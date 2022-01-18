@@ -1,0 +1,29 @@
+{
+  "name": "@nest-boot/workspace",
+  "version": "0.0.0-development",
+  "private": true,
+  "engines": {
+    "npm": "^8.0.0",
+    "node": ">=16"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @nest-boot/example",
+    "build": "lerna run build",
+    "clean": "lerna run clean",
+    "semantic-release": "multi-semantic-release --ignore-packages=packages/example/**"
+  },
+  "release": {
+    "plugins": [
+      "@semantic-release/commit-analyzer",
+      "@semantic-release/release-notes-generator"
+    ],
+    "noCi": true
+  },
+  "devDependencies": {
+    "@qiwi/multi-semantic-release": "^3.17.1",
+    "lerna": "^4.0.0"
+  }
+}

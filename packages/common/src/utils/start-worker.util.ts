@@ -1,0 +1,26 @@
+import { Logger, logger } from "@nest-boot/logger";
+import { INestApplicationContext } from "@nestjs/common";
+import { NestFactory } from "@nestjs/core";
+
+import { RUNTIME_KEY } from "../constants";
+
+export async function startWorker(
+  module: unknown,
+  callback?: (app: INestApplicationContext) => void | Promise<void>
+): Promise<void> {
+  process[RUNTIME_KEY] = "worker";
+
+  const app = await NestFactory.createApplicationContext(module, {
+    bufferLogs: true,
+  });
+
+  // 获取日志服务
+  const loggerService = app.get(Logger);
+
+  // 使用日志服务
+  app.useLogger(loggerService);
+
+  if (callback) {
+    await callback(app);
+  }
+}

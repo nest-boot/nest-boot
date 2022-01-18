@@ -1,0 +1,12 @@
+import { EntityDataLoader } from "@nest-boot/database";
+import { Injectable, Scope } from "@nestjs/common";
+
+import { {{ name | camelize }} } from "../../core/entities/{{ name | underscore | dasherize }}.entity";
+import { {{ name | camelize }}Service } from "../../service/services/{{ name | underscore | dasherize }}.service";
+
+@Injectable({ scope: Scope.REQUEST })
+export class {{ name | camelize }}DataLoader extends EntityDataLoader<{{ name | camelize }}> {
+  constructor(entityService: {{ name | camelize }}Service) {
+    super(entityService);
+  }
+}
