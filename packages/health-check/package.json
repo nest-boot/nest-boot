@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/health-check",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
   "homepage": "",
@@ -21,7 +21,7 @@
     "@nestjs/terminus": "^8.0.0"
   },
   "devDependencies": {
-    "@nest-boot/auth": "1.0.0",
+    "@nest-boot/auth": "1.0.1",
     "@nestjs/common": "^8.0.0",
     "@nestjs/core": "^8.0.0",
     "@types/ioredis": "^4.17.11",
@@ -35,7 +35,7 @@
     "typescript": "^4.4.2"
   },
   "peerDependencies": {
-    "@nest-boot/auth": "1.0.0",
+    "@nest-boot/auth": "1.0.1",
     "@nestjs/common": "^8.0.0",
     "@nestjs/core": "^8.0.0",
     "@nestjs/terminus": "^8.0.0",
