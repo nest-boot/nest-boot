@@ -17,6 +17,7 @@
   },
   "devDependencies": {
     "@qiwi/multi-semantic-release": "^3.17.1",
+    "@semantic-release/git": "^10.0.1",
     "lerna": "^4.0.0"
   }
 }
