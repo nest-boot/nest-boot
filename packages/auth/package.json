@@ -18,8 +18,8 @@
     "clean": "rimraf dist"
   },
   "devDependencies": {
-    "@nest-boot/common": "0.0.1",
-    "@nest-boot/database": "0.0.1",
+    "@nest-boot/common": "1.0.0",
+    "@nest-boot/database": "1.0.0",
     "@nestjs/common": "^8.0.0",
     "@nestjs/config": "^1.0.0",
     "@nestjs/core": "^8.0.0",
@@ -31,8 +31,8 @@
     "typescript": "^4.4.2"
   },
   "peerDependencies": {
-    "@nest-boot/common": "^0.0.1",
-    "@nest-boot/database": "^0.0.1",
+    "@nest-boot/common": "1.0.0",
+    "@nest-boot/database": "1.0.0",
     "@nestjs/common": "^8.0.0",
     "@nestjs/core": "^8.0.0"
   },

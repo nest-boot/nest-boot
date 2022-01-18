@@ -21,8 +21,8 @@
     "ms": "^2.1.3"
   },
   "devDependencies": {
-    "@nest-boot/logger": "0.0.1",
-    "@nest-boot/redis": "0.0.1",
+    "@nest-boot/logger": "1.0.0",
+    "@nest-boot/redis": "1.0.0",
     "@nestjs/common": "^8.0.0",
     "@nestjs/config": "^1.0.0",
     "@nestjs/core": "^8.0.0",
@@ -40,8 +40,8 @@
     "typescript": "^4.4.2"
   },
   "peerDependencies": {
-    "@nest-boot/logger": "^0.0.1",
-    "@nest-boot/redis": "^0.0.1",
+    "@nest-boot/logger": "1.0.0",
+    "@nest-boot/redis": "1.0.0",
     "@nestjs/common": "^8.0.0",
     "@nestjs/config": "^1.0.0",
     "@nestjs/core": "^8.0.0",

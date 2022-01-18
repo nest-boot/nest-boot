@@ -24,7 +24,7 @@
     "moment-timezone": "^0.5.31"
   },
   "devDependencies": {
-    "@nest-boot/i18next": "0.0.1",
+    "@nest-boot/i18next": "1.0.0",
     "@nestjs/common": "^8.0.0",
     "@types/jest": "^26.0.20",
     "reflect-metadata": "^0.1.13",
