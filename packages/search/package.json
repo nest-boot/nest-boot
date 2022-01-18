@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/search",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
   "homepage": "",
@@ -19,7 +19,7 @@
     "test": "jest"
   },
   "devDependencies": {
-    "@nest-boot/command": "1.0.0",
+    "@nest-boot/command": "1.0.1",
     "@nest-boot/common": "1.0.0",
     "@nest-boot/database": "1.0.0",
     "@nest-boot/queue": "1.0.0",
@@ -37,7 +37,7 @@
     "typescript": "^4.4.2"
   },
   "peerDependencies": {
-    "@nest-boot/command": "1.0.0",
+    "@nest-boot/command": "1.0.1",
     "@nest-boot/common": "1.0.0",
     "@nest-boot/database": "1.0.0",
     "@nest-boot/graphql": "1.0.0",
