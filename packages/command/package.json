@@ -8,8 +8,8 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "nb": "bin/nb",
-    "nest-boot": "bin/nb"
+    "nb": "bin/nest-boot",
+    "nest-boot": "bin/nest-boot"
   },
   "directories": {
     "lib": "dist"
