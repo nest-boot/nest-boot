@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/search",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
   "homepage": "",
@@ -19,10 +19,10 @@
     "test": "jest"
   },
   "devDependencies": {
-    "@nest-boot/command": "*",
-    "@nest-boot/common": "*",
-    "@nest-boot/database": "*",
-    "@nest-boot/queue": "*",
+    "@nest-boot/command": "1.1.0",
+    "@nest-boot/common": "1.1.0",
+    "@nest-boot/database": "1.1.0",
+    "@nest-boot/queue": "1.1.0",
     "@nestjs/common": "^8.0.0",
     "@nestjs/config": "^1.0.0",
     "@nestjs/core": "^8.0.0",
@@ -37,11 +37,11 @@
     "typescript": "^4.4.2"
   },
   "peerDependencies": {
-    "@nest-boot/command": "^1.0.0",
-    "@nest-boot/common": "^1.0.0",
-    "@nest-boot/database": "^1.0.0",
-    "@nest-boot/graphql": "^1.0.0",
-    "@nest-boot/queue": "^1.0.0",
+    "@nest-boot/command": "1.1.0",
+    "@nest-boot/common": "1.1.0",
+    "@nest-boot/database": "1.1.0",
+    "@nest-boot/graphql": "1.1.0",
+    "@nest-boot/queue": "1.1.0",
     "@nestjs/common": "^8.0.0",
     "@nestjs/config": "^1.0.0",
     "@nestjs/core": "^8.0.0"
