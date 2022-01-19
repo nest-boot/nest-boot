@@ -47,9 +47,10 @@ export function IsUnique(
             field = args.property,
           }: IsUniqueOptions = args.constraints[0];
 
-          const repository = (connection instanceof Connection
-            ? connection
-            : getConnection(connection)
+          const repository = (
+            connection instanceof Connection
+              ? connection
+              : getConnection(connection)
           ).getRepository(entity());
 
           return !(await repository.findOne({

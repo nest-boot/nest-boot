@@ -8,6 +8,10 @@ export class CommandService {
 
   private running = false;
 
+  get isRunning(): boolean {
+    return this.running;
+  }
+
   initialize(metadatas: CommandModule[]): void {
     this.yargs
       .scriptName("nest-boot")
@@ -34,9 +38,5 @@ export class CommandService {
   exit(code?: number): void {
     this.running = false;
     process.exit(code);
-  }
-
-  get isRunning(): boolean {
-    return this.running;
   }
 }

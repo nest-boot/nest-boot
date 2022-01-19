@@ -12,9 +12,7 @@ import {
 
 @Injectable()
 export class TransactionalConnection {
-  constructor(@InjectConnection() private readonly connection: Connection) {
-    return this;
-  }
+  constructor(@InjectConnection() private readonly connection: Connection) {}
 
   get rawConnection(): Connection {
     return this.connection;

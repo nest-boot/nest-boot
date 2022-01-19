@@ -10,13 +10,23 @@
     "dev": "yarn workspace @nest-boot/example run dev",
     "build": "yarn workspaces foreach run build",
     "clean": "yarn workspaces foreach run clean",
+    "lint": "eslint packages/*/src --fix",
     "semantic-release": "multi-semantic-release --ignore-packages=packages/example/**"
   },
   "devDependencies": {
     "@qiwi/multi-semantic-release": "^3.17.1",
     "@semantic-release/changelog": "^6.0.1",
     "@semantic-release/git": "^10.0.1",
+    "@typescript-eslint/eslint-plugin": "^5.10.0",
+    "@typescript-eslint/parser": "^5.10.0",
     "eslint": "^8.7.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-import-resolver-node": "^0.3.6",
+    "eslint-import-resolver-typescript": "^2.5.0",
+    "eslint-plugin-import": "^2.25.4",
+    "eslint-plugin-prettier": "^4.0.0",
+    "eslint-plugin-simple-import-sort": "^7.0.0",
     "lerna": "^4.0.0",
     "prettier": "^2.5.1",
     "typescript": "^4.5.4"

@@ -1,19 +1,19 @@
 import { PersonalAccessToken } from "@nest-boot/auth";
 import { DatabaseModule } from "@nest-boot/database";
+import { LoggerModule } from "@nest-boot/logger";
 import { MailerModule } from "@nest-boot/mailer";
 import { QueueModule } from "@nest-boot/queue";
+import { RedisModule } from "@nest-boot/redis";
 import { SearchModule } from "@nest-boot/search";
 import { MeiliSearchEngine } from "@nest-boot/search/dist/engines/meilisearch.engine";
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { MeiliSearch } from "meilisearch";
-import { RedisModule } from "@nest-boot/redis";
 
 import { TestQueue } from "./queues/test.queue";
 import { AuthService } from "./services/auth.service";
 import { PostService } from "./services/post.service";
 import { UserService } from "./services/user.service";
-import { LoggerModule } from "@nest-boot/logger";
 
 const DatabaseDynamicModule = DatabaseModule.register({
   entities: [PersonalAccessToken],

@@ -8,9 +8,7 @@ import { UserService } from "../../core/services/user.service";
 
 @Injectable()
 export class UserCommand {
-  constructor(private readonly userService: UserService) {
-    return this;
-  }
+  constructor(private readonly userService: UserService) {}
 
   @Command({
     command: "create:user <name> <email>",

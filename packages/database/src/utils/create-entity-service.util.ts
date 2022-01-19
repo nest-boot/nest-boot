@@ -18,6 +18,7 @@ export interface Type<T = any> extends Function {
   new (...args: any[]): T;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface ChunkByIdOptions<T = any>
   extends Omit<FindManyOptions<T>, "skip" | "take" | "order"> {
   where?: Exclude<FindManyOptions<T>["where"], string | FindConditions<T>[]>;
@@ -56,6 +57,10 @@ export function createEntityService<T extends BaseEntity>(
 
     readonly target: Type<T> = Entity;
 
+    get repository(): Repository<T> {
+      return this.getRepository();
+    }
+
     async create(input: DeepPartial<T>): Promise<T> {
       const repository = this.connection.getRepository(this.target);
       return await this.save(repository.create(input));
@@ -72,10 +77,6 @@ export function createEntityService<T extends BaseEntity>(
     async delete(conditions: FindConditions<T>): Promise<this> {
       await this.repository.delete(conditions);
       return this;
-    }
-
-    get repository(): Repository<T> {
-      return this.getRepository();
     }
 
     async findAll(options?: FindManyOptions<T>): Promise<T[]> {
@@ -129,12 +130,10 @@ export function createEntityService<T extends BaseEntity>(
         // eslint-disable-next-line no-await-in-loop
         const entities = await this.repository.find({
           where: options.where
-            ? options.where instanceof Array
-              ? options.where.map((item) => ({}))
-              : {
-                  ...options.where,
-                  ...(lastId ? { id: MoreThan(lastId) } : null),
-                }
+            ? {
+                ...options.where,
+                ...(lastId ? { id: MoreThan(lastId) } : null),
+              }
             : {
                 ...options,
                 ...(lastId ? { id: MoreThan(lastId) } : null),

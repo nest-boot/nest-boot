@@ -12,7 +12,6 @@ export class I18NextMiddleware implements NestMiddleware {
 
   constructor(@InjectI18next() readonly i18next: I18Next) {
     this.i18nextMiddleware = middleware.handle(this.i18next);
-    return this;
   }
 
   async use(req: Request, res: Response, next: () => void): Promise<void> {

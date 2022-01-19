@@ -48,13 +48,12 @@ import {
 
 export * from "./decorators";
 export * from "./entities";
+export * from "./entity.data-loader";
 export * from "./interceptors";
 export * from "./interfaces";
 export * from "./modules";
 export * from "./services";
 export * from "./utils";
-
-export * from "./entity.data-loader";
 
 export {
   AfterInsert,

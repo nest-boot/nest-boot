@@ -6,9 +6,7 @@ import { Injectable } from "@nestjs/common";
 
 @Injectable()
 export class SendMailCommand {
-  constructor(private readonly mailerService: MailerService) {
-    return this;
-  }
+  constructor(private readonly mailerService: MailerService) {}
 
   @Command({
     command: "send:mail <from> <to> <message>",

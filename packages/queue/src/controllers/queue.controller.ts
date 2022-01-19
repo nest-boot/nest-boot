@@ -11,9 +11,7 @@ import { QueueInfoService } from "../services/queue-info.service";
 
 @Controller("/api/queues")
 export class QueueController {
-  constructor(private queueInfoService: QueueInfoService) {
-    return this;
-  }
+  constructor(private queueInfoService: QueueInfoService) {}
 
   @Can("QUEUE_READ")
   @Get()

@@ -156,32 +156,20 @@ export class CreateCodeCommand {
         connection.driver instanceof AuroraDataApiDriver
       ) {
         sqlInMemory.upQueries.forEach((upQuery) => {
-          upSqls.push(
-            sqlFormatter.format(
-              upQuery.query.replace(new RegExp(`"`, "g"), `\\"`)
-            )
-          );
+          upSqls.push(sqlFormatter.format(upQuery.query.replace(/"/g, `\\"`)));
         });
         sqlInMemory.downQueries.forEach((downQuery) => {
           downSqls.push(
-            sqlFormatter.format(
-              downQuery.query.replace(new RegExp(`"`, "g"), `\\"`)
-            )
+            sqlFormatter.format(downQuery.query.replace(/"/g, `\\"`))
           );
         });
       } else {
         sqlInMemory.upQueries.forEach((upQuery) => {
-          upSqls.push(
-            sqlFormatter.format(
-              upQuery.query.replace(new RegExp("`", "g"), "\\`")
-            )
-          );
+          upSqls.push(sqlFormatter.format(upQuery.query.replace(/`/g, "\\`")));
         });
         sqlInMemory.downQueries.forEach((downQuery) => {
           downSqls.push(
-            sqlFormatter.format(
-              downQuery.query.replace(new RegExp("`", "g"), "\\`")
-            )
+            sqlFormatter.format(downQuery.query.replace(/`/g, "\\`"))
           );
         });
       }

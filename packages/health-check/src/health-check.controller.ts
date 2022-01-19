@@ -13,9 +13,7 @@ export class HealthCheckController {
   constructor(
     private healthCheckService: HealthCheckService,
     private healthCheckRegistryService: HealthCheckRegistryService
-  ) {
-    return this;
-  }
+  ) {}
 
   @Can("PUBLIC")
   @Get()

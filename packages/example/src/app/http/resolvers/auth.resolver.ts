@@ -12,9 +12,7 @@ export class AuthResolver {
   constructor(
     private readonly authService: AuthService,
     private readonly userService: UserService
-  ) {
-    return this;
-  }
+  ) {}
 
   @Query(() => UserObject)
   async me(): Promise<UserObject> {

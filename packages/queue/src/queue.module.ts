@@ -4,18 +4,18 @@ import {
   Module,
   ModuleMetadata,
   OnModuleInit,
-  Provider,
 } from "@nestjs/common";
 import { DiscoveryModule } from "@nestjs/core";
 
+import { QueueService } from "./services/queue.service";
 import { QueueInfoService } from "./services/queue-info.service";
 import { QueueManagerService } from "./services/queue-manager.service";
-import { QueueService } from "./services/queue.service";
 
-export interface QueueModuleOptions {}
+export interface QueueModuleOptions {
+  driver: string;
+}
 
-export interface QueueModuleAsyncOptions
-  extends Pick<ModuleMetadata, "imports"> {}
+export type QueueModuleAsyncOptions = Pick<ModuleMetadata, "imports">;
 
 @Module({
   imports: [DiscoveryModule, RedisModule],
@@ -28,11 +28,6 @@ export class QueueModule implements OnModuleInit {
     private readonly queueInfoService: QueueInfoService
   ) {}
 
-  async onModuleInit(): Promise<void> {
-    await this.queueService.init();
-    this.queueInfoService.init();
-  }
-
   static registerAsync(options: QueueModuleAsyncOptions): DynamicModule {
     return {
       module: QueueModule,
@@ -40,5 +35,10 @@ export class QueueModule implements OnModuleInit {
       providers: [QueueService, QueueManagerService, QueueInfoService],
       exports: [QueueManagerService],
     };
+  }
+
+  async onModuleInit(): Promise<void> {
+    await this.queueService.init();
+    this.queueInfoService.init();
   }
 }

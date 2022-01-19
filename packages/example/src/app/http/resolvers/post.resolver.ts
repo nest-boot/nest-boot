@@ -1,19 +1,16 @@
 import { Can } from "@nest-boot/common";
-import { LessThan } from "@nest-boot/database";
 import { QueryConnectionArgs } from "@nest-boot/graphql";
 import { Args, ID, Mutation, Query, Resolver } from "@nestjs/graphql";
 
 import { PostService } from "../../core/services/post.service";
 import { CreatePostInput } from "../inputs/create-post.input";
 import { UpdatePostInput } from "../inputs/update-post.input";
-import { PostConnection } from "../objects/post-connection.object";
 import { PostObject } from "../objects/post.object";
+import { PostConnection } from "../objects/post-connection.object";
 
 @Resolver(() => PostObject)
 export class PostResolver {
-  constructor(private readonly postService: PostService) {
-    return this;
-  }
+  constructor(private readonly postService: PostService) {}
 
   @Can("PUBLIC")
   @Query(() => PostObject)

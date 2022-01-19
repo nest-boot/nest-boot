@@ -41,7 +41,7 @@ export class MeiliSearchEngine implements SearchEngineInterface {
       .deleteDocuments(entities.map(({ id }) => id));
   }
 
-  async flush(index: string, entity: BaseEntity): Promise<void> {
+  async flush(index: string): Promise<void> {
     await this.meilisearch.index(index).deleteAllDocuments();
   }
 

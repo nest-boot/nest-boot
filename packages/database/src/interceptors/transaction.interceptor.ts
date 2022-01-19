@@ -23,9 +23,7 @@ export class TransactionInterceptor implements NestInterceptor {
   constructor(
     private connection: TransactionalConnection,
     private reflector: Reflector
-  ) {
-    return this;
-  }
+  ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const ctx = getRuntimeContext();
@@ -78,7 +76,9 @@ export class TransactionInterceptor implements NestInterceptor {
 
       // insert an increasing delay before retrying
       // eslint-disable-next-line no-await-in-loop, no-loop-func
-      await new Promise((resolve) => setTimeout(resolve, attempts * 20));
+      await new Promise((resolve) => {
+        setTimeout(resolve, attempts * 20);
+      });
     }
     throw lastError;
   }

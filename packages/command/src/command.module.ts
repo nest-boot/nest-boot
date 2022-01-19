@@ -1,8 +1,8 @@
 import { Module, OnModuleInit } from "@nestjs/common";
 import { MetadataScanner } from "@nestjs/core";
 
-import { CommandExplorerService } from "./command-explorer.service";
 import { CommandService } from "./command.service";
+import { CommandExplorerService } from "./command-explorer.service";
 import * as commands from "./commands";
 
 @Module({

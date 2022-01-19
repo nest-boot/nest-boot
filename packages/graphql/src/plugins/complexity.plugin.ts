@@ -17,9 +17,7 @@ export class ComplexityPlugin implements ApolloServerPlugin {
     readonly logger: LoggerService,
     readonly maxComplexity = 1000,
     readonly defaultComplexity = 0
-  ) {
-    return this;
-  }
+  ) {}
 
   async requestDidStart(): Promise<GraphQLRequestListener> {
     const { schema } = this.gqlSchemaHost;

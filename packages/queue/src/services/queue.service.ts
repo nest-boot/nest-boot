@@ -21,9 +21,7 @@ export class QueueService {
     private readonly discoveryService: DiscoveryService,
     private readonly reflector: Reflector,
     private readonly redis: Redis
-  ) {
-    return this;
-  }
+  ) {}
 
   getQueueProviders(): InstanceWrapper<BaseQueue>[] {
     return this.discoveryService
@@ -72,7 +70,7 @@ export class QueueService {
 
                 ctx.job = job;
 
-                return runtimeContextStorage.run(ctx, () =>
+                return await runtimeContextStorage.run(ctx, () =>
                   wrapper.instance.processor(job)
                 );
               },

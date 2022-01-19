@@ -1,6 +1,5 @@
 import "source-map-support/register";
 
-import { startHttpServer } from "@nest-boot/common";
 import { NestFactory } from "@nestjs/core";
 
 import { HttpModule } from "./app/http/http.module";

@@ -36,10 +36,9 @@ export function mixinConnection<T extends BaseEntity>(
       where: FindConditions<T> = {}
     ): Promise<Connection<T>> {
       if (args.page) {
-        return this.getCursorConnection(args, where);
-      } else {
-        return this.getOffsetConnection(args, where);
+        return await this.getCursorConnection(args, where);
       }
+      return await this.getOffsetConnection(args, where);
     }
 
     private async getCursorConnection(

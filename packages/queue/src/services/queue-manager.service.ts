@@ -12,9 +12,7 @@ export class QueueManagerService {
   constructor(
     private readonly discoveryService: DiscoveryService,
     private readonly reflector: Reflector
-  ) {
-    return this;
-  }
+  ) {}
 
   getQuene<T extends BaseQueue>(name: string): T {
     const providers = this.getQueueProviders();

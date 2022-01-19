@@ -17,8 +17,10 @@ export interface SearchModuleOptions {
 
 export interface SearchModuleAsyncOptions
   extends Pick<ModuleMetadata, "imports"> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   inject?: any[];
   useFactory: (
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ...args: any[]
   ) => Promise<SearchModuleOptions> | SearchModuleOptions;
 }

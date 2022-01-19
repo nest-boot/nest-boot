@@ -7,10 +7,6 @@ import { PersonalAccessToken } from "../entities";
 
 @Injectable()
 export class AuthMiddleware implements NestMiddleware {
-  constructor() {
-    return this;
-  }
-
   async use(req: Request, res: Response, next: () => void): Promise<void> {
     // 获取运行上下文
     const ctx = getRuntimeContext();

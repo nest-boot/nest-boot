@@ -4,7 +4,7 @@ import {
   ModuleMetadata,
   Provider,
 } from "@nestjs/common";
-import { createTransport, Transporter } from "nodemailer";
+import { createTransport } from "nodemailer";
 import Mailer from "nodemailer/lib/mailer";
 import SMTPTransport from "nodemailer/lib/smtp-transport";
 
@@ -17,8 +17,10 @@ export interface MailerModuleOptions {
 
 export interface MailerModuleAsyncOptions
   extends Pick<ModuleMetadata, "imports"> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   inject?: any[];
   useFactory: (
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ...args: any[]
   ) => Promise<MailerModuleOptions> | MailerModuleOptions;
 }

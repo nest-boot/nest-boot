@@ -1,3 +1,4 @@
+import { Redis } from "@nest-boot/redis";
 import { Injectable, Scope } from "@nestjs/common";
 import { ModuleRef } from "@nestjs/core";
 import {
@@ -8,7 +9,6 @@ import {
   TimeoutError,
 } from "@nestjs/terminus";
 import { checkPackages, promiseTimeout } from "@nestjs/terminus/dist/utils";
-import { Redis } from "@nest-boot/redis";
 import { parse } from "redis-info";
 
 export interface RedisPingCheckSettings {

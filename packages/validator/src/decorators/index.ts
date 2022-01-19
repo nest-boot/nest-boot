@@ -1,6 +1,6 @@
 // 通用
-export * from "./common/is-unique.decorator";
 export * from "./common/array-length.decorator";
+export * from "./common/is-unique.decorator";
 
 // 字符串
 export * from "./string/is-domain.decorator";
@@ -11,10 +11,10 @@ export * from "./string/is-url.decorator";
 export * from "./string/length.decorator";
 
 // 数值
-export * from "./number/is-greater-than-or-equal.decorator";
 export * from "./number/is-greater-than.decorator";
-export * from "./number/is-less-than-or-equal.decorator";
+export * from "./number/is-greater-than-or-equal.decorator";
 export * from "./number/is-less-than.decorator";
+export * from "./number/is-less-than-or-equal.decorator";
 export * from "./number/max.decorator";
 export * from "./number/min.decorator";
 

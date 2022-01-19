@@ -8,12 +8,14 @@ import IORedis from "ioredis";
 
 import { Redis } from "./redis";
 
-export interface RedisModuleOptions extends IORedis.RedisOptions {}
+export type RedisModuleOptions = IORedis.RedisOptions;
 
 export interface RedisModuleAsyncOptions
   extends Pick<ModuleMetadata, "imports"> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   inject?: any[];
   useFactory: (
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ...args: any[]
   ) => Promise<RedisModuleOptions> | RedisModuleOptions;
 }

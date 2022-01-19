@@ -1,4 +1,4 @@
-import { Logger, logger } from "@nest-boot/logger";
+import { Logger } from "@nest-boot/logger";
 import { INestApplicationContext } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 

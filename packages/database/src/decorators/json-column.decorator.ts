@@ -3,9 +3,7 @@ import { omit } from "lodash";
 import { Column, ColumnOptions } from "./column.decorator";
 
 class Wrap<T> {
-  constructor(private readonly value: T) {
-    return this;
-  }
+  constructor(private readonly value: T) {}
 
   toJSON(): T {
     return this.value;
