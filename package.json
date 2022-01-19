@@ -11,7 +11,7 @@
     "build": "lerna run build",
     "clean": "lerna run clean",
     "lint": "eslint packages/*/src --fix",
-    "semantic-release": "multi-semantic-release --ignore-packages=packages/example/**"
+    "semantic-release": "multi-semantic-release '--ignore-packages=packages/example/**'"
   },
   "devDependencies": {
     "@qiwi/multi-semantic-release": "^3.17.1",
