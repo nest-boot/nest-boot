@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/database",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
   "homepage": "",
@@ -28,9 +28,9 @@
     "typeorm-snake-naming-strategy": "^1.0.2"
   },
   "devDependencies": {
-    "@nest-boot/command": "*",
-    "@nest-boot/common": "*",
-    "@nest-boot/queue": "*",
+    "@nest-boot/command": "1.1.0",
+    "@nest-boot/common": "1.1.0",
+    "@nest-boot/queue": "1.1.0",
     "@nestjs/common": "^8.0.0",
     "@nestjs/config": "^1.0.0",
     "@nestjs/core": "^8.0.0",
@@ -44,9 +44,9 @@
     "typescript": "^4.4.2"
   },
   "peerDependencies": {
-    "@nest-boot/command": "^1.0.0",
-    "@nest-boot/common": "^1.0.0",
-    "@nest-boot/queue": "^1.0.0",
+    "@nest-boot/command": "1.1.0",
+    "@nest-boot/common": "1.1.0",
+    "@nest-boot/queue": "1.1.0",
     "@nestjs/common": "^8.0.0",
     "@nestjs/config": "^1.0.0",
     "@nestjs/core": "^8.0.0"
