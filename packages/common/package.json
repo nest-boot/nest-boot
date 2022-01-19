@@ -18,30 +18,33 @@
     "clean": "rimraf dist"
   },
   "dependencies": {
-    "ms": "^2.1.3"
+    "lodash": "^4.17.21",
+    "ms": "^2.1.3",
+    "rxjs": "^7.5.2"
   },
   "devDependencies": {
-    "@nest-boot/logger": "1.0.0",
-    "@nest-boot/redis": "1.0.0",
+    "@nest-boot/logger": "workspace:^",
+    "@nest-boot/redis": "workspace:^",
     "@nestjs/common": "^8.0.0",
     "@nestjs/config": "^1.0.0",
     "@nestjs/core": "^8.0.0",
     "@types/cookie-parser": "^1.4.2",
-    "@types/jest": "^26.0.20",
+    "@types/jest": "^27.4.0",
     "@types/lodash": "^4.14.167",
     "@types/ms": "^0.7.31",
     "apollo-server-errors": "^3.0.0",
     "argon2": "^0.27.1",
     "cookie-parser": "^1.4.5",
     "express": "^4.17.1",
+    "jest": "^27.4.7",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",
-    "ts-jest": "^26.4.3",
+    "ts-jest": "^27.1.3",
     "typescript": "^4.4.2"
   },
   "peerDependencies": {
-    "@nest-boot/logger": "1.0.0",
-    "@nest-boot/redis": "1.0.0",
+    "@nest-boot/logger": "^1.0.0",
+    "@nest-boot/redis": "^1.0.0",
     "@nestjs/common": "^8.0.0",
     "@nestjs/config": "^1.0.0",
     "@nestjs/core": "^8.0.0",

@@ -18,24 +18,27 @@
     "clean": "rimraf dist"
   },
   "dependencies": {
-    "graphql-query-complexity": "^0.7.0"
+    "graphql": "^15.8.0",
+    "graphql-query-complexity": "^0.7.0",
+    "lodash": "^4.17.21"
   },
   "devDependencies": {
-    "@nest-boot/database": "1.0.1",
-    "@nest-boot/search": "1.0.1",
+    "@nest-boot/database": "workspace:^",
+    "@nest-boot/search": "workspace:^",
     "@nestjs/common": "^8.0.0",
     "@nestjs/core": "^8.0.0",
     "@nestjs/graphql": "^9.0.0",
-    "@types/jest": "^26.0.20",
+    "@types/jest": "^27.4.0",
     "apollo-server-plugin-base": "^3.2.0",
+    "jest": "^27.4.7",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",
-    "ts-jest": "^26.4.3",
+    "ts-jest": "^27.1.3",
     "typescript": "^4.4.2"
   },
   "peerDependencies": {
-    "@nest-boot/database": "1.0.1",
-    "@nest-boot/search": "1.0.1",
+    "@nest-boot/database": "^1.0.0",
+    "@nest-boot/search": "^1.0.0",
     "@nestjs/common": "^8.0.0",
     "@nestjs/core": "^8.0.0",
     "@nestjs/graphql": "^9.0.0"

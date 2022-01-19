@@ -15,7 +15,6 @@ const resolvers = [AuthResolver, PostResolver];
 @Module({
   imports: [
     CoreModule,
-
     GraphQLModule.forRoot({
       autoSchemaFile: true,
       path: "/graphql",

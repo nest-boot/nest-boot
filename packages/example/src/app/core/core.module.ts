@@ -7,25 +7,20 @@ import { MeiliSearchEngine } from "@nest-boot/search/dist/engines/meilisearch.en
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { MeiliSearch } from "meilisearch";
-import { Redis, RedisModule } from "@nest-boot/redis";
+import { RedisModule } from "@nest-boot/redis";
 
 import { TestQueue } from "./queues/test.queue";
 import { AuthService } from "./services/auth.service";
 import { PostService } from "./services/post.service";
 import { UserService } from "./services/user.service";
 import { LoggerModule } from "@nest-boot/logger";
-import {
-  HealthCheckModule,
-  HealthCheckRegistryService,
-  RedisHealthIndicator,
-  TypeOrmHealthIndicator,
-} from "@nest-boot/health-check";
 
 const DatabaseDynamicModule = DatabaseModule.register({
   entities: [PersonalAccessToken],
 });
 
 const RedisDynamicModule = RedisModule.registerAsync({
+  imports: [],
   inject: [ConfigService],
   useFactory: (configService: ConfigService) => ({
     host: configService.get("REDIS_HOST", "localhost"),
@@ -37,6 +32,7 @@ const RedisDynamicModule = RedisModule.registerAsync({
 });
 
 const SearchDynamicModule = SearchModule.registerAsync({
+  imports: [],
   inject: [ConfigService],
   useFactory: (configService: ConfigService) => ({
     engine: new MeiliSearchEngine(
@@ -49,6 +45,7 @@ const SearchDynamicModule = SearchModule.registerAsync({
 });
 
 const MailerDynamicModule = MailerModule.registerAsync({
+  imports: [],
   inject: [ConfigService],
   useFactory: (configService: ConfigService) => ({
     transport: {
@@ -77,7 +74,6 @@ const providers = [...services, ...queues];
   imports: [
     ConfigModule.forRoot({ isGlobal: true, expandVariables: true }),
     LoggerModule.register(),
-    HealthCheckModule,
     RedisDynamicModule,
     SearchDynamicModule,
     MailerDynamicModule,
@@ -87,16 +83,4 @@ const providers = [...services, ...queues];
   providers,
   exports: providers,
 })
-export class CoreModule {
-  constructor(
-    readonly redis: Redis,
-    private readonly healthCheckRegistryService: HealthCheckRegistryService,
-    private readonly redisHealthIndicator: RedisHealthIndicator,
-    private readonly typeOrmHealthIndicator: TypeOrmHealthIndicator
-  ) {
-    this.healthCheckRegistryService.registerIndicator(
-      () => this.redisHealthIndicator.pingCheck("redis", { client: redis }),
-      () => this.typeOrmHealthIndicator.pingCheck("database")
-    );
-  }
-}
+export class CoreModule {}

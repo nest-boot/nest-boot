@@ -19,29 +19,32 @@
   },
   "dependencies": {
     "bullmq": "^1.32.0",
-    "class-transformer": "^0.4.0"
+    "class-transformer": "^0.4.0",
+    "lodash": "^4.17.21",
+    "rxjs": "^7.5.2"
   },
   "devDependencies": {
-    "@nest-boot/common": "1.0.0",
-    "@nest-boot/redis": "1.0.0",
+    "@nest-boot/common": "workspace:^",
+    "@nest-boot/redis": "workspace:^",
     "@nestjs/common": "^8.0.0",
     "@nestjs/config": "^1.0.0",
     "@nestjs/core": "^8.0.0",
     "@types/humps": "^2.0.0",
-    "@types/jest": "^26.0.20",
-    "redis-info": "*",
+    "@types/jest": "^27.4.0",
+    "jest": "^27.4.7",
+    "redis-info": "^3.1.0",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",
-    "ts-jest": "^26.4.3",
+    "ts-jest": "^27.1.3",
     "typescript": "^4.4.2"
   },
   "peerDependencies": {
-    "@nest-boot/common": "1.0.0",
-    "@nest-boot/redis": "1.0.0",
+    "@nest-boot/common": "^1.0.0",
+    "@nest-boot/redis": "^1.0.0",
     "@nestjs/common": "^8.0.0",
     "@nestjs/config": "^1.0.0",
     "@nestjs/core": "^8.0.0",
-    "redis-info": "^3.0.8"
+    "redis-info": "^3.0.0"
   },
   "publishConfig": {
     "access": "public"

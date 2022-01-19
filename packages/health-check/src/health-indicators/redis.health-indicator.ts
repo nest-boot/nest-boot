@@ -8,11 +8,11 @@ import {
   TimeoutError,
 } from "@nestjs/terminus";
 import { checkPackages, promiseTimeout } from "@nestjs/terminus/dist/utils";
-import Redis from "ioredis";
+import { Redis } from "@nest-boot/redis";
 import { parse } from "redis-info";
 
 export interface RedisPingCheckSettings {
-  client?: Redis.Redis;
+  client?: Redis;
 
   timeout?: number;
 
@@ -95,6 +95,6 @@ export class RedisHealthIndicator extends HealthIndicator {
   }
 
   private checkDependantPackages(): void {
-    checkPackages(["ioredis", "redis-info"], this.constructor.name);
+    checkPackages(["@nest-boot/redis", "redis-info"], this.constructor.name);
   }
 }
