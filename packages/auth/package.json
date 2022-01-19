@@ -22,8 +22,8 @@
     "lodash": "^4.17.21"
   },
   "devDependencies": {
-    "@nest-boot/common": "workspace:^",
-    "@nest-boot/database": "workspace:^",
+    "@nest-boot/common": "*",
+    "@nest-boot/database": "*",
     "@nestjs/common": "^8.0.0",
     "@nestjs/config": "^1.0.0",
     "@nestjs/core": "^8.0.0",

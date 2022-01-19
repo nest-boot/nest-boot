@@ -35,8 +35,8 @@
     "yargs": "^16.2.0"
   },
   "devDependencies": {
-    "@nest-boot/common": "workspace:^",
-    "@nest-boot/logger": "workspace:^",
+    "@nest-boot/common": "*",
+    "@nest-boot/logger": "*",
     "@nestjs/common": "^8.0.0",
     "@nestjs/core": "^8.0.0",
     "@types/fs-extra": "^9.0.6",

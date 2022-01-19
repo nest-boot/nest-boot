@@ -22,9 +22,9 @@
     "redis-info": "^3.1.0"
   },
   "devDependencies": {
-    "@nest-boot/auth": "workspace:^",
-    "@nest-boot/common": "workspace:^",
-    "@nest-boot/redis": "workspace:^",
+    "@nest-boot/auth": "*",
+    "@nest-boot/common": "*",
+    "@nest-boot/redis": "*",
     "@nestjs/common": "^8.0.0",
     "@nestjs/core": "^8.0.0",
     "@types/jest": "^27.4.0",

@@ -28,9 +28,9 @@
     "typeorm-snake-naming-strategy": "^1.0.2"
   },
   "devDependencies": {
-    "@nest-boot/command": "workspace:^",
-    "@nest-boot/common": "workspace:^",
-    "@nest-boot/queue": "workspace:^",
+    "@nest-boot/command": "*",
+    "@nest-boot/common": "*",
+    "@nest-boot/queue": "*",
     "@nestjs/common": "^8.0.0",
     "@nestjs/config": "^1.0.0",
     "@nestjs/core": "^8.0.0",
