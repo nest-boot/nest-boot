@@ -68,6 +68,7 @@ export class DatabaseModule {
     });
 
     return {
+      global: true,
       module: DatabaseModule,
       imports: [TypeOrmDynamicModule],
       providers: [TransactionalConnection],

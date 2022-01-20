@@ -1,5 +1,5 @@
 {
-  "name": "@nest-boot/search",
+  "name": "@nest-boot/search-engine-meilisearch",
   "version": "1.1.0",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
@@ -19,20 +19,12 @@
     "test": "jest"
   },
   "dependencies": {
-    "@nest-boot/command": "1.1.0",
-    "@nest-boot/common": "1.1.0",
-    "@nest-boot/database": "1.1.0",
-    "@nest-boot/queue": "1.1.0",
+    "@nest-boot/database": "*",
+    "@nest-boot/search": "*",
     "@nestjs/common": "^8.0.0",
-    "@nestjs/config": "^1.0.0",
-    "@nestjs/core": "^8.0.0",
-    "reflect-metadata": "^0.1.13",
-    "rxjs": "^7.3.0",
-    "typeorm": "^0.2.41"
+    "meilisearch": "^0.24.0"
   },
   "devDependencies": {
-    "@types/jest": "^27.4.0",
-    "@types/lodash": "^4.14.167",
     "jest": "^27.4.7",
     "rimraf": "^3.0.2",
     "ts-jest": "^27.1.3",

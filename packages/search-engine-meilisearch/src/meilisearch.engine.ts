@@ -1,9 +1,11 @@
 import { BaseEntity, FindConditions, FindOperator } from "@nest-boot/database";
+import {
+  SearchableOptions,
+  SearchEngineInterface,
+  SearchOptions,
+} from "@nest-boot/search";
 import { Injectable } from "@nestjs/common";
 import { MeiliSearch } from "meilisearch";
-
-import { SearchEngineInterface } from "../interfaces/search-engine.interface";
-import { SearchOptions } from "../interfaces/search-options.interface";
 
 @Injectable()
 export class MeiliSearchEngine implements SearchEngineInterface {
@@ -45,8 +47,8 @@ export class MeiliSearchEngine implements SearchEngineInterface {
     await this.meilisearch.index(index).deleteAllDocuments();
   }
 
-  async createIndex(index: string, options) {
-    const indexInstance = await this.meilisearch.getOrCreateIndex(index);
+  async createIndex(index: string, options: SearchableOptions<BaseEntity>) {
+    const indexInstance = this.meilisearch.index(index);
 
     await Promise.all([
       indexInstance.updateFilterableAttributes(options.filterableAttributes),

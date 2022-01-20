@@ -5,7 +5,7 @@ import { MailerModule } from "@nest-boot/mailer";
 import { QueueModule } from "@nest-boot/queue";
 import { RedisModule } from "@nest-boot/redis";
 import { SearchModule } from "@nest-boot/search";
-import { MeiliSearchEngine } from "@nest-boot/search/dist/engines/meilisearch.engine";
+import { MeiliSearchEngine } from "@nest-boot/search-engine-meilisearch";
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { MeiliSearch } from "meilisearch";
@@ -32,7 +32,7 @@ const RedisDynamicModule = RedisModule.registerAsync({
 });
 
 const SearchDynamicModule = SearchModule.registerAsync({
-  imports: [],
+  imports: [DatabaseDynamicModule],
   inject: [ConfigService],
   useFactory: (configService: ConfigService) => ({
     engine: new MeiliSearchEngine(
@@ -81,6 +81,6 @@ const providers = [...services, ...queues];
     DatabaseDynamicModule,
   ],
   providers,
-  exports: providers,
+  exports: [...providers],
 })
 export class CoreModule {}
