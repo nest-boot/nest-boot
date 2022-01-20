@@ -1,3 +1,14 @@
+## @nest-boot/health-check [1.1.5](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/health-check@1.1.4...@nest-boot/health-check@1.1.5) (2022-01-20)
+
+
+
+
+
+### Dependencies
+
+* **@nest-boot/common:** upgraded to 1.1.3
+* **@nest-boot/redis:** upgraded to 1.2.0
+
 ## @nest-boot/health-check [1.1.4](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/health-check@1.1.3...@nest-boot/health-check@1.1.4) (2022-01-20)
 
 
