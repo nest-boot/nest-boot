@@ -1,3 +1,10 @@
+# @nest-boot/redis [1.2.0](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/redis@1.1.1...@nest-boot/redis@1.2.0) (2022-01-20)
+
+
+### Features
+
+* graphql add the getConnection() ([66fc2fa](https://github.com/d4rkcr0w/nest-boot/commit/66fc2fa515dcb57cc40e87c2fe8784b2f3eebe00))
+
 ## @nest-boot/redis [1.1.1](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/redis@1.1.0...@nest-boot/redis@1.1.1) (2022-01-20)
 
 
