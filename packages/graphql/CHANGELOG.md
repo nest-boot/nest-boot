@@ -1,3 +1,19 @@
+# @nest-boot/graphql [1.2.0](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/graphql@1.1.3...@nest-boot/graphql@1.2.0) (2022-01-20)
+
+
+### Features
+
+* graphql add the getConnection() ([66fc2fa](https://github.com/d4rkcr0w/nest-boot/commit/66fc2fa515dcb57cc40e87c2fe8784b2f3eebe00))
+
+
+
+
+
+### Dependencies
+
+* **@nest-boot/database:** upgraded to 1.2.2
+* **@nest-boot/search:** upgraded to 1.2.2
+
 ## @nest-boot/graphql [1.1.3](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/graphql@1.1.2...@nest-boot/graphql@1.1.3) (2022-01-20)
 
 
