@@ -1,3 +1,15 @@
+## @nest-boot/database [1.2.2](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/database@1.2.1...@nest-boot/database@1.2.2) (2022-01-20)
+
+
+
+
+
+### Dependencies
+
+* **@nest-boot/command:** upgraded to 1.2.2
+* **@nest-boot/common:** upgraded to 1.1.3
+* **@nest-boot/queue:** upgraded to 1.1.3
+
 ## @nest-boot/database [1.2.1](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/database@1.2.0...@nest-boot/database@1.2.1) (2022-01-20)
 
 
