@@ -2034,22 +2034,18 @@ __metadata:
     "@types/pino": ^6.3.5
     "@types/uuid": ^8.3.0
     jest: ^27.4.7
-    nestjs-pino: ^2.2.0
-    pino: ^7.6.3
+    nestjs-pino: ^2.5.0
+    pino: ^6.13.2
     pino-http: ^6.5.0
     reflect-metadata: ^0.1.13
     rimraf: ^3.0.2
     rxjs: ^7.5.2
     ts-jest: ^27.1.3
     typescript: ^4.4.2
-    uuid: ^8.3.2
   peerDependencies:
     "@nestjs/common": ^8.0.0
     "@nestjs/config": ^1.0.0
     "@nestjs/core": ^8.0.0
-    nestjs-pino: ^2.3.1
-    pino: ^6.13.2
-    pino-http: ^6.3.1
   languageName: unknown
   linkType: soft
 
@@ -7327,7 +7323,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fast-safe-stringify@npm:2.1.1, fast-safe-stringify@npm:^2.1.1":
+"fast-safe-stringify@npm:2.1.1, fast-safe-stringify@npm:^2.0.8, fast-safe-stringify@npm:^2.1.1":
   version: 2.1.1
   resolution: "fast-safe-stringify@npm:2.1.1"
   checksum: a851cbddc451745662f8f00ddb622d6766f9bd97642dabfd9a405fb0d646d69fc0b9a1243cbf67f5f18a39f40f6fa821737651ff1bceeba06c9992ca2dc5bd3d
@@ -7461,6 +7457,13 @@ __metadata:
     flatted: ^3.1.0
     rimraf: ^3.0.2
   checksum: 4fdd10ecbcbf7d520f9040dd1340eb5dfe951e6f0ecf2252edeec03ee68d989ec8b9a20f4434270e71bcfd57800dc09b3344fca3966b2eb8f613072c7d9a2365
+  languageName: node
+  linkType: hard
+
+"flatstr@npm:^1.0.12":
+  version: 1.0.12
+  resolution: "flatstr@npm:1.0.12"
+  checksum: e1bb562c94b119e958bf37e55738b172b5f8aaae6532b9660ecd877779f8559dbbc89613ba6b29ccc13447e14c59277d41450f785cf75c30df9fce62f459e9a8
   languageName: node
   linkType: hard
 
@@ -11531,7 +11534,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"nestjs-pino@npm:^2.2.0":
+"nestjs-pino@npm:^2.5.0":
   version: 2.5.0
   resolution: "nestjs-pino@npm:2.5.0"
   peerDependencies:
@@ -12937,6 +12940,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"pino-std-serializers@npm:^3.1.0":
+  version: 3.2.0
+  resolution: "pino-std-serializers@npm:3.2.0"
+  checksum: 77e29675b116e42ae9fe6d4ef52ef3a082ffc54922b122d85935f93ddcc20277f0b0c873c5c6c5274a67b0409c672aaae3de6bcea10a2d84699718dda55ba95b
+  languageName: node
+  linkType: hard
+
 "pino-std-serializers@npm:^4.0.0":
   version: 4.0.0
   resolution: "pino-std-serializers@npm:4.0.0"
@@ -12945,13 +12955,13 @@ __metadata:
   linkType: hard
 
 "pino-std-serializers@npm:^5.0.0":
-  version: 5.0.0
-  resolution: "pino-std-serializers@npm:5.0.0"
-  checksum: 3877a49f93ed513e92c3116460b63ff0d9e6ae57f054618f66f6f8aa7a0f1220da236c070590cdd42e066a7da8eb30a0c7e6f1e81cad07552e6ab8decf4aebc0
+  version: 5.1.0
+  resolution: "pino-std-serializers@npm:5.1.0"
+  checksum: ef1e8cf310c00efefd484633fdf31ba7139b738f38c641268d7269a4b8d813ead73c54a6369d85e31c218e3341b9369748060ec64af98e6b68b051ccfd2f269a
   languageName: node
   linkType: hard
 
-"pino@npm:*, pino@npm:^7.5.0, pino@npm:^7.6.3":
+"pino@npm:*, pino@npm:^7.5.0":
   version: 7.6.3
   resolution: "pino@npm:7.6.3"
   dependencies:
@@ -12968,6 +12978,23 @@ __metadata:
   bin:
     pino: bin.js
   checksum: d179e1178ebb5bf601745cf3870633f70f29ba14b512fa7949a4f4820eb27069477a2e4bbaf6cf5f9199e5b319d2f218865c74e7b8ace2711f1201e399771e56
+  languageName: node
+  linkType: hard
+
+"pino@npm:^6.13.2":
+  version: 6.13.4
+  resolution: "pino@npm:6.13.4"
+  dependencies:
+    fast-redact: ^3.0.0
+    fast-safe-stringify: ^2.0.8
+    flatstr: ^1.0.12
+    pino-std-serializers: ^3.1.0
+    process-warning: ^1.0.0
+    quick-format-unescaped: ^4.0.3
+    sonic-boom: ^1.0.2
+  bin:
+    pino: bin.js
+  checksum: 8146f2bcd1657127931be902c6e697b9eb1fe71ba7858efa4076ac4a932b6b98ec047667040235e69f802314f2bcbd3d76e915959780fbc0ba0fa3c1b79c417e
   languageName: node
   linkType: hard
 
@@ -14337,6 +14364,16 @@ __metadata:
     ip: ^1.1.5
     smart-buffer: ^4.1.0
   checksum: 2ca9d616e424f645838ebaabb04f85d94ea999e0f8393dc07f86c435af22ed88cb83958feeabd1bb7bc537c635ed47454255635502c6808a6df61af1f41af750
+  languageName: node
+  linkType: hard
+
+"sonic-boom@npm:^1.0.2":
+  version: 1.4.1
+  resolution: "sonic-boom@npm:1.4.1"
+  dependencies:
+    atomic-sleep: ^1.0.0
+    flatstr: ^1.0.12
+  checksum: 189fa8fe5c2dc05d3513fc1a4926a2f16f132fa6fa0b511745a436010cdcd9c1d3b3cb6a9d7c05bd32a965dc77673a5ac0eb0992e920bdedd16330d95323124f
   languageName: node
   linkType: hard
 
