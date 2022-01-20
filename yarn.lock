@@ -1744,12 +1744,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nest-boot/auth@*, @nest-boot/auth@1.1.2, @nest-boot/auth@workspace:packages/auth":
+"@nest-boot/auth@*, @nest-boot/auth@workspace:packages/auth":
   version: 0.0.0-use.local
   resolution: "@nest-boot/auth@workspace:packages/auth"
   dependencies:
     "@nest-boot/common": 1.1.1
-    "@nest-boot/database": 1.1.1
+    "@nest-boot/database": 1.2.0
     "@nestjs/common": ^8.0.0
     "@nestjs/config": ^1.0.0
     "@nestjs/core": ^8.0.0
@@ -1766,13 +1766,16 @@ __metadata:
     typescript: ^4.4.2
   peerDependencies:
     "@nest-boot/common": 1.1.1
-    "@nest-boot/database": 1.1.1
+    "@nest-boot/database": 1.2.0
     "@nestjs/common": ^8.0.0
     "@nestjs/core": ^8.0.0
+    express: ^4.0.0
+    reflect-metadata: ^0.1.13
+    rxjs: ^7.0.0
   languageName: unknown
   linkType: soft
 
-"@nest-boot/command@*, @nest-boot/command@1.1.1, @nest-boot/command@workspace:packages/command":
+"@nest-boot/command@*, @nest-boot/command@1.2.0, @nest-boot/command@workspace:packages/command":
   version: 0.0.0-use.local
   resolution: "@nest-boot/command@workspace:packages/command"
   dependencies:
@@ -1797,6 +1800,7 @@ __metadata:
     prettier: ^2.2.1
     reflect-metadata: ^0.1.13
     rimraf: ^3.0.2
+    rxjs: ^7.5.2
     sql-formatter: ^3.1.0
     ts-jest: ^27.1.3
     typeorm: ^0.2.41
@@ -1807,6 +1811,8 @@ __metadata:
     "@nest-boot/logger": 1.1.1
     "@nestjs/common": ^8.0.0
     "@nestjs/core": ^8.0.0
+    reflect-metadata: ^0.1.13
+    rxjs: ^7.0.0
   bin:
     nb: bin/nest-boot
     nest-boot: bin/nest-boot
@@ -1830,6 +1836,7 @@ __metadata:
     argon2: ^0.27.1
     cookie-parser: ^1.4.5
     express: ^4.17.1
+    graphql: ^15.8.0
     jest: ^27.4.7
     lodash: ^4.17.21
     ms: ^2.1.3
@@ -1848,20 +1855,23 @@ __metadata:
     argon2: ^0.27.1
     cookie-parser: ^1.4.5
     express: ^4.0.0
+    graphql: ^15.0.0
+    reflect-metadata: ^0.1.13
+    rxjs: ^7.0.0
   languageName: unknown
   linkType: soft
 
-"@nest-boot/database@*, @nest-boot/database@1.1.1, @nest-boot/database@workspace:packages/database":
+"@nest-boot/database@*, @nest-boot/database@1.2.0, @nest-boot/database@workspace:packages/database":
   version: 0.0.0-use.local
   resolution: "@nest-boot/database@workspace:packages/database"
   dependencies:
-    "@nest-boot/command": 1.1.1
+    "@nest-boot/command": 1.2.0
     "@nest-boot/common": 1.1.1
     "@nest-boot/queue": 1.1.1
     "@nestjs/common": ^8.0.0
     "@nestjs/config": ^1.0.0
     "@nestjs/core": ^8.0.0
-    "@nestjs/typeorm": ^8.0.2
+    "@nestjs/typeorm": ^8.0.3
     "@types/jest": ^27.4.0
     "@types/lodash": ^4.14.167
     "@types/node": ^14.14.20
@@ -1877,12 +1887,17 @@ __metadata:
     typeorm-snake-naming-strategy: ^1.0.2
     typescript: ^4.4.2
   peerDependencies:
-    "@nest-boot/command": 1.1.1
+    "@nest-boot/command": 1.2.0
     "@nest-boot/common": 1.1.1
     "@nest-boot/queue": 1.1.1
     "@nestjs/common": ^8.0.0
     "@nestjs/config": ^1.0.0
     "@nestjs/core": ^8.0.0
+    "@nestjs/typeorm": ^8.0.0
+    dataloader: ^2.0.0
+    reflect-metadata: ^0.1.13
+    rxjs: ^7.0.0
+    typeorm: ^0.2.0
   languageName: unknown
   linkType: soft
 
@@ -1920,8 +1935,8 @@ __metadata:
     apollo-server-core: ^3.6.2
     apollo-server-express: ^3.3.0
     argon2: ^0.27.1
-    class-transformer: ^0.4.0
-    class-validator: ^0.13.0
+    class-transformer: ^0.4.1
+    class-validator: ^0.13.2
     express: ^4.17.2
     graphql: ^15.8.0
     jest: ^27.4.7
@@ -1946,27 +1961,35 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@nest-boot/graphql@workspace:packages/graphql"
   dependencies:
-    "@nest-boot/database": 1.1.1
-    "@nest-boot/search": 1.1.1
+    "@nest-boot/database": 1.2.0
+    "@nest-boot/search": 1.2.0
     "@nestjs/common": ^8.0.0
     "@nestjs/core": ^8.0.0
     "@nestjs/graphql": ^9.0.0
     "@types/jest": ^27.4.0
     apollo-server-plugin-base: ^3.2.0
+    class-transformer: ^0.4.1
+    class-validator: ^0.13.2
     graphql: ^15.8.0
     graphql-query-complexity: ^0.7.0
     jest: ^27.4.7
     lodash: ^4.17.21
     reflect-metadata: ^0.1.13
     rimraf: ^3.0.2
+    rxjs: ^7.5.2
     ts-jest: ^27.1.3
     typescript: ^4.4.2
   peerDependencies:
-    "@nest-boot/database": 1.1.1
-    "@nest-boot/search": 1.1.1
+    "@nest-boot/database": 1.2.0
+    "@nest-boot/search": 1.2.0
     "@nestjs/common": ^8.0.0
     "@nestjs/core": ^8.0.0
     "@nestjs/graphql": ^9.0.0
+    class-transformer: ^0.4.0
+    class-validator: ^0.13.0
+    graphql: ^15.8.0
+    reflect-metadata: ^0.1.13
+    rxjs: ^7.0.0
   languageName: unknown
   linkType: soft
 
@@ -1974,7 +1997,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@nest-boot/health-check@workspace:packages/health-check"
   dependencies:
-    "@nest-boot/auth": 1.1.2
     "@nest-boot/common": 1.1.1
     "@nest-boot/redis": 1.1.0
     "@nestjs/common": ^8.0.0
@@ -1990,11 +2012,11 @@ __metadata:
     ts-jest: ^27.1.3
     typescript: ^4.4.2
   peerDependencies:
-    "@nest-boot/auth": 1.1.2
     "@nest-boot/redis": 1.1.0
     "@nestjs/common": ^8.0.0
     "@nestjs/core": ^8.0.0
     "@nestjs/terminus": ^8.0.0
+    reflect-metadata: ^0.1.13
   languageName: unknown
   linkType: soft
 
@@ -2015,6 +2037,7 @@ __metadata:
     jest: ^27.4.7
     reflect-metadata: ^0.1.13
     rimraf: ^3.0.2
+    rxjs: ^7.5.2
     ts-jest: ^27.1.3
     typescript: ^4.4.2
   peerDependencies:
@@ -2022,6 +2045,8 @@ __metadata:
     i18next: ^19.7.0
     i18next-fs-backend: ^1.0.7
     i18next-http-middleware: ^3.0.5
+    reflect-metadata: ^0.1.13
+    rxjs: ^7.0.0
   languageName: unknown
   linkType: soft
 
@@ -2037,7 +2062,7 @@ __metadata:
     "@types/uuid": ^8.3.0
     jest: ^27.4.7
     nestjs-pino: ^2.5.0
-    pino: ^6.13.2
+    pino: ^6.13.3
     pino-http: ^6.5.0
     reflect-metadata: ^0.1.13
     rimraf: ^3.0.2
@@ -2048,6 +2073,11 @@ __metadata:
     "@nestjs/common": ^8.0.0
     "@nestjs/config": ^1.0.0
     "@nestjs/core": ^8.0.0
+    nestjs-pino: ^2.0.0
+    pino: ^6.0.0
+    pino-http: ^6.0.0
+    reflect-metadata: ^0.1.13
+    rxjs: ^7.0.0
   languageName: unknown
   linkType: soft
 
@@ -2061,11 +2091,11 @@ __metadata:
     "@nestjs/core": ^8.0.0
     "@types/jest": ^27.4.0
     "@types/mjml": ^4.7.0
-    "@types/nodemailer": ^6.4.0
+    "@types/nodemailer": ^6.4.4
     jest: ^27.4.7
-    mjml: ^4.8.1
-    nodemailer: ^6.4.17
-    nunjucks: ^3.2.2
+    mjml: ^4.11.0
+    nodemailer: ^6.7.2
+    nunjucks: ^3.2.3
     reflect-metadata: ^0.1.13
     rimraf: ^3.0.2
     rxjs: ^7.5.2
@@ -2076,6 +2106,11 @@ __metadata:
     "@nestjs/common": ^8.0.0
     "@nestjs/config": ^1.0.0
     "@nestjs/core": ^8.0.0
+    mjml: ^4.0.0
+    nodemailer: ^6.0.0
+    nunjucks: ^3.0.0
+    reflect-metadata: ^0.1.13
+    rxjs: ^7.0.0
   languageName: unknown
   linkType: soft
 
@@ -2090,8 +2125,8 @@ __metadata:
     "@nestjs/core": ^8.0.0
     "@types/humps": ^2.0.0
     "@types/jest": ^27.4.0
-    bullmq: ^1.32.0
-    class-transformer: ^0.4.0
+    bullmq: ^1.64.4
+    class-transformer: ^0.4.1
     jest: ^27.4.7
     lodash: ^4.17.21
     redis-info: ^3.1.0
@@ -2106,7 +2141,11 @@ __metadata:
     "@nestjs/common": ^8.0.0
     "@nestjs/config": ^1.0.0
     "@nestjs/core": ^8.0.0
+    bullmq: ^1.0.0
+    class-transformer: ^0.4.0
     redis-info: ^3.0.0
+    reflect-metadata: ^0.1.13
+    rxjs: ^7.0.0
   languageName: unknown
   linkType: soft
 
@@ -2130,6 +2169,9 @@ __metadata:
     "@nestjs/common": ^8.0.0
     "@nestjs/config": ^1.0.0
     "@nestjs/core": ^8.0.0
+    ioredis: ^4.0.0
+    reflect-metadata: ^0.1.13
+    rxjs: ^7.0.0
   languageName: unknown
   linkType: soft
 
@@ -2137,27 +2179,27 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@nest-boot/search-engine-meilisearch@workspace:packages/search-engine-meilisearch"
   dependencies:
-    "@nest-boot/database": 1.1.1
-    "@nest-boot/search": 1.1.1
+    "@nest-boot/database": 1.2.0
+    "@nest-boot/search": 1.2.0
     jest: ^27.4.7
     meilisearch: ^0.24.0
     rimraf: ^3.0.2
     ts-jest: ^27.1.3
     typescript: ^4.4.2
   peerDependencies:
-    "@nest-boot/database": ^1.0.0
-    "@nest-boot/search": ^1.0.0
+    "@nest-boot/database": 1.2.0
+    "@nest-boot/search": 1.2.0
     meilisearch: ^0.24.0
   languageName: unknown
   linkType: soft
 
-"@nest-boot/search@*, @nest-boot/search@1.1.1, @nest-boot/search@workspace:packages/search":
+"@nest-boot/search@*, @nest-boot/search@1.2.0, @nest-boot/search@workspace:packages/search":
   version: 0.0.0-use.local
   resolution: "@nest-boot/search@workspace:packages/search"
   dependencies:
-    "@nest-boot/command": 1.1.1
+    "@nest-boot/command": 1.2.0
     "@nest-boot/common": 1.1.1
-    "@nest-boot/database": 1.1.1
+    "@nest-boot/database": 1.2.0
     "@nest-boot/queue": 1.1.1
     "@nestjs/common": ^8.0.0
     "@nestjs/core": ^8.0.0
@@ -2171,9 +2213,9 @@ __metadata:
     typeorm: ^0.2.41
     typescript: ^4.4.2
   peerDependencies:
-    "@nest-boot/command": 1.1.1
+    "@nest-boot/command": 1.2.0
     "@nest-boot/common": 1.1.1
-    "@nest-boot/database": 1.1.1
+    "@nest-boot/database": 1.2.0
     "@nest-boot/queue": 1.1.1
     "@nestjs/common": ^8.0.0
     "@nestjs/core": ^8.0.0
@@ -2190,20 +2232,25 @@ __metadata:
     "@nest-boot/i18next": 1.1.1
     "@nestjs/common": ^8.0.0
     "@types/jest": ^27.4.0
-    class-transformer: ^0.4.0
-    class-validator: ^0.13.0
+    class-transformer: ^0.4.1
+    class-validator: ^0.13.2
     jest: ^27.4.7
     lodash: ^4.17.21
     moment: ^2.29.1
     moment-timezone: ^0.5.31
     reflect-metadata: ^0.1.13
     rimraf: ^3.0.2
+    rxjs: ^7.5.2
     ts-jest: ^27.1.3
     typeorm: ^0.2.41
     typescript: ^4.4.2
     validator: ^13.7.0
   peerDependencies:
+    "@nest-boot/i18next": ^1.0.0
     "@nestjs/common": ^8.0.0
+    class-transformer: ^0.4.0
+    class-validator: ^0.13.0
+    rxjs: ^7.0.0
   languageName: unknown
   linkType: soft
 
@@ -2266,7 +2313,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nestjs/common@npm:*, @nestjs/common@npm:^8.0.0":
+"@nestjs/common@npm:^8.0.0":
   version: 8.2.5
   resolution: "@nestjs/common@npm:8.2.5"
   dependencies:
@@ -2462,7 +2509,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nestjs/typeorm@npm:^8.0.2":
+"@nestjs/typeorm@npm:^8.0.3":
   version: 8.0.3
   resolution: "@nestjs/typeorm@npm:8.0.3"
   dependencies:
@@ -3555,7 +3602,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/nodemailer@npm:^6.4.0":
+"@types/nodemailer@npm:^6.4.4":
   version: 6.4.4
   resolution: "@types/nodemailer@npm:6.4.4"
   dependencies:
@@ -4994,7 +5041,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"bullmq@npm:^1.32.0":
+"bullmq@npm:^1.64.4":
   version: 1.64.4
   resolution: "bullmq@npm:1.64.4"
   dependencies:
@@ -5374,14 +5421,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"class-transformer@npm:^0.4.0":
-  version: 0.4.0
-  resolution: "class-transformer@npm:0.4.0"
-  checksum: 4057346b512705b1a5a68025b025a5be1ff847d7e0e76e82bbb937f832cf6235c5f66e874487d4bd35d67401411e8a3279c9d36bdd8c800336d5507ee6e94af0
+"class-transformer@npm:^0.4.1":
+  version: 0.4.1
+  resolution: "class-transformer@npm:0.4.1"
+  checksum: a4f66c857f939d38b6d0e69448d26e4a94715a5c2778a6f6bbc20dc5fad6d2c1f96cfd93c55b0fc28c1f870844177300dca3cbf4dc790e3d1eb97a8844165199
   languageName: node
   linkType: hard
 
-"class-validator@npm:^0.13.0":
+"class-validator@npm:^0.13.2":
   version: 0.13.2
   resolution: "class-validator@npm:0.13.2"
   dependencies:
@@ -7960,7 +8007,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"graphql@npm:^15, graphql@npm:^15.8.0":
+"graphql@npm:^15.8.0":
   version: 15.8.0
   resolution: "graphql@npm:15.8.0"
   checksum: 423325271db8858428641b9aca01699283d1fe5b40ef6d4ac622569ecca927019fce8196208b91dd1d8eb8114f00263fe661d241d0eb40c10e5bfd650f86ec5e
@@ -11254,7 +11301,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"mjml@npm:^4.8.1":
+"mjml@npm:^4.11.0":
   version: 4.11.0
   resolution: "mjml@npm:4.11.0"
   dependencies:
@@ -11612,7 +11659,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"nodemailer@npm:^6.4.17":
+"nodemailer@npm:^6.7.2":
   version: 6.7.2
   resolution: "nodemailer@npm:6.7.2"
   checksum: 3c37a40928448e2f5118a9f2f016c7a4f32228d0e6b7cc7d1834b8001374cc77280dc077a83239420f6daea4c898d9a1f336dfc2273bb7eddaf51a36bd126f72
@@ -12065,7 +12112,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"nunjucks@npm:^3.2.2":
+"nunjucks@npm:^3.2.2, nunjucks@npm:^3.2.3":
   version: 3.2.3
   resolution: "nunjucks@npm:3.2.3"
   dependencies:
@@ -12886,7 +12933,24 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pino@npm:*, pino@npm:^7.5.0":
+"pino@npm:^6.13.3":
+  version: 6.13.4
+  resolution: "pino@npm:6.13.4"
+  dependencies:
+    fast-redact: ^3.0.0
+    fast-safe-stringify: ^2.0.8
+    flatstr: ^1.0.12
+    pino-std-serializers: ^3.1.0
+    process-warning: ^1.0.0
+    quick-format-unescaped: ^4.0.3
+    sonic-boom: ^1.0.2
+  bin:
+    pino: bin.js
+  checksum: 8146f2bcd1657127931be902c6e697b9eb1fe71ba7858efa4076ac4a932b6b98ec047667040235e69f802314f2bcbd3d76e915959780fbc0ba0fa3c1b79c417e
+  languageName: node
+  linkType: hard
+
+"pino@npm:^7.5.0":
   version: 7.6.3
   resolution: "pino@npm:7.6.3"
   dependencies:
@@ -12903,23 +12967,6 @@ __metadata:
   bin:
     pino: bin.js
   checksum: d179e1178ebb5bf601745cf3870633f70f29ba14b512fa7949a4f4820eb27069477a2e4bbaf6cf5f9199e5b319d2f218865c74e7b8ace2711f1201e399771e56
-  languageName: node
-  linkType: hard
-
-"pino@npm:^6.13.2":
-  version: 6.13.4
-  resolution: "pino@npm:6.13.4"
-  dependencies:
-    fast-redact: ^3.0.0
-    fast-safe-stringify: ^2.0.8
-    flatstr: ^1.0.12
-    pino-std-serializers: ^3.1.0
-    process-warning: ^1.0.0
-    quick-format-unescaped: ^4.0.3
-    sonic-boom: ^1.0.2
-  bin:
-    pino: bin.js
-  checksum: 8146f2bcd1657127931be902c6e697b9eb1fe71ba7858efa4076ac4a932b6b98ec047667040235e69f802314f2bcbd3d76e915959780fbc0ba0fa3c1b79c417e
   languageName: node
   linkType: hard
 
@@ -13580,7 +13627,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"reflect-metadata@npm:*, reflect-metadata@npm:^0.1.13":
+"reflect-metadata@npm:^0.1.13":
   version: 0.1.13
   resolution: "reflect-metadata@npm:0.1.13"
   checksum: 798d379a7b6f6455501145419505c97dd11cbc23857a386add2b9ef15963ccf15a48d9d15507afe01d4cd74116df8a213247200bac00320bd7c11ddeaa5e8fb4
@@ -13831,21 +13878,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"rxjs@npm:*, rxjs@npm:^7.2.0, rxjs@npm:^7.3.0, rxjs@npm:^7.5.2":
-  version: 7.5.2
-  resolution: "rxjs@npm:7.5.2"
-  dependencies:
-    tslib: ^2.1.0
-  checksum: daf1fe7289de500b25d822fd96cde3c138c7902e8bf0e6aa12a3e70847a5cabeeb4d677f10e19387e1db44b12c5b1be0ff5c79b8cd63ed6ce891d765e566cf4d
-  languageName: node
-  linkType: hard
-
 "rxjs@npm:6.6.7, rxjs@npm:^6.6.0":
   version: 6.6.7
   resolution: "rxjs@npm:6.6.7"
   dependencies:
     tslib: ^1.9.0
   checksum: bc334edef1bb8bbf56590b0b25734ba0deaf8825b703256a93714308ea36dff8a11d25533671adf8e104e5e8f256aa6fdfe39b2e248cdbd7a5f90c260acbbd1b
+  languageName: node
+  linkType: hard
+
+"rxjs@npm:^7.2.0, rxjs@npm:^7.3.0, rxjs@npm:^7.5.2":
+  version: 7.5.2
+  resolution: "rxjs@npm:7.5.2"
+  dependencies:
+    tslib: ^2.1.0
+  checksum: daf1fe7289de500b25d822fd96cde3c138c7902e8bf0e6aa12a3e70847a5cabeeb4d677f10e19387e1db44b12c5b1be0ff5c79b8cd63ed6ce891d765e566cf4d
   languageName: node
   linkType: hard
 
