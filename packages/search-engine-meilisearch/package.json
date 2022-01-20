@@ -21,7 +21,6 @@
   "dependencies": {
     "@nest-boot/database": "*",
     "@nest-boot/search": "*",
-    "@nestjs/common": "^8.0.0",
     "meilisearch": "^0.24.0"
   },
   "devDependencies": {

@@ -1,3 +1,13 @@
+## @nest-boot/common [1.1.1](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/common@1.1.0...@nest-boot/common@1.1.1) (2022-01-20)
+
+
+
+
+
+### Dependencies
+
+* **@nest-boot/logger:** upgraded to 1.1.1
+
 # @nest-boot/common [1.1.0](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/common@1.0.0...@nest-boot/common@1.1.0) (2022-01-19)
 
 

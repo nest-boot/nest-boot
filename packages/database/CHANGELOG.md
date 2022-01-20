@@ -1,3 +1,20 @@
+## @nest-boot/database [1.1.1](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/database@1.1.0...@nest-boot/database@1.1.1) (2022-01-20)
+
+
+### Bug Fixes
+
+* fix dependencies ([e30eb30](https://github.com/d4rkcr0w/nest-boot/commit/e30eb305319d2b0100ea848872f99480b3b0d94e))
+
+
+
+
+
+### Dependencies
+
+* **@nest-boot/command:** upgraded to 1.1.1
+* **@nest-boot/common:** upgraded to 1.1.1
+* **@nest-boot/queue:** upgraded to 1.1.1
+
 # @nest-boot/database [1.1.0](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/database@1.0.1...@nest-boot/database@1.1.0) (2022-01-19)
 
 

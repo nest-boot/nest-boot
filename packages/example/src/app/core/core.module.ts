@@ -35,12 +35,10 @@ const SearchDynamicModule = SearchModule.registerAsync({
   imports: [DatabaseDynamicModule],
   inject: [ConfigService],
   useFactory: (configService: ConfigService) => ({
-    engine: new MeiliSearchEngine(
-      new MeiliSearch({
-        host: configService.get("MEILISEARCH_HOST"),
-        apiKey: configService.get("MEILISEARCH_KEY"),
-      })
-    ),
+    engine: new MeiliSearchEngine({
+      host: configService.get("MEILISEARCH_HOST"),
+      apiKey: configService.get("MEILISEARCH_KEY"),
+    }),
   }),
 });
 

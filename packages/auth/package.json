@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/auth",
-  "version": "1.1.0",
+  "version": "1.1.2",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
   "homepage": "",
@@ -22,11 +22,12 @@
     "lodash": "^4.17.21"
   },
   "devDependencies": {
-    "@nest-boot/common": "1.1.0",
-    "@nest-boot/database": "1.1.0",
+    "@nest-boot/common": "1.1.1",
+    "@nest-boot/database": "1.1.1",
     "@nestjs/common": "^8.0.0",
     "@nestjs/config": "^1.0.0",
     "@nestjs/core": "^8.0.0",
+    "@types/express": "^4.17.13",
     "@types/jest": "^27.4.0",
     "@types/node": "^17.0.9",
     "jest": "^27.4.7",
@@ -37,8 +38,8 @@
     "typescript": "^4.4.2"
   },
   "peerDependencies": {
-    "@nest-boot/common": "1.1.0",
-    "@nest-boot/database": "1.1.0",
+    "@nest-boot/common": "1.1.1",
+    "@nest-boot/database": "1.1.1",
     "@nestjs/common": "^8.0.0",
     "@nestjs/core": "^8.0.0"
   },

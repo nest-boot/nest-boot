@@ -4,12 +4,15 @@ import {
   SearchEngineInterface,
   SearchOptions,
 } from "@nest-boot/search";
-import { Injectable } from "@nestjs/common";
-import { MeiliSearch } from "meilisearch";
+import { Config, MeiliSearch } from "meilisearch";
 
-@Injectable()
 export class MeiliSearchEngine implements SearchEngineInterface {
-  constructor(private readonly meilisearch: MeiliSearch) {}
+  private readonly meilisearch: MeiliSearch;
+
+  constructor(config: MeiliSearch | Config) {
+    this.meilisearch =
+      config instanceof MeiliSearch ? config : new MeiliSearch(config);
+  }
 
   async search(
     index: string,

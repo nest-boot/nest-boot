@@ -1,3 +1,24 @@
+## @nest-boot/health-check [1.1.2](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/health-check@1.1.1...@nest-boot/health-check@1.1.2) (2022-01-20)
+
+
+
+
+
+### Dependencies
+
+* **@nest-boot/auth:** upgraded to 1.1.2
+
+## @nest-boot/health-check [1.1.1](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/health-check@1.1.0...@nest-boot/health-check@1.1.1) (2022-01-20)
+
+
+
+
+
+### Dependencies
+
+* **@nest-boot/auth:** upgraded to 1.1.1
+* **@nest-boot/common:** upgraded to 1.1.1
+
 # @nest-boot/health-check [1.1.0](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/health-check@1.0.1...@nest-boot/health-check@1.1.0) (2022-01-19)
 
 
