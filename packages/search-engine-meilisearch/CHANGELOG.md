@@ -1,3 +1,14 @@
+## @nest-boot/search-engine-meilisearch [1.0.1](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/search-engine-meilisearch@1.0.0...@nest-boot/search-engine-meilisearch@1.0.1) (2022-01-20)
+
+
+
+
+
+### Dependencies
+
+* **@nest-boot/database:** upgraded to 1.2.1
+* **@nest-boot/search:** upgraded to 1.2.1
+
 # @nest-boot/search-engine-meilisearch 1.0.0 (2022-01-20)
 
 

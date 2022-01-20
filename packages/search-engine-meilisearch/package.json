@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/search-engine-meilisearch",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
   "homepage": "",
@@ -19,8 +19,8 @@
     "test": "jest"
   },
   "devDependencies": {
-    "@nest-boot/database": "1.2.0",
-    "@nest-boot/search": "1.2.0",
+    "@nest-boot/database": "1.2.1",
+    "@nest-boot/search": "1.2.1",
     "jest": "^27.4.7",
     "meilisearch": "^0.24.0",
     "rimraf": "^3.0.2",
@@ -28,8 +28,8 @@
     "typescript": "^4.4.2"
   },
   "peerDependencies": {
-    "@nest-boot/database": "1.2.0",
-    "@nest-boot/search": "1.2.0",
+    "@nest-boot/database": "1.2.1",
+    "@nest-boot/search": "1.2.1",
     "meilisearch": "^0.24.0"
   },
   "publishConfig": {
