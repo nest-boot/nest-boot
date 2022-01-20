@@ -1,3 +1,19 @@
+## @nest-boot/auth [1.1.4](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/auth@1.1.3...@nest-boot/auth@1.1.4) (2022-01-20)
+
+
+### Bug Fixes
+
+* fix dependencies ([fd0068b](https://github.com/d4rkcr0w/nest-boot/commit/fd0068b0842bb0001038dca8b6375d464dd89ed6))
+
+
+
+
+
+### Dependencies
+
+* **@nest-boot/common:** upgraded to 1.1.2
+* **@nest-boot/database:** upgraded to 1.2.1
+
 ## @nest-boot/auth [1.1.3](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/auth@1.1.2...@nest-boot/auth@1.1.3) (2022-01-20)
 
 
