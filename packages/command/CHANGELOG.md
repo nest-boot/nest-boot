@@ -1,3 +1,10 @@
+# @nest-boot/command [1.2.0](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/command@1.1.1...@nest-boot/command@1.2.0) (2022-01-20)
+
+
+### Features
+
+* Independent search engine ([#1](https://github.com/d4rkcr0w/nest-boot/issues/1)) ([720616a](https://github.com/d4rkcr0w/nest-boot/commit/720616aa01bf769b57e77ec444a2e00f4b785a52))
+
 ## @nest-boot/command [1.1.1](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/command@1.1.0...@nest-boot/command@1.1.1) (2022-01-20)
 
 
