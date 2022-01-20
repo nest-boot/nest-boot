@@ -43,7 +43,7 @@ export class AuthMiddleware implements NestMiddleware {
 
     // 从会话中提取访问令牌
     if (!accessToken) {
-      accessToken = req.cookies.access_token;
+      accessToken = req.cookies?.access_token;
     }
 
     return accessToken;

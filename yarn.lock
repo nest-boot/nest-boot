@@ -1744,15 +1744,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nest-boot/auth@*, @nest-boot/auth@1.1.0, @nest-boot/auth@workspace:packages/auth":
+"@nest-boot/auth@*, @nest-boot/auth@1.1.1, @nest-boot/auth@workspace:packages/auth":
   version: 0.0.0-use.local
   resolution: "@nest-boot/auth@workspace:packages/auth"
   dependencies:
-    "@nest-boot/common": 1.1.0
-    "@nest-boot/database": 1.1.0
+    "@nest-boot/common": 1.1.1
+    "@nest-boot/database": 1.1.1
     "@nestjs/common": ^8.0.0
     "@nestjs/config": ^1.0.0
     "@nestjs/core": ^8.0.0
+    "@types/express": ^4.17.13
     "@types/jest": ^27.4.0
     "@types/node": ^17.0.9
     express: ^4.17.2
@@ -1764,19 +1765,19 @@ __metadata:
     ts-jest: ^27.1.3
     typescript: ^4.4.2
   peerDependencies:
-    "@nest-boot/common": 1.1.0
-    "@nest-boot/database": 1.1.0
+    "@nest-boot/common": 1.1.1
+    "@nest-boot/database": 1.1.1
     "@nestjs/common": ^8.0.0
     "@nestjs/core": ^8.0.0
   languageName: unknown
   linkType: soft
 
-"@nest-boot/command@*, @nest-boot/command@1.1.0, @nest-boot/command@workspace:packages/command":
+"@nest-boot/command@*, @nest-boot/command@1.1.1, @nest-boot/command@workspace:packages/command":
   version: 0.0.0-use.local
   resolution: "@nest-boot/command@workspace:packages/command"
   dependencies:
     "@nest-boot/common": 1.1.0
-    "@nest-boot/logger": 1.1.0
+    "@nest-boot/logger": 1.1.1
     "@nestjs/common": ^8.0.0
     "@nestjs/core": ^8.0.0
     "@types/fs-extra": ^9.0.6
@@ -1803,7 +1804,7 @@ __metadata:
     yargs: ^16.2.0
   peerDependencies:
     "@nest-boot/common": 1.1.0
-    "@nest-boot/logger": 1.1.0
+    "@nest-boot/logger": 1.1.1
     "@nestjs/common": ^8.0.0
     "@nestjs/core": ^8.0.0
   bin:
@@ -1812,11 +1813,11 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@nest-boot/common@*, @nest-boot/common@1.1.0, @nest-boot/common@workspace:packages/common":
+"@nest-boot/common@*, @nest-boot/common@1.1.1, @nest-boot/common@workspace:packages/common":
   version: 0.0.0-use.local
   resolution: "@nest-boot/common@workspace:packages/common"
   dependencies:
-    "@nest-boot/logger": 1.1.0
+    "@nest-boot/logger": 1.1.1
     "@nest-boot/redis": 1.1.0
     "@nestjs/common": ^8.0.0
     "@nestjs/config": ^1.0.0
@@ -1838,7 +1839,7 @@ __metadata:
     ts-jest: ^27.1.3
     typescript: ^4.4.2
   peerDependencies:
-    "@nest-boot/logger": 1.1.0
+    "@nest-boot/logger": 1.1.1
     "@nest-boot/redis": 1.1.0
     "@nestjs/common": ^8.0.0
     "@nestjs/config": ^1.0.0
@@ -1850,13 +1851,34 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@nest-boot/database@*, @nest-boot/database@1.1.0, @nest-boot/database@workspace:packages/database":
+"@nest-boot/common@npm:1.1.0":
+  version: 1.1.0
+  resolution: "@nest-boot/common@npm:1.1.0"
+  dependencies:
+    lodash: ^4.17.21
+    ms: ^2.1.3
+    rxjs: ^7.5.2
+  peerDependencies:
+    "@nest-boot/logger": 1.1.0
+    "@nest-boot/redis": 1.1.0
+    "@nestjs/common": ^8.0.0
+    "@nestjs/config": ^1.0.0
+    "@nestjs/core": ^8.0.0
+    apollo-server-errors: ^3.0.0
+    argon2: ^0.27.1
+    cookie-parser: ^1.4.5
+    express: ^4.0.0
+  checksum: 822ba8abfe0a10c3a745f2eb02cf93b3a1495d4f8c489f50175f54ecd5b4f99eb7003cb83bfb564e3aba02888abd986459b933256a8575a5fc41f95ed7cb6f60
+  languageName: node
+  linkType: hard
+
+"@nest-boot/database@*, @nest-boot/database@1.1.1, @nest-boot/database@workspace:packages/database":
   version: 0.0.0-use.local
   resolution: "@nest-boot/database@workspace:packages/database"
   dependencies:
-    "@nest-boot/command": 1.1.0
-    "@nest-boot/common": 1.1.0
-    "@nest-boot/queue": 1.1.0
+    "@nest-boot/command": 1.1.1
+    "@nest-boot/common": 1.1.1
+    "@nest-boot/queue": 1.1.1
     "@nestjs/common": ^8.0.0
     "@nestjs/config": ^1.0.0
     "@nestjs/core": ^8.0.0
@@ -1876,9 +1898,9 @@ __metadata:
     typeorm-snake-naming-strategy: ^1.0.2
     typescript: ^4.4.2
   peerDependencies:
-    "@nest-boot/command": 1.1.0
-    "@nest-boot/common": 1.1.0
-    "@nest-boot/queue": 1.1.0
+    "@nest-boot/command": 1.1.1
+    "@nest-boot/common": 1.1.1
+    "@nest-boot/queue": 1.1.1
     "@nestjs/common": ^8.0.0
     "@nestjs/config": ^1.0.0
     "@nestjs/core": ^8.0.0
@@ -1944,8 +1966,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@nest-boot/graphql@workspace:packages/graphql"
   dependencies:
-    "@nest-boot/database": 1.1.0
-    "@nest-boot/search": 1.1.0
+    "@nest-boot/database": 1.1.1
+    "@nest-boot/search": 1.1.1
     "@nestjs/common": ^8.0.0
     "@nestjs/core": ^8.0.0
     "@nestjs/graphql": ^9.0.0
@@ -1960,8 +1982,8 @@ __metadata:
     ts-jest: ^27.1.3
     typescript: ^4.4.2
   peerDependencies:
-    "@nest-boot/database": 1.1.0
-    "@nest-boot/search": 1.1.0
+    "@nest-boot/database": 1.1.1
+    "@nest-boot/search": 1.1.1
     "@nestjs/common": ^8.0.0
     "@nestjs/core": ^8.0.0
     "@nestjs/graphql": ^9.0.0
@@ -1972,8 +1994,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@nest-boot/health-check@workspace:packages/health-check"
   dependencies:
-    "@nest-boot/auth": 1.1.0
-    "@nest-boot/common": 1.1.0
+    "@nest-boot/auth": 1.1.1
+    "@nest-boot/common": 1.1.1
     "@nest-boot/redis": 1.1.0
     "@nestjs/common": ^8.0.0
     "@nestjs/core": ^8.0.0
@@ -1988,7 +2010,7 @@ __metadata:
     ts-jest: ^27.1.3
     typescript: ^4.4.2
   peerDependencies:
-    "@nest-boot/auth": 1.1.0
+    "@nest-boot/auth": 1.1.1
     "@nest-boot/redis": 1.1.0
     "@nestjs/common": ^8.0.0
     "@nestjs/core": ^8.0.0
@@ -1996,11 +2018,11 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@nest-boot/i18next@*, @nest-boot/i18next@1.1.0, @nest-boot/i18next@workspace:packages/i18next":
+"@nest-boot/i18next@*, @nest-boot/i18next@1.1.1, @nest-boot/i18next@workspace:packages/i18next":
   version: 0.0.0-use.local
   resolution: "@nest-boot/i18next@workspace:packages/i18next"
   dependencies:
-    "@nest-boot/common": 1.1.0
+    "@nest-boot/common": 1.1.1
     "@nestjs/common": ^8.0.0
     "@nestjs/core": ^8.0.0
     "@types/express": ^4.17.11
@@ -2016,14 +2038,14 @@ __metadata:
     ts-jest: ^27.1.3
     typescript: ^4.4.2
   peerDependencies:
-    "@nest-boot/common": 1.1.0
+    "@nest-boot/common": 1.1.1
     i18next: ^19.7.0
     i18next-fs-backend: ^1.0.7
     i18next-http-middleware: ^3.0.5
   languageName: unknown
   linkType: soft
 
-"@nest-boot/logger@*, @nest-boot/logger@1.1.0, @nest-boot/logger@workspace:packages/logger":
+"@nest-boot/logger@*, @nest-boot/logger@1.1.1, @nest-boot/logger@workspace:packages/logger":
   version: 0.0.0-use.local
   resolution: "@nest-boot/logger@workspace:packages/logger"
   dependencies:
@@ -2053,7 +2075,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@nest-boot/mailer@workspace:packages/mailer"
   dependencies:
-    "@nest-boot/queue": 1.1.0
+    "@nest-boot/queue": 1.1.1
     "@nestjs/common": ^8.0.0
     "@nestjs/config": ^1.0.0
     "@nestjs/core": ^8.0.0
@@ -2070,18 +2092,18 @@ __metadata:
     ts-jest: ^27.1.3
     typescript: ^4.4.2
   peerDependencies:
-    "@nest-boot/queue": 1.1.0
+    "@nest-boot/queue": 1.1.1
     "@nestjs/common": ^8.0.0
     "@nestjs/config": ^1.0.0
     "@nestjs/core": ^8.0.0
   languageName: unknown
   linkType: soft
 
-"@nest-boot/queue@*, @nest-boot/queue@1.1.0, @nest-boot/queue@workspace:packages/queue":
+"@nest-boot/queue@*, @nest-boot/queue@1.1.1, @nest-boot/queue@workspace:packages/queue":
   version: 0.0.0-use.local
   resolution: "@nest-boot/queue@workspace:packages/queue"
   dependencies:
-    "@nest-boot/common": 1.1.0
+    "@nest-boot/common": 1.1.1
     "@nest-boot/redis": 1.1.0
     "@nestjs/common": ^8.0.0
     "@nestjs/config": ^1.0.0
@@ -2099,7 +2121,7 @@ __metadata:
     ts-jest: ^27.1.3
     typescript: ^4.4.2
   peerDependencies:
-    "@nest-boot/common": 1.1.0
+    "@nest-boot/common": 1.1.1
     "@nest-boot/redis": 1.1.0
     "@nestjs/common": ^8.0.0
     "@nestjs/config": ^1.0.0
@@ -2131,14 +2153,14 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@nest-boot/search@*, @nest-boot/search@1.1.0, @nest-boot/search@workspace:packages/search":
+"@nest-boot/search@*, @nest-boot/search@1.1.1, @nest-boot/search@workspace:packages/search":
   version: 0.0.0-use.local
   resolution: "@nest-boot/search@workspace:packages/search"
   dependencies:
-    "@nest-boot/command": 1.1.0
-    "@nest-boot/common": 1.1.0
-    "@nest-boot/database": 1.1.0
-    "@nest-boot/queue": 1.1.0
+    "@nest-boot/command": 1.1.1
+    "@nest-boot/common": 1.1.1
+    "@nest-boot/database": 1.1.1
+    "@nest-boot/queue": 1.1.1
     "@nestjs/common": ^8.0.0
     "@nestjs/config": ^1.0.0
     "@nestjs/core": ^8.0.0
@@ -2153,11 +2175,11 @@ __metadata:
     typeorm: ^0.2.41
     typescript: ^4.4.2
   peerDependencies:
-    "@nest-boot/command": 1.1.0
-    "@nest-boot/common": 1.1.0
-    "@nest-boot/database": 1.1.0
+    "@nest-boot/command": 1.1.1
+    "@nest-boot/common": 1.1.1
+    "@nest-boot/database": 1.1.1
     "@nest-boot/graphql": 1.1.0
-    "@nest-boot/queue": 1.1.0
+    "@nest-boot/queue": 1.1.1
     "@nestjs/common": ^8.0.0
     "@nestjs/config": ^1.0.0
     "@nestjs/core": ^8.0.0
@@ -2168,7 +2190,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@nest-boot/validator@workspace:packages/validator"
   dependencies:
-    "@nest-boot/i18next": 1.1.0
+    "@nest-boot/i18next": 1.1.1
     "@nestjs/common": ^8.0.0
     "@types/jest": ^27.4.0
     class-transformer: ^0.4.0
@@ -3341,7 +3363,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/express@npm:*, @types/express@npm:4.17.13, @types/express@npm:^4.17.11, @types/express@npm:^4.17.8":
+"@types/express@npm:*, @types/express@npm:4.17.13, @types/express@npm:^4.17.11, @types/express@npm:^4.17.13, @types/express@npm:^4.17.8":
   version: 4.17.13
   resolution: "@types/express@npm:4.17.13"
   dependencies:
