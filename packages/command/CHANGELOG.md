@@ -1,3 +1,19 @@
+## @nest-boot/command [1.2.1](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/command@1.2.0...@nest-boot/command@1.2.1) (2022-01-20)
+
+
+### Bug Fixes
+
+* fix dependencies ([fd0068b](https://github.com/d4rkcr0w/nest-boot/commit/fd0068b0842bb0001038dca8b6375d464dd89ed6))
+
+
+
+
+
+### Dependencies
+
+* **@nest-boot/common:** upgraded to 1.1.2
+* **@nest-boot/logger:** upgraded to 1.1.2
+
 # @nest-boot/command [1.2.0](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/command@1.1.1...@nest-boot/command@1.2.0) (2022-01-20)
 
 
