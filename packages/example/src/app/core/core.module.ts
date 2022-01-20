@@ -8,7 +8,6 @@ import { SearchModule } from "@nest-boot/search";
 import { MeiliSearchEngine } from "@nest-boot/search-engine-meilisearch";
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
-import { MeiliSearch } from "meilisearch";
 
 import { TestQueue } from "./queues/test.queue";
 import { AuthService } from "./services/auth.service";

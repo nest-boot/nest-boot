@@ -8,8 +8,8 @@
   ],
   "scripts": {
     "dev": "yarn workspace @nest-boot/example dev",
-    "build": "lerna run build",
-    "clean": "lerna run clean",
+    "build": "lerna run build --ignore @nest-boot/example",
+    "clean": "lerna run clean --ignore @nest-boot/example",
     "lint": "eslint packages/*/src --fix",
     "semantic-release": "multi-semantic-release '--ignore-packages=packages/example/**'"
   },
