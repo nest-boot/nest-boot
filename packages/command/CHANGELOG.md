@@ -1,3 +1,13 @@
+## @nest-boot/command [1.2.2](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/command@1.2.1...@nest-boot/command@1.2.2) (2022-01-20)
+
+
+
+
+
+### Dependencies
+
+* **@nest-boot/common:** upgraded to 1.1.3
+
 ## @nest-boot/command [1.2.1](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/command@1.2.0...@nest-boot/command@1.2.1) (2022-01-20)
 
 
