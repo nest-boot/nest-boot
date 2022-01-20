@@ -1,3 +1,16 @@
+## @nest-boot/search [1.2.1](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/search@1.2.0...@nest-boot/search@1.2.1) (2022-01-20)
+
+
+
+
+
+### Dependencies
+
+* **@nest-boot/command:** upgraded to 1.2.1
+* **@nest-boot/common:** upgraded to 1.1.2
+* **@nest-boot/database:** upgraded to 1.2.1
+* **@nest-boot/queue:** upgraded to 1.1.2
+
 # @nest-boot/search [1.2.0](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/search@1.1.1...@nest-boot/search@1.2.0) (2022-01-20)
 
 
