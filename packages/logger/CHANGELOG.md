@@ -1,3 +1,15 @@
+# @nest-boot/logger [1.2.0](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/logger@1.1.2...@nest-boot/logger@1.2.0) (2022-02-03)
+
+
+### Bug Fixes
+
+* update deps ([a08f25d](https://github.com/d4rkcr0w/nest-boot/commit/a08f25d6625243d84db1903bac51e4894167c69d))
+
+
+### Features
+
+* add tenant module ([be71e8f](https://github.com/d4rkcr0w/nest-boot/commit/be71e8faf71cdd5782e3cf9809dacf8666d708bc))
+
 ## @nest-boot/logger [1.1.2](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/logger@1.1.1...@nest-boot/logger@1.1.2) (2022-01-20)
 
 
