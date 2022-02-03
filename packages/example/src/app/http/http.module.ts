@@ -1,6 +1,7 @@
 import { AuthMiddleware } from "@nest-boot/auth";
 import { ContextMiddleware } from "@nest-boot/common";
 import { TenantMiddleware } from "@nest-boot/tenant";
+import { ApolloDriver } from "@nestjs/apollo";
 import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { GraphQLModule } from "@nestjs/graphql";
@@ -17,6 +18,7 @@ const resolvers = [AuthResolver, PostResolver];
   imports: [
     CoreModule,
     GraphQLModule.forRoot({
+      driver: ApolloDriver,
       autoSchemaFile: true,
       path: "/graphql",
       context: ({ req, res }) => ({ req, res }),

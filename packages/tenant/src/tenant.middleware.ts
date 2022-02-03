@@ -7,7 +7,9 @@ export class TenantMiddleware implements NestMiddleware {
     // 获取运行上下文
     const ctx = Context.get();
 
-    ctx.tenantId = req.headers["x-tenant-id"];
+    if (typeof req.headers["x-tenant-id"] === "string") {
+      ctx.tenantId = req.headers["x-tenant-id"];
+    }
 
     return next();
   }

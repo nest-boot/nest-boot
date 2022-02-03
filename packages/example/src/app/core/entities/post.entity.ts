@@ -7,8 +7,7 @@ import {
   ManyToOne,
 } from "@nest-boot/database";
 import { mixinTenantId } from "@nest-boot/tenant";
-import remark from "remark";
-import remarkHtml from "remark-html";
+import { marked } from "marked";
 
 import { User } from "./user.entity";
 
@@ -29,7 +28,6 @@ export class Post extends mixinTenantId(BaseEntity) {
   @BeforeInsert()
   @BeforeUpdate()
   async beforeInsertOrUpdate(): Promise<void> {
-    this.html = (await remark().use(remarkHtml).process(this.markdown))
-      .contents as string;
+    this.html = marked.parse(this.markdown);
   }
 }

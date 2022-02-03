@@ -6,7 +6,7 @@ import { QueueModule } from "@nest-boot/queue";
 import { RedisModule } from "@nest-boot/redis";
 import { SearchModule } from "@nest-boot/search";
 import { MeiliSearchEngine } from "@nest-boot/search-engine-meilisearch";
-// import { TenantModule } from "@nest-boot/tenant";
+import { TenantModule } from "@nest-boot/tenant";
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { TypeOrmModule } from "@nestjs/typeorm";
@@ -22,11 +22,7 @@ const DatabaseDynamicModule = DatabaseModule.register({
   entities: [PersonalAccessToken],
 });
 
-// const TenantDynamicModule = TenantModule.forRoot({
-//   getTenantId: () => {
-//     return "1";
-//   },
-// });
+const TenantDynamicModule = TenantModule.forRoot();
 
 const RedisDynamicModule = RedisModule.registerAsync({
   imports: [],
@@ -89,7 +85,7 @@ const providers = [...services, ...queues];
     MailerDynamicModule,
     QueueDynamicModule,
     DatabaseDynamicModule,
-    // TenantDynamicModule,
+    TenantDynamicModule,
     TypeOrmModule.forFeature([Post, User]),
   ],
   providers,

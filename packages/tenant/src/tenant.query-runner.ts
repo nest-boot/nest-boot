@@ -11,13 +11,9 @@ export class TenantQueryRunner extends PostgresQueryRunner {
   ): Promise<any> {
     const ctx = Context.get();
 
-    console.log("@@@ TenantQueryRunner");
-
-    await super.query(`SET "tenant.id" = '${ctx.tenantId || 1}';`);
+    await super.query(`SET "tenant.id" = '${ctx.tenantId || 0}';`);
     const result = await super.query(query, parameters, useStructuredResult);
     await super.query(`RESET "tenant.id";`);
-
-    console.log("### TenantQueryRunner");
 
     return result;
   }
