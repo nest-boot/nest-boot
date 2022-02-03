@@ -14,10 +14,7 @@ export async function execCli(
 ): Promise<void> {
   process[RUNTIME_KEY] = "cli";
 
-  const app = await NestFactory.createApplicationContext(module, {
-    bufferLogs: true,
-    logger: COMMAND_DEBUG === "true" ? logger : false,
-  });
+  const app = await NestFactory.createApplicationContext(module);
 
   // 获取日志服务
   const loggerService = app.get(Logger);

@@ -6,6 +6,7 @@ import { mergeWith } from "lodash";
 import { resolve } from "path";
 import { SnakeNamingStrategy } from "typeorm-snake-naming-strategy";
 
+import { DatabaseCommand } from "../commands/database.command";
 import { TransactionalConnection } from "../services/transactional-connection";
 
 @Global()
@@ -27,6 +28,11 @@ export class DatabaseModule {
             username: configService.get("DATABASE_USERNAME"),
             password: configService.get("DATABASE_PASSWORD"),
             timezone: configService.get("DATABASE_TIMEZONE", "Z"),
+            extra: {
+              ssl: configService.get("DATABASE_SSL") === "true" && {
+                rejectUnauthorized: false,
+              },
+            },
             synchronize: configService.get("DATABASE_SYNC") === "true",
             namingStrategy: new SnakeNamingStrategy(),
             entities: [
@@ -36,11 +42,11 @@ export class DatabaseModule {
             ],
             migrations: [
               tsNodeRegistered
-                ? resolve(process.cwd(), "src/app/core/migrations/**/*.ts")
-                : resolve(process.cwd(), "dist/app/core/migrations/**/*.js"),
+                ? resolve(process.cwd(), "src/database/migrations/**/*.ts")
+                : resolve(process.cwd(), "dist/database/migrations/**/*.js"),
             ],
             cli: {
-              migrationsDir: resolve(process.cwd(), "src/app/core/migrations"),
+              migrationsDir: resolve(process.cwd(), "src/database/migrations"),
             },
           },
           options,
@@ -71,7 +77,7 @@ export class DatabaseModule {
       global: true,
       module: DatabaseModule,
       imports: [TypeOrmDynamicModule],
-      providers: [TransactionalConnection],
+      providers: [TransactionalConnection, DatabaseCommand],
       exports: [TransactionalConnection],
     };
   }

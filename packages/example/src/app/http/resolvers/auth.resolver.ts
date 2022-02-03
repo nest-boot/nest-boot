@@ -1,4 +1,4 @@
-import { Can, getRuntimeContext } from "@nest-boot/common";
+import { Can, Context } from "@nest-boot/common";
 import { NotFoundException } from "@nestjs/common";
 import { Args, Mutation, Query, Resolver } from "@nestjs/graphql";
 
@@ -16,7 +16,7 @@ export class AuthResolver {
 
   @Query(() => UserObject)
   async me(): Promise<UserObject> {
-    return getRuntimeContext()?.user;
+    return Context.get()?.user;
   }
 
   @Can("PUBLIC")
@@ -33,7 +33,7 @@ export class AuthResolver {
 
     const personalAccessToken = await this.authService.createToken(user);
 
-    const ctx = getRuntimeContext();
+    const ctx = Context.get();
     ctx.res.cookie("access_token", personalAccessToken.token);
     return personalAccessToken?.token;
   }

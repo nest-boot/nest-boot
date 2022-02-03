@@ -1,4 +1,4 @@
-import { getRuntimeContext, PERMISSIONS_METADATA_KEY } from "@nest-boot/common";
+import { Context, PERMISSIONS_METADATA_KEY } from "@nest-boot/common";
 import { CanActivate, ExecutionContext } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import _ from "lodash";
@@ -10,7 +10,7 @@ export abstract class BaseAuthGuard implements CanActivate {
     executionContext: ExecutionContext
   ): Promise<boolean> {
     // 获取运行上下文
-    const ctx = getRuntimeContext();
+    const ctx = Context.get();
 
     // 获取配置权限
     const permissions = this.reflector.get<string[]>(

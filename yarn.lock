@@ -536,6 +536,22 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@cspotcode/source-map-consumer@npm:0.8.0":
+  version: 0.8.0
+  resolution: "@cspotcode/source-map-consumer@npm:0.8.0"
+  checksum: c0c16ca3d2f58898f1bd74c4f41a189dbcc202e642e60e489cbcc2e52419c4e89bdead02c886a12fb13ea37798ede9e562b2321df997ebc210ae9bd881561b4e
+  languageName: node
+  linkType: hard
+
+"@cspotcode/source-map-support@npm:0.7.0":
+  version: 0.7.0
+  resolution: "@cspotcode/source-map-support@npm:0.7.0"
+  dependencies:
+    "@cspotcode/source-map-consumer": 0.8.0
+  checksum: 9faddda7757cd778b5fd6812137b2cc265810043680d6399acc20441668fafcdc874053be9dccd0d9110087287bfad27eb3bf342f72bceca9aa9059f5d0c4be8
+  languageName: node
+  linkType: hard
+
 "@eslint/eslintrc@npm:^1.0.5":
   version: 1.0.5
   resolution: "@eslint/eslintrc@npm:1.0.5"
@@ -1755,6 +1771,7 @@ __metadata:
     "@nestjs/core": ^8.0.0
     "@types/express": ^4.17.13
     "@types/jest": ^27.4.0
+    "@types/lodash": ^4.14.178
     "@types/node": ^17.0.9
     express: ^4.17.2
     jest: ^27.4.7
@@ -1787,6 +1804,7 @@ __metadata:
     "@types/inflection": ^1.5.28
     "@types/jest": ^27.4.0
     "@types/lodash": ^4.14.167
+    "@types/node": ^17.0.14
     "@types/nunjucks": ^3.1.3
     "@types/prettier": ^2.1.6
     "@types/sql-formatter": ^2.3.0
@@ -1801,9 +1819,8 @@ __metadata:
     reflect-metadata: ^0.1.13
     rimraf: ^3.0.2
     rxjs: ^7.5.2
-    sql-formatter: ^3.1.0
     ts-jest: ^27.1.3
-    typeorm: ^0.2.41
+    ts-node: ^10.4.0
     typescript: ^4.4.2
     yargs: ^16.2.0
   peerDependencies:
@@ -1829,6 +1846,7 @@ __metadata:
     "@nestjs/config": ^1.0.0
     "@nestjs/core": ^8.0.0
     "@types/cookie-parser": ^1.4.2
+    "@types/express": ^4.17.13
     "@types/jest": ^27.4.0
     "@types/lodash": ^4.14.167
     "@types/ms": ^0.7.31
@@ -1872,16 +1890,25 @@ __metadata:
     "@nestjs/config": ^1.0.0
     "@nestjs/core": ^8.0.0
     "@nestjs/typeorm": ^8.0.3
+    "@types/fs-extra": ^9.0.13
+    "@types/inflection": ^1.13.0
     "@types/jest": ^27.4.0
     "@types/lodash": ^4.14.167
     "@types/node": ^14.14.20
+    "@types/nunjucks": ^3.2.1
+    "@types/prettier": ^2.4.3
     dataloader: ^2.0.0
+    fs-extra: ^10.0.0
+    inflection: ^1.13.2
     jest: ^27.4.7
     lodash: ^4.17.20
+    nunjucks: ^3.2.3
+    prettier: ^2.5.1
     reflect-metadata: ^0.1.13
     rimraf: ^3.0.2
     rxjs: ^7.5.2
     snowflake-id-generator: ^1.0.4
+    sql-formatter: ^4.0.2
     ts-jest: ^27.1.3
     typeorm: ^0.2.41
     typeorm-snake-naming-strategy: ^1.0.2
@@ -1918,6 +1945,7 @@ __metadata:
     "@nest-boot/redis": "*"
     "@nest-boot/search": "*"
     "@nest-boot/search-engine-meilisearch": "*"
+    "@nest-boot/tenant": "*"
     "@nest-boot/validator": "*"
     "@nestjs/cli": ^8.1.1
     "@nestjs/common": ^8.0.0
@@ -1927,6 +1955,7 @@ __metadata:
     "@nestjs/platform-express": ^8.0.6
     "@nestjs/schematics": ^8.0.3
     "@nestjs/testing": ^8.0.6
+    "@nestjs/typeorm": ^8.0.3
     "@types/express": ^4.17.8
     "@types/jest": ^27.4.0
     "@types/node": ^14.14.6
@@ -1942,7 +1971,6 @@ __metadata:
     jest: ^27.4.7
     meilisearch: ^0.24.0
     pg: ^8.5.1
-    prettier: ^2.1.2
     reflect-metadata: ^0.1.13
     remark: ^13.0.0
     remark-html: ^13.0.1
@@ -1951,8 +1979,9 @@ __metadata:
     source-map-support: ^0.5.19
     supertest: ^6.0.0
     ts-jest: ^27.1.3
-    ts-node: ^9.0.0
+    ts-node: ^10.4.0
     tsconfig-paths: ^3.9.0
+    typeorm: ^0.2.41
     typescript: ^4.4.2
   languageName: unknown
   linkType: soft
@@ -2224,6 +2253,32 @@ __metadata:
     reflect-metadata: ^0.1.13
     rxjs: ^7.3.0
     typeorm: ^0.2.41
+  languageName: unknown
+  linkType: soft
+
+"@nest-boot/tenant@*, @nest-boot/tenant@workspace:packages/tenant":
+  version: 0.0.0-use.local
+  resolution: "@nest-boot/tenant@workspace:packages/tenant"
+  dependencies:
+    "@nest-boot/common": 1.1.2
+    "@nest-boot/database": 1.2.1
+    "@nestjs/common": ^8.0.0
+    "@types/jest": ^27.4.0
+    "@types/node": ^14.14.20
+    jest: ^27.4.7
+    reflect-metadata: ^0.1.13
+    rimraf: ^3.0.2
+    rxjs: ^7.5.2
+    ts-jest: ^27.1.3
+    typeorm: ^0.2.41
+    typescript: ^4.4.2
+  peerDependencies:
+    "@nest-boot/common": 1.1.2
+    "@nest-boot/database": 1.2.1
+    "@nestjs/common": ^8.0.0
+    reflect-metadata: ^0.1.13
+    rxjs: ^7.0.0
+    typeorm: ^0.2.0
   languageName: unknown
   linkType: soft
 
@@ -3268,6 +3323,34 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@tsconfig/node10@npm:^1.0.7":
+  version: 1.0.8
+  resolution: "@tsconfig/node10@npm:1.0.8"
+  checksum: b8d5fffbc6b17ef64ef74f7fdbccee02a809a063ade785c3648dae59406bc207f70ea2c4296f92749b33019fa36a5ae716e42e49cc7f1bbf0fd147be0d6b970a
+  languageName: node
+  linkType: hard
+
+"@tsconfig/node12@npm:^1.0.7":
+  version: 1.0.9
+  resolution: "@tsconfig/node12@npm:1.0.9"
+  checksum: a01b2400ab3582b86b589c6d31dcd0c0656f333adecde85d6d7d4086adb059808b82692380bb169546d189bf771ae21d02544a75b57bd6da4a5dd95f8567bec9
+  languageName: node
+  linkType: hard
+
+"@tsconfig/node14@npm:^1.0.0":
+  version: 1.0.1
+  resolution: "@tsconfig/node14@npm:1.0.1"
+  checksum: 976345e896c0f059867f94f8d0f6ddb8b1844fb62bf36b727de8a9a68f024857e5db97ed51d3325e23e0616a5e48c034ff51a8d595b3fe7e955f3587540489be
+  languageName: node
+  linkType: hard
+
+"@tsconfig/node16@npm:^1.0.2":
+  version: 1.0.2
+  resolution: "@tsconfig/node16@npm:1.0.2"
+  checksum: ca94d3639714672bbfd55f03521d3f56bb6a25479bd425da81faf21f13e1e9d15f40f97377dedbbf477a5841c5b0c8f4cd1b391f33553d750b9202c54c2c07aa
+  languageName: node
+  linkType: hard
+
 "@types/accepts@npm:^1.3.5":
   version: 1.3.5
   resolution: "@types/accepts@npm:1.3.5"
@@ -3410,7 +3493,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/fs-extra@npm:^9.0.6":
+"@types/fs-extra@npm:^9.0.13, @types/fs-extra@npm:^9.0.6":
   version: 9.0.13
   resolution: "@types/fs-extra@npm:9.0.13"
   dependencies:
@@ -3444,7 +3527,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/inflection@npm:^1.5.28":
+"@types/inflection@npm:^1.13.0, @types/inflection@npm:^1.5.28":
   version: 1.13.0
   resolution: "@types/inflection@npm:1.13.0"
   checksum: 0c7cb5b31d0b9418db5c391af07c1d9bfc56daa3a7d6b7c4697e5ea59f24933e19fbcbd8eb921053c0d8db9146b26e166e8f21feed1d5ae020cc3308c10587e2
@@ -3604,6 +3687,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/node@npm:^17.0.14":
+  version: 17.0.14
+  resolution: "@types/node@npm:17.0.14"
+  checksum: cc059ce29686bad5890685f45741826a1a7d1d27382464f6d5fa00b72ba239f6f5b8245a7fa5a56c23ce928030dc76b165a4ab0b86dc078f05b44597d8fe1a46
+  languageName: node
+  linkType: hard
+
 "@types/nodemailer@npm:^6.4.4":
   version: 6.4.4
   resolution: "@types/nodemailer@npm:6.4.4"
@@ -3620,7 +3710,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/nunjucks@npm:^3.1.3":
+"@types/nunjucks@npm:^3.1.3, @types/nunjucks@npm:^3.2.1":
   version: 3.2.1
   resolution: "@types/nunjucks@npm:3.2.1"
   checksum: 40f3dd8968cd30c19a99c6eec55e3bf354da39ce08840a8d652a7c9754a7e5a8a59f92fb258862c56d223f9908b62c347006d0a26f685a5dc72f13bdb68ce778
@@ -3665,7 +3755,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/prettier@npm:^2.1.5, @types/prettier@npm:^2.1.6":
+"@types/prettier@npm:^2.1.5, @types/prettier@npm:^2.1.6, @types/prettier@npm:^2.4.3":
   version: 2.4.3
   resolution: "@types/prettier@npm:2.4.3"
   checksum: b240434daabac54700c862b0bb52a83fec396e0e9c847447119ba41fd8404d79aadfa174e6306fb094b29efadac586344b7606c3a71c286b71755ab2579d54df
@@ -4151,6 +4241,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"acorn-walk@npm:^8.1.1":
+  version: 8.2.0
+  resolution: "acorn-walk@npm:8.2.0"
+  checksum: 1715e76c01dd7b2d4ca472f9c58968516a4899378a63ad5b6c2d668bba8da21a71976c14ec5f5b75f887b6317c4ae0b897ab141c831d741dc76024d8745f1ad1
+  languageName: node
+  linkType: hard
+
 "acorn@npm:^7.1.1":
   version: 7.4.1
   resolution: "acorn@npm:7.4.1"
@@ -4568,7 +4665,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"argparse@npm:^1.0.10, argparse@npm:^1.0.7":
+"argparse@npm:^1.0.7":
   version: 1.0.10
   resolution: "argparse@npm:1.0.10"
   dependencies:
@@ -8526,6 +8623,13 @@ __metadata:
   version: 1.13.1
   resolution: "inflection@npm:1.13.1"
   checksum: 0ae265f710f61320306207501931fe4248dace8e841fb911a33625df68f611bc3736d9f03be5abc5351ae3698c7830e35c400a3a092cd68e93aa3d8cc01cb73a
+  languageName: node
+  linkType: hard
+
+"inflection@npm:^1.13.2":
+  version: 1.13.2
+  resolution: "inflection@npm:1.13.2"
+  checksum: e7ad0559384ed7c526813404bde843f8f17941d47625ad60fc3b09e46efde873dd9840818007c6bd4dbe388e6248fa033d5a8c405c5fc62738c51b118a0e940f
   languageName: node
   linkType: hard
 
@@ -13058,7 +13162,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"prettier@npm:^2.1.2, prettier@npm:^2.2.1, prettier@npm:^2.5.1":
+"prettier@npm:^2.2.1, prettier@npm:^2.5.1":
   version: 2.5.1
   resolution: "prettier@npm:2.5.1"
   bin:
@@ -14378,7 +14482,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"source-map-support@npm:0.5.21, source-map-support@npm:^0.5.17, source-map-support@npm:^0.5.19, source-map-support@npm:^0.5.6, source-map-support@npm:~0.5.20":
+"source-map-support@npm:0.5.21, source-map-support@npm:^0.5.19, source-map-support@npm:^0.5.6, source-map-support@npm:~0.5.20":
   version: 0.5.21
   resolution: "source-map-support@npm:0.5.21"
   dependencies:
@@ -14512,14 +14616,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"sql-formatter@npm:^3.1.0":
-  version: 3.1.0
-  resolution: "sql-formatter@npm:3.1.0"
+"sql-formatter@npm:^4.0.2":
+  version: 4.0.2
+  resolution: "sql-formatter@npm:4.0.2"
   dependencies:
-    argparse: ^1.0.10
+    argparse: ^2.0.1
   bin:
     sql-formatter: bin/sqlfmt.js
-  checksum: 3cf7efb6344830e529bb6212e4546561741bdf97ee52d2b86b5cd13551d4352e4a3b063ac6d5d4e5f5ec819a4429515f48f08e3bb3b7322211c3be56b132096b
+  checksum: ce2bd1c507bc3435cfc17184d6404e39d033541ebf0f092087623972a4cf0f72822aec0752060b9f8ed387b63e3a1c46e3d621037dd069fe15f258a83e235940
   languageName: node
   linkType: hard
 
@@ -15272,24 +15376,39 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ts-node@npm:^9.0.0":
-  version: 9.1.1
-  resolution: "ts-node@npm:9.1.1"
+"ts-node@npm:^10.4.0":
+  version: 10.4.0
+  resolution: "ts-node@npm:10.4.0"
   dependencies:
+    "@cspotcode/source-map-support": 0.7.0
+    "@tsconfig/node10": ^1.0.7
+    "@tsconfig/node12": ^1.0.7
+    "@tsconfig/node14": ^1.0.0
+    "@tsconfig/node16": ^1.0.2
+    acorn: ^8.4.1
+    acorn-walk: ^8.1.1
     arg: ^4.1.0
     create-require: ^1.1.0
     diff: ^4.0.1
     make-error: ^1.1.1
-    source-map-support: ^0.5.17
     yn: 3.1.1
   peerDependencies:
+    "@swc/core": ">=1.2.50"
+    "@swc/wasm": ">=1.2.50"
+    "@types/node": "*"
     typescript: ">=2.7"
+  peerDependenciesMeta:
+    "@swc/core":
+      optional: true
+    "@swc/wasm":
+      optional: true
   bin:
     ts-node: dist/bin.js
+    ts-node-cwd: dist/bin-cwd.js
     ts-node-script: dist/bin-script.js
     ts-node-transpile-only: dist/bin-transpile.js
     ts-script: dist/bin-script-deprecated.js
-  checksum: 356e2647b8b1e6ab00380c0537fa569b63bd9b6f006cc40fd650f81fae1817bd8fecc075300036950d8f45c1d85b95be33cd1e48a1a424a7d86c3dbb42bf60e5
+  checksum: 3933ac0a937d33c45e04a6750fcdd3e765eb2897d1da1307cd97ac52af093bcfb632ec0453a75000a65c8b5b7bdb32b1077050a186dcc556e62657cb592e6d49
   languageName: node
   linkType: hard
 

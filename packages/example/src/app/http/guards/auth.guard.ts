@@ -1,5 +1,5 @@
 import { BaseAuthGuard } from "@nest-boot/auth";
-import { getRuntimeContext } from "@nest-boot/common";
+import { Context } from "@nest-boot/common";
 import { Injectable } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 
@@ -11,6 +11,6 @@ export class AuthGuard extends BaseAuthGuard {
 
   // 需要自定义获取用户权限的方法
   async getPermissions(): Promise<string[]> {
-    return getRuntimeContext()?.user?.permissions || [];
+    return Context.get()?.user?.permissions || [];
   }
 }

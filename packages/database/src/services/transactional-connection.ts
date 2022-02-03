@@ -1,4 +1,4 @@
-import { getRuntimeContext, RuntimeContext } from "@nest-boot/common";
+import { Context } from "@nest-boot/common";
 import { Injectable } from "@nestjs/common";
 import { InjectConnection } from "@nestjs/typeorm";
 import {
@@ -21,10 +21,10 @@ export class TransactionalConnection {
   getRepository<Entity>(
     target: ObjectType<Entity> | EntitySchema<Entity> | string
   ): Repository<Entity> {
-    const ctx = getRuntimeContext();
+    const ctx = Context.get();
 
     if (ctx) {
-      const transactionManager = this.getTransactionManager(ctx);
+      const transactionManager = this.getTransactionManager();
 
       if (
         transactionManager &&
@@ -38,14 +38,14 @@ export class TransactionalConnection {
     return getRepository(target);
   }
 
-  async startTransaction(ctx: RuntimeContext): Promise<void> {
-    const transactionManager = this.getTransactionManager(ctx);
+  async startTransaction(): Promise<void> {
+    const transactionManager = this.getTransactionManager();
     if (transactionManager?.queryRunner?.isTransactionActive === false) {
       await transactionManager.queryRunner.startTransaction();
     }
   }
 
-  private getTransactionManager(ctx: RuntimeContext): EntityManager {
-    return ctx.transactionQueryRunner?.manager;
+  private getTransactionManager(): EntityManager {
+    return Context.get()?.transactionQueryRunner?.manager;
   }
 }

@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-namespace */
+
 import {
   AfterInsert,
   AfterLoad,
@@ -45,6 +47,14 @@ import {
   Repository,
   UpdateEvent,
 } from "typeorm";
+
+declare global {
+  namespace NestBootCommon {
+    interface Context {
+      transactionQueryRunner?: QueryRunner;
+    }
+  }
+}
 
 export * from "./decorators";
 export * from "./entities";

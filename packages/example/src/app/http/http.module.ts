@@ -1,5 +1,6 @@
 import { AuthMiddleware } from "@nest-boot/auth";
-import { RuntimeContextMiddleware } from "@nest-boot/common";
+import { ContextMiddleware } from "@nest-boot/common";
+import { TenantMiddleware } from "@nest-boot/tenant";
 import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { GraphQLModule } from "@nestjs/graphql";
@@ -32,6 +33,8 @@ const resolvers = [AuthResolver, PostResolver];
 })
 export class HttpModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(RuntimeContextMiddleware, AuthMiddleware).forRoutes("*");
+    consumer
+      .apply(ContextMiddleware, TenantMiddleware, AuthMiddleware)
+      .forRoutes("*");
   }
 }

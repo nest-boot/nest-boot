@@ -6,9 +6,13 @@ import { QueueModule } from "@nest-boot/queue";
 import { RedisModule } from "@nest-boot/redis";
 import { SearchModule } from "@nest-boot/search";
 import { MeiliSearchEngine } from "@nest-boot/search-engine-meilisearch";
+// import { TenantModule } from "@nest-boot/tenant";
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
+import { TypeOrmModule } from "@nestjs/typeorm";
 
+import { Post } from "./entities/post.entity";
+import { User } from "./entities/user.entity";
 import { TestQueue } from "./queues/test.queue";
 import { AuthService } from "./services/auth.service";
 import { PostService } from "./services/post.service";
@@ -17,6 +21,12 @@ import { UserService } from "./services/user.service";
 const DatabaseDynamicModule = DatabaseModule.register({
   entities: [PersonalAccessToken],
 });
+
+// const TenantDynamicModule = TenantModule.forRoot({
+//   getTenantId: () => {
+//     return "1";
+//   },
+// });
 
 const RedisDynamicModule = RedisModule.registerAsync({
   imports: [],
@@ -27,6 +37,9 @@ const RedisDynamicModule = RedisModule.registerAsync({
     username: configService.get("REDIS_USERNAME"),
     password: configService.get("REDIS_PASSWORD"),
     db: +configService.get("REDIS_DB", "0"),
+    tls: configService.get("REDIS_SSL") === "true" && {
+      rejectUnauthorized: false,
+    },
   }),
 });
 
@@ -76,8 +89,10 @@ const providers = [...services, ...queues];
     MailerDynamicModule,
     QueueDynamicModule,
     DatabaseDynamicModule,
+    // TenantDynamicModule,
+    TypeOrmModule.forFeature([Post, User]),
   ],
   providers,
-  exports: [...providers],
+  exports: [...providers, MailerDynamicModule],
 })
 export class CoreModule {}

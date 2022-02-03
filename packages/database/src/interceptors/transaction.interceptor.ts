@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { getRuntimeContext, RuntimeContext } from "@nest-boot/common";
+import { Context } from "@nest-boot/common";
 import {
   CallHandler,
   ExecutionContext,
@@ -26,16 +26,14 @@ export class TransactionInterceptor implements NestInterceptor {
   ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
-    const ctx = getRuntimeContext();
+    const ctx = Context.get();
 
     if (ctx) {
       const transactionMode = this.reflector.get<TransactionMode>(
         TRANSACTION_MODE_METADATA_KEY,
         context.getHandler()
       );
-      return of(
-        this.withTransaction(ctx, () => next.handle(), transactionMode)
-      );
+      return of(this.withTransaction(() => next.handle(), transactionMode));
     }
     return next.handle();
   }
@@ -84,10 +82,10 @@ export class TransactionInterceptor implements NestInterceptor {
   }
 
   private async withTransaction<T>(
-    ctx: RuntimeContext,
     work: () => Observable<T>,
     mode: TransactionMode
   ): Promise<T> {
+    const ctx = Context.get();
     const queryRunnerExists = !!ctx.transactionQueryRunner;
 
     if (queryRunnerExists) {

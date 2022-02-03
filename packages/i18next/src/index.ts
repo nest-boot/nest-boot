@@ -1,4 +1,14 @@
+/* eslint-disable @typescript-eslint/no-namespace */
+
 import { i18n as I18Next, TFunction as Translation } from "i18next";
+
+declare global {
+  namespace NestBootCommon {
+    interface Context {
+      i18n?: I18Next;
+    }
+  }
+}
 
 export * from "./configs";
 export * from "./constants";

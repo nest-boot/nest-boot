@@ -1,4 +1,6 @@
-import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
 import {
   DeepPartial,
   FindConditions,
@@ -10,23 +12,17 @@ import {
 } from "typeorm";
 
 import { BaseEntity } from "../entities/base.entity";
-import { TransactionalConnection } from "../services/transactional-connection";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface Type<T = any> extends Function {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   new (...args: any[]): T;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface ChunkByIdOptions<T = any>
   extends Omit<FindManyOptions<T>, "skip" | "take" | "order"> {
   where?: Exclude<FindManyOptions<T>["where"], string | FindConditions<T>[]>;
 }
 
 export interface EntityService<T extends BaseEntity> {
-  target: Type<T>;
-  connection: TransactionalConnection;
   repository: Repository<T>;
 
   create(input: DeepPartial<T>): Promise<T>;
@@ -48,22 +44,15 @@ export interface EntityService<T extends BaseEntity> {
 }
 
 export function createEntityService<T extends BaseEntity>(
-  Entity: Type<T>
+  entityClass: Type<T>
 ): Type<EntityService<T>> {
   @Injectable()
   class AbstractEntityService implements EntityService<T> {
-    @Inject()
-    readonly connection: TransactionalConnection;
-
-    readonly target: Type<T> = Entity;
-
-    get repository(): Repository<T> {
-      return this.getRepository();
-    }
+    @InjectRepository(entityClass)
+    readonly repository: Repository<T>;
 
     async create(input: DeepPartial<T>): Promise<T> {
-      const repository = this.connection.getRepository(this.target);
-      return await this.save(repository.create(input));
+      return await this.save(this.repository.create(input));
     }
 
     async update(
@@ -92,13 +81,13 @@ export function createEntityService<T extends BaseEntity>(
       options?: FindOneOptions<T>
     ): Promise<T> {
       if (!id) {
-        throw new NotFoundException(`${this.target.name} not found`);
+        throw new NotFoundException();
       }
 
       const entity = await this.repository.findOne(id, options);
 
       if (!entity) {
-        throw new NotFoundException(`${this.target.name} not found`);
+        throw new NotFoundException();
       }
 
       return entity;
@@ -112,7 +101,7 @@ export function createEntityService<T extends BaseEntity>(
       const entity = await this.repository.findOne(options);
 
       if (!entity) {
-        throw new NotFoundException(`${this.target.name} not found`);
+        throw new NotFoundException();
       }
 
       return entity;
@@ -154,10 +143,6 @@ export function createEntityService<T extends BaseEntity>(
 
       // eslint-disable-next-line consistent-return
       return this;
-    }
-
-    getRepository(): Repository<T> {
-      return this.connection.getRepository(this.target);
     }
 
     async save(entity: DeepPartial<T> | T): Promise<T> {

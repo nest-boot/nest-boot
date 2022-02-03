@@ -12,10 +12,6 @@ import {
 import { Environment, FileSystemLoader } from "nunjucks";
 import { resolve } from "path";
 import prettier from "prettier";
-import sqlFormatter from "sql-formatter";
-import { Connection, getConnection } from "typeorm";
-import { AuroraDataApiDriver } from "typeorm/driver/aurora-data-api/AuroraDataApiDriver";
-import { MysqlDriver } from "typeorm/driver/mysql/MysqlDriver";
 
 import { Command, Option, Positional } from "../command.decorator";
 
@@ -120,88 +116,6 @@ export class CreateCodeCommand {
       "entity.njk",
       { name, searchable }
     );
-  }
-
-  @Command({
-    command: "create:migration <name>",
-    describe: "创建一个迁移",
-  })
-  async createMigration(
-    @Positional({
-      name: "name",
-      describe: "名称",
-      type: "string",
-    })
-    name: string,
-    @Option({
-      alias: "c",
-      default: "default",
-      describe: "运行查询的连接名称",
-      name: "connectionName",
-    })
-    connectionName: string
-  ): Promise<void> {
-    let connection: Connection;
-
-    try {
-      connection = getConnection(connectionName);
-
-      const sqlInMemory = await connection.driver.createSchemaBuilder().log();
-
-      const upSqls: string[] = [];
-      const downSqls: string[] = [];
-
-      if (
-        connection.driver instanceof MysqlDriver ||
-        connection.driver instanceof AuroraDataApiDriver
-      ) {
-        sqlInMemory.upQueries.forEach((upQuery) => {
-          upSqls.push(sqlFormatter.format(upQuery.query.replace(/"/g, `\\"`)));
-        });
-        sqlInMemory.downQueries.forEach((downQuery) => {
-          downSqls.push(
-            sqlFormatter.format(downQuery.query.replace(/"/g, `\\"`))
-          );
-        });
-      } else {
-        sqlInMemory.upQueries.forEach((upQuery) => {
-          upSqls.push(sqlFormatter.format(upQuery.query.replace(/`/g, "\\`")));
-        });
-        sqlInMemory.downQueries.forEach((downQuery) => {
-          downSqls.push(
-            sqlFormatter.format(downQuery.query.replace(/`/g, "\\`"))
-          );
-        });
-      }
-
-      if (upSqls.length) {
-        const timestamp = new Date().getTime();
-
-        const fileName = `${timestamp}-${dasherize(name).toLowerCase()}`;
-        const migrationName = `${dasherize(name).toLowerCase()}-${timestamp}`;
-
-        await this.render(
-          `database/migrations/${fileName}.migration.ts`,
-          "migration.njk",
-          { name, migrationName, upSqls, downSqls: downSqls.reverse() }
-        );
-
-        console.log(
-          `Migration ${migrationName} has been generated successfully.`
-        );
-      } else {
-        console.log(
-          `No changes in database schema were found - cannot generate a migration.`
-        );
-      }
-      await connection.close();
-    } catch (err) {
-      if (connection) await (connection as Connection).close();
-
-      console.log("Error during migration generation:");
-      console.error(err);
-      process.exit(1);
-    }
   }
 
   @Command({

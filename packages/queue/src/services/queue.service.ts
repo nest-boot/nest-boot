@@ -1,8 +1,4 @@
-import {
-  createRuntimeContext,
-  getRuntime,
-  runtimeContextStorage,
-} from "@nest-boot/common";
+import { Context, getRuntime } from "@nest-boot/common";
 import { Redis } from "@nest-boot/redis";
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -66,11 +62,7 @@ export class QueueService {
             wrapper.instance.worker = new Worker(
               queueOptions.name,
               async (job: Job) => {
-                const ctx = createRuntimeContext();
-
-                ctx.job = job;
-
-                return await runtimeContextStorage.run(ctx, () =>
+                return Context.run({ job }, () =>
                   wrapper.instance.processor(job)
                 );
               },

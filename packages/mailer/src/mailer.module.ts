@@ -1,5 +1,6 @@
 import {
   DynamicModule,
+  Global,
   Module,
   ModuleMetadata,
   Provider,

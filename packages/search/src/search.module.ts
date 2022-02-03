@@ -61,7 +61,8 @@ export class SearchModule {
       {
         provide: SearchEngine,
         inject: options.inject || [],
-        useFactory: options.useFactory,
+        useFactory: async (...args) =>
+          (await options.useFactory(...args))?.engine,
       },
     ];
   }
