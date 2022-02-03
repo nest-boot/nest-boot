@@ -4,6 +4,7 @@ import {
   BulkJobOptions,
   Job,
   JobsOptions,
+  JobType,
   Queue as BullQueue,
   QueueScheduler,
   RedisClient,
@@ -55,7 +56,7 @@ export abstract class BaseQueue<T = any, R = any, N extends string = string> {
   }
 
   async getJobs(
-    types: string | string[],
+    types: JobType | JobType[],
     start?: number,
     end?: number,
     asc?: boolean
@@ -63,7 +64,7 @@ export abstract class BaseQueue<T = any, R = any, N extends string = string> {
     return await this.queue.getJobs(types, start, end, asc);
   }
 
-  async getJobCounts(types: string[]): Promise<{
+  async getJobCounts(types: JobType[]): Promise<{
     [index: string]: number;
   }> {
     return await this.queue.getJobCounts(...types);

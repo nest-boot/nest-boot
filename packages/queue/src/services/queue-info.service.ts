@@ -138,7 +138,7 @@ export class QueueInfoService {
   }
 
   // 查询队列内 jobs , 每页 20 个
-  async getJobs(name: string, type: string, page?: number): Promise<Jobs> {
+  async getJobs(name: string, type: JobType, page?: number): Promise<Jobs> {
     if (!this.queueNames.includes(name)) {
       throw new NotFoundException();
     }
