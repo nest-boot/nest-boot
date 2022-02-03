@@ -1,3 +1,10 @@
+## @nest-boot/graphql [1.3.1](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/graphql@1.3.0...@nest-boot/graphql@1.3.1) (2022-02-03)
+
+
+### Bug Fixes
+
+* update @nestjs/graphql v9.2.0 ([c67f7f6](https://github.com/d4rkcr0w/nest-boot/commit/c67f7f61b1c5dd8bbcf6a637e1ad1cc043f3b877))
+
 # @nest-boot/graphql [1.3.0](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/graphql@1.2.0...@nest-boot/graphql@1.3.0) (2022-02-03)
 
 
