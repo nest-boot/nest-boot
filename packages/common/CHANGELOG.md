@@ -1,3 +1,10 @@
+## @nest-boot/common [1.2.1](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/common@1.2.0...@nest-boot/common@1.2.1) (2022-02-04)
+
+
+### Bug Fixes
+
+* context type ([75002d5](https://github.com/d4rkcr0w/nest-boot/commit/75002d5b9e030a4ad0fc3feb2edcd18370188013))
+
 # @nest-boot/common [1.2.0](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/common@1.1.3...@nest-boot/common@1.2.0) (2022-02-03)
 
 
