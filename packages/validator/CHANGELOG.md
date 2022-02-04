@@ -1,3 +1,13 @@
+## @nest-boot/validator [1.2.1](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/validator@1.2.0...@nest-boot/validator@1.2.1) (2022-02-04)
+
+
+
+
+
+### Dependencies
+
+* **@nest-boot/i18next:** upgraded to 1.2.1
+
 # @nest-boot/validator [1.2.0](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/validator@1.1.3...@nest-boot/validator@1.2.0) (2022-02-03)
 
 
