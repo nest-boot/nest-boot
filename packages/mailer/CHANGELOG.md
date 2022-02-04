@@ -1,3 +1,13 @@
+## @nest-boot/mailer [1.2.1](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/mailer@1.2.0...@nest-boot/mailer@1.2.1) (2022-02-04)
+
+
+
+
+
+### Dependencies
+
+* **@nest-boot/queue:** upgraded to 1.2.1
+
 # @nest-boot/mailer [1.2.0](https://github.com/d4rkcr0w/nest-boot/compare/@nest-boot/mailer@1.1.3...@nest-boot/mailer@1.2.0) (2022-02-03)
 
 
