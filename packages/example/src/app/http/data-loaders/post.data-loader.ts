@@ -1,4 +1,4 @@
-import { EntityDataLoader } from "@nest-boot/database";
+import { EntityDataLoader } from "@nest-boot/graphql";
 import { Injectable, Scope } from "@nestjs/common";
 
 import { Post } from "../../core/entities/post.entity";

@@ -8,10 +8,10 @@
   ],
   "scripts": {
     "dev": "yarn workspace @nest-boot/example dev",
-    "build": "lerna run build --ignore @nest-boot/example",
-    "clean": "lerna run clean --ignore @nest-boot/example",
+    "build": "yarn workspaces foreach --parallel --topological-dev --no-private run build",
+    "clean": "yarn workspaces foreach --parallel run clean",
     "lint": "eslint packages/*/src --fix",
-    "semantic-release": "multi-semantic-release '--ignore-packages=packages/example/**'"
+    "semantic-release": "multi-semantic-release --sequential-init '--ignore-packages=packages/example/**'"
   },
   "devDependencies": {
     "@qiwi/multi-semantic-release": "^3.17.1",
@@ -27,7 +27,6 @@
     "eslint-plugin-import": "^2.25.4",
     "eslint-plugin-prettier": "^4.0.0",
     "eslint-plugin-simple-import-sort": "^7.0.0",
-    "lerna": "^4.0.0",
     "prettier": "^2.5.1",
     "typescript": "^4.5.5"
   },
