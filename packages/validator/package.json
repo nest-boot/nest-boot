@@ -38,7 +38,11 @@
     "typescript": "^4.5.5"
   },
   "peerDependencies": {
+<<<<<<< HEAD
     "@nest-boot/i18next": "1.2.1",
+=======
+    "@nest-boot/i18next": "^1.0.0",
+>>>>>>> ebcc6b4 (fix: update deps)
     "@nestjs/common": "^8.0.0",
     "class-transformer": "^0.4.0",
     "class-validator": "^0.13.0",

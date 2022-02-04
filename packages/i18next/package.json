@@ -36,7 +36,11 @@
     "typescript": "^4.5.5"
   },
   "peerDependencies": {
+<<<<<<< HEAD
     "@nest-boot/common": "1.2.1",
+=======
+    "@nest-boot/common": "^1.0.0",
+>>>>>>> ebcc6b4 (fix: update deps)
     "i18next": "^19.7.0",
     "i18next-fs-backend": "^1.0.7",
     "i18next-http-middleware": "^3.0.5",

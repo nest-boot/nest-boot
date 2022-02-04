@@ -35,8 +35,13 @@
     "typescript": "^4.5.5"
   },
   "peerDependencies": {
+<<<<<<< HEAD
     "@nest-boot/common": "1.2.1",
     "@nest-boot/database": "1.3.0",
+=======
+    "@nest-boot/common": "^1.0.0",
+    "@nest-boot/database": "^1.0.0",
+>>>>>>> ebcc6b4 (fix: update deps)
     "@nestjs/common": "^8.0.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.0.0",

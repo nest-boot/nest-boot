@@ -4,14 +4,15 @@
   "private": true,
   "packageManager": "yarn@3.1.1",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "!packages/example/**"
   ],
   "scripts": {
     "dev": "yarn workspace @nest-boot/example dev",
     "build": "lerna run build --ignore @nest-boot/example",
     "clean": "lerna run clean --ignore @nest-boot/example",
     "lint": "eslint packages/*/src --fix",
-    "semantic-release": "multi-semantic-release '--ignore-packages=packages/example/**'"
+    "semantic-release": "multi-semantic-release --sequential-init '--ignore-packages=packages/example/**'"
   },
   "devDependencies": {
     "@qiwi/multi-semantic-release": "^3.17.1",
