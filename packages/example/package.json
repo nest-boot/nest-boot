@@ -1,7 +1,7 @@
 {
   "private": true,
   "name": "@nest-boot/example",
-  "version": "1.0.0",
+  "version": "0.0.0-development",
   "description": "",
   "author": "",
   "license": "MIT",
@@ -37,7 +37,7 @@
     "@nest-boot/search-engine-meilisearch": "workspace:^",
     "@nest-boot/tenant": "workspace:^",
     "@nest-boot/validator": "workspace:^",
-    "@nestjs/apollo": "^9.2.0",
+    "@nestjs/apollo": "^9.2.7",
     "@nestjs/common": "^8.2.6",
     "@nestjs/config": "^1.1.6",
     "@nestjs/core": "^8.2.6",

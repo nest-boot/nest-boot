@@ -1010,8 +1010,10 @@ __metadata:
     "@nest-boot/logger": ^1.0.0
     "@nestjs/common": ^8.0.0
     "@nestjs/core": ^8.0.0
+    "@types/node": "*"
     reflect-metadata: ^0.1.13
     rxjs: ^7.0.0
+    typescript: "*"
   bin:
     nb: bin/nest-boot
     nest-boot: bin/nest-boot
@@ -1127,7 +1129,7 @@ __metadata:
     "@nest-boot/search-engine-meilisearch": "workspace:^"
     "@nest-boot/tenant": "workspace:^"
     "@nest-boot/validator": "workspace:^"
-    "@nestjs/apollo": ^9.2.0
+    "@nestjs/apollo": ^9.2.7
     "@nestjs/cli": ^8.2.0
     "@nestjs/common": ^8.2.6
     "@nestjs/config": ^1.1.6
@@ -1529,7 +1531,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@nestjs/apollo@npm:^9.2.0":
+"@nestjs/apollo@npm:^9.2.7":
   version: 9.2.7
   resolution: "@nestjs/apollo@npm:9.2.7"
   dependencies:
