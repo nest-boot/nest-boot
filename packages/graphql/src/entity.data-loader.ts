@@ -1,9 +1,7 @@
+import { BaseEntity, EntityService } from "@nest-boot/database";
 import DataLoader from "dataloader";
 import _ from "lodash";
 import { In } from "typeorm";
-
-import { BaseEntity } from "./entities/base.entity";
-import { EntityService } from "./utils/create-entity-service.util";
 
 export class EntityDataLoader<T extends BaseEntity> extends DataLoader<
   T["id"],

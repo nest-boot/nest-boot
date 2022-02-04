@@ -19,10 +19,10 @@
     "test": "jest"
   },
   "devDependencies": {
-    "@nest-boot/command": "1.3.1",
-    "@nest-boot/common": "1.2.1",
-    "@nest-boot/database": "1.3.1",
-    "@nest-boot/queue": "1.2.1",
+    "@nest-boot/command": "workspace:^",
+    "@nest-boot/common": "workspace:^",
+    "@nest-boot/database": "workspace:^",
+    "@nest-boot/queue": "workspace:^",
     "@nestjs/common": "^8.2.6",
     "@nestjs/core": "^8.2.6",
     "@types/jest": "^27.4.0",
@@ -36,17 +36,10 @@
     "typescript": "^4.5.5"
   },
   "peerDependencies": {
-<<<<<<< HEAD
-    "@nest-boot/command": "1.3.1",
-    "@nest-boot/common": "1.2.1",
-    "@nest-boot/database": "1.3.1",
-    "@nest-boot/queue": "1.2.1",
-=======
     "@nest-boot/command": "^1.0.0",
     "@nest-boot/common": "^1.0.0",
     "@nest-boot/database": "^1.0.0",
     "@nest-boot/queue": "^1.0.0",
->>>>>>> ebcc6b4 (fix: update deps)
     "@nestjs/common": "^8.0.0",
     "@nestjs/core": "^8.0.0",
     "reflect-metadata": "^0.1.13",
