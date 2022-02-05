@@ -17,7 +17,7 @@ export function mixinTenantId<T extends { id: number | string }>(
   class TenantTrait extends Base implements MixinTenantEntity<T> {
     @Column({
       type: "bigint",
-      default: () => "get_tenant_id()",
+      default: () => "current_tenant_id()",
     })
     tenantId: T["id"];
   }
