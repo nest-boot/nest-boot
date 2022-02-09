@@ -8,7 +8,7 @@ import {
   HealthIndicatorResult,
   TimeoutError,
 } from "@nestjs/terminus";
-import { checkPackages, promiseTimeout } from "@nestjs/terminus/dist/utils";
+import { promiseTimeout } from "@nestjs/terminus/dist/utils";
 import { parse } from "redis-info";
 
 export interface RedisPingCheckSettings {
@@ -23,15 +23,12 @@ export interface RedisPingCheckSettings {
 export class RedisHealthIndicator extends HealthIndicator {
   constructor(private moduleRef: ModuleRef) {
     super();
-    this.checkDependantPackages();
   }
 
   async pingCheck(
     key: string,
     options: RedisPingCheckSettings = {}
   ): Promise<HealthIndicatorResult> {
-    this.checkDependantPackages();
-
     let isHealthy = false;
 
     const { client, timeout = 1000, memoryMaximumUtilization = 80 } = options;
@@ -92,9 +89,5 @@ export class RedisHealthIndicator extends HealthIndicator {
       `${key} is not available`,
       this.getStatus(key, isHealthy)
     );
-  }
-
-  private checkDependantPackages(): void {
-    checkPackages(["@nest-boot/redis", "redis-info"], this.constructor.name);
   }
 }
