@@ -21,15 +21,15 @@
   "devDependencies": {
     "@nest-boot/database": "workspace:^",
     "@nest-boot/search": "workspace:^",
-    "jest": "^27.4.7",
+    "jest": "^27.5.1",
     "meilisearch": "^0.24.0",
     "rimraf": "^3.0.2",
     "ts-jest": "^27.1.3",
     "typescript": "^4.5.5"
   },
   "peerDependencies": {
-    "@nest-boot/database": "^1.0.0",
-    "@nest-boot/search": "^1.0.0",
+    "@nest-boot/database": "*",
+    "@nest-boot/search": "*",
     "meilisearch": "^0.24.0"
   },
   "publishConfig": {
