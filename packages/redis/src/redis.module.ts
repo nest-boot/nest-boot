@@ -55,7 +55,8 @@ export class RedisModule {
       {
         provide: Redis,
         inject: options.inject || [],
-        useFactory: options.useFactory,
+        useFactory: async (...args) =>
+          new Redis(await options.useFactory(...args)),
       },
     ];
   }
