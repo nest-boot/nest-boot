@@ -193,8 +193,8 @@ export async function getConnection<T extends BaseEntity>(
   where: FindConditions<T> = {}
 ): Promise<Connection<T>> {
   if (args.page) {
-    return await getCursorConnection<T>(service, args, where);
+    return await getOffsetConnection<T>(service, args, where);
   }
 
-  return await getOffsetConnection<T>(service, args, where);
+  return await getCursorConnection<T>(service, args, where);
 }
