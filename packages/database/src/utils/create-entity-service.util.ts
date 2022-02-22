@@ -10,6 +10,7 @@ import {
   MoreThan,
   Repository,
 } from "typeorm";
+import { QueryDeepPartialEntity } from "typeorm/query-builder/QueryPartialEntity";
 
 import { BaseEntity } from "../entities/base.entity";
 
@@ -26,7 +27,10 @@ export interface EntityService<T extends BaseEntity> {
   repository: Repository<T>;
 
   create(input: DeepPartial<T>): Promise<T>;
-  update(conditions: FindConditions<T>, input?: DeepPartial<T>): Promise<this>;
+  update(
+    conditions: FindConditions<T>,
+    input: QueryDeepPartialEntity<T>
+  ): Promise<this>;
   delete(conditions: FindConditions<T>): Promise<this>;
   findAll(options?: FindManyOptions<T>): Promise<T[]>;
   findOneById(id: T["id"], options?: FindOneOptions<T>): Promise<T>;
@@ -57,7 +61,7 @@ export function createEntityService<T extends BaseEntity>(
 
     async update(
       conditions: FindConditions<T>,
-      input?: DeepPartial<T>
+      input: QueryDeepPartialEntity<T>
     ): Promise<this> {
       await this.repository.update(conditions, input);
       return this;

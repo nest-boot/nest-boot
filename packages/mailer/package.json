@@ -19,9 +19,9 @@
   },
   "devDependencies": {
     "@nest-boot/queue": "workspace:^",
-    "@nestjs/common": "^8.2.6",
-    "@nestjs/config": "^1.1.6",
-    "@nestjs/core": "^8.2.6",
+    "@nestjs/common": "^8.3.1",
+    "@nestjs/config": "^1.2.0",
+    "@nestjs/core": "^8.3.1",
     "@types/jest": "^27.4.0",
     "@types/mjml": "^4.7.0",
     "@types/nodemailer": "^6.4.4",
@@ -31,7 +31,7 @@
     "nunjucks": "^3.2.3",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",
-    "rxjs": "^7.5.3",
+    "rxjs": "^7.5.4",
     "ts-jest": "^27.1.3",
     "typescript": "^4.5.5"
   },

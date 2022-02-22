@@ -7,6 +7,7 @@ import {
   In,
 } from "@nest-boot/database";
 import { Inject, Injectable } from "@nestjs/common";
+import { QueryDeepPartialEntity } from "typeorm/query-builder/QueryPartialEntity";
 
 import { SearchEngine } from "../engines/search.engine";
 import { SearchOptions } from "../interfaces/search-options.interface";
@@ -122,7 +123,7 @@ export function mixinSearchable<T extends BaseEntity>(
 
     async update(
       conditions: FindConditions<T>,
-      input: DeepPartial<T>
+      input: QueryDeepPartialEntity<T>
     ): Promise<this> {
       await super.update(conditions, input);
       await this.searchable(conditions);
