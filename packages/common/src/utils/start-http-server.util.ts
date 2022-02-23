@@ -16,6 +16,9 @@ export async function startHttpServer(
   // 创建服务器实例
   const app = await NestFactory.create(module, { bufferLogs: true });
 
+  // 启用关机钩子
+  app.enableShutdownHooks();
+
   // 获取日志服务
   const loggerService = app.get(Logger);
 

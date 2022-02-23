@@ -1393,6 +1393,7 @@ __metadata:
   resolution: "@nest-boot/queue@workspace:packages/queue"
   dependencies:
     "@nest-boot/common": "workspace:^"
+    "@nest-boot/logger": "workspace:^"
     "@nest-boot/redis": "workspace:^"
     "@nestjs/common": ^8.3.1
     "@nestjs/config": ^1.2.0
@@ -1411,6 +1412,7 @@ __metadata:
     typescript: ^4.5.5
   peerDependencies:
     "@nest-boot/common": "*"
+    "@nest-boot/logger": "*"
     "@nest-boot/redis": "*"
     "@nestjs/common": ^8.0.0
     "@nestjs/config": ^1.0.0

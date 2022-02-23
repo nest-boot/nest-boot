@@ -14,6 +14,9 @@ export async function startWorker(
     bufferLogs: true,
   });
 
+  // 启用关机钩子
+  app.enableShutdownHooks();
+
   // 获取日志服务
   const loggerService = app.get(Logger);
 
