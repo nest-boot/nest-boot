@@ -16,7 +16,7 @@ export function createConnection<T>(
 
   @ObjectType(`${name}Edge`)
   class Edge implements BaseEdge<T> {
-    @Field(() => NodeType)
+    @Field(() => NodeType as Type<T>)
     node!: T;
 
     @Field()
