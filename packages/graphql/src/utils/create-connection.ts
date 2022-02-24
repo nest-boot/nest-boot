@@ -6,8 +6,15 @@ import { Connection } from "../interfaces/connection.interface";
 import { Edge as BaseEdge } from "../interfaces/edge.interface";
 import { Type } from "../interfaces/type.interface";
 
-export function createConnection<T>(NodeType: Type<T>): Type<Connection<T>> {
-  @ObjectType(`${NodeType.name}Edge`)
+export function createConnection<T>(
+  NodeType: Type<T> | T
+): Type<Connection<T>> {
+  const name =
+    typeof NodeType === "symbol"
+      ? NodeType.description
+      : (NodeType as Type<T>).name;
+
+  @ObjectType(`${name}Edge`)
   class Edge implements BaseEdge<T> {
     @Field(() => NodeType)
     node!: T;
