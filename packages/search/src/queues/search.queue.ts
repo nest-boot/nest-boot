@@ -10,8 +10,8 @@ export interface SearchQueueOptions {
 
 @Queue({
   defaultJobOptions: {
-    removeOnComplete: 60 * 5,
-    removeOnFail: 60 * 30,
+    removeOnComplete: true,
+    removeOnFail: true,
   },
 })
 export class SearchQueue extends BaseQueue<
