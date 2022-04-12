@@ -14,9 +14,7 @@
     "semantic-release": "multi-semantic-release --sequential-init '--ignore-packages=packages/example/**'"
   },
   "devDependencies": {
-    "@qiwi/multi-semantic-release": "^3.17.1",
-    "@semantic-release/changelog": "^6.0.1",
-    "@semantic-release/git": "^10.0.1",
+    "@qiwi/multi-semantic-release": "^6.1.1",
     "@typescript-eslint/eslint-plugin": "^5.12.1",
     "@typescript-eslint/parser": "^5.12.1",
     "eslint": "^8.9.0",
