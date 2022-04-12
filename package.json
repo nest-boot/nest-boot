@@ -11,10 +11,11 @@
     "build": "yarn workspaces foreach --parallel --topological-dev --no-private run build",
     "clean": "yarn workspaces foreach --parallel run clean",
     "lint": "eslint packages/*/src --fix",
-    "semantic-release": "multi-semantic-release --sequential-init '--ignore-packages=packages/example/**'"
+    "semantic-release": "multi-semantic-release --sequential-init '--ignore-packages=packages/example/**'",
+    "semantic-release:dry-run": "multi-semantic-release --sequential-init '--ignore-packages=packages/example/**' --dry-run"
   },
   "devDependencies": {
-    "@qiwi/multi-semantic-release": "^6.1.1",
+    "@qiwi/multi-semantic-release": "^3.17.1",
     "@typescript-eslint/eslint-plugin": "^5.12.1",
     "@typescript-eslint/parser": "^5.12.1",
     "eslint": "^8.9.0",
