@@ -1,11 +1,10 @@
 import { Context, getRuntime } from "@nest-boot/common";
-import { PinoLogger } from "@nest-boot/logger";
-import { Redis } from "@nest-boot/redis";
-import { Injectable, OnApplicationShutdown } from "@nestjs/common";
+import { Injectable, Logger, OnApplicationShutdown } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { DiscoveryService, Reflector } from "@nestjs/core";
 import { InstanceWrapper } from "@nestjs/core/injector/instance-wrapper";
-import { Job, Queue, QueueScheduler, Worker } from "bullmq";
+import { ConnectionOptions, Job, Queue, QueueScheduler, Worker } from "bullmq";
+import pino from "pino";
 
 import { BaseQueue } from "../base.queue";
 import { QUEUE_METADATA_KEY } from "../constants";
@@ -13,6 +12,10 @@ import { QueueOptions } from "../queue.decorator";
 
 @Injectable()
 export class QueueService implements OnApplicationShutdown {
+  private readonly logger = new Logger(QueueService.name);
+
+  private readonly connectionOptions: ConnectionOptions;
+
   private readonly queues: Queue[] = [];
 
   private readonly queueSchedulers: QueueScheduler[] = [];
@@ -20,13 +23,20 @@ export class QueueService implements OnApplicationShutdown {
   private readonly workers: Worker[] = [];
 
   constructor(
-    private readonly logger: PinoLogger,
     private readonly configService: ConfigService,
     private readonly discoveryService: DiscoveryService,
-    private readonly reflector: Reflector,
-    private readonly redis: Redis
+    private readonly reflector: Reflector
   ) {
-    this.logger.setContext(this.constructor.name);
+    this.connectionOptions = {
+      host: configService.get("REDIS_HOST", "localhost"),
+      port: +configService.get("REDIS_PORT", "6379"),
+      username: configService.get("REDIS_USERNAME"),
+      password: configService.get("REDIS_PASSWORD"),
+      db: +configService.get("REDIS_DB", "0"),
+      tls: configService.get("REDIS_SSL") === "true" && {
+        rejectUnauthorized: false,
+      },
+    };
   }
 
   getQueueProviders(): InstanceWrapper<BaseQueue>[] {
@@ -52,7 +62,7 @@ export class QueueService implements OnApplicationShutdown {
           // eslint-disable-next-line no-param-reassign
           wrapper.instance.queue = new Queue(queueOptions.name, {
             ...queueOptions,
-            connection: this.redis,
+            connection: this.connectionOptions,
           });
 
           this.queues.push(wrapper.instance.queue);
@@ -66,7 +76,7 @@ export class QueueService implements OnApplicationShutdown {
               queueOptions.name,
               {
                 ...queueOptions,
-                connection: this.redis,
+                connection: this.connectionOptions,
               }
             );
 
@@ -74,13 +84,14 @@ export class QueueService implements OnApplicationShutdown {
             wrapper.instance.worker = new Worker(
               queueOptions.name,
               async (job: Job) => {
-                return await Context.run({ job }, () =>
-                  wrapper.instance.processor(job)
+                await Context.run(
+                  { job, logger: pino().child({ jobId: job.id }) },
+                  () => wrapper.instance.processor(job)
                 );
               },
               {
                 ...queueOptions,
-                connection: this.redis,
+                connection: this.connectionOptions,
               }
             );
 
@@ -96,22 +107,23 @@ export class QueueService implements OnApplicationShutdown {
     await Promise.all(
       this.workers.map((worker) =>
         (async () => {
-          this.logger.info(
-            { signal, name: worker.name },
-            "queue worker close processing"
-          );
+          this.logger.log(`Shutting down worker`, {
+            signal,
+            name: worker.name,
+          });
 
           try {
             await worker.close();
-            this.logger.info(
-              { signal, name: worker.name },
-              "queue worker closed"
-            );
+            this.logger.log(`Worker has been shut down`, {
+              signal,
+              name: worker.name,
+            });
           } catch (err) {
-            this.logger.info(
-              { signal, name: worker.name, err },
-              "queue worker close failed"
-            );
+            this.logger.error(`Error while shutting down worker`, {
+              err,
+              signal,
+              name: worker.name,
+            });
           }
         })()
       )

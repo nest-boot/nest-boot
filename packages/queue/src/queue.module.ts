@@ -1,4 +1,3 @@
-import { RedisModule } from "@nest-boot/redis";
 import {
   DynamicModule,
   Module,
@@ -8,37 +7,27 @@ import {
 import { DiscoveryModule } from "@nestjs/core";
 
 import { QueueService } from "./services/queue.service";
-import { QueueInfoService } from "./services/queue-info.service";
-import { QueueManagerService } from "./services/queue-manager.service";
-
-export interface QueueModuleOptions {
-  driver: string;
-}
 
 export type QueueModuleAsyncOptions = Pick<ModuleMetadata, "imports">;
 
 @Module({
-  imports: [DiscoveryModule, RedisModule],
-  providers: [QueueService, QueueManagerService, QueueInfoService],
-  exports: [QueueManagerService],
+  imports: [DiscoveryModule],
+  providers: [QueueService],
+  exports: [QueueService],
 })
 export class QueueModule implements OnModuleInit {
-  constructor(
-    private readonly queueService: QueueService,
-    private readonly queueInfoService: QueueInfoService
-  ) {}
+  constructor(private readonly queueService: QueueService) {}
 
   static registerAsync(options: QueueModuleAsyncOptions): DynamicModule {
     return {
       module: QueueModule,
       imports: [DiscoveryModule, ...(options.imports || [])],
-      providers: [QueueService, QueueManagerService, QueueInfoService],
-      exports: [QueueManagerService],
+      providers: [QueueService],
+      exports: [QueueService],
     };
   }
 
   async onModuleInit(): Promise<void> {
     await this.queueService.init();
-    this.queueInfoService.init();
   }
 }

@@ -19,10 +19,11 @@
   },
   "dependencies": {
     "lodash": "^4.17.21",
-    "ms": "^2.1.3"
+    "ms": "^2.1.3",
+    "pino": "^7.10.0",
+    "pino-http": "^6.6.0"
   },
   "devDependencies": {
-    "@nest-boot/logger": "workspace:^",
     "@nestjs/common": "^8.3.1",
     "@nestjs/config": "^1.2.0",
     "@nestjs/core": "^8.3.1",
@@ -31,6 +32,7 @@
     "@types/jest": "^27.4.0",
     "@types/lodash": "^4.14.178",
     "@types/ms": "^0.7.31",
+    "@types/node": "^17.0.23",
     "apollo-server-errors": "^3.3.1",
     "argon2": "^0.28.4",
     "cookie-parser": "^1.4.6",
@@ -44,7 +46,6 @@
     "typescript": "^4.5.5"
   },
   "peerDependencies": {
-    "@nest-boot/logger": "*",
     "@nestjs/common": "^8.0.0",
     "@nestjs/config": "^1.0.0",
     "@nestjs/core": "^8.0.0",

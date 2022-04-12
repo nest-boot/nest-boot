@@ -6,13 +6,12 @@ import {
   Entity,
   ManyToOne,
 } from "@nest-boot/database";
-import { mixinTenantId } from "@nest-boot/tenant";
 import { marked } from "marked";
 
 import { User } from "./user.entity";
 
 @Entity({ searchable: true })
-export class Post extends mixinTenantId(BaseEntity) {
+export class Post extends BaseEntity {
   @Column()
   title: string;
 

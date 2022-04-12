@@ -11,9 +11,7 @@ declare global {
 }
 
 export * from "./base.queue";
-export * from "./controllers/queue.controller";
 export * from "./queue.decorator";
 export * from "./queue.module";
-export * from "./services/queue-manager.service";
 
 export { BulkJobOptions, Job, JobOptions };

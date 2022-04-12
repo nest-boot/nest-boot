@@ -11,6 +11,7 @@ import {
   RepeatOptions,
   Worker,
 } from "bullmq";
+import { randomUUID } from "crypto";
 
 export abstract class BaseQueue<T = any, R = any, N extends string = string> {
   queue?: BullQueue<T, R, N>;
@@ -24,7 +25,10 @@ export abstract class BaseQueue<T = any, R = any, N extends string = string> {
     data: T,
     options?: JobsOptions
   ): Promise<Job<T, R, string>> {
-    return await this.queue.add(name, data, options);
+    return await this.queue.add(name, data, {
+      ...(options || {}),
+      jobId: randomUUID(),
+    });
   }
 
   async addBulk(
@@ -35,7 +39,13 @@ export abstract class BaseQueue<T = any, R = any, N extends string = string> {
     }[]
   ): Promise<Job<T, any, N>[]> {
     return await this.queue.addBulk(
-      jobs.map((job) => ({ ...job, opts: job?.options }))
+      jobs.map((job) => ({
+        ...job,
+        opts: {
+          ...(job.options || {}),
+          jobId: randomUUID(),
+        },
+      }))
     );
   }
 

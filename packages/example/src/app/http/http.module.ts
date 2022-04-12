@@ -1,5 +1,5 @@
 import { AuthMiddleware } from "@nest-boot/auth";
-import { ContextMiddleware } from "@nest-boot/common";
+import { ContextMiddleware, LoggerModule } from "@nest-boot/common";
 import { TenantMiddleware } from "@nest-boot/tenant";
 import { ApolloDriver } from "@nestjs/apollo";
 import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
@@ -17,6 +17,7 @@ const resolvers = [AuthResolver, PostResolver];
 @Module({
   imports: [
     CoreModule,
+    LoggerModule,
     GraphQLModule.forRoot({
       driver: ApolloDriver,
       autoSchemaFile: true,

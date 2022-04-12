@@ -1,8 +1,8 @@
-import { Logger } from "@nest-boot/logger";
 import { INestApplicationContext } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 
 import { RUNTIME_KEY } from "../constants";
+import { Logger } from "../services/logger.service";
 
 export async function startWorker(
   module: unknown,

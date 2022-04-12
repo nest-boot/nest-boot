@@ -1,4 +1,3 @@
-import { Logger } from "@nest-boot/logger";
 import { INestApplication, ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
@@ -6,6 +5,7 @@ import cookieParser from "cookie-parser";
 
 import { RUNTIME_KEY } from "../constants";
 import { GlobalExceptionFilter } from "../exception-filters/global.exception-filter";
+import { Logger } from "../services/logger.service";
 
 export async function startHttpServer(
   module: unknown,

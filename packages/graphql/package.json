@@ -29,6 +29,7 @@
     "@nestjs/graphql": "^10.0.4",
     "@types/jest": "^27.4.0",
     "@types/lodash": "^4.14.178",
+    "@types/node": "^17.0.23",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.13.2",
     "dataloader": "^2.0.0",

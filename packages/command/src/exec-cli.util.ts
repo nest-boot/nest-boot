@@ -1,5 +1,4 @@
-import { RUNTIME_KEY } from "@nest-boot/common";
-import { Logger, logger } from "@nest-boot/logger";
+import { Logger, RUNTIME_KEY } from "@nest-boot/common";
 import { INestApplicationContext } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 
@@ -16,11 +15,8 @@ export async function execCli(
 
   const app = await NestFactory.createApplicationContext(module);
 
-  // 获取日志服务
-  const loggerService = app.get(Logger);
-
   // 使用日志服务
-  app.useLogger(loggerService);
+  app.useLogger(app.get(Logger));
 
   if (callback) {
     await callback(app);
