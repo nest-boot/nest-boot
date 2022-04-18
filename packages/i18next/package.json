@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/i18next",
-  "version": "1.2.9",
+  "version": "1.2.10",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
   "homepage": "",
@@ -18,7 +18,7 @@
     "clean": "rimraf dist"
   },
   "devDependencies": {
-    "@nest-boot/common": "1.4.0",
+    "@nest-boot/common": "1.4.1",
     "@nestjs/common": "^8.4.4",
     "@nestjs/core": "^8.4.4",
     "@types/express": "^4.17.13",
@@ -36,7 +36,7 @@
     "typescript": "^4.6.3"
   },
   "peerDependencies": {
-    "@nest-boot/common": "*",
+    "@nest-boot/common": "1.4.1",
     "i18next": "^19.7.0",
     "i18next-fs-backend": "^1.0.7",
     "i18next-http-middleware": "^3.0.5",
