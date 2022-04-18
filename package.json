@@ -2,37 +2,40 @@
   "name": "@nest-boot/workspace",
   "version": "0.0.0-development",
   "private": true,
-  "packageManager": "yarn@3.1.1",
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0",
+    "yarn": "Please use npm"
+  },
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
-    "dev": "yarn workspace @nest-boot/example dev",
-    "build": "yarn workspaces foreach --parallel --topological-dev --no-private run build",
-    "clean": "yarn workspaces foreach --parallel run clean",
-    "lint": "eslint packages/*/src --fix",
-    "semantic-release": "multi-semantic-release --sequential-init '--ignore-packages=packages/example/**'"
+    "build": "turbo run build",
+    "clean": "turbo run clean --parallel",
+    "dev": "turbo run dev --parallel",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "semantic-release": "multi-semantic-release"
   },
   "devDependencies": {
     "@qiwi/multi-semantic-release": "^3.17.1",
-    "@semantic-release/github": "^8.0.4",
-    "@semantic-release/npm": "^9.0.1",
-    "@typescript-eslint/eslint-plugin": "^5.12.1",
-    "@typescript-eslint/parser": "^5.12.1",
-    "eslint": "^8.9.0",
+    "@semantic-release/git": "^10.0.1",
+    "@typescript-eslint/eslint-plugin": "^5.19.0",
+    "@typescript-eslint/parser": "^5.19.0",
+    "eslint": "^8.13.0",
     "eslint-config-airbnb-base": "^15.0.0",
-    "eslint-config-prettier": "^8.4.0",
+    "eslint-config-prettier": "^8.5.0",
     "eslint-import-resolver-node": "^0.3.6",
-    "eslint-import-resolver-typescript": "^2.5.0",
-    "eslint-plugin-import": "^2.25.4",
+    "eslint-import-resolver-typescript": "^2.7.1",
+    "eslint-plugin-import": "^2.26.0",
     "eslint-plugin-prettier": "^4.0.0",
     "eslint-plugin-simple-import-sort": "^7.0.0",
-    "prettier": "^2.5.1",
-    "semantic-release": "^19.0.2",
-    "typescript": "^4.5.5"
+    "prettier": "^2.6.2",
+    "turbo": "^1.2.4",
+    "typescript": "^4.6.3"
   },
   "volta": {
-    "node": "16.13.2",
-    "yarn": "1.22.17"
+    "node": "16.13.2"
   }
 }
