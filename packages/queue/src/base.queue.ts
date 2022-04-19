@@ -26,8 +26,8 @@ export abstract class BaseQueue<T = any, R = any, N extends string = string> {
     options?: JobsOptions
   ): Promise<Job<T, R, string>> {
     return await this.queue.add(name, data, {
-      ...(options || {}),
       jobId: randomUUID(),
+      ...(options || {}),
     });
   }
 
@@ -42,8 +42,8 @@ export abstract class BaseQueue<T = any, R = any, N extends string = string> {
       jobs.map((job) => ({
         ...job,
         opts: {
-          ...(job.options || {}),
           jobId: randomUUID(),
+          ...(job.options || {}),
         },
       }))
     );
