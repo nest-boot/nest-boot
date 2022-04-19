@@ -1,19 +1,16 @@
 /* eslint-disable no-underscore-dangle */
-import { Injectable, LoggerService, Optional } from "@nestjs/common";
+import { Injectable, LoggerService, Optional, Scope } from "@nestjs/common";
 import pino, { Bindings, Level } from "pino";
 
 import { Context } from "../context";
 
-@Injectable()
+@Injectable({ scope: Scope.TRANSIENT })
 export class Logger implements LoggerService {
   static logger: pino.Logger;
 
   private __LOGGER__: pino.Logger;
 
-  constructor(
-    @Optional()
-    private context?: string
-  ) {}
+  constructor(@Optional() private context?: string) {}
 
   get logger(): pino.Logger {
     if (Context.get()?.logger) {

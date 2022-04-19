@@ -13,10 +13,15 @@ export async function execCli(
 ): Promise<void> {
   process[RUNTIME_KEY] = "cli";
 
-  const app = await NestFactory.createApplicationContext(module);
+  const app = await NestFactory.createApplicationContext(module, {
+    bufferLogs: true,
+  });
+
+  // 启用关机钩子
+  app.enableShutdownHooks();
 
   // 使用日志服务
-  app.useLogger(app.get(Logger));
+  app.useLogger(new Logger());
 
   if (callback) {
     await callback(app);
