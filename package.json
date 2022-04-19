@@ -20,9 +20,8 @@
     "semantic-release": "multi-semantic-release --ignore-private"
   },
   "devDependencies": {
-    "@qiwi/multi-semantic-release": "^6.1.1",
+    "@qiwi/multi-semantic-release": "^3.17.1",
     "@semantic-release/git": "^10.0.1",
-    "@semantic-release/npm": "^9.0.1",
     "@typescript-eslint/eslint-plugin": "^5.20.0",
     "@typescript-eslint/parser": "^5.20.0",
     "eslint": "^8.13.0",
