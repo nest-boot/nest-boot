@@ -17,7 +17,7 @@
     "dev": "turbo run dev --parallel",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "semantic-release": "multi-semantic-release --ignore-private --deps.bump=satisfy"
+    "semantic-release": "multi-semantic-release --ignore-private"
   },
   "devDependencies": {
     "@qiwi/multi-semantic-release": "^6.1.1",
