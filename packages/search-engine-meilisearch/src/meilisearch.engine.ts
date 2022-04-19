@@ -1,9 +1,5 @@
-import { BaseEntity, FindConditions, FindOperator } from "@nest-boot/database";
-import {
-  SearchableOptions,
-  SearchEngineInterface,
-  SearchOptions,
-} from "@nest-boot/search";
+import { AnyEntity, FilterQuery, FindOptions } from "@nest-boot/database";
+import { SearchableOptions, SearchEngineInterface } from "@nest-boot/search";
 import { Config, MeiliSearch } from "meilisearch";
 
 export class MeiliSearchEngine implements SearchEngineInterface {
@@ -18,29 +14,30 @@ export class MeiliSearchEngine implements SearchEngineInterface {
     index: string,
     query?: string,
     filter?: string,
-    options: SearchOptions = {}
-  ): Promise<[BaseEntity["id"][], number]> {
-    const whereFilter = options.where && this.getWhereFilter(options.where);
+    options?: FindOptions<AnyEntity>
+  ): Promise<[AnyEntity["id"][], number]> {
+    // const whereFilter = options.where && this.getWhereFilter(options.where);
+    // const response = await this.meilisearch.index(index).search(query, {
+    //   filter: whereFilter ? `(${whereFilter}) AND (${filter})` : filter,
+    //   limit: options.take,
+    //   offset: options.skip,
+    //   sort: options.order
+    //     ? Object.entries(options.order).map(
+    //         ([key, value]) =>
+    //           `${key}:${value === "ASC" || value === 1 ? "asc" : "desc"}`
+    //       )
+    //     : [],
+    // });
+    // return [response.hits.map(({ id }) => id), response.nbHits];
 
-    const response = await this.meilisearch.index(index).search(query, {
-      filter: whereFilter ? `(${whereFilter}) AND (${filter})` : filter,
-      limit: options.take,
-      offset: options.skip,
-      sort: options.order
-        ? Object.entries(options.order).map(
-            ([key, value]) =>
-              `${key}:${value === "ASC" || value === 1 ? "asc" : "desc"}`
-          )
-        : [],
-    });
-    return [response.hits.map(({ id }) => id), response.nbHits];
+    return [[], 0];
   }
 
-  async update(index: string, entities: BaseEntity[]): Promise<void> {
+  async update(index: string, entities: AnyEntity[]): Promise<void> {
     await this.meilisearch.index(index).addDocuments(entities);
   }
 
-  async delete(index: string, entities: BaseEntity[]): Promise<void> {
+  async delete(index: string, entities: AnyEntity[]): Promise<void> {
     await this.meilisearch
       .index(index)
       .deleteDocuments(entities.map(({ id }) => id));
@@ -50,7 +47,7 @@ export class MeiliSearchEngine implements SearchEngineInterface {
     await this.meilisearch.index(index).deleteAllDocuments();
   }
 
-  async createIndex(index: string, options: SearchableOptions<BaseEntity>) {
+  async createIndex(index: string, options: SearchableOptions<AnyEntity>) {
     const indexInstance = this.meilisearch.index(index);
 
     await Promise.all([
@@ -64,7 +61,7 @@ export class MeiliSearchEngine implements SearchEngineInterface {
   }
 
   private getWhereFilter(
-    where: FindConditions<BaseEntity> | FindConditions<BaseEntity>[]
+    where: FilterQuery<AnyEntity> | FilterQuery<AnyEntity>[]
   ): string {
     if (where instanceof Array) {
       return where.map((item) => this.getWhereFilter(item)).join(" OR ");
@@ -73,7 +70,7 @@ export class MeiliSearchEngine implements SearchEngineInterface {
     return (
       Object.entries(where)
         .map(([key, value]) => {
-          if (value instanceof FindOperator) {
+          if (value instanceof Object) {
             switch (value.type) {
               case "lessThan":
                 return `${key} < ${value.value}`;

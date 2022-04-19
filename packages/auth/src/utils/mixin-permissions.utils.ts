@@ -1,4 +1,4 @@
-import { Column } from "@nest-boot/database";
+import { Property, t } from "@nest-boot/database";
 
 import { HasPermissions } from "../interfaces/has-permission.interface";
 
@@ -16,7 +16,7 @@ export function mixinPermissions<T extends Type<{}>>(
     permissions: string[];
   };
 
-  Column({ type: "simple-array", generator: () => [] })(
+  Property({ type: t.json, onCreate: () => [] })(
     trait.prototype,
     "permissions"
   );

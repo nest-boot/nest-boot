@@ -1,6 +1,5 @@
-import { BaseEntity } from "@nest-boot/database";
+import { AnyEntity, FindOptions } from "@nest-boot/database";
 
-import { SearchOptions } from "./search-options.interface";
 import { SearchableOptions } from "./searchable-options.interface";
 
 export interface SearchEngineInterface {
@@ -8,18 +7,18 @@ export interface SearchEngineInterface {
     index: string,
     query?: string,
     filter?: string,
-    options?: SearchOptions
-  ): Promise<[BaseEntity["id"][], number]>;
+    options?: FindOptions<AnyEntity>
+  ): Promise<[AnyEntity["id"][], number]>;
 
-  update(index: string, entities: BaseEntity[]): Promise<void>;
+  update(index: string, entities: AnyEntity[]): Promise<void>;
 
-  delete(index: string, entities: BaseEntity[]): Promise<void>;
+  delete(index: string, entities: AnyEntity[]): Promise<void>;
 
-  flush(index: string, entity: BaseEntity): Promise<void>;
+  flush(index: string, entity: AnyEntity): Promise<void>;
 
   createIndex(
     index: string,
-    options: SearchableOptions<BaseEntity>
+    options: SearchableOptions<AnyEntity>
   ): Promise<void>;
 
   deleteIndex(index: string): Promise<void>;

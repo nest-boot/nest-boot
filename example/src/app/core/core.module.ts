@@ -1,4 +1,3 @@
-import { PersonalAccessToken } from "@nest-boot/auth";
 import { LoggerModule } from "@nest-boot/common";
 import { DatabaseModule } from "@nest-boot/database";
 import { MailerModule } from "@nest-boot/mailer";
@@ -8,18 +7,12 @@ import { SearchModule } from "@nest-boot/search";
 import { MeiliSearchEngine } from "@nest-boot/search-engine-meilisearch";
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
-import { TypeOrmModule } from "@nestjs/typeorm";
 
-import { Post } from "./entities/post.entity";
-import { User } from "./entities/user.entity";
 import { TestQueue } from "./queues/test.queue";
-import { AuthService } from "./services/auth.service";
-import { PostService } from "./services/post.service";
-import { UserService } from "./services/user.service";
+import { PostRepository } from "./repositories/post.repository";
+import { UserRepository } from "./repositories/user.repository";
 
-const DatabaseDynamicModule = DatabaseModule.register({
-  entities: [PersonalAccessToken],
-});
+const DatabaseDynamicModule = DatabaseModule.forRoot();
 
 const RedisDynamicModule = RedisModule.registerAsync({
   imports: [],
@@ -67,11 +60,11 @@ const QueueDynamicModule = QueueModule.registerAsync({
   imports: [RedisDynamicModule],
 });
 
-const services = [AuthService, UserService, PostService];
+const repositories = [];
 
 const queues = [TestQueue];
 
-const providers = [...services, ...queues];
+const providers = [...repositories, ...queues];
 
 @Module({
   imports: [
@@ -82,7 +75,6 @@ const providers = [...services, ...queues];
     MailerDynamicModule,
     QueueDynamicModule,
     DatabaseDynamicModule,
-    TypeOrmModule.forFeature([Post, User]),
   ],
   providers,
   exports: [...providers, MailerDynamicModule],

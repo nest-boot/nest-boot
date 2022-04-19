@@ -1,113 +1,17 @@
 /* eslint-disable @typescript-eslint/no-namespace */
 
-import {
-  AfterInsert,
-  AfterLoad,
-  AfterRemove,
-  AfterUpdate,
-  BeforeInsert,
-  BeforeRemove,
-  BeforeUpdate,
-  Brackets,
-  ColumnType,
-  Connection,
-  DeepPartial,
-  EntitySubscriberInterface,
-  Equal,
-  EventSubscriber,
-  FindConditions,
-  FindManyOptions,
-  FindOneOptions,
-  FindOperator,
-  getConnection,
-  getMetadataArgsStorage,
-  getRepository,
-  In,
-  Index,
-  InsertEvent,
-  IsNull,
-  JoinColumn,
-  JoinTable,
-  LessThan,
-  LessThanOrEqual,
-  LoadEvent,
-  ManyToMany,
-  ManyToOne,
-  MigrationInterface,
-  MoreThan,
-  MoreThanOrEqual,
-  Not,
-  OneToMany,
-  OneToOne,
-  PrimaryColumn,
-  PrimaryGeneratedColumn,
-  QueryRunner,
-  RelationId,
-  RemoveEvent,
-  Repository,
-  UpdateEvent,
-} from "typeorm";
+import { EntityManager } from "@mikro-orm/core";
 
 declare global {
   namespace NestBootCommon {
     interface Context {
-      transactionQueryRunner?: QueryRunner;
+      entityManager?: EntityManager;
     }
   }
 }
 
-export * from "./decorators";
-export * from "./entities";
-export * from "./interceptors";
-export * from "./interfaces";
-export * from "./modules";
-export * from "./services";
-export * from "./utils";
+export * from "@mikro-orm/core";
+export * from "@mikro-orm/nestjs";
 
-export {
-  AfterInsert,
-  AfterLoad,
-  AfterRemove,
-  AfterUpdate,
-  BeforeInsert,
-  BeforeRemove,
-  BeforeUpdate,
-  Brackets,
-  ColumnType,
-  Connection,
-  DeepPartial,
-  EntitySubscriberInterface,
-  Equal,
-  EventSubscriber,
-  FindConditions,
-  FindManyOptions,
-  FindOneOptions,
-  FindOperator,
-  getConnection,
-  getMetadataArgsStorage,
-  getRepository,
-  In,
-  Index,
-  InsertEvent,
-  IsNull,
-  JoinColumn,
-  JoinTable,
-  LessThan,
-  LessThanOrEqual,
-  LoadEvent,
-  ManyToMany,
-  ManyToOne,
-  MigrationInterface,
-  MoreThan,
-  MoreThanOrEqual,
-  Not,
-  OneToMany,
-  OneToOne,
-  PrimaryColumn,
-  PrimaryGeneratedColumn,
-  QueryRunner,
-  RelationId,
-  RemoveEvent,
-  Repository,
-  UpdateEvent,
-};
+export * from "./database.module";
+export * from "./database.middleware";

@@ -1,5 +1,6 @@
 import { AuthMiddleware } from "@nest-boot/auth";
 import { ContextMiddleware, LoggerModule } from "@nest-boot/common";
+import { DatabaseMiddleware, DatabaseModule } from "@nest-boot/database";
 import { TenantMiddleware } from "@nest-boot/tenant";
 import { ApolloDriver } from "@nestjs/apollo";
 import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
@@ -7,12 +8,12 @@ import { APP_GUARD } from "@nestjs/core";
 import { GraphQLModule } from "@nestjs/graphql";
 
 import { CoreModule } from "../core/core.module";
+import { Post } from "../core/entities/post.entity";
 import { IndexController } from "./controllers/index.controller";
 import { AuthGuard } from "./guards/auth.guard";
-import { AuthResolver } from "./resolvers/auth.resolver";
 import { PostResolver } from "./resolvers/post.resolver";
 
-const resolvers = [AuthResolver, PostResolver];
+const resolvers = [PostResolver];
 
 @Module({
   imports: [
@@ -24,20 +25,19 @@ const resolvers = [AuthResolver, PostResolver];
       path: "/graphql",
       context: ({ req, res }) => ({ req, res }),
     }),
+    DatabaseModule.forFeature([Post]),
   ],
   controllers: [IndexController],
   providers: [
-    {
-      provide: APP_GUARD,
-      useClass: AuthGuard,
-    },
+    // {
+    //   provide: APP_GUARD,
+    //   useClass: AuthGuard,
+    // },
     ...resolvers,
   ],
 })
 export class HttpModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    consumer
-      .apply(ContextMiddleware, TenantMiddleware, AuthMiddleware)
-      .forRoutes("*");
+    consumer.apply(ContextMiddleware, DatabaseMiddleware).forRoutes("*");
   }
 }

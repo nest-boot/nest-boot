@@ -1,18 +1,18 @@
-import { BaseEntity, Column, Entity } from "@nest-boot/database";
+import { Property, Entity } from "@nest-boot/database";
 import crypto from "crypto";
 
 @Entity()
-export class PersonalAccessToken extends BaseEntity {
-  @Column({
+export class PersonalAccessToken {
+  @Property({
     length: 64,
     unique: true,
-    generator: () => crypto.randomBytes(32).toString("hex"),
+    onCreate: () => crypto.randomBytes(32).toString("hex"),
   })
   token: string;
 
-  @Column()
+  @Property()
   entity: string;
 
-  @Column()
+  @Property()
   entityId: string;
 }

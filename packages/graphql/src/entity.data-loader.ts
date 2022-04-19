@@ -1,15 +1,14 @@
-import { BaseEntity, EntityService } from "@nest-boot/database";
+import { AnyEntity, EntityRepository } from "@nest-boot/database";
 import DataLoader from "dataloader";
 import _ from "lodash";
-import { In } from "typeorm";
 
-export class EntityDataLoader<T extends BaseEntity> extends DataLoader<
+export class EntityDataLoader<T extends { id: string }> extends DataLoader<
   T["id"],
   T
 > {
-  constructor(entityService: EntityService<T>) {
+  constructor(repository: EntityRepository<T>) {
     super(async (ids: T["id"][]) => {
-      const results = await entityService.findAll({ where: { id: In(ids) } });
+      const results = [];
 
       return _.sortBy(results, (result) =>
         _.findIndex(ids, (id) => result.id === id)

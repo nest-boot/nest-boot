@@ -1,32 +1,39 @@
 import {
-  BaseEntity,
-  BeforeInsert,
-  BeforeUpdate,
-  Column,
+  Property,
   Entity,
   ManyToOne,
+  IdentifiedReference,
+  PrimaryKey,
+  t,
+  EntityRepositoryType,
 } from "@nest-boot/database";
-import { marked } from "marked";
+import { SnowflakeIdGenerator } from "snowflake-id-generator";
+import { PostRepository } from "../repositories/post.repository";
 
 import { User } from "./user.entity";
 
-@Entity({ searchable: true })
-export class Post extends BaseEntity {
-  @Column()
+@Entity({ customRepository: () => PostRepository })
+export class Post {
+  [EntityRepositoryType]?: PostRepository;
+
+  @PrimaryKey({ type: t.bigint })
+  id = SnowflakeIdGenerator.next().toString();
+
+  @Property()
   title: string;
 
-  @Column({ type: "text" })
-  html: string;
+  @Property({ type: "text" })
+  html: string = "html";
 
-  @Column({ type: "text" })
+  @Property({ type: "text" })
   markdown: string;
 
-  @ManyToOne(() => User, (user) => user.posts, { cascade: true })
-  author: User;
+  @Property()
+  createdAt: Date = new Date();
 
-  @BeforeInsert()
-  @BeforeUpdate()
-  async beforeInsertOrUpdate(): Promise<void> {
-    this.html = marked.parse(this.markdown);
-  }
+  @Property({ onUpdate: () => new Date() })
+  updatedAt = new Date();
+
+  @ManyToOne({ nullable: true })
+  author: IdentifiedReference<User>;
 }

@@ -22,9 +22,13 @@
     "nest-boot": "nest-boot"
   },
   "dependencies": {
-    "@nest-boot/auth": "^1.0.0",
+    "@mikro-orm/core": "^5.1.2",
+    "@mikro-orm/nestjs": "^5.0.1",
+    "@mikro-orm/postgresql": "^5.1.2",
+    "@mikro-orm/reflection": "^5.1.2",
+    "@nest-boot/auth": "1.2.11",
     "@nest-boot/command": "^1.0.0",
-    "@nest-boot/common": "1.4.0",
+    "@nest-boot/common": "1.4.1",
     "@nest-boot/database": "^1.0.0",
     "@nest-boot/graphql": "^1.0.0",
     "@nest-boot/health-check": "^1.0.0",
@@ -34,7 +38,6 @@
     "@nest-boot/redis": "^1.0.0",
     "@nest-boot/search": "^1.0.0",
     "@nest-boot/search-engine-meilisearch": "^1.0.0",
-    "@nest-boot/tenant": "^1.0.0",
     "@nest-boot/validator": "^1.0.0",
     "@nestjs/apollo": "^10.0.9",
     "@nestjs/common": "^8.4.4",
@@ -42,7 +45,6 @@
     "@nestjs/core": "^8.4.4",
     "@nestjs/graphql": "^10.0.9",
     "@nestjs/platform-express": "^8.4.4",
-    "@nestjs/typeorm": "^8.0.3",
     "apollo-server-core": "^3.6.7",
     "apollo-server-express": "^3.6.7",
     "argon2": "^0.28.5",
@@ -55,10 +57,10 @@
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",
     "rxjs": "^7.5.5",
-    "source-map-support": "^0.5.21",
-    "typeorm": "^0.2.0"
+    "source-map-support": "^0.5.21"
   },
   "devDependencies": {
+    "@mikro-orm/cli": "^5.1.2",
     "@nestjs/cli": "^8.2.5",
     "@nestjs/schematics": "^8.0.10",
     "@nestjs/testing": "^8.4.4",
@@ -93,6 +95,13 @@
     "testEnvironment": "node"
   },
   "volta": {
-    "extends": "../../package.json"
+    "extends": "../package.json"
+  },
+  "mikro-orm": {
+    "useTsNode": true,
+    "configPaths": [
+      "./src/mikro-orm.config.ts",
+      "./dist/mikro-orm.config.js"
+    ]
   }
 }

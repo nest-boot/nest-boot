@@ -4,11 +4,11 @@ import { Command, Positional } from "@nest-boot/command";
 import { Injectable } from "@nestjs/common";
 import crypto from "crypto";
 
-import { UserService } from "../../core/services/user.service";
+import { UserRepository } from "../../core/repositories/user.repository";
 
 @Injectable()
 export class UserCommand {
-  constructor(private readonly userService: UserService) {}
+  constructor(private readonly userRepository: UserRepository) {}
 
   @Command({
     command: "create:user <name> <email>",
@@ -29,7 +29,9 @@ export class UserCommand {
     email: string
   ): Promise<void> {
     const password = crypto.randomBytes(4).toString("hex");
-    await this.userService.create({ name, email, password });
+    const user = this.userRepository.create({ name, email, password });
+
+    await this.userRepository.persistAndFlush(user);
 
     console.log("创建用户成功");
     console.log("名称：", name);

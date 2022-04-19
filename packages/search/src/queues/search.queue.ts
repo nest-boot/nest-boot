@@ -1,11 +1,11 @@
-import { BaseEntity, TransactionalConnection } from "@nest-boot/database";
+import { AnyEntity } from "@nest-boot/database";
 import { BaseQueue, Job, Queue } from "@nest-boot/queue";
 
 import { SearchEngine } from "../engines/search.engine";
 
 export interface SearchQueueOptions {
   index: string;
-  entities: BaseEntity[];
+  entities: AnyEntity[];
 }
 
 @Queue({
@@ -19,10 +19,7 @@ export class SearchQueue extends BaseQueue<
   void,
   "makeSearchable" | "unmakeSearchable"
 > {
-  constructor(
-    readonly connection: TransactionalConnection,
-    readonly searchEngine: SearchEngine
-  ) {
+  constructor(readonly searchEngine: SearchEngine) {
     super();
   }
 
