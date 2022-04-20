@@ -19,11 +19,8 @@ export async function startHttpServer(
   // 启用关机钩子
   app.enableShutdownHooks();
 
-  // 获取日志服务
-  const loggerService = app.get(Logger);
-
   // 使用日志服务
-  app.useLogger(loggerService);
+  app.useLogger(new Logger());
 
   // 使用扩展异常过滤器
   app.useGlobalFilters(new GlobalExceptionFilter());

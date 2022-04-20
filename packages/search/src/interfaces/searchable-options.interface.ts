@@ -1,6 +1,5 @@
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export interface SearchableOptions<T> {
+export interface SearchableOptions {
   index?: string;
-  filterableAttributes?: string[];
+  searchableAttributes?: string[];
   sortableAttributes?: string[];
 }

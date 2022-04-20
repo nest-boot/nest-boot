@@ -16,7 +16,7 @@ export async function execCli(
   const app = await NestFactory.createApplicationContext(module);
 
   // 使用日志服务
-  app.useLogger(app.get(Logger));
+  app.useLogger(new Logger());
 
   if (callback) {
     await callback(app);

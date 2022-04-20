@@ -1,4 +1,4 @@
-import { Property, Entity } from "@nest-boot/database";
+import { Property, Entity } from "@mikro-orm/core";
 
 @Entity()
 export class Permission {

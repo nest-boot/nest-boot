@@ -5,17 +5,13 @@ import {
   IdentifiedReference,
   PrimaryKey,
   t,
-  EntityRepositoryType,
-} from "@nest-boot/database";
+} from "@mikro-orm/core";
 import { SnowflakeIdGenerator } from "snowflake-id-generator";
-import { PostRepository } from "../repositories/post.repository";
 
 import { User } from "./user.entity";
 
-@Entity({ customRepository: () => PostRepository })
+@Entity()
 export class Post {
-  [EntityRepositoryType]?: PostRepository;
-
   @PrimaryKey({ type: t.bigint })
   id = SnowflakeIdGenerator.next().toString();
 

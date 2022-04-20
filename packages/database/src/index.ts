@@ -10,8 +10,6 @@ declare global {
   }
 }
 
-export * from "@mikro-orm/core";
-export * from "@mikro-orm/nestjs";
-
 export * from "./database.module";
 export * from "./database.middleware";
+export * from "./utils/create-entity-service.util";

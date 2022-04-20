@@ -17,11 +17,8 @@ export async function startWorker(
   // 启用关机钩子
   app.enableShutdownHooks();
 
-  // 获取日志服务
-  const loggerService = app.get(Logger);
-
   // 使用日志服务
-  app.useLogger(loggerService);
+  app.useLogger(new Logger());
 
   if (callback) {
     await callback(app);

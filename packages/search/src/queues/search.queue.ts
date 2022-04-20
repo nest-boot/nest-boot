@@ -1,4 +1,4 @@
-import { AnyEntity } from "@nest-boot/database";
+import { AnyEntity } from "@mikro-orm/core";
 import { BaseQueue, Job, Queue } from "@nest-boot/queue";
 
 import { SearchEngine } from "../engines/search.engine";

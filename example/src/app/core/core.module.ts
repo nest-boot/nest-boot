@@ -1,16 +1,20 @@
 import { LoggerModule } from "@nest-boot/common";
 import { DatabaseModule } from "@nest-boot/database";
+import { EntityManager } from "@mikro-orm/postgresql";
 import { MailerModule } from "@nest-boot/mailer";
 import { QueueModule } from "@nest-boot/queue";
 import { RedisModule } from "@nest-boot/redis";
 import { SearchModule } from "@nest-boot/search";
-import { MeiliSearchEngine } from "@nest-boot/search-engine-meilisearch";
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
+import { Post } from "./entities/post.entity";
+import { User } from "./entities/user.entity";
+import { PostgresqlSearchEngine } from "@nest-boot/search-engine-postgresql";
 
 import { TestQueue } from "./queues/test.queue";
-import { PostRepository } from "./repositories/post.repository";
-import { UserRepository } from "./repositories/user.repository";
+import { PostService } from "./services/post.service";
+import { UserService } from "./services/user.service";
+import { DiscoveryService } from "@nestjs/core";
 
 const DatabaseDynamicModule = DatabaseModule.forRoot();
 
@@ -31,12 +35,12 @@ const RedisDynamicModule = RedisModule.registerAsync({
 
 const SearchDynamicModule = SearchModule.registerAsync({
   imports: [DatabaseDynamicModule],
-  inject: [ConfigService],
-  useFactory: (configService: ConfigService) => ({
-    engine: new MeiliSearchEngine({
-      host: configService.get("MEILISEARCH_HOST"),
-      apiKey: configService.get("MEILISEARCH_KEY"),
-    }),
+  inject: [DiscoveryService, EntityManager],
+  useFactory: (
+    discoveryService: DiscoveryService,
+    entityManager: EntityManager
+  ) => ({
+    engine: new PostgresqlSearchEngine(discoveryService, entityManager),
   }),
 });
 
@@ -60,11 +64,11 @@ const QueueDynamicModule = QueueModule.registerAsync({
   imports: [RedisDynamicModule],
 });
 
-const repositories = [];
+const services = [PostService, UserService];
 
 const queues = [TestQueue];
 
-const providers = [...repositories, ...queues];
+const providers = [...services, ...queues];
 
 @Module({
   imports: [
@@ -75,6 +79,7 @@ const providers = [...repositories, ...queues];
     MailerDynamicModule,
     QueueDynamicModule,
     DatabaseDynamicModule,
+    DatabaseModule.forFeature([Post, User]),
   ],
   providers,
   exports: [...providers, MailerDynamicModule],

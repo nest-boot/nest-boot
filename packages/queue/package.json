@@ -28,6 +28,7 @@
     "@nestjs/core": "^8.4.4",
     "@types/humps": "^2.0.1",
     "@types/jest": "^27.4.1",
+    "@types/node": "^17.0.25",
     "bullmq": "^1.80.3",
     "class-transformer": "^0.5.1",
     "jest": "^27.5.1",

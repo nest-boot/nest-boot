@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { AnyEntity } from "@nest-boot/database";
+import { AnyEntity } from "@mikro-orm/core";
 import { Column } from "typeorm";
 
 export interface Type<T = any> extends Function {

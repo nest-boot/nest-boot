@@ -1,6 +1,6 @@
 /* eslint-disable no-nested-ternary */
-import { AnyEntity, FilterQuery } from "@nest-boot/database";
-import { SearchableEntityRepository } from "@nest-boot/search";
+import { AnyEntity, FilterQuery } from "@mikro-orm/core";
+import { SearchableEntityService } from "@nest-boot/search";
 import { Injectable } from "@nestjs/common";
 
 import { QueryConnectionArgs } from "../dtos/query-connection.args";
@@ -9,7 +9,7 @@ import { Type } from "../interfaces/type.interface";
 import { getConnection } from "./get-connection";
 
 export interface ConnectionEntityService<T extends AnyEntity>
-  extends SearchableEntityRepository<T> {
+  extends SearchableEntityService<T> {
   getConnection(
     args: QueryConnectionArgs,
     where?: FilterQuery<T>
@@ -17,7 +17,7 @@ export interface ConnectionEntityService<T extends AnyEntity>
 }
 
 export function mixinConnection<T extends AnyEntity>(
-  Base: Type<SearchableEntityRepository<T>>
+  Base: Type<SearchableEntityService<T>>
 ): Type<ConnectionEntityService<T>> {
   @Injectable()
   class ConnectionTrait extends Base implements ConnectionEntityService<T> {
@@ -25,7 +25,7 @@ export function mixinConnection<T extends AnyEntity>(
       args: QueryConnectionArgs,
       where: FilterQuery<T>
     ): Promise<Connection<T>> {
-      return null;
+      return await getConnection(this, args, where);
     }
   }
 

@@ -1,4 +1,4 @@
-import { AnyEntity, EntityRepository } from "@nest-boot/database";
+import { AnyEntity, EntityRepository } from "@mikro-orm/core";
 import DataLoader from "dataloader";
 import _ from "lodash";
 

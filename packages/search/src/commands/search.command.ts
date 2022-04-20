@@ -6,7 +6,7 @@ import { DiscoveryService } from "@nestjs/core";
 import { InstanceWrapper } from "@nestjs/core/injector/instance-wrapper";
 
 import { SearchEngine } from "../engines/search.engine";
-import { SearchableEntityRepository } from "../utils/mixin-searchable.util";
+import { SearchableEntityService } from "../utils/mixin-searchable.util";
 
 @Injectable()
 export class SearchCommand {
@@ -27,14 +27,13 @@ export class SearchCommand {
     })
     index: string
   ): Promise<void> {
-    const searchableEntityRepository =
-      this.getSearchableEntityRepository(index);
+    const searchableEntityService = this.getSearchableEntityService(index);
 
-    if (!searchableEntityRepository) {
+    if (!searchableEntityService) {
       return;
     }
 
-    const { searchableOptions } = searchableEntityRepository;
+    const { searchableOptions } = searchableEntityService;
 
     await this.searchEngine.createIndex(index, searchableOptions);
   }
@@ -51,10 +50,9 @@ export class SearchCommand {
     })
     index: string
   ): Promise<void> {
-    const searchableEntityRepository =
-      this.getSearchableEntityRepository(index);
+    const searchableEntityService = this.getSearchableEntityService(index);
 
-    if (!searchableEntityRepository) {
+    if (!searchableEntityService) {
       return;
     }
 
@@ -73,14 +71,13 @@ export class SearchCommand {
     })
     index: string
   ): Promise<void> {
-    const searchableEntityRepository =
-      this.getSearchableEntityRepository(index);
+    const searchableEntityService = this.getSearchableEntityService(index);
 
-    if (!searchableEntityRepository) {
+    if (!searchableEntityService) {
       return;
     }
 
-    await searchableEntityRepository.searchable({});
+    await searchableEntityService.searchable({});
   }
 
   @Command({
@@ -95,25 +92,24 @@ export class SearchCommand {
     })
     index: string
   ): Promise<void> {
-    const searchableEntityRepository =
-      this.getSearchableEntityRepository(index);
+    const searchableEntityService = this.getSearchableEntityService(index);
 
-    if (!searchableEntityRepository) {
+    if (!searchableEntityService) {
       return;
     }
 
-    await searchableEntityRepository.unsearchable({});
+    await searchableEntityService.unsearchable({});
   }
 
-  private getSearchableEntityRepository(
+  private getSearchableEntityService(
     index: string
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ): SearchableEntityRepository<any> {
+  ): SearchableEntityService<any> {
     return (
       this.discoveryService
         .getProviders()
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .find((wrapper: InstanceWrapper<SearchableEntityRepository<any>>) => {
+        .find((wrapper: InstanceWrapper<SearchableEntityService<any>>) => {
           return wrapper.instance?.searchableOptions?.index === index;
         })?.instance
     );

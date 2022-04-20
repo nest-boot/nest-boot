@@ -1,4 +1,4 @@
-import { Property, t } from "@nest-boot/database";
+import { Property, t } from "@mikro-orm/core";
 
 import { HasPermissions } from "../interfaces/has-permission.interface";
 

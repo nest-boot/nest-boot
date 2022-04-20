@@ -1,4 +1,11 @@
-import { AnyEntity, EntityRepository, FindOptions } from "@nest-boot/database";
+import {
+  AnyEntity,
+  EntityManager,
+  EntityRepository,
+  FilterQuery,
+  FindOptions,
+} from "@mikro-orm/core";
+import { EntityService } from "@nest-boot/database";
 import { Inject, Injectable } from "@nestjs/common";
 
 import { SearchEngine } from "../engines/search.engine";
@@ -11,104 +18,78 @@ export interface Type<T = any> extends Function {
   new (...args: any[]): T;
 }
 
-export interface SearchableEntityRepository<T extends AnyEntity>
-  extends EntityRepository<T> {
-  searchableOptions: SearchableOptions<T>;
+export interface SearchableEntityService<T extends AnyEntity>
+  extends EntityService<T> {
+  searchableOptions: SearchableOptions;
 
   search(
-    query?: string,
-    filter?: string,
+    query: string,
+    where: FilterQuery<T>,
     options?: FindOptions<T>
   ): Promise<[T[], number]>;
 
-  searchable<P extends string = never>(
-    options?: FindOptions<T, P>
-  ): Promise<this>;
+  searchable(where: FilterQuery<T>): Promise<this>;
 
-  unsearchable<P extends string = never>(
-    options?: FindOptions<T, P>
-  ): Promise<this>;
+  unsearchable(where: FilterQuery<T>): Promise<this>;
 }
 
 export function mixinSearchable<T extends AnyEntity>(
-  Base: Type<EntityRepository<T>>,
-  searchableOptions?: SearchableOptions<T>
-): Type<SearchableEntityRepository<T>> {
+  Base: Type<EntityService<T>>,
+  options?: SearchableOptions
+): Type<SearchableEntityService<T>> {
   @Injectable()
-  class SearchableTrait extends Base implements SearchableEntityRepository<T> {
-    searchableOptions: SearchableOptions<T>;
+  class SearchableTrait extends Base implements SearchableEntityService<T> {
+    repository: EntityRepository<T>;
+
+    @Inject()
+    readonly entityManager: EntityManager;
+
     @Inject()
     readonly searchQueue: SearchQueue;
 
     @Inject()
     readonly searchEngine: SearchEngine;
 
-    // get searchableOptions(): SearchableOptions<T> {
-    //   return {
-    //     index: searchableOptions?.index || this.repository.metadata.tableName,
-    //     filterableAttributes: searchableOptions?.filterableAttributes || [
-    //       ...this.repository.metadata.columns
-    //         .filter((column) => !column.relationMetadata)
-    //         .map((column) => column.propertyName),
-    //       ...this.repository.metadata.relationIds.map(
-    //         (relationId) => relationId.propertyName
-    //       ),
-    //     ],
-    //     sortableAttributes: searchableOptions?.sortableAttributes || [
-    //       ...this.repository.metadata.columns
-    //         .filter(
-    //           (column) =>
-    //             !column.relationMetadata &&
-    //             [
-    //               "int",
-    //               "bigint",
-    //               "float",
-    //               "decimal",
-    //               "timestamp",
-    //               Number,
-    //             ].includes(column.type as string)
-    //         )
-    //         .map((column) => column.propertyName),
-    //       ...this.repository.metadata.relationIds.map(
-    //         (relationId) => relationId.propertyName
-    //       ),
-    //     ],
-    //   };
-    // }
-
-    async search(
-      query?: string,
-      filter?: string,
-      options?: FindOptions<T>
-    ): Promise<[T[], number]> {
-      // const [ids, count] = await this.searchEngine.search(
-      //   this.repository.metadata.tableName,
-      //   query,
-      //   filter,
-      //   options
-      // );
-
-      return [[], 0];
+    get searchableOptions(): SearchableOptions {
+      return options;
     }
 
-    async searchable<P extends string = never>(options?: FindOptions<T, P>) {
-      // await this.chunkById({ where }, 500, async (entities) => {
-      //   await this.searchQueue.add("makeSearchable", {
-      //     index: this.repository.metadata.tableName,
-      //     entities,
-      //   });
-      // });
+    async search(
+      query: string,
+      where: FilterQuery<T>,
+      options?: FindOptions<T>
+    ): Promise<[T[], number]> {
+      const [ids] = await this.searchEngine.search(
+        this.searchableOptions.index,
+        query,
+        where,
+        options
+      );
+
+      return await this.repository.findAndCount(
+        { id: { $in: ids } } as FilterQuery<T>,
+        options
+      );
+    }
+
+    async searchable(where: FilterQuery<T>) {
+      await this.chunkById(where, { limit: 500 }, async (entities) => {
+        await this.searchQueue.add("makeSearchable", {
+          index: this.searchableOptions.index,
+          entities,
+        });
+      });
 
       return this;
     }
 
-    async unsearchable<P extends string = never>(options?: FindOptions<T, P>) {
-      // await this.chunkById({ where }, 500, async (entities) => {
-      //   await this.searchQueue.add("unmakeSearchable", {
-      //     index: this.repository.metadata.tableName,
-      //     entities,
-      //   });
-      // });
+    async unsearchable(where: FilterQuery<T>) {
+      await this.chunkById(where, { limit: 500 }, async (entities) => {
+        await this.searchQueue.add("unmakeSearchable", {
+          index: this.searchableOptions.index,
+          entities,
+        });
+      });
 
       return this;
     }

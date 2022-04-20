@@ -5,7 +5,7 @@ import {
   Collection,
   PrimaryKey,
   t,
-} from "@nest-boot/database";
+} from "@mikro-orm/core";
 import { SnowflakeIdGenerator } from "snowflake-id-generator";
 
 import { Post } from "./post.entity";

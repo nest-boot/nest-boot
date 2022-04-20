@@ -28,6 +28,7 @@ export class DatabaseModule {
           entities: [resolve(process.cwd(), "dist/app/core/entities/**/*.js")],
           entitiesTs: [resolve(process.cwd(), "src/app/core/entities/**/*.ts")],
           context: () => Context.get()?.entityManager,
+          debug: true,
         };
 
         return connectionOptions;

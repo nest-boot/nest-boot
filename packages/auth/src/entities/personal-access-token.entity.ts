@@ -1,4 +1,4 @@
-import { Property, Entity } from "@nest-boot/database";
+import { Property, Entity } from "@mikro-orm/core";
 import crypto from "crypto";
 
 @Entity()

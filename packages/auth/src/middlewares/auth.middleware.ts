@@ -1,5 +1,5 @@
 import { Context } from "@nest-boot/common";
-import { EntityManager } from "@nest-boot/database";
+import { EntityManager } from "@mikro-orm/core";
 import { Injectable, NestMiddleware } from "@nestjs/common";
 import { Request, Response } from "express";
 

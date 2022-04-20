@@ -1,4 +1,4 @@
-import { AnyEntity, FilterQuery, FindOptions } from "@nest-boot/database";
+import { AnyEntity, FilterQuery, FindOptions } from "@mikro-orm/core";
 import { SearchableOptions, SearchEngineInterface } from "@nest-boot/search";
 import { Config, MeiliSearch } from "meilisearch";
 
@@ -47,11 +47,11 @@ export class MeiliSearchEngine implements SearchEngineInterface {
     await this.meilisearch.index(index).deleteAllDocuments();
   }
 
-  async createIndex(index: string, options: SearchableOptions<AnyEntity>) {
+  async createIndex(index: string, options: SearchableOptions) {
     const indexInstance = this.meilisearch.index(index);
 
     await Promise.all([
-      indexInstance.updateFilterableAttributes(options.filterableAttributes),
+      indexInstance.updateFilterableAttributes(options.searchableAttributes),
       indexInstance.updateSortableAttributes(options.sortableAttributes),
     ]);
   }
