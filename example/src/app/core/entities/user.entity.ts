@@ -1,25 +1,35 @@
-import { mixinPermissions } from "@nest-boot/auth";
 import {
-  BaseEntity,
-  Column,
   Entity,
-  HashColumn,
   OneToMany,
-} from "@nest-boot/database";
+  Property,
+  Collection,
+  PrimaryKey,
+  t,
+} from "@mikro-orm/core";
+import { SnowflakeIdGenerator } from "snowflake-id-generator";
 
 import { Post } from "./post.entity";
 
-@Entity({ searchable: true })
-export class User extends mixinPermissions(BaseEntity) {
-  @Column()
+@Entity()
+export class User {
+  @PrimaryKey({ type: t.bigint })
+  id = SnowflakeIdGenerator.next().toString();
+
+  @Property()
   name: string;
 
-  @Column({ unique: true })
+  @Property({ unique: true })
   email: string;
 
-  @HashColumn()
+  @Property()
   password: string;
 
+  @Property()
+  createdAt: Date = new Date();
+
+  @Property({ onUpdate: () => new Date() })
+  updatedAt = new Date();
+
   @OneToMany(() => Post, (post) => post.author)
-  posts: Post[];
+  posts = new Collection<Post>(this);
 }

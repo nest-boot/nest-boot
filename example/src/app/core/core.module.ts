@@ -1,25 +1,22 @@
-import { PersonalAccessToken } from "@nest-boot/auth";
 import { LoggerModule } from "@nest-boot/common";
 import { DatabaseModule } from "@nest-boot/database";
+import { EntityManager } from "@mikro-orm/postgresql";
 import { MailerModule } from "@nest-boot/mailer";
 import { QueueModule } from "@nest-boot/queue";
 import { RedisModule } from "@nest-boot/redis";
 import { SearchModule } from "@nest-boot/search";
-import { MeiliSearchEngine } from "@nest-boot/search-engine-meilisearch";
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
-import { TypeOrmModule } from "@nestjs/typeorm";
-
 import { Post } from "./entities/post.entity";
 import { User } from "./entities/user.entity";
+import { PostgresqlSearchEngine } from "@nest-boot/search-engine-postgresql";
+
 import { TestQueue } from "./queues/test.queue";
-import { AuthService } from "./services/auth.service";
 import { PostService } from "./services/post.service";
 import { UserService } from "./services/user.service";
+import { DiscoveryService } from "@nestjs/core";
 
-const DatabaseDynamicModule = DatabaseModule.register({
-  entities: [PersonalAccessToken],
-});
+const DatabaseDynamicModule = DatabaseModule.forRoot();
 
 const RedisDynamicModule = RedisModule.registerAsync({
   imports: [],
@@ -38,12 +35,12 @@ const RedisDynamicModule = RedisModule.registerAsync({
 
 const SearchDynamicModule = SearchModule.registerAsync({
   imports: [DatabaseDynamicModule],
-  inject: [ConfigService],
-  useFactory: (configService: ConfigService) => ({
-    engine: new MeiliSearchEngine({
-      host: configService.get("MEILISEARCH_HOST"),
-      apiKey: configService.get("MEILISEARCH_KEY"),
-    }),
+  inject: [DiscoveryService, EntityManager],
+  useFactory: (
+    discoveryService: DiscoveryService,
+    entityManager: EntityManager
+  ) => ({
+    engine: new PostgresqlSearchEngine(discoveryService, entityManager),
   }),
 });
 
@@ -67,7 +64,7 @@ const QueueDynamicModule = QueueModule.registerAsync({
   imports: [RedisDynamicModule],
 });
 
-const services = [AuthService, UserService, PostService];
+const services = [PostService, UserService];
 
 const queues = [TestQueue];
 
@@ -82,7 +79,7 @@ const providers = [...services, ...queues];
     MailerDynamicModule,
     QueueDynamicModule,
     DatabaseDynamicModule,
-    TypeOrmModule.forFeature([Post, User]),
+    DatabaseModule.forFeature([Post, User]),
   ],
   providers,
   exports: [...providers, MailerDynamicModule],

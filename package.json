@@ -3,8 +3,8 @@
   "version": "0.0.0-development",
   "private": true,
   "engines": {
-    "node": ">=16.0.0",
-    "npm": ">=8.0.0",
+    "node": ">= 16.0.0",
+    "npm": ">= 8.0.0",
     "yarn": "Please use npm"
   },
   "workspaces": [
@@ -33,6 +33,7 @@
     "eslint-plugin-prettier": "^4.0.0",
     "eslint-plugin-simple-import-sort": "^7.0.0",
     "prettier": "^2.6.2",
+    "semantic-release": "^19.0.2",
     "turbo": "^1.2.4",
     "typescript": "^4.6.3"
   },

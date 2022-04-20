@@ -1,11 +1,10 @@
 /* eslint-disable no-nested-ternary */
 import {
-  BaseEntity,
-  FindConditions,
-  FindManyOptions,
-  LessThan,
-  MoreThan,
-} from "@nest-boot/database";
+  AnyEntity,
+  FilterQuery,
+  QueryOrder,
+  QueryOrderMap,
+} from "@mikro-orm/core";
 import { SearchableEntityService } from "@nest-boot/search";
 import _ from "lodash";
 
@@ -16,81 +15,73 @@ import { Connection } from "../interfaces/connection.interface";
 import { Cursor } from "./cursor";
 import { getPagingType } from "./get-paging-type";
 
-async function getCursorConnection<T extends BaseEntity>(
+async function getCursorConnection<T extends AnyEntity>(
   service: SearchableEntityService<T>,
   args: QueryConnectionArgs,
-  where: FindConditions<T> = {}
+  where?: FilterQuery<T>
 ): Promise<Connection<T>> {
   // 提取集合参数
   const {
     after,
     before,
     query,
-    filter,
     orderBy = { field: "createdAt", direction: OrderDirection.ASC },
   } = args;
-  const take = args.first || args.last || 0;
+  const limit = args.first || args.last || 0;
   const cursor = new Cursor(after || before);
   const pagingType = getPagingType(args);
 
   // 声明搜索参数
-  const order: FindManyOptions<T>["order"] = {
+  const order: QueryOrderMap<T> = {
     [orderBy.field]: (
       pagingType === PagingType.FORWARD
         ? orderBy.direction === OrderDirection.ASC
         : orderBy.direction === OrderDirection.DESC
     )
-      ? "ASC"
-      : "DESC",
-    id: pagingType === PagingType.FORWARD ? "ASC" : "DESC",
+      ? QueryOrder.ASC
+      : QueryOrder.DESC,
+    id: pagingType === PagingType.FORWARD ? QueryOrder.ASC : QueryOrder.DESC,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } as any;
-
-  const whereGroup: FindConditions<T>[] = [];
-  if (cursor.id) {
-    if (orderBy) {
-      whereGroup.push(
-        {
-          ...where,
-          [orderBy.field]: cursor.value,
-          id:
-            pagingType === PagingType.FORWARD
-              ? MoreThan(cursor.id)
-              : LessThan(cursor.id),
-        },
-        {
-          ...where,
-          [orderBy.field]: (
-            pagingType === PagingType.FORWARD
-              ? orderBy.direction === OrderDirection.ASC
-              : orderBy.direction === OrderDirection.DESC
-          )
-            ? MoreThan(cursor.value)
-            : LessThan(cursor.value),
-        }
-      );
-    } else {
-      whereGroup.push({
-        ...where,
-        id:
-          pagingType === PagingType.FORWARD
-            ? MoreThan(cursor.id)
-            : LessThan(cursor.id),
-      });
-    }
-  }
+  } as QueryOrderMap<T>;
 
   // 搜索结果
   const [[results], [, totalCount]] = await Promise.all([
-    service.search(query, filter, {
-      where: whereGroup.length === 0 ? where : whereGroup,
-      take: take + 1,
-      order,
-    }),
-    service.search(query, filter, {
-      where,
-      take: 0,
-    }),
+    service.search(
+      query,
+      {
+        $and: [
+          where,
+          ...(cursor.id
+            ? [
+                {
+                  id:
+                    pagingType === PagingType.FORWARD
+                      ? { $gt: cursor.id }
+                      : { $lt: cursor.id },
+                },
+              ]
+            : []),
+          ...(orderBy && cursor.value
+            ? [
+                {
+                  [orderBy.field]: (
+                    pagingType === PagingType.FORWARD
+                      ? orderBy.direction === OrderDirection.ASC
+                      : orderBy.direction === OrderDirection.DESC
+                  )
+                    ? { $gt: cursor.value }
+                    : { $lt: cursor.value },
+                },
+              ]
+            : []),
+        ],
+      } as FilterQuery<T>,
+      {
+        limit: limit + 1,
+        orderBy: order,
+      }
+    ),
+    service.search(query, where, { limit: 0 }),
   ]);
 
   // 重新排序结果
@@ -107,7 +98,7 @@ async function getCursorConnection<T extends BaseEntity>(
 
   // 根据结果生成 edges
   const edges = (
-    entities.length > take
+    entities.length > limit
       ? pagingType === PagingType.FORWARD
         ? entities.slice(0, -1)
         : entities.slice(1)
@@ -126,12 +117,12 @@ async function getCursorConnection<T extends BaseEntity>(
     pageInfo: {
       ...(pagingType === PagingType.FORWARD
         ? {
-            hasNextPage: entities.length > take,
+            hasNextPage: entities.length > limit,
             hasPreviousPage: !!after,
           }
         : {
             hasNextPage: !!before,
-            hasPreviousPage: entities.length > take,
+            hasPreviousPage: entities.length > limit,
           }),
       startCursor: edges[0]?.cursor || null,
       endCursor: edges[edges.length - 1]?.cursor || null,
@@ -140,30 +131,29 @@ async function getCursorConnection<T extends BaseEntity>(
   };
 }
 
-async function getOffsetConnection<T extends BaseEntity>(
+async function getOffsetConnection<T extends AnyEntity>(
   service: SearchableEntityService<T>,
   args: QueryConnectionArgs,
-  where: FindConditions<T> = {}
+  where?: FilterQuery<T>
 ): Promise<Connection<T>> {
   const {
     page = 1,
     pageSize = 20,
     query,
-    filter,
     orderBy = { field: "createdAt", direction: OrderDirection.ASC },
   } = args;
 
   // 搜索结果
   const [[entities], [, totalCount]] = await Promise.all([
-    service.search(query, filter, {
-      where,
-      skip: page * pageSize,
-      take: pageSize,
-      order: { [orderBy.field]: orderBy.direction },
+    service.search(query, where, {
+      // where,
+      // skip: page * pageSize,
+      // take: pageSize,
+      // order: { [orderBy.field]: orderBy.direction },
     }),
-    service.search(query, filter, {
-      where,
-      take: 0,
+    service.search(query, where, {
+      // where,
+      // take: 0,
     }),
   ]);
 
@@ -187,10 +177,10 @@ async function getOffsetConnection<T extends BaseEntity>(
   };
 }
 
-export async function getConnection<T extends BaseEntity>(
+export async function getConnection<T extends AnyEntity>(
   service: SearchableEntityService<T>,
   args: QueryConnectionArgs,
-  where: FindConditions<T> = {}
+  where?: FilterQuery<T>
 ): Promise<Connection<T>> {
   if (args.page) {
     return await getOffsetConnection<T>(service, args, where);

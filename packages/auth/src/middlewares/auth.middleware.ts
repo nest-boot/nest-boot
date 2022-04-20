@@ -1,5 +1,5 @@
 import { Context } from "@nest-boot/common";
-import { getRepository } from "@nest-boot/database";
+import { EntityManager } from "@mikro-orm/core";
 import { Injectable, NestMiddleware } from "@nestjs/common";
 import { Request, Response } from "express";
 
@@ -7,18 +7,24 @@ import { PersonalAccessToken } from "../entities";
 
 @Injectable()
 export class AuthMiddleware implements NestMiddleware {
+  constructor(private readonly entityManager: EntityManager) {}
+
   async use(req: Request, res: Response, next: () => void): Promise<void> {
     // 获取运行上下文
     const ctx = Context.get();
 
     // 查找访问令牌
-    const accessTokenRepository = getRepository(PersonalAccessToken);
+    const accessTokenRepository =
+      this.entityManager.getRepository(PersonalAccessToken);
+
     const accessToken = await accessTokenRepository.findOne({
-      where: { token: this.extractAccessToken(req) },
+      token: this.extractAccessToken(req),
     });
 
     if (accessToken) {
-      const repository = getRepository<NestBootAuth.User>(accessToken.entity);
+      const repository = this.entityManager.getRepository<NestBootAuth.User>(
+        accessToken.entity
+      );
       const entity = await repository.findOne(accessToken.entityId);
 
       // 设置访问令牌和用户到运行上下文

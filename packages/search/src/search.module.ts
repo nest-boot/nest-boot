@@ -31,11 +31,12 @@ export class SearchModule {
     const providers = [
       {
         provide: SearchEngine,
-        useValue: options?.engine || new SearchEngine(),
+        useValue: options?.engine,
       },
     ];
 
     return {
+      global: true,
       module: SearchModule,
       imports: [DiscoveryModule],
       providers: [SearchQueue, SearchCommand, ...providers],
