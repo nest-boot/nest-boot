@@ -29,7 +29,9 @@ export class UserCommand {
     email: string
   ): Promise<void> {
     const password = crypto.randomBytes(4).toString("hex");
-    await this.userService.create({ name, email, password });
+    const user = this.userService.repository.create({ name, email, password });
+
+    await this.userService.repository.persistAndFlush(user);
 
     console.log("创建用户成功");
     console.log("名称：", name);

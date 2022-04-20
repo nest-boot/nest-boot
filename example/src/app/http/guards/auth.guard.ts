@@ -11,6 +11,7 @@ export class AuthGuard extends BaseAuthGuard {
 
   // 需要自定义获取用户权限的方法
   async getPermissions(): Promise<string[]> {
-    return Context.get()?.user?.permissions || [];
+    // return Context.get()?.user?.permissions || [];
+    return [];
   }
 }

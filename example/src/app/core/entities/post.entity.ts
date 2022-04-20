@@ -1,32 +1,35 @@
 import {
-  BaseEntity,
-  BeforeInsert,
-  BeforeUpdate,
-  Column,
+  Property,
   Entity,
   ManyToOne,
-} from "@nest-boot/database";
-import { marked } from "marked";
+  IdentifiedReference,
+  PrimaryKey,
+  t,
+} from "@mikro-orm/core";
+import { SnowflakeIdGenerator } from "snowflake-id-generator";
 
 import { User } from "./user.entity";
 
-@Entity({ searchable: true })
-export class Post extends BaseEntity {
-  @Column()
+@Entity()
+export class Post {
+  @PrimaryKey({ type: t.bigint })
+  id = SnowflakeIdGenerator.next().toString();
+
+  @Property()
   title: string;
 
-  @Column({ type: "text" })
-  html: string;
+  @Property({ type: "text" })
+  html: string = "html";
 
-  @Column({ type: "text" })
+  @Property({ type: "text" })
   markdown: string;
 
-  @ManyToOne(() => User, (user) => user.posts, { cascade: true })
-  author: User;
+  @Property()
+  createdAt: Date = new Date();
 
-  @BeforeInsert()
-  @BeforeUpdate()
-  async beforeInsertOrUpdate(): Promise<void> {
-    this.html = marked.parse(this.markdown);
-  }
+  @Property({ onUpdate: () => new Date() })
+  updatedAt = new Date();
+
+  @ManyToOne({ nullable: true })
+  author: IdentifiedReference<User>;
 }

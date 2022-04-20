@@ -6,7 +6,4 @@ import { ConnectionArgs } from "./connection.args";
 export class QueryConnectionArgs extends ConnectionArgs {
   @Field({ nullable: true })
   query?: string;
-
-  @Field({ nullable: true })
-  filter?: string;
 }

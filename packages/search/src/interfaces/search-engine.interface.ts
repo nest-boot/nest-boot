@@ -1,26 +1,22 @@
-import { BaseEntity } from "@nest-boot/database";
+import { FindOptions, FilterQuery } from "@mikro-orm/core";
 
-import { SearchOptions } from "./search-options.interface";
 import { SearchableOptions } from "./searchable-options.interface";
 
 export interface SearchEngineInterface {
   search(
     index: string,
-    query?: string,
-    filter?: string,
-    options?: SearchOptions
-  ): Promise<[BaseEntity["id"][], number]>;
+    query: string,
+    where?: FilterQuery<any>,
+    options?: FindOptions<any>
+  ): Promise<[(number | string)[], number]>;
 
-  update(index: string, entities: BaseEntity[]): Promise<void>;
+  update(index: string, entities: any[]): Promise<void>;
 
-  delete(index: string, entities: BaseEntity[]): Promise<void>;
+  delete(index: string, entities: any[]): Promise<void>;
 
-  flush(index: string, entity: BaseEntity): Promise<void>;
+  flush(index: string, entity: any): Promise<void>;
 
-  createIndex(
-    index: string,
-    options: SearchableOptions<BaseEntity>
-  ): Promise<void>;
+  createIndex(index: string, options: SearchableOptions): Promise<void>;
 
   deleteIndex(index: string): Promise<void>;
 }

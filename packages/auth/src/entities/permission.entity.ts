@@ -1,7 +1,7 @@
-import { BaseEntity, Column, Entity } from "@nest-boot/database";
+import { Property, Entity } from "@mikro-orm/core";
 
 @Entity()
-export class Permission extends BaseEntity {
-  @Column()
+export class Permission {
+  @Property()
   name: string;
 }
