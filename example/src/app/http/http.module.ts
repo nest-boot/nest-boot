@@ -1,7 +1,6 @@
 import { AuthMiddleware } from "@nest-boot/auth";
 import { ContextMiddleware, LoggerModule } from "@nest-boot/common";
 import { DatabaseMiddleware, DatabaseModule } from "@nest-boot/database";
-import { TenantMiddleware } from "@nest-boot/tenant";
 import { ApolloDriver } from "@nestjs/apollo";
 import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";

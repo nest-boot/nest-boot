@@ -1,6 +1,5 @@
 // 通用
 export * from "./common/array-length.decorator";
-export * from "./common/is-unique.decorator";
 
 // 字符串
 export * from "./string/is-domain.decorator";

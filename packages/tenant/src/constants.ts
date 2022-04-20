@@ -1,1 +1,0 @@
-export const TENANT_CONNECTION = "__TENANT_CONNECTION__";

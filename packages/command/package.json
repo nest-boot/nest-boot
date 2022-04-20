@@ -19,7 +19,7 @@
     "templates"
   ],
   "scripts": {
-    "build": "yarn clean && tsc -p tsconfig.build.json",
+    "build": "npm run clean && tsc -p tsconfig.build.json",
     "clean": "rimraf dist"
   },
   "dependencies": {

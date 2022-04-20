@@ -1,4 +1,4 @@
-import { IsEmail, IsUnique, Length } from "@nest-boot/validator";
+import { IsEmail, Length } from "@nest-boot/validator";
 import { Field, InputType } from "@nestjs/graphql";
 
 import { User } from "../../core/entities/user.entity";
@@ -9,7 +9,6 @@ export class RegisterInput {
   name: string;
 
   @IsEmail()
-  @IsUnique(() => User)
   @Field()
   email: string;
 
