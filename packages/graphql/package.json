@@ -23,8 +23,8 @@
   },
   "devDependencies": {
     "@mikro-orm/core": "^5.1.2",
-    "@nest-boot/database": "^1.0.0",
-    "@nest-boot/search": "^1.0.0",
+    "@nest-boot/database": "*",
+    "@nest-boot/search": "*",
     "@nestjs/common": "^8.4.4",
     "@nestjs/core": "^8.4.4",
     "@nestjs/graphql": "^10.0.9",
@@ -43,8 +43,8 @@
     "typescript": "^4.6.3"
   },
   "peerDependencies": {
-    "@nest-boot/database": "^1.0.0",
-    "@nest-boot/search": "^1.0.0",
+    "@nest-boot/database": "*",
+    "@nest-boot/search": "*",
     "@nestjs/common": "^8.0.0",
     "@nestjs/core": "^8.0.0",
     "@nestjs/graphql": "^10.0.0",
