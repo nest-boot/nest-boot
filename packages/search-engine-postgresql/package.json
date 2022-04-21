@@ -21,8 +21,8 @@
   "devDependencies": {
     "@mikro-orm/core": "^5.1.2",
     "@mikro-orm/postgresql": "^5.1.2",
-    "@nest-boot/database": "*",
-    "@nest-boot/search": "*",
+    "@nest-boot/database": "2.0.0",
+    "@nest-boot/search": "2.0.0",
     "@nestjs/common": "^8.4.4",
     "@nestjs/core": "^8.4.4",
     "jest": "^27.5.1",
@@ -32,8 +32,8 @@
   },
   "peerDependencies": {
     "@mikro-orm/postgresql": "^5.0.0",
-    "@nest-boot/database": "*",
-    "@nest-boot/search": "*",
+    "@nest-boot/database": "2.0.0",
+    "@nest-boot/search": "2.0.0",
     "@nestjs/common": "^8.0.0",
     "@nestjs/core": "^8.0.0"
   },
