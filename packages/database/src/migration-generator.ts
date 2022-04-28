@@ -1,9 +1,13 @@
 import { TSMigrationGenerator } from "@mikro-orm/migrations";
+import prettier from "prettier";
 import { format, FormatOptions } from "sql-formatter";
 
 export class MigrationGenerator extends TSMigrationGenerator {
   createStatement(sql: string, padLeft: number): string {
+    const padding = " ".repeat(padLeft);
+
     const driverType = this.driver.config.get("type");
+
     let language: FormatOptions["language"];
 
     switch (driverType) {
@@ -19,9 +23,29 @@ export class MigrationGenerator extends TSMigrationGenerator {
       default:
     }
 
-    return super.createStatement(
-      language ? format(sql, { language }) : sql,
-      padLeft
+    const formatSql = (language ? format(sql, { language }) : sql).replace(
+      /['\\]/g,
+      "\\'"
     );
+
+    if (formatSql) {
+      return `${padding}this.addSql(/* SQL */ \`
+      ${formatSql.replace(/\n/g, `\n${padding}  `)}
+    \`);\n\n`;
+    }
+
+    return "";
+  }
+
+  generateMigrationFile(
+    className: string,
+    diff: { up: string[]; down: string[] }
+  ): string {
+    return `/* eslint-disable */\n\n${prettier.format(
+      super.generateMigrationFile(className, diff),
+      {
+        parser: "typescript",
+      }
+    )}`;
   }
 }

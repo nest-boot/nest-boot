@@ -20,6 +20,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "prettier": "^2.6.2",
     "sql-formatter": "^4.0.2"
   },
   "devDependencies": {
