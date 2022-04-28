@@ -1,6 +1,6 @@
+import { MikroOrmModule } from "@mikro-orm/nestjs";
 import { AuthMiddleware } from "@nest-boot/auth";
 import { ContextMiddleware, LoggerModule } from "@nest-boot/common";
-import { DatabaseMiddleware, DatabaseModule } from "@nest-boot/database";
 import { ApolloDriver } from "@nestjs/apollo";
 import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
@@ -24,7 +24,7 @@ const resolvers = [PostResolver];
       path: "/graphql",
       context: ({ req, res }) => ({ req, res }),
     }),
-    DatabaseModule.forFeature([Post]),
+    MikroOrmModule.forFeature([Post]),
   ],
   controllers: [IndexController],
   providers: [
@@ -37,6 +37,6 @@ const resolvers = [PostResolver];
 })
 export class HttpModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(ContextMiddleware, DatabaseMiddleware).forRoutes("*");
+    consumer.apply(ContextMiddleware).forRoutes("*");
   }
 }

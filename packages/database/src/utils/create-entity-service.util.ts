@@ -1,17 +1,19 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Injectable, Type } from "@nestjs/common";
 import {
   AnyEntity,
   EntityRepository,
   FilterQuery,
   FindOptions,
-  QueryOrderMap,
   QueryOrder,
+  QueryOrderMap,
 } from "@mikro-orm/core";
 import { InjectRepository } from "@mikro-orm/nestjs";
+import { Injectable, Type } from "@nestjs/common";
 
-export interface ChunkByIdOptions<T, P extends string = never>
-  extends Omit<FindOptions<T, P>, "offset" | "orderBy"> {}
+export type ChunkByIdOptions<T, P extends string = never> = Omit<
+  FindOptions<T, P>,
+  "offset" | "orderBy"
+>;
 
 export interface EntityService<T extends AnyEntity<T>> {
   entityClass: Type<T>;
@@ -30,10 +32,10 @@ export function createEntityService<T extends AnyEntity<T> & { id: string }>(
 ): Type<EntityService<T>> {
   @Injectable()
   class AbstractEntityService implements EntityService<T> {
-    readonly entityClass = entityClass;
-
     @InjectRepository(entityClass)
     readonly repository: EntityRepository<T>;
+
+    readonly entityClass = entityClass;
 
     async chunkById<P extends string = never>(
       where: FilterQuery<T>,
@@ -44,6 +46,7 @@ export function createEntityService<T extends AnyEntity<T> & { id: string }>(
       let count = 0;
 
       do {
+        // eslint-disable-next-line no-await-in-loop
         const entities = await this.repository.find(
           {
             $and: [where, { id: { $gt: lastId } }],
@@ -57,10 +60,10 @@ export function createEntityService<T extends AnyEntity<T> & { id: string }>(
           lastId = entities[count - 1].id;
         }
 
+        // eslint-disable-next-line no-await-in-loop
         await callback(entities);
       } while ((options?.limit || 0) === count);
 
-      // eslint-disable-next-line consistent-return
       return this;
     }
   }

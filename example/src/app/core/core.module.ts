@@ -1,22 +1,22 @@
-import { LoggerModule } from "@nest-boot/common";
-import { DatabaseModule } from "@nest-boot/database";
+import { MikroOrmModule } from "@mikro-orm/nestjs";
 import { EntityManager } from "@mikro-orm/postgresql";
+import { LoggerModule } from "@nest-boot/common";
 import { MailerModule } from "@nest-boot/mailer";
 import { QueueModule } from "@nest-boot/queue";
 import { RedisModule } from "@nest-boot/redis";
 import { SearchModule } from "@nest-boot/search";
+import { PostgresqlSearchEngine } from "@nest-boot/search-engine-postgresql";
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
+import { DiscoveryService } from "@nestjs/core";
+
 import { Post } from "./entities/post.entity";
 import { User } from "./entities/user.entity";
-import { PostgresqlSearchEngine } from "@nest-boot/search-engine-postgresql";
-
 import { TestQueue } from "./queues/test.queue";
 import { PostService } from "./services/post.service";
 import { UserService } from "./services/user.service";
-import { DiscoveryService } from "@nestjs/core";
 
-const DatabaseDynamicModule = DatabaseModule.forRoot();
+const DatabaseDynamicModule = MikroOrmModule.forRoot();
 
 const RedisDynamicModule = RedisModule.registerAsync({
   imports: [],
@@ -79,7 +79,7 @@ const providers = [...services, ...queues];
     MailerDynamicModule,
     QueueDynamicModule,
     DatabaseDynamicModule,
-    DatabaseModule.forFeature([Post, User]),
+    MikroOrmModule.forFeature([Post, User]),
   ],
   providers,
   exports: [...providers, MailerDynamicModule],

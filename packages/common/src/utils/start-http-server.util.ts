@@ -2,6 +2,7 @@ import { INestApplication, ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
 import cookieParser from "cookie-parser";
+import express from "express";
 
 import { RUNTIME_KEY } from "../constants";
 import { GlobalExceptionFilter } from "../exception-filters/global.exception-filter";
@@ -14,10 +15,16 @@ export async function startHttpServer(
   process[RUNTIME_KEY] = "http-server";
 
   // 创建服务器实例
-  const app = await NestFactory.create(module, { bufferLogs: true });
+  const app = await NestFactory.create(module, {
+    bufferLogs: true,
+    bodyParser: false,
+  });
 
   // 启用关机钩子
   app.enableShutdownHooks();
+
+  // bodyParser
+  app.use(express.json());
 
   // 使用日志服务
   app.useLogger(new Logger());
