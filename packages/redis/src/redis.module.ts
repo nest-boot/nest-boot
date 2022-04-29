@@ -4,11 +4,11 @@ import {
   ModuleMetadata,
   Provider,
 } from "@nestjs/common";
-import IORedis from "ioredis";
+import { RedisOptions } from "ioredis";
 
 import { Redis } from "./redis";
 
-export type RedisModuleOptions = IORedis.RedisOptions;
+export type RedisModuleOptions = RedisOptions;
 
 export interface RedisModuleAsyncOptions
   extends Pick<ModuleMetadata, "imports"> {
