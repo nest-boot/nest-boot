@@ -14,7 +14,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "npm run clean && tsc -p tsconfig.build.json",
+    "build": "yarn clean && tsc -p tsconfig.build.json",
     "clean": "rimraf dist"
   },
   "dependencies": {
