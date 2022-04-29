@@ -18,14 +18,14 @@
     "clean": "rimraf dist"
   },
   "devDependencies": {
-    "@nest-boot/queue": "2.0.0",
+    "@nest-boot/queue": "^2.0.0",
     "@nestjs/common": "^8.4.4",
-    "@nestjs/config": "^1.2.1",
+    "@nestjs/config": "^2.0.0",
     "@nestjs/core": "^8.4.4",
     "@types/jest": "^27.4.1",
     "@types/mjml": "^4.7.0",
     "@types/nodemailer": "^6.4.4",
-    "jest": "^27.5.1",
+    "jest": "^28.0.2",
     "mjml": "^4.12.0",
     "nodemailer": "^6.7.3",
     "nunjucks": "^3.2.3",
@@ -36,7 +36,7 @@
     "typescript": "^4.6.3"
   },
   "peerDependencies": {
-    "@nest-boot/queue": "2.0.0",
+    "@nest-boot/queue": "^2.0.0",
     "@nestjs/common": "^8.0.0",
     "@nestjs/config": "^1.0.0",
     "@nestjs/core": "^8.0.0",
