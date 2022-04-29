@@ -21,6 +21,7 @@
   },
   "devDependencies": {
     "@semantic-release/git": "^9.0.1",
+    "@semrel-extra/npm": "^1.2.2",
     "@typescript-eslint/eslint-plugin": "^5.20.0",
     "@typescript-eslint/parser": "^5.20.0",
     "eslint": "^8.13.0",
