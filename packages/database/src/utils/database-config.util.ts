@@ -7,7 +7,7 @@ import { MigrationGenerator } from "../migration-generator";
 const resolve = (...args: string[]) => path.resolve(process.cwd(), ...args);
 
 export function databaseConfig<D extends IDatabaseDriver<Connection>>(
-  options: Options<D>
+  options?: Options<D>
 ): Options<D> {
   return {
     debug:
