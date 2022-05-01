@@ -6,18 +6,23 @@ import { MigrationGenerator } from "../migration-generator";
 
 const resolve = (...args: string[]) => path.resolve(process.cwd(), ...args);
 
-export function databaseConfig<
-  D extends IDatabaseDriver<Connection>
->(): Options<D> {
+export function databaseConfig<D extends IDatabaseDriver<Connection>>(
+  options: Options<D>
+): Options<D> {
   return {
     debug:
-      !!process.env.DATABASE_DEBUG || process.env.NODE_ENV !== "production",
-    type: process.env.DATABASE_TYPE as Options<D>["type"],
-    host: process.env.DATABASE_HOST,
-    port: +process.env.DATABASE_PORT,
-    dbName: process.env.DATABASE_NAME,
-    name: process.env.DATABASE_USERNAME,
-    password: process.env.DATABASE_PASSWORD,
+      options?.debug ||
+      !!process.env.DATABASE_DEBUG ||
+      process.env.NODE_ENV !== "production",
+    type: options?.type || (process.env.DATABASE_TYPE as Options<D>["type"]),
+    host: options?.host || process.env.DATABASE_HOST,
+    port: options?.port || +process.env.DATABASE_PORT,
+    name: options?.name || process.env.DATABASE_USERNAME,
+    password: options?.password || process.env.DATABASE_PASSWORD,
+    clientUrl:
+      options?.clientUrl ||
+      `${process.env.DATABASE_TYPE}://${process.env.DATABASE_USERNAME}:${process.env.DATABASE_PASSWORD}@${process.env.DATABASE_HOST}:${process.env.DATABASE_PORT}`,
+    dbName: options?.dbName || process.env.DATABASE_NAME,
     metadataProvider: TsMorphMetadataProvider,
     entities: [resolve("dist/app/core/entities/**/*.entity.js")],
     entitiesTs: [resolve("src/app/core/entities/**/*.entity.ts")],
