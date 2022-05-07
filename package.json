@@ -20,11 +20,11 @@
     "semantic-release": "multi-semantic-release --ignore-private --deps.bump=inherit"
   },
   "devDependencies": {
-    "@semantic-release/git": "^9.0.1",
+    "@semantic-release/git": "^10.0.1",
     "@semrel-extra/npm": "^1.2.2",
-    "@typescript-eslint/eslint-plugin": "^5.20.0",
-    "@typescript-eslint/parser": "^5.20.0",
-    "eslint": "^8.13.0",
+    "@typescript-eslint/eslint-plugin": "^5.22.0",
+    "@typescript-eslint/parser": "^5.22.0",
+    "eslint": "^8.15.0",
     "eslint-config-airbnb-base": "^15.0.0",
     "eslint-config-prettier": "^8.5.0",
     "eslint-import-resolver-node": "^0.3.6",
@@ -35,7 +35,7 @@
     "multi-semantic-release": "^2.12.0",
     "prettier": "^2.6.2",
     "semantic-release": "17.4.7",
-    "turbo": "^1.2.4",
+    "turbo": "^1.2.8",
     "typescript": "^4.6.3"
   },
   "volta": {
