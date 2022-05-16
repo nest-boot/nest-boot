@@ -1,7 +1,7 @@
 {
   "private": true,
   "name": "example",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "",
   "author": "",
   "license": "MIT",
@@ -37,7 +37,7 @@
     "@nest-boot/queue": "^2.0.0",
     "@nest-boot/redis": "1.4.1",
     "@nest-boot/search": "^2.0.0",
-    "@nest-boot/search-engine-postgresql": "1.1.1",
+    "@nest-boot/search-engine-postgresql": "1.1.2",
     "@nest-boot/validator": "^2.0.0",
     "@nestjs/apollo": "^10.0.11",
     "@nestjs/common": "^8.4.4",
