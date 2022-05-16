@@ -35,12 +35,10 @@ export interface SearchableEntityService<T extends AnyEntity>
 
 export function mixinSearchable<T extends AnyEntity>(
   Base: Type<EntityService<T>>,
-  options?: SearchableOptions
+  searchableOptions?: SearchableOptions
 ): Type<SearchableEntityService<T>> {
   @Injectable()
   class SearchableTrait extends Base implements SearchableEntityService<T> {
-    repository: EntityRepository<T>;
-
     @Inject()
     readonly entityManager: EntityManager;
 
@@ -50,8 +48,10 @@ export function mixinSearchable<T extends AnyEntity>(
     @Inject()
     readonly searchEngine: SearchEngine;
 
+    repository: EntityRepository<T>;
+
     get searchableOptions(): SearchableOptions {
-      return options;
+      return searchableOptions;
     }
 
     async search(
@@ -59,17 +59,20 @@ export function mixinSearchable<T extends AnyEntity>(
       where: FilterQuery<T>,
       options?: FindOptions<T>
     ): Promise<[T[], number]> {
-      const [ids] = await this.searchEngine.search(
+      const [ids, count] = await this.searchEngine.search(
         this.searchableOptions.index,
         query,
         where,
         options
       );
 
-      return await this.repository.findAndCount(
-        { id: { $in: ids } } as FilterQuery<T>,
-        options
-      );
+      return [
+        await this.repository.find(
+          { id: { $in: ids } } as FilterQuery<T>,
+          options
+        ),
+        count,
+      ];
     }
 
     async searchable(where: FilterQuery<T>) {

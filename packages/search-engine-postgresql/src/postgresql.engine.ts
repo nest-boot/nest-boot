@@ -1,13 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function */
 import { FilterQuery, FindOptions } from "@mikro-orm/core";
 import { EntityManager } from "@mikro-orm/postgresql";
-import { Injectable, Scope } from "@nestjs/common";
-
 import {
-  SearchEngineInterface,
-  SearchableOptions,
   SearchableEntityService,
+  SearchableOptions,
+  SearchEngineInterface,
 } from "@nest-boot/search";
+import { Injectable, Scope } from "@nestjs/common";
 import { DiscoveryService } from "@nestjs/core";
 import { InstanceWrapper } from "@nestjs/core/injector/instance-wrapper";
 
@@ -26,7 +25,7 @@ export class PostgresqlSearchEngine implements SearchEngineInterface {
       .getProviders()
       .forEach((wrapper: InstanceWrapper<SearchableEntityService<any>>) => {
         if (wrapper.instance?.searchableOptions) {
-          const searchableOptions = wrapper.instance.searchableOptions;
+          const { searchableOptions } = wrapper.instance;
 
           this.searchableMap.set(searchableOptions.index, {
             service: wrapper.instance,
@@ -48,8 +47,9 @@ export class PostgresqlSearchEngine implements SearchEngineInterface {
 
       const metadata = this.entityManager.getMetadata().get(index);
 
-      const queryBuilder =
-        this.entityManager.createQueryBuilder<{ id: string | number }>(index);
+      const queryBuilder = this.entityManager.createQueryBuilder<{
+        id: string | number;
+      }>(index);
 
       queryBuilder
         .where(where)
