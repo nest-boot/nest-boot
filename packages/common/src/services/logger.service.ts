@@ -47,10 +47,14 @@ export class Logger implements LoggerService {
   assign(bindings: Bindings) {
     const ctx = Context.get();
 
-    if (ctx) {
+    if (ctx?.logger) {
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       ctx.logger = ctx.logger.child(bindings);
+    } else {
+      this.__LOGGER__ = this.__LOGGER__
+        ? this.__LOGGER__.child(bindings)
+        : pino(bindings);
     }
   }
 
