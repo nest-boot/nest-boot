@@ -52,9 +52,7 @@ export class Logger implements LoggerService {
       // @ts-ignore
       ctx.logger = ctx.logger.child(bindings);
     } else {
-      this.__LOGGER__ = this.__LOGGER__
-        ? this.__LOGGER__.child(bindings)
-        : pino(bindings);
+      this.__LOGGER__ = (this.__LOGGER__ || pino()).child(bindings);
     }
   }
 
