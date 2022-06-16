@@ -62,8 +62,10 @@ export class PostgresqlSearchEngine implements SearchEngineInterface {
           `to_tsvector(${searchableOptions.searchableAttributes
             .map(
               (name) =>
-                metadata.props.find((prop) => prop.name === name)
-                  .fieldNames?.[0]
+                `COALESCE(${
+                  metadata.props.find((prop) => prop.name === name)
+                    .fieldNames?.[0]
+                }::text, '')`
             )
             .filter((name) => name)
             .join(" || ' ' || ")}) @@ to_tsquery(?)`,
