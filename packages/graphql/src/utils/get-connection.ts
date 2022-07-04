@@ -51,29 +51,43 @@ async function getCursorConnection<T extends AnyEntity>(
       {
         $and: [
           where,
-          ...(cursor.id
+          ...(orderBy && cursor.value
             ? [
+                {
+                  $or: [
+                    {
+                      [orderBy.field]: (
+                        pagingType === PagingType.FORWARD
+                          ? orderBy.direction === OrderDirection.ASC
+                          : orderBy.direction === OrderDirection.DESC
+                      )
+                        ? { $gt: cursor.value }
+                        : { $lt: cursor.value },
+                    },
+                    {
+                      $and: [
+                        {
+                          [orderBy.field]: { $eq: cursor.value },
+                        },
+                        {
+                          id:
+                            pagingType === PagingType.FORWARD
+                              ? { $gt: cursor.id }
+                              : { $lt: cursor.id },
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ]
+            : [
                 {
                   id:
                     pagingType === PagingType.FORWARD
                       ? { $gt: cursor.id }
                       : { $lt: cursor.id },
                 },
-              ]
-            : []),
-          ...(orderBy && cursor.value
-            ? [
-                {
-                  [orderBy.field]: (
-                    pagingType === PagingType.FORWARD
-                      ? orderBy.direction === OrderDirection.ASC
-                      : orderBy.direction === OrderDirection.DESC
-                  )
-                    ? { $gt: cursor.value }
-                    : { $lt: cursor.value },
-                },
-              ]
-            : []),
+              ]),
         ],
       } as FilterQuery<T>,
       {
