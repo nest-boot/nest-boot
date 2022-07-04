@@ -24,6 +24,7 @@ export function databaseConfig<D extends IDatabaseDriver<Connection>>(
     entities: ["dist/app/core/entities/**/*.entity.js"],
     entitiesTs: ["src/app/core/entities/**/*.entity.ts"],
     migrations: {
+      snapshot: false,
       path: "dist/database/migrations",
       pathTs: "src/database/migrations",
       generator: MigrationGenerator,
