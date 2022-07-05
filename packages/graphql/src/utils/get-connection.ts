@@ -44,51 +44,46 @@ async function getCursorConnection<T extends AnyEntity>(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as QueryOrderMap<T>;
 
+  const idWhere = cursor.id
+    ? [
+        {
+          id: {
+            [pagingType === PagingType.FORWARD ? "$gt" : "$lt"]: cursor.id,
+          },
+        },
+      ]
+    : [];
+
+  const valueWhere = [
+    {
+      $or: [
+        {
+          [orderBy.field]: (
+            pagingType === PagingType.FORWARD
+              ? orderBy.direction === OrderDirection.ASC
+              : orderBy.direction === OrderDirection.DESC
+          )
+            ? { $gt: cursor.value }
+            : { $lt: cursor.value },
+        },
+        {
+          $and: [
+            {
+              [orderBy.field]: { $eq: cursor.value },
+            },
+            ...idWhere,
+          ],
+        },
+      ],
+    },
+  ];
+
   // 搜索结果
   const [[results], [, totalCount]] = await Promise.all([
     service.search(
       query,
       {
-        $and: [
-          where,
-          ...(orderBy && cursor.value
-            ? [
-                {
-                  $or: [
-                    {
-                      [orderBy.field]: (
-                        pagingType === PagingType.FORWARD
-                          ? orderBy.direction === OrderDirection.ASC
-                          : orderBy.direction === OrderDirection.DESC
-                      )
-                        ? { $gt: cursor.value }
-                        : { $lt: cursor.value },
-                    },
-                    {
-                      $and: [
-                        {
-                          [orderBy.field]: { $eq: cursor.value },
-                        },
-                        {
-                          id:
-                            pagingType === PagingType.FORWARD
-                              ? { $gt: cursor.id }
-                              : { $lt: cursor.id },
-                        },
-                      ],
-                    },
-                  ],
-                },
-              ]
-            : [
-                {
-                  id:
-                    pagingType === PagingType.FORWARD
-                      ? { $gt: cursor.id }
-                      : { $lt: cursor.id },
-                },
-              ]),
-        ],
+        $and: [where, ...(orderBy && cursor.value ? valueWhere : idWhere)],
       } as FilterQuery<T>,
       {
         limit: limit + 1,
