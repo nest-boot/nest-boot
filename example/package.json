@@ -1,7 +1,7 @@
 {
   "private": true,
   "name": "example",
-  "version": "1.0.6-alpha.1",
+  "version": "1.0.6-alpha.2",
   "description": "",
   "author": "",
   "license": "MIT",
@@ -30,7 +30,7 @@
     "@nest-boot/command": "^2.0.0",
     "@nest-boot/common": "^2.0.0",
     "@nest-boot/database": "^2.0.0",
-    "@nest-boot/graphql": "2.1.2-alpha.1",
+    "@nest-boot/graphql": "2.1.2-alpha.2",
     "@nest-boot/health-check": "^2.0.0",
     "@nest-boot/i18next": "^2.0.0",
     "@nest-boot/mailer": "^2.0.0",
