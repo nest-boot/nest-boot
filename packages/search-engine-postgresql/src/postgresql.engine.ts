@@ -68,7 +68,7 @@ export class PostgresqlSearchEngine implements SearchEngineInterface {
                 }::text, '')`
             )
             .filter((name) => name)
-            .join(" || ' ' || ")}) @@ to_tsquery(?)`,
+            .join(" || ' ' || ")}) @@ plainto_tsquery(?)`,
           [query]
         );
       }
