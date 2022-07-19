@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/queue",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
   "homepage": "",
@@ -22,7 +22,7 @@
     "pino": "^8.2.0"
   },
   "devDependencies": {
-    "@nest-boot/common": "3.0.0",
+    "@nest-boot/common": "3.0.1",
     "@nestjs/common": "^9.0.4",
     "@nestjs/config": "^2.2.0",
     "@nestjs/core": "^9.0.4",
@@ -40,7 +40,7 @@
     "typescript": "^4.7.4"
   },
   "peerDependencies": {
-    "@nest-boot/common": "3.0.0",
+    "@nest-boot/common": "3.0.1",
     "@nestjs/common": "^9.0.0",
     "@nestjs/config": "^2.0.0",
     "@nestjs/core": "^9.0.0",
