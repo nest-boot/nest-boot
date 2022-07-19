@@ -1,12 +1,12 @@
-import argon2 from "argon2";
+import argon2 from "@node-rs/argon2";
 
 class Hash {
   async create(value: string | Buffer): Promise<string> {
-    return await argon2.hash(value);
+    return argon2.hash(value);
   }
 
   async verify(hash: string, value: string | Buffer): Promise<boolean> {
-    return await argon2.verify(hash, value);
+    return argon2.verify(hash, value);
   }
 }
 
