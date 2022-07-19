@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/health-check",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
   "homepage": "",
@@ -18,7 +18,7 @@
     "clean": "rimraf dist"
   },
   "devDependencies": {
-    "@nest-boot/common": "3.0.0",
+    "@nest-boot/common": "3.0.1",
     "@nest-boot/redis": "2.0.0",
     "@nestjs/common": "^9.0.4",
     "@nestjs/core": "^9.0.4",
@@ -34,7 +34,7 @@
     "typescript": "^4.7.4"
   },
   "peerDependencies": {
-    "@nest-boot/common": "3.0.0",
+    "@nest-boot/common": "3.0.1",
     "@nest-boot/redis": "2.0.0",
     "@nestjs/common": "^9.0.0",
     "@nestjs/core": "^9.0.0",
