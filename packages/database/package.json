@@ -40,7 +40,7 @@
     "@mikro-orm/migrations": "^5.0.0",
     "@mikro-orm/nestjs": "^5.0.0",
     "@mikro-orm/reflection": "^5.0.0",
-    "@nestjs/common": "^8.0.0"
+    "@nestjs/common": "^9.0.0"
   },
   "publishConfig": {
     "access": "public"
