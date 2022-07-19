@@ -52,7 +52,7 @@
     "apollo-server-errors": "^3.0.0",
     "cookie-parser": "^1.4.5",
     "express": "^4.0.0",
-    "graphql": "^15.0.0",
+    "graphql": "^15.0.0 || ^16.0.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.0.0"
   },
