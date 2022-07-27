@@ -21,8 +21,8 @@ export function databaseConfig<D extends IDatabaseDriver<Connection>>(
       `${process.env.DATABASE_TYPE}://${process.env.DATABASE_USERNAME}:${process.env.DATABASE_PASSWORD}@${process.env.DATABASE_HOST}:${process.env.DATABASE_PORT}`,
     dbName: options?.dbName || process.env.DATABASE_NAME,
     metadataProvider: TsMorphMetadataProvider,
-    entities: ["dist/app/core/entities/**/*.entity.js"],
-    entitiesTs: ["src/app/core/entities/**/*.entity.ts"],
+    entities: ["dist/**/*.entity.js"],
+    entitiesTs: ["src/**/*.entity.ts"],
     migrations: {
       snapshot: false,
       path: "dist/database/migrations",
