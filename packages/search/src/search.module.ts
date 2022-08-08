@@ -46,6 +46,7 @@ export class SearchModule {
     const providers = this.createAsyncProviders(options);
 
     return {
+      global: true,
       module: SearchModule,
       imports: [DiscoveryModule, ...(options.imports || [])],
       providers: [...providers],
