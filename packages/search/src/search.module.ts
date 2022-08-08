@@ -6,10 +6,8 @@ import {
 } from "@nestjs/common";
 import { DiscoveryModule } from "@nestjs/core";
 
-import { SearchCommand } from "./commands/search.command";
 import { SearchEngine } from "./engines/search.engine";
 import { SearchEngineInterface } from "./interfaces/search-engine.interface";
-import { SearchQueue } from "./queues/search.queue";
 
 export interface SearchModuleOptions {
   engine?: SearchEngineInterface;
@@ -39,8 +37,8 @@ export class SearchModule {
       global: true,
       module: SearchModule,
       imports: [DiscoveryModule],
-      providers: [SearchQueue, SearchCommand, ...providers],
-      exports: [SearchQueue, ...providers],
+      providers,
+      exports: [...providers],
     };
   }
 
@@ -50,8 +48,8 @@ export class SearchModule {
     return {
       module: SearchModule,
       imports: [DiscoveryModule, ...(options.imports || [])],
-      providers: [SearchQueue, SearchCommand, ...providers],
-      exports: [SearchQueue, ...providers],
+      providers: [...providers],
+      exports: [...providers],
     };
   }
 

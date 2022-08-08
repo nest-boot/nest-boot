@@ -10,7 +10,6 @@ import { Inject, Injectable } from "@nestjs/common";
 
 import { SearchEngine } from "../engines/search.engine";
 import { SearchableOptions } from "../interfaces/searchable-options.interface";
-import { SearchQueue } from "../queues/search.queue";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface Type<T = any> extends Function {
@@ -27,10 +26,6 @@ export interface SearchableEntityService<T extends AnyEntity>
     where: FilterQuery<T>,
     options?: FindOptions<T>
   ): Promise<[T[], number]>;
-
-  searchable(where: FilterQuery<T>): Promise<this>;
-
-  unsearchable(where: FilterQuery<T>): Promise<this>;
 }
 
 export function mixinSearchable<T extends AnyEntity>(
@@ -41,9 +36,6 @@ export function mixinSearchable<T extends AnyEntity>(
   class SearchableTrait extends Base implements SearchableEntityService<T> {
     @Inject()
     readonly entityManager: EntityManager;
-
-    @Inject()
-    readonly searchQueue: SearchQueue;
 
     @Inject()
     readonly searchEngine: SearchEngine;
@@ -73,28 +65,6 @@ export function mixinSearchable<T extends AnyEntity>(
         ),
         count,
       ];
-    }
-
-    async searchable(where: FilterQuery<T>) {
-      await this.chunkById(where, { limit: 500 }, async (entities) => {
-        await this.searchQueue.add("makeSearchable", {
-          index: this.searchableOptions.index,
-          entities,
-        });
-      });
-
-      return this;
-    }
-
-    async unsearchable(where: FilterQuery<T>) {
-      await this.chunkById(where, { limit: 500 }, async (entities) => {
-        await this.searchQueue.add("unmakeSearchable", {
-          index: this.searchableOptions.index,
-          entities,
-        });
-      });
-
-      return this;
     }
   }
 
