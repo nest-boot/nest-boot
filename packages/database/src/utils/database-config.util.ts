@@ -19,7 +19,7 @@ export function databaseConfig<D extends IDatabaseDriver<Connection>>(
     timezone: options?.timezone || process.env.DATABASE_TIMEZONE || process.env.TZ,
     clientUrl:
       options?.clientUrl ||
-      `${process.env.DATABASE_TYPE}://${process.env.DATABASE_USERNAME}:${process.env.DATABASE_PASSWORD}@${process.env.DATABASE_HOST}:${process.env.DATABASE_PORT}`,
+      `${process.env.DATABASE_TYPE}://${process.env.DATABASE_USERNAME}:${process.env.DATABASE_PASSWORD}@${process.env.DATABASE_HOST}:${process.env.DATABASE_PORT}/${process.env.DATABASE_NAME}?application_name=${process.env.APP_NAME}`,
     dbName: options?.dbName || process.env.DATABASE_NAME,
     metadataProvider: TsMorphMetadataProvider,
     entities: ["dist/**/*.entity.js"],
