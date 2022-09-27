@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/graphql",
-  "version": "3.0.7",
+  "version": "3.0.8",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
   "homepage": "",
@@ -23,8 +23,8 @@
   },
   "devDependencies": {
     "@mikro-orm/core": "^5.2.3",
-    "@nest-boot/database": "3.1.0",
-    "@nest-boot/search": "3.0.7",
+    "@nest-boot/database": "3.1.1",
+    "@nest-boot/search": "3.0.8",
     "@nestjs/common": "^9.0.4",
     "@nestjs/core": "^9.0.4",
     "@nestjs/graphql": "^10.0.18",
@@ -43,8 +43,8 @@
     "typescript": "^4.7.4"
   },
   "peerDependencies": {
-    "@nest-boot/database": "3.1.0",
-    "@nest-boot/search": "3.0.7",
+    "@nest-boot/database": "3.1.1",
+    "@nest-boot/search": "3.0.8",
     "@nestjs/common": "^9.0.0",
     "@nestjs/core": "^9.0.0",
     "@nestjs/graphql": "^10.0.0",
