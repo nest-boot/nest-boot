@@ -60,7 +60,7 @@ export function mixinSearchable<T extends AnyEntity>(
 
       return [
         await this.repository.find(
-          { id: { $in: ids } } as FilterQuery<T>,
+          { id: { $in: ids } } as unknown as FilterQuery<T>,
           options
         ),
         count,

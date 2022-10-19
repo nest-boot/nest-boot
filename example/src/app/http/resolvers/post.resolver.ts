@@ -1,14 +1,14 @@
+import { EntityManager } from "@mikro-orm/postgresql";
 import { Can } from "@nest-boot/common";
 import { QueryConnectionArgs } from "@nest-boot/graphql";
 import { Args, ID, Mutation, Query, Resolver } from "@nestjs/graphql";
 
+import { Post } from "../../core/entities/post.entity";
 import { PostService } from "../../core/services/post.service";
 import { CreatePostInput } from "../inputs/create-post.input";
 import { UpdatePostInput } from "../inputs/update-post.input";
 import { PostObject } from "../objects/post.object";
 import { PostConnection } from "../objects/post-connection.object";
-import { EntityManager } from "@mikro-orm/postgresql";
-import { Post } from "../../core/entities/post.entity";
 
 @Resolver(() => PostObject)
 export class PostResolver {
@@ -32,8 +32,6 @@ export class PostResolver {
   @Can("PUBLIC")
   @Mutation(() => PostObject)
   async createPost(@Args("input") input: CreatePostInput): Promise<PostObject> {
-    console.log(this.entityManager.getMetadata().get<Post>(Post.name).props[0]);
-
     const post = this.postService.repository.create(input);
 
     await this.postService.repository.persistAndFlush(post);

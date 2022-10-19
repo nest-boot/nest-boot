@@ -1,9 +1,10 @@
 import {
-  Property,
   Entity,
-  ManyToOne,
   IdentifiedReference,
+  Index,
+  ManyToOne,
   PrimaryKey,
+  Property,
   t,
 } from "@mikro-orm/core";
 import { SnowflakeIdGenerator } from "snowflake-id-generator";
@@ -18,11 +19,15 @@ export class Post {
   @Property()
   title: string;
 
+  @Index({ type: "fulltext" })
   @Property({ type: "text" })
-  html: string = "html";
+  html = "html";
 
   @Property({ type: "text" })
   markdown: string;
+
+  @Property()
+  tags: string[] = [];
 
   @Property()
   createdAt: Date = new Date();

@@ -9,6 +9,7 @@ import {
 import { Injectable, Scope } from "@nestjs/common";
 import { DiscoveryService } from "@nestjs/core";
 import { InstanceWrapper } from "@nestjs/core/injector/instance-wrapper";
+import { parse } from "search-syntax";
 
 @Injectable({ scope: Scope.TRANSIENT })
 export class PostgresqlSearchEngine implements SearchEngineInterface {
@@ -59,17 +60,17 @@ export class PostgresqlSearchEngine implements SearchEngineInterface {
 
       if (query) {
         queryBuilder.andWhere(
-          `to_tsvector(${searchableOptions.searchableAttributes
-            .map(
-              (name) =>
-                `COALESCE(${
-                  metadata.props.find((prop) => prop.name === name)
-                    .fieldNames?.[0]
-                }::text, '')`
-            )
-            .filter((name) => name)
-            .join(" || ' ' || ")}) @@ plainto_tsquery(?)`,
-          [query]
+          parse(query, {
+            arrayAttributes: metadata.props
+              .filter(({ type }) => type === "ArrayType")
+              .map(({ name }) => name),
+            fulltextAttributes: metadata.indexes
+              .filter(
+                ({ type, properties }) =>
+                  type === "fulltext" && typeof properties === "string"
+              )
+              .map(({ properties }) => properties as string),
+          })
         );
       }
 
