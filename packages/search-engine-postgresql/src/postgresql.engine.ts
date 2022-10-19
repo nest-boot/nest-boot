@@ -61,6 +61,7 @@ export class PostgresqlSearchEngine implements SearchEngineInterface {
       if (query) {
         queryBuilder.andWhere(
           parse(query, {
+            globalAttributes: searchableOptions?.globalAttributes,
             arrayAttributes: metadata.props
               .filter(({ type }) => type === "ArrayType")
               .map(({ name }) => name),
