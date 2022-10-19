@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/command",
-  "version": "3.0.1",
+  "version": "3.1.0",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
   "homepage": "",
@@ -33,7 +33,7 @@
     "yargs": "^17.6.0"
   },
   "devDependencies": {
-    "@nest-boot/common": "3.0.1",
+    "@nest-boot/common": "3.1.0",
     "@nestjs/common": "^9.1.4",
     "@nestjs/core": "^9.1.4",
     "@types/fs-extra": "^9.0.13",
@@ -53,7 +53,7 @@
     "typescript": "^4.8.4"
   },
   "peerDependencies": {
-    "@nest-boot/common": "3.0.1",
+    "@nest-boot/common": "3.1.0",
     "@nestjs/common": "^9.0.0",
     "@nestjs/core": "^9.0.0",
     "reflect-metadata": "^0.1.13",
