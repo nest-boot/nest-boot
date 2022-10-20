@@ -19,7 +19,7 @@
     "test": "jest"
   },
   "dependencies": {
-    "search-syntax": "^1.4.0"
+    "search-syntax": "^1.5.0"
   },
   "devDependencies": {
     "@mikro-orm/core": "^5.4.2",

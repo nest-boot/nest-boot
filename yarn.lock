@@ -9875,10 +9875,10 @@ schema-utils@^3.1.0, schema-utils@^3.1.1:
     ajv "^6.12.5"
     ajv-keywords "^3.5.2"
 
-search-syntax@^1.4.0:
-  version "1.4.0"
-  resolved "https://registry.yarnpkg.com/search-syntax/-/search-syntax-1.4.0.tgz#36a2946af7c2d2d63cd1c00b0449a2836e72c3a2"
-  integrity sha512-ldJVCjJ9l0qqGl+tkico9oItTjSpu/UVBlaRKfr3DGB9CPI1zvANEZIVydkjP5fW1adZXN2JSfu+x4hRnY91CQ==
+search-syntax@^1.5.0:
+  version "1.5.0"
+  resolved "https://registry.yarnpkg.com/search-syntax/-/search-syntax-1.5.0.tgz#3671bb8d913f7de5763009b53fbb49e81753a0b5"
+  integrity sha512-jcLM2EB05jYESABoSZtaO8P63xPFLyoBzWSwZsvMWjyhWCT9BJLyVvJQg1b9Mb2blithQ34jj4zvizShC3zJYg==
   dependencies:
     chevrotain "^10.3.0"
 
