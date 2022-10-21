@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/search",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
   "homepage": "",
@@ -20,8 +20,8 @@
   },
   "devDependencies": {
     "@mikro-orm/core": "^5.4.2",
-    "@nest-boot/common": "3.1.0",
-    "@nest-boot/database": "3.2.0",
+    "@nest-boot/common": "3.2.0",
+    "@nest-boot/database": "3.3.0",
     "@nestjs/common": "^9.1.4",
     "@nestjs/core": "^9.1.4",
     "@types/jest": "^29.2.0",
@@ -35,8 +35,8 @@
   },
   "peerDependencies": {
     "@mikro-orm/core": "^5.0.0",
-    "@nest-boot/common": "3.1.0",
-    "@nest-boot/database": "3.2.0",
+    "@nest-boot/common": "3.2.0",
+    "@nest-boot/database": "3.3.0",
     "@nestjs/common": "^9.0.0",
     "@nestjs/core": "^9.0.0",
     "reflect-metadata": "^0.1.13",
