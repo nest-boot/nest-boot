@@ -19,7 +19,8 @@
     "test": "jest"
   },
   "dependencies": {
-    "search-syntax": "^1.6.0"
+    "lodash": "^4.17.21",
+    "search-syntax": "^2.1.0"
   },
   "devDependencies": {
     "@mikro-orm/core": "^5.4.2",
@@ -28,6 +29,7 @@
     "@nest-boot/search": "3.2.0",
     "@nestjs/common": "^9.1.4",
     "@nestjs/core": "^9.1.4",
+    "eslint-import-resolver-typescript": "^3.5.2",
     "jest": "^29.2.1",
     "rimraf": "^3.0.2",
     "ts-jest": "^29.0.3",

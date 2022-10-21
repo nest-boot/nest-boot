@@ -40,7 +40,7 @@
     "@types/inflection": "^1.13.0",
     "@types/jest": "^29.2.0",
     "@types/lodash": "^4.14.186",
-    "@types/node": "^18.11.2",
+    "@types/node": "^18.11.3",
     "@types/nunjucks": "^3.2.1",
     "@types/prettier": "^2.7.1",
     "@types/sql-formatter": "^4.0.1",

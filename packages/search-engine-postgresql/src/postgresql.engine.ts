@@ -9,7 +9,9 @@ import {
 import { Injectable, Scope } from "@nestjs/common";
 import { DiscoveryService } from "@nestjs/core";
 import { InstanceWrapper } from "@nestjs/core/injector/instance-wrapper";
+import _ from "lodash";
 import { parse } from "search-syntax";
+import { Attributes } from "search-syntax/dist/interfaces";
 
 @Injectable({ scope: Scope.TRANSIENT })
 export class PostgresqlSearchEngine implements SearchEngineInterface {
@@ -61,16 +63,56 @@ export class PostgresqlSearchEngine implements SearchEngineInterface {
       if (query) {
         queryBuilder.andWhere(
           parse(query, {
-            globalAttributes: searchableOptions?.globalAttributes,
-            arrayAttributes: metadata.props
-              .filter(({ type }) => type === "ArrayType")
-              .map(({ name }) => name),
-            fulltextAttributes: metadata.indexes
-              .filter(
-                ({ type, properties }) =>
-                  type === "fulltext" && typeof properties === "string"
-              )
-              .map(({ properties }) => properties as string),
+            attributes: _.uniq([
+              ...(searchableOptions?.filterableAttributes || []),
+              ...(searchableOptions?.searchableAttributes || []),
+            ]).reduce<Attributes>((result, field) => {
+              const prop = metadata.properties[field];
+
+              if (prop) {
+                return {
+                  ...result,
+                  [field]: {
+                    type: (() => {
+                      switch (prop.type) {
+                        case "boolean":
+                          return "boolean";
+                        case "integer":
+                        case "smallint":
+                        case "tinyint":
+                        case "mediumint":
+                        case "float":
+                        case "double":
+                        case "decimal":
+                          return "number";
+                        case "date":
+                        case "time":
+                        case "datetime":
+                          return "date";
+                        case "bigint":
+                        case "enum":
+                        case "string":
+                        case "uuid":
+                        case "text":
+                        default:
+                          return "string";
+                      }
+                    })(),
+                    array: prop.array,
+                    fulltext: metadata.indexes.some(
+                      ({ type, properties }) =>
+                        properties === field && type === "fulltext"
+                    ),
+                    filterable:
+                      searchableOptions?.filterableAttributes?.includes(field),
+                    searchable:
+                      searchableOptions?.searchableAttributes?.includes(field),
+                  },
+                };
+              }
+
+              return result;
+            }, {}),
           })
         );
       }
