@@ -49,14 +49,14 @@ export function createEntityService<T extends AnyEntity<T> & { id: string }>(
         // eslint-disable-next-line no-await-in-loop
         const entities = await this.repository.find(
           {
-            $and: [where, { id: { $gt: lastId } }],
+            $and: [where, ...(lastId ? [{ id: { $gt: lastId } }] : [])],
           } as FilterQuery<T>,
           { ...options, orderBy: { id: QueryOrder.ASC } as QueryOrderMap<T> }
         );
 
         count = entities.length;
 
-        if (entities.length > 0) {
+        if (count > 0) {
           lastId = entities[count - 1].id;
         }
 
