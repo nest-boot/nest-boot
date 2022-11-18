@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/auth",
-  "version": "3.2.1",
+  "version": "3.2.2",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
   "homepage": "",
@@ -22,8 +22,8 @@
   },
   "devDependencies": {
     "@mikro-orm/core": "^5.5.3",
-    "@nest-boot/common": "3.2.0",
-    "@nest-boot/database": "3.3.1",
+    "@nest-boot/common": "3.2.1",
+    "@nest-boot/database": "3.3.2",
     "@nestjs/common": "^9.2.0",
     "@nestjs/config": "^2.2.0",
     "@nestjs/core": "^9.2.0",
@@ -41,8 +41,8 @@
   },
   "peerDependencies": {
     "@mikro-orm/core": "^5.0.0",
-    "@nest-boot/common": "3.2.0",
-    "@nest-boot/database": "3.3.1",
+    "@nest-boot/common": "3.2.1",
+    "@nest-boot/database": "3.3.2",
     "@nestjs/common": "^9.0.0",
     "@nestjs/core": "^9.0.0",
     "express": "^4.0.0",
