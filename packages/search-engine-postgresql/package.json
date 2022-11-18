@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/search-engine-postgresql",
-  "version": "2.3.1",
+  "version": "2.3.2",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
   "homepage": "",
@@ -25,8 +25,8 @@
   "devDependencies": {
     "@mikro-orm/core": "^5.5.3",
     "@mikro-orm/postgresql": "^5.5.3",
-    "@nest-boot/database": "3.3.1",
-    "@nest-boot/search": "3.3.1",
+    "@nest-boot/database": "3.3.2",
+    "@nest-boot/search": "3.3.2",
     "@nestjs/common": "^9.2.0",
     "@nestjs/core": "^9.2.0",
     "eslint-import-resolver-typescript": "^3.5.2",
@@ -37,8 +37,8 @@
   },
   "peerDependencies": {
     "@mikro-orm/postgresql": "^5.0.0",
-    "@nest-boot/database": "3.3.1",
-    "@nest-boot/search": "3.3.1",
+    "@nest-boot/database": "3.3.2",
+    "@nest-boot/search": "3.3.2",
     "@nestjs/common": "^9.0.0",
     "@nestjs/core": "^8.0.0"
   },
