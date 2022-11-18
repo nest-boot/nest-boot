@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function */
-import { FilterQuery, FindOptions } from "@mikro-orm/core";
+import { AnyEntity, FilterQuery, FindOptions } from "@mikro-orm/core";
 import { EntityManager } from "@mikro-orm/postgresql";
 import {
   SearchableEntityService,
@@ -50,18 +50,12 @@ export class PostgresqlSearchEngine implements SearchEngineInterface {
 
       const metadata = this.entityManager.getMetadata().get(index);
 
-      const queryBuilder = this.entityManager.createQueryBuilder<{
-        id: string | number;
-      }>(index);
+      const repository = this.entityManager.getRepository<AnyEntity>(index);
 
-      queryBuilder
-        .where(where)
-        .limit(options?.limit)
-        .offset(options?.offset)
-        .orderBy(options?.orderBy);
+      const whereGroup = [where];
 
       if (query) {
-        queryBuilder.andWhere(
+        whereGroup.push(
           parse(query, {
             attributes: _.uniq([
               ...(searchableOptions?.filterableAttributes || []),
@@ -117,14 +111,19 @@ export class PostgresqlSearchEngine implements SearchEngineInterface {
         );
       }
 
-      const countQueryBuilder = queryBuilder.clone();
-
       return await Promise.all([
         (async () =>
           (
-            await queryBuilder.select("id").getResultList()
-          ).map((item) => item.id))(),
-        countQueryBuilder.getCount(),
+            await repository.find(
+              { $and: whereGroup },
+              {
+                limit: options?.limit,
+                offset: options?.offset,
+                orderBy: options?.orderBy,
+              }
+            )
+          ).map((item: any) => item.id))(),
+        repository.count({ $and: whereGroup }),
       ]);
     }
   }
