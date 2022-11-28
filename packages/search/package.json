@@ -14,18 +14,21 @@
     "dist"
   ],
   "scripts": {
-    "build": "yarn clean && tsc -p tsconfig.build.json",
-    "clean": "rimraf dist",
-    "test": "jest"
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist"
   },
   "devDependencies": {
     "@mikro-orm/core": "^5.5.3",
-    "@nest-boot/common": "3.2.1",
-    "@nest-boot/database": "3.3.2",
+    "@nest-boot/common": "workspace:*",
+    "@nest-boot/database": "workspace:*",
+    "@nest-boot/tsconfig": "workspace:*",
     "@nestjs/common": "^9.2.0",
     "@nestjs/core": "^9.2.0",
     "@types/jest": "^29.2.3",
     "@types/lodash": "^4.14.189",
+    "eslint": "^8.28.0",
+    "eslint-config-nest-boot": "workspace:*",
     "jest": "^29.3.1",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",
@@ -35,8 +38,8 @@
   },
   "peerDependencies": {
     "@mikro-orm/core": "^5.0.0",
-    "@nest-boot/common": "3.2.1",
-    "@nest-boot/database": "3.3.2",
+    "@nest-boot/common": "*",
+    "@nest-boot/database": "*",
     "@nestjs/common": "^9.0.0",
     "@nestjs/core": "^9.0.0",
     "reflect-metadata": "^0.1.13",

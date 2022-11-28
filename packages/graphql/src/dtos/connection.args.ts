@@ -16,12 +16,6 @@ export class ConnectionArgs {
   @Field(() => Int, { nullable: true })
   last?: number;
 
-  @Field(() => Int, { nullable: true })
-  page?: number;
-
-  @Field(() => Int, { nullable: true })
-  pageSize?: number;
-
   @Field(() => Ordering, { nullable: true })
   orderBy?: Ordering;
 }

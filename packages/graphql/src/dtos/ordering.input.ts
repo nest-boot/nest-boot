@@ -5,8 +5,8 @@ import { OrderDirection } from "../enums/order-direction.enum";
 @InputType()
 export class Ordering {
   @Field()
-  field: string;
+  field!: string;
 
   @Field(() => OrderDirection)
-  direction: OrderDirection;
+  direction!: OrderDirection;
 }

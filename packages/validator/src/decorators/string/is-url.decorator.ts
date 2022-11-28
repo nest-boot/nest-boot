@@ -30,7 +30,8 @@ export function IsUrl(
       name: IS_URL,
       constraints: [options],
       validator: {
-        validate: (value, args): boolean => isURL(value, args.constraints[0]),
+        validate: (value, args): boolean =>
+          typeof args !== "undefined" && isURL(value, args.constraints[0]),
         defaultMessage: buildI18nMessage(() => "is-url"),
       },
     },

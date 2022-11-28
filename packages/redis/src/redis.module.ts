@@ -26,7 +26,7 @@ export class RedisModule {
     const providers = [
       {
         provide: Redis,
-        useValue: new Redis(options),
+        useValue: new Redis(options || { host: "localhost", port: 6379 }),
       },
     ];
 

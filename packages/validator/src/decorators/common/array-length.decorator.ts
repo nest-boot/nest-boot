@@ -48,33 +48,35 @@ function arrayLengthMessage(
 export function ArrayLength(
   validationOptions: ArrayLengthOptions
 ): PropertyDecorator {
-  return (target: unknown, propertyName: string) => {
-    registerDecorator({
-      name: "arrayLength",
-      target: target.constructor,
-      propertyName,
-      options: validationOptions,
-      validator: {
-        validate(value: unknown) {
-          if (Array.isArray(value)) {
-            const { min, max } = validationOptions;
+  return (target: Object, propertyName: string | symbol) => {
+    if (typeof propertyName === "string") {
+      registerDecorator({
+        name: "arrayLength",
+        target: target.constructor,
+        propertyName,
+        options: validationOptions,
+        validator: {
+          validate(value: unknown) {
+            if (Array.isArray(value)) {
+              const { min, max } = validationOptions;
 
-            if ((min && value.length < min) || (max && value.length > max)) {
-              return false;
+              if ((min && value.length < min) || (max && value.length > max)) {
+                return false;
+              }
+
+              return true;
             }
 
-            return true;
-          }
-
-          // 不是数组
-          return false;
+            // 不是数组
+            return false;
+          },
+          defaultMessage(args) {
+            const { value, property } = args!;
+            const { min, max } = validationOptions;
+            return arrayLengthMessage(value, property, min, max);
+          },
         },
-        defaultMessage(args) {
-          const { value, property } = args;
-          const { min, max } = validationOptions;
-          return arrayLengthMessage(value, property, min, max);
-        },
-      },
-    });
+      });
+    }
   };
 }

@@ -1,19 +1,31 @@
 import { AsyncLocalStorage } from "async_hooks";
+import { Type } from "@nestjs/common";
 
 export class Context implements NestBootCommon.Context {
-  private static storage = new AsyncLocalStorage<NestBootCommon.Context>();
+  private readonly container = new Map();
 
-  constructor(context: Partial<NestBootCommon.Context>) {
-    Object.entries(context).forEach(([key, value]) => {
-      this[key] = value;
-    });
+  private static readonly storage =
+    new AsyncLocalStorage<NestBootCommon.Context>();
+
+  get<T>(key: Type<T> | string | symbol): T | undefined {
+    return this.container.get(key);
   }
 
-  static get() {
-    return this.storage.getStore();
+  set<T>(key: Type<T> | string | symbol, value: T): void {
+    this.container.set(key, value);
   }
 
-  static run<R>(store: Partial<NestBootCommon.Context>, callback: () => R) {
-    return this.storage.run(new this(store), callback);
+  static get(): NestBootCommon.Context {
+    const store = this.storage.getStore();
+
+    if (typeof store === "undefined") {
+      throw new Error("Failed to get the context");
+    }
+
+    return store;
+  }
+
+  static run<R>(ctx: NestBootCommon.Context, callback: () => R): R {
+    return this.storage.run(ctx, callback);
   }
 }

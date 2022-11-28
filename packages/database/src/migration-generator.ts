@@ -8,7 +8,7 @@ export class MigrationGenerator extends TSMigrationGenerator {
 
     const driverType = this.driver.config.get("type");
 
-    let language: FormatOptions["language"];
+    let language: FormatOptions["language"] = "postgresql";
 
     switch (driverType) {
       case "mysql":

@@ -4,6 +4,7 @@ import {
   EntityRepository,
   FilterQuery,
   FindOptions,
+  Loaded,
   QueryOrder,
   QueryOrderMap,
 } from "@mikro-orm/core";
@@ -33,7 +34,7 @@ export function createEntityService<T extends AnyEntity<T> & { id: string }>(
   @Injectable()
   class AbstractEntityService implements EntityService<T> {
     @InjectRepository(entityClass)
-    readonly repository: EntityRepository<T>;
+    readonly repository!: EntityRepository<T>;
 
     readonly entityClass = entityClass;
 
@@ -42,12 +43,12 @@ export function createEntityService<T extends AnyEntity<T> & { id: string }>(
       options: ChunkByIdOptions<T, P>,
       callback: (entities: T[]) => Promise<void>
     ): Promise<this> {
-      let lastId: string = null;
+      let lastId: string | null = null;
       let count = 0;
 
       do {
         // eslint-disable-next-line no-await-in-loop
-        const entities = await this.repository.find(
+        const entities: Loaded<T, P>[] = await this.repository.find(
           {
             $and: [where, ...(lastId ? [{ id: { $gt: lastId } }] : [])],
           } as FilterQuery<T>,

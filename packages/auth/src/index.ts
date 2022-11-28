@@ -1,10 +1,12 @@
 /* eslint-disable @typescript-eslint/no-namespace */
 
+import { Loaded } from "@mikro-orm/core";
+
 declare global {
   namespace NestBootCommon {
     interface Context {
       accessToken?: string;
-      user?: NestBootAuth.User;
+      user?: Loaded<NestBootAuth.User, never>;
     }
   }
 

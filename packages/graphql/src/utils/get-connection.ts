@@ -1,4 +1,3 @@
-/* eslint-disable no-nested-ternary */
 import {
   AnyEntity,
   FilterQuery,
@@ -22,17 +21,31 @@ async function getCursorConnection<T extends AnyEntity>(
 ): Promise<Connection<T>> {
   // 提取集合参数
   const {
+    first,
+    last,
     after,
     before,
-    query,
+    query = "",
     orderBy = { field: "createdAt", direction: OrderDirection.ASC },
   } = args;
-  const limit = args.first || args.last || 0;
-  const cursor = new Cursor(after || before);
+  const limit =
+    typeof first !== "undefined"
+      ? first
+      : typeof last !== "undefined"
+      ? last
+      : 0;
+
+  const cursor =
+    typeof after !== "undefined"
+      ? new Cursor(after)
+      : typeof before !== "undefined"
+      ? new Cursor(before)
+      : undefined;
+
   const pagingType = getPagingType(args);
 
   // 声明搜索参数
-  const order: QueryOrderMap<T> = {
+  const order: QueryOrderMap<any> = {
     [orderBy.field]: (
       pagingType === PagingType.FORWARD
         ? orderBy.direction === OrderDirection.ASC
@@ -41,66 +54,67 @@ async function getCursorConnection<T extends AnyEntity>(
       ? QueryOrder.ASC
       : QueryOrder.DESC,
     id: pagingType === PagingType.FORWARD ? QueryOrder.ASC : QueryOrder.DESC,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } as QueryOrderMap<T>;
+  };
 
-  const idWhere = cursor.id
-    ? [
-        {
-          id: {
-            [pagingType === PagingType.FORWARD ? "$gt" : "$lt"]: cursor.id,
-          },
-        },
-      ]
-    : [];
-
-  const valueWhere = [
-    {
-      $or: [
-        {
-          [orderBy.field]: (
-            pagingType === PagingType.FORWARD
-              ? orderBy.direction === OrderDirection.ASC
-              : orderBy.direction === OrderDirection.DESC
-          )
-            ? { $gt: cursor.value }
-            : { $lt: cursor.value },
-        },
-        {
-          $and: [
-            {
-              [orderBy.field]: { $eq: cursor.value },
+  const idWhere: Array<FilterQuery<any>> =
+    typeof cursor?.id !== "undefined"
+      ? [
+          {
+            id: {
+              [pagingType === PagingType.FORWARD ? "$gt" : "$lt"]: cursor.id,
             },
-            ...idWhere,
-          ],
-        },
-      ],
-    },
-  ];
+          },
+        ]
+      : [];
+
+  const valueWhere: Array<FilterQuery<any>> =
+    typeof orderBy !== "undefined" && typeof cursor?.value !== "undefined"
+      ? [
+          {
+            $or: [
+              {
+                [orderBy.field]: (
+                  pagingType === PagingType.FORWARD
+                    ? orderBy.direction === OrderDirection.ASC
+                    : orderBy.direction === OrderDirection.DESC
+                )
+                  ? { $gt: cursor.value }
+                  : { $lt: cursor.value },
+              },
+              {
+                $and: [
+                  {
+                    [orderBy.field]: { $eq: cursor.value },
+                  },
+                  ...idWhere,
+                ],
+              },
+            ],
+          },
+        ]
+      : idWhere;
 
   // 搜索结果
   const [[results], [, totalCount]] = await Promise.all([
-    service.search(
-      query,
-      {
-        $and: [where, ...(orderBy && cursor.value ? valueWhere : idWhere)],
-      } as FilterQuery<T>,
-      {
-        limit: limit + 1,
-        orderBy: order,
-      }
-    ),
-    service.search(query, where, { limit: 0 }),
+    service.search(query, {
+      where: [where, ...valueWhere],
+      limit: limit + 1,
+      orderBy: order,
+    }),
+    service.search(query, {
+      where: typeof where !== "undefined" ? where : undefined,
+      limit: 0,
+    }),
   ]);
 
   // 重新排序结果
   const entities = _.orderBy(
     results,
-    [...(orderBy ? [orderBy.field] : []), "id"],
+    [...(typeof orderBy !== "undefined" ? [orderBy.field] : []), "id"],
     [
-      ...((orderBy
+      ...((typeof orderBy !== "undefined"
         ? [orderBy.direction === OrderDirection.ASC ? "asc" : "desc"]
-        : []) as ("asc" | "desc")[]),
+        : []) as Array<"asc" | "desc">),
       "asc",
     ]
   );
@@ -116,7 +130,7 @@ async function getCursorConnection<T extends AnyEntity>(
     node,
     cursor: new Cursor({
       id: node.id,
-      value: orderBy ? node[orderBy.field] : undefined,
+      value: typeof orderBy !== "undefined" ? node[orderBy.field] : undefined,
     }).toString(),
   }));
 
@@ -127,60 +141,14 @@ async function getCursorConnection<T extends AnyEntity>(
       ...(pagingType === PagingType.FORWARD
         ? {
             hasNextPage: entities.length > limit,
-            hasPreviousPage: !!after,
+            hasPreviousPage: typeof after !== "undefined",
           }
         : {
-            hasNextPage: !!before,
+            hasNextPage: typeof before !== "undefined",
             hasPreviousPage: entities.length > limit,
           }),
-      startCursor: edges[0]?.cursor || null,
-      endCursor: edges[edges.length - 1]?.cursor || null,
-    },
-    edges,
-  };
-}
-
-async function getOffsetConnection<T extends AnyEntity>(
-  service: SearchableEntityService<T>,
-  args: QueryConnectionArgs,
-  where?: FilterQuery<T>
-): Promise<Connection<T>> {
-  const {
-    page = 1,
-    pageSize = 20,
-    query,
-    orderBy = { field: "createdAt", direction: OrderDirection.ASC },
-  } = args;
-
-  // 搜索结果
-  const [[entities], [, totalCount]] = await Promise.all([
-    service.search(query, where, {
-      // where,
-      // skip: page * pageSize,
-      // take: pageSize,
-      // order: { [orderBy.field]: orderBy.direction },
-    }),
-    service.search(query, where, {
-      // where,
-      // take: 0,
-    }),
-  ]);
-
-  // 根据结果生成 edges
-  const edges = entities.map((node: T) => ({
-    node,
-    cursor: new Cursor({
-      id: node.id,
-      value: orderBy ? node[orderBy.field] : undefined,
-    }).toString(),
-  }));
-
-  // 返回集合
-  return {
-    totalCount,
-    pageInfo: {
-      hasNextPage: totalCount > page * pageSize + entities.length,
-      hasPreviousPage: page > 1,
+      startCursor: edges[0]?.cursor,
+      endCursor: edges[edges.length - 1]?.cursor,
     },
     edges,
   };
@@ -191,9 +159,5 @@ export async function getConnection<T extends AnyEntity>(
   args: QueryConnectionArgs,
   where?: FilterQuery<T>
 ): Promise<Connection<T>> {
-  if (args.page) {
-    return await getOffsetConnection<T>(service, args, where);
-  }
-
   return await getCursorConnection<T>(service, args, where);
 }

@@ -12,6 +12,7 @@ export function Max(
       constraints: [maxValue],
       validator: {
         validate: (value, args): boolean =>
+          typeof args !== "undefined" &&
           Number(value) <= Number(args.constraints[0]),
         defaultMessage: buildI18nMessage(() => "max"),
       },

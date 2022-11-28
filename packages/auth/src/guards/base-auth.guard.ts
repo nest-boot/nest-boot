@@ -24,14 +24,12 @@ export abstract class BaseAuthGuard implements CanActivate {
     }
 
     // 没有配置权限须登录才能访问
-    if (!permissions && ctx.user) {
+    if (typeof permissions === "undefined" && ctx?.user != null) {
       return true;
     }
 
     // 判断用户权限和配置权限是否有交集，如果有放行
-    return (
-      _.intersection(await this.getPermissions(), permissions || []).length > 0
-    );
+    return _.intersection(await this.getPermissions(), permissions).length > 0;
   }
 
   protected abstract getPermissions(): Promise<string[]>;

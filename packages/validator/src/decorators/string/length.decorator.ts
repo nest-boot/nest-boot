@@ -28,19 +28,22 @@ export function Length(
       constraints: [min, max],
       validator: {
         validate: (value, args): boolean =>
+          typeof args !== "undefined" &&
           length(value, args.constraints[0], args.constraints[1]),
         defaultMessage: buildI18nMessage((args) => {
-          const isMinLength =
-            args.constraints[0] !== null && args.constraints[0] !== undefined;
-          const isMaxLength =
-            args.constraints[1] !== null && args.constraints[1] !== undefined;
+          if (typeof args !== "undefined") {
+            const isMinLength =
+              args.constraints[0] !== null && args.constraints[0] !== undefined;
+            const isMaxLength =
+              args.constraints[1] !== null && args.constraints[1] !== undefined;
 
-          if (
-            isMinLength &&
-            !isMaxLength &&
-            args.value.length < args.constraints[0]
-          ) {
-            return "length.gte";
+            if (
+              isMinLength &&
+              !isMaxLength &&
+              args.value.length < args.constraints[0]
+            ) {
+              return "length.gte";
+            }
           }
 
           return "length.between";

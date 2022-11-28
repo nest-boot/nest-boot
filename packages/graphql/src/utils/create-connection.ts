@@ -26,13 +26,13 @@ export function createConnection<T>(
   @ObjectType({ isAbstract: true })
   class AbstractConnection implements Connection<T> {
     @Field(() => [Edge], { nullable: true })
-    edges: Edge[];
+    edges!: Edge[];
 
     @Field(() => [NodeType], { nullable: true })
-    nodes: T[];
+    nodes!: T[];
 
     @Field()
-    pageInfo: PageInfo;
+    pageInfo!: PageInfo;
 
     @Field(() => Int, { nullable: true })
     totalCount?: number;

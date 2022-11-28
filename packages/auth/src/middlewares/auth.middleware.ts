@@ -21,35 +21,37 @@ export class AuthMiddleware implements NestMiddleware {
       token: this.extractAccessToken(req),
     });
 
-    if (accessToken) {
+    if (accessToken != null) {
       const repository = this.entityManager.getRepository<NestBootAuth.User>(
         accessToken.entity
       );
       const entity = await repository.findOne(accessToken.entityId);
 
       // 设置访问令牌和用户到运行上下文
-      ctx.accessToken = accessToken.token;
-      ctx.user = entity;
+      if (entity != null) {
+        ctx.accessToken = accessToken.token;
+        ctx.user = entity;
+      }
     }
 
     return next();
   }
 
-  private extractAccessToken(req: Request): string {
-    let accessToken: string;
+  private extractAccessToken(req: Request): string | null {
+    let accessToken: string | null = null;
 
-    // 从请求头中提取访问令牌
-    if (!accessToken) {
-      const authorizationHeader = req.get("Authorization");
-      if (authorizationHeader) {
-        accessToken =
-          authorizationHeader.match(/[Bb]earer\s+(.+)$/i)?.[1] || "";
+    const authorizationHeader = req.get("Authorization");
+    if (typeof authorizationHeader === "string") {
+      const matched = authorizationHeader.match(/[Bb]earer\s+(.+)$/i);
+
+      if (matched !== null) {
+        accessToken = matched[1];
       }
     }
 
     // 从会话中提取访问令牌
-    if (!accessToken) {
-      accessToken = req.cookies?.access_token;
+    if (typeof accessToken === "string" && accessToken !== "") {
+      accessToken = req.cookies.access_token;
     }
 
     return accessToken;

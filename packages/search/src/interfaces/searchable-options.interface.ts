@@ -1,5 +1,5 @@
 export interface SearchableOptions {
-  index?: string;
+  index: string;
   filterableAttributes?: string[];
   searchableAttributes?: string[];
   sortableAttributes?: string[];

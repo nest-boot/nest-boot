@@ -5,7 +5,9 @@ import {
   Catch,
   ExceptionFilter,
   HttpException,
+  InternalServerErrorException,
   HttpStatus,
+  ContextType,
 } from "@nestjs/common";
 import { ApolloError, toApolloError } from "apollo-server-errors";
 import { Response } from "express";
@@ -14,7 +16,7 @@ import _ from "lodash";
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
   catch(exception: Error, host: ArgumentsHost): void {
-    if ((host.getType() as string) === "graphql") {
+    if (host.getType<ContextType | "graphql">() === "graphql") {
       this.catchGraphqlException(exception);
     }
 
@@ -50,7 +52,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const response: any = exception.getResponse();
 
-      let message: string;
+      let message: string = InternalServerErrorException.prototype.message;
 
       if (typeof response === "string") {
         message = response;

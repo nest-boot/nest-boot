@@ -6,6 +6,7 @@ import {
   SearchableOptions,
   SearchEngineInterface,
 } from "@nest-boot/search";
+import { SearchOptions } from "@nest-boot/search/dist/interfaces/search-options.interface";
 import { Injectable, Scope } from "@nestjs/common";
 import { DiscoveryService } from "@nestjs/core";
 import { InstanceWrapper } from "@nestjs/core/injector/instance-wrapper";
@@ -14,7 +15,7 @@ import { parse } from "search-syntax";
 import { Attributes } from "search-syntax/dist/interfaces";
 
 @Injectable({ scope: Scope.TRANSIENT })
-export class PostgresqlSearchEngine implements SearchEngineInterface {
+export class PostgresqlSearchEngine<T> implements SearchEngineInterface {
   private readonly searchableMap = new Map<
     string,
     { service: SearchableEntityService<any>; options: SearchableOptions }
@@ -27,7 +28,7 @@ export class PostgresqlSearchEngine implements SearchEngineInterface {
     this.discoveryService
       .getProviders()
       .forEach((wrapper: InstanceWrapper<SearchableEntityService<any>>) => {
-        if (wrapper.instance?.searchableOptions) {
+        if (typeof wrapper.instance?.searchableOptions !== "undefined") {
           const { searchableOptions } = wrapper.instance;
 
           this.searchableMap.set(searchableOptions.index, {
@@ -41,91 +42,90 @@ export class PostgresqlSearchEngine implements SearchEngineInterface {
   async search(
     index: string,
     query: string,
-    where?: FilterQuery<any>,
-    options?: FindOptions<any>
-  ): Promise<[(number | string)[], number]> {
+    options?: SearchOptions<T>
+  ): Promise<[Array<number | string>, number]> {
     const searchable = this.searchableMap.get(index);
-    if (searchable) {
-      const { options: searchableOptions } = searchable;
 
-      const metadata = this.entityManager.getMetadata().get(index);
-
-      const repository = this.entityManager.getRepository<AnyEntity>(index);
-
-      const whereGroup = [where];
-
-      if (query) {
-        whereGroup.push(
-          parse(query, {
-            attributes: _.uniq([
-              ...(searchableOptions?.filterableAttributes || []),
-              ...(searchableOptions?.searchableAttributes || []),
-            ]).reduce<Attributes>((result, field) => {
-              const prop = metadata.properties[field];
-
-              if (prop) {
-                return {
-                  ...result,
-                  [field]: {
-                    type: (() => {
-                      switch (prop.type) {
-                        case "boolean":
-                          return "boolean";
-                        case "integer":
-                        case "smallint":
-                        case "tinyint":
-                        case "mediumint":
-                        case "float":
-                        case "double":
-                        case "decimal":
-                          return "number";
-                        case "date":
-                        case "time":
-                        case "datetime":
-                          return "date";
-                        case "bigint":
-                        case "enum":
-                        case "string":
-                        case "uuid":
-                        case "text":
-                        default:
-                          return "string";
-                      }
-                    })(),
-                    array: prop.array,
-                    fulltext: metadata.indexes.some(
-                      ({ type, properties }) =>
-                        properties === field && type === "fulltext"
-                    ),
-                    filterable:
-                      searchableOptions?.filterableAttributes?.includes(field),
-                    searchable:
-                      searchableOptions?.searchableAttributes?.includes(field),
-                  },
-                };
-              }
-
-              return result;
-            }, {}),
-          })
-        );
-      }
-
-      return await Promise.all([
-        (async () =>
-          (
-            await repository.find(
-              { $and: whereGroup },
-              {
-                limit: options?.limit,
-                offset: options?.offset,
-                orderBy: options?.orderBy,
-              }
-            )
-          ).map((item: any) => item.id))(),
-        repository.count({ $and: whereGroup }),
-      ]);
+    if (typeof searchable === "undefined") {
+      throw new Error("Can't find searchable options");
     }
+
+    const { options: searchableOptions } = searchable;
+
+    const metadata = this.entityManager.getMetadata().get(index);
+
+    const repository = this.entityManager.getRepository<AnyEntity>(index);
+
+    const whereGroup: Array<FilterQuery<T>> =
+      typeof options?.where !== "undefined" ? [options.where] : [];
+
+    if (typeof query !== "undefined") {
+      whereGroup.push(
+        parse(query, {
+          attributes: _.uniq([
+            ...(searchableOptions?.filterableAttributes || []),
+            ...(searchableOptions?.searchableAttributes || []),
+          ]).reduce<Attributes>((result, field) => {
+            const prop = metadata.properties[field];
+
+            if (typeof prop !== "undefined") {
+              return {
+                ...result,
+                [field]: {
+                  type: (() => {
+                    switch (prop.type) {
+                      case "boolean":
+                        return "boolean";
+                      case "integer":
+                      case "smallint":
+                      case "tinyint":
+                      case "mediumint":
+                      case "float":
+                      case "double":
+                      case "decimal":
+                        return "number";
+                      case "date":
+                      case "time":
+                      case "datetime":
+                        return "date";
+                      case "bigint":
+                      case "enum":
+                      case "string":
+                      case "uuid":
+                      case "text":
+                      default:
+                        return "string";
+                    }
+                  })(),
+                  array: prop.array,
+                  fulltext: metadata.indexes.some(
+                    ({ type, properties }) =>
+                      properties === field && type === "fulltext"
+                  ),
+                  filterable:
+                    searchableOptions?.filterableAttributes?.includes(field),
+                  searchable:
+                    searchableOptions?.searchableAttributes?.includes(field),
+                },
+              };
+            }
+
+            return result;
+          }, {}),
+        }) as FilterQuery<T>
+      );
+    }
+
+    const result = await repository.findAndCount(
+      { $and: whereGroup },
+      {
+        limit: options?.limit,
+        offset: options?.offset,
+        orderBy: options?.orderBy,
+      }
+    );
+
+    return [result[0].map(({ id }: { id: string | number }) => id), result[1]];
   }
 
   async update(index: string, entities: any[]): Promise<void> {}

@@ -10,9 +10,8 @@ export class SearchEngine implements SearchEngineInterface {
   async search(
     index: string,
     query: string,
-    where?: FilterQuery<any>,
     options?: FindOptions<any>
-  ): Promise<[(number | string)[], number]> {
+  ): Promise<[Array<number | string>, number]> {
     return [[], 0];
   }
 

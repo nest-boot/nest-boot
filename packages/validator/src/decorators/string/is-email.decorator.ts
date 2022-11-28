@@ -30,7 +30,8 @@ export function IsEmail(
       name: IS_EMAIL,
       constraints: [options],
       validator: {
-        validate: (value, args): boolean => isEmail(value, args.constraints[0]),
+        validate: (value, args): boolean =>
+          typeof args !== "undefined" && isEmail(value, args.constraints[0]),
         defaultMessage: buildI18nMessage(() => "is-email"),
       },
     },

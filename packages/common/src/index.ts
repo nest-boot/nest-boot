@@ -1,14 +1,12 @@
 /* eslint-disable @typescript-eslint/no-namespace */
 
-import { Request, Response } from "express";
-import { Logger } from "pino";
+import { Type } from "@nestjs/common";
 
 declare global {
   namespace NestBootCommon {
     interface Context {
-      readonly req?: Request;
-      readonly res?: Response;
-      readonly logger?: Logger;
+      get: <T>(key: Type<T> | string | symbol) => T | undefined;
+      set: <T>(key: Type<T> | string | symbol, value: T) => void;
     }
   }
 }

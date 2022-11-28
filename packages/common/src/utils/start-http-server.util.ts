@@ -4,7 +4,6 @@ import { NestFactory } from "@nestjs/core";
 import cookieParser from "cookie-parser";
 import express from "express";
 
-import { RUNTIME_KEY } from "../constants";
 import { GlobalExceptionFilter } from "../exception-filters/global.exception-filter";
 import { Logger } from "../services/logger.service";
 
@@ -12,8 +11,6 @@ export async function startHttpServer(
   module: unknown,
   callback?: (app: INestApplication) => void | Promise<void>
 ): Promise<void> {
-  process[RUNTIME_KEY] = "http-server";
-
   // 创建服务器实例
   const app = await NestFactory.create(module, {
     bufferLogs: true,
@@ -41,7 +38,7 @@ export async function startHttpServer(
   // Cookie 解析
   app.use(cookieParser());
 
-  if (callback) {
+  if (callback != null) {
     await callback(app);
   }
 

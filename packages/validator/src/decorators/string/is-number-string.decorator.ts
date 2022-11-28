@@ -31,6 +31,7 @@ export function IsNumberString(
       constraints: [options],
       validator: {
         validate: (value, args): boolean =>
+          typeof args !== "undefined" &&
           isNumberString(value, args.constraints[0]),
         defaultMessage: buildI18nMessage(() => "is-number-string"),
       },

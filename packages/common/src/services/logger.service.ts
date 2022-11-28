@@ -1,4 +1,3 @@
-/* eslint-disable no-underscore-dangle */
 import { Injectable, LoggerService, Optional, Scope } from "@nestjs/common";
 import pino, { Bindings, Level } from "pino";
 
@@ -6,61 +5,61 @@ import { Context } from "../context";
 
 @Injectable({ scope: Scope.TRANSIENT })
 export class Logger implements LoggerService {
-  static logger: pino.Logger;
-
-  private __LOGGER__: pino.Logger;
+  private pinoLogger: pino.Logger = pino();
 
   constructor(@Optional() private context?: string) {}
 
   get logger(): pino.Logger {
-    if (Context.get()?.logger) {
-      return Context.get().logger;
+    const ctx = Context.get();
+    const pinoLogger = ctx.get<pino.Logger>("pino-logger");
+
+    if (typeof pinoLogger !== "undefined") {
+      return pinoLogger;
     }
 
-    if (!this.__LOGGER__) {
-      this.__LOGGER__ = pino();
-    }
-
-    return this.__LOGGER__;
+    return this.pinoLogger;
   }
 
-  verbose(message: string, ...optionalParams: unknown[]) {
+  verbose(message: string, ...optionalParams: unknown[]): void {
     this.call("trace", message, ...optionalParams);
   }
 
-  debug(message: string, ...optionalParams: unknown[]) {
+  debug(message: string, ...optionalParams: unknown[]): void {
     this.call("debug", message, ...optionalParams);
   }
 
-  log(message: string, ...optionalParams: unknown[]) {
+  log(message: string, ...optionalParams: unknown[]): void {
     this.call("info", message, ...optionalParams);
   }
 
-  warn(message: string, ...optionalParams: unknown[]) {
+  warn(message: string, ...optionalParams: unknown[]): void {
     this.call("warn", message, ...optionalParams);
   }
 
-  error(message: string, ...optionalParams: unknown[]) {
+  error(message: string, ...optionalParams: unknown[]): void {
     this.call("error", message, ...optionalParams);
   }
 
-  assign(bindings: Bindings) {
+  assign(bindings: Bindings): void {
     const ctx = Context.get();
+    const pinoLogger = ctx.get<pino.Logger>("pino-logger");
 
-    if (ctx?.logger) {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      ctx.logger = ctx.logger.child(bindings);
+    if (typeof pinoLogger !== "undefined") {
+      ctx.set<pino.Logger>("pino-logger", pinoLogger.child(bindings));
     } else {
-      this.__LOGGER__ = (this.__LOGGER__ || pino()).child(bindings);
+      this.pinoLogger = this.pinoLogger.child(bindings);
     }
   }
 
-  setContext(context: string) {
+  setContext(context: string): void {
     this.context = context;
   }
 
-  private call(level: Level, message: string, ...optionalParams: unknown[]) {
+  private call(
+    level: Level,
+    message: string,
+    ...optionalParams: unknown[]
+  ): void {
     let objArg: Record<string, unknown> = {};
 
     objArg.context = this.context;

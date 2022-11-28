@@ -1,8 +1,0 @@
-import { BaseQueue, Job, Queue } from "@nest-boot/queue";
-
-@Queue()
-export class {{ name | camelize }}Queue extends BaseQueue {
-  async processor(job: Job): Promise<void> {
-    console.log("job id:", job.id);
-  }
-}

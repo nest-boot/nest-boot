@@ -1,4 +1,5 @@
 {
+  "$schema": "https://turbo.build/schema.json",
   "pipeline": {
     "build": {
       "dependsOn": ["^build"],
@@ -7,11 +8,17 @@
     "clean": {
       "cache": false
     },
+    "test": {
+      "dependsOn": ["build"],
+      "outputs": [],
+      "inputs": ["src/**/*.ts", "test/**/*.ts"]
+    },
     "lint": {
       "outputs": []
     },
-    "dev": {
-      "cache": false
+    "deploy": {
+      "dependsOn": ["build", "test", "lint"],
+      "outputs": []
     }
   }
 }

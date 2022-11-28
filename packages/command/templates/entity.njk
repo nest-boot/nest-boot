@@ -1,6 +1,0 @@
-import { BaseEntity {{ ", Searchable" if searchable }} } from "@nest-boot/database";
-import { Entity } from "typeorm";
-
-{{ "@Searchable()" if searchable }}
-@Entity()
-export class {{ name | camelize }} extends BaseEntity {}
