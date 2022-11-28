@@ -1,5 +1,4 @@
 module.exports = {
-  root: true,
   extends: ["nest-boot"],
   overrides: [
     {

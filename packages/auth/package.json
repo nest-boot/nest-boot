@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@mikro-orm/core": "^5.5.3",
+    "@mikro-orm/nestjs": "^5.1.2",
     "@nest-boot/common": "workspace:*",
     "@nest-boot/database": "workspace:*",
     "@nest-boot/tsconfig": "workspace:*",
@@ -47,6 +48,7 @@
   },
   "peerDependencies": {
     "@mikro-orm/core": "^5.0.0",
+    "@mikro-orm/nestjs": "^5.1.2",
     "@nest-boot/common": "workspace:*",
     "@nest-boot/database": "workspace:*",
     "@nestjs/common": "^9.0.0",

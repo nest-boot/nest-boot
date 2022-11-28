@@ -24,7 +24,10 @@ export abstract class BaseAuthGuard implements CanActivate {
     }
 
     // 没有配置权限须登录才能访问
-    if (typeof permissions === "undefined" && ctx?.user != null) {
+    if (
+      typeof permissions === "undefined" &&
+      typeof ctx.get<{ entity: unknown }>("auth")?.entity !== "undefined"
+    ) {
       return true;
     }
 
