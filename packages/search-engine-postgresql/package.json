@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/search-engine-postgresql",
-  "version": "2.3.2",
+  "version": "4.0.0",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
   "homepage": "",
@@ -30,7 +30,7 @@
     "@nest-boot/tsconfig": "workspace:*",
     "@nestjs/common": "^9.2.0",
     "@nestjs/core": "^9.2.0",
-    "@types/lodash": "^4.14.189",
+    "@types/lodash": "^4.14.190",
     "eslint": "^8.28.0",
     "eslint-config-nest-boot": "workspace:*",
     "jest": "^29.3.1",
@@ -45,9 +45,9 @@
     "@nest-boot/database": "workspace:*",
     "@nest-boot/search": "workspace:*",
     "@nestjs/common": "^9.0.0",
-    "@nestjs/core": "^8.0.0",
+    "@nestjs/core": "^9.0.0",
     "reflect-metadata": "^0.1.13",
-    "rxjs": "^7.5.7"
+    "rxjs": "^7.0.0"
   },
   "publishConfig": {
     "access": "public"

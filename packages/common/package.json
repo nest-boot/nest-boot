@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/common",
-  "version": "3.2.1",
+  "version": "4.0.0",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
   "homepage": "",
@@ -31,10 +31,10 @@
     "@nestjs/common": "^9.2.0",
     "@nestjs/config": "^2.2.0",
     "@nestjs/core": "^9.2.0",
-    "@types/cookie-parser": "^1.4.2",
+    "@types/cookie-parser": "^1.4.3",
     "@types/express": "^4.17.14",
     "@types/jest": "^29.2.3",
-    "@types/lodash": "^4.14.189",
+    "@types/lodash": "^4.14.190",
     "@types/ms": "^0.7.31",
     "@types/node": "^18.11.9",
     "apollo-server-errors": "^3.3.1",
@@ -59,7 +59,7 @@
     "express": "^4.0.0",
     "graphql": "^15.0.0 || ^16.0.0",
     "reflect-metadata": "^0.1.13",
-    "rxjs": "^7.5.7"
+    "rxjs": "^7.0.0"
   },
   "publishConfig": {
     "access": "public"

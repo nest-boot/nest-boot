@@ -1,4 +1,4 @@
-export interface Edge<T> {
+export interface EdgeInterface<T> {
   node: T;
   cursor: string;
 }

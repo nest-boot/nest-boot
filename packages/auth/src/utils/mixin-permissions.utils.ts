@@ -1,12 +1,9 @@
 import { Property, t } from "@mikro-orm/core";
 
-import { HasPermissions } from "../interfaces/has-permission.interface";
+import { HasPermissions } from "../interfaces";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Type<T = any> = new (...args: any[]) => T;
 
-// eslint-disable-next-line @typescript-eslint/ban-types
 export function mixinPermissions<T extends Type<{}>>(
   base: T
 ): Type<HasPermissions> & T {
@@ -14,7 +11,7 @@ export function mixinPermissions<T extends Type<{}>>(
     permissions: string[] = [];
   };
 
-  Property({ type: t.json, onCreate: () => [] })(
+  Property({ type: t.array, onCreate: () => [] })(
     trait.prototype,
     "permissions"
   );

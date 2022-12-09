@@ -7,9 +7,9 @@ import {
 import { EntityService } from "@nest-boot/database";
 import { Inject, Injectable } from "@nestjs/common";
 
-import { SearchEngine } from "../engines/search.engine";
 import { SearchOptions } from "../interfaces";
-import { SearchableOptions } from "../interfaces/searchable-options.interface";
+import { SearchableOptions } from "../interfaces";
+import { SearchService } from "../search.service";
 
 export type Type<T = any> = new (...args: any[]) => T;
 
@@ -27,10 +27,10 @@ export function mixinSearchable<T extends AnyEntity>(
   @Injectable()
   class SearchableTrait extends Base implements SearchableEntityService<T> {
     @Inject()
-    readonly entityManager!: EntityManager;
+    readonly searchService!: SearchService;
 
     @Inject()
-    readonly searchEngine!: SearchEngine;
+    readonly entityManager!: EntityManager;
 
     repository!: EntityRepository<T>;
 
@@ -42,7 +42,7 @@ export function mixinSearchable<T extends AnyEntity>(
       query: string,
       options?: SearchOptions<T>
     ): Promise<[T[], number]> {
-      const [ids, count] = await this.searchEngine.search(
+      const [ids, count] = await this.searchService.search(
         this.searchableOptions.index,
         query,
         options

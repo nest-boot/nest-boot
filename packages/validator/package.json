@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/validator",
-  "version": "3.1.2",
+  "version": "4.0.0",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
   "homepage": "",
@@ -28,6 +28,7 @@
     "@nest-boot/i18next": "workspace:*",
     "@nest-boot/tsconfig": "workspace:*",
     "@nestjs/common": "^9.2.0",
+    "@nestjs/core": "^9.2.0",
     "@types/jest": "^29.2.3",
     "@types/validator": "^13.7.10",
     "class-transformer": "^0.5.1",
@@ -44,8 +45,10 @@
   "peerDependencies": {
     "@nest-boot/i18next": "*",
     "@nestjs/common": "^9.0.0",
+    "@nestjs/core": "^9.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.13.0",
+    "reflect-metadata": "^0.1.13",
     "rxjs": "^7.0.0"
   },
   "publishConfig": {

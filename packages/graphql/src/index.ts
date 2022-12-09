@@ -1,3 +1,4 @@
+export * from "./connection.builder";
 export * from "./decorators";
 export * from "./dtos";
 export * from "./entity.data-loader";

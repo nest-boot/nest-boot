@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/graphql",
-  "version": "3.2.2",
+  "version": "4.0.0",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
   "homepage": "",
@@ -23,7 +23,7 @@
     "lodash": "^4.17.21"
   },
   "devDependencies": {
-    "@apollo/server": "^4.2.1",
+    "@apollo/server": "^4.2.2",
     "@mikro-orm/core": "^5.5.3",
     "@nest-boot/database": "workspace:*",
     "@nest-boot/search": "workspace:*",
@@ -33,7 +33,7 @@
     "@nestjs/core": "^9.2.0",
     "@nestjs/graphql": "^10.1.6",
     "@types/jest": "^29.2.3",
-    "@types/lodash": "^4.14.189",
+    "@types/lodash": "^4.14.190",
     "@types/node": "^18.11.9",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.13.2",

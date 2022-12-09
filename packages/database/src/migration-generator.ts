@@ -1,6 +1,6 @@
 import { TSMigrationGenerator } from "@mikro-orm/migrations";
 import prettier from "prettier";
-import { format, FormatOptions } from "sql-formatter";
+import { format, FormatOptionsWithLanguage } from "sql-formatter";
 
 export class MigrationGenerator extends TSMigrationGenerator {
   createStatement(sql: string, padLeft: number): string {
@@ -8,7 +8,7 @@ export class MigrationGenerator extends TSMigrationGenerator {
 
     const driverType = this.driver.config.get("type");
 
-    let language: FormatOptions["language"] = "postgresql";
+    let language: FormatOptionsWithLanguage["language"] = "postgresql";
 
     switch (driverType) {
       case "mysql":

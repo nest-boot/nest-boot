@@ -1,5 +1,11 @@
 import { ConfigurableModuleBuilder } from "@nestjs/common";
-import { AuthModuleOptions } from "./interfaces/auth-module-options.interface";
+import { randomUUID } from "crypto";
 
-export const { ConfigurableModuleClass, MODULE_OPTIONS_TOKEN, OPTIONS_TYPE } =
+import { AuthModuleOptions } from "./interfaces";
+
+export const PERMISSIONS_METADATA_KEY = randomUUID();
+
+export const REQUIRE_AUTH_METADATA_KEY = randomUUID();
+
+export const { ConfigurableModuleClass, MODULE_OPTIONS_TOKEN } =
   new ConfigurableModuleBuilder<AuthModuleOptions>().build();

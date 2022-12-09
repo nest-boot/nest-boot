@@ -1,13 +1,11 @@
 {
   "name": "@nest-boot/tsconfig",
-  "version": "0.0.0",
+  "version": "4.0.0",
   "private": true,
   "license": "MIT",
   "publishConfig": {
     "access": "public"
   },
-  "devDependencies": {
-    "eslint": "^8.28.0",
-    "eslint-config-nest-boot": "workspace:*"
-  }
+  "devDependencies": {},
+  "peerDependencies": {}
 }

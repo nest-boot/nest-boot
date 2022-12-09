@@ -1,8 +1,8 @@
 import { PageInfo } from "../dtos";
-import { Edge } from "./edge.interface";
+import { EdgeInterface } from "./edge.interface";
 
-export interface Connection<T> {
-  edges: Array<Edge<T>>;
+export interface ConnectionInterface<T> {
+  edges: Array<EdgeInterface<T>>;
 
   pageInfo: PageInfo;
 

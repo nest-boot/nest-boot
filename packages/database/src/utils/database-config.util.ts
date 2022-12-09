@@ -7,8 +7,6 @@ export function databaseConfig<D extends IDatabaseDriver<Connection>>(
   options: Options<D> = {}
 ): Options<D> {
   return {
-    debug:
-      !!process.env.DATABASE_DEBUG || process.env.NODE_ENV !== "production",
     type: process.env.DATABASE_TYPE as Options<D>["type"],
     host: process.env.DATABASE_HOST,
     port: process.env.DATABASE_PORT ? +process.env.DATABASE_PORT : undefined,

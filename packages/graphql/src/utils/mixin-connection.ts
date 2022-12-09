@@ -1,30 +1,29 @@
 /* eslint-disable no-nested-ternary */
-import { AnyEntity, FilterQuery } from "@mikro-orm/core";
+import { FilterQuery } from "@mikro-orm/core";
+import { IdEntity } from "@nest-boot/database";
 import { SearchableEntityService } from "@nest-boot/search";
-import { Injectable } from "@nestjs/common";
+import { Injectable, Type } from "@nestjs/common";
 
-import { QueryConnectionArgs } from "../dtos/query-connection.args";
-import { Connection } from "../interfaces/connection.interface";
-import { Type } from "../interfaces/type.interface";
+import { ConnectionArgsInterface, ConnectionInterface } from "../interfaces";
 import { getConnection } from "./get-connection";
 
-export interface ConnectionEntityService<T extends AnyEntity>
+export interface ConnectionEntityService<T extends IdEntity, P extends keyof T>
   extends SearchableEntityService<T> {
-  getConnection(
-    args: QueryConnectionArgs,
+  getConnection: (
+    args: ConnectionArgsInterface<T, P>,
     where?: FilterQuery<T>
-  ): Promise<Connection<T>>;
+  ) => Promise<ConnectionInterface<T>>;
 }
 
-export function mixinConnection<T extends AnyEntity>(
+export function mixinConnection<T extends IdEntity, P extends keyof T>(
   Base: Type<SearchableEntityService<T>>
-): Type<ConnectionEntityService<T>> {
+): Type<ConnectionEntityService<T, P>> {
   @Injectable()
-  class ConnectionTrait extends Base implements ConnectionEntityService<T> {
+  class ConnectionTrait extends Base implements ConnectionEntityService<T, P> {
     async getConnection(
-      args: QueryConnectionArgs,
-      where: FilterQuery<T>
-    ): Promise<Connection<T>> {
+      args: ConnectionArgsInterface<T, P>,
+      where?: FilterQuery<T>
+    ): Promise<ConnectionInterface<T>> {
       return await getConnection(this, args, where);
     }
   }

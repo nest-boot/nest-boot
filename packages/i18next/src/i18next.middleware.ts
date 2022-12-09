@@ -17,7 +17,7 @@ export class I18NextMiddleware implements NestMiddleware {
   async use(req: Request, res: Response, next: () => void): Promise<void> {
     this.i18nextMiddleware(req, res, () => {
       const ctx = Context.get();
-      ctx.i18n = (req as Request & { i18n: I18Next }).i18n;
+      ctx.set("i18n", (req as Request & { i18n: I18Next }).i18n);
       next();
     });
   }

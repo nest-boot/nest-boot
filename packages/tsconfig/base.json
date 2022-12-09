@@ -9,7 +9,6 @@
     "esModuleInterop": true,
     "experimentalDecorators": true,
     "incremental": true,
-    "lib": ["ES2022"],
     "module": "CommonJS",
     "outDir": "./dist",
     "removeComments": true,
@@ -17,7 +16,7 @@
     "skipLibCheck": true,
     "sourceMap": true,
     "strict": true,
-    "target": "ES2022"
+    "target": "ES2019"
   },
   "exclude": ["dist", "node_modules"]
 }

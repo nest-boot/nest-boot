@@ -2,11 +2,13 @@ import { Directive } from "@nestjs/graphql";
 
 export function Complexity<T>(
   value: number,
-  multipliers?: (keyof T & string)[]
+  multipliers?: Array<keyof T & string>
 ): MethodDecorator & PropertyDecorator & ClassDecorator {
   return Directive(
     `@complexity(value: ${value}${
-      multipliers ? `, multipliers: ${JSON.stringify(multipliers)})` : ")"
+      typeof multipliers !== "undefined"
+        ? `, multipliers: ${JSON.stringify(multipliers)})`
+        : ")"
     }`
   );
 }

@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/database",
-  "version": "3.3.2",
+  "version": "4.0.0",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
   "homepage": "",
@@ -21,14 +21,15 @@
     "test": "jest"
   },
   "dependencies": {
-    "prettier": "^2.7.1",
-    "sql-formatter": "^11.0.2"
+    "prettier": "^2.8.0",
+    "sql-formatter": "^12.0.3"
   },
   "devDependencies": {
     "@mikro-orm/core": "^5.5.3",
     "@mikro-orm/migrations": "^5.5.3",
     "@mikro-orm/nestjs": "^5.1.2",
     "@mikro-orm/reflection": "^5.5.3",
+    "@nest-boot/common": "workspace:*",
     "@nest-boot/tsconfig": "workspace:*",
     "@nestjs/common": "^9.2.0",
     "@nestjs/core": "^9.2.0",
@@ -47,10 +48,11 @@
     "@mikro-orm/migrations": "^5.0.0",
     "@mikro-orm/nestjs": "^5.0.0",
     "@mikro-orm/reflection": "^5.0.0",
+    "@nest-boot/common": "*",
     "@nestjs/common": "^9.0.0",
-    "@nestjs/core": "^9.2.0",
+    "@nestjs/core": "^9.0.0",
     "reflect-metadata": "^0.1.13",
-    "rxjs": "^7.5.7"
+    "rxjs": "^7.0.0"
   },
   "publishConfig": {
     "access": "public"

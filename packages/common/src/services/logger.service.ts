@@ -5,19 +5,22 @@ import { Context } from "../context";
 
 @Injectable({ scope: Scope.TRANSIENT })
 export class Logger implements LoggerService {
-  private pinoLogger: pino.Logger = pino();
+  #logger?: pino.Logger;
 
   constructor(@Optional() private context?: string) {}
 
   get logger(): pino.Logger {
-    const ctx = Context.get();
-    const pinoLogger = ctx.get<pino.Logger>("pino-logger");
-
-    if (typeof pinoLogger !== "undefined") {
-      return pinoLogger;
+    if (typeof this.#logger === "undefined") {
+      try {
+        this.#logger = Context.get<pino.Logger>("pino-logger");
+      } catch (err) {}
     }
 
-    return this.pinoLogger;
+    if (typeof this.#logger === "undefined") {
+      this.#logger = pino();
+    }
+
+    return this.#logger;
   }
 
   verbose(message: string, ...optionalParams: unknown[]): void {
@@ -41,13 +44,15 @@ export class Logger implements LoggerService {
   }
 
   assign(bindings: Bindings): void {
-    const ctx = Context.get();
-    const pinoLogger = ctx.get<pino.Logger>("pino-logger");
+    this.#logger = this.logger.child(bindings);
 
-    if (typeof pinoLogger !== "undefined") {
-      ctx.set<pino.Logger>("pino-logger", pinoLogger.child(bindings));
-    } else {
-      this.pinoLogger = this.pinoLogger.child(bindings);
+    let ctxLogger: pino.Logger | undefined;
+    try {
+      ctxLogger = Context.get<pino.Logger | undefined>("pino-logger");
+    } catch (err) {}
+
+    if (typeof ctxLogger !== "undefined") {
+      Context.set<pino.Logger>("pino-logger", this.#logger.child(bindings));
     }
   }
 
