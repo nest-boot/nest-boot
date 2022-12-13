@@ -1,5 +1,5 @@
 module.exports = {
-  extends: ["nest-boot"],
+  extends: ["@nest-boot/eslint-config"],
   overrides: [
     {
       files: ["*.ts"],

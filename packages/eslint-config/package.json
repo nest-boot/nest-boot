@@ -1,5 +1,5 @@
 {
-  "name": "eslint-config-nest-boot",
+  "name": "@nest-boot/eslint-config",
   "version": "4.0.0",
   "main": "index.js",
   "license": "MIT",

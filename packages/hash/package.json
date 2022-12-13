@@ -24,11 +24,12 @@
     "@node-rs/argon2": "^1.2.0"
   },
   "devDependencies": {
+    "@nest-boot/eslint-config": "workspace:*",
+    "@nest-boot/tsconfig": "workspace:*",
     "@nestjs/common": "^9.2.0",
     "@nestjs/core": "^9.2.0",
     "@types/node": "^18.11.9",
     "eslint": "^8.28.0",
-    "eslint-config-nest-boot": "workspace:*",
     "jest": "^29.3.1",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.5.7",
