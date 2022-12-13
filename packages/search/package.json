@@ -38,8 +38,8 @@
   },
   "peerDependencies": {
     "@mikro-orm/core": "^5.0.0",
-    "@nest-boot/common": "*",
-    "@nest-boot/database": "*",
+    "@nest-boot/common": "workspace:*",
+    "@nest-boot/database": "workspace:*",
     "@nestjs/common": "^9.0.0",
     "@nestjs/core": "^9.0.0",
     "reflect-metadata": "^0.1.13",

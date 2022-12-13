@@ -48,7 +48,7 @@
     "@mikro-orm/migrations": "^5.0.0",
     "@mikro-orm/nestjs": "^5.0.0",
     "@mikro-orm/reflection": "^5.0.0",
-    "@nest-boot/common": "*",
+    "@nest-boot/common": "workspace:*",
     "@nestjs/common": "^9.0.0",
     "@nestjs/core": "^9.0.0",
     "reflect-metadata": "^0.1.13",

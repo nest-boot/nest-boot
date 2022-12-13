@@ -50,8 +50,8 @@
   },
   "peerDependencies": {
     "@apollo/server": "^4.2.1",
-    "@nest-boot/database": "*",
-    "@nest-boot/search": "*",
+    "@nest-boot/database": "workspace:*",
+    "@nest-boot/search": "workspace:*",
     "@nestjs/apollo": "^10.1.6",
     "@nestjs/common": "^9.0.0",
     "@nestjs/core": "^9.0.0",

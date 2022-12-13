@@ -43,7 +43,7 @@
     "typescript": "^4.9.3"
   },
   "peerDependencies": {
-    "@nest-boot/i18next": "*",
+    "@nest-boot/i18next": "workspace:*",
     "@nestjs/common": "^9.0.0",
     "@nestjs/core": "^9.0.0",
     "class-transformer": "^0.5.1",

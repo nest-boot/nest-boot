@@ -38,8 +38,8 @@
     "typescript": "^4.9.3"
   },
   "peerDependencies": {
-    "@nest-boot/common": "*",
-    "@nest-boot/redis": "*",
+    "@nest-boot/common": "workspace:*",
+    "@nest-boot/redis": "workspace:*",
     "@nestjs/common": "^9.0.0",
     "@nestjs/core": "^9.0.0",
     "@nestjs/terminus": "^9.0.0",

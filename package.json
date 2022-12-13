@@ -2,7 +2,7 @@
   "private": true,
   "name": "@nest-boot/workspace",
   "engines": {
-    "node": ">= 16.0.0",
+    "node": ">= 18.0.0",
     "npm": ">= 8.0.0",
     "pnpm": ">= 7.0.0"
   },
@@ -14,19 +14,19 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "lint": "turbo run lint",
     "test": "turbo run test",
-    "version-packages": "changeset version",
+    "semantic-release": "multi-semantic-release",
     "publish-packages": "turbo run build lint && changeset version && changeset publish"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.25.2",
-    "@nest-boot/eslint-config": "workspace:4.0.0",
-    "@nest-boot/tsconfig": "workspace:4.0.0",
+    "@nest-boot/eslint-config": "workspace:*",
+    "@nest-boot/tsconfig": "workspace:*",
+    "@qiwi/multi-semantic-release": "^6.5.1",
     "eslint": "^8.29.0",
     "prettier": "^2.8.1",
     "turbo": "^1.6.3"
   },
   "packageManager": "pnpm@7.17.0",
   "volta": {
-    "node": "16.18.1"
+    "node": "18.12.1"
   }
 }
