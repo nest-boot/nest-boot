@@ -25,6 +25,7 @@
   "devDependencies": {
     "@nest-boot/eslint-config": "workspace:*",
     "@nest-boot/tsconfig": "workspace:*",
+    "@semrel-extra/npm": "^1.2.2",
     "eslint": "^8.29.0",
     "multi-semantic-release": "^3.0.1",
     "prettier": "^2.8.1",

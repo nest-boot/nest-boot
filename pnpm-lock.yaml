@@ -6,6 +6,7 @@ importers:
     specifiers:
       '@nest-boot/eslint-config': workspace:*
       '@nest-boot/tsconfig': workspace:*
+      '@semrel-extra/npm': ^1.2.2
       eslint: ^8.29.0
       multi-semantic-release: ^3.0.1
       prettier: ^2.8.1
@@ -13,6 +14,7 @@ importers:
     devDependencies:
       '@nest-boot/eslint-config': link:packages/eslint-config
       '@nest-boot/tsconfig': link:packages/tsconfig
+      '@semrel-extra/npm': 1.2.2
       eslint: 8.29.0
       multi-semantic-release: 3.0.1
       prettier: 2.8.1
@@ -1878,6 +1880,10 @@ packages:
       into-stream: 6.0.0
       lodash: 4.17.21
       read-pkg-up: 7.0.1
+    dev: true
+
+  /@semrel-extra/npm/1.2.2:
+    resolution: {integrity: sha512-QoOJFUd00ORaqOQUe2wYmwPwa7NRdGGfUhzjZ9UEZqoqymXaBDVmFF2hE3h8mFaTa/iWpAyRrrjTsg8HbSpZyw==}
     dev: true
 
   /@sinclair/typebox/0.24.51:
