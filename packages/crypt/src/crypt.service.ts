@@ -7,6 +7,7 @@ import {
   scrypt,
 } from "crypto";
 import { promisify } from "util";
+
 import { MODULE_OPTIONS_TOKEN } from "./crypt.module-definition";
 import { CryptModuleOptions } from "./crypt-module-options.interface";
 
@@ -40,23 +41,23 @@ export class CryptService {
         iv: iv.toString(this.#encoding),
         tag: tag.toString(this.#encoding),
         data: data.toString(this.#encoding),
-        ...(salt ? { salt: salt.toString(this.#encoding) } : {}),
+        ...(salt != null ? { salt: salt.toString(this.#encoding) } : {}),
       })
     ).toString(this.#encoding);
   }
 
   async decrypt(value: string): Promise<string> {
-    const payload = JSON.parse(
-      Buffer.from(value, this.#encoding).toString("utf8")
-    );
+    const payload: { iv: string; tag: string; data: string; salt?: string } =
+      JSON.parse(Buffer.from(value, this.#encoding).toString("utf8"));
 
-    const key = payload.salt
-      ? ((await promisify(scrypt)(
-          this.options.secret ?? "",
-          Buffer.from(payload.salt, this.#encoding),
-          this.#keyByteLength
-        )) as Buffer)
-      : Buffer.from(this.options.secret ?? "", "hex");
+    const key =
+      typeof payload.salt !== "undefined"
+        ? ((await promisify(scrypt)(
+            this.options.secret ?? "",
+            Buffer.from(payload.salt, this.#encoding),
+            this.#keyByteLength
+          )) as Buffer)
+        : Buffer.from(this.options.secret ?? "", "hex");
 
     const iv = Buffer.from(payload.iv, this.#encoding);
     const tag = Buffer.from(payload.tag, this.#encoding);

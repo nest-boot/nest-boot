@@ -1,5 +1,9 @@
 import { getTranslation } from "@nest-boot/i18next";
-import { registerDecorator, ValidationOptions } from "class-validator";
+import {
+  registerDecorator,
+  ValidationArguments,
+  ValidationOptions,
+} from "class-validator";
 
 export interface ArrayLengthOptions extends ValidationOptions {
   min?: number;
@@ -14,7 +18,7 @@ function arrayLengthMessage(
 ): string {
   const t = getTranslation();
   if (Array.isArray(value)) {
-    if (min && max) {
+    if (typeof min !== "undefined" && typeof max !== "undefined") {
       return t("validation:arrayLength.between", {
         property: t(`property:${property}`),
         min,
@@ -23,7 +27,7 @@ function arrayLengthMessage(
     }
 
     // 长度小于要求
-    if (min && value.length < min) {
+    if (typeof min !== "undefined" && value.length < min) {
       return t("validation:arrayLength.gte", {
         property: t(`property:${property}`),
         compareProperty: `${min}`,
@@ -31,7 +35,7 @@ function arrayLengthMessage(
     }
 
     // 长度大于要求
-    if (max && value.length > max) {
+    if (typeof max !== "undefined" && value.length > max) {
       return t("validation:arrayLength.lte", {
         property: t(`property:${property}`),
         compareProperty: `${max}`,
@@ -60,7 +64,10 @@ export function ArrayLength(
             if (Array.isArray(value)) {
               const { min, max } = validationOptions;
 
-              if ((min && value.length < min) || (max && value.length > max)) {
+              if (
+                (typeof min !== "undefined" && value.length < min) ||
+                (typeof max !== "undefined" && value.length > max)
+              ) {
                 return false;
               }
 
@@ -71,7 +78,7 @@ export function ArrayLength(
             return false;
           },
           defaultMessage(args) {
-            const { value, property } = args!;
+            const { value, property } = args as ValidationArguments;
             const { min, max } = validationOptions;
             return arrayLengthMessage(value, property, min, max);
           },

@@ -7,8 +7,7 @@ import {
 import { EntityService } from "@nest-boot/database";
 import { Inject, Injectable } from "@nestjs/common";
 
-import { SearchOptions } from "../interfaces";
-import { SearchableOptions } from "../interfaces";
+import { SearchableOptions, SearchOptions } from "../interfaces";
 import { SearchService } from "../search.service";
 
 export type Type<T = any> = new (...args: any[]) => T;

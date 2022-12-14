@@ -1,4 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
+
 import {
   SearchEngineInterface,
   SearchModuleOptions,
@@ -16,11 +17,11 @@ export class SearchService implements SearchEngineInterface {
     this.engine = options.engine;
   }
 
-  search(
+  async search(
     index: string,
     query: string,
     options?: SearchOptions<any>
-  ): Promise<[(string | number)[], number]> {
-    return this.engine.search(index, query, options);
+  ): Promise<[Array<string | number>, number]> {
+    return await this.engine.search(index, query, options);
   }
 }

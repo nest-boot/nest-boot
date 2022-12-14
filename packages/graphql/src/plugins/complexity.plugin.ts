@@ -1,13 +1,16 @@
+import { Plugin } from "@nestjs/apollo";
 import { HttpException, LoggerService } from "@nestjs/common";
 import { GraphQLSchemaHost } from "@nestjs/graphql";
+import {
+  ApolloServerPlugin,
+  GraphQLRequestListener,
+} from "apollo-server-plugin-base";
 import {
   directiveEstimator,
   fieldExtensionsEstimator,
   getComplexity,
   simpleEstimator,
 } from "graphql-query-complexity";
-import { Plugin } from "@nestjs/apollo";
-import { ApolloServerPlugin, GraphQLRequestListener } from "@apollo/server";
 
 @Plugin()
 export class ComplexityPlugin implements ApolloServerPlugin {

@@ -26,7 +26,7 @@ export class RedisModule {
     const providers = [
       {
         provide: Redis,
-        useValue: new Redis(options || { host: "localhost", port: 6379 }),
+        useValue: new Redis(options ?? { host: "localhost", port: 6379 }),
       },
     ];
 
@@ -54,7 +54,7 @@ export class RedisModule {
     return [
       {
         provide: Redis,
-        inject: options.inject || [],
+        inject: options.inject ?? [],
         useFactory: async (...args) =>
           new Redis(await options.useFactory(...args)),
       },

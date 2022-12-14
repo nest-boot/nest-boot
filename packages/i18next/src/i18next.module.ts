@@ -10,7 +10,7 @@ import { getI18next, getTranslation } from "./utils";
 @Module({})
 export class I18nextModule {
   static register(options: InitOptions): DynamicModule {
-    i18next.use(Backend).use(middleware.LanguageDetector).init(options);
+    void i18next.use(Backend).use(middleware.LanguageDetector).init(options);
 
     const providers = [
       {

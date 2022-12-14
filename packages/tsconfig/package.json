@@ -2,6 +2,9 @@
   "name": "@nest-boot/tsconfig",
   "version": "0.0.0-development",
   "license": "MIT",
+  "scripts": {
+    "clean": "rm -rf node_modules"
+  },
   "publishConfig": {
     "access": "public"
   },

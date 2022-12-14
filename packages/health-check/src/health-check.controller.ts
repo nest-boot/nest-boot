@@ -10,14 +10,14 @@ import { HealthCheckRegistryService } from "./health-check-registry.service";
 @Controller("/health")
 export class HealthCheckController {
   constructor(
-    private healthCheckService: HealthCheckService,
-    private healthCheckRegistryService: HealthCheckRegistryService
+    private readonly healthCheckService: HealthCheckService,
+    private readonly healthCheckRegistryService: HealthCheckRegistryService
   ) {}
 
   @Get()
   @HealthCheck()
-  handle(): Promise<HealthCheckResult> {
-    return this.healthCheckService.check(
+  async handle(): Promise<HealthCheckResult> {
+    return await this.healthCheckService.check(
       this.healthCheckRegistryService.healthIndicatorFunctions
     );
   }

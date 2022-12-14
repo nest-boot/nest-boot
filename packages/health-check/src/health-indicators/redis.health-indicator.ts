@@ -21,7 +21,7 @@ export interface RedisPingCheckSettings {
 
 @Injectable({ scope: Scope.TRANSIENT })
 export class RedisHealthIndicator extends HealthIndicator {
-  constructor(private moduleRef: ModuleRef) {
+  constructor(private readonly moduleRef: ModuleRef) {
     super();
   }
 
@@ -33,7 +33,7 @@ export class RedisHealthIndicator extends HealthIndicator {
 
     const { client, timeout = 1000, memoryMaximumUtilization = 80 } = options;
 
-    if (!client) {
+    if (client == null) {
       throw new ConnectionNotFoundError(
         this.getStatus(key, isHealthy, {
           message: "Connection provider not found in application context",

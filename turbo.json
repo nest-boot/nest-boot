@@ -16,8 +16,11 @@
       "outputs": [],
       "inputs": ["src/**/*.ts", "test/**/*.ts"]
     },
+    "format": {
+      "cache": false
+    },
     "lint": {
-      "outputs": []
+      "cache": false
     },
     "deploy": {
       "dependsOn": ["build", "test", "lint"],

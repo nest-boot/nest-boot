@@ -63,8 +63,8 @@ export class PostgresqlSearchEngine implements SearchEngineInterface {
       whereGroup.push(
         parse(query, {
           attributes: _.uniq([
-            ...(searchableOptions?.filterableAttributes || []),
-            ...(searchableOptions?.searchableAttributes || []),
+            ...(searchableOptions?.filterableAttributes ?? []),
+            ...(searchableOptions?.searchableAttributes ?? []),
           ]).reduce<Attributes>((result, field) => {
             const prop = metadata.properties[field];
 

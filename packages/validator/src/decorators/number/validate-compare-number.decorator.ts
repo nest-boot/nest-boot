@@ -59,8 +59,11 @@ export function ValidateCompareNumber(
           defaultMessage(args) {
             const t = getTranslation();
 
-            const { property, constraints } = args!;
-            const [innerComparator, innerCompareProperty] = constraints;
+            const { property, constraints } = args as ValidationArguments;
+            const [innerComparator, innerCompareProperty] = constraints as [
+              string,
+              string
+            ];
 
             return t(`validation:is-${innerComparator.toLowerCase()}`, {
               ...args,

@@ -11,7 +11,7 @@ export function IsTimezone(
       name: "isTimezone",
       validator: {
         validate: (value): boolean =>
-          typeof value === "string" && !!moment.tz.zone(value),
+          typeof value === "string" && !(moment.tz.zone(value) == null),
         defaultMessage: buildI18nMessage(() => "is-timezone"),
       },
     },

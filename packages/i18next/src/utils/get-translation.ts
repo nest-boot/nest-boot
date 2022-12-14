@@ -5,5 +5,5 @@ export const getTranslation =
   (): TFunction =>
   (...args: Parameters<TFunction>) => {
     const ctx = Context.get();
-    return (ctx?.get<i18n>("i18n") || i18next).t(...args);
+    return (ctx?.get<i18n>("i18n") ?? i18next).t(...args);
   };

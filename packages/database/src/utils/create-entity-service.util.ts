@@ -1,6 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
-  AnyEntity,
   EntityRepository,
   FilterQuery,
   FindOptions,
@@ -11,24 +9,26 @@ import {
 import { InjectRepository } from "@mikro-orm/nestjs";
 import { Injectable, Type } from "@nestjs/common";
 
+import { IdEntity } from "../interfaces";
+
 export type ChunkByIdOptions<T, P extends string = never> = Omit<
   FindOptions<T, P>,
   "offset" | "orderBy"
 >;
 
-export interface EntityService<T extends AnyEntity<T>> {
+export interface EntityService<T extends IdEntity<T>> {
   entityClass: Type<T>;
 
   repository: EntityRepository<T>;
 
-  chunkById<P extends string = never>(
+  chunkById: <P extends string = never>(
     where: FilterQuery<T>,
     options: ChunkByIdOptions<T, P>,
     callback: (entities: T[]) => Promise<void>
-  ): Promise<this>;
+  ) => Promise<this>;
 }
 
-export function createEntityService<T extends AnyEntity<T> & { id: string }>(
+export function createEntityService<T extends IdEntity<T> & { id: string }>(
   entityClass: Type<T>
 ): Type<EntityService<T>> {
   @Injectable()
@@ -43,16 +43,23 @@ export function createEntityService<T extends AnyEntity<T> & { id: string }>(
       options: ChunkByIdOptions<T, P>,
       callback: (entities: T[]) => Promise<void>
     ): Promise<this> {
-      let lastId: string | null = null;
+      let lastId: string | undefined;
       let count = 0;
 
       do {
-        // eslint-disable-next-line no-await-in-loop
-        const entities: Loaded<T, P>[] = await this.repository.find(
+        const entities: Array<Loaded<T, P>> = await this.repository.find(
           {
-            $and: [where, ...(lastId ? [{ id: { $gt: lastId } }] : [])],
-          } as FilterQuery<T>,
-          { ...options, orderBy: { id: QueryOrder.ASC } as QueryOrderMap<T> }
+            $and: [
+              where,
+              ...(typeof lastId !== "undefined"
+                ? [{ id: { $gt: lastId } }]
+                : []),
+            ],
+          } as unknown as FilterQuery<T>,
+          {
+            ...options,
+            orderBy: { id: QueryOrder.ASC } as unknown as QueryOrderMap<T>,
+          }
         );
 
         count = entities.length;
@@ -63,7 +70,7 @@ export function createEntityService<T extends AnyEntity<T> & { id: string }>(
 
         // eslint-disable-next-line no-await-in-loop
         await callback(entities);
-      } while ((options?.limit || 0) === count);
+      } while ((typeof options?.limit !== "undefined" || 0) === count);
 
       return this;
     }

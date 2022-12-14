@@ -23,18 +23,11 @@ export class MigrationGenerator extends TSMigrationGenerator {
       default:
     }
 
-    const formatSql = (language ? format(sql, { language }) : sql).replace(
-      /['\\]/g,
-      "\\'"
-    );
+    const formatSql = format(sql, { language }).replace(/['\\]/g, "\\'");
 
-    if (formatSql) {
-      return `${padding}this.addSql(/* SQL */ \`
+    return `${padding}this.addSql(/* SQL */ \`
       ${formatSql.replace(/\n/g, `\n${padding}  `)}
     \`);\n\n`;
-    }
-
-    return "";
   }
 
   generateMigrationFile(

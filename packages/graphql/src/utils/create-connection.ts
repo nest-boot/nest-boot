@@ -6,16 +6,13 @@ import { PageInfo } from "../dtos";
 import { ConnectionInterface, EdgeInterface } from "../interfaces";
 
 export function createConnection<T>(
-  NodeType: Type<T> | T
+  NodeType: Type<T>
 ): Type<ConnectionInterface<T>> {
-  const name =
-    typeof NodeType === "symbol"
-      ? NodeType.description
-      : (NodeType as Type<T>).name;
+  const name = NodeType.name;
 
   @ObjectType(`${name}Edge`)
   class Edge implements EdgeInterface<T> {
-    @Field(() => NodeType as Type<T>)
+    @Field(() => NodeType)
     node!: T;
 
     @Field()
