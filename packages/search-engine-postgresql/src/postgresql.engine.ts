@@ -1,4 +1,4 @@
-import { AnyEntity, FilterQuery } from "@mikro-orm/core";
+import { FilterQuery, FindOptions, GetRepository } from "@mikro-orm/core";
 import { EntityManager, SqlEntityRepository } from "@mikro-orm/postgresql";
 import {
   SearchableEntityService,
@@ -12,10 +12,12 @@ import _ from "lodash";
 import { parse } from "search-syntax";
 import { Attributes } from "search-syntax/dist/interfaces";
 
-export class PostgresqlSearchEngine implements SearchEngineInterface {
+export class PostgresqlSearchEngine<T extends { id: number | string | bigint }>
+  implements SearchEngineInterface<T>
+{
   private readonly searchableMap = new Map<
     string,
-    { service: SearchableEntityService<AnyEntity>; options: SearchableOptions }
+    { service: SearchableEntityService<T>; options: SearchableOptions }
   >();
 
   constructor(
@@ -24,25 +26,23 @@ export class PostgresqlSearchEngine implements SearchEngineInterface {
   ) {
     this.discoveryService
       .getProviders()
-      .forEach(
-        (wrapper: InstanceWrapper<SearchableEntityService<AnyEntity>>) => {
-          if (typeof wrapper.instance?.searchableOptions !== "undefined") {
-            const { searchableOptions } = wrapper.instance;
+      .forEach((wrapper: InstanceWrapper<SearchableEntityService<T>>) => {
+        if (typeof wrapper.instance?.searchableOptions !== "undefined") {
+          const { searchableOptions } = wrapper.instance;
 
-            this.searchableMap.set(searchableOptions.index, {
-              service: wrapper.instance,
-              options: searchableOptions,
-            });
-          }
+          this.searchableMap.set(searchableOptions.index, {
+            service: wrapper.instance,
+            options: searchableOptions,
+          });
         }
-      );
+      });
   }
 
   async search(
     index: string,
     query: string,
-    options?: SearchOptions<AnyEntity>
-  ): Promise<[Array<number | string>, number]> {
+    options?: SearchOptions<T>
+  ): Promise<[Array<T["id"]>, number]> {
     const searchable = this.searchableMap.get(index);
 
     if (typeof searchable === "undefined") {
@@ -53,78 +53,89 @@ export class PostgresqlSearchEngine implements SearchEngineInterface {
 
     const metadata = this.entityManager.getMetadata().get(index);
 
-    const repository: SqlEntityRepository<AnyEntity> =
-      this.entityManager.getRepository<AnyEntity>(index);
+    const repository: GetRepository<
+      T,
+      SqlEntityRepository<T>
+    > = this.entityManager.getRepository<T>(index);
 
-    const whereGroup: Array<FilterQuery<AnyEntity>> =
-      typeof options?.where !== "undefined" ? [options.where] : [];
+    let where = options?.where;
 
     if (typeof query !== "undefined") {
-      whereGroup.push(
-        parse(query, {
-          attributes: _.uniq([
-            ...(searchableOptions?.filterableAttributes ?? []),
-            ...(searchableOptions?.searchableAttributes ?? []),
-          ]).reduce<Attributes>((result, field) => {
-            const prop = metadata.properties[field];
+      const queryWhere = parse(query, {
+        attributes: _.uniq([
+          ...(searchableOptions?.filterableAttributes ?? []),
+          ...(searchableOptions?.searchableAttributes ?? []),
+        ]).reduce<Attributes>((result, field) => {
+          const prop = metadata.properties[field];
 
-            if (typeof prop !== "undefined") {
-              return {
-                ...result,
-                [field]: {
-                  type: (() => {
-                    switch (prop.type) {
-                      case "boolean":
-                        return "boolean";
-                      case "integer":
-                      case "smallint":
-                      case "tinyint":
-                      case "mediumint":
-                      case "float":
-                      case "double":
-                      case "decimal":
-                        return "number";
-                      case "date":
-                      case "time":
-                      case "datetime":
-                        return "date";
-                      case "bigint":
-                      case "enum":
-                      case "string":
-                      case "uuid":
-                      case "text":
-                      default:
-                        return "string";
-                    }
-                  })(),
-                  array: prop.array,
-                  fulltext: metadata.indexes.some(
-                    ({ type, properties }) =>
-                      properties === field && type === "fulltext"
-                  ),
-                  filterable:
-                    searchableOptions?.filterableAttributes?.includes(field),
-                  searchable:
-                    searchableOptions?.searchableAttributes?.includes(field),
-                },
-              };
-            }
+          if (typeof prop !== "undefined") {
+            return {
+              ...result,
+              [field]: {
+                type: (() => {
+                  switch (prop.type) {
+                    case "boolean":
+                      return "boolean";
+                    case "integer":
+                    case "smallint":
+                    case "tinyint":
+                    case "mediumint":
+                    case "float":
+                    case "double":
+                    case "decimal":
+                      return "number";
+                    case "date":
+                    case "time":
+                    case "datetime":
+                      return "date";
+                    case "bigint":
+                    case "enum":
+                    case "string":
+                    case "uuid":
+                    case "text":
+                    default:
+                      return "string";
+                  }
+                })(),
+                array: prop.array,
+                fulltext: metadata.indexes.some(
+                  ({ type, properties }) =>
+                    properties === field && type === "fulltext"
+                ),
+                filterable:
+                  searchableOptions?.filterableAttributes?.includes(field),
+                searchable:
+                  searchableOptions?.searchableAttributes?.includes(field),
+              },
+            };
+          }
 
-            return result;
-          }, {}),
-        }) as FilterQuery<AnyEntity>
-      );
+          return result;
+        }, {}),
+      }) as FilterQuery<T>;
+
+      if (Object.keys(queryWhere).length !== 0) {
+        where = (
+          typeof where !== "undefined"
+            ? { $and: [where, queryWhere] }
+            : queryWhere
+        ) as FilterQuery<T> | undefined;
+      }
     }
 
-    const result = await repository.findAndCount(
-      { $and: whereGroup },
-      {
-        limit: options?.limit,
-        offset: options?.offset,
-        orderBy: options?.orderBy,
-      }
-    );
+    const findOptions: FindOptions<T> = {
+      fields: ["id"],
+      limit: options?.limit,
+      offset: options?.offset,
+      orderBy: options?.orderBy,
+    };
 
-    return [result[0].map(({ id }) => id), result[1]];
+    return await Promise.all([
+      (typeof where !== "undefined"
+        ? repository.find(where, findOptions)
+        : repository.findAll(findOptions)
+      ).then((items) => items.map((item) => item.id)),
+      repository.count(where),
+    ]);
   }
 }

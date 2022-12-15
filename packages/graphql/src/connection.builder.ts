@@ -1,4 +1,3 @@
-import { IdEntity } from "@nest-boot/database";
 import { Type } from "@nestjs/common";
 import {
   ArgsType,
@@ -38,7 +37,10 @@ interface ConnectionBuildResult<T, P extends keyof T> {
   OrderField?: OrderFieldType<T, P>;
 }
 
-export class ConnectionBuilder<T extends IdEntity, P extends keyof T> {
+export class ConnectionBuilder<
+  T extends { id: number | string | bigint },
+  P extends keyof T
+> {
   private readonly entityName: string;
 
   constructor(

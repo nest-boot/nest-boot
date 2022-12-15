@@ -9,14 +9,12 @@ import {
 import { InjectRepository } from "@mikro-orm/nestjs";
 import { Injectable, Type } from "@nestjs/common";
 
-import { IdEntity } from "../interfaces";
-
 export type ChunkByIdOptions<T, P extends string = never> = Omit<
   FindOptions<T, P>,
   "offset" | "orderBy"
 >;
 
-export interface EntityService<T extends IdEntity<T>> {
+export interface EntityService<T extends { id: number | string | bigint }> {
   entityClass: Type<T>;
 
   repository: EntityRepository<T>;
@@ -28,7 +26,7 @@ export interface EntityService<T extends IdEntity<T>> {
   ) => Promise<this>;
 }
 
-export function createEntityService<T extends IdEntity<T> & { id: string }>(
+export function createEntityService<T extends { id: number | string | bigint }>(
   entityClass: Type<T>
 ): Type<EntityService<T>> {
   @Injectable()
@@ -43,7 +41,7 @@ export function createEntityService<T extends IdEntity<T> & { id: string }>(
       options: ChunkByIdOptions<T, P>,
       callback: (entities: T[]) => Promise<void>
     ): Promise<this> {
-      let lastId: string | undefined;
+      let lastId: number | string | bigint | undefined;
       let count = 0;
 
       do {

@@ -1,10 +1,4 @@
-import {
-  AnyEntity,
-  FilterQuery,
-  QueryOrder,
-  QueryOrderMap,
-} from "@mikro-orm/core";
-import { IdEntity } from "@nest-boot/database";
+import { FilterQuery, QueryOrder, QueryOrderMap } from "@mikro-orm/core";
 import { SearchableEntityService } from "@nest-boot/search";
 import _ from "lodash";
 
@@ -13,7 +7,7 @@ import { ConnectionArgsInterface, ConnectionInterface } from "../interfaces";
 import { Cursor } from "./cursor";
 import { getPagingType } from "./get-paging-type";
 
-async function getCursorConnection<T extends AnyEntity>(
+async function getCursorConnection<T extends { id: number | string | bigint }>(
   service: SearchableEntityService<T>,
   args: ConnectionArgsInterface<any, any>,
   where?: FilterQuery<T>
@@ -55,55 +49,58 @@ async function getCursorConnection<T extends AnyEntity>(
     id: pagingType === PagingType.FORWARD ? QueryOrder.ASC : QueryOrder.DESC,
   };
 
-  const idWhere: Array<FilterQuery<any>> =
+  const idWhere = (
     typeof cursor?.id !== "undefined"
-      ? [
-          {
-            id: {
-              [pagingType === PagingType.FORWARD ? "$gt" : "$lt"]: cursor.id,
-            },
+      ? // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+        {
+          id: {
+            [pagingType === PagingType.FORWARD ? "$gt" : "$lt"]: cursor.id,
           },
-        ]
-      : [];
+        }
+      : undefined
+  ) as FilterQuery<T> | undefined;
 
-  const valueWhere: Array<FilterQuery<any>> =
+  const cursorWhere = (
     typeof orderBy !== "undefined" && typeof cursor?.value !== "undefined"
-      ? [
-          {
-            $or: [
-              {
-                [orderBy.field]: (
-                  pagingType === PagingType.FORWARD
-                    ? orderBy.direction === OrderDirection.ASC
-                    : orderBy.direction === OrderDirection.DESC
-                )
-                  ? { $gt: cursor.value }
-                  : { $lt: cursor.value },
-              },
-              {
-                $and: [
-                  {
-                    [orderBy.field]: { $eq: cursor.value },
-                  },
-                  ...idWhere,
-                ],
-              },
-            ],
-          },
-        ]
-      : idWhere;
-
-  const whereArray: FilterQuery<T> = _.compact([where, ...valueWhere]);
+      ? {
+          $or: [
+            {
+              [orderBy.field]: (
+                pagingType === PagingType.FORWARD
+                  ? orderBy.direction === OrderDirection.ASC
+                  : orderBy.direction === OrderDirection.DESC
+              )
+                ? { $gt: cursor.value }
+                : { $lt: cursor.value },
+            },
+            typeof idWhere !== "undefined"
+              ? {
+                  $and: [
+                    {
+                      [orderBy.field]: { $eq: cursor.value },
+                    },
+                    idWhere,
+                  ],
+                }
+              : {
+                  [orderBy.field]: { $eq: cursor.value },
+                },
+          ],
+        }
+      : idWhere
+  ) as FilterQuery<T> | undefined;
 
   // 搜索结果
   const [[results], [, totalCount]] = await Promise.all([
     service.search(query, {
-      where: whereArray.length > 0 ? whereArray : undefined,
+      where: (typeof cursorWhere !== "undefined"
+        ? { $and: [where, cursorWhere] }
+        : where) as FilterQuery<T> | undefined,
       limit: limit + 1,
       orderBy: order,
     }),
     service.search(query, {
-      where: typeof where !== "undefined" ? where : undefined,
+      where,
       limit: 0,
     }),
   ]);
@@ -157,7 +154,10 @@ async function getCursorConnection<T extends AnyEntity>(
   };
 }
 
-export async function getConnection<T extends IdEntity, P extends keyof T>(
+export async function getConnection<
+  T extends { id: number | string | bigint },
+  P extends keyof T
+>(
   service: SearchableEntityService<T>,
   args: ConnectionArgsInterface<T, P>,
   where?: FilterQuery<T>
