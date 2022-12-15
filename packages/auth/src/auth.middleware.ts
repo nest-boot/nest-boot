@@ -47,6 +47,10 @@ export class AuthMiddleware implements NestMiddleware {
       }
     }
 
+    if (typeof req.cookies?.token === "string") {
+      return req.cookies.token;
+    }
+
     return null;
   }
 }
