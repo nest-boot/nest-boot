@@ -21,7 +21,7 @@ export class SearchService implements SearchEngineInterface {
     index: string,
     query: string,
     options?: SearchOptions<any>
-  ): Promise<[Array<string | number>, number]> {
+  ): Promise<[Array<string | number | bigint>, number]> {
     return await this.engine.search(index, query, options);
   }
 }

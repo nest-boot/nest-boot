@@ -3,7 +3,11 @@ import { SearchableEntityService } from "@nest-boot/search";
 import _ from "lodash";
 
 import { OrderDirection, PagingType } from "../enums";
-import { ConnectionArgsInterface, ConnectionInterface } from "../interfaces";
+import {
+  ConnectionArgsInterface,
+  ConnectionInterface,
+  EdgeInterface,
+} from "../interfaces";
 import { Cursor } from "./cursor";
 import { getPagingType } from "./get-paging-type";
 
@@ -115,24 +119,25 @@ async function getCursorConnection<T extends { id: number | string | bigint }>(
         : []) as Array<"asc" | "desc">),
       "asc",
     ]
-  );
+  ) as T[];
 
-  // // 根据结果生成 edges
-  // const edges = (
-  //   entities.length > limit
-  //     ? pagingType === PagingType.FORWARD
-  //       ? entities.slice(0, -1)
-  //       : entities.slice(1)
-  //     : entities
-  // ).map((node: T) => ({
-  //   node,
-  //   cursor: new Cursor({
-  //     id: node.id,
-  //     value: typeof orderBy !== "undefined" ? node[orderBy.field] : undefined,
-  //   }).toString(),
-  // }));
-
-  const edges: string | any[] = [];
+  // 根据结果生成 edges
+  const edges = (
+    entities.length > limit
+      ? pagingType === PagingType.FORWARD
+        ? entities.slice(0, -1)
+        : entities.slice(1)
+      : entities
+  ).map<EdgeInterface<T>>((node: T) => ({
+    node,
+    cursor: new Cursor({
+      id: node.id,
+      value:
+        typeof orderBy !== "undefined"
+          ? node[_.camelCase(orderBy.field) as keyof T]
+          : undefined,
+    }).toString(),
+  }));
 
   // 返回集合
   return {
@@ -151,6 +156,7 @@ async function getCursorConnection<T extends { id: number | string | bigint }>(
       endCursor: edges[edges.length - 1]?.cursor,
     },
     edges,
+    nodes: edges.map((edge: any) => edge.node),
   };
 }
 

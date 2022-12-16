@@ -1,7 +1,7 @@
 import { SearchOptions } from "./search-options.interface";
 
 export interface SearchEngineInterface<
-  T extends { id: number | string | bigint } = any
+  T extends { id: number | string | bigint } = { id: number | string | bigint }
 > {
   search: (
     index: string,
