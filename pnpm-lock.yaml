@@ -67,7 +67,7 @@ importers:
       pino-pretty: ^9.1.1
       prettier: ^2.8.0
       reflect-metadata: ^0.1.13
-      rxjs: ^7.5.7
+      rxjs: ^7.8.0
       source-map-support: ^0.5.21
       supertest: ^6.3.1
       ts-jest: 29.0.3
@@ -98,7 +98,7 @@ importers:
       graphql: 16.6.0
       lodash: 4.17.21
       reflect-metadata: 0.1.13
-      rxjs: 7.6.0
+      rxjs: 7.8.0
     devDependencies:
       '@mikro-orm/cli': 5.6.0
       '@mikro-orm/seeder': 5.6.0
@@ -143,7 +143,7 @@ importers:
       lodash: ^4.17.21
       ms: ^2.1.3
       reflect-metadata: ^0.1.13
-      rxjs: ^7.6.0
+      rxjs: ^7.8.0
       ts-jest: ^29.0.3
       typescript: ^4.9.4
     dependencies:
@@ -168,7 +168,7 @@ importers:
       express: 4.18.2
       jest: 29.3.1
       reflect-metadata: 0.1.13
-      rxjs: 7.6.0
+      rxjs: 7.8.0
       ts-jest: 29.0.3
       typescript: 4.9.4
 
@@ -188,15 +188,15 @@ importers:
       graphql: ^16.6.0
       jest: ^29.3.1
       lodash: ^4.17.21
-      pino: ^8.7.0
-      pino-http: ^8.2.1
+      pino: ^8.8.0
+      pino-http: ^8.3.0
       reflect-metadata: ^0.1.13
       ts-jest: ^29.0.3
       typescript: ^4.9.4
     dependencies:
       lodash: 4.17.21
-      pino: 8.7.0
-      pino-http: 8.2.1
+      pino: 8.8.0
+      pino-http: 8.3.0
     devDependencies:
       '@nest-boot/eslint-config': link:../eslint-config
       '@nest-boot/tsconfig': link:../tsconfig
@@ -225,7 +225,7 @@ importers:
       eslint: ^8.29.0
       jest: ^29.3.1
       reflect-metadata: ^0.1.13
-      rxjs: ^7.6.0
+      rxjs: ^7.8.0
       ts-jest: ^29.0.3
       typescript: ^4.9.4
     devDependencies:
@@ -237,7 +237,7 @@ importers:
       eslint: 8.29.0
       jest: 29.3.1
       reflect-metadata: 0.1.13
-      rxjs: 7.6.0
+      rxjs: 7.8.0
       ts-jest: 29.0.3
       typescript: 4.9.4
 
@@ -257,13 +257,13 @@ importers:
       jest: ^29.3.1
       prettier: ^2.8.1
       reflect-metadata: ^0.1.13
-      rxjs: ^7.6.0
-      sql-formatter: ^12.0.3
+      rxjs: ^7.8.0
+      sql-formatter: ^12.0.4
       ts-jest: ^29.0.3
       typescript: ^4.9.4
     dependencies:
       prettier: 2.8.1
-      sql-formatter: 12.0.3
+      sql-formatter: 12.0.4
     devDependencies:
       '@mikro-orm/core': 5.6.0
       '@mikro-orm/migrations': 5.6.0
@@ -278,7 +278,7 @@ importers:
       eslint: 8.29.0
       jest: 29.3.1
       reflect-metadata: 0.1.13
-      rxjs: 7.6.0
+      rxjs: 7.8.0
       ts-jest: 29.0.3
       typescript: 4.9.4
 
@@ -333,7 +333,7 @@ importers:
       jest: ^29.3.1
       lodash: ^4.17.21
       reflect-metadata: ^0.1.13
-      rxjs: ^7.6.0
+      rxjs: ^7.8.0
       ts-jest: ^29.0.3
       typescript: ^4.9.4
     dependencies:
@@ -362,7 +362,7 @@ importers:
       graphql: 16.6.0
       jest: 29.3.1
       reflect-metadata: 0.1.13
-      rxjs: 7.6.0
+      rxjs: 7.8.0
       ts-jest: 29.0.3
       typescript: 4.9.4
 
@@ -377,7 +377,7 @@ importers:
       eslint: ^8.29.0
       jest: ^29.3.1
       reflect-metadata: ^0.1.13
-      rxjs: ^7.6.0
+      rxjs: ^7.8.0
       ts-jest: ^29.0.3
       typescript: ^4.9.4
     dependencies:
@@ -391,7 +391,7 @@ importers:
       eslint: 8.29.0
       jest: 29.3.1
       reflect-metadata: 0.1.13
-      rxjs: 7.6.0
+      rxjs: 7.8.0
       ts-jest: 29.0.3
       typescript: 4.9.4
 
@@ -410,7 +410,7 @@ importers:
       jest: ^29.3.1
       redis-info: ^3.1.0
       reflect-metadata: ^0.1.13
-      rxjs: ^7.6.0
+      rxjs: ^7.8.0
       ts-jest: ^29.0.3
       typescript: ^4.9.4
     devDependencies:
@@ -427,7 +427,7 @@ importers:
       jest: 29.3.1
       redis-info: 3.1.0
       reflect-metadata: 0.1.13
-      rxjs: 7.6.0
+      rxjs: 7.8.0
       ts-jest: 29.0.3
       typescript: 4.9.4
 
@@ -448,7 +448,7 @@ importers:
       i18next-http-middleware: ^3.2.1
       jest: ^29.3.1
       reflect-metadata: ^0.1.13
-      rxjs: ^7.6.0
+      rxjs: ^7.8.0
       ts-jest: ^29.0.3
       typescript: ^4.9.4
     devDependencies:
@@ -467,7 +467,7 @@ importers:
       i18next-http-middleware: 3.2.1
       jest: 29.3.1
       reflect-metadata: 0.1.13
-      rxjs: 7.6.0
+      rxjs: 7.8.0
       ts-jest: 29.0.3
       typescript: 4.9.4
 
@@ -483,7 +483,7 @@ importers:
       ioredis: ^5.2.4
       jest: ^29.3.1
       reflect-metadata: ^0.1.13
-      rxjs: ^7.6.0
+      rxjs: ^7.8.0
       ts-jest: ^29.0.3
       typescript: ^4.9.4
     devDependencies:
@@ -497,7 +497,7 @@ importers:
       ioredis: 5.2.4
       jest: 29.3.1
       reflect-metadata: 0.1.13
-      rxjs: 7.6.0
+      rxjs: 7.8.0
       ts-jest: 29.0.3
       typescript: 4.9.4
 
@@ -515,7 +515,7 @@ importers:
       eslint: ^8.29.0
       jest: ^29.3.1
       reflect-metadata: ^0.1.13
-      rxjs: ^7.6.0
+      rxjs: ^7.8.0
       ts-jest: ^29.0.3
       typescript: ^4.9.4
     devDependencies:
@@ -531,7 +531,7 @@ importers:
       eslint: 8.29.0
       jest: 29.3.1
       reflect-metadata: 0.1.13
-      rxjs: 7.6.0
+      rxjs: 7.8.0
       ts-jest: 29.0.3
       typescript: 4.9.4
 
@@ -550,13 +550,13 @@ importers:
       jest: ^29.3.1
       lodash: ^4.17.21
       reflect-metadata: ^0.1.13
-      rxjs: ^7.6.0
-      search-syntax: ^2.1.1
+      rxjs: ^7.8.0
+      search-syntax: ^2.1.2
       ts-jest: ^29.0.3
       typescript: ^4.9.4
     dependencies:
       lodash: 4.17.21
-      search-syntax: 2.1.1
+      search-syntax: 2.1.2
     devDependencies:
       '@mikro-orm/core': 5.6.0
       '@mikro-orm/postgresql': 5.6.0
@@ -570,7 +570,7 @@ importers:
       eslint: 8.29.0
       jest: 29.3.1
       reflect-metadata: 0.1.13
-      rxjs: 7.6.0
+      rxjs: 7.8.0
       ts-jest: 29.0.3
       typescript: 4.9.4
 
@@ -594,7 +594,7 @@ importers:
       moment: ^2.29.4
       moment-timezone: ^0.5.40
       reflect-metadata: ^0.1.13
-      rxjs: ^7.6.0
+      rxjs: ^7.8.0
       ts-jest: ^29.0.3
       typescript: ^4.9.4
       validator: ^13.7.0
@@ -616,7 +616,7 @@ importers:
       eslint: 8.29.0
       jest: 29.3.1
       reflect-metadata: 0.1.13
-      rxjs: 7.6.0
+      rxjs: 7.8.0
       ts-jest: 29.0.3
       typescript: 4.9.4
 
@@ -5013,7 +5013,7 @@ packages:
       mute-stream: 0.0.8
       ora: 5.4.1
       run-async: 2.4.1
-      rxjs: 7.6.0
+      rxjs: 7.8.0
       string-width: 4.2.3
       strip-ansi: 6.0.1
       through: 2.3.8
@@ -6801,14 +6801,14 @@ packages:
       readable-stream: 4.2.0
       split2: 4.1.0
 
-  /pino-http/8.2.1:
-    resolution: {integrity: sha512-bdWAE4HYfFjDhKw2/N7BLNSIFAs+WDLZnetsGRpBdNEKq7/RoZUgblLS5OlMY257RPQml6J5QiiLkwxbstzWbA==}
+  /pino-http/8.3.0:
+    resolution: {integrity: sha512-DmuC0zGdldG+MnW1ZD+YDShTAsHdNUdnzk1Oic0dbhm/saOe1cYakJomO3ciwi/HQ9WmuhkuBkRwIzgP98r2Kw==}
     dependencies:
       fast-url-parser: 1.1.3
       get-caller-file: 2.0.5
-      pino: 8.7.0
+      pino: 8.8.0
       pino-std-serializers: 6.0.0
-      process-warning: 2.0.0
+      process-warning: 2.1.0
     dev: false
 
   /pino-pretty/9.1.1:
@@ -6835,8 +6835,8 @@ packages:
     resolution: {integrity: sha512-mMMOwSKrmyl+Y12Ri2xhH1lbzQxwwpuru9VjyJpgFIH4asSj88F2csdMwN6+M5g1Ll4rmsYghHLQJw81tgZ7LQ==}
     dev: false
 
-  /pino/8.7.0:
-    resolution: {integrity: sha512-l9sA5uPxmZzwydhMWUcm1gI0YxNnYl8MfSr2h8cwLvOAzQLBLewzF247h/vqHe3/tt6fgtXeG9wdjjoetdI/vA==}
+  /pino/8.8.0:
+    resolution: {integrity: sha512-cF8iGYeu2ODg2gIwgAHcPrtR63ILJz3f7gkogaHC/TXVVXxZgInmNYiIpDYEwgEkxZti2Se6P2W2DxlBIZe6eQ==}
     hasBin: true
     dependencies:
       atomic-sleep: 1.0.0
@@ -6844,11 +6844,11 @@ packages:
       on-exit-leak-free: 2.1.0
       pino-abstract-transport: 1.0.0
       pino-std-serializers: 6.0.0
-      process-warning: 2.0.0
+      process-warning: 2.1.0
       quick-format-unescaped: 4.0.4
       real-require: 0.2.0
       safe-stable-stringify: 2.4.1
-      sonic-boom: 3.2.0
+      sonic-boom: 3.2.1
       thread-stream: 2.2.0
     dev: false
 
@@ -6921,8 +6921,8 @@ packages:
   /process-nextick-args/2.0.1:
     resolution: {integrity: sha512-3ouUOpQhtgrbOa17J7+uxOTpITYWaGP7/AhoR3+A+/1e9skrzelGi/dXzEYyvbxubEF6Wn2ypscTKiKJFFn1ag==}
 
-  /process-warning/2.0.0:
-    resolution: {integrity: sha512-+MmoAXoUX+VTHAlwns0h+kFUWFs/3FZy+ZuchkgjyOu3oioLAo2LB5aCfKPh2+P9O18i3m43tUEv3YqttSy0Ww==}
+  /process-warning/2.1.0:
+    resolution: {integrity: sha512-9C20RLxrZU/rFnxWncDkuF6O999NdIf3E1ws4B0ZeY3sRVPzWBMsYDE2lxjxhiXxg464cQTgKUGm8/i6y2YGXg==}
     dev: false
 
   /process/0.11.10:
@@ -7298,6 +7298,12 @@ packages:
     resolution: {integrity: sha512-DDa7d8TFNUalGC9VqXvQ1euWNN7sc63TrUCuM9J998+ViviahMIjKSOU7rfcgFOF+FCD71BhDRv4hrFz+ImDLQ==}
     dependencies:
       tslib: 2.4.1
+    dev: true
+
+  /rxjs/7.8.0:
+    resolution: {integrity: sha512-F2+gxDshqmIub1KdvZkaEfGDwLNpPvk9Fs6LD/MyQxNgMds/WH9OdDDXOmxUZpME+iSK3rQCctkL0DYyytUqMg==}
+    dependencies:
+      tslib: 2.4.1
 
   /safe-buffer/5.1.2:
     resolution: {integrity: sha512-Gd2UZBJDkXlY7GbJxfsE8/nvKkUEU1G38c1siN6QP6a9PT9MmHB8GnpscSmMJSoF8LOIrt8ud/wPtojys4G6+g==}
@@ -7330,10 +7336,11 @@ packages:
       ajv-keywords: 3.5.2
     dev: true
 
-  /search-syntax/2.1.1:
-    resolution: {integrity: sha512-fm/sckrpnsD5/iECpz3BYoxwEJFz7ztVkPPGFgV72eqVLAFy+Qs9AGTwLhok573+jOSxHNoppR8ICoEmCUz72w==}
+  /search-syntax/2.1.2:
+    resolution: {integrity: sha512-IW8T9uJTX35G7JnCHZcEVeooDS0e7r1G7HY7od9aF583MYJGEJC3UvEneg3kyy/0JynObMDgeSK77UTZUvv/kg==}
     dependencies:
       chevrotain: 10.4.2
+      lodash: 4.17.21
     dev: false
 
   /secure-json-parse/2.6.0:
@@ -7529,6 +7536,13 @@ packages:
     resolution: {integrity: sha512-SbbZ+Kqj/XIunvIAgUZRlqd6CGQYq71tRRbXR92Za8J/R3Yh4Av+TWENiSiEgnlwckYLyP0YZQWVfyNC0dzLaA==}
     dependencies:
       atomic-sleep: 1.0.0
+    dev: true
+
+  /sonic-boom/3.2.1:
+    resolution: {integrity: sha512-iITeTHxy3B9FGu8aVdiDXUVAcHMF9Ss0cCsAOo2HfCrmVGT3/DT5oYaeu0M/YKZDlKTvChEyPq0zI9Hf33EX6A==}
+    dependencies:
+      atomic-sleep: 1.0.0
+    dev: false
 
   /source-map-support/0.5.13:
     resolution: {integrity: sha512-SHSKFHadjVA5oR4PPqhtAVdcBWwRYVd6g6cAXnIbRiIwc2EhPrTuKUBdSLvlEKyIP3GCf89fltvcZiP9MMFA1w==}
@@ -7611,8 +7625,8 @@ packages:
     resolution: {integrity: sha512-D9cPgkvLlV3t3IzL0D0YLvGA9Ahk4PcvVwUbN0dSGr1aP0Nrt4AEnTUbuGvquEC0mA64Gqt1fzirlRs5ibXx8g==}
     dev: true
 
-  /sql-formatter/12.0.3:
-    resolution: {integrity: sha512-Q4ABErLPem1hW/IAy9XOkGIdXgeM+SfUv0ngRo6ef/Z7t4juz/buX8tkBRvEjthAuO9AXVbEKKnBetFxGE+/JQ==}
+  /sql-formatter/12.0.4:
+    resolution: {integrity: sha512-uyaLYIYe+e8tIpMiWCf2drSVWUQ6Ln8RC5L96ELVPHX4e3jNvvAz7nKSZKSan0rMyHpimc+D8HaiMQ94eFriEQ==}
     hasBin: true
     dependencies:
       argparse: 2.0.1

@@ -22,8 +22,8 @@
   },
   "dependencies": {
     "lodash": "^4.17.21",
-    "pino": "^8.7.0",
-    "pino-http": "^8.2.1"
+    "pino": "^8.8.0",
+    "pino-http": "^8.3.0"
   },
   "devDependencies": {
     "@nest-boot/eslint-config": "workspace:*",
@@ -55,7 +55,10 @@
     "access": "public"
   },
   "lint-staged": {
-    "*.ts": ["prettier --write", "eslint --fix"]
+    "*.ts": [
+      "prettier --write",
+      "eslint --fix"
+    ]
   },
   "jest": {
     "moduleFileExtensions": [

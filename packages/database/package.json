@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "prettier": "^2.8.1",
-    "sql-formatter": "^12.0.3"
+    "sql-formatter": "^12.0.4"
   },
   "devDependencies": {
     "@mikro-orm/core": "^5.6.0",
@@ -39,7 +39,7 @@
     "eslint": "^8.29.0",
     "jest": "^29.3.1",
     "reflect-metadata": "^0.1.13",
-    "rxjs": "^7.6.0",
+    "rxjs": "^7.8.0",
     "ts-jest": "^29.0.3",
     "typescript": "^4.9.4"
   },
@@ -58,7 +58,10 @@
     "access": "public"
   },
   "lint-staged": {
-    "*.ts": ["prettier --write", "eslint --fix"]
+    "*.ts": [
+      "prettier --write",
+      "eslint --fix"
+    ]
   },
   "jest": {
     "moduleFileExtensions": [
