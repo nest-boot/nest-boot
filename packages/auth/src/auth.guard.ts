@@ -24,6 +24,10 @@ export class AuthGuard implements CanActivate {
   public async canActivate(
     executionContext: ExecutionContext
   ): Promise<boolean> {
+    if (executionContext.getType() !== "http") {
+      return true;
+    }
+
     // 获取运行上下文
     const ctx = Context.get();
 
