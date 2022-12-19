@@ -1,4 +1,4 @@
-import { Context } from "@nest-boot/common";
+import { RequestContext } from "@nest-boot/request-context";
 import { Injectable, NestMiddleware } from "@nestjs/common";
 import { Handler, Request, Response } from "express";
 import { i18n as I18Next } from "i18next";
@@ -16,7 +16,7 @@ export class I18NextMiddleware implements NestMiddleware {
 
   async use(req: Request, res: Response, next: () => void): Promise<void> {
     this.i18nextMiddleware(req, res, () => {
-      const ctx = Context.get();
+      const ctx = RequestContext.get();
       ctx.set("i18n", (req as Request & { i18n: I18Next }).i18n);
       next();
     });

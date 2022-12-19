@@ -1,8 +1,8 @@
-import { Context } from "@nest-boot/common";
+import { RequestContext } from "@nest-boot/request-context";
 import { createParamDecorator } from "@nestjs/common";
 
 import { AuthPayload } from "../interfaces";
 
 export const CurrentPersonalAccessToken = createParamDecorator(() => {
-  return Context.get<AuthPayload>("auth")?.personalAccessToken;
+  return RequestContext.get<AuthPayload>("auth")?.personalAccessToken;
 });

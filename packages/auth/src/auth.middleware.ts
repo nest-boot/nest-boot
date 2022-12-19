@@ -1,5 +1,5 @@
 import { EntityManager } from "@mikro-orm/core";
-import { Context } from "@nest-boot/common";
+import { RequestContext } from "@nest-boot/request-context";
 import { Inject, Injectable, NestMiddleware, Scope } from "@nestjs/common";
 import { Request, Response } from "express";
 
@@ -29,7 +29,10 @@ export class AuthMiddleware implements NestMiddleware {
 
         // 设置访问令牌和用户到运行上下文
         if (entity !== null) {
-          Context.set<AuthPayload>("auth", { entity, personalAccessToken });
+          RequestContext.set<AuthPayload>("auth", {
+            entity,
+            personalAccessToken,
+          });
         }
       }
     }

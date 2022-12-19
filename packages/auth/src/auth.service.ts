@@ -14,7 +14,7 @@ import {
   PersonalAccessTokenInterface,
 } from "./interfaces";
 import ms = require("ms");
-import { Context } from "@nest-boot/common";
+import { RequestContext } from "@nest-boot/request-context";
 
 @Injectable()
 export class AuthService {
@@ -69,7 +69,9 @@ export class AuthService {
     token?: string
   ): Promise<Loaded<PersonalAccessTokenInterface> | null> {
     if (typeof token === "undefined") {
-      return Context.get<AuthPayload>("auth")?.personalAccessToken ?? null;
+      return (
+        RequestContext.get<AuthPayload>("auth")?.personalAccessToken ?? null
+      );
     }
 
     return await this.personalAccessTokenEntity.findOne({ token });

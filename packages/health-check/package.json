@@ -21,7 +21,6 @@
     "test": "jest"
   },
   "devDependencies": {
-    "@nest-boot/common": "workspace:*",
     "@nest-boot/eslint-config": "workspace:*",
     "@nest-boot/redis": "workspace:*",
     "@nest-boot/tsconfig": "workspace:*",
@@ -39,7 +38,6 @@
     "typescript": "^4.9.4"
   },
   "peerDependencies": {
-    "@nest-boot/common": "workspace:*",
     "@nest-boot/redis": "workspace:*",
     "@nestjs/common": "^9.0.0",
     "@nestjs/core": "^9.0.0",

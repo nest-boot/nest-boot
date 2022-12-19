@@ -3,18 +3,21 @@ import {
   LogContext as MikroOrmLoggerContext,
   LoggerNamespace as MikroOrmLoggerNamespace,
 } from "@mikro-orm/core";
-import { Logger } from "@nest-boot/common";
+import { LoggerOptions } from "@mikro-orm/core/logging/Logger";
+import { Logger } from "@nestjs/common";
 
 export class DatabaseLogger extends MikroOrmLogger {
-  #logger = new Logger("DatabaseModule");
+  constructor(options: LoggerOptions, private readonly logger: Logger) {
+    super(options);
+  }
 
-  #log(
+  private _log(
     method: "log" | "error" | "warn",
     namespace: MikroOrmLoggerNamespace,
     message: string,
     context?: MikroOrmLoggerContext
   ): void {
-    this.#logger[method](`database ${namespace}`, {
+    this.logger[method](`database ${namespace}`, {
       message:
         namespace === "discovery" && /^- /.test(message)
           ? message.replace(/^- /, "")
@@ -28,7 +31,7 @@ export class DatabaseLogger extends MikroOrmLogger {
     message: string,
     context?: MikroOrmLoggerContext
   ): void {
-    this.#log("log", namespace, message, context);
+    this._log("log", namespace, message, context);
   }
 
   error(
@@ -36,7 +39,7 @@ export class DatabaseLogger extends MikroOrmLogger {
     message: string,
     context?: MikroOrmLoggerContext
   ): void {
-    this.#log("error", namespace, message, context);
+    this._log("error", namespace, message, context);
   }
 
   warn(
@@ -44,10 +47,10 @@ export class DatabaseLogger extends MikroOrmLogger {
     message: string,
     context?: MikroOrmLoggerContext
   ): void {
-    this.#log("warn", namespace, message, context);
+    this._log("warn", namespace, message, context);
   }
 
   logQuery(context: MikroOrmLoggerContext): void {
-    this.#logger.log("database query", context);
+    this.logger.log("database query", context);
   }
 }

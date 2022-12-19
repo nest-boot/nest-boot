@@ -8,6 +8,7 @@ import {
 } from "@mikro-orm/nestjs";
 import {
   DynamicModule,
+  Logger,
   MiddlewareConsumer,
   Module,
   NestModule,
@@ -33,14 +34,16 @@ export class DatabaseModule
           ? dynamicModule.imports
           : []),
         MikroOrmModule.forRootAsync({
-          useFactory: async () => {
+          providers: [Logger],
+          inject: [Logger],
+          useFactory: async (logger: Logger) => {
             const config = await ConfigurationLoader.getConfiguration();
 
             process.env.NO_COLOR = "true";
 
             config.set(
               "loggerFactory",
-              (options) => new DatabaseLogger(options)
+              (options) => new DatabaseLogger(options, logger)
             );
 
             const options: MikroOrmModuleOptions =

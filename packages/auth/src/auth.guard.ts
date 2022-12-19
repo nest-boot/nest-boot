@@ -1,5 +1,5 @@
 import { EntityManager, Reference } from "@mikro-orm/core";
-import { Context } from "@nest-boot/common";
+import { RequestContext } from "@nest-boot/request-context";
 import { CanActivate, ExecutionContext, Inject } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import _ from "lodash";
@@ -24,12 +24,12 @@ export class AuthGuard implements CanActivate {
   public async canActivate(
     executionContext: ExecutionContext
   ): Promise<boolean> {
-    if (executionContext.getType() !== "http") {
+    if (!["http", "graphql"].includes(executionContext.getType())) {
       return true;
     }
 
     // 获取运行上下文
-    const ctx = Context.get();
+    const ctx = RequestContext.get();
 
     // 获取方法是否需要认证
     const requireAuth = this.reflector.get<boolean>(
@@ -70,7 +70,7 @@ export class AuthGuard implements CanActivate {
     return false;
   }
 
-  async getPermissions(ctx: Context): Promise<string[]> {
+  async getPermissions(ctx: RequestContext): Promise<string[]> {
     let permissions: string[] = [];
 
     const payload = ctx.get<AuthPayload<Partial<HasPermissions>>>("auth");

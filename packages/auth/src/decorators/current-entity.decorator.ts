@@ -1,10 +1,10 @@
-import { Context } from "@nest-boot/common";
+import { RequestContext } from "@nest-boot/request-context";
 import { createParamDecorator } from "@nestjs/common";
 
 import { AuthPayload } from "../interfaces";
 
 export const CurrentEntity = createParamDecorator(() => {
-  return Context.get<AuthPayload>("auth")?.entity;
+  return RequestContext.get<AuthPayload>("auth")?.entity;
 });
 
 export const CurrentUser = CurrentEntity;
