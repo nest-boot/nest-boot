@@ -32,7 +32,7 @@ jobs:
               args: [--frozen-lockfile]
 
       - name: Build
-        run: pnpm build
+        run: pnpm build:packages
 
       - name: Release
         env:
