@@ -10,7 +10,7 @@ module.exports = {
   plugins: [
     "@semantic-release/commit-analyzer",
     "@semantic-release/release-notes-generator",
-    "@semrel-extra/npm"
+    ...(process.env.CI ? ["@semrel-extra/npm"] : []),
   ],
   noCi: true,
 };
