@@ -12,12 +12,14 @@ import _ from "lodash";
 import { parse } from "search-syntax";
 import { Attributes } from "search-syntax/dist/interfaces";
 
-export class PostgresqlSearchEngine<T extends { id: number | string | bigint }>
-  implements SearchEngineInterface<T>
+export class PostgresqlSearchEngine<
+  T extends { id: number | string | bigint },
+  P extends string = never
+> implements SearchEngineInterface<T>
 {
   private readonly searchableMap = new Map<
     string,
-    { service: SearchableEntityService<T>; options: SearchableOptions }
+    { service: SearchableEntityService<T>; options: SearchableOptions<T, P> }
   >();
 
   constructor(
@@ -66,15 +68,16 @@ export class PostgresqlSearchEngine<T extends { id: number | string | bigint }>
           ...(searchableOptions?.filterableAttributes ?? []),
           ...(searchableOptions?.searchableAttributes ?? []),
         ]).reduce<Attributes>((result, field) => {
-          const prop = metadata.properties[field];
+          const prop = _.get(
+            metadata.properties,
+            (field as string).split(".").join(".targetMeta.properties.")
+          );
 
           if (typeof prop !== "undefined") {
             return {
               ...result,
-              [field]: {
+              [field as string]: {
                 type: (() => {
-                  console.log("prop.type", prop.name, prop.type);
-
                   switch (prop.type) {
                     case "boolean":
                     case "BooleanType":
