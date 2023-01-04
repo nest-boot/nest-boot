@@ -73,27 +73,26 @@ export class PostgresqlSearchEngine<T extends { id: number | string | bigint }>
               ...result,
               [field]: {
                 type: (() => {
+                  console.log("prop.type", prop.name, prop.type);
+
                   switch (prop.type) {
                     case "boolean":
+                    case "BooleanType":
                       return "boolean";
-                    case "integer":
-                    case "smallint":
-                    case "tinyint":
-                    case "mediumint":
-                    case "float":
-                    case "double":
-                    case "decimal":
+                    case "number":
+                    case "IntegerType":
+                    case "SmallIntType":
+                    case "MediumIntType":
+                    case "FloatType":
+                    case "DoubleType":
                       return "number";
-                    case "date":
-                    case "time":
-                    case "datetime":
+                    case "Date":
+                    case "DateType":
+                    case "DateTimeType":
                       return "date";
                     case "bigint":
+                    case "BigIntType":
                       return "bigint";
-                    case "enum":
-                    case "string":
-                    case "uuid":
-                    case "text":
                     default:
                       return "string";
                   }
