@@ -12,14 +12,12 @@ import _ from "lodash";
 import { parse } from "search-syntax";
 import { Attributes } from "search-syntax/dist/interfaces";
 
-export class PostgresqlSearchEngine<
-  T extends { id: number | string | bigint },
-  P extends string = never
-> implements SearchEngineInterface<T>
+export class PostgresqlSearchEngine<T extends { id: number | string | bigint }>
+  implements SearchEngineInterface<T>
 {
   private readonly searchableMap = new Map<
     string,
-    { service: SearchableEntityService<T>; options: SearchableOptions<T, P> }
+    { service: SearchableEntityService<T>; options: SearchableOptions<T> }
   >();
 
   constructor(

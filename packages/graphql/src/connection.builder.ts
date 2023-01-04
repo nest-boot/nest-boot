@@ -29,7 +29,10 @@ type OrderFieldType<T, P extends keyof T> = {
   >];
 };
 
-interface ConnectionBuildResult<T, P extends keyof T> {
+interface ConnectionBuildResult<
+  T extends { id: number | string | bigint },
+  P extends keyof T
+> {
   Connection: Type<ConnectionInterface<T>>;
   ConnectionArgs: Type<ConnectionArgsInterface<T, P>>;
   Edge: Type<EdgeInterface<T>>;
