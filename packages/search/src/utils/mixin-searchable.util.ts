@@ -10,14 +10,14 @@ export type Type<T = any> = new (...args: any[]) => T;
 export interface SearchableEntityService<
   T extends { id: number | string | bigint }
 > extends EntityService<T> {
-  searchableOptions: SearchableOptions;
+  searchableOptions: SearchableOptions<T>;
 
   search: (query: string, options?: SearchOptions<T>) => Promise<[T[], number]>;
 }
 
 export function mixinSearchable<T extends { id: number | string | bigint }>(
   Base: Type<EntityService<T>>,
-  searchableOptions: SearchableOptions
+  searchableOptions: SearchableOptions<T>
 ): Type<SearchableEntityService<T>> {
   @Injectable()
   class SearchableTrait extends Base implements SearchableEntityService<T> {
@@ -29,7 +29,7 @@ export function mixinSearchable<T extends { id: number | string | bigint }>(
 
     repository!: EntityRepository<T>;
 
-    get searchableOptions(): SearchableOptions {
+    get searchableOptions(): SearchableOptions<T> {
       return searchableOptions;
     }
 
