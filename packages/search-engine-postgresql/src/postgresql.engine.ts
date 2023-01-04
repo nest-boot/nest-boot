@@ -89,6 +89,7 @@ export class PostgresqlSearchEngine<T extends { id: number | string | bigint }>
                     case "datetime":
                       return "date";
                     case "bigint":
+                      return "bigint";
                     case "enum":
                     case "string":
                     case "uuid":
