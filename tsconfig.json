@@ -1,4 +1,4 @@
 {
   "extends": "@nest-boot/tsconfig/library.json",
-  "include": ["src"],
+  "include": ["src"]
 }

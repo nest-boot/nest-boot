@@ -66,7 +66,7 @@ npm i @nest-boot/auth
    import { PersonalAccessToken } from "./personal-access-token.entity";
 
    @Controller("auth")
-   export class UserAuthController {
+   export class UserController {
      constructor(private readonly authService: AuthService) {}
 
      @Post("login")
