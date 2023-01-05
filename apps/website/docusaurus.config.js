@@ -16,7 +16,7 @@ const config = {
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
-  organizationName: "facebook", // Usually your GitHub org/user name.
+  organizationName: "nest-boot", // Usually your GitHub org/user name.
   projectName: "nest-boot", // Usually your repo name.
 
   // Even if you don't use internalization, you can use this field to set useful
@@ -33,6 +33,7 @@ const config = {
       /** @type {import('@docusaurus/preset-classic').Options} */
       ({
         docs: {
+          sidebarCollapsed: false,
           sidebarPath: require.resolve("./sidebars.js"),
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
@@ -65,11 +66,11 @@ const config = {
             position: "left",
             label: "文档",
           },
-          {
-            href: "https://github.com/facebook/docusaurus",
-            label: "GitHub",
-            position: "right",
-          },
+          // {
+          //   href: "https://github.com/nest-boot/nest-boot",
+          //   label: "GitHub",
+          //   position: "right",
+          // },
         ],
       },
       footer: {
