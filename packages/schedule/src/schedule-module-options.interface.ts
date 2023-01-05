@@ -1,5 +1,5 @@
-import { QueueOptions } from "bullmq";
+import { WorkerOptions } from "bullmq";
 
-export interface ScheduleModuleOptions extends QueueOptions {
+export interface ScheduleModuleOptions extends WorkerOptions {
   name?: string;
 }
