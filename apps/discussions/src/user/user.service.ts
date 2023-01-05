@@ -5,11 +5,6 @@ import { Injectable } from "@nestjs/common";
 
 import { User } from "./user.entity";
 
-/**
- * 用户服务
- *
- * @public
- */
 @Injectable()
 export class UserService extends mixinConnection(
   mixinSearchable(createEntityService(User), {

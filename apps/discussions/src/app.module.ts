@@ -44,7 +44,7 @@ const ScheduleDynamicModule = ScheduleModule.registerAsync({
 const DatabaseDynamicModule = DatabaseModule.forRoot({});
 
 const SearchDynamicModule = SearchModule.registerAsync({
-  inject: [DiscoveryService],
+  inject: [DiscoveryService, EntityManager],
   useFactory: (
     discoveryService: DiscoveryService,
     entityManager: EntityManager
