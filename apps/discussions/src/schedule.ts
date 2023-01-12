@@ -1,12 +1,12 @@
 import { Logger } from "@nest-boot/logger";
-import { NestFactory } from "@nestjs/core";
+import { createScheduleServer } from "@nest-boot/schedule";
 
 import { AppModule } from "./app.module";
 
 const logger = new Logger();
 
 void (async () => {
-  const app = await NestFactory.create(AppModule, {
+  const app = await createScheduleServer(AppModule, {
     bufferLogs: true,
   });
 
@@ -14,5 +14,5 @@ void (async () => {
 
   app.enableShutdownHooks();
 
-  await app.listen(3000);
+  await app.start();
 })();

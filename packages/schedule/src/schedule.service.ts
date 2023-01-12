@@ -29,12 +29,10 @@ export class ScheduleService implements OnModuleInit, OnApplicationShutdown {
   private readonly queue: Queue;
   private worker?: Worker;
 
-  private readonly schedules: Array<{
-    name: string;
-    type: "cron" | "interval";
-    value: number | string;
-    handler: () => Promise<void>;
-  }> = [];
+  private readonly schedules: Map<
+    string,
+    ScheduleMetadataOptions & { processor: () => Promise<void> }
+  > = new Map();
 
   constructor(
     @Inject(MODULE_OPTIONS_TOKEN)
@@ -62,12 +60,10 @@ export class ScheduleService implements OnModuleInit, OnApplicationShutdown {
               this.reflector.get(SCHEDULE_METADATA_KEY, instance[key]);
 
             if (typeof scheduleMetadataOptions !== "undefined") {
-              this.schedules.push({
-                // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-                name: `${instance.constructor.name}#${key}`,
-                type: scheduleMetadataOptions.type,
-                value: scheduleMetadataOptions.value,
-                handler: () => instance[key](),
+              // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+              this.schedules.set(`${instance.constructor.name}#${key}`, {
+                ...scheduleMetadataOptions,
+                processor: () => instance[key](),
               });
             }
           }
@@ -83,14 +79,12 @@ export class ScheduleService implements OnModuleInit, OnApplicationShutdown {
       repeatableJobs
         .filter(
           (repeatableJob) =>
-            typeof this.schedules.find(
-              (schedule) =>
-                schedule.name === repeatableJob.name &&
-                schedule.value.toString() === repeatableJob.pattern
-            ) === "undefined"
+            this.schedules.get(repeatableJob.name)?.value.toString() !==
+            repeatableJob.pattern
         )
         .map(async (repeatableJob) => {
           await this.queue.removeRepeatableByKey(repeatableJob.key);
+
           this.logger.log(
             `Removed {${repeatableJob.name}, ${repeatableJob.pattern}}`,
             this.constructor.name
@@ -101,19 +95,16 @@ export class ScheduleService implements OnModuleInit, OnApplicationShutdown {
 
   async registerSchedules(): Promise<void> {
     await Promise.all(
-      this.schedules.map(async (schedule) => {
+      [...this.schedules.entries()].map(async ([name, { type, value }]) => {
         await this.queue.add(
-          schedule.name,
+          name,
           {},
           {
             repeat:
-              schedule.type === "cron"
-                ? { pattern: schedule.value.toString() }
+              type === "cron"
+                ? { pattern: value.toString() }
                 : {
-                    every:
-                      typeof schedule.value === "string"
-                        ? ms(schedule.value)
-                        : schedule.value,
+                    every: typeof value === "string" ? ms(value) : value,
                   },
             removeOnFail: true,
             removeOnComplete: true,
@@ -121,7 +112,7 @@ export class ScheduleService implements OnModuleInit, OnApplicationShutdown {
         );
 
         this.logger.log(
-          `Registered {${schedule.name}, ${schedule.value}}`,
+          `Registered {${name}, ${value}}`,
           this.constructor.name
         );
       })
@@ -131,17 +122,19 @@ export class ScheduleService implements OnModuleInit, OnApplicationShutdown {
   async processor(job: Job): Promise<void> {
     const ctx = new RequestContext();
     ctx.set("job", job);
-    // ctx.set("entityManager", this.moduleRef.get(EntityManager).fork());
 
-    await RequestContext.run(ctx, async () => {
-      const schedule = this.schedules.find(
-        (schedule) => schedule.name === job.name
-      );
+    const processor = this.schedules.get(job.name)?.processor;
 
-      if (typeof schedule !== "undefined") {
-        await schedule.handler();
-      }
-    });
+    if (typeof processor === "function") {
+      await RequestContext.run(ctx, processor);
+    }
+  }
+
+  async start(): Promise<void> {
+    if (this.worker instanceof Worker && !this.worker.isRunning()) {
+      void this.worker.run();
+      this.logger.log(`Worker started`, this.constructor.name);
+    }
   }
 
   async onModuleInit(): Promise<void> {
@@ -151,20 +144,23 @@ export class ScheduleService implements OnModuleInit, OnApplicationShutdown {
 
     await this.registerSchedules();
 
-    this.worker = new Worker(
-      this.name,
-      async (job: Job) => {
-        await this.processor(job);
-      },
-      this.options
-    );
+    this.worker = new Worker(this.name, this.processor.bind(this), {
+      autorun: false,
+      ...this.options,
+    });
 
     this.worker.on("failed", (job, err) => {
-      this.logger.error(err);
+      this.logger.error(
+        err,
+        typeof job !== "undefined"
+          ? { queueName: job.queueName, jobName: job.name, jobId: job.id }
+          : {}
+      );
     });
   }
 
   async onApplicationShutdown(): Promise<void> {
+    await this.queue.close();
     await this.worker?.close();
   }
 }

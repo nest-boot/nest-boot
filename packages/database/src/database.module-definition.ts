@@ -9,13 +9,8 @@ export const {
   ASYNC_OPTIONS_TYPE,
 } = new ConfigurableModuleBuilder<DatabaseModuleOptions>()
   .setClassMethodName("forRoot")
-  .setExtras(
-    {
-      isGlobal: true,
-    },
-    (definition, extras) => ({
-      ...definition,
-      global: extras.isGlobal,
-    })
-  )
+  .setExtras({}, (definition) => ({
+    ...definition,
+    global: true,
+  }))
   .build();

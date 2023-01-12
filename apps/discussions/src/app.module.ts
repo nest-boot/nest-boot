@@ -1,7 +1,7 @@
-import { EntityManager } from "@mikro-orm/postgresql";
+import { EntityManager, PostgreSqlDriver } from "@mikro-orm/postgresql";
 import { DatabaseModule } from "@nest-boot/database";
 import { MetricsModule } from "@nest-boot/metrics";
-import { RedisModule } from "@nest-boot/redis";
+import { QueueModule } from "@nest-boot/queue";
 import { RequestContextModule } from "@nest-boot/request-context";
 import { ScheduleModule } from "@nest-boot/schedule";
 import { SearchModule } from "@nest-boot/search";
@@ -19,16 +19,6 @@ const RequestContextDynamicModule = RequestContextModule.registerAsync({
   useFactory: () => ({}),
 });
 
-const RedisDynamicModule = RedisModule.registerAsync({
-  inject: [ConfigService],
-  useFactory: (config: ConfigService) => ({
-    host: config.get("REDIS_HOST"),
-    port: config.get("REDIS_PORT"),
-    username: config.get("REDIS_USERNAME"),
-    password: config.get("REDIS_PASSWORD"),
-  }),
-});
-
 const ScheduleDynamicModule = ScheduleModule.registerAsync({
   inject: [ConfigService],
   useFactory: (config: ConfigService) => ({
@@ -41,7 +31,17 @@ const ScheduleDynamicModule = ScheduleModule.registerAsync({
   }),
 });
 
-const DatabaseDynamicModule = DatabaseModule.forRoot({});
+const DatabaseDynamicModule = DatabaseModule.forRootAsync({
+  inject: [ConfigService],
+  useFactory: (config: ConfigService) => ({
+    driver: PostgreSqlDriver,
+    host: config.get("DATABASE_HOST"),
+    port: config.get("DATABASE_PORT"),
+    dbName: config.get("DATABASE_NAME"),
+    name: config.get("DATABASE_USERNAME"),
+    password: config.get("DATABASE_PASSWORD"),
+  }),
+});
 
 const SearchDynamicModule = SearchModule.registerAsync({
   inject: [DiscoveryService, EntityManager],
@@ -58,8 +58,30 @@ const SearchDynamicModule = SearchModule.registerAsync({
     ConfigModule.forRoot({ isGlobal: true }),
     RequestContextDynamicModule,
     MetricsModule,
-    RedisDynamicModule,
     ScheduleDynamicModule,
+    QueueModule.registerQueueAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        connection: {
+          host: config.get("REDIS_HOST"),
+          port: config.get("REDIS_PORT"),
+          username: config.get("REDIS_USERNAME"),
+          password: config.get("REDIS_PASSWORD"),
+        },
+      }),
+    }),
+    QueueModule.registerQueueAsync({
+      name: "queue-b",
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        connection: {
+          host: config.get("REDIS_HOST"),
+          port: config.get("REDIS_PORT"),
+          username: config.get("REDIS_USERNAME"),
+          password: config.get("REDIS_PASSWORD"),
+        },
+      }),
+    }),
     DatabaseDynamicModule,
     SearchDynamicModule,
     UserModule,

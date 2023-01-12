@@ -2,6 +2,7 @@ import {
   DynamicModule,
   Module,
   ModuleMetadata,
+  OnApplicationShutdown,
   Provider,
 } from "@nestjs/common";
 import { RedisOptions } from "ioredis";
@@ -21,7 +22,7 @@ export interface RedisModuleAsyncOptions
 }
 
 @Module({})
-export class RedisModule {
+export class RedisModule implements OnApplicationShutdown {
   static register(options?: RedisModuleOptions): DynamicModule {
     const providers = [
       {
@@ -59,5 +60,11 @@ export class RedisModule {
           new Redis(await options.useFactory(...args)),
       },
     ];
+  }
+
+  constructor(private readonly redis: Redis) {}
+
+  async onApplicationShutdown(): Promise<void> {
+    await this.redis.quit();
   }
 }
