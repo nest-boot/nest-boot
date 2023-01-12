@@ -12,7 +12,7 @@
     "pnpm": ">= 7.0.0"
   },
   "scripts": {
-    "prepare": "husky install",
+    "prepare": "chmod +x ./node_modules/husky/lib/bin.js && husky install",
     "build": "turbo run build",
     "build:packages": "turbo run build --filter=./packages/*",
     "clean": "turbo run clean && rm -rf node_modules",
