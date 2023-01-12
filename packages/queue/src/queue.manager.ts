@@ -14,7 +14,7 @@ export class QueueManager {
       .filter(([name]) => typeof names === "undefined" || names.includes(name))
       .forEach(([name, worker]) => {
         void worker.run();
-        this.logger.log(`Worker ${name} started`);
+        this.logger.log(`Worker ${name} started`, this.constructor.name);
       });
   }
 }

@@ -60,7 +60,10 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
                   processor: instance[key].bind(instance),
                 });
 
-                this.logger.log(`Processor ${metadataOptions.name} discovered`);
+                this.logger.log(
+                  `Processor ${metadataOptions.name} discovered`,
+                  this.constructor.name
+                );
               }
             }
           }
@@ -76,7 +79,10 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
       if (instance instanceof Queue) {
         this.queues.set(instance.name, instance);
 
-        this.logger.log(`Queue ${instance.name} discovered`);
+        this.logger.log(
+          `Queue ${instance.name} discovered`,
+          this.constructor.name
+        );
       }
     });
   }
@@ -115,7 +121,7 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
       [...this.queues.entries()].map(async ([name, queue]) => {
         await queue.close();
 
-        this.logger.log(`Queue ${name} closed`);
+        this.logger.log(`Queue ${name} closed`, this.constructor.name);
       })
     );
 
@@ -123,7 +129,7 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
       [...this.workers.entries()].map(async ([name, worker]) => {
         await worker.close();
 
-        this.logger.log(`Worker ${name} closed`);
+        this.logger.log(`Worker ${name} closed`, this.constructor.name);
       })
     );
   }
