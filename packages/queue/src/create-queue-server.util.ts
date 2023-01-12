@@ -2,7 +2,7 @@ import { NestApplicationContextOptions } from "@nestjs/common/interfaces/nest-ap
 import { NestFactory } from "@nestjs/core";
 
 import { QueueServer } from "./interfaces/queue-server.interface";
-import { QueueExplorer } from "./queue.explorer";
+import { QueueManager } from "./queue.manager";
 
 export async function createQueueServer(
   module: any,
@@ -14,7 +14,7 @@ export async function createQueueServer(
   )) as QueueServer;
 
   app.start = async () => {
-    await app.get(QueueExplorer).start();
+    await app.get(QueueManager).start();
   };
 
   return app;

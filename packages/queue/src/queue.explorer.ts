@@ -18,14 +18,14 @@ import { PROCESSOR_METADATA_KEY } from "./queue.module-definition";
 
 @Injectable()
 export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
-  private readonly processors: Map<
+  readonly processors: Map<
     string,
     ProcessorMetadataOptions & { processor: () => Promise<void> }
   > = new Map();
 
-  private readonly queues: Map<string, Queue> = new Map();
+  readonly queues: Map<string, Queue> = new Map();
 
-  private readonly workers: Map<string, Worker> = new Map();
+  readonly workers: Map<string, Worker> = new Map();
 
   constructor(
     private readonly moduleRef: ModuleRef,
@@ -90,15 +90,6 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
     if (typeof processor === "function") {
       await RequestContext.run(ctx, processor);
     }
-  }
-
-  async start(names?: string[]): Promise<void> {
-    [...this.workers.entries()]
-      .filter(([name]) => typeof names === "undefined" || names.includes(name))
-      .forEach(([name, worker]) => {
-        void worker.run();
-        this.logger.log(`Worker ${name} started`);
-      });
   }
 
   async onModuleInit(): Promise<void> {
