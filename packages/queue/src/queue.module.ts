@@ -9,7 +9,7 @@ import {
   OPTIONS_TYPE,
 } from "./queue.module-definition";
 import { QueueCoreModule } from "./queue-core.module";
-import { createQueueToken } from "./utils/create-queue-token.util";
+import { getQueueToken } from "./utils/get-queue-token.util";
 
 @Module({
   imports: [QueueCoreModule],
@@ -35,7 +35,7 @@ export class QueueModule extends ConfigurableModuleClass {
     const name = options.name ?? "default";
 
     const queueProvider: Provider<Queue> = {
-      provide: name === "default" ? Queue : createQueueToken(name),
+      provide: name === "default" ? Queue : getQueueToken(name),
       inject: [MODULE_OPTIONS_TOKEN],
       useFactory: (options: QueueModuleOptions) => new Queue(name, options),
     };
