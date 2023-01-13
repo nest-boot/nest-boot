@@ -1,8 +1,13 @@
-import { InjectQueue } from "@nest-boot/queue";
-import { Injectable } from "@nestjs/common";
-import { Queue } from "bullmq";
+import { Processor } from "@nest-boot/queue";
+import { Injectable, Logger, Scope } from "@nestjs/common";
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class UserAuthService {
-  constructor(@InjectQueue("queue-b") private readonly queue: Queue) {}
+  private readonly logger = new Logger(UserAuthService.name);
+
+  @Processor("test")
+  handle(): void {
+    console.log("this", this);
+    this.logger.log("handle");
+  }
 }

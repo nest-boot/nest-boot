@@ -5,13 +5,16 @@ import {
   Logger,
   OnApplicationShutdown,
   OnModuleInit,
+  Scope,
 } from "@nestjs/common";
 import {
+  createContextId,
   DiscoveryService,
   MetadataScanner,
   ModuleRef,
   Reflector,
 } from "@nestjs/core";
+import { Injector } from "@nestjs/core/injector/injector";
 import { Job, Queue, Worker } from "bullmq";
 import ms from "ms";
 
@@ -24,6 +27,9 @@ import { ScheduleModuleOptions } from "./schedule-module-options.interface";
 
 @Injectable()
 export class ScheduleService implements OnModuleInit, OnApplicationShutdown {
+  private readonly logger = new Logger(ScheduleService.name);
+  private readonly injector = new Injector();
+
   private readonly name: string;
 
   private readonly queue: Queue;
@@ -40,8 +46,7 @@ export class ScheduleService implements OnModuleInit, OnApplicationShutdown {
     private readonly moduleRef: ModuleRef,
     private readonly reflector: Reflector,
     private readonly discoveryService: DiscoveryService,
-    private readonly metadataScanner: MetadataScanner,
-    private readonly logger: Logger
+    private readonly metadataScanner: MetadataScanner
   ) {
     this.name = options.name ?? "nest-boot-schedule";
     this.queue = new Queue(this.name, options);
@@ -49,13 +54,16 @@ export class ScheduleService implements OnModuleInit, OnApplicationShutdown {
 
   async discoverySchedules(): Promise<void> {
     this.discoveryService.getControllers().forEach((wrapper) => {
-      const { instance } = wrapper;
+      const { host, scope, instance } = wrapper;
 
       this.metadataScanner.scanFromPrototype(
         instance,
         Object.getPrototypeOf(instance),
         (key: string) => {
-          if (typeof instance.constructor.name === "string") {
+          if (
+            typeof host !== "undefined" &&
+            typeof instance.constructor.name === "string"
+          ) {
             const scheduleMetadataOptions: ScheduleMetadataOptions =
               this.reflector.get(SCHEDULE_METADATA_KEY, instance[key]);
 
@@ -63,7 +71,22 @@ export class ScheduleService implements OnModuleInit, OnApplicationShutdown {
               // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
               this.schedules.set(`${instance.constructor.name}#${key}`, {
                 ...scheduleMetadataOptions,
-                processor: () => instance[key](),
+                processor:
+                  scope === Scope.REQUEST
+                    ? async (...args) => {
+                        const contextId = createContextId();
+
+                        const contextInstance =
+                          await this.injector.loadPerContext(
+                            instance,
+                            host,
+                            host.providers,
+                            contextId
+                          );
+
+                        return contextInstance[key](...args);
+                      }
+                    : instance[key].bind(instance),
               });
             }
           }
@@ -86,8 +109,7 @@ export class ScheduleService implements OnModuleInit, OnApplicationShutdown {
           await this.queue.removeRepeatableByKey(repeatableJob.key);
 
           this.logger.log(
-            `Removed {${repeatableJob.name}, ${repeatableJob.pattern}}`,
-            this.constructor.name
+            `Removed {${repeatableJob.name}, ${repeatableJob.pattern}}`
           );
         })
     );
@@ -111,10 +133,7 @@ export class ScheduleService implements OnModuleInit, OnApplicationShutdown {
           }
         );
 
-        this.logger.log(
-          `Registered {${name}, ${value}}`,
-          this.constructor.name
-        );
+        this.logger.log(`Registered {${name}, ${value}}`);
       })
     );
   }
@@ -133,7 +152,7 @@ export class ScheduleService implements OnModuleInit, OnApplicationShutdown {
   async start(): Promise<void> {
     if (this.worker instanceof Worker && !this.worker.isRunning()) {
       void this.worker.run();
-      this.logger.log(`Worker started`, this.constructor.name);
+      this.logger.log(`Worker started`);
     }
   }
 
