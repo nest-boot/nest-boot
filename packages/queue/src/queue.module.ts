@@ -9,21 +9,22 @@ import {
   OPTIONS_TYPE,
 } from "./queue.module-definition";
 import { QueueCoreModule } from "./queue-core.module";
+import { createQueueToken } from "./utils/create-queue-token.util";
 
 @Module({
   imports: [QueueCoreModule],
   exports: [QueueCoreModule],
 })
 export class QueueModule extends ConfigurableModuleClass {
-  static registerQueue(options: typeof OPTIONS_TYPE): DynamicModule {
+  static register(options: typeof OPTIONS_TYPE): DynamicModule {
     return {
-      ...this.withQueue(options, super.registerQueue(options)),
+      ...this.withQueue(options, super.register(options)),
     };
   }
 
-  static registerQueueAsync(options: typeof ASYNC_OPTIONS_TYPE): DynamicModule {
+  static registerAsync(options: typeof ASYNC_OPTIONS_TYPE): DynamicModule {
     return {
-      ...this.withQueue(options, super.registerQueueAsync(options)),
+      ...this.withQueue(options, super.registerAsync(options)),
     };
   }
 
@@ -34,7 +35,7 @@ export class QueueModule extends ConfigurableModuleClass {
     const name = options.name ?? "default";
 
     const queueProvider: Provider<Queue> = {
-      provide: name === "default" ? Queue : `QUEUE_SERVICE[${name}]`,
+      provide: name === "default" ? Queue : createQueueToken(name),
       inject: [MODULE_OPTIONS_TOKEN],
       useFactory: (options: QueueModuleOptions) => new Queue(name, options),
     };

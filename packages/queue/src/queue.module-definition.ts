@@ -21,5 +21,4 @@ export const {
       global: extras.isGlobal,
     })
   )
-  .setClassMethodName("registerQueue")
   .build();

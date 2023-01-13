@@ -59,7 +59,7 @@ const SearchDynamicModule = SearchModule.registerAsync({
     RequestContextDynamicModule,
     MetricsModule,
     ScheduleDynamicModule,
-    QueueModule.registerQueueAsync({
+    QueueModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         connection: {
@@ -70,7 +70,7 @@ const SearchDynamicModule = SearchModule.registerAsync({
         },
       }),
     }),
-    QueueModule.registerQueueAsync({
+    QueueModule.registerAsync({
       name: "queue-b",
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
