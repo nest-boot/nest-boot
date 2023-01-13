@@ -14,7 +14,7 @@ import {
   Reflector,
 } from "@nestjs/core";
 import { Injector } from "@nestjs/core/injector/injector";
-import { Job, Queue, Worker } from "bullmq";
+import { Processor, Queue, Worker } from "bullmq";
 
 import { ProcessorMetadataOptions } from "./interfaces/processor-metadata-options.interface";
 import { PROCESSOR_METADATA_KEY } from "./queue.module-definition";
@@ -26,7 +26,7 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
 
   readonly processors: Map<
     string,
-    ProcessorMetadataOptions & { processor: () => Promise<void> }
+    ProcessorMetadataOptions & { processor: Processor }
   > = new Map();
 
   readonly queues: Map<string, Queue> = new Map();
@@ -104,14 +104,18 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
     });
   }
 
-  async processor(job: Job): Promise<void> {
+  async processor(...args: Parameters<Processor>): Promise<void> {
+    const [job] = args;
+
     const ctx = new RequestContext();
     ctx.set("job", job);
 
     const processor = this.processors.get(job.name)?.processor;
 
     if (typeof processor === "function") {
-      await RequestContext.run(ctx, processor);
+      await RequestContext.run(ctx, async () => {
+        await processor(...args);
+      });
     }
   }
 
