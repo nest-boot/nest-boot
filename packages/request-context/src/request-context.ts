@@ -22,7 +22,7 @@ export class RequestContext {
     }
 
     if (typeof key !== "undefined") {
-      return store.set(key, value);
+      store.set(key, value);
     }
   }
 

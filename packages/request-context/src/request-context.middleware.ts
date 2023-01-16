@@ -10,6 +10,8 @@ export class RequestContextMiddleware implements NestMiddleware {
     ctx.set<Request>("request", req);
     ctx.set<Response>("response", res);
 
-    return RequestContext.run(ctx, () => next());
+    RequestContext.run(ctx, () => {
+      next();
+    });
   }
 }

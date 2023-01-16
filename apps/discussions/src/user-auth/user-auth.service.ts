@@ -6,8 +6,8 @@ export class UserAuthService {
   private readonly logger = new Logger(UserAuthService.name);
 
   @Processor("test")
-  handle(): void {
-    console.log("this", this);
+  handle(job: any): void {
+    console.log("this", job);
     this.logger.log("handle");
   }
 }

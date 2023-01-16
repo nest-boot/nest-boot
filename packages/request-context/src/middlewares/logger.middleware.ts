@@ -28,6 +28,6 @@ export class LoggerMiddleware implements NestMiddleware {
     const ctx = RequestContext.get();
     ctx.set<Logger>("logger", req.log);
 
-    return next();
+    next();
   }
 }

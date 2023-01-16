@@ -13,6 +13,6 @@ import { QueueManager } from "./queue.manager";
     QueueExplorer,
     QueueManager,
   ],
-  exports: [QueueManager],
+  exports: [QueueExplorer, QueueManager],
 })
 export class QueueCoreModule {}

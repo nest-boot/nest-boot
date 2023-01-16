@@ -37,7 +37,7 @@ export class AuthMiddleware implements NestMiddleware {
       }
     }
 
-    return next();
+    next();
   }
 
   private extractAccessToken(req: Request): string | null {
