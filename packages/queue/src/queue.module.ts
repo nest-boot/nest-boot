@@ -1,7 +1,7 @@
 import { DynamicModule, Module, Provider } from "@nestjs/common";
-import { Queue } from "bullmq";
 
 import { QueueModuleOptions } from "./interfaces/queue-module-options.interface";
+import { Queue } from "./queue";
 import {
   ASYNC_OPTIONS_TYPE,
   ConfigurableModuleClass,

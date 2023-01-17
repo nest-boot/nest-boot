@@ -14,10 +14,12 @@ import {
   Reflector,
 } from "@nestjs/core";
 import { Injector } from "@nestjs/core/injector/injector";
-import { Processor, Queue, Worker } from "bullmq";
 
+import { ProcessorFunction } from "./interfaces/processor-function.interface";
 import { ProcessorMetadataOptions } from "./interfaces/processor-metadata-options.interface";
+import { Queue } from "./queue";
 import { PROCESSOR_METADATA_KEY } from "./queue.module-definition";
+import { Worker } from "./worker";
 
 @Injectable()
 export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
@@ -26,7 +28,7 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
 
   readonly processors: Map<
     string,
-    ProcessorMetadataOptions & { processor: Processor }
+    ProcessorMetadataOptions & { processor: ProcessorFunction }
   > = new Map();
 
   readonly queues: Map<string, Queue> = new Map();
@@ -104,7 +106,7 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
     });
   }
 
-  async processor(...args: Parameters<Processor>): Promise<void> {
+  async processor(...args: Parameters<ProcessorFunction>): Promise<void> {
     const [job] = args;
 
     const ctx = new RequestContext();
@@ -113,9 +115,20 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
     const processor = this.processors.get(job.name)?.processor;
 
     if (typeof processor === "function") {
-      await RequestContext.run(ctx, async () => {
-        await processor(...args);
-      });
+      await Promise.race([
+        RequestContext.run(ctx, async () => {
+          await processor(...args);
+        }),
+        ...(typeof job.opts.timeout !== "undefined"
+          ? [
+              new Promise<void>((resolve, reject) => {
+                setTimeout(() => {
+                  reject(new Error("Job processing timeout"));
+                }, job.opts.timeout);
+              }),
+            ]
+          : []),
+      ]);
     }
   }
 
