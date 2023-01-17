@@ -1,4 +1,3 @@
-import { Redis } from "@nest-boot/redis";
 import { Injectable, Scope } from "@nestjs/common";
 import { ModuleRef } from "@nestjs/core";
 import {
@@ -9,6 +8,7 @@ import {
   TimeoutError,
 } from "@nestjs/terminus";
 import { promiseTimeout } from "@nestjs/terminus/dist/utils";
+import { Redis } from "ioredis";
 import { parse } from "redis-info";
 
 export interface RedisPingCheckSettings {
@@ -33,7 +33,7 @@ export class RedisHealthIndicator extends HealthIndicator {
 
     const { client, timeout = 1000, memoryMaximumUtilization = 80 } = options;
 
-    if (client == null) {
+    if (typeof client === "undefined") {
       throw new ConnectionNotFoundError(
         this.getStatus(key, isHealthy, {
           message: "Connection provider not found in application context",
