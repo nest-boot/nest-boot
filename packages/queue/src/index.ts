@@ -1,5 +1,6 @@
 export * from "./decorators/inject-queue.decorator";
 export * from "./decorators/processor.decorator";
+export * from "./interfaces/bulk-job-options.interface";
 export * from "./interfaces/job.interface";
 export * from "./interfaces/job-options.interface";
 export * from "./interfaces/processor-function.interface";
