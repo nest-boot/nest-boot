@@ -37,6 +37,8 @@ const List: FC = () => {
         },
       ]}
       dataSource={query?.data}
+      loading={query?.isLoading}
+      rowKey="name"
       pagination={false}
     />
   );

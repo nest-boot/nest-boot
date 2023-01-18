@@ -1,4 +1,5 @@
 import { Controller, Get, Param } from "@nestjs/common";
+import { parse as redisInfoParse } from "redis-info";
 
 import { QueueExplorer } from "./queue.explorer";
 
@@ -20,9 +21,18 @@ export class QueueController {
     const queue = this.queueExplorer.queues.get(name);
 
     if (typeof queue !== "undefined") {
-      return {
-        name: queue.name,
-        ...(await queue.getJobCounts(
+      const [
+        redisInfoString,
+        isPaused,
+        workers,
+        jobCounts,
+        completedMetrics,
+        failedMetrics,
+      ] = await Promise.all([
+        (await queue.client).info(),
+        queue.isPaused(),
+        queue.getWorkers(),
+        queue.getJobCounts(
           "completed",
           "failed",
           "delayed",
@@ -30,8 +40,29 @@ export class QueueController {
           "wait",
           "paused",
           "repeat"
-        )),
-        status: (await queue.isPaused()) ? "paused" : "active",
+        ),
+        queue.getMetrics("completed"),
+        queue.getMetrics("failed"),
+      ]);
+
+      const redisInfoObject = redisInfoParse(redisInfoString);
+
+      return {
+        name: queue.name,
+        ...jobCounts,
+        status: isPaused ? "paused" : "active",
+        workers,
+        client: {
+          redisVersion: redisInfoObject.redis_version,
+          usedMemory: Number(redisInfoObject.used_memory),
+          maxMemory: Number(redisInfoObject.maxmemory),
+          usedConnection: Number(redisInfoObject.connected_clients),
+          maxConnection: Number((redisInfoObject as any).maxclients),
+        },
+        metrics: {
+          completed: completedMetrics,
+          failed: failedMetrics,
+        },
       };
     }
 

@@ -15,7 +15,7 @@ import {
   Reflector,
 } from "@nestjs/core";
 import { Injector } from "@nestjs/core/injector/injector";
-import { Job, Queue, Worker } from "bullmq";
+import { Job, MetricsTime, Queue, Worker } from "bullmq";
 import ms from "ms";
 
 import {
@@ -165,6 +165,9 @@ export class ScheduleService implements OnModuleInit, OnApplicationShutdown {
 
     this.worker = new Worker(this.name, this.processor.bind(this), {
       autorun: false,
+      metrics: {
+        maxDataPoints: MetricsTime.ONE_MONTH,
+      },
       ...this.options,
     });
 
