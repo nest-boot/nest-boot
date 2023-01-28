@@ -97,11 +97,43 @@ npm i @nest-boot/auth
    @Module({
      imports: [
        AuthModule.register({
+         // 需要将个人访问令牌实体类传递给认证模块
          personalAccessTokenEntityClass: PersonalAccessToken,
+         // 是否默认要求认证
+         defaultRequireAuth: false,
+         // 可以通过调整 `includeRoutes` 包含需要认证的路由，默认为："*" 表示包含所有路由。
+         includeRoutes: ["*"],
+         // 可以通过调整 `excludeRoutes` 排除不需要认证的路由。
+         // 比如常见用于健康检查和指标监控的 `/health` 和 `/metrics` 路由。
+         excludeRoutes: ["/health", "/metrics"],
        }),
      ],
    })
    export class AppModule {}
    ```
+
+## 认证范围
+
+除了在模块注册时通过 `defaultRequireAuth` 参数设置的是否默认要求认证，还可以在 `Controller` 和 `Resolver` 通过 `@RequireAuth(requireAuth: boolean)` 装饰器来覆盖默认配置。
+
+```typescript
+import { RequireAuth } from "@nest-boot/auth";
+import { Body, Controller, Post } from "@nestjs/common";
+
+@Controller("auth")
+export class AuthController {
+  @RequireAuth(false)
+  @Post("login")
+  async login() {
+    // ...
+  }
+
+  @RequireAuth(true)
+  @Post("logout")
+  async logout() {
+    // ...
+  }
+}
+```
 
 ## 权限
