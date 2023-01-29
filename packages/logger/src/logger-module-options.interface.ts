@@ -1,4 +1,5 @@
 export interface LoggerModuleOptions {
-  httpAutoLogging?: boolean;
-  graphqlAutoLogging?: boolean;
+  genReqId?: () => string;
+  // httpAutoLogging?: boolean;
+  // graphqlAutoLogging?: boolean;
 }

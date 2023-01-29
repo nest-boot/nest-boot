@@ -1,26 +1,13 @@
-import { RequestContext } from "@nest-boot/request-context";
-import { Injectable, LoggerService, Optional, Scope } from "@nestjs/common";
-import pino, { Bindings, Level } from "pino";
+import { Injectable, LoggerService, Scope } from "@nestjs/common";
+import { Bindings, Level } from "pino";
+
+import { RequestLogger } from "./request-logger.service";
 
 @Injectable({ scope: Scope.TRANSIENT })
 export class Logger implements LoggerService {
-  #logger?: pino.Logger;
+  private context?: string;
 
-  constructor(@Optional() private context?: string) {}
-
-  get logger(): pino.Logger {
-    if (typeof this.#logger === "undefined") {
-      try {
-        this.#logger = RequestContext.get<pino.Logger>("pino-logger");
-      } catch (err) {}
-    }
-
-    if (typeof this.#logger === "undefined") {
-      this.#logger = pino();
-    }
-
-    return this.#logger;
-  }
+  constructor(public logger: RequestLogger) {}
 
   verbose(message: string, ...optionalParams: unknown[]): void {
     this.call("trace", message, ...optionalParams);
@@ -43,19 +30,7 @@ export class Logger implements LoggerService {
   }
 
   assign(bindings: Bindings): void {
-    this.#logger = this.logger.child(bindings);
-
-    let ctxLogger: pino.Logger | undefined;
-    try {
-      ctxLogger = RequestContext.get<pino.Logger | undefined>("pino-logger");
-    } catch (err) {}
-
-    if (typeof ctxLogger !== "undefined") {
-      RequestContext.set<pino.Logger>(
-        "pino-logger",
-        this.#logger.child(bindings)
-      );
-    }
+    this.logger.assign(bindings);
   }
 
   setContext(context: string): void {

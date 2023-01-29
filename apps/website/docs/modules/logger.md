@@ -33,13 +33,6 @@ import { NestFactory } from "@nestjs/core";
 
 import { AppModule } from "./app.module";
 
-const logger = new Logger();
-
-// 在 Node.js v18.0.0 之后，不监听 Promise 未解决拒绝会导致程序崩溃。
-process.on("unhandledRejection", (err, promise) => {
-  logger.error("Unhandled rejection exception", { err, promise });
-});
-
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     /* 设置 bufferLogs 为 true 以确保所有日志都将被缓冲。
@@ -49,7 +42,15 @@ async function bootstrap() {
     bufferLogs: true,
   });
 
-  // 使用 @nest-boot/logger 作为日志记录器
+  // 获取日志服务实例
+  const logger = await app.resolve(Logger);
+
+  // 在 Node.js v18.0.0 之后，不监听 Promise 未解决拒绝会导致程序崩溃。
+  process.on("unhandledRejection", (err, promise) => {
+    logger.error("Unhandled rejection exception", { err, promise });
+  });
+
+  // 使用日志服务实例
   app.useLogger(logger);
 
   await app.listen(3000);
@@ -58,4 +59,6 @@ async function bootstrap() {
 bootstrap();
 ```
 
-###
+### 打印美化
+
+JSON 格式的日志方便机器阅读但不适合人类阅读，建议开发时配合 [pino-pretty](https://github.com/pinojs/pino-pretty) 工具进行日志美化。
