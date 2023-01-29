@@ -28,9 +28,6 @@ export class AuthGuard implements CanActivate {
       return true;
     }
 
-    // 获取运行上下文
-    const ctx = RequestContext.get();
-
     // 获取方法是否需要认证
     const requireAuth = this.reflector.get<boolean>(
       REQUIRE_AUTH_METADATA_KEY,
@@ -42,7 +39,7 @@ export class AuthGuard implements CanActivate {
       return true;
     }
 
-    const authPayload = ctx.get<AuthPayload>("auth");
+    const authPayload = RequestContext.get<AuthPayload>("auth");
 
     // 如果上下文中没有认证信息拒绝访问
     if (typeof authPayload === "undefined") {
@@ -59,7 +56,7 @@ export class AuthGuard implements CanActivate {
     // 判断用户权限和配置权限是否有交集，如果有放行
     if (
       typeof permissions === "undefined" ||
-      _.intersection(await this.getPermissions(ctx), permissions).length > 0
+      _.intersection(await this.getPermissions(), permissions).length > 0
     ) {
       authPayload.personalAccessToken.lastUsedAt = new Date();
       await this.entityManager.flush();
@@ -70,10 +67,11 @@ export class AuthGuard implements CanActivate {
     return false;
   }
 
-  async getPermissions(ctx: RequestContext): Promise<string[]> {
+  async getPermissions(): Promise<string[]> {
     let permissions: string[] = [];
 
-    const payload = ctx.get<AuthPayload<Partial<HasPermissions>>>("auth");
+    const payload =
+      RequestContext.get<AuthPayload<Partial<HasPermissions>>>("auth");
 
     if (typeof payload !== "undefined") {
       if (typeof payload.entity.permissions !== "undefined") {

@@ -3,14 +3,12 @@ import { NestFactory } from "@nestjs/core";
 
 import { AppModule } from "./app.module";
 
-const logger = new Logger();
-
 void (async () => {
   const app = await NestFactory.create(AppModule, {
     bufferLogs: true,
   });
 
-  app.useLogger(logger);
+  app.useLogger(await app.resolve(Logger));
 
   app.enableShutdownHooks();
 

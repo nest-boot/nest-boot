@@ -1,5 +1,6 @@
 import { EntityManager, PostgreSqlDriver } from "@mikro-orm/postgresql";
 import { DatabaseModule } from "@nest-boot/database";
+import { LoggerModule } from "@nest-boot/logger";
 import { MetricsModule } from "@nest-boot/metrics";
 import { QueueDashboardModule, QueueModule } from "@nest-boot/queue";
 import { RequestContextModule } from "@nest-boot/request-context";
@@ -15,9 +16,7 @@ import { PostModule } from "./post/post.module";
 import { UserModule } from "./user/user.module";
 import { UserAuthModule } from "./user-auth/user-auth.module";
 
-const RequestContextDynamicModule = RequestContextModule.registerAsync({
-  useFactory: () => ({}),
-});
+const LoggerDynamicModule = LoggerModule.register({});
 
 const ScheduleDynamicModule = ScheduleModule.registerAsync({
   inject: [ConfigService],
@@ -56,7 +55,8 @@ const SearchDynamicModule = SearchModule.registerAsync({
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    RequestContextDynamicModule,
+    RequestContextModule,
+    LoggerDynamicModule,
     MetricsModule,
     ScheduleDynamicModule,
     QueueDashboardModule,

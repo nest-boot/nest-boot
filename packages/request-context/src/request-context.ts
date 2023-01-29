@@ -1,5 +1,5 @@
 import { Type } from "@nestjs/common";
-import { ContextId, ModuleRef } from "@nestjs/core";
+import { ModuleRef } from "@nestjs/core";
 import { AsyncLocalStorage } from "async_hooks";
 
 export class RequestContext {
@@ -7,10 +7,7 @@ export class RequestContext {
 
   private static readonly storage = new AsyncLocalStorage<RequestContext>();
 
-  constructor(
-    private readonly contextId: ContextId,
-    private readonly moduleRef: ModuleRef
-  ) {}
+  constructor(private readonly moduleRef: ModuleRef) {}
 
   async create<T>(type: Type<T>): Promise<T> {
     return await this.moduleRef.create(type);
