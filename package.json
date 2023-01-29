@@ -3,7 +3,7 @@
   "name": "@nest-boot/workspace",
   "repository": {
     "type": "git",
-    "url": "https://github.com/d4rkcr0w/nest-boot.git"
+    "url": "https://github.com/nest-boot/nest-boot.git"
   },
   "packageManager": "pnpm@7.17.0",
   "engines": {
