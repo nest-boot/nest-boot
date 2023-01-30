@@ -6,7 +6,8 @@
     "dist"
   ],
   "scripts": {
-    "prepublish": "node scripts/prepublish.js",
+    "prepack": "node scripts/prepack.js",
+    "postpack": "node scripts/postpack.js",
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview"
