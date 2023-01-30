@@ -1,11 +1,11 @@
 import { Entity, PrimaryKey, Property, t } from "@mikro-orm/core";
-import { PersonalAccessTokenInterface } from "@nest-boot/auth";
+import { AccessTokenInterface } from "@nest-boot/auth";
 import { ObjectType } from "@nestjs/graphql";
 import { randomUUID } from "crypto";
 
 @ObjectType()
 @Entity()
-export class PersonalAccessToken implements PersonalAccessTokenInterface {
+export class AccessToken implements AccessTokenInterface {
   @PrimaryKey({
     type: t.uuid,
     defaultRaw: "uuid_generate_v4()",

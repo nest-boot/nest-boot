@@ -1,8 +1,9 @@
 import { RequestContext } from "@nest-boot/request-context";
 import { createParamDecorator } from "@nestjs/common";
 
-import { AuthPayload } from "../interfaces";
+import { AUTH_ACCESS_TOKEN } from "../auth.constants";
+import { AccessTokenInterface } from "../interfaces";
 
-export const CurrentPersonalAccessToken = createParamDecorator(() => {
-  return RequestContext.get<AuthPayload>("auth")?.personalAccessToken;
+export const CurrentAccessToken = createParamDecorator(() => {
+  return RequestContext.get<AccessTokenInterface>(AUTH_ACCESS_TOKEN);
 });

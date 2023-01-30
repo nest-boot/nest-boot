@@ -1,14 +1,14 @@
 import { EntityClass } from "@mikro-orm/core";
 import { RouteInfo, Type } from "@nestjs/common/interfaces";
 
-import { PersonalAccessTokenInterface } from "./personal-access-token.interface";
+import { AccessTokenInterface } from "./access-token.interface";
 
 /**
  * 认证模块选项
  */
 export interface AuthModuleOptions {
   // 个人访问令牌实体
-  personalAccessTokenEntity: EntityClass<PersonalAccessTokenInterface>;
+  accessTokenEntityClass: EntityClass<AccessTokenInterface>;
 
   // 密钥
   secret: string | Buffer;

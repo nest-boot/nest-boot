@@ -4,12 +4,17 @@ import { CanActivate, ExecutionContext, Inject } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import _ from "lodash";
 
+import { AUTH_ACCESS_TOKEN, AUTH_ENTITY } from "./auth.constants";
 import {
   MODULE_OPTIONS_TOKEN,
   PERMISSIONS_METADATA_KEY,
   REQUIRE_AUTH_METADATA_KEY,
 } from "./auth.module-definition";
-import { AuthModuleOptions, AuthPayload, HasPermissions } from "./interfaces";
+import {
+  AccessTokenInterface,
+  AuthModuleOptions,
+  HasPermissions,
+} from "./interfaces";
 
 export class AuthGuard implements CanActivate {
   constructor(
@@ -39,10 +44,11 @@ export class AuthGuard implements CanActivate {
       return true;
     }
 
-    const authPayload = RequestContext.get<AuthPayload>("auth");
+    const accessToken =
+      RequestContext.get<AccessTokenInterface>(AUTH_ACCESS_TOKEN);
 
     // 如果上下文中没有认证信息拒绝访问
-    if (typeof authPayload === "undefined") {
+    if (typeof accessToken === "undefined") {
       return false;
     }
 
@@ -58,7 +64,7 @@ export class AuthGuard implements CanActivate {
       typeof permissions === "undefined" ||
       _.intersection(await this.getPermissions(), permissions).length > 0
     ) {
-      authPayload.personalAccessToken.lastUsedAt = new Date();
+      accessToken.lastUsedAt = new Date();
       await this.entityManager.flush();
 
       return true;
@@ -70,14 +76,13 @@ export class AuthGuard implements CanActivate {
   async getPermissions(): Promise<string[]> {
     let permissions: string[] = [];
 
-    const payload =
-      RequestContext.get<AuthPayload<Partial<HasPermissions>>>("auth");
+    const entity = RequestContext.get<Partial<HasPermissions>>(AUTH_ENTITY);
 
-    if (typeof payload !== "undefined") {
-      if (typeof payload.entity.permissions !== "undefined") {
-        permissions = permissions.concat(payload.entity.permissions);
+    if (typeof entity !== "undefined") {
+      if (typeof entity.permissions !== "undefined") {
+        permissions = permissions.concat(entity.permissions);
       } else {
-        const newPermissions = await Reference.create(payload.entity).load(
+        const newPermissions = await Reference.create(entity).load(
           "permissions"
         );
 

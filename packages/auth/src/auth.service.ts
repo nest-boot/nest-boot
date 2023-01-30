@@ -8,25 +8,23 @@ import { Inject, Injectable } from "@nestjs/common";
 import { randomBytes } from "crypto";
 
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition";
-import {
-  AuthModuleOptions,
-  AuthPayload,
-  PersonalAccessTokenInterface,
-} from "./interfaces";
+import { AccessTokenInterface, AuthModuleOptions } from "./interfaces";
 import ms = require("ms");
 import { RequestContext } from "@nest-boot/request-context";
 
+import { AUTH_ACCESS_TOKEN } from "./auth.constants";
+
 @Injectable()
 export class AuthService {
-  private readonly personalAccessTokenEntity: EntityRepository<PersonalAccessTokenInterface>;
+  private readonly accessTokenRepository: EntityRepository<AccessTokenInterface>;
 
   constructor(
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly options: AuthModuleOptions,
     private readonly entityManager: EntityManager
   ) {
-    this.personalAccessTokenEntity = this.entityManager.getRepository(
-      this.options.personalAccessTokenEntity
+    this.accessTokenRepository = this.entityManager.getRepository(
+      this.options.accessTokenEntityClass
     );
   }
 
@@ -40,14 +38,14 @@ export class AuthService {
     entity: AnyEntity,
     name: string,
     expiresIn?: string | number
-  ): Promise<PersonalAccessTokenInterface> {
+  ): Promise<AccessTokenInterface> {
     const token = randomBytes(32).toString("hex");
 
     const _expiresIn = expiresIn ?? this.options.expiresIn;
     const _expiresInMs =
       typeof _expiresIn === "string" ? ms(_expiresIn) : _expiresIn;
 
-    const personalAccessToken = this.personalAccessTokenEntity.create({
+    const accessToken = this.accessTokenRepository.create({
       name,
       token,
       entityId: entity.id,
@@ -56,25 +54,23 @@ export class AuthService {
         _expiresInMs != null ? new Date(Date.now() + _expiresInMs) : undefined,
     });
 
-    await this.personalAccessTokenEntity.persistAndFlush(personalAccessToken);
+    await this.accessTokenRepository.persistAndFlush(accessToken);
 
-    return personalAccessToken;
+    return accessToken;
   }
 
   /**
    * 获取个人访问令牌
    * @param token 令牌，如果不传则从上下文中获取
    */
-  async getToken(
-    token?: string
-  ): Promise<Loaded<PersonalAccessTokenInterface> | null> {
+  async getToken(token?: string): Promise<Loaded<AccessTokenInterface> | null> {
     if (typeof token === "undefined") {
       return (
-        RequestContext.get<AuthPayload>("auth")?.personalAccessToken ?? null
+        RequestContext.get<AccessTokenInterface>(AUTH_ACCESS_TOKEN) ?? null
       );
     }
 
-    return await this.personalAccessTokenEntity.findOne({ token });
+    return await this.accessTokenRepository.findOne({ token });
   }
 
   /**
@@ -90,10 +86,10 @@ export class AuthService {
    * @param token 令牌，如果不传则从上下文中获取
    */
   async revokeToken(token?: string): Promise<void> {
-    const personalAccessToken = await this.getToken(token);
+    const accessToken = await this.getToken(token);
 
-    if (personalAccessToken !== null) {
-      await this.personalAccessTokenEntity.remove(personalAccessToken).flush();
+    if (accessToken !== null) {
+      await this.accessTokenRepository.remove(accessToken).flush();
     }
   }
 }

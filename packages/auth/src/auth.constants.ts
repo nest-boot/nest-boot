@@ -1,0 +1,2 @@
+export const AUTH_ENTITY = "AUTH_ENTITY";
+export const AUTH_ACCESS_TOKEN = "AUTH_ACCESS_TOKEN";

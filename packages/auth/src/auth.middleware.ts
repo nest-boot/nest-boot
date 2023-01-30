@@ -3,9 +3,10 @@ import { RequestContext } from "@nest-boot/request-context";
 import { Inject, Injectable, NestMiddleware, Scope } from "@nestjs/common";
 import { Request, Response } from "express";
 
+import { AUTH_ACCESS_TOKEN, AUTH_ENTITY } from "./auth.constants";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition";
 import { AuthService } from "./auth.service";
-import { AuthModuleOptions, AuthPayload } from "./interfaces";
+import { AccessTokenInterface, AuthModuleOptions } from "./interfaces";
 
 @Injectable({ scope: Scope.REQUEST })
 export class AuthMiddleware implements NestMiddleware {
@@ -17,22 +18,24 @@ export class AuthMiddleware implements NestMiddleware {
   ) {}
 
   async use(req: Request, res: Response, next: () => void): Promise<void> {
-    const accessToken = this.extractAccessToken(req);
+    const accessTokenString = this.extractAccessToken(req);
 
-    if (accessToken !== null) {
-      const personalAccessToken = await this.authService.getToken(accessToken);
+    if (accessTokenString !== null) {
+      const accessToken = await this.authService.getToken(accessTokenString);
 
-      if (personalAccessToken !== null) {
+      if (accessToken !== null) {
+        RequestContext.set<AccessTokenInterface>(
+          AUTH_ACCESS_TOKEN,
+          accessToken
+        );
+
         const entity = await this.entityManager
-          .getRepository(personalAccessToken.entityName)
-          .findOne(personalAccessToken.entityId);
+          .getRepository(accessToken.entityName)
+          .findOne(accessToken.entityId);
 
         // 设置访问令牌和用户到运行上下文
         if (entity !== null) {
-          RequestContext.set<AuthPayload>("auth", {
-            entity,
-            personalAccessToken,
-          });
+          RequestContext.set(AUTH_ENTITY, entity);
         }
       }
     }

@@ -1,4 +1,4 @@
-export interface PersonalAccessTokenInterface {
+export interface AccessTokenInterface {
   // ID
   id: string;
 
