@@ -1,6 +1,11 @@
 import { EntityManager, Reference } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
-import { CanActivate, ExecutionContext, Inject } from "@nestjs/common";
+import {
+  CanActivate,
+  ExecutionContext,
+  Inject,
+  Injectable,
+} from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import _ from "lodash";
 
@@ -16,6 +21,7 @@ import {
   HasPermissions,
 } from "./interfaces";
 
+@Injectable()
 export class AuthGuard implements CanActivate {
   constructor(
     @Inject(MODULE_OPTIONS_TOKEN)

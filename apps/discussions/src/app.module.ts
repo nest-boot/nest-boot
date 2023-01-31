@@ -15,8 +15,18 @@ import { CommentModule } from "./comment/comment.module";
 import { PostModule } from "./post/post.module";
 import { UserModule } from "./user/user.module";
 import { UserAuthModule } from "./user-auth/user-auth.module";
+import { AuthModule } from "@nest-boot/auth";
+import { AccessToken } from "./user-auth/access-token.entity";
 
 const LoggerDynamicModule = LoggerModule.register({});
+
+const AuthDynamicModule = AuthModule.registerAsync({
+  inject: [ConfigService],
+  useFactory: (config: ConfigService) => ({
+    accessTokenEntityClass: AccessToken,
+    defaultRequireAuth: true,
+  }),
+});
 
 const ScheduleDynamicModule = ScheduleModule.registerAsync({
   inject: [ConfigService],
@@ -54,8 +64,10 @@ const SearchDynamicModule = SearchModule.registerAsync({
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
     RequestContextModule,
+    DatabaseDynamicModule,
+    AuthDynamicModule,
+    ConfigModule.forRoot({ isGlobal: true }),
     LoggerDynamicModule,
     MetricsModule,
     ScheduleDynamicModule,
@@ -83,7 +95,6 @@ const SearchDynamicModule = SearchModule.registerAsync({
         },
       }),
     }),
-    DatabaseDynamicModule,
     SearchDynamicModule,
     UserModule,
     UserAuthModule,

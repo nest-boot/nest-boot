@@ -10,9 +10,6 @@ export interface AuthModuleOptions {
   // 个人访问令牌实体
   accessTokenEntityClass: EntityClass<AccessTokenInterface>;
 
-  // 密钥
-  secret: string | Buffer;
-
   // 令牌过期时间，单位毫秒，支持 ms 格式如：1d
   expiresIn?: string | number;
 
