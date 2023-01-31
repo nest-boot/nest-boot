@@ -1,5 +1,6 @@
 import { Type } from "@nestjs/common";
 import { ModuleRef } from "@nestjs/core";
+import { UnknownElementException } from "@nestjs/core/errors/exceptions";
 import { AsyncLocalStorage } from "async_hooks";
 
 export class RequestContext {
@@ -20,11 +21,13 @@ export class RequestContext {
 
     let service = this.container.get(typeOrToken);
 
-    if (typeof service !== "undefined") {
+    if (typeof service === "undefined") {
       try {
         service = this.moduleRef.get(typeOrToken);
       } catch (err) {
-        console.log(err);
+        if (!(err instanceof UnknownElementException)) {
+          throw err;
+        }
       }
     }
 
