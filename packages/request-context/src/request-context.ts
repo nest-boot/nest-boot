@@ -13,12 +13,22 @@ export class RequestContext {
     return await this.moduleRef.create(type);
   }
 
-  get<T>(typeOrToken: string | symbol | Function | Type<T>): T {
+  get<T>(typeOrToken: string | symbol | Type<T>): T {
     if (typeOrToken === ModuleRef) {
       return this.moduleRef as any;
     }
 
-    return this.container.get(typeOrToken) ?? this.moduleRef.get(typeOrToken);
+    let service = this.container.get(typeOrToken);
+
+    if (typeof service !== "undefined") {
+      try {
+        service = this.moduleRef.get(typeOrToken);
+      } catch (err) {
+        console.log(err);
+      }
+    }
+
+    return service;
   }
 
   set<T>(typeOrToken: string | symbol | Type<T>, value?: T): void {
