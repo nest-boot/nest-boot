@@ -38,6 +38,7 @@
     "@nest-boot/auth": "workspace:*",
     "@nest-boot/database": "workspace:*",
     "@nest-boot/graphql": "workspace:*",
+    "@nest-boot/i18n": "workspace:*",
     "@nest-boot/logger": "workspace:*",
     "@nest-boot/metrics": "workspace:*",
     "@nest-boot/queue": "workspace:*",

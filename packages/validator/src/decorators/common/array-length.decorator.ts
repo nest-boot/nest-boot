@@ -1,4 +1,4 @@
-import { getTranslation } from "@nest-boot/i18next";
+import { t } from "@nest-boot/i18n";
 import {
   registerDecorator,
   ValidationArguments,
@@ -16,7 +16,6 @@ function arrayLengthMessage(
   min?: number,
   max?: number
 ): string {
-  const t = getTranslation();
   if (Array.isArray(value)) {
     if (typeof min !== "undefined" && typeof max !== "undefined") {
       return t("validation:arrayLength.between", {

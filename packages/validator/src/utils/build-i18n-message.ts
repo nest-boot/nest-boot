@@ -1,12 +1,10 @@
-import { getTranslation } from "@nest-boot/i18next";
+import { t } from "@nest-boot/i18n";
 import { ValidationArguments } from "class-validator";
 
 export function buildI18nMessage(
   callback: (args: ValidationArguments) => string
 ) {
   return (args: ValidationArguments): string => {
-    const t = getTranslation();
-
     return t(`validation:${callback(args)}`, {
       ...args,
       ...args.constraints?.reduce(

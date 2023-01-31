@@ -14,7 +14,7 @@ export class RequestContext {
     return await this.moduleRef.create(type);
   }
 
-  get<T>(typeOrToken: string | symbol | Type<T>): T {
+  get<T>(typeOrToken: string | symbol | Function | Type<T>): T {
     if (typeOrToken === ModuleRef) {
       return this.moduleRef as any;
     }

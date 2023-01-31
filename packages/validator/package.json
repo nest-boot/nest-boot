@@ -28,7 +28,7 @@
   },
   "devDependencies": {
     "@nest-boot/eslint-config": "workspace:*",
-    "@nest-boot/i18next": "workspace:*",
+    "@nest-boot/i18n": "workspace:*",
     "@nest-boot/tsconfig": "workspace:*",
     "@nestjs/common": "^9.2.1",
     "@nestjs/core": "^9.2.1",

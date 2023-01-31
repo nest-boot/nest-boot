@@ -1,3 +1,0 @@
-export const I18NEXT_INSTANCE = Symbol("I18NEXT_INSTANCE");
-
-export const I18NEXT_TRANSLATION = Symbol("I18NEXT_TRANSLATION");

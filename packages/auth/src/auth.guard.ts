@@ -1,10 +1,13 @@
 import { EntityManager, Reference } from "@mikro-orm/core";
+import { I18N, I18n } from "@nest-boot/i18n";
 import { RequestContext } from "@nest-boot/request-context";
 import {
   CanActivate,
   ExecutionContext,
+  ForbiddenException,
   Inject,
   Injectable,
+  UnauthorizedException,
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import _ from "lodash";
@@ -32,6 +35,10 @@ export class AuthGuard implements CanActivate {
     this.reflector = reflector;
   }
 
+  private t(key: string): string {
+    return RequestContext.get<I18n>(I18N)?.t(key, { ns: "auth" }) ?? key;
+  }
+
   public async canActivate(
     executionContext: ExecutionContext
   ): Promise<boolean> {
@@ -55,7 +62,7 @@ export class AuthGuard implements CanActivate {
 
     // 如果上下文中没有认证信息拒绝访问
     if (typeof accessToken === "undefined") {
-      return false;
+      throw new UnauthorizedException(this.t("The access token is invalid."));
     }
 
     // 获取方法权限
@@ -76,7 +83,7 @@ export class AuthGuard implements CanActivate {
       return true;
     }
 
-    return false;
+    throw new ForbiddenException(this.t("Permission denied."));
   }
 
   async getPermissions(): Promise<string[]> {

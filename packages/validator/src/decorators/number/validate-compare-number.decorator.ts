@@ -1,4 +1,4 @@
-import { getTranslation } from "@nest-boot/i18next";
+import { t } from "@nest-boot/i18n";
 import {
   registerDecorator,
   ValidationArguments,
@@ -57,8 +57,6 @@ export function ValidateCompareNumber(
             }
           },
           defaultMessage(args) {
-            const t = getTranslation();
-
             const { property, constraints } = args as ValidationArguments;
             const [innerComparator, innerCompareProperty] = constraints as [
               string,
