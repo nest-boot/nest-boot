@@ -1,3 +1,3 @@
 export interface ViewModuleOptions {
-  path: string[];
+  path?: string[];
 }
