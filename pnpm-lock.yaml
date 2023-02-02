@@ -42,6 +42,7 @@ importers:
       '@nest-boot/graphql': workspace:*
       '@nest-boot/i18n': workspace:*
       '@nest-boot/logger': workspace:*
+      '@nest-boot/mailer': workspace:*
       '@nest-boot/metrics': workspace:*
       '@nest-boot/queue': workspace:*
       '@nest-boot/redis': workspace:*
@@ -49,6 +50,7 @@ importers:
       '@nest-boot/schedule': workspace:*
       '@nest-boot/search': workspace:*
       '@nest-boot/search-engine-postgresql': workspace:*
+      '@nest-boot/view': workspace:*
       '@nestjs/cli': ^9.1.8
       '@nestjs/common': ^9.2.1
       '@nestjs/config': ^2.2.0
@@ -88,6 +90,7 @@ importers:
       '@nest-boot/graphql': link:../../packages/graphql
       '@nest-boot/i18n': link:../../packages/i18n
       '@nest-boot/logger': link:../../packages/logger
+      '@nest-boot/mailer': link:../../packages/mailer
       '@nest-boot/metrics': link:../../packages/metrics
       '@nest-boot/queue': link:../../packages/queue
       '@nest-boot/redis': link:../../packages/redis
@@ -95,6 +98,7 @@ importers:
       '@nest-boot/schedule': link:../../packages/schedule
       '@nest-boot/search': link:../../packages/search
       '@nest-boot/search-engine-postgresql': link:../../packages/search-engine-postgresql
+      '@nest-boot/view': link:../../packages/view
       '@nestjs/common': 9.2.1
       '@nestjs/config': 2.2.0
       '@nestjs/core': 9.2.1
@@ -500,6 +504,36 @@ importers:
       ts-jest: 29.0.5
       typescript: 4.9.4
 
+  packages/mailer:
+    specifiers:
+      '@nest-boot/eslint-config': workspace:*
+      '@nest-boot/tsconfig': workspace:*
+      '@nestjs/common': ^9.2.1
+      '@nestjs/core': ^9.2.1
+      '@types/node': ^18.11.18
+      '@types/nodemailer': ^6.4.7
+      eslint: ^8.32.0
+      jest: ^29.3.1
+      nodemailer: ^6.9.1
+      reflect-metadata: ^0.1.13
+      rxjs: ^7.8.0
+      ts-jest: ^29.0.5
+      typescript: ^4.9.4
+    devDependencies:
+      '@nest-boot/eslint-config': link:../eslint-config
+      '@nest-boot/tsconfig': link:../tsconfig
+      '@nestjs/common': 9.2.1
+      '@nestjs/core': 9.2.1
+      '@types/node': 18.11.18
+      '@types/nodemailer': 6.4.7
+      eslint: 8.32.0
+      jest: 29.3.1
+      nodemailer: 6.9.1
+      reflect-metadata: 0.1.13
+      rxjs: 7.8.0
+      ts-jest: 29.0.5
+      typescript: 4.9.4
+
   packages/metrics:
     specifiers:
       '@nest-boot/eslint-config': workspace:*
@@ -808,6 +842,37 @@ importers:
       class-transformer: 0.5.1
       class-validator: 0.14.0
       eslint: 8.32.0
+      jest: 29.3.1
+      reflect-metadata: 0.1.13
+      rxjs: 7.8.0
+      ts-jest: 29.0.5
+      typescript: 4.9.4
+
+  packages/view:
+    specifiers:
+      '@nest-boot/eslint-config': workspace:*
+      '@nest-boot/tsconfig': workspace:*
+      '@nestjs/common': ^9.2.1
+      '@nestjs/core': ^9.2.1
+      '@types/node': ^18.11.18
+      eslint: ^8.32.0
+      fast-glob: ^3.2.12
+      handlebars: ^4.7.7
+      jest: ^29.3.1
+      reflect-metadata: ^0.1.13
+      rxjs: ^7.8.0
+      ts-jest: ^29.0.5
+      typescript: ^4.9.4
+    dependencies:
+      fast-glob: 3.2.12
+    devDependencies:
+      '@nest-boot/eslint-config': link:../eslint-config
+      '@nest-boot/tsconfig': link:../tsconfig
+      '@nestjs/common': 9.2.1
+      '@nestjs/core': 9.2.1
+      '@types/node': 18.11.18
+      eslint: 8.32.0
+      handlebars: 4.7.7
       jest: 29.3.1
       reflect-metadata: 0.1.13
       rxjs: 7.8.0
@@ -1847,15 +1912,6 @@ packages:
       '@jridgewell/gen-mapping': 0.3.2
       jsesc: 2.5.2
 
-  /@babel/generator/7.20.7:
-    resolution: {integrity: sha512-7wqMOJq8doJMZmP4ApXTzLxSr7+oO2jroJURrVEp6XShrQUObV8Tq/D0NCcoYg2uHqUrjzO0zwBjoYzelxK+sw==}
-    engines: {node: '>=6.9.0'}
-    dependencies:
-      '@babel/types': 7.20.7
-      '@jridgewell/gen-mapping': 0.3.2
-      jsesc: 2.5.2
-    dev: true
-
   /@babel/helper-annotate-as-pure/7.18.6:
     resolution: {integrity: sha512-duORpUiYrEpzKIop6iNbjnwKLAKnJ47csTyRACyEmWj0QdUrm5aqNJGHSSEQSUAvNW0ojX0dOmK9dZduvkfeXA==}
     engines: {node: '>=6.9.0'}
@@ -2064,14 +2120,6 @@ packages:
     hasBin: true
     dependencies:
       '@babel/types': 7.20.7
-
-  /@babel/parser/7.20.7:
-    resolution: {integrity: sha512-T3Z9oHybU+0vZlY9CiDSJQTD5ZapcW18ZctFMi0MOAl/4BjFF4ul7NVSARLdbGO5vDqy9eQiGTV0LtKfvCYvcg==}
-    engines: {node: '>=6.0.0'}
-    hasBin: true
-    dependencies:
-      '@babel/types': 7.20.7
-    dev: true
 
   /@babel/plugin-bugfix-safari-id-destructuring-collision-in-function-expression/7.18.6:
     resolution: {integrity: sha512-Dgxsyg54Fx1d4Nge8UnvTrED63vrwOdPmyvPzlNN/boaliRP54pm3pGzZD1SJUwrBA+Cs/xdG8kXX6Mn/RfISQ==}
@@ -2806,22 +2854,6 @@ packages:
       '@babel/code-frame': 7.18.6
       '@babel/parser': 7.20.13
       '@babel/types': 7.20.7
-
-  /@babel/traverse/7.20.12:
-    resolution: {integrity: sha512-MsIbFN0u+raeja38qboyF8TIT7K0BFzz/Yd/77ta4MsUsmP2RAnidIlwq7d5HFQrH/OZJecGV6B71C4zAgpoSQ==}
-    engines: {node: '>=6.9.0'}
-    dependencies:
-      '@babel/code-frame': 7.18.6
-      '@babel/generator': 7.20.7
-      '@babel/helper-environment-visitor': 7.18.9
-      '@babel/helper-function-name': 7.19.0
-      '@babel/helper-hoist-variables': 7.18.6
-      '@babel/helper-split-export-declaration': 7.18.6
-      '@babel/parser': 7.20.7
-      '@babel/types': 7.20.7
-      debug: 4.3.4
-      globals: 11.12.0
-    dev: true
 
   /@babel/traverse/7.20.13:
     resolution: {integrity: sha512-kMJXfF0T6DIS9E8cgdLCSAL+cuCK+YEZHWiLK0SXpTo8YRj5lpJu3CDNKiIBCne4m9hhTIqUg6SYTAI39tAiVQ==}
@@ -5045,7 +5077,7 @@ packages:
   /@types/babel__core/7.1.20:
     resolution: {integrity: sha512-PVb6Bg2QuscZ30FvOU7z4guG6c926D9YRvOxEaelzndpMsvP+YM74Q/dAFASpg2l6+XLalxSGxcq/lrgYWZtyQ==}
     dependencies:
-      '@babel/parser': 7.20.7
+      '@babel/parser': 7.20.13
       '@babel/types': 7.20.7
       '@types/babel__generator': 7.6.4
       '@types/babel__template': 7.4.1
@@ -5061,7 +5093,7 @@ packages:
   /@types/babel__template/7.4.1:
     resolution: {integrity: sha512-azBFKemX6kMg5Io+/rdGT0dkGreboUVR0Cdm3fz9QJWpaQGJRQXl7C+6hOTCZcMll7KFyEQpgbYI2lHdsS4U7g==}
     dependencies:
-      '@babel/parser': 7.20.7
+      '@babel/parser': 7.20.13
       '@babel/types': 7.20.7
     dev: true
 
@@ -5277,6 +5309,12 @@ packages:
 
   /@types/node/18.11.18:
     resolution: {integrity: sha512-DHQpWGjyQKSHj3ebjFI/wRKcqQcdR+MoFBygntYOZytCqNfkd2ZC4ARDJ2DQqhjH5p85Nnd3jhUJIXrszFX/JA==}
+
+  /@types/nodemailer/6.4.7:
+    resolution: {integrity: sha512-f5qCBGAn/f0qtRcd4SEn88c8Fp3Swct1731X4ryPKqS61/A3LmmzN8zaEz7hneJvpjFbUUgY7lru/B/7ODTazg==}
+    dependencies:
+      '@types/node': 18.11.18
+    dev: true
 
   /@types/normalize-package-data/2.4.1:
     resolution: {integrity: sha512-Gj7cI7z+98M282Tqmp2K5EIsoouUEzbBJhQQzDE3jSIRk6r9gsz0oUokqIUR4u1R3dMHo0pDHM7sNOHyhulypw==}
@@ -10119,7 +10157,7 @@ packages:
     engines: {node: '>=8'}
     dependencies:
       '@babel/core': 7.20.12
-      '@babel/parser': 7.20.7
+      '@babel/parser': 7.20.13
       '@istanbuljs/schema': 0.1.3
       istanbul-lib-coverage: 3.2.0
       semver: 6.3.0
@@ -10442,10 +10480,10 @@ packages:
     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
     dependencies:
       '@babel/core': 7.20.12
-      '@babel/generator': 7.20.7
+      '@babel/generator': 7.20.14
       '@babel/plugin-syntax-jsx': 7.18.6
       '@babel/plugin-syntax-typescript': 7.20.0
-      '@babel/traverse': 7.20.12
+      '@babel/traverse': 7.20.13
       '@babel/types': 7.20.7
       '@jest/expect-utils': 29.3.1
       '@jest/transform': 29.3.1
@@ -11572,6 +11610,11 @@ packages:
 
   /node-releases/2.0.8:
     resolution: {integrity: sha512-dFSmB8fFHEH/s81Xi+Y/15DQY6VHW81nXRj86EMSL3lmuTmK1e+aT4wrFCkTbm+gSwkw4KpX+rT/pMM2c1mF+A==}
+
+  /nodemailer/6.9.1:
+    resolution: {integrity: sha512-qHw7dOiU5UKNnQpXktdgQ1d3OFgRAekuvbJLcdG5dnEo/GtcTHRYM7+UfJARdOFU9WUQO8OiIamgWPmiSFHYAA==}
+    engines: {node: '>=6.0.0'}
+    dev: true
 
   /normalize-package-data/2.5.0:
     resolution: {integrity: sha512-/5CMN3T0R4XTj4DcGaexo+roZSdSFW/0AOOTROrjxzCG1wrWXEsGbRKevjlIL+ZDE4sZlJr5ED4YW0yqmkK+eA==}

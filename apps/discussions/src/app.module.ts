@@ -3,12 +3,14 @@ import { AuthModule } from "@nest-boot/auth";
 import { DatabaseModule } from "@nest-boot/database";
 import { I18nModule } from "@nest-boot/i18n";
 import { LoggerModule } from "@nest-boot/logger";
+import { MailerModule } from "@nest-boot/mailer";
 import { MetricsModule } from "@nest-boot/metrics";
 import { QueueDashboardModule, QueueModule } from "@nest-boot/queue";
 import { RequestContextModule } from "@nest-boot/request-context";
 import { ScheduleModule } from "@nest-boot/schedule";
 import { SearchModule } from "@nest-boot/search";
 import { PostgresqlSearchEngine } from "@nest-boot/search-engine-postgresql";
+import { ViewModule } from "@nest-boot/view";
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { DiscoveryService } from "@nestjs/core";
@@ -20,6 +22,20 @@ import { AccessToken } from "./user-auth/access-token.entity";
 import { UserAuthModule } from "./user-auth/user-auth.module";
 
 const LoggerDynamicModule = LoggerModule.register({});
+
+const ViewDynamicModule = ViewModule.register({});
+
+const MailerDynamicModule = MailerModule.registerAsync({
+  inject: [ConfigService],
+  useFactory: (config: ConfigService) => ({
+    host: config.get("SMTP_HOST"),
+    port: config.get("SMTP_PORT"),
+    auth: {
+      user: config.get("SMTP_USERNAME"),
+      pass: config.get("SMTP_PASSWORD"),
+    },
+  }),
+});
 
 const I18nDynamicModule = I18nModule.register({
   ns: ["auth"],
@@ -74,6 +90,8 @@ const SearchDynamicModule = SearchModule.registerAsync({
     I18nDynamicModule,
     AuthDynamicModule,
     ConfigModule.forRoot({ isGlobal: true }),
+    ViewDynamicModule,
+    MailerDynamicModule,
     LoggerDynamicModule,
     MetricsModule,
     ScheduleDynamicModule,
