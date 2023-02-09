@@ -82,7 +82,7 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
 
                           return contextInstance[key](...args);
                         }
-                      : instance[key].bind(instance),
+                      : (...args) => instance[key](...args),
                 });
 
                 this.logger.log(`Processor ${metadataOptions.name} discovered`);
