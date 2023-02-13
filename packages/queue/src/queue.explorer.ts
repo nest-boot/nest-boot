@@ -4,7 +4,6 @@ import {
   Logger,
   OnApplicationShutdown,
   OnModuleInit,
-  Scope,
 } from "@nestjs/common";
 import {
   createContextId,
@@ -43,11 +42,8 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
   ) {}
 
   discoveryJobs(): void {
-    [
-      ...this.discoveryService.getControllers(),
-      ...this.discoveryService.getProviders(),
-    ].forEach((wrapper) => {
-      const { host, scope, instance } = wrapper;
+    this.discoveryService.getProviders().forEach((wrapper) => {
+      const { host, instance } = wrapper;
 
       if (typeof instance === "object" && instance !== null) {
         this.metadataScanner.scanFromPrototype(
@@ -67,22 +63,21 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
               if (typeof metadataOptions !== "undefined") {
                 this.processors.set(metadataOptions.name, {
                   ...metadataOptions,
-                  processor:
-                    scope === Scope.REQUEST
-                      ? async (...args) => {
-                          const contextId = createContextId();
+                  processor: wrapper.isDependencyTreeStatic()
+                    ? async (job) => {
+                        const contextId = createContextId();
 
-                          const contextInstance =
-                            await this.injector.loadPerContext(
-                              instance,
-                              host,
-                              host.providers,
-                              contextId
-                            );
+                        const contextInstance =
+                          await this.injector.loadPerContext(
+                            instance,
+                            host,
+                            host.providers,
+                            contextId
+                          );
 
-                          return contextInstance[key](...args);
-                        }
-                      : (...args) => instance[key](...args),
+                        return contextInstance[key](job);
+                      }
+                    : (job) => instance[key](job),
                 });
 
                 this.logger.log(`Processor ${metadataOptions.name} discovered`);

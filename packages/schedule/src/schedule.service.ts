@@ -5,17 +5,16 @@ import {
   Logger,
   OnApplicationShutdown,
   OnModuleInit,
-  Scope,
 } from "@nestjs/common";
 import {
-  createContextId,
+  ContextIdFactory,
   DiscoveryService,
   MetadataScanner,
   ModuleRef,
   Reflector,
 } from "@nestjs/core";
 import { Injector } from "@nestjs/core/injector/injector";
-import { Job, MetricsTime, Queue, Worker } from "bullmq";
+import { Job, MetricsTime, Processor, Queue, Worker } from "bullmq";
 import ms from "ms";
 
 import {
@@ -37,7 +36,7 @@ export class ScheduleService implements OnModuleInit, OnApplicationShutdown {
 
   private readonly schedules: Map<
     string,
-    ScheduleMetadataOptions & { processor: () => Promise<void> }
+    ScheduleMetadataOptions & { processor: Processor }
   > = new Map();
 
   constructor(
@@ -53,45 +52,54 @@ export class ScheduleService implements OnModuleInit, OnApplicationShutdown {
   }
 
   async discoverySchedules(): Promise<void> {
-    this.discoveryService.getControllers().forEach((wrapper) => {
-      const { host, scope, instance } = wrapper;
+    this.discoveryService.getProviders().forEach((wrapper) => {
+      if (typeof wrapper.instance?.constructor !== "undefined") {
+        const { instance, host } = wrapper;
 
-      this.metadataScanner.scanFromPrototype(
-        instance,
-        Object.getPrototypeOf(instance),
-        (key: string) => {
-          if (
-            typeof host !== "undefined" &&
-            typeof instance.constructor.name === "string"
-          ) {
-            const scheduleMetadataOptions: ScheduleMetadataOptions =
-              this.reflector.get(SCHEDULE_METADATA_KEY, instance[key]);
+        this.metadataScanner.scanFromPrototype(
+          instance,
+          Object.getPrototypeOf(instance),
+          (key: string) => {
+            if (
+              typeof host !== "undefined" &&
+              typeof instance.constructor.name === "string"
+            ) {
+              const scheduleMetadataOptions: ScheduleMetadataOptions =
+                this.reflector.get(SCHEDULE_METADATA_KEY, instance[key]);
 
-            if (typeof scheduleMetadataOptions !== "undefined") {
-              // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-              this.schedules.set(`${instance.constructor.name}#${key}`, {
-                ...scheduleMetadataOptions,
-                processor:
-                  scope === Scope.REQUEST
-                    ? async (...args) => {
-                        const contextId = createContextId();
+              if (typeof scheduleMetadataOptions !== "undefined") {
+                this.schedules.set(
+                  // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+                  `${instance.constructor.name}#${key}`,
+                  {
+                    ...scheduleMetadataOptions,
+                    processor: wrapper.isDependencyTreeStatic()
+                      ? (job) => instance[key](job)
+                      : async (job) => {
+                          const contextId = ContextIdFactory.create();
 
-                        const contextInstance =
-                          await this.injector.loadPerContext(
-                            instance,
-                            host,
-                            host.providers,
+                          this.moduleRef.registerRequestByContextId(
+                            job,
                             contextId
                           );
 
-                        return contextInstance[key](...args);
-                      }
-                    : (...args) => instance[key](...args),
-              });
+                          const contextInstance =
+                            await this.injector.loadPerContext(
+                              instance,
+                              host,
+                              host.providers,
+                              contextId
+                            );
+
+                          return contextInstance[key](job);
+                        },
+                  }
+                );
+              }
             }
           }
-        }
-      );
+        );
+      }
     });
   }
 
@@ -145,7 +153,7 @@ export class ScheduleService implements OnModuleInit, OnApplicationShutdown {
     const processor = this.schedules.get(job.name)?.processor;
 
     if (typeof processor === "function") {
-      await RequestContext.run(ctx, processor);
+      await RequestContext.run(ctx, async () => await processor(job));
     }
   }
 
@@ -163,13 +171,19 @@ export class ScheduleService implements OnModuleInit, OnApplicationShutdown {
 
     await this.registerSchedules();
 
-    this.worker = new Worker(this.name, this.processor.bind(this), {
-      autorun: false,
-      metrics: {
-        maxDataPoints: MetricsTime.ONE_MONTH,
+    this.worker = new Worker(
+      this.name,
+      async (job) => {
+        await this.processor(job);
       },
-      ...this.options,
-    });
+      {
+        autorun: false,
+        metrics: {
+          maxDataPoints: MetricsTime.ONE_MONTH,
+        },
+        ...this.options,
+      }
+    );
 
     this.worker.on("failed", (job, err) => {
       this.logger.error(
