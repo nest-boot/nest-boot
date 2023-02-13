@@ -90,7 +90,7 @@ importers:
       '@nest-boot/graphql': link:../../packages/graphql
       '@nest-boot/i18n': link:../../packages/i18n
       '@nest-boot/logger': link:../../packages/logger
-      '@nest-boot/mailer': link:../../packages/mailer
+      '@nest-boot/mailer': link:../../packages/mailer.md
       '@nest-boot/metrics': link:../../packages/metrics
       '@nest-boot/queue': link:../../packages/queue
       '@nest-boot/redis': link:../../packages/redis
