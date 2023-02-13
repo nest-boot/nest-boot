@@ -1,7 +1,22 @@
-import { OnApplicationShutdown } from "@nestjs/common";
+import { Module, OnApplicationShutdown } from "@nestjs/common";
+import { RedisOptions } from "ioredis";
 
-import { ConfigurableModuleClass } from "./redis.module-definition";
+import { Redis } from "./redis";
+import {
+  ConfigurableModuleClass,
+  MODULE_OPTIONS_TOKEN,
+} from "./redis.module-definition";
 
+@Module({
+  providers: [
+    {
+      provide: Redis,
+      inject: [MODULE_OPTIONS_TOKEN],
+      useFactory: (options: RedisOptions) => new Redis(options),
+    },
+  ],
+  exports: [Redis],
+})
 export class RedisModule
   extends ConfigurableModuleClass
   implements OnApplicationShutdown
