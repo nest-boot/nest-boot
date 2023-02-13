@@ -43,6 +43,7 @@
     "rxjs": "^7.0.0"
   },
   "optionalDependencies": {
+    "@nest-boot/redis": "workspace:*",
     "ioredis": "^5.0.0",
     "redis-info": "^3.0.0"
   },

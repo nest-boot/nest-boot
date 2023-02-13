@@ -1,18 +1,18 @@
+import { Redis } from "@nest-boot/redis";
 import { Injectable, Scope } from "@nestjs/common";
 import { ModuleRef } from "@nestjs/core";
 import {
-  ConnectionNotFoundError,
   HealthCheckError,
   HealthIndicator,
   HealthIndicatorResult,
   TimeoutError,
 } from "@nestjs/terminus";
 import { promiseTimeout } from "@nestjs/terminus/dist/utils";
-import { Redis } from "ioredis";
+import { Redis as IORedis } from "ioredis";
 import { parse } from "redis-info";
 
 export interface RedisPingCheckSettings {
-  client?: Redis;
+  redis: Redis | IORedis;
 
   timeout?: number;
 
@@ -27,25 +27,17 @@ export class RedisHealthIndicator extends HealthIndicator {
 
   async pingCheck(
     key: string,
-    options: RedisPingCheckSettings = {}
+    options: RedisPingCheckSettings
   ): Promise<HealthIndicatorResult> {
     let isHealthy = false;
 
-    const { client, timeout = 1000, memoryMaximumUtilization = 80 } = options;
-
-    if (typeof client === "undefined") {
-      throw new ConnectionNotFoundError(
-        this.getStatus(key, isHealthy, {
-          message: "Connection provider not found in application context",
-        })
-      );
-    }
+    const { redis, timeout = 1000, memoryMaximumUtilization = 80 } = options;
 
     try {
       await promiseTimeout(
         timeout,
         (async () => {
-          const info = parse(await client.info());
+          const info = parse(await redis.info());
 
           const currentMemoryMaximumUtilization =
             info.maxmemory === "0"
