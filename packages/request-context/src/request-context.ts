@@ -57,7 +57,6 @@ export class RequestContext {
   }
 
   static get<T>(key: string | symbol | Function | Type<T>): T {
-    console.log("global", global);
     const store = this.storage.getStore() ?? (global as any).__requestContext;
 
     if (typeof store === "undefined") {
