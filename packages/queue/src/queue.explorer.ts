@@ -9,7 +9,6 @@ import {
   createContextId,
   DiscoveryService,
   MetadataScanner,
-  ModuleRef,
   Reflector,
 } from "@nestjs/core";
 import { Injector } from "@nestjs/core/injector/injector";
@@ -35,7 +34,6 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
   readonly workers: Map<string, Worker> = new Map();
 
   constructor(
-    private readonly moduleRef: ModuleRef,
     private readonly reflector: Reflector,
     private readonly discoveryService: DiscoveryService,
     private readonly metadataScanner: MetadataScanner
@@ -104,7 +102,7 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
   async processor(...args: Parameters<ProcessorFunction>): Promise<void> {
     const [job] = args;
 
-    const ctx = new RequestContext(this.moduleRef);
+    const ctx = new RequestContext(this.discoveryService);
     ctx.set("job", job);
 
     const processor = this.processors.get(job.name)?.processor;

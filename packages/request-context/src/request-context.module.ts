@@ -5,13 +5,14 @@ import {
   NestModule,
   OnModuleInit,
 } from "@nestjs/common";
+import { DiscoveryService } from "@nestjs/core";
 
 import { RequestContext } from "./request-context";
 import { RequestContextMiddleware } from "./request-context.middleware";
 
 @Global()
 @Module({
-  providers: [RequestContext],
+  providers: [DiscoveryService, RequestContext],
   exports: [RequestContext],
 })
 export class RequestContextModule implements NestModule, OnModuleInit {

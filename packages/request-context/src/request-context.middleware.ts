@@ -1,5 +1,5 @@
 import { Injectable, NestMiddleware } from "@nestjs/common";
-import { ModuleRef } from "@nestjs/core";
+import { DiscoveryService } from "@nestjs/core";
 import { Request, Response } from "express";
 
 import { RequestContext } from "./request-context";
@@ -10,10 +10,10 @@ import {
 
 @Injectable()
 export class RequestContextMiddleware implements NestMiddleware {
-  constructor(private readonly moduleRef: ModuleRef) {}
+  constructor(private readonly discoveryService: DiscoveryService) {}
 
   async use(req: Request, res: Response, next: () => void): Promise<void> {
-    const ctx = new RequestContext(this.moduleRef);
+    const ctx = new RequestContext(this.discoveryService);
 
     ctx.set<Request>(CTX_REQUEST_TOKEN, req);
     ctx.set<Response>(CTX_RESPONSE_TOKEN, res);

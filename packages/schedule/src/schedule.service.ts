@@ -147,7 +147,7 @@ export class ScheduleService implements OnModuleInit, OnApplicationShutdown {
   }
 
   async processor(job: Job): Promise<void> {
-    const ctx = new RequestContext(this.moduleRef);
+    const ctx = new RequestContext(this.discoveryService);
     ctx.set("job", job);
 
     const processor = this.schedules.get(job.name)?.processor;

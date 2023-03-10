@@ -1,6 +1,5 @@
 import { Injectable, Type } from "@nestjs/common";
-import { ModuleRef } from "@nestjs/core";
-import { UnknownElementException } from "@nestjs/core/errors/exceptions";
+import { DiscoveryService } from "@nestjs/core";
 import { AsyncLocalStorage } from "async_hooks";
 
 @Injectable()
@@ -9,38 +8,26 @@ export class RequestContext {
 
   private static readonly storage = new AsyncLocalStorage<RequestContext>();
 
-  constructor(private readonly moduleRef: ModuleRef) {}
+  constructor(private readonly discoveryService: DiscoveryService) {}
 
-  async create<T>(type: Type<T>): Promise<T> {
-    return await this.moduleRef.create(type);
-  }
-
-  get<T>(typeOrToken: string | symbol | Function | Type<T>): T {
-    if (typeOrToken === ModuleRef) {
-      return this.moduleRef as any;
+  get<T>(token: string | symbol | Function | Type<T>): T {
+    if (token === DiscoveryService) {
+      return this.discoveryService as any;
     }
 
-    let service = this.container.get(typeOrToken);
+    let service = this.container.get(token);
 
     if (typeof service === "undefined") {
-      try {
-        service = this.moduleRef.get(typeOrToken);
-      } catch (err) {
-        if (!(err instanceof UnknownElementException)) {
-          throw err;
-        }
-      }
+      service = this.discoveryService
+        .getProviders()
+        .find((wrapper) => wrapper.token === token)?.instance;
     }
 
     return service;
   }
 
-  set<T>(typeOrToken: string | symbol | Type<T>, value?: T): void {
-    typeof typeOrToken !== "string" &&
-    typeof typeOrToken !== "symbol" &&
-    typeof value === "undefined"
-      ? this.container.set(typeOrToken, this.create(typeOrToken))
-      : this.container.set(typeOrToken, value);
+  set<T>(typeOrToken: string | symbol | Type<T>, value: T): void {
+    this.container.set(typeOrToken, value);
   }
 
   static set<T>(key: string | symbol | Type<T>, value: T): void {
