@@ -1,8 +1,9 @@
-import { Type } from "@nestjs/common";
+import { Injectable, Type } from "@nestjs/common";
 import { ModuleRef } from "@nestjs/core";
 import { UnknownElementException } from "@nestjs/core/errors/exceptions";
 import { AsyncLocalStorage } from "async_hooks";
 
+@Injectable()
 export class RequestContext {
   private readonly container = new Map();
 
@@ -43,7 +44,8 @@ export class RequestContext {
   }
 
   static set<T>(key: string | symbol | Type<T>, value: T): void {
-    const store = this.storage.getStore();
+    const store =
+      this.storage.getStore() != null || (global as any).__requestContext;
 
     if (typeof store === "undefined") {
       throw new Error("Failed to get the context");
@@ -55,7 +57,8 @@ export class RequestContext {
   }
 
   static get<T>(key: string | symbol | Function | Type<T>): T {
-    const store = this.storage.getStore();
+    console.log("global", global);
+    const store = this.storage.getStore() ?? (global as any).__requestContext;
 
     if (typeof store === "undefined") {
       throw new Error("Failed to get the context");
