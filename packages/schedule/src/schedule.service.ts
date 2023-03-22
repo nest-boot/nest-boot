@@ -157,7 +157,7 @@ export class ScheduleService implements OnModuleInit, OnApplicationShutdown {
     }
   }
 
-  async start(): Promise<void> {
+  async run(): Promise<void> {
     if (this.worker instanceof Worker && !this.worker.isRunning()) {
       void this.worker.run();
       this.logger.log(`Worker started`);
@@ -177,7 +177,6 @@ export class ScheduleService implements OnModuleInit, OnApplicationShutdown {
         await this.processor(job);
       },
       {
-        autorun: false,
         metrics: {
           maxDataPoints: MetricsTime.ONE_MONTH,
         },
