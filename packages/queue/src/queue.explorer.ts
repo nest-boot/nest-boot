@@ -130,10 +130,7 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
     this.discoveryQueues();
 
     [...this.queues.entries()].forEach(([name, queue]) => {
-      const worker = new Worker(name, this.processor.bind(this), {
-        autorun: false,
-        ...queue.opts,
-      });
+      const worker = new Worker(name, this.processor.bind(this), queue.opts);
 
       worker.on("failed", (job, err) => {
         this.logger.error(err);
