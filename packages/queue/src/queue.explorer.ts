@@ -12,6 +12,7 @@ import {
   Reflector,
 } from "@nestjs/core";
 import { Injector } from "@nestjs/core/injector/injector";
+import { MetricsTime } from "bullmq";
 
 import { ProcessorFunction } from "./interfaces/processor-function.interface";
 import { ProcessorMetadataOptions } from "./interfaces/processor-metadata-options.interface";
@@ -130,7 +131,13 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
     this.discoveryQueues();
 
     [...this.queues.entries()].forEach(([name, queue]) => {
-      const worker = new Worker(name, this.processor.bind(this), queue.opts);
+      const worker = new Worker(name, this.processor.bind(this), {
+        autorun: false,
+        metrics: {
+          maxDataPoints: MetricsTime.ONE_MONTH,
+        },
+        ...queue.opts,
+      });
 
       worker.on("failed", (job, err) => {
         this.logger.error(err);

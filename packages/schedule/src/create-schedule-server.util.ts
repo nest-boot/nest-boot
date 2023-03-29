@@ -13,7 +13,7 @@ export async function createScheduleServer(
     options
   )) as ScheduleServer;
 
-  app.listen = async () => {
+  app.run = async () => {
     await app.get(ScheduleService).run();
   };
 

@@ -13,8 +13,8 @@ export async function createQueueServer(
     options
   )) as QueueServer;
 
-  app.start = async () => {
-    await app.get(QueueManager).start();
+  app.run = async (names?: string[] | undefined) => {
+    await app.get(QueueManager).run(names);
   };
 
   return app;

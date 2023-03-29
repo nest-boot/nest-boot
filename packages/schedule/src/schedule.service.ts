@@ -177,6 +177,7 @@ export class ScheduleService implements OnModuleInit, OnApplicationShutdown {
         await this.processor(job);
       },
       {
+        autorun: false,
         metrics: {
           maxDataPoints: MetricsTime.ONE_MONTH,
         },

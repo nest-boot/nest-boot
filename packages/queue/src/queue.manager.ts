@@ -9,7 +9,7 @@ export class QueueManager {
     private readonly queueExplorer: QueueExplorer
   ) {}
 
-  async start(names?: string[]): Promise<void> {
+  async run(names?: string[]): Promise<void> {
     [...this.queueExplorer.workers.entries()]
       .filter(([name]) => typeof names === "undefined" || names.includes(name))
       .forEach(([name, worker]) => {
