@@ -30,14 +30,14 @@
     "@nest-boot/eslint-config": "workspace:*",
     "@nest-boot/tsconfig": "workspace:*",
     "@semrel-extra/npm": "^1.2.2",
-    "commitizen": "^4.2.6",
+    "commitizen": "^4.3.0",
     "cz-conventional-changelog": "^3.3.0",
-    "eslint": "^8.32.0",
+    "eslint": "^8.37.0",
     "husky": "^8.0.3",
-    "lint-staged": "^13.1.0",
-    "multi-semantic-release": "^3.0.1",
-    "prettier": "^2.8.3",
-    "turbo": "^1.7.0"
+    "lint-staged": "^13.2.0",
+    "multi-semantic-release": "^3.0.2",
+    "prettier": "^2.8.7",
+    "turbo": "^1.8.6"
   },
   "lint-staged": {
     "*.md": [
