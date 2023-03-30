@@ -31,8 +31,7 @@ export class RequestContext {
   }
 
   static set<T>(key: string | symbol | Type<T>, value: T): void {
-    const store =
-      this.storage.getStore() != null || (global as any).__requestContext;
+    const store = this.storage.getStore() ?? (global as any).__requestContext;
 
     if (typeof store === "undefined") {
       throw new Error("Failed to get the context");

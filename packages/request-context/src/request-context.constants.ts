@@ -1,2 +1,2 @@
-export declare const REQUEST = "REQUEST";
-export declare const RESPONSE = "RESPONSE";
+export const REQUEST = "REQUEST";
+export const RESPONSE = "RESPONSE";
