@@ -21,7 +21,9 @@ export class RedisModule
   extends ConfigurableModuleClass
   implements OnApplicationShutdown
 {
-  constructor(private readonly redis: Redis) {}
+  constructor(private readonly redis: Redis) {
+    super();
+  }
 
   async onApplicationShutdown(): Promise<void> {
     await this.redis.quit();
