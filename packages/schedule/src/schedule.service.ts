@@ -7,7 +7,7 @@ import {
   type OnModuleInit,
 } from "@nestjs/common";
 import {
-  ContextIdFactory,
+  createContextId,
   DiscoveryService,
   MetadataScanner,
   ModuleRef,
@@ -76,12 +76,7 @@ export class ScheduleService implements OnModuleInit, OnApplicationShutdown {
                     processor: wrapper.isDependencyTreeStatic()
                       ? (job) => instance[key](job)
                       : async (job) => {
-                          const contextId = ContextIdFactory.create();
-
-                          this.moduleRef.registerRequestByContextId(
-                            job,
-                            contextId
-                          );
+                          const contextId = createContextId();
 
                           const contextInstance =
                             await this.injector.loadPerContext(
