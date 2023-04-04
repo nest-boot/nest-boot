@@ -6,9 +6,10 @@ import {
   type OnModuleInit,
 } from "@nestjs/common";
 import {
-  createContextId,
+  ContextIdFactory,
   DiscoveryService,
   MetadataScanner,
+  ModuleRef,
   Reflector,
 } from "@nestjs/core";
 import { Injector } from "@nestjs/core/injector/injector";
@@ -36,6 +37,7 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
 
   constructor(
     private readonly reflector: Reflector,
+    private readonly moduleRef: ModuleRef,
     private readonly discoveryService: DiscoveryService,
     private readonly metadataScanner: MetadataScanner
   ) {}
@@ -64,7 +66,12 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
                   ...metadataOptions,
                   processor: wrapper.isDependencyTreeStatic()
                     ? async (job) => {
-                        const contextId = createContextId();
+                        const contextId = ContextIdFactory.create();
+
+                        this.moduleRef.registerRequestByContextId(
+                          job,
+                          contextId
+                        );
 
                         const contextInstance =
                           await this.injector.loadPerContext(
