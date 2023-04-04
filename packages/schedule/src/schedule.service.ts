@@ -3,8 +3,8 @@ import {
   Inject,
   Injectable,
   Logger,
-  OnApplicationShutdown,
-  OnModuleInit,
+  type OnApplicationShutdown,
+  type OnModuleInit,
 } from "@nestjs/common";
 import {
   ContextIdFactory,
@@ -14,14 +14,14 @@ import {
   Reflector,
 } from "@nestjs/core";
 import { Injector } from "@nestjs/core/injector/injector";
-import { Job, MetricsTime, Processor, Queue, Worker } from "bullmq";
+import { type Job, MetricsTime, type Processor, Queue, Worker } from "bullmq";
 import ms from "ms";
 
 import {
   MODULE_OPTIONS_TOKEN,
   SCHEDULE_METADATA_KEY,
 } from "./schedule.module-definition";
-import { ScheduleMetadataOptions } from "./schedule-metadata-options.interface";
+import { type ScheduleMetadataOptions } from "./schedule-metadata-options.interface";
 import { ScheduleModuleOptions } from "./schedule-module-options.interface";
 
 @Injectable()
@@ -34,10 +34,10 @@ export class ScheduleService implements OnModuleInit, OnApplicationShutdown {
   private readonly queue: Queue;
   private worker?: Worker;
 
-  private readonly schedules: Map<
+  private readonly schedules = new Map<
     string,
     ScheduleMetadataOptions & { processor: Processor }
-  > = new Map();
+  >();
 
   constructor(
     @Inject(MODULE_OPTIONS_TOKEN)
@@ -186,12 +186,12 @@ export class ScheduleService implements OnModuleInit, OnApplicationShutdown {
     );
 
     this.worker.on("failed", (job, err) => {
-      this.logger.error(
+      this.logger.error("schedule job failed", {
         err,
-        typeof job !== "undefined"
+        ...(typeof job !== "undefined"
           ? { queueName: job.queueName, jobName: job.name, jobId: job.id }
-          : {}
-      );
+          : {}),
+      });
     });
   }
 

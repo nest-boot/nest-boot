@@ -2,8 +2,8 @@ import { RequestContext } from "@nest-boot/request-context";
 import {
   Injectable,
   Logger,
-  OnApplicationShutdown,
-  OnModuleInit,
+  type OnApplicationShutdown,
+  type OnModuleInit,
 } from "@nestjs/common";
 import {
   createContextId,
@@ -14,8 +14,8 @@ import {
 import { Injector } from "@nestjs/core/injector/injector";
 import { MetricsTime } from "bullmq";
 
-import { ProcessorFunction } from "./interfaces/processor-function.interface";
-import { ProcessorMetadataOptions } from "./interfaces/processor-metadata-options.interface";
+import { type ProcessorFunction } from "./interfaces/processor-function.interface";
+import { type ProcessorMetadataOptions } from "./interfaces/processor-metadata-options.interface";
 import { Queue } from "./queue";
 import { PROCESSOR_METADATA_KEY } from "./queue.module-definition";
 import { Worker } from "./worker";
@@ -25,14 +25,14 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
   private readonly logger = new Logger(QueueExplorer.name);
   private readonly injector = new Injector();
 
-  readonly processors: Map<
+  readonly processors = new Map<
     string,
     ProcessorMetadataOptions & { processor: ProcessorFunction }
-  > = new Map();
+  >();
 
-  readonly queues: Map<string, Queue> = new Map();
+  readonly queues = new Map<string, Queue>();
 
-  readonly workers: Map<string, Worker> = new Map();
+  readonly workers = new Map<string, Worker>();
 
   constructor(
     private readonly reflector: Reflector,
@@ -140,7 +140,12 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
       });
 
       worker.on("failed", (job, err) => {
-        this.logger.error(err);
+        this.logger.error("queue job failed", {
+          err,
+          ...(typeof job !== "undefined"
+            ? { queueName: job.queueName, jobName: job.name, jobId: job.id }
+            : {}),
+        });
       });
 
       this.workers.set(name, worker);

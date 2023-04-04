@@ -1,4 +1,7 @@
-import { type ApolloServerPlugin, type GraphQLRequestListener } from "@apollo/server";
+import {
+  type ApolloServerPlugin,
+  type GraphQLRequestListener,
+} from "@apollo/server";
 import { Plugin } from "@nestjs/apollo";
 import { HttpException, LoggerService } from "@nestjs/common";
 import { GraphQLSchemaHost } from "@nestjs/graphql";
@@ -38,10 +41,10 @@ export class ComplexityPlugin implements ApolloServerPlugin {
         });
 
         if (complexity >= this.maxComplexity) {
-          this.logger.error(
-            { operationName: request.operationName, complexity },
-            "query complexity"
-          );
+          this.logger.error("query complexity", {
+            operationName: request.operationName,
+            complexity,
+          });
 
           throw new HttpException(
             `Query is too complex: ${complexity}. Maximum allowed complexity: ${this.maxComplexity}`,
@@ -49,10 +52,10 @@ export class ComplexityPlugin implements ApolloServerPlugin {
           );
         }
 
-        this.logger.log(
-          { operationName: request.operationName, complexity },
-          "query complexity"
-        );
+        this.logger.log("query complexity", {
+          operationName: request.operationName,
+          complexity,
+        });
       },
     };
   }

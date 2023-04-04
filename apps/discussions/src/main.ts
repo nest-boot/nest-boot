@@ -1,4 +1,5 @@
 import { Logger } from "@nest-boot/logger";
+import { QueueManager } from "@nest-boot/queue";
 import { NestFactory } from "@nestjs/core";
 
 import { AppModule } from "./app.module";
@@ -13,4 +14,6 @@ void (async () => {
   app.enableShutdownHooks();
 
   await app.listen(3000);
+
+  await app.get(QueueManager).run();
 })();

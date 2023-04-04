@@ -10,7 +10,7 @@
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "dev": "nest start --watch",
-    "dev:repl": "nest start --debug --watch --entryFile repl",
+    "dev:repl": "nest start --watch --entryFile repl",
     "debug": "nest start --debug --watch",
     "debug:repl": "nest start --debug --watch --entryFile repl",
     "start": "node dist/main",
