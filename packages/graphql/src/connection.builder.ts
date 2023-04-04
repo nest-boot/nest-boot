@@ -65,10 +65,10 @@ export class ConnectionBuilder<
 
     @ObjectType(`${this.entityName}Connection`, { isAbstract: true })
     class Connection implements ConnectionInterface<T> {
-      @Field(() => [Edge], { nullable: "items" })
+      @Field(() => [Edge])
       edges!: Edge[];
 
-      @Field(() => [this.entityClass], { nullable: "items" })
+      @Field(() => [this.entityClass])
       nodes!: T[];
 
       @Field()
