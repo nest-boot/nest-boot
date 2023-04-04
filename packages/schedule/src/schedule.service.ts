@@ -68,12 +68,14 @@ export class ScheduleService implements OnModuleInit, OnApplicationShutdown {
                 this.reflector.get(SCHEDULE_METADATA_KEY, instance[key]);
 
               if (typeof scheduleMetadataOptions !== "undefined") {
+                const isRequestScoped = !wrapper.isDependencyTreeStatic();
+
                 this.schedules.set(
                   // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
                   `${instance.constructor.name}#${key}`,
                   {
                     ...scheduleMetadataOptions,
-                    processor: wrapper.isDependencyTreeStatic()
+                    processor: isRequestScoped
                       ? (job) => instance[key](job)
                       : async (job) => {
                           const contextId = createContextId();
