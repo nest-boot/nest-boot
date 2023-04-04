@@ -76,8 +76,7 @@ export class ScheduleService implements OnModuleInit, OnApplicationShutdown {
                   {
                     ...scheduleMetadataOptions,
                     processor: isRequestScoped
-                      ? (job) => instance[key](job)
-                      : async (job) => {
+                      ? async (job) => {
                           const contextId = createContextId();
 
                           const contextInstance =
@@ -89,7 +88,8 @@ export class ScheduleService implements OnModuleInit, OnApplicationShutdown {
                             );
 
                           return contextInstance[key](job);
-                        },
+                        }
+                      : (job) => instance[key](job),
                   }
                 );
               }
