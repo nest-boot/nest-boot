@@ -1,4 +1,4 @@
-import { Type } from "@nestjs/common";
+import { type Type } from "@nestjs/common";
 import {
   ArgsType,
   Field,
@@ -12,10 +12,10 @@ import _ from "lodash";
 import { PageInfo } from "./dtos";
 import { OrderDirection } from "./enums";
 import {
-  ConnectionArgsInterface,
-  ConnectionInterface,
-  EdgeInterface,
-  OrderInterface,
+  type ConnectionArgsInterface,
+  type ConnectionInterface,
+  type EdgeInterface,
+  type OrderInterface,
 } from "./interfaces";
 
 interface ConnectionBuilderOptions<T, P extends keyof T> {
@@ -65,17 +65,17 @@ export class ConnectionBuilder<
 
     @ObjectType(`${this.entityName}Connection`, { isAbstract: true })
     class Connection implements ConnectionInterface<T> {
-      @Field(() => [Edge], { nullable: true })
+      @Field(() => [Edge], { nullable: "items" })
       edges!: Edge[];
 
-      @Field(() => [this.entityClass], { nullable: true })
+      @Field(() => [this.entityClass], { nullable: "items" })
       nodes!: T[];
 
       @Field()
       pageInfo!: PageInfo;
 
-      @Field(() => Int, { nullable: true })
-      totalCount?: number;
+      @Field(() => Int)
+      totalCount!: number;
     }
 
     const OrderField =
