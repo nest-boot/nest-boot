@@ -10,7 +10,9 @@
     "postpack": "node scripts/postpack.js",
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "prepublish": "cp -f package.json package.json.tmp && echo -E \"$(jq '.dependencies = {} | .devDependencies = {}' package.json)\" > package.json",
+    "postpublish": "mv package.json.tmp package.json"
   },
   "dependencies": {
     "@ant-design/charts": "^1.4.2",
