@@ -1,7 +1,7 @@
 import { ConfigurableModuleBuilder } from "@nestjs/common";
 import { randomUUID } from "crypto";
 
-import { ScheduleModuleOptions } from "./schedule-module-options.interface";
+import { type ScheduleModuleOptions } from "./schedule-module-options.interface";
 
 export const SCHEDULE_METADATA_KEY = randomUUID();
 

@@ -2,7 +2,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import {
   createCipheriv,
   createDecipheriv,
-  Encoding,
+  type Encoding,
   randomBytes,
   scrypt,
 } from "crypto";

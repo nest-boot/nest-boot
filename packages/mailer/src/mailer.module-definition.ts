@@ -1,6 +1,6 @@
 import { ConfigurableModuleBuilder } from "@nestjs/common";
 
-import { MailerModuleOptions } from "./mailer-module-options.interface";
+import { type MailerModuleOptions } from "./mailer-module-options.interface";
 
 export const {
   ConfigurableModuleClass,

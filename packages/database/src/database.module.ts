@@ -1,31 +1,34 @@
 import {
-  EntityName,
-  MikroOrmMiddleware,
-  MikroOrmModule,
-  MikroOrmModuleFeatureOptions,
-} from "@mikro-orm/nestjs";
+  MikroORM,
+  RequestContext as MikroORMRequestContext,
+} from "@mikro-orm/core";
 import {
-  DynamicModule,
+  type EntityName,
+  MikroOrmModule,
+  type MikroOrmModuleFeatureOptions,
+} from "@mikro-orm/nestjs";
+import { RequestContext } from "@nest-boot/request-context";
+import {
+  type DynamicModule,
   Logger,
-  MiddlewareConsumer,
   Module,
-  NestModule,
+  type OnModuleInit,
 } from "@nestjs/common";
 
 import { DatabaseLogger } from "./database.logger";
 import {
-  ASYNC_OPTIONS_TYPE,
+  type ASYNC_OPTIONS_TYPE,
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
-  OPTIONS_TYPE,
+  type OPTIONS_TYPE,
 } from "./database.module-definition";
-import { DatabaseModuleOptions } from "./interfaces";
+import { type DatabaseModuleOptions } from "./interfaces";
 import { withBaseConfig } from "./utils/with-base-config.util";
 
 @Module({})
 export class DatabaseModule
   extends ConfigurableModuleClass
-  implements NestModule
+  implements OnModuleInit
 {
   static forRoot(options: typeof OPTIONS_TYPE): DynamicModule {
     return this.withMikroOrm(super.forRoot(options));
@@ -40,6 +43,10 @@ export class DatabaseModule
     contextName?: string
   ): DynamicModule {
     return MikroOrmModule.forFeature(options, contextName);
+  }
+
+  constructor(private readonly orm: MikroORM) {
+    super();
   }
 
   private static withMikroOrm(dynamicModule: DynamicModule): DynamicModule {
@@ -65,7 +72,10 @@ export class DatabaseModule
     };
   }
 
-  configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(MikroOrmMiddleware).forRoutes("*");
+  onModuleInit(): void {
+    RequestContext.registerMiddleware((_, next) => {
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises
+      MikroORMRequestContext.create(this.orm.em, async () => await next?.());
+    });
   }
 }

@@ -88,7 +88,7 @@ const SearchDynamicModule = SearchModule.registerAsync({
     RequestContextModule,
     DatabaseDynamicModule,
     I18nDynamicModule,
-    AuthDynamicModule,
+    // AuthDynamicModule,
     ConfigModule.forRoot({ isGlobal: true }),
     ViewDynamicModule,
     MailerDynamicModule,

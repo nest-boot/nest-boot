@@ -1,11 +1,12 @@
 import { SetMetadata } from "@nestjs/common";
 
 import { SCHEDULE_METADATA_KEY } from "./schedule.module-definition";
-import { ScheduleMetadataOptions } from "./schedule-metadata-options.interface";
+import { type ScheduleMetadataOptions } from "./schedule-metadata-options.interface";
 
 export const Schedule =
   (options: ScheduleMetadataOptions): MethodDecorator =>
   <T>(
+    // eslint-disable-next-line @typescript-eslint/ban-types
     target: Object,
     propertyKey: string | symbol,
     descriptor: TypedPropertyDescriptor<T>

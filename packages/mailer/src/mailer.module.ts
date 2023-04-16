@@ -1,4 +1,4 @@
-import { Module, Provider } from "@nestjs/common";
+import { Module, type Provider } from "@nestjs/common";
 import { createTransport } from "nodemailer";
 import Mailer from "nodemailer/lib/mailer";
 
@@ -6,7 +6,7 @@ import {
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
 } from "./mailer.module-definition";
-import { MailerModuleOptions } from "./mailer-module-options.interface";
+import { type MailerModuleOptions } from "./mailer-module-options.interface";
 
 const mailerProvider: Provider<Mailer> = {
   provide: Mailer,

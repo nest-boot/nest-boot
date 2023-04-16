@@ -26,7 +26,7 @@ npm i @nest-boot/auth
    @ObjectType()
    @Entity()
    export class PersonalAccessToken implements PersonalAccessTokenInterface {
-     @PrimaryKey({ type: "uuid", defaultRaw: "uuid_generate_v4()" })
+     @PrimaryKey({ type: "uuid", defaultRaw: "gen_random_uuid()" })
      id!: string;
 
      @Property()

@@ -6,8 +6,6 @@ import { QueueController } from "./queue.controller";
 import { ConfigurableModuleClass } from "./queue.module-definition";
 import { QueueCoreModule } from "./queue-core.module";
 
-console.log();
-
 @Module({
   imports: [
     QueueCoreModule,

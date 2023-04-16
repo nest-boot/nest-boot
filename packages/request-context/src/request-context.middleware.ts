@@ -1,6 +1,6 @@
-import { Injectable, NestMiddleware } from "@nestjs/common";
+import { Injectable, type NestMiddleware } from "@nestjs/common";
 import { DiscoveryService } from "@nestjs/core";
-import { Request, Response } from "express";
+import { type Request, type Response } from "express";
 
 import { RequestContext } from "./request-context";
 import {
@@ -18,7 +18,7 @@ export class RequestContextMiddleware implements NestMiddleware {
     ctx.set<Request>(CTX_REQUEST_TOKEN, req);
     ctx.set<Response>(CTX_RESPONSE_TOKEN, res);
 
-    RequestContext.run(ctx, () => {
+    await RequestContext.run(ctx, () => {
       next();
     });
   }

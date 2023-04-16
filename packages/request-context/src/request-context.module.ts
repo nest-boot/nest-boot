@@ -1,9 +1,9 @@
 import {
   Global,
-  MiddlewareConsumer,
+  type MiddlewareConsumer,
   Module,
-  NestModule,
-  OnModuleInit,
+  type NestModule,
+  type OnModuleInit,
 } from "@nestjs/common";
 import { DiscoveryService } from "@nestjs/core";
 

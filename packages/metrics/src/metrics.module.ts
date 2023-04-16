@@ -1,4 +1,4 @@
-import { Module, Provider } from "@nestjs/common";
+import { Module, type Provider } from "@nestjs/common";
 import { collectDefaultMetrics, Registry } from "prom-client";
 
 import { MetricsController } from "./metrics.controller";

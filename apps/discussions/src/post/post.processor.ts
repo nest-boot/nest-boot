@@ -13,7 +13,6 @@ export class PostProcessor {
   @Processor("test")
   @UseRequestContext()
   async handle() {
-    console.log("test");
     await this.postService.repository.findAll();
   }
 }

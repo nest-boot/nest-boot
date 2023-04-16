@@ -1,6 +1,43 @@
-import { Injectable, Type } from "@nestjs/common";
+import { Injectable, type Type } from "@nestjs/common";
 import { DiscoveryService } from "@nestjs/core";
 import { AsyncLocalStorage } from "async_hooks";
+
+type RequestContextMiddleware = (
+  ctx: RequestContext,
+  next?: () => Promise<void> | void
+) => Promise<void> | void;
+
+const compose = (
+  middleware: RequestContextMiddleware[]
+): RequestContextMiddleware => {
+  return function (context, next) {
+    // last called middleware #
+    let index = -1;
+    return dispatch(0);
+    function dispatch(i: number): any {
+      if (i <= index) {
+        return Promise.reject(new Error("next() called multiple times"));
+      }
+
+      index = i;
+      let fn = middleware[i];
+      if (i === middleware.length) {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        fn = next!;
+      }
+
+      if (typeof fn === "undefined") {
+        return Promise.resolve();
+      }
+
+      try {
+        return Promise.resolve(fn(context, dispatch.bind(null, i + 1)));
+      } catch (err) {
+        return Promise.reject(err);
+      }
+    }
+  };
+};
 
 @Injectable()
 export class RequestContext {
@@ -8,8 +45,11 @@ export class RequestContext {
 
   private static readonly storage = new AsyncLocalStorage<RequestContext>();
 
+  private static readonly middlewares: RequestContextMiddleware[] = [];
+
   constructor(private readonly discoveryService: DiscoveryService) {}
 
+  // eslint-disable-next-line @typescript-eslint/ban-types
   get<T>(token: string | symbol | Function | Type<T>): T {
     if (token === DiscoveryService) {
       return this.discoveryService as any;
@@ -42,6 +82,7 @@ export class RequestContext {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/ban-types
   static get<T>(key: string | symbol | Function | Type<T>): T {
     const store = this.storage.getStore() ?? (global as any).__requestContext;
 
@@ -52,7 +93,18 @@ export class RequestContext {
     return store.get(key);
   }
 
-  static run<R>(ctx: RequestContext, callback: () => R): R {
-    return this.storage.run(ctx, callback);
+  static run(
+    ctx: RequestContext,
+    callback: RequestContextMiddleware
+  ): Promise<void> | void {
+    const composedMiddleware = compose([...this.middlewares, callback]);
+
+    return this.storage.run(ctx, async () => {
+      await composedMiddleware(ctx);
+    });
+  }
+
+  static registerMiddleware(middleware: RequestContextMiddleware): void {
+    this.middlewares.push(middleware);
   }
 }

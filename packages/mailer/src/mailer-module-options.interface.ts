@@ -1,8 +1,8 @@
-import JSONTransport from "nodemailer/lib/json-transport";
-import SendmailTransport from "nodemailer/lib/sendmail-transport";
-import SESTransport from "nodemailer/lib/ses-transport";
-import SMTPTransport from "nodemailer/lib/smtp-transport";
-import StreamTransport from "nodemailer/lib/stream-transport";
+import type JSONTransport from "nodemailer/lib/json-transport";
+import type SendmailTransport from "nodemailer/lib/sendmail-transport";
+import type SESTransport from "nodemailer/lib/ses-transport";
+import type SMTPTransport from "nodemailer/lib/smtp-transport";
+import type StreamTransport from "nodemailer/lib/stream-transport";
 
 export type MailerModuleOptions =
   | JSONTransport.Options

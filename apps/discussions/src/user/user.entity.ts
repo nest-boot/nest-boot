@@ -10,7 +10,7 @@ export class User {
   @Field(() => ID)
   @PrimaryKey({
     type: t.uuid,
-    defaultRaw: "uuid_generate_v4()",
+    defaultRaw: "gen_random_uuid()",
     onCreate: () => randomUUID(),
   })
   id!: string;

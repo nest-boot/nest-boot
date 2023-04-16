@@ -1,6 +1,6 @@
 import { ConfigurableModuleBuilder } from "@nestjs/common";
 
-import { MetricsModuleOptions } from "./metrics-module-options.interface";
+import { type MetricsModuleOptions } from "./metrics-module-options.interface";
 
 export const {
   ConfigurableModuleClass,
