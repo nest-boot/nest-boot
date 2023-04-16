@@ -52,11 +52,16 @@ export class Logger implements LoggerService {
   }
 
   private get pinoLogger(): PinoLogger {
-    return (
-      RequestContext.get<PinoLogger>(PINO_LOGGER) ??
-      this.globalLogger ??
-      (this.globalLogger = pino())
-    );
+    let pinoLogger: PinoLogger | undefined;
+    try {
+      pinoLogger = RequestContext.get<PinoLogger>(PINO_LOGGER);
+    } catch (err) {}
+
+    if (typeof pinoLogger === "undefined") {
+      return this.globalLogger ?? (this.globalLogger = pino());
+    }
+
+    return pinoLogger;
   }
 
   private call(
