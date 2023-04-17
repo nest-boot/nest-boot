@@ -1,7 +1,4 @@
-import {
-  RequestContext,
-  RequestContextModule,
-} from "@nest-boot/request-context";
+import { RequestContext } from "@nest-boot/request-context";
 import { Inject, Module, type OnModuleInit } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import pino from "pino";
@@ -15,7 +12,6 @@ import { Logger } from "./logger.service";
 import { LoggerModuleOptions } from "./logger-module-options.interface";
 
 @Module({
-  imports: [RequestContextModule],
   providers: [Logger],
   exports: [Logger],
 })

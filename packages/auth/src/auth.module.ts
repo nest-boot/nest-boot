@@ -1,9 +1,9 @@
 import {
   Global,
   Inject,
-  MiddlewareConsumer,
+  type MiddlewareConsumer,
   Module,
-  NestModule,
+  type NestModule,
 } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 

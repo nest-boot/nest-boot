@@ -1,12 +1,12 @@
 import { EntityManager } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
-import { Inject, Injectable, NestMiddleware, Scope } from "@nestjs/common";
-import { Request, Response } from "express";
+import { Inject, Injectable, type NestMiddleware, Scope } from "@nestjs/common";
+import { type Request, type Response } from "express";
 
 import { AUTH_ACCESS_TOKEN, AUTH_ENTITY } from "./auth.constants";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition";
 import { AuthService } from "./auth.service";
-import { AccessTokenInterface, AuthModuleOptions } from "./interfaces";
+import { type AccessTokenInterface, AuthModuleOptions } from "./interfaces";
 
 @Injectable({ scope: Scope.REQUEST })
 export class AuthMiddleware implements NestMiddleware {
