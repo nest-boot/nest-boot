@@ -1,9 +1,9 @@
 import { EntityManager, Reference } from "@mikro-orm/core";
-import { I18N, I18n } from "@nest-boot/i18n";
+import { I18N, type I18n } from "@nest-boot/i18n";
 import { RequestContext } from "@nest-boot/request-context";
 import {
-  CanActivate,
-  ExecutionContext,
+  type CanActivate,
+  type ExecutionContext,
   ForbiddenException,
   Inject,
   Injectable,
@@ -19,9 +19,9 @@ import {
   REQUIRE_AUTH_METADATA_KEY,
 } from "./auth.module-definition";
 import {
-  AccessTokenInterface,
+  type AccessTokenInterface,
   AuthModuleOptions,
-  HasPermissions,
+  type HasPermissions,
 } from "./interfaces";
 
 @Injectable()
@@ -47,10 +47,15 @@ export class AuthGuard implements CanActivate {
     }
 
     // 获取方法是否需要认证
-    const requireAuth = this.reflector.get<boolean>(
-      REQUIRE_AUTH_METADATA_KEY,
-      executionContext.getHandler()
-    );
+    const requireAuth =
+      this.reflector.get<boolean>(
+        REQUIRE_AUTH_METADATA_KEY,
+        executionContext.getHandler()
+      ) ??
+      this.reflector.get<boolean>(
+        REQUIRE_AUTH_METADATA_KEY,
+        executionContext.getClass()
+      );
 
     // 如果默认公开或有公共访问权限直接放行
     if (!(requireAuth ?? this.options.defaultRequireAuth ?? false)) {
