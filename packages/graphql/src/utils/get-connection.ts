@@ -1,12 +1,12 @@
-import { FilterQuery, QueryOrder, QueryOrderMap } from "@mikro-orm/core";
-import { SearchableEntityService } from "@nest-boot/search";
+import { type FilterQuery, QueryOrder, type QueryOrderMap } from "@mikro-orm/core";
+import { type SearchableEntityService } from "@nest-boot/search";
 import _ from "lodash";
 
 import { OrderDirection, PagingType } from "../enums";
 import {
-  ConnectionArgsInterface,
-  ConnectionInterface,
-  EdgeInterface,
+  type ConnectionArgsInterface,
+  type ConnectionInterface,
+  type EdgeInterface,
 } from "../interfaces";
 import { Cursor } from "./cursor";
 import { getPagingType } from "./get-paging-type";
@@ -25,17 +25,12 @@ async function getCursorConnection<T extends { id: number | string | bigint }>(
     query = "",
     orderBy = { field: "createdAt", direction: OrderDirection.ASC },
   } = args;
-  const limit =
-    typeof first !== "undefined"
-      ? first
-      : typeof last !== "undefined"
-      ? last
-      : 0;
+  const limit = first != null ? first : last != null ? last : 0;
 
   const cursor =
-    typeof after !== "undefined"
+    after != null
       ? new Cursor(after)
-      : typeof before !== "undefined"
+      : before != null
       ? new Cursor(before)
       : undefined;
 
@@ -146,10 +141,10 @@ async function getCursorConnection<T extends { id: number | string | bigint }>(
       ...(pagingType === PagingType.FORWARD
         ? {
             hasNextPage: entities.length > limit,
-            hasPreviousPage: typeof after !== "undefined",
+            hasPreviousPage: after != null,
           }
         : {
-            hasNextPage: typeof before !== "undefined",
+            hasNextPage: before != null,
             hasPreviousPage: entities.length > limit,
           }),
       startCursor: edges[0]?.cursor,
