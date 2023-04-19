@@ -4,40 +4,8 @@ import { AsyncLocalStorage } from "async_hooks";
 
 type RequestContextMiddleware = (
   ctx: RequestContext,
-  next?: () => Promise<void> | void
-) => Promise<void> | void;
-
-const compose = (
-  middleware: RequestContextMiddleware[]
-): RequestContextMiddleware => {
-  return function (context, next) {
-    // last called middleware #
-    let index = -1;
-    return dispatch(0);
-    function dispatch(i: number): any {
-      if (i <= index) {
-        return Promise.reject(new Error("next() called multiple times"));
-      }
-
-      index = i;
-      let fn = middleware[i];
-      if (i === middleware.length) {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        fn = next!;
-      }
-
-      if (typeof fn === "undefined") {
-        return Promise.resolve();
-      }
-
-      try {
-        return Promise.resolve(fn(context, dispatch.bind(null, i + 1)));
-      } catch (err) {
-        return Promise.reject(err);
-      }
-    }
-  };
-};
+  next?: () => Promise<void>
+) => Promise<void>;
 
 @Injectable()
 export class RequestContext {
@@ -46,6 +14,8 @@ export class RequestContext {
   private static readonly storage = new AsyncLocalStorage<RequestContext>();
 
   private static readonly middlewares: RequestContextMiddleware[] = [];
+
+  private static readonly composedMiddleware?: any;
 
   constructor(private readonly discoveryService: DiscoveryService) {}
 
@@ -93,15 +63,20 @@ export class RequestContext {
     return store.get(key);
   }
 
-  static run(
+  static async run(
     ctx: RequestContext,
     callback: RequestContextMiddleware
-  ): Promise<void> | void {
-    const composedMiddleware = compose([...this.middlewares, callback]);
+  ): Promise<void> {
+    let i = 0;
 
-    return this.storage.run(ctx, async () => {
-      await composedMiddleware(ctx);
-    });
+    const next = async (): Promise<void> => {
+      const middleware = this.middlewares[i++];
+      typeof middleware === "undefined"
+        ? await callback(ctx)
+        : await middleware(ctx, next);
+    };
+
+    await this.storage.run(ctx, next);
   }
 
   static registerMiddleware(middleware: RequestContextMiddleware): void {
