@@ -73,9 +73,12 @@ export class DatabaseModule
   }
 
   onModuleInit(): void {
-    RequestContext.registerMiddleware((_, next) => {
-      // eslint-disable-next-line @typescript-eslint/no-misused-promises
-      MikroORMRequestContext.create(this.orm.em, async () => await next?.());
+    RequestContext.registerMiddleware(async (_, next) => {
+      return await new Promise((resolve, reject) => {
+        MikroORMRequestContext.create(this.orm.em, () => {
+          next().then(resolve).catch(reject);
+        });
+      });
     });
   }
 }

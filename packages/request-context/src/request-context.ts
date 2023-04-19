@@ -4,8 +4,8 @@ import { AsyncLocalStorage } from "async_hooks";
 
 type RequestContextMiddleware = (
   ctx: RequestContext,
-  next?: () => Promise<void>
-) => Promise<void>;
+  next: () => Promise<any>
+) => Promise<any>;
 
 @Injectable()
 export class RequestContext {
@@ -14,8 +14,6 @@ export class RequestContext {
   private static readonly storage = new AsyncLocalStorage<RequestContext>();
 
   private static readonly middlewares: RequestContextMiddleware[] = [];
-
-  private static readonly composedMiddleware?: any;
 
   constructor(private readonly discoveryService: DiscoveryService) {}
 
@@ -65,7 +63,7 @@ export class RequestContext {
 
   static async run(
     ctx: RequestContext,
-    callback: RequestContextMiddleware
+    callback: (ctx: RequestContext) => void | Promise<void>
   ): Promise<void> {
     let i = 0;
 
