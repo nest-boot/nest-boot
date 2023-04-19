@@ -34,7 +34,7 @@ export class LoggerModule
         })
       );
 
-      await next?.();
+      return await next();
     });
   }
 }
