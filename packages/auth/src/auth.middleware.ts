@@ -18,6 +18,8 @@ export class AuthMiddleware implements NestMiddleware {
   ) {}
 
   async use(req: Request, res: Response, next: () => void): Promise<void> {
+    (req as any).authMiddlewareUsed = true;
+
     const accessTokenString = this.extractAccessToken(req);
 
     if (accessTokenString !== null) {

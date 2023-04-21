@@ -31,6 +31,7 @@
     "@nest-boot/auth": "workspace:*",
     "@nest-boot/database": "workspace:*",
     "@nest-boot/graphql": "workspace:*",
+    "@nest-boot/health-check": "workspace:*",
     "@nest-boot/i18n": "workspace:*",
     "@nest-boot/logger": "workspace:*",
     "@nest-boot/mailer": "workspace:*",

@@ -46,6 +46,12 @@ export class AuthGuard implements CanActivate {
       return true;
     }
 
+    const httpArgumentsHost = executionContext.switchToHttp();
+    const request = httpArgumentsHost.getRequest<Request>();
+    if (typeof (request as any).authMiddlewareUsed === "undefined") {
+      return true;
+    }
+
     // 获取方法是否需要认证
     const requireAuth =
       this.reflector.get<boolean>(
