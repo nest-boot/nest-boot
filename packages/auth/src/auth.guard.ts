@@ -1,6 +1,6 @@
 import { EntityManager, Reference } from "@mikro-orm/core";
 import { I18N, type I18n } from "@nest-boot/i18n";
-import { RequestContext } from "@nest-boot/request-context";
+import { REQUEST, RequestContext } from "@nest-boot/request-context";
 import {
   type CanActivate,
   type ExecutionContext,
@@ -46,9 +46,10 @@ export class AuthGuard implements CanActivate {
       return true;
     }
 
-    const httpArgumentsHost = executionContext.switchToHttp();
-    const request = httpArgumentsHost.getRequest<Request>();
-    if (typeof (request as any).authMiddlewareUsed === "undefined") {
+    if (
+      typeof RequestContext.get<{ authMiddlewareUsed?: boolean }>(REQUEST)
+        ?.authMiddlewareUsed === "undefined"
+    ) {
       return true;
     }
 
