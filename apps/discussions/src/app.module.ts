@@ -1,6 +1,7 @@
 import { EntityManager, PostgreSqlDriver } from "@mikro-orm/postgresql";
 import { AuthModule } from "@nest-boot/auth";
 import { DatabaseModule } from "@nest-boot/database";
+import { HealthCheckModule } from "@nest-boot/health-check";
 import { I18nModule } from "@nest-boot/i18n";
 import { LoggerModule } from "@nest-boot/logger";
 import { MailerModule } from "@nest-boot/mailer";
@@ -46,6 +47,7 @@ const AuthDynamicModule = AuthModule.registerAsync({
   useFactory: (config: ConfigService) => ({
     accessTokenEntityClass: AccessToken,
     defaultRequireAuth: true,
+    excludeRoutes: ["health"],
   }),
 });
 
@@ -85,6 +87,7 @@ const SearchDynamicModule = SearchModule.registerAsync({
 
 @Module({
   imports: [
+    HealthCheckModule,
     RequestContextModule,
     DatabaseDynamicModule,
     I18nDynamicModule,

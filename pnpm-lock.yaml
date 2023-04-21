@@ -62,8 +62,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/graphql
       '@nest-boot/health-check':
-        specifier: ^4.0.3
-        version: 4.0.3
+        specifier: workspace:*
+        version: link:../../packages/health-check
       '@nest-boot/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
@@ -4626,20 +4626,6 @@ packages:
     os: [win32]
     requiresBuild: true
     dev: true
-    optional: true
-
-  /@nest-boot/health-check@4.0.3:
-    resolution: {integrity: sha512-2dUHQ6tL4stSyQ3jktKPFI55pMTVCPUBORbb+/88fxf0SB4ZUJhkQ65VJIIzMZYQpd7UPiQ+aOttjbyzlj/ZzQ==}
-    optionalDependencies:
-      '@nest-boot/redis': 4.0.3
-      ioredis: 5.3.1
-      redis-info: 3.1.0
-    dev: false
-
-  /@nest-boot/redis@4.0.3:
-    resolution: {integrity: sha512-YUFc+6KY8nIzOZ2jLFtQ5oiqrgljlQ2Ri+X7HTrd8xY3OYXbR7N3Ac1W2DBI6tlcbdyk0xVigQIGOBG2qzdTrA==}
-    requiresBuild: true
-    dev: false
     optional: true
 
   /@nestjs/apollo@11.0.4:
