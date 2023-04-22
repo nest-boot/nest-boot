@@ -5,14 +5,22 @@ import {
   type NestModule,
   type OnModuleInit,
 } from "@nestjs/common";
-import { DiscoveryService } from "@nestjs/core";
+import { APP_INTERCEPTOR,DiscoveryService } from "@nestjs/core";
 
 import { RequestContext } from "./request-context";
+import { RequestContextInterceptor } from "./request-context.interceptor";
 import { RequestContextMiddleware } from "./request-context.middleware";
 
 @Global()
 @Module({
-  providers: [DiscoveryService, RequestContext],
+  providers: [
+    DiscoveryService,
+    RequestContext,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: RequestContextInterceptor,
+    },
+  ],
   exports: [RequestContext],
 })
 export class RequestContextModule implements NestModule, OnModuleInit {
