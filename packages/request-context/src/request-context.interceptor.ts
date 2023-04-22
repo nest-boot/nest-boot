@@ -5,7 +5,7 @@ import {
   type NestInterceptor,
 } from "@nestjs/common";
 import { DiscoveryService } from "@nestjs/core";
-import { from,lastValueFrom, type Observable } from "rxjs";
+import { from, lastValueFrom, type Observable } from "rxjs";
 
 import { RequestContext } from "./request-context";
 
@@ -13,13 +13,16 @@ import { RequestContext } from "./request-context";
 export class RequestContextInterceptor implements NestInterceptor {
   constructor(private readonly discoveryService: DiscoveryService) {}
 
-  intercept(
-    context: ExecutionContext,
-    next: CallHandler<any>
-  ): Observable<any> | Promise<Observable<any>> {
+  intercept<T>(context: ExecutionContext, next: CallHandler<T>): Observable<T> {
     if (context.getType() === "rpc") {
       const ctx = new RequestContext(this.discoveryService);
-      return from(RequestContext.run(ctx, async () => await lastValueFrom(next.handle())));
+
+      return from(
+        RequestContext.run<T>(
+          ctx,
+          async () => await lastValueFrom(next.handle())
+        )
+      );
     }
 
     return next.handle();

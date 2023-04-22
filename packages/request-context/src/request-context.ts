@@ -2,10 +2,10 @@ import { Injectable, type Type } from "@nestjs/common";
 import { DiscoveryService } from "@nestjs/core";
 import { AsyncLocalStorage } from "async_hooks";
 
-type RequestContextMiddleware = (
+type RequestContextMiddleware = <T>(
   ctx: RequestContext,
-  next: () => Promise<any>
-) => Promise<any>;
+  next: () => Promise<T>
+) => Promise<T>;
 
 @Injectable()
 export class RequestContext {
@@ -61,20 +61,20 @@ export class RequestContext {
     return store.get(key);
   }
 
-  static async run(
+  static async run<T>(
     ctx: RequestContext,
-    callback: (ctx: RequestContext) => void | Promise<void>
-  ): Promise<void> {
+    callback: (ctx: RequestContext) => T | Promise<T>
+  ): Promise<T> {
     let i = 0;
 
-    const next = async (): Promise<void> => {
+    const next = async (): Promise<T> => {
       const middleware = this.middlewares[i++];
-      typeof middleware === "undefined"
+      return typeof middleware === "undefined"
         ? await callback(ctx)
-        : await middleware(ctx, next);
+        : await middleware<T>(ctx, next);
     };
 
-    await this.storage.run(ctx, next);
+    return await this.storage.run(ctx, next);
   }
 
   static registerMiddleware(middleware: RequestContextMiddleware): void {
