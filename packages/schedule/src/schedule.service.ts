@@ -122,24 +122,26 @@ export class ScheduleService implements OnModuleInit, OnApplicationShutdown {
 
   async registerSchedules(): Promise<void> {
     await Promise.all(
-      [...this.schedules.entries()].map(async ([name, { type, value }]) => {
-        await this.queue.add(
-          name,
-          {},
-          {
-            repeat:
-              type === "cron"
-                ? { pattern: value.toString() }
-                : {
-                    every: typeof value === "string" ? ms(value) : value,
-                  },
-            removeOnFail: true,
-            removeOnComplete: true,
-          }
-        );
+      [...this.schedules.entries()].map(
+        async ([name, { type, value, timezone }]) => {
+          await this.queue.add(
+            name,
+            {},
+            {
+              repeat:
+                type === "cron"
+                  ? { pattern: value.toString(), tz: timezone }
+                  : {
+                      every: typeof value === "string" ? ms(value) : value,
+                    },
+              removeOnFail: true,
+              removeOnComplete: true,
+            }
+          );
 
-        this.logger.log(`Registered {${name}, ${value}}`);
-      })
+          this.logger.log(`Registered {${name}, ${value}}`);
+        }
+      )
     );
   }
 
