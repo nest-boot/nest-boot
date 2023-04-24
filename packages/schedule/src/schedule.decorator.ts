@@ -16,10 +16,14 @@ export const Schedule =
       options
     )(target, propertyKey, descriptor);
 
-export const Cron = (value: string): MethodDecorator =>
+export const Cron = (
+  value: string,
+  options?: Omit<ScheduleMetadataOptions, "type" | "value">
+): MethodDecorator =>
   Schedule({
     type: "cron",
     value,
+    ...(options ?? {}),
   });
 
 export const Interval = (value: number | string): MethodDecorator =>
