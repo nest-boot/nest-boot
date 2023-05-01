@@ -22,7 +22,8 @@
   },
   "dependencies": {
     "lodash": "^4.17.21",
-    "pino": "^8.11.0"
+    "pino": "^8.11.0",
+    "pino-http": "^8.3.3"
   },
   "devDependencies": {
     "@nest-boot/eslint-config": "workspace:*",

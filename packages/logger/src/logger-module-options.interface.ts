@@ -1,7 +1,3 @@
-import { type RequestContext } from "@nest-boot/request-context";
+import { type Options } from "pino-http";
 
-export interface LoggerModuleOptions {
-  genReqId?: (ctx: RequestContext) => string | Promise<string>;
-  // httpAutoLogging?: boolean;
-  // graphqlAutoLogging?: boolean;
-}
+export interface LoggerModuleOptions extends Options {}

@@ -1,6 +1,7 @@
 import { Injectable, type Type } from "@nestjs/common";
 import { DiscoveryService } from "@nestjs/core";
 import { AsyncLocalStorage } from "async_hooks";
+import { randomUUID } from "crypto";
 
 type RequestContextMiddleware = <T>(
   ctx: RequestContext,
@@ -9,6 +10,8 @@ type RequestContextMiddleware = <T>(
 
 @Injectable()
 export class RequestContext {
+  readonly id = randomUUID();
+
   private readonly container = new Map();
 
   private static readonly storage = new AsyncLocalStorage<RequestContext>();
