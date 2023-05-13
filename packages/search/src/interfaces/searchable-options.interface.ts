@@ -1,4 +1,4 @@
-import { Collection, Reference } from "@mikro-orm/core";
+import { type Collection, type Reference } from "@mikro-orm/core";
 
 type Loadable<T extends object> =
   | Collection<T, any>
@@ -31,7 +31,6 @@ type Field<T, D extends Prev[number] = 3> = [D] extends [never]
 
 export interface SearchableOptions<T> {
   index: string;
-  filterableAttributes?: Array<Field<T>>;
-  searchableAttributes?: Array<Field<T>>;
-  sortableAttributes?: Array<Field<T>>;
+  filterableFields?: Array<Field<T>>;
+  searchableFields?: Array<Field<T>>;
 }

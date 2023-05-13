@@ -1,4 +1,4 @@
-import { ValidateBy, ValidationOptions } from "class-validator";
+import { ValidateBy, type ValidationOptions } from "class-validator";
 import isLengthValidator from "validator/lib/isLength";
 
 import { buildI18nMessage } from "../../utils/build-i18n-message";

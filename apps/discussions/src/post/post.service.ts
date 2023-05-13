@@ -1,24 +1,23 @@
 import { createEntityService } from "@nest-boot/database";
 import { mixinConnection } from "@nest-boot/graphql";
+import { Cron } from "@nest-boot/schedule";
 import { mixinSearchable } from "@nest-boot/search";
 import { Injectable } from "@nestjs/common";
 
 import { Post } from "./post.entity";
-import { Cron } from "@nest-boot/schedule";
 
 @Injectable()
 export class PostService extends mixinConnection(
   mixinSearchable(createEntityService(Post), {
     index: "Post",
-    filterableAttributes: [
+    filterableFields: [
       "id",
       "message",
       "createdAt",
       "user.name",
       "user.createdAt",
     ],
-    searchableAttributes: ["id", "message", "createdAt", "user.name"],
-    sortableAttributes: ["createdAt"],
+    searchableFields: ["id", "message", "createdAt", "user.name"],
   })
 ) {
   @Cron("* * * * * *")

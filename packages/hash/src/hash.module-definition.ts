@@ -1,6 +1,6 @@
 import { ConfigurableModuleBuilder } from "@nestjs/common";
 
-import { HashModuleOptions } from "./hash-module-options.interface";
+import { type HashModuleOptions } from "./hash-module-options.interface";
 
 export const {
   ConfigurableModuleClass,

@@ -1,4 +1,4 @@
-import { HealthIndicatorFunction } from "@nestjs/terminus";
+import { type HealthIndicatorFunction } from "@nestjs/terminus";
 
 export class HealthCheckRegistryService {
   #healthIndicatorFunctions: HealthIndicatorFunction[] = [];

@@ -1,8 +1,8 @@
 import { t } from "@nest-boot/i18n";
 import {
   registerDecorator,
-  ValidationArguments,
-  ValidationOptions,
+  type ValidationArguments,
+  type ValidationOptions,
 } from "class-validator";
 
 export enum Comparator {
@@ -18,7 +18,7 @@ export function ValidateCompareNumber(
   compareProperty: string,
   validationOptions?: ValidationOptions
 ): PropertyDecorator {
-  return (target: Object, propertyName: string | symbol) => {
+  return (target: object, propertyName: string | symbol) => {
     if (typeof propertyName === "string") {
       registerDecorator({
         name: "isGreaterThanOrEqual",

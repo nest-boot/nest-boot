@@ -1,4 +1,4 @@
-import { i18n as I18n } from "i18next";
+import { type i18n as I18n } from "i18next";
 
 export * from "./decorators";
 export * from "./i18n.constants";
@@ -6,4 +6,4 @@ export * from "./i18n.middleware";
 export * from "./i18n.module";
 export * from "./utils";
 
-export { I18n };
+export type { I18n };

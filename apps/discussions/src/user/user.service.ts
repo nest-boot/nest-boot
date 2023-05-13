@@ -9,6 +9,5 @@ import { User } from "./user.entity";
 export class UserService extends mixinConnection(
   mixinSearchable(createEntityService(User), {
     index: "User",
-    sortableAttributes: [],
   })
 ) {}

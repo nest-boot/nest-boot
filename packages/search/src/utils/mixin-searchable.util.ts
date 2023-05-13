@@ -1,8 +1,12 @@
-import { EntityManager, EntityRepository, FilterQuery } from "@mikro-orm/core";
-import { EntityService } from "@nest-boot/database";
+import {
+  EntityManager,
+  type EntityRepository,
+  type FilterQuery,
+} from "@mikro-orm/core";
+import { type EntityService } from "@nest-boot/database";
 import { Inject, Injectable } from "@nestjs/common";
 
-import { SearchableOptions, SearchOptions } from "../interfaces";
+import { type SearchableOptions, type SearchOptions } from "../interfaces";
 import { SearchService } from "../search.service";
 
 export type Type<T = any> = new (...args: any[]) => T;

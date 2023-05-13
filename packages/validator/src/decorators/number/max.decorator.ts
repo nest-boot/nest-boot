@@ -1,4 +1,4 @@
-import { ValidateBy, ValidationOptions } from "class-validator";
+import { ValidateBy, type ValidationOptions } from "class-validator";
 
 import { buildI18nMessage } from "../../utils";
 

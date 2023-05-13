@@ -1,6 +1,6 @@
 import { ConfigurableModuleBuilder } from "@nestjs/common";
 
-import { I18nModuleOptions } from "./interfaces/i18n-module-options.interface";
+import { type I18nModuleOptions } from "./interfaces/i18n-module-options.interface";
 
 export const {
   ConfigurableModuleClass,

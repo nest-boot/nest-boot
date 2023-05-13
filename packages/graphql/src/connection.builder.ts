@@ -83,7 +83,7 @@ export class ConnectionBuilder<
         ? this.options.orderFields.reduce<OrderFieldType<T, P>>(
             (result, field) => ({
               ...result,
-              [_.snakeCase(field).toUpperCase()]: field,
+              [_.snakeCase(field.replace(/_/g, ".")).toUpperCase()]: field,
             }),
             // eslint-disable-next-line @typescript-eslint/prefer-reduce-type-parameter
             {} as any

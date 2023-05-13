@@ -1,5 +1,5 @@
-import { ValidateBy, ValidationOptions } from "class-validator";
-import ValidatorJS from "validator";
+import { ValidateBy, type ValidationOptions } from "class-validator";
+import type ValidatorJS from "validator";
 import isUrlValidator from "validator/lib/isURL";
 
 import { buildI18nMessage } from "../../utils";

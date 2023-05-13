@@ -1,5 +1,5 @@
-import { Global, Module, Type } from "@nestjs/common";
-import { HealthIndicator, TerminusModule } from "@nestjs/terminus";
+import { Global, Module, type Type } from "@nestjs/common";
+import { type HealthIndicator, TerminusModule } from "@nestjs/terminus";
 
 import { HealthCheckController } from "./health-check.controller";
 import { HealthCheckRegistryService } from "./health-check-registry.service";

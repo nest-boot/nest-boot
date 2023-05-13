@@ -1,5 +1,5 @@
 import { RequestContext } from "@nest-boot/request-context";
-import i18next, { i18n, TOptions } from "i18next";
+import i18next, { type i18n, type TOptions } from "i18next";
 
 import { I18N } from "../i18n.constants";
 

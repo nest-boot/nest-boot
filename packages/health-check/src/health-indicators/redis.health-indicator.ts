@@ -1,14 +1,14 @@
-import { Redis } from "@nest-boot/redis";
+import { type Redis } from "@nest-boot/redis";
 import { Injectable, Scope } from "@nestjs/common";
 import { ModuleRef } from "@nestjs/core";
 import {
   HealthCheckError,
   HealthIndicator,
-  HealthIndicatorResult,
+  type HealthIndicatorResult,
   TimeoutError,
 } from "@nestjs/terminus";
 import { promiseTimeout } from "@nestjs/terminus/dist/utils";
-import { Redis as IORedis } from "ioredis";
+import { type Redis as IORedis } from "ioredis";
 import { parse } from "redis-info";
 
 export interface RedisPingCheckSettings {

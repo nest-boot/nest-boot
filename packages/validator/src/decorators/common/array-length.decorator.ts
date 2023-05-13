@@ -1,8 +1,8 @@
 import { t } from "@nest-boot/i18n";
 import {
   registerDecorator,
-  ValidationArguments,
-  ValidationOptions,
+  type ValidationArguments,
+  type ValidationOptions,
 } from "class-validator";
 
 export interface ArrayLengthOptions extends ValidationOptions {
@@ -51,7 +51,7 @@ function arrayLengthMessage(
 export function ArrayLength(
   validationOptions: ArrayLengthOptions
 ): PropertyDecorator {
-  return (target: Object, propertyName: string | symbol) => {
+  return (target: object, propertyName: string | symbol) => {
     if (typeof propertyName === "string") {
       registerDecorator({
         name: "arrayLength",

@@ -1,11 +1,11 @@
 import {
-  DynamicModule,
-  MiddlewareConsumer,
+  type DynamicModule,
+  type MiddlewareConsumer,
   Module,
-  NestModule,
-  Provider,
+  type NestModule,
+  type Provider,
 } from "@nestjs/common";
-import i18next, { i18n } from "i18next";
+import i18next, { type i18n } from "i18next";
 import Backend from "i18next-fs-backend";
 import { LanguageDetector } from "i18next-http-middleware";
 import path from "path";
@@ -13,12 +13,12 @@ import path from "path";
 import { I18N } from "./i18n.constants";
 import { I18nMiddleware } from "./i18n.middleware";
 import {
-  ASYNC_OPTIONS_TYPE,
+  type ASYNC_OPTIONS_TYPE,
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
-  OPTIONS_TYPE,
+  type OPTIONS_TYPE,
 } from "./i18n.module-definition";
-import { I18nModuleOptions } from "./interfaces/i18n-module-options.interface";
+import { type I18nModuleOptions } from "./interfaces/i18n-module-options.interface";
 
 i18next.use(Backend).use(LanguageDetector);
 

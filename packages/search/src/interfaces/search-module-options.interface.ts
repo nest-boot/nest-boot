@@ -1,4 +1,4 @@
-import { SearchEngineInterface } from "./search-engine.interface";
+import { type SearchEngineInterface } from "./search-engine.interface";
 
 export interface SearchModuleOptions {
   isGlobal?: boolean;

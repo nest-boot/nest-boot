@@ -1,5 +1,5 @@
 import { t } from "@nest-boot/i18n";
-import { ValidationArguments } from "class-validator";
+import { type ValidationArguments } from "class-validator";
 
 export function buildI18nMessage(
   callback: (args: ValidationArguments) => string

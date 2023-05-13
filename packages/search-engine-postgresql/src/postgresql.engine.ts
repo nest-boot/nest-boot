@@ -1,16 +1,22 @@
-import { FilterQuery, FindOptions, GetRepository } from "@mikro-orm/core";
-import { EntityManager, SqlEntityRepository } from "@mikro-orm/postgresql";
 import {
-  SearchableEntityService,
-  SearchableOptions,
-  SearchEngineInterface,
-  SearchOptions,
+  type FilterQuery,
+  type FindOptions,
+  type GetRepository,
+} from "@mikro-orm/core";
+import {
+  type EntityManager,
+  type SqlEntityRepository,
+} from "@mikro-orm/postgresql";
+import {
+  type SearchableEntityService,
+  type SearchableOptions,
+  type SearchEngineInterface,
+  type SearchOptions,
 } from "@nest-boot/search";
-import { DiscoveryService } from "@nestjs/core";
-import { InstanceWrapper } from "@nestjs/core/injector/instance-wrapper";
+import { type DiscoveryService } from "@nestjs/core";
+import { type InstanceWrapper } from "@nestjs/core/injector/instance-wrapper";
 import _ from "lodash";
 import { parse } from "search-syntax";
-import { Attributes } from "search-syntax/dist/interfaces";
 
 export class PostgresqlSearchEngine<T extends { id: number | string | bigint }>
   implements SearchEngineInterface<T>
@@ -62,10 +68,10 @@ export class PostgresqlSearchEngine<T extends { id: number | string | bigint }>
 
     if (typeof query !== "undefined") {
       const queryWhere = parse(query, {
-        attributes: _.uniq([
-          ...(searchableOptions?.filterableAttributes ?? []),
-          ...(searchableOptions?.searchableAttributes ?? []),
-        ]).reduce<Attributes>((result, field) => {
+        fields: _.uniq([
+          ...(searchableOptions?.filterableFields ?? []),
+          ...(searchableOptions?.searchableFields ?? []),
+        ]).reduce((result, field) => {
           const prop = _.get(
             metadata.properties,
             (field as string).split(".").join(".targetMeta.properties.")
@@ -104,9 +110,9 @@ export class PostgresqlSearchEngine<T extends { id: number | string | bigint }>
                     properties === field && type === "fulltext"
                 ),
                 filterable:
-                  searchableOptions?.filterableAttributes?.includes(field),
+                  searchableOptions?.filterableFields?.includes(field),
                 searchable:
-                  searchableOptions?.searchableAttributes?.includes(field),
+                  searchableOptions?.searchableFields?.includes(field),
               },
             };
           }
