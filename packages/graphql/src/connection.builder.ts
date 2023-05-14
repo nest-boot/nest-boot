@@ -15,45 +15,35 @@ import {
   type ConnectionArgsInterface,
   type ConnectionInterface,
   type EdgeInterface,
+  OrderFieldKey,
+  type OrderFieldType,
+  type OrderFieldValue,
   type OrderInterface,
 } from "./interfaces";
 
-interface ConnectionBuilderOptions<T, P extends keyof T> {
-  orderFields: Array<Extract<P, string>>;
+interface ConnectionBuilderOptions<T> {
+  orderFields: Array<OrderFieldValue<T>>;
 }
 
-type OrderFieldType<T, P extends keyof T> = {
-  [field in Uppercase<Extract<P, string>> | Exclude<P, string>]: T[Extract<
-    P,
-    string
-  >];
-};
-
-interface ConnectionBuildResult<
-  T extends { id: number | string | bigint },
-  P extends keyof T
-> {
+interface ConnectionBuildResult<T extends { id: number | string | bigint }> {
   Connection: Type<ConnectionInterface<T>>;
-  ConnectionArgs: Type<ConnectionArgsInterface<T, P>>;
+  ConnectionArgs: Type<ConnectionArgsInterface<T>>;
   Edge: Type<EdgeInterface<T>>;
-  Order: Type<OrderInterface<T, P>>;
-  OrderField?: OrderFieldType<T, P>;
+  Order: Type<OrderInterface<T>>;
+  OrderField?: OrderFieldType<T>;
 }
 
-export class ConnectionBuilder<
-  T extends { id: number | string | bigint },
-  P extends keyof T
-> {
+export class ConnectionBuilder<T extends { id: number | string | bigint }> {
   private readonly entityName: string;
 
   constructor(
     private readonly entityClass: Type<T>,
-    private readonly options: ConnectionBuilderOptions<T, P>
+    private readonly options: ConnectionBuilderOptions<T>
   ) {
     this.entityName = entityClass.name;
   }
 
-  build(): ConnectionBuildResult<T, P> {
+  build(): ConnectionBuildResult<T> {
     @ObjectType(`${this.entityName}Edge`)
     class Edge implements EdgeInterface<T> {
       @Field(() => this.entityClass)
@@ -80,7 +70,7 @@ export class ConnectionBuilder<
 
     const OrderField =
       this.options.orderFields.length > 0
-        ? this.options.orderFields.reduce<OrderFieldType<T, P>>(
+        ? this.options.orderFields.reduce<OrderFieldType<T>>(
             (result, field) => ({
               ...result,
               [_.snakeCase(field.replace(/_/g, ".")).toUpperCase()]: field,
@@ -97,16 +87,16 @@ export class ConnectionBuilder<
     }
 
     @InputType(`${this.entityName}Order`)
-    class Order implements OrderInterface<T, P> {
+    class Order implements OrderInterface<T> {
       @Field(() => OrderField ?? String)
-      field!: P;
+      field!: OrderFieldKey<T>;
 
       @Field(() => OrderDirection)
       direction!: OrderDirection;
     }
 
     @ArgsType()
-    class ConnectionArgs implements ConnectionArgsInterface<T, P> {
+    class ConnectionArgs implements ConnectionArgsInterface<T> {
       @Field({ nullable: true })
       query?: string;
 

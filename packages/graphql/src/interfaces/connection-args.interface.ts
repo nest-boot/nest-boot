@@ -1,6 +1,6 @@
-import { OrderInterface } from "./order.interface";
+import { type OrderInterface } from "./order.interface";
 
-export interface ConnectionArgsInterface<T, P extends keyof T> {
+export interface ConnectionArgsInterface<T> {
   query?: string;
 
   before?: string;
@@ -11,5 +11,5 @@ export interface ConnectionArgsInterface<T, P extends keyof T> {
 
   last?: number;
 
-  orderBy?: OrderInterface<T, P>;
+  orderBy?: OrderInterface<T>;
 }

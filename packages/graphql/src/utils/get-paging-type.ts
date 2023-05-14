@@ -2,7 +2,7 @@ import { PagingType } from "../enums";
 import { type ConnectionArgsInterface } from "../interfaces";
 
 export function getPagingType(
-  connectionArgs: ConnectionArgsInterface<any, any>
+  connectionArgs: ConnectionArgsInterface<any>
 ): PagingType {
   const { first, last, after, before } = connectionArgs;
   const isForwardPaging =

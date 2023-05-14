@@ -1,4 +1,8 @@
-import { type FilterQuery, QueryOrder, type QueryOrderMap } from "@mikro-orm/core";
+import {
+  type FilterQuery,
+  QueryOrder,
+  type QueryOrderMap,
+} from "@mikro-orm/core";
 import { type SearchableEntityService } from "@nest-boot/search";
 import _ from "lodash";
 
@@ -13,7 +17,7 @@ import { getPagingType } from "./get-paging-type";
 
 async function getCursorConnection<T extends { id: number | string | bigint }>(
   service: SearchableEntityService<T>,
-  args: ConnectionArgsInterface<any, any>,
+  args: ConnectionArgsInterface<any>,
   where?: FilterQuery<T>
 ): Promise<ConnectionInterface<T>> {
   // 提取集合参数
@@ -114,7 +118,7 @@ async function getCursorConnection<T extends { id: number | string | bigint }>(
         : []) as Array<"asc" | "desc">),
       "asc",
     ]
-  ) as T[];
+  );
 
   // 根据结果生成 edges
   const edges = (
@@ -155,12 +159,9 @@ async function getCursorConnection<T extends { id: number | string | bigint }>(
   };
 }
 
-export async function getConnection<
-  T extends { id: number | string | bigint },
-  P extends keyof T
->(
+export async function getConnection<T extends { id: number | string | bigint }>(
   service: SearchableEntityService<T>,
-  args: ConnectionArgsInterface<T, P>,
+  args: ConnectionArgsInterface<T>,
   where?: FilterQuery<T>
 ): Promise<ConnectionInterface<T>> {
   return await getCursorConnection<T>(service, args, where);
