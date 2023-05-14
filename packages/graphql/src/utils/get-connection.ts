@@ -22,13 +22,13 @@ function get(object: any, path: string): any {
 
   // eslint-disable-next-line no-unreachable-loop
   for (const key of keys) {
-    if (value instanceof Reference) {
-      value = value.getProperty(key);
+    if (value[key] instanceof Reference) {
+      value = value[key].getEntity();
     } else if (_.isObject(value) && key in value) {
       value = (value as any)[key];
+    } else {
+      break;
     }
-
-    return;
   }
 
   return value;
@@ -104,6 +104,7 @@ async function getCursorConnection<T extends { id: number | string | bigint }>(
       where: (typeof cursorWhere !== "undefined"
         ? { $and: [where, cursorWhere] }
         : where) as FilterQuery<T> | undefined,
+      populate: [orderBy.field as never],
       limit: limit + 1,
       orderBy: [
         _.set(
