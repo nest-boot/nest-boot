@@ -41,16 +41,19 @@ async function getCursorConnection<T extends { id: number | string | bigint }>(
   const pagingType = getPagingType(args);
 
   // 声明搜索参数
-  const order: QueryOrderMap<any> = {
-    [orderBy.field]: (
+  const order: QueryOrderMap<any> = _.set(
+    {
+      id: pagingType === PagingType.FORWARD ? QueryOrder.ASC : QueryOrder.DESC,
+    },
+    orderBy.field,
+    (
       pagingType === PagingType.FORWARD
         ? orderBy.direction === OrderDirection.ASC
         : orderBy.direction === OrderDirection.DESC
     )
       ? QueryOrder.ASC
-      : QueryOrder.DESC,
-    id: pagingType === PagingType.FORWARD ? QueryOrder.ASC : QueryOrder.DESC,
-  };
+      : QueryOrder.DESC
+  );
 
   const idWhere = (
     typeof cursor?.id !== "undefined"
@@ -67,27 +70,25 @@ async function getCursorConnection<T extends { id: number | string | bigint }>(
     typeof orderBy !== "undefined" && typeof cursor?.value !== "undefined"
       ? {
           $or: [
-            {
-              [orderBy.field]: (
+            _.set(
+              {},
+              orderBy.field,
+              (
                 pagingType === PagingType.FORWARD
                   ? orderBy.direction === OrderDirection.ASC
                   : orderBy.direction === OrderDirection.DESC
               )
                 ? { $gt: cursor.value }
-                : { $lt: cursor.value },
-            },
+                : { $lt: cursor.value }
+            ),
             typeof idWhere !== "undefined"
               ? {
                   $and: [
-                    {
-                      [orderBy.field]: { $eq: cursor.value },
-                    },
+                    _.set({}, orderBy.field, { $eq: cursor.value }),
                     idWhere,
                   ],
                 }
-              : {
-                  [orderBy.field]: { $eq: cursor.value },
-                },
+              : _.set({}, orderBy.field, { $eq: cursor.value }),
           ],
         }
       : idWhere
@@ -132,9 +133,7 @@ async function getCursorConnection<T extends { id: number | string | bigint }>(
     cursor: new Cursor({
       id: node.id,
       value:
-        typeof orderBy !== "undefined"
-          ? node[_.camelCase(orderBy.field) as keyof T]
-          : undefined,
+        typeof orderBy !== "undefined" ? _.get(node, orderBy.field) : undefined,
     }).toString(),
   }));
 
