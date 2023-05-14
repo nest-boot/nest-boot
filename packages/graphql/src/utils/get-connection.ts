@@ -2,6 +2,7 @@ import {
   type FilterQuery,
   QueryOrder,
   type QueryOrderMap,
+  Reference,
 } from "@mikro-orm/core";
 import { type SearchableEntityService } from "@nest-boot/search";
 import _ from "lodash";
@@ -14,6 +15,24 @@ import {
 } from "../interfaces";
 import { Cursor } from "./cursor";
 import { getPagingType } from "./get-paging-type";
+
+function get(object: any, path: string): any {
+  const keys = path.split(".");
+  let value = object;
+
+  // eslint-disable-next-line no-unreachable-loop
+  for (const key of keys) {
+    if (value instanceof Reference) {
+      value = value.getProperty(key);
+    } else if (_.isObject(value) && key in value) {
+      value = (value as any)[key];
+    }
+
+    return;
+  }
+
+  return value;
+}
 
 async function getCursorConnection<T extends { id: number | string | bigint }>(
   service: SearchableEntityService<T>,
@@ -136,7 +155,7 @@ async function getCursorConnection<T extends { id: number | string | bigint }>(
     cursor: new Cursor({
       id: node.id,
       value:
-        typeof orderBy !== "undefined" ? _.get(node, orderBy.field) : undefined,
+        typeof orderBy !== "undefined" ? get(node, orderBy.field) : undefined,
     }).toString(),
   }));
 
