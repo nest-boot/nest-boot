@@ -40,21 +40,6 @@ async function getCursorConnection<T extends { id: number | string | bigint }>(
 
   const pagingType = getPagingType(args);
 
-  // 声明搜索参数
-  const order: QueryOrderMap<any> = _.set(
-    {
-      id: pagingType === PagingType.FORWARD ? QueryOrder.ASC : QueryOrder.DESC,
-    },
-    orderBy.field,
-    (
-      pagingType === PagingType.FORWARD
-        ? orderBy.direction === OrderDirection.ASC
-        : orderBy.direction === OrderDirection.DESC
-    )
-      ? QueryOrder.ASC
-      : QueryOrder.DESC
-  );
-
   const idWhere = (
     typeof cursor?.id !== "undefined"
       ? // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
@@ -101,7 +86,25 @@ async function getCursorConnection<T extends { id: number | string | bigint }>(
         ? { $and: [where, cursorWhere] }
         : where) as FilterQuery<T> | undefined,
       limit: limit + 1,
-      orderBy: order,
+      orderBy: [
+        _.set(
+          {},
+          orderBy.field,
+          (
+            pagingType === PagingType.FORWARD
+              ? orderBy.direction === OrderDirection.ASC
+              : orderBy.direction === OrderDirection.DESC
+          )
+            ? QueryOrder.ASC
+            : QueryOrder.DESC
+        ),
+        {
+          id:
+            pagingType === PagingType.FORWARD
+              ? QueryOrder.ASC
+              : QueryOrder.DESC,
+        },
+      ] as Array<QueryOrderMap<T>>,
     }),
     service.search(query, {
       where,
