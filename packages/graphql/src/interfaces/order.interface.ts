@@ -1,8 +1,8 @@
 import { type OrderDirection } from "../enums";
-import { type OrderFieldValue } from "./order-field.type";
+import { type OrderFieldKey } from "./order-field.type";
 
 export interface OrderInterface<T> {
-  field: OrderFieldValue<T>;
+  field: OrderFieldKey<T>;
 
   direction: OrderDirection;
 }
