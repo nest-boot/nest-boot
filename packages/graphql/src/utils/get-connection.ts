@@ -133,16 +133,8 @@ async function getCursorConnection<T extends { id: number | string | bigint }>(
   ]);
 
   // 重新排序结果
-  const entities = _.orderBy(
-    results,
-    [...(typeof orderBy !== "undefined" ? [orderBy.field] : []), "id"],
-    [
-      ...((typeof orderBy !== "undefined"
-        ? [orderBy.direction === OrderDirection.ASC ? "asc" : "desc"]
-        : []) as Array<"asc" | "desc">),
-      "asc",
-    ]
-  );
+  const entities =
+    pagingType === PagingType.FORWARD ? results : results.reverse();
 
   // 根据结果生成 edges
   const edges = (
