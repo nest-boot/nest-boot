@@ -60,7 +60,10 @@ export class DatabaseModule
           ...withBaseConfig(options),
           autoLoadEntities: false,
           registerRequestContext: false,
-          loggerFactory: (options) => new DatabaseLogger(options, logger),
+          loggerFactory:
+            options.debug === true
+              ? (options) => new DatabaseLogger(options, logger)
+              : undefined,
         };
       },
     });
