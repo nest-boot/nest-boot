@@ -119,10 +119,13 @@ async function getCursorConnection<T extends { id: number | string | bigint }>(
             : QueryOrder.DESC
         ),
         {
-          id:
+          id: (
             pagingType === PagingType.FORWARD
-              ? QueryOrder.ASC
-              : QueryOrder.DESC,
+              ? orderBy.direction === OrderDirection.ASC
+              : orderBy.direction === OrderDirection.DESC
+          )
+            ? QueryOrder.ASC
+            : QueryOrder.DESC,
         },
       ] as Array<QueryOrderMap<T>>,
     }),
