@@ -99,41 +99,35 @@ async function getCursorConnection<T extends { id: number | string | bigint }>(
   ) as FilterQuery<T> | undefined;
 
   // 搜索结果
-  const [[results], [, totalCount]] = await Promise.all([
-    service.search(query, {
-      where: (typeof cursorWhere !== "undefined"
-        ? { $and: [where, cursorWhere] }
-        : where) as FilterQuery<T> | undefined,
-      populate: [orderBy.field as never],
-      limit: limit + 1,
-      orderBy: [
-        _.set(
-          {},
-          orderBy.field,
-          (
-            pagingType === PagingType.FORWARD
-              ? orderBy.direction === OrderDirection.ASC
-              : orderBy.direction === OrderDirection.DESC
-          )
-            ? QueryOrder.ASC
-            : QueryOrder.DESC
-        ),
-        {
-          id: (
-            pagingType === PagingType.FORWARD
-              ? orderBy.direction === OrderDirection.ASC
-              : orderBy.direction === OrderDirection.DESC
-          )
-            ? QueryOrder.ASC
-            : QueryOrder.DESC,
-        },
-      ] as Array<QueryOrderMap<T>>,
-    }),
-    service.search(query, {
-      where,
-      limit: 0,
-    }),
-  ]);
+  const results = await service.search(query, {
+    where: (typeof cursorWhere !== "undefined"
+      ? { $and: [where, cursorWhere] }
+      : where) as FilterQuery<T> | undefined,
+    populate: [orderBy.field as never],
+    limit: limit + 1,
+    orderBy: [
+      _.set(
+        {},
+        orderBy.field,
+        (
+          pagingType === PagingType.FORWARD
+            ? orderBy.direction === OrderDirection.ASC
+            : orderBy.direction === OrderDirection.DESC
+        )
+          ? QueryOrder.ASC
+          : QueryOrder.DESC
+      ),
+      {
+        id: (
+          pagingType === PagingType.FORWARD
+            ? orderBy.direction === OrderDirection.ASC
+            : orderBy.direction === OrderDirection.DESC
+        )
+          ? QueryOrder.ASC
+          : QueryOrder.DESC,
+      },
+    ] as Array<QueryOrderMap<T>>,
+  });
 
   // 重新排序结果
   const entities =
@@ -157,7 +151,6 @@ async function getCursorConnection<T extends { id: number | string | bigint }>(
 
   // 返回集合
   return {
-    totalCount,
     pageInfo: {
       ...(pagingType === PagingType.FORWARD
         ? {

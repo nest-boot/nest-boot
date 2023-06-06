@@ -1,9 +1,9 @@
 import { Inject, Injectable } from "@nestjs/common";
 
 import {
-  SearchEngineInterface,
+  type SearchEngineInterface,
   SearchModuleOptions,
-  SearchOptions,
+  type SearchOptions,
 } from "./interfaces";
 import { MODULE_OPTIONS_TOKEN } from "./search.module-definition";
 
@@ -21,7 +21,7 @@ export class SearchService implements SearchEngineInterface {
     index: string,
     query: string,
     options?: SearchOptions<any>
-  ): Promise<[Array<string | number | bigint>, number]> {
+  ): Promise<Array<string | number | bigint>> {
     return await this.engine.search(index, query, options);
   }
 }

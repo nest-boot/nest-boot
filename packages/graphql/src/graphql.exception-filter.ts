@@ -1,12 +1,12 @@
 import {
-  ArgumentsHost,
+  type ArgumentsHost,
   Catch,
-  ContextType,
-  ExceptionFilter,
+  type ContextType,
+  type ExceptionFilter,
   HttpException,
   HttpStatus,
 } from "@nestjs/common";
-import { Response } from "express";
+import { type Response } from "express";
 import { GraphQLError } from "graphql";
 import _ from "lodash";
 

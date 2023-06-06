@@ -1,4 +1,4 @@
-import { SearchOptions } from "./search-options.interface";
+import { type SearchOptions } from "./search-options.interface";
 
 export interface SearchEngineInterface<
   T extends { id: number | string | bigint } = { id: number | string | bigint }
@@ -7,5 +7,5 @@ export interface SearchEngineInterface<
     index: string,
     query: string,
     options?: SearchOptions<T>
-  ) => Promise<[Array<T["id"]>, number]>;
+  ) => Promise<Array<T["id"]>>;
 }

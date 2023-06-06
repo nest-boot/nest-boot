@@ -16,7 +16,7 @@ export interface SearchableEntityService<
 > extends EntityService<T> {
   searchableOptions: SearchableOptions<T>;
 
-  search: (query: string, options?: SearchOptions<T>) => Promise<[T[], number]>;
+  search: (query: string, options?: SearchOptions<T>) => Promise<T[]>;
 }
 
 export function mixinSearchable<T extends { id: number | string | bigint }>(
@@ -37,23 +37,17 @@ export function mixinSearchable<T extends { id: number | string | bigint }>(
       return searchableOptions;
     }
 
-    async search(
-      query: string,
-      options?: SearchOptions<T>
-    ): Promise<[T[], number]> {
-      const [ids, count] = await this.searchService.search(
+    async search(query: string, options?: SearchOptions<T>): Promise<T[]> {
+      const ids = await this.searchService.search(
         this.searchableOptions.index,
         query,
         options
       );
 
-      return [
-        await this.repository.find(
-          { id: { $in: ids } } as unknown as FilterQuery<T>,
-          options
-        ),
-        count,
-      ];
+      return await this.repository.find(
+        { id: { $in: ids } } as unknown as FilterQuery<T>,
+        options
+      );
     }
   }
 
