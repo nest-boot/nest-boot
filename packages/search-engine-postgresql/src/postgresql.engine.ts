@@ -149,12 +149,12 @@ export class PostgresqlSearchEngine<T extends { id: number | string | bigint }>
           typeof where !== "undefined"
             ? this.entityManager
                 .createQueryBuilder(index)
-                .select("id")
+                .select("1")
                 .andWhere(where)
                 .limit(limit)
             : this.entityManager
                 .createQueryBuilder(index)
-                .select("id")
+                .select("1")
                 .limit(limit)
         )
         .count(),
