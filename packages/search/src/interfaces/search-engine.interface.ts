@@ -7,5 +7,5 @@ export interface SearchEngineInterface<
     index: string,
     query: string,
     options?: SearchOptions<T>
-  ) => Promise<Array<T["id"]>>;
+  ) => Promise<[Array<T["id"]>, number]>;
 }

@@ -9,4 +9,6 @@ export interface ConnectionInterface<
   nodes: T[];
 
   pageInfo: PageInfo;
+
+  totalCount: number;
 }

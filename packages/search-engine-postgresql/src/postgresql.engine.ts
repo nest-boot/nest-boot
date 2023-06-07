@@ -48,7 +48,7 @@ export class PostgresqlSearchEngine<T extends { id: number | string | bigint }>
     index: string,
     query: string,
     options?: SearchOptions<T>
-  ): Promise<Array<T["id"]>> {
+  ): Promise<[Array<T["id"]>, number]> {
     const searchable = this.searchableMap.get(index);
 
     if (typeof searchable === "undefined") {
@@ -137,9 +137,27 @@ export class PostgresqlSearchEngine<T extends { id: number | string | bigint }>
       orderBy: options?.orderBy,
     };
 
-    return await (typeof where !== "undefined"
-      ? repository.find(where, findOptions)
-      : repository.findAll(findOptions)
-    ).then((items) => items.map((item) => item.id));
+    const limit = 10000;
+
+    return await Promise.all([
+      (typeof where !== "undefined"
+        ? repository.find(where, findOptions)
+        : repository.findAll(findOptions)
+      ).then((items) => items.map((item) => item.id)),
+      this.entityManager
+        .createQueryBuilder(
+          typeof where !== "undefined"
+            ? this.entityManager
+                .createQueryBuilder(index)
+                .select("id")
+                .andWhere(where)
+                .limit(limit)
+            : this.entityManager
+                .createQueryBuilder(index)
+                .select("id")
+                .limit(limit)
+        )
+        .count(),
+    ]);
   }
 }
