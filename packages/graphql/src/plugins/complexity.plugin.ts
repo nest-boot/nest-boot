@@ -3,7 +3,7 @@ import {
   type GraphQLRequestListener,
 } from "@apollo/server";
 import { Plugin } from "@nestjs/apollo";
-import { HttpException, LoggerService } from "@nestjs/common";
+import { HttpException, Logger } from "@nestjs/common";
 import { GraphQLSchemaHost } from "@nestjs/graphql";
 import {
   directiveEstimator,
@@ -14,19 +14,19 @@ import {
 
 @Plugin()
 export class ComplexityPlugin implements ApolloServerPlugin {
-  constructor(
-    readonly gqlSchemaHost: GraphQLSchemaHost,
-    readonly logger: LoggerService,
-    readonly maxComplexity = 1000,
-    readonly defaultComplexity = 0
-  ) {}
+  private readonly logger = new Logger(ComplexityPlugin.name);
+
+  private readonly maxComplexity = 1000;
+  private readonly defaultComplexity = 1;
+
+  constructor(readonly gqlSchemaHost: GraphQLSchemaHost) {}
 
   async requestDidStart(): Promise<GraphQLRequestListener<any>> {
     const { schema } = this.gqlSchemaHost;
 
     return {
       didResolveOperation: async ({ request, document }) => {
-        const complexity = getComplexity({
+        const complexity: number = getComplexity({
           schema,
           operationName: request.operationName,
           query: document,
