@@ -1,5 +1,5 @@
-import { Module, OnApplicationShutdown } from "@nestjs/common";
-import { RedisOptions } from "ioredis";
+import { Module, type OnApplicationShutdown } from "@nestjs/common";
+import { type RedisOptions } from "ioredis";
 
 import { Redis } from "./redis";
 import {

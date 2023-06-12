@@ -1,4 +1,4 @@
-import { EntityRepository } from "@mikro-orm/core";
+import { type EntityRepository } from "@mikro-orm/core";
 import DataLoader from "dataloader";
 import _ from "lodash";
 

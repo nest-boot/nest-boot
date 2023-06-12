@@ -1,10 +1,10 @@
 import { Property, t } from "@mikro-orm/core";
 
-import { HasPermissions } from "../interfaces";
+import { type HasPermissions } from "../interfaces";
 
 export type Type<T = any> = new (...args: any[]) => T;
 
-export function mixinPermissions<T extends Type<{}>>(
+export function mixinPermissions<T extends Type<any>>(
   base: T
 ): Type<HasPermissions> & T {
   const trait = class extends base implements HasPermissions {

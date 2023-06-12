@@ -5,11 +5,11 @@
     "type": "git",
     "url": "https://github.com/nest-boot/nest-boot.git"
   },
-  "packageManager": "pnpm@7.17.0",
+  "packageManager": "pnpm@8.6.2",
   "engines": {
     "node": ">= 18.0.0",
     "npm": ">= 8.0.0",
-    "pnpm": ">= 7.0.0"
+    "pnpm": ">= 8.0.0"
   },
   "scripts": {
     "prepare": "chmod +x ./node_modules/husky/lib/bin.js && husky install",
@@ -21,7 +21,7 @@
     "dev:packages": "turbo run dev --filter=./packages/* --no-cache --parallel --continue",
     "test": "turbo run test",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "lint": "turbo run lint",
+    "lint": "turbo run lint --filter=./packages/*",
     "release": "multi-semantic-release --deps.bump=override --deps.release=inherit --deps.prefix=^ --ignore-private-packages=true",
     "debug:release": "pnpm release --dry-run",
     "debug:publish": "pnpm publish -r --dry-run --no-git-checks"

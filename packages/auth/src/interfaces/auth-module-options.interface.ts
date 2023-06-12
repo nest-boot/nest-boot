@@ -1,7 +1,7 @@
-import { EntityClass } from "@mikro-orm/core";
-import { RouteInfo, Type } from "@nestjs/common/interfaces";
+import { type EntityClass } from "@mikro-orm/core";
+import { type RouteInfo, type Type } from "@nestjs/common/interfaces";
 
-import { AccessTokenInterface } from "./access-token.interface";
+import { type AccessTokenInterface } from "./access-token.interface";
 
 /**
  * 认证模块选项

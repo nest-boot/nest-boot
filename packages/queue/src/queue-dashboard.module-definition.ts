@@ -1,6 +1,6 @@
 import { ConfigurableModuleBuilder } from "@nestjs/common";
 
-import { QueueDashboardModuleOptions } from "./interfaces/queue-dashboard-module-options.interface";
+import { type QueueDashboardModuleOptions } from "./interfaces/queue-dashboard-module-options.interface";
 
 export const {
   ConfigurableModuleClass,

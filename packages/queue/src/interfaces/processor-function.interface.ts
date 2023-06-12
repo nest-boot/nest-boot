@@ -1,4 +1,4 @@
-import { Job } from "./job.interface";
+import { type Job } from "./job.interface";
 
 export type ProcessorFunction<T = any, R = any, N extends string = string> = (
   job: Job<T, R, N>,

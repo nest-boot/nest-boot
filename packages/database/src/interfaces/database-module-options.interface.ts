@@ -1,3 +1,3 @@
-import { MikroOrmModuleSyncOptions } from "@mikro-orm/nestjs";
+import { type MikroOrmModuleSyncOptions } from "@mikro-orm/nestjs";
 
 export interface DatabaseModuleOptions extends MikroOrmModuleSyncOptions {}

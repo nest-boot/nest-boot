@@ -1,9 +1,7 @@
 import { Injectable } from "@nestjs/common";
-import Handlebars, {
-  create,
-  RuntimeOptions,
-  TemplateDelegate,
-} from "handlebars";
+import type Handlebars from "handlebars";
+import { type RuntimeOptions, type TemplateDelegate } from "handlebars";
+import { create } from "handlebars";
 
 @Injectable()
 export class ViewService {

@@ -1,6 +1,6 @@
-import { Job as BaseJob } from "bullmq";
+import { type Job as BaseJob } from "bullmq";
 
-import { JobOptions } from "./job-options.interface";
+import { type JobOptions } from "./job-options.interface";
 
 export interface Job<
   DataType = any,

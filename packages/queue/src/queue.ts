@@ -1,8 +1,8 @@
 import { Queue as BaseQueue } from "bullmq";
 
-import { BulkJobOptions } from "./interfaces/bulk-job-options.interface";
-import { Job } from "./interfaces/job.interface";
-import { JobOptions } from "./interfaces/job-options.interface";
+import { type BulkJobOptions } from "./interfaces/bulk-job-options.interface";
+import { type Job } from "./interfaces/job.interface";
+import { type JobOptions } from "./interfaces/job-options.interface";
 
 export class Queue<
   DataType = any,

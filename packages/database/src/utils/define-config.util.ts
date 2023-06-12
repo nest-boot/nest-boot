@@ -1,5 +1,5 @@
-import { IDatabaseDriver, Options } from "@mikro-orm/core";
-import { NestApplicationContextOptions } from "@nestjs/common/interfaces/nest-application-context-options.interface";
+import { type IDatabaseDriver, type Options } from "@mikro-orm/core";
+import { type NestApplicationContextOptions } from "@nestjs/common/interfaces/nest-application-context-options.interface";
 import { NestFactory } from "@nestjs/core";
 
 import { MODULE_OPTIONS_TOKEN } from "../database.module-definition";

@@ -1,7 +1,7 @@
-import { NestApplicationContextOptions } from "@nestjs/common/interfaces/nest-application-context-options.interface";
+import { type NestApplicationContextOptions } from "@nestjs/common/interfaces/nest-application-context-options.interface";
 import { NestFactory } from "@nestjs/core";
 
-import { QueueServer } from "../interfaces/queue-server.interface";
+import { type QueueServer } from "../interfaces/queue-server.interface";
 import { QueueManager } from "../queue.manager";
 
 export async function createQueueServer(

@@ -1,7 +1,7 @@
 import { ConfigurableModuleBuilder } from "@nestjs/common";
 import { randomUUID } from "crypto";
 
-import { QueueModuleOptions } from "./interfaces/queue-module-options.interface";
+import { type QueueModuleOptions } from "./interfaces/queue-module-options.interface";
 
 export const PROCESSOR_METADATA_KEY = randomUUID();
 

@@ -1,13 +1,13 @@
 import {
   EntityRepository,
-  FilterQuery,
-  FindOptions,
-  Loaded,
+  type FilterQuery,
+  type FindOptions,
+  type Loaded,
   QueryOrder,
-  QueryOrderMap,
+  type QueryOrderMap,
 } from "@mikro-orm/core";
 import { InjectRepository } from "@mikro-orm/nestjs";
-import { Injectable, Type } from "@nestjs/common";
+import { Injectable, type Type } from "@nestjs/common";
 
 export type ChunkByIdOptions<T, P extends string = never> = Omit<
   FindOptions<T, P>,

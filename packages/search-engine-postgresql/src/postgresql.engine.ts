@@ -5,7 +5,7 @@ import {
 } from "@mikro-orm/core";
 import {
   type EntityManager,
-  type SqlEntityRepository,
+  type EntityRepository,
 } from "@mikro-orm/postgresql";
 import {
   type SearchableEntityService,
@@ -13,11 +13,13 @@ import {
   type SearchEngineInterface,
   type SearchOptions,
 } from "@nest-boot/search";
+import { Injectable } from "@nestjs/common";
 import { type DiscoveryService } from "@nestjs/core";
 import { type InstanceWrapper } from "@nestjs/core/injector/instance-wrapper";
 import _ from "lodash";
 import { parse } from "search-syntax";
 
+@Injectable()
 export class PostgresqlSearchEngine<T extends { id: number | string | bigint }>
   implements SearchEngineInterface<T>
 {
@@ -61,7 +63,7 @@ export class PostgresqlSearchEngine<T extends { id: number | string | bigint }>
 
     const repository: GetRepository<
       T,
-      SqlEntityRepository<T>
+      EntityRepository<T>
     > = this.entityManager.getRepository<T>(index);
 
     let where = options?.where;

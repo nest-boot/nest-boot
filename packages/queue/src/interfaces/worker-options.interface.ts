@@ -1,3 +1,3 @@
-import { WorkerOptions as BaseWorkerOptions } from "bullmq";
+import { type WorkerOptions as BaseWorkerOptions } from "bullmq";
 
 export interface WorkerOptions extends BaseWorkerOptions {}

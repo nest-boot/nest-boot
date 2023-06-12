@@ -1,5 +1,5 @@
 import { Entity, PrimaryKey, Property, t } from "@mikro-orm/core";
-import { AccessTokenInterface } from "@nest-boot/auth";
+import { type AccessTokenInterface } from "@nest-boot/auth";
 import { ObjectType } from "@nestjs/graphql";
 import { randomUUID } from "crypto";
 

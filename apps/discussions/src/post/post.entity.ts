@@ -9,7 +9,7 @@ import {
 import { Field, ID, ObjectType } from "@nestjs/graphql";
 import { randomUUID } from "crypto";
 
-import { User } from "../user/user.entity";
+import { type User } from "../user/user.entity";
 
 @ObjectType()
 @Entity()

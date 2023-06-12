@@ -1,4 +1,4 @@
-import { IDatabaseDriver, Options } from "@mikro-orm/core";
+import { type IDatabaseDriver, type Options } from "@mikro-orm/core";
 import { TsMorphMetadataProvider } from "@mikro-orm/reflection";
 
 import { MigrationGenerator } from "../migration-generator";

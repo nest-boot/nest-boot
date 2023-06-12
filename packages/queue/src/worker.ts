@@ -1,7 +1,7 @@
-import { RedisConnection, Worker as BaseWorker } from "bullmq";
+import { type RedisConnection, Worker as BaseWorker } from "bullmq";
 
-import { ProcessorFunction } from "./interfaces/processor-function.interface";
-import { WorkerOptions } from "./interfaces/worker-options.interface";
+import { type ProcessorFunction } from "./interfaces/processor-function.interface";
+import { type WorkerOptions } from "./interfaces/worker-options.interface";
 
 export class Worker<
   DataType = any,

@@ -1,7 +1,7 @@
 import { ConfigurableModuleBuilder } from "@nestjs/common";
 import { randomUUID } from "crypto";
 
-import { AuthModuleOptions } from "./interfaces";
+import { type AuthModuleOptions } from "./interfaces";
 
 export const PERMISSIONS_METADATA_KEY = randomUUID();
 

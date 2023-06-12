@@ -5,7 +5,7 @@ import {
   type NestModule,
   type OnModuleInit,
 } from "@nestjs/common";
-import { APP_INTERCEPTOR,DiscoveryService } from "@nestjs/core";
+import { APP_INTERCEPTOR, DiscoveryService } from "@nestjs/core";
 
 import { RequestContext } from "./request-context";
 import { RequestContextInterceptor } from "./request-context.interceptor";

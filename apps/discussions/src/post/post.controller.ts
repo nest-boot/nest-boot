@@ -1,8 +1,7 @@
-import { Controller, Get } from "@nestjs/common";
+import { Logger as PinoLogger } from "@nest-boot/logger";
+import { Controller, Get, Logger as NestLogger } from "@nestjs/common";
 
 import { PostService } from "./post.service";
-import { Logger as PinoLogger } from "@nest-boot/logger";
-import { Logger as NestLogger } from "@nestjs/common";
 
 @Controller("posts")
 export class PostController {

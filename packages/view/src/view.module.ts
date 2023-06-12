@@ -1,4 +1,4 @@
-import { Inject, Module, OnModuleInit, Optional } from "@nestjs/common";
+import { Inject, Module, type OnModuleInit, Optional } from "@nestjs/common";
 import glob from "fast-glob";
 import fs from "fs/promises";
 import { basename, dirname, extname, join, relative } from "path";

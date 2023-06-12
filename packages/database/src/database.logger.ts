@@ -1,10 +1,10 @@
 import {
   DefaultLogger as MikroOrmLogger,
-  LogContext as MikroOrmLoggerContext,
-  LoggerNamespace as MikroOrmLoggerNamespace,
+  type LogContext as MikroOrmLoggerContext,
+  type LoggerNamespace as MikroOrmLoggerNamespace,
 } from "@mikro-orm/core";
-import { LoggerOptions } from "@mikro-orm/core/logging/Logger";
-import { Logger } from "@nestjs/common";
+import { type LoggerOptions } from "@mikro-orm/core/logging/Logger";
+import { type Logger } from "@nestjs/common";
 
 export class DatabaseLogger extends MikroOrmLogger {
   constructor(options: LoggerOptions, private readonly logger: Logger) {

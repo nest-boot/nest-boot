@@ -1,12 +1,12 @@
-import { DynamicModule, Module, Provider } from "@nestjs/common";
+import { type DynamicModule, Module, type Provider } from "@nestjs/common";
 
-import { QueueModuleOptions } from "./interfaces/queue-module-options.interface";
+import { type QueueModuleOptions } from "./interfaces/queue-module-options.interface";
 import { Queue } from "./queue";
 import {
-  ASYNC_OPTIONS_TYPE,
+  type ASYNC_OPTIONS_TYPE,
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
-  OPTIONS_TYPE,
+  type OPTIONS_TYPE,
 } from "./queue.module-definition";
 import { QueueCoreModule } from "./queue-core.module";
 import { getQueueToken } from "./utils/get-queue-token.util";

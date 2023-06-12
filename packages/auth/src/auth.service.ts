@@ -1,14 +1,14 @@
 import {
-  AnyEntity,
+  type AnyEntity,
   EntityManager,
-  EntityRepository,
-  Loaded,
+  type EntityRepository,
+  type Loaded,
 } from "@mikro-orm/core";
 import { Inject, Injectable } from "@nestjs/common";
 import { randomBytes } from "crypto";
 
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition";
-import { AccessTokenInterface, AuthModuleOptions } from "./interfaces";
+import { type AccessTokenInterface, AuthModuleOptions } from "./interfaces";
 import ms = require("ms");
 import { RequestContext } from "@nest-boot/request-context";
 

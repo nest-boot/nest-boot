@@ -1,6 +1,6 @@
 import { ConfigurableModuleBuilder } from "@nestjs/common";
 
-import { DatabaseModuleOptions } from "./interfaces";
+import { type DatabaseModuleOptions } from "./interfaces";
 
 export const {
   ConfigurableModuleClass,
