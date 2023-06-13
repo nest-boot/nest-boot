@@ -21,6 +21,9 @@
     "lint": "eslint \"{src,test}/**/*.ts\" --fix",
     "test": "jest"
   },
+  "dependencies": {
+    "fast-glob": "^3.2.12"
+  },
   "devDependencies": {
     "@nest-boot/eslint-config": "workspace:*",
     "@nest-boot/tsconfig": "workspace:*",
@@ -66,8 +69,5 @@
   },
   "volta": {
     "extends": "../../package.json"
-  },
-  "dependencies": {
-    "fast-glob": "^3.2.12"
   }
 }
