@@ -23,8 +23,8 @@
   "devDependencies": {
     "@nest-boot/eslint-config": "workspace:*",
     "@nest-boot/tsconfig": "workspace:*",
-    "@nestjs/common": "^9.4.2",
-    "@nestjs/core": "^9.4.2",
+    "@nestjs/common": "^9.4.3",
+    "@nestjs/core": "^9.4.3",
     "@nestjs/terminus": "^9.2.2",
     "@types/jest": "^29.5.2",
     "@types/redis-info": "^3.0.0",
@@ -43,7 +43,7 @@
     "rxjs": "^7.0.0"
   },
   "optionalDependencies": {
-    "@nest-boot/redis": "^4.0.0",
+    "@nest-boot/redis": "^4.1.2",
     "ioredis": "^5.0.0",
     "redis-info": "^3.0.0"
   },

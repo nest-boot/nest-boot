@@ -23,9 +23,9 @@
   "devDependencies": {
     "@nest-boot/eslint-config": "workspace:*",
     "@nest-boot/tsconfig": "workspace:*",
-    "@nestjs/common": "^9.4.2",
-    "@nestjs/config": "^2.3.2",
-    "@nestjs/core": "^9.4.2",
+    "@nestjs/common": "^9.4.3",
+    "@nestjs/config": "^2.3.3",
+    "@nestjs/core": "^9.4.3",
     "@types/jest": "^29.5.2",
     "eslint": "^8.42.0",
     "ioredis": "^5.3.2",
