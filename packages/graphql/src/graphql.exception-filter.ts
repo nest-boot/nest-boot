@@ -11,7 +11,7 @@ import { GraphQLError } from "graphql";
 import _ from "lodash";
 
 @Catch()
-export class GraphqlExceptionFilter implements ExceptionFilter {
+export class GraphQLExceptionFilter implements ExceptionFilter {
   catch(error: Error, host: ArgumentsHost): void {
     if (host.getType<ContextType | "graphql">() === "graphql") {
       this.catchGraphqlException(error);

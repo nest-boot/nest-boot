@@ -46,25 +46,25 @@ export class ConnectionBuilder<T extends { id: number | string | bigint }> {
   build(): ConnectionBuildResult<T> {
     @ObjectType(`${this.entityName}Edge`)
     class Edge implements EdgeInterface<T> {
-      @Field(() => this.entityClass)
+      @Field(() => this.entityClass, { complexity: 0 })
       node!: T;
 
-      @Field()
+      @Field({ complexity: 0 })
       cursor!: string;
     }
 
     @ObjectType(`${this.entityName}Connection`, { isAbstract: true })
     class Connection implements ConnectionInterface<T> {
-      @Field(() => [Edge])
+      @Field(() => [Edge], { complexity: 0 })
       edges!: Edge[];
 
-      @Field(() => [this.entityClass])
+      @Field(() => [this.entityClass], { complexity: 0 })
       nodes!: T[];
 
-      @Field()
+      @Field({ complexity: 0 })
       pageInfo!: PageInfo;
 
-      @Field(() => Int)
+      @Field(() => Int, { complexity: 0 })
       totalCount!: number;
     }
 

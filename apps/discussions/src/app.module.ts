@@ -1,6 +1,7 @@
 import { EntityManager, PostgreSqlDriver } from "@mikro-orm/postgresql";
 import { AuthModule } from "@nest-boot/auth";
 import { DatabaseModule } from "@nest-boot/database";
+import { GraphQLModule } from "@nest-boot/graphql";
 import { HealthCheckModule } from "@nest-boot/health-check";
 import { I18nModule } from "@nest-boot/i18n";
 import { LoggerModule } from "@nest-boot/logger";
@@ -43,8 +44,7 @@ const I18nDynamicModule = I18nModule.register({
 });
 
 const AuthDynamicModule = AuthModule.registerAsync({
-  inject: [ConfigService],
-  useFactory: (config: ConfigService) => ({
+  useFactory: () => ({
     accessTokenEntityClass: AccessToken,
     defaultRequireAuth: true,
     excludeRoutes: ["health"],
@@ -85,6 +85,17 @@ const SearchDynamicModule = SearchModule.registerAsync({
   }),
 });
 
+const GraphQLModuleDynamicModule = GraphQLModule.forRootAsync({
+  inject: [ConfigService],
+  useFactory: (configService: ConfigService) => ({
+    autoSchemaFile: "schema.gql",
+    path: "/api/graphql",
+    introspection: true,
+    playground: true,
+    debug: configService.get("NODE_ENV") !== "production",
+  }),
+});
+
 @Module({
   imports: [
     HealthCheckModule,
@@ -98,6 +109,7 @@ const SearchDynamicModule = SearchModule.registerAsync({
     LoggerDynamicModule,
     MetricsModule,
     ScheduleDynamicModule,
+    GraphQLModuleDynamicModule,
     QueueDashboardModule,
     QueueModule.registerAsync({
       inject: [ConfigService],

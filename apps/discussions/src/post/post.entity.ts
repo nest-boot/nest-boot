@@ -22,7 +22,7 @@ export class Post {
   })
   id!: string;
 
-  @Field()
+  @Field({ complexity: 1 })
   @Property()
   message!: string;
 

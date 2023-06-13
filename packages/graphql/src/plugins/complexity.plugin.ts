@@ -3,7 +3,7 @@ import {
   type GraphQLRequestListener,
 } from "@apollo/server";
 import { Plugin } from "@nestjs/apollo";
-import { HttpException, Logger } from "@nestjs/common";
+import { HttpException, Inject, Logger } from "@nestjs/common";
 import { GraphQLSchemaHost } from "@nestjs/graphql";
 import {
   directiveEstimator,
@@ -12,14 +12,24 @@ import {
   simpleEstimator,
 } from "graphql-query-complexity";
 
+import { MODULE_OPTIONS_TOKEN } from "../graphql.module-definition";
+import { GraphQLModuleOptions } from "../interfaces";
+
 @Plugin()
 export class ComplexityPlugin implements ApolloServerPlugin {
   private readonly logger = new Logger(ComplexityPlugin.name);
 
-  private readonly maxComplexity = 1000;
-  private readonly defaultComplexity = 1;
+  private readonly maxComplexity: number;
+  private readonly defaultComplexity: number;
 
-  constructor(readonly gqlSchemaHost: GraphQLSchemaHost) {}
+  constructor(
+    @Inject(MODULE_OPTIONS_TOKEN)
+    private readonly options: GraphQLModuleOptions,
+    private readonly gqlSchemaHost: GraphQLSchemaHost
+  ) {
+    this.maxComplexity = options.maxComplexity ?? 1000;
+    this.defaultComplexity = options.defaultComplexity ?? 1;
+  }
 
   async requestDidStart(): Promise<GraphQLRequestListener<any>> {
     const { schema } = this.gqlSchemaHost;
@@ -32,9 +42,7 @@ export class ComplexityPlugin implements ApolloServerPlugin {
           query: document,
           variables: request.variables,
           estimators: [
-            directiveEstimator({
-              name: "complexity",
-            }),
+            directiveEstimator({ name: "complexity" }),
             fieldExtensionsEstimator(),
             simpleEstimator({ defaultComplexity: this.defaultComplexity }),
           ],
