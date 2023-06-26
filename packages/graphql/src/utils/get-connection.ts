@@ -1,4 +1,5 @@
 import {
+  type EntityManager,
   type FilterQuery,
   QueryOrder,
   type QueryOrderMap,
@@ -34,11 +35,14 @@ function get(object: any, path: string): any {
   return value;
 }
 
-async function getCursorConnection<T extends { id: number | string | bigint }>(
-  service: SearchableEntityService<T>,
+export async function getConnection<
+  E extends { id: number | string | bigint },
+  EM extends EntityManager
+>(
+  service: SearchableEntityService<E, EM>,
   args: ConnectionArgsInterface<any>,
-  where?: FilterQuery<T>
-): Promise<ConnectionInterface<T>> {
+  where?: FilterQuery<E>
+): Promise<ConnectionInterface<E>> {
   // 提取集合参数
   const {
     first,
@@ -68,7 +72,7 @@ async function getCursorConnection<T extends { id: number | string | bigint }>(
           },
         }
       : undefined
-  ) as FilterQuery<T> | undefined;
+  ) as FilterQuery<E> | undefined;
 
   const cursorWhere = (
     typeof orderBy !== "undefined" && typeof cursor?.value !== "undefined"
@@ -96,14 +100,14 @@ async function getCursorConnection<T extends { id: number | string | bigint }>(
           ],
         }
       : idWhere
-  ) as FilterQuery<T> | undefined;
+  ) as FilterQuery<E> | undefined;
 
   // 搜索结果
   const [[results], [, totalCount]] = await Promise.all([
     service.search(query, {
       where: (typeof cursorWhere !== "undefined"
         ? { $and: [where, cursorWhere] }
-        : where) as FilterQuery<T> | undefined,
+        : where) as FilterQuery<E> | undefined,
       populate: [orderBy.field as never],
       limit: limit + 1,
       orderBy: [
@@ -127,7 +131,7 @@ async function getCursorConnection<T extends { id: number | string | bigint }>(
             ? QueryOrder.ASC
             : QueryOrder.DESC,
         },
-      ] as Array<QueryOrderMap<T>>,
+      ] as Array<QueryOrderMap<E>>,
     }),
     service.search(query, {
       where,
@@ -146,7 +150,7 @@ async function getCursorConnection<T extends { id: number | string | bigint }>(
         ? entities.slice(0, -1)
         : entities.slice(1)
       : entities
-  ).map<EdgeInterface<T>>((node: T) => ({
+  ).map<EdgeInterface<E>>((node: E) => ({
     node,
     cursor: new Cursor({
       id: node.id,
@@ -174,12 +178,4 @@ async function getCursorConnection<T extends { id: number | string | bigint }>(
     edges,
     nodes: edges.map((edge: any) => edge.node),
   };
-}
-
-export async function getConnection<T extends { id: number | string | bigint }>(
-  service: SearchableEntityService<T>,
-  args: ConnectionArgsInterface<T>,
-  where?: FilterQuery<T>
-): Promise<ConnectionInterface<T>> {
-  return await getCursorConnection<T>(service, args, where);
 }

@@ -5,7 +5,7 @@ import {
   Module,
   type NestModule,
 } from "@nestjs/common";
-import { APP_GUARD } from "@nestjs/core";
+import { APP_GUARD, Reflector } from "@nestjs/core";
 
 import { AuthGuard } from "./auth.guard";
 import { AuthMiddleware } from "./auth.middleware";
@@ -24,6 +24,7 @@ import { AuthModuleOptions } from "./interfaces";
       useClass: AuthGuard,
     },
     AuthService,
+    Reflector,
   ],
   exports: [AuthService],
 })

@@ -1,11 +1,15 @@
+import { type EntityManager } from "@mikro-orm/core";
+
+import { type SearchableEntityService } from "../utils/mixin-searchable.util";
 import { type SearchOptions } from "./search-options.interface";
 
 export interface SearchEngineInterface<
-  T extends { id: number | string | bigint } = { id: number | string | bigint }
+  E extends { id: number | string | bigint },
+  EM extends EntityManager
 > {
   search: (
-    index: string,
+    service: SearchableEntityService<E, EM>,
     query: string,
-    options?: SearchOptions<T>
-  ) => Promise<[Array<T["id"]>, number]>;
+    options?: SearchOptions<E>
+  ) => Promise<[Array<E["id"]>, number]>;
 }

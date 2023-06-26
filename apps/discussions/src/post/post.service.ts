@@ -1,3 +1,4 @@
+import { EntityManager } from "@mikro-orm/postgresql";
 import { createEntityService } from "@nest-boot/database";
 import { mixinConnection } from "@nest-boot/graphql";
 import { Cron } from "@nest-boot/schedule";
@@ -8,8 +9,7 @@ import { Post } from "./post.entity";
 
 @Injectable()
 export class PostService extends mixinConnection(
-  mixinSearchable(createEntityService(Post), {
-    index: "Post",
+  mixinSearchable(createEntityService(Post, EntityManager), {
     filterableFields: [
       "id",
       "message",
@@ -21,8 +21,8 @@ export class PostService extends mixinConnection(
   })
 ) {
   @Cron("* * * * * *")
-  async test() {
-    const posts = await this.repository.findAll();
+  async test(): Promise<void> {
+    const posts = await this.search("name: 1");
     console.log("test", posts.length);
   }
 }

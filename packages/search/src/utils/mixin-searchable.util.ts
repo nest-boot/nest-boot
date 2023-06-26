@@ -1,8 +1,4 @@
-import {
-  EntityManager,
-  type EntityRepository,
-  type FilterQuery,
-} from "@mikro-orm/core";
+import { type EntityManager, type FilterQuery } from "@mikro-orm/core";
 import { type EntityService } from "@nest-boot/database";
 import { Inject, Injectable } from "@nestjs/common";
 
@@ -12,46 +8,44 @@ import { SearchService } from "../search.service";
 export type Type<T = any> = new (...args: any[]) => T;
 
 export interface SearchableEntityService<
-  T extends { id: number | string | bigint }
-> extends EntityService<T> {
-  searchableOptions: SearchableOptions<T>;
+  E extends { id: number | string | bigint },
+  EM extends EntityManager
+> extends EntityService<E, EM> {
+  searchableOptions: SearchableOptions<E>;
 
-  search: (query: string, options?: SearchOptions<T>) => Promise<[T[], number]>;
+  search: (query: string, options?: SearchOptions<E>) => Promise<[E[], number]>;
 }
 
-export function mixinSearchable<T extends { id: number | string | bigint }>(
-  Base: Type<EntityService<T>>,
-  searchableOptions: SearchableOptions<T>
-): Type<SearchableEntityService<T>> {
+export function mixinSearchable<
+  E extends { id: number | string | bigint },
+  EM extends EntityManager
+>(
+  Base: Type<EntityService<E, EM>>,
+  searchableOptions: SearchableOptions<E>
+): Type<SearchableEntityService<E, EM>> {
   @Injectable()
-  class SearchableTrait extends Base implements SearchableEntityService<T> {
+  class SearchableTrait extends Base implements SearchableEntityService<E, EM> {
     @Inject()
-    readonly searchService!: SearchService;
+    readonly searchService!: SearchService<E, EM>;
 
-    @Inject()
-    readonly entityManager!: EntityManager;
-
-    repository!: EntityRepository<T>;
-
-    get searchableOptions(): SearchableOptions<T> {
+    get searchableOptions(): SearchableOptions<E> {
       return searchableOptions;
     }
 
     async search(
       query: string,
-      options?: SearchOptions<T>
-    ): Promise<[T[], number]> {
+      options?: SearchOptions<E>
+    ): Promise<[E[], number]> {
       const [ids, count] = await this.searchService.search(
-        this.searchableOptions.index,
+        this,
         query,
         options
       );
 
       return [
-        await this.repository.find(
-          { id: { $in: ids } } as unknown as FilterQuery<T>,
-          options
-        ),
+        await this.entityManager
+          .getRepository(this.entityClass)
+          .find({ id: { $in: ids } } as unknown as FilterQuery<E>, options),
         count,
       ];
     }

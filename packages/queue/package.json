@@ -15,15 +15,15 @@
     "templates"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "nest build --builder swc",
     "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist",
-    "dev": "tsc --watch",
+    "dev": "nest build --builder swc --watch",
     "lint": "eslint \"{src,test}/**/*.ts\" --fix",
     "test": "jest"
   },
   "dependencies": {
     "@nest-boot/queue-dashboard": "workspace:*",
-    "@nestjs/serve-static": "^3.0.1",
+    "@nestjs/serve-static": "^4.0.0",
     "ms": "^2.1.3",
     "redis-info": "^3.1.0"
   },
@@ -31,13 +31,15 @@
     "@nest-boot/eslint-config": "workspace:*",
     "@nest-boot/request-context": "workspace:*",
     "@nest-boot/tsconfig": "workspace:*",
-    "@nestjs/common": "^9.4.3",
-    "@nestjs/core": "^9.4.3",
+    "@nestjs/common": "^10.0.3",
+    "@nestjs/core": "^10.0.3",
+    "@swc/cli": "^0.1.62",
+    "@swc/core": "^1.3.66",
     "@types/ms": "^0.7.31",
     "@types/node": "^20.3.1",
     "@types/redis-info": "^3.0.0",
-    "bullmq": "^3.15.6",
-    "eslint": "^8.42.0",
+    "bullmq": "^4.1.0",
+    "eslint": "^8.43.0",
     "jest": "^29.5.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
@@ -46,8 +48,8 @@
   },
   "peerDependencies": {
     "@nest-boot/request-context": "workspace:*",
-    "@nestjs/common": "^9.0.0",
-    "@nestjs/core": "^9.0.0",
+    "@nestjs/common": "^10.0.0",
+    "@nestjs/core": "^10.0.0",
     "bullmq": "^3.5.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.0.0"

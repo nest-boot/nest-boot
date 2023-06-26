@@ -1,11 +1,12 @@
 import {
+  type EntityManager,
   type FilterQuery,
   type FindOptions,
   type GetRepository,
 } from "@mikro-orm/core";
 import {
-  type EntityManager,
   type EntityRepository,
+  type SqlEntityManager,
 } from "@mikro-orm/postgresql";
 import {
   type SearchableEntityService,
@@ -20,51 +21,50 @@ import _ from "lodash";
 import { parse } from "search-syntax";
 
 @Injectable()
-export class PostgresqlSearchEngine<T extends { id: number | string | bigint }>
-  implements SearchEngineInterface<T>
+export class PostgresqlSearchEngine<
+  E extends { id: number | string | bigint },
+  EM extends EntityManager
+> implements SearchEngineInterface<E, EM>
 {
-  private readonly searchableMap = new Map<
-    string,
-    { service: SearchableEntityService<T>; options: SearchableOptions<T> }
-  >();
+  private readonly searchableMap = new Map<string, SearchableOptions<E>>();
 
   constructor(
     private readonly discoveryService: DiscoveryService,
-    private readonly entityManager: EntityManager
+    private readonly entityManager: SqlEntityManager
   ) {
     this.discoveryService
       .getProviders()
-      .forEach((wrapper: InstanceWrapper<SearchableEntityService<T>>) => {
+      .forEach((wrapper: InstanceWrapper<SearchableEntityService<E, EM>>) => {
         if (typeof wrapper.instance?.searchableOptions !== "undefined") {
           const { searchableOptions } = wrapper.instance;
 
-          this.searchableMap.set(searchableOptions.index, {
-            service: wrapper.instance,
-            options: searchableOptions,
-          });
+          this.searchableMap.set(
+            wrapper.instance.constructor.name,
+            searchableOptions
+          );
         }
       });
   }
 
   async search(
-    index: string,
+    service: SearchableEntityService<E, EM>,
     query: string,
-    options?: SearchOptions<T>
-  ): Promise<[Array<T["id"]>, number]> {
-    const searchable = this.searchableMap.get(index);
+    options?: SearchOptions<E>
+  ): Promise<[Array<E["id"]>, number]> {
+    const searchableOptions = this.searchableMap.get(service.constructor.name);
 
-    if (typeof searchable === "undefined") {
+    if (typeof searchableOptions === "undefined") {
       throw new Error("Can't find searchable options");
     }
 
-    const { options: searchableOptions } = searchable;
+    const entityClassName = searchableOptions.index ?? service.entityClass.name;
 
-    const metadata = this.entityManager.getMetadata().get(index);
+    const metadata = this.entityManager.getMetadata().get(entityClassName);
 
     const repository: GetRepository<
-      T,
-      EntityRepository<T>
-    > = this.entityManager.getRepository<T>(index);
+      E,
+      EntityRepository<E>
+    > = this.entityManager.getRepository<E>(entityClassName);
 
     let where = options?.where;
 
@@ -121,18 +121,18 @@ export class PostgresqlSearchEngine<T extends { id: number | string | bigint }>
 
           return result;
         }, {}),
-      }) as FilterQuery<T>;
+      }) as FilterQuery<E>;
 
       if (Object.keys(queryWhere).length !== 0) {
         where = (
           typeof where !== "undefined"
             ? { $and: [where, queryWhere] }
             : queryWhere
-        ) as FilterQuery<T> | undefined;
+        ) as FilterQuery<E> | undefined;
       }
     }
 
-    const findOptions: FindOptions<T> = {
+    const findOptions: FindOptions<E> = {
       fields: ["id"],
       limit: options?.limit,
       offset: options?.offset,
@@ -150,12 +150,12 @@ export class PostgresqlSearchEngine<T extends { id: number | string | bigint }>
         .createQueryBuilder(
           typeof where !== "undefined"
             ? this.entityManager
-                .createQueryBuilder(index)
+                .createQueryBuilder(entityClassName)
                 .select("1")
                 .andWhere(where)
                 .limit(limit)
             : this.entityManager
-                .createQueryBuilder(index)
+                .createQueryBuilder(entityClassName)
                 .select("1")
                 .limit(limit)
         )

@@ -1,64 +1,72 @@
 import {
-  EntityRepository,
+  type EntityManager,
   type FilterQuery,
   type FindOptions,
   type Loaded,
   QueryOrder,
   type QueryOrderMap,
 } from "@mikro-orm/core";
-import { InjectRepository } from "@mikro-orm/nestjs";
-import { Injectable, type Type } from "@nestjs/common";
+import { Inject, Injectable, type Type } from "@nestjs/common";
 
 export type ChunkByIdOptions<T, P extends string = never> = Omit<
   FindOptions<T, P>,
   "offset" | "orderBy"
 >;
 
-export interface EntityService<T extends { id: number | string | bigint }> {
-  entityClass: Type<T>;
+export interface EntityService<
+  E extends { id: number | string | bigint },
+  EM extends EntityManager
+> {
+  entityClass: Type<E>;
 
-  repository: EntityRepository<T>;
+  entityManager: EM;
 
   chunkById: <P extends string = never>(
-    where: FilterQuery<T>,
-    options: ChunkByIdOptions<T, P>,
-    callback: (entities: T[]) => Promise<void>
+    where: FilterQuery<E>,
+    options: ChunkByIdOptions<E, P>,
+    callback: (entities: E[]) => Promise<void>
   ) => Promise<this>;
 }
 
-export function createEntityService<T extends { id: number | string | bigint }>(
-  entityClass: Type<T>
-): Type<EntityService<T>> {
+export function createEntityService<
+  E extends { id: number | string | bigint },
+  EM extends EntityManager
+>(
+  entityClass: Type<E>,
+  entityEntityClass: Type<EM>
+): Type<EntityService<E, EM>> {
   @Injectable()
-  class AbstractEntityService implements EntityService<T> {
-    @InjectRepository(entityClass)
-    readonly repository!: EntityRepository<T>;
-
+  class AbstractEntityService implements EntityService<E, EM> {
     readonly entityClass = entityClass;
 
+    @Inject(entityEntityClass)
+    readonly entityManager!: EM;
+
     async chunkById<P extends string = never>(
-      where: FilterQuery<T>,
-      options: ChunkByIdOptions<T, P>,
-      callback: (entities: T[]) => Promise<void>
+      where: FilterQuery<E>,
+      options: ChunkByIdOptions<E, P>,
+      callback: (entities: E[]) => Promise<void>
     ): Promise<this> {
       let lastId: number | string | bigint | undefined;
       let count = 0;
 
       do {
-        const entities: Array<Loaded<T, P>> = await this.repository.find(
-          {
-            $and: [
-              where,
-              ...(typeof lastId !== "undefined"
-                ? [{ id: { $gt: lastId } }]
-                : []),
-            ],
-          } as unknown as FilterQuery<T>,
-          {
-            ...options,
-            orderBy: { id: QueryOrder.ASC } as unknown as QueryOrderMap<T>,
-          }
-        );
+        const entities: Array<Loaded<E, P>> = await this.entityManager
+          .getRepository(this.entityClass)
+          .find(
+            {
+              $and: [
+                where,
+                ...(typeof lastId !== "undefined"
+                  ? [{ id: { $gt: lastId } }]
+                  : []),
+              ],
+            } as unknown as FilterQuery<E>,
+            {
+              ...options,
+              orderBy: { id: QueryOrder.ASC } as unknown as QueryOrderMap<E>,
+            }
+          );
 
         count = entities.length;
 

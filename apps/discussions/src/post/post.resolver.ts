@@ -1,3 +1,4 @@
+import { EntityManager } from "@mikro-orm/postgresql";
 import { Args, Complexity, ID, Query, Resolver } from "@nest-boot/graphql";
 
 import { PostConnection } from "./post.connection";
@@ -7,11 +8,14 @@ import { PostService } from "./post.service";
 
 @Resolver(() => Post)
 export class PostResolver {
-  constructor(private readonly postService: PostService) {}
+  constructor(
+    private readonly postService: PostService,
+    private readonly entityManager: EntityManager
+  ) {}
 
   @Query(() => Post)
   async post(@Args("id", { type: () => ID }) id: string): Promise<Post> {
-    return await this.postService.repository.findOneOrFail({ id });
+    return await this.entityManager.getRepository(Post).findOneOrFail({ id });
   }
 
   @Complexity({ multipliers: ["first", "last"] })

@@ -2,8 +2,8 @@ import { Global, Module, type Type } from "@nestjs/common";
 import { type HealthIndicator, TerminusModule } from "@nestjs/terminus";
 
 import { HealthCheckController } from "./health-check.controller";
-import { HealthCheckRegistryService } from "./health-check-registry.service";
-import { RedisHealthIndicator } from "./health-indicators/redis.health-indicator";
+import { HealthCheckRegistry } from "./health-check-registry.service";
+import { RedisHealthIndicator } from "./health-indicators";
 
 const healthIndicators: Array<Type<HealthIndicator>> = [RedisHealthIndicator];
 
@@ -11,7 +11,7 @@ const healthIndicators: Array<Type<HealthIndicator>> = [RedisHealthIndicator];
 @Module({
   imports: [TerminusModule],
   controllers: [HealthCheckController],
-  providers: [HealthCheckRegistryService, ...healthIndicators],
-  exports: [TerminusModule, HealthCheckRegistryService, ...healthIndicators],
+  providers: [HealthCheckRegistry, ...healthIndicators],
+  exports: [TerminusModule, HealthCheckRegistry, ...healthIndicators],
 })
 export class HealthCheckModule {}

@@ -1,15 +1,15 @@
+import { Injectable } from "@nestjs/common";
 import { type HealthIndicatorFunction } from "@nestjs/terminus";
 
-export class HealthCheckRegistryService {
-  #healthIndicatorFunctions: HealthIndicatorFunction[] = [];
+@Injectable()
+export class HealthCheckRegistry {
+  #healthIndicators: HealthIndicatorFunction[] = [];
 
-  get healthIndicatorFunctions(): HealthIndicatorFunction[] {
-    return this.#healthIndicatorFunctions;
+  get healthIndicators(): HealthIndicatorFunction[] {
+    return this.#healthIndicators;
   }
 
-  registerIndicator(
-    ...healthIndicatorFunctions: HealthIndicatorFunction[]
-  ): void {
-    this.#healthIndicatorFunctions.push(...healthIndicatorFunctions);
+  register(...healthIndicators: HealthIndicatorFunction[]): void {
+    this.#healthIndicators.push(...healthIndicators);
   }
 }
