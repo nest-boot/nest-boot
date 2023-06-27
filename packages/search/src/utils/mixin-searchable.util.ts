@@ -43,9 +43,10 @@ export function mixinSearchable<
       );
 
       return [
-        await this.entityManager
-          .getRepository(this.entityClass)
-          .find({ id: { $in: ids } } as unknown as FilterQuery<E>, options),
+        await this.repository.find(
+          { id: { $in: ids } } as unknown as FilterQuery<E>,
+          options
+        ),
         count,
       ];
     }

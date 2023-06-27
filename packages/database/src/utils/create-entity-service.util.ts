@@ -50,7 +50,7 @@ export function createEntityService<
     }
 
     get repository(): EntityRepository<E> {
-      return this.entityManager.getRepository(this.entityClass);
+      return this.em.getRepository(this.entityClass);
     }
 
     async chunkById<P extends string = never>(
@@ -62,22 +62,20 @@ export function createEntityService<
       let count = 0;
 
       do {
-        const entities: Array<Loaded<E, P>> = await this.entityManager
-          .getRepository(this.entityClass)
-          .find(
-            {
-              $and: [
-                where,
-                ...(typeof lastId !== "undefined"
-                  ? [{ id: { $gt: lastId } }]
-                  : []),
-              ],
-            } as unknown as FilterQuery<E>,
-            {
-              ...options,
-              orderBy: { id: QueryOrder.ASC } as unknown as QueryOrderMap<E>,
-            }
-          );
+        const entities: Array<Loaded<E, P>> = await this.repository.find(
+          {
+            $and: [
+              where,
+              ...(typeof lastId !== "undefined"
+                ? [{ id: { $gt: lastId } }]
+                : []),
+            ],
+          } as unknown as FilterQuery<E>,
+          {
+            ...options,
+            orderBy: { id: QueryOrder.ASC } as unknown as QueryOrderMap<E>,
+          }
+        );
 
         count = entities.length;
 
