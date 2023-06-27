@@ -45,6 +45,10 @@ export function createEntityService<
     @Inject(entityEntityClass)
     readonly entityManager!: EM;
 
+    get em(): EM {
+      return this.entityManager;
+    }
+
     get repository(): EntityRepository<E> {
       return this.entityManager.getRepository(this.entityClass);
     }
