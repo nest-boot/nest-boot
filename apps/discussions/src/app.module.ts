@@ -48,7 +48,7 @@ const AuthDynamicModule = AuthModule.registerAsync({
   useFactory: () => ({
     accessTokenEntityClass: AccessToken,
     defaultRequireAuth: true,
-    excludeRoutes: ["health"],
+    excludeRoutes: ["health", "metrics"],
   }),
 });
 
