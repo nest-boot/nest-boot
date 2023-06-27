@@ -1,5 +1,6 @@
 import {
   type EntityManager,
+  type EntityRepository,
   type FilterQuery,
   type FindOptions,
   type Loaded,
@@ -17,9 +18,11 @@ export interface EntityService<
   E extends { id: number | string | bigint },
   EM extends EntityManager
 > {
-  entityClass: Type<E>;
+  readonly entityClass: Type<E>;
 
-  entityManager: EM;
+  readonly entityManager: EM;
+
+  readonly repository: EntityRepository<E>;
 
   chunkById: <P extends string = never>(
     where: FilterQuery<E>,
@@ -41,6 +44,10 @@ export function createEntityService<
 
     @Inject(entityEntityClass)
     readonly entityManager!: EM;
+
+    get repository(): EntityRepository<E> {
+      return this.entityManager.getRepository(this.entityClass);
+    }
 
     async chunkById<P extends string = never>(
       where: FilterQuery<E>,

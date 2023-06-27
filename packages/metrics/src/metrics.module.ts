@@ -4,7 +4,7 @@ import { collectDefaultMetrics, Registry } from "prom-client";
 import { MetricsController } from "./metrics.controller";
 import { ConfigurableModuleClass } from "./metrics.module-definition";
 
-const registryProvider: Provider<Registry> = {
+const RegistryProvider: Provider<Registry> = {
   provide: Registry,
   useFactory: () => {
     const registry = new Registry();
@@ -17,7 +17,7 @@ const registryProvider: Provider<Registry> = {
 
 @Module({
   controllers: [MetricsController],
-  providers: [registryProvider],
-  exports: [registryProvider],
+  providers: [RegistryProvider],
+  exports: [RegistryProvider],
 })
 export class MetricsModule extends ConfigurableModuleClass {}

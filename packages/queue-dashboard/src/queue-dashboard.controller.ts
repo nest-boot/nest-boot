@@ -1,10 +1,9 @@
+import { QueueExplorer } from "@nest-boot/queue";
 import { Controller, Get, Param } from "@nestjs/common";
 import { parse as redisInfoParse } from "redis-info";
 
-import { QueueExplorer } from "./queue.explorer";
-
-@Controller("queue-dashboard/api/queues")
-export class QueueController {
+@Controller("/api/queue-dashboard/queues")
+export class QueueDashboardController {
   constructor(private readonly queueExplorer: QueueExplorer) {}
 
   @Get()

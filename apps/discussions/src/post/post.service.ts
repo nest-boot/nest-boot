@@ -22,7 +22,7 @@ export class PostService extends mixinConnection(
 ) {
   @Cron("* * * * * *")
   async test(): Promise<void> {
-    const posts = await this.search("name: 1");
+    const posts = await this.repository.findAll();
     console.log("test", posts.length);
   }
 }
