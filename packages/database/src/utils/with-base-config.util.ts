@@ -1,7 +1,7 @@
 import { type IDatabaseDriver, type Options } from "@mikro-orm/core";
 import { TsMorphMetadataProvider } from "@mikro-orm/reflection";
 
-import { MigrationGenerator } from "../migration-generator";
+// import { MigrationGenerator } from "../migration-generator";
 
 export function withBaseConfig<D extends IDatabaseDriver>(
   options: Options<D>
@@ -15,7 +15,7 @@ export function withBaseConfig<D extends IDatabaseDriver>(
       snapshot: false,
       path: "dist/database/migrations",
       pathTs: "src/database/migrations",
-      generator: MigrationGenerator,
+      // generator: MigrationGenerator,
     },
     seeder: {
       path: "dist/database/seeders",
