@@ -19,6 +19,7 @@ import { GraphQLModuleOptions } from "../interfaces";
 export class ComplexityPlugin implements ApolloServerPlugin {
   private readonly logger = new Logger(ComplexityPlugin.name);
 
+  private readonly logging: boolean;
   private readonly maxComplexity: number;
   private readonly defaultComplexity: number;
 
@@ -27,8 +28,9 @@ export class ComplexityPlugin implements ApolloServerPlugin {
     private readonly options: GraphQLModuleOptions,
     private readonly gqlSchemaHost: GraphQLSchemaHost
   ) {
-    this.maxComplexity = options.maxComplexity ?? 1000;
-    this.defaultComplexity = options.defaultComplexity ?? 1;
+    this.logging = options.complexity?.logging ?? false;
+    this.maxComplexity = options.complexity?.maxComplexity ?? 1000;
+    this.defaultComplexity = options.complexity?.defaultComplexity ?? 1;
   }
 
   async requestDidStart(): Promise<GraphQLRequestListener<any>> {
@@ -48,22 +50,19 @@ export class ComplexityPlugin implements ApolloServerPlugin {
           ],
         });
 
-        if (complexity >= this.maxComplexity) {
-          this.logger.error("query complexity", {
+        if (this.logging) {
+          this.logger.log("query complexity", {
             operationName: request.operationName,
             complexity,
           });
+        }
 
+        if (complexity >= this.maxComplexity) {
           throw new HttpException(
             `Query is too complex: ${complexity}. Maximum allowed complexity: ${this.maxComplexity}`,
             429
           );
         }
-
-        this.logger.log("query complexity", {
-          operationName: request.operationName,
-          complexity,
-        });
       },
     };
   }

@@ -3,8 +3,11 @@ import { type GraphQLWsSubscriptionsConfig } from "@nestjs/graphql";
 
 export interface GraphQLModuleOptions
   extends Omit<ApolloDriverConfig, "subscriptions"> {
-  subscriptions: GraphQLWsSubscriptionsConfig | boolean;
+  subscriptions?: GraphQLWsSubscriptionsConfig | boolean;
 
-  maxComplexity?: number;
-  defaultComplexity?: number;
+  complexity?: {
+    logging?: boolean;
+    maxComplexity?: number;
+    defaultComplexity?: number;
+  };
 }
