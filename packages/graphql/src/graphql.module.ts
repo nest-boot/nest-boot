@@ -39,7 +39,16 @@ export class GraphQLModule extends ConfigurableModuleClass {
       driver: ApolloDriver,
       inject: [MODULE_OPTIONS_TOKEN],
       useFactory: async (options: GraphQLModuleOptions) => {
-        return options;
+        return {
+          ...options,
+          ...(typeof options.subscriptions !== "undefined"
+            ? {
+                subscriptions: {
+                  "graphql-ws": options.subscriptions,
+                },
+              }
+            : {}),
+        };
       },
     });
 
