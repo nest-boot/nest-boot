@@ -22,6 +22,8 @@ export interface EntityService<
 
   readonly entityManager: EM;
 
+  readonly em: EM;
+
   readonly repository: EntityRepository<E>;
 
   chunkById: <P extends string = never>(
