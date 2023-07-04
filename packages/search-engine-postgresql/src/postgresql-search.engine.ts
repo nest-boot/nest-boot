@@ -1,5 +1,5 @@
 import {
-  type EntityManager,
+  type EntityClass,
   type FilterQuery,
   type FindOptions,
   type GetRepository,
@@ -9,62 +9,39 @@ import {
   type SqlEntityManager,
 } from "@mikro-orm/postgresql";
 import {
-  type SearchableEntityService,
   type SearchableOptions,
-  type SearchEngineInterface,
+  type SearchEngine,
   type SearchOptions,
 } from "@nest-boot/search";
+import { SEARCHABLE_OPTIONS } from "@nest-boot/search/dist/search.constants";
 import { Injectable } from "@nestjs/common";
-import { type DiscoveryService } from "@nestjs/core";
-import { type InstanceWrapper } from "@nestjs/core/injector/instance-wrapper";
 import _ from "lodash";
 import { parse } from "search-syntax";
 
 @Injectable()
-export class PostgresqlSearchEngine<
-  E extends { id: number | string | bigint },
-  EM extends EntityManager
-> implements SearchEngineInterface<E, EM>
-{
-  private readonly searchableMap = new Map<string, SearchableOptions<E>>();
+export class PostgresqlSearchEngine implements SearchEngine {
+  constructor(private readonly em: SqlEntityManager) {}
 
-  constructor(
-    private readonly discoveryService: DiscoveryService,
-    private readonly entityManager: SqlEntityManager
-  ) {
-    this.discoveryService
-      .getProviders()
-      .forEach((wrapper: InstanceWrapper<SearchableEntityService<E, EM>>) => {
-        if (typeof wrapper.instance?.searchableOptions !== "undefined") {
-          const { searchableOptions } = wrapper.instance;
-
-          this.searchableMap.set(
-            wrapper.instance.constructor.name,
-            searchableOptions
-          );
-        }
-      });
-  }
-
-  async search(
-    service: SearchableEntityService<E, EM>,
+  async search<E extends { id: number | string | bigint }>(
+    entityClass: EntityClass<E>,
     query: string,
     options?: SearchOptions<E>
   ): Promise<[Array<E["id"]>, number]> {
-    const searchableOptions = this.searchableMap.get(service.constructor.name);
+    const searchableOptions: SearchableOptions<E> = Reflect.getMetadata(
+      SEARCHABLE_OPTIONS,
+      entityClass
+    );
 
     if (typeof searchableOptions === "undefined") {
       throw new Error("Can't find searchable options");
     }
 
-    const entityClassName = searchableOptions.index ?? service.entityClass.name;
-
-    const metadata = this.entityManager.getMetadata().get(entityClassName);
+    const metadata = this.em.getMetadata().get(entityClass.name);
 
     const repository: GetRepository<
       E,
       EntityRepository<E>
-    > = this.entityManager.getRepository<E>(entityClassName);
+    > = this.em.getRepository<E>(entityClass);
 
     let where = options?.where;
 
@@ -146,18 +123,15 @@ export class PostgresqlSearchEngine<
         ? repository.find(where, findOptions)
         : repository.findAll(findOptions)
       ).then((items) => items.map((item) => item.id)),
-      this.entityManager
+      this.em
         .createQueryBuilder(
           typeof where !== "undefined"
-            ? this.entityManager
-                .createQueryBuilder(entityClassName)
+            ? this.em
+                .createQueryBuilder(entityClass)
                 .select("1")
                 .andWhere(where)
                 .limit(limit)
-            : this.entityManager
-                .createQueryBuilder(entityClassName)
-                .select("1")
-                .limit(limit)
+            : this.em.createQueryBuilder(entityClass).select("1").limit(limit)
         )
         .count(),
     ]);

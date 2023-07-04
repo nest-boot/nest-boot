@@ -1,16 +1,27 @@
 import {
   Entity,
-  IdentifiedReference,
   ManyToOne,
   PrimaryKey,
   Property,
+  Ref,
   t,
 } from "@mikro-orm/core";
+import { Searchable } from "@nest-boot/search";
 import { Field, ID, ObjectType } from "@nestjs/graphql";
 import { randomUUID } from "crypto";
 
 import { type User } from "../user/user.entity";
 
+@Searchable({
+  filterableFields: [
+    "id",
+    "message",
+    "createdAt",
+    "user.name",
+    "user.createdAt",
+  ],
+  searchableFields: ["id", "message", "createdAt", "user.name"],
+})
 @ObjectType()
 @Entity()
 export class Post {
@@ -35,5 +46,5 @@ export class Post {
   updatedAt: Date = new Date();
 
   @ManyToOne()
-  user!: IdentifiedReference<User>;
+  user!: Ref<User>;
 }

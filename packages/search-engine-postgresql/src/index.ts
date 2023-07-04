@@ -1,1 +1,1 @@
-export * from "./postgresql.engine";
+export * from "./postgresql-search.engine";

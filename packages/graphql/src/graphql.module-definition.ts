@@ -9,8 +9,4 @@ export const {
   ASYNC_OPTIONS_TYPE,
 } = new ConfigurableModuleBuilder<GraphQLModuleOptions>()
   .setClassMethodName("forRoot")
-  .setExtras({}, (definition) => ({
-    ...definition,
-    global: true,
-  }))
   .build();

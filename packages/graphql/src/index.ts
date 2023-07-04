@@ -1,5 +1,6 @@
 export * from "./complexities";
 export * from "./connection.builder";
+export * from "./connection.service";
 export * from "./decorators";
 export * from "./dtos";
 export * from "./entity.data-loader";

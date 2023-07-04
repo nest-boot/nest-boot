@@ -1,4 +1,5 @@
 export * from "./interfaces";
+export * from "./search.engine";
 export * from "./search.module";
 export * from "./search.service";
-export * from "./utils/mixin-searchable.util";
+export * from "./searchable.decorator";

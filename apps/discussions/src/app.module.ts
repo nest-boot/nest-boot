@@ -47,7 +47,7 @@ const I18nDynamicModule = I18nModule.register({
 const AuthDynamicModule = AuthModule.registerAsync({
   useFactory: () => ({
     accessTokenEntityClass: AccessToken,
-    defaultRequireAuth: true,
+    defaultRequireAuth: false,
     excludeRoutes: ["health", "metrics"],
   }),
 });
@@ -77,12 +77,9 @@ const DatabaseDynamicModule = DatabaseModule.forRootAsync({
 });
 
 const SearchDynamicModule = SearchModule.registerAsync({
-  inject: [DiscoveryService, EntityManager],
-  useFactory: (
-    discoveryService: DiscoveryService,
-    entityManager: EntityManager
-  ) => ({
-    engine: new PostgresqlSearchEngine(discoveryService, entityManager),
+  inject: [EntityManager],
+  useFactory: (entityManager: EntityManager) => ({
+    engine: new PostgresqlSearchEngine(entityManager),
   }),
 });
 

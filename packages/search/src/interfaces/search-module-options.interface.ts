@@ -1,11 +1,5 @@
-import { type EntityManager } from "@mikro-orm/core";
+import { type SearchEngine } from "../search.engine";
 
-import { type SearchEngineInterface } from "./search-engine.interface";
-
-export interface SearchModuleOptions<
-  E extends { id: string | number | bigint },
-  EM extends EntityManager
-> {
-  isGlobal?: boolean;
-  engine: SearchEngineInterface<E, EM>;
+export interface SearchModuleOptions {
+  engine: SearchEngine;
 }

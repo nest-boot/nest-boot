@@ -1,8 +1,9 @@
 import { ApolloDriver } from "@nestjs/apollo";
-import { type DynamicModule, Module } from "@nestjs/common";
+import { type DynamicModule, Global, Module } from "@nestjs/common";
 import { APP_FILTER } from "@nestjs/core";
 import { GraphQLModule as BaseGraphQLModule } from "@nestjs/graphql";
 
+import { ConnectionService } from "./connection.service";
 import { GraphQLExceptionFilter } from "./graphql.exception-filter";
 import {
   type ASYNC_OPTIONS_TYPE,
@@ -13,15 +14,17 @@ import {
 import { type GraphQLModuleOptions } from "./interfaces";
 import { ComplexityPlugin } from "./plugins";
 
+@Global()
 @Module({
   providers: [
+    ConnectionService,
     ComplexityPlugin,
     {
       provide: APP_FILTER,
       useClass: GraphQLExceptionFilter,
     },
   ],
-  exports: [MODULE_OPTIONS_TOKEN],
+  exports: [MODULE_OPTIONS_TOKEN, ConnectionService],
 })
 export class GraphQLModule extends ConfigurableModuleClass {
   static forRoot(options: typeof OPTIONS_TYPE): DynamicModule {

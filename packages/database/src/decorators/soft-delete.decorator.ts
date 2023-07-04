@@ -1,7 +1,11 @@
-import { Filter } from "@mikro-orm/core";
+import { type EntityClass, Filter } from "@mikro-orm/core";
 
-export const SoftDelete = Filter({
-  name: "softDelete",
-  cond: { deletedAt: { $eq: null } },
-  default: true,
-});
+export function SoftDelete<E extends { deletedAt?: Date }>() {
+  return (target: EntityClass<E>) => {
+    Filter({
+      name: "softDelete",
+      cond: { deletedAt: { $eq: null } },
+      default: true,
+    })(target);
+  };
+}

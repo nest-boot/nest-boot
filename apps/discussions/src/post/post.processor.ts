@@ -3,14 +3,13 @@ import { Processor } from "@nest-boot/queue";
 import { Injectable } from "@nestjs/common";
 
 import { Post } from "./post.entity";
-import { PostService } from "./post.service";
 
 @Injectable()
 export class PostProcessor {
-  constructor(private readonly postService: PostService) {}
+  constructor(private readonly em: EntityManager) {}
 
   @Processor("test")
   async handle(): Promise<void> {
-    await this.postService.entityManager.getRepository(Post).findAll();
+    await this.em.getRepository(Post).findAll();
   }
 }

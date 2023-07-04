@@ -1,33 +1,39 @@
-import { type EntityManager } from "@mikro-orm/core";
+import {
+  type EntityClass,
+  EntityManager,
+  type FilterQuery,
+} from "@mikro-orm/core";
 import { Inject, Injectable } from "@nestjs/common";
 
-import {
-  type SearchEngineInterface,
-  SearchModuleOptions,
-  type SearchOptions,
-} from "./interfaces";
+import { SearchModuleOptions, type SearchOptions } from "./interfaces";
 import { MODULE_OPTIONS_TOKEN } from "./search.module-definition";
-import { type SearchableEntityService } from "./utils/mixin-searchable.util";
 
 @Injectable()
-export class SearchService<
-  E extends { id: number | string | bigint },
-  EM extends EntityManager
-> implements SearchEngineInterface<E, EM>
-{
-  private readonly engine: SearchEngineInterface<E, EM>;
-
+export class SearchService {
   constructor(
-    @Inject(MODULE_OPTIONS_TOKEN) readonly options: SearchModuleOptions<E, EM>
-  ) {
-    this.engine = options.engine;
-  }
+    @Inject(MODULE_OPTIONS_TOKEN)
+    private readonly options: SearchModuleOptions,
+    private readonly em: EntityManager
+  ) {}
 
-  async search(
-    service: SearchableEntityService<E, EM>,
+  async search<E extends { id: string | number | bigint }>(
+    entityClass: EntityClass<E>,
     query: string,
     options?: SearchOptions<E>
-  ): Promise<[Array<string | number | bigint>, number]> {
-    return await this.engine.search(service, query, options);
+  ): Promise<[E[], number]> {
+    const [ids, count] = await this.options.engine.search(
+      entityClass,
+      query,
+      options
+    );
+
+    return [
+      await this.em.find(
+        entityClass,
+        { id: { $in: ids } } as unknown as FilterQuery<E>,
+        options
+      ),
+      count,
+    ];
   }
 }
