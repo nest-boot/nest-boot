@@ -16,7 +16,6 @@ import { PostgresqlSearchEngine } from "@nest-boot/search-engine-postgresql";
 import { ViewModule } from "@nest-boot/view";
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
-import { DiscoveryService } from "@nestjs/core";
 
 import { CommentModule } from "./comment/comment.module";
 import { PostModule } from "./post/post.module";

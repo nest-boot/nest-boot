@@ -1,5 +1,3 @@
-import { type WorkerOptions } from "bullmq";
+import { type QueueModuleOptions } from "@nest-boot/queue";
 
-export interface ScheduleModuleOptions extends WorkerOptions {
-  name?: string;
-}
+export type ScheduleModuleOptions = QueueModuleOptions;

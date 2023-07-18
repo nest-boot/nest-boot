@@ -38,9 +38,9 @@ export class DatabaseModule
     return this.withMikroOrm(super.forRootAsync(options));
   }
 
-  static forFeature(
-    options: Array<EntityName<Partial<any>>> | MikroOrmModuleFeatureOptions,
-    contextName?: string
+  static forFeature<T>(
+    options: EntityName<T>[] | MikroOrmModuleFeatureOptions,
+    contextName?: string,
   ): DynamicModule {
     return MikroOrmModule.forFeature(options, contextName);
   }
@@ -53,7 +53,7 @@ export class DatabaseModule
     const MikroOrmDynamicModule = MikroOrmModule.forRootAsync({
       providers: [Logger],
       inject: [MODULE_OPTIONS_TOKEN, Logger],
-      useFactory: async (options: DatabaseModuleOptions, logger: Logger) => {
+      useFactory: (options: DatabaseModuleOptions, logger: Logger) => {
         process.env.NO_COLOR = "true";
 
         return {

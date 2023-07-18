@@ -1,6 +1,5 @@
 import { Logger } from "@nest-boot/logger";
 import { QueueManager } from "@nest-boot/queue";
-import { ScheduleService } from "@nest-boot/schedule";
 import { NestFactory } from "@nestjs/core";
 
 import { AppModule } from "./app.module";
@@ -24,7 +23,5 @@ void (async () => {
     logger.log("server started");
   });
 
-  await app.get(ScheduleService).run();
-
-  await app.get(QueueManager).run();
+  app.get(QueueManager).run();
 })();

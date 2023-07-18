@@ -7,23 +7,23 @@ import { type JobOptions } from "./interfaces/job-options.interface";
 export class Queue<
   DataType = any,
   ResultType = any,
-  NameType extends string = string
+  NameType extends string = string,
 > extends BaseQueue<DataType, ResultType, NameType> {
   async add(
     name: NameType,
     data: DataType,
-    opts?: JobOptions
+    opts?: JobOptions,
   ): Promise<Job<DataType, ResultType, NameType>> {
-    return super.add(name, data, opts) as any;
+    return super.add(name, data, opts);
   }
 
   async addBulk(
-    jobs: Array<{
+    jobs: {
       name: NameType;
       data: DataType;
       opts?: BulkJobOptions;
-    }>
-  ): Promise<Array<Job<DataType, ResultType, NameType>>> {
+    }[],
+  ): Promise<Job<DataType, ResultType, NameType>[]> {
     return await super.addBulk(jobs);
   }
 }

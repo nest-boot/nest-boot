@@ -12,13 +12,12 @@ import {
   Reflector,
 } from "@nestjs/core";
 import { Injector } from "@nestjs/core/injector/injector";
-import { MetricsTime } from "bullmq";
+import { MetricsTime, Worker } from "bullmq";
 
 import { type ProcessorFunction } from "./interfaces/processor-function.interface";
 import { type ProcessorMetadataOptions } from "./interfaces/processor-metadata-options.interface";
 import { Queue } from "./queue";
 import { PROCESSOR_METADATA_KEY } from "./queue.module-definition";
-import { Worker } from "./worker";
 
 @Injectable()
 export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
@@ -37,7 +36,7 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
   constructor(
     private readonly reflector: Reflector,
     private readonly discoveryService: DiscoveryService,
-    private readonly metadataScanner: MetadataScanner
+    private readonly metadataScanner: MetadataScanner,
   ) {}
 
   discoveryJobs(): void {
@@ -45,10 +44,9 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
       const { host, instance } = wrapper;
 
       if (typeof instance === "object" && instance !== null) {
-        this.metadataScanner.scanFromPrototype(
-          instance,
-          Object.getPrototypeOf(instance),
-          (key: string) => {
+        this.metadataScanner
+          .getAllMethodNames(Object.getPrototypeOf(instance))
+          .forEach((key) => {
             if (
               typeof host !== "undefined" &&
               typeof instance.constructor.name === "string"
@@ -56,7 +54,7 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
               const metadataOptions =
                 this.reflector.get<ProcessorMetadataOptions>(
                   PROCESSOR_METADATA_KEY,
-                  instance[key]
+                  instance[key],
                 );
 
               if (typeof metadataOptions !== "undefined") {
@@ -73,7 +71,7 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
                             instance,
                             host,
                             host.providers,
-                            contextId
+                            contextId,
                           );
 
                         return contextInstance[key](job);
@@ -84,8 +82,7 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
                 this.logger.log(`Processor ${metadataOptions.name} discovered`);
               }
             }
-          }
-        );
+          });
       }
     });
   }
@@ -128,7 +125,7 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
     }
   }
 
-  async onModuleInit(): Promise<void> {
+  onModuleInit(): void {
     this.discoveryJobs();
     this.discoveryQueues();
 
@@ -160,7 +157,7 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
         await queue.close();
 
         this.logger.log(`Queue ${name} closed`);
-      })
+      }),
     );
 
     await Promise.all(
@@ -168,7 +165,7 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
         await worker.close();
 
         this.logger.log(`Worker ${name} closed`);
-      })
+      }),
     );
   }
 }

@@ -6,10 +6,10 @@ import { QueueExplorer } from "./queue.explorer";
 export class QueueManager {
   constructor(
     private readonly logger: Logger,
-    private readonly queueExplorer: QueueExplorer
+    private readonly queueExplorer: QueueExplorer,
   ) {}
 
-  async run(names?: string[]): Promise<void> {
+  run(names?: string[]): void {
     [...this.queueExplorer.workers.entries()]
       .filter(([name]) => typeof names === "undefined" || names.includes(name))
       .forEach(([name, worker]) => {
