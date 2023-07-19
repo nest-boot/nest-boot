@@ -22,24 +22,19 @@ export class LoggerModule
   implements OnModuleInit
 {
   constructor(
-    @Inject(MODULE_OPTIONS_TOKEN) private readonly options: LoggerModuleOptions
+    @Inject(MODULE_OPTIONS_TOKEN) private readonly options: LoggerModuleOptions,
   ) {
     super();
   }
 
-  async onModuleInit(): Promise<void> {
+  onModuleInit(): void {
     const logger = pino();
     const loggerMiddleware = pinoHttp({
       autoLogging: false,
       genReqId:
         this.options.genReqId ??
         function (req, res) {
-          const existingID = req.id ?? req.headers["x-request-id"];
-          if (typeof existingID === "string") {
-            return existingID;
-          }
-
-          const id = randomUUID();
+          const id = req.headers["x-request-id"] ?? randomUUID();
           res.setHeader("X-Request-Id", id);
           return id;
         },
@@ -58,7 +53,7 @@ export class LoggerModule
           PINO_LOGGER,
           logger.child({
             req: { id: randomUUID() },
-          })
+          }),
         );
       }
 
