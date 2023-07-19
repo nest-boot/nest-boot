@@ -43,8 +43,8 @@ export class DatabaseModule
     return this.withMikroOrm(super.forRootAsync(options));
   }
 
-  static forFeature<T>(
-    options: EntityName<T>[] | MikroOrmModuleFeatureOptions,
+  static forFeature(
+    options: MikroOrmModuleFeatureOptions | EntityName<Partial<any>>[],
     contextName?: string,
   ): DynamicModule {
     return MikroOrmModule.forFeature(options, contextName);
