@@ -44,7 +44,7 @@
     "@nest-boot/request-context": "workspace:*",
     "@nestjs/common": "^10.0.0",
     "@nestjs/core": "^10.0.0",
-    "i18next": "^22.0.0",
+    "i18next": "^23.0.0",
     "i18next-fs-backend": "^2.0.0",
     "i18next-http-middleware": "^3.0.0",
     "reflect-metadata": "^0.1.13",
