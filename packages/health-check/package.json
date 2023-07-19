@@ -42,11 +42,6 @@
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.0.0"
   },
-  "optionalDependencies": {
-    "@nest-boot/redis": "^4.1.2",
-    "ioredis": "^5.0.0",
-    "redis-info": "^3.1.0"
-  },
   "publishConfig": {
     "access": "public"
   },

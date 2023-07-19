@@ -37,7 +37,7 @@
     "typescript": "^5.1.6"
   },
   "peerDependencies": {
-    "@nest-boot/health-check": "^5.0.0",
+    "@nest-boot/health-check": "workspace:*",
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^3.0.0",
     "@nestjs/core": "^10.0.0",
