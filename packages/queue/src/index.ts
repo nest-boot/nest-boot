@@ -13,4 +13,3 @@ export * from "./queue.manager";
 export * from "./queue.module";
 export * from "./utils/create-queue-server.util";
 export * from "./utils/get-queue-token.util";
-export * from "./worker";

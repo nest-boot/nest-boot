@@ -1,19 +1,16 @@
-import { type Redis } from "@nest-boot/redis";
-import { Injectable, Scope } from "@nestjs/common";
-import { ModuleRef } from "@nestjs/core";
+import { promiseTimeout } from "@nest-boot/health-check";
 import {
   HealthCheckError,
   HealthIndicator,
   type HealthIndicatorResult,
   TimeoutError,
-} from "@nestjs/terminus";
-import { promiseTimeout } from "@nestjs/terminus/dist/utils";
-import { type Redis as IORedis } from "ioredis";
+} from "@nest-boot/health-check";
+import { Injectable, Scope } from "@nestjs/common";
 import { parse } from "redis-info";
 
-export interface RedisPingCheckSettings {
-  redis: Redis | IORedis;
+import { Redis } from "./redis";
 
+export interface RedisPingCheckSettings {
   timeout?: number;
 
   memoryMaximumUtilization?: number;
@@ -21,23 +18,23 @@ export interface RedisPingCheckSettings {
 
 @Injectable({ scope: Scope.TRANSIENT })
 export class RedisHealthIndicator extends HealthIndicator {
-  constructor(private readonly moduleRef: ModuleRef) {
+  constructor(private readonly redis: Redis) {
     super();
   }
 
   async pingCheck(
     key: string,
-    options: RedisPingCheckSettings
+    options: RedisPingCheckSettings = {},
   ): Promise<HealthIndicatorResult> {
     let isHealthy = false;
 
-    const { redis, timeout = 1000, memoryMaximumUtilization = 80 } = options;
+    const { timeout = 1000, memoryMaximumUtilization = 80 } = options;
 
     try {
       await promiseTimeout(
         timeout,
         (async () => {
-          const info = parse(await redis.info());
+          const info = parse(await this.redis.info());
 
           const currentMemoryMaximumUtilization =
             info.maxmemory === "0"
@@ -49,12 +46,12 @@ export class RedisHealthIndicator extends HealthIndicator {
               "Used memory exceeded the set maximum utilization",
               this.getStatus(key, isHealthy, {
                 message: "Used memory exceeded the set maximum utilization",
-              })
+              }),
             );
           }
 
           return info;
-        })()
+        })(),
       );
 
       isHealthy = true;
@@ -68,7 +65,7 @@ export class RedisHealthIndicator extends HealthIndicator {
           timeout,
           this.getStatus(key, isHealthy, {
             message: `timeout of ${timeout}ms exceeded`,
-          })
+          }),
         );
       }
     }
@@ -79,7 +76,7 @@ export class RedisHealthIndicator extends HealthIndicator {
 
     throw new HealthCheckError(
       `${key} is not available`,
-      this.getStatus(key, isHealthy)
+      this.getStatus(key, isHealthy),
     );
   }
 }

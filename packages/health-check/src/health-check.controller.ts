@@ -11,14 +11,14 @@ import { HealthCheckRegistry } from "./health-check-registry.service";
 export class HealthCheckController {
   constructor(
     private readonly healthCheckService: HealthCheckService,
-    private readonly healthCheckRegistry: HealthCheckRegistry
+    private readonly healthCheckRegistry: HealthCheckRegistry,
   ) {}
 
   @Get()
   @HealthCheck()
-  async handle(): Promise<HealthCheckResult> {
+  async check(): Promise<HealthCheckResult> {
     return await this.healthCheckService.check(
-      this.healthCheckRegistry.healthIndicators
+      this.healthCheckRegistry.healthIndicators,
     );
   }
 }

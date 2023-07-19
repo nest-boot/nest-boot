@@ -1,4 +1,13 @@
 export * from "./health-check.module";
 export * from "./health-check-registry.service";
-export * from "./health-indicators";
+export {
+  HealthCheckError,
+  HealthIndicator,
+  HealthIndicatorResult,
+  TimeoutError,
+} from "@nestjs/terminus";
 export * from "@nestjs/terminus/dist/health-indicator";
+export {
+  promiseTimeout,
+  TimeoutError as PromiseTimeoutError,
+} from "@nestjs/terminus/dist/utils";

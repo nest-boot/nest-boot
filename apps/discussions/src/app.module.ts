@@ -9,6 +9,7 @@ import { MailerModule } from "@nest-boot/mailer";
 import { MetricsModule } from "@nest-boot/metrics";
 import { QueueModule } from "@nest-boot/queue";
 import { QueueDashboardModule } from "@nest-boot/queue-dashboard";
+import { RedisModule } from "@nest-boot/redis";
 import { RequestContextModule } from "@nest-boot/request-context";
 import { ScheduleModule } from "@nest-boot/schedule";
 import { SearchModule } from "@nest-boot/search";
@@ -63,6 +64,16 @@ const ScheduleDynamicModule = ScheduleModule.registerAsync({
   }),
 });
 
+const RedisDynamicModule = RedisModule.registerAsync({
+  inject: [ConfigService],
+  useFactory: (config: ConfigService) => ({
+    host: config.get("REDIS_HOST"),
+    port: config.get("REDIS_PORT"),
+    username: config.get("REDIS_USERNAME"),
+    password: config.get("REDIS_PASSWORD"),
+  }),
+});
+
 const DatabaseDynamicModule = DatabaseModule.forRootAsync({
   inject: [ConfigService],
   useFactory: (config: ConfigService) => ({
@@ -107,6 +118,7 @@ const GraphQLModuleDynamicModule = GraphQLModule.forRootAsync({
     MetricsModule,
     ScheduleDynamicModule,
     GraphQLModuleDynamicModule,
+    RedisDynamicModule,
     QueueDashboardModule,
     QueueModule.registerAsync({
       inject: [ConfigService],

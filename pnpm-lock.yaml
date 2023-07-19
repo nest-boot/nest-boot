@@ -372,6 +372,9 @@ importers:
       '@nest-boot/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@nest-boot/health-check':
+        specifier: workspace:*
+        version: link:../health-check
       '@nest-boot/request-context':
         specifier: workspace:*
         version: link:../request-context
@@ -930,6 +933,9 @@ importers:
       '@nest-boot/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@nest-boot/health-check':
+        specifier: workspace:*
+        version: link:../health-check
       '@nest-boot/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig

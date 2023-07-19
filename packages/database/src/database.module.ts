@@ -7,14 +7,17 @@ import {
   MikroOrmModule,
   type MikroOrmModuleFeatureOptions,
 } from "@mikro-orm/nestjs";
+import { HealthCheckRegistry } from "@nest-boot/health-check";
 import { RequestContext } from "@nest-boot/request-context";
 import {
   type DynamicModule,
   Logger,
   Module,
   type OnModuleInit,
+  Optional,
 } from "@nestjs/common";
 
+import { DatabaseHealthIndicator } from "./database.health-indicator";
 import { DatabaseLogger } from "./database.logger";
 import {
   type ASYNC_OPTIONS_TYPE,
@@ -25,7 +28,9 @@ import {
 import { type DatabaseModuleOptions } from "./interfaces";
 import { withBaseConfig } from "./utils/with-base-config.util";
 
-@Module({})
+@Module({
+  providers: [DatabaseHealthIndicator],
+})
 export class DatabaseModule
   extends ConfigurableModuleClass
   implements OnModuleInit
@@ -45,7 +50,12 @@ export class DatabaseModule
     return MikroOrmModule.forFeature(options, contextName);
   }
 
-  constructor(private readonly orm: MikroORM) {
+  constructor(
+    private readonly orm: MikroORM,
+    private readonly healthIndicator: DatabaseHealthIndicator,
+    @Optional()
+    private readonly healthCheckRegistry?: HealthCheckRegistry,
+  ) {
     super();
   }
 
@@ -76,6 +86,12 @@ export class DatabaseModule
   }
 
   onModuleInit(): void {
+    if (typeof this.healthCheckRegistry !== "undefined") {
+      this.healthCheckRegistry.register(async () =>
+        this.healthIndicator.pingCheck("database"),
+      );
+    }
+
     RequestContext.registerMiddleware(async (_, next) => {
       return await new Promise((resolve, reject) => {
         MikroORMRequestContext.create(this.orm.em, () => {
