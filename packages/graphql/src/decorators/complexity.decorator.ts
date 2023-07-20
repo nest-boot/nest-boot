@@ -6,11 +6,11 @@ export interface ComplexityOptions {
 }
 
 export function Complexity(
-  options: ComplexityOptions
+  options: ComplexityOptions,
 ): MethodDecorator & PropertyDecorator & ClassDecorator {
   return Directive(
-    `@complexity(value: ${options.value ?? 0}, multipliers: ${JSON.stringify(
-      options.multipliers ?? []
-    )})`
+    `@complexity(value: ${options.value ?? 1}, multipliers: ${JSON.stringify(
+      options.multipliers ?? [],
+    )})`,
   );
 }
