@@ -4,10 +4,9 @@ on:
   push:
     branches:
       - master
-      - next
-      - next-major
-      - alpha
       - beta
+      - alpha
+      - "*.x"
 
 jobs:
   release:
