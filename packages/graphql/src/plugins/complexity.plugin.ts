@@ -3,11 +3,14 @@
 import {
   type ApolloServerPlugin,
   type BaseContext,
+  GraphQLRequestContextDidResolveOperation,
   type GraphQLRequestListener,
 } from "@apollo/server";
+import { Redis } from "@nest-boot/redis";
 import { Plugin } from "@nestjs/apollo";
-import { HttpException, Inject, Logger } from "@nestjs/common";
+import { HttpException, Inject, Logger, Optional } from "@nestjs/common";
 import { GraphQLSchemaHost } from "@nestjs/graphql";
+import { Request } from "express";
 import {
   GraphQLEnumType,
   GraphQLInterfaceType,
@@ -66,29 +69,131 @@ function shopifyEstimator(
   }
 }
 
+const REDIS_GRAPHQL_COMPLEXITY_RATE_LIMIT_COMMAND_NAME =
+  "GRAPHQL_COMPLEXITY.RATE_LIMIT";
+
 @Plugin()
 export class ComplexityPlugin implements ApolloServerPlugin {
   private readonly logger = new Logger(ComplexityPlugin.name);
 
-  private readonly logging: boolean;
-  private readonly maxComplexity: number;
-  private readonly defaultComplexity: number;
+  private readonly logging: boolean = false;
+  private readonly maxComplexity: number = 1000;
+  private readonly defaultComplexity: number = 0;
+
+  private readonly rateLimitEnable: boolean = true;
+  private readonly rateLimitKeyPrefix: string = "graphql-complexity:rate-limit";
+  private readonly rateLimitRestoreRate: number = 50;
+  private readonly rateLimitMaximumAvailable: number = 1000;
+  private readonly rateLimitGetId = (
+    args: GraphQLRequestContextDidResolveOperation<BaseContext>,
+  ) => {
+    const req = (args.contextValue as { req: Request }).req;
+    return req.ips.length ? req.ips[0] : req.ip;
+  };
 
   constructor(
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly options: GraphQLModuleOptions,
     private readonly gqlSchemaHost: GraphQLSchemaHost,
+    @Optional()
+    private readonly redis: Redis,
   ) {
-    this.logging = options.complexity?.logging ?? false;
-    this.maxComplexity = options.complexity?.maxComplexity ?? 1000;
-    this.defaultComplexity = options.complexity?.defaultComplexity ?? 0;
+    if (
+      typeof options.complexity !== "boolean" &&
+      typeof options.complexity !== "undefined"
+    ) {
+      this.logging = options.complexity.logging ?? this.logging;
+      this.maxComplexity =
+        options.complexity.maxComplexity ?? this.maxComplexity;
+      this.defaultComplexity =
+        options.complexity.defaultComplexity ?? this.defaultComplexity;
+
+      if (options.complexity.rateLimit === false) {
+        this.rateLimitEnable = false;
+      } else if (
+        typeof options.complexity.rateLimit !== "boolean" &&
+        typeof options.complexity.rateLimit !== "undefined"
+      ) {
+        this.rateLimitKeyPrefix =
+          options.complexity.rateLimit.keyPrefix ?? this.rateLimitKeyPrefix;
+        this.rateLimitRestoreRate =
+          options.complexity.rateLimit.restoreRate ?? this.rateLimitRestoreRate;
+        this.rateLimitMaximumAvailable =
+          options.complexity.rateLimit.maximumAvailable ??
+          this.rateLimitMaximumAvailable;
+        this.rateLimitGetId =
+          options.complexity.rateLimit.getId ?? this.rateLimitGetId;
+      }
+    }
+
+    if (typeof this.redis !== "undefined" && this.rateLimitEnable) {
+      this.redis.defineCommand(
+        REDIS_GRAPHQL_COMPLEXITY_RATE_LIMIT_COMMAND_NAME,
+        {
+          numberOfKeys: 5,
+          lua: /* lua */ `
+          -- 获取当前时间戳
+          local currentTimestamp = redis.call("TIME")[1]
+          
+          -- 获取参数
+          local bucketKeyPrefix = KEYS[1]
+          local maximumAvailable = tonumber(KEYS[2])
+          local restoreRate = tonumber(KEYS[3])
+          local id = KEYS[4]
+          local complexity = tonumber(KEYS[5])
+          
+          -- 定义存储桶的键
+          local bucketKey = bucketKeyPrefix .. ":" .. id
+          
+          local keyExpireSeconds = math.ceil(maximumAvailable / restoreRate)
+          
+          -- 获取存储桶中当前的令牌数量，如果不存在，则设置为最大可用令牌数
+          local currentlyAvailable = redis.call("HGET", bucketKey, "currentlyAvailable")
+          if not currentlyAvailable then
+            currentlyAvailable = maximumAvailable
+          end
+          
+          -- 如果存储桶为空，设置上次更新时间戳为当前时间戳
+          local updatedTimestamp = redis.call("HGET", bucketKey, "updatedTimestamp")
+          if not updatedTimestamp then
+            updatedTimestamp = currentTimestamp
+          end
+          
+          -- 更新上次更新的时间戳
+          redis.call("HSET", bucketKey, "updatedTimestamp", currentTimestamp)
+          
+          -- 更新存储桶的过期时间
+          redis.call("EXPIRE", bucketKey, keyExpireSeconds)
+          
+          -- 计算自上次更新以来要恢复的令牌数量，并恢复存储桶中的令牌数量
+          local intervalSeconds = currentTimestamp - updatedTimestamp;
+          if intervalSeconds > 0 then
+            currentlyAvailable = math.min((restoreRate * intervalSeconds) + currentlyAvailable, maximumAvailable);
+            redis.call("HSET", bucketKey, "currentlyAvailable", currentlyAvailable)
+          end
+          
+          -- 检查是否有足够的令牌供扣减，如果有，则扣减并返回剩余令牌数
+          local newCurrentlyAvailable = currentlyAvailable - complexity
+          if newCurrentlyAvailable >= 0 then
+            currentlyAvailable = newCurrentlyAvailable
+            redis.call("HSET", bucketKey, "currentlyAvailable", currentlyAvailable)
+            return { false, currentlyAvailable };
+          end
+          
+          return { true, currentlyAvailable }
+        `,
+        },
+      );
+    }
   }
 
   async requestDidStart(): Promise<GraphQLRequestListener<BaseContext>> {
     const { schema } = this.gqlSchemaHost;
 
     return {
-      didResolveOperation: async ({ request, document }) => {
+      didResolveOperation: async (args) => {
+        const { request, document } = args;
+
         const complexity = getComplexity({
           schema,
           operationName: request.operationName,
@@ -119,6 +224,31 @@ export class ComplexityPlugin implements ApolloServerPlugin {
             `Query is too complex: ${complexity}. Maximum allowed complexity: ${this.maxComplexity}`,
             429,
           );
+        }
+
+        if (typeof this.redis !== "undefined" && this.rateLimitEnable) {
+          const [blocked, currentlyAvailable] = (await (this.redis as any)[
+            REDIS_GRAPHQL_COMPLEXITY_RATE_LIMIT_COMMAND_NAME
+          ](
+            this.rateLimitKeyPrefix,
+            this.rateLimitMaximumAvailable,
+            this.rateLimitRestoreRate,
+            this.rateLimitGetId(args),
+            complexity,
+          )) as [boolean, number];
+
+          request.extensions.cost = {
+            ...request.extensions.cost,
+            throttleStatus: {
+              maximumAvailable: this.rateLimitMaximumAvailable,
+              currentlyAvailable,
+              restoreRate: this.rateLimitRestoreRate,
+            },
+          };
+
+          if (blocked) {
+            throw new HttpException(`Too Many Requests`, 429);
+          }
         }
       },
       willSendResponse: async ({ request, response }): Promise<void> => {
