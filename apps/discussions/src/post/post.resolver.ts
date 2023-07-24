@@ -1,4 +1,4 @@
-import { Args, Complexity, ID, Query, Resolver } from "@nest-boot/graphql";
+import { Args, ID, Query, Resolver } from "@nest-boot/graphql";
 
 import { PostConnection } from "./post.connection";
 import { PostConnectionArgs } from "./post.connection-args";
@@ -14,7 +14,6 @@ export class PostResolver {
     return await this.postService.repository.findOneOrFail({ id });
   }
 
-  @Complexity({ multipliers: ["first", "last"] })
   @Query(() => PostConnection)
   async posts(@Args() args: PostConnectionArgs): Promise<PostConnection> {
     return await this.postService.getConnection(args);

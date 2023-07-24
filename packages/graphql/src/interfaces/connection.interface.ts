@@ -6,8 +6,6 @@ export interface ConnectionInterface<
 > {
   edges: Array<EdgeInterface<T>>;
 
-  nodes: T[];
-
   pageInfo: PageInfo;
 
   totalCount: number;

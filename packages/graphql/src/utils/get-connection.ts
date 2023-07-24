@@ -172,7 +172,6 @@ async function getCursorConnection<T extends { id: number | string | bigint }>(
       endCursor: edges[edges.length - 1]?.cursor,
     },
     edges,
-    nodes: edges.map((edge: any) => edge.node),
   };
 }
 
