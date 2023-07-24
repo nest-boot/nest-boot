@@ -42,11 +42,11 @@ export class ConnectionService {
   async get<
     E extends {
       id: string | number | bigint;
-    }
+    },
   >(
     entityClass: EntityClass<E>,
     args: ConnectionArgsInterface<E>,
-    where?: FilterQuery<E>
+    where?: FilterQuery<E>,
   ): Promise<ConnectionInterface<E>> {
     // 提取集合参数
     const {
@@ -57,7 +57,7 @@ export class ConnectionService {
       query = "",
       orderBy = { field: "createdAt", direction: OrderDirection.ASC },
     } = args;
-    const limit = first != null ? first : last != null ? last : 0;
+    const limit = first ?? last ?? 0;
 
     const cursor =
       after != null
@@ -92,7 +92,7 @@ export class ConnectionService {
                     : orderBy.direction === OrderDirection.DESC
                 )
                   ? { $gt: cursor.value }
-                  : { $lt: cursor.value }
+                  : { $lt: cursor.value },
               ),
               typeof idWhere !== "undefined"
                 ? {
@@ -124,7 +124,7 @@ export class ConnectionService {
                 : orderBy.direction === OrderDirection.DESC
             )
               ? QueryOrder.ASC
-              : QueryOrder.DESC
+              : QueryOrder.DESC,
           ),
           {
             id: (
@@ -135,7 +135,7 @@ export class ConnectionService {
               ? QueryOrder.ASC
               : QueryOrder.DESC,
           },
-        ] as Array<QueryOrderMap<E>>,
+        ] as QueryOrderMap<E>[],
       }),
       this.searchService.search(entityClass, query, {
         where,
@@ -180,7 +180,6 @@ export class ConnectionService {
         endCursor: edges[edges.length - 1]?.cursor,
       },
       edges,
-      nodes: edges.map((edge: any) => edge.node),
     };
   }
 }
