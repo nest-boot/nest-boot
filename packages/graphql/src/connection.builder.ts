@@ -22,7 +22,7 @@ import {
 } from "./interfaces";
 
 interface ConnectionBuilderOptions<T> {
-  orderFields: Array<OrderFieldValue<T>>;
+  orderFields: OrderFieldValue<T>[];
 }
 
 interface ConnectionBuildResult<T extends { id: number | string | bigint }> {
@@ -38,7 +38,7 @@ export class ConnectionBuilder<T extends { id: number | string | bigint }> {
 
   constructor(
     private readonly entityClass: Type<T>,
-    private readonly options: ConnectionBuilderOptions<T>
+    private readonly options: ConnectionBuilderOptions<T>,
   ) {
     this.entityName = entityClass.name;
   }
@@ -46,7 +46,7 @@ export class ConnectionBuilder<T extends { id: number | string | bigint }> {
   build(): ConnectionBuildResult<T> {
     @ObjectType(`${this.entityName}Edge`)
     class Edge implements EdgeInterface<T> {
-      @Field(() => this.entityClass, { complexity: 0 })
+      @Field(() => this.entityClass)
       node!: T;
 
       @Field({ complexity: 0 })
@@ -55,11 +55,8 @@ export class ConnectionBuilder<T extends { id: number | string | bigint }> {
 
     @ObjectType(`${this.entityName}Connection`, { isAbstract: true })
     class Connection implements ConnectionInterface<T> {
-      @Field(() => [Edge], { complexity: 0 })
+      @Field(() => [Edge])
       edges!: Edge[];
-
-      @Field(() => [this.entityClass], { complexity: 0 })
-      nodes!: T[];
 
       @Field({ complexity: 0 })
       pageInfo!: PageInfo;
@@ -76,7 +73,7 @@ export class ConnectionBuilder<T extends { id: number | string | bigint }> {
               [_.snakeCase(field.replace(/_/g, ".")).toUpperCase()]: field,
             }),
             // eslint-disable-next-line @typescript-eslint/prefer-reduce-type-parameter
-            {} as any
+            {} as any,
           )
         : undefined;
 

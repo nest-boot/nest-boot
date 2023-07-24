@@ -1,7 +1,6 @@
 import { EntityManager } from "@mikro-orm/postgresql";
 import {
   Args,
-  Complexity,
   ConnectionService,
   ID,
   Query,
@@ -16,7 +15,7 @@ import { Post } from "./post.entity";
 export class PostResolver {
   constructor(
     private readonly em: EntityManager,
-    private readonly connectionService: ConnectionService
+    private readonly connectionService: ConnectionService,
   ) {}
 
   @Query(() => Post)
@@ -24,7 +23,6 @@ export class PostResolver {
     return await this.em.findOneOrFail(Post, { id });
   }
 
-  @Complexity({ multipliers: ["first", "last"] })
   @Query(() => PostConnection)
   async posts(@Args() args: PostConnectionArgs): Promise<PostConnection> {
     return this.connectionService.get(Post, args);
