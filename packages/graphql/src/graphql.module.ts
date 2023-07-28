@@ -36,13 +36,14 @@ export class GraphQLModule extends ConfigurableModuleClass {
   }
 
   private static withBaseGraphQLModule(
-    dynamicModule: DynamicModule
+    dynamicModule: DynamicModule,
   ): DynamicModule {
     const BaseGraphQLDynamicModule = BaseGraphQLModule.forRootAsync({
       driver: ApolloDriver,
       inject: [MODULE_OPTIONS_TOKEN],
-      useFactory: async (options: GraphQLModuleOptions) => {
+      useFactory: (options: GraphQLModuleOptions) => {
         return {
+          playground: false,
           ...options,
           ...(typeof options.subscriptions !== "undefined"
             ? {
