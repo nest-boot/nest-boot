@@ -11,7 +11,7 @@
     "incremental": true,
     "module": "CommonJS",
     "outDir": "./dist",
-    "removeComments": true,
+    "removeComments": false,
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "sourceMap": true,
