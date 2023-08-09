@@ -6,6 +6,7 @@ import {
   Query,
   Resolver,
 } from "@nest-boot/graphql";
+import { NotFoundException } from "@nestjs/common";
 
 import { PostConnection } from "./post.connection";
 import { PostConnectionArgs } from "./post.connection-args";
@@ -20,7 +21,13 @@ export class PostResolver {
 
   @Query(() => Post)
   async post(@Args("id", { type: () => ID }) id: string): Promise<Post> {
-    return await this.em.findOneOrFail(Post, { id });
+    const post = await this.em.findOne(Post, { id });
+
+    if (post === null) {
+      throw new NotFoundException("Post not found");
+    }
+
+    return post;
   }
 
   @Query(() => PostConnection)
