@@ -8,8 +8,11 @@ module.exports = {
     "plugin:@typescript-eslint/stylistic-type-checked",
     "prettier",
   ],
-  plugins: ["simple-import-sort"],
+  plugins: ["@nest-boot", "simple-import-sort"],
   rules: {
+    "@nest-boot/entity-property-no-optional-or-non-null-assertion": "error",
+    "@nest-boot/entity-property-nullable-type": "error",
+
     "@typescript-eslint/restrict-plus-operands": "error",
     "@typescript-eslint/no-unsafe-assignment": "off",
     "@typescript-eslint/no-unsafe-argument": "off",

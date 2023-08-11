@@ -25,17 +25,21 @@ import { type User } from "../user/user.entity";
 @ObjectType()
 @Entity()
 export class Post {
+  constructor(data: Pick<Post, "message" | "user">) {
+    this.message = data.message;
+    this.user = data.user;
+  }
+
   @Field(() => ID)
   @PrimaryKey({
     type: t.uuid,
     defaultRaw: "gen_random_uuid()",
-    onCreate: () => randomUUID(),
   })
-  id!: string;
+  id: string = randomUUID();
 
   @Field({ complexity: 1 })
   @Property()
-  message!: string;
+  message: string;
 
   @Field()
   @Property({ defaultRaw: "now()" })
@@ -45,6 +49,9 @@ export class Post {
   @Property({ defaultRaw: "now()", onUpdate: () => new Date() })
   updatedAt: Date = new Date();
 
-  @ManyToOne()
-  user!: Ref<User>;
+  @Property({ nullable: true })
+  deletedAt: Date | null = null;
+
+  @ManyToOne({ nullable: true })
+  user: Ref<User>;
 }
