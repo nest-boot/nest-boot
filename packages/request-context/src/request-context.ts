@@ -21,7 +21,7 @@ export class RequestContext {
   constructor(private readonly discoveryService: DiscoveryService) {}
 
   // eslint-disable-next-line @typescript-eslint/ban-types
-  get<T>(token: string | symbol | Function | Type<T>): T | null {
+  get<T>(token: string | symbol | Function | Type<T>): T | undefined {
     if (token === DiscoveryService) {
       return this.discoveryService as any;
     }
@@ -34,7 +34,7 @@ export class RequestContext {
         .find((wrapper) => wrapper.token === token)?.instance;
     }
 
-    return service ?? null;
+    return service;
   }
 
   set<T>(typeOrToken: string | symbol | Type<T>, value: T): void {
@@ -54,7 +54,7 @@ export class RequestContext {
   }
 
   // eslint-disable-next-line @typescript-eslint/ban-types
-  static get<T>(key: string | symbol | Function | Type<T>): T | null {
+  static get<T>(key: string | symbol | Function | Type<T>): T | undefined {
     const store = this.storage.getStore() ?? (global as any).__requestContext;
 
     if (typeof store === "undefined") {

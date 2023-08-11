@@ -40,7 +40,7 @@ export class Logger implements LoggerService {
   assign(bindings: Bindings): void {
     const logger = RequestContext.get<PinoLogger>(PINO_LOGGER);
 
-    if (logger === null) {
+    if (typeof logger === "undefined") {
       throw new Error(`Unable to assign extra fields out of request scope`);
     }
 
@@ -52,13 +52,13 @@ export class Logger implements LoggerService {
   }
 
   private get pinoLogger(): PinoLogger {
-    let pinoLogger: PinoLogger | null = null;
+    let pinoLogger: PinoLogger | undefined;
 
     try {
       pinoLogger = RequestContext.get<PinoLogger>(PINO_LOGGER);
     } catch (err) {}
 
-    if (pinoLogger === null) {
+    if (typeof pinoLogger === "undefined") {
       return this.globalLogger ?? (this.globalLogger = pino());
     }
 

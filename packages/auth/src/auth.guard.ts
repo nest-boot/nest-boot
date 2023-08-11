@@ -73,7 +73,7 @@ export class AuthGuard implements CanActivate {
       RequestContext.get<AccessTokenInterface>(AUTH_ACCESS_TOKEN);
 
     // 如果上下文中没有认证信息拒绝访问
-    if (accessToken === null) {
+    if (typeof accessToken === "undefined") {
       throw new UnauthorizedException(this.t("The access token is invalid."));
     }
 
@@ -103,7 +103,7 @@ export class AuthGuard implements CanActivate {
 
     const entity = RequestContext.get<Partial<HasPermissions>>(AUTH_ENTITY);
 
-    if (entity !== null) {
+    if (typeof entity !== "undefined") {
       if (typeof entity.permissions !== "undefined") {
         permissions = permissions.concat(entity.permissions);
       } else {
