@@ -15,7 +15,7 @@ export class Logger implements LoggerService {
 
   private globalLogger?: PinoLogger;
 
-  constructor(@Inject(MODULE_OPTIONS_TOKEN) options: LoggerModuleOptions) {}
+  constructor(@Inject(MODULE_OPTIONS_TOKEN) _options: LoggerModuleOptions) {}
 
   verbose(message: string, ...optionalParams: unknown[]): void {
     this.call("trace", message, ...optionalParams);
@@ -40,7 +40,7 @@ export class Logger implements LoggerService {
   assign(bindings: Bindings): void {
     const logger = RequestContext.get<PinoLogger>(PINO_LOGGER);
 
-    if (typeof logger === "undefined") {
+    if (logger === null) {
       throw new Error(`Unable to assign extra fields out of request scope`);
     }
 
@@ -52,12 +52,13 @@ export class Logger implements LoggerService {
   }
 
   private get pinoLogger(): PinoLogger {
-    let pinoLogger: PinoLogger | undefined;
+    let pinoLogger: PinoLogger | null = null;
+
     try {
       pinoLogger = RequestContext.get<PinoLogger>(PINO_LOGGER);
     } catch (err) {}
 
-    if (typeof pinoLogger === "undefined") {
+    if (pinoLogger === null) {
       return this.globalLogger ?? (this.globalLogger = pino());
     }
 

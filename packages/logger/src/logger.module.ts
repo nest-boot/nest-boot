@@ -45,7 +45,7 @@ export class LoggerModule
       const req = ctx.get<Request>(REQUEST);
       const res = ctx.get<Response>(RESPONSE);
 
-      if (typeof req !== "undefined" && typeof res !== "undefined") {
+      if (req !== null && res !== null) {
         loggerMiddleware(req, res);
         ctx.set(PINO_LOGGER, req.log);
       } else {

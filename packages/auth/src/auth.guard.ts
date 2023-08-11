@@ -30,7 +30,7 @@ export class AuthGuard implements CanActivate {
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly options: AuthModuleOptions,
     private readonly reflector: Reflector,
-    private readonly entityManager: EntityManager
+    private readonly entityManager: EntityManager,
   ) {
     this.reflector = reflector;
   }
@@ -40,7 +40,7 @@ export class AuthGuard implements CanActivate {
   }
 
   public async canActivate(
-    executionContext: ExecutionContext
+    executionContext: ExecutionContext,
   ): Promise<boolean> {
     if (!["http", "graphql"].includes(executionContext.getType())) {
       return true;
@@ -57,11 +57,11 @@ export class AuthGuard implements CanActivate {
     const requireAuth =
       this.reflector.get<boolean>(
         REQUIRE_AUTH_METADATA_KEY,
-        executionContext.getHandler()
+        executionContext.getHandler(),
       ) ??
       this.reflector.get<boolean>(
         REQUIRE_AUTH_METADATA_KEY,
-        executionContext.getClass()
+        executionContext.getClass(),
       );
 
     // 如果默认公开或有公共访问权限直接放行
@@ -73,14 +73,14 @@ export class AuthGuard implements CanActivate {
       RequestContext.get<AccessTokenInterface>(AUTH_ACCESS_TOKEN);
 
     // 如果上下文中没有认证信息拒绝访问
-    if (typeof accessToken === "undefined") {
+    if (accessToken === null) {
       throw new UnauthorizedException(this.t("The access token is invalid."));
     }
 
     // 获取方法权限
     const permissions = this.reflector.get<string[]>(
       PERMISSIONS_METADATA_KEY,
-      executionContext.getHandler()
+      executionContext.getHandler(),
     );
 
     // 如果没有权限要求直接放行
@@ -103,12 +103,12 @@ export class AuthGuard implements CanActivate {
 
     const entity = RequestContext.get<Partial<HasPermissions>>(AUTH_ENTITY);
 
-    if (typeof entity !== "undefined") {
+    if (entity !== null) {
       if (typeof entity.permissions !== "undefined") {
         permissions = permissions.concat(entity.permissions);
       } else {
         const newPermissions = await Reference.create(entity).load(
-          "permissions"
+          "permissions",
         );
 
         if (typeof newPermissions !== "undefined") {
