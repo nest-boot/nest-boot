@@ -1,39 +1,27 @@
 /**
  * @fileoverview 实体字段可为空时属性类型
- * @author 实体字段可为空时属性类型
+ * @author D4rkCr0w
  */
 "use strict";
-
-//------------------------------------------------------------------------------
-// Rule Definition
-//------------------------------------------------------------------------------
 
 /** @type {import('eslint').Rule.RuleModule} */
 module.exports = {
   meta: {
-    type: null, // `problem`, `suggestion`, or `layout`
+    type: "problem",
     docs: {
       description: "实体字段可为空时属性类型",
       recommended: false,
-      url: null, // URL to the documentation page for this rule
+      url: null,
     },
-    fixable: null, // Or `code` or `whitespace`
-    schema: [], // Add a schema if the rule has options
+    fixable: "code",
+    schema: [],
+    messages: {
+      entityPropertyNullable:
+        "@Property({ nullable: true }) 属性类型需包含 null。",
+    },
   },
 
   create(context) {
-    // variables should be defined here
-
-    //----------------------------------------------------------------------
-    // Helpers
-    //----------------------------------------------------------------------
-
-    // any helper functions should go here or else delete this section
-
-    //----------------------------------------------------------------------
-    // Public
-    //----------------------------------------------------------------------
-
     return {
       ClassDeclaration(node) {
         // 检查是否有 @Entity 装饰器
@@ -45,13 +33,13 @@ module.exports = {
         ) {
           // 遍历类属性
           node.body.body.forEach((property) => {
-            // 检查是否有 @Property 装饰器
+            // 检查是否有 @Property() 装饰器
             if (property.type === "PropertyDefinition" && property.decorators) {
               const propertyDecorator = property.decorators.find(
                 (decorator) => decorator.expression.callee.name === "Property",
               );
 
-              // 检查是否有 @Property(nullable: true) 装饰器
+              // 检查 @Property() 装饰器 nullable 参数是否为 true
               if (
                 propertyDecorator &&
                 propertyDecorator.expression.arguments[0] &&
@@ -74,8 +62,23 @@ module.exports = {
                 ) {
                   context.report({
                     node: property,
-                    message:
-                      "@Property({ nullable: true }) 属性类型需包含 null。",
+                    messageId: "entityPropertyNullable",
+                    fix: (fixer) => {
+                      const typeAnnotationStart =
+                        property.typeAnnotation.range[0];
+                      const typeAnnotationEnd =
+                        property.typeAnnotation.range[1];
+                      const originalType = context.sourceCode.getText(
+                        property.typeAnnotation,
+                      );
+
+                      return fixer.replaceTextRange(
+                        [typeAnnotationStart, typeAnnotationEnd],
+                        `${originalType} | null${
+                          property.value ? "" : " = null"
+                        }`,
+                      );
+                    },
                   });
                 }
               }

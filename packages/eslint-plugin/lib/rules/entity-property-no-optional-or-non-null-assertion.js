@@ -1,24 +1,24 @@
 /**
  * @fileoverview 实体字段不能使用可选属性和非空断言
- * @author 实体字段不能使用可选属性和非空断言
+ * @author D4rkCr0w
  */
 "use strict";
-
-//------------------------------------------------------------------------------
-// Rule Definition
-//------------------------------------------------------------------------------
 
 /** @type {import('eslint').Rule.RuleModule} */
 module.exports = {
   meta: {
-    type: null, // `problem`, `suggestion`, or `layout`
+    type: "problem",
     docs: {
       description: "实体字段不能使用可选属性和非空断言",
       recommended: false,
-      url: null, // URL to the documentation page for this rule
+      url: null,
     },
-    fixable: null, // Or `code` or `whitespace`
-    schema: [], // Add a schema if the rule has options
+    fixable: "code",
+    schema: [],
+    messages: {
+      entityPropertyNoOptionalOrNonNullAssertion:
+        "实体字段不能使用可选属性和非空断言。",
+    },
   },
 
   create(context) {
@@ -46,7 +46,28 @@ module.exports = {
               if (property.optional || property.definite) {
                 context.report({
                   node: property,
-                  message: "实体属性不能有 ? 或 ! 断言。",
+                  messageId: "entityPropertyNoOptionalOrNonNullAssertion",
+                  fix: (fixer) => {
+                    const tokenBefore = context.sourceCode.getTokenBefore(
+                      property.key,
+                    );
+                    const propertyStart =
+                      tokenBefore && tokenBefore.range[1] < property.range[0]
+                        ? tokenBefore.range[1]
+                        : property.range[0];
+                    const propertyEnd = property.range[1];
+
+                    // 从属性中移除 ? 或 ! 符号
+                    const fixedPropertyText = context.sourceCode
+                      .getText()
+                      .slice(propertyStart, propertyEnd)
+                      .replace(/\?|!/, "");
+
+                    return fixer.replaceTextRange(
+                      [propertyStart, propertyEnd],
+                      fixedPropertyText,
+                    );
+                  },
                 });
               }
             }

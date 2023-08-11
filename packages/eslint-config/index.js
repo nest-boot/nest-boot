@@ -11,7 +11,7 @@ module.exports = {
   plugins: ["@nest-boot", "simple-import-sort"],
   rules: {
     "@nest-boot/entity-property-no-optional-or-non-null-assertion": "error",
-    "@nest-boot/entity-property-nullable-type": "error",
+    "@nest-boot/entity-property-nullable": "error",
 
     "@typescript-eslint/restrict-plus-operands": "error",
     "@typescript-eslint/no-unsafe-assignment": "off",

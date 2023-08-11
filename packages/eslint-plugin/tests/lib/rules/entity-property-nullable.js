@@ -8,16 +8,15 @@
 // Requirements
 //------------------------------------------------------------------------------
 
-const rule = require("../../../lib/rules/entity-property-nullable-type"),
+const rule = require("../../../lib/rules/entity-property-nullable"),
   RuleTester = require("eslint").RuleTester;
-
 
 //------------------------------------------------------------------------------
 // Tests
 //------------------------------------------------------------------------------
 
 const ruleTester = new RuleTester();
-ruleTester.run("entity-property-nullable-type", rule, {
+ruleTester.run("entity-property-nullable", rule, {
   valid: [
     // give me some code that won't trigger a warning
   ],
