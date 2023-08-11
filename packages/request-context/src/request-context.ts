@@ -5,7 +5,7 @@ import { randomUUID } from "crypto";
 
 type RequestContextMiddleware = <T>(
   ctx: RequestContext,
-  next: () => Promise<T>
+  next: () => Promise<T>,
 ) => Promise<T>;
 
 @Injectable()
@@ -21,7 +21,7 @@ export class RequestContext {
   constructor(private readonly discoveryService: DiscoveryService) {}
 
   // eslint-disable-next-line @typescript-eslint/ban-types
-  get<T>(token: string | symbol | Function | Type<T>): T {
+  get<T>(token: string | symbol | Function | Type<T>): T | null {
     if (token === DiscoveryService) {
       return this.discoveryService as any;
     }
@@ -34,7 +34,7 @@ export class RequestContext {
         .find((wrapper) => wrapper.token === token)?.instance;
     }
 
-    return service;
+    return service ?? null;
   }
 
   set<T>(typeOrToken: string | symbol | Type<T>, value: T): void {
@@ -54,7 +54,7 @@ export class RequestContext {
   }
 
   // eslint-disable-next-line @typescript-eslint/ban-types
-  static get<T>(key: string | symbol | Function | Type<T>): T {
+  static get<T>(key: string | symbol | Function | Type<T>): T | null {
     const store = this.storage.getStore() ?? (global as any).__requestContext;
 
     if (typeof store === "undefined") {
@@ -66,7 +66,7 @@ export class RequestContext {
 
   static async run<T>(
     ctx: RequestContext,
-    callback: (ctx: RequestContext) => T | Promise<T>
+    callback: (ctx: RequestContext) => T | Promise<T>,
   ): Promise<T> {
     let i = 0;
 
