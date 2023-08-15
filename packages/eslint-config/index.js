@@ -10,8 +10,16 @@ module.exports = {
   ],
   plugins: ["@nest-boot", "simple-import-sort"],
   rules: {
-    "@nest-boot/entity-property-no-optional-or-non-null-assertion": "error",
-    "@nest-boot/entity-property-nullable": "error",
+    "no-void": "off",
+    "no-use-before-define": "off",
+
+    // 导入排序
+    "import/order": "off",
+    "simple-import-sort/imports": "error",
+    "simple-import-sort/exports": "error",
+
+    // 总是使用 return await
+    "@typescript-eslint/return-await": ["error", "always"],
 
     "@typescript-eslint/restrict-plus-operands": "error",
     "@typescript-eslint/no-unsafe-assignment": "off",
@@ -27,11 +35,9 @@ module.exports = {
       { allow: ["constructors"] },
     ],
     "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
-    "no-void": "off",
-    "no-use-before-define": "off",
-    "simple-import-sort/imports": "error",
-    "simple-import-sort/exports": "error",
-    "import/order": "off",
+
+    "@nest-boot/entity-property-no-optional-or-non-null-assertion": "error",
+    "@nest-boot/entity-property-nullable": "error",
   },
   parserOptions: {
     sourceType: "module",
