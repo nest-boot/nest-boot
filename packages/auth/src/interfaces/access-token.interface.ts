@@ -15,8 +15,8 @@ export interface AccessTokenInterface {
   entityName: string;
 
   // 最后使用时间
-  lastUsedAt?: Date;
+  lastUsedAt: Date | null;
 
   // 过期时间
-  expiresAt?: Date;
+  expiresAt: Date | null;
 }
