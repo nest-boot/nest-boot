@@ -37,31 +37,47 @@ export default createRule({
           });
 
           if (typeof constructor === "undefined") {
-            // 遍历类属性
-            const requiredPropertyKeys = node.body.body
-              .map((property) => {
-                return property.type === AST_NODE_TYPES.PropertyDefinition &&
-                  property.value === null &&
-                  property.key.type === AST_NODE_TYPES.Identifier
-                  ? property.key.name
-                  : null;
-              })
-              .filter((property) => property !== null);
+            const propertyKeys: { name: string; required: boolean }[] = [];
 
-            if (requiredPropertyKeys.length > 0) {
+            // 遍历类属性
+            node.body.body.forEach((property) => {
+              if (
+                property.type === AST_NODE_TYPES.PropertyDefinition &&
+                property.key.type === AST_NODE_TYPES.Identifier
+              ) {
+                propertyKeys.push({
+                  name: property.key.name,
+                  required: property.value === null,
+                });
+              }
+            });
+
+            if (propertyKeys.length > 0) {
               context.report({
                 node,
                 messageId: "entityConstructor",
                 fix(fixer) {
                   const constructorCode = /* typescript */ `
-                    constructor(data: Pick<${
-                      node.id.name
-                    }, ${requiredPropertyKeys
-                      .map((key) => `"${key}"`)
-                      .join(` | `)}>) {
-                      ${requiredPropertyKeys
-                        .map((key) => `this.${key} = data.${key}`)
-                        .join(`;\n`)};
+                    constructor(data: Pick<${node.id?.name}, ${propertyKeys
+                      .filter((key) => key.required)
+                      .map((key) => `"${key.name}"`)
+                      .join(` | `)}> & Partial<Pick<${node.id
+                      ?.name}, ${propertyKeys
+                      .filter((key) => !key.required)
+                      .map((key) => `"${key.name}"`)
+                      .join(` | `)}>>) {
+                      ${propertyKeys
+                        .filter((key) => key.required)
+                        .map((key) => `this.${key.name} = data.${key.name};`)
+                        .join(`\n`)}
+                      
+                      ${propertyKeys
+                        .filter((key) => !key.required)
+                        .map(
+                          (key) =>
+                            `data.${key.name} !== void 0 && (this.${key.name} = data.${key.name});`,
+                        )
+                        .join(`\n`)}
                     }
                   `;
 

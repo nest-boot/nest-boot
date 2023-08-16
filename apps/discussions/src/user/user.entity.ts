@@ -7,32 +7,51 @@ import { UserPermission } from "./enums/permission.enum";
 @ObjectType()
 @Entity()
 export class User {
+  constructor(
+    data: Pick<
+      User,
+      "id" | "name" | "email" | "avatar" | "password" | "invitationCode"
+    > &
+      Partial<Pick<User, "permissions" | "createdAt" | "updatedAt">>,
+  ) {
+    this.id = data.id;
+    this.name = data.name;
+    this.email = data.email;
+    this.avatar = data.avatar;
+    this.password = data.password;
+    this.invitationCode = data.invitationCode;
+
+    data.permissions !== void 0 && (this.permissions = data.permissions);
+    data.createdAt !== void 0 && (this.createdAt = data.createdAt);
+    data.updatedAt !== void 0 && (this.updatedAt = data.updatedAt);
+  }
+
   @Field(() => ID)
   @PrimaryKey({
     type: t.uuid,
     defaultRaw: "gen_random_uuid()",
     onCreate: () => randomUUID(),
   })
-  id!: string;
+  id: string;
 
   @Field()
   @Property()
-  name!: string;
+  name: string;
 
   @Field()
   @Property({ unique: true })
-  email!: string;
+  email: string;
 
   @Field({ nullable: true })
   @Property()
-  avatar?: string;
+  avatar: string;
 
   @Property({ type: "text" })
-  password?: string;
+  password: string;
 
   @Field({ nullable: true })
   @Property({ type: "text" })
-  invitationCode?: string;
+  invitationCode: string;
 
   @Field(() => [UserPermission])
   @Property({ type: "array", defaultRaw: "array[]::varchar[]" })

@@ -25,12 +25,18 @@ import { type User } from "../user/user.entity";
 @ObjectType()
 @Entity()
 export class Post {
-  constructor(data: Pick<Post, "message" | "user">) {
-    this.message = data.message;
-    this.user = data.user;
-  }
+  
+                    constructor(data: Pick<Post, "message" | "user"> & Partial<Pick<Post, "id" | "createdAt" | "updatedAt" | "deletedAt">>) {
+                      this.message = data.message;
+this.user = data.user;
+                      
+                      data.id !== void 0 && (this.id = data.id);
+data.createdAt !== void 0 && (this.createdAt = data.createdAt);
+data.updatedAt !== void 0 && (this.updatedAt = data.updatedAt);
+data.deletedAt !== void 0 && (this.deletedAt = data.deletedAt);
+                    }
 
-  @Field(() => ID)
+                  @Field(() => ID)
   @PrimaryKey({
     type: t.uuid,
     defaultRaw: "gen_random_uuid()",
