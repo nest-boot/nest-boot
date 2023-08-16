@@ -19,15 +19,15 @@ export class PostResolver {
     private readonly connectionService: ConnectionService,
   ) {}
 
-  @Query(() => Boolean, { nullable: true })
-  async post(@Args("id", { type: () => ID }) id: string): Promise<typeof ID> {
+  @Query(() => Post)
+  async post(@Args("id", { type: () => ID }) id: string): Promise<Post> {
     const post = await this.em.findOne(Post, { id });
 
     if (post === null) {
       throw new NotFoundException("Post not found");
     }
 
-    return "123";
+    return post;
   }
 
   @Query(() => PostConnection)
