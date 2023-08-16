@@ -20,7 +20,7 @@ export class PostResolver {
   ) {}
 
   @Query(() => Post)
-  async post(@Args("id", { type: () => ID }) id: string): Promise<Post> {
+  async post(@Args("id", { type: () => ID }) id: string) {
     const post = await this.em.findOne(Post, { id });
 
     if (post === null) {
