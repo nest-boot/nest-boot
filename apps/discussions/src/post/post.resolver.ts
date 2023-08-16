@@ -32,6 +32,6 @@ export class PostResolver {
 
   @Query(() => PostConnection)
   async posts(@Args() args: PostConnectionArgs): Promise<PostConnection> {
-    return this.connectionService.get(Post, args);
+    return await this.connectionService.get(Post, args);
   }
 }

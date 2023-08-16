@@ -1,17 +1,12 @@
-/**
- * @fileoverview 实体字段不能使用可选属性和非空断言
- * @author D4rkCr0w
- */
-"use strict";
+import { AST_NODE_TYPES } from "@typescript-eslint/utils";
 
-/** @type {import('eslint').Rule.RuleModule} */
-module.exports = {
+import { createRule } from "../utils/createRule";
+
+export default createRule({
   meta: {
     type: "problem",
     docs: {
       description: "实体字段不能使用可选属性和非空断言",
-      recommended: false,
-      url: null,
     },
     fixable: "code",
     schema: [],
@@ -20,26 +15,33 @@ module.exports = {
         "实体字段不能使用可选属性和非空断言。",
     },
   },
-
+  defaultOptions: [{}],
   create(context) {
     return {
       ClassDeclaration(node) {
-        // 检查是否有 @Entity 装饰器
         if (
-          node.decorators &&
-          node.decorators.some(
-            (decorator) => decorator.expression.callee.name === "Entity",
-          )
+          node.decorators.some((decorator) => {
+            return (
+              decorator.expression.type === AST_NODE_TYPES.CallExpression &&
+              decorator.expression.callee.type === AST_NODE_TYPES.Identifier &&
+              decorator.expression.callee.name === "Entity"
+            );
+          })
         ) {
           // 遍历类属性
           node.body.body.forEach((property) => {
             // 检查是否有 @Property、@ManyToOne 或 @PrimaryKey 装饰器
             if (
-              property.type === "PropertyDefinition" &&
+              property.type === AST_NODE_TYPES.PropertyDefinition &&
               property.decorators &&
               property.decorators.some((decorator) => {
-                return ["Property", "ManyToOne", "PrimaryKey"].includes(
-                  decorator.expression.callee.name,
+                return (
+                  decorator.expression.type === AST_NODE_TYPES.CallExpression &&
+                  decorator.expression.callee.type ===
+                    AST_NODE_TYPES.Identifier &&
+                  ["Property", "ManyToOne", "PrimaryKey"].includes(
+                    decorator.expression.callee.name,
+                  )
                 );
               })
             ) {
@@ -76,4 +78,4 @@ module.exports = {
       },
     };
   },
-};
+});
