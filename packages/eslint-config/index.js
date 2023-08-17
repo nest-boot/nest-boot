@@ -39,8 +39,8 @@ module.exports = {
     "@nest-boot/entity-constructor": "error",
     "@nest-boot/entity-property-no-optional-or-non-null-assertion": "error",
     "@nest-boot/entity-property-nullable": "error",
+    "@nest-boot/graphql-field-arguments-match-property-type": "error",
     "@nest-boot/graphql-resolver-method-return-type": "error",
-    "@nest-boot/entity-property-field": "error",
   },
   parserOptions: {
     sourceType: "module",
