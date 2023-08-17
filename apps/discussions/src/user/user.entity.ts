@@ -34,19 +34,20 @@ export class User {
   })
   id: string;
 
-  @Field()
-  @Property()
-  name: string;
+  @Field(() => String, {nullable: true})
+  @Property({nullable: true})
+  name: string | null;
 
-  @Field()
+  @Field(() => Number)
   @Property({ unique: true })
-  email: string;
+  email: number | undefined;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @Property()
-  avatar: string;
+  avatar: boolean | null;
 
-  @Property({ type: "text" })
+  @Field()
+  @Property({ type: "text", nullable: true })
   password: string;
 
   @Field({ nullable: true })
