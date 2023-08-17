@@ -50,18 +50,25 @@ export default createRule({
               }
 
                // 检查属性类型是否是联合类型且 @Field 没有加类型
-               if (propertyDecorator.expression?.arguments?.findIndex(item => item.type === 'ArrowFunctionExpression') === -1) {
+               if (
+                property.typeAnnotation?.type === AST_NODE_TYPES.TSTypeAnnotation &&
+                property.typeAnnotation.typeAnnotation.type === AST_NODE_TYPES.TSUnionType &&
+                propertyDecorator.expression.type === AST_NODE_TYPES.CallExpression &&
+                propertyDecorator.expression.arguments?.findIndex(item => item.type === 'ArrowFunctionExpression') === -1) {
 
-                const nonemptyTypes = property.typeAnnotation?.typeAnnotation?.types?.filter(item => ![AST_NODE_TYPES.TSNullKeyword, AST_NODE_TYPES.TSUndefinedKeyword].includes(item.type))
+                const nonemptyTypes = property.typeAnnotation.typeAnnotation.types.filter(item => ![AST_NODE_TYPES.TSNullKeyword, AST_NODE_TYPES.TSUndefinedKeyword].includes(item.type))
+
                 // 是否有非空类型
-                if (nonemptyTypes?.length) {
+                if (nonemptyTypes.length) {
                   context.report({
                     node: property,
                     messageId: "entityPropertyFieldType",
                     fix: (fixer) => {
                       const typeAnnotationStart = property.range[0];
 
-                     return fixer.insertTextAfterRange([typeAnnotationStart, typeAnnotationStart + '@Field('.length], `() => ${nonemptyTypes[0].type.replace(/TS|Keyword/g, '')}${propertyDecorator.expression?.arguments?.length? ', ': ""}`)
+                     return fixer.insertTextAfterRange([typeAnnotationStart, typeAnnotationStart + '@Field('.length], `() => ${nonemptyTypes[0].type.replace(/TS|Keyword/g, '')}${
+                      propertyDecorator.expression.type === AST_NODE_TYPES.CallExpression &&
+                      propertyDecorator.expression.arguments.length ? ', ' : ""}`)
                     },
                   });
                  }
