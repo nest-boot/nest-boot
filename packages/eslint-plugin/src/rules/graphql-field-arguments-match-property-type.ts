@@ -26,7 +26,9 @@ export default createRule({
     schema: [],
     messages: {
       fieldArgumentsMatchPropertyType:
-        "@Field() 装饰器参数需要和字段类型相符。",
+        "@Field() 装饰器类型需要和字段类型声明相符。",
+      propertyNoExplicitTypeDeclaration:
+        "属性未显式类型声明时 @Field() 装饰器需要提供类型。",
     },
   },
   defaultOptions: [{}],
@@ -65,79 +67,121 @@ export default createRule({
                 return;
               }
 
-              // 检查属性类型是否是联合类型且 @Field 没有加类型
+              // 检查 @Field 装饰器是否声明类型
               if (
-                property.typeAnnotation?.type ===
-                  AST_NODE_TYPES.TSTypeAnnotation &&
-                property.typeAnnotation.typeAnnotation.type ===
-                  AST_NODE_TYPES.TSUnionType &&
                 propertyDecorator.expression.type ===
                   AST_NODE_TYPES.CallExpression &&
                 propertyDecorator.expression.arguments[0]?.type !==
                   AST_NODE_TYPES.ArrowFunctionExpression
               ) {
-                const typeAnnotation =
-                  property.typeAnnotation.typeAnnotation.types.find(
-                    (item) =>
-                      ![
-                        AST_NODE_TYPES.TSNullKeyword,
-                        AST_NODE_TYPES.TSUndefinedKeyword,
-                      ].includes(item.type),
-                  );
-
-                if (typeof typeAnnotation !== "undefined") {
-                  const propertyTypeAnnotationHasNullType =
-                    property.typeAnnotation.typeAnnotation.types.some(
-                      (item) => item.type === AST_NODE_TYPES.TSNullKeyword,
-                    );
-
-                  const propertyTypeName =
-                    astTypeAlias[typeAnnotation.type] ??
-                    (typeAnnotation.type === AST_NODE_TYPES.TSTypeReference &&
-                    typeAnnotation.typeName.type === AST_NODE_TYPES.Identifier
-                      ? typeAnnotation.typeName.name
-                      : typeAnnotation.type);
-
-                  console.log(
-                    "typeAnnotation",
-                    propertyTypeAnnotationHasNullType,
-                    propertyTypeName,
-                  );
+                if (
+                  typeof property.typeAnnotation === "undefined" &&
+                  property.value !== null &&
+                  property.value.type === AST_NODE_TYPES.Literal
+                ) {
+                  const propertyTypeName = typeof property.value.value;
 
                   const expectedScalarType =
                     Object.entries(scalarTypeAlias).find(
                       ([, value]) => value === propertyTypeName,
                     )?.[0] ?? propertyTypeName;
 
-                  context.report({
-                    node: property,
-                    messageId: "fieldArgumentsMatchPropertyType",
-                    fix: (fixer) => {
-                      const fixes = [];
+                  if (typeof expectedScalarType !== "undefined") {
+                    context.report({
+                      node: property,
+                      messageId: "propertyNoExplicitTypeDeclaration",
+                      fix: (fixer) => {
+                        const fixes = [];
 
-                      if (["Int", "Float"].includes(expectedScalarType)) {
+                        if (["Int", "Float"].includes(expectedScalarType)) {
+                          fixes.push(
+                            fixer.insertTextBeforeRange(
+                              [0, 0],
+                              `import { ${expectedScalarType} } from "@nestjs/graphql";\n`,
+                            ),
+                          );
+                        }
+
                         fixes.push(
-                          fixer.insertTextBeforeRange(
-                            [0, 0],
-                            `import { ${expectedScalarType} } from "@nestjs/graphql";\n`,
+                          fixer.replaceText(
+                            propertyDecorator,
+                            `@Field(() => ${expectedScalarType})`,
                           ),
                         );
-                      }
 
-                      fixes.push(
-                        fixer.replaceText(
-                          propertyDecorator,
-                          `@Field(() => ${expectedScalarType}${
-                            propertyTypeAnnotationHasNullType
-                              ? ", { nullable: true }"
-                              : ""
-                          })`,
-                        ),
+                        return fixes;
+                      },
+                    });
+                  }
+                } else if (
+                  property.typeAnnotation?.type ===
+                    AST_NODE_TYPES.TSTypeAnnotation &&
+                  property.typeAnnotation.typeAnnotation.type ===
+                    AST_NODE_TYPES.TSUnionType
+                ) {
+                  const typeAnnotation =
+                    property.typeAnnotation.typeAnnotation.types.find(
+                      (item) =>
+                        ![
+                          AST_NODE_TYPES.TSNullKeyword,
+                          AST_NODE_TYPES.TSUndefinedKeyword,
+                        ].includes(item.type),
+                    );
+
+                  if (typeof typeAnnotation !== "undefined") {
+                    const propertyTypeAnnotationHasNullType =
+                      property.typeAnnotation.typeAnnotation.types.some(
+                        (item) => item.type === AST_NODE_TYPES.TSNullKeyword,
                       );
 
-                      return fixes;
-                    },
-                  });
+                    const propertyTypeName =
+                      astTypeAlias[typeAnnotation.type] ??
+                      (typeAnnotation.type === AST_NODE_TYPES.TSTypeReference &&
+                      typeAnnotation.typeName.type === AST_NODE_TYPES.Identifier
+                        ? typeAnnotation.typeName.name
+                        : typeAnnotation.type);
+
+                    console.log(
+                      "typeAnnotation",
+                      propertyTypeAnnotationHasNullType,
+                      propertyTypeName,
+                    );
+
+                    const expectedScalarType =
+                      Object.entries(scalarTypeAlias).find(
+                        ([, value]) => value === propertyTypeName,
+                      )?.[0] ?? propertyTypeName;
+
+                    context.report({
+                      node: property,
+                      messageId: "fieldArgumentsMatchPropertyType",
+                      fix: (fixer) => {
+                        const fixes = [];
+
+                        if (["Int", "Float"].includes(expectedScalarType)) {
+                          fixes.push(
+                            fixer.insertTextBeforeRange(
+                              [0, 0],
+                              `import { ${expectedScalarType} } from "@nestjs/graphql";\n`,
+                            ),
+                          );
+                        }
+
+                        fixes.push(
+                          fixer.replaceText(
+                            propertyDecorator,
+                            `@Field(() => ${expectedScalarType}${
+                              propertyTypeAnnotationHasNullType
+                                ? ", { nullable: true }"
+                                : ""
+                            })`,
+                          ),
+                        );
+
+                        return fixes;
+                      },
+                    });
+                  }
                 }
               }
             }
