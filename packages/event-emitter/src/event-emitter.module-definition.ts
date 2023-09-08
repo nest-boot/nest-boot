@@ -10,13 +10,9 @@ export const {
   OPTIONS_TYPE,
   ASYNC_OPTIONS_TYPE,
 } = new ConfigurableModuleBuilder<RedisOptions>()
-  .setExtras(
-    {
-      isGlobal: true,
-    },
-    (definition, extras) => ({
-      ...definition,
-      global: extras.isGlobal,
-    }),
-  )
+  .setClassMethodName("forRoot")
+  .setExtras({}, (definition) => ({
+    ...definition,
+    global: true,
+  }))
   .build();
