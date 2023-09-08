@@ -34,7 +34,7 @@ export class EventEmitterHealthIndicator extends HealthIndicator {
       await promiseTimeout(
         timeout,
         (async () => {
-          const info = parse(await this.eventEmitterManager.redis.info());
+          const info = parse(await this.eventEmitterManager.subscriber.info());
 
           const currentMemoryMaximumUtilization =
             info.maxmemory === "0"
