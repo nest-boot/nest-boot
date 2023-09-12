@@ -22,27 +22,27 @@
     "test": "jest"
   },
   "dependencies": {
-    "prettier": "^3.0.0",
-    "sql-formatter": "^12.2.3"
+    "prettier": "^3.0.3",
+    "sql-formatter": "^13.0.0"
   },
   "devDependencies": {
-    "@mikro-orm/core": "^5.7.13",
-    "@mikro-orm/migrations": "^5.7.13",
-    "@mikro-orm/nestjs": "^5.2.0",
-    "@mikro-orm/reflection": "^5.7.13",
+    "@mikro-orm/core": "^5.8.0",
+    "@mikro-orm/migrations": "^5.8.0",
+    "@mikro-orm/nestjs": "^5.2.1",
+    "@mikro-orm/reflection": "^5.8.0",
     "@nest-boot/eslint-config": "workspace:*",
     "@nest-boot/health-check": "workspace:*",
     "@nest-boot/request-context": "workspace:*",
     "@nest-boot/tsconfig": "workspace:*",
-    "@nestjs/common": "^10.1.0",
-    "@nestjs/core": "^10.1.0",
-    "@types/node": "^20.4.2",
-    "eslint": "^8.45.0",
-    "jest": "^29.6.1",
+    "@nestjs/common": "^10.2.5",
+    "@nestjs/core": "^10.2.5",
+    "@types/node": "^20.6.0",
+    "eslint": "^8.49.0",
+    "jest": "^29.7.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
     "ts-jest": "^29.1.1",
-    "typescript": "^5.1.6"
+    "typescript": "^5.2.2"
   },
   "peerDependencies": {
     "@mikro-orm/core": "^5.0.0",

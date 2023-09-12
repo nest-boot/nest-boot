@@ -25,11 +25,11 @@ export class PostgresqlSearchEngine implements SearchEngine {
   async search<E extends { id: number | string | bigint }>(
     entityClass: EntityClass<E>,
     query: string,
-    options?: SearchOptions<E>
-  ): Promise<[Array<E["id"]>, number]> {
+    options?: SearchOptions<E>,
+  ): Promise<[E["id"][], number]> {
     const searchableOptions: SearchableOptions<E> = Reflect.getMetadata(
       SEARCHABLE_OPTIONS,
-      entityClass
+      entityClass,
     );
 
     if (typeof searchableOptions === "undefined") {
@@ -53,7 +53,7 @@ export class PostgresqlSearchEngine implements SearchEngine {
         ]).reduce((result, field) => {
           const prop = _.get(
             metadata.properties,
-            (field as string).split(".").join(".targetMeta.properties.")
+            (field as string).split(".").join(".targetMeta.properties."),
           );
 
           if (typeof prop !== "undefined") {
@@ -86,7 +86,7 @@ export class PostgresqlSearchEngine implements SearchEngine {
                 array: prop.array,
                 fulltext: metadata.indexes.some(
                   ({ type, properties }) =>
-                    properties === field && type === "fulltext"
+                    properties === field && type === "fulltext",
                 ),
                 filterable:
                   searchableOptions?.filterableFields?.includes(field),
@@ -98,6 +98,7 @@ export class PostgresqlSearchEngine implements SearchEngine {
 
           return result;
         }, {}),
+        aliases: searchableOptions?.aliasFields,
       }) as FilterQuery<E>;
 
       if (Object.keys(queryWhere).length !== 0) {
@@ -131,7 +132,7 @@ export class PostgresqlSearchEngine implements SearchEngine {
                 .select("1")
                 .andWhere(where)
                 .limit(limit)
-            : this.em.createQueryBuilder(entityClass).select("1").limit(limit)
+            : this.em.createQueryBuilder(entityClass).select("1").limit(limit),
         )
         .count(),
     ]);

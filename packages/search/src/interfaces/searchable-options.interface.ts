@@ -28,6 +28,7 @@ export type Field<T, D extends Prev[number] = 3> = [D] extends [never]
 
 export interface SearchableOptions<T> {
   index?: string;
-  filterableFields?: Array<Field<T>>;
-  searchableFields?: Array<Field<T>>;
+  aliasFields?: Record<string, Field<T>>;
+  filterableFields?: Field<T>[];
+  searchableFields?: Field<T>[];
 }

@@ -15,14 +15,14 @@
     "update:eslint-docs": "eslint-doc-generator"
   },
   "dependencies": {
-    "@typescript-eslint/utils": "^6.4.0"
+    "@typescript-eslint/utils": "^6.7.0"
   },
   "devDependencies": {
-    "eslint": "^8.19.0",
-    "eslint-doc-generator": "^1.0.0",
-    "mocha": "^10.0.0",
+    "eslint": "^8.49.0",
+    "eslint-doc-generator": "^1.4.3",
+    "mocha": "^10.2.0",
     "npm-run-all": "^4.1.5",
-    "typescript": "^5.1.6"
+    "typescript": "^5.2.2"
   },
   "peerDependencies": {
     "eslint": "^8.0.0"
