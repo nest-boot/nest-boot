@@ -14,11 +14,11 @@
     "dist"
   ],
   "scripts": {
-    "build": "nest build",
+    "build": "nest build -p tsconfig.build.json",
     "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist",
     "dev": "nest build --watch",
     "lint": "eslint \"{src,test}/**/*.ts\" --fix",
-    "test": "jest"
+    "test": "jest --config ./test/jest-e2e.json --runInBand"
   },
   "dependencies": {
     "lodash": "^4.17.21",

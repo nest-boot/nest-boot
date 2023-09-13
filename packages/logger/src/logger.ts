@@ -1,13 +1,13 @@
 import { RequestContext } from "@nest-boot/request-context";
 import { Inject, Injectable, type LoggerService, Scope } from "@nestjs/common";
+import { INQUIRER } from "@nestjs/core";
 import pino, {
   type Bindings,
   type Level,
   type Logger as PinoLogger,
 } from "pino";
 
-import { MODULE_OPTIONS_TOKEN, PINO_LOGGER } from "./logger.module-definition";
-import { LoggerModuleOptions } from "./logger-module-options.interface";
+import { PINO_LOGGER } from "./logger.module-definition";
 
 @Injectable({ scope: Scope.TRANSIENT })
 export class Logger implements LoggerService {
@@ -15,7 +15,17 @@ export class Logger implements LoggerService {
 
   private globalLogger?: PinoLogger;
 
-  constructor(@Inject(MODULE_OPTIONS_TOKEN) _options: LoggerModuleOptions) {}
+  constructor(@Inject(INQUIRER) private parentClass: object) {
+    this.setContext(this.parentClass?.constructor?.name);
+  }
+
+  getContext(): string | undefined {
+    return this.context;
+  }
+
+  setContext(context: string): void {
+    this.context = context;
+  }
 
   verbose(message: string, ...optionalParams: unknown[]): void {
     this.call("trace", message, ...optionalParams);
@@ -45,10 +55,6 @@ export class Logger implements LoggerService {
     }
 
     RequestContext.set(PINO_LOGGER, logger.child(bindings));
-  }
-
-  setContext(context: string): void {
-    this.context = context;
   }
 
   private get pinoLogger(): PinoLogger {
