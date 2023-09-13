@@ -1,6 +1,5 @@
 import { Injectable, type NestMiddleware } from "@nestjs/common";
-import { DiscoveryService } from "@nestjs/core";
-import { type Request, type Response } from "express";
+import { type NextFunction, type Request, type Response } from "express";
 
 import { RequestContext } from "./request-context";
 import {
@@ -10,15 +9,13 @@ import {
 
 @Injectable()
 export class RequestContextMiddleware implements NestMiddleware {
-  constructor(private readonly discoveryService: DiscoveryService) {}
-
-  async use(req: Request, res: Response, next: () => void): Promise<void> {
-    const ctx = new RequestContext(this.discoveryService);
+  async use(req: Request, res: Response, next: NextFunction): Promise<void> {
+    const ctx = new RequestContext();
 
     ctx.set<Request>(CTX_REQUEST_TOKEN, req);
     ctx.set<Response>(CTX_RESPONSE_TOKEN, res);
 
-    void RequestContext.run(ctx, () => {
+    await RequestContext.run(ctx, () => {
       next();
     });
   }
