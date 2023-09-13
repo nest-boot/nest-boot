@@ -1,4 +1,4 @@
-import { repl } from "@nestjs/core";
+import { repl } from "@nest-boot/request-context";
 
 import { AppModule } from "./app.module";
 
