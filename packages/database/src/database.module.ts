@@ -1,7 +1,4 @@
-import {
-  MikroORM,
-  RequestContext as MikroORMRequestContext,
-} from "@mikro-orm/core";
+import { EntityManager, MikroORM } from "@mikro-orm/core";
 import {
   type EntityName,
   MikroOrmModule,
@@ -70,6 +67,11 @@ export class DatabaseModule
           ...withBaseConfig(options),
           autoLoadEntities: false,
           registerRequestContext: false,
+          context: () => {
+            if (RequestContext.isActive()) {
+              return RequestContext.get(EntityManager);
+            }
+          },
           loggerFactory:
             options.debug === true
               ? (options) => new DatabaseLogger(options, logger)
@@ -88,16 +90,13 @@ export class DatabaseModule
   onModuleInit(): void {
     if (typeof this.healthCheckRegistry !== "undefined") {
       this.healthCheckRegistry.register(async () =>
-        this.healthIndicator.pingCheck("database"),
+        await this.healthIndicator.pingCheck("database"),
       );
     }
 
-    RequestContext.registerMiddleware(async (_, next) => {
-      return await new Promise((resolve, reject) => {
-        MikroORMRequestContext.create(this.orm.em, () => {
-          next().then(resolve).catch(reject);
-        });
-      });
+    RequestContext.registerMiddleware(async (ctx, next) => {
+      ctx.set(EntityManager, this.orm.em.fork({ useContext: true }));
+      return await next();
     });
   }
 }

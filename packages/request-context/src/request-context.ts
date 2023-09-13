@@ -26,27 +26,31 @@ export class RequestContext {
     this.container.set(typeOrToken, value);
   }
 
-  static set<T>(key: string | symbol | Type<T>, value: T): void {
-    const store = this.storage.getStore();
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  static get<T>(key: string | symbol | Function | Type<T>): T | undefined {
+    const ctx = this.storage.getStore();
 
-    if (typeof store === "undefined") {
-      throw new Error("Failed to get the context");
+    if (typeof ctx === "undefined") {
+      throw new Error("Request context is not active");
+    }
+
+    return ctx.get(key);
+  }
+
+  static set<T>(key: string | symbol | Type<T>, value: T): void {
+    const ctx = this.storage.getStore();
+
+    if (typeof ctx === "undefined") {
+      throw new Error("Request context is not active");
     }
 
     if (typeof key !== "undefined") {
-      store.set(key, value);
+      ctx.set(key, value);
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/ban-types
-  static get<T>(key: string | symbol | Function | Type<T>): T | undefined {
-    const store = this.storage.getStore();
-
-    if (typeof store === "undefined") {
-      throw new Error("Failed to get the context");
-    }
-
-    return store.get(key);
+  static isActive(): boolean {
+    return !!this.storage.getStore();
   }
 
   static async run<T>(
