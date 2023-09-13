@@ -1,5 +1,4 @@
 import { Injectable, type Type } from "@nestjs/common";
-import { DiscoveryService } from "@nestjs/core";
 import { AsyncLocalStorage } from "async_hooks";
 import { randomUUID } from "crypto";
 
@@ -18,23 +17,9 @@ export class RequestContext {
 
   private static readonly middlewares: RequestContextMiddleware[] = [];
 
-  constructor(private readonly discoveryService: DiscoveryService) {}
-
   // eslint-disable-next-line @typescript-eslint/ban-types
   get<T>(token: string | symbol | Function | Type<T>): T | undefined {
-    if (token === DiscoveryService) {
-      return this.discoveryService as any;
-    }
-
-    let service = this.container.get(token);
-
-    if (typeof service === "undefined") {
-      service = this.discoveryService
-        .getProviders()
-        .find((wrapper) => wrapper.token === token)?.instance;
-    }
-
-    return service;
+    return this.container.get(token);
   }
 
   set<T>(typeOrToken: string | symbol | Type<T>, value: T): void {
@@ -42,7 +27,7 @@ export class RequestContext {
   }
 
   static set<T>(key: string | symbol | Type<T>, value: T): void {
-    const store = this.storage.getStore() ?? (global as any).__requestContext;
+    const store = this.storage.getStore();
 
     if (typeof store === "undefined") {
       throw new Error("Failed to get the context");
@@ -55,7 +40,7 @@ export class RequestContext {
 
   // eslint-disable-next-line @typescript-eslint/ban-types
   static get<T>(key: string | symbol | Function | Type<T>): T | undefined {
-    const store = this.storage.getStore() ?? (global as any).__requestContext;
+    const store = this.storage.getStore();
 
     if (typeof store === "undefined") {
       throw new Error("Failed to get the context");

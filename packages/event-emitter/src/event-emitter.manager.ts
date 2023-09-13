@@ -105,7 +105,7 @@ export class EventEmitterManager
 
       this.listeners.forEach((listener) => {
         if (listener.name === name) {
-          const ctx = new RequestContext(this.discoveryService);
+          const ctx = new RequestContext();
           void RequestContext.run(ctx, async () => {
             await listener.handle(data);
           });

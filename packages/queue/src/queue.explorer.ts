@@ -102,7 +102,7 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
   async processor(...args: Parameters<ProcessorFunction>): Promise<void> {
     const [job] = args;
 
-    const ctx = new RequestContext(this.discoveryService);
+    const ctx = new RequestContext();
     ctx.set("job", job);
 
     const processor = this.processors.get(job.name)?.processor;
