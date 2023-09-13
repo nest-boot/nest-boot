@@ -1,9 +1,9 @@
 import { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 
-import { AppModule } from "../src/app.module";
-import { CUSTOM_CONTENT_NAME } from "../src/constants";
-import { TestService } from "../src/test.service";
+import { AppModule } from "./src/app.module";
+import { CUSTOM_CONTENT_NAME } from "./src/constants";
+import { TestService } from "./src/test.service";
 
 describe("LoggerModule - e2e", () => {
   let app: INestApplication;

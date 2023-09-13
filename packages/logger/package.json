@@ -14,11 +14,15 @@
     "dist"
   ],
   "scripts": {
-    "build": "nest build -p tsconfig.build.json",
+    "build": "nest build",
     "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist",
     "dev": "nest build --watch",
     "lint": "eslint \"{src,test}/**/*.ts\" --fix",
-    "test": "jest --config ./test/jest-e2e.json --runInBand"
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage",
+    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
+    "test:e2e": "jest --config test/jest-e2e.ts --runInBand"
   },
   "dependencies": {
     "lodash": "^4.17.21",
@@ -59,19 +63,6 @@
       "prettier --write",
       "eslint --fix"
     ]
-  },
-  "jest": {
-    "moduleFileExtensions": [
-      "js",
-      "json",
-      "ts"
-    ],
-    "testRegex": ".test.ts$",
-    "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
-    },
-    "coverageDirectory": "./coverage",
-    "testEnvironment": "node"
   },
   "volta": {
     "extends": "../../package.json"
