@@ -16,7 +16,7 @@ const DatabaseDynamicModule = DatabaseModule.forRootAsync({
     driver: PostgreSqlDriver,
     host: config.get("DATABASE_HOST"),
     port: config.get("DATABASE_PORT"),
-    dbName: config.get("DATABASE_NAME"),
+    dbName: `search-fulltext-with-postgresql_${config.get("DATABASE_NAME")}`,
     name: config.get("DATABASE_USERNAME"),
     password: config.get("DATABASE_PASSWORD"),
   }),

@@ -29,7 +29,7 @@ describe("App (e2e)", () => {
     await seeder.seed(DatabaseSeeder);
 
     await app.init();
-  });
+  }, 60000);
 
   it("不指定字段搜索", async () => {
     return await request(app.getHttpServer())
@@ -86,6 +86,7 @@ describe("App (e2e)", () => {
   });
 
   afterAll(async () => {
+    await orm.getSchemaGenerator().dropDatabase();
     await app.close();
   });
 });
