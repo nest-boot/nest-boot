@@ -72,7 +72,7 @@ npm i @nest-boot/auth
      @Post("login")
      async login(
        @Body("email") email: string,
-       @Body("password") password: string
+       @Body("password") password: string,
      ): Promise<{ user: User; token: PersonalAccessToken }> {
        const token = await this.authService.login(email, password);
        return { user: await token.user.load(), token };

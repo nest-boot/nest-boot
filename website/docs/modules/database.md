@@ -65,7 +65,7 @@ import { EntityManager } from "@mikro-orm/postgresql";
 export class MyService {
   constructor(
     private readonly orm: MikroORM,
-    private readonly em: EntityManager
+    private readonly em: EntityManager,
   ) {}
 }
 ```
