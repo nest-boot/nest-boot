@@ -2,7 +2,7 @@
 sidebar_position: 2
 ---
 
-# 日志
+# 日志 Logger
 
 Nest Boot 使用 pino 作为底层记录器，所以仅支持 JSON 格式日志。
 

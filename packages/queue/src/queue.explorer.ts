@@ -9,13 +9,20 @@ import {
   createContextId,
   DiscoveryService,
   MetadataScanner,
+  ModuleRef,
   Reflector,
 } from "@nestjs/core";
 import { Injector } from "@nestjs/core/injector/injector";
+import { InstanceWrapper } from "@nestjs/core/injector/instance-wrapper";
 import { MetricsTime, Worker } from "bullmq";
 
+import {
+  ConsumerDecorator,
+  ConsumerOptions,
+} from "./decorators/consumer.decorator";
 import { type ProcessorFunction } from "./interfaces/processor-function.interface";
 import { type ProcessorMetadataOptions } from "./interfaces/processor-metadata-options.interface";
+import { QueueConsumer } from "./interfaces/queue-consumer.interface";
 import { Queue } from "./queue";
 import { PROCESSOR_METADATA_KEY } from "./queue.module-definition";
 
@@ -33,10 +40,16 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
 
   readonly workers = new Map<string, Worker>();
 
+  readonly consumers = new Map<
+    string,
+    ConsumerOptions & { consume: QueueConsumer["consume"] }
+  >();
+
   constructor(
     private readonly reflector: Reflector,
     private readonly discoveryService: DiscoveryService,
     private readonly metadataScanner: MetadataScanner,
+    private readonly moduleRef: ModuleRef,
   ) {}
 
   discoveryJobs(): void {
@@ -87,6 +100,48 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
     });
   }
 
+  discoveryConsumer(): void {
+    this.discoveryService
+      .getProviders()
+      .forEach((wrapper: InstanceWrapper<QueueConsumer>) => {
+        const { host, instance } = wrapper;
+
+        if (
+          typeof host !== "undefined" &&
+          typeof instance?.constructor !== "undefined"
+        ) {
+          const consumerOptions = this.reflector.get(
+            ConsumerDecorator,
+            instance?.constructor,
+          );
+
+          if (typeof consumerOptions !== "undefined") {
+            const isRequestScoped = !wrapper.isDependencyTreeStatic();
+
+            this.consumers.set(consumerOptions.name, {
+              ...consumerOptions,
+              consume: isRequestScoped
+                ? async (job) => {
+                    const contextId = createContextId();
+
+                    this.moduleRef.registerRequestByContextId(job, contextId);
+
+                    const contextInstance = await this.injector.loadPerContext(
+                      instance,
+                      host,
+                      host.providers,
+                      contextId,
+                    );
+
+                    await contextInstance.consume(job);
+                  }
+                : instance.consume.bind(instance),
+            });
+          }
+        }
+      });
+  }
+
   discoveryQueues(): void {
     this.discoveryService.getProviders().forEach((wrapper) => {
       const { instance } = wrapper;
@@ -123,11 +178,31 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
           : []),
       ]);
     }
+
+    const consumer = this.consumers.get(job.name);
+
+    if (typeof consumer !== "undefined") {
+      await Promise.race([
+        RequestContext.run(ctx, async () => {
+          await consumer.consume(job);
+        }),
+        ...(typeof job.opts.timeout !== "undefined"
+          ? [
+              new Promise<void>((resolve, reject) => {
+                setTimeout(() => {
+                  reject(new Error("Job processing timeout"));
+                }, job.opts.timeout);
+              }),
+            ]
+          : []),
+      ]);
+    }
   }
 
   onModuleInit(): void {
     this.discoveryJobs();
     this.discoveryQueues();
+    this.discoveryConsumer();
 
     [...this.queues.entries()].forEach(([name, queue]) => {
       const worker = new Worker(name, this.processor.bind(this), {
@@ -138,14 +213,14 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
         ...queue.opts,
       });
 
-      worker.on("failed", (job, err) => {
-        this.logger.error("queue job failed", {
-          err,
-          ...(typeof job !== "undefined"
-            ? { queueName: job.queueName, jobName: job.name, jobId: job.id }
-            : {}),
-        });
-      });
+      // worker.on("failed", (job, err) => {
+      //   this.logger.error("queue job failed", {
+      //     err,
+      //     ...(typeof job !== "undefined"
+      //       ? { queueName: job.queueName, jobName: job.name, jobId: job.id }
+      //       : {}),
+      //   });
+      // });
 
       this.workers.set(name, worker);
     });

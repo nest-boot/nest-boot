@@ -14,11 +14,10 @@ export const {
   .setExtras(
     {
       name: "default",
-      isGlobal: true,
     },
     (definition, extras) => ({
+      ...extras,
       ...definition,
-      global: extras.isGlobal,
-    })
+    }),
   )
   .build();

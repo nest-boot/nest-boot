@@ -19,6 +19,7 @@
     "build:packages": "turbo run build --filter=./packages/*",
     "clean": "turbo run clean && rm -rf node_modules",
     "dev": "turbo run dev --filter=./packages/* --no-cache --parallel --continue",
+    "dev:website": "turbo run dev --filter=website",
     "test": "turbo run test",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "lint": "turbo run lint --filter=./packages/*",

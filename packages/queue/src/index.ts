@@ -1,3 +1,4 @@
+export * from "./decorators/consumer.decorator";
 export * from "./decorators/inject-queue.decorator";
 export * from "./decorators/processor.decorator";
 export * from "./interfaces/bulk-job-options.interface";
@@ -5,6 +6,7 @@ export * from "./interfaces/job.interface";
 export * from "./interfaces/job-options.interface";
 export * from "./interfaces/processor-function.interface";
 export * from "./interfaces/processor-metadata-options.interface";
+export * from "./interfaces/queue-consumer.interface";
 export * from "./interfaces/queue-module-options.interface";
 export * from "./interfaces/worker-options.interface";
 export * from "./queue";
