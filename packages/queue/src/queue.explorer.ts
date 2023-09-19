@@ -8,7 +8,6 @@ import {
 import {
   createContextId,
   DiscoveryService,
-  MetadataScanner,
   ModuleRef,
   Reflector,
 } from "@nestjs/core";
@@ -16,91 +15,43 @@ import { Injector } from "@nestjs/core/injector/injector";
 import { InstanceWrapper } from "@nestjs/core/injector/instance-wrapper";
 import { MetricsTime, Worker } from "bullmq";
 
-import {
-  ConsumerDecorator,
-  ConsumerOptions,
-} from "./decorators/consumer.decorator";
-import { type ProcessorFunction } from "./interfaces/processor-function.interface";
-import { type ProcessorMetadataOptions } from "./interfaces/processor-metadata-options.interface";
-import { QueueConsumer } from "./interfaces/queue-consumer.interface";
+import { ConsumerDecorator, ProcessorDecorator } from "./decorators";
+import { Job, JobProcessor, type ProcessorFunction } from "./interfaces";
+import { QueueConsumer } from "./interfaces";
 import { Queue } from "./queue";
-import { PROCESSOR_METADATA_KEY } from "./queue.module-definition";
 
 @Injectable()
 export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
   private readonly logger = new Logger(QueueExplorer.name);
   private readonly injector = new Injector();
 
-  readonly processors = new Map<
-    string,
-    ProcessorMetadataOptions & { processor: ProcessorFunction }
-  >();
+  readonly queueMap = new Map<string, Queue>();
 
-  readonly queues = new Map<string, Queue>();
+  readonly workerMap = new Map<string, Worker>();
 
-  readonly workers = new Map<string, Worker>();
+  readonly consumerMap = new Map<string, ProcessorFunction>();
 
-  readonly consumers = new Map<
-    string,
-    ConsumerOptions & { consume: QueueConsumer["consume"] }
-  >();
+  readonly processorMap = new Map<string, Map<string, ProcessorFunction>>();
 
   constructor(
     private readonly reflector: Reflector,
     private readonly discoveryService: DiscoveryService,
-    private readonly metadataScanner: MetadataScanner,
     private readonly moduleRef: ModuleRef,
   ) {}
 
-  discoveryJobs(): void {
+  discoveryQueues(): void {
     this.discoveryService.getProviders().forEach((wrapper) => {
-      const { host, instance } = wrapper;
+      const { instance } = wrapper;
 
-      if (typeof instance === "object" && instance !== null) {
-        this.metadataScanner
-          .getAllMethodNames(Object.getPrototypeOf(instance))
-          .forEach((key) => {
-            if (
-              typeof host !== "undefined" &&
-              typeof instance.constructor.name === "string"
-            ) {
-              const metadataOptions =
-                this.reflector.get<ProcessorMetadataOptions>(
-                  PROCESSOR_METADATA_KEY,
-                  instance[key],
-                );
+      if (instance instanceof Queue) {
+        this.queueMap.set(instance.name, instance);
 
-              if (typeof metadataOptions !== "undefined") {
-                const isRequestScoped = !wrapper.isDependencyTreeStatic();
-
-                this.processors.set(metadataOptions.name, {
-                  ...metadataOptions,
-                  processor: isRequestScoped
-                    ? async (job) => {
-                        const contextId = createContextId();
-
-                        const contextInstance =
-                          await this.injector.loadPerContext(
-                            instance,
-                            host,
-                            host.providers,
-                            contextId,
-                          );
-
-                        return contextInstance[key](job);
-                      }
-                    : (job) => instance[key](job),
-                });
-
-                this.logger.log(`Processor ${metadataOptions.name} discovered`);
-              }
-            }
-          });
+        this.logger.log(`Queue ${instance.name} discovered`);
       }
     });
   }
 
-  discoveryConsumer(): void {
+  discoveryConsumers(): void {
     this.discoveryService
       .getProviders()
       .forEach((wrapper: InstanceWrapper<QueueConsumer>) => {
@@ -110,125 +61,203 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
           typeof host !== "undefined" &&
           typeof instance?.constructor !== "undefined"
         ) {
-          const consumerOptions = this.reflector.get(
+          const metadata = this.reflector.get(
             ConsumerDecorator,
             instance?.constructor,
           );
 
-          if (typeof consumerOptions !== "undefined") {
+          if (typeof metadata !== "undefined") {
+            const queue = this.queueMap.get(metadata.queue);
+
+            if (typeof queue === "undefined") {
+              throw new Error(
+                `Queue ${metadata.queue} not found for consumer ${instance?.constructor.name}`,
+              );
+            }
+
             const isRequestScoped = !wrapper.isDependencyTreeStatic();
 
-            this.consumers.set(consumerOptions.name, {
-              ...consumerOptions,
-              consume: isRequestScoped
-                ? async (job) => {
-                    const contextId = createContextId();
+            this.consumerMap.set(
+              metadata.queue,
+              this.wrapRequestContext(
+                this.wrapTimeout(
+                  isRequestScoped
+                    ? async (job) => {
+                        const contextId = createContextId();
 
-                    this.moduleRef.registerRequestByContextId(job, contextId);
+                        this.moduleRef.registerRequestByContextId(
+                          job,
+                          contextId,
+                        );
 
-                    const contextInstance = await this.injector.loadPerContext(
-                      instance,
-                      host,
-                      host.providers,
-                      contextId,
-                    );
+                        const contextInstance =
+                          await this.injector.loadPerContext(
+                            instance,
+                            host,
+                            host.providers,
+                            contextId,
+                          );
 
-                    await contextInstance.consume(job);
-                  }
-                : instance.consume.bind(instance),
-            });
+                        await contextInstance.consume(job);
+                      }
+                    : instance.consume.bind(instance),
+                ),
+              ),
+            );
           }
         }
       });
   }
 
-  discoveryQueues(): void {
-    this.discoveryService.getProviders().forEach((wrapper) => {
-      const { instance } = wrapper;
+  discoveryProcessors(): void {
+    this.discoveryService
+      .getProviders()
+      .forEach((wrapper: InstanceWrapper<JobProcessor>) => {
+        const { host, instance } = wrapper;
 
-      if (instance instanceof Queue) {
-        this.queues.set(instance.name, instance);
+        if (
+          typeof host !== "undefined" &&
+          typeof instance?.constructor !== "undefined"
+        ) {
+          const metadata = this.reflector.get(
+            ProcessorDecorator,
+            instance?.constructor,
+          );
 
-        this.logger.log(`Queue ${instance.name} discovered`);
+          if (typeof metadata !== "undefined") {
+            const queue = this.queueMap.get(metadata.queue);
+
+            if (typeof queue === "undefined") {
+              throw new Error(
+                `Queue ${metadata.queue} not found for processor ${instance?.constructor.name}`,
+              );
+            }
+
+            const isRequestScoped = !wrapper.isDependencyTreeStatic();
+
+            const processors =
+              this.processorMap.get(metadata.queue) ??
+              new Map<string, ProcessorFunction>();
+
+            processors.set(
+              metadata.name,
+              this.wrapRequestContext(
+                this.wrapTimeout(
+                  isRequestScoped
+                    ? async (job) => {
+                        const contextId = createContextId();
+
+                        this.moduleRef.registerRequestByContextId(
+                          job,
+                          contextId,
+                        );
+
+                        const contextInstance =
+                          await this.injector.loadPerContext(
+                            instance,
+                            host,
+                            host.providers,
+                            contextId,
+                          );
+
+                        await contextInstance.process(job);
+                      }
+                    : instance.process.bind(instance),
+                ),
+              ),
+            );
+
+            this.processorMap.set(metadata.queue, processors);
+          }
+        }
+      });
+  }
+
+  createWorkers(): void {
+    [...this.queueMap.entries()].forEach(([name, queue]) => {
+      const consumer = this.consumerMap.get(name);
+      const processors = this.processorMap.get(name);
+
+      if (
+        typeof consumer !== "undefined" ||
+        typeof processors !== "undefined"
+      ) {
+        this.workerMap.set(
+          name,
+          new Worker(
+            name,
+            async (job) => {
+              const processor = processors?.get(job.name);
+
+              if (typeof processor !== "undefined") {
+                await processor(job);
+              } else if (typeof consumer !== "undefined") {
+                await consumer(job);
+              } else {
+                throw new Error(
+                  `Processor ${job.name} not found for queue ${name}`,
+                );
+              }
+            },
+            {
+              autorun: false,
+              metrics: {
+                maxDataPoints: MetricsTime.TWO_WEEKS,
+              },
+              ...queue.opts,
+            },
+          ),
+        );
+
+        this.logger.log(`Worker ${name} created`);
       }
     });
   }
 
-  async processor(...args: Parameters<ProcessorFunction>): Promise<void> {
-    const [job] = args;
+  wrapRequestContext(processor: ProcessorFunction) {
+    return async (job: Job) => {
+      const ctx = new RequestContext();
+      ctx.set("job", job);
 
-    const ctx = new RequestContext();
-    ctx.set("job", job);
-
-    const processor = this.processors.get(job.name)?.processor;
-
-    if (typeof processor === "function") {
-      await Promise.race([
-        RequestContext.run(ctx, async () => {
-          await processor(...args);
-        }),
-        ...(typeof job.opts.timeout !== "undefined"
-          ? [
-              new Promise<void>((resolve, reject) => {
-                setTimeout(() => {
-                  reject(new Error("Job processing timeout"));
-                }, job.opts.timeout);
-              }),
-            ]
-          : []),
-      ]);
-    }
-
-    const consumer = this.consumers.get(job.name);
-
-    if (typeof consumer !== "undefined") {
-      await Promise.race([
-        RequestContext.run(ctx, async () => {
-          await consumer.consume(job);
-        }),
-        ...(typeof job.opts.timeout !== "undefined"
-          ? [
-              new Promise<void>((resolve, reject) => {
-                setTimeout(() => {
-                  reject(new Error("Job processing timeout"));
-                }, job.opts.timeout);
-              }),
-            ]
-          : []),
-      ]);
-    }
+      await RequestContext.run(ctx, async () => {
+        await processor(job);
+      });
+    };
   }
 
-  onModuleInit(): void {
-    this.discoveryJobs();
+  wrapTimeout(processor: ProcessorFunction) {
+    return async (job: Job) => {
+      let timer: NodeJS.Timeout | undefined;
+
+      await Promise.race([
+        (async () => {
+          await processor(job);
+          clearTimeout(timer);
+        })(),
+        ...(typeof job.opts.timeout !== "undefined"
+          ? [
+              new Promise<void>((resolve, reject) => {
+                timer = setTimeout(() => {
+                  reject(new Error("Job processing timeout"));
+                }, job.opts.timeout);
+              }),
+            ]
+          : []),
+      ]);
+    };
+  }
+
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async onModuleInit(): Promise<void> {
     this.discoveryQueues();
-    this.discoveryConsumer();
-
-    [...this.queues.entries()].forEach(([name, queue]) => {
-      const worker = new Worker(name, this.processor.bind(this), {
-        autorun: false,
-        metrics: {
-          maxDataPoints: MetricsTime.ONE_MONTH,
-        },
-        ...queue.opts,
-      });
-
-      // worker.on("failed", (job, err) => {
-      //   this.logger.error("queue job failed", {
-      //     err,
-      //     ...(typeof job !== "undefined"
-      //       ? { queueName: job.queueName, jobName: job.name, jobId: job.id }
-      //       : {}),
-      //   });
-      // });
-
-      this.workers.set(name, worker);
-    });
+    this.discoveryConsumers();
+    this.discoveryProcessors();
+    this.createWorkers();
   }
 
   async onApplicationShutdown(): Promise<void> {
     await Promise.all(
-      [...this.queues.entries()].map(async ([name, queue]) => {
+      [...this.queueMap.entries()].map(async ([name, queue]) => {
         await queue.close();
 
         this.logger.log(`Queue ${name} closed`);
@@ -236,7 +265,7 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
     );
 
     await Promise.all(
-      [...this.workers.entries()].map(async ([name, worker]) => {
+      [...this.workerMap.entries()].map(async ([name, worker]) => {
         await worker.close();
 
         this.logger.log(`Worker ${name} closed`);

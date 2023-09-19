@@ -22,6 +22,7 @@ import { ConfigService } from "@nestjs/config";
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     QueueModule.registerAsync({
+      name: "audio",
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         connection: {
@@ -39,15 +40,19 @@ export class AppModule {}
 
 ## 生产者
 
-要添加作业到队列，您需要使用 `Queue` 实例。您可以通过注入 `Queue` 实例来实现此目的。
+要添加作业到队列，您需要使用 `Queue` 实例。您可以通过 `@InjectQueue()` 装饰器来注入 `Queue` 实例。
 
 ```typescript
 import { Controller, Post } from "@nestjs/common";
 import { Queue } from "bullmq";
+import { InjectQueue } from "./inject-queue.decorator";
 
 @Controller("audio")
-export class AudioController {
-  constructor(private readonly queue: Queue) {}
+export class TaskService {
+  constructor(
+    @InjectQueue("audio")
+    private readonly queue: Queue,
+  ) {}
 
   @Post("transcode")
   async transcode() {
@@ -60,14 +65,14 @@ export class AudioController {
 
 ## 消费者
 
-消费者是一个定义方法的类，这些方法要么处理添加到队列中的作业，要么监听队列上的事件，或者两者兼而有之。使用 `@Consumer()` 装饰器声明一个消费者类，如下所示：
+使用 `@Consumer()` 装饰器声明一个消费者类，如下所示：
 
 ```typescript
 import { Logger } from "@nestjs/common";
 import { Job, Consumer, QueueConsumer } from "@nest-boot/queue";
 
-@Consumer("transcode")
-export class TranscodeConsumer implements QueueConsumer {
+@Consumer("audio")
+export class AudioConsumer implements QueueConsumer {
   private readonly logger = new Logger(TranscodeConsumer.name);
 
   consume(job: Job) {
@@ -87,8 +92,8 @@ export class TranscodeConsumer implements QueueConsumer {
 import { Logger, REQUEST } from "@nestjs/common";
 import { Job, Consumer, Consumer } from "@nest-boot/queue";
 
-@Consumer("transcode", { scope: Scope.REQUEST })
-export class TranscodeConsumer {
+@Consumer("audio", { scope: Scope.REQUEST })
+export class AudioConsumer {
   private readonly logger = new Logger(TranscodeConsumer.name);
 
   constructor(@Inject(REQUEST) job: Job) {}

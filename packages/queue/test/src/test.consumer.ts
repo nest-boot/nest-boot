@@ -1,11 +1,12 @@
 import { Consumer, Job, QueueConsumer } from "../../src";
-import { TEST_JOB_NAME } from "./constants";
+import { TEST_QUEUE_NAME } from "./constants";
 
-@Consumer(TEST_JOB_NAME)
+@Consumer(TEST_QUEUE_NAME)
 export class TestConsumer implements QueueConsumer {
   job?: Job;
 
-  consume(job: Job): void | Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async consume(job: Job): Promise<void> {
     this.job = job;
   }
 }

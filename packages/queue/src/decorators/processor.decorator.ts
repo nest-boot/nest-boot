@@ -1,15 +1,22 @@
-import { SetMetadata } from "@nestjs/common";
+import { Injectable, InjectableOptions, Scope, Type } from "@nestjs/common";
+import { Reflector } from "@nestjs/core";
 
-import { type ProcessorMetadataOptions } from "../interfaces/processor-metadata-options.interface";
-import { PROCESSOR_METADATA_KEY } from "../queue.module-definition";
+import { JobProcessor } from "../interfaces";
 
-export const Processor =
-  (name: string): MethodDecorator =>
-  <T>(
-    target: object,
-    propertyKey: string | symbol,
-    descriptor: TypedPropertyDescriptor<T>
-  ) =>
-    SetMetadata<string, ProcessorMetadataOptions>(PROCESSOR_METADATA_KEY, {
+export const ProcessorDecorator = Reflector.createDecorator<{
+  name: string;
+  queue: string;
+}>();
+
+export const Processor = (
+  name: string,
+  options?: InjectableOptions & { queue?: string },
+) => {
+  return <T extends Type<JobProcessor>>(target: T) => {
+    Injectable({ scope: options?.scope ?? Scope.DEFAULT })(target);
+    ProcessorDecorator({
       name,
-    })(target, propertyKey, descriptor);
+      queue: options?.queue ?? "default",
+    })(target);
+  };
+};

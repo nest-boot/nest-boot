@@ -2,8 +2,11 @@ import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 
 import { QueueModule } from "../../src";
+import { TEST_QUEUE_NAME, TEST_REQUEST_SCOPED_QUEUE_NAME } from "./constants";
 import { TestConsumer } from "./test.consumer";
+import { TestProcessor } from "./test.processor";
 import { TestRequestScopedConsumer } from "./test-request-scoped.consumer";
+import { TestRequestScopedProcessor } from "./test-request-scoped.processor";
 
 @Module({
   imports: [
@@ -19,7 +22,36 @@ import { TestRequestScopedConsumer } from "./test-request-scoped.consumer";
         },
       }),
     }),
+    QueueModule.registerAsync({
+      name: TEST_QUEUE_NAME,
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        connection: {
+          host: configService.get("REDIS_HOST"),
+          port: configService.get("REDIS_PORT"),
+          username: configService.get("REDIS_USERNAME"),
+          password: configService.get("REDIS_PASSWORD"),
+        },
+      }),
+    }),
+    QueueModule.registerAsync({
+      name: TEST_REQUEST_SCOPED_QUEUE_NAME,
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        connection: {
+          host: configService.get("REDIS_HOST"),
+          port: configService.get("REDIS_PORT"),
+          username: configService.get("REDIS_USERNAME"),
+          password: configService.get("REDIS_PASSWORD"),
+        },
+      }),
+    }),
   ],
-  providers: [TestConsumer, TestRequestScopedConsumer],
+  providers: [
+    TestConsumer,
+    TestRequestScopedConsumer,
+    TestProcessor,
+    TestRequestScopedProcessor,
+  ],
 })
 export class AppModule {}
