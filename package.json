@@ -28,9 +28,6 @@
     "debug:publish": "pnpm publish -r --dry-run --no-git-checks"
   },
   "devDependencies": {
-    "@nest-boot/eslint-config": "workspace:*",
-    "@nest-boot/eslint-plugin": "workspace:*",
-    "@nest-boot/tsconfig": "workspace:*",
     "@semrel-extra/npm": "^1.2.2",
     "commitizen": "^4.3.0",
     "cz-conventional-changelog": "^3.3.0",

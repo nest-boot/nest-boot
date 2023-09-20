@@ -32,6 +32,7 @@
     "remove": "^0.1.5"
   },
   "devDependencies": {
+    "@nest-boot/eslint-plugin": "workspace:*",
     "@nest-boot/eslint-config": "workspace:*",
     "@nest-boot/request-context": "workspace:*",
     "@nest-boot/tsconfig": "workspace:*",

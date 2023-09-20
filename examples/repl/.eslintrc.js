@@ -1,11 +1,6 @@
 module.exports = {
-  extends: ['@nest-boot/eslint-config'],
-  overrides: [
-    {
-      files: ['*.ts'],
-      parserOptions: {
-        project: ['tsconfig.json'],
-      },
-    },
-  ],
+  extends: ["@nest-boot/eslint-config"],
+  parserOptions: {
+    project: ["tsconfig.json"],
+  },
 };

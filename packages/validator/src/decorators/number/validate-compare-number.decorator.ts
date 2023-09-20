@@ -16,7 +16,7 @@ export enum Comparator {
 export function ValidateCompareNumber(
   comparator: Comparator,
   compareProperty: string,
-  validationOptions?: ValidationOptions
+  validationOptions?: ValidationOptions,
 ): PropertyDecorator {
   return (target: object, propertyName: string | symbol) => {
     if (typeof propertyName === "string") {
@@ -57,10 +57,11 @@ export function ValidateCompareNumber(
             }
           },
           defaultMessage(args) {
-            const { property, constraints } = args as ValidationArguments;
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const { property, constraints } = args!;
             const [innerComparator, innerCompareProperty] = constraints as [
               string,
-              string
+              string,
             ];
 
             return t(`validation:is-${innerComparator.toLowerCase()}`, {

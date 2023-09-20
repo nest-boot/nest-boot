@@ -35,8 +35,8 @@ export class RedisModule
 
   onModuleInit(): void {
     if (typeof this.healthCheckRegistry !== "undefined") {
-      this.healthCheckRegistry.register(async () =>
-        this.healthIndicator.pingCheck("redis"),
+      this.healthCheckRegistry.register(
+        async () => await this.healthIndicator.pingCheck("redis"),
       );
     }
   }
