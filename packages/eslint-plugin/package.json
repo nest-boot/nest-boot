@@ -15,9 +15,10 @@
     "update:eslint-docs": "eslint-doc-generator"
   },
   "dependencies": {
-    "@typescript-eslint/utils": "^6.7.0"
+    "@typescript-eslint/utils": "^6.7.2"
   },
   "devDependencies": {
+    "@nest-boot/tsconfig": "workspace:*",
     "eslint": "^8.49.0",
     "eslint-doc-generator": "^1.4.3",
     "mocha": "^10.2.0",
