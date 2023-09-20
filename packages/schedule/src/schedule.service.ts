@@ -1,28 +1,47 @@
-import { InjectQueue, Queue } from "@nest-boot/queue";
-import { Injectable, Logger, type OnModuleInit } from "@nestjs/common";
+import { Consumer, InjectQueue, Job, Queue } from "@nest-boot/queue";
+import { Logger, type OnApplicationBootstrap } from "@nestjs/common";
 import { DiscoveryService, MetadataScanner, Reflector } from "@nestjs/core";
 import ms from "ms";
 
-import { getScheduleProcessorName } from "./get-schedule-processor-name.util";
-import { SCHEDULE_METADATA_KEY } from "./schedule.module-definition";
-import { type ScheduleMetadataOptions } from "./schedule-metadata-options.interface";
+import {
+  SCHEDULE_METADATA_KEY,
+  SCHEDULE_QUEUE_NAME,
+} from "./schedule.module-definition";
+import { type ScheduleOptions } from "./schedule-options.interface";
 
-@Injectable()
-export class ScheduleService implements OnModuleInit {
+@Consumer(SCHEDULE_QUEUE_NAME)
+export class ScheduleService implements OnApplicationBootstrap {
   private readonly logger = new Logger(ScheduleService.name);
 
-  private readonly schedules = new Map<string, ScheduleMetadataOptions>();
+  private readonly schedules = new Map<
+    string,
+    {
+      handler: () => Promise<void>;
+      options: ScheduleOptions;
+    }
+  >();
 
   constructor(
-    @InjectQueue("schedule")
+    @InjectQueue(SCHEDULE_QUEUE_NAME)
     private readonly queue: Queue,
     private readonly reflector: Reflector,
     private readonly discoveryService: DiscoveryService,
     private readonly metadataScanner: MetadataScanner,
   ) {}
 
-  discoverySchedules() {
-    this.discoveryService.getProviders().forEach((wrapper) => {
+  async consume(job: Job) {
+    const schedule = this.schedules.get(job.name);
+
+    if (typeof schedule !== "undefined") {
+      await schedule.handler();
+    }
+  }
+
+  private discoverySchedules() {
+    [
+      ...this.discoveryService.getControllers(),
+      ...this.discoveryService.getProviders(),
+    ].forEach((wrapper) => {
       if (typeof wrapper.instance === "object" && wrapper.instance !== null) {
         const { instance } = wrapper;
 
@@ -30,14 +49,16 @@ export class ScheduleService implements OnModuleInit {
           .getAllMethodNames(Object.getPrototypeOf(instance))
           .forEach((key) => {
             if (typeof instance.constructor.name === "string") {
-              const scheduleMetadataOptions: ScheduleMetadataOptions =
-                this.reflector.get(SCHEDULE_METADATA_KEY, instance[key]);
+              const options: ScheduleOptions = this.reflector.get(
+                SCHEDULE_METADATA_KEY,
+                instance[key],
+              );
 
-              if (typeof scheduleMetadataOptions !== "undefined") {
-                this.schedules.set(
-                  getScheduleProcessorName(instance, key),
-                  scheduleMetadataOptions,
-                );
+              if (typeof options !== "undefined") {
+                this.schedules.set(`${instance.constructor.name}.${key}`, {
+                  handler: instance[key].bind(instance),
+                  options,
+                });
               }
             }
           });
@@ -45,15 +66,16 @@ export class ScheduleService implements OnModuleInit {
     });
   }
 
-  async cleanUnregisteredSchedules(): Promise<void> {
+  private async cleanUnregisteredSchedules(): Promise<void> {
     const repeatableJobs = await this.queue.getRepeatableJobs();
 
     await Promise.all(
       repeatableJobs
         .filter(
           (repeatableJob) =>
-            this.schedules.get(repeatableJob.name)?.value.toString() !==
-            repeatableJob.pattern,
+            this.schedules
+              .get(repeatableJob.name)
+              ?.options?.value.toString() !== repeatableJob.pattern,
         )
         .map(async (repeatableJob) => {
           await this.queue.removeRepeatableByKey(repeatableJob.key);
@@ -65,10 +87,15 @@ export class ScheduleService implements OnModuleInit {
     );
   }
 
-  async registerSchedules(): Promise<void> {
+  private async registerSchedules(): Promise<void> {
     await Promise.all(
       [...this.schedules.entries()].map(
-        async ([name, { type, value, timezone }]) => {
+        async ([
+          name,
+          {
+            options: { type, value, timezone },
+          },
+        ]) => {
           await this.queue.add(
             name,
             {},
@@ -90,11 +117,9 @@ export class ScheduleService implements OnModuleInit {
     );
   }
 
-  async onModuleInit(): Promise<void> {
+  async onApplicationBootstrap(): Promise<void> {
     this.discoverySchedules();
-
     await this.cleanUnregisteredSchedules();
-
     await this.registerSchedules();
   }
 }

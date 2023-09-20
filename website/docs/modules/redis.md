@@ -2,4 +2,4 @@
 sidebar_position: 9
 ---
 
-# Redis
+# 缓存 Redis

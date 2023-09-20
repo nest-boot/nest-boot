@@ -1,20 +1,18 @@
-import { Queue as BaseQueue } from "bullmq";
+import { Queue as BullQueue } from "bullmq";
 
-import { type BulkJobOptions } from "./interfaces/bulk-job-options.interface";
-import { type Job } from "./interfaces/job.interface";
-import { type JobOptions } from "./interfaces/job-options.interface";
+import { BulkJobOptions, Job, JobOptions } from "./interfaces";
 
 export class Queue<
   DataType = any,
   ResultType = any,
   NameType extends string = string,
-> extends BaseQueue<DataType, ResultType, NameType> {
+> extends BullQueue<DataType, ResultType, NameType> {
   async add(
     name: NameType,
     data: DataType,
     opts?: JobOptions,
   ): Promise<Job<DataType, ResultType, NameType>> {
-    return super.add(name, data, opts);
+    return await super.add(name, data, opts);
   }
 
   async addBulk(

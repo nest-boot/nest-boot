@@ -1,9 +1,5 @@
 import { t } from "@nest-boot/i18n";
-import {
-  registerDecorator,
-  type ValidationArguments,
-  type ValidationOptions,
-} from "class-validator";
+import { registerDecorator, type ValidationOptions } from "class-validator";
 
 export interface ArrayLengthOptions extends ValidationOptions {
   min?: number;
@@ -14,7 +10,7 @@ function arrayLengthMessage(
   value: unknown,
   property: string,
   min?: number,
-  max?: number
+  max?: number,
 ): string {
   if (Array.isArray(value)) {
     if (typeof min !== "undefined" && typeof max !== "undefined") {
@@ -49,7 +45,7 @@ function arrayLengthMessage(
 }
 
 export function ArrayLength(
-  validationOptions: ArrayLengthOptions
+  validationOptions: ArrayLengthOptions,
 ): PropertyDecorator {
   return (target: object, propertyName: string | symbol) => {
     if (typeof propertyName === "string") {
@@ -77,7 +73,8 @@ export function ArrayLength(
             return false;
           },
           defaultMessage(args) {
-            const { value, property } = args as ValidationArguments;
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const { value, property } = args!;
             const { min, max } = validationOptions;
             return arrayLengthMessage(value, property, min, max);
           },

@@ -19,6 +19,7 @@
     "build:packages": "turbo run build --filter=./packages/*",
     "clean": "turbo run clean && rm -rf node_modules",
     "dev": "turbo run dev --filter=./packages/* --no-cache --parallel --continue",
+    "dev:website": "turbo run dev --filter=website",
     "test": "turbo run test",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "lint": "turbo run lint --filter=./packages/*",
@@ -27,9 +28,6 @@
     "debug:publish": "pnpm publish -r --dry-run --no-git-checks"
   },
   "devDependencies": {
-    "@nest-boot/eslint-config": "workspace:*",
-    "@nest-boot/eslint-plugin": "workspace:*",
-    "@nest-boot/tsconfig": "workspace:*",
     "@semrel-extra/npm": "^1.2.2",
     "commitizen": "^4.3.0",
     "cz-conventional-changelog": "^3.3.0",
@@ -38,7 +36,7 @@
     "lint-staged": "^14.0.1",
     "multi-semantic-release": "^3.0.2",
     "prettier": "^3.0.3",
-    "turbo": "^1.10.13"
+    "turbo": "^1.10.14"
   },
   "lint-staged": {
     "*.md": [

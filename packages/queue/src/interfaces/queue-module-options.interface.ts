@@ -1,3 +1,3 @@
 import { type WorkerOptions } from "bullmq";
 
-export interface QueueModuleOptions extends WorkerOptions {}
+export type QueueModuleOptions = WorkerOptions;

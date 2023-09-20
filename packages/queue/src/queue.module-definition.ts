@@ -1,9 +1,6 @@
 import { ConfigurableModuleBuilder } from "@nestjs/common";
-import { randomUUID } from "crypto";
 
-import { type QueueModuleOptions } from "./interfaces/queue-module-options.interface";
-
-export const PROCESSOR_METADATA_KEY = randomUUID();
+import { type QueueModuleOptions } from "./interfaces";
 
 export const {
   ConfigurableModuleClass,
@@ -14,11 +11,10 @@ export const {
   .setExtras(
     {
       name: "default",
-      isGlobal: true,
     },
     (definition, extras) => ({
+      ...extras,
       ...definition,
-      global: extras.isGlobal,
-    })
+    }),
   )
   .build();

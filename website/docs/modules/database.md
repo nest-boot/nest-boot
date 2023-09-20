@@ -2,7 +2,7 @@
 sidebar_position: 3
 ---
 
-# 数据库（MikroORM）
+# 数据库 Database
 
 本文档旨在帮助用户在 Nest Boot 中开始使用 MikroORM。MikroORM 是基于数据映射器、工作单元和身份映射模式的 Node.js TypeScript ORM。它是 TypeORM 的一个很好的替代品，并且从 TypeORM 迁移应该相当容易。[有关 MikroORM 的完整文档可以在此处](https://mikro-orm.io/docs)找到。
 
