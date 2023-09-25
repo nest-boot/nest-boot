@@ -1161,6 +1161,9 @@ importers:
       '@nest-boot/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@nest-boot/eslint-plugin':
+        specifier: workspace:*
+        version: link:../eslint-plugin
       '@nest-boot/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
