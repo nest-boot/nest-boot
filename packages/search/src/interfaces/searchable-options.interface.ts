@@ -1,6 +1,6 @@
-import { type Collection, type Ref } from "@mikro-orm/core";
+import { type Collection, type Reference } from "@mikro-orm/core";
 
-type Loadable<T extends object> = Collection<T, any> | Ref<T>;
+type Loadable<T extends object> = Collection<T, any> | Reference<T>;
 
 type ExtractType<T> = T extends Loadable<infer U> ? U : T;
 
@@ -19,7 +19,7 @@ export type Field<T, D extends Prev[number] = 3> = [D] extends [never]
       [K in keyof T]-?: K extends string | number
         ? T[K] extends Date | any[]
           ? `${K}`
-          : T[K] extends Ref<any> | Collection<any, any>
+          : T[K] extends Reference<any> | Collection<any, any>
           ? Join<K, Field<ExtractType<T[K]>, Prev[D]>>
           : Join<K, Field<T[K], Prev[D]>>
         : never;

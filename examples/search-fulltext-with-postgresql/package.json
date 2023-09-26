@@ -24,10 +24,10 @@
     "orm": "mikro-orm"
   },
   "dependencies": {
-    "@mikro-orm/core": "^5.8.1",
-    "@mikro-orm/nestjs": "^5.2.1",
-    "@mikro-orm/postgresql": "^5.8.1",
-    "@mikro-orm/reflection": "^5.8.1",
+    "@mikro-orm/core": "next-6-x",
+    "@mikro-orm/nestjs": "^5.2.2",
+    "@mikro-orm/postgresql": "next-6-x",
+    "@mikro-orm/reflection": "next-6-x",
     "@nest-boot/database": "workspace:*",
     "@nest-boot/request-context": "workspace:*",
     "@nest-boot/search": "workspace:*",
@@ -42,9 +42,9 @@
   },
   "devDependencies": {
     "@faker-js/faker": "^8.1.0",
-    "@mikro-orm/cli": "^5.8.1",
-    "@mikro-orm/migrations": "^5.8.1",
-    "@mikro-orm/seeder": "^5.8.1",
+    "@mikro-orm/cli": "next-6-x",
+    "@mikro-orm/migrations": "next-6-x",
+    "@mikro-orm/seeder": "next-6-x",
     "@nest-boot/tsconfig": "workspace:*",
     "@nestjs/cli": "^10.1.17",
     "@nestjs/schematics": "^10.0.2",

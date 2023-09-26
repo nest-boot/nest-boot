@@ -24,8 +24,8 @@
     "lodash": "^4.17.21"
   },
   "devDependencies": {
-    "@mikro-orm/core": "^5.8.1",
-    "@mikro-orm/postgresql": "^5.8.1",
+    "@mikro-orm/core": "next-6-x",
+    "@mikro-orm/postgresql": "next-6-x",
     "@nest-boot/database": "workspace:*",
     "@nest-boot/eslint-config": "workspace:*",
     "@nest-boot/search": "workspace:*",
@@ -42,7 +42,7 @@
     "typescript": "^5.2.2"
   },
   "peerDependencies": {
-    "@mikro-orm/postgresql": "^5.0.0 || ^6.0.0",
+    "@mikro-orm/postgresql": "next-6-x",
     "@nest-boot/database": "workspace:*",
     "@nest-boot/search": "workspace:*",
     "@nestjs/common": "^10.0.0",

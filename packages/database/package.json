@@ -26,10 +26,10 @@
     "sql-formatter": "^13.0.0"
   },
   "devDependencies": {
-    "@mikro-orm/core": "^5.8.1",
-    "@mikro-orm/migrations": "^5.8.1",
-    "@mikro-orm/nestjs": "^5.2.1",
-    "@mikro-orm/reflection": "^5.8.1",
+    "@mikro-orm/core": "next-6-x",
+    "@mikro-orm/migrations": "next-6-x",
+    "@mikro-orm/nestjs": "^5.2.2",
+    "@mikro-orm/reflection": "next-6-x",
     "@nest-boot/eslint-config": "workspace:*",
     "@nest-boot/health-check": "workspace:*",
     "@nest-boot/request-context": "workspace:*",
@@ -45,10 +45,10 @@
     "typescript": "^5.2.2"
   },
   "peerDependencies": {
-    "@mikro-orm/core": "^5.0.0 || ^6.0.0",
-    "@mikro-orm/migrations": "^5.0.0 || ^6.0.0",
-    "@mikro-orm/nestjs": "^5.0.0 || ^6.0.0",
-    "@mikro-orm/reflection": "^5.0.0 || ^6.0.0",
+    "@mikro-orm/core": "next-6-x",
+    "@mikro-orm/migrations": "next-6-x",
+    "@mikro-orm/nestjs": "^5.2.2",
+    "@mikro-orm/reflection": "next-6-x",
     "@nest-boot/health-check": "workspace:*",
     "@nest-boot/request-context": "workspace:*",
     "@nestjs/common": "^10.0.0",
