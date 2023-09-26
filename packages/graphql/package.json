@@ -52,7 +52,7 @@
     "typescript": "^5.2.2"
   },
   "peerDependencies": {
-    "@mikro-orm/core": "^5.0.0",
+    "@mikro-orm/core": "^5.0.0 || ^6.0.0",
     "@nest-boot/database": "workspace:*",
     "@nest-boot/redis": "workspace:*",
     "@nest-boot/search": "workspace:*",

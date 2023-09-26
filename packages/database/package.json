@@ -46,10 +46,10 @@
     "typescript": "^5.2.2"
   },
   "peerDependencies": {
-    "@mikro-orm/core": "^5.0.0",
-    "@mikro-orm/migrations": "^5.0.0",
-    "@mikro-orm/nestjs": "^5.0.0",
-    "@mikro-orm/reflection": "^5.0.0",
+    "@mikro-orm/core": "^5.0.0 || ^6.0.0",
+    "@mikro-orm/migrations": "^5.0.0 || ^6.0.0",
+    "@mikro-orm/nestjs": "^5.0.0 || ^6.0.0",
+    "@mikro-orm/reflection": "^5.0.0 || ^6.0.0",
     "@nest-boot/health-check": "workspace:*",
     "@nest-boot/request-context": "workspace:*",
     "@nestjs/common": "^10.0.0",
