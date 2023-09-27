@@ -123,10 +123,10 @@ export class PostgresqlSearchEngine implements SearchEngine {
           typeof where !== "undefined"
             ? this.em
                 .createQueryBuilder(entityClass)
-                .select("1")
+                .select("id")
                 .andWhere(where)
                 .limit(limit)
-            : this.em.createQueryBuilder(entityClass).select("1").limit(limit),
+            : this.em.createQueryBuilder(entityClass).select("id").limit(limit),
         )
         .count(),
     ]);
