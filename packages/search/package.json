@@ -38,7 +38,7 @@
     "typescript": "^5.2.2"
   },
   "peerDependencies": {
-    "@mikro-orm/core": "next-6-x",
+    "@mikro-orm/core": "^6.0.0",
     "@nest-boot/database": "workspace:*",
     "@nestjs/common": "^10.0.0",
     "@nestjs/core": "^10.0.0",
