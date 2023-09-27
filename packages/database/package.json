@@ -45,10 +45,10 @@
     "typescript": "^5.2.2"
   },
   "peerDependencies": {
-    "@mikro-orm/core": "next-6-x",
-    "@mikro-orm/migrations": "next-6-x",
-    "@mikro-orm/nestjs": "^5.2.2",
-    "@mikro-orm/reflection": "next-6-x",
+    "@mikro-orm/core": "^6.0.0",
+    "@mikro-orm/migrations": "^6.0.0",
+    "@mikro-orm/nestjs": "^5.0.0",
+    "@mikro-orm/reflection": "^6.0.0",
     "@nest-boot/health-check": "workspace:*",
     "@nest-boot/request-context": "workspace:*",
     "@nestjs/common": "^10.0.0",

@@ -43,7 +43,7 @@
     "typescript": "^5.2.2"
   },
   "peerDependencies": {
-    "@mikro-orm/postgresql": "next-6-x",
+    "@mikro-orm/postgresql": "^6.0.0",
     "@nest-boot/database": "workspace:*",
     "@nest-boot/search": "workspace:*",
     "@nestjs/common": "^10.0.0",
