@@ -1,32 +1,20 @@
-import {
-  type AnyEntity,
-  EntityManager,
-  type EntityRepository,
-  type Loaded,
-} from "@mikro-orm/core";
+import { type AnyEntity, EntityManager, type Loaded } from "@mikro-orm/core";
+import { RequestContext } from "@nest-boot/request-context";
 import { Inject, Injectable } from "@nestjs/common";
 import { randomBytes } from "crypto";
-
-import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition";
-import { type AccessTokenInterface, AuthModuleOptions } from "./interfaces";
-import ms = require("ms");
-import { RequestContext } from "@nest-boot/request-context";
+import ms from "ms";
 
 import { AUTH_ACCESS_TOKEN } from "./auth.constants";
+import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition";
+import { type AccessTokenInterface, AuthModuleOptions } from "./interfaces";
 
 @Injectable()
 export class AuthService {
-  private readonly accessTokenRepository: EntityRepository<AccessTokenInterface>;
-
   constructor(
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly options: AuthModuleOptions,
-    private readonly entityManager: EntityManager
-  ) {
-    this.accessTokenRepository = this.entityManager.getRepository(
-      this.options.accessTokenEntityClass
-    );
-  }
+    private readonly em: EntityManager,
+  ) {}
 
   /**
    * 生成访问令牌
@@ -37,7 +25,7 @@ export class AuthService {
   async createToken(
     entity: AnyEntity,
     name: string,
-    expiresIn?: string | number
+    expiresIn?: string | number,
   ): Promise<AccessTokenInterface> {
     const token = randomBytes(32).toString("hex");
 
@@ -45,7 +33,7 @@ export class AuthService {
     const _expiresInMs =
       typeof _expiresIn === "string" ? ms(_expiresIn) : _expiresIn;
 
-    const accessToken = this.accessTokenRepository.create({
+    const accessToken = this.em.create(this.options.accessTokenEntityClass, {
       name,
       token,
       entityId: entity.id,
@@ -54,7 +42,7 @@ export class AuthService {
         _expiresInMs != null ? new Date(Date.now() + _expiresInMs) : undefined,
     });
 
-    await this.accessTokenRepository.persistAndFlush(accessToken);
+    await this.em.persistAndFlush(accessToken);
 
     return accessToken;
   }
@@ -70,7 +58,9 @@ export class AuthService {
       );
     }
 
-    return await this.accessTokenRepository.findOne({ token });
+    return await this.em.findOne(this.options.accessTokenEntityClass, {
+      token,
+    });
   }
 
   /**
@@ -89,7 +79,7 @@ export class AuthService {
     const accessToken = await this.getToken(token);
 
     if (accessToken !== null) {
-      await this.accessTokenRepository.remove(accessToken).flush();
+      await this.em.remove(accessToken).flush();
     }
   }
 }

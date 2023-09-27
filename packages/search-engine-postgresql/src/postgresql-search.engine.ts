@@ -1,13 +1,5 @@
-import {
-  type EntityClass,
-  type FilterQuery,
-  type FindOptions,
-  type GetRepository,
-} from "@mikro-orm/core";
-import {
-  type EntityRepository,
-  type SqlEntityManager,
-} from "@mikro-orm/postgresql";
+import { type EntityClass, type FilterQuery } from "@mikro-orm/core";
+import { type SqlEntityManager } from "@mikro-orm/postgresql";
 import {
   type SearchableOptions,
   type SearchEngine,
@@ -18,11 +10,13 @@ import { Injectable } from "@nestjs/common";
 import _ from "lodash";
 import { parse } from "search-syntax";
 
+import { SearchableEntity } from "./searchable.entity";
+
 @Injectable()
 export class PostgresqlSearchEngine implements SearchEngine {
   constructor(private readonly em: SqlEntityManager) {}
 
-  async search<E extends { id: number | string | bigint }>(
+  async search<E extends SearchableEntity = SearchableEntity>(
     entityClass: EntityClass<E>,
     query: string,
     options?: SearchOptions<E>,
@@ -38,10 +32,7 @@ export class PostgresqlSearchEngine implements SearchEngine {
 
     const metadata = this.em.getMetadata().get(entityClass.name);
 
-    const repository: GetRepository<
-      E,
-      EntityRepository<E>
-    > = this.em.getRepository<E>(entityClass);
+    const repository = this.em.getRepository<SearchableEntity>(entityClass);
 
     let where = options?.where;
 
@@ -110,19 +101,22 @@ export class PostgresqlSearchEngine implements SearchEngine {
       }
     }
 
-    const findOptions: FindOptions<E> = {
-      fields: ["id"],
-      limit: options?.limit,
-      offset: options?.offset,
-      orderBy: options?.orderBy,
-    };
-
     const limit = 10000;
 
     return await Promise.all([
       (typeof where !== "undefined"
-        ? repository.find(where, findOptions)
-        : repository.findAll(findOptions)
+        ? repository.find(where, {
+            fields: ["id"],
+            limit: options?.limit,
+            offset: options?.offset,
+            orderBy: options?.orderBy,
+          })
+        : repository.findAll({
+            fields: ["id"],
+            limit: options?.limit,
+            offset: options?.offset,
+            orderBy: options?.orderBy,
+          })
       ).then((items) => items.map((item) => item.id)),
       this.em
         .createQueryBuilder(

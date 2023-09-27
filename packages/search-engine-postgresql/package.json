@@ -28,6 +28,7 @@
     "@mikro-orm/postgresql": "next-6-x",
     "@nest-boot/database": "workspace:*",
     "@nest-boot/eslint-config": "workspace:*",
+    "@nest-boot/eslint-plugin": "workspace:*",
     "@nest-boot/search": "workspace:*",
     "@nest-boot/tsconfig": "workspace:*",
     "@nestjs/common": "^10.2.5",

@@ -297,10 +297,10 @@ importers:
         version: 5.2.2
       '@mikro-orm/postgresql':
         specifier: next-6-x
-        version: 6.0.0-dev.103
+        version: 6.0.0-dev.104
       '@mikro-orm/reflection':
         specifier: next-6-x
-        version: 6.0.0-dev.103
+        version: 6.0.0-dev.104
       '@nest-boot/database':
         specifier: workspace:*
         version: link:../../packages/database
@@ -340,13 +340,13 @@ importers:
         version: 8.1.0
       '@mikro-orm/cli':
         specifier: next-6-x
-        version: 6.0.0-dev.103
+        version: 6.0.0-dev.104
       '@mikro-orm/migrations':
         specifier: next-6-x
-        version: 6.0.0-dev.103
+        version: 6.0.0-dev.104
       '@mikro-orm/seeder':
         specifier: next-6-x
-        version: 6.0.0-dev.103
+        version: 6.0.0-dev.104
       '@nest-boot/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
@@ -417,6 +417,9 @@ importers:
       '@nest-boot/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@nest-boot/eslint-plugin':
+        specifier: workspace:*
+        version: link:../eslint-plugin
       '@nest-boot/i18n':
         specifier: workspace:*
         version: link:../i18n
@@ -519,13 +522,13 @@ importers:
         version: 6.0.0-dev.104
       '@mikro-orm/migrations':
         specifier: next-6-x
-        version: 6.0.0-dev.103
+        version: 6.0.0-dev.104
       '@mikro-orm/nestjs':
         specifier: ^5.2.2
         version: 5.2.2
       '@mikro-orm/reflection':
         specifier: next-6-x
-        version: 6.0.0-dev.103
+        version: 6.0.0-dev.104
       '@nest-boot/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
@@ -1306,13 +1309,16 @@ importers:
         version: 6.0.0-dev.104
       '@mikro-orm/postgresql':
         specifier: next-6-x
-        version: 6.0.0-dev.103
+        version: 6.0.0-dev.104
       '@nest-boot/database':
         specifier: workspace:*
         version: link:../database
       '@nest-boot/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@nest-boot/eslint-plugin':
+        specifier: workspace:*
+        version: link:../eslint-plugin
       '@nest-boot/search':
         specifier: workspace:*
         version: link:../search
@@ -3891,13 +3897,13 @@ packages:
     resolution: {integrity: sha512-H1rQc1ZOHANWBvPcW+JpGwr+juXSxM8Q8YCkm3GhZd8REu1fHR3z99CErO1p9pkcfcxZnMdIZdIsXkOHY0NilA==}
     dev: false
 
-  /@mikro-orm/cli@6.0.0-dev.103:
-    resolution: {integrity: sha512-68sk29e2MUdvQgDpsV2NU9cyao8N/RTRKhq2Tgylt5NjOFV4e6O4O0paVXdRZxlG/ayC4U0qJ0O02CMbFVJxCw==}
+  /@mikro-orm/cli@6.0.0-dev.104:
+    resolution: {integrity: sha512-WKQSfzcwdYy3B959YL3hBKWycf5M1H2xw/24E2Gszk8VtGjpkmaQVYjyjIr7HRfnCLFUy9PFCpx5n5JLaQ19uQ==}
     engines: {node: '>= 18.12.0'}
     hasBin: true
     dependencies:
       '@jercle/yargonaut': 1.1.5
-      '@mikro-orm/core': 6.0.0-dev.104
+      '@mikro-orm/core': 6.0.0-dev.105
       '@mikro-orm/knex': 6.0.0-dev.104
       fs-extra: 11.1.1
       tsconfig-paths: 4.2.0
@@ -3916,6 +3922,19 @@ packages:
       mikro-orm: 6.0.0-dev.104
       reflect-metadata: 0.1.13
 
+  /@mikro-orm/core@6.0.0-dev.105:
+    resolution: {integrity: sha512-vDO4nbgXWQMuz6x9EvLyXwsVNHT9BCBrM8isDbslxoRsthak/Qa3uCuAGBnOwPpR8T80vUSsPO7xVn7lgRPFjA==}
+    engines: {node: '>= 18.12.0'}
+    dependencies:
+      acorn-loose: 8.3.0
+      acorn-walk: 8.2.0
+      dotenv: 16.3.1
+      fs-extra: 11.1.1
+      globby: 11.1.0
+      mikro-orm: 6.0.0-dev.105
+      reflect-metadata: 0.1.13
+    dev: true
+
   /@mikro-orm/knex@6.0.0-dev.104:
     resolution: {integrity: sha512-IX/YFCbYMOINCAXDnFt0klXjabUKFhRKaOZ2+ufUehsCH5NXULqkbsIQ/bKFVLcVEXJPZ94bJANrvP+Beg4FhQ==}
     engines: {node: '>= 18.12.0'}
@@ -3924,8 +3943,8 @@ packages:
       knex: 2.5.1
       sqlstring: 2.3.3
 
-  /@mikro-orm/migrations@6.0.0-dev.103:
-    resolution: {integrity: sha512-SiZmXE0HjNaPqvLhiWpcnS2qWxecigZlwvpCPgslD+JN2wxKBYEiLMbw5m8dgOYmdXV5gSr5MJz7EsJ4JzSaUg==}
+  /@mikro-orm/migrations@6.0.0-dev.104:
+    resolution: {integrity: sha512-Vg7t/JhnIcm8cD5idsQ6hysKtNCObJ+rNU014CVn7Flu0L2jrFIMw8k50KWh9V0Z+4Q4JrOC7zwL1k+UHJHIEg==}
     engines: {node: '>= 18.12.0'}
     dependencies:
       '@mikro-orm/knex': 6.0.0-dev.104
@@ -3937,22 +3956,22 @@ packages:
     resolution: {integrity: sha512-NwPTmpmwf4/aX7FjKk/CTncYS7Mbr4fMvSOfbo9rOElySjpniTnk2cCGABgj2kaX9NSFHzWCUy5tAMIkoedd4A==}
     engines: {node: '>= 14.0.0'}
 
-  /@mikro-orm/postgresql@6.0.0-dev.103:
-    resolution: {integrity: sha512-eM6fahf9GuNXm+S5v/1/9dfBwkmAuIdcxW+54vr7v3B1XApZ1oZI49a3hiJeDhLSlnIDsaqU4YvsDXgvDs7sDA==}
+  /@mikro-orm/postgresql@6.0.0-dev.104:
+    resolution: {integrity: sha512-YBi/dNJnhAkMXHP+RoHuCK9SobZ0kK3a0lqaa/PAplxUn1cZJNHOoNlN/vwBrB1G4N1RAUuv2gRyoYWpJnSLzA==}
     engines: {node: '>= 18.12.0'}
     dependencies:
       '@mikro-orm/knex': 6.0.0-dev.104
       pg: 8.11.3
 
-  /@mikro-orm/reflection@6.0.0-dev.103:
-    resolution: {integrity: sha512-5SAssur8u8Bk3jlC+AT7r8QVEeozbHmmgkdle7WCPEMRgHbrZrPwGxqbcTqWHP+5TS6HYQ1GB8az/XyEXnI7xA==}
+  /@mikro-orm/reflection@6.0.0-dev.104:
+    resolution: {integrity: sha512-zpAHR/E9p96X5XUCdtMusewxeoQswlhwNaWZiy62mHfpS3GA0EjBhze0FSVXn2V5KKcuxrNL6RtjgDCq+I61Yg==}
     engines: {node: '>= 18.12.0'}
     dependencies:
       globby: 11.1.0
       ts-morph: 20.0.0
 
-  /@mikro-orm/seeder@6.0.0-dev.103:
-    resolution: {integrity: sha512-zYedzppgi80xgD2KgXtfihaJungICTJ7UjZDurh80AAZcppdXlBxC6jd8xfhatv8CkO/5gCZbLkqTk88ZI1T9A==}
+  /@mikro-orm/seeder@6.0.0-dev.104:
+    resolution: {integrity: sha512-8WrmpJexv2X5df75JOoiFmD1gchgbox/GOSrvtKKlgK1kfX3sYPxTtBSNZC3thtXteqkbx0XIJDyClvU3q392g==}
     engines: {node: '>= 18.12.0'}
     dependencies:
       fs-extra: 11.1.1
@@ -10573,6 +10592,11 @@ packages:
   /mikro-orm@6.0.0-dev.104:
     resolution: {integrity: sha512-nrLvc+RenX9rrgELRK9K40kcGx4+0wU/l4pI0vchXPOnsmOmFkRNli+KAwPAq7nDAB9HR2Gvf17+a+pt0fbgpw==}
     engines: {node: '>= 18.12.0'}
+
+  /mikro-orm@6.0.0-dev.105:
+    resolution: {integrity: sha512-vv/fc4MFs7Wc9EQ1hF7ZtXjWRh4vXv4ZoUZstYzvXE+uBxXRnC2my+z/roa+S1vRAPQeaLppEvMcPxH6IeBemg==}
+    engines: {node: '>= 18.12.0'}
+    dev: true
 
   /mime-db@1.33.0:
     resolution: {integrity: sha512-BHJ/EKruNIqJf/QahvxwQZXKygOQ256myeN/Ew+THcAa5q+PjyTTMMeNQC4DZw5AwfvelsUrA6B67NKMqXDbzQ==}
