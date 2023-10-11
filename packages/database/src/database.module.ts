@@ -61,8 +61,6 @@ export class DatabaseModule
       providers: [Logger],
       inject: [MODULE_OPTIONS_TOKEN, Logger],
       useFactory: (options: DatabaseModuleOptions, logger: Logger) => {
-        process.env.NO_COLOR = "true";
-
         return {
           ...withBaseConfig(options),
           autoLoadEntities: false,
@@ -89,8 +87,8 @@ export class DatabaseModule
 
   onModuleInit(): void {
     if (typeof this.healthCheckRegistry !== "undefined") {
-      this.healthCheckRegistry.register(async () =>
-        await this.healthIndicator.pingCheck("database"),
+      this.healthCheckRegistry.register(
+        async () => await this.healthIndicator.pingCheck("database"),
       );
     }
 

@@ -7,7 +7,11 @@ import { type LoggerOptions } from "@mikro-orm/core/logging/Logger";
 import { type Logger } from "@nestjs/common";
 
 export class DatabaseLogger extends MikroOrmLogger {
-  constructor(options: LoggerOptions, private readonly logger: Logger) {
+  constructor(
+    options: LoggerOptions,
+    private readonly logger: Logger,
+  ) {
+    process.env.MIKRO_ORM_NO_COLOR = "true";
     super(options);
   }
 
@@ -15,11 +19,11 @@ export class DatabaseLogger extends MikroOrmLogger {
     method: "log" | "error" | "warn",
     namespace: MikroOrmLoggerNamespace,
     message: string,
-    context?: MikroOrmLoggerContext
+    context?: MikroOrmLoggerContext,
   ): void {
     this.logger[method](`database ${namespace}`, {
       message:
-        namespace === "discovery" && /^- /.test(message)
+        namespace === "discovery" && message.startsWith("- ")
           ? message.replace(/^- /, "")
           : message,
       ...(typeof context !== "undefined" ? context : {}),
@@ -29,7 +33,7 @@ export class DatabaseLogger extends MikroOrmLogger {
   log(
     namespace: MikroOrmLoggerNamespace,
     message: string,
-    context?: MikroOrmLoggerContext
+    context?: MikroOrmLoggerContext,
   ): void {
     this._log("log", namespace, message, context);
   }
@@ -37,7 +41,7 @@ export class DatabaseLogger extends MikroOrmLogger {
   error(
     namespace: MikroOrmLoggerNamespace,
     message: string,
-    context?: MikroOrmLoggerContext
+    context?: MikroOrmLoggerContext,
   ): void {
     this._log("error", namespace, message, context);
   }
@@ -45,7 +49,7 @@ export class DatabaseLogger extends MikroOrmLogger {
   warn(
     namespace: MikroOrmLoggerNamespace,
     message: string,
-    context?: MikroOrmLoggerContext
+    context?: MikroOrmLoggerContext,
   ): void {
     this._log("warn", namespace, message, context);
   }
