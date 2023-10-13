@@ -259,7 +259,7 @@ export class ComplexityPlugin implements ApolloServerPlugin {
         ) {
           response.body.singleResult.extensions = {
             ...response.body.singleResult.extensions,
-            ...request.extensions.cost,
+            cost: request.extensions.cost,
           };
         }
       },

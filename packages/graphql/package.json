@@ -29,6 +29,7 @@
     "@mikro-orm/core": "^5.8.1",
     "@nest-boot/database": "workspace:*",
     "@nest-boot/eslint-config": "workspace:*",
+    "@nest-boot/eslint-plugin": "workspace:*",
     "@nest-boot/redis": "workspace:*",
     "@nest-boot/search": "workspace:*",
     "@nest-boot/tsconfig": "workspace:*",
@@ -73,19 +74,6 @@
       "prettier --write",
       "eslint --fix"
     ]
-  },
-  "jest": {
-    "moduleFileExtensions": [
-      "js",
-      "json",
-      "ts"
-    ],
-    "testRegex": ".test.ts$",
-    "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
-    },
-    "coverageDirectory": "./coverage",
-    "testEnvironment": "node"
   },
   "volta": {
     "extends": "../../package.json"
