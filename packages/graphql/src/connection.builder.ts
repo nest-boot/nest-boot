@@ -55,7 +55,7 @@ export class ConnectionBuilder<T extends { id: number | string | bigint }> {
 
     @ObjectType(`${this.entityName}Connection`, { isAbstract: true })
     class Connection implements ConnectionInterface<T> {
-      @Field(() => [Edge])
+      @Field(() => [Edge], { complexity: 0 })
       edges!: Edge[];
 
       @Field({ complexity: 0 })

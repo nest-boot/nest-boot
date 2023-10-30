@@ -30,7 +30,6 @@
     "@nest-boot/database": "workspace:*",
     "@nest-boot/eslint-config": "workspace:*",
     "@nest-boot/eslint-plugin": "workspace:*",
-    "@nest-boot/redis": "workspace:*",
     "@nest-boot/search": "workspace:*",
     "@nest-boot/tsconfig": "workspace:*",
     "@nestjs/apollo": "^12.0.9",
@@ -45,6 +44,7 @@
     "eslint": "^8.49.0",
     "express": "^4.18.2",
     "graphql": "^16.8.1",
+    "ioredis": "^5.3.2",
     "jest": "^29.7.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
@@ -54,7 +54,6 @@
   "peerDependencies": {
     "@mikro-orm/core": "^5.0.0",
     "@nest-boot/database": "workspace:*",
-    "@nest-boot/redis": "workspace:*",
     "@nest-boot/search": "workspace:*",
     "@nestjs/apollo": "^12.0.0",
     "@nestjs/common": "^10.0.0",
@@ -63,6 +62,7 @@
     "dataloader": "^2.0.0",
     "express": "^4.0.0",
     "graphql": "^16.0.0",
+    "ioredis": "^5.3.2",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.0.0"
   },
