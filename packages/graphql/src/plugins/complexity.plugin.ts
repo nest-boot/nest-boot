@@ -3,12 +3,11 @@
 import {
   type ApolloServerPlugin,
   type BaseContext,
-  GraphQLRequestContextDidResolveOperation,
+  GraphQLRequestContext,
   type GraphQLRequestListener,
 } from "@apollo/server";
-import { Redis } from "@nest-boot/redis";
 import { Plugin } from "@nestjs/apollo";
-import { HttpException, Inject, Logger, Optional } from "@nestjs/common";
+import { HttpException, Inject } from "@nestjs/common";
 import { GraphQLSchemaHost } from "@nestjs/graphql";
 import { Request } from "express";
 import {
@@ -22,15 +21,17 @@ import {
   GraphQLUnionType,
 } from "graphql";
 import {
+  ComplexityEstimator,
   ComplexityEstimatorArgs,
   directiveEstimator,
   fieldExtensionsEstimator,
   getComplexity,
   simpleEstimator,
 } from "graphql-query-complexity";
+import { Redis } from "ioredis";
 
 import { MODULE_OPTIONS_TOKEN } from "../graphql.module-definition";
-import { GraphQLModuleOptions } from "../interfaces";
+import { CostResponse, GraphQLModuleOptions } from "../interfaces";
 
 // https://shopify.engineering/rate-limiting-graphql-apis-calculating-query-complexity
 function shopifyEstimator(
@@ -44,12 +45,8 @@ function shopifyEstimator(
   }
 
   // GraphQL 的 Connection 表示的是一对多的关系，Connection 的消耗是两点加上要返回的对象数量。
-  if (
-    type instanceof GraphQLObjectType &&
-    type.name.endsWith("Connection") &&
-    typeof (args.args.first ?? args.args.last) === "number"
-  ) {
-    return 2 + args.childComplexity * (args.args.first ?? args.args.last);
+  if (type instanceof GraphQLObjectType && type.name.endsWith("Connection")) {
+    return 2 + args.childComplexity * (args.args.first ?? args.args.last ?? 0);
   }
 
   // Object 是查询的基本单位，一般代码一个单次的 server 端操作，可以是一次数据库查询，也可以一次内部服务的访问。
@@ -59,7 +56,7 @@ function shopifyEstimator(
     type instanceof GraphQLInterfaceType ||
     type instanceof GraphQLUnionType
   ) {
-    return 1;
+    return 1 + args.childComplexity;
   }
 
   // Scalar 和 Enum 是 Object 本身的一部分，在 Object 里我们已经算过消耗了。
@@ -74,18 +71,18 @@ const REDIS_GRAPHQL_COMPLEXITY_RATE_LIMIT_COMMAND_NAME =
 
 @Plugin()
 export class ComplexityPlugin implements ApolloServerPlugin {
-  private readonly logger = new Logger(ComplexityPlugin.name);
+  private readonly complexityEstimators: ComplexityEstimator[] = [];
 
-  private readonly logging: boolean = false;
   private readonly maxComplexity: number = 1000;
   private readonly defaultComplexity: number = 0;
 
-  private readonly rateLimitEnable: boolean = true;
+  private readonly rateLimitRedis?: Redis;
   private readonly rateLimitKeyPrefix: string = "graphql-complexity:rate-limit";
   private readonly rateLimitRestoreRate: number = 50;
   private readonly rateLimitMaximumAvailable: number = 1000;
+
   private readonly rateLimitGetId = (
-    args: GraphQLRequestContextDidResolveOperation<BaseContext>,
+    args: GraphQLRequestContext<BaseContext>,
   ) => {
     const req = (args.contextValue as { req: Request }).req;
     return req.ips.length ? req.ips[0] : req.ip;
@@ -95,25 +92,19 @@ export class ComplexityPlugin implements ApolloServerPlugin {
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly options: GraphQLModuleOptions,
     private readonly gqlSchemaHost: GraphQLSchemaHost,
-    @Optional()
-    private readonly redis: Redis,
   ) {
-    if (
-      typeof options.complexity !== "boolean" &&
-      typeof options.complexity !== "undefined"
-    ) {
-      this.logging = options.complexity.logging ?? this.logging;
+    if (typeof options.complexity !== "undefined") {
       this.maxComplexity =
         options.complexity.maxComplexity ?? this.maxComplexity;
       this.defaultComplexity =
         options.complexity.defaultComplexity ?? this.defaultComplexity;
 
-      if (options.complexity.rateLimit === false) {
-        this.rateLimitEnable = false;
-      } else if (
-        typeof options.complexity.rateLimit !== "boolean" &&
-        typeof options.complexity.rateLimit !== "undefined"
-      ) {
+      if (typeof options.complexity.rateLimit !== "undefined") {
+        this.rateLimitRedis =
+          typeof options.complexity.rateLimit.connection !== "undefined"
+            ? new Redis(options.complexity.rateLimit.connection)
+            : new Redis();
+
         this.rateLimitKeyPrefix =
           options.complexity.rateLimit.keyPrefix ?? this.rateLimitKeyPrefix;
         this.rateLimitRestoreRate =
@@ -126,8 +117,8 @@ export class ComplexityPlugin implements ApolloServerPlugin {
       }
     }
 
-    if (typeof this.redis !== "undefined" && this.rateLimitEnable) {
-      this.redis.defineCommand(
+    if (typeof this.rateLimitRedis !== "undefined") {
+      this.rateLimitRedis.defineCommand(
         REDIS_GRAPHQL_COMPLEXITY_RATE_LIMIT_COMMAND_NAME,
         {
           numberOfKeys: 5,
@@ -185,65 +176,90 @@ export class ComplexityPlugin implements ApolloServerPlugin {
         },
       );
     }
+
+    this.complexityEstimators = [
+      directiveEstimator(),
+      fieldExtensionsEstimator(),
+      shopifyEstimator,
+      simpleEstimator({ defaultComplexity: this.defaultComplexity }),
+    ];
+  }
+
+  async addPoint(
+    args: GraphQLRequestContext<BaseContext>,
+    point: number,
+  ): Promise<[boolean, number]> {
+    if (typeof this.rateLimitRedis === "undefined") {
+      throw new Error("Redis is not defined");
+    }
+
+    return (await (this.rateLimitRedis as any)[
+      REDIS_GRAPHQL_COMPLEXITY_RATE_LIMIT_COMMAND_NAME
+    ](
+      this.rateLimitKeyPrefix,
+      this.rateLimitMaximumAvailable,
+      this.rateLimitRestoreRate,
+      this.rateLimitGetId(args),
+      -point,
+    )) as [boolean, number];
+  }
+
+  async subPoint(
+    args: GraphQLRequestContext<BaseContext>,
+    point: number,
+  ): Promise<[boolean, number]> {
+    if (typeof this.rateLimitRedis === "undefined") {
+      throw new Error("Redis is not defined");
+    }
+
+    return (await (this.rateLimitRedis as any)[
+      REDIS_GRAPHQL_COMPLEXITY_RATE_LIMIT_COMMAND_NAME
+    ](
+      this.rateLimitKeyPrefix,
+      this.rateLimitMaximumAvailable,
+      this.rateLimitRestoreRate,
+      this.rateLimitGetId(args),
+      point,
+    )) as [boolean, number];
   }
 
   async requestDidStart(): Promise<GraphQLRequestListener<BaseContext>> {
     const { schema } = this.gqlSchemaHost;
 
+    const cost: CostResponse = {
+      requestedQueryCost: 0,
+      actualQueryCost: 0,
+    };
+
     return {
       didResolveOperation: async (args) => {
         const { request, document } = args;
 
-        const complexity = getComplexity({
+        cost.requestedQueryCost = getComplexity({
           schema,
           operationName: request.operationName,
           query: document,
           variables: request.variables,
-          estimators: [
-            directiveEstimator({ name: "complexity" }),
-            fieldExtensionsEstimator(),
-            shopifyEstimator,
-            simpleEstimator({ defaultComplexity: this.defaultComplexity }),
-          ],
+          estimators: this.complexityEstimators,
         });
 
-        request.extensions = request.extensions ?? {};
-        request.extensions.cost = {
-          requestedQueryCost: complexity,
-        };
-
-        if (this.logging) {
-          this.logger.log("query complexity", {
-            operationName: request.operationName,
-            complexity,
-          });
-        }
-
-        if (complexity >= this.maxComplexity) {
+        if (cost.requestedQueryCost >= this.maxComplexity) {
           throw new HttpException(
-            `Query is too complex: ${complexity}. Maximum allowed complexity: ${this.maxComplexity}`,
+            `Query is too complex: ${cost.requestedQueryCost}. Maximum allowed complexity: ${this.maxComplexity}`,
             429,
           );
         }
 
-        if (typeof this.redis !== "undefined" && this.rateLimitEnable) {
-          const [blocked, currentlyAvailable] = (await (this.redis as any)[
-            REDIS_GRAPHQL_COMPLEXITY_RATE_LIMIT_COMMAND_NAME
-          ](
-            this.rateLimitKeyPrefix,
-            this.rateLimitMaximumAvailable,
-            this.rateLimitRestoreRate,
-            this.rateLimitGetId(args),
-            complexity,
-          )) as [boolean, number];
+        if (typeof this.rateLimitRedis !== "undefined") {
+          const [blocked, currentlyAvailable] = await this.subPoint(
+            args,
+            cost.requestedQueryCost,
+          );
 
-          request.extensions.cost = {
-            ...request.extensions.cost,
-            throttleStatus: {
-              maximumAvailable: this.rateLimitMaximumAvailable,
-              currentlyAvailable,
-              restoreRate: this.rateLimitRestoreRate,
-            },
+          cost.throttleStatus = {
+            maximumAvailable: this.rateLimitMaximumAvailable,
+            currentlyAvailable,
+            restoreRate: this.rateLimitRestoreRate,
           };
 
           if (blocked) {
@@ -251,15 +267,59 @@ export class ComplexityPlugin implements ApolloServerPlugin {
           }
         }
       },
-      willSendResponse: async ({ request, response }): Promise<void> => {
+      executionDidStart: async () => {
+        return {
+          willResolveField: ({ info }) => {
+            const parentTypeFields = info.parentType.getFields();
+            const field = parentTypeFields[info.fieldName];
+
+            const estimatorArgs: ComplexityEstimatorArgs = {
+              childComplexity: 0,
+              args: {},
+              field,
+              node: info.fieldNodes[0],
+              type: info.parentType,
+            };
+
+            return (error) => {
+              if (error === null) {
+                // eslint-disable-next-line @typescript-eslint/no-invalid-void-type
+                let fieldCost: number | void;
+
+                for (const complexityEstimator of this.complexityEstimators) {
+                  fieldCost = complexityEstimator(estimatorArgs);
+
+                  if (typeof fieldCost === "number" && !isNaN(fieldCost)) {
+                    cost.actualQueryCost += fieldCost;
+                    break;
+                  }
+                }
+              }
+            };
+          },
+        };
+      },
+      willSendResponse: async (request): Promise<void> => {
         if (
-          response.body.kind === "single" &&
-          "data" in response.body.singleResult &&
-          typeof request.extensions?.cost !== "undefined"
+          request.response.body.kind === "single" &&
+          "data" in request.response.body.singleResult
         ) {
-          response.body.singleResult.extensions = {
-            ...response.body.singleResult.extensions,
-            cost: request.extensions.cost,
+          if (typeof this.rateLimitRedis !== "undefined") {
+            const [, currentlyAvailable] = await this.addPoint(
+              request,
+              cost.requestedQueryCost - cost.actualQueryCost,
+            );
+
+            cost.throttleStatus = {
+              maximumAvailable: this.rateLimitMaximumAvailable,
+              currentlyAvailable,
+              restoreRate: this.rateLimitRestoreRate,
+            };
+          }
+
+          request.response.body.singleResult.extensions = {
+            ...request.response.body.singleResult.extensions,
+            cost,
           };
         }
       },
