@@ -757,9 +757,9 @@ importers:
       '@nest-boot/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
-      '@nest-boot/health-check':
+      '@nest-boot/eslint-plugin':
         specifier: workspace:*
-        version: link:../health-check
+        version: link:../eslint-plugin
       '@nest-boot/request-context':
         specifier: workspace:*
         version: link:../request-context
@@ -781,9 +781,9 @@ importers:
       eslint:
         specifier: ^8.49.0
         version: 8.49.0
-      ioredis:
-        specifier: ^5.3.2
-        version: 5.3.2
+      eventemitter2:
+        specifier: ^6.4.9
+        version: 6.4.9
       jest:
         specifier: ^29.7.0
         version: 29.7.0
@@ -7884,6 +7884,10 @@ packages:
     resolution: {integrity: sha512-i/2XbnSz/uxRCU6+NdVJgKWDTM427+MqYbkQzD321DuCQJUqOuJKIA0IM2+W2xtYHdKOmZ4dR6fExsd4SXL+WQ==}
     engines: {node: '>=6'}
     dev: false
+
+  /eventemitter2@6.4.9:
+    resolution: {integrity: sha512-JEPTiaOt9f04oa6NOkc4aH+nVp5I3wEjpHbIPqfgCdD5v5bUzy7xQqwcVO2aDQgOWhI28da57HksMrzK9HlRxg==}
+    dev: true
 
   /eventemitter3@3.1.2:
     resolution: {integrity: sha512-tvtQIeLVHjDkJYnzf2dgVMxfuSGJeM/7UCG17TT4EumTfNtF+0nebF/4zWOIkCreAbtNqhGEboB6BWrwqNaw4Q==}

@@ -1,39 +1,27 @@
-import { HealthCheckRegistry } from "@nest-boot/health-check";
-import { Module, type OnModuleInit, Optional } from "@nestjs/common";
-import { DiscoveryService, MetadataScanner } from "@nestjs/core";
+import { DynamicModule, Module } from "@nestjs/common";
+import { DiscoveryModule } from "@nestjs/core";
+import { EventEmitter2 } from "eventemitter2";
 
-import { EventEmitter } from "./event-emitter";
-import { EventEmitterHealthIndicator } from "./event-emitter.health-indicator";
-import { EventEmitterManager } from "./event-emitter.manager";
-import { ConfigurableModuleClass } from "./event-emitter.module-definition";
+import { EventSubscribersLoader } from "./event-subscribers.loader";
+import { EventsMetadataAccessor } from "./events-metadata.accessor";
+import { EventEmitterModuleOptions } from "./interfaces";
 
-@Module({
-  providers: [
-    DiscoveryService,
-    EventEmitter,
-    EventEmitterManager,
-    EventEmitterHealthIndicator,
-    MetadataScanner,
-  ],
-  exports: [EventEmitter],
-})
-export class EventEmitterModule
-  extends ConfigurableModuleClass
-  implements OnModuleInit
-{
-  constructor(
-    private readonly healthIndicator: EventEmitterHealthIndicator,
-    @Optional()
-    private readonly healthCheckRegistry?: HealthCheckRegistry,
-  ) {
-    super();
-  }
-
-  onModuleInit(): void {
-    if (typeof this.healthCheckRegistry !== "undefined") {
-      this.healthCheckRegistry.register(
-        async () => await this.healthIndicator.pingCheck("event-emitter"),
-      );
-    }
+@Module({})
+export class EventEmitterModule {
+  static forRoot(options?: EventEmitterModuleOptions): DynamicModule {
+    return {
+      global: options?.global ?? true,
+      module: EventEmitterModule,
+      imports: [DiscoveryModule],
+      providers: [
+        EventSubscribersLoader,
+        EventsMetadataAccessor,
+        {
+          provide: EventEmitter2,
+          useValue: new EventEmitter2(options),
+        },
+      ],
+      exports: [EventEmitter2],
+    };
   }
 }

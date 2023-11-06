@@ -1,4 +1,4 @@
-export * from "./event-emitter";
+export { EVENT_PAYLOAD } from "./constants";
+export * from "./decorators";
 export * from "./event-emitter.module";
-export * from "./event-emitter-module-options.interface";
-export * from "./subscribe.decorator";
+export { EventEmitter2 } from "eventemitter2";
