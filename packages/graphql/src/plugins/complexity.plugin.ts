@@ -7,7 +7,7 @@ import {
   type GraphQLRequestListener,
 } from "@apollo/server";
 import { Plugin } from "@nestjs/apollo";
-import { HttpException, Inject } from "@nestjs/common";
+import { HttpException, Inject, OnApplicationShutdown } from "@nestjs/common";
 import { GraphQLSchemaHost } from "@nestjs/graphql";
 import { Request } from "express";
 import {
@@ -70,7 +70,9 @@ const REDIS_GRAPHQL_COMPLEXITY_RATE_LIMIT_COMMAND_NAME =
   "GRAPHQL_COMPLEXITY.RATE_LIMIT";
 
 @Plugin()
-export class ComplexityPlugin implements ApolloServerPlugin {
+export class ComplexityPlugin
+  implements ApolloServerPlugin, OnApplicationShutdown
+{
   private readonly complexityEstimators: ComplexityEstimator[] = [];
 
   private readonly maxComplexity: number = 1000;
@@ -324,5 +326,9 @@ export class ComplexityPlugin implements ApolloServerPlugin {
         }
       },
     };
+  }
+
+  async onApplicationShutdown(): Promise<void> {
+    await this.rateLimitRedis?.quit();
   }
 }
