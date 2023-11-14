@@ -18,5 +18,9 @@ void (async () => {
     logger.error("Unhandled rejection exception", { err });
   });
 
+  app.useLogger(logger);
+
+  app.enableShutdownHooks();
+
   await app.listen(3000);
 })();
