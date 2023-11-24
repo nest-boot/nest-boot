@@ -832,6 +832,10 @@ importers:
       lodash:
         specifier: ^4.17.21
         version: 4.17.21
+    optionalDependencies:
+      '@nest-boot/logger':
+        specifier: workspace:*
+        version: link:../logger
     devDependencies:
       '@mikro-orm/core':
         specifier: ^5.8.1

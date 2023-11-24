@@ -22,12 +22,14 @@ import {
 } from "./graphql.module-definition";
 import { type GraphQLModuleOptions } from "./interfaces";
 import { ComplexityPlugin } from "./plugins";
+import { LoggingPlugin } from "./plugins/logging.plugin";
 
 @Global()
 @Module({
   providers: [
     ConnectionService,
     ComplexityPlugin,
+    LoggingPlugin,
     {
       provide: APP_FILTER,
       useClass: GraphQLExceptionFilter,
