@@ -39,7 +39,6 @@ export class LoggerModule
   onModuleInit(): void {
     const logger = pino();
     const loggerMiddleware = pinoHttp({
-      autoLogging: false,
       genReqId:
         this.options.genReqId ??
         function (req, res) {

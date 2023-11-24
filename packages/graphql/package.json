@@ -52,6 +52,9 @@
     "ts-jest": "^29.1.1",
     "typescript": "^5.2.2"
   },
+  "optionalDependencies": {
+    "@nest-boot/logger": "workspace:*"
+  },
   "peerDependencies": {
     "@mikro-orm/core": "^5.0.0",
     "@nest-boot/database": "workspace:*",
