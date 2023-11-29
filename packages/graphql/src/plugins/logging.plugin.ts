@@ -9,10 +9,6 @@ import { Logger } from "@nest-boot/logger";
 import { Plugin } from "@nestjs/apollo";
 import { Optional } from "@nestjs/common";
 
-function durationHrTimeToNanos(hrtime: [number, number]) {
-  return hrtime[0] * 1e9 + hrtime[1];
-}
-
 @Plugin()
 export class LoggingPlugin implements ApolloServerPlugin {
   constructor(
@@ -24,7 +20,7 @@ export class LoggingPlugin implements ApolloServerPlugin {
     const logger = this.logger;
 
     if (typeof logger !== "undefined") {
-      const startHrTime = process.hrtime();
+      const startTime = Date.now();
 
       return {
         didResolveOperation: async (ctx) => {
@@ -37,7 +33,7 @@ export class LoggingPlugin implements ApolloServerPlugin {
           });
         },
         willSendResponse: async ({ response, errors }) => {
-          const durationNs = durationHrTimeToNanos(process.hrtime(startHrTime));
+          const responseTime = Date.now() - startTime;
 
           if (response.body.kind === "incremental") {
             return;
@@ -45,11 +41,11 @@ export class LoggingPlugin implements ApolloServerPlugin {
 
           if (typeof errors !== "undefined" && errors.length > 0) {
             logger.error("graphql request errored", {
-              durationNs,
+              responseTime,
             });
           } else {
             logger.log("graphql request completed", {
-              durationNs,
+              responseTime,
             });
           }
         },
