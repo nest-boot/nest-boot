@@ -20,34 +20,15 @@ export class LoggingPlugin implements ApolloServerPlugin {
     const logger = this.logger;
 
     if (typeof logger !== "undefined") {
-      const startTime = Date.now();
-
       return {
         didResolveOperation: async (ctx) => {
           logger.assign({
             operation: {
               id: ctx.queryHash,
               name: ctx.operationName,
-              type: ctx.operation?.operation?.toUpperCase(),
+              type: ctx.operation?.operation,
             },
           });
-        },
-        willSendResponse: async ({ response, errors }) => {
-          const responseTime = Date.now() - startTime;
-
-          if (response.body.kind === "incremental") {
-            return;
-          }
-
-          if (typeof errors !== "undefined" && errors.length > 0) {
-            logger.error("graphql request errored", {
-              responseTime,
-            });
-          } else {
-            logger.log("graphql request completed", {
-              responseTime,
-            });
-          }
         },
       };
     }
