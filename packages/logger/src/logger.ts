@@ -7,7 +7,7 @@ import pino, {
   type Logger as PinoLogger,
 } from "pino";
 
-import { PINO_LOGGER } from "./logger.module-definition";
+import { BINDINGS, PINO_LOGGER } from "./logger.module-definition";
 
 @Injectable({ scope: Scope.TRANSIENT })
 export class Logger implements LoggerService {
@@ -48,13 +48,10 @@ export class Logger implements LoggerService {
   }
 
   assign(bindings: Bindings): void {
-    const logger = RequestContext.get<PinoLogger>(PINO_LOGGER);
-
-    if (typeof logger === "undefined") {
-      throw new Error(`Unable to assign extra fields out of request scope`);
-    }
-
-    RequestContext.set(PINO_LOGGER, logger.child(bindings));
+    RequestContext.set(BINDINGS, {
+      ...(RequestContext.get<Bindings>(BINDINGS) ?? {}),
+      ...bindings,
+    });
   }
 
   private get pinoLogger(): PinoLogger {
@@ -76,20 +73,25 @@ export class Logger implements LoggerService {
     message: string,
     ...optionalParams: unknown[]
   ): void {
-    let objArg: Record<string, unknown> = {};
+    let bindings: Bindings = {};
 
-    objArg.context = this.context;
+    try {
+      bindings = RequestContext.get<Bindings>(BINDINGS) ?? {};
+    } catch (err) {}
+
+    let context = this.context;
 
     if (optionalParams.length !== 0) {
-      if (typeof optionalParams[optionalParams.length - 1] === "string") {
-        objArg.context = optionalParams[optionalParams.length - 1];
+      const lastOptionalParam = optionalParams[optionalParams.length - 1];
+      if (typeof lastOptionalParam === "string") {
+        context = lastOptionalParam;
       }
 
       if (typeof optionalParams[0] === "object") {
-        objArg = { ...objArg, ...optionalParams[0] };
+        bindings = { ...bindings, context, ...optionalParams[0] };
       }
     }
 
-    this.pinoLogger[level](objArg, message);
+    this.pinoLogger[level](bindings, message);
   }
 }
