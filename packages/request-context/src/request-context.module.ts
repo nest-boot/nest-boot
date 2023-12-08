@@ -14,15 +14,20 @@ import { RequestContextMiddleware } from "./request-context.middleware";
 @Module({
   providers: [
     RequestContext,
+    RequestContextMiddleware,
     {
       provide: APP_INTERCEPTOR,
       useClass: RequestContextInterceptor,
     },
   ],
-  exports: [RequestContext],
+  exports: [RequestContext, RequestContextMiddleware],
 })
 export class RequestContextModule implements NestModule {
+  constructor(
+    private readonly requestContextMiddleware: RequestContextMiddleware,
+  ) {}
+
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(RequestContextMiddleware).forRoutes("/");
+    consumer.apply(this.requestContextMiddleware.use).forRoutes("*");
   }
 }
