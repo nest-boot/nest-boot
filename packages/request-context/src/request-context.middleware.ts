@@ -9,7 +9,22 @@ import {
 
 @Injectable()
 export class RequestContextMiddleware implements NestMiddleware {
-  async use(req: Request, res: Response, next: NextFunction): Promise<void> {
+  readonly use: NestMiddleware["use"];
+
+  constructor() {
+    this.use = this.handle.bind(this);
+  }
+
+  private async handle(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
+    if (RequestContext.isActive()) {
+      next();
+      return;
+    }
+
     const ctx = new RequestContext();
 
     ctx.set<Request>(CTX_REQUEST_TOKEN, req);
