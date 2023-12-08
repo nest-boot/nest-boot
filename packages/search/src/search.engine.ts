@@ -3,11 +3,12 @@ import { type EntityName } from "@mikro-orm/core";
 import { type SearchOptions } from "./interfaces";
 
 export class SearchEngine {
+  // eslint-disable-next-line @typescript-eslint/require-await
   async search<E extends { id: string | number | bigint }>(
-    service: EntityName<E>,
-    query: string,
-    options?: SearchOptions<E>
-  ): Promise<[Array<E["id"]>, number]> {
+    _service: EntityName<E>,
+    _query: string,
+    _options?: SearchOptions<E>,
+  ): Promise<[E["id"][], number]> {
     return [[], 0];
   }
 }

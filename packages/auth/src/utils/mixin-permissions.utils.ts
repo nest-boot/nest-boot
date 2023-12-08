@@ -4,8 +4,8 @@ import { type HasPermissions } from "../interfaces";
 
 export type Type<T = any> = new (...args: any[]) => T;
 
-export function mixinPermissions<T extends Type<any>>(
-  base: T
+export function mixinPermissions<T extends Type>(
+  base: T,
 ): Type<HasPermissions> & T {
   const trait = class extends base implements HasPermissions {
     permissions: string[] = [];
@@ -13,7 +13,7 @@ export function mixinPermissions<T extends Type<any>>(
 
   Property({ type: t.array, onCreate: () => [] })(
     trait.prototype,
-    "permissions"
+    "permissions",
   );
 
   return trait;

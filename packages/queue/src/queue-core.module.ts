@@ -1,3 +1,4 @@
+import { RequestContextModule } from "@nest-boot/request-context";
 import { Global, Logger, Module } from "@nestjs/common";
 import { DiscoveryService, MetadataScanner } from "@nestjs/core";
 
@@ -6,6 +7,7 @@ import { QueueManager } from "./queue.manager";
 
 @Global()
 @Module({
+  imports: [RequestContextModule],
   providers: [
     DiscoveryService,
     MetadataScanner,

@@ -1,4 +1,9 @@
-import { REQUEST, RequestContext, RESPONSE } from "@nest-boot/request-context";
+import {
+  REQUEST,
+  RequestContext,
+  RequestContextModule,
+  RESPONSE,
+} from "@nest-boot/request-context";
 import {
   Global,
   Inject,
@@ -24,6 +29,7 @@ import { LoggerModuleOptions } from "./logger-module-options.interface";
 
 @Global()
 @Module({
+  imports: [RequestContextModule],
   providers: [
     Logger,
     {

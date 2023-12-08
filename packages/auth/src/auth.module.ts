@@ -1,3 +1,4 @@
+import { RequestContextModule } from "@nest-boot/request-context";
 import {
   Global,
   Inject,
@@ -18,6 +19,7 @@ import { AuthModuleOptions } from "./interfaces";
 
 @Global()
 @Module({
+  imports: [RequestContextModule],
   providers: [
     {
       provide: APP_GUARD,
@@ -31,7 +33,7 @@ import { AuthModuleOptions } from "./interfaces";
 export class AuthModule extends ConfigurableModuleClass implements NestModule {
   constructor(
     @Inject(MODULE_OPTIONS_TOKEN)
-    private readonly options: AuthModuleOptions
+    private readonly options: AuthModuleOptions,
   ) {
     super();
   }

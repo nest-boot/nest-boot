@@ -17,8 +17,8 @@ export interface AuthModuleOptions {
   defaultRequireAuth?: boolean;
 
   // 包含路由默认为 *
-  includeRoutes?: Array<string | Type<any> | RouteInfo>;
+  includeRoutes?: (string | Type | RouteInfo)[];
 
   // 排除路由默认为空
-  excludeRoutes?: Array<string | RouteInfo>;
+  excludeRoutes?: (string | RouteInfo)[];
 }

@@ -8,7 +8,7 @@ export class MigrationGenerator extends TSMigrationGenerator {
 
     const formatSql = format(sql, { language: "postgresql" }).replace(
       /['\\]/g,
-      "\\'"
+      "\\'",
     );
 
     return `${padding}this.addSql(/* SQL */ \`
@@ -18,13 +18,14 @@ export class MigrationGenerator extends TSMigrationGenerator {
 
   generateMigrationFile(
     className: string,
-    diff: { up: string[]; down: string[] }
+    diff: { up: string[]; down: string[] },
   ): string {
+    // eslint-disable-next-line @typescript-eslint/no-base-to-string, @typescript-eslint/restrict-template-expressions
     return `/* eslint-disable */\n\n${prettier.format(
       super.generateMigrationFile(className, diff),
       {
         parser: "typescript",
-      }
+      },
     )}`;
   }
 }

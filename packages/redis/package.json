@@ -22,6 +22,7 @@
   },
   "devDependencies": {
     "@nest-boot/eslint-config": "workspace:*",
+    "@nest-boot/eslint-plugin": "workspace:*",
     "@nest-boot/health-check": "workspace:*",
     "@nest-boot/tsconfig": "workspace:*",
     "@nestjs/common": "^10.2.5",

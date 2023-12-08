@@ -28,6 +28,7 @@
     "@mikro-orm/nestjs": "^5.2.1",
     "@nest-boot/database": "workspace:*",
     "@nest-boot/eslint-config": "workspace:*",
+    "@nest-boot/eslint-plugin": "workspace:*",
     "@nest-boot/i18n": "workspace:*",
     "@nest-boot/request-context": "workspace:*",
     "@nest-boot/tsconfig": "workspace:*",
