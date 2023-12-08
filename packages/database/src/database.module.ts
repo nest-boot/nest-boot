@@ -5,7 +5,10 @@ import {
   type MikroOrmModuleFeatureOptions,
 } from "@mikro-orm/nestjs";
 import { HealthCheckRegistry } from "@nest-boot/health-check";
-import { RequestContext } from "@nest-boot/request-context";
+import {
+  RequestContext,
+  RequestContextModule,
+} from "@nest-boot/request-context";
 import {
   type DynamicModule,
   Logger,
@@ -26,6 +29,7 @@ import { type DatabaseModuleOptions } from "./interfaces";
 import { withBaseConfig } from "./utils/with-base-config.util";
 
 @Module({
+  imports: [RequestContextModule],
   providers: [DatabaseHealthIndicator],
 })
 export class DatabaseModule

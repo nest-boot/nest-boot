@@ -1,3 +1,4 @@
+import { RequestContextModule } from "@nest-boot/request-context";
 import {
   type DynamicModule,
   type MiddlewareConsumer,
@@ -22,7 +23,9 @@ import { type I18nModuleOptions } from "./interfaces/i18n-module-options.interfa
 
 i18next.use(Backend).use(LanguageDetector);
 
-@Module({})
+@Module({
+  imports: [RequestContextModule],
+})
 export class I18nModule extends ConfigurableModuleClass implements NestModule {
   static register(options: typeof OPTIONS_TYPE): DynamicModule {
     return {
@@ -38,7 +41,7 @@ export class I18nModule extends ConfigurableModuleClass implements NestModule {
 
   private static with(
     options: typeof OPTIONS_TYPE | typeof ASYNC_OPTIONS_TYPE,
-    dynamicModule: DynamicModule
+    dynamicModule: DynamicModule,
   ): DynamicModule {
     const provider: Provider<i18n> = {
       provide: I18N,

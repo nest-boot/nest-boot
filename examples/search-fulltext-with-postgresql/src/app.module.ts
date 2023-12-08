@@ -1,6 +1,5 @@
 import { EntityManager, PostgreSqlDriver } from "@mikro-orm/postgresql";
 import { DatabaseModule } from "@nest-boot/database";
-import { RequestContextModule } from "@nest-boot/request-context";
 import { SearchModule } from "@nest-boot/search";
 import { PostgresqlSearchEngine } from "@nest-boot/search-engine-postgresql";
 import { Module } from "@nestjs/common";
@@ -32,7 +31,6 @@ const SearchDynamicModule = SearchModule.registerAsync({
 @Module({
   imports: [
     ConfigDynamicModule,
-    RequestContextModule,
     DatabaseDynamicModule,
     SearchDynamicModule,
     PostModule,

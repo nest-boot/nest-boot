@@ -2,7 +2,6 @@ import { EntityManager, PostgreSqlDriver } from "@mikro-orm/postgresql";
 import { DatabaseModule } from "@nest-boot/database";
 import { GraphQLModule } from "@nest-boot/graphql";
 import { LoggerModule } from "@nest-boot/logger";
-import { RequestContextModule } from "@nest-boot/request-context";
 import { SearchModule } from "@nest-boot/search";
 import { PostgresqlSearchEngine } from "@nest-boot/search-engine-postgresql";
 import { Module } from "@nestjs/common";
@@ -52,7 +51,6 @@ const GraphQLDynamicModule = GraphQLModule.forRootAsync({
   imports: [
     ConfigDynamicModule,
     LoggerModule,
-    RequestContextModule,
     DatabaseDynamicModule,
     SearchDynamicModule,
     GraphQLDynamicModule,

@@ -557,6 +557,9 @@ importers:
       '@nest-boot/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@nest-boot/eslint-plugin':
+        specifier: workspace:*
+        version: link:../eslint-plugin
       '@nest-boot/i18n':
         specifier: workspace:*
         version: link:../i18n
@@ -614,6 +617,9 @@ importers:
       '@nest-boot/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@nest-boot/eslint-plugin':
+        specifier: workspace:*
+        version: link:../eslint-plugin
       '@nest-boot/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
@@ -919,6 +925,9 @@ importers:
       '@nest-boot/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@nest-boot/eslint-plugin':
+        specifier: workspace:*
+        version: link:../eslint-plugin
       '@nest-boot/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
@@ -955,6 +964,9 @@ importers:
       '@nest-boot/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@nest-boot/eslint-plugin':
+        specifier: workspace:*
+        version: link:../eslint-plugin
       '@nest-boot/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
@@ -997,6 +1009,9 @@ importers:
       '@nest-boot/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@nest-boot/eslint-plugin':
+        specifier: workspace:*
+        version: link:../eslint-plugin
       '@nest-boot/request-context':
         specifier: workspace:*
         version: link:../request-context
@@ -1115,6 +1130,9 @@ importers:
       '@nest-boot/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@nest-boot/eslint-plugin':
+        specifier: workspace:*
+        version: link:../eslint-plugin
       '@nest-boot/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
@@ -1157,6 +1175,9 @@ importers:
       '@nest-boot/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@nest-boot/eslint-plugin':
+        specifier: workspace:*
+        version: link:../eslint-plugin
       '@nest-boot/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
@@ -1269,6 +1290,9 @@ importers:
       '@nest-boot/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@nest-boot/eslint-plugin':
+        specifier: workspace:*
+        version: link:../eslint-plugin
       '@nest-boot/health-check':
         specifier: workspace:*
         version: link:../health-check
@@ -1357,6 +1381,9 @@ importers:
       '@nest-boot/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@nest-boot/eslint-plugin':
+        specifier: workspace:*
+        version: link:../eslint-plugin
       '@nest-boot/queue':
         specifier: workspace:*
         version: link:../queue
@@ -1411,6 +1438,9 @@ importers:
       '@nest-boot/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@nest-boot/eslint-plugin':
+        specifier: workspace:*
+        version: link:../eslint-plugin
       '@nest-boot/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
@@ -1463,6 +1493,9 @@ importers:
       '@nest-boot/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@nest-boot/eslint-plugin':
+        specifier: workspace:*
+        version: link:../eslint-plugin
       '@nest-boot/search':
         specifier: workspace:*
         version: link:../search
@@ -1520,6 +1553,9 @@ importers:
       '@nest-boot/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@nest-boot/eslint-plugin':
+        specifier: workspace:*
+        version: link:../eslint-plugin
       '@nest-boot/i18n':
         specifier: workspace:*
         version: link:../i18n
@@ -1572,6 +1608,9 @@ importers:
       '@nest-boot/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@nest-boot/eslint-plugin':
+        specifier: workspace:*
+        version: link:../eslint-plugin
       '@nest-boot/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig

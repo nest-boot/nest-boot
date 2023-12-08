@@ -1,9 +1,12 @@
-name: Check Pull Request
+name: Build
 
 on:
   pull_request:
     branches:
       - master
+      - beta
+      - alpha
+      - "*.x"
 
 jobs:
   build:

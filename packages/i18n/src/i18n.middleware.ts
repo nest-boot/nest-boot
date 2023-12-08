@@ -13,12 +13,12 @@ export class I18nMiddleware implements NestMiddleware {
   private readonly handler: Handler;
 
   constructor(
-    @Inject(MODULE_OPTIONS_TOKEN) readonly options: I18nModuleOptions
+    @Inject(MODULE_OPTIONS_TOKEN) readonly options: I18nModuleOptions,
   ) {
     this.handler = middleware.handle(i18next as any, options) as Handler;
   }
 
-  async use(req: Request, res: Response, next: () => void): Promise<void> {
+  use(req: Request, res: Response, next: () => void): void {
     this.handler(req, res, () => {
       RequestContext.set(I18N, req.i18n);
       next();
