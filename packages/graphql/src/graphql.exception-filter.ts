@@ -2,18 +2,24 @@ import {
   type ArgumentsHost,
   Catch,
   type ContextType,
-  type ExceptionFilter,
   HttpException,
   HttpStatus,
 } from "@nestjs/common";
+import { BaseExceptionFilter } from "@nestjs/core";
+import { GqlExceptionFilter } from "@nestjs/graphql";
 import { GraphQLError } from "graphql";
 
 @Catch()
-export class GraphQLExceptionFilter implements ExceptionFilter {
-  catch(error: Error, host: ArgumentsHost): void {
+export class GraphQLExceptionFilter
+  extends BaseExceptionFilter
+  implements GqlExceptionFilter
+{
+  catch(error: Error, host: ArgumentsHost) {
     if (host.getType<ContextType | "graphql">() === "graphql") {
-      throw this.transform(error);
+      return this.transform(error);
     }
+
+    super.catch(error, host);
   }
 
   transform(error: Error): GraphQLError {

@@ -6,13 +6,16 @@ import {
   type OnModuleInit,
   Optional,
 } from "@nestjs/common";
+import { APP_INTERCEPTOR } from "@nestjs/core";
 import { randomUUID } from "crypto";
 import { type Request, type Response } from "express";
 import pino from "pino";
 import pinoHttp from "pino-http";
 
 import { Logger } from "./logger";
+import { LoggingInterceptor } from "./logger.interceptor";
 import {
+  BINDINGS,
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
   PINO_LOGGER,
@@ -21,7 +24,13 @@ import { LoggerModuleOptions } from "./logger-module-options.interface";
 
 @Global()
 @Module({
-  providers: [Logger],
+  providers: [
+    Logger,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: LoggingInterceptor,
+    },
+  ],
   exports: [Logger],
 })
 export class LoggerModule
@@ -39,7 +48,6 @@ export class LoggerModule
   onModuleInit(): void {
     const logger = pino();
     const loggerMiddleware = pinoHttp({
-      autoLogging: false,
       genReqId:
         this.options.genReqId ??
         function (req, res) {
@@ -47,6 +55,8 @@ export class LoggerModule
           res.setHeader("X-Request-Id", id);
           return id;
         },
+      customReceivedMessage: () => "request received",
+      customProps: () => RequestContext.get(BINDINGS) ?? {},
       ...this.options,
     });
 

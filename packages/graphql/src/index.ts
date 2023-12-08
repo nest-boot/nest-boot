@@ -3,7 +3,6 @@ export * from "./connection.builder";
 export * from "./connection.service";
 export * from "./decorators";
 export * from "./dtos";
-export * from "./entity.data-loader";
 export * from "./enums";
 export * from "./graphql.exception-filter";
 export * from "./graphql.module";
