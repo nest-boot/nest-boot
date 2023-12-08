@@ -12,10 +12,10 @@ import { type Request, type Response } from "express";
 import pino from "pino";
 import pinoHttp from "pino-http";
 
-import { BINDINGS } from "../dist/logger.module-definition";
 import { Logger } from "./logger";
 import { LoggingInterceptor } from "./logger.interceptor";
 import {
+  BINDINGS,
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
   PINO_LOGGER,
