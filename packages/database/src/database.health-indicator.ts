@@ -23,11 +23,13 @@ export class DatabaseHealthIndicator extends HealthIndicator {
     key: string,
     options: DatabasePingCheckSettings = {},
   ): Promise<HealthIndicatorResult> {
+    let isHealthy = false;
+
     const connection = this.orm.em.getConnection();
     const timeout = options.timeout ?? 1000;
 
     try {
-      await this.pingDb(connection, timeout);
+      isHealthy = await this.pingDb(connection, timeout);
     } catch (error) {
       if (error instanceof PromiseTimeoutError) {
         throw new TimeoutError(
@@ -48,10 +50,17 @@ export class DatabaseHealthIndicator extends HealthIndicator {
       }
     }
 
-    return this.getStatus(key, true);
+    if (isHealthy) {
+      return this.getStatus(key, isHealthy);
+    }
+
+    throw new HealthCheckError(
+      `${key} is not available`,
+      this.getStatus(key, isHealthy),
+    );
   }
 
   private async pingDb(connection: Connection, timeout: number) {
-    return await promiseTimeout(timeout, connection.isConnected());
+    return (await promiseTimeout(timeout, connection.isConnected())) as boolean;
   }
 }
