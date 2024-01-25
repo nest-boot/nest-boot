@@ -854,57 +854,6 @@ importers:
         specifier: ^5.2.2
         version: 5.3.3
 
-  packages/event-emitter:
-    devDependencies:
-      '@nest-boot/common':
-        specifier: workspace:*
-        version: link:../common
-      '@nest-boot/eslint-config':
-        specifier: workspace:*
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:*
-        version: link:../eslint-plugin
-      '@nest-boot/request-context':
-        specifier: workspace:*
-        version: link:../request-context
-      '@nest-boot/tsconfig':
-        specifier: workspace:*
-        version: link:../tsconfig
-      '@nestjs/common':
-        specifier: ^10.3.1
-        version: 10.3.1
-      '@nestjs/config':
-        specifier: ^3.1.1
-        version: 3.1.1
-      '@nestjs/core':
-        specifier: ^10.3.1
-        version: 10.3.1
-      '@types/jest':
-        specifier: ^29.5.11
-        version: 29.5.11
-      eslint:
-        specifier: ^8.49.0
-        version: 8.56.0
-      eventemitter2:
-        specifier: ^6.4.9
-        version: 6.4.9
-      jest:
-        specifier: ^29.7.0
-        version: 29.7.0
-      reflect-metadata:
-        specifier: ^0.1.13
-        version: 0.1.14
-      rxjs:
-        specifier: ^7.8.1
-        version: 7.8.1
-      ts-jest:
-        specifier: ^29.1.2
-        version: 29.1.2
-      typescript:
-        specifier: ^5.2.2
-        version: 5.3.3
-
   packages/graphql:
     dependencies:
       '@apollo/server':
@@ -1267,6 +1216,9 @@ importers:
         specifier: ^3.1.1
         version: 3.1.1
       '@nestjs/core':
+        specifier: ^10.3.1
+        version: 10.3.1
+      '@nestjs/testing':
         specifier: ^10.3.1
         version: 10.3.1
       '@types/express':
@@ -8024,10 +7976,6 @@ packages:
     resolution: {integrity: sha512-i/2XbnSz/uxRCU6+NdVJgKWDTM427+MqYbkQzD321DuCQJUqOuJKIA0IM2+W2xtYHdKOmZ4dR6fExsd4SXL+WQ==}
     engines: {node: '>=6'}
     dev: false
-
-  /eventemitter2@6.4.9:
-    resolution: {integrity: sha512-JEPTiaOt9f04oa6NOkc4aH+nVp5I3wEjpHbIPqfgCdD5v5bUzy7xQqwcVO2aDQgOWhI28da57HksMrzK9HlRxg==}
-    dev: true
 
   /eventemitter3@3.1.2:
     resolution: {integrity: sha512-tvtQIeLVHjDkJYnzf2dgVMxfuSGJeM/7UCG17TT4EumTfNtF+0nebF/4zWOIkCreAbtNqhGEboB6BWrwqNaw4Q==}
