@@ -1,3 +1,4 @@
+/* eslint-disable */
 import type { CstNode, ICstVisitor, IToken } from "chevrotain";
 
 export interface QueryCstNode extends CstNode {
@@ -5,125 +6,125 @@ export interface QueryCstNode extends CstNode {
   children: QueryCstChildren;
 }
 
-export interface QueryCstChildren {
+export type QueryCstChildren = {
   orQuery: OrQueryCstNode[];
-}
+};
 
 export interface OrQueryCstNode extends CstNode {
   name: "orQuery";
   children: OrQueryCstChildren;
 }
 
-export interface OrQueryCstChildren {
+export type OrQueryCstChildren = {
   andQuery: AndQueryCstNode[];
   Or?: IToken[];
-}
+};
 
 export interface AndQueryCstNode extends CstNode {
   name: "andQuery";
   children: AndQueryCstChildren;
 }
 
-export interface AndQueryCstChildren {
+export type AndQueryCstChildren = {
   atomicQuery: AtomicQueryCstNode[];
   And?: IToken[];
-}
+};
 
 export interface AtomicQueryCstNode extends CstNode {
   name: "atomicQuery";
   children: AtomicQueryCstChildren;
 }
 
-export interface AtomicQueryCstChildren {
+export type AtomicQueryCstChildren = {
   subQuery?: SubQueryCstNode[];
   notQuery?: NotQueryCstNode[];
   term?: TermCstNode[];
-}
+};
 
 export interface SubQueryCstNode extends CstNode {
   name: "subQuery";
   children: SubQueryCstChildren;
 }
 
-export interface SubQueryCstChildren {
+export type SubQueryCstChildren = {
   LeftBracket: IToken[];
   query: QueryCstNode[];
   RightBracket: IToken[];
-}
+};
 
 export interface NotQueryCstNode extends CstNode {
   name: "notQuery";
   children: NotQueryCstChildren;
 }
 
-export interface NotQueryCstChildren {
+export type NotQueryCstChildren = {
   Not: IToken[];
   atomicQuery: AtomicQueryCstNode[];
-}
+};
 
 export interface TermCstNode extends CstNode {
   name: "term";
   children: TermCstChildren;
 }
 
-export interface TermCstChildren {
+export type TermCstChildren = {
   equalFieldTerm?: EqualFieldTermCstNode[];
   otherFieldTerm?: OtherFieldTermCstNode[];
   globalTerm?: GlobalTermCstNode[];
-}
+};
 
 export interface EqualFieldTermCstNode extends CstNode {
   name: "equalFieldTerm";
   children: EqualFieldTermCstChildren;
 }
 
-export interface EqualFieldTermCstChildren {
+export type EqualFieldTermCstChildren = {
   field: FieldCstNode[];
   Equal: IToken[];
   value: ValueCstNode[];
   Comma?: IToken[];
-}
+};
 
 export interface OtherFieldTermCstNode extends CstNode {
   name: "otherFieldTerm";
   children: OtherFieldTermCstChildren;
 }
 
-export interface OtherFieldTermCstChildren {
+export type OtherFieldTermCstChildren = {
   field: FieldCstNode[];
   LessThan?: IToken[];
   LessThanOrEqual?: IToken[];
   GreaterThan?: IToken[];
   GreaterThanOrEqual?: IToken[];
   value: ValueCstNode[];
-}
+};
 
 export interface GlobalTermCstNode extends CstNode {
   name: "globalTerm";
   children: GlobalTermCstChildren;
 }
 
-export interface GlobalTermCstChildren {
+export type GlobalTermCstChildren = {
   value: ValueCstNode[];
-}
+};
 
 export interface FieldCstNode extends CstNode {
   name: "field";
   children: FieldCstChildren;
 }
 
-export interface FieldCstChildren {
+export type FieldCstChildren = {
   Field: IToken[];
-}
+};
 
 export interface ValueCstNode extends CstNode {
   name: "value";
   children: ValueCstChildren;
 }
 
-export interface ValueCstChildren {
+export type ValueCstChildren = {
   Value: IToken[];
-}
+};
 
 export interface ICstNodeVisitor<IN, OUT> extends ICstVisitor<IN, OUT> {
   query(children: QueryCstChildren, param?: IN): OUT;

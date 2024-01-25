@@ -1761,6 +1761,9 @@ importers:
       '@docusaurus/preset-classic':
         specifier: 3.1.0
         version: 3.1.0
+      '@mdx-js/react':
+        specifier: ^3.0.0
+        version: 3.0.0
       clsx:
         specifier: ^2.1.0
         version: 2.1.0
