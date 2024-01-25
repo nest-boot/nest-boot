@@ -1,18 +1,9 @@
+import { ApolloServerPluginLandingPageLocalDefault } from "@apollo/server/plugin/landingPage/default";
 import { ApolloDriver } from "@nestjs/apollo";
-import {
-  type DynamicModule,
-  Global,
-  Inject,
-  MiddlewareConsumer,
-  Module,
-  NestModule,
-  RequestMethod,
-} from "@nestjs/common";
+import { type DynamicModule, Global, Inject, Module } from "@nestjs/common";
 import { APP_FILTER } from "@nestjs/core";
 import { GraphQLModule as BaseGraphQLModule } from "@nestjs/graphql";
 
-import { ConnectionService } from "./connection.service";
-import { GraphiQLMiddleware } from "./graphiql.middleware";
 import { GraphQLExceptionFilter } from "./graphql.exception-filter";
 import {
   type ASYNC_OPTIONS_TYPE,
@@ -27,7 +18,6 @@ import { LoggingPlugin } from "./plugins/logging.plugin";
 @Global()
 @Module({
   providers: [
-    ConnectionService,
     ComplexityPlugin,
     LoggingPlugin,
     {
@@ -35,12 +25,9 @@ import { LoggingPlugin } from "./plugins/logging.plugin";
       useClass: GraphQLExceptionFilter,
     },
   ],
-  exports: [MODULE_OPTIONS_TOKEN, ConnectionService],
+  exports: [MODULE_OPTIONS_TOKEN],
 })
-export class GraphQLModule
-  extends ConfigurableModuleClass
-  implements NestModule
-{
+export class GraphQLModule extends ConfigurableModuleClass {
   static forRoot(options: typeof OPTIONS_TYPE): DynamicModule {
     return this.withBaseGraphQLModule(super.forRoot(options));
   }
@@ -56,9 +43,18 @@ export class GraphQLModule
       driver: ApolloDriver,
       inject: [MODULE_OPTIONS_TOKEN],
       useFactory: (options: GraphQLModuleOptions) => {
+        if (options.playground !== false) {
+          options.playground = false;
+          options.plugins = [
+            ...(options.plugins ?? []),
+            ApolloServerPluginLandingPageLocalDefault({
+              includeCookies: true,
+            }),
+          ];
+        }
+
         return {
           ...options,
-          playground: false,
           ...(typeof options.subscriptions !== "undefined"
             ? {
                 subscriptions: {
@@ -70,6 +66,7 @@ export class GraphQLModule
       },
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
     dynamicModule.imports = [
       ...(dynamicModule.imports ?? []),
       BaseGraphQLDynamicModule,
@@ -83,14 +80,5 @@ export class GraphQLModule
     private readonly options: GraphQLModuleOptions,
   ) {
     super();
-  }
-
-  configure(consumer: MiddlewareConsumer) {
-    if (this.options.playground === true) {
-      consumer.apply(GraphiQLMiddleware).forRoutes({
-        method: RequestMethod.GET,
-        path: this.options.path ?? "/graphql",
-      });
-    }
   }
 }

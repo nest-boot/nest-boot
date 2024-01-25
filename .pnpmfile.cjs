@@ -1,9 +1,8 @@
 module.exports = {
   hooks: {
     readPackage: (pkg, context) => {
+      // https://pnpm.io/how-peers-are-resolved
       if (pkg.name) {
-        // https://pnpm.io/zh/how-peers-are-resolved
-
         if (pkg.peerDependencies) {
           pkg.peerDependencies = {};
         }

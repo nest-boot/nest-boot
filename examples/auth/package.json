@@ -1,0 +1,103 @@
+{
+  "name": "auth",
+  "version": "0.0.0-development",
+  "description": "",
+  "author": "",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "prebuild": "rimraf dist",
+    "build": "nest build",
+    "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "dev": "nest start --watch",
+    "dev:repl": "nest start --watch --entryFile repl",
+    "debug": "nest start --debug --watch",
+    "debug:repl": "nest start --debug --watch --entryFile repl",
+    "start": "node dist/main",
+    "start:repl": "node dist/repl",
+    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage",
+    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
+    "test:e2e": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json",
+    "orm": "mikro-orm"
+  },
+  "dependencies": {
+    "@apollo/server": "^4.10.0",
+    "@mikro-orm/core": "^6.0.5",
+    "@mikro-orm/nestjs": "^5.2.1",
+    "@mikro-orm/postgresql": "^6.0.5",
+    "@mikro-orm/reflection": "^6.0.5",
+    "@nest-boot/auth": "workspace:*",
+    "@nest-boot/database": "workspace:*",
+    "@nest-boot/graphql": "workspace:*",
+    "@nest-boot/graphql-connection": "workspace:*",
+    "@nest-boot/hash": "workspace:*",
+    "@nest-boot/logger": "workspace:*",
+    "@nest-boot/request-context": "workspace:*",
+    "@nestjs/apollo": "^12.0.9",
+    "@nestjs/common": "^10.3.1",
+    "@nestjs/config": "^3.1.1",
+    "@nestjs/core": "^10.3.1",
+    "@nestjs/graphql": "^12.0.9",
+    "@nestjs/platform-express": "^10.3.1",
+    "graphql": "^16.8.1",
+    "reflect-metadata": "^0.1.13",
+    "rimraf": "^5.0.1",
+    "rxjs": "^7.8.0"
+  },
+  "devDependencies": {
+    "@faker-js/faker": "^8.1.0",
+    "@mikro-orm/cli": "^6.0.5",
+    "@mikro-orm/migrations": "^6.0.5",
+    "@mikro-orm/seeder": "^6.0.5",
+    "@nest-boot/eslint-config": "workspace:*",
+    "@nest-boot/eslint-plugin": "workspace:*",
+    "@nest-boot/tsconfig": "workspace:*",
+    "@nestjs/cli": "^10.3.0",
+    "@nestjs/schematics": "^10.1.0",
+    "@nestjs/testing": "^10.3.1",
+    "@types/express": "^4.17.17",
+    "@types/jest": "29.5.11",
+    "@types/node": "^20.11.6",
+    "@types/supertest": "^6.0.2",
+    "jest": "29.7.0",
+    "prettier": "^3.2.4",
+    "source-map-support": "^0.5.21",
+    "supertest": "^6.3.4",
+    "ts-jest": "29.1.2",
+    "ts-loader": "^9.4.4",
+    "ts-node": "^10.9.1",
+    "tsconfig-paths": "4.2.0",
+    "typescript": "^5.2.2"
+  },
+  "jest": {
+    "moduleFileExtensions": [
+      "js",
+      "json",
+      "ts"
+    ],
+    "rootDir": "src",
+    "testRegex": ".*\\.spec\\.ts$",
+    "transform": {
+      "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "collectCoverageFrom": [
+      "**/*.(t|j)s"
+    ],
+    "coverageDirectory": "../coverage",
+    "testEnvironment": "node"
+  },
+  "volta": {
+    "node": "20.11.0"
+  },
+  "mikro-orm": {
+    "useTsNode": true,
+    "configPaths": [
+      "./src/mikro-orm.config.ts",
+      "./dist/mikro-orm.config.js"
+    ]
+  }
+}

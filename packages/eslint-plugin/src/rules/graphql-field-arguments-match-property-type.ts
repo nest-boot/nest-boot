@@ -1,5 +1,4 @@
 import { AST_NODE_TYPES } from "@typescript-eslint/utils";
-import * as console from "console";
 
 import { createRule } from "../utils/createRule";
 
@@ -140,12 +139,6 @@ export default createRule({
                       typeAnnotation.typeName.type === AST_NODE_TYPES.Identifier
                         ? typeAnnotation.typeName.name
                         : typeAnnotation.type);
-
-                    console.log(
-                      "typeAnnotation",
-                      propertyTypeAnnotationHasNullType,
-                      propertyTypeName,
-                    );
 
                     const expectedScalarType =
                       Object.entries(scalarTypeAlias).find(

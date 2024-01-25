@@ -72,7 +72,7 @@ export class MyService {
 
 ## 实体服务
 
-实体服务主要是扩展了默认存储库中不存在的方法，可以配合 SearchModule 和 GraphQLModule 提供更多功能。
+实体服务主要是扩展了默认存储库中不存在的方法，可以配合 SearchModule 和 GraphqlConnectionModule 提供更多功能。
 
 ```typescript
 import { EntityManager } from "@mikro-orm/postgresql";

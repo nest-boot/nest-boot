@@ -1,5 +1,6 @@
 import { EntityManager } from "@mikro-orm/core";
-import { ConnectionService, ID } from "@nest-boot/graphql";
+import { ID } from "@nest-boot/graphql";
+import { ConnectionManager } from "@nest-boot/graphql-connection";
 import { NotFoundException } from "@nestjs/common";
 import { Args, Query, Resolver } from "@nestjs/graphql";
 
@@ -11,7 +12,7 @@ import { Post } from "./post.entity";
 export class PostResolver {
   constructor(
     private readonly em: EntityManager,
-    private readonly connectionService: ConnectionService,
+    private readonly cm: ConnectionManager,
   ) {}
 
   @Query(() => Post)
@@ -27,6 +28,6 @@ export class PostResolver {
 
   @Query(() => PostConnection)
   async posts(@Args() args: PostConnectionArgs): Promise<PostConnection> {
-    return await this.connectionService.get(Post, args);
+    return this.cm.find(PostConnection, args, {});
   }
 }

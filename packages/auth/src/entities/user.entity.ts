@@ -1,0 +1,56 @@
+import {
+  Collection,
+  Entity,
+  OneToMany,
+  PrimaryKey,
+  Property,
+  t,
+} from "@mikro-orm/core";
+
+import { PersonalAccessToken } from "./personal-access-token.entity";
+
+@Entity()
+export class User {
+  constructor(
+    data: Pick<User, "id" | "name" | "email" | "password" | "permissions"> &
+      Partial<Pick<User, "createdAt" | "updatedAt" | "personalAccessTokens">>,
+  ) {
+    this.id = data.id;
+    this.name = data.name;
+    this.email = data.email;
+    this.password = data.password;
+    this.permissions = data.permissions;
+
+    data.createdAt !== void 0 && (this.createdAt = data.createdAt);
+    data.updatedAt !== void 0 && (this.updatedAt = data.updatedAt);
+    data.personalAccessTokens !== void 0 &&
+      (this.personalAccessTokens = data.personalAccessTokens);
+  }
+
+  @PrimaryKey()
+  id: string;
+
+  @Property()
+  name: string;
+
+  @Property({ unique: true })
+  email: string;
+
+  @Property()
+  password: string;
+
+  @Property({ type: t.array })
+  permissions: string[];
+
+  @Property()
+  createdAt: Date = new Date();
+
+  @Property()
+  updatedAt: Date = new Date();
+
+  @OneToMany(
+    () => PersonalAccessToken,
+    (personalAccessToken) => personalAccessToken.user,
+  )
+  personalAccessTokens = new Collection<PersonalAccessToken>(this);
+}

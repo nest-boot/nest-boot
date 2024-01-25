@@ -1,5 +1,5 @@
 import { ValidateBy, type ValidationOptions } from "class-validator";
-import type ValidatorJS from "validator";
+import { IsNumericOptions } from "validator";
 import isNumericValidator from "validator/lib/isNumeric";
 
 import { buildI18nMessage } from "../../utils";
@@ -12,7 +12,7 @@ export const IS_NUMBER_STRING = "isNumberString";
  */
 export function isNumberString(
   value: unknown,
-  options?: ValidatorJS.IsNumericOptions
+  options?: IsNumericOptions,
 ): boolean {
   return typeof value === "string" && isNumericValidator(value, options);
 }
@@ -22,8 +22,8 @@ export function isNumberString(
  * If given value is not a string, then it returns false.
  */
 export function IsNumberString(
-  options?: ValidatorJS.IsNumericOptions,
-  validationOptions?: ValidationOptions
+  options?: IsNumericOptions,
+  validationOptions?: ValidationOptions,
 ): PropertyDecorator {
   return ValidateBy(
     {
@@ -36,6 +36,6 @@ export function IsNumberString(
         defaultMessage: buildI18nMessage(() => "is-number-string"),
       },
     },
-    validationOptions
+    validationOptions,
   );
 }

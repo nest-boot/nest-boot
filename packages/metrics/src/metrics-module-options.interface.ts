@@ -1,6 +1,9 @@
-import { type DefaultMetricsCollectorConfiguration } from "prom-client";
+import {
+  type DefaultMetricsCollectorConfiguration,
+  RegistryContentType,
+} from "prom-client";
 
-export type MetricsModuleOptions = Omit<
-  DefaultMetricsCollectorConfiguration,
+export type MetricsModuleOptions<T extends RegistryContentType> = Omit<
+  DefaultMetricsCollectorConfiguration<T>,
   "register"
 >;

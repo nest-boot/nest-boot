@@ -1,6 +1,6 @@
-import { EntityManager, Reference } from "@mikro-orm/core";
+import { EntityManager } from "@mikro-orm/core";
 import { I18N, type I18n } from "@nest-boot/i18n";
-import { REQUEST, RequestContext } from "@nest-boot/request-context";
+import { RequestContext } from "@nest-boot/request-context";
 import {
   type CanActivate,
   type ExecutionContext,
@@ -10,35 +10,72 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
+import { Request } from "express";
 import _ from "lodash";
 
-import { AUTH_ACCESS_TOKEN, AUTH_ENTITY } from "./auth.constants";
 import {
   MODULE_OPTIONS_TOKEN,
   PERMISSIONS_METADATA_KEY,
   REQUIRE_AUTH_METADATA_KEY,
 } from "./auth.module-definition";
-import {
-  type AccessTokenInterface,
-  AuthModuleOptions,
-  type HasPermissions,
-} from "./interfaces";
+import { AuthService } from "./auth.service";
+import { PersonalAccessToken, User } from "./entities";
+import { AuthModuleOptions } from "./interfaces";
 
+/**
+ * Authentication guard class used to protect routes and handle requests.
+ */
 @Injectable()
 export class AuthGuard implements CanActivate {
+  private readonly defaultRequireAuth: boolean;
+
   constructor(
+    private readonly reflector: Reflector,
+    private readonly em: EntityManager,
+    private readonly authService: AuthService,
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly options: AuthModuleOptions,
-    private readonly reflector: Reflector,
-    private readonly entityManager: EntityManager,
   ) {
     this.reflector = reflector;
+    this.defaultRequireAuth = this.options?.defaultRequireAuth ?? true;
   }
 
+  /**
+   * Get internationalized text based on the specified key.
+   * @param key - The key of the internationalized text.
+   * @returns The internationalized text.
+   */
   private t(key: string): string {
     return RequestContext.get<I18n>(I18N)?.t(key, { ns: "auth" }) ?? key;
   }
 
+  /**
+   * Extracts the personal access token from the request.
+   * @param req - The request object.
+   * @returns The personal access token, or null if it doesn't exist.
+   */
+  private extractPersonalAccessToken(req: Request): string | null {
+    const authorizationHeader = req.get("authorization");
+    if (typeof authorizationHeader !== "undefined") {
+      const matched = authorizationHeader.match(/(\S+)\s+(\S+)/);
+
+      if (matched !== null && matched[1].toLowerCase() === "bearer") {
+        return matched[2];
+      }
+    }
+
+    if (typeof req.cookies?.token === "string") {
+      return req.cookies.token;
+    }
+
+    return null;
+  }
+
+  /**
+   * Determines whether the request is allowed to be executed.
+   * @param executionContext - The execution context object.
+   * @returns True if the request is allowed to be executed, otherwise false.
+   */
   public async canActivate(
     executionContext: ExecutionContext,
   ): Promise<boolean> {
@@ -46,14 +83,7 @@ export class AuthGuard implements CanActivate {
       return true;
     }
 
-    if (
-      typeof RequestContext.get<{ authMiddlewareUsed?: boolean }>(REQUEST)
-        ?.authMiddlewareUsed === "undefined"
-    ) {
-      return true;
-    }
-
-    // 获取方法是否需要认证
+    // Get whether the method requires authentication
     const requireAuth =
       this.reflector.get<boolean>(
         REQUIRE_AUTH_METADATA_KEY,
@@ -64,59 +94,55 @@ export class AuthGuard implements CanActivate {
         executionContext.getClass(),
       );
 
-    // 如果默认公开或有公共访问权限直接放行
-    if (!(requireAuth ?? this.options.defaultRequireAuth ?? false)) {
+    // If it's publicly accessible by default or has public access permission, allow access directly
+    if (!(requireAuth ?? this.defaultRequireAuth ?? false)) {
       return true;
     }
 
-    const accessToken =
-      RequestContext.get<AccessTokenInterface>(AUTH_ACCESS_TOKEN);
+    // Get the Request object
+    const req =
+      executionContext.switchToHttp().getRequest<Request>() ??
+      executionContext.getArgs()[2].req;
 
-    // 如果上下文中没有认证信息拒绝访问
-    if (typeof accessToken === "undefined") {
-      throw new UnauthorizedException(this.t("The access token is invalid."));
+    // Extract the token
+    const token = this.extractPersonalAccessToken(req);
+
+    if (token === null) {
+      throw new UnauthorizedException(
+        this.t("The personal access token is invalid."),
+      );
     }
 
-    // 获取方法权限
+    const personalAccessToken = await this.authService.getToken(token);
+    const user = await personalAccessToken?.user.load();
+
+    if (personalAccessToken === null || user == null) {
+      throw new UnauthorizedException(
+        this.t("The personal access token is invalid."),
+      );
+    }
+
+    RequestContext.set(PersonalAccessToken, personalAccessToken);
+    RequestContext.set(User, user);
+
+    // Get the method permissions
     const permissions = this.reflector.get<string[]>(
       PERMISSIONS_METADATA_KEY,
       executionContext.getHandler(),
     );
 
-    // 如果没有权限要求直接放行
-    // 判断用户权限和配置权限是否有交集，如果有放行
+    // If there are no permission requirements, allow access directly
+    // Check if there is an intersection between user permissions and configured permissions, if so, allow access
     if (
       typeof permissions === "undefined" ||
-      _.intersection(await this.getPermissions(), permissions).length > 0
+      _.intersection(user.permissions, permissions).length > 0
     ) {
-      accessToken.lastUsedAt = new Date();
-      await this.entityManager.flush();
+      personalAccessToken.lastUsedAt = new Date();
+      await this.em.flush();
 
       return true;
     }
 
     throw new ForbiddenException(this.t("Permission denied."));
-  }
-
-  async getPermissions(): Promise<string[]> {
-    let permissions: string[] = [];
-
-    const entity = RequestContext.get<Partial<HasPermissions>>(AUTH_ENTITY);
-
-    if (typeof entity !== "undefined") {
-      if (typeof entity.permissions !== "undefined") {
-        permissions = permissions.concat(entity.permissions);
-      } else {
-        const newPermissions = await Reference.create(entity).load(
-          "permissions",
-        );
-
-        if (typeof newPermissions !== "undefined") {
-          permissions = permissions.concat(newPermissions);
-        }
-      }
-    }
-
-    return permissions;
   }
 }

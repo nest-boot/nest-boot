@@ -11,6 +11,7 @@ import {
 } from "@nest-boot/request-context";
 import {
   type DynamicModule,
+  Global,
   Logger,
   Module,
   type OnModuleInit,
@@ -28,6 +29,7 @@ import {
 import { type DatabaseModuleOptions } from "./interfaces";
 import { withBaseConfig } from "./utils/with-base-config.util";
 
+@Global()
 @Module({
   imports: [RequestContextModule],
   providers: [DatabaseHealthIndicator],
@@ -83,6 +85,7 @@ export class DatabaseModule
     });
 
     return {
+      global: true,
       ...dynamicModule,
       imports: [...(dynamicModule.imports ?? []), MikroOrmDynamicModule],
       exports: [MODULE_OPTIONS_TOKEN],

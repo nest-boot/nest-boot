@@ -1,95 +1,141 @@
-import {
-  type AnyEntity,
-  EntityManager,
-  type EntityRepository,
-  type Loaded,
-} from "@mikro-orm/core";
+import { EntityClass, EntityManager } from "@mikro-orm/core";
+import { HashService } from "@nest-boot/hash";
 import { Inject, Injectable } from "@nestjs/common";
-import { randomBytes } from "crypto";
 
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition";
-import { type AccessTokenInterface, AuthModuleOptions } from "./interfaces";
-import ms = require("ms");
-import { RequestContext } from "@nest-boot/request-context";
+import { PersonalAccessToken, User } from "./entities";
+import { AuthModuleOptions } from "./interfaces";
+import { randomString } from "./utils/random-string.util";
 
-import { AUTH_ACCESS_TOKEN } from "./auth.constants";
-
+/**
+ * Service responsible for handling authentication-related operations.
+ */
 @Injectable()
 export class AuthService {
-  private readonly accessTokenRepository: EntityRepository<AccessTokenInterface>;
+  private readonly User: EntityClass<User>;
+  private readonly PersonalAccessToken: EntityClass<PersonalAccessToken>;
 
+  private readonly expiresIn?: number;
+
+  /**
+   * Constructs a new instance of the AuthService class.
+   * @param em The EntityManager instance.
+   * @param hashService The HashService instance.
+   * @param options The options for the Auth module.
+   */
   constructor(
+    private readonly em: EntityManager,
+    private readonly hashService: HashService,
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly options: AuthModuleOptions,
-    private readonly entityManager: EntityManager
   ) {
-    this.accessTokenRepository = this.entityManager.getRepository(
-      this.options.accessTokenEntityClass
-    );
+    this.User = this.options?.entities?.User ?? User;
+    this.PersonalAccessToken =
+      this.options?.entities?.PersonalAccessToken ?? PersonalAccessToken;
+
+    this.expiresIn = this.options?.expiresIn;
   }
 
   /**
-   * 生成访问令牌
-   * @param entity
-   * @param name
-   * @param expiresIn
+   * Attempts to authenticate a user with the provided email and password.
+   * @param email The user's email.
+   * @param password The user's password.
+   * @returns The authenticated user if successful, otherwise null.
+   */
+  async attempt(email: string, password: string) {
+    const user = await this.em.findOne(this.User, { email });
+
+    if (
+      user === null ||
+      !(await this.hashService.verify(user.password, password))
+    ) {
+      return null;
+    }
+
+    return user;
+  }
+
+  /**
+   * Retrieves a personal access token by its token value.
+   * @param token The token value.
+   * @returns The personal access token if found, otherwise null.
+   */
+  async getToken(token: string): Promise<PersonalAccessToken | null> {
+    return await this.em.findOne(this.PersonalAccessToken, {
+      token,
+    });
+  }
+
+  /**
+   * Creates a new personal access token for a user.
+   * @param user The user for whom the token is created.
+   * @param name The name of the token.
+   * @param permissions The permissions associated with the token.
+   * @param expiresIn The expiration time for the token.
+   * @returns An object containing the token and the personal access token entity.
    */
   async createToken(
-    entity: AnyEntity,
+    user: User,
     name: string,
-    expiresIn?: string | number
-  ): Promise<AccessTokenInterface> {
-    const token = randomBytes(32).toString("hex");
+    permissions: string[] = ["*"],
+    expiresIn?: number,
+  ): Promise<{ token: string; personalAccessToken: PersonalAccessToken }> {
+    const token = randomString(48);
 
-    const _expiresIn = expiresIn ?? this.options.expiresIn;
-    const _expiresInMs =
-      typeof _expiresIn === "string" ? ms(_expiresIn) : _expiresIn;
+    expiresIn = expiresIn ?? this.expiresIn;
 
-    const accessToken = this.accessTokenRepository.create({
+    const personalAccessToken = this.em.create(this.PersonalAccessToken, {
+      user,
       name,
       token,
-      entityId: entity.id,
-      entityName: entity.constructor.name,
+      permissions,
       expiresAt:
-        _expiresInMs != null ? new Date(Date.now() + _expiresInMs) : undefined,
+        typeof expiresIn !== "undefined"
+          ? new Date(Date.now() + expiresIn)
+          : null,
     });
 
-    await this.accessTokenRepository.persistAndFlush(accessToken);
+    await this.em.persistAndFlush(personalAccessToken);
 
-    return accessToken;
+    return { token, personalAccessToken };
   }
 
   /**
-   * 获取个人访问令牌
-   * @param token 令牌，如果不传则从上下文中获取
+   * Deletes a personal access token.
+   * @param personalAccessToken - The personal access token to be deleted.
+   * @returns A Promise that resolves when the token is successfully deleted.
    */
-  async getToken(token?: string): Promise<Loaded<AccessTokenInterface> | null> {
-    if (typeof token === "undefined") {
-      return (
-        RequestContext.get<AccessTokenInterface>(AUTH_ACCESS_TOKEN) ?? null
-      );
-    }
-
-    return await this.accessTokenRepository.findOne({ token });
+  async deleteToken(personalAccessToken: PersonalAccessToken): Promise<void> {
+    await this.em.remove(personalAccessToken).flush();
   }
 
   /**
-   * 验证访问令牌
-   * @param token 令牌，如果不传则从上下文中获取
+   * Registers a new user.
+   * @param name The user's name.
+   * @param email The user's email.
+   * @param password The user's password.
+   * @param permissions The permissions associated with the user.
+   * @returns The registered user.
    */
-  async verifyToken(token?: string): Promise<boolean> {
-    return (await this.getToken(token)) !== null;
-  }
+  async register(
+    name: string,
+    email: string,
+    password: string,
+    permissions: string[] = [],
+  ) {
+    const hashedPassword = await this.hashService.create(password);
 
-  /**
-   * 撤销访问令牌
-   * @param token 令牌，如果不传则从上下文中获取
-   */
-  async revokeToken(token?: string): Promise<void> {
-    const accessToken = await this.getToken(token);
+    const user = this.em.create(this.User, {
+      name,
+      email,
+      password: hashedPassword,
+      permissions,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
 
-    if (accessToken !== null) {
-      await this.accessTokenRepository.remove(accessToken).flush();
-    }
+    await this.em.persistAndFlush(user);
+
+    return user;
   }
 }

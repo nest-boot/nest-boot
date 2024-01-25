@@ -1,26 +1,29 @@
-import { Entity, Index, PrimaryKey, Property, t } from "@mikro-orm/core";
+import {
+  Entity,
+  Index,
+  ManyToOne,
+  PrimaryKey,
+  Property,
+  Ref,
+  t,
+} from "@mikro-orm/core";
 import { FullTextType } from "@mikro-orm/postgresql";
 import { Field, ID, ObjectType } from "@nest-boot/graphql";
-import { Searchable } from "@nest-boot/search";
 import { randomUUID } from "crypto";
 
+import { User } from "../user/user.entity";
+
 @ObjectType()
-@Searchable({
-  aliasFields: {
-    content: "searchableContent",
-  },
-  filterableFields: ["title", "searchableContent", "createdAt", "updatedAt"],
-  searchableFields: ["title", "searchableContent"],
-})
 @Entity()
 export class Post {
   constructor(
-    data: Pick<Post, "title" | "content"> &
+    data: Pick<Post, "title" | "content" | "searchableContent" | "user"> &
       Partial<Pick<Post, "id" | "createdAt" | "updatedAt">>,
   ) {
     this.title = data.title;
     this.content = data.content;
-    this.searchableContent = data.content;
+    this.searchableContent = data.searchableContent;
+    this.user = data.user;
 
     data.id !== void 0 && (this.id = data.id);
     data.createdAt !== void 0 && (this.createdAt = data.createdAt);
@@ -57,4 +60,11 @@ export class Post {
   @Field()
   @Property({ defaultRaw: "now()", onUpdate: () => new Date() })
   updatedAt: Date = new Date();
+
+  @Field(() => Date, { nullable: true })
+  @Property({ nullable: true })
+  publishedAt: Date | null = null;
+
+  @ManyToOne(() => User)
+  user: Ref<User>;
 }

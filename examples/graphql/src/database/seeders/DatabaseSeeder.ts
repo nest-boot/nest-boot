@@ -2,6 +2,7 @@ import type { EntityManager } from "@mikro-orm/core";
 import { Seeder } from "@mikro-orm/seeder";
 
 import { Post } from "../../post/post.entity";
+import { User } from "../../user/user.entity";
 
 // {
 //   id: faker.datatype.uuid(),
@@ -97,10 +98,20 @@ const posts = [
 export class DatabaseSeeder extends Seeder {
   // eslint-disable-next-line @typescript-eslint/require-await
   async run(em: EntityManager): Promise<void> {
+    const user = em.create(User, {
+      id: "b3c9b8b3-7c0e-4c8d-8c2a-6b3e5e5f9e0c",
+      name: "admin",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
     for (const post of posts) {
       em.create(Post, {
         ...post,
         searchableContent: post.content,
+        user,
+        createdAt: new Date(post.createdAt),
+        updatedAt: new Date(post.updatedAt),
       });
     }
   }

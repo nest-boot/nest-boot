@@ -1,9 +1,9 @@
-import { EntityManager, PostgreSqlDriver } from "@mikro-orm/postgresql";
+import { PostgreSqlDriver } from "@mikro-orm/postgresql";
+import { SeedManager } from "@mikro-orm/seeder";
 import { DatabaseModule } from "@nest-boot/database";
 import { GraphQLModule } from "@nest-boot/graphql";
+import { GraphqlConnectionModule } from "@nest-boot/graphql-connection";
 import { LoggerModule } from "@nest-boot/logger";
-import { SearchModule } from "@nest-boot/search";
-import { PostgresqlSearchEngine } from "@nest-boot/search-engine-postgresql";
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 
@@ -20,13 +20,7 @@ const DatabaseDynamicModule = DatabaseModule.forRootAsync({
     dbName: `graphql_${config.get("DATABASE_NAME")}`,
     name: config.get("DATABASE_USERNAME"),
     password: config.get("DATABASE_PASSWORD"),
-  }),
-});
-
-const SearchDynamicModule = SearchModule.registerAsync({
-  inject: [EntityManager],
-  useFactory: (entityManager: EntityManager) => ({
-    engine: new PostgresqlSearchEngine(entityManager),
+    extensions: [SeedManager],
   }),
 });
 
@@ -34,7 +28,7 @@ const GraphQLDynamicModule = GraphQLModule.forRootAsync({
   inject: [ConfigService],
   useFactory: (config: ConfigService) => ({
     playground: true,
-    autoSchemaFile: true,
+    autoSchemaFile: "./schema.gql",
     complexity: {
       rateLimit: {
         connection: {
@@ -47,13 +41,17 @@ const GraphQLDynamicModule = GraphQLModule.forRootAsync({
   }),
 });
 
+const GraphqlConnectionDynamicModule = GraphqlConnectionModule.register({
+  isGlobal: true,
+});
+
 @Module({
   imports: [
     ConfigDynamicModule,
     LoggerModule,
     DatabaseDynamicModule,
-    SearchDynamicModule,
     GraphQLDynamicModule,
+    GraphqlConnectionDynamicModule,
     PostModule,
   ],
 })
