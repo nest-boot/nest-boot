@@ -12,10 +12,8 @@ import {
 } from "./src/constants";
 import { delay } from "./src/delay";
 import { TestConsumer } from "./src/test.consumer";
-import { TestLegacyProcessor } from "./src/test.legacy-processor";
 import { TestProcessor } from "./src/test.processor";
 import { TestRequestScopedConsumer } from "./src/test-request-scoped.consumer";
-import { TestRequestScopedLegacyProcessor } from "./src/test-request-scoped.legacy-processor";
 import { TestRequestScopedProcessor } from "./src/test-request-scoped.processor";
 
 describe("LoggerModule - e2e", () => {
@@ -71,24 +69,6 @@ describe("LoggerModule - e2e", () => {
     await delay(1000);
 
     expect(TestRequestScopedProcessor.job?.data).toEqual(TEST_JOB_DATA);
-  });
-
-  it(`经典处理器收到的数据应该要和发送者的一致`, async () => {
-    await app.get(Queue).add(TEST_JOB_NAME, TEST_JOB_DATA);
-
-    await delay(1000);
-
-    const testLegacyProcessor = app.get(TestLegacyProcessor);
-
-    expect(testLegacyProcessor.job?.data).toEqual(TEST_JOB_DATA);
-  });
-
-  it(`请求范围经典处理器收到的数据应该要和发送者的一致`, async () => {
-    await app.get(Queue).add(TEST_REQUEST_SCOPED_JOB_NAME, TEST_JOB_DATA);
-
-    await delay(1000);
-
-    expect(TestRequestScopedLegacyProcessor.job?.data).toEqual(TEST_JOB_DATA);
   });
 
   afterEach(async () => {

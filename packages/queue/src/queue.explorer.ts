@@ -16,11 +16,7 @@ import { Injector } from "@nestjs/core/injector/injector";
 import { InstanceWrapper } from "@nestjs/core/injector/instance-wrapper";
 import { MetricsTime, Worker } from "bullmq";
 
-import {
-  ConsumerDecorator,
-  LegacyProcessorDecorator,
-  ProcessorDecorator,
-} from "./decorators";
+import { ConsumerDecorator, ProcessorDecorator } from "./decorators";
 import { Job, JobProcessor, type ProcessorFunction } from "./interfaces";
 import { QueueConsumer } from "./interfaces";
 import { Queue } from "./queue";
@@ -37,11 +33,6 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
   readonly consumerMap = new Map<string, ProcessorFunction>();
 
   readonly processorMap = new Map<string, Map<string, ProcessorFunction>>();
-
-  readonly legacyProcessorMap = new Map<
-    string,
-    Map<string, ProcessorFunction>
-  >();
 
   constructor(
     private readonly reflector: Reflector,
@@ -184,82 +175,14 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
       });
   }
 
-  discoveryLegacyProcessors(): void {
-    this.discoveryService.getProviders().forEach((wrapper: InstanceWrapper) => {
-      const { host, instance } = wrapper;
-
-      if (
-        typeof host !== "undefined" &&
-        typeof instance?.constructor !== "undefined"
-      ) {
-        this.metadataScanner
-          .getAllMethodNames(Object.getPrototypeOf(instance))
-          .forEach((key) => {
-            const metadata = this.reflector.get(
-              LegacyProcessorDecorator,
-              instance[key],
-            );
-
-            if (typeof metadata !== "undefined") {
-              const queue = this.queueMap.get(metadata.queue);
-
-              if (typeof queue === "undefined") {
-                throw new Error(
-                  `Queue ${metadata.queue} not found for processor ${instance?.constructor.name}`,
-                );
-              }
-
-              const isRequestScoped = !wrapper.isDependencyTreeStatic();
-
-              const legacyProcessors =
-                this.legacyProcessorMap.get(metadata.queue) ??
-                new Map<string, ProcessorFunction>();
-
-              legacyProcessors.set(
-                metadata.name,
-                this.wrapRequestContext(
-                  this.wrapTimeout(
-                    isRequestScoped
-                      ? async (job) => {
-                          const contextId = createContextId();
-
-                          this.moduleRef.registerRequestByContextId(
-                            job,
-                            contextId,
-                          );
-
-                          const contextInstance =
-                            await this.injector.loadPerContext(
-                              instance,
-                              host,
-                              host.providers,
-                              contextId,
-                            );
-
-                          await contextInstance[key](job);
-                        }
-                      : instance[key].bind(instance),
-                  ),
-                ),
-              );
-
-              this.legacyProcessorMap.set(metadata.queue, legacyProcessors);
-            }
-          });
-      }
-    });
-  }
-
   createWorkers(): void {
     [...this.queueMap.entries()].forEach(([name, queue]) => {
       const consumer = this.consumerMap.get(name);
       const processors = this.processorMap.get(name);
-      const legacyProcessors = this.legacyProcessorMap.get(name);
 
       if (
         typeof consumer !== "undefined" ||
-        typeof processors !== "undefined" ||
-        typeof legacyProcessors !== "undefined"
+        typeof processors !== "undefined"
       ) {
         this.workerMap.set(
           name,
@@ -267,17 +190,10 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
             name,
             async (job) => {
               const processor = processors?.get(job.name);
-              const legacyProcessor = legacyProcessors?.get(job.name);
-              if (
-                typeof processor !== "undefined" ||
-                typeof legacyProcessor !== "undefined"
-              ) {
+
+              if (typeof processor !== "undefined") {
                 if (typeof processor !== "undefined") {
                   await processor(job);
-                }
-
-                if (typeof legacyProcessor !== "undefined") {
-                  await legacyProcessor(job);
                 }
               } else if (typeof consumer !== "undefined") {
                 await consumer(job);
@@ -340,7 +256,6 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
     this.discoveryQueues();
     this.discoveryConsumers();
     this.discoveryProcessors();
-    this.discoveryLegacyProcessors();
     this.createWorkers();
   }
 
