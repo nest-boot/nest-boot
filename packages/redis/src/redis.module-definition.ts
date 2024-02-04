@@ -9,11 +9,11 @@ export const {
 } = new ConfigurableModuleBuilder<RedisOptions>()
   .setExtras(
     {
-      isGlobal: true,
+      isGlobal: false,
     },
     (definition, extras) => ({
       ...definition,
       global: extras.isGlobal,
-    })
+    }),
   )
   .build();

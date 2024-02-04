@@ -1,9 +1,4 @@
-import {
-  type DynamicModule,
-  Global,
-  Module,
-  type Provider,
-} from "@nestjs/common";
+import { type DynamicModule, Module, type Provider } from "@nestjs/common";
 
 import { type QueueModuleOptions } from "./interfaces/queue-module-options.interface";
 import { Queue } from "./queue";
@@ -16,7 +11,6 @@ import {
 import { QueueCoreModule } from "./queue-core.module";
 import { getQueueToken } from "./utils/get-queue-token.util";
 
-@Global()
 @Module({
   imports: [QueueCoreModule],
   exports: [QueueCoreModule],

@@ -10,11 +10,11 @@ export const {
 } = new ConfigurableModuleBuilder<CryptModuleOptions>()
   .setExtras(
     {
-      isGlobal: true,
+      isGlobal: false,
     },
     (definition, extras) => ({
       ...definition,
       global: extras.isGlobal,
-    })
+    }),
   )
   .build();

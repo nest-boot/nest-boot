@@ -8,7 +8,7 @@ export const {
 } = new ConfigurableModuleBuilder<object>()
   .setExtras(
     {
-      isGlobal: true,
+      isGlobal: false,
     },
     (definition, extras) => ({
       ...definition,

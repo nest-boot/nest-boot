@@ -1,12 +1,11 @@
 import { RequestContextModule } from "@nest-boot/request-context";
-import { Global, Module } from "@nestjs/common";
+import { Module } from "@nestjs/common";
 import { APP_GUARD, Reflector } from "@nestjs/core";
 
 import { AuthGuard } from "./auth.guard";
 import { ConfigurableModuleClass } from "./auth.module-definition";
 import { AuthService } from "./auth.service";
 
-@Global()
 @Module({
   imports: [RequestContextModule],
   providers: [
