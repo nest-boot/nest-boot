@@ -2,12 +2,11 @@ import type { Config } from "jest";
 
 export default {
   moduleFileExtensions: ["js", "json", "ts"],
-  rootDir: "src",
-  testRegex: ".*\\.spec\\.ts$",
+  testRegex: ".spec.ts$",
   transform: {
-    "^.+\\.(t|j)s$": "ts-jest",
+    "^.+\.(t|j)s$": "ts-jest",
   },
-  collectCoverageFrom: ["**/*.(t|j)s"],
-  coverageDirectory: "../coverage",
-  testEnvironment: "node",
+  coverageDirectory: "./coverage",
+  collectCoverageFrom: ["src/**/*"],
+  testEnvironment: "node"
 } satisfies Config;
