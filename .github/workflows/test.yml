@@ -24,7 +24,7 @@ jobs:
               args: [--frozen-lockfile]
 
       - name: Test
-        run: pnpm test
+        run: pnpm test:cov
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v3
