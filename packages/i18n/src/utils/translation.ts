@@ -5,7 +5,7 @@ import { I18N } from "../i18n.constants";
 
 export const translation = (
   key: string | string[],
-  options?: TOptions
+  options?: TOptions,
 ): string => {
   const instance = RequestContext?.get<i18n>(I18N) ?? i18next;
 

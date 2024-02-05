@@ -4,7 +4,7 @@ import moment from "moment-timezone";
 import { buildI18nMessage } from "../../utils";
 
 export function IsTimezone(
-  validationOptions?: ValidationOptions
+  validationOptions?: ValidationOptions,
 ): PropertyDecorator {
   return ValidateBy(
     {
@@ -15,6 +15,6 @@ export function IsTimezone(
         defaultMessage: buildI18nMessage(() => "is-timezone"),
       },
     },
-    validationOptions
+    validationOptions,
   );
 }

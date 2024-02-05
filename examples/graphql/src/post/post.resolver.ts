@@ -28,6 +28,6 @@ export class PostResolver {
 
   @Query(() => PostConnection)
   async posts(@Args() args: PostConnectionArgs): Promise<PostConnection> {
-    return this.cm.find(PostConnection, args, {});
+    return await this.cm.find(PostConnection, args, {});
   }
 }

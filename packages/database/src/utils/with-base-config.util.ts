@@ -4,7 +4,7 @@ import { TsMorphMetadataProvider } from "@mikro-orm/reflection";
 // import { MigrationGenerator } from "../migration-generator";
 
 export function withBaseConfig<D extends IDatabaseDriver>(
-  options: Options<D>
+  options: Options<D>,
 ): Options<D> {
   return {
     timezone: "UTC",

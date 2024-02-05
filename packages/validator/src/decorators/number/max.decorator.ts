@@ -4,7 +4,7 @@ import { buildI18nMessage } from "../../utils";
 
 export function Max(
   maxValue: number,
-  validationOptions?: ValidationOptions
+  validationOptions?: ValidationOptions,
 ): PropertyDecorator {
   return ValidateBy(
     {
@@ -17,6 +17,6 @@ export function Max(
         defaultMessage: buildI18nMessage(() => "max"),
       },
     },
-    validationOptions
+    validationOptions,
   );
 }

@@ -1,5 +1,5 @@
+import { Consumer, Job, QueueConsumer } from '@nest-boot/queue';
 import { Logger } from '@nestjs/common';
-import { Job, QueueConsumer, Consumer } from '@nest-boot/queue';
 
 @Consumer('audio')
 export class AudioConsumer implements QueueConsumer {
@@ -7,6 +7,7 @@ export class AudioConsumer implements QueueConsumer {
 
   job?: Job;
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async consume(job: Job) {
     this.logger.debug('Start transcoding...');
     this.logger.debug(job.data);

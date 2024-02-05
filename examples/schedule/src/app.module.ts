@@ -1,8 +1,8 @@
-import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { ConfigService } from '@nestjs/config';
-import { TaskModule } from './task/task.module';
 import { ScheduleModule } from '@nest-boot/schedule';
+import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+
+import { TaskModule } from './task/task.module';
 
 @Module({
   imports: [

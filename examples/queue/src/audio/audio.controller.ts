@@ -1,5 +1,5 @@
-import { Controller, Post } from '@nestjs/common';
 import { InjectQueue, Queue } from '@nest-boot/queue';
+import { Controller, Post } from '@nestjs/common';
 
 @Controller('audio')
 export class AudioController {

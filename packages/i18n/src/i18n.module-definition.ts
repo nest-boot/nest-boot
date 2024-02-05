@@ -15,6 +15,6 @@ export const {
     (definition, extras) => ({
       ...definition,
       global: extras.isGlobal,
-    })
+    }),
   )
   .build();
