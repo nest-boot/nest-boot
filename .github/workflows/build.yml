@@ -1,34 +1,22 @@
-name: Build
+name: lint
 
-on:
-  pull_request:
-    branches:
-      - master
-      - beta
-      - alpha
-      - "*.x"
+on: workflow_call
 
 jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v1
+      - name: Download install artifact
+        uses: actions/download-artifact@v3
         with:
-          node-version: 18
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v2
-        id: pnpm-install
-        with:
-          version: 8
-          run_install: |
-            - recursive: true
-              args: [--frozen-lockfile]
+          name: install-${{ github.run_id }}
 
       - name: Build
         run: pnpm run build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-${{ github.run_id }}
+          path: ${{ github.workspace }}/**/*

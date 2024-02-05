@@ -18,8 +18,7 @@
     "build": "tsc -p tsconfig.build.json",
     "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist",
     "dev": "tsc -w -p tsconfig.build.json",
-    "lint": "eslint \"{src,test}/**/*.ts\" --fix",
-    "test": "jest"
+    "lint": "eslint \"{src,test}/**/*.ts\" --fix"
   },
   "dependencies": {
     "ms": "^2.1.3"

@@ -1,7 +1,7 @@
-name: Release
+name: Pull request
 
 on:
-  push:
+  pull_request:
     branches:
       - master
       - beta
@@ -46,20 +46,3 @@ jobs:
   test:
     needs: [install]
     uses: ./.github/workflows/test.yml
-
-  release:
-    needs: [build, lint, test]
-    name: Release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download build artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: build-${{ github.run_id }}
-
-      - name: Release
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: pnpm release

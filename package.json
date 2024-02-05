@@ -20,9 +20,9 @@
     "clean": "turbo run clean && rm -rf node_modules",
     "dev": "turbo run dev --filter=./packages/* --no-cache --parallel --continue",
     "dev:website": "turbo run dev --filter=website",
-    "test": "turbo run test",
+    "test": "turbo run test --filter=./packages/* --filter=!@nest-boot/eslint-* --filter=!@nest-boot/tsconfig",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "lint": "turbo run lint --filter=./packages/*",
+    "lint": "turbo run lint",
     "release": "multi-semantic-release --deps.bump=override --deps.release=inherit --deps.prefix=^ --ignore-private-packages=true",
     "debug:release": "pnpm release --dry-run",
     "debug:publish": "pnpm publish -r --dry-run --no-git-checks"
