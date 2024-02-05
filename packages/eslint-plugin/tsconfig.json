@@ -8,6 +8,6 @@
     "lib": ["ES2021"],
     "outDir": "./dist",
     "declaration": false,
-    "declarationMap": false
-  }
+    "declarationMap": false,
+  },
 }
