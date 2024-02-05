@@ -1,5 +1,5 @@
 import { QueueModule } from "@nest-boot/queue";
-import { type DynamicModule, Global, Logger, Module } from "@nestjs/common";
+import { type DynamicModule, Logger, Module } from "@nestjs/common";
 import { DiscoveryService, MetadataScanner } from "@nestjs/core";
 
 import {
@@ -11,7 +11,6 @@ import {
 import { ScheduleService } from "./schedule.service";
 import { type ScheduleModuleOptions } from "./schedule-module-options.interface";
 
-@Global()
 @Module({
   providers: [DiscoveryService, MetadataScanner, Logger, ScheduleService],
   exports: [],

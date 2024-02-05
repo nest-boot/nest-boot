@@ -41,9 +41,7 @@ const GraphQLDynamicModule = GraphQLModule.forRootAsync({
   }),
 });
 
-const GraphqlConnectionDynamicModule = GraphqlConnectionModule.register({
-  isGlobal: true,
-});
+const GraphqlConnectionDynamicModule = GraphqlConnectionModule.register();
 
 @Module({
   imports: [

@@ -5,10 +5,10 @@ export const {
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
   ASYNC_OPTIONS_TYPE,
-} = new ConfigurableModuleBuilder<object>()
+} = new ConfigurableModuleBuilder()
   .setExtras(
     {
-      isGlobal: true,
+      isGlobal: false,
     },
     (definition, extras) => ({
       ...definition,

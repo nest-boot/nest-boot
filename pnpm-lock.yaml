@@ -710,6 +710,12 @@ importers:
       '@nestjs/core':
         specifier: ^10.3.1
         version: 10.3.1
+      '@nestjs/testing':
+        specifier: ^10.3.1
+        version: 10.3.1
+      '@types/jest':
+        specifier: ^29.5.12
+        version: 29.5.12
       '@types/node':
         specifier: ^20.11.6
         version: 20.11.6
@@ -1055,6 +1061,12 @@ importers:
       '@nestjs/core':
         specifier: ^10.3.1
         version: 10.3.1
+      '@nestjs/testing':
+        specifier: ^10.3.1
+        version: 10.3.1
+      '@types/jest':
+        specifier: ^29.5.12
+        version: 29.5.12
       '@types/node':
         specifier: ^20.11.6
         version: 20.11.6

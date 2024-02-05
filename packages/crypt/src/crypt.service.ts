@@ -24,12 +24,12 @@ export class CryptService {
   readonly #viByteLength: number = 16;
 
   constructor(
-    @Inject(MODULE_OPTIONS_TOKEN) private readonly options: CryptModuleOptions
+    @Inject(MODULE_OPTIONS_TOKEN) private readonly options: CryptModuleOptions,
   ) {}
 
   async encrypt(value: string, secret?: string): Promise<string> {
     const { key, salt } = await this.#getKeyAndSalt(
-      secret ?? this.options.secret ?? ""
+      secret ?? this.options.secret ?? "",
     );
 
     const iv = randomBytes(this.#viByteLength);
@@ -45,7 +45,7 @@ export class CryptService {
         tag: tag.toString(this.#encoding),
         data: data.toString(this.#encoding),
         ...(salt != null ? { salt: salt.toString(this.#encoding) } : {}),
-      })
+      }),
     ).toString(this.#encoding);
   }
 
@@ -58,7 +58,7 @@ export class CryptService {
         ? ((await promisify(scrypt)(
             secret ?? this.options.secret ?? "",
             Buffer.from(payload.salt, this.#encoding),
-            this.#keyByteLength
+            this.#keyByteLength,
           )) as Buffer)
         : Buffer.from(secret ?? this.options.secret ?? "", "hex");
 
@@ -71,12 +71,12 @@ export class CryptService {
     decipher.setAuthTag(tag);
 
     return Buffer.concat([decipher.update(data), decipher.final()]).toString(
-      "utf8"
+      "utf8",
     );
   }
 
   async #getKeyAndSalt(
-    secret: string
+    secret: string,
   ): Promise<{ key: Buffer; salt?: Buffer }> {
     const key = Buffer.from(secret, "hex");
 
@@ -88,9 +88,9 @@ export class CryptService {
 
     return {
       key: (await promisify(scrypt)(
-        this.options.secret ?? "",
+        secret ?? "",
         salt,
-        this.#keyByteLength
+        this.#keyByteLength,
       )) as Buffer,
       salt,
     };
