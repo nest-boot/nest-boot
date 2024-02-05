@@ -29,7 +29,7 @@ export class CryptService {
 
   async encrypt(value: string, secret?: string): Promise<string> {
     const { key, salt } = await this.#getKeyAndSalt(
-      secret ?? this.options.secret ?? "",
+      secret ?? this.options.secret,
     );
 
     const iv = randomBytes(this.#viByteLength);
@@ -44,23 +44,20 @@ export class CryptService {
         iv: iv.toString(this.#encoding),
         tag: tag.toString(this.#encoding),
         data: data.toString(this.#encoding),
-        ...(salt != null ? { salt: salt.toString(this.#encoding) } : {}),
+        salt: salt.toString(this.#encoding),
       }),
     ).toString(this.#encoding);
   }
 
   async decrypt(value: string, secret?: string): Promise<string> {
-    const payload: { iv: string; tag: string; data: string; salt?: string } =
+    const payload: { iv: string; tag: string; data: string; salt: string } =
       JSON.parse(Buffer.from(value, this.#encoding).toString("utf8"));
 
-    const key =
-      typeof payload.salt !== "undefined"
-        ? ((await promisify(scrypt)(
-            secret ?? this.options.secret ?? "",
-            Buffer.from(payload.salt, this.#encoding),
-            this.#keyByteLength,
-          )) as Buffer)
-        : Buffer.from(secret ?? this.options.secret ?? "", "hex");
+    const key = (await promisify(scrypt)(
+      secret ?? this.options.secret,
+      Buffer.from(payload.salt, this.#encoding),
+      this.#keyByteLength,
+    )) as Buffer;
 
     const iv = Buffer.from(payload.iv, this.#encoding);
     const tag = Buffer.from(payload.tag, this.#encoding);
@@ -75,20 +72,12 @@ export class CryptService {
     );
   }
 
-  async #getKeyAndSalt(
-    secret: string,
-  ): Promise<{ key: Buffer; salt?: Buffer }> {
-    const key = Buffer.from(secret, "hex");
-
-    if (key.byteLength === this.#keyByteLength) {
-      return { key };
-    }
-
+  async #getKeyAndSalt(secret: string): Promise<{ key: Buffer; salt: Buffer }> {
     const salt = randomBytes(this.#saltByteLength);
 
     return {
       key: (await promisify(scrypt)(
-        secret ?? "",
+        secret,
         salt,
         this.#keyByteLength,
       )) as Buffer,

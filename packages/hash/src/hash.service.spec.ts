@@ -1,6 +1,6 @@
 import { Test } from "@nestjs/testing";
 
-import { MODULE_OPTIONS_TOKEN } from "./hash.module-definition";
+import { HashModule } from "./hash.module";
 import { HashService } from "./hash.service";
 
 describe("HashService", () => {
@@ -9,15 +9,7 @@ describe("HashService", () => {
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      providers: [
-        HashService,
-        {
-          provide: MODULE_OPTIONS_TOKEN,
-          useValue: {
-            secret: globalSecret,
-          },
-        },
-      ],
+      imports: [HashModule.register({ secret: globalSecret })],
     }).compile();
 
     hashService = moduleRef.get<HashService>(HashService);
