@@ -12,9 +12,10 @@
       "cache": false
     },
     "test": {
-      "dependsOn": ["build"],
-      "outputs": [],
-      "inputs": ["src/**/*.ts", "test/**/*.ts"]
+      "cache": false
+    },
+    "test:cov": {
+      "cache": false
     },
     "format": {
       "cache": false

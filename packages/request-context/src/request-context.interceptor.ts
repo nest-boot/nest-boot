@@ -24,9 +24,15 @@ export class RequestContextInterceptor implements NestInterceptor {
             .handle()
             .pipe()
             .subscribe({
-              next: (res) => { subscriber.next(res); },
-              error: (err) => { subscriber.error(err); },
-              complete: () => { subscriber.complete(); },
+              next: (res) => {
+                subscriber.next(res);
+              },
+              error: (err) => {
+                subscriber.error(err);
+              },
+              complete: () => {
+                subscriber.complete();
+              },
             });
         } catch (err) {
           subscriber.error(err);

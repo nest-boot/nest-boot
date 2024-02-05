@@ -19,7 +19,7 @@ export class ViewModule
     private readonly viewService: ViewService,
     @Optional()
     @Inject(MODULE_OPTIONS_TOKEN)
-    private readonly options?: ViewModuleOptions
+    private readonly options?: ViewModuleOptions,
   ) {
     super();
   }
@@ -35,15 +35,15 @@ export class ViewModule
           paths.map(async (path) => {
             const name = join(
               relative(dir, dirname(path)),
-              basename(path, extname(path))
+              basename(path, extname(path)),
             ).replace(/\/|\\/g, ".");
 
             const template = await fs.readFile(path, "utf-8");
 
             this.viewService.register(name, template);
-          })
+          }),
         );
-      })
+      }),
     );
   }
 }

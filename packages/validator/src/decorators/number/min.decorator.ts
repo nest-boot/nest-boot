@@ -4,7 +4,7 @@ import { buildI18nMessage } from "../../utils";
 
 export function Min(
   minValue: number,
-  validationOptions?: ValidationOptions
+  validationOptions?: ValidationOptions,
 ): PropertyDecorator {
   return ValidateBy(
     {
@@ -17,6 +17,6 @@ export function Min(
         defaultMessage: buildI18nMessage(() => "min"),
       },
     },
-    validationOptions
+    validationOptions,
   );
 }

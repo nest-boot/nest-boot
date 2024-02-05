@@ -61,8 +61,9 @@ export default createRule({
                     constructor(data: Pick<${node.id?.name}, ${propertyKeys
                       .filter((key) => key.required)
                       .map((key) => `"${key.name}"`)
-                      .join(` | `)}> & Partial<Pick<${node.id
-                      ?.name}, ${propertyKeys
+                      .join(` | `)}> & Partial<Pick<${
+                      node.id?.name
+                    }, ${propertyKeys
                       .filter((key) => !key.required)
                       .map((key) => `"${key.name}"`)
                       .join(` | `)}>>) {

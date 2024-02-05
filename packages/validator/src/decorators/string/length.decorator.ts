@@ -20,7 +20,7 @@ export function length(value: unknown, min: number, max?: number): boolean {
 export function Length(
   min: number,
   max?: number,
-  validationOptions?: ValidationOptions
+  validationOptions?: ValidationOptions,
 ): PropertyDecorator {
   return ValidateBy(
     {
@@ -50,6 +50,6 @@ export function Length(
         }),
       },
     },
-    validationOptions
+    validationOptions,
   );
 }

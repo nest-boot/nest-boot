@@ -1,10 +1,10 @@
-name: Build
+name: Test
 
 on: workflow_call
 
 jobs:
-  build:
-    name: Build
+  test:
+    name: Test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -23,5 +23,10 @@ jobs:
             - recursive: true
               args: [--frozen-lockfile]
 
-      - name: Build
-        run: pnpm build
+      - name: Test
+        run: pnpm test:cov
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v3
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

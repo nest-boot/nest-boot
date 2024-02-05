@@ -15,7 +15,7 @@ export function isDate(value: unknown): boolean {
  * Checks if a value is a date.
  */
 export function IsDate(
-  validationOptions?: ValidationOptions
+  validationOptions?: ValidationOptions,
 ): PropertyDecorator {
   return ValidateBy(
     {
@@ -25,6 +25,6 @@ export function IsDate(
         defaultMessage: buildI18nMessage(() => "is-date"),
       },
     },
-    validationOptions
+    validationOptions,
   );
 }

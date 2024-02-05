@@ -1,0 +1,22 @@
+name: Pull request
+
+on:
+  pull_request:
+    branches:
+      - master
+      - beta
+      - alpha
+      - "*.x"
+
+jobs:
+  build:
+    name: Build
+    uses: ./.github/workflows/build.yml
+
+  lint:
+    name: Lint
+    uses: ./.github/workflows/lint.yml
+
+  test:
+    name: Test
+    uses: ./.github/workflows/test.yml

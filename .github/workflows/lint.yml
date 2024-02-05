@@ -1,12 +1,6 @@
 name: Lint
 
-on:
-  pull_request:
-    branches:
-      - master
-      - beta
-      - alpha
-      - "*.x"
+on: workflow_call
 
 jobs:
   lint:
@@ -14,16 +8,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
 
       - name: Install pnpm
         uses: pnpm/action-setup@v2
-        id: pnpm-install
         with:
           version: 8
           run_install: |
@@ -31,7 +24,10 @@ jobs:
               args: [--frozen-lockfile]
 
       - name: Build
-        run: pnpm run build
+        run: pnpm build
+
+      - name: Format
+        run: pnpm format
 
       - name: Lint
-        run: pnpm run lint
+        run: pnpm lint

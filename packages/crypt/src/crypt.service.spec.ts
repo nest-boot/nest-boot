@@ -1,6 +1,6 @@
 import { Test } from "@nestjs/testing";
 
-import { MODULE_OPTIONS_TOKEN } from "./crypt.module-definition";
+import { CryptModule } from "./crypt.module";
 import { CryptService } from "./crypt.service";
 
 describe("CryptService", () => {
@@ -9,15 +9,7 @@ describe("CryptService", () => {
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      providers: [
-        CryptService,
-        {
-          provide: MODULE_OPTIONS_TOKEN,
-          useValue: {
-            secret: globalSecret,
-          },
-        },
-      ],
+      imports: [CryptModule.register({ secret: globalSecret })],
     }).compile();
 
     cryptService = moduleRef.get<CryptService>(CryptService);

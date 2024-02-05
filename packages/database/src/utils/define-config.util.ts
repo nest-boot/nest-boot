@@ -7,7 +7,7 @@ import { withBaseConfig } from "./with-base-config.util";
 
 export async function defineConfig<D extends IDatabaseDriver>(
   module: any,
-  options?: NestApplicationContextOptions
+  options?: NestApplicationContextOptions,
 ): Promise<Options<D>> {
   const app = await NestFactory.createApplicationContext(module, {
     logger: false,
@@ -15,7 +15,7 @@ export async function defineConfig<D extends IDatabaseDriver>(
   });
 
   const config: Options<D> = withBaseConfig(
-    await app.get(MODULE_OPTIONS_TOKEN)
+    await app.get(MODULE_OPTIONS_TOKEN),
   );
 
   setTimeout(() => {

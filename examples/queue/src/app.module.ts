@@ -1,7 +1,7 @@
-import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
 import { QueueModule } from '@nest-boot/queue';
-import { ConfigService } from '@nestjs/config';
+import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+
 import { AudioModule } from './audio/audio.module';
 
 @Module({

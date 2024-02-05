@@ -11,6 +11,9 @@ importers:
       '@semrel-extra/npm':
         specifier: ^1.2.2
         version: 1.2.2
+      '@types/jest':
+        specifier: ^29.5.12
+        version: 29.5.12
       commitizen:
         specifier: ^4.3.0
         version: 4.3.0
@@ -23,6 +26,9 @@ importers:
       husky:
         specifier: ^8.0.3
         version: 8.0.3
+      jest:
+        specifier: ^29.7.0
+        version: 29.7.0
       lint-staged:
         specifier: ^15.2.0
         version: 15.2.0
@@ -32,6 +38,9 @@ importers:
       prettier:
         specifier: ^3.2.4
         version: 3.2.4
+      ts-jest:
+        specifier: ^29.1.2
+        version: 29.1.2
       turbo:
         specifier: ^1.11.3
         version: 1.11.3
@@ -310,12 +319,21 @@ importers:
 
   examples/queue:
     dependencies:
+      '@nest-boot/eslint-config':
+        specifier: workspace:*
+        version: link:../../packages/eslint-config
+      '@nest-boot/eslint-plugin':
+        specifier: workspace:*
+        version: link:../../packages/eslint-plugin
       '@nest-boot/queue':
         specifier: workspace:*
         version: link:../../packages/queue
       '@nest-boot/request-context':
         specifier: workspace:*
         version: link:../../packages/request-context
+      '@nest-boot/tsconfig':
+        specifier: workspace:*
+        version: link:../../packages/tsconfig
       '@nestjs/common':
         specifier: ^10.3.1
         version: 10.3.1
@@ -341,9 +359,6 @@ importers:
         specifier: ^7.8.1
         version: 7.8.1
     devDependencies:
-      '@nest-boot/tsconfig':
-        specifier: workspace:*
-        version: link:../../packages/tsconfig
       '@nestjs/cli':
         specifier: ^10.3.0
         version: 10.3.0
@@ -429,6 +444,12 @@ importers:
         specifier: ^7.8.0
         version: 7.8.1
     devDependencies:
+      '@nest-boot/eslint-config':
+        specifier: workspace:*
+        version: link:../../packages/eslint-config
+      '@nest-boot/eslint-plugin':
+        specifier: workspace:*
+        version: link:../../packages/eslint-plugin
       '@nest-boot/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
@@ -462,6 +483,12 @@ importers:
 
   examples/schedule:
     dependencies:
+      '@nest-boot/eslint-config':
+        specifier: workspace:*
+        version: link:../../packages/eslint-config
+      '@nest-boot/eslint-plugin':
+        specifier: workspace:*
+        version: link:../../packages/eslint-plugin
       '@nest-boot/queue':
         specifier: workspace:*
         version: link:../../packages/queue
@@ -471,6 +498,9 @@ importers:
       '@nest-boot/schedule':
         specifier: workspace:*
         version: link:../../packages/schedule
+      '@nest-boot/tsconfig':
+        specifier: workspace:*
+        version: link:../../packages/tsconfig
       '@nestjs/common':
         specifier: ^10.3.1
         version: 10.3.1
@@ -496,9 +526,6 @@ importers:
         specifier: ^7.8.1
         version: 7.8.1
     devDependencies:
-      '@nest-boot/tsconfig':
-        specifier: workspace:*
-        version: link:../../packages/tsconfig
       '@nestjs/cli':
         specifier: ^10.3.0
         version: 10.3.0

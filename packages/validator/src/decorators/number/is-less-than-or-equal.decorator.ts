@@ -7,7 +7,7 @@ import {
 
 export function IsLessThanOrEqual(
   field: string,
-  validationOptions?: ValidationOptions
+  validationOptions?: ValidationOptions,
 ): PropertyDecorator {
   return ValidateCompareNumber(Comparator.LTE, field, validationOptions);
 }

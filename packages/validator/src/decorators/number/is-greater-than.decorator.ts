@@ -7,7 +7,7 @@ import {
 
 export function IsGreaterThan(
   field: string,
-  validationOptions?: ValidationOptions
+  validationOptions?: ValidationOptions,
 ): PropertyDecorator {
   return ValidateCompareNumber(Comparator.GT, field, validationOptions);
 }

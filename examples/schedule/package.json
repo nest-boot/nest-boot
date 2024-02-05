@@ -21,8 +21,11 @@
     "test:e2e": "jest --config test/jest-e2e.ts"
   },
   "dependencies": {
+    "@nest-boot/eslint-config": "workspace:*",
+    "@nest-boot/eslint-plugin": "workspace:*",
     "@nest-boot/queue": "workspace:*",
     "@nest-boot/request-context": "workspace:*",
+    "@nest-boot/tsconfig": "workspace:*",
     "@nest-boot/schedule": "workspace:*",
     "@nestjs/common": "^10.3.1",
     "@nestjs/config": "^3.1.1",
