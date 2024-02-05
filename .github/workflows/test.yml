@@ -15,13 +15,16 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install pnpm
+      - name: Install dependencies
         uses: pnpm/action-setup@v2
         with:
           version: 8
           run_install: |
             - recursive: true
               args: [--frozen-lockfile]
+
+      - name: Build
+        run: pnpm build
 
       - name: Test
         run: pnpm test:cov
