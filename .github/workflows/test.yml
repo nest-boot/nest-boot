@@ -7,10 +7,21 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     steps:
-      - name: Download install artifact
-        uses: actions/download-artifact@v3
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v1
         with:
-          name: install-${{ github.run_id }}
+          node-version: 18
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+          run_install: |
+            - recursive: true
+              args: [--frozen-lockfile]
 
       - name: Test
-        run: pnpm run test
+        run: pnpm test

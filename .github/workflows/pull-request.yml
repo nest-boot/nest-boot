@@ -9,40 +9,11 @@ on:
       - "*.x"
 
 jobs:
-  install:
-    name: Install
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v1
-        with:
-          node-version: 18
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
-          run_install: |
-            - recursive: true
-              args: [--frozen-lockfile]
-
-      - name: Upload install artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: install-${{ github.run_id }}
-          path: ${{ github.workspace }}/**/*
-
   build:
-    needs: [install]
     uses: ./.github/workflows/build.yml
 
   lint:
-    needs: [install]
     uses: ./.github/workflows/lint.yml
 
   test:
-    needs: [install]
     uses: ./.github/workflows/test.yml
