@@ -42,6 +42,8 @@ jobs:
           DATABASE_NAME: ${{ vars.DATABASE_NAME }}
           DATABASE_USERNAME: ${{ vars.DATABASE_USERNAME }}
           DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          REDIS_HOST: redis
+          REDIS_PORT: 6379
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v3
