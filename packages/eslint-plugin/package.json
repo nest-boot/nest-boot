@@ -14,7 +14,7 @@
     "update:eslint-docs": "eslint-doc-generator"
   },
   "dependencies": {
-    "@typescript-eslint/utils": "^6.19.1"
+    "@typescript-eslint/utils": "^6.20.0"
   },
   "devDependencies": {
     "@nest-boot/tsconfig": "workspace:*",

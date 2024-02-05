@@ -1,6 +1,6 @@
 {
   "extends": "@nest-boot/tsconfig/library.json",
   "compilerOptions": {
-    "outDir": "./dist",
-  },
+    "outDir": "./dist"
+  }
 }
