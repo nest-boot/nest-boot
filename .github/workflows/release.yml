@@ -10,12 +10,15 @@ on:
 
 jobs:
   build:
+    name: Build
     uses: ./.github/workflows/build.yml
 
   lint:
+    name: Lint
     uses: ./.github/workflows/lint.yml
 
   test:
+    name: Test
     uses: ./.github/workflows/test.yml
 
   release:
