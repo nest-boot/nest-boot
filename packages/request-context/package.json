@@ -54,19 +54,6 @@
       "eslint --fix"
     ]
   },
-  "jest": {
-    "moduleFileExtensions": [
-      "js",
-      "json",
-      "ts"
-    ],
-    "testRegex": ".test.ts$",
-    "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
-    },
-    "coverageDirectory": "./coverage",
-    "testEnvironment": "node"
-  },
   "volta": {
     "extends": "../../package.json"
   }
