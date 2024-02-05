@@ -2,7 +2,7 @@ import { PostgreSqlDriver } from "@mikro-orm/postgresql";
 import { SeedManager } from "@mikro-orm/seeder";
 import { DatabaseModule } from "@nest-boot/database";
 import { GraphQLModule } from "@nest-boot/graphql";
-import { GraphqlConnectionModule } from "@nest-boot/graphql-connection";
+import { GraphQLConnectionModule } from "@nest-boot/graphql-connection";
 import { LoggerModule } from "@nest-boot/logger";
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
@@ -41,7 +41,9 @@ const GraphQLDynamicModule = GraphQLModule.forRootAsync({
   }),
 });
 
-const GraphqlConnectionDynamicModule = GraphqlConnectionModule.register();
+const GraphQLConnectionDynamicModule = GraphQLConnectionModule.register({
+  isGlobal: true,
+});
 
 @Module({
   imports: [
@@ -49,7 +51,7 @@ const GraphqlConnectionDynamicModule = GraphqlConnectionModule.register();
     LoggerModule,
     DatabaseDynamicModule,
     GraphQLDynamicModule,
-    GraphqlConnectionDynamicModule,
+    GraphQLConnectionDynamicModule,
     PostModule,
   ],
 })

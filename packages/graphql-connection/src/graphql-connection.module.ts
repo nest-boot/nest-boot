@@ -11,7 +11,7 @@ import {
   providers: [ConnectionManager],
   exports: [ConnectionManager],
 })
-export class GraphqlConnectionModule extends ConfigurableModuleClass {
+export class GraphQLConnectionModule extends ConfigurableModuleClass {
   static register(options?: typeof OPTIONS_TYPE) {
     return super.register(options ?? {});
   }
