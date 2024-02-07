@@ -46,7 +46,9 @@ export class AuthService {
     const user = await this.em.findOne(this.User, { email });
 
     if (
+      // eslint-disable-next-line @typescript-eslint/prefer-optional-chain
       user === null ||
+      user.password === null ||
       !(await this.hashService.verify(user.password, password))
     ) {
       return null;
