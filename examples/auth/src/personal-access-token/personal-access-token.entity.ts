@@ -1,5 +1,3 @@
-/* eslint-disable @nest-boot/entity-property-no-optional-or-non-null-assertion */
-
 import {
   Entity,
   ManyToOne,
@@ -17,7 +15,6 @@ import { User } from "../user/user.entity";
 @ObjectType()
 @Entity()
 export class PersonalAccessToken extends BasePersonalAccessToken {
-  // eslint-disable-next-line @typescript-eslint/no-useless-constructor
   constructor(
     data: Pick<
       PersonalAccessToken,
@@ -32,6 +29,17 @@ export class PersonalAccessToken extends BasePersonalAccessToken {
       Partial<Pick<PersonalAccessToken, "id" | "name">>,
   ) {
     super(data);
+
+    this.token = data.token;
+    this.permissions = data.permissions;
+    this.lastUsedAt = data.lastUsedAt;
+    this.expiresAt = data.expiresAt;
+    this.createdAt = data.createdAt;
+    this.updatedAt = data.updatedAt;
+    this.user = data.user;
+
+    data.id !== void 0 && (this.id = data.id);
+    data.name !== void 0 && (this.name = data.name);
   }
 
   @Field(() => ID)
@@ -44,28 +52,28 @@ export class PersonalAccessToken extends BasePersonalAccessToken {
 
   @Field()
   @Property({ unique: true, length: 64 })
-  token!: string;
+  token: string;
 
   @Field(() => [String])
   @Property({ type: t.array })
-  permissions!: string[];
+  permissions: string[];
 
   @Field(() => Date, { nullable: true })
   @Property({ nullable: true })
-  lastUsedAt!: Date | null;
+  lastUsedAt: Date | null;
 
   @Field(() => Date, { nullable: true })
   @Property({ nullable: true })
-  expiresAt!: Date | null;
+  expiresAt: Date | null;
 
   @Field(() => Date, { nullable: true })
   @Property({ nullable: true })
-  createdAt!: Date | null;
+  createdAt: Date | null;
 
   @Field(() => Date, { nullable: true })
   @Property({ nullable: true })
-  updatedAt!: Date | null;
+  updatedAt: Date | null;
 
   @ManyToOne(() => User)
-  user!: Ref<User>;
+  user: Ref<User>;
 }

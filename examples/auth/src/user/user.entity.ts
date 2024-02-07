@@ -19,8 +19,13 @@ import { PersonalAccessToken } from "../personal-access-token/personal-access-to
 export class User extends BaseUser {
   // eslint-disable-next-line @typescript-eslint/no-useless-constructor
   constructor(
-    data: Pick<User, "id" | "name" | "email" | "password" | "permissions"> &
-      Partial<Pick<User, "createdAt" | "updatedAt" | "personalAccessTokens">>,
+    data: Pick<User, "id" | "name" | "email" | "permissions"> &
+      Partial<
+        Pick<
+          User,
+          "password" | "createdAt" | "updatedAt" | "personalAccessTokens"
+        >
+      >,
   ) {
     super(data);
   }
@@ -36,9 +41,6 @@ export class User extends BaseUser {
   @Field()
   @Property({ unique: true })
   email!: string;
-
-  @Property()
-  password!: string;
 
   @Field(() => [String])
   @Property({ type: t.array })
