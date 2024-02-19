@@ -8,7 +8,6 @@ import {
 import {
   createContextId,
   DiscoveryService,
-  MetadataScanner,
   ModuleRef,
   Reflector,
 } from "@nestjs/core";
@@ -20,6 +19,7 @@ import { ConsumerDecorator, ProcessorDecorator } from "./decorators";
 import { Job, JobProcessor, type ProcessorFunction } from "./interfaces";
 import { QueueConsumer } from "./interfaces";
 import { Queue } from "./queue";
+import { wrapTimeout } from "./utils";
 
 @Injectable()
 export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
@@ -38,7 +38,6 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
     private readonly reflector: Reflector,
     private readonly discoveryService: DiscoveryService,
     private readonly moduleRef: ModuleRef,
-    private readonly metadataScanner: MetadataScanner,
   ) {}
 
   discoveryQueues(): void {
@@ -82,7 +81,7 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
             this.consumerMap.set(
               metadata.queue,
               this.wrapRequestContext(
-                this.wrapTimeout(
+                wrapTimeout(
                   isRequestScoped
                     ? async (job) => {
                         const contextId = createContextId();
@@ -144,7 +143,7 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
             processors.set(
               metadata.name,
               this.wrapRequestContext(
-                this.wrapTimeout(
+                wrapTimeout(
                   isRequestScoped
                     ? async (job) => {
                         const contextId = createContextId();
@@ -226,28 +225,6 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
       await RequestContext.run(ctx, async () => {
         await processor(job);
       });
-    };
-  }
-
-  wrapTimeout(processor: ProcessorFunction) {
-    return async (job: Job) => {
-      let timer: NodeJS.Timeout | undefined;
-
-      await Promise.race([
-        (async () => {
-          await processor(job);
-          clearTimeout(timer);
-        })(),
-        ...(typeof job.opts.timeout !== "undefined"
-          ? [
-              new Promise<void>((resolve, reject) => {
-                timer = setTimeout(() => {
-                  reject(new Error("Job processing timeout"));
-                }, job.opts.timeout);
-              }),
-            ]
-          : []),
-      ]);
     };
   }
 

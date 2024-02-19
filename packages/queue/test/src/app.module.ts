@@ -3,8 +3,11 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 
 import { QueueModule } from "../../src";
 import { TEST_QUEUE_NAME, TEST_REQUEST_SCOPED_QUEUE_NAME } from "./constants";
+import { DefaultConsumer } from "./default.consumer";
+import { PublishService } from "./publish.service";
 import { TestConsumer } from "./test.consumer";
 import { TestProcessor } from "./test.processor";
+import { TestBulkProcessor } from "./test-bulk.processor";
 import { TestRequestScopedConsumer } from "./test-request-scoped.consumer";
 import { TestRequestScopedProcessor } from "./test-request-scoped.processor";
 
@@ -48,6 +51,9 @@ import { TestRequestScopedProcessor } from "./test-request-scoped.processor";
     }),
   ],
   providers: [
+    DefaultConsumer,
+    PublishService,
+    TestBulkProcessor,
     TestConsumer,
     TestProcessor,
     TestRequestScopedConsumer,

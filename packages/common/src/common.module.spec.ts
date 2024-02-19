@@ -1,7 +1,7 @@
 import { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 
-import { CommonModule } from "./common.module";
+import { CommonModule } from ".";
 
 describe("CommonModule", () => {
   let app: INestApplication;
