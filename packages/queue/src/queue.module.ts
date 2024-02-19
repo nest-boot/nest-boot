@@ -9,7 +9,7 @@ import {
   type OPTIONS_TYPE,
 } from "./queue.module-definition";
 import { QueueCoreModule } from "./queue-core.module";
-import { getQueueToken } from "./utils/get-queue-token.util";
+import { getQueueToken } from "./utils/get-queue-token";
 
 @Module({
   imports: [QueueCoreModule],
@@ -17,15 +17,11 @@ import { getQueueToken } from "./utils/get-queue-token.util";
 })
 export class QueueModule extends ConfigurableModuleClass {
   static register(options: typeof OPTIONS_TYPE): DynamicModule {
-    return {
-      ...this.withQueue(options, super.register(options)),
-    };
+    return this.withQueue(options, super.register(options));
   }
 
   static registerAsync(options: typeof ASYNC_OPTIONS_TYPE): DynamicModule {
-    return {
-      ...this.withQueue(options, super.registerAsync(options)),
-    };
+    return this.withQueue(options, super.registerAsync(options));
   }
 
   private static withQueue(
@@ -42,8 +38,9 @@ export class QueueModule extends ConfigurableModuleClass {
 
     return {
       ...dynamicModule,
-      providers: [...(dynamicModule.providers ?? []), queueProvider],
-      exports: [...(dynamicModule.exports ?? []), queueProvider],
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      providers: [...dynamicModule.providers!, queueProvider],
+      exports: [queueProvider],
     };
   }
 }

@@ -1,7 +1,6 @@
 import { Test } from "@nestjs/testing";
 
-import { CryptModule } from "./crypt.module";
-import { CryptService } from "./crypt.service";
+import { CryptModule, CryptService } from ".";
 
 describe("CryptService", () => {
   const globalSecret = "myGlobalSecret";

@@ -9,8 +9,8 @@ export class QueueManager {
     private readonly queueExplorer: QueueExplorer,
   ) {}
 
-  get(queue: string) {
-    return this.queueExplorer.queueMap.get(queue);
+  get(name: string) {
+    return this.queueExplorer.queueMap.get(name);
   }
 
   run(names?: string[]): void {
@@ -23,9 +23,6 @@ export class QueueManager {
   }
 
   runAll(): void {
-    [...this.queueExplorer.workerMap.entries()].forEach(([name, worker]) => {
-      void worker.run();
-      this.logger.log(`Queue ${name} worker started`, this.constructor.name);
-    });
+    this.run([...this.queueExplorer.workerMap.keys()]);
   }
 }

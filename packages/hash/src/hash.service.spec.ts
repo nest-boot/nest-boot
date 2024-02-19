@@ -1,7 +1,6 @@
 import { Test } from "@nestjs/testing";
 
-import { HashModule } from "./hash.module";
-import { HashService } from "./hash.service";
+import { HashModule, HashService } from ".";
 
 describe("HashService", () => {
   const globalSecret = "myGlobalSecret";
