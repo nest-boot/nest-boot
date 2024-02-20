@@ -9,8 +9,8 @@ const {
 const config = {
   title: "Nest Boot",
   tagline: "一个基于 NestJS 的快速开发脚手架",
-  url: "https://nest-boot.github.io",
-  baseUrl: "/nest-boot/",
+  url: "https://nest-boot.vercel.app",
+  baseUrl: "/",
   onBrokenLinks: "throw",
   onBrokenMarkdownLinks: "warn",
   favicon: "img/favicon.ico",
