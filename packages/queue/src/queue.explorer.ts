@@ -239,7 +239,9 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
   async onApplicationShutdown(): Promise<void> {
     await Promise.all(
       [...this.queueMap.entries()].map(async ([name, queue]) => {
-        await queue.close();
+        if ((await queue.client).status === "ready") {
+          await queue.close();
+        }
 
         this.logger.log(`Queue ${name} closed`);
       }),
@@ -247,7 +249,9 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
 
     await Promise.all(
       [...this.workerMap.entries()].map(async ([name, worker]) => {
-        await worker.close();
+        if ((await worker.client).status === "ready") {
+          await worker.close();
+        }
 
         this.logger.log(`Worker ${name} closed`);
       }),
