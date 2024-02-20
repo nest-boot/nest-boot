@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/eslint-config",
-  "version": "0.0.0-development",
+  "version": "6.10.0",
   "main": "index.js",
   "license": "MIT",
   "scripts": {
