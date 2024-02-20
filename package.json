@@ -24,6 +24,7 @@
     "test:cov": "jest --coverage",
     "format": "prettier --check --write \"**/*.{ts,tsx,md}\"",
     "lint": "turbo run lint",
+    "cz": "cz",
     "changeset": "changeset",
     "version-packages": "changeset version && pnpm format",
     "publish-packages": "pnpm build && changeset publish"
