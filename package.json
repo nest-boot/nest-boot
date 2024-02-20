@@ -12,6 +12,7 @@
     "pnpm": ">= 8.0.0"
   },
   "scripts": {
+    "cz": "cz",
     "prepare": "chmod +x ./node_modules/husky/lib/bin.js && husky install",
     "build": "turbo run build",
     "build:website": "turbo run build --filter=website",
@@ -26,7 +27,7 @@
     "lint": "turbo run lint",
     "changeset": "changeset",
     "version-packages": "changeset version && pnpm format",
-    "publish-packages": "pnpm build && changeset publish"
+    "publish-packages": "pnpm build:packages && pnpm publish --filter=./packages/*"
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.1",
