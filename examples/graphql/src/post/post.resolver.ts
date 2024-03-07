@@ -4,8 +4,10 @@ import { ConnectionManager } from "@nest-boot/graphql-connection";
 import { NotFoundException } from "@nestjs/common";
 import { Args, Query, Resolver } from "@nestjs/graphql";
 
-import { PostConnection } from "./post.connection";
-import { PostConnectionArgs } from "./post.connection-args";
+import {
+  PostConnection,
+  PostConnectionArgs,
+} from "./post.connection-definition";
 import { Post } from "./post.entity";
 
 @Resolver(Post)
