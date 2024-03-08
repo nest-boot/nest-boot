@@ -46,13 +46,6 @@ export class AuthGuard implements CanActivate {
       return true;
     }
 
-    if (
-      typeof RequestContext.get<{ authMiddlewareUsed?: boolean }>(REQUEST)
-        ?.authMiddlewareUsed === "undefined"
-    ) {
-      return true;
-    }
-
     // 获取方法是否需要认证
     const requireAuth =
       this.reflector.get<boolean>(
@@ -66,6 +59,13 @@ export class AuthGuard implements CanActivate {
 
     // 如果默认公开或有公共访问权限直接放行
     if (!(requireAuth ?? this.options.defaultRequireAuth ?? false)) {
+      return true;
+    }
+
+    if (
+      typeof RequestContext.get<{ authMiddlewareUsed?: boolean }>(REQUEST)
+        ?.authMiddlewareUsed === "undefined"
+    ) {
       return true;
     }
 
