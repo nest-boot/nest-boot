@@ -1,6 +1,6 @@
 {
   "extends": "@nest-boot/tsconfig/app.json",
-  "include": ["src", "test"],
+  "include": ["src", "test", "../file-upload/src/test.resolver.ts"],
   "compilerOptions": {
     "outDir": "./dist"
   }

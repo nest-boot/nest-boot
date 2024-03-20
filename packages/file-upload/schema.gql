@@ -1,0 +1,32 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type FileUploadField {
+  name: String!
+  value: String!
+}
+
+type FileUpload {
+  fields: [FileUploadField!]!
+  url: String!
+}
+
+type Query {
+  test: String!
+}
+
+type Mutation {
+  createFileUploads(input: [FileUploadInput!]!): [FileUpload!]!
+  createAbsoluteFile(input: CreateAbsoluteFileInput!): String!
+}
+
+input FileUploadInput {
+  name: String!
+  fileSize: Int!
+  mimeType: String!
+}
+
+input CreateAbsoluteFileInput {
+  path: String!
+}

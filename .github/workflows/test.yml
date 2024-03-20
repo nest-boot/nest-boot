@@ -30,6 +30,17 @@ jobs:
         ports:
           - 6379:6379
 
+      minio:
+        image: bitnami/minio
+        ports:
+          - 9000:9000
+        env:
+          MINIO_ROOT_USER: minio
+          MINIO_ROOT_PASSWORD: password
+        options: >-
+          --name=minio 
+          --health-cmd "curl http://localhost:9000/minio/health/live"
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -60,6 +71,13 @@ jobs:
           DATABASE_PASSWORD: postgres
           REDIS_HOST: localhost
           REDIS_PORT: 6379
+          S3_ENDPOINT: localhost
+          S3_PORT: 9000
+          S3_USE_SSL: false
+          S3_ACCESS_KEY_ID: minio
+          S3_SECRET_KEY: password
+          S3_BUCKET: test-bucket
+          S3_PATH_STYLE: true
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v3
