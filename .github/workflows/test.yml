@@ -35,8 +35,8 @@ jobs:
         ports:
           - 9000:9000
         env:
-          MINIO_ROOT_USER: accesskey
-          MINIO_ROOT_PASSWORD: password
+          MINIO_ACCESS_KEY: accesskey
+          MINIO_SECRET_KEY: password
         options: >-
           --name=minio 
           --health-cmd "curl http://localhost:9000/minio/health/live"
@@ -47,7 +47,7 @@ jobs:
 
       - run: wget https://dl.min.io/client/mc/release/linux-amd64/mc
       - run: chmod +x ./mc
-      - run: ./mc alias set minio http://127.0.0.1:9000 accesskey password
+      - run: ./mc alias set minio http://localhost:9000 accesskey password
       - run: ./mc mb --ignore-existing minio/test-bucket
 
       - name: Checkout
