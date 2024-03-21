@@ -31,20 +31,22 @@ jobs:
           - 6379:6379
 
       minio:
-        image: minio/minio
-        env:
-          MINIO_ROOT_USER: minio
-          MINIO_ROOT_PASSWORD: secret_minio
+        image: lazybit/minio
         ports:
           - 9000:9000
+        env:
+          MINIO_ROOT_USER: minio
+          MINIO_ROOT_PASSWORD: password
         options: >-
-          --health-cmd "wget -qO- http://localhost:9000/minio/health/live"
-          --health-interval 30s
-          --health-timeout 3s
-          --health-retries 3
-        command: server /data
+          --name=minio 
+          --health-cmd "curl http://localhost:9000/minio/health/live"
 
     steps:
+      - run: wget https://dl.min.io/client/mc/release/linux-amd64/mc
+      - run: chmod +x ./mc
+      - run: ./mc alias set minio http://127.0.0.1:9000 accesskey password
+      - run: ./mc mb --ignore-existing minio/test-bucket
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -78,8 +80,8 @@ jobs:
           S3_PORT: 9000
           S3_USE_SSL: false
           S3_ACCESS_KEY_ID: minio
-          S3_SECRET_KEY: secret_minio
-          S3_BUCKET: test
+          S3_SECRET_KEY: password
+          S3_BUCKET: test-bucket
           S3_PATH_STYLE: true
 
       - name: Upload coverage reports to Codecov
