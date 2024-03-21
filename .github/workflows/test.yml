@@ -33,13 +33,16 @@ jobs:
       minio:
         image: minio/minio
         env:
-          MINIO_ACCESS_KEY: minio
-          MINIO_SECRET_KEY: secret_minio
-        options: >-
-          server /data --console-address ":9001"
+          MINIO_ROOT_USER: minio
+          MINIO_ROOT_PASSWORD: secret_minio
         ports:
           - 9000:9000
-          - 9001:9001
+        options: >-
+          --health-cmd "wget -qO- http://localhost:9000/minio/health/live"
+          --health-interval 30s
+          --health-timeout 3s
+          --health-retries 3
+        command: server /data
 
     steps:
       - name: Checkout
