@@ -1,20 +1,21 @@
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import { Client } from "minio";
+import moment from "moment";
 import { extname } from "path";
 
-import { FileUploadInput } from "./file-upload.input";
 import { MODULE_OPTIONS_TOKEN } from "./file-upload.module-definition";
 import { FileUpload } from "./file-upload.object";
 import { FileUploadModuleOptions } from "./file-upload-options.interface";
+import { FileUploadInput } from "./inputs/file-upload.input";
 
 @Injectable()
 export class FileUploadService {
-  public readonly ossClient: Client;
+  readonly ossClient: Client;
 
   constructor(
     @Inject(MODULE_OPTIONS_TOKEN)
-    public readonly options: FileUploadModuleOptions,
+    readonly options: FileUploadModuleOptions,
   ) {
     this.ossClient = new Client(options);
   }
@@ -81,9 +82,22 @@ export class FileUploadService {
     return await Promise.all(results);
   }
 
+  // 临时文件转永久文件
+  async tmpAssetToFileAsset(tmpUrl: string): Promise<string> {
+    const filePath = "tmp/" + tmpUrl.split("/tmp/")[1];
+    const filename = `files/${moment().format("YYYY/MM/DD")}/${filePath
+      .split("/")
+      .pop()}`;
+
+    return await this.copyObject(filePath, filename);
+  }
+
   // 不能使用 minio 的 copyObject(),因为它会把原文件的策略也拷贝（aws-sdk 的 copyObject() 可以添加策略参数）
   // 并且 minio 只支持对 bucket 的策略配置，不支持对某对象进行策略配置
-  async copyObject(originPath: string, filename: string): Promise<string> {
+  private async copyObject(
+    originPath: string,
+    filename: string,
+  ): Promise<string> {
     const originMetadata = await this.ossClient.statObject(
       this.options.bucket,
       originPath,

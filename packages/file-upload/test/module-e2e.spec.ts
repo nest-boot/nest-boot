@@ -119,23 +119,9 @@ describe("FileUploadModule - e2e", () => {
   it("成功将临时文件转为普通文件", async () => {
     expect(fileTmpUrl).toBeTruthy();
 
-    const createAbsoluteFile = await request(app.getHttpServer())
-      .post("/graphql")
-      .send({
-        query: /* GraphQL */ `
-          mutation CreateAbsoluteFile($input: CreateAbsoluteFileInput!) {
-            createAbsoluteFile(input: $input)
-          }
-        `,
-        variables: {
-          input: {
-            path: fileTmpUrl,
-          },
-        },
-      });
+    const fileUrl = await fileUploadService.tmpAssetToFileAsset(fileTmpUrl);
 
-    expect(createAbsoluteFile.status).toBe(200);
-    expect(createAbsoluteFile.body.data.createAbsoluteFile).toBeTruthy();
+    expect(fileUrl).toBeTruthy();
 
     // fileUrl = createAbsoluteFile.body.data.createAbsoluteFile;
   }, 10000);

@@ -18,15 +18,10 @@ type Query {
 
 type Mutation {
   createFileUploads(input: [FileUploadInput!]!): [FileUpload!]!
-  createAbsoluteFile(input: CreateAbsoluteFileInput!): String!
 }
 
 input FileUploadInput {
   name: String!
   fileSize: Int!
   mimeType: String!
-}
-
-input CreateAbsoluteFileInput {
-  path: String!
 }
