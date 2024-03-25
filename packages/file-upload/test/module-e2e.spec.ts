@@ -1,6 +1,7 @@
 import { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import axios from "axios";
+import bytes from "bytes";
 import FormData from "form-data";
 import fs from "fs";
 import path from "path";
@@ -15,6 +16,7 @@ describe("FileUploadModule - e2e", () => {
 
   const filename = "test.jpeg";
   const fileSize = 48445;
+  const fileSizeLimited = bytes("100mb");
   const mimeType = "image/jpeg";
   const filePath = "./attachments/test.jpeg";
 
@@ -122,21 +124,13 @@ describe("FileUploadModule - e2e", () => {
     const fileUrl = await fileUploadService.tmpAssetToFileAsset(fileTmpUrl);
 
     expect(fileUrl).toBeTruthy();
-
-    // fileUrl = createAbsoluteFile.body.data.createAbsoluteFile;
   }, 10000);
 
-  // it("成功从公网获取上传的文件", async () => {
-  //   expect(fileUrl).toBeTruthy();
-
-  //   const response = await axios.get(fileUrl, {
-  //     responseType: "arraybuffer",
-  //   });
-
-  //   expect(response.status).toBe(200); // 确保 HTTP 状态码为 200，表示请求成功
-
-  //   expect(response.headers).toMatchObject({
-  //     "content-type": mimeType,
-  //   });
-  // }, 10000);
+  it("文件过大，抛出异常", async () => {
+    await expect(
+      fileUploadService.create([
+        { name: filename, fileSize: fileSizeLimited, mimeType },
+      ]),
+    ).rejects.toThrow();
+  }, 10000);
 });
