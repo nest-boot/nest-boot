@@ -12,12 +12,25 @@ type FileUpload {
   url: String!
 }
 
+type Product {
+  name: String!
+  imageUrl: String!
+  description: String!
+}
+
 type Query {
-  test: String!
+  getProducts: [Product!]!
 }
 
 type Mutation {
+  createProduct(input: CreateProductInput!): Product!
   createFileUploads(input: [FileUploadInput!]!): [FileUpload!]!
+}
+
+input CreateProductInput {
+  name: String!
+  imageTmpUrl: String!
+  description: String!
 }
 
 input FileUploadInput {
