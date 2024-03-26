@@ -1,0 +1,40 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type FileUploadField {
+  name: String!
+  value: String!
+}
+
+type FileUpload {
+  fields: [FileUploadField!]!
+  url: String!
+}
+
+type Product {
+  name: String!
+  imageUrl: String!
+  description: String!
+}
+
+type Query {
+  getProducts: [Product!]!
+}
+
+type Mutation {
+  createProduct(input: CreateProductInput!): Product!
+  createFileUploads(input: [FileUploadInput!]!): [FileUpload!]!
+}
+
+input CreateProductInput {
+  name: String!
+  imageTmpUrl: String!
+  description: String!
+}
+
+input FileUploadInput {
+  name: String!
+  fileSize: Int!
+  mimeType: String!
+}

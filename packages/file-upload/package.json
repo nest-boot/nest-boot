@@ -15,9 +15,9 @@
     "templates"
   ],
   "scripts": {
-    "build": "nest build",
+    "build": "tsc -p tsconfig.build.json",
     "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist",
-    "dev": "nest build --watch",
+    "dev": "tsc -w -p tsconfig.build.json",
     "lint": "eslint \"{src,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:cov": "jest --coverage",
@@ -29,7 +29,6 @@
     "@nest-boot/eslint-plugin": "workspace:^",
     "@nest-boot/graphql": "workspace:*",
     "@nest-boot/tsconfig": "workspace:*",
-    "@nestjs/cli": "^10.3.2",
     "@nestjs/common": "^10.2.5",
     "@nestjs/config": "^3.2.0",
     "@nestjs/core": "^10.2.5",

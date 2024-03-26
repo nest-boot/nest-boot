@@ -133,7 +133,7 @@ export class FileUploadService {
     );
 
     return this.options.pathStyle
-      ? `https://${this.options.endPoint}/${this.options.bucket}/${filename}`
-      : `https://${this.options.bucket}.${this.options.endPoint}/${filename}`;
+      ? `${this.options.useSSL !== false ? "https" : "http"}://${this.options.endPoint}${this.options.port ? `:${this.options.port}` : ""}/${this.options.bucket}/${filename}`
+      : `${this.options.useSSL !== false ? "https" : "http"}://${this.options.bucket}.${this.options.endPoint}${this.options.port ? `:${this.options.port}` : ""}/${filename}`;
   }
 }
