@@ -7,9 +7,7 @@ import { Injectable } from '@nestjs/common';
 export class ProductService {
   private readonly products: Product[] = [];
 
-  constructor(private readonly fileUploadService: FileUploadService) {
-    console.log('---', fileUploadService);
-  }
+  constructor(private readonly fileUploadService: FileUploadService) {}
 
   findAll(): Product[] {
     return this.products;
