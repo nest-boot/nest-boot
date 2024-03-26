@@ -1,7 +1,8 @@
-import { CreateProductInput } from './inputs/create-product.input';
 import { FileUploadService } from '@nest-boot/file-upload';
-import { Product } from './objects/product.object';
 import { Injectable } from '@nestjs/common';
+
+import { CreateProductInput } from './inputs/create-product.input';
+import { Product } from './objects/product.object';
 
 @Injectable()
 export class ProductService {
@@ -9,8 +10,8 @@ export class ProductService {
 
   constructor(private readonly fileUploadService: FileUploadService) {}
 
-  findAll(): Product[] {
-    return this.products;
+  findAll(): Promise<Product[]> {
+    return Promise.resolve(this.products);
   }
 
   async create(input: CreateProductInput): Promise<Product> {

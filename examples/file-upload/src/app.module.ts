@@ -1,9 +1,9 @@
+import { FileUploadModule } from '@nest-boot/file-upload';
 import { GraphQLModule } from '@nest-boot/graphql';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import bytes from 'bytes';
 
-import { FileUploadModule, FileUploadService } from '@nest-boot/file-upload';
 import { ProductResolver } from './product/product.resolver';
 import { ProductService } from './product/product.service';
 

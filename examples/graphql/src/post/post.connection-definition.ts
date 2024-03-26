@@ -1,7 +1,7 @@
 import { ConnectionBuilder } from "@nest-boot/graphql-connection";
+import { ArgsType, ObjectType } from "@nestjs/graphql";
 
 import { Post } from "./post.entity";
-import { ArgsType, ObjectType } from "@nestjs/graphql";
 
 export const { Connection, ConnectionArgs } = new ConnectionBuilder(Post)
   .addField({ field: "id", filterable: true })
