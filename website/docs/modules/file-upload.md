@@ -75,13 +75,6 @@ const FileUploadDynamicModule = FileUploadModule.registerAsync({
         : {}),
       accessKey: configService.getOrThrow("STORAGE_ACCESS_KEY_ID"),
       secretKey: configService.getOrThrow("STORAGE_SECRET_KEY"),
-      pathStyle: configService.get("STORAGE_PATH_STYLE") === "true",
-      // 通过 path 方法可以自定义文件的路径的中间部分
-      // 默认的路径：files/2024/03/27/a15e77f5-f133-40c5-b366-468ace3f5e96.jpeg
-      // 自定义后的路径：files/5fa3afa0-fa65-4b6b-bd0d-854b88438fce/a15e77f5-f133-40c5-b366-468ace3f5e96.jpeg
-      path: () => {
-        return randomUUID();
-      },
       limits: [
         {
           fileSize: bytes("20mb"),
