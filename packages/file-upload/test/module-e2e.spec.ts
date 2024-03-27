@@ -28,9 +28,6 @@ describe("FileUploadModule - e2e", () => {
   // 临时文件的地址
   let fileTmpUrl: string;
 
-  // 永久文件的地址
-  // let fileUrl: string;
-
   beforeAll(async () => {
     const module = await Test.createTestingModule({
       imports: [AppModule],
@@ -118,10 +115,10 @@ describe("FileUploadModule - e2e", () => {
     expect(fileTmpUrl).toBeTruthy();
   }, 10000);
 
-  it("成功将临时文件转为普通文件", async () => {
+  it("成功将临时文件持久化", async () => {
     expect(fileTmpUrl).toBeTruthy();
 
-    const fileUrl = await fileUploadService.tmpAssetToFileAsset(fileTmpUrl);
+    const fileUrl = await fileUploadService.persist(fileTmpUrl);
 
     expect(fileUrl).toBeTruthy();
   }, 10000);

@@ -15,9 +15,7 @@ export class ProductService {
   }
 
   async create(input: CreateProductInput): Promise<Product> {
-    const imageUrl = await this.fileUploadService.tmpAssetToFileAsset(
-      input.imageTmpUrl,
-    );
+    const imageUrl = await this.fileUploadService.persist(input.imageTmpUrl);
 
     const product = new Product();
 

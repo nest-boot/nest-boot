@@ -12,7 +12,44 @@ Nest Boot 提供开箱即用的上传模块，支持 Minio、AWS S3、阿里云 
 npm i @nest-boot/file-upload minio
 ```
 
-## 注册模块
+## 快速入门
+
+### 环境变量配置
+
+请根据 S3 服务商的路径风格决定是否配置 S3_PATH_STYLE 变量（默认为 false）
+示例：
+
+1.  本地 Minio
+
+```
+S3_ENDPOINT=localhost
+S3_PORT=9000
+S3_USE_SSL=false
+S3_ACCESS_KEY_ID=minio
+S3_SECRET_KEY=secret_minio
+S3_BUCKET=test-bucket
+S3_PATH_STYLE=true
+```
+
+2. 阿里云 OSS
+
+```
+S3_ENDPOINT=oss-us-east-1.aliyuncs.com
+S3_ACCESS_KEY_ID=access_key_id
+S3_SECRET_KEY=secret_key
+S3_BUCKET=test-bucket
+```
+
+3. AWS S3
+
+```
+STORAGE_ENDPOINT=s3.amazonaws.com
+STORAGE_ACCESS_KEY=access_key_id
+STORAGE_SECRET_KEY=secret_key/ctvSRgtcUl
+STORAGE_BUCKET=test-bucket
+```
+
+### 注册模块
 
 ```typescript
 // ./app.module.ts
@@ -39,6 +76,12 @@ const FileUploadDynamicModule = FileUploadModule.registerAsync({
       accessKey: configService.getOrThrow("S3_ACCESS_KEY_ID"),
       secretKey: configService.getOrThrow("S3_SECRET_KEY"),
       pathStyle: configService.get("S3_PATH_STYLE") === "true",
+      // 通过 path 方法可以自定义文件的路径的中间部分
+      // 默认的路径：files/2024/03/27/a15e77f5-f133-40c5-b366-468ace3f5e96.jpeg
+      // 自定义后的路径：files/5fa3afa0-fa65-4b6b-bd0d-854b88438fce/a15e77f5-f133-40c5-b366-468ace3f5e96.jpeg
+      path: () => {
+        return randomUUID();
+      },
       limits: [
         {
           fileSize: bytes("20mb"),
@@ -71,7 +114,7 @@ const FileUploadDynamicModule = FileUploadModule.registerAsync({
 export class AppModule {}
 ```
 
-## 获取临时文件的上传配置：
+### 获取临时文件的上传配置：
 
 调用模块提供的 GraphQL 接口 FileUploadResolver
 示例：
@@ -92,7 +135,7 @@ mutation {
 }
 ```
 
-响应
+响应：
 
 ```json
 {
@@ -160,7 +203,6 @@ mutation {
 ```
 
 使用上传配置进行临时文件的上传
-
 文件上传的 curl 请求：
 
 ```shell
@@ -192,17 +234,17 @@ curl --location 'http://localhost:9000/test' \
 
 Location 的值就是临时文件 Url
 
-## 使用模块提供的 tmpAssetToFileAsset() 方法将临时文件转为永久文件
+### 使用模块提供的 persist() 方法将临时文件转为永久文件
 
 示例：
 
 ```typescript
-import { tmpAssetToFileAsset } from "@nest-boot/file-upload";
+import { persist } from "@nest-boot/file-upload";
 
 // 模拟创建产品
 async create(input: CreateProductInput): Promise<Product> {
   // 获取永久图片地址
-  const imageUrl = await this.fileUploadService.tmpAssetToFileAsset(
+  const imageUrl = await this.fileUploadService.persist(
     input.imageTmpUrl,
   );
 
