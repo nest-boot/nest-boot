@@ -2,4 +2,4 @@
 "@nest-boot/file-upload": patch
 ---
 
-add path option, add persist function
+Rename the tmpAssetToFileAsset method to persist
