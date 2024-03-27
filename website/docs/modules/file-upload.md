@@ -25,8 +25,8 @@ npm i @nest-boot/file-upload minio
 STORAGE_ENDPOINT=localhost
 STORAGE_PORT=9000
 STORAGE_USE_SSL=false
-STORAGE_ACCESS_KEY_ID=minio
-STORAGE_SECRET_KEY=secret_minio
+STORAGE_ACCESS_KEY_ID=access_key_id
+STORAGE_SECRET_KEY=secret_key
 STORAGE_BUCKET=test-bucket
 STORAGE_PATH_STYLE=true
 ```
@@ -45,7 +45,7 @@ STORAGE_BUCKET=test-bucket
 ```
 STORAGE_ENDPOINT=s3.amazonaws.com
 STORAGE_ACCESS_KEY=access_key_id
-STORAGE_SECRET_KEY=secret_key/ctvSRgtcUl
+STORAGE_SECRET_KEY=secret_key
 STORAGE_BUCKET=test-bucket
 ```
 
