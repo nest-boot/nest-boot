@@ -51,8 +51,8 @@
     "typescript": "^5.2.2"
   },
   "dependencies": {
-    "lodash": "^4.17.21",
-    "moment": "^2.30.1"
+    "dayjs": "^1.11.10",
+    "lodash": "^4.17.21"
   },
   "peerDependencies": {
     "@nest-boot/graphql": "workspace:*",

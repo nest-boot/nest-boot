@@ -12,7 +12,44 @@ Nest Boot 提供开箱即用的上传模块，支持 Minio、AWS S3、阿里云 
 npm i @nest-boot/file-upload minio
 ```
 
-## 注册模块
+## 快速入门
+
+### 环境变量配置
+
+请根据 S3 服务商的路径风格决定是否配置 STORAGE_PATH_STYLE 变量（默认为 false）
+示例：
+
+1.  本地 Minio
+
+```
+STORAGE_ENDPOINT=localhost
+STORAGE_PORT=9000
+STORAGE_USE_SSL=false
+STORAGE_ACCESS_KEY_ID=access_key_id
+STORAGE_SECRET_KEY=secret_key
+STORAGE_BUCKET=test-bucket
+STORAGE_PATH_STYLE=true
+```
+
+2. 阿里云 OSS
+
+```
+STORAGE_ENDPOINT=oss-us-east-1.aliyuncs.com
+STORAGE_ACCESS_KEY_ID=access_key_id
+STORAGE_SECRET_KEY=secret_key
+STORAGE_BUCKET=test-bucket
+```
+
+3. AWS S3
+
+```
+STORAGE_ENDPOINT=s3.amazonaws.com
+STORAGE_ACCESS_KEY=access_key_id
+STORAGE_SECRET_KEY=secret_key
+STORAGE_BUCKET=test-bucket
+```
+
+### 注册模块
 
 ```typescript
 // ./app.module.ts
@@ -21,7 +58,7 @@ import { LoggerModule } from "@nest-boot/file-upload";
 const FileUploadDynamicModule = FileUploadModule.registerAsync({
   inject: [ConfigService],
   useFactory: (configService: ConfigService) => {
-    const bucket = configService.get("S3_BUCKET");
+    const bucket = configService.get("STORAGE_BUCKET");
 
     if (bucket === undefined) {
       throw new Error("S3 BUCKET is not defined");
@@ -29,16 +66,15 @@ const FileUploadDynamicModule = FileUploadModule.registerAsync({
 
     return {
       bucket,
-      endPoint: configService.getOrThrow("S3_ENDPOINT"),
-      ...(configService.get("S3_PORT")
-        ? { port: +configService.get("S3_PORT") }
+      endPoint: configService.getOrThrow("STORAGE_ENDPOINT"),
+      ...(configService.get("STORAGE_PORT")
+        ? { port: +configService.get("STORAGE_PORT") }
         : {}),
-      ...(configService.get("S3_USE_SSL")
-        ? { useSSL: configService.get("S3_USE_SSL") === "true" }
+      ...(configService.get("STORAGE_USE_SSL")
+        ? { useSSL: configService.get("STORAGE_USE_SSL") === "true" }
         : {}),
-      accessKey: configService.getOrThrow("S3_ACCESS_KEY_ID"),
-      secretKey: configService.getOrThrow("S3_SECRET_KEY"),
-      pathStyle: configService.get("S3_PATH_STYLE") === "true",
+      accessKey: configService.getOrThrow("STORAGE_ACCESS_KEY_ID"),
+      secretKey: configService.getOrThrow("STORAGE_SECRET_KEY"),
       limits: [
         {
           fileSize: bytes("20mb"),
@@ -71,7 +107,7 @@ const FileUploadDynamicModule = FileUploadModule.registerAsync({
 export class AppModule {}
 ```
 
-## 获取临时文件的上传配置：
+### 获取临时文件的上传配置：
 
 调用模块提供的 GraphQL 接口 FileUploadResolver
 示例：
@@ -92,7 +128,7 @@ mutation {
 }
 ```
 
-响应
+响应：
 
 ```json
 {
@@ -160,7 +196,6 @@ mutation {
 ```
 
 使用上传配置进行临时文件的上传
-
 文件上传的 curl 请求：
 
 ```shell
@@ -192,17 +227,15 @@ curl --location 'http://localhost:9000/test' \
 
 Location 的值就是临时文件 Url
 
-## 使用模块提供的 tmpAssetToFileAsset() 方法将临时文件转为永久文件
+### 使用模块提供的 persist() 方法将临时文件转为永久文件
 
 示例：
 
 ```typescript
-import { tmpAssetToFileAsset } from "@nest-boot/file-upload";
-
 // 模拟创建产品
 async create(input: CreateProductInput): Promise<Product> {
   // 获取永久图片地址
-  const imageUrl = await this.fileUploadService.tmpAssetToFileAsset(
+  const imageUrl = await this.fileUploadService.persist(
     input.imageTmpUrl,
   );
 

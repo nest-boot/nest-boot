@@ -1,7 +1,7 @@
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { randomUUID } from "crypto";
+import dayjs from "dayjs";
 import { Client } from "minio";
-import moment from "moment";
 import { extname } from "path";
 
 import { MODULE_OPTIONS_TOKEN } from "./file-upload.module-definition";
@@ -83,9 +83,10 @@ export class FileUploadService {
   }
 
   // 临时文件转永久文件
-  async tmpAssetToFileAsset(tmpUrl: string): Promise<string> {
+  async persist(tmpUrl: string): Promise<string> {
     const filePath = "tmp/" + tmpUrl.split("/tmp/")[1];
-    const filename = `files/${moment().format("YYYY/MM/DD")}/${filePath
+
+    const filename = `files/${dayjs().format("YYYY/MM/DD")}/${filePath
       .split("/")
       .pop()}`;
 
