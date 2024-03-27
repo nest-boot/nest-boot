@@ -9,5 +9,4 @@ export interface FileUploadModuleOptions extends ClientOptions {
   bucket: string;
   expires?: number;
   limits?: FileUploadLimit[];
-  path?: () => string;
 }

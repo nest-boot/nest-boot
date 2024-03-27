@@ -86,9 +86,9 @@ export class FileUploadService {
   async persist(tmpUrl: string): Promise<string> {
     const filePath = "tmp/" + tmpUrl.split("/tmp/")[1];
 
-    const filename = `files/${
-      this.options.path ? this.options.path() : dayjs().format("YYYY/MM/DD")
-    }/${filePath.split("/").pop()}`;
+    const filename = `files/${dayjs().format("YYYY/MM/DD")}/${filePath
+      .split("/")
+      .pop()}`;
 
     return await this.copyObject(filePath, filename);
   }
