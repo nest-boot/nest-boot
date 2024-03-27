@@ -16,28 +16,28 @@ npm i @nest-boot/file-upload minio
 
 ### 环境变量配置
 
-请根据 S3 服务商的路径风格决定是否配置 S3_PATH_STYLE 变量（默认为 false）
+请根据 S3 服务商的路径风格决定是否配置 STORAGE_PATH_STYLE 变量（默认为 false）
 示例：
 
 1.  本地 Minio
 
 ```
-S3_ENDPOINT=localhost
-S3_PORT=9000
-S3_USE_SSL=false
-S3_ACCESS_KEY_ID=minio
-S3_SECRET_KEY=secret_minio
-S3_BUCKET=test-bucket
-S3_PATH_STYLE=true
+STORAGE_ENDPOINT=localhost
+STORAGE_PORT=9000
+STORAGE_USE_SSL=false
+STORAGE_ACCESS_KEY_ID=minio
+STORAGE_SECRET_KEY=secret_minio
+STORAGE_BUCKET=test-bucket
+STORAGE_PATH_STYLE=true
 ```
 
 2. 阿里云 OSS
 
 ```
-S3_ENDPOINT=oss-us-east-1.aliyuncs.com
-S3_ACCESS_KEY_ID=access_key_id
-S3_SECRET_KEY=secret_key
-S3_BUCKET=test-bucket
+STORAGE_ENDPOINT=oss-us-east-1.aliyuncs.com
+STORAGE_ACCESS_KEY_ID=access_key_id
+STORAGE_SECRET_KEY=secret_key
+STORAGE_BUCKET=test-bucket
 ```
 
 3. AWS S3
@@ -58,7 +58,7 @@ import { LoggerModule } from "@nest-boot/file-upload";
 const FileUploadDynamicModule = FileUploadModule.registerAsync({
   inject: [ConfigService],
   useFactory: (configService: ConfigService) => {
-    const bucket = configService.get("S3_BUCKET");
+    const bucket = configService.get("STORAGE_BUCKET");
 
     if (bucket === undefined) {
       throw new Error("S3 BUCKET is not defined");
@@ -66,16 +66,16 @@ const FileUploadDynamicModule = FileUploadModule.registerAsync({
 
     return {
       bucket,
-      endPoint: configService.getOrThrow("S3_ENDPOINT"),
-      ...(configService.get("S3_PORT")
-        ? { port: +configService.get("S3_PORT") }
+      endPoint: configService.getOrThrow("STORAGE_ENDPOINT"),
+      ...(configService.get("STORAGE_PORT")
+        ? { port: +configService.get("STORAGE_PORT") }
         : {}),
-      ...(configService.get("S3_USE_SSL")
-        ? { useSSL: configService.get("S3_USE_SSL") === "true" }
+      ...(configService.get("STORAGE_USE_SSL")
+        ? { useSSL: configService.get("STORAGE_USE_SSL") === "true" }
         : {}),
-      accessKey: configService.getOrThrow("S3_ACCESS_KEY_ID"),
-      secretKey: configService.getOrThrow("S3_SECRET_KEY"),
-      pathStyle: configService.get("S3_PATH_STYLE") === "true",
+      accessKey: configService.getOrThrow("STORAGE_ACCESS_KEY_ID"),
+      secretKey: configService.getOrThrow("STORAGE_SECRET_KEY"),
+      pathStyle: configService.get("STORAGE_PATH_STYLE") === "true",
       // 通过 path 方法可以自定义文件的路径的中间部分
       // 默认的路径：files/2024/03/27/a15e77f5-f133-40c5-b366-468ace3f5e96.jpeg
       // 自定义后的路径：files/5fa3afa0-fa65-4b6b-bd0d-854b88438fce/a15e77f5-f133-40c5-b366-468ace3f5e96.jpeg
@@ -239,8 +239,6 @@ Location 的值就是临时文件 Url
 示例：
 
 ```typescript
-import { persist } from "@nest-boot/file-upload";
-
 // 模拟创建产品
 async create(input: CreateProductInput): Promise<Product> {
   // 获取永久图片地址

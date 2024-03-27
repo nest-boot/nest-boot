@@ -43,7 +43,7 @@ describe("FileUploadModule - e2e", () => {
     await app.close();
   }, 60000);
 
-  it("成功获取上传参数配置", async () => {
+  it("should successfully gets the upload parameter configuration", async () => {
     // 创建一个新桶
     const bucket = await fileUploadService.ossClient.bucketExists(
       fileUploadService.options.bucket,
@@ -86,7 +86,7 @@ describe("FileUploadModule - e2e", () => {
     fileUploadArgs = createFileUploads.body.data.createFileUploads[0];
   }, 10000);
 
-  it("成功上传临时文件", async () => {
+  it("should successfully uploads temporary file", async () => {
     expect(fileUploadArgs).toBeTruthy();
 
     const form = new FormData();
@@ -115,7 +115,7 @@ describe("FileUploadModule - e2e", () => {
     expect(fileTmpUrl).toBeTruthy();
   }, 10000);
 
-  it("成功将临时文件持久化", async () => {
+  it("should successfully persists the temporary file", async () => {
     expect(fileTmpUrl).toBeTruthy();
 
     const fileUrl = await fileUploadService.persist(fileTmpUrl);
@@ -123,7 +123,7 @@ describe("FileUploadModule - e2e", () => {
     expect(fileUrl).toBeTruthy();
   }, 10000);
 
-  it("文件过大，抛出异常", async () => {
+  it("file is too large, should throw an exception", async () => {
     await expect(
       fileUploadService.create([
         { name: filename, fileSize: fileSizeLimited, mimeType },

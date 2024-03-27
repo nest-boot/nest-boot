@@ -1,7 +1,7 @@
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { randomUUID } from "crypto";
+import dayjs from "dayjs";
 import { Client } from "minio";
-import moment from "moment";
 import { extname } from "path";
 
 import { MODULE_OPTIONS_TOKEN } from "./file-upload.module-definition";
@@ -87,7 +87,7 @@ export class FileUploadService {
     const filePath = "tmp/" + tmpUrl.split("/tmp/")[1];
 
     const filename = `files/${
-      this.options.path ? this.options.path() : moment().format("YYYY/MM/DD")
+      this.options.path ? this.options.path() : dayjs().format("YYYY/MM/DD")
     }/${filePath.split("/").pop()}`;
 
     return await this.copyObject(filePath, filename);

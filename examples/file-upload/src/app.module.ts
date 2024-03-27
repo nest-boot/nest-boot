@@ -29,7 +29,7 @@ const GraphQLDynamicModule = GraphQLModule.forRootAsync({
 const FileUploadDynamicModule = FileUploadModule.registerAsync({
   inject: [ConfigService],
   useFactory: (configService: ConfigService) => {
-    const bucket = configService.get('S3_BUCKET');
+    const bucket = configService.get('STORAGE_BUCKET');
 
     if (bucket === undefined) {
       throw new Error('S3 BUCKET is not defined');
@@ -37,16 +37,16 @@ const FileUploadDynamicModule = FileUploadModule.registerAsync({
 
     return {
       bucket,
-      endPoint: configService.getOrThrow('S3_ENDPOINT'),
-      ...(configService.get('S3_PORT')
-        ? { port: +configService.get('S3_PORT') }
+      endPoint: configService.getOrThrow('STORAGE_ENDPOINT'),
+      ...(configService.get('STORAGE_PORT')
+        ? { port: +configService.get('STORAGE_PORT') }
         : {}),
-      ...(configService.get('S3_USE_SSL')
-        ? { useSSL: configService.get('S3_USE_SSL') === 'true' }
+      ...(configService.get('STORAGE_USE_SSL')
+        ? { useSSL: configService.get('STORAGE_USE_SSL') === 'true' }
         : {}),
-      accessKey: configService.getOrThrow('S3_ACCESS_KEY_ID'),
-      secretKey: configService.getOrThrow('S3_SECRET_KEY'),
-      pathStyle: configService.get('S3_PATH_STYLE') === 'true',
+      accessKey: configService.getOrThrow('STORAGE_ACCESS_KEY_ID'),
+      secretKey: configService.getOrThrow('STORAGE_SECRET_KEY'),
+      pathStyle: configService.get('STORAGE_PATH_STYLE') === 'true',
       limits: [
         {
           fileSize: bytes('20mb'),
