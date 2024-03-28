@@ -17,10 +17,10 @@ import _ from "lodash";
 import {
   AUTH_PERSONAL_ACCESS_TOKEN,
   AUTH_USER,
-  MODULE_OPTIONS_TOKEN,
   PERMISSIONS_METADATA_KEY,
   REQUIRE_AUTH_METADATA_KEY,
-} from "./auth.module-definition";
+} from "./auth.constants";
+import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition";
 import { AuthService } from "./auth.service";
 import { PersonalAccessToken, User } from "./entities";
 import { AuthModuleOptions } from "./interfaces";
