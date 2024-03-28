@@ -1,4 +1,4 @@
-import { EntityManager } from "@mikro-orm/core";
+import { EntityClass, EntityManager } from "@mikro-orm/core";
 import { I18N, type I18n } from "@nest-boot/i18n";
 import { RequestContext } from "@nest-boot/request-context";
 import {
@@ -7,6 +7,7 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Type,
   UnauthorizedException,
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
@@ -29,6 +30,9 @@ import { AuthModuleOptions } from "./interfaces";
 export class AuthGuard implements CanActivate {
   private readonly defaultRequireAuth: boolean;
 
+  private readonly userEntityClass: EntityClass<User>;
+  private readonly personalAccessTokenEntityClass: EntityClass<PersonalAccessToken>;
+
   constructor(
     private readonly reflector: Reflector,
     private readonly em: EntityManager,
@@ -38,6 +42,10 @@ export class AuthGuard implements CanActivate {
   ) {
     this.reflector = reflector;
     this.defaultRequireAuth = this.options?.defaultRequireAuth ?? true;
+
+    this.userEntityClass = this.options.entities?.User ?? User;
+    this.personalAccessTokenEntityClass =
+      this.options.entities?.PersonalAccessToken ?? PersonalAccessToken;
   }
 
   /**
@@ -122,8 +130,11 @@ export class AuthGuard implements CanActivate {
       );
     }
 
-    RequestContext.set(PersonalAccessToken, personalAccessToken);
-    RequestContext.set(User, user);
+    RequestContext.set(this.userEntityClass as Type<User>, user);
+    RequestContext.set(
+      this.personalAccessTokenEntityClass as Type<PersonalAccessToken>,
+      personalAccessToken,
+    );
 
     // Get the method permissions
     const permissions = this.reflector.get<string[]>(
