@@ -1,5 +1,11 @@
 # @nest-boot/auth
 
+## 6.10.3
+
+### Patch Changes
+
+- a52e8ae: Fix decorator failure when using custom entities
+
 ## 6.10.2
 
 ### Patch Changes
