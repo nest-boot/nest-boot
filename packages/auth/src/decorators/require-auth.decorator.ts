@@ -1,6 +1,6 @@
 import { SetMetadata } from "@nestjs/common";
 
-import { REQUIRE_AUTH_METADATA_KEY } from "../auth.module-definition";
+import { REQUIRE_AUTH_METADATA_KEY } from "../auth.constants";
 
 export const RequireAuth = (
   requireAuth = true,
