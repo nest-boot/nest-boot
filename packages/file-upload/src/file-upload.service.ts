@@ -1,7 +1,7 @@
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import dayjs from "dayjs";
-import { Client } from "minio";
+import { Client, ItemBucketMetadata, UploadedObjectInfo } from "minio";
 import { extname } from "path";
 
 import { MODULE_OPTIONS_TOKEN } from "./file-upload.module-definition";
@@ -84,20 +84,39 @@ export class FileUploadService {
 
   // 临时文件转永久文件
   async persist(tmpUrl: string): Promise<string> {
-    const filePath = "tmp/" + tmpUrl.split("/tmp/")[1];
+    const originPath = "tmp/" + tmpUrl.split("/tmp/")[1];
 
-    const filename = `files/${dayjs().format("YYYY/MM/DD")}/${filePath
+    const targetPath = `files/${dayjs().format("YYYY/MM/DD")}/${originPath
       .split("/")
       .pop()}`;
 
-    return await this.copyObject(filePath, filename);
+    return await this.copyObject(originPath, targetPath);
+  }
+
+  async upload(
+    filePath: string,
+    data: ReadableStream | Buffer | string,
+    metaData: ItemBucketMetadata,
+  ): Promise<string> {
+    await (
+      this.ossClient.putObject as (
+        bucketName: string,
+        objectName: string,
+        stream: ReadableStream | Buffer | string,
+        metaData?: ItemBucketMetadata,
+      ) => Promise<UploadedObjectInfo>
+    )(this.options.bucket, filePath, data, metaData);
+
+    return this.options.pathStyle
+      ? `${this.options.useSSL !== false ? "https" : "http"}://${this.options.endPoint}${this.options.port ? `:${this.options.port}` : ""}/${this.options.bucket}/${filePath}`
+      : `${this.options.useSSL !== false ? "https" : "http"}://${this.options.bucket}.${this.options.endPoint}${this.options.port ? `:${this.options.port}` : ""}/${filePath}`;
   }
 
   // 不能使用 minio 的 copyObject(),因为它会把原文件的策略也拷贝（aws-sdk 的 copyObject() 可以添加策略参数）
   // 并且 minio 只支持对 bucket 的策略配置，不支持对某对象进行策略配置
   private async copyObject(
     originPath: string,
-    filename: string,
+    targetPath: string,
   ): Promise<string> {
     const originMetadata = await this.ossClient.statObject(
       this.options.bucket,
@@ -120,21 +139,11 @@ export class FileUploadService {
       dataStream.on("error", reject);
     });
 
-    // 上传对象
     const metaData = {
       "Content-Type": originMetadata.metaData["content-type"],
     };
 
-    // 无法设置 acl 等策略，会自动继承 files 目录的策略
-    await this.ossClient.putObject(
-      this.options.bucket,
-      filename,
-      data,
-      metaData,
-    );
-
-    return this.options.pathStyle
-      ? `${this.options.useSSL !== false ? "https" : "http"}://${this.options.endPoint}${this.options.port ? `:${this.options.port}` : ""}/${this.options.bucket}/${filename}`
-      : `${this.options.useSSL !== false ? "https" : "http"}://${this.options.bucket}.${this.options.endPoint}${this.options.port ? `:${this.options.port}` : ""}/${filename}`;
+    // 上传文件
+    return await this.upload(targetPath, data, metaData);
   }
 }

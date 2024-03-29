@@ -2,6 +2,8 @@ import { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import axios from "axios";
 import bytes from "bytes";
+import { randomUUID } from "crypto";
+import dayjs from "dayjs";
 import FormData from "form-data";
 import fs from "fs";
 import path from "path";
@@ -119,6 +121,18 @@ describe("FileUploadModule - e2e", () => {
     expect(fileTmpUrl).toBeTruthy();
 
     const fileUrl = await fileUploadService.persist(fileTmpUrl);
+
+    expect(fileUrl).toBeTruthy();
+  }, 10000);
+
+  it("should successfully upload file", async () => {
+    const buffer = fs.readFileSync(path.resolve(__dirname, filePath));
+    const fileType = filePath.split(".").pop();
+    const targetPath = `files/${dayjs().format("YYYY/MM/DD")}/${randomUUID()}.${fileType}`;
+
+    const fileUrl = await fileUploadService.upload(targetPath, buffer, {
+      "Content-Type": mimeType,
+    });
 
     expect(fileUrl).toBeTruthy();
   }, 10000);
