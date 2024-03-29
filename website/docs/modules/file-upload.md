@@ -258,6 +258,8 @@ async create(input: CreateProductInput): Promise<Product> {
    create(input: FileUploadInput[]): Promise<FileUpload[]>;
 // 2. 临时文件持久化
    persist(tmpUrl: string): Promise<string>;
-// 3. 文件上传
-   upload(filePath: string, data: ReadableStream | Buffer | string, metaData: ItemBucketMetadata): Promise<string>;
+// 3. 文件上传：第三个参数 persist 默认为 false
+    upload(data: ReadableStream | Buffer | string, metadata: ItemBucketMetadata & {
+        "Content-Type": string;
+    }, persist?: boolean): Promise<string>;
 ```

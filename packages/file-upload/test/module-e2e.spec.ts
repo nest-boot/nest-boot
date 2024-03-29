@@ -2,8 +2,6 @@ import { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import axios from "axios";
 import bytes from "bytes";
-import { randomUUID } from "crypto";
-import dayjs from "dayjs";
 import FormData from "form-data";
 import fs from "fs";
 import path from "path";
@@ -125,16 +123,30 @@ describe("FileUploadModule - e2e", () => {
     expect(fileUrl).toBeTruthy();
   }, 10000);
 
-  it("should successfully upload file", async () => {
+  it("should successfully upload temporary file", async () => {
     const buffer = fs.readFileSync(path.resolve(__dirname, filePath));
-    const fileType = filePath.split(".").pop();
-    const targetPath = `files/${dayjs().format("YYYY/MM/DD")}/${randomUUID()}.${fileType}`;
 
-    const fileUrl = await fileUploadService.upload(targetPath, buffer, {
+    const tmpFileUrl = await fileUploadService.upload(buffer, {
       "Content-Type": mimeType,
     });
 
+    expect(tmpFileUrl).toBeTruthy();
+    expect(tmpFileUrl).toContain("tmp");
+  }, 10000);
+
+  it("should successfully upload persistent file", async () => {
+    const buffer = fs.readFileSync(path.resolve(__dirname, filePath));
+
+    const fileUrl = await fileUploadService.upload(
+      buffer,
+      {
+        "Content-Type": mimeType,
+      },
+      true,
+    );
+
     expect(fileUrl).toBeTruthy();
+    expect(fileUrl).toContain("file");
   }, 10000);
 
   it("file is too large, should throw an exception", async () => {
