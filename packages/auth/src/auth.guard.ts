@@ -15,10 +15,12 @@ import { Request } from "express";
 import _ from "lodash";
 
 import {
-  MODULE_OPTIONS_TOKEN,
+  AUTH_PERSONAL_ACCESS_TOKEN,
+  AUTH_USER,
   PERMISSIONS_METADATA_KEY,
   REQUIRE_AUTH_METADATA_KEY,
-} from "./auth.module-definition";
+} from "./auth.constants";
+import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition";
 import { AuthService } from "./auth.service";
 import { PersonalAccessToken, User } from "./entities";
 import { AuthModuleOptions } from "./interfaces";
@@ -135,6 +137,9 @@ export class AuthGuard implements CanActivate {
       this.personalAccessTokenEntityClass as Type<PersonalAccessToken>,
       personalAccessToken,
     );
+
+    RequestContext.set(AUTH_USER, user);
+    RequestContext.set(AUTH_PERSONAL_ACCESS_TOKEN, personalAccessToken);
 
     // Get the method permissions
     const permissions = this.reflector.get<string[]>(

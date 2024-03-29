@@ -1,8 +1,8 @@
 import { RequestContext } from "@nest-boot/request-context";
 import { createParamDecorator } from "@nestjs/common";
 
-import { User } from "../entities/user.entity";
+import { AUTH_USER } from "../auth.constants";
 
 export const CurrentUser = createParamDecorator(() => {
-  return RequestContext.get(User);
+  return RequestContext.get(AUTH_USER);
 });
