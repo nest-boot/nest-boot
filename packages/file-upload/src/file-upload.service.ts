@@ -100,9 +100,7 @@ export class FileUploadService {
       conditions,
     );
 
-    return this.options.pathStyle
-      ? `${this.options.useSSL !== false ? "https" : "http"}://${this.options.endPoint}${this.options.port ? `:${this.options.port}` : ""}/${this.options.bucket}/${targetPath}`
-      : `${this.options.useSSL !== false ? "https" : "http"}://${this.options.bucket}.${this.options.endPoint}${this.options.port ? `:${this.options.port}` : ""}/${targetPath}`;
+    return this.getFileUrl(targetPath);
   }
 
   async upload(
@@ -121,9 +119,7 @@ export class FileUploadService {
       ) => Promise<UploadedObjectInfo>
     )(this.options.bucket, filePath, data, metadata);
 
-    const tmpUrl = this.options.pathStyle
-      ? `${this.options.useSSL !== false ? "https" : "http"}://${this.options.endPoint}${this.options.port ? `:${this.options.port}` : ""}/${this.options.bucket}/${filePath}`
-      : `${this.options.useSSL !== false ? "https" : "http"}://${this.options.bucket}.${this.options.endPoint}${this.options.port ? `:${this.options.port}` : ""}/${filePath}`;
+    const tmpUrl = this.getFileUrl(filePath);
 
     if (!persist) {
       return tmpUrl;
@@ -131,5 +127,11 @@ export class FileUploadService {
 
     // 持久化
     return await this.persist(tmpUrl);
+  }
+
+  private getFileUrl(filePath: string): string {
+    return this.options.pathStyle
+      ? `${this.options.useSSL !== false ? "https" : "http"}://${this.options.endPoint}${this.options.port ? `:${this.options.port}` : ""}/${this.options.bucket}/${filePath}`
+      : `${this.options.useSSL !== false ? "https" : "http"}://${this.options.bucket}.${this.options.endPoint}${this.options.port ? `:${this.options.port}` : ""}/${filePath}`;
   }
 }
