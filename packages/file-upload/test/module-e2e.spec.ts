@@ -123,6 +123,32 @@ describe("FileUploadModule - e2e", () => {
     expect(fileUrl).toBeTruthy();
   }, 10000);
 
+  it("should successfully upload temporary file", async () => {
+    const buffer = fs.readFileSync(path.resolve(__dirname, filePath));
+
+    const tmpFileUrl = await fileUploadService.upload(buffer, {
+      "Content-Type": mimeType,
+    });
+
+    expect(tmpFileUrl).toBeTruthy();
+    expect(tmpFileUrl).toContain("tmp");
+  }, 10000);
+
+  it("should successfully upload persistent file", async () => {
+    const buffer = fs.readFileSync(path.resolve(__dirname, filePath));
+
+    const fileUrl = await fileUploadService.upload(
+      buffer,
+      {
+        "Content-Type": mimeType,
+      },
+      true,
+    );
+
+    expect(fileUrl).toBeTruthy();
+    expect(fileUrl).toContain("file");
+  }, 10000);
+
   it("file is too large, should throw an exception", async () => {
     await expect(
       fileUploadService.create([

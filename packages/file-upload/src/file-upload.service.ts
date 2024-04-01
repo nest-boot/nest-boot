@@ -1,7 +1,12 @@
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import dayjs from "dayjs";
-import { Client } from "minio";
+import {
+  Client,
+  CopyConditions,
+  ItemBucketMetadata,
+  UploadedObjectInfo,
+} from "minio";
 import { extname } from "path";
 
 import { MODULE_OPTIONS_TOKEN } from "./file-upload.module-definition";
@@ -21,8 +26,6 @@ export class FileUploadService {
   }
 
   async create(input: FileUploadInput[]): Promise<FileUpload[]> {
-    const acl = "private";
-
     const results = input.map(async (item) => {
       const key = `tmp/${randomUUID()}${extname(item.name)}`;
 
@@ -41,7 +44,6 @@ export class FileUploadService {
       const policy = this.ossClient.newPostPolicy();
 
       policy.formData = {
-        acl,
         bucket: this.options.bucket,
         key,
         success_action_status: "201",
@@ -51,7 +53,6 @@ export class FileUploadService {
       policy.policy = {
         conditions: [
           ...(limit ? [["content-length-range", 1, limit.fileSize]] : []),
-          ["eq", "$acl", acl],
           ["eq", "$bucket", this.options.bucket],
           ["eq", "$key", key],
           ["eq", "$success_action_status", "201"],
@@ -84,57 +85,53 @@ export class FileUploadService {
 
   // 临时文件转永久文件
   async persist(tmpUrl: string): Promise<string> {
-    const filePath = "tmp/" + tmpUrl.split("/tmp/")[1];
+    const originPath = `${this.options.bucket}/tmp/${tmpUrl.split("/tmp/")[1]}`;
 
-    const filename = `files/${dayjs().format("YYYY/MM/DD")}/${filePath
+    const targetPath = `files/${dayjs().format("YYYY/MM/DD")}/${originPath
       .split("/")
       .pop()}`;
 
-    return await this.copyObject(filePath, filename);
+    const conditions = new CopyConditions();
+
+    await this.ossClient.copyObject(
+      this.options.bucket,
+      targetPath,
+      originPath,
+      conditions,
+    );
+
+    return this.getFileUrl(targetPath);
   }
 
-  // 不能使用 minio 的 copyObject(),因为它会把原文件的策略也拷贝（aws-sdk 的 copyObject() 可以添加策略参数）
-  // 并且 minio 只支持对 bucket 的策略配置，不支持对某对象进行策略配置
-  private async copyObject(
-    originPath: string,
-    filename: string,
+  async upload(
+    data: ReadableStream | Buffer | string,
+    metadata: ItemBucketMetadata & { "Content-Type": string },
+    persist = false,
   ): Promise<string> {
-    const originMetadata = await this.ossClient.statObject(
-      this.options.bucket,
-      originPath,
-    );
+    const filePath = `tmp/${dayjs().format("YYYY/MM/DD")}/${randomUUID()}.${metadata["Content-Type"].split("/").pop()}`;
 
-    const dataStream = await this.ossClient.getObject(
-      this.options.bucket,
-      originPath,
-    );
+    await (
+      this.ossClient.putObject as (
+        bucketName: string,
+        objectName: string,
+        stream: ReadableStream | Buffer | string,
+        metadata?: ItemBucketMetadata,
+      ) => Promise<UploadedObjectInfo>
+    )(this.options.bucket, filePath, data, metadata);
 
-    const data = await new Promise<Buffer>((resolve, reject) => {
-      const chunks: Buffer[] = [];
-      dataStream.on("data", (chunk: Buffer) => {
-        chunks.push(chunk);
-      });
-      dataStream.on("end", () => {
-        resolve(Buffer.concat(chunks));
-      });
-      dataStream.on("error", reject);
-    });
+    const tmpUrl = this.getFileUrl(filePath);
 
-    // 上传对象
-    const metaData = {
-      "Content-Type": originMetadata.metaData["content-type"],
-    };
+    if (!persist) {
+      return tmpUrl;
+    }
 
-    // 无法设置 acl 等策略，会自动继承 files 目录的策略
-    await this.ossClient.putObject(
-      this.options.bucket,
-      filename,
-      data,
-      metaData,
-    );
+    // 持久化
+    return await this.persist(tmpUrl);
+  }
 
+  private getFileUrl(filePath: string): string {
     return this.options.pathStyle
-      ? `${this.options.useSSL !== false ? "https" : "http"}://${this.options.endPoint}${this.options.port ? `:${this.options.port}` : ""}/${this.options.bucket}/${filename}`
-      : `${this.options.useSSL !== false ? "https" : "http"}://${this.options.bucket}.${this.options.endPoint}${this.options.port ? `:${this.options.port}` : ""}/${filename}`;
+      ? `${this.options.useSSL !== false ? "https" : "http"}://${this.options.endPoint}${this.options.port ? `:${this.options.port}` : ""}/${this.options.bucket}/${filePath}`
+      : `${this.options.useSSL !== false ? "https" : "http"}://${this.options.bucket}.${this.options.endPoint}${this.options.port ? `:${this.options.port}` : ""}/${filePath}`;
   }
 }

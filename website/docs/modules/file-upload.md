@@ -16,7 +16,7 @@ npm i @nest-boot/file-upload minio
 
 ### 环境变量配置
 
-请根据 S3 服务商的路径风格决定是否配置 STORAGE_PATH_STYLE 变量（默认为 false）
+请根据 S3 服务商的路径风格决定是否配置 STORAGE_PATH_STYLE 变量（默认为 true）
 示例：
 
 1.  本地 Minio
@@ -249,4 +249,17 @@ async create(input: CreateProductInput): Promise<Product> {
 
   return product;
 }
+```
+
+## 内置函数
+
+```typescript
+// 1. 获取预上传策略
+   create(input: FileUploadInput[]): Promise<FileUpload[]>;
+// 2. 临时文件持久化
+   persist(tmpUrl: string): Promise<string>;
+// 3. 文件上传：第三个参数 persist 默认为 false
+    upload(data: ReadableStream | Buffer | string, metadata: ItemBucketMetadata & {
+        "Content-Type": string;
+    }, persist?: boolean): Promise<string>;
 ```
