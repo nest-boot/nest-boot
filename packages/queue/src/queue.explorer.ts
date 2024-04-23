@@ -196,11 +196,11 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
                 }
               } else if (typeof consumer !== "undefined") {
                 await consumer(job);
+              } else {
+                throw new Error(
+                  `Processor ${job.name} not found for queue ${name}`,
+                );
               }
-
-              throw new Error(
-                `Processor ${job.name} not found for queue ${name}`,
-              );
             },
             {
               autorun: false,
