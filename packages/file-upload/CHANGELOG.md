@@ -1,5 +1,11 @@
 # @nest-boot/file-upload
 
+## 6.3.0
+
+### Minor Changes
+
+- 3bed836: 修复 upload() 上传 xlsx 时出现不兼容
+
 ## 6.2.0
 
 ### Minor Changes
