@@ -44,17 +44,6 @@ describe("FileUploadModule - e2e", () => {
   }, 60000);
 
   it("should successfully gets the upload parameter configuration", async () => {
-    // 创建一个新桶
-    const bucket = await fileUploadService.ossClient.bucketExists(
-      fileUploadService.options.bucket,
-    );
-
-    if (!bucket) {
-      await fileUploadService.ossClient.makeBucket(
-        fileUploadService.options.bucket,
-      );
-    }
-
     const createFileUploads = await request(app.getHttpServer())
       .post("/graphql")
       .send({

@@ -1,6 +1,7 @@
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import dayjs from "dayjs";
+import mimeTypes from "mime-types";
 import {
   Client,
   CopyConditions,
@@ -16,13 +17,13 @@ import { FileUploadInput } from "./inputs/file-upload.input";
 
 @Injectable()
 export class FileUploadService {
-  readonly ossClient: Client;
+  private readonly client: Client;
 
   constructor(
     @Inject(MODULE_OPTIONS_TOKEN)
-    readonly options: FileUploadModuleOptions,
+    private readonly options: FileUploadModuleOptions,
   ) {
-    this.ossClient = new Client(options);
+    this.client = new Client(options);
   }
 
   async create(input: FileUploadInput[]): Promise<FileUpload[]> {
@@ -41,7 +42,7 @@ export class FileUploadService {
         );
       }
 
-      const policy = this.ossClient.newPostPolicy();
+      const policy = this.client.newPostPolicy();
 
       policy.formData = {
         bucket: this.options.bucket,
@@ -64,7 +65,7 @@ export class FileUploadService {
         ).toISOString(),
       };
 
-      const presignedPost = await this.ossClient.presignedPostPolicy(policy);
+      const presignedPost = await this.client.presignedPostPolicy(policy);
 
       return {
         url: presignedPost.postURL,
@@ -93,7 +94,7 @@ export class FileUploadService {
 
     const conditions = new CopyConditions();
 
-    await this.ossClient.copyObject(
+    await this.client.copyObject(
       this.options.bucket,
       targetPath,
       originPath,
@@ -108,10 +109,13 @@ export class FileUploadService {
     metadata: ItemBucketMetadata & { "Content-Type": string },
     persist = false,
   ): Promise<string> {
-    const filePath = `tmp/${dayjs().format("YYYY/MM/DD")}/${randomUUID()}.${metadata["Content-Type"].split("/").pop()}`;
+    const extension: string =
+      metadata.extension || mimeTypes.extension(metadata["Content-Type"]);
+
+    const filePath = `tmp/${dayjs().format("YYYY/MM/DD")}/${randomUUID()}.${extension}`;
 
     await (
-      this.ossClient.putObject as (
+      this.client.putObject as (
         bucketName: string,
         objectName: string,
         stream: ReadableStream | Buffer | string,
