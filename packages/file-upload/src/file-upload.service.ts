@@ -1,6 +1,7 @@
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import dayjs from "dayjs";
+import mimeTypes from "mime-types";
 import {
   Client,
   CopyConditions,
@@ -8,6 +9,8 @@ import {
   UploadedObjectInfo,
 } from "minio";
 import { extname } from "path";
+import { pipeline, Readable, Transform } from "stream";
+import { promisify } from "util";
 
 import { MODULE_OPTIONS_TOKEN } from "./file-upload.module-definition";
 import { FileUpload } from "./file-upload.object";
@@ -16,11 +19,11 @@ import { FileUploadInput } from "./inputs/file-upload.input";
 
 @Injectable()
 export class FileUploadService {
-  readonly ossClient: Client;
+  private readonly ossClient: Client;
 
   constructor(
     @Inject(MODULE_OPTIONS_TOKEN)
-    readonly options: FileUploadModuleOptions,
+    private readonly options: FileUploadModuleOptions,
   ) {
     this.ossClient = new Client(options);
   }
@@ -108,7 +111,10 @@ export class FileUploadService {
     metadata: ItemBucketMetadata & { "Content-Type": string },
     persist = false,
   ): Promise<string> {
-    const filePath = `tmp/${dayjs().format("YYYY/MM/DD")}/${randomUUID()}.${metadata["Content-Type"].split("/").pop()}`;
+    const extension =
+      metadata.extension || mimeTypes.extension(metadata["Content-Type"]);
+
+    const filePath = `tmp/${dayjs().format("YYYY/MM/DD")}/${randomUUID()}.${extension}`;
 
     await (
       this.ossClient.putObject as (
@@ -127,6 +133,36 @@ export class FileUploadService {
 
     // 持久化
     return await this.persist(tmpUrl);
+  }
+
+  // 获取对象，默认返回 stream
+  async getObject<T extends boolean = false>(
+    filePath: string,
+    buffer: T = false as T,
+  ): Promise<T extends true ? Buffer : Readable> {
+    const fileStream = await this.ossClient.getObject(
+      this.options.bucket,
+      filePath,
+    );
+
+    if (!buffer) {
+      return fileStream as any;
+    }
+
+    const chunks: Buffer[] = [];
+    const pipelinePromise = promisify(pipeline);
+
+    await pipelinePromise(
+      fileStream,
+      new Transform({
+        transform(chunk, encoding, callback) {
+          chunks.push(chunk);
+          callback();
+        },
+      }),
+    );
+
+    return Buffer.concat(chunks) as any;
   }
 
   private getFileUrl(filePath: string): string {

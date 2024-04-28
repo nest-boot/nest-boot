@@ -42,6 +42,14 @@ jobs:
           --health-cmd "curl http://localhost:9000/minio/health/live"
 
     steps:
+      - name: Install MinIO Client and Create Bucket
+        run: |
+          wget https://dl.min.io/client/mc/release/linux-amd64/mc
+          chmod +x mc
+          ./mc --help
+          ./mc alias set minio http://localhost:9000 minio password
+          ./mc mb minio/test-bucket
+
       - name: Checkout
         uses: actions/checkout@v4
 
