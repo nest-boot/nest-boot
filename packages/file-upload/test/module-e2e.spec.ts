@@ -5,7 +5,6 @@ import bytes from "bytes";
 import FormData from "form-data";
 import fs from "fs";
 import path from "path";
-import stream from "stream";
 import request from "supertest";
 
 import { FileUploadService } from "../src";
@@ -146,24 +145,4 @@ describe("FileUploadModule - e2e", () => {
       ]),
     ).rejects.toThrow();
   }, 10000);
-
-  it("should successfully retrieve a buffer object when calling getObject", async () => {
-    expect(fileTmpUrl).toBeTruthy();
-
-    const filePath = fileTmpUrl.slice(fileTmpUrl.indexOf("tmp"));
-
-    const fileBuffer = await fileUploadService.getObject(filePath, true);
-
-    expect(fileBuffer instanceof Buffer).toBe(true);
-  });
-
-  it("should successfully retrieve a readable stream when calling getObject", async () => {
-    expect(fileTmpUrl).toBeTruthy();
-
-    const filePath = fileTmpUrl.slice(fileTmpUrl.indexOf("tmp"));
-
-    const readableStream = await fileUploadService.getObject(filePath);
-
-    expect(readableStream instanceof stream.Readable).toBe(true);
-  });
 });

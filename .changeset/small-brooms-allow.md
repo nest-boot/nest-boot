@@ -2,4 +2,4 @@
 "@nest-boot/file-upload": minor
 ---
 
-FileUploadService 新增 getObject()
+修复 upload() 上传 xlsx 时出现不兼容

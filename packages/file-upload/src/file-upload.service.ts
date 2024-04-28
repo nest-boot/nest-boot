@@ -9,8 +9,6 @@ import {
   UploadedObjectInfo,
 } from "minio";
 import { extname } from "path";
-import { pipeline, Readable, Transform } from "stream";
-import { promisify } from "util";
 
 import { MODULE_OPTIONS_TOKEN } from "./file-upload.module-definition";
 import { FileUpload } from "./file-upload.object";
@@ -19,13 +17,13 @@ import { FileUploadInput } from "./inputs/file-upload.input";
 
 @Injectable()
 export class FileUploadService {
-  private readonly ossClient: Client;
+  private readonly client: Client;
 
   constructor(
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly options: FileUploadModuleOptions,
   ) {
-    this.ossClient = new Client(options);
+    this.client = new Client(options);
   }
 
   async create(input: FileUploadInput[]): Promise<FileUpload[]> {
@@ -44,7 +42,7 @@ export class FileUploadService {
         );
       }
 
-      const policy = this.ossClient.newPostPolicy();
+      const policy = this.client.newPostPolicy();
 
       policy.formData = {
         bucket: this.options.bucket,
@@ -67,7 +65,7 @@ export class FileUploadService {
         ).toISOString(),
       };
 
-      const presignedPost = await this.ossClient.presignedPostPolicy(policy);
+      const presignedPost = await this.client.presignedPostPolicy(policy);
 
       return {
         url: presignedPost.postURL,
@@ -96,7 +94,7 @@ export class FileUploadService {
 
     const conditions = new CopyConditions();
 
-    await this.ossClient.copyObject(
+    await this.client.copyObject(
       this.options.bucket,
       targetPath,
       originPath,
@@ -111,13 +109,13 @@ export class FileUploadService {
     metadata: ItemBucketMetadata & { "Content-Type": string },
     persist = false,
   ): Promise<string> {
-    const extension =
+    const extension: string =
       metadata.extension || mimeTypes.extension(metadata["Content-Type"]);
 
     const filePath = `tmp/${dayjs().format("YYYY/MM/DD")}/${randomUUID()}.${extension}`;
 
     await (
-      this.ossClient.putObject as (
+      this.client.putObject as (
         bucketName: string,
         objectName: string,
         stream: ReadableStream | Buffer | string,
@@ -133,36 +131,6 @@ export class FileUploadService {
 
     // 持久化
     return await this.persist(tmpUrl);
-  }
-
-  // 获取对象，默认返回 stream
-  async getObject<T extends boolean = false>(
-    filePath: string,
-    buffer: T = false as T,
-  ): Promise<T extends true ? Buffer : Readable> {
-    const fileStream = await this.ossClient.getObject(
-      this.options.bucket,
-      filePath,
-    );
-
-    if (!buffer) {
-      return fileStream as any;
-    }
-
-    const chunks: Buffer[] = [];
-    const pipelinePromise = promisify(pipeline);
-
-    await pipelinePromise(
-      fileStream,
-      new Transform({
-        transform(chunk, encoding, callback) {
-          chunks.push(chunk);
-          callback();
-        },
-      }),
-    );
-
-    return Buffer.concat(chunks) as any;
   }
 
   private getFileUrl(filePath: string): string {
