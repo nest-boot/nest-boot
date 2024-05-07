@@ -29,7 +29,7 @@ export class ConnectionManager {
     Excludes extends string = never,
   >(
     connectionClass: ConnectionClass<Entity>,
-    args: ConnectionArgsInterface<Entity, Hint, Fields, Excludes>,
+    args: ConnectionArgsInterface<Entity>,
     options?: ConnectionFindOptions<Entity, Hint, Fields, Excludes>,
   ): Promise<ConnectionInterface<Entity>> {
     return await new ConnectionQueryBuilder(

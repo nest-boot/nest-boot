@@ -87,12 +87,7 @@ export class ConnectionQueryBuilder<
   constructor(
     private readonly entityManager: EntityManager,
     private readonly connectionClass: ConnectionClass<Entity>,
-    private readonly args: ConnectionArgsInterface<
-      Entity,
-      Hint,
-      Fields,
-      Excludes
-    >,
+    private readonly args: ConnectionArgsInterface<Entity>,
     private readonly options?: ConnectionFindOptions<
       Entity,
       Hint,

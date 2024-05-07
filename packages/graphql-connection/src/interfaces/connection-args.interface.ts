@@ -1,6 +1,6 @@
 import { OrderInterface } from "./order.interface";
 
-export interface ConnectionArgsInterface {
+export interface ConnectionArgsInterface<Entity extends object> {
   after?: string;
 
   before?: string;
