@@ -1,5 +1,5 @@
 import { EntityManager, type FilterQuery } from "@mikro-orm/core";
-import type { FindByCursorOptions } from "@mikro-orm/core/drivers";
+import type { FindOptions } from "@mikro-orm/core/drivers";
 import { Injectable } from "@nestjs/common";
 
 import { ConnectionQueryBuilder } from "./connection-query-builder";
@@ -12,8 +12,8 @@ export interface ConnectionFindOptions<
   Fields extends string = "*",
   Excludes extends string = never,
 > extends Exclude<
-    FindByCursorOptions<Entity, Hint, Fields, Excludes>,
-    "before" | "after" | "first" | "last" | "orderBy"
+    FindOptions<Entity, Hint, Fields, Excludes>,
+    "limit" | "offset" | "orderBy"
   > {
   where?: FilterQuery<Entity>;
 }
