@@ -26,6 +26,7 @@
   },
   "devDependencies": {
     "@mikro-orm/core": "^6.1.4",
+    "@mikro-orm/knex": "^6.1.4",
     "@nest-boot/common": "workspace:*",
     "@nest-boot/database": "workspace:*",
     "@nest-boot/eslint-config": "workspace:*",
@@ -51,6 +52,7 @@
   },
   "peerDependencies": {
     "@mikro-orm/core": "^6.0.0",
+    "@mikro-orm/knex": "^6.0.0",
     "@nest-boot/common": "workspace:*",
     "@nest-boot/database": "workspace:*",
     "@nestjs/apollo": "^12.0.0",
