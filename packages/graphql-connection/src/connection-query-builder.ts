@@ -6,7 +6,6 @@ import {
   QueryOrder,
   QueryOrderMap,
 } from "@mikro-orm/core";
-import { SqlEntityManager } from "@mikro-orm/knex";
 import compact from "lodash/compact";
 import get from "lodash/get";
 import set from "lodash/set";
@@ -342,20 +341,17 @@ export class ConnectionQueryBuilder<
             this.allFilterQuery,
             this.findOptions,
           ),
-      (this.entityManager as unknown as SqlEntityManager)
-        .createQueryBuilder(
-          this.totalCountFilterQuery === null
-            ? (this.entityManager as unknown as SqlEntityManager)
-                .createQueryBuilder(this.metadata.entityClass)
-                .select("id")
-                .limit(10000)
-            : (this.entityManager as unknown as SqlEntityManager)
-                .createQueryBuilder(this.metadata.entityClass)
-                .select("id")
-                .andWhere(this.totalCountFilterQuery)
-                .limit(10000),
-        )
-        .count(),
+      (this.totalCountFilterQuery === null
+        ? this.entityManager.findAll(this.metadata.entityClass, {
+            fields: ["id"] as any,
+            limit: 10000,
+          })
+        : this.entityManager.find(
+            this.metadata.entityClass,
+            this.totalCountFilterQuery,
+            { fields: ["id"] as any, limit: 10000 },
+          )
+      ).then((result) => result.length),
     ]);
 
     // 重新排序结果
