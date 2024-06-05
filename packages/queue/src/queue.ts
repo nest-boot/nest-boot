@@ -1,4 +1,5 @@
 import { Queue as BullQueue } from "bullmq";
+import { randomUUID } from "crypto";
 
 import { BulkJobOptions, Job, JobOptions } from "./interfaces";
 
@@ -12,7 +13,7 @@ export class Queue<
     data: DataType,
     opts?: JobOptions,
   ): Promise<Job<DataType, ResultType, NameType>> {
-    return await super.add(name, data, opts);
+    return await super.add(name, data, { jobId: randomUUID(), ...opts });
   }
 
   async addBulk(
@@ -22,6 +23,11 @@ export class Queue<
       opts?: BulkJobOptions;
     }[],
   ): Promise<Job<DataType, ResultType, NameType>[]> {
-    return await super.addBulk(jobs);
+    return await super.addBulk(
+      jobs.map((job) => ({
+        ...job,
+        opts: { jobId: randomUUID(), ...job.opts },
+      })),
+    );
   }
 }
