@@ -22,7 +22,7 @@ export class JobEntityService {
         name: job.name,
         queueName: job.queueName,
         data: job.data,
-        result: await job.returnvalue,
+        result: job.returnvalue ?? null,
         failedReason: job.failedReason,
         progress: typeof job.progress === "number" ? job.progress : 0,
         status,
