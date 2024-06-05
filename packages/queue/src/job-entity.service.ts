@@ -1,10 +1,9 @@
 import { EntityClass, EntityManager } from "@mikro-orm/core";
-import { Inject, Optional } from "@nestjs/common";
+import { Optional } from "@nestjs/common";
 
 import { Job as JobEntity } from "./entities/job.entity";
-import { JobStatus } from "./enums/job-status.enum";
-import { Job, QueueModuleOptions } from "./interfaces";
-import { MODULE_OPTIONS_TOKEN } from "./queue.module-definition";
+import { JobStatus } from "./enums";
+import { Job } from "./interfaces";
 
 export class JobEntityService {
   private readonly jobEntity: EntityClass<JobEntity>;
@@ -12,10 +11,8 @@ export class JobEntityService {
   constructor(
     @Optional()
     private readonly em?: EntityManager,
-    @Inject(MODULE_OPTIONS_TOKEN)
-    private readonly options?: QueueModuleOptions,
   ) {
-    this.jobEntity = options?.jobEntity ?? JobEntity;
+    this.jobEntity = JobEntity;
   }
 
   async update(job: Job, status: JobStatus): Promise<void> {
