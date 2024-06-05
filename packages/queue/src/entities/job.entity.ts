@@ -1,14 +1,15 @@
 import { Entity, PrimaryKey, Property, t } from "@mikro-orm/core";
 
-import { JobStatus } from "../enums/job-status.enum";
+import { JobStatus } from "../enums";
 
 @Entity()
 export class Job {
   constructor(
-    data: Pick<Job, "id" | "name" | "queueName" | "data"> &
+    data: Pick<Job, "id" | "name" | "queueName" | "data" | "result"> &
       Partial<
         Pick<
           Job,
+          | "failedReason"
           | "progress"
           | "status"
           | "startedAt"
@@ -22,7 +23,9 @@ export class Job {
     this.name = data.name;
     this.queueName = data.queueName;
     this.data = data.data;
+    this.result = data.result;
 
+    data.failedReason !== void 0 && (this.failedReason = data.failedReason);
     data.progress !== void 0 && (this.progress = data.progress);
     data.status !== void 0 && (this.status = data.status);
     data.startedAt !== void 0 && (this.startedAt = data.startedAt);
@@ -43,16 +46,22 @@ export class Job {
   @Property({ type: t.json })
   data: any;
 
+  @Property({ type: t.json })
+  result: any;
+
   @Property({ type: t.float, default: 0 })
   progress = 0;
 
   @Property({ default: JobStatus.PENDING })
   status: JobStatus = JobStatus.PENDING;
 
-  @Property()
+  @Property({ type: t.text, nullable: true })
+  failedReason: string | null = null;
+
+  @Property({ nullable: true })
   startedAt: Date | null = null;
 
-  @Property()
+  @Property({ nullable: true })
   settledAt: Date | null = null;
 
   @Property()

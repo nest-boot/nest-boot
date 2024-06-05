@@ -15,13 +15,15 @@ export class JobEntityService {
     this.jobEntity = JobEntity;
   }
 
-  async update(job: Job, status: JobStatus): Promise<void> {
+  async upsert(job: Job, status: JobStatus): Promise<void> {
     if (typeof this.em !== "undefined" && job.id !== "undefined") {
       const jobEntityData = {
         id: job.id,
         name: job.name,
         queueName: job.queueName,
         data: job.data,
+        result: await job.returnvalue,
+        failedReason: job.failedReason,
         progress: typeof job.progress === "number" ? job.progress : 0,
         status,
         startedAt: job.processedOn ? new Date(job.processedOn) : null,
@@ -30,15 +32,7 @@ export class JobEntityService {
         updatedAt: new Date(),
       };
 
-      let jobEntity = await this.em.findOne(this.jobEntity, { id: job.id });
-
-      if (jobEntity !== null) {
-        this.em.assign(jobEntity, jobEntityData);
-      } else {
-        jobEntity = this.em.create(this.jobEntity, jobEntityData);
-      }
-
-      await this.em.persistAndFlush(jobEntity);
+      await this.em.upsert(this.jobEntity, jobEntityData);
     }
   }
 }
