@@ -1620,6 +1620,9 @@ importers:
         specifier: ^0.1.5
         version: 0.1.5
     devDependencies:
+      '@mikro-orm/core':
+        specifier: ^6.1.4
+        version: 6.2.5
       '@nest-boot/common':
         specifier: workspace:*
         version: link:../common
