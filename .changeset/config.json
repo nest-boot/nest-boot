@@ -7,5 +7,8 @@
   "access": "public",
   "baseBranch": "master",
   "updateInternalDependencies": "patch",
-  "ignore": ["@nest-boot/website", "@nest-boot/example-*"]
+  "ignore": ["@nest-boot/website", "@nest-boot/example-*"],
+  "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
+    "onlyUpdatePeerDependentsWhenOutOfRange": true
+  }
 }

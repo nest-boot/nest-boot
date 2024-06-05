@@ -16,8 +16,14 @@ import { InstanceWrapper } from "@nestjs/core/injector/instance-wrapper";
 import { MetricsTime, Worker } from "bullmq";
 
 import { ConsumerDecorator, ProcessorDecorator } from "./decorators";
-import { Job, JobProcessor, type ProcessorFunction } from "./interfaces";
-import { QueueConsumer } from "./interfaces";
+import { JobStatus } from "./enums/job-status.enum";
+import {
+  Job,
+  JobProcessor,
+  type ProcessorFunction,
+  QueueConsumer,
+} from "./interfaces";
+import { JobEntityService } from "./job-entity.service";
 import { Queue } from "./queue";
 import { wrapTimeout } from "./utils";
 
@@ -38,6 +44,7 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
     private readonly reflector: Reflector,
     private readonly discoveryService: DiscoveryService,
     private readonly moduleRef: ModuleRef,
+    private readonly jobEntityService: JobEntityService,
   ) {}
 
   discoveryQueues(): void {
@@ -234,6 +241,33 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
     this.discoveryConsumers();
     this.discoveryProcessors();
     this.createWorkers();
+
+    [...this.queueMap.entries()].forEach(([, queue]) => {
+      queue.on(
+        "waiting",
+        (job) => void this.jobEntityService.update(job, JobStatus.PENDING),
+      );
+    });
+
+    [...this.workerMap.entries()].forEach(([, worker]) => {
+      worker.on(
+        "active",
+        (job) => void this.jobEntityService.update(job, JobStatus.RUNNING),
+      );
+      worker.on(
+        "progress",
+        (job) => void this.jobEntityService.update(job, JobStatus.RUNNING),
+      );
+      worker.on(
+        "completed",
+        (job) => void this.jobEntityService.update(job, JobStatus.COMPLETED),
+      );
+      worker.on(
+        "failed",
+        (job) =>
+          job && void this.jobEntityService.update(job, JobStatus.FAILED),
+      );
+    });
   }
 
   async onApplicationShutdown(): Promise<void> {

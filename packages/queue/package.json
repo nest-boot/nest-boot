@@ -31,6 +31,7 @@
     "remove": "^0.1.5"
   },
   "devDependencies": {
+    "@mikro-orm/core": "^6.1.4",
     "@nest-boot/common": "workspace:*",
     "@nest-boot/eslint-config": "workspace:*",
     "@nest-boot/eslint-plugin": "workspace:*",
