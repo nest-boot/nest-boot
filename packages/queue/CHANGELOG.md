@@ -1,5 +1,11 @@
 # @nest-boot/queue
 
+## 6.11.3
+
+### Patch Changes
+
+- 0cca7f7: 修复队列处理器和消费者返回值没有正确的记录到数据库中
+
 ## 6.11.2
 
 ### Patch Changes
