@@ -46,8 +46,9 @@ export class Job {
   @Property({ type: t.json })
   data: any;
 
-  @Property({ type: t.json })
-  result: any;
+  @Property({ type: t.json, nullable: true })
+  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+  result: any | null = null;
 
   @Property({ type: t.float, default: 0 })
   progress = 0;

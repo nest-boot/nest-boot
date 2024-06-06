@@ -6,10 +6,13 @@ export function wrapTimeout(
   return async (job: Job) => {
     let timer: NodeJS.Timeout | undefined;
 
-    await Promise.race([
+    const result = await Promise.race([
       (async () => {
-        await processor(job);
+        const result = await processor(job);
+
         clearTimeout(timer);
+
+        return result;
       })(),
       ...(typeof job.opts.timeout !== "undefined"
         ? [
@@ -21,5 +24,7 @@ export function wrapTimeout(
           ]
         : []),
     ]);
+
+    return result;
   };
 }

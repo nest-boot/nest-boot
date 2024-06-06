@@ -106,7 +106,7 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
                             contextId,
                           );
 
-                        await contextInstance.consume(job);
+                        return await contextInstance.consume(job);
                       }
                     : instance.consume.bind(instance),
                 ),
@@ -168,7 +168,7 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
                             contextId,
                           );
 
-                        await contextInstance.process(job);
+                        return await contextInstance.process(job);
                       }
                     : instance.process.bind(instance),
                 ),
@@ -198,11 +198,9 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
               const processor = processors?.get(job.name);
 
               if (typeof processor !== "undefined") {
-                if (typeof processor !== "undefined") {
-                  await processor(job);
-                }
+                return await processor(job);
               } else if (typeof consumer !== "undefined") {
-                await consumer(job);
+                return await consumer(job);
               } else {
                 throw new Error(
                   `Processor ${job.name} not found for queue ${name}`,
