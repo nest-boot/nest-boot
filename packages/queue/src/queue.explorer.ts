@@ -226,10 +226,7 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
     return async (job: Job) => {
       const ctx = new RequestContext();
       ctx.set("job", job);
-
-      await RequestContext.run(ctx, async () => {
-        await processor(job);
-      });
+      return await RequestContext.run(ctx, () => processor(job));
     };
   }
 
