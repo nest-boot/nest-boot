@@ -32,7 +32,7 @@ export class JobEntityService {
         updatedAt: new Date(),
       };
 
-      await this.em.upsert(this.jobEntity, jobEntityData);
+      await this.em.fork().upsert(this.jobEntity, jobEntityData);
     }
   }
 }
