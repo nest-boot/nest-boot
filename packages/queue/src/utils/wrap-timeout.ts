@@ -6,7 +6,7 @@ export function wrapTimeout(
   return async (job: Job) => {
     let timer: NodeJS.Timeout | undefined;
 
-    const [result] = await Promise.race([
+    const result = await Promise.race([
       (async () => {
         const result = await processor(job);
 
