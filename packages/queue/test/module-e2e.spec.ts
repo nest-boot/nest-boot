@@ -81,6 +81,7 @@ describe("QueueModule - e2e", () => {
     const testConsumer = app.get(TestConsumer);
 
     expect(testConsumer.job?.data).toEqual(TEST_JOB_DATA);
+    expect(testConsumer.job?.returnvalue).toEqual(TEST_JOB_DATA);
   });
 
   it(`请求范围消费者收到的数据应该要和发送者的一致`, async () => {
@@ -92,6 +93,7 @@ describe("QueueModule - e2e", () => {
     await delay(1000);
 
     expect(TestRequestScopedConsumer.job?.data).toEqual(TEST_JOB_DATA);
+    expect(TestRequestScopedConsumer.job?.returnvalue).toEqual(TEST_JOB_DATA);
   });
 
   it(`处理器收到的数据应该要和发送者的一致`, async () => {
@@ -102,6 +104,7 @@ describe("QueueModule - e2e", () => {
     const testProcessor = app.get(TestProcessor);
 
     expect(testProcessor.job?.data).toEqual(TEST_JOB_DATA);
+    expect(testProcessor.job?.returnvalue).toEqual(TEST_JOB_DATA);
   });
 
   it(`请求范围处理器收到的数据应该要和发送者的一致`, async () => {
@@ -113,6 +116,7 @@ describe("QueueModule - e2e", () => {
     await delay(1000);
 
     expect(TestRequestScopedProcessor.job?.data).toEqual(TEST_JOB_DATA);
+    expect(TestRequestScopedProcessor.job?.returnvalue).toEqual(TEST_JOB_DATA);
   });
 
   afterEach(async () => {

@@ -12,7 +12,7 @@ export class TestRequestScopedProcessor implements JobProcessor {
     TestRequestScopedProcessor.job = job;
   }
 
-  async process(): Promise<void> {
-    //
+  process() {
+    return this.job.data;
   }
 }

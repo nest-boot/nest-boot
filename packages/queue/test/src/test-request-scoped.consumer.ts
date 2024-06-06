@@ -12,7 +12,7 @@ export class TestRequestScopedConsumer implements QueueConsumer {
     TestRequestScopedConsumer.job = job;
   }
 
-  async consume(): Promise<void> {
-    //
+  consume() {
+    return this.job.data;
   }
 }

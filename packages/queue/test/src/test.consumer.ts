@@ -5,8 +5,8 @@ import { TEST_QUEUE_NAME } from "./constants";
 export class TestConsumer implements QueueConsumer {
   job?: Job;
 
-  // eslint-disable-next-line @typescript-eslint/require-await
-  async consume(job: Job): Promise<void> {
+  consume(job: Job) {
     this.job = job;
+    return job.data;
   }
 }
