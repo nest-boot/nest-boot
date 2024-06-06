@@ -16,7 +16,7 @@ import { InstanceWrapper } from "@nestjs/core/injector/instance-wrapper";
 import { MetricsTime, Worker } from "bullmq";
 
 import { ConsumerDecorator, ProcessorDecorator } from "./decorators";
-import { JobStatus } from "./enums/job-status.enum";
+import { JobStatus } from "./enums";
 import {
   Job,
   JobProcessor,
@@ -245,27 +245,27 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
     [...this.queueMap.entries()].forEach(([, queue]) => {
       queue.on(
         "waiting",
-        (job) => void this.jobEntityService.update(job, JobStatus.PENDING),
+        (job) => void this.jobEntityService.upsert(job, JobStatus.PENDING),
       );
     });
 
     [...this.workerMap.entries()].forEach(([, worker]) => {
       worker.on(
         "active",
-        (job) => void this.jobEntityService.update(job, JobStatus.RUNNING),
+        (job) => void this.jobEntityService.upsert(job, JobStatus.RUNNING),
       );
       worker.on(
         "progress",
-        (job) => void this.jobEntityService.update(job, JobStatus.RUNNING),
+        (job) => void this.jobEntityService.upsert(job, JobStatus.RUNNING),
       );
       worker.on(
         "completed",
-        (job) => void this.jobEntityService.update(job, JobStatus.COMPLETED),
+        (job) => void this.jobEntityService.upsert(job, JobStatus.COMPLETED),
       );
       worker.on(
         "failed",
         (job) =>
-          job && void this.jobEntityService.update(job, JobStatus.FAILED),
+          job && void this.jobEntityService.upsert(job, JobStatus.FAILED),
       );
     });
   }
