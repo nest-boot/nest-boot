@@ -1,5 +1,11 @@
 # @nest-boot/queue
 
+## 6.11.2
+
+### Patch Changes
+
+- 1b42159: 修复 em.fork 和 returnValue 问题
+
 ## 6.11.1
 
 ### Patch Changes
