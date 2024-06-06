@@ -1,5 +1,11 @@
 # @nest-boot/queue
 
+## 6.11.1
+
+### Patch Changes
+
+- 1f11da5: 修复 em.fork 问题，数据库作业表添加 result 和 value
+
 ## 6.11.0
 
 ### Minor Changes
