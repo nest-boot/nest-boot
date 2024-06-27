@@ -1,5 +1,11 @@
 # @nest-boot/queue
 
+## 6.11.4
+
+### Patch Changes
+
+- b30b169: 可重复任务不自动生成 jobId，解决重复创建可重复任务的问题。
+
 ## 6.11.3
 
 ### Patch Changes
