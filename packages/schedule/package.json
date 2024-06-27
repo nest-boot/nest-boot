@@ -44,7 +44,7 @@
   },
   "peerDependencies": {
     "@nest-boot/common": "workspace:*",
-    "@nest-boot/queue": "workspace:^6.0.0",
+    "@nest-boot/queue": "workspace:*",
     "@nest-boot/request-context": "workspace:*",
     "@nestjs/common": "^10.0.0",
     "@nestjs/core": "^10.0.0",
