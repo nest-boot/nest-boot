@@ -8,12 +8,23 @@ export class Queue<
   ResultType = any,
   NameType extends string = string,
 > extends BullQueue<DataType, ResultType, NameType> {
+  private generateJobOptions<T extends JobOptions | BulkJobOptions>(
+    opts?: T,
+  ): T {
+    return {
+      ...(!opts?.jobId && !(opts as JobOptions)?.repeat
+        ? { jobId: randomUUID() }
+        : {}),
+      ...(opts ?? {}),
+    } as T;
+  }
+
   async add(
     name: NameType,
     data: DataType,
     opts?: JobOptions,
   ): Promise<Job<DataType, ResultType, NameType>> {
-    return await super.add(name, data, { jobId: randomUUID(), ...opts });
+    return await super.add(name, data, this.generateJobOptions(opts));
   }
 
   async addBulk(
@@ -26,7 +37,7 @@ export class Queue<
     return await super.addBulk(
       jobs.map((job) => ({
         ...job,
-        opts: { jobId: randomUUID(), ...job.opts },
+        opts: this.generateJobOptions(job.opts),
       })),
     );
   }
