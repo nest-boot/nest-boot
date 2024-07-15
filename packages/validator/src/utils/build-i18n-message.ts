@@ -10,7 +10,7 @@ export function buildI18nMessage(
       ...args.constraints?.reduce(
         (constraints, value, index) => ({
           ...constraints,
-          [`constraint${index}`]: value,
+          [`constraint${String(index)}`]: value,
         }),
         {},
       ),

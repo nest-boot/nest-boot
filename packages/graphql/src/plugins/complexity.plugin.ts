@@ -247,7 +247,7 @@ export class ComplexityPlugin
 
         if (cost.requestedQueryCost >= this.maxComplexity) {
           throw new HttpException(
-            `Query is too complex: ${cost.requestedQueryCost}. Maximum allowed complexity: ${this.maxComplexity}`,
+            `Query is too complex: ${String(cost.requestedQueryCost)}. Maximum allowed complexity: ${String(this.maxComplexity)}`,
             429,
           );
         }

@@ -2,13 +2,9 @@ import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import dayjs from "dayjs";
 import mimeTypes from "mime-types";
-import {
-  Client,
-  CopyConditions,
-  ItemBucketMetadata,
-  UploadedObjectInfo,
-} from "minio";
+import { Client, CopyConditions, ItemBucketMetadata } from "minio";
 import { extname } from "path";
+import { Readable } from "stream";
 
 import { MODULE_OPTIONS_TOKEN } from "./file-upload.module-definition";
 import { FileUpload } from "./file-upload.object";
@@ -88,9 +84,9 @@ export class FileUploadService {
   async persist(tmpUrl: string): Promise<string> {
     const originPath = `${this.options.bucket}/tmp/${tmpUrl.split("/tmp/")[1]}`;
 
-    const targetPath = `files/${dayjs().format("YYYY/MM/DD")}/${originPath
-      .split("/")
-      .pop()}`;
+    const targetPath = `files/${dayjs().format("YYYY/MM/DD")}/${String(
+      originPath.split("/").pop(),
+    )}`;
 
     const conditions = new CopyConditions();
 
@@ -105,7 +101,7 @@ export class FileUploadService {
   }
 
   async upload(
-    data: ReadableStream | Buffer | string,
+    data: Readable | Buffer | string,
     metadata: ItemBucketMetadata & { "Content-Type": string },
     persist = false,
   ): Promise<string> {
@@ -114,14 +110,13 @@ export class FileUploadService {
 
     const filePath = `tmp/${dayjs().format("YYYY/MM/DD")}/${randomUUID()}.${extension}`;
 
-    await (
-      this.client.putObject as (
-        bucketName: string,
-        objectName: string,
-        stream: ReadableStream | Buffer | string,
-        metadata?: ItemBucketMetadata,
-      ) => Promise<UploadedObjectInfo>
-    )(this.options.bucket, filePath, data, metadata);
+    await this.client.putObject(
+      this.options.bucket,
+      filePath,
+      data,
+      undefined,
+      metadata,
+    );
 
     const tmpUrl = this.getFileUrl(filePath);
 
@@ -135,7 +130,7 @@ export class FileUploadService {
 
   private getFileUrl(filePath: string): string {
     return this.options.pathStyle
-      ? `${this.options.useSSL !== false ? "https" : "http"}://${this.options.endPoint}${this.options.port ? `:${this.options.port}` : ""}/${this.options.bucket}/${filePath}`
-      : `${this.options.useSSL !== false ? "https" : "http"}://${this.options.bucket}.${this.options.endPoint}${this.options.port ? `:${this.options.port}` : ""}/${filePath}`;
+      ? `${this.options.useSSL !== false ? "https" : "http"}://${this.options.endPoint}${this.options.port ? `:${String(this.options.port)}` : ""}/${this.options.bucket}/${filePath}`
+      : `${this.options.useSSL !== false ? "https" : "http"}://${this.options.bucket}.${this.options.endPoint}${this.options.port ? `:${String(this.options.port)}` : ""}/${filePath}`;
   }
 }

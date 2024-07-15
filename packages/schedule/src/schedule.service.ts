@@ -48,14 +48,16 @@ export class ScheduleService implements OnApplicationBootstrap {
         this.metadataScanner
           .getAllMethodNames(Object.getPrototypeOf(instance))
           .forEach((key) => {
-            if (typeof instance.constructor.name === "string") {
+            const instanceClassName = instance.constructor.name;
+
+            if (typeof instanceClassName === "string") {
               const options: ScheduleOptions = this.reflector.get(
                 SCHEDULE_METADATA_KEY,
                 instance[key],
               );
 
               if (typeof options !== "undefined") {
-                this.schedules.set(`${instance.constructor.name}.${key}`, {
+                this.schedules.set(`${instanceClassName}.${key}`, {
                   handler: instance[key].bind(instance),
                   options,
                 });
@@ -111,7 +113,7 @@ export class ScheduleService implements OnApplicationBootstrap {
             },
           );
 
-          this.logger.log(`Registered {${name}, ${value}}`);
+          this.logger.log(`Registered {${name}, ${type}, ${String(value)}}`);
         },
       ),
     );
