@@ -53,8 +53,8 @@
   "peerDependencies": {
     "@mikro-orm/core": "^6.0.0",
     "@mikro-orm/knex": "^6.0.0",
-    "@nest-boot/common": "workspace:^",
-    "@nest-boot/database": "workspace:^",
+    "@nest-boot/common": "^6.0.0",
+    "@nest-boot/database": "^6.0.0",
     "@nestjs/apollo": "^12.0.0",
     "@nestjs/common": "^10.0.0",
     "@nestjs/core": "^10.0.0",
