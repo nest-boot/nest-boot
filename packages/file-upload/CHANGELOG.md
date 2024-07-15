@@ -1,5 +1,14 @@
 # @nest-boot/file-upload
 
+## 6.3.1
+
+### Patch Changes
+
+- 8372590: 更新依赖
+- 8372590: 更新 minio 依赖到 8.0.1
+- Updated dependencies [8372590]
+  - @nest-boot/graphql@6.10.1
+
 ## 6.3.0
 
 ### Minor Changes
