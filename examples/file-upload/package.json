@@ -25,8 +25,8 @@
   },
   "dependencies": {
     "@apollo/server": "^4.10.4",
-    "@nest-boot/file-upload": "workspace:*",
-    "@nest-boot/graphql": "workspace:*",
+    "@nest-boot/file-upload": "workspace:^6.0.0",
+    "@nest-boot/graphql": "workspace:^6.0.0",
     "@nestjs/apollo": "^12.2.0",
     "@nestjs/common": "^10.3.10",
     "@nestjs/config": "^3.2.3",
@@ -40,9 +40,9 @@
     "rxjs": "^7.8.1"
   },
   "devDependencies": {
-    "@nest-boot/eslint-config": "workspace:*",
-    "@nest-boot/eslint-plugin": "workspace:*",
-    "@nest-boot/tsconfig": "workspace:*",
+    "@nest-boot/eslint-config": "workspace:^6.0.0",
+    "@nest-boot/eslint-plugin": "workspace:^6.0.0",
+    "@nest-boot/tsconfig": "workspace:^6.0.0",
     "@nestjs/cli": "^10.4.2",
     "@nestjs/schematics": "^10.1.2",
     "@nestjs/testing": "^10.3.10",
