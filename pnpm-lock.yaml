@@ -1210,19 +1210,19 @@ importers:
         specifier: ^6.2.9
         version: 6.2.9
       '@nest-boot/common':
-        specifier: workspace:*
+        specifier: workspace:^6.0.0
         version: link:../common
       '@nest-boot/database':
-        specifier: workspace:*
+        specifier: workspace:^6.0.0
         version: link:../database
       '@nest-boot/eslint-config':
-        specifier: workspace:*
+        specifier: workspace:^6.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:*
+        specifier: workspace:^6.0.0
         version: link:../eslint-plugin
       '@nest-boot/tsconfig':
-        specifier: workspace:*
+        specifier: workspace:^6.0.0
         version: link:../tsconfig
       '@nestjs/apollo':
         specifier: ^12.2.0

@@ -31,7 +31,7 @@
     "@nest-boot/database": "workspace:^6.0.0",
     "@nest-boot/eslint-config": "workspace:^6.0.0",
     "@nest-boot/eslint-plugin": "workspace:^6.0.0",
-    "@nest-boot/tsconfig": "workspace:*",
+    "@nest-boot/tsconfig": "workspace:^6.0.0",
     "@nestjs/apollo": "^12.2.0",
     "@nestjs/common": "^10.3.10",
     "@nestjs/core": "^10.3.10",
