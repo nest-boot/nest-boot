@@ -20,7 +20,7 @@ const DatabaseDynamicModule = DatabaseModule.forRootAsync({
     driver: PostgreSqlDriver,
     host: config.get("DATABASE_HOST"),
     port: config.get("DATABASE_PORT"),
-    dbName: `graphql_${config.get("DATABASE_NAME")}`,
+    dbName: `graphql_${config.get<string>("DATABASE_NAME", "nest_boot")}`,
     name: config.get("DATABASE_USERNAME"),
     password: config.get("DATABASE_PASSWORD"),
   }),

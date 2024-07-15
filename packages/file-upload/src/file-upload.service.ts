@@ -4,12 +4,12 @@ import dayjs from "dayjs";
 import mimeTypes from "mime-types";
 import { Client, CopyConditions, ItemBucketMetadata } from "minio";
 import { extname } from "path";
+import { Readable } from "stream";
 
 import { MODULE_OPTIONS_TOKEN } from "./file-upload.module-definition";
 import { FileUpload } from "./file-upload.object";
 import { FileUploadModuleOptions } from "./file-upload-options.interface";
 import { FileUploadInput } from "./inputs/file-upload.input";
-import { Readable } from "stream";
 
 @Injectable()
 export class FileUploadService {
@@ -84,9 +84,9 @@ export class FileUploadService {
   async persist(tmpUrl: string): Promise<string> {
     const originPath = `${this.options.bucket}/tmp/${tmpUrl.split("/tmp/")[1]}`;
 
-    const targetPath = `files/${dayjs().format("YYYY/MM/DD")}/${originPath
-      .split("/")
-      .pop()}`;
+    const targetPath = `files/${dayjs().format("YYYY/MM/DD")}/${String(
+      originPath.split("/").pop(),
+    )}`;
 
     const conditions = new CopyConditions();
 
@@ -130,7 +130,7 @@ export class FileUploadService {
 
   private getFileUrl(filePath: string): string {
     return this.options.pathStyle
-      ? `${this.options.useSSL !== false ? "https" : "http"}://${this.options.endPoint}${this.options.port ? `:${this.options.port}` : ""}/${this.options.bucket}/${filePath}`
-      : `${this.options.useSSL !== false ? "https" : "http"}://${this.options.bucket}.${this.options.endPoint}${this.options.port ? `:${this.options.port}` : ""}/${filePath}`;
+      ? `${this.options.useSSL !== false ? "https" : "http"}://${this.options.endPoint}${this.options.port ? `:${String(this.options.port)}` : ""}/${this.options.bucket}/${filePath}`
+      : `${this.options.useSSL !== false ? "https" : "http"}://${this.options.bucket}.${this.options.endPoint}${this.options.port ? `:${String(this.options.port)}` : ""}/${filePath}`;
   }
 }

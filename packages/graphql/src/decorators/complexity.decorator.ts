@@ -9,7 +9,7 @@ export function Complexity(
   options: ComplexityOptions,
 ): MethodDecorator & PropertyDecorator & ClassDecorator {
   return Directive(
-    `@complexity(value: ${options.value ?? 1}, multipliers: ${JSON.stringify(
+    `@complexity(value: ${String(options.value ?? 1)}, multipliers: ${JSON.stringify(
       options.multipliers ?? [],
     )})`,
   );

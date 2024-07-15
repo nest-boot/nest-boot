@@ -25,7 +25,7 @@ function arrayLengthMessage(
     if (typeof min !== "undefined" && value.length < min) {
       return t("validation:arrayLength.gte", {
         property: t(`property:${property}`),
-        compareProperty: `${min}`,
+        compareProperty: String(min),
       });
     }
 
@@ -33,7 +33,7 @@ function arrayLengthMessage(
     if (typeof max !== "undefined" && value.length > max) {
       return t("validation:arrayLength.lte", {
         property: t(`property:${property}`),
-        compareProperty: `${max}`,
+        compareProperty: String(max),
       });
     }
   }

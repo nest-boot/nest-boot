@@ -40,7 +40,7 @@
     "@types/supertest": "^6.0.2",
     "axios": "^1.7.2",
     "bytes": "^3.1.2",
-    "eslint": "^9.7.0",
+    "eslint": "^8.56.0",
     "form-data": "^4.0.0",
     "graphql": "^16.9.0",
     "jest": "^29.7.0",

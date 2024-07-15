@@ -151,7 +151,7 @@ export class ConnectionBuilder<Entity extends object> {
         ...(builder.filterableFields.length > 0
           ? {
               description: `Apply one or multiple filters to the query.\nSupported filter parameters:\n${builder.filterableFields
-                .map(({ field }) => `\`${field}\``)
+                .map(({ field }) => `\`${String(field)}\``)
                 .join(", ")}`,
             }
           : {}),

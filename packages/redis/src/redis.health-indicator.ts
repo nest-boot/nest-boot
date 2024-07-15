@@ -64,7 +64,7 @@ export class RedisHealthIndicator extends HealthIndicator {
         throw new TimeoutError(
           timeout,
           this.getStatus(key, isHealthy, {
-            message: `timeout of ${timeout}ms exceeded`,
+            message: `timeout of ${String(timeout)}ms exceeded`,
           }),
         );
       }

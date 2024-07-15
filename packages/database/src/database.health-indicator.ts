@@ -48,7 +48,7 @@ export class DatabaseHealthIndicator extends HealthIndicator {
         throw new TimeoutError(
           timeout,
           this.getStatus(key, false, {
-            message: `timeout of ${timeout}ms exceeded`,
+            message: `timeout of ${String(timeout)}ms exceeded`,
           }),
         );
       }
