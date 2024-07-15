@@ -2,18 +2,14 @@ import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import dayjs from "dayjs";
 import mimeTypes from "mime-types";
-import {
-  Client,
-  CopyConditions,
-  ItemBucketMetadata,
-  UploadedObjectInfo,
-} from "minio";
+import { Client, CopyConditions, ItemBucketMetadata } from "minio";
 import { extname } from "path";
 
 import { MODULE_OPTIONS_TOKEN } from "./file-upload.module-definition";
 import { FileUpload } from "./file-upload.object";
 import { FileUploadModuleOptions } from "./file-upload-options.interface";
 import { FileUploadInput } from "./inputs/file-upload.input";
+import { Readable } from "stream";
 
 @Injectable()
 export class FileUploadService {
@@ -105,7 +101,7 @@ export class FileUploadService {
   }
 
   async upload(
-    data: ReadableStream | Buffer | string,
+    data: Readable | Buffer | string,
     metadata: ItemBucketMetadata & { "Content-Type": string },
     persist = false,
   ): Promise<string> {
@@ -114,14 +110,13 @@ export class FileUploadService {
 
     const filePath = `tmp/${dayjs().format("YYYY/MM/DD")}/${randomUUID()}.${extension}`;
 
-    await (
-      this.client.putObject as (
-        bucketName: string,
-        objectName: string,
-        stream: ReadableStream | Buffer | string,
-        metadata?: ItemBucketMetadata,
-      ) => Promise<UploadedObjectInfo>
-    )(this.options.bucket, filePath, data, metadata);
+    await this.client.putObject(
+      this.options.bucket,
+      filePath,
+      data,
+      undefined,
+      metadata,
+    );
 
     const tmpUrl = this.getFileUrl(filePath);
 
