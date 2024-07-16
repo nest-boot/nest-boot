@@ -1,5 +1,14 @@
 # @nest-boot/auth
 
+## 6.10.5
+
+### Patch Changes
+
+- 8c6c5e1: 修复对等依赖
+- Updated dependencies [8c6c5e1]
+- Updated dependencies [8c6c5e1]
+  - @nest-boot/database@6.11.1
+
 ## 6.10.4
 
 ### Patch Changes
