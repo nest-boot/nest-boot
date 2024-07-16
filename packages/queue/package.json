@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/queue",
-  "version": "6.11.4",
+  "version": "6.11.5",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
   "homepage": "",
@@ -32,10 +32,10 @@
   },
   "devDependencies": {
     "@mikro-orm/core": "^6.2.9",
-    "@nest-boot/common": "workspace:^6.0.0",
-    "@nest-boot/eslint-config": "workspace:^6.0.0",
-    "@nest-boot/eslint-plugin": "workspace:^6.0.0",
-    "@nest-boot/request-context": "workspace:^6.0.0",
+    "@nest-boot/common": "workspace:^6.10.1",
+    "@nest-boot/eslint-config": "workspace:^6.10.1",
+    "@nest-boot/eslint-plugin": "workspace:^6.10.1",
+    "@nest-boot/request-context": "workspace:^6.10.1",
     "@nest-boot/tsconfig": "workspace:^6.0.0",
     "@nestjs/common": "^10.3.10",
     "@nestjs/config": "^3.2.3",
@@ -56,8 +56,8 @@
     "typescript": "^5.5.3"
   },
   "peerDependencies": {
-    "@nest-boot/common": "workspace:^6.0.0",
-    "@nest-boot/request-context": "workspace:^6.0.0",
+    "@nest-boot/common": "workspace:^6.10.1",
+    "@nest-boot/request-context": "workspace:^6.10.1",
     "@nestjs/common": "^10.0.0",
     "@nestjs/core": "^10.0.0",
     "bullmq": "^5.0.0",

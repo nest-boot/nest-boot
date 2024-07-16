@@ -35,7 +35,7 @@ export class GraphQLExceptionFilter
       const message: string =
         typeof response === "string"
           ? response
-          : response.message ?? response.reason ?? "INTERNAL_SERVER_ERROR";
+          : (response.message ?? response.reason ?? "INTERNAL_SERVER_ERROR");
 
       return new GraphQLError(message, {
         extensions: {

@@ -1,13 +1,13 @@
 {
   "name": "@nest-boot/eslint-config",
-  "version": "6.10.0",
+  "version": "6.10.1",
   "main": "index.js",
   "license": "MIT",
   "scripts": {
     "clean": "rm -rf node_modules"
   },
   "dependencies": {
-    "@nest-boot/eslint-plugin": "workspace:^6.0.0",
+    "@nest-boot/eslint-plugin": "workspace:^6.10.1",
     "@typescript-eslint/eslint-plugin": "^7.16.0",
     "@typescript-eslint/parser": "^7.16.0",
     "eslint": "^8.56.0",

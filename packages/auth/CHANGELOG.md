@@ -1,5 +1,17 @@
 # @nest-boot/auth
 
+## 6.10.4
+
+### Patch Changes
+
+- 8372590: 更新依赖
+- Updated dependencies [8372590]
+- Updated dependencies [8372590]
+  - @nest-boot/database@6.11.0
+  - @nest-boot/request-context@6.10.1
+  - @nest-boot/common@6.10.1
+  - @nest-boot/i18n@6.10.1
+
 ## 6.10.3
 
 ### Patch Changes
