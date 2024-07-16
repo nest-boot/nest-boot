@@ -11,11 +11,7 @@ import {
 } from "@nest-boot/health-check";
 import { Injectable, Scope } from "@nestjs/common";
 
-export interface DatabasePingCheckSettings {
-  connection?: Connection;
-  timeout?: number;
-  checkQuery?: string;
-}
+import { DatabaseHealthCheckOptions } from "./interfaces";
 
 @Injectable({ scope: Scope.TRANSIENT })
 export class DatabaseHealthIndicator extends HealthIndicator {
@@ -24,23 +20,23 @@ export class DatabaseHealthIndicator extends HealthIndicator {
     this.checkDependantPackages();
   }
 
-  public async pingCheck(
+  public async healthCheck(
     key: string,
-    options: DatabasePingCheckSettings = {},
+    options?: DatabaseHealthCheckOptions,
   ): Promise<HealthIndicatorResult> {
     this.checkDependantPackages();
 
-    const connection = options.connection ?? this.orm.em.getConnection();
-    const timeout = options.timeout ?? 1000;
+    const connection = options?.connection ?? this.orm.em.getConnection();
+    const timeout = options?.timeout ?? 1000;
 
     if (!connection) {
       return this.getStatus(key, false);
     }
 
     try {
-      await this.pingDb(connection, timeout);
+      await this.checkConnection(connection, timeout);
 
-      if (options.checkQuery) {
+      if (options?.checkQuery) {
         await connection.execute(options.checkQuery);
       }
     } catch (error) {
@@ -77,7 +73,7 @@ export class DatabaseHealthIndicator extends HealthIndicator {
     );
   }
 
-  private async pingDb(connection: Connection, timeout: number) {
+  private async checkConnection(connection: Connection, timeout: number) {
     const checker = async () => {
       const isConnected = await connection.isConnected();
       if (!isConnected) {
