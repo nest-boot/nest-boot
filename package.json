@@ -25,7 +25,7 @@
     "format": "prettier --check --write \"**/*.{ts,tsx,md}\"",
     "lint": "turbo run lint",
     "changeset": "changeset",
-    "version-packages": "changeset version && pnpm install && pnpm format",
+    "version-packages": "changeset version && pnpm install --no-frozen-lockfile && pnpm format",
     "publish-packages": "pnpm build:packages && pnpm publish --filter=./packages/*"
   },
   "devDependencies": {
