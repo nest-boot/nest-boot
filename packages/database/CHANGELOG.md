@@ -1,5 +1,12 @@
 # @nest-boot/database
 
+## 6.11.1
+
+### Patch Changes
+
+- 8c6c5e1: 修复对等依赖
+- 8c6c5e1: 可修改健康检查配置
+
 ## 6.11.0
 
 ### Minor Changes
