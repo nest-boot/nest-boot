@@ -12,6 +12,7 @@ import {
 import {
   type DynamicModule,
   Global,
+  Inject,
   Logger,
   Module,
   type OnModuleInit,
@@ -33,6 +34,7 @@ import { withBaseConfig } from "./utils/with-base-config.util";
 @Module({
   imports: [RequestContextModule],
   providers: [DatabaseHealthIndicator],
+  exports: [DatabaseHealthIndicator],
 })
 export class DatabaseModule
   extends ConfigurableModuleClass
@@ -54,6 +56,8 @@ export class DatabaseModule
   }
 
   constructor(
+    @Inject(MODULE_OPTIONS_TOKEN)
+    private readonly options: DatabaseModuleOptions,
     private readonly orm: MikroORM,
     private readonly healthIndicator: DatabaseHealthIndicator,
     @Optional()
@@ -93,9 +97,15 @@ export class DatabaseModule
   }
 
   onModuleInit(): void {
-    if (typeof this.healthCheckRegistry !== "undefined") {
+    const healthCheckOptions = this.options.healthCheck;
+
+    if (healthCheckOptions && typeof this.healthCheckRegistry !== "undefined") {
       this.healthCheckRegistry.register(
-        async () => await this.healthIndicator.pingCheck("database"),
+        async () =>
+          await this.healthIndicator.healthCheck(
+            "database",
+            healthCheckOptions === true ? undefined : healthCheckOptions,
+          ),
       );
     }
 
