@@ -77,7 +77,7 @@ importers:
         specifier: workspace:^6.10.1
         version: link:../../packages/graphql
       '@nest-boot/graphql-connection':
-        specifier: workspace:^6.10.2
+        specifier: workspace:^6.10.3
         version: link:../../packages/graphql-connection
       '@nest-boot/hash':
         specifier: workspace:^6.10.1
@@ -328,7 +328,7 @@ importers:
         specifier: workspace:^6.10.1
         version: link:../../packages/graphql
       '@nest-boot/graphql-connection':
-        specifier: workspace:^6.10.2
+        specifier: workspace:^6.10.3
         version: link:../../packages/graphql-connection
       '@nest-boot/logger':
         specifier: workspace:^6.10.1
