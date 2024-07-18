@@ -124,7 +124,7 @@ export class AuthGuard implements CanActivate {
     }
 
     const personalAccessToken = await this.authService.getToken(token);
-    const user = await personalAccessToken?.user.load();
+    const user = await personalAccessToken?.user.load({ filters: false });
 
     if (personalAccessToken === null || user == null) {
       throw new UnauthorizedException(
