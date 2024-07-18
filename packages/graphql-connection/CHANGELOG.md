@@ -1,5 +1,11 @@
 # @nest-boot/graphql-connection
 
+## 6.10.3
+
+### Patch Changes
+
+- d19de29: fix: 固定 chevrotain 版本为 10.5.0
+
 ## 6.10.2
 
 ### Patch Changes
