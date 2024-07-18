@@ -1,5 +1,11 @@
 # @nest-boot/auth
 
+## 6.10.6
+
+### Patch Changes
+
+- 02ec51f: 认证模块内禁用所有过滤器
+
 ## 6.10.5
 
 ### Patch Changes
