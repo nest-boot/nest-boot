@@ -68,7 +68,7 @@ importers:
         specifier: ^6.2.9
         version: 6.2.9
       '@nest-boot/auth':
-        specifier: workspace:^6.10.5
+        specifier: workspace:^6.10.6
         version: link:../../packages/auth
       '@nest-boot/database':
         specifier: workspace:^6.11.1
