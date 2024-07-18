@@ -83,7 +83,7 @@ export class ScheduleService implements OnApplicationBootstrap {
           await this.queue.removeRepeatableByKey(repeatableJob.key);
 
           this.logger.log(
-            `Removed {${repeatableJob.name}, ${repeatableJob.pattern}}`,
+            `Removed {${repeatableJob.name}, ${String(repeatableJob.pattern ?? "null")}}`,
           );
         }),
     );

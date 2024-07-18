@@ -20,7 +20,7 @@
     "lint": "eslint \"{src,test}/**/*.ts\" --fix"
   },
   "dependencies": {
-    "chevrotain": "^11.0.3",
+    "chevrotain": "10.5.0",
     "inflection": "^3.0.0",
     "lodash": "^4.17.21"
   },
