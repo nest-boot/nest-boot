@@ -43,7 +43,11 @@ export class AuthService {
    * @returns The authenticated user if successful, otherwise null.
    */
   async attempt(email: string, password: string) {
-    const user = await this.em.findOne(this.User, { email });
+    const user = await this.em.findOne(
+      this.User,
+      { email },
+      { filters: false },
+    );
 
     if (
       // eslint-disable-next-line @typescript-eslint/prefer-optional-chain
@@ -63,9 +67,13 @@ export class AuthService {
    * @returns The personal access token if found, otherwise null.
    */
   async getToken(token: string): Promise<PersonalAccessToken | null> {
-    return await this.em.findOne(this.PersonalAccessToken, {
-      token,
-    });
+    return await this.em.findOne(
+      this.PersonalAccessToken,
+      {
+        token,
+      },
+      { filters: false },
+    );
   }
 
   /**
