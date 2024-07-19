@@ -10,6 +10,7 @@ import {
 import { Reflector } from "@nestjs/core";
 import { from, lastValueFrom, Observable } from "rxjs";
 
+import { TRANSACTION_METADATA_KEY } from "./database.constants";
 import { MODULE_OPTIONS_TOKEN } from "./database.module-definition";
 import type { DatabaseModuleOptions } from "./interfaces";
 import { TransactionOptions } from "./interfaces/transaction-options.interface";
