@@ -68,10 +68,10 @@ importers:
         specifier: ^6.2.9
         version: 6.2.9
       '@nest-boot/auth':
-        specifier: workspace:^6.10.6
+        specifier: workspace:^6.10.7
         version: link:../../packages/auth
       '@nest-boot/database':
-        specifier: workspace:^6.11.1
+        specifier: workspace:^6.12.0
         version: link:../../packages/database
       '@nest-boot/graphql':
         specifier: workspace:^6.10.1
@@ -322,7 +322,7 @@ importers:
         specifier: ^6.2.9
         version: 6.2.9
       '@nest-boot/database':
-        specifier: workspace:^6.11.1
+        specifier: workspace:^6.12.0
         version: link:../../packages/database
       '@nest-boot/graphql':
         specifier: workspace:^6.10.1
@@ -723,7 +723,7 @@ importers:
         specifier: workspace:^6.10.1
         version: link:../common
       '@nest-boot/database':
-        specifier: workspace:^6.11.1
+        specifier: workspace:^6.12.0
         version: link:../database
       '@nest-boot/eslint-config':
         specifier: workspace:^6.10.1

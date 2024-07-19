@@ -1,5 +1,13 @@
 # @nest-boot/auth
 
+## 6.10.7
+
+### Patch Changes
+
+- 50aafe8: 认证模块支持设置全局模块
+- Updated dependencies [50aafe8]
+  - @nest-boot/database@6.12.0
+
 ## 6.10.6
 
 ### Patch Changes
