@@ -1,5 +1,13 @@
 # @nest-boot/database
 
+## 6.12.1
+
+### Patch Changes
+
+- f7a6b69: 改为使用 RequestContext 方式包装请求事务，以兼容 GraphQL。
+- Updated dependencies [f7a6b69]
+  - @nest-boot/request-context@6.10.2
+
 ## 6.12.0
 
 ### Minor Changes
