@@ -18,7 +18,7 @@
     "build:examples": "turbo run build --filter=./examples/*",
     "build:packages": "turbo run build --filter=./packages/*",
     "clean": "turbo run clean && rm -rf node_modules",
-    "dev": "turbo run dev --filter=./packages/* --no-cache --parallel --continue",
+    "dev": "turbo run dev --filter=./packages/* --concurrency=100 --no-cache --parallel --continue",
     "dev:website": "turbo run dev --filter=website",
     "test": "jest",
     "test:cov": "jest --coverage",

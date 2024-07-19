@@ -18,6 +18,7 @@ import {
   type OnModuleInit,
   Optional,
 } from "@nestjs/common";
+import { APP_INTERCEPTOR } from "@nestjs/core";
 
 import { DatabaseHealthIndicator } from "./database.health-indicator";
 import { DatabaseLogger } from "./database.logger";
@@ -28,12 +29,19 @@ import {
   type OPTIONS_TYPE,
 } from "./database.module-definition";
 import { type DatabaseModuleOptions } from "./interfaces";
+import { TransactionInterceptor } from "./transaction.interceptor";
 import { withBaseConfig } from "./utils/with-base-config.util";
 
 @Global()
 @Module({
   imports: [RequestContextModule],
-  providers: [DatabaseHealthIndicator],
+  providers: [
+    DatabaseHealthIndicator,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TransactionInterceptor,
+    },
+  ],
   exports: [DatabaseHealthIndicator],
 })
 export class DatabaseModule
@@ -73,7 +81,7 @@ export class DatabaseModule
       useFactory: (options: DatabaseModuleOptions, logger: Logger) => {
         return {
           ...withBaseConfig(options),
-          autoLoadEntities: false,
+          autoLoadEntities: true,
           registerRequestContext: false,
           context: () => {
             if (RequestContext.isActive()) {

@@ -24,6 +24,7 @@ const DatabaseDynamicModule = DatabaseModule.forRootAsync({
     dbName: `graphql_${config.get<string>("DATABASE_NAME", "nest_boot")}`,
     name: config.get("DATABASE_USERNAME"),
     password: config.get("DATABASE_PASSWORD"),
+    transactional: true,
   }),
 });
 
@@ -71,6 +72,7 @@ const AuthDynamicModule = AuthModule.registerAsync({
     HashDynamicModule,
     AuthDynamicModule,
     GraphQLDynamicModule,
+    GraphQLConnectionDynamicModule,
     UserModule,
     PersonalAccessTokenModule,
   ],
