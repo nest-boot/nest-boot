@@ -1,5 +1,11 @@
 # @nest-boot/database
 
+## 6.12.0
+
+### Minor Changes
+
+- 50aafe8: 支持请求级别事务
+
 ## 6.11.1
 
 ### Patch Changes
