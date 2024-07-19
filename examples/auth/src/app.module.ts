@@ -2,6 +2,7 @@ import { PostgreSqlDriver } from "@mikro-orm/postgresql";
 import { AuthModule } from "@nest-boot/auth";
 import { DatabaseModule } from "@nest-boot/database";
 import { GraphQLModule } from "@nest-boot/graphql";
+import { GraphQLConnectionModule } from "@nest-boot/graphql-connection";
 import { HashModule } from "@nest-boot/hash";
 import { LoggerModule } from "@nest-boot/logger";
 import { Module } from "@nestjs/common";
@@ -43,17 +44,23 @@ const GraphQLDynamicModule = GraphQLModule.forRootAsync({
   }),
 });
 
+export const GraphQLConnectionDynamicModule = GraphQLConnectionModule.register({
+  isGlobal: true,
+});
+
+const HashDynamicModule = HashModule.registerAsync({
+  isGlobal: true,
+  useFactory: () => ({}),
+});
+
 const AuthDynamicModule = AuthModule.registerAsync({
+  isGlobal: true,
   useFactory: () => ({
     entities: {
       User,
       PersonalAccessToken,
     },
   }),
-});
-
-const HashDynamicModule = HashModule.registerAsync({
-  useFactory: () => ({}),
 });
 
 @Module({
