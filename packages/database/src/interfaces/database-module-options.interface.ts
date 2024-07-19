@@ -5,5 +5,5 @@ import { TransactionOptions } from "./transaction-options.interface";
 
 export interface DatabaseModuleOptions extends MikroOrmModuleSyncOptions {
   healthCheck?: boolean | DatabaseHealthCheckOptions;
-  transaction?: TransactionOptions;
+  explicitTransaction?: TransactionOptions;
 }

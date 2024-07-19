@@ -18,7 +18,6 @@ import {
   type OnModuleInit,
   Optional,
 } from "@nestjs/common";
-import { APP_INTERCEPTOR } from "@nestjs/core";
 
 import { DatabaseHealthIndicator } from "./database.health-indicator";
 import { DatabaseLogger } from "./database.logger";
@@ -29,19 +28,12 @@ import {
   type OPTIONS_TYPE,
 } from "./database.module-definition";
 import { type DatabaseModuleOptions } from "./interfaces";
-import { TransactionInterceptor } from "./transaction.interceptor";
 import { withBaseConfig } from "./utils/with-base-config.util";
 
 @Global()
 @Module({
   imports: [RequestContextModule],
-  providers: [
-    DatabaseHealthIndicator,
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: TransactionInterceptor,
-    },
-  ],
+  providers: [DatabaseHealthIndicator],
   exports: [DatabaseHealthIndicator],
 })
 export class DatabaseModule
@@ -118,7 +110,21 @@ export class DatabaseModule
     }
 
     RequestContext.registerMiddleware(async (ctx, next) => {
-      ctx.set(EntityManager, this.orm.em.fork({ useContext: true }));
+      const em = this.orm.em.fork({ useContext: true });
+
+      if (this.options.explicitTransaction) {
+        return await em.transactional(
+          async (em) => {
+            ctx.set(EntityManager, em);
+            return await next();
+          },
+          this.options.explicitTransaction === true
+            ? {}
+            : this.options.explicitTransaction,
+        );
+      }
+
+      ctx.set(EntityManager, em);
       return await next();
     });
   }

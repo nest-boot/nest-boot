@@ -31,7 +31,21 @@ export class RequestContextMiddleware implements NestMiddleware {
     ctx.set<Response>(CTX_RESPONSE_TOKEN, res);
 
     await RequestContext.run(ctx, () => {
-      next();
+      return new Promise<void>((resolve) => {
+        res.on("finish", () => {
+          resolve();
+        });
+
+        res.on("close", () => {
+          resolve();
+        });
+
+        res.on("error", () => {
+          resolve();
+        });
+
+        next();
+      });
     });
   }
 }
