@@ -11,7 +11,7 @@ import { PostModule } from "./post/post.module";
 
 const ConfigDynamicModule = ConfigModule.forRoot({ isGlobal: true });
 
-const DatabaseDynamicModule = DatabaseModule.forRootAsync({
+const DatabaseDynamicModule = DatabaseModule.registerAsync({
   inject: [ConfigService],
   useFactory: (config: ConfigService) => ({
     driver: PostgreSqlDriver,
