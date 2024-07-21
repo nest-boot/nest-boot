@@ -9,6 +9,8 @@ export function withBaseConfig<D extends IDatabaseDriver>(
   return {
     timezone: "UTC",
     metadataProvider: TsMorphMetadataProvider,
+    // entities: ["dist/**/*.entity.js"],
+    // entitiesTs: ["src/**/*.entity.ts"],
     migrations: {
       snapshot: false,
       path: "dist/database/migrations",

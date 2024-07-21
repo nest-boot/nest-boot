@@ -5,8 +5,9 @@ import { AuthResolver } from "./auth.resolver";
 import { User } from "./user.entity";
 import { UserResolver } from "./user.resolver";
 
+DatabaseModule.registerEntity([User]);
+
 @Module({
-  imports: [DatabaseModule.forFeature([User])],
   providers: [UserResolver, AuthResolver],
 })
 export class UserModule {}

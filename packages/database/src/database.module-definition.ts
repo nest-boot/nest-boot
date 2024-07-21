@@ -7,10 +7,4 @@ export const {
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
   ASYNC_OPTIONS_TYPE,
-} = new ConfigurableModuleBuilder<DatabaseModuleOptions>()
-  .setClassMethodName("forRoot")
-  .setExtras({}, (definition) => ({
-    ...definition,
-    global: true,
-  }))
-  .build();
+} = new ConfigurableModuleBuilder<DatabaseModuleOptions>().build();

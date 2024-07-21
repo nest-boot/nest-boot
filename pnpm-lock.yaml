@@ -894,9 +894,6 @@ importers:
       '@mikro-orm/migrations':
         specifier: ^6.2.9
         version: 6.2.9
-      '@mikro-orm/nestjs':
-        specifier: ^6.0.2
-        version: 6.0.2
       '@mikro-orm/reflection':
         specifier: ^6.2.9
         version: 6.2.9
