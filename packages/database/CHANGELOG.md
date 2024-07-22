@@ -1,5 +1,15 @@
 # @nest-boot/database
 
+## 6.13.0
+
+### Minor Changes
+
+- 6daa4a6: 移除 @mikro-orm/nestjs 依赖，依赖注入代理后的 EntityManager，以从请求上下文中获取 EntityManager 对象。
+
+### Patch Changes
+
+- 6daa4a6: 优化请求错误日志和精简生产环境下响应错误信息内容
+
 ## 6.12.1
 
 ### Patch Changes
