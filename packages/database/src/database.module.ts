@@ -1,4 +1,9 @@
-import { EntityClass, EntityManager, MikroORM } from "@mikro-orm/core";
+import {
+  Dictionary,
+  EntityClass,
+  EntityManager,
+  MikroORM,
+} from "@mikro-orm/core";
 import { HealthCheckRegistry } from "@nest-boot/health-check";
 import {
   RequestContext,
@@ -22,6 +27,15 @@ import {
 } from "./database.module-definition";
 import { type DatabaseModuleOptions } from "./interfaces";
 import { withBaseConfig } from "./utils/with-base-config.util";
+
+function tryRequire(name: string): Dictionary | undefined {
+  try {
+    return require(name);
+  } catch {}
+}
+
+const knex = tryRequire("@mikro-orm/knex");
+const mongo = tryRequire("@mikro-orm/mongodb");
 
 const providers: Provider[] = [
   Logger,
@@ -65,6 +79,24 @@ const providers: Provider[] = [
         },
       }),
   },
+  ...(knex
+    ? [
+        {
+          provide: knex.EntityManager,
+          inject: [EntityManager],
+          useFactory: (em: EntityManager) => em,
+        },
+      ]
+    : []),
+  ...(mongo
+    ? [
+        {
+          provide: mongo.EntityManager,
+          inject: [EntityManager],
+          useFactory: (em: EntityManager) => em,
+        },
+      ]
+    : []),
   DatabaseHealthIndicator,
 ];
 
