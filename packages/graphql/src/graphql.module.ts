@@ -1,6 +1,7 @@
 import { ApolloServerPluginLandingPageLocalDefault } from "@apollo/server/plugin/landingPage/default";
 import { ApolloDriver } from "@nestjs/apollo";
 import { type DynamicModule, Global, Inject, Module } from "@nestjs/common";
+import { Logger } from "@nestjs/common";
 import { APP_FILTER } from "@nestjs/core";
 import { GraphQLModule as BaseGraphQLModule } from "@nestjs/graphql";
 
@@ -18,6 +19,7 @@ import { LoggingPlugin } from "./plugins/logging.plugin";
 @Global()
 @Module({
   providers: [
+    Logger,
     ComplexityPlugin,
     LoggingPlugin,
     {

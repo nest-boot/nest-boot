@@ -7,8 +7,11 @@ export function withBaseConfig<D extends IDatabaseDriver>(
   options: Options<D>,
 ): Options<D> {
   return {
+    debug: process.env.NODE_ENV !== "production",
     timezone: "UTC",
     metadataProvider: TsMorphMetadataProvider,
+    // entities: ["dist/**/*.entity.js"],
+    // entitiesTs: ["src/**/*.entity.ts"],
     migrations: {
       snapshot: false,
       path: "dist/database/migrations",

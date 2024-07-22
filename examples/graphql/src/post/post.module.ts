@@ -4,8 +4,9 @@ import { Module } from "@nestjs/common";
 import { Post } from "./post.entity";
 import { PostResolver } from "./post.resolver";
 
+DatabaseModule.registerEntity([Post]);
+
 @Module({
-  imports: [DatabaseModule.forFeature([Post])],
   providers: [PostResolver],
 })
 export class PostModule {}

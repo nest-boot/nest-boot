@@ -4,8 +4,9 @@ import { Module } from "@nestjs/common";
 import { PersonalAccessToken } from "./personal-access-token.entity";
 import { PersonalAccessTokenResolver } from "./personal-access-token.resolver";
 
+DatabaseModule.registerEntity([PersonalAccessToken]);
+
 @Module({
-  imports: [DatabaseModule.forFeature([PersonalAccessToken])],
   providers: [PersonalAccessTokenResolver],
 })
 export class PersonalAccessTokenModule {}
