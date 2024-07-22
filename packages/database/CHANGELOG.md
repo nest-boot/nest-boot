@@ -1,5 +1,11 @@
 # @nest-boot/database
 
+## 6.13.1
+
+### Patch Changes
+
+- 97cbb16: 修复 SqlEntityManager 未别名到 EntityManager
+
 ## 6.13.0
 
 ### Minor Changes
