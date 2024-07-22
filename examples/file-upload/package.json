@@ -26,7 +26,7 @@
   "dependencies": {
     "@apollo/server": "^4.10.4",
     "@nest-boot/file-upload": "workspace:^6.3.1",
-    "@nest-boot/graphql": "workspace:^6.10.1",
+    "@nest-boot/graphql": "workspace:^6.10.2",
     "@nestjs/apollo": "^12.2.0",
     "@nestjs/common": "^10.3.10",
     "@nestjs/config": "^3.2.3",
