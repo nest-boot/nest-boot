@@ -1,5 +1,11 @@
 # @nest-boot/database
 
+## 6.13.2
+
+### Patch Changes
+
+- c02f137: 修复在应用关闭时没有断开数据库连接
+
 ## 6.13.1
 
 ### Patch Changes
