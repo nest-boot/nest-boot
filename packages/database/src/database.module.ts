@@ -14,6 +14,7 @@ import {
   Inject,
   Logger,
   Module,
+  OnApplicationShutdown,
   OnModuleInit,
   Optional,
   Provider,
@@ -108,7 +109,7 @@ const providers: Provider[] = [
 })
 export class DatabaseModule
   extends ConfigurableModuleClass
-  implements OnModuleInit
+  implements OnModuleInit, OnApplicationShutdown
 {
   static entities: EntityClass<any>[] = [];
 
@@ -158,5 +159,9 @@ export class DatabaseModule
       ctx.set(EntityManager, em);
       return await next();
     });
+  }
+
+  async onApplicationShutdown() {
+    await this.orm.close();
   }
 }
