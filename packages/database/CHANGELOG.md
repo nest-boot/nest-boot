@@ -1,5 +1,11 @@
 # @nest-boot/database
 
+## 6.13.3
+
+### Patch Changes
+
+- d6ebea5: 仅在 http 下启用请求事务
+
 ## 6.13.2
 
 ### Patch Changes
