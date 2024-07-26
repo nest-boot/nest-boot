@@ -6,6 +6,7 @@ import {
 } from "@mikro-orm/core";
 import { HealthCheckRegistry } from "@nest-boot/health-check";
 import {
+  REQUEST,
   RequestContext,
   RequestContextModule,
 } from "@nest-boot/request-context";
@@ -144,7 +145,7 @@ export class DatabaseModule
     RequestContext.registerMiddleware(async (ctx, next) => {
       const em = this.orm.em.fork({ useContext: true });
 
-      if (this.options.explicitTransaction) {
+      if (this.options.explicitTransaction && ctx.get(REQUEST)) {
         return await em.transactional(
           async (em) => {
             ctx.set(EntityManager, em);
