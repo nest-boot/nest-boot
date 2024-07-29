@@ -1,5 +1,11 @@
 # @nest-boot/request-context
 
+## 6.11.0
+
+### Minor Changes
+
+- fc7a9f8: 请求上下文添加 type 字段
+
 ## 6.10.2
 
 ### Patch Changes
