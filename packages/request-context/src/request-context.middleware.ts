@@ -35,17 +35,16 @@ export class RequestContextMiddleware implements NestMiddleware {
 
     await RequestContext.run(ctx, () => {
       return new Promise<void>((resolve) => {
-        res.on("finish", () => {
+        const onResponseComplete = () => {
+          res.removeListener("close", onResponseComplete);
+          res.removeListener("finish", onResponseComplete);
+          res.removeListener("error", onResponseComplete);
           resolve();
-        });
+        };
 
-        res.on("close", () => {
-          resolve();
-        });
-
-        res.on("error", () => {
-          resolve();
-        });
+        res.on("finish", onResponseComplete);
+        res.on("close", onResponseComplete);
+        res.on("error", onResponseComplete);
 
         next();
       });
