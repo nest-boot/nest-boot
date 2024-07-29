@@ -66,7 +66,7 @@ export class LoggerModule
       ...this.options,
     });
 
-    RequestContext.registerMiddleware(async (ctx, next) => {
+    RequestContext.registerMiddleware("logger", async (ctx, next) => {
       const req = ctx.get<Request>(REQUEST);
       const res = ctx.get<Response>(RESPONSE);
 

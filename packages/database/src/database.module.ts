@@ -141,7 +141,7 @@ export class DatabaseModule
       );
     }
 
-    RequestContext.registerMiddleware(async (ctx, next) => {
+    RequestContext.registerMiddleware("database", async (ctx, next) => {
       const em = this.orm.em.fork({ useContext: true });
 
       if (this.options.explicitTransaction && ctx.type === "http") {
