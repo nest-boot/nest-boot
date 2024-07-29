@@ -25,7 +25,10 @@ export class RequestContextMiddleware implements NestMiddleware {
       return;
     }
 
-    const ctx = new RequestContext();
+    const ctx = new RequestContext({
+      id: req.get("x-request-id"),
+      type: "http",
+    });
 
     ctx.set<Request>(CTX_REQUEST_TOKEN, req);
     ctx.set<Response>(CTX_RESPONSE_TOKEN, res);

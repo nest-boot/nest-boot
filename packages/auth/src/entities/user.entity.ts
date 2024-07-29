@@ -12,23 +12,19 @@ import { PersonalAccessToken } from "./personal-access-token.entity";
 @Entity()
 export class User {
   constructor(
-    data: Pick<User, "id" | "name" | "email"> &
+    data: Pick<User, "id" | "name" | "email" | "password"> &
       Partial<
         Pick<
           User,
-          | "password"
-          | "permissions"
-          | "createdAt"
-          | "updatedAt"
-          | "personalAccessTokens"
+          "permissions" | "createdAt" | "updatedAt" | "personalAccessTokens"
         >
       >,
   ) {
     this.id = data.id;
     this.name = data.name;
     this.email = data.email;
+    this.password = data.password;
 
-    data.password !== void 0 && (this.password = data.password);
     data.permissions !== void 0 && (this.permissions = data.permissions);
     data.createdAt !== void 0 && (this.createdAt = data.createdAt);
     data.updatedAt !== void 0 && (this.updatedAt = data.updatedAt);
@@ -45,8 +41,8 @@ export class User {
   @Property({ unique: true })
   email: string;
 
-  @Property({ nullable: true })
-  password: string | null = null;
+  @Property()
+  password: string;
 
   @Property({ type: t.array, default: "{}" })
   permissions: string[] = [];

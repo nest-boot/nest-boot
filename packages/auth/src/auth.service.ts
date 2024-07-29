@@ -1,4 +1,4 @@
-import { EntityClass, EntityManager } from "@mikro-orm/core";
+import { EntityClass, EntityManager, MikroORM } from "@mikro-orm/core";
 import { HashService } from "@nest-boot/hash";
 import { Inject, Injectable } from "@nestjs/common";
 
@@ -12,6 +12,8 @@ import { randomString } from "./utils/random-string.util";
  */
 @Injectable()
 export class AuthService {
+  private readonly em: EntityManager;
+
   private readonly User: EntityClass<User>;
   private readonly PersonalAccessToken: EntityClass<PersonalAccessToken>;
 
@@ -24,11 +26,13 @@ export class AuthService {
    * @param options The options for the Auth module.
    */
   constructor(
-    private readonly em: EntityManager,
+    private readonly orm: MikroORM,
     private readonly hashService: HashService,
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly options: AuthModuleOptions,
   ) {
+    this.em = this.orm.em;
+
     this.User = this.options?.entities?.User ?? User;
     this.PersonalAccessToken =
       this.options?.entities?.PersonalAccessToken ?? PersonalAccessToken;
@@ -147,5 +151,16 @@ export class AuthService {
     await this.em.persistAndFlush(user);
 
     return user;
+  }
+
+  async updateLastUsedAt(
+    personalAccessToken: PersonalAccessToken,
+    flush = true,
+  ) {
+    personalAccessToken.lastUsedAt = new Date();
+
+    if (flush) {
+      await this.em.flush();
+    }
   }
 }

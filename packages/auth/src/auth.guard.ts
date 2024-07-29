@@ -1,4 +1,3 @@
-import { EntityClass, EntityManager } from "@mikro-orm/core";
 import { I18N, type I18n } from "@nest-boot/i18n";
 import { RequestContext } from "@nest-boot/request-context";
 import {
@@ -7,11 +6,9 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
-  Type,
   UnauthorizedException,
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
-import { Request } from "express";
 import _ from "lodash";
 
 import {
@@ -21,7 +18,6 @@ import {
   REQUIRE_AUTH_METADATA_KEY,
 } from "./auth.constants";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition";
-import { AuthService } from "./auth.service";
 import { PersonalAccessToken, User } from "./entities";
 import { AuthModuleOptions } from "./interfaces";
 
@@ -32,22 +28,12 @@ import { AuthModuleOptions } from "./interfaces";
 export class AuthGuard implements CanActivate {
   private readonly defaultRequireAuth: boolean;
 
-  private readonly userEntityClass: EntityClass<User>;
-  private readonly personalAccessTokenEntityClass: EntityClass<PersonalAccessToken>;
-
   constructor(
     private readonly reflector: Reflector,
-    private readonly em: EntityManager,
-    private readonly authService: AuthService,
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly options: AuthModuleOptions,
   ) {
-    this.reflector = reflector;
     this.defaultRequireAuth = this.options?.defaultRequireAuth ?? true;
-
-    this.userEntityClass = this.options.entities?.User ?? User;
-    this.personalAccessTokenEntityClass =
-      this.options.entities?.PersonalAccessToken ?? PersonalAccessToken;
   }
 
   /**
@@ -60,35 +46,11 @@ export class AuthGuard implements CanActivate {
   }
 
   /**
-   * Extracts the personal access token from the request.
-   * @param req - The request object.
-   * @returns The personal access token, or null if it doesn't exist.
-   */
-  private extractPersonalAccessToken(req: Request): string | null {
-    const authorizationHeader = req.get("authorization");
-    if (typeof authorizationHeader !== "undefined") {
-      const matched = authorizationHeader.match(/(\S+)\s+(\S+)/);
-
-      if (matched !== null && matched[1].toLowerCase() === "bearer") {
-        return matched[2];
-      }
-    }
-
-    if (typeof req.cookies?.token === "string") {
-      return req.cookies.token;
-    }
-
-    return null;
-  }
-
-  /**
    * Determines whether the request is allowed to be executed.
    * @param executionContext - The execution context object.
    * @returns True if the request is allowed to be executed, otherwise false.
    */
-  public async canActivate(
-    executionContext: ExecutionContext,
-  ): Promise<boolean> {
+  public canActivate(executionContext: ExecutionContext) {
     if (!["http", "graphql"].includes(executionContext.getType())) {
       return true;
     }
@@ -109,37 +71,16 @@ export class AuthGuard implements CanActivate {
       return true;
     }
 
-    // Get the Request object
-    const req =
-      executionContext.switchToHttp().getRequest<Request>() ??
-      executionContext.getArgs()[2].req;
-
-    // Extract the token
-    const token = this.extractPersonalAccessToken(req);
-
-    if (token === null) {
-      throw new UnauthorizedException(
-        this.t("The personal access token is invalid."),
-      );
-    }
-
-    const personalAccessToken = await this.authService.getToken(token);
-    const user = await personalAccessToken?.user.load({ filters: false });
+    const user = RequestContext.get<User>(AUTH_USER);
+    const personalAccessToken = RequestContext.get<PersonalAccessToken>(
+      AUTH_PERSONAL_ACCESS_TOKEN,
+    );
 
     if (personalAccessToken === null || user == null) {
       throw new UnauthorizedException(
         this.t("The personal access token is invalid."),
       );
     }
-
-    RequestContext.set(this.userEntityClass as Type<User>, user);
-    RequestContext.set(
-      this.personalAccessTokenEntityClass as Type<PersonalAccessToken>,
-      personalAccessToken,
-    );
-
-    RequestContext.set(AUTH_USER, user);
-    RequestContext.set(AUTH_PERSONAL_ACCESS_TOKEN, personalAccessToken);
 
     // Get the method permissions
     const permissions = this.reflector.get<string[]>(
@@ -153,9 +94,6 @@ export class AuthGuard implements CanActivate {
       typeof permissions === "undefined" ||
       _.intersection(user.permissions, permissions).length > 0
     ) {
-      personalAccessToken.lastUsedAt = new Date();
-      await this.em.flush();
-
       return true;
     }
 
