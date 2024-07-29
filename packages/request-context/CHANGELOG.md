@@ -1,5 +1,11 @@
 # @nest-boot/request-context
 
+## 6.12.1
+
+### Patch Changes
+
+- 9640aaa: 请求完成后移除监听器
+
 ## 6.12.0
 
 ### Minor Changes
