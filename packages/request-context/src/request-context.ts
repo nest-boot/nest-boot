@@ -7,15 +7,27 @@ type RequestContextMiddleware = <T>(
   next: () => Promise<T>,
 ) => Promise<T>;
 
+export interface RequestContextCreateOptions {
+  id?: string;
+  type: string;
+}
+
 @Injectable()
 export class RequestContext {
-  readonly id = randomUUID();
+  readonly id: string;
+
+  readonly type: string;
 
   private readonly container = new Map();
 
   private static readonly storage = new AsyncLocalStorage<RequestContext>();
 
   private static readonly middlewares: RequestContextMiddleware[] = [];
+
+  constructor(options: RequestContextCreateOptions) {
+    this.id = options.id ?? randomUUID();
+    this.type = options.type;
+  }
 
   // eslint-disable-next-line @typescript-eslint/ban-types
   get<T>(token: string | symbol | Function | Type<T>): T | undefined {

@@ -22,37 +22,40 @@ export async function repl(module: Type | DynamicModule) {
   const replContext = new ReplContext(app);
   Logger.log(REPL_INITIALIZED_MESSAGE);
 
-  return await RequestContext.run(new RequestContext(), async () => {
-    const asyncResource = new AsyncResource("REPL");
+  return await RequestContext.run(
+    new RequestContext({ type: "repl" }),
+    async () => {
+      const asyncResource = new AsyncResource("REPL");
 
-    const replServer = (await import("repl")).start({
-      input: new Proxy(
-        process.stdin.pipe(
-          new Transform({
-            transform(chunk, encoding, callback) {
-              asyncResource.runInAsyncScope(callback, null, null, chunk);
+      const replServer = (await import("repl")).start({
+        input: new Proxy(
+          process.stdin.pipe(
+            new Transform({
+              transform(chunk, encoding, callback) {
+                asyncResource.runInAsyncScope(callback, null, null, chunk);
+              },
+            }),
+          ),
+          {
+            get(target, prop, receiver) {
+              if (prop in target) {
+                return Reflect.get(target, prop, receiver);
+              } else if (prop in process.stdin) {
+                return Reflect.get(process.stdin, prop, receiver);
+              }
             },
-          }),
-        ),
-        {
-          get(target, prop, receiver) {
-            if (prop in target) {
-              return Reflect.get(target, prop, receiver);
-            } else if (prop in process.stdin) {
-              return Reflect.get(process.stdin, prop, receiver);
-            }
           },
-        },
-      ),
-      output: process.stdout,
-      prompt: clc.green("> "),
-      ignoreUndefined: true,
-    });
+        ),
+        output: process.stdout,
+        prompt: clc.green("> "),
+        ignoreUndefined: true,
+      });
 
-    assignToObject(replServer.context, replContext.globalScope);
+      assignToObject(replServer.context, replContext.globalScope);
 
-    defineDefaultCommandsOnRepl(replServer);
+      defineDefaultCommandsOnRepl(replServer);
 
-    return replServer;
-  });
+      return replServer;
+    },
+  );
 }

@@ -4,18 +4,32 @@ import {
   Injectable,
   type NestInterceptor,
 } from "@nestjs/common";
+import { Request } from "express";
 import { Observable } from "rxjs";
 
 import { RequestContext } from "./request-context";
 
 @Injectable()
 export class RequestContextInterceptor implements NestInterceptor {
-  intercept<T>(context: ExecutionContext, next: CallHandler<T>): Observable<T> {
-    if (RequestContext.isActive()) {
+  intercept<T>(
+    executionContext: ExecutionContext,
+    next: CallHandler<T>,
+  ): Observable<T> {
+    if (
+      RequestContext.isActive() ||
+      !["http", "graphql"].includes(executionContext.getType())
+    ) {
       return next.handle();
     }
 
-    const ctx = new RequestContext();
+    const req =
+      executionContext.switchToHttp().getRequest<Request>() ??
+      executionContext.getArgs()[2].req;
+
+    const ctx = new RequestContext({
+      id: req.get("x-request-id"),
+      type: "http",
+    });
 
     return new Observable((subscriber) => {
       void RequestContext.run(ctx, () => {
