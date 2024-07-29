@@ -68,9 +68,9 @@ const AuthDynamicModule = AuthModule.registerAsync({
   imports: [
     ConfigDynamicModule,
     LoggerModule,
+    AuthDynamicModule,
     DatabaseDynamicModule,
     HashDynamicModule,
-    AuthDynamicModule,
     GraphQLDynamicModule,
     GraphQLConnectionDynamicModule,
     UserModule,

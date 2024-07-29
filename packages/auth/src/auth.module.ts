@@ -48,39 +48,44 @@ export class AuthModule
   }
 
   onModuleInit() {
-    RequestContext.registerMiddleware(async (ctx, next) => {
-      if (ctx.type === "http") {
-        const req = ctx.get<Request>(REQUEST);
+    RequestContext.registerMiddleware(
+      "auth",
+      async (ctx, next) => {
+        if (ctx.type === "http") {
+          const req = ctx.get<Request>(REQUEST);
 
-        if (req) {
-          const token = this.extractPersonalAccessToken(req);
+          if (req) {
+            const token = this.extractPersonalAccessToken(req);
 
-          if (token) {
-            const personalAccessToken = await this.authService.getToken(token);
-            const user = await personalAccessToken?.user.load();
+            if (token) {
+              const personalAccessToken =
+                await this.authService.getToken(token);
+              const user = await personalAccessToken?.user.load();
 
-            if (personalAccessToken && user) {
-              RequestContext.set(this.userEntityClass as Type<User>, user);
-              RequestContext.set(
-                this
-                  .personalAccessTokenEntityClass as Type<PersonalAccessToken>,
-                personalAccessToken,
-              );
+              if (personalAccessToken && user) {
+                RequestContext.set(this.userEntityClass as Type<User>, user);
+                RequestContext.set(
+                  this
+                    .personalAccessTokenEntityClass as Type<PersonalAccessToken>,
+                  personalAccessToken,
+                );
 
-              RequestContext.set(AUTH_USER, user);
-              RequestContext.set(
-                AUTH_PERSONAL_ACCESS_TOKEN,
-                personalAccessToken,
-              );
+                RequestContext.set(AUTH_USER, user);
+                RequestContext.set(
+                  AUTH_PERSONAL_ACCESS_TOKEN,
+                  personalAccessToken,
+                );
 
-              await this.authService.updateLastUsedAt(personalAccessToken);
+                await this.authService.updateLastUsedAt(personalAccessToken);
+              }
             }
           }
         }
-      }
 
-      return await next();
-    });
+        return await next();
+      },
+      ["database"],
+    );
   }
 
   /**
