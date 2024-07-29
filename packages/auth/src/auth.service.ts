@@ -150,13 +150,13 @@ export class AuthService {
   }
 
   async updateLastUsedAt(
-    _personalAccessToken: PersonalAccessToken,
-    _flush = true,
+    personalAccessToken: PersonalAccessToken,
+    flush = true,
   ) {
-    // personalAccessToken.lastUsedAt = new Date();
-    //
-    // if (flush) {
-    //   await this.em.flush();
-    // }
+    personalAccessToken.lastUsedAt = new Date();
+
+    if (flush) {
+      await this.em.flush();
+    }
   }
 }

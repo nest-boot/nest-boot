@@ -5,5 +5,5 @@ import { TransactionOptions } from "./transaction-options.interface";
 
 export interface DatabaseModuleOptions extends Options {
   healthCheck?: boolean | DatabaseHealthCheckOptions;
-  explicitTransaction?: TransactionOptions;
+  transactional?: TransactionOptions;
 }

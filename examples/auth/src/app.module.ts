@@ -24,7 +24,7 @@ const DatabaseDynamicModule = DatabaseModule.registerAsync({
     dbName: config.get<string>("DATABASE_NAME"),
     name: config.get("DATABASE_USERNAME"),
     password: config.get("DATABASE_PASSWORD"),
-    explicitTransaction: true,
+    transactional: true,
   }),
 });
 

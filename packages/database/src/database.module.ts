@@ -19,24 +19,21 @@ import {
   Optional,
   Provider,
 } from "@nestjs/common";
+import { APP_INTERCEPTOR } from "@nestjs/core";
 
 import { DatabaseHealthIndicator } from "./database.health-indicator";
+import { DatabaseInterceptor } from "./database.interceptor";
 import { DatabaseLogger } from "./database.logger";
 import {
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
 } from "./database.module-definition";
 import { type DatabaseModuleOptions } from "./interfaces";
+import { tryRequire } from "./utils/try-require.util";
 import { withBaseConfig } from "./utils/with-base-config.util";
 
-function tryRequire(name: string): Dictionary | undefined {
-  try {
-    return require(name);
-  } catch {}
-}
-
-const knex = tryRequire("@mikro-orm/knex");
-const mongo = tryRequire("@mikro-orm/mongodb");
+const knex = tryRequire<Dictionary>("@mikro-orm/knex");
+const mongo = tryRequire<Dictionary>("@mikro-orm/mongodb");
 
 const providers: Provider[] = [
   Logger,
@@ -104,7 +101,13 @@ const providers: Provider[] = [
 @Global()
 @Module({
   imports: [RequestContextModule],
-  providers,
+  providers: [
+    ...providers,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: DatabaseInterceptor,
+    },
+  ],
   exports: providers,
 })
 export class DatabaseModule
@@ -141,24 +144,14 @@ export class DatabaseModule
       );
     }
 
-    RequestContext.registerMiddleware("database", async (ctx, next) => {
-      const em = this.orm.em.fork({ useContext: true });
-
-      if (this.options.explicitTransaction && ctx.type === "http") {
-        return await em.transactional(
-          async (em) => {
-            ctx.set(EntityManager, em);
-            return await next();
-          },
-          this.options.explicitTransaction === true
-            ? {}
-            : this.options.explicitTransaction,
-        );
-      }
-
-      ctx.set(EntityManager, em);
-      return await next();
-    });
+    RequestContext.registerMiddleware(
+      "database",
+      (ctx, next) => {
+        ctx.set(EntityManager, this.orm.em.fork({ useContext: true }));
+        return next();
+      },
+      ["logger"],
+    );
   }
 
   async onApplicationShutdown() {
