@@ -1,5 +1,16 @@
 # @nest-boot/database
 
+## 6.16.0
+
+### Minor Changes
+
+- 7760eec: 支持 @Transactional 装饰器控制方法是否启用事务
+
+### Patch Changes
+
+- Updated dependencies [87d85de]
+  - @nest-boot/request-context@6.13.0
+
 ## 6.15.0
 
 ### Minor Changes

@@ -1,5 +1,19 @@
 # @nest-boot/auth
 
+## 6.13.0
+
+### Minor Changes
+
+- 7760eec: 支持 @Transactional 装饰器控制方法是否启用事务
+
+### Patch Changes
+
+- 3f1bd18: 临时禁止更新最后使用时间
+- Updated dependencies [7760eec]
+- Updated dependencies [87d85de]
+  - @nest-boot/database@6.16.0
+  - @nest-boot/request-context@6.13.0
+
 ## 6.12.0
 
 ### Minor Changes
