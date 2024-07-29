@@ -1,5 +1,11 @@
 # @nest-boot/request-context
 
+## 6.13.0
+
+### Minor Changes
+
+- 87d85de: 支持子请求上下文
+
 ## 6.12.1
 
 ### Patch Changes
