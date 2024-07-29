@@ -1,5 +1,16 @@
 # @nest-boot/database
 
+## 6.14.0
+
+### Minor Changes
+
+- fc7a9f8: 请求上下文添加 type 字段
+
+### Patch Changes
+
+- Updated dependencies [fc7a9f8]
+  - @nest-boot/request-context@6.11.0
+
 ## 6.13.3
 
 ### Patch Changes

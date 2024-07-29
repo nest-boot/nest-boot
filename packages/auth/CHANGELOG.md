@@ -1,5 +1,18 @@
 # @nest-boot/auth
 
+## 6.11.0
+
+### Minor Changes
+
+- fc7a9f8: 请求上下文添加 type 字段
+- fc7a9f8: 认证守卫移除数据库相关代码，移动到请求上下文中间件中实现，防止在 GraphQL 下重复查询数据库。
+
+### Patch Changes
+
+- Updated dependencies [fc7a9f8]
+  - @nest-boot/request-context@6.11.0
+  - @nest-boot/database@6.14.0
+
 ## 6.10.7
 
 ### Patch Changes
