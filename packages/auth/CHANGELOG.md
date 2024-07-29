@@ -1,5 +1,17 @@
 # @nest-boot/auth
 
+## 6.12.0
+
+### Minor Changes
+
+- 715b4db: 请求上下文中间件支持使用依赖控制顺序
+
+### Patch Changes
+
+- Updated dependencies [715b4db]
+  - @nest-boot/request-context@6.12.0
+  - @nest-boot/database@6.15.0
+
 ## 6.11.0
 
 ### Minor Changes
