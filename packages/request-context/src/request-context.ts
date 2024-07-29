@@ -10,12 +10,15 @@ type RequestContextMiddleware = <T>(
 export interface RequestContextCreateOptions {
   id?: string;
   type: string;
+  parent?: RequestContext;
 }
 
 export class RequestContext {
   readonly id: string;
 
   readonly type: string;
+
+  readonly parent?: RequestContext;
 
   private readonly container = new Map();
 
@@ -33,11 +36,12 @@ export class RequestContext {
   constructor(options: RequestContextCreateOptions) {
     this.id = options.id ?? randomUUID();
     this.type = options.type;
+    this.parent = options.parent;
   }
 
   // eslint-disable-next-line @typescript-eslint/ban-types
   get<T>(token: string | symbol | Function | Type<T>): T | undefined {
-    return this.container.get(token);
+    return this.container.get(token) ?? this.parent?.get(token);
   }
 
   set<T>(typeOrToken: string | symbol | Type<T>, value: T): void {
@@ -46,25 +50,27 @@ export class RequestContext {
 
   // eslint-disable-next-line @typescript-eslint/ban-types
   static get<T>(key: string | symbol | Function | Type<T>): T | undefined {
-    const ctx = this.storage.getStore();
-
-    if (typeof ctx === "undefined") {
-      throw new Error("Request context is not active");
-    }
+    const ctx = this.current();
 
     return ctx.get(key);
   }
 
   static set<T>(key: string | symbol | Type<T>, value: T): void {
+    const ctx = this.current();
+
+    if (typeof key !== "undefined") {
+      ctx.set(key, value);
+    }
+  }
+
+  static current(): RequestContext {
     const ctx = this.storage.getStore();
 
     if (typeof ctx === "undefined") {
       throw new Error("Request context is not active");
     }
 
-    if (typeof key !== "undefined") {
-      ctx.set(key, value);
-    }
+    return ctx;
   }
 
   static isActive(): boolean {
@@ -85,6 +91,24 @@ export class RequestContext {
     };
 
     return await this.storage.run(ctx, next);
+  }
+
+  static async child<T>(
+    callback: (ctx: RequestContext) => T | Promise<T>,
+  ): Promise<T> {
+    const parent = this.storage.getStore();
+
+    if (typeof parent === "undefined") {
+      throw new Error("Request context is not active");
+    }
+
+    const ctx = new RequestContext({
+      id: parent.id,
+      type: parent.type,
+      parent,
+    });
+
+    return await this.storage.run(ctx, () => callback(ctx));
   }
 
   static registerMiddleware(
