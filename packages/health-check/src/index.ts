@@ -1,7 +1,10 @@
 export * from "./health-check.module";
+export * from "./health-check.service";
 export * from "./health-check-registry.service";
 export {
+  HealthCheck,
   HealthCheckError,
+  HealthCheckResult,
   HealthIndicator,
   HealthIndicatorResult,
   TimeoutError,

@@ -82,6 +82,9 @@ importers:
       '@nest-boot/hash':
         specifier: workspace:^6.10.1
         version: link:../../packages/hash
+      '@nest-boot/health-check':
+        specifier: workspace:^6.10.1
+        version: link:../../packages/health-check
       '@nest-boot/logger':
         specifier: workspace:^6.11.0
         version: link:../../packages/logger

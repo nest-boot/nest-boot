@@ -4,10 +4,12 @@ import { DatabaseModule } from "@nest-boot/database";
 import { GraphQLModule } from "@nest-boot/graphql";
 import { GraphQLConnectionModule } from "@nest-boot/graphql-connection";
 import { HashModule } from "@nest-boot/hash";
+import { HealthCheckModule } from "@nest-boot/health-check";
 import { LoggerModule } from "@nest-boot/logger";
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 
+import { HealthCheckController } from "./health-check/health-check.controller";
 import { PersonalAccessToken } from "./personal-access-token/personal-access-token.entity";
 import { PersonalAccessTokenModule } from "./personal-access-token/personal-access-token.module";
 import { User } from "./user/user.entity";
@@ -66,6 +68,7 @@ const AuthDynamicModule = AuthModule.registerAsync({
 
 @Module({
   imports: [
+    HealthCheckModule,
     ConfigDynamicModule,
     LoggerModule,
     AuthDynamicModule,
@@ -76,5 +79,6 @@ const AuthDynamicModule = AuthModule.registerAsync({
     UserModule,
     PersonalAccessTokenModule,
   ],
+  controllers: [HealthCheckController],
 })
 export class AppModule {}

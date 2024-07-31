@@ -35,6 +35,7 @@
     "@nest-boot/graphql": "workspace:^6.10.2",
     "@nest-boot/graphql-connection": "workspace:^6.10.3",
     "@nest-boot/hash": "workspace:^6.10.1",
+    "@nest-boot/health-check": "workspace:^6.10.1",
     "@nest-boot/logger": "workspace:^6.11.0",
     "@nest-boot/request-context": "workspace:^6.13.0",
     "@nestjs/apollo": "^12.2.0",
