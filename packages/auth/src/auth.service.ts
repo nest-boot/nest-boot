@@ -72,7 +72,7 @@ export class AuthService {
       {
         token,
       },
-      { filters: false },
+      { populate: ["user"] },
     );
   }
 
@@ -149,14 +149,8 @@ export class AuthService {
     return user;
   }
 
-  async updateLastUsedAt(
-    personalAccessToken: PersonalAccessToken,
-    flush = true,
-  ) {
+  async updateLastUsedAt(personalAccessToken: PersonalAccessToken) {
     personalAccessToken.lastUsedAt = new Date();
-
-    if (flush) {
-      await this.em.flush();
-    }
+    await this.em.flush();
   }
 }
