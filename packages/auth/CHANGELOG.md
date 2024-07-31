@@ -1,5 +1,11 @@
 # @nest-boot/auth
 
+## 6.14.0
+
+### Minor Changes
+
+- 484f349: 使用 dataloader 来解决 GraphQL 认证时多次读取数据库。
+
 ## 6.13.0
 
 ### Minor Changes

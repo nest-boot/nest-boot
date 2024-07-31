@@ -1,5 +1,11 @@
 # @nest-boot/health-check
 
+## 6.11.0
+
+### Minor Changes
+
+- 6cd5b58: 移除默认健康检查控制器，以便自定义路由和装饰器
+
 ## 6.10.1
 
 ### Patch Changes
