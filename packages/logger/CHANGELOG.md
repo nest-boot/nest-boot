@@ -1,5 +1,11 @@
 # @nest-boot/logger
 
+## 6.11.1
+
+### Patch Changes
+
+- 4846ed2: 修复上下文获取失败。
+
 ## 6.11.0
 
 ### Minor Changes
