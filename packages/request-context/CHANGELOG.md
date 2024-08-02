@@ -1,5 +1,11 @@
 # @nest-boot/request-context
 
+## 6.13.1
+
+### Patch Changes
+
+- 5a5cb5d: 修复请求上下文在 GraphQL 订阅下无法正常工作。
+
 ## 6.13.0
 
 ### Minor Changes
