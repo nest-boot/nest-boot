@@ -1,5 +1,11 @@
 # @nest-boot/database
 
+## 6.16.1
+
+### Patch Changes
+
+- 4846ed2: 关闭数据库连接前先回滚所有活动的事务。
+
 ## 6.16.0
 
 ### Minor Changes

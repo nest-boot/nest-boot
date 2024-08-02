@@ -21,6 +21,7 @@ import {
 } from "@nestjs/common";
 import { APP_INTERCEPTOR } from "@nestjs/core";
 
+import { ActiveTransactionManager } from "./active-transaction.manager";
 import { DatabaseHealthIndicator } from "./database.health-indicator";
 import { DatabaseInterceptor } from "./database.interceptor";
 import { DatabaseLogger } from "./database.logger";
@@ -39,13 +40,18 @@ const providers: Provider[] = [
   Logger,
   {
     provide: MikroORM,
-    inject: [MODULE_OPTIONS_TOKEN, Logger],
-    useFactory: (options: DatabaseModuleOptions, logger: Logger) => {
+    inject: [MODULE_OPTIONS_TOKEN, Logger, ActiveTransactionManager],
+    useFactory: (
+      options: DatabaseModuleOptions,
+      logger: Logger,
+      activeTransactionManager: ActiveTransactionManager,
+    ) => {
       options = withBaseConfig(options);
 
       return MikroORM.init({
         ...options,
         entities: [...DatabaseModule.entities, ...(options.entities ?? [])],
+        subscribers: [activeTransactionManager, ...(options.subscribers ?? [])],
         context: () => {
           if (RequestContext.isActive()) {
             return RequestContext.get(EntityManager);
@@ -95,6 +101,7 @@ const providers: Provider[] = [
         },
       ]
     : []),
+  ActiveTransactionManager,
   DatabaseHealthIndicator,
 ];
 
@@ -124,6 +131,7 @@ export class DatabaseModule
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly options: DatabaseModuleOptions,
     private readonly orm: MikroORM,
+    private readonly activeTransactionManager: ActiveTransactionManager,
     private readonly healthIndicator: DatabaseHealthIndicator,
     @Optional()
     private readonly healthCheckRegistry?: HealthCheckRegistry,
@@ -135,12 +143,11 @@ export class DatabaseModule
     const healthCheckOptions = this.options.healthCheck;
 
     if (healthCheckOptions && typeof this.healthCheckRegistry !== "undefined") {
-      this.healthCheckRegistry.register(
-        async () =>
-          await this.healthIndicator.healthCheck(
-            "database",
-            healthCheckOptions === true ? undefined : healthCheckOptions,
-          ),
+      this.healthCheckRegistry.register(() =>
+        this.healthIndicator.healthCheck(
+          "database",
+          healthCheckOptions === true ? undefined : healthCheckOptions,
+        ),
       );
     }
 
@@ -155,6 +162,7 @@ export class DatabaseModule
   }
 
   async onApplicationShutdown() {
+    await this.activeTransactionManager.rollbackActiveTransactions();
     await this.orm.close();
   }
 }

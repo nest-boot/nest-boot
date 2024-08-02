@@ -62,7 +62,8 @@ export class LoggerModule
           return id;
         },
       customReceivedMessage: () => "request received",
-      customProps: () => RequestContext.get(BINDINGS) ?? {},
+      customProps: () =>
+        RequestContext.isActive() ? (RequestContext.get(BINDINGS) ?? {}) : {},
       ...this.options,
     });
 
