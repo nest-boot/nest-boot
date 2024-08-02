@@ -22,12 +22,13 @@ export class RequestContextInterceptor implements NestInterceptor {
       return next.handle();
     }
 
-    const req =
+    const id = (
       executionContext.switchToHttp().getRequest<Request>() ??
-      executionContext.getArgs()[2].req;
+      executionContext.getArgs()[2]?.req
+    )?.get?.("x-request-id");
 
     const ctx = new RequestContext({
-      id: req.get("x-request-id"),
+      id,
       type: "http",
     });
 
