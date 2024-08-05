@@ -37,7 +37,7 @@
     "@nest-boot/hash": "workspace:^6.10.1",
     "@nest-boot/health-check": "workspace:^6.11.0",
     "@nest-boot/logger": "workspace:^6.11.1",
-    "@nest-boot/request-context": "workspace:^6.13.0",
+    "@nest-boot/request-context": "workspace:^6.13.1",
     "@nestjs/apollo": "^12.2.0",
     "@nestjs/common": "^10.3.10",
     "@nestjs/config": "^3.2.3",
