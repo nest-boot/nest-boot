@@ -89,7 +89,7 @@ importers:
         specifier: workspace:^6.12.0
         version: link:../../packages/logger
       '@nest-boot/request-context':
-        specifier: workspace:^6.14.0
+        specifier: workspace:^6.15.0
         version: link:../../packages/request-context
       '@nestjs/apollo':
         specifier: ^12.2.0
@@ -337,7 +337,7 @@ importers:
         specifier: workspace:^6.12.0
         version: link:../../packages/logger
       '@nest-boot/request-context':
-        specifier: workspace:^6.14.0
+        specifier: workspace:^6.15.0
         version: link:../../packages/request-context
       '@nestjs/apollo':
         specifier: ^12.2.0
@@ -449,7 +449,7 @@ importers:
         specifier: workspace:^6.12.0
         version: link:../../packages/queue
       '@nest-boot/request-context':
-        specifier: workspace:^6.14.0
+        specifier: workspace:^6.15.0
         version: link:../../packages/request-context
       '@nest-boot/tsconfig':
         specifier: workspace:^6.0.0
@@ -546,7 +546,7 @@ importers:
   examples/repl:
     dependencies:
       '@nest-boot/request-context':
-        specifier: workspace:^6.14.0
+        specifier: workspace:^6.15.0
         version: link:../../packages/request-context
       '@nestjs/common':
         specifier: ^10.3.10
@@ -610,7 +610,7 @@ importers:
         specifier: workspace:^6.12.0
         version: link:../../packages/queue
       '@nest-boot/request-context':
-        specifier: workspace:^6.14.0
+        specifier: workspace:^6.15.0
         version: link:../../packages/request-context
       '@nest-boot/schedule':
         specifier: workspace:^6.10.3
