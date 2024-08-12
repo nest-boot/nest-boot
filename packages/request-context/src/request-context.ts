@@ -48,6 +48,18 @@ export class RequestContext {
     this.container.set(typeOrToken, value);
   }
 
+  getOrSet<T>(typeOrToken: string | symbol | Type<T>, value: T): T {
+    const existing = this.get(typeOrToken);
+
+    if (typeof existing !== "undefined") {
+      return existing;
+    }
+
+    this.set(typeOrToken, value);
+
+    return value;
+  }
+
   // eslint-disable-next-line @typescript-eslint/ban-types
   static get<T>(key: string | symbol | Function | Type<T>): T | undefined {
     const ctx = this.current();
@@ -61,6 +73,12 @@ export class RequestContext {
     if (typeof key !== "undefined") {
       ctx.set(key, value);
     }
+  }
+
+  static getOrSet<T>(key: string | symbol | Type<T>, value: T): T {
+    const ctx = this.current();
+
+    return ctx.getOrSet(key, value);
   }
 
   static get id() {
