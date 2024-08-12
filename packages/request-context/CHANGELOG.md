@@ -1,5 +1,11 @@
 # @nest-boot/request-context
 
+## 6.15.0
+
+### Minor Changes
+
+- 751a112: 请求上下文添加 getOrSet 方法
+
 ## 6.14.0
 
 ### Minor Changes
