@@ -12,7 +12,6 @@ import {
   Optional,
 } from "@nestjs/common";
 import { APP_INTERCEPTOR } from "@nestjs/core";
-import { randomUUID } from "crypto";
 import { type Request, type Response } from "express";
 import pino from "pino";
 import pinoHttp from "pino-http";
@@ -56,10 +55,8 @@ export class LoggerModule
     const loggerMiddleware = pinoHttp({
       genReqId:
         this.options.genReqId ??
-        function (req, res) {
-          const id = req.headers["x-request-id"] ?? randomUUID();
-          res.setHeader("X-Request-Id", id);
-          return id;
+        function () {
+          return RequestContext.id;
         },
       customReceivedMessage: () => "request received",
       customProps: () =>
@@ -73,12 +70,15 @@ export class LoggerModule
 
       if (typeof req !== "undefined" && typeof res !== "undefined") {
         loggerMiddleware(req, res);
-        ctx.set(PINO_LOGGER, req.log);
+        ctx.set(
+          PINO_LOGGER,
+          req.log.child({ ctx: { id: ctx.id, type: ctx.type } }),
+        );
       } else {
         ctx.set(
           PINO_LOGGER,
           logger.child({
-            req: { id: randomUUID() },
+            ctx: { id: ctx.id, type: ctx.type },
           }),
         );
       }

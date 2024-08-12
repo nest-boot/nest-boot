@@ -63,6 +63,10 @@ export class RequestContext {
     }
   }
 
+  static get id() {
+    return this.current().id;
+  }
+
   static current(): RequestContext {
     const ctx = this.storage.getStore();
 
