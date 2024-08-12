@@ -1,5 +1,16 @@
 # @nest-boot/logger
 
+## 6.12.0
+
+### Minor Changes
+
+- 7267c10: 日志跟踪请求上下文 ID 和 类型。
+
+### Patch Changes
+
+- Updated dependencies [7267c10]
+  - @nest-boot/request-context@6.14.0
+
 ## 6.11.1
 
 ### Patch Changes
