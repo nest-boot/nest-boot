@@ -48,15 +48,34 @@ export class DatabaseInterceptor implements NestInterceptor {
       RequestContext.isActive()
     ) {
       return from(
-        RequestContext.child(() =>
-          this.em.transactional(
-            (em) => {
-              RequestContext.set(EntityManager, em);
-              return lastValueFrom(next.handle());
+        RequestContext.child(async () => {
+          let error: Error | undefined;
+
+          const result = await this.em.transactional(
+            async (em) => {
+              try {
+                RequestContext.set(EntityManager, em);
+                return await lastValueFrom(next.handle());
+              } catch (err) {
+                if (
+                  typeof transactionOptions !== "boolean" &&
+                  transactionOptions.alwaysCommit
+                ) {
+                  error = err as Error;
+                } else {
+                  throw err;
+                }
+              }
             },
             transactionOptions === true ? {} : transactionOptions,
-          ),
-        ),
+          );
+
+          if (error) {
+            throw error;
+          }
+
+          return result;
+        }),
       );
     }
 
