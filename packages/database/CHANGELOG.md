@@ -1,5 +1,11 @@
 # @nest-boot/database
 
+## 6.16.2
+
+### Patch Changes
+
+- 0691854: 数据库交易模式新增 alwaysCommit 选项
+
 ## 6.16.1
 
 ### Patch Changes
