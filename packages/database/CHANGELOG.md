@@ -1,5 +1,11 @@
 # @nest-boot/database
 
+## 6.17.0
+
+### Minor Changes
+
+- b3ca0ad: 添加 @SearchableProperty 语法糖
+
 ## 6.16.2
 
 ### Patch Changes

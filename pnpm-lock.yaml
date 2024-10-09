@@ -71,7 +71,7 @@ importers:
         specifier: workspace:^6.14.0
         version: link:../../packages/auth
       '@nest-boot/database':
-        specifier: workspace:^6.16.2
+        specifier: workspace:^6.17.0
         version: link:../../packages/database
       '@nest-boot/graphql':
         specifier: workspace:^6.10.2
@@ -325,7 +325,7 @@ importers:
         specifier: ^6.2.9
         version: 6.2.9
       '@nest-boot/database':
-        specifier: workspace:^6.16.2
+        specifier: workspace:^6.17.0
         version: link:../../packages/database
       '@nest-boot/graphql':
         specifier: workspace:^6.10.2
