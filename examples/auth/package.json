@@ -31,7 +31,7 @@
     "@mikro-orm/postgresql": "^6.2.9",
     "@mikro-orm/reflection": "^6.2.9",
     "@nest-boot/auth": "workspace:^6.14.0",
-    "@nest-boot/database": "workspace:^6.16.2",
+    "@nest-boot/database": "workspace:^6.17.0",
     "@nest-boot/graphql": "workspace:^6.10.2",
     "@nest-boot/graphql-connection": "workspace:^6.10.3",
     "@nest-boot/hash": "workspace:^6.10.1",
