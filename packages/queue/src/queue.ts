@@ -36,22 +36,22 @@ export class Queue<
     } as T;
   }
 
-  async add(
+  add(
     name: NameType,
     data: DataType,
     opts?: JobOptions,
   ): Promise<Job<DataType, ResultType, NameType>> {
-    return await super.add(name, data, this.generateJobOptions(opts));
+    return super.add(name, data, this.generateJobOptions(opts));
   }
 
-  async addBulk(
+  addBulk(
     jobs: {
       name: NameType;
       data: DataType;
       opts?: BulkJobOptions;
     }[],
   ): Promise<Job<DataType, ResultType, NameType>[]> {
-    return await super.addBulk(
+    return super.addBulk(
       jobs.map((job) => ({
         ...job,
         opts: this.generateJobOptions(job.opts),
