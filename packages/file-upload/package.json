@@ -62,7 +62,7 @@
     "@nestjs/core": "^10.0.0",
     "@nestjs/graphql": "^12.0.0",
     "minio": "^7.0.0",
-    "reflect-metadata": "^0.1.13",
+    "reflect-metadata": "^0.2.2",
     "rxjs": "^7.0.0"
   },
   "publishConfig": {
