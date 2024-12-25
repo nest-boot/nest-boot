@@ -49,7 +49,8 @@ const FileUploadDynamicModule = FileUploadModule.registerAsync({
       pathStyle: configService.get('STORAGE_PATH_STYLE') === 'true',
       limits: [
         {
-          fileSize: bytes('20mb'),
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          fileSize: bytes('20mb')!,
           mimeTypes: [
             'text/csv',
             'image/jpeg',
