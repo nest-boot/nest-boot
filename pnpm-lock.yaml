@@ -68,28 +68,28 @@ importers:
         specifier: ^6.4.2
         version: 6.4.2
       '@nest-boot/auth':
-        specifier: workspace:^6.14.0
+        specifier: workspace:^6.14.1
         version: link:../../packages/auth
       '@nest-boot/database':
-        specifier: workspace:^6.17.0
+        specifier: workspace:^6.17.1
         version: link:../../packages/database
       '@nest-boot/graphql':
-        specifier: workspace:^6.10.2
+        specifier: workspace:^6.10.3
         version: link:../../packages/graphql
       '@nest-boot/graphql-connection':
-        specifier: workspace:^6.10.3
+        specifier: workspace:^6.10.4
         version: link:../../packages/graphql-connection
       '@nest-boot/hash':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../../packages/hash
       '@nest-boot/health-check':
-        specifier: workspace:^6.11.0
+        specifier: workspace:^6.11.1
         version: link:../../packages/health-check
       '@nest-boot/logger':
-        specifier: workspace:^6.12.0
+        specifier: workspace:^6.12.1
         version: link:../../packages/logger
       '@nest-boot/request-context':
-        specifier: workspace:^6.15.0
+        specifier: workspace:^6.15.1
         version: link:../../packages/request-context
       '@nestjs/apollo':
         specifier: ^12.2.2
@@ -132,10 +132,10 @@ importers:
         specifier: ^6.4.2
         version: 6.4.2
       '@nest-boot/eslint-config':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../../packages/eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../../packages/eslint-plugin
       '@nest-boot/tsconfig':
         specifier: workspace:^6.0.0
@@ -195,10 +195,10 @@ importers:
         specifier: ^4.11.2
         version: 4.11.2
       '@nest-boot/file-upload':
-        specifier: workspace:^6.3.1
+        specifier: workspace:^6.3.2
         version: link:../../packages/file-upload
       '@nest-boot/graphql':
-        specifier: workspace:^6.10.2
+        specifier: workspace:^6.10.3
         version: link:../../packages/graphql
       '@nestjs/apollo':
         specifier: ^12.2.2
@@ -235,10 +235,10 @@ importers:
         version: 7.8.1
     devDependencies:
       '@nest-boot/eslint-config':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../../packages/eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../../packages/eslint-plugin
       '@nest-boot/tsconfig':
         specifier: workspace:^6.0.0
@@ -325,19 +325,19 @@ importers:
         specifier: ^6.4.2
         version: 6.4.2
       '@nest-boot/database':
-        specifier: workspace:^6.17.0
+        specifier: workspace:^6.17.1
         version: link:../../packages/database
       '@nest-boot/graphql':
-        specifier: workspace:^6.10.2
+        specifier: workspace:^6.10.3
         version: link:../../packages/graphql
       '@nest-boot/graphql-connection':
-        specifier: workspace:^6.10.3
+        specifier: workspace:^6.10.4
         version: link:../../packages/graphql-connection
       '@nest-boot/logger':
-        specifier: workspace:^6.12.0
+        specifier: workspace:^6.12.1
         version: link:../../packages/logger
       '@nest-boot/request-context':
-        specifier: workspace:^6.15.0
+        specifier: workspace:^6.15.1
         version: link:../../packages/request-context
       '@nestjs/apollo':
         specifier: ^12.2.2
@@ -380,10 +380,10 @@ importers:
         specifier: ^6.4.2
         version: 6.4.2
       '@nest-boot/eslint-config':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../../packages/eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../../packages/eslint-plugin
       '@nest-boot/tsconfig':
         specifier: workspace:^6.0.0
@@ -440,16 +440,16 @@ importers:
   examples/queue:
     dependencies:
       '@nest-boot/eslint-config':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../../packages/eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../../packages/eslint-plugin
       '@nest-boot/queue':
-        specifier: workspace:^6.12.0
+        specifier: workspace:^6.12.1
         version: link:../../packages/queue
       '@nest-boot/request-context':
-        specifier: workspace:^6.15.0
+        specifier: workspace:^6.15.1
         version: link:../../packages/request-context
       '@nest-boot/tsconfig':
         specifier: workspace:^6.0.0
@@ -546,7 +546,7 @@ importers:
   examples/repl:
     dependencies:
       '@nest-boot/request-context':
-        specifier: workspace:^6.15.0
+        specifier: workspace:^6.15.1
         version: link:../../packages/request-context
       '@nestjs/common':
         specifier: ^10.4.15
@@ -562,10 +562,10 @@ importers:
         version: 7.8.1
     devDependencies:
       '@nest-boot/eslint-config':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../../packages/eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../../packages/eslint-plugin
       '@nest-boot/tsconfig':
         specifier: workspace:^6.0.0
@@ -601,19 +601,19 @@ importers:
   examples/schedule:
     dependencies:
       '@nest-boot/eslint-config':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../../packages/eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../../packages/eslint-plugin
       '@nest-boot/queue':
-        specifier: workspace:^6.12.0
+        specifier: workspace:^6.12.1
         version: link:../../packages/queue
       '@nest-boot/request-context':
-        specifier: workspace:^6.15.0
+        specifier: workspace:^6.15.1
         version: link:../../packages/request-context
       '@nest-boot/schedule':
-        specifier: workspace:^6.10.3
+        specifier: workspace:^6.10.4
         version: link:../../packages/schedule
       '@nest-boot/tsconfig':
         specifier: workspace:^6.0.0
@@ -726,25 +726,25 @@ importers:
         specifier: ^6.0.2
         version: 6.0.2
       '@nest-boot/common':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../common
       '@nest-boot/database':
-        specifier: workspace:^6.16.0
+        specifier: workspace:^6.17.1
         version: link:../database
       '@nest-boot/eslint-config':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-plugin
       '@nest-boot/hash':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../hash
       '@nest-boot/i18n':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../i18n
       '@nest-boot/request-context':
-        specifier: workspace:^6.13.0
+        specifier: workspace:^6.15.1
         version: link:../request-context
       '@nest-boot/tsconfig':
         specifier: workspace:^6.0.0
@@ -795,10 +795,10 @@ importers:
   packages/common:
     devDependencies:
       '@nest-boot/eslint-config':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-plugin
       '@nest-boot/tsconfig':
         specifier: workspace:^6.0.0
@@ -840,13 +840,13 @@ importers:
   packages/crypt:
     devDependencies:
       '@nest-boot/common':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../common
       '@nest-boot/eslint-config':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-plugin
       '@nest-boot/tsconfig':
         specifier: workspace:^6.0.0
@@ -907,19 +907,19 @@ importers:
         specifier: ^6.4.2
         version: 6.4.2
       '@nest-boot/common':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../common
       '@nest-boot/eslint-config':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-plugin
       '@nest-boot/health-check':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.11.1
         version: link:../health-check
       '@nest-boot/request-context':
-        specifier: workspace:^6.13.0
+        specifier: workspace:^6.15.1
         version: link:../request-context
       '@nest-boot/tsconfig':
         specifier: workspace:^6.0.0
@@ -961,7 +961,7 @@ importers:
   packages/eslint-config:
     dependencies:
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-plugin
       '@typescript-eslint/eslint-plugin':
         specifier: ^7.18.0
@@ -1032,13 +1032,13 @@ importers:
         version: 2.1.35
     devDependencies:
       '@nest-boot/eslint-config':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
         specifier: workspace:^
         version: link:../eslint-plugin
       '@nest-boot/graphql':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.3
         version: link:../graphql
       '@nest-boot/tsconfig':
         specifier: workspace:^6.0.0
@@ -1120,23 +1120,23 @@ importers:
         version: 4.17.21
     optionalDependencies:
       '@nest-boot/logger':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.12.1
         version: link:../logger
     devDependencies:
       '@mikro-orm/core':
         specifier: ^6.4.2
         version: 6.4.2
       '@nest-boot/common':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../common
       '@nest-boot/database':
-        specifier: workspace:^6.13.0
+        specifier: workspace:^6.17.1
         version: link:../database
       '@nest-boot/eslint-config':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-plugin
       '@nest-boot/tsconfig':
         specifier: workspace:^6.0.0
@@ -1215,16 +1215,16 @@ importers:
         specifier: ^6.4.2
         version: 6.4.2
       '@nest-boot/common':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../common
       '@nest-boot/database':
-        specifier: workspace:^6.11.0
+        specifier: workspace:^6.17.1
         version: link:../database
       '@nest-boot/eslint-config':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-plugin
       '@nest-boot/tsconfig':
         specifier: workspace:^6.0.0
@@ -1288,13 +1288,13 @@ importers:
         version: 1.8.3
     devDependencies:
       '@nest-boot/common':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../common
       '@nest-boot/eslint-config':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-plugin
       '@nest-boot/tsconfig':
         specifier: workspace:^6.0.0
@@ -1336,13 +1336,13 @@ importers:
   packages/health-check:
     devDependencies:
       '@nest-boot/common':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../common
       '@nest-boot/eslint-config':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-plugin
       '@nest-boot/tsconfig':
         specifier: workspace:^6.0.0
@@ -1384,16 +1384,16 @@ importers:
   packages/i18n:
     devDependencies:
       '@nest-boot/common':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../common
       '@nest-boot/eslint-config':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-plugin
       '@nest-boot/request-context':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.15.1
         version: link:../request-context
       '@nest-boot/tsconfig':
         specifier: workspace:^6.0.0
@@ -1457,16 +1457,16 @@ importers:
         version: 10.3.0
     devDependencies:
       '@nest-boot/common':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../common
       '@nest-boot/eslint-config':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-plugin
       '@nest-boot/request-context':
-        specifier: workspace:^6.14.0
+        specifier: workspace:^6.15.1
         version: link:../request-context
       '@nest-boot/tsconfig':
         specifier: workspace:^6.0.0
@@ -1520,13 +1520,13 @@ importers:
   packages/mailer:
     devDependencies:
       '@nest-boot/common':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../common
       '@nest-boot/eslint-config':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-plugin
       '@nest-boot/tsconfig':
         specifier: workspace:^6.0.0
@@ -1568,13 +1568,13 @@ importers:
   packages/metrics:
     devDependencies:
       '@nest-boot/common':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../common
       '@nest-boot/eslint-config':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-plugin
       '@nest-boot/tsconfig':
         specifier: workspace:^6.0.0
@@ -1629,16 +1629,16 @@ importers:
         specifier: ^6.4.2
         version: 6.4.2
       '@nest-boot/common':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../common
       '@nest-boot/eslint-config':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-plugin
       '@nest-boot/request-context':
-        specifier: workspace:^6.11.0
+        specifier: workspace:^6.15.1
         version: link:../request-context
       '@nest-boot/tsconfig':
         specifier: workspace:^6.0.0
@@ -1698,16 +1698,16 @@ importers:
   packages/redis:
     devDependencies:
       '@nest-boot/common':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../common
       '@nest-boot/eslint-config':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-plugin
       '@nest-boot/health-check':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.11.1
         version: link:../health-check
       '@nest-boot/tsconfig':
         specifier: workspace:^6.0.0
@@ -1752,13 +1752,13 @@ importers:
   packages/request-context:
     devDependencies:
       '@nest-boot/common':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../common
       '@nest-boot/eslint-config':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-plugin
       '@nest-boot/tsconfig':
         specifier: workspace:^6.0.0
@@ -1807,19 +1807,19 @@ importers:
         version: 2.1.3
     devDependencies:
       '@nest-boot/common':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../common
       '@nest-boot/eslint-config':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-plugin
       '@nest-boot/queue':
-        specifier: workspace:^6.11.5
+        specifier: workspace:^6.12.1
         version: link:../queue
       '@nest-boot/request-context':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.15.1
         version: link:../request-context
       '@nest-boot/tsconfig':
         specifier: workspace:^6.0.0
@@ -1876,16 +1876,16 @@ importers:
         version: 13.12.0
     devDependencies:
       '@nest-boot/common':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../common
       '@nest-boot/eslint-config':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-plugin
       '@nest-boot/i18n':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../i18n
       '@nest-boot/tsconfig':
         specifier: workspace:^6.0.0
@@ -1934,13 +1934,13 @@ importers:
         version: 3.3.2
     devDependencies:
       '@nest-boot/common':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../common
       '@nest-boot/eslint-config':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^6.10.1
+        specifier: workspace:^6.10.2
         version: link:../eslint-plugin
       '@nest-boot/tsconfig':
         specifier: workspace:^6.0.0

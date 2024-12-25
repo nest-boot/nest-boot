@@ -1,5 +1,13 @@
 # @nest-boot/request-context
 
+## 6.15.1
+
+### Patch Changes
+
+- bcd62cb: fix: Update dependencies across multiple packages to latest versions.
+- Updated dependencies [bcd62cb]
+  - @nest-boot/common@6.10.2
+
 ## 6.15.0
 
 ### Minor Changes
