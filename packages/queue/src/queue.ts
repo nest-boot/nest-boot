@@ -3,11 +3,28 @@ import { randomUUID } from "crypto";
 
 import { BulkJobOptions, Job, JobOptions } from "./interfaces";
 
+type ExtractDataType<DataTypeOrJob, Default> =
+  DataTypeOrJob extends Job<infer D, any, any> ? D : Default;
+type ExtractResultType<DataTypeOrJob, Default> =
+  DataTypeOrJob extends Job<any, infer R, any> ? R : Default;
+type ExtractNameType<DataTypeOrJob, Default extends string> =
+  DataTypeOrJob extends Job<any, any, infer N> ? N : Default;
+
 export class Queue<
-  DataType = any,
-  ResultType = any,
-  NameType extends string = string,
-> extends BullQueue<DataType, ResultType, NameType> {
+  DataTypeOrJob = any,
+  DefaultResultType = any,
+  DefaultNameType extends string = string,
+  DataType = ExtractDataType<DataTypeOrJob, DataTypeOrJob>,
+  ResultType = ExtractResultType<DataTypeOrJob, DefaultResultType>,
+  NameType extends string = ExtractNameType<DataTypeOrJob, DefaultNameType>,
+> extends BullQueue<
+  DataTypeOrJob,
+  DefaultResultType,
+  DefaultNameType,
+  DataType,
+  ResultType,
+  NameType
+> {
   private generateJobOptions<T extends JobOptions | BulkJobOptions>(
     opts?: T,
   ): T {
@@ -19,22 +36,22 @@ export class Queue<
     } as T;
   }
 
-  async add(
+  add(
     name: NameType,
     data: DataType,
     opts?: JobOptions,
   ): Promise<Job<DataType, ResultType, NameType>> {
-    return await super.add(name, data, this.generateJobOptions(opts));
+    return super.add(name, data, this.generateJobOptions(opts));
   }
 
-  async addBulk(
+  addBulk(
     jobs: {
       name: NameType;
       data: DataType;
       opts?: BulkJobOptions;
     }[],
   ): Promise<Job<DataType, ResultType, NameType>[]> {
-    return await super.addBulk(
+    return super.addBulk(
       jobs.map((job) => ({
         ...job,
         opts: this.generateJobOptions(job.opts),

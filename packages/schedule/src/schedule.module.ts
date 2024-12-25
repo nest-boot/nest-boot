@@ -1,6 +1,6 @@
 import { QueueModule } from "@nest-boot/queue";
 import { type DynamicModule, Logger, Module } from "@nestjs/common";
-import { DiscoveryService, MetadataScanner } from "@nestjs/core";
+import { DiscoveryModule } from "@nestjs/core";
 
 import {
   type ASYNC_OPTIONS_TYPE,
@@ -12,7 +12,8 @@ import { ScheduleService } from "./schedule.service";
 import { type ScheduleModuleOptions } from "./schedule-module-options.interface";
 
 @Module({
-  providers: [DiscoveryService, MetadataScanner, Logger, ScheduleService],
+  imports: [DiscoveryModule],
+  providers: [Logger, ScheduleService],
   exports: [],
 })
 export class ScheduleModule extends ConfigurableModuleClass {
