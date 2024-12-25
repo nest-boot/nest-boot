@@ -16,7 +16,8 @@ describe("FileUploadModule - e2e", () => {
 
   const filename = "test.jpeg";
   const fileSize = 48445;
-  const fileSizeLimited = bytes("100mb");
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const fileSizeLimited = bytes("100mb")!;
   const mimeType = "image/jpeg";
   const filePath = "./attachments/test.jpeg";
 
