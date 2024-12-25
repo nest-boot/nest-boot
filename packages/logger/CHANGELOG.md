@@ -1,5 +1,14 @@
 # @nest-boot/logger
 
+## 6.12.1
+
+### Patch Changes
+
+- bcd62cb: fix: Update dependencies across multiple packages to latest versions.
+- Updated dependencies [bcd62cb]
+  - @nest-boot/request-context@6.15.1
+  - @nest-boot/common@6.10.2
+
 ## 6.12.0
 
 ### Minor Changes

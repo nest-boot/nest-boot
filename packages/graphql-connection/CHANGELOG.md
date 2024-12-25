@@ -1,5 +1,14 @@
 # @nest-boot/graphql-connection
 
+## 6.10.4
+
+### Patch Changes
+
+- bcd62cb: fix: Update dependencies across multiple packages to latest versions.
+- Updated dependencies [bcd62cb]
+  - @nest-boot/database@6.17.1
+  - @nest-boot/common@6.10.2
+
 ## 6.10.3
 
 ### Patch Changes

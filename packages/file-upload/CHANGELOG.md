@@ -1,5 +1,13 @@
 # @nest-boot/file-upload
 
+## 6.3.2
+
+### Patch Changes
+
+- bcd62cb: fix: Update dependencies across multiple packages to latest versions.
+- Updated dependencies [bcd62cb]
+  - @nest-boot/graphql@6.10.3
+
 ## 6.3.1
 
 ### Patch Changes
