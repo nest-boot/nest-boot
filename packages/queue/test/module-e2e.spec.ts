@@ -8,7 +8,8 @@ import {
   TEST_BULK_JOB_NAME,
   TEST_JOB_DATA,
   TEST_JOB_NAME,
-  TEST_REQUEST_SCOPED_JOB_NAME,
+  TEST_REQUEST_SCOPED_CONSUMER_JOB_NAME,
+  TEST_REQUEST_SCOPED_PROCESSOR_JOB_NAME,
 } from "./src/constants";
 import { DefaultConsumer } from "./src/default.consumer";
 import { delay } from "./src/delay";
@@ -86,7 +87,7 @@ describe("QueueModule - e2e", () => {
 
   it(`请求范围消费者收到的数据应该要和发送者的一致`, async () => {
     await publishService.testRequestScopedQueue.add(
-      TEST_REQUEST_SCOPED_JOB_NAME,
+      TEST_REQUEST_SCOPED_CONSUMER_JOB_NAME,
       TEST_JOB_DATA,
     );
 
@@ -108,8 +109,8 @@ describe("QueueModule - e2e", () => {
   });
 
   it(`请求范围处理器收到的数据应该要和发送者的一致`, async () => {
-    await publishService.defaultQueue.add(
-      TEST_REQUEST_SCOPED_JOB_NAME,
+    await publishService.testRequestScopedQueue.add(
+      TEST_REQUEST_SCOPED_PROCESSOR_JOB_NAME,
       TEST_JOB_DATA,
     );
 
