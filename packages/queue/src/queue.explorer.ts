@@ -13,17 +13,14 @@ import {
 } from "@nestjs/core";
 import { Injector } from "@nestjs/core/injector/injector";
 import { InstanceWrapper } from "@nestjs/core/injector/instance-wrapper";
-import { MetricsTime, Worker } from "bullmq";
 
 import { ConsumerDecorator, ProcessorDecorator } from "./decorators";
-import { JobStatus } from "./enums";
 import {
   Job,
   JobProcessor,
   type ProcessorFunction,
   QueueConsumer,
 } from "./interfaces";
-import { JobEntityService } from "./job-entity.service";
 import { Queue } from "./queue";
 import { wrapTimeout } from "./utils";
 
@@ -34,8 +31,6 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
 
   readonly queueMap = new Map<string, Queue>();
 
-  readonly workerMap = new Map<string, Worker>();
-
   readonly consumerMap = new Map<string, ProcessorFunction>();
 
   readonly processorMap = new Map<string, Map<string, ProcessorFunction>>();
@@ -44,7 +39,6 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
     private readonly reflector: Reflector,
     private readonly discoveryService: DiscoveryService,
     private readonly moduleRef: ModuleRef,
-    private readonly jobEntityService: JobEntityService,
   ) {}
 
   discoveryQueues(): void {
@@ -54,7 +48,7 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
       if (instance instanceof Queue) {
         this.queueMap.set(instance.name, instance);
 
-        this.logger.log(`Queue ${instance.name} discovered`);
+        this.logger.log(`Queue ${instance.name as string} discovered`);
       }
     });
   }
@@ -190,32 +184,19 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
         typeof consumer !== "undefined" ||
         typeof processors !== "undefined"
       ) {
-        this.workerMap.set(
-          name,
-          new Worker(
-            name,
-            async (job) => {
-              const processor = processors?.get(job.name);
+        queue.createWorker(async (job) => {
+          const processor = processors?.get(job.name);
 
-              if (typeof processor !== "undefined") {
-                return await processor(job);
-              } else if (typeof consumer !== "undefined") {
-                return await consumer(job);
-              } else {
-                throw new Error(
-                  `Processor ${job.name} not found for queue ${name}`,
-                );
-              }
-            },
-            {
-              autorun: false,
-              metrics: {
-                maxDataPoints: MetricsTime.TWO_WEEKS,
-              },
-              ...queue.opts,
-            },
-          ),
-        );
+          if (typeof processor !== "undefined") {
+            return await processor(job);
+          } else if (typeof consumer !== "undefined") {
+            return await consumer(job);
+          } else {
+            throw new Error(
+              `Processor ${job.name} not found for queue ${name}`,
+            );
+          }
+        });
 
         this.logger.log(`Worker ${name} created`);
       }
@@ -240,53 +221,14 @@ export class QueueExplorer implements OnModuleInit, OnApplicationShutdown {
     this.discoveryConsumers();
     this.discoveryProcessors();
     this.createWorkers();
-
-    [...this.queueMap.entries()].forEach(([, queue]) => {
-      queue.on(
-        "waiting",
-        (job) => void this.jobEntityService.upsert(job, JobStatus.PENDING),
-      );
-    });
-
-    [...this.workerMap.entries()].forEach(([, worker]) => {
-      worker.on(
-        "active",
-        (job) => void this.jobEntityService.upsert(job, JobStatus.RUNNING),
-      );
-      worker.on(
-        "progress",
-        (job) => void this.jobEntityService.upsert(job, JobStatus.RUNNING),
-      );
-      worker.on(
-        "completed",
-        (job) => void this.jobEntityService.upsert(job, JobStatus.COMPLETED),
-      );
-      worker.on(
-        "failed",
-        (job) =>
-          job && void this.jobEntityService.upsert(job, JobStatus.FAILED),
-      );
-    });
   }
 
   async onApplicationShutdown(): Promise<void> {
     await Promise.all(
       [...this.queueMap.entries()].map(async ([name, queue]) => {
-        if ((await queue.client).status === "ready") {
-          await queue.close();
-        }
+        await queue.close();
 
         this.logger.log(`Queue ${name} closed`);
-      }),
-    );
-
-    await Promise.all(
-      [...this.workerMap.entries()].map(async ([name, worker]) => {
-        if ((await worker.client).status === "ready") {
-          await worker.close();
-        }
-
-        this.logger.log(`Worker ${name} closed`);
       }),
     );
   }
