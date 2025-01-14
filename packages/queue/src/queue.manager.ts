@@ -14,15 +14,15 @@ export class QueueManager {
   }
 
   run(names?: string[]): void {
-    [...this.queueExplorer.workerMap.entries()]
+    [...this.queueExplorer.queueMap.entries()]
       .filter(([name]) => typeof names === "undefined" || names.includes(name))
-      .forEach(([name, worker]) => {
-        void worker.run();
+      .forEach(([name, queue]) => {
+        void queue.runWorker();
         this.logger.log(`Queue ${name} worker started`, this.constructor.name);
       });
   }
 
   runAll(): void {
-    this.run([...this.queueExplorer.workerMap.keys()]);
+    this.run([...this.queueExplorer.queueMap.keys()]);
   }
 }
