@@ -1223,12 +1223,6 @@ importers:
       '@mikro-orm/knex':
         specifier: ^6.4.2
         version: 6.4.2
-      '@nest-boot/common':
-        specifier: workspace:^6.10.2
-        version: link:../common
-      '@nest-boot/database':
-        specifier: workspace:^6.17.1
-        version: link:../database
       '@nest-boot/eslint-config':
         specifier: workspace:^6.10.2
         version: link:../eslint-config
