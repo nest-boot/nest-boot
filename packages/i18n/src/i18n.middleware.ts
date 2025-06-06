@@ -15,11 +15,14 @@ export class I18nMiddleware implements NestMiddleware {
   constructor(
     @Inject(MODULE_OPTIONS_TOKEN) readonly options: I18nModuleOptions,
   ) {
-    this.handler = middleware.handle(i18next as any, options) as Handler;
+    this.handler = middleware.handle(
+      i18next as any,
+      options,
+    ) as unknown as Handler;
   }
 
   use(req: Request, res: Response, next: () => void): void {
-    this.handler(req, res, () => {
+    void this.handler(req, res, () => {
       RequestContext.set(I18N, req.i18n);
       next();
     });
