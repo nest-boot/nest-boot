@@ -122,7 +122,7 @@ export class ConnectionBuilder<Entity extends object> {
             fieldOptions.field,
         };
       },
-      // eslint-disable-next-line @typescript-eslint/prefer-reduce-type-parameter
+
       { ID: "id" } as unknown as OrderFieldType<Entity>,
     );
 

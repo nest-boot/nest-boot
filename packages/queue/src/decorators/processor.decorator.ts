@@ -12,7 +12,7 @@ export const Processor = (
   name: string,
   options?: InjectableOptions & { queue?: string },
 ) => {
-  return <T extends Type<JobProcessor>>(target: T) => {
+  return (target: Type<JobProcessor>) => {
     Injectable({ scope: options?.scope ?? Scope.DEFAULT })(target);
     ProcessorDecorator({
       name,

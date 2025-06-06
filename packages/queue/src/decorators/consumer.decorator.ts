@@ -6,7 +6,7 @@ import { QueueConsumer } from "../interfaces";
 export const ConsumerDecorator = Reflector.createDecorator<{ queue: string }>();
 
 export const Consumer = (queue?: string, options?: InjectableOptions) => {
-  return <T extends Type<QueueConsumer>>(target: T) => {
+  return (target: Type<QueueConsumer>) => {
     Injectable({ scope: options?.scope ?? Scope.DEFAULT })(target);
     ConsumerDecorator({ queue: queue ?? "default" })(target);
   };

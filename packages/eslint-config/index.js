@@ -1,49 +1,93 @@
-module.exports = {
-  env: {
-    node: true,
+const js = require("@eslint/js");
+const tsParser = require("@typescript-eslint/parser");
+const tseslint = require("typescript-eslint");
+const nestBootPlugin = require("@nest-boot/eslint-plugin");
+const simpleImportSort = require("eslint-plugin-simple-import-sort");
+const prettierConfig = require("eslint-config-prettier");
+const { FlatCompat } = require("@eslint/eslintrc");
+
+const compat = new FlatCompat({
+  baseDirectory: __dirname,
+});
+
+/** @type {import('eslint').Linter.Config[]} */
+module.exports = [
+  js.configs.recommended,
+
+  // 使用 FlatCompat 包装 Standard 配置
+  ...compat.extends("standard"),
+
+  // TypeScript 严格类型检查配置
+  ...tseslint.configs.strictTypeChecked,
+  ...tseslint.configs.stylisticTypeChecked,
+
+  // TypeScript 和插件配置
+  {
+    files: ["**/*.{ts,tsx,js,jsx}"],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        sourceType: "module",
+        project: true,
+      },
+      globals: {
+        process: "readonly",
+        Buffer: "readonly",
+        __dirname: "readonly",
+        __filename: "readonly",
+        module: "readonly",
+        require: "readonly",
+        exports: "readonly",
+        global: "readonly",
+        console: "readonly",
+      },
+    },
+    plugins: {
+      "@nest-boot": nestBootPlugin,
+      "simple-import-sort": simpleImportSort,
+    },
+    rules: {
+      // 基础规则
+      "no-void": "off",
+      "no-use-before-define": "off",
+
+      // 导入排序
+      "import/order": "off",
+      "simple-import-sort/imports": "error",
+      "simple-import-sort/exports": "error",
+
+      // 禁用 no-unused-expressions 和 @typescript-eslint/no-unused-expressions
+      "no-unused-expressions": "off",
+      "@typescript-eslint/no-unused-expressions": "off",
+
+      // TypeScript 规则
+      "@typescript-eslint/return-await": ["error", "always"],
+      "@typescript-eslint/restrict-plus-operands": "error",
+      "@typescript-eslint/no-unsafe-assignment": "off",
+      "@typescript-eslint/no-unsafe-argument": "off",
+      "@typescript-eslint/no-unsafe-member-access": "off",
+      "@typescript-eslint/no-unsafe-call": "off",
+      "@typescript-eslint/no-unsafe-return": "off",
+      "@typescript-eslint/no-unnecessary-condition": "off",
+      "@typescript-eslint/no-extraneous-class": "off",
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-empty-function": [
+        "error",
+        { allow: ["constructors"] },
+      ],
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_" },
+      ],
+
+      // NestBoot 自定义规则
+      "@nest-boot/entity-constructor": "error",
+      "@nest-boot/entity-property-no-optional-or-non-null-assertion": "error",
+      "@nest-boot/entity-property-nullable": "error",
+      "@nest-boot/graphql-field-arguments-match-property-type": "error",
+      "@nest-boot/graphql-resolver-method-return-type": "error",
+    },
   },
-  extends: [
-    "standard",
-    "plugin:@typescript-eslint/strict-type-checked",
-    "plugin:@typescript-eslint/stylistic-type-checked",
-    "prettier",
-  ],
-  plugins: ["@nest-boot", "simple-import-sort"],
-  rules: {
-    "no-void": "off",
-    "no-use-before-define": "off",
 
-    // 导入排序
-    "import/order": "off",
-    "simple-import-sort/imports": "error",
-    "simple-import-sort/exports": "error",
-
-    // 总是使用 return await
-    "@typescript-eslint/return-await": ["error", "always"],
-
-    "@typescript-eslint/restrict-plus-operands": "error",
-    "@typescript-eslint/no-unsafe-assignment": "off",
-    "@typescript-eslint/no-unsafe-argument": "off",
-    "@typescript-eslint/no-unsafe-member-access": "off",
-    "@typescript-eslint/no-unsafe-call": "off",
-    "@typescript-eslint/no-unsafe-return": "off",
-    "@typescript-eslint/no-unnecessary-condition": "off",
-    "@typescript-eslint/no-extraneous-class": "off",
-    "@typescript-eslint/no-explicit-any": "off",
-    "@typescript-eslint/no-empty-function": [
-      "error",
-      { allow: ["constructors"] },
-    ],
-    "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
-
-    "@nest-boot/entity-constructor": "error",
-    "@nest-boot/entity-property-no-optional-or-non-null-assertion": "error",
-    "@nest-boot/entity-property-nullable": "error",
-    "@nest-boot/graphql-field-arguments-match-property-type": "error",
-    "@nest-boot/graphql-resolver-method-return-type": "error",
-  },
-  parserOptions: {
-    sourceType: "module",
-    project: true,
-  },
-};
+  prettierConfig,
+];

@@ -106,7 +106,7 @@ export class FileUploadService {
     persist = false,
   ): Promise<string> {
     const extension: string =
-      metadata.extension || mimeTypes.extension(metadata["Content-Type"]);
+      metadata.extension ?? mimeTypes.extension(metadata["Content-Type"]);
 
     const filePath = `tmp/${dayjs().format("YYYY/MM/DD")}/${randomUUID()}.${extension}`;
 

@@ -39,7 +39,7 @@ export class RequestContext {
     this.parent = options.parent;
   }
 
-  // eslint-disable-next-line @typescript-eslint/ban-types
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
   get<T>(token: string | symbol | Function | Type<T>): T | undefined {
     return this.container.get(token) ?? this.parent?.get(token);
   }
@@ -60,7 +60,7 @@ export class RequestContext {
     return value;
   }
 
-  // eslint-disable-next-line @typescript-eslint/ban-types
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
   static get<T>(key: string | symbol | Function | Type<T>): T | undefined {
     const ctx = this.current();
 

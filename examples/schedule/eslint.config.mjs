@@ -1,5 +1,13 @@
-import config from "@nest-boot/eslint-config";
+import config from '@nest-boot/eslint-config';
 
+/** @type {import('eslint').Linter.Config[]} */
 export default [
-  config,
+  ...config,
+  {
+    languageOptions: {
+      parserOptions: {
+        project: ['tsconfig.json'],
+      },
+    },
+  },
 ];

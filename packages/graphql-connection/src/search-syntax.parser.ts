@@ -15,7 +15,6 @@ import { Field } from "./tokens/fields";
 import { Value } from "./tokens/values";
 
 export class SearchSyntaxParser extends CstParser {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
 
   constructor() {

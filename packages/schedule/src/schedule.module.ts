@@ -33,7 +33,6 @@ export class ScheduleModule extends ConfigurableModuleClass {
       useFactory: (options: ScheduleModuleOptions) => options,
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-floating-promises
     dynamicModule.imports = [
       ...(dynamicModule.imports ?? []),
       ScheduleQueueDynamicModule,
