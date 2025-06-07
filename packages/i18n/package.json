@@ -48,7 +48,7 @@
     "@nestjs/core": "^11.0.0",
     "i18next": "^23.0.0",
     "i18next-fs-backend": "^2.0.0",
-    "": "^3.0.0",
+    "i18next-http-middleware": "^3.0.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.0.0"
   },
