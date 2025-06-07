@@ -20,7 +20,7 @@ export class DatabaseHealthIndicator {
     this.checkDependantPackages();
   }
 
-  public async isHealthy(
+  public async pingCheck(
     key: string,
     options?: DatabaseHealthCheckOptions,
   ): Promise<HealthIndicatorResult> {

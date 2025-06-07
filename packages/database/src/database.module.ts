@@ -144,7 +144,7 @@ export class DatabaseModule
 
     if (healthCheckOptions && typeof this.healthCheckRegistry !== "undefined") {
       this.healthCheckRegistry.register(() =>
-        this.healthIndicator.healthCheck(
+        this.healthIndicator.pingCheck(
           "database",
           healthCheckOptions === true ? undefined : healthCheckOptions,
         ),
