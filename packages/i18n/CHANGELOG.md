@@ -1,5 +1,11 @@
 # @nest-boot/i18n
 
+## 7.0.0-beta.1
+
+### Patch Changes
+
+- 7385d41: 修复对等依赖错误
+
 ## 7.0.0-beta.0
 
 ### Major Changes
