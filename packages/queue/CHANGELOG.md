@@ -1,5 +1,21 @@
 # @nest-boot/queue
 
+## 7.0.0-beta.0
+
+### Major Changes
+
+- 14895ac: ESLint 升级到 v9
+
+### Minor Changes
+
+- 011fec5: refactor: Remove JobEntityService and integrate job handling directly into Queue class
+
+### Patch Changes
+
+- Updated dependencies [14895ac]
+  - @nest-boot/request-context@7.0.0-beta.0
+  - @nest-boot/common@7.0.0-beta.0
+
 ## 6.12.1
 
 ### Patch Changes

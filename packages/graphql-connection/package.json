@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/graphql-connection",
-  "version": "6.10.4",
+  "version": "7.0.0-beta.0",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
   "homepage": "",
@@ -27,8 +27,8 @@
   "devDependencies": {
     "@mikro-orm/core": "^6.4.16",
     "@mikro-orm/knex": "^6.4.16",
-    "@nest-boot/eslint-config": "workspace:^6.10.2",
-    "@nest-boot/eslint-plugin": "workspace:^6.10.2",
+    "@nest-boot/eslint-config": "workspace:^7.0.0-beta.0",
+    "@nest-boot/eslint-plugin": "workspace:^7.0.0-beta.0",
     "@nest-boot/tsconfig": "workspace:^6.0.0",
     "@nestjs/apollo": "^13.1.0",
     "@nestjs/common": "^11.1.3",

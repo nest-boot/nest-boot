@@ -1,5 +1,17 @@
 # @nest-boot/validator
 
+## 7.0.0-beta.0
+
+### Major Changes
+
+- 14895ac: ESLint 升级到 v9
+
+### Patch Changes
+
+- Updated dependencies [14895ac]
+  - @nest-boot/common@7.0.0-beta.0
+  - @nest-boot/i18n@7.0.0-beta.0
+
 ## 6.10.2
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @nest-boot/file-upload
 
+## 7.0.0-beta.0
+
+### Major Changes
+
+- 14895ac: ESLint 升级到 v9
+
 ## 6.3.2
 
 ### Patch Changes
