@@ -1,10 +1,9 @@
-import { promiseTimeout } from "@nest-boot/health-check";
 import {
-  HealthCheckError,
-  HealthIndicator,
-  type HealthIndicatorResult,
-  TimeoutError,
+  HealthIndicatorService,
+  promiseTimeout,
+  PromiseTimeoutError,
 } from "@nest-boot/health-check";
+import { type HealthIndicatorResult } from "@nest-boot/health-check";
 import { Injectable, Scope } from "@nestjs/common";
 import { parse } from "redis-info";
 
@@ -13,22 +12,26 @@ import { Redis } from "./redis";
 export interface RedisPingCheckSettings {
   timeout?: number;
 
+  /**
+   * 内存最大使用率百分比 (0-100)
+   */
   memoryMaximumUtilization?: number;
 }
 
 @Injectable({ scope: Scope.TRANSIENT })
-export class RedisHealthIndicator extends HealthIndicator {
-  constructor(private readonly redis: Redis) {
-    super();
-  }
+export class RedisHealthIndicator {
+  constructor(
+    private readonly redis: Redis,
+    private readonly healthIndicatorService: HealthIndicatorService,
+  ) {}
 
   async pingCheck(
     key: string,
     options: RedisPingCheckSettings = {},
   ): Promise<HealthIndicatorResult> {
-    let isHealthy = false;
-
     const { timeout = 1000, memoryMaximumUtilization = 80 } = options;
+
+    const check = this.healthIndicatorService.check(key);
 
     try {
       await promiseTimeout(
@@ -36,47 +39,38 @@ export class RedisHealthIndicator extends HealthIndicator {
         (async () => {
           const info = parse(await this.redis.info());
 
-          const currentMemoryMaximumUtilization =
-            info.maxmemory === "0"
-              ? 0
-              : Number(info.used_memory) / Number(info.maxmemory);
+          // 检查内存使用率
+          if (info.maxmemory && info.maxmemory !== "0") {
+            const maxMemory = Number(info.maxmemory);
+            const usedMemory = Number(info.used_memory);
 
-          if (currentMemoryMaximumUtilization > memoryMaximumUtilization) {
-            throw new HealthCheckError(
-              "Used memory exceeded the set maximum utilization",
-              this.getStatus(key, isHealthy, {
-                message: "Used memory exceeded the set maximum utilization",
-              }),
-            );
+            if (maxMemory > 0) {
+              const currentMemoryUtilizationPercent =
+                (usedMemory / maxMemory) * 100;
+
+              if (currentMemoryUtilizationPercent > memoryMaximumUtilization) {
+                throw new Error(
+                  `Used memory exceeded the set maximum utilization: ${currentMemoryUtilizationPercent.toFixed(2)}% > ${String(memoryMaximumUtilization)}%`,
+                );
+              }
+            }
           }
 
           return info;
         })(),
       );
 
-      isHealthy = true;
+      return check.up();
     } catch (err) {
-      if (err instanceof HealthCheckError) {
-        throw err;
+      if (err instanceof PromiseTimeoutError) {
+        return check.down(`timeout of ${String(timeout)}ms exceeded`);
       }
 
-      if (err instanceof TimeoutError) {
-        throw new TimeoutError(
-          timeout,
-          this.getStatus(key, isHealthy, {
-            message: `timeout of ${String(timeout)}ms exceeded`,
-          }),
-        );
+      if (err instanceof Error) {
+        return check.down(err.message);
       }
-    }
 
-    if (isHealthy) {
-      return this.getStatus(key, isHealthy);
+      return check.down();
     }
-
-    throw new HealthCheckError(
-      `${key} is not available`,
-      this.getStatus(key, isHealthy),
-    );
   }
 }

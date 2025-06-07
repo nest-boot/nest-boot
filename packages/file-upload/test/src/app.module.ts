@@ -1,6 +1,7 @@
-import { GraphQLModule } from "@nest-boot/graphql";
+import { ApolloDriver } from "@nestjs/apollo";
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
+import { GraphQLModule } from "@nestjs/graphql";
 import bytes from "bytes";
 
 import { FileUploadModule } from "../../src";
@@ -9,19 +10,10 @@ import { TestResolver } from "./test.resolver";
 const ConfigDynamicModule = ConfigModule.forRoot({ isGlobal: true });
 
 const GraphQLDynamicModule = GraphQLModule.forRootAsync({
-  inject: [ConfigService],
-  useFactory: (config: ConfigService) => ({
+  driver: ApolloDriver,
+  useFactory: () => ({
     playground: true,
-    autoSchemaFile: "./schema.gql",
-    complexity: {
-      rateLimit: {
-        connection: {
-          host: config.get("REDIS_HOST"),
-          port: config.get("REDIS_PORT"),
-          password: config.get("REDIS_PASSWORD"),
-        },
-      },
-    },
+    autoSchemaFile: true,
   }),
 });
 

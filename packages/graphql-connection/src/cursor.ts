@@ -11,6 +11,7 @@ export class Cursor implements Record<string, any> {
         Object.entries(payload).forEach(([key, value]) => {
           this[key] = value;
         });
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (err) {
         //
       }

@@ -68,7 +68,6 @@ export class GraphQLModule extends ConfigurableModuleClass {
       },
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-floating-promises
     dynamicModule.imports = [
       ...(dynamicModule.imports ?? []),
       BaseGraphQLDynamicModule,

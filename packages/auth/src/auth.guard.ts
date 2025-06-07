@@ -80,7 +80,7 @@ export class AuthGuard implements CanActivate {
   private extractPersonalAccessToken(req: Request): string | null {
     const authorizationHeader = req.get("authorization");
     if (typeof authorizationHeader !== "undefined") {
-      const matched = authorizationHeader.match(/(\S+)\s+(\S+)/);
+      const matched = /(\S+)\s+(\S+)/.exec(authorizationHeader);
 
       if (matched !== null && matched[1].toLowerCase() === "bearer") {
         return matched[2];

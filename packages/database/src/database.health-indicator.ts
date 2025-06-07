@@ -2,25 +2,25 @@ import { Connection, MikroORM } from "@mikro-orm/core";
 import {
   checkPackages,
   DatabaseNotConnectedError,
-  HealthCheckError,
-  HealthIndicator,
   HealthIndicatorResult,
+  HealthIndicatorService,
   promiseTimeout,
   PromiseTimeoutError,
-  TimeoutError,
 } from "@nest-boot/health-check";
 import { Injectable, Scope } from "@nestjs/common";
 
 import { DatabaseHealthCheckOptions } from "./interfaces";
 
 @Injectable({ scope: Scope.TRANSIENT })
-export class DatabaseHealthIndicator extends HealthIndicator {
-  constructor(private orm: MikroORM) {
-    super();
+export class DatabaseHealthIndicator {
+  constructor(
+    private orm: MikroORM,
+    private readonly healthIndicatorService: HealthIndicatorService,
+  ) {
     this.checkDependantPackages();
   }
 
-  public async healthCheck(
+  public async pingCheck(
     key: string,
     options?: DatabaseHealthCheckOptions,
   ): Promise<HealthIndicatorResult> {
@@ -29,8 +29,10 @@ export class DatabaseHealthIndicator extends HealthIndicator {
     const connection = options?.connection ?? this.orm.em.getConnection();
     const timeout = options?.timeout ?? 1000;
 
+    const check = this.healthIndicatorService.check(key);
+
     if (!connection) {
-      return this.getStatus(key, false);
+      return check.down({ database: "connection not found" });
     }
 
     try {
@@ -41,29 +43,17 @@ export class DatabaseHealthIndicator extends HealthIndicator {
       }
     } catch (error) {
       if (error instanceof PromiseTimeoutError) {
-        throw new TimeoutError(
-          timeout,
-          this.getStatus(key, false, {
-            message: `timeout of ${String(timeout)}ms exceeded`,
-          }),
-        );
-      }
-      if (error instanceof DatabaseNotConnectedError) {
-        throw new HealthCheckError(
-          error.message,
-          this.getStatus(key, false, {
-            message: error.message,
-          }),
-        );
+        return check.down(`timeout of ${String(timeout)}ms exceeded`);
       }
 
-      throw new HealthCheckError(
-        `${key} is not available`,
-        this.getStatus(key, false),
-      );
+      if (error instanceof DatabaseNotConnectedError) {
+        return check.down(error.message);
+      }
+
+      return check.down();
     }
 
-    return this.getStatus(key, true);
+    return check.up();
   }
 
   private checkDependantPackages() {
@@ -81,6 +71,6 @@ export class DatabaseHealthIndicator extends HealthIndicator {
       }
     };
 
-    return await promiseTimeout(timeout, checker());
+    await promiseTimeout(timeout, checker());
   }
 }

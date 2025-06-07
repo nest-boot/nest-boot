@@ -162,10 +162,12 @@ export class Queue<
   }
 
   getRepeatableJobs(): Promise<RepeatableJob[]> {
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
     return this.bullQueue.getRepeatableJobs();
   }
 
   removeRepeatableByKey(key: string): Promise<boolean> {
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
     return this.bullQueue.removeRepeatableByKey(key);
   }
 

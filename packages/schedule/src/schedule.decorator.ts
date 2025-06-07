@@ -6,8 +6,7 @@ import { type ScheduleOptions } from "./schedule-options.interface";
 export const Schedule =
   (options: ScheduleOptions) =>
   <T>(
-    // eslint-disable-next-line @typescript-eslint/ban-types
-    target: Object,
+    target: object,
     propertyKey: string,
     descriptor: TypedPropertyDescriptor<T>,
   ) => {

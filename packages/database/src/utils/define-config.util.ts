@@ -11,6 +11,7 @@ export async function defineConfig<D extends IDatabaseDriver>(
 ): Promise<Options<D>> {
   const app = await NestFactory.createApplicationContext(module, {
     logger: false,
+    // eslint-disable-next-line @typescript-eslint/no-misused-spread
     ...options,
   });
 

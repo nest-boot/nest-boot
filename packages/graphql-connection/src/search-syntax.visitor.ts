@@ -399,6 +399,7 @@ export class SearchSyntaxVisitor<Entity extends object>
             return isNaN(date.getTime()) ? undefined : date;
           }
         }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (err) {
         return;
       }

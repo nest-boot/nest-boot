@@ -9,6 +9,4 @@ export type OrderFieldKey<T> = Uppercase<DotToUnderscore<AutoPath<T, string>>>;
 
 export type OrderFieldValue<T> = AutoPath<T, string>;
 
-export type OrderFieldType<T> = {
-  [key in OrderFieldKey<T>]: OrderFieldValue<T>;
-};
+export type OrderFieldType<T> = Record<OrderFieldKey<T>, OrderFieldValue<T>>;

@@ -212,8 +212,7 @@ export class ConnectionQueryBuilder<
   private getCursorFilterQuery(): FilterQuery<Entity> | null {
     const idFilterQuery: FilterQuery<Entity> | null =
       typeof this.cursor?.id !== "undefined"
-        ? // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-          ({
+        ? ({
             id: {
               [this.pagingType === PagingType.FORWARD ? "$gt" : "$lt"]:
                 this.cursor.id,
