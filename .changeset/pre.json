@@ -32,5 +32,10 @@
     "@nest-boot/view": "6.10.2",
     "@nest-boot/website": "0.0.0"
   },
-  "changesets": ["swift-olives-roll", "tame-crabs-worry", "tame-yaks-occur"]
+  "changesets": [
+    "public-bags-press",
+    "swift-olives-roll",
+    "tame-crabs-worry",
+    "tame-yaks-occur"
+  ]
 }

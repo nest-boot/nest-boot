@@ -1,5 +1,11 @@
 # @nest-boot/file-upload
 
+## 7.0.0-beta.1
+
+### Minor Changes
+
+- 7f715cc: 上传客户端改为 s3
+
 ## 7.0.0-beta.0
 
 ### Major Changes
