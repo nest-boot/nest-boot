@@ -92,13 +92,12 @@ jobs:
           DATABASE_PASSWORD: postgres
           REDIS_HOST: localhost
           REDIS_PORT: 6379
-          STORAGE_ENDPOINT: localhost
-          STORAGE_PORT: 9000
-          STORAGE_USE_SSL: false
-          STORAGE_ACCESS_KEY_ID: minio
-          STORAGE_SECRET_KEY: password
-          STORAGE_BUCKET: test-bucket
-          STORAGE_PATH_STYLE: true
+          S3_ENDPOINT: http://localhost:9000
+          S3_REGION: us-east-1
+          S3_BUCKET: test-bucket
+          S3_FORCE_PATH_STYLE: true
+          S3_ACCESS_KEY_ID: minio
+          S3_SECRET_ACCESS_KEY: password
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v3
