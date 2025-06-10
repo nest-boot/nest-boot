@@ -26,6 +26,8 @@
   },
   "devDependencies": {
     "@apollo/server": "^4.12.2",
+    "@aws-sdk/client-s3": "^3.826.0",
+    "@aws-sdk/s3-presigned-post": "^3.826.0",
     "@nest-boot/eslint-config": "workspace:^7.0.0-beta.0",
     "@nest-boot/eslint-plugin": "workspace:^",
     "@nest-boot/tsconfig": "workspace:^6.0.0",
@@ -45,7 +47,6 @@
     "form-data": "^4.0.3",
     "graphql": "^16.11.0",
     "jest": "^29.7.0",
-    "minio": "^8.0.5",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "supertest": "^7.1.1",
@@ -59,11 +60,12 @@
   },
   "peerDependencies": {
     "@apollo/server": "^4.0.0",
+    "@aws-sdk/client-s3": "^3.0.0",
+    "@aws-sdk/s3-presigned-post": "^3.0.0",
     "@nestjs/apollo": "^13.0.0",
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
     "@nestjs/graphql": "^13.0.0",
-    "minio": "^7.0.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.0.0"
   },

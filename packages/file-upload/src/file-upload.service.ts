@@ -1,8 +1,13 @@
+import {
+  CopyObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from "@aws-sdk/client-s3";
+import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import dayjs from "dayjs";
 import mimeTypes from "mime-types";
-import { Client, CopyConditions, ItemBucketMetadata } from "minio";
 import { extname } from "path";
 import { Readable } from "stream";
 
@@ -13,13 +18,16 @@ import { FileUploadInput } from "./inputs/file-upload.input";
 
 @Injectable()
 export class FileUploadService {
-  private readonly client: Client;
+  private readonly s3Client: S3Client;
 
   constructor(
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly options: FileUploadModuleOptions,
   ) {
-    this.client = new Client(options);
+    this.s3Client =
+      options.client instanceof S3Client
+        ? options.client
+        : new S3Client(options.client);
   }
 
   async create(input: FileUploadInput[]): Promise<FileUpload[]> {
@@ -38,36 +46,30 @@ export class FileUploadService {
         );
       }
 
-      const policy = this.client.newPostPolicy();
+      const conditions: any[] = [
+        ...(limit ? [["content-length-range", 1, limit.fileSize]] : []),
+        ["eq", "$bucket", this.options.bucket],
+        ["eq", "$key", key],
+        ["eq", "$success_action_status", "201"],
+        ["eq", "$Content-Type", item.mimeType],
+      ];
 
-      policy.formData = {
-        bucket: this.options.bucket,
-        key,
-        success_action_status: "201",
-        "Content-Type": item.mimeType,
-      };
-
-      policy.policy = {
-        conditions: [
-          ...(limit ? [["content-length-range", 1, limit.fileSize]] : []),
-          ["eq", "$bucket", this.options.bucket],
-          ["eq", "$key", key],
-          ["eq", "$success_action_status", "201"],
-          ["eq", "$Content-Type", item.mimeType],
-        ],
-        // 上传链接的过期时间，不是临时文件的过期时间
-        expiration: new Date(
-          Date.now() + (this.options.expires ?? 3600) * 1000,
-        ).toISOString(),
-      };
-
-      const presignedPost = await this.client.presignedPostPolicy(policy);
+      const presignedPost = await createPresignedPost(this.s3Client, {
+        Bucket: this.options.bucket,
+        Key: key,
+        Conditions: conditions as any,
+        Fields: {
+          success_action_status: "201",
+          "Content-Type": item.mimeType,
+        },
+        Expires: this.options.expires ?? 3600,
+      });
 
       return {
-        url: presignedPost.postURL,
+        url: presignedPost.url,
         fields: [
-          { name: "key", value: presignedPost.formData.key },
-          ...Object.entries(presignedPost.formData)
+          { name: "key", value: presignedPost.fields.key },
+          ...Object.entries(presignedPost.fields)
             .filter(([name]) => name !== "key")
             .map(([name, value]) => ({
               name,
@@ -82,43 +84,48 @@ export class FileUploadService {
 
   // 临时文件转永久文件
   async persist(tmpUrl: string): Promise<string> {
-    const originPath = `${this.options.bucket}/tmp/${tmpUrl.split("/tmp/")[1]}`;
+    const tmpKey = tmpUrl.split("/tmp/")[1];
+    const originKey = `tmp/${tmpKey}`;
 
-    const targetPath = `files/${dayjs().format("YYYY/MM/DD")}/${String(
-      originPath.split("/").pop(),
-    )}`;
+    const targetKey = `files/${dayjs().format("YYYY/MM/DD")}/${tmpKey}`;
 
-    const conditions = new CopyConditions();
+    const copyCommand = new CopyObjectCommand({
+      Bucket: this.options.bucket,
+      CopySource: `${this.options.bucket}/${originKey}`,
+      Key: targetKey,
+    });
 
-    await this.client.copyObject(
-      this.options.bucket,
-      targetPath,
-      originPath,
-      conditions,
-    );
+    await this.s3Client.send(copyCommand);
 
-    return this.getFileUrl(targetPath);
+    return await this.getFileUrl(targetKey);
   }
 
   async upload(
     data: Readable | Buffer | string,
-    metadata: ItemBucketMetadata & { "Content-Type": string },
+    metadata: {
+      "Content-Type": string;
+      extension?: string;
+      [key: string]: any;
+    },
     persist = false,
   ): Promise<string> {
     const extension: string =
-      metadata.extension ?? mimeTypes.extension(metadata["Content-Type"]);
+      metadata.extension ??
+      (mimeTypes.extension(metadata["Content-Type"]) || "bin");
 
     const filePath = `tmp/${dayjs().format("YYYY/MM/DD")}/${randomUUID()}.${extension}`;
 
-    await this.client.putObject(
-      this.options.bucket,
-      filePath,
-      data,
-      undefined,
-      metadata,
+    await this.s3Client.send(
+      new PutObjectCommand({
+        Bucket: this.options.bucket,
+        Key: filePath,
+        Body: data,
+        ContentType: metadata["Content-Type"],
+        Metadata: metadata,
+      }),
     );
 
-    const tmpUrl = this.getFileUrl(filePath);
+    const tmpUrl = await this.getFileUrl(filePath);
 
     if (!persist) {
       return tmpUrl;
@@ -128,9 +135,29 @@ export class FileUploadService {
     return await this.persist(tmpUrl);
   }
 
-  private getFileUrl(filePath: string): string {
-    return this.options.pathStyle
-      ? `${this.options.useSSL !== false ? "https" : "http"}://${this.options.endPoint}${this.options.port ? `:${String(this.options.port)}` : ""}/${this.options.bucket}/${filePath}`
-      : `${this.options.useSSL !== false ? "https" : "http"}://${this.options.bucket}.${this.options.endPoint}${this.options.port ? `:${String(this.options.port)}` : ""}/${filePath}`;
+  private async getFileUrl(filePath: string): Promise<string> {
+    // 获取 S3Client 的配置
+    const config = this.s3Client.config;
+    const forcePathStyle = config.forcePathStyle;
+    const endpoint = await config.endpoint?.();
+
+    if (!endpoint) {
+      throw new Error("Endpoint is not configured");
+    }
+
+    // 构造基础 URL
+    const protocol = String(endpoint.protocol);
+    const hostname = String(endpoint.hostname);
+    const port = endpoint.port ? `:${String(endpoint.port)}` : "";
+    const baseUrl = `${protocol}//${hostname}${port}`;
+
+    // 根据配置生成正确的 URL
+    if (forcePathStyle) {
+      // Path-style URL: https://endpoint/bucket/key
+      return `${baseUrl}/${this.options.bucket}/${filePath}`;
+    } else {
+      // Virtual-hosted-style URL: https://bucket.endpoint/key
+      return `${protocol}//${this.options.bucket}.${hostname}${port}/${filePath}`;
+    }
   }
 }

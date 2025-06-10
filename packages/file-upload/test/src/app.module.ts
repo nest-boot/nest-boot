@@ -20,24 +20,17 @@ const GraphQLDynamicModule = GraphQLModule.forRootAsync({
 const FileUploadDynamicModule = FileUploadModule.registerAsync({
   inject: [ConfigService],
   useFactory: (configService: ConfigService) => {
-    const bucket = configService.get("STORAGE_BUCKET");
-
-    if (bucket === undefined) {
-      throw new Error("S3 BUCKET is not defined");
-    }
-
     return {
-      bucket,
-      endPoint: configService.getOrThrow("STORAGE_ENDPOINT"),
-      ...(configService.get("STORAGE_PORT")
-        ? { port: +configService.get("STORAGE_PORT") }
-        : {}),
-      ...(configService.get("STORAGE_USE_SSL")
-        ? { useSSL: configService.get("STORAGE_USE_SSL") === "true" }
-        : {}),
-      accessKey: configService.getOrThrow("STORAGE_ACCESS_KEY_ID"),
-      secretKey: configService.getOrThrow("STORAGE_SECRET_KEY"),
-      pathStyle: configService.get("STORAGE_PATH_STYLE") === "true",
+      bucket: configService.getOrThrow("S3_BUCKET"),
+      client: {
+        endpoint: configService.getOrThrow("S3_ENDPOINT"),
+        region: configService.get("S3_REGION"),
+        forcePathStyle: configService.get("S3_FORCE_PATH_STYLE") === "true",
+        credentials: {
+          accessKeyId: configService.getOrThrow("S3_ACCESS_KEY_ID"),
+          secretAccessKey: configService.getOrThrow("S3_SECRET_ACCESS_KEY"),
+        },
+      },
       limits: [
         {
           // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
