@@ -1,5 +1,11 @@
 # @nest-boot/crypt
 
+## 7.0.0-beta.1
+
+### Patch Changes
+
+- 79ef4a8: 移除 @nest-boot/common 依赖
+
 ## 7.0.0-beta.0
 
 ### Major Changes

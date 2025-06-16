@@ -23,8 +23,8 @@
   "dependencies": {
     "@nest-boot/eslint-config": "workspace:^7.0.0-beta.0",
     "@nest-boot/eslint-plugin": "workspace:^7.0.0-beta.0",
-    "@nest-boot/queue": "workspace:^7.0.0-beta.0",
-    "@nest-boot/request-context": "workspace:^7.0.0-beta.0",
+    "@nest-boot/queue": "workspace:^7.0.0-beta.1",
+    "@nest-boot/request-context": "workspace:^7.0.0-beta.1",
     "@nest-boot/tsconfig": "workspace:^6.0.0",
     "@nestjs/common": "^11.1.3",
     "@nestjs/config": "^4.0.2",

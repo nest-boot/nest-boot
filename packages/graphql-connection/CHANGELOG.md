@@ -1,5 +1,11 @@
 # @nest-boot/graphql-connection
 
+## 7.0.0-beta.1
+
+### Patch Changes
+
+- 762ad68: 更新 @nestjs/apollo 依赖版本至 ^13.0.0
+
 ## 7.0.0-beta.0
 
 ### Major Changes
