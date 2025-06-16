@@ -21,11 +21,7 @@ import { RequestContextMiddleware } from "./request-context.middleware";
   exports: [RequestContextMiddleware],
 })
 export class RequestContextModule implements NestModule {
-  constructor(
-    private readonly requestContextMiddleware: RequestContextMiddleware,
-  ) {}
-
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(this.requestContextMiddleware.use).forRoutes("*");
+    consumer.apply(RequestContextMiddleware).forRoutes("*");
   }
 }

@@ -4,15 +4,8 @@ on:
   push:
     branches:
       - master
-      - beta
-      - alpha
-      - "*.x"
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
-
-permissions:
-  contents: write
-  pull-requests: write
 
 jobs:
   build:
@@ -70,6 +63,7 @@ jobs:
         with:
           version: pnpm version-packages
           publish: pnpm publish-packages
+          createGithubReleases: true
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
