@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/eslint-config",
-  "version": "7.0.0-beta.0",
+  "version": "7.0.0-beta.1",
   "main": "index.js",
   "types": "index.d.ts",
   "license": "MIT",
@@ -10,7 +10,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^9.28.0",
-    "@nest-boot/eslint-plugin": "workspace:^7.0.0-beta.0",
+    "@nest-boot/eslint-plugin": "workspace:^7.0.0-beta.1",
     "@typescript-eslint/eslint-plugin": "^8.33.1",
     "@typescript-eslint/parser": "^8.33.1",
     "eslint": "^9.28.0",
@@ -26,7 +26,7 @@
   "peerDependencies": {
     "@eslint/eslintrc": "^3.0.0",
     "@eslint/js": "^9.0.0",
-    "@nest-boot/eslint-plugin": "workspace:^7.0.0-beta.0",
+    "@nest-boot/eslint-plugin": "workspace:^7.0.0-beta.1",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "eslint": "^9.0.0",

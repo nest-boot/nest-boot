@@ -1,5 +1,13 @@
 # @nest-boot/logger
 
+## 7.0.0-beta.2
+
+### Patch Changes
+
+- b5e6548: 重新发布版本
+- Updated dependencies [b5e6548]
+  - @nest-boot/request-context@7.0.0-beta.2
+
 ## 7.0.0-beta.1
 
 ### Patch Changes
