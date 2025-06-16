@@ -9,7 +9,6 @@
     "@nest-boot/example-repl": "0.0.0-development",
     "@nest-boot/example-schedule": "0.0.0-development",
     "@nest-boot/auth": "6.14.1",
-    "@nest-boot/common": "6.10.2",
     "@nest-boot/crypt": "6.10.2",
     "@nest-boot/database": "6.17.1",
     "@nest-boot/eslint-config": "6.10.2",

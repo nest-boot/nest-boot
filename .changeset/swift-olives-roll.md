@@ -10,7 +10,6 @@
 "@nest-boot/schedule": major
 "@nest-boot/graphql": major
 "@nest-boot/metrics": major
-"@nest-boot/common": major
 "@nest-boot/logger": major
 "@nest-boot/mailer": major
 "@nest-boot/crypt": major
