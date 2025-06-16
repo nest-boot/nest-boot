@@ -26,7 +26,7 @@
     "lint": "turbo run lint",
     "changeset": "changeset",
     "version-packages": "changeset version && pnpm install --no-frozen-lockfile && pnpm format",
-    "publish-packages": "pnpm build:packages && pnpm publish --tag beta --filter=./packages/*"
+    "publish-packages": "pnpm build:packages && changeset publish --filter=./packages/*"
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.4",
