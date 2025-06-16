@@ -24,7 +24,6 @@
     "fast-glob": "^3.3.3"
   },
   "devDependencies": {
-    "@nest-boot/common": "workspace:^7.0.0-beta.0",
     "@nest-boot/eslint-config": "workspace:^7.0.0-beta.0",
     "@nest-boot/eslint-plugin": "workspace:^7.0.0-beta.0",
     "@nest-boot/tsconfig": "workspace:^6.0.0",
@@ -40,7 +39,6 @@
     "typescript": "^5.8.3"
   },
   "peerDependencies": {
-    "@nest-boot/common": "workspace:^7.0.0-beta.0",
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
     "handlebars": "^4.7.7",

@@ -9,17 +9,7 @@ import {
 
 @Injectable()
 export class RequestContextMiddleware implements NestMiddleware {
-  readonly use: NestMiddleware["use"];
-
-  constructor() {
-    this.use = this.handle.bind(this);
-  }
-
-  private async handle(
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> {
+  async use(req: Request, res: Response, next: NextFunction): Promise<void> {
     if (RequestContext.isActive()) {
       next();
       return;
