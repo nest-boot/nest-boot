@@ -26,7 +26,7 @@
     "@nest-boot/queue": "workspace:^7.0.0-beta.1",
     "@nest-boot/request-context": "workspace:^7.0.0-beta.1",
     "@nest-boot/schedule": "workspace:^7.0.0-beta.1",
-    "@nest-boot/tsconfig": "workspace:^6.0.0",
+    "@nest-boot/tsconfig": "workspace:*",
     "@nestjs/common": "^11.1.3",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.3",
@@ -37,7 +37,7 @@
     "rxjs": "^7.8.2"
   },
   "devDependencies": {
-    "@nest-boot/tsconfig": "workspace:^6.0.0",
+    "@nest-boot/tsconfig": "workspace:*",
     "@nestjs/cli": "^11.0.7",
     "@nestjs/schematics": "^11.0.5",
     "@nestjs/testing": "^11.1.3",
