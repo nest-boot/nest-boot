@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/file-upload",
-  "version": "7.0.0-beta.1",
+  "version": "7.0.0-beta.2",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
   "homepage": "",
@@ -28,7 +28,7 @@
     "@apollo/server": "^4.12.2",
     "@aws-sdk/client-s3": "^3.826.0",
     "@aws-sdk/s3-presigned-post": "^3.826.0",
-    "@nest-boot/eslint-config": "workspace:^7.0.0-beta.0",
+    "@nest-boot/eslint-config": "workspace:^7.0.0-beta.1",
     "@nest-boot/eslint-plugin": "workspace:^",
     "@nest-boot/tsconfig": "workspace:*",
     "@nestjs/apollo": "^13.1.0",

@@ -1,5 +1,11 @@
 # @nest-boot/eslint-plugin
 
+## 7.0.0-beta.1
+
+### Patch Changes
+
+- b5e6548: 重新发布版本
+
 ## 7.0.0-beta.0
 
 ### Major Changes

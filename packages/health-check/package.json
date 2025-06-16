@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/health-check",
-  "version": "7.0.0-beta.1",
+  "version": "7.0.0-beta.2",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
   "homepage": "",
@@ -20,8 +20,8 @@
     "lint": "eslint \"{src,test}/**/*.ts\" --fix"
   },
   "devDependencies": {
-    "@nest-boot/eslint-config": "workspace:^7.0.0-beta.0",
-    "@nest-boot/eslint-plugin": "workspace:^7.0.0-beta.0",
+    "@nest-boot/eslint-config": "workspace:^7.0.0-beta.1",
+    "@nest-boot/eslint-plugin": "workspace:^7.0.0-beta.1",
     "@nest-boot/tsconfig": "workspace:*",
     "@nestjs/common": "^11.1.3",
     "@nestjs/core": "^11.1.3",
