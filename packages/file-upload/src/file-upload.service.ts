@@ -66,7 +66,13 @@ export class FileUploadService {
       });
 
       return {
-        url: presignedPost.url,
+        url: this.options.url
+          ? (() => {
+              const originalUrl = new URL(presignedPost.url);
+              const customUrl = new URL(this.options.url);
+              return `${customUrl.origin}${originalUrl.pathname}${originalUrl.search}`;
+            })()
+          : presignedPost.url,
         fields: [
           { name: "key", value: presignedPost.fields.key },
           ...Object.entries(presignedPost.fields)

@@ -7,6 +7,7 @@ export interface FileUploadLimit {
 
 export interface FileUploadModuleOptions {
   client: S3Client | S3ClientConfig;
+  url?: string;
   bucket: string;
   expires?: number;
   limits?: FileUploadLimit[];
