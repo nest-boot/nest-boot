@@ -1,5 +1,11 @@
 # @nest-boot/file-upload
 
+## 7.0.0-beta.3
+
+### Patch Changes
+
+- 7c761d6: 添加可选的自定义 URL 支持
+
 ## 7.0.0-beta.2
 
 ### Patch Changes
