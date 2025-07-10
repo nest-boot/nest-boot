@@ -1634,9 +1634,6 @@ importers:
       '@nest-boot/eslint-plugin':
         specifier: workspace:^7.0.0-beta.1
         version: link:../eslint-plugin
-      '@nest-boot/health-check':
-        specifier: workspace:^7.0.0-beta.2
-        version: link:../health-check
       '@nest-boot/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
@@ -1652,9 +1649,6 @@ importers:
       '@types/jest':
         specifier: ^29.5.14
         version: 29.5.14
-      '@types/redis-info':
-        specifier: ^3.0.0
-        version: 3.0.3
       eslint:
         specifier: ^9.28.0
         version: 9.28.0

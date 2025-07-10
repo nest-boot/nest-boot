@@ -1,9 +1,7 @@
-import { HealthCheckRegistry } from "@nest-boot/health-check";
-import { Module, type OnApplicationShutdown, Optional } from "@nestjs/common";
+import { Module, type OnApplicationShutdown } from "@nestjs/common";
 import { type RedisOptions } from "ioredis";
 
 import { Redis } from "./redis";
-import { RedisHealthIndicator } from "./redis.health-indicator";
 import {
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
@@ -16,7 +14,6 @@ import {
       inject: [MODULE_OPTIONS_TOKEN],
       useFactory: (options: RedisOptions) => new Redis(options),
     },
-    RedisHealthIndicator,
   ],
   exports: [Redis],
 })
@@ -24,21 +21,8 @@ export class RedisModule
   extends ConfigurableModuleClass
   implements OnApplicationShutdown
 {
-  constructor(
-    private readonly redis: Redis,
-    private readonly healthIndicator: RedisHealthIndicator,
-    @Optional()
-    private readonly healthCheckRegistry?: HealthCheckRegistry,
-  ) {
+  constructor(private readonly redis: Redis) {
     super();
-  }
-
-  onModuleInit(): void {
-    if (typeof this.healthCheckRegistry !== "undefined") {
-      this.healthCheckRegistry.register(
-        async () => await this.healthIndicator.pingCheck("redis"),
-      );
-    }
   }
 
   async onApplicationShutdown(): Promise<void> {
