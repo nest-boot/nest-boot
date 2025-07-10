@@ -1,5 +1,11 @@
 # @nest-boot/redis
 
+## 7.0.0-beta.3
+
+### Patch Changes
+
+- 0486915: 移除 Redis 模块中 @nest-boot/health-check 依赖及相关代码，简化 Redis 模块实现
+
 ## 7.0.0-beta.2
 
 ### Patch Changes
