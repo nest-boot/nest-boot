@@ -90,9 +90,11 @@ export class Logger implements LoggerService {
       }
 
       if (typeof optionalParams[0] === "object") {
-        bindings = { ...bindings, context, ...optionalParams[0] };
+        bindings = { ...bindings, ...optionalParams[0] };
       }
     }
+
+    bindings = { ...bindings, context };
 
     this.pinoLogger[level](bindings, message);
   }
