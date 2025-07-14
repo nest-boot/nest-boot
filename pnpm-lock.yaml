@@ -86,7 +86,7 @@ importers:
         specifier: workspace:^7.0.0-beta.2
         version: link:../../packages/health-check
       '@nest-boot/logger':
-        specifier: workspace:^7.0.0-beta.2
+        specifier: workspace:^7.0.0-beta.3
         version: link:../../packages/logger
       '@nest-boot/request-context':
         specifier: workspace:^7.0.0-beta.2
@@ -334,7 +334,7 @@ importers:
         specifier: workspace:^7.0.0-beta.2
         version: link:../../packages/graphql-connection
       '@nest-boot/logger':
-        specifier: workspace:^7.0.0-beta.2
+        specifier: workspace:^7.0.0-beta.3
         version: link:../../packages/logger
       '@nest-boot/request-context':
         specifier: workspace:^7.0.0-beta.2

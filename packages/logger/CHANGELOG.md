@@ -1,5 +1,11 @@
 # @nest-boot/logger
 
+## 7.0.0-beta.3
+
+### Patch Changes
+
+- 97179ae: 修复日志打印不传对象参数时 context 会丢失
+
 ## 7.0.0-beta.2
 
 ### Patch Changes
