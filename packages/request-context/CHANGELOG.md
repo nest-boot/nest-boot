@@ -1,5 +1,11 @@
 # @nest-boot/request-context
 
+## 7.0.0-beta.3
+
+### Minor Changes
+
+- cf99c26: feat(request-context): 添加 CreateRequestContext 装饰器
+
 ## 7.0.0-beta.2
 
 ### Patch Changes
