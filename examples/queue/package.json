@@ -24,7 +24,7 @@
     "@nest-boot/eslint-config": "workspace:^7.0.0-beta.1",
     "@nest-boot/eslint-plugin": "workspace:^7.0.0-beta.1",
     "@nest-boot/queue": "workspace:^7.0.0-beta.2",
-    "@nest-boot/request-context": "workspace:^7.0.0-beta.2",
+    "@nest-boot/request-context": "workspace:^7.0.0-beta.3",
     "@nest-boot/tsconfig": "workspace:*",
     "@nestjs/common": "^11.1.3",
     "@nestjs/config": "^4.0.2",
