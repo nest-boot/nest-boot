@@ -1,8 +1,6 @@
 ---
 "@nest-boot/request-context": patch
-"@nest-boot/health-check": patch
 "@nest-boot/validator": patch
-"@nest-boot/database": patch
 "@nest-boot/schedule": patch
 "@nest-boot/graphql": patch
 "@nest-boot/metrics": patch
