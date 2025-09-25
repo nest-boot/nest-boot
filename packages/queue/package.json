@@ -39,6 +39,7 @@
     "@nestjs/common": "^11.1.6",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.6",
+    "@nestjs/platform-express": "^11.1.6",
     "@nestjs/testing": "^11.1.6",
     "@types/ioredis-mock": "^8.2.6",
     "@types/jest": "^29.5.14",

@@ -36,6 +36,7 @@
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.6",
     "@nestjs/graphql": "^13.1.0",
+    "@nestjs/platform-express": "^11.1.6",
     "@nestjs/testing": "^11.1.6",
     "@types/bytes": "^3.1.5",
     "@types/mime-types": "^2.1.4",
