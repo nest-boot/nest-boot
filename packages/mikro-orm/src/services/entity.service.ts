@@ -184,7 +184,6 @@ export class EntityService<Entity extends IdEntity> {
 
     if (entity === null) {
       throw new NotFoundException(
-         
         `${_.capitalize(this.entityClass.name)} not found`,
       );
     }
