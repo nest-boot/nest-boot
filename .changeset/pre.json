@@ -29,7 +29,8 @@
     "@nest-boot/tsconfig": "6.10.0",
     "@nest-boot/validator": "6.10.2",
     "@nest-boot/view": "6.10.2",
-    "@nest-boot/website": "0.0.0"
+    "@nest-boot/website": "0.0.0",
+    "@nest-boot/mikro-orm": "7.0.0-beta.2"
   },
   "changesets": [
     "cute-worlds-attack",
@@ -43,6 +44,7 @@
     "swift-olives-roll",
     "tame-crabs-worry",
     "tame-yaks-occur",
+    "tough-deer-drum",
     "violet-cities-prove"
   ]
 }
