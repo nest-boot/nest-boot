@@ -152,8 +152,8 @@ export class FileUploadService {
     }
 
     // 构造基础 URL
-    const protocol = String(endpoint.protocol);
-    const hostname = String(endpoint.hostname);
+    const protocol = endpoint.protocol;
+    const hostname = endpoint.hostname;
     const port = endpoint.port ? `:${String(endpoint.port)}` : "";
     const baseUrl = `${protocol}//${hostname}${port}`;
 
