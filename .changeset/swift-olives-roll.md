@@ -3,10 +3,8 @@
 "@nest-boot/request-context": major
 "@nest-boot/eslint-config": major
 "@nest-boot/eslint-plugin": major
-"@nest-boot/health-check": major
 "@nest-boot/file-upload": major
 "@nest-boot/validator": major
-"@nest-boot/database": major
 "@nest-boot/schedule": major
 "@nest-boot/graphql": major
 "@nest-boot/metrics": major
