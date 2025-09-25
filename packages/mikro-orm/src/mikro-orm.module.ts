@@ -4,7 +4,7 @@ import {
   RequestContext,
   RequestContextModule,
 } from "@nest-boot/request-context";
-import { DynamicModule, OnModuleInit } from "@nestjs/common";
+import { DynamicModule, Module, OnModuleInit } from "@nestjs/common";
 
 import { MikroOrmModuleOptions } from "./interfaces/mikro-orm-module-options.interface";
 import {
@@ -14,6 +14,7 @@ import {
   OPTIONS_TYPE,
 } from "./mikro-orm.module-definition";
 
+@Module({})
 export class MikroOrmModule
   extends ConfigurableModuleClass
   implements OnModuleInit
@@ -22,7 +23,7 @@ export class MikroOrmModule
     super();
   }
 
-  static #patchDynamicModule(
+  private static patchDynamicModule(
     options: Pick<MikroOrmModuleOptions, "driver">,
     dynamicModule: DynamicModule,
   ) {
@@ -49,13 +50,13 @@ export class MikroOrmModule
   }
 
   static forRoot(options: typeof OPTIONS_TYPE) {
-    return this.#patchDynamicModule(options, super.forRoot(options));
+    return this.patchDynamicModule(options, super.forRoot(options));
   }
 
   static forRootAsync(
     options: typeof ASYNC_OPTIONS_TYPE & Pick<MikroOrmModuleOptions, "driver">,
   ) {
-    return this.#patchDynamicModule(options, super.forRootAsync(options));
+    return this.patchDynamicModule(options, super.forRootAsync(options));
   }
 
   static forFeature(...args: Parameters<typeof BaseMikroOrmModule.forFeature>) {
