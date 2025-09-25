@@ -31,6 +31,7 @@
     "@nest-boot/mikro-orm": "7.0.0-beta.2"
   },
   "changesets": [
+    "beige-pens-leave",
     "cute-worlds-attack",
     "fruity-bananas-grin",
     "little-kings-joke",

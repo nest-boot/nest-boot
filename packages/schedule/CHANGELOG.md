@@ -1,5 +1,11 @@
 # @nest-boot/schedule
 
+## 7.0.0-beta.3
+
+### Patch Changes
+
+- 49659ef: fix: 移除 database 和 health-check 模块并格式化代码
+
 ## 7.0.0-beta.2
 
 ### Patch Changes
