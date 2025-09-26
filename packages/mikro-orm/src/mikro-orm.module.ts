@@ -1,4 +1,9 @@
-import { DataloaderType, EntityManager, MikroORM } from "@mikro-orm/core";
+import {
+  DataloaderType,
+  EntityManager,
+  MikroORM,
+  RequestContext as MikroRequestContext,
+} from "@mikro-orm/core";
 import { MikroOrmModule as BaseMikroOrmModule } from "@mikro-orm/nestjs";
 import {
   RequestContext,
@@ -14,7 +19,9 @@ import {
   OPTIONS_TYPE,
 } from "./mikro-orm.module-definition";
 
-@Module({})
+@Module({
+  imports: [RequestContextModule],
+})
 export class MikroOrmModule
   extends ConfigurableModuleClass
   implements OnModuleInit
@@ -30,7 +37,7 @@ export class MikroOrmModule
     dynamicModule.global = true;
 
     dynamicModule.imports = [
-      RequestContextModule,
+      ...(dynamicModule.imports ?? []),
       BaseMikroOrmModule.forRootAsync({
         driver: options.driver,
         inject: [MODULE_OPTIONS_TOKEN],
@@ -77,13 +84,11 @@ export class MikroOrmModule
   }
 
   onModuleInit(): void {
-    RequestContext.registerMiddleware(
-      "database",
-      (ctx, next) => {
-        ctx.set(EntityManager, this.orm.em.fork({ useContext: true }));
+    RequestContext.registerMiddleware("mikro-orm", (ctx, next) => {
+      return MikroRequestContext.create(this.orm.em, () => {
+        ctx.set(EntityManager, this.orm.em);
         return next();
-      },
-      ["logger"],
-    );
+      });
+    });
   }
 }
