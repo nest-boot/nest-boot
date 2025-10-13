@@ -1,7 +1,7 @@
-import { Consumer, InjectQueue, Job, Queue } from "@nest-boot/queue";
+import { InjectQueue } from "@nestjs/bullmq";
 import { Logger, type OnApplicationBootstrap } from "@nestjs/common";
 import { DiscoveryService, MetadataScanner, Reflector } from "@nestjs/core";
-import ms from "ms";
+import { Queue } from "bullmq";
 
 import {
   SCHEDULE_METADATA_KEY,
@@ -9,9 +9,8 @@ import {
 } from "./schedule.module-definition";
 import { type ScheduleOptions } from "./schedule-options.interface";
 
-@Consumer(SCHEDULE_QUEUE_NAME)
-export class ScheduleService implements OnApplicationBootstrap {
-  private readonly logger = new Logger(ScheduleService.name);
+export class ScheduleRegistry implements OnApplicationBootstrap {
+  private readonly logger = new Logger(ScheduleRegistry.name);
 
   private readonly schedules = new Map<
     string,
@@ -29,12 +28,8 @@ export class ScheduleService implements OnApplicationBootstrap {
     private readonly metadataScanner: MetadataScanner,
   ) {}
 
-  async consume(job: Job) {
-    const schedule = this.schedules.get(job.name);
-
-    if (typeof schedule !== "undefined") {
-      await schedule.handler();
-    }
+  get(name: string) {
+    return this.schedules.get(name);
   }
 
   private discoverySchedules() {
@@ -69,54 +64,46 @@ export class ScheduleService implements OnApplicationBootstrap {
   }
 
   private async cleanUnregisteredSchedules(): Promise<void> {
-    const repeatableJobs = await this.queue.getRepeatableJobs();
+    const jobSchedulers = await this.queue.getJobSchedulers();
 
-    await Promise.all(
-      repeatableJobs
-        .filter(
-          (repeatableJob) =>
-            this.schedules
-              .get(repeatableJob.name)
-              ?.options?.value.toString() !== repeatableJob.pattern,
-        )
-        .map(async (repeatableJob) => {
-          await this.queue.removeRepeatableByKey(repeatableJob.key);
+    for (const jobScheduler of jobSchedulers) {
+      if (!this.schedules.get(jobScheduler.name)) {
+        await this.queue.removeJobScheduler(jobScheduler.name);
 
-          this.logger.log(
-            `Removed {${repeatableJob.name}, ${repeatableJob.pattern ?? "null"}}`,
-          );
-        }),
-    );
+        this.logger.log(
+          `Removed {${jobScheduler.name}, ${jobScheduler.pattern ? "cron" : "interval"}, ${String(jobScheduler.pattern ?? jobScheduler.every)}}`,
+        );
+      }
+    }
   }
 
   private async registerSchedules(): Promise<void> {
-    await Promise.all(
-      [...this.schedules.entries()].map(
-        async ([
-          name,
-          {
-            options: { type, value, timezone },
-          },
-        ]) => {
-          await this.queue.add(
-            name,
-            {},
-            {
-              repeat:
-                type === "cron"
-                  ? { pattern: value.toString(), tz: timezone }
-                  : {
-                      every: typeof value === "string" ? ms(value) : value,
-                    },
-              removeOnFail: true,
-              removeOnComplete: true,
-            },
-          );
-
-          this.logger.log(`Registered {${name}, ${type}, ${String(value)}}`);
+    for (const [
+      name,
+      {
+        options: { type, value, timezone, ...jobOptions },
+      },
+    ] of this.schedules.entries()) {
+      await this.queue.upsertJobScheduler(
+        name,
+        {
+          tz: timezone ?? "UTC",
+          ...(type === "cron"
+            ? {
+                pattern: value.toString(),
+              }
+            : {
+                every: Number(value),
+              }),
         },
-      ),
-    );
+        {
+          name,
+          opts: jobOptions,
+        },
+      );
+
+      this.logger.log(`Registered {${name}, ${type}, ${String(value)}}`);
+    }
   }
 
   async onApplicationBootstrap(): Promise<void> {

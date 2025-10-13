@@ -27,8 +27,12 @@ export const Cron = (
     ...(options ?? {}),
   });
 
-export const Interval = (value: number | string) =>
+export const Interval = (
+  value: number | string,
+  options?: Omit<ScheduleOptions, "type" | "value">,
+) =>
   Schedule({
     type: "interval",
     value,
+    ...(options ?? {}),
   });

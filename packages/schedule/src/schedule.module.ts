@@ -1,4 +1,4 @@
-import { QueueModule } from "@nest-boot/queue";
+import { BullModule } from "@nestjs/bullmq";
 import { type DynamicModule, Logger, Module } from "@nestjs/common";
 import { DiscoveryModule } from "@nestjs/core";
 
@@ -8,12 +8,13 @@ import {
   MODULE_OPTIONS_TOKEN,
   type OPTIONS_TYPE,
 } from "./schedule.module-definition";
-import { ScheduleService } from "./schedule.service";
+import { ScheduleProcessor } from "./schedule.processor";
+import { ScheduleRegistry } from "./schedule.registry";
 import { type ScheduleModuleOptions } from "./schedule-module-options.interface";
 
 @Module({
   imports: [DiscoveryModule],
-  providers: [Logger, ScheduleService],
+  providers: [Logger, ScheduleRegistry, ScheduleProcessor],
   exports: [],
 })
 export class ScheduleModule extends ConfigurableModuleClass {
@@ -26,7 +27,7 @@ export class ScheduleModule extends ConfigurableModuleClass {
   }
 
   private static withQueue(dynamicModule: DynamicModule): DynamicModule {
-    const ScheduleQueueDynamicModule = QueueModule.registerAsync({
+    const ScheduleQueueDynamicModule = BullModule.registerQueueAsync({
       name: "schedule",
       imports: [dynamicModule],
       inject: [MODULE_OPTIONS_TOKEN],
