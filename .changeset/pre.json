@@ -28,7 +28,8 @@
     "@nest-boot/validator": "6.10.2",
     "@nest-boot/view": "6.10.2",
     "@nest-boot/website": "0.0.0",
-    "@nest-boot/mikro-orm": "7.0.0-beta.2"
+    "@nest-boot/mikro-orm": "7.0.0-beta.2",
+    "@nest-boot/bullmq": "7.0.0-beta.2"
   },
   "changesets": [
     "beige-pens-leave",
@@ -36,6 +37,7 @@
     "eager-items-greet",
     "fluffy-banks-bet",
     "fruity-bananas-grin",
+    "heavy-sloths-laugh",
     "little-kings-joke",
     "ninety-lights-allow",
     "polite-things-knock",

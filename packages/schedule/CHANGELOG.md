@@ -1,5 +1,16 @@
 # @nest-boot/schedule
 
+## 7.0.0-beta.7
+
+### Minor Changes
+
+- 81fae6e: feat: mikro-orm, schedule, bullmq 非动态模块也能直接使用
+
+### Patch Changes
+
+- Updated dependencies [81fae6e]
+  - @nest-boot/bullmq@7.0.0-beta.3
+
 ## 7.0.0-beta.6
 
 ### Minor Changes
