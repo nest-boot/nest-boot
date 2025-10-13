@@ -1,3 +1,5 @@
-import { type QueueModuleOptions } from "@nest-boot/queue";
+import { type RegisterQueueOptions } from "@nestjs/bullmq";
 
-export type ScheduleModuleOptions = QueueModuleOptions;
+export interface ScheduleModuleOptions extends RegisterQueueOptions {
+  concurrency?: number;
+}

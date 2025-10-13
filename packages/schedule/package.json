@@ -26,9 +26,9 @@
   "devDependencies": {
     "@nest-boot/eslint-config": "workspace:^7.0.0-beta.1",
     "@nest-boot/eslint-plugin": "workspace:^7.0.0-beta.1",
-    "@nest-boot/queue": "workspace:^7.0.0-beta.2",
     "@nest-boot/request-context": "workspace:^7.0.0-beta.2",
     "@nest-boot/tsconfig": "workspace:*",
+    "@nestjs/bullmq": "^11.0.4",
     "@nestjs/common": "^11.1.6",
     "@nestjs/core": "^11.1.6",
     "@types/ms": "^0.7.31",
@@ -44,6 +44,7 @@
   "peerDependencies": {
     "@nest-boot/queue": "workspace:^7.0.0-beta.2",
     "@nest-boot/request-context": "workspace:^7.0.0-beta.2",
+    "@nestjs/bullmq": "^11.0.0",
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
     "bullmq": "^5.0.0",
