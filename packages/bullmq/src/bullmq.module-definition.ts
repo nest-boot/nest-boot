@@ -1,7 +1,7 @@
 import { ConfigurableModuleBuilder } from "@nestjs/common";
 import { randomUUID } from "crypto";
 
-import { type ScheduleModuleOptions } from "./schedule-module-options.interface";
+import { BullModuleOptions } from "./bullmq-module-options.interface";
 
 export const SCHEDULE_QUEUE_NAME = "schedule";
 
@@ -12,6 +12,6 @@ export const {
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
   ASYNC_OPTIONS_TYPE,
-} = new ConfigurableModuleBuilder<ScheduleModuleOptions>()
+} = new ConfigurableModuleBuilder<BullModuleOptions>()
   .setClassMethodName("forRoot")
   .build();

@@ -1,4 +1,9 @@
-import { DataloaderType, type Options } from "@mikro-orm/core";
+import {
+  Configuration,
+  DataloaderType,
+  IDatabaseDriver,
+  type Options,
+} from "@mikro-orm/core";
 import { TsMorphMetadataProvider } from "@mikro-orm/reflection";
 
 const baseConfig: Options = {
@@ -20,24 +25,43 @@ const baseConfig: Options = {
   },
 };
 
-export function loadConfigFromEnv():
-  | { clientUrl?: string }
-  | {
-      host?: string;
-      port?: number;
-      dbName?: string;
-      user?: string;
-      password?: string;
-    } {
+async function getDriver(
+  type?: string,
+): Promise<(new (config: Configuration) => IDatabaseDriver) | undefined> {
+  switch (type) {
+    case "mysql":
+      return (await import("@mikro-orm/mysql")).MySqlDriver;
+    case "postgres":
+    case "postgresql":
+      return (await import("@mikro-orm/postgresql")).PostgreSqlDriver;
+  }
+}
+
+export async function loadConfigFromEnv(): Promise<
+  { driver?: new (config: Configuration) => IDatabaseDriver } & (
+    | { clientUrl?: string }
+    | {
+        host?: string;
+        port?: number;
+        dbName?: string;
+        user?: string;
+        password?: string;
+      }
+  )
+> {
   const dbUrl = process.env.DB_URL ?? process.env.DATABASE_URL;
 
   if (dbUrl) {
+    const dbType = new URL(dbUrl).protocol.replace(":", "");
+
     return {
       ...baseConfig,
+      driver: await getDriver(dbType),
       clientUrl: dbUrl,
     };
   }
 
+  const dbType = process.env.DB_TYPE ?? process.env.DATABASE_TYPE;
   const dbHost = process.env.DB_HOST ?? process.env.DATABASE_HOST;
   const dbPort = process.env.DB_PORT ?? process.env.DATABASE_PORT;
   const dbName =
@@ -55,6 +79,7 @@ export function loadConfigFromEnv():
 
   return {
     ...baseConfig,
+    driver: await getDriver(dbType),
     host: dbHost,
     port: dbPort ? +dbPort : undefined,
     dbName,

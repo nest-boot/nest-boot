@@ -1,5 +1,5 @@
-import { BullModule } from "@nestjs/bullmq";
-import { type DynamicModule, Logger, Module } from "@nestjs/common";
+import { BullModule } from "@nest-boot/bullmq";
+import { type DynamicModule, Global, Logger, Module } from "@nestjs/common";
 import { DiscoveryModule } from "@nestjs/core";
 
 import {
@@ -12,68 +12,38 @@ import { ScheduleProcessor } from "./schedule.processor";
 import { ScheduleRegistry } from "./schedule.registry";
 import { type ScheduleModuleOptions } from "./schedule-module-options.interface";
 
+@Global()
 @Module({
-  imports: [DiscoveryModule],
+  imports: [
+    DiscoveryModule,
+    BullModule.registerQueueAsync({
+      name: "schedule",
+      inject: [{ token: MODULE_OPTIONS_TOKEN, optional: true }],
+      useFactory: (options: ScheduleModuleOptions) => {
+        return {
+          removeOnComplete: true,
+          removeOnFail: true,
+          ...options,
+        };
+      },
+    }),
+  ],
   providers: [Logger, ScheduleRegistry, ScheduleProcessor],
   exports: [],
 })
 export class ScheduleModule extends ConfigurableModuleClass {
-  static register(options?: typeof OPTIONS_TYPE): DynamicModule {
-    return this.withQueue(super.register(options ?? {}));
-  }
-
-  static registerAsync(options: typeof ASYNC_OPTIONS_TYPE): DynamicModule {
-    return this.withQueue(super.registerAsync(options));
-  }
-
-  private static withQueue(dynamicModule: DynamicModule): DynamicModule {
-    const ScheduleQueueDynamicModule = BullModule.registerQueueAsync({
-      name: "schedule",
-      imports: [dynamicModule],
-      inject: [MODULE_OPTIONS_TOKEN],
-      useFactory: (options: ScheduleModuleOptions) => {
-        return {
-          connection: (() => {
-            if (process.env.REDIS_URL) {
-              const url = new URL(process.env.REDIS_URL);
-              const port = url.port;
-              const database = url.pathname.split("/")[1];
-
-              return {
-                host: url.hostname,
-                port: port ? +port : undefined,
-                database: database ? +database : undefined,
-                username: url.username,
-                password: url.password,
-              };
-            }
-
-            const host = process.env.REDIS_HOST;
-            const port = process.env.REDIS_PORT;
-            const database = process.env.REDIS_DATABASE;
-            const username = process.env.REDIS_USERNAME;
-            const password = process.env.REDIS_PASSWORD;
-
-            return {
-              host,
-              port: port ? +port : undefined,
-              database: database ? +database : undefined,
-              username,
-              password,
-            };
-          })(),
-          ...options,
-        };
-      },
-    });
-
-    dynamicModule.imports = [
-      ...(dynamicModule.imports ?? []),
-      ScheduleQueueDynamicModule,
-    ];
-
+  private static patchDynamicModule(
+    dynamicModule: DynamicModule,
+  ): DynamicModule {
     dynamicModule.exports = [MODULE_OPTIONS_TOKEN];
-
     return dynamicModule;
+  }
+
+  static forRoot(options: typeof OPTIONS_TYPE): DynamicModule {
+    return this.patchDynamicModule(super.forRoot(options));
+  }
+
+  static forRootAsync(options: typeof ASYNC_OPTIONS_TYPE): DynamicModule {
+    return this.patchDynamicModule(super.forRootAsync(options));
   }
 }
