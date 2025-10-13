@@ -1,5 +1,11 @@
 # @nest-boot/schedule
 
+## 7.0.0-beta.5
+
+### Minor Changes
+
+- 3a17f44: refactor: migrate schedule module to use @nestjs/bullmq, update interfaces and implement schedule processor
+
 ## 7.0.0-beta.3
 
 ### Patch Changes
