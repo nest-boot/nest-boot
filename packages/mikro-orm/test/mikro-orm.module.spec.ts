@@ -3,8 +3,8 @@ import "dotenv/config";
 import { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 
-import { TestEntity } from "../test/test.entity";
-import { MikroOrmModule } from ".";
+import { MikroOrmModule } from "../src";
+import { TestEntity } from "./test.entity";
 
 describe("MikroOrmModule", () => {
   let app: INestApplication;
