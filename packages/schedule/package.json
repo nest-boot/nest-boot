@@ -42,7 +42,6 @@
     "typescript": "^5.9.2"
   },
   "peerDependencies": {
-    "@nest-boot/queue": "workspace:^7.0.0-beta.2",
     "@nest-boot/request-context": "workspace:^7.0.0-beta.2",
     "@nestjs/bullmq": "^11.0.0",
     "@nestjs/common": "^11.0.0",
