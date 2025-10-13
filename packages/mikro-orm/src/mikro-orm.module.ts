@@ -1,11 +1,9 @@
 import {
-  DataloaderType,
   EntityManager,
   MikroORM,
   RequestContext as MikroRequestContext,
 } from "@mikro-orm/core";
 import { MikroOrmModule as BaseMikroOrmModule } from "@mikro-orm/nestjs";
-import { TsMorphMetadataProvider } from "@mikro-orm/reflection";
 import {
   RequestContext,
   RequestContextModule,
@@ -19,7 +17,7 @@ import {
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
 } from "./mikro-orm.module-definition";
-import { loadConfigByEnv } from "./utils/load-config-by-env.util";
+import { loadConfigFromEnv } from "./utils/load-config-from-env.util";
 
 @Module({
   imports: [RequestContextModule],
@@ -42,13 +40,8 @@ export class MikroOrmModule
       inject: [MODULE_OPTIONS_TOKEN],
       useFactory: (options: MikroOrmModuleOptions) => {
         return {
-          dataloader: DataloaderType.ALL,
           registerRequestContext: false,
-          timezone: "UTC",
-          metadataProvider: TsMorphMetadataProvider,
-          entities: ["dist/**/*.entity.js"],
-          entitiesTs: ["src/**/*.entity.ts"],
-          ...loadConfigByEnv(),
+          ...loadConfigFromEnv(),
           ...options,
         };
       },

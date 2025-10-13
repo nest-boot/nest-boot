@@ -1,7 +1,8 @@
-import { type Options } from "@mikro-orm/core";
+import { DataloaderType, type Options } from "@mikro-orm/core";
 import { TsMorphMetadataProvider } from "@mikro-orm/reflection";
 
 const baseConfig: Options = {
+  dataloader: DataloaderType.ALL,
   timezone: "UTC",
   metadataProvider: TsMorphMetadataProvider,
   entities: ["dist/**/*.entity.js"],
@@ -19,7 +20,7 @@ const baseConfig: Options = {
   },
 };
 
-export function loadConfigByEnv():
+export function loadConfigFromEnv():
   | { clientUrl?: string }
   | {
       host?: string;
