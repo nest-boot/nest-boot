@@ -1,5 +1,11 @@
 # @nest-boot/mikro-orm
 
+## 7.0.0-beta.7
+
+### Patch Changes
+
+- e4e4ddc: fix: rename loadConfigByEnv to loadConfigFromEnv
+
 ## 7.0.0-beta.6
 
 ### Minor Changes
