@@ -24,7 +24,7 @@ export class ScheduleProcessor
   }
 
   @CreateRequestContext((_, job: Job) => {
-    const ctx = new RequestContext({ type: "job", id: job.id });
+    const ctx = new RequestContext({ type: "schedule", id: job.id });
     ctx.set(JOB_REF, job);
     return ctx;
   })
