@@ -1,5 +1,11 @@
 # @nest-boot/mikro-orm
 
+## 7.0.0-beta.9
+
+### Patch Changes
+
+- 172e636: fix: 修复打包后源码目录错误
+
 ## 7.0.0-beta.8
 
 ### Minor Changes
