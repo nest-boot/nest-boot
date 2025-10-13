@@ -1,5 +1,11 @@
 # @nest-boot/schedule
 
+## 7.0.0-beta.6
+
+### Minor Changes
+
+- 2ff1783: feat: mikro-orm、redis、schedule 默认从环境变量读取配置
+
 ## 7.0.0-beta.5
 
 ### Minor Changes
