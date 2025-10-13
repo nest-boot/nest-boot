@@ -18,8 +18,8 @@ import { type ScheduleModuleOptions } from "./schedule-module-options.interface"
   exports: [],
 })
 export class ScheduleModule extends ConfigurableModuleClass {
-  static register(options: typeof OPTIONS_TYPE): DynamicModule {
-    return this.withQueue(super.register(options));
+  static register(options?: typeof OPTIONS_TYPE): DynamicModule {
+    return this.withQueue(super.register(options ?? {}));
   }
 
   static registerAsync(options: typeof ASYNC_OPTIONS_TYPE): DynamicModule {
@@ -31,7 +31,40 @@ export class ScheduleModule extends ConfigurableModuleClass {
       name: "schedule",
       imports: [dynamicModule],
       inject: [MODULE_OPTIONS_TOKEN],
-      useFactory: (options: ScheduleModuleOptions) => options,
+      useFactory: (options: ScheduleModuleOptions) => {
+        return {
+          connection: (() => {
+            if (process.env.REDIS_URL) {
+              const url = new URL(process.env.REDIS_URL);
+              const port = url.port;
+              const database = url.pathname.split("/")[1];
+
+              return {
+                host: url.hostname,
+                port: port ? +port : undefined,
+                database: database ? +database : undefined,
+                username: url.username,
+                password: url.password,
+              };
+            }
+
+            const host = process.env.REDIS_HOST;
+            const port = process.env.REDIS_PORT;
+            const database = process.env.REDIS_DATABASE;
+            const username = process.env.REDIS_USERNAME;
+            const password = process.env.REDIS_PASSWORD;
+
+            return {
+              host,
+              port: port ? +port : undefined,
+              database: database ? +database : undefined,
+              username,
+              password,
+            };
+          })(),
+          ...options,
+        };
+      },
     });
 
     dynamicModule.imports = [
