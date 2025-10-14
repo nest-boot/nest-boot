@@ -1,4 +1,4 @@
-import { type RegisterQueueOptions } from "@nestjs/bullmq";
+import { type RegisterQueueOptions } from "@nest-boot/bullmq";
 
 export interface ScheduleModuleOptions extends RegisterQueueOptions {
   autorun?: boolean;

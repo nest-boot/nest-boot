@@ -25,7 +25,7 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand"
   },
   "devDependencies": {
-    "@nest-boot/bullmq": "workspace:^7.0.0-beta.3",
+    "@nest-boot/bullmq": "workspace:^7.0.0-beta.4",
     "@nest-boot/eslint-config": "workspace:^7.0.0-beta.1",
     "@nest-boot/eslint-plugin": "workspace:^7.0.0-beta.1",
     "@nest-boot/tsconfig": "workspace:*",

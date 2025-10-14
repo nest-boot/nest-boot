@@ -1,4 +1,4 @@
-import { InjectQueue } from "@nestjs/bullmq";
+import { InjectQueue } from "@nest-boot/bullmq";
 import { Logger, type OnApplicationBootstrap } from "@nestjs/common";
 import { DiscoveryService, MetadataScanner, Reflector } from "@nestjs/core";
 import { Queue } from "bullmq";

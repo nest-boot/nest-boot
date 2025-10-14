@@ -1,4 +1,4 @@
-import { Processor, WorkerHost } from "@nestjs/bullmq";
+import { Processor, WorkerHost } from "@nest-boot/bullmq";
 import { Inject, OnApplicationBootstrap, Optional } from "@nestjs/common";
 import { Job } from "bullmq";
 
