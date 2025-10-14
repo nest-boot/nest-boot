@@ -4,25 +4,17 @@ import { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 
 import { MikroOrmModule } from "../src";
-import { TestEntity } from "./test.entity";
+import { TestEntity } from "./entities/test.entity";
 
 describe("MikroOrmModule", () => {
   let app: INestApplication;
 
-  it(`MikroOrmModule`, async () => {
-    const moduleRef = await Test.createTestingModule({
-      imports: [MikroOrmModule, MikroOrmModule.forFeature([TestEntity])],
-    }).compile();
-
-    app = moduleRef.createNestApplication();
-    await app.init();
-    await app.close();
-  });
-
   it(`MikroOrmModule.forRoot`, async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [
-        MikroOrmModule.forRoot({}),
+        MikroOrmModule.forRoot({
+          autoLoadEntities: true,
+        }),
         MikroOrmModule.forFeature([TestEntity]),
       ],
     }).compile();
@@ -36,7 +28,9 @@ describe("MikroOrmModule", () => {
     const moduleRef = await Test.createTestingModule({
       imports: [
         MikroOrmModule.forRootAsync({
-          useFactory: () => ({}),
+          useFactory: () => ({
+            autoLoadEntities: true,
+          }),
         }),
         MikroOrmModule.forFeature([TestEntity]),
       ],

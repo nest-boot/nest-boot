@@ -27,7 +27,6 @@ import { loadConfigFromEnv } from "./utils/load-config-from-env.util";
       inject: [{ token: MODULE_OPTIONS_TOKEN, optional: true }],
       useFactory: async (options: MikroOrmModuleOptions = {}) => {
         return {
-          autoLoadEntities: true,
           registerRequestContext: false,
           ...(await loadConfigFromEnv()),
           ...options,
