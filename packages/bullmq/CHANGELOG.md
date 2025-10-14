@@ -1,5 +1,11 @@
 # @nest-boot/bullmq
 
+## 7.0.0-beta.4
+
+### Patch Changes
+
+- 0b05db2: fix: 增强 Processor 装饰器以支持多种签名和选项
+
 ## 7.0.0-beta.3
 
 ### Minor Changes
