@@ -1,5 +1,11 @@
 # @nest-boot/mikro-orm
 
+## 7.0.0-beta.11
+
+### Patch Changes
+
+- 4c7c772: Forced upgrade version
+
 ## 7.0.0-beta.10
 
 ### Patch Changes
