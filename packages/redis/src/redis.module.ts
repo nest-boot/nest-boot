@@ -1,23 +1,18 @@
-import {
-  type DynamicModule,
-  Module,
-  type OnApplicationShutdown,
-} from "@nestjs/common";
+import { Module, type OnApplicationShutdown } from "@nestjs/common";
 import { type RedisOptions } from "ioredis";
 
 import { Redis } from "./redis";
 import {
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
-  OPTIONS_TYPE,
 } from "./redis.module-definition";
 
 @Module({
   providers: [
     {
       provide: Redis,
-      inject: [MODULE_OPTIONS_TOKEN],
-      useFactory: (options: RedisOptions) =>
+      inject: [{ token: MODULE_OPTIONS_TOKEN, optional: true }],
+      useFactory: (options: RedisOptions = {}) =>
         new Redis({
           ...(() => {
             if (process.env.REDIS_URL) {
@@ -60,10 +55,6 @@ export class RedisModule
 {
   constructor(private readonly redis: Redis) {
     super();
-  }
-
-  register(options?: typeof OPTIONS_TYPE): DynamicModule {
-    return super.register(options ?? {});
   }
 
   async onApplicationShutdown(): Promise<void> {

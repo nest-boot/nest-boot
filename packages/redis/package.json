@@ -17,7 +17,11 @@
     "build": "tsc -p tsconfig.build.json",
     "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist",
     "dev": "tsc -w -p tsconfig.build.json",
-    "lint": "eslint \"{src,test}/**/*.ts\" --fix"
+    "lint": "eslint \"{src,test}/**/*.ts\" --fix",
+    "test": "jest",
+    "test:cov": "jest --coverage",
+    "test:watch": "jest --watch",
+    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand"
   },
   "devDependencies": {
     "@nest-boot/eslint-config": "workspace:^7.0.0-beta.1",
@@ -26,6 +30,7 @@
     "@nestjs/common": "^11.1.6",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.6",
+    "@nestjs/testing": "^11.1.6",
     "@types/jest": "^29.5.14",
     "eslint": "^9.36.0",
     "ioredis": "^5.8.0",

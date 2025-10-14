@@ -1019,6 +1019,9 @@ importers:
       '@nestjs/core':
         specifier: ^11.1.6
         version: 11.1.6
+      '@nestjs/testing':
+        specifier: ^11.1.6
+        version: 11.1.6
       '@types/jest':
         specifier: ^29.5.14
         version: 29.5.14
