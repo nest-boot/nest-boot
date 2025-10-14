@@ -24,13 +24,15 @@ export class ScheduleProcessor
     await this.scheduleRegistry.get(job.name)?.handler();
   }
 
-  async onApplicationBootstrap() {
+  onApplicationBootstrap() {
     if (this.options?.concurrency) {
       this.worker.concurrency = this.options.concurrency;
     }
 
-    if (this.options?.autorun !== false && this.worker.isPaused()) {
-      await this.worker.run();
+    if (this.options?.autorun !== false) {
+      this.worker.run().catch(() => {
+        //
+      });
     }
   }
 }
