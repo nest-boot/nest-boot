@@ -1,5 +1,11 @@
 # @nest-boot/schedule
 
+## 7.0.0-beta.10
+
+### Minor Changes
+
+- fa9731d: fix: add autorun option to ScheduleModuleOptions and update ScheduleProcessor to support it
+
 ## 7.0.0-beta.9
 
 ### Patch Changes
