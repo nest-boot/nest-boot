@@ -6,7 +6,7 @@ import { MODULE_OPTIONS_TOKEN } from "./schedule.module-definition";
 import { ScheduleRegistry } from "./schedule.registry";
 import { ScheduleModuleOptions } from "./schedule-module-options.interface";
 
-@Processor("schedule")
+@Processor("schedule", { autorun: false })
 export class ScheduleProcessor
   extends WorkerHost
   implements OnApplicationBootstrap
@@ -24,9 +24,13 @@ export class ScheduleProcessor
     await this.scheduleRegistry.get(job.name)?.handler();
   }
 
-  onApplicationBootstrap() {
+  async onApplicationBootstrap() {
     if (this.options?.concurrency) {
       this.worker.concurrency = this.options.concurrency;
+    }
+
+    if (this.options?.autorun !== false && this.worker.isPaused()) {
+      await this.worker.run();
     }
   }
 }
