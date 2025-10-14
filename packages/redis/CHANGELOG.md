@@ -1,5 +1,11 @@
 # @nest-boot/redis
 
+## 7.0.0-beta.5
+
+### Patch Changes
+
+- f0583f5: fix: 修复 RedisModule 导入异常
+
 ## 7.0.0-beta.4
 
 ### Minor Changes
