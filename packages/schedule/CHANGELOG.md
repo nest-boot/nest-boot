@@ -1,5 +1,11 @@
 # @nest-boot/schedule
 
+## 7.0.0-beta.12
+
+### Patch Changes
+
+- 2fe46e6: fix: 修复启动逻辑
+
 ## 7.0.0-beta.11
 
 ### Patch Changes
