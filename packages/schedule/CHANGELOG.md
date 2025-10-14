@@ -1,5 +1,11 @@
 # @nest-boot/schedule
 
+## 7.0.0-beta.11
+
+### Patch Changes
+
+- f5a64fc: fix: 修复 schedule 错误的导入 bullmq 模块
+
 ## 7.0.0-beta.10
 
 ### Minor Changes
