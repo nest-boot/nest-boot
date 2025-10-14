@@ -21,9 +21,12 @@ import { type ScheduleModuleOptions } from "./schedule-module-options.interface"
       inject: [{ token: MODULE_OPTIONS_TOKEN, optional: true }],
       useFactory: (options: ScheduleModuleOptions) => {
         return {
-          removeOnComplete: true,
-          removeOnFail: true,
           ...options,
+          defaultJobOptions: {
+            removeOnComplete: true,
+            removeOnFail: true,
+            ...options?.defaultJobOptions,
+          },
         };
       },
     }),
