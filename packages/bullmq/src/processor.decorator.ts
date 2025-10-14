@@ -1,14 +1,33 @@
+/* eslint-disable @typescript-eslint/unified-signatures */
+
 import { RequestContext } from "@nest-boot/request-context";
 import {
   JOB_REF,
   Processor as BaseProcessor,
+  ProcessorOptions,
   WorkerHost,
 } from "@nestjs/bullmq";
+import { NestWorkerOptions } from "@nestjs/bullmq/dist/interfaces/worker-options.interface";
 import { Type } from "@nestjs/common";
 import { Job, Worker } from "bullmq";
 
+export function Processor(queueName: string): ClassDecorator;
+
+export function Processor(
+  queueName: string,
+  workerOptions: NestWorkerOptions,
+): ClassDecorator;
+
+export function Processor(processorOptions: ProcessorOptions): ClassDecorator;
+
+export function Processor(
+  processorOptions: ProcessorOptions,
+  workerOptions: NestWorkerOptions,
+): ClassDecorator;
+
 export function Processor<T extends Worker = Worker>(
-  ...args: Parameters<typeof BaseProcessor>
+  queueNameOrOptions?: string | ProcessorOptions,
+  maybeWorkerOptions?: NestWorkerOptions,
 ) {
   return (target: Type<WorkerHost<T>>) => {
     const originalProcess = target.prototype.process;
@@ -27,6 +46,6 @@ export function Processor<T extends Worker = Worker>(
       };
     }
 
-    BaseProcessor(...args)(target);
+    BaseProcessor(queueNameOrOptions as any, maybeWorkerOptions as any)(target);
   };
 }
