@@ -1,5 +1,11 @@
 # @nest-boot/schedule
 
+## 7.0.0-beta.8
+
+### Major Changes
+
+- 9895ff6: fix: 修复 removeOnComplete 和 removeOnFail 参数使用错误
+
 ## 7.0.0-beta.7
 
 ### Minor Changes
