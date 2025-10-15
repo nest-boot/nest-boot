@@ -1,5 +1,11 @@
 # @nest-boot/crypt
 
+## 7.0.0-beta.3
+
+### Minor Changes
+
+- ff479f2: feat: crypt 和 hash 模块支持直接导入
+
 ## 7.0.0-beta.2
 
 ### Patch Changes
