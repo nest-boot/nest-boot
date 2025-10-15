@@ -1,5 +1,11 @@
 # @nest-boot/bullmq
 
+## 7.0.0-beta.5
+
+### Patch Changes
+
+- 50216e0: fix: 优化获取配置的方式
+
 ## 7.0.0-beta.4
 
 ### Patch Changes

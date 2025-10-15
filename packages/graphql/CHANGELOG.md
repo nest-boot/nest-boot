@@ -1,5 +1,11 @@
 # @nest-boot/graphql
 
+## 7.0.0-beta.4
+
+### Minor Changes
+
+- eec2ebc: feat: GraphQL 模块支持直接导入
+
 ## 7.0.0-beta.3
 
 ### Patch Changes

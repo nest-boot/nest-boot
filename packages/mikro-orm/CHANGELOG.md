@@ -1,5 +1,11 @@
 # @nest-boot/mikro-orm
 
+## 7.0.0-beta.12
+
+### Patch Changes
+
+- 50216e0: fix: 优化获取配置的方式
+
 ## 7.0.0-beta.11
 
 ### Patch Changes

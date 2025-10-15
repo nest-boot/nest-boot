@@ -1,5 +1,13 @@
 # @nest-boot/schedule
 
+## 7.0.0-beta.13
+
+### Patch Changes
+
+- 50216e0: fix: 优化获取配置的方式
+- Updated dependencies [50216e0]
+  - @nest-boot/bullmq@7.0.0-beta.5
+
 ## 7.0.0-beta.12
 
 ### Patch Changes

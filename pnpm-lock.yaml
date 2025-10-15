@@ -1101,7 +1101,7 @@ importers:
   packages/schedule:
     devDependencies:
       '@nest-boot/bullmq':
-        specifier: workspace:^7.0.0-beta.4
+        specifier: workspace:^7.0.0-beta.5
         version: link:../bullmq
       '@nest-boot/eslint-config':
         specifier: workspace:^7.0.0-beta.1
