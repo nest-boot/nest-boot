@@ -2,10 +2,9 @@ import { BullModule as BaseBullModule } from "@nestjs/bullmq";
 import { type DynamicModule, Global, Module } from "@nestjs/common";
 
 import {
-  type ASYNC_OPTIONS_TYPE,
+  BASE_MODULE_OPTIONS_TOKEN,
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
-  type OPTIONS_TYPE,
 } from "./bullmq.module-definition";
 import { BullModuleOptions } from "./bullmq-module-options.interface";
 
@@ -13,8 +12,8 @@ import { BullModuleOptions } from "./bullmq-module-options.interface";
 @Module({
   imports: [
     BaseBullModule.forRootAsync({
-      inject: [{ token: MODULE_OPTIONS_TOKEN, optional: true }],
-      useFactory: (options: BullModuleOptions = {}) => {
+      inject: [MODULE_OPTIONS_TOKEN],
+      useFactory: (options: BullModuleOptions) => {
         return {
           connection: (() => {
             if (process.env.REDIS_URL) {
@@ -50,23 +49,16 @@ import { BullModuleOptions } from "./bullmq-module-options.interface";
       },
     }),
   ],
+  providers: [
+    {
+      provide: MODULE_OPTIONS_TOKEN,
+      inject: [{ token: BASE_MODULE_OPTIONS_TOKEN, optional: true }],
+      useFactory: (options: BullModuleOptions = {}) => options,
+    },
+  ],
+  exports: [MODULE_OPTIONS_TOKEN],
 })
 export class BullModule extends ConfigurableModuleClass {
-  private static patchDynamicModule(
-    dynamicModule: DynamicModule,
-  ): DynamicModule {
-    dynamicModule.exports = [MODULE_OPTIONS_TOKEN];
-    return dynamicModule;
-  }
-
-  static forRoot(options: typeof OPTIONS_TYPE): DynamicModule {
-    return this.patchDynamicModule(super.forRoot(options));
-  }
-
-  static forRootAsync(options: typeof ASYNC_OPTIONS_TYPE): DynamicModule {
-    return this.patchDynamicModule(super.forRootAsync(options));
-  }
-
   static registerQueue(
     ...args: Parameters<typeof BaseBullModule.registerQueue>
   ): DynamicModule {

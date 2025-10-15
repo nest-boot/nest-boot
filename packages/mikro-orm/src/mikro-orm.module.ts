@@ -8,14 +8,13 @@ import {
   RequestContext,
   RequestContextModule,
 } from "@nest-boot/request-context";
-import { DynamicModule, Global, Module, OnModuleInit } from "@nestjs/common";
+import { Global, Module, OnModuleInit } from "@nestjs/common";
 
 import { MikroOrmModuleOptions } from "./interfaces/mikro-orm-module-options.interface";
 import {
-  ASYNC_OPTIONS_TYPE,
+  BASE_MODULE_OPTIONS_TOKEN,
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
-  OPTIONS_TYPE,
 } from "./mikro-orm.module-definition";
 import { loadConfigFromEnv } from "./utils/load-config-from-env.util";
 
@@ -24,16 +23,22 @@ import { loadConfigFromEnv } from "./utils/load-config-from-env.util";
   imports: [
     RequestContextModule,
     BaseMikroOrmModule.forRootAsync({
-      inject: [{ token: MODULE_OPTIONS_TOKEN, optional: true }],
-      useFactory: async (options: MikroOrmModuleOptions = {}) => {
-        return {
-          registerRequestContext: false,
-          ...(await loadConfigFromEnv()),
-          ...options,
-        };
-      },
+      inject: [MODULE_OPTIONS_TOKEN],
+      useFactory: async (options: MikroOrmModuleOptions) => ({
+        registerRequestContext: false,
+        ...(await loadConfigFromEnv()),
+        ...options,
+      }),
     }),
   ],
+  providers: [
+    {
+      provide: MODULE_OPTIONS_TOKEN,
+      inject: [{ token: BASE_MODULE_OPTIONS_TOKEN, optional: true }],
+      useFactory: (options: MikroOrmModuleOptions = {}) => options,
+    },
+  ],
+  exports: [MODULE_OPTIONS_TOKEN],
 })
 export class MikroOrmModule
   extends ConfigurableModuleClass
@@ -41,21 +46,6 @@ export class MikroOrmModule
 {
   constructor(private readonly orm: MikroORM) {
     super();
-  }
-
-  private static patchDynamicModule(dynamicModule: DynamicModule) {
-    dynamicModule.exports = [MODULE_OPTIONS_TOKEN];
-    return dynamicModule;
-  }
-
-  static forRoot(options: typeof OPTIONS_TYPE) {
-    return this.patchDynamicModule(super.forRoot(options));
-  }
-
-  static forRootAsync(
-    options: typeof ASYNC_OPTIONS_TYPE & Pick<MikroOrmModuleOptions, "driver">,
-  ) {
-    return this.patchDynamicModule(super.forRootAsync(options));
   }
 
   static forFeature(...args: Parameters<typeof BaseMikroOrmModule.forFeature>) {
