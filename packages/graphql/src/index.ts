@@ -1,21 +1,12 @@
 export * from "./complexities";
+export { Complexity } from "./decorators";
 export * from "./decorators";
 export * from "./graphql.exception-filter";
+export { GraphQLModule } from "./graphql.module";
 export * from "./graphql.module";
 export * from "./interfaces";
 export * from "./plugins";
 export { Plugin } from "@nestjs/apollo";
-export {
-  Args,
-  createUnionType,
-  Field,
-  GraphQLSchemaHost,
-  ID,
-  InputType,
-  Mutation,
-  ObjectType,
-  Query,
-  registerEnumType,
-  ResolveField,
-  Resolver,
-} from "@nestjs/graphql";
+export { BuildSchemaOptions } from "@nestjs/graphql";
+export * from "@nestjs/graphql";
+export * from "graphql";

@@ -441,6 +441,9 @@ importers:
       '@nestjs/graphql':
         specifier: ^13.1.0
         version: 13.1.0
+      '@nestjs/testing':
+        specifier: ^11.1.6
+        version: 11.1.6
       '@types/express':
         specifier: ^5.0.3
         version: 5.0.3
