@@ -1,5 +1,11 @@
 # @nest-boot/mikro-orm
 
+## 7.0.0-beta.13
+
+### Minor Changes
+
+- fb7f5e2: feat: 添加 VectorType 类型
+
 ## 7.0.0-beta.12
 
 ### Patch Changes
