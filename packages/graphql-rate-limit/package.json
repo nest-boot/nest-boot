@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/graphql-rate-limit",
-  "version": "7.0.0-beta.3",
+  "version": "7.0.0-beta.4",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
   "homepage": "",
@@ -27,7 +27,7 @@
     "@apollo/server": "^4.12.2",
     "@nest-boot/eslint-config": "workspace:^7.0.0-beta.1",
     "@nest-boot/eslint-plugin": "workspace:^7.0.0-beta.1",
-    "@nest-boot/redis": "workspace:^7.0.0-beta.5",
+    "@nest-boot/redis": "workspace:^7.0.0-beta.6",
     "@nest-boot/tsconfig": "workspace:*",
     "@nestjs/apollo": "^13.1.0",
     "@nestjs/common": "^11.1.6",

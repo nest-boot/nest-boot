@@ -618,7 +618,7 @@ importers:
         specifier: workspace:^7.0.0-beta.1
         version: link:../eslint-plugin
       '@nest-boot/redis':
-        specifier: workspace:^7.0.0-beta.5
+        specifier: workspace:^7.0.0-beta.6
         version: link:../redis
       '@nest-boot/tsconfig':
         specifier: workspace:*
@@ -11013,7 +11013,7 @@ snapshots:
       '@babel/preset-env': 7.27.2
       '@babel/preset-react': 7.27.1
       '@babel/preset-typescript': 7.27.1
-      '@babel/runtime': 7.27.6
+      '@babel/runtime': 7.28.4
       '@babel/runtime-corejs3': 7.27.6
       '@babel/traverse': 7.27.4
       '@docusaurus/logger': 3.8.0
@@ -11723,7 +11723,7 @@ snapshots:
 
   '@manypkg/find-root@1.1.0':
     dependencies:
-      '@babel/runtime': 7.27.6
+      '@babel/runtime': 7.28.4
       '@types/node': 12.20.55
       find-up: 4.1.0
       fs-extra: 8.1.0
@@ -18060,15 +18060,15 @@ snapshots:
 
   react-loadable-ssr-addon-v5-slorber@1.0.1:
     dependencies:
-      '@babel/runtime': 7.27.6
+      '@babel/runtime': 7.28.4
 
   react-router-config@5.1.1:
     dependencies:
-      '@babel/runtime': 7.27.6
+      '@babel/runtime': 7.28.4
 
   react-router-dom@5.3.4:
     dependencies:
-      '@babel/runtime': 7.27.6
+      '@babel/runtime': 7.28.4
       history: 4.10.1
       loose-envify: 1.4.0
       prop-types: 15.8.1
@@ -18078,7 +18078,7 @@ snapshots:
 
   react-router@5.3.4:
     dependencies:
-      '@babel/runtime': 7.27.6
+      '@babel/runtime': 7.28.4
       history: 4.10.1
       hoist-non-react-statics: 3.3.2
       loose-envify: 1.4.0
