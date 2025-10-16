@@ -1,5 +1,11 @@
 # @nest-boot/redis
 
+## 7.0.0-beta.7
+
+### Patch Changes
+
+- d9b1965: fix: enhance environment variable loading for Redis and BullMQ to support TLS configuration
+
 ## 7.0.0-beta.6
 
 ### Patch Changes

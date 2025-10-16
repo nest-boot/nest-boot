@@ -34,6 +34,7 @@
     "@nest-boot/graphql-rate-limit": "7.0.0-beta.3"
   },
   "changesets": [
+    "all-swans-smile",
     "beige-pens-leave",
     "brown-kids-grab",
     "cuddly-weeks-share",
