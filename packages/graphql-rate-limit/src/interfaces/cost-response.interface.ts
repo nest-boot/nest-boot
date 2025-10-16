@@ -1,4 +1,5 @@
 export interface CostThrottleStatus {
+  blocked: boolean;
   maximumAvailable: number;
   currentlyAvailable: number;
   restoreRate: number;

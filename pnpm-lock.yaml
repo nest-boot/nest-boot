@@ -402,24 +402,7 @@ importers:
         version: 5.9.2
 
   packages/graphql:
-    dependencies:
-      '@apollo/server':
-        specifier: ^4.12.2
-        version: 4.12.2
-      graphql-query-complexity:
-        specifier: ^1.1.0
-        version: 1.1.0
-      lodash:
-        specifier: ^4.17.21
-        version: 4.17.21
-    optionalDependencies:
-      '@nest-boot/logger':
-        specifier: workspace:^7.0.0-beta.2
-        version: link:../logger
     devDependencies:
-      '@mikro-orm/core':
-        specifier: ^6.5.8
-        version: 6.5.8
       '@nest-boot/eslint-config':
         specifier: workspace:^7.0.0-beta.1
         version: link:../eslint-config
@@ -450,15 +433,9 @@ importers:
       '@types/jest':
         specifier: ^29.5.14
         version: 29.5.14
-      '@types/lodash':
-        specifier: ^4.17.20
-        version: 4.17.20
       '@types/node':
         specifier: ^22.18.6
         version: 22.18.6
-      dataloader:
-        specifier: ^2.2.3
-        version: 2.2.3
       eslint:
         specifier: ^9.36.0
         version: 9.36.0
@@ -468,9 +445,6 @@ importers:
       graphql:
         specifier: ^16.11.0
         version: 16.11.0
-      ioredis:
-        specifier: ^5.8.0
-        version: 5.8.0
       jest:
         specifier: ^29.7.0
         version: 29.7.0
@@ -547,6 +521,144 @@ importers:
       graphql:
         specifier: ^16.11.0
         version: 16.11.0
+      ioredis:
+        specifier: ^5.8.0
+        version: 5.8.0
+      jest:
+        specifier: ^29.7.0
+        version: 29.7.0
+      reflect-metadata:
+        specifier: ^0.2.2
+        version: 0.2.2
+      rxjs:
+        specifier: ^7.8.2
+        version: 7.8.2
+      ts-jest:
+        specifier: ^29.4.4
+        version: 29.4.4
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.2
+
+  packages/graphql-logger:
+    devDependencies:
+      '@apollo/server':
+        specifier: ^4.12.2
+        version: 4.12.2
+      '@nest-boot/eslint-config':
+        specifier: workspace:^7.0.0-beta.1
+        version: link:../eslint-config
+      '@nest-boot/eslint-plugin':
+        specifier: workspace:^7.0.0-beta.1
+        version: link:../eslint-plugin
+      '@nest-boot/logger':
+        specifier: workspace:^7.0.0-beta.3
+        version: link:../logger
+      '@nest-boot/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@nestjs/apollo':
+        specifier: ^13.1.0
+        version: 13.1.0
+      '@nestjs/common':
+        specifier: ^11.1.6
+        version: 11.1.6
+      '@nestjs/core':
+        specifier: ^11.1.6
+        version: 11.1.6
+      '@nestjs/graphql':
+        specifier: ^13.1.0
+        version: 13.1.0
+      '@nestjs/testing':
+        specifier: ^11.1.6
+        version: 11.1.6
+      '@types/express':
+        specifier: ^5.0.3
+        version: 5.0.3
+      '@types/jest':
+        specifier: ^29.5.14
+        version: 29.5.14
+      '@types/node':
+        specifier: ^22.18.6
+        version: 22.18.6
+      eslint:
+        specifier: ^9.36.0
+        version: 9.36.0
+      express:
+        specifier: ^5.1.0
+        version: 5.1.0
+      graphql:
+        specifier: ^16.11.0
+        version: 16.11.0
+      jest:
+        specifier: ^29.7.0
+        version: 29.7.0
+      reflect-metadata:
+        specifier: ^0.2.2
+        version: 0.2.2
+      rxjs:
+        specifier: ^7.8.2
+        version: 7.8.2
+      ts-jest:
+        specifier: ^29.4.4
+        version: 29.4.4
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.2
+
+  packages/graphql-rate-limit:
+    devDependencies:
+      '@apollo/server':
+        specifier: ^4.12.2
+        version: 4.12.2
+      '@nest-boot/eslint-config':
+        specifier: workspace:^7.0.0-beta.1
+        version: link:../eslint-config
+      '@nest-boot/eslint-plugin':
+        specifier: workspace:^7.0.0-beta.1
+        version: link:../eslint-plugin
+      '@nest-boot/redis':
+        specifier: workspace:^7.0.0-beta.5
+        version: link:../redis
+      '@nest-boot/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@nestjs/apollo':
+        specifier: ^13.1.0
+        version: 13.1.0
+      '@nestjs/common':
+        specifier: ^11.1.6
+        version: 11.1.6
+      '@nestjs/core':
+        specifier: ^11.1.6
+        version: 11.1.6
+      '@nestjs/graphql':
+        specifier: ^13.1.0
+        version: 13.1.0
+      '@nestjs/testing':
+        specifier: ^11.1.6
+        version: 11.1.6
+      '@types/express':
+        specifier: ^5.0.3
+        version: 5.0.3
+      '@types/jest':
+        specifier: ^29.5.14
+        version: 29.5.14
+      '@types/node':
+        specifier: ^22.18.6
+        version: 22.18.6
+      eslint:
+        specifier: ^9.36.0
+        version: 9.36.0
+      express:
+        specifier: ^5.1.0
+        version: 5.1.0
+      graphql:
+        specifier: ^16.11.0
+        version: 16.11.0
+      graphql-query-complexity:
+        specifier: ^1.1.0
+        version: 1.1.0
       ioredis:
         specifier: ^5.8.0
         version: 5.8.0
@@ -3984,10 +4096,6 @@ packages:
     resolution: {integrity: sha512-oKlSFMcMwpUg2ednkhQ454wfWiU/ul3CkJe/PEHcTKuiX6RpbehUiFMXu13HalGZxfUwCQzZG747YXBn1im9ww==}
     engines: {node: '>= 0.4'}
 
-  call-bound@1.0.3:
-    resolution: {integrity: sha512-YTd+6wGlNlPxSuri7Y6X8tY2dmm12UMH66RpKMhiX6rsk5wXXnYgbUcOt8kiS31/AjfoTOvCsE+w8nZQLQnzHA==}
-    engines: {node: '>= 0.4'}
-
   call-bound@1.0.4:
     resolution: {integrity: sha512-+ys997U96po4Kx/ABpBCqhA9EuxJaQWDQg7295H4hBphv3IZg0boBKuwYpt4YXp6MZ5AmZQnU/tyMTlRpaSejg==}
     engines: {node: '>= 0.4'}
@@ -6967,10 +7075,6 @@ packages:
     resolution: {integrity: sha512-IRZSRuzJiynemAXPYtPe5BoI/RESNYR7TYm50MC5Mqbd3Jmw5y790sErYw3V6SryFJD64b74qQQs9wn5Bg/k3g==}
     engines: {node: '>= 0.4'}
 
-  object-inspect@1.13.3:
-    resolution: {integrity: sha512-kDCGIbxkDSXE3euJZZXzc6to7fCrKHNI/hSRQnRuQ+BWjFNzZwiFF8fj/6o2t2G9/jTj8PSIYTfCLelLZEeRpA==}
-    engines: {node: '>= 0.4'}
-
   object-inspect@1.13.4:
     resolution: {integrity: sha512-W67iLl4J2EXEGTbfeHCffrjDfitvLANg0UlX3wFUUSTx92KXRFegMHUVgSqE+wvhAbi4WqjGg9czysTV2Epbew==}
     engines: {node: '>= 0.4'}
@@ -8195,10 +8299,6 @@ packages:
 
   side-channel-weakmap@1.0.2:
     resolution: {integrity: sha512-WPS/HvHQTYnHisLo9McqBHOJk2FkHO/tlpvldyrnem4aeQp4hai3gythswg6p01oSoTl58rcpiFAjF2br2Ak2A==}
-    engines: {node: '>= 0.4'}
-
-  side-channel@1.0.6:
-    resolution: {integrity: sha512-fDW/EZ6Q9RiO8eFG8Hj+7u/oW+XrPTIChwCOM2+th2A6OblDtYYIpve9m+KvI9Z4C9qSEXlaGR6bTEYHReuglA==}
     engines: {node: '>= 0.4'}
 
   side-channel@1.1.0:
@@ -12627,7 +12727,7 @@ snapshots:
 
   '@types/serve-index@1.9.4':
     dependencies:
-      '@types/express': 4.17.23
+      '@types/express': 5.0.3
 
   '@types/serve-static@1.15.7':
     dependencies:
@@ -13312,11 +13412,6 @@ snapshots:
       es-define-property: 1.0.1
       get-intrinsic: 1.2.6
       set-function-length: 1.2.2
-
-  call-bound@1.0.3:
-    dependencies:
-      call-bind-apply-helpers: 1.0.1
-      get-intrinsic: 1.2.6
 
   call-bound@1.0.4:
     dependencies:
@@ -14638,7 +14733,7 @@ snapshots:
       content-type: 1.0.5
       cookie: 0.7.2
       cookie-signature: 1.2.2
-      debug: 4.4.1
+      debug: 4.4.3
       encodeurl: 2.0.0
       escape-html: 1.0.3
       etag: 1.8.1
@@ -15477,7 +15572,7 @@ snapshots:
     dependencies:
       es-errors: 1.3.0
       hasown: 2.0.2
-      side-channel: 1.0.6
+      side-channel: 1.1.0
 
   internal-slot@1.1.0:
     dependencies:
@@ -15503,7 +15598,7 @@ snapshots:
     dependencies:
       '@ioredis/commands': 1.4.0
       cluster-key-slot: 1.1.2
-      debug: 4.4.1
+      debug: 4.4.3
       denque: 2.1.0
       lodash.defaults: 4.2.0
       lodash.isarguments: 3.1.0
@@ -17109,8 +17204,6 @@ snapshots:
 
   object-inspect@1.13.2: {}
 
-  object-inspect@1.13.3: {}
-
   object-inspect@1.13.4: {}
 
   object-keys@1.1.1: {}
@@ -18529,34 +18622,27 @@ snapshots:
   side-channel-list@1.0.0:
     dependencies:
       es-errors: 1.3.0
-      object-inspect: 1.13.3
+      object-inspect: 1.13.4
 
   side-channel-map@1.0.1:
     dependencies:
-      call-bound: 1.0.3
+      call-bound: 1.0.4
       es-errors: 1.3.0
-      get-intrinsic: 1.2.6
-      object-inspect: 1.13.3
+      get-intrinsic: 1.3.0
+      object-inspect: 1.13.4
 
   side-channel-weakmap@1.0.2:
     dependencies:
-      call-bound: 1.0.3
+      call-bound: 1.0.4
       es-errors: 1.3.0
-      get-intrinsic: 1.2.6
-      object-inspect: 1.13.3
+      get-intrinsic: 1.3.0
+      object-inspect: 1.13.4
       side-channel-map: 1.0.1
-
-  side-channel@1.0.6:
-    dependencies:
-      call-bind: 1.0.7
-      es-errors: 1.3.0
-      get-intrinsic: 1.2.4
-      object-inspect: 1.13.2
 
   side-channel@1.1.0:
     dependencies:
       es-errors: 1.3.0
-      object-inspect: 1.13.3
+      object-inspect: 1.13.4
       side-channel-list: 1.0.0
       side-channel-map: 1.0.1
       side-channel-weakmap: 1.0.2

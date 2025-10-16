@@ -1,11 +1,5 @@
-export * from "./complexities";
-export { Complexity } from "./decorators";
-export * from "./decorators";
 export * from "./graphql.exception-filter";
 export { GraphQLModule } from "./graphql.module";
-export * from "./graphql.module";
-export * from "./interfaces";
-export * from "./plugins";
 export { Plugin } from "@nestjs/apollo";
 export { BuildSchemaOptions } from "@nestjs/graphql";
 export * from "@nestjs/graphql";

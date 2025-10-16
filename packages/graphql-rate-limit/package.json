@@ -1,6 +1,6 @@
 {
-  "name": "@nest-boot/graphql",
-  "version": "7.0.0-beta.4",
+  "name": "@nest-boot/graphql-rate-limit",
+  "version": "7.0.0-beta.3",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
   "homepage": "",
@@ -24,8 +24,10 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand"
   },
   "devDependencies": {
+    "@apollo/server": "^4.12.2",
     "@nest-boot/eslint-config": "workspace:^7.0.0-beta.1",
     "@nest-boot/eslint-plugin": "workspace:^7.0.0-beta.1",
+    "@nest-boot/redis": "workspace:^7.0.0-beta.5",
     "@nest-boot/tsconfig": "workspace:*",
     "@nestjs/apollo": "^13.1.0",
     "@nestjs/common": "^11.1.6",
@@ -38,6 +40,8 @@
     "eslint": "^9.36.0",
     "express": "^5.1.0",
     "graphql": "^16.11.0",
+    "graphql-query-complexity": "^1.1.0",
+    "ioredis": "^5.8.0",
     "jest": "^29.7.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
@@ -45,12 +49,16 @@
     "typescript": "^5.9.2"
   },
   "peerDependencies": {
+    "@apollo/server": "^4.0.0",
     "@nestjs/apollo": "^12.0.0",
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
     "@nestjs/graphql": "^13.0.0",
+    "@nest-boot/redis": "^7.0.0-beta.5",
     "express": "^5.0.0",
     "graphql": "^16.0.0",
+    "graphql-query-complexity": "^1.0.0",
+    "ioredis": "^5.0.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.0.0"
   },

@@ -1,6 +1,5 @@
-import { ApolloServerPluginLandingPageLocalDefault } from "@apollo/server/plugin/landingPage/default";
 import { ApolloDriver } from "@nestjs/apollo";
-import { Global, Logger, Module } from "@nestjs/common";
+import { Global, Module } from "@nestjs/common";
 import { APP_FILTER } from "@nestjs/core";
 import { GraphQLModule as BaseGraphQLModule } from "@nestjs/graphql";
 
@@ -10,9 +9,7 @@ import {
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
 } from "./graphql.module-definition";
-import { type GraphQLModuleOptions } from "./interfaces";
-import { ComplexityPlugin } from "./plugins";
-import { LoggingPlugin } from "./plugins/logging.plugin";
+import { type GraphQLModuleOptions } from "./graphql-module-options.interface";
 
 @Global()
 @Module({
@@ -21,35 +18,17 @@ import { LoggingPlugin } from "./plugins/logging.plugin";
       driver: ApolloDriver,
       inject: [MODULE_OPTIONS_TOKEN],
       useFactory: (options: GraphQLModuleOptions) => {
-        if (options.playground !== false) {
-          options.playground = false;
-          options.plugins = [
-            ...(options.plugins ?? []),
-            ApolloServerPluginLandingPageLocalDefault({
-              includeCookies: true,
-            }),
-          ];
-        }
-
         return {
           path: "/api/graphql",
-          autoSchemaFile: true,
+          autoSchemaFile: "schema.gql",
+          sortSchema: true,
+          graphiql: process.env.NODE_ENV !== "production",
           ...options,
-          ...(typeof options.subscriptions !== "undefined"
-            ? {
-                subscriptions: {
-                  "graphql-ws": options.subscriptions,
-                },
-              }
-            : {}),
         };
       },
     }),
   ],
   providers: [
-    Logger,
-    ComplexityPlugin,
-    LoggingPlugin,
     {
       provide: APP_FILTER,
       useClass: GraphQLExceptionFilter,
