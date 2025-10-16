@@ -1,5 +1,5 @@
 import { ApolloDriver } from "@nestjs/apollo";
-import { Global, Module } from "@nestjs/common";
+import { Global, Logger, Module } from "@nestjs/common";
 import { APP_FILTER } from "@nestjs/core";
 import { GraphQLModule as BaseGraphQLModule } from "@nestjs/graphql";
 
@@ -29,6 +29,7 @@ import { type GraphQLModuleOptions } from "./graphql-module-options.interface";
     }),
   ],
   providers: [
+    Logger,
     {
       provide: APP_FILTER,
       useClass: GraphQLExceptionFilter,
