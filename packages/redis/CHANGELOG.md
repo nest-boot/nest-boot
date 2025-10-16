@@ -1,5 +1,11 @@
 # @nest-boot/redis
 
+## 7.0.0-beta.6
+
+### Patch Changes
+
+- 3a447d2: fix: 修复优化 Redis 和 BullMQ 模块的环境变量加载
+
 ## 7.0.0-beta.5
 
 ### Patch Changes

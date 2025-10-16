@@ -29,7 +29,9 @@
     "@nest-boot/view": "6.10.2",
     "@nest-boot/website": "0.0.0",
     "@nest-boot/mikro-orm": "7.0.0-beta.2",
-    "@nest-boot/bullmq": "7.0.0-beta.2"
+    "@nest-boot/bullmq": "7.0.0-beta.2",
+    "@nest-boot/graphql-logger": "7.0.0-beta.3",
+    "@nest-boot/graphql-rate-limit": "7.0.0-beta.3"
   },
   "changesets": [
     "beige-pens-leave",
@@ -37,6 +39,7 @@
     "cuddly-weeks-share",
     "cute-worlds-attack",
     "eager-items-greet",
+    "eager-months-speak",
     "easy-rocks-refuse",
     "fluffy-banks-bet",
     "fresh-pugs-trade",
@@ -47,6 +50,7 @@
     "legal-chairs-enjoy",
     "legal-schools-win",
     "little-kings-joke",
+    "mean-crews-switch",
     "moody-walls-show",
     "ninety-lights-allow",
     "open-ducks-travel",
@@ -63,6 +67,7 @@
     "tame-yaks-occur",
     "tidy-wings-chew",
     "tough-deer-drum",
-    "violet-cities-prove"
+    "violet-cities-prove",
+    "wise-dancers-write"
   ]
 }

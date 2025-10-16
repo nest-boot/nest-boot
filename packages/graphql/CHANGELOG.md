@@ -1,5 +1,15 @@
 # @nest-boot/graphql
 
+## 7.0.0-beta.5
+
+### Minor Changes
+
+- 34591c8: feat: 拆分 graphql 模块的 logger 和 rate limit 功能为独立模块
+
+### Patch Changes
+
+- aeedd1c: fix: 修复 GraphQL 模块缺少 Logger 提供者
+
 ## 7.0.0-beta.4
 
 ### Minor Changes
