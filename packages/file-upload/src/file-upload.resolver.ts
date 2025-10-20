@@ -1,4 +1,4 @@
-import { Args, Mutation, Resolver } from "@nestjs/graphql";
+import { Args, Mutation, Resolver } from "@nest-boot/graphql";
 
 import { FileUpload } from "./file-upload.object";
 import { FileUploadService } from "./file-upload.service";

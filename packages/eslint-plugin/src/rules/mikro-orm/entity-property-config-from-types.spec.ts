@@ -1,0 +1,262 @@
+import { tester } from "../../utils/tester";
+import rule from "./entity-property-config-from-types";
+
+tester.run("entity-property-config-from-types", rule, {
+  valid: [
+    // 正确的 string 类型
+    /* typescript */ `
+      import { Entity, Property } from "@mikro-orm/core";
+
+      @Entity()
+      class User {
+        @Property({ type: t.string })
+        name!: string;
+      }
+    `,
+    // 正确的 nullable 配置
+    /* typescript */ `
+      import { Entity, Property } from "@mikro-orm/core";
+
+      @Entity()
+      class User {
+        @Property({ type: t.string, nullable: true })
+        name?: string;
+      }
+    `,
+    // 使用 Opt<T> 类型且有初始化值
+    /* typescript */ `
+      import { Entity, Property, Opt } from "@mikro-orm/core";
+
+      @Entity()
+      class User {
+        @Property({ type: t.boolean })
+        isActive: Opt<boolean> = false;
+      }
+    `,
+    // 关系装饰器不需要 @Property
+    /* typescript */ `
+      import { Entity, ManyToOne } from "@mikro-orm/core";
+
+      @Entity()
+      class Post {
+        @ManyToOne()
+        author!: User;
+      }
+    `,
+    // PrimaryKey 不需要 @Property
+    /* typescript */ `
+      import { Entity, PrimaryKey } from "@mikro-orm/core";
+
+      @Entity()
+      class User {
+        @PrimaryKey()
+        id!: number;
+      }
+    `,
+    // 枚举类型使用 @Enum
+    /* typescript */ `
+      import { Entity, Enum } from "@mikro-orm/core";
+
+      enum Role {
+        Admin,
+        User
+      }
+
+      @Entity()
+      class User {
+        @Enum({ items: () => Role })
+        role!: Role;
+      }
+    `,
+    // 数组类型
+    /* typescript */ `
+      import { Entity, Property } from "@mikro-orm/core";
+
+      @Entity()
+      class User {
+        @Property({ type: t.array })
+        tags!: number[];
+      }
+    `,
+    // boolean 类型
+    /* typescript */ `
+      import { Entity, Property } from "@mikro-orm/core";
+
+      @Entity()
+      class User {
+        @Property({ type: t.boolean })
+        isActive!: boolean;
+      }
+    `,
+    // 使用 t.text 代替 t.string（有效的 string 类型配置）
+    /* typescript */ `
+      import { Entity, Property } from "@mikro-orm/core";
+
+      @Entity()
+      class User {
+        @Property({ type: t.text })
+        description!: string;
+      }
+    `,
+    // 非 Entity 类不检查
+    /* typescript */ `
+      class NotAnEntity {
+        field: string;
+      }
+    `,
+  ],
+  invalid: [
+    // type 配置不匹配
+    {
+      code: /* typescript */ `
+        import { Entity, Property } from "@mikro-orm/core";
+
+        @Entity()
+        class User {
+          @Property({ type: t.float })
+          name!: string;
+        }
+      `,
+      output: /* typescript */ `
+        import { Entity, Property } from "@mikro-orm/core";
+
+        @Entity()
+        class User {
+          @Property({ type: t.string })
+          name!: string;
+        }
+      `,
+      errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
+    },
+    // nullable 配置不匹配
+    {
+      code: /* typescript */ `
+        import { Entity, Property } from "@mikro-orm/core";
+
+        @Entity()
+        class User {
+          @Property({ type: t.string })
+          name?: string;
+        }
+      `,
+      output: /* typescript */ `
+        import { Entity, Property } from "@mikro-orm/core";
+
+        @Entity()
+        class User {
+          @Property({ type: t.string, nullable: true })
+          name?: string;
+        }
+      `,
+      errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
+    },
+    // 有初始化值但没有使用 Opt<T>
+    {
+      code: /* typescript */ `
+        import { Entity, Property } from "@mikro-orm/core";
+
+        @Entity()
+        class User {
+          @Property({ type: t.boolean })
+          isActive: boolean = false;
+        }
+      `,
+      output: /* typescript */ `
+        import { Entity, Property, Opt } from "@mikro-orm/core";
+
+        @Entity()
+        class User {
+          @Property({ type: t.boolean })
+          isActive: Opt<boolean> = false;
+        }
+      `,
+      errors: [{ messageId: "useOptTypeForInitializedProperty" }],
+    },
+    // 枚举类型应该使用 @Enum 装饰器
+    {
+      code: /* typescript */ `
+        import { Entity, Property } from "@mikro-orm/core";
+
+        enum Role {
+          Admin,
+          User
+        }
+
+        @Entity()
+        class User {
+          @Property()
+          role!: Role;
+        }
+      `,
+      output: /* typescript */ `
+        import { Entity, Property } from "@mikro-orm/core";
+
+        enum Role {
+          Admin,
+          User
+        }
+
+        @Entity()
+        class User {
+          @Enum({ items: () => Role })
+          role!: Role;
+        }
+      `,
+      errors: [{ messageId: "useEnumDecorator" }],
+    },
+    // @Enum 的 nullable 配置不匹配
+    {
+      code: /* typescript */ `
+        import { Entity, Enum } from "@mikro-orm/core";
+
+        enum Role {
+          Admin,
+          User
+        }
+
+        @Entity()
+        class User {
+          @Enum({ items: () => Role })
+          role?: Role;
+        }
+      `,
+      output: /* typescript */ `
+        import { Entity, Enum } from "@mikro-orm/core";
+
+        enum Role {
+          Admin,
+          User
+        }
+
+        @Entity()
+        class User {
+          @Enum({ items: () => Role, nullable: true })
+          role?: Role;
+        }
+      `,
+      errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
+    },
+    // 数组类型配置不匹配
+    {
+      code: /* typescript */ `
+        import { Entity, Property } from "@mikro-orm/core";
+
+        @Entity()
+        class User {
+          @Property({ type: t.string })
+          tags!: number[];
+        }
+      `,
+      output: /* typescript */ `
+        import { Entity, Property } from "@mikro-orm/core";
+
+        @Entity()
+        class User {
+          @Property({ type: t.array })
+          tags!: number[];
+        }
+      `,
+      errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
+    },
+  ],
+});

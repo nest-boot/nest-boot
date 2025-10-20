@@ -10,4 +10,9 @@ export default [
       },
     },
   },
+  {
+    rules: {
+      "@nest-boot/import-mikro-orm": "off",
+    },
+  },
 ];

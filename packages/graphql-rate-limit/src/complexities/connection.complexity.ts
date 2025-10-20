@@ -1,4 +1,7 @@
-import { type Complexity, type ComplexityEstimatorArgs } from "@nestjs/graphql";
+import {
+  type Complexity,
+  type ComplexityEstimatorArgs,
+} from "@nest-boot/graphql";
 
 export const connectionComplexity: Complexity = (
   options: ComplexityEstimatorArgs,

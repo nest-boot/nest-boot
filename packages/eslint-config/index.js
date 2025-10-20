@@ -28,7 +28,7 @@ module.exports = [
       parser: tsParser,
       parserOptions: {
         sourceType: "module",
-        project: true,
+        project: ["tsconfig.json"],
       },
       globals: {
         process: "readonly",
@@ -81,11 +81,13 @@ module.exports = [
       ],
 
       // NestBoot 自定义规则
-      "@nest-boot/entity-constructor": "error",
-      "@nest-boot/entity-property-no-optional-or-non-null-assertion": "error",
-      "@nest-boot/entity-property-nullable": "error",
-      "@nest-boot/graphql-field-arguments-match-property-type": "error",
-      "@nest-boot/graphql-resolver-method-return-type": "error",
+      "@nest-boot/entity-field-definite-assignment": "error",
+      "@nest-boot/entity-property-config-from-types": "error",
+      "@nest-boot/graphql-field-definite-assignment": "error",
+      "@nest-boot/graphql-field-config-from-types": "error",
+      "@nest-boot/import-bullmq": "error",
+      "@nest-boot/import-graphql": "error",
+      "@nest-boot/import-mikro-orm": "error",
     },
   },
 

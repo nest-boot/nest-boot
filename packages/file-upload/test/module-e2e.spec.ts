@@ -46,7 +46,7 @@ describe("FileUploadModule - e2e", () => {
 
   it("should successfully gets the upload parameter configuration", async () => {
     const createFileUploads = await request(app.getHttpServer())
-      .post("/graphql")
+      .post("/api/graphql")
       .send({
         query: /* GraphQL */ `
           mutation CreateFileUploads($input: [FileUploadInput!]!) {

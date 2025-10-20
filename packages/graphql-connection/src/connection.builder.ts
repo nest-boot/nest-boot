@@ -1,5 +1,4 @@
 import type { EntityClass } from "@mikro-orm/core";
-import { type Type } from "@nestjs/common";
 import {
   ArgsType,
   Field,
@@ -7,7 +6,8 @@ import {
   Int,
   ObjectType,
   registerEnumType,
-} from "@nestjs/graphql";
+} from "@nest-boot/graphql";
+import { type Type } from "@nestjs/common";
 import { humanize, pluralize, underscore } from "inflection";
 
 import { OrderDirection } from "./enums";
@@ -79,12 +79,16 @@ export class ConnectionBuilder<Entity extends object> {
       description: `An auto-generated type which holds one ${builder.entityName} and a cursor during pagination.`,
     })
     class Edge implements EdgeInterface<Entity> {
+      // eslint-disable-next-line @nest-boot/graphql-field-config-from-types
       @Field(() => builder.entityClass, {
         description: `The item at the end of ${builder.entityName}Edge.`,
       })
       node!: Entity;
 
-      @Field({ complexity: 0, description: `A cursor for use in pagination.` })
+      @Field(() => String, {
+        complexity: 0,
+        description: `A cursor for use in pagination.`,
+      })
       cursor!: string;
     }
 
@@ -100,7 +104,7 @@ export class ConnectionBuilder<Entity extends object> {
       @Field(() => [Edge], { complexity: 0, description: `A list of edges.` })
       edges!: Edge[];
 
-      @Field({
+      @Field(() => PageInfo, {
         complexity: 0,
         description: `Information to aid in pagination.`,
       })
@@ -135,6 +139,7 @@ export class ConnectionBuilder<Entity extends object> {
       description: `Ordering options for ${humanizeEntityName} connections`,
     })
     class Order implements OrderInterface<Entity> {
+      // eslint-disable-next-line @nest-boot/graphql-field-config-from-types
       @Field(() => OrderField as object, {
         description: `The field to order ${humanizeAndPluralizeAndEntityName} by.`,
       })
@@ -146,7 +151,7 @@ export class ConnectionBuilder<Entity extends object> {
 
     @ArgsType()
     class ConnectionArgs implements ConnectionArgsInterface<Entity> {
-      @Field({
+      @Field(() => String, {
         nullable: true,
         ...(builder.filterableFields.length > 0
           ? {
@@ -170,15 +175,15 @@ export class ConnectionBuilder<Entity extends object> {
       })
       last?: number;
 
-      @Field({
-        nullable: true,
+      @Field(() => String, {
         description: `Returns the elements that come after the specified cursor.`,
+        nullable: true,
       })
       after?: string;
 
-      @Field({
-        nullable: true,
+      @Field(() => String, {
         description: `Returns the elements that come before the specified cursor.`,
+        nullable: true,
       })
       before?: string;
 

@@ -1,3 +1,5 @@
 import { ESLintUtils } from "@typescript-eslint/utils";
 
-export const createRule = ESLintUtils.RuleCreator.withoutDocs;
+export const createRule = ESLintUtils.RuleCreator(
+  (name) => `https://example.com/eslint/rules/${name}`,
+);

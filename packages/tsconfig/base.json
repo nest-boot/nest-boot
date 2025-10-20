@@ -10,6 +10,7 @@
     "esModuleInterop": true,
     "experimentalDecorators": true,
     "incremental": true,
+    "isolatedModules": true,
     "module": "CommonJS",
     "outDir": "./dist",
     "removeComments": false,

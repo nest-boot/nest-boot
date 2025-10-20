@@ -1,13 +1,13 @@
-import { Field, InputType, Int } from "@nestjs/graphql";
+import { Field, InputType, Int } from "@nest-boot/graphql";
 
 @InputType()
 export class FileUploadInput {
-  @Field()
+  @Field(() => String)
   name!: string;
 
   @Field(() => Int)
   fileSize!: number;
 
-  @Field()
+  @Field(() => String)
   mimeType!: string;
 }

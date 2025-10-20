@@ -1,4 +1,4 @@
-import { registerEnumType } from "@nestjs/graphql";
+import { registerEnumType } from "@nest-boot/graphql";
 
 export enum OrderDirection {
   ASC = "ASC",

@@ -1,4 +1,4 @@
-import { Entity, PrimaryKey, Property } from "@mikro-orm/core";
+import { Entity, Opt, PrimaryKey, Property } from "@mikro-orm/core";
 
 @Entity()
 export class TestEntity {
@@ -16,8 +16,8 @@ export class TestEntity {
   id: number;
 
   @Property()
-  createdAt: Date = new Date();
+  createdAt: Opt<Date> = new Date();
 
   @Property()
-  updatedAt: Date = new Date();
+  updatedAt: Opt<Date> = new Date();
 }

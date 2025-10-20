@@ -1,16 +1,16 @@
-import { Field, ObjectType } from "@nestjs/graphql";
+import { Field, ObjectType } from "@nest-boot/graphql";
 
 @ObjectType({
   description: `Returns information about pagination in a connection, in accordance with the [Relay specification](https://relay.dev/graphql/connections.htm#sec-undefined.PageInfo).`,
 })
 export class PageInfo {
-  @Field({
+  @Field(() => Boolean, {
     complexity: 0,
     description: `Whether there are more pages to fetch following the current page.`,
   })
   hasNextPage!: boolean;
 
-  @Field({
+  @Field(() => Boolean, {
     complexity: 0,
     description: `Whether there are any pages prior to the current page.`,
   })

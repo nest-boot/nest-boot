@@ -40,26 +40,26 @@ export class PersonalAccessToken {
   @PrimaryKey({ type: t.uuid })
   id: string = randomUUID();
 
-  @Property({ nullable: true })
+  @Property({ type: t.string, nullable: true })
   name: string | null = null;
 
-  @Property({ unique: true, length: 64 })
-  token: string;
+  @Property({ type: t.string, unique: true, length: 64 })
+  token!: string;
 
   @Property({ type: t.array })
-  permissions: string[];
+  permissions!: string[];
 
   @Property({ nullable: true })
-  lastUsedAt: Date | null;
+  lastUsedAt!: Date | null;
 
   @Property({ nullable: true })
-  expiresAt: Date | null;
+  expiresAt!: Date | null;
 
   @Property({ nullable: true })
-  createdAt: Date | null;
+  createdAt!: Date | null;
 
   @Property({ nullable: true })
-  updatedAt: Date | null;
+  updatedAt!: Date | null;
 
   @ManyToOne(() => User)
   user: Ref<User>;

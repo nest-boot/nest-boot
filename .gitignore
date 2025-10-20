@@ -289,3 +289,6 @@ dist
 
 # turbo
 .turbo
+
+# graphql
+schema.gql

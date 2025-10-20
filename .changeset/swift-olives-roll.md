@@ -11,7 +11,6 @@
 "@nest-boot/logger": major
 "@nest-boot/mailer": major
 "@nest-boot/crypt": major
-"@nest-boot/queue": major
 "@nest-boot/redis": major
 "@nest-boot/auth": major
 "@nest-boot/hash": major

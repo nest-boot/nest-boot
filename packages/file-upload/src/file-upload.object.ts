@@ -1,4 +1,4 @@
-import { Field, ObjectType } from "@nestjs/graphql";
+import { Field, ObjectType } from "@nest-boot/graphql";
 
 import { FileUploadField } from "./file-upload-field.object";
 
@@ -7,6 +7,6 @@ export class FileUpload {
   @Field(() => [FileUploadField])
   fields!: FileUploadField[];
 
-  @Field()
+  @Field(() => String)
   url!: string;
 }

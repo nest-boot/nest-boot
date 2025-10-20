@@ -20,7 +20,6 @@
     "@nest-boot/logger": "6.12.1",
     "@nest-boot/mailer": "6.10.2",
     "@nest-boot/metrics": "6.10.2",
-    "@nest-boot/queue": "6.12.1",
     "@nest-boot/redis": "6.10.2",
     "@nest-boot/request-context": "6.15.1",
     "@nest-boot/schedule": "6.10.4",

@@ -1,13 +1,12 @@
 {
   "extends": "@nest-boot/tsconfig/library.json",
-  "include": ["src"],
   "compilerOptions": {
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "target": "ES2021",
-    "lib": ["ES2021"],
-    "outDir": "./dist",
-    "declaration": false,
-    "declarationMap": false,
-  },
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "outDir": "./dist"
+  }
 }

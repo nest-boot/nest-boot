@@ -7,7 +7,6 @@
 "@nest-boot/logger": patch
 "@nest-boot/mailer": patch
 "@nest-boot/crypt": patch
-"@nest-boot/queue": patch
 "@nest-boot/redis": patch
 "@nest-boot/auth": patch
 "@nest-boot/hash": patch

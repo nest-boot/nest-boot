@@ -1,21 +1,12 @@
-import { ApolloDriver } from "@nestjs/apollo";
+import { GraphQLModule } from "@nest-boot/graphql";
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
-import { GraphQLModule } from "@nestjs/graphql";
 import bytes from "bytes";
 
 import { FileUploadModule } from "../../src";
 import { TestResolver } from "./test.resolver";
 
 const ConfigDynamicModule = ConfigModule.forRoot({ isGlobal: true });
-
-const GraphQLDynamicModule = GraphQLModule.forRootAsync({
-  driver: ApolloDriver,
-  useFactory: () => ({
-    playground: true,
-    autoSchemaFile: true,
-  }),
-});
 
 const FileUploadDynamicModule = FileUploadModule.registerAsync({
   inject: [ConfigService],
@@ -59,7 +50,7 @@ const FileUploadDynamicModule = FileUploadModule.registerAsync({
 });
 
 @Module({
-  imports: [ConfigDynamicModule, GraphQLDynamicModule, FileUploadDynamicModule],
+  imports: [ConfigDynamicModule, GraphQLModule, FileUploadDynamicModule],
   providers: [TestResolver],
 })
 export class AppModule {}

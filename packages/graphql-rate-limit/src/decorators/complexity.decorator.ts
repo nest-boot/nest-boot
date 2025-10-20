@@ -1,4 +1,4 @@
-import { Directive } from "@nestjs/graphql";
+import { Directive } from "@nest-boot/graphql";
 
 export interface ComplexityOptions {
   value?: number;

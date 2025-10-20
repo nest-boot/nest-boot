@@ -2,6 +2,7 @@ import {
   Collection,
   Entity,
   OneToMany,
+  Opt,
   PrimaryKey,
   Property,
   t,
@@ -35,23 +36,23 @@ export class User {
   @PrimaryKey()
   id: string;
 
-  @Property()
-  name: string;
+  @Property({ type: t.string })
+  name!: string;
 
-  @Property({ unique: true })
-  email: string;
+  @Property({ type: t.string, unique: true })
+  email!: string;
 
-  @Property()
-  password: string;
+  @Property({ type: t.string })
+  password!: string;
 
   @Property({ type: t.array, default: "{}" })
-  permissions: string[] = [];
+  permissions: Opt<string[]> = [];
 
   @Property()
-  createdAt: Date = new Date();
+  createdAt: Opt<Date> = new Date();
 
   @Property()
-  updatedAt: Date = new Date();
+  updatedAt: Opt<Date> = new Date();
 
   @OneToMany(
     () => PersonalAccessToken,

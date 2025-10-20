@@ -6,9 +6,9 @@ import {
   GraphQLRequestContext,
   type GraphQLRequestListener,
 } from "@apollo/server";
+import { GraphQLSchemaHost } from "@nest-boot/graphql";
 import { Plugin } from "@nestjs/apollo";
 import { HttpException } from "@nestjs/common";
-import { GraphQLSchemaHost } from "@nestjs/graphql";
 import { Request } from "express";
 import {
   GraphQLEnumType,

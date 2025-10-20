@@ -11,7 +11,6 @@
 "@nest-boot/logger": patch
 "@nest-boot/mailer": patch
 "@nest-boot/metrics": patch
-"@nest-boot/queue": patch
 "@nest-boot/redis": patch
 "@nest-boot/request-context": patch
 "@nest-boot/schedule": patch
