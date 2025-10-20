@@ -20,8 +20,8 @@
     "lint": "eslint \"{src,test}/**/*.ts\" --fix"
   },
   "devDependencies": {
-    "@nest-boot/eslint-config": "workspace:^7.0.0-beta.1",
-    "@nest-boot/eslint-plugin": "workspace:^7.0.0-beta.1",
+    "@nest-boot/eslint-config": "workspace:^7.0.0-beta.2",
+    "@nest-boot/eslint-plugin": "workspace:^7.0.0-beta.2",
     "@nest-boot/tsconfig": "workspace:*",
     "@nestjs/common": "^11.1.6",
     "@nestjs/core": "^11.1.6",

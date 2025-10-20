@@ -124,9 +124,9 @@ describe("decorators", () => {
         ],
       } as TSESTree.PropertyDefinition;
 
-      expect(hasPropertyDecorator(propertyDefinition, ["Property", "Field"])).toBe(
-        true,
-      );
+      expect(
+        hasPropertyDecorator(propertyDefinition, ["Property", "Field"]),
+      ).toBe(true);
     });
 
     it("should return false when property does not have the specified decorator", () => {

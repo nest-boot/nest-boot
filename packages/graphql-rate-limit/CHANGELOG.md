@@ -1,5 +1,13 @@
 # @nest-boot/graphql-rate-limit
 
+## 7.0.0-beta.5
+
+### Patch Changes
+
+- 20f3262: fix: 重构 eslint-plugin 和移除 queue 模块
+- Updated dependencies [20f3262]
+  - @nest-boot/graphql@7.0.0-beta.6
+
 ## 7.0.0-beta.4
 
 ### Minor Changes
