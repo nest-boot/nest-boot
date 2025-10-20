@@ -216,8 +216,9 @@ export default createRule<
       return null;
     };
 
-
-    const extractArrayElementType = (node: TSESTree.TypeNode): TSESTree.TypeNode | null => {
+    const extractArrayElementType = (
+      node: TSESTree.TypeNode,
+    ): TSESTree.TypeNode | null => {
       if (node.type === AST_NODE_TYPES.TSArrayType) {
         return node.elementType;
       }
@@ -240,7 +241,9 @@ export default createRule<
     };
 
     // 检查类型是否被 Opt<T> 包装
-    const isWrappedWithOpt = (property: TSESTree.PropertyDefinition): boolean => {
+    const isWrappedWithOpt = (
+      property: TSESTree.PropertyDefinition,
+    ): boolean => {
       const typeAnnotation = property.typeAnnotation;
       if (typeAnnotation?.type !== AST_NODE_TYPES.TSTypeAnnotation) {
         return false;
@@ -265,13 +268,15 @@ export default createRule<
             typeof importSource === "string" &&
             importSource.startsWith("@mikro-orm/")
           ) {
-            const hasOpt = statement.specifiers.some((spec: TSESTree.ImportClause) => {
-              return (
-                spec.type === AST_NODE_TYPES.ImportSpecifier &&
-                spec.imported.type === AST_NODE_TYPES.Identifier &&
-                spec.imported.name === "Opt"
-              );
-            });
+            const hasOpt = statement.specifiers.some(
+              (spec: TSESTree.ImportClause) => {
+                return (
+                  spec.type === AST_NODE_TYPES.ImportSpecifier &&
+                  spec.imported.type === AST_NODE_TYPES.Identifier &&
+                  spec.imported.name === "Opt"
+                );
+              },
+            );
             if (hasOpt) return true;
           }
         }
@@ -316,7 +321,8 @@ export default createRule<
       } else {
         // 没有 @mikro-orm/core 导入,在文件开头添加新的导入语句
         const firstImport = program.body.find(
-          (node: TSESTree.ProgramStatement) => node.type === AST_NODE_TYPES.ImportDeclaration,
+          (node: TSESTree.ProgramStatement) =>
+            node.type === AST_NODE_TYPES.ImportDeclaration,
         );
 
         if (firstImport) {
@@ -329,11 +335,13 @@ export default createRule<
       return null;
     };
 
-    const computeTypeInfo = (property: TSESTree.PropertyDefinition): TypeInfo | null => {
+    const computeTypeInfo = (
+      property: TSESTree.PropertyDefinition,
+    ): TypeInfo | null => {
       let isNullable = false;
       let isArray = false;
       let isEnum = false;
-       
+
       let baseTypeNode: TSESTree.TypeNode | null =
         property.typeAnnotation?.type === AST_NODE_TYPES.TSTypeAnnotation
           ? property.typeAnnotation.typeAnnotation
@@ -396,12 +404,15 @@ export default createRule<
       }
 
       // 数组类型（T[] 或 Array<T>）- 在解包 Opt/Ref 之后检查
-      const elementTypeNode = baseTypeNode ? extractArrayElementType(baseTypeNode) : null;
+      const elementTypeNode = baseTypeNode
+        ? extractArrayElementType(baseTypeNode)
+        : null;
       if (elementTypeNode) {
         isArray = true;
       }
 
-      const targetTypeNode: TSESTree.TypeNode | null = elementTypeNode ?? baseTypeNode;
+      const targetTypeNode: TSESTree.TypeNode | null =
+        elementTypeNode ?? baseTypeNode;
 
       // 检查目标类型是否为枚举
       if (targetTypeNode) {
@@ -570,7 +581,10 @@ export default createRule<
       return `@Property({ ${options.join(", ")} })`;
     };
 
-    const addPropertyDecorator = (property: TSESTree.PropertyDefinition, info: TypeInfo) => {
+    const addPropertyDecorator = (
+      property: TSESTree.PropertyDefinition,
+      info: TypeInfo,
+    ) => {
       const fixes: CustomFix[] = [];
 
       const newDecoratorText = buildPropertyDecorator(info);
@@ -768,13 +782,18 @@ export default createRule<
 
           // 递归检查联合类型
           if (typeNode.type === AST_NODE_TYPES.TSUnionType) {
-            return typeNode.types.some((t: TSESTree.TypeNode) => containsOpt(t));
+            return typeNode.types.some((t: TSESTree.TypeNode) =>
+              containsOpt(t),
+            );
           }
 
           // 递归检查类型参数
-          if (typeNode.type === AST_NODE_TYPES.TSTypeReference && typeNode.typeArguments?.params) {
-            return typeNode.typeArguments.params.some((param: TSESTree.TypeNode) =>
-              containsOpt(param),
+          if (
+            typeNode.type === AST_NODE_TYPES.TSTypeReference &&
+            typeNode.typeArguments?.params
+          ) {
+            return typeNode.typeArguments.params.some(
+              (param: TSESTree.TypeNode) => containsOpt(param),
             );
           }
 
@@ -841,13 +860,16 @@ export default createRule<
 
           // 检查 @Enum 装饰器
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-          const enumDecorator = member.decorators?.find((decorator: TSESTree.Decorator) => {
-            return (
-              decorator.expression.type === AST_NODE_TYPES.CallExpression &&
-              decorator.expression.callee.type === AST_NODE_TYPES.Identifier &&
-              decorator.expression.callee.name === "Enum"
-            );
-          });
+          const enumDecorator = member.decorators?.find(
+            (decorator: TSESTree.Decorator) => {
+              return (
+                decorator.expression.type === AST_NODE_TYPES.CallExpression &&
+                decorator.expression.callee.type ===
+                  AST_NODE_TYPES.Identifier &&
+                decorator.expression.callee.name === "Enum"
+              );
+            },
+          );
 
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           const propertyDecorator = member.decorators?.find(
@@ -862,7 +884,7 @@ export default createRule<
           );
 
           const typeInfo = computeTypeInfo(member);
-           
+
           if (!typeInfo?.typeName) return;
 
           // 检查初始化值和 Opt<T> 类型的匹配
@@ -870,10 +892,9 @@ export default createRule<
           const isOptWrapped = isWrappedWithOpt(member);
 
           // 检查初始化值是否为 null
-           
+
           const isInitializedToNull =
             hasInitializer &&
-             
             member.value?.type === AST_NODE_TYPES.Literal &&
             // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             member.value?.value === null;
@@ -915,7 +936,6 @@ export default createRule<
               let inferredType: string | null = null;
 
               if (member.value.type === AST_NODE_TYPES.Literal) {
-                 
                 const valueType = typeof member.value.value;
                 if (valueType === "boolean") inferredType = "boolean";
                 else if (valueType === "number") inferredType = "number";

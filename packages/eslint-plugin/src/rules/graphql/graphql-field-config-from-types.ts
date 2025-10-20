@@ -501,7 +501,8 @@ export default createRule<
 
           if (
             callExpr.arguments.length > 0 &&
-            callExpr.arguments[0].type === AST_NODE_TYPES.ArrowFunctionExpression
+            callExpr.arguments[0].type ===
+              AST_NODE_TYPES.ArrowFunctionExpression
           ) {
             const firstArg = callExpr.arguments[0];
             const calleeText = source.getText(firstArg.body);

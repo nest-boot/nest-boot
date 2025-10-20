@@ -1,5 +1,13 @@
 # @nest-boot/auth
 
+## 7.0.0-beta.4
+
+### Patch Changes
+
+- 20f3262: fix: 重构 eslint-plugin 和移除 queue 模块
+  - @nest-boot/i18n@7.0.0-beta.3
+  - @nest-boot/request-context@7.0.0-beta.3
+
 ## 7.0.0-beta.3
 
 ### Patch Changes

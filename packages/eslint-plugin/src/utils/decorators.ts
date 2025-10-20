@@ -39,17 +39,15 @@ export function hasPropertyDecorator(
     ? decoratorNames
     : [decoratorNames];
 
-  return propertyDefinition.decorators.some(
-    (decorator: TSESTree.Decorator) => {
-      if (decorator.expression.type !== AST_NODE_TYPES.CallExpression) {
-        return false;
-      }
-      if (decorator.expression.callee.type !== AST_NODE_TYPES.Identifier) {
-        return false;
-      }
-      return names.includes(decorator.expression.callee.name);
-    },
-  );
+  return propertyDefinition.decorators.some((decorator: TSESTree.Decorator) => {
+    if (decorator.expression.type !== AST_NODE_TYPES.CallExpression) {
+      return false;
+    }
+    if (decorator.expression.callee.type !== AST_NODE_TYPES.Identifier) {
+      return false;
+    }
+    return names.includes(decorator.expression.callee.name);
+  });
 }
 
 /**
