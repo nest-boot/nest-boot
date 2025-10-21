@@ -24,6 +24,7 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand"
   },
   "devDependencies": {
+    "@as-integrations/express5": "^1.1.2",
     "@nest-boot/eslint-config": "workspace:^7.0.0-beta.2",
     "@nest-boot/eslint-plugin": "workspace:^7.0.0-beta.2",
     "@nest-boot/tsconfig": "workspace:^7.0.0-beta.1",
@@ -45,6 +46,7 @@
     "typescript": "^5.9.3"
   },
   "peerDependencies": {
+    "@as-integrations/express5": "^1.0.0",
     "@nestjs/apollo": "^12.0.0",
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",

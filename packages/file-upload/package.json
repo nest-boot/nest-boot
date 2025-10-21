@@ -24,8 +24,14 @@
     "test:watch": "jest --watch",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand"
   },
+  "dependencies": {
+    "dayjs": "^1.11.18",
+    "lodash": "^4.17.21",
+    "mime-types": "^2.1.35"
+  },
   "devDependencies": {
     "@apollo/server": "^4.12.2",
+    "@as-integrations/express5": "^1.1.2",
     "@aws-sdk/client-s3": "^3.896.0",
     "@aws-sdk/s3-presigned-post": "^3.896.0",
     "@nest-boot/eslint-config": "workspace:^7.0.0-beta.2",
@@ -55,13 +61,9 @@
     "ts-jest": "^29.4.4",
     "typescript": "^5.9.3"
   },
-  "dependencies": {
-    "dayjs": "^1.11.18",
-    "lodash": "^4.17.21",
-    "mime-types": "^2.1.35"
-  },
   "peerDependencies": {
     "@apollo/server": "^4.0.0",
+    "@as-integrations/express5": "^1.0.0",
     "@aws-sdk/client-s3": "^3.0.0",
     "@aws-sdk/s3-presigned-post": "^3.0.0",
     "@nest-boot/graphql": "workspace:^",
