@@ -1,5 +1,11 @@
 # @nest-boot/graphql
 
+## 7.0.0-beta.7
+
+### Patch Changes
+
+- f9c03c3: 修复 ESLint
+
 ## 7.0.0-beta.6
 
 ### Patch Changes

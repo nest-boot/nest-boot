@@ -30,7 +30,8 @@
     "@nest-boot/mikro-orm": "7.0.0-beta.2",
     "@nest-boot/bullmq": "7.0.0-beta.2",
     "@nest-boot/graphql-logger": "7.0.0-beta.3",
-    "@nest-boot/graphql-rate-limit": "7.0.0-beta.3"
+    "@nest-boot/graphql-rate-limit": "7.0.0-beta.3",
+    "@nest-boot/bullmq-mikro-orm": "7.0.0-beta.1"
   },
   "changesets": [
     "all-swans-smile",
@@ -62,8 +63,10 @@
     "quiet-clubs-smile",
     "silly-ducks-warn",
     "silly-tables-spend",
+    "silver-ducks-boil",
     "slick-towns-poke",
     "solid-jobs-heal",
+    "stupid-places-push",
     "swift-olives-roll",
     "tame-crabs-worry",
     "tidy-wings-chew",
