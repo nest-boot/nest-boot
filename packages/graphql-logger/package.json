@@ -28,11 +28,11 @@
     "@nest-boot/eslint-config": "workspace:^7.0.0-beta.2",
     "@nest-boot/eslint-plugin": "workspace:^7.0.0-beta.2",
     "@nest-boot/logger": "workspace:^7.0.0-beta.3",
-    "@nest-boot/tsconfig": "workspace:*",
-    "@nestjs/apollo": "^13.1.0",
+    "@nest-boot/tsconfig": "workspace:^7.0.0-beta.1",
+    "@nestjs/apollo": "^13.2.1",
     "@nestjs/common": "^11.1.6",
     "@nestjs/core": "^11.1.6",
-    "@nestjs/graphql": "^13.1.0",
+    "@nestjs/graphql": "^13.2.0",
     "@nestjs/testing": "^11.1.6",
     "@types/express": "^5.0.3",
     "@types/jest": "^29.5.14",
@@ -44,7 +44,7 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "ts-jest": "^29.4.4",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.3"
   },
   "peerDependencies": {
     "@apollo/server": "^4.0.0",

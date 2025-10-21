@@ -4,13 +4,6 @@ import config from "@nest-boot/eslint-config";
 export default [
   ...config,
   {
-    languageOptions: {
-      parserOptions: {
-        project: ["tsconfig.json"],
-      },
-    },
-  },
-  {
     rules: {
       "@nest-boot/import-bullmq": "off",
     },

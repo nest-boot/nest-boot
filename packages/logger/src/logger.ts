@@ -59,8 +59,9 @@ export class Logger implements LoggerService {
 
     try {
       pinoLogger = RequestContext.get<PinoLogger>(PINO_LOGGER);
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (err) {}
+    } catch {
+      //
+    }
 
     if (typeof pinoLogger === "undefined") {
       return this.globalLogger ?? (this.globalLogger = pino());
@@ -78,8 +79,9 @@ export class Logger implements LoggerService {
 
     try {
       bindings = RequestContext.get<Bindings>(BINDINGS) ?? {};
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (err) {}
+    } catch {
+      //
+    }
 
     let context = this.context;
 

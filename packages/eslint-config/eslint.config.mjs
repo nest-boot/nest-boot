@@ -1,45 +1,28 @@
-const js = require("@eslint/js");
-const tsParser = require("@typescript-eslint/parser");
-const tseslint = require("typescript-eslint");
-const nestBootPlugin = require("@nest-boot/eslint-plugin");
-const simpleImportSort = require("eslint-plugin-simple-import-sort");
-const prettierConfig = require("eslint-config-prettier");
-const { FlatCompat } = require("@eslint/eslintrc");
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
+import js from "@eslint/js";
+import nestBootPlugin from "@nest-boot/eslint-plugin";
+import tsParser from "@typescript-eslint/parser";
+import prettierConfig from "eslint-config-prettier";
+import simpleImportSort from "eslint-plugin-simple-import-sort";
+import tsEslint from "typescript-eslint";
 
 /** @type {import('eslint').Linter.Config[]} */
-module.exports = [
+const config = [
   js.configs.recommended,
 
-  // 使用 FlatCompat 包装 Standard 配置
-  ...compat.extends("standard"),
-
   // TypeScript 严格类型检查配置
-  ...tseslint.configs.strictTypeChecked,
-  ...tseslint.configs.stylisticTypeChecked,
+  ...tsEslint.configs.strictTypeChecked,
+  ...tsEslint.configs.stylisticTypeChecked,
+
+  // // Prettier 配置
+  prettierConfig,
 
   // TypeScript 和插件配置
   {
-    files: ["**/*.{ts,tsx,js,jsx}"],
     languageOptions: {
+      /** @type {import('eslint').Linter.Parser} */
       parser: tsParser,
       parserOptions: {
-        sourceType: "module",
         project: ["tsconfig.json"],
-      },
-      globals: {
-        process: "readonly",
-        Buffer: "readonly",
-        __dirname: "readonly",
-        __filename: "readonly",
-        module: "readonly",
-        require: "readonly",
-        exports: "readonly",
-        global: "readonly",
-        console: "readonly",
       },
     },
     plugins: {
@@ -90,6 +73,6 @@ module.exports = [
       "@nest-boot/import-mikro-orm": "error",
     },
   },
-
-  prettierConfig,
 ];
+
+export default config;

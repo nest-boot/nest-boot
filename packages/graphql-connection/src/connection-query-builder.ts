@@ -329,7 +329,7 @@ export class ConnectionQueryBuilder<
   }
 
   async query() {
-    let [entities, totalCount] = await Promise.all([
+    const [entities, totalCount] = await Promise.all([
       this.allFilterQuery === null
         ? this.entityManager.findAll(
             this.metadata.entityClass,
@@ -354,16 +354,16 @@ export class ConnectionQueryBuilder<
     ]);
 
     // 重新排序结果
-    entities =
+    const sortedEntities =
       this.pagingType === PagingType.FORWARD ? entities : entities.reverse();
 
     // 根据结果生成 edges
     const edges = (
-      entities.length > this.limit
+      sortedEntities.length > this.limit
         ? this.pagingType === PagingType.FORWARD
-          ? entities.slice(0, -1)
-          : entities.slice(1)
-        : entities
+          ? sortedEntities.slice(0, -1)
+          : sortedEntities.slice(1)
+        : sortedEntities
     ).map<EdgeInterface<Entity>>((node) => ({
       node: node as Entity,
       cursor: new Cursor({
@@ -381,12 +381,12 @@ export class ConnectionQueryBuilder<
       pageInfo: {
         ...(this.pagingType === PagingType.FORWARD
           ? {
-              hasNextPage: entities.length > this.limit,
+              hasNextPage: sortedEntities.length > this.limit,
               hasPreviousPage: this.cursor != null,
             }
           : {
               hasNextPage: this.cursor != null,
-              hasPreviousPage: entities.length > this.limit,
+              hasPreviousPage: sortedEntities.length > this.limit,
             }),
         startCursor: edges[0]?.cursor,
         endCursor: edges[edges.length - 1]?.cursor,
