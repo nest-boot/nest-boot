@@ -1,5 +1,11 @@
 # @nest-boot/redis
 
+## 7.0.0-beta.8
+
+### Patch Changes
+
+- f9c03c3: 修复 ESLint
+
 ## 7.0.0-beta.7
 
 ### Patch Changes

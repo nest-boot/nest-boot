@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/mailer",
-  "version": "7.0.0-beta.2",
+  "version": "7.0.0-beta.3",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
   "homepage": "",
@@ -21,8 +21,8 @@
     "lint": "eslint \"{src,test}/**/*.ts\" --fix"
   },
   "devDependencies": {
-    "@nest-boot/eslint-config": "workspace:^7.0.0-beta.2",
-    "@nest-boot/eslint-plugin": "workspace:^7.0.0-beta.2",
+    "@nest-boot/eslint-config": "workspace:^7.0.0-beta.3",
+    "@nest-boot/eslint-plugin": "workspace:^7.0.0-beta.3",
     "@nest-boot/tsconfig": "workspace:^7.0.0-beta.1",
     "@nestjs/common": "^11.1.6",
     "@nestjs/core": "^11.1.6",
