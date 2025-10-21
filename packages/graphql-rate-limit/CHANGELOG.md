@@ -1,5 +1,13 @@
 # @nest-boot/graphql-rate-limit
 
+## 7.0.0-beta.6
+
+### Patch Changes
+
+- f9c03c3: 修复 ESLint
+- Updated dependencies [f9c03c3]
+  - @nest-boot/graphql@7.0.0-beta.7
+
 ## 7.0.0-beta.5
 
 ### Patch Changes
