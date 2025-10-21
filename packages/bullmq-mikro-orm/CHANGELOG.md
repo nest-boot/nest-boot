@@ -1,5 +1,11 @@
 # @nest-boot/bullmq-mikro-orm
 
+## 7.0.0-beta.3
+
+### Patch Changes
+
+- 3b04ea9: fix: update onConflictFields to only use "id" in BullMQMikroORMService
+
 ## 7.0.0-beta.2
 
 ### Minor Changes
