@@ -67,7 +67,7 @@ export class BullMQMikroORMService implements OnApplicationBootstrap {
         this.options.jobEntity,
         await this.convertJobToEntityData(job, jobState),
         {
-          onConflictFields: ["queueName", "id"],
+          onConflictFields: ["id"],
         },
       );
   }
