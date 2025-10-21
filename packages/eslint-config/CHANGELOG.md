@@ -1,5 +1,13 @@
 # @nest-boot/eslint-config
 
+## 7.0.0-beta.3
+
+### Patch Changes
+
+- f9c03c3: 修复 ESLint
+- Updated dependencies [f9c03c3]
+  - @nest-boot/eslint-plugin@7.0.0-beta.3
+
 ## 7.0.0-beta.2
 
 ### Patch Changes

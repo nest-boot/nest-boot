@@ -1,5 +1,13 @@
 # @nest-boot/mikro-orm
 
+## 7.0.0-beta.15
+
+### Patch Changes
+
+- f9c03c3: 修复 ESLint
+- Updated dependencies [f9c03c3]
+  - @nest-boot/request-context@7.0.0-beta.4
+
 ## 7.0.0-beta.14
 
 ### Patch Changes
