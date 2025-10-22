@@ -1,5 +1,11 @@
 # @nest-boot/graphql-connection
 
+## 7.1.0
+
+### Minor Changes
+
+- c752bdc: feat: GraphQL Connection Module changed to global module
+
 ## 7.0.1
 
 ### Patch Changes
