@@ -1,5 +1,11 @@
 # @nest-boot/eslint-plugin
 
+## 7.0.1
+
+### Patch Changes
+
+- ffa3871: fix: 增强实体字段明确赋值规则以支持关系装饰器
+
 ## 7.0.0
 
 ### Major Changes

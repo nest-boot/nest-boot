@@ -896,7 +896,7 @@ importers:
         specifier: workspace:^7.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^7.0.0
+        specifier: workspace:^7.0.1
         version: link:../eslint-plugin
       '@nest-boot/request-context':
         specifier: workspace:^7.0.0
