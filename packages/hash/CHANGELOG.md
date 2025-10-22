@@ -1,5 +1,21 @@
 # @nest-boot/hash
 
+## 7.0.0
+
+### Major Changes
+
+- 14895ac: ESLint 升级到 v9
+
+### Minor Changes
+
+- ff479f2: feat: crypt 和 hash 模块支持直接导入
+
+### Patch Changes
+
+- 79ef4a8: 移除 @nest-boot/common 依赖
+- b5e6548: 重新发布版本
+- f9c03c3: 修复 ESLint
+
 ## 7.0.0-beta.4
 
 ### Patch Changes

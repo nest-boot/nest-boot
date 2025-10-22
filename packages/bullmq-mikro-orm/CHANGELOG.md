@@ -1,5 +1,16 @@
 # @nest-boot/bullmq-mikro-orm
 
+## 7.0.0
+
+### Minor Changes
+
+- 6d91fb4: feat: 添加 bullmq-mikro-orm 模块
+
+### Patch Changes
+
+- 3b04ea9: fix: update onConflictFields to only use "id" in BullMQMikroORMService
+- f9c03c3: 修复 ESLint
+
 ## 7.0.0-beta.3
 
 ### Patch Changes

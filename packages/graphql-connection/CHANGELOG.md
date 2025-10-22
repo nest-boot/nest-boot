@@ -1,5 +1,28 @@
 # @nest-boot/graphql-connection
 
+## 7.0.0
+
+### Major Changes
+
+- 14895ac: ESLint 升级到 v9
+
+### Patch Changes
+
+- 20f3262: fix: 重构 eslint-plugin 和移除 queue 模块
+- 762ad68: 更新 @nestjs/apollo 依赖版本至 ^13.0.0
+- b5e6548: 重新发布版本
+- f9c03c3: 修复 ESLint
+- Updated dependencies [49659ef]
+- Updated dependencies [34591c8]
+- Updated dependencies [20f3262]
+- Updated dependencies [79ef4a8]
+- Updated dependencies [eec2ebc]
+- Updated dependencies [b5e6548]
+- Updated dependencies [f9c03c3]
+- Updated dependencies [14895ac]
+- Updated dependencies [aeedd1c]
+  - @nest-boot/graphql@7.0.0
+
 ## 7.0.0-beta.4
 
 ### Patch Changes

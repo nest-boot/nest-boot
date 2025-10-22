@@ -1,5 +1,21 @@
 # @nest-boot/request-context
 
+## 7.0.0
+
+### Major Changes
+
+- 14895ac: ESLint 升级到 v9
+
+### Minor Changes
+
+- cf99c26: feat(request-context): 添加 CreateRequestContext 装饰器
+
+### Patch Changes
+
+- 79ef4a8: 移除 @nest-boot/common 依赖
+- b5e6548: 重新发布版本
+- f9c03c3: 修复 ESLint
+
 ## 7.0.0-beta.4
 
 ### Patch Changes

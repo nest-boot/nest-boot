@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/hash",
-  "version": "7.0.0-beta.4",
+  "version": "7.0.0",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
   "homepage": "",
@@ -26,9 +26,9 @@
     "@node-rs/argon2": "^1.8.3"
   },
   "devDependencies": {
-    "@nest-boot/eslint-config": "workspace:^7.0.0-beta.3",
-    "@nest-boot/eslint-plugin": "workspace:^7.0.0-beta.3",
-    "@nest-boot/tsconfig": "workspace:^7.0.0-beta.1",
+    "@nest-boot/eslint-config": "workspace:^7.0.0",
+    "@nest-boot/eslint-plugin": "workspace:^7.0.0",
+    "@nest-boot/tsconfig": "workspace:^7.0.0",
     "@nestjs/common": "^11.1.6",
     "@nestjs/core": "^11.1.6",
     "@nestjs/testing": "^11.1.6",

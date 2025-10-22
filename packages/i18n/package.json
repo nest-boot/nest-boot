@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/i18n",
-  "version": "7.0.0-beta.4",
+  "version": "7.0.0",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
   "homepage": "",
@@ -20,10 +20,10 @@
     "lint": "eslint \"{src,test}/**/*.ts\" --fix"
   },
   "devDependencies": {
-    "@nest-boot/eslint-config": "workspace:^7.0.0-beta.3",
-    "@nest-boot/eslint-plugin": "workspace:^7.0.0-beta.3",
-    "@nest-boot/request-context": "workspace:^7.0.0-beta.4",
-    "@nest-boot/tsconfig": "workspace:^7.0.0-beta.1",
+    "@nest-boot/eslint-config": "workspace:^7.0.0",
+    "@nest-boot/eslint-plugin": "workspace:^7.0.0",
+    "@nest-boot/request-context": "workspace:^7.0.0",
+    "@nest-boot/tsconfig": "workspace:^7.0.0",
     "@nestjs/common": "^11.1.6",
     "@nestjs/core": "^11.1.6",
     "@types/express": "^5.0.3",
@@ -41,7 +41,7 @@
     "typescript": "^5.9.3"
   },
   "peerDependencies": {
-    "@nest-boot/request-context": "workspace:^7.0.0-beta.4",
+    "@nest-boot/request-context": "workspace:^7.0.0",
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
     "i18next": "^23.0.0",

@@ -1,5 +1,25 @@
 # @nest-boot/redis
 
+## 7.0.0
+
+### Major Changes
+
+- 14895ac: ESLint 升级到 v9
+
+### Minor Changes
+
+- 2ff1783: feat: mikro-orm、redis、schedule 默认从环境变量读取配置
+
+### Patch Changes
+
+- d9b1965: fix: enhance environment variable loading for Redis and BullMQ to support TLS configuration
+- f0583f5: fix: 修复 RedisModule 导入异常
+- 0486915: 移除 Redis 模块中 @nest-boot/health-check 依赖及相关代码，简化 Redis 模块实现
+- 3a447d2: fix: 修复优化 Redis 和 BullMQ 模块的环境变量加载
+- 79ef4a8: 移除 @nest-boot/common 依赖
+- b5e6548: 重新发布版本
+- f9c03c3: 修复 ESLint
+
 ## 7.0.0-beta.8
 
 ### Patch Changes
