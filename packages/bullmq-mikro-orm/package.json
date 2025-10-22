@@ -49,9 +49,9 @@
   },
   "peerDependencies": {
     "@mikro-orm/core": "^6.0.0",
-    "@nest-boot/bullmq": "^7.0.0-beta.9",
-    "@nest-boot/request-context": "^7.0.0-beta.4",
-    "@nest-boot/schedule": "^7.0.0-beta.15",
+    "@nest-boot/bullmq": "^7.0.0",
+    "@nest-boot/request-context": "^7.0.0",
+    "@nest-boot/schedule": "^7.0.0",
     "@nestjs/bullmq": "^11.0.0",
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
