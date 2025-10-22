@@ -1,5 +1,11 @@
 # @nest-boot/graphql-connection
 
+## 7.0.1
+
+### Patch Changes
+
+- a1a2490: fix: update @nest-boot dependencies to version 7.0.0 across multiple packages
+
 ## 7.0.0
 
 ### Major Changes
