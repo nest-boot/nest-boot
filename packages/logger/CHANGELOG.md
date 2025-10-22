@@ -1,5 +1,11 @@
 # @nest-boot/logger
 
+## 7.0.2
+
+### Patch Changes
+
+- fc9a08c: feat: 日志默认屏蔽请求头的 authorization 和 cookie 字段，非生产环境可以在请求头添加 x-logging: false 来关闭日志。
+
 ## 7.0.1
 
 ### Patch Changes
