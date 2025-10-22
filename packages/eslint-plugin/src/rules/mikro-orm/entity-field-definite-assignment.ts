@@ -70,7 +70,17 @@ export default createRule({
 
         node.body.body.forEach((member: TSESTree.ClassElement) => {
           if (member.type !== AST_NODE_TYPES.PropertyDefinition) return;
-          if (!hasPropertyDecorator(member, "Property")) return;
+          if (
+            !hasPropertyDecorator(member, [
+              "Property",
+              "Enum",
+              "OneToOne",
+              "OneToMany",
+              "ManyToOne",
+              "ManyToMany",
+            ])
+          )
+            return;
 
           const propertyName = getPropertyName(member);
           if (!propertyName) return;
