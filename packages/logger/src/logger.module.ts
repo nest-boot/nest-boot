@@ -12,6 +12,7 @@ import {
   Optional,
 } from "@nestjs/common";
 import { APP_INTERCEPTOR } from "@nestjs/core";
+import { randomUUID } from "crypto";
 import { type Request, type Response } from "express";
 import pino from "pino";
 import pinoHttp from "pino-http";
@@ -48,21 +49,29 @@ export class LoggerModule
     private readonly options: LoggerModuleOptions = {},
   ) {
     super();
-  }
 
-  onModuleInit(): void {
-    const logger = pino();
-    const loggerMiddleware = pinoHttp({
+    this.options = {
+      autoLogging: {
+        ignore: (req) =>
+          process.env.NODE_ENV !== "production" &&
+          req.headers["x-logging"] === "false",
+        ...(typeof this.options.autoLogging !== "boolean"
+          ? this.options.autoLogging
+          : {}),
+      },
+      redact: ["req.headers.authorization", "req.headers.cookie"],
       genReqId:
-        this.options.genReqId ??
-        function () {
-          return RequestContext.id;
-        },
+        this.options.genReqId ?? (() => RequestContext.id ?? randomUUID()),
       customReceivedMessage: () => "request received",
       customProps: () =>
         RequestContext.isActive() ? (RequestContext.get(BINDINGS) ?? {}) : {},
       ...this.options,
-    });
+    };
+  }
+
+  onModuleInit(): void {
+    const logger = pino();
+    const loggerMiddleware = pinoHttp(this.options);
 
     RequestContext.registerMiddleware("logger", async (ctx, next) => {
       const req = ctx.get<Request>(REQUEST);
