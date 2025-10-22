@@ -1,5 +1,33 @@
 # @nest-boot/file-upload
 
+## 7.0.0
+
+### Major Changes
+
+- 14895ac: ESLint 升级到 v9
+
+### Minor Changes
+
+- 7f715cc: 上传客户端改为 s3
+
+### Patch Changes
+
+- 49659ef: fix: 移除 database 和 health-check 模块并格式化代码
+- 20f3262: fix: 重构 eslint-plugin 和移除 queue 模块
+- b5e6548: 重新发布版本
+- f9c03c3: 修复 ESLint
+- 7c761d6: 添加可选的自定义 URL 支持
+- Updated dependencies [49659ef]
+- Updated dependencies [34591c8]
+- Updated dependencies [20f3262]
+- Updated dependencies [79ef4a8]
+- Updated dependencies [eec2ebc]
+- Updated dependencies [b5e6548]
+- Updated dependencies [f9c03c3]
+- Updated dependencies [14895ac]
+- Updated dependencies [aeedd1c]
+  - @nest-boot/graphql@7.0.0
+
 ## 7.0.0-beta.6
 
 ### Patch Changes

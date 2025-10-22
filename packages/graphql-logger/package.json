@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/graphql-logger",
-  "version": "7.0.0-beta.5",
+  "version": "7.0.0",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
   "homepage": "",
@@ -25,10 +25,10 @@
   },
   "devDependencies": {
     "@apollo/server": "^4.12.2",
-    "@nest-boot/eslint-config": "workspace:^7.0.0-beta.3",
-    "@nest-boot/eslint-plugin": "workspace:^7.0.0-beta.3",
-    "@nest-boot/logger": "workspace:^7.0.0-beta.4",
-    "@nest-boot/tsconfig": "workspace:^7.0.0-beta.1",
+    "@nest-boot/eslint-config": "workspace:^7.0.0",
+    "@nest-boot/eslint-plugin": "workspace:^7.0.0",
+    "@nest-boot/logger": "workspace:^7.0.0",
+    "@nest-boot/tsconfig": "workspace:^7.0.0",
     "@nestjs/apollo": "^13.2.1",
     "@nestjs/common": "^11.1.6",
     "@nestjs/core": "^11.1.6",
@@ -48,7 +48,7 @@
   },
   "peerDependencies": {
     "@apollo/server": "^4.0.0",
-    "@nest-boot/logger": "workspace:^7.0.0-beta.4",
+    "@nest-boot/logger": "workspace:^7.0.0",
     "@nestjs/apollo": "^12.0.0",
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",

@@ -1,5 +1,27 @@
 # @nest-boot/auth
 
+## 7.0.0
+
+### Major Changes
+
+- 14895ac: ESLint 升级到 v9
+
+### Patch Changes
+
+- 49659ef: fix: 移除 database 和 health-check 模块并格式化代码
+- 20f3262: fix: 重构 eslint-plugin 和移除 queue 模块
+- 79ef4a8: 移除 @nest-boot/common 依赖
+- b5e6548: 重新发布版本
+- f9c03c3: 修复 ESLint
+- Updated dependencies [cf99c26]
+- Updated dependencies [79ef4a8]
+- Updated dependencies [b5e6548]
+- Updated dependencies [f9c03c3]
+- Updated dependencies [14895ac]
+- Updated dependencies [7385d41]
+  - @nest-boot/request-context@7.0.0
+  - @nest-boot/i18n@7.0.0
+
 ## 7.0.0-beta.5
 
 ### Patch Changes

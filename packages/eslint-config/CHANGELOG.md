@@ -1,5 +1,22 @@
 # @nest-boot/eslint-config
 
+## 7.0.0
+
+### Major Changes
+
+- 14895ac: ESLint 升级到 v9
+
+### Patch Changes
+
+- 20f3262: fix: 重构 eslint-plugin 和移除 queue 模块
+- b5e6548: 重新发布版本
+- f9c03c3: 修复 ESLint
+- Updated dependencies [20f3262]
+- Updated dependencies [b5e6548]
+- Updated dependencies [f9c03c3]
+- Updated dependencies [14895ac]
+  - @nest-boot/eslint-plugin@7.0.0
+
 ## 7.0.0-beta.3
 
 ### Patch Changes

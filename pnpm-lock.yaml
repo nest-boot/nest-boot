@@ -72,22 +72,22 @@ importers:
         specifier: ^6.1.1
         version: 6.1.1
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-plugin
       '@nest-boot/hash':
-        specifier: workspace:^7.0.0-beta.4
+        specifier: workspace:^7.0.0
         version: link:../hash
       '@nest-boot/i18n':
-        specifier: workspace:^7.0.0-beta.4
+        specifier: workspace:^7.0.0
         version: link:../i18n
       '@nest-boot/request-context':
-        specifier: workspace:^7.0.0-beta.4
+        specifier: workspace:^7.0.0
         version: link:../request-context
       '@nest-boot/tsconfig':
-        specifier: workspace:^7.0.0-beta.1
+        specifier: workspace:^7.0.0
         version: link:../tsconfig
       '@nestjs/common':
         specifier: ^11.1.6
@@ -135,16 +135,16 @@ importers:
   packages/bullmq:
     devDependencies:
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-plugin
       '@nest-boot/request-context':
-        specifier: workspace:^7.0.0-beta.4
+        specifier: workspace:^7.0.0
         version: link:../request-context
       '@nest-boot/tsconfig':
-        specifier: workspace:^7.0.0-beta.1
+        specifier: workspace:^7.0.0
         version: link:../tsconfig
       '@nestjs/bullmq':
         specifier: ^11.0.4
@@ -195,22 +195,22 @@ importers:
         specifier: ^6.5.8
         version: 6.5.8
       '@nest-boot/bullmq':
-        specifier: workspace:^7.0.0-beta.9
+        specifier: workspace:^7.0.0
         version: link:../bullmq
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-plugin
       '@nest-boot/request-context':
-        specifier: workspace:^7.0.0-beta.4
+        specifier: workspace:^7.0.0
         version: link:../request-context
       '@nest-boot/schedule':
-        specifier: workspace:^7.0.0-beta.15
+        specifier: workspace:^7.0.0
         version: link:../schedule
       '@nest-boot/tsconfig':
-        specifier: workspace:^7.0.0-beta.1
+        specifier: workspace:^7.0.0
         version: link:../tsconfig
       '@nestjs/bullmq':
         specifier: ^11.0.4
@@ -258,13 +258,13 @@ importers:
   packages/crypt:
     devDependencies:
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-plugin
       '@nest-boot/tsconfig':
-        specifier: workspace:^7.0.0-beta.1
+        specifier: workspace:^7.0.0
         version: link:../tsconfig
       '@nestjs/common':
         specifier: ^11.1.6
@@ -309,10 +309,10 @@ importers:
         specifier: ^9.36.0
         version: 9.36.0
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-plugin
       '@nest-boot/tsconfig':
-        specifier: workspace:^7.0.0-beta.1
+        specifier: workspace:^7.0.0
         version: link:../tsconfig
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.44.1
@@ -352,7 +352,7 @@ importers:
         specifier: ^30.2.0
         version: 30.2.0
       '@nest-boot/tsconfig':
-        specifier: workspace:^7.0.0-beta.1
+        specifier: workspace:^7.0.0
         version: link:../tsconfig
       '@types/node':
         specifier: ^22.18.6
@@ -407,7 +407,7 @@ importers:
         specifier: ^3.896.0
         version: 3.896.0
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
         specifier: workspace:^
@@ -416,7 +416,7 @@ importers:
         specifier: workspace:^
         version: link:../graphql
       '@nest-boot/tsconfig':
-        specifier: workspace:^7.0.0-beta.1
+        specifier: workspace:^7.0.0
         version: link:../tsconfig
       '@nestjs/apollo':
         specifier: ^13.2.1
@@ -491,13 +491,13 @@ importers:
         specifier: ^1.1.2
         version: 1.1.2
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-plugin
       '@nest-boot/tsconfig':
-        specifier: workspace:^7.0.0-beta.1
+        specifier: workspace:^7.0.0
         version: link:../tsconfig
       '@nestjs/apollo':
         specifier: ^13.2.1
@@ -567,16 +567,16 @@ importers:
         specifier: ^6.5.8
         version: 6.5.8
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-plugin
       '@nest-boot/graphql':
         specifier: workspace:^
         version: link:../graphql
       '@nest-boot/tsconfig':
-        specifier: workspace:^7.0.0-beta.1
+        specifier: workspace:^7.0.0
         version: link:../tsconfig
       '@nestjs/apollo':
         specifier: ^13.2.1
@@ -636,16 +636,16 @@ importers:
         specifier: ^4.12.2
         version: 4.12.2
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-plugin
       '@nest-boot/logger':
-        specifier: workspace:^7.0.0-beta.4
+        specifier: workspace:^7.0.0
         version: link:../logger
       '@nest-boot/tsconfig':
-        specifier: workspace:^7.0.0-beta.1
+        specifier: workspace:^7.0.0
         version: link:../tsconfig
       '@nestjs/apollo':
         specifier: ^13.2.1
@@ -702,19 +702,19 @@ importers:
         specifier: ^4.12.2
         version: 4.12.2
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-plugin
       '@nest-boot/graphql':
         specifier: workspace:^
         version: link:../graphql
       '@nest-boot/redis':
-        specifier: workspace:^7.0.0-beta.8
+        specifier: workspace:^7.0.0
         version: link:../redis
       '@nest-boot/tsconfig':
-        specifier: workspace:^7.0.0-beta.1
+        specifier: workspace:^7.0.0
         version: link:../tsconfig
       '@nestjs/apollo':
         specifier: ^13.2.1
@@ -778,13 +778,13 @@ importers:
         version: 1.8.3
     devDependencies:
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-plugin
       '@nest-boot/tsconfig':
-        specifier: workspace:^7.0.0-beta.1
+        specifier: workspace:^7.0.0
         version: link:../tsconfig
       '@nestjs/common':
         specifier: ^11.1.6
@@ -823,16 +823,16 @@ importers:
   packages/i18n:
     devDependencies:
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-plugin
       '@nest-boot/request-context':
-        specifier: workspace:^7.0.0-beta.4
+        specifier: workspace:^7.0.0
         version: link:../request-context
       '@nest-boot/tsconfig':
-        specifier: workspace:^7.0.0-beta.1
+        specifier: workspace:^7.0.0
         version: link:../tsconfig
       '@nestjs/common':
         specifier: ^11.1.6
@@ -893,16 +893,16 @@ importers:
         version: 10.5.0
     devDependencies:
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-plugin
       '@nest-boot/request-context':
-        specifier: workspace:^7.0.0-beta.4
+        specifier: workspace:^7.0.0
         version: link:../request-context
       '@nest-boot/tsconfig':
-        specifier: workspace:^7.0.0-beta.1
+        specifier: workspace:^7.0.0
         version: link:../tsconfig
       '@nestjs/common':
         specifier: ^11.1.6
@@ -956,13 +956,13 @@ importers:
   packages/mailer:
     devDependencies:
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-plugin
       '@nest-boot/tsconfig':
-        specifier: workspace:^7.0.0-beta.1
+        specifier: workspace:^7.0.0
         version: link:../tsconfig
       '@nestjs/common':
         specifier: ^11.1.6
@@ -1001,13 +1001,13 @@ importers:
   packages/metrics:
     devDependencies:
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-plugin
       '@nest-boot/tsconfig':
-        specifier: workspace:^7.0.0-beta.1
+        specifier: workspace:^7.0.0
         version: link:../tsconfig
       '@nestjs/common':
         specifier: ^11.1.6
@@ -1071,16 +1071,16 @@ importers:
         specifier: ^6.5.8
         version: 6.5.8
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-plugin
       '@nest-boot/request-context':
-        specifier: workspace:^7.0.0-beta.4
+        specifier: workspace:^7.0.0
         version: link:../request-context
       '@nest-boot/tsconfig':
-        specifier: workspace:^7.0.0-beta.1
+        specifier: workspace:^7.0.0
         version: link:../tsconfig
       '@nestjs/common':
         specifier: ^11.1.6
@@ -1128,13 +1128,13 @@ importers:
   packages/redis:
     devDependencies:
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-plugin
       '@nest-boot/tsconfig':
-        specifier: workspace:^7.0.0-beta.1
+        specifier: workspace:^7.0.0
         version: link:../tsconfig
       '@nestjs/common':
         specifier: ^11.1.6
@@ -1176,13 +1176,13 @@ importers:
   packages/request-context:
     devDependencies:
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-plugin
       '@nest-boot/tsconfig':
-        specifier: workspace:^7.0.0-beta.1
+        specifier: workspace:^7.0.0
         version: link:../tsconfig
       '@nestjs/common':
         specifier: ^11.1.6
@@ -1224,16 +1224,16 @@ importers:
   packages/schedule:
     devDependencies:
       '@nest-boot/bullmq':
-        specifier: workspace:^7.0.0-beta.9
+        specifier: workspace:^7.0.0
         version: link:../bullmq
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-plugin
       '@nest-boot/tsconfig':
-        specifier: workspace:^7.0.0-beta.1
+        specifier: workspace:^7.0.0
         version: link:../tsconfig
       '@nestjs/bullmq':
         specifier: ^11.0.4
@@ -1299,16 +1299,16 @@ importers:
         version: 13.15.15
     devDependencies:
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-plugin
       '@nest-boot/i18n':
-        specifier: workspace:^7.0.0-beta.4
+        specifier: workspace:^7.0.0
         version: link:../i18n
       '@nest-boot/tsconfig':
-        specifier: workspace:^7.0.0-beta.1
+        specifier: workspace:^7.0.0
         version: link:../tsconfig
       '@nestjs/common':
         specifier: ^11.1.6
@@ -1354,13 +1354,13 @@ importers:
         version: 3.3.3
     devDependencies:
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
-        specifier: workspace:^7.0.0-beta.3
+        specifier: workspace:^7.0.0
         version: link:../eslint-plugin
       '@nest-boot/tsconfig':
-        specifier: workspace:^7.0.0-beta.1
+        specifier: workspace:^7.0.0
         version: link:../tsconfig
       '@nestjs/common':
         specifier: ^11.1.6

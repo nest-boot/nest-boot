@@ -1,5 +1,25 @@
 # @nest-boot/graphql
 
+## 7.0.0
+
+### Major Changes
+
+- 14895ac: ESLint 升级到 v9
+
+### Minor Changes
+
+- 34591c8: feat: 拆分 graphql 模块的 logger 和 rate limit 功能为独立模块
+- eec2ebc: feat: GraphQL 模块支持直接导入
+
+### Patch Changes
+
+- 49659ef: fix: 移除 database 和 health-check 模块并格式化代码
+- 20f3262: fix: 重构 eslint-plugin 和移除 queue 模块
+- 79ef4a8: 移除 @nest-boot/common 依赖
+- b5e6548: 重新发布版本
+- f9c03c3: 修复 ESLint
+- aeedd1c: fix: 修复 GraphQL 模块缺少 Logger 提供者
+
 ## 7.0.0-beta.7
 
 ### Patch Changes
