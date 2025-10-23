@@ -88,6 +88,36 @@ tester.run("entity-property-config-from-types", rule, {
         isActive!: boolean;
       }
     `,
+    // Date 类型使用 t.datetime
+    /* typescript */ `
+      import { Entity, Property, Opt } from "@mikro-orm/core";
+
+      @Entity()
+      class User {
+        @Property({ type: t.datetime, defaultRaw: 'now()' })
+        createdAt: Opt<Date> = new Date();
+      }
+    `,
+    // Date 类型使用 t.date（有效的 Date 类型配置）
+    /* typescript */ `
+      import { Entity, Property } from "@mikro-orm/core";
+
+      @Entity()
+      class User {
+        @Property({ type: t.date })
+        birthDate!: Date;
+      }
+    `,
+    // Date 类型使用 t.time（有效的 Date 类型配置）
+    /* typescript */ `
+      import { Entity, Property } from "@mikro-orm/core";
+
+      @Entity()
+      class User {
+        @Property({ type: t.time })
+        workTime!: Date;
+      }
+    `,
     // 使用 t.text 代替 t.string（有效的 string 类型配置）
     /* typescript */ `
       import { Entity, Property } from "@mikro-orm/core";
@@ -254,6 +284,72 @@ tester.run("entity-property-config-from-types", rule, {
         class User {
           @Property({ type: t.array })
           tags!: number[];
+        }
+      `,
+      errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
+    },
+    // 空的 @Property() 应该添加 type: t.boolean
+    {
+      code: /* typescript */ `
+        import { Entity, Property } from "@mikro-orm/core";
+
+        @Entity()
+        class User {
+          @Property()
+          published!: boolean;
+        }
+      `,
+      output: /* typescript */ `
+        import { Entity, Property } from "@mikro-orm/core";
+
+        @Entity()
+        class User {
+          @Property({ type: t.boolean })
+          published!: boolean;
+        }
+      `,
+      errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
+    },
+    // 空的 @Property() 应该添加 type: t.datetime（Date 类型）
+    {
+      code: /* typescript */ `
+        import { Entity, Property } from "@mikro-orm/core";
+
+        @Entity()
+        class User {
+          @Property()
+          createdAt!: Date;
+        }
+      `,
+      output: /* typescript */ `
+        import { Entity, Property } from "@mikro-orm/core";
+
+        @Entity()
+        class User {
+          @Property({ type: t.datetime })
+          createdAt!: Date;
+        }
+      `,
+      errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
+    },
+    // Date 类型配置错误应该修正为 t.datetime
+    {
+      code: /* typescript */ `
+        import { Entity, Property } from "@mikro-orm/core";
+
+        @Entity()
+        class User {
+          @Property({ type: t.string })
+          createdAt!: Date;
+        }
+      `,
+      output: /* typescript */ `
+        import { Entity, Property } from "@mikro-orm/core";
+
+        @Entity()
+        class User {
+          @Property({ type: t.datetime })
+          createdAt!: Date;
         }
       `,
       errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],

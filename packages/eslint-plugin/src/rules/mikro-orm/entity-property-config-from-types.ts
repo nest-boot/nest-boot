@@ -100,7 +100,7 @@ export default createRule<
         case "boolean":
           return "t.boolean"; // 默认使用 t.boolean
         case "Date":
-          return null; // Date 类型不需要指定
+          return "t.datetime"; // 默认使用 t.datetime
         case "GraphQLJSONObject":
         case "Record":
           return "t.json";
@@ -200,6 +200,21 @@ export default createRule<
 
       // 接受 new VectorType(...)
       if (typeConfig.includes("VectorType")) {
+        return true;
+      }
+
+      return false;
+    };
+
+    const isValidDateType = (typeConfig: string | null): boolean => {
+      if (!typeConfig) return false;
+
+      // 接受 t.datetime, t.date, t.time
+      if (
+        typeConfig === "t.datetime" ||
+        typeConfig === "t.date" ||
+        typeConfig === "t.time"
+      ) {
         return true;
       }
 
@@ -623,6 +638,12 @@ export default createRule<
         isValidNumberType(currentConfig.type)
       ) {
         // 保留有效的 number 类型配置
+        finalInfo.propertyType = currentConfig.type;
+      } else if (
+        info.propertyType === "t.datetime" &&
+        isValidDateType(currentConfig.type)
+      ) {
+        // 保留有效的 Date 类型配置
         finalInfo.propertyType = currentConfig.type;
       } else if (
         info.isArray &&
@@ -1063,6 +1084,11 @@ export default createRule<
               isValidNumberType(currentConfig.type)
             ) {
               // 当前配置是有效的 number 类型配置，不需要修改
+            } else if (
+              expectedType === "t.datetime" &&
+              isValidDateType(currentConfig.type)
+            ) {
+              // 当前配置是有效的 Date 类型配置，不需要修改
             } else if (
               expectedType === "t.array" &&
               typeInfo.arrayElementTypeName === "number" &&
