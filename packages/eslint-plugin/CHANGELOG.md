@@ -1,5 +1,11 @@
 # @nest-boot/eslint-plugin
 
+## 7.0.2
+
+### Patch Changes
+
+- 57ee97b: fix: 添加 MikroORM 的 ESLint 规则 Date 和 boolean 类型会修复 Property 装饰器的类型参数。
+
 ## 7.0.1
 
 ### Patch Changes
