@@ -18,18 +18,9 @@ import { NotFoundException, Type } from "@nestjs/common";
 import DataLoader from "dataloader";
 import _ from "lodash";
 
-export interface IdEntity {
-  id: number | string | bigint;
-}
-
-export type IdOrEntity<Entity extends IdEntity> = IdEntity["id"] | Entity;
-
-export type ChunkByIdOptions<
-  Entity,
-  Hint extends string = never,
-  Fields extends string = PopulatePath.ALL,
-  Excludes extends string = never,
-> = Omit<FindOptions<Entity, Hint, Fields, Excludes>, "offset" | "orderBy">;
+import type { IdEntity } from "../interfaces/id-entity.interface";
+import type { ChunkByIdOptions } from "../types/chunk-by-id-options.type";
+import type { IdOrEntity } from "../types/id-or-entity.type";
 
 interface UpdateArgs<
   Entity extends IdEntity,
