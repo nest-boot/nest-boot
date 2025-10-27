@@ -72,7 +72,7 @@ importers:
         specifier: ^6.1.1
         version: 6.1.1
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0
+        specifier: workspace:^8.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
         specifier: workspace:^7.0.0
@@ -135,7 +135,7 @@ importers:
   packages/bullmq:
     devDependencies:
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0
+        specifier: workspace:^8.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
         specifier: workspace:^7.0.0
@@ -198,7 +198,7 @@ importers:
         specifier: workspace:^7.0.0
         version: link:../bullmq
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0
+        specifier: workspace:^8.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
         specifier: workspace:^7.0.0
@@ -258,7 +258,7 @@ importers:
   packages/crypt:
     devDependencies:
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0
+        specifier: workspace:^8.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
         specifier: workspace:^7.0.0
@@ -407,7 +407,7 @@ importers:
         specifier: ^3.896.0
         version: 3.896.0
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0
+        specifier: workspace:^8.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
         specifier: workspace:^7.0.0
@@ -491,7 +491,7 @@ importers:
         specifier: ^1.1.2
         version: 1.1.2
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0
+        specifier: workspace:^8.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
         specifier: workspace:^7.0.0
@@ -567,7 +567,7 @@ importers:
         specifier: ^6.5.8
         version: 6.5.8
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0
+        specifier: workspace:^8.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
         specifier: workspace:^7.0.0
@@ -636,13 +636,13 @@ importers:
         specifier: ^4.12.2
         version: 4.12.2
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0
+        specifier: workspace:^8.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
         specifier: workspace:^7.0.0
         version: link:../eslint-plugin
       '@nest-boot/logger':
-        specifier: workspace:^7.0.0
+        specifier: workspace:^7.0.2
         version: link:../logger
       '@nest-boot/tsconfig':
         specifier: workspace:^7.0.0
@@ -702,7 +702,7 @@ importers:
         specifier: ^4.12.2
         version: 4.12.2
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0
+        specifier: workspace:^8.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
         specifier: workspace:^7.0.0
@@ -778,7 +778,7 @@ importers:
         version: 1.8.3
     devDependencies:
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0
+        specifier: workspace:^8.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
         specifier: workspace:^7.0.0
@@ -823,7 +823,7 @@ importers:
   packages/i18n:
     devDependencies:
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0
+        specifier: workspace:^8.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
         specifier: workspace:^7.0.0
@@ -893,7 +893,7 @@ importers:
         version: 10.5.0
     devDependencies:
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0
+        specifier: workspace:^8.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
         specifier: workspace:^7.0.1
@@ -956,7 +956,7 @@ importers:
   packages/mailer:
     devDependencies:
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0
+        specifier: workspace:^8.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
         specifier: workspace:^7.0.0
@@ -1001,7 +1001,7 @@ importers:
   packages/metrics:
     devDependencies:
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0
+        specifier: workspace:^8.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
         specifier: workspace:^7.0.0
@@ -1071,7 +1071,7 @@ importers:
         specifier: ^6.5.8
         version: 6.5.8
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0
+        specifier: workspace:^8.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
         specifier: workspace:^7.0.0
@@ -1128,7 +1128,7 @@ importers:
   packages/redis:
     devDependencies:
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0
+        specifier: workspace:^8.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
         specifier: workspace:^7.0.0
@@ -1176,7 +1176,7 @@ importers:
   packages/request-context:
     devDependencies:
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0
+        specifier: workspace:^8.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
         specifier: workspace:^7.0.0
@@ -1227,7 +1227,7 @@ importers:
         specifier: workspace:^7.0.0
         version: link:../bullmq
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0
+        specifier: workspace:^8.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
         specifier: workspace:^7.0.0
@@ -1299,7 +1299,7 @@ importers:
         version: 13.15.15
     devDependencies:
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0
+        specifier: workspace:^8.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
         specifier: workspace:^7.0.0
@@ -1354,7 +1354,7 @@ importers:
         version: 3.3.3
     devDependencies:
       '@nest-boot/eslint-config':
-        specifier: workspace:^7.0.0
+        specifier: workspace:^8.0.0
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
         specifier: workspace:^7.0.0

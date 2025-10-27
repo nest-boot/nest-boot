@@ -27,7 +27,7 @@
   "devDependencies": {
     "@mikro-orm/core": "^6.5.8",
     "@nest-boot/bullmq": "workspace:^7.0.0",
-    "@nest-boot/eslint-config": "workspace:^7.0.0",
+    "@nest-boot/eslint-config": "workspace:^8.0.0",
     "@nest-boot/eslint-plugin": "workspace:^7.0.0",
     "@nest-boot/request-context": "workspace:^7.0.0",
     "@nest-boot/schedule": "workspace:^7.0.0",

@@ -26,7 +26,7 @@
   },
   "devDependencies": {
     "@nest-boot/bullmq": "workspace:^7.0.0",
-    "@nest-boot/eslint-config": "workspace:^7.0.0",
+    "@nest-boot/eslint-config": "workspace:^8.0.0",
     "@nest-boot/eslint-plugin": "workspace:^7.0.0",
     "@nest-boot/tsconfig": "workspace:^7.0.0",
     "@nestjs/bullmq": "^11.0.4",
