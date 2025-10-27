@@ -1,5 +1,11 @@
 # @nest-boot/mikro-orm
 
+## 7.0.1
+
+### Patch Changes
+
+- c77f6d3: fix: IdOrEntity can infer the correct id type
+
 ## 7.0.0
 
 ### Minor Changes
