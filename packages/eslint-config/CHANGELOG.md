@@ -1,5 +1,11 @@
 # @nest-boot/eslint-config
 
+## 7.0.1
+
+### Patch Changes
+
+- b7bfd4b: fix: @typescript-eslint/no-misused-spread off
+
 ## 7.0.0
 
 ### Major Changes
