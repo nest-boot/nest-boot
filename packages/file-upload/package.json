@@ -34,7 +34,7 @@
     "@as-integrations/express5": "^1.1.2",
     "@aws-sdk/client-s3": "^3.896.0",
     "@aws-sdk/s3-presigned-post": "^3.896.0",
-    "@nest-boot/eslint-config": "workspace:^7.0.0",
+    "@nest-boot/eslint-config": "workspace:^8.0.0",
     "@nest-boot/eslint-plugin": "workspace:^7.0.0",
     "@nest-boot/graphql": "workspace:^7.0.0",
     "@nest-boot/tsconfig": "workspace:^7.0.0",

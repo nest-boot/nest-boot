@@ -25,7 +25,7 @@
   },
   "devDependencies": {
     "@apollo/server": "^4.12.2",
-    "@nest-boot/eslint-config": "workspace:^7.0.0",
+    "@nest-boot/eslint-config": "workspace:^8.0.0",
     "@nest-boot/eslint-plugin": "workspace:^7.0.0",
     "@nest-boot/graphql": "workspace:^7.0.0",
     "@nest-boot/redis": "workspace:^7.0.0",

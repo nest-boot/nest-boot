@@ -1,5 +1,11 @@
 # @nest-boot/eslint-config
 
+## 8.0.0
+
+### Major Changes
+
+- 6f51076: @typescript-eslint/no-misused-spread off
+
 ## 7.0.0
 
 ### Major Changes
