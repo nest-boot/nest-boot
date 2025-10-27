@@ -44,24 +44,25 @@ const config = [
       "@typescript-eslint/no-unused-expressions": "off",
 
       // TypeScript 规则
-      "@typescript-eslint/return-await": ["error", "always"],
-      "@typescript-eslint/restrict-plus-operands": "error",
-      "@typescript-eslint/no-unsafe-assignment": "off",
-      "@typescript-eslint/no-unsafe-argument": "off",
-      "@typescript-eslint/no-unsafe-member-access": "off",
-      "@typescript-eslint/no-unsafe-call": "off",
-      "@typescript-eslint/no-unsafe-return": "off",
-      "@typescript-eslint/no-unnecessary-condition": "off",
-      "@typescript-eslint/no-extraneous-class": "off",
-      "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-empty-function": [
         "error",
         { allow: ["constructors"] },
       ],
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-extraneous-class": "off",
+      "@typescript-eslint/no-misused-spread": "off",
+      "@typescript-eslint/no-unnecessary-condition": "off",
+      "@typescript-eslint/no-unsafe-argument": "off",
+      "@typescript-eslint/no-unsafe-assignment": "off",
+      "@typescript-eslint/no-unsafe-call": "off",
+      "@typescript-eslint/no-unsafe-member-access": "off",
+      "@typescript-eslint/no-unsafe-return": "off",
       "@typescript-eslint/no-unused-vars": [
         "error",
         { argsIgnorePattern: "^_" },
       ],
+      "@typescript-eslint/restrict-plus-operands": "error",
+      "@typescript-eslint/return-await": ["error", "always"],
 
       // NestBoot 自定义规则
       "@nest-boot/entity-field-definite-assignment": "error",
