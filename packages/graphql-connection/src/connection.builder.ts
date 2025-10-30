@@ -26,16 +26,26 @@ import {
 } from "./interfaces";
 import { PageInfo } from "./objects";
 
-interface ConnectionBuildResult<Entity extends object> {
+type ConnectionBuildResult<Entity extends object> = {
   Connection: Type<ConnectionInterface<Entity>>;
   ConnectionArgs: Type<ConnectionArgsInterface<Entity>>;
   Edge: Type<EdgeInterface<Entity>>;
   Order: Type<OrderInterface<Entity>>;
   OrderField?: OrderFieldType<Entity>;
-}
+} & Record<
+  `${EntityClass<Entity>["name"]}Connection`,
+  Type<ConnectionInterface<Entity>>
+> &
+  Record<
+    `${EntityClass<Entity>["name"]}ConnectionArgs`,
+    Type<ConnectionArgsInterface<Entity>>
+  > &
+  Record<`${EntityClass<Entity>["name"]}Edge`, Type<EdgeInterface<Entity>>> &
+  Record<`${EntityClass<Entity>["name"]}Order`, Type<OrderInterface<Entity>>> &
+  Record<`${EntityClass<Entity>["name"]}OrderField`, OrderFieldType<Entity>>;
 
 export class ConnectionBuilder<Entity extends object> {
-  private readonly entityName: string;
+  private readonly entityName: EntityClass<Entity>["name"];
   private readonly fieldOptionsMap = new Map<
     string,
     FieldOptions<Entity, any, any>
@@ -149,7 +159,7 @@ export class ConnectionBuilder<Entity extends object> {
       direction!: OrderDirection;
     }
 
-    @ArgsType()
+    @ArgsType(`${builder.entityName}ConnectionArgs`)
     class ConnectionArgs implements ConnectionArgsInterface<Entity> {
       @Field(() => String, {
         nullable: true,
@@ -200,6 +210,11 @@ export class ConnectionBuilder<Entity extends object> {
       Edge,
       Order,
       OrderField,
-    };
+      [`${this.entityName}Connection`]: Connection,
+      [`${this.entityName}ConnectionArgs`]: ConnectionArgs,
+      [`${this.entityName}Edge`]: Edge,
+      [`${this.entityName}Order`]: Order,
+      [`${this.entityName}OrderField`]: OrderField,
+    } as ConnectionBuildResult<Entity>;
   }
 }
