@@ -573,7 +573,7 @@ importers:
         specifier: workspace:^7.0.0
         version: link:../eslint-plugin
       '@nest-boot/graphql':
-        specifier: workspace:^7.0.0
+        specifier: workspace:^7.1.0
         version: link:../graphql
       '@nest-boot/tsconfig':
         specifier: workspace:^7.0.0

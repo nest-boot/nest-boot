@@ -1,5 +1,11 @@
 # @nest-boot/graphql
 
+## 7.1.0
+
+### Minor Changes
+
+- 4e8cd0e: feat: ConnectionBuilder 构建结果携带实体名称作为前缀
+
 ## 7.0.0
 
 ### Major Changes
