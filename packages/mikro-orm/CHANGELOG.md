@@ -1,5 +1,11 @@
 # @nest-boot/mikro-orm
 
+## 7.1.0
+
+### Minor Changes
+
+- bf39843: feat: 支持软删除优化 findOne 先尝试从 Identity Map (UnitOfWork) 中取已有实体
+
 ## 7.0.1
 
 ### Patch Changes
