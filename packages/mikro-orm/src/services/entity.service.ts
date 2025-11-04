@@ -1,5 +1,6 @@
 import {
   type AssignOptions,
+  CountOptions,
   type EntityData,
   type EntityDTO,
   EntityManager,
@@ -12,8 +13,9 @@ import {
   type PopulatePath,
   QueryOrder,
   type QueryOrderMap,
+  Utils,
 } from "@mikro-orm/core";
-import type { RequiredEntityData } from "@mikro-orm/core/typings";
+import type { Primary, RequiredEntityData } from "@mikro-orm/core/typings";
 import { NotFoundException, Type } from "@nestjs/common";
 import DataLoader from "dataloader";
 import _ from "lodash";
@@ -21,6 +23,10 @@ import _ from "lodash";
 import type { IdEntity } from "../interfaces/id-entity.interface";
 import type { ChunkByIdOptions } from "../types/chunk-by-id-options.type";
 import type { IdOrEntity } from "../types/id-or-entity.type";
+
+interface FindOneArgs<Entity extends IdEntity> {
+  idOrEntity: IdOrEntity<Entity>;
+}
 
 interface UpdateArgs<
   Entity extends IdEntity,
@@ -35,33 +41,68 @@ interface UpdateArgs<
   options?: AssignOptions<Convert>;
 }
 
+interface RemoveArgs<Entity extends IdEntity> {
+  idOrEntity: IdOrEntity<Entity>;
+  softDelete: boolean;
+}
+
+export interface EntityServiceOptions<Entity extends IdEntity> {
+  softDeleteKey?: keyof Entity;
+}
+
 export class EntityService<Entity extends IdEntity> {
   constructor(
     protected readonly entityClass: Type<Entity>,
     protected readonly em: EntityManager,
+    protected readonly options?: EntityServiceOptions<Entity>,
   ) {}
 
   get #getDataLoader() {
-    return new DataLoader<IdOrEntity<Entity>, Entity | null>(
-      async (idsOrEntities) => {
-        const ids = idsOrEntities.filter(
-          (idOrEntity) => typeof idOrEntity !== "object",
+    return new DataLoader<FindOneArgs<Entity>, Entity | null>(
+      async (items: readonly FindOneArgs<Entity>[]) => {
+        const uow = this.em.getUnitOfWork();
+
+        // 获取所有 ID
+        const ids = items.map(({ idOrEntity }) =>
+          typeof idOrEntity === "object" ? idOrEntity.id : idOrEntity,
         );
 
-        const entities = await this.em.find(
-          this.entityClass,
-          {
-            id: { $in: ids },
-          },
-          { limit: ids.length },
-        );
+        // 先尝试从 UnitOfWork 中获取已加载的实体
+        const entitiesFromUow: Loaded<Entity>[] = [];
+        const idsToFetch: (string | number | bigint)[] = [];
 
-        return idsOrEntities.map((idOrEntity) => {
-          if (typeof idOrEntity === "object") {
-            return idOrEntity;
+        for (const id of ids) {
+          // 尝试从 UnitOfWork 的身份映射中获取实体
+          const entity = uow.getById<Entity>(
+            Utils.className(this.entityClass),
+            id as Primary<Entity>,
+          );
+
+          if (entity) {
+            entitiesFromUow.push(entity as Loaded<Entity>);
+          } else {
+            idsToFetch.push(id);
           }
+        }
 
-          return entities.find((entity) => entity.id === idOrEntity) ?? null;
+        // 如果有需要从数据库查询的 ID,则执行查询
+        let entitiesFromDb: Loaded<Entity>[] = [];
+        if (idsToFetch.length > 0) {
+          entitiesFromDb = await this.em.find(
+            this.entityClass,
+            {
+              id: { $in: idsToFetch },
+            },
+            { limit: idsToFetch.length },
+          );
+        }
+
+        // 合并 UnitOfWork 和数据库查询的结果
+        const allEntities = [...entitiesFromUow, ...entitiesFromDb];
+
+        // 按照原始顺序返回结果
+        return items.map(({ idOrEntity }) => {
+          return allEntities.find((entity) => entity.id === idOrEntity) ?? null;
         });
       },
       { cache: false },
@@ -126,11 +167,11 @@ export class EntityService<Entity extends IdEntity> {
   }
 
   get #removeDataLoader() {
-    return new DataLoader<IdOrEntity<Entity>, Entity | Error>(
-      async (idsOrEntities: readonly (string | number | bigint | Entity)[]) => {
+    return new DataLoader<RemoveArgs<Entity>, Entity | Error>(
+      async (items) => {
         const entitiesOrErrors = (
           await Promise.all(
-            idsOrEntities.map((idOrEntity) => this.findOne(idOrEntity)),
+            items.map(({ idOrEntity }) => this.findOne(idOrEntity)),
           )
         ).map((entity) => {
           if (entity === null) {
@@ -139,9 +180,22 @@ export class EntityService<Entity extends IdEntity> {
             );
           }
 
-          this.em.remove(entity);
-
           return entity;
+        });
+
+        entitiesOrErrors.forEach((entityOrError, index) => {
+          if (entityOrError instanceof Error) {
+            return entityOrError;
+          }
+
+          const { softDelete } = items[index];
+          const softDeleteKey = this.options?.softDeleteKey ?? "deletedAt";
+
+          if (softDelete && softDeleteKey in entityOrError) {
+            (entityOrError as any)[softDeleteKey] = new Date();
+          } else {
+            this.em.remove(entityOrError);
+          }
         });
 
         await this.em.flush();
@@ -157,20 +211,23 @@ export class EntityService<Entity extends IdEntity> {
   }
 
   async findOne(
-    idOrEntityOrWhere: IdOrEntity<Entity> | FilterQuery<Entity>,
-  ): Promise<Entity | null> {
+    idOrEntityOrWhere: IdOrEntity<Entity> | FilterQuery<NoInfer<Entity>>,
+  ): Promise<Loaded<Entity> | null> {
     if (_.isPlainObject(idOrEntityOrWhere)) {
-      return await this.em.findOne(this.entityClass, idOrEntityOrWhere);
-    } else {
-      return await this.#getDataLoader.load(
-        idOrEntityOrWhere as IdOrEntity<Entity>,
+      return await this.em.findOne<Entity>(
+        this.entityClass,
+        idOrEntityOrWhere as FilterQuery<NoInfer<Entity>>,
       );
+    } else {
+      return (await this.#getDataLoader.load({
+        idOrEntity: idOrEntityOrWhere as IdOrEntity<Entity>,
+      })) as Loaded<Entity> | null;
     }
   }
 
   async findOneOrFail(
     idOrEntityOrWhere: IdOrEntity<Entity> | FilterQuery<Entity>,
-  ): Promise<Entity> {
+  ): Promise<Loaded<Entity>> {
     const entity = await this.findOne(idOrEntityOrWhere);
 
     if (entity === null) {
@@ -182,18 +239,26 @@ export class EntityService<Entity extends IdEntity> {
     return entity;
   }
 
-  async findAll(
-    where: FilterQuery<Entity>,
-    options?: FindOptions<Entity>,
-  ): Promise<Entity[]> {
-    return await this.em.find(this.entityClass, where, options);
+  async findAll<
+    Hint extends string = never,
+    Fields extends string = PopulatePath.ALL,
+    Excludes extends string = never,
+  >(
+    where: FilterQuery<NoInfer<Entity>>,
+    options?: FindOptions<Entity, Hint, Fields, Excludes>,
+  ): Promise<Loaded<Entity, Hint, Fields, Excludes>[]> {
+    return await this.em.find<Entity, Hint, Fields, Excludes>(
+      this.entityClass,
+      where,
+      options,
+    );
   }
 
-  async count(
-    where: FilterQuery<Entity>,
-    options?: FindOptions<Entity>,
+  async count<Hint extends string = never>(
+    where: FilterQuery<NoInfer<Entity>>,
+    options?: CountOptions<Entity, Hint>,
   ): Promise<number> {
-    return await this.em.count(this.entityClass, where, options);
+    return await this.em.count<Entity, Hint>(this.entityClass, where, options);
   }
 
   async update<
@@ -220,8 +285,14 @@ export class EntityService<Entity extends IdEntity> {
     return entity;
   }
 
-  async remove(idOrEntity: IdOrEntity<Entity>): Promise<Entity> {
-    const entity = await this.#removeDataLoader.load(idOrEntity);
+  async remove(
+    idOrEntity: IdOrEntity<Entity>,
+    softDelete = true,
+  ): Promise<Entity> {
+    const entity = await this.#removeDataLoader.load({
+      idOrEntity,
+      softDelete,
+    });
 
     if (entity instanceof Error) {
       throw entity;
