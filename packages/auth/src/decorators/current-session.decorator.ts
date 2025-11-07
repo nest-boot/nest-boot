@@ -1,7 +1,7 @@
 import { createParamDecorator, ExecutionContext } from "@nestjs/common";
 import { Response } from "express";
 
-export const CurrentUser = createParamDecorator(
+export const CurrentSession = createParamDecorator(
   (data: unknown, context: ExecutionContext) => {
     let res: Response;
 
@@ -11,6 +11,6 @@ export const CurrentUser = createParamDecorator(
       res = context.switchToHttp().getResponse();
     }
 
-    return res.locals.user;
+    return res.locals.session;
   },
 );

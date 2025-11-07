@@ -1,7 +1,3 @@
-export const PERMISSIONS_METADATA_KEY = Symbol("PERMISSIONS_METADATA_KEY");
+export const AUTH_TOKEN = Symbol("AUTH");
 
-export const REQUIRE_AUTH_METADATA_KEY = Symbol("REQUIRE_AUTH_METADATA_KEY");
-
-export const AUTH_USER = Symbol("AUTH_USER");
-
-export const AUTH_PERSONAL_ACCESS_TOKEN = Symbol("AUTH_PERSONAL_ACCESS_TOKEN");
+export const IS_PUBLIC_KEY = Symbol("IS_PUBLIC_KEY");

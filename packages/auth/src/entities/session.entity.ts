@@ -1,6 +1,8 @@
 import {
   BaseEntity,
+  Cascade,
   Entity,
+  ManyToOne,
   Opt,
   PrimaryKey,
   Property,
@@ -10,22 +12,29 @@ import {
 import { randomUUID } from "crypto";
 
 @Entity({ abstract: true })
-export abstract class BaseUser extends BaseEntity {
+export abstract class BaseSession extends BaseEntity {
   @PrimaryKey({ type: t.uuid })
   id: Opt<string> = randomUUID();
 
   @Property({ type: t.text })
-  name!: string;
-
-  @Property({ type: t.text })
   @Unique()
-  email!: string;
+  token!: string;
 
-  @Property({ type: t.boolean, default: false })
-  emailVerified!: boolean;
+  @ManyToOne(() => "User", {
+    fieldName: "user_id",
+    mapToPk: true,
+    cascade: [Cascade.REMOVE],
+  })
+  userId!: string;
+
+  @Property({ type: t.datetime })
+  expiresAt!: Date;
 
   @Property({ type: t.text, nullable: true })
-  image?: Opt<string>;
+  ipAddress?: Opt<string>;
+
+  @Property({ type: t.text, nullable: true })
+  userAgent?: Opt<string>;
 
   @Property({ type: t.datetime, defaultRaw: "now()" })
   createdAt: Opt<Date> = new Date();

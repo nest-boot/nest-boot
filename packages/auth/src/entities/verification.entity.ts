@@ -5,27 +5,22 @@ import {
   PrimaryKey,
   Property,
   t,
-  Unique,
 } from "@mikro-orm/core";
 import { randomUUID } from "crypto";
 
 @Entity({ abstract: true })
-export abstract class BaseUser extends BaseEntity {
+export abstract class BaseVerification extends BaseEntity {
   @PrimaryKey({ type: t.uuid })
   id: Opt<string> = randomUUID();
 
   @Property({ type: t.text })
-  name!: string;
+  identifier!: string;
 
   @Property({ type: t.text })
-  @Unique()
-  email!: string;
+  value!: string;
 
-  @Property({ type: t.boolean, default: false })
-  emailVerified!: boolean;
-
-  @Property({ type: t.text, nullable: true })
-  image?: Opt<string>;
+  @Property({ type: t.datetime })
+  expiresAt!: Date;
 
   @Property({ type: t.datetime, defaultRaw: "now()" })
   createdAt: Opt<Date> = new Date();
