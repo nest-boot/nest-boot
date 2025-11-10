@@ -24,7 +24,7 @@ export class RequestContextInterceptor implements NestInterceptor {
 
     const id = (
       executionContext.switchToHttp().getRequest<Request>() ??
-      executionContext.getArgs()[2]?.req
+      executionContext.getArgByIndex<{ req: Request }>(2).req
     )?.get?.("x-request-id");
 
     const ctx = new RequestContext({
