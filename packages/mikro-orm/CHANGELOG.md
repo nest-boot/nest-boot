@@ -1,5 +1,11 @@
 # @nest-boot/mikro-orm
 
+## 7.2.0
+
+### Minor Changes
+
+- 4673492: feat: 优化请求上下文
+
 ## 7.1.0
 
 ### Minor Changes

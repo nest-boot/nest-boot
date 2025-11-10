@@ -1,5 +1,15 @@
 # @nest-boot/auth
 
+## 7.3.0
+
+### Minor Changes
+
+- 95815b4: feat: 添加 @nest-boot/request-context 依赖并更新 AuthInterceptor 以支持请求上下文
+
+### Patch Changes
+
+- 271f5d4: fix: 修复没有导出 AuthInterceptor 和 AuthTransactionContext
+
 ## 7.2.0
 
 ### Minor Changes
