@@ -25,6 +25,7 @@
     "@mikro-orm/postgresql": "^6.5.8",
     "@nest-boot/eslint-config": "workspace:^7.0.0",
     "@nest-boot/eslint-plugin": "workspace:^7.0.0",
+    "@nest-boot/request-context": "workspace:^7.0.0",
     "@nest-boot/tsconfig": "workspace:^7.0.0",
     "@nestjs/common": "^11.1.6",
     "@nestjs/config": "^4.0.2",
@@ -44,6 +45,7 @@
   "peerDependencies": {
     "@mikro-orm/core": "^6.0.0",
     "@mikro-orm/postgresql": "^6.0.0",
+    "@nest-boot/request-context": "^7.0.0",
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
     "better-auth": "^1.0.0",

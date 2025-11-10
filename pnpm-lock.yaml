@@ -67,6 +67,9 @@ importers:
       '@nest-boot/eslint-plugin':
         specifier: workspace:^7.0.0
         version: link:../eslint-plugin
+      '@nest-boot/request-context':
+        specifier: workspace:^7.0.0
+        version: link:../request-context
       '@nest-boot/tsconfig':
         specifier: workspace:^7.0.0
         version: link:../tsconfig

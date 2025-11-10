@@ -1,4 +1,5 @@
 import { MikroORM } from "@mikro-orm/core";
+import { RequestContextModule } from "@nest-boot/request-context";
 import {
   Inject,
   MiddlewareConsumer,
@@ -36,6 +37,7 @@ const authProvider: Provider = {
 };
 
 @Module({
+  imports: [RequestContextModule],
   providers: [authProvider, AuthService],
   exports: [AuthService],
 })

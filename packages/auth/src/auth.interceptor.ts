@@ -1,5 +1,6 @@
 import { EntityManager } from "@mikro-orm/core";
 import { Knex } from "@mikro-orm/postgresql";
+import { RequestContext } from "@nest-boot/request-context";
 import {
   type CallHandler,
   type ExecutionContext,
@@ -7,7 +8,7 @@ import {
   type NestInterceptor,
 } from "@nestjs/common";
 import { Request, Response } from "express";
-import { concatMap, from, Observable } from "rxjs";
+import { concatMap, from, lastValueFrom } from "rxjs";
 
 import { AuthTransactionContext } from "./auth.transaction-context";
 import { BaseSession, BaseUser } from "./entities";
@@ -82,36 +83,28 @@ export class AuthInterceptor implements NestInterceptor {
     }
   }
 
-  private async interceptAsync(
-    executionContext: ExecutionContext,
-  ): Promise<void> {
-    // 检查是否已在事务中
+  intercept<T>(executionContext: ExecutionContext, next: CallHandler<T>) {
     const knex = this.em.getTransactionContext<Knex>();
 
     if (knex) {
-      // 已在事务中,直接设置认证上下文
-      await this.setTransactionAuthContext(executionContext, knex);
-    } else {
-      // 不在事务中,启动一个新事务
-      await this.em.transactional(async (em) => {
-        await this.setTransactionAuthContext(
-          executionContext,
-          em.getTransactionContext<Knex>(),
-        );
-      });
-    }
-  }
-
-  intercept<T>(
-    executionContext: ExecutionContext,
-    next: CallHandler<T>,
-  ): Observable<T> {
-    if (["http", "graphql"].includes(executionContext.getType())) {
-      return from(this.interceptAsync(executionContext)).pipe(
+      return from(this.setTransactionAuthContext(executionContext, knex)).pipe(
         concatMap(() => next.handle()),
       );
-    }
+    } else {
+      return from(
+        RequestContext.child(() =>
+          this.em.transactional(async (em) => {
+            RequestContext.set(EntityManager, em);
 
-    return next.handle();
+            await this.setTransactionAuthContext(
+              executionContext,
+              em.getTransactionContext<Knex>(),
+            );
+
+            return await lastValueFrom(next.handle());
+          }),
+        ),
+      );
+    }
   }
 }
