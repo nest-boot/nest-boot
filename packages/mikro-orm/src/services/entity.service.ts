@@ -101,8 +101,8 @@ export class EntityService<Entity extends IdEntity> {
         const allEntities = [...entitiesFromUow, ...entitiesFromDb];
 
         // 按照原始顺序返回结果
-        return items.map(({ idOrEntity }) => {
-          return allEntities.find((entity) => entity.id === idOrEntity) ?? null;
+        return ids.map((id) => {
+          return allEntities.find((entity) => entity.id === id) ?? null;
         });
       },
       { cache: false },
