@@ -1,5 +1,11 @@
 # @nest-boot/mikro-orm
 
+## 7.2.1
+
+### Patch Changes
+
+- 59f76aa: fix: 修复 EntityService.findOne 返回错误
+
 ## 7.2.0
 
 ### Minor Changes
