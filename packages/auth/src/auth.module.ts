@@ -64,11 +64,15 @@ export class AuthModule
   }
 
   onModuleInit() {
-    const app = this.adapterHost.httpAdapter.getInstance<Express>();
+    const httpAdapter = this.adapterHost.httpAdapter;
 
-    app.all(
-      this.options.basePath ?? "/api/auth/{*any}",
-      toNodeHandler(this.auth),
-    );
+    if (httpAdapter) {
+      const app = httpAdapter.getInstance<Express>();
+
+      app.all(
+        this.options.basePath ?? "/api/auth/{*any}",
+        toNodeHandler(this.auth),
+      );
+    }
   }
 }

@@ -58,6 +58,9 @@ importers:
       '@mikro-orm/core':
         specifier: ^6.5.8
         version: 6.5.8
+      '@mikro-orm/postgresql':
+        specifier: ^6.5.8
+        version: 6.5.8
       '@nest-boot/eslint-config':
         specifier: workspace:^7.0.0
         version: link:../eslint-config
