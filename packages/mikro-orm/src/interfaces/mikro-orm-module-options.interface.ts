@@ -2,5 +2,5 @@ import { MikroOrmModuleOptions as BaseMikroOrmModuleOptions } from "@mikro-orm/n
 
 export type MikroOrmModuleOptions = Omit<
   BaseMikroOrmModuleOptions,
-  "registerRequestContext"
+  "registerRequestContext" | "context"
 >;

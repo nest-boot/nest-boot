@@ -1,8 +1,4 @@
-import {
-  EntityManager,
-  MikroORM,
-  RequestContext as MikroRequestContext,
-} from "@mikro-orm/core";
+import { EntityManager, MikroORM } from "@mikro-orm/core";
 import { MikroOrmModule as BaseMikroOrmModule } from "@mikro-orm/nestjs";
 import {
   RequestContext,
@@ -26,6 +22,11 @@ import { loadConfigFromEnv } from "./utils/load-config-from-env.util";
       inject: [MODULE_OPTIONS_TOKEN],
       useFactory: async (options: MikroOrmModuleOptions) => ({
         registerRequestContext: false,
+        context: () => {
+          if (RequestContext.isActive()) {
+            return RequestContext.get(EntityManager);
+          }
+        },
         ...(await loadConfigFromEnv()),
         ...options,
       }),
@@ -67,10 +68,8 @@ export class MikroOrmModule
 
   onModuleInit(): void {
     RequestContext.registerMiddleware("mikro-orm", (ctx, next) => {
-      return MikroRequestContext.create(this.orm.em, () => {
-        ctx.set(EntityManager, this.orm.em);
-        return next();
-      });
+      ctx.set(EntityManager, this.orm.em.fork({ useContext: true }));
+      return next();
     });
   }
 }
