@@ -1,5 +1,11 @@
 # @nest-boot/request-context
 
+## 7.1.0
+
+### Minor Changes
+
+- 562535e: feat: 优化中间件注册
+
 ## 7.0.0
 
 ### Major Changes
