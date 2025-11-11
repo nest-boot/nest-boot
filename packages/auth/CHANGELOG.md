@@ -1,5 +1,11 @@
 # @nest-boot/auth
 
+## 7.4.0
+
+### Minor Changes
+
+- 074c240: feat: 拆分出 auth-rls 和 mikro-orm-request-transaction 模块
+
 ## 7.3.0
 
 ### Minor Changes
