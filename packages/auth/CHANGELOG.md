@@ -1,5 +1,11 @@
 # @nest-boot/auth
 
+## 7.5.0
+
+### Minor Changes
+
+- 8ae94c8: feat: 添加 baseURL 和 secret 环境变量配置
+
 ## 7.4.0
 
 ### Minor Changes
