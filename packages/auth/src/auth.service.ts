@@ -6,6 +6,10 @@ import { AUTH_TOKEN } from "./auth.constants";
 export class AuthService {
   constructor(
     @Inject(AUTH_TOKEN)
-    public readonly auth: Auth,
+    private readonly auth: Auth,
   ) {}
+
+  get api() {
+    return this.auth.api;
+  }
 }

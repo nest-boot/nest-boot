@@ -15,7 +15,7 @@ export class AuthMiddleware implements NestMiddleware {
     private readonly em: EntityManager,
   ) {}
   private async getSession(req: Request) {
-    return await this.authService.auth.api.getSession({
+    return await this.authService.api.getSession({
       headers: Object.entries(req.headers).reduce((headers, [key, value]) => {
         if (value) {
           if (Array.isArray(value)) {

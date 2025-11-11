@@ -7,7 +7,7 @@ import {
   Module,
   NestModule,
 } from "@nestjs/common";
-import { betterAuth } from "better-auth";
+import { Auth, betterAuth } from "better-auth";
 import { toNodeHandler } from "better-auth/node";
 
 import { mikroOrmAdapter } from "./adapters/mikro-orm-adapter";
@@ -31,6 +31,8 @@ import { AuthModuleOptions } from "./auth-module-options.interface";
       inject: [MODULE_OPTIONS_TOKEN, MikroORM],
       useFactory: (options: AuthModuleOptions, orm: MikroORM) =>
         betterAuth({
+          baseURL: process.env.AUTH_URL ?? process.env.APP_URL,
+          secret: process.env.AUTH_SECRET ?? process.env.APP_SECRET,
           ...options,
           database: mikroOrmAdapter({
             orm,
@@ -43,7 +45,8 @@ import { AuthModuleOptions } from "./auth-module-options.interface";
 })
 export class AuthModule extends ConfigurableModuleClass implements NestModule {
   constructor(
-    private readonly authService: AuthService,
+    @Inject(AUTH_TOKEN)
+    private readonly auth: Auth,
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly options: AuthModuleOptions,
   ) {
@@ -52,7 +55,7 @@ export class AuthModule extends ConfigurableModuleClass implements NestModule {
 
   configure(consumer: MiddlewareConsumer) {
     consumer
-      .apply(toNodeHandler(this.authService.auth))
+      .apply(toNodeHandler(this.auth))
       .forRoutes(this.options.basePath ?? "/api/auth/{*any}");
 
     if (this.options.middleware?.register !== false) {
