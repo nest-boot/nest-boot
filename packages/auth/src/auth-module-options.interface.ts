@@ -4,6 +4,7 @@ import { BetterAuthOptions } from "better-auth";
 import { MikroOrmAdapterConfig } from "./adapters/mikro-orm-adapter";
 
 export interface AuthModuleMiddlewareOptions {
+  register?: boolean;
   includeRoutes?: (string | RouteInfo | Type)[];
   excludeRoutes?: (string | RouteInfo)[];
 }

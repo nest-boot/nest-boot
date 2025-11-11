@@ -1,17 +1,14 @@
 import { MikroORM } from "@mikro-orm/core";
 import { RequestContextModule } from "@nest-boot/request-context";
 import {
+  Global,
   Inject,
   MiddlewareConsumer,
   Module,
   NestModule,
-  OnModuleInit,
-  Provider,
 } from "@nestjs/common";
-import { HttpAdapterHost } from "@nestjs/core";
-import { Auth, betterAuth } from "better-auth";
+import { betterAuth } from "better-auth";
 import { toNodeHandler } from "better-auth/node";
-import { Express } from "express";
 
 import { mikroOrmAdapter } from "./adapters/mikro-orm-adapter";
 import { AUTH_TOKEN } from "./auth.constants";
@@ -23,32 +20,30 @@ import {
 import { AuthService } from "./auth.service";
 import { AuthModuleOptions } from "./auth-module-options.interface";
 
-const authProvider: Provider = {
-  provide: AUTH_TOKEN,
-  inject: [MODULE_OPTIONS_TOKEN, MikroORM],
-  useFactory: (options: AuthModuleOptions, orm: MikroORM) =>
-    betterAuth({
-      ...options,
-      database: mikroOrmAdapter({
-        orm,
-        entities: options.entities,
-      }),
-    }),
-};
-
+@Global()
 @Module({
   imports: [RequestContextModule],
-  providers: [authProvider, AuthService],
-  exports: [AuthService],
+  providers: [
+    AuthService,
+    AuthMiddleware,
+    {
+      provide: AUTH_TOKEN,
+      inject: [MODULE_OPTIONS_TOKEN, MikroORM],
+      useFactory: (options: AuthModuleOptions, orm: MikroORM) =>
+        betterAuth({
+          ...options,
+          database: mikroOrmAdapter({
+            orm,
+            entities: options.entities,
+          }),
+        }),
+    },
+  ],
+  exports: [AuthService, AuthMiddleware],
 })
-export class AuthModule
-  extends ConfigurableModuleClass
-  implements NestModule, OnModuleInit
-{
+export class AuthModule extends ConfigurableModuleClass implements NestModule {
   constructor(
-    private readonly adapterHost: HttpAdapterHost,
-    @Inject(AUTH_TOKEN)
-    private readonly auth: Auth,
+    private readonly authService: AuthService,
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly options: AuthModuleOptions,
   ) {
@@ -56,25 +51,22 @@ export class AuthModule
   }
 
   configure(consumer: MiddlewareConsumer) {
-    const proxy = consumer.apply(AuthMiddleware);
+    consumer
+      .apply(toNodeHandler(this.authService.auth))
+      .forRoutes(this.options.basePath ?? "/api/auth/{*any}");
 
-    if (this.options.middleware?.excludeRoutes) {
-      proxy.exclude(...this.options.middleware.excludeRoutes);
-    }
+    if (this.options.middleware?.register !== false) {
+      const proxy = consumer.apply(AuthMiddleware);
 
-    proxy.forRoutes(...(this.options.middleware?.includeRoutes ?? ["*"]));
-  }
+      if (this.options.middleware?.excludeRoutes) {
+        proxy.exclude(...this.options.middleware.excludeRoutes);
+      }
 
-  onModuleInit() {
-    const httpAdapter = this.adapterHost.httpAdapter;
-
-    if (httpAdapter) {
-      const app = httpAdapter.getInstance<Express>();
-
-      app.all(
-        this.options.basePath ?? "/api/auth/{*any}",
-        toNodeHandler(this.auth),
-      );
+      if (this.options.middleware?.includeRoutes) {
+        proxy.forRoutes(...this.options.middleware.includeRoutes);
+      } else {
+        proxy.forRoutes("*");
+      }
     }
   }
 }

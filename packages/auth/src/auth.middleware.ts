@@ -15,40 +15,41 @@ export class AuthMiddleware implements NestMiddleware {
     private readonly em: EntityManager,
   ) {}
   private async getSession(req: Request) {
-    const headers = new Headers();
-
-    Object.entries(req.headers).forEach(([key, value]) => {
-      if (value) {
-        if (Array.isArray(value)) {
-          value.forEach((v) => {
-            headers.append(key, v);
-          });
-        } else {
-          headers.set(key, value);
-        }
-      }
-    });
-
     return await this.authService.auth.api.getSession({
-      headers,
+      headers: Object.entries(req.headers).reduce((headers, [key, value]) => {
+        if (value) {
+          if (Array.isArray(value)) {
+            for (const item of value) {
+              headers.append(key, item);
+            }
+          } else {
+            headers.append(key, value);
+          }
+        }
+        return headers;
+      }, new Headers()),
     });
   }
 
   async use(req: Request, res: Response, next: NextFunction) {
     const data = await this.getSession(req);
 
-    if (data) {
-      res.locals.user = await this.em.findOne(this.options.entities.user, {
-        id: data.user.id,
-      });
-
-      res.locals.session = await this.em.findOne(
-        this.options.entities.session,
-        {
-          token: data.session.token,
-        },
-      );
+    if (!data) {
+      next();
+      return;
     }
+
+    const [user, session] = await Promise.all([
+      this.em.findOne(this.options.entities.user, {
+        id: data.user.id,
+      }),
+      this.em.findOne(this.options.entities.session, {
+        token: data.session.token,
+      }),
+    ]);
+
+    res.locals.user = user;
+    res.locals.session = session;
 
     next();
   }

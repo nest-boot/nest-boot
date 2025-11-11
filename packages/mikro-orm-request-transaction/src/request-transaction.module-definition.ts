@@ -1,8 +1,8 @@
 import { ConfigurableModuleBuilder } from "@nestjs/common";
 
-import { type AuthModuleOptions } from "./auth-module-options.interface";
+import { RequestTransactionModuleOptions } from "./request-transaction-module-options.interface";
 
 export const { ConfigurableModuleClass, MODULE_OPTIONS_TOKEN } =
-  new ConfigurableModuleBuilder<AuthModuleOptions>()
+  new ConfigurableModuleBuilder<RequestTransactionModuleOptions>()
     .setClassMethodName("forRoot")
     .build();
