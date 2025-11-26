@@ -7,6 +7,7 @@ import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import dayjs from "dayjs";
+import micromatch from "micromatch";
 import mimeTypes from "mime-types";
 import { extname } from "path";
 import { Readable } from "stream";
@@ -36,7 +37,8 @@ export class FileUploadService {
 
       const limit = this.options.limits?.find(
         (v) =>
-          item.fileSize <= v.fileSize && v.mimeTypes.includes(item.mimeType),
+          item.fileSize <= v.fileSize &&
+          micromatch.isMatch(item.mimeType, v.mimeTypes),
       );
 
       if (this.options.limits && !limit) {
