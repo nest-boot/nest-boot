@@ -1,5 +1,11 @@
 # @nest-boot/file-upload
 
+## 7.1.0
+
+### Minor Changes
+
+- db94d6b: feat: supports wildcard matching
+
 ## 7.0.1
 
 ### Patch Changes
