@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/request-context",
-  "version": "7.2.0",
+  "version": "7.3.0",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
   "homepage": "",
@@ -22,7 +22,7 @@
   "devDependencies": {
     "@nest-boot/eslint-config": "workspace:^7.0.0",
     "@nest-boot/eslint-plugin": "workspace:^7.0.0",
-    "@nest-boot/middleware": "workspace:^7.0.0",
+    "@nest-boot/middleware": "workspace:^7.1.0",
     "@nest-boot/tsconfig": "workspace:^7.0.0",
     "@nestjs/common": "^11.1.6",
     "@nestjs/core": "^11.1.6",
