@@ -136,6 +136,9 @@ importers:
       '@nest-boot/middleware':
         specifier: workspace:^7.1.0
         version: link:../middleware
+      '@nest-boot/mikro-orm-request-transaction':
+        specifier: workspace:^7.0.0
+        version: link:../mikro-orm-request-transaction
       '@nest-boot/tsconfig':
         specifier: workspace:^7.0.0
         version: link:../tsconfig
@@ -1240,6 +1243,9 @@ importers:
       '@nest-boot/eslint-plugin':
         specifier: workspace:^7.0.0
         version: link:../eslint-plugin
+      '@nest-boot/middleware':
+        specifier: workspace:^7.0.0
+        version: link:../middleware
       '@nest-boot/request-context':
         specifier: workspace:^7.2.0
         version: link:../request-context

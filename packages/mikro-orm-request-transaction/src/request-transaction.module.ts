@@ -1,12 +1,9 @@
-import { RequestContextModule } from "@nest-boot/request-context";
+import { MiddlewareManager, MiddlewareModule } from "@nest-boot/middleware";
 import {
-  Global,
-  Inject,
-  MiddlewareConsumer,
-  Module,
-  NestModule,
-  Optional,
-} from "@nestjs/common";
+  RequestContextMiddleware,
+  RequestContextModule,
+} from "@nest-boot/request-context";
+import { Global, Inject, Module, Optional } from "@nestjs/common";
 
 import { RequestTransactionMiddleware } from "./request-transaction.middleware";
 import {
@@ -18,25 +15,23 @@ import { RequestTransactionModuleOptions } from "./request-transaction-module-op
 
 @Global()
 @Module({
-  imports: [RequestContextModule],
+  imports: [RequestContextModule, MiddlewareModule],
   providers: [RequestTransactionSubscriber, RequestTransactionMiddleware],
-  exports: [RequestTransactionMiddleware],
 })
-export class RequestTransactionModule
-  extends ConfigurableModuleClass
-  implements NestModule
-{
+export class RequestTransactionModule extends ConfigurableModuleClass {
   constructor(
+    private readonly middlewareManager: MiddlewareManager,
+    private readonly requestTransactionMiddleware: RequestTransactionMiddleware,
     @Optional()
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly options?: RequestTransactionModuleOptions,
   ) {
     super();
-  }
 
-  configure(consumer: MiddlewareConsumer) {
     if (this.options?.middleware?.register !== false) {
-      const proxy = consumer.apply(RequestTransactionMiddleware);
+      const proxy = this.middlewareManager
+        .apply(this.requestTransactionMiddleware)
+        .dependencies(RequestContextMiddleware);
 
       if (this.options?.middleware?.excludeRoutes) {
         proxy.exclude(...this.options.middleware.excludeRoutes);
