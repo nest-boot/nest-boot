@@ -65,10 +65,10 @@ importers:
         specifier: workspace:^7.0.0
         version: link:../eslint-plugin
       '@nest-boot/middleware':
-        specifier: workspace:^7.0.0
+        specifier: workspace:^7.1.0
         version: link:../middleware
       '@nest-boot/request-context':
-        specifier: workspace:^7.2.0
+        specifier: workspace:^7.3.0
         version: link:../request-context
       '@nest-boot/tsconfig':
         specifier: workspace:^7.0.0
@@ -125,7 +125,7 @@ importers:
         specifier: ^6.5.8
         version: 6.5.8
       '@nest-boot/auth':
-        specifier: workspace:^7.4.0
+        specifier: workspace:^7.6.0
         version: link:../auth
       '@nest-boot/eslint-config':
         specifier: workspace:^7.0.0
@@ -134,7 +134,7 @@ importers:
         specifier: workspace:^7.0.0
         version: link:../eslint-plugin
       '@nest-boot/middleware':
-        specifier: workspace:^7.0.0
+        specifier: workspace:^7.1.0
         version: link:../middleware
       '@nest-boot/tsconfig':
         specifier: workspace:^7.0.0
@@ -1349,7 +1349,7 @@ importers:
         specifier: workspace:^7.0.0
         version: link:../eslint-plugin
       '@nest-boot/middleware':
-        specifier: workspace:^7.0.0
+        specifier: workspace:^7.1.0
         version: link:../middleware
       '@nest-boot/tsconfig':
         specifier: workspace:^7.0.0
