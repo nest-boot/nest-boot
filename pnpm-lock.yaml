@@ -137,7 +137,7 @@ importers:
         specifier: workspace:^7.1.0
         version: link:../middleware
       '@nest-boot/mikro-orm-request-transaction':
-        specifier: workspace:^7.0.0
+        specifier: workspace:^7.1.1
         version: link:../mikro-orm-request-transaction
       '@nest-boot/tsconfig':
         specifier: workspace:^7.0.0

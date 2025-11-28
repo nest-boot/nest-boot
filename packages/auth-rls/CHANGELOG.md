@@ -1,5 +1,11 @@
 # @nest-boot/auth-rls
 
+## 7.2.1
+
+### Patch Changes
+
+- a1f5869: fix: 修复中间件依赖关系
+
 ## 7.2.0
 
 ### Minor Changes
