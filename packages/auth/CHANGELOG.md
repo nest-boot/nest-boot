@@ -1,5 +1,11 @@
 # @nest-boot/auth
 
+## 7.7.0
+
+### Minor Changes
+
+- 3f503c8: feat: MiddlewareManager 支持全局排除路由
+
 ## 7.6.0
 
 ### Minor Changes

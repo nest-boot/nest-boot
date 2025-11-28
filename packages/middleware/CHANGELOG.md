@@ -1,5 +1,11 @@
 # @nest-boot/middleware
 
+## 7.2.0
+
+### Minor Changes
+
+- 3f503c8: feat: MiddlewareManager 支持全局排除路由
+
 ## 7.1.0
 
 ### Minor Changes
