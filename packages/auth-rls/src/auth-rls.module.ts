@@ -1,11 +1,6 @@
-import {
-  Global,
-  Inject,
-  MiddlewareConsumer,
-  Module,
-  NestModule,
-  Optional,
-} from "@nestjs/common";
+import { AuthMiddleware } from "@nest-boot/auth";
+import { MiddlewareManager, MiddlewareModule } from "@nest-boot/middleware";
+import { Global, Inject, Module, Optional } from "@nestjs/common";
 
 import { AuthRlsMiddleware } from "./auth-rls.middleware";
 import {
@@ -16,24 +11,24 @@ import { AuthRlsModuleOptions } from "./auth-rls-module-options.interface";
 
 @Global()
 @Module({
+  imports: [MiddlewareModule],
   providers: [AuthRlsMiddleware],
   exports: [AuthRlsMiddleware],
 })
-export class AuthRlsModule
-  extends ConfigurableModuleClass
-  implements NestModule
-{
+export class AuthRlsModule extends ConfigurableModuleClass {
   constructor(
+    private readonly middlewareManager: MiddlewareManager,
+    private readonly authRlsMiddleware: AuthRlsMiddleware,
     @Optional()
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly options?: AuthRlsModuleOptions,
   ) {
     super();
-  }
 
-  configure(consumer: MiddlewareConsumer) {
     if (this.options?.middleware?.register !== false) {
-      const proxy = consumer.apply(AuthRlsMiddleware);
+      const proxy = this.middlewareManager
+        .apply(this.authRlsMiddleware)
+        .dependencies(AuthMiddleware);
 
       if (this.options?.middleware?.excludeRoutes) {
         proxy.exclude(...this.options.middleware.excludeRoutes);

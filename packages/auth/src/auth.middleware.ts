@@ -1,10 +1,12 @@
 import { EntityManager } from "@mikro-orm/core";
-import { Inject, Injectable, NestMiddleware } from "@nestjs/common";
+import { RequestContext } from "@nest-boot/request-context";
+import { Inject, Injectable, NestMiddleware, Type } from "@nestjs/common";
 import { NextFunction, Request, Response } from "express";
 
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition";
 import { AuthService } from "./auth.service";
 import { AuthModuleOptions } from "./auth-module-options.interface";
+import { BaseSession, BaseUser } from "./entities";
 
 @Injectable()
 export class AuthMiddleware implements NestMiddleware {
@@ -48,8 +50,21 @@ export class AuthMiddleware implements NestMiddleware {
       }),
     ]);
 
-    res.locals.user = user;
-    res.locals.session = session;
+    if (user && session) {
+      res.locals.user = user;
+      res.locals.session = session;
+
+      RequestContext.set<BaseUser>(
+        this.options.entities.user as Type<BaseUser>,
+        user,
+      );
+      RequestContext.set<BaseSession>(
+        this.options.entities.session as Type<BaseSession>,
+        session,
+      );
+    }
+
+    await this.options.onAuthenticated?.({ req, res, user, session });
 
     next();
   }

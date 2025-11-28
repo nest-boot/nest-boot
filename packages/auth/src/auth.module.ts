@@ -1,12 +1,10 @@
 import { MikroORM } from "@mikro-orm/core";
-import { RequestContextModule } from "@nest-boot/request-context";
+import { MiddlewareManager, MiddlewareModule } from "@nest-boot/middleware";
 import {
-  Global,
-  Inject,
-  MiddlewareConsumer,
-  Module,
-  NestModule,
-} from "@nestjs/common";
+  RequestContextMiddleware,
+  RequestContextModule,
+} from "@nest-boot/request-context";
+import { Global, Inject, Module } from "@nestjs/common";
 import { Auth, betterAuth } from "better-auth";
 import { toNodeHandler } from "better-auth/node";
 
@@ -22,7 +20,7 @@ import { AuthModuleOptions } from "./auth-module-options.interface";
 
 @Global()
 @Module({
-  imports: [RequestContextModule],
+  imports: [RequestContextModule, MiddlewareModule],
   providers: [
     AuthService,
     AuthMiddleware,
@@ -43,23 +41,25 @@ import { AuthModuleOptions } from "./auth-module-options.interface";
   ],
   exports: [AuthService, AuthMiddleware],
 })
-export class AuthModule extends ConfigurableModuleClass implements NestModule {
+export class AuthModule extends ConfigurableModuleClass {
   constructor(
     @Inject(AUTH_TOKEN)
     private readonly auth: Auth,
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly options: AuthModuleOptions,
+    private readonly middlewareManager: MiddlewareManager,
+    private readonly authMiddleware: AuthMiddleware,
   ) {
     super();
-  }
 
-  configure(consumer: MiddlewareConsumer) {
-    consumer
+    this.middlewareManager
       .apply(toNodeHandler(this.auth))
       .forRoutes(this.options.basePath ?? "/api/auth/{*any}");
 
     if (this.options.middleware?.register !== false) {
-      const proxy = consumer.apply(AuthMiddleware);
+      const proxy = this.middlewareManager
+        .apply(this.authMiddleware)
+        .dependencies(RequestContextMiddleware);
 
       if (this.options.middleware?.excludeRoutes) {
         proxy.exclude(...this.options.middleware.excludeRoutes);
