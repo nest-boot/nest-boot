@@ -4,6 +4,8 @@ import { NestMiddleware, RouteInfo } from "@nestjs/common/interfaces";
 import { MiddlewareManager } from "./middleware.manager";
 
 export class MiddlewareConfigurator {
+  private disabledGlobalExcludeRoutes = false;
+
   private readonly excludeRoutes: (string | RouteInfo)[] = [];
 
   private readonly dependencyMiddlewares: Type<NestMiddleware>[] = [];
@@ -12,6 +14,11 @@ export class MiddlewareConfigurator {
     private readonly manager: MiddlewareManager,
     private readonly middlewares: (NestMiddleware | NestMiddleware["use"])[],
   ) {}
+
+  public disableGlobalExcludeRoutes(): this {
+    this.disabledGlobalExcludeRoutes = true;
+    return this;
+  }
 
   public exclude(...routes: (string | RouteInfo)[]): this {
     this.excludeRoutes.push(...routes);
@@ -39,6 +46,7 @@ export class MiddlewareConfigurator {
         routes,
         excludeRoutes: this.excludeRoutes,
         dependencyMiddlewares: this.dependencyMiddlewares,
+        disabledGlobalExcludeRoutes: this.disabledGlobalExcludeRoutes,
       });
     });
 

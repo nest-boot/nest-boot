@@ -2,16 +2,12 @@ import { Injectable, NestMiddleware, Type } from "@nestjs/common";
 import { MiddlewareConsumer, RouteInfo } from "@nestjs/common/interfaces";
 
 import { MiddlewareConfigurator } from "./middleware.configurator";
-
-export interface MiddlewareConfig {
-  middleware: NestMiddleware["use"];
-  routes: (string | Type | RouteInfo)[];
-  excludeRoutes: (string | RouteInfo)[];
-  dependencyMiddlewares: Type<NestMiddleware>[];
-}
+import { MiddlewareConfig } from "./middleware-config.interface";
 
 @Injectable()
 export class MiddlewareManager {
+  private globalExcludeRoutes: (string | RouteInfo)[] = [];
+
   public readonly middlewareConfigMap = new Map<
     NestMiddleware | NestMiddleware["use"],
     MiddlewareConfig
@@ -74,12 +70,21 @@ export class MiddlewareManager {
     return new MiddlewareConfigurator(this, middlewares);
   }
 
+  globalExclude(...routes: (string | RouteInfo)[]): this {
+    this.globalExcludeRoutes.push(...routes);
+    return this;
+  }
+
   configure(consumer: MiddlewareConsumer) {
     for (const config of this.middlewareConfigs) {
       const proxy = consumer.apply(config.middleware);
 
-      if (config.excludeRoutes.length > 0) {
-        proxy.exclude(...config.excludeRoutes);
+      const excludeRoutes = config.disabledGlobalExcludeRoutes
+        ? config.excludeRoutes
+        : [...this.globalExcludeRoutes, ...config.excludeRoutes];
+
+      if (excludeRoutes.length > 0) {
+        proxy.exclude(...excludeRoutes);
       }
 
       proxy.forRoutes(...config.routes);

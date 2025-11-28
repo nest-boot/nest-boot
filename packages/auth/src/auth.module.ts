@@ -52,9 +52,11 @@ export class AuthModule extends ConfigurableModuleClass {
   ) {
     super();
 
-    this.middlewareManager
-      .apply(toNodeHandler(this.auth))
-      .forRoutes(this.options.basePath ?? "/api/auth/{*any}");
+    const basePath = this.options.basePath ?? "/api/auth/{*any}";
+
+    this.middlewareManager.globalExclude(basePath);
+
+    this.middlewareManager.apply(toNodeHandler(this.auth)).forRoutes(basePath);
 
     if (this.options.middleware?.register !== false) {
       const proxy = this.middlewareManager

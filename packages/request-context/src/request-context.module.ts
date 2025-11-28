@@ -22,6 +22,9 @@ export class RequestContextModule {
     private readonly middlewareManager: MiddlewareManager,
     private readonly requestContextMiddleware: RequestContextMiddleware,
   ) {
-    this.middlewareManager.apply(this.requestContextMiddleware).forRoutes("*");
+    this.middlewareManager
+      .apply(this.requestContextMiddleware)
+      .disableGlobalExcludeRoutes()
+      .forRoutes("*");
   }
 }
