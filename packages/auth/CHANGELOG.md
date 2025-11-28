@@ -1,5 +1,11 @@
 # @nest-boot/auth
 
+## 7.7.1
+
+### Patch Changes
+
+- b64e6b7: fix: 修复 better-auth 没有禁止全局排除路由
+
 ## 7.7.0
 
 ### Minor Changes
