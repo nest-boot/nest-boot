@@ -24,16 +24,16 @@ export class RequestTransactionMiddleware implements NestMiddleware {
           RequestContext.set(EntityManager, em);
 
           await new Promise<void>((resolve) => {
-            const onResponseComplete = () => {
-              res.removeListener("close", onResponseComplete);
-              res.removeListener("finish", onResponseComplete);
-              res.removeListener("error", onResponseComplete);
+            const onResponseClose = () => {
+              res.off("close", onResponseClose);
               resolve();
             };
 
-            res.on("finish", onResponseComplete);
-            res.on("close", onResponseComplete);
-            res.on("error", onResponseComplete);
+            if (res.closed) {
+              onResponseClose();
+            } else {
+              res.once("close", onResponseClose);
+            }
 
             next();
           });
