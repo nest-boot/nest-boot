@@ -26,10 +26,10 @@
     "validator": "^13.15.15"
   },
   "devDependencies": {
-    "@nest-boot/eslint-config": "workspace:^7.0.0",
-    "@nest-boot/eslint-plugin": "workspace:^7.0.0",
-    "@nest-boot/i18n": "workspace:^7.0.1",
-    "@nest-boot/tsconfig": "workspace:^7.0.0",
+    "@nest-boot/eslint-config": "workspace:^",
+    "@nest-boot/eslint-plugin": "workspace:^",
+    "@nest-boot/i18n": "workspace:^",
+    "@nest-boot/tsconfig": "workspace:^",
     "@nestjs/common": "^11.1.9",
     "@nestjs/core": "^11.1.9",
     "@types/jest": "^29.5.14",

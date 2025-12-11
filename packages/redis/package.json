@@ -24,9 +24,9 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand"
   },
   "devDependencies": {
-    "@nest-boot/eslint-config": "workspace:^7.0.0",
-    "@nest-boot/eslint-plugin": "workspace:^7.0.0",
-    "@nest-boot/tsconfig": "workspace:^7.0.0",
+    "@nest-boot/eslint-config": "workspace:^",
+    "@nest-boot/eslint-plugin": "workspace:^",
+    "@nest-boot/tsconfig": "workspace:^",
     "@nestjs/common": "^11.1.9",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.9",
