@@ -1,5 +1,13 @@
 # @nest-boot/schedule
 
+## 7.0.1
+
+### Patch Changes
+
+- bf35af9: fix: update @nestjs packages to version 11.1.9 across multiple packages
+- Updated dependencies [bf35af9]
+  - @nest-boot/bullmq@7.0.1
+
 ## 7.0.0
 
 ### Major Changes

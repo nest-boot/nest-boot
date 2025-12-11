@@ -1,5 +1,14 @@
 # @nest-boot/graphql-logger
 
+## 7.0.1
+
+### Patch Changes
+
+- bf35af9: fix: update @nestjs packages to version 11.1.9 across multiple packages
+- 795f20d: fix: update @apollo/server to version 5.2.0
+- Updated dependencies [bf35af9]
+  - @nest-boot/logger@7.0.3
+
 ## 7.0.0
 
 ### Minor Changes

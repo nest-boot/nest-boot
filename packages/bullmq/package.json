@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/bullmq",
-  "version": "7.0.0",
+  "version": "7.0.1",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
   "homepage": "",
@@ -27,7 +27,7 @@
   "devDependencies": {
     "@nest-boot/eslint-config": "workspace:^7.0.0",
     "@nest-boot/eslint-plugin": "workspace:^7.0.0",
-    "@nest-boot/request-context": "workspace:^7.0.0",
+    "@nest-boot/request-context": "workspace:^7.4.1",
     "@nest-boot/tsconfig": "workspace:^7.0.0",
     "@nestjs/bullmq": "^11.0.4",
     "@nestjs/common": "^11.1.9",
@@ -45,7 +45,7 @@
     "typescript": "^5.9.3"
   },
   "peerDependencies": {
-    "@nest-boot/request-context": "workspace:^7.0.0",
+    "@nest-boot/request-context": "workspace:^7.4.1",
     "@nestjs/bullmq": "^11.0.0",
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",

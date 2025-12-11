@@ -1,5 +1,11 @@
 # @nest-boot/request-context
 
+## 7.4.1
+
+### Patch Changes
+
+- bf35af9: fix: update @nestjs packages to version 11.1.9 across multiple packages
+
 ## 7.4.0
 
 ### Minor Changes
