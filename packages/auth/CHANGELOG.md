@@ -1,5 +1,11 @@
 # @nest-boot/auth
 
+## 7.7.3
+
+### Patch Changes
+
+- e99f023: fix export AuthService
+
 ## 7.7.2
 
 ### Patch Changes
