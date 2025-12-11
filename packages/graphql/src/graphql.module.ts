@@ -23,9 +23,12 @@ import { type GraphQLModuleOptions } from "./graphql-module-options.interface";
           path: "/api/graphql",
           autoSchemaFile: "schema.gql",
           sortSchema: true,
+          playground: false,
           ...options,
           plugins: [
-            ApolloServerPluginLandingPageLocalDefault(),
+            ...(options.playground === false
+              ? []
+              : [ApolloServerPluginLandingPageLocalDefault()]),
             ...(options.plugins ?? []),
           ],
         };
