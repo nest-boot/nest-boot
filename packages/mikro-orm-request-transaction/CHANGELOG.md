@@ -1,5 +1,11 @@
 # @nest-boot/mikro-orm-request-transaction
 
+## 7.1.3
+
+### Patch Changes
+
+- bf35af9: fix: update @nestjs packages to version 11.1.9 across multiple packages
+
 ## 7.1.2
 
 ### Patch Changes

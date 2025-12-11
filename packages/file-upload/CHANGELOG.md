@@ -1,5 +1,12 @@
 # @nest-boot/file-upload
 
+## 7.1.1
+
+### Patch Changes
+
+- bf35af9: fix: update @nestjs packages to version 11.1.9 across multiple packages
+- 795f20d: fix: update @apollo/server to version 5.2.0
+
 ## 7.1.0
 
 ### Minor Changes

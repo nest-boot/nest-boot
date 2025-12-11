@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/graphql-connection",
-  "version": "7.2.0",
+  "version": "7.2.1",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
   "homepage": "",
@@ -29,7 +29,7 @@
     "@mikro-orm/knex": "^6.5.8",
     "@nest-boot/eslint-config": "workspace:^7.0.0",
     "@nest-boot/eslint-plugin": "workspace:^7.0.0",
-    "@nest-boot/graphql": "workspace:^7.1.0",
+    "@nest-boot/graphql": "workspace:^7.1.1",
     "@nest-boot/tsconfig": "workspace:^7.0.0",
     "@nestjs/apollo": "^13.2.1",
     "@nestjs/common": "^11.1.9",

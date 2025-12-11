@@ -1,5 +1,11 @@
 # @nest-boot/bullmq-mikro-orm
 
+## 7.0.2
+
+### Patch Changes
+
+- bf35af9: fix: update @nestjs packages to version 11.1.9 across multiple packages
+
 ## 7.0.1
 
 ### Patch Changes

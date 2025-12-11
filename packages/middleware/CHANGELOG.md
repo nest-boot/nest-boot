@@ -1,5 +1,11 @@
 # @nest-boot/middleware
 
+## 7.2.1
+
+### Patch Changes
+
+- bf35af9: fix: update @nestjs packages to version 11.1.9 across multiple packages
+
 ## 7.2.0
 
 ### Minor Changes
