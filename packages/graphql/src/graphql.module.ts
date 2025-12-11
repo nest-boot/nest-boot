@@ -1,3 +1,4 @@
+import { ApolloServerPluginLandingPageLocalDefault } from "@apollo/server/plugin/landingPage/default";
 import { ApolloDriver } from "@nestjs/apollo";
 import { Global, Logger, Module } from "@nestjs/common";
 import { APP_FILTER } from "@nestjs/core";
@@ -22,8 +23,11 @@ import { type GraphQLModuleOptions } from "./graphql-module-options.interface";
           path: "/api/graphql",
           autoSchemaFile: "schema.gql",
           sortSchema: true,
-          graphiql: process.env.NODE_ENV !== "production",
           ...options,
+          plugins: [
+            ApolloServerPluginLandingPageLocalDefault(),
+            ...(options.plugins ?? []),
+          ],
         };
       },
     }),
