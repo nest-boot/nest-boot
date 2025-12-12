@@ -1,5 +1,12 @@
 # @nest-boot/graphql-connection
 
+## 7.3.0
+
+### Minor Changes
+
+- f1180a5: feat: improve field options handling and add UnknownFieldError for better error management
+- f1180a5: feat: add zod dependency and enhance connection query builder with filter capabilities
+
 ## 7.2.1
 
 ### Patch Changes
