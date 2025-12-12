@@ -22,7 +22,8 @@
   "dependencies": {
     "chevrotain": "10.5.0",
     "inflection": "^3.0.2",
-    "lodash": "^4.17.21"
+    "lodash": "^4.17.21",
+    "zod": "^3.25.67"
   },
   "devDependencies": {
     "@mikro-orm/core": "^6.5.8",
