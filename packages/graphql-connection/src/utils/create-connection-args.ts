@@ -64,7 +64,7 @@ export function createConnectionArgs<Entity extends object>(
     // eslint-disable-next-line @nest-boot/graphql-field-config-from-types
     @Field(() => OrderClass, {
       nullable: true,
-      description: `Ordering options for the returned topics.`,
+      description: `Ordering options for the returned ${humanizeAndPluralizeEntityName}.`,
     })
     orderBy?: OrderInterface<Entity>;
 
