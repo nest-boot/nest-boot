@@ -4,6 +4,7 @@ import { GraphQLScalarType } from "graphql";
 
 import {
   ConnectionArgsInterface,
+  ConnectionBuilderOptions,
   ConnectionInterface,
   EdgeInterface,
   FieldOptions,
@@ -43,13 +44,31 @@ type ConnectionBuildResult<Entity extends object> = {
 
 export class ConnectionBuilder<Entity extends object> {
   private readonly entityName: EntityClass<Entity>["name"];
+
+  private readonly options: ConnectionBuilderOptions;
+
   private readonly fieldOptionsMap = new Map<
     string,
     FieldOptions<Entity, any, any>
   >();
 
-  constructor(private readonly entityClass: EntityClass<Entity>) {
+  constructor(
+    private readonly entityClass: EntityClass<Entity>,
+    options?: Partial<ConnectionBuilderOptions>,
+  ) {
     this.entityName = entityClass.name;
+
+    this.options = {
+      ...options,
+      filter: {
+        maxDepth: 5,
+        maxConditions: 20,
+        maxOrBranches: 5,
+        maxArrayLength: 100,
+        disabledOperators: [],
+        ...options?.filter,
+      },
+    };
   }
 
   addField<
@@ -75,7 +94,11 @@ export class ConnectionBuilder<Entity extends object> {
       this.fieldOptionsMap,
     );
 
-    const Filter = createFilter(this.entityName, this.fieldOptionsMap);
+    const Filter = createFilter(
+      this.entityName,
+      this.fieldOptionsMap,
+      this.options?.filter,
+    );
 
     const ConnectionArgs = createConnectionArgs(
       this.entityName,

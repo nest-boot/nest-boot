@@ -3,7 +3,11 @@ import { GraphQLScalarType, Kind, ValueNode } from "graphql";
 import { z } from "zod";
 
 import { UnknownFieldError } from "../errors";
-import { FieldOptions, ReplacementFieldOptions } from "../interfaces";
+import {
+  FieldOptions,
+  FilterOptions,
+  ReplacementFieldOptions,
+} from "../interfaces";
 
 const comparisonOperators = [
   "$eq",
@@ -16,7 +20,6 @@ const comparisonOperators = [
   "$nin",
   "$like",
   "$ilike",
-  "$re",
   "$fulltext",
   "$contains",
   "$overlap",
@@ -46,7 +49,6 @@ function createComparisonSchema(): z.ZodType<unknown> {
       $nin: z.array(primitiveSchema).optional(),
       $like: z.string().optional(),
       $ilike: z.string().optional(),
-      $re: z.string().optional(),
       $fulltext: z.string().optional(),
       $contains: z.array(primitiveSchema).optional(),
       $overlap: z.array(primitiveSchema).optional(),
@@ -178,6 +180,86 @@ function validateFilterFields(
   }
 }
 
+function validateFilterSecurity(
+  filter: FilterValue,
+  options: Required<FilterOptions>,
+  currentDepth = 0,
+): number {
+  if (filter === null || typeof filter !== "object") {
+    return 0;
+  }
+
+  if (currentDepth > options.maxDepth) {
+    throw new Error(
+      `Filter nesting depth exceeds maximum of ${String(options.maxDepth)}`,
+    );
+  }
+
+  let conditionCount = 0;
+
+  for (const key of Object.keys(filter)) {
+    const value = filter[key];
+
+    if (options.disabledOperators.includes(key)) {
+      throw new Error(`Operator '${key}' is disabled`);
+    }
+
+    if (key === "$or" && Array.isArray(value)) {
+      if (value.length > options.maxOrBranches) {
+        throw new Error(
+          `$or branches (${String(value.length)}) exceed maximum of ${String(options.maxOrBranches)}`,
+        );
+      }
+    }
+
+    if (
+      ["$in", "$nin", "$contains", "$overlap"].includes(key) &&
+      Array.isArray(value)
+    ) {
+      if (value.length > options.maxArrayLength) {
+        throw new Error(
+          `Array in '${key}' (${String(value.length)}) exceeds maximum length of ${String(options.maxArrayLength)}`,
+        );
+      }
+    }
+
+    if (value !== null && typeof value === "object") {
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          if (item !== null && typeof item === "object") {
+            conditionCount += validateFilterSecurity(
+              item as FilterValue,
+              options,
+              currentDepth + 1,
+            );
+          }
+        }
+      } else {
+        conditionCount += validateFilterSecurity(
+          value as FilterValue,
+          options,
+          currentDepth + 1,
+        );
+      }
+    }
+
+    if (
+      !logicalOperators.includes(key as (typeof logicalOperators)[number]) &&
+      !comparisonOperators.includes(key as (typeof comparisonOperators)[number])
+    ) {
+      conditionCount++;
+    }
+  }
+
+  if (currentDepth === 0 && conditionCount > options.maxConditions) {
+    throw new Error(
+      `Filter conditions (${String(conditionCount)}) exceed maximum of ${String(options.maxConditions)}`,
+    );
+  }
+
+  return conditionCount;
+}
+
 function applyReplacement<Entity extends object>(
   filter: FilterValue,
   fieldOptionsMap: Map<string, FieldOptions<Entity, any, any>>,
@@ -234,6 +316,7 @@ function applyReplacement<Entity extends object>(
 export function createFilter<Entity extends object>(
   entityName: string,
   fieldOptionsMap: Map<string, FieldOptions<Entity, any, any>>,
+  filterOptions: FilterOptions,
 ): GraphQLScalarType<FilterQuery<Entity>, FilterValue> {
   const filterableFields = [...fieldOptionsMap.values()]
     .filter((field) => field.filterable)
@@ -246,6 +329,7 @@ export function createFilter<Entity extends object>(
     parseValue: (value) => {
       const parsed = parseJson(value);
       const validated = validateSchema(parsed);
+      validateFilterSecurity(validated, filterOptions);
       validateFilterFields(
         validated,
         fieldOptionsMap as Map<string, FieldOptions<object, any, any>>,
@@ -255,6 +339,7 @@ export function createFilter<Entity extends object>(
     parseLiteral: (ast) => {
       const parsed = parseLiteralValue(ast);
       const validated = validateSchema(parsed);
+      validateFilterSecurity(validated, filterOptions);
       validateFilterFields(
         validated,
         fieldOptionsMap as Map<string, FieldOptions<object, any, any>>,
