@@ -5,3 +5,4 @@ export * from "./errors";
 export * from "./graphql-connection.module";
 export * from "./interfaces";
 export * from "./objects";
+export * from "./utils";

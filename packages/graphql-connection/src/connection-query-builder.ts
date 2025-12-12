@@ -79,6 +79,8 @@ export class ConnectionQueryBuilder<
 
   private readonly queryStringFilterQuery: FilterQuery<Entity> | null = null;
 
+  private readonly argsFilterQuery: FilterQuery<Entity> | null = null;
+
   private readonly totalCountFilterQuery: FilterQuery<Entity> | null = null;
 
   private readonly allFilterQuery: FilterQuery<Entity> | null = null;
@@ -113,9 +115,14 @@ export class ConnectionQueryBuilder<
     this.optionFilterQuery = this.options?.where ?? null;
     this.cursorFilterQuery = this.getCursorFilterQuery();
     this.queryStringFilterQuery = this.getQueryStringToFilterQuery();
+    this.argsFilterQuery = this.args.filter ?? null;
 
     this.totalCountFilterQuery = this.mergeFilterQuery(
-      compact([this.optionFilterQuery, this.queryStringFilterQuery]),
+      compact([
+        this.optionFilterQuery,
+        this.queryStringFilterQuery,
+        this.argsFilterQuery,
+      ]),
     );
 
     this.allFilterQuery = this.mergeFilterQuery(
@@ -123,6 +130,7 @@ export class ConnectionQueryBuilder<
         this.cursorFilterQuery,
         this.optionFilterQuery,
         this.queryStringFilterQuery,
+        this.argsFilterQuery,
       ]),
     );
   }

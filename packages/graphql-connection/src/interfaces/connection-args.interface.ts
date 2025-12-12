@@ -1,3 +1,5 @@
+import { FilterQuery } from "@mikro-orm/core";
+
 import { OrderInterface } from "./order.interface";
 
 export interface ConnectionArgsInterface<Entity extends object> {
@@ -10,6 +12,8 @@ export interface ConnectionArgsInterface<Entity extends object> {
   last?: number;
 
   query?: string;
+
+  filter?: FilterQuery<Entity>;
 
   orderBy?: OrderInterface<Entity>;
 }
