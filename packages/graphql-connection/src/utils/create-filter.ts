@@ -127,6 +127,7 @@ function parseLiteralValue(ast: ValueNode): unknown {
 function validateFilterFields(
   filter: FilterValue,
   fieldOptionsMap: Map<string, FieldOptions<object, any, any>>,
+  inFieldComparison = false,
 ): void {
   if (filter === null || typeof filter !== "object") {
     return;
@@ -136,10 +137,10 @@ function validateFilterFields(
     if (logicalOperators.includes(key as (typeof logicalOperators)[number])) {
       const value = filter[key];
       if (key === "$not" && value !== null && typeof value === "object") {
-        validateFilterFields(value as FilterValue, fieldOptionsMap);
+        validateFilterFields(value as FilterValue, fieldOptionsMap, false);
       } else if (Array.isArray(value)) {
         for (const item of value) {
-          validateFilterFields(item as FilterValue, fieldOptionsMap);
+          validateFilterFields(item as FilterValue, fieldOptionsMap, false);
         }
       }
       continue;
@@ -148,6 +149,11 @@ function validateFilterFields(
     if (
       comparisonOperators.includes(key as (typeof comparisonOperators)[number])
     ) {
+      if (!inFieldComparison) {
+        throw new Error(
+          `Comparison operator '${key}' is not allowed at root level. Use it inside a field object, e.g., { "fieldName": { "${key}": value } }`,
+        );
+      }
       continue;
     }
 
@@ -166,7 +172,7 @@ function validateFilterFields(
       typeof fieldValue === "object" &&
       !Array.isArray(fieldValue)
     ) {
-      validateFilterFields(fieldValue as FilterValue, fieldOptionsMap);
+      validateFilterFields(fieldValue as FilterValue, fieldOptionsMap, true);
     }
   }
 }
