@@ -235,7 +235,7 @@ export function createFilter<Entity extends object>(
   fieldOptionsMap: Map<string, FieldOptions<Entity, any, any>>,
 ): GraphQLScalarType<FilterQuery<Entity>, FilterValue> {
   const filterableFields = [...fieldOptionsMap.values()]
-    .filter((field) => field.filterable !== false)
+    .filter((field) => field.filterable)
     .map((field) => field.field);
 
   return new GraphQLScalarType<FilterQuery<Entity>, FilterValue>({
