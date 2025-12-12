@@ -68,9 +68,9 @@ export class ConnectionBuilder<Entity extends object> {
   }
 
   addField<
-    Field extends string = never,
     Type extends "string" | "number" | "bigint" | "boolean" | "date" = never,
-  >(options: FieldOptions<Entity, Field, Type>): this {
+    Field extends string = never,
+  >(options: FieldOptions<Entity, Type, Field>): this {
     this.fieldOptionsMap.set(options.field, options);
     return this;
   }
@@ -166,7 +166,7 @@ export class ConnectionBuilder<Entity extends object> {
         ...(builder.filterableFields.length > 0
           ? {
               description: `Apply one or multiple filters to the query.\nSupported filter parameters:\n${builder.filterableFields
-                .map(({ field }) => `\`${String(field)}\``)
+                .map(({ field }) => `\`${field}\``)
                 .join(", ")}`,
             }
           : {}),

@@ -19,10 +19,10 @@ import {
   type ValueCstChildren,
 } from "./cst";
 import { ComparatorOperator } from "./enums";
+import { UnknownFieldError } from "./errors";
 import { type ReplacementArgs } from "./interfaces";
 import { SearchSyntaxFieldOptions } from "./interfaces/search-syntax-field-options.interface";
 import { searchSyntaxParser } from "./search-syntax.parser";
-import { inferType } from "./utils";
 
 function filterEmpty(values: any[]): any[] {
   return values.filter((value) => value !== null);
@@ -215,22 +215,19 @@ export class SearchSyntaxVisitor<Entity extends object>
     children: EqualFieldTermCstChildren,
   ): FilterQuery<Entity> | undefined {
     const field = this.visit(children.field);
-    let fieldOptions = this.fieldOptionsMap.get(field);
+    const fieldOptions = this.fieldOptionsMap.get(field);
 
-    if (fieldOptions?.filterable === false) {
+    if (typeof fieldOptions === "undefined") {
+      throw new UnknownFieldError(field);
+    }
+
+    if (fieldOptions.filterable === false) {
       return;
     }
 
     const values = children.value.map((item) =>
-      this.visit(item, fieldOptions?.type),
+      this.visit(item, fieldOptions.type),
     );
-
-    if (typeof fieldOptions === "undefined") {
-      fieldOptions = {
-        field,
-        type: inferType(values[0]),
-      };
-    }
 
     if (values.length === 0) {
       return;
@@ -303,23 +300,20 @@ export class SearchSyntaxVisitor<Entity extends object>
     children: OtherFieldTermCstChildren,
   ): FilterQuery<Entity> | undefined {
     const field = this.visit(children.field);
-    let fieldOptions = this.fieldOptionsMap.get(field);
+    const fieldOptions = this.fieldOptionsMap.get(field);
 
-    if (fieldOptions?.filterable === false) {
+    if (typeof fieldOptions === "undefined") {
+      throw new UnknownFieldError(field);
+    }
+
+    if (fieldOptions.filterable === false) {
       return;
     }
 
-    const value = this.visit(children.value, fieldOptions?.type);
+    const value = this.visit(children.value, fieldOptions.type);
 
     if (typeof value === "undefined") {
       return;
-    }
-
-    if (typeof fieldOptions === "undefined") {
-      fieldOptions = {
-        field,
-        type: inferType(value),
-      };
     }
 
     if (typeof children.LessThan !== "undefined") {
