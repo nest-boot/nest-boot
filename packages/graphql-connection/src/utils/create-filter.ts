@@ -101,6 +101,7 @@ function validateSchema(value: unknown): FilterValue {
 function parseLiteralValue(ast: ValueNode): unknown {
   switch (ast.kind) {
     case Kind.STRING:
+    case Kind.ENUM:
       return ast.value;
     case Kind.OBJECT: {
       const obj: Record<string, unknown> = {};
