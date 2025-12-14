@@ -4,7 +4,5 @@ export * from "./connection-builder-options.interface";
 export * from "./connection-metadata.interface";
 export * from "./edge.interface";
 export * from "./field-options.interface";
-export * from "./filter-options.interface";
 export * from "./order.interface";
 export * from "./order-field.type";
-export * from "./replacement-args.interface";

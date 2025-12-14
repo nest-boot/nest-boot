@@ -20,10 +20,11 @@
     "lint": "eslint \"{src,test}/**/*.ts\" --fix"
   },
   "dependencies": {
-    "chevrotain": "10.5.0",
     "inflection": "^3.0.2",
     "lodash": "^4.17.21",
-    "zod": "^3.25.67"
+    "mikro-orm-filter-query-schema": "^1.0.0",
+    "search-syntax": "^3.4.0",
+    "zod": "^4.1.13"
   },
   "devDependencies": {
     "@mikro-orm/core": "^6.5.8",

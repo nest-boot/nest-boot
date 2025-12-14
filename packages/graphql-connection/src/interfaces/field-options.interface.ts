@@ -1,50 +1,44 @@
-import type { FilterQuery } from "@mikro-orm/core";
-import { AutoPath } from "@mikro-orm/core/typings";
+import type {
+  FieldType,
+  ReplacementCallbackFieldOptions as FilterReplacementCallbackFieldOptions,
+  ReplacementFieldOptions as FilterReplacementFieldOptions,
+  SimpleFieldOptions as FilterSimpleFieldOptions,
+} from "mikro-orm-filter-query-schema";
 
-import { ReplacementArgs } from "./replacement-args.interface";
-
-export interface BaseFieldOptions<
-  Type extends "string" | "number" | "bigint" | "boolean" | "date" = never,
-> {
-  type: Type;
-  field: string;
-  array?: boolean;
-  fulltext?: boolean;
-  searchable?: boolean;
+export interface BaseFieldOptions {
   filterable?: boolean;
+  searchable?: boolean;
 }
 
-export interface SortableFieldOptions<
-  Type extends "string" | "number" | "bigint" | "boolean" | "date" = never,
-> extends BaseFieldOptions<Type> {
+export interface SortableFieldOptions {
   sortable?: boolean;
 }
 
 export interface SimpleFieldOptions<
   Entity extends object,
-  Type extends "string" | "number" | "bigint" | "boolean" | "date" = never,
-> extends SortableFieldOptions<Type> {
-  field: Extract<keyof Entity, string>;
-}
+  Type extends FieldType = never,
+> extends FilterSimpleFieldOptions<Entity, Type>,
+    BaseFieldOptions,
+    SortableFieldOptions {}
 
 export interface ReplacementFieldOptions<
   Entity extends object,
-  Type extends "string" | "number" | "bigint" | "boolean" | "date" = never,
+  Type extends FieldType = never,
   Field extends string = never,
-> extends SortableFieldOptions<Type> {
-  replacement: Extract<AutoPath<Entity, Field>, string>;
-}
+> extends FilterReplacementFieldOptions<Entity, Type, Field>,
+    BaseFieldOptions,
+    SortableFieldOptions {}
 
 export interface ReplacementFunctionFieldOptions<
   Entity extends object,
-  Type extends "string" | "number" | "bigint" | "boolean" | "date" = never,
-> extends BaseFieldOptions<Type> {
-  replacement?: (args: ReplacementArgs<Type>) => FilterQuery<Entity>;
-}
+  Type extends FieldType = never,
+> extends FilterReplacementCallbackFieldOptions<Entity, Type>,
+    BaseFieldOptions,
+    SortableFieldOptions {}
 
 export type FieldOptions<
   Entity extends object,
-  Type extends "string" | "number" | "bigint" | "boolean" | "date" = never,
+  Type extends FieldType = never,
   Field extends string = never,
 > =
   | SimpleFieldOptions<Entity, Type>
