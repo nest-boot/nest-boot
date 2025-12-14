@@ -3,19 +3,19 @@ import { ArgsType, Field, Int } from "@nest-boot/graphql";
 import { type Type } from "@nestjs/common";
 import { GraphQLScalarType } from "graphql";
 import { humanize, pluralize } from "inflection";
+import type { FieldType } from "mikro-orm-filter-query-schema";
 
 import {
   ConnectionArgsInterface,
   FieldOptions,
   OrderInterface,
 } from "../interfaces";
-import { FilterValue } from "./create-filter";
 
 export function createConnectionArgs<Entity extends object>(
   entityName: string,
-  fieldOptionsMap: Map<string, FieldOptions<Entity, any, any>>,
+  fieldOptionsMap: Map<string, FieldOptions<Entity, FieldType, string>>,
   OrderClass: Type<OrderInterface<Entity>>,
-  FilterScalar: GraphQLScalarType<FilterQuery<Entity>, FilterValue>,
+  FilterScalar: GraphQLScalarType<FilterQuery<Entity>>,
 ): Type<ConnectionArgsInterface<Entity>> {
   const humanizeAndPluralizeEntityName = pluralize(humanize(entityName, true));
 
@@ -36,6 +36,13 @@ export function createConnectionArgs<Entity extends object>(
         : {}),
     })
     query?: string;
+
+    // eslint-disable-next-line @nest-boot/graphql-field-config-from-types
+    @Field(() => FilterScalar, {
+      nullable: true,
+      description: `Filter ${humanizeAndPluralizeEntityName} using MongoDB query syntax.`,
+    })
+    filter?: FilterQuery<Entity>;
 
     @Field(() => Int, {
       nullable: true,
@@ -67,13 +74,6 @@ export function createConnectionArgs<Entity extends object>(
       description: `Ordering options for the returned ${humanizeAndPluralizeEntityName}.`,
     })
     orderBy?: OrderInterface<Entity>;
-
-    // eslint-disable-next-line @nest-boot/graphql-field-config-from-types
-    @Field(() => FilterScalar, {
-      nullable: true,
-      description: `Filter ${humanizeAndPluralizeEntityName} using MongoDB query syntax.`,
-    })
-    filter?: FilterQuery<Entity>;
   }
 
   return ConnectionArgs;

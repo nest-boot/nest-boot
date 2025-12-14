@@ -1,6 +1,5 @@
 import {
   EntityManager,
-  EntityProperty,
   FilterQuery,
   FindOptions,
   QueryOrder,
@@ -9,6 +8,7 @@ import {
 import compact from "lodash/compact";
 import get from "lodash/get";
 import set from "lodash/set";
+import { parse, type ParseOptions } from "search-syntax";
 
 import { ConnectionFindOptions } from "./connection.manager";
 import { Cursor } from "./cursor";
@@ -18,40 +18,8 @@ import {
   ConnectionArgsInterface,
   ConnectionMetadata,
   EdgeInterface,
-  ReplacementFieldOptions,
-  ReplacementFunctionFieldOptions,
 } from "./interfaces";
-import { SearchSyntaxFieldOptions } from "./interfaces/search-syntax-field-options.interface";
-import { searchSyntaxLexer } from "./search-syntax.lexer";
-import { searchSyntaxParser } from "./search-syntax.parser";
-import { SearchSyntaxVisitor } from "./search-syntax.visitor";
 import { ConnectionClass } from "./types";
-
-function entityPropertyToSimpleType(
-  type: EntityProperty["type"],
-): "string" | "number" | "bigint" | "boolean" | "date" {
-  switch (type) {
-    case "boolean":
-    case "BooleanType":
-      return "boolean";
-    case "number":
-    case "IntegerType":
-    case "SmallIntType":
-    case "MediumIntType":
-    case "FloatType":
-    case "DoubleType":
-      return "number";
-    case "Date":
-    case "DateType":
-    case "DateTimeType":
-      return "date";
-    case "bigint":
-    case "BigIntType":
-      return "bigint";
-    default:
-      return "string";
-  }
-}
 
 export class ConnectionQueryBuilder<
   Entity extends object,
@@ -263,58 +231,27 @@ export class ConnectionQueryBuilder<
       typeof this.args.query !== "undefined" &&
       this.args.query.trim() !== ""
     ) {
-      const { entityClass, fieldOptionsMap } = this.metadata;
+      const { fieldOptionsMap, filterQuerySchema } = this.metadata;
 
-      const entityMetadata = this.entityManager.getMetadata().get(entityClass);
-
-      if (typeof entityMetadata === "undefined") {
-        throw new Error("Entity metadata not found");
+      // 构建 ParseOptions，只包含 filterable 的字段
+      const fields: ParseOptions["fields"] = {};
+      for (const [key, options] of fieldOptionsMap) {
+        if (options.filterable === true) {
+          fields[key] = {
+            type: options.type,
+            array: options.array,
+            searchable: options.searchable,
+          };
+        }
       }
 
-      const visitor = new SearchSyntaxVisitor(
-        this.entityManager,
-        [...fieldOptionsMap.values()].reduce((result, fieldOptions) => {
-          const replacedField =
-            typeof (fieldOptions as any).replacement === "string"
-              ? (fieldOptions as any).replacement
-              : fieldOptions.field;
+      const rawFilter = parse(this.args.query, { fields });
 
-          const prop: EntityProperty<Entity> | undefined = get(
-            entityMetadata.properties,
-            replacedField.split(".").join(".targetMeta.properties."),
-          );
-
-          result.set(fieldOptions.field, {
-            field: fieldOptions.field,
-            type:
-              (fieldOptions as ReplacementFunctionFieldOptions<Entity>).type ??
-              entityPropertyToSimpleType(prop?.type),
-            replacement: (fieldOptions as ReplacementFieldOptions<Entity>)
-              .replacement,
-            array: fieldOptions.array ?? prop?.array,
-            fulltext:
-              fieldOptions.fulltext ??
-              entityMetadata.indexes.some(
-                ({ type, properties }) =>
-                  type === "fulltext" && properties === replacedField,
-              ),
-            searchable: fieldOptions.searchable,
-            filterable: fieldOptions.filterable,
-          });
-
-          return result;
-        }, new Map<string, SearchSyntaxFieldOptions<Entity, any, any>>()),
-      );
-
-      searchSyntaxParser.input = searchSyntaxLexer.tokenize(
-        this.args.query,
-      ).tokens;
-
-      if (searchSyntaxParser.errors.length > 0) {
-        throw Error(searchSyntaxParser.errors[0].message);
+      if (rawFilter === null) {
+        return null;
       }
 
-      return visitor.visit(searchSyntaxParser.query()) ?? null;
+      return filterQuerySchema.parse(rawFilter);
     }
 
     return null;

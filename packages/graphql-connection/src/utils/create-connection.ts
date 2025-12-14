@@ -1,7 +1,9 @@
-import type { EntityClass } from "@mikro-orm/core";
+import type { EntityClass, FilterQuery } from "@mikro-orm/core";
 import { Field, Int, ObjectType } from "@nest-boot/graphql";
 import { type Type } from "@nestjs/common";
 import { pluralize } from "inflection";
+import type { FieldType } from "mikro-orm-filter-query-schema";
+import type { ZodType } from "zod";
 
 import { GRAPHQL_CONNECTION_METADATA } from "../graphql-connection.constants";
 import {
@@ -16,13 +18,15 @@ export function createConnection<Entity extends object>(
   entityClass: EntityClass<Entity>,
   entityName: string,
   EdgeClass: Type<EdgeInterface<Entity>>,
-  fieldOptionsMap: Map<string, FieldOptions<Entity, any, any>>,
+  fieldOptionsMap: Map<string, FieldOptions<Entity, FieldType, string>>,
+  filterQuerySchema: ZodType<FilterQuery<Entity>>,
 ): Type<ConnectionInterface<Entity>> {
   const pluralizeEntityName = pluralize(entityName);
 
   @Reflect.metadata(GRAPHQL_CONNECTION_METADATA, {
     entityClass,
     fieldOptionsMap,
+    filterQuerySchema,
   } satisfies ConnectionMetadata<Entity>)
   @ObjectType(`${entityName}Connection`, {
     isAbstract: true,

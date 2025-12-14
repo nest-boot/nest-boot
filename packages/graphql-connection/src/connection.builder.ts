@@ -1,9 +1,11 @@
 import type { EntityClass, FilterQuery } from "@mikro-orm/core";
 import { type Type } from "@nestjs/common";
 import { GraphQLScalarType } from "graphql";
+import type { FieldType } from "mikro-orm-filter-query-schema";
 
 import {
   ConnectionArgsInterface,
+  ConnectionBuilderOptions,
   ConnectionInterface,
   EdgeInterface,
   FieldOptions,
@@ -43,17 +45,34 @@ type ConnectionBuildResult<Entity extends object> = {
 
 export class ConnectionBuilder<Entity extends object> {
   private readonly entityName: EntityClass<Entity>["name"];
+
+  private readonly options: ConnectionBuilderOptions;
+
   private readonly fieldOptionsMap = new Map<
     string,
-    FieldOptions<Entity, any, any>
+    FieldOptions<Entity, FieldType, string>
   >();
 
-  constructor(private readonly entityClass: EntityClass<Entity>) {
+  constructor(
+    private readonly entityClass: EntityClass<Entity>,
+    options?: Partial<ConnectionBuilderOptions>,
+  ) {
     this.entityName = entityClass.name;
+
+    this.options = {
+      ...options,
+      filter: {
+        maxDepth: 5,
+        maxConditions: 20,
+        maxOrBranches: 5,
+        maxArrayLength: 100,
+        ...options?.filter,
+      },
+    };
   }
 
   addField<
-    Type extends "string" | "number" | "bigint" | "boolean" | "date" = never,
+    Type extends "string" | "number" | "boolean" | "date" = never,
     Field extends string = never,
   >(options: FieldOptions<Entity, Type, Field>): this {
     this.fieldOptionsMap.set(options.field, options);
@@ -63,19 +82,24 @@ export class ConnectionBuilder<Entity extends object> {
   build(): ConnectionBuildResult<Entity> {
     const Edge = createEdge(this.entityClass, this.entityName);
 
-    const Connection = createConnection(
-      this.entityClass,
-      this.entityName,
-      Edge,
-      this.fieldOptionsMap,
-    );
-
     const { Order, OrderField } = createOrder(
       this.entityName,
       this.fieldOptionsMap,
     );
 
-    const Filter = createFilter(this.entityName, this.fieldOptionsMap);
+    const { Filter, filterQuerySchema } = createFilter(
+      this.entityName,
+      this.fieldOptionsMap,
+      this.options?.filter,
+    );
+
+    const Connection = createConnection(
+      this.entityClass,
+      this.entityName,
+      Edge,
+      this.fieldOptionsMap,
+      filterQuerySchema,
+    );
 
     const ConnectionArgs = createConnectionArgs(
       this.entityName,
