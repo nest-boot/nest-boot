@@ -1,5 +1,13 @@
 # @nest-boot/graphql-connection
 
+## 7.4.0
+
+### Minor Changes
+
+- ce5c7b7: feat: improve field options handling and add UnknownFieldError for better error management
+- ce5c7b7: feat: add zod dependency and enhance connection query builder with filter capabilities
+- ce5c7b7: feat: use search-syntax library for query string parsing
+
 ## 7.3.0
 
 ### Minor Changes
