@@ -12,7 +12,7 @@
   },
   "scripts": {
     "cz": "cz",
-    "prepare": "chmod +x ./node_modules/husky/lib/bin.js && husky install",
+    "prepare": "husky",
     "build": "turbo run build",
     "build:website": "turbo run build --filter=website",
     "build:examples": "turbo run build --filter=./examples/*",
