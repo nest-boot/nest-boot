@@ -1,5 +1,11 @@
 # @nest-boot/eslint-config
 
+## 7.0.2
+
+### Patch Changes
+
+- d663833: fix: eslint
+
 ## 7.0.1
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/eslint-config",
-  "version": "7.0.1",
+  "version": "7.0.2",
   "main": "eslint.config.mjs",
   "types": "eslint.config.d.ts",
   "license": "MIT",

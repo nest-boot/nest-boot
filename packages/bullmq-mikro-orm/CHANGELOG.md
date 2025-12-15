@@ -1,5 +1,11 @@
 # @nest-boot/bullmq-mikro-orm
 
+## 7.0.3
+
+### Patch Changes
+
+- d663833: fix: eslint
+
 ## 7.0.2
 
 ### Patch Changes
