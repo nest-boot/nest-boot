@@ -143,7 +143,7 @@ export const mikroOrmAdapter = ({
       return {
         create: async ({ data, model }) => {
           const entity = orm.em.create(getEntityClass(model), data);
-          await orm.em.persistAndFlush(entity);
+          await orm.em.persist(entity).flush();
           return entity as any;
         },
         update: async ({ model, where, update }) => {

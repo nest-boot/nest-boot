@@ -43,17 +43,21 @@ export abstract class JobEntity {
   @Enum({ items: () => JobStatus })
   status!: string;
 
-  @Property({ nullable: true })
+  @Property({ type: t.datetime, nullable: true })
   startedAt?: Date;
 
-  @Property({ nullable: true })
+  @Property({ type: t.datetime, nullable: true })
   finishedAt?: Date;
 
   @Index()
-  @Property({ defaultRaw: "now()" })
+  @Property({ type: t.datetime, defaultRaw: "now()" })
   createdAt: Opt<Date> = new Date();
 
   @Index()
-  @Property({ defaultRaw: "now()", onUpdate: () => new Date() })
+  @Property({
+    type: t.datetime,
+    defaultRaw: "now()",
+    onUpdate: () => new Date(),
+  })
   updatedAt: Opt<Date> = new Date();
 }

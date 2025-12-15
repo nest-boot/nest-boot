@@ -15,9 +15,9 @@ export class TestEntity {
   @PrimaryKey()
   id: number;
 
-  @Property()
+  @Property({ type: t.datetime })
   createdAt: Opt<Date> = new Date();
 
-  @Property()
+  @Property({ type: t.datetime })
   updatedAt: Opt<Date> = new Date();
 }
