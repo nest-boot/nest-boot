@@ -1,5 +1,11 @@
 # @nest-boot/mikro-orm
 
+## 7.2.3
+
+### Patch Changes
+
+- d663833: fix: eslint
+
 ## 7.2.2
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @nest-boot/auth
 
+## 7.7.4
+
+### Patch Changes
+
+- d663833: fix: eslint
+
 ## 7.7.3
 
 ### Patch Changes

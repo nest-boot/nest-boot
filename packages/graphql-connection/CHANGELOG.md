@@ -1,5 +1,11 @@
 # @nest-boot/graphql-connection
 
+## 7.5.0
+
+### Minor Changes
+
+- 7636d13: feat: support $fulltext
+
 ## 7.4.0
 
 ### Minor Changes
