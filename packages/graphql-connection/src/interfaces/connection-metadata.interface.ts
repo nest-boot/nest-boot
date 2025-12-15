@@ -2,7 +2,7 @@ import { EntityClass, FilterQuery } from "@mikro-orm/core";
 import type { FieldType } from "mikro-orm-filter-query-schema";
 import type { ZodType } from "zod";
 
-import { FieldOptions } from "./field-options.interface";
+import { FieldOptions } from "../types/field-options.type";
 
 export interface ConnectionMetadata<Entity extends object> {
   entityClass: EntityClass<Entity>;

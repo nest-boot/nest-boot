@@ -9,7 +9,6 @@ import {
   OrderFieldKey,
   OrderFieldType,
   OrderInterface,
-  ReplacementFieldOptions,
   SortableFieldOptions,
 } from "../interfaces";
 
@@ -34,7 +33,7 @@ export function createOrder<Entity extends object>(
       return {
         ...result,
         [underscore(fieldOptions.field).toUpperCase()]:
-          (fieldOptions as ReplacementFieldOptions<Entity>).replacement ??
+          (fieldOptions as { replacement?: string }).replacement ??
           fieldOptions.field,
       };
     },

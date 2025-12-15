@@ -22,7 +22,7 @@ const config = [
       /** @type {import('eslint').Linter.Parser} */
       parser: tsParser,
       parserOptions: {
-        project: ["tsconfig.json"],
+        projectService: true,
       },
     },
     plugins: {

@@ -14,27 +14,27 @@ export interface SortableFieldOptions {
   sortable?: boolean;
 }
 
-export interface SimpleFieldOptions<
+export type SimpleFieldOptions<
   Entity extends object,
   Type extends FieldType = never,
-> extends FilterSimpleFieldOptions<Entity, Type>,
-    BaseFieldOptions,
-    SortableFieldOptions {}
+> = FilterSimpleFieldOptions<Entity, Type> &
+  BaseFieldOptions &
+  SortableFieldOptions;
 
-export interface ReplacementFieldOptions<
+export type ReplacementFieldOptions<
   Entity extends object,
   Type extends FieldType = never,
   Field extends string = never,
-> extends FilterReplacementFieldOptions<Entity, Type, Field>,
-    BaseFieldOptions,
-    SortableFieldOptions {}
+> = FilterReplacementFieldOptions<Entity, Type, Field> &
+  BaseFieldOptions &
+  SortableFieldOptions;
 
-export interface ReplacementFunctionFieldOptions<
+export type ReplacementFunctionFieldOptions<
   Entity extends object,
   Type extends FieldType = never,
-> extends FilterReplacementCallbackFieldOptions<Entity, Type>,
-    BaseFieldOptions,
-    SortableFieldOptions {}
+> = FilterReplacementCallbackFieldOptions<Entity, Type> &
+  BaseFieldOptions &
+  SortableFieldOptions;
 
 export type FieldOptions<
   Entity extends object,

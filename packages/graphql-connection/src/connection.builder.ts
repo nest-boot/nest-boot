@@ -75,7 +75,10 @@ export class ConnectionBuilder<Entity extends object> {
     Type extends "string" | "number" | "boolean" | "date" = never,
     Field extends string = never,
   >(options: FieldOptions<Entity, Type, Field>): this {
-    this.fieldOptionsMap.set(options.field, options);
+    this.fieldOptionsMap.set(
+      options.field,
+      options as FieldOptions<Entity, FieldType, string>,
+    );
     return this;
   }
 
