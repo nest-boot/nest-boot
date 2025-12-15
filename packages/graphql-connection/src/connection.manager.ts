@@ -12,9 +12,9 @@ export interface ConnectionFindOptions<
   Fields extends string = "*",
   Excludes extends string = never,
 > extends Exclude<
-    FindOptions<Entity, Hint, Fields, Excludes>,
-    "limit" | "offset" | "orderBy"
-  > {
+  FindOptions<Entity, Hint, Fields, Excludes>,
+  "limit" | "offset" | "orderBy"
+> {
   where?: FilterQuery<Entity>;
 }
 
