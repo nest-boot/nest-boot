@@ -1,4 +1,4 @@
-import { Entity, Opt, PrimaryKey, Property } from "@mikro-orm/core";
+import { Entity, Opt, PrimaryKey, Property, t } from "@mikro-orm/core";
 
 @Entity()
 export class TestEntity {
