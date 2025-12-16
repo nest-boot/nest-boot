@@ -2,6 +2,7 @@ import type { EntityClass, FilterQuery } from "@mikro-orm/core";
 import { type Type } from "@nestjs/common";
 import { GraphQLScalarType } from "graphql";
 import type { FieldType } from "mikro-orm-filter-query-schema";
+import type { ZodType } from "zod";
 
 import {
   ConnectionArgsInterface,
@@ -24,9 +25,10 @@ type ConnectionBuildResult<Entity extends object> = {
   Connection: Type<ConnectionInterface<Entity>>;
   ConnectionArgs: Type<ConnectionArgsInterface<Entity>>;
   Edge: Type<EdgeInterface<Entity>>;
+  Filter: GraphQLScalarType<FilterQuery<Entity>>;
+  filterQuerySchema: ZodType<FilterQuery<Entity>>;
   Order: Type<OrderInterface<Entity>>;
   OrderField?: OrderFieldType<Entity>;
-  Filter: GraphQLScalarType<FilterQuery<Entity>>;
 } & Record<
   `${EntityClass<Entity>["name"]}Connection`,
   Type<ConnectionInterface<Entity>>
@@ -115,15 +117,16 @@ export class ConnectionBuilder<Entity extends object> {
       Connection,
       ConnectionArgs,
       Edge,
+      Filter,
+      filterQuerySchema,
       Order,
       OrderField,
-      Filter,
       [`${this.entityName}Connection`]: Connection,
       [`${this.entityName}ConnectionArgs`]: ConnectionArgs,
       [`${this.entityName}Edge`]: Edge,
+      [`${this.entityName}Filter`]: Filter,
       [`${this.entityName}Order`]: Order,
       [`${this.entityName}OrderField`]: OrderField,
-      [`${this.entityName}Filter`]: Filter,
     } as ConnectionBuildResult<Entity>;
   }
 }
