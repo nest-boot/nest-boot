@@ -1,5 +1,11 @@
 # @nest-boot/graphql-connection
 
+## 7.6.0
+
+### Minor Changes
+
+- 5684aab: feat: connectionBuilder.build newly added return filterQuerySchema
+
 ## 7.5.0
 
 ### Minor Changes
