@@ -1,5 +1,11 @@
 # @nest-boot/graphql-connection
 
+## 7.6.1
+
+### Patch Changes
+
+- fc593f8: fix: upgrade search-syntax
+
 ## 7.6.0
 
 ### Minor Changes
