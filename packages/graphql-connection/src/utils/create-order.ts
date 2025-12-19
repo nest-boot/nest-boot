@@ -12,11 +12,39 @@ import {
   SortableFieldOptions,
 } from "../interfaces";
 
+/**
+ * The result of creating order types.
+ *
+ * @typeParam Entity - The entity type for ordering
+ */
 export interface CreateOrderResult<Entity extends object> {
+  /**
+   * The Order input type class.
+   */
   Order: Type<OrderInterface<Entity>>;
+
+  /**
+   * The OrderField enum object mapping field keys to paths.
+   */
   OrderField: OrderFieldType<Entity>;
 }
 
+/**
+ * Creates GraphQL Order input type and OrderField enum.
+ *
+ * The Order type allows specifying:
+ * - `field`: Which field to order by (from the OrderField enum)
+ * - `direction`: ASC or DESC
+ *
+ * Only fields marked as `sortable: true` in field options are included.
+ *
+ * @typeParam Entity - The entity type being ordered
+ * @param entityName - The name to use for the GraphQL types
+ * @param fieldOptionsMap - Map of field configurations
+ * @returns An object containing the Order class and OrderField enum
+ *
+ * @internal Used by ConnectionBuilder.build()
+ */
 export function createOrder<Entity extends object>(
   entityName: string,
   fieldOptionsMap: Map<string, FieldOptions<Entity, FieldType, string>>,

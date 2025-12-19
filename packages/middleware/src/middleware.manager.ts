@@ -1,22 +1,29 @@
 import { Injectable, NestMiddleware, Type } from "@nestjs/common";
 import { MiddlewareConsumer, RouteInfo } from "@nestjs/common/interfaces";
 
+import { MiddlewareConfig } from "./interfaces";
 import { MiddlewareConfigurator } from "./middleware.configurator";
-import { MiddlewareConfig } from "./middleware-config.interface";
+import { MiddlewareInstanceOrFunction } from "./types";
 
+/**
+ * Manages middleware registration and configuration.
+ */
 @Injectable()
 export class MiddlewareManager {
   private globalExcludeRoutes: (string | RouteInfo)[] = [];
 
+  /**
+   * @internal
+   */
   public readonly middlewareConfigMap = new Map<
-    NestMiddleware | NestMiddleware["use"],
+    MiddlewareInstanceOrFunction,
     MiddlewareConfig
   >();
 
   private get middlewareConfigs(): MiddlewareConfig[] {
-    const sorted: (NestMiddleware | NestMiddleware["use"])[] = [];
-    const visited = new Set<NestMiddleware | NestMiddleware["use"]>();
-    const visiting = new Set<NestMiddleware | NestMiddleware["use"]>();
+    const sorted: MiddlewareInstanceOrFunction[] = [];
+    const visited = new Set<MiddlewareInstanceOrFunction>();
+    const visiting = new Set<MiddlewareInstanceOrFunction>();
 
     const typeToMiddleware = new Map<Type<NestMiddleware>, NestMiddleware>();
     for (const middleware of this.middlewareConfigMap.keys()) {
@@ -28,7 +35,7 @@ export class MiddlewareManager {
       }
     }
 
-    const visit = (middleware: NestMiddleware | NestMiddleware["use"]) => {
+    const visit = (middleware: MiddlewareInstanceOrFunction) => {
       if (visited.has(middleware)) {
         return;
       }
@@ -66,7 +73,14 @@ export class MiddlewareManager {
       .filter((config): config is MiddlewareConfig => config !== undefined);
   }
 
-  apply(...middlewares: (NestMiddleware | NestMiddleware["use"])[]) {
+  /**
+   * Applies middlewares to routes.
+   * @param middlewares - The middlewares to apply
+   * @returns A configurator for specifying routes
+   */
+  apply(
+    ...middlewares: MiddlewareInstanceOrFunction[]
+  ): MiddlewareConfigurator {
     return new MiddlewareConfigurator(this, middlewares);
   }
 

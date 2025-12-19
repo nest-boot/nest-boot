@@ -9,6 +9,11 @@ import {
 
 import { FieldOptions } from "../interfaces";
 
+/**
+ * The Zod schema type returned by FilterQuerySchemaBuilder.
+ *
+ * @typeParam Entity - The entity type for the filter
+ */
 export type FilterQuerySchema<Entity extends object> = ReturnType<
   FilterQuerySchemaBuilder<Entity>["build"]
 >;
@@ -51,11 +56,37 @@ function parseLiteralValue(ast: ValueNode): unknown {
   }
 }
 
+/**
+ * The result of creating a filter scalar and schema.
+ *
+ * @typeParam Entity - The entity type for the filter
+ */
 export interface CreateFilterResult<Entity extends object> {
+  /**
+   * The GraphQL scalar type for the filter.
+   */
   Filter: GraphQLScalarType<FilterQuery<Entity>>;
+
+  /**
+   * The Zod schema for validating filter queries.
+   */
   filterQuerySchema: FilterQuerySchema<Entity>;
 }
 
+/**
+ * Creates a GraphQL Filter scalar type and validation schema.
+ *
+ * The Filter scalar accepts MongoDB-style query syntax and validates
+ * it against the configured field options.
+ *
+ * @typeParam Entity - The entity type being filtered
+ * @param entityName - The name to use for the GraphQL scalar
+ * @param fieldOptionsMap - Map of field configurations
+ * @param filterOptions - Options for filter complexity limits
+ * @returns An object containing the Filter scalar and filterQuerySchema
+ *
+ * @internal Used by ConnectionBuilder.build()
+ */
 export function createFilter<Entity extends object>(
   entityName: string,
   fieldOptionsMap: Map<string, FieldOptions<Entity, FieldType, string>>,

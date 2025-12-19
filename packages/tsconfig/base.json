@@ -19,6 +19,5 @@
     "sourceMap": true,
     "strict": true,
     "target": "ES2021"
-  },
-  "exclude": ["dist", "node_modules"]
+  }
 }

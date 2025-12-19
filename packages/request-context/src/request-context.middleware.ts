@@ -7,8 +7,35 @@ import {
   RESPONSE as CTX_RESPONSE_TOKEN,
 } from "./request-context.constants";
 
+/**
+ * Express middleware that creates and manages request context for HTTP requests.
+ *
+ * This middleware:
+ * - Creates a new RequestContext for each incoming HTTP request
+ * - Uses the `x-request-id` header as the context ID if provided
+ * - Stores the Express request and response objects in the context
+ * - Maintains the context throughout the request lifecycle
+ *
+ * The middleware is automatically applied by RequestContextModule to all routes.
+ *
+ * @example Accessing request/response from context
+ * ```typescript
+ * import { RequestContext, REQUEST, RESPONSE } from '@nest-boot/request-context';
+ * import { Request, Response } from 'express';
+ *
+ * const req = RequestContext.get<Request>(REQUEST);
+ * const res = RequestContext.get<Response>(RESPONSE);
+ * ```
+ */
 @Injectable()
 export class RequestContextMiddleware implements NestMiddleware {
+  /**
+   * Processes an incoming HTTP request and establishes request context.
+   *
+   * @param req - The Express request object
+   * @param res - The Express response object
+   * @param next - The next middleware function
+   */
   async use(req: Request, res: Response, next: NextFunction): Promise<void> {
     if (RequestContext.isActive()) {
       next();

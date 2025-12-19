@@ -1,4 +1,4 @@
 import config from "@nest-boot/eslint-config";
+import { defineConfig } from "eslint/config";
 
-/** @type {import('eslint').Linter.Config[]} */
-export default [...config];
+export default defineConfig([...config]);

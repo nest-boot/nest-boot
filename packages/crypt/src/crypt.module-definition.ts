@@ -7,14 +7,4 @@ export const {
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
   ASYNC_OPTIONS_TYPE,
-} = new ConfigurableModuleBuilder<CryptModuleOptions>()
-  .setExtras(
-    {
-      isGlobal: false,
-    },
-    (definition, extras) => ({
-      ...definition,
-      global: extras.isGlobal,
-    }),
-  )
-  .build();
+} = new ConfigurableModuleBuilder<CryptModuleOptions>().build();

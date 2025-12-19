@@ -28,7 +28,7 @@ import { type ScheduleModuleOptions } from "./schedule-module-options.interface"
     {
       provide: MODULE_OPTIONS_TOKEN,
       inject: [{ token: BASE_MODULE_OPTIONS_TOKEN, optional: true }],
-      useFactory: (options: ScheduleModuleOptions = {}) => options,
+      useFactory: (options?: ScheduleModuleOptions) => options ?? {},
     },
   ],
   exports: [MODULE_OPTIONS_TOKEN],

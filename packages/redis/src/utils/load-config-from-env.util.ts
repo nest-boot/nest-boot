@@ -1,5 +1,19 @@
 import { RedisOptions } from "ioredis";
 
+/**
+ * Loads Redis configuration from environment variables.
+ *
+ * Supports the following environment variables:
+ * - `REDIS_URL`: Full Redis connection URL (takes precedence over individual settings)
+ * - `REDIS_HOST`: Redis server hostname
+ * - `REDIS_PORT`: Redis server port
+ * - `REDIS_DB` or `REDIS_DATABASE`: Redis database number
+ * - `REDIS_USER` or `REDIS_USERNAME`: Redis username
+ * - `REDIS_PASS` or `REDIS_PASSWORD`: Redis password
+ * - `REDIS_TLS`: Enable TLS connection (any truthy value)
+ *
+ * @returns Redis connection options parsed from environment variables
+ */
 export function loadConfigFromEnv(): RedisOptions {
   if (process.env.REDIS_URL) {
     const url = new URL(process.env.REDIS_URL);

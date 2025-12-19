@@ -7,11 +7,53 @@ import { ReplContext } from "@nestjs/core/repl/repl-context";
 import { ReplLogger } from "@nestjs/core/repl/repl-logger";
 import { defineDefaultCommandsOnRepl } from "@nestjs/core/repl/repl-native-commands";
 import { AsyncResource } from "async_hooks";
+import type { REPLServer } from "repl";
 import { Transform } from "stream";
 
 import { RequestContext } from "./request-context";
 
-export async function repl(module: Type | DynamicModule) {
+/**
+ * Starts a REPL (Read-Eval-Print Loop) session with request context support.
+ *
+ * This function creates a NestJS application context and starts an interactive
+ * REPL session where all commands run within a request context. This is useful
+ * for debugging and testing services that depend on request context.
+ *
+ * The REPL session:
+ * - Runs within a request context of type 'repl'
+ * - Has access to all NestJS providers
+ * - Maintains context across async operations
+ *
+ * @param module - The NestJS module (class or DynamicModule) to create the context from
+ * @returns A promise that resolves to the REPL server instance
+ *
+ * @example
+ * ```typescript
+ * // repl.ts
+ * import { repl } from '@nest-boot/request-context';
+ * import { AppModule } from './app.module';
+ *
+ * async function bootstrap() {
+ *   await repl(AppModule);
+ * }
+ *
+ * bootstrap();
+ * ```
+ *
+ * @example Running the REPL
+ * ```bash
+ * npx ts-node -r tsconfig-paths/register repl.ts
+ * ```
+ *
+ * @example Using services in REPL
+ * ```typescript
+ * // In the REPL session:
+ * > const userService = get(UserService)
+ * > await userService.findAll()
+ * > RequestContext.id  // Access current context ID
+ * ```
+ */
+export async function repl(module: Type | DynamicModule): Promise<REPLServer> {
   const app = await NestFactory.createApplicationContext(module, {
     abortOnError: false,
     logger: new ReplLogger(),

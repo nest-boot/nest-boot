@@ -31,16 +31,16 @@ import {
       provide: OPTIONS_TOKEN,
       inject: [{ token: MODULE_OPTIONS_TOKEN, optional: true }],
       useFactory: (
-        options: GraphQLRateLimitModuleOptions = {},
+        options?: GraphQLRateLimitModuleOptions,
       ): GraphQLRateLimitOptions => {
         return {
-          maxComplexity: options.maxComplexity ?? 1000,
-          defaultComplexity: options.defaultComplexity ?? 0,
-          keyPrefix: options.keyPrefix ?? "graphql-rate-limit",
-          restoreRate: options.restoreRate ?? 50,
-          maximumAvailable: options.maximumAvailable ?? 1000,
+          maxComplexity: options?.maxComplexity ?? 1000,
+          defaultComplexity: options?.defaultComplexity ?? 0,
+          keyPrefix: options?.keyPrefix ?? "graphql-rate-limit",
+          restoreRate: options?.restoreRate ?? 50,
+          maximumAvailable: options?.maximumAvailable ?? 1000,
           getId:
-            options.getId ??
+            options?.getId ??
             ((args: GraphQLRequestContext<BaseContext>) => {
               const req = (args.contextValue as { req: Request }).req;
               const ip = req.ips.length ? req.ips[0] : req.ip;

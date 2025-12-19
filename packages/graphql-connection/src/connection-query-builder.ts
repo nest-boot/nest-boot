@@ -21,6 +21,22 @@ import {
 } from "./interfaces";
 import { ConnectionClass } from "./types";
 
+/**
+ * Builds and executes paginated queries for GraphQL connections.
+ *
+ * This class handles the complexity of cursor-based pagination including:
+ * - Forward and backward pagination
+ * - Custom ordering with fallback to ID ordering
+ * - Filter query construction from multiple sources (args, options, query string)
+ * - Cursor encoding/decoding for stable pagination
+ *
+ * @typeParam Entity - The entity type being queried
+ * @typeParam Hint - Type hints for population
+ * @typeParam Fields - Fields to select
+ * @typeParam Excludes - Fields to exclude
+ *
+ * @internal This class is used internally by ConnectionManager
+ */
 export class ConnectionQueryBuilder<
   Entity extends object,
   Hint extends string = never,
@@ -273,6 +289,11 @@ export class ConnectionQueryBuilder<
     } as FilterQuery<Entity>;
   }
 
+  /**
+   * Executes the paginated query and returns the connection result.
+   *
+   * @returns A promise that resolves to the connection with edges, pageInfo, and totalCount
+   */
   async query() {
     const [entities, totalCount] = await Promise.all([
       this.allFilterQuery === null

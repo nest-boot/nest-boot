@@ -21,6 +21,14 @@ import {
   createOrder,
 } from "./utils";
 
+/**
+ * The result of building a connection with ConnectionBuilder.
+ *
+ * Contains all the GraphQL types needed for cursor-based pagination,
+ * including dynamic named types based on the entity name.
+ *
+ * @typeParam Entity - The entity type for the connection
+ */
 type ConnectionBuildResult<Entity extends object> = {
   Connection: Type<ConnectionInterface<Entity>>;
   ConnectionArgs: Type<ConnectionArgsInterface<Entity>>;
@@ -45,6 +53,47 @@ type ConnectionBuildResult<Entity extends object> = {
     GraphQLScalarType<FilterQuery<Entity>>
   >;
 
+/**
+ * Builder class for creating GraphQL connection types following the Relay specification.
+ *
+ * The ConnectionBuilder generates all necessary GraphQL types for cursor-based pagination:
+ * - Connection type with edges, pageInfo, and totalCount
+ * - Edge type with node and cursor
+ * - ConnectionArgs type with first, last, after, before, orderBy, filter, and query
+ * - Order input type for sorting
+ * - Filter scalar type for MongoDB-style filtering
+ *
+ * @typeParam Entity - The MikroORM entity type for the connection
+ *
+ * @example Basic usage
+ * ```typescript
+ * import { ConnectionBuilder } from "@nest-boot/graphql-connection";
+ * import { User } from "./user.entity";
+ *
+ * const { Connection, ConnectionArgs, Edge } = new ConnectionBuilder(User)
+ *   .addField({ field: "name", type: "string", filterable: true, sortable: true })
+ *   .addField({ field: "createdAt", type: "date", sortable: true })
+ *   .build();
+ *
+ * // Use in resolver
+ * @Query(() => Connection)
+ * async users(@Args() args: typeof ConnectionArgs) {
+ *   return this.connectionManager.find(Connection, args);
+ * }
+ * ```
+ *
+ * @example With custom filter options
+ * ```typescript
+ * const { Connection, ConnectionArgs } = new ConnectionBuilder(User, {
+ *   filter: {
+ *     maxDepth: 3,
+ *     maxConditions: 10,
+ *   },
+ * })
+ *   .addField({ field: "email", type: "string", filterable: true })
+ *   .build();
+ * ```
+ */
 export class ConnectionBuilder<Entity extends object> {
   private readonly entityName: EntityClass<Entity>["name"];
 
@@ -55,6 +104,12 @@ export class ConnectionBuilder<Entity extends object> {
     FieldOptions<Entity, FieldType, string>
   >();
 
+  /**
+   * Creates a new ConnectionBuilder instance.
+   *
+   * @param entityClass - The MikroORM entity class to build connection types for
+   * @param options - Optional configuration for the connection builder
+   */
   constructor(
     private readonly entityClass: EntityClass<Entity>,
     options?: Partial<ConnectionBuilderOptions>,
@@ -73,6 +128,26 @@ export class ConnectionBuilder<Entity extends object> {
     };
   }
 
+  /**
+   * Adds a field configuration to the connection builder.
+   *
+   * Fields can be configured for filtering, sorting, and searching.
+   * The field type determines what filter operators are available.
+   *
+   * @typeParam Type - The field type ("string", "number", "boolean", or "date")
+   * @typeParam Field - The field path in the entity
+   * @param options - The field configuration options
+   * @returns The builder instance for method chaining
+   *
+   * @example
+   * ```typescript
+   * builder
+   *   .addField({ field: "name", type: "string", filterable: true, searchable: true })
+   *   .addField({ field: "age", type: "number", filterable: true, sortable: true })
+   *   .addField({ field: "isActive", type: "boolean", filterable: true })
+   *   .addField({ field: "createdAt", type: "date", sortable: true });
+   * ```
+   */
   addField<
     Type extends "string" | "number" | "boolean" | "date" = never,
     Field extends string = never,
@@ -84,6 +159,14 @@ export class ConnectionBuilder<Entity extends object> {
     return this;
   }
 
+  /**
+   * Builds and returns all GraphQL types for the connection.
+   *
+   * The returned object contains both generic type references and
+   * entity-specific named types (e.g., UserConnection, UserEdge).
+   *
+   * @returns An object containing all generated connection types
+   */
   build(): ConnectionBuildResult<Entity> {
     const Edge = createEdge(this.entityClass, this.entityName);
 

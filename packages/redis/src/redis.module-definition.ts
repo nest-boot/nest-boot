@@ -6,14 +6,4 @@ export const {
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
   ASYNC_OPTIONS_TYPE,
-} = new ConfigurableModuleBuilder<RedisOptions>()
-  .setExtras(
-    {
-      isGlobal: false,
-    },
-    (definition, extras) => ({
-      ...definition,
-      global: extras.isGlobal,
-    }),
-  )
-  .build();
+} = new ConfigurableModuleBuilder<RedisOptions>().build();

@@ -1,5 +1,5 @@
 import { BaseContext, GraphQLRequestContext } from "@apollo/server";
-import { RedisOptions } from "@nest-boot/redis";
+import { RedisOptions } from "ioredis";
 
 export interface GraphQLRateLimitOptions {
   connection?: RedisOptions;

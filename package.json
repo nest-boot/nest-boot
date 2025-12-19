@@ -12,7 +12,7 @@
   },
   "scripts": {
     "cz": "cz",
-    "prepare": "husky",
+    "prepare": "husky install",
     "build": "turbo run build",
     "build:website": "turbo run build --filter=website",
     "build:examples": "turbo run build --filter=./examples/*",
@@ -23,6 +23,8 @@
     "test": "jest",
     "test:cov": "jest --coverage",
     "format": "prettier --check --write \"**/*.{ts,tsx,md}\"",
+    "docs": "typedoc",
+    "docs:coverage": "typedoc --plugin typedoc-plugin-coverage",
     "lint": "turbo run lint",
     "changeset": "changeset",
     "version-packages": "changeset version && pnpm install --no-frozen-lockfile && pnpm format",
@@ -31,7 +33,6 @@
   "devDependencies": {
     "@changesets/cli": "^2.29.7",
     "@nest-boot/tsconfig": "workspace:^",
-    "@semrel-extra/npm": "^1.2.2",
     "@types/jest": "^29.5.14",
     "commitizen": "^4.3.1",
     "cz-conventional-changelog": "^3.3.0",
@@ -42,7 +43,10 @@
     "prettier": "^3.6.2",
     "ts-jest": "^29.4.4",
     "ts-node": "^10.9.2",
-    "turbo": "^2.5.8"
+    "turbo": "^2.5.8",
+    "typedoc": "^0.28.15",
+    "typedoc-docusaurus-theme": "^1.4.2",
+    "typedoc-plugin-coverage": "^4.0.2"
   },
   "lint-staged": {
     "*.{md,json}": [

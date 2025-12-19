@@ -36,7 +36,7 @@ import { loadConfigFromEnv } from "./utils/load-config-from-env.util";
     {
       provide: MODULE_OPTIONS_TOKEN,
       inject: [{ token: BASE_MODULE_OPTIONS_TOKEN, optional: true }],
-      useFactory: (options: MikroOrmModuleOptions = {}) => options,
+      useFactory: (options?: MikroOrmModuleOptions) => options ?? {},
     },
   ],
   exports: [MODULE_OPTIONS_TOKEN],

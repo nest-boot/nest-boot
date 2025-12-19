@@ -1,6 +1,6 @@
 import { BaseContext, GraphQLRequestContext } from "@apollo/server";
-import { Redis } from "@nest-boot/redis";
 import { Inject, Injectable } from "@nestjs/common";
+import Redis from "ioredis";
 
 import {
   OPTIONS_TOKEN,

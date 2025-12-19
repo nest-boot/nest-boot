@@ -1,7 +1,7 @@
 import config from "@nest-boot/eslint-config";
+import { defineConfig } from "eslint/config";
 
-/** @type {import('eslint').Linter.Config[]} */
-export default [
+export default defineConfig([
   ...config,
 
   {
@@ -9,4 +9,4 @@ export default [
       "@nest-boot/import-bullmq": "off",
     },
   },
-];
+]);

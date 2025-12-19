@@ -1,46 +1,60 @@
-import React from "react";
-import clsx from "clsx";
-import styles from "./styles.module.css";
+import type {ReactNode} from 'react';
+import clsx from 'clsx';
+import Heading from '@theme/Heading';
+import Translate from '@docusaurus/Translate';
+import styles from './styles.module.css';
 
 type FeatureItem = {
-  title: string;
-  Svg: React.ComponentType<React.ComponentProps<"svg">>;
-  description: JSX.Element;
+  title: ReactNode;
+  Svg: React.ComponentType<React.ComponentProps<'svg'>>;
+  description: ReactNode;
 };
 
 const FeatureList: FeatureItem[] = [
   {
-    title: "基于 NestJS 生态",
-    Svg: require("@site/static/img/undraw_docusaurus_mountain.svg").default,
-    description: <></>,
+    title: <Translate id="homepage.features.modular.title">Modular Architecture</Translate>,
+    Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
+    description: (
+      <Translate id="homepage.features.modular.description">
+        Pick and choose only the modules you need. Each module is independent and can be used separately.
+      </Translate>
+    ),
   },
   {
-    title: "尊重模块化",
-    Svg: require("@site/static/img/undraw_docusaurus_tree.svg").default,
-    description: <></>,
+    title: <Translate id="homepage.features.typescript.title">TypeScript First</Translate>,
+    Svg: require('@site/static/img/undraw_docusaurus_tree.svg').default,
+    description: (
+      <Translate id="homepage.features.typescript.description">
+        Built with TypeScript for type safety and better developer experience with full IDE support.
+      </Translate>
+    ),
   },
   {
-    title: "易于使用",
-    Svg: require("@site/static/img/undraw_docusaurus_react.svg").default,
-    description: <></>,
+    title: <Translate id="homepage.features.production.title">Production Ready</Translate>,
+    Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
+    description: (
+      <Translate id="homepage.features.production.description">
+        Battle-tested modules used in production applications. Reliable and well-maintained.
+      </Translate>
+    ),
   },
 ];
 
-function Feature({ title, Svg, description }: FeatureItem) {
+function Feature({title, Svg, description}: FeatureItem) {
   return (
-    <div className={clsx("col col--4")}>
+    <div className={clsx('col col--4')}>
       <div className="text--center">
         <Svg className={styles.featureSvg} role="img" />
       </div>
       <div className="text--center padding-horiz--md">
-        <h3>{title}</h3>
+        <Heading as="h3">{title}</Heading>
         <p>{description}</p>
       </div>
     </div>
   );
 }
 
-export default function HomepageFeatures(): JSX.Element {
+export default function HomepageFeatures(): ReactNode {
   return (
     <section className={styles.features}>
       <div className="container">

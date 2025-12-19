@@ -44,7 +44,7 @@ import { type GraphQLModuleOptions } from "./graphql-module-options.interface";
     {
       provide: MODULE_OPTIONS_TOKEN,
       inject: [{ token: BASE_MODULE_OPTIONS_TOKEN, optional: true }],
-      useFactory: (options: GraphQLModuleOptions = {}) => options,
+      useFactory: (options?: GraphQLModuleOptions) => options ?? {},
     },
   ],
   exports: [MODULE_OPTIONS_TOKEN],

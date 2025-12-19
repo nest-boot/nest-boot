@@ -14,6 +14,24 @@ import {
 } from "../interfaces";
 import { PageInfo } from "../objects";
 
+/**
+ * Creates a GraphQL Connection type for cursor-based pagination.
+ *
+ * The generated Connection type includes:
+ * - `edges`: List of edges containing nodes and cursors
+ * - `pageInfo`: Pagination information (hasNextPage, hasPreviousPage, cursors)
+ * - `totalCount`: Total number of items matching the query
+ *
+ * @typeParam Entity - The entity type for the connection
+ * @param entityClass - The MikroORM entity class
+ * @param entityName - The name to use for the GraphQL type
+ * @param EdgeClass - The Edge type class to use for edges
+ * @param fieldOptionsMap - Map of field configurations
+ * @param filterQuerySchema - Zod schema for validating filter queries
+ * @returns A class implementing ConnectionInterface
+ *
+ * @internal Used by ConnectionBuilder.build()
+ */
 export function createConnection<Entity extends object>(
   entityClass: EntityClass<Entity>,
   entityName: string,

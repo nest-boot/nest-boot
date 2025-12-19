@@ -11,6 +11,27 @@ import { promisify } from "util";
 import { MODULE_OPTIONS_TOKEN } from "./crypt.module-definition";
 import { CryptModuleOptions } from "./crypt-module-options.interface";
 
+/**
+ * Service that provides encryption and decryption functionality using AES-256-GCM algorithm.
+ *
+ * @example
+ * ```typescript
+ * import { CryptService } from '@nest-boot/crypt';
+ *
+ * @Injectable()
+ * export class MyService {
+ *   constructor(private readonly cryptService: CryptService) {}
+ *
+ *   async encryptData(data: string): Promise<string> {
+ *     return this.cryptService.encrypt(data);
+ *   }
+ *
+ *   async decryptData(encrypted: string): Promise<string> {
+ *     return this.cryptService.decrypt(encrypted);
+ *   }
+ * }
+ * ```
+ */
 @Injectable()
 export class CryptService {
   readonly #algorithm = "aes-256-gcm";
@@ -25,10 +46,15 @@ export class CryptService {
 
   readonly #secret: string;
 
+  /**
+   * Creates an instance of CryptService.
+   * @param options - Configuration options for the crypt service
+   * @throws Error if no secret is provided via options or environment variables
+   */
   constructor(
     @Optional()
     @Inject(MODULE_OPTIONS_TOKEN)
-    private readonly options: CryptModuleOptions = {},
+    options: CryptModuleOptions = {},
   ) {
     const secret =
       options.secret ?? process.env.CRYPT_SECRET ?? process.env.APP_SECRET;
@@ -42,6 +68,12 @@ export class CryptService {
     this.#secret = secret;
   }
 
+  /**
+   * Encrypts a string value using AES-256-GCM algorithm.
+   * @param value - The plaintext string to encrypt
+   * @param secret - Optional secret key to use instead of the default
+   * @returns A base64-encoded encrypted string containing IV, auth tag, data, and salt
+   */
   async encrypt(value: string, secret?: string): Promise<string> {
     const { key, salt } = await this.#getKeyAndSalt(secret ?? this.#secret);
 
@@ -62,6 +94,12 @@ export class CryptService {
     ).toString(this.#encoding);
   }
 
+  /**
+   * Decrypts an encrypted string value.
+   * @param value - The base64-encoded encrypted string to decrypt
+   * @param secret - Optional secret key to use instead of the default
+   * @returns The decrypted plaintext string
+   */
   async decrypt(value: string, secret?: string): Promise<string> {
     const payload: { iv: string; tag: string; data: string; salt: string } =
       JSON.parse(Buffer.from(value, this.#encoding).toString("utf8"));

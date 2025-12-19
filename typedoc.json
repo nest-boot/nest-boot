@@ -1,0 +1,38 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+
+  "entryPointStrategy": "packages",
+  "entryPoints": ["packages/*"],
+
+  "exclude": [
+    "packages/eslint-config",
+    "packages/eslint-plugin",
+    "packages/tsconfig"
+  ],
+
+  "out": "website/docs/api",
+  "name": "Nest Boot API",
+
+  "packageOptions": {
+    "entryPoints": ["src/index.ts"],
+    "excludeInternal": true,
+    "excludePrivate": true
+  },
+
+  "plugin": [
+    "typedoc-plugin-markdown",
+    "typedoc-docusaurus-theme",
+    "typedoc-plugin-coverage"
+  ],
+  "outputFileStrategy": "modules",
+  "useCodeBlocks": true,
+  "expandObjects": true,
+  "parametersFormat": "table",
+  "tableColumnSettings": {
+    "hideDefaults": true,
+    "hideInherited": true,
+    "hideModifiers": true,
+    "hideOverrides": true,
+    "hideSources": true
+  }
+}

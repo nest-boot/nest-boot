@@ -11,6 +11,25 @@ import {
   OrderInterface,
 } from "../interfaces";
 
+/**
+ * Creates a GraphQL Args type for connection queries.
+ *
+ * The generated Args type includes:
+ * - `first`/`last`: Number of items to return (for forward/backward pagination)
+ * - `after`/`before`: Cursor for pagination position
+ * - `query`: Search query string
+ * - `filter`: MongoDB-style filter query
+ * - `orderBy`: Sorting options
+ *
+ * @typeParam Entity - The entity type being queried
+ * @param entityName - The name to use for the GraphQL type
+ * @param fieldOptionsMap - Map of field configurations
+ * @param OrderClass - The Order input type class
+ * @param FilterScalar - The Filter scalar type
+ * @returns A class implementing ConnectionArgsInterface
+ *
+ * @internal Used by ConnectionBuilder.build()
+ */
 export function createConnectionArgs<Entity extends object>(
   entityName: string,
   fieldOptionsMap: Map<string, FieldOptions<Entity, FieldType, string>>,

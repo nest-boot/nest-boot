@@ -2,7 +2,11 @@ import { Type } from "@nestjs/common";
 import { NestMiddleware, RouteInfo } from "@nestjs/common/interfaces";
 
 import { MiddlewareManager } from "./middleware.manager";
+import { MiddlewareInstanceOrFunction } from "./types";
 
+/**
+ * Configurator for applying middlewares to routes.
+ */
 export class MiddlewareConfigurator {
   private disabledGlobalExcludeRoutes = false;
 
@@ -10,9 +14,12 @@ export class MiddlewareConfigurator {
 
   private readonly dependencyMiddlewares: Type<NestMiddleware>[] = [];
 
+  /**
+   * @internal
+   */
   constructor(
     private readonly manager: MiddlewareManager,
-    private readonly middlewares: (NestMiddleware | NestMiddleware["use"])[],
+    private readonly middlewares: MiddlewareInstanceOrFunction[],
   ) {}
 
   public disableGlobalExcludeRoutes(): this {
@@ -39,10 +46,13 @@ export class MiddlewareConfigurator {
 
     this.middlewares.forEach((middleware) => {
       this.manager.middlewareConfigMap.set(middleware, {
-        middleware: (req, res, next) =>
-          "use" in middleware
-            ? middleware.use(req, res, next)
-            : middleware(req, res, next),
+        middleware: (req, res, next) => {
+          if ("use" in middleware) {
+            middleware.use(req, res, next);
+          } else {
+            middleware(req, res, next);
+          }
+        },
         routes,
         excludeRoutes: this.excludeRoutes,
         dependencyMiddlewares: this.dependencyMiddlewares,
