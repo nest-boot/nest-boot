@@ -1,5 +1,11 @@
 # @nest-boot/eslint-plugin
 
+## 7.0.3
+
+### Patch Changes
+
+- e3bde0c: fix: add peerDependencies for TypeScript and ESLint in eslint-plugin package.json
+
 ## 7.0.2
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @nest-boot/tsconfig
 
+## 7.0.1
+
+### Patch Changes
+
+- 372cb9e: fix: add typedoc
+
 ## 7.0.0
 
 ### Major Changes

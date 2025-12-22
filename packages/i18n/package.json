@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/i18n",
-  "version": "7.0.1",
+  "version": "7.0.2",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
   "homepage": "",
@@ -41,7 +41,7 @@
     "typescript": "^5.9.3"
   },
   "peerDependencies": {
-    "@nest-boot/request-context": "workspace:^7.4.1",
+    "@nest-boot/request-context": "workspace:^7.4.2",
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
     "i18next": "^23.0.0",

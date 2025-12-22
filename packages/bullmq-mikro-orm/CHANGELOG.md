@@ -1,5 +1,12 @@
 # @nest-boot/bullmq-mikro-orm
 
+## 7.0.4
+
+### Patch Changes
+
+- 372cb9e: chore: use defineConfig to configure eslint
+- 372cb9e: fix: add typedoc
+
 ## 7.0.3
 
 ### Patch Changes

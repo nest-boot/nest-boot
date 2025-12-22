@@ -1,5 +1,15 @@
 # @nest-boot/graphql-logger
 
+## 7.0.2
+
+### Patch Changes
+
+- 372cb9e: chore: use defineConfig to configure eslint
+- 372cb9e: fix: add typedoc
+- Updated dependencies [372cb9e]
+- Updated dependencies [372cb9e]
+  - @nest-boot/logger@7.0.4
+
 ## 7.0.1
 
 ### Patch Changes

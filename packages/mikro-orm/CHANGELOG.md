@@ -1,5 +1,15 @@
 # @nest-boot/mikro-orm
 
+## 7.2.4
+
+### Patch Changes
+
+- 372cb9e: chore: use defineConfig to configure eslint
+- 372cb9e: fix: add typedoc
+- Updated dependencies [372cb9e]
+- Updated dependencies [372cb9e]
+  - @nest-boot/request-context@7.4.2
+
 ## 7.2.3
 
 ### Patch Changes
