@@ -1,5 +1,12 @@
 # @nest-boot/graphql-connection
 
+## 7.6.2
+
+### Patch Changes
+
+- 372cb9e: chore: use defineConfig to configure eslint
+- 372cb9e: fix: add typedoc
+
 ## 7.6.1
 
 ### Patch Changes

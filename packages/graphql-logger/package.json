@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/graphql-logger",
-  "version": "7.0.1",
+  "version": "7.0.2",
   "description": "",
   "author": "d4rkcr0w <me@d4rkcr0w.com>",
   "homepage": "",
@@ -48,7 +48,7 @@
   },
   "peerDependencies": {
     "@apollo/server": "^5.0.0",
-    "@nest-boot/logger": "workspace:^7.0.3",
+    "@nest-boot/logger": "workspace:^7.0.4",
     "@nestjs/apollo": "^12.0.0",
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",

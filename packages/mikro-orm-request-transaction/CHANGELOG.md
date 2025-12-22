@@ -1,5 +1,12 @@
 # @nest-boot/mikro-orm-request-transaction
 
+## 7.1.4
+
+### Patch Changes
+
+- 372cb9e: chore: use defineConfig to configure eslint
+- 372cb9e: fix: add typedoc
+
 ## 7.1.3
 
 ### Patch Changes

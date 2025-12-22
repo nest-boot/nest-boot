@@ -1,5 +1,12 @@
 # @nest-boot/auth
 
+## 7.7.5
+
+### Patch Changes
+
+- 372cb9e: chore: use defineConfig to configure eslint
+- 372cb9e: fix: add typedoc
+
 ## 7.7.4
 
 ### Patch Changes
