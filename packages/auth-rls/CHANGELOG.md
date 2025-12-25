@@ -1,5 +1,11 @@
 # @nest-boot/auth-rls
 
+## 7.3.1
+
+### Patch Changes
+
+- a19bb0c: fix(auth-rls): pass user to setRlsContext in middleware
+
 ## 7.3.0
 
 ### Minor Changes
