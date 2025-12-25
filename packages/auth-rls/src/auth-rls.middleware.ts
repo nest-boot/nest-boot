@@ -1,4 +1,6 @@
 import { EntityManager } from "@mikro-orm/core";
+import { BaseUser } from "@nest-boot/auth";
+import { RequestContext } from "@nest-boot/request-context";
 import {
   HttpException,
   HttpStatus,
@@ -18,7 +20,10 @@ export class AuthRlsMiddleware implements NestMiddleware {
 
   async use(_req: Request, _res: Response, next: NextFunction) {
     try {
-      await this.authRlsService.setRlsContext(this.em);
+      await this.authRlsService.setRlsContext(
+        this.em,
+        RequestContext.get(BaseUser),
+      );
     } catch (error) {
       if (error instanceof Error) {
         throw new HttpException(

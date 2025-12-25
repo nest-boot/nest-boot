@@ -145,6 +145,9 @@ importers:
       '@nest-boot/mikro-orm-request-transaction':
         specifier: workspace:^
         version: link:../mikro-orm-request-transaction
+      '@nest-boot/request-context':
+        specifier: workspace:^
+        version: link:../request-context
       '@nest-boot/tsconfig':
         specifier: workspace:^
         version: link:../tsconfig
