@@ -1,5 +1,11 @@
 # @nest-boot/auth-rls
 
+## 7.3.0
+
+### Minor Changes
+
+- 345b53d: feat: auth module to use RequestContext for session and user management, and simplify middleware options
+
 ## 7.2.3
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @nest-boot/auth
 
+## 7.8.0
+
+### Minor Changes
+
+- 345b53d: feat: auth module to use RequestContext for session and user management, and simplify middleware options
+
 ## 7.7.5
 
 ### Patch Changes
