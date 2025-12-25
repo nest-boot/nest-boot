@@ -1,16 +1,8 @@
-import { createParamDecorator, ExecutionContext } from "@nestjs/common";
-import { Response } from "express";
+import { RequestContext } from "@nest-boot/request-context";
+import { createParamDecorator } from "@nestjs/common";
 
-export const CurrentSession = createParamDecorator(
-  (data: unknown, context: ExecutionContext) => {
-    let res: Response;
+import { BaseSession } from "../entities/session.entity";
 
-    if (context.getType<"graphql">() === "graphql") {
-      res = context.getArgByIndex(2).req.res;
-    } else {
-      res = context.switchToHttp().getResponse();
-    }
-
-    return res.locals.session;
-  },
+export const CurrentSession = createParamDecorator(() =>
+  RequestContext.get(BaseSession),
 );

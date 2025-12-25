@@ -1,16 +1,8 @@
-import { createParamDecorator, ExecutionContext } from "@nestjs/common";
-import { Response } from "express";
+import { RequestContext } from "@nest-boot/request-context";
+import { createParamDecorator } from "@nestjs/common";
 
-export const CurrentUser = createParamDecorator(
-  (data: unknown, context: ExecutionContext) => {
-    let res: Response;
+import { BaseUser } from "../entities/user.entity";
 
-    if (context.getType<"graphql">() === "graphql") {
-      res = context.getArgByIndex(2).req.res;
-    } else {
-      res = context.switchToHttp().getResponse();
-    }
-
-    return res.locals.user;
-  },
+export const CurrentUser = createParamDecorator(() =>
+  RequestContext.get(BaseUser),
 );

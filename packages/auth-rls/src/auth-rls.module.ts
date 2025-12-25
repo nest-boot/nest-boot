@@ -8,13 +8,14 @@ import {
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
 } from "./auth-rls.module-definition";
+import { AuthRlsService } from "./auth-rls.service";
 import { AuthRlsModuleOptions } from "./auth-rls-module-options.interface";
 
 @Global()
 @Module({
   imports: [MiddlewareModule],
-  providers: [AuthRlsMiddleware],
-  exports: [AuthRlsMiddleware],
+  providers: [AuthRlsMiddleware, AuthRlsService],
+  exports: [AuthRlsService],
 })
 export class AuthRlsModule extends ConfigurableModuleClass {
   constructor(

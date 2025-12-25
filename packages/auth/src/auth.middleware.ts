@@ -51,20 +51,17 @@ export class AuthMiddleware implements NestMiddleware {
     ]);
 
     if (user && session) {
-      res.locals.user = user;
-      res.locals.session = session;
+      RequestContext.set(BaseUser, user);
+      RequestContext.set(BaseSession, session);
 
-      RequestContext.set<BaseUser>(
-        this.options.entities.user as Type<BaseUser>,
-        user,
-      );
-      RequestContext.set<BaseSession>(
+      RequestContext.set(this.options.entities.user as Type<BaseUser>, user);
+      RequestContext.set(
         this.options.entities.session as Type<BaseSession>,
         session,
       );
-    }
 
-    await this.options.onAuthenticated?.({ req, res, user, session });
+      await this.options.onAuthenticated?.();
+    }
 
     next();
   }

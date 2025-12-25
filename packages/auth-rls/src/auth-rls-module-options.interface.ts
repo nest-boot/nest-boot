@@ -1,5 +1,4 @@
 import { RouteInfo, Type } from "@nestjs/common/interfaces";
-import { Request, Response } from "express";
 
 import { AuthRlsContext } from "./auth-rls.context";
 
@@ -10,11 +9,7 @@ export interface AuthRlsModuleMiddlewareOptions {
 }
 
 export interface AuthRlsModuleOptions {
-  context?: (
-    ctx: AuthRlsContext,
-    req: Request,
-    res: Response,
-  ) => AuthRlsContext | Promise<AuthRlsContext>;
+  context?: (ctx: AuthRlsContext) => AuthRlsContext | Promise<AuthRlsContext>;
 
   middleware?: AuthRlsModuleMiddlewareOptions;
 }

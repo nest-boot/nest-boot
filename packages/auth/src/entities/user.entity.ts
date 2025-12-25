@@ -10,7 +10,7 @@ import {
 import { randomUUID } from "crypto";
 
 @Entity({ abstract: true })
-export abstract class BaseUser extends BaseEntity {
+export class BaseUser extends BaseEntity {
   @PrimaryKey({ type: t.uuid })
   id: Opt<string> = randomUUID();
 

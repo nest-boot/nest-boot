@@ -39,7 +39,7 @@ import { AuthModuleOptions } from "./auth-module-options.interface";
         }),
     },
   ],
-  exports: [AuthService, AuthMiddleware],
+  exports: [AuthService],
 })
 export class AuthModule extends ConfigurableModuleClass {
   constructor(
