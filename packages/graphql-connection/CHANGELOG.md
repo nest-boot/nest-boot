@@ -1,5 +1,11 @@
 # @nest-boot/graphql-connection
 
+## 7.6.3
+
+### Patch Changes
+
+- f242b5b: fix(graphql-connection): pass fulltext option to search-syntax for full-text search
+
 ## 7.6.2
 
 ### Patch Changes
