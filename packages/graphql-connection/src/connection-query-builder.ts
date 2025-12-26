@@ -257,6 +257,7 @@ export class ConnectionQueryBuilder<
             type: options.type,
             array: options.array,
             searchable: options.searchable,
+            ...("fulltext" in options ? { fulltext: options.fulltext } : {}),
           };
         }
       }
