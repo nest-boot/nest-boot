@@ -2,7 +2,11 @@
   "name": "@nest-boot/i18n",
   "version": "7.0.2",
   "description": "",
-  "author": "d4rkcr0w <me@d4rkcr0w.com>",
+  "author": {
+    "name": "Xudong Huang",
+    "email": "me@huangxudong.com",
+    "url": "https://www.huangxudong.com/"
+  },
   "homepage": "",
   "license": "MIT",
   "main": "dist/index.js",
