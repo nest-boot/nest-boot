@@ -1,8 +1,4 @@
-import { Inject, Injectable, Optional } from "@nestjs/common";
 import { hash, verify } from "@node-rs/argon2";
-
-import { MODULE_OPTIONS_TOKEN } from "./hash.module-definition";
-import { HashModuleOptions } from "./hash-module-options.interface";
 
 /**
  * Service that provides password hashing and verification using Argon2 algorithm.
@@ -11,39 +7,82 @@ import { HashModuleOptions } from "./hash-module-options.interface";
  * ```typescript
  * import { HashService } from '@nest-boot/hash';
  *
- * @Injectable()
- * export class AuthService {
- *   constructor(private readonly hashService: HashService) {}
+ * // Initialize at application startup
+ * HashService.init(process.env.HASH_SECRET);
  *
- *   async hashPassword(password: string): Promise<string> {
- *     return this.hashService.create(password);
- *   }
- *
- *   async verifyPassword(hash: string, password: string): Promise<boolean> {
- *     return this.hashService.verify(hash, password);
- *   }
- * }
+ * // Use static methods
+ * const hashed = await HashService.hash(password);
+ * const isValid = await HashService.verify(hashed, password);
  * ```
  */
-@Injectable()
+
 export class HashService {
+  private static _instance?: HashService;
+
+  /**
+   * Gets the static HashService instance.
+   * @throws Error if HashService has not been initialized via `init()`
+   * @returns The HashService instance
+   */
+  static get instance(): HashService {
+    if (!this._instance) {
+      throw new Error("HashService not initialized");
+    }
+
+    return this._instance;
+  }
+
+  /**
+   * Initializes the static HashService instance with the given secret.
+   * Call this method at application startup to configure the default secret.
+   *
+   * @param secret - The secret key to use for hashing
+   *
+   * @example
+   * ```typescript
+   * // In your application bootstrap
+   * HashService.init(process.env.HASH_SECRET);
+   * ```
+   */
+  static init(secret?: string): void {
+    this._instance = new HashService(secret);
+  }
+
+  /**
+   * Creates a hash from the given value using the static instance.
+   * @param value - The value to hash (password or other sensitive data)
+   * @param secret - Optional secret key to use instead of the default
+   * @returns The hashed string
+   * @throws Error if HashService has not been initialized via `init()`
+   */
+  static hash(value: string | Buffer, secret?: string): Promise<string> {
+    return this.instance.hash(value, secret);
+  }
+
+  /**
+   * Verifies a value against a hash using the static instance.
+   * @param hashed - The hash to verify against
+   * @param value - The value to verify
+   * @param secret - Optional secret key to use instead of the default
+   * @returns True if the value matches the hash, false otherwise
+   * @throws Error if HashService has not been initialized via `init()`
+   */
+  static verify(
+    hashed: string | Buffer,
+    value: string | Buffer,
+    secret?: string,
+  ): Promise<boolean> {
+    return this.instance.verify(hashed, value, secret);
+  }
+
   private readonly secret?: Buffer;
 
   /**
    * Creates an instance of HashService.
-   * @param options - Configuration options for the hash service
+   * @param secret - Optional secret key to use for hashing
    */
-  constructor(
-    @Optional()
-    @Inject(MODULE_OPTIONS_TOKEN)
-    options: HashModuleOptions = {},
-  ) {
-    const secret =
-      options.secret ?? process.env.HASH_SECRET ?? process.env.APP_SECRET;
-
-    if (secret) {
-      this.secret = Buffer.from(secret);
-    }
+  constructor(secret?: string) {
+    this.secret = secret ? Buffer.from(secret) : undefined;
   }
 
   /**
@@ -52,10 +91,21 @@ export class HashService {
    * @param secret - Optional secret key to use instead of the default
    * @returns The hashed string
    */
-  async create(value: string | Buffer, secret?: string): Promise<string> {
+  async hash(value: string | Buffer, secret?: string): Promise<string> {
     return await hash(value, {
       secret: typeof secret !== "undefined" ? Buffer.from(secret) : this.secret,
     });
+  }
+
+  /**
+   * Creates a hash from the given value using Argon2.
+   * @param value - The value to hash (password or other sensitive data)
+   * @param secret - Optional secret key to use instead of the default
+   * @returns The hashed string
+   * @deprecated Use `hash` instead
+   */
+  async create(value: string | Buffer, secret?: string): Promise<string> {
+    return await this.hash(value, secret);
   }
 
   /**
