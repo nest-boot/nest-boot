@@ -1,4 +1,4 @@
-import { hash, verify } from "@node-rs/argon2";
+import { hash, hashSync, verify, verifySync } from "@node-rs/argon2";
 
 /**
  * Service that provides password hashing and verification using Argon2 algorithm.
@@ -60,6 +60,17 @@ export class HashService {
   }
 
   /**
+   * Creates a hash synchronously from the given value using the static instance.
+   * @param value - The value to hash (password or other sensitive data)
+   * @param secret - Optional secret key to use instead of the default
+   * @returns The hashed string
+   * @throws Error if HashService has not been initialized via `init()`
+   */
+  static hashSync(value: string | Buffer, secret?: string): string {
+    return this.instance.hashSync(value, secret);
+  }
+
+  /**
    * Verifies a value against a hash using the static instance.
    * @param hashed - The hash to verify against
    * @param value - The value to verify
@@ -73,6 +84,22 @@ export class HashService {
     secret?: string,
   ): Promise<boolean> {
     return this.instance.verify(hashed, value, secret);
+  }
+
+  /**
+   * Verifies a value against a hash synchronously using the static instance.
+   * @param hashed - The hash to verify against
+   * @param value - The value to verify
+   * @param secret - Optional secret key to use instead of the default
+   * @returns True if the value matches the hash, false otherwise
+   * @throws Error if HashService has not been initialized via `init()`
+   */
+  static verifySync(
+    hashed: string | Buffer,
+    value: string | Buffer,
+    secret?: string,
+  ): boolean {
+    return this.instance.verifySync(hashed, value, secret);
   }
 
   private readonly secret?: Buffer;
@@ -90,6 +117,17 @@ export class HashService {
    * @param value - The value to hash (password or other sensitive data)
    * @param secret - Optional secret key to use instead of the default
    * @returns The hashed string
+   * @deprecated Use `hash` instead
+   */
+  async create(value: string | Buffer, secret?: string): Promise<string> {
+    return await this.hash(value, secret);
+  }
+
+  /**
+   * Creates a hash from the given value using Argon2.
+   * @param value - The value to hash (password or other sensitive data)
+   * @param secret - Optional secret key to use instead of the default
+   * @returns The hashed string
    */
   async hash(value: string | Buffer, secret?: string): Promise<string> {
     return await hash(value, {
@@ -98,14 +136,15 @@ export class HashService {
   }
 
   /**
-   * Creates a hash from the given value using Argon2.
+   * Creates a hash synchronously from the given value using Argon2.
    * @param value - The value to hash (password or other sensitive data)
    * @param secret - Optional secret key to use instead of the default
    * @returns The hashed string
-   * @deprecated Use `hash` instead
    */
-  async create(value: string | Buffer, secret?: string): Promise<string> {
-    return await this.hash(value, secret);
+  hashSync(value: string | Buffer, secret?: string): string {
+    return hashSync(value, {
+      secret: typeof secret !== "undefined" ? Buffer.from(secret) : this.secret,
+    });
   }
 
   /**
@@ -121,6 +160,23 @@ export class HashService {
     secret?: string,
   ): Promise<boolean> {
     return await verify(hashed, value, {
+      secret: typeof secret !== "undefined" ? Buffer.from(secret) : this.secret,
+    });
+  }
+
+  /**
+   * Verifies a value against a hash synchronously.
+   * @param hashed - The hash to verify against
+   * @param value - The value to verify
+   * @param secret - Optional secret key to use instead of the default
+   * @returns True if the value matches the hash, false otherwise
+   */
+  verifySync(
+    hashed: string | Buffer,
+    value: string | Buffer,
+    secret?: string,
+  ): boolean {
+    return verifySync(hashed, value, {
       secret: typeof secret !== "undefined" ? Buffer.from(secret) : this.secret,
     });
   }

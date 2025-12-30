@@ -171,6 +171,62 @@ describe("HashService", () => {
         expect(result).toBe(true);
       });
     });
+
+    describe("hashSync (static)", () => {
+      it("should create a hash synchronously using static method", () => {
+        HashService.init("mySecret");
+        const value = "password";
+
+        const result = HashService.hashSync(value);
+
+        expect(result).toBeDefined();
+        expect(result).toContain("$argon2");
+      });
+
+      it("should create a hash synchronously with custom secret using static method", () => {
+        HashService.init();
+        const value = "password";
+        const secret = "customSecret";
+
+        const result = HashService.hashSync(value, secret);
+
+        expect(result).toBeDefined();
+        expect(result).toContain("$argon2");
+      });
+    });
+
+    describe("verifySync (static)", () => {
+      it("should verify synchronously using static method", () => {
+        HashService.init("mySecret");
+        const value = "password";
+        const hashed = HashService.hashSync(value);
+
+        const result = HashService.verifySync(hashed, value);
+
+        expect(result).toBe(true);
+      });
+
+      it("should verify synchronously with custom secret using static method", () => {
+        HashService.init();
+        const value = "password";
+        const secret = "customSecret";
+        const hashed = HashService.hashSync(value, secret);
+
+        const result = HashService.verifySync(hashed, value, secret);
+
+        expect(result).toBe(true);
+      });
+
+      it("should return false for incorrect password synchronously", () => {
+        HashService.init("mySecret");
+        const value = "password";
+        const hashed = HashService.hashSync(value);
+
+        const result = HashService.verifySync(hashed, "wrongpassword");
+
+        expect(result).toBe(false);
+      });
+    });
   });
 
   describe("constructor", () => {
