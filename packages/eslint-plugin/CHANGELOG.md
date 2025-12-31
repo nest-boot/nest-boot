@@ -1,5 +1,11 @@
 # @nest-boot/eslint-plugin
 
+## 7.0.4
+
+### Patch Changes
+
+- 0a36908: fix(eslint-plugin): support PrimaryKey, EncryptedProperty and HashedProperty decorators
+
 ## 7.0.3
 
 ### Patch Changes

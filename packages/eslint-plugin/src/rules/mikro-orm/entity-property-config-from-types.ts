@@ -632,7 +632,10 @@ export default createRule<
       const finalInfo = { ...info };
 
       // PrimaryKey 的 number 类型默认使用 t.integer
-      if (decoratorName === "PrimaryKey" && finalInfo.propertyType === "t.float") {
+      if (
+        decoratorName === "PrimaryKey" &&
+        finalInfo.propertyType === "t.float"
+      ) {
         finalInfo.propertyType = "t.integer";
       }
 
@@ -643,7 +646,8 @@ export default createRule<
         // 保留有效的 string 类型配置
         finalInfo.propertyType = currentConfig.type;
       } else if (
-        (info.propertyType === "t.float" || info.propertyType === "t.integer") &&
+        (info.propertyType === "t.float" ||
+          info.propertyType === "t.integer") &&
         isValidNumberType(currentConfig.type)
       ) {
         // 保留有效的 number 类型配置
@@ -1110,7 +1114,10 @@ export default createRule<
           let expectedType = typeInfo.propertyType;
 
           // PrimaryKey 的 number 类型期望 t.integer
-          if (currentDecoratorName === "PrimaryKey" && expectedType === "t.float") {
+          if (
+            currentDecoratorName === "PrimaryKey" &&
+            expectedType === "t.float"
+          ) {
             expectedType = "t.integer";
           }
 

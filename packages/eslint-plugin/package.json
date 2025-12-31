@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/eslint-plugin",
-  "version": "7.0.3",
+  "version": "7.0.4",
   "license": "MIT",
   "main": "./dist/index.js",
   "exports": "./dist/index.js",
