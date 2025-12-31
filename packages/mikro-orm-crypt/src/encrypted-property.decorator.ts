@@ -5,7 +5,7 @@ import {
   Property,
   PropertyOptions,
 } from "@mikro-orm/core";
-import { CryptService } from "@nest-boot/crypt";
+import { CryptService, isJwe } from "@nest-boot/crypt";
 
 const ENCRYPTED_PROPERTIES_KEY = Symbol("encryptedProperties");
 
@@ -70,8 +70,8 @@ export function EncryptedProperty<T extends object>(
         for (const key of properties) {
           const value = payload?.[key];
 
-          // Skip if value is not a string or is already a JWE (5 dot-separated parts)
-          if (typeof value !== "string" || value.split(".").length === 5) {
+          // Skip if value is not a string or is already a JWE
+          if (typeof value !== "string" || isJwe(value)) {
             continue;
           }
 
