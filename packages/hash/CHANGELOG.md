@@ -1,5 +1,12 @@
 # @nest-boot/hash
 
+## 7.2.0
+
+### Minor Changes
+
+- 3e27905: feat: add hashSync and verifySync
+- 131b6c0: feat(hash): add secret validation with entropy check
+
 ## 7.1.0
 
 ### Minor Changes

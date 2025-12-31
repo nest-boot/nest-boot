@@ -1,5 +1,12 @@
 # @nest-boot/crypt
 
+## 7.1.0
+
+### Minor Changes
+
+- 4da1214: feat(crypt): migrate to JWE encryption with HKDF key derivation
+- 512f317: feat(crypt): add isJwe utility for proper JWE format detection
+
 ## 7.0.2
 
 ### Patch Changes

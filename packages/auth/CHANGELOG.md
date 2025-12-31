@@ -1,5 +1,11 @@
 # @nest-boot/auth
 
+## 7.9.0
+
+### Minor Changes
+
+- 6d45c18: feat(auth): add secret validation with entropy check
+
 ## 7.8.0
 
 ### Minor Changes
