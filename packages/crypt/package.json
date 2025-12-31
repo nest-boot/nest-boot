@@ -26,6 +26,9 @@
     "test": "jest",
     "test:cov": "jest --coverage"
   },
+  "dependencies": {
+    "jose": "^5.10.0"
+  },
   "devDependencies": {
     "@nest-boot/eslint-config": "workspace:^",
     "@nest-boot/eslint-plugin": "workspace:^",

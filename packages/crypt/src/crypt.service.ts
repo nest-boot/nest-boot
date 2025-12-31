@@ -1,138 +1,123 @@
-import { Inject, Injectable, Optional } from "@nestjs/common";
-import {
-  createCipheriv,
-  createDecipheriv,
-  type Encoding,
-  randomBytes,
-  scrypt,
-} from "crypto";
-import { promisify } from "util";
+import { compactDecrypt, CompactEncrypt } from "jose";
 
-import { MODULE_OPTIONS_TOKEN } from "./crypt.module-definition";
-import { CryptModuleOptions } from "./crypt-module-options.interface";
+import { deriveKey } from "./utils/derive-key";
 
 /**
- * Service that provides encryption and decryption functionality using AES-256-GCM algorithm.
+ * Service that provides encryption and decryption functionality using JWE (JSON Web Encryption).
+ *
+ * Uses HKDF to derive a 32-byte key from the secret, then A256GCMKW for key management
+ * and A256GCM for content encryption. Accepts secrets of any length.
  *
  * @example
  * ```typescript
  * import { CryptService } from '@nest-boot/crypt';
  *
- * @Injectable()
- * export class MyService {
- *   constructor(private readonly cryptService: CryptService) {}
+ * // Initialize at application startup for static usage
+ * CryptService.init(process.env.CRYPT_SECRET);
  *
- *   async encryptData(data: string): Promise<string> {
- *     return this.cryptService.encrypt(data);
- *   }
- *
- *   async decryptData(encrypted: string): Promise<string> {
- *     return this.cryptService.decrypt(encrypted);
- *   }
- * }
+ * // Use static methods
+ * const encrypted = await CryptService.encrypt(data);
+ * const decrypted = await CryptService.decrypt(encrypted);
  * ```
  */
-@Injectable()
 export class CryptService {
-  readonly #algorithm = "aes-256-gcm";
+  private static _instance?: CryptService;
 
-  readonly #encoding: Encoding = "base64";
+  /**
+   * Gets the static CryptService instance.
+   * @throws Error if CryptService has not been initialized via `init()`
+   * @returns The CryptService instance
+   */
+  static get instance(): CryptService {
+    if (!this._instance) {
+      throw new Error("CryptService not initialized");
+    }
 
-  readonly #keyByteLength: number = 32;
+    return this._instance;
+  }
 
-  readonly #saltByteLength: number = 16;
+  /**
+   * Initializes the static CryptService instance with the given secret.
+   * Call this method at application startup to configure the default secret.
+   *
+   * @param secret - The secret key to use for encryption/decryption
+   *
+   * @example
+   * ```typescript
+   * // In your application bootstrap
+   * CryptService.init(process.env.CRYPT_SECRET);
+   * ```
+   */
+  static init(secret: string): void {
+    this._instance = new CryptService(secret);
+  }
 
-  readonly #viByteLength: number = 16;
+  /**
+   * Encrypts a string value using the static instance.
+   * @param value - The plaintext string to encrypt
+   * @returns A JWE compact serialization string
+   * @throws Error if CryptService has not been initialized via `init()`
+   */
+  static encrypt(value: string): Promise<string> {
+    return this.instance.encrypt(value);
+  }
 
-  readonly #secret: string;
+  /**
+   * Decrypts a JWE string using the static instance.
+   * @param value - The JWE compact serialization string to decrypt
+   * @returns The decrypted plaintext string
+   * @throws Error if CryptService has not been initialized via `init()`
+   */
+  static decrypt(value: string): Promise<string> {
+    return this.instance.decrypt(value);
+  }
+
+  private readonly secret: string;
+  private derivedKeyPromise?: Promise<Uint8Array>;
 
   /**
    * Creates an instance of CryptService.
-   * @param options - Configuration options for the crypt service
-   * @throws Error if no secret is provided via options or environment variables
+   * @param secret - The secret key to use for encryption/decryption
    */
-  constructor(
-    @Optional()
-    @Inject(MODULE_OPTIONS_TOKEN)
-    options: CryptModuleOptions = {},
-  ) {
-    const secret =
-      options.secret ?? process.env.CRYPT_SECRET ?? process.env.APP_SECRET;
-
-    if (!secret) {
-      throw new Error(
-        "Crypt secret is missing. Set CRYPT_SECRET or APP_SECRET or pass a secret option.",
-      );
-    }
-
-    this.#secret = secret;
+  constructor(secret: string) {
+    this.secret = secret;
   }
 
   /**
-   * Encrypts a string value using AES-256-GCM algorithm.
+   * Gets or creates the derived key asynchronously.
+   */
+  private getDerivedKey(): Promise<Uint8Array> {
+    return (this.derivedKeyPromise ??= deriveKey(this.secret));
+  }
+
+  /**
+   * Encrypts a string value using JWE with A256GCMKW and A256GCM.
+   * The secret is first derived using HKDF-SHA256.
    * @param value - The plaintext string to encrypt
-   * @param secret - Optional secret key to use instead of the default
-   * @returns A base64-encoded encrypted string containing IV, auth tag, data, and salt
+   * @returns A JWE compact serialization string
    */
-  async encrypt(value: string, secret?: string): Promise<string> {
-    const { key, salt } = await this.#getKeyAndSalt(secret ?? this.#secret);
+  async encrypt(value: string): Promise<string> {
+    const key = await this.getDerivedKey();
 
-    const iv = randomBytes(this.#viByteLength);
-
-    const cipher = createCipheriv(this.#algorithm, key, iv);
-
-    const data = Buffer.concat([cipher.update(value), cipher.final()]);
-    const tag = cipher.getAuthTag();
-
-    return Buffer.from(
-      JSON.stringify({
-        iv: iv.toString(this.#encoding),
-        tag: tag.toString(this.#encoding),
-        data: data.toString(this.#encoding),
-        salt: salt.toString(this.#encoding),
-      }),
-    ).toString(this.#encoding);
+    return await new CompactEncrypt(new TextEncoder().encode(value))
+      .setProtectedHeader({ alg: "A256GCMKW", enc: "A256GCM" })
+      .encrypt(key);
   }
 
   /**
-   * Decrypts an encrypted string value.
-   * @param value - The base64-encoded encrypted string to decrypt
-   * @param secret - Optional secret key to use instead of the default
+   * Decrypts a JWE compact serialization string.
+   * The secret is first derived using HKDF-SHA256.
+   * @param value - The JWE string to decrypt
    * @returns The decrypted plaintext string
    */
-  async decrypt(value: string, secret?: string): Promise<string> {
-    const payload: { iv: string; tag: string; data: string; salt: string } =
-      JSON.parse(Buffer.from(value, this.#encoding).toString("utf8"));
+  async decrypt(value: string): Promise<string> {
+    const key = await this.getDerivedKey();
 
-    const key = (await promisify(scrypt)(
-      secret ?? this.#secret,
-      Buffer.from(payload.salt, this.#encoding),
-      this.#keyByteLength,
-    )) as Buffer;
+    const { plaintext } = await compactDecrypt(value, key, {
+      keyManagementAlgorithms: ["A256GCMKW"],
+      contentEncryptionAlgorithms: ["A256GCM"],
+    });
 
-    const iv = Buffer.from(payload.iv, this.#encoding);
-    const tag = Buffer.from(payload.tag, this.#encoding);
-    const data = Buffer.from(payload.data, this.#encoding);
-
-    const decipher = createDecipheriv(this.#algorithm, key, iv);
-
-    decipher.setAuthTag(tag);
-
-    return Buffer.concat([decipher.update(data), decipher.final()]).toString(
-      "utf8",
-    );
-  }
-
-  async #getKeyAndSalt(secret: string): Promise<{ key: Buffer; salt: Buffer }> {
-    const salt = randomBytes(this.#saltByteLength);
-
-    return {
-      key: (await promisify(scrypt)(
-        secret,
-        salt,
-        this.#keyByteLength,
-      )) as Buffer,
-      salt,
-    };
+    return new TextDecoder().decode(plaintext);
   }
 }
