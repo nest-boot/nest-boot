@@ -31,8 +31,8 @@
     "zod": "^4.1.13"
   },
   "devDependencies": {
-    "@mikro-orm/core": "^6.5.8",
-    "@mikro-orm/knex": "^6.5.8",
+    "@mikro-orm/core": "^6.6.2",
+    "@mikro-orm/knex": "^6.6.2",
     "@nest-boot/eslint-config": "workspace:^",
     "@nest-boot/eslint-plugin": "workspace:^",
     "@nest-boot/graphql": "workspace:^",
