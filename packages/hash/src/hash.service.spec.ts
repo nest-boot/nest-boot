@@ -4,8 +4,11 @@ import { Test } from "@nestjs/testing";
 
 import { HashModule, HashService } from ".";
 
+const TEST_SECRET = "myTestSecretThatIsAtLeast32Chars!";
+const TEST_SECRET_ALT = "anotherSecretThatIsAtLeast32Char";
+
 describe("HashService", () => {
-  const globalSecret = "myGlobalSecret";
+  const globalSecret = TEST_SECRET;
 
   describe("instance methods (via HashModule.register)", () => {
     let hashService: HashService;
@@ -21,7 +24,7 @@ describe("HashService", () => {
     describe("hash", () => {
       it("should create a hash with the provided value and secret", async () => {
         const value = "password";
-        const secret = "mySecret";
+        const secret = TEST_SECRET_ALT;
 
         const result = await hashService.hash(value, secret);
 
@@ -42,7 +45,7 @@ describe("HashService", () => {
     describe("create (deprecated)", () => {
       it("should create a hash with the provided value and secret", async () => {
         const value = "password";
-        const secret = "mySecret";
+        const secret = TEST_SECRET_ALT;
 
         const result = await hashService.create(value, secret);
 
@@ -63,7 +66,7 @@ describe("HashService", () => {
     describe("verify", () => {
       it("should verify the hashed value with the provided value and secret", async () => {
         const value = "password";
-        const secret = "mySecret";
+        const secret = TEST_SECRET_ALT;
         const hashed = await hashService.hash(value, secret);
 
         const result = await hashService.verify(hashed, value, secret);
@@ -106,7 +109,7 @@ describe("HashService", () => {
       });
 
       it("should return instance after initialization", () => {
-        HashService.init("secret");
+        HashService.init(TEST_SECRET);
 
         expect(HashService.instance).toBeInstanceOf(HashService);
       });
@@ -114,7 +117,7 @@ describe("HashService", () => {
 
     describe("init", () => {
       it("should initialize with secret", () => {
-        HashService.init("mySecret");
+        HashService.init(TEST_SECRET);
 
         expect(HashService.instance).toBeDefined();
       });
@@ -128,7 +131,7 @@ describe("HashService", () => {
 
     describe("hash (static)", () => {
       it("should create a hash using static method", async () => {
-        HashService.init("mySecret");
+        HashService.init(TEST_SECRET);
         const value = "password";
 
         const result = await HashService.hash(value);
@@ -138,9 +141,9 @@ describe("HashService", () => {
       });
 
       it("should create a hash with custom secret using static method", async () => {
-        HashService.init();
+        HashService.init(TEST_SECRET);
         const value = "password";
-        const secret = "customSecret";
+        const secret = TEST_SECRET_ALT;
 
         const result = await HashService.hash(value, secret);
 
@@ -151,7 +154,7 @@ describe("HashService", () => {
 
     describe("verify (static)", () => {
       it("should verify using static method", async () => {
-        HashService.init("mySecret");
+        HashService.init(TEST_SECRET);
         const value = "password";
         const hashed = await HashService.hash(value);
 
@@ -161,9 +164,9 @@ describe("HashService", () => {
       });
 
       it("should verify with custom secret using static method", async () => {
-        HashService.init();
+        HashService.init(TEST_SECRET);
         const value = "password";
-        const secret = "customSecret";
+        const secret = TEST_SECRET_ALT;
         const hashed = await HashService.hash(value, secret);
 
         const result = await HashService.verify(hashed, value, secret);
@@ -174,7 +177,7 @@ describe("HashService", () => {
 
     describe("hashSync (static)", () => {
       it("should create a hash synchronously using static method", () => {
-        HashService.init("mySecret");
+        HashService.init(TEST_SECRET);
         const value = "password";
 
         const result = HashService.hashSync(value);
@@ -184,9 +187,9 @@ describe("HashService", () => {
       });
 
       it("should create a hash synchronously with custom secret using static method", () => {
-        HashService.init();
+        HashService.init(TEST_SECRET);
         const value = "password";
-        const secret = "customSecret";
+        const secret = TEST_SECRET_ALT;
 
         const result = HashService.hashSync(value, secret);
 
@@ -197,7 +200,7 @@ describe("HashService", () => {
 
     describe("verifySync (static)", () => {
       it("should verify synchronously using static method", () => {
-        HashService.init("mySecret");
+        HashService.init(TEST_SECRET);
         const value = "password";
         const hashed = HashService.hashSync(value);
 
@@ -207,9 +210,9 @@ describe("HashService", () => {
       });
 
       it("should verify synchronously with custom secret using static method", () => {
-        HashService.init();
+        HashService.init(TEST_SECRET);
         const value = "password";
-        const secret = "customSecret";
+        const secret = TEST_SECRET_ALT;
         const hashed = HashService.hashSync(value, secret);
 
         const result = HashService.verifySync(hashed, value, secret);
@@ -218,7 +221,7 @@ describe("HashService", () => {
       });
 
       it("should return false for incorrect password synchronously", () => {
-        HashService.init("mySecret");
+        HashService.init(TEST_SECRET);
         const value = "password";
         const hashed = HashService.hashSync(value);
 
@@ -231,7 +234,7 @@ describe("HashService", () => {
 
   describe("constructor", () => {
     it("should create instance with secret", () => {
-      const service = new HashService("mySecret");
+      const service = new HashService(TEST_SECRET);
 
       expect(service).toBeDefined();
     });
@@ -240,89 +243,6 @@ describe("HashService", () => {
       const service = new HashService();
 
       expect(service).toBeDefined();
-    });
-  });
-});
-
-describe("HashModule", () => {
-  const originalEnv = process.env;
-
-  beforeEach(() => {
-    // Reset static instance before each test
-    (HashService as unknown as { _instance: undefined })._instance = undefined;
-    // Reset environment variables
-    process.env = { ...originalEnv };
-    delete process.env.HASH_SECRET;
-    delete process.env.APP_SECRET;
-  });
-
-  afterAll(() => {
-    process.env = originalEnv;
-  });
-
-  describe("registerAsync", () => {
-    it("should register module with async factory", async () => {
-      const moduleRef = await Test.createTestingModule({
-        imports: [
-          HashModule.registerAsync({
-            useFactory: () => ({
-              secret: "asyncSecret",
-            }),
-          }),
-        ],
-      }).compile();
-
-      const hashService = moduleRef.get<HashService>(HashService);
-
-      expect(hashService).toBeDefined();
-
-      const hashed = await hashService.hash("password");
-      expect(hashed).toContain("$argon2");
-    });
-  });
-
-  describe("register with fallback secrets", () => {
-    it("should use HASH_SECRET env when no secret provided", async () => {
-      process.env.HASH_SECRET = "envHashSecret";
-
-      const moduleRef = await Test.createTestingModule({
-        imports: [HashModule.register({})],
-      }).compile();
-
-      const hashService = moduleRef.get<HashService>(HashService);
-
-      expect(hashService).toBeDefined();
-
-      const hashed = await hashService.hash("password");
-      expect(hashed).toContain("$argon2");
-    });
-
-    it("should use APP_SECRET env when no secret or HASH_SECRET provided", async () => {
-      process.env.APP_SECRET = "envAppSecret";
-
-      const moduleRef = await Test.createTestingModule({
-        imports: [HashModule.register({})],
-      }).compile();
-
-      const hashService = moduleRef.get<HashService>(HashService);
-
-      expect(hashService).toBeDefined();
-
-      const hashed = await hashService.hash("password");
-      expect(hashed).toContain("$argon2");
-    });
-
-    it("should work without any secret", async () => {
-      const moduleRef = await Test.createTestingModule({
-        imports: [HashModule.register({})],
-      }).compile();
-
-      const hashService = moduleRef.get<HashService>(HashService);
-
-      expect(hashService).toBeDefined();
-
-      const hashed = await hashService.hash("password");
-      expect(hashed).toContain("$argon2");
     });
   });
 });

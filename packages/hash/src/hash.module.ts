@@ -8,6 +8,7 @@ import {
 } from "./hash.module-definition";
 import { HashService } from "./hash.service";
 import { HashModuleOptions } from "./hash-module-options.interface";
+import { estimateEntropy } from "./utils/estimate-entropy";
 
 /**
  * Module that provides password hashing services using Argon2.
@@ -19,12 +20,16 @@ import { HashModuleOptions } from "./hash-module-options.interface";
  * @Module({
  *   imports: [
  *     HashModule.register({
- *       secret: 'your-secret-key',
- *       isGlobal: true,
+ *       secret: process.env.HASH_SECRET
  *     }),
  *   ],
  * })
  * export class AppModule {}
+ * ```
+ *
+ * Generate a secure secret:
+ * ```bash
+ * node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
  * ```
  */
 @Global()
@@ -34,9 +39,37 @@ import { HashModuleOptions } from "./hash-module-options.interface";
       provide: HashService,
       inject: [{ token: MODULE_OPTIONS_TOKEN, optional: true }],
       useFactory: (options: HashModuleOptions) => {
-        HashService.init(
-          options.secret ?? process.env.HASH_SECRET ?? process.env.APP_SECRET,
-        );
+        const secret =
+          options.secret ?? process.env.HASH_SECRET ?? process.env.APP_SECRET;
+
+        if (!secret) {
+          throw new Error(
+            "Hash secret is required.\n" +
+              "Set HASH_SECRET or APP_SECRET environment variable, or pass a secret option.\n" +
+              "Generate a secure secret with:\n" +
+              "  node -e \"console.log(require('crypto').randomBytes(32).toString('base64url'))\"",
+          );
+        }
+
+        if (secret.length < 32) {
+          throw new Error(
+            "Hash secret must be at least 32 characters long.\n" +
+              "Set HASH_SECRET or APP_SECRET environment variable, or pass a secret option.\n" +
+              "Generate a secure secret with:\n" +
+              "  node -e \"console.log(require('crypto').randomBytes(32).toString('base64url'))\"",
+          );
+        }
+
+        if (estimateEntropy(secret) < 120) {
+          throw new Error(
+            "Hash secret appears low-entropy.\n" +
+              "Use a randomly generated secret for production.\n" +
+              "Generate a secure secret with:\n" +
+              "  node -e \"console.log(require('crypto').randomBytes(32).toString('base64url'))\"",
+          );
+        }
+
+        HashService.init(secret);
 
         return HashService.instance;
       },
