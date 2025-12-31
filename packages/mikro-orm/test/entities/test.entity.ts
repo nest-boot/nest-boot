@@ -12,7 +12,7 @@ export class TestEntity {
     data.updatedAt !== void 0 && (this.updatedAt = data.updatedAt);
   }
 
-  @PrimaryKey()
+  @PrimaryKey({ type: t.integer })
   id: number;
 
   @Property({ type: t.datetime })

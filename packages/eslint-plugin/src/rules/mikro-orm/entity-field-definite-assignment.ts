@@ -78,6 +78,8 @@ export default createRule({
               "OneToMany",
               "ManyToOne",
               "ManyToMany",
+              "EncryptedProperty",
+              "HashedProperty",
             ])
           )
             return;

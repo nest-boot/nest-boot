@@ -112,10 +112,11 @@ export default createRule<
     const isValidStringType = (typeConfig: string | null): boolean => {
       if (!typeConfig) return false;
 
-      // 接受 t.string, t.text, t.decimal, t.bigint
+      // 接受 t.string, t.text, t.uuid, t.decimal, t.bigint
       if (
         typeConfig === "t.string" ||
         typeConfig === "t.text" ||
+        typeConfig === "t.uuid" ||
         typeConfig === "t.decimal" ||
         typeConfig === "t.bigint"
       ) {
@@ -572,6 +573,7 @@ export default createRule<
     const buildPropertyDecorator = (
       info: TypeInfo,
       otherProps: { key: string; value: string }[] = [],
+      decoratorName = "Property",
     ): string => {
       const options: string[] = [];
 
@@ -590,10 +592,10 @@ export default createRule<
       }
 
       if (options.length === 0) {
-        return "@Property()";
+        return `@${decoratorName}()`;
       }
 
-      return `@Property({ ${options.join(", ")} })`;
+      return `@${decoratorName}({ ${options.join(", ")} })`;
     };
 
     const addPropertyDecorator = (
@@ -622,11 +624,18 @@ export default createRule<
         nullable: boolean;
         otherProps: { key: string; value: string }[];
       },
+      decoratorName = "Property",
     ) => {
       const fixes: CustomFix[] = [];
 
       // 如果当前已经有有效的配置，保留它而不是替换成默认值
       const finalInfo = { ...info };
+
+      // PrimaryKey 的 number 类型默认使用 t.integer
+      if (decoratorName === "PrimaryKey" && finalInfo.propertyType === "t.float") {
+        finalInfo.propertyType = "t.integer";
+      }
+
       if (
         info.propertyType === "t.string" &&
         isValidStringType(currentConfig.type)
@@ -634,7 +643,7 @@ export default createRule<
         // 保留有效的 string 类型配置
         finalInfo.propertyType = currentConfig.type;
       } else if (
-        info.propertyType === "t.float" &&
+        (info.propertyType === "t.float" || info.propertyType === "t.integer") &&
         isValidNumberType(currentConfig.type)
       ) {
         // 保留有效的 number 类型配置
@@ -658,6 +667,7 @@ export default createRule<
       const newDecoratorText = buildPropertyDecorator(
         finalInfo,
         currentConfig.otherProps,
+        decoratorName,
       );
 
       fixes.push({
@@ -855,7 +865,7 @@ export default createRule<
         node.body.body.forEach((member: TSESTree.ClassElement) => {
           if (member.type !== AST_NODE_TYPES.PropertyDefinition) return;
 
-          // 检查关系装饰器（PrimaryKey, OneToOne, OneToMany, ManyToOne, ManyToMany）
+          // 检查关系装饰器（OneToOne, OneToMany, ManyToOne, ManyToMany）
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           const hasRelationDecorator = member.decorators?.some(
             (decorator: TSESTree.Decorator) => {
@@ -865,7 +875,6 @@ export default createRule<
               ) {
                 const decoratorName = decorator.expression.callee.name;
                 return [
-                  "PrimaryKey",
                   "OneToOne",
                   "OneToMany",
                   "ManyToOne",
@@ -878,6 +887,43 @@ export default createRule<
 
           // 如果有关系装饰器，跳过检查（这些属性不需要 @Property 装饰器）
           if (hasRelationDecorator) return;
+
+          // 类 Property 装饰器列表（需要类型检查的装饰器）
+          const propertyLikeDecorators = [
+            "Property",
+            "PrimaryKey",
+            "EncryptedProperty",
+            "HashedProperty",
+          ];
+
+          // 查找类 Property 装饰器
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+          const propertyLikeDecorator = member.decorators?.find(
+            (decorator: TSESTree.Decorator) => {
+              if (
+                decorator.expression.type === AST_NODE_TYPES.CallExpression &&
+                decorator.expression.callee.type === AST_NODE_TYPES.Identifier
+              ) {
+                return propertyLikeDecorators.includes(
+                  decorator.expression.callee.name,
+                );
+              }
+              return false;
+            },
+          );
+
+          // 获取装饰器名称
+          const getDecoratorName = (
+            decorator: TSESTree.Decorator,
+          ): string | null => {
+            if (
+              decorator.expression.type === AST_NODE_TYPES.CallExpression &&
+              decorator.expression.callee.type === AST_NODE_TYPES.Identifier
+            ) {
+              return decorator.expression.callee.name;
+            }
+            return null;
+          };
 
           // 检查 @Enum 装饰器
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -892,17 +938,11 @@ export default createRule<
             },
           );
 
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-          const propertyDecorator = member.decorators?.find(
-            (decorator: TSESTree.Decorator) => {
-              return (
-                decorator.expression.type === AST_NODE_TYPES.CallExpression &&
-                decorator.expression.callee.type ===
-                  AST_NODE_TYPES.Identifier &&
-                decorator.expression.callee.name === "Property"
-              );
-            },
-          );
+          // 使用类 Property 装饰器
+          const propertyDecorator = propertyLikeDecorator;
+          const currentDecoratorName = propertyDecorator
+            ? getDecoratorName(propertyDecorator)
+            : null;
 
           const typeInfo = computeTypeInfo(member);
 
@@ -1065,9 +1105,14 @@ export default createRule<
             return;
           }
 
-          // 检查现有 @Property 装饰器是否与类型匹配
+          // 检查现有装饰器是否与类型匹配
           const currentConfig = parsePropertyDecorator(propertyDecorator);
-          const expectedType = typeInfo.propertyType;
+          let expectedType = typeInfo.propertyType;
+
+          // PrimaryKey 的 number 类型期望 t.integer
+          if (currentDecoratorName === "PrimaryKey" && expectedType === "t.float") {
+            expectedType = "t.integer";
+          }
 
           let needReport = false;
 
@@ -1080,7 +1125,7 @@ export default createRule<
             ) {
               // 当前配置是有效的 string 类型配置，不需要修改
             } else if (
-              expectedType === "t.float" &&
+              (expectedType === "t.float" || expectedType === "t.integer") &&
               isValidNumberType(currentConfig.type)
             ) {
               // 当前配置是有效的 number 类型配置，不需要修改
@@ -1126,6 +1171,7 @@ export default createRule<
                 propertyDecorator,
                 typeInfo,
                 currentConfig,
+                currentDecoratorName ?? "Property",
               );
               return applyFixes(fixer, fixes);
             },

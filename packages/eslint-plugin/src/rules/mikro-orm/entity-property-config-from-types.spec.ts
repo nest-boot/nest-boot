@@ -43,13 +43,13 @@ tester.run("entity-property-config-from-types", rule, {
         author!: User;
       }
     `,
-    // PrimaryKey 不需要 @Property
+    // PrimaryKey 需要 type 配置
     /* typescript */ `
-      import { Entity, PrimaryKey } from "@mikro-orm/core";
+      import { Entity, PrimaryKey, t } from "@mikro-orm/core";
 
       @Entity()
       class User {
-        @PrimaryKey()
+        @PrimaryKey({ type: t.integer })
         id!: number;
       }
     `,
