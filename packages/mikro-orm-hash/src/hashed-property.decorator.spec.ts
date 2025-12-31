@@ -11,50 +11,50 @@ import {
 } from "@mikro-orm/better-sqlite";
 import { HashService } from "@nest-boot/hash";
 
-import { HashProperty } from ".";
+import { HashedProperty } from ".";
 
 @Entity()
 class User {
-  @PrimaryKey()
+  @PrimaryKey({ type: t.integer })
   id!: number;
 
   @Property({ type: t.string })
-  @HashProperty()
+  @HashedProperty()
   password!: string;
 }
 
 @Entity()
 class UserWithMultipleHashFields {
-  @PrimaryKey()
+  @PrimaryKey({ type: t.integer })
   id!: number;
 
   @Property({ type: t.string })
-  @HashProperty()
+  @HashedProperty()
   password!: string;
 
   @Property({ type: t.string })
-  @HashProperty()
+  @HashedProperty()
   apiKey!: string;
 }
 
 @Entity()
 class ParentEntity {
-  @PrimaryKey()
+  @PrimaryKey({ type: t.integer })
   id!: number;
 
   @Property({ type: t.string })
-  @HashProperty()
+  @HashedProperty()
   parentPassword!: string;
 }
 
 @Entity()
 class ChildEntity extends ParentEntity {
   @Property({ type: t.string })
-  @HashProperty()
+  @HashedProperty()
   childPassword!: string;
 }
 
-describe("HashProperty", () => {
+describe("HashedProperty", () => {
   let orm: MikroORM;
 
   beforeAll(async () => {
@@ -81,9 +81,9 @@ describe("HashProperty", () => {
       expect(() => {
         // Manually apply the decorator to a symbol property
         const target = {};
-        HashProperty()(target, symbolKey);
+        HashedProperty()(target, symbolKey);
       }).toThrow(
-        "HashProperty decorator can only be used on string properties.",
+        "HashedProperty decorator can only be used on string properties.",
       );
     });
 
@@ -91,12 +91,12 @@ describe("HashProperty", () => {
       // This tests the deduplication logic at lines 45-48
       @Entity()
       class DuplicateDecoratorEntity {
-        @PrimaryKey()
+        @PrimaryKey({ type: t.integer })
         id!: number;
 
         @Property({ type: t.string })
-        @HashProperty()
-        @HashProperty() // Applied twice
+        @HashedProperty()
+        @HashedProperty() // Applied twice
         password!: string;
       }
 
@@ -124,11 +124,11 @@ describe("HashProperty", () => {
       // Verify that custom options are passed through while hidden and lazy are enforced
       @Entity()
       class CustomOptionsEntity {
-        @PrimaryKey()
+        @PrimaryKey({ type: t.integer })
         id!: number;
 
         @Property({ type: t.string })
-        @HashProperty({ nullable: true })
+        @HashedProperty({ nullable: true })
         optionalPassword!: string;
       }
 
@@ -233,6 +233,31 @@ describe("HashProperty", () => {
   });
 
   describe("edge cases", () => {
+    it("should not rehash if value is already an Argon2 hash", async () => {
+      const em = orm.em.fork();
+
+      const user = em.create(User, { password: "initial" });
+      em.persist(user);
+      await em.flush();
+
+      const initialHash = user.password;
+      expect(initialHash).toContain("$argon2");
+
+      // Simulate calling the hook with an already hashed value
+      const hashPropertiesMethod = (
+        user as unknown as {
+          __hashProperties__: (args: EventArgs<User>) => Promise<void>;
+        }
+      ).__hashProperties__;
+
+      await hashPropertiesMethod.call(user, {
+        changeSet: { payload: { password: initialHash } },
+      } as unknown as EventArgs<User>);
+
+      // Password should remain unchanged since it was already a hash
+      expect(user.password).toBe(initialHash);
+    });
+
     it("should skip hashing for non-string values in payload", async () => {
       const em = orm.em.fork();
 
