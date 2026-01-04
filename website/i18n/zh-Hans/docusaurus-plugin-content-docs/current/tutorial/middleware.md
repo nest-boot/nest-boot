@@ -1,8 +1,8 @@
 ---
-sidebar_position: 3
+sidebar_position: 4
 ---
 
-# Middleware 模块
+# 中间件
 
 `@nest-boot/middleware` 模块提供了一种集中且灵活的方式来管理 NestJS 应用中的中间件注册。它支持依赖排序、路由排除和全局配置。
 

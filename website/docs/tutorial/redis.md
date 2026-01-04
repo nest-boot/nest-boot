@@ -1,8 +1,8 @@
 ---
-sidebar_position: 4
+sidebar_position: 5
 ---
 
-# Redis Module
+# Redis
 
 The `@nest-boot/redis` module provides Redis connection management using [ioredis](https://github.com/redis/ioredis). It supports automatic configuration from environment variables and graceful shutdown handling.
 

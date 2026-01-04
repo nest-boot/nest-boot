@@ -2,7 +2,7 @@
 sidebar_position: 1
 ---
 
-# Hash Module
+# Hash
 
 The `@nest-boot/hash` module provides secure password hashing and verification using the Argon2 algorithm, which is considered one of the most secure hashing algorithms available.
 

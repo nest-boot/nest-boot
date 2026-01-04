@@ -2,7 +2,7 @@
 sidebar_position: 1
 ---
 
-# Hash 模块
+# 哈希
 
 `@nest-boot/hash` 模块提供使用 Argon2 算法的安全密码哈希和验证功能，Argon2 被认为是目前最安全的哈希算法之一。
 

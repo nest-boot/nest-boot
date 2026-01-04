@@ -1,8 +1,8 @@
 ---
-sidebar_position: 5
+sidebar_position: 6
 ---
 
-# Request Context 模块
+# 请求上下文
 
 `@nest-boot/request-context` 模块使用 Node.js AsyncLocalStorage 提供请求作用域存储。它允许你在整个请求生命周期中存储和访问数据，而无需通过每个函数调用传递。
 

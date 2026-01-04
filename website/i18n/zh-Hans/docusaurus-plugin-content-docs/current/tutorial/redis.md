@@ -1,8 +1,8 @@
 ---
-sidebar_position: 4
+sidebar_position: 5
 ---
 
-# Redis 模块
+# Redis
 
 `@nest-boot/redis` 模块使用 [ioredis](https://github.com/redis/ioredis) 提供 Redis 连接管理。它支持从环境变量自动配置和优雅关闭处理。
 

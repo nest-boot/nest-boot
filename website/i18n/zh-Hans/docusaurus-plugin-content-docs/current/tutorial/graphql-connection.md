@@ -1,8 +1,8 @@
 ---
-sidebar_position: 6
+sidebar_position: 7
 ---
 
-# GraphQL Connection 模块
+# GraphQL 分页
 
 `@nest-boot/graphql-connection` 模块为 GraphQL API 提供基于游标的分页功能，遵循 [Relay Connection 规范](https://relay.dev/graphql/connections.htm)。它与 MikroORM 集成，生成类型安全的分页查询，支持过滤、排序和搜索功能。
 

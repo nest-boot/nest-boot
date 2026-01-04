@@ -1,8 +1,8 @@
 ---
-sidebar_position: 5
+sidebar_position: 6
 ---
 
-# Request Context Module
+# Request Context
 
 The `@nest-boot/request-context` module provides request-scoped storage using Node.js AsyncLocalStorage. It allows you to store and access data throughout the lifecycle of a request without passing it through every function call.
 

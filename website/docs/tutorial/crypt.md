@@ -2,7 +2,7 @@
 sidebar_position: 2
 ---
 
-# Crypt Module
+# Crypt
 
 The `@nest-boot/crypt` module provides encryption and decryption functionality using the AES-256-GCM algorithm, which provides both confidentiality and authenticity guarantees.
 

@@ -1,8 +1,8 @@
 ---
-sidebar_position: 3
+sidebar_position: 4
 ---
 
-# Middleware Module
+# Middleware
 
 The `@nest-boot/middleware` module provides a centralized and flexible way to manage middleware registration in NestJS applications. It supports dependency ordering, route exclusions, and global configuration.
 

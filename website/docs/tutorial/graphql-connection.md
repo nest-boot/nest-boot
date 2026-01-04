@@ -1,8 +1,8 @@
 ---
-sidebar_position: 6
+sidebar_position: 7
 ---
 
-# GraphQL Connection Module
+# GraphQL Connection
 
 The `@nest-boot/graphql-connection` module provides cursor-based pagination for GraphQL APIs following the [Relay Connection specification](https://relay.dev/graphql/connections.htm). It integrates with MikroORM to generate type-safe, paginated queries with filtering, sorting, and search capabilities.
 

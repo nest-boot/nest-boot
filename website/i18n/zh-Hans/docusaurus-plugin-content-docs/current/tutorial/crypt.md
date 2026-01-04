@@ -2,7 +2,7 @@
 sidebar_position: 2
 ---
 
-# Crypt 模块
+# 加密
 
 `@nest-boot/crypt` 模块提供使用 AES-256-GCM 算法的加密和解密功能，该算法同时提供机密性和真实性保证。
 
