@@ -6,27 +6,6 @@ import {
 } from "@mikro-orm/core";
 import { TsMorphMetadataProvider } from "@mikro-orm/reflection";
 
-const baseConfig: Options = {
-  colors: false,
-  debug: !!(process.env.DB_DEBUG ?? process.env.DATABASE_DEBUG),
-  dataloader: DataloaderType.ALL,
-  timezone: "UTC",
-  metadataProvider: TsMorphMetadataProvider,
-  entities: ["dist/**/*.entity.js"],
-  entitiesTs: ["src/**/*.entity.ts"],
-  migrations: {
-    snapshot: false,
-    path: "dist/database/migrations",
-    pathTs: "src/database/migrations",
-  },
-  seeder: {
-    path: "dist/database/seeders",
-    pathTs: "src/database/seeders",
-    defaultSeeder: "DatabaseSeeder",
-    fileName: (className: string) => className,
-  },
-};
-
 async function getDriver(
   type?: string,
 ): Promise<(new (config: Configuration) => IDatabaseDriver) | undefined> {
@@ -51,6 +30,27 @@ export async function loadConfigFromEnv(): Promise<
       }
   )
 > {
+  const baseConfig: Options = {
+    colors: false,
+    debug: !!(process.env.DB_DEBUG ?? process.env.DATABASE_DEBUG),
+    dataloader: DataloaderType.ALL,
+    timezone: "UTC",
+    metadataProvider: TsMorphMetadataProvider,
+    entities: ["dist/**/*.entity.js"],
+    entitiesTs: ["src/**/*.entity.ts"],
+    migrations: {
+      snapshot: false,
+      path: "dist/database/migrations",
+      pathTs: "src/database/migrations",
+    },
+    seeder: {
+      path: "dist/database/seeders",
+      pathTs: "src/database/seeders",
+      defaultSeeder: "DatabaseSeeder",
+      fileName: (className: string) => className,
+    },
+  };
+
   const dbUrl = process.env.DB_URL ?? process.env.DATABASE_URL;
 
   if (dbUrl) {
