@@ -1,5 +1,11 @@
 # @nest-boot/mikro-orm
 
+## 7.3.1
+
+### Patch Changes
+
+- 8be49e8: fix(mikro-orm): move base configuration inside loadConfigFromEnv function
+
 ## 7.3.0
 
 ### Minor Changes
