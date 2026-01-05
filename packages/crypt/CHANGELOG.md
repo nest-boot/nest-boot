@@ -1,5 +1,11 @@
 # @nest-boot/crypt
 
+## 7.1.1
+
+### Patch Changes
+
+- 0ce6d1e: fix: upgrade to jose@6 and update Node.js requirements
+
 ## 7.1.0
 
 ### Minor Changes

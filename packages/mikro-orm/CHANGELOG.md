@@ -1,5 +1,11 @@
 # @nest-boot/mikro-orm
 
+## 7.3.0
+
+### Minor Changes
+
+- d0b5699: feat(mikro-orm): add logging support and update configuration options
+
 ## 7.2.4
 
 ### Patch Changes
