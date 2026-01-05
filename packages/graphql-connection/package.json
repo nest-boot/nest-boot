@@ -26,8 +26,8 @@
   "dependencies": {
     "inflection": "^3.0.2",
     "lodash": "^4.17.21",
-    "mikro-orm-filter-query-schema": "^1.1.0",
-    "search-syntax": "^3.6.0",
+    "mikro-orm-filter-query-schema": "^1.2.0",
+    "search-syntax": "^3.7.0",
     "zod": "^4.1.13"
   },
   "devDependencies": {

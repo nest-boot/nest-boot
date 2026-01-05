@@ -258,6 +258,7 @@ export class ConnectionQueryBuilder<
             array: options.array,
             searchable: options.searchable,
             ...("fulltext" in options ? { fulltext: options.fulltext } : {}),
+            ...("prefix" in options ? { prefix: options.prefix } : {}),
           };
         }
       }
