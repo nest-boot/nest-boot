@@ -7,6 +7,8 @@ import {
 import { TsMorphMetadataProvider } from "@mikro-orm/reflection";
 
 const baseConfig: Options = {
+  colors: false,
+  debug: !!(process.env.DB_DEBUG ?? process.env.DATABASE_DEBUG),
   dataloader: DataloaderType.ALL,
   timezone: "UTC",
   metadataProvider: TsMorphMetadataProvider,

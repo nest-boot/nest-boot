@@ -4,7 +4,7 @@ import {
   RequestContext,
   RequestContextModule,
 } from "@nest-boot/request-context";
-import { Global, Module, OnModuleInit } from "@nestjs/common";
+import { Global, Logger, Module, OnModuleInit } from "@nestjs/common";
 
 import { MikroOrmModuleOptions } from "./interfaces/mikro-orm-module-options.interface";
 import {
@@ -20,16 +20,23 @@ import { loadConfigFromEnv } from "./utils/load-config-from-env.util";
     RequestContextModule,
     BaseMikroOrmModule.forRootAsync({
       inject: [MODULE_OPTIONS_TOKEN],
-      useFactory: async (options: MikroOrmModuleOptions) => ({
-        registerRequestContext: false,
-        context: () => {
-          if (RequestContext.isActive()) {
-            return RequestContext.get(EntityManager);
-          }
-        },
-        ...(await loadConfigFromEnv()),
-        ...options,
-      }),
+      useFactory: async (options: MikroOrmModuleOptions) => {
+        const logger = new Logger("MikroORM");
+
+        return {
+          registerRequestContext: false,
+          context: () => {
+            if (RequestContext.isActive()) {
+              return RequestContext.get(EntityManager);
+            }
+          },
+          logger: (msg) => {
+            logger.log(msg);
+          },
+          ...(await loadConfigFromEnv()),
+          ...options,
+        };
+      },
     }),
   ],
   providers: [
