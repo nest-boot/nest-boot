@@ -1,5 +1,11 @@
 # @nest-boot/graphql-connection
 
+## 7.7.0
+
+### Minor Changes
+
+- db0a4ba: feat(graphql-connection): support prefix search
+
 ## 7.6.3
 
 ### Patch Changes
