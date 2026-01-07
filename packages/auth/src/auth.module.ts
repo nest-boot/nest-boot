@@ -84,7 +84,7 @@ export class AuthModule extends ConfigurableModuleClass {
   ) {
     super();
 
-    const basePath = this.options.basePath ?? "/api/auth/{*any}";
+    const basePath = this.options.basePath ?? "/api/auth/";
 
     this.middlewareManager.globalExclude(basePath);
 
