@@ -1,5 +1,11 @@
 # @nest-boot/auth
 
+## 7.9.1
+
+### Patch Changes
+
+- 427ffc4: fix(auth): compatible with better-auth@^1.4.6
+
 ## 7.9.0
 
 ### Minor Changes
