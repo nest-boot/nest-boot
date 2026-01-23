@@ -38,9 +38,9 @@ import { estimateEntropy } from "./utils/estimate-entropy";
     {
       provide: HashService,
       inject: [{ token: MODULE_OPTIONS_TOKEN, optional: true }],
-      useFactory: (options: HashModuleOptions) => {
+      useFactory: (options?: HashModuleOptions) => {
         const secret =
-          options.secret ?? process.env.HASH_SECRET ?? process.env.APP_SECRET;
+          options?.secret ?? process.env.HASH_SECRET ?? process.env.APP_SECRET;
 
         if (!secret) {
           throw new Error(

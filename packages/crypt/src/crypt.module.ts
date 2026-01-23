@@ -40,9 +40,9 @@ import { estimateEntropy } from "./utils/estimate-entropy";
     {
       provide: CryptService,
       inject: [{ token: MODULE_OPTIONS_TOKEN, optional: true }],
-      useFactory: (options: CryptModuleOptions) => {
+      useFactory: (options?: CryptModuleOptions) => {
         const secret =
-          options.secret ?? process.env.CRYPT_SECRET ?? process.env.APP_SECRET;
+          options?.secret ?? process.env.CRYPT_SECRET ?? process.env.APP_SECRET;
 
         if (!secret) {
           throw new Error(
