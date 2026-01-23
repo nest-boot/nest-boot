@@ -1,5 +1,11 @@
 # @nest-boot/hash
 
+## 7.2.1
+
+### Patch Changes
+
+- 03dbd2f: fix: make options parameter optional in useFactory methods
+
 ## 7.2.0
 
 ### Minor Changes

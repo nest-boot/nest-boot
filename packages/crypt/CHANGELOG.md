@@ -1,5 +1,11 @@
 # @nest-boot/crypt
 
+## 7.1.2
+
+### Patch Changes
+
+- 03dbd2f: fix: make options parameter optional in useFactory methods
+
 ## 7.1.1
 
 ### Patch Changes
