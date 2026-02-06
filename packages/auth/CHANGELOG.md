@@ -1,5 +1,11 @@
 # @nest-boot/auth
 
+## 7.9.2
+
+### Patch Changes
+
+- 935d7fa: fix(auth): add account configuration to skip state cookie check
+
 ## 7.9.1
 
 ### Patch Changes
