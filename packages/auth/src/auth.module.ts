@@ -62,6 +62,9 @@ import { estimateEntropy } from "./utils/estimate-entropy";
         return betterAuth({
           baseURL: process.env.AUTH_URL ?? process.env.APP_URL,
           secret,
+          account: {
+            skipStateCookieCheck: true,
+          },
           ...options,
           database: mikroOrmAdapter({
             orm,
