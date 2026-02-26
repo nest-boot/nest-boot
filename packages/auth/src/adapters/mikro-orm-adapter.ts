@@ -12,6 +12,9 @@ import {
   BaseVerification,
 } from "../entities";
 
+/**
+ * Configuration for the MikroORM adapter.
+ */
 export interface MikroOrmAdapterConfig {
   /**
    * The MikroORM instance.
@@ -32,6 +35,12 @@ export interface MikroOrmAdapterConfig {
   debugLogs?: DBAdapterDebugLogOption;
 }
 
+/**
+ * Converts Better Auth where clause to MikroORM compatible query.
+ *
+ * @param where - The where clause from Better Auth.
+ * @returns The MikroORM query object.
+ */
 function convertWhereToMikroOrm(where: Required<Where>[]) {
   return where.map(({ field, operator, value }) => {
     switch (operator) {
@@ -117,6 +126,12 @@ function convertWhereToMikroOrm(where: Required<Where>[]) {
   });
 }
 
+/**
+ * Creates a Better Auth adapter for MikroORM.
+ *
+ * @param config - The adapter configuration.
+ * @returns The Better Auth adapter factory.
+ */
 export const mikroOrmAdapter = ({
   orm,
   entities,

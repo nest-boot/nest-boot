@@ -1,7 +1,7 @@
 {
   "name": "@nest-boot/graphql",
   "version": "7.1.2",
-  "description": "",
+  "description": "GraphQL integration for NestJS with additional utilities and decorators.",
   "author": {
     "name": "Xudong Huang",
     "email": "me@huangxudong.com",

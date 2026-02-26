@@ -3,6 +3,11 @@ import { SetMetadata } from "@nestjs/common";
 import { SCHEDULE_METADATA_KEY } from "./schedule.module-definition";
 import { type ScheduleOptions } from "./schedule-options.interface";
 
+/**
+ * Decorator to schedule a method execution.
+ *
+ * @param options - Scheduling options.
+ */
 export const Schedule =
   (options: ScheduleOptions) =>
   <T>(
@@ -17,6 +22,12 @@ export const Schedule =
     );
   };
 
+/**
+ * Decorator to schedule a method using a cron expression.
+ *
+ * @param value - The cron expression.
+ * @param options - Additional job options.
+ */
 export const Cron = (
   value: string,
   options?: Omit<ScheduleOptions, "type" | "value">,
@@ -27,6 +38,12 @@ export const Cron = (
     ...(options ?? {}),
   });
 
+/**
+ * Decorator to schedule a method using a time interval.
+ *
+ * @param value - The interval in milliseconds.
+ * @param options - Additional job options.
+ */
 export const Interval = (
   value: number | string,
   options?: Omit<ScheduleOptions, "type" | "value">,

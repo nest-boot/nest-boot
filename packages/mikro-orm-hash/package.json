@@ -1,7 +1,7 @@
 {
   "name": "@nest-boot/mikro-orm-hash",
   "version": "7.1.1",
-  "description": "",
+  "description": "Hashing decorator for MikroORM entities (e.g. for passwords).",
   "author": {
     "name": "Xudong Huang",
     "email": "me@huangxudong.com",

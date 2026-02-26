@@ -11,6 +11,9 @@ import {
 import { AuthRlsService } from "./auth-rls.service";
 import { AuthRlsModuleOptions } from "./auth-rls-module-options.interface";
 
+/**
+ * Module for enabling Row Level Security (RLS) with Authentication.
+ */
 @Global()
 @Module({
   imports: [MiddlewareModule],

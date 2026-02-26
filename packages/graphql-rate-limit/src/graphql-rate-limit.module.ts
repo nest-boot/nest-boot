@@ -15,6 +15,12 @@ import {
   GraphQLRateLimitOptions,
 } from "./interfaces";
 
+/**
+ * Module for GraphQL rate limiting using Redis and query complexity.
+ *
+ * It prevents abuse by limiting the complexity of GraphQL queries that a client can execute
+ * within a certain time window.
+ */
 @Global()
 @Module({
   imports: [

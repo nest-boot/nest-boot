@@ -27,6 +27,10 @@ import {
 } from "./logger.module-definition";
 import { LoggerModuleOptions } from "./logger-module-options.interface";
 
+/**
+ * Module that integrates Pino logger with NestJS.
+ * It provides request logging, context tracking via RequestContext, and a Logger service.
+ */
 @Global()
 @Module({
   imports: [RequestContextModule],
@@ -69,6 +73,10 @@ export class LoggerModule
     };
   }
 
+  /**
+   * Initializes the logger middleware.
+   * Attaches the logger to the RequestContext so it stays available throughout the request lifecycle.
+   */
   onModuleInit(): void {
     const logger = pino();
     const loggerMiddleware = pinoHttp(this.options);

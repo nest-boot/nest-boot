@@ -1,7 +1,7 @@
 {
   "name": "@nest-boot/logger",
   "version": "7.0.4",
-  "description": "",
+  "description": "High-performance logging module for NestJS based on Pino.",
   "author": {
     "name": "Xudong Huang",
     "email": "me@huangxudong.com",

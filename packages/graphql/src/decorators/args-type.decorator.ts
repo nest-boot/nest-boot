@@ -6,7 +6,7 @@ import { addClassTypeMetadata } from "@nestjs/graphql/dist/utils/add-class-type-
 /**
  * Decorator that marks a class as a resolver arguments type.
  *
- * @publicApi
+ * @param name - The name of the arguments type.
  */
 export function ArgsType(name?: string): ClassDecorator {
   // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type

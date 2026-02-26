@@ -1,7 +1,7 @@
 {
   "name": "@nest-boot/graphql-rate-limit",
   "version": "7.0.3",
-  "description": "",
+  "description": "GraphQL rate limiting based on query complexity and Redis.",
   "author": {
     "name": "Xudong Huang",
     "email": "me@huangxudong.com",

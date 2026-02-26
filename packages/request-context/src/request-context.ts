@@ -1,476 +1,155 @@
-import { type Type } from "@nestjs/common";
 import { AsyncLocalStorage } from "async_hooks";
 import { randomUUID } from "crypto";
 
-/**
- * Middleware function type for request context.
- * Middlewares are executed in order when running a request context.
- *
- * @typeParam T - The return type of the middleware chain
- * @param ctx - The current request context
- * @param next - Function to call the next middleware in the chain
- * @returns A promise resolving to the result of the middleware chain
- */
-type RequestContextMiddleware = <T>(
-  ctx: RequestContext,
-  next: () => Promise<T>,
-) => Promise<T>;
+import { MiddlewareInstanceOrFunction } from "./interfaces";
 
 /**
- * Options for creating a new RequestContext instance.
- */
-export interface RequestContextCreateOptions {
-  /**
-   * Unique identifier for the request context.
-   * If not provided, a random UUID will be generated.
-   */
-  id?: string;
-
-  /**
-   * The type of context (e.g., 'http', 'graphql', 'repl', 'job').
-   */
-  type: string;
-
-  /**
-   * Parent context for creating nested/child contexts.
-   * Child contexts can access values from parent contexts.
-   */
-  parent?: RequestContext;
-}
-
-/**
- * RequestContext provides a way to store and access request-scoped data
- * throughout the lifecycle of a request using AsyncLocalStorage.
- *
- * This is useful for storing data like the current user, request ID,
- * database transactions, and other request-specific information that
- * needs to be accessed across different parts of the application.
- *
- * @example Basic usage
- * ```typescript
- * import { RequestContext } from '@nest-boot/request-context';
- *
- * // Get the current request ID
- * const requestId = RequestContext.id;
- *
- * // Store a value in the context
- * RequestContext.set('userId', 123);
- *
- * // Retrieve a value from the context
- * const userId = RequestContext.get<number>('userId');
- * ```
- *
- * @example Running code in a new context
- * ```typescript
- * await RequestContext.run(
- *   new RequestContext({ type: 'job' }),
- *   async (ctx) => {
- *     ctx.set('jobId', 'abc123');
- *     await processJob();
- *   }
- * );
- * ```
- *
- * @example Creating a child context
- * ```typescript
- * await RequestContext.child(async (childCtx) => {
- *   // Child context inherits values from parent
- *   // but can have its own values that don't affect parent
- *   childCtx.set('tempValue', 'only in child');
- * });
- * ```
+ * Manages the context for the current request execution.
+ * Uses AsyncLocalStorage to persist data across async operations.
  */
 export class RequestContext {
+  static storage = new AsyncLocalStorage<RequestContext>();
+
   /**
-   * Unique identifier for this request context.
-   * Automatically generated as a UUID if not provided.
+   * Type of middleware that can be registered in the RequestContext.
    */
+  static middlewareMap = new Map<string, MiddlewareInstanceOrFunction>();
+
   readonly id: string;
-
-  /**
-   * The type of this context (e.g., 'http', 'graphql', 'repl', 'job').
-   */
   readonly type: string;
+  private readonly map = new Map<any, any>();
 
-  /**
-   * Parent context, if this is a child context.
-   * Values not found in this context will be looked up in the parent.
-   */
-  readonly parent?: RequestContext;
-
-  /** @internal */
-  private readonly container = new Map();
-
-  /** @internal */
-  private static readonly storage = new AsyncLocalStorage<RequestContext>();
-
-  /** @internal */
-  private static readonly middlewares = new Map<
-    string,
-    RequestContextMiddleware
-  >();
-
-  /** @internal */
-  private static readonly middlewareDependencies = new Map<string, string[]>();
-
-  /** @internal */
-  private static middlewaresStack: RequestContextMiddleware[] = [];
-
-  /**
-   * Creates a new RequestContext instance.
-   *
-   * @param options - Configuration options for the context
-   *
-   * @example
-   * ```typescript
-   * const ctx = new RequestContext({
-   *   id: 'custom-id',
-   *   type: 'http',
-   * });
-   * ```
-   */
-  constructor(options: RequestContextCreateOptions) {
-    this.id = options.id ?? randomUUID();
-    this.type = options.type;
-    this.parent = options.parent;
-  }
-
-  /**
-   * Gets a value from the context by its token.
-   * If not found in this context, looks up the parent context.
-   *
-   * @typeParam T - The expected type of the value
-   * @param token - The key to look up (string, symbol, function, or class)
-   * @returns The value if found, otherwise undefined
-   *
-   * @example
-   * ```typescript
-   * const ctx = RequestContext.current();
-   * const user = ctx.get<User>('currentUser');
-   * const service = ctx.get(MyService);
-   * ```
-   */
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-  get<T>(token: string | symbol | Function | Type<T>): T | undefined {
-    return this.container.get(token) ?? this.parent?.get(token);
-  }
-
-  /**
-   * Sets a value in the context.
-   *
-   * @typeParam T - The type of the value
-   * @param typeOrToken - The key to store the value under
-   * @param value - The value to store
-   *
-   * @example
-   * ```typescript
-   * const ctx = RequestContext.current();
-   * ctx.set('userId', 123);
-   * ctx.set(UserService, userServiceInstance);
-   * ```
-   */
-  set<T>(typeOrToken: string | symbol | Type<T>, value: T): void {
-    this.container.set(typeOrToken, value);
-  }
-
-  /**
-   * Gets a value from the context, or sets it if not present.
-   *
-   * @typeParam T - The type of the value
-   * @param typeOrToken - The key to look up or store under
-   * @param value - The value to set if not already present
-   * @returns The existing value or the newly set value
-   *
-   * @example
-   * ```typescript
-   * const ctx = RequestContext.current();
-   * const cache = ctx.getOrSet('cache', new Map());
-   * ```
-   */
-  getOrSet<T>(typeOrToken: string | symbol | Type<T>, value: T): T {
-    const existing = this.get(typeOrToken);
-
-    if (typeof existing !== "undefined") {
-      return existing;
+  constructor(options?: { id?: string; type?: string; map?: Map<any, any> }) {
+    this.id = options?.id ?? randomUUID();
+    this.type = options?.type ?? "default";
+    if (options?.map) {
+      this.map = new Map(options.map);
     }
-
-    this.set(typeOrToken, value);
-
-    return value;
-  }
-
-  /**
-   * Gets a value from the current context by its key.
-   * Static method that accesses the current context automatically.
-   *
-   * @typeParam T - The expected type of the value
-   * @param key - The key to look up
-   * @returns The value if found, otherwise undefined
-   * @throws Error if no request context is active
-   *
-   * @example
-   * ```typescript
-   * const userId = RequestContext.get<number>('userId');
-   * ```
-   */
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-  static get<T>(key: string | symbol | Function | Type<T>): T | undefined {
-    const ctx = this.current();
-
-    return ctx.get(key);
   }
 
   /**
    * Sets a value in the current context.
-   * Static method that accesses the current context automatically.
    *
-   * @typeParam T - The type of the value
-   * @param key - The key to store the value under
-   * @param value - The value to store
-   * @throws Error if no request context is active
-   *
-   * @example
-   * ```typescript
-   * RequestContext.set('userId', 123);
-   * ```
+   * @param key - The key to store the value under.
+   * @param value - The value to store.
    */
-  static set<T>(key: string | symbol | Type<T>, value: T): void {
-    const ctx = this.current();
+  static set<T>(key: any, value: T): void {
+    const store = this.storage.getStore();
 
-    if (typeof key !== "undefined") {
-      ctx.set(key, value);
-    }
-  }
-
-  /**
-   * Gets a value from the current context, or sets it if not present.
-   * Static method that accesses the current context automatically.
-   *
-   * @typeParam T - The type of the value
-   * @param key - The key to look up or store under
-   * @param value - The value to set if not already present
-   * @returns The existing value or the newly set value
-   * @throws Error if no request context is active
-   *
-   * @example
-   * ```typescript
-   * const cache = RequestContext.getOrSet('cache', new Map());
-   * ```
-   */
-  static getOrSet<T>(key: string | symbol | Type<T>, value: T): T {
-    const ctx = this.current();
-
-    return ctx.getOrSet(key, value);
-  }
-
-  /**
-   * Gets the ID of the current request context.
-   *
-   * @returns The unique identifier of the current context
-   * @throws Error if no request context is active
-   *
-   * @example
-   * ```typescript
-   * console.log(`Processing request ${RequestContext.id}`);
-   * ```
-   */
-  static get id() {
-    return this.current().id;
-  }
-
-  /**
-   * Gets the current request context.
-   *
-   * @returns The current RequestContext instance
-   * @throws Error if no request context is active
-   *
-   * @example
-   * ```typescript
-   * const ctx = RequestContext.current();
-   * console.log(ctx.type); // 'http'
-   * ```
-   */
-  static current(): RequestContext {
-    const ctx = this.storage.getStore();
-
-    if (typeof ctx === "undefined") {
-      throw new Error("Request context is not active");
+    if (!store) {
+      throw new Error("RequestContext is not active");
     }
 
-    return ctx;
+    store.set(key, value);
   }
 
   /**
-   * Checks if a request context is currently active.
+   * Gets a value from the current context.
    *
-   * @returns true if a context is active, false otherwise
+   * @param key - The key to retrieve.
+   * @returns The value stored under the key, or undefined.
+   */
+  static get<T>(key: any): T {
+    const store = this.storage.getStore();
+
+    if (!store) {
+      throw new Error("RequestContext is not active");
+    }
+
+    return store.get(key);
+  }
+
+  /**
+   * Runs a function within the given context.
    *
-   * @example
-   * ```typescript
-   * if (RequestContext.isActive()) {
-   *   const userId = RequestContext.get('userId');
-   * }
-   * ```
+   * @param ctx - The RequestContext instance.
+   * @param fn - The function to run.
+   * @returns The result of the function.
+   */
+  static run<T>(ctx: RequestContext, fn: () => T): T {
+    return this.storage.run(ctx, fn);
+  }
+
+  /**
+   * Checks if a RequestContext is currently active.
    */
   static isActive(): boolean {
     return !!this.storage.getStore();
   }
 
   /**
-   * Runs a callback within a request context.
-   * All registered middlewares are executed before the callback.
-   *
-   * @typeParam T - The return type of the callback
-   * @param ctx - The request context to run within
-   * @param callback - The function to execute within the context
-   * @returns A promise resolving to the callback's return value
-   *
-   * @example
-   * ```typescript
-   * const result = await RequestContext.run(
-   *   new RequestContext({ type: 'job' }),
-   *   async (ctx) => {
-   *     ctx.set('jobId', 'abc123');
-   *     return await processJob();
-   *   }
-   * );
-   * ```
+   * Gets the current RequestContext ID.
    */
-  static async run<T>(
-    ctx: RequestContext,
-    callback: (ctx: RequestContext) => T | Promise<T>,
-  ): Promise<T> {
-    let i = 0;
-
-    const next = async (): Promise<T> => {
-      const middleware = this.middlewaresStack[i++];
-      return typeof middleware === "undefined"
-        ? await callback(ctx)
-        : await middleware<T>(ctx, next);
-    };
-
-    return await this.storage.run(ctx, next);
+  static get id(): string | undefined {
+    return this.storage.getStore()?.id;
   }
 
   /**
-   * Creates and runs a child context that inherits from the current context.
-   * Child contexts can read values from parent contexts but modifications
-   * are isolated to the child.
+   * Registers a middleware to be executed when setting up the context.
+   * This is typically used by other modules to attach data to the context.
    *
-   * @typeParam T - The return type of the callback
-   * @param callback - The function to execute within the child context
-   * @returns A promise resolving to the callback's return value
-   * @throws Error if no request context is active
-   *
-   * @example
-   * ```typescript
-   * // In parent context
-   * RequestContext.set('userId', 123);
-   *
-   * await RequestContext.child(async (childCtx) => {
-   *   // Can read parent values
-   *   const userId = childCtx.get('userId'); // 123
-   *
-   *   // Child-only values don't affect parent
-   *   childCtx.set('tempData', 'child only');
-   * });
-   *
-   * // Parent context unchanged
-   * RequestContext.get('tempData'); // undefined
-   * ```
-   */
-  static async child<T>(
-    callback: (ctx: RequestContext) => T | Promise<T>,
-  ): Promise<T> {
-    const parent = this.storage.getStore();
-
-    if (typeof parent === "undefined") {
-      throw new Error("Request context is not active");
-    }
-
-    const ctx = new RequestContext({
-      id: parent.id,
-      type: parent.type,
-      parent,
-    });
-
-    return await this.storage.run(ctx, () => callback(ctx));
-  }
-
-  /**
-   * Registers a middleware to be executed when running a request context.
-   * Middlewares are executed in dependency order.
-   *
-   * @param name - Unique name for the middleware
-   * @param middleware - The middleware function to register
-   * @param dependencies - Names of middlewares that must run before this one
-   *
-   * @example
-   * ```typescript
-   * RequestContext.registerMiddleware(
-   *   'auth',
-   *   async (ctx, next) => {
-   *     ctx.set('user', await loadUser());
-   *     return next();
-   *   }
-   * );
-   *
-   * // Middleware with dependencies
-   * RequestContext.registerMiddleware(
-   *   'permissions',
-   *   async (ctx, next) => {
-   *     const user = ctx.get('user');
-   *     ctx.set('permissions', await loadPermissions(user));
-   *     return next();
-   *   },
-   *   ['auth'] // Runs after 'auth' middleware
-   * );
-   * ```
+   * @param name - Unique name for the middleware.
+   * @param middleware - The middleware function.
    */
   static registerMiddleware(
     name: string,
-    middleware: RequestContextMiddleware,
-    dependencies?: string[],
-  ): void {
-    this.middlewares.set(name, middleware);
-    this.middlewareDependencies.set(name, dependencies ?? []);
-    this.generateMiddlewaresStack();
+    middleware: MiddlewareInstanceOrFunction,
+  ) {
+    this.middlewareMap.set(name, middleware);
   }
 
-  /** @internal */
-  private static resolveDependencies(
-    name: string,
-    resolved: Set<string>,
-    seen: Set<string>,
-  ): void {
-    if (seen.has(name)) {
-      throw new Error(`Circular dependency detected: ${name}`);
-    }
-    seen.add(name);
+  /**
+   * Wraps the execution of a function with the registered middlewares in a new isolated context.
+   * This ensures that changes made to the context (like setting a transaction) do not leak to the parent context.
+   *
+   * @param next - The function to execute after middlewares.
+   */
+  static async child(next: () => Promise<void>) {
+    const currentStore = this.getStore();
+    // Create a new context that inherits from the current one (if it exists)
+    const newContext = new RequestContext({
+      id: currentStore?.id,
+      type: currentStore?.type,
+      map: currentStore?.map,
+    });
 
-    const deps = this.middlewareDependencies.get(name) ?? [];
-    for (const dep of deps) {
-      if (!resolved.has(dep)) {
-        this.resolveDependencies(dep, resolved, seen);
-      }
-    }
+    await this.run(newContext, async () => {
+      const middlewareList = Array.from(this.middlewareMap.values());
 
-    resolved.add(name);
+      const dispatch = async (index: number): Promise<void> => {
+        if (index === middlewareList.length) {
+          await next();
+          return;
+        }
+
+        const middleware = middlewareList[index];
+
+        return await (middleware as any)(
+          this.getStore(),
+          dispatch.bind(null, index + 1),
+        );
+      };
+
+      await dispatch(0);
+    });
   }
 
-  /** @internal */
-  private static generateMiddlewaresStack(): void {
-    const resolved = new Set<string>();
-    const seen = new Set<string>();
+  /**
+   * Gets the current store instance.
+   */
+  static getStore(): RequestContext | undefined {
+    return this.storage.getStore();
+  }
 
-    for (const name of this.middlewares.keys()) {
-      if (!resolved.has(name)) {
-        this.resolveDependencies(name, resolved, seen);
-      }
-    }
+  get mapGetter() {
+    return this.map;
+  }
 
-    this.middlewaresStack = Array.from(resolved)
-      .map((name) => this.middlewares.get(name))
-      .filter((middleware) => typeof middleware !== "undefined");
+  set<T>(key: any, value: T): void {
+    this.map.set(key, value);
+  }
+
+  get<T>(key: any): T {
+    return this.map.get(key);
   }
 }

@@ -7,6 +7,7 @@ import { MiddlewareInstanceOrFunction } from "./types";
 
 /**
  * Manages middleware registration and configuration.
+ * Supports dynamic middleware application and dependency management.
  */
 @Injectable()
 export class MiddlewareManager {
@@ -75,8 +76,8 @@ export class MiddlewareManager {
 
   /**
    * Applies middlewares to routes.
-   * @param middlewares - The middlewares to apply
-   * @returns A configurator for specifying routes
+   * @param middlewares - The middlewares to apply.
+   * @returns A configurator for specifying routes.
    */
   apply(
     ...middlewares: MiddlewareInstanceOrFunction[]
@@ -84,11 +85,19 @@ export class MiddlewareManager {
     return new MiddlewareConfigurator(this, middlewares);
   }
 
+  /**
+   * Globally excludes routes from all middlewares managed by this manager.
+   * @param routes - Routes to exclude globally.
+   */
   globalExclude(...routes: (string | RouteInfo)[]): this {
     this.globalExcludeRoutes.push(...routes);
     return this;
   }
 
+  /**
+   * Configures the middleware consumer with the registered middlewares.
+   * Called by the MiddlewareModule.
+   */
   configure(consumer: MiddlewareConsumer) {
     for (const config of this.middlewareConfigs) {
       const proxy = consumer.apply(config.middleware);

@@ -20,4 +20,4 @@ import { ConnectionInterface } from "../interfaces";
  * const result = await connectionManager.find(UserConnection, args);
  * ```
  */
-export type ConnectionClass<T> = Type<ConnectionInterface<T>>;
+export type ConnectionClass<T extends object> = Type<ConnectionInterface<T>>;

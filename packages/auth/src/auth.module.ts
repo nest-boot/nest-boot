@@ -19,6 +19,10 @@ import { AuthService } from "./auth.service";
 import { AuthModuleOptions } from "./auth-module-options.interface";
 import { estimateEntropy } from "./utils/estimate-entropy";
 
+/**
+ * Main module for Authentication.
+ * Configures Better Auth and registers the authentication middleware.
+ */
 @Global()
 @Module({
   imports: [RequestContextModule, MiddlewareModule],

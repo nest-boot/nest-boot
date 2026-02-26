@@ -13,14 +13,18 @@ const ENCRYPTED_PROPERTIES_KEY = Symbol("encryptedProperties");
  * Decorator that marks a property as an encrypted field.
  * The property value will be automatically encrypted before create and update operations.
  *
+ * It uses the CryptService to encrypt the value. If the value is already a JWE, it is skipped.
+ *
+ * @param options - MikroORM property options.
+ *
  * @example
  * ```typescript
- * import { Entity } from '@mikro-orm/core';
+ * import { Entity, t } from '@mikro-orm/core';
  * import { EncryptedProperty } from '@nest-boot/mikro-orm-crypt';
  *
  * @Entity()
  * export class User {
- *   @EncryptedProperty({ type: t.string })
+ *   @EncryptedProperty({ type: t.text })
  *   ssn!: string;
  * }
  * ```

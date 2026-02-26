@@ -8,6 +8,9 @@ import { AuthService } from "./auth.service";
 import { AuthModuleOptions } from "./auth-module-options.interface";
 import { BaseSession, BaseUser } from "./entities";
 
+/**
+ * Middleware that handles authentication for incoming requests.
+ */
 @Injectable()
 export class AuthMiddleware implements NestMiddleware {
   constructor(
@@ -16,6 +19,13 @@ export class AuthMiddleware implements NestMiddleware {
     private readonly authService: AuthService,
     private readonly em: EntityManager,
   ) {}
+
+  /**
+   * Retrieves the session from the request using the AuthService.
+   *
+   * @param req - The express request object.
+   * @returns The session data or null.
+   */
   private async getSession(req: Request) {
     return await this.authService.api.getSession({
       headers: Object.entries(req.headers).reduce((headers, [key, value]) => {
@@ -33,6 +43,14 @@ export class AuthMiddleware implements NestMiddleware {
     });
   }
 
+  /**
+   * Middleware handler.
+   * Checks for a valid session and sets the user and session in the RequestContext.
+   *
+   * @param req - The express request object.
+   * @param res - The express response object.
+   * @param next - The next function in the middleware chain.
+   */
   async use(req: Request, res: Response, next: NextFunction) {
     const data = await this.getSession(req);
 

@@ -11,6 +11,10 @@ import { ScheduleProcessor } from "./schedule.processor";
 import { ScheduleRegistry } from "./schedule.registry";
 import { type ScheduleModuleOptions } from "./schedule-module-options.interface";
 
+/**
+ * Module for scheduling tasks using BullMQ.
+ * It registers a dedicated 'schedule' queue and a processor to execute scheduled methods.
+ */
 @Global()
 @Module({
   imports: [

@@ -1,7 +1,7 @@
 {
   "name": "@nest-boot/bullmq",
   "version": "7.0.2",
-  "description": "",
+  "description": "BullMQ integration for NestJS, providing enhanced queue management.",
   "author": {
     "name": "Xudong Huang",
     "email": "me@huangxudong.com",

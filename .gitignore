@@ -292,3 +292,5 @@ dist
 
 # graphql
 schema.gql
+docs/
+docs/

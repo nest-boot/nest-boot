@@ -12,6 +12,10 @@ import {
 } from "./graphql.module-definition";
 import { type GraphQLModuleOptions } from "./graphql-module-options.interface";
 
+/**
+ * GraphQL module for NestJS.
+ * Configures Apollo Server with default settings and exception filtering.
+ */
 @Global()
 @Module({
   imports: [

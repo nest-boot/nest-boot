@@ -1,4 +1,4 @@
-import type { EntityClass, FilterQuery } from "@mikro-orm/core";
+import { EntityClass } from "@mikro-orm/core";
 import { type Type } from "@nestjs/common";
 import { GraphQLScalarType } from "graphql";
 import type { FieldType } from "mikro-orm-filter-query-schema";
@@ -29,12 +29,12 @@ import {
  *
  * @typeParam Entity - The entity type for the connection
  */
-type ConnectionBuildResult<Entity extends object> = {
+export type ConnectionBuildResult<Entity extends object> = {
   Connection: Type<ConnectionInterface<Entity>>;
   ConnectionArgs: Type<ConnectionArgsInterface<Entity>>;
   Edge: Type<EdgeInterface<Entity>>;
-  Filter: GraphQLScalarType<FilterQuery<Entity>>;
-  filterQuerySchema: ZodType<FilterQuery<Entity>>;
+  Filter: GraphQLScalarType;
+  filterQuerySchema: ZodType<any>;
   Order: Type<OrderInterface<Entity>>;
   OrderField?: OrderFieldType<Entity>;
 } & Record<
@@ -48,10 +48,7 @@ type ConnectionBuildResult<Entity extends object> = {
   Record<`${EntityClass<Entity>["name"]}Edge`, Type<EdgeInterface<Entity>>> &
   Record<`${EntityClass<Entity>["name"]}Order`, Type<OrderInterface<Entity>>> &
   Record<`${EntityClass<Entity>["name"]}OrderField`, OrderFieldType<Entity>> &
-  Record<
-    `${EntityClass<Entity>["name"]}Filter`,
-    GraphQLScalarType<FilterQuery<Entity>>
-  >;
+  Record<`${EntityClass<Entity>["name"]}Filter`, GraphQLScalarType>;
 
 /**
  * Builder class for creating GraphQL connection types following the Relay specification.

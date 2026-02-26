@@ -1,24 +1,22 @@
 ---
-sidebar_position: 1
+sidebar_position: 2
 ---
 
-# 哈希
+# Hash
 
-`@nest-boot/hash` 模块提供使用 Argon2 算法的安全密码哈希和验证功能，Argon2 被认为是目前最安全的哈希算法之一。
+`@nest-boot/hash` 模块通过 `@node-rs/argon2` 提供基于 Argon2 算法的密码哈希工具。
 
 ## 安装
 
 ```bash
-npm install @nest-boot/hash
-# 或
-pnpm add @nest-boot/hash
+npm install @nest-boot/hash @node-rs/argon2
+# or
+pnpm add @nest-boot/hash @node-rs/argon2
 ```
 
-## 基本用法
+## 配置
 
-### 模块注册
-
-在应用模块中注册 `HashModule`：
+在你的应用程序模块中注册 `HashModule`。
 
 ```typescript
 import { Module } from "@nestjs/common";
@@ -27,39 +25,16 @@ import { HashModule } from "@nest-boot/hash";
 @Module({
   imports: [
     HashModule.register({
-      secret: "your-secret-key",
+      // secret: process.env.HASH_SECRET, // 如果设置了 HASH_SECRET 或 APP_SECRET 环境变量，则为可选
     }),
   ],
 })
 export class AppModule {}
 ```
 
-### 异步注册
+## 使用
 
-从环境变量或其他异步来源配置：
-
-```typescript
-import { Module } from "@nestjs/common";
-import { ConfigModule, ConfigService } from "@nestjs/config";
-import { HashModule } from "@nest-boot/hash";
-
-@Module({
-  imports: [
-    ConfigModule.forRoot(),
-    HashModule.registerAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        secret: config.get("HASH_SECRET"),
-      }),
-    }),
-  ],
-})
-export class AppModule {}
-```
-
-## 使用 HashService
-
-将 `HashService` 注入到你的服务或控制器中：
+注入 `HashService` 来对密码进行哈希处理和验证。
 
 ```typescript
 import { Injectable } from "@nestjs/common";
@@ -69,29 +44,14 @@ import { HashService } from "@nest-boot/hash";
 export class AuthService {
   constructor(private readonly hashService: HashService) {}
 
-  async hashPassword(password: string): Promise<string> {
-    return this.hashService.create(password);
+  async hashPassword(password: string) {
+    return await this.hashService.hash(password);
   }
 
-  async verifyPassword(hash: string, password: string): Promise<boolean> {
-    return this.hashService.verify(hash, password);
+  async validatePassword(password: string, hash: string) {
+    return await this.hashService.verify(hash, password);
   }
 }
 ```
 
-## API 参考
-
-查看完整的 [API 文档](/docs/api/@nest-boot/hash) 获取详细信息。
-
-## 配置选项
-
-| 选项     | 类型     | 描述                                                                          |
-| -------- | -------- | ----------------------------------------------------------------------------- |
-| `secret` | `string` | 用于哈希的密钥。如果未提供，将回退到 `HASH_SECRET` 或 `APP_SECRET` 环境变量。 |
-
-## 环境变量
-
-模块支持以下环境变量作为回退：
-
-- `HASH_SECRET` - 密钥的主要回退
-- `APP_SECRET` - 密钥的次要回退
+Argon2 是一种现代、安全的密码哈希算法。该模块自动处理盐的生成和配置。

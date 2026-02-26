@@ -1,7 +1,7 @@
 {
   "name": "@nest-boot/crypt",
   "version": "7.1.2",
-  "description": "",
+  "description": "Encryption module for NestJS based on JOSE (JSON Object Signing and Encryption).",
   "author": {
     "name": "Xudong Huang",
     "email": "me@huangxudong.com",

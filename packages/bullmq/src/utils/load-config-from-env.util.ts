@@ -1,5 +1,11 @@
 import { ConnectionOptions } from "bullmq";
 
+/**
+ * Loads Redis connection configuration from environment variables.
+ * Supports REDIS_URL or separate host/port/etc variables.
+ *
+ * @returns Redis connection options.
+ */
 export function loadConfigFromEnv(): ConnectionOptions {
   if (process.env.REDIS_URL) {
     const url = new URL(process.env.REDIS_URL);

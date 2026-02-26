@@ -45,9 +45,20 @@ type SnakeCase<S extends string> = S extends ""
         ? S
         : never;
 
+/**
+ * Context for handling Row Level Security (RLS) configuration.
+ */
 export class AuthRlsContext {
   private readonly ctx = new Map<string, string>();
 
+  /**
+   * Sets a key-value pair in the RLS context.
+   *
+   * @param key - The key in snake_case format.
+   * @param value - The value to store.
+   * @returns The updated AuthRlsContext instance.
+   * @throws Error if the key format is invalid.
+   */
   set<S extends string>(key: SnakeCase<S>, value: string) {
     if (!/^[a-z]+(_[a-z]+)*$/.test(key)) {
       throw new Error(
@@ -58,10 +69,20 @@ export class AuthRlsContext {
     return this;
   }
 
+  /**
+   * Returns an array of [key, value] pairs.
+   *
+   * @returns An array of entries.
+   */
   entries() {
     return Array.from(this.ctx.entries());
   }
 
+  /**
+   * Generates a SQL string to set the configuration parameters in the database session.
+   *
+   * @returns A SQL string.
+   */
   toSQL(): string {
     return /* SQL */ `SELECT ${Array.from(this.ctx.entries())
       .map(([key, value]) => {

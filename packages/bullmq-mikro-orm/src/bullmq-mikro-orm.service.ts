@@ -12,9 +12,12 @@ import { JobEntity } from "./entities/job.entity";
 import { convertBullmqJobStateToJobStatus } from "./utils/convert-bullmq-job-state-to-job-status.util";
 import { shouldIncludeQueue } from "./utils/should-include-queue.util";
 
+/**
+ * Service that listens to BullMQ events and persists job data to the database.
+ */
 @Injectable()
 export class BullMQMikroORMService implements OnApplicationBootstrap {
-  private readonly jobTTL: number = 1000 * 60 * 60 * 24 * 30;
+  private readonly jobTTL: number = 1000 * 60 * 60 * 24 * 30; // 30 days
 
   private readonly includeQueues: string[] = [];
   private readonly excludeQueues: string[] = [];
@@ -30,6 +33,13 @@ export class BullMQMikroORMService implements OnApplicationBootstrap {
     this.excludeQueues = this.options.excludeQueues ?? this.excludeQueues;
   }
 
+  /**
+   * Converts a BullMQ Job instance to an entity data object.
+   *
+   * @param job - The BullMQ job.
+   * @param jobState - The current state of the job.
+   * @returns Entity data for JobEntity.
+   */
   async convertJobToEntityData(
     job: Job,
     jobState: JobState,
@@ -60,6 +70,12 @@ export class BullMQMikroORMService implements OnApplicationBootstrap {
     };
   }
 
+  /**
+   * Upserts a job record in the database.
+   *
+   * @param job - The BullMQ job.
+   * @param jobState - The current state of the job.
+   */
   async upsertJob(job: Job, jobState: JobState) {
     await this.em
       .fork()
@@ -72,6 +88,10 @@ export class BullMQMikroORMService implements OnApplicationBootstrap {
       );
   }
 
+  /**
+   * Cron job to clean up old job records from the database.
+   * Runs hourly.
+   */
   @Cron("0 * * * *")
   async cleanHistoryJobs() {
     await this.em.fork().nativeDelete(this.options.jobEntity, {
@@ -81,6 +101,9 @@ export class BullMQMikroORMService implements OnApplicationBootstrap {
     });
   }
 
+  /**
+   * Lifecycle hook to register event listeners on queues and workers.
+   */
   onApplicationBootstrap() {
     const instanceWrappers = this.discoveryService.getProviders();
 

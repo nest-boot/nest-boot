@@ -1,24 +1,18 @@
 {
   "$schema": "https://typedoc.org/schema.json",
-
   "entryPointStrategy": "packages",
   "entryPoints": ["packages/*"],
-
   "exclude": [
     "packages/eslint-config",
     "packages/eslint-plugin",
     "packages/tsconfig"
   ],
-
-  "out": "website/docs/api",
   "name": "Nest Boot API",
-
   "packageOptions": {
     "entryPoints": ["src/index.ts"],
-    "excludeInternal": true,
-    "excludePrivate": true
+    "excludeInternal": false,
+    "excludePrivate": false
   },
-
   "plugin": [
     "typedoc-plugin-markdown",
     "typedoc-docusaurus-theme",
@@ -34,5 +28,19 @@
     "hideModifiers": true,
     "hideOverrides": true,
     "hideSources": true
-  }
+  },
+  "coverageOutputType": "all",
+  "requiredToBeDocumented": [
+    "Project",
+    "Module",
+    "Namespace",
+    "Class",
+    "Interface",
+    "Function",
+    "Variable",
+    "TypeAlias",
+    "Method",
+    "Property",
+    "Accessor"
+  ]
 }

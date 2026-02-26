@@ -1,7 +1,7 @@
 {
   "name": "@nest-boot/file-upload",
   "version": "7.1.2",
-  "description": "",
+  "description": "File upload module for NestJS using GraphQL and AWS S3 (or compatible).",
   "author": {
     "name": "Xudong Huang",
     "email": "me@huangxudong.com",

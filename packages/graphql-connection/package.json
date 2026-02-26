@@ -1,7 +1,7 @@
 {
   "name": "@nest-boot/graphql-connection",
   "version": "7.7.0",
-  "description": "",
+  "description": "Relay-style connection pagination for GraphQL, integrated with MikroORM.",
   "author": {
     "name": "Xudong Huang",
     "email": "me@huangxudong.com",

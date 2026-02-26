@@ -1,49 +1,24 @@
 import { MiddlewareManager, MiddlewareModule } from "@nest-boot/middleware";
-import { Global, Module } from "@nestjs/common";
-import { APP_INTERCEPTOR } from "@nestjs/core";
+import { Global, Inject, Module, OnModuleInit, Optional } from "@nestjs/common";
+import {
+  APP_INTERCEPTOR,
+  DiscoveryService,
+  MetadataScanner,
+} from "@nestjs/core";
 
+import { CreateRequestContext } from "./create-request-context.decorator";
+import { RequestContext } from "./request-context";
+import { CREATE_REQUEST_CONTEXT_METADATA } from "./request-context.constants";
 import { RequestContextInterceptor } from "./request-context.interceptor";
 import { RequestContextMiddleware } from "./request-context.middleware";
 
 /**
- * NestJS module that provides request context functionality.
- *
- * This module automatically sets up request context for HTTP requests
- * using both middleware (for Express) and interceptor (for GraphQL).
- * It stores the request and response objects in the context and makes
- * them available throughout the request lifecycle.
- *
- * The module is global, so it only needs to be imported once in the root module.
- *
- * @example
- * ```typescript
- * import { Module } from '@nestjs/common';
- * import { RequestContextModule } from '@nest-boot/request-context';
- *
- * @Module({
- *   imports: [RequestContextModule],
- * })
- * export class AppModule {}
- * ```
- *
- * @example Using in a service
- * ```typescript
- * import { Injectable } from '@nestjs/common';
- * import { RequestContext, REQUEST } from '@nest-boot/request-context';
- * import { Request } from 'express';
- *
- * @Injectable()
- * export class MyService {
- *   getCurrentUser() {
- *     const req = RequestContext.get<Request>(REQUEST);
- *     return req?.user;
- *   }
- * }
- * ```
+ * Module that provides request context management using AsyncLocalStorage.
+ * It allows storing and retrieving data scoped to the current execution context (request, job, etc.).
  */
 @Global()
 @Module({
-  imports: [MiddlewareModule],
+  imports: [MiddlewareModule, DiscoveryService],
   providers: [
     RequestContextMiddleware,
     {
@@ -53,15 +28,55 @@ import { RequestContextMiddleware } from "./request-context.middleware";
   ],
   exports: [RequestContextMiddleware],
 })
-export class RequestContextModule {
-  /** @internal */
+export class RequestContextModule implements OnModuleInit {
   constructor(
     private readonly middlewareManager: MiddlewareManager,
     private readonly requestContextMiddleware: RequestContextMiddleware,
-  ) {
+    private readonly discoveryService: DiscoveryService,
+    private readonly metadataScanner: MetadataScanner,
+  ) {}
+
+  onModuleInit() {
     this.middlewareManager
       .apply(this.requestContextMiddleware)
-      .disableGlobalExcludeRoutes()
-      .forRoutes("*");
+      .forRoutes("*")
+      .disableGlobalExcludeRoutes();
+
+    this.discoveryService
+      .getProviders()
+      .concat(this.discoveryService.getControllers())
+      .forEach((instanceWrapper) => {
+        const { instance } = instanceWrapper;
+        if (!instance || typeof instance !== "object") {
+          return;
+        }
+
+        const prototype = Object.getPrototypeOf(instance);
+        this.metadataScanner.getAllMethodNames(prototype).forEach((method) => {
+          const createRequestContextOptions = Reflect.getMetadata(
+            CREATE_REQUEST_CONTEXT_METADATA,
+            instance[method],
+          );
+
+          if (createRequestContextOptions) {
+            const originalMethod = instance[method];
+
+            instance[method] = async function (...args: any[]) {
+              const ctx = new RequestContext({
+                type: createRequestContextOptions.type,
+              });
+              return await RequestContext.run(ctx, () =>
+                originalMethod.apply(this, args),
+              );
+            };
+
+            // Copy metadata from original method to wrapped method
+            Reflect.getMetadataKeys(originalMethod).forEach((key) => {
+              const value = Reflect.getMetadata(key, originalMethod);
+              Reflect.defineMetadata(key, value, instance[method]);
+            });
+          }
+        });
+      });
   }
 }

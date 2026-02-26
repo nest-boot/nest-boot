@@ -26,7 +26,9 @@ export class HashService {
    */
   static get instance(): HashService {
     if (!this._instance) {
-      throw new Error("HashService not initialized");
+      throw new Error(
+        "HashService not initialized. Call HashService.init() first or use dependency injection.",
+      );
     }
 
     return this._instance;

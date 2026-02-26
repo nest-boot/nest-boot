@@ -15,7 +15,7 @@ import { ConfigurableModuleClass } from "./graphql-connection.module-definition"
  * import { GraphQLConnectionModule } from "@nest-boot/graphql-connection";
  *
  * @Module({
- *   imports: [GraphQLConnectionModule.register()],
+ *   imports: [GraphQLConnectionModule.forRoot()],
  * })
  * export class AppModule {}
  * ```

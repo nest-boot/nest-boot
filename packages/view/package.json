@@ -1,7 +1,7 @@
 {
   "name": "@nest-boot/view",
   "version": "7.0.2",
-  "description": "",
+  "description": "View rendering module for NestJS using Handlebars.",
   "author": {
     "name": "Xudong Huang",
     "email": "me@huangxudong.com",

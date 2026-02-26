@@ -8,6 +8,10 @@ import { I18N } from "./i18n.constants";
 import { MODULE_OPTIONS_TOKEN } from "./i18n.module-definition";
 import { I18nModuleOptions } from "./interfaces/i18n-module-options.interface";
 
+/**
+ * Middleware that handles i18n initialization for each request.
+ * It uses i18next-http-middleware to detect language and attaches the i18n instance to the request context.
+ */
 @Injectable()
 export class I18nMiddleware implements NestMiddleware {
   private readonly handler: Handler;

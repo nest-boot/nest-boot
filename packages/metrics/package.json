@@ -1,7 +1,7 @@
 {
   "name": "@nest-boot/metrics",
   "version": "7.0.2",
-  "description": "",
+  "description": "Prometheus metrics for NestJS using prom-client.",
   "author": {
     "name": "Xudong Huang",
     "email": "me@huangxudong.com",

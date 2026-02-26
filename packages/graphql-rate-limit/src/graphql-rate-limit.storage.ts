@@ -8,6 +8,10 @@ import {
 } from "./graphql-rate-limit.module-definition";
 import { CostThrottleStatus, GraphQLRateLimitOptions } from "./interfaces";
 
+/**
+ * Storage for rate limiting data using Redis.
+ * Handles token bucket algorithm implementation via Lua scripts.
+ */
 @Injectable()
 export class GraphQLRateLimitStorage {
   constructor(
@@ -71,6 +75,9 @@ export class GraphQLRateLimitStorage {
     });
   }
 
+  /**
+   * Adds points back to the bucket (e.g. if actual cost was lower than estimated).
+   */
   async addPoint(
     args: GraphQLRequestContext<BaseContext>,
     point: number,
@@ -93,6 +100,10 @@ export class GraphQLRateLimitStorage {
     };
   }
 
+  /**
+   * Subtracts points from the bucket.
+   * Returns blocked=true if not enough points are available.
+   */
   async subPoint(
     args: GraphQLRequestContext<BaseContext>,
     point: number,

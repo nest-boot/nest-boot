@@ -9,6 +9,11 @@ import pino, {
 
 import { BINDINGS, PINO_LOGGER } from "./logger.module-definition";
 
+/**
+ * Enhanced Logger service based on Pino.
+ * Can be injected into services to log messages with context.
+ * It automatically includes request context information if available.
+ */
 @Injectable({ scope: Scope.TRANSIENT })
 export class Logger implements LoggerService {
   private context?: string;
@@ -19,34 +24,60 @@ export class Logger implements LoggerService {
     this.setContext(this.parentClass?.constructor?.name);
   }
 
+  /**
+   * Gets the current logger context (usually the class name).
+   */
   getContext(): string | undefined {
     return this.context;
   }
 
+  /**
+   * Sets the logger context.
+   * @param context - The context string.
+   */
   setContext(context: string): void {
     this.context = context;
   }
 
+  /**
+   * Logs a verbose message.
+   */
   verbose(message: string, ...optionalParams: unknown[]): void {
     this.call("trace", message, ...optionalParams);
   }
 
+  /**
+   * Logs a debug message.
+   */
   debug(message: string, ...optionalParams: unknown[]): void {
     this.call("debug", message, ...optionalParams);
   }
 
+  /**
+   * Logs an info message.
+   */
   log(message: string, ...optionalParams: unknown[]): void {
     this.call("info", message, ...optionalParams);
   }
 
+  /**
+   * Logs a warning message.
+   */
   warn(message: string, ...optionalParams: unknown[]): void {
     this.call("warn", message, ...optionalParams);
   }
 
+  /**
+   * Logs an error message.
+   */
   error(message: string, ...optionalParams: unknown[]): void {
     this.call("error", message, ...optionalParams);
   }
 
+  /**
+   * Assigns additional bindings (key-value pairs) to the current request's logger context.
+   * @param bindings - Object containing properties to log with every subsequent message in this request.
+   */
   assign(bindings: Bindings): void {
     RequestContext.set(BINDINGS, {
       ...(RequestContext.get<Bindings>(BINDINGS) ?? {}),

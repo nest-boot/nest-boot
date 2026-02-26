@@ -6,6 +6,7 @@ import { MiddlewareInstanceOrFunction } from "./types";
 
 /**
  * Configurator for applying middlewares to routes.
+ * Allows specifying routes, exclusions, and dependencies for the middleware.
  */
 export class MiddlewareConfigurator {
   private disabledGlobalExcludeRoutes = false;
@@ -22,21 +23,37 @@ export class MiddlewareConfigurator {
     private readonly middlewares: MiddlewareInstanceOrFunction[],
   ) {}
 
+  /**
+   * Disables globally configured exclude routes for this middleware.
+   */
   public disableGlobalExcludeRoutes(): this {
     this.disabledGlobalExcludeRoutes = true;
     return this;
   }
 
+  /**
+   * Excludes routes from the middleware application.
+   * @param routes - Routes to exclude.
+   */
   public exclude(...routes: (string | RouteInfo)[]): this {
     this.excludeRoutes.push(...routes);
     return this;
   }
 
+  /**
+   * Specifies middleware dependencies that should run before this middleware.
+   * @param dependencyMiddlewares - The middleware classes that this middleware depends on.
+   */
   public dependencies(...dependencyMiddlewares: Type<NestMiddleware>[]): this {
     this.dependencyMiddlewares.push(...dependencyMiddlewares);
     return this;
   }
 
+  /**
+   * Applies the middleware to the specified routes.
+   * @param routes - Routes to apply the middleware to.
+   * @returns The MiddlewareManager instance.
+   */
   public forRoutes(
     ...routes: (string | Type | RouteInfo)[]
   ): MiddlewareManager {

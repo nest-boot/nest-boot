@@ -11,6 +11,9 @@ import { NextFunction, Request, Response } from "express";
 
 import { AuthRlsService } from "./auth-rls.service";
 
+/**
+ * Middleware that sets up the Row Level Security (RLS) context for the current request.
+ */
 @Injectable()
 export class AuthRlsMiddleware implements NestMiddleware {
   constructor(
@@ -18,6 +21,14 @@ export class AuthRlsMiddleware implements NestMiddleware {
     protected readonly authRlsService: AuthRlsService,
   ) {}
 
+  /**
+   * Middleware handler.
+   * Sets the RLS context using AuthRlsService.
+   *
+   * @param _req - The express request object.
+   * @param _res - The express response object.
+   * @param next - The next function in the middleware chain.
+   */
   async use(_req: Request, _res: Response, next: NextFunction) {
     try {
       await this.authRlsService.setRlsContext(

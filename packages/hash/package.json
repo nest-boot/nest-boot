@@ -1,7 +1,7 @@
 {
   "name": "@nest-boot/hash",
   "version": "7.2.1",
-  "description": "",
+  "description": "Password hashing module for NestJS using Argon2.",
   "author": {
     "name": "Xudong Huang",
     "email": "me@huangxudong.com",

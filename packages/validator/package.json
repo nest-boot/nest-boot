@@ -1,7 +1,7 @@
 {
   "name": "@nest-boot/validator",
   "version": "7.0.2",
-  "description": "",
+  "description": "Validation module for NestJS with additional decorators and utilities.",
   "author": {
     "name": "Xudong Huang",
     "email": "me@huangxudong.com",

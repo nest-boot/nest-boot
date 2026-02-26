@@ -1,7 +1,7 @@
 {
   "name": "@nest-boot/mikro-orm",
   "version": "7.3.1",
-  "description": "",
+  "description": "Enhanced MikroORM integration for NestJS with additional utilities and features.",
   "author": {
     "name": "Xudong Huang",
     "email": "me@huangxudong.com",

@@ -14,5 +14,9 @@ const mailerProvider: Provider<Mailer> = {
   useFactory: (options: MailerModuleOptions) => createTransport(options),
 };
 
+/**
+ * Module for sending emails using Nodemailer.
+ * It provides the `Mailer` provider which is a configured Nodemailer transport.
+ */
 @Module({ providers: [mailerProvider], exports: [mailerProvider] })
 export class MailerModule extends ConfigurableModuleClass {}

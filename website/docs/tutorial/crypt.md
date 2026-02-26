@@ -1,24 +1,22 @@
 ---
-sidebar_position: 2
+sidebar_position: 1
 ---
 
 # Crypt
 
-The `@nest-boot/crypt` module provides encryption and decryption functionality using the AES-256-GCM algorithm, which provides both confidentiality and authenticity guarantees.
+The `@nest-boot/crypt` module provides utilities for encryption and decryption using JWE (JSON Web Encryption) with the `jose` library.
 
 ## Installation
 
 ```bash
-npm install @nest-boot/crypt
+npm install @nest-boot/crypt jose
 # or
-pnpm add @nest-boot/crypt
+pnpm add @nest-boot/crypt jose
 ```
 
-## Basic Usage
+## Setup
 
-### Module Registration
-
-Register the `CryptModule` in your application module:
+Register the `CryptModule` in your application module.
 
 ```typescript
 import { Module } from "@nestjs/common";
@@ -27,104 +25,36 @@ import { CryptModule } from "@nest-boot/crypt";
 @Module({
   imports: [
     CryptModule.register({
-      secret: "your-secret-key",
+      // secret: process.env.CRYPT_SECRET, // Optional if CRYPT_SECRET or APP_SECRET env var is set
     }),
   ],
 })
 export class AppModule {}
 ```
 
-### Async Registration
+## Usage
 
-For configuration from environment variables or other async sources:
-
-```typescript
-import { Module } from "@nestjs/common";
-import { ConfigModule, ConfigService } from "@nestjs/config";
-import { CryptModule } from "@nest-boot/crypt";
-
-@Module({
-  imports: [
-    ConfigModule.forRoot(),
-    CryptModule.registerAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        secret: config.get("CRYPT_SECRET"),
-      }),
-    }),
-  ],
-})
-export class AppModule {}
-```
-
-## Using CryptService
-
-Inject the `CryptService` into your service or controller:
+Inject `CryptService` to encrypt and decrypt data.
 
 ```typescript
 import { Injectable } from "@nestjs/common";
 import { CryptService } from "@nest-boot/crypt";
 
 @Injectable()
-export class DataService {
+export class SecretService {
   constructor(private readonly cryptService: CryptService) {}
 
-  async encryptSensitiveData(data: string): Promise<string> {
-    return this.cryptService.encrypt(data);
+  async saveSecret(data: string) {
+    const encrypted = await this.cryptService.encrypt(data);
+    // save encrypted data...
+    return encrypted;
   }
 
-  async decryptSensitiveData(encrypted: string): Promise<string> {
-    return this.cryptService.decrypt(encrypted);
+  async getSecret(encryptedData: string) {
+    const decrypted = await this.cryptService.decrypt(encryptedData);
+    return decrypted;
   }
 }
 ```
 
-## Example: Encrypting User Data
-
-```typescript
-import { Injectable } from "@nestjs/common";
-import { CryptService } from "@nest-boot/crypt";
-
-@Injectable()
-export class UserService {
-  constructor(private readonly cryptService: CryptService) {}
-
-  async saveUserData(userId: string, sensitiveData: object): Promise<void> {
-    const encrypted = await this.cryptService.encrypt(
-      JSON.stringify(sensitiveData),
-    );
-    // Save encrypted data to database
-    await this.userRepository.update(userId, { encryptedData: encrypted });
-  }
-
-  async getUserData(userId: string): Promise<object> {
-    const user = await this.userRepository.findOne(userId);
-    const decrypted = await this.cryptService.decrypt(user.encryptedData);
-    return JSON.parse(decrypted);
-  }
-}
-```
-
-## API Reference
-
-See the full [API documentation](/docs/api/@nest-boot/crypt) for detailed information.
-
-## Configuration Options
-
-| Option   | Type     | Description                                                                                                                                                                |
-| -------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `secret` | `string` | The secret key used for encryption/decryption. Falls back to `CRYPT_SECRET` or `APP_SECRET` environment variables if not provided. **Required** - throws error if not set. |
-
-## Environment Variables
-
-The module supports the following environment variables as fallbacks:
-
-- `CRYPT_SECRET` - Primary fallback for the secret key
-- `APP_SECRET` - Secondary fallback for the secret key
-
-## Security Notes
-
-- The AES-256-GCM algorithm provides authenticated encryption
-- Each encryption generates a unique IV (Initialization Vector) and salt
-- The encrypted output includes the IV, authentication tag, encrypted data, and salt
-- Always use a strong, randomly generated secret key in production
+The module uses HKDF to derive keys from your secret, ensuring secure encryption regardless of the secret length (though longer is better). It uses `A256GCMKW` for key wrapping and `A256GCM` for content encryption.

@@ -30,7 +30,9 @@ export class CryptService {
    */
   static get instance(): CryptService {
     if (!this._instance) {
-      throw new Error("CryptService not initialized");
+      throw new Error(
+        "CryptService not initialized. Call CryptService.init() first or use dependency injection.",
+      );
     }
 
     return this._instance;

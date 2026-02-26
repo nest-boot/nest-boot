@@ -13,6 +13,10 @@ import {
 import { RequestTransactionSubscriber } from "./request-transaction.subscriber";
 import { RequestTransactionModuleOptions } from "./request-transaction-module-options.interface";
 
+/**
+ * Module that provides request-scoped database transactions.
+ * It automatically wraps HTTP requests in a transaction.
+ */
 @Global()
 @Module({
   imports: [RequestContextModule, MiddlewareModule],

@@ -9,6 +9,10 @@ import {
 import { BullModuleOptions } from "./bullmq-module-options.interface";
 import { loadConfigFromEnv } from "./utils/load-config-from-env.util";
 
+/**
+ * BullMQ module for NestJS.
+ * Provides global configuration and methods to register queues.
+ */
 @Global()
 @Module({
   imports: [
@@ -32,12 +36,24 @@ import { loadConfigFromEnv } from "./utils/load-config-from-env.util";
   exports: [MODULE_OPTIONS_TOKEN],
 })
 export class BullModule extends ConfigurableModuleClass {
+  /**
+   * Registers a BullMQ queue.
+   *
+   * @param args - Arguments for registering a queue.
+   * @returns A dynamic module for the queue.
+   */
   static registerQueue(
     ...args: Parameters<typeof BaseBullModule.registerQueue>
   ): DynamicModule {
     return BaseBullModule.registerQueue(...args);
   }
 
+  /**
+   * Registers a BullMQ queue asynchronously.
+   *
+   * @param args - Arguments for registering a queue asynchronously.
+   * @returns A dynamic module for the queue.
+   */
   static registerQueueAsync(
     ...args: Parameters<typeof BaseBullModule.registerQueueAsync>
   ): DynamicModule {

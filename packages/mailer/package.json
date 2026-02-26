@@ -1,7 +1,7 @@
 {
   "name": "@nest-boot/mailer",
   "version": "7.0.2",
-  "description": "",
+  "description": "Email sending module for NestJS using Nodemailer.",
   "author": {
     "name": "Xudong Huang",
     "email": "me@huangxudong.com",

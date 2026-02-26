@@ -12,15 +12,18 @@ const HASH_PROPERTIES_KEY = Symbol("hashProperties");
 /**
  * Decorator that marks a property as a hashed field.
  * The property value will be automatically hashed before create and update operations.
+ * It uses the HashService to hash the value. If the value is already an Argon2 hash, it is skipped.
+ *
+ * @param options - MikroORM property options.
  *
  * @example
  * ```typescript
- * import { Entity } from '@mikro-orm/core';
+ * import { Entity, t } from '@mikro-orm/core';
  * import { HashedProperty } from '@nest-boot/mikro-orm-hash';
  *
  * @Entity()
  * export class User {
- *   @HashedProperty({ type: t.string })
+ *   @HashedProperty({ type: t.text })
  *   password!: string;
  * }
  * ```

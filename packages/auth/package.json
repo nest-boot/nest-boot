@@ -1,7 +1,7 @@
 {
   "name": "@nest-boot/auth",
   "version": "7.9.2",
-  "description": "",
+  "description": "Authentication module for NestJS, integrating with Better Auth.",
   "author": {
     "name": "Xudong Huang",
     "email": "me@huangxudong.com",

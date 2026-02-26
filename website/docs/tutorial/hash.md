@@ -1,24 +1,22 @@
 ---
-sidebar_position: 1
+sidebar_position: 2
 ---
 
 # Hash
 
-The `@nest-boot/hash` module provides secure password hashing and verification using the Argon2 algorithm, which is considered one of the most secure hashing algorithms available.
+The `@nest-boot/hash` module provides password hashing utilities using the Argon2 algorithm, via `@node-rs/argon2`.
 
 ## Installation
 
 ```bash
-npm install @nest-boot/hash
+npm install @nest-boot/hash @node-rs/argon2
 # or
-pnpm add @nest-boot/hash
+pnpm add @nest-boot/hash @node-rs/argon2
 ```
 
-## Basic Usage
+## Setup
 
-### Module Registration
-
-Register the `HashModule` in your application module:
+Register the `HashModule` in your application module.
 
 ```typescript
 import { Module } from "@nestjs/common";
@@ -27,39 +25,16 @@ import { HashModule } from "@nest-boot/hash";
 @Module({
   imports: [
     HashModule.register({
-      secret: "your-secret-key",
+      // secret: process.env.HASH_SECRET, // Optional if HASH_SECRET or APP_SECRET env var is set
     }),
   ],
 })
 export class AppModule {}
 ```
 
-### Async Registration
+## Usage
 
-For configuration from environment variables or other async sources:
-
-```typescript
-import { Module } from "@nestjs/common";
-import { ConfigModule, ConfigService } from "@nestjs/config";
-import { HashModule } from "@nest-boot/hash";
-
-@Module({
-  imports: [
-    ConfigModule.forRoot(),
-    HashModule.registerAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        secret: config.get("HASH_SECRET"),
-      }),
-    }),
-  ],
-})
-export class AppModule {}
-```
-
-## Using HashService
-
-Inject the `HashService` into your service or controller:
+Inject `HashService` to hash and verify passwords.
 
 ```typescript
 import { Injectable } from "@nestjs/common";
@@ -69,29 +44,14 @@ import { HashService } from "@nest-boot/hash";
 export class AuthService {
   constructor(private readonly hashService: HashService) {}
 
-  async hashPassword(password: string): Promise<string> {
-    return this.hashService.create(password);
+  async hashPassword(password: string) {
+    return await this.hashService.hash(password);
   }
 
-  async verifyPassword(hash: string, password: string): Promise<boolean> {
-    return this.hashService.verify(hash, password);
+  async validatePassword(password: string, hash: string) {
+    return await this.hashService.verify(hash, password);
   }
 }
 ```
 
-## API Reference
-
-See the full [API documentation](/docs/api/@nest-boot/hash) for detailed information.
-
-## Configuration Options
-
-| Option   | Type     | Description                                                                                                         |
-| -------- | -------- | ------------------------------------------------------------------------------------------------------------------- |
-| `secret` | `string` | The secret key used for hashing. Falls back to `HASH_SECRET` or `APP_SECRET` environment variables if not provided. |
-
-## Environment Variables
-
-The module supports the following environment variables as fallbacks:
-
-- `HASH_SECRET` - Primary fallback for the secret key
-- `APP_SECRET` - Secondary fallback for the secret key
+Argon2 is a modern, secure password hashing algorithm. The module handles salt generation and configuration automatically.

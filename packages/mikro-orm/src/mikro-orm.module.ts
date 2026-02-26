@@ -14,6 +14,11 @@ import {
 } from "./mikro-orm.module-definition";
 import { loadConfigFromEnv } from "./utils/load-config-from-env.util";
 
+/**
+ * Module that integrates MikroORM with NestJS.
+ * It uses the @nest-boot/request-context module to manage the EntityManager context.
+ * It also automatically loads configuration from environment variables.
+ */
 @Global()
 @Module({
   imports: [
@@ -56,16 +61,33 @@ export class MikroOrmModule
     super();
   }
 
+  /**
+   * Register entities for a feature module.
+   *
+   * @param args - Arguments for forFeature.
+   * @returns Dynamic module.
+   */
   static forFeature(...args: Parameters<typeof BaseMikroOrmModule.forFeature>) {
     return BaseMikroOrmModule.forFeature(...args);
   }
 
+  /**
+   * Register middleware for MikroORM.
+   *
+   * @param args - Arguments for forMiddleware.
+   * @returns Middleware configuration.
+   */
   static forMiddleware(
     ...args: Parameters<typeof BaseMikroOrmModule.forMiddleware>
   ) {
     return BaseMikroOrmModule.forMiddleware(...args);
   }
 
+  /**
+   * Clears the storage.
+   *
+   * @param args - Arguments for clearStorage.
+   */
   static clearStorage(
     ...args: Parameters<typeof BaseMikroOrmModule.clearStorage>
   ) {
@@ -73,6 +95,9 @@ export class MikroOrmModule
     return BaseMikroOrmModule.clearStorage(...args);
   }
 
+  /**
+   * Registers a middleware in the RequestContext to fork the EntityManager for each request.
+   */
   onModuleInit(): void {
     RequestContext.registerMiddleware("mikro-orm", (ctx, next) => {
       ctx.set(EntityManager, this.orm.em.fork({ useContext: true }));

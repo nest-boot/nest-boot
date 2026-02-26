@@ -65,6 +65,9 @@ function shopifyEstimator(
   }
 }
 
+/**
+ * Apollo Server plugin to calculate query complexity and enforce rate limiting.
+ */
 @Plugin()
 export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
   private readonly complexityEstimators: ComplexityEstimator[] = [];
@@ -91,6 +94,9 @@ export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
     ];
   }
 
+  /**
+   * Called when a request starts. Returns a listener for request lifecycle events.
+   */
   async requestDidStart(): Promise<GraphQLRequestListener<BaseContext>> {
     const { schema } = this.gqlSchemaHost;
 
