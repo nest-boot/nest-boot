@@ -1,2 +1,3 @@
+export * from "./interfaces";
 export * from "./redis.module";
-export * from "./utils/load-config-from-env.util";
+export { MODULE_OPTIONS_TOKEN as REDIS_MODULE_OPTIONS_TOKEN } from "./redis.module-definition";

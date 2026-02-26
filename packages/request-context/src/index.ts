@@ -1,4 +1,5 @@
 export * from "./create-request-context.decorator";
+export * from "./interfaces";
 export * from "./repl";
 export * from "./request-context";
 export * from "./request-context.constants";
