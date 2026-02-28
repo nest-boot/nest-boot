@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "docs:generate": "cd ../.. && pnpm docs:generate",
+    "docs:generate": "cd ../.. && pnpm build:packages && pnpm docs:generate",
     "prebuild": "pnpm run docs:generate",
     "build": "next build",
     "dev": "next dev",
