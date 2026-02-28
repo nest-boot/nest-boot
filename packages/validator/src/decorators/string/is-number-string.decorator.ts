@@ -4,6 +4,7 @@ import isNumericValidator from "validator/lib/isNumeric";
 
 import { buildI18nMessage } from "../../utils";
 
+/** Validation name constant for the IsNumberString validator. */
 export const IS_NUMBER_STRING = "isNumberString";
 
 /**

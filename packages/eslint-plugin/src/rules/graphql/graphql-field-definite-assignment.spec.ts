@@ -3,7 +3,7 @@ import rule from "./graphql-field-definite-assignment";
 
 tester.run("graphql-field-definite-assignment", rule, {
   valid: [
-    // 有初始化值的属性，不需要 !
+    // Property with initializer, no ! needed
     /* typescript */ `
       @ObjectType()
       class User {
@@ -11,7 +11,7 @@ tester.run("graphql-field-definite-assignment", rule, {
         createdAt: Date = new Date();
       }
     `,
-    // 有 ! 的属性，没有初始化值
+    // Property with !, no initializer
     /* typescript */ `
       @ObjectType()
       class User {
@@ -19,7 +19,7 @@ tester.run("graphql-field-definite-assignment", rule, {
         name!: string;
       }
     `,
-    // 可选属性，不需要 !
+    // Optional property, no ! needed
     /* typescript */ `
       @ObjectType()
       class User {
@@ -27,7 +27,7 @@ tester.run("graphql-field-definite-assignment", rule, {
         age?: number;
       }
     `,
-    // InputType 类型
+    // InputType class
     /* typescript */ `
       @InputType()
       class CreateUserInput {
@@ -35,7 +35,7 @@ tester.run("graphql-field-definite-assignment", rule, {
         name!: string;
       }
     `,
-    // ArgsType 类型
+    // ArgsType class
     /* typescript */ `
       @ArgsType()
       class GetUserArgs {
@@ -43,14 +43,14 @@ tester.run("graphql-field-definite-assignment", rule, {
         id!: string;
       }
     `,
-    // 非 GraphQL 模型类不检查
+    // Non-GraphQL model class is not checked
     /* typescript */ `
       class NotAGraphQLModel {
         @Field()
         field: string;
       }
     `,
-    // 没有 @Field 装饰器不检查
+    // Property without @Field decorator is not checked
     /* typescript */ `
       @ObjectType()
       class User {
@@ -59,7 +59,7 @@ tester.run("graphql-field-definite-assignment", rule, {
     `,
   ],
   invalid: [
-    // 没有初始化值，也没有 !
+    // No initializer and no !
     {
       code: /* typescript */ `
         @ObjectType()
@@ -77,7 +77,7 @@ tester.run("graphql-field-definite-assignment", rule, {
       `,
       errors: [{ messageId: "addDefiniteAssignment" }],
     },
-    // 有初始化值，但也有 !
+    // Has initializer but also has !
     {
       code: /* typescript */ `
         @ObjectType()
@@ -95,7 +95,7 @@ tester.run("graphql-field-definite-assignment", rule, {
       `,
       errors: [{ messageId: "removeDefiniteAssignment" }],
     },
-    // InputType - 没有初始化值，也没有 !
+    // InputType - no initializer and no !
     {
       code: /* typescript */ `
         @InputType()
@@ -113,7 +113,7 @@ tester.run("graphql-field-definite-assignment", rule, {
       `,
       errors: [{ messageId: "addDefiniteAssignment" }],
     },
-    // 数字类型，没有初始化值和 !
+    // Number type, no initializer and no !
     {
       code: /* typescript */ `
         @ObjectType()

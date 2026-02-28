@@ -5,6 +5,7 @@ import {
   RESPONSE,
 } from "@nest-boot/request-context";
 import {
+  type DynamicModule,
   Global,
   Inject,
   Module,
@@ -20,13 +21,22 @@ import pinoHttp from "pino-http";
 import { Logger } from "./logger";
 import { LoggingInterceptor } from "./logger.interceptor";
 import {
+  ASYNC_OPTIONS_TYPE,
   BINDINGS,
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
+  OPTIONS_TYPE,
   PINO_LOGGER,
 } from "./logger.module-definition";
 import { LoggerModuleOptions } from "./logger-module-options.interface";
 
+/**
+ * Structured logging module powered by Pino.
+ *
+ * @remarks
+ * Provides request-scoped structured logging with automatic request correlation,
+ * HTTP logging via pino-http, and a global logging interceptor.
+ */
 @Global()
 @Module({
   imports: [RequestContextModule],
@@ -43,6 +53,29 @@ export class LoggerModule
   extends ConfigurableModuleClass
   implements OnModuleInit
 {
+  /**
+   * Registers the LoggerModule with the given options.
+   * @param options - Pino logger configuration options
+   * @returns Dynamic module configuration
+   */
+  static override register(options: typeof OPTIONS_TYPE): DynamicModule {
+    return super.register(options);
+  }
+
+  /**
+   * Registers the LoggerModule asynchronously with factory functions.
+   * @param options - Async configuration options
+   * @returns Dynamic module configuration
+   */
+  static override registerAsync(
+    options: typeof ASYNC_OPTIONS_TYPE,
+  ): DynamicModule {
+    return super.registerAsync(options);
+  }
+
+  /** Creates a new LoggerModule instance.
+   * @param options - Pino logger configuration options
+   */
   constructor(
     @Optional()
     @Inject(MODULE_OPTIONS_TOKEN)
@@ -69,6 +102,7 @@ export class LoggerModule
     };
   }
 
+  /** Sets up the pino-http logger and registers it in the request context middleware. */
   onModuleInit(): void {
     const logger = pino();
     const loggerMiddleware = pinoHttp(this.options);

@@ -5,14 +5,27 @@ import {
   type ValidationOptions,
 } from "class-validator";
 
+/** Comparison operators for number validation. */
 export enum Comparator {
+  /** Equal to. */
   EQ = "EQ",
+  /** Greater than. */
   GT = "GT",
+  /** Greater than or equal to. */
   GTE = "GTE",
+  /** Less than. */
   LT = "LT",
+  /** Less than or equal to. */
   LTE = "LTE",
 }
 
+/**
+ * Validates that a numeric property satisfies a comparison against another property's value.
+ * @param comparator - The comparison operator to use
+ * @param compareProperty - The name of the property to compare against
+ * @param validationOptions - Optional class-validator validation options
+ * @returns Property decorator
+ */
 export function ValidateCompareNumber(
   comparator: Comparator,
   compareProperty: string,

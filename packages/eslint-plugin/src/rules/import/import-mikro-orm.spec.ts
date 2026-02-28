@@ -3,25 +3,25 @@ import rule from "./import-mikro-orm";
 
 tester.run("import-mikro-orm", rule, {
   valid: [
-    // 正确的导入来源
+    // Correct import source
     /* typescript */ `
       import { MikroOrmModule } from "@nest-boot/mikro-orm";
     `,
-    // 从其他包导入
+    // Importing from another package
     /* typescript */ `
       import { Module } from "@nestjs/common";
     `,
-    // 从 @mikro-orm/core 导入（不应该被替换）
+    // Importing from @mikro-orm/core (should not be replaced)
     /* typescript */ `
       import { Entity, Property } from "@mikro-orm/core";
     `,
-    // 命名导入
+    // Named import
     /* typescript */ `
       import { InjectRepository } from "@nest-boot/mikro-orm";
     `,
   ],
   invalid: [
-    // 从 @mikro-orm/nestjs 导入，应该替换为 @nest-boot/mikro-orm
+    // Importing from @mikro-orm/nestjs, should be replaced with @nest-boot/mikro-orm
     {
       code: /* typescript */ `
         import { MikroOrmModule } from "@mikro-orm/nestjs";
@@ -31,7 +31,7 @@ tester.run("import-mikro-orm", rule, {
       `,
       errors: [{ messageId: "replaceMikroOrmImport" }],
     },
-    // InjectRepository 导入
+    // InjectRepository import
     {
       code: /* typescript */ `
         import { InjectRepository } from "@mikro-orm/nestjs";
@@ -41,7 +41,7 @@ tester.run("import-mikro-orm", rule, {
       `,
       errors: [{ messageId: "replaceMikroOrmImport" }],
     },
-    // 类型导入
+    // Type import
     {
       code: /* typescript */ `
         import type { MikroOrmModuleOptions } from "@mikro-orm/nestjs";
@@ -51,7 +51,7 @@ tester.run("import-mikro-orm", rule, {
       `,
       errors: [{ messageId: "replaceMikroOrmImport" }],
     },
-    // 混合导入
+    // Mixed imports
     {
       code: /* typescript */ `
         import { MikroOrmModule, InjectRepository } from "@mikro-orm/nestjs";

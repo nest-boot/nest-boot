@@ -6,26 +6,26 @@ export default createRule({
     type: "problem",
     docs: {
       description:
-        "将从 @nestjs/graphql 导入的包修复为从 @nest-boot/graphql 导入",
+        "Fix imports from @nestjs/graphql to use @nest-boot/graphql instead",
     },
     fixable: "code",
     schema: [],
     messages: {
       replaceGraphqlImport:
-        "应从 @nest-boot/graphql 导入，而不是 @nestjs/graphql",
+        "Should import from @nest-boot/graphql instead of @nestjs/graphql",
     },
   },
   defaultOptions: [],
   create(context) {
     return {
       ImportDeclaration(node) {
-        // 检查是否从 @nestjs/graphql 导入
+        // Check if importing from @nestjs/graphql
         if (node.source.value === "@nestjs/graphql") {
           context.report({
             node,
             messageId: "replaceGraphqlImport",
             fix(fixer) {
-              // 将导入源替换为 @nest-boot/graphql
+              // Replace import source with @nest-boot/graphql
               return fixer.replaceText(node.source, '"@nest-boot/graphql"');
             },
           });

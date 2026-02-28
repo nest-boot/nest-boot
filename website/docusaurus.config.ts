@@ -56,6 +56,7 @@ const config: Config = {
   projectName: "nest-boot",
 
   onBrokenLinks: "throw",
+  onBrokenAnchors: "ignore",
 
   i18n: {
     defaultLocale: "en",

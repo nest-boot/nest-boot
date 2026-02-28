@@ -3,9 +3,8 @@ import { AutoPath } from "@mikro-orm/core/typings";
 /**
  * Utility type that converts dot notation to underscore notation.
  * For example: "user.profile.name" becomes "user_profile_name"
- * @internal
  */
-type DotToUnderscore<S extends string> =
+export type DotToUnderscore<S extends string> =
   S extends `${infer Prefix}.${infer Rest}`
     ? `${Prefix}_${DotToUnderscore<Rest>}`
     : S;

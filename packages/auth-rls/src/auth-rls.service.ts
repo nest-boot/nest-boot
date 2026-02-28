@@ -7,14 +7,30 @@ import { AuthRlsContext } from "./auth-rls.context";
 import { MODULE_OPTIONS_TOKEN } from "./auth-rls.module-definition";
 import { AuthRlsModuleOptions } from "./auth-rls-module-options.interface";
 
+/**
+ * Service that applies PostgreSQL row-level security context within a database transaction.
+ *
+ * @remarks
+ * Sets the PostgreSQL role to `authenticated` or `anonymous` and populates
+ * transaction-local config variables (`auth.user_id`, `auth.user_name`, etc.)
+ * based on the current user.
+ */
 @Injectable()
 export class AuthRlsService {
+  /** Creates a new AuthRlsService instance.
+   * @param options - Optional RLS module configuration
+   */
   constructor(
     @Optional()
     @Inject(MODULE_OPTIONS_TOKEN)
     protected readonly options?: AuthRlsModuleOptions,
   ) {}
 
+  /**
+   * Applies RLS context to the current database transaction.
+   * @param em - The MikroORM entity manager (must have an active transaction)
+   * @param user - The authenticated user, or `undefined` for anonymous access
+   */
   async setRlsContext(em: EntityManager, user?: BaseUser): Promise<void> {
     const knex = em.getTransactionContext<Knex>();
 

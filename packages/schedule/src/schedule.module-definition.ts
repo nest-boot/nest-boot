@@ -12,6 +12,8 @@ export const MODULE_OPTIONS_TOKEN = Symbol("ScheduleModuleOptions");
 export const {
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN: BASE_MODULE_OPTIONS_TOKEN,
+  OPTIONS_TYPE,
+  ASYNC_OPTIONS_TYPE,
 } = new ConfigurableModuleBuilder<ScheduleModuleOptions>()
   .setClassMethodName("forRoot")
   .build();

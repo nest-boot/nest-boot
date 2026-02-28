@@ -2,9 +2,10 @@ import { RequestContext } from "./request-context";
 
 /**
  * Helper type that extracts the argument types of a method.
- * @internal
  */
-type MethodArgs<T, M extends keyof T> = T[M] extends (...args: infer A) => any
+export type MethodArgs<T, M extends keyof T> = T[M] extends (
+  ...args: infer A
+) => any
   ? A
   : never;
 

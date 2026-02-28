@@ -3,8 +3,10 @@ import nestBootPlugin from "@nest-boot/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
 import prettierConfig from "eslint-config-prettier";
 import simpleImportSort from "eslint-plugin-simple-import-sort";
+import tsdocPlugin from "eslint-plugin-tsdoc";
 import tsEslint from "typescript-eslint";
 
+// eslint-disable-next-line tsdoc/syntax
 /** @type {import('eslint').Linter.Config[]} */
 const config = [
   js.configs.recommended,
@@ -19,7 +21,6 @@ const config = [
   // TypeScript 和插件配置
   {
     languageOptions: {
-      /** @type {import('eslint').Linter.Parser} */
       parser: tsParser,
       parserOptions: {
         projectService: true,
@@ -28,8 +29,12 @@ const config = [
     plugins: {
       "@nest-boot": nestBootPlugin,
       "simple-import-sort": simpleImportSort,
+      tsdoc: tsdocPlugin,
     },
     rules: {
+      // TSDoc 语法检查
+      "tsdoc/syntax": "error",
+
       // 基础规则
       "no-void": "off",
       "no-use-before-define": "off",

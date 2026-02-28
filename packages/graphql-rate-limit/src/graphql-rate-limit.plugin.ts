@@ -43,13 +43,13 @@ function shopifyEstimator(
     return shopifyEstimator(args, type.ofType);
   }
 
-  // GraphQL 的 Connection 表示的是一对多的关系，Connection 的消耗是两点加上要返回的对象数量。
+  // A GraphQL Connection represents a one-to-many relationship. The cost is two points plus the number of objects to return.
   if (type instanceof GraphQLObjectType && type.name.endsWith("Connection")) {
     return 2 + args.childComplexity * (args.args.first ?? args.args.last ?? 0);
   }
 
-  // Object 是查询的基本单位，一般代码一个单次的 server 端操作，可以是一次数据库查询，也可以一次内部服务的访问。
-  // Interface 和 Union 和 Object 类似，只不过是能返回不同类型的 object，所以算一点。
+  // An Object is the basic unit of a query, generally representing a single server-side operation such as a database query or an internal service call.
+  // Interface and Union are similar to Object but can return different types of objects, so they cost one point.
   if (
     type instanceof GraphQLObjectType ||
     type instanceof GraphQLInterfaceType ||
@@ -58,8 +58,8 @@ function shopifyEstimator(
     return 1 + args.childComplexity;
   }
 
-  // Scalar 和 Enum 是 Object 本身的一部分，在 Object 里我们已经算过消耗了。
-  // Scalar 和 Enum 其实就是 Object 上的某个字段，一个 Object 上多返回几个字段消耗是比较少的。
+  // Scalar and Enum are part of the Object itself; we've already counted their cost in the Object.
+  // They are just fields on an Object, and returning a few extra fields costs relatively little.
   if (type instanceof GraphQLScalarType || type instanceof GraphQLEnumType) {
     return 0;
   }

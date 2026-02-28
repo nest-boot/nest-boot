@@ -1,8 +1,11 @@
 import { t } from "@nest-boot/i18n";
 import { registerDecorator, type ValidationOptions } from "class-validator";
 
+/** Options for the {@link ArrayLength} decorator. */
 export interface ArrayLengthOptions extends ValidationOptions {
+  /** Minimum array length. */
   min?: number;
+  /** Maximum array length. */
   max?: number;
 }
 
@@ -21,7 +24,7 @@ function arrayLengthMessage(
       });
     }
 
-    // 长度小于要求
+    // Length is less than required
     if (typeof min !== "undefined" && value.length < min) {
       return t("validation:arrayLength.gte", {
         property: t(`property:${property}`),
@@ -29,7 +32,7 @@ function arrayLengthMessage(
       });
     }
 
-    // 长度大于要求
+    // Length exceeds required
     if (typeof max !== "undefined" && value.length > max) {
       return t("validation:arrayLength.lte", {
         property: t(`property:${property}`),
@@ -38,12 +41,17 @@ function arrayLengthMessage(
     }
   }
 
-  // 不是数组
+  // Not an array
   return t("validation:is-array", {
     property: t(`property:${property}`),
   });
 }
 
+/**
+ * Validates that the array length falls within the specified range.
+ * @param validationOptions - Array length constraints and validation options
+ * @returns Property decorator
+ */
 export function ArrayLength(
   validationOptions: ArrayLengthOptions,
 ): PropertyDecorator {
@@ -69,7 +77,7 @@ export function ArrayLength(
               return true;
             }
 
-            // 不是数组
+            // Not an array
             return false;
           },
           defaultMessage(args) {

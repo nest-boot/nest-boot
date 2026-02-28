@@ -64,6 +64,9 @@ export interface ConnectionFindOptions<
  */
 @Injectable()
 export class ConnectionManager {
+  /** Creates a new ConnectionManager instance.
+   * @param em - MikroORM entity manager for querying entities
+   */
   constructor(private readonly em: EntityManager) {}
 
   /**

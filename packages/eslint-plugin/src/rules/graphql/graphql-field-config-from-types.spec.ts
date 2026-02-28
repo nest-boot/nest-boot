@@ -3,7 +3,7 @@ import rule from "./graphql-field-config-from-types";
 
 tester.run("graphql-field-config-from-types", rule, {
   valid: [
-    // 正确的 string 类型
+    // Correct string type
     /* typescript */ `
       @ObjectType()
       class User {
@@ -11,7 +11,7 @@ tester.run("graphql-field-config-from-types", rule, {
         name!: string;
       }
     `,
-    // 正确的 number 类型（Float）
+    // Correct number type (Float)
     /* typescript */ `
       @ObjectType()
       class User {
@@ -19,7 +19,7 @@ tester.run("graphql-field-config-from-types", rule, {
         score!: number;
       }
     `,
-    // 正确的 number 类型（Int）
+    // Correct number type (Int)
     /* typescript */ `
       @ObjectType()
       class User {
@@ -27,7 +27,7 @@ tester.run("graphql-field-config-from-types", rule, {
         age!: number;
       }
     `,
-    // 正确的 boolean 类型
+    // Correct boolean type
     /* typescript */ `
       @ObjectType()
       class User {
@@ -35,7 +35,7 @@ tester.run("graphql-field-config-from-types", rule, {
         isActive!: boolean;
       }
     `,
-    // 正确的 nullable 配置
+    // Correct nullable configuration
     /* typescript */ `
       @ObjectType()
       class User {
@@ -43,7 +43,7 @@ tester.run("graphql-field-config-from-types", rule, {
         name?: string;
       }
     `,
-    // 正确的数组类型
+    // Correct array type
     /* typescript */ `
       @ObjectType()
       class User {
@@ -51,7 +51,7 @@ tester.run("graphql-field-config-from-types", rule, {
         tags!: string[];
       }
     `,
-    // ID 类型
+    // ID type
     /* typescript */ `
       @ObjectType()
       class User {
@@ -59,7 +59,7 @@ tester.run("graphql-field-config-from-types", rule, {
         id!: string;
       }
     `,
-    // 自定义类型
+    // Custom type
     /* typescript */ `
       @ObjectType()
       class User {
@@ -67,7 +67,7 @@ tester.run("graphql-field-config-from-types", rule, {
         profile!: Profile;
       }
     `,
-    // 带有 HideField 装饰器的属性不需要 @Field
+    // Property with @HideField decorator does not need @Field
     /* typescript */ `
       @ObjectType()
       class User {
@@ -75,13 +75,13 @@ tester.run("graphql-field-config-from-types", rule, {
         password!: string;
       }
     `,
-    // 非 GraphQL 模型类不检查
+    // Non-GraphQL model class is not checked
     /* typescript */ `
       class NotAGraphQLModel {
         field: string;
       }
     `,
-    // 复杂的配置对象（包含展开运算符和条件表达式）
+    // Complex config object (with spread operator and conditional expression)
     /* typescript */ `
       @ObjectType()
       class Connection {
@@ -98,7 +98,7 @@ tester.run("graphql-field-config-from-types", rule, {
     `,
   ],
   invalid: [
-    // @Field 类型不匹配
+    // @Field type mismatch
     {
       code: /* typescript */ `
         @ObjectType()
@@ -116,7 +116,7 @@ tester.run("graphql-field-config-from-types", rule, {
       `,
       errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
     },
-    // nullable 配置不匹配
+    // nullable configuration mismatch
     {
       code: /* typescript */ `
         @ObjectType()
@@ -134,7 +134,7 @@ tester.run("graphql-field-config-from-types", rule, {
       `,
       errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
     },
-    // 不应该有 nullable 但设置了
+    // Should not have nullable but it is set
     {
       code: /* typescript */ `
         @ObjectType()
@@ -152,7 +152,7 @@ tester.run("graphql-field-config-from-types", rule, {
       `,
       errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
     },
-    // 数组类型不匹配
+    // Array type mismatch
     {
       code: /* typescript */ `
         @ObjectType()
@@ -170,7 +170,7 @@ tester.run("graphql-field-config-from-types", rule, {
       `,
       errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
     },
-    // 缺少 type function 但有其他配置选项（应保留）
+    // Missing type function but has other config options (should be preserved)
     {
       code: /* typescript */ `
         @ObjectType()
@@ -191,7 +191,7 @@ tester.run("graphql-field-config-from-types", rule, {
       `,
       errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
     },
-    // 配置 nullable 时保留其他选项
+    // nullable config should preserve other options
     {
       code: /* typescript */ `
         @ObjectType()
@@ -209,7 +209,7 @@ tester.run("graphql-field-config-from-types", rule, {
       `,
       errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
     },
-    // 复杂配置对象（包含展开运算符）缺少 type function
+    // Complex config object (with spread operator) missing type function
     {
       code: /* typescript */ `
         @ObjectType()

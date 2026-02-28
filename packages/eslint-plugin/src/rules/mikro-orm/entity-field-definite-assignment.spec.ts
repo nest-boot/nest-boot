@@ -3,7 +3,7 @@ import rule from "./entity-field-definite-assignment";
 
 tester.run("entity-field-definite-assignment", rule, {
   valid: [
-    // 有初始化值的属性，不需要 !
+    // Property with initializer, no ! needed
     /* typescript */ `
       @Entity()
       class User {
@@ -11,7 +11,7 @@ tester.run("entity-field-definite-assignment", rule, {
         createdAt: Date = new Date();
       }
     `,
-    // 有 ! 的属性，没有初始化值
+    // Property with !, no initializer
     /* typescript */ `
       @Entity()
       class User {
@@ -19,7 +19,7 @@ tester.run("entity-field-definite-assignment", rule, {
         name!: string;
       }
     `,
-    // 可选属性，不需要 !
+    // Optional property, no ! needed
     /* typescript */ `
       @Entity()
       class User {
@@ -27,7 +27,7 @@ tester.run("entity-field-definite-assignment", rule, {
         age?: number;
       }
     `,
-    // 可空属性且有初始化值
+    // Nullable property with initializer
     /* typescript */ `
       @Entity()
       class User {
@@ -35,21 +35,21 @@ tester.run("entity-field-definite-assignment", rule, {
         name: string | null = null;
       }
     `,
-    // 非 Entity 类不检查
+    // Non-Entity class is not checked
     /* typescript */ `
       class NotAnEntity {
         @Property()
         field: string;
       }
     `,
-    // 没有 @Property 装饰器不检查
+    // Property without @Property decorator is not checked
     /* typescript */ `
       @Entity()
       class User {
         field: string;
       }
     `,
-    // @Enum 装饰器 - 有 !
+    // @Enum decorator - with !
     /* typescript */ `
       @Entity()
       class User {
@@ -57,7 +57,7 @@ tester.run("entity-field-definite-assignment", rule, {
         role!: UserRole;
       }
     `,
-    // @OneToOne 装饰器 - 使用 Ref
+    // @OneToOne decorator - using Ref
     /* typescript */ `
       @Entity()
       class User {
@@ -65,7 +65,7 @@ tester.run("entity-field-definite-assignment", rule, {
         profile!: Ref<Profile>;
       }
     `,
-    // @OneToMany 装饰器 - 使用 Collection 初始化
+    // @OneToMany decorator - initialized with Collection
     /* typescript */ `
       @Entity()
       class User {
@@ -73,7 +73,7 @@ tester.run("entity-field-definite-assignment", rule, {
         posts = new Collection<Post>(this);
       }
     `,
-    // @ManyToOne 装饰器 - 使用 Ref
+    // @ManyToOne decorator - using Ref
     /* typescript */ `
       @Entity()
       class Post {
@@ -81,7 +81,7 @@ tester.run("entity-field-definite-assignment", rule, {
         author!: Ref<User>;
       }
     `,
-    // @ManyToMany 装饰器 - 使用 Collection 初始化
+    // @ManyToMany decorator - initialized with Collection
     /* typescript */ `
       @Entity()
       class User {
@@ -91,7 +91,7 @@ tester.run("entity-field-definite-assignment", rule, {
     `,
   ],
   invalid: [
-    // 没有初始化值，也没有 !
+    // No initializer and no !
     {
       code: /* typescript */ `
         @Entity()
@@ -109,7 +109,7 @@ tester.run("entity-field-definite-assignment", rule, {
       `,
       errors: [{ messageId: "addDefiniteAssignment" }],
     },
-    // 有初始化值，但也有 !
+    // Has initializer but also has !
     {
       code: /* typescript */ `
         @Entity()
@@ -127,7 +127,7 @@ tester.run("entity-field-definite-assignment", rule, {
       `,
       errors: [{ messageId: "removeDefiniteAssignment" }],
     },
-    // @Enum 装饰器 - 没有初始化值,也没有 !
+    // @Enum decorator - no initializer and no !
     {
       code: /* typescript */ `
         @Entity()
@@ -145,7 +145,7 @@ tester.run("entity-field-definite-assignment", rule, {
       `,
       errors: [{ messageId: "addDefiniteAssignment" }],
     },
-    // @OneToOne 装饰器 - 没有初始化值,也没有 ! (使用 Ref)
+    // @OneToOne decorator - no initializer and no ! (using Ref)
     {
       code: /* typescript */ `
         @Entity()
@@ -163,7 +163,7 @@ tester.run("entity-field-definite-assignment", rule, {
       `,
       errors: [{ messageId: "addDefiniteAssignment" }],
     },
-    // @OneToMany 装饰器 - 有初始化值,但也有 ! (使用 Collection)
+    // @OneToMany decorator - has initializer but also has ! (using Collection)
     {
       code: /* typescript */ `
         @Entity()
@@ -181,7 +181,7 @@ tester.run("entity-field-definite-assignment", rule, {
       `,
       errors: [{ messageId: "removeDefiniteAssignment" }],
     },
-    // @ManyToOne 装饰器 - 没有初始化值,也没有 ! (使用 Ref)
+    // @ManyToOne decorator - no initializer and no ! (using Ref)
     {
       code: /* typescript */ `
         @Entity()
@@ -199,7 +199,7 @@ tester.run("entity-field-definite-assignment", rule, {
       `,
       errors: [{ messageId: "addDefiniteAssignment" }],
     },
-    // @ManyToMany 装饰器 - 有初始化值,但也有 ! (使用 Collection)
+    // @ManyToMany decorator - has initializer but also has ! (using Collection)
     {
       code: /* typescript */ `
         @Entity()

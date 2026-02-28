@@ -1,5 +1,6 @@
 import type { FindOptions, PopulatePath } from "@mikro-orm/core";
 
+/** Options for {@link EntityService.chunkById}, excluding offset and orderBy (managed internally). */
 export type ChunkByIdOptions<
   Entity,
   Hint extends string = never,

@@ -18,7 +18,7 @@ import { loadConfigFromEnv } from "./utils/load-config-from-env.util";
  * Module that provides Redis connection using ioredis.
  *
  * The module automatically loads configuration from environment variables if not provided:
- * - `REDIS_URL`: Full Redis connection URL (e.g., redis://user:pass@host:6379/0)
+ * - `REDIS_URL`: Full Redis connection URL (e.g., `redis://user:pass@host:6379/0`)
  * - `REDIS_HOST`: Redis server hostname
  * - `REDIS_PORT`: Redis server port
  * - `REDIS_DB` or `REDIS_DATABASE`: Redis database number
@@ -96,9 +96,8 @@ export class RedisModule
     return super.registerAsync(options);
   }
 
-  /**
-   * Creates an instance of RedisModule.
-   * @param redis - The Redis client instance
+  /** Creates a new RedisModule instance.
+   * @param redis - The ioredis client instance
    */
   constructor(private readonly redis: Redis) {
     super();

@@ -3,9 +3,9 @@ import { JobState } from "bullmq";
 import { JobStatus } from "../enums/job-status.enum";
 
 /**
- * 将 BullMQ 的任务状态转换为内部 JobStatus 枚举
- * @param state BullMQ 任务状态或 "unknown"
- * @returns 对应的 JobStatus 枚举值
+ * Converts a BullMQ job state to the internal JobStatus enum.
+ * @param state - The BullMQ job state or "unknown".
+ * @returns The corresponding JobStatus enum value.
  */
 export function convertBullmqJobStateToJobStatus(
   state: JobState | "unknown",

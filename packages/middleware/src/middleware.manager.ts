@@ -6,20 +6,24 @@ import { MiddlewareConfigurator } from "./middleware.configurator";
 import { MiddlewareInstanceOrFunction } from "./types";
 
 /**
- * Manages middleware registration and configuration.
+ * Service that manages middleware registration and topological ordering.
+ *
+ * @remarks
+ * Provides an API similar to NestJS `MiddlewareConsumer` but adds support
+ * for dependency-based ordering and global route exclusions.
  */
 @Injectable()
 export class MiddlewareManager {
+  /** Global routes excluded from all middleware processing. @internal */
   private globalExcludeRoutes: (string | RouteInfo)[] = [];
 
-  /**
-   * @internal
-   */
+  /** Map of middleware instances to their configurations. @internal */
   public readonly middlewareConfigMap = new Map<
     MiddlewareInstanceOrFunction,
     MiddlewareConfig
   >();
 
+  /** Returns middleware configs sorted by dependency order. @internal */
   private get middlewareConfigs(): MiddlewareConfig[] {
     const sorted: MiddlewareInstanceOrFunction[] = [];
     const visited = new Set<MiddlewareInstanceOrFunction>();
@@ -74,9 +78,9 @@ export class MiddlewareManager {
   }
 
   /**
-   * Applies middlewares to routes.
-   * @param middlewares - The middlewares to apply
-   * @returns A configurator for specifying routes
+   * Creates a middleware configurator for the given middlewares.
+   * @param middlewares - Middleware instances or functions to apply
+   * @returns A {@link MiddlewareConfigurator} for specifying routes and options
    */
   apply(
     ...middlewares: MiddlewareInstanceOrFunction[]
@@ -84,11 +88,20 @@ export class MiddlewareManager {
     return new MiddlewareConfigurator(this, middlewares);
   }
 
+  /**
+   * Adds routes to the global exclusion list (applies to all middlewares).
+   * @param routes - Route patterns or RouteInfo objects to exclude globally
+   * @returns This manager for chaining
+   */
   globalExclude(...routes: (string | RouteInfo)[]): this {
     this.globalExcludeRoutes.push(...routes);
     return this;
   }
 
+  /**
+   * Applies all registered middleware configurations to the NestJS middleware consumer.
+   * @param consumer - The NestJS middleware consumer from the module's configure method
+   */
   configure(consumer: MiddlewareConsumer) {
     for (const config of this.middlewareConfigs) {
       const proxy = consumer.apply(config.middleware);

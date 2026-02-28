@@ -17,10 +17,20 @@ import { FileUpload } from "./file-upload.object";
 import { FileUploadModuleOptions } from "./file-upload-options.interface";
 import { FileUploadInput } from "./inputs/file-upload.input";
 
+/**
+ * Service for handling file uploads to S3-compatible storage.
+ *
+ * @remarks
+ * Supports presigned POST uploads, direct uploads, and
+ * moving temporary files to permanent storage paths.
+ */
 @Injectable()
 export class FileUploadService {
-  private readonly s3Client: S3Client;
+  /** S3 client instance. @internal */ private readonly s3Client: S3Client;
 
+  /** Creates a new FileUploadService instance.
+   * @param options - File upload module configuration options
+   */
   constructor(
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly options: FileUploadModuleOptions,
@@ -31,6 +41,11 @@ export class FileUploadService {
         : new S3Client(options.client);
   }
 
+  /**
+   * Creates presigned POST URLs for uploading files.
+   * @param input - Array of file upload inputs with name, size, and MIME type
+   * @returns An array of presigned POST data (URL and form fields)
+   */
   async create(input: FileUploadInput[]): Promise<FileUpload[]> {
     const results = input.map(async (item) => {
       const key = `tmp/${randomUUID()}${extname(item.name)}`;
@@ -42,7 +57,6 @@ export class FileUploadService {
       );
 
       if (this.options.limits && !limit) {
-        // 上传的文件不符合要求
         throw new BadRequestException(
           "The uploaded file does not meet the requirements",
         );
@@ -90,7 +104,11 @@ export class FileUploadService {
     return await Promise.all(results);
   }
 
-  // 临时文件转永久文件
+  /**
+   * Moves a temporary file to permanent storage.
+   * @param tmpUrl - The URL of the temporary file
+   * @returns The permanent URL of the file
+   */
   async persist(tmpUrl: string): Promise<string> {
     const tmpKey = tmpUrl.split("/tmp/")[1];
     const originKey = `tmp/${tmpKey}`;
@@ -108,6 +126,13 @@ export class FileUploadService {
     return await this.getFileUrl(targetKey);
   }
 
+  /**
+   * Uploads file data directly to S3.
+   * @param data - File content as a Readable stream, Buffer, or string
+   * @param metadata - Upload metadata including Content-Type and optional extension
+   * @param persist - Whether to move the file to permanent storage immediately
+   * @returns The URL of the uploaded file
+   */
   async upload(
     data: Readable | Buffer | string,
     metadata: {
@@ -139,12 +164,11 @@ export class FileUploadService {
       return tmpUrl;
     }
 
-    // 持久化
     return await this.persist(tmpUrl);
   }
 
+  /** Constructs the full URL for a file stored in S3. @internal */
   private async getFileUrl(filePath: string): Promise<string> {
-    // 获取 S3Client 的配置
     const config = this.s3Client.config;
     const forcePathStyle = config.forcePathStyle;
     const endpoint = await config.endpoint?.();
@@ -153,18 +177,14 @@ export class FileUploadService {
       throw new Error("Endpoint is not configured");
     }
 
-    // 构造基础 URL
     const protocol = endpoint.protocol;
     const hostname = endpoint.hostname;
     const port = endpoint.port ? `:${String(endpoint.port)}` : "";
     const baseUrl = `${protocol}//${hostname}${port}`;
 
-    // 根据配置生成正确的 URL
     if (forcePathStyle) {
-      // Path-style URL: https://endpoint/bucket/key
       return `${baseUrl}/${this.options.bucket}/${filePath}`;
     } else {
-      // Virtual-hosted-style URL: https://bucket.endpoint/key
       return `${protocol}//${this.options.bucket}.${hostname}${port}/${filePath}`;
     }
   }

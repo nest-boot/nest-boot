@@ -4,6 +4,7 @@ import type SESTransport from "nodemailer/lib/ses-transport";
 import type SMTPTransport from "nodemailer/lib/smtp-transport";
 import type StreamTransport from "nodemailer/lib/stream-transport";
 
+/** Configuration options for the mailer module (nodemailer transport options). */
 export type MailerModuleOptions =
   | JSONTransport.Options
   | SESTransport.Options

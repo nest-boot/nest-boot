@@ -3,29 +3,29 @@ import rule from "./import-bullmq";
 
 tester.run("import-bullmq", rule, {
   valid: [
-    // 正确的导入来源
+    // Correct import source
     /* typescript */ `
       import { BullModule } from "@nest-boot/bullmq";
     `,
-    // 从其他包导入
+    // Importing from another package
     /* typescript */ `
       import { Module } from "@nestjs/common";
     `,
-    // 命名导入
+    // Named import
     /* typescript */ `
       import { InjectQueue, Processor } from "@nest-boot/bullmq";
     `,
-    // 默认导入
+    // Default import
     /* typescript */ `
       import BullMQ from "@nest-boot/bullmq";
     `,
-    // 从 bullmq 核心包导入（不应该被替换）
+    // Importing from bullmq core package (should not be replaced)
     /* typescript */ `
       import { Queue, Worker } from "bullmq";
     `,
   ],
   invalid: [
-    // 从 @nestjs/bullmq 导入，应该替换为 @nest-boot/bullmq
+    // Importing from @nestjs/bullmq, should be replaced with @nest-boot/bullmq
     {
       code: /* typescript */ `
         import { BullModule } from "@nestjs/bullmq";
@@ -35,7 +35,7 @@ tester.run("import-bullmq", rule, {
       `,
       errors: [{ messageId: "replaceBullmqImport" }],
     },
-    // Processor 相关导入
+    // Processor related imports
     {
       code: /* typescript */ `
         import { Processor, InjectQueue } from "@nestjs/bullmq";
@@ -45,7 +45,7 @@ tester.run("import-bullmq", rule, {
       `,
       errors: [{ messageId: "replaceBullmqImport" }],
     },
-    // 类型导入
+    // Type import
     {
       code: /* typescript */ `
         import type { BullModuleOptions } from "@nestjs/bullmq";
@@ -55,7 +55,7 @@ tester.run("import-bullmq", rule, {
       `,
       errors: [{ messageId: "replaceBullmqImport" }],
     },
-    // 装饰器导入
+    // Decorator imports
     {
       code: /* typescript */ `
         import { OnQueueActive, OnQueueCompleted } from "@nestjs/bullmq";

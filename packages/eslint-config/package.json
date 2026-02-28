@@ -37,5 +37,8 @@
   },
   "volta": {
     "extends": "../../package.json"
+  },
+  "dependencies": {
+    "eslint-plugin-tsdoc": "^0.5.2"
   }
 }

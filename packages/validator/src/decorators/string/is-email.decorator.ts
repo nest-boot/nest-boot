@@ -4,6 +4,7 @@ import isEmailValidator from "validator/lib/isEmail";
 
 import { buildI18nMessage } from "../../utils";
 
+/** Validation name constant for the IsEmail validator. */
 export const IS_EMAIL = "isEmail";
 
 /**

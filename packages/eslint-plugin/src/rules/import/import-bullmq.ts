@@ -6,25 +6,26 @@ export default createRule({
     type: "problem",
     docs: {
       description:
-        "将从 @nestjs/bullmq 导入的包修复为从 @nest-boot/bullmq 导入",
+        "Fix imports from @nestjs/bullmq to use @nest-boot/bullmq instead",
     },
     fixable: "code",
     schema: [],
     messages: {
-      replaceBullmqImport: "应从 @nest-boot/bullmq 导入，而不是 @nestjs/bullmq",
+      replaceBullmqImport:
+        "Should import from @nest-boot/bullmq instead of @nestjs/bullmq",
     },
   },
   defaultOptions: [],
   create(context) {
     return {
       ImportDeclaration(node) {
-        // 检查是否从 @nestjs/bullmq 导入
+        // Check if importing from @nestjs/bullmq
         if (node.source.value === "@nestjs/bullmq") {
           context.report({
             node,
             messageId: "replaceBullmqImport",
             fix(fixer) {
-              // 将导入源替换为 @nest-boot/bullmq
+              // Replace import source with @nest-boot/bullmq
               return fixer.replaceText(node.source, '"@nest-boot/bullmq"');
             },
           });

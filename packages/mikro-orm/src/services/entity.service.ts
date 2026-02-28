@@ -46,11 +46,29 @@ interface RemoveArgs<Entity extends IdEntity> {
   softDelete: boolean;
 }
 
+/** Options for configuring an {@link EntityService} instance. */
 export interface EntityServiceOptions<Entity extends IdEntity> {
+  /** Entity property key used for soft-delete timestamps (defaults to `"deletedAt"`). */
   softDeleteKey?: keyof Entity;
 }
 
+/**
+ * Generic CRUD service for MikroORM entities with DataLoader batching.
+ *
+ * @remarks
+ * Provides batched `create`, `findOne`, `update`, and `remove` operations
+ * via DataLoader for automatic N+1 prevention, plus standard `findAll`,
+ * `count`, and `chunkById` methods.
+ *
+ * @typeParam Entity - The entity type, which must have an `id` property
+ */
 export class EntityService<Entity extends IdEntity> {
+  /**
+   * Creates a new EntityService instance.
+   * @param entityClass - The entity class to manage
+   * @param em - MikroORM entity manager
+   * @param options - Optional service configuration (e.g. soft-delete key)
+   */
   constructor(
     protected readonly entityClass: Type<Entity>,
     protected readonly em: EntityManager,
@@ -62,17 +80,17 @@ export class EntityService<Entity extends IdEntity> {
       async (items: readonly FindOneArgs<Entity>[]) => {
         const uow = this.em.getUnitOfWork();
 
-        // 获取所有 ID
+        // Get all IDs
         const ids = items.map(({ idOrEntity }) =>
           typeof idOrEntity === "object" ? idOrEntity.id : idOrEntity,
         );
 
-        // 先尝试从 UnitOfWork 中获取已加载的实体
+        // First try to get already loaded entities from UnitOfWork
         const entitiesFromUow: Loaded<Entity>[] = [];
         const idsToFetch: (string | number | bigint)[] = [];
 
         for (const id of ids) {
-          // 尝试从 UnitOfWork 的身份映射中获取实体
+          // Try to get entity from UnitOfWork's identity map
           const entity = uow.getById<Entity>(
             Utils.className(this.entityClass),
             id as Primary<Entity>,
@@ -85,7 +103,7 @@ export class EntityService<Entity extends IdEntity> {
           }
         }
 
-        // 如果有需要从数据库查询的 ID,则执行查询
+        // If there are IDs that need to be fetched from the database, execute the query
         let entitiesFromDb: Loaded<Entity>[] = [];
         if (idsToFetch.length > 0) {
           entitiesFromDb = await this.em.find(
@@ -97,10 +115,10 @@ export class EntityService<Entity extends IdEntity> {
           );
         }
 
-        // 合并 UnitOfWork 和数据库查询的结果
+        // Merge results from UnitOfWork and database query
         const allEntities = [...entitiesFromUow, ...entitiesFromDb];
 
-        // 按照原始顺序返回结果
+        // Return results in the original order
         return ids.map((id) => {
           return allEntities.find((entity) => entity.id === id) ?? null;
         });
@@ -150,7 +168,7 @@ export class EntityService<Entity extends IdEntity> {
 
           const { data, options } = items[index];
 
-          // 过滤掉 undefined 的值
+          // Filter out undefined values
           const filteredData = Object.fromEntries(
             Object.entries(data).filter(([, value]) => value !== undefined),
           ) as typeof data;
@@ -206,10 +224,20 @@ export class EntityService<Entity extends IdEntity> {
     );
   }
 
+  /**
+   * Creates a new entity and persists it.
+   * @param data - The entity data to create
+   * @returns The created entity
+   */
   create(data: RequiredEntityData<Entity>): Promise<Entity> {
     return this.#createDataLoader.load(data);
   }
 
+  /**
+   * Finds a single entity by ID, entity reference, or filter query.
+   * @param idOrEntityOrWhere - The entity ID, entity instance, or filter query
+   * @returns The found entity or null
+   */
   async findOne(
     idOrEntityOrWhere: IdOrEntity<Entity> | FilterQuery<NoInfer<Entity>>,
   ): Promise<Loaded<Entity> | null> {
@@ -225,6 +253,12 @@ export class EntityService<Entity extends IdEntity> {
     }
   }
 
+  /**
+   * Finds a single entity by ID, entity reference, or filter query, throwing if not found.
+   * @param idOrEntityOrWhere - The entity ID, entity instance, or filter query
+   * @returns The found entity
+   * @throws NotFoundException if the entity is not found
+   */
   async findOneOrFail(
     idOrEntityOrWhere: IdOrEntity<Entity> | FilterQuery<Entity>,
   ): Promise<Loaded<Entity>> {
@@ -239,6 +273,12 @@ export class EntityService<Entity extends IdEntity> {
     return entity;
   }
 
+  /**
+   * Finds all entities matching the given filter query.
+   * @param where - Filter query
+   * @param options - Find options (populate, limit, offset, etc.)
+   * @returns Array of matching entities
+   */
   async findAll<
     Hint extends string = never,
     Fields extends string = PopulatePath.ALL,
@@ -254,6 +294,12 @@ export class EntityService<Entity extends IdEntity> {
     );
   }
 
+  /**
+   * Counts entities matching the given filter query.
+   * @param where - Filter query
+   * @param options - Count options
+   * @returns The number of matching entities
+   */
   async count<Hint extends string = never>(
     where: FilterQuery<NoInfer<Entity>>,
     options?: CountOptions<Entity, Hint>,
@@ -261,6 +307,14 @@ export class EntityService<Entity extends IdEntity> {
     return await this.em.count<Entity, Hint>(this.entityClass, where, options);
   }
 
+  /**
+   * Updates an entity by ID or reference.
+   * @param idOrEntity - The entity ID or entity instance to update
+   * @param data - The data to assign to the entity
+   * @param options - Optional assign options
+   * @returns The updated entity
+   * @throws NotFoundException if the entity is not found
+   */
   async update<
     Naked extends FromEntityType<Entity> = FromEntityType<Entity>,
     Convert extends boolean = false,
@@ -285,6 +339,13 @@ export class EntityService<Entity extends IdEntity> {
     return entity;
   }
 
+  /**
+   * Removes an entity by ID or reference (supports soft-delete).
+   * @param idOrEntity - The entity ID or entity instance to remove
+   * @param softDelete - Whether to soft-delete (default: true)
+   * @returns The removed entity
+   * @throws NotFoundException if the entity is not found
+   */
   async remove(
     idOrEntity: IdOrEntity<Entity>,
     softDelete = true,
@@ -301,6 +362,13 @@ export class EntityService<Entity extends IdEntity> {
     return entity;
   }
 
+  /**
+   * Iterates over entities in chunks ordered by ID, useful for batch processing.
+   * @param where - Filter query
+   * @param options - Find options (limit determines chunk size)
+   * @param callback - Async callback invoked with each chunk of entities
+   * @returns This service instance for chaining
+   */
   async chunkById<
     Hint extends string = never,
     Fields extends string = PopulatePath.ALL,

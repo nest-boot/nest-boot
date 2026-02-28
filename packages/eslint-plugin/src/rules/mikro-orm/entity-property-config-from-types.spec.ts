@@ -3,7 +3,7 @@ import rule from "./entity-property-config-from-types";
 
 tester.run("entity-property-config-from-types", rule, {
   valid: [
-    // 正确的 string 类型
+    // Correct string type
     /* typescript */ `
       import { Entity, Property } from "@mikro-orm/core";
 
@@ -13,7 +13,7 @@ tester.run("entity-property-config-from-types", rule, {
         name!: string;
       }
     `,
-    // 正确的 nullable 配置
+    // Correct nullable configuration
     /* typescript */ `
       import { Entity, Property } from "@mikro-orm/core";
 
@@ -23,7 +23,7 @@ tester.run("entity-property-config-from-types", rule, {
         name?: string;
       }
     `,
-    // 使用 Opt<T> 类型且有初始化值
+    // Using Opt<T> type with initializer
     /* typescript */ `
       import { Entity, Property, Opt } from "@mikro-orm/core";
 
@@ -33,7 +33,7 @@ tester.run("entity-property-config-from-types", rule, {
         isActive: Opt<boolean> = false;
       }
     `,
-    // 关系装饰器不需要 @Property
+    // Relation decorators don't need @Property
     /* typescript */ `
       import { Entity, ManyToOne } from "@mikro-orm/core";
 
@@ -43,7 +43,7 @@ tester.run("entity-property-config-from-types", rule, {
         author!: User;
       }
     `,
-    // PrimaryKey 需要 type 配置
+    // PrimaryKey needs type configuration
     /* typescript */ `
       import { Entity, PrimaryKey, t } from "@mikro-orm/core";
 
@@ -53,7 +53,7 @@ tester.run("entity-property-config-from-types", rule, {
         id!: number;
       }
     `,
-    // 枚举类型使用 @Enum
+    // Enum type uses @Enum
     /* typescript */ `
       import { Entity, Enum } from "@mikro-orm/core";
 
@@ -68,7 +68,7 @@ tester.run("entity-property-config-from-types", rule, {
         role!: Role;
       }
     `,
-    // 数组类型
+    // Array type
     /* typescript */ `
       import { Entity, Property } from "@mikro-orm/core";
 
@@ -78,7 +78,7 @@ tester.run("entity-property-config-from-types", rule, {
         tags!: number[];
       }
     `,
-    // boolean 类型
+    // boolean type
     /* typescript */ `
       import { Entity, Property } from "@mikro-orm/core";
 
@@ -88,7 +88,7 @@ tester.run("entity-property-config-from-types", rule, {
         isActive!: boolean;
       }
     `,
-    // Date 类型使用 t.datetime
+    // Date type using t.datetime
     /* typescript */ `
       import { Entity, Property, Opt } from "@mikro-orm/core";
 
@@ -98,7 +98,7 @@ tester.run("entity-property-config-from-types", rule, {
         createdAt: Opt<Date> = new Date();
       }
     `,
-    // Date 类型使用 t.date（有效的 Date 类型配置）
+    // Date type using t.date (valid Date type configuration)
     /* typescript */ `
       import { Entity, Property } from "@mikro-orm/core";
 
@@ -108,7 +108,7 @@ tester.run("entity-property-config-from-types", rule, {
         birthDate!: Date;
       }
     `,
-    // Date 类型使用 t.time（有效的 Date 类型配置）
+    // Date type using t.time (valid Date type configuration)
     /* typescript */ `
       import { Entity, Property } from "@mikro-orm/core";
 
@@ -118,7 +118,7 @@ tester.run("entity-property-config-from-types", rule, {
         workTime!: Date;
       }
     `,
-    // 使用 t.text 代替 t.string（有效的 string 类型配置）
+    // Using t.text instead of t.string (valid string type configuration)
     /* typescript */ `
       import { Entity, Property } from "@mikro-orm/core";
 
@@ -128,7 +128,7 @@ tester.run("entity-property-config-from-types", rule, {
         description!: string;
       }
     `,
-    // 非 Entity 类不检查
+    // Non-Entity class is not checked
     /* typescript */ `
       class NotAnEntity {
         field: string;
@@ -136,7 +136,7 @@ tester.run("entity-property-config-from-types", rule, {
     `,
   ],
   invalid: [
-    // type 配置不匹配
+    // type configuration mismatch
     {
       code: /* typescript */ `
         import { Entity, Property } from "@mikro-orm/core";
@@ -158,7 +158,7 @@ tester.run("entity-property-config-from-types", rule, {
       `,
       errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
     },
-    // nullable 配置不匹配
+    // nullable configuration mismatch
     {
       code: /* typescript */ `
         import { Entity, Property } from "@mikro-orm/core";
@@ -180,7 +180,7 @@ tester.run("entity-property-config-from-types", rule, {
       `,
       errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
     },
-    // 有初始化值但没有使用 Opt<T>
+    // Has initializer but not using Opt<T>
     {
       code: /* typescript */ `
         import { Entity, Property } from "@mikro-orm/core";
@@ -202,7 +202,7 @@ tester.run("entity-property-config-from-types", rule, {
       `,
       errors: [{ messageId: "useOptTypeForInitializedProperty" }],
     },
-    // 枚举类型应该使用 @Enum 装饰器
+    // Enum type should use @Enum decorator
     {
       code: /* typescript */ `
         import { Entity, Property } from "@mikro-orm/core";
@@ -234,7 +234,7 @@ tester.run("entity-property-config-from-types", rule, {
       `,
       errors: [{ messageId: "useEnumDecorator" }],
     },
-    // @Enum 的 nullable 配置不匹配
+    // @Enum nullable configuration mismatch
     {
       code: /* typescript */ `
         import { Entity, Enum } from "@mikro-orm/core";
@@ -266,7 +266,7 @@ tester.run("entity-property-config-from-types", rule, {
       `,
       errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
     },
-    // 数组类型配置不匹配
+    // Array type configuration mismatch
     {
       code: /* typescript */ `
         import { Entity, Property } from "@mikro-orm/core";
@@ -288,7 +288,7 @@ tester.run("entity-property-config-from-types", rule, {
       `,
       errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
     },
-    // 空的 @Property() 应该添加 type: t.boolean
+    // Empty @Property() should add type: t.boolean
     {
       code: /* typescript */ `
         import { Entity, Property } from "@mikro-orm/core";
@@ -310,7 +310,7 @@ tester.run("entity-property-config-from-types", rule, {
       `,
       errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
     },
-    // 空的 @Property() 应该添加 type: t.datetime（Date 类型）
+    // Empty @Property() should add type: t.datetime (Date type)
     {
       code: /* typescript */ `
         import { Entity, Property } from "@mikro-orm/core";
@@ -332,7 +332,7 @@ tester.run("entity-property-config-from-types", rule, {
       `,
       errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
     },
-    // Date 类型配置错误应该修正为 t.datetime
+    // Date type with wrong configuration should be fixed to t.datetime
     {
       code: /* typescript */ `
         import { Entity, Property } from "@mikro-orm/core";

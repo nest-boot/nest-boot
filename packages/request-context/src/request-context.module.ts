@@ -54,7 +54,11 @@ import { RequestContextMiddleware } from "./request-context.middleware";
   exports: [RequestContextMiddleware],
 })
 export class RequestContextModule {
-  /** @internal */
+  /**
+   * Creates a new RequestContextModule instance.
+   * @param middlewareManager - Middleware manager for registering the context middleware
+   * @param requestContextMiddleware - The request context middleware instance
+   */
   constructor(
     private readonly middlewareManager: MiddlewareManager,
     private readonly requestContextMiddleware: RequestContextMiddleware,

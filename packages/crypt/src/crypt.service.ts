@@ -21,6 +21,7 @@ import { deriveKey } from "./utils/derive-key";
  * ```
  */
 export class CryptService {
+  /** Singleton instance. @internal */
   private static _instance?: CryptService;
 
   /**
@@ -72,11 +73,12 @@ export class CryptService {
     return this.instance.decrypt(value);
   }
 
+  /** Secret key used for encryption. @internal */
   private readonly secret: string;
+  /** Cached promise for the derived encryption key. @internal */
   private derivedKeyPromise?: Promise<Uint8Array>;
 
-  /**
-   * Creates an instance of CryptService.
+  /** Creates a new CryptService instance.
    * @param secret - The secret key to use for encryption/decryption
    */
   constructor(secret: string) {

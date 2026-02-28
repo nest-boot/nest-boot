@@ -6,7 +6,7 @@
  *
  * @typeParam T - The type of the node (entity) in the edge
  *
- * @see {@link https://relay.dev/graphql/connections.htm#sec-Edge-Types Relay Edge Type Specification}
+ * @see {@link https://relay.dev/graphql/connections.htm#sec-Edge-Types | Relay Edge Type Specification}
  */
 export interface EdgeInterface<T> {
   /**

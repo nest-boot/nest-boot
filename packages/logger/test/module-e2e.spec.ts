@@ -16,14 +16,14 @@ describe("LoggerModule - e2e", () => {
     app = module.createNestApplication();
   });
 
-  it(`默认上下文名称应该为类名`, async () => {
+  it(`default context name should be the class name`, async () => {
     const testService = app.get(TestService);
     await app.init();
 
     expect(testService.defaultContextName).toEqual(TestService.name);
   });
 
-  it(`设置上下文后读取上下文应该和设定值一致`, async () => {
+  it(`reading context after setting it should match the set value`, async () => {
     const testService = app.get(TestService);
     await app.init();
 

@@ -21,9 +21,13 @@ export interface MikroOrmAdapterConfig {
    * The entities to use for the adapter.
    */
   entities: {
+    /** Account entity class. */
     account: EntityClass<BaseAccount>;
+    /** Session entity class. */
     session: EntityClass<BaseSession>;
+    /** User entity class. */
     user: EntityClass<BaseUser>;
+    /** Verification entity class. */
     verification: EntityClass<BaseVerification>;
   };
   /**

@@ -23,22 +23,41 @@ import { type I18nModuleOptions } from "./interfaces/i18n-module-options.interfa
 
 i18next.use(Backend).use(LanguageDetector);
 
+/**
+ * Module that provides i18n (internationalization) support via i18next.
+ *
+ * @remarks
+ * Initializes i18next with file-system backend and HTTP language detection,
+ * and makes the i18n instance available through dependency injection and
+ * the request context.
+ */
 @Module({
   imports: [RequestContextModule],
 })
 export class I18nModule extends ConfigurableModuleClass implements NestModule {
+  /**
+   * Registers the I18nModule with synchronous options.
+   * @param options - i18next configuration options
+   * @returns Dynamic module configuration
+   */
   static register(options: typeof OPTIONS_TYPE): DynamicModule {
     return {
       ...this.with(options, super.register(options)),
     };
   }
 
+  /**
+   * Registers the I18nModule with asynchronous options.
+   * @param options - Async configuration options
+   * @returns Dynamic module configuration
+   */
   static registerAsync(options: typeof ASYNC_OPTIONS_TYPE): DynamicModule {
     return {
       ...this.with(options, super.registerAsync(options)),
     };
   }
 
+  /** Merges i18next init options with defaults. @internal */
   private static with(
     options: typeof OPTIONS_TYPE | typeof ASYNC_OPTIONS_TYPE,
     dynamicModule: DynamicModule,
@@ -69,6 +88,7 @@ export class I18nModule extends ConfigurableModuleClass implements NestModule {
     };
   }
 
+  /** Configures i18n middleware for all routes. */
   configure(consumer: MiddlewareConsumer): void {
     consumer.apply(I18nMiddleware).forRoutes("*");
   }

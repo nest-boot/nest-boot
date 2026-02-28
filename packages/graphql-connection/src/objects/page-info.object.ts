@@ -6,7 +6,7 @@ import { Field, ObjectType } from "@nest-boot/graphql";
  * PageInfo is used to determine whether more pages exist and to fetch
  * additional pages using cursor-based pagination.
  *
- * @see {@link https://relay.dev/graphql/connections.htm#sec-undefined.PageInfo Relay PageInfo Specification}
+ * @see {@link https://relay.dev/graphql/connections.htm#sec-undefined.PageInfo | Relay PageInfo Specification}
  *
  * @example Using pageInfo for pagination
  * ```typescript

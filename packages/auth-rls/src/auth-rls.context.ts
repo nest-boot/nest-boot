@@ -1,4 +1,5 @@
-type LowercaseLetter =
+/** Union of all lowercase letter characters (a–z). */
+export type LowercaseLetter =
   | "a"
   | "b"
   | "c"
@@ -26,16 +27,19 @@ type LowercaseLetter =
   | "y"
   | "z";
 
-type ValidChar = LowercaseLetter | "_";
+/** Characters allowed in snake_case identifiers (lowercase letters and underscore). */
+export type ValidChar = LowercaseLetter | "_";
 
-type IsValidSnakeCase<S extends string> =
+/** Recursively validates that a string contains only valid snake_case characters. */
+export type IsValidSnakeCase<S extends string> =
   S extends `${infer First}${infer Rest}`
     ? First extends ValidChar
       ? IsValidSnakeCase<Rest>
       : false
     : true;
 
-type SnakeCase<S extends string> = S extends ""
+/** Ensures a string literal is a valid snake_case identifier. */
+export type SnakeCase<S extends string> = S extends ""
   ? never
   : S extends `_${string}` | `${string}_`
     ? never
@@ -45,9 +49,23 @@ type SnakeCase<S extends string> = S extends ""
         ? S
         : never;
 
+/**
+ * Stores key-value pairs for PostgreSQL transaction-level RLS context.
+ *
+ * @remarks
+ * Values set here are emitted as `set_config('auth.<key>', '<value>', true)` SQL
+ * statements, enabling row-level security policies to access auth state.
+ */
 export class AuthRlsContext {
+  /** Internal storage for RLS context key-value pairs. @internal */
   private readonly ctx = new Map<string, string>();
 
+  /**
+   * Sets a snake_case key-value pair in the RLS context.
+   * @param key - Must be a valid snake_case string
+   * @param value - The string value to associate with the key
+   * @returns This instance for chaining
+   */
   set<S extends string>(key: SnakeCase<S>, value: string) {
     if (!/^[a-z]+(_[a-z]+)*$/.test(key)) {
       throw new Error(
@@ -58,10 +76,12 @@ export class AuthRlsContext {
     return this;
   }
 
+  /** Returns all stored key-value pairs as an array of `[key, value]` tuples. */
   entries() {
     return Array.from(this.ctx.entries());
   }
 
+  /** Generates a SQL statement that sets all stored values as PostgreSQL transaction-local config variables. */
   toSQL(): string {
     return /* SQL */ `SELECT ${Array.from(this.ctx.entries())
       .map(([key, value]) => {

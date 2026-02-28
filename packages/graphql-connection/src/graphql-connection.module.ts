@@ -1,7 +1,11 @@
-import { Global, Module } from "@nestjs/common";
+import { type DynamicModule, Global, Module } from "@nestjs/common";
 
 import { ConnectionManager } from "./connection.manager";
-import { ConfigurableModuleClass } from "./graphql-connection.module-definition";
+import {
+  ASYNC_OPTIONS_TYPE,
+  ConfigurableModuleClass,
+  OPTIONS_TYPE,
+} from "./graphql-connection.module-definition";
 
 /**
  * NestJS module that provides GraphQL connection-based pagination functionality.
@@ -28,4 +32,24 @@ import { ConfigurableModuleClass } from "./graphql-connection.module-definition"
   providers: [ConnectionManager],
   exports: [ConnectionManager],
 })
-export class GraphQLConnectionModule extends ConfigurableModuleClass {}
+export class GraphQLConnectionModule extends ConfigurableModuleClass {
+  /**
+   * Registers the GraphQLConnectionModule with the given options.
+   * @param options - Configuration options
+   * @returns Dynamic module configuration
+   */
+  static override register(options: typeof OPTIONS_TYPE): DynamicModule {
+    return super.register(options);
+  }
+
+  /**
+   * Registers the GraphQLConnectionModule asynchronously with factory functions.
+   * @param options - Async configuration options
+   * @returns Dynamic module configuration
+   */
+  static override registerAsync(
+    options: typeof ASYNC_OPTIONS_TYPE,
+  ): DynamicModule {
+    return super.registerAsync(options);
+  }
+}

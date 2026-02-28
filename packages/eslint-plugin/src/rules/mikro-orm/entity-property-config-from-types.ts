@@ -9,7 +9,7 @@ import * as ts from "typescript";
 import { createRule } from "../../utils/createRule";
 import { hasClassDecorator } from "../../utils/decorators";
 
-// 自定义 Fix 对象类型,用于延迟应用修复
+// Custom Fix object type for deferred fix application
 interface CustomFix {
   type: "insert" | "replace";
   range: readonly [number, number];
@@ -20,9 +20,9 @@ interface TypeInfo {
   typeName: string | null;
   isArray: boolean;
   isNullable: boolean;
-  isEnum: boolean; // 是否是枚举类型
-  propertyType: string | null; // MikroORM 类型如 t.text, t.bigint 等
-  arrayElementTypeName?: string | null; // 数组元素的类型名称（用于特殊验证）
+  isEnum: boolean; // Whether the type is an enum
+  propertyType: string | null; // MikroORM type such as t.text, t.bigint, etc.
+  arrayElementTypeName?: string | null; // Type name of array elements (for special validation)
 }
 
 export default createRule<
@@ -38,20 +38,21 @@ export default createRule<
     type: "problem",
     docs: {
       description:
-        "根据 TypeScript 类型自动生成或修正 @Property 装饰器的类型与 nullable 配置（支持数组）,以及 @Enum 装饰器的 nullable 配置。检查有初始化值的属性是否使用 Opt<T> 类型。",
+        "Automatically generate or fix @Property decorator type and nullable configuration based on TypeScript types (with array support), as well as @Enum decorator nullable configuration. Checks whether properties with initializers use the Opt<T> type.",
     },
     fixable: "code",
     schema: [],
     messages: {
       alignPropertyDecoratorWithTsType:
-        "@Property 装饰器应与 TypeScript 类型保持一致（类型与 nullable）。",
+        "@Property decorator should align with the TypeScript type (type and nullable).",
       removePropertyDecorator:
-        "属性带有 @{{decoratorName}} 装饰器，应移除 @Property 装饰器。",
-      useEnumDecorator: "枚举类型应使用 @Enum 装饰器而不是 @Property 装饰器。",
+        "Property has a @{{decoratorName}} decorator, @Property decorator should be removed.",
+      useEnumDecorator:
+        "Enum types should use @Enum decorator instead of @Property decorator.",
       useOptTypeForInitializedProperty:
-        "有非 null 初始化值的属性应使用 Opt<T> 类型包装。",
+        "Properties with non-null initializers should use the Opt<T> type wrapper.",
       removeOptTypeForNonInitializedProperty:
-        "没有初始化值或初始化为 null 的属性不应使用 Opt<T> 类型包装。",
+        "Properties without initializers or initialized to null should not use the Opt<T> type wrapper.",
     },
   },
   defaultOptions: [],
@@ -60,18 +61,18 @@ export default createRule<
     const parserServices = ESLintUtils.getParserServices(context);
     const checker = parserServices.program.getTypeChecker();
 
-    // 检查是否为枚举类型
+    // Check if the type is an enum
     const isEnumType = (node: TSESTree.Node): boolean => {
       try {
         const tsNode = parserServices.esTreeNodeToTSNodeMap.get(node);
         const type = checker.getTypeAtLocation(tsNode);
 
-        // 检查是否是枚举类型
+        // Check if it is an enum type
         if (type.symbol.flags & ts.SymbolFlags.Enum) {
           return true;
         }
 
-        // 检查联合类型中的每个成员
+        // Check each member in a union type
         if (type.isUnion()) {
           return type.types.some(
             (t) =>
@@ -92,15 +93,15 @@ export default createRule<
       switch (typeName) {
         case "String":
         case "string":
-          return "t.string"; // 默认使用 t.string
+          return "t.string"; // Default to t.string
         case "Number":
         case "number":
-          return "t.float"; // 默认使用 t.float
+          return "t.float"; // Default to t.float
         case "Boolean":
         case "boolean":
-          return "t.boolean"; // 默认使用 t.boolean
+          return "t.boolean"; // Default to t.boolean
         case "Date":
-          return "t.datetime"; // 默认使用 t.datetime
+          return "t.datetime"; // Default to t.datetime
         case "GraphQLJSONObject":
         case "Record":
           return "t.json";
@@ -112,7 +113,7 @@ export default createRule<
     const isValidStringType = (typeConfig: string | null): boolean => {
       if (!typeConfig) return false;
 
-      // 接受 t.string, t.text, t.uuid, t.decimal, t.bigint
+      // Accept t.string, t.text, t.uuid, t.decimal, t.bigint
       if (
         typeConfig === "t.string" ||
         typeConfig === "t.text" ||
@@ -123,25 +124,25 @@ export default createRule<
         return true;
       }
 
-      // 接受 DecimalType（类引用，不带参数）
+      // Accept DecimalType (class reference, without arguments)
       if (typeConfig === "DecimalType") {
         return true;
       }
 
-      // 接受 new DecimalType('string') 和 new BigIntType('string')
-      // 但排除 new BigIntType('number')
+      // Accept new DecimalType('string') and new BigIntType('string')
+      // but exclude new BigIntType('number')
       if (
         typeConfig.includes("DecimalType") ||
         typeConfig.includes("BigIntType")
       ) {
-        // 如果是 new BigIntType('number')，则无效
+        // If it's new BigIntType('number'), it's invalid
         if (
           typeConfig.includes("BigIntType") &&
           (typeConfig.includes("'number'") || typeConfig.includes('"number"'))
         ) {
           return false;
         }
-        // 其他情况（包括 new XXXType('string') 和 DecimalType）都有效
+        // Other cases (including new XXXType('string') and DecimalType) are valid
         return true;
       }
 
@@ -151,7 +152,7 @@ export default createRule<
     const isValidNumberType = (typeConfig: string | null): boolean => {
       if (!typeConfig) return false;
 
-      // 接受 t.integer, t.float, t.double, t.decimal
+      // Accept t.integer, t.float, t.double, t.decimal
       if (
         typeConfig === "t.integer" ||
         typeConfig === "t.float" ||
@@ -161,25 +162,25 @@ export default createRule<
         return true;
       }
 
-      // 接受 BigIntType 和 DecimalType（类引用，不带参数）
+      // Accept BigIntType and DecimalType (class reference, without arguments)
       if (typeConfig === "BigIntType" || typeConfig === "DecimalType") {
         return true;
       }
 
-      // 接受 new DecimalType('number') 和 new BigIntType('number')
-      // 但排除 new XXXType('string')
+      // Accept new DecimalType('number') and new BigIntType('number')
+      // but exclude new XXXType('string')
       if (
         typeConfig.includes("DecimalType") ||
         typeConfig.includes("BigIntType")
       ) {
-        // 如果包含 'string'，则对 number 类型无效
+        // If it contains 'string', it's invalid for number type
         if (
           typeConfig.includes("'string'") ||
           typeConfig.includes('"string"')
         ) {
           return false;
         }
-        // 其他情况（包括 new XXXType('number')）都有效
+        // Other cases (including new XXXType('number')) are valid
         return true;
       }
 
@@ -189,17 +190,17 @@ export default createRule<
     const isValidNumberArrayType = (typeConfig: string | null): boolean => {
       if (!typeConfig) return false;
 
-      // 接受 t.array（默认）
+      // Accept t.array (default)
       if (typeConfig === "t.array") {
         return true;
       }
 
-      // 接受 VectorType（类引用）
+      // Accept VectorType (class reference)
       if (typeConfig === "VectorType") {
         return true;
       }
 
-      // 接受 new VectorType(...)
+      // Accept new VectorType(...)
       if (typeConfig.includes("VectorType")) {
         return true;
       }
@@ -210,7 +211,7 @@ export default createRule<
     const isValidDateType = (typeConfig: string | null): boolean => {
       if (!typeConfig) return false;
 
-      // 接受 t.datetime, t.date, t.time
+      // Accept t.datetime, t.date, t.time
       if (
         typeConfig === "t.datetime" ||
         typeConfig === "t.date" ||
@@ -256,7 +257,7 @@ export default createRule<
       );
     };
 
-    // 检查类型是否被 Opt<T> 包装
+    // Check if the type is wrapped with Opt<T>
     const isWrappedWithOpt = (
       property: TSESTree.PropertyDefinition,
     ): boolean => {
@@ -273,13 +274,13 @@ export default createRule<
       );
     };
 
-    // 检查是否已导入 Opt
+    // Check if Opt is imported
     const hasOptImport = (): boolean => {
       const program = context.sourceCode.ast;
       for (const statement of program.body) {
         if (statement.type === AST_NODE_TYPES.ImportDeclaration) {
           const importSource = statement.source.value;
-          // 检查从 @mikro-orm/* 导入的语句
+          // Check imports from @mikro-orm/*
           if (
             typeof importSource === "string" &&
             importSource.startsWith("@mikro-orm/")
@@ -300,11 +301,11 @@ export default createRule<
       return false;
     };
 
-    // 添加 Opt 到 @mikro-orm/core 的导入
+    // Add Opt to the @mikro-orm/core import
     const addOptImport = (fixer: RuleFixer): RuleFix | null => {
       const program = context.sourceCode.ast;
 
-      // 查找 @mikro-orm/core 的导入语句
+      // Find the @mikro-orm/core import statement
       let coreImport: TSESTree.ImportDeclaration | null = null;
 
       for (const statement of program.body) {
@@ -318,24 +319,24 @@ export default createRule<
       }
 
       if (coreImport) {
-        // 已有 @mikro-orm/core 导入,添加 Opt 到导入列表
+        // Already has @mikro-orm/core import, add Opt to the import list
         const lastSpecifier =
           coreImport.specifiers[coreImport.specifiers.length - 1];
 
-        // 检查是否是多行导入
+        // Check if it's a multiline import
         const importText = source.getText(coreImport);
         const isMultiline = importText.includes("\n");
 
         if (isMultiline) {
-          // 多行导入:在最后一个导入项后添加,保持缩进
-          const indent = "  "; // 假设使用 2 个空格缩进
+          // Multiline import: add after the last import item, keeping indentation
+          const indent = "  "; // Assuming 2-space indentation
           return fixer.insertTextAfter(lastSpecifier, `,\n${indent}Opt`);
         } else {
-          // 单行导入:直接添加
+          // Single-line import: add directly
           return fixer.insertTextAfter(lastSpecifier, ", Opt");
         }
       } else {
-        // 没有 @mikro-orm/core 导入,在文件开头添加新的导入语句
+        // No @mikro-orm/core import, add a new import statement at the top
         const firstImport = program.body.find(
           (node: TSESTree.ProgramStatement) =>
             node.type === AST_NODE_TYPES.ImportDeclaration,
@@ -363,12 +364,12 @@ export default createRule<
           ? property.typeAnnotation.typeAnnotation
           : null;
 
-      // 可选属性（?）视为可空
+      // Optional property (?) is treated as nullable
       if (property.optional) {
         isNullable = true;
       }
 
-      // 处理联合类型中的 null/undefined
+      // Handle null/undefined in union types
       if (baseTypeNode?.type === AST_NODE_TYPES.TSUnionType) {
         const hasNullish = baseTypeNode.types.some((t: TSESTree.TypeNode) => {
           return (
@@ -387,7 +388,7 @@ export default createRule<
           }) ?? null;
       }
 
-      // 先解包 Ref<T> 和 Opt<T> → T，并在内部再次处理 null/undefined
+      // First unwrap Ref<T> and Opt<T> → T, and handle null/undefined within
       if (
         baseTypeNode?.type === AST_NODE_TYPES.TSTypeReference &&
         baseTypeNode.typeName.type === AST_NODE_TYPES.Identifier &&
@@ -414,12 +415,12 @@ export default createRule<
         baseTypeNode = inner ?? baseTypeNode;
       }
 
-      // 跳过 Collection<T> 类型（这些应该由 OneToMany 等装饰器处理）
+      // Skip Collection<T> types (these should be handled by OneToMany etc. decorators)
       if (baseTypeNode && isCollectionType(baseTypeNode)) {
         return null;
       }
 
-      // 数组类型（T[] 或 Array<T>）- 在解包 Opt/Ref 之后检查
+      // Array type (T[] or Array<T>) - checked after unwrapping Opt/Ref
       const elementTypeNode = baseTypeNode
         ? extractArrayElementType(baseTypeNode)
         : null;
@@ -430,12 +431,12 @@ export default createRule<
       const targetTypeNode: TSESTree.TypeNode | null =
         elementTypeNode ?? baseTypeNode;
 
-      // 检查目标类型是否为枚举
+      // Check if target type is an enum
       if (targetTypeNode) {
         isEnum = isEnumType(targetTypeNode);
       }
 
-      // 无显式类型时，尝试从字面量初始值推断
+      // When no explicit type, try to infer from literal initializer
       if (!targetTypeNode) {
         if (property.value?.type === AST_NODE_TYPES.Literal) {
           const value = property.value.value;
@@ -487,7 +488,7 @@ export default createRule<
         };
       }
 
-      // 关键字类型
+      // Keyword types
       if (targetTypeNode.type === AST_NODE_TYPES.TSStringKeyword) {
         return {
           typeName: "string",
@@ -519,10 +520,10 @@ export default createRule<
         };
       }
 
-      // 标识符（类/自定义类型）
+      // Identifier (class/custom type)
       const ident = getIdentifierName(targetTypeNode);
       if (ident) {
-        // 如果是数组，自定义类型数组使用 t.json
+        // For arrays, custom type arrays use t.json
         if (isArray) {
           return {
             typeName: ident,
@@ -547,7 +548,7 @@ export default createRule<
       return null;
     };
 
-    // 将类型包装为 Opt<T>
+    // Wrap type with Opt<T>
     const wrapWithOpt = (typeString: string): string => {
       return `Opt<${typeString}>`;
     };
@@ -577,12 +578,12 @@ export default createRule<
     ): string => {
       const options: string[] = [];
 
-      // 如果有 propertyType 配置，添加 type
+      // If there is a propertyType configuration, add type
       if (info.propertyType) {
         options.push(`type: ${info.propertyType}`);
       }
 
-      // 添加其他属性（保持原有顺序）
+      // Add other properties (keeping original order)
       for (const prop of otherProps) {
         options.push(`${prop.key}: ${prop.value}`);
       }
@@ -628,10 +629,10 @@ export default createRule<
     ) => {
       const fixes: CustomFix[] = [];
 
-      // 如果当前已经有有效的配置，保留它而不是替换成默认值
+      // If current config already has a valid value, keep it instead of replacing with default
       const finalInfo = { ...info };
 
-      // PrimaryKey 的 number 类型默认使用 t.integer
+      // PrimaryKey number type defaults to t.integer
       if (
         decoratorName === "PrimaryKey" &&
         finalInfo.propertyType === "t.float"
@@ -643,31 +644,31 @@ export default createRule<
         info.propertyType === "t.string" &&
         isValidStringType(currentConfig.type)
       ) {
-        // 保留有效的 string 类型配置
+        // Keep valid string type config
         finalInfo.propertyType = currentConfig.type;
       } else if (
         (info.propertyType === "t.float" ||
           info.propertyType === "t.integer") &&
         isValidNumberType(currentConfig.type)
       ) {
-        // 保留有效的 number 类型配置
+        // Keep valid number type config
         finalInfo.propertyType = currentConfig.type;
       } else if (
         info.propertyType === "t.datetime" &&
         isValidDateType(currentConfig.type)
       ) {
-        // 保留有效的 Date 类型配置
+        // Keep valid Date type config
         finalInfo.propertyType = currentConfig.type;
       } else if (
         info.isArray &&
         info.arrayElementTypeName === "number" &&
         isValidNumberArrayType(currentConfig.type)
       ) {
-        // 保留有效的 number[] 类型配置（VectorType）
+        // Keep valid number[] type config (VectorType)
         finalInfo.propertyType = currentConfig.type;
       }
 
-      // 保留其他属性配置
+      // Keep other property configs
       const newDecoratorText = buildPropertyDecorator(
         finalInfo,
         currentConfig.otherProps,
@@ -736,7 +737,7 @@ export default createRule<
             nullable = true;
           }
         } else {
-          // 保留其他所有属性
+          // Keep all other properties
           otherProps.push({
             key: prop.key.name,
             value: source.getText(prop.value),
@@ -789,23 +790,23 @@ export default createRule<
       return { items, nullable };
     };
 
-    // 检查文件中是否使用了 Opt 类型但没有导入
+    // Check if the file uses the Opt type but hasn't imported it
     const checkOptUsageWithoutImport = (node: TSESTree.ClassDeclaration) => {
       let usesOpt = false;
 
-      // 遍历所有成员，检查是否有使用 Opt<T> 的类型注解
+      // Iterate through all members to check for Opt<T> type annotations
       node.body.body.forEach((member: TSESTree.ClassElement) => {
         if (member.type !== AST_NODE_TYPES.PropertyDefinition) return;
 
         const typeAnnotation = member.typeAnnotation?.typeAnnotation;
         if (!typeAnnotation) return;
 
-        // 递归检查类型节点中是否包含 Opt
+        // Recursively check if the type node contains Opt
         const containsOpt = (typeNode: TSESTree.TypeNode): boolean => {
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           if (!typeNode) return false;
 
-          // 检查是否是 Opt<T>
+          // Check if it's Opt<T>
           if (
             typeNode.type === AST_NODE_TYPES.TSTypeReference &&
             // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -815,14 +816,14 @@ export default createRule<
             return true;
           }
 
-          // 递归检查联合类型
+          // Recursively check union types
           if (typeNode.type === AST_NODE_TYPES.TSUnionType) {
             return typeNode.types.some((t: TSESTree.TypeNode) =>
               containsOpt(t),
             );
           }
 
-          // 递归检查类型参数
+          // Recursively check type parameters
           if (
             typeNode.type === AST_NODE_TYPES.TSTypeReference &&
             typeNode.typeArguments?.params
@@ -832,7 +833,7 @@ export default createRule<
             );
           }
 
-          // 递归检查数组元素类型
+          // Recursively check array element type
           if (typeNode.type === AST_NODE_TYPES.TSArrayType) {
             return containsOpt(typeNode.elementType);
           }
@@ -845,7 +846,7 @@ export default createRule<
         }
       });
 
-      // 如果使用了 Opt 但没有导入，报告错误
+      // If Opt is used but not imported, report an error
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (usesOpt && !hasOptImport()) {
         context.report({
@@ -863,13 +864,13 @@ export default createRule<
       ClassDeclaration(node) {
         if (!isEntityClass(node)) return;
 
-        // 首先检查是否使用了 Opt 但没有导入
+        // First check if Opt is used but not imported
         checkOptUsageWithoutImport(node);
 
         node.body.body.forEach((member: TSESTree.ClassElement) => {
           if (member.type !== AST_NODE_TYPES.PropertyDefinition) return;
 
-          // 检查关系装饰器（OneToOne, OneToMany, ManyToOne, ManyToMany）
+          // Check relation decorators (OneToOne, OneToMany, ManyToOne, ManyToMany)
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           const hasRelationDecorator = member.decorators?.some(
             (decorator: TSESTree.Decorator) => {
@@ -889,10 +890,10 @@ export default createRule<
             },
           );
 
-          // 如果有关系装饰器，跳过检查（这些属性不需要 @Property 装饰器）
+          // If there are relation decorators, skip checking (these properties don't need @Property)
           if (hasRelationDecorator) return;
 
-          // 类 Property 装饰器列表（需要类型检查的装饰器）
+          // Property-like decorators (decorators that need type checking)
           const propertyLikeDecorators = [
             "Property",
             "PrimaryKey",
@@ -900,7 +901,7 @@ export default createRule<
             "HashedProperty",
           ];
 
-          // 查找类 Property 装饰器
+          // Find property-like decorator
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           const propertyLikeDecorator = member.decorators?.find(
             (decorator: TSESTree.Decorator) => {
@@ -916,7 +917,7 @@ export default createRule<
             },
           );
 
-          // 获取装饰器名称
+          // Get decorator name
           const getDecoratorName = (
             decorator: TSESTree.Decorator,
           ): string | null => {
@@ -929,7 +930,7 @@ export default createRule<
             return null;
           };
 
-          // 检查 @Enum 装饰器
+          // Check @Enum decorator
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           const enumDecorator = member.decorators?.find(
             (decorator: TSESTree.Decorator) => {
@@ -942,7 +943,7 @@ export default createRule<
             },
           );
 
-          // 使用类 Property 装饰器
+          // Use property-like decorator
           const propertyDecorator = propertyLikeDecorator;
           const currentDecoratorName = propertyDecorator
             ? getDecoratorName(propertyDecorator)
@@ -952,11 +953,11 @@ export default createRule<
 
           if (!typeInfo?.typeName) return;
 
-          // 检查初始化值和 Opt<T> 类型的匹配
+          // Check initializer and Opt<T> type match
           const hasInitializer = member.value !== null;
           const isOptWrapped = isWrappedWithOpt(member);
 
-          // 检查初始化值是否为 null
+          // Check if the initializer is null
 
           const isInitializedToNull =
             hasInitializer &&
@@ -964,14 +965,14 @@ export default createRule<
             // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             member.value?.value === null;
 
-          // 情况 1：有非 null 初始化值但没有使用 Opt<T>
+          // Case 1: Has non-null initializer but not wrapped with Opt<T>
           if (
             hasInitializer &&
             !isInitializedToNull &&
             !isOptWrapped &&
             !member.optional
           ) {
-            // 有初始化值但没有使用 Opt<T> 包装，需要报错
+            // Has initializer but not wrapped with Opt<T>, needs to report error
             const typeAnnotation = member.typeAnnotation?.typeAnnotation;
             const needsImport = !hasOptImport();
 
@@ -987,7 +988,7 @@ export default createRule<
                     fixer.replaceText(typeAnnotation, wrappedType),
                   ];
 
-                  // 如果需要，添加 Opt 导入
+                  // If needed, add Opt import
                   if (needsImport) {
                     const importFix = addOptImport(fixer);
                     if (importFix) fixes.push(importFix);
@@ -997,7 +998,7 @@ export default createRule<
                 },
               });
             } else if (member.value) {
-              // 没有类型注解，从初始化值推断类型
+              // No type annotation, infer type from initializer
               let inferredType: string | null = null;
 
               if (member.value.type === AST_NODE_TYPES.Literal) {
@@ -1006,10 +1007,10 @@ export default createRule<
                 else if (valueType === "number") inferredType = "number";
                 else if (valueType === "string") inferredType = "string";
               } else if (member.value.type === AST_NODE_TYPES.ArrayExpression) {
-                // 空数组 [] 的情况,需要从 @Property 装饰器推断类型
+                // Empty array [] case, need to infer type from @Property decorator
                 inferredType = "unknown[]";
               } else if (member.value.type === AST_NODE_TYPES.NewExpression) {
-                // new Date() 的情况
+                // new Date() case
                 // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
                 if (member.value.callee?.type === AST_NODE_TYPES.Identifier) {
                   inferredType = member.value.callee.name;
@@ -1028,7 +1029,7 @@ export default createRule<
                       fixer.insertTextAfter(propertyName, `: ${wrappedType}`),
                     ];
 
-                    // 如果需要，添加 Opt 导入
+                    // If needed, add Opt import
                     if (needsImport) {
                       const importFix = addOptImport(fixer);
                       if (importFix) fixes.push(importFix);
@@ -1041,11 +1042,11 @@ export default createRule<
             }
           }
 
-          // 如果有 @Enum 装饰器，无论是否识别为枚举类型，都检查其配置
+          // If there is an @Enum decorator, check its configuration regardless of whether the type is recognized as enum
           if (enumDecorator) {
             const enumConfig = parseEnumDecorator(enumDecorator);
 
-            // 检查 nullable 配置是否与 TypeScript 类型匹配
+            // Check if nullable configuration matches the TypeScript type
             if (enumConfig.nullable !== typeInfo.isNullable) {
               const expectedEnumText = buildEnumDecorator(typeInfo);
               context.report({
@@ -1059,13 +1060,13 @@ export default createRule<
                 },
               });
             }
-            // 有 @Enum 装饰器的属性，不需要 @Property 装饰器
+            // Properties with @Enum decorator do not need @Property decorator
             return;
           }
 
-          // 如果是枚举类型但没有 @Enum 装饰器
+          // If it's an enum type but doesn't have @Enum decorator
           if (typeInfo.isEnum) {
-            // 如果有 @Property 装饰器，建议替换为 @Enum
+            // If it has @Property decorator, suggest replacing with @Enum
             if (propertyDecorator) {
               context.report({
                 node: propertyDecorator,
@@ -1081,7 +1082,7 @@ export default createRule<
               return;
             }
 
-            // 如果没有 @Enum 装饰器，添加它
+            // If it doesn't have @Enum decorator, add one
             context.report({
               node: member,
               messageId: "useEnumDecorator",
@@ -1096,7 +1097,7 @@ export default createRule<
             return;
           }
 
-          // 非枚举类型：如果没有 @Property 装饰器，添加它
+          // Non-enum type: if no @Property decorator, add one
           if (!propertyDecorator) {
             context.report({
               node: member,
@@ -1109,11 +1110,11 @@ export default createRule<
             return;
           }
 
-          // 检查现有装饰器是否与类型匹配
+          // Check if existing decorator matches the type
           const currentConfig = parsePropertyDecorator(propertyDecorator);
           let expectedType = typeInfo.propertyType;
 
-          // PrimaryKey 的 number 类型期望 t.integer
+          // PrimaryKey number type expects t.integer
           if (
             currentDecoratorName === "PrimaryKey" &&
             expectedType === "t.float"
@@ -1123,34 +1124,34 @@ export default createRule<
 
           let needReport = false;
 
-          // 检查 type 配置
+          // Check type configuration
           if (expectedType && currentConfig.type !== expectedType) {
-            // 对于 string 类型，接受多种有效配置
+            // For string type, accept multiple valid configurations
             if (
               expectedType === "t.string" &&
               isValidStringType(currentConfig.type)
             ) {
-              // 当前配置是有效的 string 类型配置，不需要修改
+              // Current config is a valid string type configuration, no modification needed
             } else if (
               (expectedType === "t.float" || expectedType === "t.integer") &&
               isValidNumberType(currentConfig.type)
             ) {
-              // 当前配置是有效的 number 类型配置，不需要修改
+              // Current config is a valid number type configuration, no modification needed
             } else if (
               expectedType === "t.datetime" &&
               isValidDateType(currentConfig.type)
             ) {
-              // 当前配置是有效的 Date 类型配置，不需要修改
+              // Current config is a valid Date type configuration, no modification needed
             } else if (
               expectedType === "t.array" &&
               typeInfo.arrayElementTypeName === "number" &&
               isValidNumberArrayType(currentConfig.type)
             ) {
-              // 当前配置是有效的 number[] 类型配置（t.array 或 VectorType），不需要修改
+              // Current config is a valid number[] type configuration (t.array or VectorType), no modification needed
             } else if (expectedType === "t.json") {
-              // 对于 t.json 类型（Record 或自定义类型数组）
+              // For t.json type (Record or custom type arrays)
               if (currentConfig.type === "t.json") {
-                // t.json 配置正确，不需要修改
+                // t.json config is correct, no modification needed
               } else {
                 needReport = true;
               }
@@ -1158,11 +1159,11 @@ export default createRule<
               needReport = true;
             }
           } else if (!expectedType && currentConfig.type) {
-            // 如果不需要 type 但当前有 type，也需要修正
+            // If type is not needed but currently has one, needs correction
             needReport = true;
           }
 
-          // 检查 nullable 配置
+          // Check nullable configuration
           if (currentConfig.nullable !== typeInfo.isNullable) {
             needReport = true;
           }

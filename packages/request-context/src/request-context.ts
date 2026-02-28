@@ -11,7 +11,7 @@ import { randomUUID } from "crypto";
  * @param next - Function to call the next middleware in the chain
  * @returns A promise resolving to the result of the middleware chain
  */
-type RequestContextMiddleware = <T>(
+export type RequestContextMiddlewareType = <T>(
   ctx: RequestContext,
   next: () => Promise<T>,
 ) => Promise<T>;
@@ -98,36 +98,26 @@ export class RequestContext {
    */
   readonly parent?: RequestContext;
 
-  /** @internal */
+  /** Internal storage map for context values. @internal */
   private readonly container = new Map();
 
-  /** @internal */
+  /** Async local storage backing the request context. @internal */
   private static readonly storage = new AsyncLocalStorage<RequestContext>();
 
-  /** @internal */
+  /** Registered middleware map keyed by name. @internal */
   private static readonly middlewares = new Map<
     string,
-    RequestContextMiddleware
+    RequestContextMiddlewareType
   >();
 
-  /** @internal */
+  /** Dependency graph for middleware ordering. @internal */
   private static readonly middlewareDependencies = new Map<string, string[]>();
 
-  /** @internal */
-  private static middlewaresStack: RequestContextMiddleware[] = [];
+  /** Topologically-sorted middleware execution stack. @internal */
+  private static middlewaresStack: RequestContextMiddlewareType[] = [];
 
-  /**
-   * Creates a new RequestContext instance.
-   *
-   * @param options - Configuration options for the context
-   *
-   * @example
-   * ```typescript
-   * const ctx = new RequestContext({
-   *   id: 'custom-id',
-   *   type: 'http',
-   * });
-   * ```
+  /** Creates a new RequestContext instance.
+   * @param options - Options for creating the request context (id, type, parent)
    */
   constructor(options: RequestContextCreateOptions) {
     this.id = options.id ?? randomUUID();
@@ -429,7 +419,7 @@ export class RequestContext {
    */
   static registerMiddleware(
     name: string,
-    middleware: RequestContextMiddleware,
+    middleware: RequestContextMiddlewareType,
     dependencies?: string[],
   ): void {
     this.middlewares.set(name, middleware);
@@ -437,7 +427,7 @@ export class RequestContext {
     this.generateMiddlewaresStack();
   }
 
-  /** @internal */
+  /** Resolves middleware dependencies via topological sort. @internal */
   private static resolveDependencies(
     name: string,
     resolved: Set<string>,
@@ -458,7 +448,7 @@ export class RequestContext {
     resolved.add(name);
   }
 
-  /** @internal */
+  /** Rebuilds the middleware execution stack after registration changes. @internal */
   private static generateMiddlewaresStack(): void {
     const resolved = new Set<string>();
     const seen = new Set<string>();

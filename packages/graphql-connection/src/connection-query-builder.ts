@@ -249,7 +249,7 @@ export class ConnectionQueryBuilder<
     ) {
       const { fieldOptionsMap, filterQuerySchema } = this.metadata;
 
-      // 构建 ParseOptions，只包含 filterable 的字段
+      // Build ParseOptions, only include filterable fields
       const fields: ParseOptions["fields"] = {};
       for (const [key, options] of fieldOptionsMap) {
         if (options.filterable === true) {
@@ -321,11 +321,11 @@ export class ConnectionQueryBuilder<
       ).then((result) => result.length),
     ]);
 
-    // 重新排序结果
+    // Re-sort results
     const sortedEntities =
       this.pagingType === PagingType.FORWARD ? entities : entities.reverse();
 
-    // 根据结果生成 edges
+    // Generate edges from results
     const edges = (
       sortedEntities.length > this.limit
         ? this.pagingType === PagingType.FORWARD
@@ -342,7 +342,7 @@ export class ConnectionQueryBuilder<
       }).toString(),
     }));
 
-    // 返回集合
+    // Return collection
     return {
       totalCount,
       edges,

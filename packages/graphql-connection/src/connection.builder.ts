@@ -29,13 +29,20 @@ import {
  *
  * @typeParam Entity - The entity type for the connection
  */
-type ConnectionBuildResult<Entity extends object> = {
+export type ConnectionBuildResult<Entity extends object> = {
+  /** The generated Connection object type class. */
   Connection: Type<ConnectionInterface<Entity>>;
+  /** The generated ConnectionArgs input type class. */
   ConnectionArgs: Type<ConnectionArgsInterface<Entity>>;
+  /** The generated Edge object type class. */
   Edge: Type<EdgeInterface<Entity>>;
+  /** GraphQL scalar type for filter queries. */
   Filter: GraphQLScalarType<FilterQuery<Entity>>;
+  /** Zod schema for validating filter query input. */
   filterQuerySchema: ZodType<FilterQuery<Entity>>;
+  /** The generated Order input type class. */
   Order: Type<OrderInterface<Entity>>;
+  /** Optional enum type for order fields. */
   OrderField?: OrderFieldType<Entity>;
 } & Record<
   `${EntityClass<Entity>["name"]}Connection`,
@@ -95,10 +102,13 @@ type ConnectionBuildResult<Entity extends object> = {
  * ```
  */
 export class ConnectionBuilder<Entity extends object> {
+  /** Entity name for the connection. @internal */
   private readonly entityName: EntityClass<Entity>["name"];
 
+  /** Connection builder options. @internal */
   private readonly options: ConnectionBuilderOptions;
 
+  /** Map of field names to their sort/filter options. @internal */
   private readonly fieldOptionsMap = new Map<
     string,
     FieldOptions<Entity, FieldType, string>
@@ -106,8 +116,7 @@ export class ConnectionBuilder<Entity extends object> {
 
   /**
    * Creates a new ConnectionBuilder instance.
-   *
-   * @param entityClass - The MikroORM entity class to build connection types for
+   * @param entityClass - The MikroORM entity class for this connection
    * @param options - Optional configuration for the connection builder
    */
   constructor(

@@ -26,7 +26,7 @@ describe("FileUploadModule - e2e", () => {
     fields: Record<string, string>[];
   };
 
-  // 临时文件的地址
+  // Temporary file URL
   let fileTmpUrl: string;
 
   beforeAll(async () => {
@@ -81,7 +81,7 @@ describe("FileUploadModule - e2e", () => {
 
     const form = new FormData();
 
-    // 添加文件和其他字段到表单
+    // Add file and other fields to the form
     fileUploadArgs.fields.forEach((field) => {
       form.append(field.name, field.value);
     });
@@ -89,7 +89,7 @@ describe("FileUploadModule - e2e", () => {
     const fileStream = fs.createReadStream(path.resolve(__dirname, filePath));
     form.append("file", fileStream);
 
-    // 上传临时文件
+    // Upload temporary file
     const response = await axios.post(fileUploadArgs.url, form, {
       headers: {
         ...form.getHeaders(),

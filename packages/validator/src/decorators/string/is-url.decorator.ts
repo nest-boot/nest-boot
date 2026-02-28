@@ -4,6 +4,7 @@ import isUrlValidator from "validator/lib/isURL";
 
 import { buildI18nMessage } from "../../utils";
 
+/** Validation name constant for the IsUrl validator. */
 export const IS_URL = "isUrl";
 
 /**

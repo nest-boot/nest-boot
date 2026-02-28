@@ -1,12 +1,14 @@
 import { BaseContext, GraphQLRequestContext } from "@apollo/server";
 import { RedisModule } from "@nest-boot/redis";
-import { Global, Module } from "@nestjs/common";
+import { type DynamicModule, Global, Module } from "@nestjs/common";
 import { Request } from "express";
 
 import {
+  ASYNC_OPTIONS_TYPE,
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TOKEN,
+  OPTIONS_TYPE,
 } from "./graphql-rate-limit.module-definition";
 import { GraphQLRateLimitPlugin } from "./graphql-rate-limit.plugin";
 import { GraphQLRateLimitStorage } from "./graphql-rate-limit.storage";
@@ -15,6 +17,13 @@ import {
   GraphQLRateLimitOptions,
 } from "./interfaces";
 
+/**
+ * GraphQL rate limiting module using Redis-backed leaky bucket algorithm.
+ *
+ * @remarks
+ * Provides query complexity analysis and rate limiting for GraphQL operations.
+ * Uses Redis for distributed rate limit state and supports custom ID extraction.
+ */
 @Global()
 @Module({
   imports: [
@@ -59,4 +68,24 @@ import {
   ],
   exports: [OPTIONS_TOKEN],
 })
-export class GraphQLRateLimitModule extends ConfigurableModuleClass {}
+export class GraphQLRateLimitModule extends ConfigurableModuleClass {
+  /**
+   * Registers the GraphQLRateLimitModule with the given options.
+   * @param options - Configuration options including rate limit thresholds and Redis connection
+   * @returns Dynamic module configuration
+   */
+  static override forRoot(options: typeof OPTIONS_TYPE): DynamicModule {
+    return super.forRoot(options);
+  }
+
+  /**
+   * Registers the GraphQLRateLimitModule asynchronously with factory functions.
+   * @param options - Async configuration options
+   * @returns Dynamic module configuration
+   */
+  static override forRootAsync(
+    options: typeof ASYNC_OPTIONS_TYPE,
+  ): DynamicModule {
+    return super.forRootAsync(options);
+  }
+}

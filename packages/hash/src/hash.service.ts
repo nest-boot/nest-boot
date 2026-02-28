@@ -15,8 +15,8 @@ import { hash, hashSync, verify, verifySync } from "@node-rs/argon2";
  * const isValid = await HashService.verify(hashed, password);
  * ```
  */
-
 export class HashService {
+  /** Singleton instance. @internal */
   private static _instance?: HashService;
 
   /**
@@ -102,10 +102,10 @@ export class HashService {
     return this.instance.verifySync(hashed, value, secret);
   }
 
+  /** Secret key buffer used for hashing. @internal */
   private readonly secret?: Buffer;
 
-  /**
-   * Creates an instance of HashService.
+  /** Creates a new HashService instance.
    * @param secret - Optional secret key to use for hashing
    */
   constructor(secret?: string) {

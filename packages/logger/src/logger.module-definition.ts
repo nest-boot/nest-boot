@@ -6,5 +6,9 @@ export const PINO_LOGGER = Symbol("PINO_LOGGER");
 
 export const BINDINGS = Symbol("BINDINGS");
 
-export const { ConfigurableModuleClass, MODULE_OPTIONS_TOKEN } =
-  new ConfigurableModuleBuilder<LoggerModuleOptions>().build();
+export const {
+  ConfigurableModuleClass,
+  MODULE_OPTIONS_TOKEN,
+  OPTIONS_TYPE,
+  ASYNC_OPTIONS_TYPE,
+} = new ConfigurableModuleBuilder<LoggerModuleOptions>().build();

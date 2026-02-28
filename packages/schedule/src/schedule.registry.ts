@@ -9,17 +9,37 @@ import {
 } from "./schedule.module-definition";
 import { type ScheduleOptions } from "./schedule-options.interface";
 
+/**
+ * Registry that discovers and manages scheduled jobs at application startup.
+ *
+ * @remarks
+ * Scans all controllers and providers for methods decorated with
+ * {@link Schedule}, {@link Cron}, or {@link Interval}, then registers
+ * them as BullMQ job schedulers. Removes stale schedulers that are no
+ * longer defined in the codebase.
+ */
 export class ScheduleRegistry implements OnApplicationBootstrap {
+  /** Logger instance for the schedule registry. @internal */
   private readonly logger = new Logger(ScheduleRegistry.name);
 
+  /** Map of schedule names to their handlers and options. @internal */
   private readonly schedules = new Map<
     string,
     {
+      /** Handler function bound to the original instance. */
       handler: () => Promise<void>;
+      /** Schedule options from the decorator. */
       options: ScheduleOptions;
     }
   >();
 
+  /**
+   * Creates a new ScheduleRegistry instance.
+   * @param queue - BullMQ queue for managing scheduled jobs
+   * @param reflector - NestJS reflector for reading decorator metadata
+   * @param discoveryService - NestJS discovery service for scanning providers
+   * @param metadataScanner - Scanner for extracting method metadata
+   */
   constructor(
     @InjectQueue(SCHEDULE_QUEUE_NAME)
     private readonly queue: Queue,
@@ -28,10 +48,16 @@ export class ScheduleRegistry implements OnApplicationBootstrap {
     private readonly metadataScanner: MetadataScanner,
   ) {}
 
+  /**
+   * Retrieves a registered schedule entry by name.
+   * @param name - The schedule identifier (className.methodName)
+   * @returns The schedule handler and options, or undefined
+   */
   get(name: string) {
     return this.schedules.get(name);
   }
 
+  /** Scans controllers and providers for schedule-decorated methods. @internal */
   private discoverySchedules() {
     [
       ...this.discoveryService.getControllers(),
@@ -63,6 +89,7 @@ export class ScheduleRegistry implements OnApplicationBootstrap {
     });
   }
 
+  /** Removes job schedulers that are no longer defined. @internal */
   private async cleanUnregisteredSchedules(): Promise<void> {
     const jobSchedulers = await this.queue.getJobSchedulers();
 
@@ -77,6 +104,7 @@ export class ScheduleRegistry implements OnApplicationBootstrap {
     }
   }
 
+  /** Registers all discovered schedules as BullMQ job schedulers. @internal */
   private async registerSchedules(): Promise<void> {
     for (const [
       name,
@@ -106,6 +134,7 @@ export class ScheduleRegistry implements OnApplicationBootstrap {
     }
   }
 
+  /** Discovers all scheduled methods and registers them as BullMQ job schedulers. */
   async onApplicationBootstrap(): Promise<void> {
     this.discoverySchedules();
     await this.cleanUnregisteredSchedules();

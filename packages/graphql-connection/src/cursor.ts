@@ -28,11 +28,6 @@ export class Cursor implements Record<string, any> {
    */
   [key: string]: any;
 
-  /**
-   * Creates a new Cursor instance.
-   *
-   * @param cursor - Either a base64-encoded cursor string or an object containing cursor data
-   */
   constructor(cursor: string | Record<string, any>) {
     if (typeof cursor === "string") {
       try {

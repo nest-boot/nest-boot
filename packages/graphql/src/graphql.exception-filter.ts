@@ -10,17 +10,35 @@ import { BaseExceptionFilter } from "@nestjs/core";
 import { GqlExceptionFilter } from "@nestjs/graphql";
 import { GraphQLError } from "graphql";
 
+/**
+ * Global exception filter for GraphQL and HTTP contexts.
+ *
+ * @remarks
+ * Catches all exceptions and converts them to appropriate GraphQL errors
+ * or delegates to the base HTTP exception filter. In production, internal
+ * error details are hidden from the response.
+ */
 @Catch()
 export class GraphQLExceptionFilter
   extends BaseExceptionFilter
   implements GqlExceptionFilter
 {
+  /** Whether to include debug information (stack traces, error details) in responses. */
   private readonly debug = process.env.NODE_ENV !== "production";
 
+  /** Creates a new GraphQLExceptionFilter instance.
+   * @param logger - NestJS logger for logging exceptions
+   */
   constructor(private readonly logger: Logger) {
     super();
   }
 
+  /**
+   * Catches and handles exceptions from both GraphQL and HTTP contexts.
+   * @param error - The caught exception
+   * @param host - The execution context arguments
+   * @returns A GraphQL error for GraphQL contexts, or delegates to HTTP handler
+   */
   catch(error: Error, host: ArgumentsHost) {
     if (host.getType<ContextType | "graphql">() === "graphql") {
       const graphqlError = this.transform(error);
@@ -32,13 +50,16 @@ export class GraphQLExceptionFilter
     }
   }
 
+  /**
+   * Transforms a generic error into a GraphQL error.
+   * @param error - The original error
+   * @returns A standardized GraphQL error with appropriate extensions
+   */
   transform(error: Error): GraphQLError {
-    // 如果是 GraphQL 错误，直接返回
     if (error instanceof GraphQLError) {
       return error;
     }
 
-    // 如果是 Http 错误，转换为 Apollo 错误
     if (error instanceof HttpException) {
       const status = error.getStatus();
       const response: any = error.getResponse();

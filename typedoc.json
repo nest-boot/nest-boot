@@ -16,14 +16,20 @@
   "packageOptions": {
     "entryPoints": ["src/index.ts"],
     "excludeInternal": true,
-    "excludePrivate": true
+    "excludePrivate": true,
+    "excludeExternals": true
   },
 
-  "plugin": [
-    "typedoc-plugin-markdown",
-    "typedoc-docusaurus-theme",
-    "typedoc-plugin-coverage"
-  ],
+  "externalSymbolLinkMappings": {
+    "@nest-boot/request-context": {
+      "RequestContext": "/docs/api/@nest-boot/request-context#requestcontext"
+    },
+    "@nestjs/common": {
+      "LoggerService": "https://docs.nestjs.com/techniques/logger"
+    }
+  },
+
+  "plugin": ["typedoc-plugin-markdown", "typedoc-docusaurus-theme"],
   "outputFileStrategy": "modules",
   "useCodeBlocks": true,
   "expandObjects": true,
@@ -34,5 +40,57 @@
     "hideModifiers": true,
     "hideOverrides": true,
     "hideSources": true
-  }
+  },
+
+  "validation": {
+    "notExported": true,
+    "invalidLink": true,
+    "invalidPath": true,
+    "rewrittenLink": true,
+    "notDocumented": true,
+    "unusedMergeModuleWith": true
+  },
+
+  "requiredToBeDocumented": [
+    "Accessor",
+    "Class",
+    "Constructor",
+    "Enum",
+    "EnumMember",
+    "Function",
+    "Interface",
+    "Method",
+    "Property",
+    "Reference",
+    "TypeAlias",
+    "Variable"
+  ],
+
+  "packagesRequiringDocumentation": [
+    "@nest-boot/auth-rls",
+    "@nest-boot/auth",
+    "@nest-boot/bullmq-mikro-orm",
+    "@nest-boot/bullmq",
+    "@nest-boot/crypt",
+    "@nest-boot/file-upload",
+    "@nest-boot/graphql-connection",
+    "@nest-boot/graphql-logger",
+    "@nest-boot/graphql-rate-limit",
+    "@nest-boot/graphql",
+    "@nest-boot/hash",
+    "@nest-boot/i18n",
+    "@nest-boot/logger",
+    "@nest-boot/mailer",
+    "@nest-boot/metrics",
+    "@nest-boot/middleware",
+    "@nest-boot/mikro-orm-crypt",
+    "@nest-boot/mikro-orm-hash",
+    "@nest-boot/mikro-orm-request-transaction",
+    "@nest-boot/mikro-orm",
+    "@nest-boot/redis",
+    "@nest-boot/request-context",
+    "@nest-boot/schedule",
+    "@nest-boot/validator",
+    "@nest-boot/view"
+  ]
 }

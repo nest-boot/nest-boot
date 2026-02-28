@@ -50,10 +50,10 @@ export default createRule({
     const isOptionalProperty = (
       member: TSESTree.PropertyDefinition,
     ): boolean => {
-      // 检查 AST 节点的 optional 标记
+      // Check the AST node's optional flag
       if (member.optional) return true;
 
-      // 检查源代码中是否有 ? 符号（在属性名和冒号之间）
+      // Check if there is a ? symbol in the source code (between property name and colon)
       const keyEnd = member.key.range[1];
       const text = source.text;
       for (let i = keyEnd; i < member.range[1]; i++) {
@@ -87,13 +87,13 @@ export default createRule({
           const propertyName = getPropertyName(member);
           if (!propertyName) return;
 
-          // 可选属性（?:）不需要 definite assignment assertion
+          // Optional properties (?:) do not need a definite assignment assertion
           if (isOptionalProperty(member)) return;
 
           const hasInit = hasInitializer(member);
           const hasDefinite = hasDefiniteAssignment(member);
 
-          // 情况1: 没有初始化值，但也没有 definite assignment assertion
+          // Case 1: No initializer and no definite assignment assertion
           if (!hasInit && !hasDefinite) {
             context.report({
               node: member,
@@ -102,15 +102,15 @@ export default createRule({
                 propertyName,
               },
               fix: (fixer) => {
-                // 找到属性名称的结束位置
+                // Find the end position of the property name
                 const keyEnd = member.key.range[1];
-                // 在属性名称后添加 !
+                // Insert ! after the property name
                 return fixer.insertTextAfterRange([keyEnd, keyEnd], "!");
               },
             });
           }
 
-          // 情况2: 有初始化值，但也有 definite assignment assertion
+          // Case 2: Has initializer but also has definite assignment assertion
           if (hasInit && hasDefinite) {
             context.report({
               node: member,
@@ -119,18 +119,18 @@ export default createRule({
                 propertyName,
               },
               fix: (fixer) => {
-                // 找到 ! 的位置并移除
+                // Find and remove the ! position
                 const keyEnd = member.key.range[1];
                 const text = source.text;
 
-                // 查找 ! 的位置（在属性名称和冒号之间）
+                // Find the ! position (between the property name and the colon)
                 let exclamationPos = -1;
                 for (let i = keyEnd; i < member.range[1]; i++) {
                   if (text[i] === "!") {
                     exclamationPos = i;
                     break;
                   }
-                  // 如果遇到冒号，说明没有 !
+                  // If we encounter a colon, there is no !
                   if (text[i] === ":") {
                     break;
                   }

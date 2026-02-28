@@ -7,7 +7,7 @@ import {
   hasClassDecorator,
 } from "../../utils/decorators";
 
-// 自定义 Fix 对象类型,用于延迟应用修复
+// Custom Fix object type for deferred fix application
 interface CustomFix {
   type: "insert" | "replace";
   range: readonly [number, number];
@@ -35,7 +35,7 @@ export default createRule<
     type: "problem",
     docs: {
       description:
-        "根据 TypeScript 类型自动生成或修正 @Field 装饰器的类型与 nullable 配置（支持数组）。",
+        "Automatically generate or fix @Field decorator type and nullable configuration based on TypeScript types (with array support).",
     },
     fixable: "code",
     schema: [
@@ -49,7 +49,7 @@ export default createRule<
               enum: ["ignore", "remove"],
             },
             description:
-              "配置每个装饰器的行为。ignore: 跳过检查；remove: 移除 @Field。默认：{ HideField: 'remove', OneToOne: 'remove', OneToMany: 'remove', ManyToOne: 'remove', ManyToMany: 'remove' }",
+              "Configure behavior for each decorator. ignore: skip checks; remove: remove @Field. Default: { HideField: 'remove', OneToOne: 'remove', OneToMany: 'remove', ManyToOne: 'remove', ManyToMany: 'remove' }",
           },
         },
         additionalProperties: false,
@@ -57,9 +57,9 @@ export default createRule<
     ],
     messages: {
       alignFieldDecoratorWithTsType:
-        "@Field 装饰器应与 TypeScript 类型保持一致（类型与 nullable）。",
+        "@Field decorator should align with the TypeScript type (type and nullable).",
       removeFieldDecorator:
-        "属性带有 @{{decoratorName}} 装饰器，应移除 @Field 装饰器。",
+        "Property has a @{{decoratorName}} decorator, @Field decorator should be removed.",
     },
   },
   defaultOptions: [
@@ -85,7 +85,7 @@ export default createRule<
         case AST_NODE_TYPES.TSStringKeyword:
           return "String";
         case AST_NODE_TYPES.TSNumberKeyword:
-          // 默认 number → Float（GraphQL 默认也是 Float；Int 需显式声明）
+          // Default number → Float (GraphQL default is also Float; Int must be declared explicitly)
           return "Float";
         default:
           return null;
@@ -129,12 +129,12 @@ export default createRule<
           ? property.typeAnnotation.typeAnnotation
           : null;
 
-      // 可选属性（?）视为可空
+      // Optional property (?) is treated as nullable
       if (property.optional) {
         isNullable = true;
       }
 
-      // 处理联合类型中的 null/undefined
+      // Handle null/undefined in union types
       if (baseTypeNode?.type === AST_NODE_TYPES.TSUnionType) {
         const hasNullish = baseTypeNode.types.some((t: TSESTree.TypeNode) => {
           return (
@@ -153,7 +153,7 @@ export default createRule<
           }) ?? null;
       }
 
-      // 先解包 Ref<T> 和 Opt<T> → T，并在内部再次处理 null/undefined
+      // First unwrap Ref<T> and Opt<T> → T, and handle null/undefined within
       if (
         baseTypeNode?.type === AST_NODE_TYPES.TSTypeReference &&
         baseTypeNode.typeName.type === AST_NODE_TYPES.Identifier &&
@@ -180,7 +180,7 @@ export default createRule<
         baseTypeNode = inner ?? baseTypeNode;
       }
 
-      // 数组类型（T[] 或 Array<T>）- 在解包 Opt/Ref 之后检查
+      // Array type (T[] or Array<T>) - checked after unwrapping Opt/Ref
       const elementTypeNode = baseTypeNode
         ? extractArrayElementType(baseTypeNode)
         : null;
@@ -191,7 +191,7 @@ export default createRule<
       const targetTypeNode: TSESTree.TypeNode | null =
         elementTypeNode ?? baseTypeNode;
 
-      // 无显式类型时，尝试从字面量初始值推断
+      // When no explicit type, try to infer from literal initializer
       if (!targetTypeNode) {
         if (property.value?.type === AST_NODE_TYPES.Literal) {
           const value = property.value.value;
@@ -206,7 +206,7 @@ export default createRule<
         return null;
       }
 
-      // id 字段优先使用 GraphQL 标量 ID
+      // id field prefers GraphQL scalar ID
       const propertyName =
         property.key.type === AST_NODE_TYPES.Identifier
           ? property.key.name
@@ -220,7 +220,7 @@ export default createRule<
         return { typeName: "ID", isArray, isNullable };
       }
 
-      // Record<*, *> → GraphQLJSONObject（不限制键值类型）
+      // Record<*, *> → GraphQLJSONObject (no restriction on key/value types)
       if (
         targetTypeNode.type === AST_NODE_TYPES.TSTypeReference &&
         targetTypeNode.typeName.type === AST_NODE_TYPES.Identifier &&
@@ -229,13 +229,13 @@ export default createRule<
         return { typeName: "GraphQLJSONObject", isArray, isNullable };
       }
 
-      // 关键字类型 → GraphQL 标量
+      // Keyword types → GraphQL scalars
       const scalar = scalarFromTsKeyword(targetTypeNode.type);
       if (scalar) {
         return { typeName: scalar, isArray, isNullable };
       }
 
-      // 标识符（类/自定义类型）
+      // Identifier (class/custom type)
       const ident = getIdentifierName(targetTypeNode);
       if (ident) {
         return { typeName: ident, isArray, isNullable };
@@ -313,24 +313,24 @@ export default createRule<
         ? `() => [${typeName}]`
         : `() => ${typeName}`;
 
-      // 提取现有的配置选项（除了 nullable）
+      // Extract existing config options (except nullable)
       const callExpr = fieldDecorator.expression;
       const existingOptions: string[] = [];
 
-      // 检查是否有现有的配置对象
+      // Check if there is an existing config object
       let optionsArg: TSESTree.ObjectExpression | null = null;
       if (
         callExpr.type === AST_NODE_TYPES.CallExpression &&
         callExpr.arguments.length > 0
       ) {
-        // 如果第一个参数是对象表达式（没有 type function）
+        // If the first argument is an object expression (no type function)
         if (
           callExpr.arguments[0] &&
           callExpr.arguments[0].type === AST_NODE_TYPES.ObjectExpression
         ) {
           optionsArg = callExpr.arguments[0];
         }
-        // 如果第二个参数是对象表达式（有 type function）
+        // If the second argument is an object expression (has type function)
         else if (
           callExpr.arguments[1] &&
           callExpr.arguments[1].type === AST_NODE_TYPES.ObjectExpression
@@ -339,42 +339,42 @@ export default createRule<
         }
       }
 
-      // 提取现有选项，同时处理 nullable
+      // Extract existing options, while handling nullable
       let hasNullableProperty = false;
       if (optionsArg) {
         optionsArg.properties.forEach((prop: TSESTree.ObjectLiteralElement) => {
-          // 处理展开运算符 (SpreadElement)
+          // Handle spread elements (SpreadElement)
           if (prop.type === AST_NODE_TYPES.SpreadElement) {
             const propText = source.getText(prop);
             existingOptions.push(propText);
             return;
           }
-          // 处理普通属性 (Property)
+          // Handle regular properties (Property)
           if (
             prop.key.type === AST_NODE_TYPES.Identifier &&
             prop.key.name === "nullable"
           ) {
             hasNullableProperty = true;
-            // 根据类型决定是否保留或更新 nullable
+            // Decide whether to keep or update nullable based on type
             if (info.isNullable) {
               existingOptions.push("nullable: true");
             }
-            // 如果不需要 nullable，则跳过（不保留）
+            // If nullable is not needed, skip (don't keep)
           } else {
-            // 保留原有的其他配置
+            // Keep other existing config options
             const propText = source.getText(prop);
             existingOptions.push(propText);
           }
         });
       }
 
-      // 如果需要 nullable 但原配置中没有，则添加到最前面
+      // If nullable is needed but not in original config, prepend it
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (info.isNullable && !hasNullableProperty) {
         existingOptions.unshift("nullable: true");
       }
 
-      // 构建新的装饰器文本
+      // Build the new decorator text
       const optionsExpr =
         existingOptions.length > 0 ? `, { ${existingOptions.join(", ")} }` : "";
       const newDecoratorText = `@Field(${typeExpr}${optionsExpr})`;
@@ -422,7 +422,7 @@ export default createRule<
             ManyToMany: "remove",
           };
 
-          // 检查是否有配置的装饰器
+          // Check if the property has a configured decorator
           let foundDecoratorName: string | null = null;
           let foundBehavior: DecoratorBehavior | null = null;
 
@@ -440,12 +440,12 @@ export default createRule<
             }
           }
 
-          // 如果是 ignore 行为，直接跳过
+          // If behavior is "ignore", skip directly
           if (foundBehavior === "ignore") return;
 
           const fieldDecorator = getPropertyDecorator(member, "Field");
 
-          // 如果是 remove 行为且有 @Field，则移除 @Field
+          // If behavior is "remove" and has @Field, remove @Field
           if (foundBehavior === "remove" && fieldDecorator) {
             context.report({
               node: fieldDecorator,
@@ -454,11 +454,11 @@ export default createRule<
                 decoratorName: foundDecoratorName ?? "unknown",
               },
               fix: (fixer) => {
-                // 移除整个装饰器行（包括换行）
+                // Remove the entire decorator line (including newline)
                 const decoratorStart = fieldDecorator.range[0];
                 const decoratorEnd = fieldDecorator.range[1];
 
-                // 查找装饰器后的换行符和空格
+                // Find the newline and whitespace after the decorator
                 const textAfter = source.text.slice(
                   decoratorEnd,
                   decoratorEnd + 10,
@@ -474,13 +474,13 @@ export default createRule<
             return;
           }
 
-          // 如果是 remove 行为但没有 @Field，跳过
+          // If behavior is "remove" but no @Field, skip
           if (foundBehavior === "remove") return;
 
           const typeInfo = computeTypeInfo(member);
           if (!typeInfo?.typeName) return;
 
-          // 如果没有 @Field 装饰器，添加它
+          // If there is no @Field decorator, add one
           if (!fieldDecorator) {
             context.report({
               node: member,
@@ -493,7 +493,7 @@ export default createRule<
             return;
           }
 
-          // 若已有 ArrowFunction 但与期望不一致，也进行修正
+          // If there is an existing ArrowFunction but it doesn't match expectations, fix it
           const callExpr = fieldDecorator.expression;
           if (callExpr.type !== AST_NODE_TYPES.CallExpression) return;
 
@@ -525,9 +525,9 @@ export default createRule<
                 },
               );
 
-            // 对于 number 类型，Int 和 Float 都是合法的
+            // For number types, both Int and Float are valid
             const isNumberType = typeInfo.typeName === "Float";
-            const actualTypeText = calleeText.replace(/^\[|\]$/g, ""); // 移除数组括号
+            const actualTypeText = calleeText.replace(/^\[|\]$/g, ""); // Remove array brackets
             const isValidNumberType =
               isNumberType &&
               (actualTypeText === "Int" || actualTypeText === "Float");

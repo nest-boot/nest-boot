@@ -4,7 +4,7 @@ import {
   RequestContextMiddleware,
   RequestContextModule,
 } from "@nest-boot/request-context";
-import { Global, Inject, Module } from "@nestjs/common";
+import { type DynamicModule, Global, Inject, Module } from "@nestjs/common";
 import { Auth, betterAuth } from "better-auth";
 import { toNodeHandler } from "better-auth/node";
 
@@ -12,13 +12,22 @@ import { mikroOrmAdapter } from "./adapters/mikro-orm-adapter";
 import { AUTH_TOKEN } from "./auth.constants";
 import { AuthMiddleware } from "./auth.middleware";
 import {
+  ASYNC_OPTIONS_TYPE,
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
+  OPTIONS_TYPE,
 } from "./auth.module-definition";
 import { AuthService } from "./auth.service";
 import { AuthModuleOptions } from "./auth-module-options.interface";
 import { estimateEntropy } from "./utils/estimate-entropy";
 
+/**
+ * Authentication module based on better-auth.
+ *
+ * @remarks
+ * Provides authentication services including session management, middleware registration,
+ * and MikroORM-based persistence via the better-auth adapter.
+ */
 @Global()
 @Module({
   imports: [RequestContextModule, MiddlewareModule],
@@ -77,6 +86,33 @@ import { estimateEntropy } from "./utils/estimate-entropy";
   exports: [AuthService],
 })
 export class AuthModule extends ConfigurableModuleClass {
+  /**
+   * Registers the AuthModule with the given options.
+   * @param options - Configuration options including secret and middleware settings
+   * @returns Dynamic module configuration
+   */
+  static override forRoot(options: typeof OPTIONS_TYPE): DynamicModule {
+    return super.forRoot(options);
+  }
+
+  /**
+   * Registers the AuthModule asynchronously with factory functions.
+   * @param options - Async configuration options
+   * @returns Dynamic module configuration
+   */
+  static override forRootAsync(
+    options: typeof ASYNC_OPTIONS_TYPE,
+  ): DynamicModule {
+    return super.forRootAsync(options);
+  }
+
+  /**
+   * Creates a new AuthModule instance.
+   * @param auth - The better-auth instance
+   * @param options - Auth module configuration options
+   * @param middlewareManager - Middleware manager for registering auth middleware
+   * @param authMiddleware - The auth middleware instance
+   */
   constructor(
     @Inject(AUTH_TOKEN)
     private readonly auth: Auth,

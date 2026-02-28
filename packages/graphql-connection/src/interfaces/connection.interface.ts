@@ -9,7 +9,7 @@ import { type EdgeInterface } from "./edge.interface";
  *
  * @typeParam T - The type of entities in the connection
  *
- * @see {@link https://relay.dev/graphql/connections.htm Relay Connection Specification}
+ * @see {@link https://relay.dev/graphql/connections.htm | Relay Connection Specification}
  */
 export interface ConnectionInterface<T> {
   /**

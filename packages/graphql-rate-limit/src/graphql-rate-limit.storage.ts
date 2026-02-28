@@ -18,47 +18,47 @@ export class GraphQLRateLimitStorage {
     this.redis.defineCommand(REDIS_COMMAND, {
       numberOfKeys: 5,
       lua: /* lua */ `
-        -- 获取当前时间戳
+        -- Get current timestamp
         local currentTimestamp = redis.call("TIME")[1]
         
-        -- 获取参数
+        -- Get arguments
         local bucketKeyPrefix = KEYS[1]
         local maximumAvailable = tonumber(KEYS[2])
         local restoreRate = tonumber(KEYS[3])
         local id = KEYS[4]
         local complexity = tonumber(KEYS[5])
         
-        -- 定义存储桶的键
+        -- Define the bucket key
         local bucketKey = bucketKeyPrefix .. ":" .. id
         
         local keyExpireSeconds = math.ceil(maximumAvailable / restoreRate)
         
-        -- 获取存储桶中当前的令牌数量，如果不存在，则设置为最大可用令牌数
+        -- Get the current number of tokens in the bucket; if it doesn't exist, set to max available
         local currentlyAvailable = redis.call("HGET", bucketKey, "currentlyAvailable")
         if not currentlyAvailable then
           currentlyAvailable = maximumAvailable
         end
         
-        -- 如果存储桶为空，设置上次更新时间戳为当前时间戳
+        -- If the bucket is empty, set the last updated timestamp to the current timestamp
         local updatedTimestamp = redis.call("HGET", bucketKey, "updatedTimestamp")
         if not updatedTimestamp then
           updatedTimestamp = currentTimestamp
         end
         
-        -- 更新上次更新的时间戳
+        -- Update the last updated timestamp
         redis.call("HSET", bucketKey, "updatedTimestamp", currentTimestamp)
         
-        -- 更新存储桶的过期时间
+        -- Update the bucket's expiration time
         redis.call("EXPIRE", bucketKey, keyExpireSeconds)
         
-        -- 计算自上次更新以来要恢复的令牌数量，并恢复存储桶中的令牌数量
+        -- Calculate the number of tokens to restore since the last update, and restore tokens in the bucket
         local intervalSeconds = currentTimestamp - updatedTimestamp;
         if intervalSeconds > 0 then
           currentlyAvailable = math.min((restoreRate * intervalSeconds) + currentlyAvailable, maximumAvailable);
           redis.call("HSET", bucketKey, "currentlyAvailable", currentlyAvailable)
         end
         
-        -- 检查是否有足够的令牌供扣减，如果有，则扣减并返回剩余令牌数
+        -- Check if there are enough tokens to deduct; if so, deduct and return the remaining tokens
         local newCurrentlyAvailable = currentlyAvailable - complexity
         if newCurrentlyAvailable >= 0 then
           currentlyAvailable = newCurrentlyAvailable

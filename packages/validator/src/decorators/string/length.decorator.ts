@@ -3,6 +3,7 @@ import isLengthValidator from "validator/lib/isLength";
 
 import { buildI18nMessage } from "../../utils/build-i18n-message";
 
+/** Validation name constant for the Length validator. */
 export const IS_LENGTH = "isLength";
 
 /**

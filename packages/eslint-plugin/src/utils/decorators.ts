@@ -1,10 +1,10 @@
 import { AST_NODE_TYPES, TSESTree } from "@typescript-eslint/utils";
 
 /**
- * 检查类是否有指定的装饰器
- * @param classDeclaration 类声明节点
- * @param decoratorNames 装饰器名称（可以是字符串或字符串数组）
- * @returns 是否有指定的装饰器
+ * Checks whether a class has the specified decorator(s).
+ * @param classDeclaration - The class declaration node.
+ * @param decoratorNames - Decorator name(s) (can be a string or an array of strings).
+ * @returns Whether the class has the specified decorator(s).
  */
 export function hasClassDecorator(
   classDeclaration: TSESTree.ClassDeclaration,
@@ -26,10 +26,10 @@ export function hasClassDecorator(
 }
 
 /**
- * 检查属性是否有指定的装饰器
- * @param propertyDefinition 属性定义节点
- * @param decoratorNames 装饰器名称（可以是字符串或字符串数组）
- * @returns 是否有指定的装饰器
+ * Checks whether a property has the specified decorator(s).
+ * @param propertyDefinition - The property definition node.
+ * @param decoratorNames - Decorator name(s) (can be a string or an array of strings).
+ * @returns Whether the property has the specified decorator(s).
  */
 export function hasPropertyDecorator(
   propertyDefinition: TSESTree.PropertyDefinition,
@@ -51,10 +51,10 @@ export function hasPropertyDecorator(
 }
 
 /**
- * 获取类的装饰器
- * @param classDeclaration 类声明节点
- * @param decoratorName 装饰器名称
- * @returns 装饰器节点，如果不存在则返回 null
+ * Gets a decorator from a class declaration.
+ * @param classDeclaration - The class declaration node.
+ * @param decoratorName - The decorator name.
+ * @returns The decorator node, or null if not found.
  */
 export function getClassDecorator(
   classDeclaration: TSESTree.ClassDeclaration,
@@ -72,10 +72,10 @@ export function getClassDecorator(
 }
 
 /**
- * 获取属性的装饰器
- * @param propertyDefinition 属性定义节点
- * @param decoratorName 装饰器名称
- * @returns 装饰器节点，如果不存在则返回 null
+ * Gets a decorator from a property definition.
+ * @param propertyDefinition - The property definition node.
+ * @param decoratorName - The decorator name.
+ * @returns The decorator node, or null if not found.
  */
 export function getPropertyDecorator(
   propertyDefinition: TSESTree.PropertyDefinition,

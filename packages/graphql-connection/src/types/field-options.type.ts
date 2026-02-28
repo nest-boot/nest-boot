@@ -11,7 +11,7 @@ import type {
 export interface BaseFieldOptions {
   /**
    * Whether this field can be used in filter queries.
-   * @default true
+   * @defaultValue true
    */
   filterable?: boolean;
 
