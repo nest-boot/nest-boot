@@ -1,5 +1,11 @@
 # @nest-boot/middleware
 
+## 7.2.3
+
+### Patch Changes
+
+- 3f42c62: add comprehensive TSDoc coverage and translate comments to English
+
 ## 7.2.2
 
 ### Patch Changes

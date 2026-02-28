@@ -1,5 +1,11 @@
 # @nest-boot/bullmq-mikro-orm
 
+## 7.0.5
+
+### Patch Changes
+
+- 3f42c62: add comprehensive TSDoc coverage and translate comments to English
+
 ## 7.0.4
 
 ### Patch Changes

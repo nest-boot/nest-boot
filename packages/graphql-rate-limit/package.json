@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/graphql-rate-limit",
-  "version": "7.0.3",
+  "version": "7.0.4",
   "description": "",
   "author": {
     "name": "Xudong Huang",
