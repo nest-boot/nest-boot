@@ -1,0 +1,96 @@
+---
+title: "Request Context"
+description: "The @nest-boot/request-context module provides request-scoped storage using Node.js AsyncLocalStorage."
+---
+
+The `@nest-boot/request-context` module provides request-scoped storage using Node.js AsyncLocalStorage. It allows you to store and access data throughout the lifecycle of a request without passing it through every function call.
+
+## Installation
+
+```bash
+npm install @nest-boot/request-context @nest-boot/middleware
+# or
+pnpm add @nest-boot/request-context @nest-boot/middleware
+```
+
+## Basic Usage
+
+### Module Registration
+
+```typescript
+import { Module } from "@nestjs/common";
+import { RequestContextModule } from "@nest-boot/request-context";
+
+@Module({
+  imports: [RequestContextModule],
+})
+export class AppModule {}
+```
+
+### Storing and Retrieving Data
+
+```typescript
+import { Injectable } from "@nestjs/common";
+import { RequestContext } from "@nest-boot/request-context";
+
+@Injectable()
+export class UserService {
+  setCurrentUser(user: User) {
+    RequestContext.set("currentUser", user);
+  }
+
+  getCurrentUser(): User | undefined {
+    return RequestContext.get<User>("currentUser");
+  }
+}
+```
+
+### Accessing Request ID
+
+```typescript
+import { Injectable } from "@nestjs/common";
+import { RequestContext } from "@nest-boot/request-context";
+
+@Injectable()
+export class LoggingService {
+  log(message: string) {
+    const requestId = RequestContext.id;
+    console.log(`[${requestId}] ${message}`);
+  }
+}
+```
+
+## Creating Custom Contexts
+
+### For Background Jobs
+
+Use the `CreateRequestContext` decorator:
+
+```typescript
+import { Injectable } from "@nestjs/common";
+import {
+  CreateRequestContext,
+  RequestContext,
+} from "@nest-boot/request-context";
+
+@Injectable()
+export class JobProcessor {
+  @CreateRequestContext(
+    (instance, job) => new RequestContext({ type: "job", id: job.id }),
+  )
+  async processJob(job: { id: string; data: any }) {
+    console.log(`Processing job ${RequestContext.id}`);
+    RequestContext.set("jobData", job.data);
+    await this.doWork();
+  }
+}
+```
+
+## Features
+
+- **AsyncLocalStorage Based** - Uses Node.js AsyncLocalStorage for reliable context propagation
+- **Automatic HTTP Context** - Automatically creates context for HTTP requests
+- **GraphQL Support** - Works with GraphQL resolvers via interceptor
+- **Child Contexts** - Create isolated child contexts that inherit from parents
+- **Middleware System** - Register middlewares with dependency ordering
+- **REPL Support** - Interactive debugging with context support

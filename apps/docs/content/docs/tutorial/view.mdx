@@ -1,0 +1,72 @@
+---
+title: "View"
+description: "The @nest-boot/view module provides server-side template rendering using Handlebars."
+---
+
+The `@nest-boot/view` module provides server-side template rendering using [Handlebars](https://handlebarsjs.com/), with automatic template discovery and registration.
+
+## Installation
+
+```bash
+npm install @nest-boot/view handlebars
+# or
+pnpm add @nest-boot/view handlebars
+```
+
+## Basic Usage
+
+```typescript
+import { Module } from "@nestjs/common";
+import { ViewModule } from "@nest-boot/view";
+
+@Module({
+  imports: [
+    ViewModule.register({
+      path: ["views"],
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+## Template Files
+
+```
+project/
+├── views/
+│   ├── emails/
+│   │   ├── welcome.hbs
+│   │   └── reset-password.hbs
+│   └── reports/
+│       └── daily.hbs
+└── src/
+```
+
+Template names use dot notation: `views/emails/welcome.hbs` → `emails.welcome`
+
+## Rendering Templates
+
+```typescript
+import { Injectable } from "@nestjs/common";
+import { ViewService } from "@nest-boot/view";
+
+@Injectable()
+export class EmailService {
+  constructor(private readonly viewService: ViewService) {}
+
+  renderWelcomeEmail(name: string, activationLink: string): string {
+    return this.viewService.render("emails.welcome", {
+      name,
+      activationLink,
+    });
+  }
+}
+```
+
+## Features
+
+- **Handlebars Templates** - Full Handlebars syntax with helpers and partials
+- **Auto Discovery** - Automatically finds `.hbs` and `.handlebars` files
+- **Dot Notation** - Templates named by directory path
+- **Programmatic Registration** - Register templates dynamically via `ViewService`
+- **Multi-Directory** - Support for multiple template directories

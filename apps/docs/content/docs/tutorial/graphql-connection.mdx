@@ -1,0 +1,77 @@
+---
+title: "GraphQL Connection"
+description: "The @nest-boot/graphql-connection module provides cursor-based pagination for GraphQL APIs following the Relay Connection specification."
+---
+
+The `@nest-boot/graphql-connection` module provides cursor-based pagination for GraphQL APIs following the [Relay Connection specification](https://relay.dev/graphql/connections.htm). It integrates with MikroORM to generate type-safe, paginated queries with filtering, sorting, and search capabilities.
+
+## Installation
+
+```bash
+npm install @nest-boot/graphql-connection @nest-boot/graphql @mikro-orm/core
+# or
+pnpm add @nest-boot/graphql-connection @nest-boot/graphql @mikro-orm/core
+```
+
+## Basic Usage
+
+### Building Connection Types
+
+```typescript
+import { ConnectionBuilder } from "@nest-boot/graphql-connection";
+import { User } from "./user.entity";
+
+export const {
+  Connection: UserConnection,
+  ConnectionArgs: UserConnectionArgs,
+} = new ConnectionBuilder(User)
+  .addField({ field: "name", type: "string", filterable: true, sortable: true })
+  .addField({
+    field: "email",
+    type: "string",
+    filterable: true,
+    searchable: true,
+  })
+  .addField({ field: "createdAt", type: "date", sortable: true })
+  .addField({ field: "isActive", type: "boolean", filterable: true })
+  .build();
+```
+
+### Using in Resolvers
+
+```typescript
+import { Resolver, Query, Args } from "@nestjs/graphql";
+import { ConnectionManager } from "@nest-boot/graphql-connection";
+import { UserConnection, UserConnectionArgs } from "./user.connection";
+
+@Resolver()
+export class UserResolver {
+  constructor(private readonly connectionManager: ConnectionManager) {}
+
+  @Query(() => UserConnection)
+  async users(@Args() args: UserConnectionArgs): Promise<UserConnection> {
+    return this.connectionManager.find(UserConnection, args);
+  }
+}
+```
+
+## Pagination
+
+Supports both forward (`first`/`after`) and backward (`last`/`before`) pagination.
+
+## Filtering
+
+MongoDB-style filter syntax with operators: `$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`, `$in`, `$nin`, `$and`, `$or`, `$regex`.
+
+## Search Query
+
+Human-friendly search syntax with field-specific filters: `field:value`, quoted strings, and negation.
+
+## Features
+
+- **Relay Compliant** - Follows the Relay Connection specification
+- **Type-Safe** - Fully typed with TypeScript generics
+- **MikroORM Integration** - Works seamlessly with MikroORM entities
+- **MongoDB-Style Filtering** - Powerful filter syntax with validation
+- **Search Syntax** - Human-friendly search query parsing
+- **Cursor-Based Pagination** - Stable pagination with opaque cursors

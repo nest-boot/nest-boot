@@ -1,8 +1,0 @@
-{
-  "label": "教程",
-  "position": 2,
-  "link": {
-    "type": "generated-index",
-    "description": "学习 Nest Boot 的核心模块和使用方法。"
-  }
-}

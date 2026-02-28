@@ -1,0 +1,94 @@
+---
+title: "BullMQ"
+description: "The @nest-boot/bullmq module provides job queue management powered by BullMQ."
+---
+
+The `@nest-boot/bullmq` module provides job queue management powered by [BullMQ](https://docs.bullmq.io/), with automatic Redis connection configuration from environment variables.
+
+## Installation
+
+```bash
+npm install @nest-boot/bullmq bullmq
+# or
+pnpm add @nest-boot/bullmq bullmq
+```
+
+## Basic Usage
+
+### Module Registration
+
+```typescript
+import { Module } from "@nestjs/common";
+import { BullModule } from "@nest-boot/bullmq";
+
+@Module({
+  imports: [
+    BullModule.forRoot({}),
+    BullModule.registerQueue({ name: "email" }),
+  ],
+})
+export class AppModule {}
+```
+
+## Creating Workers
+
+```typescript
+import { WorkerHost } from "@nest-boot/bullmq";
+import { Processor } from "@nestjs/bullmq";
+import { Job } from "bullmq";
+
+@Processor("email")
+export class EmailProcessor extends WorkerHost {
+  async process(job: Job<{ to: string; subject: string; body: string }>) {
+    const { to, subject, body } = job.data;
+    console.log(`Sending email to ${to}: ${subject}`);
+  }
+}
+```
+
+## Adding Jobs to Queue
+
+```typescript
+import { Injectable } from "@nestjs/common";
+import { InjectQueue } from "@nestjs/bullmq";
+import { Queue } from "bullmq";
+
+@Injectable()
+export class EmailService {
+  constructor(@InjectQueue("email") private readonly emailQueue: Queue) {}
+
+  async sendWelcomeEmail(to: string) {
+    await this.emailQueue.add("welcome", {
+      to,
+      subject: "Welcome!",
+      body: "Thanks for signing up.",
+    });
+  }
+}
+```
+
+## MikroORM Job Persistence
+
+The `@nest-boot/bullmq-mikro-orm` package persists BullMQ job data to a MikroORM-managed database.
+
+```bash
+pnpm add @nest-boot/bullmq-mikro-orm
+```
+
+## Environment Variables
+
+| Variable         | Description               |
+| ---------------- | ------------------------- |
+| `REDIS_URL`      | Full Redis connection URL |
+| `REDIS_HOST`     | Redis server hostname     |
+| `REDIS_PORT`     | Redis server port         |
+| `REDIS_DB`       | Redis database number     |
+| `REDIS_PASSWORD` | Redis password            |
+
+## Features
+
+- **Auto Redis Config** - Automatically loads Redis connection from environment variables
+- **Queue Registration** - Simple queue and flow producer registration
+- **Worker Support** - `WorkerHost` base class for processing jobs
+- **Job Persistence** - Optional MikroORM integration for job history
+- **Auto Cleanup** - Configurable TTL with automatic old job cleanup

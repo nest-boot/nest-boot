@@ -1,0 +1,194 @@
+---
+title: "MikroORM"
+description: "The @nest-boot/mikro-orm module provides seamless integration with MikroORM, a TypeScript ORM for Node.js."
+---
+
+The `@nest-boot/mikro-orm` module provides seamless integration with [MikroORM](https://mikro-orm.io/), a TypeScript ORM for Node.js. It includes automatic configuration from environment variables, request context integration, and support for encrypted and hashed entity properties.
+
+## Installation
+
+```bash
+npm install @nest-boot/mikro-orm @mikro-orm/core @mikro-orm/reflection
+# or
+pnpm add @nest-boot/mikro-orm @mikro-orm/core @mikro-orm/reflection
+```
+
+You also need to install a database driver:
+
+```bash
+# For PostgreSQL
+pnpm add @mikro-orm/postgresql
+
+# For MySQL
+pnpm add @mikro-orm/mysql
+```
+
+## Basic Usage
+
+### Module Registration
+
+Register the `MikroOrmModule` in your application module:
+
+```typescript
+import { Module } from "@nestjs/common";
+import { MikroOrmModule } from "@nest-boot/mikro-orm";
+
+@Module({
+  imports: [
+    MikroOrmModule.register({
+      entities: ["dist/**/*.entity.js"],
+      entitiesTs: ["src/**/*.entity.ts"],
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+### Using Environment Variables
+
+The module automatically loads configuration from environment variables if no options are provided:
+
+```typescript
+import { Module } from "@nestjs/common";
+import { MikroOrmModule } from "@nest-boot/mikro-orm";
+
+@Module({
+  imports: [
+    // Will use DB_* or DATABASE_* environment variables
+    MikroOrmModule.register({}),
+  ],
+})
+export class AppModule {}
+```
+
+### Async Registration
+
+For configuration from other services:
+
+```typescript
+import { Module } from "@nestjs/common";
+import { ConfigModule, ConfigService } from "@nestjs/config";
+import { MikroOrmModule } from "@nest-boot/mikro-orm";
+
+@Module({
+  imports: [
+    ConfigModule.forRoot(),
+    MikroOrmModule.registerAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        clientUrl: config.get("DATABASE_URL"),
+      }),
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+## Registering Entities
+
+Use `MikroOrmModule.forFeature()` to register entities for a specific module:
+
+```typescript
+import { Module } from "@nestjs/common";
+import { MikroOrmModule } from "@nest-boot/mikro-orm";
+import { User } from "./entities/user.entity";
+import { UserService } from "./user.service";
+
+@Module({
+  imports: [MikroOrmModule.forFeature([User])],
+  providers: [UserService],
+})
+export class UserModule {}
+```
+
+## Environment Variables
+
+The module supports automatic configuration from the following environment variables:
+
+| Variable                                      | Description                                       |
+| --------------------------------------------- | ------------------------------------------------- |
+| `DB_URL` or `DATABASE_URL`                    | Full database connection URL (takes precedence)   |
+| `DB_TYPE` or `DATABASE_TYPE`                  | Database type (`mysql`, `postgres`, `postgresql`) |
+| `DB_HOST` or `DATABASE_HOST`                  | Database server hostname                          |
+| `DB_PORT` or `DATABASE_PORT`                  | Database server port                              |
+| `DB_NAME` or `DB_DATABASE` or `DATABASE_NAME` | Database name                                     |
+| `DB_USER` or `DB_USERNAME` or `DATABASE_USER` | Database username                                 |
+| `DB_PASS` or `DB_PASSWORD` or `DATABASE_PASS` | Database password                                 |
+
+## Encrypted Properties
+
+The `@nest-boot/mikro-orm-crypt` package provides a decorator for automatically encrypting entity properties before they are persisted to the database.
+
+### Installation
+
+```bash
+npm install @nest-boot/mikro-orm-crypt @nest-boot/crypt
+# or
+pnpm add @nest-boot/mikro-orm-crypt @nest-boot/crypt
+```
+
+### Usage
+
+Use the `@EncryptedProperty()` decorator to mark properties that should be encrypted:
+
+```typescript
+import { Entity, PrimaryKey, Property, t } from "@mikro-orm/core";
+import { EncryptedProperty } from "@nest-boot/mikro-orm-crypt";
+
+@Entity()
+export class User {
+  @PrimaryKey()
+  id!: number;
+
+  @Property()
+  email!: string;
+
+  @EncryptedProperty({ type: t.string })
+  ssn!: string;
+
+  @EncryptedProperty({ type: t.text })
+  creditCard!: string;
+}
+```
+
+## Hashed Properties
+
+The `@nest-boot/mikro-orm-hash` package provides a decorator for automatically hashing entity properties (like passwords) before they are persisted to the database.
+
+### Installation
+
+```bash
+npm install @nest-boot/mikro-orm-hash @nest-boot/hash
+# or
+pnpm add @nest-boot/mikro-orm-hash @nest-boot/hash
+```
+
+### Usage
+
+Use the `@HashedProperty()` decorator to mark properties that should be hashed:
+
+```typescript
+import { Entity, PrimaryKey, Property, t } from "@mikro-orm/core";
+import { HashedProperty } from "@nest-boot/mikro-orm-hash";
+
+@Entity()
+export class User {
+  @PrimaryKey()
+  id!: number;
+
+  @Property()
+  email!: string;
+
+  @HashedProperty({ type: t.string })
+  password!: string;
+}
+```
+
+## Features
+
+- **Auto Configuration** - Automatically loads settings from environment variables
+- **Request Context Integration** - Automatic EntityManager forking per request
+- **Encrypted Properties** - Automatic AES-256-GCM encryption for sensitive data
+- **Hashed Properties** - Automatic Argon2 hashing for passwords
+- **TsMorph Metadata** - Reflection-based metadata provider
+- **Dataloader Support** - Built-in dataloader for optimized relation loading

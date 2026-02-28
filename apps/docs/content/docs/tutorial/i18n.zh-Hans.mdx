@@ -1,0 +1,39 @@
+---
+title: "国际化"
+description: "@nest-boot/i18n 模块提供基于 i18next 的国际化支持。"
+---
+
+`@nest-boot/i18n` 模块提供基于 [i18next](https://www.i18next.com/) 的国际化支持，支持文件系统翻译加载和自动 HTTP 语言检测。
+
+## 安装
+
+```bash
+npm install @nest-boot/i18n i18next i18next-fs-backend i18next-http-middleware
+# 或
+pnpm add @nest-boot/i18n i18next i18next-fs-backend i18next-http-middleware
+```
+
+## 基本用法
+
+```typescript
+import { Module } from "@nestjs/common";
+import { I18nModule } from "@nest-boot/i18n";
+
+@Module({
+  imports: [
+    I18nModule.register({
+      fallbackLng: "en",
+      supportedLngs: ["en", "zh"],
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+## 特性
+
+- **i18next 集成** - 通过 NestJS 依赖注入使用完整 i18next API
+- **文件系统后端** - 自动从 JSON 翻译文件加载
+- **HTTP 语言检测** - 从请求头自动检测语言
+- **请求作用域** - 通过请求上下文实现每请求语言
+- **装饰器支持** - 控制器的 `@I18n()` 参数装饰器

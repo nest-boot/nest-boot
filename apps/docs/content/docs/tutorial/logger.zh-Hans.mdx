@@ -1,0 +1,35 @@
+---
+title: "日志"
+description: "@nest-boot/logger 模块提供由 Pino 驱动的结构化请求作用域日志。"
+---
+
+`@nest-boot/logger` 模块提供由 [Pino](https://getpino.io/) 驱动的结构化、请求作用域日志，支持自动请求关联和 HTTP 日志。
+
+## 安装
+
+```bash
+npm install @nest-boot/logger pino pino-http
+# 或
+pnpm add @nest-boot/logger pino pino-http
+```
+
+## 基本用法
+
+```typescript
+import { Module } from "@nestjs/common";
+import { LoggerModule } from "@nest-boot/logger";
+
+@Module({
+  imports: [LoggerModule.register({})],
+})
+export class AppModule {}
+```
+
+## 特性
+
+- **结构化日志** - 使用 Pino 的 JSON 格式日志
+- **请求作用域** - 每个请求拥有自己的日志上下文
+- **自动关联** - 请求 ID 自动传播
+- **HTTP 日志** - 通过 pino-http 自动记录请求/响应
+- **上下文传播** - `assign()` 向后续日志添加数据
+- **安全** - 默认脱敏敏感头信息

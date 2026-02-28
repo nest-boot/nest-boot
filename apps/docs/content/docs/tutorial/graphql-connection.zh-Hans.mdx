@@ -1,0 +1,42 @@
+---
+title: "GraphQL 连接"
+description: "@nest-boot/graphql-connection 模块提供遵循 Relay 连接规范的游标分页。"
+---
+
+`@nest-boot/graphql-connection` 模块提供遵循 [Relay 连接规范](https://relay.dev/graphql/connections.htm) 的游标分页。集成 MikroORM，生成类型安全的分页查询，支持过滤、排序和搜索。
+
+## 安装
+
+```bash
+npm install @nest-boot/graphql-connection @nest-boot/graphql @mikro-orm/core
+# 或
+pnpm add @nest-boot/graphql-connection @nest-boot/graphql @mikro-orm/core
+```
+
+## 基本用法
+
+```typescript
+import { ConnectionBuilder } from "@nest-boot/graphql-connection";
+import { User } from "./user.entity";
+
+export const {
+  Connection: UserConnection,
+  ConnectionArgs: UserConnectionArgs,
+} = new ConnectionBuilder(User)
+  .addField({ field: "name", type: "string", filterable: true, sortable: true })
+  .addField({
+    field: "email",
+    type: "string",
+    filterable: true,
+    searchable: true,
+  })
+  .build();
+```
+
+## 特性
+
+- **Relay 兼容** - 遵循 Relay 连接规范
+- **类型安全** - 使用 TypeScript 泛型完全类型化
+- **MikroORM 集成** - 与 MikroORM 实体无缝配合
+- **MongoDB 风格过滤** - 强大的过滤语法和验证
+- **搜索语法** - 人性化的搜索查询解析

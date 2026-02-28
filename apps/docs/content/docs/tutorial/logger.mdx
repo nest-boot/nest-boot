@@ -1,0 +1,66 @@
+---
+title: "Logger"
+description: "The @nest-boot/logger module provides structured, request-scoped logging powered by Pino."
+---
+
+The `@nest-boot/logger` module provides structured, request-scoped logging powered by [Pino](https://getpino.io/), with automatic request correlation and HTTP logging.
+
+## Installation
+
+```bash
+npm install @nest-boot/logger pino pino-http
+# or
+pnpm add @nest-boot/logger pino pino-http
+```
+
+## Basic Usage
+
+```typescript
+import { Module } from "@nestjs/common";
+import { LoggerModule } from "@nest-boot/logger";
+
+@Module({
+  imports: [LoggerModule.register({})],
+})
+export class AppModule {}
+```
+
+## Using the Logger
+
+```typescript
+import { Injectable } from "@nestjs/common";
+import { Logger } from "@nest-boot/logger";
+
+@Injectable()
+export class UserService {
+  constructor(private readonly logger: Logger) {}
+
+  async createUser(email: string) {
+    this.logger.log("Creating user", { email });
+    try {
+      // ... create user
+      this.logger.log("User created successfully");
+    } catch (error) {
+      this.logger.error("Failed to create user", { error });
+      throw error;
+    }
+  }
+}
+```
+
+## Adding Context
+
+```typescript
+this.logger.assign({ orderId, userId });
+this.logger.log("Processing order");
+// Output: {"orderId": "123", "userId": "456", "msg": "Processing order"}
+```
+
+## Features
+
+- **Structured Logging** - JSON-formatted logs with Pino
+- **Request-Scoped** - Each request gets its own logger context
+- **Auto Correlation** - Request IDs automatically propagated
+- **HTTP Logging** - Automatic request/response logging via pino-http
+- **Context Propagation** - `assign()` adds data to all subsequent logs
+- **Security** - Sensitive headers redacted by default

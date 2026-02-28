@@ -1,0 +1,81 @@
+---
+title: "File Upload"
+description: "The @nest-boot/file-upload module provides file upload handling via S3-compatible storage."
+---
+
+The `@nest-boot/file-upload` module provides file upload handling via S3-compatible storage, with support for presigned POST uploads, direct uploads, and GraphQL integration.
+
+## Installation
+
+```bash
+npm install @nest-boot/file-upload @aws-sdk/client-s3 @aws-sdk/s3-presigned-post
+# or
+pnpm add @nest-boot/file-upload @aws-sdk/client-s3 @aws-sdk/s3-presigned-post
+```
+
+## Basic Usage
+
+```typescript
+import { Module } from "@nestjs/common";
+import { FileUploadModule } from "@nest-boot/file-upload";
+
+@Module({
+  imports: [
+    FileUploadModule.register({
+      client: {
+        endpoint: "https://s3.amazonaws.com",
+        region: "us-east-1",
+        credentials: {
+          accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+        },
+      },
+      bucket: "my-uploads",
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+## Using FileUploadService
+
+### Presigned Upload (Client-Side)
+
+```typescript
+import { Injectable } from "@nestjs/common";
+import { FileUploadService } from "@nest-boot/file-upload";
+
+@Injectable()
+export class UploadService {
+  constructor(private readonly fileUploadService: FileUploadService) {}
+
+  async getUploadUrl(filename: string, mimeType: string, fileSize: number) {
+    const [upload] = await this.fileUploadService.create([
+      { name: filename, mimeType, fileSize },
+    ]);
+    return upload; // { url, fields }
+  }
+
+  async persistFile(tmpUrl: string) {
+    return this.fileUploadService.persist(tmpUrl);
+  }
+}
+```
+
+## Configuration Options
+
+| Option    | Type                 | Description                                         |
+| --------- | -------------------- | --------------------------------------------------- |
+| `client`  | `S3Client \| object` | S3Client instance or S3ClientConfig options         |
+| `bucket`  | `string`             | S3 bucket name                                      |
+| `url`     | `string`             | Custom URL origin for presigned URLs                |
+| `expires` | `number`             | Presigned URL expiration in seconds (default: 3600) |
+| `limits`  | `object[]`           | File size and MIME type restrictions                |
+
+## Features
+
+- **S3 Compatible** - Works with AWS S3, MinIO, CloudFlare R2
+- **Presigned Uploads** - Secure client-side uploads via presigned POST
+- **Direct Uploads** - Server-side upload from streams, buffers, or strings
+- **File Persistence** - Two-phase upload: temporary → permanent
+- **Size Limits** - Configurable per-MIME-type size restrictions

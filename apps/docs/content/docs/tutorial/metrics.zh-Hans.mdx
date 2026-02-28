@@ -1,0 +1,33 @@
+---
+title: "指标"
+description: "@nest-boot/metrics 模块提供使用 prom-client 的 Prometheus 应用指标。"
+---
+
+`@nest-boot/metrics` 模块提供使用 [prom-client](https://github.com/siimon/prom-client) 的 [Prometheus](https://prometheus.io/) 应用指标，暴露 `/metrics` 端点供抓取。
+
+## 安装
+
+```bash
+npm install @nest-boot/metrics prom-client
+# 或
+pnpm add @nest-boot/metrics prom-client
+```
+
+## 基本用法
+
+```typescript
+import { Module } from "@nestjs/common";
+import { MetricsModule } from "@nest-boot/metrics";
+
+@Module({
+  imports: [MetricsModule.register({})],
+})
+export class AppModule {}
+```
+
+## 特性
+
+- **默认指标** - 自动收集 Node.js 运行时指标
+- **指标端点** - 内置 `GET /metrics` 控制器
+- **自定义指标** - 完整 prom-client API
+- **Prometheus 兼容** - 标准暴露格式

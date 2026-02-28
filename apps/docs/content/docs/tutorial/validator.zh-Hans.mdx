@@ -1,0 +1,50 @@
+---
+title: "验证器"
+description: "@nest-boot/validator 模块提供基于 class-validator 的增强验证装饰器。"
+---
+
+`@nest-boot/validator` 模块提供基于 [class-validator](https://github.com/typestack/class-validator) 的增强验证装饰器集合，支持国际化错误消息。
+
+## 安装
+
+```bash
+npm install @nest-boot/validator class-validator class-transformer
+# 或
+pnpm add @nest-boot/validator class-validator class-transformer
+```
+
+## 基本用法
+
+```typescript
+import {
+  IsEmail,
+  IsUrl,
+  Length,
+  Min,
+  Max,
+  IsOptional,
+} from "@nest-boot/validator";
+
+export class CreateUserDto {
+  @Length(2, 50)
+  name!: string;
+
+  @IsEmail()
+  email!: string;
+
+  @IsUrl()
+  @IsOptional()
+  website?: string;
+
+  @Min(0)
+  @Max(120)
+  age!: number;
+}
+```
+
+## 特性
+
+- **增强装饰器** - 改进的验证装饰器，提供一致的错误消息
+- **国际化就绪** - 错误消息格式化支持国际化
+- **class-validator 兼容** - 与 class-validator 生态系统完全兼容
+- **类型安全** - TypeScript 优先的验证，具有正确的类型推断

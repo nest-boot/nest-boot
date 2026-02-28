@@ -1,0 +1,40 @@
+{
+  "name": "@nest-boot/docs",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "docs:generate": "cd ../.. && pnpm docs:generate",
+    "prebuild": "pnpm run docs:generate",
+    "build": "next build",
+    "dev": "next dev",
+    "start": "next start",
+    "types:check": "fumadocs-mdx && next typegen && tsc --noEmit",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@takumi-rs/image-response": "^0.69.1",
+    "fumadocs-core": "16.6.7",
+    "fumadocs-mdx": "14.2.8",
+    "fumadocs-ui": "16.6.7",
+    "lucide-react": "^0.575.0",
+    "next": "16.1.6",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "tailwind-merge": "^3.5.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.1",
+    "@types/mdx": "^2.0.13",
+    "@types/node": "^25.3.1",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^10.0.2",
+    "eslint-config-next": "16.1.6",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.2.1",
+    "typescript": "^5.9.3"
+  },
+  "volta": {
+    "extends": "../../package.json"
+  }
+}

@@ -1,0 +1,46 @@
+---
+title: "文件上传"
+description: "@nest-boot/file-upload 模块提供通过 S3 兼容存储的文件上传处理。"
+---
+
+`@nest-boot/file-upload` 模块提供通过 S3 兼容存储的文件上传处理，支持预签名 POST 上传、直接上传和 GraphQL 集成。
+
+## 安装
+
+```bash
+npm install @nest-boot/file-upload @aws-sdk/client-s3 @aws-sdk/s3-presigned-post
+# 或
+pnpm add @nest-boot/file-upload @aws-sdk/client-s3 @aws-sdk/s3-presigned-post
+```
+
+## 基本用法
+
+```typescript
+import { Module } from "@nestjs/common";
+import { FileUploadModule } from "@nest-boot/file-upload";
+
+@Module({
+  imports: [
+    FileUploadModule.register({
+      client: {
+        endpoint: "https://s3.amazonaws.com",
+        region: "us-east-1",
+        credentials: {
+          accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+        },
+      },
+      bucket: "my-uploads",
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+## 特性
+
+- **S3 兼容** - 支持 AWS S3、MinIO、CloudFlare R2
+- **预签名上传** - 通过预签名 POST 的安全客户端上传
+- **直接上传** - 从流、缓冲区或字符串的服务端上传
+- **文件持久化** - 两阶段上传：临时 → 永久
+- **大小限制** - 按 MIME 类型配置大小限制

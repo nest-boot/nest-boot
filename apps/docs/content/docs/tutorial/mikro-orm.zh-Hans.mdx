@@ -1,0 +1,57 @@
+---
+title: "MikroORM"
+description: "@nest-boot/mikro-orm 模块提供与 MikroORM 的无缝集成。"
+---
+
+`@nest-boot/mikro-orm` 模块提供与 [MikroORM](https://mikro-orm.io/) 的无缝集成，支持从环境变量自动配置、请求上下文集成以及加密和哈希实体属性。
+
+## 安装
+
+```bash
+npm install @nest-boot/mikro-orm @mikro-orm/core @mikro-orm/reflection
+# 或
+pnpm add @nest-boot/mikro-orm @mikro-orm/core @mikro-orm/reflection
+```
+
+## 基本用法
+
+```typescript
+import { Module } from "@nestjs/common";
+import { MikroOrmModule } from "@nest-boot/mikro-orm";
+
+@Module({
+  imports: [
+    MikroOrmModule.register({
+      entities: ["dist/**/*.entity.js"],
+      entitiesTs: ["src/**/*.entity.ts"],
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+## 环境变量
+
+| 变量                                          | 描述               |
+| --------------------------------------------- | ------------------ |
+| `DB_URL` 或 `DATABASE_URL`                    | 完整数据库连接 URL |
+| `DB_TYPE` 或 `DATABASE_TYPE`                  | 数据库类型         |
+| `DB_HOST` 或 `DATABASE_HOST`                  | 数据库服务器主机名 |
+| `DB_PORT` 或 `DATABASE_PORT`                  | 数据库服务器端口   |
+| `DB_NAME` 或 `DB_DATABASE` 或 `DATABASE_NAME` | 数据库名称         |
+
+## 加密属性
+
+`@nest-boot/mikro-orm-crypt` 提供在持久化前自动加密实体属性的装饰器。
+
+## 哈希属性
+
+`@nest-boot/mikro-orm-hash` 提供在持久化前自动哈希实体属性（如密码）的装饰器。
+
+## 特性
+
+- **自动配置** - 从环境变量自动加载设置
+- **请求上下文集成** - 每个请求自动 Fork EntityManager
+- **加密属性** - 自动 AES-256-GCM 加密敏感数据
+- **哈希属性** - 自动 Argon2 哈希密码
+- **Dataloader 支持** - 内置 dataloader 优化关联加载

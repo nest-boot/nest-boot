@@ -1,0 +1,34 @@
+---
+title: "中间件"
+description: "@nest-boot/middleware 模块提供集中式和灵活的中间件管理。"
+---
+
+`@nest-boot/middleware` 模块提供在 NestJS 应用程序中集中式和灵活的中间件注册管理方式。支持依赖排序、路由排除和全局配置。
+
+## 安装
+
+```bash
+npm install @nest-boot/middleware
+# 或
+pnpm add @nest-boot/middleware
+```
+
+## 基本用法
+
+```typescript
+import { Module } from "@nestjs/common";
+import { MiddlewareModule } from "@nest-boot/middleware";
+
+@Module({
+  imports: [MiddlewareModule],
+})
+export class AppModule {}
+```
+
+## 特性
+
+- **集中管理** - 在一个地方注册所有中间件
+- **依赖排序** - 根据依赖关系自动排序中间件
+- **循环依赖检测** - 检测到循环依赖时抛出错误
+- **全局排除** - 定义所有中间件排除的路由
+- **流畅 API** - 简洁的链式配置语法

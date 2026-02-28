@@ -1,0 +1,84 @@
+---
+title: "I18n"
+description: "The @nest-boot/i18n module provides internationalization support via i18next."
+---
+
+The `@nest-boot/i18n` module provides internationalization (i18n) support via [i18next](https://www.i18next.com/), with file-system-based translation loading and automatic HTTP language detection.
+
+## Installation
+
+```bash
+npm install @nest-boot/i18n i18next i18next-fs-backend i18next-http-middleware
+# or
+pnpm add @nest-boot/i18n i18next i18next-fs-backend i18next-http-middleware
+```
+
+## Basic Usage
+
+```typescript
+import { Module } from "@nestjs/common";
+import { I18nModule } from "@nest-boot/i18n";
+
+@Module({
+  imports: [
+    I18nModule.register({
+      fallbackLng: "en",
+      supportedLngs: ["en", "zh"],
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+## Translation Files
+
+```
+project/
+├── locales/
+│   ├── en/
+│   │   └── translation.json
+│   └── zh/
+│       └── translation.json
+└── src/
+```
+
+## Using Translations
+
+### Using the t() Helper
+
+```typescript
+import { Injectable } from "@nestjs/common";
+import { t } from "@nest-boot/i18n";
+
+@Injectable()
+export class GreetingService {
+  getWelcomeMessage(name: string): string {
+    return t("welcome", { name });
+  }
+}
+```
+
+### Using the @I18n() Decorator
+
+```typescript
+import { Controller, Get } from "@nestjs/common";
+import { I18n as I18nDecorator } from "@nest-boot/i18n";
+import { i18n } from "i18next";
+
+@Controller("greetings")
+export class GreetingController {
+  @Get()
+  getGreeting(@I18nDecorator() i18n: i18n) {
+    return { message: i18n.t("welcome", { name: "World" }) };
+  }
+}
+```
+
+## Features
+
+- **i18next Integration** - Full i18next API with NestJS DI
+- **File-System Backend** - Automatic loading from JSON translation files
+- **HTTP Language Detection** - Auto-detect language from request headers
+- **Request-Scoped** - Per-request language via request context
+- **Decorator Support** - `@I18n()` parameter decorator for controllers
+- **Helper Function** - `t()` utility for quick translations

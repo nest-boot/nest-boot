@@ -1,17 +1,14 @@
 {
   "$schema": "https://typedoc.org/schema.json",
+  "name": "API Reference",
 
   "entryPointStrategy": "packages",
   "entryPoints": ["packages/*"],
-
   "exclude": [
     "packages/eslint-config",
     "packages/eslint-plugin",
     "packages/tsconfig"
   ],
-
-  "out": "website/docs/api",
-  "name": "Nest Boot API",
 
   "packageOptions": {
     "entryPoints": ["src/index.ts"],
@@ -20,17 +17,22 @@
     "excludeExternals": true
   },
 
-  "externalSymbolLinkMappings": {
-    "@nest-boot/request-context": {
-      "RequestContext": "/docs/api/@nest-boot/request-context#requestcontext"
-    },
-    "@nestjs/common": {
-      "LoggerService": "https://docs.nestjs.com/techniques/logger"
-    }
-  },
+  "plugin": [
+    "typedoc-plugin-markdown",
+    "typedoc-plugin-frontmatter",
+    "./typedoc-custom-frontmatter.mjs"
+  ],
 
-  "plugin": ["typedoc-plugin-markdown", "typedoc-docusaurus-theme"],
+  "out": "apps/docs/content/docs/api",
+  "fileExtension": ".mdx",
+  "entryFileName": "index",
+  "readme": "none",
   "outputFileStrategy": "modules",
+  "excludeScopesInPaths": true,
+
+  "hidePageHeader": true,
+  "hideBreadcrumbs": true,
+  "hidePageTitle": true,
   "useCodeBlocks": true,
   "expandObjects": true,
   "parametersFormat": "table",
@@ -40,6 +42,15 @@
     "hideModifiers": true,
     "hideOverrides": true,
     "hideSources": true
+  },
+
+  "externalSymbolLinkMappings": {
+    "@nest-boot/request-context": {
+      "RequestContext": "/docs/api/request-context#requestcontext"
+    },
+    "@nestjs/common": {
+      "LoggerService": "https://docs.nestjs.com/techniques/logger"
+    }
   },
 
   "validation": {
@@ -67,26 +78,26 @@
   ],
 
   "packagesRequiringDocumentation": [
-    "@nest-boot/auth-rls",
     "@nest-boot/auth",
-    "@nest-boot/bullmq-mikro-orm",
+    "@nest-boot/auth-rls",
     "@nest-boot/bullmq",
+    "@nest-boot/bullmq-mikro-orm",
     "@nest-boot/crypt",
     "@nest-boot/file-upload",
+    "@nest-boot/graphql",
     "@nest-boot/graphql-connection",
     "@nest-boot/graphql-logger",
     "@nest-boot/graphql-rate-limit",
-    "@nest-boot/graphql",
     "@nest-boot/hash",
     "@nest-boot/i18n",
     "@nest-boot/logger",
     "@nest-boot/mailer",
     "@nest-boot/metrics",
     "@nest-boot/middleware",
+    "@nest-boot/mikro-orm",
     "@nest-boot/mikro-orm-crypt",
     "@nest-boot/mikro-orm-hash",
     "@nest-boot/mikro-orm-request-transaction",
-    "@nest-boot/mikro-orm",
     "@nest-boot/redis",
     "@nest-boot/request-context",
     "@nest-boot/schedule",

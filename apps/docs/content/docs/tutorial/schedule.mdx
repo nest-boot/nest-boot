@@ -1,0 +1,72 @@
+---
+title: "Schedule"
+description: "The @nest-boot/schedule module provides cron-like job scheduling powered by BullMQ."
+---
+
+The `@nest-boot/schedule` module provides cron-like job scheduling powered by BullMQ, with decorator-based schedule registration.
+
+## Installation
+
+```bash
+npm install @nest-boot/schedule @nest-boot/bullmq
+# or
+pnpm add @nest-boot/schedule @nest-boot/bullmq
+```
+
+## Basic Usage
+
+```typescript
+import { Module } from "@nestjs/common";
+import { BullModule } from "@nest-boot/bullmq";
+import { ScheduleModule } from "@nest-boot/schedule";
+
+@Module({
+  imports: [BullModule.forRoot({}), ScheduleModule.forRoot({})],
+})
+export class AppModule {}
+```
+
+## Defining Schedules
+
+### Cron Jobs
+
+```typescript
+import { Injectable } from "@nestjs/common";
+import { Cron } from "@nest-boot/schedule";
+
+@Injectable()
+export class TaskService {
+  @Cron("0 * * * *") // Every hour
+  async cleanupExpiredSessions() {
+    // Clean up expired sessions
+  }
+
+  @Cron("0 0 * * *") // Every day at midnight
+  async generateDailyReport() {
+    // Generate daily report
+  }
+}
+```
+
+### Interval Jobs
+
+```typescript
+import { Injectable } from "@nestjs/common";
+import { Interval } from "@nest-boot/schedule";
+
+@Injectable()
+export class HealthCheckService {
+  @Interval(30000) // Every 30 seconds
+  async checkHealth() {
+    // Perform health check
+  }
+}
+```
+
+## Features
+
+- **Cron Scheduling** - Standard cron expressions with timezone support
+- **Interval Scheduling** - Fixed-interval recurring jobs
+- **Decorator-Based** - Simple `@Cron()` and `@Interval()` decorators
+- **BullMQ Powered** - Reliable job processing with Redis-backed queues
+- **Auto Discovery** - Automatic registration of decorated methods

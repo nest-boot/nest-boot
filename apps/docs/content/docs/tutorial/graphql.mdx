@@ -1,0 +1,71 @@
+---
+title: "GraphQL"
+description: "The @nest-boot/graphql module provides GraphQL API support powered by Apollo Server."
+---
+
+The `@nest-boot/graphql` module provides GraphQL API support powered by [Apollo Server](https://www.apollographql.com/docs/apollo-server/), with code-first schema generation, exception filtering, and companion modules for logging and rate limiting.
+
+## Installation
+
+```bash
+npm install @nest-boot/graphql @nestjs/graphql @nestjs/apollo @apollo/server graphql
+# or
+pnpm add @nest-boot/graphql @nestjs/graphql @nestjs/apollo @apollo/server graphql
+```
+
+## Basic Usage
+
+```typescript
+import { Module } from "@nestjs/common";
+import { GraphQLModule } from "@nest-boot/graphql";
+
+@Module({
+  imports: [GraphQLModule.forRoot({})],
+})
+export class AppModule {}
+```
+
+## Creating Resolvers
+
+```typescript
+import { Query, Resolver, Mutation, Args } from "@nestjs/graphql";
+import { User } from "./user.model";
+
+@Resolver(() => User)
+export class UserResolver {
+  @Query(() => [User])
+  async users() {
+    return this.userService.findAll();
+  }
+
+  @Mutation(() => User)
+  async createUser(@Args("name") name: string) {
+    return this.userService.create({ name });
+  }
+}
+```
+
+## GraphQL Logger
+
+The `@nest-boot/graphql-logger` package provides an Apollo Server plugin that logs GraphQL operation metadata.
+
+```bash
+pnpm add @nest-boot/graphql-logger @nest-boot/logger
+```
+
+## GraphQL Rate Limiting
+
+The `@nest-boot/graphql-rate-limit` package provides query complexity-based rate limiting.
+
+```bash
+pnpm add @nest-boot/graphql-rate-limit graphql-query-complexity
+```
+
+## Features
+
+- **Apollo Server** — Production-ready GraphQL server
+- **Code-First** — Auto-generated schema from TypeScript types
+- **Exception Filtering** — Global GraphQL error handling
+- **Operation Logging** — Structured logging for all operations
+- **Rate Limiting** — Shopify-style query complexity-based throttling
+- **Cost Transparency** — Query cost reported in response extensions

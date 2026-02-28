@@ -1,0 +1,38 @@
+---
+title: "视图"
+description: "@nest-boot/view 模块提供使用 Handlebars 的服务端模板渲染。"
+---
+
+`@nest-boot/view` 模块提供使用 [Handlebars](https://handlebarsjs.com/) 的服务端模板渲染，支持自动模板发现和注册。
+
+## 安装
+
+```bash
+npm install @nest-boot/view handlebars
+# 或
+pnpm add @nest-boot/view handlebars
+```
+
+## 基本用法
+
+```typescript
+import { Module } from "@nestjs/common";
+import { ViewModule } from "@nest-boot/view";
+
+@Module({
+  imports: [
+    ViewModule.register({
+      path: ["views"],
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+## 特性
+
+- **Handlebars 模板** - 完整的 Handlebars 语法，支持助手和部分模板
+- **自动发现** - 自动查找 `.hbs` 和 `.handlebars` 文件
+- **点号表示法** - 按目录路径命名模板
+- **程序化注册** - 通过 `ViewService` 动态注册模板
+- **多目录** - 支持多个模板目录

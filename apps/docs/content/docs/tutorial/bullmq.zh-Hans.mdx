@@ -1,0 +1,53 @@
+---
+title: "BullMQ"
+description: "@nest-boot/bullmq 模块提供由 BullMQ 驱动的作业队列管理。"
+---
+
+`@nest-boot/bullmq` 模块提供由 [BullMQ](https://docs.bullmq.io/) 驱动的作业队列管理，支持从环境变量自动配置 Redis 连接。
+
+## 安装
+
+```bash
+npm install @nest-boot/bullmq bullmq
+# 或
+pnpm add @nest-boot/bullmq bullmq
+```
+
+## 基本用法
+
+```typescript
+import { Module } from "@nestjs/common";
+import { BullModule } from "@nest-boot/bullmq";
+
+@Module({
+  imports: [
+    BullModule.forRoot({}),
+    BullModule.registerQueue({ name: "email" }),
+  ],
+})
+export class AppModule {}
+```
+
+## 创建工作进程
+
+```typescript
+import { WorkerHost } from "@nest-boot/bullmq";
+import { Processor } from "@nestjs/bullmq";
+import { Job } from "bullmq";
+
+@Processor("email")
+export class EmailProcessor extends WorkerHost {
+  async process(job: Job<{ to: string; subject: string; body: string }>) {
+    const { to, subject, body } = job.data;
+    console.log(`发送邮件到 ${to}: ${subject}`);
+  }
+}
+```
+
+## 特性
+
+- **自动 Redis 配置** - 从环境变量自动加载 Redis 连接
+- **队列注册** - 简单的队列和流程生产者注册
+- **工作进程支持** - 用于处理作业的 `WorkerHost` 基类
+- **作业持久化** - 可选的 MikroORM 集成用于作业历史
+- **自动清理** - 可配置 TTL 的自动旧作业清理

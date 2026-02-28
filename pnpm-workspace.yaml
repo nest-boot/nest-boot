@@ -1,6 +1,6 @@
 packages:
   - website
-  - examples/**
+  - apps/**
   - packages/**
 
 onlyBuiltDependencies:

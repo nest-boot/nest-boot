@@ -1,0 +1,48 @@
+---
+title: "Redis"
+description: "@nest-boot/redis 模块提供使用 ioredis 的 Redis 连接管理。"
+---
+
+`@nest-boot/redis` 模块提供使用 [ioredis](https://github.com/redis/ioredis) 的 Redis 连接管理。支持从环境变量自动配置和优雅关闭处理。
+
+## 安装
+
+```bash
+npm install @nest-boot/redis ioredis
+# 或
+pnpm add @nest-boot/redis ioredis
+```
+
+## 基本用法
+
+```typescript
+import { Module } from "@nestjs/common";
+import { RedisModule } from "@nest-boot/redis";
+
+@Module({
+  imports: [
+    RedisModule.register({
+      host: "localhost",
+      port: 6379,
+      isGlobal: true,
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+## 环境变量
+
+| 变量             | 描述                |
+| ---------------- | ------------------- |
+| `REDIS_URL`      | 完整 Redis 连接 URL |
+| `REDIS_HOST`     | Redis 服务器主机名  |
+| `REDIS_PORT`     | Redis 服务器端口    |
+| `REDIS_PASSWORD` | Redis 密码          |
+
+## 特性
+
+- **自动配置** - 从环境变量自动加载设置
+- **全局模块** - 可通过 `isGlobal: true` 注册为全局模块
+- **优雅关闭** - 应用关闭时自动关闭 Redis 连接
+- **完整 ioredis 支持** - 访问所有 ioredis 功能

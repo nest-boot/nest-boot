@@ -1,0 +1,50 @@
+---
+title: "定时任务"
+description: "@nest-boot/schedule 模块提供由 BullMQ 驱动的 Cron 任务调度。"
+---
+
+`@nest-boot/schedule` 模块提供由 BullMQ 驱动的 Cron 任务调度，支持基于装饰器的任务注册。
+
+## 安装
+
+```bash
+npm install @nest-boot/schedule @nest-boot/bullmq
+# 或
+pnpm add @nest-boot/schedule @nest-boot/bullmq
+```
+
+## 基本用法
+
+```typescript
+import { Module } from "@nestjs/common";
+import { BullModule } from "@nest-boot/bullmq";
+import { ScheduleModule } from "@nest-boot/schedule";
+
+@Module({
+  imports: [BullModule.forRoot({}), ScheduleModule.forRoot({})],
+})
+export class AppModule {}
+```
+
+## Cron 作业
+
+```typescript
+import { Injectable } from "@nestjs/common";
+import { Cron } from "@nest-boot/schedule";
+
+@Injectable()
+export class TaskService {
+  @Cron("0 * * * *") // 每小时
+  async cleanupExpiredSessions() {}
+
+  @Cron("0 0 * * *") // 每天午夜
+  async generateDailyReport() {}
+}
+```
+
+## 特性
+
+- **Cron 调度** - 标准 Cron 表达式，支持时区
+- **间隔调度** - 固定间隔的循环作业
+- **基于装饰器** - 简单的 `@Cron()` 和 `@Interval()` 装饰器
+- **BullMQ 驱动** - 使用 Redis 支持的可靠作业处理

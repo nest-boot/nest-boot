@@ -1,0 +1,39 @@
+---
+title: "邮件"
+description: "@nest-boot/mailer 模块提供由 Nodemailer 驱动的邮件发送功能。"
+---
+
+`@nest-boot/mailer` 模块提供由 [Nodemailer](https://nodemailer.com/) 驱动的邮件发送功能。
+
+## 安装
+
+```bash
+npm install @nest-boot/mailer nodemailer
+# 或
+pnpm add @nest-boot/mailer nodemailer
+```
+
+## 基本用法
+
+```typescript
+import { Module } from "@nestjs/common";
+import { MailerModule } from "@nest-boot/mailer";
+
+@Module({
+  imports: [
+    MailerModule.register({
+      host: "smtp.example.com",
+      port: 587,
+      auth: { user: "user@example.com", pass: "password" },
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+## 特性
+
+- **Nodemailer 集成** - 通过 NestJS 依赖注入使用完整 Nodemailer API
+- **SMTP 支持** - 标准 SMTP 传输配置
+- **模板支持** - 结合 ViewModule 使用 HTML 模板
+- **异步配置** - 基于工厂的环境或配置服务配置

@@ -1,0 +1,34 @@
+---
+title: "请求上下文"
+description: "@nest-boot/request-context 模块提供使用 Node.js AsyncLocalStorage 的请求作用域存储。"
+---
+
+`@nest-boot/request-context` 模块提供使用 Node.js AsyncLocalStorage 的请求作用域存储。
+
+## 安装
+
+```bash
+npm install @nest-boot/request-context @nest-boot/middleware
+# 或
+pnpm add @nest-boot/request-context @nest-boot/middleware
+```
+
+## 基本用法
+
+```typescript
+import { Module } from "@nestjs/common";
+import { RequestContextModule } from "@nest-boot/request-context";
+
+@Module({
+  imports: [RequestContextModule],
+})
+export class AppModule {}
+```
+
+## 特性
+
+- **基于 AsyncLocalStorage** - 可靠的上下文传播
+- **自动 HTTP 上下文** - 自动为 HTTP 请求创建上下文
+- **GraphQL 支持** - 通过拦截器与 GraphQL 解析器配合
+- **子上下文** - 创建从父级继承的隔离子上下文
+- **REPL 支持** - 支持上下文的交互式调试

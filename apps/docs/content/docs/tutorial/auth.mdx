@@ -1,0 +1,112 @@
+---
+title: "Auth"
+description: "The @nest-boot/auth module provides authentication and session management built on better-auth."
+---
+
+The `@nest-boot/auth` module provides authentication and session management built on [better-auth](https://www.better-auth.com/), with MikroORM persistence and automatic middleware registration.
+
+## Installation
+
+```bash
+npm install @nest-boot/auth better-auth
+# or
+pnpm add @nest-boot/auth better-auth
+```
+
+## Basic Usage
+
+### Module Registration
+
+```typescript
+import { Module } from "@nestjs/common";
+import { AuthModule } from "@nest-boot/auth";
+
+@Module({
+  imports: [
+    AuthModule.forRoot({
+      secret: process.env.AUTH_SECRET,
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+### Async Registration
+
+```typescript
+import { Module } from "@nestjs/common";
+import { ConfigModule, ConfigService } from "@nestjs/config";
+import { AuthModule } from "@nest-boot/auth";
+
+@Module({
+  imports: [
+    ConfigModule.forRoot(),
+    AuthModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        secret: config.get("AUTH_SECRET"),
+      }),
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+## Using AuthService
+
+```typescript
+import { Injectable } from "@nestjs/common";
+import { AuthService } from "@nest-boot/auth";
+
+@Injectable()
+export class UserService {
+  constructor(private readonly authService: AuthService) {}
+
+  async getSession(headers: Headers) {
+    const session = await this.authService.api.getSession({ headers });
+    return session;
+  }
+}
+```
+
+## Row-Level Security (RLS)
+
+The `@nest-boot/auth-rls` package extends the auth module with PostgreSQL Row-Level Security support.
+
+```bash
+npm install @nest-boot/auth-rls
+# or
+pnpm add @nest-boot/auth-rls
+```
+
+```typescript
+import { Module } from "@nestjs/common";
+import { AuthModule } from "@nest-boot/auth";
+import { AuthRlsModule } from "@nest-boot/auth-rls";
+
+@Module({
+  imports: [
+    AuthModule.forRoot({ secret: process.env.AUTH_SECRET }),
+    AuthRlsModule.forRoot({}),
+  ],
+})
+export class AppModule {}
+```
+
+## Environment Variables
+
+| Variable      | Description                                       |
+| ------------- | ------------------------------------------------- |
+| `AUTH_SECRET` | Secret key for signing tokens (min 32 characters) |
+| `APP_SECRET`  | Fallback secret key                               |
+| `AUTH_URL`    | Base URL for auth endpoints                       |
+| `APP_URL`     | Fallback base URL                                 |
+
+## Features
+
+- **better-auth Integration** - Full better-auth API with NestJS DI
+- **MikroORM Adapter** - Built-in database adapter for session persistence
+- **Auto Middleware** - Automatic middleware registration with configurable routes
+- **Custom Entities** - Extensible account and verification entities
+- **Row-Level Security** - PostgreSQL RLS support via auth-rls module
+- **Secret Validation** - Enforces minimum length and entropy requirements
