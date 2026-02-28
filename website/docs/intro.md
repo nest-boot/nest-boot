@@ -17,25 +17,26 @@ Nest Boot is a modular framework for building NestJS applications. It provides a
 
 Nest Boot provides the following modules:
 
-| Module                                                                   | Description                         |
-| ------------------------------------------------------------------------ | ----------------------------------- |
-| [@nest-boot/auth](/docs/api/@nest-boot/auth)                             | Authentication and authorization    |
-| [@nest-boot/bullmq](/docs/api/@nest-boot/bullmq)                         | Job queue management with BullMQ    |
-| [@nest-boot/crypt](/docs/tutorial/crypt)                                 | Encryption and decryption utilities |
-| [@nest-boot/graphql](/docs/api/@nest-boot/graphql)                       | GraphQL integration                 |
-| [@nest-boot/graphql-connection](/docs/api/@nest-boot/graphql-connection) | GraphQL connection/pagination       |
-| [@nest-boot/hash](/docs/tutorial/hash)                                   | Password hashing utilities          |
-| [@nest-boot/i18n](/docs/api/@nest-boot/i18n)                             | Internationalization                |
-| [@nest-boot/logger](/docs/api/@nest-boot/logger)                         | Logging utilities                   |
-| [@nest-boot/mailer](/docs/api/@nest-boot/mailer)                         | Email sending                       |
-| [@nest-boot/metrics](/docs/api/@nest-boot/metrics)                       | Application metrics                 |
-| [@nest-boot/middleware](/docs/tutorial/middleware)                       | Middleware management               |
-| [@nest-boot/mikro-orm](/docs/api/@nest-boot/mikro-orm)                   | MikroORM integration                |
-| [@nest-boot/redis](/docs/tutorial/redis)                                 | Redis client                        |
-| [@nest-boot/request-context](/docs/api/@nest-boot/request-context)       | Request context management          |
-| [@nest-boot/schedule](/docs/api/@nest-boot/schedule)                     | Task scheduling                     |
-| [@nest-boot/validator](/docs/api/@nest-boot/validator)                   | Validation utilities                |
-| [@nest-boot/view](/docs/api/@nest-boot/view)                             | View rendering                      |
+| Module                                                             | Description                         |
+| ------------------------------------------------------------------ | ----------------------------------- |
+| [@nest-boot/auth](/docs/tutorial/auth)                             | Authentication and authorization    |
+| [@nest-boot/bullmq](/docs/tutorial/bullmq)                         | Job queue management with BullMQ    |
+| [@nest-boot/crypt](/docs/tutorial/crypt)                           | Encryption and decryption utilities |
+| [@nest-boot/file-upload](/docs/tutorial/file-upload)               | File upload with S3 storage         |
+| [@nest-boot/graphql](/docs/tutorial/graphql)                       | GraphQL integration                 |
+| [@nest-boot/graphql-connection](/docs/tutorial/graphql-connection) | GraphQL connection/pagination       |
+| [@nest-boot/hash](/docs/tutorial/hash)                             | Password hashing utilities          |
+| [@nest-boot/i18n](/docs/tutorial/i18n)                             | Internationalization                |
+| [@nest-boot/logger](/docs/tutorial/logger)                         | Structured logging                  |
+| [@nest-boot/mailer](/docs/tutorial/mailer)                         | Email sending                       |
+| [@nest-boot/metrics](/docs/tutorial/metrics)                       | Application metrics                 |
+| [@nest-boot/middleware](/docs/tutorial/middleware)                 | Middleware management               |
+| [@nest-boot/mikro-orm](/docs/tutorial/mikro-orm)                   | MikroORM integration                |
+| [@nest-boot/redis](/docs/tutorial/redis)                           | Redis client                        |
+| [@nest-boot/request-context](/docs/tutorial/request-context)       | Request context management          |
+| [@nest-boot/schedule](/docs/tutorial/schedule)                     | Task scheduling                     |
+| [@nest-boot/validator](/docs/tutorial/validator)                   | Validation utilities                |
+| [@nest-boot/view](/docs/tutorial/view)                             | View rendering                      |
 
 ## Quick Start
 
