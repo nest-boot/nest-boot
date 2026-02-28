@@ -2,6 +2,9 @@
   "$schema": "https://typedoc.org/schema.json",
   "name": "API Reference",
 
+  "gitRemote": "https://github.com/nest-boot/nest-boot",
+  "gitRevision": "master",
+
   "entryPointStrategy": "packages",
   "entryPoints": ["packages/*"],
   "exclude": [
