@@ -1,6 +1,11 @@
 {
   "name": "@nest-boot/mikro-orm-request-transaction",
   "version": "7.1.5",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nest-boot/nest-boot.git",
+    "directory": "packages/mikro-orm-request-transaction"
+  },
   "description": "",
   "author": {
     "name": "Xudong Huang",

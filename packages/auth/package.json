@@ -1,6 +1,11 @@
 {
   "name": "@nest-boot/auth",
   "version": "7.9.3",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nest-boot/nest-boot.git",
+    "directory": "packages/auth"
+  },
   "description": "",
   "author": {
     "name": "Xudong Huang",

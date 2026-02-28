@@ -1,6 +1,11 @@
 {
   "name": "@nest-boot/schedule",
   "version": "7.0.3",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nest-boot/nest-boot.git",
+    "directory": "packages/schedule"
+  },
   "description": "",
   "author": {
     "name": "Xudong Huang",

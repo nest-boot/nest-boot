@@ -1,6 +1,11 @@
 {
   "name": "@nest-boot/i18n",
   "version": "7.0.3",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nest-boot/nest-boot.git",
+    "directory": "packages/i18n"
+  },
   "description": "",
   "author": {
     "name": "Xudong Huang",

@@ -1,6 +1,11 @@
 {
   "name": "@nest-boot/mikro-orm-crypt",
   "version": "7.2.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nest-boot/nest-boot.git",
+    "directory": "packages/mikro-orm-crypt"
+  },
   "description": "",
   "author": {
     "name": "Xudong Huang",

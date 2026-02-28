@@ -1,6 +1,11 @@
 {
   "name": "@nest-boot/tsconfig",
   "version": "7.0.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nest-boot/nest-boot.git",
+    "directory": "packages/tsconfig"
+  },
   "license": "MIT",
   "scripts": {
     "clean": "rm -rf node_modules"

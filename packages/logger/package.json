@@ -1,6 +1,11 @@
 {
   "name": "@nest-boot/logger",
   "version": "7.0.5",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nest-boot/nest-boot.git",
+    "directory": "packages/logger"
+  },
   "description": "",
   "author": {
     "name": "Xudong Huang",

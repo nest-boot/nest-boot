@@ -1,6 +1,11 @@
 {
   "name": "@nest-boot/graphql",
   "version": "7.1.3",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nest-boot/nest-boot.git",
+    "directory": "packages/graphql"
+  },
   "description": "",
   "author": {
     "name": "Xudong Huang",

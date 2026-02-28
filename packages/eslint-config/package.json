@@ -1,6 +1,11 @@
 {
   "name": "@nest-boot/eslint-config",
   "version": "7.0.3",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nest-boot/nest-boot.git",
+    "directory": "packages/eslint-config"
+  },
   "main": "eslint.config.mjs",
   "types": "eslint.config.d.ts",
   "license": "MIT",

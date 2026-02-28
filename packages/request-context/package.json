@@ -1,6 +1,11 @@
 {
   "name": "@nest-boot/request-context",
   "version": "7.4.3",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nest-boot/nest-boot.git",
+    "directory": "packages/request-context"
+  },
   "description": "",
   "author": {
     "name": "Xudong Huang",

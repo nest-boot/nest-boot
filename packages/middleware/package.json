@@ -1,6 +1,11 @@
 {
   "name": "@nest-boot/middleware",
   "version": "7.2.3",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nest-boot/nest-boot.git",
+    "directory": "packages/middleware"
+  },
   "description": "",
   "author": {
     "name": "Xudong Huang",

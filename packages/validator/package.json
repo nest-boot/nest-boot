@@ -1,6 +1,11 @@
 {
   "name": "@nest-boot/validator",
   "version": "7.0.3",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nest-boot/nest-boot.git",
+    "directory": "packages/validator"
+  },
   "description": "",
   "author": {
     "name": "Xudong Huang",

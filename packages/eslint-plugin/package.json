@@ -1,6 +1,11 @@
 {
   "name": "@nest-boot/eslint-plugin",
   "version": "7.0.5",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nest-boot/nest-boot.git",
+    "directory": "packages/eslint-plugin"
+  },
   "license": "MIT",
   "main": "./dist/index.js",
   "exports": "./dist/index.js",
