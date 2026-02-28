@@ -1,5 +1,11 @@
 # @nest-boot/graphql-rate-limit
 
+## 7.0.4
+
+### Patch Changes
+
+- 3f42c62: add comprehensive TSDoc coverage and translate comments to English
+
 ## 7.0.3
 
 ### Patch Changes

@@ -1,5 +1,13 @@
 # @nest-boot/mikro-orm
 
+## 7.3.2
+
+### Patch Changes
+
+- 3f42c62: add comprehensive TSDoc coverage and translate comments to English
+- Updated dependencies [3f42c62]
+  - @nest-boot/request-context@7.4.3
+
 ## 7.3.1
 
 ### Patch Changes

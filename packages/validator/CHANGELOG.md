@@ -1,5 +1,13 @@
 # @nest-boot/validator
 
+## 7.0.3
+
+### Patch Changes
+
+- 3f42c62: add comprehensive TSDoc coverage and translate comments to English
+- Updated dependencies [3f42c62]
+  - @nest-boot/i18n@7.0.3
+
 ## 7.0.2
 
 ### Patch Changes
