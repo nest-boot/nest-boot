@@ -1,194 +1,241 @@
 ---
 title: "MikroORM"
-description: "The @nest-boot/mikro-orm module provides seamless integration with MikroORM, a TypeScript ORM for Node.js."
+description: "MikroORM integration with request-scoped entity manager, EntityService base class, encrypted/hashed properties, and request transactions."
 ---
 
-The `@nest-boot/mikro-orm` module provides seamless integration with [MikroORM](https://mikro-orm.io/), a TypeScript ORM for Node.js. It includes automatic configuration from environment variables, request context integration, and support for encrypted and hashed entity properties.
+The `@nest-boot/mikro-orm` module wraps [`@mikro-orm/nestjs`](https://mikro-orm.io/docs/usage-with-nestjs) with automatic environment-based configuration and request context integration for per-request entity manager forking. Companion modules provide [encrypted properties](#encrypted-properties), [hashed properties](#hashed-properties), and [request-scoped transactions](#request-transactions).
 
 ## Installation
 
 ```bash
-npm install @nest-boot/mikro-orm @mikro-orm/core @mikro-orm/reflection
-# or
-pnpm add @nest-boot/mikro-orm @mikro-orm/core @mikro-orm/reflection
+pnpm add @nest-boot/mikro-orm @mikro-orm/core @mikro-orm/postgresql @mikro-orm/migrations
 ```
 
-You also need to install a database driver:
+## Module Registration
 
-```bash
-# For PostgreSQL
-pnpm add @mikro-orm/postgresql
-
-# For MySQL
-pnpm add @mikro-orm/mysql
-```
-
-## Basic Usage
-
-### Module Registration
-
-Register the `MikroOrmModule` in your application module:
+### Basic Registration
 
 ```typescript
-import { Module } from "@nestjs/common";
 import { MikroOrmModule } from "@nest-boot/mikro-orm";
 
+@Global()
 @Module({
-  imports: [
-    MikroOrmModule.register({
-      entities: ["dist/**/*.entity.js"],
-      entitiesTs: ["src/**/*.entity.ts"],
-    }),
-  ],
+  imports: [MikroOrmModule],
 })
-export class AppModule {}
+export class CommonModule {}
 ```
 
-### Using Environment Variables
+When no options are passed, the module auto-loads configuration from environment variables using `loadConfigFromEnv()`, which reads:
 
-The module automatically loads configuration from environment variables if no options are provided:
-
-```typescript
-import { Module } from "@nestjs/common";
-import { MikroOrmModule } from "@nest-boot/mikro-orm";
-
-@Module({
-  imports: [
-    // Will use DB_* or DATABASE_* environment variables
-    MikroOrmModule.register({}),
-  ],
-})
-export class AppModule {}
-```
+- `DATABASE_URL` — PostgreSQL connection string
+- Entity discovery via `tsconfig.json` paths
 
 ### Async Registration
 
-For configuration from other services:
-
 ```typescript
-import { Module } from "@nestjs/common";
-import { ConfigModule, ConfigService } from "@nestjs/config";
 import { MikroOrmModule } from "@nest-boot/mikro-orm";
+import { ConfigService } from "@nestjs/config";
 
 @Module({
   imports: [
-    ConfigModule.forRoot(),
-    MikroOrmModule.registerAsync({
+    MikroOrmModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        clientUrl: config.get("DATABASE_URL"),
+      useFactory: (configService: ConfigService) => ({
+        clientUrl: configService.getOrThrow("DATABASE_URL"),
       }),
     }),
   ],
 })
-export class AppModule {}
+export class CommonModule {}
 ```
 
-## Registering Entities
+### CLI Configuration
 
-Use `MikroOrmModule.forFeature()` to register entities for a specific module:
+For MikroORM CLI (migrations, schema generation), create a `mikro-orm.config.ts`:
 
 ```typescript
-import { Module } from "@nestjs/common";
-import { MikroOrmModule } from "@nest-boot/mikro-orm";
-import { User } from "./entities/user.entity";
-import { UserService } from "./user.service";
+import "dotenv/config";
+import { loadConfigFromEnv } from "@nest-boot/mikro-orm";
 
-@Module({
-  imports: [MikroOrmModule.forFeature([User])],
-  providers: [UserService],
-})
-export class UserModule {}
+export default loadConfigFromEnv();
 ```
 
-## Environment Variables
+## Request-Scoped Entity Manager
 
-The module supports automatic configuration from the following environment variables:
+The module automatically forks the entity manager for each request via `RequestContext`, ensuring proper isolation. You can inject `EntityManager` anywhere:
 
-| Variable                                      | Description                                       |
-| --------------------------------------------- | ------------------------------------------------- |
-| `DB_URL` or `DATABASE_URL`                    | Full database connection URL (takes precedence)   |
-| `DB_TYPE` or `DATABASE_TYPE`                  | Database type (`mysql`, `postgres`, `postgresql`) |
-| `DB_HOST` or `DATABASE_HOST`                  | Database server hostname                          |
-| `DB_PORT` or `DATABASE_PORT`                  | Database server port                              |
-| `DB_NAME` or `DB_DATABASE` or `DATABASE_NAME` | Database name                                     |
-| `DB_USER` or `DB_USERNAME` or `DATABASE_USER` | Database username                                 |
-| `DB_PASS` or `DB_PASSWORD` or `DATABASE_PASS` | Database password                                 |
+```typescript
+import { EntityManager } from "@mikro-orm/postgresql";
+import { Injectable } from "@nestjs/common";
+
+@Injectable()
+export class UserService {
+  constructor(private readonly em: EntityManager) {}
+
+  async findAll() {
+    return this.em.findAll(User);
+  }
+}
+```
+
+## EntityService
+
+`EntityService` is a generic CRUD base class with DataLoader batching for automatic N+1 prevention:
+
+```typescript
+import { EntityManager, FilterQuery } from "@mikro-orm/postgresql";
+import { EntityService } from "@nest-boot/mikro-orm";
+import { Injectable } from "@nestjs/common";
+
+import { User } from "./user.entity";
+
+@Injectable()
+export class UserService extends EntityService<User> {
+  constructor(protected readonly em: EntityManager) {
+    super(User, em);
+  }
+}
+```
+
+### Available Methods
+
+| Method                                | Description                                                            |
+| ------------------------------------- | ---------------------------------------------------------------------- |
+| `create(data)`                        | Create and persist a new entity                                        |
+| `findOne(idOrEntity)`                 | Find by ID, entity reference, or filter query (batched via DataLoader) |
+| `findOneOrFail(idOrEntity)`           | Same as `findOne` but throws `NotFoundException`                       |
+| `findAll(where, options?)`            | Find all entities matching a filter                                    |
+| `count(where, options?)`              | Count matching entities                                                |
+| `update(idOrEntity, data)`            | Update an entity                                                       |
+| `remove(idOrEntity, softDelete?)`     | Remove an entity (supports soft-delete)                                |
+| `chunkById(where, options, callback)` | Iterate entities in chunks for batch processing                        |
+
+### Soft Delete
+
+`EntityService` supports soft delete when configured with a `softDeleteKey`:
+
+```typescript
+@Injectable()
+export class FileService extends EntityService<File> {
+  constructor(protected readonly em: EntityManager) {
+    super(File, em, { softDeleteKey: "deletedAt" });
+  }
+}
+
+// Soft delete (sets deletedAt = new Date())
+await this.fileService.remove(fileId);
+
+// Hard delete
+await this.fileService.remove(fileId, false);
+```
+
+### Chunk Processing
+
+Process large datasets in batches:
+
+```typescript
+await this.userService.chunkById(
+  { isActive: true },
+  { limit: 100 },
+  async (users) => {
+    for (const user of users) {
+      await this.sendEmail(user);
+    }
+  },
+);
+```
 
 ## Encrypted Properties
 
-The `@nest-boot/mikro-orm-crypt` package provides a decorator for automatically encrypting entity properties before they are persisted to the database.
-
-### Installation
+The `@nest-boot/mikro-orm-crypt` module provides the `@EncryptedProperty()` decorator for transparent field encryption using the `@nest-boot/crypt` module:
 
 ```bash
-npm install @nest-boot/mikro-orm-crypt @nest-boot/crypt
-# or
 pnpm add @nest-boot/mikro-orm-crypt @nest-boot/crypt
 ```
 
-### Usage
-
-Use the `@EncryptedProperty()` decorator to mark properties that should be encrypted:
-
 ```typescript
-import { Entity, PrimaryKey, Property, t } from "@mikro-orm/core";
+import { Entity, PrimaryKey, t } from "@mikro-orm/postgresql";
 import { EncryptedProperty } from "@nest-boot/mikro-orm-crypt";
 
 @Entity()
-export class User {
-  @PrimaryKey()
-  id!: number;
+export class CloudProviderAccount {
+  @PrimaryKey({ type: t.bigint })
+  id!: string;
 
-  @Property()
-  email!: string;
+  @EncryptedProperty()
+  apiKey!: string;
 
-  @EncryptedProperty({ type: t.string })
-  ssn!: string;
-
-  @EncryptedProperty({ type: t.text })
-  creditCard!: string;
+  @EncryptedProperty()
+  apiSecret!: string;
 }
+```
+
+Values are automatically encrypted on write and decrypted on read. Requires `CryptModule` to be registered:
+
+```typescript
+import { CryptModule } from "@nest-boot/crypt";
+
+const CryptDynamicModule = CryptModule.registerAsync({
+  inject: [ConfigService],
+  useFactory: (configService: ConfigService) => ({
+    secret: configService.get("APP_SECRET", "secret"),
+  }),
+});
 ```
 
 ## Hashed Properties
 
-The `@nest-boot/mikro-orm-hash` package provides a decorator for automatically hashing entity properties (like passwords) before they are persisted to the database.
-
-### Installation
+The `@nest-boot/mikro-orm-hash` module provides the `@HashedProperty()` decorator for transparent field hashing using the `@nest-boot/hash` module:
 
 ```bash
-npm install @nest-boot/mikro-orm-hash @nest-boot/hash
-# or
 pnpm add @nest-boot/mikro-orm-hash @nest-boot/hash
 ```
 
-### Usage
-
-Use the `@HashedProperty()` decorator to mark properties that should be hashed:
-
 ```typescript
-import { Entity, PrimaryKey, Property, t } from "@mikro-orm/core";
+import { Entity, PrimaryKey, t } from "@mikro-orm/postgresql";
 import { HashedProperty } from "@nest-boot/mikro-orm-hash";
 
 @Entity()
 export class User {
-  @PrimaryKey()
-  id!: number;
+  @PrimaryKey({ type: t.bigint })
+  id!: string;
 
-  @Property()
-  email!: string;
-
-  @HashedProperty({ type: t.string })
+  @HashedProperty()
   password!: string;
 }
 ```
 
-## Features
+Values are automatically hashed on write. Requires `HashModule` to be registered.
 
-- **Auto Configuration** - Automatically loads settings from environment variables
-- **Request Context Integration** - Automatic EntityManager forking per request
-- **Encrypted Properties** - Automatic AES-256-GCM encryption for sensitive data
-- **Hashed Properties** - Automatic Argon2 hashing for passwords
-- **TsMorph Metadata** - Reflection-based metadata provider
-- **Dataloader Support** - Built-in dataloader for optimized relation loading
+## Request Transactions
+
+The `@nest-boot/mikro-orm-request-transaction` module wraps each request in a database transaction, which is essential for RLS and data consistency:
+
+```bash
+pnpm add @nest-boot/mikro-orm-request-transaction
+```
+
+```typescript
+import { RequestTransactionModule } from "@nest-boot/mikro-orm-request-transaction";
+
+@Module({
+  imports: [RequestTransactionModule],
+})
+export class CommonModule {}
+```
+
+The transaction is automatically committed on success and rolled back on error.
+
+## Best Practices
+
+1. **Environment Config** — Use `loadConfigFromEnv()` for both runtime and CLI configuration to keep them in sync.
+
+2. **EntityService as Base** — Extend `EntityService` for all domain services to get CRUD + DataLoader batching out of the box.
+
+3. **Request Transactions** — Always use `RequestTransactionModule` when using Auth-RLS for proper transaction scoping.
+
+4. **Soft Delete** — Configure `softDeleteKey` in `EntityService` for entities that support soft delete.
+
+## API Reference
+
+For detailed API documentation, see the [MikroORM API Reference](/docs/api/mikro-orm), [MikroORM Crypt API Reference](/docs/api/mikro-orm-crypt), [MikroORM Hash API Reference](/docs/api/mikro-orm-hash), and [Request Transaction API Reference](/docs/api/mikro-orm-request-transaction).

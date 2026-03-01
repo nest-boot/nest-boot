@@ -1,50 +1,62 @@
 ---
 title: "验证器"
-description: "@nest-boot/validator 模块提供基于 class-validator 的增强验证装饰器。"
+description: "NestJS 验证工具，集成 class-validator。"
 ---
 
-`@nest-boot/validator` 模块提供基于 [class-validator](https://github.com/typestack/class-validator) 的增强验证装饰器集合，支持国际化错误消息。
+`@nest-boot/validator` 模块提供与 [class-validator](https://github.com/typestack/class-validator) 和 NestJS 管道集成的验证工具。
 
 ## 安装
 
 ```bash
-npm install @nest-boot/validator class-validator class-transformer
-# 或
 pnpm add @nest-boot/validator class-validator class-transformer
 ```
 
-## 基本用法
+## 用法
+
+在 `main.ts` 中全局应用 `ValidationPipe`：
 
 ```typescript
-import {
-  IsEmail,
-  IsUrl,
-  Length,
-  Min,
-  Max,
-  IsOptional,
-} from "@nest-boot/validator";
+import { ValidationPipe } from "@nestjs/common";
+import { NestFactory } from "@nestjs/core";
+import { AppModule } from "./app/app.module";
 
-export class CreateUserDto {
-  @Length(2, 50)
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+
+  app.useGlobalPipes(
+    new ValidationPipe({
+      transform: true,
+      forbidUnknownValues: false,
+    }),
+  );
+
+  await app.listen(process.env.PORT ?? 4000);
+}
+
+void bootstrap();
+```
+
+### 验证输入类型
+
+在 GraphQL 输入类型上使用 `class-validator` 装饰器：
+
+```typescript
+import { Field, InputType } from "@nest-boot/graphql";
+import { IsEmail, IsString, MinLength } from "class-validator";
+
+@InputType()
+export class CreateUserInput {
+  @IsString()
+  @MinLength(2)
+  @Field(() => String)
   name!: string;
 
   @IsEmail()
+  @Field(() => String)
   email!: string;
-
-  @IsUrl()
-  @IsOptional()
-  website?: string;
-
-  @Min(0)
-  @Max(120)
-  age!: number;
 }
 ```
 
-## 特性
+## API 参考
 
-- **增强装饰器** - 改进的验证装饰器，提供一致的错误消息
-- **国际化就绪** - 错误消息格式化支持国际化
-- **class-validator 兼容** - 与 class-validator 生态系统完全兼容
-- **类型安全** - TypeScript 优先的验证，具有正确的类型推断
+详细的 API 文档请参阅[验证器 API 参考](/docs/api/validator)。

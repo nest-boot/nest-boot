@@ -1,66 +1,110 @@
 ---
 title: "Logger"
-description: "The @nest-boot/logger module provides structured, request-scoped logging powered by Pino."
+description: "Structured JSON logging with pino, context-aware log entries, and NestJS integration."
 ---
 
-The `@nest-boot/logger` module provides structured, request-scoped logging powered by [Pino](https://getpino.io/), with automatic request correlation and HTTP logging.
+The `@nest-boot/logger` module provides structured logging powered by [pino](https://getpino.io/), with support for context-scoped log entries, structured metadata, and seamless NestJS integration.
 
 ## Installation
 
 ```bash
-npm install @nest-boot/logger pino pino-http
-# or
-pnpm add @nest-boot/logger pino pino-http
+pnpm add @nest-boot/logger
 ```
 
-## Basic Usage
+## Module Registration
 
 ```typescript
-import { Module } from "@nestjs/common";
 import { LoggerModule } from "@nest-boot/logger";
 
+@Global()
 @Module({
-  imports: [LoggerModule.register({})],
+  imports: [LoggerModule],
 })
-export class AppModule {}
+export class CommonModule {}
 ```
 
-## Using the Logger
+## Replacing the Default Logger
+
+Replace the default NestJS logger in `main.ts`:
 
 ```typescript
-import { Injectable } from "@nestjs/common";
 import { Logger } from "@nest-boot/logger";
+import { NestFactory } from "@nestjs/core";
+import { AppModule } from "./app/app.module";
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule, {
+    bufferLogs: true,
+  });
+
+  app.useLogger(await app.resolve(Logger));
+
+  await app.listen(process.env.PORT ?? 4000);
+}
+
+void bootstrap();
+```
+
+The `bufferLogs: true` option buffers log messages until the custom logger is attached, ensuring no logs are lost during startup.
+
+## Usage
+
+```typescript
+import { Logger } from "@nest-boot/logger";
+import { Injectable } from "@nestjs/common";
 
 @Injectable()
 export class UserService {
   constructor(private readonly logger: Logger) {}
 
-  async createUser(email: string) {
-    this.logger.log("Creating user", { email });
-    try {
-      // ... create user
-      this.logger.log("User created successfully");
-    } catch (error) {
-      this.logger.error("Failed to create user", { error });
-      throw error;
-    }
+  async createUser(data: CreateUserInput) {
+    this.logger.assign({ userId: data.id, email: data.email });
+    this.logger.log("Creating user");
+
+    const user = await this.em.create(User, data);
+
+    this.logger.log("User created successfully");
+    return user;
   }
 }
 ```
 
-## Adding Context
+The logger context is automatically set to the injecting class name (e.g., `UserService`) via `@Inject(INQUIRER)`.
 
-```typescript
-this.logger.assign({ orderId, userId });
-this.logger.log("Processing order");
-// Output: {"orderId": "123", "userId": "456", "msg": "Processing order"}
+### Key Methods
+
+| Method                   | Description                                                              |
+| ------------------------ | ------------------------------------------------------------------------ |
+| `setContext(name)`       | Override the logger context (auto-set to the injecting class name)       |
+| `assign(metadata)`       | Attach structured metadata to all subsequent log entries in this request |
+| `log(message)`           | Log at INFO level                                                        |
+| `warn(message)`          | Log at WARN level                                                        |
+| `error(message, trace?)` | Log at ERROR level with optional stack trace                             |
+| `debug(message)`         | Log at DEBUG level                                                       |
+
+### Structured Output
+
+All logs are output as JSON with structured metadata:
+
+```json
+{
+  "level": "info",
+  "time": 1709251234567,
+  "context": "UserService",
+  "userId": "123",
+  "email": "john@example.com",
+  "msg": "User created successfully"
+}
 ```
 
-## Features
+## Best Practices
 
-- **Structured Logging** - JSON-formatted logs with Pino
-- **Request-Scoped** - Each request gets its own logger context
-- **Auto Correlation** - Request IDs automatically propagated
-- **HTTP Logging** - Automatic request/response logging via pino-http
-- **Context Propagation** - `assign()` adds data to all subsequent logs
-- **Security** - Sensitive headers redacted by default
+1. **Buffer Logs** — Always use `bufferLogs: true` in `NestFactory.create()` to capture startup logs.
+
+2. **Automatic Context** — The logger automatically uses the injecting class name as the context. Only call `setContext()` if you need to override it (e.g., in BullMQ processors).
+
+3. **Assign Metadata** — Use `assign()` to attach request-level data (user ID, job ID, etc.) rather than including it in every log message string.
+
+## API Reference
+
+For detailed API documentation, see the [Logger API Reference](/docs/api/logger).

@@ -1,112 +1,301 @@
 ---
 title: "Auth"
-description: "The @nest-boot/auth module provides authentication and session management built on better-auth."
+description: "Add authentication to your NestJS app with better-auth, supporting sessions, OAuth/OIDC, guards, and Row-Level Security."
 ---
 
-The `@nest-boot/auth` module provides authentication and session management built on [better-auth](https://www.better-auth.com/), with MikroORM persistence and automatic middleware registration.
+The `@nest-boot/auth` module provides authentication powered by [better-auth](https://www.better-auth.com/), with MikroORM-based session persistence, automatic middleware registration, and a global guard. The companion `@nest-boot/auth-rls` module integrates with PostgreSQL Row-Level Security (RLS) policies.
 
 ## Installation
 
 ```bash
-npm install @nest-boot/auth better-auth
-# or
 pnpm add @nest-boot/auth better-auth
 ```
 
-## Basic Usage
+## Module Registration
 
-### Module Registration
+### Basic Registration
 
 ```typescript
-import { Module } from "@nestjs/common";
 import { AuthModule } from "@nest-boot/auth";
+import { User } from "./user.entity";
+import { Account } from "./account.entity";
+import { Session } from "./session.entity";
+import { Verification } from "./verification.entity";
 
-@Module({
-  imports: [
-    AuthModule.forRoot({
-      secret: process.env.AUTH_SECRET,
-    }),
-  ],
-})
-export class AppModule {}
+const AuthDynamicModule = AuthModule.forRoot({
+  entities: {
+    user: User,
+    account: Account,
+    session: Session,
+    verification: Verification,
+  },
+});
 ```
 
-### Async Registration
+The module automatically:
+
+- Creates a better-auth instance with MikroORM adapter
+- Registers auth API routes at `/api/auth/` (configurable via `basePath`)
+- Registers auth middleware on all routes for session resolution
+- Reads `AUTH_SECRET` or `APP_SECRET` from environment variables
+
+### Async Registration with OIDC
+
+In real-world applications, use `forRootAsync` to inject `ConfigService` and configure OAuth/OIDC providers:
 
 ```typescript
-import { Module } from "@nestjs/common";
-import { ConfigModule, ConfigService } from "@nestjs/config";
+import { EntityManager } from "@mikro-orm/postgresql";
 import { AuthModule } from "@nest-boot/auth";
+import { REQUEST, RequestContext } from "@nest-boot/request-context";
+import { ConfigService } from "@nestjs/config";
+import { genericOAuth } from "better-auth/plugins";
+import { Request } from "express";
 
-@Module({
-  imports: [
-    ConfigModule.forRoot(),
-    AuthModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        secret: config.get("AUTH_SECRET"),
+import { User } from "./user.entity";
+import { Account } from "./account.entity";
+import { Session } from "./session.entity";
+import { Verification } from "./verification.entity";
+import { Workspace } from "./workspace.entity";
+import { WorkspaceMember } from "./workspace-member.entity";
+
+const AuthDynamicModule = AuthModule.forRootAsync({
+  inject: [ConfigService, EntityManager],
+  useFactory: (configService: ConfigService, em: EntityManager) => ({
+    trustedOrigins: ["*"],
+    entities: {
+      user: User,
+      account: Account,
+      session: Session,
+      verification: Verification,
+    },
+    onAuthenticated: async () => {
+      const user = RequestContext.get(User);
+      const request = RequestContext.get<Request>(REQUEST);
+      const workspaceId = request?.headers["x-workspace-id"];
+
+      if (user && typeof workspaceId === "string") {
+        const workspaceMember = await em.findOne(
+          WorkspaceMember,
+          { user, workspace: { id: workspaceId } },
+          { populate: ["workspace"] },
+        );
+
+        if (workspaceMember) {
+          RequestContext.set(Workspace, workspaceMember.workspace.getEntity());
+          RequestContext.set(WorkspaceMember, workspaceMember);
+        }
+      }
+    },
+    plugins: [
+      genericOAuth({
+        config: [
+          {
+            providerId: "oidc",
+            clientId: configService.getOrThrow("AUTH_OIDC_ID"),
+            clientSecret: configService.getOrThrow("AUTH_OIDC_SECRET"),
+            discoveryUrl: configService.getOrThrow("AUTH_OIDC_DISCOVERY_URL"),
+            prompt: "login",
+            scopes: ["openid", "profile", "email"],
+          },
+        ],
       }),
-    }),
-  ],
-})
-export class AppModule {}
+    ],
+  }),
+});
 ```
 
-## Using AuthService
+Key options:
+
+- **`entities`** — Map your MikroORM entity classes for user, account, session, and verification
+- **`onAuthenticated`** — Callback invoked after successful session resolution, useful for loading workspace/tenant context into `RequestContext`
+- **`plugins`** — better-auth plugins (e.g., `genericOAuth`, `twoFactor`, etc.)
+- **`basePath`** — Customize the auth API path (default: `/api/auth/`)
+- **`trustedOrigins`** — Allowed CORS origins
+
+## Auth Guard
+
+Register `AuthGuard` as a global guard to protect all routes by default:
 
 ```typescript
-import { Injectable } from "@nestjs/common";
-import { AuthService } from "@nest-boot/auth";
+import { AuthGuard } from "@nest-boot/auth";
+import { APP_GUARD } from "@nestjs/core";
 
-@Injectable()
-export class UserService {
-  constructor(private readonly authService: AuthService) {}
+@Global()
+@Module({
+  imports: [AuthModule],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: AuthGuard,
+    },
+  ],
+})
+export class CommonModule {}
+```
 
-  async getSession(headers: Headers) {
-    const session = await this.authService.api.getSession({ headers });
-    return session;
+The guard checks for a valid session in `RequestContext`. If no session is found, the request is rejected with a 403 error.
+
+### Public Routes
+
+Use the `@Public()` decorator to bypass the auth guard on specific routes:
+
+```typescript
+import { Public } from "@nest-boot/auth";
+import { Query, Resolver } from "@nest-boot/graphql";
+
+@Resolver()
+export class HealthResolver {
+  @Public()
+  @Query(() => String)
+  health(): string {
+    return "ok";
   }
 }
 ```
 
-## Row-Level Security (RLS)
+## Decorators
 
-The `@nest-boot/auth-rls` package extends the auth module with PostgreSQL Row-Level Security support.
+### @CurrentUser()
+
+Access the authenticated user in resolvers or controllers:
+
+```typescript
+import { CurrentUser } from "@nest-boot/auth";
+import { Query, Resolver } from "@nest-boot/graphql";
+import { User } from "./user.entity";
+
+@Resolver()
+export class ProfileResolver {
+  @Query(() => User)
+  me(@CurrentUser() user: User): User {
+    return user;
+  }
+}
+```
+
+### @CurrentSession()
+
+Access the current session:
+
+```typescript
+import { CurrentSession } from "@nest-boot/auth";
+```
+
+## Entity Setup
+
+Extend the base entity classes provided by the module to define your auth entities:
+
+```typescript
+import { Entity, PrimaryKey, Property, t } from "@mikro-orm/postgresql";
+import { BaseUser } from "@nest-boot/auth";
+import { Field, ID, ObjectType } from "@nest-boot/graphql";
+
+@ObjectType()
+@Entity()
+export class User extends BaseUser {
+  @Field(() => ID)
+  @PrimaryKey({ type: t.bigint })
+  id!: string;
+
+  @Field(() => String)
+  @Property({ type: t.string })
+  name!: string;
+
+  @Field(() => String)
+  @Property({ type: t.string })
+  email!: string;
+}
+```
+
+Similarly extend `BaseAccount`, `BaseSession`, and `BaseVerification` for the other auth entities.
+
+## Auth RLS (Row-Level Security)
+
+The `@nest-boot/auth-rls` module integrates PostgreSQL Row-Level Security with authentication, automatically setting security context variables on each request.
+
+### Installation
 
 ```bash
-npm install @nest-boot/auth-rls
-# or
 pnpm add @nest-boot/auth-rls
 ```
 
-```typescript
-import { Module } from "@nestjs/common";
-import { AuthModule } from "@nest-boot/auth";
-import { AuthRlsModule } from "@nest-boot/auth-rls";
+### Registration
 
-@Module({
-  imports: [
-    AuthModule.forRoot({ secret: process.env.AUTH_SECRET }),
-    AuthRlsModule.forRoot({}),
-  ],
-})
-export class AppModule {}
+```typescript
+import { AuthRlsModule } from "@nest-boot/auth-rls";
+import { RequestContext } from "@nest-boot/request-context";
+import { WorkspaceMember } from "./workspace-member.entity";
+
+const AuthRlsDynamicModule = AuthRlsModule.forRootAsync({
+  useFactory: () => ({
+    context: (ctx) => {
+      const workspaceMember = RequestContext.get(WorkspaceMember);
+
+      if (workspaceMember) {
+        ctx.set("workspace_id", workspaceMember.workspace.id);
+        ctx.set("workspace_member_id", workspaceMember.id);
+      }
+
+      return ctx;
+    },
+  }),
+});
 ```
 
-## Environment Variables
+The `context` callback is invoked on each request. It receives a `Map` where you set PostgreSQL session variables. These are then applied via `SET LOCAL` so that RLS policies can reference them:
 
-| Variable      | Description                                       |
-| ------------- | ------------------------------------------------- |
-| `AUTH_SECRET` | Secret key for signing tokens (min 32 characters) |
-| `APP_SECRET`  | Fallback secret key                               |
-| `AUTH_URL`    | Base URL for auth endpoints                       |
-| `APP_URL`     | Fallback base URL                                 |
+```sql
+-- Example RLS policy
+CREATE POLICY workspace_isolation ON files
+  USING (workspace_id = current_setting('app.workspace_id')::bigint);
+```
 
-## Features
+### How It Works
 
-- **better-auth Integration** - Full better-auth API with NestJS DI
-- **MikroORM Adapter** - Built-in database adapter for session persistence
-- **Auto Middleware** - Automatic middleware registration with configurable routes
-- **Custom Entities** - Extensible account and verification entities
-- **Row-Level Security** - PostgreSQL RLS support via auth-rls module
-- **Secret Validation** - Enforces minimum length and entropy requirements
+1. `AuthMiddleware` resolves the session and populates `RequestContext` with the authenticated user
+2. `onAuthenticated` loads the workspace/tenant context
+3. `RequestTransactionMiddleware` wraps the request in a database transaction
+4. `AuthRlsMiddleware` sets the PostgreSQL session variables within the transaction
+5. All subsequent queries are filtered by the RLS policies
+
+## NestJS Integration
+
+A complete `main.ts` setup with auth:
+
+```typescript
+import { Logger } from "@nest-boot/logger";
+import { ValidationPipe } from "@nestjs/common";
+import { NestFactory } from "@nestjs/core";
+import { AppModule } from "./app/app.module";
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule, {
+    bufferLogs: true,
+    cors: true,
+  });
+
+  app.useLogger(await app.resolve(Logger));
+  app.useGlobalPipes(
+    new ValidationPipe({ transform: true, forbidUnknownValues: false }),
+  );
+  app.enableShutdownHooks();
+
+  await app.listen(process.env.PORT ?? 4000);
+}
+
+void bootstrap();
+```
+
+## Best Practices
+
+1. **Global Guard** — Always register `AuthGuard` as `APP_GUARD` and use `@Public()` for exceptions, rather than adding guards per-route.
+
+2. **onAuthenticated for Context** — Use the `onAuthenticated` callback to load workspace/tenant data into `RequestContext` so it's available throughout the request lifecycle.
+
+3. **Environment Variables** — Store `AUTH_SECRET` in environment variables and ensure it's at least 32 characters with high entropy.
+
+4. **Module Ordering** — Register `RequestContextModule` → `AuthModule` → `AuthRlsModule` → `RequestTransactionModule` in that order for correct middleware chaining.
+
+## API Reference
+
+For detailed API documentation, see the [Auth API Reference](/docs/api/auth) and [Auth RLS API Reference](/docs/api/auth-rls).

@@ -7,7 +7,6 @@
     "middleware",
     "redis",
     "request-context",
-    "graphql-connection",
     "auth",
     "bullmq",
     "schedule",

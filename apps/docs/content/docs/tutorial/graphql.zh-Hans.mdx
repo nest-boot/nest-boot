@@ -1,19 +1,19 @@
 ---
 title: "GraphQL"
-description: "@nest-boot/graphql 模块提供由 Apollo Server 驱动的 GraphQL API 支持。"
+description: "使用 Apollo Server 构建 GraphQL API，支持游标分页、操作日志和查询复杂度限流。"
 ---
 
-`@nest-boot/graphql` 模块提供由 [Apollo Server](https://www.apollographql.com/docs/apollo-server/) 驱动的 GraphQL API 支持，包括代码优先的模式生成、异常过滤和日志/限流伴生模块。
+`@nest-boot/graphql` 模块为 NestJS 提供预配置的 [Apollo Server](https://www.apollographql.com/docs/apollo-server/) GraphQL 层，支持代码优先的模式生成、全局异常过滤和内置 Playground。配套模块提供[操作日志](#graphql-日志)、[查询复杂度限流](#graphql-限流)和[游标分页](#graphql-连接)。
 
 ## 安装
 
 ```bash
-npm install @nest-boot/graphql @nestjs/graphql @nestjs/apollo @apollo/server graphql
-# 或
 pnpm add @nest-boot/graphql @nestjs/graphql @nestjs/apollo @apollo/server graphql
 ```
 
-## 基本用法
+## 模块注册
+
+### 基本注册
 
 ```typescript
 import { Module } from "@nestjs/common";
@@ -25,10 +25,407 @@ import { GraphQLModule } from "@nest-boot/graphql";
 export class AppModule {}
 ```
 
-## 特性
+模块自动配置 Apollo Server 的合理默认值：
 
-- **Apollo Server** — 生产就绪的 GraphQL 服务器
-- **代码优先** — 从 TypeScript 类型自动生成模式
-- **异常过滤** — 全局 GraphQL 错误处理
-- **操作日志** — 所有操作的结构化日志
-- **请求限流** — Shopify 风格的查询复杂度限流
+- 端点路径 `/api/graphql`
+- 代码优先自动生成 Schema（`schema.gql`）
+- Schema 排序输出
+- 全局 `GraphQLExceptionFilter` 错误处理
+
+### 异步注册
+
+```typescript
+import { GraphQLModule } from "@nest-boot/graphql";
+import { ConfigService } from "@nestjs/config";
+
+const GraphQLDynamicModule = GraphQLModule.forRootAsync({
+  inject: [ConfigService],
+  useFactory: (configService: ConfigService) => ({
+    playground: configService.get("NODE_ENV") !== "production",
+  }),
+});
+```
+
+## 定义类型
+
+`@nest-boot/graphql` 重新导出了 `@nestjs/graphql` 的所有内容，因此你可以使用一组装饰器同时定义 GraphQL 类型和实体模型：
+
+```typescript
+import { Entity, PrimaryKey, Property, t } from "@mikro-orm/postgresql";
+import { Field, ID, ObjectType } from "@nest-boot/graphql";
+
+@ObjectType()
+@Entity()
+export class User {
+  @Field(() => ID)
+  @PrimaryKey({ type: t.bigint })
+  id!: string;
+
+  @Field(() => String)
+  @Property({ type: t.string })
+  name!: string;
+
+  @Field(() => String)
+  @Property({ type: t.string })
+  email!: string;
+
+  @Field(() => Date)
+  @Property({ type: t.datetime, defaultRaw: "now()" })
+  createdAt: Date = new Date();
+}
+```
+
+### 输入类型
+
+使用 `@InputType()` 定义 Mutation 输入，配合 `class-validator` 进行验证：
+
+```typescript
+import { Field, InputType, ID } from "@nest-boot/graphql";
+import { IsOptional, IsString } from "class-validator";
+
+@InputType()
+export class CreateUserInput {
+  @IsString()
+  @Field(() => String)
+  name!: string;
+
+  @IsString()
+  @Field(() => String)
+  email!: string;
+
+  @IsOptional()
+  @IsString()
+  @Field(() => ID, { nullable: true })
+  workspaceId?: string;
+}
+```
+
+## 解析器
+
+```typescript
+import {
+  Args,
+  ID,
+  Mutation,
+  Parent,
+  Query,
+  ResolveField,
+  Resolver,
+} from "@nest-boot/graphql";
+import { NotFoundException } from "@nestjs/common";
+
+import { User } from "./user.entity";
+import { UserService } from "./user.service";
+import { CreateUserInput } from "./inputs/create-user.input";
+
+@Resolver(() => User)
+export class UserResolver {
+  constructor(private readonly userService: UserService) {}
+
+  @Query(() => User)
+  async user(@Args("id", { type: () => ID }) id: string): Promise<User> {
+    const user = await this.userService.findOne({ id });
+
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+
+    return user;
+  }
+
+  @Mutation(() => User)
+  async createUser(@Args("input") input: CreateUserInput): Promise<User> {
+    return await this.userService.create(input);
+  }
+
+  @ResolveField(() => String)
+  fullName(@Parent() user: User): string {
+    return `${user.firstName} ${user.lastName}`;
+  }
+}
+```
+
+## GraphQL 连接
+
+`@nest-boot/graphql-connection` 模块提供遵循 [Relay 连接规范](https://relay.dev/graphql/connections.htm) 的游标分页。集成 MikroORM，生成类型安全的分页查询，支持过滤、排序和全文搜索。
+
+### 安装
+
+```bash
+pnpm add @nest-boot/graphql-connection @mikro-orm/core
+```
+
+在 `CommonModule`（或根模块）中注册：
+
+```typescript
+import { GraphQLConnectionModule } from "@nest-boot/graphql-connection";
+
+@Global()
+@Module({
+  imports: [GraphQLConnectionModule],
+})
+export class CommonModule {}
+```
+
+### 定义连接
+
+使用 `ConnectionBuilder` 定义哪些字段支持过滤、排序和搜索：
+
+```typescript
+import { ArgsType, ObjectType } from "@nest-boot/graphql";
+import { ConnectionBuilder } from "@nest-boot/graphql-connection";
+import { User } from "./user.entity";
+
+export const { Connection, ConnectionArgs } = new ConnectionBuilder(User)
+  .addField({
+    field: "id",
+    type: "string",
+    filterable: true,
+  })
+  .addField({
+    field: "name",
+    type: "string",
+    filterable: true,
+    sortable: true,
+    searchable: true,
+  })
+  .addField({
+    field: "email",
+    type: "string",
+    filterable: true,
+    searchable: true,
+  })
+  .addField({
+    field: "created_at",
+    replacement: "createdAt",
+    type: "date",
+    filterable: true,
+    sortable: true,
+  })
+  .addField({
+    field: "is_active",
+    replacement: "isActive",
+    type: "boolean",
+    filterable: true,
+  })
+  .build();
+
+@ArgsType()
+export class UserConnectionArgs extends ConnectionArgs {}
+
+@ObjectType()
+export class UserConnection extends Connection {}
+```
+
+`addField` 的关键选项：
+
+- **`replacement`** — 将客户端字段名映射到不同的实体属性（例如 `created_at` → `createdAt`）
+- **`filterable`** — 启用 MongoDB 风格过滤（`$eq`、`$ne`、`$gt`、`$in` 等）
+- **`sortable`** — 启用按此字段排序
+- **`searchable`** — 启用人性化搜索语法（`field:value`）
+- **`fulltext`** — 使用 PostgreSQL 全文搜索
+
+### 在解析器中使用
+
+注入 `ConnectionManager` 执行分页查询：
+
+```typescript
+import {
+  Args,
+  Query,
+  Resolver,
+  ResolveField,
+  Parent,
+} from "@nest-boot/graphql";
+import { ConnectionManager } from "@nest-boot/graphql-connection";
+
+import { User } from "./user.entity";
+import {
+  UserConnection,
+  UserConnectionArgs,
+} from "./user.connection-definition";
+import {
+  PostConnection,
+  PostConnectionArgs,
+} from "./post.connection-definition";
+
+@Resolver(() => User)
+export class UserResolver {
+  constructor(private readonly cm: ConnectionManager) {}
+
+  @Query(() => UserConnection)
+  async users(@Args() args: UserConnectionArgs): Promise<UserConnection> {
+    return await this.cm.find(UserConnection, args);
+  }
+
+  // 嵌套连接：解析用户的文章
+  @ResolveField(() => PostConnection)
+  async posts(
+    @Parent() user: User,
+    @Args() args: PostConnectionArgs,
+  ): Promise<PostConnection> {
+    return await this.cm.find(PostConnection, args, {
+      where: { author: user },
+    });
+  }
+}
+```
+
+`cm.find()` 的第三个参数接受额外的 `where` 过滤条件，会与客户端的 filter/query 参数合并。适用于：
+
+- 将查询范围限定到当前工作区或用户
+- 实现软删除（例如 `where: { deletedAt: null }`）
+- 嵌套连接字段
+
+### 分页
+
+客户端支持正向和反向分页：
+
+```graphql
+# 正向分页
+query {
+  users(first: 10, after: "cursor_abc") {
+    edges {
+      node {
+        id
+        name
+      }
+      cursor
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    totalCount
+  }
+}
+
+# 反向分页
+query {
+  users(last: 10, before: "cursor_xyz") {
+    edges {
+      node {
+        id
+        name
+      }
+    }
+    pageInfo {
+      hasPreviousPage
+      startCursor
+    }
+  }
+}
+```
+
+### 过滤
+
+MongoDB 风格的过滤语法，支持操作符：`$eq`、`$ne`、`$gt`、`$gte`、`$lt`、`$lte`、`$in`、`$nin`、`$and`、`$or`、`$regex`。
+
+```graphql
+query {
+  users(filter: { name: { $regex: "john" }, is_active: { $eq: true } }) {
+    edges { node { id name } }
+  }
+}
+```
+
+### 搜索查询
+
+人性化的搜索语法，映射到可过滤/可搜索字段：
+
+```graphql
+query {
+  users(query: "john email:john@example.com") {
+    edges {
+      node {
+        id
+        name
+        email
+      }
+    }
+  }
+}
+```
+
+## GraphQL 日志
+
+`@nest-boot/graphql-logger` 模块提供 Apollo Server 插件，记录 GraphQL 操作元数据（操作名称、查询、变量、耗时）。
+
+### 安装
+
+```bash
+pnpm add @nest-boot/graphql-logger @nest-boot/logger
+```
+
+### 注册
+
+```typescript
+import { GraphQLLoggerModule } from "@nest-boot/graphql-logger";
+
+@Module({
+  imports: [GraphQLLoggerModule],
+})
+export class CommonModule {}
+```
+
+## GraphQL 限流
+
+`@nest-boot/graphql-rate-limit` 模块提供 Shopify 风格的查询复杂度限流，使用 Redis 支持的漏桶算法。
+
+### 安装
+
+```bash
+pnpm add @nest-boot/graphql-rate-limit graphql-query-complexity
+```
+
+### 注册
+
+```typescript
+import { GraphQLRateLimitModule } from "@nest-boot/graphql-rate-limit";
+
+@Module({
+  imports: [
+    GraphQLRateLimitModule.forRoot({
+      maxComplexity: 1000, // 每次查询最大开销
+      maximumAvailable: 1000, // 令牌桶容量
+      restoreRate: 50, // 每秒恢复的点数
+    }),
+  ],
+})
+export class CommonModule {}
+```
+
+### 自定义复杂度
+
+使用 `@Complexity()` 装饰器为字段定义自定义开销计算：
+
+```typescript
+import { Complexity } from "@nest-boot/graphql-rate-limit";
+
+@Resolver(() => User)
+export class UserResolver {
+  @Complexity(({ childComplexity, args }) => args.first * childComplexity)
+  @Query(() => UserConnection)
+  async users(@Args() args: UserConnectionArgs) {
+    return this.cm.find(UserConnection, args);
+  }
+}
+```
+
+查询开销会在响应 `extensions` 中返回，让客户端对 API 使用预算有完整的了解。
+
+## 最佳实践
+
+1. **全局 CommonModule** — 在一个 `@Global()` 的 `CommonModule` 中注册 `GraphQLModule`、`GraphQLConnectionModule` 和配套模块，供所有功能模块共享。
+
+2. **双装饰器** — 在同一个类上使用 `@ObjectType()` + `@Entity()`，确保 GraphQL Schema 和数据库模式始终同步。
+
+3. **连接定义** — 将连接构建器定义放在实体旁的 `*.connection-definition.ts` 文件中。
+
+4. **字段替换** — 使用 `addField` 的 `replacement` 选项暴露客户端友好的 snake_case 字段名，同时内部映射到 camelCase 实体属性。
+
+5. **作用域查询** — 始终传递 `where` 过滤条件，将连接查询限定到当前工作区或租户。
+
+## API 参考
+
+详细的 API 文档请参阅 [GraphQL API 参考](/docs/api/graphql)、[GraphQL Connection API 参考](/docs/api/graphql-connection)、[GraphQL Logger API 参考](/docs/api/graphql-logger)和 [GraphQL Rate Limit API 参考](/docs/api/graphql-rate-limit)。

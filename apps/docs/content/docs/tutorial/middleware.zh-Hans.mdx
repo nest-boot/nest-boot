@@ -1,34 +1,55 @@
 ---
 title: "中间件"
-description: "@nest-boot/middleware 模块提供集中式和灵活的中间件管理。"
+description: "NestJS 的有序中间件管理，支持依赖解析。"
 ---
 
-`@nest-boot/middleware` 模块提供在 NestJS 应用程序中集中式和灵活的中间件注册管理方式。支持依赖排序、路由排除和全局配置。
+`@nest-boot/middleware` 模块提供 `MiddlewareManager`，支持依赖感知的有序中间件注册，确保认证、RLS 和请求事务等中间件按正确顺序执行。
 
 ## 安装
 
 ```bash
-npm install @nest-boot/middleware
-# 或
 pnpm add @nest-boot/middleware
 ```
 
-## 基本用法
+## 模块注册
 
 ```typescript
-import { Module } from "@nestjs/common";
 import { MiddlewareModule } from "@nest-boot/middleware";
 
+@Global()
 @Module({
   imports: [MiddlewareModule],
 })
-export class AppModule {}
+export class CommonModule {}
 ```
 
-## 特性
+## 用法
 
-- **集中管理** - 在一个地方注册所有中间件
-- **依赖排序** - 根据依赖关系自动排序中间件
-- **循环依赖检测** - 检测到循环依赖时抛出错误
-- **全局排除** - 定义所有中间件排除的路由
-- **流畅 API** - 简洁的链式配置语法
+`MiddlewareManager` 通常由其他 `@nest-boot` 模块（Auth、AuthRLS、RequestTransaction）内部使用来注册有正确顺序的中间件。你也可以直接使用：
+
+```typescript
+import { MiddlewareManager } from "@nest-boot/middleware";
+import { Injectable, OnModuleInit } from "@nestjs/common";
+
+@Injectable()
+export class MyModule implements OnModuleInit {
+  constructor(private readonly middlewareManager: MiddlewareManager) {}
+
+  onModuleInit() {
+    this.middlewareManager
+      .apply(MyCustomMiddleware)
+      .dependencies(AuthMiddleware) // 在认证之后运行
+      .forRoutes("*");
+  }
+}
+```
+
+### 核心特性
+
+- **依赖解析** — 声明中间件之间的依赖关系，确保正确的执行顺序
+- **全局排除** — 将路由从所有中间件中排除（例如认证 API 路由）
+- **路由作用域** — 将中间件应用到特定路由或模式
+
+## API 参考
+
+详细的 API 文档请参阅[中间件 API 参考](/docs/api/middleware)。

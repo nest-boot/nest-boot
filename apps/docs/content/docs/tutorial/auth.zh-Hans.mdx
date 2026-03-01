@@ -1,75 +1,301 @@
 ---
-title: "认证"
-description: "@nest-boot/auth 模块提供基于 better-auth 的认证和会话管理。"
+title: "Auth"
+description: "使用 better-auth 为 NestJS 应用添加认证，支持会话、OAuth/OIDC、守卫和行级安全。"
 ---
 
-`@nest-boot/auth` 模块提供基于 [better-auth](https://www.better-auth.com/) 的认证和会话管理，支持 MikroORM 持久化和自动中间件注册。
+`@nest-boot/auth` 模块提供基于 [better-auth](https://www.better-auth.com/) 的认证功能，包括 MikroORM 会话持久化、自动中间件注册和全局守卫。配套的 `@nest-boot/auth-rls` 模块集成 PostgreSQL 行级安全（RLS）策略。
 
 ## 安装
 
 ```bash
-npm install @nest-boot/auth better-auth
-# 或
 pnpm add @nest-boot/auth better-auth
 ```
 
-## 基本用法
+## 模块注册
 
-### 模块注册
+### 基本注册
 
 ```typescript
-import { Module } from "@nestjs/common";
 import { AuthModule } from "@nest-boot/auth";
+import { User } from "./user.entity";
+import { Account } from "./account.entity";
+import { Session } from "./session.entity";
+import { Verification } from "./verification.entity";
 
-@Module({
-  imports: [
-    AuthModule.forRoot({
-      secret: process.env.AUTH_SECRET,
-    }),
-  ],
-})
-export class AppModule {}
+const AuthDynamicModule = AuthModule.forRoot({
+  entities: {
+    user: User,
+    account: Account,
+    session: Session,
+    verification: Verification,
+  },
+});
 ```
 
-## 使用 AuthService
+模块自动完成：
+
+- 使用 MikroORM 适配器创建 better-auth 实例
+- 在 `/api/auth/` 注册认证 API 路由（可通过 `basePath` 配置）
+- 在所有路由上注册认证中间件用于会话解析
+- 从环境变量读取 `AUTH_SECRET` 或 `APP_SECRET`
+
+### 异步注册（含 OIDC）
+
+在实际应用中，使用 `forRootAsync` 注入 `ConfigService` 并配置 OAuth/OIDC 提供商：
 
 ```typescript
-import { Injectable } from "@nestjs/common";
-import { AuthService } from "@nest-boot/auth";
+import { EntityManager } from "@mikro-orm/postgresql";
+import { AuthModule } from "@nest-boot/auth";
+import { REQUEST, RequestContext } from "@nest-boot/request-context";
+import { ConfigService } from "@nestjs/config";
+import { genericOAuth } from "better-auth/plugins";
+import { Request } from "express";
 
-@Injectable()
-export class UserService {
-  constructor(private readonly authService: AuthService) {}
+import { User } from "./user.entity";
+import { Account } from "./account.entity";
+import { Session } from "./session.entity";
+import { Verification } from "./verification.entity";
+import { Workspace } from "./workspace.entity";
+import { WorkspaceMember } from "./workspace-member.entity";
 
-  async getSession(headers: Headers) {
-    const session = await this.authService.api.getSession({ headers });
-    return session;
+const AuthDynamicModule = AuthModule.forRootAsync({
+  inject: [ConfigService, EntityManager],
+  useFactory: (configService: ConfigService, em: EntityManager) => ({
+    trustedOrigins: ["*"],
+    entities: {
+      user: User,
+      account: Account,
+      session: Session,
+      verification: Verification,
+    },
+    onAuthenticated: async () => {
+      const user = RequestContext.get(User);
+      const request = RequestContext.get<Request>(REQUEST);
+      const workspaceId = request?.headers["x-workspace-id"];
+
+      if (user && typeof workspaceId === "string") {
+        const workspaceMember = await em.findOne(
+          WorkspaceMember,
+          { user, workspace: { id: workspaceId } },
+          { populate: ["workspace"] },
+        );
+
+        if (workspaceMember) {
+          RequestContext.set(Workspace, workspaceMember.workspace.getEntity());
+          RequestContext.set(WorkspaceMember, workspaceMember);
+        }
+      }
+    },
+    plugins: [
+      genericOAuth({
+        config: [
+          {
+            providerId: "oidc",
+            clientId: configService.getOrThrow("AUTH_OIDC_ID"),
+            clientSecret: configService.getOrThrow("AUTH_OIDC_SECRET"),
+            discoveryUrl: configService.getOrThrow("AUTH_OIDC_DISCOVERY_URL"),
+            prompt: "login",
+            scopes: ["openid", "profile", "email"],
+          },
+        ],
+      }),
+    ],
+  }),
+});
+```
+
+关键选项：
+
+- **`entities`** — 映射 MikroORM 实体类（user、account、session、verification）
+- **`onAuthenticated`** — 会话解析成功后的回调，用于将工作区/租户上下文加载到 `RequestContext`
+- **`plugins`** — better-auth 插件（如 `genericOAuth`、`twoFactor` 等）
+- **`basePath`** — 自定义认证 API 路径（默认：`/api/auth/`）
+- **`trustedOrigins`** — 允许的 CORS 来源
+
+## 认证守卫
+
+将 `AuthGuard` 注册为全局守卫，默认保护所有路由：
+
+```typescript
+import { AuthGuard } from "@nest-boot/auth";
+import { APP_GUARD } from "@nestjs/core";
+
+@Global()
+@Module({
+  imports: [AuthModule],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: AuthGuard,
+    },
+  ],
+})
+export class CommonModule {}
+```
+
+守卫检查 `RequestContext` 中是否存在有效会话。如果没有会话，请求将返回 403 错误。
+
+### 公开路由
+
+使用 `@Public()` 装饰器跳过特定路由的认证守卫：
+
+```typescript
+import { Public } from "@nest-boot/auth";
+import { Query, Resolver } from "@nest-boot/graphql";
+
+@Resolver()
+export class HealthResolver {
+  @Public()
+  @Query(() => String)
+  health(): string {
+    return "ok";
   }
 }
 ```
 
-## 环境变量
+## 装饰器
 
-| 变量          | 描述                                 |
-| ------------- | ------------------------------------ |
-| `AUTH_SECRET` | 用于签名令牌的密钥（最少 32 个字符） |
-| `APP_SECRET`  | 备用密钥                             |
-| `AUTH_URL`    | 认证端点的基础 URL                   |
-| `APP_URL`     | 备用基础 URL                         |
+### @CurrentUser()
 
-## 行级安全 (RLS)
+在解析器或控制器中获取已认证用户：
 
-`@nest-boot/auth-rls` 包扩展了认证模块，支持 PostgreSQL 行级安全策略。
+```typescript
+import { CurrentUser } from "@nest-boot/auth";
+import { Query, Resolver } from "@nest-boot/graphql";
+import { User } from "./user.entity";
+
+@Resolver()
+export class ProfileResolver {
+  @Query(() => User)
+  me(@CurrentUser() user: User): User {
+    return user;
+  }
+}
+```
+
+### @CurrentSession()
+
+获取当前会话：
+
+```typescript
+import { CurrentSession } from "@nest-boot/auth";
+```
+
+## 实体设置
+
+继承模块提供的基础实体类来定义你的认证实体：
+
+```typescript
+import { Entity, PrimaryKey, Property, t } from "@mikro-orm/postgresql";
+import { BaseUser } from "@nest-boot/auth";
+import { Field, ID, ObjectType } from "@nest-boot/graphql";
+
+@ObjectType()
+@Entity()
+export class User extends BaseUser {
+  @Field(() => ID)
+  @PrimaryKey({ type: t.bigint })
+  id!: string;
+
+  @Field(() => String)
+  @Property({ type: t.string })
+  name!: string;
+
+  @Field(() => String)
+  @Property({ type: t.string })
+  email!: string;
+}
+```
+
+同样继承 `BaseAccount`、`BaseSession` 和 `BaseVerification` 来定义其他认证实体。
+
+## Auth RLS（行级安全）
+
+`@nest-boot/auth-rls` 模块将 PostgreSQL 行级安全与认证集成，在每个请求中自动设置安全上下文变量。
+
+### 安装
 
 ```bash
 pnpm add @nest-boot/auth-rls
 ```
 
-## 特性
+### 注册
 
-- **better-auth 集成** - 通过 NestJS 依赖注入使用完整的 better-auth API
-- **MikroORM 适配器** - 内置数据库适配器用于会话持久化
-- **自动中间件** - 自动注册中间件，支持配置路由
-- **自定义实体** - 可扩展的账户和验证实体
-- **行级安全** - 通过 auth-rls 模块支持 PostgreSQL RLS
-- **密钥验证** - 强制最小长度和熵值要求
+```typescript
+import { AuthRlsModule } from "@nest-boot/auth-rls";
+import { RequestContext } from "@nest-boot/request-context";
+import { WorkspaceMember } from "./workspace-member.entity";
+
+const AuthRlsDynamicModule = AuthRlsModule.forRootAsync({
+  useFactory: () => ({
+    context: (ctx) => {
+      const workspaceMember = RequestContext.get(WorkspaceMember);
+
+      if (workspaceMember) {
+        ctx.set("workspace_id", workspaceMember.workspace.id);
+        ctx.set("workspace_member_id", workspaceMember.id);
+      }
+
+      return ctx;
+    },
+  }),
+});
+```
+
+`context` 回调在每个请求中被调用。它接收一个 `Map`，你在其中设置 PostgreSQL 会话变量。这些变量随后通过 `SET LOCAL` 应用，使 RLS 策略可以引用：
+
+```sql
+-- 示例 RLS 策略
+CREATE POLICY workspace_isolation ON files
+  USING (workspace_id = current_setting('app.workspace_id')::bigint);
+```
+
+### 工作原理
+
+1. `AuthMiddleware` 解析会话并将已认证用户填充到 `RequestContext`
+2. `onAuthenticated` 加载工作区/租户上下文
+3. `RequestTransactionMiddleware` 将请求包装在数据库事务中
+4. `AuthRlsMiddleware` 在事务内设置 PostgreSQL 会话变量
+5. 后续所有查询都受 RLS 策略过滤
+
+## NestJS 集成
+
+包含认证的完整 `main.ts` 设置：
+
+```typescript
+import { Logger } from "@nest-boot/logger";
+import { ValidationPipe } from "@nestjs/common";
+import { NestFactory } from "@nestjs/core";
+import { AppModule } from "./app/app.module";
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule, {
+    bufferLogs: true,
+    cors: true,
+  });
+
+  app.useLogger(await app.resolve(Logger));
+  app.useGlobalPipes(
+    new ValidationPipe({ transform: true, forbidUnknownValues: false }),
+  );
+  app.enableShutdownHooks();
+
+  await app.listen(process.env.PORT ?? 4000);
+}
+
+void bootstrap();
+```
+
+## 最佳实践
+
+1. **全局守卫** — 始终将 `AuthGuard` 注册为 `APP_GUARD`，对例外路由使用 `@Public()`，而不是逐路由添加守卫。
+
+2. **onAuthenticated 加载上下文** — 使用 `onAuthenticated` 回调将工作区/租户数据加载到 `RequestContext`，使其在整个请求生命周期内可用。
+
+3. **环境变量** — 将 `AUTH_SECRET` 存储在环境变量中，确保至少 32 个字符且具有高熵值。
+
+4. **模块顺序** — 按 `RequestContextModule` → `AuthModule` → `AuthRlsModule` → `RequestTransactionModule` 的顺序注册，以确保正确的中间件链。
+
+## API 参考
+
+详细的 API 文档请参阅 [Auth API 参考](/docs/api/auth) 和 [Auth RLS API 参考](/docs/api/auth-rls)。

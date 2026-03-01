@@ -1,48 +1,75 @@
 ---
 title: "Redis"
-description: "@nest-boot/redis 模块提供使用 ioredis 的 Redis 连接管理。"
+description: "NestJS 的 Redis 集成，支持基于环境变量的配置和便捷注入。"
 ---
 
-`@nest-boot/redis` 模块提供使用 [ioredis](https://github.com/redis/ioredis) 的 Redis 连接管理。支持从环境变量自动配置和优雅关闭处理。
+`@nest-boot/redis` 模块使用 [ioredis](https://github.com/redis/ioredis) 提供简洁的 Redis 集成，支持基于环境变量的配置。
 
 ## 安装
 
 ```bash
-npm install @nest-boot/redis ioredis
-# 或
-pnpm add @nest-boot/redis ioredis
+pnpm add @nest-boot/redis
 ```
 
-## 基本用法
+## 模块注册
 
 ```typescript
-import { Module } from "@nestjs/common";
+import { RedisModule } from "@nest-boot/redis";
+
+@Global()
+@Module({
+  imports: [RedisModule],
+})
+export class CommonModule {}
+```
+
+默认读取 `REDIS_URL` 环境变量。
+
+### 自定义配置
+
+```typescript
 import { RedisModule } from "@nest-boot/redis";
 
 @Module({
   imports: [
-    RedisModule.register({
-      host: "localhost",
-      port: 6379,
-      isGlobal: true,
+    RedisModule.registerAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        url: configService.getOrThrow("REDIS_URL"),
+      }),
     }),
   ],
 })
-export class AppModule {}
+export class CommonModule {}
 ```
 
-## 环境变量
+## 用法
 
-| 变量             | 描述                |
-| ---------------- | ------------------- |
-| `REDIS_URL`      | 完整 Redis 连接 URL |
-| `REDIS_HOST`     | Redis 服务器主机名  |
-| `REDIS_PORT`     | Redis 服务器端口    |
-| `REDIS_PASSWORD` | Redis 密码          |
+使用 `@InjectRedis()` 注入 Redis 客户端：
 
-## 特性
+```typescript
+import { InjectRedis } from "@nest-boot/redis";
+import { Injectable } from "@nestjs/common";
+import { Redis } from "ioredis";
 
-- **自动配置** - 从环境变量自动加载设置
-- **全局模块** - 可通过 `isGlobal: true` 注册为全局模块
-- **优雅关闭** - 应用关闭时自动关闭 Redis 连接
-- **完整 ioredis 支持** - 访问所有 ioredis 功能
+@Injectable()
+export class CacheService {
+  constructor(@InjectRedis() private readonly redis: Redis) {}
+
+  async get(key: string): Promise<string | null> {
+    return this.redis.get(key);
+  }
+
+  async set(key: string, value: string, ttl?: number): Promise<void> {
+    if (ttl) {
+      await this.redis.set(key, value, "EX", ttl);
+    } else {
+      await this.redis.set(key, value);
+    }
+  }
+}
+```
+
+## API 参考
+
+详细的 API 文档请参阅 [Redis API 参考](/docs/api/redis)。

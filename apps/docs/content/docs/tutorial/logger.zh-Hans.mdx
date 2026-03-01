@@ -1,35 +1,110 @@
 ---
 title: "日志"
-description: "@nest-boot/logger 模块提供由 Pino 驱动的结构化请求作用域日志。"
+description: "基于 pino 的结构化 JSON 日志，支持上下文感知日志条目和 NestJS 集成。"
 ---
 
-`@nest-boot/logger` 模块提供由 [Pino](https://getpino.io/) 驱动的结构化、请求作用域日志，支持自动请求关联和 HTTP 日志。
+`@nest-boot/logger` 模块提供基于 [pino](https://getpino.io/) 的结构化日志，支持上下文作用域日志条目、结构化元数据和无缝 NestJS 集成。
 
 ## 安装
 
 ```bash
-npm install @nest-boot/logger pino pino-http
-# 或
-pnpm add @nest-boot/logger pino pino-http
+pnpm add @nest-boot/logger
 ```
 
-## 基本用法
+## 模块注册
 
 ```typescript
-import { Module } from "@nestjs/common";
 import { LoggerModule } from "@nest-boot/logger";
 
+@Global()
 @Module({
-  imports: [LoggerModule.register({})],
+  imports: [LoggerModule],
 })
-export class AppModule {}
+export class CommonModule {}
 ```
 
-## 特性
+## 替换默认日志器
 
-- **结构化日志** - 使用 Pino 的 JSON 格式日志
-- **请求作用域** - 每个请求拥有自己的日志上下文
-- **自动关联** - 请求 ID 自动传播
-- **HTTP 日志** - 通过 pino-http 自动记录请求/响应
-- **上下文传播** - `assign()` 向后续日志添加数据
-- **安全** - 默认脱敏敏感头信息
+在 `main.ts` 中替换默认的 NestJS 日志器：
+
+```typescript
+import { Logger } from "@nest-boot/logger";
+import { NestFactory } from "@nestjs/core";
+import { AppModule } from "./app/app.module";
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule, {
+    bufferLogs: true,
+  });
+
+  app.useLogger(await app.resolve(Logger));
+
+  await app.listen(process.env.PORT ?? 4000);
+}
+
+void bootstrap();
+```
+
+`bufferLogs: true` 选项在自定义日志器加载前缓冲日志消息，确保启动期间不丢失任何日志。
+
+## 用法
+
+```typescript
+import { Logger } from "@nest-boot/logger";
+import { Injectable } from "@nestjs/common";
+
+@Injectable()
+export class UserService {
+  constructor(private readonly logger: Logger) {}
+
+  async createUser(data: CreateUserInput) {
+    this.logger.assign({ userId: data.id, email: data.email });
+    this.logger.log("Creating user");
+
+    const user = await this.em.create(User, data);
+
+    this.logger.log("User created successfully");
+    return user;
+  }
+}
+```
+
+日志上下文通过 `@Inject(INQUIRER)` 自动设置为注入类的类名（如 `UserService`）。
+
+### 关键方法
+
+| 方法                     | 描述                                           |
+| ------------------------ | ---------------------------------------------- |
+| `setContext(name)`       | 覆盖日志上下文（默认自动设置为注入类的类名）   |
+| `assign(metadata)`       | 将结构化元数据附加到本次请求的所有后续日志条目 |
+| `log(message)`           | INFO 级别日志                                  |
+| `warn(message)`          | WARN 级别日志                                  |
+| `error(message, trace?)` | ERROR 级别日志，可选堆栈跟踪                   |
+| `debug(message)`         | DEBUG 级别日志                                 |
+
+### 结构化输出
+
+所有日志以 JSON 格式输出，包含结构化元数据：
+
+```json
+{
+  "level": "info",
+  "time": 1709251234567,
+  "context": "UserService",
+  "userId": "123",
+  "email": "john@example.com",
+  "msg": "User created successfully"
+}
+```
+
+## 最佳实践
+
+1. **缓冲日志** — 在 `NestFactory.create()` 中始终使用 `bufferLogs: true` 捕获启动日志。
+
+2. **自动上下文** — Logger 自动使用注入类的类名作为上下文。只有需要覆盖时才调用 `setContext()`（例如在 BullMQ 处理器中）。
+
+3. **附加元数据** — 使用 `assign()` 附加请求级数据（用户 ID、任务 ID 等），而非在每条日志消息字符串中包含。
+
+## API 参考
+
+详细的 API 文档请参阅[日志 API 参考](/docs/api/logger)。

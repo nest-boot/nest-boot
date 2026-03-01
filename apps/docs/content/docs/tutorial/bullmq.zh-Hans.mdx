@@ -1,53 +1,155 @@
 ---
 title: "BullMQ"
-description: "@nest-boot/bullmq 模块提供由 BullMQ 驱动的作业队列管理。"
+description: "基于 BullMQ 的分布式任务队列和后台工作器，支持 Redis 驱动处理和可选的 MikroORM 集成。"
 ---
 
-`@nest-boot/bullmq` 模块提供由 [BullMQ](https://docs.bullmq.io/) 驱动的作业队列管理，支持从环境变量自动配置 Redis 连接。
+`@nest-boot/bullmq` 模块封装 [`@nestjs/bullmq`](https://docs.nestjs.com/techniques/queues)，提供基于 Redis 支持的分布式任务处理。配套的 `@nest-boot/bullmq-mikro-orm` 模块提供可选的任务持久化到 MikroORM 实体。
 
 ## 安装
 
 ```bash
-npm install @nest-boot/bullmq bullmq
-# 或
-pnpm add @nest-boot/bullmq bullmq
+pnpm add @nest-boot/bullmq
 ```
 
-## 基本用法
+## 模块注册
+
+在 `CommonModule` 中注册 `BullModule` 配置 Redis 连接：
 
 ```typescript
-import { Module } from "@nestjs/common";
 import { BullModule } from "@nest-boot/bullmq";
+
+@Global()
+@Module({
+  imports: [BullModule],
+})
+export class CommonModule {}
+```
+
+模块自动读取 `REDIS_URL` 环境变量。
+
+## 定义队列
+
+在功能模块中注册命名队列：
+
+```typescript
+import { BullModule } from "@nest-boot/bullmq";
+import { Module } from "@nestjs/common";
 
 @Module({
   imports: [
-    BullModule.forRoot({}),
-    BullModule.registerQueue({ name: "email" }),
+    BullModule.registerQueue({
+      name: "file-ops-queue",
+      defaultJobOptions: {
+        removeOnComplete: { age: 60 * 60 },
+        removeOnFail: { age: 60 * 60 },
+      },
+    }),
   ],
+  providers: [FileService, FileOpsProcessor],
 })
-export class AppModule {}
+export class FileModule {}
 ```
 
-## 创建工作进程
+## 添加任务
+
+使用 `@InjectQueue()` 注入 `Queue` 来添加任务：
 
 ```typescript
-import { WorkerHost } from "@nest-boot/bullmq";
-import { Processor } from "@nestjs/bullmq";
-import { Job } from "bullmq";
+import { InjectQueue, Queue } from "@nest-boot/bullmq";
+import { Injectable } from "@nestjs/common";
 
-@Processor("email")
-export class EmailProcessor extends WorkerHost {
-  async process(job: Job<{ to: string; subject: string; body: string }>) {
-    const { to, subject, body } = job.data;
-    console.log(`发送邮件到 ${to}: ${subject}`);
+interface EmailJobData {
+  to: string;
+  subject: string;
+  body: string;
+}
+
+@Injectable()
+export class EmailService {
+  constructor(
+    @InjectQueue("email-queue")
+    private readonly emailQueue: Queue<EmailJobData>,
+  ) {}
+
+  async sendEmail(data: EmailJobData): Promise<string> {
+    const job = await this.emailQueue.add("send", data, {
+      jobId: `email-${Date.now()}`,
+    });
+
+    return job.id!;
   }
 }
 ```
 
-## 特性
+## 处理任务
 
-- **自动 Redis 配置** - 从环境变量自动加载 Redis 连接
-- **队列注册** - 简单的队列和流程生产者注册
-- **工作进程支持** - 用于处理作业的 `WorkerHost` 基类
-- **作业持久化** - 可选的 MikroORM 集成用于作业历史
-- **自动清理** - 可配置 TTL 的自动旧作业清理
+使用 `@Processor()` 装饰器继承 `WorkerHost` 创建处理器：
+
+```typescript
+import { Job, Processor, WorkerHost } from "@nest-boot/bullmq";
+import { Logger } from "@nest-boot/logger";
+
+@Processor("email-queue", { concurrency: 5 })
+export class EmailProcessor extends WorkerHost {
+  constructor(private readonly logger: Logger) {
+    super();
+    this.logger.setContext(EmailProcessor.name);
+  }
+
+  async process(job: Job<EmailJobData>): Promise<void> {
+    const { to, subject, body } = job.data;
+
+    this.logger.assign({ jobId: job.id, to });
+    this.logger.log("Processing email job");
+
+    await this.mailer.send({ to, subject, body });
+
+    this.logger.log("Email sent successfully");
+  }
+}
+```
+
+## BullMQ MikroORM 集成
+
+`@nest-boot/bullmq-mikro-orm` 模块将 BullMQ 任务持久化为 MikroORM 实体，使你能通过数据库查询任务历史：
+
+```bash
+pnpm add @nest-boot/bullmq-mikro-orm
+```
+
+```typescript
+import { ref } from "@mikro-orm/core";
+import { BullMQMikroORMModule } from "@nest-boot/bullmq-mikro-orm";
+
+import { Job } from "./job.entity";
+import { Workspace } from "./workspace.entity";
+
+const BullMQMikroORMDynamicModule = BullMQMikroORMModule.forRoot({
+  jobEntity: Job,
+  convertJobToEntityData: (job) => {
+    const workspaceId = job.data.workspaceId;
+
+    return {
+      ...(typeof workspaceId === "string"
+        ? { workspace: ref(Workspace, workspaceId) }
+        : {}),
+    };
+  },
+});
+```
+
+`convertJobToEntityData` 回调将 BullMQ 任务数据映射到实体字段，允许你将任务与工作区或其他实体关联。
+
+## 最佳实践
+
+1. **独立队列** — 为不同的任务类型使用独立队列（邮件、文件操作等），配置适当的并发数。
+
+2. **任务 ID** — 使用确定性或 Sonyflake 的任务 ID 实现幂等性和可追踪性。
+
+3. **结构化日志** — 在处理器中使用 `Logger.assign()` 将任务上下文附加到日志条目。
+
+4. **自动清理** — 设置 `removeOnComplete` 和 `removeOnFail` 自动清理旧任务。
+
+## API 参考
+
+详细的 API 文档请参阅 [BullMQ API 参考](/docs/api/bullmq) 和 [BullMQ MikroORM API 参考](/docs/api/bullmq-mikro-orm)。

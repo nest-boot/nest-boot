@@ -1,101 +1,55 @@
 ---
 title: "Middleware"
-description: "The @nest-boot/middleware module provides a centralized and flexible way to manage middleware registration in NestJS applications."
+description: "Ordered middleware management with dependency resolution for NestJS."
 ---
 
-The `@nest-boot/middleware` module provides a centralized and flexible way to manage middleware registration in NestJS applications. It supports dependency ordering, route exclusions, and global configuration.
+The `@nest-boot/middleware` module provides a `MiddlewareManager` that enables dependency-aware, ordered middleware registration — ensuring middleware like auth, RLS, and request transactions execute in the correct order.
 
 ## Installation
 
 ```bash
-npm install @nest-boot/middleware
-# or
 pnpm add @nest-boot/middleware
 ```
 
-## Basic Usage
-
-### Module Registration
-
-Import the `MiddlewareModule` in your application module:
+## Module Registration
 
 ```typescript
-import { Module } from "@nestjs/common";
 import { MiddlewareModule } from "@nest-boot/middleware";
 
+@Global()
 @Module({
   imports: [MiddlewareModule],
 })
-export class AppModule {}
+export class CommonModule {}
 ```
 
-### Using MiddlewareManager
+## Usage
 
-Inject the `MiddlewareManager` and register middlewares using the fluent API:
+`MiddlewareManager` is typically used internally by other `@nest-boot` modules (Auth, AuthRLS, RequestTransaction) to register their middleware with proper ordering. You can also use it directly:
 
 ```typescript
-import { Injectable, NestMiddleware, OnModuleInit } from "@nestjs/common";
 import { MiddlewareManager } from "@nest-boot/middleware";
+import { Injectable, OnModuleInit } from "@nestjs/common";
 
 @Injectable()
-export class LoggerMiddleware implements NestMiddleware {
-  use(req: any, res: any, next: () => void) {
-    console.log(`Request: ${req.method} ${req.url}`);
-    next();
-  }
-}
-
-@Injectable()
-export class AppService implements OnModuleInit {
-  constructor(
-    private readonly middlewareManager: MiddlewareManager,
-    private readonly loggerMiddleware: LoggerMiddleware,
-  ) {}
+export class MyModule implements OnModuleInit {
+  constructor(private readonly middlewareManager: MiddlewareManager) {}
 
   onModuleInit() {
-    this.middlewareManager.apply(this.loggerMiddleware).forRoutes("*");
+    this.middlewareManager
+      .apply(MyCustomMiddleware)
+      .dependencies(AuthMiddleware) // Run after auth
+      .forRoutes("*");
   }
 }
 ```
 
-## Fluent API
+### Key Features
 
-### Applying Middleware
+- **Dependency Resolution** — Declare dependencies between middleware to ensure correct execution order
+- **Global Excludes** — Exclude routes from all middleware (e.g., auth API routes)
+- **Route Scoping** — Apply middleware to specific routes or patterns
 
-```typescript
-middlewareManager
-  .apply(middleware1, middleware2)
-  .forRoutes("users", "products");
-```
+## API Reference
 
-### Excluding Routes
-
-```typescript
-middlewareManager
-  .apply(authMiddleware)
-  .exclude("health", { path: "auth/login", method: RequestMethod.POST })
-  .forRoutes("*");
-```
-
-### Middleware Dependencies
-
-Ensure middlewares execute in a specific order:
-
-```typescript
-// RateLimitMiddleware will always run after AuthMiddleware
-middlewareManager
-  .apply(rateLimitMiddleware)
-  .dependencies(AuthMiddleware)
-  .forRoutes("*");
-
-middlewareManager.apply(authMiddleware).forRoutes("*");
-```
-
-## Features
-
-- **Centralized Management** - Register all middlewares in one place
-- **Dependency Ordering** - Automatically sort middlewares based on dependencies
-- **Circular Dependency Detection** - Throws error if circular dependencies are detected
-- **Global Exclusions** - Define routes excluded from all middlewares
-- **Per-Middleware Exclusions** - Fine-grained control over route exclusions
-- **Fluent API** - Clean, chainable configuration syntax
+For detailed API documentation, see the [Middleware API Reference](/docs/api/middleware).

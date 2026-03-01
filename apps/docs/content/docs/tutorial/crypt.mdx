@@ -1,99 +1,54 @@
 ---
 title: "Crypt"
-description: "The @nest-boot/crypt module provides encryption and decryption functionality using the AES-256-GCM algorithm."
+description: "Symmetric encryption and decryption for sensitive data."
 ---
 
-The `@nest-boot/crypt` module provides encryption and decryption functionality using the AES-256-GCM algorithm, which provides both confidentiality and authenticity guarantees.
+The `@nest-boot/crypt` module provides symmetric encryption/decryption using a shared secret, suitable for encrypting API keys, tokens, and other sensitive data at rest.
 
 ## Installation
 
 ```bash
-npm install @nest-boot/crypt
-# or
 pnpm add @nest-boot/crypt
 ```
 
-## Basic Usage
-
-### Module Registration
-
-Register the `CryptModule` in your application module:
+## Module Registration
 
 ```typescript
-import { Module } from "@nestjs/common";
 import { CryptModule } from "@nest-boot/crypt";
+import { ConfigService } from "@nestjs/config";
 
-@Module({
-  imports: [
-    CryptModule.register({
-      secret: "your-secret-key",
-    }),
-  ],
-})
-export class AppModule {}
+const CryptDynamicModule = CryptModule.registerAsync({
+  inject: [ConfigService],
+  useFactory: (configService: ConfigService) => ({
+    secret: configService.get("APP_SECRET", "secret"),
+  }),
+});
 ```
 
-### Async Registration
-
-For configuration from environment variables or other async sources:
+## Usage
 
 ```typescript
-import { Module } from "@nestjs/common";
-import { ConfigModule, ConfigService } from "@nestjs/config";
-import { CryptModule } from "@nest-boot/crypt";
-
-@Module({
-  imports: [
-    ConfigModule.forRoot(),
-    CryptModule.registerAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        secret: config.get("CRYPT_SECRET"),
-      }),
-    }),
-  ],
-})
-export class AppModule {}
-```
-
-## Using CryptService
-
-Inject the `CryptService` into your service or controller:
-
-```typescript
-import { Injectable } from "@nestjs/common";
 import { CryptService } from "@nest-boot/crypt";
+import { Injectable } from "@nestjs/common";
 
 @Injectable()
-export class DataService {
+export class SecretService {
   constructor(private readonly cryptService: CryptService) {}
 
-  async encryptSensitiveData(data: string): Promise<string> {
-    return this.cryptService.encrypt(data);
+  encrypt(value: string): string {
+    return this.cryptService.encrypt(value);
   }
 
-  async decryptSensitiveData(encrypted: string): Promise<string> {
+  decrypt(encrypted: string): string {
     return this.cryptService.decrypt(encrypted);
   }
 }
 ```
 
-## Configuration Options
+## MikroORM Integration
 
-| Option   | Type     | Description                                                                                                                                                                |
-| -------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `secret` | `string` | The secret key used for encryption/decryption. Falls back to `CRYPT_SECRET` or `APP_SECRET` environment variables if not provided. **Required** - throws error if not set. |
+Use the `@EncryptedProperty()` decorator from `@nest-boot/mikro-orm-crypt` for automatic field encryption. See the [MikroORM tutorial](/docs/tutorial/mikro-orm#encrypted-properties) for details.
 
-## Environment Variables
+## API Reference
 
-The module supports the following environment variables as fallbacks:
-
-- `CRYPT_SECRET` - Primary fallback for the secret key
-- `APP_SECRET` - Secondary fallback for the secret key
-
-## Security Notes
-
-- The AES-256-GCM algorithm provides authenticated encryption
-- Each encryption generates a unique IV (Initialization Vector) and salt
-- The encrypted output includes the IV, authentication tag, encrypted data, and salt
-- Always use a strong, randomly generated secret key in production
+For detailed API documentation, see the [Crypt API Reference](/docs/api/crypt).

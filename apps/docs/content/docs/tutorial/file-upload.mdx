@@ -1,81 +1,122 @@
 ---
 title: "File Upload"
-description: "The @nest-boot/file-upload module provides file upload handling via S3-compatible storage."
+description: "Handle file uploads with S3-compatible storage, MIME type validation, and file size limits."
 ---
 
-The `@nest-boot/file-upload` module provides file upload handling via S3-compatible storage, with support for presigned POST uploads, direct uploads, and GraphQL integration.
+The `@nest-boot/file-upload` module provides file upload handling with S3-compatible object storage, MIME type validation, file size limits, and a simple persist API.
 
 ## Installation
 
 ```bash
-npm install @nest-boot/file-upload @aws-sdk/client-s3 @aws-sdk/s3-presigned-post
-# or
-pnpm add @nest-boot/file-upload @aws-sdk/client-s3 @aws-sdk/s3-presigned-post
+pnpm add @nest-boot/file-upload @aws-sdk/client-s3
 ```
 
-## Basic Usage
+## Module Registration
 
 ```typescript
-import { Module } from "@nestjs/common";
 import { FileUploadModule } from "@nest-boot/file-upload";
+import { ConfigService } from "@nestjs/config";
 
-@Module({
-  imports: [
-    FileUploadModule.register({
-      client: {
-        endpoint: "https://s3.amazonaws.com",
-        region: "us-east-1",
-        credentials: {
-          accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-        },
+const FileUploadDynamicModule = FileUploadModule.registerAsync({
+  inject: [ConfigService],
+  useFactory: (configService: ConfigService) => ({
+    storageUrl: configService.getOrThrow("STORAGE_URL"),
+    bucket: configService.getOrThrow("STORAGE_BUCKET"),
+    client: {
+      endpoint: configService.getOrThrow("S3_ENDPOINT"),
+      credentials: {
+        accessKeyId: configService.getOrThrow("S3_ACCESS_KEY"),
+        secretAccessKey: configService.getOrThrow("S3_SECRET_KEY"),
       },
-      bucket: "my-uploads",
-    }),
-  ],
-})
-export class AppModule {}
+      region: configService.get("S3_REGION", "auto"),
+      forcePathStyle: true,
+    },
+    maxFileByteSize: 1024 * 1024 * 500, // 500MB
+    allowedMimeTypes: [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+      "image/svg+xml",
+      "video/mp4",
+      "video/quicktime",
+      "audio/mpeg",
+      "audio/wav",
+      "application/pdf",
+    ],
+  }),
+});
 ```
 
-## Using FileUploadService
+### Configuration Options
 
-### Presigned Upload (Client-Side)
+| Option             | Description                                                 |
+| ------------------ | ----------------------------------------------------------- |
+| `storageUrl`       | Base URL for generating public file URLs                    |
+| `bucket`           | S3 bucket name                                              |
+| `client`           | AWS S3 client configuration (endpoint, credentials, region) |
+| `maxFileByteSize`  | Maximum file size in bytes                                  |
+| `allowedMimeTypes` | Array of allowed MIME types                                 |
+
+## Usage
+
+### Persisting Files
+
+Use `FileUploadService` to move temporary files to permanent storage:
 
 ```typescript
-import { Injectable } from "@nestjs/common";
 import { FileUploadService } from "@nest-boot/file-upload";
+import { Injectable } from "@nestjs/common";
 
 @Injectable()
-export class UploadService {
+export class FileService {
   constructor(private readonly fileUploadService: FileUploadService) {}
 
-  async getUploadUrl(filename: string, mimeType: string, fileSize: number) {
-    const [upload] = await this.fileUploadService.create([
-      { name: filename, mimeType, fileSize },
-    ]);
-    return upload; // { url, fields }
-  }
+  async createFile(tempFileUrl: string): Promise<FileInfo> {
+    const { url, mimeType, byteSize } =
+      await this.fileUploadService.persist(tempFileUrl);
 
-  async persistFile(tmpUrl: string) {
-    return this.fileUploadService.persist(tmpUrl);
+    return { url, mimeType, byteSize };
   }
 }
 ```
 
-## Configuration Options
+The `persist()` method:
 
-| Option    | Type                 | Description                                         |
-| --------- | -------------------- | --------------------------------------------------- |
-| `client`  | `S3Client \| object` | S3Client instance or S3ClientConfig options         |
-| `bucket`  | `string`             | S3 bucket name                                      |
-| `url`     | `string`             | Custom URL origin for presigned URLs                |
-| `expires` | `number`             | Presigned URL expiration in seconds (default: 3600) |
-| `limits`  | `object[]`           | File size and MIME type restrictions                |
+1. Validates the file's MIME type against `allowedMimeTypes`
+2. Checks the file size against `maxFileByteSize`
+3. Copies the file from temporary to permanent storage
+4. Returns the permanent URL, detected MIME type, and byte size
 
-## Features
+### GraphQL Integration
 
-- **S3 Compatible** - Works with AWS S3, MinIO, CloudFlare R2
-- **Presigned Uploads** - Secure client-side uploads via presigned POST
-- **Direct Uploads** - Server-side upload from streams, buffers, or strings
-- **File Persistence** - Two-phase upload: temporary → permanent
-- **Size Limits** - Configurable per-MIME-type size restrictions
+Create a file upload mutation:
+
+```typescript
+import { Args, Mutation, Resolver } from "@nest-boot/graphql";
+import { File } from "./file.entity";
+import { FileService } from "./file.service";
+import { CreateFileInput } from "./inputs/create-file.input";
+
+@Resolver(() => File)
+export class FileResolver {
+  constructor(private readonly fileService: FileService) {}
+
+  @Mutation(() => File)
+  async createFile(@Args("input") input: CreateFileInput): Promise<File> {
+    return this.fileService.create(input);
+  }
+}
+```
+
+## Best Practices
+
+1. **Strict MIME Types** — Only allow the MIME types your application actually needs.
+
+2. **Reasonable Size Limits** — Set `maxFileByteSize` based on your use case. Most web apps don't need files larger than 100MB.
+
+3. **Temporary URLs** — Client uploads go to a temporary URL first, then `persist()` moves them to permanent storage after validation.
+
+## API Reference
+
+For detailed API documentation, see the [File Upload API Reference](/docs/api/file-upload).

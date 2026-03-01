@@ -1,96 +1,134 @@
 ---
 title: "Request Context"
-description: "The @nest-boot/request-context module provides request-scoped storage using Node.js AsyncLocalStorage."
+description: "Share request-scoped state across your NestJS application with AsyncLocalStorage-based context propagation."
 ---
 
-The `@nest-boot/request-context` module provides request-scoped storage using Node.js AsyncLocalStorage. It allows you to store and access data throughout the lifecycle of a request without passing it through every function call.
+The `@nest-boot/request-context` module provides a request-scoped storage layer built on Node.js `AsyncLocalStorage`. It allows you to share state — such as the authenticated user, session, workspace, or entity manager — across all services and resolvers within a single request, without threading it through function arguments.
 
 ## Installation
 
 ```bash
-npm install @nest-boot/request-context @nest-boot/middleware
-# or
-pnpm add @nest-boot/request-context @nest-boot/middleware
+pnpm add @nest-boot/request-context
+```
+
+## Module Registration
+
+```typescript
+import { RequestContextModule } from "@nest-boot/request-context";
+
+@Global()
+@Module({
+  imports: [RequestContextModule],
+})
+export class CommonModule {}
 ```
 
 ## Basic Usage
 
-### Module Registration
+### Setting Values
+
+Store values from middleware, guards, or any service:
 
 ```typescript
-import { Module } from "@nestjs/common";
-import { RequestContextModule } from "@nest-boot/request-context";
+import { RequestContext } from "@nest-boot/request-context";
+import { User } from "./user.entity";
+import { Workspace } from "./workspace.entity";
 
-@Module({
-  imports: [RequestContextModule],
-})
-export class AppModule {}
+// In a middleware or guard
+RequestContext.set(User, authenticatedUser);
+RequestContext.set(Workspace, currentWorkspace);
 ```
 
-### Storing and Retrieving Data
+### Getting Values
+
+Retrieve values anywhere in the request lifecycle:
 
 ```typescript
-import { Injectable } from "@nestjs/common";
 import { RequestContext } from "@nest-boot/request-context";
+import { User } from "./user.entity";
+
+const user = RequestContext.get(User);
+```
+
+### Request Object
+
+Access the Express request via the `REQUEST` token:
+
+```typescript
+import { REQUEST, RequestContext } from "@nest-boot/request-context";
+import { Request } from "express";
+
+const request = RequestContext.get<Request>(REQUEST);
+const workspaceId = request?.headers["x-workspace-id"];
+```
+
+## Common Patterns
+
+### Auth + Workspace Context
+
+A typical pattern in multi-tenant applications:
+
+```typescript
+// In AuthModule configuration
+onAuthenticated: async () => {
+  const user = RequestContext.get(User);
+  const request = RequestContext.get<Request>(REQUEST);
+  const workspaceId = request?.headers["x-workspace-id"];
+
+  if (user && typeof workspaceId === "string") {
+    const workspaceMember = await em.findOne(
+      WorkspaceMember,
+      { user, workspace: { id: workspaceId } },
+      { populate: ["workspace"] },
+    );
+
+    if (workspaceMember) {
+      RequestContext.set(Workspace, workspaceMember.workspace.getEntity());
+      RequestContext.set(WorkspaceMember, workspaceMember);
+    }
+  }
+},
+```
+
+### Using in Services
+
+```typescript
+import { RequestContext } from "@nest-boot/request-context";
+import { Injectable } from "@nestjs/common";
 
 @Injectable()
-export class UserService {
-  setCurrentUser(user: User) {
-    RequestContext.set("currentUser", user);
-  }
-
+export class AuditService {
   getCurrentUser(): User | undefined {
-    return RequestContext.get<User>("currentUser");
+    return RequestContext.get(User);
+  }
+
+  getCurrentWorkspace(): Workspace | undefined {
+    return RequestContext.get(Workspace);
   }
 }
 ```
 
-### Accessing Request ID
+## Middleware Registration
+
+The module supports registering custom middleware within the request context:
 
 ```typescript
-import { Injectable } from "@nestjs/common";
-import { RequestContext } from "@nest-boot/request-context";
-
-@Injectable()
-export class LoggingService {
-  log(message: string) {
-    const requestId = RequestContext.id;
-    console.log(`[${requestId}] ${message}`);
-  }
-}
+RequestContext.registerMiddleware("my-middleware", (ctx, next) => {
+  ctx.set(SomeService, someInstance);
+  return next();
+});
 ```
 
-## Creating Custom Contexts
+This is used internally by modules like `MikroOrmModule` to fork the entity manager per request.
 
-### For Background Jobs
+## Best Practices
 
-Use the `CreateRequestContext` decorator:
+1. **Use Class Keys** — Use entity/service classes as keys (e.g., `User`, `Workspace`) for type-safe lookups.
 
-```typescript
-import { Injectable } from "@nestjs/common";
-import {
-  CreateRequestContext,
-  RequestContext,
-} from "@nest-boot/request-context";
+2. **Set Early** — Populate the context in middleware or the `onAuthenticated` callback, not in resolvers or services.
 
-@Injectable()
-export class JobProcessor {
-  @CreateRequestContext(
-    (instance, job) => new RequestContext({ type: "job", id: job.id }),
-  )
-  async processJob(job: { id: string; data: any }) {
-    console.log(`Processing job ${RequestContext.id}`);
-    RequestContext.set("jobData", job.data);
-    await this.doWork();
-  }
-}
-```
+3. **Read-Only in Services** — Services should only read from `RequestContext`, never write.
 
-## Features
+## API Reference
 
-- **AsyncLocalStorage Based** - Uses Node.js AsyncLocalStorage for reliable context propagation
-- **Automatic HTTP Context** - Automatically creates context for HTTP requests
-- **GraphQL Support** - Works with GraphQL resolvers via interceptor
-- **Child Contexts** - Create isolated child contexts that inherit from parents
-- **Middleware System** - Register middlewares with dependency ordering
-- **REPL Support** - Interactive debugging with context support
+For detailed API documentation, see the [Request Context API Reference](/docs/api/request-context).

@@ -1,57 +1,241 @@
 ---
 title: "MikroORM"
-description: "@nest-boot/mikro-orm 模块提供与 MikroORM 的无缝集成。"
+description: "MikroORM 集成，支持请求作用域实体管理器、EntityService 基类、加密/哈希属性和请求事务。"
 ---
 
-`@nest-boot/mikro-orm` 模块提供与 [MikroORM](https://mikro-orm.io/) 的无缝集成，支持从环境变量自动配置、请求上下文集成以及加密和哈希实体属性。
+`@nest-boot/mikro-orm` 模块封装 [`@mikro-orm/nestjs`](https://mikro-orm.io/docs/usage-with-nestjs)，提供基于环境变量的自动配置和请求上下文集成，支持每个请求独立的实体管理器分支。配套模块提供[加密属性](#加密属性)、[哈希属性](#哈希属性)和[请求事务](#请求事务)。
 
 ## 安装
 
 ```bash
-npm install @nest-boot/mikro-orm @mikro-orm/core @mikro-orm/reflection
-# 或
-pnpm add @nest-boot/mikro-orm @mikro-orm/core @mikro-orm/reflection
+pnpm add @nest-boot/mikro-orm @mikro-orm/core @mikro-orm/postgresql @mikro-orm/migrations
 ```
 
-## 基本用法
+## 模块注册
+
+### 基本注册
 
 ```typescript
-import { Module } from "@nestjs/common";
 import { MikroOrmModule } from "@nest-boot/mikro-orm";
+
+@Global()
+@Module({
+  imports: [MikroOrmModule],
+})
+export class CommonModule {}
+```
+
+不传参数时，模块使用 `loadConfigFromEnv()` 从环境变量自动加载配置：
+
+- `DATABASE_URL` — PostgreSQL 连接字符串
+- 通过 `tsconfig.json` 路径进行实体发现
+
+### 异步注册
+
+```typescript
+import { MikroOrmModule } from "@nest-boot/mikro-orm";
+import { ConfigService } from "@nestjs/config";
 
 @Module({
   imports: [
-    MikroOrmModule.register({
-      entities: ["dist/**/*.entity.js"],
-      entitiesTs: ["src/**/*.entity.ts"],
+    MikroOrmModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        clientUrl: configService.getOrThrow("DATABASE_URL"),
+      }),
     }),
   ],
 })
-export class AppModule {}
+export class CommonModule {}
 ```
 
-## 环境变量
+### CLI 配置
 
-| 变量                                          | 描述               |
-| --------------------------------------------- | ------------------ |
-| `DB_URL` 或 `DATABASE_URL`                    | 完整数据库连接 URL |
-| `DB_TYPE` 或 `DATABASE_TYPE`                  | 数据库类型         |
-| `DB_HOST` 或 `DATABASE_HOST`                  | 数据库服务器主机名 |
-| `DB_PORT` 或 `DATABASE_PORT`                  | 数据库服务器端口   |
-| `DB_NAME` 或 `DB_DATABASE` 或 `DATABASE_NAME` | 数据库名称         |
+用于 MikroORM CLI（迁移、Schema 生成），创建 `mikro-orm.config.ts`：
+
+```typescript
+import "dotenv/config";
+import { loadConfigFromEnv } from "@nest-boot/mikro-orm";
+
+export default loadConfigFromEnv();
+```
+
+## 请求作用域实体管理器
+
+模块通过 `RequestContext` 自动为每个请求分支实体管理器，确保正确隔离。可以在任何地方注入 `EntityManager`：
+
+```typescript
+import { EntityManager } from "@mikro-orm/postgresql";
+import { Injectable } from "@nestjs/common";
+
+@Injectable()
+export class UserService {
+  constructor(private readonly em: EntityManager) {}
+
+  async findAll() {
+    return this.em.findAll(User);
+  }
+}
+```
+
+## EntityService
+
+`EntityService` 是通用的 CRUD 基类，内置 DataLoader 批处理，自动防止 N+1 查询：
+
+```typescript
+import { EntityManager, FilterQuery } from "@mikro-orm/postgresql";
+import { EntityService } from "@nest-boot/mikro-orm";
+import { Injectable } from "@nestjs/common";
+
+import { User } from "./user.entity";
+
+@Injectable()
+export class UserService extends EntityService<User> {
+  constructor(protected readonly em: EntityManager) {
+    super(User, em);
+  }
+}
+```
+
+### 可用方法
+
+| 方法                                  | 描述                                                    |
+| ------------------------------------- | ------------------------------------------------------- |
+| `create(data)`                        | 创建并持久化新实体                                      |
+| `findOne(idOrEntity)`                 | 按 ID、实体引用或过滤查询查找（通过 DataLoader 批处理） |
+| `findOneOrFail(idOrEntity)`           | 同 `findOne`，未找到时抛出 `NotFoundException`          |
+| `findAll(where, options?)`            | 查找所有匹配过滤条件的实体                              |
+| `count(where, options?)`              | 统计匹配的实体数量                                      |
+| `update(idOrEntity, data)`            | 更新实体                                                |
+| `remove(idOrEntity, softDelete?)`     | 删除实体（支持软删除）                                  |
+| `chunkById(where, options, callback)` | 按块迭代实体，用于批量处理                              |
+
+### 软删除
+
+配置 `softDeleteKey` 后 `EntityService` 支持软删除：
+
+```typescript
+@Injectable()
+export class FileService extends EntityService<File> {
+  constructor(protected readonly em: EntityManager) {
+    super(File, em, { softDeleteKey: "deletedAt" });
+  }
+}
+
+// 软删除（设置 deletedAt = new Date()）
+await this.fileService.remove(fileId);
+
+// 硬删除
+await this.fileService.remove(fileId, false);
+```
+
+### 分块处理
+
+批量处理大数据集：
+
+```typescript
+await this.userService.chunkById(
+  { isActive: true },
+  { limit: 100 },
+  async (users) => {
+    for (const user of users) {
+      await this.sendEmail(user);
+    }
+  },
+);
+```
 
 ## 加密属性
 
-`@nest-boot/mikro-orm-crypt` 提供在持久化前自动加密实体属性的装饰器。
+`@nest-boot/mikro-orm-crypt` 模块提供 `@EncryptedProperty()` 装饰器，使用 `@nest-boot/crypt` 实现透明字段加密：
+
+```bash
+pnpm add @nest-boot/mikro-orm-crypt @nest-boot/crypt
+```
+
+```typescript
+import { Entity, PrimaryKey, t } from "@mikro-orm/postgresql";
+import { EncryptedProperty } from "@nest-boot/mikro-orm-crypt";
+
+@Entity()
+export class CloudProviderAccount {
+  @PrimaryKey({ type: t.bigint })
+  id!: string;
+
+  @EncryptedProperty()
+  apiKey!: string;
+
+  @EncryptedProperty()
+  apiSecret!: string;
+}
+```
+
+值在写入时自动加密，读取时自动解密。需要注册 `CryptModule`：
+
+```typescript
+import { CryptModule } from "@nest-boot/crypt";
+
+const CryptDynamicModule = CryptModule.registerAsync({
+  inject: [ConfigService],
+  useFactory: (configService: ConfigService) => ({
+    secret: configService.get("APP_SECRET", "secret"),
+  }),
+});
+```
 
 ## 哈希属性
 
-`@nest-boot/mikro-orm-hash` 提供在持久化前自动哈希实体属性（如密码）的装饰器。
+`@nest-boot/mikro-orm-hash` 模块提供 `@HashedProperty()` 装饰器，使用 `@nest-boot/hash` 实现透明字段哈希：
 
-## 特性
+```bash
+pnpm add @nest-boot/mikro-orm-hash @nest-boot/hash
+```
 
-- **自动配置** - 从环境变量自动加载设置
-- **请求上下文集成** - 每个请求自动 Fork EntityManager
-- **加密属性** - 自动 AES-256-GCM 加密敏感数据
-- **哈希属性** - 自动 Argon2 哈希密码
-- **Dataloader 支持** - 内置 dataloader 优化关联加载
+```typescript
+import { Entity, PrimaryKey, t } from "@mikro-orm/postgresql";
+import { HashedProperty } from "@nest-boot/mikro-orm-hash";
+
+@Entity()
+export class User {
+  @PrimaryKey({ type: t.bigint })
+  id!: string;
+
+  @HashedProperty()
+  password!: string;
+}
+```
+
+值在写入时自动哈希。需要注册 `HashModule`。
+
+## 请求事务
+
+`@nest-boot/mikro-orm-request-transaction` 模块将每个请求包装在数据库事务中，对 RLS 和数据一致性至关重要：
+
+```bash
+pnpm add @nest-boot/mikro-orm-request-transaction
+```
+
+```typescript
+import { RequestTransactionModule } from "@nest-boot/mikro-orm-request-transaction";
+
+@Module({
+  imports: [RequestTransactionModule],
+})
+export class CommonModule {}
+```
+
+事务在成功时自动提交，出错时自动回滚。
+
+## 最佳实践
+
+1. **环境配置** — 运行时和 CLI 都使用 `loadConfigFromEnv()` 保持配置同步。
+
+2. **EntityService 作为基类** — 所有领域服务都继承 `EntityService`，开箱即获得 CRUD + DataLoader 批处理。
+
+3. **请求事务** — 使用 Auth-RLS 时始终配合 `RequestTransactionModule` 确保正确的事务作用域。
+
+4. **软删除** — 对支持软删除的实体在 `EntityService` 中配置 `softDeleteKey`。
+
+## API 参考
+
+详细的 API 文档请参阅 [MikroORM API 参考](/docs/api/mikro-orm)、[MikroORM Crypt API 参考](/docs/api/mikro-orm-crypt)、[MikroORM Hash API 参考](/docs/api/mikro-orm-hash) 和 [请求事务 API 参考](/docs/api/mikro-orm-request-transaction)。

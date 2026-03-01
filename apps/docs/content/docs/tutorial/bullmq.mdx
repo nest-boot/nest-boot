@@ -1,94 +1,155 @@
 ---
 title: "BullMQ"
-description: "The @nest-boot/bullmq module provides job queue management powered by BullMQ."
+description: "Distributed job queues and background workers with BullMQ, Redis-backed processing, and optional MikroORM integration."
 ---
 
-The `@nest-boot/bullmq` module provides job queue management powered by [BullMQ](https://docs.bullmq.io/), with automatic Redis connection configuration from environment variables.
+The `@nest-boot/bullmq` module wraps [`@nestjs/bullmq`](https://docs.nestjs.com/techniques/queues) for distributed job processing with Redis-backed queues. The companion `@nest-boot/bullmq-mikro-orm` module provides optional job persistence to MikroORM entities.
 
 ## Installation
 
 ```bash
-npm install @nest-boot/bullmq bullmq
-# or
-pnpm add @nest-boot/bullmq bullmq
+pnpm add @nest-boot/bullmq
 ```
 
-## Basic Usage
+## Module Registration
 
-### Module Registration
+Register `BullModule` in your `CommonModule` to configure the Redis connection:
 
 ```typescript
-import { Module } from "@nestjs/common";
 import { BullModule } from "@nest-boot/bullmq";
+
+@Global()
+@Module({
+  imports: [BullModule],
+})
+export class CommonModule {}
+```
+
+The module reads the `REDIS_URL` environment variable automatically.
+
+## Defining Queues
+
+Register named queues in feature modules:
+
+```typescript
+import { BullModule } from "@nest-boot/bullmq";
+import { Module } from "@nestjs/common";
 
 @Module({
   imports: [
-    BullModule.forRoot({}),
-    BullModule.registerQueue({ name: "email" }),
+    BullModule.registerQueue({
+      name: "file-ops-queue",
+      defaultJobOptions: {
+        removeOnComplete: { age: 60 * 60 },
+        removeOnFail: { age: 60 * 60 },
+      },
+    }),
   ],
+  providers: [FileService, FileOpsProcessor],
 })
-export class AppModule {}
+export class FileModule {}
 ```
 
-## Creating Workers
+## Adding Jobs
+
+Inject `Queue` using `@InjectQueue()` to add jobs:
 
 ```typescript
-import { WorkerHost } from "@nest-boot/bullmq";
-import { Processor } from "@nestjs/bullmq";
-import { Job } from "bullmq";
-
-@Processor("email")
-export class EmailProcessor extends WorkerHost {
-  async process(job: Job<{ to: string; subject: string; body: string }>) {
-    const { to, subject, body } = job.data;
-    console.log(`Sending email to ${to}: ${subject}`);
-  }
-}
-```
-
-## Adding Jobs to Queue
-
-```typescript
+import { InjectQueue, Queue } from "@nest-boot/bullmq";
 import { Injectable } from "@nestjs/common";
-import { InjectQueue } from "@nestjs/bullmq";
-import { Queue } from "bullmq";
+
+interface EmailJobData {
+  to: string;
+  subject: string;
+  body: string;
+}
 
 @Injectable()
 export class EmailService {
-  constructor(@InjectQueue("email") private readonly emailQueue: Queue) {}
+  constructor(
+    @InjectQueue("email-queue")
+    private readonly emailQueue: Queue<EmailJobData>,
+  ) {}
 
-  async sendWelcomeEmail(to: string) {
-    await this.emailQueue.add("welcome", {
-      to,
-      subject: "Welcome!",
-      body: "Thanks for signing up.",
+  async sendEmail(data: EmailJobData): Promise<string> {
+    const job = await this.emailQueue.add("send", data, {
+      jobId: `email-${Date.now()}`,
     });
+
+    return job.id!;
   }
 }
 ```
 
-## MikroORM Job Persistence
+## Processing Jobs
 
-The `@nest-boot/bullmq-mikro-orm` package persists BullMQ job data to a MikroORM-managed database.
+Create a processor by extending `WorkerHost` with the `@Processor()` decorator:
+
+```typescript
+import { Job, Processor, WorkerHost } from "@nest-boot/bullmq";
+import { Logger } from "@nest-boot/logger";
+
+@Processor("email-queue", { concurrency: 5 })
+export class EmailProcessor extends WorkerHost {
+  constructor(private readonly logger: Logger) {
+    super();
+    this.logger.setContext(EmailProcessor.name);
+  }
+
+  async process(job: Job<EmailJobData>): Promise<void> {
+    const { to, subject, body } = job.data;
+
+    this.logger.assign({ jobId: job.id, to });
+    this.logger.log("Processing email job");
+
+    await this.mailer.send({ to, subject, body });
+
+    this.logger.log("Email sent successfully");
+  }
+}
+```
+
+## BullMQ MikroORM Integration
+
+The `@nest-boot/bullmq-mikro-orm` module persists BullMQ jobs as MikroORM entities, enabling you to query job history via the database:
 
 ```bash
 pnpm add @nest-boot/bullmq-mikro-orm
 ```
 
-## Environment Variables
+```typescript
+import { ref } from "@mikro-orm/core";
+import { BullMQMikroORMModule } from "@nest-boot/bullmq-mikro-orm";
 
-| Variable         | Description               |
-| ---------------- | ------------------------- |
-| `REDIS_URL`      | Full Redis connection URL |
-| `REDIS_HOST`     | Redis server hostname     |
-| `REDIS_PORT`     | Redis server port         |
-| `REDIS_DB`       | Redis database number     |
-| `REDIS_PASSWORD` | Redis password            |
+import { Job } from "./job.entity";
+import { Workspace } from "./workspace.entity";
 
-## Features
+const BullMQMikroORMDynamicModule = BullMQMikroORMModule.forRoot({
+  jobEntity: Job,
+  convertJobToEntityData: (job) => {
+    const workspaceId = job.data.workspaceId;
 
-- **Auto Redis Config** - Automatically loads Redis connection from environment variables
-- **Queue Registration** - Simple queue and flow producer registration
-- **Worker Support** - `WorkerHost` base class for processing jobs
-- **Job Persistence** - Optional MikroORM integration for job history
-- **Auto Cleanup** - Configurable TTL with automatic old job cleanup
+    return {
+      ...(typeof workspaceId === "string"
+        ? { workspace: ref(Workspace, workspaceId) }
+        : {}),
+    };
+  },
+});
+```
+
+The `convertJobToEntityData` callback maps BullMQ job data to your entity fields, allowing you to associate jobs with workspaces or other entities.
+
+## Best Practices
+
+1. **Separate Queues** — Use dedicated queues for different job types (email, file-ops, etc.) with appropriate concurrency settings.
+
+2. **Job IDs** — Use deterministic or Sonyflake-based job IDs for idempotency and traceability.
+
+3. **Structured Logging** — Use `Logger.assign()` in processors to attach job context to log entries.
+
+4. **Cleanup** — Set `removeOnComplete` and `removeOnFail` to auto-clean old jobs.
+
+## API Reference
+
+For detailed API documentation, see the [BullMQ API Reference](/docs/api/bullmq) and [BullMQ MikroORM API Reference](/docs/api/bullmq-mikro-orm).

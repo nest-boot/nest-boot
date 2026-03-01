@@ -1,46 +1,122 @@
 ---
 title: "文件上传"
-description: "@nest-boot/file-upload 模块提供通过 S3 兼容存储的文件上传处理。"
+description: "使用 S3 兼容存储处理文件上传，支持 MIME 类型验证和文件大小限制。"
 ---
 
-`@nest-boot/file-upload` 模块提供通过 S3 兼容存储的文件上传处理，支持预签名 POST 上传、直接上传和 GraphQL 集成。
+`@nest-boot/file-upload` 模块提供文件上传处理，支持 S3 兼容对象存储、MIME 类型验证、文件大小限制和简洁的持久化 API。
 
 ## 安装
 
 ```bash
-npm install @nest-boot/file-upload @aws-sdk/client-s3 @aws-sdk/s3-presigned-post
-# 或
-pnpm add @nest-boot/file-upload @aws-sdk/client-s3 @aws-sdk/s3-presigned-post
+pnpm add @nest-boot/file-upload @aws-sdk/client-s3
 ```
 
-## 基本用法
+## 模块注册
 
 ```typescript
-import { Module } from "@nestjs/common";
 import { FileUploadModule } from "@nest-boot/file-upload";
+import { ConfigService } from "@nestjs/config";
 
-@Module({
-  imports: [
-    FileUploadModule.register({
-      client: {
-        endpoint: "https://s3.amazonaws.com",
-        region: "us-east-1",
-        credentials: {
-          accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-        },
+const FileUploadDynamicModule = FileUploadModule.registerAsync({
+  inject: [ConfigService],
+  useFactory: (configService: ConfigService) => ({
+    storageUrl: configService.getOrThrow("STORAGE_URL"),
+    bucket: configService.getOrThrow("STORAGE_BUCKET"),
+    client: {
+      endpoint: configService.getOrThrow("S3_ENDPOINT"),
+      credentials: {
+        accessKeyId: configService.getOrThrow("S3_ACCESS_KEY"),
+        secretAccessKey: configService.getOrThrow("S3_SECRET_KEY"),
       },
-      bucket: "my-uploads",
-    }),
-  ],
-})
-export class AppModule {}
+      region: configService.get("S3_REGION", "auto"),
+      forcePathStyle: true,
+    },
+    maxFileByteSize: 1024 * 1024 * 500, // 500MB
+    allowedMimeTypes: [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+      "image/svg+xml",
+      "video/mp4",
+      "video/quicktime",
+      "audio/mpeg",
+      "audio/wav",
+      "application/pdf",
+    ],
+  }),
+});
 ```
 
-## 特性
+### 配置选项
 
-- **S3 兼容** - 支持 AWS S3、MinIO、CloudFlare R2
-- **预签名上传** - 通过预签名 POST 的安全客户端上传
-- **直接上传** - 从流、缓冲区或字符串的服务端上传
-- **文件持久化** - 两阶段上传：临时 → 永久
-- **大小限制** - 按 MIME 类型配置大小限制
+| 选项               | 描述                                  |
+| ------------------ | ------------------------------------- |
+| `storageUrl`       | 用于生成公开文件 URL 的基础 URL       |
+| `bucket`           | S3 存储桶名称                         |
+| `client`           | AWS S3 客户端配置（端点、凭证、区域） |
+| `maxFileByteSize`  | 最大文件大小（字节）                  |
+| `allowedMimeTypes` | 允许的 MIME 类型数组                  |
+
+## 用法
+
+### 持久化文件
+
+使用 `FileUploadService` 将临时文件移动到永久存储：
+
+```typescript
+import { FileUploadService } from "@nest-boot/file-upload";
+import { Injectable } from "@nestjs/common";
+
+@Injectable()
+export class FileService {
+  constructor(private readonly fileUploadService: FileUploadService) {}
+
+  async createFile(tempFileUrl: string): Promise<FileInfo> {
+    const { url, mimeType, byteSize } =
+      await this.fileUploadService.persist(tempFileUrl);
+
+    return { url, mimeType, byteSize };
+  }
+}
+```
+
+`persist()` 方法：
+
+1. 根据 `allowedMimeTypes` 验证文件的 MIME 类型
+2. 根据 `maxFileByteSize` 检查文件大小
+3. 将文件从临时存储复制到永久存储
+4. 返回永久 URL、检测到的 MIME 类型和字节大小
+
+### GraphQL 集成
+
+创建文件上传 Mutation：
+
+```typescript
+import { Args, Mutation, Resolver } from "@nest-boot/graphql";
+import { File } from "./file.entity";
+import { FileService } from "./file.service";
+import { CreateFileInput } from "./inputs/create-file.input";
+
+@Resolver(() => File)
+export class FileResolver {
+  constructor(private readonly fileService: FileService) {}
+
+  @Mutation(() => File)
+  async createFile(@Args("input") input: CreateFileInput): Promise<File> {
+    return this.fileService.create(input);
+  }
+}
+```
+
+## 最佳实践
+
+1. **严格 MIME 类型** — 只允许应用实际需要的 MIME 类型。
+
+2. **合理的大小限制** — 根据用例设置 `maxFileByteSize`。大多数 Web 应用不需要超过 100MB 的文件。
+
+3. **临时 URL** — 客户端先上传到临时 URL，然后 `persist()` 在验证后将文件移到永久存储。
+
+## API 参考
+
+详细的 API 文档请参阅[文件上传 API 参考](/docs/api/file-upload)。

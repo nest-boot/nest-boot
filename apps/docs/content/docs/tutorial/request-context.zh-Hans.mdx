@@ -1,34 +1,134 @@
 ---
 title: "请求上下文"
-description: "@nest-boot/request-context 模块提供使用 Node.js AsyncLocalStorage 的请求作用域存储。"
+description: "使用基于 AsyncLocalStorage 的上下文传播在 NestJS 应用中共享请求作用域状态。"
 ---
 
-`@nest-boot/request-context` 模块提供使用 Node.js AsyncLocalStorage 的请求作用域存储。
+`@nest-boot/request-context` 模块提供基于 Node.js `AsyncLocalStorage` 的请求作用域存储层。它允许你在单个请求的所有服务和解析器之间共享状态（如已认证用户、会话、工作区或实体管理器），无需通过函数参数层层传递。
 
 ## 安装
 
 ```bash
-npm install @nest-boot/request-context @nest-boot/middleware
-# 或
-pnpm add @nest-boot/request-context @nest-boot/middleware
+pnpm add @nest-boot/request-context
+```
+
+## 模块注册
+
+```typescript
+import { RequestContextModule } from "@nest-boot/request-context";
+
+@Global()
+@Module({
+  imports: [RequestContextModule],
+})
+export class CommonModule {}
 ```
 
 ## 基本用法
 
-```typescript
-import { Module } from "@nestjs/common";
-import { RequestContextModule } from "@nest-boot/request-context";
+### 设置值
 
-@Module({
-  imports: [RequestContextModule],
-})
-export class AppModule {}
+从中间件、守卫或任何服务中存储值：
+
+```typescript
+import { RequestContext } from "@nest-boot/request-context";
+import { User } from "./user.entity";
+import { Workspace } from "./workspace.entity";
+
+// 在中间件或守卫中
+RequestContext.set(User, authenticatedUser);
+RequestContext.set(Workspace, currentWorkspace);
 ```
 
-## 特性
+### 获取值
 
-- **基于 AsyncLocalStorage** - 可靠的上下文传播
-- **自动 HTTP 上下文** - 自动为 HTTP 请求创建上下文
-- **GraphQL 支持** - 通过拦截器与 GraphQL 解析器配合
-- **子上下文** - 创建从父级继承的隔离子上下文
-- **REPL 支持** - 支持上下文的交互式调试
+在请求生命周期中的任何位置获取值：
+
+```typescript
+import { RequestContext } from "@nest-boot/request-context";
+import { User } from "./user.entity";
+
+const user = RequestContext.get(User);
+```
+
+### 请求对象
+
+通过 `REQUEST` Token 访问 Express 请求：
+
+```typescript
+import { REQUEST, RequestContext } from "@nest-boot/request-context";
+import { Request } from "express";
+
+const request = RequestContext.get<Request>(REQUEST);
+const workspaceId = request?.headers["x-workspace-id"];
+```
+
+## 常见模式
+
+### 认证 + 工作区上下文
+
+多租户应用中的典型模式：
+
+```typescript
+// 在 AuthModule 配置中
+onAuthenticated: async () => {
+  const user = RequestContext.get(User);
+  const request = RequestContext.get<Request>(REQUEST);
+  const workspaceId = request?.headers["x-workspace-id"];
+
+  if (user && typeof workspaceId === "string") {
+    const workspaceMember = await em.findOne(
+      WorkspaceMember,
+      { user, workspace: { id: workspaceId } },
+      { populate: ["workspace"] },
+    );
+
+    if (workspaceMember) {
+      RequestContext.set(Workspace, workspaceMember.workspace.getEntity());
+      RequestContext.set(WorkspaceMember, workspaceMember);
+    }
+  }
+},
+```
+
+### 在服务中使用
+
+```typescript
+import { RequestContext } from "@nest-boot/request-context";
+import { Injectable } from "@nestjs/common";
+
+@Injectable()
+export class AuditService {
+  getCurrentUser(): User | undefined {
+    return RequestContext.get(User);
+  }
+
+  getCurrentWorkspace(): Workspace | undefined {
+    return RequestContext.get(Workspace);
+  }
+}
+```
+
+## 中间件注册
+
+模块支持在请求上下文中注册自定义中间件：
+
+```typescript
+RequestContext.registerMiddleware("my-middleware", (ctx, next) => {
+  ctx.set(SomeService, someInstance);
+  return next();
+});
+```
+
+`MikroOrmModule` 等模块内部使用此机制为每个请求分支实体管理器。
+
+## 最佳实践
+
+1. **使用类作为键** — 使用实体/服务类作为键（如 `User`、`Workspace`）实现类型安全的查找。
+
+2. **尽早设置** — 在中间件或 `onAuthenticated` 回调中填充上下文，而非在解析器或服务中。
+
+3. **服务中只读** — 服务应只从 `RequestContext` 读取，不应写入。
+
+## API 参考
+
+详细的 API 文档请参阅[请求上下文 API 参考](/docs/api/request-context)。

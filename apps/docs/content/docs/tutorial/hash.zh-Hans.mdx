@@ -1,92 +1,52 @@
 ---
 title: "哈希"
-description: "@nest-boot/hash 模块提供使用 Argon2 算法的安全密码哈希和验证功能。"
+description: "安全的密码哈希和验证。"
 ---
 
-`@nest-boot/hash` 模块提供使用 Argon2 算法的安全密码哈希和验证功能，Argon2 被认为是目前最安全的哈希算法之一。
+`@nest-boot/hash` 模块使用 bcrypt 或类似算法提供安全的密码哈希和验证。
 
 ## 安装
 
 ```bash
-npm install @nest-boot/hash
-# 或
 pnpm add @nest-boot/hash
 ```
 
-## 基本用法
-
-### 模块注册
-
-在应用模块中注册 `HashModule`：
+## 模块注册
 
 ```typescript
-import { Module } from "@nestjs/common";
 import { HashModule } from "@nest-boot/hash";
 
+@Global()
 @Module({
-  imports: [
-    HashModule.register({
-      secret: "your-secret-key",
-    }),
-  ],
+  imports: [HashModule],
 })
-export class AppModule {}
+export class CommonModule {}
 ```
 
-### 异步注册
-
-从环境变量或其他异步来源配置：
+## 用法
 
 ```typescript
-import { Module } from "@nestjs/common";
-import { ConfigModule, ConfigService } from "@nestjs/config";
-import { HashModule } from "@nest-boot/hash";
-
-@Module({
-  imports: [
-    ConfigModule.forRoot(),
-    HashModule.registerAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        secret: config.get("HASH_SECRET"),
-      }),
-    }),
-  ],
-})
-export class AppModule {}
-```
-
-## 使用 HashService
-
-将 `HashService` 注入到你的服务或控制器中：
-
-```typescript
-import { Injectable } from "@nestjs/common";
 import { HashService } from "@nest-boot/hash";
+import { Injectable } from "@nestjs/common";
 
 @Injectable()
 export class AuthService {
   constructor(private readonly hashService: HashService) {}
 
   async hashPassword(password: string): Promise<string> {
-    return this.hashService.create(password);
+    return this.hashService.hash(password);
   }
 
-  async verifyPassword(hash: string, password: string): Promise<boolean> {
-    return this.hashService.verify(hash, password);
+  async verifyPassword(password: string, hash: string): Promise<boolean> {
+    return this.hashService.verify(password, hash);
   }
 }
 ```
 
-## 配置选项
+## MikroORM 集成
 
-| 选项     | 类型     | 描述                                                                          |
-| -------- | -------- | ----------------------------------------------------------------------------- |
-| `secret` | `string` | 用于哈希的密钥。如果未提供，将回退到 `HASH_SECRET` 或 `APP_SECRET` 环境变量。 |
+使用 `@nest-boot/mikro-orm-hash` 的 `@HashedProperty()` 装饰器实现自动字段哈希。详见 [MikroORM 教程](/docs/tutorial/mikro-orm#哈希属性)。
 
-## 环境变量
+## API 参考
 
-模块支持以下环境变量作为回退：
-
-- `HASH_SECRET` - 密钥的主要回退
-- `APP_SECRET` - 密钥的次要回退
+详细的 API 文档请参阅[哈希 API 参考](/docs/api/hash)。

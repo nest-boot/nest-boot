@@ -1,50 +1,57 @@
 ---
 title: "定时任务"
-description: "@nest-boot/schedule 模块提供由 BullMQ 驱动的 Cron 任务调度。"
+description: "基于 Cron 的 NestJS 任务调度，支持装饰器和动态间隔。"
 ---
 
-`@nest-boot/schedule` 模块提供由 BullMQ 驱动的 Cron 任务调度，支持基于装饰器的任务注册。
+`@nest-boot/schedule` 模块基于 [`@nestjs/schedule`](https://docs.nestjs.com/techniques/task-scheduling) 提供 Cron 定时任务调度。
 
 ## 安装
 
 ```bash
-npm install @nest-boot/schedule @nest-boot/bullmq
-# 或
-pnpm add @nest-boot/schedule @nest-boot/bullmq
+pnpm add @nest-boot/schedule
 ```
 
-## 基本用法
+## 模块注册
 
 ```typescript
-import { Module } from "@nestjs/common";
-import { BullModule } from "@nest-boot/bullmq";
 import { ScheduleModule } from "@nest-boot/schedule";
 
+@Global()
 @Module({
-  imports: [BullModule.forRoot({}), ScheduleModule.forRoot({})],
+  imports: [ScheduleModule],
 })
-export class AppModule {}
+export class CommonModule {}
 ```
 
-## Cron 作业
+## 定义定时任务
+
+使用 `@Cron()` 装饰器定义定时任务：
 
 ```typescript
 import { Injectable } from "@nestjs/common";
-import { Cron } from "@nest-boot/schedule";
+import { Cron, CronExpression } from "@nest-boot/schedule";
+import { Logger } from "@nest-boot/logger";
 
 @Injectable()
-export class TaskService {
-  @Cron("0 * * * *") // 每小时
-  async cleanupExpiredSessions() {}
+export class CleanupService {
+  constructor(private readonly logger: Logger) {
+    this.logger.setContext(CleanupService.name);
+  }
 
-  @Cron("0 0 * * *") // 每天午夜
-  async generateDailyReport() {}
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async cleanupExpiredSessions(): Promise<void> {
+    this.logger.log("Cleaning up expired sessions");
+    // ...清理逻辑
+  }
+
+  @Cron("0 */5 * * * *") // 每 5 分钟
+  async syncMetrics(): Promise<void> {
+    this.logger.log("Syncing metrics");
+    // ...同步逻辑
+  }
 }
 ```
 
-## 特性
+## API 参考
 
-- **Cron 调度** - 标准 Cron 表达式，支持时区
-- **间隔调度** - 固定间隔的循环作业
-- **基于装饰器** - 简单的 `@Cron()` 和 `@Interval()` 装饰器
-- **BullMQ 驱动** - 使用 Redis 支持的可靠作业处理
+详细的 API 文档请参阅[定时任务 API 参考](/docs/api/schedule)。

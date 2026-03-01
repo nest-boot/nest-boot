@@ -1,19 +1,19 @@
 ---
 title: "GraphQL"
-description: "The @nest-boot/graphql module provides GraphQL API support powered by Apollo Server."
+description: "Build GraphQL APIs with Apollo Server, cursor-based pagination, operation logging, and query complexity rate limiting."
 ---
 
-The `@nest-boot/graphql` module provides GraphQL API support powered by [Apollo Server](https://www.apollographql.com/docs/apollo-server/), with code-first schema generation, exception filtering, and companion modules for logging and rate limiting.
+The `@nest-boot/graphql` module provides a preconfigured [Apollo Server](https://www.apollographql.com/docs/apollo-server/) GraphQL layer for NestJS, with code-first schema generation, global exception filtering, and built-in playground support. Companion modules provide [operation logging](#graphql-logger), [query complexity rate limiting](#graphql-rate-limiting), and [cursor-based pagination](#graphql-connection).
 
 ## Installation
 
 ```bash
-npm install @nest-boot/graphql @nestjs/graphql @nestjs/apollo @apollo/server graphql
-# or
 pnpm add @nest-boot/graphql @nestjs/graphql @nestjs/apollo @apollo/server graphql
 ```
 
-## Basic Usage
+## Module Registration
+
+### Basic Registration
 
 ```typescript
 import { Module } from "@nestjs/common";
@@ -25,47 +25,407 @@ import { GraphQLModule } from "@nest-boot/graphql";
 export class AppModule {}
 ```
 
-## Creating Resolvers
+The module auto-configures Apollo Server with sensible defaults:
+
+- Endpoint at `/api/graphql`
+- Code-first auto-generated schema (`schema.gql`)
+- Sorted schema output
+- Global `GraphQLExceptionFilter` for error handling
+
+### Async Registration
 
 ```typescript
-import { Query, Resolver, Mutation, Args } from "@nestjs/graphql";
-import { User } from "./user.model";
+import { GraphQLModule } from "@nest-boot/graphql";
+import { ConfigService } from "@nestjs/config";
+
+const GraphQLDynamicModule = GraphQLModule.forRootAsync({
+  inject: [ConfigService],
+  useFactory: (configService: ConfigService) => ({
+    playground: configService.get("NODE_ENV") !== "production",
+  }),
+});
+```
+
+## Defining Types
+
+`@nest-boot/graphql` re-exports everything from `@nestjs/graphql`, so you can define GraphQL types and entity models using a single set of decorators:
+
+```typescript
+import { Entity, PrimaryKey, Property, t } from "@mikro-orm/postgresql";
+import { Field, ID, ObjectType } from "@nest-boot/graphql";
+
+@ObjectType()
+@Entity()
+export class User {
+  @Field(() => ID)
+  @PrimaryKey({ type: t.bigint })
+  id!: string;
+
+  @Field(() => String)
+  @Property({ type: t.string })
+  name!: string;
+
+  @Field(() => String)
+  @Property({ type: t.string })
+  email!: string;
+
+  @Field(() => Date)
+  @Property({ type: t.datetime, defaultRaw: "now()" })
+  createdAt: Date = new Date();
+}
+```
+
+### Input Types
+
+Use `@InputType()` to define mutation inputs, and combine with `class-validator` for validation:
+
+```typescript
+import { Field, InputType, ID } from "@nest-boot/graphql";
+import { IsOptional, IsString } from "class-validator";
+
+@InputType()
+export class CreateUserInput {
+  @IsString()
+  @Field(() => String)
+  name!: string;
+
+  @IsString()
+  @Field(() => String)
+  email!: string;
+
+  @IsOptional()
+  @IsString()
+  @Field(() => ID, { nullable: true })
+  workspaceId?: string;
+}
+```
+
+## Resolvers
+
+```typescript
+import {
+  Args,
+  ID,
+  Mutation,
+  Parent,
+  Query,
+  ResolveField,
+  Resolver,
+} from "@nest-boot/graphql";
+import { NotFoundException } from "@nestjs/common";
+
+import { User } from "./user.entity";
+import { UserService } from "./user.service";
+import { CreateUserInput } from "./inputs/create-user.input";
 
 @Resolver(() => User)
 export class UserResolver {
-  @Query(() => [User])
-  async users() {
-    return this.userService.findAll();
+  constructor(private readonly userService: UserService) {}
+
+  @Query(() => User)
+  async user(@Args("id", { type: () => ID }) id: string): Promise<User> {
+    const user = await this.userService.findOne({ id });
+
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+
+    return user;
   }
 
   @Mutation(() => User)
-  async createUser(@Args("name") name: string) {
-    return this.userService.create({ name });
+  async createUser(@Args("input") input: CreateUserInput): Promise<User> {
+    return await this.userService.create(input);
+  }
+
+  @ResolveField(() => String)
+  fullName(@Parent() user: User): string {
+    return `${user.firstName} ${user.lastName}`;
+  }
+}
+```
+
+## GraphQL Connection
+
+The `@nest-boot/graphql-connection` module provides cursor-based pagination following the [Relay Connection specification](https://relay.dev/graphql/connections.htm). It integrates with MikroORM to generate type-safe, paginated queries with filtering, sorting, and full-text search.
+
+### Installation
+
+```bash
+pnpm add @nest-boot/graphql-connection @mikro-orm/core
+```
+
+Register the module in your `CommonModule` (or root module):
+
+```typescript
+import { GraphQLConnectionModule } from "@nest-boot/graphql-connection";
+
+@Global()
+@Module({
+  imports: [GraphQLConnectionModule],
+})
+export class CommonModule {}
+```
+
+### Defining a Connection
+
+Use `ConnectionBuilder` to define which fields are filterable, sortable, and searchable:
+
+```typescript
+import { ArgsType, ObjectType } from "@nest-boot/graphql";
+import { ConnectionBuilder } from "@nest-boot/graphql-connection";
+import { User } from "./user.entity";
+
+export const { Connection, ConnectionArgs } = new ConnectionBuilder(User)
+  .addField({
+    field: "id",
+    type: "string",
+    filterable: true,
+  })
+  .addField({
+    field: "name",
+    type: "string",
+    filterable: true,
+    sortable: true,
+    searchable: true,
+  })
+  .addField({
+    field: "email",
+    type: "string",
+    filterable: true,
+    searchable: true,
+  })
+  .addField({
+    field: "created_at",
+    replacement: "createdAt",
+    type: "date",
+    filterable: true,
+    sortable: true,
+  })
+  .addField({
+    field: "is_active",
+    replacement: "isActive",
+    type: "boolean",
+    filterable: true,
+  })
+  .build();
+
+@ArgsType()
+export class UserConnectionArgs extends ConnectionArgs {}
+
+@ObjectType()
+export class UserConnection extends Connection {}
+```
+
+Key features of `addField`:
+
+- **`replacement`** — Map a client-facing field name to a different entity property (e.g., `created_at` → `createdAt`)
+- **`filterable`** — Enable MongoDB-style filtering (`$eq`, `$ne`, `$gt`, `$in`, etc.)
+- **`sortable`** — Enable ordering by this field
+- **`searchable`** — Enable human-friendly search syntax (`field:value`)
+- **`fulltext`** — Use PostgreSQL full-text search for this field
+
+### Using in Resolvers
+
+Inject `ConnectionManager` to execute paginated queries:
+
+```typescript
+import {
+  Args,
+  Query,
+  Resolver,
+  ResolveField,
+  Parent,
+} from "@nest-boot/graphql";
+import { ConnectionManager } from "@nest-boot/graphql-connection";
+
+import { User } from "./user.entity";
+import {
+  UserConnection,
+  UserConnectionArgs,
+} from "./user.connection-definition";
+import {
+  PostConnection,
+  PostConnectionArgs,
+} from "./post.connection-definition";
+
+@Resolver(() => User)
+export class UserResolver {
+  constructor(private readonly cm: ConnectionManager) {}
+
+  @Query(() => UserConnection)
+  async users(@Args() args: UserConnectionArgs): Promise<UserConnection> {
+    return await this.cm.find(UserConnection, args);
+  }
+
+  // Nested connection: resolve a user's posts
+  @ResolveField(() => PostConnection)
+  async posts(
+    @Parent() user: User,
+    @Args() args: PostConnectionArgs,
+  ): Promise<PostConnection> {
+    return await this.cm.find(PostConnection, args, {
+      where: { author: user },
+    });
+  }
+}
+```
+
+The third argument to `cm.find()` accepts additional `where` filters that are merged with the client's filter/query arguments. This is useful for:
+
+- Scoping queries to the current workspace or user
+- Implementing soft-delete (e.g., `where: { deletedAt: null }`)
+- Nested connection fields
+
+### Pagination
+
+Clients can use both forward and backward pagination:
+
+```graphql
+# Forward pagination
+query {
+  users(first: 10, after: "cursor_abc") {
+    edges {
+      node {
+        id
+        name
+      }
+      cursor
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    totalCount
+  }
+}
+
+# Backward pagination
+query {
+  users(last: 10, before: "cursor_xyz") {
+    edges {
+      node {
+        id
+        name
+      }
+    }
+    pageInfo {
+      hasPreviousPage
+      startCursor
+    }
+  }
+}
+```
+
+### Filtering
+
+MongoDB-style filter syntax with operators: `$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`, `$in`, `$nin`, `$and`, `$or`, `$regex`.
+
+```graphql
+query {
+  users(filter: { name: { $regex: "john" }, is_active: { $eq: true } }) {
+    edges { node { id name } }
+  }
+}
+```
+
+### Search Query
+
+Human-friendly search syntax that maps to filterable/searchable fields:
+
+```graphql
+query {
+  users(query: "john email:john@example.com") {
+    edges {
+      node {
+        id
+        name
+        email
+      }
+    }
   }
 }
 ```
 
 ## GraphQL Logger
 
-The `@nest-boot/graphql-logger` package provides an Apollo Server plugin that logs GraphQL operation metadata.
+The `@nest-boot/graphql-logger` module provides an Apollo Server plugin that logs GraphQL operation metadata (operation name, query, variables, duration).
+
+### Installation
 
 ```bash
 pnpm add @nest-boot/graphql-logger @nest-boot/logger
 ```
 
+### Registration
+
+```typescript
+import { GraphQLLoggerModule } from "@nest-boot/graphql-logger";
+
+@Module({
+  imports: [GraphQLLoggerModule],
+})
+export class CommonModule {}
+```
+
 ## GraphQL Rate Limiting
 
-The `@nest-boot/graphql-rate-limit` package provides query complexity-based rate limiting.
+The `@nest-boot/graphql-rate-limit` module provides Shopify-style query complexity rate limiting using a Redis-backed leaky bucket algorithm.
+
+### Installation
 
 ```bash
 pnpm add @nest-boot/graphql-rate-limit graphql-query-complexity
 ```
 
-## Features
+### Registration
 
-- **Apollo Server** — Production-ready GraphQL server
-- **Code-First** — Auto-generated schema from TypeScript types
-- **Exception Filtering** — Global GraphQL error handling
-- **Operation Logging** — Structured logging for all operations
-- **Rate Limiting** — Shopify-style query complexity-based throttling
-- **Cost Transparency** — Query cost reported in response extensions
+```typescript
+import { GraphQLRateLimitModule } from "@nest-boot/graphql-rate-limit";
+
+@Module({
+  imports: [
+    GraphQLRateLimitModule.forRoot({
+      maxComplexity: 1000, // Max cost per query
+      maximumAvailable: 1000, // Bucket capacity
+      restoreRate: 50, // Points restored per second
+    }),
+  ],
+})
+export class CommonModule {}
+```
+
+### Custom Complexity
+
+Use the `@Complexity()` decorator to define custom cost calculations for fields:
+
+```typescript
+import { Complexity } from "@nest-boot/graphql-rate-limit";
+
+@Resolver(() => User)
+export class UserResolver {
+  @Complexity(({ childComplexity, args }) => args.first * childComplexity)
+  @Query(() => UserConnection)
+  async users(@Args() args: UserConnectionArgs) {
+    return this.cm.find(UserConnection, args);
+  }
+}
+```
+
+The query cost is reported in the response `extensions`, giving clients full transparency over their API usage budget.
+
+## Best Practices
+
+1. **Global CommonModule** — Register `GraphQLModule`, `GraphQLConnectionModule`, and companion modules in a single `@Global()` `CommonModule` that all feature modules share.
+
+2. **Dual Decorators** — Use `@ObjectType()` + `@Entity()` on the same class so your GraphQL schema and database schema are always in sync.
+
+3. **Connection Definitions** — Keep connection builder definitions in a dedicated `*.connection-definition.ts` file next to the entity.
+
+4. **Field Replacement** — Use the `replacement` option in `addField` to expose client-friendly snake_case field names while mapping to camelCase entity properties internally.
+
+5. **Scoped Queries** — Always pass a `where` filter to scope connection queries to the current workspace or tenant.
+
+## API Reference
+
+For detailed API documentation, see the [GraphQL API Reference](/docs/api/graphql), [GraphQL Connection API Reference](/docs/api/graphql-connection), [GraphQL Logger API Reference](/docs/api/graphql-logger), and [GraphQL Rate Limit API Reference](/docs/api/graphql-rate-limit).
