@@ -161,7 +161,7 @@ export default createRule<
           baseTypeNode.typeName.name === "Opt")
       ) {
         let inner = baseTypeNode.typeArguments?.params[0] ?? null;
-        if (inner && inner.type === AST_NODE_TYPES.TSUnionType) {
+        if (inner?.type === AST_NODE_TYPES.TSUnionType) {
           const hasNullish = inner.types.some((t: TSESTree.TypeNode) => {
             return (
               t.type === AST_NODE_TYPES.TSNullKeyword ||
@@ -325,15 +325,13 @@ export default createRule<
       ) {
         // If the first argument is an object expression (no type function)
         if (
-          callExpr.arguments[0] &&
-          callExpr.arguments[0].type === AST_NODE_TYPES.ObjectExpression
+          callExpr.arguments[0]?.type === AST_NODE_TYPES.ObjectExpression
         ) {
           optionsArg = callExpr.arguments[0];
         }
         // If the second argument is an object expression (has type function)
         else if (
-          callExpr.arguments[1] &&
-          callExpr.arguments[1].type === AST_NODE_TYPES.ObjectExpression
+          callExpr.arguments[1]?.type === AST_NODE_TYPES.ObjectExpression
         ) {
           optionsArg = callExpr.arguments[1];
         }

@@ -396,7 +396,7 @@ export default createRule<
           baseTypeNode.typeName.name === "Opt")
       ) {
         let inner = baseTypeNode.typeArguments?.params[0] ?? null;
-        if (inner && inner.type === AST_NODE_TYPES.TSUnionType) {
+        if (inner?.type === AST_NODE_TYPES.TSUnionType) {
           const hasNullish = inner.types.some((t: TSESTree.TypeNode) => {
             return (
               t.type === AST_NODE_TYPES.TSNullKeyword ||

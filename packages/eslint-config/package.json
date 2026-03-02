@@ -17,13 +17,13 @@
     "@eslint/js": "^9.39.2",
     "@nest-boot/eslint-plugin": "workspace:^",
     "@nest-boot/tsconfig": "workspace:^",
-    "@typescript-eslint/eslint-plugin": "^8.51.0",
-    "@typescript-eslint/parser": "^8.51.0",
-    "eslint": "^9.39.2",
+    "@typescript-eslint/eslint-plugin": "^8.56.1",
+    "@typescript-eslint/parser": "^8.56.1",
+    "eslint": "^9.39.3",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.46.2"
+    "typescript-eslint": "^8.56.1"
   },
   "peerDependencies": {
     "@eslint/eslintrc": "^3.0.0",
