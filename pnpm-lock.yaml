@@ -858,9 +858,6 @@ importers:
       '@nest-boot/graphql':
         specifier: workspace:^
         version: link:../graphql
-      '@nest-boot/redis':
-        specifier: workspace:^
-        version: link:../redis
       '@nest-boot/tsconfig':
         specifier: workspace:^
         version: link:../tsconfig
