@@ -324,9 +324,7 @@ export default createRule<
         callExpr.arguments.length > 0
       ) {
         // If the first argument is an object expression (no type function)
-        if (
-          callExpr.arguments[0]?.type === AST_NODE_TYPES.ObjectExpression
-        ) {
+        if (callExpr.arguments[0]?.type === AST_NODE_TYPES.ObjectExpression) {
           optionsArg = callExpr.arguments[0];
         }
         // If the second argument is an object expression (has type function)
