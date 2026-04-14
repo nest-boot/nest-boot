@@ -312,11 +312,16 @@ export class ConnectionQueryBuilder<
         ? this.entityManager.findAll(this.metadata.entityClass, {
             fields: ["id"] as any,
             limit: 10000,
+            disableIdentityMap: true,
           })
         : this.entityManager.find(
             this.metadata.entityClass,
             this.totalCountFilterQuery,
-            { fields: ["id"] as any, limit: 10000 },
+            {
+              fields: ["id"] as any,
+              limit: 10000,
+              disableIdentityMap: true,
+            },
           )
       ).then((result) => result.length),
     ]);
