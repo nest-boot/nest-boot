@@ -1,5 +1,11 @@
 # @nest-boot/graphql-rate-limit
 
+## 7.1.0
+
+### Minor Changes
+
+- e1614cc: feat(graphql-rate-limit): remove @nest-boot/redis dependency, manage Redis internally with env var support
+
 ## 7.0.4
 
 ### Patch Changes

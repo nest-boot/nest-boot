@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/graphql-rate-limit",
-  "version": "7.0.4",
+  "version": "7.1.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/nest-boot/nest-boot.git",

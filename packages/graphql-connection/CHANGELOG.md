@@ -1,5 +1,11 @@
 # @nest-boot/graphql-connection
 
+## 7.7.2
+
+### Patch Changes
+
+- fadc3d0: fix: disable identity map for count queries in connection query builder
+
 ## 7.7.1
 
 ### Patch Changes
