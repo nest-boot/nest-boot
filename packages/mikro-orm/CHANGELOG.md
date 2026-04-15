@@ -1,5 +1,11 @@
 # @nest-boot/mikro-orm
 
+## 7.4.0
+
+### Minor Changes
+
+- dbce7e8: feat: wrap entity removal in transactions to ensure data consistency in entity service
+
 ## 7.3.2
 
 ### Patch Changes
