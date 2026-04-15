@@ -201,24 +201,32 @@ export class EntityService<Entity extends IdEntity> {
           return entity;
         });
 
-        entitiesOrErrors.forEach((entityOrError, index) => {
-          if (entityOrError instanceof Error) {
-            return entityOrError;
-          }
+        const removeHandler = async () => {
+          entitiesOrErrors.forEach((entityOrError, index) => {
+            if (entityOrError instanceof Error) {
+              return entityOrError;
+            }
 
-          const { softDelete } = items[index];
-          const softDeleteKey = this.options?.softDeleteKey ?? "deletedAt";
+            const { softDelete } = items[index];
+            const softDeleteKey = this.options?.softDeleteKey ?? "deletedAt";
 
-          if (softDelete && softDeleteKey in entityOrError) {
-            (entityOrError as any)[softDeleteKey] = new Date();
-          } else {
-            this.em.remove(entityOrError);
-          }
-        });
+            if (softDelete && softDeleteKey in entityOrError) {
+              (entityOrError as any)[softDeleteKey] = new Date();
+            } else {
+              this.em.remove(entityOrError);
+            }
+          });
 
-        await this.em.flush();
+          await this.em.flush();
 
-        return entitiesOrErrors;
+          return entitiesOrErrors;
+        };
+
+        if (this.em.isInTransaction()) {
+          return await removeHandler();
+        }
+
+        return await this.em.transactional(removeHandler);
       },
       { cache: false },
     );
