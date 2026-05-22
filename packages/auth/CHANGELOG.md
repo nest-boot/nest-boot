@@ -1,5 +1,11 @@
 # @nest-boot/auth
 
+## 7.9.4
+
+### Patch Changes
+
+- 3fbaf86: fix(auth): resolve WHERE array being interpreted as OR by MikroORM
+
 ## 7.9.3
 
 ### Patch Changes
