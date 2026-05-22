@@ -36,8 +36,8 @@ export interface MikroOrmAdapterConfig {
   debugLogs?: DBAdapterDebugLogOption;
 }
 
-function convertWhereToMikroOrm(where: Required<Where>[]) {
-  return where.map(({ field, operator, value }) => {
+export function convertWhereToMikroOrm(where: Required<Where>[]) {
+  const conditions = where.map(({ field, operator, value }) => {
     switch (operator) {
       case "eq":
         return {
@@ -117,8 +117,31 @@ function convertWhereToMikroOrm(where: Required<Where>[]) {
             $like: `%${value}`,
           },
         };
+      default:
+        throw new Error(`Unsupported operator: ${String(operator)}`);
     }
   });
+
+  const hasOr = where.some((w) => w.connector === "OR");
+
+  if (!hasOr) {
+    return { $and: conditions };
+  }
+
+  const groups: Record<string, unknown>[][] = [[]];
+
+  for (let i = 0; i < conditions.length; i++) {
+    if (i > 0 && where[i].connector === "OR") {
+      groups.push([]);
+    }
+    groups[groups.length - 1].push(conditions[i]!);
+  }
+
+  const orBranches = groups.map((group) =>
+    group.length === 1 ? group[0] : { $and: group },
+  );
+
+  return orBranches.length === 1 ? orBranches[0]! : { $or: orBranches };
 }
 
 export const mikroOrmAdapter = ({
