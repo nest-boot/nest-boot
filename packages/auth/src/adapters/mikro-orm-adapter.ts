@@ -117,6 +117,8 @@ export function convertWhereToMikroOrm(where: Required<Where>[]) {
             $like: `%${value}`,
           },
         };
+      default:
+        throw new Error(`Unsupported operator: ${String(operator)}`);
     }
   });
 

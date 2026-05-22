@@ -203,4 +203,12 @@ describe("convertWhereToMikroOrm", () => {
       ).toThrow("Value must be a string");
     });
   });
+
+  describe("unsupported operator", () => {
+    it("should throw on unknown operator", () => {
+      expect(() =>
+        convertWhereToMikroOrm([makeWhere("f", "unknown_op" as never, "x")]),
+      ).toThrow("Unsupported operator: unknown_op");
+    });
+  });
 });
