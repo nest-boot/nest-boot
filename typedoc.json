@@ -103,6 +103,7 @@
     "@nest-boot/mikro-orm-request-transaction",
     "@nest-boot/redis",
     "@nest-boot/request-context",
+    "@nest-boot/row-level-security",
     "@nest-boot/schedule",
     "@nest-boot/validator",
     "@nest-boot/view"
