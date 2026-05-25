@@ -1,3 +1,4 @@
+import type { MigrationDiff } from ".";
 import * as rowLevelSecurity from ".";
 import * as rowLevelSecurityUtils from "./utils";
 
@@ -25,5 +26,11 @@ describe("row level security package exports", () => {
     expect(rowLevelSecurityUtils.createPolicyBootstrapSqlStatements()).toEqual(
       expect.arrayContaining(["create schema if not exists app;"]),
     );
+  });
+
+  it("exports migration generator types", () => {
+    const diff: MigrationDiff = { down: [], up: [] };
+
+    expect(diff).toEqual({ down: [], up: [] });
   });
 });
