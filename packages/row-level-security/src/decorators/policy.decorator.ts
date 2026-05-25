@@ -21,6 +21,13 @@ export type { PolicyOptions } from "../interfaces/policy-options.interface";
 
 const policyMetadata = new WeakMap<object, PolicyMetadataEntry[]>();
 
+/**
+ * Attaches PostgreSQL row-level security policy metadata to an entity class.
+ *
+ * When `property` and `context` are provided, the decorator derives default
+ * `USING` and `WITH CHECK` expressions that compare the mapped database column
+ * against `app.get_context(context, null::<column type>)`.
+ */
 export function Policy(options: PolicyOptions): ClassDecorator {
   const name = normalizeOption(options.name, "Policy name is required");
   const command = options.command ?? PolicyCommand.ALL;
@@ -81,10 +88,12 @@ export function Policy(options: PolicyOptions): ClassDecorator {
   };
 }
 
+/** Returns static policy metadata entries already attached to a class. */
 export function getPolicyMetadata(target: object) {
   return getPolicyMetadataEntries(target).filter(isPolicyMetadata);
 }
 
+/** Resolves all policy metadata entries for a class using concrete entity metadata. */
 export function getPolicyDefinitions(
   target: object,
   entityMetadata: PolicyEntityMetadata,
@@ -94,6 +103,7 @@ export function getPolicyDefinitions(
   );
 }
 
+/** Adds a raw policy metadata entry to a class. */
 export function addPolicyMetadata(
   target: object,
   metadata: PolicyMetadataEntry,

@@ -1,3 +1,4 @@
+/** Lowercase letters allowed in snake_case context keys. */
 export type LowercaseLetter =
   | "a"
   | "b"
@@ -26,8 +27,10 @@ export type LowercaseLetter =
   | "y"
   | "z";
 
+/** Characters allowed in snake_case context keys. */
 export type ValidChar = LowercaseLetter | "_";
 
+/** Compile-time predicate that checks whether a string contains only valid characters. */
 export type IsValidSnakeCase<S extends string> =
   S extends `${infer First}${infer Rest}`
     ? First extends ValidChar
@@ -35,6 +38,7 @@ export type IsValidSnakeCase<S extends string> =
       : false
     : true;
 
+/** Compile-time snake_case constraint used by RLS context helpers. */
 export type SnakeCase<S extends string> = S extends ""
   ? never
   : S extends `_${string}` | `${string}_`
@@ -45,6 +49,7 @@ export type SnakeCase<S extends string> = S extends ""
         ? S
         : never;
 
+/** Values that can be stored in RLS context and converted to PostgreSQL settings. */
 export type RowLevelSecurityContextValue =
   | string
   | number

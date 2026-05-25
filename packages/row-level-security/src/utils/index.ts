@@ -9,6 +9,5 @@ export * from "./get-row-level-security-options";
 export * from "./quote-identifier";
 export * from "./quote-qualified-identifier";
 export * from "./row-level-security-context-builder";
-export * from "./row-level-security-context-builder.types";
-export * from "./row-level-security-options-state";
+export type * from "./row-level-security-context-builder.types";
 export * from "./set-row-level-security-options";

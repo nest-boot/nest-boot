@@ -4,6 +4,7 @@ import type { PolicySqlOptions } from "../interfaces/policy-sql-options.interfac
 import { assertIdentifier } from "./assert-identifier";
 import { quoteQualifiedIdentifier } from "./quote-qualified-identifier";
 
+/** Creates SQL statements that enable RLS and recreate a PostgreSQL policy. */
 export function createPolicyUpSqlStatements(options: PolicySqlOptions) {
   const tableIdentifier = quoteQualifiedIdentifier(
     options.schemaName,

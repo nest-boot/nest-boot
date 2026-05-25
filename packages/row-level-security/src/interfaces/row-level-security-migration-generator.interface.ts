@@ -1,7 +1,10 @@
 import type { PolicySqlOptions } from "./policy-sql-options.interface";
 
+/** SQL diff shape passed from MikroORM to migration generators. */
 export interface MigrationDiff {
+  /** SQL statements applied by the generated migration. */
   up: string[];
+  /** SQL statements applied when reverting the generated migration. */
   down: string[];
 }
 

@@ -1,3 +1,4 @@
+/** Creates SQL statements for shared RLS roles, grants, schema, and `app.get_context`. */
 export function createPolicyBootstrapSqlStatements() {
   return [
     "do $$ begin if not exists (select 1 from pg_roles where rolname = 'authenticated') then create role authenticated nologin; end if; end $$;",

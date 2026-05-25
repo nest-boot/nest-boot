@@ -2,6 +2,7 @@ import type { PolicySqlOptions } from "../interfaces/policy-sql-options.interfac
 import { assertIdentifier } from "./assert-identifier";
 import { quoteQualifiedIdentifier } from "./quote-qualified-identifier";
 
+/** Creates guarded SQL for dropping a policy and disabling RLS when no policies remain. */
 export function createPolicyDownSql(options: PolicySqlOptions) {
   const tableIdentifier = quoteQualifiedIdentifier(
     options.schemaName,

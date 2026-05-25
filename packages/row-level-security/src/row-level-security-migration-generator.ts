@@ -17,6 +17,7 @@ import { createPolicyDownSql } from "./utils/create-policy-down-sql";
 import { createPolicyUpSqlStatements } from "./utils/create-policy-up-sql-statements";
 import { escapeSqlLiteral } from "./utils/escape-sql-literal";
 
+/** MikroORM TypeScript migration generator that injects generated RLS SQL. */
 export class RowLevelSecurityMigrationGenerator extends TSMigrationGenerator {
   private existingPolicyDefinitions?: RowLevelSecurityDefinition[];
   private currentPolicyDefinitions?: RowLevelSecurityDefinition[];

@@ -30,6 +30,10 @@ import { getRowLevelSecurityOptions } from "./utils/get-row-level-security-optio
 import { RowLevelSecurityContextBuilder } from "./utils/row-level-security-context-builder";
 import { RowLevelSecurityContextValue } from "./utils/row-level-security-context-builder.types";
 
+/**
+ * MikroORM entity manager that wraps database operations in transactions with
+ * transaction-local PostgreSQL role and context settings.
+ */
 export class RowLevelSecurityEntityManager extends EntityManager {
   async transactional<T>(
     cb: (em: this) => T | Promise<T>,
