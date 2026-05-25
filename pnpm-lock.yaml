@@ -1574,10 +1574,19 @@ importers:
 
   packages/row-level-security:
     devDependencies:
+      '@mikro-orm/core':
+        specifier: 6.6.2
+        version: 6.6.2
       '@mikro-orm/migrations':
         specifier: 6.6.2
         version: 6.6.2
+      '@mikro-orm/nestjs':
+        specifier: ^6.1.1
+        version: 6.1.1
       '@mikro-orm/postgresql':
+        specifier: 6.6.2
+        version: 6.6.2
+      '@mikro-orm/reflection':
         specifier: 6.6.2
         version: 6.6.2
       '@nest-boot/eslint-config':
@@ -1586,12 +1595,24 @@ importers:
       '@nest-boot/eslint-plugin':
         specifier: workspace:^
         version: link:../eslint-plugin
+      '@nest-boot/mikro-orm':
+        specifier: workspace:^
+        version: link:../mikro-orm
       '@nest-boot/request-context':
         specifier: workspace:^
         version: link:../request-context
       '@nest-boot/tsconfig':
         specifier: workspace:^
         version: link:../tsconfig
+      '@nestjs/common':
+        specifier: ^11.1.11
+        version: 11.1.11
+      '@nestjs/core':
+        specifier: ^11.1.11
+        version: 11.1.11
+      '@nestjs/testing':
+        specifier: ^11.1.11
+        version: 11.1.11
       '@types/jest':
         specifier: ^29.5.14
         version: 29.5.14
@@ -1610,6 +1631,9 @@ importers:
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
+      rxjs:
+        specifier: ^7.8.2
+        version: 7.8.2
       ts-jest:
         specifier: ^29.4.4
         version: 29.4.6

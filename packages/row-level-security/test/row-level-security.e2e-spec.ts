@@ -1,63 +1,79 @@
 import "dotenv/config";
 import "reflect-metadata";
 
+import { EntityManager as CoreEntityManager, MikroORM } from "@mikro-orm/core";
 import {
   Entity,
   EntityManager,
   Knex,
-  knex,
-  MikroORM,
-  PostgreSqlDriver,
   PrimaryKey,
   Property,
   t,
 } from "@mikro-orm/postgresql";
+import { MikroOrmModule } from "@nest-boot/mikro-orm";
 import { RequestContext } from "@nest-boot/request-context";
+import { Test, TestingModule } from "@nestjs/testing";
 
 import {
   createPolicyBootstrapSqlStatements,
   createPolicyUpSqlStatements,
   PolicyCommand,
+  quoteIdentifier,
   quoteQualifiedIdentifier,
   RowLevelSecurityContext,
   RowLevelSecurityEntityManager,
 } from "../src";
 import { setRowLevelSecurityOptions } from "../src/utils/set-row-level-security-options";
 
-@Entity()
-class RowLevelSecurityTestEntity {
+const DOCUMENT_SCHEMA_NAME = `rls_e2e_${String(process.pid)}_${String(
+  Date.now(),
+)}`;
+const DOCUMENT_TABLE_NAME = "documents";
+
+@Entity({ schema: DOCUMENT_SCHEMA_NAME, tableName: DOCUMENT_TABLE_NAME })
+class RowLevelSecurityDocumentEntity {
   @PrimaryKey({ type: t.integer })
   id!: number;
 
+  @Property({ fieldName: "tenant_id", type: t.integer })
+  tenantId!: number;
+
   @Property({ type: t.string })
-  name!: string;
+  content!: string;
 }
 
 describe("RowLevelSecurity - database integration", () => {
-  let db: Knex;
   let orm: MikroORM;
+  let testingModule: TestingModule;
 
   beforeAll(async () => {
-    const connection = getDatabaseUrl();
+    testingModule = await Test.createTestingModule({
+      imports: [
+        MikroOrmModule.forRoot({
+          allowGlobalContext: true,
+          autoLoadEntities: true,
+          metadataCache: {
+            enabled: false,
+          },
+        }),
+        MikroOrmModule.forFeature([RowLevelSecurityDocumentEntity]),
+      ],
+    }).compile();
 
-    db = knex({
-      client: "pg",
-      connection,
-    });
+    await testingModule.init();
 
-    orm = await MikroORM.init({
-      allowGlobalContext: true,
-      clientUrl: connection,
-      driver: PostgreSqlDriver,
-      entities: [RowLevelSecurityTestEntity],
-    });
+    orm = testingModule.get(MikroORM);
 
+    await resetSchema();
     await runStatements(createPolicyBootstrapSqlStatements());
   }, 30000);
 
   afterAll(async () => {
-    await orm?.close(true);
-    await db?.destroy();
+    try {
+      await dropSchema();
+    } finally {
+      await testingModule?.close();
+    }
   });
 
   afterEach(() => {
@@ -65,7 +81,7 @@ describe("RowLevelSecurity - database integration", () => {
   });
 
   it("installs app.get_context and converts transaction-local values", async () => {
-    const row = await db.transaction(async (trx) => {
+    const row = await withKnexTransaction(async (trx) => {
       await trx.raw("select set_config('app.user_id', '42', true)");
 
       const result = await trx.raw<{
@@ -84,43 +100,41 @@ describe("RowLevelSecurity - database integration", () => {
   });
 
   it("enforces generated row level security policies with app context", async () => {
-    const tableName = createTestTableName();
-    const tableIdentifier = quoteQualifiedIdentifier("public", tableName);
+    const tableIdentifier = quoteQualifiedIdentifier(
+      DOCUMENT_SCHEMA_NAME,
+      DOCUMENT_TABLE_NAME,
+    );
 
-    await createPolicyFixture(tableName);
+    await createPolicyFixture();
 
-    try {
-      const rows = await db.transaction(async (trx) => {
+    const rows = await withKnexTransaction(async (trx) => {
+      await trx.raw("set local role authenticated");
+      await trx.raw("select set_config('app.tenant_id', '1', true)");
+
+      const result = await trx.raw<{
+        rows: { id: number; tenant_id: number; content: string }[];
+      }>(`select id, tenant_id, content from ${tableIdentifier} order by id`);
+
+      return result.rows;
+    });
+
+    expect(rows).toEqual([
+      {
+        content: "tenant-1",
+        id: 1,
+        tenant_id: 1,
+      },
+    ]);
+
+    await expect(
+      withKnexTransaction(async (trx) => {
         await trx.raw("set local role authenticated");
         await trx.raw("select set_config('app.tenant_id', '1', true)");
-
-        const result = await trx.raw<{
-          rows: { id: number; tenant_id: number; content: string }[];
-        }>(`select id, tenant_id, content from ${tableIdentifier} order by id`);
-
-        return result.rows;
-      });
-
-      expect(rows).toEqual([
-        {
-          content: "tenant-1",
-          id: 1,
-          tenant_id: 1,
-        },
-      ]);
-
-      await expect(
-        db.transaction(async (trx) => {
-          await trx.raw("set local role authenticated");
-          await trx.raw("select set_config('app.tenant_id', '1', true)");
-          await trx.raw(
-            `insert into ${tableIdentifier} (id, tenant_id, content) values (3, 2, 'blocked')`,
-          );
-        }),
-      ).rejects.toThrow(/row-level security policy/i);
-    } finally {
-      await db.raw(`drop table if exists ${tableIdentifier}`);
-    }
+        await trx.raw(
+          `insert into ${tableIdentifier} (id, tenant_id, content) values (3, 2, 'blocked')`,
+        );
+      }),
+    ).rejects.toThrow(/row-level security policy/i);
   });
 
   it("applies RowLevelSecurityContext inside real MikroORM transactions", async () => {
@@ -154,27 +168,51 @@ describe("RowLevelSecurity - database integration", () => {
     });
   });
 
-  async function createPolicyFixture(tableName: string) {
-    const tableIdentifier = quoteQualifiedIdentifier("public", tableName);
+  async function resetSchema() {
+    await dropSchema();
+    await orm.schema.createSchema({ schema: DOCUMENT_SCHEMA_NAME });
+  }
 
-    await db.raw(`drop table if exists ${tableIdentifier}`);
-    await db.raw(`
-      create table ${tableIdentifier} (
-        id integer primary key,
-        tenant_id integer not null,
-        content text not null
-      )
-    `);
-    await db.raw(`grant all on table ${tableIdentifier} to authenticated`);
-    await db.raw(
-      `insert into ${tableIdentifier} (id, tenant_id, content) values (1, 1, 'tenant-1'), (2, 2, 'tenant-2')`,
+  async function dropSchema() {
+    if (!orm) {
+      return;
+    }
+
+    await orm.schema.dropSchema({
+      dropDb: false,
+      dropMigrationsTable: false,
+      schema: DOCUMENT_SCHEMA_NAME,
+    });
+  }
+
+  async function createPolicyFixture() {
+    const tableIdentifier = quoteQualifiedIdentifier(
+      DOCUMENT_SCHEMA_NAME,
+      DOCUMENT_TABLE_NAME,
     );
+
+    await execute(
+      `grant usage on schema ${quoteIdentifier(DOCUMENT_SCHEMA_NAME)} to authenticated`,
+    );
+    await execute(`grant all on table ${tableIdentifier} to authenticated`);
+    await orm.em.fork().insertMany(RowLevelSecurityDocumentEntity, [
+      {
+        content: "tenant-1",
+        id: 1,
+        tenantId: 1,
+      },
+      {
+        content: "tenant-2",
+        id: 2,
+        tenantId: 2,
+      },
+    ]);
 
     await runStatements(
       createPolicyUpSqlStatements({
-        schemaName: "public",
-        tableName,
-        policyName: `${tableName}_tenant_policy`,
+        schemaName: DOCUMENT_SCHEMA_NAME,
+        tableName: DOCUMENT_TABLE_NAME,
+        policyName: `${DOCUMENT_TABLE_NAME}_tenant_policy`,
         command: PolicyCommand.ALL,
         roles: ["authenticated"],
         using:
@@ -187,13 +225,32 @@ describe("RowLevelSecurity - database integration", () => {
 
   async function runStatements(statements: string[]) {
     for (const statement of statements) {
-      await db.raw(statement);
+      await execute(statement);
     }
+  }
+
+  async function execute(sql: string) {
+    await orm.em.getConnection().execute(sql);
+  }
+
+  async function withKnexTransaction<T>(
+    callback: (trx: Knex) => T | Promise<T>,
+  ) {
+    return await orm.em.transactional(async (em) => {
+      const trx = em.getTransactionContext<Knex>();
+
+      if (!trx) {
+        throw new Error("Transaction context is not available.");
+      }
+
+      return await callback(trx);
+    });
   }
 
   async function transactionalWithRowLevelSecurity<T>(
     callback: (em: EntityManager) => T | Promise<T>,
   ) {
+    const entityManager = RequestContext.get(CoreEntityManager) ?? orm.em;
     const transactional = Reflect.get(
       RowLevelSecurityEntityManager.prototype,
       "transactional",
@@ -202,22 +259,6 @@ describe("RowLevelSecurity - database integration", () => {
       cb: (em: EntityManager) => T | Promise<T>,
     ) => Promise<T>;
 
-    return await transactional.call(orm.em, callback);
+    return await transactional.call(entityManager as EntityManager, callback);
   }
 });
-
-function getDatabaseUrl() {
-  const databaseUrl = process.env.DB_URL ?? process.env.DATABASE_URL;
-
-  if (!databaseUrl) {
-    throw new Error(
-      "DB_URL or DATABASE_URL is required to run row-level-security database integration tests.",
-    );
-  }
-
-  return databaseUrl;
-}
-
-function createTestTableName() {
-  return `rls_e2e_documents_${String(process.pid)}_${String(Date.now())}`;
-}
