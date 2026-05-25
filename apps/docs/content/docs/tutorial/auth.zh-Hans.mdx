@@ -1,9 +1,9 @@
 ---
 title: "Auth"
-description: "使用 better-auth 为 NestJS 应用添加认证，支持会话、OAuth/OIDC、守卫和行级安全。"
+description: "使用 better-auth 为 NestJS 应用添加认证，支持会话、OAuth/OIDC、守卫和中间件。"
 ---
 
-`@nest-boot/auth` 模块提供基于 [better-auth](https://www.better-auth.com/) 的认证功能，包括 MikroORM 会话持久化、自动中间件注册和全局守卫。配套的 `@nest-boot/auth-rls` 模块集成 PostgreSQL 行级安全（RLS）策略。
+`@nest-boot/auth` 模块提供基于 [better-auth](https://www.better-auth.com/) 的认证功能，包括 MikroORM 会话持久化、自动中间件注册和全局守卫。
 
 ## 安装
 
@@ -209,55 +209,6 @@ export class User extends BaseUser {
 
 同样继承 `BaseAccount`、`BaseSession` 和 `BaseVerification` 来定义其他认证实体。
 
-## Auth RLS（行级安全）
-
-`@nest-boot/auth-rls` 模块将 PostgreSQL 行级安全与认证集成，在每个请求中自动设置安全上下文变量。
-
-### 安装
-
-```bash
-pnpm add @nest-boot/auth-rls
-```
-
-### 注册
-
-```typescript
-import { AuthRlsModule } from "@nest-boot/auth-rls";
-import { RequestContext } from "@nest-boot/request-context";
-import { WorkspaceMember } from "./workspace-member.entity";
-
-const AuthRlsDynamicModule = AuthRlsModule.forRootAsync({
-  useFactory: () => ({
-    context: (ctx) => {
-      const workspaceMember = RequestContext.get(WorkspaceMember);
-
-      if (workspaceMember) {
-        ctx.set("workspace_id", workspaceMember.workspace.id);
-        ctx.set("workspace_member_id", workspaceMember.id);
-      }
-
-      return ctx;
-    },
-  }),
-});
-```
-
-`context` 回调在每个请求中被调用。它接收一个 `Map`，你在其中设置 PostgreSQL 会话变量。这些变量随后通过 `SET LOCAL` 应用，使 RLS 策略可以引用：
-
-```sql
--- 示例 RLS 策略
-CREATE POLICY workspace_isolation ON files
-  USING (workspace_id = current_setting('app.workspace_id')::bigint);
-```
-
-### 工作原理
-
-1. `AuthMiddleware` 解析会话并将已认证用户填充到 `RequestContext`
-2. `onAuthenticated` 加载工作区/租户上下文
-3. `RequestTransactionMiddleware` 将请求包装在数据库事务中
-4. `AuthRlsMiddleware` 在事务内设置 PostgreSQL 会话变量
-5. 后续所有查询都受 RLS 策略过滤
-
 ## NestJS 集成
 
 包含认证的完整 `main.ts` 设置：
@@ -294,8 +245,8 @@ void bootstrap();
 
 3. **环境变量** — 将 `AUTH_SECRET` 存储在环境变量中，确保至少 32 个字符且具有高熵值。
 
-4. **模块顺序** — 按 `RequestContextModule` → `AuthModule` → `AuthRlsModule` → `RequestTransactionModule` 的顺序注册，以确保正确的中间件链。
+4. **RLS 上下文** — 将认证与 PostgreSQL RLS 结合时，在 `onAuthenticated` 中加载租户或工作区，并写入 `RowLevelSecurityContext`。参见 [Row-Level Security 教程](/docs/tutorial/row-level-security)。
 
 ## API 参考
 
-详细的 API 文档请参阅 [Auth API 参考](/docs/api/auth) 和 [Auth RLS API 参考](/docs/api/auth-rls)。
+详细的 API 文档请参阅 [Auth API 参考](/docs/api/auth)。

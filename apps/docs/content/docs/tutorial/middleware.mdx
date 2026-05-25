@@ -3,7 +3,7 @@ title: "Middleware"
 description: "Ordered middleware management with dependency resolution for NestJS."
 ---
 
-The `@nest-boot/middleware` module provides a `MiddlewareManager` that enables dependency-aware, ordered middleware registration — ensuring middleware like auth, RLS, and request transactions execute in the correct order.
+The `@nest-boot/middleware` module provides a `MiddlewareManager` that enables dependency-aware, ordered middleware registration, ensuring middleware like request context and auth execute in the correct order.
 
 ## Installation
 
@@ -25,7 +25,7 @@ export class CommonModule {}
 
 ## Usage
 
-`MiddlewareManager` is typically used internally by other `@nest-boot` modules (Auth, AuthRLS, RequestTransaction) to register their middleware with proper ordering. You can also use it directly:
+`MiddlewareManager` is typically used internally by other `@nest-boot` modules to register their middleware with proper ordering. You can also use it directly:
 
 ```typescript
 import { MiddlewareManager } from "@nest-boot/middleware";

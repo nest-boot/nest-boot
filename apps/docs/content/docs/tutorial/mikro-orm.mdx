@@ -1,9 +1,9 @@
 ---
 title: "MikroORM"
-description: "MikroORM integration with request-scoped entity manager, EntityService base class, encrypted/hashed properties, and request transactions."
+description: "MikroORM integration with request-scoped entity manager, EntityService base class, and encrypted/hashed properties."
 ---
 
-The `@nest-boot/mikro-orm` module wraps [`@mikro-orm/nestjs`](https://mikro-orm.io/docs/usage-with-nestjs) with automatic environment-based configuration and request context integration for per-request entity manager forking. Companion modules provide [encrypted properties](#encrypted-properties), [hashed properties](#hashed-properties), and [request-scoped transactions](#request-transactions).
+The `@nest-boot/mikro-orm` module wraps [`@mikro-orm/nestjs`](https://mikro-orm.io/docs/usage-with-nestjs) with automatic environment-based configuration and request context integration for per-request entity manager forking. Companion modules provide [encrypted properties](#encrypted-properties), [hashed properties](#hashed-properties), and [PostgreSQL row-level security](/docs/tutorial/row-level-security).
 
 ## Installation
 
@@ -207,35 +207,16 @@ export class User {
 
 Values are automatically hashed on write. Requires `HashModule` to be registered.
 
-## Request Transactions
-
-The `@nest-boot/mikro-orm-request-transaction` module wraps each request in a database transaction, which is essential for RLS and data consistency:
-
-```bash
-pnpm add @nest-boot/mikro-orm-request-transaction
-```
-
-```typescript
-import { RequestTransactionModule } from "@nest-boot/mikro-orm-request-transaction";
-
-@Module({
-  imports: [RequestTransactionModule],
-})
-export class CommonModule {}
-```
-
-The transaction is automatically committed on success and rolled back on error.
-
 ## Best Practices
 
 1. **Environment Config** — Use `loadConfigFromEnv()` for both runtime and CLI configuration to keep them in sync.
 
 2. **EntityService as Base** — Extend `EntityService` for all domain services to get CRUD + DataLoader batching out of the box.
 
-3. **Request Transactions** — Always use `RequestTransactionModule` when using Auth-RLS for proper transaction scoping.
+3. **RLS Entity Manager** — Use `@nest-boot/row-level-security` when PostgreSQL policies should enforce tenant or workspace isolation.
 
 4. **Soft Delete** — Configure `softDeleteKey` in `EntityService` for entities that support soft delete.
 
 ## API Reference
 
-For detailed API documentation, see the [MikroORM API Reference](/docs/api/mikro-orm), [MikroORM Crypt API Reference](/docs/api/mikro-orm-crypt), [MikroORM Hash API Reference](/docs/api/mikro-orm-hash), and [Request Transaction API Reference](/docs/api/mikro-orm-request-transaction).
+For detailed API documentation, see the [MikroORM API Reference](/docs/api/mikro-orm), [MikroORM Crypt API Reference](/docs/api/mikro-orm-crypt), and [MikroORM Hash API Reference](/docs/api/mikro-orm-hash).

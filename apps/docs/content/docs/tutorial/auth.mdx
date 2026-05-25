@@ -1,9 +1,9 @@
 ---
 title: "Auth"
-description: "Add authentication to your NestJS app with better-auth, supporting sessions, OAuth/OIDC, guards, and Row-Level Security."
+description: "Add authentication to your NestJS app with better-auth, supporting sessions, OAuth/OIDC, guards, and middleware."
 ---
 
-The `@nest-boot/auth` module provides authentication powered by [better-auth](https://www.better-auth.com/), with MikroORM-based session persistence, automatic middleware registration, and a global guard. The companion `@nest-boot/auth-rls` module integrates with PostgreSQL Row-Level Security (RLS) policies.
+The `@nest-boot/auth` module provides authentication powered by [better-auth](https://www.better-auth.com/), with MikroORM-based session persistence, automatic middleware registration, and a global guard.
 
 ## Installation
 
@@ -209,55 +209,6 @@ export class User extends BaseUser {
 
 Similarly extend `BaseAccount`, `BaseSession`, and `BaseVerification` for the other auth entities.
 
-## Auth RLS (Row-Level Security)
-
-The `@nest-boot/auth-rls` module integrates PostgreSQL Row-Level Security with authentication, automatically setting security context variables on each request.
-
-### Installation
-
-```bash
-pnpm add @nest-boot/auth-rls
-```
-
-### Registration
-
-```typescript
-import { AuthRlsModule } from "@nest-boot/auth-rls";
-import { RequestContext } from "@nest-boot/request-context";
-import { WorkspaceMember } from "./workspace-member.entity";
-
-const AuthRlsDynamicModule = AuthRlsModule.forRootAsync({
-  useFactory: () => ({
-    context: (ctx) => {
-      const workspaceMember = RequestContext.get(WorkspaceMember);
-
-      if (workspaceMember) {
-        ctx.set("workspace_id", workspaceMember.workspace.id);
-        ctx.set("workspace_member_id", workspaceMember.id);
-      }
-
-      return ctx;
-    },
-  }),
-});
-```
-
-The `context` callback is invoked on each request. It receives a `Map` where you set PostgreSQL session variables. These are then applied via `SET LOCAL` so that RLS policies can reference them:
-
-```sql
--- Example RLS policy
-CREATE POLICY workspace_isolation ON files
-  USING (workspace_id = current_setting('app.workspace_id')::bigint);
-```
-
-### How It Works
-
-1. `AuthMiddleware` resolves the session and populates `RequestContext` with the authenticated user
-2. `onAuthenticated` loads the workspace/tenant context
-3. `RequestTransactionMiddleware` wraps the request in a database transaction
-4. `AuthRlsMiddleware` sets the PostgreSQL session variables within the transaction
-5. All subsequent queries are filtered by the RLS policies
-
 ## NestJS Integration
 
 A complete `main.ts` setup with auth:
@@ -294,8 +245,8 @@ void bootstrap();
 
 3. **Environment Variables** — Store `AUTH_SECRET` in environment variables and ensure it's at least 32 characters with high entropy.
 
-4. **Module Ordering** — Register `RequestContextModule` → `AuthModule` → `AuthRlsModule` → `RequestTransactionModule` in that order for correct middleware chaining.
+4. **RLS Context** — When combining auth with PostgreSQL RLS, load the tenant or workspace in `onAuthenticated` and write it to `RowLevelSecurityContext`. See the [Row-Level Security tutorial](/docs/tutorial/row-level-security).
 
 ## API Reference
 
-For detailed API documentation, see the [Auth API Reference](/docs/api/auth) and [Auth RLS API Reference](/docs/api/auth-rls).
+For detailed API documentation, see the [Auth API Reference](/docs/api/auth).

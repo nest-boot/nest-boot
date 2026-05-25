@@ -3,7 +3,7 @@ title: "中间件"
 description: "NestJS 的有序中间件管理，支持依赖解析。"
 ---
 
-`@nest-boot/middleware` 模块提供 `MiddlewareManager`，支持依赖感知的有序中间件注册，确保认证、RLS 和请求事务等中间件按正确顺序执行。
+`@nest-boot/middleware` 模块提供 `MiddlewareManager`，支持依赖感知的有序中间件注册，确保请求上下文和认证等中间件按正确顺序执行。
 
 ## 安装
 
@@ -25,7 +25,7 @@ export class CommonModule {}
 
 ## 用法
 
-`MiddlewareManager` 通常由其他 `@nest-boot` 模块（Auth、AuthRLS、RequestTransaction）内部使用来注册有正确顺序的中间件。你也可以直接使用：
+`MiddlewareManager` 通常由其他 `@nest-boot` 模块内部使用来注册有正确顺序的中间件。你也可以直接使用：
 
 ```typescript
 import { MiddlewareManager } from "@nest-boot/middleware";

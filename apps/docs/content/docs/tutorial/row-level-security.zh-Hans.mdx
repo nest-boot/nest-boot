@@ -1,0 +1,147 @@
+---
+title: "Row-Level Security"
+description: "面向 MikroORM 实体、请求上下文和迁移生成的 PostgreSQL 行级安全辅助工具。"
+---
+
+`@nest-boot/row-level-security` 包帮助 Nest Boot 应用在 MikroORM 中使用 PostgreSQL Row-Level Security（RLS）。它提供实体策略元数据、根据元数据生成 SQL 的迁移辅助工具，以及在事务内应用请求作用域角色和上下文值的实体管理器。
+
+## 安装
+
+```bash
+pnpm add @nest-boot/row-level-security @nest-boot/request-context @mikro-orm/postgresql @mikro-orm/migrations
+```
+
+## 配置 MikroORM
+
+将 `RowLevelSecurityEntityManager` 配置为 MikroORM 的实体管理器，并将 `RowLevelSecurityMigrationGenerator` 配置为迁移生成器：
+
+```typescript
+import {
+  RowLevelSecurityEntityManager,
+  RowLevelSecurityMigrationGenerator,
+  setRowLevelSecurityOptions,
+} from "@nest-boot/row-level-security";
+import { RequestContext } from "@nest-boot/request-context";
+
+import { User } from "./user.entity";
+import { Workspace } from "./workspace.entity";
+
+setRowLevelSecurityOptions({
+  isAuthenticated: () => Boolean(RequestContext.get(User)),
+  getContext: () => {
+    const workspace = RequestContext.get(Workspace);
+
+    return workspace ? [["workspace_id", workspace.id]] : [];
+  },
+});
+
+export default {
+  entityManager: RowLevelSecurityEntityManager,
+  migrations: {
+    generator: RowLevelSecurityMigrationGenerator,
+  },
+};
+```
+
+`setRowLevelSecurityOptions()` 配置实体管理器使用的进程级钩子：
+
+- `authenticatedRole` 和 `anonymousRole` 默认分别为 `authenticated`、`anonymous`
+- `isAuthenticated()` 在请求没有显式设置角色时选择默认角色
+- `getContext()` 提供会转换为 `app.workspace_id` 等事务级 PostgreSQL 设置的值
+- `shouldApply()` 可用于后台任务或特权操作，跳过 RLS 设置
+
+## 定义实体策略
+
+在 MikroORM 实体上添加 `@Policy()`。同时提供 `property` 和 `context` 时，包会生成 `USING` 和 `WITH CHECK` 谓词，将映射后的数据库列与 `app.get_context(...)` 返回值比较。
+
+```typescript
+import { Entity, PrimaryKey, Property, t } from "@mikro-orm/postgresql";
+import { Policy, PolicyCommand } from "@nest-boot/row-level-security";
+
+@Policy({
+  command: PolicyCommand.ALL,
+  property: "workspaceId",
+  context: "workspace_id",
+  roles: ["authenticated"],
+})
+@Entity({ tableName: "files" })
+export class File {
+  @PrimaryKey({ type: t.integer })
+  id!: number;
+
+  @Property({ fieldName: "workspace_id", type: t.integer })
+  workspaceId!: number;
+
+  @Property({ type: t.string })
+  name!: string;
+}
+```
+
+这个策略只允许已认证请求读取、插入、更新和删除 `workspace_id` 与事务级 `app.workspace_id` 上下文一致的行。
+
+需要自定义策略逻辑时，可以直接提供 SQL 谓词：
+
+```typescript
+@Policy({
+  name: "published_files_read_policy",
+  command: PolicyCommand.SELECT,
+  using: `"is_public" = true or (select app.get_context('workspace_id', null::integer)) = "workspace_id"`,
+  roles: ["anonymous", "authenticated"],
+})
+```
+
+## 生成迁移
+
+配置 `RowLevelSecurityMigrationGenerator` 后，MikroORM 生成迁移时会根据实体元数据中的策略写入 RLS SQL。生成的迁移会继承 `RowLevelSecurityMigration`，用于添加共享的 `app.get_context(...)` 函数、数据库角色、授权和策略 DDL。
+
+```bash
+pnpm mikro-orm migration:create
+```
+
+生成的策略迁移会：
+
+1. 在目标表上启用 row-level security。
+2. 将需要的表权限和序列权限授予策略角色。
+3. 在元数据变化时删除并重建策略。
+4. 在 down 迁移中恢复之前的策略状态。
+
+## 设置请求上下文
+
+`RowLevelSecurityEntityManager` 会在活动事务内执行 `SET LOCAL ROLE ...` 和 `set_config('app.<key>', value, true)` 来应用 RLS。它会合并 `setRowLevelSecurityOptions().getContext()` 提供的值，以及通过 `RowLevelSecurityContext` 写入的请求作用域值。
+
+```typescript
+import { RowLevelSecurityContext } from "@nest-boot/row-level-security";
+import { RequestContext } from "@nest-boot/request-context";
+
+import { WorkspaceMember } from "./workspace-member.entity";
+
+const workspaceMember = RequestContext.get(WorkspaceMember);
+
+if (workspaceMember) {
+  RowLevelSecurityContext.setRole("authenticated");
+  RowLevelSecurityContext.set("workspace_id", workspaceMember.workspace.id);
+  RowLevelSecurityContext.set("workspace_member_id", workspaceMember.id);
+}
+```
+
+上下文 key 必须是 `snake_case`，因为它们会以 `app.` 前缀暴露为 PostgreSQL 设置。
+
+## 运行时行为
+
+支持的实体管理器方法在事务外运行时，`RowLevelSecurityEntityManager` 会自动开启事务，并在查询前应用 RLS 角色和上下文。如果已经处于事务中，它会复用当前事务，不会重复嵌套设置。
+
+包装的方法包括常见读取、写入、计数、upsert、删除和 `flush()`。当多个操作必须共享同一个 RLS 上下文时，也可以直接调用 `em.transactional()`。
+
+## 最佳实践
+
+1. **优先使用生成策略** — 对租户或工作区隔离使用 `property` + `context`，让迁移 SQL 与实体元数据保持一致。
+
+2. **保持上下文小而稳定** — 存储 `workspace_id`、`tenant_id`、`user_id` 等标识符，不要存储整个对象。
+
+3. **显式指定角色** — 在策略上包含 `roles`，让授权和 PostgreSQL 角色行为更可预测。
+
+4. **有意绕过** — 对可信后台任务使用 `shouldApply()`，不要临时清空上下文。
+
+## API 参考
+
+详细的 API 文档请参阅 [Row-Level Security API 参考](/docs/api/row-level-security)。

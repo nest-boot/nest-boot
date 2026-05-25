@@ -4,6 +4,7 @@
     "hash",
     "crypt",
     "mikro-orm",
+    "row-level-security",
     "middleware",
     "redis",
     "request-context",
