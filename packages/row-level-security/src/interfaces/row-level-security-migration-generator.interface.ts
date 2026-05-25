@@ -68,5 +68,6 @@ export interface PolicyRow {
   permissive?: boolean | null;
   command?: string | null;
   qual?: string | null;
+  roles?: string[] | string | null;
   with_check?: string | null;
 }

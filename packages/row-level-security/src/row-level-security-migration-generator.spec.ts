@@ -37,6 +37,8 @@ class WorkspaceMemberWithGeneratedPolicy {}
 })
 class AuditLog {}
 
+class UnmanagedEntity {}
+
 describe("RowLevelSecurityMigrationGenerator", () => {
   afterEach(() => {
     jest.restoreAllMocks();
@@ -53,6 +55,7 @@ describe("RowLevelSecurityMigrationGenerator", () => {
           command: "r",
           qual: "true",
           with_check: null,
+          roles: ["authenticated"],
         },
         {
           policy_name: "workspace_member_insert_policy",
@@ -62,6 +65,7 @@ describe("RowLevelSecurityMigrationGenerator", () => {
           command: "a",
           qual: null,
           with_check: "true",
+          roles: ["authenticated"],
         },
         {
           policy_name: "workspace_member_update_policy",
@@ -71,6 +75,7 @@ describe("RowLevelSecurityMigrationGenerator", () => {
           command: "w",
           qual: "true",
           with_check: "true",
+          roles: ["authenticated"],
         },
         {
           policy_name: "workspace_member_delete_policy",
@@ -80,6 +85,7 @@ describe("RowLevelSecurityMigrationGenerator", () => {
           command: "d",
           qual: "true",
           with_check: null,
+          roles: ["authenticated"],
         },
         {
           policy_name: "workspace_member_all_policy",
@@ -89,6 +95,7 @@ describe("RowLevelSecurityMigrationGenerator", () => {
           command: "*",
           qual: "true",
           with_check: "true",
+          roles: ["authenticated"],
         },
       ]),
     );
@@ -102,6 +109,7 @@ describe("RowLevelSecurityMigrationGenerator", () => {
               mode: "restrictive",
               command: "insert",
               withCheck: "true",
+              roles: ["authenticated"],
             }),
             expect.objectContaining({
               policyName: "workspace_member_delete_policy",
@@ -149,6 +157,7 @@ describe("RowLevelSecurityMigrationGenerator", () => {
     expect(execute.mock.calls[0]?.[0]).toContain(
       "('public', 'workspace_member')",
     );
+    expect(execute.mock.calls[0]?.[0]).toContain("unnest(p.polroles)");
     expect((generator as any).existingPolicyDefinitions).toBeUndefined();
     expect((generator as any).currentPolicyDefinitions).toBeUndefined();
   });
@@ -196,6 +205,37 @@ describe("RowLevelSecurityMigrationGenerator", () => {
     await generator.generate({ up: [], down: [] });
 
     expect(execute).not.toHaveBeenCalled();
+  });
+
+  it("only loads existing database policies for tables managed by Policy metadata", async () => {
+    const execute = jest.fn((_sql: string) => Promise.resolve([]));
+    jest
+      .spyOn(TSMigrationGenerator.prototype, "generate")
+      .mockResolvedValue(["migration-file", "/tmp/Migration.ts"]);
+    const generator = createGenerator(
+      [
+        {
+          class: WorkspaceMember,
+          tableName: "workspace_member",
+        },
+        {
+          class: UnmanagedEntity,
+          tableName: "unmanaged_entity",
+        },
+      ],
+      {
+        getConnection: () => ({
+          execute,
+        }),
+      },
+    );
+
+    await generator.generate({ up: [], down: [] });
+
+    expect(execute.mock.calls[0]?.[0]).toContain(
+      "('public', 'workspace_member')",
+    );
+    expect(execute.mock.calls[0]?.[0]).not.toContain("unmanaged_entity");
   });
 
   it("throws when MikroORM metadata is unavailable", () => {
@@ -256,6 +296,25 @@ describe("RowLevelSecurityMigrationGenerator", () => {
     );
   });
 
+  it("throws when MikroORM migration output cannot be converted to the RLS base class", () => {
+    jest
+      .spyOn(TSMigrationGenerator.prototype, "generateMigrationFile")
+      .mockReturnValue("export class MigrationTest {}");
+    const generator = createGenerator([
+      {
+        class: WorkspaceMember,
+        tableName: "workspace_member",
+      },
+    ]);
+
+    expect(() =>
+      generator.generateMigrationFile("MigrationTest", {
+        up: [],
+        down: [],
+      }),
+    ).toThrow("MikroORM migration output format is not supported");
+  });
+
   it("generates policy SQL for all policy entities in a blank migration", () => {
     const generator = createGenerator([
       {
@@ -307,6 +366,7 @@ describe("RowLevelSecurityMigrationGenerator", () => {
         policyName: "removed_workspace_member_policy",
         command: PolicyCommand.SELECT,
         using: "true",
+        roles: ["authenticated"],
       },
     ];
 
@@ -320,6 +380,44 @@ describe("RowLevelSecurityMigrationGenerator", () => {
     );
     expect(file).toContain("create policy workspace_member_user_select_policy");
     expect(file).toContain("create policy removed_workspace_member_policy");
+    expect(file).toContain("create policy removed_workspace_member_policy on");
+    expect(file).toContain("for select to authenticated using true");
+  });
+
+  it("recreates policies when an existing policy changes content", () => {
+    const generator = createGenerator([
+      {
+        class: WorkspaceMember,
+        tableName: "workspace_member",
+      },
+    ]);
+    (generator as any).existingPolicyDefinitions = [
+      {
+        entityName: "WorkspaceMember",
+        schemaName: "public",
+        tableName: "workspace_member",
+        policyName: "workspace_member_user_select_policy",
+        command: PolicyCommand.SELECT,
+        using: "false",
+        roles: ["authenticated"],
+      },
+    ];
+
+    const file = generator.generateMigrationFile("MigrationTest", {
+      up: ['alter table "workspace_member" add column "display_name" text;'],
+      down: ['alter table "workspace_member" drop column "display_name";'],
+    });
+
+    expect(file).toContain(
+      "drop policy if exists workspace_member_user_select_policy",
+    );
+    expect(file).toContain(
+      "create policy workspace_member_user_select_policy on",
+    );
+    expect(file).toContain(
+      "using ((select app.get_context('user_id', null::bigint)) = \"user_id\")",
+    );
+    expect(file).toContain("for select to authenticated using false");
   });
 
   it("matches create table statements for non-public schemas and collection names", () => {

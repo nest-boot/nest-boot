@@ -57,9 +57,7 @@ export class RowLevelSecurityEntityManager extends EntityManager {
         );
       }
 
-      const builder = new RowLevelSecurityContextBuilder(
-        rowLevelSecurityOptions.namespace,
-      );
+      const builder = new RowLevelSecurityContextBuilder();
       const role =
         RowLevelSecurityContext.getRole() ??
         ((await rowLevelSecurityOptions.isAuthenticated?.())

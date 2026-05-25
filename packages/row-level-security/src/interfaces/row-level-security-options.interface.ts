@@ -10,8 +10,6 @@ export type RowLevelSecurityContextEntries = Iterable<
 
 /** Runtime options used by {@link RowLevelSecurityEntityManager}. */
 export interface RowLevelSecurityOptions {
-  /** PostgreSQL setting namespace. Defaults to `app`. */
-  namespace?: string;
   /** Database role used for authenticated requests. Defaults to `authenticated`. */
   authenticatedRole?: string;
   /** Database role used for anonymous requests. Defaults to `anonymous`. */

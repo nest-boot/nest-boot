@@ -19,7 +19,6 @@ describe("RowLevelSecurityEntityManager", () => {
       new RequestContext({ type: "http" }),
       async () => {
         setRowLevelSecurityOptions({
-          namespace: "app_tenant",
           authenticatedRole: "app_authenticated",
           isAuthenticated: () => true,
           getContext: () => [["tenant_id", "42"]],
@@ -31,7 +30,7 @@ describe("RowLevelSecurityEntityManager", () => {
 
     expect(result).toBe("transaction-result");
     expect(rawSql).toEqual([
-      "SET LOCAL ROLE app_authenticated;\nSELECT set_config('app_tenant.tenant_id', '42', true);",
+      "SET LOCAL ROLE app_authenticated;\nSELECT set_config('app.tenant_id', '42', true);",
     ]);
   });
 
@@ -69,7 +68,6 @@ describe("RowLevelSecurityEntityManager", () => {
 
     await RequestContext.run(new RequestContext({ type: "http" }), async () => {
       setRowLevelSecurityOptions({
-        namespace: "app_tenant",
         anonymousRole: "app_anonymous",
         getContext: () => [["tenant_id", "42"]],
       });
@@ -78,7 +76,7 @@ describe("RowLevelSecurityEntityManager", () => {
     });
 
     expect(rawSql).toEqual([
-      "SET LOCAL ROLE app_anonymous;\nSELECT set_config('app_tenant.tenant_id', '42', true);",
+      "SET LOCAL ROLE app_anonymous;\nSELECT set_config('app.tenant_id', '42', true);",
     ]);
   });
 

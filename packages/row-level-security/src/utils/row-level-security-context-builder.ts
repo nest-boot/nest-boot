@@ -8,11 +8,7 @@ import {
 /** Builds SQL that writes RLS context values into PostgreSQL transaction settings. */
 export class RowLevelSecurityContextBuilder {
   private readonly ctx = new Map<string, string>();
-
-  /** Creates a builder for a PostgreSQL setting namespace. */
-  constructor(private readonly namespace = "app") {
-    assertSnakeCase(namespace, "Row level security context namespace");
-  }
+  private readonly namespace = "app";
 
   /** Adds a context key and value, ignoring nullish values. */
   set<S extends string>(
@@ -36,11 +32,17 @@ export class RowLevelSecurityContextBuilder {
 
   /** Renders a `SELECT set_config(...)` statement for the collected entries. */
   toSQL(): string {
-    return /* SQL */ `SELECT ${this.entries()
+    const statements = this.entries()
       .map(([key, value]) => {
         const escapedValue = escapeSqlLiteral(value);
         return /* SQL */ `set_config('${this.namespace}.${key}', '${escapedValue}', true)`;
       })
-      .join(",")};`;
+      .join(",");
+
+    if (!statements) {
+      return "SELECT 1;";
+    }
+
+    return /* SQL */ `SELECT ${statements};`;
   }
 }

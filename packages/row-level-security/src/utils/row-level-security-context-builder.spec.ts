@@ -2,7 +2,7 @@ import { RowLevelSecurityContextBuilder } from "./row-level-security-context-bui
 
 describe("RowLevelSecurityContextBuilder", () => {
   it("generates transaction-local tenant context SQL", () => {
-    const builder = new RowLevelSecurityContextBuilder("tenant");
+    const builder = new RowLevelSecurityContextBuilder();
 
     builder.set("request_id", "1");
     builder.set("tenant_id", "42");
@@ -12,12 +12,12 @@ describe("RowLevelSecurityContextBuilder", () => {
       ["tenant_id", "42"],
     ]);
     expect(builder.toSQL()).toBe(
-      "SELECT set_config('tenant.request_id', '1', true),set_config('tenant.tenant_id', '42', true);",
+      "SELECT set_config('app.request_id', '1', true),set_config('app.tenant_id', '42', true);",
     );
   });
 
   it("ignores null and undefined values", () => {
-    const builder = new RowLevelSecurityContextBuilder("tenant");
+    const builder = new RowLevelSecurityContextBuilder();
 
     builder.set("request_id", undefined);
     builder.set("tenant_id", null);
@@ -25,31 +25,35 @@ describe("RowLevelSecurityContextBuilder", () => {
 
     expect(builder.entries()).toEqual([["is_enabled", "false"]]);
     expect(builder.toSQL()).toBe(
-      "SELECT set_config('tenant.is_enabled', 'false', true);",
+      "SELECT set_config('app.is_enabled', 'false', true);",
     );
   });
 
+  it("renders no-op SQL when every value is nullish", () => {
+    const builder = new RowLevelSecurityContextBuilder();
+
+    builder.set("request_id", undefined);
+    builder.set("tenant_id", null);
+
+    expect(builder.entries()).toEqual([]);
+    expect(builder.toSQL()).toBe("SELECT 1;");
+  });
+
   it("escapes string values for SQL literals", () => {
-    const builder = new RowLevelSecurityContextBuilder("tenant");
+    const builder = new RowLevelSecurityContextBuilder();
 
     builder.set("user_name", "O'Connor");
 
     expect(builder.toSQL()).toBe(
-      "SELECT set_config('tenant.user_name', 'O''Connor', true);",
+      "SELECT set_config('app.user_name', 'O''Connor', true);",
     );
   });
 
   it("rejects non snake_case context keys", () => {
-    const builder = new RowLevelSecurityContextBuilder("tenant");
+    const builder = new RowLevelSecurityContextBuilder();
 
     expect(() => builder.set("userId" as never, "1")).toThrow(
       "Row level security context key must be snake_case",
     );
-  });
-
-  it("rejects unsafe namespaces", () => {
-    expect(
-      () => new RowLevelSecurityContextBuilder("tenant.context" as never),
-    ).toThrow("Row level security context namespace must be snake_case");
   });
 });

@@ -3,6 +3,10 @@ import * as rowLevelSecurity from ".";
 import * as rowLevelSecurityUtils from "./utils";
 
 describe("row level security package exports", () => {
+  afterEach(() => {
+    rowLevelSecurityUtils.setRowLevelSecurityOptions();
+  });
+
   it("exports the public package API", () => {
     expect(rowLevelSecurity.Policy).toBeDefined();
     expect(rowLevelSecurity.PolicyCommand.SELECT).toBe("select");
@@ -21,7 +25,6 @@ describe("row level security package exports", () => {
     expect(rowLevelSecurityUtils.DEFAULT_ROW_LEVEL_SECURITY_OPTIONS).toEqual({
       anonymousRole: "anonymous",
       authenticatedRole: "authenticated",
-      namespace: "app",
     });
     expect(rowLevelSecurityUtils.createPolicyBootstrapSqlStatements()).toEqual(
       expect.arrayContaining(["create schema if not exists app;"]),
@@ -32,5 +35,15 @@ describe("row level security package exports", () => {
     const diff: MigrationDiff = { down: [], up: [] };
 
     expect(diff).toEqual({ down: [], up: [] });
+  });
+
+  it("returns a copy of process-level options", () => {
+    const options = rowLevelSecurityUtils.getRowLevelSecurityOptions();
+
+    options.authenticatedRole = "mutated";
+
+    expect(
+      rowLevelSecurityUtils.getRowLevelSecurityOptions().authenticatedRole,
+    ).toBe("authenticated");
   });
 });

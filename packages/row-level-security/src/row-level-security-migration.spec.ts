@@ -30,21 +30,23 @@ describe("RowLevelSecurityMigration", () => {
 
     const queries = migration.getQueries() as string[];
 
-    expect(migration.getQueries()).toHaveLength(14);
+    expect(migration.getQueries()).toHaveLength(12);
     expect(queries[0]).toContain("create role authenticated nologin");
     expect(queries[1]).toContain("create role anonymous nologin");
-    expect(queries[2]).toContain("create schema if not exists app");
-    expect(queries[9]).toContain("create or replace function app.get_context");
-    expect(queries[10]).toContain(
+    expect(queries[2]).toContain("grant authenticated to current_user");
+    expect(queries[3]).toContain("grant anonymous to current_user");
+    expect(queries[4]).toContain("create schema if not exists app");
+    expect(queries[7]).toContain("create or replace function app.get_context");
+    expect(queries[8]).toContain(
       'alter table "public"."workspace_member" enable row level security;',
     );
-    expect(queries[11]).toContain(
+    expect(queries[9]).toContain(
       'drop policy if exists workspace_member_user_select_policy on "public"."workspace_member";',
     );
-    expect(queries[12]).toContain(
+    expect(queries[10]).toContain(
       "create policy workspace_member_user_select_policy",
     );
-    expect(queries[13]).toContain(
+    expect(queries[11]).toContain(
       "drop policy if exists workspace_member_user_select_policy",
     );
   });

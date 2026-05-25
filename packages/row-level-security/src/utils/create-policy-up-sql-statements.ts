@@ -2,6 +2,7 @@ import { PolicyCommand } from "../enums/policy-command.enum";
 import { PolicyMode } from "../enums/policy-mode.enum";
 import type { PolicySqlOptions } from "../interfaces/policy-sql-options.interface";
 import { assertIdentifier } from "./assert-identifier";
+import { escapeSqlLiteral } from "./escape-sql-literal";
 import { quoteQualifiedIdentifier } from "./quote-qualified-identifier";
 
 /** Creates SQL statements that enable RLS and recreate a PostgreSQL policy. */
@@ -19,9 +20,68 @@ export function createPolicyUpSqlStatements(options: PolicySqlOptions) {
 
   return [
     `alter table ${tableIdentifier} enable row level security;`,
+    ...createPrivilegeGrantSqlStatements(options, tableIdentifier, roleSql),
     `drop policy if exists ${policyName} on ${tableIdentifier};`,
     `create policy ${policyName} on ${tableIdentifier} as ${mode} for ${command}${roleSql ? ` to ${roleSql}` : ""} ${getPolicyPredicateSql(command, predicates)};`,
   ];
+}
+
+function createPrivilegeGrantSqlStatements(
+  options: PolicySqlOptions,
+  tableIdentifier: string,
+  roleSql: string,
+) {
+  if (!roleSql) {
+    return [];
+  }
+
+  const command = options.command ?? PolicyCommand.ALL;
+  const privileges = getTablePrivileges(command).join(", ");
+  const statements = [
+    `grant ${privileges} on table ${tableIdentifier} to ${roleSql};`,
+  ];
+
+  if (requiresSequencePrivileges(command)) {
+    statements.push(createSequenceGrantSql(options, tableIdentifier, roleSql));
+  }
+
+  return statements;
+}
+
+function getTablePrivileges(command: PolicyCommand) {
+  if (command === PolicyCommand.SELECT) {
+    return ["select"];
+  }
+
+  if (command === PolicyCommand.INSERT) {
+    return ["insert"];
+  }
+
+  if (command === PolicyCommand.UPDATE) {
+    return ["select", "update"];
+  }
+
+  if (command === PolicyCommand.DELETE) {
+    return ["select", "delete"];
+  }
+
+  return ["select", "insert", "update", "delete"];
+}
+
+function requiresSequencePrivileges(command: PolicyCommand) {
+  return command === PolicyCommand.INSERT || command === PolicyCommand.ALL;
+}
+
+function createSequenceGrantSql(
+  options: PolicySqlOptions,
+  tableIdentifier: string,
+  roleSql: string,
+) {
+  const tableLiteral = escapeSqlLiteral(tableIdentifier);
+  const schemaName = escapeSqlLiteral(options.schemaName);
+  const tableName = escapeSqlLiteral(options.tableName);
+
+  return /* SQL */ `do $$ declare sequence_identifier text; begin for sequence_identifier in select pg_get_serial_sequence('${tableLiteral}', columns.column_name) from information_schema.columns where columns.table_schema = '${schemaName}' and columns.table_name = '${tableName}' and pg_get_serial_sequence('${tableLiteral}', columns.column_name) is not null loop execute format('grant usage, select on sequence %s to ${roleSql}', sequence_identifier); end loop; end $$;`;
 }
 
 function getPolicyPredicates(options: PolicySqlOptions) {

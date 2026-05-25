@@ -76,6 +76,10 @@ describe("RowLevelSecurity - database integration", () => {
     }
   });
 
+  beforeEach(() => {
+    setRowLevelSecurityOptions();
+  });
+
   afterEach(() => {
     setRowLevelSecurityOptions();
   });

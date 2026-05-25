@@ -29,7 +29,9 @@ export class RowLevelSecurityMigrationGenerator extends TSMigrationGenerator {
   ): Promise<[string, string]> {
     const entityMetadata = this.getEntityMetadata();
     const currentPolicyDefinitions = this.getPolicyDefinitions(entityMetadata);
-    const tableReferences = getEntityTableReferences(entityMetadata);
+    const tableReferences = getPolicyDefinitionTableReferences(
+      currentPolicyDefinitions,
+    );
 
     this.existingPolicyDefinitions =
       await this.getExistingPolicyDefinitionsFromDatabase(tableReferences);
@@ -81,12 +83,7 @@ export class RowLevelSecurityMigrationGenerator extends TSMigrationGenerator {
 
     const migrationFile = super.generateMigrationFile(className, policyDiff);
 
-    return migrationFile
-      .replace(
-        "import { Migration } from '@mikro-orm/migrations';",
-        "import { RowLevelSecurityMigration } from '@nest-boot/row-level-security';",
-      )
-      .replace("extends Migration", "extends RowLevelSecurityMigration");
+    return convertMigrationBaseClass(migrationFile);
   }
 
   private getPolicyDefinitionChanges(
@@ -108,12 +105,17 @@ export class RowLevelSecurityMigrationGenerator extends TSMigrationGenerator {
     return {
       added: currentPolicyDefinitions.filter(
         (definition) =>
-          !hasPolicyDefinition(existingPolicyDefinitions, definition) ||
-          isPolicyDefinitionIntroduced(definition, diff.up),
+          !hasPolicyDefinitionWithSameContent(
+            existingPolicyDefinitions,
+            definition,
+          ) || isPolicyDefinitionIntroduced(definition, diff.up),
       ),
       removed: existingPolicyDefinitions.filter(
         (definition) =>
-          !hasPolicyDefinition(currentPolicyDefinitions, definition),
+          !hasPolicyDefinitionWithSameContent(
+            currentPolicyDefinitions,
+            definition,
+          ),
       ),
     };
   }
@@ -210,7 +212,14 @@ export class RowLevelSecurityMigrationGenerator extends TSMigrationGenerator {
         p.polpermissive AS permissive,
         p.polcmd AS command,
         pg_get_expr(p.polqual, p.polrelid) AS qual,
-        pg_get_expr(p.polwithcheck, p.polrelid) AS with_check
+        pg_get_expr(p.polwithcheck, p.polrelid) AS with_check,
+        ARRAY(
+          SELECT roles.rolname
+          FROM unnest(p.polroles) policy_role(role_oid)
+          INNER JOIN pg_roles roles ON roles.oid = policy_role.role_oid
+          WHERE policy_role.role_oid <> 0
+          ORDER BY roles.rolname
+        ) AS roles
       FROM pg_policy p
       INNER JOIN pg_class c ON c.oid = p.polrelid
       INNER JOIN pg_namespace n ON n.oid = c.relnamespace
@@ -227,6 +236,25 @@ export class RowLevelSecurityMigrationGenerator extends TSMigrationGenerator {
   }
 }
 
+function convertMigrationBaseClass(migrationFile: string) {
+  const migrationImport = "import { Migration } from '@mikro-orm/migrations';";
+  const migrationBaseClass = "extends Migration";
+
+  if (
+    !migrationFile.includes(migrationImport) ||
+    !migrationFile.includes(migrationBaseClass)
+  ) {
+    throw new Error("MikroORM migration output format is not supported");
+  }
+
+  return migrationFile
+    .replace(
+      migrationImport,
+      "import { RowLevelSecurityMigration } from '@nest-boot/row-level-security';",
+    )
+    .replace(migrationBaseClass, "extends RowLevelSecurityMigration");
+}
+
 function getDefinitionBootstrapSql(definitions: RowLevelSecurityDefinition[]) {
   return [
     ...new Set(
@@ -235,19 +263,13 @@ function getDefinitionBootstrapSql(definitions: RowLevelSecurityDefinition[]) {
   ];
 }
 
-function getEntityTableReferences(metadata: EntityMetadataLike[]) {
-  return metadata.flatMap((entityMetadata) => {
-    if (!entityMetadata.class) {
-      return [];
-    }
-
-    return [
-      {
-        schemaName: normalizeSchemaName(entityMetadata.schema),
-        tableName: getTableName(entityMetadata),
-      },
-    ];
-  });
+function getPolicyDefinitionTableReferences(
+  definitions: RowLevelSecurityDefinition[],
+) {
+  return definitions.map((definition) => ({
+    schemaName: definition.schemaName,
+    tableName: definition.tableName,
+  }));
 }
 
 function dedupeTableReferences(tableReferences: TableReference[]) {
@@ -268,14 +290,51 @@ function isPolicyDefinitionIntroduced(
   return upSql.some((sql) => isCreateTableStatement(sql, definition));
 }
 
-function hasPolicyDefinition(
+function hasPolicyDefinitionWithSameContent(
   definitions: RowLevelSecurityDefinition[],
   definition: RowLevelSecurityDefinition,
 ) {
   return definitions.some(
     (candidate) =>
-      getPolicyDefinitionKey(candidate) === getPolicyDefinitionKey(definition),
+      getPolicyDefinitionKey(candidate) ===
+        getPolicyDefinitionKey(definition) &&
+      hasSamePolicyDefinitionContent(candidate, definition),
   );
+}
+
+function hasSamePolicyDefinitionContent(
+  left: RowLevelSecurityDefinition,
+  right: RowLevelSecurityDefinition,
+) {
+  return (
+    normalizePolicyMode(left.mode) === normalizePolicyMode(right.mode) &&
+    normalizePolicyCommand(left.command) ===
+      normalizePolicyCommand(right.command) &&
+    normalizePolicyExpression(left.using) ===
+      normalizePolicyExpression(right.using) &&
+    normalizePolicyExpression(left.withCheck) ===
+      normalizePolicyExpression(right.withCheck) &&
+    normalizePolicyRoles(left.roles).join("\n") ===
+      normalizePolicyRoles(right.roles).join("\n")
+  );
+}
+
+function normalizePolicyMode(mode: PolicyMode | undefined) {
+  return mode ?? PolicyMode.PERMISSIVE;
+}
+
+function normalizePolicyCommand(command: PolicyCommand | undefined) {
+  return command ?? PolicyCommand.ALL;
+}
+
+function normalizePolicyExpression(expression: string | undefined) {
+  return expression?.trim() ?? "";
+}
+
+function normalizePolicyRoles(roles: string[] | undefined) {
+  return [
+    ...new Set((roles ?? []).filter((role) => role.toLowerCase() !== "public")),
+  ].sort();
 }
 
 function sortPolicyDefinitions(definitions: RowLevelSecurityDefinition[]) {
@@ -305,7 +364,26 @@ function createPolicyDefinitionFromPolicyRow(
     command: getPolicyCommandFromDatabase(row.command),
     using: row.qual ?? undefined,
     withCheck: row.with_check ?? undefined,
+    roles: normalizePolicyRowRoles(row.roles),
   };
+}
+
+function normalizePolicyRowRoles(roles: PolicyRow["roles"]) {
+  if (!roles) {
+    return [];
+  }
+
+  if (Array.isArray(roles)) {
+    return normalizePolicyRoles(roles);
+  }
+
+  return normalizePolicyRoles(
+    roles
+      .replace(/^{|}$/g, "")
+      .split(",")
+      .map((role) => role.trim())
+      .filter(Boolean),
+  );
 }
 
 function getPolicyCommandFromDatabase(command: string | null | undefined) {
