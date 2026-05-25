@@ -189,7 +189,7 @@ export class RowLevelSecurityMigrationGenerator extends TSMigrationGenerator {
 
   private async getExistingPolicyDefinitionsFromDatabase(
     tableReferences: TableReference[],
-  ) {
+  ): Promise<RowLevelSecurityDefinition[] | undefined> {
     const uniqueTableReferences = dedupeTableReferences(tableReferences);
 
     if (uniqueTableReferences.length === 0) {
@@ -201,7 +201,7 @@ export class RowLevelSecurityMigrationGenerator extends TSMigrationGenerator {
     const connection = driver.getConnection?.();
 
     if (!connection) {
-      return [];
+      return undefined;
     }
 
     const rows = await connection.execute<PolicyRow[]>(/* SQL */ `

@@ -166,7 +166,7 @@ describe("RowLevelSecurityMigrationGenerator", () => {
     const superGenerate = jest
       .spyOn(TSMigrationGenerator.prototype, "generate")
       .mockImplementation(function (this: RowLevelSecurityMigrationGenerator) {
-        expect((this as any).existingPolicyDefinitions).toEqual([]);
+        expect((this as any).existingPolicyDefinitions).toBeUndefined();
 
         return Promise.resolve(["migration-file", "/tmp/Migration.ts"]);
       });
@@ -182,6 +182,38 @@ describe("RowLevelSecurityMigrationGenerator", () => {
       "/tmp/Migration.ts",
     ]);
     expect(superGenerate).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not recreate policies for unrelated schema changes without a database connection", async () => {
+    const diff = {
+      up: [
+        'alter table "workspace_member" add column "display_name" text null;',
+      ],
+      down: ['alter table "workspace_member" drop column "display_name";'],
+    };
+    const superGenerate = jest
+      .spyOn(TSMigrationGenerator.prototype, "generate")
+      .mockImplementation(function (this: RowLevelSecurityMigrationGenerator) {
+        return Promise.resolve([
+          this.generateMigrationFile("MigrationTest", diff),
+          "/tmp/Migration.ts",
+        ]);
+      });
+    const generator = createGenerator([
+      {
+        class: WorkspaceMember,
+        tableName: "workspace_member",
+      },
+    ]);
+
+    const [file] = await generator.generate(diff);
+
+    expect(superGenerate).toHaveBeenCalledWith(diff, undefined, undefined);
+    expect(file).toContain(
+      "import { Migration } from '@mikro-orm/migrations';",
+    );
+    expect(file).toContain("extends Migration");
+    expect(file).not.toContain("workspace_member_user_select_policy");
   });
 
   it("skips database policy lookup when metadata has no entity classes", async () => {
