@@ -3,16 +3,15 @@ import * as rowLevelSecurity from ".";
 import * as rowLevelSecurityUtils from "./utils";
 
 describe("row level security package exports", () => {
-  afterEach(() => {
-    rowLevelSecurityUtils.setRowLevelSecurityOptions();
-  });
-
   it("exports the public package API", () => {
     expect(rowLevelSecurity.Policy).toBeDefined();
     expect(rowLevelSecurity.PolicyCommand.SELECT).toBe("select");
     expect(rowLevelSecurity.PolicyMode.PERMISSIVE).toBe("permissive");
-    expect(rowLevelSecurity.RowLevelSecurityContext).toBeDefined();
-    expect(rowLevelSecurity.RowLevelSecurityEntityManager).toBeDefined();
+    expect(rowLevelSecurity.RowLevelSecurity).toBeDefined();
+    expect(rowLevelSecurity.RowLevelSecurityMode.AUTO).toBe("auto");
+    expect(rowLevelSecurity.RowLevelSecurityRole.ANONYMOUS).toBe("anonymous");
+    expect(rowLevelSecurity.RowLevelSecurityConnection).toBeDefined();
+    expect(rowLevelSecurity.RowLevelSecurityDriver).toBeDefined();
     expect(rowLevelSecurity.RowLevelSecurityMigration).toBeDefined();
     expect(rowLevelSecurity.RowLevelSecurityMigrationGenerator).toBeDefined();
     expect(rowLevelSecurity.createPolicyUpSqlStatements).toBeDefined();
@@ -22,12 +21,11 @@ describe("row level security package exports", () => {
     expect(rowLevelSecurityUtils.assertIdentifier("valid_identifier")).toBe(
       "valid_identifier",
     );
-    expect(rowLevelSecurityUtils.DEFAULT_ROW_LEVEL_SECURITY_OPTIONS).toEqual({
-      anonymousRole: "anonymous",
-      authenticatedRole: "authenticated",
-    });
     expect(rowLevelSecurityUtils.createPolicyBootstrapSqlStatements()).toEqual(
       expect.arrayContaining(["create schema if not exists app;"]),
+    );
+    expect(rowLevelSecurityUtils.createPolicyRoleUpSqlStatements()).toEqual(
+      expect.arrayContaining(["grant anonymous to current_user;"]),
     );
   });
 
@@ -35,15 +33,5 @@ describe("row level security package exports", () => {
     const diff: MigrationDiff = { down: [], up: [] };
 
     expect(diff).toEqual({ down: [], up: [] });
-  });
-
-  it("returns a copy of process-level options", () => {
-    const options = rowLevelSecurityUtils.getRowLevelSecurityOptions();
-
-    options.authenticatedRole = "mutated";
-
-    expect(
-      rowLevelSecurityUtils.getRowLevelSecurityOptions().authenticatedRole,
-    ).toBe("authenticated");
   });
 });

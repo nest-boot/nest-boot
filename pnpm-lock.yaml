@@ -21,6 +21,9 @@ importers:
       '@types/jest':
         specifier: ^29.5.14
         version: 29.5.14
+      '@types/node':
+        specifier: ^24.12.4
+        version: 24.12.4
       commitizen:
         specifier: ^4.3.1
         version: 4.3.1
@@ -101,8 +104,8 @@ importers:
         specifier: ^2.0.13
         version: 2.0.13
       '@types/node':
-        specifier: ^25.3.1
-        version: 25.3.2
+        specifier: ^24.12.4
+        version: 24.12.4
       '@types/react':
         specifier: ^19.2.14
         version: 19.2.14
@@ -164,8 +167,8 @@ importers:
         specifier: ^29.5.14
         version: 29.5.14
       '@types/node':
-        specifier: ^22.18.6
-        version: 22.19.3
+        specifier: ^24.12.4
+        version: 24.12.4
       better-auth:
         specifier: ^1.4.10
         version: 1.4.10
@@ -218,8 +221,8 @@ importers:
         specifier: ^29.5.14
         version: 29.5.14
       '@types/node':
-        specifier: ^22.18.6
-        version: 22.19.3
+        specifier: ^24.12.4
+        version: 24.12.4
       bullmq:
         specifier: ^5.61.0
         version: 5.66.1
@@ -284,8 +287,8 @@ importers:
         specifier: ^29.5.14
         version: 29.5.14
       '@types/node':
-        specifier: ^22.18.6
-        version: 22.19.3
+        specifier: ^24.12.4
+        version: 24.12.4
       bullmq:
         specifier: ^5.61.0
         version: 5.66.1
@@ -335,8 +338,8 @@ importers:
         specifier: ^29.5.14
         version: 29.5.14
       '@types/node':
-        specifier: ^22.18.6
-        version: 22.19.3
+        specifier: ^24.12.4
+        version: 24.12.4
       eslint:
         specifier: ^9.39.3
         version: 9.39.3
@@ -377,6 +380,9 @@ importers:
       '@nest-boot/tsconfig':
         specifier: workspace:^
         version: link:../tsconfig
+      '@types/node':
+        specifier: ^24.12.4
+        version: 24.12.4
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.56.1
         version: 8.56.1
@@ -418,8 +424,8 @@ importers:
         specifier: workspace:^
         version: link:../tsconfig
       '@types/node':
-        specifier: ^22.18.6
-        version: 22.19.3
+        specifier: ^24.12.4
+        version: 24.12.4
       '@typescript-eslint/parser':
         specifier: ^8.56.1
         version: 8.56.1
@@ -518,8 +524,8 @@ importers:
         specifier: ^2.1.4
         version: 2.1.4
       '@types/node':
-        specifier: ^22.18.6
-        version: 22.19.3
+        specifier: ^24.12.4
+        version: 24.12.4
       '@types/supertest':
         specifier: ^6.0.3
         version: 6.0.3
@@ -596,8 +602,8 @@ importers:
         specifier: ^29.5.14
         version: 29.5.14
       '@types/node':
-        specifier: ^22.18.6
-        version: 22.19.3
+        specifier: ^24.12.4
+        version: 24.12.4
       eslint:
         specifier: ^9.39.3
         version: 9.39.3
@@ -681,8 +687,8 @@ importers:
         specifier: ^4.17.20
         version: 4.17.21
       '@types/node':
-        specifier: ^22.18.6
-        version: 22.19.3
+        specifier: ^24.12.4
+        version: 24.12.4
       eslint:
         specifier: ^9.39.3
         version: 9.39.3
@@ -750,8 +756,8 @@ importers:
         specifier: ^29.5.14
         version: 29.5.14
       '@types/node':
-        specifier: ^22.18.6
-        version: 22.19.3
+        specifier: ^24.12.4
+        version: 24.12.4
       eslint:
         specifier: ^9.39.3
         version: 9.39.3
@@ -816,8 +822,8 @@ importers:
         specifier: ^29.5.14
         version: 29.5.14
       '@types/node':
-        specifier: ^22.18.6
-        version: 22.19.3
+        specifier: ^24.12.4
+        version: 24.12.4
       eslint:
         specifier: ^9.39.3
         version: 9.39.3
@@ -877,8 +883,8 @@ importers:
         specifier: ^29.5.14
         version: 29.5.14
       '@types/node':
-        specifier: ^22.18.6
-        version: 22.19.3
+        specifier: ^24.12.4
+        version: 24.12.4
       eslint:
         specifier: ^9.39.3
         version: 9.39.3
@@ -927,6 +933,9 @@ importers:
       '@types/jest':
         specifier: ^29.5.14
         version: 29.5.14
+      '@types/node':
+        specifier: ^24.12.4
+        version: 24.12.4
       eslint:
         specifier: ^9.39.3
         version: 9.39.3
@@ -1007,8 +1016,8 @@ importers:
         specifier: ^4.17.20
         version: 4.17.21
       '@types/node':
-        specifier: ^22.18.6
-        version: 22.19.3
+        specifier: ^24.12.4
+        version: 24.12.4
       eslint:
         specifier: ^9.39.3
         version: 9.39.3
@@ -1049,8 +1058,8 @@ importers:
         specifier: ^11.1.11
         version: 11.1.11
       '@types/node':
-        specifier: ^22.18.6
-        version: 22.19.3
+        specifier: ^24.12.4
+        version: 24.12.4
       '@types/nodemailer':
         specifier: ^6.4.19
         version: 6.4.21
@@ -1094,8 +1103,8 @@ importers:
         specifier: ^11.1.11
         version: 11.1.11
       '@types/node':
-        specifier: ^22.18.6
-        version: 22.19.3
+        specifier: ^24.12.4
+        version: 24.12.4
       eslint:
         specifier: ^9.39.3
         version: 9.39.3
@@ -1142,8 +1151,8 @@ importers:
         specifier: ^29.5.14
         version: 29.5.14
       '@types/node':
-        specifier: ^22.18.6
-        version: 22.19.3
+        specifier: ^24.12.4
+        version: 24.12.4
       eslint:
         specifier: ^9.39.3
         version: 9.39.3
@@ -1221,8 +1230,8 @@ importers:
         specifier: ^4.17.20
         version: 4.17.21
       '@types/node':
-        specifier: ^22.18.6
-        version: 22.19.3
+        specifier: ^24.12.4
+        version: 24.12.4
       dataloader:
         specifier: ^2.2.3
         version: 2.2.3
@@ -1272,8 +1281,8 @@ importers:
         specifier: ^29.5.14
         version: 29.5.14
       '@types/node':
-        specifier: ^22.18.6
-        version: 22.19.3
+        specifier: ^24.12.4
+        version: 24.12.4
       better-sqlite3:
         specifier: ^12.5.0
         version: 12.5.0
@@ -1314,8 +1323,8 @@ importers:
         specifier: ^29.5.14
         version: 29.5.14
       '@types/node':
-        specifier: ^22.18.6
-        version: 22.19.3
+        specifier: ^24.12.4
+        version: 24.12.4
       better-sqlite3:
         specifier: ^12.5.0
         version: 12.5.0
@@ -1358,6 +1367,9 @@ importers:
       '@types/jest':
         specifier: ^29.5.14
         version: 29.5.14
+      '@types/node':
+        specifier: ^24.12.4
+        version: 24.12.4
       eslint:
         specifier: ^9.39.3
         version: 9.39.3
@@ -1407,8 +1419,8 @@ importers:
         specifier: ^29.5.14
         version: 29.5.14
       '@types/node':
-        specifier: ^22.18.6
-        version: 22.19.3
+        specifier: ^24.12.4
+        version: 24.12.4
       eslint:
         specifier: ^9.39.3
         version: 9.39.3
@@ -1476,8 +1488,8 @@ importers:
         specifier: ^29.5.14
         version: 29.5.14
       '@types/node':
-        specifier: ^22.18.6
-        version: 22.19.3
+        specifier: ^24.12.4
+        version: 24.12.4
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
@@ -1533,8 +1545,8 @@ importers:
         specifier: ^0.7.31
         version: 0.7.34
       '@types/node':
-        specifier: ^22.18.6
-        version: 22.19.3
+        specifier: ^24.12.4
+        version: 24.12.4
       bullmq:
         specifier: ^5.61.0
         version: 5.66.1
@@ -1560,7 +1572,18 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  packages/tsconfig: {}
+  packages/tsconfig:
+    dependencies:
+      '@types/jest':
+        specifier: ^29.5.14
+        version: 29.5.14
+      '@types/node':
+        specifier: ^24.12.4
+        version: 24.12.4
+    devDependencies:
+      jest:
+        specifier: ^29.7.0
+        version: 29.7.0
 
   packages/validator:
     dependencies:
@@ -1598,6 +1621,9 @@ importers:
       '@types/jest':
         specifier: ^29.5.14
         version: 29.5.14
+      '@types/node':
+        specifier: ^24.12.4
+        version: 24.12.4
       '@types/validator':
         specifier: ^13.15.3
         version: 13.15.10
@@ -1648,8 +1674,8 @@ importers:
         specifier: ^11.1.11
         version: 11.1.11
       '@types/node':
-        specifier: ^22.18.6
-        version: 22.19.3
+        specifier: ^24.12.4
+        version: 24.12.4
       eslint:
         specifier: ^9.39.3
         version: 9.39.3
@@ -3828,11 +3854,8 @@ packages:
   '@types/node@12.20.55':
     resolution: {integrity: sha512-J8xLz7q2OFulZ2cyGTLE1TbbZcjpno7FaN6zdJNrgAdrJ+DZzh/uFR6YrTb4C+nXakvud8Q4+rbhoIWlYQbUFQ==}
 
-  '@types/node@22.19.3':
-    resolution: {integrity: sha512-1N9SBnWYOJTrNZCdh/yJE+t910Y128BoyY+zBLWhL3r0TYzlTmFdXrPwHL9DyFZmlEXNQQolTZh3KHV31QDhyA==}
-
-  '@types/node@25.3.2':
-    resolution: {integrity: sha512-RpV6r/ij22zRRdyBPcxDeKAzH43phWVKEjL2iksqo1Vz3CuBUrgmPpPhALKiRfU7OMCmeeO9vECBMsV0hMTG8Q==}
+  '@types/node@24.12.4':
+    resolution: {integrity: sha512-GUUEShf+PBCGW2KaXwcIt3Yk+e3pkKwWKb9GSyM9WQVE+ep2jzmHdGsHzu4wgcZy5fN9FBdVzjpBQsYlpfpgLA==}
 
   '@types/nodemailer@6.4.21':
     resolution: {integrity: sha512-Eix+sb/Nj28MNnWvO2X1OLrk5vuD4C9SMnb2Vf4itWnxphYeSceqkFX7IdmxTzn+dvmnNz7paMbg4Uc60wSfJg==}
@@ -7808,11 +7831,8 @@ packages:
     resolution: {integrity: sha512-nWJ91DjeOkej/TA8pXQ3myruKpKEYgqvpw9lz4OPHj/NWFNluYrjbz9j01CJ8yKQd2g4jFoOkINCTW2I5LEEyw==}
     engines: {node: '>= 0.4'}
 
-  undici-types@6.21.0:
-    resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
-
-  undici-types@7.18.2:
-    resolution: {integrity: sha512-AsuCzffGHJybSaRrmr5eHr81mwJU3kjw6M+uprWvCXiNeN9SOGwQ3Jn8jb8m3Z6izVgknn1R0FTCEAP2QrLY/w==}
+  undici-types@7.16.0:
+    resolution: {integrity: sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw==}
 
   unified@11.0.5:
     resolution: {integrity: sha512-xKvGhPWw3k84Qjh8bI3ZeJjqnyadK+GEFtazSfZv/rKeTkTjOJho6mFqh2SM96iIcZokxiOpg78GazTSg8+KHA==}
@@ -9615,7 +9635,7 @@ snapshots:
   '@jest/console@29.7.0':
     dependencies:
       '@jest/types': 29.6.3
-      '@types/node': 25.3.2
+      '@types/node': 24.12.4
       chalk: 4.1.2
       jest-message-util: 29.7.0
       jest-util: 29.7.0
@@ -9628,7 +9648,7 @@ snapshots:
       '@jest/test-result': 29.7.0
       '@jest/transform': 29.7.0
       '@jest/types': 29.6.3
-      '@types/node': 25.3.2
+      '@types/node': 24.12.4
       ansi-escapes: 4.3.2
       chalk: 4.1.2
       ci-info: 3.9.0
@@ -9658,14 +9678,14 @@ snapshots:
     dependencies:
       '@jest/fake-timers': 29.7.0
       '@jest/types': 29.6.3
-      '@types/node': 25.3.2
+      '@types/node': 24.12.4
       jest-mock: 29.7.0
 
   '@jest/environment@30.2.0':
     dependencies:
       '@jest/fake-timers': 30.2.0
       '@jest/types': 30.2.0
-      '@types/node': 25.3.2
+      '@types/node': 24.12.4
       jest-mock: 30.2.0
 
   '@jest/expect-utils@29.7.0':
@@ -9690,7 +9710,7 @@ snapshots:
     dependencies:
       '@jest/types': 29.6.3
       '@sinonjs/fake-timers': 10.3.0
-      '@types/node': 25.3.2
+      '@types/node': 24.12.4
       jest-message-util: 29.7.0
       jest-mock: 29.7.0
       jest-util: 29.7.0
@@ -9699,7 +9719,7 @@ snapshots:
     dependencies:
       '@jest/types': 30.2.0
       '@sinonjs/fake-timers': 13.0.5
-      '@types/node': 25.3.2
+      '@types/node': 24.12.4
       jest-message-util: 30.2.0
       jest-mock: 30.2.0
       jest-util: 30.2.0
@@ -9722,7 +9742,7 @@ snapshots:
 
   '@jest/pattern@30.0.1':
     dependencies:
-      '@types/node': 25.3.2
+      '@types/node': 24.12.4
       jest-regex-util: 30.0.1
 
   '@jest/reporters@29.7.0':
@@ -9733,7 +9753,7 @@ snapshots:
       '@jest/transform': 29.7.0
       '@jest/types': 29.6.3
       '@jridgewell/trace-mapping': 0.3.31
-      '@types/node': 25.3.2
+      '@types/node': 24.12.4
       chalk: 4.1.2
       collect-v8-coverage: 1.0.3
       exit: 0.1.2
@@ -9828,7 +9848,7 @@ snapshots:
       '@jest/schemas': 29.6.3
       '@types/istanbul-lib-coverage': 2.0.6
       '@types/istanbul-reports': 3.0.4
-      '@types/node': 25.3.2
+      '@types/node': 24.12.4
       '@types/yargs': 17.0.35
       chalk: 4.1.2
 
@@ -9838,7 +9858,7 @@ snapshots:
       '@jest/schemas': 30.0.5
       '@types/istanbul-lib-coverage': 2.0.6
       '@types/istanbul-reports': 3.0.4
-      '@types/node': 25.3.2
+      '@types/node': 24.12.4
       '@types/yargs': 17.0.35
       chalk: 4.1.2
 
@@ -11033,7 +11053,7 @@ snapshots:
   '@types/body-parser@1.19.5':
     dependencies:
       '@types/connect': 3.4.38
-      '@types/node': 25.3.2
+      '@types/node': 24.12.4
 
   '@types/braces@3.0.5': {}
 
@@ -11041,11 +11061,11 @@ snapshots:
 
   '@types/connect@3.4.38':
     dependencies:
-      '@types/node': 25.3.2
+      '@types/node': 24.12.4
 
   '@types/conventional-commits-parser@5.0.0':
     dependencies:
-      '@types/node': 25.3.2
+      '@types/node': 24.12.4
     optional: true
 
   '@types/cookiejar@2.1.5': {}
@@ -11062,7 +11082,7 @@ snapshots:
 
   '@types/express-serve-static-core@5.0.6':
     dependencies:
-      '@types/node': 25.3.2
+      '@types/node': 24.12.4
       '@types/qs': 6.14.0
       '@types/range-parser': 1.2.7
       '@types/send': 0.17.4
@@ -11075,7 +11095,7 @@ snapshots:
 
   '@types/graceful-fs@4.1.9':
     dependencies:
-      '@types/node': 25.3.2
+      '@types/node': 24.12.4
 
   '@types/hast@3.0.4':
     dependencies:
@@ -11130,18 +11150,14 @@ snapshots:
 
   '@types/node@12.20.55': {}
 
-  '@types/node@22.19.3':
+  '@types/node@24.12.4':
     dependencies:
-      undici-types: 6.21.0
-
-  '@types/node@25.3.2':
-    dependencies:
-      undici-types: 7.18.2
+      undici-types: 7.16.0
 
   '@types/nodemailer@6.4.21':
     dependencies:
       '@aws-sdk/client-ses': 3.955.0
-      '@types/node': 22.19.3
+      '@types/node': 24.12.4
 
   '@types/qs@6.14.0': {}
 
@@ -11156,12 +11172,12 @@ snapshots:
   '@types/send@0.17.4':
     dependencies:
       '@types/mime': 1.3.5
-      '@types/node': 25.3.2
+      '@types/node': 24.12.4
 
   '@types/serve-static@2.2.0':
     dependencies:
       '@types/http-errors': 2.0.5
-      '@types/node': 25.3.2
+      '@types/node': 24.12.4
 
   '@types/stack-utils@2.0.3': {}
 
@@ -11169,7 +11185,7 @@ snapshots:
     dependencies:
       '@types/cookiejar': 2.1.5
       '@types/methods': 1.1.4
-      '@types/node': 25.3.2
+      '@types/node': 24.12.4
       form-data: 4.0.5
 
   '@types/supertest@6.0.3':
@@ -13530,7 +13546,7 @@ snapshots:
       '@jest/expect': 29.7.0
       '@jest/test-result': 29.7.0
       '@jest/types': 29.6.3
-      '@types/node': 25.3.2
+      '@types/node': 24.12.4
       chalk: 4.1.2
       co: 4.6.0
       dedent: 1.7.1
@@ -13617,7 +13633,7 @@ snapshots:
       '@jest/environment': 29.7.0
       '@jest/fake-timers': 29.7.0
       '@jest/types': 29.6.3
-      '@types/node': 25.3.2
+      '@types/node': 24.12.4
       jest-mock: 29.7.0
       jest-util: 29.7.0
 
@@ -13627,7 +13643,7 @@ snapshots:
     dependencies:
       '@jest/types': 29.6.3
       '@types/graceful-fs': 4.1.9
-      '@types/node': 25.3.2
+      '@types/node': 24.12.4
       anymatch: 3.1.3
       fb-watchman: 2.0.2
       graceful-fs: 4.2.11
@@ -13642,7 +13658,7 @@ snapshots:
   jest-haste-map@30.2.0:
     dependencies:
       '@jest/types': 30.2.0
-      '@types/node': 25.3.2
+      '@types/node': 24.12.4
       anymatch: 3.1.3
       fb-watchman: 2.0.2
       graceful-fs: 4.2.11
@@ -13700,13 +13716,13 @@ snapshots:
   jest-mock@29.7.0:
     dependencies:
       '@jest/types': 29.6.3
-      '@types/node': 25.3.2
+      '@types/node': 24.12.4
       jest-util: 29.7.0
 
   jest-mock@30.2.0:
     dependencies:
       '@jest/types': 30.2.0
-      '@types/node': 25.3.2
+      '@types/node': 24.12.4
       jest-util: 30.2.0
 
   jest-pnp-resolver@1.2.3: {}
@@ -13739,7 +13755,7 @@ snapshots:
       '@jest/test-result': 29.7.0
       '@jest/transform': 29.7.0
       '@jest/types': 29.6.3
-      '@types/node': 25.3.2
+      '@types/node': 24.12.4
       chalk: 4.1.2
       emittery: 0.13.1
       graceful-fs: 4.2.11
@@ -13765,7 +13781,7 @@ snapshots:
       '@jest/test-result': 29.7.0
       '@jest/transform': 29.7.0
       '@jest/types': 29.6.3
-      '@types/node': 25.3.2
+      '@types/node': 24.12.4
       chalk: 4.1.2
       cjs-module-lexer: 1.4.3
       collect-v8-coverage: 1.0.3
@@ -13831,7 +13847,7 @@ snapshots:
   jest-util@29.7.0:
     dependencies:
       '@jest/types': 29.6.3
-      '@types/node': 25.3.2
+      '@types/node': 24.12.4
       chalk: 4.1.2
       ci-info: 3.9.0
       graceful-fs: 4.2.11
@@ -13840,7 +13856,7 @@ snapshots:
   jest-util@30.2.0:
     dependencies:
       '@jest/types': 30.2.0
-      '@types/node': 25.3.2
+      '@types/node': 24.12.4
       chalk: 4.1.2
       ci-info: 4.3.1
       graceful-fs: 4.2.11
@@ -13859,7 +13875,7 @@ snapshots:
     dependencies:
       '@jest/test-result': 29.7.0
       '@jest/types': 29.6.3
-      '@types/node': 25.3.2
+      '@types/node': 24.12.4
       ansi-escapes: 4.3.2
       chalk: 4.1.2
       emittery: 0.13.1
@@ -13868,14 +13884,14 @@ snapshots:
 
   jest-worker@29.7.0:
     dependencies:
-      '@types/node': 25.3.2
+      '@types/node': 24.12.4
       jest-util: 29.7.0
       merge-stream: 2.0.0
       supports-color: 8.1.1
 
   jest-worker@30.2.0:
     dependencies:
-      '@types/node': 25.3.2
+      '@types/node': 24.12.4
       '@ungap/structured-clone': 1.3.0
       jest-util: 30.2.0
       merge-stream: 2.0.0
@@ -16155,9 +16171,7 @@ snapshots:
       has-symbols: 1.1.0
       which-boxed-primitive: 1.1.1
 
-  undici-types@6.21.0: {}
-
-  undici-types@7.18.2: {}
+  undici-types@7.16.0: {}
 
   unified@11.0.5:
     dependencies:

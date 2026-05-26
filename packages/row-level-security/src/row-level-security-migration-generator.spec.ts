@@ -37,6 +37,29 @@ class WorkspaceMemberWithGeneratedPolicy {}
 })
 class AuditLog {}
 
+@Policy({
+  name: "workspace_member_admin_select_policy",
+  command: PolicyCommand.SELECT,
+  using: "true",
+  roles: ["workspace_admin"],
+})
+class WorkspaceMemberWithCustomRole {}
+
+@Policy({
+  name: "workspace_member_admin_select_policy",
+  command: PolicyCommand.SELECT,
+  using: "true",
+  roles: ["workspace_admin"],
+})
+@Policy({
+  name: "workspace_member_admin_update_policy",
+  command: PolicyCommand.UPDATE,
+  using: "true",
+  withCheck: "true",
+  roles: ["workspace_admin"],
+})
+class WorkspaceMemberWithSharedRolePolicies {}
+
 class UnmanagedEntity {}
 
 describe("RowLevelSecurityMigrationGenerator", () => {
@@ -97,6 +120,36 @@ describe("RowLevelSecurityMigrationGenerator", () => {
           with_check: "true",
           roles: ["authenticated"],
         },
+        {
+          policy_name: "workspace_member_public_select_policy",
+          schema_name: "public",
+          table_name: "workspace_member",
+          permissive: true,
+          command: "r",
+          qual: "true",
+          with_check: null,
+          roles: null,
+        },
+        {
+          policy_name: "workspace_member_string_roles_select_policy",
+          schema_name: "public",
+          table_name: "workspace_member",
+          permissive: true,
+          command: "r",
+          qual: "true",
+          with_check: null,
+          roles: "{authenticated,anonymous}",
+        },
+        {
+          policy_name: "external_workspace_policy",
+          schema_name: "external",
+          table_name: "workspace",
+          permissive: true,
+          command: "r",
+          qual: "true",
+          with_check: null,
+          roles: ["workspace_admin"],
+        },
       ]),
     );
     const superGenerate = jest
@@ -119,6 +172,29 @@ describe("RowLevelSecurityMigrationGenerator", () => {
             expect.objectContaining({
               policyName: "workspace_member_all_policy",
               command: "all",
+            }),
+            expect.objectContaining({
+              policyName: "workspace_member_public_select_policy",
+              roles: [],
+            }),
+            expect.objectContaining({
+              policyName: "workspace_member_string_roles_select_policy",
+              roles: ["anonymous", "authenticated"],
+            }),
+          ]),
+        );
+        expect((this as any).existingPolicyDefinitions).not.toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              policyName: "external_workspace_policy",
+            }),
+          ]),
+        );
+        expect((this as any).existingPolicyRoleDefinitions).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              policyName: "external_workspace_policy",
+              roles: ["workspace_admin"],
             }),
           ]),
         );
@@ -154,11 +230,10 @@ describe("RowLevelSecurityMigrationGenerator", () => {
       "/tmp",
       "Migration",
     );
-    expect(execute.mock.calls[0]?.[0]).toContain(
-      "('public', 'workspace_member')",
-    );
+    expect(execute.mock.calls[0]?.[0]).toContain("FROM pg_policy");
     expect(execute.mock.calls[0]?.[0]).toContain("unnest(p.polroles)");
     expect((generator as any).existingPolicyDefinitions).toBeUndefined();
+    expect((generator as any).existingPolicyRoleDefinitions).toBeUndefined();
     expect((generator as any).currentPolicyDefinitions).toBeUndefined();
   });
 
@@ -239,11 +314,33 @@ describe("RowLevelSecurityMigrationGenerator", () => {
     expect(execute).not.toHaveBeenCalled();
   });
 
-  it("only loads existing database policies for tables managed by Policy metadata", async () => {
-    const execute = jest.fn((_sql: string) => Promise.resolve([]));
+  it("only diffs existing database policies for tables managed by Policy metadata", async () => {
+    const execute = jest.fn((_sql: string) =>
+      Promise.resolve([
+        {
+          policy_name: "unmanaged_policy",
+          schema_name: "public",
+          table_name: "unmanaged_entity",
+          permissive: true,
+          command: "r",
+          qual: "true",
+          with_check: null,
+          roles: ["authenticated"],
+        },
+      ]),
+    );
     jest
       .spyOn(TSMigrationGenerator.prototype, "generate")
-      .mockResolvedValue(["migration-file", "/tmp/Migration.ts"]);
+      .mockImplementation(function (this: RowLevelSecurityMigrationGenerator) {
+        expect((this as any).existingPolicyDefinitions).toEqual([]);
+        expect((this as any).existingPolicyRoleDefinitions).toEqual([
+          expect.objectContaining({
+            policyName: "unmanaged_policy",
+          }),
+        ]);
+
+        return Promise.resolve(["migration-file", "/tmp/Migration.ts"]);
+      });
     const generator = createGenerator(
       [
         {
@@ -264,10 +361,7 @@ describe("RowLevelSecurityMigrationGenerator", () => {
 
     await generator.generate({ up: [], down: [] });
 
-    expect(execute.mock.calls[0]?.[0]).toContain(
-      "('public', 'workspace_member')",
-    );
-    expect(execute.mock.calls[0]?.[0]).not.toContain("unmanaged_entity");
+    expect(execute.mock.calls[0]?.[0]).toContain("FROM pg_policy");
   });
 
   it("throws when MikroORM metadata is unavailable", () => {
@@ -362,7 +456,7 @@ describe("RowLevelSecurityMigrationGenerator", () => {
 
     expect(file).toContain("extends RowLevelSecurityMigration");
     expect(file).toContain(
-      "this.addSql(`do \\$\\$ begin if not exists (select 1 from pg_roles where rolname = 'authenticated') then create role authenticated nologin; end if; end \\$\\$;`);",
+      "this.addSql(`do \\$\\$ begin if not exists (select 1 from pg_roles where rolname = 'anonymous') then create role anonymous nologin; end if; end \\$\\$;`);",
     );
     expect(file).toContain("this.addSql(`create schema if not exists app;`);");
     expect(file).toContain(
@@ -380,6 +474,123 @@ describe("RowLevelSecurityMigrationGenerator", () => {
     );
     expect(file).toContain(
       'this.addSql(`create policy workspace_member_user_select_policy on "public"."workspace_member" as permissive for select using ((select app.get_context(\'user_id\', null::bigint)) = "user_id");`);',
+    );
+  });
+
+  it("creates anonymous and custom policy roles in up and revokes generated grants in down", () => {
+    const generator = createGenerator([
+      {
+        class: WorkspaceMemberWithCustomRole,
+        tableName: "workspace_member",
+      },
+    ]);
+
+    const file = generator.generateMigrationFile("MigrationTest", {
+      up: [],
+      down: [],
+    });
+
+    expect(file).toContain(
+      "this.addSql(`do \\$\\$ begin if not exists (select 1 from pg_roles where rolname = 'anonymous') then create role anonymous nologin; end if; end \\$\\$;`);",
+    );
+    expect(file).toContain(
+      "this.addSql(`do \\$\\$ begin if not exists (select 1 from pg_roles where rolname = 'workspace_admin') then create role workspace_admin nologin; end if; end \\$\\$;`);",
+    );
+    expect(file).toContain(
+      'this.addSql(`grant select on table "public"."workspace_member" to workspace_admin;`);',
+    );
+    expect(file).toContain(
+      'this.addSql(`revoke select on table "public"."workspace_member" from workspace_admin;`);',
+    );
+    expect(file).toContain(
+      "this.addSql(`revoke usage on schema app from workspace_admin;`);",
+    );
+    expect(file).toContain(
+      "this.addSql(`revoke workspace_admin from current_user;`);",
+    );
+    expect(file).not.toContain("drop role workspace_admin");
+  });
+
+  it("keeps grants required by pre-existing policies when rolling back added policies", () => {
+    const generator = createGenerator([
+      {
+        class: WorkspaceMemberWithSharedRolePolicies,
+        tableName: "workspace_member",
+      },
+    ]);
+    (generator as any).existingPolicyDefinitions = [
+      {
+        entityName: "WorkspaceMemberWithSharedRolePolicies",
+        schemaName: "public",
+        tableName: "workspace_member",
+        policyName: "workspace_member_admin_select_policy",
+        command: PolicyCommand.SELECT,
+        using: "true",
+        roles: ["workspace_admin"],
+      },
+    ];
+
+    const file = generator.generateMigrationFile("MigrationTest", {
+      up: [],
+      down: [],
+    });
+
+    expect(file).toContain(
+      "drop policy if exists workspace_member_admin_update_policy",
+    );
+    expect(file).toContain(
+      'this.addSql(`revoke update on table "public"."workspace_member" from workspace_admin;`);',
+    );
+    expect(file).not.toContain(
+      'this.addSql(`revoke select, update on table "public"."workspace_member" from workspace_admin;`);',
+    );
+    expect(file).not.toContain(
+      "this.addSql(`revoke usage on schema app from anonymous;`);",
+    );
+    expect(file).not.toContain(
+      "this.addSql(`revoke anonymous from current_user;`);",
+    );
+    expect(file).not.toContain(
+      "this.addSql(`revoke usage on schema app from workspace_admin;`);",
+    );
+    expect(file).not.toContain(
+      "this.addSql(`revoke workspace_admin from current_user;`);",
+    );
+  });
+
+  it("keeps role grants required by policies outside the generated diff", () => {
+    const generator = createGenerator([
+      {
+        class: WorkspaceMemberWithCustomRole,
+        tableName: "workspace_member",
+      },
+    ]);
+    (generator as any).existingPolicyDefinitions = [];
+    (generator as any).existingPolicyRoleDefinitions = [
+      {
+        entityName: "ExternalPolicy",
+        schemaName: "external",
+        tableName: "workspace",
+        policyName: "external_workspace_policy",
+        command: PolicyCommand.SELECT,
+        using: "true",
+        roles: ["workspace_admin"],
+      },
+    ];
+
+    const file = generator.generateMigrationFile("MigrationTest", {
+      up: [],
+      down: [],
+    });
+
+    expect(file).toContain(
+      'this.addSql(`revoke select on table "public"."workspace_member" from workspace_admin;`);',
+    );
+    expect(file).not.toContain(
+      "this.addSql(`revoke usage on schema app from workspace_admin;`);",
+    );
+    expect(file).not.toContain(
+      "this.addSql(`revoke workspace_admin from current_user;`);",
     );
   });
 

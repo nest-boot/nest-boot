@@ -14,12 +14,18 @@ import type {
 } from "./interfaces/row-level-security-migration-generator.interface";
 import { createPolicyBootstrapSqlStatements } from "./utils/create-policy-bootstrap-sql-statements";
 import { createPolicyDownSql } from "./utils/create-policy-down-sql";
+import { createPolicyPrivilegeDownSqlStatements } from "./utils/create-policy-privilege-down-sql-statements";
+import {
+  createPolicyRoleDownSqlStatements,
+  createPolicyRoleUpSqlStatements,
+  getPolicyRoleNames,
+} from "./utils/create-policy-role-sql-statements";
 import { createPolicyUpSqlStatements } from "./utils/create-policy-up-sql-statements";
-import { escapeSqlLiteral } from "./utils/escape-sql-literal";
 
 /** MikroORM TypeScript migration generator that injects generated RLS SQL. */
 export class RowLevelSecurityMigrationGenerator extends TSMigrationGenerator {
   private existingPolicyDefinitions?: RowLevelSecurityDefinition[];
+  private existingPolicyRoleDefinitions?: RowLevelSecurityDefinition[];
   private currentPolicyDefinitions?: RowLevelSecurityDefinition[];
 
   override async generate(
@@ -33,14 +39,23 @@ export class RowLevelSecurityMigrationGenerator extends TSMigrationGenerator {
       currentPolicyDefinitions,
     );
 
-    this.existingPolicyDefinitions =
+    const existingPolicyDefinitions =
       await this.getExistingPolicyDefinitionsFromDatabase(tableReferences);
+
+    this.existingPolicyDefinitions = existingPolicyDefinitions
+      ? filterPolicyDefinitionsByTableReferences(
+          existingPolicyDefinitions,
+          tableReferences,
+        )
+      : undefined;
+    this.existingPolicyRoleDefinitions = existingPolicyDefinitions;
     this.currentPolicyDefinitions = currentPolicyDefinitions;
 
     try {
       return await super.generate(diff, path, name);
     } finally {
       this.existingPolicyDefinitions = undefined;
+      this.existingPolicyRoleDefinitions = undefined;
       this.currentPolicyDefinitions = undefined;
     }
   }
@@ -55,6 +70,13 @@ export class RowLevelSecurityMigrationGenerator extends TSMigrationGenerator {
       diff,
       currentPolicyDefinitions,
     );
+    const preservedDefinitions = this.existingPolicyDefinitions ?? [];
+    const preservedRoleDefinitions =
+      this.existingPolicyRoleDefinitions ?? preservedDefinitions;
+    const revocableRoleNames = getRevocableDefinitionRoleNames(
+      added,
+      preservedRoleDefinitions,
+    );
 
     if (added.length === 0 && removed.length === 0) {
       return super.generateMigrationFile(className, diff);
@@ -65,6 +87,9 @@ export class RowLevelSecurityMigrationGenerator extends TSMigrationGenerator {
         ...removed.map((definition) => createPolicyDownSql(definition)),
         ...diff.up,
         ...(added.length > 0 ? createPolicyBootstrapSqlStatements() : []),
+        ...(added.length > 0
+          ? createPolicyRoleUpSqlStatements(getDefinitionRoles(added))
+          : []),
         ...getDefinitionBootstrapSql(added),
         ...added.flatMap((definition) =>
           createPolicyUpSqlStatements(definition),
@@ -72,8 +97,20 @@ export class RowLevelSecurityMigrationGenerator extends TSMigrationGenerator {
       ],
       down: [
         ...added.map((definition) => createPolicyDownSql(definition)),
+        ...added.flatMap((definition) =>
+          createPolicyPrivilegeDownSqlStatements(
+            definition,
+            preservedDefinitions,
+          ),
+        ),
+        ...(revocableRoleNames.length > 0
+          ? createPolicyRoleDownSqlStatements(revocableRoleNames)
+          : []),
         ...diff.down,
         ...(removed.length > 0 ? createPolicyBootstrapSqlStatements() : []),
+        ...(removed.length > 0
+          ? createPolicyRoleUpSqlStatements(getDefinitionRoles(removed))
+          : []),
         ...getDefinitionBootstrapSql(removed),
         ...removed.flatMap((definition) =>
           createPolicyUpSqlStatements(definition),
@@ -190,9 +227,7 @@ export class RowLevelSecurityMigrationGenerator extends TSMigrationGenerator {
   private async getExistingPolicyDefinitionsFromDatabase(
     tableReferences: TableReference[],
   ): Promise<RowLevelSecurityDefinition[] | undefined> {
-    const uniqueTableReferences = dedupeTableReferences(tableReferences);
-
-    if (uniqueTableReferences.length === 0) {
+    if (tableReferences.length === 0) {
       return [];
     }
 
@@ -223,12 +258,6 @@ export class RowLevelSecurityMigrationGenerator extends TSMigrationGenerator {
       FROM pg_policy p
       INNER JOIN pg_class c ON c.oid = p.polrelid
       INNER JOIN pg_namespace n ON n.oid = c.relnamespace
-      WHERE (n.nspname, c.relname) in (${uniqueTableReferences
-        .map(
-          (table) =>
-            `('${escapeSqlLiteral(table.schemaName)}', '${escapeSqlLiteral(table.tableName)}')`,
-        )
-        .join(", ")})
       ORDER BY n.nspname, c.relname
     `);
 
@@ -263,6 +292,31 @@ function getDefinitionBootstrapSql(definitions: RowLevelSecurityDefinition[]) {
   ];
 }
 
+function getDefinitionRoles(definitions: RowLevelSecurityDefinition[]) {
+  return definitions.flatMap((definition) => definition.roles ?? []);
+}
+
+function getDefinitionRoleNames(definitions: RowLevelSecurityDefinition[]) {
+  if (definitions.length === 0) {
+    return [];
+  }
+
+  return getPolicyRoleNames(getDefinitionRoles(definitions));
+}
+
+function getRevocableDefinitionRoleNames(
+  addedDefinitions: RowLevelSecurityDefinition[],
+  preservedDefinitions: RowLevelSecurityDefinition[],
+) {
+  const preservedRoleNames = new Set(
+    getDefinitionRoleNames(preservedDefinitions),
+  );
+
+  return getDefinitionRoleNames(addedDefinitions).filter(
+    (role) => !preservedRoleNames.has(role),
+  );
+}
+
 function getPolicyDefinitionTableReferences(
   definitions: RowLevelSecurityDefinition[],
 ) {
@@ -270,6 +324,21 @@ function getPolicyDefinitionTableReferences(
     schemaName: definition.schemaName,
     tableName: definition.tableName,
   }));
+}
+
+function filterPolicyDefinitionsByTableReferences(
+  definitions: RowLevelSecurityDefinition[],
+  tableReferences: TableReference[],
+) {
+  const tableKeys = new Set(
+    dedupeTableReferences(tableReferences).map(
+      (table) => `${table.schemaName}.${table.tableName}`,
+    ),
+  );
+
+  return definitions.filter((definition) =>
+    tableKeys.has(`${definition.schemaName}.${definition.tableName}`),
+  );
 }
 
 function dedupeTableReferences(tableReferences: TableReference[]) {

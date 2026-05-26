@@ -245,7 +245,7 @@ void bootstrap();
 
 3. **环境变量** — 将 `AUTH_SECRET` 存储在环境变量中，确保至少 32 个字符且具有高熵值。
 
-4. **RLS 上下文** — 将认证与 PostgreSQL RLS 结合时，在 `onAuthenticated` 中加载租户或工作区，并写入 `RowLevelSecurityContext`。参见 [Row-Level Security 教程](/docs/tutorial/row-level-security)。
+4. **RLS 上下文** — 将认证与 PostgreSQL RLS 结合时，在 `onAuthenticated` 中加载租户或工作区，并写入 `RowLevelSecurity`。参见 [Row-Level Security 教程](/docs/tutorial/row-level-security)。
 
 ## API 参考
 

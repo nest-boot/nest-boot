@@ -213,7 +213,7 @@ Values are automatically hashed on write. Requires `HashModule` to be registered
 
 2. **EntityService as Base** — Extend `EntityService` for all domain services to get CRUD + DataLoader batching out of the box.
 
-3. **RLS Entity Manager** — Use `@nest-boot/row-level-security` when PostgreSQL policies should enforce tenant or workspace isolation.
+3. **RLS Driver** — Use `@nest-boot/row-level-security` when PostgreSQL policies should enforce tenant or workspace isolation.
 
 4. **Soft Delete** — Configure `softDeleteKey` in `EntityService` for entities that support soft delete.
 
