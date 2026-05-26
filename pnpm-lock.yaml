@@ -1560,7 +1560,11 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  packages/tsconfig: {}
+  packages/tsconfig:
+    dependencies:
+      '@types/jest':
+        specifier: ^29.5.14
+        version: 29.5.14
 
   packages/validator:
     dependencies:

@@ -14,6 +14,11 @@ import type {
 } from "./interfaces/row-level-security-migration-generator.interface";
 import { createPolicyBootstrapSqlStatements } from "./utils/create-policy-bootstrap-sql-statements";
 import { createPolicyDownSql } from "./utils/create-policy-down-sql";
+import { createPolicyPrivilegeDownSqlStatements } from "./utils/create-policy-privilege-down-sql-statements";
+import {
+  createPolicyRoleDownSqlStatements,
+  createPolicyRoleUpSqlStatements,
+} from "./utils/create-policy-role-sql-statements";
 import { createPolicyUpSqlStatements } from "./utils/create-policy-up-sql-statements";
 import { escapeSqlLiteral } from "./utils/escape-sql-literal";
 
@@ -65,6 +70,9 @@ export class RowLevelSecurityMigrationGenerator extends TSMigrationGenerator {
         ...removed.map((definition) => createPolicyDownSql(definition)),
         ...diff.up,
         ...(added.length > 0 ? createPolicyBootstrapSqlStatements() : []),
+        ...(added.length > 0
+          ? createPolicyRoleUpSqlStatements(getDefinitionRoles(added))
+          : []),
         ...getDefinitionBootstrapSql(added),
         ...added.flatMap((definition) =>
           createPolicyUpSqlStatements(definition),
@@ -72,8 +80,17 @@ export class RowLevelSecurityMigrationGenerator extends TSMigrationGenerator {
       ],
       down: [
         ...added.map((definition) => createPolicyDownSql(definition)),
+        ...added.flatMap((definition) =>
+          createPolicyPrivilegeDownSqlStatements(definition),
+        ),
+        ...(added.length > 0
+          ? createPolicyRoleDownSqlStatements(getDefinitionRoles(added))
+          : []),
         ...diff.down,
         ...(removed.length > 0 ? createPolicyBootstrapSqlStatements() : []),
+        ...(removed.length > 0
+          ? createPolicyRoleUpSqlStatements(getDefinitionRoles(removed))
+          : []),
         ...getDefinitionBootstrapSql(removed),
         ...removed.flatMap((definition) =>
           createPolicyUpSqlStatements(definition),
@@ -261,6 +278,10 @@ function getDefinitionBootstrapSql(definitions: RowLevelSecurityDefinition[]) {
       definitions.flatMap((definition) => definition.bootstrapSql ?? []),
     ),
   ];
+}
+
+function getDefinitionRoles(definitions: RowLevelSecurityDefinition[]) {
+  return definitions.flatMap((definition) => definition.roles ?? []);
 }
 
 function getPolicyDefinitionTableReferences(

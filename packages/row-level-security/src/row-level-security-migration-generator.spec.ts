@@ -37,6 +37,14 @@ class WorkspaceMemberWithGeneratedPolicy {}
 })
 class AuditLog {}
 
+@Policy({
+  name: "workspace_member_admin_select_policy",
+  command: PolicyCommand.SELECT,
+  using: "true",
+  roles: ["workspace_admin"],
+})
+class WorkspaceMemberWithCustomRole {}
+
 class UnmanagedEntity {}
 
 describe("RowLevelSecurityMigrationGenerator", () => {
@@ -97,6 +105,26 @@ describe("RowLevelSecurityMigrationGenerator", () => {
           with_check: "true",
           roles: ["authenticated"],
         },
+        {
+          policy_name: "workspace_member_public_select_policy",
+          schema_name: "public",
+          table_name: "workspace_member",
+          permissive: true,
+          command: "r",
+          qual: "true",
+          with_check: null,
+          roles: null,
+        },
+        {
+          policy_name: "workspace_member_string_roles_select_policy",
+          schema_name: "public",
+          table_name: "workspace_member",
+          permissive: true,
+          command: "r",
+          qual: "true",
+          with_check: null,
+          roles: "{authenticated,anonymous}",
+        },
       ]),
     );
     const superGenerate = jest
@@ -119,6 +147,14 @@ describe("RowLevelSecurityMigrationGenerator", () => {
             expect.objectContaining({
               policyName: "workspace_member_all_policy",
               command: "all",
+            }),
+            expect.objectContaining({
+              policyName: "workspace_member_public_select_policy",
+              roles: [],
+            }),
+            expect.objectContaining({
+              policyName: "workspace_member_string_roles_select_policy",
+              roles: ["anonymous", "authenticated"],
             }),
           ]),
         );
@@ -362,7 +398,7 @@ describe("RowLevelSecurityMigrationGenerator", () => {
 
     expect(file).toContain("extends RowLevelSecurityMigration");
     expect(file).toContain(
-      "this.addSql(`do \\$\\$ begin if not exists (select 1 from pg_roles where rolname = 'authenticated') then create role authenticated nologin; end if; end \\$\\$;`);",
+      "this.addSql(`do \\$\\$ begin if not exists (select 1 from pg_roles where rolname = 'anonymous') then create role anonymous nologin; end if; end \\$\\$;`);",
     );
     expect(file).toContain("this.addSql(`create schema if not exists app;`);");
     expect(file).toContain(
@@ -381,6 +417,40 @@ describe("RowLevelSecurityMigrationGenerator", () => {
     expect(file).toContain(
       'this.addSql(`create policy workspace_member_user_select_policy on "public"."workspace_member" as permissive for select using ((select app.get_context(\'user_id\', null::bigint)) = "user_id");`);',
     );
+  });
+
+  it("creates anonymous and custom policy roles in up and revokes generated grants in down", () => {
+    const generator = createGenerator([
+      {
+        class: WorkspaceMemberWithCustomRole,
+        tableName: "workspace_member",
+      },
+    ]);
+
+    const file = generator.generateMigrationFile("MigrationTest", {
+      up: [],
+      down: [],
+    });
+
+    expect(file).toContain(
+      "this.addSql(`do \\$\\$ begin if not exists (select 1 from pg_roles where rolname = 'anonymous') then create role anonymous nologin; end if; end \\$\\$;`);",
+    );
+    expect(file).toContain(
+      "this.addSql(`do \\$\\$ begin if not exists (select 1 from pg_roles where rolname = 'workspace_admin') then create role workspace_admin nologin; end if; end \\$\\$;`);",
+    );
+    expect(file).toContain(
+      'this.addSql(`grant select on table "public"."workspace_member" to workspace_admin;`);',
+    );
+    expect(file).toContain(
+      'this.addSql(`revoke select on table "public"."workspace_member" from workspace_admin;`);',
+    );
+    expect(file).toContain(
+      "this.addSql(`revoke usage on schema app from workspace_admin;`);",
+    );
+    expect(file).toContain(
+      "this.addSql(`revoke workspace_admin from current_user;`);",
+    );
+    expect(file).not.toContain("drop role workspace_admin");
   });
 
   it("handles removed policies when an existing database policy is no longer declared", () => {

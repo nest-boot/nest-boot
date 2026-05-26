@@ -3,7 +3,7 @@ title: "Row-Level Security"
 description: "面向 MikroORM 实体、请求上下文和迁移生成的 PostgreSQL 行级安全辅助工具。"
 ---
 
-`@nest-boot/row-level-security` 包帮助 Nest Boot 应用在 MikroORM 中使用 PostgreSQL Row-Level Security（RLS）。它提供实体策略元数据、根据元数据生成 SQL 的迁移辅助工具，以及在事务内应用请求作用域角色和上下文值的实体管理器。
+`@nest-boot/row-level-security` 包帮助 Nest Boot 应用在 MikroORM 中使用 PostgreSQL Row-Level Security（RLS）。它提供实体策略元数据、根据元数据生成 SQL 的迁移辅助工具，以及在事务级查询执行中应用请求作用域角色和上下文值的 PostgreSQL 驱动。
 
 ## 安装
 
@@ -13,42 +13,23 @@ pnpm add @nest-boot/row-level-security @nest-boot/request-context @mikro-orm/pos
 
 ## 配置 MikroORM
 
-将 `RowLevelSecurityEntityManager` 配置为 MikroORM 的实体管理器，并将 `RowLevelSecurityMigrationGenerator` 配置为迁移生成器：
+将 `RowLevelSecurityDriver` 配置为 MikroORM 的 PostgreSQL 驱动，并将 `RowLevelSecurityMigrationGenerator` 配置为迁移生成器：
 
 ```typescript
 import {
-  RowLevelSecurityEntityManager,
+  RowLevelSecurityDriver,
   RowLevelSecurityMigrationGenerator,
-  setRowLevelSecurityOptions,
 } from "@nest-boot/row-level-security";
-import { RequestContext } from "@nest-boot/request-context";
-
-import { User } from "./user.entity";
-import { Workspace } from "./workspace.entity";
-
-setRowLevelSecurityOptions({
-  isAuthenticated: () => Boolean(RequestContext.get(User)),
-  getContext: () => {
-    const workspace = RequestContext.get(Workspace);
-
-    return workspace ? [["workspace_id", workspace.id]] : [];
-  },
-});
 
 export default {
-  entityManager: RowLevelSecurityEntityManager,
+  driver: RowLevelSecurityDriver,
   migrations: {
     generator: RowLevelSecurityMigrationGenerator,
   },
 };
 ```
 
-`setRowLevelSecurityOptions()` 配置实体管理器使用的进程级钩子：
-
-- `authenticatedRole` 和 `anonymousRole` 默认分别为 `authenticated`、`anonymous`
-- `isAuthenticated()` 在请求没有显式设置角色时选择默认角色
-- `getContext()` 提供会转换为 `app.workspace_id` 等事务级 PostgreSQL 设置的值
-- `shouldApply()` 可用于后台任务或特权操作，跳过 RLS 设置
+驱动只会在 `RequestContext` 处于活动状态，并且当前上下文中通过 `RowLevelSecurity` 设置了行级安全值时应用 RLS。如果没有设置 RLS role 或 context 值，它会按 MikroORM 原始逻辑执行。
 
 ## 定义实体策略
 
@@ -56,13 +37,17 @@ export default {
 
 ```typescript
 import { Entity, PrimaryKey, Property, t } from "@mikro-orm/postgresql";
-import { Policy, PolicyCommand } from "@nest-boot/row-level-security";
+import {
+  Policy,
+  PolicyCommand,
+  RowLevelSecurityRole,
+} from "@nest-boot/row-level-security";
 
 @Policy({
   command: PolicyCommand.ALL,
   property: "workspaceId",
   context: "workspace_id",
-  roles: ["authenticated"],
+  roles: [RowLevelSecurityRole.AUTHENTICATED],
 })
 @Entity({ tableName: "files" })
 export class File {
@@ -86,7 +71,10 @@ export class File {
   name: "published_files_read_policy",
   command: PolicyCommand.SELECT,
   using: `"is_public" = true or (select app.get_context('workspace_id', null::integer)) = "workspace_id"`,
-  roles: ["anonymous", "authenticated"],
+  roles: [
+    RowLevelSecurityRole.ANONYMOUS,
+    RowLevelSecurityRole.AUTHENTICATED,
+  ],
 })
 ```
 
@@ -101,16 +89,21 @@ pnpm mikro-orm migration:create
 生成的策略迁移会：
 
 1. 在目标表上启用 row-level security。
-2. 将需要的表权限和序列权限授予策略角色。
+2. 在 `up` 中创建 `anonymous` 和 policy metadata 声明的 roles。
 3. 在元数据变化时删除并重建策略。
-4. 在 down 迁移中恢复之前的策略状态。
+4. 在 `up` 中授予需要的 role、schema、table 和 sequence 权限。
+5. 在 `down` 中撤销本次迁移生成的授权，但不删除数据库 role。
+6. 在 down 迁移中恢复之前的策略状态。
 
 ## 设置请求上下文
 
-`RowLevelSecurityEntityManager` 会在活动事务内执行 `SET LOCAL ROLE ...` 和 `set_config('app.<key>', value, true)` 来应用 RLS。它会合并 `setRowLevelSecurityOptions().getContext()` 提供的值，以及通过 `RowLevelSecurityContext` 写入的请求作用域值。
+`RowLevelSecurityDriver` 会在活动事务内执行 `SET LOCAL ROLE ...` 和 `set_config('app.<key>', value, true)` 来应用 RLS。它会读取通过 `RowLevelSecurity` 写入的请求作用域值。
 
 ```typescript
-import { RowLevelSecurityContext } from "@nest-boot/row-level-security";
+import {
+  RowLevelSecurity,
+  RowLevelSecurityRole,
+} from "@nest-boot/row-level-security";
 import { RequestContext } from "@nest-boot/request-context";
 
 import { WorkspaceMember } from "./workspace-member.entity";
@@ -118,19 +111,54 @@ import { WorkspaceMember } from "./workspace-member.entity";
 const workspaceMember = RequestContext.get(WorkspaceMember);
 
 if (workspaceMember) {
-  RowLevelSecurityContext.setRole("authenticated");
-  RowLevelSecurityContext.set("workspace_id", workspaceMember.workspace.id);
-  RowLevelSecurityContext.set("workspace_member_id", workspaceMember.id);
+  RowLevelSecurity.setRole(RowLevelSecurityRole.AUTHENTICATED);
+  RowLevelSecurity.setContext("workspace_id", workspaceMember.workspace.id);
+  RowLevelSecurity.setContext("workspace_member_id", workspaceMember.id);
 }
 ```
 
 上下文 key 必须是 `snake_case`，因为它们会以 `app.` 前缀暴露为 PostgreSQL 设置。
 
+RLS mode 是请求作用域行为。它只影响 `RequestContext` 活动期间执行的查询；在 `RequestContext` 外部，驱动会按 MikroORM 原始逻辑执行。
+
+| Mode | 行为 |
+| --- | --- |
+| `RowLevelSecurityMode.AUTO` | 默认模式。设置了 role 或至少一个 context 值时应用 RLS。如果应用 RLS 但没有显式设置 role，驱动会使用 `anonymous`。如果没有 role 也没有 context 值，则按原始逻辑执行。 |
+| `RowLevelSecurityMode.ENABLED` | 对当前 `RequestContext` 强制应用 RLS，即使没有任何 context 值。如果没有显式设置 role，驱动会使用 `anonymous`。 |
+| `RowLevelSecurityMode.DISABLED` | 对当前 `RequestContext` 绕过 RLS，即使已经设置了 role 或 context 值。只应在可信的基础设施、管理或跨租户 job 中使用。 |
+
+`anonymous` 是一个特殊数据库角色，并以 `RowLevelSecurityRole.ANONYMOUS` 导出。生成的迁移总会在 `up` 中创建它，因为当 RLS 被启用但没有显式设置 role 时，它就是默认 fallback role。其他 role 会从 `@Policy({ roles })` 读取，包括用户自定义 role 名称，并同样在 `up` 中创建。需要允许公开或未登录访问的策略可以添加 `roles: [RowLevelSecurityRole.ANONYMOUS]`；已认证的租户作用域工作则调用 `RowLevelSecurity.setRole(RowLevelSecurityRole.AUTHENTICATED)`。
+
+```typescript
+import {
+  RowLevelSecurity,
+  RowLevelSecurityMode,
+} from "@nest-boot/row-level-security";
+
+RowLevelSecurity.setMode(RowLevelSecurityMode.DISABLED);
+```
+
+如果 queue job 需要 MikroORM 的请求上下文，但任务本身要跨租户运行，可以照常创建 `RequestContext`，但不要设置 `RowLevelSecurity`。如果 job 内部要按租户执行，则在该租户的执行边界内设置 role 和租户上下文：
+
+```typescript
+import {
+  RowLevelSecurity,
+  RowLevelSecurityRole,
+} from "@nest-boot/row-level-security";
+
+await RequestContext.run(new RequestContext({ type: "job" }), async () => {
+  RowLevelSecurity.setRole(RowLevelSecurityRole.AUTHENTICATED);
+  RowLevelSecurity.setContext("workspace_id", workspaceId);
+
+  await processWorkspace(workspaceId);
+});
+```
+
 ## 运行时行为
 
-支持的实体管理器方法在事务外运行时，`RowLevelSecurityEntityManager` 会自动开启事务，并在查询前应用 RLS 角色和上下文。如果已经处于事务中，它会复用当前事务，不会重复嵌套设置。
+查询在事务外运行时，`RowLevelSecurityDriver` 会自动开启一个短事务，应用 RLS 角色和上下文，执行 SQL，并通过提交或回滚清理事务级设置。如果 MikroORM 已经有事务上下文，驱动会在该事务上应用同样的设置后再执行查询。
 
-包装的方法包括常见读取、写入、计数、upsert、删除和 `flush()`。当多个操作必须共享同一个 RLS 上下文时，也可以直接调用 `em.transactional()`。
+因为设置发生在 SQL 连接层，之后 lazy-load relation 仍会使用正常的请求实体管理器，并在实际发起查询时获得新的 RLS 事务。当多个操作必须共享同一个 RLS 上下文时，也可以直接调用 `em.transactional()`。
 
 ## 最佳实践
 
@@ -140,7 +168,7 @@ if (workspaceMember) {
 
 3. **显式指定角色** — 在策略上包含 `roles`，让授权和 PostgreSQL 角色行为更可预测。
 
-4. **有意绕过** — 对可信后台任务使用 `shouldApply()`，不要临时清空上下文。
+4. **有意绕过** — 可信跨租户后台任务可以继续使用 MikroORM 需要的 `RequestContext`，但不要设置 `RowLevelSecurity`。
 
 ## API 参考
 

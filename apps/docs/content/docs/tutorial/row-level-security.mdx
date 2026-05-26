@@ -3,7 +3,7 @@ title: "Row-Level Security"
 description: "PostgreSQL row-level security helpers for MikroORM entities, request context values, and generated migrations."
 ---
 
-The `@nest-boot/row-level-security` package helps Nest Boot applications use PostgreSQL Row-Level Security (RLS) with MikroORM. It provides policy metadata for entities, migration helpers that generate SQL from that metadata, and an entity manager that applies request-scoped roles and context values inside transactions.
+The `@nest-boot/row-level-security` package helps Nest Boot applications use PostgreSQL Row-Level Security (RLS) with MikroORM. It provides policy metadata for entities, migration helpers that generate SQL from that metadata, and a PostgreSQL driver that applies request-scoped roles and context values inside transaction-local query execution.
 
 ## Installation
 
@@ -13,42 +13,23 @@ pnpm add @nest-boot/row-level-security @nest-boot/request-context @mikro-orm/pos
 
 ## Configure MikroORM
 
-Use `RowLevelSecurityEntityManager` as the MikroORM entity manager and `RowLevelSecurityMigrationGenerator` as the migration generator:
+Use `RowLevelSecurityDriver` as the MikroORM PostgreSQL driver and `RowLevelSecurityMigrationGenerator` as the migration generator:
 
 ```typescript
 import {
-  RowLevelSecurityEntityManager,
+  RowLevelSecurityDriver,
   RowLevelSecurityMigrationGenerator,
-  setRowLevelSecurityOptions,
 } from "@nest-boot/row-level-security";
-import { RequestContext } from "@nest-boot/request-context";
-
-import { User } from "./user.entity";
-import { Workspace } from "./workspace.entity";
-
-setRowLevelSecurityOptions({
-  isAuthenticated: () => Boolean(RequestContext.get(User)),
-  getContext: () => {
-    const workspace = RequestContext.get(Workspace);
-
-    return workspace ? [["workspace_id", workspace.id]] : [];
-  },
-});
 
 export default {
-  entityManager: RowLevelSecurityEntityManager,
+  driver: RowLevelSecurityDriver,
   migrations: {
     generator: RowLevelSecurityMigrationGenerator,
   },
 };
 ```
 
-`setRowLevelSecurityOptions()` configures process-level hooks used by the entity manager:
-
-- `authenticatedRole` and `anonymousRole` default to `authenticated` and `anonymous`
-- `isAuthenticated()` chooses the default role when a request has not set one explicitly
-- `getContext()` contributes values that become transaction-local PostgreSQL settings like `app.workspace_id`
-- `shouldApply()` can disable RLS setup for background tasks or privileged operations
+The driver applies RLS only when a `RequestContext` is active and the current context has row-level security values set through `RowLevelSecurity`. If no row-level security role or context values are present, it delegates to MikroORM unchanged.
 
 ## Define Entity Policies
 
@@ -56,13 +37,17 @@ Attach `@Policy()` to MikroORM entities. When `property` and `context` are provi
 
 ```typescript
 import { Entity, PrimaryKey, Property, t } from "@mikro-orm/postgresql";
-import { Policy, PolicyCommand } from "@nest-boot/row-level-security";
+import {
+  Policy,
+  PolicyCommand,
+  RowLevelSecurityRole,
+} from "@nest-boot/row-level-security";
 
 @Policy({
   command: PolicyCommand.ALL,
   property: "workspaceId",
   context: "workspace_id",
-  roles: ["authenticated"],
+  roles: [RowLevelSecurityRole.AUTHENTICATED],
 })
 @Entity({ tableName: "files" })
 export class File {
@@ -86,7 +71,10 @@ For custom policy logic, provide explicit SQL predicates:
   name: "published_files_read_policy",
   command: PolicyCommand.SELECT,
   using: `"is_public" = true or (select app.get_context('workspace_id', null::integer)) = "workspace_id"`,
-  roles: ["anonymous", "authenticated"],
+  roles: [
+    RowLevelSecurityRole.ANONYMOUS,
+    RowLevelSecurityRole.AUTHENTICATED,
+  ],
 })
 ```
 
@@ -101,16 +89,21 @@ pnpm mikro-orm migration:create
 Generated policy migrations:
 
 1. Enable row-level security on the target table.
-2. Grant the required table and sequence privileges to policy roles.
+2. Create `anonymous` and the roles declared by policy metadata during `up`.
 3. Drop and recreate policies when metadata changes.
-4. Rebuild the previous policy state in the down migration.
+4. Grant the required role, schema, table, and sequence privileges during `up`.
+5. Revoke the grants emitted by the migration during `down`, without dropping database roles.
+6. Rebuild the previous policy state in the down migration.
 
 ## Set Request Context
 
-`RowLevelSecurityEntityManager` applies RLS by running `SET LOCAL ROLE ...` and `set_config('app.<key>', value, true)` inside the active transaction. It combines values from `setRowLevelSecurityOptions().getContext()` and request-scoped values written through `RowLevelSecurityContext`.
+`RowLevelSecurityDriver` applies RLS by running `SET LOCAL ROLE ...` and `set_config('app.<key>', value, true)` inside the active transaction. It reads request-scoped values written through `RowLevelSecurity`.
 
 ```typescript
-import { RowLevelSecurityContext } from "@nest-boot/row-level-security";
+import {
+  RowLevelSecurity,
+  RowLevelSecurityRole,
+} from "@nest-boot/row-level-security";
 import { RequestContext } from "@nest-boot/request-context";
 
 import { WorkspaceMember } from "./workspace-member.entity";
@@ -118,19 +111,54 @@ import { WorkspaceMember } from "./workspace-member.entity";
 const workspaceMember = RequestContext.get(WorkspaceMember);
 
 if (workspaceMember) {
-  RowLevelSecurityContext.setRole("authenticated");
-  RowLevelSecurityContext.set("workspace_id", workspaceMember.workspace.id);
-  RowLevelSecurityContext.set("workspace_member_id", workspaceMember.id);
+  RowLevelSecurity.setRole(RowLevelSecurityRole.AUTHENTICATED);
+  RowLevelSecurity.setContext("workspace_id", workspaceMember.workspace.id);
+  RowLevelSecurity.setContext("workspace_member_id", workspaceMember.id);
 }
 ```
 
 Context keys must be `snake_case`, because they are exposed as PostgreSQL settings under the `app.` prefix.
 
+RLS mode is request-scoped behavior. It affects only queries executed while a `RequestContext` is active; outside a `RequestContext`, the driver delegates to MikroORM unchanged.
+
+| Mode | Behavior |
+| --- | --- |
+| `RowLevelSecurityMode.AUTO` | Default. Applies RLS when a role or at least one context value is set. If RLS is applied and no role was set, the driver uses `anonymous`. With no role and no context values, it delegates unchanged. |
+| `RowLevelSecurityMode.ENABLED` | Forces RLS for the current `RequestContext`, even when there are no context values. If no role was set, the driver uses `anonymous`. |
+| `RowLevelSecurityMode.DISABLED` | Bypasses RLS for the current `RequestContext`, even when role or context values are set. Use only for trusted infrastructure, admin, or cross-tenant job work. |
+
+`anonymous` is a special database role exported as `RowLevelSecurityRole.ANONYMOUS`. Generated migrations always create it during `up`, because it is the fallback role whenever RLS is enabled but no explicit role was set. Other roles are read from `@Policy({ roles })`, including custom role names, and are also created during `up`. Add `roles: [RowLevelSecurityRole.ANONYMOUS]` to policies that should allow public or unauthenticated access, and call `RowLevelSecurity.setRole(RowLevelSecurityRole.AUTHENTICATED)` for authenticated tenant-scoped work.
+
+```typescript
+import {
+  RowLevelSecurity,
+  RowLevelSecurityMode,
+} from "@nest-boot/row-level-security";
+
+RowLevelSecurity.setMode(RowLevelSecurityMode.DISABLED);
+```
+
+If a queue job needs MikroORM's request context but should operate across tenants, create the `RequestContext` as usual and do not set `RowLevelSecurity` values. For tenant-scoped work inside a job, set the role and tenant context around that tenant's work:
+
+```typescript
+import {
+  RowLevelSecurity,
+  RowLevelSecurityRole,
+} from "@nest-boot/row-level-security";
+
+await RequestContext.run(new RequestContext({ type: "job" }), async () => {
+  RowLevelSecurity.setRole(RowLevelSecurityRole.AUTHENTICATED);
+  RowLevelSecurity.setContext("workspace_id", workspaceId);
+
+  await processWorkspace(workspaceId);
+});
+```
+
 ## Runtime Behavior
 
-When a supported entity manager method runs outside a transaction, `RowLevelSecurityEntityManager` opens a transaction automatically and applies the RLS role and context before executing the query. If a transaction is already active, it reuses that transaction and avoids nesting extra setup.
+When a query runs outside a transaction, `RowLevelSecurityDriver` opens a short transaction, applies the RLS role and context, executes the SQL, and lets commit or rollback clear transaction-local settings. If MikroORM already has a transaction context, the driver applies the same setup to that transaction before running the query.
 
-The wrapped methods include common reads, writes, counts, upserts, deletes, and `flush()`. You can also call `em.transactional()` directly when several operations must share one RLS context.
+Because the setup happens at the SQL connection layer, lazy-loaded relations use the normal request entity manager and receive a fresh RLS transaction when they execute later. You can still call `em.transactional()` directly when several operations must share one RLS context.
 
 ## Best Practices
 
@@ -140,7 +168,7 @@ The wrapped methods include common reads, writes, counts, upserts, deletes, and 
 
 3. **Use Explicit Roles** — Include `roles` on policies so grants and PostgreSQL role behavior stay predictable.
 
-4. **Bypass Deliberately** — Use `shouldApply()` for trusted background jobs instead of clearing context ad hoc.
+4. **Bypass Deliberately** — For trusted cross-tenant jobs, use `RequestContext` for MikroORM but do not set `RowLevelSecurity`.
 
 ## API Reference
 

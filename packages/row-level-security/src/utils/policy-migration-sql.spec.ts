@@ -2,6 +2,12 @@ import { PolicyCommand } from "../enums/policy-command.enum";
 import { PolicyMode } from "../enums/policy-mode.enum";
 import { createPolicyBootstrapSqlStatements } from "./create-policy-bootstrap-sql-statements";
 import { createPolicyDownSql } from "./create-policy-down-sql";
+import { createPolicyPrivilegeDownSqlStatements } from "./create-policy-privilege-down-sql-statements";
+import {
+  createPolicyRoleDownSqlStatements,
+  createPolicyRoleUpSqlStatements,
+  getPolicyRoleNames,
+} from "./create-policy-role-sql-statements";
 import { createPolicyUpSqlStatements } from "./create-policy-up-sql-statements";
 
 describe("policy migration SQL", () => {
@@ -9,17 +15,54 @@ describe("policy migration SQL", () => {
     const statements = createPolicyBootstrapSqlStatements();
 
     expect(statements).toEqual([
-      "do $$ begin if not exists (select 1 from pg_roles where rolname = 'authenticated') then create role authenticated nologin; end if; end $$;",
-      "do $$ begin if not exists (select 1 from pg_roles where rolname = 'anonymous') then create role anonymous nologin; end if; end $$;",
-      "grant authenticated to current_user;",
-      "grant anonymous to current_user;",
       "create schema if not exists app;",
-      "grant usage on schema app to authenticated;",
-      "grant usage on schema app to anonymous;",
       "create or replace function app.get_context(context_key text, context_type anyelement) returns anyelement as $$ declare context_value text; begin context_value := current_setting('app.' || context_key, true); if context_value is null or context_value = '' then return null; end if; execute format('select $1::%s', pg_typeof(context_type)::text) using context_value into context_type; return context_type; end; $$ language plpgsql stable;",
     ]);
     expect(statements.join("\n")).not.toContain("grant all on all tables");
     expect(statements.join("\n")).not.toContain("get_policy_context");
+  });
+
+  it("generates up-only role SQL for anonymous and custom policy roles", () => {
+    const statements = createPolicyRoleUpSqlStatements([
+      "authenticated",
+      "workspace_admin",
+    ]);
+
+    expect(statements).toEqual([
+      "do $$ begin if not exists (select 1 from pg_roles where rolname = 'anonymous') then create role anonymous nologin; end if; end $$;",
+      "grant anonymous to current_user;",
+      "grant usage on schema app to anonymous;",
+      "do $$ begin if not exists (select 1 from pg_roles where rolname = 'authenticated') then create role authenticated nologin; end if; end $$;",
+      "grant authenticated to current_user;",
+      "grant usage on schema app to authenticated;",
+      "do $$ begin if not exists (select 1 from pg_roles where rolname = 'workspace_admin') then create role workspace_admin nologin; end if; end $$;",
+      "grant workspace_admin to current_user;",
+      "grant usage on schema app to workspace_admin;",
+    ]);
+  });
+
+  it("generates role down SQL that revokes grants without dropping roles", () => {
+    const statements = createPolicyRoleDownSqlStatements(["workspace_admin"]);
+
+    expect(statements).toEqual([
+      "revoke usage on schema app from anonymous;",
+      "revoke anonymous from current_user;",
+      "revoke usage on schema app from workspace_admin;",
+      "revoke workspace_admin from current_user;",
+    ]);
+    expect(statements.join("\n")).not.toContain("drop role");
+  });
+
+  it("normalizes policy role names with anonymous first and public skipped", () => {
+    expect(getPolicyRoleNames()).toEqual(["anonymous"]);
+    expect(
+      getPolicyRoleNames([
+        "workspace_admin",
+        "public",
+        "authenticated",
+        "workspace_admin",
+      ]),
+    ).toEqual(["anonymous", "authenticated", "workspace_admin"]);
   });
 
   it("generates policy up SQL", () => {
@@ -89,6 +132,66 @@ describe("policy migration SQL", () => {
         expect.stringContaining("pg_get_serial_sequence"),
         expect.stringContaining(
           "grant usage, select on sequence %s to authenticated",
+        ),
+      ]),
+    );
+  });
+
+  it.each([
+    [PolicyCommand.SELECT, "revoke select on table"],
+    [PolicyCommand.INSERT, "revoke insert on table"],
+    [PolicyCommand.UPDATE, "revoke select, update on table"],
+    [PolicyCommand.DELETE, "revoke select, delete on table"],
+    [PolicyCommand.ALL, "revoke select, insert, update, delete on table"],
+  ])("generates policy privilege revoke SQL for %s", (command, expected) => {
+    const statements = createPolicyPrivilegeDownSqlStatements({
+      schemaName: "public",
+      tableName: "workspace_member",
+      policyName: "workspace_member_policy",
+      command,
+      roles: ["authenticated"],
+    });
+
+    expect(statements[0]).toContain(expected);
+
+    if (command === PolicyCommand.INSERT || command === PolicyCommand.ALL) {
+      expect(statements).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining(
+            "revoke usage, select on sequence %s from authenticated",
+          ),
+        ]),
+      );
+    } else {
+      expect(statements).toHaveLength(1);
+    }
+  });
+
+  it("does not generate policy privilege revoke SQL without explicit roles", () => {
+    expect(
+      createPolicyPrivilegeDownSqlStatements({
+        schemaName: "public",
+        tableName: "workspace_member",
+        policyName: "workspace_member_policy",
+      }),
+    ).toEqual([]);
+  });
+
+  it("defaults policy privilege revoke SQL to all command privileges", () => {
+    expect(
+      createPolicyPrivilegeDownSqlStatements({
+        schemaName: "public",
+        tableName: "workspace_member",
+        policyName: "workspace_member_policy",
+        roles: ["authenticated"],
+      }),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(
+          'revoke select, insert, update, delete on table "public"."workspace_member" from authenticated;',
+        ),
+        expect.stringContaining(
+          "revoke usage, select on sequence %s from authenticated",
         ),
       ]),
     );
