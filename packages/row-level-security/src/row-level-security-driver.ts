@@ -34,6 +34,11 @@ interface RowLevelSecurityTransactionState {
   [ROW_LEVEL_SECURITY_TRANSACTION_QUEUE]?: Promise<void>;
 }
 
+interface RowLevelSecurityTransactionContext {
+  state: RowLevelSecurityTransactionState;
+  execution: Transaction;
+}
+
 /** PostgreSQL connection that applies RLS role and context at SQL execution time. */
 export class RowLevelSecurityConnection extends PostgreSqlConnection {
   /** Applies row level security setup before delegating SQL execution to MikroORM. */
@@ -51,19 +56,25 @@ export class RowLevelSecurityConnection extends PostgreSqlConnection {
     const transactionContext = getTransactionContext(queryOrKnex, ctx);
 
     if (transactionContext) {
-      const transaction = transactionContext as Transaction;
+      return await this.runInTransactionQueue(
+        transactionContext.state,
+        async () => {
+          await this.configureRowLevelSecurity(
+            transactionContext.state,
+            transactionContext.execution,
+            setup,
+            loggerContext,
+          );
 
-      return await this.runInTransactionQueue(transaction, async () => {
-        await this.configureRowLevelSecurity(transaction, setup, loggerContext);
-
-        return await super.execute(
-          queryOrKnex,
-          params,
-          method,
-          transaction,
-          loggerContext,
-        );
-      });
+          return await super.execute(
+            queryOrKnex,
+            params,
+            method,
+            transactionContext.execution,
+            loggerContext,
+          );
+        },
+      );
     }
 
     if (!setup || setup.action === "clear") {
@@ -78,8 +89,15 @@ export class RowLevelSecurityConnection extends PostgreSqlConnection {
 
     return await this.transactional(
       async (trx) => {
-        return await this.runInTransactionQueue(trx, async () => {
-          await this.configureRowLevelSecurity(trx, setup, loggerContext);
+        const transactionState = trx as RowLevelSecurityTransactionState;
+
+        return await this.runInTransactionQueue(transactionState, async () => {
+          await this.configureRowLevelSecurity(
+            transactionState,
+            trx,
+            setup,
+            loggerContext,
+          );
 
           return await super.execute(
             queryOrKnex,
@@ -97,10 +115,9 @@ export class RowLevelSecurityConnection extends PostgreSqlConnection {
   }
 
   private async runInTransactionQueue<T>(
-    ctx: Transaction,
+    transactionState: RowLevelSecurityTransactionState,
     callback: () => Promise<T>,
   ) {
-    const transactionState = ctx as RowLevelSecurityTransactionState;
     const previous = transactionState[ROW_LEVEL_SECURITY_TRANSACTION_QUEUE];
     let release: () => void = () => {
       return;
@@ -128,21 +145,21 @@ export class RowLevelSecurityConnection extends PostgreSqlConnection {
   }
 
   private async configureRowLevelSecurity(
+    transactionState: RowLevelSecurityTransactionState,
     ctx: Transaction,
     setup: RowLevelSecurityTransactionSetup | undefined,
     loggerContext?: LoggingOptions,
   ) {
     if (!setup) {
-      await this.clearRowLevelSecurity(ctx, loggerContext);
+      await this.clearRowLevelSecurity(transactionState, ctx, loggerContext);
       return;
     }
 
     if (setup.action === "clear") {
-      await this.clearRowLevelSecurity(ctx, loggerContext);
+      await this.clearRowLevelSecurity(transactionState, ctx, loggerContext);
       return;
     }
 
-    const transactionState = ctx as RowLevelSecurityTransactionState;
     const staleContextKeys = getStaleContextKeys(
       transactionState[ROW_LEVEL_SECURITY_TRANSACTION_CONTEXT_KEYS] ?? [],
       setup.contextKeys,
@@ -168,10 +185,10 @@ export class RowLevelSecurityConnection extends PostgreSqlConnection {
   }
 
   private async clearRowLevelSecurity(
+    transactionState: RowLevelSecurityTransactionState,
     ctx: Transaction,
     loggerContext?: LoggingOptions,
   ) {
-    const transactionState = ctx as RowLevelSecurityTransactionState;
     const contextKeys =
       transactionState[ROW_LEVEL_SECURITY_TRANSACTION_CONTEXT_KEYS] ?? [];
 
@@ -207,9 +224,19 @@ export class RowLevelSecurityDriver extends AbstractSqlDriver<RowLevelSecurityCo
   }
 }
 
-function getTransactionContext(queryOrKnex: unknown, ctx: unknown) {
-  if (ctx || typeof queryOrKnex === "string") {
-    return ctx;
+function getTransactionContext(
+  queryOrKnex: unknown,
+  ctx: unknown,
+): RowLevelSecurityTransactionContext | undefined {
+  if (ctx) {
+    return {
+      state: ctx as RowLevelSecurityTransactionState,
+      execution: ctx as Transaction,
+    };
+  }
+
+  if (typeof queryOrKnex === "string") {
+    return undefined;
   }
 
   const knexQuery = queryOrKnex as {
@@ -218,7 +245,14 @@ function getTransactionContext(queryOrKnex: unknown, ctx: unknown) {
     };
   };
 
-  return knexQuery.client?.transacting ? queryOrKnex : ctx;
+  if (!knexQuery.client?.transacting) {
+    return undefined;
+  }
+
+  return {
+    state: knexQuery.client as RowLevelSecurityTransactionState,
+    execution: queryOrKnex as Transaction,
+  };
 }
 
 function getStaleContextKeys(previousKeys: string[], nextKeys: string[]) {

@@ -347,6 +347,47 @@ describe("RowLevelSecurityDriver", () => {
     );
   });
 
+  it("tracks row level security state on the shared transaction client for Knex query builders", async () => {
+    const transactionClient = {
+      transacting: true,
+    };
+    const scopedQueryBuilder = {
+      client: transactionClient,
+    };
+    const unscopedQueryBuilder = {
+      client: transactionClient,
+    };
+    const executeSpy = mockPostgreSqlExecute("query-result");
+
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      RowLevelSecurity.setRole("authenticated");
+      RowLevelSecurity.setContext("tenant_id", 7);
+
+      await RowLevelSecurityConnection.prototype.execute.call(
+        createConnection(),
+        scopedQueryBuilder as any,
+        [],
+        "all",
+      );
+    });
+
+    await RowLevelSecurityConnection.prototype.execute.call(
+      createConnection(),
+      unscopedQueryBuilder as any,
+      [],
+      "all",
+    );
+
+    expect(executeSpy).toHaveBeenNthCalledWith(
+      3,
+      "SET LOCAL ROLE NONE;\nSELECT set_config('app.tenant_id', '', true);",
+      [],
+      "run",
+      unscopedQueryBuilder,
+      undefined,
+    );
+  });
+
   it("opens a short transaction for a Knex query builder without a transaction", async () => {
     const queryBuilder = {
       client: {

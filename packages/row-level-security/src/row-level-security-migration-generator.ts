@@ -21,11 +21,11 @@ import {
   getPolicyRoleNames,
 } from "./utils/create-policy-role-sql-statements";
 import { createPolicyUpSqlStatements } from "./utils/create-policy-up-sql-statements";
-import { escapeSqlLiteral } from "./utils/escape-sql-literal";
 
 /** MikroORM TypeScript migration generator that injects generated RLS SQL. */
 export class RowLevelSecurityMigrationGenerator extends TSMigrationGenerator {
   private existingPolicyDefinitions?: RowLevelSecurityDefinition[];
+  private existingPolicyRoleDefinitions?: RowLevelSecurityDefinition[];
   private currentPolicyDefinitions?: RowLevelSecurityDefinition[];
 
   override async generate(
@@ -39,14 +39,23 @@ export class RowLevelSecurityMigrationGenerator extends TSMigrationGenerator {
       currentPolicyDefinitions,
     );
 
-    this.existingPolicyDefinitions =
+    const existingPolicyDefinitions =
       await this.getExistingPolicyDefinitionsFromDatabase(tableReferences);
+
+    this.existingPolicyDefinitions = existingPolicyDefinitions
+      ? filterPolicyDefinitionsByTableReferences(
+          existingPolicyDefinitions,
+          tableReferences,
+        )
+      : undefined;
+    this.existingPolicyRoleDefinitions = existingPolicyDefinitions;
     this.currentPolicyDefinitions = currentPolicyDefinitions;
 
     try {
       return await super.generate(diff, path, name);
     } finally {
       this.existingPolicyDefinitions = undefined;
+      this.existingPolicyRoleDefinitions = undefined;
       this.currentPolicyDefinitions = undefined;
     }
   }
@@ -62,9 +71,11 @@ export class RowLevelSecurityMigrationGenerator extends TSMigrationGenerator {
       currentPolicyDefinitions,
     );
     const preservedDefinitions = this.existingPolicyDefinitions ?? [];
+    const preservedRoleDefinitions =
+      this.existingPolicyRoleDefinitions ?? preservedDefinitions;
     const revocableRoleNames = getRevocableDefinitionRoleNames(
       added,
-      preservedDefinitions,
+      preservedRoleDefinitions,
     );
 
     if (added.length === 0 && removed.length === 0) {
@@ -216,9 +227,7 @@ export class RowLevelSecurityMigrationGenerator extends TSMigrationGenerator {
   private async getExistingPolicyDefinitionsFromDatabase(
     tableReferences: TableReference[],
   ): Promise<RowLevelSecurityDefinition[] | undefined> {
-    const uniqueTableReferences = dedupeTableReferences(tableReferences);
-
-    if (uniqueTableReferences.length === 0) {
+    if (tableReferences.length === 0) {
       return [];
     }
 
@@ -249,12 +258,6 @@ export class RowLevelSecurityMigrationGenerator extends TSMigrationGenerator {
       FROM pg_policy p
       INNER JOIN pg_class c ON c.oid = p.polrelid
       INNER JOIN pg_namespace n ON n.oid = c.relnamespace
-      WHERE (n.nspname, c.relname) in (${uniqueTableReferences
-        .map(
-          (table) =>
-            `('${escapeSqlLiteral(table.schemaName)}', '${escapeSqlLiteral(table.tableName)}')`,
-        )
-        .join(", ")})
       ORDER BY n.nspname, c.relname
     `);
 
@@ -321,6 +324,21 @@ function getPolicyDefinitionTableReferences(
     schemaName: definition.schemaName,
     tableName: definition.tableName,
   }));
+}
+
+function filterPolicyDefinitionsByTableReferences(
+  definitions: RowLevelSecurityDefinition[],
+  tableReferences: TableReference[],
+) {
+  const tableKeys = new Set(
+    dedupeTableReferences(tableReferences).map(
+      (table) => `${table.schemaName}.${table.tableName}`,
+    ),
+  );
+
+  return definitions.filter((definition) =>
+    tableKeys.has(`${definition.schemaName}.${definition.tableName}`),
+  );
 }
 
 function dedupeTableReferences(tableReferences: TableReference[]) {
