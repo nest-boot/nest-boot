@@ -4,11 +4,17 @@ import { assertIdentifier } from "./assert-identifier";
 import { escapeSqlLiteral } from "./escape-sql-literal";
 import { quoteQualifiedIdentifier } from "./quote-qualified-identifier";
 
-/** Creates SQL that revokes table and sequence privileges emitted for a policy. */
+/**
+ * Creates SQL that revokes table and sequence privileges emitted for a policy.
+ *
+ * Preserved policies keep overlapping privileges for the same schema, table,
+ * and role from being revoked during rollback.
+ */
 export function createPolicyPrivilegeDownSqlStatements(
   options: PolicySqlOptions,
+  preservedPolicies: PolicySqlOptions[] = [],
 ) {
-  const roles = options.roles ?? [];
+  const roles = getPolicySqlRoleNames(options.roles);
 
   if (roles.length === 0) {
     return [];
@@ -18,18 +24,69 @@ export function createPolicyPrivilegeDownSqlStatements(
     options.schemaName,
     options.tableName,
   );
-  const roleSql = roles.map((role) => assertIdentifier(role)).join(", ");
   const command = options.command ?? PolicyCommand.ALL;
-  const privileges = getTablePrivileges(command).join(", ");
-  const statements = [
-    `revoke ${privileges} on table ${tableIdentifier} from ${roleSql};`,
-  ];
+  const statements = createTablePrivilegeRevokeSqlStatements(
+    options,
+    tableIdentifier,
+    roles,
+    preservedPolicies,
+  );
 
   if (requiresSequencePrivileges(command)) {
-    statements.push(createSequenceRevokeSql(options, tableIdentifier, roleSql));
+    const sequenceRevokeRoles = roles.filter(
+      (role) =>
+        !hasPreservedSequencePrivileges(options, role, preservedPolicies),
+    );
+
+    if (sequenceRevokeRoles.length > 0) {
+      statements.push(
+        createSequenceRevokeSql(
+          options,
+          tableIdentifier,
+          sequenceRevokeRoles.join(", "),
+        ),
+      );
+    }
   }
 
   return statements;
+}
+
+function createTablePrivilegeRevokeSqlStatements(
+  options: PolicySqlOptions,
+  tableIdentifier: string,
+  roles: string[],
+  preservedPolicies: PolicySqlOptions[],
+) {
+  const command = options.command ?? PolicyCommand.ALL;
+  const privileges = getTablePrivileges(command);
+  const rolesByPrivileges = new Map<string, string[]>();
+
+  for (const role of roles) {
+    const preservedPrivileges = getPreservedTablePrivileges(
+      options,
+      role,
+      preservedPolicies,
+    );
+    const revocablePrivileges = privileges.filter(
+      (privilege) => !preservedPrivileges.has(privilege),
+    );
+
+    if (revocablePrivileges.length === 0) {
+      continue;
+    }
+
+    const privilegeSql = revocablePrivileges.join(", ");
+    const groupedRoles = rolesByPrivileges.get(privilegeSql) ?? [];
+
+    groupedRoles.push(role);
+    rolesByPrivileges.set(privilegeSql, groupedRoles);
+  }
+
+  return [...rolesByPrivileges].map(
+    ([privilegeSql, groupedRoles]) =>
+      `revoke ${privilegeSql} on table ${tableIdentifier} from ${groupedRoles.join(", ")};`,
+  );
 }
 
 function getTablePrivileges(command: PolicyCommand) {
@@ -54,6 +111,61 @@ function getTablePrivileges(command: PolicyCommand) {
 
 function requiresSequencePrivileges(command: PolicyCommand) {
   return command === PolicyCommand.INSERT || command === PolicyCommand.ALL;
+}
+
+function getPreservedTablePrivileges(
+  options: PolicySqlOptions,
+  role: string,
+  preservedPolicies: PolicySqlOptions[],
+) {
+  const privileges = new Set<string>();
+
+  for (const preservedPolicy of getPreservedPoliciesForRole(
+    options,
+    role,
+    preservedPolicies,
+  )) {
+    for (const privilege of getTablePrivileges(
+      preservedPolicy.command ?? PolicyCommand.ALL,
+    )) {
+      privileges.add(privilege);
+    }
+  }
+
+  return privileges;
+}
+
+function hasPreservedSequencePrivileges(
+  options: PolicySqlOptions,
+  role: string,
+  preservedPolicies: PolicySqlOptions[],
+) {
+  return getPreservedPoliciesForRole(options, role, preservedPolicies).some(
+    (preservedPolicy) =>
+      requiresSequencePrivileges(preservedPolicy.command ?? PolicyCommand.ALL),
+  );
+}
+
+function getPreservedPoliciesForRole(
+  options: PolicySqlOptions,
+  role: string,
+  preservedPolicies: PolicySqlOptions[],
+) {
+  return preservedPolicies.filter(
+    (preservedPolicy) =>
+      isSamePolicyTarget(options, preservedPolicy) &&
+      getPolicySqlRoleNames(preservedPolicy.roles).includes(role),
+  );
+}
+
+function getPolicySqlRoleNames(roles: string[] | undefined) {
+  return [...new Set((roles ?? []).map((role) => assertIdentifier(role)))];
+}
+
+function isSamePolicyTarget(left: PolicySqlOptions, right: PolicySqlOptions) {
+  return (
+    left.schemaName === right.schemaName && left.tableName === right.tableName
+  );
 }
 
 function createSequenceRevokeSql(

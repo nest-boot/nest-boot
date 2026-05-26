@@ -92,7 +92,7 @@ pnpm mikro-orm migration:create
 2. 在 `up` 中创建 `anonymous` 和 policy metadata 声明的 roles。
 3. 在元数据变化时删除并重建策略。
 4. 在 `up` 中授予需要的 role、schema、table 和 sequence 权限。
-5. 在 `down` 中撤销本次迁移生成的授权，但不删除数据库 role。
+5. 在 `down` 中只撤销不再被旧策略需要的 role、table、sequence 授权，但不删除数据库 role。
 6. 在 down 迁移中恢复之前的策略状态。
 
 ## 设置请求上下文
@@ -121,11 +121,11 @@ if (workspaceMember) {
 
 RLS mode 是请求作用域行为。它只影响 `RequestContext` 活动期间执行的查询；在 `RequestContext` 外部，驱动会按 MikroORM 原始逻辑执行。
 
-| Mode | 行为 |
-| --- | --- |
-| `RowLevelSecurityMode.AUTO` | 默认模式。设置了 role 或至少一个 context 值时应用 RLS。如果应用 RLS 但没有显式设置 role，驱动会使用 `anonymous`。如果没有 role 也没有 context 值，则按原始逻辑执行。 |
-| `RowLevelSecurityMode.ENABLED` | 对当前 `RequestContext` 强制应用 RLS，即使没有任何 context 值。如果没有显式设置 role，驱动会使用 `anonymous`。 |
-| `RowLevelSecurityMode.DISABLED` | 对当前 `RequestContext` 绕过 RLS，即使已经设置了 role 或 context 值。只应在可信的基础设施、管理或跨租户 job 中使用。 |
+| Mode                            | 行为                                                                                                                                                                 |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `RowLevelSecurityMode.AUTO`     | 默认模式。设置了 role 或至少一个 context 值时应用 RLS。如果应用 RLS 但没有显式设置 role，驱动会使用 `anonymous`。如果没有 role 也没有 context 值，则按原始逻辑执行。 |
+| `RowLevelSecurityMode.ENABLED`  | 对当前 `RequestContext` 强制应用 RLS，即使没有任何 context 值。如果没有显式设置 role，驱动会使用 `anonymous`。                                                       |
+| `RowLevelSecurityMode.DISABLED` | 对当前 `RequestContext` 绕过 RLS，即使已经设置了 role 或 context 值。只应在可信的基础设施、管理或跨租户 job 中使用。                                                 |
 
 `anonymous` 是一个特殊数据库角色，并以 `RowLevelSecurityRole.ANONYMOUS` 导出。生成的迁移总会在 `up` 中创建它，因为当 RLS 被启用但没有显式设置 role 时，它就是默认 fallback role。其他 role 会从 `@Policy({ roles })` 读取，包括用户自定义 role 名称，并同样在 `up` 中创建。需要允许公开或未登录访问的策略可以添加 `roles: [RowLevelSecurityRole.ANONYMOUS]`；已认证的租户作用域工作则调用 `RowLevelSecurity.setRole(RowLevelSecurityRole.AUTHENTICATED)`。
 

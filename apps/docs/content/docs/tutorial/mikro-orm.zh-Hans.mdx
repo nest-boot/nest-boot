@@ -213,7 +213,7 @@ export class User {
 
 2. **EntityService 作为基类** — 所有领域服务都继承 `EntityService`，开箱即获得 CRUD + DataLoader 批处理。
 
-3. **RLS Entity Manager** — 需要由 PostgreSQL 策略强制租户或工作区隔离时，使用 `@nest-boot/row-level-security`。
+3. **RLS Driver** — 需要由 PostgreSQL 策略强制租户或工作区隔离时，使用 `@nest-boot/row-level-security`。
 
 4. **软删除** — 对支持软删除的实体在 `EntityService` 中配置 `softDeleteKey`。
 

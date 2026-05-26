@@ -245,7 +245,7 @@ void bootstrap();
 
 3. **Environment Variables** — Store `AUTH_SECRET` in environment variables and ensure it's at least 32 characters with high entropy.
 
-4. **RLS Context** — When combining auth with PostgreSQL RLS, load the tenant or workspace in `onAuthenticated` and write it to `RowLevelSecurityContext`. See the [Row-Level Security tutorial](/docs/tutorial/row-level-security).
+4. **RLS Context** — When combining auth with PostgreSQL RLS, load the tenant or workspace in `onAuthenticated` and write it to `RowLevelSecurity`. See the [Row-Level Security tutorial](/docs/tutorial/row-level-security).
 
 ## API Reference
 

@@ -8,4 +8,4 @@ Remove `setRowLevelSecurityOptions` and related runtime override hooks. RLS now 
 
 Rename the request-scoped helper from `RowLevelSecurityContext` to `RowLevelSecurity`, add `RowLevelSecurityMode`, and expose `RowLevelSecurity.setMode(...)` for `AUTO`, `ENABLED`, and `DISABLED` execution modes.
 
-Add `RowLevelSecurityRole` constants for `anonymous` and `authenticated`, derive migration role creation from policy roles plus the anonymous fallback, and revoke generated grants in down migrations without dropping database roles.
+Add `RowLevelSecurityRole` constants for `anonymous` and `authenticated`, derive migration role creation from policy roles plus the anonymous fallback, and revoke generated grants in down migrations without dropping database roles or privileges still required by preserved policies.

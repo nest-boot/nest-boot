@@ -18,6 +18,7 @@ import { createPolicyPrivilegeDownSqlStatements } from "./utils/create-policy-pr
 import {
   createPolicyRoleDownSqlStatements,
   createPolicyRoleUpSqlStatements,
+  getPolicyRoleNames,
 } from "./utils/create-policy-role-sql-statements";
 import { createPolicyUpSqlStatements } from "./utils/create-policy-up-sql-statements";
 import { escapeSqlLiteral } from "./utils/escape-sql-literal";
@@ -60,6 +61,11 @@ export class RowLevelSecurityMigrationGenerator extends TSMigrationGenerator {
       diff,
       currentPolicyDefinitions,
     );
+    const preservedDefinitions = this.existingPolicyDefinitions ?? [];
+    const revocableRoleNames = getRevocableDefinitionRoleNames(
+      added,
+      preservedDefinitions,
+    );
 
     if (added.length === 0 && removed.length === 0) {
       return super.generateMigrationFile(className, diff);
@@ -81,10 +87,13 @@ export class RowLevelSecurityMigrationGenerator extends TSMigrationGenerator {
       down: [
         ...added.map((definition) => createPolicyDownSql(definition)),
         ...added.flatMap((definition) =>
-          createPolicyPrivilegeDownSqlStatements(definition),
+          createPolicyPrivilegeDownSqlStatements(
+            definition,
+            preservedDefinitions,
+          ),
         ),
-        ...(added.length > 0
-          ? createPolicyRoleDownSqlStatements(getDefinitionRoles(added))
+        ...(revocableRoleNames.length > 0
+          ? createPolicyRoleDownSqlStatements(revocableRoleNames)
           : []),
         ...diff.down,
         ...(removed.length > 0 ? createPolicyBootstrapSqlStatements() : []),
@@ -282,6 +291,27 @@ function getDefinitionBootstrapSql(definitions: RowLevelSecurityDefinition[]) {
 
 function getDefinitionRoles(definitions: RowLevelSecurityDefinition[]) {
   return definitions.flatMap((definition) => definition.roles ?? []);
+}
+
+function getDefinitionRoleNames(definitions: RowLevelSecurityDefinition[]) {
+  if (definitions.length === 0) {
+    return [];
+  }
+
+  return getPolicyRoleNames(getDefinitionRoles(definitions));
+}
+
+function getRevocableDefinitionRoleNames(
+  addedDefinitions: RowLevelSecurityDefinition[],
+  preservedDefinitions: RowLevelSecurityDefinition[],
+) {
+  const preservedRoleNames = new Set(
+    getDefinitionRoleNames(preservedDefinitions),
+  );
+
+  return getDefinitionRoleNames(addedDefinitions).filter(
+    (role) => !preservedRoleNames.has(role),
+  );
 }
 
 function getPolicyDefinitionTableReferences(

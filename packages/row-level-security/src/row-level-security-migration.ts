@@ -7,6 +7,7 @@ import { createPolicyPrivilegeDownSqlStatements } from "./utils/create-policy-pr
 import {
   createPolicyRoleDownSqlStatements,
   createPolicyRoleUpSqlStatements,
+  getPolicyRoleNames,
 } from "./utils/create-policy-role-sql-statements";
 import { createPolicyUpSqlStatements } from "./utils/create-policy-up-sql-statements";
 
@@ -42,7 +43,9 @@ export abstract class RowLevelSecurityMigration extends Migration {
       this.addSql(sql);
     }
 
-    for (const sql of createPolicyRoleDownSqlStatements(options.roles)) {
+    for (const sql of createPolicyRoleDownSqlStatements(
+      getPolicyRoleNames(options.roles),
+    )) {
       this.addSql(sql);
     }
   }

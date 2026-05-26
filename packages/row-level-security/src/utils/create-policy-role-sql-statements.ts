@@ -16,11 +16,11 @@ export function createPolicyRoleUpSqlStatements(roles: Iterable<string> = []) {
   });
 }
 
-/** Creates SQL that revokes grants emitted by {@link createPolicyRoleUpSqlStatements}. */
+/** Creates SQL that revokes schema and membership grants for the supplied roles. */
 export function createPolicyRoleDownSqlStatements(
   roles: Iterable<string> = [],
 ) {
-  return getPolicyRoleNames(roles).flatMap((role) => {
+  return [...getExplicitPolicyRoleNames(roles)].sort().flatMap((role) => {
     const roleName = assertIdentifier(role);
 
     return [
@@ -32,6 +32,15 @@ export function createPolicyRoleDownSqlStatements(
 
 /** Returns unique policy roles, always including the anonymous fallback role. */
 export function getPolicyRoleNames(roles: Iterable<string> = []) {
+  const roleNames = getExplicitPolicyRoleNames(roles);
+
+  roleNames.delete(RowLevelSecurityRole.ANONYMOUS);
+
+  return [RowLevelSecurityRole.ANONYMOUS, ...[...roleNames].sort()];
+}
+
+/** Returns unique explicit policy roles without adding fallback roles. */
+function getExplicitPolicyRoleNames(roles: Iterable<string>) {
   const roleNames = new Set<string>();
 
   for (const role of roles) {
@@ -42,7 +51,5 @@ export function getPolicyRoleNames(roles: Iterable<string> = []) {
     roleNames.add(assertIdentifier(role));
   }
 
-  roleNames.delete(RowLevelSecurityRole.ANONYMOUS);
-
-  return [RowLevelSecurityRole.ANONYMOUS, ...[...roleNames].sort()];
+  return roleNames;
 }

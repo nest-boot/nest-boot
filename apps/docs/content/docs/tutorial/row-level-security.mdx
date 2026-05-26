@@ -92,7 +92,7 @@ Generated policy migrations:
 2. Create `anonymous` and the roles declared by policy metadata during `up`.
 3. Drop and recreate policies when metadata changes.
 4. Grant the required role, schema, table, and sequence privileges during `up`.
-5. Revoke the grants emitted by the migration during `down`, without dropping database roles.
+5. Revoke grants emitted by the migration during `down` only when no previous policy still requires the same role, table, or sequence privilege, without dropping database roles.
 6. Rebuild the previous policy state in the down migration.
 
 ## Set Request Context
@@ -121,11 +121,11 @@ Context keys must be `snake_case`, because they are exposed as PostgreSQL settin
 
 RLS mode is request-scoped behavior. It affects only queries executed while a `RequestContext` is active; outside a `RequestContext`, the driver delegates to MikroORM unchanged.
 
-| Mode | Behavior |
-| --- | --- |
-| `RowLevelSecurityMode.AUTO` | Default. Applies RLS when a role or at least one context value is set. If RLS is applied and no role was set, the driver uses `anonymous`. With no role and no context values, it delegates unchanged. |
-| `RowLevelSecurityMode.ENABLED` | Forces RLS for the current `RequestContext`, even when there are no context values. If no role was set, the driver uses `anonymous`. |
-| `RowLevelSecurityMode.DISABLED` | Bypasses RLS for the current `RequestContext`, even when role or context values are set. Use only for trusted infrastructure, admin, or cross-tenant job work. |
+| Mode                            | Behavior                                                                                                                                                                                               |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `RowLevelSecurityMode.AUTO`     | Default. Applies RLS when a role or at least one context value is set. If RLS is applied and no role was set, the driver uses `anonymous`. With no role and no context values, it delegates unchanged. |
+| `RowLevelSecurityMode.ENABLED`  | Forces RLS for the current `RequestContext`, even when there are no context values. If no role was set, the driver uses `anonymous`.                                                                   |
+| `RowLevelSecurityMode.DISABLED` | Bypasses RLS for the current `RequestContext`, even when role or context values are set. Use only for trusted infrastructure, admin, or cross-tenant job work.                                         |
 
 `anonymous` is a special database role exported as `RowLevelSecurityRole.ANONYMOUS`. Generated migrations always create it during `up`, because it is the fallback role whenever RLS is enabled but no explicit role was set. Other roles are read from `@Policy({ roles })`, including custom role names, and are also created during `up`. Add `roles: [RowLevelSecurityRole.ANONYMOUS]` to policies that should allow public or unauthenticated access, and call `RowLevelSecurity.setRole(RowLevelSecurityRole.AUTHENTICATED)` for authenticated tenant-scoped work.
 

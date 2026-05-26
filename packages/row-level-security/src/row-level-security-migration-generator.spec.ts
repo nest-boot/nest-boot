@@ -45,6 +45,21 @@ class AuditLog {}
 })
 class WorkspaceMemberWithCustomRole {}
 
+@Policy({
+  name: "workspace_member_admin_select_policy",
+  command: PolicyCommand.SELECT,
+  using: "true",
+  roles: ["workspace_admin"],
+})
+@Policy({
+  name: "workspace_member_admin_update_policy",
+  command: PolicyCommand.UPDATE,
+  using: "true",
+  withCheck: "true",
+  roles: ["workspace_admin"],
+})
+class WorkspaceMemberWithSharedRolePolicies {}
+
 class UnmanagedEntity {}
 
 describe("RowLevelSecurityMigrationGenerator", () => {
@@ -451,6 +466,53 @@ describe("RowLevelSecurityMigrationGenerator", () => {
       "this.addSql(`revoke workspace_admin from current_user;`);",
     );
     expect(file).not.toContain("drop role workspace_admin");
+  });
+
+  it("keeps grants required by pre-existing policies when rolling back added policies", () => {
+    const generator = createGenerator([
+      {
+        class: WorkspaceMemberWithSharedRolePolicies,
+        tableName: "workspace_member",
+      },
+    ]);
+    (generator as any).existingPolicyDefinitions = [
+      {
+        entityName: "WorkspaceMemberWithSharedRolePolicies",
+        schemaName: "public",
+        tableName: "workspace_member",
+        policyName: "workspace_member_admin_select_policy",
+        command: PolicyCommand.SELECT,
+        using: "true",
+        roles: ["workspace_admin"],
+      },
+    ];
+
+    const file = generator.generateMigrationFile("MigrationTest", {
+      up: [],
+      down: [],
+    });
+
+    expect(file).toContain(
+      "drop policy if exists workspace_member_admin_update_policy",
+    );
+    expect(file).toContain(
+      'this.addSql(`revoke update on table "public"."workspace_member" from workspace_admin;`);',
+    );
+    expect(file).not.toContain(
+      'this.addSql(`revoke select, update on table "public"."workspace_member" from workspace_admin;`);',
+    );
+    expect(file).not.toContain(
+      "this.addSql(`revoke usage on schema app from anonymous;`);",
+    );
+    expect(file).not.toContain(
+      "this.addSql(`revoke anonymous from current_user;`);",
+    );
+    expect(file).not.toContain(
+      "this.addSql(`revoke usage on schema app from workspace_admin;`);",
+    );
+    expect(file).not.toContain(
+      "this.addSql(`revoke workspace_admin from current_user;`);",
+    );
   });
 
   it("handles removed policies when an existing database policy is no longer declared", () => {

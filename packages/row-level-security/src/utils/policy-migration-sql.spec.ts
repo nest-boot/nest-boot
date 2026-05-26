@@ -45,12 +45,19 @@ describe("policy migration SQL", () => {
     const statements = createPolicyRoleDownSqlStatements(["workspace_admin"]);
 
     expect(statements).toEqual([
-      "revoke usage on schema app from anonymous;",
-      "revoke anonymous from current_user;",
       "revoke usage on schema app from workspace_admin;",
       "revoke workspace_admin from current_user;",
     ]);
     expect(statements.join("\n")).not.toContain("drop role");
+  });
+
+  it("generates role down SQL for an explicit anonymous role", () => {
+    const statements = createPolicyRoleDownSqlStatements(["anonymous"]);
+
+    expect(statements).toEqual([
+      "revoke usage on schema app from anonymous;",
+      "revoke anonymous from current_user;",
+    ]);
   });
 
   it("normalizes policy role names with anonymous first and public skipped", () => {
@@ -190,6 +197,49 @@ describe("policy migration SQL", () => {
         expect.stringContaining(
           'revoke select, insert, update, delete on table "public"."workspace_member" from authenticated;',
         ),
+        expect.stringContaining(
+          "revoke usage, select on sequence %s from authenticated",
+        ),
+      ]),
+    );
+  });
+
+  it("keeps policy privilege grants required by preserved policies", () => {
+    const statements = createPolicyPrivilegeDownSqlStatements(
+      {
+        schemaName: "public",
+        tableName: "workspace_member",
+        policyName: "workspace_member_all_policy",
+        command: PolicyCommand.ALL,
+        roles: ["authenticated", "workspace_admin"],
+      },
+      [
+        {
+          schemaName: "public",
+          tableName: "workspace_member",
+          policyName: "workspace_member_insert_policy",
+          command: PolicyCommand.INSERT,
+          withCheck: "true",
+          roles: ["authenticated"],
+        },
+      ],
+    );
+
+    expect(statements).toEqual(
+      expect.arrayContaining([
+        'revoke select, update, delete on table "public"."workspace_member" from authenticated;',
+        'revoke select, insert, update, delete on table "public"."workspace_member" from workspace_admin;',
+      ]),
+    );
+    expect(statements).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(
+          "revoke usage, select on sequence %s from workspace_admin",
+        ),
+      ]),
+    );
+    expect(statements).toEqual(
+      expect.not.arrayContaining([
         expect.stringContaining(
           "revoke usage, select on sequence %s from authenticated",
         ),
