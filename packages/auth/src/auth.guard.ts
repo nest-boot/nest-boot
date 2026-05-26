@@ -1,5 +1,9 @@
 import { RequestContext } from "@nest-boot/request-context";
-import { CanActivate, ExecutionContext, Injectable } from "@nestjs/common";
+import {
+  type CanActivate,
+  type ExecutionContext,
+  Injectable,
+} from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 
 import { IS_PUBLIC_KEY } from "./auth.constants";
@@ -22,9 +26,11 @@ export class AuthGuard implements CanActivate {
   /**
    * Determines whether the current request is allowed to proceed.
    * @param context - The execution context of the current request
-   * @returns `true` if the route is public or the user has a valid session
+   * @returns A NestJS guard activation result
    */
-  canActivate(context: ExecutionContext): boolean {
+  canActivate(
+    context: ExecutionContext,
+  ): ReturnType<CanActivate["canActivate"]> {
     if (
       this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
         context.getHandler(),
