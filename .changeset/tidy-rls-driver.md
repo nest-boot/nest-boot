@@ -10,4 +10,6 @@ Rename the request-scoped helper from `RowLevelSecurityContext` to `RowLevelSecu
 
 Clear previously applied transaction-local RLS state when a query runs with `RowLevelSecurityMode.DISABLED`, and serialize driver-managed setup plus query execution on the same transaction to avoid concurrent context interleaving.
 
+Remove the unsafe `RowLevelSecurityMigration.addDropPolicySql` helper; generated migrations perform grant rollback with policy diff context, while manual migrations should write explicit drop and revoke SQL.
+
 Add `RowLevelSecurityRole` constants for `anonymous` and `authenticated`, derive migration role creation from policy roles plus the anonymous fallback, and revoke generated grants in down migrations without dropping database roles or privileges still required by preserved policies.

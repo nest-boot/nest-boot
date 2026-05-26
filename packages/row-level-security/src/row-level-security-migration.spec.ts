@@ -11,11 +11,6 @@ class TestRowLevelSecurityMigration extends RowLevelSecurityMigration {
       command: PolicyCommand.SELECT,
       using: `((select app.get_context('user_id', null::bigint)) = "user_id")`,
     });
-    this.addDropPolicySql({
-      schemaName: "public",
-      tableName: "workspace_member",
-      policyName: "workspace_member_user_select_policy",
-    });
   }
 }
 
@@ -43,12 +38,6 @@ describe("RowLevelSecurityMigration", () => {
       expect.stringContaining("create or replace function app.get_context"),
     );
     expect(queries).toContainEqual(
-      expect.stringContaining("revoke anonymous from current_user"),
-    );
-    expect(queries).toContainEqual(
-      expect.stringContaining("revoke usage on schema app from anonymous"),
-    );
-    expect(queries).toContainEqual(
       'alter table "public"."workspace_member" enable row level security;',
     );
     expect(queries).toContainEqual(
@@ -57,11 +46,6 @@ describe("RowLevelSecurityMigration", () => {
     expect(queries).toContainEqual(
       expect.stringContaining(
         "create policy workspace_member_user_select_policy",
-      ),
-    );
-    expect(queries).toContainEqual(
-      expect.stringContaining(
-        "drop policy if exists workspace_member_user_select_policy",
       ),
     );
   });
