@@ -13,16 +13,18 @@ pnpm add @nest-boot/row-level-security @nest-boot/request-context @mikro-orm/pos
 
 ## Configure MikroORM
 
-Use `RowLevelSecurityDriver` as the MikroORM PostgreSQL driver and `RowLevelSecurityMigrationGenerator` as the migration generator:
+Use `RowLevelSecurityDriver` as the MikroORM PostgreSQL driver, `RowLevelSecurityMigrator` as the migrator extension, and `RowLevelSecurityMigrationGenerator` as the migration generator:
 
 ```typescript
 import {
   RowLevelSecurityDriver,
   RowLevelSecurityMigrationGenerator,
+  RowLevelSecurityMigrator,
 } from "@nest-boot/row-level-security";
 
 export default {
   driver: RowLevelSecurityDriver,
+  extensions: [RowLevelSecurityMigrator],
   migrations: {
     generator: RowLevelSecurityMigrationGenerator,
   },
@@ -83,6 +85,7 @@ Explicit `using` and `withCheck` expressions may be written as raw SQL fragments
 ## Generate Migrations
 
 With `RowLevelSecurityMigrationGenerator` configured, MikroORM migration generation includes RLS SQL for policies discovered from entity metadata. Generated migrations extend `RowLevelSecurityMigration`, which adds the shared `app.get_context(...)` helper, database roles, grants, and policy DDL.
+`RowLevelSecurityMigrator` lets `migration:create` detect policy-only changes, such as changing a policy `context` while the table schema stays unchanged.
 
 ```bash
 pnpm mikro-orm migration:create

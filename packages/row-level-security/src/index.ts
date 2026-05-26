@@ -7,4 +7,5 @@ export * from "./row-level-security";
 export * from "./row-level-security-driver";
 export * from "./row-level-security-migration";
 export * from "./row-level-security-migration-generator";
+export * from "./row-level-security-migrator";
 export * from "./utils";

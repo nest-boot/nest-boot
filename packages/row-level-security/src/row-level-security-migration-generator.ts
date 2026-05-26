@@ -33,6 +33,31 @@ export class RowLevelSecurityMigrationGenerator extends TSMigrationGenerator {
     path?: string,
     name?: string,
   ): Promise<[string, string]> {
+    return await this.withPolicyDefinitions(diff, () =>
+      super.generate(diff, path, name),
+    );
+  }
+
+  async hasPendingPolicyChanges(diff: MigrationDiff): Promise<boolean> {
+    return await this.withPolicyDefinitions(diff, () => {
+      if (!this.existingPolicyDefinitions) {
+        return false;
+      }
+
+      const currentPolicyDefinitions = this.currentPolicyDefinitions ?? [];
+      const { added, removed } = this.getPolicyDefinitionChanges(
+        diff,
+        currentPolicyDefinitions,
+      );
+
+      return added.length > 0 || removed.length > 0;
+    });
+  }
+
+  private async withPolicyDefinitions<T>(
+    diff: MigrationDiff,
+    callback: () => Promise<T> | T,
+  ): Promise<T> {
     const entityMetadata = this.getEntityMetadata();
     const currentPolicyDefinitions = this.getPolicyDefinitions(entityMetadata);
     const tableReferences = getPolicyDefinitionTableReferences(
@@ -52,7 +77,7 @@ export class RowLevelSecurityMigrationGenerator extends TSMigrationGenerator {
     this.currentPolicyDefinitions = currentPolicyDefinitions;
 
     try {
-      return await super.generate(diff, path, name);
+      return await callback();
     } finally {
       this.existingPolicyDefinitions = undefined;
       this.existingPolicyRoleDefinitions = undefined;
