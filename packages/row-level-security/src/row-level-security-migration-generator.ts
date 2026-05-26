@@ -38,6 +38,7 @@ export class RowLevelSecurityMigrationGenerator extends TSMigrationGenerator {
     );
   }
 
+  /** Returns whether the current metadata contains RLS policy changes not present in the database. */
   async hasPendingPolicyChanges(diff: MigrationDiff): Promise<boolean> {
     return await this.withPolicyDefinitions(diff, () => {
       if (!this.existingPolicyDefinitions) {

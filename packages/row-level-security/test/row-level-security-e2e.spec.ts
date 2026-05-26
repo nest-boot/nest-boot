@@ -5,7 +5,11 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { MikroORM, ReflectMetadataProvider } from "@mikro-orm/core";
+import {
+  type EntityClass,
+  MikroORM,
+  ReflectMetadataProvider,
+} from "@mikro-orm/core";
 import {
   Entity,
   Knex,
@@ -503,8 +507,8 @@ describe("RowLevelSecurity - database integration", () => {
     });
   }
 
-  async function createPolicyMigrationOrm(
-    entity: object,
+  async function createPolicyMigrationOrm<T extends object>(
+    entity: EntityClass<T>,
     migrationPath: string,
   ) {
     const databaseConfig = await loadConfigFromEnv();

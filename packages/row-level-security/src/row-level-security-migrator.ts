@@ -20,6 +20,7 @@ interface MigratorInternals {
 
 /** MikroORM migrator that also creates migrations for policy-only RLS changes. */
 export class RowLevelSecurityMigrator extends Migrator {
+  /** Registers the RLS-aware migrator extension with a MikroORM instance. */
   static override register(orm: MikroORM): void {
     orm.config.registerExtension(
       "@mikro-orm/migrator",
@@ -65,6 +66,7 @@ export class RowLevelSecurityMigrator extends Migrator {
     };
   }
 
+  /** Checks whether schema or RLS policy changes require a new migration. */
   override async checkMigrationNeeded(): Promise<boolean> {
     const internals = this.getInternals();
 
