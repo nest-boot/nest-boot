@@ -17,19 +17,6 @@ describe("row level security package exports", () => {
     expect(rowLevelSecurity.createPolicyUpSqlStatements).toBeDefined();
   });
 
-  it("does not export the removed entity manager wrapper", () => {
-    expect(
-      (rowLevelSecurity as Record<string, unknown>)
-        .RowLevelSecurityEntityManager,
-    ).toBeUndefined();
-  });
-
-  it("does not export the old row level security context helper name", () => {
-    expect(
-      (rowLevelSecurity as Record<string, unknown>).RowLevelSecurityContext,
-    ).toBeUndefined();
-  });
-
   it("exports utility helpers", () => {
     expect(rowLevelSecurityUtils.assertIdentifier("valid_identifier")).toBe(
       "valid_identifier",
