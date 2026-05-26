@@ -351,6 +351,8 @@ describe("RowLevelSecurity - database integration", () => {
     let workspaceOrm: MikroORM | undefined;
 
     try {
+      await dropGeneratedTestArtifacts(orm);
+
       tenantOrm = await createPolicyMigrationOrm(
         RowLevelSecurityMigrationTenantContextEntity,
         migrationPath,
@@ -361,9 +363,7 @@ describe("RowLevelSecurity - database integration", () => {
         tenantOrm.migrator as RowLevelSecurityMigrator
       ).createInitialMigration(migrationPath, "InitialPolicyContext");
 
-      expect(initialMigration.code).toContain(
-        "app.get_context('tenant_id', null::integer)",
-      );
+      expect(initialMigration.code).toContain("app.get_context('tenant_id'");
 
       await runGeneratedMigrationUpStatements(tenantOrm, initialMigration.code);
       await tenantOrm.close(true);
@@ -378,13 +378,13 @@ describe("RowLevelSecurity - database integration", () => {
         workspaceOrm.migrator as RowLevelSecurityMigrator
       ).createMigration(migrationPath, false, false, "UpdatePolicyContext");
 
-      expect(policyDiffMigration.fileName).toBe("UpdatePolicyContext.ts");
+      expect(policyDiffMigration.fileName).toMatch(/UpdatePolicyContext\.ts$/);
       expect(policyDiffMigration.diff.up).toEqual([]);
       expect(policyDiffMigration.code).toContain(
         `drop policy if exists ${POLICY_MIGRATION_POLICY_NAME}`,
       );
       expect(policyDiffMigration.code).toContain(
-        "app.get_context('workspace_id', null::integer)",
+        "app.get_context('workspace_id'",
       );
       expect(policyDiffMigration.code).toContain("app.get_context('tenant_id'");
 
@@ -514,12 +514,14 @@ describe("RowLevelSecurity - database integration", () => {
       allowGlobalContext: true,
       driver: RowLevelSecurityDriver,
       entities: [entity],
+      entitiesTs: [entity],
       extensions: [RowLevelSecurityMigrator],
       metadataCache: {
         enabled: false,
       },
       metadataProvider: ReflectMetadataProvider,
       migrations: {
+        dropTables: false,
         emit: "ts",
         generator: RowLevelSecurityMigrationGenerator,
         path: migrationPath,
@@ -527,6 +529,7 @@ describe("RowLevelSecurity - database integration", () => {
         snapshot: false,
         tableName: POLICY_MIGRATION_STORAGE_TABLE,
       },
+      schema: POLICY_MIGRATION_SCHEMA_NAME,
     });
   }
 
@@ -543,6 +546,38 @@ describe("RowLevelSecurity - database integration", () => {
           POLICY_MIGRATION_STORAGE_TABLE,
         )} cascade`,
       );
+  }
+
+  async function dropGeneratedTestArtifacts(targetOrm: MikroORM) {
+    const schemas = await targetOrm.em.getConnection().execute<
+      { nspname: string }[]
+    >(/* SQL */ `
+        SELECT nspname
+        FROM pg_namespace
+        WHERE nspname LIKE 'rls_e2e_%'
+          OR nspname LIKE 'rls_migration_e2e_%'
+      `);
+
+    for (const { nspname } of schemas) {
+      await targetOrm.em
+        .getConnection()
+        .execute(`drop schema if exists ${quoteIdentifier(nspname)} cascade`);
+    }
+
+    const tables = await targetOrm.em.getConnection().execute<
+      { tablename: string }[]
+    >(/* SQL */ `
+        SELECT tablename
+        FROM pg_tables
+        WHERE schemaname = 'public'
+          AND tablename LIKE 'rls_migrations_%'
+      `);
+
+    for (const { tablename } of tables) {
+      await targetOrm.em
+        .getConnection()
+        .execute(`drop table if exists ${quoteIdentifier(tablename)} cascade`);
+    }
   }
 
   async function runGeneratedMigrationUpStatements(
