@@ -10,6 +10,7 @@
     "node": ">=24.0.0"
   },
   "scripts": {
+    "commit:check": "lint-staged && pnpm docs:check",
     "cz": "cz",
     "prepare": "husky install",
     "build": "turbo run build",
@@ -21,8 +22,10 @@
     "test": "jest",
     "test:cov": "jest --coverage",
     "format": "prettier --check --write \"**/*.{ts,tsx,md}\"",
+    "docs:check": "pnpm build:packages && pnpm typedoc:check",
     "docs:generate": "typedoc --treatValidationWarningsAsErrors && rimraf apps/docs/content/docs/api/index.mdx",
     "lint": "turbo run lint",
+    "typedoc:check": "typedoc --treatValidationWarningsAsErrors --emit none",
     "changeset": "changeset",
     "version-packages": "changeset version && pnpm install --no-frozen-lockfile && pnpm format",
     "publish-packages": "pnpm build:packages && changeset publish --filter=./packages/*"
