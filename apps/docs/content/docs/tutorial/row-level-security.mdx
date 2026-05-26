@@ -121,11 +121,11 @@ Context keys must be `snake_case`, because they are exposed as PostgreSQL settin
 
 RLS mode is request-scoped behavior. It affects only queries executed while a `RequestContext` is active; outside a `RequestContext`, the driver delegates to MikroORM unchanged.
 
-| Mode                            | Behavior                                                                                                                                                                                               |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `RowLevelSecurityMode.AUTO`     | Default. Applies RLS when a role or at least one context value is set. If RLS is applied and no role was set, the driver uses `anonymous`. With no role and no context values, it delegates unchanged. |
-| `RowLevelSecurityMode.ENABLED`  | Forces RLS for the current `RequestContext`, even when there are no context values. If no role was set, the driver uses `anonymous`.                                                                   |
-| `RowLevelSecurityMode.DISABLED` | Bypasses RLS for the current `RequestContext`, even when role or context values are set. Use only for trusted infrastructure, admin, or cross-tenant job work.                                         |
+| Mode                            | Behavior                                                                                                                                                                                                                                                                |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `RowLevelSecurityMode.AUTO`     | Default. Applies RLS when a role or at least one context value is set. If RLS is applied and no role was set, the driver uses `anonymous`. With no role and no context values, it delegates unchanged.                                                                  |
+| `RowLevelSecurityMode.ENABLED`  | Forces RLS for the current `RequestContext`, even when there are no context values. If no role was set, the driver uses `anonymous`.                                                                                                                                    |
+| `RowLevelSecurityMode.DISABLED` | Bypasses RLS for the current `RequestContext`, even when role or context values are set. If the active transaction already has RLS state, the driver clears it before running the disabled query. Use only for trusted infrastructure, admin, or cross-tenant job work. |
 
 `anonymous` is a special database role exported as `RowLevelSecurityRole.ANONYMOUS`. Generated migrations always create it during `up`, because it is the fallback role whenever RLS is enabled but no explicit role was set. Other roles are read from `@Policy({ roles })`, including custom role names, and are also created during `up`. Add `roles: [RowLevelSecurityRole.ANONYMOUS]` to policies that should allow public or unauthenticated access, and call `RowLevelSecurity.setRole(RowLevelSecurityRole.AUTHENTICATED)` for authenticated tenant-scoped work.
 
@@ -156,7 +156,7 @@ await RequestContext.run(new RequestContext({ type: "job" }), async () => {
 
 ## Runtime Behavior
 
-When a query runs outside a transaction, `RowLevelSecurityDriver` opens a short transaction, applies the RLS role and context, executes the SQL, and lets commit or rollback clear transaction-local settings. If MikroORM already has a transaction context, the driver applies the same setup to that transaction before running the query.
+When a query runs outside a transaction, `RowLevelSecurityDriver` opens a short transaction, applies the RLS role and context, executes the SQL, and lets commit or rollback clear transaction-local settings. If MikroORM already has a transaction context, the driver applies the same setup to that transaction before running the query. If RLS is disabled or the request-scoped RLS values are cleared while reusing that transaction, the driver clears the previously applied role and context settings before executing the next query. Queries sharing the same transaction are serialized by the driver so each query runs with the role and context prepared for that query.
 
 Because the setup happens at the SQL connection layer, lazy-loaded relations use the normal request entity manager and receive a fresh RLS transaction when they execute later. You can still call `em.transactional()` directly when several operations must share one RLS context.
 

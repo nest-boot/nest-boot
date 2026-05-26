@@ -121,11 +121,11 @@ if (workspaceMember) {
 
 RLS mode 是请求作用域行为。它只影响 `RequestContext` 活动期间执行的查询；在 `RequestContext` 外部，驱动会按 MikroORM 原始逻辑执行。
 
-| Mode                            | 行为                                                                                                                                                                 |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `RowLevelSecurityMode.AUTO`     | 默认模式。设置了 role 或至少一个 context 值时应用 RLS。如果应用 RLS 但没有显式设置 role，驱动会使用 `anonymous`。如果没有 role 也没有 context 值，则按原始逻辑执行。 |
-| `RowLevelSecurityMode.ENABLED`  | 对当前 `RequestContext` 强制应用 RLS，即使没有任何 context 值。如果没有显式设置 role，驱动会使用 `anonymous`。                                                       |
-| `RowLevelSecurityMode.DISABLED` | 对当前 `RequestContext` 绕过 RLS，即使已经设置了 role 或 context 值。只应在可信的基础设施、管理或跨租户 job 中使用。                                                 |
+| Mode                            | 行为                                                                                                                                                                                                    |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `RowLevelSecurityMode.AUTO`     | 默认模式。设置了 role 或至少一个 context 值时应用 RLS。如果应用 RLS 但没有显式设置 role，驱动会使用 `anonymous`。如果没有 role 也没有 context 值，则按原始逻辑执行。                                    |
+| `RowLevelSecurityMode.ENABLED`  | 对当前 `RequestContext` 强制应用 RLS，即使没有任何 context 值。如果没有显式设置 role，驱动会使用 `anonymous`。                                                                                          |
+| `RowLevelSecurityMode.DISABLED` | 对当前 `RequestContext` 绕过 RLS，即使已经设置了 role 或 context 值。如果当前事务已经应用过 RLS 状态，驱动会先清理这些事务级状态，再执行 disabled 查询。只应在可信的基础设施、管理或跨租户 job 中使用。 |
 
 `anonymous` 是一个特殊数据库角色，并以 `RowLevelSecurityRole.ANONYMOUS` 导出。生成的迁移总会在 `up` 中创建它，因为当 RLS 被启用但没有显式设置 role 时，它就是默认 fallback role。其他 role 会从 `@Policy({ roles })` 读取，包括用户自定义 role 名称，并同样在 `up` 中创建。需要允许公开或未登录访问的策略可以添加 `roles: [RowLevelSecurityRole.ANONYMOUS]`；已认证的租户作用域工作则调用 `RowLevelSecurity.setRole(RowLevelSecurityRole.AUTHENTICATED)`。
 
@@ -156,7 +156,7 @@ await RequestContext.run(new RequestContext({ type: "job" }), async () => {
 
 ## 运行时行为
 
-查询在事务外运行时，`RowLevelSecurityDriver` 会自动开启一个短事务，应用 RLS 角色和上下文，执行 SQL，并通过提交或回滚清理事务级设置。如果 MikroORM 已经有事务上下文，驱动会在该事务上应用同样的设置后再执行查询。
+查询在事务外运行时，`RowLevelSecurityDriver` 会自动开启一个短事务，应用 RLS 角色和上下文，执行 SQL，并通过提交或回滚清理事务级设置。如果 MikroORM 已经有事务上下文，驱动会在该事务上应用同样的设置后再执行查询。如果复用该事务时禁用了 RLS，或清空了请求作用域的 RLS 值，驱动会在执行下一条查询前清理之前应用的 role 和 context 设置。共享同一事务的查询会由驱动串行化，确保每条查询都使用为它准备的 role 和 context 执行。
 
 因为设置发生在 SQL 连接层，之后 lazy-load relation 仍会使用正常的请求实体管理器，并在实际发起查询时获得新的 RLS 事务。当多个操作必须共享同一个 RLS 上下文时，也可以直接调用 `em.transactional()`。
 

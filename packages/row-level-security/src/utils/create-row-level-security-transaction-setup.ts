@@ -6,12 +6,27 @@ import { assertSnakeCase } from "./assert-snake-case";
 import { RowLevelSecurityContextBuilder } from "./row-level-security-context-builder";
 import { RowLevelSecurityContextValue } from "./row-level-security-context-builder.types";
 
+/** Instruction for row level security transaction setup. */
+export type RowLevelSecurityTransactionSetup =
+  | RowLevelSecurityApplyTransactionSetup
+  | RowLevelSecurityClearTransactionSetup;
+
 /** SQL and cache key for applying row level security on a transaction. */
-export interface RowLevelSecurityTransactionSetup {
+export interface RowLevelSecurityApplyTransactionSetup {
+  /** Applies row level security state to the transaction. */
+  action: "apply";
   /** Transaction-local SQL that applies the PostgreSQL role and context settings. */
   sql: string;
   /** Stable cache key used to skip repeated setup on the same transaction. */
   signature: string;
+  /** Context setting keys emitted by this setup. */
+  contextKeys: string[];
+}
+
+/** Instruction to clear previously applied row level security state. */
+export interface RowLevelSecurityClearTransactionSetup {
+  /** Clears row level security state previously applied to the transaction. */
+  action: "clear";
 }
 
 /** Creates transaction-local SQL for the current row level security context. */
@@ -28,7 +43,9 @@ export function createRowLevelSecurityTransactionSetup():
   const role = RowLevelSecurity.getRole();
 
   if (mode === RowLevelSecurityMode.DISABLED) {
-    return;
+    return {
+      action: "clear",
+    };
   }
 
   if (
@@ -36,7 +53,9 @@ export function createRowLevelSecurityTransactionSetup():
     !role &&
     contextEntries.length === 0
   ) {
-    return;
+    return {
+      action: "clear",
+    };
   }
 
   appendContext(builder, contextEntries);
@@ -53,6 +72,8 @@ export function createRowLevelSecurityTransactionSetup():
   });
 
   return {
+    action: "apply",
+    contextKeys: builder.entries().map(([key]) => key),
     signature,
     sql,
   };

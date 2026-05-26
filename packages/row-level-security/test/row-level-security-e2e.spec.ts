@@ -24,6 +24,7 @@ import {
   quoteQualifiedIdentifier,
   RowLevelSecurity,
   RowLevelSecurityDriver,
+  RowLevelSecurityMode,
 } from "../src";
 
 const DOCUMENT_SCHEMA_NAME = `rls_e2e_${String(process.pid)}_${String(
@@ -184,6 +185,48 @@ describe("RowLevelSecurity - database integration", () => {
       current_user: "authenticated",
       tenant_id: 7,
     });
+  });
+
+  it("clears row level security state when disabled inside an existing transaction", async () => {
+    const result = await RequestContext.run(
+      new RequestContext({ type: "test" }),
+      async () => {
+        RowLevelSecurity.setRole("authenticated");
+        RowLevelSecurity.setContext("tenant_id", 7);
+
+        return await orm.em.transactional(async (em) => {
+          const trx = em.getTransactionContext<Knex>();
+
+          if (!trx) {
+            throw new Error("Transaction context is not available.");
+          }
+
+          const scoped = await em.getConnection().execute<{
+            current_user: string;
+            tenant_id: number;
+          }>("select current_user, app.get_context('tenant_id', null::integer) as tenant_id", [], "get", trx);
+
+          RowLevelSecurity.setMode(RowLevelSecurityMode.DISABLED);
+
+          const disabled = await em.getConnection().execute<{
+            current_user: string;
+            tenant_id: number | null;
+          }>("select current_user, app.get_context('tenant_id', null::integer) as tenant_id", [], "get", trx);
+
+          return {
+            disabled,
+            scoped,
+          };
+        });
+      },
+    );
+
+    expect(result.scoped).toEqual({
+      current_user: "authenticated",
+      tenant_id: 7,
+    });
+    expect(result.disabled.current_user).not.toBe("authenticated");
+    expect(result.disabled.tenant_id).toBeNull();
   });
 
   it("lazy-loads relations from entities returned by row level security driver queries", async () => {

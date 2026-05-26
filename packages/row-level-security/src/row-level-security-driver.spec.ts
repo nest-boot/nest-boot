@@ -95,6 +95,52 @@ describe("RowLevelSecurityDriver", () => {
     );
   });
 
+  it("clears transaction-local row level security before a disabled query", async () => {
+    const transaction = {};
+    const executeSpy = mockPostgreSqlExecute("query-result");
+
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      RowLevelSecurity.setRole("authenticated");
+      RowLevelSecurity.setContext("tenant_id", 7);
+      RowLevelSecurity.setContext("request_id", "abc");
+
+      await RowLevelSecurityConnection.prototype.execute.call(
+        createConnection(),
+        "select scoped",
+        [],
+        "all",
+        transaction,
+      );
+
+      RowLevelSecurity.setMode(RowLevelSecurityMode.DISABLED);
+
+      await RowLevelSecurityConnection.prototype.execute.call(
+        createConnection(),
+        "select disabled",
+        [],
+        "all",
+        transaction,
+      );
+    });
+
+    expect(executeSpy).toHaveBeenNthCalledWith(
+      3,
+      "SET LOCAL ROLE NONE;\nSELECT set_config('app.tenant_id', '', true),set_config('app.request_id', '', true);",
+      [],
+      "run",
+      transaction,
+      undefined,
+    );
+    expect(executeSpy).toHaveBeenNthCalledWith(
+      4,
+      "select disabled",
+      [],
+      "all",
+      transaction,
+      undefined,
+    );
+  });
+
   it("applies anonymous row level security when mode is enabled without context values", async () => {
     const executeSpy = mockPostgreSqlExecute("query-result");
     const transaction = {};
@@ -350,6 +396,114 @@ describe("RowLevelSecurityDriver", () => {
     expect(rlsQueries[1]?.[0]).toBe(
       "SET LOCAL ROLE authenticated;\nSELECT set_config('app.tenant_id', '2', true);",
     );
+  });
+
+  it("clears removed context keys before reusing a transaction", async () => {
+    const transaction = {};
+    const executeSpy = mockPostgreSqlExecute("query-result");
+
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      RowLevelSecurity.setRole("authenticated");
+      RowLevelSecurity.setContext("tenant_id", 1);
+      RowLevelSecurity.setContext("request_id", "abc");
+
+      await RowLevelSecurityConnection.prototype.execute.call(
+        createConnection(),
+        "select one",
+        [],
+        "all",
+        transaction,
+      );
+
+      RowLevelSecurity.clear();
+      RowLevelSecurity.setRole("authenticated");
+      RowLevelSecurity.setContext("tenant_id", 2);
+
+      await RowLevelSecurityConnection.prototype.execute.call(
+        createConnection(),
+        "select two",
+        [],
+        "all",
+        transaction,
+      );
+    });
+
+    const setupQueries = executeSpy.mock.calls
+      .map(([query]) => query)
+      .filter(
+        (query) => typeof query === "string" && query.startsWith("SET LOCAL"),
+      );
+
+    expect(setupQueries).toEqual([
+      "SET LOCAL ROLE authenticated;\nSELECT set_config('app.tenant_id', '1', true),set_config('app.request_id', 'abc', true);",
+      "SET LOCAL ROLE authenticated;\nSELECT set_config('app.tenant_id', '2', true);\nSELECT set_config('app.request_id', '', true);",
+    ]);
+  });
+
+  it("serializes setup and query execution on the same transaction", async () => {
+    const transaction = {};
+    const executionOrder: string[] = [];
+    let activeTenantId: number | undefined;
+
+    jest
+      .spyOn(PostgreSqlConnection.prototype, "execute")
+      .mockImplementation(async (queryOrKnex) => {
+        if (typeof queryOrKnex === "string") {
+          if (queryOrKnex.startsWith("SET LOCAL ROLE")) {
+            activeTenantId = queryOrKnex.includes("'1'") ? 1 : 2;
+            executionOrder.push(`setup:${String(activeTenantId)}`);
+
+            return undefined as any;
+          }
+
+          executionOrder.push(`${queryOrKnex}:${String(activeTenantId)}`);
+
+          return activeTenantId as any;
+        }
+
+        return undefined as any;
+      });
+
+    const firstQuery = RequestContext.run(
+      new RequestContext({ type: "test" }),
+      async () => {
+        RowLevelSecurity.setRole("authenticated");
+        RowLevelSecurity.setContext("tenant_id", 1);
+
+        return await RowLevelSecurityConnection.prototype.execute.call(
+          createConnection(),
+          "select one",
+          [],
+          "get",
+          transaction,
+        );
+      },
+    );
+    const secondQuery = RequestContext.run(
+      new RequestContext({ type: "test" }),
+      async () => {
+        RowLevelSecurity.setRole("authenticated");
+        RowLevelSecurity.setContext("tenant_id", 2);
+
+        return await RowLevelSecurityConnection.prototype.execute.call(
+          createConnection(),
+          "select two",
+          [],
+          "get",
+          transaction,
+        );
+      },
+    );
+
+    await expect(Promise.all([firstQuery, secondQuery])).resolves.toEqual([
+      1, 2,
+    ]);
+    expect(executionOrder).toEqual([
+      "setup:1",
+      "select one:1",
+      "setup:2",
+      "select two:2",
+    ]);
   });
 });
 
