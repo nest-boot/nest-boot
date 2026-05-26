@@ -14,6 +14,7 @@ describe("row level security package exports", () => {
     expect(rowLevelSecurity.RowLevelSecurityDriver).toBeDefined();
     expect(rowLevelSecurity.RowLevelSecurityMigration).toBeDefined();
     expect(rowLevelSecurity.RowLevelSecurityMigrationGenerator).toBeDefined();
+    expect(rowLevelSecurity.RowLevelSecurityMigrator).toBeDefined();
     expect(rowLevelSecurity.createPolicyUpSqlStatements).toBeDefined();
   });
 

@@ -1,8 +1,13 @@
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { TSMigrationGenerator } from "@mikro-orm/migrations";
 
 import { Policy } from "./decorators/policy.decorator";
 import { PolicyCommand } from "./enums/policy-command.enum";
 import { RowLevelSecurityMigrationGenerator } from "./row-level-security-migration-generator";
+import { RowLevelSecurityMigrator } from "./row-level-security-migrator";
 
 @Policy({
   name: "workspace_member_user_select_policy",
@@ -29,6 +34,15 @@ class WorkspaceMemberWithMultiplePolicies {}
   context: "user_id",
 })
 class WorkspaceMemberWithGeneratedPolicy {}
+
+@Policy({
+  name: "workspace_member_workspace_select_policy",
+  command: PolicyCommand.SELECT,
+  property: "workspace",
+  context: "workspace_id",
+  roles: ["authenticated"],
+})
+class WorkspaceMemberWithWorkspaceContextPolicy {}
 
 @Policy({
   name: "audit_log_select_policy",
@@ -257,6 +271,48 @@ describe("RowLevelSecurityMigrationGenerator", () => {
       "/tmp/Migration.ts",
     ]);
     expect(superGenerate).toHaveBeenCalledTimes(1);
+  });
+
+  it("detects pending policy-only changes from existing database policies", async () => {
+    const execute = jest.fn((_sql: string) =>
+      Promise.resolve([
+        {
+          policy_name: "workspace_member_workspace_select_policy",
+          schema_name: "public",
+          table_name: "workspace_member",
+          permissive: true,
+          command: "r",
+          qual: `((select app.get_context('tenant_id', null::bigint)) = "workspace_id")`,
+          with_check: null,
+          roles: ["authenticated"],
+        },
+      ]),
+    );
+    const generator = createGenerator(
+      [
+        {
+          class: WorkspaceMemberWithWorkspaceContextPolicy,
+          tableName: "workspace_member",
+          properties: {
+            workspace: {
+              fieldNames: ["workspace_id"],
+              columnTypes: ["bigint"],
+            },
+          },
+        },
+      ],
+      {
+        getConnection: () => ({
+          execute,
+        }),
+      },
+    );
+
+    await expect(
+      generator.hasPendingPolicyChanges({ up: [], down: [] }),
+    ).resolves.toBe(true);
+    expect((generator as any).existingPolicyDefinitions).toBeUndefined();
+    expect((generator as any).currentPolicyDefinitions).toBeUndefined();
   });
 
   it("does not recreate policies for unrelated schema changes without a database connection", async () => {
@@ -778,20 +834,194 @@ describe("RowLevelSecurityMigrationGenerator", () => {
   });
 });
 
+describe("RowLevelSecurityMigrator", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("creates a migration when only row-level-security policies changed", async () => {
+    const diff = { up: [], down: [] };
+    const generator = createGenerator([]);
+    const hasPendingPolicyChanges = jest
+      .spyOn(generator, "hasPendingPolicyChanges")
+      .mockResolvedValue(true);
+    const generate = jest
+      .spyOn(generator, "generate")
+      .mockResolvedValue(["migration-file", "Migration.ts"]);
+    const storeCurrentSchema = jest.fn();
+    const migrator = Object.assign(
+      Object.create(RowLevelSecurityMigrator.prototype),
+      {
+        generator,
+        ensureMigrationsDirExists: jest.fn(),
+        getSchemaDiff: jest.fn().mockResolvedValue(diff),
+        storeCurrentSchema,
+      },
+    ) as RowLevelSecurityMigrator;
+
+    await expect(
+      migrator.createMigration("/tmp", false, false, "Migration"),
+    ).resolves.toEqual({
+      fileName: "Migration.ts",
+      code: "migration-file",
+      diff,
+    });
+    expect(hasPendingPolicyChanges).toHaveBeenCalledWith(diff);
+    expect(generate).toHaveBeenCalledWith(diff, "/tmp", "Migration");
+    expect(storeCurrentSchema).toHaveBeenCalledTimes(1);
+  });
+
+  it("generates a policy diff after an applied context policy changes", async () => {
+    const migrationPath = mkdtempSync(join(tmpdir(), "rls-policy-diff-"));
+    const diff = { up: [], down: [] };
+    const execute = jest.fn((_sql: string) =>
+      Promise.resolve([
+        {
+          policy_name: "workspace_member_workspace_select_policy",
+          schema_name: "public",
+          table_name: "workspace_member",
+          permissive: true,
+          command: "r",
+          qual: `((select app.get_context('tenant_id', null::bigint)) = "workspace_id")`,
+          with_check: null,
+          roles: ["authenticated"],
+        },
+      ]),
+    );
+    const generator = createGenerator(
+      [
+        {
+          class: WorkspaceMemberWithWorkspaceContextPolicy,
+          tableName: "workspace_member",
+          properties: {
+            workspace: {
+              fieldNames: ["workspace_id"],
+              columnTypes: ["bigint"],
+            },
+          },
+        },
+      ],
+      {
+        getConnection: () => ({
+          execute,
+        }),
+      },
+      {
+        path: migrationPath,
+        pathTs: migrationPath,
+      },
+    );
+    const storeCurrentSchema = jest.fn();
+    const migrator = Object.assign(
+      Object.create(RowLevelSecurityMigrator.prototype),
+      {
+        generator,
+        ensureMigrationsDirExists: jest.fn(),
+        getSchemaDiff: jest.fn().mockResolvedValue(diff),
+        storeCurrentSchema,
+      },
+    ) as RowLevelSecurityMigrator;
+
+    try {
+      const result = await migrator.createMigration(
+        migrationPath,
+        false,
+        false,
+        "MigrationPolicyContextDiff",
+      );
+
+      expect(result.fileName).toBe("MigrationPolicyContextDiff.ts");
+      expect(result.diff).toBe(diff);
+      expect(result.code).toContain("extends RowLevelSecurityMigration");
+      expect(result.code).toContain(
+        "drop policy if exists workspace_member_workspace_select_policy",
+      );
+      expect(result.code).toContain(
+        "app.get_context('workspace_id', null::bigint)",
+      );
+      expect(result.code).toContain(
+        "app.get_context('tenant_id', null::bigint)",
+      );
+      expect(
+        result.code.indexOf(
+          "drop policy if exists workspace_member_workspace_select_policy",
+        ),
+      ).toBeLessThan(
+        result.code.indexOf(
+          "create policy workspace_member_workspace_select_policy",
+        ),
+      );
+      expect(storeCurrentSchema).toHaveBeenCalledTimes(1);
+    } finally {
+      rmSync(migrationPath, { force: true, recursive: true });
+    }
+  });
+
+  it("keeps MikroORM no-op behavior when schema and policies are unchanged", async () => {
+    const diff = { up: [], down: [] };
+    const generator = createGenerator([]);
+    jest.spyOn(generator, "hasPendingPolicyChanges").mockResolvedValue(false);
+    const generate = jest.spyOn(generator, "generate");
+    const storeCurrentSchema = jest.fn();
+    const migrator = Object.assign(
+      Object.create(RowLevelSecurityMigrator.prototype),
+      {
+        generator,
+        ensureMigrationsDirExists: jest.fn(),
+        getSchemaDiff: jest.fn().mockResolvedValue(diff),
+        storeCurrentSchema,
+      },
+    ) as RowLevelSecurityMigrator;
+
+    await expect(migrator.createMigration()).resolves.toEqual({
+      fileName: "",
+      code: "",
+      diff,
+    });
+    expect(generate).not.toHaveBeenCalled();
+    expect(storeCurrentSchema).not.toHaveBeenCalled();
+  });
+
+  it("reports migration needed when only row-level-security policies changed", async () => {
+    const diff = { up: [], down: [] };
+    const generator = createGenerator([]);
+    jest.spyOn(generator, "hasPendingPolicyChanges").mockResolvedValue(true);
+    const migrator = Object.assign(
+      Object.create(RowLevelSecurityMigrator.prototype),
+      {
+        generator,
+        ensureMigrationsDirExists: jest.fn(),
+        getSchemaDiff: jest.fn().mockResolvedValue(diff),
+      },
+    ) as RowLevelSecurityMigrator;
+
+    await expect(migrator.checkMigrationNeeded()).resolves.toBe(true);
+  });
+});
+
 function createGenerator(
   metadata: object[],
   driverOptions: Record<string, unknown> = {},
+  generatorOptions: Record<string, unknown> = {},
 ) {
   return new RowLevelSecurityMigrationGenerator(
     {
       config: {
+        get: (key: string) => (key === "baseDir" ? process.cwd() : undefined),
         getMetadata: () => ({
           getAll: () => metadata,
         }),
       },
       ...driverOptions,
     } as never,
-    {} as never,
-    { emit: "ts" } as never,
+    {
+      classToMigrationName: (_timestamp: string, name?: string) =>
+        name ?? "Migration",
+    } as never,
+    {
+      emit: "ts",
+      fileName: (_timestamp: string, name?: string) => name ?? "Migration",
+      ...generatorOptions,
+    } as never,
   );
 }

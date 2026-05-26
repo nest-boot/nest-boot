@@ -1,37 +1,11 @@
-name: Release
+name: TypeDoc
 
-on:
-  push:
-    branches:
-      - master
-
-concurrency: ${{ github.workflow }}-${{ github.ref }}
+on: workflow_call
 
 jobs:
-  build:
-    name: Build
-    uses: ./.github/workflows/build.yml
-
-  lint:
-    name: Lint
-    uses: ./.github/workflows/lint.yml
-
   typedoc:
     name: TypeDoc
-    uses: ./.github/workflows/typedoc.yml
-
-  test:
-    name: Test
-    uses: ./.github/workflows/test.yml
-
-  release:
-    needs: [build, lint, typedoc, test]
-    name: Release
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      id-token: write
-      pull-requests: write
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -65,12 +39,5 @@ jobs:
       - name: Build
         run: pnpm build:packages --no-cache
 
-      - name: Create Release Pull Request or Publish to npm
-        id: changesets
-        uses: changesets/action@v1
-        with:
-          version: pnpm version-packages
-          publish: pnpm publish-packages
-          createGithubReleases: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      - name: TypeDoc
+        run: pnpm typedoc:check

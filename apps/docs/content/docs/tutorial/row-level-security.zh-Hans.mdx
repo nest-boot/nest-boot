@@ -13,21 +13,26 @@ pnpm add @nest-boot/row-level-security @nest-boot/request-context @mikro-orm/pos
 
 ## 配置 MikroORM
 
-将 `RowLevelSecurityDriver` 配置为 MikroORM 的 PostgreSQL 驱动，并将 `RowLevelSecurityMigrationGenerator` 配置为迁移生成器：
+将 `RowLevelSecurityDriver` 配置为 MikroORM 的 PostgreSQL 驱动，将 `RowLevelSecurityMigrator` 配置为迁移扩展，并将 `RowLevelSecurityMigrationGenerator` 配置为迁移生成器：
 
 ```typescript
 import {
   RowLevelSecurityDriver,
   RowLevelSecurityMigrationGenerator,
+  RowLevelSecurityMigrator,
 } from "@nest-boot/row-level-security";
 
 export default {
   driver: RowLevelSecurityDriver,
+  extensions: [RowLevelSecurityMigrator],
   migrations: {
     generator: RowLevelSecurityMigrationGenerator,
+    snapshot: false,
   },
 };
 ```
+
+策略差异检测目前要求 `migrations.snapshot: false`。开启 MikroORM snapshot 模式时，生成的 policy migration 不会写入 schema snapshot；如果在应用该迁移之前再次运行 `migration:create`，可能会再次生成同一个 policy diff。在支持基于 snapshot 的 RLS policy tracking 前，请保持关闭 snapshot。
 
 驱动只会在 `RequestContext` 处于活动状态，并且当前上下文中通过 `RowLevelSecurity` 设置了行级安全值时应用 RLS。如果没有设置 RLS role 或 context 值，它会按 MikroORM 原始逻辑执行；但如果同一个事务之前已经应用过 RLS 状态，驱动会先清理这些状态。
 
@@ -83,6 +88,7 @@ export class File {
 ## 生成迁移
 
 配置 `RowLevelSecurityMigrationGenerator` 后，MikroORM 生成迁移时会根据实体元数据中的策略写入 RLS SQL。生成的迁移会继承 `RowLevelSecurityMigration`，用于添加共享的 `app.get_context(...)` 函数、数据库角色、授权和策略 DDL。
+`RowLevelSecurityMigrator` 会让 `migration:create` 检测只有策略变化、表结构不变的场景，例如只修改 policy 的 `context`。
 
 ```bash
 pnpm mikro-orm migration:create
