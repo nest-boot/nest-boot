@@ -2,4 +2,4 @@
 "@nest-boot/tsconfig": patch
 ---
 
-Add Jest globals to the shared TypeScript base config so package test files resolve `describe`, `it`, and `expect` without local tsconfig overrides.
+Add Jest and Node globals to the shared TypeScript base config so package test files resolve `describe`, `it`, `expect`, and Node APIs without local tsconfig overrides.
