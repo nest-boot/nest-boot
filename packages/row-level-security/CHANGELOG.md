@@ -1,5 +1,11 @@
 # @nest-boot/row-level-security
 
+## 7.2.1
+
+### Patch Changes
+
+- 32fa3ce: Detect row-level-security policy-only migration changes, including policy context updates when table schemas are unchanged.
+
 ## 7.2.0
 
 ### Minor Changes
