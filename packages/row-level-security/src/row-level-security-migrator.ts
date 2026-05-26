@@ -45,10 +45,7 @@ export class RowLevelSecurityMigrator extends Migrator {
     const diff = await internals.getSchemaDiff(blank, initial);
 
     if (diff.up.length === 0) {
-      const generator = this.getRowLevelSecurityGenerator();
-      const hasPolicyChanges = generator
-        ? await generator.hasPendingPolicyChanges(diff)
-        : false;
+      const hasPolicyChanges = await this.hasPendingPolicyChanges(diff);
 
       if (!hasPolicyChanges) {
         return { fileName: "", code: "", diff };
@@ -78,8 +75,14 @@ export class RowLevelSecurityMigrator extends Migrator {
       return true;
     }
 
+    return await this.hasPendingPolicyChanges(diff);
+  }
+
+  private async hasPendingPolicyChanges(diff: MigrationDiff): Promise<boolean> {
     const generator = this.getRowLevelSecurityGenerator();
 
+    // TODO: Support MikroORM snapshot mode by comparing generated policy state
+    // instead of only live database policies.
     return generator ? await generator.hasPendingPolicyChanges(diff) : false;
   }
 

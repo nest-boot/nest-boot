@@ -27,9 +27,12 @@ export default {
   extensions: [RowLevelSecurityMigrator],
   migrations: {
     generator: RowLevelSecurityMigrationGenerator,
+    snapshot: false,
   },
 };
 ```
+
+Policy-only migration detection currently requires `migrations.snapshot: false`. With MikroORM snapshot mode enabled, generated policy migrations are not represented in the schema snapshot, so running `migration:create` again before applying the generated migration can emit the same policy diff again. Keep snapshots disabled until snapshot-backed RLS policy tracking is supported.
 
 The driver applies RLS only when a `RequestContext` is active and the current context has row-level security values set through `RowLevelSecurity`. If no row-level security role or context values are present, it delegates to MikroORM unchanged unless it needs to clear RLS state previously applied to the same transaction.
 

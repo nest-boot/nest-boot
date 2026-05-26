@@ -27,9 +27,12 @@ export default {
   extensions: [RowLevelSecurityMigrator],
   migrations: {
     generator: RowLevelSecurityMigrationGenerator,
+    snapshot: false,
   },
 };
 ```
+
+策略差异检测目前要求 `migrations.snapshot: false`。开启 MikroORM snapshot 模式时，生成的 policy migration 不会写入 schema snapshot；如果在应用该迁移之前再次运行 `migration:create`，可能会再次生成同一个 policy diff。在支持基于 snapshot 的 RLS policy tracking 前，请保持关闭 snapshot。
 
 驱动只会在 `RequestContext` 处于活动状态，并且当前上下文中通过 `RowLevelSecurity` 设置了行级安全值时应用 RLS。如果没有设置 RLS role 或 context 值，它会按 MikroORM 原始逻辑执行；但如果同一个事务之前已经应用过 RLS 状态，驱动会先清理这些状态。
 
