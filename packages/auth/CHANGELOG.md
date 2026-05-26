@@ -1,5 +1,11 @@
 # @nest-boot/auth
 
+## 7.9.5
+
+### Patch Changes
+
+- 3b24b53: fix: widen AuthGuard canActivate return type to match Nest CanActivate
+
 ## 7.9.4
 
 ### Patch Changes
