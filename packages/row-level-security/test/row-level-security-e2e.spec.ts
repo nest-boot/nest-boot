@@ -1,7 +1,11 @@
 import "dotenv/config";
 import "reflect-metadata";
 
-import { MikroORM } from "@mikro-orm/core";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import { MikroORM, ReflectMetadataProvider } from "@mikro-orm/core";
 import {
   Entity,
   Knex,
@@ -11,7 +15,7 @@ import {
   Ref,
   t,
 } from "@mikro-orm/postgresql";
-import { MikroOrmModule } from "@nest-boot/mikro-orm";
+import { loadConfigFromEnv, MikroOrmModule } from "@nest-boot/mikro-orm";
 import { RequestContext } from "@nest-boot/request-context";
 import { Test, TestingModule } from "@nestjs/testing";
 
@@ -19,11 +23,14 @@ import {
   createPolicyBootstrapSqlStatements,
   createPolicyRoleUpSqlStatements,
   createPolicyUpSqlStatements,
+  Policy,
   PolicyCommand,
   quoteIdentifier,
   quoteQualifiedIdentifier,
   RowLevelSecurity,
   RowLevelSecurityDriver,
+  RowLevelSecurityMigrationGenerator,
+  RowLevelSecurityMigrator,
   RowLevelSecurityMode,
 } from "../src";
 
@@ -32,6 +39,13 @@ const DOCUMENT_SCHEMA_NAME = `rls_e2e_${String(process.pid)}_${String(
 )}`;
 const DOCUMENT_TABLE_NAME = "documents";
 const MEMBER_TABLE_NAME = "members";
+const POLICY_MIGRATION_SUFFIX = `${String(process.pid)}_${String(
+  Date.now(),
+).slice(-8)}`;
+const POLICY_MIGRATION_SCHEMA_NAME = `rls_migration_e2e_${POLICY_MIGRATION_SUFFIX}`;
+const POLICY_MIGRATION_TABLE_NAME = "policy_documents";
+const POLICY_MIGRATION_POLICY_NAME = `${POLICY_MIGRATION_TABLE_NAME}_workspace_select_policy`;
+const POLICY_MIGRATION_STORAGE_TABLE = `rls_migrations_${POLICY_MIGRATION_SUFFIX}`;
 
 @Entity({ schema: DOCUMENT_SCHEMA_NAME, tableName: MEMBER_TABLE_NAME })
 class RowLevelSecurityMemberEntity {
@@ -61,6 +75,44 @@ class RowLevelSecurityDocumentEntity {
     ref: true,
   })
   member!: Ref<RowLevelSecurityMemberEntity>;
+}
+
+@Policy({
+  name: POLICY_MIGRATION_POLICY_NAME,
+  command: PolicyCommand.SELECT,
+  property: "workspaceId",
+  context: "tenant_id",
+  roles: ["authenticated"],
+})
+@Entity({
+  schema: POLICY_MIGRATION_SCHEMA_NAME,
+  tableName: POLICY_MIGRATION_TABLE_NAME,
+})
+class RowLevelSecurityMigrationTenantContextEntity {
+  @PrimaryKey({ type: t.integer })
+  id!: number;
+
+  @Property({ fieldName: "workspace_id", type: t.integer })
+  workspaceId!: number;
+}
+
+@Policy({
+  name: POLICY_MIGRATION_POLICY_NAME,
+  command: PolicyCommand.SELECT,
+  property: "workspaceId",
+  context: "workspace_id",
+  roles: ["authenticated"],
+})
+@Entity({
+  schema: POLICY_MIGRATION_SCHEMA_NAME,
+  tableName: POLICY_MIGRATION_TABLE_NAME,
+})
+class RowLevelSecurityMigrationWorkspaceContextEntity {
+  @PrimaryKey({ type: t.integer })
+  id!: number;
+
+  @Property({ fieldName: "workspace_id", type: t.integer })
+  workspaceId!: number;
 }
 
 describe("RowLevelSecurity - database integration", () => {
@@ -293,6 +345,71 @@ describe("RowLevelSecurity - database integration", () => {
     expect(member.name).toBe("tenant-1-member");
   });
 
+  it("generates a policy diff after applying a migration and changing only context", async () => {
+    const migrationPath = mkdtempSync(join(tmpdir(), "rls-policy-migrations-"));
+    let tenantOrm: MikroORM | undefined;
+    let workspaceOrm: MikroORM | undefined;
+
+    try {
+      tenantOrm = await createPolicyMigrationOrm(
+        RowLevelSecurityMigrationTenantContextEntity,
+        migrationPath,
+      );
+      await dropPolicyMigrationSchema(tenantOrm);
+
+      const initialMigration = await (
+        tenantOrm.migrator as RowLevelSecurityMigrator
+      ).createInitialMigration(migrationPath, "InitialPolicyContext");
+
+      expect(initialMigration.code).toContain(
+        "app.get_context('tenant_id', null::integer)",
+      );
+
+      await runGeneratedMigrationUpStatements(tenantOrm, initialMigration.code);
+      await tenantOrm.close(true);
+      tenantOrm = undefined;
+
+      workspaceOrm = await createPolicyMigrationOrm(
+        RowLevelSecurityMigrationWorkspaceContextEntity,
+        migrationPath,
+      );
+
+      const policyDiffMigration = await (
+        workspaceOrm.migrator as RowLevelSecurityMigrator
+      ).createMigration(migrationPath, false, false, "UpdatePolicyContext");
+
+      expect(policyDiffMigration.fileName).toBe("UpdatePolicyContext.ts");
+      expect(policyDiffMigration.diff.up).toEqual([]);
+      expect(policyDiffMigration.code).toContain(
+        `drop policy if exists ${POLICY_MIGRATION_POLICY_NAME}`,
+      );
+      expect(policyDiffMigration.code).toContain(
+        "app.get_context('workspace_id', null::integer)",
+      );
+      expect(policyDiffMigration.code).toContain("app.get_context('tenant_id'");
+
+      await runGeneratedMigrationUpStatements(
+        workspaceOrm,
+        policyDiffMigration.code,
+      );
+
+      const policy = await getGeneratedPolicyExpression(workspaceOrm);
+
+      expect(policy.qual).toContain("workspace_id");
+      expect(policy.qual).not.toContain("tenant_id");
+    } finally {
+      const cleanupOrm = workspaceOrm ?? tenantOrm;
+
+      if (cleanupOrm) {
+        await dropPolicyMigrationSchema(cleanupOrm);
+      }
+
+      await workspaceOrm?.close(true);
+      await tenantOrm?.close(true);
+      rmSync(migrationPath, { force: true, recursive: true });
+    }
+  }, 30000);
+
   async function resetSchema() {
     await dropSchema();
     await orm.schema.createSchema({ schema: DOCUMENT_SCHEMA_NAME });
@@ -384,5 +501,89 @@ describe("RowLevelSecurity - database integration", () => {
 
       return await callback(trx);
     });
+  }
+
+  async function createPolicyMigrationOrm(
+    entity: object,
+    migrationPath: string,
+  ) {
+    const databaseConfig = await loadConfigFromEnv();
+
+    return await MikroORM.init({
+      ...databaseConfig,
+      allowGlobalContext: true,
+      driver: RowLevelSecurityDriver,
+      entities: [entity],
+      extensions: [RowLevelSecurityMigrator],
+      metadataCache: {
+        enabled: false,
+      },
+      metadataProvider: ReflectMetadataProvider,
+      migrations: {
+        emit: "ts",
+        generator: RowLevelSecurityMigrationGenerator,
+        path: migrationPath,
+        pathTs: migrationPath,
+        snapshot: false,
+        tableName: POLICY_MIGRATION_STORAGE_TABLE,
+      },
+    });
+  }
+
+  async function dropPolicyMigrationSchema(targetOrm: MikroORM) {
+    await targetOrm.schema.dropSchema({
+      dropDb: false,
+      dropMigrationsTable: false,
+      schema: POLICY_MIGRATION_SCHEMA_NAME,
+    });
+    await targetOrm.em
+      .getConnection()
+      .execute(
+        `drop table if exists ${quoteIdentifier(
+          POLICY_MIGRATION_STORAGE_TABLE,
+        )} cascade`,
+      );
+  }
+
+  async function runGeneratedMigrationUpStatements(
+    targetOrm: MikroORM,
+    code: string,
+  ) {
+    for (const statement of getGeneratedMigrationUpStatements(code)) {
+      await targetOrm.em.getConnection().execute(statement);
+    }
+  }
+
+  function getGeneratedMigrationUpStatements(code: string) {
+    const upStart = code.indexOf("async up()");
+    const downStart = code.indexOf("async down()", upStart);
+    const upCode = code.slice(
+      upStart,
+      downStart === -1 ? undefined : downStart,
+    );
+
+    return [...upCode.matchAll(/this\.addSql\(`((?:\\.|[^`])*)`\);/g)].map(
+      ([, sql]) => unescapeGeneratedMigrationSql(sql),
+    );
+  }
+
+  function unescapeGeneratedMigrationSql(sql: string) {
+    return sql.replace(/\\([`$\\])/g, "$1");
+  }
+
+  async function getGeneratedPolicyExpression(targetOrm: MikroORM) {
+    return await targetOrm.em.getConnection().execute<{ qual: string }>(
+      /* SQL */ `
+        SELECT pg_get_expr(p.polqual, p.polrelid) AS qual
+        FROM pg_policy p
+        INNER JOIN pg_class c ON c.oid = p.polrelid
+        INNER JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = '${POLICY_MIGRATION_SCHEMA_NAME}'
+          AND c.relname = '${POLICY_MIGRATION_TABLE_NAME}'
+          AND p.polname = '${POLICY_MIGRATION_POLICY_NAME}'
+      `,
+      [],
+      "get",
+    );
   }
 });
