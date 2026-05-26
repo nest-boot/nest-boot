@@ -103,6 +103,21 @@ describe("policy migration SQL", () => {
     );
   });
 
+  it("wraps raw using predicates in parentheses", () => {
+    const statements = createPolicyUpSqlStatements({
+      schemaName: "public",
+      tableName: "user",
+      policyName: "user_select_authenticated_policy",
+      command: PolicyCommand.SELECT,
+      using: "true",
+      roles: ["authenticated"],
+    });
+
+    expect(statements).toContain(
+      'create policy user_select_authenticated_policy on "public"."user" as permissive for select to authenticated using (true);',
+    );
+  });
+
   it("generates table grants for explicit policy roles", () => {
     const statements = createPolicyUpSqlStatements({
       schemaName: "public",
@@ -271,7 +286,7 @@ describe("policy migration SQL", () => {
     });
 
     expect(statements[2]).toBe(
-      'create policy workspace_member_insert_policy on "public"."workspace_member" as permissive for insert with check true;',
+      'create policy workspace_member_insert_policy on "public"."workspace_member" as permissive for insert with check (true);',
     );
   });
 

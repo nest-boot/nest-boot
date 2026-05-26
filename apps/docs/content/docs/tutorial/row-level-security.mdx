@@ -78,6 +78,8 @@ For custom policy logic, provide explicit SQL predicates:
 })
 ```
 
+Explicit `using` and `withCheck` expressions may be written as raw SQL fragments such as `true` or `"is_public" = true`; generated migrations wrap them as PostgreSQL policy predicates.
+
 ## Generate Migrations
 
 With `RowLevelSecurityMigrationGenerator` configured, MikroORM migration generation includes RLS SQL for policies discovered from entity metadata. Generated migrations extend `RowLevelSecurityMigration`, which adds the shared `app.get_context(...)` helper, database roles, grants, and policy DDL.

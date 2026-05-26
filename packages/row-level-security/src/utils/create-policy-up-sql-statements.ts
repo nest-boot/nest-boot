@@ -146,7 +146,7 @@ function getPolicyPredicateSql(
   const fragments: string[] = [];
 
   if (command !== PolicyCommand.INSERT && predicates.using) {
-    fragments.push(`using ${predicates.using}`);
+    fragments.push(`using ${createPredicateExpressionSql(predicates.using)}`);
   }
 
   if (
@@ -154,8 +154,18 @@ function getPolicyPredicateSql(
     command !== PolicyCommand.DELETE &&
     predicates.withCheck
   ) {
-    fragments.push(`with check ${predicates.withCheck}`);
+    fragments.push(
+      `with check ${createPredicateExpressionSql(predicates.withCheck)}`,
+    );
   }
 
   return fragments.join(" ");
+}
+
+function createPredicateExpressionSql(expression: string) {
+  return isParenthesizedExpression(expression) ? expression : `(${expression})`;
+}
+
+function isParenthesizedExpression(expression: string) {
+  return expression.startsWith("(") && expression.endsWith(")");
 }

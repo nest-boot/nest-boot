@@ -13,9 +13,9 @@ export interface PolicyOptions {
   property?: string;
   /** Row-level security context key read through `app.get_context`. */
   context?: string;
-  /** Explicit `USING` expression. Overrides the generated predicate when provided. */
+  /** Explicit `USING` expression. Overrides the generated predicate when provided. Raw expressions are parenthesized in generated SQL. */
   using?: string;
-  /** Explicit `WITH CHECK` expression. Overrides the generated predicate when provided. */
+  /** Explicit `WITH CHECK` expression. Overrides the generated predicate when provided. Raw expressions are parenthesized in generated SQL. */
   withCheck?: string;
   /** Database roles to which the policy applies. Empty or omitted means no role restriction. */
   roles?: string[];
