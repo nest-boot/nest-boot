@@ -13,9 +13,9 @@ export interface PolicySqlOptions {
   mode?: PolicyMode;
   /** PostgreSQL command covered by the policy. Defaults to {@link PolicyCommand.ALL}. */
   command?: PolicyCommand;
-  /** SQL expression emitted as the policy `USING` predicate. */
+  /** SQL expression emitted as the policy `USING` predicate. Raw expressions are parenthesized in generated SQL. */
   using?: string;
-  /** SQL expression emitted as the policy `WITH CHECK` predicate. */
+  /** SQL expression emitted as the policy `WITH CHECK` predicate. Raw expressions are parenthesized in generated SQL. */
   withCheck?: string;
   /** Database roles to which the generated policy applies. */
   roles?: string[];

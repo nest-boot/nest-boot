@@ -78,6 +78,8 @@ export class File {
 })
 ```
 
+显式的 `using` 和 `withCheck` 可以写成 `true` 或 `"is_public" = true` 这样的裸 SQL 片段；生成迁移时会把它们包装成 PostgreSQL policy 谓词。
+
 ## 生成迁移
 
 配置 `RowLevelSecurityMigrationGenerator` 后，MikroORM 生成迁移时会根据实体元数据中的策略写入 RLS SQL。生成的迁移会继承 `RowLevelSecurityMigration`，用于添加共享的 `app.get_context(...)` 函数、数据库角色、授权和策略 DDL。

@@ -624,7 +624,7 @@ describe("RowLevelSecurityMigrationGenerator", () => {
     expect(file).toContain("create policy workspace_member_user_select_policy");
     expect(file).toContain("create policy removed_workspace_member_policy");
     expect(file).toContain("create policy removed_workspace_member_policy on");
-    expect(file).toContain("for select to authenticated using true");
+    expect(file).toContain("for select to authenticated using (true)");
   });
 
   it("recreates policies when an existing policy changes content", () => {
@@ -660,7 +660,7 @@ describe("RowLevelSecurityMigrationGenerator", () => {
     expect(file).toContain(
       "using ((select app.get_context('user_id', null::bigint)) = \"user_id\")",
     );
-    expect(file).toContain("for select to authenticated using false");
+    expect(file).toContain("for select to authenticated using (false)");
   });
 
   it("matches create table statements for non-public schemas and collection names", () => {
@@ -678,7 +678,7 @@ describe("RowLevelSecurityMigrationGenerator", () => {
     });
 
     expect(file).toContain(
-      'this.addSql(`create policy audit_log_select_policy on "app"."audit_log" as permissive for select using true;`);',
+      'this.addSql(`create policy audit_log_select_policy on "app"."audit_log" as permissive for select using (true);`);',
     );
   });
 
