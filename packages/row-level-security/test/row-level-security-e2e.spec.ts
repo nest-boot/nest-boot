@@ -229,6 +229,46 @@ describe("RowLevelSecurity - database integration", () => {
     expect(result.disabled.tenant_id).toBeNull();
   });
 
+  it("clears row level security state without RequestContext inside an existing transaction", async () => {
+    const result = await orm.em.transactional(async (em) => {
+      const trx = em.getTransactionContext<Knex>();
+
+      if (!trx) {
+        throw new Error("Transaction context is not available.");
+      }
+
+      const scoped = await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          RowLevelSecurity.setRole("authenticated");
+          RowLevelSecurity.setContext("tenant_id", 7);
+
+          return await em.getConnection().execute<{
+            current_user: string;
+            tenant_id: number;
+          }>("select current_user, app.get_context('tenant_id', null::integer) as tenant_id", [], "get", trx);
+        },
+      );
+
+      const unscoped = await em.getConnection().execute<{
+        current_user: string;
+        tenant_id: number | null;
+      }>("select current_user, app.get_context('tenant_id', null::integer) as tenant_id", [], "get", trx);
+
+      return {
+        scoped,
+        unscoped,
+      };
+    });
+
+    expect(result.scoped).toEqual({
+      current_user: "authenticated",
+      tenant_id: 7,
+    });
+    expect(result.unscoped.current_user).not.toBe("authenticated");
+    expect(result.unscoped.tenant_id).toBeNull();
+  });
+
   it("lazy-loads relations from entities returned by row level security driver queries", async () => {
     await createPolicyFixture();
 

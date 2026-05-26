@@ -133,6 +133,7 @@ export class RowLevelSecurityConnection extends PostgreSqlConnection {
     loggerContext?: LoggingOptions,
   ) {
     if (!setup) {
+      await this.clearRowLevelSecurity(ctx, loggerContext);
       return;
     }
 

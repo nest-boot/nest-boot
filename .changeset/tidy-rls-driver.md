@@ -8,7 +8,7 @@ Remove `setRowLevelSecurityOptions` and related runtime override hooks. RLS now 
 
 Rename the request-scoped helper from `RowLevelSecurityContext` to `RowLevelSecurity`, add `RowLevelSecurityMode`, and expose `RowLevelSecurity.setMode(...)` for `AUTO`, `ENABLED`, and `DISABLED` execution modes.
 
-Clear previously applied transaction-local RLS state when a query runs with `RowLevelSecurityMode.DISABLED`, and serialize driver-managed setup plus query execution on the same transaction to avoid concurrent context interleaving.
+Clear previously applied transaction-local RLS state when a query runs with `RowLevelSecurityMode.DISABLED` or without an active `RequestContext` on a reused transaction, and serialize driver-managed setup plus query execution on the same transaction to avoid concurrent context interleaving.
 
 Remove the unsafe `RowLevelSecurityMigration.addDropPolicySql` helper; generated migrations perform grant rollback with policy diff context, while manual migrations should write explicit drop and revoke SQL.
 

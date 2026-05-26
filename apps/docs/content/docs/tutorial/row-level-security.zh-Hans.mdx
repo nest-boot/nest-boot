@@ -29,7 +29,7 @@ export default {
 };
 ```
 
-驱动只会在 `RequestContext` 处于活动状态，并且当前上下文中通过 `RowLevelSecurity` 设置了行级安全值时应用 RLS。如果没有设置 RLS role 或 context 值，它会按 MikroORM 原始逻辑执行。
+驱动只会在 `RequestContext` 处于活动状态，并且当前上下文中通过 `RowLevelSecurity` 设置了行级安全值时应用 RLS。如果没有设置 RLS role 或 context 值，它会按 MikroORM 原始逻辑执行；但如果同一个事务之前已经应用过 RLS 状态，驱动会先清理这些状态。
 
 ## 定义实体策略
 
@@ -119,7 +119,7 @@ if (workspaceMember) {
 
 上下文 key 必须是 `snake_case`，因为它们会以 `app.` 前缀暴露为 PostgreSQL 设置。
 
-RLS mode 是请求作用域行为。它只影响 `RequestContext` 活动期间执行的查询；在 `RequestContext` 外部，驱动会按 MikroORM 原始逻辑执行。
+RLS mode 是请求作用域行为。它只影响 `RequestContext` 活动期间执行的查询；在 `RequestContext` 外部，驱动会按 MikroORM 原始逻辑执行，除非该查询复用了已经被驱动应用过 RLS 状态的事务。
 
 | Mode                            | 行为                                                                                                                                                                                                    |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -156,7 +156,7 @@ await RequestContext.run(new RequestContext({ type: "job" }), async () => {
 
 ## 运行时行为
 
-查询在事务外运行时，`RowLevelSecurityDriver` 会自动开启一个短事务，应用 RLS 角色和上下文，执行 SQL，并通过提交或回滚清理事务级设置。如果 MikroORM 已经有事务上下文，驱动会在该事务上应用同样的设置后再执行查询。如果复用该事务时禁用了 RLS，或清空了请求作用域的 RLS 值，驱动会在执行下一条查询前清理之前应用的 role 和 context 设置。共享同一事务的查询会由驱动串行化，确保每条查询都使用为它准备的 role 和 context 执行。
+查询在事务外运行时，`RowLevelSecurityDriver` 会自动开启一个短事务，应用 RLS 角色和上下文，执行 SQL，并通过提交或回滚清理事务级设置。如果 MikroORM 已经有事务上下文，驱动会在该事务上应用同样的设置后再执行查询。如果复用该事务时禁用了 RLS、清空了请求作用域的 RLS 值，或下一条查询在没有 `RequestContext` 的情况下复用该事务，驱动会在执行查询前清理之前应用的 role 和 context 设置。共享同一事务的查询会由驱动串行化，确保每条查询都使用为它准备的 role 和 context 执行。
 
 因为设置发生在 SQL 连接层，之后 lazy-load relation 仍会使用正常的请求实体管理器，并在实际发起查询时获得新的 RLS 事务。当多个操作必须共享同一个 RLS 上下文时，也可以直接调用 `em.transactional()`。
 

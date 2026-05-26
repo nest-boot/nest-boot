@@ -141,6 +141,49 @@ describe("RowLevelSecurityDriver", () => {
     );
   });
 
+  it("clears transaction-local row level security before a query without RequestContext", async () => {
+    const transaction = {};
+    const executeSpy = mockPostgreSqlExecute("query-result");
+
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      RowLevelSecurity.setRole("authenticated");
+      RowLevelSecurity.setContext("tenant_id", 7);
+
+      await RowLevelSecurityConnection.prototype.execute.call(
+        createConnection(),
+        "select scoped",
+        [],
+        "all",
+        transaction,
+      );
+    });
+
+    await RowLevelSecurityConnection.prototype.execute.call(
+      createConnection(),
+      "select unscoped",
+      [],
+      "all",
+      transaction,
+    );
+
+    expect(executeSpy).toHaveBeenNthCalledWith(
+      3,
+      "SET LOCAL ROLE NONE;\nSELECT set_config('app.tenant_id', '', true);",
+      [],
+      "run",
+      transaction,
+      undefined,
+    );
+    expect(executeSpy).toHaveBeenNthCalledWith(
+      4,
+      "select unscoped",
+      [],
+      "all",
+      transaction,
+      undefined,
+    );
+  });
+
   it("applies anonymous row level security when mode is enabled without context values", async () => {
     const executeSpy = mockPostgreSqlExecute("query-result");
     const transaction = {};
