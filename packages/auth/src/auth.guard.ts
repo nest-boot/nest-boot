@@ -24,6 +24,18 @@ export class AuthGuard implements CanActivate {
   constructor(protected readonly reflector: Reflector) {}
 
   /**
+   * Determines whether the current route is marked as public.
+   * @param context - The execution context of the current request
+   * @returns True when authentication should be skipped
+   */
+  protected isPublic(context: ExecutionContext): boolean {
+    return !!this.reflector.getAllAndOverride(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+  }
+
+  /**
    * Determines whether the current request is allowed to proceed.
    * @param context - The execution context of the current request
    * @returns A NestJS guard activation result
@@ -31,12 +43,7 @@ export class AuthGuard implements CanActivate {
   canActivate(
     context: ExecutionContext,
   ): ReturnType<CanActivate["canActivate"]> {
-    if (
-      this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
-        context.getHandler(),
-        context.getClass(),
-      ])
-    ) {
+    if (this.isPublic(context)) {
       return true;
     }
 
