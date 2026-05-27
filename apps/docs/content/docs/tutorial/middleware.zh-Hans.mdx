@@ -33,12 +33,15 @@ import { Injectable, OnModuleInit } from "@nestjs/common";
 
 @Injectable()
 export class MyModule implements OnModuleInit {
-  constructor(private readonly middlewareManager: MiddlewareManager) {}
+  constructor(
+    private readonly middlewareManager: MiddlewareManager,
+    private readonly loggerMiddleware: LoggerMiddleware,
+  ) {}
 
   onModuleInit() {
     this.middlewareManager
-      .apply(MyCustomMiddleware)
-      .dependencies(AuthMiddleware) // 在认证之后运行
+      .apply(this.loggerMiddleware)
+      .before(AuthMiddleware) // 如果已注册 AuthMiddleware，则在认证前记录请求日志
       .forRoutes("*");
   }
 }
@@ -46,9 +49,37 @@ export class MyModule implements OnModuleInit {
 
 ### 核心特性
 
-- **依赖解析** — 声明中间件之间的依赖关系，确保正确的执行顺序
+- **软排序** — 使用 `before(...)` 和 `after(...)` 表达“如果目标中间件已注册，则按指定顺序执行”
+- **硬依赖** — 使用 `dependencies(...)` 表达“目标中间件必须注册，并且必须先执行”
 - **全局排除** — 将路由从所有中间件中排除（例如认证 API 路由）
 - **路由作用域** — 将中间件应用到特定路由或模式
+
+## 中间件排序
+
+当目标中间件是可选的，使用 `before(...)` 和 `after(...)`。如果目标中间件已注册，`MiddlewareManager` 会按要求排序；如果目标中间件未注册，这个排序提示会被忽略。
+
+```typescript
+this.middlewareManager
+  .apply(this.loggerMiddleware)
+  .before(AuthMiddleware)
+  .forRoutes("*");
+
+this.middlewareManager
+  .apply(this.auditMiddleware)
+  .after(AuthMiddleware)
+  .forRoutes("*");
+```
+
+当当前中间件必须依赖另一个中间件先注册并先执行，使用 `dependencies(...)`。依赖中间件缺失时，会在中间件配置阶段抛出异常。
+
+```typescript
+this.middlewareManager
+  .apply(this.authMiddleware)
+  .dependencies(RequestContextMiddleware)
+  .forRoutes("*");
+```
+
+在这个配置里，如果应用注册了认证中间件，日志中间件会尽早记录请求；认证中间件硬依赖请求上下文；审计日志只会在注册了认证中间件的应用中排在认证之后。
 
 ## API 参考
 

@@ -33,12 +33,15 @@ import { Injectable, OnModuleInit } from "@nestjs/common";
 
 @Injectable()
 export class MyModule implements OnModuleInit {
-  constructor(private readonly middlewareManager: MiddlewareManager) {}
+  constructor(
+    private readonly middlewareManager: MiddlewareManager,
+    private readonly loggerMiddleware: LoggerMiddleware,
+  ) {}
 
   onModuleInit() {
     this.middlewareManager
-      .apply(MyCustomMiddleware)
-      .dependencies(AuthMiddleware) // Run after auth
+      .apply(this.loggerMiddleware)
+      .before(AuthMiddleware) // Log requests before auth runs, when auth is registered
       .forRoutes("*");
   }
 }
@@ -46,9 +49,37 @@ export class MyModule implements OnModuleInit {
 
 ### Key Features
 
-- **Dependency Resolution** — Declare dependencies between middleware to ensure correct execution order
+- **Soft Ordering** — Use `before(...)` and `after(...)` to express preferred execution order when the target middleware is registered
+- **Hard Dependencies** — Use `dependencies(...)` when another middleware must be registered and must run first
 - **Global Excludes** — Exclude routes from all middleware (e.g., auth API routes)
 - **Route Scoping** — Apply middleware to specific routes or patterns
+
+## Ordering Middleware
+
+Use `before(...)` and `after(...)` when the target middleware is optional. If the target middleware is registered, the manager applies the requested order. If it is not registered, the ordering hint is ignored.
+
+```typescript
+this.middlewareManager
+  .apply(this.loggerMiddleware)
+  .before(AuthMiddleware)
+  .forRoutes("*");
+
+this.middlewareManager
+  .apply(this.auditMiddleware)
+  .after(AuthMiddleware)
+  .forRoutes("*");
+```
+
+Use `dependencies(...)` when the current middleware cannot run correctly unless another middleware is registered and has already run. Missing dependencies throw during middleware configuration.
+
+```typescript
+this.middlewareManager
+  .apply(this.authMiddleware)
+  .dependencies(RequestContextMiddleware)
+  .forRoutes("*");
+```
+
+In this setup, the logger runs early when auth exists, auth requires request context, and audit logging runs after auth only in applications that register auth.
 
 ## API Reference
 

@@ -21,6 +21,12 @@ export class MiddlewareConfigurator {
   /** Middleware types that must run before this middleware. @internal */
   private readonly dependencyMiddlewares: Type<NestMiddleware>[] = [];
 
+  /** Middleware types that should run before this middleware when registered. @internal */
+  private readonly afterMiddlewares: Type<NestMiddleware>[] = [];
+
+  /** Middleware types that should run after this middleware when registered. @internal */
+  private readonly beforeMiddlewares: Type<NestMiddleware>[] = [];
+
   /**
    * Creates a new MiddlewareConfigurator instance.
    * @param manager - The middleware manager that owns this configurator
@@ -51,7 +57,41 @@ export class MiddlewareConfigurator {
   }
 
   /**
-   * Declares middleware dependencies for ordering.
+   * Declares middlewares that should run after this middleware when registered.
+   *
+   * @remarks
+   * This is a soft ordering hint. Unregistered middleware types are ignored.
+   *
+   * @param beforeMiddlewares - Middleware types that should run after this middleware
+   * @returns This configurator for chaining
+   */
+  public before(...beforeMiddlewares: Type<NestMiddleware>[]): this {
+    this.beforeMiddlewares.push(...beforeMiddlewares);
+    return this;
+  }
+
+  /**
+   * Declares middlewares that should run before this middleware when registered.
+   *
+   * @remarks
+   * This is a soft ordering hint. Unregistered middleware types are ignored.
+   *
+   * @param afterMiddlewares - Middleware types that should run before this middleware
+   * @returns This configurator for chaining
+   */
+  public after(...afterMiddlewares: Type<NestMiddleware>[]): this {
+    this.afterMiddlewares.push(...afterMiddlewares);
+    return this;
+  }
+
+  /**
+   * Declares middleware dependencies for ordering. Dependencies must be registered
+   * and must run before this middleware.
+   *
+   * @remarks
+   * This is a hard prerequisite. An unregistered dependency throws during
+   * middleware configuration.
+   *
    * @param dependencyMiddlewares - Middleware types that must run before this middleware
    * @returns This configurator for chaining
    */
@@ -84,6 +124,8 @@ export class MiddlewareConfigurator {
         routes,
         excludeRoutes: this.excludeRoutes,
         dependencyMiddlewares: this.dependencyMiddlewares,
+        afterMiddlewares: this.afterMiddlewares,
+        beforeMiddlewares: this.beforeMiddlewares,
         disabledGlobalExcludeRoutes: this.disabledGlobalExcludeRoutes,
       });
     });
