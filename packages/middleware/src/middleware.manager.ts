@@ -39,6 +39,48 @@ export class MiddlewareManager {
       }
     }
 
+    const resolveDependencyMiddleware = (
+      middlewareType: Type<NestMiddleware>,
+    ) => {
+      const middleware = typeToMiddleware.get(middlewareType);
+      if (!middleware) {
+        throw new Error(
+          `Dependency middleware ${middlewareType.name} is not registered`,
+        );
+      }
+      return middleware;
+    };
+
+    const dependencyMap = new Map<
+      MiddlewareInstanceOrFunction,
+      MiddlewareInstanceOrFunction[]
+    >();
+
+    for (const [middleware, config] of this.middlewareConfigMap) {
+      dependencyMap.set(
+        middleware,
+        config.dependencyMiddlewares.map((dependencyMiddleware) =>
+          resolveDependencyMiddleware(dependencyMiddleware),
+        ),
+      );
+    }
+
+    for (const [middleware, config] of this.middlewareConfigMap) {
+      for (const afterMiddleware of config.afterMiddlewares) {
+        const dependency = typeToMiddleware.get(afterMiddleware);
+        if (dependency) {
+          dependencyMap.get(middleware)?.push(dependency);
+        }
+      }
+
+      for (const beforeMiddleware of config.beforeMiddlewares) {
+        const dependent = typeToMiddleware.get(beforeMiddleware);
+        if (dependent) {
+          dependencyMap.get(dependent)?.push(middleware);
+        }
+      }
+    }
+
     const visit = (middleware: MiddlewareInstanceOrFunction) => {
       if (visited.has(middleware)) {
         return;
@@ -50,17 +92,9 @@ export class MiddlewareManager {
 
       visiting.add(middleware);
 
-      const config = this.middlewareConfigMap.get(middleware);
-      if (config?.dependencyMiddlewares) {
-        for (const dependencyMiddleware of config.dependencyMiddlewares) {
-          const depMiddleware = typeToMiddleware.get(dependencyMiddleware);
-          if (!depMiddleware) {
-            throw new Error(
-              `Dependency middleware ${dependencyMiddleware.name} is not registered`,
-            );
-          }
-          visit(depMiddleware);
-        }
+      const dependencies = dependencyMap.get(middleware) ?? [];
+      for (const dependency of dependencies) {
+        visit(dependency);
       }
 
       visiting.delete(middleware);

@@ -13,8 +13,12 @@ export interface MiddlewareConfig {
   routes: (string | Type | RouteInfo)[];
   /** Routes to exclude from the middleware */
   excludeRoutes: (string | RouteInfo)[];
-  /** Middlewares that must be applied before this one */
+  /** Middlewares that must be registered and applied before this one */
   dependencyMiddlewares: Type<NestMiddleware>[];
+  /** Middlewares that should be applied before this one when registered */
+  afterMiddlewares: Type<NestMiddleware>[];
+  /** Middlewares that should be applied after this one when registered */
+  beforeMiddlewares: Type<NestMiddleware>[];
   /** Whether to disable global exclude routes for this middleware */
   disabledGlobalExcludeRoutes: boolean;
 }
