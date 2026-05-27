@@ -1,5 +1,11 @@
 # @nest-boot/auth
 
+## 7.10.0
+
+### Minor Changes
+
+- 9c35ed2: Expose `AuthGuard.isPublic()` for subclasses and guard mixins.
+
 ## 7.9.5
 
 ### Patch Changes
