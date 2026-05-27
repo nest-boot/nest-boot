@@ -1,5 +1,11 @@
 # @nest-boot/middleware
 
+## 7.3.0
+
+### Minor Changes
+
+- adc163c: Add soft before/after middleware ordering APIs while keeping dependencies as a hard prerequisite.
+
 ## 7.2.3
 
 ### Patch Changes
