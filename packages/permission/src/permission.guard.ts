@@ -2,7 +2,7 @@ import type { Subject } from "@casl/ability";
 import { RequestContext } from "@nest-boot/request-context";
 import type { CanActivate, ExecutionContext, Type } from "@nestjs/common";
 import { ForbiddenException, Inject, Injectable } from "@nestjs/common";
-import { ModuleRef, Reflector } from "@nestjs/core";
+import { ContextIdFactory, ModuleRef, Reflector } from "@nestjs/core";
 import type { Request, Response } from "express";
 
 import type { CanOptions, CanSubjectFactory } from "./decorators/can.decorator";
@@ -134,35 +134,113 @@ export class PermissionGuard implements CanActivate {
     subjectFactory: CanSubjectFactory,
     context: ExecutionContext,
   ): Promise<Subject> {
-    const handlerSelf = this.moduleRef.get(context.getClass(), {
-      strict: false,
-    });
-    const args = context.getArgs();
+    const handlerSelf = await this.resolveHandlerSelf(context);
+    const args = this.getSubjectFactoryArgs(context);
 
     return await subjectFactory(handlerSelf, ...args);
+  }
+
+  private async resolveHandlerSelf(
+    context: ExecutionContext,
+  ): Promise<unknown> {
+    const request = this.getRequest(context);
+
+    if (!request) {
+      return await this.moduleRef.resolve(context.getClass(), undefined, {
+        strict: false,
+      });
+    }
+
+    return await this.moduleRef.resolve(
+      context.getClass(),
+      ContextIdFactory.getByRequest(request),
+      {
+        strict: false,
+      },
+    );
+  }
+
+  private getSubjectFactoryArgs(context: ExecutionContext): unknown[] {
+    if (context.getType<string>() === "graphql") {
+      return this.getGraphqlSubjectFactoryArgs(context);
+    }
+
+    return context.getArgs();
+  }
+
+  private getGraphqlSubjectFactoryArgs(context: ExecutionContext): unknown[] {
+    const gqlArgs = context.getArgs()[1];
+
+    if (!gqlArgs || typeof gqlArgs !== "object") {
+      return [];
+    }
+
+    return Object.values(gqlArgs);
   }
 
   private getRequestContext(
     context: ExecutionContext,
   ): PermissionRequestContext {
-    const httpContext = context.switchToHttp();
-    const req = httpContext.getRequest<Request | undefined>();
-    const res = httpContext.getResponse<Response | undefined>();
+    const requestContext = this.getHttpRequestContext(context);
 
-    if (req?.headers && res) {
-      return { req, res };
+    if (requestContext) {
+      return requestContext;
     }
 
-    const gqlContext = context.getArgs()[2] as
-      | PermissionRequestContext
-      | undefined;
+    const gqlContext = this.getGraphqlContext(context);
+    const req = gqlContext?.req;
 
-    if (!gqlContext?.req || !gqlContext.res) {
+    if (!req) {
       throw new ForbiddenException(
         "Permission request context is not available",
       );
     }
 
-    return gqlContext;
+    return this.createRequestContext(req, gqlContext.res);
+  }
+
+  private getRequest(context: ExecutionContext): Request | undefined {
+    return (
+      this.getHttpRequestContext(context)?.req ??
+      this.getGraphqlContext(context)?.req
+    );
+  }
+
+  private getHttpRequestContext(
+    context: ExecutionContext,
+  ): PermissionRequestContext | null {
+    const httpContext = context.switchToHttp();
+    const req = httpContext.getRequest<Request | undefined>();
+    const res = httpContext.getResponse<Response | undefined>();
+
+    if (!req?.headers) {
+      return null;
+    }
+
+    return this.createRequestContext(req, res);
+  }
+
+  private getGraphqlContext(
+    context: ExecutionContext,
+  ): Partial<PermissionRequestContext> | undefined {
+    return context.getArgs()[2] as
+      | Partial<PermissionRequestContext>
+      | undefined;
+  }
+
+  private createRequestContext(
+    req: Request,
+    res: Response | undefined,
+  ): PermissionRequestContext {
+    const requestContext: PermissionRequestContext = {
+      req,
+    };
+    const response = res ?? req.res;
+
+    if (response) {
+      requestContext.res = response;
+    }
+
+    return requestContext;
   }
 }

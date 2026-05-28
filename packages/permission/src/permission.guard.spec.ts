@@ -95,12 +95,46 @@ describe("PermissionGuard", () => {
       async () => {
         await expect(
           guard.canActivate(
-            createContext(undefined, undefined, [
+            createContext(
               undefined,
-              {},
-              gqlContext,
-              {},
-            ]),
+              undefined,
+              [undefined, {}, gqlContext, {}],
+              "graphql",
+            ),
+          ),
+        ).resolves.toBe(true);
+      },
+    );
+
+    expect(buildAbility).toHaveBeenCalledWith(gqlContext);
+  });
+
+  it("builds ability from GraphQL contexts that only expose req", async () => {
+    const canMock = jest.fn(() => true);
+    const ability = {
+      can: canMock,
+    };
+    const { guard, reflector, buildAbility, req } = createGuard(
+      ability as unknown as PermissionAbility,
+    );
+    const gqlContext = { req };
+
+    reflector.getAllAndOverride.mockReturnValue({
+      action: PermissionAction.READ,
+      subject: Subject,
+    });
+
+    await RequestContext.run(
+      new RequestContext({ type: "graphql" }),
+      async () => {
+        await expect(
+          guard.canActivate(
+            createContext(
+              undefined,
+              undefined,
+              [undefined, {}, gqlContext, {}],
+              "graphql",
+            ),
           ),
         ).resolves.toBe(true);
       },
@@ -159,16 +193,78 @@ describe("PermissionGuard", () => {
 
     await RequestContext.run(new RequestContext({ type: "http" }), async () => {
       await expect(
-        guard.canActivate(createContext(undefined, undefined, handlerArgs)),
+        guard.canActivate(
+          createContext(
+            { headers: {} } as Request,
+            {} as Response,
+            handlerArgs,
+          ),
+        ),
       ).resolves.toBe(true);
     });
 
-    expect(moduleRef.get).toHaveBeenCalledWith(Controller, { strict: false });
+    expect(moduleRef.resolve).toHaveBeenCalledWith(
+      Controller,
+      expect.any(Object),
+      { strict: false },
+    );
     expect(subjectFactory.mock.contexts[0]).toBeUndefined();
     expect(subjectFactory).toHaveBeenCalledWith(handlerThis, ...handlerArgs);
     expect(handlerThis.workspaceMemberService.findOne).toHaveBeenCalledWith(
       123,
     );
+    expect(canMock).toHaveBeenCalledWith(
+      PermissionAction.UPDATE,
+      subjectInstance,
+    );
+  });
+
+  it("passes GraphQL resolver arguments to subject factories", async () => {
+    const subjectInstance = new Subject();
+    const handlerThis = {
+      postService: {
+        findOneOrFail: jest.fn((_params: { id: string }) =>
+          Promise.resolve(subjectInstance),
+        ),
+      },
+    };
+    const subjectFactory = jest.fn((self: typeof handlerThis, id: string) =>
+      self.postService.findOneOrFail({ id }),
+    );
+    const canMock = jest.fn(() => true);
+    const ability = {
+      can: canMock,
+    };
+    const { guard, reflector, req, res } = createGuard(
+      ability as unknown as PermissionAbility,
+      handlerThis,
+    );
+
+    reflector.getAllAndOverride.mockReturnValue({
+      action: PermissionAction.UPDATE,
+      subject: subjectFactory,
+    });
+
+    await RequestContext.run(
+      new RequestContext({ type: "graphql" }),
+      async () => {
+        await expect(
+          guard.canActivate(
+            createContext(
+              undefined,
+              undefined,
+              [undefined, { id: "post-1" }, { req, res }, {}],
+              "graphql",
+            ),
+          ),
+        ).resolves.toBe(true);
+      },
+    );
+
+    expect(subjectFactory).toHaveBeenCalledWith(handlerThis, "post-1");
+    expect(handlerThis.postService.findOneOrFail).toHaveBeenCalledWith({
+      id: "post-1",
+    });
     expect(canMock).toHaveBeenCalledWith(
       PermissionAction.UPDATE,
       subjectInstance,
@@ -244,8 +340,8 @@ function createGuard(
     (_ctx) => ability,
   );
   const moduleRef = {
-    get: jest.fn(() => handlerThis),
-  } as unknown as ModuleRef & { get: jest.Mock };
+    resolve: jest.fn(() => Promise.resolve(handlerThis)),
+  } as unknown as ModuleRef & { resolve: jest.Mock };
   const req = {
     headers: {},
   } as Request;
@@ -262,14 +358,20 @@ function createGuard(
 }
 
 function createContext(
-  req: Request | undefined = { headers: {} } as Request,
-  res: Response | undefined = {} as Response,
+  req?: Request,
+  res?: Response,
   args: unknown[] = [],
+  type = "http",
 ) {
+  const resolvedReq =
+    arguments.length >= 1 ? req : ({ headers: {} } as Request);
+  const resolvedRes = arguments.length >= 2 ? res : ({} as Response);
+
   return {
+    getType: jest.fn(() => type),
     switchToHttp: () => ({
-      getRequest: () => req,
-      getResponse: () => res,
+      getRequest: () => resolvedReq,
+      getResponse: () => resolvedRes,
     }),
     getArgs: jest.fn(() => args),
     getHandler: jest.fn(

@@ -7,7 +7,7 @@ import type { PermissionAction } from "../enums/permission-action.enum";
 /** Reflection metadata key used by the `Can` decorator. */
 export const CAN_METADATA = Symbol("CAN_METADATA");
 
-/** Factory that resolves a permission subject from the current handler instance and call arguments. */
+/** Factory that resolves a permission subject from the current handler instance and normalized route arguments. */
 export type CanSubjectFactory<
   T extends Subject = Subject,
   TSelf = unknown,

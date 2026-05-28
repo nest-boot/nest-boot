@@ -13,7 +13,7 @@ pnpm add @nest-boot/permission @nest-boot/request-context @casl/ability
 
 ## Module Registration
 
-Register `PermissionModule` with a `buildAbility` callback. The callback receives the current `{ req, res }` pair and can return a CASL ability or `null`. Returning `null` causes guarded routes to fail with `ForbiddenException`.
+Register `PermissionModule` with a `buildAbility` callback. The callback receives the current request context with `req` and, when available, `res`. It can return a CASL ability or `null`. Returning `null` causes guarded routes to fail with `ForbiddenException`.
 
 ```typescript
 import {
@@ -91,7 +91,7 @@ export class PostResolver {
 }
 ```
 
-Use a subject factory when the ability needs the concrete resource instance. The factory receives the current handler instance as its first argument, followed by the handler arguments from the Nest execution context.
+Use a subject factory when the ability needs the concrete resource instance. The factory receives the current handler instance as its first argument, followed by normalized route arguments. For GraphQL resolvers, those arguments are expanded from the GraphQL args object, so `@Args("id") id: string` is passed as the `id` argument below.
 
 ```typescript
 import { Can, PermissionAction } from "@nest-boot/permission";

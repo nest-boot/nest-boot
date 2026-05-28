@@ -6,8 +6,8 @@ import type { PermissionAbility } from "../types/permission-ability.type";
 export interface PermissionRequestContext {
   /** Express request object. */
   req: Request;
-  /** Express response object. */
-  res: Response;
+  /** Express response object, when available from the current transport. */
+  res?: Response;
 }
 
 /** Callback used to build the permission ability for the current request. */

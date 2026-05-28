@@ -13,7 +13,7 @@ pnpm add @nest-boot/permission @nest-boot/request-context @casl/ability
 
 ## 模块注册
 
-使用 `buildAbility` 回调注册 `PermissionModule`。回调会收到当前 `{ req, res }`，可以返回 CASL ability 或 `null`。如果返回 `null`，带权限要求的路由会抛出 `ForbiddenException`。
+使用 `buildAbility` 回调注册 `PermissionModule`。回调会收到当前请求上下文，其中包含 `req`，并在当前传输层可用时包含 `res`。它可以返回 CASL ability 或 `null`。如果返回 `null`，带权限要求的路由会抛出 `ForbiddenException`。
 
 ```typescript
 import {
@@ -91,7 +91,7 @@ export class PostResolver {
 }
 ```
 
-当 ability 需要具体资源实例时，使用 subject factory。factory 的第一个参数是当前处理器实例，后续参数来自 Nest execution context 的 handler arguments。
+当 ability 需要具体资源实例时，使用 subject factory。factory 的第一个参数是当前处理器实例，后续参数是规范化后的路由参数。对于 GraphQL resolver，这些参数会从 GraphQL args object 展开，因此下面的 `@Args("id") id: string` 会作为 `id` 参数传入。
 
 ```typescript
 import { Can, PermissionAction } from "@nest-boot/permission";
