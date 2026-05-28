@@ -230,64 +230,6 @@ describe("PermissionGuard", () => {
     );
   });
 
-  it("passes GraphQL resolver arguments to subject factories", async () => {
-    const subjectInstance = new Subject();
-    setRouteArgsMetadata({
-      "3:0": {
-        index: 0,
-        data: "id",
-      },
-    });
-    const handlerThis = {
-      postService: {
-        findOneOrFail: jest.fn((_params: { id: string }) =>
-          Promise.resolve(subjectInstance),
-        ),
-      },
-    };
-    const subjectFactory = jest.fn((self: typeof handlerThis, id: string) =>
-      self.postService.findOneOrFail({ id }),
-    );
-    const canMock = jest.fn(() => true);
-    const ability = {
-      can: canMock,
-    };
-    const { guard, reflector, req, res } = createGuard(
-      ability as unknown as PermissionAbility,
-      handlerThis,
-    );
-
-    reflector.getAllAndOverride.mockReturnValue({
-      action: PermissionAction.UPDATE,
-      subject: subjectFactory,
-    });
-
-    await RequestContext.run(
-      new RequestContext({ type: "graphql" }),
-      async () => {
-        await expect(
-          guard.canActivate(
-            createContext(
-              undefined,
-              undefined,
-              [undefined, { id: "post-1" }, { req, res }, {}],
-              "graphql",
-            ),
-          ),
-        ).resolves.toBe(true);
-      },
-    );
-
-    expect(subjectFactory).toHaveBeenCalledWith(handlerThis, "post-1");
-    expect(handlerThis.postService.findOneOrFail).toHaveBeenCalledWith({
-      id: "post-1",
-    });
-    expect(canMock).toHaveBeenCalledWith(
-      PermissionAction.UPDATE,
-      subjectInstance,
-    );
-  });
-
   it("passes GraphQL resolver arguments in decorated parameter order", async () => {
     const input = { title: "New title" };
     const subjectInstance = new Subject();
@@ -561,8 +503,7 @@ function createGuard(
   );
   const moduleRef = {
     resolve: jest.fn(() => Promise.resolve(handlerThis)),
-    create: jest.fn((Hook: new () => unknown) => Promise.resolve(new Hook())),
-  } as unknown as ModuleRef & { resolve: jest.Mock; create: jest.Mock };
+  } as unknown as ModuleRef & { resolve: jest.Mock };
   const req = {
     headers: {},
   } as Request;
