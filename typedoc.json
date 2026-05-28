@@ -96,6 +96,7 @@
     "@nest-boot/mailer",
     "@nest-boot/metrics",
     "@nest-boot/middleware",
+    "@nest-boot/permission",
     "@nest-boot/mikro-orm",
     "@nest-boot/mikro-orm-crypt",
     "@nest-boot/mikro-orm-hash",

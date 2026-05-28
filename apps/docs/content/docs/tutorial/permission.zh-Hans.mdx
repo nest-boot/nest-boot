@@ -1,0 +1,142 @@
+---
+title: "权限"
+description: "基于 CASL 的路由权限检查，并支持请求作用域的 ability 缓存。"
+---
+
+`@nest-boot/permission` 模块为 NestJS 应用提供轻量 CASL 集成。它会为每个请求构建一个权限 ability，将其缓存到 `RequestContext`，并允许你通过 `Can` 装饰器声明路由权限要求。
+
+## 安装
+
+```bash
+pnpm add @nest-boot/permission @nest-boot/request-context @casl/ability
+```
+
+## 模块注册
+
+使用 `buildAbility` 回调注册 `PermissionModule`。回调会收到当前 `{ req, res }`，可以返回 CASL ability 或 `null`。如果返回 `null`，带权限要求的路由会抛出 `ForbiddenException`。
+
+```typescript
+import {
+  PermissionAbilityBuilder,
+  PermissionAction,
+  PermissionModule,
+} from "@nest-boot/permission";
+import { RequestContextModule } from "@nest-boot/request-context";
+import { Global, Module } from "@nestjs/common";
+
+import { Post } from "./post.entity";
+
+@Global()
+@Module({
+  imports: [
+    RequestContextModule,
+    PermissionModule.forRoot({
+      buildAbility: ({ req }) => {
+        const user = req.user;
+
+        if (!user) {
+          return null;
+        }
+
+        const { can, build } = new PermissionAbilityBuilder();
+
+        can(PermissionAction.READ, Post);
+        can(PermissionAction.UPDATE, Post, { authorId: user.id });
+
+        return build();
+      },
+    }),
+  ],
+})
+export class CommonModule {}
+```
+
+## 注册守卫
+
+`PermissionModule` 会提供 `PermissionGuard`。当路由需要执行 `Can` 元数据检查时，将它注册为全局守卫。
+
+```typescript
+import { PermissionGuard } from "@nest-boot/permission";
+import { Module } from "@nestjs/common";
+import { APP_GUARD } from "@nestjs/core";
+
+@Module({
+  providers: [
+    {
+      provide: APP_GUARD,
+      useExisting: PermissionGuard,
+    },
+  ],
+})
+export class AppModule {}
+```
+
+## 保护路由
+
+当权限检查只依赖资源类型时，可以使用静态 subject class。
+
+```typescript
+import { Can, PermissionAction } from "@nest-boot/permission";
+import { Query, Resolver } from "@nestjs/graphql";
+
+import { Post } from "./post.entity";
+
+@Resolver(() => Post)
+export class PostResolver {
+  @Can(PermissionAction.READ, Post)
+  @Query(() => [Post])
+  posts() {
+    return this.postService.findAll();
+  }
+}
+```
+
+当 ability 需要具体资源实例时，使用 subject factory。factory 的第一个参数是当前处理器实例，后续参数来自 Nest execution context 的 handler arguments。
+
+```typescript
+import { Can, PermissionAction } from "@nest-boot/permission";
+import { Args, Mutation, Resolver } from "@nestjs/graphql";
+
+import { Post } from "./post.entity";
+
+@Resolver(() => Post)
+export class PostResolver {
+  constructor(readonly postService: PostService) {}
+
+  @Can(PermissionAction.UPDATE, (self: PostResolver, id: string) =>
+    self.postService.findOneOrFail({ id }),
+  )
+  @Mutation(() => Post)
+  updatePost(@Args("id") id: string) {
+    return this.postService.update(id);
+  }
+}
+```
+
+## 在服务中检查权限
+
+`PermissionGuard` 执行后，解析出的 ability 会存入 `RequestContext`。在更底层的代码中，可以使用同步的 `can` 函数判断权限。
+
+```typescript
+import { can, PermissionAction } from "@nest-boot/permission";
+import { ForbiddenException, Injectable } from "@nestjs/common";
+
+import { Post } from "./post.entity";
+
+@Injectable()
+export class PostService {
+  update(post: Post) {
+    if (!can(PermissionAction.UPDATE, post)) {
+      throw new ForbiddenException();
+    }
+
+    // 更新 Post。
+  }
+}
+```
+
+如果需要直接访问 CASL ability，也可以使用 `getPermissionAbility()`。当当前请求尚未准备 ability 时，它会抛出 `ForbiddenException`。
+
+## API 参考
+
+详细的 API 文档请参阅[权限 API 参考](/docs/api/permission)。

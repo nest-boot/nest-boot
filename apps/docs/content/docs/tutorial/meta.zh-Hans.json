@@ -5,6 +5,7 @@
     "crypt",
     "mikro-orm",
     "row-level-security",
+    "permission",
     "middleware",
     "redis",
     "request-context",
