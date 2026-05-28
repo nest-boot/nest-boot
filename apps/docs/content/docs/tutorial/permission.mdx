@@ -1,0 +1,144 @@
+---
+title: "Permission"
+description: "CASL-based route permission checks with request-scoped ability caching."
+---
+
+The `@nest-boot/permission` module provides a small CASL integration for NestJS applications. It lets you build one permission ability per request, cache it in `RequestContext`, and declare route requirements with the `Can` decorator.
+
+## Installation
+
+```bash
+pnpm add @nest-boot/permission @nest-boot/request-context @casl/ability
+```
+
+## Module Registration
+
+Register `PermissionModule` with a `buildAbility` callback. The callback receives Nest's current `ExecutionContext`; the example below reads the authenticated user from the HTTP request with `context.switchToHttp().getRequest<Request>()`. It can return a CASL ability or `null`. Returning `null` causes guarded routes to fail with `ForbiddenException`.
+
+```typescript
+import {
+  PermissionAbilityBuilder,
+  PermissionAction,
+  PermissionModule,
+} from "@nest-boot/permission";
+import { RequestContextModule } from "@nest-boot/request-context";
+import { Global, Module } from "@nestjs/common";
+import { Request } from "express";
+
+import { Post } from "./post.entity";
+
+@Global()
+@Module({
+  imports: [
+    RequestContextModule,
+    PermissionModule.forRoot({
+      buildAbility: (context) => {
+        const request = context.switchToHttp().getRequest<Request>();
+        const user = request.user;
+
+        if (!user) {
+          return null;
+        }
+
+        const { can, build } = new PermissionAbilityBuilder();
+
+        can(PermissionAction.READ, Post);
+        can(PermissionAction.UPDATE, Post, { authorId: user.id });
+
+        return build();
+      },
+    }),
+  ],
+})
+export class CommonModule {}
+```
+
+## Register the Guard
+
+`PermissionGuard` is provided by `PermissionModule`. Register it as a global guard when routes should enforce `Can` metadata.
+
+```typescript
+import { PermissionGuard } from "@nest-boot/permission";
+import { Module } from "@nestjs/common";
+import { APP_GUARD } from "@nestjs/core";
+
+@Module({
+  providers: [
+    {
+      provide: APP_GUARD,
+      useExisting: PermissionGuard,
+    },
+  ],
+})
+export class AppModule {}
+```
+
+## Protect Routes
+
+Use `Can` with a static subject class when the permission check only depends on the resource type.
+
+```typescript
+import { Can, PermissionAction } from "@nest-boot/permission";
+import { Query, Resolver } from "@nestjs/graphql";
+
+import { Post } from "./post.entity";
+
+@Resolver(() => Post)
+export class PostResolver {
+  @Can(PermissionAction.READ, Post)
+  @Query(() => [Post])
+  posts() {
+    return this.postService.findAll();
+  }
+}
+```
+
+Use a subject factory when the ability needs the concrete resource instance. The factory receives the current resolver or controller instance as its first argument, followed by the decorated method parameters. For GraphQL resolvers, `@Args("id") id: string` is passed as the `id` argument below. For HTTP controllers, parameters such as `@Param("id") id: string` and custom parameter decorators are resolved the same way.
+
+```typescript
+import { Can, PermissionAction } from "@nest-boot/permission";
+import { Args, Mutation, Resolver } from "@nestjs/graphql";
+
+import { Post } from "./post.entity";
+
+@Resolver(() => Post)
+export class PostResolver {
+  constructor(private readonly postService: PostService) {}
+
+  @Can(PermissionAction.UPDATE, (self: PostResolver, id: string) =>
+    self.postService.findOneOrFail({ id }),
+  )
+  @Mutation(() => Post)
+  updatePost(@Args("id") id: string) {
+    return this.postService.update(id);
+  }
+}
+```
+
+## Check Permissions in Services
+
+After `PermissionGuard` has run, the resolved ability is stored in `RequestContext`. Use `can` for a synchronous check in lower-level code.
+
+```typescript
+import { can, PermissionAction } from "@nest-boot/permission";
+import { ForbiddenException, Injectable } from "@nestjs/common";
+
+import { Post } from "./post.entity";
+
+@Injectable()
+export class PostService {
+  update(post: Post) {
+    if (!can(PermissionAction.UPDATE, post)) {
+      throw new ForbiddenException();
+    }
+
+    // Update the post.
+  }
+}
+```
+
+`getPermissionAbility()` is also available when direct CASL access is needed. It throws `ForbiddenException` if the ability has not been prepared for the current request.
+
+## API Reference
+
+For detailed API documentation, see the [Permission API Reference](/docs/api/permission).

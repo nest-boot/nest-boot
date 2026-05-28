@@ -1,0 +1,76 @@
+{
+  "name": "@nest-boot/permission",
+  "version": "7.0.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nest-boot/nest-boot.git",
+    "directory": "packages/permission"
+  },
+  "description": "CASL-based permission helpers for Nest Boot applications",
+  "author": {
+    "name": "Xudong Huang",
+    "email": "me@huangxudong.com",
+    "url": "https://www.huangxudong.com/"
+  },
+  "homepage": "",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "directories": {
+    "lib": "dist"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist",
+    "dev": "tsc -w -p tsconfig.build.json",
+    "lint": "eslint \"{src,test}/**/*.ts\" --fix",
+    "test": "jest",
+    "test:cov": "jest --coverage",
+    "test:watch": "jest --watch",
+    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand"
+  },
+  "peerDependencies": {
+    "@casl/ability": "^6.0.0",
+    "@nest-boot/request-context": "^7.0.0",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "express": "^5.0.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.0.0"
+  },
+  "devDependencies": {
+    "@casl/ability": "^6.7.5",
+    "@nest-boot/eslint-config": "workspace:^",
+    "@nest-boot/eslint-plugin": "workspace:^",
+    "@nest-boot/request-context": "workspace:^",
+    "@nest-boot/tsconfig": "workspace:^",
+    "@nestjs/common": "^11.1.11",
+    "@nestjs/core": "^11.1.11",
+    "@nestjs/testing": "^11.1.11",
+    "@types/express": "^5.0.3",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^24.12.4",
+    "eslint": "^9.39.3",
+    "express": "^5.1.0",
+    "jest": "^29.7.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "ts-jest": "^29.4.4",
+    "typescript": "^5.9.3"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "lint-staged": {
+    "*.ts": [
+      "prettier --write",
+      "eslint --fix"
+    ]
+  },
+  "volta": {
+    "extends": "../../package.json"
+  }
+}
