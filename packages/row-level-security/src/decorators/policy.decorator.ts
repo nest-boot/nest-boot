@@ -6,7 +6,10 @@ import type {
   PolicyMetadataEntry,
 } from "../interfaces/policy-metadata.interface";
 import type { PolicyOptions } from "../interfaces/policy-options.interface";
+import { assertIdentifier } from "../utils/assert-identifier";
 import { escapeSqlLiteral } from "../utils/escape-sql-literal";
+import { isPostgresKeywordRequiringQuote } from "../utils/is-postgres-keyword-requiring-quote";
+import { normalizePostgresTypeAlias } from "../utils/normalize-postgres-type-alias";
 import { quoteIdentifier } from "../utils/quote-identifier";
 
 export type {
@@ -26,7 +29,7 @@ const policyMetadata = new WeakMap<object, PolicyMetadataEntry[]>();
  *
  * When `property` and `context` are provided, the decorator derives default
  * `USING` and `WITH CHECK` expressions that compare the mapped database column
- * against `app.get_context(context, null::<column type>)`.
+ * against a PostgreSQL-deparsed `app.get_context(context::text, NULL::<column type>)`.
  */
 export function Policy(options: PolicyOptions): ClassDecorator {
   const name = normalizeOption(options.name, "Policy name is required");
@@ -250,7 +253,20 @@ function createPolicyContextExpression(
     property,
   );
 
-  return `((select app.get_context('${escapeSqlLiteral(contextName)}', null::${contextType})) = ${quoteIdentifier(columnName)})`;
+  return `(( SELECT app.get_context('${escapeSqlLiteral(contextName)}'::text, NULL::${contextType}) AS get_context) = ${formatDeparsedIdentifier(columnName)})`;
+}
+
+function formatDeparsedIdentifier(identifier: string) {
+  assertIdentifier(identifier);
+
+  if (
+    /^[a-z_][a-z0-9_]*$/.test(identifier) &&
+    !isPostgresKeywordRequiringQuote(identifier)
+  ) {
+    return identifier;
+  }
+
+  return quoteIdentifier(identifier);
 }
 
 function getPropertyMetadata(
@@ -385,7 +401,7 @@ function normalizePostgresType(
     );
   }
 
-  return normalized;
+  return normalizePostgresTypeAlias(normalized);
 }
 
 function mapPropertyTypeToPostgresType(propertyType: string | undefined) {
