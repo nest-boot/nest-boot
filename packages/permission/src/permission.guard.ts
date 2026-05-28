@@ -1,11 +1,18 @@
 import type { Subject } from "@casl/ability";
+import { subject as createCaslSubject } from "@casl/ability";
 import { RequestContext } from "@nest-boot/request-context";
 import type { CanActivate, ExecutionContext, Type } from "@nestjs/common";
 import { ForbiddenException, Inject, Injectable } from "@nestjs/common";
 import { ContextIdFactory, ModuleRef, Reflector } from "@nestjs/core";
 import type { Request, Response } from "express";
 
-import type { CanOptions, CanSubjectFactory } from "./decorators/can.decorator";
+import type {
+  CanOptions,
+  CanSubjectFactory,
+  CanSubjectHook,
+  CanSubjectHookResolver,
+  CanSubjectHookTuple,
+} from "./decorators/can.decorator";
 import { CAN_METADATA } from "./decorators/can.decorator";
 import type {
   PermissionModuleOptions,
@@ -17,6 +24,39 @@ import {
 } from "./permission.constants";
 import { MODULE_OPTIONS_TOKEN } from "./permission.module-definition";
 import type { PermissionAbility } from "./types/permission-ability.type";
+
+type RouteArgumentMetadata = Record<
+  string,
+  {
+    index: number;
+    data?: unknown;
+    factory?: (data: unknown, context: ExecutionContext) => unknown;
+  }
+>;
+
+const ROUTE_ARGS_METADATA = "__routeArguments__";
+const CUSTOM_ROUTE_ARGS_METADATA = "__customRouteArgs__";
+const GQL_PARAM_TYPES = {
+  ROOT: 0,
+  CONTEXT: 1,
+  INFO: 2,
+  ARGS: 3,
+} as const;
+const ROUTE_PARAM_TYPES = {
+  REQUEST: 0,
+  RESPONSE: 1,
+  NEXT: 2,
+  BODY: 3,
+  QUERY: 4,
+  PARAM: 5,
+  HEADERS: 6,
+  SESSION: 7,
+  FILE: 8,
+  FILES: 9,
+  HOST: 10,
+  IP: 11,
+  RAW_BODY: 12,
+} as const;
 
 /** Guard that evaluates CASL permissions from `Can` metadata. */
 @Injectable()
@@ -118,6 +158,14 @@ export class PermissionGuard implements CanActivate {
     const { subject } = canOptions;
 
     if (this.isSubjectType(subject)) {
+      if (canOptions.subjectHook) {
+        return await this.resolveSubjectHook(
+          subject,
+          canOptions.subjectHook,
+          context,
+        );
+      }
+
       return subject;
     }
 
@@ -128,6 +176,74 @@ export class PermissionGuard implements CanActivate {
     subject: CanOptions["subject"],
   ): subject is Type<Subject> {
     return Function.prototype.toString.call(subject).startsWith("class ");
+  }
+
+  private async resolveSubjectHook(
+    subjectType: Type<Subject>,
+    subjectHook: CanSubjectHookResolver,
+    context: ExecutionContext,
+  ): Promise<Subject> {
+    const args = this.getSubjectFactoryArgs(context);
+    const subjectInstance = await this.runSubjectHook(
+      subjectHook,
+      context,
+      args,
+    );
+
+    if (!subjectInstance) {
+      return subjectType;
+    }
+
+    return createCaslSubject(
+      subjectType as never,
+      subjectInstance as never,
+    ) as Subject;
+  }
+
+  private async runSubjectHook(
+    subjectHook: CanSubjectHookResolver,
+    context: ExecutionContext,
+    args: unknown[],
+  ): Promise<Subject | undefined> {
+    if (this.isSubjectHookTuple(subjectHook)) {
+      const [ServiceClass, run] = subjectHook;
+      const service = await this.resolveProvider(ServiceClass, context);
+
+      return await run(service, ...args);
+    }
+
+    const hook = await this.resolveSubjectHookInstance(subjectHook, context);
+
+    return await hook.run(...args);
+  }
+
+  private isSubjectHookTuple(
+    subjectHook: CanSubjectHookResolver,
+  ): subjectHook is CanSubjectHookTuple {
+    return Array.isArray(subjectHook);
+  }
+
+  private async resolveSubjectHookInstance(
+    subjectHook: Type<CanSubjectHook>,
+    context: ExecutionContext,
+  ): Promise<CanSubjectHook> {
+    try {
+      return await this.resolveProvider(subjectHook, context);
+    } catch {
+      return await this.moduleRef.create(
+        subjectHook,
+        this.getContextId(context),
+      );
+    }
+  }
+
+  private async resolveProvider<T>(
+    provider: Type<T>,
+    context: ExecutionContext,
+  ): Promise<T> {
+    return await this.moduleRef.resolve(provider, this.getContextId(context), {
+      strict: false,
+    });
   }
 
   private async resolveSubjectFactory(
@@ -143,39 +259,183 @@ export class PermissionGuard implements CanActivate {
   private async resolveHandlerSelf(
     context: ExecutionContext,
   ): Promise<unknown> {
+    return await this.resolveProvider(context.getClass(), context);
+  }
+
+  private getContextId(context: ExecutionContext): { id: number } | undefined {
     const request = this.getRequest(context);
 
-    if (!request) {
-      return await this.moduleRef.resolve(context.getClass(), undefined, {
-        strict: false,
-      });
-    }
-
-    return await this.moduleRef.resolve(
-      context.getClass(),
-      ContextIdFactory.getByRequest(request),
-      {
-        strict: false,
-      },
-    );
+    return request ? ContextIdFactory.getByRequest(request) : undefined;
   }
 
   private getSubjectFactoryArgs(context: ExecutionContext): unknown[] {
-    if (context.getType<string>() === "graphql") {
-      return this.getGraphqlSubjectFactoryArgs(context);
+    const routeArgsMetadata = this.getRouteArgsMetadata(context);
+
+    if (routeArgsMetadata) {
+      return this.createRouteArguments(context, routeArgsMetadata);
     }
 
-    return context.getArgs();
+    return [];
   }
 
-  private getGraphqlSubjectFactoryArgs(context: ExecutionContext): unknown[] {
-    const gqlArgs = context.getArgs()[1];
+  private getRouteArgsMetadata(
+    context: ExecutionContext,
+  ): RouteArgumentMetadata | null {
+    const methodName = this.getHandlerMethodName(context);
 
-    if (!gqlArgs || typeof gqlArgs !== "object") {
-      return [];
+    if (!methodName) {
+      return null;
     }
 
-    return Object.values(gqlArgs);
+    return (
+      Reflect.getMetadata(
+        ROUTE_ARGS_METADATA,
+        context.getClass(),
+        methodName,
+      ) ?? null
+    );
+  }
+
+  private getHandlerMethodName(
+    context: ExecutionContext,
+  ): string | symbol | null {
+    const handler = context.getHandler();
+
+    if (handler.name) {
+      return handler.name;
+    }
+
+    const handlerName = Object.getOwnPropertyNames(
+      context.getClass().prototype,
+    ).find(
+      (propertyName) => context.getClass().prototype[propertyName] === handler,
+    );
+
+    return handlerName ?? null;
+  }
+
+  private createRouteArguments(
+    context: ExecutionContext,
+    metadata: RouteArgumentMetadata,
+  ): unknown[] {
+    return Object.entries(metadata).reduce<unknown[]>(
+      (args, [key, parameterMetadata]) => {
+        args[parameterMetadata.index] = this.resolveRouteArgument(
+          context,
+          key,
+          parameterMetadata,
+        );
+
+        return args;
+      },
+      [],
+    );
+  }
+
+  private resolveRouteArgument(
+    context: ExecutionContext,
+    key: string,
+    metadata: RouteArgumentMetadata[string],
+  ): unknown {
+    if (key.includes(CUSTOM_ROUTE_ARGS_METADATA) && metadata.factory) {
+      return metadata.factory(metadata.data, context);
+    }
+
+    const type = Number(key.split(":")[0]);
+
+    if (context.getType<string>() === "graphql") {
+      return this.resolveGraphqlRouteArgument(context, type, metadata.data);
+    }
+
+    return this.resolveHttpRouteArgument(context, type, metadata.data);
+  }
+
+  private resolveGraphqlRouteArgument(
+    context: ExecutionContext,
+    type: number,
+    data: unknown,
+  ): unknown {
+    const args = context.getArgs();
+
+    switch (type) {
+      case GQL_PARAM_TYPES.ROOT:
+        return args[0];
+      case GQL_PARAM_TYPES.ARGS:
+        return this.getObjectValue(args[1], data);
+      case GQL_PARAM_TYPES.CONTEXT:
+        return this.getObjectValue(args[2], data);
+      case GQL_PARAM_TYPES.INFO:
+        return args[3];
+      default:
+        return undefined;
+    }
+  }
+
+  private resolveHttpRouteArgument(
+    context: ExecutionContext,
+    type: number,
+    data: unknown,
+  ): unknown {
+    const httpContext = context.switchToHttp();
+    const req = httpContext.getRequest();
+    const res = httpContext.getResponse();
+    const next = httpContext.getNext();
+
+    switch (type) {
+      case ROUTE_PARAM_TYPES.REQUEST:
+        return req;
+      case ROUTE_PARAM_TYPES.RESPONSE:
+        return res;
+      case ROUTE_PARAM_TYPES.NEXT:
+        return next;
+      case ROUTE_PARAM_TYPES.BODY:
+        return this.getObjectValue(this.getRecord(req).body, data);
+      case ROUTE_PARAM_TYPES.RAW_BODY:
+        return this.getRecord(req).rawBody;
+      case ROUTE_PARAM_TYPES.PARAM:
+        return this.getObjectValue(this.getRecord(req).params, data);
+      case ROUTE_PARAM_TYPES.HOST:
+        return this.getObjectValue(this.getRecord(req).hosts, data);
+      case ROUTE_PARAM_TYPES.QUERY:
+        return this.getObjectValue(this.getRecord(req).query, data);
+      case ROUTE_PARAM_TYPES.HEADERS:
+        return this.getObjectValue(this.getRecord(req).headers, data, true);
+      case ROUTE_PARAM_TYPES.SESSION:
+        return this.getRecord(req).session;
+      case ROUTE_PARAM_TYPES.FILE:
+        return this.getRecord(req)[this.getStringData(data) ?? "file"];
+      case ROUTE_PARAM_TYPES.FILES:
+        return this.getRecord(req).files;
+      case ROUTE_PARAM_TYPES.IP:
+        return this.getRecord(req).ip;
+      default:
+        return undefined;
+    }
+  }
+
+  private getObjectValue(
+    value: unknown,
+    data: unknown,
+    normalizeKey = false,
+  ): unknown {
+    const record = this.getRecord(value);
+    const key = this.getStringData(data);
+
+    if (!key) {
+      return value;
+    }
+
+    return record[normalizeKey ? key.toLowerCase() : key];
+  }
+
+  private getStringData(data: unknown): string | null {
+    return typeof data === "string" ? data : null;
+  }
+
+  private getRecord(value: unknown): Record<string, unknown> {
+    return value && typeof value === "object"
+      ? (value as Record<string, unknown>)
+      : {};
   }
 
   private getRequestContext(

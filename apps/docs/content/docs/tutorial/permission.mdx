@@ -91,21 +91,29 @@ export class PostResolver {
 }
 ```
 
-Use a subject factory when the ability needs the concrete resource instance. The factory receives the current handler instance as its first argument, followed by normalized route arguments. For GraphQL resolvers, those arguments are expanded from the GraphQL args object, so `@Args("id") id: string` is passed as the `id` argument below.
+Use a subject hook when the ability needs the concrete resource instance. The hook receives the decorated resolver or controller method parameters directly. For GraphQL resolvers, `@Args("id") id: string` is passed as the `id` argument below. For HTTP controllers, parameters such as `@Param("id") id: string` and custom parameter decorators are resolved the same way.
 
 ```typescript
-import { Can, PermissionAction } from "@nest-boot/permission";
+import { Can, CanSubjectHook, PermissionAction } from "@nest-boot/permission";
+import { Injectable } from "@nestjs/common";
 import { Args, Mutation, Resolver } from "@nestjs/graphql";
 
 import { Post } from "./post.entity";
 
+@Injectable()
+export class PostSubjectHook implements CanSubjectHook<Post, [string]> {
+  constructor(private readonly postService: PostService) {}
+
+  run(id: string) {
+    return this.postService.findOneOrFail({ id });
+  }
+}
+
 @Resolver(() => Post)
 export class PostResolver {
-  constructor(readonly postService: PostService) {}
+  constructor(private readonly postService: PostService) {}
 
-  @Can(PermissionAction.UPDATE, (self: PostResolver, id: string) =>
-    self.postService.findOneOrFail({ id }),
-  )
+  @Can(PermissionAction.UPDATE, Post, PostSubjectHook)
   @Mutation(() => Post)
   updatePost(@Args("id") id: string) {
     return this.postService.update(id);
