@@ -119,6 +119,65 @@ class RowLevelSecurityMigrationWorkspaceContextEntity {
   workspaceId!: number;
 }
 
+@Policy({
+  name: POLICY_MIGRATION_POLICY_NAME,
+  command: PolicyCommand.SELECT,
+  property: "workspaceId",
+  context: "workspace_id",
+  roles: ["authenticated"],
+})
+@Entity({
+  schema: POLICY_MIGRATION_SCHEMA_NAME,
+  tableName: POLICY_MIGRATION_TABLE_NAME,
+})
+class RowLevelSecurityMigrationWorkspaceContextWithExtraFieldEntity {
+  @PrimaryKey({ type: t.integer })
+  id!: number;
+
+  @Property({ type: t.string })
+  externalId!: string;
+
+  @Property({ fieldName: "workspace_id", type: t.integer })
+  workspaceId!: number;
+}
+
+@Policy({
+  name: POLICY_MIGRATION_POLICY_NAME,
+  command: PolicyCommand.SELECT,
+  using: `(select app.get_context('workspace_id'::text, null::integer)) = workspace_id`,
+})
+@Entity({
+  schema: POLICY_MIGRATION_SCHEMA_NAME,
+  tableName: POLICY_MIGRATION_TABLE_NAME,
+})
+class RowLevelSecurityMigrationExplicitWorkspacePolicyEntity {
+  @PrimaryKey({ type: t.integer })
+  id!: number;
+
+  @Property({ fieldName: "workspace_id", type: t.integer })
+  workspaceId!: number;
+}
+
+@Policy({
+  name: POLICY_MIGRATION_POLICY_NAME,
+  command: PolicyCommand.SELECT,
+  using: `(select app.get_context('workspace_id'::text, null::integer)) = workspace_id`,
+})
+@Entity({
+  schema: POLICY_MIGRATION_SCHEMA_NAME,
+  tableName: POLICY_MIGRATION_TABLE_NAME,
+})
+class RowLevelSecurityMigrationExplicitWorkspacePolicyWithExtraFieldEntity {
+  @PrimaryKey({ type: t.integer })
+  id!: number;
+
+  @Property({ type: t.string })
+  externalId!: string;
+
+  @Property({ fieldName: "workspace_id", type: t.integer })
+  workspaceId!: number;
+}
+
 describe("RowLevelSecurity - database integration", () => {
   let orm: MikroORM;
   let testingModule: TestingModule;
@@ -413,6 +472,114 @@ describe("RowLevelSecurity - database integration", () => {
       rmSync(migrationPath, { force: true, recursive: true });
     }
   }, 30000);
+
+  it("does not regenerate unchanged generated policies after an entity field changes", async () => {
+    await expectFieldChangeMigrationToKeepPolicy({
+      fieldChangeEntity:
+        RowLevelSecurityMigrationWorkspaceContextWithExtraFieldEntity,
+      fieldChangeMigrationName: "AddPolicyEntityField",
+      initialEntity: RowLevelSecurityMigrationWorkspaceContextEntity,
+      initialMigrationName: "InitialPolicyField",
+      migrationPathPrefix: "rls-field-migrations-",
+      expectedInitialPolicyExpression: "workspace_id",
+    });
+  }, 30000);
+
+  it("does not regenerate unchanged explicit user policies after an entity field changes", async () => {
+    await expectFieldChangeMigrationToKeepPolicy({
+      fieldChangeEntity:
+        RowLevelSecurityMigrationExplicitWorkspacePolicyWithExtraFieldEntity,
+      fieldChangeMigrationName: "AddExplicitPolicyEntityField",
+      initialEntity: RowLevelSecurityMigrationExplicitWorkspacePolicyEntity,
+      initialMigrationName: "InitialExplicitPolicyField",
+      migrationPathPrefix: "rls-explicit-field-migrations-",
+      expectedInitialPolicyExpression:
+        "app.get_context('workspace_id'::text, NULL::integer)",
+    });
+  }, 30000);
+
+  async function expectFieldChangeMigrationToKeepPolicy({
+    expectedInitialPolicyExpression,
+    fieldChangeEntity,
+    fieldChangeMigrationName,
+    initialEntity,
+    initialMigrationName,
+    migrationPathPrefix,
+  }: {
+    expectedInitialPolicyExpression: string;
+    fieldChangeEntity: EntityClass<object>;
+    fieldChangeMigrationName: string;
+    initialEntity: EntityClass<object>;
+    initialMigrationName: string;
+    migrationPathPrefix: string;
+  }) {
+    const migrationPath = mkdtempSync(join(tmpdir(), migrationPathPrefix));
+    let initialOrm: MikroORM | undefined;
+    let fieldChangeOrm: MikroORM | undefined;
+
+    try {
+      await dropGeneratedTestArtifacts(orm);
+
+      initialOrm = await createPolicyMigrationOrm(initialEntity, migrationPath);
+      await dropPolicyMigrationSchema(initialOrm);
+
+      const initialMigration = await (
+        initialOrm.migrator as RowLevelSecurityMigrator
+      ).createInitialMigration(migrationPath, initialMigrationName);
+
+      await runGeneratedMigrationUpStatements(
+        initialOrm,
+        initialMigration.code,
+      );
+
+      const initialPolicy = await getGeneratedPolicyExpression(initialOrm);
+
+      expect(initialPolicy.qual).toContain(expectedInitialPolicyExpression);
+
+      await initialOrm.close(true);
+      initialOrm = undefined;
+
+      fieldChangeOrm = await createPolicyMigrationOrm(
+        fieldChangeEntity,
+        migrationPath,
+      );
+
+      const fieldChangeMigration = await (
+        fieldChangeOrm.migrator as RowLevelSecurityMigrator
+      ).createMigration(migrationPath, false, false, fieldChangeMigrationName);
+
+      expect(fieldChangeMigration.fileName).toMatch(
+        new RegExp(`${fieldChangeMigrationName}\\.ts$`),
+      );
+      expect(fieldChangeMigration.code).toContain('add column "external_id"');
+      expect(fieldChangeMigration.code).not.toContain(
+        `drop policy if exists ${POLICY_MIGRATION_POLICY_NAME}`,
+      );
+      expect(fieldChangeMigration.code).not.toContain(
+        `create policy ${POLICY_MIGRATION_POLICY_NAME}`,
+      );
+
+      await runGeneratedMigrationUpStatements(
+        fieldChangeOrm,
+        fieldChangeMigration.code,
+      );
+
+      const fieldChangePolicy =
+        await getGeneratedPolicyExpression(fieldChangeOrm);
+
+      expect(fieldChangePolicy.qual).toBe(initialPolicy.qual);
+    } finally {
+      const cleanupOrm = fieldChangeOrm ?? initialOrm;
+
+      if (cleanupOrm) {
+        await dropPolicyMigrationSchema(cleanupOrm);
+      }
+
+      await fieldChangeOrm?.close(true);
+      await initialOrm?.close(true);
+      rmSync(migrationPath, { force: true, recursive: true });
+    }
+  }
 
   async function resetSchema() {
     await dropSchema();

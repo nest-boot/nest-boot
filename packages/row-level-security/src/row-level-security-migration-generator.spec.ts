@@ -76,6 +76,11 @@ class WorkspaceMemberWithSharedRolePolicies {}
 
 class UnmanagedEntity {}
 
+const WORKSPACE_MEMBER_FIELD_CHANGE_DIFF = {
+  up: ['alter table "workspace_member" add column "display_name" text null;'],
+  down: ['alter table "workspace_member" drop column "display_name";'],
+};
+
 describe("RowLevelSecurityMigrationGenerator", () => {
   afterEach(() => {
     jest.restoreAllMocks();
@@ -282,7 +287,7 @@ describe("RowLevelSecurityMigrationGenerator", () => {
           table_name: "workspace_member",
           permissive: true,
           command: "r",
-          qual: `((select app.get_context('tenant_id', null::bigint)) = "workspace_id")`,
+          qual: "(( SELECT app.get_context('tenant_id'::text, NULL::bigint) AS get_context) = workspace_id)",
           with_check: null,
           roles: ["authenticated"],
         },
@@ -316,20 +321,7 @@ describe("RowLevelSecurityMigrationGenerator", () => {
   });
 
   it("does not recreate policies for unrelated schema changes without a database connection", async () => {
-    const diff = {
-      up: [
-        'alter table "workspace_member" add column "display_name" text null;',
-      ],
-      down: ['alter table "workspace_member" drop column "display_name";'],
-    };
-    const superGenerate = jest
-      .spyOn(TSMigrationGenerator.prototype, "generate")
-      .mockImplementation(function (this: RowLevelSecurityMigrationGenerator) {
-        return Promise.resolve([
-          this.generateMigrationFile("MigrationTest", diff),
-          "/tmp/Migration.ts",
-        ]);
-      });
+    const superGenerate = mockBaseMigrationGenerate();
     const generator = createGenerator([
       {
         class: WorkspaceMember,
@@ -337,15 +329,138 @@ describe("RowLevelSecurityMigrationGenerator", () => {
       },
     ]);
 
-    const [file] = await generator.generate(diff);
+    const [file] = await generator.generate(WORKSPACE_MEMBER_FIELD_CHANGE_DIFF);
 
-    expect(superGenerate).toHaveBeenCalledWith(diff, undefined, undefined);
+    expect(superGenerate).toHaveBeenCalledWith(
+      WORKSPACE_MEMBER_FIELD_CHANGE_DIFF,
+      undefined,
+      undefined,
+    );
     expect(file).toContain(
       "import { Migration } from '@mikro-orm/migrations';",
     );
     expect(file).toContain("extends Migration");
     expect(file).not.toContain("workspace_member_user_select_policy");
   });
+
+  it("does not recreate unchanged policies when database expressions are deparsed", async () => {
+    const execute = createExistingPolicyLookup(
+      "(( SELECT app.get_context('user_id'::text, NULL::bigint) AS get_context) = user_id)",
+    );
+    const superGenerate = mockBaseMigrationGenerate();
+    const generator = createGenerator(
+      [
+        {
+          class: WorkspaceMember,
+          tableName: "workspace_member",
+        },
+      ],
+      {
+        getConnection: () => ({
+          execute,
+        }),
+      },
+    );
+
+    const [file] = await generator.generate(WORKSPACE_MEMBER_FIELD_CHANGE_DIFF);
+
+    expect(superGenerate).toHaveBeenCalledWith(
+      WORKSPACE_MEMBER_FIELD_CHANGE_DIFF,
+      undefined,
+      undefined,
+    );
+    expect(file).toContain(
+      "import { Migration } from '@mikro-orm/migrations';",
+    );
+    expect(file).toContain("extends Migration");
+    expect(file).not.toContain("workspace_member_user_select_policy");
+  });
+
+  it.each([
+    [
+      "deparsed-style context call without generated alias",
+      `(select app.get_context('user_id'::text, null::bigint)) = user_id`,
+      "(( SELECT app.get_context('user_id'::text, NULL::bigint) AS get_context) = user_id)",
+    ],
+    [
+      "integer alias and non-keyword identifier quotes",
+      `((select app.get_context('workspace_id', null::int)) = "workspace_id")`,
+      "(( SELECT app.get_context('workspace_id'::text, NULL::integer) AS get_context) = workspace_id)",
+    ],
+    [
+      "PostgreSQL keyword identifier quotes",
+      `((select app.get_context('order_id', null::integer)) = "order")`,
+      `(( SELECT app.get_context('order_id'::text, NULL::integer) AS get_context) = "order")`,
+    ],
+    [
+      "keyword casing and string literal casts",
+      `("status" = 'SELECT'::text AND NOT false)`,
+      "(status = 'SELECT' and not false)",
+    ],
+    [
+      "JSON extraction operator spacing",
+      `claims->>'tenant_id' = 'acme'`,
+      `((claims ->> 'tenant_id'::text) = 'acme'::text)`,
+    ],
+    [
+      "varchar context type alias",
+      `((select app.get_context('tenant_id', null::varchar(255))) = "tenant_id")`,
+      "(( SELECT app.get_context('tenant_id'::text, NULL::character varying) AS get_context) = tenant_id)",
+    ],
+    [
+      "timestamptz context type alias",
+      `((select app.get_context('expires_at', null::timestamptz)) > expires_at)`,
+      "(( SELECT app.get_context('expires_at'::text, NULL::timestamp with time zone) AS get_context) > expires_at)",
+    ],
+    [
+      "PostgreSQL canonical not-equals operator",
+      `status != 'deleted'`,
+      `(status <> 'deleted'::text)`,
+    ],
+  ])(
+    "does not recreate unchanged explicit policies with %s",
+    async (_name, using, databaseQual) => {
+      @Policy({
+        name: "workspace_member_user_select_policy",
+        command: PolicyCommand.SELECT,
+        using,
+      })
+      class WorkspaceMemberWithExplicitPolicy {}
+
+      const file = await generateFieldChangeMigrationFile(
+        WorkspaceMemberWithExplicitPolicy,
+        databaseQual,
+      );
+
+      expect(file).not.toContain("workspace_member_user_select_policy");
+    },
+  );
+
+  it.each([
+    ["quoted identifier case changes", `"SELECT" = true`, `"select" = true`],
+    [
+      "cast target type changes",
+      `cast(user_id as integer) = 1`,
+      `cast(user_id as bigint) = 1`,
+    ],
+  ])(
+    "recreates changed explicit policies when %s",
+    async (_name, using, databaseQual) => {
+      @Policy({
+        name: "workspace_member_user_select_policy",
+        command: PolicyCommand.SELECT,
+        using,
+      })
+      class WorkspaceMemberWithChangedExplicitPolicy {}
+
+      const file = await generateFieldChangeMigrationFile(
+        WorkspaceMemberWithChangedExplicitPolicy,
+        databaseQual,
+      );
+
+      expect(file).toContain("workspace_member_user_select_policy");
+    },
+  );
 
   it("skips database policy lookup when metadata has no entity classes", async () => {
     const execute = jest.fn();
@@ -787,7 +902,55 @@ describe("RowLevelSecurityMigrationGenerator", () => {
     });
 
     expect(file).toContain(
-      'this.addSql(`create policy workspace_member_user_select_policy on "public"."workspace_member" as permissive for select using ((select app.get_context(\'user_id\', null::bigint)) = "user_id");`);',
+      'this.addSql(`create policy workspace_member_user_select_policy on "public"."workspace_member" as permissive for select using (( SELECT app.get_context(\'user_id\'::text, NULL::bigint) AS get_context) = user_id);`);',
+    );
+  });
+
+  it("canonicalizes generated policy context type aliases", () => {
+    const generator = createGenerator([
+      {
+        class: WorkspaceMemberWithWorkspaceContextPolicy,
+        tableName: "workspace_member",
+        properties: {
+          workspace: {
+            fieldNames: ["workspace_id"],
+            columnTypes: ["int"],
+          },
+        },
+      },
+    ]);
+
+    const file = generator.generateMigrationFile("MigrationTest", {
+      up: [],
+      down: [],
+    });
+
+    expect(file).toContain(
+      "app.get_context('workspace_id'::text, NULL::integer)",
+    );
+  });
+
+  it("preserves quoted PostgreSQL keyword column names in generated policies", () => {
+    const generator = createGenerator([
+      {
+        class: WorkspaceMemberWithWorkspaceContextPolicy,
+        tableName: "workspace_member",
+        properties: {
+          workspace: {
+            fieldNames: ["between"],
+            columnTypes: ["integer"],
+          },
+        },
+      },
+    ]);
+
+    const file = generator.generateMigrationFile("MigrationTest", {
+      up: [],
+      down: [],
+    });
+
+    expect(file).toContain(
+      `using (( SELECT app.get_context('workspace_id'::text, NULL::integer) AS get_context) = "between")`,
     );
   });
 
@@ -882,7 +1045,7 @@ describe("RowLevelSecurityMigrator", () => {
           table_name: "workspace_member",
           permissive: true,
           command: "r",
-          qual: `((select app.get_context('tenant_id', null::bigint)) = "workspace_id")`,
+          qual: "(( SELECT app.get_context('tenant_id'::text, NULL::bigint) AS get_context) = workspace_id)",
           with_check: null,
           roles: ["authenticated"],
         },
@@ -937,10 +1100,10 @@ describe("RowLevelSecurityMigrator", () => {
         "drop policy if exists workspace_member_workspace_select_policy",
       );
       expect(result.code).toContain(
-        "app.get_context('workspace_id', null::bigint)",
+        "app.get_context('workspace_id'::text, NULL::bigint)",
       );
       expect(result.code).toContain(
-        "app.get_context('tenant_id', null::bigint)",
+        "app.get_context('tenant_id'::text, NULL::bigint)",
       );
       expect(
         result.code.indexOf(
@@ -1024,4 +1187,58 @@ function createGenerator(
       ...generatorOptions,
     } as never,
   );
+}
+
+function mockBaseMigrationGenerate(diff = WORKSPACE_MEMBER_FIELD_CHANGE_DIFF) {
+  return jest
+    .spyOn(TSMigrationGenerator.prototype, "generate")
+    .mockImplementation(function (this: RowLevelSecurityMigrationGenerator) {
+      return Promise.resolve([
+        this.generateMigrationFile("MigrationTest", diff),
+        "/tmp/Migration.ts",
+      ]);
+    });
+}
+
+function createExistingPolicyLookup(databaseQual: string) {
+  return jest.fn((_sql: string) =>
+    Promise.resolve([
+      {
+        policy_name: "workspace_member_user_select_policy",
+        schema_name: "public",
+        table_name: "workspace_member",
+        permissive: true,
+        command: "r",
+        qual: databaseQual,
+        with_check: null,
+        roles: [],
+      },
+    ]),
+  );
+}
+
+async function generateFieldChangeMigrationFile(
+  policyClass: object,
+  databaseQual: string,
+) {
+  const execute = createExistingPolicyLookup(databaseQual);
+  const generator = createGenerator(
+    [
+      {
+        class: policyClass,
+        tableName: "workspace_member",
+      },
+    ],
+    {
+      getConnection: () => ({
+        execute,
+      }),
+    },
+  );
+
+  mockBaseMigrationGenerate();
+
+  const [file] = await generator.generate(WORKSPACE_MEMBER_FIELD_CHANGE_DIFF);
+
+  return file;
 }
