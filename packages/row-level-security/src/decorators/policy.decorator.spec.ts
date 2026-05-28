@@ -94,7 +94,7 @@ describe("Policy decorator", () => {
         name: "workspace_member_user_select_policy",
         mode: PolicyMode.PERMISSIVE,
         command: PolicyCommand.SELECT,
-        using: `((select app.get_context('user_id', null::bigint)) = "user_id")`,
+        using: `(( SELECT app.get_context('user_id'::text, NULL::bigint) AS get_context) = user_id)`,
         roles: [],
       },
     ]);
@@ -125,7 +125,7 @@ describe("Policy decorator", () => {
         name: "workspace_member_user_select_policy",
         mode: PolicyMode.PERMISSIVE,
         command: PolicyCommand.SELECT,
-        using: `((select app.get_context('user_id', null::bigint)) = "user_id")`,
+        using: `(( SELECT app.get_context('user_id'::text, NULL::bigint) AS get_context) = user_id)`,
         roles: [],
       },
     ]);
@@ -241,7 +241,7 @@ describe("Policy decorator", () => {
         name: "workspace_member_user_insert_policy",
         mode: PolicyMode.PERMISSIVE,
         command: PolicyCommand.INSERT,
-        withCheck: `((select app.get_context('user_id', null::bigint)) = "user_id")`,
+        withCheck: `(( SELECT app.get_context('user_id'::text, NULL::bigint) AS get_context) = user_id)`,
         roles: [],
       },
     ]);
@@ -268,8 +268,8 @@ describe("Policy decorator", () => {
       })[0],
     ).toMatchObject({
       name: "workspace_member_workspace_all_policy",
-      using: `((select app.get_context('tenant_id', null::integer)) = "workspace_id")`,
-      withCheck: `((select app.get_context('tenant_id', null::integer)) = "workspace_id")`,
+      using: `(( SELECT app.get_context('tenant_id'::text, NULL::integer) AS get_context) = workspace_id)`,
+      withCheck: `(( SELECT app.get_context('tenant_id'::text, NULL::integer) AS get_context) = workspace_id)`,
     });
   });
 
@@ -300,9 +300,69 @@ describe("Policy decorator", () => {
         },
       })[0],
     ).toMatchObject({
-      using: `((select app.get_context('context_value', null::${postgresType})) = "context_value")`,
+      using: `(( SELECT app.get_context('context_value'::text, NULL::${postgresType}) AS get_context) = context_value)`,
     });
   });
+
+  it.each([
+    ["int", "integer"],
+    ["varchar(255)", "character varying"],
+    ["timestamptz", "timestamp with time zone"],
+  ])(
+    "canonicalizes %s database column type aliases in generated expressions",
+    (columnType, postgresType) => {
+      @Policy({
+        command: PolicyCommand.SELECT,
+        property: "workspace",
+        context: "workspace_id",
+      })
+      class WorkspaceMember {}
+
+      expect(
+        getPolicyDefinitions(WorkspaceMember, {
+          entityName: "WorkspaceMember",
+          schemaName: "public",
+          tableName: "workspace_member",
+          properties: {
+            workspace: {
+              fieldName: "workspace_id",
+              columnTypes: [columnType],
+            },
+          },
+        })[0],
+      ).toMatchObject({
+        using: `(( SELECT app.get_context('workspace_id'::text, NULL::${postgresType}) AS get_context) = workspace_id)`,
+      });
+    },
+  );
+
+  it.each(["authorization", "between", "binary", "order"])(
+    "preserves quotes for PostgreSQL keyword column name %s",
+    (fieldName) => {
+      @Policy({
+        command: PolicyCommand.SELECT,
+        property: "order",
+        context: "order_id",
+      })
+      class WorkspaceMember {}
+
+      expect(
+        getPolicyDefinitions(WorkspaceMember, {
+          entityName: "WorkspaceMember",
+          schemaName: "public",
+          tableName: "workspace_member",
+          properties: {
+            order: {
+              fieldName,
+              columnTypes: ["integer"],
+            },
+          },
+        })[0],
+      ).toMatchObject({
+        using: `(( SELECT app.get_context('order_id'::text, NULL::integer) AS get_context) = "${fieldName}")`,
+      });
+    },
+  );
 
   it("infers target primary key metadata from a primary property marker", () => {
     @Policy({
@@ -332,7 +392,7 @@ describe("Policy decorator", () => {
         },
       })[0],
     ).toMatchObject({
-      using: `((select app.get_context('user_id', null::uuid)) = "user_id")`,
+      using: `(( SELECT app.get_context('user_id'::text, NULL::uuid) AS get_context) = user_id)`,
     });
   });
 
