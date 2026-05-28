@@ -1,18 +1,11 @@
 import type { Subject } from "@casl/ability";
-import { subject as createCaslSubject } from "@casl/ability";
 import { RequestContext } from "@nest-boot/request-context";
 import type { CanActivate, ExecutionContext, Type } from "@nestjs/common";
 import { ForbiddenException, Inject, Injectable } from "@nestjs/common";
 import { ContextIdFactory, ModuleRef, Reflector } from "@nestjs/core";
 import type { Request, Response } from "express";
 
-import type {
-  CanOptions,
-  CanSubjectFactory,
-  CanSubjectHook,
-  CanSubjectHookResolver,
-  CanSubjectHookTuple,
-} from "./decorators/can.decorator";
+import type { CanOptions, CanSubjectFactory } from "./decorators/can.decorator";
 import { CAN_METADATA } from "./decorators/can.decorator";
 import type {
   PermissionModuleOptions,
@@ -158,14 +151,6 @@ export class PermissionGuard implements CanActivate {
     const { subject } = canOptions;
 
     if (this.isSubjectType(subject)) {
-      if (canOptions.subjectHook) {
-        return await this.resolveSubjectHook(
-          subject,
-          canOptions.subjectHook,
-          context,
-        );
-      }
-
       return subject;
     }
 
@@ -176,65 +161,6 @@ export class PermissionGuard implements CanActivate {
     subject: CanOptions["subject"],
   ): subject is Type<Subject> {
     return Function.prototype.toString.call(subject).startsWith("class ");
-  }
-
-  private async resolveSubjectHook(
-    subjectType: Type<Subject>,
-    subjectHook: CanSubjectHookResolver,
-    context: ExecutionContext,
-  ): Promise<Subject> {
-    const args = this.getSubjectFactoryArgs(context);
-    const subjectInstance = await this.runSubjectHook(
-      subjectHook,
-      context,
-      args,
-    );
-
-    if (!subjectInstance) {
-      return subjectType;
-    }
-
-    return createCaslSubject(
-      subjectType as never,
-      subjectInstance as never,
-    ) as Subject;
-  }
-
-  private async runSubjectHook(
-    subjectHook: CanSubjectHookResolver,
-    context: ExecutionContext,
-    args: unknown[],
-  ): Promise<Subject | undefined> {
-    if (this.isSubjectHookTuple(subjectHook)) {
-      const [ServiceClass, run] = subjectHook;
-      const service = await this.resolveProvider(ServiceClass, context);
-
-      return await run(service, ...args);
-    }
-
-    const hook = await this.resolveSubjectHookInstance(subjectHook, context);
-
-    return await hook.run(...args);
-  }
-
-  private isSubjectHookTuple(
-    subjectHook: CanSubjectHookResolver,
-  ): subjectHook is CanSubjectHookTuple {
-    return Array.isArray(subjectHook);
-  }
-
-  private async resolveSubjectHookInstance(
-    subjectHook: Type<CanSubjectHook>,
-    context: ExecutionContext,
-  ): Promise<CanSubjectHook> {
-    try {
-      return await this.resolveProvider(subjectHook, context);
-    } catch {
-      return await this.moduleRef.create(
-        subjectHook,
-        this.getContextId(context),
-      );
-    }
   }
 
   private async resolveProvider<T>(

@@ -1,4 +1,3 @@
-import { subject as createCaslSubject } from "@casl/ability";
 import { RequestContext } from "@nest-boot/request-context";
 import { ExecutionContext, ForbiddenException } from "@nestjs/common";
 import { ModuleRef, Reflector } from "@nestjs/core";
@@ -411,138 +410,9 @@ describe("PermissionGuard", () => {
     );
   });
 
-  it("passes decorated method parameters to a subject hook class", async () => {
-    const input = { title: "New title" };
-    const subjectInstance = new Subject();
-    class SubjectHook {
-      run(id: string, params: typeof input) {
-        return { id, ...params, subject: subjectInstance };
-      }
-    }
-    const canMock = jest.fn(() => true);
-    const ability = {
-      can: canMock,
-    };
-    const { guard, reflector, moduleRef, req, res } = createGuard(
-      ability as unknown as PermissionAbility,
-    );
-
-    moduleRef.resolve.mockImplementation((token) =>
-      Promise.resolve(token === SubjectHook ? new SubjectHook() : {}),
-    );
-    setRouteArgsMetadata({
-      "3:0": {
-        index: 0,
-        data: "id",
-      },
-      "3:1": {
-        index: 1,
-        data: "input",
-      },
-    });
-    reflector.getAllAndOverride.mockReturnValue({
-      action: PermissionAction.UPDATE,
-      subject: Subject,
-      subjectHook: SubjectHook,
-    });
-
-    await RequestContext.run(
-      new RequestContext({ type: "graphql" }),
-      async () => {
-        await expect(
-          guard.canActivate(
-            createContext(
-              undefined,
-              undefined,
-              [undefined, { input, id: "post-1" }, { req, res }, {}],
-              "graphql",
-            ),
-          ),
-        ).resolves.toBe(true);
-      },
-    );
-
-    expect(canMock).toHaveBeenCalledWith(
-      PermissionAction.UPDATE,
-      createExpectedSubject({
-        id: "post-1",
-        ...input,
-        subject: subjectInstance,
-      }),
-    );
-  });
-
-  it("passes decorated method parameters to a tuple subject hook", async () => {
-    const subjectInstance = new Subject();
-    class PostService {}
-    const postService = {
-      findOneOrFail: jest.fn((_id: string) => subjectInstance),
-    };
-    const canMock = jest.fn(() => true);
-    const ability = {
-      can: canMock,
-    };
-    const { guard, reflector, moduleRef } = createGuard(
-      ability as unknown as PermissionAbility,
-    );
-
-    moduleRef.resolve.mockImplementation((token) =>
-      Promise.resolve(token === PostService ? postService : {}),
-    );
-    setRouteArgsMetadata({
-      "5:0": {
-        index: 0,
-        data: "id",
-      },
-    });
-    reflector.getAllAndOverride.mockReturnValue({
-      action: PermissionAction.UPDATE,
-      subject: Subject,
-      subjectHook: [
-        PostService,
-        (service: typeof postService, id: string) => service.findOneOrFail(id),
-      ],
-    });
-
-    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
-      await expect(
-        guard.canActivate(
-          createContext(
-            {
-              headers: {},
-              params: { id: "post-1" },
-            } as unknown as Request,
-            {} as Response,
-            [],
-          ),
-        ),
-      ).resolves.toBe(true);
-    });
-
-    expect(postService.findOneOrFail).toHaveBeenCalledWith("post-1");
-    expect(canMock).toHaveBeenCalledWith(
-      PermissionAction.UPDATE,
-      createExpectedSubject(subjectInstance),
-    );
-  });
-
-  it("passes custom HTTP controller arguments to subject hooks", async () => {
+  it("passes custom HTTP controller arguments to subject factories", async () => {
     const workspace = { id: "workspace-1" };
     const subjectInstance = new Subject();
-    class SubjectHook {
-      run(currentWorkspace: typeof workspace, id: string) {
-        return this.workspaceService.findSubject(currentWorkspace, id);
-      }
-
-      constructor(
-        private readonly workspaceService: {
-          findSubject: (
-            currentWorkspace: typeof workspace,
-            id: string,
-          ) => Subject;
-        },
-      ) {}
-    }
     const customFactory = jest.fn(
       (_data: unknown, context: ExecutionContext) =>
         context.switchToHttp().getRequest<Request>().headers[
@@ -558,22 +428,22 @@ describe("PermissionGuard", () => {
         ),
       },
     };
+    const subjectFactory = jest.fn(
+      (
+        self: typeof handlerThis,
+        currentWorkspace: typeof workspace,
+        id: string,
+      ) => self.workspaceService.findSubject(currentWorkspace, id),
+    );
     const canMock = jest.fn(() => true);
     const ability = {
       can: canMock,
     };
-    const { guard, reflector, moduleRef } = createGuard(
+    const { guard, reflector } = createGuard(
       ability as unknown as PermissionAbility,
       handlerThis,
     );
 
-    moduleRef.resolve.mockImplementation((token) =>
-      Promise.resolve(
-        token === SubjectHook
-          ? new SubjectHook(handlerThis.workspaceService)
-          : handlerThis,
-      ),
-    );
     setRouteArgsMetadata({
       [`workspace${CUSTOM_ROUTE_ARGS_METADATA}:0`]: {
         index: 0,
@@ -587,8 +457,7 @@ describe("PermissionGuard", () => {
     });
     reflector.getAllAndOverride.mockReturnValue({
       action: PermissionAction.UPDATE,
-      subject: Subject,
-      subjectHook: SubjectHook,
+      subject: subjectFactory,
     });
 
     await RequestContext.run(new RequestContext({ type: "http" }), async () => {
@@ -607,13 +476,18 @@ describe("PermissionGuard", () => {
     });
 
     expect(customFactory).toHaveBeenCalledWith("workspace", expect.any(Object));
+    expect(subjectFactory).toHaveBeenCalledWith(
+      handlerThis,
+      workspace,
+      "post-1",
+    );
     expect(handlerThis.workspaceService.findSubject).toHaveBeenCalledWith(
       workspace,
       "post-1",
     );
     expect(canMock).toHaveBeenCalledWith(
       PermissionAction.UPDATE,
-      createExpectedSubject(subjectInstance),
+      subjectInstance,
     );
   });
 
@@ -743,8 +617,4 @@ function setRouteArgsMetadata(
   >,
 ) {
   Reflect.defineMetadata(ROUTE_ARGS_METADATA, metadata, Controller, "handler");
-}
-
-function createExpectedSubject(subject: object) {
-  return createCaslSubject(Subject as never, subject as never);
 }

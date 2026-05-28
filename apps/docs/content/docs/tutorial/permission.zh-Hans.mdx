@@ -91,29 +91,21 @@ export class PostResolver {
 }
 ```
 
-当 ability 需要具体资源实例时，使用 subject hook。hook 会直接收到 resolver 或 controller 上被装饰的方法参数。对于 GraphQL resolver，下面的 `@Args("id") id: string` 会作为 `id` 参数传入。对于 HTTP controller，`@Param("id") id: string` 以及自定义参数装饰器也会按同样方式解析。
+当 ability 需要具体资源实例时，使用 subject factory。factory 的第一个参数是当前 resolver 或 controller 实例，后续参数是被装饰的方法参数。对于 GraphQL resolver，下面的 `@Args("id") id: string` 会作为 `id` 参数传入。对于 HTTP controller，`@Param("id") id: string` 以及自定义参数装饰器也会按同样方式解析。
 
 ```typescript
-import { Can, CanSubjectHook, PermissionAction } from "@nest-boot/permission";
-import { Injectable } from "@nestjs/common";
+import { Can, PermissionAction } from "@nest-boot/permission";
 import { Args, Mutation, Resolver } from "@nestjs/graphql";
 
 import { Post } from "./post.entity";
-
-@Injectable()
-export class PostSubjectHook implements CanSubjectHook<Post, [string]> {
-  constructor(private readonly postService: PostService) {}
-
-  run(id: string) {
-    return this.postService.findOneOrFail({ id });
-  }
-}
 
 @Resolver(() => Post)
 export class PostResolver {
   constructor(private readonly postService: PostService) {}
 
-  @Can(PermissionAction.UPDATE, Post, PostSubjectHook)
+  @Can(PermissionAction.UPDATE, (self: PostResolver, id: string) =>
+    self.postService.findOneOrFail({ id }),
+  )
   @Mutation(() => Post)
   updatePost(@Args("id") id: string) {
     return this.postService.update(id);

@@ -8,11 +8,6 @@ jest.mock("@nestjs/common", () => ({
 }));
 
 class Subject {}
-class SubjectHook {
-  run() {
-    return new Subject();
-  }
-}
 
 describe("Can", () => {
   beforeEach(() => {
@@ -37,17 +32,6 @@ describe("Can", () => {
       value: {
         action: PermissionAction.READ,
         subject: subjectFactory,
-      },
-    });
-  });
-
-  it("stores subject hook as third positional argument", () => {
-    expect(Can(PermissionAction.READ, Subject, SubjectHook)).toEqual({
-      key: CAN_METADATA,
-      value: {
-        action: PermissionAction.READ,
-        subject: Subject,
-        subjectHook: SubjectHook,
       },
     });
   });
