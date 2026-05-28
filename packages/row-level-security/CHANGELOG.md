@@ -1,5 +1,11 @@
 # @nest-boot/row-level-security
 
+## 7.2.2
+
+### Patch Changes
+
+- c42d798: Avoid regenerating unchanged row-level-security policies when entity fields change.
+
 ## 7.2.1
 
 ### Patch Changes
