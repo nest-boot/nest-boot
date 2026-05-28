@@ -149,6 +149,43 @@ describe("PermissionGuard", () => {
     expect(buildAbility).toHaveBeenCalledWith(gqlContext);
   });
 
+  it("prefers GraphQL request context over HTTP switch args for GraphQL handlers", async () => {
+    const canMock = jest.fn(() => true);
+    const ability = {
+      can: canMock,
+    };
+    const { guard, reflector, buildAbility, req, res } = createGuard(
+      ability as unknown as PermissionAbility,
+    );
+    const root = {
+      headers: { authorization: "root-token" },
+    } as unknown as Request;
+    const gqlContext = { req, res };
+
+    reflector.getAllAndOverride.mockReturnValue({
+      action: PermissionAction.READ,
+      subject: Subject,
+    });
+
+    await RequestContext.run(
+      new RequestContext({ type: "graphql" }),
+      async () => {
+        await expect(
+          guard.canActivate(
+            createContext(
+              root,
+              {} as Response,
+              [root, {}, gqlContext, {}],
+              "graphql",
+            ),
+          ),
+        ).resolves.toBe(true);
+      },
+    );
+
+    expect(buildAbility).toHaveBeenCalledWith(gqlContext);
+  });
+
   it("uses cached ability before building a new one", async () => {
     const canMock = jest.fn(() => true);
     const ability = {
@@ -352,6 +389,64 @@ describe("PermissionGuard", () => {
     );
   });
 
+  it("applies parameter pipes before invoking subject factories", async () => {
+    const subjectInstance = new Subject();
+    const parseIdPipe = {
+      transform: jest.fn((value: unknown) => Number(value)),
+    };
+    const handlerThis = {
+      postService: {
+        findOneOrFail: jest.fn((_id: number) => subjectInstance),
+      },
+    };
+    const subjectFactory = jest.fn((self: typeof handlerThis, id: number) =>
+      self.postService.findOneOrFail(id),
+    );
+    const canMock = jest.fn(() => true);
+    const ability = {
+      can: canMock,
+    };
+    const { guard, reflector } = createGuard(
+      ability as unknown as PermissionAbility,
+      handlerThis,
+    );
+
+    setRouteArgsMetadata({
+      "5:0": {
+        index: 0,
+        data: "id",
+        pipes: [parseIdPipe],
+      },
+    });
+    reflector.getAllAndOverride.mockReturnValue({
+      action: PermissionAction.UPDATE,
+      subject: subjectFactory,
+    });
+
+    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+      await expect(
+        guard.canActivate(
+          createContext(
+            {
+              headers: {},
+              params: { id: "42" },
+            } as unknown as Request,
+            {} as Response,
+            [],
+          ),
+        ),
+      ).resolves.toBe(true);
+    });
+
+    expect(parseIdPipe.transform).toHaveBeenCalledWith("42", {
+      data: "id",
+      metatype: undefined,
+      type: "param",
+    });
+    expect(subjectFactory).toHaveBeenCalledWith(handlerThis, 42);
+    expect(handlerThis.postService.findOneOrFail).toHaveBeenCalledWith(42);
+  });
+
   it("passes custom HTTP controller arguments to subject factories", async () => {
     const workspace = { id: "workspace-1" };
     const subjectInstance = new Subject();
@@ -430,6 +525,75 @@ describe("PermissionGuard", () => {
     expect(canMock).toHaveBeenCalledWith(
       PermissionAction.UPDATE,
       subjectInstance,
+    );
+  });
+
+  it("awaits async custom controller arguments before invoking subject factories", async () => {
+    const workspace = { id: "workspace-1" };
+    const subjectInstance = new Subject();
+    const customFactory = jest.fn(() => Promise.resolve(workspace));
+    const handlerThis = {
+      workspaceService: {
+        findSubject: jest.fn(
+          (_customWorkspace: typeof workspace, _id: string) => subjectInstance,
+        ),
+      },
+    };
+    const subjectFactory = jest.fn(
+      (
+        self: typeof handlerThis,
+        currentWorkspace: typeof workspace,
+        id: string,
+      ) => self.workspaceService.findSubject(currentWorkspace, id),
+    );
+    const canMock = jest.fn(() => true);
+    const ability = {
+      can: canMock,
+    };
+    const { guard, reflector } = createGuard(
+      ability as unknown as PermissionAbility,
+      handlerThis,
+    );
+
+    setRouteArgsMetadata({
+      [`workspace${CUSTOM_ROUTE_ARGS_METADATA}:0`]: {
+        index: 0,
+        data: "workspace",
+        factory: customFactory,
+      },
+      "5:1": {
+        index: 1,
+        data: "id",
+      },
+    });
+    reflector.getAllAndOverride.mockReturnValue({
+      action: PermissionAction.UPDATE,
+      subject: subjectFactory,
+    });
+
+    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+      await expect(
+        guard.canActivate(
+          createContext(
+            {
+              headers: {},
+              params: { id: "post-1" },
+            } as unknown as Request,
+            {} as Response,
+            [],
+          ),
+        ),
+      ).resolves.toBe(true);
+    });
+
+    expect(subjectFactory).toHaveBeenCalledWith(
+      handlerThis,
+      workspace,
+      "post-1",
+    );
+    expect(handlerThis.workspaceService.findSubject).toHaveBeenCalledWith(
+      workspace,
+      "post-1",
     );
   });
 
@@ -554,6 +718,9 @@ function setRouteArgsMetadata(
       index: number;
       data?: string;
       factory?: (data: unknown, context: ExecutionContext) => unknown;
+      pipes?: {
+        transform: (value: unknown, metadata?: unknown) => unknown;
+      }[];
     }
   >,
 ) {

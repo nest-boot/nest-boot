@@ -1,6 +1,12 @@
 import type { Subject } from "@casl/ability";
 import { RequestContext } from "@nest-boot/request-context";
-import type { CanActivate, ExecutionContext, Type } from "@nestjs/common";
+import type {
+  ArgumentMetadata,
+  CanActivate,
+  ExecutionContext,
+  PipeTransform,
+  Type,
+} from "@nestjs/common";
 import { ForbiddenException, Inject, Injectable } from "@nestjs/common";
 import { ContextIdFactory, ModuleRef, Reflector } from "@nestjs/core";
 import type { Request, Response } from "express";
@@ -18,17 +24,17 @@ import {
 import { MODULE_OPTIONS_TOKEN } from "./permission.module-definition";
 import type { PermissionAbility } from "./types/permission-ability.type";
 
-type RouteArgumentMetadata = Record<
-  string,
-  {
-    index: number;
-    data?: unknown;
-    factory?: (data: unknown, context: ExecutionContext) => unknown;
-  }
->;
+interface RouteArgumentMetadataValue {
+  index: number;
+  data?: unknown;
+  factory?: (data: unknown, context: ExecutionContext) => unknown;
+  pipes?: (PipeTransform | Type<PipeTransform>)[];
+}
+type RouteArgumentMetadata = Record<string, RouteArgumentMetadataValue>;
 
 const ROUTE_ARGS_METADATA = "__routeArguments__";
 const CUSTOM_ROUTE_ARGS_METADATA = "__customRouteArgs__";
+const PARAMTYPES_METADATA = "design:paramtypes";
 const GQL_PARAM_TYPES = {
   ROOT: 0,
   CONTEXT: 1,
@@ -50,6 +56,14 @@ const ROUTE_PARAM_TYPES = {
   IP: 11,
   RAW_BODY: 12,
 } as const;
+const HTTP_PIPEABLE_ROUTE_PARAM_TYPES: number[] = [
+  ROUTE_PARAM_TYPES.BODY,
+  ROUTE_PARAM_TYPES.RAW_BODY,
+  ROUTE_PARAM_TYPES.QUERY,
+  ROUTE_PARAM_TYPES.PARAM,
+  ROUTE_PARAM_TYPES.FILE,
+  ROUTE_PARAM_TYPES.FILES,
+];
 
 /** Guard that evaluates CASL permissions from `Can` metadata. */
 @Injectable()
@@ -177,7 +191,7 @@ export class PermissionGuard implements CanActivate {
     context: ExecutionContext,
   ): Promise<Subject> {
     const handlerSelf = await this.resolveHandlerSelf(context);
-    const args = this.getSubjectFactoryArgs(context);
+    const args = await this.getSubjectFactoryArgs(context);
 
     return await subjectFactory(handlerSelf, ...args);
   }
@@ -194,11 +208,13 @@ export class PermissionGuard implements CanActivate {
     return request ? ContextIdFactory.getByRequest(request) : undefined;
   }
 
-  private getSubjectFactoryArgs(context: ExecutionContext): unknown[] {
+  private async getSubjectFactoryArgs(
+    context: ExecutionContext,
+  ): Promise<unknown[]> {
     const routeArgsMetadata = this.getRouteArgsMetadata(context);
 
     if (routeArgsMetadata) {
-      return this.createRouteArguments(context, routeArgsMetadata);
+      return await this.createRouteArguments(context, routeArgsMetadata);
     }
 
     return [];
@@ -240,28 +256,39 @@ export class PermissionGuard implements CanActivate {
     return handlerName ?? null;
   }
 
-  private createRouteArguments(
+  private async createRouteArguments(
     context: ExecutionContext,
     metadata: RouteArgumentMetadata,
-  ): unknown[] {
-    return Object.entries(metadata).reduce<unknown[]>(
-      (args, [key, parameterMetadata]) => {
-        args[parameterMetadata.index] = this.resolveRouteArgument(
+  ): Promise<unknown[]> {
+    const args: unknown[] = [];
+
+    await Promise.all(
+      Object.entries(metadata).map(async ([key, parameterMetadata]) => {
+        args[parameterMetadata.index] = await this.resolveRouteArgument(
           context,
           key,
           parameterMetadata,
         );
-
-        return args;
-      },
-      [],
+      }),
     );
+
+    return args;
   }
 
-  private resolveRouteArgument(
+  private async resolveRouteArgument(
     context: ExecutionContext,
     key: string,
-    metadata: RouteArgumentMetadata[string],
+    metadata: RouteArgumentMetadataValue,
+  ): Promise<unknown> {
+    const value = await this.extractRouteArgument(context, key, metadata);
+
+    return await this.applyRouteArgumentPipes(context, key, metadata, value);
+  }
+
+  private extractRouteArgument(
+    context: ExecutionContext,
+    key: string,
+    metadata: RouteArgumentMetadataValue,
   ): unknown {
     if (key.includes(CUSTOM_ROUTE_ARGS_METADATA) && metadata.factory) {
       return metadata.factory(metadata.data, context);
@@ -272,8 +299,117 @@ export class PermissionGuard implements CanActivate {
     if (context.getType<string>() === "graphql") {
       return this.resolveGraphqlRouteArgument(context, type, metadata.data);
     }
-
     return this.resolveHttpRouteArgument(context, type, metadata.data);
+  }
+
+  private async applyRouteArgumentPipes(
+    context: ExecutionContext,
+    key: string,
+    metadata: RouteArgumentMetadataValue,
+    value: unknown,
+  ): Promise<unknown> {
+    const pipes = metadata.pipes ?? [];
+
+    if (!pipes.length || !this.isRouteArgumentPipeable(context, key)) {
+      return value;
+    }
+
+    const argumentMetadata = this.createPipeArgumentMetadata(
+      context,
+      key,
+      metadata,
+    );
+
+    return await pipes.reduce<Promise<unknown>>(async (deferred, pipe) => {
+      const pipeInstance = await this.resolvePipe(pipe, context);
+      const pipeValue = await deferred;
+
+      return await pipeInstance.transform(pipeValue, argumentMetadata);
+    }, Promise.resolve(value));
+  }
+
+  private isRouteArgumentPipeable(
+    context: ExecutionContext,
+    key: string,
+  ): boolean {
+    if (context.getType<string>() === "graphql") {
+      return true;
+    }
+
+    const type = this.getRouteArgumentType(key);
+
+    return (
+      typeof type === "string" ||
+      (typeof type === "number" &&
+        HTTP_PIPEABLE_ROUTE_PARAM_TYPES.includes(type))
+    );
+  }
+
+  private createPipeArgumentMetadata(
+    context: ExecutionContext,
+    key: string,
+    metadata: RouteArgumentMetadataValue,
+  ): ArgumentMetadata {
+    return {
+      data: this.getStringData(metadata.data) ?? undefined,
+      metatype: this.getRouteArgumentMetatype(context, metadata.index),
+      type: this.getPipeArgumentType(key),
+    };
+  }
+
+  private getRouteArgumentMetatype(
+    context: ExecutionContext,
+    index: number,
+  ): Type<unknown> | undefined {
+    const methodName = this.getHandlerMethodName(context);
+
+    if (!methodName) {
+      return undefined;
+    }
+
+    return Reflect.getMetadata(
+      PARAMTYPES_METADATA,
+      context.getClass().prototype,
+      methodName,
+    )?.[index] as Type<unknown> | undefined;
+  }
+
+  private getPipeArgumentType(key: string): ArgumentMetadata["type"] {
+    const type = this.getRouteArgumentType(key);
+
+    switch (type) {
+      case ROUTE_PARAM_TYPES.BODY:
+        return "body";
+      case ROUTE_PARAM_TYPES.PARAM:
+        return "param";
+      case ROUTE_PARAM_TYPES.QUERY:
+        return "query";
+      default:
+        return "custom";
+    }
+  }
+
+  private getRouteArgumentType(key: string): string | number {
+    const type = key.split(":")[0];
+
+    return key.includes(CUSTOM_ROUTE_ARGS_METADATA) ? type : Number(type);
+  }
+
+  private async resolvePipe(
+    pipe: PipeTransform | Type<PipeTransform>,
+    context: ExecutionContext,
+  ): Promise<PipeTransform> {
+    if (this.isPipeTransform(pipe)) {
+      return pipe;
+    }
+
+    return await this.resolveProvider(pipe, context);
+  }
+
+  private isPipeTransform(
+    pipe: PipeTransform | Type<PipeTransform>,
+  ): pipe is PipeTransform {
+    return "transform" in pipe && typeof pipe.transform === "function";
   }
 
   private resolveGraphqlRouteArgument(
@@ -395,6 +531,10 @@ export class PermissionGuard implements CanActivate {
   private getHttpRequestContext(
     context: ExecutionContext,
   ): PermissionRequestContext | null {
+    if (context.getType<string>() === "graphql") {
+      return null;
+    }
+
     const httpContext = context.switchToHttp();
     const req = httpContext.getRequest<Request | undefined>();
     const res = httpContext.getResponse<Response | undefined>();
