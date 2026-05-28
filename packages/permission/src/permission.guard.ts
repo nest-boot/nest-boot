@@ -503,12 +503,46 @@ export class PermissionGuard implements CanActivate {
   private getRequestContext(
     context: ExecutionContext,
   ): PermissionRequestContext {
+    switch (context.getType<string>()) {
+      case "http":
+        return this.getRequiredHttpRequestContext(context);
+      case "graphql":
+        return this.getRequiredGraphqlRequestContext(context);
+      default:
+        throw new ForbiddenException(
+          "Permission request context is not available",
+        );
+    }
+  }
+
+  private getRequest(context: ExecutionContext): Request | undefined {
+    switch (context.getType<string>()) {
+      case "http":
+        return this.getHttpRequestContext(context)?.req;
+      case "graphql":
+        return this.getGraphqlContext(context)?.req;
+      default:
+        return undefined;
+    }
+  }
+
+  private getRequiredHttpRequestContext(
+    context: ExecutionContext,
+  ): PermissionRequestContext {
     const requestContext = this.getHttpRequestContext(context);
 
-    if (requestContext) {
-      return requestContext;
+    if (!requestContext) {
+      throw new ForbiddenException(
+        "Permission request context is not available",
+      );
     }
 
+    return requestContext;
+  }
+
+  private getRequiredGraphqlRequestContext(
+    context: ExecutionContext,
+  ): PermissionRequestContext {
     const gqlContext = this.getGraphqlContext(context);
     const req = gqlContext?.req;
 
@@ -519,13 +553,6 @@ export class PermissionGuard implements CanActivate {
     }
 
     return this.createRequestContext(req, gqlContext.res);
-  }
-
-  private getRequest(context: ExecutionContext): Request | undefined {
-    return (
-      this.getHttpRequestContext(context)?.req ??
-      this.getGraphqlContext(context)?.req
-    );
   }
 
   private getHttpRequestContext(

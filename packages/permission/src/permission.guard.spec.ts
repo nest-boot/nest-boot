@@ -186,6 +186,36 @@ describe("PermissionGuard", () => {
     expect(buildAbility).toHaveBeenCalledWith(gqlContext);
   });
 
+  it("does not fall back to GraphQL request context for HTTP handlers", async () => {
+    const canMock = jest.fn(() => true);
+    const ability = {
+      can: canMock,
+    };
+    const { guard, reflector, buildAbility, req, res } = createGuard(
+      ability as unknown as PermissionAbility,
+    );
+
+    reflector.getAllAndOverride.mockReturnValue({
+      action: PermissionAction.READ,
+      subject: Subject,
+    });
+
+    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+      await expect(
+        guard.canActivate(
+          createContext(
+            undefined,
+            undefined,
+            [undefined, {}, { req, res }, {}],
+            "http",
+          ),
+        ),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    expect(buildAbility).not.toHaveBeenCalled();
+  });
+
   it("uses cached ability before building a new one", async () => {
     const canMock = jest.fn(() => true);
     const ability = {
