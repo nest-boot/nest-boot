@@ -1,69 +1,26 @@
 import type { Subject } from "@casl/ability";
 import { RequestContext } from "@nest-boot/request-context";
-import type {
-  ArgumentMetadata,
-  CanActivate,
-  ExecutionContext,
-  PipeTransform,
-  Type,
-} from "@nestjs/common";
+import type { CanActivate, ExecutionContext, Type } from "@nestjs/common";
 import { ForbiddenException, Inject, Injectable } from "@nestjs/common";
 import { ContextIdFactory, ModuleRef, Reflector } from "@nestjs/core";
-import type { Request, Response } from "express";
+import type { Request } from "express";
 
-import type { CanOptions, CanSubjectFactory } from "./decorators/can.decorator";
-import { CAN_METADATA } from "./decorators/can.decorator";
-import type {
-  PermissionModuleOptions,
-  PermissionRequestContext,
-} from "./interfaces/permission-module-options.interface";
+import type { CanOptions } from "./interfaces/can-options.interface";
+import type { PermissionModuleOptions } from "./interfaces/permission-module-options.interface";
+import type { RouteArgumentMetadataValue } from "./interfaces/route-argument-metadata-value.interface";
 import {
+  CAN_METADATA,
+  CUSTOM_ROUTE_ARGS_METADATA,
+  GQL_PARAM_TYPES,
   PERMISSION_ABILITY,
   PERMISSION_ABILITY_PROMISE,
+  ROUTE_ARGS_METADATA,
+  ROUTE_PARAM_TYPES,
 } from "./permission.constants";
 import { MODULE_OPTIONS_TOKEN } from "./permission.module-definition";
+import type { CanSubjectFactory } from "./types/can-subject-factory.type";
 import type { PermissionAbility } from "./types/permission-ability.type";
-
-interface RouteArgumentMetadataValue {
-  index: number;
-  data?: unknown;
-  factory?: (data: unknown, context: ExecutionContext) => unknown;
-  pipes?: (PipeTransform | Type<PipeTransform>)[];
-}
-type RouteArgumentMetadata = Record<string, RouteArgumentMetadataValue>;
-
-const ROUTE_ARGS_METADATA = "__routeArguments__";
-const CUSTOM_ROUTE_ARGS_METADATA = "__customRouteArgs__";
-const PARAMTYPES_METADATA = "design:paramtypes";
-const GQL_PARAM_TYPES = {
-  ROOT: 0,
-  CONTEXT: 1,
-  INFO: 2,
-  ARGS: 3,
-} as const;
-const ROUTE_PARAM_TYPES = {
-  REQUEST: 0,
-  RESPONSE: 1,
-  NEXT: 2,
-  BODY: 3,
-  QUERY: 4,
-  PARAM: 5,
-  HEADERS: 6,
-  SESSION: 7,
-  FILE: 8,
-  FILES: 9,
-  HOST: 10,
-  IP: 11,
-  RAW_BODY: 12,
-} as const;
-const HTTP_PIPEABLE_ROUTE_PARAM_TYPES: number[] = [
-  ROUTE_PARAM_TYPES.BODY,
-  ROUTE_PARAM_TYPES.RAW_BODY,
-  ROUTE_PARAM_TYPES.QUERY,
-  ROUTE_PARAM_TYPES.PARAM,
-  ROUTE_PARAM_TYPES.FILE,
-  ROUTE_PARAM_TYPES.FILES,
-];
+import type { RouteArgumentMetadata } from "./types/route-argument-metadata.type";
 
 /** Guard that evaluates CASL permissions from `Can` metadata. */
 @Injectable()
@@ -148,7 +105,7 @@ export class PermissionGuard implements CanActivate {
     context: ExecutionContext,
   ): Promise<PermissionAbility | null> {
     const abilityPromise = Promise.resolve()
-      .then(() => this.options.buildAbility(this.getRequestContext(context)))
+      .then(() => this.options.buildAbility(context))
       .then((ability) => {
         RequestContext.set(PERMISSION_ABILITY, ability);
         return ability;
@@ -208,6 +165,17 @@ export class PermissionGuard implements CanActivate {
     return request ? ContextIdFactory.getByRequest(request) : undefined;
   }
 
+  private getRequest(context: ExecutionContext): Request | undefined {
+    switch (context.getType<string>()) {
+      case "http":
+        return context.switchToHttp().getRequest<Request | undefined>();
+      case "graphql":
+        return (context.getArgs()[2] as { req?: Request } | undefined)?.req;
+      default:
+        return undefined;
+    }
+  }
+
   private async getSubjectFactoryArgs(
     context: ExecutionContext,
   ): Promise<unknown[]> {
@@ -264,7 +232,7 @@ export class PermissionGuard implements CanActivate {
 
     await Promise.all(
       Object.entries(metadata).map(async ([key, parameterMetadata]) => {
-        args[parameterMetadata.index] = await this.resolveRouteArgument(
+        args[parameterMetadata.index] = await this.extractRouteArgument(
           context,
           key,
           parameterMetadata,
@@ -273,16 +241,6 @@ export class PermissionGuard implements CanActivate {
     );
 
     return args;
-  }
-
-  private async resolveRouteArgument(
-    context: ExecutionContext,
-    key: string,
-    metadata: RouteArgumentMetadataValue,
-  ): Promise<unknown> {
-    const value = await this.extractRouteArgument(context, key, metadata);
-
-    return await this.applyRouteArgumentPipes(context, key, metadata, value);
   }
 
   private extractRouteArgument(
@@ -300,116 +258,6 @@ export class PermissionGuard implements CanActivate {
       return this.resolveGraphqlRouteArgument(context, type, metadata.data);
     }
     return this.resolveHttpRouteArgument(context, type, metadata.data);
-  }
-
-  private async applyRouteArgumentPipes(
-    context: ExecutionContext,
-    key: string,
-    metadata: RouteArgumentMetadataValue,
-    value: unknown,
-  ): Promise<unknown> {
-    const pipes = metadata.pipes ?? [];
-
-    if (!pipes.length || !this.isRouteArgumentPipeable(context, key)) {
-      return value;
-    }
-
-    const argumentMetadata = this.createPipeArgumentMetadata(
-      context,
-      key,
-      metadata,
-    );
-
-    return await pipes.reduce<Promise<unknown>>(async (deferred, pipe) => {
-      const pipeInstance = await this.resolvePipe(pipe, context);
-      const pipeValue = await deferred;
-
-      return await pipeInstance.transform(pipeValue, argumentMetadata);
-    }, Promise.resolve(value));
-  }
-
-  private isRouteArgumentPipeable(
-    context: ExecutionContext,
-    key: string,
-  ): boolean {
-    if (context.getType<string>() === "graphql") {
-      return true;
-    }
-
-    const type = this.getRouteArgumentType(key);
-
-    return (
-      typeof type === "string" ||
-      (typeof type === "number" &&
-        HTTP_PIPEABLE_ROUTE_PARAM_TYPES.includes(type))
-    );
-  }
-
-  private createPipeArgumentMetadata(
-    context: ExecutionContext,
-    key: string,
-    metadata: RouteArgumentMetadataValue,
-  ): ArgumentMetadata {
-    return {
-      data: this.getStringData(metadata.data) ?? undefined,
-      metatype: this.getRouteArgumentMetatype(context, metadata.index),
-      type: this.getPipeArgumentType(key),
-    };
-  }
-
-  private getRouteArgumentMetatype(
-    context: ExecutionContext,
-    index: number,
-  ): Type<unknown> | undefined {
-    const methodName = this.getHandlerMethodName(context);
-
-    if (!methodName) {
-      return undefined;
-    }
-
-    return Reflect.getMetadata(
-      PARAMTYPES_METADATA,
-      context.getClass().prototype,
-      methodName,
-    )?.[index] as Type<unknown> | undefined;
-  }
-
-  private getPipeArgumentType(key: string): ArgumentMetadata["type"] {
-    const type = this.getRouteArgumentType(key);
-
-    switch (type) {
-      case ROUTE_PARAM_TYPES.BODY:
-        return "body";
-      case ROUTE_PARAM_TYPES.PARAM:
-        return "param";
-      case ROUTE_PARAM_TYPES.QUERY:
-        return "query";
-      default:
-        return "custom";
-    }
-  }
-
-  private getRouteArgumentType(key: string): string | number {
-    const type = key.split(":")[0];
-
-    return key.includes(CUSTOM_ROUTE_ARGS_METADATA) ? type : Number(type);
-  }
-
-  private async resolvePipe(
-    pipe: PipeTransform | Type<PipeTransform>,
-    context: ExecutionContext,
-  ): Promise<PipeTransform> {
-    if (this.isPipeTransform(pipe)) {
-      return pipe;
-    }
-
-    return await this.resolveProvider(pipe, context);
-  }
-
-  private isPipeTransform(
-    pipe: PipeTransform | Type<PipeTransform>,
-  ): pipe is PipeTransform {
-    return "transform" in pipe && typeof pipe.transform === "function";
   }
 
   private resolveGraphqlRouteArgument(
@@ -498,102 +346,5 @@ export class PermissionGuard implements CanActivate {
     return value && typeof value === "object"
       ? (value as Record<string, unknown>)
       : {};
-  }
-
-  private getRequestContext(
-    context: ExecutionContext,
-  ): PermissionRequestContext {
-    switch (context.getType<string>()) {
-      case "http":
-        return this.getRequiredHttpRequestContext(context);
-      case "graphql":
-        return this.getRequiredGraphqlRequestContext(context);
-      default:
-        throw new ForbiddenException(
-          "Permission request context is not available",
-        );
-    }
-  }
-
-  private getRequest(context: ExecutionContext): Request | undefined {
-    switch (context.getType<string>()) {
-      case "http":
-        return this.getHttpRequestContext(context)?.req;
-      case "graphql":
-        return this.getGraphqlContext(context)?.req;
-      default:
-        return undefined;
-    }
-  }
-
-  private getRequiredHttpRequestContext(
-    context: ExecutionContext,
-  ): PermissionRequestContext {
-    const requestContext = this.getHttpRequestContext(context);
-
-    if (!requestContext) {
-      throw new ForbiddenException(
-        "Permission request context is not available",
-      );
-    }
-
-    return requestContext;
-  }
-
-  private getRequiredGraphqlRequestContext(
-    context: ExecutionContext,
-  ): PermissionRequestContext {
-    const gqlContext = this.getGraphqlContext(context);
-    const req = gqlContext?.req;
-
-    if (!req) {
-      throw new ForbiddenException(
-        "Permission request context is not available",
-      );
-    }
-
-    return this.createRequestContext(req, gqlContext.res);
-  }
-
-  private getHttpRequestContext(
-    context: ExecutionContext,
-  ): PermissionRequestContext | null {
-    if (context.getType<string>() === "graphql") {
-      return null;
-    }
-
-    const httpContext = context.switchToHttp();
-    const req = httpContext.getRequest<Request | undefined>();
-    const res = httpContext.getResponse<Response | undefined>();
-
-    if (!req?.headers) {
-      return null;
-    }
-
-    return this.createRequestContext(req, res);
-  }
-
-  private getGraphqlContext(
-    context: ExecutionContext,
-  ): Partial<PermissionRequestContext> | undefined {
-    return context.getArgs()[2] as
-      | Partial<PermissionRequestContext>
-      | undefined;
-  }
-
-  private createRequestContext(
-    req: Request,
-    res: Response | undefined,
-  ): PermissionRequestContext {
-    const requestContext: PermissionRequestContext = {
-      req,
-    };
-    const response = res ?? req.res;
-
-    if (response) {
-      requestContext.res = response;
-    }
-
-    return requestContext;
   }
 }

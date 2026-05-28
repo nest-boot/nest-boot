@@ -13,7 +13,7 @@ pnpm add @nest-boot/permission @nest-boot/request-context @casl/ability
 
 ## Module Registration
 
-Register `PermissionModule` with a `buildAbility` callback. The callback receives the current request context with `req` and, when available, `res`. It can return a CASL ability or `null`. Returning `null` causes guarded routes to fail with `ForbiddenException`.
+Register `PermissionModule` with a `buildAbility` callback. The callback receives Nest's current `ExecutionContext`; the example below reads the authenticated user from the HTTP request with `context.switchToHttp().getRequest<Request>()`. It can return a CASL ability or `null`. Returning `null` causes guarded routes to fail with `ForbiddenException`.
 
 ```typescript
 import {
@@ -23,6 +23,7 @@ import {
 } from "@nest-boot/permission";
 import { RequestContextModule } from "@nest-boot/request-context";
 import { Global, Module } from "@nestjs/common";
+import { Request } from "express";
 
 import { Post } from "./post.entity";
 
@@ -31,8 +32,9 @@ import { Post } from "./post.entity";
   imports: [
     RequestContextModule,
     PermissionModule.forRoot({
-      buildAbility: ({ req }) => {
-        const user = req.user;
+      buildAbility: (context) => {
+        const request = context.switchToHttp().getRequest<Request>();
+        const user = request.user;
 
         if (!user) {
           return null;

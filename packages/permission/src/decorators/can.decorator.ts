@@ -1,31 +1,11 @@
 import type { Subject } from "@casl/ability";
-import type { CustomDecorator, Type } from "@nestjs/common";
+import type { CustomDecorator } from "@nestjs/common";
 import { SetMetadata } from "@nestjs/common";
 
 import type { PermissionAction } from "../enums/permission-action.enum";
-
-/** Reflection metadata key used by the `Can` decorator. */
-export const CAN_METADATA = Symbol("CAN_METADATA");
-
-/** Factory that resolves a permission subject from the current handler instance and decorated method parameters. */
-export type CanSubjectFactory<
-  T extends Subject = Subject,
-  TSelf = unknown,
-  TArgs extends unknown[] = unknown[],
-> = (self: TSelf, ...args: TArgs) => T | Promise<T>;
-
-/** Permission subject type or subject resolver factory. */
-export type CanSubject<T extends Subject = Subject> =
-  | Type<T>
-  | CanSubjectFactory<T>;
-
-/** Full `Can` decorator options. */
-export interface CanOptions<T extends Subject = Subject> {
-  /** Permission action that must be allowed. */
-  action: PermissionAction;
-  /** Permission subject type or subject resolver factory to check. */
-  subject: CanSubject<T>;
-}
+import type { CanOptions } from "../interfaces/can-options.interface";
+import { CAN_METADATA } from "../permission.constants";
+import type { CanSubject } from "../types/can-subject.type";
 
 /**
  * Declares that the current route requires the given action on the given subject.

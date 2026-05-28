@@ -1,7 +1,8 @@
 import { SetMetadata } from "@nestjs/common";
 
 import { PermissionAction } from "../enums/permission-action.enum";
-import { Can, CAN_METADATA } from "./can.decorator";
+import { CAN_METADATA } from "../permission.constants";
+import { Can } from "./can.decorator";
 
 jest.mock("@nestjs/common", () => ({
   SetMetadata: jest.fn((key, value) => ({ key, value })),

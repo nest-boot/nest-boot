@@ -13,7 +13,7 @@ pnpm add @nest-boot/permission @nest-boot/request-context @casl/ability
 
 ## 模块注册
 
-使用 `buildAbility` 回调注册 `PermissionModule`。回调会收到当前请求上下文，其中包含 `req`，并在当前传输层可用时包含 `res`。它可以返回 CASL ability 或 `null`。如果返回 `null`，带权限要求的路由会抛出 `ForbiddenException`。
+使用 `buildAbility` 回调注册 `PermissionModule`。回调会收到 Nest 当前的 `ExecutionContext`；下面的示例通过 `context.switchToHttp().getRequest<Request>()` 从 HTTP request 读取当前认证用户。它可以返回 CASL ability 或 `null`。如果返回 `null`，带权限要求的路由会抛出 `ForbiddenException`。
 
 ```typescript
 import {
@@ -23,6 +23,7 @@ import {
 } from "@nest-boot/permission";
 import { RequestContextModule } from "@nest-boot/request-context";
 import { Global, Module } from "@nestjs/common";
+import { Request } from "express";
 
 import { Post } from "./post.entity";
 
@@ -31,8 +32,9 @@ import { Post } from "./post.entity";
   imports: [
     RequestContextModule,
     PermissionModule.forRoot({
-      buildAbility: ({ req }) => {
-        const user = req.user;
+      buildAbility: (context) => {
+        const request = context.switchToHttp().getRequest<Request>();
+        const user = request.user;
 
         if (!user) {
           return null;

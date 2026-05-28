@@ -4,19 +4,20 @@ import { ModuleRef, Reflector } from "@nestjs/core";
 import type { Request, Response } from "express";
 
 import { PermissionAction } from "./enums/permission-action.enum";
-import type { BuildAbilityCallback } from "./interfaces/permission-module-options.interface";
 import {
+  CUSTOM_ROUTE_ARGS_METADATA,
   PERMISSION_ABILITY,
   PERMISSION_ABILITY_PROMISE,
+  ROUTE_ARGS_METADATA,
 } from "./permission.constants";
 import { PermissionGuard } from "./permission.guard";
+import type { BuildAbilityCallback } from "./types/build-ability-callback.type";
 import type { PermissionAbility } from "./types/permission-ability.type";
+import type { RouteArgumentMetadata } from "./types/route-argument-metadata.type";
 import { getPermissionAbility } from "./utils/get-permission-ability.util";
 
 class Subject {}
 class Controller {}
-const ROUTE_ARGS_METADATA = "__routeArguments__";
-const CUSTOM_ROUTE_ARGS_METADATA = "__customRouteArgs__";
 
 describe("PermissionGuard", () => {
   afterEach(() => {
@@ -65,11 +66,10 @@ describe("PermissionGuard", () => {
       subject: Subject,
     });
 
-    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
-      await expect(guard.canActivate(createContext(req, res))).resolves.toBe(
-        true,
-      );
+    const context = createContext(req, res);
 
+    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+      await expect(guard.canActivate(context)).resolves.toBe(true);
       await expect(
         RequestContext.get(PERMISSION_ABILITY_PROMISE),
       ).resolves.toBe(ability);
@@ -77,11 +77,11 @@ describe("PermissionGuard", () => {
       expect(getPermissionAbility()).toBe(ability);
     });
 
-    expect(buildAbility).toHaveBeenCalledWith({ req, res });
+    expect(buildAbility).toHaveBeenCalledWith(context);
     expect(canMock).toHaveBeenCalledWith(PermissionAction.UPDATE, Subject);
   });
 
-  it("builds ability from GraphQL context when HTTP request is unavailable", async () => {
+  it("passes GraphQL execution context to buildAbility", async () => {
     const canMock = jest.fn(() => true);
     const ability = {
       can: canMock,
@@ -95,125 +95,21 @@ describe("PermissionGuard", () => {
       action: PermissionAction.UPDATE,
       subject: Subject,
     });
+    const context = createContext(
+      undefined,
+      undefined,
+      [undefined, {}, gqlContext, {}],
+      "graphql",
+    );
 
     await RequestContext.run(
       new RequestContext({ type: "graphql" }),
       async () => {
-        await expect(
-          guard.canActivate(
-            createContext(
-              undefined,
-              undefined,
-              [undefined, {}, gqlContext, {}],
-              "graphql",
-            ),
-          ),
-        ).resolves.toBe(true);
+        await expect(guard.canActivate(context)).resolves.toBe(true);
       },
     );
 
-    expect(buildAbility).toHaveBeenCalledWith(gqlContext);
-  });
-
-  it("builds ability from GraphQL contexts that only expose req", async () => {
-    const canMock = jest.fn(() => true);
-    const ability = {
-      can: canMock,
-    };
-    const { guard, reflector, buildAbility, req } = createGuard(
-      ability as unknown as PermissionAbility,
-    );
-    const gqlContext = { req };
-
-    reflector.getAllAndOverride.mockReturnValue({
-      action: PermissionAction.READ,
-      subject: Subject,
-    });
-
-    await RequestContext.run(
-      new RequestContext({ type: "graphql" }),
-      async () => {
-        await expect(
-          guard.canActivate(
-            createContext(
-              undefined,
-              undefined,
-              [undefined, {}, gqlContext, {}],
-              "graphql",
-            ),
-          ),
-        ).resolves.toBe(true);
-      },
-    );
-
-    expect(buildAbility).toHaveBeenCalledWith(gqlContext);
-  });
-
-  it("prefers GraphQL request context over HTTP switch args for GraphQL handlers", async () => {
-    const canMock = jest.fn(() => true);
-    const ability = {
-      can: canMock,
-    };
-    const { guard, reflector, buildAbility, req, res } = createGuard(
-      ability as unknown as PermissionAbility,
-    );
-    const root = {
-      headers: { authorization: "root-token" },
-    } as unknown as Request;
-    const gqlContext = { req, res };
-
-    reflector.getAllAndOverride.mockReturnValue({
-      action: PermissionAction.READ,
-      subject: Subject,
-    });
-
-    await RequestContext.run(
-      new RequestContext({ type: "graphql" }),
-      async () => {
-        await expect(
-          guard.canActivate(
-            createContext(
-              root,
-              {} as Response,
-              [root, {}, gqlContext, {}],
-              "graphql",
-            ),
-          ),
-        ).resolves.toBe(true);
-      },
-    );
-
-    expect(buildAbility).toHaveBeenCalledWith(gqlContext);
-  });
-
-  it("does not fall back to GraphQL request context for HTTP handlers", async () => {
-    const canMock = jest.fn(() => true);
-    const ability = {
-      can: canMock,
-    };
-    const { guard, reflector, buildAbility, req, res } = createGuard(
-      ability as unknown as PermissionAbility,
-    );
-
-    reflector.getAllAndOverride.mockReturnValue({
-      action: PermissionAction.READ,
-      subject: Subject,
-    });
-
-    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
-      await expect(
-        guard.canActivate(
-          createContext(
-            undefined,
-            undefined,
-            [undefined, {}, { req, res }, {}],
-            "http",
-          ),
-        ),
-      ).rejects.toBeInstanceOf(ForbiddenException);
-    });
-
-    expect(buildAbility).not.toHaveBeenCalled();
+    expect(buildAbility).toHaveBeenCalledWith(context);
   });
 
   it("uses cached ability before building a new one", async () => {
@@ -417,64 +313,6 @@ describe("PermissionGuard", () => {
       "post-1",
       input,
     );
-  });
-
-  it("applies parameter pipes before invoking subject factories", async () => {
-    const subjectInstance = new Subject();
-    const parseIdPipe = {
-      transform: jest.fn((value: unknown) => Number(value)),
-    };
-    const handlerThis = {
-      postService: {
-        findOneOrFail: jest.fn((_id: number) => subjectInstance),
-      },
-    };
-    const subjectFactory = jest.fn((self: typeof handlerThis, id: number) =>
-      self.postService.findOneOrFail(id),
-    );
-    const canMock = jest.fn(() => true);
-    const ability = {
-      can: canMock,
-    };
-    const { guard, reflector } = createGuard(
-      ability as unknown as PermissionAbility,
-      handlerThis,
-    );
-
-    setRouteArgsMetadata({
-      "5:0": {
-        index: 0,
-        data: "id",
-        pipes: [parseIdPipe],
-      },
-    });
-    reflector.getAllAndOverride.mockReturnValue({
-      action: PermissionAction.UPDATE,
-      subject: subjectFactory,
-    });
-
-    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
-      await expect(
-        guard.canActivate(
-          createContext(
-            {
-              headers: {},
-              params: { id: "42" },
-            } as unknown as Request,
-            {} as Response,
-            [],
-          ),
-        ),
-      ).resolves.toBe(true);
-    });
-
-    expect(parseIdPipe.transform).toHaveBeenCalledWith("42", {
-      data: "id",
-      metatype: undefined,
-      type: "param",
-    });
-    expect(subjectFactory).toHaveBeenCalledWith(handlerThis, 42);
-    expect(handlerThis.postService.findOneOrFail).toHaveBeenCalledWith(42);
   });
 
   it("passes custom HTTP controller arguments to subject factories", async () => {
@@ -741,18 +579,6 @@ function createContext(
   } as unknown as ExecutionContext;
 }
 
-function setRouteArgsMetadata(
-  metadata: Record<
-    string,
-    {
-      index: number;
-      data?: string;
-      factory?: (data: unknown, context: ExecutionContext) => unknown;
-      pipes?: {
-        transform: (value: unknown, metadata?: unknown) => unknown;
-      }[];
-    }
-  >,
-) {
+function setRouteArgsMetadata(metadata: RouteArgumentMetadata) {
   Reflect.defineMetadata(ROUTE_ARGS_METADATA, metadata, Controller, "handler");
 }
