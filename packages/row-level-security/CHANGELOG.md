@@ -1,5 +1,11 @@
 # @nest-boot/row-level-security
 
+## 7.2.3
+
+### Patch Changes
+
+- 326e32d: Shorten generated PostgreSQL row-level security policy names before migration diffing to avoid redundant policy recreation when names exceed the identifier length limit.
+
 ## 7.2.2
 
 ### Patch Changes
