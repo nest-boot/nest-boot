@@ -45,6 +45,14 @@ class WorkspaceMemberWithGeneratedPolicy {}
 class WorkspaceMemberWithWorkspaceContextPolicy {}
 
 @Policy({
+  command: PolicyCommand.ALL,
+  property: "workspace",
+  context: "workspace_id",
+  roles: ["authenticated"],
+})
+class WorkspaceMemberGroupMemberWithLongGeneratedPolicy {}
+
+@Policy({
   name: "audit_log_select_policy",
   command: PolicyCommand.SELECT,
   using: "true",
@@ -80,6 +88,20 @@ const WORKSPACE_MEMBER_FIELD_CHANGE_DIFF = {
   up: ['alter table "workspace_member" add column "display_name" text null;'],
   down: ['alter table "workspace_member" drop column "display_name";'],
 };
+const WORKSPACE_MEMBER_GROUP_MEMBER_FIELD_CHANGE_DIFF = {
+  up: [
+    'alter table "workspace_member_group_member" add column "display_name" text null;',
+  ],
+  down: [
+    'alter table "workspace_member_group_member" drop column "display_name";',
+  ],
+};
+const LONG_GENERATED_POLICY_NAME =
+  "workspace_member_group_member_workspace_all_authenticated_policy";
+const LONG_GENERATED_POLICY_NAME_POSTGRES_TRUNCATED =
+  "workspace_member_group_member_workspace_all_authenticated_polic";
+const LONG_GENERATED_POLICY_NAME_SHORTENED =
+  "workspace_member_group_member_workspace_all_authe_fb4ec_policy";
 
 describe("RowLevelSecurityMigrationGenerator", () => {
   afterEach(() => {
@@ -374,6 +396,57 @@ describe("RowLevelSecurityMigrationGenerator", () => {
     );
     expect(file).toContain("extends Migration");
     expect(file).not.toContain("workspace_member_user_select_policy");
+  });
+
+  it("does not recreate unchanged generated policies with legacy PostgreSQL-truncated names", async () => {
+    const execute = jest.fn((_sql: string) =>
+      Promise.resolve([
+        {
+          policy_name: LONG_GENERATED_POLICY_NAME_POSTGRES_TRUNCATED,
+          schema_name: "public",
+          table_name: "workspace_member_group_member",
+          permissive: true,
+          command: "*",
+          qual: "(( SELECT app.get_context('workspace_id'::text, NULL::bigint) AS get_context) = workspace_id)",
+          with_check:
+            "(( SELECT app.get_context('workspace_id'::text, NULL::bigint) AS get_context) = workspace_id)",
+          roles: ["authenticated"],
+        },
+      ]),
+    );
+    const generator = createGenerator(
+      [
+        {
+          class: WorkspaceMemberGroupMemberWithLongGeneratedPolicy,
+          tableName: "workspace_member_group_member",
+          properties: {
+            workspace: {
+              fieldNames: ["workspace_id"],
+              columnTypes: ["bigint"],
+            },
+          },
+        },
+      ],
+      {
+        getConnection: () => ({
+          execute,
+        }),
+      },
+    );
+
+    mockBaseMigrationGenerate(WORKSPACE_MEMBER_GROUP_MEMBER_FIELD_CHANGE_DIFF);
+
+    const [file] = await generator.generate(
+      WORKSPACE_MEMBER_GROUP_MEMBER_FIELD_CHANGE_DIFF,
+    );
+
+    expect(file).toContain(
+      'alter table "workspace_member_group_member" add column "display_name" text null;',
+    );
+    expect(file).toContain("extends Migration");
+    expect(file).not.toContain(LONG_GENERATED_POLICY_NAME_POSTGRES_TRUNCATED);
+    expect(file).not.toContain(LONG_GENERATED_POLICY_NAME);
+    expect(file).not.toContain(LONG_GENERATED_POLICY_NAME_SHORTENED);
   });
 
   it.each([
@@ -904,6 +977,35 @@ describe("RowLevelSecurityMigrationGenerator", () => {
     expect(file).toContain(
       'this.addSql(`create policy workspace_member_user_select_policy on "public"."workspace_member" as permissive for select using (( SELECT app.get_context(\'user_id\'::text, NULL::bigint) AS get_context) = user_id);`);',
     );
+  });
+
+  it("shortens generated policy names longer than PostgreSQL identifier limit", () => {
+    const generator = createGenerator([
+      {
+        class: WorkspaceMemberGroupMemberWithLongGeneratedPolicy,
+        tableName: "workspace_member_group_member",
+        properties: {
+          workspace: {
+            fieldNames: ["workspace_id"],
+            columnTypes: ["bigint"],
+          },
+        },
+      },
+    ]);
+
+    const file = generator.generateMigrationFile("MigrationTest", {
+      up: [],
+      down: [],
+    });
+
+    expect(LONG_GENERATED_POLICY_NAME_SHORTENED).toHaveLength(62);
+    expect(file).toContain(
+      `create policy ${LONG_GENERATED_POLICY_NAME_SHORTENED}`,
+    );
+    expect(file).toContain(
+      `drop policy if exists ${LONG_GENERATED_POLICY_NAME_SHORTENED}`,
+    );
+    expect(file).not.toContain(LONG_GENERATED_POLICY_NAME);
   });
 
   it("canonicalizes generated policy context type aliases", () => {

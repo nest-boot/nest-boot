@@ -45,6 +45,7 @@ export interface DatabaseConnectionLike {
 
 export interface RowLevelSecurityMigrationGeneratorDriverLike {
   config?: {
+    get?: (key: string) => unknown;
     getMetadata?: () => MetadataStorageLike;
   };
   getConnection?: () => DatabaseConnectionLike;
@@ -53,6 +54,8 @@ export interface RowLevelSecurityMigrationGeneratorDriverLike {
 
 export interface RowLevelSecurityDefinition extends PolicySqlOptions {
   entityName: string;
+  /** Database policy names treated as equivalent when diffing existing policies. */
+  policyNameAliases?: string[];
   bootstrapSql?: string[];
 }
 

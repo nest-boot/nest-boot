@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { TSMigrationGenerator } from "@mikro-orm/migrations";
 
 import { getPolicyDefinitions } from "./decorators/policy.decorator";
@@ -23,6 +25,11 @@ import {
 import { createPolicyUpSqlStatements } from "./utils/create-policy-up-sql-statements";
 import { isPostgresKeywordRequiringQuote } from "./utils/is-postgres-keyword-requiring-quote";
 import { normalizePostgresTypeAlias } from "./utils/normalize-postgres-type-alias";
+
+const POSTGRES_IDENTIFIER_MAX_LENGTH = 63;
+const POLICY_IDENTIFIER_TYPE = "policy";
+
+type HashAlgorithm = "md5" | "sha256";
 
 /** MikroORM TypeScript migration generator that injects generated RLS SQL. */
 export class RowLevelSecurityMigrationGenerator extends TSMigrationGenerator {
@@ -201,6 +208,8 @@ export class RowLevelSecurityMigrationGenerator extends TSMigrationGenerator {
   private getPolicyDefinitions(
     metadata = this.getEntityMetadata(),
   ): RowLevelSecurityDefinition[] {
+    const hashAlgorithm = this.getHashAlgorithm();
+
     return sortPolicyDefinitions(
       metadata.flatMap((entityMetadata) => {
         if (!entityMetadata.class) {
@@ -220,20 +229,36 @@ export class RowLevelSecurityMigrationGenerator extends TSMigrationGenerator {
         return getPolicyDefinitions(
           entityMetadata.class,
           policyEntityMetadata,
-        ).map((policy) => ({
-          entityName,
-          schemaName,
-          tableName,
-          policyName: policy.name,
-          mode: policy.mode,
-          command: policy.command,
-          using: policy.using,
-          withCheck: policy.withCheck,
-          roles: policy.roles,
-          bootstrapSql: policy.bootstrapSql,
-        }));
+        ).map((policy) => {
+          const policyName = normalizePostgresPolicyName(
+            policy.name,
+            hashAlgorithm,
+          );
+
+          return {
+            entityName,
+            schemaName,
+            tableName,
+            policyName,
+            policyNameAliases: createPolicyNameAliases(policy.name, policyName),
+            mode: policy.mode,
+            command: policy.command,
+            using: policy.using,
+            withCheck: policy.withCheck,
+            roles: policy.roles,
+            bootstrapSql: policy.bootstrapSql,
+          };
+        });
       }),
     );
+  }
+
+  private getHashAlgorithm(): HashAlgorithm {
+    const driver = this
+      .driver as unknown as RowLevelSecurityMigrationGeneratorDriverLike;
+    const hashAlgorithm = driver.config?.get?.("hashAlgorithm");
+
+    return hashAlgorithm === "md5" ? "md5" : "sha256";
   }
 
   private getEntityMetadata() {
@@ -393,10 +418,33 @@ function hasPolicyDefinitionWithSameContent(
 ) {
   return definitions.some(
     (candidate) =>
-      getPolicyDefinitionKey(candidate) ===
-        getPolicyDefinitionKey(definition) &&
+      hasSamePolicyDefinitionIdentity(candidate, definition) &&
       hasSamePolicyDefinitionContent(candidate, definition),
   );
+}
+
+function hasSamePolicyDefinitionIdentity(
+  left: RowLevelSecurityDefinition,
+  right: RowLevelSecurityDefinition,
+) {
+  return (
+    left.schemaName === right.schemaName &&
+    left.tableName === right.tableName &&
+    hasOverlappingPolicyNames(left, right)
+  );
+}
+
+function hasOverlappingPolicyNames(
+  left: RowLevelSecurityDefinition,
+  right: RowLevelSecurityDefinition,
+) {
+  const leftNames = new Set(getPolicyNameAliases(left));
+
+  return getPolicyNameAliases(right).some((name) => leftNames.has(name));
+}
+
+function getPolicyNameAliases(definition: RowLevelSecurityDefinition) {
+  return definition.policyNameAliases ?? [definition.policyName];
 }
 
 function hasSamePolicyDefinitionContent(
@@ -929,6 +977,42 @@ function getPolicyDefinitionKey(definition: RowLevelSecurityDefinition) {
     definition.tableName,
     definition.policyName,
   ].join(".");
+}
+
+function normalizePostgresPolicyName(
+  policyName: string,
+  hashAlgorithm: HashAlgorithm,
+) {
+  if (policyName.length <= POSTGRES_IDENTIFIER_MAX_LENGTH) {
+    return policyName;
+  }
+
+  return [
+    policyName.substring(0, 55 - POLICY_IDENTIFIER_TYPE.length),
+    hashValue(policyName, 5, hashAlgorithm),
+    POLICY_IDENTIFIER_TYPE,
+  ].join("_");
+}
+
+function createPolicyNameAliases(policyName: string, normalizedName: string) {
+  const aliases = new Set([normalizedName]);
+
+  if (policyName.length > POSTGRES_IDENTIFIER_MAX_LENGTH) {
+    aliases.add(policyName.substring(0, POSTGRES_IDENTIFIER_MAX_LENGTH));
+  }
+
+  return [...aliases];
+}
+
+function hashValue(
+  value: string,
+  length: number,
+  hashAlgorithm: HashAlgorithm,
+) {
+  return createHash(hashAlgorithm)
+    .update(value)
+    .digest("hex")
+    .substring(0, length);
 }
 
 function createPolicyDefinitionFromPolicyRow(
