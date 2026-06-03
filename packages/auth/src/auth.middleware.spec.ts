@@ -1,15 +1,17 @@
 import { EntityManager } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
+import { Test } from "@nestjs/testing";
 import { NextFunction, Request } from "express";
 
 import { AuthMiddleware } from "./auth.middleware";
+import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition";
 import { AuthService } from "./auth.service";
 import { BaseSession, BaseUser } from "./entities";
 
 class TestUser extends BaseUser {}
 class TestSession extends BaseSession {}
 
-function createMiddleware(
+async function createMiddleware(
   getSession: jest.Mock,
   findOne: jest.Mock,
   onAuthenticated = jest.fn(),
@@ -22,21 +24,34 @@ function createMiddleware(
   const em = {
     findOne,
   } as unknown as EntityManager;
+  const moduleRef = await Test.createTestingModule({
+    providers: [
+      AuthMiddleware,
+      {
+        provide: MODULE_OPTIONS_TOKEN,
+        useValue: {
+          entities: {
+            account: class {},
+            session: TestSession,
+            user: TestUser,
+            verification: class {},
+          },
+          onAuthenticated,
+        },
+      },
+      {
+        provide: AuthService,
+        useValue: authService,
+      },
+      {
+        provide: EntityManager,
+        useValue: em,
+      },
+    ],
+  }).compile();
 
   return {
-    middleware: new AuthMiddleware(
-      {
-        entities: {
-          account: class {},
-          session: TestSession,
-          user: TestUser,
-          verification: class {},
-        },
-        onAuthenticated,
-      } as never,
-      authService,
-      em,
-    ),
+    middleware: moduleRef.get(AuthMiddleware),
     onAuthenticated,
   };
 }
@@ -50,7 +65,7 @@ describe("AuthMiddleware", () => {
     const getSession = jest.fn().mockResolvedValue(null);
     const findOne = jest.fn();
     const next = jest.fn() as NextFunction;
-    const { middleware } = createMiddleware(getSession, findOne);
+    const { middleware } = await createMiddleware(getSession, findOne);
 
     await middleware.use(
       {
@@ -88,7 +103,7 @@ describe("AuthMiddleware", () => {
       .spyOn(RequestContext, "set")
       .mockImplementation(() => undefined);
     const next = jest.fn() as NextFunction;
-    const { middleware, onAuthenticated } = createMiddleware(
+    const { middleware, onAuthenticated } = await createMiddleware(
       getSession,
       findOne,
     );
@@ -136,7 +151,7 @@ describe("AuthMiddleware", () => {
       .spyOn(RequestContext, "set")
       .mockImplementation(() => undefined);
     const next = jest.fn() as NextFunction;
-    const { middleware, onAuthenticated } = createMiddleware(
+    const { middleware, onAuthenticated } = await createMiddleware(
       getSession,
       findOne,
     );

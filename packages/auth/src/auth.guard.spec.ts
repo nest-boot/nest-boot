@@ -1,6 +1,11 @@
 import { RequestContext } from "@nest-boot/request-context";
-import { type CanActivate, type ExecutionContext } from "@nestjs/common";
+import {
+  type CanActivate,
+  type ExecutionContext,
+  type Type,
+} from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
+import { Test } from "@nestjs/testing";
 import { of } from "rxjs";
 
 import { IS_PUBLIC_KEY } from "./auth.constants";
@@ -39,7 +44,7 @@ describe("AuthGuard", () => {
     expect(ObservableAuthGuard).toBeDefined();
   });
 
-  it("allows subclasses to reuse the public route metadata lookup", () => {
+  it("allows subclasses to reuse the public route metadata lookup", async () => {
     const handler = () => undefined;
     class TestController {}
 
@@ -49,9 +54,10 @@ describe("AuthGuard", () => {
     } as unknown as ExecutionContext;
 
     const getAllAndOverride = jest.fn(() => true);
-    const guard = new PublicAwareAuthGuard({
+    const { guard } = await createGuard(
+      PublicAwareAuthGuard,
       getAllAndOverride,
-    } as unknown as Reflector);
+    );
 
     expect(guard.isContextPublic(context)).toBe(true);
     expect(getAllAndOverride).toHaveBeenCalledWith(IS_PUBLIC_KEY, [
@@ -60,10 +66,11 @@ describe("AuthGuard", () => {
     ]);
   });
 
-  it("allows public routes without a session", () => {
-    const guard = new AuthGuard({
-      getAllAndOverride: jest.fn(() => true),
-    } as unknown as Reflector);
+  it("allows public routes without a session", async () => {
+    const { guard } = await createGuard(
+      AuthGuard,
+      jest.fn(() => true),
+    );
     const context = {
       getClass: jest.fn(),
       getHandler: jest.fn(),
@@ -72,10 +79,11 @@ describe("AuthGuard", () => {
     expect(guard.canActivate(context)).toBe(true);
   });
 
-  it("requires a session for non-public routes", () => {
-    const guard = new AuthGuard({
-      getAllAndOverride: jest.fn(() => false),
-    } as unknown as Reflector);
+  it("requires a session for non-public routes", async () => {
+    const { guard } = await createGuard(
+      AuthGuard,
+      jest.fn(() => false),
+    );
     const context = {
       getClass: jest.fn(),
       getHandler: jest.fn(),
@@ -90,3 +98,24 @@ describe("AuthGuard", () => {
     expect(guard.canActivate(context)).toBe(true);
   });
 });
+
+async function createGuard<T extends AuthGuard>(
+  guardType: Type<T>,
+  getAllAndOverride: jest.Mock,
+) {
+  const moduleRef = await Test.createTestingModule({
+    providers: [
+      guardType,
+      {
+        provide: Reflector,
+        useValue: {
+          getAllAndOverride,
+        },
+      },
+    ],
+  }).compile();
+
+  return {
+    guard: moduleRef.get(guardType),
+  };
+}

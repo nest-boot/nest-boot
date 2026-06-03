@@ -1,3 +1,5 @@
+import { Test } from "@nestjs/testing";
+
 import { FileUploadResolver } from "./file-upload.resolver";
 import { FileUploadService } from "./file-upload.service";
 
@@ -15,10 +17,7 @@ describe("FileUploadResolver", () => {
       },
     ];
     const create = jest.fn().mockResolvedValue(result);
-    const service = {
-      create,
-    } as unknown as FileUploadService;
-    const resolver = new FileUploadResolver(service);
+    const resolver = await createResolver(create);
     const input = [
       {
         fileSize: 123,
@@ -31,3 +30,19 @@ describe("FileUploadResolver", () => {
     expect(create).toHaveBeenCalledWith(input);
   });
 });
+
+async function createResolver(create: jest.Mock) {
+  const moduleRef = await Test.createTestingModule({
+    providers: [
+      FileUploadResolver,
+      {
+        provide: FileUploadService,
+        useValue: {
+          create,
+        },
+      },
+    ],
+  }).compile();
+
+  return moduleRef.get(FileUploadResolver);
+}
