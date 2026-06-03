@@ -567,6 +567,16 @@ describe("RowLevelSecurityMigrationGenerator", () => {
       `note = '::varchar' AND (( SELECT current_setting('app.tenant_id'::text, true)::character varying) = tenant_id)`,
     ],
     [
+      "E-string literal text inside parser fallback expressions changes",
+      `note = E'foo\\'::character varying' AND ((select current_setting('app.tenant_id', true)::character varying) = tenant_id)`,
+      `note = E'foo\\'::varchar' AND (( SELECT current_setting('app.tenant_id'::text, true)::character varying) = tenant_id)`,
+    ],
+    [
+      "quoted text-like type casts change",
+      `is_allowed('x'::"Text")`,
+      `is_allowed('x')`,
+    ],
+    [
       "large integer literal changes",
       "id = 9007199254740992",
       "id = 9007199254740993",
