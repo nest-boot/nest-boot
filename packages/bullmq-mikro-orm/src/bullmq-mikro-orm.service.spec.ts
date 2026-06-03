@@ -1,8 +1,10 @@
 import { EntityData, EntityManager } from "@mikro-orm/core";
 import { WorkerHost } from "@nest-boot/bullmq";
 import { DiscoveryService } from "@nestjs/core";
+import { Test } from "@nestjs/testing";
 import { Job, JobState, Queue } from "bullmq";
 
+import { MODULE_OPTIONS_TOKEN } from "./bullmq-mikro-orm.module-definition";
 import { BullMQMikroORMService } from "./bullmq-mikro-orm.service";
 import { BullMQMikroORMModuleOptions } from "./bullmq-mikro-orm-module-options.interface";
 import { JobEntity } from "./entities/job.entity";
@@ -46,7 +48,7 @@ function createJob(
   } as unknown as Job;
 }
 
-function createService(
+async function createService(
   options: Partial<BullMQMikroORMModuleOptions> = {},
   providers: unknown[] = [],
 ) {
@@ -63,18 +65,33 @@ function createService(
   const discoveryService = {
     getProviders,
   } as unknown as DiscoveryService;
-
-  const service = new BullMQMikroORMService(discoveryService, em, {
-    jobEntity: JobEntity,
-    ...options,
-  });
+  const moduleRef = await Test.createTestingModule({
+    providers: [
+      BullMQMikroORMService,
+      {
+        provide: DiscoveryService,
+        useValue: discoveryService,
+      },
+      {
+        provide: EntityManager,
+        useValue: em,
+      },
+      {
+        provide: MODULE_OPTIONS_TOKEN,
+        useValue: {
+          jobEntity: JobEntity,
+          ...options,
+        },
+      },
+    ],
+  }).compile();
 
   return {
     discoveryService,
     em,
     fork,
     getProviders,
-    service,
+    service: moduleRef.get(BullMQMikroORMService),
   };
 }
 
@@ -111,7 +128,7 @@ describe("BullMQMikroORMService", () => {
 
   describe("convertJobToEntityData", () => {
     it("should convert a BullMQ job to entity data", async () => {
-      const { service } = createService();
+      const { service } = await createService();
 
       await expect(
         service.convertJobToEntityData(createJob("completed"), "waiting"),
@@ -133,7 +150,7 @@ describe("BullMQMikroORMService", () => {
     });
 
     it("should use the event state when BullMQ returns unknown", async () => {
-      const { service } = createService({
+      const { service } = await createService({
         convertJobToEntityData: () =>
           ({
             tenantId: "tenant-1",
@@ -166,7 +183,7 @@ describe("BullMQMikroORMService", () => {
   });
 
   it("should upsert converted job data by id", async () => {
-    const { fork, service } = createService();
+    const { fork, service } = await createService();
     const job = createJob("waiting");
 
     await service.upsertJob(job, "waiting");
@@ -186,7 +203,7 @@ describe("BullMQMikroORMService", () => {
   it("should delete history jobs older than the configured ttl", async () => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date("2026-01-31T00:00:00.000Z"));
-    const { fork, service } = createService({
+    const { fork, service } = await createService({
       jobTTL: 1000,
     });
 
@@ -199,13 +216,13 @@ describe("BullMQMikroORMService", () => {
     });
   });
 
-  it("should subscribe included queues and workers on application bootstrap", () => {
+  it("should subscribe included queues and workers on application bootstrap", async () => {
     const emailQueue = createQueue("email");
     const ignoredQueue = createQueue("ignored");
     const emailWorkerHost = createWorkerHost("email");
     const ignoredWorkerHost = createWorkerHost("ignored");
     const job = createJob("waiting");
-    const { getProviders, service } = createService(
+    const { getProviders, service } = await createService(
       {
         excludeQueues: ["ignored"],
         includeQueues: ["email", "ignored"],

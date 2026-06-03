@@ -5,6 +5,9 @@ jest.mock("@nest-boot/bullmq", () => ({
 }));
 
 import { Logger } from "@nestjs/common";
+import { DiscoveryService, MetadataScanner, Reflector } from "@nestjs/core";
+import { Test } from "@nestjs/testing";
+import { Queue } from "bullmq";
 
 import { Cron, Interval } from "./schedule.decorator";
 import { SCHEDULE_METADATA_KEY } from "./schedule.module-definition";
@@ -40,7 +43,7 @@ describe("ScheduleRegistry", () => {
     }
   }
 
-  const createRegistry = (
+  const createRegistry = async (
     controller = new ControllerSchedules(),
     provider = new ProviderSchedules(),
     schedulers: {
@@ -84,12 +87,28 @@ describe("ScheduleRegistry", () => {
         ),
       ),
     };
-    const registry = new ScheduleRegistry(
-      queue as never,
-      reflector as never,
-      discoveryService as never,
-      metadataScanner as never,
-    );
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        ScheduleRegistry,
+        {
+          provide: Queue,
+          useValue: queue,
+        },
+        {
+          provide: Reflector,
+          useValue: reflector,
+        },
+        {
+          provide: DiscoveryService,
+          useValue: discoveryService,
+        },
+        {
+          provide: MetadataScanner,
+          useValue: metadataScanner,
+        },
+      ],
+    }).compile();
+    const registry = moduleRef.get(ScheduleRegistry);
 
     jest.spyOn((registry as any).logger, "log").mockImplementation(jest.fn());
 
@@ -113,7 +132,7 @@ describe("ScheduleRegistry", () => {
   });
 
   it("should discover decorated methods, clean stale schedulers, and register schedules", async () => {
-    const { controller, queue, registry } = createRegistry(
+    const { controller, queue, registry } = await createRegistry(
       undefined,
       undefined,
       [
@@ -169,7 +188,7 @@ describe("ScheduleRegistry", () => {
 
   it("should ignore non-object wrappers and methods without schedule metadata", async () => {
     const { discoveryService, metadataScanner, queue, reflector, registry } =
-      createRegistry();
+      await createRegistry();
 
     await registry.onApplicationBootstrap();
 

@@ -1,6 +1,7 @@
 import { RequestContext } from "@nest-boot/request-context";
 import { ExecutionContext, ForbiddenException } from "@nestjs/common";
 import { ModuleRef, Reflector } from "@nestjs/core";
+import { Test } from "@nestjs/testing";
 import type { Request, Response } from "express";
 
 import { PermissionAction } from "./enums/permission-action.enum";
@@ -11,6 +12,7 @@ import {
   ROUTE_ARGS_METADATA,
 } from "./permission.constants";
 import { PermissionGuard } from "./permission.guard";
+import { MODULE_OPTIONS_TOKEN } from "./permission.module-definition";
 import type { BuildAbilityCallback } from "./types/build-ability-callback.type";
 import type { PermissionAbility } from "./types/permission-ability.type";
 import type { RouteArgumentMetadata } from "./types/route-argument-metadata.type";
@@ -32,7 +34,7 @@ describe("PermissionGuard", () => {
   });
 
   it("allows requests without permission metadata", async () => {
-    const { guard, reflector, buildAbility } = createGuard();
+    const { guard, reflector, buildAbility } = await createGuard();
     reflector.getAllAndOverride.mockReturnValue(undefined);
 
     await expect(guard.canActivate(createContext())).resolves.toBe(true);
@@ -41,7 +43,7 @@ describe("PermissionGuard", () => {
   });
 
   it("throws when permission metadata exists but no ability is available", async () => {
-    const { guard, reflector, buildAbility } = createGuard();
+    const { guard, reflector, buildAbility } = await createGuard();
     reflector.getAllAndOverride.mockReturnValue({
       action: PermissionAction.READ,
       subject: Subject,
@@ -64,7 +66,7 @@ describe("PermissionGuard", () => {
     const ability = {
       can: canMock,
     };
-    const { guard, reflector, buildAbility, req, res } = createGuard(
+    const { guard, reflector, buildAbility, req, res } = await createGuard(
       ability as unknown as PermissionAbility,
     );
 
@@ -93,7 +95,7 @@ describe("PermissionGuard", () => {
     const ability = {
       can: canMock,
     };
-    const { guard, reflector, buildAbility, req, res } = createGuard(
+    const { guard, reflector, buildAbility, req, res } = await createGuard(
       ability as unknown as PermissionAbility,
     );
     const gqlContext = { req, res };
@@ -124,7 +126,7 @@ describe("PermissionGuard", () => {
     const ability = {
       can: canMock,
     };
-    const { guard, reflector, buildAbility } = createGuard();
+    const { guard, reflector, buildAbility } = await createGuard();
 
     reflector.getAllAndOverride.mockReturnValue({
       action: PermissionAction.UPDATE,
@@ -157,7 +159,7 @@ describe("PermissionGuard", () => {
     const ability = {
       can: canMock,
     };
-    const { guard, reflector, moduleRef } = createGuard(
+    const { guard, reflector, moduleRef } = await createGuard(
       ability as unknown as PermissionAbility,
       handlerThis,
     );
@@ -218,7 +220,7 @@ describe("PermissionGuard", () => {
     const ability = {
       can: canMock,
     };
-    const { guard, reflector, req, res } = createGuard(
+    const { guard, reflector, req, res } = await createGuard(
       ability as unknown as PermissionAbility,
       handlerThis,
     );
@@ -271,7 +273,7 @@ describe("PermissionGuard", () => {
     const ability = {
       can: canMock,
     };
-    const { guard, reflector, req } = createGuard(
+    const { guard, reflector, req } = await createGuard(
       ability as unknown as PermissionAbility,
       handlerThis,
     );
@@ -348,7 +350,7 @@ describe("PermissionGuard", () => {
     const ability = {
       can: canMock,
     };
-    const { guard, reflector } = createGuard(
+    const { guard, reflector } = await createGuard(
       ability as unknown as PermissionAbility,
       handlerThis,
     );
@@ -415,7 +417,7 @@ describe("PermissionGuard", () => {
     const ability = {
       can: canMock,
     };
-    const { guard, reflector } = createGuard(
+    const { guard, reflector } = await createGuard(
       ability as unknown as PermissionAbility,
       handlerThis,
     );
@@ -538,7 +540,7 @@ describe("PermissionGuard", () => {
     const ability = {
       can: canMock,
     };
-    const { guard, reflector } = createGuard(
+    const { guard, reflector } = await createGuard(
       ability as unknown as PermissionAbility,
       handlerThis,
     );
@@ -612,7 +614,7 @@ describe("PermissionGuard", () => {
     const ability = {
       can: canMock,
     };
-    const { guard, reflector } = createGuard(
+    const { guard, reflector } = await createGuard(
       ability as unknown as PermissionAbility,
       handlerThis,
     );
@@ -664,7 +666,7 @@ describe("PermissionGuard", () => {
     const ability = {
       can: canMock,
     };
-    const { guard, reflector, buildAbility } = createGuard();
+    const { guard, reflector, buildAbility } = await createGuard();
     let resolveAbility!: (ability: PermissionAbility) => void;
     const abilityPromise = new Promise<PermissionAbility>((resolve) => {
       resolveAbility = resolve;
@@ -703,7 +705,7 @@ describe("PermissionGuard", () => {
     const handlerThis = {};
     const subjectFactory = jest.fn(() => subjectInstance);
     const canMock = jest.fn(() => true);
-    const { guard, reflector, moduleRef } = createGuard(
+    const { guard, reflector, moduleRef } = await createGuard(
       {
         can: canMock,
       } as unknown as PermissionAbility,
@@ -732,7 +734,7 @@ describe("PermissionGuard", () => {
     const handlerThis = {};
     const subjectFactory = jest.fn(() => subjectInstance);
     const canMock = jest.fn(() => true);
-    const { guard, reflector } = createGuard(
+    const { guard, reflector } = await createGuard(
       {
         can: canMock,
       } as unknown as PermissionAbility,
@@ -796,7 +798,7 @@ describe("PermissionGuard", () => {
 
   it("returns false when ability denies the permission", async () => {
     const canMock = jest.fn(() => false);
-    const { guard, reflector } = createGuard({
+    const { guard, reflector } = await createGuard({
       can: canMock,
     } as unknown as PermissionAbility);
 
@@ -811,7 +813,7 @@ describe("PermissionGuard", () => {
   });
 });
 
-function createGuard(
+async function createGuard(
   ability: PermissionAbility | null = null,
   handlerThis: unknown = {},
 ) {
@@ -823,19 +825,38 @@ function createGuard(
   const buildAbility: jest.MockedFunction<BuildAbilityCallback> = jest.fn(
     (_ctx) => ability,
   );
-  const moduleRef = {
+  const moduleRefMock = {
     resolve: jest.fn(() => Promise.resolve(handlerThis)),
   } as unknown as ModuleRef & { resolve: jest.Mock };
   const req = {
     headers: {},
   } as Request;
   const res = {} as Response;
+  const testingModule = await Test.createTestingModule({
+    providers: [
+      PermissionGuard,
+      {
+        provide: Reflector,
+        useValue: reflector,
+      },
+      {
+        provide: MODULE_OPTIONS_TOKEN,
+        useValue: {
+          buildAbility,
+        },
+      },
+      {
+        provide: ModuleRef,
+        useValue: moduleRefMock,
+      },
+    ],
+  }).compile();
 
   return {
-    guard: new PermissionGuard(reflector, { buildAbility }, moduleRef),
+    guard: testingModule.get(PermissionGuard),
     reflector,
     buildAbility,
-    moduleRef,
+    moduleRef: moduleRefMock,
     req,
     res,
   };

@@ -5,9 +5,12 @@ import {
 } from "@aws-sdk/client-s3";
 import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
 import { BadRequestException } from "@nestjs/common";
+import { Test } from "@nestjs/testing";
 import { Readable } from "stream";
 
+import { MODULE_OPTIONS_TOKEN } from "./file-upload.module-definition";
 import { FileUploadService } from "./file-upload.service";
+import { type FileUploadModuleOptions } from "./file-upload-options.interface";
 
 jest.mock("@aws-sdk/s3-presigned-post", () => ({
   createPresignedPost: jest.fn(),
@@ -64,7 +67,7 @@ describe("FileUploadService", () => {
   describe("create", () => {
     it("should create presigned upload arguments with limits and a custom public URL", async () => {
       const client = createClient();
-      const service = new FileUploadService({
+      const service = await createService({
         bucket: "uploads",
         client,
         expires: 120,
@@ -124,7 +127,7 @@ describe("FileUploadService", () => {
     });
 
     it("should use the original presigned URL and default expiration when limits are not configured", async () => {
-      const service = new FileUploadService({
+      const service = await createService({
         bucket: "uploads",
         client: createClient(),
       });
@@ -172,7 +175,7 @@ describe("FileUploadService", () => {
     });
 
     it("should reject uploads that do not match configured limits", async () => {
-      const service = new FileUploadService({
+      const service = await createService({
         bucket: "uploads",
         client: createClient(),
         limits: [
@@ -205,7 +208,7 @@ describe("FileUploadService", () => {
         endpoint: "http://s3.local:9000",
         forcePathStyle: true,
       });
-      const service = new FileUploadService({
+      const service = await createService({
         bucket: "uploads",
         client,
       });
@@ -234,7 +237,7 @@ describe("FileUploadService", () => {
         endpoint: "http://s3.local:9000",
         forcePathStyle: true,
       });
-      const service = new FileUploadService({
+      const service = await createService({
         bucket: "uploads",
         client,
       });
@@ -265,7 +268,7 @@ describe("FileUploadService", () => {
     it("should use the provided extension and return a virtual-host style URL", async () => {
       jest.useFakeTimers();
       jest.setSystemTime(new Date("2026-01-31T12:00:00.000Z"));
-      const service = new FileUploadService({
+      const service = await createService({
         bucket: "uploads",
         client: {
           credentials: {
@@ -291,7 +294,7 @@ describe("FileUploadService", () => {
     });
 
     it("should persist uploaded files when requested", async () => {
-      const service = new FileUploadService({
+      const service = await createService({
         bucket: "uploads",
         client: createClient({
           endpoint: "http://s3.local",
@@ -316,7 +319,7 @@ describe("FileUploadService", () => {
     it("should use bin when the MIME type has no known extension", async () => {
       jest.useFakeTimers();
       jest.setSystemTime(new Date("2026-01-31T12:00:00.000Z"));
-      const service = new FileUploadService({
+      const service = await createService({
         bucket: "uploads",
         client: createClient({
           endpoint: "http://s3.local",
@@ -332,7 +335,7 @@ describe("FileUploadService", () => {
     });
 
     it("should throw when the S3 endpoint is not configured", async () => {
-      const service = new FileUploadService({
+      const service = await createService({
         bucket: "uploads",
         client: createClient(),
       });
@@ -362,3 +365,17 @@ describe("FileUploadService", () => {
     });
   });
 });
+
+async function createService(options: FileUploadModuleOptions) {
+  const moduleRef = await Test.createTestingModule({
+    providers: [
+      FileUploadService,
+      {
+        provide: MODULE_OPTIONS_TOKEN,
+        useValue: options,
+      },
+    ],
+  }).compile();
+
+  return moduleRef.get(FileUploadService);
+}

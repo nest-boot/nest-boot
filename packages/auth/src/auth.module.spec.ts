@@ -1,6 +1,8 @@
 import { MikroORM } from "@mikro-orm/core";
+import { MiddlewareManager } from "@nest-boot/middleware";
 import { RequestContextMiddleware } from "@nest-boot/request-context";
 import { MODULE_METADATA } from "@nestjs/common/constants";
+import { Test } from "@nestjs/testing";
 
 const mockBetterAuth = jest.fn((options) => ({
   api: {},
@@ -78,6 +80,37 @@ function createMiddlewareManager() {
     middlewareManager,
     middlewareProxy,
   };
+}
+
+async function createAuthModule(
+  auth: unknown,
+  options: unknown,
+  middlewareManager: unknown,
+  authMiddleware: AuthMiddleware,
+) {
+  const moduleRef = await Test.createTestingModule({
+    providers: [
+      AuthModule,
+      {
+        provide: AUTH_TOKEN,
+        useValue: auth,
+      },
+      {
+        provide: MODULE_OPTIONS_TOKEN,
+        useValue: options,
+      },
+      {
+        provide: MiddlewareManager,
+        useValue: middlewareManager,
+      },
+      {
+        provide: AuthMiddleware,
+        useValue: authMiddleware,
+      },
+    ],
+  }).compile();
+
+  return moduleRef.get(AuthModule);
 }
 
 describe("AuthModule", () => {
@@ -209,7 +242,7 @@ describe("AuthModule", () => {
     ).toThrow("Auth secret appears low-entropy");
   });
 
-  it("should register auth handler and auth middleware routes", () => {
+  it("should register auth handler and auth middleware routes", async () => {
     const auth = {
       api: {},
     };
@@ -218,7 +251,7 @@ describe("AuthModule", () => {
     const { authProxy, middlewareManager, middlewareProxy } =
       createMiddlewareManager();
 
-    new AuthModule(
+    await createAuthModule(
       auth as never,
       {
         basePath: "/auth",
@@ -248,7 +281,7 @@ describe("AuthModule", () => {
     expect(middlewareProxy.forRoutes).toHaveBeenCalledWith("/private");
   });
 
-  it("should use defaults and skip auth middleware registration when disabled", () => {
+  it("should use defaults and skip auth middleware registration when disabled", async () => {
     const auth = {
       api: {},
     };
@@ -257,7 +290,7 @@ describe("AuthModule", () => {
     const { authProxy, middlewareManager, middlewareProxy } =
       createMiddlewareManager();
 
-    new AuthModule(
+    await createAuthModule(
       auth as never,
       {
         entities,

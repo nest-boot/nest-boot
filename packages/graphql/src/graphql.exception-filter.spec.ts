@@ -7,6 +7,7 @@ import {
   Logger,
 } from "@nestjs/common";
 import { BaseExceptionFilter } from "@nestjs/core";
+import { Test } from "@nestjs/testing";
 import { GraphQLError } from "graphql";
 
 import { GraphQLExceptionFilter } from "./graphql.exception-filter";
@@ -32,20 +33,15 @@ describe("GraphQLExceptionFilter", () => {
     jest.restoreAllMocks();
   });
 
-  it("should return GraphQL errors unchanged", () => {
-    const logger = {
-      error: jest.fn(),
-    } as unknown as Logger;
-    const filter = new GraphQLExceptionFilter(logger);
+  it("should return GraphQL errors unchanged", async () => {
+    const { filter } = await createFilter();
     const error = new GraphQLError("already graphql");
 
     expect(filter.transform(error)).toBe(error);
   });
 
-  it("should transform HTTP exceptions with string responses", () => {
-    const filter = new GraphQLExceptionFilter({
-      error: jest.fn(),
-    } as unknown as Logger);
+  it("should transform HTTP exceptions with string responses", async () => {
+    const { filter } = await createFilter();
 
     const error = filter.transform(
       new HttpException("bad input", HttpStatus.BAD_REQUEST),
@@ -58,10 +54,8 @@ describe("GraphQLExceptionFilter", () => {
     });
   });
 
-  it("should transform HTTP exceptions with object responses", () => {
-    const filter = new GraphQLExceptionFilter({
-      error: jest.fn(),
-    } as unknown as Logger);
+  it("should transform HTTP exceptions with object responses", async () => {
+    const { filter } = await createFilter();
 
     expect(
       filter.transform(new BadRequestException({ reason: "bad reason" })),
@@ -80,11 +74,9 @@ describe("GraphQLExceptionFilter", () => {
     });
   });
 
-  it("should hide internal errors in production", () => {
+  it("should hide internal errors in production", async () => {
     process.env.NODE_ENV = "production";
-    const filter = new GraphQLExceptionFilter({
-      error: jest.fn(),
-    } as unknown as Logger);
+    const { filter } = await createFilter();
 
     expect(
       filter.transform(new InternalServerErrorException("secret")),
@@ -102,12 +94,8 @@ describe("GraphQLExceptionFilter", () => {
     });
   });
 
-  it("should log and return transformed errors for GraphQL contexts", () => {
-    const errorLog = jest.fn();
-    const logger = {
-      error: errorLog,
-    } as unknown as Logger;
-    const filter = new GraphQLExceptionFilter(logger);
+  it("should log and return transformed errors for GraphQL contexts", async () => {
+    const { errorLog, filter } = await createFilter();
 
     const result = filter.catch(new Error("boom"), createHost("graphql"));
 
@@ -117,15 +105,11 @@ describe("GraphQLExceptionFilter", () => {
     });
   });
 
-  it("should log and delegate HTTP contexts to the base exception filter", () => {
-    const errorLog = jest.fn();
-    const logger = {
-      error: errorLog,
-    } as unknown as Logger;
+  it("should log and delegate HTTP contexts to the base exception filter", async () => {
+    const { errorLog, filter } = await createFilter();
     const baseCatch = jest
       .spyOn(BaseExceptionFilter.prototype, "catch")
       .mockImplementation();
-    const filter = new GraphQLExceptionFilter(logger);
     const error = new Error("http boom");
     const host = createHost("http");
 
@@ -136,3 +120,23 @@ describe("GraphQLExceptionFilter", () => {
     expect(baseCatch).toHaveBeenCalledWith(error, host);
   });
 });
+
+async function createFilter() {
+  const errorLog = jest.fn();
+  const moduleRef = await Test.createTestingModule({
+    providers: [
+      GraphQLExceptionFilter,
+      {
+        provide: Logger,
+        useValue: {
+          error: errorLog,
+        },
+      },
+    ],
+  }).compile();
+
+  return {
+    errorLog,
+    filter: moduleRef.get(GraphQLExceptionFilter),
+  };
+}
