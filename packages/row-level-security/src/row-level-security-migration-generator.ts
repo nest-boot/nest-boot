@@ -593,7 +593,11 @@ function replaceSqlOutsideQuotedTokens(
 
 function readSqlQuotedTokenEnd(expression: string, startIndex: number) {
   if (expression[startIndex] === "'") {
-    return readSqlStringLiteralEnd(expression, startIndex);
+    return readSqlStringLiteralEnd(
+      expression,
+      startIndex,
+      hasPostgresEscapeStringPrefix(expression, startIndex),
+    );
   }
 
   if (expression[startIndex] === '"') {
@@ -603,10 +607,29 @@ function readSqlQuotedTokenEnd(expression: string, startIndex: number) {
   return readDollarQuotedStringEnd(expression, startIndex);
 }
 
-function readSqlStringLiteralEnd(expression: string, startIndex: number) {
+function hasPostgresEscapeStringPrefix(expression: string, quoteIndex: number) {
+  const prefixIndex = quoteIndex - 1;
+
+  if (!/[eE]/.test(expression[prefixIndex] ?? "")) {
+    return false;
+  }
+
+  return prefixIndex === 0 || !isSqlIdentifierPart(expression[prefixIndex - 1]);
+}
+
+function readSqlStringLiteralEnd(
+  expression: string,
+  startIndex: number,
+  allowBackslashEscapes = false,
+) {
   let index = startIndex + 1;
 
   while (index < expression.length) {
+    if (allowBackslashEscapes && expression[index] === "\\") {
+      index += 2;
+      continue;
+    }
+
     if (expression[index] !== "'") {
       index += 1;
       continue;
@@ -622,6 +645,10 @@ function readSqlStringLiteralEnd(expression: string, startIndex: number) {
   }
 
   return index;
+}
+
+function isSqlIdentifierPart(character: string | undefined) {
+  return character !== undefined && /[A-Za-z0-9_$]/.test(character);
 }
 
 function readQuotedIdentifierEnd(expression: string, startIndex: number) {
@@ -793,12 +820,15 @@ function isTextJsonMember(value: unknown) {
 }
 
 function isTextType(value: unknown) {
-  const typeName =
-    value !== null && typeof value === "object" && !Array.isArray(value)
-      ? (value as Record<string, unknown>).name
-      : undefined;
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+
+  const node = value as Record<string, unknown>;
+  const typeName = node.name;
 
   return (
+    node.doubleQuoted !== true &&
     typeof typeName === "string" &&
     normalizePolicyExpressionDataTypeName(typeName) === "text"
   );
