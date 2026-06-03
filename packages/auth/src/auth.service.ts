@@ -1,5 +1,5 @@
 import { Inject } from "@nestjs/common";
-import { Auth } from "better-auth";
+import { type Auth } from "better-auth";
 
 import { AUTH_TOKEN } from "./auth.constants";
 

@@ -1,3 +1,4 @@
+import { CreateBucketCommand, S3Client } from "@aws-sdk/client-s3";
 import { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import axios from "axios";
@@ -10,14 +11,82 @@ import request from "supertest";
 import { FileUploadService } from "../src";
 import { AppModule } from "./src/app.module";
 
-describe("FileUploadModule - e2e", () => {
+const requiredS3Env = [
+  "S3_ACCESS_KEY_ID",
+  "S3_BUCKET",
+  "S3_ENDPOINT",
+  "S3_SECRET_ACCESS_KEY",
+];
+const describeIfS3Configured = requiredS3Env.every((name) => process.env[name])
+  ? describe
+  : describe.skip;
+
+function getS3Env() {
+  const accessKeyId = process.env.S3_ACCESS_KEY_ID;
+  const bucket = process.env.S3_BUCKET;
+  const endpoint = process.env.S3_ENDPOINT;
+  const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
+
+  if (!accessKeyId || !bucket || !endpoint || !secretAccessKey) {
+    throw new Error(
+      "S3 environment variables are required for this test suite",
+    );
+  }
+
+  return {
+    accessKeyId,
+    bucket,
+    endpoint,
+    secretAccessKey,
+  };
+}
+
+function parseFileSize(value: string) {
+  const parsed = bytes(value);
+
+  if (typeof parsed !== "number") {
+    throw new Error(`Unable to parse file size: ${value}`);
+  }
+
+  return parsed;
+}
+
+async function ensureBucketExists() {
+  const { accessKeyId, bucket, endpoint, secretAccessKey } = getS3Env();
+  const client = new S3Client({
+    credentials: {
+      accessKeyId,
+      secretAccessKey,
+    },
+    endpoint,
+    forcePathStyle: process.env.S3_FORCE_PATH_STYLE === "true",
+    region: process.env.S3_REGION ?? "us-east-1",
+  });
+
+  try {
+    await client.send(
+      new CreateBucketCommand({
+        Bucket: bucket,
+      }),
+    );
+  } catch (error) {
+    const errorName = (error as { name?: string }).name;
+    if (
+      errorName !== "BucketAlreadyExists" &&
+      errorName !== "BucketAlreadyOwnedByYou"
+    ) {
+      throw error;
+    }
+  }
+}
+
+describeIfS3Configured("FileUploadModule - e2e", () => {
   let app: INestApplication;
   let fileUploadService: FileUploadService;
 
   const filename = "test.jpeg";
   const fileSize = 48445;
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  const fileSizeLimited = bytes("100mb")!;
+  const fileSizeLimited = parseFileSize("100mb");
   const mimeType = "image/jpeg";
   const filePath = "./attachments/test.jpeg";
 
@@ -30,6 +99,8 @@ describe("FileUploadModule - e2e", () => {
   let fileTmpUrl: string;
 
   beforeAll(async () => {
+    await ensureBucketExists();
+
     const module = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();

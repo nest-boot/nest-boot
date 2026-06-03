@@ -5,7 +5,7 @@ import {
   RequestContextModule,
 } from "@nest-boot/request-context";
 import { type DynamicModule, Global, Inject, Module } from "@nestjs/common";
-import { Auth, betterAuth } from "better-auth";
+import { type Auth, betterAuth } from "better-auth";
 import { toNodeHandler } from "better-auth/node";
 
 import { mikroOrmAdapter } from "./adapters/mikro-orm-adapter";

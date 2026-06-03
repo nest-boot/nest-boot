@@ -84,6 +84,32 @@ describe("decorators", () => {
 
       expect(hasClassDecorator(classDeclaration, "Entity")).toBe(false);
     });
+
+    it("should return false for non-call and non-identifier class decorators", () => {
+      const classDeclaration = {
+        type: AST_NODE_TYPES.ClassDeclaration,
+        decorators: [
+          {
+            type: AST_NODE_TYPES.Decorator,
+            expression: {
+              type: AST_NODE_TYPES.Identifier,
+              name: "Entity",
+            },
+          },
+          {
+            type: AST_NODE_TYPES.Decorator,
+            expression: {
+              type: AST_NODE_TYPES.CallExpression,
+              callee: {
+                type: AST_NODE_TYPES.MemberExpression,
+              },
+            },
+          },
+        ],
+      } as unknown as TSESTree.ClassDeclaration;
+
+      expect(hasClassDecorator(classDeclaration, "Entity")).toBe(false);
+    });
   });
 
   describe("hasPropertyDecorator", () => {
@@ -145,6 +171,32 @@ describe("decorators", () => {
           } as TSESTree.Decorator,
         ],
       } as TSESTree.PropertyDefinition;
+
+      expect(hasPropertyDecorator(propertyDefinition, "Field")).toBe(false);
+    });
+
+    it("should return false for non-call and non-identifier property decorators", () => {
+      const propertyDefinition = {
+        type: AST_NODE_TYPES.PropertyDefinition,
+        decorators: [
+          {
+            type: AST_NODE_TYPES.Decorator,
+            expression: {
+              type: AST_NODE_TYPES.Identifier,
+              name: "Field",
+            },
+          },
+          {
+            type: AST_NODE_TYPES.Decorator,
+            expression: {
+              type: AST_NODE_TYPES.CallExpression,
+              callee: {
+                type: AST_NODE_TYPES.MemberExpression,
+              },
+            },
+          },
+        ],
+      } as unknown as TSESTree.PropertyDefinition;
 
       expect(hasPropertyDecorator(propertyDefinition, "Field")).toBe(false);
     });

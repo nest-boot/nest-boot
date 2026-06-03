@@ -75,6 +75,24 @@ tester.run("graphql-field-config-from-types", rule, {
         password!: string;
       }
     `,
+    // Configured decorators can be ignored
+    {
+      code: /* typescript */ `
+        @ObjectType()
+        class User {
+          @Internal()
+          @Field(() => String)
+          token!: string;
+        }
+      `,
+      options: [
+        {
+          decorators: {
+            Internal: "ignore" as const,
+          },
+        },
+      ],
+    },
     // Non-GraphQL model class is not checked
     /* typescript */ `
       class NotAGraphQLModel {
@@ -94,6 +112,31 @@ tester.run("graphql-field-config-from-types", rule, {
             : {}),
         })
         query?: string;
+      }
+    `,
+    // Methods are ignored
+    /* typescript */ `
+      @ObjectType()
+      class User {
+        method() {
+          return "value";
+        }
+      }
+    `,
+    // Properties with no usable type information are skipped
+    /* typescript */ `
+      @ObjectType()
+      class User {
+        @Field(() => String)
+        settings = {};
+      }
+    `,
+    // Computed property names fall back to normal type inference
+    /* typescript */ `
+      @ObjectType()
+      class User {
+        @Field(() => String)
+        ["name"]!: string;
       }
     `,
   ],
@@ -237,6 +280,212 @@ tester.run("graphql-field-config-from-types", rule, {
         }
       `,
       errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
+    },
+    // Missing @Field decorator should infer scalar type from the property type
+    {
+      code: /* typescript */ `@ObjectType()
+class User {
+  name!: string;
+}`,
+      output: /* typescript */ `@ObjectType()
+class User {
+  @Field(() => String)
+  name!: string;
+}`,
+      errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
+    },
+    // Missing @Field decorator should add required ID import
+    {
+      code: /* typescript */ `@ObjectType()
+class User {
+  id!: string;
+}`,
+      output: /* typescript */ `import { ID } from "@nestjs/graphql";
+@ObjectType()
+class User {
+  @Field(() => ID)
+  id!: string;
+}`,
+      errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
+    },
+    // Existing scalar imports should be reused
+    {
+      code: /* typescript */ `import { ID } from "@nestjs/graphql";
+@ObjectType()
+class User {
+  ownerID!: string;
+}`,
+      output: /* typescript */ `import { ID } from "@nestjs/graphql";
+@ObjectType()
+class User {
+  @Field(() => ID)
+  ownerID!: string;
+}`,
+      errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
+    },
+    // Record types should use GraphQLJSONObject and add its import
+    {
+      code: /* typescript */ `@ObjectType()
+class User {
+  @Field(() => String)
+  metadata!: Record<string, unknown>;
+}`,
+      output: /* typescript */ `import { GraphQLJSONObject } from "graphql-type-json";
+@ObjectType()
+class User {
+  @Field(() => GraphQLJSONObject)
+  metadata!: Record<string, unknown>;
+}`,
+      errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
+    },
+    // Existing GraphQLJSONObject imports should be reused
+    {
+      code: /* typescript */ `import { GraphQLJSONObject } from "graphql-type-json";
+@ObjectType()
+class User {
+  metadata!: Record<string, unknown>;
+}`,
+      output: /* typescript */ `import { GraphQLJSONObject } from "graphql-type-json";
+@ObjectType()
+class User {
+  @Field(() => GraphQLJSONObject)
+  metadata!: Record<string, unknown>;
+}`,
+      errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
+    },
+    // Ref<T | null> should unwrap the type and mark the field nullable
+    {
+      code: /* typescript */ `@ObjectType()
+class User {
+  friend!: Ref<User | null>;
+}`,
+      output: /* typescript */ `@ObjectType()
+class User {
+  @Field(() => User, { nullable: true })
+  friend!: Ref<User | null>;
+}`,
+      errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
+    },
+    // Ref<T | undefined> should also mark the field nullable
+    {
+      code: /* typescript */ `@ObjectType()
+class User {
+  friend!: Ref<User | undefined>;
+}`,
+      output: /* typescript */ `@ObjectType()
+class User {
+  @Field(() => User, { nullable: true })
+  friend!: Ref<User | undefined>;
+}`,
+      errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
+    },
+    // Union types without nullish members use the first concrete type
+    {
+      code: /* typescript */ `@ObjectType()
+class User {
+  value!: string | number;
+}`,
+      output: /* typescript */ `@ObjectType()
+class User {
+  @Field(() => String)
+  value!: string | number;
+}`,
+      errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
+    },
+    // Undefined unions should be nullable
+    {
+      code: /* typescript */ `@ObjectType()
+class User {
+  nickname!: string | undefined;
+}`,
+      output: /* typescript */ `@ObjectType()
+class User {
+  @Field(() => String, { nullable: true })
+  nickname!: string | undefined;
+}`,
+      errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
+    },
+    // Array<T> should be emitted as a GraphQL array type
+    {
+      code: /* typescript */ `@ObjectType()
+class User {
+  tags!: Array<string>;
+}`,
+      output: /* typescript */ `@ObjectType()
+class User {
+  @Field(() => [String])
+  tags!: Array<string>;
+}`,
+      errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
+    },
+    // Bare Array references should still be handled as identifier types
+    {
+      code: /* typescript */ `@ObjectType()
+class User {
+  values!: Array;
+}`,
+      output: /* typescript */ `@ObjectType()
+class User {
+  @Field(() => Array)
+  values!: Array;
+}`,
+      errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
+    },
+    // Literal initializers should be used when no type annotation exists
+    {
+      code: /* typescript */ `@ObjectType()
+class User {
+  published = true;
+}`,
+      output: /* typescript */ `@ObjectType()
+class User {
+  @Field(() => Boolean)
+  published = true;
+}`,
+      errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
+    },
+    // Number literal initializers should infer Float
+    {
+      code: /* typescript */ `import { Float } from "@nestjs/graphql";
+@ObjectType()
+class User {
+  score = 1;
+}`,
+      output: /* typescript */ `import { Float } from "@nestjs/graphql";
+@ObjectType()
+class User {
+  @Field(() => Float)
+  score = 1;
+}`,
+      errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
+    },
+    // String literal initializers should infer String
+    {
+      code: /* typescript */ `@ObjectType()
+class User {
+  title = "hello";
+}`,
+      output: /* typescript */ `@ObjectType()
+class User {
+  @Field(() => String)
+  title = "hello";
+}`,
+      errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
+    },
+    // Relation decorators configured for removal should remove @Field
+    {
+      code: /* typescript */ `@ObjectType()
+class User {
+  @HideField()
+  @Field(() => String)
+  password!: string;
+}`,
+      output: /* typescript */ `@ObjectType()
+class User {
+  @HideField()
+  password!: string;
+}`,
+      errors: [{ messageId: "removeFieldDecorator" }],
     },
   ],
 });

@@ -57,6 +57,23 @@ tester.run("graphql-field-definite-assignment", rule, {
         field: string;
       }
     `,
+    // Methods are ignored
+    /* typescript */ `
+      @ObjectType()
+      class User {
+        method() {
+          return "value";
+        }
+      }
+    `,
+    // Computed property names are skipped
+    /* typescript */ `
+      @ObjectType()
+      class User {
+        @Field()
+        ["name"]: string;
+      }
+    `,
   ],
   invalid: [
     // No initializer and no !

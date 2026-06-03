@@ -1320,6 +1320,26 @@ describe("RowLevelSecurityMigrator", () => {
 
     await expect(migrator.checkMigrationNeeded()).resolves.toBe(true);
   });
+
+  it("reports migration needed when MikroORM schema diff has up statements", async () => {
+    const diff = { up: ["create table workspace (id int);"], down: [] };
+    const generator = createGenerator([]);
+    const hasPendingPolicyChanges = jest.spyOn(
+      generator,
+      "hasPendingPolicyChanges",
+    );
+    const migrator = Object.assign(
+      Object.create(RowLevelSecurityMigrator.prototype),
+      {
+        generator,
+        ensureMigrationsDirExists: jest.fn(),
+        getSchemaDiff: jest.fn().mockResolvedValue(diff),
+      },
+    ) as RowLevelSecurityMigrator;
+
+    await expect(migrator.checkMigrationNeeded()).resolves.toBe(true);
+    expect(hasPendingPolicyChanges).not.toHaveBeenCalled();
+  });
 });
 
 function createGenerator(

@@ -1,9 +1,11 @@
+import { RequestContext } from "@nest-boot/request-context";
 import { type CanActivate, type ExecutionContext } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { of } from "rxjs";
 
 import { IS_PUBLIC_KEY } from "./auth.constants";
 import { AuthGuard } from "./auth.guard";
+import { BaseSession } from "./entities";
 
 class PromiseAuthGuard extends AuthGuard {
   override canActivate(
@@ -28,6 +30,10 @@ class PublicAwareAuthGuard extends AuthGuard {
 }
 
 describe("AuthGuard", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it("allows subclasses to return the full CanActivate result type", () => {
     expect(PromiseAuthGuard).toBeDefined();
     expect(ObservableAuthGuard).toBeDefined();
@@ -52,5 +58,35 @@ describe("AuthGuard", () => {
       handler,
       TestController,
     ]);
+  });
+
+  it("allows public routes without a session", () => {
+    const guard = new AuthGuard({
+      getAllAndOverride: jest.fn(() => true),
+    } as unknown as Reflector);
+    const context = {
+      getClass: jest.fn(),
+      getHandler: jest.fn(),
+    } as unknown as ExecutionContext;
+
+    expect(guard.canActivate(context)).toBe(true);
+  });
+
+  it("requires a session for non-public routes", () => {
+    const guard = new AuthGuard({
+      getAllAndOverride: jest.fn(() => false),
+    } as unknown as Reflector);
+    const context = {
+      getClass: jest.fn(),
+      getHandler: jest.fn(),
+    } as unknown as ExecutionContext;
+    const get = jest.spyOn(RequestContext, "get");
+
+    get.mockReturnValueOnce(undefined);
+    expect(guard.canActivate(context)).toBe(false);
+    expect(get).toHaveBeenCalledWith(BaseSession);
+
+    get.mockReturnValueOnce(new BaseSession());
+    expect(guard.canActivate(context)).toBe(true);
   });
 });
