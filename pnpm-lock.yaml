@@ -1501,6 +1501,10 @@ importers:
         version: 5.9.3
 
   packages/row-level-security:
+    dependencies:
+      pgsql-ast-parser:
+        specifier: ^12.0.2
+        version: 12.0.2
     devDependencies:
       '@mikro-orm/core':
         specifier: 6.6.2
@@ -6937,6 +6941,9 @@ packages:
 
   pgpass@1.0.5:
     resolution: {integrity: sha512-FdW9r/jQZhSeohs1Z3sI1yxFQNFvMcnmfuj4WBMUTxOrAyLMaTcE1aAMBiTlbMNaXvBCQuVi0R7hd8udDSP7ug==}
+
+  pgsql-ast-parser@12.0.2:
+    resolution: {integrity: sha512-1WWa96Sw6h4uv9GLw98EzH/+xoBTC8j2TwV/AMW3E+Ir/fHOu/jLLbj6kPiz3y2bGISTKNYvKWwHoqvQ5FLuAw==}
 
   pgvector@0.2.1:
     resolution: {integrity: sha512-nKaQY9wtuiidwLMdVIce1O3kL0d+FxrigCVzsShnoqzOSaWWWOvuctb/sYwlai5cTwwzRSNa+a/NtN2kVZGNJw==}
@@ -15145,6 +15152,11 @@ snapshots:
   pgpass@1.0.5:
     dependencies:
       split2: 4.2.0
+
+  pgsql-ast-parser@12.0.2:
+    dependencies:
+      moo: 0.5.2
+      nearley: 2.20.1
 
   pgvector@0.2.1: {}
 

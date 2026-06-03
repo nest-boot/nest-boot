@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 
 import { TSMigrationGenerator } from "@mikro-orm/migrations";
+import type { Expr, SelectStatement } from "pgsql-ast-parser";
+import { parse } from "pgsql-ast-parser";
 
 import { getPolicyDefinitions } from "./decorators/policy.decorator";
 import { PolicyCommand } from "./enums/policy-command.enum";
@@ -23,7 +25,6 @@ import {
   getPolicyRoleNames,
 } from "./utils/create-policy-role-sql-statements";
 import { createPolicyUpSqlStatements } from "./utils/create-policy-up-sql-statements";
-import { isPostgresKeywordRequiringQuote } from "./utils/is-postgres-keyword-requiring-quote";
 import { normalizePostgresTypeAlias } from "./utils/normalize-postgres-type-alias";
 
 const POSTGRES_IDENTIFIER_MAX_LENGTH = 63;
@@ -455,10 +456,8 @@ function hasSamePolicyDefinitionContent(
     normalizePolicyMode(left.mode) === normalizePolicyMode(right.mode) &&
     normalizePolicyCommand(left.command) ===
       normalizePolicyCommand(right.command) &&
-    normalizePolicyExpression(left.using) ===
-      normalizePolicyExpression(right.using) &&
-    normalizePolicyExpression(left.withCheck) ===
-      normalizePolicyExpression(right.withCheck) &&
+    hasSamePolicyExpression(left.using, right.using) &&
+    hasSamePolicyExpression(left.withCheck, right.withCheck) &&
     normalizePolicyRoles(left.roles).join("\n") ===
       normalizePolicyRoles(right.roles).join("\n")
   );
@@ -472,6 +471,20 @@ function normalizePolicyCommand(command: PolicyCommand | undefined) {
   return command ?? PolicyCommand.ALL;
 }
 
+function hasSamePolicyExpression(
+  left: string | undefined,
+  right: string | undefined,
+) {
+  const normalizedLeft = normalizePolicyExpression(left);
+  const normalizedRight = normalizePolicyExpression(right);
+
+  return (
+    normalizedLeft !== undefined &&
+    normalizedRight !== undefined &&
+    normalizedLeft === normalizedRight
+  );
+}
+
 function normalizePolicyExpression(expression: string | undefined) {
   const normalized = expression?.trim();
 
@@ -483,347 +496,71 @@ function normalizePolicyExpression(expression: string | undefined) {
 }
 
 function normalizePostgresExpression(expression: string) {
-  const normalized = stripSelectProjectionAliases(
-    mapSqlOutsideQuotedTokens(
-      expression.replace(/'((?:''|[^'])*)'::text\b/gi, "'$1'"),
-      normalizePostgresExpressionSegment,
-    ).trim(),
-  );
+  const parsed = parsePolicyExpressionAst(expression);
 
-  return stripRedundantJsonOperandParentheses(
-    stripRedundantOuterParentheses(
-      stripRedundantCurrentSettingCastParentheses(normalized),
-    ),
-  );
-}
-
-function stripRedundantCurrentSettingCastParentheses(expression: string) {
-  return expression.replace(
-    /\((current_setting\('(?:''|[^'])*', true\))\)::/gi,
-    "$1::",
-  );
-}
-
-function normalizePostgresExpressionSegment(segment: string) {
-  return normalizeSqlOperatorSpacing(
-    normalizeNullTypeCasts(
-      segment
-        .replace(/\s+/g, " ")
-        .replace(/\b(select|and|or|not|is|true|false|null|as)\b/gi, (match) =>
-          match.toLowerCase(),
-        )
-        .replace(/\s*,\s*/g, ", "),
-    ),
-  )
-    .replace(/\(\s+/g, "(")
-    .replace(/\s+\)/g, ")");
-}
-
-function normalizeNullTypeCasts(segment: string) {
-  return segment
-    .replace(
-      /\bnull::(?:character\s+varying|varchar)(?:\s*\([^)]*\))?/gi,
-      "null::character varying",
-    )
-    .replace(
-      /\bnull::(?:timestamp\s+with\s+time\s+zone|timestamptz)\b/gi,
-      "null::timestamp with time zone",
-    )
-    .replace(
-      /\bnull::([a-z_][a-z0-9_.]*)/gi,
-      (_match, type: string) =>
-        `null::${normalizePostgresTypeAlias(type.toLowerCase())}`,
-    );
-}
-
-function normalizeSqlOperatorSpacing(segment: string) {
-  const jsonOperators: string[] = [];
-  const protectedSegment = segment.replace(
-    /\s*(#>>|#>|->>|->|@>|<@)\s*/g,
-    (_match, operator: string) => {
-      const placeholder = `__rls_json_operator_${String(jsonOperators.length)}__`;
-      jsonOperators.push(` ${operator} `);
-      return placeholder;
-    },
-  );
-
-  return protectedSegment
-    .replace(
-      /\s*(<>|!=|<=|>=|=|<|>)\s*/g,
-      (_match, operator: string) => ` ${operator === "!=" ? "<>" : operator} `,
-    )
-    .replace(
-      /__rls_json_operator_(\d+)__/g,
-      (_match, index: string) => jsonOperators[Number(index)],
-    );
-}
-
-function stripSelectProjectionAliases(expression: string) {
-  let normalized = "";
-  const selectDepths = new Set<number>();
-  let depth = 0;
-  let index = 0;
-
-  while (index < expression.length) {
-    const character = expression[index];
-
-    if (character === "'") {
-      const literalEnd = readSqlStringLiteralEnd(expression, index);
-      normalized += expression.slice(index, literalEnd);
-      index = literalEnd;
-      continue;
-    }
-
-    if (character === '"') {
-      const identifierEnd = readQuotedIdentifierEnd(expression, index);
-      normalized += expression.slice(index, identifierEnd);
-      index = identifierEnd;
-      continue;
-    }
-
-    if (character === "(") {
-      depth += 1;
-      normalized += character;
-      index += 1;
-      continue;
-    }
-
-    if (character === ")") {
-      selectDepths.delete(depth);
-      depth -= 1;
-      normalized += character;
-      index += 1;
-      continue;
-    }
-
-    const wordEnd = readSqlWordEnd(expression, index);
-
-    if (wordEnd > index) {
-      const word = expression.slice(index, wordEnd);
-      const lowerWord = word.toLowerCase();
-
-      if (lowerWord === "select") {
-        selectDepths.add(depth);
-      }
-
-      if (lowerWord === "as" && selectDepths.has(depth)) {
-        const aliasEnd = readSelectProjectionAliasEnd(expression, wordEnd);
-
-        if (aliasEnd !== undefined) {
-          normalized = normalized.replace(/\s+$/, "");
-          index = aliasEnd;
-          continue;
-        }
-      }
-
-      normalized += word;
-      index = wordEnd;
-      continue;
-    }
-
-    normalized += character;
-    index += 1;
-  }
-
-  return normalized;
-}
-
-function readSelectProjectionAliasEnd(expression: string, startIndex: number) {
-  const aliasStart = skipSqlWhitespace(expression, startIndex);
-  const aliasEnd = readSqlIdentifierEnd(expression, aliasStart);
-
-  if (aliasEnd === aliasStart) {
+  if (!parsed) {
     return undefined;
   }
 
-  const nextIndex = skipSqlWhitespace(expression, aliasEnd);
-
-  return expression[nextIndex] === ")" ? nextIndex : undefined;
-}
-
-function stripRedundantOuterParentheses(expression: string) {
-  let normalized = expression;
-
-  while (isWrappedInParentheses(normalized)) {
-    normalized = normalized.slice(1, -1).trim();
-  }
-
-  return normalized;
-}
-
-function stripRedundantJsonOperandParentheses(expression: string) {
-  let normalized = expression;
-  let previous: string;
-
-  do {
-    previous = normalized;
-    normalized = stripRedundantJsonOperandParenthesesOnce(normalized);
-  } while (normalized !== previous);
-
-  return normalized;
-}
-
-function stripRedundantJsonOperandParenthesesOnce(expression: string) {
-  const removals = new Set<number>();
-  const parenthesisPairs = findParenthesisPairs(expression);
-
-  for (const [start, end] of parenthesisPairs) {
-    const innerExpression = expression.slice(start + 1, end);
-
-    if (
-      hasTopLevelJsonOperator(innerExpression) &&
-      (hasComparisonOperatorBefore(expression, start) ||
-        hasComparisonOperatorAfter(expression, end))
-    ) {
-      removals.add(start);
-      removals.add(end);
-    }
-  }
-
-  if (removals.size === 0) {
-    return expression;
-  }
-
-  return [...expression]
-    .filter((_character, index) => !removals.has(index))
-    .join("");
-}
-
-function isWrappedInParentheses(expression: string) {
-  if (!expression.startsWith("(") || !expression.endsWith(")")) {
-    return false;
-  }
-
-  let depth = 0;
-  let index = 0;
-
-  while (index < expression.length) {
-    const character = expression[index];
-
-    if (character === "'") {
-      index = readSqlStringLiteralEnd(expression, index);
-      continue;
-    }
-
-    if (character === '"') {
-      index = readQuotedIdentifierEnd(expression, index);
-      continue;
-    }
-
-    if (character === "(") {
-      depth += 1;
-    } else if (character === ")") {
-      depth -= 1;
-
-      if (depth === 0 && index < expression.length - 1) {
-        return false;
-      }
-    }
-
-    if (depth < 0) {
-      return false;
-    }
-
-    index += 1;
-  }
-
-  return depth === 0;
-}
-
-function findParenthesisPairs(expression: string) {
-  const pairs: [number, number][] = [];
-  const stack: number[] = [];
-  let index = 0;
-
-  while (index < expression.length) {
-    const character = expression[index];
-
-    if (character === "'") {
-      index = readSqlStringLiteralEnd(expression, index);
-      continue;
-    }
-
-    if (character === '"') {
-      index = readQuotedIdentifierEnd(expression, index);
-      continue;
-    }
-
-    if (character === "(") {
-      stack.push(index);
-    } else if (character === ")") {
-      const start = stack.pop();
-
-      if (start !== undefined) {
-        pairs.push([start, index]);
-      }
-    }
-
-    index += 1;
-  }
-
-  return pairs;
-}
-
-function hasTopLevelJsonOperator(expression: string) {
-  let depth = 0;
-  let index = 0;
-
-  while (index < expression.length) {
-    const character = expression[index];
-
-    if (character === "'") {
-      index = readSqlStringLiteralEnd(expression, index);
-      continue;
-    }
-
-    if (character === '"') {
-      index = readQuotedIdentifierEnd(expression, index);
-      continue;
-    }
-
-    if (character === "(") {
-      depth += 1;
-      index += 1;
-      continue;
-    }
-
-    if (character === ")") {
-      depth -= 1;
-      index += 1;
-      continue;
-    }
-
-    if (depth === 0) {
-      const jsonOperator = readJsonOperatorAt(expression, index);
-
-      if (jsonOperator) {
-        return true;
-      }
-    }
-
-    index += 1;
-  }
-
-  return false;
-}
-
-function hasComparisonOperatorBefore(expression: string, startIndex: number) {
-  const operatorEnd =
-    skipSqlWhitespaceBackwards(expression, startIndex - 1) + 1;
-
-  return ["<>", "!=", "<=", ">=", "=", "<", ">"].some(
-    (operator) =>
-      expression.slice(operatorEnd - operator.length, operatorEnd) === operator,
+  return JSON.stringify(
+    canonicalizePolicyExpressionAst(parsed.ast, parsed.sql),
   );
 }
 
-function hasComparisonOperatorAfter(expression: string, endIndex: number) {
-  const operatorStart = skipSqlWhitespace(expression, endIndex + 1);
+function parsePolicyExpressionAst(expression: string) {
+  const parsed = parsePolicyExpressionStatement(expression);
 
-  return Boolean(readComparisonOperatorAt(expression, operatorStart));
+  if (parsed?.statement.type !== "select" || !parsed.statement.where) {
+    return undefined;
+  }
+
+  return {
+    ast: parsed.statement.where,
+    sql: parsed.sql,
+  };
 }
 
-function mapSqlOutsideQuotedTokens(
+function parsePolicyExpressionStatement(expression: string) {
+  const sql = `select 1 where ${expression}`;
+
+  try {
+    return {
+      sql,
+      statement: parse(sql, { locationTracking: true })[0] as SelectStatement,
+    };
+  } catch {
+    const parserCompatibleExpression =
+      getPolicyExpressionForAstParser(expression);
+
+    if (parserCompatibleExpression !== expression) {
+      try {
+        const parserCompatibleSql = `select 1 where ${parserCompatibleExpression}`;
+
+        return {
+          sql: parserCompatibleSql,
+          statement: parse(parserCompatibleSql, {
+            locationTracking: true,
+          })[0] as SelectStatement,
+        };
+      } catch {
+        return undefined;
+      }
+    }
+
+    return undefined;
+  }
+}
+
+function getPolicyExpressionForAstParser(expression: string) {
+  // pgsql-ast-parser treats these multi-word casts in select projections as ambiguous.
+  return replaceSqlOutsideQuotedTokens(expression, (segment) =>
+    segment
+      .replace(/::\s*character\s+varying\b/gi, "::varchar")
+      .replace(/::\s*bit\s+varying\b/gi, "::varbit"),
+  );
+}
+
+function replaceSqlOutsideQuotedTokens(
   expression: string,
   transform: (segment: string) => string,
 ) {
@@ -832,26 +569,17 @@ function mapSqlOutsideQuotedTokens(
   let index = 0;
 
   while (index < expression.length) {
-    if (expression[index] !== "'" && expression[index] !== '"') {
+    const tokenEnd = readSqlQuotedTokenEnd(expression, index);
+
+    if (tokenEnd === undefined) {
       index += 1;
       continue;
     }
 
     parts.push(transform(expression.slice(segmentStart, index)));
-
-    if (expression[index] === "'") {
-      const literalStart = index;
-      index = readSqlStringLiteralEnd(expression, index);
-      parts.push(expression.slice(literalStart, index));
-    } else {
-      const identifierStart = index;
-      index = readQuotedIdentifierEnd(expression, index);
-      parts.push(
-        normalizeQuotedIdentifier(expression.slice(identifierStart, index)),
-      );
-    }
-
-    segmentStart = index;
+    parts.push(expression.slice(index, tokenEnd));
+    segmentStart = tokenEnd;
+    index = tokenEnd;
   }
 
   parts.push(transform(expression.slice(segmentStart)));
@@ -859,17 +587,16 @@ function mapSqlOutsideQuotedTokens(
   return parts.join("");
 }
 
-function normalizeQuotedIdentifier(identifierToken: string) {
-  const identifier = identifierToken.slice(1, -1).replace(/""/g, '"');
-
-  if (
-    /^[a-z_][a-z0-9_]*$/.test(identifier) &&
-    !isPostgresKeywordRequiringQuote(identifier)
-  ) {
-    return identifier;
+function readSqlQuotedTokenEnd(expression: string, startIndex: number) {
+  if (expression[startIndex] === "'") {
+    return readSqlStringLiteralEnd(expression, startIndex);
   }
 
-  return identifierToken;
+  if (expression[startIndex] === '"') {
+    return readQuotedIdentifierEnd(expression, startIndex);
+  }
+
+  return readDollarQuotedStringEnd(expression, startIndex);
 }
 
 function readSqlStringLiteralEnd(expression: string, startIndex: number) {
@@ -914,58 +641,213 @@ function readQuotedIdentifierEnd(expression: string, startIndex: number) {
   return index;
 }
 
-function readSqlIdentifierEnd(expression: string, startIndex: number) {
-  if (expression[startIndex] === '"') {
-    return readQuotedIdentifierEnd(expression, startIndex);
+function readDollarQuotedStringEnd(expression: string, startIndex: number) {
+  const delimiter = /^\$[a-z_][a-z0-9_]*\$|^\$\$/i.exec(
+    expression.slice(startIndex),
+  )?.[0];
+
+  if (!delimiter) {
+    return undefined;
   }
 
-  return readSqlWordEnd(expression, startIndex);
+  const endIndex = expression.indexOf(delimiter, startIndex + delimiter.length);
+
+  return endIndex === -1 ? expression.length : endIndex + delimiter.length;
 }
 
-function readJsonOperatorAt(expression: string, startIndex: number) {
-  return ["#>>", "->>", "#>", "->", "@>", "<@"].find((operator) =>
-    expression.startsWith(operator, startIndex),
+type CanonicalPolicyExpressionAst =
+  | string
+  | number
+  | boolean
+  | null
+  | CanonicalPolicyExpressionAst[]
+  | { [key: string]: CanonicalPolicyExpressionAst };
+
+function canonicalizePolicyExpressionAst(
+  value: unknown,
+  sourceSql: string,
+): CanonicalPolicyExpressionAst {
+  if (value === null || typeof value !== "object") {
+    return value === undefined
+      ? null
+      : (value as string | number | boolean | null);
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) =>
+      canonicalizePolicyExpressionAst(item, sourceSql),
+    );
+  }
+
+  if (isRedundantTextCast(value)) {
+    return canonicalizePolicyExpressionAst(value.operand, sourceSql);
+  }
+
+  const node = value as Record<string, unknown>;
+  const entries: [string, CanonicalPolicyExpressionAst][] = [];
+
+  for (const key of Object.keys(node).sort()) {
+    const property = node[key];
+
+    if (property === undefined || key === "_location") {
+      continue;
+    }
+
+    if (key === "alias" && "expr" in node) {
+      continue;
+    }
+
+    if (key === "value" && isNumericPolicyExpressionAstNode(node)) {
+      entries.push([
+        key,
+        getPolicyExpressionAstNodeSource(node, sourceSql) ??
+          canonicalizePolicyExpressionAst(property, sourceSql),
+      ]);
+      continue;
+    }
+
+    if (key === "op" && typeof property === "string") {
+      entries.push([key, normalizePolicyExpressionOperator(property)]);
+      continue;
+    }
+
+    if (key === "to" && node.type === "cast") {
+      entries.push([
+        key,
+        canonicalizePolicyExpressionDataType(property, sourceSql),
+      ]);
+      continue;
+    }
+
+    entries.push([key, canonicalizePolicyExpressionAst(property, sourceSql)]);
+  }
+
+  return Object.fromEntries(entries);
+}
+
+function canonicalizePolicyExpressionDataType(
+  value: unknown,
+  sourceSql: string,
+): CanonicalPolicyExpressionAst {
+  if (value === null || typeof value !== "object") {
+    return value === undefined
+      ? null
+      : (value as string | number | boolean | null);
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) =>
+      canonicalizePolicyExpressionDataType(item, sourceSql),
+    );
+  }
+
+  const node = value as Record<string, unknown>;
+  const entries: [string, CanonicalPolicyExpressionAst][] = [];
+  const isDoubleQuoted = node.doubleQuoted === true;
+
+  for (const key of Object.keys(node).sort()) {
+    const property = node[key];
+
+    if (property === undefined || key === "_location") {
+      continue;
+    }
+
+    if (key === "name" && typeof property === "string" && !isDoubleQuoted) {
+      entries.push([key, normalizePolicyExpressionDataTypeName(property)]);
+      continue;
+    }
+
+    if (key === "arrayOf") {
+      entries.push([
+        key,
+        canonicalizePolicyExpressionDataType(property, sourceSql),
+      ]);
+      continue;
+    }
+
+    entries.push([key, canonicalizePolicyExpressionAst(property, sourceSql)]);
+  }
+
+  return Object.fromEntries(entries);
+}
+
+function isRedundantTextCast(
+  value: object,
+): value is Expr & { type: "cast"; operand: Expr } {
+  if (!isPolicyExpressionAstNode(value, "cast") || !isTextType(value.to)) {
+    return false;
+  }
+
+  return (
+    isPolicyExpressionAstNode(value.operand, "string") ||
+    isTextJsonMember(value.operand)
   );
 }
 
-function readComparisonOperatorAt(expression: string, startIndex: number) {
-  return ["<>", "!=", "<=", ">=", "=", "<", ">"].find((operator) =>
-    expression.startsWith(operator, startIndex),
+function isTextJsonMember(value: unknown) {
+  return isPolicyExpressionAstNode(value, "member") && value.op === "->>";
+}
+
+function isTextType(value: unknown) {
+  const typeName =
+    value !== null && typeof value === "object" && !Array.isArray(value)
+      ? (value as Record<string, unknown>).name
+      : undefined;
+
+  return (
+    typeof typeName === "string" &&
+    normalizePolicyExpressionDataTypeName(typeName) === "text"
   );
 }
 
-function readSqlWordEnd(expression: string, startIndex: number) {
-  if (!/[a-z_]/i.test(expression[startIndex] ?? "")) {
-    return startIndex;
-  }
-
-  let index = startIndex + 1;
-
-  while (/[a-z0-9_$]/i.test(expression[index] ?? "")) {
-    index += 1;
-  }
-
-  return index;
+function isNumericPolicyExpressionAstNode(value: Record<string, unknown>) {
+  return value.type === "integer" || value.type === "numeric";
 }
 
-function skipSqlWhitespace(expression: string, startIndex: number) {
-  let index = startIndex;
+function getPolicyExpressionAstNodeSource(
+  value: Record<string, unknown>,
+  sourceSql: string,
+) {
+  const location = value._location;
 
-  while (/\s/.test(expression[index] ?? "")) {
-    index += 1;
+  if (
+    location === null ||
+    typeof location !== "object" ||
+    Array.isArray(location)
+  ) {
+    return undefined;
   }
 
-  return index;
+  const start = (location as Record<string, unknown>).start;
+  const end = (location as Record<string, unknown>).end;
+
+  if (typeof start !== "number" || typeof end !== "number") {
+    return undefined;
+  }
+
+  return sourceSql.slice(start, end);
 }
 
-function skipSqlWhitespaceBackwards(expression: string, startIndex: number) {
-  let index = startIndex;
+function isPolicyExpressionAstNode<TType extends string>(
+  value: unknown,
+  type: TType,
+): value is Record<string, unknown> & { type: TType } {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    (value as Record<string, unknown>).type === type
+  );
+}
 
-  while (/\s/.test(expression[index] ?? "")) {
-    index -= 1;
-  }
+function normalizePolicyExpressionDataTypeName(typeName: string) {
+  return normalizePostgresTypeAlias(
+    typeName.toLowerCase().replace(/\s+/g, " "),
+  );
+}
 
-  return index;
+function normalizePolicyExpressionOperator(operator: string) {
+  return operator === "!=" ? "<>" : operator;
 }
 
 function normalizePolicyRoles(roles: string[] | undefined) {
