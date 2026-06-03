@@ -495,6 +495,11 @@ describe("RowLevelSecurityMigrationGenerator", () => {
       `status != 'deleted'`,
       `(status <> 'deleted'::text)`,
     ],
+    [
+      "unsupported PostgreSQL predicate syntax exact match",
+      "deleted_at IS DISTINCT FROM NULL",
+      "deleted_at IS DISTINCT FROM NULL",
+    ],
   ])(
     "does not recreate unchanged explicit policies with %s",
     async (_name, using, databaseQual) => {
@@ -524,7 +529,7 @@ describe("RowLevelSecurityMigrationGenerator", () => {
     [
       "unsupported PostgreSQL predicate syntax",
       "deleted_at IS DISTINCT FROM NULL",
-      "deleted_at IS DISTINCT FROM NULL",
+      "created_at IS DISTINCT FROM NULL",
     ],
     [
       "string literal text inside parser fallback expressions changes",
