@@ -1,4 +1,6 @@
 import { RequestContext } from "@nest-boot/request-context";
+import { INQUIRER } from "@nestjs/core";
+import { Test } from "@nestjs/testing";
 
 const mockPinoLogger = {
   child: jest.fn(),
@@ -26,8 +28,8 @@ describe("Logger", () => {
     jest.clearAllMocks();
   });
 
-  it("should default context to the parent class name and allow overriding it", () => {
-    const logger = new Logger(new ParentService());
+  it("should default context to the parent class name and allow overriding it", async () => {
+    const logger = await createLogger();
 
     expect(logger.getContext()).toBe("ParentService");
 
@@ -36,12 +38,12 @@ describe("Logger", () => {
     expect(logger.getContext()).toBe("CustomContext");
   });
 
-  it("should merge bindings into request context", () => {
+  it("should merge bindings into request context", async () => {
     jest.spyOn(RequestContext, "get").mockReturnValue({
       requestId: "request-1",
     });
     const set = jest.spyOn(RequestContext, "set").mockImplementation();
-    const logger = new Logger(new ParentService());
+    const logger = await createLogger();
 
     logger.assign({
       tenantId: "tenant-1",
@@ -53,10 +55,10 @@ describe("Logger", () => {
     });
   });
 
-  it("should assign bindings when request context has no existing bindings", () => {
+  it("should assign bindings when request context has no existing bindings", async () => {
     jest.spyOn(RequestContext, "get").mockReturnValue(undefined);
     const set = jest.spyOn(RequestContext, "set").mockImplementation();
-    const logger = new Logger(new ParentService());
+    const logger = await createLogger();
 
     logger.assign({
       tenantId: "tenant-1",
@@ -67,11 +69,11 @@ describe("Logger", () => {
     });
   });
 
-  it("should log with the global pino logger when request context is inactive", () => {
+  it("should log with the global pino logger when request context is inactive", async () => {
     jest.spyOn(RequestContext, "get").mockImplementation(() => {
       throw new Error("Request context is not active");
     });
-    const logger = new Logger(new ParentService());
+    const logger = await createLogger();
 
     logger.verbose("trace message");
     logger.debug("debug message");
@@ -113,7 +115,7 @@ describe("Logger", () => {
     );
   });
 
-  it("should log with request-scoped pino logger and bindings", () => {
+  it("should log with request-scoped pino logger and bindings", async () => {
     const requestLogger = {
       warn: jest.fn(),
     };
@@ -126,7 +128,7 @@ describe("Logger", () => {
       }
       return undefined;
     });
-    const logger = new Logger(new ParentService());
+    const logger = await createLogger();
 
     logger.warn("warn message");
 
@@ -139,7 +141,7 @@ describe("Logger", () => {
     );
   });
 
-  it("should log with empty bindings when request context has no bindings", () => {
+  it("should log with empty bindings when request context has no bindings", async () => {
     const requestLogger = {
       debug: jest.fn(),
     };
@@ -147,7 +149,7 @@ describe("Logger", () => {
       if (token === PINO_LOGGER) return requestLogger;
       return undefined;
     });
-    const logger = new Logger(new ParentService());
+    const logger = await createLogger();
 
     logger.debug("debug message");
 
@@ -159,3 +161,17 @@ describe("Logger", () => {
     );
   });
 });
+
+async function createLogger() {
+  const moduleRef = await Test.createTestingModule({
+    providers: [
+      Logger,
+      {
+        provide: INQUIRER,
+        useValue: new ParentService(),
+      },
+    ],
+  }).compile();
+
+  return await moduleRef.resolve(Logger);
+}

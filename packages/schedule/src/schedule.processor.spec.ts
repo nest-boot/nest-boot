@@ -12,8 +12,13 @@ jest.mock("@nest-boot/bullmq", () => ({
   },
 }));
 
+import { type Provider } from "@nestjs/common";
+import { Test } from "@nestjs/testing";
+
+import { MODULE_OPTIONS_TOKEN } from "./schedule.module-definition";
 import { ScheduleProcessor } from "./schedule.processor";
-import { type ScheduleRegistry } from "./schedule.registry";
+import { ScheduleRegistry } from "./schedule.registry";
+import { type ScheduleModuleOptions } from "./schedule-module-options.interface";
 
 describe("ScheduleProcessor", () => {
   const createRegistry = (entry?: ReturnType<ScheduleRegistry["get"]>) => {
@@ -43,7 +48,7 @@ describe("ScheduleProcessor", () => {
         value: "* * * * *",
       },
     });
-    const processor = new ScheduleProcessor(registry);
+    const processor = await createProcessor(registry);
 
     await processor.process({
       name: "Tasks.run",
@@ -55,7 +60,7 @@ describe("ScheduleProcessor", () => {
 
   it("should ignore jobs with no registered handler", async () => {
     const { get, registry } = createRegistry();
-    const processor = new ScheduleProcessor(registry);
+    const processor = await createProcessor(registry);
 
     await expect(
       processor.process({
@@ -66,8 +71,8 @@ describe("ScheduleProcessor", () => {
     expect(get).toHaveBeenCalledWith("Missing.run");
   });
 
-  it("should configure concurrency and start the worker by default", () => {
-    const processor = new ScheduleProcessor(createRegistry().registry, {
+  it("should configure concurrency and start the worker by default", async () => {
+    const processor = await createProcessor(createRegistry().registry, {
       concurrency: 4,
     });
 
@@ -77,8 +82,8 @@ describe("ScheduleProcessor", () => {
     expect((processor as any).worker.run).toHaveBeenCalledTimes(1);
   });
 
-  it("should skip autorun when disabled", () => {
-    const processor = new ScheduleProcessor(createRegistry().registry, {
+  it("should skip autorun when disabled", async () => {
+    const processor = await createProcessor(createRegistry().registry, {
       autorun: false,
     });
 
@@ -89,7 +94,7 @@ describe("ScheduleProcessor", () => {
   });
 
   it("should swallow worker run errors", async () => {
-    const processor = new ScheduleProcessor(createRegistry().registry);
+    const processor = await createProcessor(createRegistry().registry);
     (processor as any).worker.run.mockRejectedValueOnce(new Error("boom"));
 
     expect(() => {
@@ -142,3 +147,29 @@ describe("ScheduleProcessor", () => {
     });
   });
 });
+
+async function createProcessor(
+  registry: ScheduleRegistry,
+  options?: ScheduleModuleOptions,
+) {
+  const providers: Provider[] = [
+    ScheduleProcessor,
+    {
+      provide: ScheduleRegistry,
+      useValue: registry,
+    },
+  ];
+
+  if (typeof options !== "undefined") {
+    providers.push({
+      provide: MODULE_OPTIONS_TOKEN,
+      useValue: options,
+    });
+  }
+
+  const moduleRef = await Test.createTestingModule({
+    providers,
+  }).compile();
+
+  return moduleRef.get(ScheduleProcessor);
+}

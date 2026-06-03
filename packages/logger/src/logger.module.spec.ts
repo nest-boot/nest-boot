@@ -1,4 +1,5 @@
 import { REQUEST, RequestContext, RESPONSE } from "@nest-boot/request-context";
+import { Test } from "@nestjs/testing";
 
 const mockChildLogger = {
   ctx: "child",
@@ -25,6 +26,7 @@ jest.mock("pino-http", () => ({
 
 import { LoggerModule } from "./logger.module";
 import { MODULE_OPTIONS_TOKEN, PINO_LOGGER } from "./logger.module-definition";
+import { type LoggerModuleOptions } from "./logger-module-options.interface";
 
 describe("LoggerModule", () => {
   afterEach(() => {
@@ -62,8 +64,8 @@ describe("LoggerModule", () => {
     );
   });
 
-  it("should apply defaults while preserving supplied options", () => {
-    const module = new LoggerModule({
+  it("should apply defaults while preserving supplied options", async () => {
+    const module = await createLoggerModule({
       autoLogging: {
         ignore: () => false,
       },
@@ -85,8 +87,8 @@ describe("LoggerModule", () => {
     });
   });
 
-  it("should configure default request id, props, and auto logging behavior", () => {
-    const module = new LoggerModule();
+  it("should configure default request id, props, and auto logging behavior", async () => {
+    const module = await createLoggerModule();
     const options = (module as unknown as { options: any }).options;
     jest.spyOn(RequestContext, "isActive").mockReturnValue(true);
     jest.spyOn(RequestContext, "get").mockReturnValue({
@@ -114,8 +116,8 @@ describe("LoggerModule", () => {
     });
   });
 
-  it("should cover fallback defaults for boolean auto logging and inactive context", () => {
-    const module = new LoggerModule({
+  it("should cover fallback defaults for boolean auto logging and inactive context", async () => {
+    const module = await createLoggerModule({
       autoLogging: false,
     });
     const options = (module as unknown as { options: any }).options;
@@ -129,8 +131,8 @@ describe("LoggerModule", () => {
     expect(options.genReqId()).toEqual(expect.any(String));
   });
 
-  it("should return empty custom props when bindings are not set", () => {
-    const module = new LoggerModule();
+  it("should return empty custom props when bindings are not set", async () => {
+    const module = await createLoggerModule();
     const options = (module as unknown as { options: any }).options;
     jest.spyOn(RequestContext, "isActive").mockReturnValue(true);
     jest.spyOn(RequestContext, "get").mockReturnValue(undefined);
@@ -155,7 +157,7 @@ describe("LoggerModule", () => {
   });
 
   it("should register pino logger middleware for requests", async () => {
-    const module = new LoggerModule();
+    const module = await createLoggerModule();
     const registerMiddleware = jest
       .spyOn(RequestContext, "registerMiddleware")
       .mockImplementation();
@@ -184,7 +186,7 @@ describe("LoggerModule", () => {
   });
 
   it("should register fallback pino logger middleware without request objects", async () => {
-    const module = new LoggerModule();
+    const module = await createLoggerModule();
     const registerMiddleware = jest
       .spyOn(RequestContext, "registerMiddleware")
       .mockImplementation();
@@ -211,3 +213,21 @@ describe("LoggerModule", () => {
     expect(ctx.set).toHaveBeenCalledWith(PINO_LOGGER, mockChildLogger);
   });
 });
+
+async function createLoggerModule(options?: LoggerModuleOptions) {
+  const providers: Parameters<typeof Test.createTestingModule>[0]["providers"] =
+    [LoggerModule];
+
+  if (typeof options !== "undefined") {
+    providers?.push({
+      provide: MODULE_OPTIONS_TOKEN,
+      useValue: options,
+    });
+  }
+
+  const moduleRef = await Test.createTestingModule({
+    providers,
+  }).compile();
+
+  return moduleRef.get(LoggerModule);
+}

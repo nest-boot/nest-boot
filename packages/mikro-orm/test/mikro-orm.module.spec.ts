@@ -13,6 +13,7 @@ jest.mock("@mikro-orm/nestjs", () => ({
 
 import { MikroOrmModule as BaseMikroOrmModule } from "@mikro-orm/nestjs";
 import { RequestContext } from "@nest-boot/request-context";
+import { Test } from "@nestjs/testing";
 
 import { MikroOrmModule } from "../src";
 import {
@@ -97,7 +98,16 @@ describe("MikroOrmModule", () => {
     const registerMiddleware = jest
       .spyOn(RequestContext, "registerMiddleware")
       .mockImplementation(() => undefined);
-    const module = new MikroOrmModule(orm);
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        MikroOrmModule,
+        {
+          provide: MikroORM,
+          useValue: orm,
+        },
+      ],
+    }).compile();
+    const module = moduleRef.get(MikroOrmModule);
 
     module.onModuleInit();
 
