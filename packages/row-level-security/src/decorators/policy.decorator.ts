@@ -9,7 +9,7 @@ import type { PolicyOptions } from "../interfaces/policy-options.interface";
 import { assertIdentifier } from "../utils/assert-identifier";
 import { escapeSqlLiteral } from "../utils/escape-sql-literal";
 import { isPostgresKeywordRequiringQuote } from "../utils/is-postgres-keyword-requiring-quote";
-import { normalizePostgresTypeAlias } from "../utils/normalize-postgres-type-alias";
+import { normalizePostgresTypeAlias } from "../utils/normalize-postgres-type-alias.util";
 import { quoteIdentifier } from "../utils/quote-identifier";
 
 export type {

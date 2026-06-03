@@ -25,7 +25,7 @@ import {
   getPolicyRoleNames,
 } from "./utils/create-policy-role-sql-statements";
 import { createPolicyUpSqlStatements } from "./utils/create-policy-up-sql-statements";
-import { normalizePostgresTypeAlias } from "./utils/normalize-postgres-type-alias";
+import { normalizePostgresTypeAlias } from "./utils/normalize-postgres-type-alias.util";
 
 const POSTGRES_IDENTIFIER_MAX_LENGTH = 63;
 const POLICY_IDENTIFIER_TYPE = "policy";
