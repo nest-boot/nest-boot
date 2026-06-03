@@ -478,11 +478,15 @@ function hasSamePolicyExpression(
   const normalizedLeft = normalizePolicyExpression(left);
   const normalizedRight = normalizePolicyExpression(right);
 
-  return (
-    normalizedLeft !== undefined &&
-    normalizedRight !== undefined &&
-    normalizedLeft === normalizedRight
-  );
+  if (normalizedLeft !== undefined && normalizedRight !== undefined) {
+    return normalizedLeft === normalizedRight;
+  }
+
+  if (normalizedLeft === undefined && normalizedRight === undefined) {
+    return left?.trim() === right?.trim();
+  }
+
+  return false;
 }
 
 function normalizePolicyExpression(expression: string | undefined) {
