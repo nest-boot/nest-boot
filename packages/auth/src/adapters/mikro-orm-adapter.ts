@@ -134,14 +134,14 @@ export function convertWhereToMikroOrm(where: Required<Where>[]) {
     if (i > 0 && where[i].connector === "OR") {
       groups.push([]);
     }
-    groups[groups.length - 1].push(conditions[i]!);
+    groups[groups.length - 1].push(conditions[i]);
   }
 
   const orBranches = groups.map((group) =>
     group.length === 1 ? group[0] : { $and: group },
   );
 
-  return orBranches.length === 1 ? orBranches[0]! : { $or: orBranches };
+  return orBranches.length === 1 ? orBranches[0] : { $or: orBranches };
 }
 
 export const mikroOrmAdapter = ({
