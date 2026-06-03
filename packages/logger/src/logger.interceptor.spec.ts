@@ -1,20 +1,18 @@
+import { Test } from "@nestjs/testing";
 import { of } from "rxjs";
 
 import { Logger } from "./logger";
 import { LoggingInterceptor } from "./logger.interceptor";
 
 describe("LoggingInterceptor", () => {
-  it("should assign route bindings for HTTP requests", () => {
+  it("should assign route bindings for HTTP requests", async () => {
     function handler() {
       return undefined;
     }
     class TestController {}
     const assign = jest.fn();
     const handle = jest.fn(() => of("ok"));
-    const logger = {
-      assign,
-    } as unknown as Logger;
-    const interceptor = new LoggingInterceptor(logger);
+    const interceptor = await createInterceptor(assign);
     const next = {
       handle,
     };
@@ -43,13 +41,10 @@ describe("LoggingInterceptor", () => {
     expect(handle).toHaveBeenCalledTimes(1);
   });
 
-  it("should skip route bindings for non-HTTP requests", () => {
+  it("should skip route bindings for non-HTTP requests", async () => {
     const assign = jest.fn();
     const handle = jest.fn(() => of("ok"));
-    const logger = {
-      assign,
-    } as unknown as Logger;
-    const interceptor = new LoggingInterceptor(logger);
+    const interceptor = await createInterceptor(assign);
     const next = {
       handle,
     };
@@ -63,3 +58,19 @@ describe("LoggingInterceptor", () => {
     expect(handle).toHaveBeenCalledTimes(1);
   });
 });
+
+async function createInterceptor(assign: jest.Mock) {
+  const moduleRef = await Test.createTestingModule({
+    providers: [
+      LoggingInterceptor,
+      {
+        provide: Logger,
+        useValue: {
+          assign,
+        },
+      },
+    ],
+  }).compile();
+
+  return moduleRef.get(LoggingInterceptor);
+}
