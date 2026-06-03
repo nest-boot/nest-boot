@@ -125,7 +125,7 @@ describe("RowLevelSecurityDriver", () => {
 
     expect(executeSpy).toHaveBeenNthCalledWith(
       3,
-      "SET LOCAL ROLE NONE;\nSELECT set_config('app.tenant_id', '', true),set_config('app.request_id', '', true);",
+      "SET LOCAL ROLE NONE;\nRESET LOCAL app.tenant_id;\nRESET LOCAL app.request_id;",
       [],
       "run",
       transaction,
@@ -168,7 +168,7 @@ describe("RowLevelSecurityDriver", () => {
 
     expect(executeSpy).toHaveBeenNthCalledWith(
       3,
-      "SET LOCAL ROLE NONE;\nSELECT set_config('app.tenant_id', '', true);",
+      "SET LOCAL ROLE NONE;\nRESET LOCAL app.tenant_id;",
       [],
       "run",
       transaction,
@@ -380,7 +380,7 @@ describe("RowLevelSecurityDriver", () => {
 
     expect(executeSpy).toHaveBeenNthCalledWith(
       3,
-      "SET LOCAL ROLE NONE;\nSELECT set_config('app.tenant_id', '', true);",
+      "SET LOCAL ROLE NONE;\nRESET LOCAL app.tenant_id;",
       [],
       "run",
       unscopedQueryBuilder,
@@ -520,7 +520,7 @@ describe("RowLevelSecurityDriver", () => {
 
     expect(setupQueries).toEqual([
       "SET LOCAL ROLE authenticated;\nSELECT set_config('app.tenant_id', '1', true),set_config('app.request_id', 'abc', true);",
-      "SET LOCAL ROLE authenticated;\nSELECT set_config('app.tenant_id', '2', true);\nSELECT set_config('app.request_id', '', true);",
+      "SET LOCAL ROLE authenticated;\nSELECT set_config('app.tenant_id', '2', true);\nRESET LOCAL app.request_id;",
     ]);
   });
 

@@ -38,7 +38,7 @@ The driver applies RLS only when a `RequestContext` is active and the current co
 
 ## Define Entity Policies
 
-Attach `@Policy()` to MikroORM entities. When `property` and `context` are provided together, the package generates `USING` and `WITH CHECK` predicates that compare the mapped database column with `app.get_context(...)`.
+Attach `@Policy()` to MikroORM entities. When `property` and `context` are provided together, the package generates `USING` and `WITH CHECK` predicates that compare the mapped database column with the transaction-local `app.<key>` setting.
 
 ```typescript
 import { Entity, PrimaryKey, Property, t } from "@mikro-orm/postgresql";
@@ -75,7 +75,7 @@ For custom policy logic, provide explicit SQL predicates:
 @Policy({
   name: "published_files_read_policy",
   command: PolicyCommand.SELECT,
-  using: `"is_public" = true or (select app.get_context('workspace_id', null::integer)) = "workspace_id"`,
+  using: `"is_public" = true or (select nullif(current_setting('app.workspace_id', true), '')::integer) = "workspace_id"`,
   roles: [
     RowLevelSecurityRole.ANONYMOUS,
     RowLevelSecurityRole.AUTHENTICATED,
@@ -85,9 +85,23 @@ For custom policy logic, provide explicit SQL predicates:
 
 Explicit `using` and `withCheck` expressions may be written as raw SQL fragments such as `true` or `"is_public" = true`; generated migrations wrap them as PostgreSQL policy predicates.
 
+## Prepare Database Roles
+
+The RLS runtime executes `SET LOCAL ROLE ...`, so database administrators must create the RLS roles ahead of time and grant them to the login role used by the application. Generated migrations do not create these roles and do not grant role membership.
+
+For example, when using the built-in `anonymous` and `authenticated` roles, a database administrator can run:
+
+```sql
+do $$ begin if not exists (select 1 from pg_roles where rolname = 'anonymous') then create role anonymous nologin; end if; end $$;
+do $$ begin if not exists (select 1 from pg_roles where rolname = 'authenticated') then create role authenticated nologin; end if; end $$;
+grant anonymous, authenticated to app_user;
+```
+
+Replace `app_user` with the PostgreSQL login role used by your application. If `@Policy({ roles })` declares custom roles, create those roles and grant them to the application login role the same way.
+
 ## Generate Migrations
 
-With `RowLevelSecurityMigrationGenerator` configured, MikroORM migration generation includes RLS SQL for policies discovered from entity metadata. Generated migrations extend `RowLevelSecurityMigration`, which adds the shared `app.get_context(...)` helper, database roles, grants, and policy DDL.
+With `RowLevelSecurityMigrationGenerator` configured, MikroORM migration generation includes RLS SQL for policies discovered from entity metadata. Generated migrations extend `RowLevelSecurityMigration`, which adds policy DDL and the table or sequence grants required by explicit policy roles.
 `RowLevelSecurityMigrator` lets `migration:create` detect policy-only changes, such as changing a policy `context` while the table schema stays unchanged.
 
 ```bash
@@ -97,10 +111,10 @@ pnpm mikro-orm migration:create
 Generated policy migrations:
 
 1. Enable row-level security on the target table.
-2. Create `anonymous` and the roles declared by policy metadata during `up`.
+2. Assume `anonymous` and the roles declared by policy metadata were already created by a database administrator.
 3. Drop and recreate policies when metadata changes.
-4. Grant the required role, schema, table, and sequence privileges during `up`.
-5. Revoke grants emitted by the migration during `down` only when no previous policy still requires the same role, table, or sequence privilege, without dropping database roles.
+4. Grant the required table and sequence privileges during `up`.
+5. Revoke grants emitted by the migration during `down` only when no previous policy still requires the same table or sequence privilege, without dropping database roles or revoking role membership.
 6. Rebuild the previous policy state in the down migration.
 
 ## Set Request Context
@@ -135,7 +149,7 @@ RLS mode is request-scoped behavior. It affects only queries executed while a `R
 | `RowLevelSecurityMode.ENABLED`  | Forces RLS for the current `RequestContext`, even when there are no context values. If no role was set, the driver uses `anonymous`.                                                                                                                                    |
 | `RowLevelSecurityMode.DISABLED` | Bypasses RLS for the current `RequestContext`, even when role or context values are set. If the active transaction already has RLS state, the driver clears it before running the disabled query. Use only for trusted infrastructure, admin, or cross-tenant job work. |
 
-`anonymous` is a special database role exported as `RowLevelSecurityRole.ANONYMOUS`. Generated migrations always create it during `up`, because it is the fallback role whenever RLS is enabled but no explicit role was set. Other roles are read from `@Policy({ roles })`, including custom role names, and are also created during `up`. Add `roles: [RowLevelSecurityRole.ANONYMOUS]` to policies that should allow public or unauthenticated access, and call `RowLevelSecurity.setRole(RowLevelSecurityRole.AUTHENTICATED)` for authenticated tenant-scoped work.
+`anonymous` is a special database role exported as `RowLevelSecurityRole.ANONYMOUS`. It is the fallback role whenever RLS is enabled but no explicit role was set. Other roles are read from `@Policy({ roles })`, including custom role names. Add `roles: [RowLevelSecurityRole.ANONYMOUS]` to policies that should allow public or unauthenticated access, and call `RowLevelSecurity.setRole(RowLevelSecurityRole.AUTHENTICATED)` for authenticated tenant-scoped work.
 
 ```typescript
 import {

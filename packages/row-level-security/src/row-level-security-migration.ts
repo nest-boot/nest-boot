@@ -7,7 +7,7 @@ import { createPolicyUpSqlStatements } from "./utils/create-policy-up-sql-statem
 
 /** Base MikroORM migration with convenience helpers for row-level security SQL. */
 export abstract class RowLevelSecurityMigration extends Migration {
-  /** Adds the shared RLS schema, helper function, roles, and role grants. */
+  /** Adds shared RLS bootstrap SQL. Currently no-op; roles are managed outside migrations. */
   protected addRowLevelSecurityBootstrapSql(roles: string[] = []) {
     for (const sql of createPolicyBootstrapSqlStatements()) {
       this.addSql(sql);

@@ -9,7 +9,7 @@ class TestRowLevelSecurityMigration extends RowLevelSecurityMigration {
       tableName: "workspace_member",
       policyName: "workspace_member_user_select_policy",
       command: PolicyCommand.SELECT,
-      using: `((select app.get_context('user_id', null::bigint)) = "user_id")`,
+      using: `((select nullif(current_setting('app.user_id', true), '')::bigint) = "user_id")`,
     });
   }
 }
@@ -25,18 +25,11 @@ describe("RowLevelSecurityMigration", () => {
 
     const queries = migration.getQueries() as string[];
 
-    expect(queries).toContainEqual(
-      expect.stringContaining("create role anonymous nologin"),
-    );
-    expect(queries).toContainEqual(
-      expect.stringContaining("grant anonymous to current_user"),
-    );
-    expect(queries).toContainEqual(
-      expect.stringContaining("create schema if not exists app"),
-    );
-    expect(queries).toContainEqual(
-      expect.stringContaining("create or replace function app.get_context"),
-    );
+    expect(queries.join("\n")).not.toContain("create schema if not exists app");
+    expect(queries.join("\n")).not.toContain("grant usage on schema app");
+    expect(queries.join("\n")).not.toContain("create role anonymous");
+    expect(queries.join("\n")).not.toContain("grant anonymous to current_user");
+    expect(queries.join("\n")).not.toContain("app.get_context");
     expect(queries).toContainEqual(
       'alter table "public"."workspace_member" enable row level security;',
     );

@@ -23,11 +23,9 @@ describe("row level security package exports", () => {
       "valid_identifier",
     );
     expect(rowLevelSecurityUtils.createPolicyBootstrapSqlStatements()).toEqual(
-      expect.arrayContaining(["create schema if not exists app;"]),
+      [],
     );
-    expect(rowLevelSecurityUtils.createPolicyRoleUpSqlStatements()).toEqual(
-      expect.arrayContaining(["grant anonymous to current_user;"]),
-    );
+    expect(rowLevelSecurityUtils.createPolicyRoleUpSqlStatements()).toEqual([]);
   });
 
   it("exports migration generator types", () => {
