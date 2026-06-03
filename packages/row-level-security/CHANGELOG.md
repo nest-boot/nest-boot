@@ -1,5 +1,11 @@
 # @nest-boot/row-level-security
 
+## 7.2.5
+
+### Patch Changes
+
+- 7f29b20: Compare row level security policy expressions with canonical PostgreSQL ASTs to avoid false diffs from deparsed SQL formatting.
+
 ## 7.2.4
 
 ### Patch Changes
