@@ -9,7 +9,7 @@ class TestRowLevelSecurityMigration extends RowLevelSecurityMigration {
       tableName: "workspace_member",
       policyName: "workspace_member_user_select_policy",
       command: PolicyCommand.SELECT,
-      using: `((select nullif(current_setting('app.user_id', true), '')::bigint) = "user_id")`,
+      using: `((select current_setting('app.user_id', true)::bigint) = "user_id")`,
     });
   }
 }

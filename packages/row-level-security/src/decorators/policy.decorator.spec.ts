@@ -11,7 +11,7 @@ describe("Policy decorator", () => {
     @Policy({
       name: "workspace_member_user_select_policy",
       command: PolicyCommand.SELECT,
-      using: `((select nullif(current_setting('app.user_id', true), '')::bigint) = "user_id")`,
+      using: `((select current_setting('app.user_id', true)::bigint) = "user_id")`,
     })
     class WorkspaceMember {}
 
@@ -20,7 +20,7 @@ describe("Policy decorator", () => {
         name: "workspace_member_user_select_policy",
         mode: PolicyMode.PERMISSIVE,
         command: PolicyCommand.SELECT,
-        using: `((select nullif(current_setting('app.user_id', true), '')::bigint) = "user_id")`,
+        using: `((select current_setting('app.user_id', true)::bigint) = "user_id")`,
         roles: [],
       },
     ]);
@@ -30,13 +30,13 @@ describe("Policy decorator", () => {
     @Policy({
       name: "workspace_member_user_select_policy",
       command: PolicyCommand.SELECT,
-      using: `((select nullif(current_setting('app.user_id', true), '')::bigint) = "user_id")`,
+      using: `((select current_setting('app.user_id', true)::bigint) = "user_id")`,
     })
     @Policy({
       name: "tenant_access_policy",
       command: PolicyCommand.ALL,
-      using: `((select nullif(current_setting('app.tenant_id', true), '')::bigint) = "workspace_id")`,
-      withCheck: `((select nullif(current_setting('app.tenant_id', true), '')::bigint) = "workspace_id")`,
+      using: `((select current_setting('app.tenant_id', true)::bigint) = "workspace_id")`,
+      withCheck: `((select current_setting('app.tenant_id', true)::bigint) = "workspace_id")`,
     })
     class WorkspaceMember {}
 
@@ -49,7 +49,7 @@ describe("Policy decorator", () => {
     @Policy({
       name: "tenant_required_policy",
       mode: PolicyMode.RESTRICTIVE,
-      using: `((select nullif(current_setting('app.tenant_id', true), '')::bigint) is not null)`,
+      using: `((select current_setting('app.tenant_id', true)::bigint) is not null)`,
     })
     class WorkspaceMember {}
 
@@ -94,7 +94,7 @@ describe("Policy decorator", () => {
         name: "workspace_member_user_select_policy",
         mode: PolicyMode.PERMISSIVE,
         command: PolicyCommand.SELECT,
-        using: `((select nullif(current_setting('app.user_id', true), '')::bigint) = user_id)`,
+        using: `((select current_setting('app.user_id', true)::bigint) = user_id)`,
         roles: [],
       },
     ]);
@@ -125,7 +125,7 @@ describe("Policy decorator", () => {
         name: "workspace_member_user_select_policy",
         mode: PolicyMode.PERMISSIVE,
         command: PolicyCommand.SELECT,
-        using: `((select nullif(current_setting('app.user_id', true), '')::bigint) = user_id)`,
+        using: `((select current_setting('app.user_id', true)::bigint) = user_id)`,
         roles: [],
       },
     ]);
@@ -241,7 +241,7 @@ describe("Policy decorator", () => {
         name: "workspace_member_user_insert_policy",
         mode: PolicyMode.PERMISSIVE,
         command: PolicyCommand.INSERT,
-        withCheck: `((select nullif(current_setting('app.user_id', true), '')::bigint) = user_id)`,
+        withCheck: `((select current_setting('app.user_id', true)::bigint) = user_id)`,
         roles: [],
       },
     ]);
@@ -268,8 +268,8 @@ describe("Policy decorator", () => {
       })[0],
     ).toMatchObject({
       name: "workspace_member_workspace_all_policy",
-      using: `((select nullif(current_setting('app.tenant_id', true), '')::integer) = workspace_id)`,
-      withCheck: `((select nullif(current_setting('app.tenant_id', true), '')::integer) = workspace_id)`,
+      using: `((select current_setting('app.tenant_id', true)::integer) = workspace_id)`,
+      withCheck: `((select current_setting('app.tenant_id', true)::integer) = workspace_id)`,
     });
   });
 
@@ -300,7 +300,7 @@ describe("Policy decorator", () => {
         },
       })[0],
     ).toMatchObject({
-      using: `((select nullif(current_setting('app.context_value', true), '')::${postgresType}) = context_value)`,
+      using: `((select current_setting('app.context_value', true)::${postgresType}) = context_value)`,
     });
   });
 
@@ -331,7 +331,7 @@ describe("Policy decorator", () => {
           },
         })[0],
       ).toMatchObject({
-        using: `((select nullif(current_setting('app.workspace_id', true), '')::${postgresType}) = workspace_id)`,
+        using: `((select current_setting('app.workspace_id', true)::${postgresType}) = workspace_id)`,
       });
     },
   );
@@ -359,7 +359,7 @@ describe("Policy decorator", () => {
           },
         })[0],
       ).toMatchObject({
-        using: `((select nullif(current_setting('app.order_id', true), '')::integer) = "${fieldName}")`,
+        using: `((select current_setting('app.order_id', true)::integer) = "${fieldName}")`,
       });
     },
   );
@@ -392,7 +392,7 @@ describe("Policy decorator", () => {
         },
       })[0],
     ).toMatchObject({
-      using: `((select nullif(current_setting('app.user_id', true), '')::uuid) = user_id)`,
+      using: `((select current_setting('app.user_id', true)::uuid) = user_id)`,
     });
   });
 
@@ -400,7 +400,7 @@ describe("Policy decorator", () => {
     expect(() =>
       Policy({
         name: "",
-        using: `((select nullif(current_setting('app.tenant_id', true), '')::bigint) = "workspace_id")`,
+        using: `((select current_setting('app.tenant_id', true)::bigint) = "workspace_id")`,
       }),
     ).toThrow("Policy name is required");
   });
@@ -428,8 +428,8 @@ describe("Policy decorator", () => {
       Policy({
         name: "tenant_access_policy",
         command: PolicyCommand.SELECT,
-        using: `((select nullif(current_setting('app.tenant_id', true), '')::bigint) = "workspace_id")`,
-        withCheck: `((select nullif(current_setting('app.tenant_id', true), '')::bigint) = "workspace_id")`,
+        using: `((select current_setting('app.tenant_id', true)::bigint) = "workspace_id")`,
+        withCheck: `((select current_setting('app.tenant_id', true)::bigint) = "workspace_id")`,
       }),
     ).toThrow("Policy withCheck is not allowed for select");
   });

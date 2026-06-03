@@ -253,7 +253,7 @@ function createPolicyContextExpression(
     property,
   );
 
-  return `((select nullif(current_setting('app.${escapeSqlLiteral(contextName)}', true), '')::${contextType}) = ${formatDeparsedIdentifier(columnName)})`;
+  return `((select current_setting('app.${escapeSqlLiteral(contextName)}', true)::${contextType}) = ${formatDeparsedIdentifier(columnName)})`;
 }
 
 function formatDeparsedIdentifier(identifier: string) {

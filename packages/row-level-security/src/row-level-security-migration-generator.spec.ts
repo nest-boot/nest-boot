@@ -12,19 +12,19 @@ import { RowLevelSecurityMigrator } from "./row-level-security-migrator";
 @Policy({
   name: "workspace_member_user_select_policy",
   command: PolicyCommand.SELECT,
-  using: `((select nullif(current_setting('app.user_id', true), '')::bigint) = "user_id")`,
+  using: `((select current_setting('app.user_id', true)::bigint) = "user_id")`,
 })
 class WorkspaceMember {}
 
 @Policy({
   name: "workspace_member_user_select_policy",
   command: PolicyCommand.SELECT,
-  using: `((select nullif(current_setting('app.user_id', true), '')::bigint) = "user_id")`,
+  using: `((select current_setting('app.user_id', true)::bigint) = "user_id")`,
 })
 @Policy({
   name: "workspace_member_write_policy",
-  using: `((select nullif(current_setting('app.workspace_id', true), '')::bigint) = "workspace_id")`,
-  withCheck: `((select nullif(current_setting('app.workspace_id', true), '')::bigint) = "workspace_id")`,
+  using: `((select current_setting('app.workspace_id', true)::bigint) = "workspace_id")`,
+  withCheck: `((select current_setting('app.workspace_id', true)::bigint) = "workspace_id")`,
 })
 class WorkspaceMemberWithMultiplePolicies {}
 
@@ -309,7 +309,7 @@ describe("RowLevelSecurityMigrationGenerator", () => {
           table_name: "workspace_member",
           permissive: true,
           command: "r",
-          qual: "(( SELECT nullif(current_setting('app.tenant_id'::text, true), ''::text)::bigint) = workspace_id)",
+          qual: "(( SELECT current_setting('app.tenant_id'::text, true)::bigint) = workspace_id)",
           with_check: null,
           roles: ["authenticated"],
         },
@@ -367,7 +367,7 @@ describe("RowLevelSecurityMigrationGenerator", () => {
 
   it("does not recreate unchanged policies when database expressions are deparsed", async () => {
     const execute = createExistingPolicyLookup(
-      "(( SELECT nullif(current_setting('app.user_id'::text, true), ''::text)::bigint) = user_id)",
+      "(( SELECT (current_setting('app.user_id'::text, true))::bigint AS current_setting) = user_id)",
     );
     const superGenerate = mockBaseMigrationGenerate();
     const generator = createGenerator(
@@ -407,9 +407,9 @@ describe("RowLevelSecurityMigrationGenerator", () => {
           table_name: "workspace_member_group_member",
           permissive: true,
           command: "*",
-          qual: "(( SELECT nullif(current_setting('app.workspace_id'::text, true), ''::text)::bigint) = workspace_id)",
+          qual: "(( SELECT (current_setting('app.workspace_id'::text, true))::bigint AS current_setting) = workspace_id)",
           with_check:
-            "(( SELECT nullif(current_setting('app.workspace_id'::text, true), ''::text)::bigint) = workspace_id)",
+            "(( SELECT (current_setting('app.workspace_id'::text, true))::bigint AS current_setting) = workspace_id)",
           roles: ["authenticated"],
         },
       ]),
@@ -452,18 +452,18 @@ describe("RowLevelSecurityMigrationGenerator", () => {
   it.each([
     [
       "deparsed-style context setting call",
-      `(select nullif(current_setting('app.user_id'::text, true), ''::text)::bigint) = user_id`,
-      "(( SELECT nullif(current_setting('app.user_id'::text, true), ''::text)::bigint) = user_id)",
+      `(select current_setting('app.user_id'::text, true)::bigint) = user_id`,
+      "(( SELECT current_setting('app.user_id'::text, true)::bigint) = user_id)",
     ],
     [
       "integer alias and non-keyword identifier quotes",
-      `((select nullif(current_setting('app.workspace_id', true), '')::integer) = "workspace_id")`,
-      "(( SELECT nullif(current_setting('app.workspace_id'::text, true), ''::text)::integer) = workspace_id)",
+      `((select current_setting('app.workspace_id', true)::integer) = "workspace_id")`,
+      "(( SELECT current_setting('app.workspace_id'::text, true)::integer) = workspace_id)",
     ],
     [
       "PostgreSQL keyword identifier quotes",
-      `((select nullif(current_setting('app.order_id', true), '')::integer) = "order")`,
-      `(( SELECT nullif(current_setting('app.order_id'::text, true), ''::text)::integer) = "order")`,
+      `((select current_setting('app.order_id', true)::integer) = "order")`,
+      `(( SELECT current_setting('app.order_id'::text, true)::integer) = "order")`,
     ],
     [
       "keyword casing and string literal casts",
@@ -477,13 +477,13 @@ describe("RowLevelSecurityMigrationGenerator", () => {
     ],
     [
       "varchar context type alias",
-      `((select nullif(current_setting('app.tenant_id', true), '')::character varying) = "tenant_id")`,
-      "(( SELECT nullif(current_setting('app.tenant_id'::text, true), ''::text)::character varying) = tenant_id)",
+      `((select current_setting('app.tenant_id', true)::character varying) = "tenant_id")`,
+      "(( SELECT current_setting('app.tenant_id'::text, true)::character varying) = tenant_id)",
     ],
     [
       "timestamptz context type alias",
-      `((select nullif(current_setting('app.expires_at', true), '')::timestamp with time zone) > expires_at)`,
-      "(( SELECT nullif(current_setting('app.expires_at'::text, true), ''::text)::timestamp with time zone) > expires_at)",
+      `((select current_setting('app.expires_at', true)::timestamp with time zone) > expires_at)`,
+      "(( SELECT current_setting('app.expires_at'::text, true)::timestamp with time zone) > expires_at)",
     ],
     [
       "PostgreSQL canonical not-equals operator",
@@ -715,7 +715,7 @@ describe("RowLevelSecurityMigrationGenerator", () => {
       'this.addSql(`drop policy if exists workspace_member_user_select_policy on "public"."workspace_member";`);',
     );
     expect(file).toContain(
-      'this.addSql(`create policy workspace_member_user_select_policy on "public"."workspace_member" as permissive for select using ((select nullif(current_setting(\'app.user_id\', true), \'\')::bigint) = "user_id");`);',
+      'this.addSql(`create policy workspace_member_user_select_policy on "public"."workspace_member" as permissive for select using ((select current_setting(\'app.user_id\', true)::bigint) = "user_id");`);',
     );
   });
 
@@ -895,7 +895,7 @@ describe("RowLevelSecurityMigrationGenerator", () => {
       "create policy workspace_member_user_select_policy on",
     );
     expect(file).toContain(
-      "using ((select nullif(current_setting('app.user_id', true), '')::bigint) = \"user_id\")",
+      "using ((select current_setting('app.user_id', true)::bigint) = \"user_id\")",
     );
     expect(file).toContain("for select to authenticated using (false)");
   });
@@ -933,10 +933,10 @@ describe("RowLevelSecurityMigrationGenerator", () => {
     });
 
     expect(file).toContain(
-      "this.addSql(`create policy workspace_member_write_policy on \"public\".\"workspace_member\" as permissive for all using ((select nullif(current_setting('app.workspace_id', true), '')::bigint) = \"workspace_id\") with check ((select nullif(current_setting('app.workspace_id', true), '')::bigint) = \"workspace_id\");`);",
+      'this.addSql(`create policy workspace_member_write_policy on "public"."workspace_member" as permissive for all using ((select current_setting(\'app.workspace_id\', true)::bigint) = "workspace_id") with check ((select current_setting(\'app.workspace_id\', true)::bigint) = "workspace_id");`);',
     );
     expect(file).toContain(
-      'this.addSql(`create policy workspace_member_user_select_policy on "public"."workspace_member" as permissive for select using ((select nullif(current_setting(\'app.user_id\', true), \'\')::bigint) = "user_id");`);',
+      'this.addSql(`create policy workspace_member_user_select_policy on "public"."workspace_member" as permissive for select using ((select current_setting(\'app.user_id\', true)::bigint) = "user_id");`);',
     );
   });
 
@@ -968,7 +968,7 @@ describe("RowLevelSecurityMigrationGenerator", () => {
     });
 
     expect(file).toContain(
-      "this.addSql(`create policy workspace_member_user_select_policy on \"public\".\"workspace_member\" as permissive for select using ((select nullif(current_setting('app.user_id', true), '')::bigint) = user_id);`);",
+      'this.addSql(`create policy workspace_member_user_select_policy on "public"."workspace_member" as permissive for select using ((select current_setting(\'app.user_id\', true)::bigint) = user_id);`);',
     );
   });
 
@@ -1021,7 +1021,7 @@ describe("RowLevelSecurityMigrationGenerator", () => {
     });
 
     expect(file).toContain(
-      "nullif(current_setting('app.workspace_id', true), '')::integer",
+      "current_setting('app.workspace_id', true)::integer",
     );
   });
 
@@ -1045,7 +1045,7 @@ describe("RowLevelSecurityMigrationGenerator", () => {
     });
 
     expect(file).toContain(
-      `using ((select nullif(current_setting('app.workspace_id', true), '')::integer) = "between")`,
+      `using ((select current_setting('app.workspace_id', true)::integer) = "between")`,
     );
   });
 
@@ -1140,7 +1140,7 @@ describe("RowLevelSecurityMigrator", () => {
           table_name: "workspace_member",
           permissive: true,
           command: "r",
-          qual: "(( SELECT nullif(current_setting('app.tenant_id'::text, true), ''::text)::bigint) = workspace_id)",
+          qual: "(( SELECT current_setting('app.tenant_id'::text, true)::bigint) = workspace_id)",
           with_check: null,
           roles: ["authenticated"],
         },
@@ -1195,10 +1195,10 @@ describe("RowLevelSecurityMigrator", () => {
         "drop policy if exists workspace_member_workspace_select_policy",
       );
       expect(result.code).toContain(
-        "nullif(current_setting('app.workspace_id', true), '')::bigint",
+        "current_setting('app.workspace_id', true)::bigint",
       );
       expect(result.code).toContain(
-        "nullif(current_setting('app.tenant_id'::text, true), ''::text)::bigint",
+        "current_setting('app.tenant_id'::text, true)::bigint",
       );
       expect(
         result.code.indexOf(
