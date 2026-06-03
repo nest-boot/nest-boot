@@ -22,6 +22,9 @@ describe("row level security package exports", () => {
     expect(rowLevelSecurityUtils.assertIdentifier("valid_identifier")).toBe(
       "valid_identifier",
     );
+    expect(() =>
+      rowLevelSecurityUtils.assertIdentifier("invalid-identifier"),
+    ).toThrow("Invalid SQL identifier: invalid-identifier");
     expect(rowLevelSecurityUtils.createPolicyBootstrapSqlStatements()).toEqual(
       [],
     );

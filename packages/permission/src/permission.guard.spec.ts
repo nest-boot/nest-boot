@@ -19,6 +19,13 @@ import { getPermissionAbility } from "./utils/get-permission-ability.util";
 class Subject {}
 class Controller {}
 
+interface PermissionTestRequest extends Request {
+  files?: unknown;
+  rawBody?: Buffer;
+  session?: unknown;
+  upload?: unknown;
+}
+
 describe("PermissionGuard", () => {
   afterEach(() => {
     Reflect.deleteMetadata(ROUTE_ARGS_METADATA, Controller, "handler");
@@ -254,6 +261,75 @@ describe("PermissionGuard", () => {
     );
   });
 
+  it("passes every GraphQL route argument source to subject factories", async () => {
+    const root = { root: true };
+    const info = { fieldName: "post" };
+    const subjectInstance = new Subject();
+    const handlerThis = {};
+    const subjectFactory = jest.fn(() => subjectInstance);
+    const canMock = jest.fn(() => true);
+    const ability = {
+      can: canMock,
+    };
+    const { guard, reflector, req } = createGuard(
+      ability as unknown as PermissionAbility,
+      handlerThis,
+    );
+
+    setRouteArgsMetadata({
+      "0:0": {
+        index: 0,
+      },
+      "3:1": {
+        index: 1,
+        data: "id",
+      },
+      "1:2": {
+        index: 2,
+        data: "viewer",
+      },
+      "2:3": {
+        index: 3,
+      },
+      "99:4": {
+        index: 4,
+      },
+    });
+    reflector.getAllAndOverride.mockReturnValue({
+      action: PermissionAction.READ,
+      subject: subjectFactory,
+    });
+
+    await RequestContext.run(
+      new RequestContext({ type: "graphql" }),
+      async () => {
+        await expect(
+          guard.canActivate(
+            createContext(
+              undefined,
+              undefined,
+              [root, { id: "post-1" }, { req, viewer: "user-1" }, info],
+              "graphql",
+            ),
+          ),
+        ).resolves.toBe(true);
+      },
+    );
+
+    expect(subjectFactory).toHaveBeenCalledWith(
+      handlerThis,
+      root,
+      "post-1",
+      "user-1",
+      info,
+      undefined,
+    );
+    expect(canMock).toHaveBeenCalledWith(
+      PermissionAction.READ,
+      subjectInstance,
+    );
+  });
+
   it("passes HTTP controller arguments in decorated parameter order", async () => {
     const input = { title: "New title" };
     const subjectInstance = new Subject();
@@ -312,6 +388,124 @@ describe("PermissionGuard", () => {
     expect(handlerThis.postService.findOneOrFail).toHaveBeenCalledWith(
       "post-1",
       input,
+    );
+  });
+
+  it("passes every HTTP route argument source to subject factories", async () => {
+    const req = {
+      body: { input: { title: "Draft" } },
+      files: ["first-file"],
+      headers: { "x-user-id": "user-1" },
+      hosts: { account: "acme" },
+      ip: "127.0.0.1",
+      params: { id: "post-1" },
+      query: { preview: "true" },
+      rawBody: Buffer.from("raw"),
+      session: { id: "session-1" },
+      upload: { filename: "avatar.png" },
+    } as unknown as PermissionTestRequest;
+    const res = {
+      locals: {},
+    } as Response;
+    const next = jest.fn();
+    const subjectInstance = new Subject();
+    const handlerThis = {};
+    const subjectFactory = jest.fn(() => subjectInstance);
+    const canMock = jest.fn(() => true);
+    const ability = {
+      can: canMock,
+    };
+    const { guard, reflector } = createGuard(
+      ability as unknown as PermissionAbility,
+      handlerThis,
+    );
+
+    setRouteArgsMetadata({
+      "0:0": {
+        index: 0,
+      },
+      "1:1": {
+        index: 1,
+      },
+      "2:2": {
+        index: 2,
+      },
+      "3:3": {
+        index: 3,
+      },
+      "12:4": {
+        index: 4,
+      },
+      "5:5": {
+        index: 5,
+        data: "id",
+      },
+      "10:6": {
+        index: 6,
+        data: "account",
+      },
+      "4:7": {
+        index: 7,
+        data: "preview",
+      },
+      "6:8": {
+        index: 8,
+        data: "X-USER-ID",
+      },
+      "7:9": {
+        index: 9,
+      },
+      "8:10": {
+        index: 10,
+        data: "upload",
+      },
+      "8:11": {
+        index: 11,
+      },
+      "9:12": {
+        index: 12,
+      },
+      "11:13": {
+        index: 13,
+      },
+      "99:14": {
+        index: 14,
+      },
+    });
+    reflector.getAllAndOverride.mockReturnValue({
+      action: PermissionAction.READ,
+      subject: subjectFactory,
+    });
+
+    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+      await expect(
+        guard.canActivate(
+          createContext(req, res, [undefined, undefined, next]),
+        ),
+      ).resolves.toBe(true);
+    });
+
+    expect(subjectFactory).toHaveBeenCalledWith(
+      handlerThis,
+      req,
+      res,
+      next,
+      req.body,
+      req.rawBody,
+      "post-1",
+      "acme",
+      "true",
+      "user-1",
+      req.session,
+      req.upload,
+      undefined,
+      req.files,
+      req.ip,
+      undefined,
+    );
+    expect(canMock).toHaveBeenCalledWith(
+      PermissionAction.READ,
+      subjectInstance,
     );
   });
 
@@ -504,6 +698,102 @@ describe("PermissionGuard", () => {
     expect(canMock).toHaveBeenCalledTimes(2);
   });
 
+  it("passes no subject factory args when route metadata is missing", async () => {
+    const subjectInstance = new Subject();
+    const handlerThis = {};
+    const subjectFactory = jest.fn(() => subjectInstance);
+    const canMock = jest.fn(() => true);
+    const { guard, reflector, moduleRef } = createGuard(
+      {
+        can: canMock,
+      } as unknown as PermissionAbility,
+      handlerThis,
+    );
+
+    reflector.getAllAndOverride.mockReturnValue({
+      action: PermissionAction.READ,
+      subject: subjectFactory,
+    });
+
+    await RequestContext.run(new RequestContext({ type: "rpc" }), async () => {
+      await expect(
+        guard.canActivate(createContext(undefined, undefined, [], "rpc")),
+      ).resolves.toBe(true);
+    });
+
+    expect(moduleRef.resolve).toHaveBeenCalledWith(Controller, undefined, {
+      strict: false,
+    });
+    expect(subjectFactory).toHaveBeenCalledWith(handlerThis);
+  });
+
+  it("falls back to prototype lookup and null when handler names are unavailable", async () => {
+    const subjectInstance = new Subject();
+    const handlerThis = {};
+    const subjectFactory = jest.fn(() => subjectInstance);
+    const canMock = jest.fn(() => true);
+    const { guard, reflector } = createGuard(
+      {
+        can: canMock,
+      } as unknown as PermissionAbility,
+      handlerThis,
+    );
+    const matchedHandler = createUnnamedHandler();
+    const unmatchedHandler = createUnnamedHandler();
+
+    Object.defineProperty(Controller.prototype, "matched", {
+      configurable: true,
+      value: matchedHandler,
+    });
+    Reflect.defineMetadata(
+      ROUTE_ARGS_METADATA,
+      {
+        "3:0": {
+          index: 0,
+          data: 1,
+        },
+      },
+      Controller,
+      "matched",
+    );
+    reflector.getAllAndOverride.mockReturnValue({
+      action: PermissionAction.READ,
+      subject: subjectFactory,
+    });
+
+    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+      const matchedContext = createContext(
+        {
+          body: { input: true },
+          headers: {},
+        } as unknown as Request,
+        {} as Response,
+      ) as ExecutionContext & { getHandler: jest.Mock };
+      matchedContext.getHandler = jest.fn(() => matchedHandler);
+
+      await expect(guard.canActivate(matchedContext)).resolves.toBe(true);
+
+      const unmatchedContext = createContext(
+        {
+          body: "not-an-object",
+          headers: {},
+        } as unknown as Request,
+        {} as Response,
+      ) as ExecutionContext & { getHandler: jest.Mock };
+      unmatchedContext.getHandler = jest.fn(() => unmatchedHandler);
+
+      await expect(guard.canActivate(unmatchedContext)).resolves.toBe(true);
+    });
+
+    expect(subjectFactory).toHaveBeenNthCalledWith(1, handlerThis, {
+      input: true,
+    });
+    expect(subjectFactory).toHaveBeenNthCalledWith(2, handlerThis);
+
+    Reflect.deleteMetadata(ROUTE_ARGS_METADATA, Controller, "matched");
+    delete (Controller.prototype as Record<string, unknown>).matched;
+  });
+
   it("returns false when ability denies the permission", async () => {
     const canMock = jest.fn(() => false);
     const { guard, reflector } = createGuard({
@@ -581,4 +871,10 @@ function createContext(
 
 function setRouteArgsMetadata(metadata: RouteArgumentMetadata) {
   Reflect.defineMetadata(ROUTE_ARGS_METADATA, metadata, Controller, "handler");
+}
+
+function createUnnamedHandler() {
+  return function () {
+    return undefined;
+  };
 }

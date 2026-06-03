@@ -49,6 +49,23 @@ tester.run("entity-field-definite-assignment", rule, {
         field: string;
       }
     `,
+    // Methods are ignored
+    /* typescript */ `
+      @Entity()
+      class User {
+        method() {
+          return "value";
+        }
+      }
+    `,
+    // Computed property names are skipped
+    /* typescript */ `
+      @Entity()
+      class User {
+        @Property()
+        ["name"]: string;
+      }
+    `,
     // @Enum decorator - with !
     /* typescript */ `
       @Entity()

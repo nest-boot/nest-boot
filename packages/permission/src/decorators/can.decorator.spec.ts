@@ -48,4 +48,11 @@ describe("Can", () => {
       value: options,
     });
   });
+
+  it("throws when positional arguments omit the subject", () => {
+    expect(() => Can(PermissionAction.READ as never)).toThrow(
+      "Permission subject is required.",
+    );
+    expect(SetMetadata).not.toHaveBeenCalled();
+  });
 });

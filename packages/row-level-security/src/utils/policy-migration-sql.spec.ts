@@ -35,6 +35,7 @@ describe("policy migration SQL", () => {
     const statements = createPolicyRoleDownSqlStatements(["workspace_admin"]);
 
     expect(statements).toEqual([]);
+    expect(createPolicyRoleDownSqlStatements()).toEqual([]);
     expect(statements.join("\n")).not.toContain("drop role");
     expect(statements.join("\n")).not.toContain("current_user");
     expect(statements.join("\n")).not.toContain("revoke usage on schema app");

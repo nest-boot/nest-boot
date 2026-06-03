@@ -6,11 +6,22 @@
  * collision bug in production).
  */
 
-// Mock better-auth/adapters to avoid ESM compatibility issues (types only)
-jest.mock("better-auth/adapters", () => ({}));
+// Mock better-auth/adapters to avoid ESM compatibility issues.
+const mockCreateAdapterFactory = jest.fn((config) => config);
+jest.mock("better-auth/adapters", () => ({
+  createAdapterFactory: mockCreateAdapterFactory,
+}));
 
 // Import the function under test
-import { convertWhereToMikroOrm } from "./mikro-orm-adapter";
+import { MikroORM } from "@mikro-orm/core";
+
+import {
+  BaseAccount,
+  BaseSession,
+  BaseUser,
+  BaseVerification,
+} from "../entities";
+import { convertWhereToMikroOrm, mikroOrmAdapter } from "./mikro-orm-adapter";
 
 /** Helper to construct a Where condition */
 function makeWhere(
@@ -153,14 +164,30 @@ describe("convertWhereToMikroOrm", () => {
       expect(result).toEqual({ $and: [{ f: { [mikroOp]: value } }] });
     };
 
-    it("eq → $eq", () => testOperator("eq", "$eq"));
-    it("ne → $ne", () => testOperator("ne", "$ne"));
-    it("lt → $lt", () => testOperator("lt", "$lt", 10));
-    it("lte → $lte", () => testOperator("lte", "$lte", 10));
-    it("gt → $gt", () => testOperator("gt", "$gt", 10));
-    it("gte → $gte", () => testOperator("gte", "$gte", 10));
-    it("in → $in", () => testOperator("in", "$in", [1, 2]));
-    it("not_in → $nin", () => testOperator("not_in", "$nin", [1, 2]));
+    it("eq → $eq", () => {
+      testOperator("eq", "$eq");
+    });
+    it("ne → $ne", () => {
+      testOperator("ne", "$ne");
+    });
+    it("lt → $lt", () => {
+      testOperator("lt", "$lt", 10);
+    });
+    it("lte → $lte", () => {
+      testOperator("lte", "$lte", 10);
+    });
+    it("gt → $gt", () => {
+      testOperator("gt", "$gt", 10);
+    });
+    it("gte → $gte", () => {
+      testOperator("gte", "$gte", 10);
+    });
+    it("in → $in", () => {
+      testOperator("in", "$in", [1, 2]);
+    });
+    it("not_in → $nin", () => {
+      testOperator("not_in", "$nin", [1, 2]);
+    });
 
     it("contains → $like %value%", () => {
       const result = convertWhereToMikroOrm([
@@ -210,5 +237,289 @@ describe("convertWhereToMikroOrm", () => {
         convertWhereToMikroOrm([makeWhere("f", "unknown_op" as never, "x")]),
       ).toThrow("Unsupported operator: unknown_op");
     });
+  });
+});
+
+class TestAccount extends BaseAccount {}
+class TestSession extends BaseSession {}
+class TestUser extends BaseUser {}
+class TestVerification extends BaseVerification {}
+
+const entities = {
+  account: TestAccount,
+  session: TestSession,
+  user: TestUser,
+  verification: TestVerification,
+};
+
+function createOrm() {
+  const flush = jest.fn();
+  const em = {
+    assign: jest.fn(),
+    count: jest.fn(),
+    create: jest.fn((_entity, data) => ({ ...data })),
+    findAll: jest.fn(),
+    findOne: jest.fn(),
+    flush,
+    nativeDelete: jest.fn(),
+    nativeUpdate: jest.fn(),
+    persist: jest.fn(() => ({
+      flush,
+    })),
+  };
+
+  return {
+    em,
+    flush,
+    orm: {
+      em,
+    } as unknown as MikroORM,
+  };
+}
+
+describe("mikroOrmAdapter", () => {
+  beforeEach(() => {
+    mockCreateAdapterFactory.mockClear();
+  });
+
+  it("should configure better-auth adapter capabilities", () => {
+    const { orm } = createOrm();
+
+    const adapterFactory = mikroOrmAdapter({
+      debugLogs: true,
+      entities,
+      orm,
+    }) as any;
+
+    expect(mockCreateAdapterFactory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        config: expect.objectContaining({
+          adapterId: "mikro-orm-adapter",
+          adapterName: "MikroORM Adapter",
+          debugLogs: true,
+          disableIdGeneration: true,
+          supportsBooleans: true,
+          supportsDates: true,
+          supportsJSON: true,
+          supportsNumericIds: true,
+          usePlural: false,
+        }),
+      }),
+    );
+    expect(adapterFactory.config.debugLogs).toBe(true);
+  });
+
+  it("should create and persist entities", async () => {
+    const { em, flush, orm } = createOrm();
+    const adapter = (mikroOrmAdapter({ entities, orm }) as any).adapter();
+
+    await expect(
+      adapter.create({
+        data: {
+          email: "user@example.com",
+        },
+        model: "user",
+      }),
+    ).resolves.toEqual({
+      email: "user@example.com",
+    });
+
+    expect(em.create).toHaveBeenCalledWith(TestUser, {
+      email: "user@example.com",
+    });
+    expect(em.persist).toHaveBeenCalledWith({
+      email: "user@example.com",
+    });
+    expect(flush).toHaveBeenCalledTimes(1);
+  });
+
+  it("should update an existing entity", async () => {
+    const { em, orm } = createOrm();
+    const entity = {
+      id: "user-1",
+      name: "Old",
+    };
+    em.findOne.mockResolvedValue(entity);
+    const adapter = (mikroOrmAdapter({ entities, orm }) as any).adapter();
+
+    await expect(
+      adapter.update({
+        model: "user",
+        update: {
+          name: "New",
+        },
+        where: [makeWhere("id", "eq", "user-1")],
+      }),
+    ).resolves.toBe(entity);
+
+    expect(em.findOne).toHaveBeenCalledWith(TestUser, {
+      $and: [
+        {
+          id: {
+            $eq: "user-1",
+          },
+        },
+      ],
+    });
+    expect(em.assign).toHaveBeenCalledWith(entity, {
+      name: "New",
+    });
+    expect(em.flush).toHaveBeenCalledTimes(1);
+  });
+
+  it("should return null when update cannot find an entity", async () => {
+    const { em, orm } = createOrm();
+    em.findOne.mockResolvedValue(null);
+    const adapter = (mikroOrmAdapter({ entities, orm }) as any).adapter();
+
+    await expect(
+      adapter.update({
+        model: "user",
+        update: {
+          name: "New",
+        },
+        where: [makeWhere("id", "eq", "missing")],
+      }),
+    ).resolves.toBeNull();
+
+    expect(em.assign).not.toHaveBeenCalled();
+    expect(em.flush).not.toHaveBeenCalled();
+  });
+
+  it("should update and delete many entities", async () => {
+    const { em, orm } = createOrm();
+    em.nativeUpdate.mockResolvedValue(2);
+    em.nativeDelete.mockResolvedValue(3);
+    const adapter = (mikroOrmAdapter({ entities, orm }) as any).adapter();
+    const where = [makeWhere("providerId", "eq", "oidc")];
+
+    await expect(
+      adapter.updateMany({
+        model: "account",
+        update: {
+          scope: "email",
+        },
+        where,
+      }),
+    ).resolves.toBe(2);
+    await expect(
+      adapter.deleteMany({
+        model: "account",
+        where,
+      }),
+    ).resolves.toBe(3);
+    await adapter.delete({
+      model: "account",
+      where,
+    });
+
+    expect(em.nativeUpdate).toHaveBeenCalledWith(
+      TestAccount,
+      {
+        $and: [
+          {
+            providerId: {
+              $eq: "oidc",
+            },
+          },
+        ],
+      },
+      {
+        scope: "email",
+      },
+    );
+    expect(em.nativeDelete).toHaveBeenCalledTimes(2);
+  });
+
+  it("should find one and many entities", async () => {
+    const { em, orm } = createOrm();
+    const session = {
+      token: "session-token",
+    };
+    const sessions = [session];
+    em.findOne.mockResolvedValue(session);
+    em.findAll.mockResolvedValue(sessions);
+    const adapter = (mikroOrmAdapter({ entities, orm }) as any).adapter();
+
+    await expect(
+      adapter.findOne({
+        model: "session",
+        where: [makeWhere("token", "eq", "session-token")],
+      }),
+    ).resolves.toBe(session);
+    await expect(
+      adapter.findMany({
+        limit: 10,
+        model: "session",
+        sortBy: {
+          direction: "desc",
+          field: "createdAt",
+        },
+        where: [makeWhere("token", "eq", "session-token")],
+      }),
+    ).resolves.toBe(sessions);
+
+    expect(em.findAll).toHaveBeenCalledWith(TestSession, {
+      limit: 10,
+      offset: 0,
+      orderBy: {
+        createdAt: "desc",
+      },
+      where: {
+        $and: [
+          {
+            token: {
+              $eq: "session-token",
+            },
+          },
+        ],
+      },
+    });
+  });
+
+  it("should find many entities without optional filters", async () => {
+    const { em, orm } = createOrm();
+    em.findAll.mockResolvedValue([]);
+    const adapter = (mikroOrmAdapter({ entities, orm }) as any).adapter();
+
+    await expect(
+      adapter.findMany({
+        model: "verification",
+      }),
+    ).resolves.toEqual([]);
+
+    expect(em.findAll).toHaveBeenCalledWith(TestVerification, {
+      limit: undefined,
+      offset: 0,
+    });
+  });
+
+  it("should count entities with and without filters", async () => {
+    const { em, orm } = createOrm();
+    em.count.mockResolvedValueOnce(1).mockResolvedValueOnce(4);
+    const adapter = (mikroOrmAdapter({ entities, orm }) as any).adapter();
+
+    await expect(
+      adapter.count({
+        model: "user",
+        where: [makeWhere("email", "eq", "user@example.com")],
+      }),
+    ).resolves.toBe(1);
+    await expect(
+      adapter.count({
+        model: "user",
+      }),
+    ).resolves.toBe(4);
+
+    expect(em.count).toHaveBeenNthCalledWith(1, TestUser, {
+      $and: [
+        {
+          email: {
+            $eq: "user@example.com",
+          },
+        },
+      ],
+    });
+    expect(em.count).toHaveBeenNthCalledWith(2, TestUser, undefined);
   });
 });
