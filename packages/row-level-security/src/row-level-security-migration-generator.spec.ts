@@ -486,6 +486,26 @@ describe("RowLevelSecurityMigrationGenerator", () => {
       "(( SELECT current_setting('app.tenant_id'::text, true)::character varying) = tenant_id)",
     ],
     [
+      "parser fallback with escaped string literals",
+      `note = 'tenant''s ::character varying' AND ((select current_setting('app.tenant_id', true)::character varying) = tenant_id)`,
+      `note = 'tenant''s ::character varying' AND (( SELECT current_setting('app.tenant_id'::text, true)::character varying) = tenant_id)`,
+    ],
+    [
+      "parser fallback with quoted identifiers",
+      `"tenant::character varying" = ((select current_setting('app.tenant_id', true)::character varying))`,
+      `"tenant::character varying" = (( SELECT current_setting('app.tenant_id'::text, true)::character varying))`,
+    ],
+    [
+      "parser fallback with dollar-quoted strings exact match",
+      `note = $$::character varying$$ AND ((select current_setting('app.tenant_id', true)::character varying) = tenant_id)`,
+      `note = $$::character varying$$ AND ((select current_setting('app.tenant_id', true)::character varying) = tenant_id)`,
+    ],
+    [
+      "array type aliases",
+      `scopes::character varying[] = array['admin']::character varying[]`,
+      `scopes::varchar[] = array['admin']::varchar[]`,
+    ],
+    [
       "timestamptz context type alias",
       `((select current_setting('app.expires_at', true)::timestamp with time zone) > expires_at)`,
       "(( SELECT current_setting('app.expires_at'::text, true)::timestamp with time zone) > expires_at)",
@@ -530,6 +550,16 @@ describe("RowLevelSecurityMigrationGenerator", () => {
       "unsupported PostgreSQL predicate syntax",
       "deleted_at IS DISTINCT FROM NULL",
       "created_at IS DISTINCT FROM NULL",
+    ],
+    [
+      "unsupported PostgreSQL predicate syntax is compared with parseable syntax",
+      "deleted_at IS DISTINCT FROM NULL",
+      "deleted_at IS NULL",
+    ],
+    [
+      "parser fallback still fails after compatibility rewrites",
+      "note = $$::character varying$$ AND ((select current_setting('app.tenant_id', true)::character varying) = tenant_id)",
+      "note = $tag$::character varying$tag$ AND ((select current_setting('app.tenant_id', true)::character varying) = tenant_id)",
     ],
     [
       "string literal text inside parser fallback expressions changes",
