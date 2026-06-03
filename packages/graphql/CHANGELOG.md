@@ -1,5 +1,11 @@
 # @nest-boot/graphql
 
+## 7.1.4
+
+### Patch Changes
+
+- d6f7c46: Document `ArgsType` explicit names and avoid depending on the internal `ClassType` enum export.
+
 ## 7.1.3
 
 ### Patch Changes
