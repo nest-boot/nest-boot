@@ -29,7 +29,7 @@ const policyMetadata = new WeakMap<object, PolicyMetadataEntry[]>();
  *
  * When `property` and `context` are provided, the decorator derives default
  * `USING` and `WITH CHECK` expressions that compare the mapped database column
- * against a PostgreSQL-deparsed `app.get_context(context::text, NULL::<column type>)`.
+ * against a transaction-local PostgreSQL setting read via `current_setting`.
  */
 export function Policy(options: PolicyOptions): ClassDecorator {
   const name = normalizeOption(options.name, "Policy name is required");
@@ -253,7 +253,7 @@ function createPolicyContextExpression(
     property,
   );
 
-  return `(( SELECT app.get_context('${escapeSqlLiteral(contextName)}'::text, NULL::${contextType}) AS get_context) = ${formatDeparsedIdentifier(columnName)})`;
+  return `((select nullif(current_setting('app.${escapeSqlLiteral(contextName)}', true), '')::${contextType}) = ${formatDeparsedIdentifier(columnName)})`;
 }
 
 function formatDeparsedIdentifier(identifier: string) {

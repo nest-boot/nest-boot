@@ -266,7 +266,5 @@ function createClearContextSql(contextKeys: string[]) {
     return "";
   }
 
-  return `SELECT ${contextKeys
-    .map((key) => `set_config('app.${key}', '', true)`)
-    .join(",")};`;
+  return contextKeys.map((key) => `RESET LOCAL app.${key};`).join("\n");
 }

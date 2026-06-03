@@ -24,8 +24,6 @@ import { RequestContext } from "@nest-boot/request-context";
 import { Test, TestingModule } from "@nestjs/testing";
 
 import {
-  createPolicyBootstrapSqlStatements,
-  createPolicyRoleUpSqlStatements,
   createPolicyUpSqlStatements,
   Policy,
   PolicyCommand,
@@ -144,7 +142,7 @@ class RowLevelSecurityMigrationWorkspaceContextWithExtraFieldEntity {
 @Policy({
   name: POLICY_MIGRATION_POLICY_NAME,
   command: PolicyCommand.SELECT,
-  using: `(select app.get_context('workspace_id'::text, null::integer)) = workspace_id`,
+  using: `(select nullif(current_setting('app.workspace_id'::text, true), ''::text)::integer) = workspace_id`,
 })
 @Entity({
   schema: POLICY_MIGRATION_SCHEMA_NAME,
@@ -161,7 +159,7 @@ class RowLevelSecurityMigrationExplicitWorkspacePolicyEntity {
 @Policy({
   name: POLICY_MIGRATION_POLICY_NAME,
   command: PolicyCommand.SELECT,
-  using: `(select app.get_context('workspace_id'::text, null::integer)) = workspace_id`,
+  using: `(select nullif(current_setting('app.workspace_id'::text, true), ''::text)::integer) = workspace_id`,
 })
 @Entity({
   schema: POLICY_MIGRATION_SCHEMA_NAME,
@@ -205,8 +203,7 @@ describe("RowLevelSecurity - database integration", () => {
     orm = testingModule.get(MikroORM);
 
     await resetSchema();
-    await runStatements(createPolicyBootstrapSqlStatements());
-    await runStatements(createPolicyRoleUpSqlStatements(["authenticated"]));
+    await prepareDatabaseRoles();
   }, 30000);
 
   afterAll(async () => {
@@ -217,14 +214,14 @@ describe("RowLevelSecurity - database integration", () => {
     }
   });
 
-  it("installs app.get_context and converts transaction-local values", async () => {
+  it("reads transaction-local context settings with null-safe casts", async () => {
     const row = await withKnexTransaction(async (trx) => {
       await trx.raw("select set_config('app.user_id', '42', true)");
 
       const result = await trx.raw<{
         rows: { user_id: number; missing_id: number | null }[];
       }>(
-        "select app.get_context('user_id', null::integer) as user_id, app.get_context('missing_id', null::integer) as missing_id",
+        "select nullif(current_setting('app.user_id', true), '')::integer as user_id, nullif(current_setting('app.missing_id', true), '')::integer as missing_id",
       );
 
       return result.rows[0];
@@ -291,7 +288,7 @@ describe("RowLevelSecurity - database integration", () => {
           return await em.getConnection().execute<{
             current_user: string;
             tenant_id: number;
-          }>("select current_user, app.get_context('tenant_id', null::integer) as tenant_id", [], "get", trx);
+          }>("select current_user, nullif(current_setting('app.tenant_id', true), '')::integer as tenant_id", [], "get", trx);
         });
       },
     );
@@ -319,14 +316,14 @@ describe("RowLevelSecurity - database integration", () => {
           const scoped = await em.getConnection().execute<{
             current_user: string;
             tenant_id: number;
-          }>("select current_user, app.get_context('tenant_id', null::integer) as tenant_id", [], "get", trx);
+          }>("select current_user, nullif(current_setting('app.tenant_id', true), '')::integer as tenant_id", [], "get", trx);
 
           RowLevelSecurity.setMode(RowLevelSecurityMode.DISABLED);
 
           const disabled = await em.getConnection().execute<{
             current_user: string;
             tenant_id: number | null;
-          }>("select current_user, app.get_context('tenant_id', null::integer) as tenant_id", [], "get", trx);
+          }>("select current_user, nullif(current_setting('app.tenant_id', true), '')::integer as tenant_id", [], "get", trx);
 
           return {
             disabled,
@@ -361,14 +358,14 @@ describe("RowLevelSecurity - database integration", () => {
           return await em.getConnection().execute<{
             current_user: string;
             tenant_id: number;
-          }>("select current_user, app.get_context('tenant_id', null::integer) as tenant_id", [], "get", trx);
+          }>("select current_user, nullif(current_setting('app.tenant_id', true), '')::integer as tenant_id", [], "get", trx);
         },
       );
 
       const unscoped = await em.getConnection().execute<{
         current_user: string;
         tenant_id: number | null;
-      }>("select current_user, app.get_context('tenant_id', null::integer) as tenant_id", [], "get", trx);
+      }>("select current_user, nullif(current_setting('app.tenant_id', true), '')::integer as tenant_id", [], "get", trx);
 
       return {
         scoped,
@@ -426,7 +423,9 @@ describe("RowLevelSecurity - database integration", () => {
         tenantOrm.migrator as RowLevelSecurityMigrator
       ).createInitialMigration(migrationPath, "InitialPolicyContext");
 
-      expect(initialMigration.code).toContain("app.get_context('tenant_id'");
+      expect(initialMigration.code).toContain(
+        "nullif(current_setting('app.tenant_id', true), '')::integer",
+      );
 
       await runGeneratedMigrationUpStatements(tenantOrm, initialMigration.code);
       await tenantOrm.close(true);
@@ -447,9 +446,11 @@ describe("RowLevelSecurity - database integration", () => {
         `drop policy if exists ${POLICY_MIGRATION_POLICY_NAME}`,
       );
       expect(policyDiffMigration.code).toContain(
-        "app.get_context('workspace_id'",
+        "nullif(current_setting('app.workspace_id', true), '')::integer",
       );
-      expect(policyDiffMigration.code).toContain("app.get_context('tenant_id'");
+      expect(policyDiffMigration.code).toContain(
+        "nullif(current_setting('app.tenant_id'::text, true), ''::text)::integer",
+      );
 
       await runGeneratedMigrationUpStatements(
         workspaceOrm,
@@ -494,7 +495,7 @@ describe("RowLevelSecurity - database integration", () => {
       initialMigrationName: "InitialExplicitPolicyField",
       migrationPathPrefix: "rls-explicit-field-migrations-",
       expectedInitialPolicyExpression:
-        "app.get_context('workspace_id'::text, NULL::integer)",
+        "nullif(current_setting('app.workspace_id'::text, true), ''::text)::integer",
     });
   }, 30000);
 
@@ -586,6 +587,13 @@ describe("RowLevelSecurity - database integration", () => {
     await orm.schema.createSchema({ schema: DOCUMENT_SCHEMA_NAME });
   }
 
+  async function prepareDatabaseRoles() {
+    await execute(
+      "do $$ begin if not exists (select 1 from pg_roles where rolname = 'authenticated') then create role authenticated nologin; end if; end $$;",
+    );
+    await execute("grant authenticated to current_user;");
+  }
+
   async function dropSchema() {
     if (!orm) {
       return;
@@ -630,9 +638,9 @@ describe("RowLevelSecurity - database integration", () => {
         command: PolicyCommand.ALL,
         roles: ["authenticated"],
         using:
-          "((select app.get_context('tenant_id', null::integer)) = tenant_id)",
+          "((select nullif(current_setting('app.tenant_id', true), '')::integer) = tenant_id)",
         withCheck:
-          "((select app.get_context('tenant_id', null::integer)) = tenant_id)",
+          "((select nullif(current_setting('app.tenant_id', true), '')::integer) = tenant_id)",
       }),
     );
     await runStatements(
@@ -643,9 +651,9 @@ describe("RowLevelSecurity - database integration", () => {
         command: PolicyCommand.ALL,
         roles: ["authenticated"],
         using:
-          "((select app.get_context('tenant_id', null::integer)) = tenant_id)",
+          "((select nullif(current_setting('app.tenant_id', true), '')::integer) = tenant_id)",
         withCheck:
-          "((select app.get_context('tenant_id', null::integer)) = tenant_id)",
+          "((select nullif(current_setting('app.tenant_id', true), '')::integer) = tenant_id)",
       }),
     );
   }

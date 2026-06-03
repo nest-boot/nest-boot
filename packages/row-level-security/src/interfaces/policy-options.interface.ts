@@ -11,7 +11,7 @@ export interface PolicyOptions {
   command?: PolicyCommand;
   /** Entity property used to generate the default policy predicate. */
   property?: string;
-  /** Row-level security context key read through `app.get_context`. */
+  /** Row-level security context key read from the `app.<key>` transaction setting. */
   context?: string;
   /** Explicit `USING` expression. Overrides the generated predicate when provided. Raw expressions are parenthesized in generated SQL. */
   using?: string;
