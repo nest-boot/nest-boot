@@ -456,6 +456,11 @@ describe("RowLevelSecurityMigrationGenerator", () => {
       "(( SELECT current_setting('app.user_id'::text, true)::bigint) = user_id)",
     ],
     [
+      "function name casing and deparsed select alias",
+      `(select current_setting('app.user_id'::text, true)::bigint) = user_id`,
+      `(( SELECT (CURRENT_SETTING('app.user_id'::text, TRUE))::bigint AS current_setting) = user_id)`,
+    ],
+    [
       "integer alias and non-keyword identifier quotes",
       `((select current_setting('app.workspace_id', true)::integer) = "workspace_id")`,
       "(( SELECT current_setting('app.workspace_id'::text, true)::integer) = workspace_id)",
@@ -515,6 +520,21 @@ describe("RowLevelSecurityMigrationGenerator", () => {
       "cast target type changes",
       `cast(user_id as integer) = 1`,
       `cast(user_id as bigint) = 1`,
+    ],
+    [
+      "unsupported PostgreSQL predicate syntax",
+      "deleted_at IS DISTINCT FROM NULL",
+      "deleted_at IS DISTINCT FROM NULL",
+    ],
+    [
+      "string literal text inside parser fallback expressions changes",
+      `note = '::character varying' AND ((select current_setting('app.tenant_id', true)::character varying) = tenant_id)`,
+      `note = '::varchar' AND (( SELECT current_setting('app.tenant_id'::text, true)::character varying) = tenant_id)`,
+    ],
+    [
+      "large integer literal changes",
+      "id = 9007199254740992",
+      "id = 9007199254740993",
     ],
   ])(
     "recreates changed explicit policies when %s",
