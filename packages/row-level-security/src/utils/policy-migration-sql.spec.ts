@@ -64,13 +64,13 @@ describe("policy migration SQL", () => {
       tableName: "workspace_member",
       policyName: "workspace_member_user_select_policy",
       command: PolicyCommand.SELECT,
-      using: `((select nullif(current_setting('app.user_id', true), '')::bigint) = "user_id")`,
+      using: `((select current_setting('app.user_id', true)::bigint) = "user_id")`,
     });
 
     expect(statements).toEqual([
       'alter table "public"."workspace_member" enable row level security;',
       'drop policy if exists workspace_member_user_select_policy on "public"."workspace_member";',
-      'create policy workspace_member_user_select_policy on "public"."workspace_member" as permissive for select using ((select nullif(current_setting(\'app.user_id\', true), \'\')::bigint) = "user_id");',
+      'create policy workspace_member_user_select_policy on "public"."workspace_member" as permissive for select using ((select current_setting(\'app.user_id\', true)::bigint) = "user_id");',
     ]);
   });
 
@@ -80,7 +80,7 @@ describe("policy migration SQL", () => {
       tableName: "workspace_member",
       policyName: "workspace_member_user_select_policy",
       command: PolicyCommand.SELECT,
-      using: `((select nullif(current_setting('app.user_id', true), '')::bigint) = "user_id")`,
+      using: `((select current_setting('app.user_id', true)::bigint) = "user_id")`,
       roles: ["authenticated", "anonymous"],
     });
 
@@ -110,7 +110,7 @@ describe("policy migration SQL", () => {
       tableName: "workspace_member",
       policyName: "workspace_member_user_select_policy",
       command: PolicyCommand.SELECT,
-      using: `((select nullif(current_setting('app.user_id', true), '')::bigint) = "user_id")`,
+      using: `((select current_setting('app.user_id', true)::bigint) = "user_id")`,
       roles: ["authenticated", "anonymous"],
     });
 
@@ -118,7 +118,7 @@ describe("policy migration SQL", () => {
       'alter table "public"."workspace_member" enable row level security;',
       'grant select on table "public"."workspace_member" to authenticated, anonymous;',
       'drop policy if exists workspace_member_user_select_policy on "public"."workspace_member";',
-      'create policy workspace_member_user_select_policy on "public"."workspace_member" as permissive for select to authenticated, anonymous using ((select nullif(current_setting(\'app.user_id\', true), \'\')::bigint) = "user_id");',
+      'create policy workspace_member_user_select_policy on "public"."workspace_member" as permissive for select to authenticated, anonymous using ((select current_setting(\'app.user_id\', true)::bigint) = "user_id");',
     ]);
   });
 
@@ -254,11 +254,11 @@ describe("policy migration SQL", () => {
       tableName: "workspace_member",
       policyName: "tenant_required_policy",
       mode: PolicyMode.RESTRICTIVE,
-      using: `((select nullif(current_setting('app.tenant_id', true), '')::bigint) is not null)`,
+      using: `((select current_setting('app.tenant_id', true)::bigint) is not null)`,
     });
 
     expect(statements[2]).toBe(
-      "create policy tenant_required_policy on \"public\".\"workspace_member\" as restrictive for all using ((select nullif(current_setting('app.tenant_id', true), '')::bigint) is not null);",
+      'create policy tenant_required_policy on "public"."workspace_member" as restrictive for all using ((select current_setting(\'app.tenant_id\', true)::bigint) is not null);',
     );
   });
 

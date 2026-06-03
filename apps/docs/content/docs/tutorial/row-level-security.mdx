@@ -75,7 +75,7 @@ For custom policy logic, provide explicit SQL predicates:
 @Policy({
   name: "published_files_read_policy",
   command: PolicyCommand.SELECT,
-  using: `"is_public" = true or (select nullif(current_setting('app.workspace_id', true), '')::integer) = "workspace_id"`,
+  using: `"is_public" = true or (select current_setting('app.workspace_id', true)::integer) = "workspace_id"`,
   roles: [
     RowLevelSecurityRole.ANONYMOUS,
     RowLevelSecurityRole.AUTHENTICATED,

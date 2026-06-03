@@ -491,7 +491,16 @@ function normalizePostgresExpression(expression: string) {
   );
 
   return stripRedundantJsonOperandParentheses(
-    stripRedundantOuterParentheses(normalized),
+    stripRedundantOuterParentheses(
+      stripRedundantCurrentSettingCastParentheses(normalized),
+    ),
+  );
+}
+
+function stripRedundantCurrentSettingCastParentheses(expression: string) {
+  return expression.replace(
+    /\((current_setting\('(?:''|[^'])*', true\))\)::/gi,
+    "$1::",
   );
 }
 
