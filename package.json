@@ -11,6 +11,7 @@
   },
   "scripts": {
     "commit:check": "lint-staged && pnpm docs:check",
+    "commitlint": "commitlint",
     "cz": "cz",
     "prepare": "husky install",
     "build": "nx run-many -t build",
@@ -31,8 +32,10 @@
     "release:dry-run": "nx release --dry-run --skip-publish"
   },
   "devDependencies": {
-    "@nx/js": "^22.7.5",
+    "@commitlint/cli": "^21.0.2",
+    "@commitlint/config-conventional": "^21.0.2",
     "@nest-boot/tsconfig": "workspace:^",
+    "@nx/js": "^22.7.5",
     "@types/jest": "^29.5.14",
     "@types/node": "^24.12.4",
     "commitizen": "^4.3.1",
