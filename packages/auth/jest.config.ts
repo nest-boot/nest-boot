@@ -8,5 +8,9 @@ export default {
   },
   coverageDirectory: "./coverage",
   collectCoverageFrom: ["src/**/*"],
+  moduleNameMapper: {
+    "^@nest-boot/middleware$": "<rootDir>/../middleware/src",
+    "^@nest-boot/request-context$": "<rootDir>/../request-context/src",
+  },
   testEnvironment: "node",
 } satisfies Config;

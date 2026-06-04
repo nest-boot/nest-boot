@@ -338,7 +338,7 @@ tester.run("entity-property-config-from-types", rule, {
         }
       `,
       output: /* typescript */ `
-        import { Entity, Property } from "@mikro-orm/core";
+        import { Entity, Property, Enum } from "@mikro-orm/core";
 
         enum Role {
           Admin,
@@ -726,7 +726,7 @@ enum Role {
 class User {
   role!: Role;
 }`,
-      output: /* typescript */ `import { Entity } from "@mikro-orm/core";
+      output: /* typescript */ `import { Entity, Enum } from "@mikro-orm/core";
 enum Role {
   Admin,
   User
