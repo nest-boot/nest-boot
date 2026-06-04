@@ -1159,9 +1159,7 @@ export default createRule<
                   member.range,
                   newDecoratorText + "\n  ",
                 );
-                const importFix = hasEnumImport()
-                  ? null
-                  : addEnumImport(fixer);
+                const importFix = hasEnumImport() ? null : addEnumImport(fixer);
 
                 return importFix ? [importFix, decoratorFix] : decoratorFix;
               },

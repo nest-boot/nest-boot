@@ -1,5 +1,11 @@
 # @nest-boot/eslint-plugin
 
+## 7.0.7
+
+### Patch Changes
+
+- c6eceed: Fix MikroORM enum fixer output to add the missing `Enum` import, and preserve custom file upload URL path prefixes.
+
 ## 7.0.6
 
 ### Patch Changes
