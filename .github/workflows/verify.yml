@@ -3,6 +3,15 @@ name: Verify
 on:
   workflow_call:
     inputs:
+      commitlint-from:
+        type: string
+        default: ""
+      commitlint-title:
+        type: string
+        default: ""
+      commitlint-to:
+        type: string
+        default: ""
       fetch-depth:
         type: number
         default: 1
@@ -74,6 +83,23 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Commitlint PR title
+        if: inputs.commitlint-title != ''
+        run: printf '%s\n' "$COMMITLINT_TITLE" | pnpm commitlint --verbose
+        env:
+          COMMITLINT_TITLE: ${{ inputs.commitlint-title }}
+
+      - name: Commitlint PR commits
+        if: inputs.commitlint-from != '' && inputs.commitlint-to != ''
+        run: pnpm commitlint --from "$COMMITLINT_FROM" --to "$COMMITLINT_TO" --verbose
+        env:
+          COMMITLINT_FROM: ${{ inputs.commitlint-from }}
+          COMMITLINT_TO: ${{ inputs.commitlint-to }}
+
+      - name: Commitlint latest commit
+        if: inputs.release
+        run: pnpm commitlint --last --verbose
 
       - name: Build packages
         run: pnpm build:packages --skip-nx-cache
