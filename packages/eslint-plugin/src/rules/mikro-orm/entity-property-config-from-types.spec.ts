@@ -480,7 +480,7 @@ tester.run("entity-property-config-from-types", rule, {
 class User {
   name!: string;
 }`,
-      output: /* typescript */ `import { Entity } from "@mikro-orm/core";
+      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
 @Entity()
 class User {
   @Property({ type: t.string })
@@ -626,7 +626,7 @@ class Profile {}
 class User {
   profile!: Profile;
 }`,
-      output: /* typescript */ `import { Entity } from "@mikro-orm/core";
+      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
 class Profile {}
 @Entity()
 class User {
@@ -727,6 +727,32 @@ class User {
   role!: Role;
 }`,
       output: /* typescript */ `import { Entity, Enum } from "@mikro-orm/core";
+enum Role {
+  Admin,
+  User
+}
+@Entity()
+class User {
+  @Enum({ items: () => Role })
+  role!: Role;
+}`,
+      errors: [{ messageId: "useEnumDecorator" }],
+    },
+    // Enum imports should be value imports even when @mikro-orm/core is type-only
+    {
+      code: /* typescript */ `import type { Ref } from "@mikro-orm/core";
+import { Entity } from "@mikro-orm/postgresql";
+enum Role {
+  Admin,
+  User
+}
+@Entity()
+class User {
+  role!: Role;
+}`,
+      output: /* typescript */ `import { Enum } from '@mikro-orm/core';
+import type { Ref } from "@mikro-orm/core";
+import { Entity } from "@mikro-orm/postgresql";
 enum Role {
   Admin,
   User

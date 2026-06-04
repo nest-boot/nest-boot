@@ -8,5 +8,8 @@ export default {
   },
   coverageDirectory: "./coverage",
   collectCoverageFrom: ["src/**/*"],
+  moduleNameMapper: {
+    "^@nest-boot/graphql$": "<rootDir>/../graphql/src",
+  },
   testEnvironment: "node",
 } satisfies Config;
