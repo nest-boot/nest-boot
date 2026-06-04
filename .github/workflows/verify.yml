@@ -6,7 +6,7 @@ on:
       fetch-depth:
         type: number
         default: 1
-      publish:
+      release:
         type: boolean
         default: false
     secrets:
@@ -111,9 +111,16 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
-      - name: Publish packages
-        if: inputs.publish
-        run: pnpm exec nx release publish
+      - name: Configure Git
+        if: inputs.release
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Release packages
+        if: inputs.release
+        run: pnpm exec nx release --yes
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
