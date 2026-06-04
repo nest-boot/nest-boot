@@ -23,9 +23,6 @@
     "format": {
       "cache": false
     },
-    "format:fix": {
-      "cache": false
-    },
     "lint": {
       "cache": false
     },

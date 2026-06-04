@@ -79,7 +79,7 @@ jobs:
         run: pnpm build:packages --skip-nx-cache
 
       - name: Format
-        run: pnpm format
+        run: pnpm format:check
 
       - name: Lint
         run: pnpm lint
