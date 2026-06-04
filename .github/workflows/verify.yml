@@ -1,10 +1,23 @@
-name: Test
+name: Verify
 
-on: workflow_call
+on:
+  workflow_call:
+    inputs:
+      fetch-depth:
+        type: number
+        default: 1
+      publish:
+        type: boolean
+        default: false
+    secrets:
+      CODECOV_TOKEN:
+        required: false
+      NPM_ACCESS_TOKEN:
+        required: false
 
 jobs:
-  test:
-    name: Test
+  verify:
+    name: Verify
     runs-on: ubuntu-latest
 
     services:
@@ -38,49 +51,48 @@ jobs:
           MINIO_ROOT_USER: minio
           MINIO_ROOT_PASSWORD: password
         options: >-
-          --name=minio 
+          --name=minio
           --health-cmd "curl http://localhost:9000/minio/health/live"
 
     steps:
-      - name: Install MinIO Client and Create Bucket
-        run: |
-          wget https://dl.min.io/client/mc/release/linux-amd64/mc
-          chmod +x mc
-          ./mc --help
-          ./mc alias set minio http://localhost:9000 minio password
-          ./mc mb minio/test-bucket
-
       - name: Checkout
         uses: actions/checkout@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
         with:
-          node-version: 24
+          fetch-depth: ${{ inputs.fetch-depth }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
         with:
           run_install: false
 
-      - name: Get pnpm store directory
-        shell: bash
-        run: |
-          echo "PNPM_STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - uses: actions/cache@v5
-        name: Setup pnpm cache
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
         with:
-          path: ${{ env.PNPM_STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org/
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build
-        run: pnpm build:packages --no-cache
+      - name: Build packages
+        run: pnpm build:packages --skip-nx-cache
+
+      - name: Format
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: TypeDoc
+        run: pnpm typedoc:check
+
+      - name: Prepare MinIO bucket
+        run: |
+          wget https://dl.min.io/client/mc/release/linux-amd64/mc
+          chmod +x mc
+          ./mc alias set minio http://localhost:9000 minio password
+          ./mc mb minio/test-bucket
 
       - name: Test
         run: pnpm test:cov
@@ -95,6 +107,13 @@ jobs:
           S3_SECRET_ACCESS_KEY: password
 
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v5
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Publish packages
+        if: inputs.publish
+        run: pnpm exec nx release publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
