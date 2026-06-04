@@ -2,8 +2,6 @@ name: Commitlint PR title
 
 on:
   pull_request:
-    branches:
-      - master
     types:
       - opened
       - reopened
@@ -20,26 +18,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v6
         with:
           fetch-depth: 1
 
-      - name: Setup pnpm
+      - name: Set up pnpm
         uses: pnpm/action-setup@v6
         with:
           run_install: false
 
-      - name: Setup Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version: lts/*
           cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Commitlint PR title
-        run: printf '%s\n' "$COMMITLINT_TITLE" | pnpm commitlint --verbose
+        run: printf '%s\n' "$COMMITLINT_TITLE" | pnpm exec commitlint --verbose
         env:
           COMMITLINT_TITLE: ${{ github.event.pull_request.title }}
