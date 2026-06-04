@@ -275,7 +275,10 @@ export default createRule<
     };
 
     // Check if a named MikroORM helper is imported
-    const hasMikroOrmImport = (importName: string): boolean => {
+    const hasMikroOrmImport = (
+      importName: string,
+      options: { valueOnly?: boolean } = {},
+    ): boolean => {
       const program = context.sourceCode.ast;
       for (const statement of program.body) {
         if (statement.type === AST_NODE_TYPES.ImportDeclaration) {
@@ -285,10 +288,15 @@ export default createRule<
             typeof importSource === "string" &&
             importSource.startsWith("@mikro-orm/")
           ) {
+            if (options.valueOnly && statement.importKind === "type") {
+              continue;
+            }
+
             const hasImport = statement.specifiers.some(
               (spec: TSESTree.ImportClause) => {
                 return (
                   spec.type === AST_NODE_TYPES.ImportSpecifier &&
+                  (!options.valueOnly || spec.importKind !== "type") &&
                   spec.imported.type === AST_NODE_TYPES.Identifier &&
                   spec.imported.name === importName
                 );
@@ -302,12 +310,16 @@ export default createRule<
     };
 
     const hasOptImport = (): boolean => hasMikroOrmImport("Opt");
-    const hasEnumImport = (): boolean => hasMikroOrmImport("Enum");
+    const hasEnumImport = (): boolean =>
+      hasMikroOrmImport("Enum", { valueOnly: true });
+    const hasPropertyImport = (): boolean =>
+      hasMikroOrmImport("Property", { valueOnly: true });
 
     // Add a named helper to the @mikro-orm/core import
     const addMikroOrmImport = (
       fixer: RuleFixer,
       importName: string,
+      options: { valueImport?: boolean } = {},
     ): RuleFix | null => {
       const program = context.sourceCode.ast;
 
@@ -317,7 +329,10 @@ export default createRule<
       for (const statement of program.body) {
         if (statement.type === AST_NODE_TYPES.ImportDeclaration) {
           const importSource = statement.source.value;
-          if (importSource === "@mikro-orm/core") {
+          if (
+            importSource === "@mikro-orm/core" &&
+            (!options.valueImport || statement.importKind !== "type")
+          ) {
             coreImport = statement;
             break;
           }
@@ -362,7 +377,10 @@ export default createRule<
       addMikroOrmImport(fixer, "Opt");
 
     const addEnumImport = (fixer: RuleFixer): RuleFix | null =>
-      addMikroOrmImport(fixer, "Enum");
+      addMikroOrmImport(fixer, "Enum", { valueImport: true });
+
+    const addPropertyImport = (fixer: RuleFixer): RuleFix | null =>
+      addMikroOrmImport(fixer, "Property", { valueImport: true });
 
     const computeTypeInfo = (
       property: TSESTree.PropertyDefinition,
@@ -1125,8 +1143,17 @@ export default createRule<
               node: member,
               messageId: "alignPropertyDecoratorWithTsType",
               fix: (fixer) => {
-                const fixes = addPropertyDecorator(member, typeInfo);
-                return applyFixes(fixer, fixes);
+                const decoratorFixes = applyFixes(
+                  fixer,
+                  addPropertyDecorator(member, typeInfo),
+                );
+                const importFix = hasPropertyImport()
+                  ? null
+                  : addPropertyImport(fixer);
+
+                return importFix
+                  ? [importFix, ...decoratorFixes]
+                  : decoratorFixes;
               },
             });
             return;

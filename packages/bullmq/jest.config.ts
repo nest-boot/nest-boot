@@ -8,5 +8,8 @@ export default {
   },
   coverageDirectory: "./coverage",
   collectCoverageFrom: ["src/**/*"],
+  moduleNameMapper: {
+    "^@nest-boot/request-context$": "<rootDir>/../request-context/src",
+  },
   testEnvironment: "node",
 } satisfies Config;
