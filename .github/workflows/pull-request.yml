@@ -9,10 +9,5 @@ jobs:
   verify:
     name: Verify
     uses: ./.github/workflows/verify.yml
-    with:
-      commitlint-from: ${{ github.event.pull_request.base.sha }}
-      commitlint-title: ${{ github.event.pull_request.title }}
-      commitlint-to: ${{ github.event.pull_request.head.sha }}
-      fetch-depth: 0
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

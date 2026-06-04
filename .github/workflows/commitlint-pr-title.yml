@@ -1,0 +1,45 @@
+name: Commitlint PR title
+
+on:
+  pull_request:
+    branches:
+      - master
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - edited
+
+permissions:
+  contents: read
+
+jobs:
+  commitlint-pr-title:
+    name: Commitlint PR title
+    if: github.event.action != 'edited' || contains(toJson(github.event.changes), 'title')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Commitlint PR title
+        run: printf '%s\n' "$COMMITLINT_TITLE" | pnpm commitlint --verbose
+        env:
+          COMMITLINT_TITLE: ${{ github.event.pull_request.title }}
