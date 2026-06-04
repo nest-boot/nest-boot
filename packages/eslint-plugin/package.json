@@ -11,9 +11,10 @@
   "exports": "./dist/index.js",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist",
+    "clean": "rm -rf .nx && rm -rf node_modules && rm -rf dist",
     "dev": "tsc -p tsconfig.build.json --watch",
-    "lint": "eslint \"{src,test}/**/*.ts\" --fix",
+    "lint": "eslint \"{src,test}/**/*.ts\"",
+    "lint:fix": "eslint \"{src,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:cov": "jest --coverage",
     "test:watch": "jest --watch",

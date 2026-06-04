@@ -1,0 +1,130 @@
+name: Verify
+
+on:
+  workflow_call:
+    inputs:
+      fetch-depth:
+        type: number
+        default: 1
+      release:
+        type: boolean
+        default: false
+    secrets:
+      CODECOV_TOKEN:
+        required: false
+      NPM_ACCESS_TOKEN:
+        required: false
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+      minio:
+        image: bitnamilegacy/minio
+        ports:
+          - 9000:9000
+        env:
+          MINIO_ROOT_USER: minio
+          MINIO_ROOT_PASSWORD: password
+        options: >-
+          --name=minio
+          --health-cmd "curl http://localhost:9000/minio/health/live"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: ${{ inputs.fetch-depth }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org/
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Commitlint latest commit
+        if: inputs.release
+        run: pnpm commitlint --last --verbose
+
+      - name: Build packages
+        run: pnpm build:packages --skip-nx-cache
+
+      - name: Format
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: TypeDoc
+        run: pnpm typedoc:check
+
+      - name: Prepare MinIO bucket
+        run: |
+          wget -O "$RUNNER_TEMP/mc" https://dl.min.io/client/mc/release/linux-amd64/mc
+          chmod +x "$RUNNER_TEMP/mc"
+          "$RUNNER_TEMP/mc" alias set minio http://localhost:9000 minio password
+          "$RUNNER_TEMP/mc" mb minio/test-bucket
+
+      - name: Test
+        run: pnpm test:cov
+        env:
+          DB_URL: postgres://postgres:postgres@localhost:5432/postgres
+          REDIS_URL: redis://localhost:6379
+          S3_ENDPOINT: http://localhost:9000
+          S3_REGION: us-east-1
+          S3_BUCKET: test-bucket
+          S3_FORCE_PATH_STYLE: true
+          S3_ACCESS_KEY_ID: minio
+          S3_SECRET_ACCESS_KEY: password
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Configure Git
+        if: inputs.release
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Release packages
+        if: inputs.release
+        run: pnpm exec nx release --yes
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
