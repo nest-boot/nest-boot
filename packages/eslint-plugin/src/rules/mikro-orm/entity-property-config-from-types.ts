@@ -274,8 +274,8 @@ export default createRule<
       );
     };
 
-    // Check if Opt is imported
-    const hasOptImport = (): boolean => {
+    // Check if a named MikroORM helper is imported
+    const hasMikroOrmImport = (importName: string): boolean => {
       const program = context.sourceCode.ast;
       for (const statement of program.body) {
         if (statement.type === AST_NODE_TYPES.ImportDeclaration) {
@@ -285,24 +285,30 @@ export default createRule<
             typeof importSource === "string" &&
             importSource.startsWith("@mikro-orm/")
           ) {
-            const hasOpt = statement.specifiers.some(
+            const hasImport = statement.specifiers.some(
               (spec: TSESTree.ImportClause) => {
                 return (
                   spec.type === AST_NODE_TYPES.ImportSpecifier &&
                   spec.imported.type === AST_NODE_TYPES.Identifier &&
-                  spec.imported.name === "Opt"
+                  spec.imported.name === importName
                 );
               },
             );
-            if (hasOpt) return true;
+            if (hasImport) return true;
           }
         }
       }
       return false;
     };
 
-    // Add Opt to the @mikro-orm/core import
-    const addOptImport = (fixer: RuleFixer): RuleFix | null => {
+    const hasOptImport = (): boolean => hasMikroOrmImport("Opt");
+    const hasEnumImport = (): boolean => hasMikroOrmImport("Enum");
+
+    // Add a named helper to the @mikro-orm/core import
+    const addMikroOrmImport = (
+      fixer: RuleFixer,
+      importName: string,
+    ): RuleFix | null => {
       const program = context.sourceCode.ast;
 
       // Find the @mikro-orm/core import statement
@@ -319,7 +325,7 @@ export default createRule<
       }
 
       if (coreImport) {
-        // Already has @mikro-orm/core import, add Opt to the import list
+        // Already has @mikro-orm/core import, add the helper to the import list
         const lastSpecifier =
           coreImport.specifiers[coreImport.specifiers.length - 1];
 
@@ -330,10 +336,10 @@ export default createRule<
         if (isMultiline) {
           // Multiline import: add after the last import item, keeping indentation
           const indent = "  "; // Assuming 2-space indentation
-          return fixer.insertTextAfter(lastSpecifier, `,\n${indent}Opt`);
+          return fixer.insertTextAfter(lastSpecifier, `,\n${indent}${importName}`);
         } else {
           // Single-line import: add directly
-          return fixer.insertTextAfter(lastSpecifier, ", Opt");
+          return fixer.insertTextAfter(lastSpecifier, `, ${importName}`);
         }
       } else {
         // No @mikro-orm/core import, add a new import statement at the top
@@ -345,12 +351,18 @@ export default createRule<
         if (firstImport) {
           return fixer.insertTextBefore(
             firstImport,
-            "import { Opt } from '@mikro-orm/core';\n",
+            `import { ${importName} } from '@mikro-orm/core';\n`,
           );
         }
       }
       return null;
     };
+
+    const addOptImport = (fixer: RuleFixer): RuleFix | null =>
+      addMikroOrmImport(fixer, "Opt");
+
+    const addEnumImport = (fixer: RuleFixer): RuleFix | null =>
+      addMikroOrmImport(fixer, "Enum");
 
     const computeTypeInfo = (
       property: TSESTree.PropertyDefinition,
@@ -1073,10 +1085,15 @@ export default createRule<
                 messageId: "useEnumDecorator",
                 fix: (fixer) => {
                   const newDecoratorText = buildEnumDecorator(typeInfo);
-                  return fixer.replaceTextRange(
+                  const decoratorFix = fixer.replaceTextRange(
                     propertyDecorator.range,
                     newDecoratorText,
                   );
+                  const importFix = hasEnumImport()
+                    ? null
+                    : addEnumImport(fixer);
+
+                  return importFix ? [importFix, decoratorFix] : decoratorFix;
                 },
               });
               return;
@@ -1088,10 +1105,15 @@ export default createRule<
               messageId: "useEnumDecorator",
               fix: (fixer) => {
                 const newDecoratorText = buildEnumDecorator(typeInfo);
-                return fixer.insertTextBeforeRange(
+                const decoratorFix = fixer.insertTextBeforeRange(
                   member.range,
                   newDecoratorText + "\n  ",
                 );
+                const importFix = hasEnumImport()
+                  ? null
+                  : addEnumImport(fixer);
+
+                return importFix ? [importFix, decoratorFix] : decoratorFix;
               },
             });
             return;

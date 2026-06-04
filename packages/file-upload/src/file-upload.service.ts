@@ -86,7 +86,8 @@ export class FileUploadService {
           ? (() => {
               const originalUrl = new URL(presignedPost.url);
               const customUrl = new URL(this.options.url);
-              return `${customUrl.origin}${originalUrl.pathname}${originalUrl.search}`;
+              const customPathname = customUrl.pathname.replace(/\/$/, "");
+              return `${customUrl.origin}${customPathname}${originalUrl.pathname}${originalUrl.search}`;
             })()
           : presignedPost.url,
         fields: [

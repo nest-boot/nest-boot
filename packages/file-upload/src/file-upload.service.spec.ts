@@ -104,7 +104,7 @@ describe("FileUploadService", () => {
               value: "signature",
             },
           ],
-          url: "https://cdn.example.com/tmp/generated.jpeg?uploads=1",
+          url: "https://cdn.example.com/static/tmp/generated.jpeg?uploads=1",
         },
       ]);
 
