@@ -26,6 +26,7 @@
     "docs:check": "pnpm build:packages && pnpm typedoc:check",
     "docs:generate": "typedoc --treatValidationWarningsAsErrors && rimraf apps/docs/content/docs/api/index.mdx",
     "lint": "nx run-many -t lint",
+    "lint:fix": "nx run-many -t lint:fix",
     "typedoc:check": "typedoc --treatValidationWarningsAsErrors --emit none",
     "release:dry-run": "nx release --dry-run --skip-publish"
   },

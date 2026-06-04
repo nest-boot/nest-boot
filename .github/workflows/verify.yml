@@ -89,10 +89,10 @@ jobs:
 
       - name: Prepare MinIO bucket
         run: |
-          wget https://dl.min.io/client/mc/release/linux-amd64/mc
-          chmod +x mc
-          ./mc alias set minio http://localhost:9000 minio password
-          ./mc mb minio/test-bucket
+          wget -O "$RUNNER_TEMP/mc" https://dl.min.io/client/mc/release/linux-amd64/mc
+          chmod +x "$RUNNER_TEMP/mc"
+          "$RUNNER_TEMP/mc" alias set minio http://localhost:9000 minio password
+          "$RUNNER_TEMP/mc" mb minio/test-bucket
 
       - name: Test
         run: pnpm test:cov

@@ -26,6 +26,9 @@
     "lint": {
       "cache": false
     },
+    "lint:fix": {
+      "cache": false
+    },
     "deploy": {
       "dependsOn": ["build", "test", "lint"],
       "outputs": [],
@@ -41,7 +44,9 @@
       "push": true
     },
     "changelog": {
-      "projectChangelogs": true
+      "projectChangelogs": {
+        "createRelease": "github"
+      }
     },
     "version": {
       "conventionalCommits": true
