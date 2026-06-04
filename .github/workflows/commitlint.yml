@@ -1,4 +1,4 @@
-name: Commitlint PR commits
+name: Commitlint
 
 on:
   pull_request:
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 jobs:
-  commitlint-pr-commits:
-    name: Commitlint PR commits
+  commitlint:
+    name: Commitlint
     runs-on: ubuntu-latest
 
     steps:
