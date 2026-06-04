@@ -1,5 +1,11 @@
 # @nest-boot/file-upload
 
+## 7.1.4
+
+### Patch Changes
+
+- c6eceed: Fix MikroORM enum fixer output to add the missing `Enum` import, and preserve custom file upload URL path prefixes.
+
 ## 7.1.3
 
 ### Patch Changes
