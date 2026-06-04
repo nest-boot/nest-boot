@@ -480,7 +480,22 @@ tester.run("entity-property-config-from-types", rule, {
 class User {
   name!: string;
 }`,
-      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
+      output: /* typescript */ `import { Entity, Property, t } from "@mikro-orm/core";
+@Entity()
+class User {
+  @Property({ type: t.string })
+  name!: string;
+}`,
+      errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
+    },
+    // Aliased Property imports should not suppress the unaliased runtime import
+    {
+      code: /* typescript */ `import { Entity, Property as MikroProperty } from "@mikro-orm/core";
+@Entity()
+class User {
+  name!: string;
+}`,
+      output: /* typescript */ `import { Entity, Property as MikroProperty, Property, t } from "@mikro-orm/core";
 @Entity()
 class User {
   @Property({ type: t.string })
@@ -727,6 +742,29 @@ class User {
   role!: Role;
 }`,
       output: /* typescript */ `import { Entity, Enum } from "@mikro-orm/core";
+enum Role {
+  Admin,
+  User
+}
+@Entity()
+class User {
+  @Enum({ items: () => Role })
+  role!: Role;
+}`,
+      errors: [{ messageId: "useEnumDecorator" }],
+    },
+    // Aliased Enum imports should not suppress the unaliased runtime import
+    {
+      code: /* typescript */ `import { Entity, Enum as MikroEnum } from "@mikro-orm/core";
+enum Role {
+  Admin,
+  User
+}
+@Entity()
+class User {
+  role!: Role;
+}`,
+      output: /* typescript */ `import { Entity, Enum as MikroEnum, Enum } from "@mikro-orm/core";
 enum Role {
   Admin,
   User

@@ -297,8 +297,7 @@ export default createRule<
                 return (
                   spec.type === AST_NODE_TYPES.ImportSpecifier &&
                   (!options.valueOnly || spec.importKind !== "type") &&
-                  spec.imported.type === AST_NODE_TYPES.Identifier &&
-                  spec.imported.name === importName
+                  spec.local.name === importName
                 );
               },
             );
@@ -314,14 +313,21 @@ export default createRule<
       hasMikroOrmImport("Enum", { valueOnly: true });
     const hasPropertyImport = (): boolean =>
       hasMikroOrmImport("Property", { valueOnly: true });
+    const hasTImport = (): boolean =>
+      hasMikroOrmImport("t", { valueOnly: true });
 
-    // Add a named helper to the @mikro-orm/core import
-    const addMikroOrmImport = (
+    // Add named helpers to the @mikro-orm/core import
+    const addMikroOrmImports = (
       fixer: RuleFixer,
-      importName: string,
+      importNames: string[],
       options: { valueImport?: boolean } = {},
     ): RuleFix | null => {
       const program = context.sourceCode.ast;
+      const uniqueImportNames = [...new Set(importNames)];
+
+      if (uniqueImportNames.length === 0) {
+        return null;
+      }
 
       // Find the @mikro-orm/core import statement
       let coreImport: TSESTree.ImportDeclaration | null = null;
@@ -351,10 +357,16 @@ export default createRule<
         if (isMultiline) {
           // Multiline import: add after the last import item, keeping indentation
           const indent = "  "; // Assuming 2-space indentation
-          return fixer.insertTextAfter(lastSpecifier, `,\n${indent}${importName}`);
+          return fixer.insertTextAfter(
+            lastSpecifier,
+            uniqueImportNames.map((name) => `,\n${indent}${name}`).join(""),
+          );
         } else {
           // Single-line import: add directly
-          return fixer.insertTextAfter(lastSpecifier, `, ${importName}`);
+          return fixer.insertTextAfter(
+            lastSpecifier,
+            `, ${uniqueImportNames.join(", ")}`,
+          );
         }
       } else {
         // No @mikro-orm/core import, add a new import statement at the top
@@ -366,12 +378,18 @@ export default createRule<
         if (firstImport) {
           return fixer.insertTextBefore(
             firstImport,
-            `import { ${importName} } from '@mikro-orm/core';\n`,
+            `import { ${uniqueImportNames.join(", ")} } from '@mikro-orm/core';\n`,
           );
         }
       }
       return null;
     };
+
+    const addMikroOrmImport = (
+      fixer: RuleFixer,
+      importName: string,
+      options: { valueImport?: boolean } = {},
+    ): RuleFix | null => addMikroOrmImports(fixer, [importName], options);
 
     const addOptImport = (fixer: RuleFixer): RuleFix | null =>
       addMikroOrmImport(fixer, "Opt");
@@ -379,8 +397,22 @@ export default createRule<
     const addEnumImport = (fixer: RuleFixer): RuleFix | null =>
       addMikroOrmImport(fixer, "Enum", { valueImport: true });
 
-    const addPropertyImport = (fixer: RuleFixer): RuleFix | null =>
-      addMikroOrmImport(fixer, "Property", { valueImport: true });
+    const addPropertyDecoratorImports = (
+      fixer: RuleFixer,
+      info: TypeInfo,
+    ): RuleFix | null => {
+      const importNames: string[] = [];
+
+      if (!hasPropertyImport()) {
+        importNames.push("Property");
+      }
+
+      if (info.propertyType?.startsWith("t.") && !hasTImport()) {
+        importNames.push("t");
+      }
+
+      return addMikroOrmImports(fixer, importNames, { valueImport: true });
+    };
 
     const computeTypeInfo = (
       property: TSESTree.PropertyDefinition,
@@ -1147,9 +1179,7 @@ export default createRule<
                   fixer,
                   addPropertyDecorator(member, typeInfo),
                 );
-                const importFix = hasPropertyImport()
-                  ? null
-                  : addPropertyImport(fixer);
+                const importFix = addPropertyDecoratorImports(fixer, typeInfo);
 
                 return importFix
                   ? [importFix, ...decoratorFixes]
