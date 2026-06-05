@@ -12,8 +12,6 @@ on:
     secrets:
       CODECOV_TOKEN:
         required: false
-      NPM_ACCESS_TOKEN:
-        required: false
 
 jobs:
   verify:
@@ -126,5 +124,4 @@ jobs:
         run: pnpm exec nx release --yes
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
