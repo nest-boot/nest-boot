@@ -121,7 +121,6 @@ jobs:
 
       - name: Release packages
         if: inputs.release
-        run: pnpm exec nx release --yes
+        run: pnpm exec nx release publish --projects=@nest-boot/auth --yes
         env:
-          GITHUB_TOKEN: ${{ github.token }}
           NPM_CONFIG_PROVENANCE: true

@@ -1,3 +1,13 @@
+## 7.11.0 (2026-06-07)
+
+### 🚀 Features
+
+- **auth:** support env-configured auth providers ([7b1bf46](https://github.com/nest-boot/nest-boot/commit/7b1bf46))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 # @nest-boot/auth
 
 ## 7.10.0
