@@ -52,7 +52,20 @@ const AuthDynamicModule = AuthModule.forRoot({
 | `APP_URL`                   | 未设置 `AUTH_URL` 时使用的备用公开基础 URL。                                                | 未设置                     |
 | `AUTH_EMAIL_ENABLED`        | 设置为 `true` 或 `false` 时显式配置邮箱密码认证。                                           | better-auth 默认值         |
 | `AUTH_EMAIL_DISABLE_SIGNUP` | 设置为 `true` 时，在已配置邮箱密码认证的情况下禁用邮箱密码注册。                            | 允许注册                   |
-| `AUTH_DISABLE_SIGNUP`       | 设置为 `true` 时同时禁用已配置的邮箱密码和 OIDC 注册。                                      | 允许注册                   |
+| `AUTH_DISABLE_SIGNUP`       | 设置为 `true` 时禁用已配置的邮箱密码、OIDC、Google 和 GitHub 注册。                         | 允许注册                   |
+
+当设置了 Google 或 GitHub 凭据环境变量时，`AuthModule` 会配置对应的 better-auth `socialProviders.google` 或 `socialProviders.github` 专门 provider。此时模块会在启动时校验 provider 凭据：
+
+| 变量                         | 说明                               | 默认值                         |
+| ---------------------------- | ---------------------------------- | ------------------------------ |
+| `AUTH_GOOGLE_CLIENT_ID`      | Google OAuth 客户端 ID。           | 使用 Google 环境变量配置时必填 |
+| `AUTH_GOOGLE_CLIENT_SECRET`  | Google OAuth 客户端密钥。          | 使用 Google 环境变量配置时必填 |
+| `AUTH_GOOGLE_DISABLE_SIGNUP` | 设置为 `true` 时禁用 Google 注册。 | 允许注册                       |
+| `AUTH_GITHUB_CLIENT_ID`      | GitHub OAuth 客户端 ID。           | 使用 GitHub 环境变量配置时必填 |
+| `AUTH_GITHUB_CLIENT_SECRET`  | GitHub OAuth 客户端密钥。          | 使用 GitHub 环境变量配置时必填 |
+| `AUTH_GITHUB_DISABLE_SIGNUP` | 设置为 `true` 时禁用 GitHub 注册。 | 允许注册                       |
+
+如果不需要某个 provider，保持对应 provider 的环境变量未设置即可。如果手动传入了 `socialProviders.google` 或 `socialProviders.github`，禁用注册相关环境变量仍会合并到对应的嵌套 provider 配置中，不需要把凭据也移动到环境变量里。
 
 当设置了任意 `AUTH_OIDC_*` 变量时，`AuthModule` 会注册一个 `providerId: "oidc"` 的 `genericOAuth` 提供商。此时模块会在启动时校验以下变量：
 
@@ -65,7 +78,7 @@ const AuthDynamicModule = AuthModule.forRoot({
 | `AUTH_OIDC_SCOPES`         | 逗号分隔的 OIDC scopes。                                                                                                        | `openid,profile,email`       |
 | `AUTH_OIDC_DISABLE_SIGNUP` | 设置为 `true` 时禁用 OIDC 注册。                                                                                                | 允许注册                     |
 
-如果不需要 OIDC，保持所有 `AUTH_OIDC_*` 变量未设置即可。如果需要多个 provider 或自定义 provider 行为，可以手动配置 `plugins`；通过环境变量配置的 OIDC 插件会追加在自定义插件之前。
+如果不需要 OIDC，保持所有 `AUTH_OIDC_*` 变量未设置即可。如果需要多个 generic OIDC provider 或自定义 provider 行为，可以手动配置 `plugins`；通过环境变量配置的 OIDC 插件会追加在自定义插件之前。
 
 ### 异步注册（含 OIDC）
 

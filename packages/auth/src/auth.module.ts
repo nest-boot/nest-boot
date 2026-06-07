@@ -22,6 +22,7 @@ import { AuthService } from "./auth.service";
 import { AuthModuleOptions } from "./auth-module-options.interface";
 import { createEmailAndPasswordConfig } from "./utils/create-email-and-password-config";
 import { createOidcConfig } from "./utils/create-oidc-config";
+import { createSocialProvidersConfig } from "./utils/create-social-providers-config";
 import { isEnvTrue } from "./utils/is-env-true";
 import { resolveSecret } from "./utils/resolve-secret";
 
@@ -45,10 +46,19 @@ import { resolveSecret } from "./utils/resolve-secret";
         const secret = resolveSecret(options);
         const disableSignUp = isEnvTrue("AUTH_DISABLE_SIGNUP");
         const oidcConfig = createOidcConfig(disableSignUp);
-        const { emailAndPassword, plugins, ...betterAuthOptions } = options;
+        const {
+          emailAndPassword,
+          plugins,
+          socialProviders,
+          ...betterAuthOptions
+        } = options;
         const emailAndPasswordConfig = createEmailAndPasswordConfig(
           disableSignUp,
           emailAndPassword,
+        );
+        const socialProvidersConfig = createSocialProvidersConfig(
+          disableSignUp,
+          socialProviders,
         );
 
         return betterAuth({
@@ -61,6 +71,9 @@ import { resolveSecret } from "./utils/resolve-secret";
           ...betterAuthOptions,
           ...(emailAndPasswordConfig
             ? { emailAndPassword: emailAndPasswordConfig }
+            : {}),
+          ...(socialProvidersConfig
+            ? { socialProviders: socialProvidersConfig }
             : {}),
           plugins: [
             ...(oidcConfig

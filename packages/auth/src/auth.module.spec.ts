@@ -58,6 +58,16 @@ function setOidcEnv() {
     "https://oidc.example.com/.well-known/openid-configuration";
 }
 
+function setGoogleEnv() {
+  process.env.AUTH_GOOGLE_CLIENT_ID = "google-client-id";
+  process.env.AUTH_GOOGLE_CLIENT_SECRET = "google-client-secret";
+}
+
+function setGithubEnv() {
+  process.env.AUTH_GITHUB_CLIENT_ID = "github-client-id";
+  process.env.AUTH_GITHUB_CLIENT_SECRET = "github-client-secret";
+}
+
 function getAuthProvider() {
   const providers = Reflect.getMetadata(
     MODULE_METADATA.PROVIDERS,
@@ -142,6 +152,12 @@ describe("AuthModule", () => {
     delete process.env.AUTH_DISABLE_SIGNUP;
     delete process.env.AUTH_EMAIL_ENABLED;
     delete process.env.AUTH_EMAIL_DISABLE_SIGNUP;
+    delete process.env.AUTH_GITHUB_CLIENT_ID;
+    delete process.env.AUTH_GITHUB_CLIENT_SECRET;
+    delete process.env.AUTH_GITHUB_DISABLE_SIGNUP;
+    delete process.env.AUTH_GOOGLE_CLIENT_ID;
+    delete process.env.AUTH_GOOGLE_CLIENT_SECRET;
+    delete process.env.AUTH_GOOGLE_DISABLE_SIGNUP;
     delete process.env.AUTH_OIDC_CLIENT_ID;
     delete process.env.AUTH_OIDC_CLIENT_SECRET;
     delete process.env.AUTH_OIDC_DISCOVERY_URL;
@@ -236,6 +252,8 @@ describe("AuthModule", () => {
   it("should disable email and OIDC signup when the global signup disable flag is enabled", () => {
     process.env.AUTH_DISABLE_SIGNUP = "true";
     process.env.AUTH_EMAIL_ENABLED = "true";
+    setGithubEnv();
+    setGoogleEnv();
     setOidcEnv();
     const orm = {
       em: {},
@@ -255,6 +273,14 @@ describe("AuthModule", () => {
         emailAndPassword: expect.objectContaining({
           disableSignUp: true,
         }),
+        socialProviders: {
+          github: expect.objectContaining({
+            disableSignUp: true,
+          }),
+          google: expect.objectContaining({
+            disableSignUp: true,
+          }),
+        },
       }),
     );
     expect(mockGenericOAuth).toHaveBeenCalledWith({
@@ -266,6 +292,100 @@ describe("AuthModule", () => {
       ],
     });
   });
+
+  it("should create dedicated Google and GitHub social providers from env", () => {
+    setGithubEnv();
+    setGoogleEnv();
+    const orm = {
+      em: {},
+    } as unknown as MikroORM;
+    const authProvider = getAuthProvider();
+
+    authProvider.useFactory(
+      {
+        entities,
+        secret,
+      },
+      orm,
+    );
+
+    expect(mockBetterAuth).toHaveBeenCalledWith(
+      expect.objectContaining({
+        socialProviders: {
+          github: {
+            clientId: "github-client-id",
+            clientSecret: "github-client-secret",
+            disableSignUp: false,
+          },
+          google: {
+            clientId: "google-client-id",
+            clientSecret: "google-client-secret",
+            disableSignUp: false,
+          },
+        },
+      }),
+    );
+    expect(mockGenericOAuth).not.toHaveBeenCalled();
+  });
+
+  it("should disable signup for provider-specific social provider flags", () => {
+    process.env.AUTH_GITHUB_DISABLE_SIGNUP = "true";
+    process.env.AUTH_GOOGLE_DISABLE_SIGNUP = "true";
+    setGithubEnv();
+    setGoogleEnv();
+    const orm = {
+      em: {},
+    } as unknown as MikroORM;
+    const authProvider = getAuthProvider();
+
+    authProvider.useFactory(
+      {
+        entities,
+        secret,
+      },
+      orm,
+    );
+
+    expect(mockBetterAuth).toHaveBeenCalledWith(
+      expect.objectContaining({
+        socialProviders: {
+          github: expect.objectContaining({
+            disableSignUp: true,
+          }),
+          google: expect.objectContaining({
+            disableSignUp: true,
+          }),
+        },
+      }),
+    );
+  });
+
+  it.each([
+    ["AUTH_GOOGLE_CLIENT_ID", setGoogleEnv],
+    ["AUTH_GOOGLE_CLIENT_SECRET", setGoogleEnv],
+    ["AUTH_GITHUB_CLIENT_ID", setGithubEnv],
+    ["AUTH_GITHUB_CLIENT_SECRET", setGithubEnv],
+  ])(
+    "should reject missing %s when social provider env is configured",
+    (envName, setEnv) => {
+      setEnv();
+      process.env[envName] = "";
+      const orm = {
+        em: {},
+      } as unknown as MikroORM;
+      const authProvider = getAuthProvider();
+
+      expect(() =>
+        authProvider.useFactory(
+          {
+            entities,
+            secret,
+          },
+          orm,
+        ),
+      ).toThrow(envName);
+    },
+  );
 
   it("should keep signup enabled when the global signup disable flag is not true", () => {
     process.env.AUTH_DISABLE_SIGNUP = "false";
@@ -415,6 +535,50 @@ describe("AuthModule", () => {
           disableSignUp: true,
           enabled: true,
           maxPasswordLength: 128,
+        },
+      }),
+    );
+  });
+
+  it("should merge social provider options without dropping env signup disable flags", () => {
+    process.env.AUTH_DISABLE_SIGNUP = "true";
+    const orm = {
+      em: {},
+    } as unknown as MikroORM;
+    const authProvider = getAuthProvider();
+
+    authProvider.useFactory(
+      {
+        entities,
+        secret,
+        socialProviders: {
+          apple: {
+            clientId: "apple-client-id",
+            clientSecret: "apple-client-secret",
+          },
+          google: {
+            clientId: "google-client-id",
+            clientSecret: "google-client-secret",
+            scope: ["email"],
+          },
+        },
+      },
+      orm,
+    );
+
+    expect(mockBetterAuth).toHaveBeenCalledWith(
+      expect.objectContaining({
+        socialProviders: {
+          apple: {
+            clientId: "apple-client-id",
+            clientSecret: "apple-client-secret",
+          },
+          google: {
+            clientId: "google-client-id",
+            clientSecret: "google-client-secret",
+            disableSignUp: true,
+            scope: ["email"],
+          },
         },
       }),
     );
