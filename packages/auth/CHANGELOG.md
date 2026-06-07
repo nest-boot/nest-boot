@@ -1,3 +1,13 @@
+## 7.11.1 (2026-06-07)
+
+### 🩹 Fixes
+
+- **auth:** rename signup disable env vars ([1a1001b](https://github.com/nest-boot/nest-boot/commit/1a1001b))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 7.11.0 (2026-06-07)
 
 ### 🚀 Features
