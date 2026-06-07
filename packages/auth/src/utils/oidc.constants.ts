@@ -1,6 +1,7 @@
 import { OidcPrompt } from "./generic-oauth-provider-config.type";
 
 export const OIDC_ENV_NAMES = [
+  "AUTH_OIDC_ENABLED",
   "AUTH_OIDC_CLIENT_ID",
   "AUTH_OIDC_CLIENT_SECRET",
   "AUTH_OIDC_DISCOVERY_URL",

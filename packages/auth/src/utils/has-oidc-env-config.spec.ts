@@ -7,6 +7,7 @@ describe("hasOidcEnvConfig", () => {
     delete process.env.AUTH_OIDC_CLIENT_SECRET;
     delete process.env.AUTH_OIDC_DISCOVERY_URL;
     delete process.env.AUTH_OIDC_DISABLE_SIGNUP;
+    delete process.env.AUTH_OIDC_ENABLED;
     delete process.env.AUTH_OIDC_PROMPT;
     delete process.env.AUTH_OIDC_SCOPES;
   });

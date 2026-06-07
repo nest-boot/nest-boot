@@ -15,7 +15,7 @@ export function resolveRequiredSocialProviderEnv(
   if (!value) {
     throw new Error(
       `${name} is required for ${config.displayName} auth.\n` +
-        `Set ${name} environment variable, or remove ${config.envPrefix} environment variables to disable ${config.displayName} auth.`,
+        `Set ${name} environment variable, or set ${config.enabled}=false to disable ${config.displayName} auth.`,
     );
   }
 

@@ -6,7 +6,7 @@ export function resolveRequiredOidcEnv(name: RequiredOidcEnvName): string {
   if (!value) {
     throw new Error(
       `${name} is required when OIDC auth is configured.\n` +
-        `Set ${name} environment variable, or remove AUTH_OIDC_* environment variables to disable OIDC auth.`,
+        `Set ${name} environment variable, or set AUTH_OIDC_ENABLED=false to disable OIDC auth.`,
     );
   }
 

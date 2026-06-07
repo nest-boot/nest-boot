@@ -5,13 +5,21 @@ describe("hasSocialProviderCredentialEnvConfig", () => {
     delete process.env.AUTH_GITHUB_CLIENT_ID;
     delete process.env.AUTH_GITHUB_CLIENT_SECRET;
     delete process.env.AUTH_GITHUB_DISABLE_SIGNUP;
+    delete process.env.AUTH_GITHUB_ENABLED;
     delete process.env.AUTH_GOOGLE_CLIENT_ID;
     delete process.env.AUTH_GOOGLE_CLIENT_SECRET;
     delete process.env.AUTH_GOOGLE_DISABLE_SIGNUP;
+    delete process.env.AUTH_GOOGLE_ENABLED;
   });
 
   it("should return false when only disable signup env is configured", () => {
     process.env.AUTH_GOOGLE_DISABLE_SIGNUP = "true";
+
+    expect(hasSocialProviderCredentialEnvConfig("google")).toBe(false);
+  });
+
+  it("should return false when only enabled env is configured", () => {
+    process.env.AUTH_GOOGLE_ENABLED = "true";
 
     expect(hasSocialProviderCredentialEnvConfig("google")).toBe(false);
   });

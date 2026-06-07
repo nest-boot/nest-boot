@@ -20,6 +20,7 @@ import {
 } from "./auth.module-definition";
 import { AuthService } from "./auth.service";
 import { AuthModuleOptions } from "./auth-module-options.interface";
+import { assertNoDuplicateGenericOAuthPlugin } from "./utils/assert-no-duplicate-generic-oauth-plugin";
 import { createEmailAndPasswordConfig } from "./utils/create-email-and-password-config";
 import { createOidcConfig } from "./utils/create-oidc-config";
 import { createSocialProvidersConfig } from "./utils/create-social-providers-config";
@@ -60,6 +61,10 @@ import { resolveSecret } from "./utils/resolve-secret";
           disableSignUp,
           socialProviders,
         );
+
+        if (oidcConfig) {
+          assertNoDuplicateGenericOAuthPlugin(plugins);
+        }
 
         return betterAuth({
           appName: process.env.APP_NAME,

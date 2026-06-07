@@ -1,8 +1,8 @@
 import { AuthModuleOptions } from "../auth-module-options.interface";
 import { hasSocialProviderCredentialEnvConfig } from "./has-social-provider-credential-env-config";
-import { hasSocialProviderEnvConfig } from "./has-social-provider-env-config";
 import { isEnvTrue } from "./is-env-true";
 import { resolveRequiredSocialProviderEnv } from "./resolve-required-social-provider-env";
+import { resolveSocialProviderEnabled } from "./resolve-social-provider-enabled";
 import {
   SOCIAL_PROVIDER_ENV_CONFIGS,
   SocialProviderId,
@@ -19,22 +19,26 @@ export function createSocialProviderConfig<T extends SocialProviderId>(
   options?: SocialProviderConfig<T>,
 ): SocialProviderConfig<T> | undefined {
   const providerConfig = SOCIAL_PROVIDER_ENV_CONFIGS[provider];
-  const hasEnvConfig = hasSocialProviderEnvConfig(provider);
   const hasCredentialEnvConfig = hasSocialProviderCredentialEnvConfig(provider);
   const shouldDisableSignUp =
     disableSignUp || isEnvTrue(providerConfig.disableSignUp);
+  const hasEnabledEnv = process.env[providerConfig.enabled] !== undefined;
+  const enabled = resolveSocialProviderEnabled(provider);
+  const shouldUseCredentialEnv = enabled && hasCredentialEnvConfig;
+  const shouldCreateProvider = !!options || enabled;
 
-  if (!options && !hasEnvConfig) {
+  if (!shouldCreateProvider) {
     return undefined;
   }
 
-  if (!hasCredentialEnvConfig) {
+  if (!shouldUseCredentialEnv) {
     if (!options) {
       resolveRequiredSocialProviderEnv(provider, "clientId");
     }
 
     return {
       ...options,
+      ...(hasEnabledEnv ? { enabled } : {}),
       ...(shouldDisableSignUp || options?.disableSignUp === true
         ? { disableSignUp: true }
         : {}),
@@ -45,6 +49,7 @@ export function createSocialProviderConfig<T extends SocialProviderId>(
     ...options,
     clientId: resolveRequiredSocialProviderEnv(provider, "clientId"),
     clientSecret: resolveRequiredSocialProviderEnv(provider, "clientSecret"),
+    ...(hasEnabledEnv ? { enabled } : {}),
     disableSignUp: shouldDisableSignUp || options?.disableSignUp === true,
   } as SocialProviderConfig<T>;
 }

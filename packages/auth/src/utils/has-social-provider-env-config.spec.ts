@@ -5,9 +5,11 @@ const socialProviderEnvCases = [
   ["github", "AUTH_GITHUB_CLIENT_ID"],
   ["github", "AUTH_GITHUB_CLIENT_SECRET"],
   ["github", "AUTH_GITHUB_DISABLE_SIGNUP"],
+  ["github", "AUTH_GITHUB_ENABLED"],
   ["google", "AUTH_GOOGLE_CLIENT_ID"],
   ["google", "AUTH_GOOGLE_CLIENT_SECRET"],
   ["google", "AUTH_GOOGLE_DISABLE_SIGNUP"],
+  ["google", "AUTH_GOOGLE_ENABLED"],
 ] as const;
 
 describe("hasSocialProviderEnvConfig", () => {
@@ -15,9 +17,11 @@ describe("hasSocialProviderEnvConfig", () => {
     delete process.env.AUTH_GITHUB_CLIENT_ID;
     delete process.env.AUTH_GITHUB_CLIENT_SECRET;
     delete process.env.AUTH_GITHUB_DISABLE_SIGNUP;
+    delete process.env.AUTH_GITHUB_ENABLED;
     delete process.env.AUTH_GOOGLE_CLIENT_ID;
     delete process.env.AUTH_GOOGLE_CLIENT_SECRET;
     delete process.env.AUTH_GOOGLE_DISABLE_SIGNUP;
+    delete process.env.AUTH_GOOGLE_ENABLED;
   });
 
   it.each(socialProviderIds)(

@@ -4,11 +4,13 @@ export const SOCIAL_PROVIDER_ENV_CONFIGS = {
     clientId: "AUTH_GITHUB_CLIENT_ID",
     clientSecret: "AUTH_GITHUB_CLIENT_SECRET",
     disableSignUp: "AUTH_GITHUB_DISABLE_SIGNUP",
+    enabled: "AUTH_GITHUB_ENABLED",
     envPrefix: "AUTH_GITHUB_*",
     envNames: [
       "AUTH_GITHUB_CLIENT_ID",
       "AUTH_GITHUB_CLIENT_SECRET",
       "AUTH_GITHUB_DISABLE_SIGNUP",
+      "AUTH_GITHUB_ENABLED",
     ],
   },
   google: {
@@ -16,11 +18,13 @@ export const SOCIAL_PROVIDER_ENV_CONFIGS = {
     clientId: "AUTH_GOOGLE_CLIENT_ID",
     clientSecret: "AUTH_GOOGLE_CLIENT_SECRET",
     disableSignUp: "AUTH_GOOGLE_DISABLE_SIGNUP",
+    enabled: "AUTH_GOOGLE_ENABLED",
     envPrefix: "AUTH_GOOGLE_*",
     envNames: [
       "AUTH_GOOGLE_CLIENT_ID",
       "AUTH_GOOGLE_CLIENT_SECRET",
       "AUTH_GOOGLE_DISABLE_SIGNUP",
+      "AUTH_GOOGLE_ENABLED",
     ],
   },
 } as const;

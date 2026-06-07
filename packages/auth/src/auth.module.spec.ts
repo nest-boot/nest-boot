@@ -52,6 +52,7 @@ const entities = {
 };
 
 function setOidcEnv() {
+  process.env.AUTH_OIDC_ENABLED = "true";
   process.env.AUTH_OIDC_CLIENT_ID = "oidc-client-id";
   process.env.AUTH_OIDC_CLIENT_SECRET = "oidc-client-secret";
   process.env.AUTH_OIDC_DISCOVERY_URL =
@@ -59,11 +60,13 @@ function setOidcEnv() {
 }
 
 function setGoogleEnv() {
+  process.env.AUTH_GOOGLE_ENABLED = "true";
   process.env.AUTH_GOOGLE_CLIENT_ID = "google-client-id";
   process.env.AUTH_GOOGLE_CLIENT_SECRET = "google-client-secret";
 }
 
 function setGithubEnv() {
+  process.env.AUTH_GITHUB_ENABLED = "true";
   process.env.AUTH_GITHUB_CLIENT_ID = "github-client-id";
   process.env.AUTH_GITHUB_CLIENT_SECRET = "github-client-secret";
 }
@@ -155,13 +158,16 @@ describe("AuthModule", () => {
     delete process.env.AUTH_GITHUB_CLIENT_ID;
     delete process.env.AUTH_GITHUB_CLIENT_SECRET;
     delete process.env.AUTH_GITHUB_DISABLE_SIGNUP;
+    delete process.env.AUTH_GITHUB_ENABLED;
     delete process.env.AUTH_GOOGLE_CLIENT_ID;
     delete process.env.AUTH_GOOGLE_CLIENT_SECRET;
     delete process.env.AUTH_GOOGLE_DISABLE_SIGNUP;
+    delete process.env.AUTH_GOOGLE_ENABLED;
     delete process.env.AUTH_OIDC_CLIENT_ID;
     delete process.env.AUTH_OIDC_CLIENT_SECRET;
     delete process.env.AUTH_OIDC_DISCOVERY_URL;
     delete process.env.AUTH_OIDC_DISABLE_SIGNUP;
+    delete process.env.AUTH_OIDC_ENABLED;
     delete process.env.AUTH_OIDC_PROMPT;
     delete process.env.AUTH_OIDC_SCOPES;
     delete process.env.APP_URL;
@@ -316,11 +322,13 @@ describe("AuthModule", () => {
             clientId: "github-client-id",
             clientSecret: "github-client-secret",
             disableSignUp: false,
+            enabled: true,
           },
           google: {
             clientId: "google-client-id",
             clientSecret: "google-client-secret",
             disableSignUp: false,
+            enabled: true,
           },
         },
       }),
@@ -355,6 +363,67 @@ describe("AuthModule", () => {
           google: expect.objectContaining({
             disableSignUp: true,
           }),
+        },
+      }),
+    );
+  });
+
+  it("should apply provider-specific social provider enabled flags", () => {
+    setGoogleEnv();
+    const orm = {
+      em: {},
+    } as unknown as MikroORM;
+    const authProvider = getAuthProvider();
+
+    authProvider.useFactory(
+      {
+        entities,
+        secret,
+      },
+      orm,
+    );
+
+    expect(mockBetterAuth).toHaveBeenCalledWith(
+      expect.objectContaining({
+        socialProviders: {
+          google: expect.objectContaining({
+            enabled: true,
+          }),
+        },
+      }),
+    );
+  });
+
+  it("should disable manually configured social providers when provider enabled env is false", () => {
+    process.env.AUTH_GITHUB_ENABLED = "false";
+    const orm = {
+      em: {},
+    } as unknown as MikroORM;
+    const authProvider = getAuthProvider();
+
+    authProvider.useFactory(
+      {
+        entities,
+        secret,
+        socialProviders: {
+          github: {
+            clientId: "github-client-id",
+            clientSecret: "github-client-secret",
+            enabled: true,
+          },
+        },
+      },
+      orm,
+    );
+
+    expect(mockBetterAuth).toHaveBeenCalledWith(
+      expect.objectContaining({
+        socialProviders: {
+          github: {
+            clientId: "github-client-id",
+            clientSecret: "github-client-secret",
+            enabled: false,
+          },
         },
       }),
     );
@@ -414,6 +483,27 @@ describe("AuthModule", () => {
   });
 
   it("should skip OIDC plugin registration when OIDC env is not configured", () => {
+    const orm = {
+      em: {},
+    } as unknown as MikroORM;
+    const authProvider = getAuthProvider();
+
+    authProvider.useFactory(
+      {
+        entities,
+        secret,
+      },
+      orm,
+    );
+
+    expect(mockGenericOAuth).not.toHaveBeenCalled();
+  });
+
+  it("should skip OIDC plugin registration when OIDC credentials are configured but AUTH_OIDC_ENABLED is unset", () => {
+    process.env.AUTH_OIDC_CLIENT_ID = "oidc-client-id";
+    process.env.AUTH_OIDC_CLIENT_SECRET = "oidc-client-secret";
+    process.env.AUTH_OIDC_DISCOVERY_URL =
+      "https://oidc.example.com/.well-known/openid-configuration";
     const orm = {
       em: {},
     } as unknown as MikroORM;
@@ -508,6 +598,29 @@ describe("AuthModule", () => {
         ],
       }),
     );
+  });
+
+  it("should reject env OIDC when a custom genericOAuth plugin is configured", () => {
+    setOidcEnv();
+    const orm = {
+      em: {},
+    } as unknown as MikroORM;
+    const authProvider = getAuthProvider();
+
+    expect(() =>
+      authProvider.useFactory(
+        {
+          entities,
+          plugins: [
+            {
+              id: "generic-oauth",
+            },
+          ],
+          secret,
+        },
+        orm,
+      ),
+    ).toThrow("AUTH_OIDC_*");
   });
 
   it("should merge email auth options without dropping env signup disable flags", () => {
