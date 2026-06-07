@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/eslint-plugin",
-  "version": "7.0.7",
+  "version": "7.0.8",
   "repository": {
     "type": "git",
     "url": "https://github.com/nest-boot/nest-boot.git",
