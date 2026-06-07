@@ -11,7 +11,7 @@ export function createEmailAndPasswordConfig(
 ): EmailAndPasswordConfig | undefined {
   const hasEnabledEnv = process.env.AUTH_EMAIL_ENABLED !== undefined;
   const shouldDisableSignUp =
-    disableSignUp || isEnvTrue("AUTH_EMAIL_DISABLE_SIGNUP");
+    disableSignUp || isEnvTrue("AUTH_EMAIL_DISABLE_SIGN_UP");
 
   if (!options && !hasEnabledEnv) {
     return undefined;

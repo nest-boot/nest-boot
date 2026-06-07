@@ -152,21 +152,21 @@ describe("AuthModule", () => {
     delete process.env.APP_NAME;
     delete process.env.APP_SECRET;
     delete process.env.AUTH_SECRET;
-    delete process.env.AUTH_DISABLE_SIGNUP;
+    delete process.env.AUTH_DISABLE_SIGN_UP;
     delete process.env.AUTH_EMAIL_ENABLED;
-    delete process.env.AUTH_EMAIL_DISABLE_SIGNUP;
+    delete process.env.AUTH_EMAIL_DISABLE_SIGN_UP;
     delete process.env.AUTH_GITHUB_CLIENT_ID;
     delete process.env.AUTH_GITHUB_CLIENT_SECRET;
-    delete process.env.AUTH_GITHUB_DISABLE_SIGNUP;
+    delete process.env.AUTH_GITHUB_DISABLE_SIGN_UP;
     delete process.env.AUTH_GITHUB_ENABLED;
     delete process.env.AUTH_GOOGLE_CLIENT_ID;
     delete process.env.AUTH_GOOGLE_CLIENT_SECRET;
-    delete process.env.AUTH_GOOGLE_DISABLE_SIGNUP;
+    delete process.env.AUTH_GOOGLE_DISABLE_SIGN_UP;
     delete process.env.AUTH_GOOGLE_ENABLED;
     delete process.env.AUTH_OIDC_CLIENT_ID;
     delete process.env.AUTH_OIDC_CLIENT_SECRET;
     delete process.env.AUTH_OIDC_DISCOVERY_URL;
-    delete process.env.AUTH_OIDC_DISABLE_SIGNUP;
+    delete process.env.AUTH_OIDC_DISABLE_SIGN_UP;
     delete process.env.AUTH_OIDC_ENABLED;
     delete process.env.AUTH_OIDC_PROMPT;
     delete process.env.AUTH_OIDC_SCOPES;
@@ -256,7 +256,7 @@ describe("AuthModule", () => {
   });
 
   it("should disable email and OIDC signup when the global signup disable flag is enabled", () => {
-    process.env.AUTH_DISABLE_SIGNUP = "true";
+    process.env.AUTH_DISABLE_SIGN_UP = "true";
     process.env.AUTH_EMAIL_ENABLED = "true";
     setGithubEnv();
     setGoogleEnv();
@@ -337,8 +337,8 @@ describe("AuthModule", () => {
   });
 
   it("should disable signup for provider-specific social provider flags", () => {
-    process.env.AUTH_GITHUB_DISABLE_SIGNUP = "true";
-    process.env.AUTH_GOOGLE_DISABLE_SIGNUP = "true";
+    process.env.AUTH_GITHUB_DISABLE_SIGN_UP = "true";
+    process.env.AUTH_GOOGLE_DISABLE_SIGN_UP = "true";
     setGithubEnv();
     setGoogleEnv();
     const orm = {
@@ -457,7 +457,7 @@ describe("AuthModule", () => {
   );
 
   it("should keep signup enabled when the global signup disable flag is not true", () => {
-    process.env.AUTH_DISABLE_SIGNUP = "false";
+    process.env.AUTH_DISABLE_SIGN_UP = "false";
     setOidcEnv();
     const orm = {
       em: {},
@@ -624,7 +624,7 @@ describe("AuthModule", () => {
   });
 
   it("should merge email auth options without dropping env signup disable flags", () => {
-    process.env.AUTH_DISABLE_SIGNUP = "true";
+    process.env.AUTH_DISABLE_SIGN_UP = "true";
     const orm = {
       em: {},
     } as unknown as MikroORM;
@@ -654,7 +654,7 @@ describe("AuthModule", () => {
   });
 
   it("should merge social provider options without dropping env signup disable flags", () => {
-    process.env.AUTH_DISABLE_SIGNUP = "true";
+    process.env.AUTH_DISABLE_SIGN_UP = "true";
     const orm = {
       em: {},
     } as unknown as MikroORM;

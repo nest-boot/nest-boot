@@ -4,11 +4,11 @@ describe("createSocialProviderConfig", () => {
   beforeEach(() => {
     delete process.env.AUTH_GITHUB_CLIENT_ID;
     delete process.env.AUTH_GITHUB_CLIENT_SECRET;
-    delete process.env.AUTH_GITHUB_DISABLE_SIGNUP;
+    delete process.env.AUTH_GITHUB_DISABLE_SIGN_UP;
     delete process.env.AUTH_GITHUB_ENABLED;
     delete process.env.AUTH_GOOGLE_CLIENT_ID;
     delete process.env.AUTH_GOOGLE_CLIENT_SECRET;
-    delete process.env.AUTH_GOOGLE_DISABLE_SIGNUP;
+    delete process.env.AUTH_GOOGLE_DISABLE_SIGN_UP;
     delete process.env.AUTH_GOOGLE_ENABLED;
   });
 
@@ -17,7 +17,7 @@ describe("createSocialProviderConfig", () => {
   });
 
   it("should return undefined when only provider signup disable env is configured", () => {
-    process.env.AUTH_GOOGLE_DISABLE_SIGNUP = "true";
+    process.env.AUTH_GOOGLE_DISABLE_SIGN_UP = "true";
 
     expect(createSocialProviderConfig("google", false)).toBeUndefined();
   });
@@ -115,7 +115,7 @@ describe("createSocialProviderConfig", () => {
     process.env.AUTH_GITHUB_ENABLED = "true";
     process.env.AUTH_GITHUB_CLIENT_ID = "github-client-id";
     process.env.AUTH_GITHUB_CLIENT_SECRET = "github-client-secret";
-    process.env.AUTH_GITHUB_DISABLE_SIGNUP = "true";
+    process.env.AUTH_GITHUB_DISABLE_SIGN_UP = "true";
 
     expect(createSocialProviderConfig("github", false)).toEqual({
       clientId: "github-client-id",
@@ -141,7 +141,7 @@ describe("createSocialProviderConfig", () => {
   });
 
   it("should apply provider signup disable env without requiring env credentials when options are configured", () => {
-    process.env.AUTH_GOOGLE_DISABLE_SIGNUP = "true";
+    process.env.AUTH_GOOGLE_DISABLE_SIGN_UP = "true";
 
     expect(
       createSocialProviderConfig("google", false, {

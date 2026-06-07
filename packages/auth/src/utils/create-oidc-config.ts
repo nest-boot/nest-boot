@@ -18,6 +18,6 @@ export function createOidcConfig(
     discoveryUrl: resolveRequiredOidcEnv("AUTH_OIDC_DISCOVERY_URL"),
     prompt: resolveOidcPrompt(),
     scopes: resolveOidcScopes(),
-    disableSignUp: disableSignUp || isEnvTrue("AUTH_OIDC_DISABLE_SIGNUP"),
+    disableSignUp: disableSignUp || isEnvTrue("AUTH_OIDC_DISABLE_SIGN_UP"),
   };
 }

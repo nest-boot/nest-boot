@@ -4,11 +4,11 @@ describe("createSocialProvidersConfig", () => {
   beforeEach(() => {
     delete process.env.AUTH_GITHUB_CLIENT_ID;
     delete process.env.AUTH_GITHUB_CLIENT_SECRET;
-    delete process.env.AUTH_GITHUB_DISABLE_SIGNUP;
+    delete process.env.AUTH_GITHUB_DISABLE_SIGN_UP;
     delete process.env.AUTH_GITHUB_ENABLED;
     delete process.env.AUTH_GOOGLE_CLIENT_ID;
     delete process.env.AUTH_GOOGLE_CLIENT_SECRET;
-    delete process.env.AUTH_GOOGLE_DISABLE_SIGNUP;
+    delete process.env.AUTH_GOOGLE_DISABLE_SIGN_UP;
     delete process.env.AUTH_GOOGLE_ENABLED;
   });
 
