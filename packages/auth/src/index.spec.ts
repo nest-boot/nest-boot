@@ -4,6 +4,9 @@ jest.mock("better-auth", () => ({
 jest.mock("better-auth/node", () => ({
   toNodeHandler: jest.fn(),
 }));
+jest.mock("better-auth/plugins", () => ({
+  genericOAuth: jest.fn(),
+}));
 jest.mock("./adapters/mikro-orm-adapter", () => ({
   mikroOrmAdapter: jest.fn(),
 }));

@@ -16,12 +16,19 @@ const mockMikroOrmAdapter = jest.fn((options) => ({
   options,
   type: "mikro-orm-adapter",
 }));
+const mockGenericOAuth = jest.fn((options) => ({
+  options,
+  type: "generic-oauth",
+}));
 
 jest.mock("better-auth", () => ({
   betterAuth: mockBetterAuth,
 }));
 jest.mock("better-auth/node", () => ({
   toNodeHandler: mockToNodeHandler,
+}));
+jest.mock("better-auth/plugins", () => ({
+  genericOAuth: mockGenericOAuth,
 }));
 jest.mock("./adapters/mikro-orm-adapter", () => ({
   mikroOrmAdapter: mockMikroOrmAdapter,
@@ -43,6 +50,13 @@ const entities = {
   user: User,
   verification: Verification,
 };
+
+function setOidcEnv() {
+  process.env.AUTH_OIDC_CLIENT_ID = "oidc-client-id";
+  process.env.AUTH_OIDC_CLIENT_SECRET = "oidc-client-secret";
+  process.env.AUTH_OIDC_DISCOVERY_URL =
+    "https://oidc.example.com/.well-known/openid-configuration";
+}
 
 function getAuthProvider() {
   const providers = Reflect.getMetadata(
@@ -119,10 +133,21 @@ describe("AuthModule", () => {
 
   beforeEach(() => {
     mockBetterAuth.mockClear();
+    mockGenericOAuth.mockClear();
     mockMikroOrmAdapter.mockClear();
     mockToNodeHandler.mockClear();
+    delete process.env.APP_NAME;
     delete process.env.APP_SECRET;
     delete process.env.AUTH_SECRET;
+    delete process.env.AUTH_DISABLE_SIGNUP;
+    delete process.env.AUTH_EMAIL_ENABLED;
+    delete process.env.AUTH_EMAIL_DISABLE_SIGNUP;
+    delete process.env.AUTH_OIDC_CLIENT_ID;
+    delete process.env.AUTH_OIDC_CLIENT_SECRET;
+    delete process.env.AUTH_OIDC_DISCOVERY_URL;
+    delete process.env.AUTH_OIDC_DISABLE_SIGNUP;
+    delete process.env.AUTH_OIDC_PROMPT;
+    delete process.env.AUTH_OIDC_SCOPES;
     delete process.env.APP_URL;
     delete process.env.AUTH_URL;
   });
@@ -204,6 +229,169 @@ describe("AuthModule", () => {
         },
         entities,
         secret,
+      }),
+    );
+  });
+
+  it("should disable email and OIDC signup when the global signup disable flag is enabled", () => {
+    process.env.AUTH_DISABLE_SIGNUP = "true";
+    setOidcEnv();
+    const orm = {
+      em: {},
+    } as unknown as MikroORM;
+    const authProvider = getAuthProvider();
+
+    authProvider.useFactory(
+      {
+        entities,
+        secret,
+      },
+      orm,
+    );
+
+    expect(mockBetterAuth).toHaveBeenCalledWith(
+      expect.objectContaining({
+        emailAndPassword: expect.objectContaining({
+          disableSignUp: true,
+        }),
+      }),
+    );
+    expect(mockGenericOAuth).toHaveBeenCalledWith({
+      config: [
+        expect.objectContaining({
+          disableSignUp: true,
+          providerId: "oidc",
+        }),
+      ],
+    });
+  });
+
+  it("should keep signup enabled when the global signup disable flag is not true", () => {
+    process.env.AUTH_DISABLE_SIGNUP = "false";
+    setOidcEnv();
+    const orm = {
+      em: {},
+    } as unknown as MikroORM;
+    const authProvider = getAuthProvider();
+
+    authProvider.useFactory(
+      {
+        entities,
+        secret,
+      },
+      orm,
+    );
+
+    expect(mockBetterAuth).toHaveBeenCalledWith(
+      expect.objectContaining({
+        emailAndPassword: expect.objectContaining({
+          disableSignUp: false,
+        }),
+      }),
+    );
+    expect(mockGenericOAuth).toHaveBeenCalledWith({
+      config: [
+        expect.objectContaining({
+          disableSignUp: false,
+          providerId: "oidc",
+        }),
+      ],
+    });
+  });
+
+  it("should skip OIDC plugin registration when OIDC env is not configured", () => {
+    const orm = {
+      em: {},
+    } as unknown as MikroORM;
+    const authProvider = getAuthProvider();
+
+    authProvider.useFactory(
+      {
+        entities,
+        secret,
+      },
+      orm,
+    );
+
+    expect(mockGenericOAuth).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["AUTH_OIDC_CLIENT_ID"],
+    ["AUTH_OIDC_CLIENT_SECRET"],
+    ["AUTH_OIDC_DISCOVERY_URL"],
+  ])("should reject missing %s when OIDC env is configured", (envName) => {
+    setOidcEnv();
+    process.env[envName] = "";
+    const orm = {
+      em: {},
+    } as unknown as MikroORM;
+    const authProvider = getAuthProvider();
+
+    expect(() =>
+      authProvider.useFactory(
+        {
+          entities,
+          secret,
+        },
+        orm,
+      ),
+    ).toThrow(envName);
+  });
+
+  it("should reject invalid OIDC prompt values", () => {
+    setOidcEnv();
+    process.env.AUTH_OIDC_PROMPT = "invalid";
+    const orm = {
+      em: {},
+    } as unknown as MikroORM;
+    const authProvider = getAuthProvider();
+
+    expect(() =>
+      authProvider.useFactory(
+        {
+          entities,
+          secret,
+        },
+        orm,
+      ),
+    ).toThrow("AUTH_OIDC_PROMPT");
+  });
+
+  it("should keep env OIDC plugin when custom plugins are configured", () => {
+    setOidcEnv();
+    const customPlugin = {
+      id: "custom-plugin",
+    };
+    const orm = {
+      em: {},
+    } as unknown as MikroORM;
+    const authProvider = getAuthProvider();
+
+    authProvider.useFactory(
+      {
+        entities,
+        plugins: [customPlugin],
+        secret,
+      },
+      orm,
+    );
+
+    expect(mockBetterAuth).toHaveBeenCalledWith(
+      expect.objectContaining({
+        plugins: [
+          {
+            options: {
+              config: [
+                expect.objectContaining({
+                  providerId: "oidc",
+                }),
+              ],
+            },
+            type: "generic-oauth",
+          },
+          customPlugin,
+        ],
       }),
     );
   });

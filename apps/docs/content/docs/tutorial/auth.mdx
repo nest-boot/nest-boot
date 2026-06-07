@@ -37,7 +37,35 @@ The module automatically:
 - Creates a better-auth instance with MikroORM adapter
 - Registers auth API routes at `/api/auth/` (configurable via `basePath`)
 - Registers auth middleware on all routes for session resolution
-- Reads `AUTH_SECRET` or `APP_SECRET` from environment variables
+- Reads common auth settings from environment variables
+
+### Environment Variables
+
+`AuthModule` can configure the default better-auth instance from environment variables. Values passed through `AuthModule.forRoot()` or `AuthModule.forRootAsync()` still take precedence for the matching better-auth options.
+
+| Variable                    | Description                                                                                                                  | Default                              |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| `AUTH_SECRET`               | Auth secret used to sign and encrypt auth data. Falls back to `APP_SECRET`. Must be at least 32 characters and high entropy. | Required                             |
+| `APP_SECRET`                | Fallback auth secret when `AUTH_SECRET` is not set.                                                                          | Required when `AUTH_SECRET` is unset |
+| `APP_NAME`                  | App name passed to better-auth.                                                                                              | unset                                |
+| `AUTH_URL`                  | Public auth base URL. Falls back to `APP_URL`.                                                                               | unset                                |
+| `APP_URL`                   | Fallback public base URL when `AUTH_URL` is not set.                                                                         | unset                                |
+| `AUTH_EMAIL_ENABLED`        | Set to `false` to disable email/password auth.                                                                               | enabled                              |
+| `AUTH_EMAIL_DISABLE_SIGNUP` | Set to `true` to disable signup through email/password auth.                                                                 | signup enabled                       |
+| `AUTH_DISABLE_SIGNUP`       | Set to `true` to disable signup for both email/password and OIDC auth.                                                       | signup enabled                       |
+
+When any `AUTH_OIDC_*` variable is set, `AuthModule` registers a `genericOAuth` provider with `providerId: "oidc"`. In that case, the following variables are validated at startup:
+
+| Variable                   | Description                                                                                                                                | Default                               |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------- |
+| `AUTH_OIDC_CLIENT_ID`      | OIDC client ID.                                                                                                                            | Required when OIDC env config is used |
+| `AUTH_OIDC_CLIENT_SECRET`  | OIDC client secret.                                                                                                                        | Required when OIDC env config is used |
+| `AUTH_OIDC_DISCOVERY_URL`  | OIDC discovery document URL.                                                                                                               | Required when OIDC env config is used |
+| `AUTH_OIDC_PROMPT`         | Optional OIDC prompt. Supported values: `none`, `login`, `create`, `consent`, `select_account`, `select_account consent`, `login consent`. | unset                                 |
+| `AUTH_OIDC_SCOPES`         | Comma-separated OIDC scopes.                                                                                                               | `openid,profile,email`                |
+| `AUTH_OIDC_DISABLE_SIGNUP` | Set to `true` to disable signup through OIDC.                                                                                              | signup enabled                        |
+
+If OIDC is not needed, leave all `AUTH_OIDC_*` variables unset. If you need multiple providers or custom provider behavior, configure `plugins` manually; env-configured OIDC is appended before custom plugins.
 
 ### Async Registration with OIDC
 
@@ -91,8 +119,8 @@ const AuthDynamicModule = AuthModule.forRootAsync({
         config: [
           {
             providerId: "oidc",
-            clientId: configService.getOrThrow("AUTH_OIDC_ID"),
-            clientSecret: configService.getOrThrow("AUTH_OIDC_SECRET"),
+            clientId: configService.getOrThrow("AUTH_OIDC_CLIENT_ID"),
+            clientSecret: configService.getOrThrow("AUTH_OIDC_CLIENT_SECRET"),
             discoveryUrl: configService.getOrThrow("AUTH_OIDC_DISCOVERY_URL"),
             prompt: "login",
             scopes: ["openid", "profile", "email"],

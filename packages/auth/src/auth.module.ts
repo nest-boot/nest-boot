@@ -7,6 +7,7 @@ import {
 import { type DynamicModule, Global, Inject, Module } from "@nestjs/common";
 import { type Auth, betterAuth } from "better-auth";
 import { toNodeHandler } from "better-auth/node";
+import { genericOAuth } from "better-auth/plugins";
 
 import { mikroOrmAdapter } from "./adapters/mikro-orm-adapter";
 import { AUTH_TOKEN } from "./auth.constants";
@@ -19,7 +20,10 @@ import {
 } from "./auth.module-definition";
 import { AuthService } from "./auth.service";
 import { AuthModuleOptions } from "./auth-module-options.interface";
-import { estimateEntropy } from "./utils/estimate-entropy";
+import { createEmailAndPasswordConfig } from "./utils/create-email-and-password-config";
+import { createOidcConfig } from "./utils/create-oidc-config";
+import { isEnvTrue } from "./utils/is-env-true";
+import { resolveSecret } from "./utils/resolve-secret";
 
 /**
  * Authentication module based on better-auth.
@@ -38,43 +42,30 @@ import { estimateEntropy } from "./utils/estimate-entropy";
       provide: AUTH_TOKEN,
       inject: [MODULE_OPTIONS_TOKEN, MikroORM],
       useFactory: (options: AuthModuleOptions, orm: MikroORM) => {
-        const secret =
-          options.secret ?? process.env.AUTH_SECRET ?? process.env.APP_SECRET;
-
-        if (!secret) {
-          throw new Error(
-            "Auth secret is required.\n" +
-              "Set AUTH_SECRET or APP_SECRET environment variable, or pass a secret option.\n" +
-              "Generate a secure secret with:\n" +
-              "  node -e \"console.log(require('crypto').randomBytes(32).toString('base64url'))\"",
-          );
-        }
-
-        if (secret.length < 32) {
-          throw new Error(
-            "Auth secret must be at least 32 characters long.\n" +
-              "Set AUTH_SECRET or APP_SECRET environment variable, or pass a secret option.\n" +
-              "Generate a secure secret with:\n" +
-              "  node -e \"console.log(require('crypto').randomBytes(32).toString('base64url'))\"",
-          );
-        }
-
-        if (estimateEntropy(secret) < 120) {
-          throw new Error(
-            "Auth secret appears low-entropy.\n" +
-              "Use a randomly generated secret for production.\n" +
-              "Generate a secure secret with:\n" +
-              "  node -e \"console.log(require('crypto').randomBytes(32).toString('base64url'))\"",
-          );
-        }
+        const secret = resolveSecret(options);
+        const disableSignUp = isEnvTrue("AUTH_DISABLE_SIGNUP");
+        const oidcConfig = createOidcConfig(disableSignUp);
+        const { plugins, ...betterAuthOptions } = options;
 
         return betterAuth({
+          appName: process.env.APP_NAME,
           baseURL: process.env.AUTH_URL ?? process.env.APP_URL,
           secret,
           account: {
             skipStateCookieCheck: true,
           },
-          ...options,
+          emailAndPassword: createEmailAndPasswordConfig(disableSignUp),
+          ...betterAuthOptions,
+          plugins: [
+            ...(oidcConfig
+              ? [
+                  genericOAuth({
+                    config: [oidcConfig],
+                  }),
+                ]
+              : []),
+            ...(plugins ?? []),
+          ],
           database: mikroOrmAdapter({
             orm,
             entities: options.entities,
