@@ -37,7 +37,51 @@ const AuthDynamicModule = AuthModule.forRoot({
 - 使用 MikroORM 适配器创建 better-auth 实例
 - 在 `/api/auth/` 注册认证 API 路由（可通过 `basePath` 配置）
 - 在所有路由上注册认证中间件用于会话解析
-- 从环境变量读取 `AUTH_SECRET` 或 `APP_SECRET`
+- 从环境变量读取常用认证配置
+
+### 环境变量
+
+`AuthModule` 可以从环境变量配置默认的 better-auth 实例。通过 `AuthModule.forRoot()` 或 `AuthModule.forRootAsync()` 传入的选项会与这些默认值合并；即使传入了嵌套认证选项，环境变量中的禁用注册开关也会保留。
+
+| 变量                        | 说明                                                                                        | 默认值                     |
+| --------------------------- | ------------------------------------------------------------------------------------------- | -------------------------- |
+| `AUTH_SECRET`               | 用于签名和加密认证数据的密钥。未设置时回退到 `APP_SECRET`。必须至少 32 个字符且具有高熵值。 | 必填                       |
+| `APP_SECRET`                | 未设置 `AUTH_SECRET` 时使用的备用认证密钥。                                                 | `AUTH_SECRET` 未设置时必填 |
+| `APP_NAME`                  | 传给 better-auth 的应用名称。                                                               | 未设置                     |
+| `AUTH_URL`                  | 公开的认证基础 URL。未设置时回退到 `APP_URL`。                                              | 未设置                     |
+| `APP_URL`                   | 未设置 `AUTH_URL` 时使用的备用公开基础 URL。                                                | 未设置                     |
+| `AUTH_EMAIL_ENABLED`        | 设置为 `true` 或 `false` 时显式配置邮箱密码认证。                                           | better-auth 默认值         |
+| `AUTH_EMAIL_DISABLE_SIGNUP` | 设置为 `true` 时，在已配置邮箱密码认证的情况下禁用邮箱密码注册。                            | 允许注册                   |
+| `AUTH_DISABLE_SIGNUP`       | 设置为 `true` 时禁用已配置的邮箱密码、OIDC、Google 和 GitHub 注册。                         | 允许注册                   |
+
+Google 和 GitHub 默认禁用。设置 `AUTH_GOOGLE_ENABLED=true` 或 `AUTH_GITHUB_ENABLED=true` 时，`AuthModule` 会从环境变量配置对应的 better-auth `socialProviders.google` 或 `socialProviders.github` 专门 provider。此时模块会在启动时校验 provider 凭据：
+
+| 变量                         | 说明                                         | 默认值                         |
+| ---------------------------- | -------------------------------------------- | ------------------------------ |
+| `AUTH_GOOGLE_ENABLED`        | 设置为 `true` 时从环境变量启用 Google 认证。 | 禁用                           |
+| `AUTH_GOOGLE_CLIENT_ID`      | Google OAuth 客户端 ID。                     | 使用 Google 环境变量配置时必填 |
+| `AUTH_GOOGLE_CLIENT_SECRET`  | Google OAuth 客户端密钥。                    | 使用 Google 环境变量配置时必填 |
+| `AUTH_GOOGLE_DISABLE_SIGNUP` | 设置为 `true` 时禁用 Google 注册。           | 允许注册                       |
+| `AUTH_GITHUB_ENABLED`        | 设置为 `true` 时从环境变量启用 GitHub 认证。 | 禁用                           |
+| `AUTH_GITHUB_CLIENT_ID`      | GitHub OAuth 客户端 ID。                     | 使用 GitHub 环境变量配置时必填 |
+| `AUTH_GITHUB_CLIENT_SECRET`  | GitHub OAuth 客户端密钥。                    | 使用 GitHub 环境变量配置时必填 |
+| `AUTH_GITHUB_DISABLE_SIGNUP` | 设置为 `true` 时禁用 GitHub 注册。           | 允许注册                       |
+
+如果不需要某个 env provider，保持 `AUTH_GOOGLE_ENABLED` 或 `AUTH_GITHUB_ENABLED` 未设置即可；即使设置了凭据，也不会启用。如果手动传入了 `socialProviders.google` 或 `socialProviders.github`，显式的 `*_ENABLED=false` 和禁用注册相关环境变量仍会合并到对应的嵌套 provider 配置中，不需要把凭据也移动到环境变量里。
+
+Generic OIDC 也默认禁用。设置 `AUTH_OIDC_ENABLED=true` 时，`AuthModule` 会注册一个 `providerId: "oidc"` 的 `genericOAuth` 提供商。此时模块会在启动时校验以下变量：
+
+| 变量                       | 说明                                                                                                                            | 默认值                       |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| `AUTH_OIDC_ENABLED`        | 设置为 `true` 时从环境变量启用 generic OIDC 认证。                                                                              | 禁用                         |
+| `AUTH_OIDC_CLIENT_ID`      | OIDC 客户端 ID。                                                                                                                | 使用 OIDC 环境变量配置时必填 |
+| `AUTH_OIDC_CLIENT_SECRET`  | OIDC 客户端密钥。                                                                                                               | 使用 OIDC 环境变量配置时必填 |
+| `AUTH_OIDC_DISCOVERY_URL`  | OIDC discovery 文档 URL。                                                                                                       | 使用 OIDC 环境变量配置时必填 |
+| `AUTH_OIDC_PROMPT`         | 可选的 OIDC prompt。支持值：`none`、`login`、`create`、`consent`、`select_account`、`select_account consent`、`login consent`。 | 未设置                       |
+| `AUTH_OIDC_SCOPES`         | 逗号分隔的 OIDC scopes。会 trim 空白并忽略空项。                                                                                | `openid,profile,email`       |
+| `AUTH_OIDC_DISABLE_SIGNUP` | 设置为 `true` 时禁用 OIDC 注册。                                                                                                | 允许注册                     |
+
+如果不需要 OIDC，保持 `AUTH_OIDC_ENABLED` 未设置即可。如果需要多个 generic OIDC provider 或自定义 provider 行为，可以手动配置 `plugins`；`AUTH_OIDC_*` 不能和自定义 `genericOAuth` 插件组合使用，因为 better-auth 会为该插件注册同一组 OAuth2 endpoints。
 
 ### 异步注册（含 OIDC）
 
@@ -91,8 +135,8 @@ const AuthDynamicModule = AuthModule.forRootAsync({
         config: [
           {
             providerId: "oidc",
-            clientId: configService.getOrThrow("AUTH_OIDC_ID"),
-            clientSecret: configService.getOrThrow("AUTH_OIDC_SECRET"),
+            clientId: configService.getOrThrow("AUTH_OIDC_CLIENT_ID"),
+            clientSecret: configService.getOrThrow("AUTH_OIDC_CLIENT_SECRET"),
             discoveryUrl: configService.getOrThrow("AUTH_OIDC_DISCOVERY_URL"),
             prompt: "login",
             scopes: ["openid", "profile", "email"],
