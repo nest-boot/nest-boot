@@ -45,7 +45,11 @@ import { resolveSecret } from "./utils/resolve-secret";
         const secret = resolveSecret(options);
         const disableSignUp = isEnvTrue("AUTH_DISABLE_SIGNUP");
         const oidcConfig = createOidcConfig(disableSignUp);
-        const { plugins, ...betterAuthOptions } = options;
+        const { emailAndPassword, plugins, ...betterAuthOptions } = options;
+        const emailAndPasswordConfig = createEmailAndPasswordConfig(
+          disableSignUp,
+          emailAndPassword,
+        );
 
         return betterAuth({
           appName: process.env.APP_NAME,
@@ -54,8 +58,10 @@ import { resolveSecret } from "./utils/resolve-secret";
           account: {
             skipStateCookieCheck: true,
           },
-          emailAndPassword: createEmailAndPasswordConfig(disableSignUp),
           ...betterAuthOptions,
+          ...(emailAndPasswordConfig
+            ? { emailAndPassword: emailAndPasswordConfig }
+            : {}),
           plugins: [
             ...(oidcConfig
               ? [

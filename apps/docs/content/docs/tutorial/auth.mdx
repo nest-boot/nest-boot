@@ -41,7 +41,7 @@ The module automatically:
 
 ### Environment Variables
 
-`AuthModule` can configure the default better-auth instance from environment variables. Values passed through `AuthModule.forRoot()` or `AuthModule.forRootAsync()` still take precedence for the matching better-auth options.
+`AuthModule` can configure the default better-auth instance from environment variables. Values passed through `AuthModule.forRoot()` or `AuthModule.forRootAsync()` are merged with these defaults; signup-disable environment variables are preserved when nested auth options are supplied.
 
 | Variable                    | Description                                                                                                                  | Default                              |
 | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
@@ -50,9 +50,9 @@ The module automatically:
 | `APP_NAME`                  | App name passed to better-auth.                                                                                              | unset                                |
 | `AUTH_URL`                  | Public auth base URL. Falls back to `APP_URL`.                                                                               | unset                                |
 | `APP_URL`                   | Fallback public base URL when `AUTH_URL` is not set.                                                                         | unset                                |
-| `AUTH_EMAIL_ENABLED`        | Set to `false` to disable email/password auth.                                                                               | enabled                              |
-| `AUTH_EMAIL_DISABLE_SIGNUP` | Set to `true` to disable signup through email/password auth.                                                                 | signup enabled                       |
-| `AUTH_DISABLE_SIGNUP`       | Set to `true` to disable signup for both email/password and OIDC auth.                                                       | signup enabled                       |
+| `AUTH_EMAIL_ENABLED`        | Set to `true` or `false` to configure email/password auth explicitly.                                                        | better-auth default                  |
+| `AUTH_EMAIL_DISABLE_SIGNUP` | Set to `true` to disable signup through email/password auth when email/password auth is configured.                          | signup enabled                       |
+| `AUTH_DISABLE_SIGNUP`       | Set to `true` to disable signup for both configured email/password and OIDC auth.                                            | signup enabled                       |
 
 When any `AUTH_OIDC_*` variable is set, `AuthModule` registers a `genericOAuth` provider with `providerId: "oidc"`. In that case, the following variables are validated at startup:
 

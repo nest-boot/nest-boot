@@ -235,6 +235,7 @@ describe("AuthModule", () => {
 
   it("should disable email and OIDC signup when the global signup disable flag is enabled", () => {
     process.env.AUTH_DISABLE_SIGNUP = "true";
+    process.env.AUTH_EMAIL_ENABLED = "true";
     setOidcEnv();
     const orm = {
       em: {},
@@ -282,13 +283,6 @@ describe("AuthModule", () => {
       orm,
     );
 
-    expect(mockBetterAuth).toHaveBeenCalledWith(
-      expect.objectContaining({
-        emailAndPassword: expect.objectContaining({
-          disableSignUp: false,
-        }),
-      }),
-    );
     expect(mockGenericOAuth).toHaveBeenCalledWith({
       config: [
         expect.objectContaining({
@@ -392,6 +386,36 @@ describe("AuthModule", () => {
           },
           customPlugin,
         ],
+      }),
+    );
+  });
+
+  it("should merge email auth options without dropping env signup disable flags", () => {
+    process.env.AUTH_DISABLE_SIGNUP = "true";
+    const orm = {
+      em: {},
+    } as unknown as MikroORM;
+    const authProvider = getAuthProvider();
+
+    authProvider.useFactory(
+      {
+        emailAndPassword: {
+          enabled: true,
+          maxPasswordLength: 128,
+        },
+        entities,
+        secret,
+      },
+      orm,
+    );
+
+    expect(mockBetterAuth).toHaveBeenCalledWith(
+      expect.objectContaining({
+        emailAndPassword: {
+          disableSignUp: true,
+          enabled: true,
+          maxPasswordLength: 128,
+        },
       }),
     );
   });
