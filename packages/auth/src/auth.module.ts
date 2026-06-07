@@ -45,7 +45,7 @@ import { resolveSecret } from "./utils/resolve-secret";
       inject: [MODULE_OPTIONS_TOKEN, MikroORM],
       useFactory: (options: AuthModuleOptions, orm: MikroORM) => {
         const secret = resolveSecret(options);
-        const disableSignUp = isEnvTrue("AUTH_DISABLE_SIGNUP");
+        const disableSignUp = isEnvTrue("AUTH_DISABLE_SIGN_UP");
         const oidcConfig = createOidcConfig(disableSignUp);
         const {
           emailAndPassword,

@@ -2,7 +2,7 @@ import { createEmailAndPasswordConfig } from "./create-email-and-password-config
 
 describe("createEmailAndPasswordConfig", () => {
   beforeEach(() => {
-    delete process.env.AUTH_EMAIL_DISABLE_SIGNUP;
+    delete process.env.AUTH_EMAIL_DISABLE_SIGN_UP;
     delete process.env.AUTH_EMAIL_ENABLED;
   });
 
@@ -29,7 +29,7 @@ describe("createEmailAndPasswordConfig", () => {
   });
 
   it("should not create email auth config for signup disable flags alone", () => {
-    process.env.AUTH_EMAIL_DISABLE_SIGNUP = "true";
+    process.env.AUTH_EMAIL_DISABLE_SIGN_UP = "true";
 
     expect(createEmailAndPasswordConfig(true)).toBeUndefined();
   });
@@ -43,9 +43,9 @@ describe("createEmailAndPasswordConfig", () => {
     });
   });
 
-  it("should disable signup when AUTH_EMAIL_DISABLE_SIGNUP is true and email auth is configured", () => {
+  it("should disable signup when AUTH_EMAIL_DISABLE_SIGN_UP is true and email auth is configured", () => {
     process.env.AUTH_EMAIL_ENABLED = "true";
-    process.env.AUTH_EMAIL_DISABLE_SIGNUP = "true";
+    process.env.AUTH_EMAIL_DISABLE_SIGN_UP = "true";
 
     expect(createEmailAndPasswordConfig(false)).toEqual({
       disableSignUp: true,
@@ -54,7 +54,7 @@ describe("createEmailAndPasswordConfig", () => {
   });
 
   it("should merge with explicit email auth options", () => {
-    process.env.AUTH_EMAIL_DISABLE_SIGNUP = "true";
+    process.env.AUTH_EMAIL_DISABLE_SIGN_UP = "true";
 
     expect(
       createEmailAndPasswordConfig(false, {

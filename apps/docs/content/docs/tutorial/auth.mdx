@@ -43,43 +43,43 @@ The module automatically:
 
 `AuthModule` can configure the default better-auth instance from environment variables. Values passed through `AuthModule.forRoot()` or `AuthModule.forRootAsync()` are merged with these defaults; signup-disable environment variables are preserved when nested auth options are supplied.
 
-| Variable                    | Description                                                                                                                  | Default                              |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| `AUTH_SECRET`               | Auth secret used to sign and encrypt auth data. Falls back to `APP_SECRET`. Must be at least 32 characters and high entropy. | Required                             |
-| `APP_SECRET`                | Fallback auth secret when `AUTH_SECRET` is not set.                                                                          | Required when `AUTH_SECRET` is unset |
-| `APP_NAME`                  | App name passed to better-auth.                                                                                              | unset                                |
-| `AUTH_URL`                  | Public auth base URL. Falls back to `APP_URL`.                                                                               | unset                                |
-| `APP_URL`                   | Fallback public base URL when `AUTH_URL` is not set.                                                                         | unset                                |
-| `AUTH_EMAIL_ENABLED`        | Set to `true` or `false` to configure email/password auth explicitly.                                                        | better-auth default                  |
-| `AUTH_EMAIL_DISABLE_SIGNUP` | Set to `true` to disable signup through email/password auth when email/password auth is configured.                          | signup enabled                       |
-| `AUTH_DISABLE_SIGNUP`       | Set to `true` to disable signup for configured email/password, OIDC, Google, and GitHub auth.                                | signup enabled                       |
+| Variable                     | Description                                                                                                                  | Default                              |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| `AUTH_SECRET`                | Auth secret used to sign and encrypt auth data. Falls back to `APP_SECRET`. Must be at least 32 characters and high entropy. | Required                             |
+| `APP_SECRET`                 | Fallback auth secret when `AUTH_SECRET` is not set.                                                                          | Required when `AUTH_SECRET` is unset |
+| `APP_NAME`                   | App name passed to better-auth.                                                                                              | unset                                |
+| `AUTH_URL`                   | Public auth base URL. Falls back to `APP_URL`.                                                                               | unset                                |
+| `APP_URL`                    | Fallback public base URL when `AUTH_URL` is not set.                                                                         | unset                                |
+| `AUTH_EMAIL_ENABLED`         | Set to `true` or `false` to configure email/password auth explicitly.                                                        | better-auth default                  |
+| `AUTH_EMAIL_DISABLE_SIGN_UP` | Set to `true` to disable signup through email/password auth when email/password auth is configured.                          | signup enabled                       |
+| `AUTH_DISABLE_SIGN_UP`       | Set to `true` to disable signup for configured email/password, OIDC, Google, and GitHub auth.                                | signup enabled                       |
 
 Google and GitHub are disabled by default. Set `AUTH_GOOGLE_ENABLED=true` or `AUTH_GITHUB_ENABLED=true` to configure the corresponding better-auth `socialProviders.google` or `socialProviders.github` provider from env. In that case, provider credentials are validated at startup:
 
-| Variable                     | Description                                     | Default                                 |
-| ---------------------------- | ----------------------------------------------- | --------------------------------------- |
-| `AUTH_GOOGLE_ENABLED`        | Set to `true` to enable Google auth from env.   | disabled                                |
-| `AUTH_GOOGLE_CLIENT_ID`      | Google OAuth client ID.                         | Required when Google env config is used |
-| `AUTH_GOOGLE_CLIENT_SECRET`  | Google OAuth client secret.                     | Required when Google env config is used |
-| `AUTH_GOOGLE_DISABLE_SIGNUP` | Set to `true` to disable signup through Google. | signup enabled                          |
-| `AUTH_GITHUB_ENABLED`        | Set to `true` to enable GitHub auth from env.   | disabled                                |
-| `AUTH_GITHUB_CLIENT_ID`      | GitHub OAuth client ID.                         | Required when GitHub env config is used |
-| `AUTH_GITHUB_CLIENT_SECRET`  | GitHub OAuth client secret.                     | Required when GitHub env config is used |
-| `AUTH_GITHUB_DISABLE_SIGNUP` | Set to `true` to disable signup through GitHub. | signup enabled                          |
+| Variable                      | Description                                     | Default                                 |
+| ----------------------------- | ----------------------------------------------- | --------------------------------------- |
+| `AUTH_GOOGLE_ENABLED`         | Set to `true` to enable Google auth from env.   | disabled                                |
+| `AUTH_GOOGLE_CLIENT_ID`       | Google OAuth client ID.                         | Required when Google env config is used |
+| `AUTH_GOOGLE_CLIENT_SECRET`   | Google OAuth client secret.                     | Required when Google env config is used |
+| `AUTH_GOOGLE_DISABLE_SIGN_UP` | Set to `true` to disable signup through Google. | signup enabled                          |
+| `AUTH_GITHUB_ENABLED`         | Set to `true` to enable GitHub auth from env.   | disabled                                |
+| `AUTH_GITHUB_CLIENT_ID`       | GitHub OAuth client ID.                         | Required when GitHub env config is used |
+| `AUTH_GITHUB_CLIENT_SECRET`   | GitHub OAuth client secret.                     | Required when GitHub env config is used |
+| `AUTH_GITHUB_DISABLE_SIGN_UP` | Set to `true` to disable signup through GitHub. | signup enabled                          |
 
 Leave `AUTH_GOOGLE_ENABLED` or `AUTH_GITHUB_ENABLED` unset to keep that env provider disabled, even if credentials are present. If you pass `socialProviders.google` or `socialProviders.github` manually, explicit `*_ENABLED=false` and signup-disable env flags are still merged into the nested provider config without requiring credentials to move into env.
 
 Generic OIDC is also disabled by default. Set `AUTH_OIDC_ENABLED=true` to register a `genericOAuth` provider with `providerId: "oidc"`. In that case, the following variables are validated at startup:
 
-| Variable                   | Description                                                                                                                                | Default                               |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------- |
-| `AUTH_OIDC_ENABLED`        | Set to `true` to enable generic OIDC auth from env.                                                                                        | disabled                              |
-| `AUTH_OIDC_CLIENT_ID`      | OIDC client ID.                                                                                                                            | Required when OIDC env config is used |
-| `AUTH_OIDC_CLIENT_SECRET`  | OIDC client secret.                                                                                                                        | Required when OIDC env config is used |
-| `AUTH_OIDC_DISCOVERY_URL`  | OIDC discovery document URL.                                                                                                               | Required when OIDC env config is used |
-| `AUTH_OIDC_PROMPT`         | Optional OIDC prompt. Supported values: `none`, `login`, `create`, `consent`, `select_account`, `select_account consent`, `login consent`. | unset                                 |
-| `AUTH_OIDC_SCOPES`         | Comma-separated OIDC scopes. Whitespace is trimmed and empty entries are ignored.                                                          | `openid,profile,email`                |
-| `AUTH_OIDC_DISABLE_SIGNUP` | Set to `true` to disable signup through OIDC.                                                                                              | signup enabled                        |
+| Variable                    | Description                                                                                                                                | Default                               |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------- |
+| `AUTH_OIDC_ENABLED`         | Set to `true` to enable generic OIDC auth from env.                                                                                        | disabled                              |
+| `AUTH_OIDC_CLIENT_ID`       | OIDC client ID.                                                                                                                            | Required when OIDC env config is used |
+| `AUTH_OIDC_CLIENT_SECRET`   | OIDC client secret.                                                                                                                        | Required when OIDC env config is used |
+| `AUTH_OIDC_DISCOVERY_URL`   | OIDC discovery document URL.                                                                                                               | Required when OIDC env config is used |
+| `AUTH_OIDC_PROMPT`          | Optional OIDC prompt. Supported values: `none`, `login`, `create`, `consent`, `select_account`, `select_account consent`, `login consent`. | unset                                 |
+| `AUTH_OIDC_SCOPES`          | Comma-separated OIDC scopes. Whitespace is trimmed and empty entries are ignored.                                                          | `openid,profile,email`                |
+| `AUTH_OIDC_DISABLE_SIGN_UP` | Set to `true` to disable signup through OIDC.                                                                                              | signup enabled                        |
 
 If OIDC is not needed, leave `AUTH_OIDC_ENABLED` unset. If you need multiple generic OIDC providers or custom provider behavior, configure `plugins` manually; `AUTH_OIDC_*` cannot be combined with a custom `genericOAuth` plugin because better-auth registers one shared set of OAuth2 endpoints for that plugin.
 

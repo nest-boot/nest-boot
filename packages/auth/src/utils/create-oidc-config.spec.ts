@@ -5,7 +5,7 @@ describe("createOidcConfig", () => {
     delete process.env.AUTH_OIDC_CLIENT_ID;
     delete process.env.AUTH_OIDC_CLIENT_SECRET;
     delete process.env.AUTH_OIDC_DISCOVERY_URL;
-    delete process.env.AUTH_OIDC_DISABLE_SIGNUP;
+    delete process.env.AUTH_OIDC_DISABLE_SIGN_UP;
     delete process.env.AUTH_OIDC_ENABLED;
     delete process.env.AUTH_OIDC_PROMPT;
     delete process.env.AUTH_OIDC_SCOPES;
@@ -69,13 +69,13 @@ describe("createOidcConfig", () => {
     );
   });
 
-  it("should disable signup when AUTH_OIDC_DISABLE_SIGNUP is true", () => {
+  it("should disable signup when AUTH_OIDC_DISABLE_SIGN_UP is true", () => {
     process.env.AUTH_OIDC_ENABLED = "true";
     process.env.AUTH_OIDC_CLIENT_ID = "client-id";
     process.env.AUTH_OIDC_CLIENT_SECRET = "client-secret";
     process.env.AUTH_OIDC_DISCOVERY_URL =
       "https://oidc.example.com/.well-known/openid-configuration";
-    process.env.AUTH_OIDC_DISABLE_SIGNUP = "true";
+    process.env.AUTH_OIDC_DISABLE_SIGN_UP = "true";
 
     expect(createOidcConfig(false)).toEqual(
       expect.objectContaining({
