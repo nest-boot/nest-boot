@@ -1,3 +1,20 @@
+## 7.5.0 (2026-06-07)
+
+### 🚀 Features
+
+- add row level security driver ([#236](https://github.com/nest-boot/nest-boot/pull/236))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 7.1.0
+- Updated @nest-boot/eslint-plugin to 7.0.8
+- Updated @nest-boot/middleware to 7.4.0
+- Updated @nest-boot/tsconfig to 7.1.0
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 # @nest-boot/request-context
 
 ## 7.4.3

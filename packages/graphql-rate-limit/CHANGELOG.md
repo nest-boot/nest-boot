@@ -1,3 +1,20 @@
+## 7.2.0 (2026-06-07)
+
+### 🚀 Features
+
+- add row level security driver ([#236](https://github.com/nest-boot/nest-boot/pull/236))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 7.1.0
+- Updated @nest-boot/eslint-plugin to 7.0.8
+- Updated @nest-boot/tsconfig to 7.1.0
+- Updated @nest-boot/graphql to 7.1.5
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 # @nest-boot/graphql-rate-limit
 
 ## 7.1.0
