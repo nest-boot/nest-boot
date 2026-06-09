@@ -1,3 +1,21 @@
+## 7.11.2 (2026-06-09)
+
+### 🩹 Fixes
+
+- **auth:** update auth env defaults ([533362c9](https://github.com/nest-boot/nest-boot/commit/533362c9))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 7.5.0
+- Updated @nest-boot/eslint-config to 7.1.0
+- Updated @nest-boot/eslint-plugin to 7.0.8
+- Updated @nest-boot/middleware to 7.4.0
+- Updated @nest-boot/tsconfig to 7.1.0
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 7.11.1 (2026-06-07)
 
 ### 🩹 Fixes
