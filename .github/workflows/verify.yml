@@ -121,6 +121,6 @@ jobs:
 
       - name: Release packages
         if: inputs.release
-        run: pnpm exec nx release publish --yes
+        run: pnpm exec nx release --yes
         env:
           NPM_CONFIG_PROVENANCE: true
