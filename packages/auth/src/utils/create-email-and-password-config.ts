@@ -8,22 +8,17 @@ type EmailAndPasswordConfig = NonNullable<
 export function createEmailAndPasswordConfig(
   disableSignUp: boolean,
   options?: EmailAndPasswordConfig,
-): EmailAndPasswordConfig | undefined {
+): EmailAndPasswordConfig {
   const hasEnabledEnv = process.env.AUTH_EMAIL_ENABLED !== undefined;
   const shouldDisableSignUp =
     disableSignUp || isEnvTrue("AUTH_EMAIL_DISABLE_SIGN_UP");
-
-  if (!options && !hasEnabledEnv) {
-    return undefined;
-  }
+  const enabled = hasEnabledEnv
+    ? process.env.AUTH_EMAIL_ENABLED !== "false"
+    : (options?.enabled ?? true);
 
   return {
-    ...(options ?? {
-      enabled: process.env.AUTH_EMAIL_ENABLED !== "false",
-    }),
-    ...(hasEnabledEnv
-      ? { enabled: process.env.AUTH_EMAIL_ENABLED !== "false" }
-      : {}),
+    ...options,
+    enabled,
     disableSignUp: shouldDisableSignUp || options?.disableSignUp === true,
   };
 }

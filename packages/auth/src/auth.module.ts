@@ -74,9 +74,7 @@ import { resolveSecret } from "./utils/resolve-secret";
             skipStateCookieCheck: true,
           },
           ...betterAuthOptions,
-          ...(emailAndPasswordConfig
-            ? { emailAndPassword: emailAndPasswordConfig }
-            : {}),
+          emailAndPassword: emailAndPasswordConfig,
           ...(socialProvidersConfig
             ? { socialProviders: socialProvidersConfig }
             : {}),
