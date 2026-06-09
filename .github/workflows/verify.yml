@@ -121,6 +121,42 @@ jobs:
 
       - name: Release packages
         if: inputs.release
-        run: pnpm exec nx release --yes
+        run: |
+          pnpm exec nx release --yes
+
+          missing_projects="$(
+            node <<'NODE'
+          const { execFileSync } = require('node:child_process');
+          const { existsSync, readdirSync, readFileSync } = require('node:fs');
+          const { join } = require('node:path');
+
+          const projects = [];
+
+          for (const entry of readdirSync('packages', { withFileTypes: true })) {
+            if (!entry.isDirectory()) continue;
+
+            const manifestPath = join('packages', entry.name, 'package.json');
+            if (!existsSync(manifestPath)) continue;
+
+            const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+            if (manifest.private || !manifest.name || !manifest.version) continue;
+
+            try {
+              execFileSync('npm', ['view', `${manifest.name}@${manifest.version}`, 'version'], {
+                stdio: 'ignore',
+              });
+            } catch {
+              projects.push(manifest.name);
+            }
+          }
+
+          process.stdout.write(projects.join(','));
+          NODE
+          )"
+
+          if [ -n "$missing_projects" ]; then
+            pnpm exec nx release publish --projects "$missing_projects" --yes
+          fi
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           NPM_CONFIG_PROVENANCE: true
