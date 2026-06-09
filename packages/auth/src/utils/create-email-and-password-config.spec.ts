@@ -2,12 +2,16 @@ import { createEmailAndPasswordConfig } from "./create-email-and-password-config
 
 describe("createEmailAndPasswordConfig", () => {
   beforeEach(() => {
+    delete process.env.AUTH_DISABLE_SIGN_UP;
     delete process.env.AUTH_EMAIL_DISABLE_SIGN_UP;
     delete process.env.AUTH_EMAIL_ENABLED;
   });
 
-  it("should preserve better-auth defaults when email auth is not configured", () => {
-    expect(createEmailAndPasswordConfig(false)).toBeUndefined();
+  it("should enable email auth when AUTH_EMAIL_ENABLED is unset", () => {
+    expect(createEmailAndPasswordConfig(false)).toEqual({
+      disableSignUp: false,
+      enabled: true,
+    });
   });
 
   it("should enable email auth when AUTH_EMAIL_ENABLED is true", () => {
@@ -28,14 +32,17 @@ describe("createEmailAndPasswordConfig", () => {
     });
   });
 
-  it("should not create email auth config for signup disable flags alone", () => {
+  it("should disable signup when AUTH_EMAIL_DISABLE_SIGN_UP is true and AUTH_EMAIL_ENABLED is unset", () => {
     process.env.AUTH_EMAIL_DISABLE_SIGN_UP = "true";
 
-    expect(createEmailAndPasswordConfig(true)).toBeUndefined();
+    expect(createEmailAndPasswordConfig(false)).toEqual({
+      disableSignUp: true,
+      enabled: true,
+    });
   });
 
-  it("should disable signup when the global disable flag is true and email auth is configured", () => {
-    process.env.AUTH_EMAIL_ENABLED = "true";
+  it("should disable signup when the global disable flag is true and AUTH_EMAIL_ENABLED is unset", () => {
+    process.env.AUTH_DISABLE_SIGN_UP = "true";
 
     expect(createEmailAndPasswordConfig(true)).toEqual({
       disableSignUp: true,
@@ -77,6 +84,17 @@ describe("createEmailAndPasswordConfig", () => {
     ).toEqual({
       disableSignUp: true,
       enabled: true,
+    });
+  });
+
+  it("should preserve explicit email auth enabled options when AUTH_EMAIL_ENABLED is unset", () => {
+    expect(
+      createEmailAndPasswordConfig(false, {
+        enabled: false,
+      }),
+    ).toEqual({
+      disableSignUp: false,
+      enabled: false,
     });
   });
 });

@@ -255,9 +255,32 @@ describe("AuthModule", () => {
     );
   });
 
-  it("should disable email and OIDC signup when the global signup disable flag is enabled", () => {
+  it("should enable email auth by default when AUTH_EMAIL_ENABLED is unset", () => {
+    const orm = {
+      em: {},
+    } as unknown as MikroORM;
+    const authProvider = getAuthProvider();
+
+    authProvider.useFactory(
+      {
+        entities,
+        secret,
+      },
+      orm,
+    );
+
+    expect(mockBetterAuth).toHaveBeenCalledWith(
+      expect.objectContaining({
+        emailAndPassword: {
+          disableSignUp: false,
+          enabled: true,
+        },
+      }),
+    );
+  });
+
+  it("should disable email, OIDC, and social signup when the global signup disable flag is enabled", () => {
     process.env.AUTH_DISABLE_SIGN_UP = "true";
-    process.env.AUTH_EMAIL_ENABLED = "true";
     setGithubEnv();
     setGoogleEnv();
     setOidcEnv();
@@ -623,8 +646,8 @@ describe("AuthModule", () => {
     ).toThrow("AUTH_OIDC_*");
   });
 
-  it("should merge email auth options without dropping env signup disable flags", () => {
-    process.env.AUTH_DISABLE_SIGN_UP = "true";
+  it("should merge email auth options without dropping email signup disable env flags", () => {
+    process.env.AUTH_EMAIL_DISABLE_SIGN_UP = "true";
     const orm = {
       em: {},
     } as unknown as MikroORM;
