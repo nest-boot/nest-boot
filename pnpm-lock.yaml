@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  zod: 4.3.6
+
 packageExtensionsChecksum: sha256-B0uJqCz4aIbwUOzF3ujbtRFJ8Y7J+jgRCi6kihMS6gk=
 
 pnpmfileChecksum: sha256-awLY/INtdu5iPZU3oN/s1ayurtSxg/S8WQkdOOoHKXk=
@@ -72,6 +75,9 @@ importers:
       typedoc-plugin-markdown:
         specifier: ^4.10.0
         version: 4.10.0
+      zod:
+        specifier: 4.3.6
+        version: 4.3.6
 
   apps/docs:
     dependencies:
@@ -103,7 +109,7 @@ importers:
         specifier: ^3.5.0
         version: 3.5.0
       zod:
-        specifier: ^4.3.6
+        specifier: 4.3.6
         version: 4.3.6
     devDependencies:
       '@tailwindcss/postcss':
@@ -653,7 +659,7 @@ importers:
         specifier: ^3.7.0
         version: 3.7.0
       zod:
-        specifier: ^4.3.6
+        specifier: 4.3.6
         version: 4.3.6
     devDependencies:
       '@mikro-orm/core':
