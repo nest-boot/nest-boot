@@ -52,6 +52,18 @@ describe("createFilter", () => {
     });
   });
 
+  it("transforms $between filters through the filter query schema", () => {
+    const fieldOptionsMap = new Map<string, ConnectionFieldOptions<Book>>([
+      ["rating", { field: "rating", type: "number" }],
+    ]);
+
+    const { filterQuerySchema } = createFilter("BookBetween", fieldOptionsMap);
+
+    expect(filterQuerySchema.parse({ rating: { $between: [3, 5] } })).toEqual({
+      rating: { $gte: 3, $lte: 5 },
+    });
+  });
+
   it("parses scalar values from GraphQL literals", () => {
     const fieldOptionsMap = new Map<string, ConnectionFieldOptions<Book>>([
       ["title", { field: "title", type: "string" }],
