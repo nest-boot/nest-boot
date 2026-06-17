@@ -3,11 +3,10 @@ import { ArgsType, Field, Int } from "@nest-boot/graphql";
 import { type Type } from "@nestjs/common";
 import { GraphQLScalarType } from "graphql";
 import { humanize, pluralize } from "inflection";
-import type { FieldType } from "mikro-orm-filter-query-schema";
 
 import {
   ConnectionArgsInterface,
-  FieldOptions,
+  ConnectionFieldOptions,
   OrderInterface,
 } from "../interfaces";
 
@@ -32,7 +31,7 @@ import {
  */
 export function createConnectionArgs<Entity extends object>(
   entityName: string,
-  fieldOptionsMap: Map<string, FieldOptions<Entity, FieldType, string>>,
+  fieldOptionsMap: Map<string, ConnectionFieldOptions<Entity>>,
   OrderClass: Type<OrderInterface<Entity>>,
   FilterScalar: GraphQLScalarType<FilterQuery<Entity>>,
 ): Type<ConnectionArgsInterface<Entity>> {

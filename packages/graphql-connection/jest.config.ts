@@ -6,6 +6,9 @@ export default {
   transform: {
     "^.+.(t|j)s$": "ts-jest",
   },
+  moduleNameMapper: {
+    "^lodash-es/(.*)\\.js$": "lodash/$1",
+  },
   coverageDirectory: "./coverage",
   collectCoverageFrom: ["src/**/*"],
   testEnvironment: "node",

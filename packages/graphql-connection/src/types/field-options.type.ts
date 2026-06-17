@@ -1,5 +1,7 @@
+import type { FilterQuery } from "@mikro-orm/core";
 import type {
   FieldType,
+  ReplacementCallbackArgs,
   ReplacementCallbackFieldOptions as FilterReplacementCallbackFieldOptions,
   ReplacementFieldOptions as FilterReplacementFieldOptions,
   SimpleFieldOptions as FilterSimpleFieldOptions,
@@ -18,6 +20,9 @@ export interface BaseFieldOptions {
   /**
    * Whether this field is included in text search queries.
    * Only applicable to string fields.
+   *
+   * When combined with `fulltext: "fieldPath"`, search queries use
+   * `$fulltext` on the configured full-text field path.
    */
   searchable?: boolean;
 }
@@ -42,7 +47,8 @@ export interface SortableFieldOptions {
 export type SimpleFieldOptions<
   Entity extends object,
   Type extends FieldType = never,
-> = FilterSimpleFieldOptions<Entity, Type> &
+  Field extends string = never,
+> = FilterSimpleFieldOptions<Entity, Type, Field> &
   BaseFieldOptions &
   SortableFieldOptions;
 
@@ -74,7 +80,8 @@ export type ReplacementFieldOptions<
 export type ReplacementFunctionFieldOptions<
   Entity extends object,
   Type extends FieldType = never,
-> = FilterReplacementCallbackFieldOptions<Entity, Type> &
+  Field extends string = never,
+> = FilterReplacementCallbackFieldOptions<Entity, Type, Field> &
   BaseFieldOptions &
   SortableFieldOptions;
 
@@ -112,6 +119,49 @@ export type FieldOptions<
   Type extends FieldType = never,
   Field extends string = never,
 > =
-  | SimpleFieldOptions<Entity, Type>
+  | SimpleFieldOptions<Entity, Type, Field>
   | ReplacementFieldOptions<Entity, Type, Field>
-  | ReplacementFunctionFieldOptions<Entity, Type>;
+  | ReplacementFunctionFieldOptions<Entity, Type, Field>;
+
+/**
+ * Runtime field configuration stored after a field has been added.
+ *
+ * This intentionally avoids the public AutoPath-heavy field option types so
+ * internal maps can be passed around without repeatedly expanding entity paths.
+ *
+ * @typeParam Entity - The entity type
+ */
+export type ConnectionFieldOptions<Entity extends object> = BaseFieldOptions &
+  SortableFieldOptions & {
+    /**
+     * The field name used in connection filter and search input.
+     */
+    field: string;
+
+    /**
+     * The field data type.
+     */
+    type: FieldType;
+
+    /**
+     * Whether this field represents an array type.
+     */
+    array?: boolean;
+
+    /**
+     * Enables `$fulltext`; when set to a string path, maps `$fulltext` there.
+     */
+    fulltext?: boolean | string;
+
+    /**
+     * Enables `$prefix` for string prefix searches.
+     */
+    prefix?: boolean;
+
+    /**
+     * Optional field replacement path or callback.
+     */
+    replacement?:
+      | string
+      | ((args: ReplacementCallbackArgs<FieldType>) => FilterQuery<Entity>);
+  };

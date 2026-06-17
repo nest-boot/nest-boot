@@ -1,8 +1,7 @@
 import { EntityClass, FilterQuery } from "@mikro-orm/core";
-import type { FieldType } from "mikro-orm-filter-query-schema";
 import type { ZodType } from "zod";
 
-import { FieldOptions } from "../types/field-options.type";
+import { ConnectionFieldOptions } from "../types/field-options.type";
 
 /**
  * Metadata stored on connection classes for query building.
@@ -23,7 +22,7 @@ export interface ConnectionMetadata<Entity extends object> {
   /**
    * Map of field names to their configuration options.
    */
-  fieldOptionsMap: Map<string, FieldOptions<Entity, FieldType, string>>;
+  fieldOptionsMap: Map<string, ConnectionFieldOptions<Entity>>;
 
   /**
    * Zod schema for validating and parsing filter queries.
