@@ -1,11 +1,10 @@
 import { Field, InputType, registerEnumType } from "@nest-boot/graphql";
 import { type Type } from "@nestjs/common";
 import { humanize, pluralize, underscore } from "inflection";
-import type { FieldType } from "mikro-orm-filter-query-schema";
 
 import { OrderDirection } from "../enums";
 import {
-  FieldOptions,
+  ConnectionFieldOptions,
   OrderFieldKey,
   OrderFieldType,
   OrderInterface,
@@ -47,7 +46,7 @@ export interface CreateOrderResult<Entity extends object> {
  */
 export function createOrder<Entity extends object>(
   entityName: string,
-  fieldOptionsMap: Map<string, FieldOptions<Entity, FieldType, string>>,
+  fieldOptionsMap: Map<string, ConnectionFieldOptions<Entity>>,
 ): CreateOrderResult<Entity> {
   const humanizeEntityName = humanize(entityName, true);
   const humanizeAndPluralizeEntityName = pluralize(humanize(entityName, true));

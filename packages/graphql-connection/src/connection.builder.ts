@@ -1,12 +1,12 @@
 import type { EntityClass, FilterQuery } from "@mikro-orm/core";
 import { type Type } from "@nestjs/common";
 import { GraphQLScalarType } from "graphql";
-import type { FieldType } from "mikro-orm-filter-query-schema";
 import type { ZodType } from "zod";
 
 import {
   ConnectionArgsInterface,
   ConnectionBuilderOptions,
+  ConnectionFieldOptions,
   ConnectionInterface,
   EdgeInterface,
   FieldOptions,
@@ -111,7 +111,7 @@ export class ConnectionBuilder<Entity extends object> {
   /** Map of field names to their sort/filter options. @internal */
   private readonly fieldOptionsMap = new Map<
     string,
-    FieldOptions<Entity, FieldType, string>
+    ConnectionFieldOptions<Entity>
   >();
 
   /**
@@ -163,7 +163,7 @@ export class ConnectionBuilder<Entity extends object> {
   >(options: FieldOptions<Entity, Type, Field>): this {
     this.fieldOptionsMap.set(
       options.field,
-      options as FieldOptions<Entity, FieldType, string>,
+      options as ConnectionFieldOptions<Entity>,
     );
     return this;
   }

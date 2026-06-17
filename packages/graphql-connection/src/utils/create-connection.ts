@@ -2,15 +2,14 @@ import type { EntityClass, FilterQuery } from "@mikro-orm/core";
 import { Field, Int, ObjectType } from "@nest-boot/graphql";
 import { type Type } from "@nestjs/common";
 import { pluralize } from "inflection";
-import type { FieldType } from "mikro-orm-filter-query-schema";
 import type { ZodType } from "zod";
 
 import { GRAPHQL_CONNECTION_METADATA } from "../graphql-connection.constants";
 import {
+  ConnectionFieldOptions,
   ConnectionInterface,
   ConnectionMetadata,
   EdgeInterface,
-  FieldOptions,
 } from "../interfaces";
 import { PageInfo } from "../objects";
 
@@ -36,7 +35,7 @@ export function createConnection<Entity extends object>(
   entityClass: EntityClass<Entity>,
   entityName: string,
   EdgeClass: Type<EdgeInterface<Entity>>,
-  fieldOptionsMap: Map<string, FieldOptions<Entity, FieldType, string>>,
+  fieldOptionsMap: Map<string, ConnectionFieldOptions<Entity>>,
   filterQuerySchema: ZodType<FilterQuery<Entity>>,
 ): Type<ConnectionInterface<Entity>> {
   const pluralizeEntityName = pluralize(entityName);

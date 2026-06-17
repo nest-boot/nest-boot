@@ -7,7 +7,7 @@ import {
   FilterQuerySchemaBuilder,
 } from "mikro-orm-filter-query-schema";
 
-import { FieldOptions } from "../interfaces";
+import { ConnectionFieldOptions } from "../interfaces";
 
 /**
  * The Zod schema type returned by FilterQuerySchemaBuilder.
@@ -89,7 +89,7 @@ export interface CreateFilterResult<Entity extends object> {
  */
 export function createFilter<Entity extends object>(
   entityName: string,
-  fieldOptionsMap: Map<string, FieldOptions<Entity, FieldType, string>>,
+  fieldOptionsMap: Map<string, ConnectionFieldOptions<Entity>>,
   filterOptions?: FilterOptions,
 ): CreateFilterResult<Entity> {
   const filterableFields = [...fieldOptionsMap.values()]
@@ -101,7 +101,7 @@ export function createFilter<Entity extends object>(
   for (const [, options] of fieldOptionsMap) {
     if (options.filterable !== false) {
       builder.addField(
-        options as FilterFieldOptions<Entity, FieldType, string>,
+        options as unknown as FilterFieldOptions<Entity, FieldType, string>,
       );
     }
   }

@@ -61,7 +61,36 @@ Supports both forward (`first`/`after`) and backward (`last`/`before`) paginatio
 
 ## Filtering
 
-MongoDB-style filter syntax with operators: `$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`, `$in`, `$nin`, `$and`, `$or`, `$regex`.
+MongoDB-style filter syntax with operators: `$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`, `$in`, `$nin`, `$and`, `$or`, `$not`, `$fulltext`, `$prefix`, `$contains`, and `$overlap`.
+
+String fields can map full-text filters to a dedicated MikroORM full-text property:
+
+```typescript
+import { Entity, Index, Property } from "@mikro-orm/core";
+import { FullTextType } from "@mikro-orm/postgresql";
+
+@Entity()
+class Book {
+  @Property()
+  title!: string;
+
+  @Index({ type: "fulltext" })
+  @Property({ type: FullTextType, onUpdate: (book) => book.title })
+  searchableTitle!: string;
+}
+
+export const { Connection: BookConnection } = new ConnectionBuilder(Book)
+  .addField({
+    field: "title",
+    type: "string",
+    filterable: true,
+    searchable: true,
+    fulltext: "searchableTitle",
+  })
+  .build();
+```
+
+With that configuration, `filter: { title: { $fulltext: "nest" } }` and `query: "title:nest"` both search `searchableTitle`, while regular operators such as `$eq` still target `title`.
 
 ## Search Query
 

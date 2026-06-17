@@ -33,6 +33,39 @@ export const {
   .build();
 ```
 
+## 过滤
+
+支持 MongoDB 风格过滤操作符：`$eq`、`$ne`、`$gt`、`$gte`、`$lt`、`$lte`、`$in`、`$nin`、`$and`、`$or`、`$not`、`$fulltext`、`$prefix`、`$contains` 和 `$overlap`。
+
+字符串字段可以把全文检索映射到专门的 MikroORM 全文检索属性：
+
+```typescript
+import { Entity, Index, Property } from "@mikro-orm/core";
+import { FullTextType } from "@mikro-orm/postgresql";
+
+@Entity()
+class Book {
+  @Property()
+  title!: string;
+
+  @Index({ type: "fulltext" })
+  @Property({ type: FullTextType, onUpdate: (book) => book.title })
+  searchableTitle!: string;
+}
+
+export const { Connection: BookConnection } = new ConnectionBuilder(Book)
+  .addField({
+    field: "title",
+    type: "string",
+    filterable: true,
+    searchable: true,
+    fulltext: "searchableTitle",
+  })
+  .build();
+```
+
+这样配置后，`filter: { title: { $fulltext: "nest" } }` 和 `query: "title:nest"` 都会查询 `searchableTitle`；`$eq` 等普通操作符仍然查询 `title`。
+
 ## 特性
 
 - **Relay 兼容** - 遵循 Relay 连接规范
