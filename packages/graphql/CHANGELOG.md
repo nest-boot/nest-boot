@@ -1,3 +1,19 @@
+## 7.2.0 (2026-06-17)
+
+### 🚀 Features
+
+- support fulltext field mapping in graphql connection ([#274](https://github.com/nest-boot/nest-boot/pull/274))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 7.2.0
+- Updated @nest-boot/eslint-plugin to 7.1.0
+- Updated @nest-boot/tsconfig to 7.2.0
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 7.1.5 (2026-06-07)
 
 ### 🧱 Updated Dependencies

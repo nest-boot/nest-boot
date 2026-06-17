@@ -1,3 +1,7 @@
+## 7.2.0 (2026-06-17)
+
+This was a version bump only for @nest-boot/tsconfig to align it with other projects, there were no code changes.
+
 ## 7.1.0 (2026-06-07)
 
 This was a version bump only for @nest-boot/tsconfig to align it with other projects, there were no code changes.

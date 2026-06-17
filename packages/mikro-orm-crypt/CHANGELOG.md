@@ -1,3 +1,12 @@
+## 7.4.0 (2026-06-17)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 7.2.0
+- Updated @nest-boot/eslint-plugin to 7.1.0
+- Updated @nest-boot/tsconfig to 7.2.0
+- Updated @nest-boot/crypt to 7.3.0
+
 ## 7.3.0 (2026-06-07)
 
 ### 🚀 Features
