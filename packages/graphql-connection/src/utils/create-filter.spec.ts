@@ -1,9 +1,13 @@
+import { Kind } from "graphql";
+
 import type { ConnectionFieldOptions, FieldOptions } from "../interfaces";
 import { createFilter } from "./create-filter";
 
 interface Book {
   title: string;
   searchableTitle: string;
+  rating: number;
+  published: boolean;
 }
 
 describe("createFilter", () => {
@@ -45,6 +49,125 @@ describe("createFilter", () => {
     ).toEqual({
       title: { $eq: "exact title" },
       searchableTitle: { $fulltext: "search term" },
+    });
+  });
+
+  it("parses scalar values from GraphQL literals", () => {
+    const fieldOptionsMap = new Map<string, ConnectionFieldOptions<Book>>([
+      ["title", { field: "title", type: "string" }],
+      ["rating", { field: "rating", type: "number" }],
+      ["published", { field: "published", type: "boolean" }],
+    ]);
+
+    const { Filter } = createFilter("BookLiteral", fieldOptionsMap);
+
+    expect(
+      Filter.parseLiteral({
+        kind: Kind.OBJECT,
+        fields: [
+          {
+            kind: Kind.OBJECT_FIELD,
+            name: { kind: Kind.NAME, value: "title" },
+            value: {
+              kind: Kind.OBJECT,
+              fields: [
+                {
+                  kind: Kind.OBJECT_FIELD,
+                  name: { kind: Kind.NAME, value: "$in" },
+                  value: {
+                    kind: Kind.LIST,
+                    values: [
+                      { kind: Kind.STRING, value: "A" },
+                      { kind: Kind.ENUM, value: "B" },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+          {
+            kind: Kind.OBJECT_FIELD,
+            name: { kind: Kind.NAME, value: "rating" },
+            value: {
+              kind: Kind.OBJECT,
+              fields: [
+                {
+                  kind: Kind.OBJECT_FIELD,
+                  name: { kind: Kind.NAME, value: "$gte" },
+                  value: { kind: Kind.FLOAT, value: "4.5" },
+                },
+                {
+                  kind: Kind.OBJECT_FIELD,
+                  name: { kind: Kind.NAME, value: "$lte" },
+                  value: { kind: Kind.INT, value: "5" },
+                },
+              ],
+            },
+          },
+          {
+            kind: Kind.OBJECT_FIELD,
+            name: { kind: Kind.NAME, value: "published" },
+            value: {
+              kind: Kind.OBJECT,
+              fields: [
+                {
+                  kind: Kind.OBJECT_FIELD,
+                  name: { kind: Kind.NAME, value: "$eq" },
+                  value: { kind: Kind.BOOLEAN, value: true },
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    ).toEqual({
+      title: { $in: ["A", "B"] },
+      rating: { $gte: 4.5, $lte: 5 },
+      published: { $eq: true },
+    });
+  });
+
+  it("reports invalid filter values", () => {
+    const fieldOptionsMap = new Map<string, ConnectionFieldOptions<Book>>([
+      ["title", { field: "title", type: "string" }],
+    ]);
+
+    const { Filter } = createFilter("BookInvalid", fieldOptionsMap);
+
+    expect(() => Filter.parseValue("{")).toThrow(
+      "Filter must be a valid JSON string",
+    );
+    expect(
+      Filter.parseLiteral({
+        kind: Kind.OBJECT,
+        fields: [
+          {
+            kind: Kind.OBJECT_FIELD,
+            name: { kind: Kind.NAME, value: "title" },
+            value: {
+              kind: Kind.OBJECT,
+              fields: [
+                {
+                  kind: Kind.OBJECT_FIELD,
+                  name: { kind: Kind.NAME, value: "$eq" },
+                  value: { kind: Kind.NULL },
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    ).toEqual({
+      title: { $eq: null },
+    });
+    expect(() =>
+      Filter.parseLiteral({
+        kind: Kind.VARIABLE,
+        name: { kind: Kind.NAME, value: "filter" },
+      }),
+    ).toThrow("Unexpected AST kind: Variable");
+    expect(Filter.serialize({ title: { $eq: "GraphQL" } })).toEqual({
+      title: { $eq: "GraphQL" },
     });
   });
 });
