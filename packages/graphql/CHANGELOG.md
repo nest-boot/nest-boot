@@ -1,3 +1,19 @@
+## 7.2.1 (2026-06-17)
+
+### 🩹 Fixes
+
+- update filter query schema dependency ([#275](https://github.com/nest-boot/nest-boot/pull/275))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 7.2.1
+- Updated @nest-boot/eslint-plugin to 7.1.1
+- Updated @nest-boot/tsconfig to 7.2.1
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 7.2.0 (2026-06-17)
 
 ### 🚀 Features
