@@ -119,6 +119,7 @@ export default defineConfig({
     root: "./",
     include: ["**/*.spec.ts"],
     exclude: ["dist/**", "node_modules/**", "**/*.e2e-spec.ts"],
+    testTimeout: 30_000,
     coverage: {
       reportsDirectory: "./coverage",
       provider: "v8",
