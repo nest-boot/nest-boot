@@ -1,11 +1,11 @@
 import { EntityManager, MikroORM } from "@mikro-orm/core";
 
-jest.mock("@mikro-orm/nestjs", () => ({
+vi.mock("@mikro-orm/nestjs", () => ({
   MikroOrmModule: {
-    clearStorage: jest.fn(),
-    forFeature: jest.fn(),
-    forMiddleware: jest.fn(),
-    forRootAsync: jest.fn(() => ({
+    clearStorage: vi.fn(),
+    forFeature: vi.fn(),
+    forMiddleware: vi.fn(),
+    forRootAsync: vi.fn(() => ({
       module: class BaseRootModule {},
     })),
   },
@@ -15,16 +15,16 @@ import { MikroOrmModule as BaseMikroOrmModule } from "@mikro-orm/nestjs";
 import { RequestContext } from "@nest-boot/request-context";
 import { Test } from "@nestjs/testing";
 
-import { MikroOrmModule } from "../src";
+import { MikroOrmModule } from "../src/index.js";
 import {
   BASE_MODULE_OPTIONS_TOKEN,
   MODULE_OPTIONS_TOKEN,
-} from "../src/mikro-orm.module-definition";
-import { TestEntity } from "./entities/test.entity";
+} from "../src/mikro-orm.module-definition.js";
+import { TestEntity } from "./entities/test.entity.js";
 
 describe("MikroOrmModule", () => {
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("should register synchronous options", () => {
@@ -71,13 +71,13 @@ describe("MikroOrmModule", () => {
     const middlewareModule = {
       module: class MiddlewareModule {},
     };
-    jest
-      .spyOn(BaseMikroOrmModule, "forFeature")
-      .mockReturnValue(featureModule as never);
-    jest
-      .spyOn(BaseMikroOrmModule, "forMiddleware")
-      .mockReturnValue(middlewareModule as never);
-    const clearStorage = jest
+    vi.spyOn(BaseMikroOrmModule, "forFeature").mockReturnValue(
+      featureModule as never,
+    );
+    vi.spyOn(BaseMikroOrmModule, "forMiddleware").mockReturnValue(
+      middlewareModule as never,
+    );
+    const clearStorage = vi
       .spyOn(BaseMikroOrmModule, "clearStorage")
       .mockReturnValue();
 
@@ -89,13 +89,13 @@ describe("MikroOrmModule", () => {
 
   it("should register request context middleware that forks the entity manager", async () => {
     const forkedEm = {} as EntityManager;
-    const fork = jest.fn(() => forkedEm);
+    const fork = vi.fn(() => forkedEm);
     const orm = {
       em: {
         fork,
       },
     } as unknown as MikroORM;
-    const registerMiddleware = jest
+    const registerMiddleware = vi
       .spyOn(RequestContext, "registerMiddleware")
       .mockImplementation(() => undefined);
     const moduleRef = await Test.createTestingModule({
@@ -118,9 +118,9 @@ describe("MikroOrmModule", () => {
 
     const middleware = registerMiddleware.mock.calls[0][1];
     const ctx = {
-      set: jest.fn(),
+      set: vi.fn(),
     };
-    const next = jest.fn(async () => {
+    const next = vi.fn(async () => {
       await Promise.resolve();
       return "next-result";
     });

@@ -5,10 +5,10 @@ import {
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
-} from "./hash.module-definition";
-import { HashService } from "./hash.service";
-import { HashModuleOptions } from "./hash-module-options.interface";
-import { estimateEntropy } from "./utils/estimate-entropy";
+} from "./hash.module-definition.js";
+import { HashService } from "./hash.service.js";
+import { HashModuleOptions } from "./hash-module-options.interface.js";
+import { estimateEntropy } from "./utils/estimate-entropy.js";
 
 /**
  * Module that provides password hashing services using Argon2.

@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 
-import { Logger } from "../../src";
-import { CUSTOM_CONTENT_NAME } from "./constants";
+import { Logger } from "../../src/index.js";
+import { CUSTOM_CONTENT_NAME } from "./constants.js";
 
 @Injectable()
 export class TestService {

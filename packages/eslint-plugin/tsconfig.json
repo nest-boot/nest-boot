@@ -6,6 +6,15 @@
     "paths": {
       "@/*": ["./src/*"]
     },
-    "outDir": "./dist"
-  }
+    "outDir": "./dist",
+    "rootDir": "."
+  },
+  "include": [
+    "src",
+    "test",
+    "vitest.setup.ts",
+    "vitest.config.ts",
+    "vitest.config.e2e.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
 }

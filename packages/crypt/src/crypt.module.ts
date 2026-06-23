@@ -5,10 +5,10 @@ import {
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
-} from "./crypt.module-definition";
-import { CryptService } from "./crypt.service";
-import { CryptModuleOptions } from "./crypt-module-options.interface";
-import { estimateEntropy } from "./utils/estimate-entropy";
+} from "./crypt.module-definition.js";
+import { CryptService } from "./crypt.service.js";
+import { CryptModuleOptions } from "./crypt-module-options.interface.js";
+import { estimateEntropy } from "./utils/estimate-entropy.js";
 
 /**
  * Module that provides encryption and decryption services using JWE (A256GCMKW + A256GCM).

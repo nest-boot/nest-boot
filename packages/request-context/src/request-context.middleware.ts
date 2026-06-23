@@ -1,11 +1,11 @@
 import { Injectable, type NestMiddleware } from "@nestjs/common";
 import { type NextFunction, type Request, type Response } from "express";
 
-import { RequestContext } from "./request-context";
 import {
   REQUEST as CTX_REQUEST_TOKEN,
   RESPONSE as CTX_RESPONSE_TOKEN,
-} from "./request-context.constants";
+} from "./request-context.constants.js";
+import { RequestContext } from "./request-context.js";
 
 /**
  * Express middleware that creates and manages request context for HTTP requests.

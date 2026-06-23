@@ -1,2 +1,2 @@
-export * from "./redis.module";
-export * from "./utils/load-config-from-env.util";
+export * from "./redis.module.js";
+export * from "./utils/load-config-from-env.util.js";

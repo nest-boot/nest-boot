@@ -10,7 +10,7 @@ import { AsyncResource } from "async_hooks";
 import type { REPLServer } from "repl";
 import { Transform } from "stream";
 
-import { RequestContext } from "./request-context";
+import { RequestContext } from "./request-context.js";
 
 /**
  * Starts a REPL (Read-Eval-Print Loop) session with request context support.

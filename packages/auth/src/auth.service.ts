@@ -1,7 +1,7 @@
 import { Inject } from "@nestjs/common";
 import { type Auth } from "better-auth";
 
-import { AUTH_TOKEN } from "./auth.constants";
+import { AUTH_TOKEN } from "./auth.constants.js";
 
 /** Service exposing the better-auth API to the application. */
 export class AuthService {

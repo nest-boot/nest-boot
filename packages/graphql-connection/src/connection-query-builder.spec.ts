@@ -2,17 +2,17 @@ import "reflect-metadata";
 
 import { type EntityManager, QueryOrder } from "@mikro-orm/core";
 
-import { ConnectionQueryBuilder } from "./connection-query-builder";
-import { Cursor } from "./cursor";
-import { OrderDirection } from "./enums";
-import { GRAPHQL_CONNECTION_METADATA } from "./graphql-connection.constants";
+import { ConnectionQueryBuilder } from "./connection-query-builder.js";
+import { Cursor } from "./cursor.js";
+import { OrderDirection } from "./enums/index.js";
+import { GRAPHQL_CONNECTION_METADATA } from "./graphql-connection.constants.js";
 import type {
   ConnectionFieldOptions,
   ConnectionMetadata,
   FieldOptions,
-} from "./interfaces";
-import type { ConnectionClass } from "./types";
-import { createFilter } from "./utils";
+} from "./interfaces/index.js";
+import type { ConnectionClass } from "./types/index.js";
+import { createFilter } from "./utils/index.js";
 
 interface Book {
   id: number;
@@ -66,8 +66,8 @@ function setConnectionMetadata(
 }
 
 function createEntityManager(entities: Book[] = []) {
-  const find = jest.fn().mockResolvedValue(entities);
-  const findAll = jest.fn().mockResolvedValue(entities);
+  const find = vi.fn().mockResolvedValue(entities);
+  const findAll = vi.fn().mockResolvedValue(entities);
 
   return {
     entityManager: { find, findAll } as unknown as EntityManager,

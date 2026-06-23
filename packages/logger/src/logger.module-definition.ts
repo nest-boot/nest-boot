@@ -1,6 +1,6 @@
 import { ConfigurableModuleBuilder } from "@nestjs/common";
 
-import { type LoggerModuleOptions } from "./logger-module-options.interface";
+import { type LoggerModuleOptions } from "./logger-module-options.interface.js";
 
 export const PINO_LOGGER = Symbol("PINO_LOGGER");
 

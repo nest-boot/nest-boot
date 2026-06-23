@@ -1,3 +1,6 @@
 {
-  "extends": "@nest-boot/tsconfig/library.json"
+  "extends": "@nest-boot/tsconfig/library.json",
+  "compilerOptions": {
+    "rootDir": "."
+  }
 }

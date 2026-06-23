@@ -1,13 +1,20 @@
-const mockProcessorDecorator = jest.fn();
-const mockProcessor = jest.fn(() => mockProcessorDecorator);
+const { mockProcessor, mockProcessorDecorator } = vi.hoisted(() => {
+  const mockProcessorDecorator = vi.fn();
+  const mockProcessor = vi.fn(() => mockProcessorDecorator);
 
-jest.mock("@nest-boot/bullmq", () => ({
-  InjectQueue: jest.fn(() => jest.fn()),
+  return {
+    mockProcessor,
+    mockProcessorDecorator,
+  };
+});
+
+vi.mock("@nest-boot/bullmq", () => ({
+  InjectQueue: vi.fn(() => vi.fn()),
   Processor: mockProcessor,
   WorkerHost: class WorkerHost {
     worker = {
       concurrency: 1,
-      run: jest.fn().mockResolvedValue(undefined),
+      run: vi.fn().mockResolvedValue(undefined),
     };
   },
 }));
@@ -15,14 +22,14 @@ jest.mock("@nest-boot/bullmq", () => ({
 import { type Provider } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 
-import { MODULE_OPTIONS_TOKEN } from "./schedule.module-definition";
-import { ScheduleProcessor } from "./schedule.processor";
-import { ScheduleRegistry } from "./schedule.registry";
-import { type ScheduleModuleOptions } from "./schedule-module-options.interface";
+import { MODULE_OPTIONS_TOKEN } from "./schedule.module-definition.js";
+import { ScheduleProcessor } from "./schedule.processor.js";
+import { ScheduleRegistry } from "./schedule.registry.js";
+import { type ScheduleModuleOptions } from "./schedule-module-options.interface.js";
 
 describe("ScheduleProcessor", () => {
   const createRegistry = (entry?: ReturnType<ScheduleRegistry["get"]>) => {
-    const get = jest.fn(() => entry);
+    const get = vi.fn(() => entry);
 
     return {
       get,
@@ -40,7 +47,7 @@ describe("ScheduleProcessor", () => {
   });
 
   it("should invoke the registered schedule handler for the job name", async () => {
-    const handler = jest.fn().mockResolvedValue(undefined);
+    const handler = vi.fn().mockResolvedValue(undefined);
     const { get, registry } = createRegistry({
       handler,
       options: {
@@ -106,45 +113,46 @@ describe("ScheduleProcessor", () => {
   });
 
   it("should load decorator metadata fallback branches", async () => {
-    await jest.isolateModulesAsync(async () => {
-      jest.doMock("@nest-boot/bullmq", () => ({
-        InjectQueue: jest.fn(() => jest.fn()),
-        Processor: jest.fn(() => jest.fn()),
-        WorkerHost: class WorkerHost {
-          worker = {
-            concurrency: 1,
-            run: jest.fn().mockResolvedValue(undefined),
-          };
-        },
-      }));
-      jest.doMock("./schedule.registry", () => ({
-        ScheduleRegistry: undefined,
-      }));
+    vi.resetModules();
+    vi.doMock("@nest-boot/bullmq", () => ({
+      InjectQueue: vi.fn(() => vi.fn()),
+      Processor: vi.fn(() => vi.fn()),
+      WorkerHost: class WorkerHost {
+        worker = {
+          concurrency: 1,
+          run: vi.fn().mockResolvedValue(undefined),
+        };
+      },
+    }));
+    vi.doMock("./schedule.registry.js", () => ({
+      ScheduleRegistry: undefined,
+    }));
 
-      const module = await import("./schedule.processor");
+    expect(
+      (await import("./schedule.processor.js")).ScheduleProcessor,
+    ).toBeDefined();
 
-      expect(module.ScheduleProcessor).toBeDefined();
-    });
+    vi.doUnmock("./schedule.registry.js");
+    vi.resetModules();
+    vi.doMock("@nest-boot/bullmq", () => ({
+      InjectQueue: vi.fn(() => vi.fn()),
+      Processor: vi.fn(() => vi.fn()),
+      WorkerHost: class WorkerHost {
+        worker = {
+          concurrency: 1,
+          run: vi.fn().mockResolvedValue(undefined),
+        };
+      },
+    }));
+    vi.doMock("./schedule-module-options.interface.js", () => ({
+      ScheduleModuleOptions: class ScheduleModuleOptions {},
+    }));
 
-    await jest.isolateModulesAsync(async () => {
-      jest.doMock("@nest-boot/bullmq", () => ({
-        InjectQueue: jest.fn(() => jest.fn()),
-        Processor: jest.fn(() => jest.fn()),
-        WorkerHost: class WorkerHost {
-          worker = {
-            concurrency: 1,
-            run: jest.fn().mockResolvedValue(undefined),
-          };
-        },
-      }));
-      jest.doMock("./schedule-module-options.interface", () => ({
-        ScheduleModuleOptions: class ScheduleModuleOptions {},
-      }));
-
-      const module = await import("./schedule.processor");
-
-      expect(module.ScheduleProcessor).toBeDefined();
-    });
+    expect(
+      (await import("./schedule.processor.js")).ScheduleProcessor,
+    ).toBeDefined();
+    vi.doUnmock("./schedule-module-options.interface.js");
+    vi.doUnmock("@nest-boot/bullmq");
   });
 });
 

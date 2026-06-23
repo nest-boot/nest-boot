@@ -1,8 +1,15 @@
-import { ValidateBy, type ValidationOptions } from "class-validator";
-import { IsNumericOptions } from "validator";
-import isNumericValidator from "validator/lib/isNumeric";
+import { createRequire } from "node:module";
 
-import { buildI18nMessage } from "../../utils";
+import { ValidateBy, type ValidationOptions } from "class-validator";
+import { type IsNumericOptions } from "validator";
+
+import { buildI18nMessage } from "../../utils/index.js";
+
+const require = createRequire(import.meta.url);
+const isNumericValidator = require("validator/lib/isNumeric.js") as (
+  str: string,
+  options?: IsNumericOptions,
+) => boolean;
 
 /** Validation name constant for the IsNumberString validator. */
 export const IS_NUMBER_STRING = "isNumberString";

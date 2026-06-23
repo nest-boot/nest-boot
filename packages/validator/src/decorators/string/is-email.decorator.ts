@@ -1,8 +1,15 @@
-import { ValidateBy, type ValidationOptions } from "class-validator";
-import { IsEmailOptions } from "validator";
-import isEmailValidator from "validator/lib/isEmail";
+import { createRequire } from "node:module";
 
-import { buildI18nMessage } from "../../utils";
+import { ValidateBy, type ValidationOptions } from "class-validator";
+import { type IsEmailOptions } from "validator";
+
+import { buildI18nMessage } from "../../utils/index.js";
+
+const require = createRequire(import.meta.url);
+const isEmailValidator = require("validator/lib/isEmail.js") as (
+  str: string,
+  options?: IsEmailOptions,
+) => boolean;
 
 /** Validation name constant for the IsEmail validator. */
 export const IS_EMAIL = "isEmail";

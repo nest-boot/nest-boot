@@ -1,1 +1,1 @@
-export * from "./hashed-property.decorator";
+export * from "./hashed-property.decorator.js";

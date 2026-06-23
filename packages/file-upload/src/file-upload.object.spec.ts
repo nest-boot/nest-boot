@@ -1,6 +1,17 @@
-import { FileUpload } from "./file-upload.object";
-import { FileUploadField } from "./file-upload-field.object";
-import { FileUploadInput } from "./inputs/file-upload.input";
+vi.mock("@nest-boot/graphql", () => {
+  const decorator = () => () => undefined;
+
+  return {
+    Field: decorator,
+    InputType: decorator,
+    Int: Number,
+    ObjectType: decorator,
+  };
+});
+
+import { FileUpload } from "./file-upload.object.js";
+import { FileUploadField } from "./file-upload-field.object.js";
+import { FileUploadInput } from "./inputs/file-upload.input.js";
 
 describe("file upload GraphQL models", () => {
   it("should store file upload response fields", () => {

@@ -1,31 +1,37 @@
 import { MODULE_METADATA } from "@nestjs/common/constants";
 
-let mockForRootAsyncOptions: any;
-const mockBaseBullModule = {
-  forRootAsync: jest.fn((options) => {
-    mockForRootAsyncOptions = options;
-    return {
-      module: class BaseRootModule {},
-    };
-  }),
-  registerQueue: jest.fn(),
-  registerQueueAsync: jest.fn(),
-};
+const { mockBaseBullModule, mockState } = vi.hoisted(() => {
+  const mockState = {
+    forRootAsyncOptions: undefined as any,
+  };
+  const mockBaseBullModule = {
+    forRootAsync: vi.fn((options) => {
+      mockState.forRootAsyncOptions = options;
+      return {
+        module: class BaseRootModule {},
+      };
+    }),
+    registerQueue: vi.fn(),
+    registerQueueAsync: vi.fn(),
+  };
 
-jest.mock("@nestjs/bullmq", () => ({
+  return { mockBaseBullModule, mockState };
+});
+
+vi.mock("@nestjs/bullmq", () => ({
   BullModule: mockBaseBullModule,
   QueueEventsListener: class QueueEventsListener {},
 }));
 
-import { BullModule } from "./bullmq.module";
+import { BullModule } from "./bullmq.module.js";
 import {
   BASE_MODULE_OPTIONS_TOKEN,
   MODULE_OPTIONS_TOKEN,
-} from "./bullmq.module-definition";
-import { loadConfigFromEnv } from "./utils/load-config-from-env.util";
+} from "./bullmq.module-definition.js";
+import { loadConfigFromEnv } from "./utils/load-config-from-env.util.js";
 
-jest.mock("./utils/load-config-from-env.util", () => ({
-  loadConfigFromEnv: jest.fn(() => ({
+vi.mock("./utils/load-config-from-env.util", () => ({
+  loadConfigFromEnv: vi.fn(() => ({
     host: "redis.local",
   })),
 }));
@@ -37,7 +43,7 @@ interface BullOptionsProvider {
 
 describe("BullModule", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("should register synchronous and asynchronous options", () => {
@@ -95,14 +101,14 @@ describe("BullModule", () => {
   it("should merge module options with environment Redis config", () => {
     const imports = Reflect.getMetadata(MODULE_METADATA.IMPORTS, BullModule);
 
-    expect(mockForRootAsyncOptions).toEqual(
+    expect(mockState.forRootAsyncOptions).toEqual(
       expect.objectContaining({
         inject: [MODULE_OPTIONS_TOKEN],
       }),
     );
 
     expect(
-      mockForRootAsyncOptions.useFactory({
+      mockState.forRootAsyncOptions.useFactory({
         prefix: "jobs",
       }),
     ).toEqual({
@@ -112,7 +118,7 @@ describe("BullModule", () => {
       prefix: "jobs",
     });
     expect(
-      mockForRootAsyncOptions.useFactory({
+      mockState.forRootAsyncOptions.useFactory({
         connection: {
           host: "custom.redis",
         },

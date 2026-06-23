@@ -1,10 +1,16 @@
-import { EntityManager, type FilterQuery } from "@mikro-orm/core";
-import type { FindOptions } from "@mikro-orm/core/drivers";
+import {
+  EntityManager,
+  type FilterQuery,
+  type FindOptions,
+} from "@mikro-orm/core";
 import { Injectable } from "@nestjs/common";
 
-import { ConnectionQueryBuilder } from "./connection-query-builder";
-import { ConnectionArgsInterface, ConnectionInterface } from "./interfaces";
-import { ConnectionClass } from "./types";
+import { ConnectionQueryBuilder } from "./connection-query-builder.js";
+import {
+  ConnectionArgsInterface,
+  ConnectionInterface,
+} from "./interfaces/index.js";
+import { ConnectionClass } from "./types/index.js";
 
 /**
  * Options for the ConnectionManager.find method.

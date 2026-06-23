@@ -14,9 +14,9 @@ import {
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
-} from "./view.module-definition";
-import { ViewService } from "./view.service";
-import { ViewModuleOptions } from "./view-module-options.interface";
+} from "./view.module-definition.js";
+import { ViewService } from "./view.service.js";
+import { type ViewModuleOptions } from "./view-module-options.interface.js";
 
 /**
  * Template rendering module using Handlebars.

@@ -1,4 +1,4 @@
-import { loadConfigFromEnv } from "./load-config-from-env.util";
+import { loadConfigFromEnv } from "./load-config-from-env.util.js";
 
 const ORIGINAL_ENV = process.env;
 

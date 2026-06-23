@@ -1,6 +1,6 @@
-import { BullMQMikroORMModule } from "./bullmq-mikro-orm.module";
-import { MODULE_OPTIONS_TOKEN } from "./bullmq-mikro-orm.module-definition";
-import { JobEntity } from "./entities/job.entity";
+import { BullMQMikroORMModule } from "./bullmq-mikro-orm.module.js";
+import { MODULE_OPTIONS_TOKEN } from "./bullmq-mikro-orm.module-definition.js";
+import { JobEntity } from "./entities/job.entity.js";
 
 describe("BullMQMikroORMModule", () => {
   it("should create a dynamic module with synchronous options", () => {

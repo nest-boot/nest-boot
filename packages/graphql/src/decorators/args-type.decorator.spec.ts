@@ -1,93 +1,87 @@
 describe("ArgsType", () => {
-  it("should register args metadata lazily and eagerly", () => {
-    const store = jest.fn((callback: () => void) => {
+  it("should register args metadata lazily and eagerly", async () => {
+    const store = vi.fn((callback: () => void) => {
       callback();
     });
-    const addArgsMetadata = jest.fn();
-    const addClassTypeMetadata = jest.fn();
+    const addArgsMetadata = vi.fn();
+    const addClassTypeMetadata = vi.fn();
 
-    jest.isolateModules(() => {
-      jest.doMock(
-        "@nestjs/graphql/dist/schema-builder/storages/lazy-metadata.storage",
-        () => ({
-          LazyMetadataStorage: {
-            store,
-          },
-        }),
-      );
-      jest.doMock(
-        "@nestjs/graphql/dist/schema-builder/storages/type-metadata.storage",
-        () => ({
-          TypeMetadataStorage: {
-            addArgsMetadata,
-          },
-        }),
-      );
-      jest.doMock(
-        "@nestjs/graphql/dist/utils/add-class-type-metadata.util",
-        () => ({
-          addClassTypeMetadata,
-        }),
-      );
+    vi.resetModules();
+    vi.doMock(
+      "@nestjs/graphql/dist/schema-builder/storages/lazy-metadata.storage",
+      () => ({
+        LazyMetadataStorage: {
+          store,
+        },
+      }),
+    );
+    vi.doMock(
+      "@nestjs/graphql/dist/schema-builder/storages/type-metadata.storage",
+      () => ({
+        TypeMetadataStorage: {
+          addArgsMetadata,
+        },
+      }),
+    );
+    vi.doMock(
+      "@nestjs/graphql/dist/utils/add-class-type-metadata.util",
+      () => ({
+        addClassTypeMetadata,
+      }),
+    );
 
-      const { ArgsType } = jest.requireActual<
-        typeof import("./args-type.decorator")
-      >("./args-type.decorator");
-      class SearchArgs {}
+    const { ArgsType } = await import("./args-type.decorator.js");
+    class SearchArgs {}
 
-      ArgsType("NamedSearchArgs")(SearchArgs);
+    ArgsType("NamedSearchArgs")(SearchArgs);
 
-      expect(store).toHaveBeenCalledWith(expect.any(Function));
-      expect(addArgsMetadata).toHaveBeenCalledTimes(2);
-      expect(addArgsMetadata).toHaveBeenCalledWith({
-        name: "NamedSearchArgs",
-        target: SearchArgs,
-      });
-      expect(addClassTypeMetadata).toHaveBeenCalledWith(
-        SearchArgs,
-        expect.any(String),
-      );
+    expect(store).toHaveBeenCalledWith(expect.any(Function));
+    expect(addArgsMetadata).toHaveBeenCalledTimes(2);
+    expect(addArgsMetadata).toHaveBeenCalledWith({
+      name: "NamedSearchArgs",
+      target: SearchArgs,
     });
+    expect(addClassTypeMetadata).toHaveBeenCalledWith(
+      SearchArgs,
+      expect.any(String),
+    );
   });
 
-  it("should default args metadata name to the target class name", () => {
-    const addArgsMetadata = jest.fn();
+  it("should default args metadata name to the target class name", async () => {
+    const addArgsMetadata = vi.fn();
 
-    jest.isolateModules(() => {
-      jest.doMock(
-        "@nestjs/graphql/dist/schema-builder/storages/lazy-metadata.storage",
-        () => ({
-          LazyMetadataStorage: {
-            store: jest.fn(),
-          },
-        }),
-      );
-      jest.doMock(
-        "@nestjs/graphql/dist/schema-builder/storages/type-metadata.storage",
-        () => ({
-          TypeMetadataStorage: {
-            addArgsMetadata,
-          },
-        }),
-      );
-      jest.doMock(
-        "@nestjs/graphql/dist/utils/add-class-type-metadata.util",
-        () => ({
-          addClassTypeMetadata: jest.fn(),
-        }),
-      );
+    vi.resetModules();
+    vi.doMock(
+      "@nestjs/graphql/dist/schema-builder/storages/lazy-metadata.storage",
+      () => ({
+        LazyMetadataStorage: {
+          store: vi.fn(),
+        },
+      }),
+    );
+    vi.doMock(
+      "@nestjs/graphql/dist/schema-builder/storages/type-metadata.storage",
+      () => ({
+        TypeMetadataStorage: {
+          addArgsMetadata,
+        },
+      }),
+    );
+    vi.doMock(
+      "@nestjs/graphql/dist/utils/add-class-type-metadata.util",
+      () => ({
+        addClassTypeMetadata: vi.fn(),
+      }),
+    );
 
-      const { ArgsType } = jest.requireActual<
-        typeof import("./args-type.decorator")
-      >("./args-type.decorator");
-      class DefaultNameArgs {}
+    const { ArgsType } = await import("./args-type.decorator.js");
+    class DefaultNameArgs {}
 
-      ArgsType()(DefaultNameArgs);
+    ArgsType()(DefaultNameArgs);
 
-      expect(addArgsMetadata).toHaveBeenCalledWith({
-        name: "DefaultNameArgs",
-        target: DefaultNameArgs,
-      });
+    expect(addArgsMetadata).toHaveBeenCalledWith({
+      name: "DefaultNameArgs",
+      target: DefaultNameArgs,
     });
   });
 });

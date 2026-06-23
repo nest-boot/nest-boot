@@ -1,5 +1,5 @@
-import { AuthModuleOptions } from "../auth-module-options.interface";
-import { createSocialProviderConfig } from "./create-social-provider-config";
+import { AuthModuleOptions } from "../auth-module-options.interface.js";
+import { createSocialProviderConfig } from "./create-social-provider-config.js";
 
 type SocialProvidersConfig = NonNullable<AuthModuleOptions["socialProviders"]>;
 

@@ -1,10 +1,10 @@
 import { AST_NODE_TYPES, TSESTree } from "@typescript-eslint/utils";
 
-import { createRule } from "../../utils/createRule";
+import { createRule } from "../../utils/createRule.js";
 import {
   hasClassDecorator,
   hasPropertyDecorator,
-} from "../../utils/decorators";
+} from "../../utils/decorators.js";
 
 export default createRule<
   [],

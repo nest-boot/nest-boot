@@ -1,5 +1,5 @@
-import { PermissionAction } from "./enums/permission-action.enum";
-import { PermissionAbilityBuilder } from "./permission.ability-builder";
+import { PermissionAction } from "./enums/permission-action.enum.js";
+import { PermissionAbilityBuilder } from "./permission.ability-builder.js";
 
 class Post {}
 

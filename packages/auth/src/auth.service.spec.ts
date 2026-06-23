@@ -1,12 +1,12 @@
 import { Test } from "@nestjs/testing";
 
-import { AUTH_TOKEN } from "./auth.constants";
-import { AuthService } from "./auth.service";
+import { AUTH_TOKEN } from "./auth.constants.js";
+import { AuthService } from "./auth.service.js";
 
 describe("AuthService", () => {
   it("should expose the better-auth api", async () => {
     const api = {
-      getSession: jest.fn(),
+      getSession: vi.fn(),
     };
     const moduleRef = await Test.createTestingModule({
       providers: [

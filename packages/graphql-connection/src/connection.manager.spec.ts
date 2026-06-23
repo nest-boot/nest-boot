@@ -2,8 +2,8 @@ import "reflect-metadata";
 
 import type { EntityManager } from "@mikro-orm/core";
 
-import { ConnectionBuilder } from "./connection.builder";
-import { ConnectionManager } from "./connection.manager";
+import { ConnectionBuilder } from "./connection.builder.js";
+import { ConnectionManager } from "./connection.manager.js";
 
 interface ManagerBook {
   id: number;
@@ -30,8 +30,8 @@ describe("ConnectionManager", () => {
       { id: 1, title: "A" },
       { id: 2, title: "B" },
     ];
-    const find = jest.fn().mockResolvedValue(rows);
-    const findAll = jest.fn().mockResolvedValue(rows);
+    const find = vi.fn().mockResolvedValue(rows);
+    const findAll = vi.fn().mockResolvedValue(rows);
     const entityManager = {
       find,
       findAll,

@@ -1,4 +1,4 @@
-import type { PolicySqlOptions } from "./policy-sql-options.interface";
+import type { PolicySqlOptions } from "./policy-sql-options.interface.js";
 
 /** SQL diff shape passed from MikroORM to migration generators. */
 export interface MigrationDiff {

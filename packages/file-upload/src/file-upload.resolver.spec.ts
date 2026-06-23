@@ -1,7 +1,22 @@
-import { Test } from "@nestjs/testing";
+vi.mock("@nest-boot/graphql", () => {
+  const decorator = () => () => undefined;
 
-import { FileUploadResolver } from "./file-upload.resolver";
-import { FileUploadService } from "./file-upload.service";
+  return {
+    Args: decorator,
+    Field: decorator,
+    InputType: decorator,
+    Int: Number,
+    Mutation: decorator,
+    ObjectType: decorator,
+    Resolver: decorator,
+  };
+});
+
+import { Test } from "@nestjs/testing";
+import type { Mock } from "vitest";
+
+import { FileUploadResolver } from "./file-upload.resolver.js";
+import { FileUploadService } from "./file-upload.service.js";
 
 describe("FileUploadResolver", () => {
   it("should delegate file upload creation to the service", async () => {
@@ -16,7 +31,7 @@ describe("FileUploadResolver", () => {
         url: "https://s3.local/tmp/file.png",
       },
     ];
-    const create = jest.fn().mockResolvedValue(result);
+    const create = vi.fn().mockResolvedValue(result);
     const resolver = await createResolver(create);
     const input = [
       {
@@ -31,7 +46,7 @@ describe("FileUploadResolver", () => {
   });
 });
 
-async function createResolver(create: jest.Mock) {
+async function createResolver(create: Mock) {
   const moduleRef = await Test.createTestingModule({
     providers: [
       FileUploadResolver,

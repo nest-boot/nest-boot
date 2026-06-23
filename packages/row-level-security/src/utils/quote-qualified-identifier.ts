@@ -1,4 +1,4 @@
-import { quoteIdentifier } from "./quote-identifier";
+import { quoteIdentifier } from "./quote-identifier.js";
 
 /** Quotes a schema-qualified PostgreSQL table identifier. */
 export function quoteQualifiedIdentifier(

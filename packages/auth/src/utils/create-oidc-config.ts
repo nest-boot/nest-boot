@@ -1,8 +1,8 @@
-import { GenericOAuthProviderConfig } from "./generic-oauth-provider-config.type";
-import { isEnvTrue } from "./is-env-true";
-import { resolveOidcPrompt } from "./resolve-oidc-prompt";
-import { resolveOidcScopes } from "./resolve-oidc-scopes";
-import { resolveRequiredOidcEnv } from "./resolve-required-oidc-env";
+import { GenericOAuthProviderConfig } from "./generic-oauth-provider-config.type.js";
+import { isEnvTrue } from "./is-env-true.js";
+import { resolveOidcPrompt } from "./resolve-oidc-prompt.js";
+import { resolveOidcScopes } from "./resolve-oidc-scopes.js";
+import { resolveRequiredOidcEnv } from "./resolve-required-oidc-env.js";
 
 export function createOidcConfig(
   disableSignUp: boolean,

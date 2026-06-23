@@ -1,12 +1,12 @@
 import { type DynamicModule, Module, type Provider } from "@nestjs/common";
 import { collectDefaultMetrics, Registry } from "prom-client";
 
-import { MetricsController } from "./metrics.controller";
+import { MetricsController } from "./metrics.controller.js";
 import {
   ASYNC_OPTIONS_TYPE,
   ConfigurableModuleClass,
   OPTIONS_TYPE,
-} from "./metrics.module-definition";
+} from "./metrics.module-definition.js";
 
 const RegistryProvider: Provider<Registry> = {
   provide: Registry,

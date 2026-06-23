@@ -2,19 +2,20 @@ import { EntityManager } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import { Test } from "@nestjs/testing";
 import { NextFunction, Request } from "express";
+import type { Mock } from "vitest";
 
-import { AuthMiddleware } from "./auth.middleware";
-import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition";
-import { AuthService } from "./auth.service";
-import { BaseSession, BaseUser } from "./entities";
+import { AuthMiddleware } from "./auth.middleware.js";
+import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
+import { AuthService } from "./auth.service.js";
+import { BaseSession, BaseUser } from "./entities/index.js";
 
 class TestUser extends BaseUser {}
 class TestSession extends BaseSession {}
 
 async function createMiddleware(
-  getSession: jest.Mock,
-  findOne: jest.Mock,
-  onAuthenticated = jest.fn(),
+  getSession: Mock,
+  findOne: Mock,
+  onAuthenticated = vi.fn(),
 ) {
   const authService = {
     api: {
@@ -58,13 +59,13 @@ async function createMiddleware(
 
 describe("AuthMiddleware", () => {
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("should continue without context when no session is returned", async () => {
-    const getSession = jest.fn().mockResolvedValue(null);
-    const findOne = jest.fn();
-    const next = jest.fn() as NextFunction;
+    const getSession = vi.fn().mockResolvedValue(null);
+    const findOne = vi.fn();
+    const next = vi.fn() as NextFunction;
     const { middleware } = await createMiddleware(getSession, findOne);
 
     await middleware.use(
@@ -91,18 +92,18 @@ describe("AuthMiddleware", () => {
     const session = {
       token: "session-token",
     };
-    const getSession = jest.fn().mockResolvedValue({
+    const getSession = vi.fn().mockResolvedValue({
       session,
       user,
     });
-    const findOne = jest
+    const findOne = vi
       .fn()
       .mockResolvedValueOnce(user)
       .mockResolvedValueOnce(session);
-    const requestContextSet = jest
+    const requestContextSet = vi
       .spyOn(RequestContext, "set")
       .mockImplementation(() => undefined);
-    const next = jest.fn() as NextFunction;
+    const next = vi.fn() as NextFunction;
     const { middleware, onAuthenticated } = await createMiddleware(
       getSession,
       findOne,
@@ -133,7 +134,7 @@ describe("AuthMiddleware", () => {
   });
 
   it("should not store context when user or session cannot be loaded", async () => {
-    const getSession = jest.fn().mockResolvedValue({
+    const getSession = vi.fn().mockResolvedValue({
       session: {
         token: "session-token",
       },
@@ -141,16 +142,13 @@ describe("AuthMiddleware", () => {
         id: "user-1",
       },
     });
-    const findOne = jest
-      .fn()
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({
-        token: "session-token",
-      });
-    const requestContextSet = jest
+    const findOne = vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce({
+      token: "session-token",
+    });
+    const requestContextSet = vi
       .spyOn(RequestContext, "set")
       .mockImplementation(() => undefined);
-    const next = jest.fn() as NextFunction;
+    const next = vi.fn() as NextFunction;
     const { middleware, onAuthenticated } = await createMiddleware(
       getSession,
       findOne,

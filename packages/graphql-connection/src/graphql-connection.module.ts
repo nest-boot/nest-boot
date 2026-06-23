@@ -1,11 +1,11 @@
 import { type DynamicModule, Global, Module } from "@nestjs/common";
 
-import { ConnectionManager } from "./connection.manager";
+import { ConnectionManager } from "./connection.manager.js";
 import {
   ASYNC_OPTIONS_TYPE,
   ConfigurableModuleClass,
   OPTIONS_TYPE,
-} from "./graphql-connection.module-definition";
+} from "./graphql-connection.module-definition.js";
 
 /**
  * NestJS module that provides GraphQL connection-based pagination functionality.

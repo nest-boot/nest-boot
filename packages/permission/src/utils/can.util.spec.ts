@@ -1,16 +1,16 @@
 import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException } from "@nestjs/common";
 
-import { PermissionAction } from "../enums/permission-action.enum";
-import { PERMISSION_ABILITY } from "../permission.constants";
-import type { PermissionAbility } from "../types/permission-ability.type";
-import { can } from "./can.util";
+import { PermissionAction } from "../enums/permission-action.enum.js";
+import { PERMISSION_ABILITY } from "../permission.constants.js";
+import type { PermissionAbility } from "../types/permission-ability.type.js";
+import { can } from "./can.util.js";
 
 class TestSubject {}
 
 describe("can", () => {
   it("checks permissions with cached current ability", async () => {
-    const canMock = jest.fn(() => true);
+    const canMock = vi.fn(() => true);
     const ability = {
       can: canMock,
     } as unknown as PermissionAbility;

@@ -16,10 +16,9 @@ import { APP_INTERCEPTOR } from "@nestjs/core";
 import { randomUUID } from "crypto";
 import { type Request, type Response } from "express";
 import pino from "pino";
-import pinoHttp from "pino-http";
 
-import { Logger } from "./logger";
-import { LoggingInterceptor } from "./logger.interceptor";
+import { LoggingInterceptor } from "./logger.interceptor.js";
+import { Logger } from "./logger.js";
 import {
   ASYNC_OPTIONS_TYPE,
   BINDINGS,
@@ -27,8 +26,9 @@ import {
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
   PINO_LOGGER,
-} from "./logger.module-definition";
-import { LoggerModuleOptions } from "./logger-module-options.interface";
+} from "./logger.module-definition.js";
+import { type LoggerModuleOptions } from "./logger-module-options.interface.js";
+import pinoHttp from "./pino-http.js";
 
 /**
  * Structured logging module powered by Pino.

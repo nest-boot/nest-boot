@@ -1,12 +1,15 @@
 import { BaseContext, GraphQLRequestContext } from "@apollo/server";
 import { Inject, Injectable } from "@nestjs/common";
-import Redis from "ioredis";
+import { Redis } from "ioredis";
 
 import {
   OPTIONS_TOKEN,
   REDIS_COMMAND,
-} from "./graphql-rate-limit.module-definition";
-import { CostThrottleStatus, GraphQLRateLimitOptions } from "./interfaces";
+} from "./graphql-rate-limit.module-definition.js";
+import {
+  type CostThrottleStatus,
+  type GraphQLRateLimitOptions,
+} from "./interfaces/index.js";
 
 @Injectable()
 export class GraphQLRateLimitStorage {

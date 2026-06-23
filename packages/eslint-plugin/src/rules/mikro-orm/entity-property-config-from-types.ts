@@ -6,8 +6,8 @@ import {
 import type { RuleFix, RuleFixer } from "@typescript-eslint/utils/ts-eslint";
 import * as ts from "typescript";
 
-import { createRule } from "../../utils/createRule";
-import { hasClassDecorator } from "../../utils/decorators";
+import { createRule } from "../../utils/createRule.js";
+import { hasClassDecorator } from "../../utils/decorators.js";
 
 // Custom Fix object type for deferred fix application
 interface CustomFix {

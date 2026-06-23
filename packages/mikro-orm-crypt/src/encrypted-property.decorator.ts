@@ -1,10 +1,9 @@
+import { type EventArgs, type PropertyOptions } from "@mikro-orm/core";
 import {
   BeforeCreate,
   BeforeUpdate,
-  EventArgs,
   Property,
-  PropertyOptions,
-} from "@mikro-orm/core";
+} from "@mikro-orm/decorators/legacy";
 import { CryptService, isJwe } from "@nest-boot/crypt";
 
 const ENCRYPTED_PROPERTIES_KEY = Symbol("encryptedProperties");
@@ -35,7 +34,10 @@ export function EncryptedProperty<T extends object>(
       );
     }
 
-    Property({ hidden: true, lazy: true, ...options })(target, propertyKey);
+    Property({ hidden: true, lazy: true, ...options })(
+      target as T,
+      propertyKey,
+    );
 
     // Collect all properties that need to be encrypted (create a copy to avoid sharing array during inheritance)
     const existingProperties: string[] = [

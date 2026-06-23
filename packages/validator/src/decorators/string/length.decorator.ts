@@ -1,7 +1,14 @@
-import { ValidateBy, type ValidationOptions } from "class-validator";
-import isLengthValidator from "validator/lib/isLength";
+import { createRequire } from "node:module";
 
-import { buildI18nMessage } from "../../utils/build-i18n-message";
+import { ValidateBy, type ValidationOptions } from "class-validator";
+
+import { buildI18nMessage } from "../../utils/build-i18n-message.js";
+
+const require = createRequire(import.meta.url);
+const isLengthValidator = require("validator/lib/isLength.js") as (
+  str: string,
+  options?: { min?: number; max?: number },
+) => boolean;
 
 /** Validation name constant for the Length validator. */
 export const IS_LENGTH = "isLength";

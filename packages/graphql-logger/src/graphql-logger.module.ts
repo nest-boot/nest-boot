@@ -4,8 +4,8 @@ import {
   ASYNC_OPTIONS_TYPE,
   ConfigurableModuleClass,
   OPTIONS_TYPE,
-} from "./graphql-logger.module-definition";
-import { GraphQLLoggerPlugin } from "./graphql-logger.plugin";
+} from "./graphql-logger.module-definition.js";
+import { GraphQLLoggerPlugin } from "./graphql-logger.plugin.js";
 
 /**
  * GraphQL request logging module.

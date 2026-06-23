@@ -1,31 +1,41 @@
 import { RequestContext } from "@nest-boot/request-context";
-import { INQUIRER } from "@nestjs/core";
+import { Injectable } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 
-const mockPinoLogger = {
-  child: jest.fn(),
-  debug: jest.fn(),
-  error: jest.fn(),
-  info: jest.fn(),
-  trace: jest.fn(),
-  warn: jest.fn(),
-};
-const mockPino = jest.fn(() => mockPinoLogger);
+const { mockPino, mockPinoLogger } = vi.hoisted(() => {
+  const mockPinoLogger = {
+    child: vi.fn(),
+    debug: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    trace: vi.fn(),
+    warn: vi.fn(),
+  };
+  const mockPino = vi.fn(() => mockPinoLogger);
 
-jest.mock("pino", () => ({
+  return {
+    mockPino,
+    mockPinoLogger,
+  };
+});
+
+vi.mock("pino", () => ({
   __esModule: true,
   default: mockPino,
 }));
 
-import { Logger } from "./logger";
-import { BINDINGS, PINO_LOGGER } from "./logger.module-definition";
+import { Logger } from "./logger.js";
+import { BINDINGS, PINO_LOGGER } from "./logger.module-definition.js";
 
-class ParentService {}
+@Injectable()
+class ParentService {
+  constructor(readonly logger: Logger) {}
+}
 
 describe("Logger", () => {
   afterEach(() => {
-    jest.restoreAllMocks();
-    jest.clearAllMocks();
+    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   it("should default context to the parent class name and allow overriding it", async () => {
@@ -39,10 +49,12 @@ describe("Logger", () => {
   });
 
   it("should merge bindings into request context", async () => {
-    jest.spyOn(RequestContext, "get").mockReturnValue({
+    vi.spyOn(RequestContext, "get").mockReturnValue({
       requestId: "request-1",
     });
-    const set = jest.spyOn(RequestContext, "set").mockImplementation();
+    const set = vi
+      .spyOn(RequestContext, "set")
+      .mockImplementation(() => undefined);
     const logger = await createLogger();
 
     logger.assign({
@@ -56,8 +68,10 @@ describe("Logger", () => {
   });
 
   it("should assign bindings when request context has no existing bindings", async () => {
-    jest.spyOn(RequestContext, "get").mockReturnValue(undefined);
-    const set = jest.spyOn(RequestContext, "set").mockImplementation();
+    vi.spyOn(RequestContext, "get").mockReturnValue(undefined);
+    const set = vi
+      .spyOn(RequestContext, "set")
+      .mockImplementation(() => undefined);
     const logger = await createLogger();
 
     logger.assign({
@@ -70,7 +84,7 @@ describe("Logger", () => {
   });
 
   it("should log with the global pino logger when request context is inactive", async () => {
-    jest.spyOn(RequestContext, "get").mockImplementation(() => {
+    vi.spyOn(RequestContext, "get").mockImplementation(() => {
       throw new Error("Request context is not active");
     });
     const logger = await createLogger();
@@ -117,9 +131,9 @@ describe("Logger", () => {
 
   it("should log with request-scoped pino logger and bindings", async () => {
     const requestLogger = {
-      warn: jest.fn(),
+      warn: vi.fn(),
     };
-    jest.spyOn(RequestContext, "get").mockImplementation((token) => {
+    vi.spyOn(RequestContext, "get").mockImplementation((token) => {
       if (token === PINO_LOGGER) return requestLogger;
       if (token === BINDINGS) {
         return {
@@ -143,9 +157,9 @@ describe("Logger", () => {
 
   it("should log with empty bindings when request context has no bindings", async () => {
     const requestLogger = {
-      debug: jest.fn(),
+      debug: vi.fn(),
     };
-    jest.spyOn(RequestContext, "get").mockImplementation((token) => {
+    vi.spyOn(RequestContext, "get").mockImplementation((token) => {
       if (token === PINO_LOGGER) return requestLogger;
       return undefined;
     });
@@ -164,14 +178,8 @@ describe("Logger", () => {
 
 async function createLogger() {
   const moduleRef = await Test.createTestingModule({
-    providers: [
-      Logger,
-      {
-        provide: INQUIRER,
-        useValue: new ParentService(),
-      },
-    ],
+    providers: [Logger, ParentService],
   }).compile();
 
-  return await moduleRef.resolve(Logger);
+  return moduleRef.get(ParentService).logger;
 }

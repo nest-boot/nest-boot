@@ -1,5 +1,5 @@
-import { tester } from "../../utils/tester";
-import rule from "./entity-field-definite-assignment";
+import { tester } from "../../utils/tester.js";
+import rule from "./entity-field-definite-assignment.js";
 
 tester.run("entity-field-definite-assignment", rule, {
   valid: [

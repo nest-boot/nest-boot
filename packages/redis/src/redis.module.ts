@@ -4,15 +4,15 @@ import {
   Module,
   type OnApplicationShutdown,
 } from "@nestjs/common";
-import Redis, { type RedisOptions } from "ioredis";
+import { Redis, type RedisOptions } from "ioredis";
 
 import {
   ASYNC_OPTIONS_TYPE,
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
-} from "./redis.module-definition";
-import { loadConfigFromEnv } from "./utils/load-config-from-env.util";
+} from "./redis.module-definition.js";
+import { loadConfigFromEnv } from "./utils/load-config-from-env.util.js";
 
 /**
  * Module that provides Redis connection using ioredis.

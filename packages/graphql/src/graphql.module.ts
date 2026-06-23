@@ -4,15 +4,15 @@ import { type DynamicModule, Global, Logger, Module } from "@nestjs/common";
 import { APP_FILTER } from "@nestjs/core";
 import { GraphQLModule as BaseGraphQLModule } from "@nestjs/graphql";
 
-import { GraphQLExceptionFilter } from "./graphql.exception-filter";
+import { GraphQLExceptionFilter } from "./graphql.exception-filter.js";
 import {
   ASYNC_OPTIONS_TYPE,
   BASE_MODULE_OPTIONS_TOKEN,
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
-} from "./graphql.module-definition";
-import { type GraphQLModuleOptions } from "./graphql-module-options.interface";
+} from "./graphql.module-definition.js";
+import { type GraphQLModuleOptions } from "./graphql-module-options.interface.js";
 
 /**
  * GraphQL module powered by Apollo Server.

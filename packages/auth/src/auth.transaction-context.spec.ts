@@ -1,4 +1,4 @@
-import { AuthTransactionContext } from "./auth.transaction-context";
+import { AuthTransactionContext } from "./auth.transaction-context.js";
 
 describe("AuthTransactionContext", () => {
   it("should store entries and escape SQL values", () => {

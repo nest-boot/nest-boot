@@ -1,7 +1,8 @@
-import { RouteInfo, Type } from "@nestjs/common/interfaces";
+import { Type } from "@nestjs/common";
+import type { RouteInfo } from "@nestjs/common/interfaces/middleware/middleware-configuration.interface.js";
 import { BetterAuthOptions } from "better-auth";
 
-import { MikroOrmAdapterConfig } from "./adapters/mikro-orm-adapter";
+import { MikroOrmAdapterConfig } from "./adapters/mikro-orm-adapter.js";
 
 /** Options for configuring auth middleware route registration. */
 export interface AuthModuleMiddlewareOptions {

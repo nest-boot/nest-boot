@@ -1,9 +1,14 @@
-import { Injectable, NestMiddleware, Type } from "@nestjs/common";
-import { MiddlewareConsumer, RouteInfo } from "@nestjs/common/interfaces";
+import {
+  Injectable,
+  MiddlewareConsumer,
+  NestMiddleware,
+  Type,
+} from "@nestjs/common";
+import type { RouteInfo } from "@nestjs/common/interfaces/middleware/middleware-configuration.interface.js";
 
-import { MiddlewareConfig } from "./interfaces";
-import { MiddlewareConfigurator } from "./middleware.configurator";
-import { MiddlewareInstanceOrFunction } from "./types";
+import { MiddlewareConfig } from "./interfaces/index.js";
+import { MiddlewareConfigurator } from "./middleware.configurator.js";
+import { MiddlewareInstanceOrFunction } from "./types/index.js";
 
 /**
  * Service that manages middleware registration and topological ordering.

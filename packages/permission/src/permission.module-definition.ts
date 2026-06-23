@@ -1,6 +1,6 @@
 import { ConfigurableModuleBuilder } from "@nestjs/common";
 
-import type { PermissionModuleOptions } from "./interfaces/permission-module-options.interface";
+import type { PermissionModuleOptions } from "./interfaces/permission-module-options.interface.js";
 
 const moduleDefinition =
   new ConfigurableModuleBuilder<PermissionModuleOptions>()

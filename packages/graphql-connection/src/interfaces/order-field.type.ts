@@ -1,4 +1,4 @@
-import { AutoPath } from "@mikro-orm/core/typings";
+import type { AutoPath } from "@mikro-orm/core";
 
 /**
  * Utility type that converts dot notation to underscore notation.
@@ -17,14 +17,16 @@ export type DotToUnderscore<S extends string> =
  *
  * @typeParam T - The entity type
  */
-export type OrderFieldKey<T> = Uppercase<DotToUnderscore<AutoPath<T, string>>>;
+export type OrderFieldKey<T> = Uppercase<
+  DotToUnderscore<Extract<AutoPath<T, string>, string>>
+>;
 
 /**
  * The value type for order fields (the actual field path in the entity).
  *
  * @typeParam T - The entity type
  */
-export type OrderFieldValue<T> = AutoPath<T, string>;
+export type OrderFieldValue<T> = Extract<AutoPath<T, string>, string>;
 
 /**
  * A record mapping order field keys to their actual field paths.

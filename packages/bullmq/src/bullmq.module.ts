@@ -7,9 +7,9 @@ import {
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
-} from "./bullmq.module-definition";
-import { BullModuleOptions } from "./bullmq-module-options.interface";
-import { loadConfigFromEnv } from "./utils/load-config-from-env.util";
+} from "./bullmq.module-definition.js";
+import { BullModuleOptions } from "./bullmq-module-options.interface.js";
+import { loadConfigFromEnv } from "./utils/load-config-from-env.util.js";
 
 /**
  * BullMQ integration module for job queue processing.

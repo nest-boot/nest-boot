@@ -1,5 +1,5 @@
-import { AuthModuleOptions } from "../auth-module-options.interface";
-import { estimateEntropy } from "./estimate-entropy";
+import { AuthModuleOptions } from "../auth-module-options.interface.js";
+import { estimateEntropy } from "./estimate-entropy.js";
 
 export function resolveSecret(options: AuthModuleOptions): string {
   const secret =

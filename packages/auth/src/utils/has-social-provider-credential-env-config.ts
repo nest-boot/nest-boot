@@ -1,7 +1,7 @@
 import {
   SOCIAL_PROVIDER_ENV_CONFIGS,
   SocialProviderId,
-} from "./social-provider.constants";
+} from "./social-provider.constants.js";
 
 export function hasSocialProviderCredentialEnvConfig(
   provider: SocialProviderId,

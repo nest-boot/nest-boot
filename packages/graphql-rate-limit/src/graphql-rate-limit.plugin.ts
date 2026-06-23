@@ -29,8 +29,8 @@ import {
   simpleEstimator,
 } from "graphql-query-complexity";
 
-import { GraphQLRateLimitStorage } from "./graphql-rate-limit.storage";
-import { CostResponse } from "./interfaces";
+import { GraphQLRateLimitStorage } from "./graphql-rate-limit.storage.js";
+import { CostResponse } from "./interfaces/index.js";
 
 // https://shopify.engineering/rate-limiting-graphql-apis-calculating-query-complexity
 function shopifyEstimator(

@@ -2,9 +2,9 @@ import { Processor, WorkerHost } from "@nest-boot/bullmq";
 import { Inject, OnApplicationBootstrap, Optional } from "@nestjs/common";
 import { Job } from "bullmq";
 
-import { MODULE_OPTIONS_TOKEN } from "./schedule.module-definition";
-import { ScheduleRegistry } from "./schedule.registry";
-import { ScheduleModuleOptions } from "./schedule-module-options.interface";
+import { MODULE_OPTIONS_TOKEN } from "./schedule.module-definition.js";
+import { ScheduleRegistry } from "./schedule.registry.js";
+import { type ScheduleModuleOptions } from "./schedule-module-options.interface.js";
 
 @Processor("schedule", { autorun: false })
 export class ScheduleProcessor

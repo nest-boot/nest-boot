@@ -1,7 +1,7 @@
 import {
   Configuration,
   DataloaderType,
-  IDatabaseDriver,
+  type IDatabaseDriver,
   type Options,
 } from "@mikro-orm/core";
 import { TsMorphMetadataProvider } from "@mikro-orm/reflection";
@@ -62,7 +62,7 @@ export interface HostConfig {
 export async function loadConfigFromEnv(): Promise<
   DriverConfig & (UrlConfig | HostConfig)
 > {
-  const baseConfig: Options = {
+  const baseConfig: Partial<Options> = {
     colors: false,
     debug: !!(process.env.DB_DEBUG ?? process.env.DATABASE_DEBUG),
     dataloader: DataloaderType.ALL,

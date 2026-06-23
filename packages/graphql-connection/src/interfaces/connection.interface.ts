@@ -1,5 +1,5 @@
-import { type PageInfo } from "../objects";
-import { type EdgeInterface } from "./edge.interface";
+import { type PageInfo } from "../objects/index.js";
+import { type EdgeInterface } from "./edge.interface.js";
 
 /**
  * Represents a paginated connection following the Relay specification.

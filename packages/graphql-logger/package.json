@@ -27,11 +27,7 @@
     "clean": "rm -rf .nx && rm -rf node_modules && rm -rf dist",
     "dev": "tsc -w -p tsconfig.build.json",
     "lint": "eslint \"{src,test}/**/*.ts\"",
-    "lint:fix": "eslint \"{src,test}/**/*.ts\" --fix",
-    "test": "jest",
-    "test:cov": "jest --coverage",
-    "test:watch": "jest --watch",
-    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand"
+    "lint:fix": "eslint \"{src,test}/**/*.ts\" --fix"
   },
   "devDependencies": {
     "@apollo/server": "^5.2.0",
@@ -39,30 +35,27 @@
     "@nest-boot/eslint-plugin": "workspace:^",
     "@nest-boot/logger": "workspace:^",
     "@nest-boot/tsconfig": "workspace:^",
-    "@nestjs/apollo": "^13.2.3",
-    "@nestjs/common": "^11.1.11",
-    "@nestjs/core": "^11.1.11",
-    "@nestjs/graphql": "^13.2.3",
-    "@nestjs/testing": "^11.1.11",
+    "@nestjs/apollo": "next",
+    "@nestjs/common": "next",
+    "@nestjs/core": "next",
+    "@nestjs/graphql": "next",
+    "@nestjs/testing": "next",
     "@types/express": "^5.0.3",
-    "@types/jest": "^29.5.14",
-    "@types/node": "^24.12.4",
+    "@types/node": "^26.0.0",
     "eslint": "^9.39.3",
     "express": "^5.1.0",
     "graphql": "^16.11.0",
-    "jest": "^29.7.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
-    "ts-jest": "^29.4.4",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.3"
   },
   "peerDependencies": {
     "@apollo/server": "^5.0.0",
-    "@nest-boot/logger": "workspace:^7.0.5",
-    "@nestjs/apollo": "^12.0.0",
-    "@nestjs/common": "^11.0.0",
-    "@nestjs/core": "^11.0.0",
-    "@nestjs/graphql": "^13.0.0",
+    "@nest-boot/logger": "workspace:^",
+    "@nestjs/apollo": "^14.0.0-next.0",
+    "@nestjs/common": "^12.0.0-alpha.5",
+    "@nestjs/core": "^12.0.0-alpha.5",
+    "@nestjs/graphql": "^14.0.0-next.0",
     "express": "^5.0.0",
     "graphql": "^16.0.0",
     "reflect-metadata": "^0.2.2",
@@ -77,7 +70,5 @@
       "eslint --fix"
     ]
   },
-  "volta": {
-    "extends": "../../package.json"
-  }
+  "type": "module"
 }

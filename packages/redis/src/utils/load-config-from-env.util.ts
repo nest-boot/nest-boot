@@ -1,4 +1,4 @@
-import { RedisOptions } from "ioredis";
+import { type RedisOptions } from "ioredis";
 
 /**
  * Loads Redis configuration from environment variables.

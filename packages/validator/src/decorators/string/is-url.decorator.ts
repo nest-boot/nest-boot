@@ -1,8 +1,15 @@
-import { ValidateBy, type ValidationOptions } from "class-validator";
-import { IsURLOptions } from "validator";
-import isUrlValidator from "validator/lib/isURL";
+import { createRequire } from "node:module";
 
-import { buildI18nMessage } from "../../utils";
+import { ValidateBy, type ValidationOptions } from "class-validator";
+import { type IsURLOptions } from "validator";
+
+import { buildI18nMessage } from "../../utils/index.js";
+
+const require = createRequire(import.meta.url);
+const isUrlValidator = require("validator/lib/isURL.js") as (
+  str: string,
+  options?: IsURLOptions,
+) => boolean;
 
 /** Validation name constant for the IsUrl validator. */
 export const IS_URL = "isUrl";

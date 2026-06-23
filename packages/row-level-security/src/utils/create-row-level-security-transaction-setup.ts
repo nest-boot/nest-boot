@@ -1,10 +1,13 @@
 import { RequestContext } from "@nest-boot/request-context";
 
-import { RowLevelSecurityRole } from "../enums/row-level-security-role.enum";
-import { RowLevelSecurity, RowLevelSecurityMode } from "../row-level-security";
-import { assertSnakeCase } from "./assert-snake-case";
-import { RowLevelSecurityContextBuilder } from "./row-level-security-context-builder";
-import { RowLevelSecurityContextValue } from "./row-level-security-context-builder.types";
+import { RowLevelSecurityRole } from "../enums/row-level-security-role.enum.js";
+import {
+  RowLevelSecurity,
+  RowLevelSecurityMode,
+} from "../row-level-security.js";
+import { assertSnakeCase } from "./assert-snake-case.js";
+import { RowLevelSecurityContextBuilder } from "./row-level-security-context-builder.js";
+import { RowLevelSecurityContextValue } from "./row-level-security-context-builder.types.js";
 
 /** Instruction for row level security transaction setup. */
 export type RowLevelSecurityTransactionSetup =

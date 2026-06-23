@@ -1,5 +1,5 @@
-import { tester } from "../../utils/tester";
-import rule from "./import-bullmq";
+import { tester } from "../../utils/tester.js";
+import rule from "./import-bullmq.js";
 
 tester.run("import-bullmq", rule, {
   valid: [

@@ -1,1 +1,1 @@
-export * from "./encrypted-property.decorator";
+export * from "./encrypted-property.decorator.js";

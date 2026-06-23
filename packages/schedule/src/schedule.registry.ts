@@ -6,8 +6,8 @@ import { Queue } from "bullmq";
 import {
   SCHEDULE_METADATA_KEY,
   SCHEDULE_QUEUE_NAME,
-} from "./schedule.module-definition";
-import { type ScheduleOptions } from "./schedule-options.interface";
+} from "./schedule.module-definition.js";
+import { type ScheduleOptions } from "./schedule-options.interface.js";
 
 /**
  * Registry that discovers and manages scheduled jobs at application startup.

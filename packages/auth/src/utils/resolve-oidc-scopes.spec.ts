@@ -1,4 +1,4 @@
-import { resolveOidcScopes } from "./resolve-oidc-scopes";
+import { resolveOidcScopes } from "./resolve-oidc-scopes.js";
 
 describe("resolveOidcScopes", () => {
   beforeEach(() => {

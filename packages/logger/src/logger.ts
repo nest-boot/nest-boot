@@ -7,7 +7,7 @@ import pino, {
   type Logger as PinoLogger,
 } from "pino";
 
-import { BINDINGS, PINO_LOGGER } from "./logger.module-definition";
+import { BINDINGS, PINO_LOGGER } from "./logger.module-definition.js";
 
 /**
  * Request-scoped structured logger built on top of pino.

@@ -11,18 +11,18 @@ import {
   type IsSubset,
   type Loaded,
   type PopulatePath,
+  type Primary,
   QueryOrder,
   type QueryOrderMap,
-  Utils,
+  type RequiredEntityData,
 } from "@mikro-orm/core";
-import type { Primary, RequiredEntityData } from "@mikro-orm/core/typings";
 import { NotFoundException, Type } from "@nestjs/common";
 import DataLoader from "dataloader";
 import _ from "lodash";
 
-import type { IdEntity } from "../interfaces/id-entity.interface";
-import type { ChunkByIdOptions } from "../types/chunk-by-id-options.type";
-import type { IdOrEntity } from "../types/id-or-entity.type";
+import type { IdEntity } from "../interfaces/id-entity.interface.js";
+import type { ChunkByIdOptions } from "../types/chunk-by-id-options.type.js";
+import type { IdOrEntity } from "../types/id-or-entity.type.js";
 
 interface FindOneArgs<Entity extends IdEntity> {
   idOrEntity: IdOrEntity<Entity>;
@@ -92,7 +92,7 @@ export class EntityService<Entity extends IdEntity> {
         for (const id of ids) {
           // Try to get entity from UnitOfWork's identity map
           const entity = uow.getById<Entity>(
-            Utils.className(this.entityClass),
+            this.entityClass,
             id as Primary<Entity>,
           );
 
@@ -298,7 +298,7 @@ export class EntityService<Entity extends IdEntity> {
     return await this.em.find<Entity, Hint, Fields, Excludes>(
       this.entityClass,
       where,
-      options,
+      options as any,
     );
   }
 
@@ -403,7 +403,7 @@ export class EntityService<Entity extends IdEntity> {
         {
           ...options,
           orderBy: { id: QueryOrder.ASC } as unknown as QueryOrderMap<Entity>,
-        },
+        } as any,
       );
 
       count = entities.length;

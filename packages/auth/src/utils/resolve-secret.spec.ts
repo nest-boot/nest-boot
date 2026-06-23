@@ -1,5 +1,5 @@
-import { AuthModuleOptions } from "../auth-module-options.interface";
-import { resolveSecret } from "./resolve-secret";
+import { AuthModuleOptions } from "../auth-module-options.interface.js";
+import { resolveSecret } from "./resolve-secret.js";
 
 describe("resolveSecret", () => {
   const secret =

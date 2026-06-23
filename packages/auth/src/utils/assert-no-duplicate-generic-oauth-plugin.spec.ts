@@ -1,4 +1,4 @@
-import { assertNoDuplicateGenericOAuthPlugin } from "./assert-no-duplicate-generic-oauth-plugin";
+import { assertNoDuplicateGenericOAuthPlugin } from "./assert-no-duplicate-generic-oauth-plugin.js";
 
 describe("assertNoDuplicateGenericOAuthPlugin", () => {
   it("should allow undefined plugins", () => {

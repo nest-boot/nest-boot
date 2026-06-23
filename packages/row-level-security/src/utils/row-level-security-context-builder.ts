@@ -1,9 +1,9 @@
-import { assertSnakeCase } from "./assert-snake-case";
-import { escapeSqlLiteral } from "./escape-sql-literal";
+import { assertSnakeCase } from "./assert-snake-case.js";
+import { escapeSqlLiteral } from "./escape-sql-literal.js";
 import {
   RowLevelSecurityContextValue,
   SnakeCase,
-} from "./row-level-security-context-builder.types";
+} from "./row-level-security-context-builder.types.js";
 
 /** Builds SQL that writes RLS context values into PostgreSQL transaction settings. */
 export class RowLevelSecurityContextBuilder {

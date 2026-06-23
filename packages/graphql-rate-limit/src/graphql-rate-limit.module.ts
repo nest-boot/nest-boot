@@ -6,7 +6,7 @@ import {
   type OnApplicationShutdown,
 } from "@nestjs/common";
 import { Request } from "express";
-import Redis from "ioredis";
+import { Redis } from "ioredis";
 
 import {
   ASYNC_OPTIONS_TYPE,
@@ -14,14 +14,14 @@ import {
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TOKEN,
   OPTIONS_TYPE,
-} from "./graphql-rate-limit.module-definition";
-import { GraphQLRateLimitPlugin } from "./graphql-rate-limit.plugin";
-import { GraphQLRateLimitStorage } from "./graphql-rate-limit.storage";
+} from "./graphql-rate-limit.module-definition.js";
+import { GraphQLRateLimitPlugin } from "./graphql-rate-limit.plugin.js";
+import { GraphQLRateLimitStorage } from "./graphql-rate-limit.storage.js";
 import {
   GraphQLRateLimitModuleOptions,
   GraphQLRateLimitOptions,
-} from "./interfaces";
-import { loadConfigFromEnv } from "./utils/load-config-from-env.util";
+} from "./interfaces/index.js";
+import { loadConfigFromEnv } from "./utils/load-config-from-env.util.js";
 
 /**
  * GraphQL rate limiting module using Redis-backed leaky bucket algorithm.

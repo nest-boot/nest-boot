@@ -1,4 +1,4 @@
-import { normalizePostgresTypeAlias } from "./normalize-postgres-type-alias.util";
+import { normalizePostgresTypeAlias } from "./normalize-postgres-type-alias.util.js";
 
 describe("normalizePostgresTypeAlias", () => {
   it.each([

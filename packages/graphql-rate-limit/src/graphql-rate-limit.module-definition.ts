@@ -1,6 +1,6 @@
 import { ConfigurableModuleBuilder } from "@nestjs/common";
 
-import { type GraphQLRateLimitModuleOptions } from "./interfaces";
+import { type GraphQLRateLimitModuleOptions } from "./interfaces/index.js";
 
 /** Redis command name used by the rate limiter. */
 export const REDIS_COMMAND = "GRAPHQL_RATE_LIMIT";

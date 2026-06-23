@@ -1,7 +1,7 @@
 import { ConfigurableModuleBuilder } from "@nestjs/common";
 import { randomUUID } from "crypto";
 
-import { type ScheduleModuleOptions } from "./schedule-module-options.interface";
+import { type ScheduleModuleOptions } from "./schedule-module-options.interface.js";
 
 export const SCHEDULE_QUEUE_NAME = "schedule";
 

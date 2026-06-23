@@ -3,12 +3,13 @@ import { WorkerHost } from "@nest-boot/bullmq";
 import { DiscoveryService } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
 import { Job, JobState, Queue } from "bullmq";
+import type { Mock } from "vitest";
 
-import { MODULE_OPTIONS_TOKEN } from "./bullmq-mikro-orm.module-definition";
-import { BullMQMikroORMService } from "./bullmq-mikro-orm.service";
-import { BullMQMikroORMModuleOptions } from "./bullmq-mikro-orm-module-options.interface";
-import { JobEntity } from "./entities/job.entity";
-import { JobStatus } from "./enums/job-status.enum";
+import { MODULE_OPTIONS_TOKEN } from "./bullmq-mikro-orm.module-definition.js";
+import { BullMQMikroORMService } from "./bullmq-mikro-orm.service.js";
+import { BullMQMikroORMModuleOptions } from "./bullmq-mikro-orm-module-options.interface.js";
+import { JobEntity } from "./entities/job.entity.js";
+import { JobStatus } from "./enums/job-status.enum.js";
 
 class TestWorkerHost extends WorkerHost {
   async process(): Promise<void> {
@@ -18,7 +19,7 @@ class TestWorkerHost extends WorkerHost {
 
 interface TestWorker {
   name: string;
-  on: jest.Mock;
+  on: Mock;
 }
 
 type WorkerHostWithMock = TestWorkerHost & {
@@ -43,7 +44,7 @@ function createJob(
     processedOn: Date.UTC(2026, 0, 1, 1),
     finishedOn: Date.UTC(2026, 0, 1, 2),
     timestamp: Date.UTC(2026, 0, 1),
-    getState: jest.fn().mockResolvedValue(state),
+    getState: vi.fn().mockResolvedValue(state),
     ...overrides,
   } as unknown as Job;
 }
@@ -53,13 +54,13 @@ async function createService(
   providers: unknown[] = [],
 ) {
   const fork = {
-    nativeDelete: jest.fn(),
-    upsert: jest.fn(),
+    nativeDelete: vi.fn(),
+    upsert: vi.fn(),
   };
   const em = {
-    fork: jest.fn(() => fork),
+    fork: vi.fn(() => fork),
   } as unknown as EntityManager;
-  const getProviders = jest.fn(() =>
+  const getProviders = vi.fn(() =>
     providers.map((provider) => ({ instance: provider })),
   );
   const discoveryService = {
@@ -98,10 +99,10 @@ async function createService(
 function createQueue(name: string) {
   const queue = Object.create(Queue.prototype) as Queue & {
     name: string;
-    on: jest.Mock;
+    on: Mock;
   };
   queue.name = name;
-  queue.on = jest.fn();
+  queue.on = vi.fn();
 
   return queue;
 }
@@ -110,7 +111,7 @@ function createWorkerHost(name: string): WorkerHostWithMock {
   const workerHost = new TestWorkerHost();
   const worker: TestWorker = {
     name,
-    on: jest.fn(),
+    on: vi.fn(),
   };
 
   Object.defineProperty(workerHost, "_worker", {
@@ -123,7 +124,7 @@ function createWorkerHost(name: string): WorkerHostWithMock {
 
 describe("BullMQMikroORMService", () => {
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   describe("convertJobToEntityData", () => {
@@ -201,8 +202,8 @@ describe("BullMQMikroORMService", () => {
   });
 
   it("should delete history jobs older than the configured ttl", async () => {
-    jest.useFakeTimers();
-    jest.setSystemTime(new Date("2026-01-31T00:00:00.000Z"));
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-31T00:00:00.000Z"));
     const { fork, service } = await createService({
       jobTTL: 1000,
     });
@@ -229,7 +230,7 @@ describe("BullMQMikroORMService", () => {
       },
       [emailQueue, ignoredQueue, emailWorkerHost, ignoredWorkerHost, {}],
     );
-    const upsertJob = jest.spyOn(service, "upsertJob").mockResolvedValue();
+    const upsertJob = vi.spyOn(service, "upsertJob").mockResolvedValue();
 
     service.onApplicationBootstrap();
 

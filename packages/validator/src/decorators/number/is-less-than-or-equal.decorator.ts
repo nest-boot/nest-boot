@@ -3,7 +3,7 @@ import { type ValidationOptions } from "class-validator";
 import {
   Comparator,
   ValidateCompareNumber,
-} from "./validate-compare-number.decorator";
+} from "./validate-compare-number.decorator.js";
 
 /**
  * Validates that the property value is less than or equal to the given field's value.

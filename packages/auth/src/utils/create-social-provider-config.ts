@@ -1,12 +1,12 @@
-import { AuthModuleOptions } from "../auth-module-options.interface";
-import { hasSocialProviderCredentialEnvConfig } from "./has-social-provider-credential-env-config";
-import { isEnvTrue } from "./is-env-true";
-import { resolveRequiredSocialProviderEnv } from "./resolve-required-social-provider-env";
-import { resolveSocialProviderEnabled } from "./resolve-social-provider-enabled";
+import { AuthModuleOptions } from "../auth-module-options.interface.js";
+import { hasSocialProviderCredentialEnvConfig } from "./has-social-provider-credential-env-config.js";
+import { isEnvTrue } from "./is-env-true.js";
+import { resolveRequiredSocialProviderEnv } from "./resolve-required-social-provider-env.js";
+import { resolveSocialProviderEnabled } from "./resolve-social-provider-enabled.js";
 import {
   SOCIAL_PROVIDER_ENV_CONFIGS,
   SocialProviderId,
-} from "./social-provider.constants";
+} from "./social-provider.constants.js";
 
 type SocialProvidersConfig = NonNullable<AuthModuleOptions["socialProviders"]>;
 type SocialProviderConfig<T extends SocialProviderId> = NonNullable<

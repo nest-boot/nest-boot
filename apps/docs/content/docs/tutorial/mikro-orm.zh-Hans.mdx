@@ -54,8 +54,14 @@ export class CommonModule {}
 用于 MikroORM CLI（迁移、Schema 生成），创建 `mikro-orm.config.ts`：
 
 ```typescript
-import "dotenv/config";
+import { existsSync } from "node:fs";
+import { loadEnvFile } from "node:process";
+
 import { loadConfigFromEnv } from "@nest-boot/mikro-orm";
+
+if (existsSync(".env")) {
+  loadEnvFile();
+}
 
 export default loadConfigFromEnv();
 ```

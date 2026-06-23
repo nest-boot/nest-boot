@@ -1,13 +1,10 @@
+import { BaseEntity, Cascade, type Opt, t } from "@mikro-orm/core";
 import {
-  BaseEntity,
-  Cascade,
   Entity,
   ManyToOne,
-  Opt,
   PrimaryKey,
   Property,
-  t,
-} from "@mikro-orm/core";
+} from "@mikro-orm/decorators/legacy";
 import { randomUUID } from "crypto";
 
 /**
@@ -32,7 +29,8 @@ export abstract class BaseAccount extends BaseEntity {
   providerId!: string;
 
   /** Foreign key referencing the owning {@link BaseUser}. */
-  @ManyToOne(() => "User", {
+  @ManyToOne({
+    entity: () => "User" as any,
     fieldName: "user_id",
     mapToPk: true,
     cascade: [Cascade.REMOVE],

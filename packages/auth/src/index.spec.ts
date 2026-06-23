@@ -1,30 +1,30 @@
-jest.mock("better-auth", () => ({
-  betterAuth: jest.fn(),
+vi.mock("better-auth", () => ({
+  betterAuth: vi.fn(),
 }));
-jest.mock("better-auth/node", () => ({
-  toNodeHandler: jest.fn(),
+vi.mock("better-auth/node", () => ({
+  toNodeHandler: vi.fn(),
 }));
-jest.mock("better-auth/plugins", () => ({
-  genericOAuth: jest.fn(),
+vi.mock("better-auth/plugins", () => ({
+  genericOAuth: vi.fn(),
 }));
-jest.mock("./adapters/mikro-orm-adapter", () => ({
-  mikroOrmAdapter: jest.fn(),
+vi.mock("./adapters/mikro-orm-adapter", () => ({
+  mikroOrmAdapter: vi.fn(),
 }));
 
-import * as publicApi from ".";
-import { AUTH_TOKEN, IS_PUBLIC_KEY } from "./auth.constants";
-import { AuthGuard } from "./auth.guard";
-import { AuthMiddleware } from "./auth.middleware";
-import { AuthModule } from "./auth.module";
-import { AuthService } from "./auth.service";
-import { AuthTransactionContext } from "./auth.transaction-context";
-import { Public } from "./decorators";
+import { AUTH_TOKEN, IS_PUBLIC_KEY } from "./auth.constants.js";
+import { AuthGuard } from "./auth.guard.js";
+import { AuthMiddleware } from "./auth.middleware.js";
+import { AuthModule } from "./auth.module.js";
+import { AuthService } from "./auth.service.js";
+import { AuthTransactionContext } from "./auth.transaction-context.js";
+import { Public } from "./decorators/index.js";
 import {
   BaseAccount,
   BaseSession,
   BaseUser,
   BaseVerification,
-} from "./entities";
+} from "./entities/index.js";
+import * as publicApi from "./index.js";
 
 describe("public API", () => {
   it("should export auth modules, services, decorators, and entities", () => {

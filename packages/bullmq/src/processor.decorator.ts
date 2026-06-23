@@ -4,11 +4,11 @@ import { RequestContext } from "@nest-boot/request-context";
 import {
   JOB_REF,
   Processor as BaseProcessor,
-  ProcessorOptions,
+  type ProcessorOptions,
   WorkerHost,
 } from "@nestjs/bullmq";
-import { NestWorkerOptions } from "@nestjs/bullmq/dist/interfaces/worker-options.interface";
-import { Type } from "@nestjs/common";
+import { type NestWorkerOptions } from "@nestjs/bullmq/dist/interfaces/worker-options.interface.js";
+import { type Type } from "@nestjs/common";
 import { Job, Worker } from "bullmq";
 
 /**

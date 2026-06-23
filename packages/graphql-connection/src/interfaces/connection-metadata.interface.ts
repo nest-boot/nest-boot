@@ -1,7 +1,7 @@
 import { EntityClass, FilterQuery } from "@mikro-orm/core";
 import type { ZodType } from "zod";
 
-import { ConnectionFieldOptions } from "../types/field-options.type";
+import { ConnectionFieldOptions } from "../types/field-options.type.js";
 
 /**
  * Metadata stored on connection classes for query building.

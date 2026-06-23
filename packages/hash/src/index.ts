@@ -1,3 +1,3 @@
-export * from "./hash.module";
-export * from "./hash.service";
-export * from "./hash-module-options.interface";
+export * from "./hash.module.js";
+export * from "./hash.service.js";
+export * from "./hash-module-options.interface.js";

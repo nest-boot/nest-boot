@@ -1,5 +1,5 @@
-import { RowLevelSecurityRole } from "../enums/row-level-security-role.enum";
-import { assertIdentifier } from "./assert-identifier";
+import { RowLevelSecurityRole } from "../enums/row-level-security-role.enum.js";
+import { assertIdentifier } from "./assert-identifier.js";
 
 /** Creates SQL for pre-created RLS roles. Roles are managed outside migrations. */
 export function createPolicyRoleUpSqlStatements(roles: Iterable<string> = []) {

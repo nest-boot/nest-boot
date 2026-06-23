@@ -4,40 +4,47 @@ import { RequestContextMiddleware } from "@nest-boot/request-context";
 import { MODULE_METADATA } from "@nestjs/common/constants";
 import { Test } from "@nestjs/testing";
 
-const mockBetterAuth = jest.fn((options) => ({
-  api: {},
-  options,
-}));
-const mockToNodeHandler = jest.fn((auth) => ({
-  auth,
-  type: "node-handler",
-}));
-const mockMikroOrmAdapter = jest.fn((options) => ({
-  options,
-  type: "mikro-orm-adapter",
-}));
-const mockGenericOAuth = jest.fn((options) => ({
-  options,
-  type: "generic-oauth",
+const {
+  mockBetterAuth,
+  mockGenericOAuth,
+  mockMikroOrmAdapter,
+  mockToNodeHandler,
+} = vi.hoisted(() => ({
+  mockBetterAuth: vi.fn((options) => ({
+    api: {},
+    options,
+  })),
+  mockGenericOAuth: vi.fn((options) => ({
+    options,
+    type: "generic-oauth",
+  })),
+  mockMikroOrmAdapter: vi.fn((options) => ({
+    options,
+    type: "mikro-orm-adapter",
+  })),
+  mockToNodeHandler: vi.fn((auth) => ({
+    auth,
+    type: "node-handler",
+  })),
 }));
 
-jest.mock("better-auth", () => ({
+vi.mock("better-auth", () => ({
   betterAuth: mockBetterAuth,
 }));
-jest.mock("better-auth/node", () => ({
+vi.mock("better-auth/node", () => ({
   toNodeHandler: mockToNodeHandler,
 }));
-jest.mock("better-auth/plugins", () => ({
+vi.mock("better-auth/plugins", () => ({
   genericOAuth: mockGenericOAuth,
 }));
-jest.mock("./adapters/mikro-orm-adapter", () => ({
+vi.mock("./adapters/mikro-orm-adapter.js", () => ({
   mikroOrmAdapter: mockMikroOrmAdapter,
 }));
 
-import { AUTH_TOKEN } from "./auth.constants";
-import { AuthMiddleware } from "./auth.middleware";
-import { AuthModule } from "./auth.module";
-import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition";
+import { AUTH_TOKEN } from "./auth.constants.js";
+import { AuthMiddleware } from "./auth.middleware.js";
+import { AuthModule } from "./auth.module.js";
+import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 
 class Account {}
 class Session {}
@@ -82,13 +89,13 @@ function getAuthProvider() {
 
 function createMiddlewareManager() {
   const authProxy = {
-    disableGlobalExcludeRoutes: jest.fn(),
-    forRoutes: jest.fn(),
+    disableGlobalExcludeRoutes: vi.fn(),
+    forRoutes: vi.fn(),
   };
   const middlewareProxy = {
-    dependencies: jest.fn(),
-    exclude: jest.fn(),
-    forRoutes: jest.fn(),
+    dependencies: vi.fn(),
+    exclude: vi.fn(),
+    forRoutes: vi.fn(),
   };
   authProxy.disableGlobalExcludeRoutes.mockReturnValue(authProxy);
   authProxy.forRoutes.mockReturnValue(authProxy);
@@ -96,10 +103,10 @@ function createMiddlewareManager() {
   middlewareProxy.exclude.mockReturnValue(middlewareProxy);
   middlewareProxy.forRoutes.mockReturnValue(middlewareProxy);
   const middlewareManager = {
-    apply: jest.fn((middleware) =>
+    apply: vi.fn((middleware) =>
       middleware instanceof AuthMiddleware ? middlewareProxy : authProxy,
     ),
-    globalExclude: jest.fn(),
+    globalExclude: vi.fn(),
   };
 
   return {

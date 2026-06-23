@@ -1,5 +1,5 @@
-import { PolicyCommand } from "../enums/policy-command.enum";
-import { PolicyMode } from "../enums/policy-mode.enum";
+import { PolicyCommand } from "../enums/policy-command.enum.js";
+import { PolicyMode } from "../enums/policy-mode.enum.js";
 
 /** Low-level inputs used to generate PostgreSQL policy SQL. */
 export interface PolicySqlOptions {

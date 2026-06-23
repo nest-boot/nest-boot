@@ -1,10 +1,9 @@
-import { NestMiddleware } from "@nestjs/common";
-import { MiddlewareConsumer } from "@nestjs/common/interfaces";
+import { MiddlewareConsumer, NestMiddleware } from "@nestjs/common";
 
-import * as MiddlewareExports from ".";
-import { MiddlewareManager } from "./middleware.manager";
-import { MiddlewareModule } from "./middleware.module";
-import { MiddlewareFunction } from "./types";
+import * as MiddlewareExports from "./index.js";
+import { MiddlewareManager } from "./middleware.manager.js";
+import { MiddlewareModule } from "./middleware.module.js";
+import { MiddlewareFunction } from "./types/index.js";
 
 abstract class RecordingMiddleware implements NestMiddleware {
   constructor(
@@ -25,11 +24,11 @@ class MissingMiddleware extends RecordingMiddleware {}
 const createMiddlewareConsumer = () => {
   const middlewares: MiddlewareFunction[] = [];
   const proxy = {
-    exclude: jest.fn().mockReturnThis(),
-    forRoutes: jest.fn().mockReturnThis(),
+    exclude: vi.fn().mockReturnThis(),
+    forRoutes: vi.fn().mockReturnThis(),
   };
   const consumer = {
-    apply: jest.fn((middleware: MiddlewareFunction) => {
+    apply: vi.fn((middleware: MiddlewareFunction) => {
       middlewares.push(middleware);
       return proxy;
     }),
@@ -48,7 +47,7 @@ const collectMiddlewares = (manager: MiddlewareManager) => {
 
 const runMiddlewares = (middlewares: MiddlewareFunction[]) => {
   for (const middleware of middlewares) {
-    middleware({}, {}, jest.fn());
+    middleware({}, {}, vi.fn());
   }
 };
 
@@ -201,7 +200,7 @@ describe("MiddlewareManager", () => {
   });
 
   it("delegates module configuration to the middleware manager", () => {
-    const configure = jest.fn();
+    const configure = vi.fn();
     const manager = {
       configure,
     } as unknown as MiddlewareManager;

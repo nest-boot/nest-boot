@@ -1,4 +1,4 @@
-import { resolveRequiredSocialProviderEnv } from "./resolve-required-social-provider-env";
+import { resolveRequiredSocialProviderEnv } from "./resolve-required-social-provider-env.js";
 
 describe("resolveRequiredSocialProviderEnv", () => {
   beforeEach(() => {

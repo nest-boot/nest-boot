@@ -2,7 +2,7 @@ import type { EntityClass } from "@mikro-orm/core";
 import { Field, ObjectType } from "@nest-boot/graphql";
 import { type Type } from "@nestjs/common";
 
-import { EdgeInterface } from "../interfaces";
+import { EdgeInterface } from "../interfaces/index.js";
 
 /**
  * Creates a GraphQL Edge type for a connection.

@@ -7,7 +7,7 @@ import {
   FilterQuerySchemaBuilder,
 } from "mikro-orm-filter-query-schema";
 
-import { ConnectionFieldOptions } from "../interfaces";
+import { ConnectionFieldOptions } from "../interfaces/index.js";
 
 /**
  * The Zod schema type returned by FilterQuerySchemaBuilder.

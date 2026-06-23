@@ -1,4 +1,4 @@
-import { resolveRequiredOidcEnv } from "./resolve-required-oidc-env";
+import { resolveRequiredOidcEnv } from "./resolve-required-oidc-env.js";
 
 describe("resolveRequiredOidcEnv", () => {
   beforeEach(() => {

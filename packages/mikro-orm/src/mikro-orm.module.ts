@@ -12,15 +12,15 @@ import {
   OnModuleInit,
 } from "@nestjs/common";
 
-import { MikroOrmModuleOptions } from "./interfaces/mikro-orm-module-options.interface";
+import { MikroOrmModuleOptions } from "./interfaces/mikro-orm-module-options.interface.js";
 import {
   ASYNC_OPTIONS_TYPE,
   BASE_MODULE_OPTIONS_TOKEN,
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
-} from "./mikro-orm.module-definition";
-import { loadConfigFromEnv } from "./utils/load-config-from-env.util";
+} from "./mikro-orm.module-definition.js";
+import { loadConfigFromEnv } from "./utils/load-config-from-env.util.js";
 
 /**
  * MikroORM integration module with request-scoped entity manager.

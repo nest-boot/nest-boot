@@ -1,4 +1,4 @@
-import plugin from ".";
+import plugin from "./index.js";
 
 describe("plugin public API", () => {
   it("should export the rule map through the plugin entrypoint", () => {

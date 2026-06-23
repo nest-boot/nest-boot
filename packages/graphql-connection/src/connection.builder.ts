@@ -12,14 +12,14 @@ import {
   FieldOptions,
   OrderFieldType,
   OrderInterface,
-} from "./interfaces";
+} from "./interfaces/index.js";
 import {
   createConnection,
   createConnectionArgs,
   createEdge,
   createFilter,
   createOrder,
-} from "./utils";
+} from "./utils/index.js";
 
 /**
  * The result of building a connection with ConnectionBuilder.

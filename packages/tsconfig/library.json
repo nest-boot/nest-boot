@@ -3,7 +3,16 @@
   "display": "Library",
   "extends": "./base.json",
   "compilerOptions": {
-    "module": "CommonJS",
-    "target": "ES2021"
-  }
+    "module": "NodeNext",
+    "target": "ES2023",
+    "moduleResolution": "NodeNext"
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "test",
+    "**/*.spec.ts",
+    "**/*.e2e-spec.ts",
+    "vitest.setup.ts"
+  ]
 }

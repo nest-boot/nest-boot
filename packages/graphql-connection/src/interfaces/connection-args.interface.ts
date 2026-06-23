@@ -1,6 +1,6 @@
 import { FilterQuery } from "@mikro-orm/core";
 
-import { OrderInterface } from "./order.interface";
+import { OrderInterface } from "./order.interface.js";
 
 /**
  * Arguments for querying a paginated connection.

@@ -11,15 +11,15 @@ import Backend from "i18next-fs-backend";
 import { LanguageDetector } from "i18next-http-middleware";
 import path from "path";
 
-import { I18N } from "./i18n.constants";
-import { I18nMiddleware } from "./i18n.middleware";
+import { I18N } from "./i18n.constants.js";
+import { I18nMiddleware } from "./i18n.middleware.js";
 import {
   type ASYNC_OPTIONS_TYPE,
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
   type OPTIONS_TYPE,
-} from "./i18n.module-definition";
-import { type I18nModuleOptions } from "./interfaces/i18n-module-options.interface";
+} from "./i18n.module-definition.js";
+import { type I18nModuleOptions } from "./interfaces/i18n-module-options.interface.js";
 
 i18next.use(Backend).use(LanguageDetector);
 

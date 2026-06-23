@@ -1,4 +1,4 @@
-import * as publicApi from ".";
+import * as publicApi from "./index.js";
 
 describe("public exports", () => {
   it("exports runtime connection APIs", () => {

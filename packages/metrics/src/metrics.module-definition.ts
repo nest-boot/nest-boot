@@ -1,7 +1,7 @@
 import { ConfigurableModuleBuilder } from "@nestjs/common";
 import { RegistryContentType } from "prom-client";
 
-import { type MetricsModuleOptions } from "./metrics-module-options.interface";
+import { type MetricsModuleOptions } from "./metrics-module-options.interface.js";
 
 export const {
   ConfigurableModuleClass,

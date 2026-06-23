@@ -1,1 +1,1 @@
-export * from "./middleware-config.interface";
+export * from "./middleware-config.interface.js";

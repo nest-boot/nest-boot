@@ -1,6 +1,6 @@
 import { JobState } from "bullmq";
 
-import { JobStatus } from "../enums/job-status.enum";
+import { JobStatus } from "../enums/job-status.enum.js";
 
 /**
  * Converts a BullMQ job state to the internal JobStatus enum.

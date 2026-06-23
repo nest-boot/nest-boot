@@ -1,6 +1,9 @@
 import { RequestContext } from "@nest-boot/request-context";
 
-import { RowLevelSecurity, RowLevelSecurityMode } from "./row-level-security";
+import {
+  RowLevelSecurity,
+  RowLevelSecurityMode,
+} from "./row-level-security.js";
 
 describe("RowLevelSecurity", () => {
   it("stores the database role in RequestContext", async () => {

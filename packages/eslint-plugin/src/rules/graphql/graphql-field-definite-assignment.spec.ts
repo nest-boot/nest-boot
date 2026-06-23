@@ -1,5 +1,5 @@
-import { tester } from "../../utils/tester";
-import rule from "./graphql-field-definite-assignment";
+import { tester } from "../../utils/tester.js";
+import rule from "./graphql-field-definite-assignment.js";
 
 tester.run("graphql-field-definite-assignment", rule, {
   valid: [

@@ -1,4 +1,4 @@
-import { hasSocialProviderEnvConfig } from "./has-social-provider-env-config";
+import { hasSocialProviderEnvConfig } from "./has-social-provider-env-config.js";
 
 const socialProviderIds = ["github", "google"] as const;
 const socialProviderEnvCases = [

@@ -2,7 +2,7 @@
 
 import { Test } from "@nestjs/testing";
 
-import { HashModule, HashService } from ".";
+import { HashModule, HashService } from "./index.js";
 
 const TEST_SECRET = "myTestSecretThatIsAtLeast32Chars!";
 const TEST_SECRET_ALT = "anotherSecretThatIsAtLeast32Char";

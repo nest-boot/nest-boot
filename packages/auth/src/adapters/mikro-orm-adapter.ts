@@ -1,4 +1,8 @@
-import { BaseEntity, EntityClass, MikroORM } from "@mikro-orm/core";
+import {
+  type BaseEntity,
+  type EntityClass,
+  type MikroORM,
+} from "@mikro-orm/core";
 import {
   createAdapterFactory,
   type DBAdapterDebugLogOption,
@@ -10,7 +14,7 @@ import {
   BaseSession,
   BaseUser,
   BaseVerification,
-} from "../entities";
+} from "../entities/index.js";
 
 export interface MikroOrmAdapterConfig {
   /**
@@ -169,7 +173,7 @@ export const mikroOrmAdapter = ({
     adapter: () => {
       return {
         create: async ({ data, model }) => {
-          const entity = orm.em.create(getEntityClass(model), data);
+          const entity = orm.em.create(getEntityClass(model), data as any);
           await orm.em.persist(entity).flush();
           return entity as any;
         },

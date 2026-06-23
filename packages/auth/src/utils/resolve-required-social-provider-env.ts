@@ -2,7 +2,7 @@ import {
   SOCIAL_PROVIDER_ENV_CONFIGS,
   SocialProviderId,
   SocialProviderRequiredEnvKey,
-} from "./social-provider.constants";
+} from "./social-provider.constants.js";
 
 export function resolveRequiredSocialProviderEnv(
   provider: SocialProviderId,

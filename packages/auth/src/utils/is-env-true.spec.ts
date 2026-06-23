@@ -1,4 +1,4 @@
-import { isEnvTrue } from "./is-env-true";
+import { isEnvTrue } from "./is-env-true.js";
 
 describe("isEnvTrue", () => {
   beforeEach(() => {

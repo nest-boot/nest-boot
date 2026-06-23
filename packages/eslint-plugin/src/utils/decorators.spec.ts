@@ -1,12 +1,12 @@
-import { describe, expect, it } from "@jest/globals";
 import { AST_NODE_TYPES, TSESTree } from "@typescript-eslint/utils";
+import { describe, expect, it } from "vitest";
 
 import {
   getClassDecorator,
   getPropertyDecorator,
   hasClassDecorator,
   hasPropertyDecorator,
-} from "./decorators";
+} from "./decorators.js";
 
 describe("decorators", () => {
   describe("hasClassDecorator", () => {

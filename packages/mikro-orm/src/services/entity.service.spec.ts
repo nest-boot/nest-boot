@@ -1,7 +1,7 @@
 import { EntityManager, QueryOrder } from "@mikro-orm/core";
 import { NotFoundException } from "@nestjs/common";
 
-import { EntityService } from "./entity.service";
+import { EntityService } from "./entity.service.js";
 
 class TestEntity {
   id!: number;
@@ -17,20 +17,20 @@ function createEntity(id: number, data: Partial<TestEntity> = {}) {
 }
 
 function createEntityManager() {
-  const getById = jest.fn();
+  const getById = vi.fn();
   const em = {
-    assign: jest.fn(),
-    count: jest.fn(),
-    create: jest.fn((_entityClass, data) => createEntity(data.id, data)),
-    find: jest.fn(),
-    findOne: jest.fn(),
-    flush: jest.fn(),
-    getUnitOfWork: jest.fn(() => ({
+    assign: vi.fn(),
+    count: vi.fn(),
+    create: vi.fn((_entityClass, data) => createEntity(data.id, data)),
+    find: vi.fn(),
+    findOne: vi.fn(),
+    flush: vi.fn(),
+    getUnitOfWork: vi.fn(() => ({
       getById,
     })),
-    isInTransaction: jest.fn(() => false),
-    remove: jest.fn(),
-    transactional: jest.fn(async (handler) => await handler()),
+    isInTransaction: vi.fn(() => false),
+    remove: vi.fn(),
+    transactional: vi.fn(async (handler) => await handler()),
   };
 
   return {
@@ -93,7 +93,7 @@ describe("EntityService", () => {
 
     await expect(service.findOne(1)).resolves.toBe(entity);
 
-    expect(getById).toHaveBeenCalledWith("TestEntity", 1);
+    expect(getById).toHaveBeenCalledWith(TestEntity, 1);
     expect(mocks.find).not.toHaveBeenCalled();
   });
 
@@ -258,7 +258,7 @@ describe("EntityService", () => {
     mocks.find
       .mockResolvedValueOnce(firstChunk)
       .mockResolvedValueOnce(secondChunk);
-    const callback = jest.fn();
+    const callback = vi.fn();
     const service = new EntityService(TestEntity, em);
 
     await expect(

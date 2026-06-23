@@ -3,20 +3,21 @@ import { ExecutionContext, ForbiddenException } from "@nestjs/common";
 import { ModuleRef, Reflector } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
 import type { Request, Response } from "express";
+import type { Mock, MockedFunction } from "vitest";
 
-import { PermissionAction } from "./enums/permission-action.enum";
+import { PermissionAction } from "./enums/permission-action.enum.js";
 import {
   CUSTOM_ROUTE_ARGS_METADATA,
   PERMISSION_ABILITY,
   PERMISSION_ABILITY_PROMISE,
   ROUTE_ARGS_METADATA,
-} from "./permission.constants";
-import { PermissionGuard } from "./permission.guard";
-import { MODULE_OPTIONS_TOKEN } from "./permission.module-definition";
-import type { BuildAbilityCallback } from "./types/build-ability-callback.type";
-import type { PermissionAbility } from "./types/permission-ability.type";
-import type { RouteArgumentMetadata } from "./types/route-argument-metadata.type";
-import { getPermissionAbility } from "./utils/get-permission-ability.util";
+} from "./permission.constants.js";
+import { PermissionGuard } from "./permission.guard.js";
+import { MODULE_OPTIONS_TOKEN } from "./permission.module-definition.js";
+import type { BuildAbilityCallback } from "./types/build-ability-callback.type.js";
+import type { PermissionAbility } from "./types/permission-ability.type.js";
+import type { RouteArgumentMetadata } from "./types/route-argument-metadata.type.js";
+import { getPermissionAbility } from "./utils/get-permission-ability.util.js";
 
 class Subject {}
 class Controller {}
@@ -62,7 +63,7 @@ describe("PermissionGuard", () => {
   });
 
   it("builds, caches, and checks ability against configured permission metadata", async () => {
-    const canMock = jest.fn(() => true);
+    const canMock = vi.fn(() => true);
     const ability = {
       can: canMock,
     };
@@ -91,7 +92,7 @@ describe("PermissionGuard", () => {
   });
 
   it("passes GraphQL execution context to buildAbility", async () => {
-    const canMock = jest.fn(() => true);
+    const canMock = vi.fn(() => true);
     const ability = {
       can: canMock,
     };
@@ -122,7 +123,7 @@ describe("PermissionGuard", () => {
   });
 
   it("uses cached ability before building a new one", async () => {
-    const canMock = jest.fn(() => true);
+    const canMock = vi.fn(() => true);
     const ability = {
       can: canMock,
     };
@@ -148,14 +149,14 @@ describe("PermissionGuard", () => {
     const input = { id: 123 };
     const handlerThis = {
       workspaceMemberService: {
-        findOne: jest.fn((_id: number) => Promise.resolve(subjectInstance)),
+        findOne: vi.fn((_id: number) => Promise.resolve(subjectInstance)),
       },
     };
-    const subjectFactory = jest.fn(
+    const subjectFactory = vi.fn(
       (self: typeof handlerThis, params: { input: typeof input }) =>
         self.workspaceMemberService.findOne(params.input.id),
     );
-    const canMock = jest.fn(() => true);
+    const canMock = vi.fn(() => true);
     const ability = {
       can: canMock,
     };
@@ -207,16 +208,16 @@ describe("PermissionGuard", () => {
     const subjectInstance = new Subject();
     const handlerThis = {
       postService: {
-        findOneOrFail: jest.fn(
+        findOneOrFail: vi.fn(
           (_id: string, _input: typeof input) => subjectInstance,
         ),
       },
     };
-    const subjectFactory = jest.fn(
+    const subjectFactory = vi.fn(
       (self: typeof handlerThis, id: string, params: typeof input) =>
         self.postService.findOneOrFail(id, params),
     );
-    const canMock = jest.fn(() => true);
+    const canMock = vi.fn(() => true);
     const ability = {
       can: canMock,
     };
@@ -268,8 +269,8 @@ describe("PermissionGuard", () => {
     const info = { fieldName: "post" };
     const subjectInstance = new Subject();
     const handlerThis = {};
-    const subjectFactory = jest.fn(() => subjectInstance);
-    const canMock = jest.fn(() => true);
+    const subjectFactory = vi.fn(() => subjectInstance);
+    const canMock = vi.fn(() => true);
     const ability = {
       can: canMock,
     };
@@ -337,16 +338,16 @@ describe("PermissionGuard", () => {
     const subjectInstance = new Subject();
     const handlerThis = {
       postService: {
-        findOneOrFail: jest.fn(
+        findOneOrFail: vi.fn(
           (_id: string, _input: typeof input) => subjectInstance,
         ),
       },
     };
-    const subjectFactory = jest.fn(
+    const subjectFactory = vi.fn(
       (self: typeof handlerThis, id: string, params: typeof input) =>
         self.postService.findOneOrFail(id, params),
     );
-    const canMock = jest.fn(() => true);
+    const canMock = vi.fn(() => true);
     const ability = {
       can: canMock,
     };
@@ -409,11 +410,11 @@ describe("PermissionGuard", () => {
     const res = {
       locals: {},
     } as Response;
-    const next = jest.fn();
+    const next = vi.fn();
     const subjectInstance = new Subject();
     const handlerThis = {};
-    const subjectFactory = jest.fn(() => subjectInstance);
-    const canMock = jest.fn(() => true);
+    const subjectFactory = vi.fn(() => subjectInstance);
+    const canMock = vi.fn(() => true);
     const ability = {
       can: canMock,
     };
@@ -514,29 +515,27 @@ describe("PermissionGuard", () => {
   it("passes custom HTTP controller arguments to subject factories", async () => {
     const workspace = { id: "workspace-1" };
     const subjectInstance = new Subject();
-    const customFactory = jest.fn(
-      (_data: unknown, context: ExecutionContext) =>
-        context.switchToHttp().getRequest<Request>().headers[
-          "x-workspace-id"
-        ] === workspace.id
-          ? workspace
-          : null,
+    const customFactory = vi.fn((_data: unknown, context: ExecutionContext) =>
+      context.switchToHttp().getRequest<Request>().headers["x-workspace-id"] ===
+      workspace.id
+        ? workspace
+        : null,
     );
     const handlerThis = {
       workspaceService: {
-        findSubject: jest.fn(
+        findSubject: vi.fn(
           (_customWorkspace: typeof workspace, _id: string) => subjectInstance,
         ),
       },
     };
-    const subjectFactory = jest.fn(
+    const subjectFactory = vi.fn(
       (
         self: typeof handlerThis,
         currentWorkspace: typeof workspace,
         id: string,
       ) => self.workspaceService.findSubject(currentWorkspace, id),
     );
-    const canMock = jest.fn(() => true);
+    const canMock = vi.fn(() => true);
     const ability = {
       can: canMock,
     };
@@ -595,22 +594,22 @@ describe("PermissionGuard", () => {
   it("awaits async custom controller arguments before invoking subject factories", async () => {
     const workspace = { id: "workspace-1" };
     const subjectInstance = new Subject();
-    const customFactory = jest.fn(() => Promise.resolve(workspace));
+    const customFactory = vi.fn(() => Promise.resolve(workspace));
     const handlerThis = {
       workspaceService: {
-        findSubject: jest.fn(
+        findSubject: vi.fn(
           (_customWorkspace: typeof workspace, _id: string) => subjectInstance,
         ),
       },
     };
-    const subjectFactory = jest.fn(
+    const subjectFactory = vi.fn(
       (
         self: typeof handlerThis,
         currentWorkspace: typeof workspace,
         id: string,
       ) => self.workspaceService.findSubject(currentWorkspace, id),
     );
-    const canMock = jest.fn(() => true);
+    const canMock = vi.fn(() => true);
     const ability = {
       can: canMock,
     };
@@ -662,7 +661,7 @@ describe("PermissionGuard", () => {
   });
 
   it("shares a pending ability build across concurrent checks", async () => {
-    const canMock = jest.fn(() => true);
+    const canMock = vi.fn(() => true);
     const ability = {
       can: canMock,
     };
@@ -703,8 +702,8 @@ describe("PermissionGuard", () => {
   it("passes no subject factory args when route metadata is missing", async () => {
     const subjectInstance = new Subject();
     const handlerThis = {};
-    const subjectFactory = jest.fn(() => subjectInstance);
-    const canMock = jest.fn(() => true);
+    const subjectFactory = vi.fn(() => subjectInstance);
+    const canMock = vi.fn(() => true);
     const { guard, reflector, moduleRef } = await createGuard(
       {
         can: canMock,
@@ -732,8 +731,8 @@ describe("PermissionGuard", () => {
   it("falls back to prototype lookup and null when handler names are unavailable", async () => {
     const subjectInstance = new Subject();
     const handlerThis = {};
-    const subjectFactory = jest.fn(() => subjectInstance);
-    const canMock = jest.fn(() => true);
+    const subjectFactory = vi.fn(() => subjectInstance);
+    const canMock = vi.fn(() => true);
     const { guard, reflector } = await createGuard(
       {
         can: canMock,
@@ -770,8 +769,8 @@ describe("PermissionGuard", () => {
           headers: {},
         } as unknown as Request,
         {} as Response,
-      ) as ExecutionContext & { getHandler: jest.Mock };
-      matchedContext.getHandler = jest.fn(() => matchedHandler);
+      ) as ExecutionContext & { getHandler: Mock };
+      matchedContext.getHandler = vi.fn(() => matchedHandler);
 
       await expect(guard.canActivate(matchedContext)).resolves.toBe(true);
 
@@ -781,8 +780,8 @@ describe("PermissionGuard", () => {
           headers: {},
         } as unknown as Request,
         {} as Response,
-      ) as ExecutionContext & { getHandler: jest.Mock };
-      unmatchedContext.getHandler = jest.fn(() => unmatchedHandler);
+      ) as ExecutionContext & { getHandler: Mock };
+      unmatchedContext.getHandler = vi.fn(() => unmatchedHandler);
 
       await expect(guard.canActivate(unmatchedContext)).resolves.toBe(true);
     });
@@ -797,7 +796,7 @@ describe("PermissionGuard", () => {
   });
 
   it("returns false when ability denies the permission", async () => {
-    const canMock = jest.fn(() => false);
+    const canMock = vi.fn(() => false);
     const { guard, reflector } = await createGuard({
       can: canMock,
     } as unknown as PermissionAbility);
@@ -818,16 +817,16 @@ async function createGuard(
   handlerThis: unknown = {},
 ) {
   const reflector = {
-    getAllAndOverride: jest.fn(),
+    getAllAndOverride: vi.fn(),
   } as unknown as Reflector & {
-    getAllAndOverride: jest.Mock;
+    getAllAndOverride: Mock;
   };
-  const buildAbility: jest.MockedFunction<BuildAbilityCallback> = jest.fn(
+  const buildAbility: MockedFunction<BuildAbilityCallback> = vi.fn(
     (_ctx) => ability,
   );
   const moduleRefMock = {
-    resolve: jest.fn(() => Promise.resolve(handlerThis)),
-  } as unknown as ModuleRef & { resolve: jest.Mock };
+    resolve: vi.fn(() => Promise.resolve(handlerThis)),
+  } as unknown as ModuleRef & { resolve: Mock };
   const req = {
     headers: {},
   } as Request;
@@ -873,20 +872,20 @@ function createContext(
   const resolvedRes = arguments.length >= 2 ? res : ({} as Response);
 
   return {
-    getType: jest.fn(() => type),
+    getType: vi.fn(() => type),
     switchToHttp: () => ({
       getRequest: () => resolvedReq,
       getResponse: () => resolvedRes,
       getNext: () => args[2],
     }),
-    getArgs: jest.fn(() => args),
-    getHandler: jest.fn(
+    getArgs: vi.fn(() => args),
+    getHandler: vi.fn(
       () =>
         function handler() {
           return undefined;
         },
     ),
-    getClass: jest.fn(() => Controller),
+    getClass: vi.fn(() => Controller),
   } as unknown as ExecutionContext;
 }
 

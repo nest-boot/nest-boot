@@ -12,10 +12,10 @@ import mimeTypes from "mime-types";
 import { extname } from "path";
 import { Readable } from "stream";
 
-import { MODULE_OPTIONS_TOKEN } from "./file-upload.module-definition";
-import { FileUpload } from "./file-upload.object";
-import { FileUploadModuleOptions } from "./file-upload-options.interface";
-import { FileUploadInput } from "./inputs/file-upload.input";
+import { MODULE_OPTIONS_TOKEN } from "./file-upload.module-definition.js";
+import { FileUpload } from "./file-upload.object.js";
+import { type FileUploadModuleOptions } from "./file-upload-options.interface.js";
+import { FileUploadInput } from "./inputs/file-upload.input.js";
 
 /**
  * Service for handling file uploads to S3-compatible storage.

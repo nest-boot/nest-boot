@@ -4,11 +4,11 @@ import { type Type } from "@nestjs/common";
 import { GraphQLScalarType } from "graphql";
 import { humanize, pluralize } from "inflection";
 
-import {
+import type {
   ConnectionArgsInterface,
   ConnectionFieldOptions,
   OrderInterface,
-} from "../interfaces";
+} from "../interfaces/index.js";
 
 /**
  * Creates a GraphQL Args type for connection queries.

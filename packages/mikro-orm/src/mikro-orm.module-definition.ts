@@ -1,6 +1,6 @@
 import { ConfigurableModuleBuilder } from "@nestjs/common";
 
-import { MikroOrmModuleOptions } from "./interfaces/mikro-orm-module-options.interface";
+import { MikroOrmModuleOptions } from "./interfaces/mikro-orm-module-options.interface.js";
 
 export const MODULE_OPTIONS_TOKEN = Symbol("MikroOrmModuleOptions");
 

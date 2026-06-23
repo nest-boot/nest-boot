@@ -1,4 +1,4 @@
-import { RowLevelSecurityContextBuilder } from "./row-level-security-context-builder";
+import { RowLevelSecurityContextBuilder } from "./row-level-security-context-builder.js";
 
 describe("RowLevelSecurityContextBuilder", () => {
   it("generates transaction-local tenant context SQL", () => {

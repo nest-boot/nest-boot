@@ -3,7 +3,7 @@ import { MySqlDriver } from "@mikro-orm/mysql";
 import { PostgreSqlDriver } from "@mikro-orm/postgresql";
 import { TsMorphMetadataProvider } from "@mikro-orm/reflection";
 
-import { loadConfigFromEnv } from "./load-config-from-env.util";
+import { loadConfigFromEnv } from "./load-config-from-env.util.js";
 
 const ORIGINAL_ENV = process.env;
 

@@ -5,21 +5,21 @@ import {
   QueryOrder,
   QueryOrderMap,
 } from "@mikro-orm/core";
-import compact from "lodash/compact";
-import get from "lodash/get";
-import set from "lodash/set";
+import compact from "lodash/compact.js";
+import get from "lodash/get.js";
+import set from "lodash/set.js";
 import { parse, type ParseOptions } from "search-syntax";
 
-import { ConnectionFindOptions } from "./connection.manager";
-import { Cursor } from "./cursor";
-import { OrderDirection, PagingType } from "./enums";
-import { GRAPHQL_CONNECTION_METADATA } from "./graphql-connection.constants";
+import { ConnectionFindOptions } from "./connection.manager.js";
+import { Cursor } from "./cursor.js";
+import { OrderDirection, PagingType } from "./enums/index.js";
+import { GRAPHQL_CONNECTION_METADATA } from "./graphql-connection.constants.js";
 import {
   ConnectionArgsInterface,
   ConnectionMetadata,
   EdgeInterface,
-} from "./interfaces";
-import { ConnectionClass } from "./types";
+} from "./interfaces/index.js";
+import { ConnectionClass } from "./types/index.js";
 
 /**
  * Builds and executes paginated queries for GraphQL connections.
@@ -303,12 +303,12 @@ export class ConnectionQueryBuilder<
       this.allFilterQuery === null
         ? this.entityManager.findAll(
             this.metadata.entityClass,
-            this.findOptions,
+            this.findOptions as any,
           )
         : this.entityManager.find(
             this.metadata.entityClass,
-            this.allFilterQuery,
-            this.findOptions,
+            this.allFilterQuery as any,
+            this.findOptions as any,
           ),
       (this.totalCountFilterQuery === null
         ? this.entityManager.findAll(this.metadata.entityClass, {
@@ -318,12 +318,12 @@ export class ConnectionQueryBuilder<
           })
         : this.entityManager.find(
             this.metadata.entityClass,
-            this.totalCountFilterQuery,
+            this.totalCountFilterQuery as any,
             {
               fields: ["id"] as any,
               limit: 10000,
               disableIdentityMap: true,
-            },
+            } as any,
           )
       ).then((result) => result.length),
     ]);
