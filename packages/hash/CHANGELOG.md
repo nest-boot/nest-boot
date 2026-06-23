@@ -1,3 +1,24 @@
+## 8.0.0-beta.0 (2026-06-23)
+
+### 🚀 Features
+
+- ⚠️  migrate packages to Node 26 ESM and Vitest ([e5ce890](https://github.com/nest-boot/nest-boot/commit/e5ce890))
+
+### ⚠️  Breaking Changes
+
+- migrate packages to Node 26 ESM and Vitest  ([e5ce890](https://github.com/nest-boot/nest-boot/commit/e5ce890))
+  @nest-boot packages now target NestJS 12 next, require Node.js >=26, publish as ES modules, require MikroORM v7, and use Vitest instead of Jest.
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.0-beta.0
+- Updated @nest-boot/eslint-plugin to 8.0.0-beta.0
+- Updated @nest-boot/tsconfig to 8.0.0-beta.0
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 7.4.1 (2026-06-17)
 
 ### 🧱 Updated Dependencies
