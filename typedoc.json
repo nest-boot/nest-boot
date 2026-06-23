@@ -3,7 +3,7 @@
   "name": "API Reference",
 
   "gitRemote": "https://github.com/nest-boot/nest-boot",
-  "gitRevision": "master",
+  "gitRevision": "main",
 
   "entryPointStrategy": "packages",
   "entryPoints": ["packages/*"],

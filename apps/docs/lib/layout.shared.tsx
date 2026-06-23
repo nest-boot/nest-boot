@@ -4,7 +4,7 @@ import { i18n } from "@/lib/i18n";
 export const gitConfig = {
   user: "nest-boot",
   repo: "nest-boot",
-  branch: "master",
+  branch: "main",
 };
 
 export function baseOptions(locale: string): BaseLayoutProps {
