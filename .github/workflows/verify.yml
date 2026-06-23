@@ -122,7 +122,7 @@ jobs:
       - name: Release packages
         if: inputs.release
         run: |
-          release_args=(--yes --skip-publish)
+          release_args=(--skip-publish)
           npm_tag="latest"
 
           if [ "${GITHUB_REF_NAME}" = "beta" ]; then
