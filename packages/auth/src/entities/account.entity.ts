@@ -12,7 +12,7 @@ import { randomUUID } from "crypto";
  *
  * @remarks
  * Maps to the better-auth `account` model. Each account links a provider
- * (e.g. Google, GitHub, credentials) to a {@link BaseUser}.
+ * (e.g. Google, GitHub, credentials) to a `BaseUser`.
  */
 @Entity({ abstract: true })
 export abstract class BaseAccount extends BaseEntity {
@@ -28,7 +28,7 @@ export abstract class BaseAccount extends BaseEntity {
   @Property({ type: t.text })
   providerId!: string;
 
-  /** Foreign key referencing the owning {@link BaseUser}. */
+  /** Foreign key referencing the owning `BaseUser`. */
   @ManyToOne({
     entity: () => "User" as any,
     fieldName: "user_id",
