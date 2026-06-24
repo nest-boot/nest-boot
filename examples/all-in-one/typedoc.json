@@ -1,0 +1,45 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "emit": "none",
+  "entryPoints": ["src"],
+  "entryPointStrategy": "expand",
+  "exclude": ["**/*.spec.ts", "**/database/migrations/**"],
+  "excludeInternal": true,
+  "excludeExternals": true,
+  "excludePrivate": true,
+  "intentionallyNotDocumented": [
+    "app/api-key/api-key.entity.ApiKey.workspace.__type.id",
+    "app/api-key/api-key.entity.ApiKey.member.__type.id",
+    "app/workspace-member/workspace-member.entity.WorkspaceMember.invitedBy.__type.id",
+    "app/workspace-member/workspace-member.entity.WorkspaceMember.user.__type.id",
+    "app/workspace-member/workspace-member.entity.WorkspaceMember.workspace.__type.id",
+    "app/workspace-member-group/workspace-member-group.entity.WorkspaceMemberGroup.workspace.__type.id",
+    "app/workspace-member-group-member/workspace-member-group-member.entity.WorkspaceMemberGroupMember.workspace.__type.id",
+    "app/workspace-member-group-member/workspace-member-group-member.entity.WorkspaceMemberGroupMember.group.__type.id",
+    "app/workspace-member-group-member/workspace-member-group-member.entity.WorkspaceMemberGroupMember.member.__type.id"
+  ],
+  "requiredToBeDocumented": [
+    "Accessor",
+    "Class",
+    "Constructor",
+    "Enum",
+    "EnumMember",
+    "Function",
+    "Interface",
+    "Method",
+    "Property",
+    "Reference",
+    "TypeAlias",
+    "Variable"
+  ],
+  "treatValidationWarningsAsErrors": true,
+  "validation": {
+    "notExported": true,
+    "invalidLink": true,
+    "invalidPath": true,
+    "rewrittenLink": true,
+    "notDocumented": true,
+    "unusedMergeModuleWith": true
+  },
+  "tsconfig": "tsconfig.build.json"
+}
