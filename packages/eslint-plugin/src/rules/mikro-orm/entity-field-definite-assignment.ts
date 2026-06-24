@@ -64,6 +64,12 @@ export default createRule({
       return false;
     };
 
+    const isDeclareProperty = (
+      member: TSESTree.PropertyDefinition,
+    ): boolean => {
+      return member.declare;
+    };
+
     return {
       ClassDeclaration(node) {
         if (!isEntityClass(node)) return;
@@ -89,6 +95,7 @@ export default createRule({
 
           // Optional properties (?:) do not need a definite assignment assertion
           if (isOptionalProperty(member)) return;
+          if (isDeclareProperty(member)) return;
 
           const hasInit = hasInitializer(member);
           const hasDefinite = hasDefiniteAssignment(member);

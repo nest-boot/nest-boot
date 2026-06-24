@@ -27,6 +27,14 @@ tester.run("graphql-field-definite-assignment", rule, {
         age?: number;
       }
     `,
+    // Declare properties cannot use definite assignment assertions
+    /* typescript */ `
+      @ObjectType()
+      class User extends BaseUser {
+        @Field()
+        declare name: string;
+      }
+    `,
     // InputType class
     /* typescript */ `
       @InputType()

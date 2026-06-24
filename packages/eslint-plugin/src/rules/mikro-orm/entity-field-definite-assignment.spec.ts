@@ -27,6 +27,14 @@ tester.run("entity-field-definite-assignment", rule, {
         age?: number;
       }
     `,
+    // Declare properties cannot use definite assignment assertions
+    /* typescript */ `
+      @Entity()
+      class User extends BaseUser {
+        @Property()
+        declare name: string;
+      }
+    `,
     // Nullable property with initializer
     /* typescript */ `
       @Entity()
