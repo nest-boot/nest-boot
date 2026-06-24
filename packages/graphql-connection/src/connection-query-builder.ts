@@ -5,9 +5,7 @@ import {
   QueryOrder,
   QueryOrderMap,
 } from "@mikro-orm/core";
-import compact from "lodash/compact.js";
-import get from "lodash/get.js";
-import set from "lodash/set.js";
+import { compact, get, set } from "lodash-es";
 import { parse, type ParseOptions } from "search-syntax";
 
 import { ConnectionFindOptions } from "./connection.manager.js";

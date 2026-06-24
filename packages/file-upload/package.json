@@ -37,7 +37,7 @@
   },
   "dependencies": {
     "dayjs": "^1.11.18",
-    "lodash": "^4.17.21",
+    "lodash-es": "^4.17.21",
     "micromatch": "^4.0.8",
     "mime-types": "^2.1.35"
   },

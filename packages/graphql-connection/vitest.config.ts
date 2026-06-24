@@ -112,7 +112,6 @@ export default defineConfig({
         find: "@nest-boot/view",
         replacement: resolve(__dirname, "../view/src"),
       },
-      { find: /^lodash-es\/(.*)\.js$/, replacement: "lodash/$1" },
     ],
   },
   test: {

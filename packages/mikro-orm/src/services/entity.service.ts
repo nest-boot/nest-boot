@@ -18,7 +18,7 @@ import {
 } from "@mikro-orm/core";
 import { NotFoundException, Type } from "@nestjs/common";
 import DataLoader from "dataloader";
-import _ from "lodash";
+import { capitalize, isPlainObject } from "lodash-es";
 
 import type { IdEntity } from "../interfaces/id-entity.interface.js";
 import type { ChunkByIdOptions } from "../types/chunk-by-id-options.type.js";
@@ -249,7 +249,7 @@ export class EntityService<Entity extends IdEntity> {
   async findOne(
     idOrEntityOrWhere: IdOrEntity<Entity> | FilterQuery<NoInfer<Entity>>,
   ): Promise<Loaded<Entity> | null> {
-    if (_.isPlainObject(idOrEntityOrWhere)) {
+    if (isPlainObject(idOrEntityOrWhere)) {
       return await this.em.findOne<Entity>(
         this.entityClass,
         idOrEntityOrWhere as FilterQuery<NoInfer<Entity>>,
@@ -274,7 +274,7 @@ export class EntityService<Entity extends IdEntity> {
 
     if (entity === null) {
       throw new NotFoundException(
-        `${_.capitalize(this.entityClass.name)} not found`,
+        `${capitalize(this.entityClass.name)} not found`,
       );
     }
 
