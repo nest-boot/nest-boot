@@ -2,7 +2,10 @@ import { mkdtempDisposable } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { RequestContext } from "@nest-boot/request-context";
+import {
+  RequestContext,
+  RequestContextModule,
+} from "@nest-boot/request-context";
 import { Global, Module } from "@nestjs/common";
 
 import { TEMPORARY_DIRECTORY_ROOT } from "./temporary-directory.constants";
@@ -11,6 +14,7 @@ import { TemporaryDirectoryService } from "./temporary-directory.service";
 /** Provides request-context-scoped temporary directories. */
 @Global()
 @Module({
+  imports: [RequestContextModule],
   providers: [TemporaryDirectoryService],
   exports: [TemporaryDirectoryService],
 })
