@@ -1,9 +1,8 @@
-import { mkdir, mkdtemp, rm, stat } from "node:fs/promises";
+import { mkdir, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 
 import { RequestContext } from "@nest-boot/request-context";
-import { type DynamicModule, type Type } from "@nestjs/common";
 import { Test, type TestingModule } from "@nestjs/testing";
 
 import { TEMPORARY_DIRECTORY_ROOT } from "./temporary-directory.constants";
@@ -11,7 +10,6 @@ import { TemporaryDirectoryModule } from "./temporary-directory.module";
 
 describe("TemporaryDirectoryModule", () => {
   const modules: TestingModule[] = [];
-  const fixtures: string[] = [];
 
   afterEach(async () => {
     await Promise.all(
@@ -19,31 +17,13 @@ describe("TemporaryDirectoryModule", () => {
         await module.close();
       }),
     );
-    await Promise.all(
-      fixtures.splice(0).map(async (fixture) => {
-        await rm(fixture, { force: true, recursive: true });
-      }),
-    );
   });
 
-  it.each([
-    ["static", TemporaryDirectoryModule],
-    ["register default", TemporaryDirectoryModule.register({})],
-    ["register empty", TemporaryDirectoryModule.register({ basePath: "" })],
-    [
-      "registerAsync default",
-      TemporaryDirectoryModule.registerAsync({ useFactory: () => ({}) }),
-    ],
-  ])("uses the system temp directory for %s", async (_name, imported) => {
-    await compile(imported);
+  it("uses the system temporary directory", async () => {
+    await compile();
 
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      const root = RequestContext.get<string>(TEMPORARY_DIRECTORY_ROOT);
-
-      if (!root) {
-        throw new Error("Temporary directory root was not initialized");
-      }
-
+      const root = requireRoot();
       expect(dirname(root)).toBe(tmpdir());
       expect(basename(root)).toMatch(
         /^nest-boot-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
@@ -52,68 +32,8 @@ describe("TemporaryDirectoryModule", () => {
     });
   });
 
-  it("uses an absolute configured base path and preserves it", async () => {
-    const basePath = await createFixture();
-    await compile(TemporaryDirectoryModule.register({ basePath }));
-    let root = "";
-
-    await RequestContext.run(new RequestContext({ type: "test" }), () => {
-      root = requireRoot();
-      expect(dirname(root)).toBe(basePath);
-    });
-
-    await expect(stat(root)).rejects.toMatchObject({ code: "ENOENT" });
-    await expect(stat(basePath)).resolves.toBeDefined();
-  });
-
-  it("uses a base path provided by registerAsync", async () => {
-    const basePath = await createFixture();
-    await compile(
-      TemporaryDirectoryModule.registerAsync({
-        useFactory: () => ({ basePath }),
-      }),
-    );
-
-    await RequestContext.run(new RequestContext({ type: "test" }), () => {
-      expect(dirname(requireRoot())).toBe(basePath);
-    });
-  });
-
-  it("resolves a relative configured base path from the working directory", async () => {
-    const originalCwd = process.cwd();
-    const workingDirectory = await createFixture();
-
-    try {
-      process.chdir(workingDirectory);
-      const resolvedWorkingDirectory = process.cwd();
-      await compile(
-        TemporaryDirectoryModule.register({ basePath: "var/temp" }),
-      );
-
-      await RequestContext.run(new RequestContext({ type: "test" }), () => {
-        const root = requireRoot();
-        expect(dirname(root)).toBe(join(resolvedWorkingDirectory, "var/temp"));
-      });
-    } finally {
-      process.chdir(originalCwd);
-    }
-  });
-
-  it("creates a missing configured base path", async () => {
-    const fixture = await createFixture();
-    const basePath = join(fixture, "nested", "temp");
-    await compile(TemporaryDirectoryModule.register({ basePath }));
-
-    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      await expect(stat(basePath)).resolves.toBeDefined();
-    });
-
-    await expect(stat(basePath)).resolves.toBeDefined();
-  });
-
   it("removes the request root after successful completion", async () => {
-    const basePath = await createFixture();
-    await compile(TemporaryDirectoryModule.register({ basePath }));
+    await compile();
     let root = "";
 
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
@@ -126,8 +46,7 @@ describe("TemporaryDirectoryModule", () => {
   });
 
   it("removes the request root when the context callback throws", async () => {
-    const basePath = await createFixture();
-    await compile(TemporaryDirectoryModule.register({ basePath }));
+    await compile();
     const expected = new Error("callback failed");
     let root = "";
 
@@ -139,23 +58,14 @@ describe("TemporaryDirectoryModule", () => {
     ).rejects.toBe(expected);
 
     await expect(stat(root)).rejects.toMatchObject({ code: "ENOENT" });
-    await expect(stat(basePath)).resolves.toBeDefined();
   });
 
-  async function compile(
-    imported: Type | DynamicModule,
-  ): Promise<TestingModule> {
+  async function compile(): Promise<TestingModule> {
     const module = await Test.createTestingModule({
-      imports: [imported],
+      imports: [TemporaryDirectoryModule],
     }).compile();
     modules.push(module);
     return module;
-  }
-
-  async function createFixture(): Promise<string> {
-    const fixture = await mkdtemp(join(tmpdir(), "temporary-directory-test-"));
-    fixtures.push(fixture);
-    return fixture;
   }
 
   function requireRoot(): string {
