@@ -293,3 +293,6 @@ dist
 
 # graphql
 schema.gql
+
+# Local Git worktrees
+.worktrees/

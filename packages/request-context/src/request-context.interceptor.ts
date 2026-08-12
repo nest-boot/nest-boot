@@ -63,26 +63,72 @@ export class RequestContextInterceptor implements NestInterceptor {
     });
 
     return new Observable((subscriber) => {
-      void RequestContext.run(ctx, () => {
-        try {
-          next
-            .handle()
-            .pipe()
-            .subscribe({
-              next: (res) => {
-                subscriber.next(res);
-              },
-              error: (err) => {
-                subscriber.error(err);
-              },
-              complete: () => {
-                subscriber.complete();
-              },
-            });
-        } catch (err) {
-          subscriber.error(err);
-        }
+      let resolveTermination!: () => void;
+      let rejectTermination!: (reason: unknown) => void;
+      let terminated = false;
+      const termination = new Promise<void>((resolve, reject) => {
+        resolveTermination = () => {
+          if (!terminated) {
+            terminated = true;
+            resolve();
+          }
+        };
+        rejectTermination = (reason) => {
+          if (!terminated) {
+            terminated = true;
+            // RxJS permits arbitrary error values and they must be forwarded intact.
+            // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+            reject(reason);
+          }
+        };
       });
+      let subscribeToSource!: (source: Observable<T>) => void;
+      const sourceSubscription = new Observable<T>((sourceSubscriber) => {
+        subscribeToSource = (source) => {
+          source.subscribe(sourceSubscriber);
+        };
+      }).subscribe({
+        next: (res) => {
+          subscriber.next(res);
+        },
+        error: (err: unknown) => {
+          rejectTermination(err);
+        },
+        complete: () => {
+          resolveTermination();
+        },
+      });
+
+      subscriber.add(sourceSubscription);
+      subscriber.add(resolveTermination);
+
+      void RequestContext.run(ctx, async () => {
+        if (subscriber.closed) {
+          return;
+        }
+
+        try {
+          const source = next.handle();
+          if (!subscriber.closed) {
+            subscribeToSource(source);
+          }
+        } catch (err) {
+          rejectTermination(err);
+        }
+
+        await termination;
+      }).then(
+        () => {
+          if (!subscriber.closed) {
+            subscriber.complete();
+          }
+        },
+        (err: unknown) => {
+          if (!subscriber.closed) {
+            subscriber.error(err);
+          }
+        },
+      );
     });
   }
 }

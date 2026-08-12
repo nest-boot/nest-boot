@@ -7,9 +7,7 @@ export default {
     "^.+.(t|j)s$": "ts-jest",
   },
   coverageDirectory: "./coverage",
-  collectCoverageFrom: ["src/request-context.interceptor.ts"],
-  coveragePathIgnorePatterns: [
-    "/packages/request-context/src/(?!request-context\\.interceptor\\.ts$)",
-  ],
+  collectCoverageFrom: ["src/**/*"],
+  coveragePathIgnorePatterns: ["/packages/request-context/"],
   testEnvironment: "node",
 } satisfies Config;
