@@ -29,8 +29,7 @@
     "lint": "nx run-many -t lint",
     "lint:fix": "nx run-many -t lint:fix",
     "typedoc:check": "typedoc --treatValidationWarningsAsErrors --emit none",
-    "release": "node scripts/release.mjs",
-    "release:dry-run": "node scripts/release.mjs --dry-run"
+    "release:dry-run": "nx release --dry-run --skip-publish"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.0.2",
