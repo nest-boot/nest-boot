@@ -104,6 +104,7 @@
     "@nest-boot/request-context",
     "@nest-boot/row-level-security",
     "@nest-boot/schedule",
+    "@nest-boot/temporary-directory",
     "@nest-boot/validator",
     "@nest-boot/view"
   ]
