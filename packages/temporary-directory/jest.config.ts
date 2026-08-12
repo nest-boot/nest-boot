@@ -8,5 +8,6 @@ export default {
   },
   coverageDirectory: "./coverage",
   collectCoverageFrom: ["src/**/*"],
+  coveragePathIgnorePatterns: ["/packages/request-context/"],
   testEnvironment: "node",
 } satisfies Config;

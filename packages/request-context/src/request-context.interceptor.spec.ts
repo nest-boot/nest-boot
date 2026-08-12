@@ -8,6 +8,23 @@ import { RequestContextInterceptor } from "./request-context.interceptor";
 describe("RequestContextInterceptor", () => {
   const interceptor = new RequestContextInterceptor();
 
+  it("reuses an active request context", async () => {
+    const id = "active-context";
+
+    await RequestContext.run(
+      new RequestContext({ id, type: "test" }),
+      async () => {
+        const result = await lastValueFrom(
+          interceptor.intercept(createExecutionContext("ignored"), {
+            handle: () => of(RequestContext.id),
+          }),
+        );
+
+        expect(result).toBe(id);
+      },
+    );
+  });
+
   it("keeps the request lifecycle active through delayed emissions", async () => {
     const id = "delayed-emission";
     let lifecycleActive = false;
@@ -252,6 +269,66 @@ describe("RequestContextInterceptor", () => {
     }).toThrow("source teardown failed");
     await new Promise<void>((resolve) => setImmediate(resolve));
     expect(lifecycleFinished).toBe(true);
+  });
+
+  it("does not start the handler after cancellation during lifecycle startup", async () => {
+    const id = "cancelled-startup";
+    let continueLifecycle!: () => void;
+    let markMiddlewareEntered!: () => void;
+    let markMiddlewareFinished!: () => void;
+    const lifecycleBarrier = new Promise<void>((resolve) => {
+      continueLifecycle = resolve;
+    });
+    const middlewareEntered = new Promise<void>((resolve) => {
+      markMiddlewareEntered = resolve;
+    });
+    const middlewareFinished = new Promise<void>((resolve) => {
+      markMiddlewareFinished = resolve;
+    });
+
+    RequestContext.registerMiddleware(
+      "interceptor-cancelled-startup-test",
+      async (context, next) => {
+        if (context.id !== id) {
+          return await next();
+        }
+
+        markMiddlewareEntered();
+        try {
+          await lifecycleBarrier;
+          return await next();
+        } finally {
+          markMiddlewareFinished();
+        }
+      },
+    );
+
+    const handle = jest.fn(() => of("value"));
+    const handler: CallHandler<string> = { handle };
+    const subscription = interceptor
+      .intercept(createExecutionContext(id), handler)
+      .subscribe();
+
+    await middlewareEntered;
+    subscription.unsubscribe();
+    continueLifecycle();
+    await middlewareFinished;
+
+    expect(handle).not.toHaveBeenCalled();
+  });
+
+  it("forwards a synchronous handler error", async () => {
+    const expected = new Error("handler failed synchronously");
+
+    await expect(
+      lastValueFrom(
+        interceptor.intercept(createExecutionContext("handler-error"), {
+          handle: () => {
+            throw expected;
+          },
+        }),
+      ),
+    ).rejects.toBe(expected);
   });
 });
 
