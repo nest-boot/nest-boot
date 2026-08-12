@@ -1,5 +1,4 @@
-import { randomUUID } from "node:crypto";
-import { mkdir, rm } from "node:fs/promises";
+import { mkdtempDisposable } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -21,15 +20,11 @@ export class TemporaryDirectoryModule {
     RequestContext.registerMiddleware(
       "temporary-directory",
       async (context, next) => {
-        const root = join(tmpdir(), `nest-boot-${randomUUID()}`);
-        await mkdir(root);
-        context.set(TEMPORARY_DIRECTORY_ROOT, root);
-
-        try {
-          return await next();
-        } finally {
-          await rm(root, { force: true, recursive: true });
-        }
+        await using temporaryDirectory = await mkdtempDisposable(
+          join(tmpdir(), "nest-boot-"),
+        );
+        context.set(TEMPORARY_DIRECTORY_ROOT, temporaryDirectory.path);
+        return await next();
       },
     );
   }

@@ -25,9 +25,7 @@ describe("TemporaryDirectoryModule", () => {
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       const root = requireRoot();
       expect(dirname(root)).toBe(tmpdir());
-      expect(basename(root)).toMatch(
-        /^nest-boot-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
-      );
+      expect(basename(root)).toMatch(/^nest-boot-.{6}$/);
       await expect(stat(root)).resolves.toBeDefined();
     });
   });
