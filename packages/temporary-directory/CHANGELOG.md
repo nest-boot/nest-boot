@@ -4,4 +4,4 @@
 
 ### Major Changes
 
-- Add request-context-scoped temporary directories with automatic cleanup.
+- Add static request-context-scoped temporary directories backed by Node.js async disposal and automatic cleanup.
