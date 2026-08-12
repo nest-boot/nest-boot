@@ -1,3 +1,20 @@
+## 7.7.0 (2026-08-12)
+
+### 🩹 Fixes
+
+- preserve request context lifecycle ([20eb8c3f](https://github.com/nest-boot/nest-boot/commit/20eb8c3f))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 7.3.0
+- Updated @nest-boot/eslint-plugin to 7.2.0
+- Updated @nest-boot/middleware to 7.6.0
+- Updated @nest-boot/tsconfig to 7.3.0
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 7.6.1 (2026-06-17)
 
 ### 🧱 Updated Dependencies
