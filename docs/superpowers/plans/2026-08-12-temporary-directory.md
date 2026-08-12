@@ -59,7 +59,7 @@
 **Interfaces:**
 
 - Consumes: NestJS `ConfigurableModuleBuilder`, `DynamicModule`, and decorators.
-- Produces: `TemporaryDirectoryModuleOptions { basePath?: string }`, `TemporaryDirectoryModule.register(options)`, `TemporaryDirectoryModule.registerAsync(options)`, and exported `TemporaryDirectoryService` with `create(): Promise<string>`.
+- Produces: `TemporaryDirectoryModuleOptions { basePath?: string }`, `TemporaryDirectoryModule.register(options)`, `TemporaryDirectoryModule.registerAsync(options)`, and an exported injectable `TemporaryDirectoryService` class.
 
 - [ ] **Step 1: Create package-only configuration and metadata**
 
@@ -148,7 +148,7 @@ export const {
 } = new ConfigurableModuleBuilder<TemporaryDirectoryModuleOptions>().build();
 ```
 
-Create a global module extending `ConfigurableModuleClass`, make its options injection optional for static imports, and add explicit `register` / `registerAsync` overrides. Provide and export an injectable service whose initial `create()` throws `"Temporary directory context is not initialized"`; lifecycle behavior is implemented under failing tests in later tasks. Export only the options interface, module, and service from `index.ts`.
+Create a global module extending `ConfigurableModuleClass`, make its options injection optional for static imports, and add explicit `register` / `registerAsync` overrides. Provide and export an empty injectable service class; its `create()` behavior is added only after Task 4's failing tests. Export only the options interface, module, and service from `index.ts`.
 
 - [ ] **Step 5: Run the focused test and verify GREEN**
 
@@ -266,7 +266,7 @@ git commit -m "feat: resolve temporary directory base paths"
 
 - [ ] **Step 1: Write failing lifecycle integration tests**
 
-Compile real Nest testing modules for all import modes and run real `RequestContext` callbacks. Use a unique outer fixture created with `mkdtemp(join(tmpdir(), "temporary-directory-test-"))`, removing only that fixture in `afterEach`.
+Compile real Nest testing modules for all import modes and run real `RequestContext` callbacks. Use a unique outer fixture created with `mkdtemp(join(tmpdir(), "temporary-directory-test-"))`, removing only that fixture in `afterEach`. Lifecycle tests read the internal `TEMPORARY_DIRECTORY_ROOT` from the active context directly so they do not depend on Task 4's service behavior.
 
 Cover these behaviors with separate tests:
 
@@ -280,11 +280,11 @@ it.each([
     TemporaryDirectoryModule.registerAsync({ useFactory: () => ({}) }),
   ],
 ])("uses the system temp directory for %s", async (_name, imported) => {
-  const service = await compile(imported);
+  await compile(imported);
   await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-    const child = await service.create();
-    expect(dirname(dirname(child))).toBe(tmpdir());
-    expect(basename(dirname(child))).toMatch(
+    const root = RequestContext.get<string>(TEMPORARY_DIRECTORY_ROOT);
+    expect(dirname(root!)).toBe(tmpdir());
+    expect(basename(root!)).toMatch(
       /^nest-boot-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
     );
   });
@@ -411,7 +411,7 @@ Run:
 pnpm --filter @nest-boot/temporary-directory test -- --runInBand src/temporary-directory.service.spec.ts
 ```
 
-Expected: FAIL because `create()` still throws the initialization placeholder inside correctly initialized contexts.
+Expected: FAIL at TypeScript compilation because `TemporaryDirectoryService.create()` does not exist yet.
 
 - [ ] **Step 3: Implement the minimal service**
 
