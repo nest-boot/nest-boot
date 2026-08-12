@@ -41,11 +41,14 @@ export class TemporaryDirectoryModule extends ConfigurableModuleClass {
     return super.registerAsync(options);
   }
 
-  /** Creates the module with optional configuration for static imports. */
+  /**
+   * Creates the module with optional configuration for static imports.
+   * @param options - Optional module configuration; absent for static imports
+   */
   constructor(
     @Optional()
     @Inject(MODULE_OPTIONS_TOKEN)
-    protected readonly options?: TemporaryDirectoryModuleOptions,
+    private readonly options?: TemporaryDirectoryModuleOptions,
   ) {
     super();
 

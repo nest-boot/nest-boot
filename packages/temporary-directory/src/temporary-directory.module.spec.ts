@@ -66,6 +66,19 @@ describe("TemporaryDirectoryModule", () => {
     await expect(stat(basePath)).resolves.toBeDefined();
   });
 
+  it("uses a base path provided by registerAsync", async () => {
+    const basePath = await createFixture();
+    await compile(
+      TemporaryDirectoryModule.registerAsync({
+        useFactory: () => ({ basePath }),
+      }),
+    );
+
+    await RequestContext.run(new RequestContext({ type: "test" }), () => {
+      expect(dirname(requireRoot())).toBe(basePath);
+    });
+  });
+
   it("resolves a relative configured base path from the working directory", async () => {
     const originalCwd = process.cwd();
     const workingDirectory = await createFixture();
