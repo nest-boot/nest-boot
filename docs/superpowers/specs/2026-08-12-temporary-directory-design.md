@@ -77,19 +77,22 @@ middleware. For each context execution, the middleware:
 
 1. Resolves the configured base path, falling back to `tmpdir()`.
 2. Creates the base path recursively when needed.
-3. Creates a unique disposable `context-*` directory below the base path.
+3. Creates a unique `nest-boot-${randomUUID()}` directory below the base path.
 4. Stores that root path in the current `RequestContext` under an internal
    symbol.
 5. Runs the remainder of the context middleware chain.
-6. Removes the entire context root after the chain resolves or rejects.
+6. Removes the entire context root in a `finally` block after the chain resolves
+   or rejects.
 
 `TemporaryDirectoryService.create()` requires an active, initialized
 `RequestContext`. It creates and returns a unique `directory-*` child below the
 current context root. Multiple calls within one context share the root but never
 the child directory. Concurrent contexts use different roots.
 
-Node's disposable temporary-directory API performs recursive cleanup. The
-package targets the repository's Node.js 24 baseline.
+The request root uses `randomUUID()` rather than a generic temporary-directory
+suffix so filesystem entries are recognizable as Nest Boot-owned. Cleanup uses
+Node's recursive filesystem removal in a `finally` block. The package targets
+the repository's Node.js 24 baseline.
 
 ## Errors
 
@@ -104,9 +107,9 @@ are propagated without translation so callers retain the native error code and
 path.
 
 The configured `basePath` is a caller-owned container and is never deleted by
-the package. Only uniquely named `context-*` roots created by the package and
-their contents are disposed. This makes cleanup safe for the system temporary
-directory and for shared custom base paths alike.
+the package. Only uniquely named `nest-boot-${randomUUID()}` roots created by
+the package and their contents are disposed. This makes cleanup safe for the
+system temporary directory and for shared custom base paths alike.
 
 ## Dependencies and Publishing
 
