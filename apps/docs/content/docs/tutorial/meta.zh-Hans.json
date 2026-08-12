@@ -9,6 +9,7 @@
     "middleware",
     "redis",
     "request-context",
+    "temporary-directory",
     "auth",
     "bullmq",
     "schedule",

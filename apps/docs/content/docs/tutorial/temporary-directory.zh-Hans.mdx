@@ -1,0 +1,155 @@
+---
+title: "临时目录"
+description: "创建请求作用域的隔离临时目录，并在请求结束时自动清理。"
+---
+
+`@nest-boot/temporary-directory` 模块在操作系统临时目录中创建隔离的临时目录。请求上下文结束时，无论正常完成还是抛出错误，模块都会自动删除该上下文创建的所有目录和文件。
+
+## 安装
+
+```bash
+pnpm add @nest-boot/temporary-directory @nest-boot/request-context
+```
+
+## 运行要求
+
+模块要求 Node.js `>=24.4.0`，因为清理生命周期使用了 Node.js 的异步可释放临时目录。
+
+## 模块注册
+
+在应用中导入一次 `TemporaryDirectoryModule`。它是静态全局模块，不提供 `register()` 或 `registerAsync()`。
+
+```typescript
+import { TemporaryDirectoryModule } from "@nest-boot/temporary-directory";
+import { Module } from "@nestjs/common";
+
+@Module({
+  imports: [TemporaryDirectoryModule],
+})
+export class AppModule {}
+```
+
+`TemporaryDirectoryModule` 已导入 `RequestContextModule`，因此仅为此用途时不需要单独注册请求上下文模块。
+
+## 基本用法
+
+注入 `TemporaryDirectoryService`，并在请求上下文处于活动状态时调用 `create()`：
+
+```typescript
+import { TemporaryDirectoryService } from "@nest-boot/temporary-directory";
+import { Injectable } from "@nestjs/common";
+import { writeFile } from "node:fs/promises";
+import { join } from "node:path";
+
+@Injectable()
+export class DocumentService {
+  constructor(
+    private readonly temporaryDirectoryService: TemporaryDirectoryService,
+  ) {}
+
+  async render(): Promise<Buffer> {
+    const directory = await this.temporaryDirectoryService.create();
+    const outputPath = join(directory, "document.pdf");
+
+    await writeFile(outputPath, await this.renderPdf());
+    return await this.readPdf(outputPath);
+  }
+
+  private async renderPdf(): Promise<Uint8Array> {
+    // 渲染 PDF 并返回其字节数据。
+    return new Uint8Array();
+  }
+
+  private async readPdf(path: string): Promise<Buffer> {
+    const { readFile } = await import("node:fs/promises");
+    return await readFile(path);
+  }
+}
+```
+
+每次调用都会返回一个新建的目录。同一请求中的多次调用共享同一个可释放请求根目录，但会获得互不相同的随机子目录。
+
+## 命名空间
+
+需要按用途组织临时任务时，可以传入命名空间：
+
+```typescript
+const original = await this.temporaryDirectoryService.create("image-input");
+const converted = await this.temporaryDirectoryService.create("image-output");
+```
+
+命名空间长度必须为 1–64 个字符，并且只能包含 ASCII 大小写字母、数字、中划线或下划线：
+
+```text
+/^[A-Za-z0-9_-]+$/
+```
+
+`image`、`image-cache` 和 `image_v2` 都是合法值。空字符串、点号、空白字符、Unicode 字符、路径分隔符、绝对路径和嵌套路径都会被拒绝，并抛出 `TypeError`。命名空间始终被视为单个目录名，无法逃逸请求根目录。
+
+## 目录结构
+
+模块为每个请求上下文创建一个可释放根目录。下方每个 `XXXXXX` 都表示 Node.js 自动追加的 6 个随机字符：
+
+```text
+<系统临时目录>/nest-boot-XXXXXX/
+├── XXXXXX/                 # create()
+└── image/
+    ├── XXXXXX/             # 第一次 create("image")
+    └── XXXXXX/             # 第二次 create("image")
+```
+
+基础临时目录由操作系统决定，模块不接受自定义基础路径。
+
+## 清理生命周期
+
+请求上下文正常完成或抛出错误后，模块都会递归删除整个 `nest-boot-*` 请求根目录。这会一次性清理未分组子目录、命名空间目录、文件以及更深层的内容。
+
+所有使用临时路径的操作都必须等待完成：
+
+```typescript
+const directory = await this.temporaryDirectoryService.create("archive");
+
+await extractArchive(input, directory);
+await persistResults(directory);
+```
+
+不要启动脱离请求生命周期的后台任务后立即返回。上下文结束后，清理过程可能在后台任务仍使用目录时将其删除。
+
+与所有进程内清理机制一样，`SIGKILL`、运行时崩溃或断电等不可捕获的终止可能阻止立即释放。请求根目录仍位于操作系统临时目录中，操作系统可以按照自身策略最终清理残留内容。
+
+## 非 HTTP 上下文
+
+HTTP 和 GraphQL 请求会自动获得 `RequestContext`。对于队列、定时任务、CLI 命令或其他入口，请在 Nest 初始化 `TemporaryDirectoryModule` 后，显式地在上下文中运行任务：
+
+```typescript
+import { RequestContext } from "@nest-boot/request-context";
+
+await RequestContext.run(new RequestContext({ type: "job" }), async () => {
+  const directory = await temporaryDirectoryService.create("import");
+  await processImport(directory);
+});
+```
+
+目录在被等待的回调执行期间保持可用，并在 `RequestContext.run()` 完成时删除。
+
+## 错误处理
+
+以下情况会导致 `create()` 拒绝：
+
+- 当前没有活动的 `RequestContext`；
+- 临时目录中间件尚未初始化当前上下文；
+- 传入的命名空间不符合上述约束；
+- 底层文件系统操作失败。
+
+非法命名空间会产生 `TypeError`。上下文错误和文件系统错误会继续向上传播，以便调用方在适当的应用边界处理。
+
+## 最佳实践
+
+1. **等待所有任务完成** — 离开请求上下文之前，完成所有使用临时路径的操作。
+2. **使用命名空间分组** — 需要改善目录辨识度时，选择 `image`、`archive` 或 `report-output` 等简短的用途名称。
+3. **保留生成的名称** — 在返回的目录中写入文件，不要重命名或移动可释放的请求根目录。
+4. **有意识地持久化** — 在上下文结束前将需要保留的结果复制到永久存储；不要把临时路径写入数据库或交给稍后运行的后台任务。
+
+## API 参考
+
+详细的 API 文档请参阅[临时目录 API 参考](/docs/api/temporary-directory)。

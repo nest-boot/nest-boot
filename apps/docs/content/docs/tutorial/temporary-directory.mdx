@@ -1,0 +1,184 @@
+---
+title: "Temporary Directory"
+description: "Create isolated request-scoped temporary directories with automatic cleanup."
+---
+
+The `@nest-boot/temporary-directory` module creates isolated temporary
+directories inside the operating system's temporary directory. All directories
+and files created for a request context are removed automatically when that
+context finishes, whether it resolves or rejects.
+
+## Installation
+
+```bash
+pnpm add @nest-boot/temporary-directory @nest-boot/request-context
+```
+
+## Requirements
+
+The module requires Node.js `>=24.4.0` because its cleanup lifecycle uses
+Node.js asynchronous disposable temporary directories.
+
+## Module Registration
+
+Import `TemporaryDirectoryModule` once in your application. It is a static
+global module, so it does not expose `register()` or `registerAsync()`.
+
+```typescript
+import { TemporaryDirectoryModule } from "@nest-boot/temporary-directory";
+import { Module } from "@nestjs/common";
+
+@Module({
+  imports: [TemporaryDirectoryModule],
+})
+export class AppModule {}
+```
+
+`TemporaryDirectoryModule` imports `RequestContextModule`, so no separate
+request-context module registration is required for this use case.
+
+## Basic Usage
+
+Inject `TemporaryDirectoryService` and call `create()` while a request context
+is active:
+
+```typescript
+import { TemporaryDirectoryService } from "@nest-boot/temporary-directory";
+import { Injectable } from "@nestjs/common";
+import { writeFile } from "node:fs/promises";
+import { join } from "node:path";
+
+@Injectable()
+export class DocumentService {
+  constructor(
+    private readonly temporaryDirectoryService: TemporaryDirectoryService,
+  ) {}
+
+  async render(): Promise<Buffer> {
+    const directory = await this.temporaryDirectoryService.create();
+    const outputPath = join(directory, "document.pdf");
+
+    await writeFile(outputPath, await this.renderPdf());
+    return await this.readPdf(outputPath);
+  }
+
+  private async renderPdf(): Promise<Uint8Array> {
+    // Render the PDF and return its bytes.
+    return new Uint8Array();
+  }
+
+  private async readPdf(path: string): Promise<Buffer> {
+    const { readFile } = await import("node:fs/promises");
+    return await readFile(path);
+  }
+}
+```
+
+Each call returns a newly created directory. Multiple calls in one request
+share the same disposable request root but receive distinct random children.
+
+## Namespaces
+
+Pass a namespace when you want to group temporary work by purpose:
+
+```typescript
+const original = await this.temporaryDirectoryService.create("image-input");
+const converted = await this.temporaryDirectoryService.create("image-output");
+```
+
+A namespace must contain 1–64 ASCII letters, numbers, hyphens, or underscores:
+
+```text
+/^[A-Za-z0-9_-]+$/
+```
+
+Values such as `image`, `image-cache`, and `image_v2` are valid. Empty strings,
+dots, whitespace, Unicode characters, path separators, absolute paths, and
+nested paths are rejected with a `TypeError`. The namespace is always treated
+as a single directory name and cannot escape the request root.
+
+## Directory Layout
+
+The module creates one disposable root for every request context. Node.js adds
+six random characters to each `XXXXXX` suffix shown below:
+
+```text
+<system temporary directory>/nest-boot-XXXXXX/
+├── XXXXXX/                 # create()
+└── image/
+    ├── XXXXXX/             # first create("image")
+    └── XXXXXX/             # second create("image")
+```
+
+The operating system chooses the base temporary directory. The module does not
+accept a custom base path.
+
+## Cleanup Lifecycle
+
+The complete `nest-boot-*` request root is removed recursively after the
+request context resolves or rejects. This removes ungrouped children,
+namespace directories, files, and nested content together.
+
+Always await operations that use a returned path:
+
+```typescript
+const directory = await this.temporaryDirectoryService.create("archive");
+
+await extractArchive(input, directory);
+await persistResults(directory);
+```
+
+Do not start detached work and return from the request first. Once the context
+finishes, cleanup can remove the directory while detached work is still using
+it.
+
+As with any process-scoped cleanup, uncatchable termination such as `SIGKILL`,
+a runtime crash, or power loss can prevent immediate disposal. Request roots
+remain under the operating system's temporary directory, where the operating
+system can apply its normal eventual-cleanup policy.
+
+## Non-HTTP Contexts
+
+HTTP and GraphQL requests receive a `RequestContext` automatically. For queues,
+scheduled jobs, CLI commands, or other entry points, run the work explicitly
+inside a context after Nest has initialized `TemporaryDirectoryModule`:
+
+```typescript
+import { RequestContext } from "@nest-boot/request-context";
+
+await RequestContext.run(new RequestContext({ type: "job" }), async () => {
+  const directory = await temporaryDirectoryService.create("import");
+  await processImport(directory);
+});
+```
+
+The directory remains available for the awaited callback and is removed when
+`RequestContext.run()` completes.
+
+## Errors
+
+`create()` rejects when:
+
+- no `RequestContext` is active;
+- the temporary-directory middleware has not initialized the active context;
+- a supplied namespace does not satisfy the documented constraints; or
+- the underlying filesystem operation fails.
+
+Invalid namespaces produce a `TypeError`. Context and filesystem errors are
+propagated so callers can handle them at the appropriate application boundary.
+
+## Best Practices
+
+1. **Await all work** — Finish every operation that uses a temporary path before
+   leaving the request context.
+2. **Use namespaces for grouping** — Choose short purpose-based names such as
+   `image`, `archive`, or `report-output` when grouped paths improve diagnostics.
+3. **Keep generated names** — Write files inside the returned directory instead
+   of renaming or moving the disposable request root.
+4. **Persist intentionally** — Copy required output to permanent storage before
+   the context ends; temporary paths must not be stored in a database or sent
+   to later background work.
+
+## API Reference
+
+For detailed API documentation, see the [Temporary Directory API Reference](/docs/api/temporary-directory).

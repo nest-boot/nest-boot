@@ -24,7 +24,8 @@
   },
   "files": [
     "dist",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "README.md"
   ],
   "scripts": {
     "build": "rimraf dist && tsc -p tsconfig.build.json",
