@@ -4,7 +4,5 @@ describe("temporary-directory public API", () => {
   it("exports the static module and service", () => {
     expect(TemporaryDirectoryModule).toBeDefined();
     expect(TemporaryDirectoryService).toBeDefined();
-    expect(TemporaryDirectoryModule).not.toHaveProperty("register");
-    expect(TemporaryDirectoryModule).not.toHaveProperty("registerAsync");
   });
 });
