@@ -1,3 +1,4 @@
+import type { BaseContext, GraphQLRequestContext } from "@apollo/server";
 import { Test } from "@nestjs/testing";
 
 import {
@@ -5,7 +6,9 @@ import {
   MemoryGraphQLRateLimitDriver,
 } from "../src/drivers";
 import { GraphQLRateLimitModule } from "../src/graphql-rate-limit.module";
+import { OPTIONS_TOKEN } from "../src/graphql-rate-limit.module-definition";
 import { GraphQLRateLimitPlugin } from "../src/graphql-rate-limit.plugin";
+import { GraphQLRateLimitOptions } from "../src/interfaces";
 
 describe("GraphQLRateLimitModule", () => {
   const originalRedisUrl = process.env.REDIS_URL;
@@ -29,6 +32,25 @@ describe("GraphQLRateLimitModule", () => {
 
     expect(moduleRef.get(GraphQLRateLimitDriver)).toBeInstanceOf(
       MemoryGraphQLRateLimitDriver,
+    );
+
+    const options = moduleRef.get<GraphQLRateLimitOptions>(OPTIONS_TOKEN);
+    const createContext = (
+      ips: string[],
+      ip?: string,
+    ): GraphQLRequestContext<BaseContext> =>
+      ({
+        contextValue: { req: { ips, ip } },
+      }) as unknown as GraphQLRequestContext<BaseContext>;
+
+    expect(
+      options.getId(createContext(["proxy-client"], "direct-client")),
+    ).toBe("proxy-client");
+    expect(options.getId(createContext([], "direct-client"))).toBe(
+      "direct-client",
+    );
+    expect(() => options.getId(createContext([]))).toThrow(
+      "Unable to determine client IP address for rate limiting",
     );
 
     await moduleRef.close();
