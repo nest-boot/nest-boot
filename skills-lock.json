@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "autoreview": {
+      "source": "openclaw/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/autoreview/SKILL.md",
+      "computedHash": "adcc7d6a577f424ecd4f8106b9d9b8d9313171a5213956dff8ff2efe273edc8d"
+    },
+    "nest-boot-maintainer": {
+      "source": "nest-boot/skills",
+      "sourceType": "github",
+      "skillPath": "skills/nest-boot-maintainer/SKILL.md",
+      "computedHash": "72ff8a4576809251fe73ae081fc8d508840e0118058748fee761bf8026143c26"
+    }
+  }
+}

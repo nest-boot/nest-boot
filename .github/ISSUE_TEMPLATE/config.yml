@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Agent skill guidance problem
+    url: https://github.com/nest-boot/skills/issues/new/choose
+    about: Report incorrect, missing, or outdated nest-boot skill guidance in the skills repository.
+  - name: Private security report
+    url: https://github.com/nest-boot/nest-boot/security/advisories/new
+    about: Do not disclose vulnerabilities or sensitive data in a public Issue.

@@ -1,0 +1,75 @@
+name: Bug report
+description: Report reproducible incorrect behavior in an @nest-boot package or official documentation.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a Nest Boot problem. Remove all credentials, customer data, private URLs, and production logs. Use private vulnerability reporting for security issues.
+  - type: input
+    id: package
+    attributes:
+      label: Package
+      description: Name the affected package.
+      placeholder: "@nest-boot/logger"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Package version
+      description: Provide the exact installed version from the lockfile or `pnpm why`.
+      placeholder: "7.x.x"
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include Node.js, pnpm, NestJS, database/runtime, and directly relevant peer dependency versions.
+      placeholder: |
+        Node.js:
+        pnpm:
+        NestJS:
+        Relevant peers:
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Link a small repository or provide deterministic, sanitized code and steps.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include the shortest useful error or output.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: Explain the public API, type, test, or documentation contract that should hold.
+    validations:
+      required: true
+  - type: textarea
+    id: investigation
+    attributes:
+      label: Investigation and possible root cause
+      description: List what you ruled out and link relevant source, tests, or upstream dependency issues. Clearly mark uncertainty.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched open and closed Issues and PRs for duplicates.
+          required: true
+        - label: I checked the latest supported release or current main where practical.
+          required: true
+        - label: I verified this is not only an application-specific convention or a nest-boot/skills guidance problem.
+          required: true
+        - label: I removed credentials, customer data, private URLs, and production logs.
+          required: true

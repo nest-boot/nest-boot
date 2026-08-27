@@ -1,0 +1,57 @@
+name: API or framework improvement
+description: Propose a broadly useful capability or design improvement for @nest-boot packages.
+title: "[Proposal]: "
+body:
+  - type: input
+    id: packages
+    attributes:
+      label: Affected packages
+      placeholder: "@nest-boot/middleware"
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Use cases and current limitation
+      description: Describe repeated, concrete development problems rather than only a preferred solution.
+    validations:
+      required: true
+  - type: textarea
+    id: existing
+    attributes:
+      label: Existing APIs and workarounds
+      description: Explain why current extension points or composition patterns are insufficient.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed capability
+      description: Describe the minimum useful behavior. API sketches are welcome but not required.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Include viable alternatives and their tradeoffs.
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility and verification
+      description: Discuss defaults, public types, dependencies, migration cost, and how maintainers can test success.
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing APIs, Issues, and PRs for equivalent functionality.
+          required: true
+        - label: This proposal is useful across applications and is not a private project convention.
+          required: true
+        - label: I am not including credentials, customer data, or private implementation details.
+          required: true

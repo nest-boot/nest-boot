@@ -7,3 +7,7 @@
     <img src="https://codecov.io/gh/nest-boot/nest-boot/graph/badge.svg?token=4ELZLKF4JO"/> 
   </a>
 </p>
+
+## Contributing and security
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development, Issue, and pull request guidance. Report suspected vulnerabilities privately according to [SECURITY.md](SECURITY.md); do not open a public Issue with sensitive details.

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Nest Boot Maintainer"
+  short_description: "诊断并向 Nest Boot 框架提交 Issue 与 PR"
+  default_prompt: "使用 $nest-boot-maintainer 诊断这个 @nest-boot/* 问题，并准备或提交有证据的 Issue 或 PR。"
