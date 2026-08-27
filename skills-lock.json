@@ -12,6 +12,12 @@
       "sourceType": "github",
       "skillPath": "skills/nest-boot-maintainer/SKILL.md",
       "computedHash": "72ff8a4576809251fe73ae081fc8d508840e0118058748fee761bf8026143c26"
+    },
+    "nest-boot-skill-maintainer": {
+      "source": "nest-boot/skills",
+      "sourceType": "github",
+      "skillPath": "skills/nest-boot-skill-maintainer/SKILL.md",
+      "computedHash": "34b137a0f4fe51dca2c85bcf9be05244666c8fecc4e5e3309611acacbd168298"
     }
   }
 }

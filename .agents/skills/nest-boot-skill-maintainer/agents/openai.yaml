@@ -1,0 +1,4 @@
+interface:
+  display_name: "Nest Boot Skill Maintainer"
+  short_description: "把项目问题沉淀为 Nest Boot skill、issue 与 PR"
+  default_prompt: "使用 $nest-boot-skill-maintainer 将本次开发发现整理为可验证的上游 skill 改进、issue 或 PR。"

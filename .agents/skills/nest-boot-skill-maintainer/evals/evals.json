@@ -1,0 +1,41 @@
+{
+  "skill_name": "nest-boot-skill-maintainer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "我在项目里照 nest-boot-graphql skill 写 Connection，发现示例注入了 ConnectionManager 却调用不存在的 service.getConnection。问题已经用本地框架源码确认了，请把经验沉淀到上游 skill，并提交 PR。",
+      "expected_output": "将问题路由到 nest-boot/skills，更新 GraphQL reference 与对应 eval，运行 README/全仓校验，从专用分支提交一个包含证据和验证结果的 PR。",
+      "files": [],
+      "expectations": [
+        "不修改业务项目中的 .agents/skills 安装副本",
+        "对照框架源码确认 ConnectionManager.find 的真实 API，并只修改相关 skill/reference",
+        "新增或更新能复现旧错误的 eval，运行维护脚本后从非 main 分支提交 PR",
+        "修复明确时不创建内容重复的仪式性 issue"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "@nest-boot/logger 在没有 RequestContext 的定时任务里调用 assign 会抛异常，这看起来不是文案问题。帮我整理最小复现并给上游报 issue，先不要改 skill。",
+      "expected_output": "区分框架行为与 skill 指引，把问题转交 nest-boot-maintainer，由它向 nest-boot/nest-boot 准备脱敏最小复现和根因证据，并按用户授权创建 Issue，不提前用文档修改掩盖框架问题。",
+      "files": [],
+      "expectations": [
+        "明确改用 $nest-boot-maintainer，目标仓库选择 nest-boot/nest-boot 而不是 nest-boot/skills",
+        "Issue 包含版本、最小复现、观察行为、期望行为和源码或测试证据",
+        "不在框架行为未决时修改 Logger skill",
+        "不包含凭证、生产日志或项目私有标识"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "我们公司项目规定所有模块必须放在 src/company-modules，我觉得 nest-boot-best-practices 也应该强制所有用户这样做，直接给上游提 PR 吧。",
+      "expected_output": "识别这是项目私有目录约定，不修改通用 skill 或提交上游 PR；建议把规则保留在项目级 AGENTS.md、文档或本地 skill。",
+      "files": [],
+      "expectations": [
+        "将问题分类为业务项目私有约定",
+        "拒绝把 src/company-modules 固化为 Nest Boot 通用要求",
+        "建议使用项目级 AGENTS.md、文档或本地 skill 保存约定",
+        "不创建 GitHub issue、分支或 PR"
+      ]
+    }
+  ]
+}
