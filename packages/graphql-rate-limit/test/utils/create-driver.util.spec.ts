@@ -69,6 +69,16 @@ describe("createGraphQLRateLimitDriver", () => {
   it.each([
     ["REDIS_URL", "redis://redis.local"],
     ["REDIS_HOST", "redis.local"],
+  ])("uses Redis when %s is present", (name, value) => {
+    process.env[name] = value;
+
+    expect(createGraphQLRateLimitDriver(options)).toBeInstanceOf(
+      RedisGraphQLRateLimitDriver,
+    );
+    expect(Redis).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
     ["REDIS_PORT", "6380"],
     ["REDIS_DB", "2"],
     ["REDIS_DATABASE", "2"],
@@ -77,14 +87,17 @@ describe("createGraphQLRateLimitDriver", () => {
     ["REDIS_PASS", "pass"],
     ["REDIS_PASSWORD", "pass"],
     ["REDIS_TLS", "true"],
-  ])("uses Redis when only %s is present", (name, value) => {
-    process.env[name] = value;
+  ])(
+    "uses memory when only supplemental variable %s is present",
+    (name, value) => {
+      process.env[name] = value;
 
-    expect(createGraphQLRateLimitDriver(options)).toBeInstanceOf(
-      RedisGraphQLRateLimitDriver,
-    );
-    expect(Redis).toHaveBeenCalledTimes(1);
-  });
+      expect(createGraphQLRateLimitDriver(options)).toBeInstanceOf(
+        MemoryGraphQLRateLimitDriver,
+      );
+      expect(Redis).not.toHaveBeenCalled();
+    },
+  );
 
   it("loads individual Redis variables and aliases", () => {
     process.env.REDIS_HOST = "redis.local";
@@ -123,7 +136,7 @@ describe("createGraphQLRateLimitDriver", () => {
   });
 
   it("lets an explicit custom driver override Redis environment config", () => {
-    process.env.REDIS_PORT = "6380";
+    process.env.REDIS_HOST = "redis.local";
     const driver = {
       update: jest.fn(),
       close: jest.fn(),

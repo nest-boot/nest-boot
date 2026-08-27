@@ -391,8 +391,8 @@ export class CommonModule {}
 
 The module is directly importable without dynamic registration. It selects a driver from the environment:
 
-- When any supported Redis variable is set (`REDIS_URL`, `REDIS_HOST`, `REDIS_PORT`, `REDIS_DB` / `REDIS_DATABASE`, `REDIS_USER` / `REDIS_USERNAME`, `REDIS_PASS` / `REDIS_PASSWORD`, or `REDIS_TLS`), it uses the distributed Redis driver. `REDIS_URL` takes precedence over the individual settings.
-- When none of those variables are set, it uses the process-local memory driver.
+- When `REDIS_URL` or `REDIS_HOST` is set, it uses the distributed Redis driver. `REDIS_PORT`, database, username, password, and TLS variables supplement `REDIS_HOST`; `REDIS_URL` takes precedence over all individual settings.
+- When neither `REDIS_URL` nor `REDIS_HOST` is set, it uses the process-local memory driver.
 
 The memory driver is convenient for local development and single-process applications, but its buckets are not shared across processes or replicas. Use Redis or a custom distributed driver when limits must be global.
 

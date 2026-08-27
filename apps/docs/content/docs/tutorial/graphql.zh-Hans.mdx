@@ -391,8 +391,8 @@ export class CommonModule {}
 
 无需动态注册即可直接导入该模块。模块会根据环境变量自动选择驱动：
 
-- 配置任意受支持的 Redis 环境变量（`REDIS_URL`、`REDIS_HOST`、`REDIS_PORT`、`REDIS_DB` / `REDIS_DATABASE`、`REDIS_USER` / `REDIS_USERNAME`、`REDIS_PASS` / `REDIS_PASSWORD` 或 `REDIS_TLS`）时，使用分布式 Redis 驱动；其中 `REDIS_URL` 优先于各项独立配置。
-- 上述环境变量均未配置时，使用进程内 memory 驱动。
+- 配置 `REDIS_URL` 或 `REDIS_HOST` 时，使用分布式 Redis 驱动。`REDIS_PORT`、数据库、用户名、密码和 TLS 环境变量用于补充 `REDIS_HOST`；`REDIS_URL` 优先于所有独立配置。
+- `REDIS_URL` 和 `REDIS_HOST` 均未配置时，使用进程内 memory 驱动。
 
 Memory 驱动适合本地开发和单进程应用，但不同进程或副本之间不会共享限流桶。如果配额需要全局共享，请使用 Redis 或自定义分布式驱动。
 

@@ -1,25 +1,12 @@
 import { RedisOptions } from "ioredis";
 
-const REDIS_ENVIRONMENT_VARIABLES = [
-  "REDIS_URL",
-  "REDIS_HOST",
-  "REDIS_PORT",
-  "REDIS_DB",
-  "REDIS_DATABASE",
-  "REDIS_USER",
-  "REDIS_USERNAME",
-  "REDIS_PASS",
-  "REDIS_PASSWORD",
-  "REDIS_TLS",
-] as const;
-
 /**
- * Checks whether any supported Redis environment variable is configured.
- * @returns Whether environment-driven Redis configuration is present
+ * Checks whether a Redis endpoint is configured in the environment.
+ * @returns Whether `REDIS_URL` or `REDIS_HOST` is present
  * @internal
  */
 export function hasRedisConfigFromEnv(): boolean {
-  return REDIS_ENVIRONMENT_VARIABLES.some((name) => !!process.env[name]);
+  return [process.env.REDIS_URL, process.env.REDIS_HOST].some(Boolean);
 }
 
 /**
