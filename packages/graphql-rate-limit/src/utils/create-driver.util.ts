@@ -21,13 +21,14 @@ export function createGraphQLRateLimitDriver(
     return options.driver;
   }
 
-  if (!process.env.REDIS_URL) {
+  const redisUrl = process.env.REDIS_URL;
+  if (!redisUrl) {
     return new MemoryGraphQLRateLimitDriver();
   }
 
   return new RedisGraphQLRateLimitDriver(
     new Redis({
-      ...loadConfigFromEnv(),
+      ...loadConfigFromEnv(redisUrl),
       ...options.connection,
     }),
   );

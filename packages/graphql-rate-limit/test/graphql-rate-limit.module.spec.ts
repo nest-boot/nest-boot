@@ -74,4 +74,24 @@ describe("GraphQLRateLimitModule", () => {
     await moduleRef.close();
     expect(close).toHaveBeenCalledTimes(1);
   });
+
+  it("registers an asynchronously supplied custom driver", async () => {
+    const customDriver = {
+      update: jest.fn(),
+      close: jest.fn(),
+    } as unknown as GraphQLRateLimitDriver;
+    const moduleRef = await Test.createTestingModule({
+      imports: [
+        GraphQLRateLimitModule.forRootAsync({
+          useFactory: () => ({ driver: customDriver }),
+        }),
+      ],
+    })
+      .overrideProvider(GraphQLRateLimitPlugin)
+      .useValue({})
+      .compile();
+
+    expect(moduleRef.get(GraphQLRateLimitDriver)).toBe(customDriver);
+    await moduleRef.close();
+  });
 });
