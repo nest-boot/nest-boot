@@ -1,3 +1,12 @@
+## 7.3.1 (2026-08-27)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 7.3.1
+- Updated @nest-boot/eslint-plugin to 7.2.1
+- Updated @nest-boot/tsconfig to 7.3.1
+- Updated @nest-boot/graphql to 7.3.1
+
 ## 7.3.0 (2026-08-12)
 
 ### 🧱 Updated Dependencies

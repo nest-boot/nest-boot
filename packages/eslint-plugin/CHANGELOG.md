@@ -1,3 +1,9 @@
+## 7.2.1 (2026-08-27)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/tsconfig to 7.3.1
+
 ## 7.2.0 (2026-08-12)
 
 ### 🧱 Updated Dependencies

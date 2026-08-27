@@ -1,3 +1,19 @@
+## 7.3.1 (2026-08-27)
+
+### 🚀 Features
+
+- **graphql-rate-limit:** support pluggable drivers ([#278](https://github.com/nest-boot/nest-boot/pull/278))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 7.3.1
+- Updated @nest-boot/eslint-plugin to 7.2.1
+- Updated @nest-boot/tsconfig to 7.3.1
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 7.3.0 (2026-08-12)
 
 ### 🧱 Updated Dependencies
