@@ -370,7 +370,7 @@ export class CommonModule {}
 
 ## GraphQL Rate Limiting
 
-The `@nest-boot/graphql-rate-limit` module provides Shopify-style query complexity rate limiting using a Redis-backed leaky bucket algorithm.
+The `@nest-boot/graphql-rate-limit` module provides Shopify-style query complexity rate limiting using a pluggable leaky bucket storage driver.
 
 ### Installation
 
@@ -384,8 +384,33 @@ pnpm add @nest-boot/graphql-rate-limit graphql-query-complexity
 import { GraphQLRateLimitModule } from "@nest-boot/graphql-rate-limit";
 
 @Module({
+  imports: [GraphQLRateLimitModule],
+})
+export class CommonModule {}
+```
+
+The module is directly importable without dynamic registration. It selects a driver from the environment:
+
+- When `REDIS_URL` is set, it uses the distributed Redis driver.
+- When `REDIS_URL` is absent, it uses the process-local memory driver.
+
+The memory driver is convenient for local development and single-process applications, but its buckets are not shared across processes or replicas. Use Redis or a custom distributed driver when limits must be global.
+
+Use `forRoot()` when you need to change thresholds or provide an explicit driver:
+
+```typescript
+import {
+  GraphQLRateLimitDriver,
+  GraphQLRateLimitModule,
+  MemoryGraphQLRateLimitDriver,
+} from "@nest-boot/graphql-rate-limit";
+
+const driver: GraphQLRateLimitDriver = new MemoryGraphQLRateLimitDriver();
+
+@Module({
   imports: [
     GraphQLRateLimitModule.forRoot({
+      driver,
       maxComplexity: 1000, // Max cost per query
       maximumAvailable: 1000, // Bucket capacity
       restoreRate: 50, // Points restored per second
@@ -394,6 +419,8 @@ import { GraphQLRateLimitModule } from "@nest-boot/graphql-rate-limit";
 })
 export class CommonModule {}
 ```
+
+Custom drivers extend `GraphQLRateLimitDriver` and implement its atomic `update()` method. Positive `points` consume capacity and negative `points` restore it. An explicitly configured driver takes precedence over `REDIS_URL`; `forRootAsync()` can be used when creating it requires injected dependencies.
 
 ### Custom Complexity
 

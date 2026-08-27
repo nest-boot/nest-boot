@@ -6,8 +6,8 @@ import {
   type OnApplicationShutdown,
 } from "@nestjs/common";
 import { Request } from "express";
-import Redis from "ioredis";
 
+import { GraphQLRateLimitDriver } from "./drivers";
 import {
   ASYNC_OPTIONS_TYPE,
   ConfigurableModuleClass,
@@ -21,23 +21,19 @@ import {
   GraphQLRateLimitModuleOptions,
   GraphQLRateLimitOptions,
 } from "./interfaces";
-import { loadConfigFromEnv } from "./utils/load-config-from-env.util";
+import { createGraphQLRateLimitDriver } from "./utils/create-driver.util";
 
 /**
- * GraphQL rate limiting module using Redis-backed leaky bucket algorithm.
+ * GraphQL rate limiting module using a pluggable leaky bucket driver.
  *
  * @remarks
  * Provides query complexity analysis and rate limiting for GraphQL operations.
- * Uses Redis for distributed rate limit state and supports custom ID extraction.
+ * Uses process-local memory by default, Redis when `REDIS_URL` is set, and
+ * supports explicit custom drivers and custom ID extraction.
  *
- * The module automatically loads Redis connection from environment variables if not provided:
- * - `REDIS_URL`: Full Redis connection URL (e.g., `redis://user:pass@host:6379/0`)
- * - `REDIS_HOST`: Redis server hostname
- * - `REDIS_PORT`: Redis server port
- * - `REDIS_DB` or `REDIS_DATABASE`: Redis database number
- * - `REDIS_USER` or `REDIS_USERNAME`: Redis username
- * - `REDIS_PASS` or `REDIS_PASSWORD`: Redis password
- * - `REDIS_TLS`: Enable TLS connection
+ * The module can be imported directly without dynamic registration. It selects
+ * Redis when `REDIS_URL` is present and memory otherwise. An explicit `driver`
+ * option overrides automatic selection.
  */
 @Global()
 @Module({
@@ -45,13 +41,9 @@ import { loadConfigFromEnv } from "./utils/load-config-from-env.util";
     GraphQLRateLimitPlugin,
     GraphQLRateLimitStorage,
     {
-      provide: Redis,
+      provide: GraphQLRateLimitDriver,
       inject: [OPTIONS_TOKEN],
-      useFactory: (options: GraphQLRateLimitOptions) =>
-        new Redis({
-          ...loadConfigFromEnv(),
-          ...options.connection,
-        }),
+      useFactory: createGraphQLRateLimitDriver,
     },
     {
       provide: OPTIONS_TOKEN,
@@ -60,6 +52,7 @@ import { loadConfigFromEnv } from "./utils/load-config-from-env.util";
         options?: GraphQLRateLimitModuleOptions,
       ): GraphQLRateLimitOptions => {
         return {
+          driver: options?.driver,
           connection: options?.connection,
           maxComplexity: options?.maxComplexity ?? 1000,
           defaultComplexity: options?.defaultComplexity ?? 0,
@@ -84,7 +77,7 @@ import { loadConfigFromEnv } from "./utils/load-config-from-env.util";
       },
     },
   ],
-  exports: [OPTIONS_TOKEN],
+  exports: [GraphQLRateLimitDriver, OPTIONS_TOKEN],
 })
 export class GraphQLRateLimitModule
   extends ConfigurableModuleClass
@@ -92,7 +85,7 @@ export class GraphQLRateLimitModule
 {
   /**
    * Registers the GraphQLRateLimitModule with the given options.
-   * @param options - Configuration options including rate limit thresholds and Redis connection
+   * @param options - Configuration options including thresholds and storage driver
    * @returns Dynamic module configuration
    */
   static override forRoot(options: typeof OPTIONS_TYPE): DynamicModule {
@@ -110,17 +103,16 @@ export class GraphQLRateLimitModule
     return super.forRootAsync(options);
   }
 
-  /** Creates a new GraphQLRateLimitModule instance.
-   * @param redis - The ioredis client instance
+  /**
+   * Creates a new GraphQLRateLimitModule instance.
+   * @param driver - Selected rate limit storage driver
    */
-  constructor(private readonly redis: Redis) {
+  constructor(private readonly driver: GraphQLRateLimitDriver) {
     super();
   }
 
-  /**
-   * Gracefully closes the Redis connection when the application shuts down.
-   */
+  /** Gracefully closes the selected driver when the application shuts down. */
   async onApplicationShutdown(): Promise<void> {
-    await this.redis.quit();
+    await this.driver.close();
   }
 }
