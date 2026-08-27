@@ -33,7 +33,8 @@ import { createGraphQLRateLimitDriver } from "./utils/create-driver.util";
  *
  * The module can be imported directly without dynamic registration. It selects
  * Redis when an environment-driven Redis endpoint is present and memory otherwise.
- * An explicit `driver` option overrides automatic selection.
+ * An explicit Redis `connection` also selects Redis, while an explicit `driver`
+ * overrides all automatic selection.
  */
 @Global()
 @Module({

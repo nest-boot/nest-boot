@@ -24,7 +24,7 @@ export function createGraphQLRateLimitDriver(
     return options.driver;
   }
 
-  if (!hasRedisConfigFromEnv()) {
+  if (!options.connection && !hasRedisConfigFromEnv()) {
     return new MemoryGraphQLRateLimitDriver();
   }
 

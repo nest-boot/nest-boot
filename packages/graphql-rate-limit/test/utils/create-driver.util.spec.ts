@@ -119,6 +119,18 @@ describe("createGraphQLRateLimitDriver", () => {
     });
   });
 
+  it("uses Redis when connection options are provided without endpoint env", () => {
+    const connection = {
+      host: "configured.redis",
+      port: 6380,
+    };
+
+    expect(
+      createGraphQLRateLimitDriver({ ...options, connection }),
+    ).toBeInstanceOf(RedisGraphQLRateLimitDriver);
+    expect(Redis).toHaveBeenCalledWith(expect.objectContaining(connection));
+  });
+
   it("lets REDIS_URL take precedence over individual Redis variables", () => {
     process.env.REDIS_URL = "redis://url-user:url-pass@url.redis:6380/3";
     process.env.REDIS_HOST = "ignored.redis";
