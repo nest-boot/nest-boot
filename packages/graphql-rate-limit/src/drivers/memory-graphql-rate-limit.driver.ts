@@ -1,3 +1,5 @@
+import { TTLCache } from "@isaacs/ttlcache";
+
 import {
   GraphQLRateLimitDriver,
   GraphQLRateLimitDriverInput,
@@ -6,7 +8,6 @@ import {
 
 interface MemoryBucket {
   currentlyAvailable: number;
-  expiresAt: number;
   updatedAt: number;
 }
 
@@ -18,7 +19,9 @@ interface MemoryBucket {
  * the Redis driver or a custom distributed driver when limits must be global.
  */
 export class MemoryGraphQLRateLimitDriver extends GraphQLRateLimitDriver {
-  private readonly buckets = new Map<string, MemoryBucket>();
+  private readonly buckets = new TTLCache<string, MemoryBucket>({
+    checkAgeOnGet: true,
+  });
 
   /**
    * Applies an atomic in-process bucket update.
@@ -33,14 +36,10 @@ export class MemoryGraphQLRateLimitDriver extends GraphQLRateLimitDriver {
       input.maximumAvailable / input.restoreRate,
     );
     const storedBucket = this.buckets.get(input.key);
-    const bucket =
-      storedBucket && storedBucket.expiresAt > now
-        ? storedBucket
-        : {
-            currentlyAvailable: input.maximumAvailable,
-            expiresAt: now + expirationSeconds,
-            updatedAt: now,
-          };
+    const bucket = storedBucket ?? {
+      currentlyAvailable: input.maximumAvailable,
+      updatedAt: now,
+    };
 
     const intervalSeconds = now - bucket.updatedAt;
     if (intervalSeconds > 0) {
@@ -51,7 +50,6 @@ export class MemoryGraphQLRateLimitDriver extends GraphQLRateLimitDriver {
     }
 
     bucket.updatedAt = now;
-    bucket.expiresAt = now + expirationSeconds;
 
     const nextAvailable = bucket.currentlyAvailable - input.points;
     const blocked = nextAvailable < 0;
@@ -59,7 +57,9 @@ export class MemoryGraphQLRateLimitDriver extends GraphQLRateLimitDriver {
       bucket.currentlyAvailable = nextAvailable;
     }
 
-    this.buckets.set(input.key, bucket);
+    this.buckets.set(input.key, bucket, {
+      ttl: expirationSeconds * 1000,
+    });
 
     return Promise.resolve({
       blocked,
@@ -70,5 +70,6 @@ export class MemoryGraphQLRateLimitDriver extends GraphQLRateLimitDriver {
   /** Clears all process-local buckets. */
   override close(): void {
     this.buckets.clear();
+    this.buckets.cancelTimer();
   }
 }

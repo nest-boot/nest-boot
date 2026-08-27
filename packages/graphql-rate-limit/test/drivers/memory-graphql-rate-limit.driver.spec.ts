@@ -1,9 +1,16 @@
-import { MemoryGraphQLRateLimitDriver } from "../../src/drivers/memory-graphql-rate-limit.driver";
+import type { GraphQLRateLimitDriverInput } from "../../src";
+
+let GraphQLRateLimitDriver: typeof import("../../src").GraphQLRateLimitDriver;
+let MemoryGraphQLRateLimitDriver: typeof import("../../src").MemoryGraphQLRateLimitDriver;
 
 describe("MemoryGraphQLRateLimitDriver", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    jest.resetModules();
     jest.useFakeTimers();
     jest.setSystemTime(new Date("2026-08-27T00:00:00.000Z"));
+
+    ({ GraphQLRateLimitDriver, MemoryGraphQLRateLimitDriver } =
+      await import("../../src"));
   });
 
   afterEach(() => {
@@ -99,6 +106,40 @@ describe("MemoryGraphQLRateLimitDriver", () => {
     });
   });
 
+  it("evicts idle buckets when another update observes their expiration", async () => {
+    const driver = new MemoryGraphQLRateLimitDriver();
+    const buckets = (
+      driver as unknown as {
+        buckets: { keys(): IterableIterator<string> };
+      }
+    ).buckets;
+
+    await driver.update({
+      key: "graphql-rate-limit:idle",
+      maximumAvailable: 10,
+      restoreRate: 2,
+      points: 1,
+    });
+    await driver.update({
+      key: "graphql-rate-limit:long-lived",
+      maximumAvailable: 60,
+      restoreRate: 1,
+      points: 1,
+    });
+    jest.advanceTimersByTime(5000);
+    await driver.update({
+      key: "graphql-rate-limit:active",
+      maximumAvailable: 60,
+      restoreRate: 1,
+      points: 1,
+    });
+
+    expect([...buckets.keys()]).toEqual([
+      "graphql-rate-limit:long-lived",
+      "graphql-rate-limit:active",
+    ]);
+  });
+
   it("clears buckets when closed", async () => {
     const driver = new MemoryGraphQLRateLimitDriver();
     const input = {
@@ -115,5 +156,17 @@ describe("MemoryGraphQLRateLimitDriver", () => {
       blocked: false,
       currentlyAvailable: 9,
     });
+  });
+
+  it("provides an optional no-op close implementation for custom drivers", () => {
+    class CustomDriver extends GraphQLRateLimitDriver {
+      update(
+        _input: GraphQLRateLimitDriverInput,
+      ): Promise<{ blocked: boolean; currentlyAvailable: number }> {
+        return Promise.resolve({ blocked: false, currentlyAvailable: 0 });
+      }
+    }
+
+    expect(new CustomDriver().close()).toBeUndefined();
   });
 });
