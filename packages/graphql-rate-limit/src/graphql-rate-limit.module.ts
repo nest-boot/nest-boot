@@ -28,12 +28,12 @@ import { createGraphQLRateLimitDriver } from "./utils/create-driver.util";
  *
  * @remarks
  * Provides query complexity analysis and rate limiting for GraphQL operations.
- * Uses process-local memory by default, Redis when `REDIS_URL` is set, and
- * supports explicit custom drivers and custom ID extraction.
+ * Uses process-local memory by default, Redis when supported Redis environment
+ * variables are set, and supports explicit custom drivers and ID extraction.
  *
  * The module can be imported directly without dynamic registration. It selects
- * Redis when `REDIS_URL` is present and memory otherwise. An explicit `driver`
- * option overrides automatic selection.
+ * Redis when environment-driven Redis configuration is present and memory
+ * otherwise. An explicit `driver` option overrides automatic selection.
  */
 @Global()
 @Module({

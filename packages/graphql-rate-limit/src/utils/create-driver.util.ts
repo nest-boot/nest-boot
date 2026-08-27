@@ -6,7 +6,10 @@ import {
   RedisGraphQLRateLimitDriver,
 } from "../drivers";
 import { GraphQLRateLimitOptions } from "../interfaces";
-import { loadConfigFromEnv } from "./load-config-from-env.util";
+import {
+  hasRedisConfigFromEnv,
+  loadConfigFromEnv,
+} from "./load-config-from-env.util";
 
 /**
  * Creates the explicitly configured driver or selects a built-in default.
@@ -21,14 +24,13 @@ export function createGraphQLRateLimitDriver(
     return options.driver;
   }
 
-  const redisUrl = process.env.REDIS_URL;
-  if (!redisUrl) {
+  if (!hasRedisConfigFromEnv()) {
     return new MemoryGraphQLRateLimitDriver();
   }
 
   return new RedisGraphQLRateLimitDriver(
     new Redis({
-      ...loadConfigFromEnv(redisUrl),
+      ...loadConfigFromEnv(),
       ...options.connection,
     }),
   );
