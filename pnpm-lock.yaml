@@ -799,6 +799,10 @@ importers:
         version: 5.9.3
 
   packages/graphql-rate-limit:
+    dependencies:
+      '@isaacs/ttlcache':
+        specifier: ^2.1.5
+        version: 2.1.5
     devDependencies:
       '@apollo/server':
         specifier: ^5.2.0
@@ -3236,6 +3240,10 @@ packages:
 
   '@ioredis/commands@1.4.0':
     resolution: {integrity: sha512-aFT2yemJJo+TZCmieA7qnYGQooOS7QfNmYrzGtsYd3g9j5iDP8AimYYAesf79ohjbLG12XxC4nG5DyEnC88AsQ==}
+
+  '@isaacs/ttlcache@2.1.5':
+    resolution: {integrity: sha512-VwGZqqjAWPICTmxUZnbpEfO60LhPWzquik+bmyXGY7pYRn6diEvCI5i6Ca+J6o2y4vS73HrpuMTo2dOvUevH8w==}
+    engines: {node: '>=12'}
 
   '@istanbuljs/load-nyc-config@1.1.0':
     resolution: {integrity: sha512-VjeHSlIzpv/NyD3N0YuHfXOPDIixcA1q2ZV98wsMqcYlPmv2n3Yb2lYP9XMElnaFVXg5A7YLTeLu6V84uQDjmQ==}
@@ -10888,6 +10896,8 @@ snapshots:
     optional: true
 
   '@ioredis/commands@1.4.0': {}
+
+  '@isaacs/ttlcache@2.1.5': {}
 
   '@istanbuljs/load-nyc-config@1.1.0':
     dependencies:

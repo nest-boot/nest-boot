@@ -3,13 +3,11 @@
 import {
   type ApolloServerPlugin,
   type BaseContext,
-  GraphQLRequestContext,
   type GraphQLRequestListener,
 } from "@apollo/server";
 import { GraphQLSchemaHost } from "@nest-boot/graphql";
 import { Plugin } from "@nestjs/apollo";
 import { HttpException } from "@nestjs/common";
-import { Request } from "express";
 import {
   GraphQLEnumType,
   GraphQLInterfaceType,
@@ -71,13 +69,6 @@ export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
 
   private readonly maxComplexity: number = 1000;
   private readonly defaultComplexity: number = 0;
-
-  private readonly rateLimitGetId = (
-    args: GraphQLRequestContext<BaseContext>,
-  ) => {
-    const req = (args.contextValue as { req: Request }).req;
-    return req.ips.length ? req.ips[0] : req.ip;
-  };
 
   constructor(
     private readonly storage: GraphQLRateLimitStorage,

@@ -1,16 +1,19 @@
 import { RedisOptions } from "ioredis";
 
 /**
+ * Checks whether a Redis endpoint is configured in the environment.
+ * @returns Whether `REDIS_URL` or `REDIS_HOST` is present
+ * @internal
+ */
+export function hasRedisConfigFromEnv(): boolean {
+  return [process.env.REDIS_URL, process.env.REDIS_HOST].some(Boolean);
+}
+
+/**
  * Loads Redis connection configuration from environment variables.
  *
- * Supports the following environment variables:
- * - `REDIS_URL`: Full Redis connection URL (takes precedence over individual settings)
- * - `REDIS_HOST`: Redis server hostname
- * - `REDIS_PORT`: Redis server port
- * - `REDIS_DB` or `REDIS_DATABASE`: Redis database number
- * - `REDIS_USER` or `REDIS_USERNAME`: Redis username
- * - `REDIS_PASS` or `REDIS_PASSWORD`: Redis password
- * - `REDIS_TLS`: Enable TLS connection (any truthy value)
+ * Supports the same variables and aliases as `@nest-boot/redis`. `REDIS_URL`
+ * takes precedence over individual settings.
  *
  * @returns Redis connection options parsed from environment variables
  */
@@ -38,11 +41,11 @@ export function loadConfigFromEnv(): RedisOptions {
   const tls = !!process.env.REDIS_TLS;
 
   return {
-    ...(host ? { host } : {}),
+    host,
     ...(port ? { port: +port } : {}),
     ...(database ? { db: +database } : {}),
-    ...(username ? { username } : {}),
-    ...(password ? { password } : {}),
+    username,
+    password,
     ...(tls ? { tls: {} } : {}),
   };
 }

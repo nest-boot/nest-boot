@@ -1,15 +1,22 @@
 import { BaseContext, GraphQLRequestContext } from "@apollo/server";
 import { RedisOptions } from "ioredis";
 
+import { GraphQLRateLimitDriver } from "../drivers";
+
 /** Configuration options for GraphQL rate limiting. */
 export interface GraphQLRateLimitOptions {
-  /** Redis connection options for rate limit state storage. */
+  /**
+   * Explicit storage driver. When omitted, Redis is used if `connection`,
+   * `REDIS_URL`, or `REDIS_HOST` is set; otherwise memory is used.
+   */
+  driver?: GraphQLRateLimitDriver;
+  /** Redis options that select and configure the built-in Redis driver. */
   connection?: RedisOptions;
   /** Maximum allowed query complexity per request. */
   maxComplexity: number;
   /** Default complexity assigned to fields without explicit `@complexity` directives. */
   defaultComplexity: number;
-  /** Redis key prefix for rate limit state. */
+  /** Key prefix for rate limit state. */
   keyPrefix: string;
   /** Rate at which cost budget restores (points per second). */
   restoreRate: number;

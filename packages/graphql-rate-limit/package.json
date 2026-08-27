@@ -33,6 +33,9 @@
     "test:watch": "jest --watch",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand"
   },
+  "dependencies": {
+    "@isaacs/ttlcache": "^2.1.5"
+  },
   "devDependencies": {
     "@apollo/server": "^5.2.0",
     "@nest-boot/eslint-config": "workspace:^",
