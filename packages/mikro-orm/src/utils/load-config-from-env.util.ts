@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -37,10 +38,42 @@ function normalizeHostname(hostname: string): string {
   return hostname;
 }
 
-function loadQueryConfig(
+async function loadPostgreSqlTlsFiles(
+  connection: Record<string, unknown>,
+): Promise<void> {
+  const ssl =
+    typeof connection.ssl === "object" && connection.ssl !== null
+      ? (connection.ssl as Record<string, unknown>)
+      : {};
+  const tlsFiles = [
+    ["sslrootcert", "ca"],
+    ["sslcert", "cert"],
+    ["sslkey", "key"],
+  ] as const;
+  let hasTlsFile = false;
+
+  for (const [queryKey, sslKey] of tlsFiles) {
+    const path = connection[queryKey];
+
+    if (typeof path === "string" && path) {
+      ssl[sslKey] = await readFile(path, "utf8");
+      hasTlsFile = true;
+    }
+  }
+
+  delete connection.sslrootcert;
+  delete connection.sslcert;
+  delete connection.sslkey;
+
+  if (hasTlsFile) {
+    connection.ssl = ssl;
+  }
+}
+
+async function loadQueryConfig(
   url: URL,
   protocol: string,
-): Pick<HostConfig, "driverOptions" | "schema"> {
+): Promise<Pick<HostConfig, "driverOptions" | "schema">> {
   const connection: Record<string, unknown> = {};
 
   url.searchParams.forEach((value, key) => {
@@ -66,18 +99,27 @@ function loadQueryConfig(
       connection.ssl = false;
     }
 
+    await loadPostgreSqlTlsFiles(connection);
+
     switch (connection.sslmode) {
       case "disable":
         connection.ssl = false;
         break;
       case "no-verify":
-        connection.ssl = { rejectUnauthorized: false };
+        connection.ssl = {
+          ...(typeof connection.ssl === "object" && connection.ssl !== null
+            ? connection.ssl
+            : {}),
+          rejectUnauthorized: false,
+        };
         break;
       case "prefer":
       case "require":
       case "verify-ca":
       case "verify-full":
-        connection.ssl = {};
+        if (typeof connection.ssl !== "object" || connection.ssl === null) {
+          connection.ssl = {};
+        }
         break;
     }
 
@@ -177,7 +219,7 @@ export async function loadConfigFromEnv(): Promise<DriverConfig & HostConfig> {
       dbName: dbName ? decodeURIComponent(dbName) : undefined,
       user: decodeURIComponent(url.username),
       password: decodeURIComponent(url.password),
-      ...loadQueryConfig(url, url.protocol),
+      ...(await loadQueryConfig(url, url.protocol)),
     };
   }
 

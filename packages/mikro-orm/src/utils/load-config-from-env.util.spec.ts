@@ -1,3 +1,7 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { BetterSqliteDriver } from "@mikro-orm/better-sqlite";
 import { Configuration, DataloaderType, type Options } from "@mikro-orm/core";
 import { MySqlDriver } from "@mikro-orm/mysql";
@@ -155,6 +159,42 @@ describe("loadConfigFromEnv", () => {
       port: 0,
       user: "",
     });
+  });
+
+  it("should load PostgreSQL TLS files into structured SSL options", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "nest-boot-mikro-orm-"));
+    const rootCert = join(directory, "root.crt");
+    const clientCert = join(directory, "client.crt");
+    const clientKey = join(directory, "client.key");
+
+    try {
+      await Promise.all([
+        writeFile(rootCert, "root certificate"),
+        writeFile(clientCert, "client certificate"),
+        writeFile(clientKey, "client key"),
+      ]);
+
+      const databaseUrl = new URL("postgresql://user:pass@localhost/app");
+      databaseUrl.searchParams.set("sslmode", "verify-full");
+      databaseUrl.searchParams.set("sslrootcert", rootCert);
+      databaseUrl.searchParams.set("sslcert", clientCert);
+      databaseUrl.searchParams.set("sslkey", clientKey);
+      process.env.DATABASE_URL = databaseUrl.href;
+
+      await expect(loadConfigFromEnv()).resolves.toMatchObject({
+        driverOptions: {
+          connection: {
+            ssl: {
+              ca: "root certificate",
+              cert: "client certificate",
+              key: "client key",
+            },
+          },
+        },
+      });
+    } finally {
+      await rm(directory, { force: true, recursive: true });
+    }
   });
 
   it("should reject unsupported database URL protocols", async () => {
