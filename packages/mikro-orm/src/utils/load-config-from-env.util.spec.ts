@@ -108,7 +108,7 @@ describe("loadConfigFromEnv", () => {
     });
   });
 
-  it("should support the postgres protocol alias", async () => {
+  it("should load the postgres PostgreSQL URI form", async () => {
     process.env.DATABASE_URL = "postgres://user:pass@localhost/app";
 
     await expect(loadConfigFromEnv()).resolves.toMatchObject({
@@ -264,6 +264,17 @@ describe("loadConfigFromEnv", () => {
 
     await expect(loadConfigFromEnv()).rejects.toThrow(error);
   });
+
+  it.each(["mysql2://localhost/app", "sqlite:///var/lib/app.db"])(
+    "should reject non-standard database URL %s",
+    async (databaseUrl) => {
+      process.env.DATABASE_URL = databaseUrl;
+
+      await expect(loadConfigFromEnv()).rejects.toThrow(
+        `Unsupported DATABASE_URL protocol: ${new URL(databaseUrl).protocol}`,
+      );
+    },
+  );
 
   it("should reject unsupported database URL protocols", async () => {
     process.env.DATABASE_URL = "mongodb://localhost/app";
