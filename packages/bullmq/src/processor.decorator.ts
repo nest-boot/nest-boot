@@ -9,7 +9,7 @@ import {
 } from "@nestjs/bullmq";
 import { NestWorkerOptions } from "@nestjs/bullmq/dist/interfaces/worker-options.interface";
 import { Type } from "@nestjs/common";
-import { Job, Worker } from "bullmq";
+import { Processor as BullMQProcessor, Worker } from "bullmq";
 
 /**
  * Decorator that marks a class as a BullMQ queue processor.
@@ -56,9 +56,12 @@ export function Processor<T extends Worker = Worker>(
   maybeWorkerOptions?: NestWorkerOptions,
 ) {
   return (target: Type<WorkerHost<T>>) => {
-    const originalProcess = target.prototype.process;
+    const originalProcess = target.prototype.process as BullMQProcessor;
     if (originalProcess) {
-      target.prototype.process = async function (job: Job, token?: string) {
+      target.prototype.process = async function (
+        ...args: Parameters<BullMQProcessor>
+      ) {
+        const [job] = args;
         const ctx = new RequestContext({
           id: job.id,
           type: "queue",
@@ -67,7 +70,7 @@ export function Processor<T extends Worker = Worker>(
         ctx.set(JOB_REF, job);
 
         return await RequestContext.run(ctx, () =>
-          originalProcess.call(this, job, token),
+          originalProcess.apply(this, args),
         );
       };
     }
