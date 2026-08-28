@@ -1206,6 +1206,9 @@ importers:
         specifier: ^15.6.9
         version: 15.6.12
     devDependencies:
+      '@mikro-orm/better-sqlite':
+        specifier: ^6.6.2
+        version: 6.6.2
       '@mikro-orm/core':
         specifier: ^6.6.2
         version: 6.6.2

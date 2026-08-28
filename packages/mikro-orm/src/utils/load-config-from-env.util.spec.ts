@@ -1,4 +1,5 @@
-import { DataloaderType, type Options } from "@mikro-orm/core";
+import { BetterSqliteDriver } from "@mikro-orm/better-sqlite";
+import { Configuration, DataloaderType, type Options } from "@mikro-orm/core";
 import { MySqlDriver } from "@mikro-orm/mysql";
 import { PostgreSqlDriver } from "@mikro-orm/postgresql";
 import { TsMorphMetadataProvider } from "@mikro-orm/reflection";
@@ -75,9 +76,32 @@ describe("loadConfigFromEnv", () => {
     });
   });
 
+  it("should support the postgres protocol alias", async () => {
+    process.env.DATABASE_URL = "postgres://user:pass@localhost/app";
+
+    await expect(loadConfigFromEnv()).resolves.toMatchObject({
+      dbName: "app",
+      driver: PostgreSqlDriver,
+      host: "localhost",
+      password: "pass",
+      user: "user",
+    });
+  });
+
+  it("should load a file URL as SQLite config", async () => {
+    process.env.DATABASE_URL = "file:///var/lib/nest-boot/app%20data.db";
+
+    await expect(loadConfigFromEnv()).resolves.toMatchObject({
+      dbName: "/var/lib/nest-boot/app data.db",
+      driver: BetterSqliteDriver,
+    });
+  });
+
   it.each([
     ["mysql", "ssl=true", { ssl: true }],
     ["mysql", "ssl=false", { ssl: false }],
+    ["postgresql", "ssl=true", { ssl: true }],
+    ["postgresql", "ssl=0", { ssl: false }],
     ["postgresql", "sslmode=disable", { ssl: false }],
     ["postgresql", "sslmode=no-verify", { ssl: { rejectUnauthorized: false } }],
   ])(
@@ -92,6 +116,54 @@ describe("loadConfigFromEnv", () => {
       });
     },
   );
+
+  it("should use mysql2-compatible query value coercion", async () => {
+    process.env.DATABASE_URL =
+      "mysql://user:pass@localhost/app?multipleStatements=false&compress=true&connectTimeout=1000&charset=utf8mb4";
+
+    await expect(loadConfigFromEnv()).resolves.toMatchObject({
+      driverOptions: {
+        connection: {
+          charset: "utf8mb4",
+          compress: true,
+          connectTimeout: 1000,
+          multipleStatements: false,
+        },
+      },
+    });
+  });
+
+  it("should preserve omitted URL credentials and port", async () => {
+    process.env.DATABASE_URL = "postgresql://db.internal/app";
+
+    const config = await loadConfigFromEnv();
+
+    expect(config).toMatchObject({
+      host: "db.internal",
+      password: "",
+      port: 0,
+      user: "",
+    });
+
+    const mikroOrmConfig = new Configuration(config as Options, false);
+
+    expect(
+      mikroOrmConfig.getDriver().getConnection().getConnectionOptions(),
+    ).toMatchObject({
+      host: "db.internal",
+      password: "",
+      port: 0,
+      user: "",
+    });
+  });
+
+  it("should reject unsupported database URL protocols", async () => {
+    process.env.DATABASE_URL = "mongodb://localhost/app";
+
+    await expect(loadConfigFromEnv()).rejects.toThrow(
+      "Unsupported DATABASE_URL protocol: mongodb:",
+    );
+  });
 
   it("should return undefined connection fields when DATABASE_URL is absent", async () => {
     await expect(loadConfigFromEnv()).resolves.toMatchObject({

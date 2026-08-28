@@ -1,3 +1,5 @@
+import { fileURLToPath } from "node:url";
+
 import {
   Configuration,
   DataloaderType,
@@ -6,15 +8,24 @@ import {
 } from "@mikro-orm/core";
 import { TsMorphMetadataProvider } from "@mikro-orm/reflection";
 
-async function getDriver(
-  type?: string,
-): Promise<(new (config: Configuration) => IDatabaseDriver) | undefined> {
-  switch (type) {
-    case "mysql":
+/** Constructor type for a MikroORM database driver. */
+export type DatabaseDriverConstructor = new (
+  config: Configuration,
+) => IDatabaseDriver;
+
+async function getDriver(protocol: string): Promise<DatabaseDriverConstructor> {
+  switch (protocol) {
+    case "file:":
+      return (await import("@mikro-orm/better-sqlite")).BetterSqliteDriver;
+    case "mysql:":
       return (await import("@mikro-orm/mysql")).MySqlDriver;
-    case "postgres":
-    case "postgresql":
+    case "postgres:":
+    case "postgresql:":
       return (await import("@mikro-orm/postgresql")).PostgreSqlDriver;
+    default:
+      throw new TypeError(
+        `Unsupported DATABASE_URL protocol: ${protocol || "(missing)"}`,
+      );
   }
 }
 
@@ -28,22 +39,33 @@ function normalizeHostname(hostname: string): string {
 
 function loadQueryConfig(
   url: URL,
-  dbType: string,
+  protocol: string,
 ): Pick<HostConfig, "driverOptions" | "schema"> {
-  const connection: Record<string, unknown> = Object.fromEntries(
-    url.searchParams,
-  );
+  const connection: Record<string, unknown> = {};
+
+  url.searchParams.forEach((value, key) => {
+    if (protocol === "mysql:") {
+      try {
+        connection[key] = JSON.parse(value) as unknown;
+      } catch {
+        connection[key] = value;
+      }
+    } else {
+      connection[key] = value;
+    }
+  });
+
   const schema = url.searchParams.get("schema") ?? undefined;
 
   delete connection.schema;
 
-  if (connection.ssl === "true" || connection.ssl === "1") {
-    connection.ssl = true;
-  } else if (connection.ssl === "false" || connection.ssl === "0") {
-    connection.ssl = false;
-  }
+  if (protocol === "postgres:" || protocol === "postgresql:") {
+    if (connection.ssl === "true" || connection.ssl === "1") {
+      connection.ssl = true;
+    } else if (connection.ssl === "0") {
+      connection.ssl = false;
+    }
 
-  if (dbType === "postgres" || dbType === "postgresql") {
     switch (connection.sslmode) {
       case "disable":
         connection.ssl = false;
@@ -58,6 +80,8 @@ function loadQueryConfig(
         connection.ssl = {};
         break;
     }
+
+    delete connection.sslmode;
   }
 
   return {
@@ -65,11 +89,6 @@ function loadQueryConfig(
     driverOptions: Object.keys(connection).length ? { connection } : undefined,
   };
 }
-
-/** Constructor type for a MikroORM database driver. */
-export type DatabaseDriverConstructor = new (
-  config: Configuration,
-) => IDatabaseDriver;
 
 /** Database driver configuration for MikroORM. */
 export interface DriverConfig {
@@ -106,8 +125,9 @@ export interface HostConfig {
  *
  * @remarks
  * Supports `DATABASE_URL`, which is parsed into individual connection options,
- * including structured query options. Its protocol resolves the database
- * driver.
+ * including structured query options. The `postgresql:` and `postgres:`
+ * protocols select PostgreSQL, `mysql:` selects MySQL, and `file:` selects
+ * SQLite.
  *
  * @returns MikroORM options derived from environment variables
  */
@@ -137,18 +157,27 @@ export async function loadConfigFromEnv(): Promise<DriverConfig & HostConfig> {
 
   if (databaseUrl) {
     const url = new URL(databaseUrl);
-    const dbType = url.protocol.replace(":", "");
+    const driver = await getDriver(url.protocol);
+
+    if (url.protocol === "file:") {
+      return {
+        ...baseConfig,
+        driver,
+        dbName: fileURLToPath(url),
+      };
+    }
+
     const dbName = url.pathname.slice(1);
 
     return {
       ...baseConfig,
-      driver: await getDriver(dbType),
+      driver,
       host: normalizeHostname(url.hostname),
-      port: url.port ? +url.port : undefined,
+      port: +url.port,
       dbName: dbName ? decodeURIComponent(dbName) : undefined,
-      user: url.username ? decodeURIComponent(url.username) : undefined,
-      password: url.password ? decodeURIComponent(url.password) : undefined,
-      ...loadQueryConfig(url, dbType),
+      user: decodeURIComponent(url.username),
+      password: decodeURIComponent(url.password),
+      ...loadQueryConfig(url, url.protocol),
     };
   }
 

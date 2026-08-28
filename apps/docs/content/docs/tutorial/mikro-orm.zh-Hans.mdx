@@ -25,7 +25,7 @@ import { MikroOrmModule } from "@nest-boot/mikro-orm";
 export class CommonModule {}
 ```
 
-不传参数时，模块使用 `loadConfigFromEnv()` 自动加载配置。它读取 `DATABASE_URL`，并把 URL 解析为 driver、host、port、数据库名、用户名、密码、schema 和结构化驱动查询选项。`postgres`/`postgresql` 与 `mysql` 协议会选择对应驱动。非 URL 配置或调试日志请显式传入模块选项。
+不传参数时，模块使用 `loadConfigFromEnv()` 自动加载配置。它读取 `DATABASE_URL`，并解析为结构化 MikroORM 选项，而不会把 URL 交给数据库客户端解析。支持的 scheme 是 PostgreSQL 的 `postgresql:` 及其 `postgres:` 别名、MySQL 的 `mysql:`，以及 SQLite 的 `file:`。SQLite 请使用 `file:///var/lib/app/app.db` 这样的绝对文件 URL。非 URL 配置或调试日志请显式传入模块选项。
 
 默认配置从 `dist/**/*.entity.js` 发现运行时实体，从 `src/**/*.entity.ts` 发现 TypeScript 实体，使用 `TsMorphMetadataProvider`，启用 MikroORM DataLoader，并把 migration 与 seeder 放在 `src/database`（构建后为 `dist/database`）下。
 
