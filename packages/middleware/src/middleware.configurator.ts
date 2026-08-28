@@ -116,10 +116,10 @@ export class MiddlewareConfigurator {
       this.manager.middlewareConfigMap.set(middleware, {
         middleware: (req, res, next) => {
           if ("use" in middleware) {
-            middleware.use(req, res, next);
-          } else {
-            middleware(req, res, next);
+            return middleware.use(req, res, next);
           }
+
+          return middleware(req, res, next);
         },
         routes,
         excludeRoutes: this.excludeRoutes,
