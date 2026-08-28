@@ -1,4 +1,5 @@
 import { DataloaderType, EntityManager, MikroORM } from "@mikro-orm/core";
+import { PostgreSqlDriver } from "@mikro-orm/postgresql";
 
 jest.mock("@mikro-orm/nestjs", () => ({
   MikroOrmModule: {
@@ -114,10 +115,14 @@ describe("MikroOrmModule", () => {
 
     try {
       await expect(
-        getRootOptionsFactory()({ debug: true }),
+        getRootOptionsFactory()({
+          debug: true,
+          driver: PostgreSqlDriver,
+        }),
       ).resolves.toMatchObject({
         dbName: "ambient",
         debug: true,
+        driver: PostgreSqlDriver,
         host: "ambient.example",
         password: "pass",
         port: 5432,

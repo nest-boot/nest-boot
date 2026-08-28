@@ -34,7 +34,7 @@ export class CommonModule {}
 
 PostgreSQL 的 TLS 文件参数使用 `sslrootcert`、`sslcert` 和 `sslkey`，支持的 `sslmode` 为 `disable`、`require`、`verify-ca` 和 `verify-full`。MySQL 使用 `ssl-ca`、`ssl-cert` 和 `ssl-key`，支持的 `ssl-mode` 为 `DISABLED`、`REQUIRED`、`VERIFY_CA` 和 `VERIFY_IDENTITY`。需要失败后回退到明文连接的模式无法用单份结构化驱动配置准确表达，因此会被拒绝。
 
-只要传入任意显式连接选项（包括 `clientUrl`、`driver`、`host` 或 `dbName`），它就会完整优先，并阻止环境中的 `DATABASE_URL` 混入该连接。`debug` 等非连接选项仍可叠加在自动环境配置上。
+显式 `clientUrl` 或 `host`、`dbName` 等 host-style 连接目标会完整优先，并阻止环境中的 `DATABASE_URL` 混入该连接。`driver`、`schema`、`pool` 或 `debug` 等补充选项仍可叠加在自动环境配置上。
 
 默认配置从 `dist/**/*.entity.js` 发现运行时实体，从 `src/**/*.entity.ts` 发现 TypeScript 实体，使用 `TsMorphMetadataProvider`，启用 MikroORM DataLoader，并把 migration 与 seeder 放在 `src/database`（构建后为 `dist/database`）下。
 

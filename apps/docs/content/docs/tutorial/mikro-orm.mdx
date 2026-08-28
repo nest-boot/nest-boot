@@ -34,7 +34,7 @@ When no connection options are passed, the module auto-loads configuration with 
 
 PostgreSQL TLS file parameters use `sslrootcert`, `sslcert`, and `sslkey`; the supported `sslmode` values are `disable`, `require`, `verify-ca`, and `verify-full`. MySQL uses `ssl-ca`, `ssl-cert`, and `ssl-key`; the supported `ssl-mode` values are `DISABLED`, `REQUIRED`, `VERIFY_CA`, and `VERIFY_IDENTITY`. Modes that require retrying with a plaintext connection are rejected because a single structured driver configuration cannot preserve that fallback behavior.
 
-Any explicit connection option, including `clientUrl`, `driver`, `host`, or `dbName`, takes full precedence and prevents ambient `DATABASE_URL` values from being merged into that connection. Non-connection options such as `debug` continue to augment automatic environment configuration.
+An explicit `clientUrl` or host-style connection target such as `host` or `dbName` takes full precedence and prevents ambient `DATABASE_URL` values from being merged into that connection. Supplemental options such as `driver`, `schema`, `pool`, or `debug` continue to augment automatic environment configuration.
 
 The default config discovers runtime entities from `dist/**/*.entity.js`, TypeScript entities from `src/**/*.entity.ts`, uses `TsMorphMetadataProvider`, enables MikroORM DataLoaders, and stores migrations and seeders under `src/database` (or `dist/database` after build).
 
