@@ -172,6 +172,33 @@ describe("MiddlewareManager", () => {
     expect(calls).toEqual(["function"]);
   });
 
+  it("preserves the promise returned by function middleware", () => {
+    const expected = Promise.resolve("done");
+    const manager = new MiddlewareManager();
+
+    manager.apply(() => expected).forRoutes("*");
+
+    const [middleware] = collectMiddlewares(manager);
+
+    expect(middleware({}, {}, jest.fn())).toBe(expected);
+  });
+
+  it("preserves the promise returned by class middleware", () => {
+    const expected = Promise.resolve("done");
+    class AsyncMiddleware implements NestMiddleware {
+      use() {
+        return expected;
+      }
+    }
+    const manager = new MiddlewareManager();
+
+    manager.apply(new AsyncMiddleware()).forRoutes("*");
+
+    const [wrappedMiddleware] = collectMiddlewares(manager);
+
+    expect(wrappedMiddleware({}, {}, jest.fn())).toBe(expected);
+  });
+
   it("can disable global exclude routes for a middleware", () => {
     const calls: string[] = [];
     const first = new FirstMiddleware("first", calls);
