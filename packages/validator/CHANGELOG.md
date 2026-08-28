@@ -1,3 +1,13 @@
+## 7.3.4 (2026-08-28)
+
+### 🩹 Fixes
+
+- **validator:** handle non-string length values ([#301](https://github.com/nest-boot/nest-boot/pull/301))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 7.3.3 (2026-08-28)
 
 ### 🧱 Updated Dependencies
