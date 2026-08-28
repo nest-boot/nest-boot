@@ -392,7 +392,7 @@ export class CommonModule {}
 
 The module is directly importable without dynamic registration. It selects a driver from the environment:
 
-- When `REDIS_URL` is set, it parses the URL and uses the distributed Redis driver. Individual `REDIS_*` connection variables are not read.
+- When `REDIS_URL` is set, it parses the URL and uses the distributed Redis driver.
 - When `REDIS_URL` is not set, it uses the process-local memory driver.
 
 Passing explicit Redis `connection` options to `forRoot()` or `forRootAsync()` also selects the Redis driver, preserving programmatic Redis configuration without environment variables. An explicit custom `driver` takes precedence over both Redis selection paths.

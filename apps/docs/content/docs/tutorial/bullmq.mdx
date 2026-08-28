@@ -25,7 +25,7 @@ import { Module } from "@nestjs/common";
 export class AppModule {}
 ```
 
-The module reads and parses `REDIS_URL` automatically. Individual `REDIS_*` connection variables are not read. You can instead call `BullModule.forRoot()` or `forRootAsync()` with an explicit BullMQ `connection`.
+The module reads and parses `REDIS_URL` automatically. You can also call `BullModule.forRoot()` or `forRootAsync()` with an explicit BullMQ `connection`.
 
 ## Defining Queues
 

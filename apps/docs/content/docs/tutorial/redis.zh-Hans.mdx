@@ -23,7 +23,7 @@ import { Module } from "@nestjs/common";
 export class AppModule {}
 ```
 
-全局模块读取 `REDIS_URL`，并将其解析为 ioredis 连接选项。普通连接使用 `redis://`，启用 TLS 使用 `rediss://`；凭证包含 URL 保留字符时需进行百分号编码。模块不会自动读取其他独立的 `REDIS_*` 连接变量；不适合使用 URL 时请显式传入模块选项。
+全局模块读取 `REDIS_URL`，并将其解析为 ioredis 连接选项。普通连接使用 `redis://`，启用 TLS 使用 `rediss://`；凭证包含 URL 保留字符时需进行百分号编码。不适合使用 URL 时请显式传入模块选项。
 
 ### 自定义配置
 
