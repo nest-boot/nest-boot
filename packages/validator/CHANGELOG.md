@@ -1,3 +1,9 @@
+## 7.3.3 (2026-08-28)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/i18n to 7.3.3
+
 ## 7.3.2 (2026-08-28)
 
 ### 🧱 Updated Dependencies

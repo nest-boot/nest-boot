@@ -1,3 +1,11 @@
+## 7.3.3 (2026-08-28)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 7.7.3
+- Updated @nest-boot/schedule to 7.3.3
+- Updated @nest-boot/bullmq to 7.3.3
+
 ## 7.3.2 (2026-08-28)
 
 ### 🧱 Updated Dependencies

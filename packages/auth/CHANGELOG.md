@@ -1,3 +1,10 @@
+## 7.13.3 (2026-08-28)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 7.7.3
+- Updated @nest-boot/middleware to 7.6.3
+
 ## 7.13.2 (2026-08-28)
 
 ### 🧱 Updated Dependencies

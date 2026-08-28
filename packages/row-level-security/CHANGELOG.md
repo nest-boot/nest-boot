@@ -1,3 +1,10 @@
+## 7.4.3 (2026-08-28)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 7.7.3
+- Updated @nest-boot/mikro-orm to 7.7.3
+
 ## 7.4.2 (2026-08-28)
 
 ### 🧱 Updated Dependencies

@@ -1,3 +1,13 @@
+## 7.6.3 (2026-08-28)
+
+### 🩹 Fixes
+
+- **middleware:** preserve middleware return values ([#299](https://github.com/nest-boot/nest-boot/pull/299), [#284](https://github.com/nest-boot/nest-boot/issues/284))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 7.6.2 (2026-08-28)
 
 ### 🧱 Updated Dependencies
