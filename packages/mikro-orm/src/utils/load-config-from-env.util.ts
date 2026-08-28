@@ -18,6 +18,54 @@ async function getDriver(
   }
 }
 
+function normalizeHostname(hostname: string): string {
+  if (hostname.startsWith("[") && hostname.endsWith("]")) {
+    return hostname.slice(1, -1);
+  }
+
+  return hostname;
+}
+
+function loadQueryConfig(
+  url: URL,
+  dbType: string,
+): Pick<HostConfig, "driverOptions" | "schema"> {
+  const connection: Record<string, unknown> = Object.fromEntries(
+    url.searchParams,
+  );
+  const schema = url.searchParams.get("schema") ?? undefined;
+
+  delete connection.schema;
+
+  if (connection.ssl === "true" || connection.ssl === "1") {
+    connection.ssl = true;
+  } else if (connection.ssl === "false" || connection.ssl === "0") {
+    connection.ssl = false;
+  }
+
+  if (dbType === "postgres" || dbType === "postgresql") {
+    switch (connection.sslmode) {
+      case "disable":
+        connection.ssl = false;
+        break;
+      case "no-verify":
+        connection.ssl = { rejectUnauthorized: false };
+        break;
+      case "prefer":
+      case "require":
+      case "verify-ca":
+      case "verify-full":
+        connection.ssl = {};
+        break;
+    }
+  }
+
+  return {
+    schema,
+    driverOptions: Object.keys(connection).length ? { connection } : undefined,
+  };
+}
+
 /** Constructor type for a MikroORM database driver. */
 export type DatabaseDriverConstructor = new (
   config: Configuration,
@@ -47,6 +95,10 @@ export interface HostConfig {
   user?: string;
   /** Database password. */
   password?: string;
+  /** Default database schema. */
+  schema?: string;
+  /** Driver connection options parsed from URL query parameters. */
+  driverOptions?: Options["driverOptions"];
 }
 
 /**
@@ -54,8 +106,8 @@ export interface HostConfig {
  *
  * @remarks
  * Supports `DB_URL` and `DATABASE_URL`. The selected URL is parsed into
- * individual connection options, and its protocol resolves the database
- * driver.
+ * individual connection options, including structured query options, and its
+ * protocol resolves the database driver.
  *
  * @returns MikroORM options derived from environment variables
  */
@@ -91,11 +143,12 @@ export async function loadConfigFromEnv(): Promise<DriverConfig & HostConfig> {
     return {
       ...baseConfig,
       driver: await getDriver(dbType),
-      host: url.hostname,
+      host: normalizeHostname(url.hostname),
       port: url.port ? +url.port : undefined,
       dbName: dbName ? decodeURIComponent(dbName) : undefined,
       user: url.username ? decodeURIComponent(url.username) : undefined,
       password: url.password ? decodeURIComponent(url.password) : undefined,
+      ...loadQueryConfig(url, dbType),
     };
   }
 

@@ -56,14 +56,22 @@ describe("loadConfigFromEnv", () => {
   });
 
   it("should load URL-based PostgreSQL config", async () => {
-    process.env.DATABASE_URL = "postgresql://user:pass@localhost:5432/app";
+    process.env.DATABASE_URL =
+      "postgresql://user:pass@[2001:db8::1]:5432/app?schema=tenant&sslmode=require&application_name=nest-boot";
 
     await expect(loadConfigFromEnv()).resolves.toMatchObject({
       dbName: "app",
       driver: PostgreSqlDriver,
-      host: "localhost",
+      driverOptions: {
+        connection: {
+          application_name: "nest-boot",
+          ssl: {},
+        },
+      },
+      host: "2001:db8::1",
       password: "pass",
       port: 5432,
+      schema: "tenant",
       user: "user",
     });
   });

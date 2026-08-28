@@ -1,5 +1,13 @@
 import { RedisOptions } from "ioredis";
 
+function normalizeHostname(hostname: string): string {
+  if (hostname.startsWith("[") && hostname.endsWith("]")) {
+    return hostname.slice(1, -1);
+  }
+
+  return hostname;
+}
+
 /**
  * Checks whether a Redis endpoint is configured in the environment.
  * @returns Whether `REDIS_URL` is present
@@ -23,7 +31,7 @@ export function loadConfigFromEnv(): RedisOptions {
     const database = url.pathname.split("/")[1];
 
     return {
-      host: url.hostname,
+      host: normalizeHostname(url.hostname),
       port: port ? +port : undefined,
       db: database ? +database : undefined,
       username: decodeURIComponent(url.username),

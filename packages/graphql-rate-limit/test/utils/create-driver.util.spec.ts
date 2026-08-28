@@ -67,6 +67,19 @@ describe("createGraphQLRateLimitDriver", () => {
     });
   });
 
+  it("strips brackets from an IPv6 Redis URL hostname", () => {
+    process.env.REDIS_URL = "redis://[2001:db8::1]:6379/0";
+
+    createGraphQLRateLimitDriver(options);
+
+    expect(Redis).toHaveBeenCalledWith(
+      expect.objectContaining({
+        host: "2001:db8::1",
+        port: 6379,
+      }),
+    );
+  });
+
   it.each([
     ["REDIS_HOST", "redis.local"],
     ["REDIS_PORT", "6380"],
