@@ -16,27 +16,39 @@ Nest Boot 是一个用于构建 NestJS 应用程序的模块化框架。它提�
 
 Nest Boot 提供以下模块：
 
-| 模块                                                               | 描述                       |
-| ------------------------------------------------------------------ | -------------------------- |
-| [@nest-boot/auth](/docs/tutorial/auth)                             | 身份验证和授权             |
-| [@nest-boot/bullmq](/docs/tutorial/bullmq)                         | 使用 BullMQ 的作业队列管理 |
-| [@nest-boot/crypt](/docs/tutorial/crypt)                           | 加密和解密工具             |
-| [@nest-boot/file-upload](/docs/tutorial/file-upload)               | 文件上传与 S3 存储         |
-| [@nest-boot/graphql](/docs/tutorial/graphql)                       | GraphQL 集成               |
-| [@nest-boot/graphql-connection](/docs/tutorial/graphql-connection) | GraphQL 连接/分页          |
-| [@nest-boot/hash](/docs/tutorial/hash)                             | 密码哈希工具               |
-| [@nest-boot/i18n](/docs/tutorial/i18n)                             | 国际化                     |
-| [@nest-boot/logger](/docs/tutorial/logger)                         | 结构化日志                 |
-| [@nest-boot/mailer](/docs/tutorial/mailer)                         | 邮件发送                   |
-| [@nest-boot/metrics](/docs/tutorial/metrics)                       | 应用指标                   |
-| [@nest-boot/middleware](/docs/tutorial/middleware)                 | 中间件管理                 |
-| [@nest-boot/mikro-orm](/docs/tutorial/mikro-orm)                   | MikroORM 集成              |
-| [@nest-boot/permission](/docs/tutorial/permission)                 | CASL 权限检查              |
-| [@nest-boot/redis](/docs/tutorial/redis)                           | Redis 客户端               |
-| [@nest-boot/request-context](/docs/tutorial/request-context)       | 请求上下文管理             |
-| [@nest-boot/schedule](/docs/tutorial/schedule)                     | 任务调度                   |
-| [@nest-boot/validator](/docs/tutorial/validator)                   | 验证工具                   |
-| [@nest-boot/view](/docs/tutorial/view)                             | 视图渲染                   |
+| 模块                                                                 | 描述                       |
+| -------------------------------------------------------------------- | -------------------------- |
+| [@nest-boot/auth](/docs/tutorial/auth)                               | 身份验证和授权             |
+| [@nest-boot/bullmq](/docs/tutorial/bullmq)                           | 使用 BullMQ 的作业队列管理 |
+| [@nest-boot/crypt](/docs/tutorial/crypt)                             | 加密和解密工具             |
+| [@nest-boot/file-upload](/docs/tutorial/file-upload)                 | 文件上传与 S3 存储         |
+| [@nest-boot/graphql](/docs/tutorial/graphql)                         | GraphQL 集成               |
+| [@nest-boot/graphql-connection](/docs/tutorial/graphql-connection)   | GraphQL 连接/分页          |
+| [@nest-boot/hash](/docs/tutorial/hash)                               | 密码哈希工具               |
+| [@nest-boot/i18n](/docs/tutorial/i18n)                               | 国际化                     |
+| [@nest-boot/logger](/docs/tutorial/logger)                           | 结构化日志                 |
+| [@nest-boot/mailer](/docs/tutorial/mailer)                           | 邮件发送                   |
+| [@nest-boot/metrics](/docs/tutorial/metrics)                         | 应用指标                   |
+| [@nest-boot/middleware](/docs/tutorial/middleware)                   | 中间件管理                 |
+| [@nest-boot/mikro-orm](/docs/tutorial/mikro-orm)                     | MikroORM 集成              |
+| [@nest-boot/permission](/docs/tutorial/permission)                   | CASL 权限检查              |
+| [@nest-boot/redis](/docs/tutorial/redis)                             | Redis 客户端               |
+| [@nest-boot/request-context](/docs/tutorial/request-context)         | 请求上下文管理             |
+| [@nest-boot/row-level-security](/docs/tutorial/row-level-security)   | PostgreSQL 行级安全        |
+| [@nest-boot/schedule](/docs/tutorial/schedule)                       | 任务调度                   |
+| [@nest-boot/temporary-directory](/docs/tutorial/temporary-directory) | 请求级临时目录             |
+| [@nest-boot/validator](/docs/tutorial/validator)                     | 验证工具                   |
+| [@nest-boot/view](/docs/tutorial/view)                               | 视图渲染                   |
+
+以下配套包在 API 参考中提供文档：
+
+| 包                                                            | 用途                                          |
+| ------------------------------------------------------------- | --------------------------------------------- |
+| [@nest-boot/bullmq-mikro-orm](/docs/api/bullmq-mikro-orm)     | 在 MikroORM 请求上下文中运行 BullMQ processor |
+| [@nest-boot/graphql-logger](/docs/api/graphql-logger)         | 将 GraphQL operation 元数据加入请求日志       |
+| [@nest-boot/graphql-rate-limit](/docs/api/graphql-rate-limit) | 拒绝超过复杂度上限的 GraphQL operation        |
+| [@nest-boot/mikro-orm-crypt](/docs/api/mikro-orm-crypt)       | 加密 MikroORM 实体属性                        |
+| [@nest-boot/mikro-orm-hash](/docs/api/mikro-orm-hash)         | 哈希 MikroORM 实体属性                        |
 
 ## 快速开始
 
@@ -48,20 +60,21 @@ npm install @nest-boot/hash @nest-boot/crypt
 pnpm add @nest-boot/hash @nest-boot/crypt
 ```
 
-然后在你的 NestJS 应用程序中导入并注册它们：
+生成一个高熵密钥，并将它设置为 `APP_SECRET`（也可以分别使用 `HASH_SECRET` 和 `CRYPT_SECRET`）：
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+```
+
+直接导入模块时，它们会读取这些环境变量：
 
 ```typescript
 import { Module } from "@nestjs/common";
-import { HashModule } from "@nest-boot/hash";
 import { CryptModule } from "@nest-boot/crypt";
+import { HashModule } from "@nest-boot/hash";
 
 @Module({
-  imports: [
-    HashModule.register(),
-    CryptModule.register({
-      secret: process.env.CRYPT_SECRET,
-    }),
-  ],
+  imports: [HashModule, CryptModule],
 })
 export class AppModule {}
 ```
@@ -69,3 +82,4 @@ export class AppModule {}
 ## 下一步
 
 - 浏览[教程](/docs/tutorial/hash)了解如何使用特定模块
+- 通过 [API 参考](/docs/api/auth)查询精确的导出、选项和方法签名

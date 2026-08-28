@@ -8,7 +8,7 @@ description: "基于 BullMQ 的分布式任务队列和后台工作器，支持 
 ## 安装
 
 ```bash
-pnpm add @nest-boot/bullmq
+pnpm add @nest-boot/bullmq @nest-boot/request-context @nestjs/bullmq bullmq
 ```
 
 ## 模块注册
@@ -17,15 +17,15 @@ pnpm add @nest-boot/bullmq
 
 ```typescript
 import { BullModule } from "@nest-boot/bullmq";
+import { Module } from "@nestjs/common";
 
-@Global()
 @Module({
   imports: [BullModule],
 })
-export class CommonModule {}
+export class AppModule {}
 ```
 
-模块自动读取 `REDIS_URL` 环境变量。
+模块自动读取 `REDIS_URL`。没有 URL 时，它使用 `REDIS_HOST`、`REDIS_PORT`、`REDIS_DB`/`REDIS_DATABASE`、`REDIS_USER`/`REDIS_USERNAME`、`REDIS_PASS`/`REDIS_PASSWORD` 和 `REDIS_TLS`。也可以通过 `BullModule.forRoot()` 或 `forRootAsync()` 显式传入 BullMQ `connection`。
 
 ## 定义队列
 
@@ -55,8 +55,9 @@ export class FileModule {}
 使用 `@InjectQueue()` 注入 `Queue` 来添加任务：
 
 ```typescript
-import { InjectQueue, Queue } from "@nest-boot/bullmq";
+import { InjectQueue } from "@nest-boot/bullmq";
 import { Injectable } from "@nestjs/common";
+import { Queue } from "bullmq";
 
 interface EmailJobData {
   to: string;
@@ -86,12 +87,17 @@ export class EmailService {
 使用 `@Processor()` 装饰器继承 `WorkerHost` 创建处理器：
 
 ```typescript
-import { Job, Processor, WorkerHost } from "@nest-boot/bullmq";
+import { Processor, WorkerHost } from "@nest-boot/bullmq";
 import { Logger } from "@nest-boot/logger";
+import { Job } from "bullmq";
+import { NotificationService } from "./notification.service";
 
 @Processor("email-queue", { concurrency: 5 })
 export class EmailProcessor extends WorkerHost {
-  constructor(private readonly logger: Logger) {
+  constructor(
+    private readonly logger: Logger,
+    private readonly notificationService: NotificationService,
+  ) {
     super();
     this.logger.setContext(EmailProcessor.name);
   }
@@ -102,24 +108,27 @@ export class EmailProcessor extends WorkerHost {
     this.logger.assign({ jobId: job.id, to });
     this.logger.log("Processing email job");
 
-    await this.mailer.send({ to, subject, body });
+    await this.notificationService.sendEmail({ to, subject, body });
 
     this.logger.log("Email sent successfully");
   }
 }
 ```
 
+Nest Boot 的 `@Processor()` 会为每个任务创建 `RequestContext`、写入 BullMQ `JOB_REF`，再调用正常的 `@nestjs/bullmq` processor。
+
 ## BullMQ MikroORM 集成
 
 `@nest-boot/bullmq-mikro-orm` 模块将 BullMQ 任务持久化为 MikroORM 实体，使你能通过数据库查询任务历史：
 
 ```bash
-pnpm add @nest-boot/bullmq-mikro-orm
+pnpm add @nest-boot/bullmq-mikro-orm @nest-boot/schedule @mikro-orm/core
 ```
 
 ```typescript
 import { ref } from "@mikro-orm/core";
 import { BullMQMikroORMModule } from "@nest-boot/bullmq-mikro-orm";
+import { Module } from "@nestjs/common";
 
 import { Job } from "./job.entity";
 import { Workspace } from "./workspace.entity";
@@ -136,9 +145,14 @@ const BullMQMikroORMDynamicModule = BullMQMikroORMModule.forRoot({
     };
   },
 });
+
+@Module({
+  imports: [BullMQMikroORMDynamicModule],
+})
+export class JobsModule {}
 ```
 
-`convertJobToEntityData` 回调将 BullMQ 任务数据映射到实体字段，允许你将任务与工作区或其他实体关联。
+`Job` 必须是继承导出基类 `JobEntity` 的具体 MikroORM 实体，并被实体发现配置纳入。集成会发现已注册的 queue 和 worker、upsert 状态变化，并通过每小时任务删除超过 `jobTTL` 的历史记录（默认 30 天）。可通过 `includeQueues` 和 `excludeQueues` 控制持久化范围；`convertJobToEntityData` 用于映射额外的实体字段。
 
 ## 最佳实践
 

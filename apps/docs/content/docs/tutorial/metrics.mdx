@@ -28,13 +28,13 @@ export class AppModule {}
 ## Custom Metrics
 
 ```typescript
+import { Registry } from "@nest-boot/metrics";
 import { Injectable, OnModuleInit } from "@nestjs/common";
-import { Counter, Histogram, Registry } from "prom-client";
+import { Counter } from "prom-client";
 
 @Injectable()
 export class OrderMetrics implements OnModuleInit {
   private ordersCreated!: Counter;
-  private orderDuration!: Histogram;
 
   constructor(private readonly registry: Registry) {}
 

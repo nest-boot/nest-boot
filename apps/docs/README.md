@@ -1,45 +1,50 @@
-# docs
+# Nest Boot documentation site
 
-This is a Next.js application generated with
-[Create Fumadocs](https://github.com/fuma-nama/fumadocs).
+This Next.js/Fumadocs application serves the Nest Boot tutorials and generated API reference.
 
-Run development server:
+## Local development
+
+From the repository root:
 
 ```bash
-npm run dev
-# or
-pnpm dev
-# or
-yarn dev
+pnpm install
+pnpm dev:docs
 ```
 
-Open http://localhost:3000 with your browser to see the result.
+The development server prints its local URL. English pages live under `/en/docs`; Simplified Chinese pages live under `/zh-Hans/docs`.
 
-## Explore
+## Documentation sources
 
-In the project, you can see:
+- `content/docs/index*.mdx`: localized introduction pages
+- `content/docs/tutorial/*.mdx`: hand-written tutorials
+- `content/docs/api/*.mdx`: generated TypeDoc API pages; do not edit these by hand
+- `source.config.ts`: Fumadocs collections and frontmatter processing
+- `../../typedoc.json`: TypeDoc package selection and Markdown output configuration
+- `../../typedoc-custom-frontmatter.mjs`: frontmatter added to generated API pages
 
-- `lib/source.ts`: Code for content source adapter, [`loader()`](https://fumadocs.dev/docs/headless/source-api) provides the interface to access your content.
-- `lib/layout.shared.tsx`: Shared options for layouts, optional but preferred to keep.
+After changing a package's public API or TSDoc, regenerate the API reference from the repository root:
 
-| Route                     | Description                                            |
-| ------------------------- | ------------------------------------------------------ |
-| `app/(home)`              | The route group for your landing page and other pages. |
-| `app/docs`                | The documentation layout and pages.                    |
-| `app/api/search/route.ts` | The Route Handler for search.                          |
+```bash
+pnpm docs:generate
+```
 
-### Fumadocs MDX
+## Machine-readable routes
 
-A `source.config.ts` config file has been included, you can customise different options like frontmatter schema.
+The site exposes the same content to tools and coding agents:
 
-Read the [Introduction](https://fumadocs.dev/docs/mdx) for further details.
+| Route                   | Content                                                |
+| ----------------------- | ------------------------------------------------------ |
+| `/llms.txt`             | English documentation page index                       |
+| `/llms-full.txt`        | All English documentation as Markdown                  |
+| `/llms.mdx/docs/<slug>` | One documentation page as Markdown                     |
+| `/docs/<slug>.mdx`      | Markdown alternative for a localized documentation URL |
+| `/robots.txt`           | Crawler policy and sitemap location                    |
+| `/sitemap.xml`          | Localized pages and API reference URLs                 |
 
-## Learn More
+## Validation
 
-To learn more about Next.js and Fumadocs, take a look at the following
-resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js
-  features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-- [Fumadocs](https://fumadocs.dev) - learn about Fumadocs
+```bash
+pnpm --filter @nest-boot/docs types:check
+pnpm --filter @nest-boot/docs lint
+pnpm build:docs
+```

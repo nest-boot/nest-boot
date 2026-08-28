@@ -3,7 +3,7 @@ title: "加密"
 description: "敏感数据的对称加密和解密。"
 ---
 
-`@nest-boot/crypt` 模块使用共享密钥提供对称加密/解密，适用于加密 API 密钥、Token 和其他静态敏感数据。
+`@nest-boot/crypt` 模块将字符串加密为紧凑 JWE：使用 HKDF-SHA256 派生密钥、A256GCMKW 管理密钥并使用 A256GCM 加密内容。它适合保护 API 密钥、Token 和其他静态敏感值。
 
 ## 安装
 
@@ -13,6 +13,8 @@ pnpm add @nest-boot/crypt
 
 ## 模块注册
 
+设置 `CRYPT_SECRET` 或 `APP_SECRET` 后导入 `CryptModule`，也可以显式注册：
+
 ```typescript
 import { CryptModule } from "@nest-boot/crypt";
 import { ConfigService } from "@nestjs/config";
@@ -20,9 +22,15 @@ import { ConfigService } from "@nestjs/config";
 const CryptDynamicModule = CryptModule.registerAsync({
   inject: [ConfigService],
   useFactory: (configService: ConfigService) => ({
-    secret: configService.get("APP_SECRET", "secret"),
+    secret: configService.getOrThrow("CRYPT_SECRET"),
   }),
 });
+```
+
+最终解析出的 secret 必须至少包含 32 个字符，并具有至少 120 bit 的估算熵。可使用以下命令生成：
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
 ```
 
 ## 用法
@@ -35,15 +43,17 @@ import { Injectable } from "@nestjs/common";
 export class SecretService {
   constructor(private readonly cryptService: CryptService) {}
 
-  encrypt(value: string): string {
-    return this.cryptService.encrypt(value);
+  async encrypt(value: string): Promise<string> {
+    return await this.cryptService.encrypt(value);
   }
 
-  decrypt(encrypted: string): string {
-    return this.cryptService.decrypt(encrypted);
+  async decrypt(encrypted: string): Promise<string> {
+    return await this.cryptService.decrypt(encrypted);
   }
 }
 ```
+
+两个操作都是异步的。`encrypt()` 返回五段式紧凑 JWE 字符串，`decrypt()` 接收该序列化值。
 
 ## MikroORM 集成
 

@@ -15,6 +15,20 @@ pnpm add @nest-boot/graphql-connection @nest-boot/graphql @mikro-orm/core
 
 ## 基本用法
 
+先导入一次全局模块，让 Nest 提供 `ConnectionManager`：
+
+```typescript
+import { GraphQLConnectionModule } from "@nest-boot/graphql-connection";
+import { Module } from "@nestjs/common";
+
+@Module({
+  imports: [GraphQLConnectionModule],
+})
+export class AppModule {}
+```
+
+### 构建 Connection 类型
+
 ```typescript
 import { ConnectionBuilder } from "@nest-boot/graphql-connection";
 import { User } from "./user.entity";
@@ -32,6 +46,29 @@ export const {
   })
   .build();
 ```
+
+### 在 Resolver 中查询
+
+```typescript
+import { ConnectionManager } from "@nest-boot/graphql-connection";
+import { Args, Query, Resolver } from "@nest-boot/graphql";
+
+import { UserConnection, UserConnectionArgs } from "./user.connection";
+
+@Resolver()
+export class UserResolver {
+  constructor(private readonly connectionManager: ConnectionManager) {}
+
+  @Query(() => UserConnection)
+  async users(@Args() args: UserConnectionArgs): Promise<UserConnection> {
+    return await this.connectionManager.find(UserConnection, args);
+  }
+}
+```
+
+## 分页
+
+同时支持正向的 `first`/`after` 和反向的 `last`/`before` 游标分页。
 
 ## 过滤
 
@@ -66,6 +103,10 @@ export const { Connection: BookConnection } = new ConnectionBuilder(Book)
 
 这样配置后，`filter: { title: { $fulltext: "nest" } }` 和 `query: "title:nest"` 都会查询 `searchableTitle`；`$eq` 等普通操作符仍然查询 `title`。
 
+## 搜索查询
+
+支持面向用户的字段搜索语法，包括 `field:value`、带引号的字符串和否定条件。
+
 ## 特性
 
 - **Relay 兼容** - 遵循 Relay 连接规范
@@ -73,3 +114,8 @@ export const { Connection: BookConnection } = new ConnectionBuilder(Book)
 - **MikroORM 集成** - 与 MikroORM 实体无缝配合
 - **MongoDB 风格过滤** - 强大的过滤语法和验证
 - **搜索语法** - 人性化的搜索查询解析
+- **游标分页** - 使用不透明游标进行稳定分页
+
+## API 参考
+
+详细的 API 文档请参阅 [GraphQL Connection API 参考](/docs/api/graphql-connection)。

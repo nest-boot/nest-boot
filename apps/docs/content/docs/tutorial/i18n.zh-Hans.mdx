@@ -30,13 +30,63 @@ import { I18nModule } from "@nest-boot/i18n";
 export class AppModule {}
 ```
 
+默认从 `<项目目录>/locales/{{lng}}/{{ns}}.json` 加载翻译，默认 fallback 语言为 `en`，并关闭 key 分隔和插值转义。传入的 i18next 选项会覆盖这些默认值。
+
+## 翻译文件
+
+```text
+project/
+├── locales/
+│   ├── en/
+│   │   └── translation.json
+│   └── zh/
+│       └── translation.json
+└── src/
+```
+
+## 使用翻译
+
+### 使用 t() 辅助函数
+
+```typescript
+import { t } from "@nest-boot/i18n";
+import { Injectable } from "@nestjs/common";
+
+@Injectable()
+export class GreetingService {
+  getWelcomeMessage(name: string): string {
+    return t("welcome", { name });
+  }
+}
+```
+
+### 注入 i18next 实例
+
+```typescript
+import { InjectI18n } from "@nest-boot/i18n";
+import { Injectable } from "@nestjs/common";
+import type { i18n } from "i18next";
+
+@Injectable()
+export class GreetingService {
+  constructor(@InjectI18n() private readonly i18n: i18n) {}
+
+  getGreeting(): string {
+    return this.i18n.t("welcome", { name: "World" });
+  }
+}
+```
+
+`InjectI18n()` 是用于构造函数参数或属性的 Nest 依赖注入装饰器，不是 controller 的路由参数装饰器。需要按请求选择语言时，可使用 `t()`；HTTP 中间件会把当前请求的 i18next 实例写入活动的 `RequestContext`。在任务、CLI 命令等没有活动上下文的代码中，应使用注入的实例，或先创建 `RequestContext`。
+
 ## 特性
 
 - **i18next 集成** - 通过 NestJS 依赖注入使用完整 i18next API
 - **文件系统后端** - 自动从 JSON 翻译文件加载
 - **HTTP 语言检测** - 从请求头自动检测语言
 - **请求作用域** - 通过请求上下文实现每请求语言
-- **装饰器支持** - 控制器的 `@I18n()` 参数装饰器
+- **依赖注入** - 使用 `@InjectI18n()` 注入已配置的 i18next 实例
+- **辅助函数** - 使用 `t()` 快速翻译并自动采用请求语言
 
 ## API 参考
 

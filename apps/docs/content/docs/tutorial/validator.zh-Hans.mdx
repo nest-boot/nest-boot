@@ -3,12 +3,12 @@ title: "验证器"
 description: "NestJS 验证工具，集成 class-validator。"
 ---
 
-`@nest-boot/validator` 模块提供与 [class-validator](https://github.com/typestack/class-validator) 和 NestJS 管道集成的验证工具。
+`@nest-boot/validator` 提供基于 [class-validator](https://github.com/typestack/class-validator) 的国际化验证装饰器。它本身不会注册 Nest 模块，也不会自动启用全局验证管道。
 
 ## 安装
 
 ```bash
-pnpm add @nest-boot/validator class-validator class-transformer
+pnpm add @nest-boot/validator @nest-boot/i18n class-validator class-transformer
 ```
 
 ## 用法
@@ -38,24 +38,31 @@ void bootstrap();
 
 ### 验证输入类型
 
-在 GraphQL 输入类型上使用 `class-validator` 装饰器：
+Nest Boot 装饰器可以和标准 `class-validator` 装饰器一起使用。默认错误消息通过 `@nest-boot/i18n` 的 `validation` 和 `property` 命名空间解析。
 
 ```typescript
 import { Field, InputType } from "@nest-boot/graphql";
-import { IsEmail, IsString, MinLength } from "class-validator";
+import { IsEmail, IsTimezone, Length } from "@nest-boot/validator";
+import { IsString } from "class-validator";
 
 @InputType()
 export class CreateUserInput {
   @IsString()
-  @MinLength(2)
+  @Length(2, 80)
   @Field(() => String)
   name!: string;
 
   @IsEmail()
   @Field(() => String)
   email!: string;
+
+  @IsTimezone()
+  @Field(() => String)
+  timezone!: string;
 }
 ```
+
+该包还导出了 `ArrayLength`、`IsDate`、`IsDomain`、`IsNumberString`、`IsUrl`、`Min`、`Max`，以及 `IsGreaterThan` 等数值比较装饰器。为方便使用，它还从 `class-validator` 重新导出了 `IsOptional` 和 `ValidateNested`。
 
 ## API 参考
 

@@ -58,21 +58,24 @@ export class GreetingService {
 }
 ```
 
-### Using the @I18n() Decorator
+### Injecting the i18next Instance
 
 ```typescript
-import { Controller, Get } from "@nestjs/common";
-import { I18n as I18nDecorator } from "@nest-boot/i18n";
-import { i18n } from "i18next";
+import { InjectI18n } from "@nest-boot/i18n";
+import { Injectable } from "@nestjs/common";
+import type { i18n } from "i18next";
 
-@Controller("greetings")
-export class GreetingController {
-  @Get()
-  getGreeting(@I18nDecorator() i18n: i18n) {
-    return { message: i18n.t("welcome", { name: "World" }) };
+@Injectable()
+export class GreetingService {
+  constructor(@InjectI18n() private readonly i18n: i18n) {}
+
+  getGreeting(): string {
+    return this.i18n.t("welcome", { name: "World" });
   }
 }
 ```
+
+`InjectI18n()` is a Nest dependency-injection decorator for constructor parameters or properties; it is not a controller route-parameter decorator. For request-specific language selection, use `t()`, which reads the i18next instance stored in an active `RequestContext` by the HTTP middleware. In jobs, CLI commands, or other code without an active context, use the injected instance or create a `RequestContext` first.
 
 ## Features
 
@@ -80,7 +83,7 @@ export class GreetingController {
 - **File-System Backend** - Automatic loading from JSON translation files
 - **HTTP Language Detection** - Auto-detect language from request headers
 - **Request-Scoped** - Per-request language via request context
-- **Decorator Support** - `@I18n()` parameter decorator for controllers
+- **Dependency Injection** - `@InjectI18n()` injects the configured i18next instance
 - **Helper Function** - `t()` utility for quick translations
 
 ## API Reference

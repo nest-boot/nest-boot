@@ -3,7 +3,7 @@ title: "GraphQL"
 description: "Build GraphQL APIs with Apollo Server, cursor-based pagination, operation logging, and query complexity rate limiting."
 ---
 
-The `@nest-boot/graphql` module provides a preconfigured [Apollo Server](https://www.apollographql.com/docs/apollo-server/) GraphQL layer for NestJS, with code-first schema generation, global exception filtering, and built-in playground support. Companion modules provide [operation logging](#graphql-logger), [query complexity rate limiting](#graphql-rate-limiting), and [cursor-based pagination](#graphql-connection).
+The `@nest-boot/graphql` module provides a preconfigured [Apollo Server](https://www.apollographql.com/docs/apollo-server/) GraphQL layer for NestJS, with code-first schema generation, global exception filtering, and an optional local landing page. Companion modules provide [operation logging](#graphql-logger), [query complexity rate limiting](#graphql-rate-limiting), and [cursor-based pagination](#graphql-connection).
 
 ## Installation
 
@@ -31,6 +31,7 @@ The module auto-configures Apollo Server with sensible defaults:
 - Code-first auto-generated schema (`schema.gql`)
 - Sorted schema output
 - Global `GraphQLExceptionFilter` for error handling
+- Apollo's local landing page unless `playground` is explicitly `false`
 
 ### Async Registration
 
@@ -139,8 +140,8 @@ export class UserResolver {
   }
 
   @ResolveField(() => String)
-  fullName(@Parent() user: User): string {
-    return `${user.firstName} ${user.lastName}`;
+  displayName(@Parent() user: User): string {
+    return user.name;
   }
 }
 ```
@@ -349,7 +350,7 @@ query {
 
 ## GraphQL Logger
 
-The `@nest-boot/graphql-logger` module provides an Apollo Server plugin that logs GraphQL operation metadata (operation name, query, variables, duration).
+The `@nest-boot/graphql-logger` module provides an Apollo Server plugin that adds the resolved operation ID, name, and type to the current structured logger bindings. Logs written after operation resolution automatically include that metadata; the plugin does not record the raw query or variables.
 
 ### Installation
 
@@ -398,7 +399,7 @@ Passing explicit Redis `connection` options to `forRoot()` or `forRootAsync()` a
 
 The memory driver is convenient for local development and single-process applications, but its buckets are not shared across processes or replicas. Use Redis or a custom distributed driver when limits must be global.
 
-Use `forRoot()` when you need to change thresholds or provide an explicit driver:
+Use `forRoot()` when you need to change the bucket thresholds or provide an explicit driver. The current plugin rejects requested query costs of `1000` or more.
 
 ```typescript
 import {
@@ -413,7 +414,6 @@ const driver: GraphQLRateLimitDriver = new MemoryGraphQLRateLimitDriver();
   imports: [
     GraphQLRateLimitModule.forRoot({
       driver,
-      maxComplexity: 1000, // Max cost per query
       maximumAvailable: 1000, // Bucket capacity
       restoreRate: 50, // Points restored per second
     }),
@@ -426,14 +426,14 @@ Custom drivers extend `GraphQLRateLimitDriver` and implement its atomic `update(
 
 ### Custom Complexity
 
-Use the `@Complexity()` decorator to define custom cost calculations for fields:
+Use the `@Complexity()` decorator to emit a `@complexity` schema directive. Set a base value and optional argument names that multiply that value:
 
 ```typescript
 import { Complexity } from "@nest-boot/graphql-rate-limit";
 
 @Resolver(() => User)
 export class UserResolver {
-  @Complexity(({ childComplexity, args }) => args.first * childComplexity)
+  @Complexity({ value: 2, multipliers: ["first"] })
   @Query(() => UserConnection)
   async users(@Args() args: UserConnectionArgs) {
     return this.cm.find(UserConnection, args);

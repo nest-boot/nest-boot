@@ -29,6 +29,29 @@ import { ViewModule } from "@nest-boot/view";
 export class AppModule {}
 ```
 
+如果没有传入 `path`，模块默认扫描 `views`。它递归加载 `.hbs` 和 `.handlebars` 文件，并将相对路径转换成点号模板名，例如 `views/emails/welcome.hbs` 对应 `emails.welcome`。
+
+## 渲染模板
+
+```typescript
+import { ViewService } from "@nest-boot/view";
+import { Injectable } from "@nestjs/common";
+
+@Injectable()
+export class EmailService {
+  constructor(private readonly viewService: ViewService) {}
+
+  renderWelcomeEmail(name: string, activationLink: string) {
+    return this.viewService.render("emails.welcome", {
+      name,
+      activationLink,
+    });
+  }
+}
+```
+
+`render()` 在模板尚未注册时返回 `undefined`。也可以通过 `register(name, template)` 和 `unregister(name)` 动态维护模板。
+
 ## 特性
 
 - **Handlebars 模板** - 完整的 Handlebars 语法，支持助手和部分模板

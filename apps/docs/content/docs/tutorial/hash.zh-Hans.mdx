@@ -3,7 +3,7 @@ title: "哈希"
 description: "安全的密码哈希和验证。"
 ---
 
-`@nest-boot/hash` 模块使用 bcrypt 或类似算法提供安全的密码哈希和验证。
+`@nest-boot/hash` 模块使用 Argon2 提供密码哈希和验证。Nest 模块初始化时必须提供一个 secret（pepper）。
 
 ## 安装
 
@@ -13,14 +13,30 @@ pnpm add @nest-boot/hash
 
 ## 模块注册
 
+设置 `HASH_SECRET` 或 `APP_SECRET`，然后只导入一次全局模块：
+
 ```typescript
 import { HashModule } from "@nest-boot/hash";
+import { Module } from "@nestjs/common";
 
-@Global()
 @Module({
   imports: [HashModule],
 })
-export class CommonModule {}
+export class AppModule {}
+```
+
+也可以显式传入 secret：
+
+```typescript
+HashModule.register({
+  secret: process.env.HASH_SECRET,
+});
+```
+
+最终解析出的 secret 必须至少包含 32 个字符，并具有至少 120 bit 的估算熵。可使用以下命令生成：
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
 ```
 
 ## 用法
@@ -38,10 +54,12 @@ export class AuthService {
   }
 
   async verifyPassword(password: string, hash: string): Promise<boolean> {
-    return this.hashService.verify(password, hash);
+    return this.hashService.verify(hash, password);
   }
 }
 ```
+
+`verify()` 始终先接收已存储的哈希，再接收明文值。模块还提供同步的 `hashSync()` 和 `verifySync()`。
 
 ## MikroORM 集成
 

@@ -8,22 +8,22 @@ description: "NestJS 的 Redis 集成，支持基于环境变量的配置和便�
 ## 安装
 
 ```bash
-pnpm add @nest-boot/redis
+pnpm add @nest-boot/redis ioredis
 ```
 
 ## 模块注册
 
 ```typescript
 import { RedisModule } from "@nest-boot/redis";
+import { Module } from "@nestjs/common";
 
-@Global()
 @Module({
   imports: [RedisModule],
 })
-export class CommonModule {}
+export class AppModule {}
 ```
 
-默认读取 `REDIS_URL` 环境变量。
+全局模块会优先读取 `REDIS_URL`。没有 URL 时，它会读取 `REDIS_HOST`、`REDIS_PORT`、`REDIS_DB`/`REDIS_DATABASE`、`REDIS_USER`/`REDIS_USERNAME`、`REDIS_PASS`/`REDIS_PASSWORD` 和 `REDIS_TLS`。`rediss:` URL 也会启用 TLS。
 
 ### 自定义配置
 
@@ -35,7 +35,9 @@ import { RedisModule } from "@nest-boot/redis";
     RedisModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        url: configService.getOrThrow("REDIS_URL"),
+        host: configService.getOrThrow("REDIS_HOST"),
+        port: configService.get<number>("REDIS_PORT", 6379),
+        password: configService.get("REDIS_PASSWORD"),
       }),
     }),
   ],
@@ -45,16 +47,15 @@ export class CommonModule {}
 
 ## 用法
 
-使用 `@InjectRedis()` 注入 Redis 客户端：
+模块使用 `ioredis` 的 `Redis` 类作为 provider token，因此可以直接按类型注入客户端：
 
 ```typescript
-import { InjectRedis } from "@nest-boot/redis";
 import { Injectable } from "@nestjs/common";
-import { Redis } from "ioredis";
+import Redis from "ioredis";
 
 @Injectable()
 export class CacheService {
-  constructor(@InjectRedis() private readonly redis: Redis) {}
+  constructor(private readonly redis: Redis) {}
 
   async get(key: string): Promise<string | null> {
     return this.redis.get(key);

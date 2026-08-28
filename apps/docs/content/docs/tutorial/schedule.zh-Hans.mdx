@@ -1,56 +1,63 @@
 ---
 title: "定时任务"
-description: "基于 Cron 的 NestJS 任务调度，支持装饰器和动态间隔。"
+description: "使用 BullMQ Job Scheduler 为 NestJS 提供持久化 Cron 和间隔调度。"
 ---
 
-`@nest-boot/schedule` 模块基于 [`@nestjs/schedule`](https://docs.nestjs.com/techniques/task-scheduling) 提供 Cron 定时任务调度。
+`@nest-boot/schedule` 模块会发现带装饰器的 provider 和 controller，注册持久化的 [BullMQ Job Scheduler](https://docs.bullmq.io/guide/job-schedulers)，并通过专用的 `schedule` worker 执行处理器。它同时支持 Cron 表达式和毫秒间隔。
 
 ## 安装
 
 ```bash
-pnpm add @nest-boot/schedule
+pnpm add @nest-boot/schedule @nest-boot/bullmq @nestjs/bullmq bullmq
 ```
 
 ## 模块注册
 
 ```typescript
+import { BullModule } from "@nest-boot/bullmq";
 import { ScheduleModule } from "@nest-boot/schedule";
+import { Module } from "@nestjs/common";
 
-@Global()
 @Module({
-  imports: [ScheduleModule],
+  imports: [
+    BullModule,
+    ScheduleModule.forRoot({
+      concurrency: 5,
+    }),
+  ],
 })
-export class CommonModule {}
+export class AppModule {}
 ```
+
+`BullModule` 从 `REDIS_URL` 或各个 `REDIS_*` 环境变量读取 Redis 连接。`ScheduleModule` 还接受显式的 BullMQ `connection`、`concurrency` 和 `autorun`；除非 `autorun` 为 `false`，worker 会自动启动。
 
 ## 定义定时任务
 
-使用 `@Cron()` 装饰器定义定时任务：
+使用 `@Cron()` 定义 Cron 表达式，使用 `@Interval()` 定义毫秒间隔。Cron 默认使用 `UTC` 时区。
 
 ```typescript
-import { Injectable } from "@nestjs/common";
-import { Cron, CronExpression } from "@nest-boot/schedule";
-import { Logger } from "@nest-boot/logger";
+import { Cron, Interval } from "@nest-boot/schedule";
+import { Injectable, Logger } from "@nestjs/common";
 
 @Injectable()
 export class CleanupService {
-  constructor(private readonly logger: Logger) {
-    this.logger.setContext(CleanupService.name);
-  }
+  private readonly logger = new Logger(CleanupService.name);
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  @Cron("0 0 * * *", { timezone: "UTC", removeOnComplete: true })
   async cleanupExpiredSessions(): Promise<void> {
     this.logger.log("Cleaning up expired sessions");
     // ...清理逻辑
   }
 
-  @Cron("0 */5 * * * *") // 每 5 分钟
+  @Interval(5 * 60 * 1000, { removeOnComplete: true })
   async syncMetrics(): Promise<void> {
     this.logger.log("Syncing metrics");
     // ...同步逻辑
   }
 }
 ```
+
+每个任务的名称为 `<类名>.<方法名>`。应用启动时，注册器会更新所有已发现的调度，并移除代码中已不存在的旧 scheduler。其他装饰器选项会作为 BullMQ job template 选项传递。
 
 ## API 参考
 

@@ -3,7 +3,7 @@ title: "Auth"
 description: "Add authentication to your NestJS app with better-auth, supporting sessions, OAuth/OIDC, guards, and middleware."
 ---
 
-The `@nest-boot/auth` module provides authentication powered by [better-auth](https://www.better-auth.com/), with MikroORM-based session persistence, automatic middleware registration, and a global guard.
+The `@nest-boot/auth` module provides authentication powered by [better-auth](https://www.better-auth.com/), with MikroORM-based session persistence, automatic middleware registration, and an `AuthGuard` that applications can register globally.
 
 ## Installation
 
@@ -17,12 +17,13 @@ pnpm add @nest-boot/auth better-auth
 
 ```typescript
 import { AuthModule } from "@nest-boot/auth";
+import { Global, Module } from "@nestjs/common";
 import { User } from "./user.entity";
 import { Account } from "./account.entity";
 import { Session } from "./session.entity";
 import { Verification } from "./verification.entity";
 
-const AuthDynamicModule = AuthModule.forRoot({
+export const AuthDynamicModule = AuthModule.forRoot({
   entities: {
     user: User,
     account: Account,
@@ -30,6 +31,12 @@ const AuthDynamicModule = AuthModule.forRoot({
     verification: Verification,
   },
 });
+
+@Global()
+@Module({
+  imports: [AuthDynamicModule],
+})
+export class CommonModule {}
 ```
 
 The module automatically:
@@ -182,7 +189,7 @@ Key options:
 
 ## Auth Guard
 
-Register `AuthGuard` as a global guard to protect all routes by default:
+Register `AuthGuard` as a global guard to protect all routes by default. Import the configured dynamic module rather than the unconfigured `AuthModule` class:
 
 ```typescript
 import { AuthGuard } from "@nest-boot/auth";
@@ -190,7 +197,7 @@ import { APP_GUARD } from "@nestjs/core";
 
 @Global()
 @Module({
-  imports: [AuthModule],
+  imports: [AuthDynamicModule],
   providers: [
     {
       provide: APP_GUARD,

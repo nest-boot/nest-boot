@@ -39,7 +39,7 @@ export class AppModule {}
 
 ```typescript
 import { Injectable } from "@nestjs/common";
-import Mailer from "nodemailer/lib/mailer";
+import { Mailer } from "@nest-boot/mailer";
 
 @Injectable()
 export class NotificationService {

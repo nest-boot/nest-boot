@@ -3,7 +3,7 @@ title: "Crypt"
 description: "Symmetric encryption and decryption for sensitive data."
 ---
 
-The `@nest-boot/crypt` module provides symmetric encryption/decryption using a shared secret, suitable for encrypting API keys, tokens, and other sensitive data at rest.
+The `@nest-boot/crypt` module encrypts strings as compact JWE values using HKDF-SHA256 key derivation, A256GCMKW key management, and A256GCM content encryption. It is suitable for API keys, tokens, and other sensitive values at rest.
 
 ## Installation
 
@@ -13,6 +13,8 @@ pnpm add @nest-boot/crypt
 
 ## Module Registration
 
+Set `CRYPT_SECRET` or `APP_SECRET` and import `CryptModule`, or register it explicitly:
+
 ```typescript
 import { CryptModule } from "@nest-boot/crypt";
 import { ConfigService } from "@nestjs/config";
@@ -20,9 +22,15 @@ import { ConfigService } from "@nestjs/config";
 const CryptDynamicModule = CryptModule.registerAsync({
   inject: [ConfigService],
   useFactory: (configService: ConfigService) => ({
-    secret: configService.get("APP_SECRET", "secret"),
+    secret: configService.getOrThrow("CRYPT_SECRET"),
   }),
 });
+```
+
+The resolved secret must be at least 32 characters and have at least 120 bits of estimated entropy. Generate one with:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
 ```
 
 ## Usage
@@ -35,15 +43,17 @@ import { Injectable } from "@nestjs/common";
 export class SecretService {
   constructor(private readonly cryptService: CryptService) {}
 
-  encrypt(value: string): string {
-    return this.cryptService.encrypt(value);
+  async encrypt(value: string): Promise<string> {
+    return await this.cryptService.encrypt(value);
   }
 
-  decrypt(encrypted: string): string {
-    return this.cryptService.decrypt(encrypted);
+  async decrypt(encrypted: string): Promise<string> {
+    return await this.cryptService.decrypt(encrypted);
   }
 }
 ```
+
+Both operations are asynchronous. `encrypt()` returns a five-part compact JWE string, and `decrypt()` accepts that serialized value.
 
 ## MikroORM Integration
 

@@ -8,7 +8,7 @@ description: "MikroORM 集成，支持请求作用域实体管理器、EntitySer
 ## 安装
 
 ```bash
-pnpm add @nest-boot/mikro-orm @mikro-orm/core @mikro-orm/postgresql @mikro-orm/migrations
+pnpm add @nest-boot/mikro-orm @mikro-orm/core @mikro-orm/nestjs @mikro-orm/postgresql @mikro-orm/reflection @mikro-orm/migrations
 ```
 
 ## 模块注册
@@ -25,10 +25,9 @@ import { MikroOrmModule } from "@nest-boot/mikro-orm";
 export class CommonModule {}
 ```
 
-不传参数时，模块使用 `loadConfigFromEnv()` 从环境变量自动加载配置：
+不传参数时，模块使用 `loadConfigFromEnv()` 自动加载配置。`DB_URL` 或 `DATABASE_URL` 优先；否则使用 `DB_*` 或 `DATABASE_*` 的 host、port、database、user、password 和 type 变量。URL protocol 与 `DB_TYPE`/`DATABASE_TYPE` 当前可解析 `postgres`/`postgresql` 和 `mysql` 驱动。
 
-- `DATABASE_URL` — PostgreSQL 连接字符串
-- 通过 `tsconfig.json` 路径进行实体发现
+默认配置从 `dist/**/*.entity.js` 发现运行时实体，从 `src/**/*.entity.ts` 发现 TypeScript 实体，使用 `TsMorphMetadataProvider`，启用 MikroORM DataLoader，并把 migration 与 seeder 放在 `src/database`（构建后为 `dist/database`）下。
 
 ### 异步注册
 
@@ -178,10 +177,12 @@ import { CryptModule } from "@nest-boot/crypt";
 const CryptDynamicModule = CryptModule.registerAsync({
   inject: [ConfigService],
   useFactory: (configService: ConfigService) => ({
-    secret: configService.get("APP_SECRET", "secret"),
+    secret: configService.getOrThrow("CRYPT_SECRET"),
   }),
 });
 ```
+
+`CryptModule` 会验证 secret 至少包含 32 个字符并具有足够熵值。`@EncryptedProperty()` 默认把列标记为 hidden 和 lazy，并在 create/update 前加密字符串值。
 
 ## 哈希属性
 
@@ -205,7 +206,7 @@ export class User {
 }
 ```
 
-值在写入时自动哈希。需要注册 `HashModule`。
+值会在 create/update 前自动哈希。装饰器默认把列标记为 hidden 和 lazy，遇到已有 Argon2 值时不会重复哈希。实体 hook 运行前必须初始化 `HashModule`。
 
 ## 最佳实践
 

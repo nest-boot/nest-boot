@@ -1,7 +1,7 @@
 import { MarkdownPageEvent } from "typedoc-plugin-markdown";
 
 /**
- * Custom TypeDoc plugin that adds `title` frontmatter from the page name
+ * Custom TypeDoc plugin that adds metadata derived from the page name.
  * @param {import("typedoc-plugin-markdown").MarkdownApplication} app
  */
 export function load(app) {
@@ -9,8 +9,12 @@ export function load(app) {
     MarkdownPageEvent.BEGIN,
     /** @param {MarkdownPageEvent} page */
     (page) => {
+      const title = page.model?.name;
+
       page.frontmatter = {
-        title: page.model?.name,
+        title,
+        description:
+          typeof title === "string" ? `API reference for ${title}.` : undefined,
         ...page.frontmatter,
       };
     },

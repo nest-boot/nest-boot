@@ -25,6 +25,38 @@ import { MetricsModule } from "@nest-boot/metrics";
 export class AppModule {}
 ```
 
+`MetricsModule` 会创建独立的 `prom-client` Registry、启用 Node.js 默认指标，并通过 `GET /metrics` 输出 Prometheus exposition format。
+
+## 自定义指标
+
+从 `@nest-boot/metrics` 注入其导出的 `Registry`，并将自定义指标注册到同一个 Registry：
+
+```typescript
+import { Registry } from "@nest-boot/metrics";
+import { Injectable, OnModuleInit } from "@nestjs/common";
+import { Counter } from "prom-client";
+
+@Injectable()
+export class OrderMetrics implements OnModuleInit {
+  private ordersCreated!: Counter;
+
+  constructor(private readonly registry: Registry) {}
+
+  onModuleInit(): void {
+    this.ordersCreated = new Counter({
+      name: "orders_created_total",
+      help: "Total number of orders created",
+      labelNames: ["status"],
+      registers: [this.registry],
+    });
+  }
+
+  recordOrderCreated(status: string): void {
+    this.ordersCreated.inc({ status });
+  }
+}
+```
+
 ## 特性
 
 - **默认指标** - 自动收集 Node.js 运行时指标

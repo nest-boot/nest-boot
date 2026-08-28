@@ -3,12 +3,12 @@ title: "File Upload"
 description: "Handle file uploads with S3-compatible storage, MIME type validation, and file size limits."
 ---
 
-The `@nest-boot/file-upload` module provides file upload handling with S3-compatible object storage, MIME type validation, file size limits, and a simple persist API.
+The `@nest-boot/file-upload` module creates constrained presigned POST uploads for S3-compatible storage, exposes them through GraphQL, supports direct server-side uploads, and copies accepted temporary objects to dated permanent keys.
 
 ## Installation
 
 ```bash
-pnpm add @nest-boot/file-upload @aws-sdk/client-s3
+pnpm add @nest-boot/file-upload @aws-sdk/client-s3 @aws-sdk/s3-presigned-post
 ```
 
 ## Module Registration
@@ -20,29 +20,22 @@ import { ConfigService } from "@nestjs/config";
 const FileUploadDynamicModule = FileUploadModule.registerAsync({
   inject: [ConfigService],
   useFactory: (configService: ConfigService) => ({
-    storageUrl: configService.getOrThrow("STORAGE_URL"),
-    bucket: configService.getOrThrow("STORAGE_BUCKET"),
+    bucket: configService.getOrThrow("S3_BUCKET"),
     client: {
       endpoint: configService.getOrThrow("S3_ENDPOINT"),
       credentials: {
-        accessKeyId: configService.getOrThrow("S3_ACCESS_KEY"),
-        secretAccessKey: configService.getOrThrow("S3_SECRET_KEY"),
+        accessKeyId: configService.getOrThrow("S3_ACCESS_KEY_ID"),
+        secretAccessKey: configService.getOrThrow("S3_SECRET_ACCESS_KEY"),
       },
       region: configService.get("S3_REGION", "auto"),
       forcePathStyle: true,
     },
-    maxFileByteSize: 1024 * 1024 * 500, // 500MB
-    allowedMimeTypes: [
-      "image/jpeg",
-      "image/png",
-      "image/gif",
-      "image/webp",
-      "image/svg+xml",
-      "video/mp4",
-      "video/quicktime",
-      "audio/mpeg",
-      "audio/wav",
-      "application/pdf",
+    expires: 3600,
+    limits: [
+      {
+        fileSize: 10 * 1024 * 1024,
+        mimeTypes: ["image/*", "application/pdf"],
+      },
     ],
   }),
 });
@@ -50,19 +43,37 @@ const FileUploadDynamicModule = FileUploadModule.registerAsync({
 
 ### Configuration Options
 
-| Option             | Description                                                 |
-| ------------------ | ----------------------------------------------------------- |
-| `storageUrl`       | Base URL for generating public file URLs                    |
-| `bucket`           | S3 bucket name                                              |
-| `client`           | AWS S3 client configuration (endpoint, credentials, region) |
-| `maxFileByteSize`  | Maximum file size in bytes                                  |
-| `allowedMimeTypes` | Array of allowed MIME types                                 |
+| Option    | Description                                                                                  |
+| --------- | -------------------------------------------------------------------------------------------- |
+| `client`  | An `S3Client` instance or AWS S3 client configuration                                        |
+| `bucket`  | S3 bucket name                                                                               |
+| `url`     | Optional public prefix that replaces the origin/path of generated presigned POST URLs        |
+| `expires` | Presigned POST lifetime in seconds; defaults to `3600`                                       |
+| `limits`  | Accepted `{ fileSize, mimeTypes }` combinations; MIME patterns use micromatch glob semantics |
 
 ## Usage
 
-### Persisting Files
+### Creating Presigned Uploads
 
-Use `FileUploadService` to move temporary files to permanent storage:
+`FileUploadModule` registers a `createFileUploads` GraphQL mutation. It accepts an array of names, byte sizes, and MIME types, validates each item against `limits`, and returns a presigned POST URL plus the required form fields:
+
+```graphql
+mutation CreateFileUploads($input: [FileUploadInput!]!) {
+  createFileUploads(input: $input) {
+    url
+    fields {
+      name
+      value
+    }
+  }
+}
+```
+
+The client must submit every returned field, the file body, and the same `Content-Type` to the returned URL. Generated temporary keys use the `tmp/` prefix.
+
+### Persisting Temporary Objects
+
+After the client upload succeeds, use `persist()` to copy the temporary object to `files/YYYY/MM/DD/...`:
 
 ```typescript
 import { FileUploadService } from "@nest-boot/file-upload";
@@ -72,50 +83,33 @@ import { Injectable } from "@nestjs/common";
 export class FileService {
   constructor(private readonly fileUploadService: FileUploadService) {}
 
-  async createFile(tempFileUrl: string): Promise<FileInfo> {
-    const { url, mimeType, byteSize } =
-      await this.fileUploadService.persist(tempFileUrl);
-
-    return { url, mimeType, byteSize };
+  async persistFile(tempFileUrl: string): Promise<string> {
+    return await this.fileUploadService.persist(tempFileUrl);
   }
 }
 ```
 
-The `persist()` method:
+`persist()` returns only the permanent object URL. Size and MIME validation happens when `create()` creates the presigned upload, not during `persist()`. The copy operation does not delete the temporary object.
 
-1. Validates the file's MIME type against `allowedMimeTypes`
-2. Checks the file size against `maxFileByteSize`
-3. Copies the file from temporary to permanent storage
-4. Returns the permanent URL, detected MIME type, and byte size
+### Direct Server-Side Uploads
 
-### GraphQL Integration
-
-Create a file upload mutation:
+Use `upload()` when the server already has the file data. Pass `true` as the third argument to copy the result to permanent storage immediately:
 
 ```typescript
-import { Args, Mutation, Resolver } from "@nest-boot/graphql";
-import { File } from "./file.entity";
-import { FileService } from "./file.service";
-import { CreateFileInput } from "./inputs/create-file.input";
-
-@Resolver(() => File)
-export class FileResolver {
-  constructor(private readonly fileService: FileService) {}
-
-  @Mutation(() => File)
-  async createFile(@Args("input") input: CreateFileInput): Promise<File> {
-    return this.fileService.create(input);
-  }
-}
+const url = await fileUploadService.upload(
+  pdfBuffer,
+  { "Content-Type": "application/pdf" },
+  true,
+);
 ```
 
 ## Best Practices
 
 1. **Strict MIME Types** — Only allow the MIME types your application actually needs.
 
-2. **Reasonable Size Limits** — Set `maxFileByteSize` based on your use case. Most web apps don't need files larger than 100MB.
+2. **Reasonable Size Limits** — Define one or more `limits` entries that pair a maximum byte size with MIME glob patterns.
 
-3. **Temporary URLs** — Client uploads go to a temporary URL first, then `persist()` moves them to permanent storage after validation.
+3. **Temporary Object Cleanup** — `persist()` copies objects but does not delete the `tmp/` source; configure an S3 lifecycle rule for temporary keys.
 
 ## API Reference
 

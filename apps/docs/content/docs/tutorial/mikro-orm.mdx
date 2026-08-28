@@ -8,7 +8,7 @@ The `@nest-boot/mikro-orm` module wraps [`@mikro-orm/nestjs`](https://mikro-orm.
 ## Installation
 
 ```bash
-pnpm add @nest-boot/mikro-orm @mikro-orm/core @mikro-orm/postgresql @mikro-orm/migrations
+pnpm add @nest-boot/mikro-orm @mikro-orm/core @mikro-orm/nestjs @mikro-orm/postgresql @mikro-orm/reflection @mikro-orm/migrations
 ```
 
 ## Module Registration
@@ -25,10 +25,9 @@ import { MikroOrmModule } from "@nest-boot/mikro-orm";
 export class CommonModule {}
 ```
 
-When no options are passed, the module auto-loads configuration from environment variables using `loadConfigFromEnv()`, which reads:
+When no options are passed, the module auto-loads configuration with `loadConfigFromEnv()`. `DB_URL` or `DATABASE_URL` takes precedence; otherwise use the `DB_*` or `DATABASE_*` host, port, database, user, password, and type variables. URL protocols and `DB_TYPE`/`DATABASE_TYPE` currently resolve `postgres`/`postgresql` and `mysql` drivers.
 
-- `DATABASE_URL` — PostgreSQL connection string
-- Entity discovery via `tsconfig.json` paths
+The default config discovers runtime entities from `dist/**/*.entity.js`, TypeScript entities from `src/**/*.entity.ts`, uses `TsMorphMetadataProvider`, enables MikroORM DataLoaders, and stores migrations and seeders under `src/database` (or `dist/database` after build).
 
 ### Async Registration
 
@@ -178,10 +177,12 @@ import { CryptModule } from "@nest-boot/crypt";
 const CryptDynamicModule = CryptModule.registerAsync({
   inject: [ConfigService],
   useFactory: (configService: ConfigService) => ({
-    secret: configService.get("APP_SECRET", "secret"),
+    secret: configService.getOrThrow("CRYPT_SECRET"),
   }),
 });
 ```
+
+`CryptModule` validates that its secret is at least 32 characters and has sufficient entropy. `@EncryptedProperty()` marks the column hidden and lazy by default and encrypts string values before create and update operations.
 
 ## Hashed Properties
 
@@ -205,7 +206,7 @@ export class User {
 }
 ```
 
-Values are automatically hashed on write. Requires `HashModule` to be registered.
+Values are automatically hashed before create and update operations. The decorator marks the column hidden and lazy by default and does not hash an existing Argon2 value again. `HashModule` must be initialized before entity hooks run.
 
 ## Best Practices
 

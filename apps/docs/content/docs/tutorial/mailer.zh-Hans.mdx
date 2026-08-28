@@ -31,6 +31,29 @@ import { MailerModule } from "@nest-boot/mailer";
 export class AppModule {}
 ```
 
+## 发送邮件
+
+`MailerModule` 将配置好的 Nodemailer transport 以 `Mailer` 类令牌导出。请从 `@nest-boot/mailer` 注入该令牌：
+
+```typescript
+import { Mailer } from "@nest-boot/mailer";
+import { Injectable } from "@nestjs/common";
+
+@Injectable()
+export class NotificationService {
+  constructor(private readonly mailer: Mailer) {}
+
+  async sendWelcomeEmail(to: string, name: string): Promise<void> {
+    await this.mailer.sendMail({
+      from: '"App" <noreply@example.com>',
+      to,
+      subject: `欢迎，${name}！`,
+      text: `${name}，感谢注册。`,
+    });
+  }
+}
+```
+
 ## 特性
 
 - **Nodemailer 集成** - 通过 NestJS 依赖注入使用完整 Nodemailer API

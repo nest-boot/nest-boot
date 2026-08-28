@@ -3,7 +3,7 @@ title: "GraphQL"
 description: "使用 Apollo Server 构建 GraphQL API，支持游标分页、操作日志和查询复杂度限流。"
 ---
 
-`@nest-boot/graphql` 模块为 NestJS 提供预配置的 [Apollo Server](https://www.apollographql.com/docs/apollo-server/) GraphQL 层，支持代码优先的模式生成、全局异常过滤和内置 Playground。配套模块提供[操作日志](#graphql-日志)、[查询复杂度限流](#graphql-限流)和[游标分页](#graphql-连接)。
+`@nest-boot/graphql` 模块为 NestJS 提供预配置的 [Apollo Server](https://www.apollographql.com/docs/apollo-server/) GraphQL 层，支持代码优先的模式生成、全局异常过滤和可选的本地 Landing Page。配套模块提供[操作日志](#graphql-日志)、[查询复杂度限流](#graphql-限流)和[游标分页](#graphql-连接)。
 
 ## 安装
 
@@ -31,6 +31,7 @@ export class AppModule {}
 - 代码优先自动生成 Schema（`schema.gql`）
 - Schema 排序输出
 - 全局 `GraphQLExceptionFilter` 错误处理
+- 除非显式设置 `playground: false`，否则启用 Apollo 本地 Landing Page
 
 ### 异步注册
 
@@ -139,8 +140,8 @@ export class UserResolver {
   }
 
   @ResolveField(() => String)
-  fullName(@Parent() user: User): string {
-    return `${user.firstName} ${user.lastName}`;
+  displayName(@Parent() user: User): string {
+    return user.name;
   }
 }
 ```
@@ -349,7 +350,7 @@ query {
 
 ## GraphQL 日志
 
-`@nest-boot/graphql-logger` 模块提供 Apollo Server 插件，记录 GraphQL 操作元数据（操作名称、查询、变量、耗时）。
+`@nest-boot/graphql-logger` 模块提供 Apollo Server 插件，把已解析操作的 ID、名称和类型加入当前结构化 logger bindings。操作解析后写出的日志会自动包含这些元数据；插件不会记录原始查询或变量。
 
 ### 安装
 
@@ -398,7 +399,7 @@ export class CommonModule {}
 
 Memory 驱动适合本地开发和单进程应用，但不同进程或副本之间不会共享限流桶。如果配额需要全局共享，请使用 Redis 或自定义分布式驱动。
 
-需要调整阈值或显式指定驱动时，使用 `forRoot()`：
+需要调整令牌桶阈值或显式指定驱动时，使用 `forRoot()`。当前插件会拒绝 requested query cost 大于等于 `1000` 的查询。
 
 ```typescript
 import {
@@ -413,7 +414,6 @@ const driver: GraphQLRateLimitDriver = new MemoryGraphQLRateLimitDriver();
   imports: [
     GraphQLRateLimitModule.forRoot({
       driver,
-      maxComplexity: 1000, // 每次查询最大开销
       maximumAvailable: 1000, // 令牌桶容量
       restoreRate: 50, // 每秒恢复的点数
     }),
@@ -426,14 +426,14 @@ export class CommonModule {}
 
 ### 自定义复杂度
 
-使用 `@Complexity()` 装饰器为字段定义自定义开销计算：
+使用 `@Complexity()` 装饰器生成 `@complexity` Schema 指令。可以设置基础值，以及用于乘算该值的参数名：
 
 ```typescript
 import { Complexity } from "@nest-boot/graphql-rate-limit";
 
 @Resolver(() => User)
 export class UserResolver {
-  @Complexity(({ childComplexity, args }) => args.first * childComplexity)
+  @Complexity({ value: 2, multipliers: ["first"] })
   @Query(() => UserConnection)
   async users(@Args() args: UserConnectionArgs) {
     return this.cm.find(UserConnection, args);

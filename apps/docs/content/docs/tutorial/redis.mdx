@@ -8,22 +8,22 @@ The `@nest-boot/redis` module provides a simple Redis integration using [ioredis
 ## Installation
 
 ```bash
-pnpm add @nest-boot/redis
+pnpm add @nest-boot/redis ioredis
 ```
 
 ## Module Registration
 
 ```typescript
 import { RedisModule } from "@nest-boot/redis";
+import { Module } from "@nestjs/common";
 
-@Global()
 @Module({
   imports: [RedisModule],
 })
-export class CommonModule {}
+export class AppModule {}
 ```
 
-By default, the module reads the `REDIS_URL` environment variable.
+The global module reads `REDIS_URL` first. Without a URL, it uses `REDIS_HOST`, `REDIS_PORT`, `REDIS_DB`/`REDIS_DATABASE`, `REDIS_USER`/`REDIS_USERNAME`, `REDIS_PASS`/`REDIS_PASSWORD`, and `REDIS_TLS`. A `rediss:` URL also enables TLS.
 
 ### Custom Configuration
 
@@ -35,7 +35,9 @@ import { RedisModule } from "@nest-boot/redis";
     RedisModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        url: configService.getOrThrow("REDIS_URL"),
+        host: configService.getOrThrow("REDIS_HOST"),
+        port: configService.get<number>("REDIS_PORT", 6379),
+        password: configService.get("REDIS_PASSWORD"),
       }),
     }),
   ],
@@ -45,16 +47,15 @@ export class CommonModule {}
 
 ## Usage
 
-Inject the Redis client with `@InjectRedis()`:
+The module registers the `ioredis` `Redis` class as its provider token, so inject the client directly by type:
 
 ```typescript
-import { InjectRedis } from "@nest-boot/redis";
 import { Injectable } from "@nestjs/common";
-import { Redis } from "ioredis";
+import Redis from "ioredis";
 
 @Injectable()
 export class CacheService {
-  constructor(@InjectRedis() private readonly redis: Redis) {}
+  constructor(private readonly redis: Redis) {}
 
   async get(key: string): Promise<string | null> {
     return this.redis.get(key);

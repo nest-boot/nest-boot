@@ -3,7 +3,7 @@ title: "Auth"
 description: "使用 better-auth 为 NestJS 应用添加认证，支持会话、OAuth/OIDC、守卫和中间件。"
 ---
 
-`@nest-boot/auth` 模块提供基于 [better-auth](https://www.better-auth.com/) 的认证功能，包括 MikroORM 会话持久化、自动中间件注册和全局守卫。
+`@nest-boot/auth` 模块提供基于 [better-auth](https://www.better-auth.com/) 的认证功能，包括 MikroORM 会话持久化、自动中间件注册，以及可由应用注册为全局守卫的 `AuthGuard`。
 
 ## 安装
 
@@ -17,12 +17,13 @@ pnpm add @nest-boot/auth better-auth
 
 ```typescript
 import { AuthModule } from "@nest-boot/auth";
+import { Global, Module } from "@nestjs/common";
 import { User } from "./user.entity";
 import { Account } from "./account.entity";
 import { Session } from "./session.entity";
 import { Verification } from "./verification.entity";
 
-const AuthDynamicModule = AuthModule.forRoot({
+export const AuthDynamicModule = AuthModule.forRoot({
   entities: {
     user: User,
     account: Account,
@@ -30,6 +31,12 @@ const AuthDynamicModule = AuthModule.forRoot({
     verification: Verification,
   },
 });
+
+@Global()
+@Module({
+  imports: [AuthDynamicModule],
+})
+export class CommonModule {}
 ```
 
 模块自动完成：
@@ -182,7 +189,7 @@ const AuthDynamicModule = AuthModule.forRootAsync({
 
 ## 认证守卫
 
-将 `AuthGuard` 注册为全局守卫，默认保护所有路由：
+将 `AuthGuard` 注册为全局守卫，默认保护所有路由。应导入已配置的动态模块，而不是未配置的 `AuthModule` 类：
 
 ```typescript
 import { AuthGuard } from "@nest-boot/auth";
@@ -190,7 +197,7 @@ import { APP_GUARD } from "@nestjs/core";
 
 @Global()
 @Module({
-  imports: [AuthModule],
+  imports: [AuthDynamicModule],
   providers: [
     {
       provide: APP_GUARD,

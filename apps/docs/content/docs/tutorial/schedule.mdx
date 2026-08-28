@@ -1,56 +1,63 @@
 ---
 title: "Schedule"
-description: "Cron-based task scheduling for NestJS with decorators and dynamic intervals."
+description: "Persistent cron and interval scheduling for NestJS using BullMQ job schedulers."
 ---
 
-The `@nest-boot/schedule` module provides cron-based task scheduling built on [`@nestjs/schedule`](https://docs.nestjs.com/techniques/task-scheduling).
+The `@nest-boot/schedule` module discovers decorated providers and controllers, registers persistent [BullMQ job schedulers](https://docs.bullmq.io/guide/job-schedulers), and executes their handlers through a dedicated `schedule` worker. It supports cron patterns and millisecond intervals.
 
 ## Installation
 
 ```bash
-pnpm add @nest-boot/schedule
+pnpm add @nest-boot/schedule @nest-boot/bullmq @nestjs/bullmq bullmq
 ```
 
 ## Module Registration
 
 ```typescript
+import { BullModule } from "@nest-boot/bullmq";
 import { ScheduleModule } from "@nest-boot/schedule";
+import { Module } from "@nestjs/common";
 
-@Global()
 @Module({
-  imports: [ScheduleModule],
+  imports: [
+    BullModule,
+    ScheduleModule.forRoot({
+      concurrency: 5,
+    }),
+  ],
 })
-export class CommonModule {}
+export class AppModule {}
 ```
+
+`BullModule` reads the Redis connection from `REDIS_URL` or the individual `REDIS_*` variables. `ScheduleModule` also accepts an explicit BullMQ `connection`, `concurrency`, and `autorun`. The worker starts automatically unless `autorun` is `false`.
 
 ## Defining Scheduled Tasks
 
-Use the `@Cron()` decorator to define scheduled tasks:
+Use `@Cron()` for a cron pattern and `@Interval()` for a millisecond interval. Cron schedules default to the `UTC` timezone.
 
 ```typescript
-import { Injectable } from "@nestjs/common";
-import { Cron, CronExpression } from "@nest-boot/schedule";
-import { Logger } from "@nest-boot/logger";
+import { Cron, Interval } from "@nest-boot/schedule";
+import { Injectable, Logger } from "@nestjs/common";
 
 @Injectable()
 export class CleanupService {
-  constructor(private readonly logger: Logger) {
-    this.logger.setContext(CleanupService.name);
-  }
+  private readonly logger = new Logger(CleanupService.name);
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  @Cron("0 0 * * *", { timezone: "UTC", removeOnComplete: true })
   async cleanupExpiredSessions(): Promise<void> {
     this.logger.log("Cleaning up expired sessions");
     // ...cleanup logic
   }
 
-  @Cron("0 */5 * * * *") // Every 5 minutes
+  @Interval(5 * 60 * 1000, { removeOnComplete: true })
   async syncMetrics(): Promise<void> {
     this.logger.log("Syncing metrics");
     // ...sync logic
   }
 }
 ```
+
+Each schedule is named `<ClassName>.<methodName>`. At application bootstrap, the registry upserts the discovered schedules and removes stale schedulers that no longer exist in the codebase. Additional decorator options are forwarded as BullMQ job template options.
 
 ## API Reference
 

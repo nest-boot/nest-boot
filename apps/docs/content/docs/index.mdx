@@ -16,27 +16,39 @@ Nest Boot is a modular framework for building NestJS applications. It provides a
 
 Nest Boot provides the following modules:
 
-| Module                                                             | Description                         |
-| ------------------------------------------------------------------ | ----------------------------------- |
-| [@nest-boot/auth](/docs/tutorial/auth)                             | Authentication and authorization    |
-| [@nest-boot/bullmq](/docs/tutorial/bullmq)                         | Job queue management with BullMQ    |
-| [@nest-boot/crypt](/docs/tutorial/crypt)                           | Encryption and decryption utilities |
-| [@nest-boot/file-upload](/docs/tutorial/file-upload)               | File upload with S3 storage         |
-| [@nest-boot/graphql](/docs/tutorial/graphql)                       | GraphQL integration                 |
-| [@nest-boot/graphql-connection](/docs/tutorial/graphql-connection) | GraphQL connection/pagination       |
-| [@nest-boot/hash](/docs/tutorial/hash)                             | Password hashing utilities          |
-| [@nest-boot/i18n](/docs/tutorial/i18n)                             | Internationalization                |
-| [@nest-boot/logger](/docs/tutorial/logger)                         | Structured logging                  |
-| [@nest-boot/mailer](/docs/tutorial/mailer)                         | Email sending                       |
-| [@nest-boot/metrics](/docs/tutorial/metrics)                       | Application metrics                 |
-| [@nest-boot/middleware](/docs/tutorial/middleware)                 | Middleware management               |
-| [@nest-boot/mikro-orm](/docs/tutorial/mikro-orm)                   | MikroORM integration                |
-| [@nest-boot/permission](/docs/tutorial/permission)                 | CASL permission checks              |
-| [@nest-boot/redis](/docs/tutorial/redis)                           | Redis client                        |
-| [@nest-boot/request-context](/docs/tutorial/request-context)       | Request context management          |
-| [@nest-boot/schedule](/docs/tutorial/schedule)                     | Task scheduling                     |
-| [@nest-boot/validator](/docs/tutorial/validator)                   | Validation utilities                |
-| [@nest-boot/view](/docs/tutorial/view)                             | View rendering                      |
+| Module                                                               | Description                          |
+| -------------------------------------------------------------------- | ------------------------------------ |
+| [@nest-boot/auth](/docs/tutorial/auth)                               | Authentication and authorization     |
+| [@nest-boot/bullmq](/docs/tutorial/bullmq)                           | Job queue management with BullMQ     |
+| [@nest-boot/crypt](/docs/tutorial/crypt)                             | Encryption and decryption utilities  |
+| [@nest-boot/file-upload](/docs/tutorial/file-upload)                 | File upload with S3 storage          |
+| [@nest-boot/graphql](/docs/tutorial/graphql)                         | GraphQL integration                  |
+| [@nest-boot/graphql-connection](/docs/tutorial/graphql-connection)   | GraphQL connection/pagination        |
+| [@nest-boot/hash](/docs/tutorial/hash)                               | Password hashing utilities           |
+| [@nest-boot/i18n](/docs/tutorial/i18n)                               | Internationalization                 |
+| [@nest-boot/logger](/docs/tutorial/logger)                           | Structured logging                   |
+| [@nest-boot/mailer](/docs/tutorial/mailer)                           | Email sending                        |
+| [@nest-boot/metrics](/docs/tutorial/metrics)                         | Application metrics                  |
+| [@nest-boot/middleware](/docs/tutorial/middleware)                   | Middleware management                |
+| [@nest-boot/mikro-orm](/docs/tutorial/mikro-orm)                     | MikroORM integration                 |
+| [@nest-boot/permission](/docs/tutorial/permission)                   | CASL permission checks               |
+| [@nest-boot/redis](/docs/tutorial/redis)                             | Redis client                         |
+| [@nest-boot/request-context](/docs/tutorial/request-context)         | Request context management           |
+| [@nest-boot/row-level-security](/docs/tutorial/row-level-security)   | PostgreSQL row-level security        |
+| [@nest-boot/schedule](/docs/tutorial/schedule)                       | Task scheduling                      |
+| [@nest-boot/temporary-directory](/docs/tutorial/temporary-directory) | Request-scoped temporary directories |
+| [@nest-boot/validator](/docs/tutorial/validator)                     | Validation utilities                 |
+| [@nest-boot/view](/docs/tutorial/view)                               | View rendering                       |
+
+Companion packages are documented in the API reference:
+
+| Package                                                       | Purpose                                              |
+| ------------------------------------------------------------- | ---------------------------------------------------- |
+| [@nest-boot/bullmq-mikro-orm](/docs/api/bullmq-mikro-orm)     | Run BullMQ processors in a MikroORM request context  |
+| [@nest-boot/graphql-logger](/docs/api/graphql-logger)         | Add GraphQL operation metadata to request logs       |
+| [@nest-boot/graphql-rate-limit](/docs/api/graphql-rate-limit) | Reject GraphQL operations above the complexity limit |
+| [@nest-boot/mikro-orm-crypt](/docs/api/mikro-orm-crypt)       | Encrypt MikroORM entity properties                   |
+| [@nest-boot/mikro-orm-hash](/docs/api/mikro-orm-hash)         | Hash MikroORM entity properties                      |
 
 ## Quick Start
 
@@ -48,20 +60,21 @@ npm install @nest-boot/hash @nest-boot/crypt
 pnpm add @nest-boot/hash @nest-boot/crypt
 ```
 
-Then import and register them in your NestJS application:
+Generate a high-entropy secret and expose it as `APP_SECRET` (or use the module-specific `HASH_SECRET` and `CRYPT_SECRET` variables):
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+```
+
+The modules read those environment variables when imported directly:
 
 ```typescript
 import { Module } from "@nestjs/common";
-import { HashModule } from "@nest-boot/hash";
 import { CryptModule } from "@nest-boot/crypt";
+import { HashModule } from "@nest-boot/hash";
 
 @Module({
-  imports: [
-    HashModule.register(),
-    CryptModule.register({
-      secret: process.env.CRYPT_SECRET,
-    }),
-  ],
+  imports: [HashModule, CryptModule],
 })
 export class AppModule {}
 ```
@@ -69,3 +82,4 @@ export class AppModule {}
 ## Next Steps
 
 - Browse the [Tutorials](/docs/tutorial/hash) to learn how to use specific modules
+- Use the [API Reference](/docs/api/auth) for exact exports, options, and signatures

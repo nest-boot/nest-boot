@@ -15,6 +15,18 @@ pnpm add @nest-boot/graphql-connection @nest-boot/graphql @mikro-orm/core
 
 ## Basic Usage
 
+Import the global module once so Nest can provide `ConnectionManager`:
+
+```typescript
+import { GraphQLConnectionModule } from "@nest-boot/graphql-connection";
+import { Module } from "@nestjs/common";
+
+@Module({
+  imports: [GraphQLConnectionModule],
+})
+export class AppModule {}
+```
+
 ### Building Connection Types
 
 ```typescript
@@ -104,3 +116,7 @@ Human-friendly search syntax with field-specific filters: `field:value`, quoted 
 - **MongoDB-Style Filtering** - Powerful filter syntax with validation
 - **Search Syntax** - Human-friendly search query parsing
 - **Cursor-Based Pagination** - Stable pagination with opaque cursors
+
+## API Reference
+
+For detailed API documentation, see the [GraphQL Connection API Reference](/docs/api/graphql-connection).

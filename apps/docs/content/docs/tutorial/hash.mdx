@@ -3,7 +3,7 @@ title: "Hash"
 description: "Secure password hashing and verification."
 ---
 
-The `@nest-boot/hash` module provides secure password hashing and verification using bcrypt or similar algorithms.
+The `@nest-boot/hash` module provides password hashing and verification using Argon2. A secret (pepper) is required when the Nest module initializes.
 
 ## Installation
 
@@ -13,14 +13,30 @@ pnpm add @nest-boot/hash
 
 ## Module Registration
 
+Set `HASH_SECRET` or `APP_SECRET`, then import the global module once:
+
 ```typescript
 import { HashModule } from "@nest-boot/hash";
+import { Module } from "@nestjs/common";
 
-@Global()
 @Module({
   imports: [HashModule],
 })
-export class CommonModule {}
+export class AppModule {}
+```
+
+You can also pass the secret explicitly:
+
+```typescript
+HashModule.register({
+  secret: process.env.HASH_SECRET,
+});
+```
+
+The resolved secret must be at least 32 characters and have at least 120 bits of estimated entropy. Generate a suitable value with:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
 ```
 
 ## Usage
@@ -38,10 +54,12 @@ export class AuthService {
   }
 
   async verifyPassword(password: string, hash: string): Promise<boolean> {
-    return this.hashService.verify(password, hash);
+    return this.hashService.verify(hash, password);
   }
 }
 ```
+
+`verify()` always receives the stored hash first and the plaintext value second. Synchronous `hashSync()` and `verifySync()` variants are also available.
 
 ## MikroORM Integration
 

@@ -3,12 +3,12 @@ title: "Validator"
 description: "Validation utilities for NestJS with class-validator integration."
 ---
 
-The `@nest-boot/validator` module provides validation utilities that integrate with [class-validator](https://github.com/typestack/class-validator) and NestJS pipes.
+The `@nest-boot/validator` package provides i18n-aware decorators built on [class-validator](https://github.com/typestack/class-validator). It does not register a Nest module or a global validation pipe for you.
 
 ## Installation
 
 ```bash
-pnpm add @nest-boot/validator class-validator class-transformer
+pnpm add @nest-boot/validator @nest-boot/i18n class-validator class-transformer
 ```
 
 ## Usage
@@ -38,24 +38,31 @@ void bootstrap();
 
 ### Validating Input Types
 
-Use `class-validator` decorators on your GraphQL input types:
+Use Nest Boot's decorators alongside the standard `class-validator` decorators. Nest Boot's default messages are resolved through `@nest-boot/i18n` using the `validation` and `property` namespaces.
 
 ```typescript
 import { Field, InputType } from "@nest-boot/graphql";
-import { IsEmail, IsString, MinLength } from "class-validator";
+import { IsEmail, IsTimezone, Length } from "@nest-boot/validator";
+import { IsString } from "class-validator";
 
 @InputType()
 export class CreateUserInput {
   @IsString()
-  @MinLength(2)
+  @Length(2, 80)
   @Field(() => String)
   name!: string;
 
   @IsEmail()
   @Field(() => String)
   email!: string;
+
+  @IsTimezone()
+  @Field(() => String)
+  timezone!: string;
 }
 ```
+
+The package also exports `ArrayLength`, `IsDate`, `IsDomain`, `IsNumberString`, `IsUrl`, `Min`, `Max`, and comparison decorators such as `IsGreaterThan`. `IsOptional` and `ValidateNested` are re-exported from `class-validator` for convenience.
 
 ## API Reference
 

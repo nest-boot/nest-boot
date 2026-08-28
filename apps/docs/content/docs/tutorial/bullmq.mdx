@@ -8,7 +8,7 @@ The `@nest-boot/bullmq` module wraps [`@nestjs/bullmq`](https://docs.nestjs.com/
 ## Installation
 
 ```bash
-pnpm add @nest-boot/bullmq
+pnpm add @nest-boot/bullmq @nest-boot/request-context @nestjs/bullmq bullmq
 ```
 
 ## Module Registration
@@ -17,15 +17,15 @@ Register `BullModule` in your `CommonModule` to configure the Redis connection:
 
 ```typescript
 import { BullModule } from "@nest-boot/bullmq";
+import { Module } from "@nestjs/common";
 
-@Global()
 @Module({
   imports: [BullModule],
 })
-export class CommonModule {}
+export class AppModule {}
 ```
 
-The module reads the `REDIS_URL` environment variable automatically.
+The module reads `REDIS_URL` automatically. Without a URL it uses `REDIS_HOST`, `REDIS_PORT`, `REDIS_DB`/`REDIS_DATABASE`, `REDIS_USER`/`REDIS_USERNAME`, `REDIS_PASS`/`REDIS_PASSWORD`, and `REDIS_TLS`. You can instead call `BullModule.forRoot()` or `forRootAsync()` with an explicit BullMQ `connection`.
 
 ## Defining Queues
 
@@ -55,8 +55,9 @@ export class FileModule {}
 Inject `Queue` using `@InjectQueue()` to add jobs:
 
 ```typescript
-import { InjectQueue, Queue } from "@nest-boot/bullmq";
+import { InjectQueue } from "@nest-boot/bullmq";
 import { Injectable } from "@nestjs/common";
+import { Queue } from "bullmq";
 
 interface EmailJobData {
   to: string;
@@ -86,12 +87,17 @@ export class EmailService {
 Create a processor by extending `WorkerHost` with the `@Processor()` decorator:
 
 ```typescript
-import { Job, Processor, WorkerHost } from "@nest-boot/bullmq";
+import { Processor, WorkerHost } from "@nest-boot/bullmq";
 import { Logger } from "@nest-boot/logger";
+import { Job } from "bullmq";
+import { NotificationService } from "./notification.service";
 
 @Processor("email-queue", { concurrency: 5 })
 export class EmailProcessor extends WorkerHost {
-  constructor(private readonly logger: Logger) {
+  constructor(
+    private readonly logger: Logger,
+    private readonly notificationService: NotificationService,
+  ) {
     super();
     this.logger.setContext(EmailProcessor.name);
   }
@@ -102,24 +108,27 @@ export class EmailProcessor extends WorkerHost {
     this.logger.assign({ jobId: job.id, to });
     this.logger.log("Processing email job");
 
-    await this.mailer.send({ to, subject, body });
+    await this.notificationService.sendEmail({ to, subject, body });
 
     this.logger.log("Email sent successfully");
   }
 }
 ```
 
+Nest Boot's `@Processor()` wraps each job in a `RequestContext`, stores BullMQ's `JOB_REF`, and then invokes the normal `@nestjs/bullmq` processor.
+
 ## BullMQ MikroORM Integration
 
 The `@nest-boot/bullmq-mikro-orm` module persists BullMQ jobs as MikroORM entities, enabling you to query job history via the database:
 
 ```bash
-pnpm add @nest-boot/bullmq-mikro-orm
+pnpm add @nest-boot/bullmq-mikro-orm @nest-boot/schedule @mikro-orm/core
 ```
 
 ```typescript
 import { ref } from "@mikro-orm/core";
 import { BullMQMikroORMModule } from "@nest-boot/bullmq-mikro-orm";
+import { Module } from "@nestjs/common";
 
 import { Job } from "./job.entity";
 import { Workspace } from "./workspace.entity";
@@ -136,9 +145,14 @@ const BullMQMikroORMDynamicModule = BullMQMikroORMModule.forRoot({
     };
   },
 });
+
+@Module({
+  imports: [BullMQMikroORMDynamicModule],
+})
+export class JobsModule {}
 ```
 
-The `convertJobToEntityData` callback maps BullMQ job data to your entity fields, allowing you to associate jobs with workspaces or other entities.
+`Job` must be a concrete MikroORM entity extending the exported `JobEntity` base class and must be included in entity discovery. The integration discovers registered queues and workers, upserts state changes, and deletes history older than `jobTTL` (30 days by default) with an hourly schedule. Use `includeQueues` and `excludeQueues` to control which queues are persisted. `convertJobToEntityData` maps BullMQ job data to your additional entity fields.
 
 ## Best Practices
 
