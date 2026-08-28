@@ -36,31 +36,89 @@ function normalizeHostname(hostname: string): string {
   return hostname;
 }
 
-async function loadPostgreSqlTlsFiles(
-  connection: Record<string, unknown>,
+async function loadTlsFiles(
+  files: readonly (readonly [unknown, string])[],
 ): Promise<Record<string, unknown> | undefined> {
   const ssl: Record<string, unknown> = {};
-  const tlsFiles = [
-    ["sslrootcert", "ca"],
-    ["sslcert", "cert"],
-    ["sslkey", "key"],
-  ] as const;
   let hasTlsFile = false;
 
-  for (const [queryKey, sslKey] of tlsFiles) {
-    const path = connection[queryKey];
-
+  for (const [path, sslKey] of files) {
     if (typeof path === "string" && path) {
       ssl[sslKey] = await readFile(path, "utf8");
       hasTlsFile = true;
     }
   }
 
+  return hasTlsFile ? ssl : undefined;
+}
+
+async function loadPostgreSqlTlsFiles(
+  connection: Record<string, unknown>,
+): Promise<Record<string, unknown> | undefined> {
+  const ssl = await loadTlsFiles([
+    [connection.sslrootcert, "ca"],
+    [connection.sslcert, "cert"],
+    [connection.sslkey, "key"],
+  ]);
+
   delete connection.sslrootcert;
   delete connection.sslcert;
   delete connection.sslkey;
 
-  return hasTlsFile ? ssl : undefined;
+  return ssl;
+}
+
+async function loadMySqlTlsConfig(
+  connection: Record<string, unknown>,
+): Promise<void> {
+  const ssl = await loadTlsFiles([
+    [connection["ssl-ca"], "ca"],
+    [connection["ssl-cert"], "cert"],
+    [connection["ssl-key"], "key"],
+  ]);
+  const sslMode = connection["ssl-mode"];
+
+  delete connection["ssl-ca"];
+  delete connection["ssl-cert"];
+  delete connection["ssl-key"];
+  delete connection["ssl-mode"];
+
+  switch (typeof sslMode === "string" ? sslMode.toUpperCase() : undefined) {
+    case "DISABLED":
+      connection.ssl = false;
+      break;
+    case "PREFERRED":
+    case "REQUIRED":
+      connection.ssl = { ...ssl, rejectUnauthorized: false };
+      break;
+    case "VERIFY_CA":
+      connection.ssl = {
+        ...ssl,
+        rejectUnauthorized: true,
+        verifyIdentity: false,
+      };
+      break;
+    case "VERIFY_IDENTITY":
+      connection.ssl = {
+        ...ssl,
+        rejectUnauthorized: true,
+        verifyIdentity: true,
+      };
+      break;
+    case undefined:
+      if (ssl) {
+        connection.ssl = {
+          ...ssl,
+          rejectUnauthorized: true,
+          verifyIdentity: false,
+        };
+      } else if (connection.ssl === true) {
+        connection.ssl = {};
+      }
+      break;
+    default:
+      throw new TypeError(`Unsupported MySQL ssl-mode: ${String(sslMode)}`);
+  }
 }
 
 async function loadQueryConfig(
@@ -84,6 +142,10 @@ async function loadQueryConfig(
   const schema = url.searchParams.get("schema") ?? undefined;
 
   delete connection.schema;
+
+  if (protocol === "mysql:") {
+    await loadMySqlTlsConfig(connection);
+  }
 
   if (protocol === "postgres:" || protocol === "postgresql:") {
     if (connection.ssl === "true" || connection.ssl === "1") {

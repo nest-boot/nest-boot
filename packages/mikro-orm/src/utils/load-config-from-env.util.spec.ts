@@ -12,6 +12,34 @@ import { loadConfigFromEnv } from "./load-config-from-env.util";
 
 const ORIGINAL_ENV = process.env;
 
+interface TlsFilePaths {
+  clientCert: string;
+  clientKey: string;
+  rootCert: string;
+}
+
+async function withTlsFiles(
+  callback: (paths: TlsFilePaths) => Promise<void>,
+): Promise<void> {
+  const directory = await mkdtemp(join(tmpdir(), "nest-boot-mikro-orm-"));
+  const paths = {
+    clientCert: join(directory, "client.crt"),
+    clientKey: join(directory, "client.key"),
+    rootCert: join(directory, "root.crt"),
+  };
+
+  try {
+    await Promise.all([
+      writeFile(paths.rootCert, "root certificate"),
+      writeFile(paths.clientCert, "client certificate"),
+      writeFile(paths.clientKey, "client key"),
+    ]);
+    await callback(paths);
+  } finally {
+    await rm(directory, { force: true, recursive: true });
+  }
+}
+
 describe("loadConfigFromEnv", () => {
   beforeEach(() => {
     process.env = { ...ORIGINAL_ENV };
@@ -102,8 +130,21 @@ describe("loadConfigFromEnv", () => {
   });
 
   it.each([
-    ["mysql", "ssl=true", { ssl: true }],
+    ["mysql", "ssl=true", { ssl: {} }],
     ["mysql", "ssl=false", { ssl: false }],
+    ["mysql", "ssl-mode=DISABLED", { ssl: false }],
+    ["mysql", "ssl-mode=PREFERRED", { ssl: { rejectUnauthorized: false } }],
+    ["mysql", "ssl-mode=REQUIRED", { ssl: { rejectUnauthorized: false } }],
+    [
+      "mysql",
+      "ssl-mode=VERIFY_CA",
+      { ssl: { rejectUnauthorized: true, verifyIdentity: false } },
+    ],
+    [
+      "mysql",
+      "ssl-mode=VERIFY_IDENTITY",
+      { ssl: { rejectUnauthorized: true, verifyIdentity: true } },
+    ],
     ["postgresql", "ssl=true", { ssl: true }],
     ["postgresql", "ssl=1", { ssl: true }],
     ["postgresql", "ssl=0", { ssl: false }],
@@ -166,18 +207,7 @@ describe("loadConfigFromEnv", () => {
   });
 
   it("should load PostgreSQL TLS files into structured SSL options", async () => {
-    const directory = await mkdtemp(join(tmpdir(), "nest-boot-mikro-orm-"));
-    const rootCert = join(directory, "root.crt");
-    const clientCert = join(directory, "client.crt");
-    const clientKey = join(directory, "client.key");
-
-    try {
-      await Promise.all([
-        writeFile(rootCert, "root certificate"),
-        writeFile(clientCert, "client certificate"),
-        writeFile(clientKey, "client key"),
-      ]);
-
+    await withTlsFiles(async ({ clientCert, clientKey, rootCert }) => {
       const databaseUrl = new URL("postgresql://user:pass@localhost/app");
       databaseUrl.searchParams.set("sslmode", "verify-full");
       databaseUrl.searchParams.set("sslrootcert", rootCert);
@@ -196,9 +226,40 @@ describe("loadConfigFromEnv", () => {
           },
         },
       });
-    } finally {
-      await rm(directory, { force: true, recursive: true });
-    }
+    });
+  });
+
+  it("should load MySQL TLS files into structured SSL options", async () => {
+    await withTlsFiles(async ({ clientCert, clientKey, rootCert }) => {
+      const databaseUrl = new URL("mysql://user:pass@localhost/app");
+      databaseUrl.searchParams.set("ssl-ca", rootCert);
+      databaseUrl.searchParams.set("ssl-cert", clientCert);
+      databaseUrl.searchParams.set("ssl-key", clientKey);
+      process.env.DATABASE_URL = databaseUrl.href;
+
+      const config = await loadConfigFromEnv();
+
+      expect(config.driverOptions).toEqual({
+        connection: {
+          ssl: {
+            ca: "root certificate",
+            cert: "client certificate",
+            key: "client key",
+            rejectUnauthorized: true,
+            verifyIdentity: false,
+          },
+        },
+      });
+    });
+  });
+
+  it("should reject unsupported MySQL SSL modes", async () => {
+    process.env.DATABASE_URL =
+      "mysql://user:pass@localhost/app?ssl-mode=VERIFY_HOSTNAME";
+
+    await expect(loadConfigFromEnv()).rejects.toThrow(
+      "Unsupported MySQL ssl-mode: VERIFY_HOSTNAME",
+    );
   });
 
   it("should reject unsupported database URL protocols", async () => {
