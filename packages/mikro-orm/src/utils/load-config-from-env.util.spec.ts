@@ -130,8 +130,6 @@ describe("loadConfigFromEnv", () => {
   });
 
   it.each([
-    ["mysql", "ssl=true", { ssl: {} }],
-    ["mysql", "ssl=false", { ssl: false }],
     ["mysql", "ssl-mode=DISABLED", { ssl: false }],
     ["mysql", "ssl-mode=PREFERRED", { ssl: { rejectUnauthorized: false } }],
     ["mysql", "ssl-mode=REQUIRED", { ssl: { rejectUnauthorized: false } }],
@@ -146,10 +144,8 @@ describe("loadConfigFromEnv", () => {
       { ssl: { rejectUnauthorized: true, verifyIdentity: true } },
     ],
     ["postgresql", "ssl=true", { ssl: true }],
-    ["postgresql", "ssl=1", { ssl: true }],
-    ["postgresql", "ssl=0", { ssl: false }],
     ["postgresql", "sslmode=disable", { ssl: false }],
-    ["postgresql", "sslmode=no-verify", { ssl: { rejectUnauthorized: false } }],
+    ["postgresql", "sslmode=allow", { ssl: {} }],
     ["postgresql", "sslmode=prefer", { ssl: {} }],
     ["postgresql", "sslmode=verify-ca", { ssl: {} }],
   ])(
@@ -164,22 +160,6 @@ describe("loadConfigFromEnv", () => {
       });
     },
   );
-
-  it("should use mysql2-compatible query value coercion", async () => {
-    process.env.DATABASE_URL =
-      "mysql://user:pass@localhost/app?multipleStatements=false&compress=true&connectTimeout=1000&charset=utf8mb4";
-
-    await expect(loadConfigFromEnv()).resolves.toMatchObject({
-      driverOptions: {
-        connection: {
-          charset: "utf8mb4",
-          compress: true,
-          connectTimeout: 1000,
-          multipleStatements: false,
-        },
-      },
-    });
-  });
 
   it("should preserve omitted URL credentials and port", async () => {
     process.env.DATABASE_URL = "postgresql://db.internal";
@@ -260,6 +240,29 @@ describe("loadConfigFromEnv", () => {
     await expect(loadConfigFromEnv()).rejects.toThrow(
       "Unsupported MySQL ssl-mode: VERIFY_HOSTNAME",
     );
+  });
+
+  it.each([
+    [
+      "mysql://user:pass@localhost/app?ssl=true",
+      "Unsupported MySQL DATABASE_URL parameter: ssl",
+    ],
+    [
+      "mysql://user:pass@localhost/app?multipleStatements=false",
+      "Unsupported MySQL DATABASE_URL parameter: multipleStatements",
+    ],
+    [
+      "postgresql://user:pass@localhost/app?ssl=1",
+      "Unsupported PostgreSQL ssl value",
+    ],
+    [
+      "postgresql://user:pass@localhost/app?sslmode=no-verify",
+      "Unsupported PostgreSQL sslmode: no-verify",
+    ],
+  ])("should reject non-standard database URL options", async (url, error) => {
+    process.env.DATABASE_URL = url;
+
+    await expect(loadConfigFromEnv()).rejects.toThrow(error);
   });
 
   it("should reject unsupported database URL protocols", async () => {

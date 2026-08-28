@@ -71,6 +71,16 @@ async function loadPostgreSqlTlsFiles(
 async function loadMySqlTlsConfig(
   connection: Record<string, unknown>,
 ): Promise<void> {
+  const supportedParameters = ["ssl-mode", "ssl-ca", "ssl-cert", "ssl-key"];
+
+  for (const parameter of Object.keys(connection)) {
+    if (!supportedParameters.includes(parameter)) {
+      throw new TypeError(
+        `Unsupported MySQL DATABASE_URL parameter: ${parameter}`,
+      );
+    }
+  }
+
   const ssl = await loadTlsFiles([
     [connection["ssl-ca"], "ca"],
     [connection["ssl-cert"], "cert"],
@@ -83,7 +93,10 @@ async function loadMySqlTlsConfig(
   delete connection["ssl-key"];
   delete connection["ssl-mode"];
 
-  switch (typeof sslMode === "string" ? sslMode.toUpperCase() : undefined) {
+  const normalizedSslMode =
+    typeof sslMode === "string" ? sslMode.toUpperCase() : sslMode;
+
+  switch (normalizedSslMode) {
     case "DISABLED":
       connection.ssl = false;
       break;
@@ -112,8 +125,6 @@ async function loadMySqlTlsConfig(
           rejectUnauthorized: true,
           verifyIdentity: false,
         };
-      } else if (connection.ssl === true) {
-        connection.ssl = {};
       }
       break;
     default:
@@ -125,19 +136,9 @@ async function loadQueryConfig(
   url: URL,
   protocol: string,
 ): Promise<Pick<HostConfig, "driverOptions" | "schema">> {
-  const connection: Record<string, unknown> = {};
-
-  url.searchParams.forEach((value, key) => {
-    if (protocol === "mysql:") {
-      try {
-        connection[key] = JSON.parse(value) as unknown;
-      } catch {
-        connection[key] = value;
-      }
-    } else {
-      connection[key] = value;
-    }
-  });
+  const connection: Record<string, unknown> = Object.fromEntries(
+    url.searchParams,
+  );
 
   const schema = url.searchParams.get("schema") ?? undefined;
 
@@ -148,10 +149,10 @@ async function loadQueryConfig(
   }
 
   if (protocol === "postgres:" || protocol === "postgresql:") {
-    if (connection.ssl === "true" || connection.ssl === "1") {
+    if (connection.ssl === "true") {
       connection.ssl = true;
-    } else if (connection.ssl === "0") {
-      connection.ssl = false;
+    } else if (connection.ssl !== undefined) {
+      throw new TypeError("Unsupported PostgreSQL ssl value");
     }
 
     const tls = await loadPostgreSqlTlsFiles(connection);
@@ -164,18 +165,19 @@ async function loadQueryConfig(
       case "disable":
         connection.ssl = false;
         break;
-      case "no-verify":
-        connection.ssl = {
-          ...tls,
-          rejectUnauthorized: false,
-        };
-        break;
+      case "allow":
       case "prefer":
       case "require":
       case "verify-ca":
       case "verify-full":
         connection.ssl = tls ?? {};
         break;
+      case undefined:
+        break;
+      default:
+        throw new TypeError(
+          `Unsupported PostgreSQL sslmode: ${String(connection.sslmode)}`,
+        );
     }
 
     delete connection.sslmode;
