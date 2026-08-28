@@ -23,7 +23,7 @@ function normalizeHostname(hostname: string): string {
     return hostname.slice(1, -1);
   }
 
-  return hostname;
+  return decodeURIComponent(hostname);
 }
 
 function loadQueryConfig(

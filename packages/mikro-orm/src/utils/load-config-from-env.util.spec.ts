@@ -76,6 +76,18 @@ describe("loadConfigFromEnv", () => {
     });
   });
 
+  it("should decode a URL-encoded Unix socket hostname", async () => {
+    process.env.DB_URL = "postgresql://user:pass@%2Fvar%2Frun%2Fpostgresql/app";
+
+    await expect(loadConfigFromEnv()).resolves.toMatchObject({
+      dbName: "app",
+      driver: PostgreSqlDriver,
+      host: "/var/run/postgresql",
+      password: "pass",
+      user: "user",
+    });
+  });
+
   it("should ignore individual database variables", async () => {
     process.env.DB_TYPE = "mysql";
     process.env.DB_HOST = "ignored.local";
