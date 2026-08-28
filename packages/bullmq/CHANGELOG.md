@@ -1,3 +1,13 @@
+## 7.3.4 (2026-08-28)
+
+### 🩹 Fixes
+
+- **bullmq:** forward all processor arguments ([#300](https://github.com/nest-boot/nest-boot/pull/300), [#285](https://github.com/nest-boot/nest-boot/issues/285))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 7.3.3 (2026-08-28)
 
 ### 🧱 Updated Dependencies

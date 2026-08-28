@@ -1,3 +1,9 @@
+## 7.3.4 (2026-08-28)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/bullmq to 7.3.4
+
 ## 7.3.3 (2026-08-28)
 
 ### 🧱 Updated Dependencies
