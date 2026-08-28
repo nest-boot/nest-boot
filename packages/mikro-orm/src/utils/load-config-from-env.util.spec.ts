@@ -131,23 +131,10 @@ describe("loadConfigFromEnv", () => {
 
   it.each([
     ["mysql", "ssl-mode=DISABLED", { ssl: false }],
-    ["mysql", "ssl-mode=PREFERRED", { ssl: { rejectUnauthorized: false } }],
     ["mysql", "ssl-mode=REQUIRED", { ssl: { rejectUnauthorized: false } }],
-    [
-      "mysql",
-      "ssl-mode=VERIFY_CA",
-      { ssl: { rejectUnauthorized: true, verifyIdentity: false } },
-    ],
-    [
-      "mysql",
-      "ssl-mode=VERIFY_IDENTITY",
-      { ssl: { rejectUnauthorized: true, verifyIdentity: true } },
-    ],
-    ["postgresql", "ssl=true", { ssl: true }],
     ["postgresql", "sslmode=disable", { ssl: false }],
-    ["postgresql", "sslmode=allow", { ssl: {} }],
-    ["postgresql", "sslmode=prefer", { ssl: {} }],
-    ["postgresql", "sslmode=verify-ca", { ssl: {} }],
+    ["postgresql", "sslmode=require", { ssl: { rejectUnauthorized: false } }],
+    ["postgresql", "sslmode=verify-full", { ssl: {} }],
   ])(
     "should parse %s driver query option %s",
     async (protocol, query, expected) => {
@@ -209,6 +196,33 @@ describe("loadConfigFromEnv", () => {
     });
   });
 
+  it.each(["require", "verify-ca"])(
+    "should map PostgreSQL sslmode=%s with a root certificate",
+    async (sslMode) => {
+      await withTlsFiles(async ({ rootCert }) => {
+        const databaseUrl = new URL("postgresql://user:pass@localhost/app");
+        databaseUrl.searchParams.set("sslmode", sslMode);
+        databaseUrl.searchParams.set("sslrootcert", rootCert);
+        process.env.DATABASE_URL = databaseUrl.href;
+
+        const config = await loadConfigFromEnv();
+        const connection = config.driverOptions?.connection as Record<
+          string,
+          unknown
+        >;
+        const ssl = connection.ssl as Record<string, unknown>;
+
+        expect(ssl).toMatchObject({
+          ca: "root certificate",
+          checkServerIdentity: expect.any(Function),
+        });
+        const checkServerIdentity = ssl.checkServerIdentity as () => undefined;
+
+        checkServerIdentity();
+      });
+    },
+  );
+
   it("should load MySQL TLS files into structured SSL options", async () => {
     await withTlsFiles(async ({ clientCert, clientKey, rootCert }) => {
       const databaseUrl = new URL("mysql://user:pass@localhost/app");
@@ -233,12 +247,87 @@ describe("loadConfigFromEnv", () => {
     });
   });
 
+  it.each([
+    ["VERIFY_CA", false],
+    ["VERIFY_IDENTITY", true],
+  ])(
+    "should map MySQL ssl-mode=%s with a CA certificate",
+    async (sslMode, verifyIdentity) => {
+      await withTlsFiles(async ({ rootCert }) => {
+        const databaseUrl = new URL("mysql://user:pass@localhost/app");
+        databaseUrl.searchParams.set("ssl-mode", sslMode);
+        databaseUrl.searchParams.set("ssl-ca", rootCert);
+        process.env.DATABASE_URL = databaseUrl.href;
+
+        await expect(loadConfigFromEnv()).resolves.toMatchObject({
+          driverOptions: {
+            connection: {
+              ssl: {
+                ca: "root certificate",
+                rejectUnauthorized: true,
+                verifyIdentity,
+              },
+            },
+          },
+        });
+      });
+    },
+  );
+
+  it("should not read MySQL TLS files when SSL is disabled", async () => {
+    process.env.DATABASE_URL =
+      "mysql://user:pass@localhost/app?ssl-mode=DISABLED&ssl-ca=/missing/ca.pem";
+
+    await expect(loadConfigFromEnv()).resolves.toMatchObject({
+      driverOptions: {
+        connection: {
+          ssl: false,
+        },
+      },
+    });
+  });
+
   it("should reject unsupported MySQL SSL modes", async () => {
     process.env.DATABASE_URL =
       "mysql://user:pass@localhost/app?ssl-mode=VERIFY_HOSTNAME";
 
     await expect(loadConfigFromEnv()).rejects.toThrow(
       "Unsupported MySQL ssl-mode: VERIFY_HOSTNAME",
+    );
+  });
+
+  it.each([
+    ["mysql://user:pass@localhost/app?ssl-mode=PREFERRED", "PREFERRED"],
+    ["postgresql://user:pass@localhost/app?sslmode=allow", "allow"],
+    ["postgresql://user:pass@localhost/app?sslmode=prefer", "prefer"],
+  ])(
+    "should reject SSL fallback mode %s that structured options cannot express",
+    async (databaseUrl, sslMode) => {
+      process.env.DATABASE_URL = databaseUrl;
+
+      await expect(loadConfigFromEnv()).rejects.toThrow(
+        `Unsupported ${databaseUrl.startsWith("mysql:") ? "MySQL ssl-mode" : "PostgreSQL sslmode"}: ${sslMode}`,
+      );
+    },
+  );
+
+  it.each(["VERIFY_CA", "VERIFY_IDENTITY"])(
+    "should require ssl-ca for MySQL ssl-mode=%s",
+    async (sslMode) => {
+      process.env.DATABASE_URL = `mysql://user:pass@localhost/app?ssl-mode=${sslMode}`;
+
+      await expect(loadConfigFromEnv()).rejects.toThrow(
+        `MySQL ssl-mode=${sslMode} requires ssl-ca`,
+      );
+    },
+  );
+
+  it("should require sslrootcert for PostgreSQL verify-ca", async () => {
+    process.env.DATABASE_URL =
+      "postgresql://user:pass@localhost/app?sslmode=verify-ca";
+
+    await expect(loadConfigFromEnv()).rejects.toThrow(
+      "PostgreSQL sslmode=verify-ca requires sslrootcert",
     );
   });
 
@@ -252,8 +341,16 @@ describe("loadConfigFromEnv", () => {
       "Unsupported MySQL DATABASE_URL parameter: multipleStatements",
     ],
     [
+      "postgresql://user:pass@localhost/app?ssl=true",
+      "Unsupported PostgreSQL DATABASE_URL parameter: ssl",
+    ],
+    [
       "postgresql://user:pass@localhost/app?ssl=1",
-      "Unsupported PostgreSQL ssl value",
+      "Unsupported PostgreSQL DATABASE_URL parameter: ssl",
+    ],
+    [
+      "postgresql://user:pass@localhost/app?uselibpqcompat=true",
+      "Unsupported PostgreSQL DATABASE_URL parameter: uselibpqcompat",
     ],
     [
       "postgresql://user:pass@localhost/app?sslmode=no-verify",

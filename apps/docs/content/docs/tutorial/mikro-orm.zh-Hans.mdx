@@ -8,7 +8,12 @@ description: "MikroORM 集成，支持请求作用域实体管理器、EntitySer
 ## 安装
 
 ```bash
-pnpm add @nest-boot/mikro-orm @mikro-orm/core @mikro-orm/nestjs @mikro-orm/postgresql @mikro-orm/reflection @mikro-orm/migrations
+pnpm add @nest-boot/mikro-orm @mikro-orm/core @mikro-orm/nestjs @mikro-orm/reflection @mikro-orm/migrations
+
+# 安装与 DATABASE_URL 匹配的驱动
+pnpm add @mikro-orm/postgresql
+# 或：pnpm add @mikro-orm/mysql
+# 或：pnpm add @mikro-orm/better-sqlite
 ```
 
 ## 模块注册
@@ -25,7 +30,11 @@ import { MikroOrmModule } from "@nest-boot/mikro-orm";
 export class CommonModule {}
 ```
 
-不传参数时，模块使用 `loadConfigFromEnv()` 自动加载配置。它读取 `DATABASE_URL`，并解析为结构化 MikroORM 选项，而不会把 URL 交给数据库客户端解析。支持的 scheme 是 PostgreSQL 的 `postgresql:` 及其 `postgres:` 别名、MySQL 的 `mysql:`，以及 SQLite 的 `file:`。PostgreSQL 的 TLS 文件参数使用 `sslrootcert`、`sslcert` 和 `sslkey`；MySQL 使用 `ssl-ca`、`ssl-cert` 和 `ssl-key`，并通过 `ssl-mode` 指定模式。SQLite 请使用 `file:///var/lib/app/app.db` 这样的绝对文件 URL。非 URL 配置或调试日志请显式传入模块选项。
+未传入连接选项时，模块使用 `loadConfigFromEnv()` 自动加载配置。它读取 `DATABASE_URL`，并解析为结构化 MikroORM 选项，而不会把 URL 交给数据库客户端解析。PostgreSQL 接受其文档定义的 `postgresql:` 和 `postgres:` URI 形式，MySQL 接受 `mysql:`，SQLite 接受 `file:`；其他协议名和驱动兼容形式会被拒绝。SQLite 请使用 `file:///var/lib/app/app.db` 这样的绝对文件 URL。
+
+PostgreSQL 的 TLS 文件参数使用 `sslrootcert`、`sslcert` 和 `sslkey`，支持的 `sslmode` 为 `disable`、`require`、`verify-ca` 和 `verify-full`。MySQL 使用 `ssl-ca`、`ssl-cert` 和 `ssl-key`，支持的 `ssl-mode` 为 `DISABLED`、`REQUIRED`、`VERIFY_CA` 和 `VERIFY_IDENTITY`。需要失败后回退到明文连接的模式无法用单份结构化驱动配置准确表达，因此会被拒绝。
+
+只要传入任意显式连接选项（包括 `clientUrl`、`driver`、`host` 或 `dbName`），它就会完整优先，并阻止环境中的 `DATABASE_URL` 混入该连接。`debug` 等非连接选项仍可叠加在自动环境配置上。
 
 默认配置从 `dist/**/*.entity.js` 发现运行时实体，从 `src/**/*.entity.ts` 发现 TypeScript 实体，使用 `TsMorphMetadataProvider`，启用 MikroORM DataLoader，并把 migration 与 seeder 放在 `src/database`（构建后为 `dist/database`）下。
 

@@ -21,6 +21,28 @@ import {
   OPTIONS_TYPE,
 } from "./mikro-orm.module-definition";
 import { loadConfigFromEnv } from "./utils/load-config-from-env.util";
+import { loadDefaultConfig } from "./utils/load-default-config.util";
+
+const CONNECTION_OPTION_KEYS = [
+  "driver",
+  "dbName",
+  "schema",
+  "clientUrl",
+  "host",
+  "port",
+  "user",
+  "password",
+  "charset",
+  "collate",
+  "multipleStatements",
+  "pool",
+  "driverOptions",
+  "replicas",
+] as const satisfies readonly (keyof MikroOrmModuleOptions)[];
+
+function hasExplicitConnectionOptions(options: MikroOrmModuleOptions): boolean {
+  return CONNECTION_OPTION_KEYS.some((key) => options[key] !== undefined);
+}
 
 /**
  * MikroORM integration module with request-scoped entity manager.
@@ -28,6 +50,8 @@ import { loadConfigFromEnv } from "./utils/load-config-from-env.util";
  * @remarks
  * Wraps `@mikro-orm/nestjs` with automatic environment-based configuration
  * and request context integration for per-request entity manager forking.
+ * Automatic `DATABASE_URL` loading is skipped when any explicit connection
+ * option is registered, so ambient connection fields cannot be merged into it.
  */
 @Global()
 @Module({
@@ -37,6 +61,9 @@ import { loadConfigFromEnv } from "./utils/load-config-from-env.util";
       inject: [MODULE_OPTIONS_TOKEN],
       useFactory: async (options: MikroOrmModuleOptions) => {
         const logger = new Logger("MikroORM");
+        const envOptions = hasExplicitConnectionOptions(options)
+          ? loadDefaultConfig()
+          : await loadConfigFromEnv();
 
         return {
           registerRequestContext: false,
@@ -48,7 +75,7 @@ import { loadConfigFromEnv } from "./utils/load-config-from-env.util";
           logger: (msg) => {
             logger.log(msg);
           },
-          ...(await loadConfigFromEnv()),
+          ...envOptions,
           ...options,
         };
       },

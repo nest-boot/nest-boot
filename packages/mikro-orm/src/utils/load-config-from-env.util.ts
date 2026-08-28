@@ -1,13 +1,9 @@
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
-import {
-  Configuration,
-  DataloaderType,
-  IDatabaseDriver,
-  type Options,
-} from "@mikro-orm/core";
-import { TsMorphMetadataProvider } from "@mikro-orm/reflection";
+import { Configuration, IDatabaseDriver, type Options } from "@mikro-orm/core";
+
+import { loadDefaultConfig } from "./load-default-config.util";
 
 /** Constructor type for a MikroORM database driver. */
 export type DatabaseDriverConstructor = new (
@@ -81,12 +77,12 @@ async function loadMySqlTlsConfig(
     }
   }
 
-  const ssl = await loadTlsFiles([
+  const sslMode = connection["ssl-mode"];
+  const tlsFiles = [
     [connection["ssl-ca"], "ca"],
     [connection["ssl-cert"], "cert"],
     [connection["ssl-key"], "key"],
-  ]);
-  const sslMode = connection["ssl-mode"];
+  ] as const;
 
   delete connection["ssl-ca"];
   delete connection["ssl-cert"];
@@ -96,15 +92,25 @@ async function loadMySqlTlsConfig(
   const normalizedSslMode =
     typeof sslMode === "string" ? sslMode.toUpperCase() : sslMode;
 
+  if (normalizedSslMode === "DISABLED") {
+    connection.ssl = false;
+    return;
+  }
+
+  if (normalizedSslMode === "PREFERRED") {
+    throw new TypeError("Unsupported MySQL ssl-mode: PREFERRED");
+  }
+
+  const ssl = await loadTlsFiles(tlsFiles);
+
   switch (normalizedSslMode) {
-    case "DISABLED":
-      connection.ssl = false;
-      break;
-    case "PREFERRED":
     case "REQUIRED":
       connection.ssl = { ...ssl, rejectUnauthorized: false };
       break;
     case "VERIFY_CA":
+      if (!ssl?.ca) {
+        throw new TypeError("MySQL ssl-mode=VERIFY_CA requires ssl-ca");
+      }
       connection.ssl = {
         ...ssl,
         rejectUnauthorized: true,
@@ -112,6 +118,9 @@ async function loadMySqlTlsConfig(
       };
       break;
     case "VERIFY_IDENTITY":
+      if (!ssl?.ca) {
+        throw new TypeError("MySQL ssl-mode=VERIFY_IDENTITY requires ssl-ca");
+      }
       connection.ssl = {
         ...ssl,
         rejectUnauthorized: true,
@@ -149,38 +158,60 @@ async function loadQueryConfig(
   }
 
   if (protocol === "postgres:" || protocol === "postgresql:") {
-    if (connection.ssl === "true") {
-      connection.ssl = true;
-    } else if (connection.ssl !== undefined) {
-      throw new TypeError("Unsupported PostgreSQL ssl value");
+    if (connection.ssl !== undefined) {
+      throw new TypeError("Unsupported PostgreSQL DATABASE_URL parameter: ssl");
     }
 
-    const tls = await loadPostgreSqlTlsFiles(connection);
-
-    if (tls) {
-      connection.ssl = tls;
+    if (connection.uselibpqcompat !== undefined) {
+      throw new TypeError(
+        "Unsupported PostgreSQL DATABASE_URL parameter: uselibpqcompat",
+      );
     }
 
-    switch (connection.sslmode) {
-      case "disable":
-        connection.ssl = false;
-        break;
-      case "allow":
-      case "prefer":
-      case "require":
-      case "verify-ca":
-      case "verify-full":
-        connection.ssl = tls ?? {};
-        break;
-      case undefined:
-        break;
-      default:
-        throw new TypeError(
-          `Unsupported PostgreSQL sslmode: ${String(connection.sslmode)}`,
-        );
-    }
+    const sslMode = connection.sslmode;
 
+    delete connection.uselibpqcompat;
     delete connection.sslmode;
+
+    if (sslMode === "disable") {
+      delete connection.sslrootcert;
+      delete connection.sslcert;
+      delete connection.sslkey;
+      connection.ssl = false;
+    } else if (sslMode === "allow" || sslMode === "prefer") {
+      throw new TypeError(`Unsupported PostgreSQL sslmode: ${sslMode}`);
+    } else {
+      const tls = await loadPostgreSqlTlsFiles(connection);
+
+      if (tls) {
+        connection.ssl = tls;
+      }
+
+      switch (sslMode) {
+        case "require":
+          connection.ssl = tls?.ca
+            ? { ...tls, checkServerIdentity: () => undefined }
+            : { ...tls, rejectUnauthorized: false };
+          break;
+        case "verify-ca":
+          if (!tls?.ca) {
+            throw new TypeError(
+              "PostgreSQL sslmode=verify-ca requires sslrootcert",
+            );
+          }
+          connection.ssl = { ...tls, checkServerIdentity: () => undefined };
+          break;
+        case "verify-full":
+          connection.ssl = tls ?? {};
+          break;
+        case undefined:
+          break;
+        default:
+          throw new TypeError(
+            `Unsupported PostgreSQL sslmode: ${String(sslMode)}`,
+          );
+      }
+    }
   }
 
   return {
@@ -228,30 +259,15 @@ export interface HostConfig {
  * protocols select PostgreSQL, `mysql:` selects MySQL, and `file:` selects
  * SQLite. Only the URL forms documented by those databases are accepted;
  * other protocol names and driver-specific compatibility forms are rejected.
+ * PostgreSQL supports `sslmode=disable`, `require`, `verify-ca`, and
+ * `verify-full`; MySQL supports `ssl-mode=DISABLED`, `REQUIRED`, `VERIFY_CA`,
+ * and `VERIFY_IDENTITY`. Modes that require a plaintext fallback are rejected
+ * because one structured driver configuration cannot preserve that behavior.
  *
  * @returns MikroORM options derived from environment variables
  */
 export async function loadConfigFromEnv(): Promise<DriverConfig & HostConfig> {
-  const baseConfig = {
-    colors: false,
-    debug: false,
-    dataloader: DataloaderType.ALL,
-    timezone: "UTC",
-    metadataProvider: TsMorphMetadataProvider,
-    entities: ["dist/**/*.entity.js"],
-    entitiesTs: ["src/**/*.entity.ts"],
-    migrations: {
-      snapshot: false,
-      path: "dist/database/migrations",
-      pathTs: "src/database/migrations",
-    },
-    seeder: {
-      path: "dist/database/seeders",
-      pathTs: "src/database/seeders",
-      defaultSeeder: "DatabaseSeeder",
-      fileName: (className: string) => className,
-    },
-  } satisfies Options;
+  const baseConfig = loadDefaultConfig();
 
   const databaseUrl = process.env.DATABASE_URL;
 
