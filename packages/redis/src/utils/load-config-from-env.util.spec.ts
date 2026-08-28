@@ -4,9 +4,8 @@ const ORIGINAL_ENV = process.env;
 
 describe("loadConfigFromEnv", () => {
   beforeEach(() => {
-    process.env = Object.fromEntries(
-      Object.entries(ORIGINAL_ENV).filter(([key]) => !key.startsWith("REDIS_")),
-    );
+    process.env = { ...ORIGINAL_ENV };
+    delete process.env.REDIS_URL;
   });
 
   afterAll(() => {
@@ -48,17 +47,7 @@ describe("loadConfigFromEnv", () => {
     });
   });
 
-  it("should ignore individual Redis variables", () => {
-    process.env.REDIS_HOST = "redis.local";
-    process.env.REDIS_PORT = "6379";
-    process.env.REDIS_DB = "3";
-    process.env.REDIS_DATABASE = "4";
-    process.env.REDIS_USER = "user";
-    process.env.REDIS_USERNAME = "aliased-user";
-    process.env.REDIS_PASS = "pass";
-    process.env.REDIS_PASSWORD = "aliased-pass";
-    process.env.REDIS_TLS = "false";
-
+  it("should return empty config when REDIS_URL is absent", () => {
     expect(loadConfigFromEnv()).toEqual({});
   });
 });

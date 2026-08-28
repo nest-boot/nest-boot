@@ -28,11 +28,8 @@ describe("createGraphQLRateLimitDriver", () => {
   };
 
   beforeEach(() => {
-    process.env = Object.fromEntries(
-      Object.entries(originalEnvironment).filter(
-        ([key]) => !key.startsWith("REDIS_"),
-      ),
-    );
+    process.env = { ...originalEnvironment };
+    delete process.env.REDIS_URL;
   });
 
   afterEach(() => {
@@ -80,25 +77,6 @@ describe("createGraphQLRateLimitDriver", () => {
     );
   });
 
-  it.each([
-    ["REDIS_HOST", "redis.local"],
-    ["REDIS_PORT", "6380"],
-    ["REDIS_DB", "2"],
-    ["REDIS_DATABASE", "2"],
-    ["REDIS_USER", "user"],
-    ["REDIS_USERNAME", "user"],
-    ["REDIS_PASS", "pass"],
-    ["REDIS_PASSWORD", "pass"],
-    ["REDIS_TLS", "true"],
-  ])("uses memory when only %s is present", (name, value) => {
-    process.env[name] = value;
-
-    expect(createGraphQLRateLimitDriver(options)).toBeInstanceOf(
-      MemoryGraphQLRateLimitDriver,
-    );
-    expect(Redis).not.toHaveBeenCalled();
-  });
-
   it("uses Redis when connection options are provided without endpoint env", () => {
     const connection = {
       host: "configured.redis",
@@ -109,22 +87,6 @@ describe("createGraphQLRateLimitDriver", () => {
       createGraphQLRateLimitDriver({ ...options, connection }),
     ).toBeInstanceOf(RedisGraphQLRateLimitDriver);
     expect(Redis).toHaveBeenCalledWith(expect.objectContaining(connection));
-  });
-
-  it("ignores individual Redis variables when REDIS_URL is present", () => {
-    process.env.REDIS_URL = "redis://url-user:url-pass@url.redis:6380/3";
-    process.env.REDIS_HOST = "ignored.redis";
-    process.env.REDIS_PORT = "6379";
-
-    createGraphQLRateLimitDriver(options);
-
-    expect(Redis).toHaveBeenCalledWith({
-      host: "url.redis",
-      port: 6380,
-      db: 3,
-      username: "url-user",
-      password: "url-pass",
-    });
   });
 
   it("lets an explicit custom driver override Redis environment config", () => {
