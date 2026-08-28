@@ -4,9 +4,8 @@ const ORIGINAL_ENV = process.env;
 
 describe("loadConfigFromEnv", () => {
   beforeEach(() => {
-    process.env = Object.fromEntries(
-      Object.entries(ORIGINAL_ENV).filter(([key]) => !key.startsWith("REDIS_")),
-    );
+    process.env = { ...ORIGINAL_ENV };
+    delete process.env.REDIS_URL;
   });
 
   afterAll(() => {
@@ -14,15 +13,16 @@ describe("loadConfigFromEnv", () => {
   });
 
   it("should load Redis config from TLS URL", () => {
-    process.env.REDIS_URL = "rediss://user:pass@redis.local:6380/2";
+    process.env.REDIS_URL =
+      "rediss://user%40example.com:p%40ss%2Fword@redis.local:6380/2";
 
     expect(loadConfigFromEnv()).toEqual({
       db: 2,
       host: "redis.local",
-      password: "pass",
+      password: "p@ss/word",
       port: 6380,
       tls: {},
-      username: "user",
+      username: "user@example.com",
     });
   });
 
@@ -38,34 +38,16 @@ describe("loadConfigFromEnv", () => {
     });
   });
 
-  it("should load Redis config from host variables", () => {
-    process.env.REDIS_HOST = "redis.local";
-    process.env.REDIS_PORT = "6379";
-    process.env.REDIS_DB = "3";
-    process.env.REDIS_USER = "user";
-    process.env.REDIS_PASS = "pass";
-    process.env.REDIS_TLS = "true";
+  it("should strip brackets from an IPv6 URL hostname", () => {
+    process.env.REDIS_URL = "redis://[2001:db8::1]:6379/0";
 
-    expect(loadConfigFromEnv()).toEqual({
-      db: 3,
-      host: "redis.local",
-      password: "pass",
+    expect(loadConfigFromEnv()).toMatchObject({
+      host: "2001:db8::1",
       port: 6379,
-      tls: {},
-      username: "user",
     });
   });
 
-  it("should load aliases and omit unset optional fields", () => {
-    process.env.REDIS_DATABASE = "4";
-    process.env.REDIS_USERNAME = "aliased-user";
-    process.env.REDIS_PASSWORD = "aliased-pass";
-
-    expect(loadConfigFromEnv()).toEqual({
-      db: 4,
-      host: undefined,
-      password: "aliased-pass",
-      username: "aliased-user",
-    });
+  it("should return empty config when REDIS_URL is absent", () => {
+    expect(loadConfigFromEnv()).toEqual({});
   });
 });

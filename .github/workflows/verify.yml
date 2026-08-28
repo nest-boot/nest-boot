@@ -99,7 +99,7 @@ jobs:
       - name: Test
         run: pnpm test:cov
         env:
-          DB_URL: postgres://postgres:postgres@localhost:5432/postgres
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
           REDIS_URL: redis://localhost:6379
           S3_ENDPOINT: http://localhost:9000
           S3_REGION: us-east-1

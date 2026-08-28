@@ -7,7 +7,7 @@ import { GraphQLRateLimitDriver } from "../drivers";
 export interface GraphQLRateLimitOptions {
   /**
    * Explicit storage driver. When omitted, Redis is used if `connection`,
-   * `REDIS_URL`, or `REDIS_HOST` is set; otherwise memory is used.
+   * or `REDIS_URL` is set; otherwise memory is used.
    */
   driver?: GraphQLRateLimitDriver;
   /** Redis options that select and configure the built-in Redis driver. */

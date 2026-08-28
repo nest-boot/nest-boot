@@ -23,7 +23,7 @@ import { Module } from "@nestjs/common";
 export class AppModule {}
 ```
 
-The global module reads `REDIS_URL` first. Without a URL, it uses `REDIS_HOST`, `REDIS_PORT`, `REDIS_DB`/`REDIS_DATABASE`, `REDIS_USER`/`REDIS_USERNAME`, `REDIS_PASS`/`REDIS_PASSWORD`, and `REDIS_TLS`. A `rediss:` URL also enables TLS.
+The global module reads `REDIS_URL` and parses it into ioredis connection options. Use `redis://` for a plain connection or `rediss://` to enable TLS, and percent-encode credentials containing URL-reserved characters. Use explicit module options when a URL is not suitable.
 
 ### Custom Configuration
 
@@ -32,13 +32,10 @@ import { RedisModule } from "@nest-boot/redis";
 
 @Module({
   imports: [
-    RedisModule.registerAsync({
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        host: configService.getOrThrow("REDIS_HOST"),
-        port: configService.get<number>("REDIS_PORT", 6379),
-        password: configService.get("REDIS_PASSWORD"),
-      }),
+    RedisModule.register({
+      host: "redis.internal",
+      port: 6379,
+      password: "secret",
     }),
   ],
 })

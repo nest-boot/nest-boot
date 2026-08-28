@@ -1,16 +1,19 @@
 import { RedisOptions } from "ioredis";
 
+function normalizeHostname(hostname: string): string {
+  if (hostname.startsWith("[") && hostname.endsWith("]")) {
+    return hostname.slice(1, -1);
+  }
+
+  return hostname;
+}
+
 /**
  * Loads Redis configuration from environment variables.
  *
- * Supports the following environment variables:
- * - `REDIS_URL`: Full Redis connection URL (takes precedence over individual settings)
- * - `REDIS_HOST`: Redis server hostname
- * - `REDIS_PORT`: Redis server port
- * - `REDIS_DB` or `REDIS_DATABASE`: Redis database number
- * - `REDIS_USER` or `REDIS_USERNAME`: Redis username
- * - `REDIS_PASS` or `REDIS_PASSWORD`: Redis password
- * - `REDIS_TLS`: Enable TLS connection (any truthy value)
+ * Supports `REDIS_URL`, a full Redis connection URL. The URL is parsed here
+ * instead of being passed to ioredis so all environment-driven connections
+ * use the same options shape.
  *
  * @returns Redis connection options parsed from environment variables
  */
@@ -21,28 +24,14 @@ export function loadConfigFromEnv(): RedisOptions {
     const database = url.pathname.split("/")[1];
 
     return {
-      host: url.hostname,
+      host: normalizeHostname(url.hostname),
       port: port ? +port : undefined,
       db: database ? +database : undefined,
-      username: url.username,
-      password: url.password,
+      username: decodeURIComponent(url.username),
+      password: decodeURIComponent(url.password),
       ...(url.protocol === "rediss:" ? { tls: {} } : {}),
     };
   }
 
-  const host = process.env.REDIS_HOST;
-  const port = process.env.REDIS_PORT;
-  const database = process.env.REDIS_DB ?? process.env.REDIS_DATABASE;
-  const username = process.env.REDIS_USER ?? process.env.REDIS_USERNAME;
-  const password = process.env.REDIS_PASS ?? process.env.REDIS_PASSWORD;
-  const tls = !!process.env.REDIS_TLS;
-
-  return {
-    host,
-    ...(port ? { port: +port } : {}),
-    ...(database ? { db: +database } : {}),
-    username,
-    password,
-    ...(tls ? { tls: {} } : {}),
-  };
+  return {};
 }

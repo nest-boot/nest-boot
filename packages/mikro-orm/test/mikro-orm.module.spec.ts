@@ -1,4 +1,5 @@
-import { EntityManager, MikroORM } from "@mikro-orm/core";
+import { DataloaderType, EntityManager, MikroORM } from "@mikro-orm/core";
+import { PostgreSqlDriver } from "@mikro-orm/postgresql";
 
 jest.mock("@mikro-orm/nestjs", () => ({
   MikroOrmModule: {
@@ -21,6 +22,19 @@ import {
   MODULE_OPTIONS_TOKEN,
 } from "../src/mikro-orm.module-definition";
 import { TestEntity } from "./entities/test.entity";
+
+type RootOptionsFactory = (
+  options: Parameters<typeof MikroOrmModule.forRoot>[0],
+) => Promise<Record<string, unknown>>;
+
+function getRootOptionsFactory(): RootOptionsFactory {
+  const baseModule = jest.mocked(BaseMikroOrmModule);
+  const [rootOptions] = baseModule.forRootAsync.mock.calls[0] as unknown as [
+    { useFactory: RootOptionsFactory },
+  ];
+
+  return rootOptions.useFactory;
+}
 
 describe("MikroOrmModule", () => {
   afterEach(() => {
@@ -62,6 +76,65 @@ describe("MikroOrmModule", () => {
         },
       ]),
     );
+  });
+
+  it("should not merge ambient database config into explicit connection options", async () => {
+    const databaseUrl = process.env.DATABASE_URL;
+    process.env.DATABASE_URL = "mongodb://ambient.example/ambient";
+
+    try {
+      const options = {
+        clientUrl: "postgresql://explicit.example/explicit",
+      };
+      const config = await getRootOptionsFactory()(options);
+
+      expect(config).toMatchObject({
+        clientUrl: "postgresql://explicit.example/explicit",
+      });
+
+      expect(config).not.toHaveProperty("host");
+      expect(config).not.toHaveProperty("dbName");
+      expect(config).toMatchObject({
+        dataloader: DataloaderType.ALL,
+        entities: ["dist/**/*.entity.js"],
+        entitiesTs: ["src/**/*.entity.ts"],
+      });
+    } finally {
+      if (databaseUrl === undefined) {
+        delete process.env.DATABASE_URL;
+      } else {
+        process.env.DATABASE_URL = databaseUrl;
+      }
+    }
+  });
+
+  it("should merge ambient database config with non-connection options", async () => {
+    const databaseUrl = process.env.DATABASE_URL;
+    process.env.DATABASE_URL =
+      "postgresql://user:pass@ambient.example:5432/ambient";
+
+    try {
+      await expect(
+        getRootOptionsFactory()({
+          debug: true,
+          driver: PostgreSqlDriver,
+        }),
+      ).resolves.toMatchObject({
+        dbName: "ambient",
+        debug: true,
+        driver: PostgreSqlDriver,
+        host: "ambient.example",
+        password: "pass",
+        port: 5432,
+        user: "user",
+      });
+    } finally {
+      if (databaseUrl === undefined) {
+        delete process.env.DATABASE_URL;
+      } else {
+        process.env.DATABASE_URL = databaseUrl;
+      }
+    }
   });
 
   it("should delegate feature and middleware registration to the base module", () => {

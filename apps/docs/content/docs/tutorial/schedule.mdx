@@ -29,7 +29,7 @@ import { Module } from "@nestjs/common";
 export class AppModule {}
 ```
 
-`BullModule` reads the Redis connection from `REDIS_URL` or the individual `REDIS_*` variables. `ScheduleModule` also accepts an explicit BullMQ `connection`, `concurrency`, and `autorun`. The worker starts automatically unless `autorun` is `false`.
+`BullModule` reads and parses the Redis connection from `REDIS_URL`. `ScheduleModule` also accepts an explicit BullMQ `connection`, `concurrency`, and `autorun`. The worker starts automatically unless `autorun` is `false`.
 
 ## Defining Scheduled Tasks
 
