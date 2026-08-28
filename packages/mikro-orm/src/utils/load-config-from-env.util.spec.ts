@@ -75,19 +75,6 @@ describe("loadConfigFromEnv", () => {
     });
   });
 
-  it("should decode a URL-encoded Unix socket hostname", async () => {
-    process.env.DATABASE_URL =
-      "postgresql://user:pass@%2Fvar%2Frun%2Fpostgresql/app";
-
-    await expect(loadConfigFromEnv()).resolves.toMatchObject({
-      dbName: "app",
-      driver: PostgreSqlDriver,
-      host: "/var/run/postgresql",
-      password: "pass",
-      user: "user",
-    });
-  });
-
   it.each([
     ["mysql", "ssl=true", { ssl: true }],
     ["mysql", "ssl=false", { ssl: false }],
