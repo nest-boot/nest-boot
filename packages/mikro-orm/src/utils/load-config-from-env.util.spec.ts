@@ -105,9 +105,12 @@ describe("loadConfigFromEnv", () => {
     ["mysql", "ssl=true", { ssl: true }],
     ["mysql", "ssl=false", { ssl: false }],
     ["postgresql", "ssl=true", { ssl: true }],
+    ["postgresql", "ssl=1", { ssl: true }],
     ["postgresql", "ssl=0", { ssl: false }],
     ["postgresql", "sslmode=disable", { ssl: false }],
     ["postgresql", "sslmode=no-verify", { ssl: { rejectUnauthorized: false } }],
+    ["postgresql", "sslmode=prefer", { ssl: {} }],
+    ["postgresql", "sslmode=verify-ca", { ssl: {} }],
   ])(
     "should parse %s driver query option %s",
     async (protocol, query, expected) => {
@@ -138,11 +141,12 @@ describe("loadConfigFromEnv", () => {
   });
 
   it("should preserve omitted URL credentials and port", async () => {
-    process.env.DATABASE_URL = "postgresql://db.internal/app";
+    process.env.DATABASE_URL = "postgresql://db.internal";
 
     const config = await loadConfigFromEnv();
 
     expect(config).toMatchObject({
+      dbName: undefined,
       host: "db.internal",
       password: "",
       port: 0,

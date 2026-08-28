@@ -24,9 +24,7 @@ async function getDriver(protocol: string): Promise<DatabaseDriverConstructor> {
     case "postgresql:":
       return (await import("@mikro-orm/postgresql")).PostgreSqlDriver;
     default:
-      throw new TypeError(
-        `Unsupported DATABASE_URL protocol: ${protocol || "(missing)"}`,
-      );
+      throw new TypeError(`Unsupported DATABASE_URL protocol: ${protocol}`);
   }
 }
 
@@ -40,11 +38,8 @@ function normalizeHostname(hostname: string): string {
 
 async function loadPostgreSqlTlsFiles(
   connection: Record<string, unknown>,
-): Promise<void> {
-  const ssl =
-    typeof connection.ssl === "object" && connection.ssl !== null
-      ? (connection.ssl as Record<string, unknown>)
-      : {};
+): Promise<Record<string, unknown> | undefined> {
+  const ssl: Record<string, unknown> = {};
   const tlsFiles = [
     ["sslrootcert", "ca"],
     ["sslcert", "cert"],
@@ -65,9 +60,7 @@ async function loadPostgreSqlTlsFiles(
   delete connection.sslcert;
   delete connection.sslkey;
 
-  if (hasTlsFile) {
-    connection.ssl = ssl;
-  }
+  return hasTlsFile ? ssl : undefined;
 }
 
 async function loadQueryConfig(
@@ -99,7 +92,11 @@ async function loadQueryConfig(
       connection.ssl = false;
     }
 
-    await loadPostgreSqlTlsFiles(connection);
+    const tls = await loadPostgreSqlTlsFiles(connection);
+
+    if (tls) {
+      connection.ssl = tls;
+    }
 
     switch (connection.sslmode) {
       case "disable":
@@ -107,9 +104,7 @@ async function loadQueryConfig(
         break;
       case "no-verify":
         connection.ssl = {
-          ...(typeof connection.ssl === "object" && connection.ssl !== null
-            ? connection.ssl
-            : {}),
+          ...tls,
           rejectUnauthorized: false,
         };
         break;
@@ -117,9 +112,7 @@ async function loadQueryConfig(
       case "require":
       case "verify-ca":
       case "verify-full":
-        if (typeof connection.ssl !== "object" || connection.ssl === null) {
-          connection.ssl = {};
-        }
+        connection.ssl = tls ?? {};
         break;
     }
 
