@@ -21,17 +21,21 @@ describe("loadConfigFromEnv", () => {
   });
 
   it("should load URL-based MySQL config", async () => {
-    process.env.DB_URL = "mysql://user:pass@localhost:3306/app";
+    process.env.DB_URL =
+      "mysql://user%40example.com:p%40ss%2Fword@localhost:3306/app";
     process.env.DB_DEBUG = "true";
 
-    await expect(loadConfigFromEnv()).resolves.toMatchObject({
-      clientUrl: "mysql://user:pass@localhost:3306/app",
+    const config = await loadConfigFromEnv();
+
+    expect(config).toMatchObject({
       colors: false,
       dataloader: DataloaderType.ALL,
-      debug: true,
+      dbName: "app",
+      debug: false,
       driver: MySqlDriver,
       entities: ["dist/**/*.entity.js"],
       entitiesTs: ["src/**/*.entity.ts"],
+      host: "localhost",
       metadataProvider: TsMorphMetadataProvider,
       migrations: {
         path: "dist/database/migrations",
@@ -43,26 +47,16 @@ describe("loadConfigFromEnv", () => {
         path: "dist/database/seeders",
         pathTs: "src/database/seeders",
       },
+      password: "p@ss/word",
+      port: 3306,
       timezone: "UTC",
+      user: "user@example.com",
     });
+    expect(config).not.toHaveProperty("clientUrl");
   });
 
   it("should load URL-based PostgreSQL config", async () => {
     process.env.DATABASE_URL = "postgresql://user:pass@localhost:5432/app";
-
-    await expect(loadConfigFromEnv()).resolves.toMatchObject({
-      clientUrl: "postgresql://user:pass@localhost:5432/app",
-      driver: PostgreSqlDriver,
-    });
-  });
-
-  it("should load host-based config from aliases", async () => {
-    process.env.DATABASE_TYPE = "postgres";
-    process.env.DATABASE_HOST = "localhost";
-    process.env.DATABASE_PORT = "5432";
-    process.env.DATABASE_NAME = "app";
-    process.env.DATABASE_USERNAME = "user";
-    process.env.DATABASE_PASSWORD = "pass";
 
     await expect(loadConfigFromEnv()).resolves.toMatchObject({
       dbName: "app",
@@ -74,7 +68,39 @@ describe("loadConfigFromEnv", () => {
     });
   });
 
-  it("should return undefined driver and port when env vars are absent", async () => {
+  it("should ignore individual database variables", async () => {
+    process.env.DB_TYPE = "mysql";
+    process.env.DB_HOST = "ignored.local";
+    process.env.DB_PORT = "3306";
+    process.env.DB_NAME = "ignored";
+    process.env.DB_DATABASE = "ignored-alias";
+    process.env.DB_USER = "ignored-user";
+    process.env.DB_USERNAME = "ignored-username";
+    process.env.DB_PASS = "ignored-pass";
+    process.env.DB_PASSWORD = "ignored-password";
+    process.env.DATABASE_TYPE = "postgres";
+    process.env.DATABASE_HOST = "localhost";
+    process.env.DATABASE_PORT = "5432";
+    process.env.DATABASE_NAME = "app";
+    process.env.DATABASE_USERNAME = "user";
+    process.env.DATABASE_PASSWORD = "pass";
+
+    process.env.DATABASE_DEBUG = "false";
+
+    const config = await loadConfigFromEnv();
+
+    expect(config).toMatchObject({
+      dbName: undefined,
+      debug: false,
+      driver: undefined,
+      host: undefined,
+      password: undefined,
+      port: undefined,
+      user: undefined,
+    });
+  });
+
+  it("should return undefined connection fields when URL variables are absent", async () => {
     await expect(loadConfigFromEnv()).resolves.toMatchObject({
       dbName: undefined,
       driver: undefined,

@@ -17,14 +17,8 @@ import { loadConfigFromEnv } from "./utils/load-config-from-env.util";
 /**
  * Module that provides Redis connection using ioredis.
  *
- * The module automatically loads configuration from environment variables if not provided:
- * - `REDIS_URL`: Full Redis connection URL (e.g., `redis://user:pass@host:6379/0`)
- * - `REDIS_HOST`: Redis server hostname
- * - `REDIS_PORT`: Redis server port
- * - `REDIS_DB` or `REDIS_DATABASE`: Redis database number
- * - `REDIS_USER` or `REDIS_USERNAME`: Redis username
- * - `REDIS_PASS` or `REDIS_PASSWORD`: Redis password
- * - `REDIS_TLS`: Enable TLS connection
+ * The module automatically loads and parses `REDIS_URL` when explicit options
+ * are not provided (for example, `redis://user:pass@host:6379/0`).
  *
  * @example
  * ```typescript

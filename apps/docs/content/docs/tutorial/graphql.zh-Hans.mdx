@@ -392,8 +392,8 @@ export class CommonModule {}
 
 无需动态注册即可直接导入该模块。模块会根据环境变量自动选择驱动：
 
-- 配置 `REDIS_URL` 或 `REDIS_HOST` 时，使用分布式 Redis 驱动。`REDIS_PORT`、数据库、用户名、密码和 TLS 环境变量用于补充 `REDIS_HOST`；`REDIS_URL` 优先于所有独立配置。
-- `REDIS_URL` 和 `REDIS_HOST` 均未配置时，使用进程内 memory 驱动。
+- 配置 `REDIS_URL` 时，解析该 URL 并使用分布式 Redis 驱动；不会读取其他独立的 `REDIS_*` 连接变量。
+- 未配置 `REDIS_URL` 时，使用进程内 memory 驱动。
 
 通过 `forRoot()` 或 `forRootAsync()` 显式传入 Redis `connection` 配置时，即使没有环境变量也会选择 Redis 驱动，以兼容编程式 Redis 配置。显式自定义 `driver` 的优先级高于两种 Redis 选择方式。
 

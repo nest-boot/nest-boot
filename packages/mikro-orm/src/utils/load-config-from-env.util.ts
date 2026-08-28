@@ -29,7 +29,7 @@ export interface DriverConfig {
   driver?: DatabaseDriverConstructor;
 }
 
-/** URL-based database connection configuration. */
+/** URL-based database connection configuration for explicit module options. */
 export interface UrlConfig {
   /** Database connection URL. */
   clientUrl?: string;
@@ -53,18 +53,16 @@ export interface HostConfig {
  * Loads MikroORM configuration from environment variables.
  *
  * @remarks
- * Supports both connection URL (`DB_URL` / `DATABASE_URL`) and individual
- * host/port/dbName/user/password variables. Automatically resolves the
- * database driver based on the URL protocol or `DB_TYPE`.
+ * Supports `DB_URL` and `DATABASE_URL`. The selected URL is parsed into
+ * individual connection options, and its protocol resolves the database
+ * driver.
  *
  * @returns MikroORM options derived from environment variables
  */
-export async function loadConfigFromEnv(): Promise<
-  DriverConfig & (UrlConfig | HostConfig)
-> {
-  const baseConfig: Options = {
+export async function loadConfigFromEnv(): Promise<DriverConfig & HostConfig> {
+  const baseConfig = {
     colors: false,
-    debug: !!(process.env.DB_DEBUG ?? process.env.DATABASE_DEBUG),
+    debug: false,
     dataloader: DataloaderType.ALL,
     timezone: "UTC",
     metadataProvider: TsMorphMetadataProvider,
@@ -81,43 +79,33 @@ export async function loadConfigFromEnv(): Promise<
       defaultSeeder: "DatabaseSeeder",
       fileName: (className: string) => className,
     },
-  };
+  } satisfies Options;
 
   const dbUrl = process.env.DB_URL ?? process.env.DATABASE_URL;
 
   if (dbUrl) {
-    const dbType = new URL(dbUrl).protocol.replace(":", "");
+    const url = new URL(dbUrl);
+    const dbType = url.protocol.replace(":", "");
+    const dbName = url.pathname.slice(1);
 
     return {
       ...baseConfig,
       driver: await getDriver(dbType),
-      clientUrl: dbUrl,
+      host: url.hostname,
+      port: url.port ? +url.port : undefined,
+      dbName: dbName ? decodeURIComponent(dbName) : undefined,
+      user: url.username ? decodeURIComponent(url.username) : undefined,
+      password: url.password ? decodeURIComponent(url.password) : undefined,
     };
   }
 
-  const dbType = process.env.DB_TYPE ?? process.env.DATABASE_TYPE;
-  const dbHost = process.env.DB_HOST ?? process.env.DATABASE_HOST;
-  const dbPort = process.env.DB_PORT ?? process.env.DATABASE_PORT;
-  const dbName =
-    process.env.DB_NAME ?? process.env.DB_DATABASE ?? process.env.DATABASE_NAME;
-  const dbUsername =
-    process.env.DB_USER ??
-    process.env.DB_USERNAME ??
-    process.env.DATABASE_USER ??
-    process.env.DATABASE_USERNAME;
-  const dbPassword =
-    process.env.DB_PASS ??
-    process.env.DB_PASSWORD ??
-    process.env.DATABASE_PASS ??
-    process.env.DATABASE_PASSWORD;
-
   return {
     ...baseConfig,
-    driver: await getDriver(dbType),
-    host: dbHost,
-    port: dbPort ? +dbPort : undefined,
-    dbName,
-    user: dbUsername,
-    password: dbPassword,
+    driver: undefined,
+    host: undefined,
+    port: undefined,
+    dbName: undefined,
+    user: undefined,
+    password: undefined,
   };
 }

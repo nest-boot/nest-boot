@@ -14,15 +14,16 @@ describe("loadConfigFromEnv", () => {
   });
 
   it("should load Redis config from URL", () => {
-    process.env.REDIS_URL = "rediss://user:pass@redis.local:6380/2";
+    process.env.REDIS_URL =
+      "rediss://user%40example.com:p%40ss%2Fword@redis.local:6380/2";
 
     expect(loadConfigFromEnv()).toEqual({
       db: 2,
       host: "redis.local",
-      password: "pass",
+      password: "p@ss/word",
       port: 6380,
       tls: {},
-      username: "user",
+      username: "user@example.com",
     });
   });
 
@@ -38,29 +39,21 @@ describe("loadConfigFromEnv", () => {
     });
   });
 
-  it("should load Redis config from host variables", () => {
+  it("should ignore individual Redis variables", () => {
     process.env.REDIS_HOST = "redis.local";
     process.env.REDIS_PORT = "6379";
+    process.env.REDIS_DB = "2";
     process.env.REDIS_DATABASE = "3";
+    process.env.REDIS_USER = "user";
     process.env.REDIS_USERNAME = "user";
+    process.env.REDIS_PASS = "pass";
     process.env.REDIS_PASSWORD = "pass";
-    process.env.REDIS_TLS = "true";
+    process.env.REDIS_TLS = "false";
 
-    expect(loadConfigFromEnv()).toEqual({
-      db: 3,
-      host: "redis.local",
-      password: "pass",
-      port: 6379,
-      tls: {},
-      username: "user",
-    });
+    expect(loadConfigFromEnv()).toEqual({});
   });
 
   it("should omit optional config when environment variables are absent", () => {
-    expect(loadConfigFromEnv()).toEqual({
-      host: undefined,
-      password: undefined,
-      username: undefined,
-    });
+    expect(loadConfigFromEnv()).toEqual({});
   });
 });

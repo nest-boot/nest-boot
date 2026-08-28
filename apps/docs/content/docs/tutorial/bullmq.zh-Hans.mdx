@@ -25,7 +25,7 @@ import { Module } from "@nestjs/common";
 export class AppModule {}
 ```
 
-模块自动读取 `REDIS_URL`。没有 URL 时，它使用 `REDIS_HOST`、`REDIS_PORT`、`REDIS_DB`/`REDIS_DATABASE`、`REDIS_USER`/`REDIS_USERNAME`、`REDIS_PASS`/`REDIS_PASSWORD` 和 `REDIS_TLS`。也可以通过 `BullModule.forRoot()` 或 `forRootAsync()` 显式传入 BullMQ `connection`。
+模块自动读取并解析 `REDIS_URL`，不会读取其他独立的 `REDIS_*` 连接变量。也可以通过 `BullModule.forRoot()` 或 `forRootAsync()` 显式传入 BullMQ `connection`。
 
 ## 定义队列
 

@@ -25,22 +25,21 @@ import { MikroOrmModule } from "@nest-boot/mikro-orm";
 export class CommonModule {}
 ```
 
-When no options are passed, the module auto-loads configuration with `loadConfigFromEnv()`. `DB_URL` or `DATABASE_URL` takes precedence; otherwise use the `DB_*` or `DATABASE_*` host, port, database, user, password, and type variables. URL protocols and `DB_TYPE`/`DATABASE_TYPE` currently resolve `postgres`/`postgresql` and `mysql` drivers.
+When no options are passed, the module auto-loads configuration with `loadConfigFromEnv()`. It reads `DB_URL`, falling back to `DATABASE_URL`, and parses the URL into driver, host, port, database name, user, and password options. The `postgres`/`postgresql` and `mysql` protocols select their corresponding drivers. Other individual `DB_*` and `DATABASE_*` variables are not read; pass explicit module options for non-URL configuration or debug logging.
 
 The default config discovers runtime entities from `dist/**/*.entity.js`, TypeScript entities from `src/**/*.entity.ts`, uses `TsMorphMetadataProvider`, enables MikroORM DataLoaders, and stores migrations and seeders under `src/database` (or `dist/database` after build).
 
 ### Async Registration
 
 ```typescript
-import { MikroOrmModule } from "@nest-boot/mikro-orm";
-import { ConfigService } from "@nestjs/config";
+import { loadConfigFromEnv, MikroOrmModule } from "@nest-boot/mikro-orm";
 
 @Module({
   imports: [
     MikroOrmModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        clientUrl: configService.getOrThrow("DATABASE_URL"),
+      useFactory: async () => ({
+        ...(await loadConfigFromEnv()),
+        debug: true,
       }),
     }),
   ],

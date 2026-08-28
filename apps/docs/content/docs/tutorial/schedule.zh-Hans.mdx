@@ -29,7 +29,7 @@ import { Module } from "@nestjs/common";
 export class AppModule {}
 ```
 
-`BullModule` 从 `REDIS_URL` 或各个 `REDIS_*` 环境变量读取 Redis 连接。`ScheduleModule` 还接受显式的 BullMQ `connection`、`concurrency` 和 `autorun`；除非 `autorun` 为 `false`，worker 会自动启动。
+`BullModule` 从 `REDIS_URL` 读取并解析 Redis 连接。`ScheduleModule` 还接受显式的 BullMQ `connection`、`concurrency` 和 `autorun`；除非 `autorun` 为 `false`，worker 会自动启动。
 
 ## 定义定时任务
 
