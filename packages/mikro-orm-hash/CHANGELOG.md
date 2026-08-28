@@ -1,3 +1,12 @@
+## 7.4.2 (2026-08-28)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 7.3.2
+- Updated @nest-boot/eslint-plugin to 7.2.2
+- Updated @nest-boot/tsconfig to 7.3.2
+- Updated @nest-boot/hash to 7.5.2
+
 ## 7.4.1 (2026-08-27)
 
 ### 🧱 Updated Dependencies

@@ -1,3 +1,10 @@
+## 7.3.2 (2026-08-28)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-plugin to 7.2.2
+- Updated @nest-boot/tsconfig to 7.3.2
+
 ## 7.3.1 (2026-08-27)
 
 ### 🧱 Updated Dependencies

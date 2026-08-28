@@ -1,3 +1,20 @@
+## 7.5.1 (2026-08-28)
+
+### 🚀 Features
+
+- **config:** use URL-only environment connections ([8b50be63](https://github.com/nest-boot/nest-boot/commit/8b50be63))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 7.3.2
+- Updated @nest-boot/eslint-plugin to 7.2.2
+- Updated @nest-boot/tsconfig to 7.3.2
+- Updated @nest-boot/graphql to 7.3.2
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 7.5.0 (2026-08-27)
 
 ### 🚀 Features
