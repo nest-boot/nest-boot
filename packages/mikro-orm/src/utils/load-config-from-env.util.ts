@@ -226,7 +226,8 @@ export interface HostConfig {
  * Supports `DATABASE_URL`, which is parsed into individual connection options,
  * including structured query options. The `postgresql:` and `postgres:`
  * protocols select PostgreSQL, `mysql:` selects MySQL, and `file:` selects
- * SQLite.
+ * SQLite. Only the URL forms documented by those databases are accepted;
+ * other protocol names and driver-specific compatibility forms are rejected.
  *
  * @returns MikroORM options derived from environment variables
  */
