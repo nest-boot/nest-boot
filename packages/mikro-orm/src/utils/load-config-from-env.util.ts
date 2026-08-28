@@ -105,9 +105,9 @@ export interface HostConfig {
  * Loads MikroORM configuration from environment variables.
  *
  * @remarks
- * Supports `DB_URL` and `DATABASE_URL`. The selected URL is parsed into
- * individual connection options, including structured query options, and its
- * protocol resolves the database driver.
+ * Supports `DATABASE_URL`, which is parsed into individual connection options,
+ * including structured query options. Its protocol resolves the database
+ * driver.
  *
  * @returns MikroORM options derived from environment variables
  */
@@ -133,10 +133,10 @@ export async function loadConfigFromEnv(): Promise<DriverConfig & HostConfig> {
     },
   } satisfies Options;
 
-  const dbUrl = process.env.DB_URL ?? process.env.DATABASE_URL;
+  const databaseUrl = process.env.DATABASE_URL;
 
-  if (dbUrl) {
-    const url = new URL(dbUrl);
+  if (databaseUrl) {
+    const url = new URL(databaseUrl);
     const dbType = url.protocol.replace(":", "");
     const dbName = url.pathname.slice(1);
 

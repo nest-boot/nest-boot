@@ -9,11 +9,8 @@ const ORIGINAL_ENV = process.env;
 
 describe("loadConfigFromEnv", () => {
   beforeEach(() => {
-    process.env = Object.fromEntries(
-      Object.entries(ORIGINAL_ENV).filter(
-        ([key]) => !key.startsWith("DB_") && !key.startsWith("DATABASE_"),
-      ),
-    );
+    process.env = { ...ORIGINAL_ENV };
+    delete process.env.DATABASE_URL;
   });
 
   afterAll(() => {
@@ -21,9 +18,8 @@ describe("loadConfigFromEnv", () => {
   });
 
   it("should load URL-based MySQL config", async () => {
-    process.env.DB_URL =
+    process.env.DATABASE_URL =
       "mysql://user%40example.com:p%40ss%2Fword@localhost:3306/app";
-    process.env.DB_DEBUG = "true";
 
     const config = await loadConfigFromEnv();
 
@@ -77,7 +73,8 @@ describe("loadConfigFromEnv", () => {
   });
 
   it("should decode a URL-encoded Unix socket hostname", async () => {
-    process.env.DB_URL = "postgresql://user:pass@%2Fvar%2Frun%2Fpostgresql/app";
+    process.env.DATABASE_URL =
+      "postgresql://user:pass@%2Fvar%2Frun%2Fpostgresql/app";
 
     await expect(loadConfigFromEnv()).resolves.toMatchObject({
       dbName: "app",
@@ -88,39 +85,7 @@ describe("loadConfigFromEnv", () => {
     });
   });
 
-  it("should ignore individual database variables", async () => {
-    process.env.DB_TYPE = "mysql";
-    process.env.DB_HOST = "ignored.local";
-    process.env.DB_PORT = "3306";
-    process.env.DB_NAME = "ignored";
-    process.env.DB_DATABASE = "ignored-alias";
-    process.env.DB_USER = "ignored-user";
-    process.env.DB_USERNAME = "ignored-username";
-    process.env.DB_PASS = "ignored-pass";
-    process.env.DB_PASSWORD = "ignored-password";
-    process.env.DATABASE_TYPE = "postgres";
-    process.env.DATABASE_HOST = "localhost";
-    process.env.DATABASE_PORT = "5432";
-    process.env.DATABASE_NAME = "app";
-    process.env.DATABASE_USERNAME = "user";
-    process.env.DATABASE_PASSWORD = "pass";
-
-    process.env.DATABASE_DEBUG = "false";
-
-    const config = await loadConfigFromEnv();
-
-    expect(config).toMatchObject({
-      dbName: undefined,
-      debug: false,
-      driver: undefined,
-      host: undefined,
-      password: undefined,
-      port: undefined,
-      user: undefined,
-    });
-  });
-
-  it("should return undefined connection fields when URL variables are absent", async () => {
+  it("should return undefined connection fields when DATABASE_URL is absent", async () => {
     await expect(loadConfigFromEnv()).resolves.toMatchObject({
       dbName: undefined,
       driver: undefined,
