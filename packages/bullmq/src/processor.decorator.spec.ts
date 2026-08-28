@@ -51,6 +51,29 @@ describe("Processor", () => {
     expect(mockBaseProcessorDecorator).toHaveBeenCalledWith(EmailProcessor);
   });
 
+  it("should forward all worker processor arguments", async () => {
+    const job = {
+      id: "job-1",
+    };
+    const signal = new AbortController().signal;
+    class EmailProcessor {
+      async process(
+        _input: typeof job,
+        token?: string,
+        receivedSignal?: AbortSignal,
+      ) {
+        await Promise.resolve();
+        return { signal: receivedSignal, token };
+      }
+    }
+
+    Processor("email")(EmailProcessor as never);
+
+    await expect(
+      new EmailProcessor().process(job, "token-1", signal),
+    ).resolves.toEqual({ signal, token: "token-1" });
+  });
+
   it("should apply the base decorator when no process method exists", () => {
     class EmptyProcessor {}
     const processorOptions = {
