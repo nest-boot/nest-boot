@@ -38,11 +38,7 @@ export function Length(
             const isMaxLength =
               args.constraints[1] !== null && args.constraints[1] !== undefined;
 
-            if (
-              isMinLength &&
-              !isMaxLength &&
-              args.value.length < args.constraints[0]
-            ) {
+            if (isMinLength && !isMaxLength) {
               return "length.gte";
             }
           }
