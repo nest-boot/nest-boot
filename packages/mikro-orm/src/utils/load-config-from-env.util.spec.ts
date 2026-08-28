@@ -1,4 +1,4 @@
-import { DataloaderType } from "@mikro-orm/core";
+import { DataloaderType, type Options } from "@mikro-orm/core";
 import { MySqlDriver } from "@mikro-orm/mysql";
 import { PostgreSqlDriver } from "@mikro-orm/postgresql";
 import { TsMorphMetadataProvider } from "@mikro-orm/reflection";
@@ -49,6 +49,9 @@ describe("loadConfigFromEnv", () => {
       user: "user@example.com",
     });
     expect(config).not.toHaveProperty("clientUrl");
+    expect((config as Options).seeder?.fileName?.("CustomSeeder")).toBe(
+      "CustomSeeder",
+    );
   });
 
   it("should load URL-based PostgreSQL config", async () => {
@@ -84,6 +87,24 @@ describe("loadConfigFromEnv", () => {
       user: "user",
     });
   });
+
+  it.each([
+    ["mysql", "ssl=true", { ssl: true }],
+    ["mysql", "ssl=false", { ssl: false }],
+    ["postgresql", "sslmode=disable", { ssl: false }],
+    ["postgresql", "sslmode=no-verify", { ssl: { rejectUnauthorized: false } }],
+  ])(
+    "should parse %s driver query option %s",
+    async (protocol, query, expected) => {
+      process.env.DATABASE_URL = `${protocol}://user:pass@localhost/app?${query}`;
+
+      await expect(loadConfigFromEnv()).resolves.toMatchObject({
+        driverOptions: {
+          connection: expected,
+        },
+      });
+    },
+  );
 
   it("should return undefined connection fields when DATABASE_URL is absent", async () => {
     await expect(loadConfigFromEnv()).resolves.toMatchObject({
