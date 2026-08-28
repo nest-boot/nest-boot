@@ -58,7 +58,7 @@ export function Processor<T extends Worker = Worker>(
   return (target: Type<WorkerHost<T>>) => {
     const originalProcess = target.prototype.process;
     if (originalProcess) {
-      target.prototype.process = async function (job: Job) {
+      target.prototype.process = async function (job: Job, token?: string) {
         const ctx = new RequestContext({
           id: job.id,
           type: "queue",
@@ -67,7 +67,7 @@ export function Processor<T extends Worker = Worker>(
         ctx.set(JOB_REF, job);
 
         return await RequestContext.run(ctx, () =>
-          originalProcess.call(this, job),
+          originalProcess.call(this, job, token),
         );
       };
     }
