@@ -12,7 +12,7 @@ jest.mock("@nest-boot/bullmq", () => ({
   },
 }));
 
-import { type Provider } from "@nestjs/common";
+import { Logger, type Provider } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 
 import { MODULE_OPTIONS_TOKEN } from "./schedule.module-definition";
@@ -31,6 +31,10 @@ describe("ScheduleProcessor", () => {
       } as unknown as ScheduleRegistry,
     };
   };
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
 
   it("should apply the schedule processor decorator", () => {
     expect(mockProcessor).toHaveBeenCalledWith("schedule", {
@@ -93,16 +97,38 @@ describe("ScheduleProcessor", () => {
     expect((processor as any).worker.run).not.toHaveBeenCalled();
   });
 
-  it("should swallow worker run errors", async () => {
+  it("should log worker run errors", async () => {
+    const loggerError = jest
+      .spyOn(Logger.prototype, "error")
+      .mockImplementation(jest.fn());
     const processor = await createProcessor(createRegistry().registry);
-    (processor as any).worker.run.mockRejectedValueOnce(new Error("boom"));
+    const error = new Error("Redis unavailable");
+    (processor as any).worker.run.mockRejectedValueOnce(error);
 
-    expect(() => {
-      processor.onApplicationBootstrap();
-    }).not.toThrow();
+    processor.onApplicationBootstrap();
     await Promise.resolve();
 
     expect((processor as any).worker.run).toHaveBeenCalledTimes(1);
+    expect(loggerError).toHaveBeenCalledWith(
+      "Schedule worker stopped unexpectedly: Redis unavailable",
+      error.stack,
+    );
+  });
+
+  it("should stringify non-error worker run rejections", async () => {
+    const loggerError = jest
+      .spyOn(Logger.prototype, "error")
+      .mockImplementation(jest.fn());
+    const processor = await createProcessor(createRegistry().registry);
+    (processor as any).worker.run.mockRejectedValueOnce("connection closed");
+
+    processor.onApplicationBootstrap();
+    await Promise.resolve();
+
+    expect(loggerError).toHaveBeenCalledWith(
+      "Schedule worker stopped unexpectedly: connection closed",
+      undefined,
+    );
   });
 
   it("should load decorator metadata fallback branches", async () => {

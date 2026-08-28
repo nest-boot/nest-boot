@@ -1,5 +1,10 @@
 import { Processor, WorkerHost } from "@nest-boot/bullmq";
-import { Inject, OnApplicationBootstrap, Optional } from "@nestjs/common";
+import {
+  Inject,
+  Logger,
+  OnApplicationBootstrap,
+  Optional,
+} from "@nestjs/common";
 import { Job } from "bullmq";
 
 import { MODULE_OPTIONS_TOKEN } from "./schedule.module-definition";
@@ -11,6 +16,9 @@ export class ScheduleProcessor
   extends WorkerHost
   implements OnApplicationBootstrap
 {
+  /** Logger for worker lifecycle failures. @internal */
+  private readonly logger = new Logger(ScheduleProcessor.name);
+
   constructor(
     private readonly scheduleRegistry: ScheduleRegistry,
     @Optional()
@@ -30,8 +38,13 @@ export class ScheduleProcessor
     }
 
     if (this.options?.autorun !== false) {
-      this.worker.run().catch(() => {
-        //
+      void this.worker.run().catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+
+        this.logger.error(
+          `Schedule worker stopped unexpectedly: ${message}`,
+          error instanceof Error ? error.stack : undefined,
+        );
       });
     }
   }
