@@ -20,7 +20,46 @@ import { Module } from "@nestjs/common";
 import { MetricsModule } from "@nest-boot/metrics";
 
 @Module({
-  imports: [MetricsModule.register({})],
+  imports: [MetricsModule],
+})
+export class AppModule {}
+```
+
+`MetricsModule` is global, so it only needs to be imported once. Static module
+registration uses the default `prom-client` collector options.
+
+## Configuration
+
+Use `register()` to configure the default metrics collector. All supported
+`prom-client` default collector options except `register` are forwarded:
+
+```typescript
+@Module({
+  imports: [
+    MetricsModule.register({
+      prefix: "app_",
+      labels: { service: "api" },
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+Use `registerAsync()` when the options come from an asynchronous factory or
+another provider:
+
+```typescript
+import { ConfigService } from "@nestjs/config";
+
+@Module({
+  imports: [
+    MetricsModule.registerAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        prefix: configService.get("METRICS_PREFIX", ""),
+      }),
+    }),
+  ],
 })
 export class AppModule {}
 ```

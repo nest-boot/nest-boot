@@ -1,19 +1,31 @@
-import { type DynamicModule, Module, type Provider } from "@nestjs/common";
-import { collectDefaultMetrics, Registry } from "prom-client";
+import {
+  type DynamicModule,
+  Global,
+  Module,
+  type Provider,
+} from "@nestjs/common";
+import {
+  collectDefaultMetrics,
+  Registry,
+  type RegistryContentType,
+} from "prom-client";
 
 import { MetricsController } from "./metrics.controller";
 import {
   ASYNC_OPTIONS_TYPE,
   ConfigurableModuleClass,
+  MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
 } from "./metrics.module-definition";
+import { type MetricsModuleOptions } from "./metrics-module-options.interface";
 
 const RegistryProvider: Provider<Registry> = {
   provide: Registry,
-  useFactory: () => {
+  inject: [{ token: MODULE_OPTIONS_TOKEN, optional: true }],
+  useFactory: (options?: MetricsModuleOptions<RegistryContentType>) => {
     const registry = new Registry();
 
-    collectDefaultMetrics({ register: registry });
+    collectDefaultMetrics({ ...options, register: registry });
 
     return registry;
   },
@@ -26,6 +38,7 @@ const RegistryProvider: Provider<Registry> = {
  * Provides a prom-client Registry with default metrics collection
  * and exposes a `/metrics` endpoint for Prometheus scraping.
  */
+@Global()
 @Module({
   controllers: [MetricsController],
   providers: [RegistryProvider],

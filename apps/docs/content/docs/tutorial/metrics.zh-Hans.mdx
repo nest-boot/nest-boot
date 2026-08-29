@@ -20,7 +20,43 @@ import { Module } from "@nestjs/common";
 import { MetricsModule } from "@nest-boot/metrics";
 
 @Module({
-  imports: [MetricsModule.register({})],
+  imports: [MetricsModule],
+})
+export class AppModule {}
+```
+
+`MetricsModule` 是全局模块，只需导入一次。静态模块用法会采用 `prom-client` 默认采集配置。
+
+## 配置
+
+使用 `register()` 配置默认指标采集器。除 `register` 外，模块会转发 `prom-client` 支持的全部默认采集配置：
+
+```typescript
+@Module({
+  imports: [
+    MetricsModule.register({
+      prefix: "app_",
+      labels: { service: "api" },
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+当配置来自异步工厂或其他 provider 时，使用 `registerAsync()`：
+
+```typescript
+import { ConfigService } from "@nestjs/config";
+
+@Module({
+  imports: [
+    MetricsModule.registerAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        prefix: configService.get("METRICS_PREFIX", ""),
+      }),
+    }),
+  ],
 })
 export class AppModule {}
 ```
