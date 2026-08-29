@@ -5,14 +5,15 @@ import { type Options } from "pino-http";
  *
  * @remarks
  * Pino is an implementation detail. Only the options needed to control HTTP
- * logging, output, serialization, formatting, timestamps, and redaction are
- * part of the public API.
+ * logging, request IDs, output, serialization, formatting, timestamps, and
+ * redaction are part of the public API.
  */
 export type LoggerModuleOptions = Pick<
   Options,
   | "autoLogging"
   | "enabled"
   | "formatters"
+  | "genReqId"
   | "redact"
   | "serializers"
   | "stream"

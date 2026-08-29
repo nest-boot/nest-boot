@@ -138,18 +138,32 @@ function createLoggerMiddleware(options?: LoggerModuleOptions): HttpLogger {
 }
 
 function createLoggerOptions(options: LoggerModuleOptions = {}): Options {
+  const {
+    autoLogging,
+    enabled,
+    formatters,
+    genReqId,
+    redact,
+    serializers,
+    stream,
+    timestamp,
+  } = options;
+
   return {
-    autoLogging: {
+    autoLogging: autoLogging ?? {
       ignore: (req) =>
         process.env.NODE_ENV !== "production" &&
         req.headers["x-logging"] === "false",
-      ...(typeof options.autoLogging !== "boolean" ? options.autoLogging : {}),
     },
-    redact: ["req.headers.authorization", "req.headers.cookie"],
-    genReqId: () => RequestContext.id ?? randomUUID(),
+    enabled,
+    formatters,
+    redact: redact ?? ["req.headers.authorization", "req.headers.cookie"],
+    serializers,
+    stream,
+    timestamp,
+    genReqId: genReqId ?? (() => RequestContext.id ?? randomUUID()),
     customReceivedMessage: () => "request received",
     customProps: () =>
       RequestContext.isActive() ? (RequestContext.get(BINDINGS) ?? {}) : {},
-    ...options,
   };
 }

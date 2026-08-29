@@ -81,6 +81,7 @@ describe("LoggerModule", () => {
     expect(true satisfies HasOption<"autoLogging">).toBe(true);
     expect(true satisfies HasOption<"enabled">).toBe(true);
     expect(true satisfies HasOption<"formatters">).toBe(true);
+    expect(true satisfies HasOption<"genReqId">).toBe(true);
     expect(true satisfies HasOption<"redact">).toBe(true);
     expect(true satisfies HasOption<"serializers">).toBe(true);
     expect(true satisfies HasOption<"stream">).toBe(true);
@@ -100,6 +101,37 @@ describe("LoggerModule", () => {
     expect(mockPinoHttp).toHaveBeenCalledWith(
       expect.objectContaining({ enabled: false }),
     );
+
+    await moduleRef.close();
+  });
+
+  it("should ignore options outside the public whitelist at runtime", async () => {
+    const customProps = jest.fn(() => ({ unsupported: true }));
+    const customReceivedMessage = jest.fn(() => "unsupported-message");
+    const moduleRef = await Test.createTestingModule({
+      imports: [
+        LoggerModule.register({
+          customLevels: { audit: 35 },
+          customProps,
+          customReceivedMessage,
+          enabled: false,
+          level: "silent",
+          transport: { target: "pino-pretty" },
+          useOnlyCustomLevels: true,
+        } as unknown as LoggerModuleOptions),
+      ],
+    }).compile();
+    const [options] = mockPinoHttp.mock.calls[0] as unknown as [
+      Record<string, unknown>,
+    ];
+
+    expect(options.enabled).toBe(false);
+    expect(options).not.toHaveProperty("customLevels");
+    expect(options).not.toHaveProperty("level");
+    expect(options).not.toHaveProperty("transport");
+    expect(options).not.toHaveProperty("useOnlyCustomLevels");
+    expect(options.customProps).not.toBe(customProps);
+    expect(options.customReceivedMessage).not.toBe(customReceivedMessage);
 
     await moduleRef.close();
   });
@@ -131,6 +163,7 @@ describe("LoggerModule", () => {
   });
 
   it("should apply defaults while preserving supplied options", async () => {
+    const genReqId = () => "custom-id";
     const ignore = () => false;
     const serializers = {
       secret: () => "hidden",
@@ -139,6 +172,7 @@ describe("LoggerModule", () => {
       autoLogging: {
         ignore,
       },
+      genReqId,
       serializers,
       timestamp: false,
     });
@@ -151,7 +185,8 @@ describe("LoggerModule", () => {
     expect(options.autoLogging.ignore).toBe(ignore);
     expect(options.serializers).toBe(serializers);
     expect(options.timestamp).toBe(false);
-    expect(options.genReqId).toEqual(expect.any(Function));
+    expect(options.genReqId).toBe(genReqId);
+    expect(options.genReqId()).toBe("custom-id");
     expect(options.customReceivedMessage()).toBe("request received");
     expect(options.customProps()).toEqual({});
   });
