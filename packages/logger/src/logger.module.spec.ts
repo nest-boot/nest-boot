@@ -74,31 +74,31 @@ describe("LoggerModule", () => {
     );
   });
 
-  it("should expose only custom level options compatible with Nest logging", () => {
-    type SupportsCustomLevels = {
-      customLevels: { notice: number };
-    } extends LoggerModuleOptions
-      ? true
-      : false;
-    type SupportsCustomOnlyLevels = {
-      useOnlyCustomLevels: true;
-    } extends LoggerModuleOptions
-      ? true
-      : false;
+  it("should expose only supported logger options", () => {
+    type HasOption<Option extends PropertyKey> =
+      Option extends keyof LoggerModuleOptions ? true : false;
 
-    expect(true satisfies SupportsCustomLevels).toBe(true);
-    expect(false satisfies SupportsCustomOnlyLevels).toBe(false);
+    expect(true satisfies HasOption<"autoLogging">).toBe(true);
+    expect(true satisfies HasOption<"enabled">).toBe(true);
+    expect(true satisfies HasOption<"formatters">).toBe(true);
+    expect(true satisfies HasOption<"redact">).toBe(true);
+    expect(true satisfies HasOption<"serializers">).toBe(true);
+    expect(true satisfies HasOption<"stream">).toBe(true);
+    expect(true satisfies HasOption<"timestamp">).toBe(true);
+    expect(false satisfies HasOption<"customLevels">).toBe(false);
+    expect(false satisfies HasOption<"level">).toBe(false);
+    expect(false satisfies HasOption<"useOnlyCustomLevels">).toBe(false);
   });
 
   it("should provide one configured pino-http middleware instance", async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [LoggerModule.register({ level: "silent" })],
+      imports: [LoggerModule.register({ enabled: false })],
     }).compile();
 
     expect(moduleRef.get(PINO_HTTP)).toBe(mockLoggerMiddleware);
     expect(mockPinoHttp).toHaveBeenCalledTimes(1);
     expect(mockPinoHttp).toHaveBeenCalledWith(
-      expect.objectContaining({ level: "silent" }),
+      expect.objectContaining({ enabled: false }),
     );
 
     await moduleRef.close();
@@ -109,7 +109,7 @@ describe("LoggerModule", () => {
       await Promise.resolve();
 
       return {
-        level: "silent" as const,
+        enabled: false,
         timestamp: false,
       };
     });
@@ -122,7 +122,7 @@ describe("LoggerModule", () => {
     expect(mockPinoHttp).toHaveBeenCalledTimes(1);
     expect(mockPinoHttp).toHaveBeenCalledWith(
       expect.objectContaining({
-        level: "silent",
+        enabled: false,
         timestamp: false,
       }),
     );
@@ -131,14 +131,16 @@ describe("LoggerModule", () => {
   });
 
   it("should apply defaults while preserving supplied options", async () => {
+    const ignore = () => false;
+    const serializers = {
+      secret: () => "hidden",
+    };
     const module = await createLoggerModule({
       autoLogging: {
-        ignore: () => false,
+        ignore,
       },
-      customProps: () => ({
-        custom: true,
-      }),
-      genReqId: () => "custom-id",
+      serializers,
+      timestamp: false,
     });
     const options = (module as unknown as { options: any }).options;
 
@@ -146,11 +148,12 @@ describe("LoggerModule", () => {
       "req.headers.authorization",
       "req.headers.cookie",
     ]);
-    expect(options.genReqId()).toBe("custom-id");
+    expect(options.autoLogging.ignore).toBe(ignore);
+    expect(options.serializers).toBe(serializers);
+    expect(options.timestamp).toBe(false);
+    expect(options.genReqId).toEqual(expect.any(Function));
     expect(options.customReceivedMessage()).toBe("request received");
-    expect(options.customProps()).toEqual({
-      custom: true,
-    });
+    expect(options.customProps()).toEqual({});
   });
 
   it("should configure default request id, props, and auto logging behavior", async () => {

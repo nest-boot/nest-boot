@@ -7,12 +7,9 @@ import {
   Injectable,
 } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
-import { type Logger as PinoLogger } from "pino";
-import { type HttpLogger } from "pino-http";
 import { Writable } from "stream";
 
 import { Logger, LoggerModule, LoggerModuleOptions } from "../src";
-import { PINO_HTTP, PINO_LOGGER } from "../src/logger.module-definition";
 import { AppModule } from "./src/app.module";
 import { CUSTOM_CONTENT_NAME } from "./src/constants";
 import { TestService } from "./src/test.service";
@@ -59,20 +56,32 @@ describe("LoggerModule - e2e", () => {
     expect(testService.customContextName).toEqual(CUSTOM_CONTENT_NAME);
   });
 
-  it("should apply pino options outside HTTP request contexts", async () => {
+  it("should apply supported options outside HTTP request contexts", async () => {
     const output: string[] = [];
     const stream = createOutputStream(output);
     const logger = await createConfiguredLogger({
+      formatters: {
+        level: (label) => ({ severity: label }),
+      },
       redact: ["secret"],
+      serializers: {
+        account: (account: { id: string }) => ({ id: account.id }),
+      },
       stream,
       timestamp: false,
     });
 
-    logger.log("outside request context", { secret: "outside-secret" });
+    logger.log("outside request context", {
+      account: { id: "outside-account", secret: "account-secret" },
+      secret: "outside-secret",
+    });
     await RequestContext.run(
       new RequestContext({ id: "queue-context", type: "queue" }),
       () => {
-        logger.log("inside queue context", { secret: "queue-secret" });
+        logger.log("inside queue context", {
+          account: { id: "queue-account", secret: "account-secret" },
+          secret: "queue-secret",
+        });
       },
     );
 
@@ -80,11 +89,14 @@ describe("LoggerModule - e2e", () => {
     expect(records).toHaveLength(2);
     expect(records).toEqual([
       expect.objectContaining({
+        account: { id: "outside-account" },
         context: ConfiguredLoggerConsumer.name,
         msg: "outside request context",
         secret: "[Redacted]",
+        severity: "info",
       }),
       expect.objectContaining({
+        account: { id: "queue-account" },
         context: ConfiguredLoggerConsumer.name,
         ctx: {
           id: "queue-context",
@@ -92,25 +104,24 @@ describe("LoggerModule - e2e", () => {
         },
         msg: "inside queue context",
         secret: "[Redacted]",
+        severity: "info",
       }),
     ]);
     expect(records.every((record) => !("time" in record))).toBe(true);
   });
 
-  it("should honor the silent level outside HTTP request contexts", async () => {
+  it("should honor disabled logging outside HTTP request contexts", async () => {
     const output: string[] = [];
     const logger = await createConfiguredLogger({
-      level: "silent",
+      enabled: false,
       stream: createOutputStream(output),
     });
 
     logger.log("outside request context");
     await RequestContext.run(new RequestContext({ type: "queue" }), () => {
-      expect(RequestContext.get<PinoLogger>(PINO_LOGGER)?.level).toBe("silent");
       logger.log("inside queue context");
     });
 
-    expect(app.get<HttpLogger>(PINO_HTTP).logger.level).toBe("silent");
     expect(output).toEqual([]);
   });
 
@@ -119,13 +130,12 @@ describe("LoggerModule - e2e", () => {
 
     const output: string[] = [];
     const loggerModule = new LoggerModule({
-      level: "silent",
+      enabled: false,
       stream: createOutputStream(output),
     });
     loggerModule.onModuleInit();
 
     await RequestContext.run(new RequestContext({ type: "queue" }), () => {
-      expect(RequestContext.get<PinoLogger>(PINO_LOGGER)?.level).toBe("silent");
       new Logger(new Worker()).log("directly constructed logger");
     });
 
@@ -138,7 +148,7 @@ describe("LoggerModule - e2e", () => {
       await Promise.resolve();
 
       return {
-        level: "silent",
+        enabled: false,
         stream: createOutputStream(output),
       };
     });
@@ -148,12 +158,10 @@ describe("LoggerModule - e2e", () => {
 
     logger.log("outside request context");
     await RequestContext.run(new RequestContext({ type: "queue" }), () => {
-      expect(RequestContext.get<PinoLogger>(PINO_LOGGER)?.level).toBe("silent");
       logger.log("inside queue context");
     });
 
     expect(useFactory).toHaveBeenCalledTimes(1);
-    expect(app.get<HttpLogger>(PINO_HTTP).logger.level).toBe("silent");
     expect(output).toEqual([]);
   });
 

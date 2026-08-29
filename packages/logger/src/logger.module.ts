@@ -16,7 +16,7 @@ import {
 import { APP_INTERCEPTOR } from "@nestjs/core";
 import { randomUUID } from "crypto";
 import { type Request, type Response } from "express";
-import pinoHttp, { type HttpLogger } from "pino-http";
+import pinoHttp, { type HttpLogger, type Options } from "pino-http";
 
 import { Logger } from "./logger";
 import { LoggingInterceptor } from "./logger.interceptor";
@@ -62,6 +62,9 @@ export class LoggerModule
   extends ConfigurableModuleClass
   implements OnModuleInit
 {
+  /** Complete options passed to the internal pino-http implementation. */
+  private readonly options: Options;
+
   /** Configured pino-http middleware shared by all logger paths. @internal */
   @Optional()
   @Inject(PINO_HTTP)
@@ -69,7 +72,7 @@ export class LoggerModule
 
   /**
    * Registers the LoggerModule with the given options.
-   * @param options - Pino logger configuration options
+   * @param options - Supported logger configuration options
    * @returns Dynamic module configuration
    */
   static override register(options: typeof OPTIONS_TYPE): DynamicModule {
@@ -88,16 +91,16 @@ export class LoggerModule
   }
 
   /** Creates a new LoggerModule instance.
-   * @param options - Pino logger configuration options
+   * @param options - Supported logger configuration options
    */
   constructor(
     @Optional()
     @Inject(MODULE_OPTIONS_TOKEN)
-    private readonly options: LoggerModuleOptions = {},
+    options: LoggerModuleOptions = {},
   ) {
     super();
 
-    this.options = createLoggerOptions(this.options);
+    this.options = createLoggerOptions(options);
   }
 
   /** Sets up the pino-http logger and registers it in the request context middleware. */
@@ -134,9 +137,7 @@ function createLoggerMiddleware(options?: LoggerModuleOptions): HttpLogger {
   return pinoHttp(createLoggerOptions(options));
 }
 
-function createLoggerOptions(
-  options: LoggerModuleOptions = {},
-): LoggerModuleOptions {
+function createLoggerOptions(options: LoggerModuleOptions = {}): Options {
   return {
     autoLogging: {
       ignore: (req) =>
@@ -145,7 +146,7 @@ function createLoggerOptions(
       ...(typeof options.autoLogging !== "boolean" ? options.autoLogging : {}),
     },
     redact: ["req.headers.authorization", "req.headers.cookie"],
-    genReqId: options.genReqId ?? (() => RequestContext.id ?? randomUUID()),
+    genReqId: () => RequestContext.id ?? randomUUID(),
     customReceivedMessage: () => "request received",
     customProps: () =>
       RequestContext.isActive() ? (RequestContext.get(BINDINGS) ?? {}) : {},

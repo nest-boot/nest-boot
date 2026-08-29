@@ -1,13 +1,20 @@
 import { type Options } from "pino-http";
 
 /**
- * Pino HTTP options compatible with Nest's standard logger methods.
+ * Logger options supported by {@link LoggerModule}.
  *
  * @remarks
- * Custom levels may be added, but the standard levels used by {@link Logger}
- * cannot be removed.
+ * Pino is an implementation detail. Only the options needed to control HTTP
+ * logging, output, serialization, formatting, timestamps, and redaction are
+ * part of the public API.
  */
-export type LoggerModuleOptions = Omit<Options, "useOnlyCustomLevels"> & {
-  /** Must remain disabled so Nest's standard logger methods stay available. */
-  useOnlyCustomLevels?: false;
-};
+export type LoggerModuleOptions = Pick<
+  Options,
+  | "autoLogging"
+  | "enabled"
+  | "formatters"
+  | "redact"
+  | "serializers"
+  | "stream"
+  | "timestamp"
+>;
