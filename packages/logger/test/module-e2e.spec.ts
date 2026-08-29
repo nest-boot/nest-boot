@@ -132,6 +132,31 @@ describe("LoggerModule - e2e", () => {
     expect(output).toEqual([]);
   });
 
+  it("should honor options for a directly constructed logger without a request context", () => {
+    class Worker {}
+
+    const output: string[] = [];
+    const loggerModule = new LoggerModule({
+      redact: ["secret"],
+      stream: createOutputStream(output),
+      timestamp: false,
+    });
+    loggerModule.onModuleInit();
+
+    new Logger(new Worker()).log("direct inactive context", {
+      secret: "direct-secret",
+    });
+
+    expect(parseRecords(output)).toEqual([
+      expect.objectContaining({
+        context: Worker.name,
+        msg: "direct inactive context",
+        secret: "[Redacted]",
+      }),
+    ]);
+    expect(parseRecords(output)[0]).not.toHaveProperty("time");
+  });
+
   it("should apply asynchronously registered options outside HTTP contexts", async () => {
     const output: string[] = [];
     const useFactory = jest.fn(async (): Promise<LoggerModuleOptions> => {

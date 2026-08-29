@@ -15,6 +15,7 @@ import pino, {
 import { type HttpLogger } from "pino-http";
 
 import { BINDINGS, PINO_HTTP, PINO_LOGGER } from "./logger.module-definition";
+import { getConfiguredLogger } from "./logger-state";
 
 /**
  * Request-scoped structured logger built on top of pino.
@@ -126,6 +127,7 @@ export class Logger implements LoggerService {
     if (typeof pinoLogger === "undefined") {
       return (
         this.loggerMiddleware?.logger ??
+        getConfiguredLogger() ??
         this.globalLogger ??
         (this.globalLogger = pino())
       );

@@ -30,6 +30,7 @@ import {
   PINO_LOGGER,
 } from "./logger.module-definition";
 import { LoggerModuleOptions } from "./logger-module-options.interface";
+import { setConfiguredLogger } from "./logger-state";
 
 const pinoHttpProvider: Provider<HttpLogger> = {
   provide: PINO_HTTP,
@@ -105,6 +106,7 @@ export class LoggerModule
     const loggerMiddleware =
       this.loggerMiddleware ?? (this.loggerMiddleware = pinoHttp(this.options));
     const logger = loggerMiddleware.logger;
+    setConfiguredLogger(logger);
 
     RequestContext.registerMiddleware("logger", async (ctx, next) => {
       const req = ctx.get<Request>(REQUEST);
