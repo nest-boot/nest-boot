@@ -7,7 +7,7 @@ import {
 } from "@apollo/server";
 import { GraphQLSchemaHost } from "@nest-boot/graphql";
 import { Plugin } from "@nestjs/apollo";
-import { HttpException } from "@nestjs/common";
+import { HttpException, Inject } from "@nestjs/common";
 import {
   GraphQLEnumType,
   GraphQLInterfaceType,
@@ -27,8 +27,9 @@ import {
   simpleEstimator,
 } from "graphql-query-complexity";
 
+import { OPTIONS_TOKEN } from "./graphql-rate-limit.module-definition";
 import { GraphQLRateLimitStorage } from "./graphql-rate-limit.storage";
-import { CostResponse } from "./interfaces";
+import { CostResponse, GraphQLRateLimitOptions } from "./interfaces";
 
 // https://shopify.engineering/rate-limiting-graphql-apis-calculating-query-complexity
 function shopifyEstimator(
@@ -67,13 +68,16 @@ function shopifyEstimator(
 export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
   private readonly complexityEstimators: ComplexityEstimator[] = [];
 
-  private readonly maxComplexity: number = 1000;
-  private readonly defaultComplexity: number = 0;
+  private readonly maxComplexity: number;
+  private readonly defaultComplexity: number;
 
   constructor(
     private readonly storage: GraphQLRateLimitStorage,
     private readonly gqlSchemaHost: GraphQLSchemaHost,
+    @Inject(OPTIONS_TOKEN) options: GraphQLRateLimitOptions,
   ) {
+    this.maxComplexity = options.maxComplexity;
+    this.defaultComplexity = options.defaultComplexity;
     this.complexityEstimators = [
       directiveEstimator(),
       fieldExtensionsEstimator(),

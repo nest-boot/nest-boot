@@ -1,5 +1,6 @@
 import type { BaseContext, GraphQLRequestContext } from "@apollo/server";
 import { GraphQLSchemaHost } from "@nest-boot/graphql";
+import { Test } from "@nestjs/testing";
 import {
   buildSchema,
   FieldNode,
@@ -7,18 +8,24 @@ import {
   Kind,
   parse,
 } from "graphql";
-import { getComplexity } from "graphql-query-complexity";
+import { getComplexity, simpleEstimator } from "graphql-query-complexity";
 
+import { OPTIONS_TOKEN } from "../src/graphql-rate-limit.module-definition";
 import { GraphQLRateLimitPlugin } from "../src/graphql-rate-limit.plugin";
 import { GraphQLRateLimitStorage } from "../src/graphql-rate-limit.storage";
-import { CostThrottleStatus } from "../src/interfaces";
+import { CostThrottleStatus, GraphQLRateLimitOptions } from "../src/interfaces";
 
-jest.mock("graphql-query-complexity", () => ({
-  ...jest.requireActual<typeof import("graphql-query-complexity")>(
+jest.mock("graphql-query-complexity", () => {
+  const actual = jest.requireActual<typeof import("graphql-query-complexity")>(
     "graphql-query-complexity",
-  ),
-  getComplexity: jest.fn(),
-}));
+  );
+
+  return {
+    ...actual,
+    getComplexity: jest.fn(),
+    simpleEstimator: jest.fn(actual.simpleEstimator),
+  };
+});
 
 interface TestExecutionListener {
   willResolveField(args: {
@@ -78,7 +85,21 @@ describe("GraphQLRateLimitPlugin", () => {
     addPoint,
   } as unknown as GraphQLRateLimitStorage;
   const schemaHost = { schema } as GraphQLSchemaHost;
+  const options: GraphQLRateLimitOptions = {
+    maxComplexity: 1000,
+    defaultComplexity: 0,
+    keyPrefix: "graphql-rate-limit",
+    restoreRate: 5,
+    maximumAvailable: 100,
+    getId: () => "client",
+  };
   const mockedGetComplexity = jest.mocked(getComplexity);
+  const mockedSimpleEstimator = jest.mocked(simpleEstimator);
+  const createPlugin = (overrides?: Partial<GraphQLRateLimitOptions>) =>
+    new GraphQLRateLimitPlugin(storage, schemaHost, {
+      ...options,
+      ...overrides,
+    });
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -102,7 +123,7 @@ describe("GraphQLRateLimitPlugin", () => {
       document,
       response,
     } as unknown as GraphQLRequestContext<BaseContext>;
-    const plugin = new GraphQLRateLimitPlugin(storage, schemaHost);
+    const plugin = createPlugin();
     const listener = (await plugin.requestDidStart()) as TestRequestListener;
 
     await listener.didResolveOperation(context);
@@ -156,7 +177,7 @@ describe("GraphQLRateLimitPlugin", () => {
       request: { operationName: "TestQuery", variables: {} },
       document,
     } as unknown as GraphQLRequestContext<BaseContext>;
-    const plugin = new GraphQLRateLimitPlugin(storage, schemaHost);
+    const plugin = createPlugin();
     const listener = (await plugin.requestDidStart()) as TestRequestListener;
 
     await expect(listener.didResolveOperation(context)).rejects.toThrow(
@@ -170,12 +191,46 @@ describe("GraphQLRateLimitPlugin", () => {
       request: { operationName: "TestQuery", variables: {} },
       document,
     } as unknown as GraphQLRequestContext<BaseContext>;
-    const plugin = new GraphQLRateLimitPlugin(storage, schemaHost);
+    const plugin = createPlugin();
     const listener = (await plugin.requestDidStart()) as TestRequestListener;
 
     await expect(listener.didResolveOperation(context)).rejects.toThrow(
       "Query is too complex: 1000. Maximum allowed complexity: 1000",
     );
     expect(subPoint).not.toHaveBeenCalled();
+  });
+
+  it("uses configured complexity options", async () => {
+    mockedGetComplexity.mockReturnValue(1);
+    const context = {
+      request: { operationName: "TestQuery", variables: {} },
+      document,
+    } as unknown as GraphQLRequestContext<BaseContext>;
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        GraphQLRateLimitPlugin,
+        { provide: GraphQLRateLimitStorage, useValue: storage },
+        { provide: GraphQLSchemaHost, useValue: schemaHost },
+        {
+          provide: OPTIONS_TOKEN,
+          useValue: {
+            ...options,
+            maxComplexity: 1,
+            defaultComplexity: 7,
+          },
+        },
+      ],
+    }).compile();
+    const plugin = moduleRef.get(GraphQLRateLimitPlugin);
+    const listener = (await plugin.requestDidStart()) as TestRequestListener;
+
+    expect(mockedSimpleEstimator).toHaveBeenCalledWith({
+      defaultComplexity: 7,
+    });
+    await expect(listener.didResolveOperation(context)).rejects.toThrow(
+      "Query is too complex: 1. Maximum allowed complexity: 1",
+    );
+    expect(subPoint).not.toHaveBeenCalled();
+    await moduleRef.close();
   });
 });
