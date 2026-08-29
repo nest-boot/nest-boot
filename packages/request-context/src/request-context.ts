@@ -30,9 +30,11 @@ export interface RequestContextCreateOptions {
    * Application-level lifecycle category for this context.
    *
    * This value does not mirror NestJS `ExecutionContext.getType()`. Contexts
-   * created by the built-in request middleware and interceptor use `"http"`,
-   * including GraphQL resolver executions within a request. Custom contexts
-   * may use categories such as `"job"`.
+   * created by the built-in HTTP request middleware and interceptor use
+   * `"http"`, including GraphQL resolver executions within a request. Other
+   * integrations select categories for their lifecycle, such as `"queue"` or
+   * `"repl"`; callers creating contexts directly may use categories such as
+   * `"job"`.
    */
   type: string;
 
@@ -95,9 +97,10 @@ export class RequestContext {
   /**
    * Application-level lifecycle category for this context.
    *
-   * Built-in request contexts use `"http"`; manually created contexts may use
-   * other categories such as `"job"` or `"repl"`. This value is independent
-   * from the NestJS execution context type.
+   * Contexts created by the built-in HTTP request middleware and interceptor
+   * use `"http"`. Other integrations may use lifecycle categories such as
+   * `"queue"` or `"repl"`, and callers may define their own categories. This
+   * value is independent from the NestJS execution context type.
    */
   readonly type: string;
 
