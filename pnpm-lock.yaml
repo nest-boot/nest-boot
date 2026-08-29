@@ -5,6 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
+  better-sqlite3: 12.11.1
   zod: 4.3.6
 
 packageExtensionsChecksum: sha256-B0uJqCz4aIbwUOzF3ujbtRFJ8Y7J+jgRCi6kihMS6gk=
@@ -1318,8 +1319,8 @@ importers:
         specifier: ^24.12.4
         version: 24.12.4
       better-sqlite3:
-        specifier: ^12.5.0
-        version: 12.5.0
+        specifier: 12.11.1
+        version: 12.11.1
       jest:
         specifier: ^29.7.0
         version: 29.7.0
@@ -1360,8 +1361,8 @@ importers:
         specifier: ^24.12.4
         version: 24.12.4
       better-sqlite3:
-        specifier: ^12.5.0
-        version: 12.5.0
+        specifier: 12.11.1
+        version: 12.11.1
       jest:
         specifier: ^29.7.0
         version: 29.7.0
@@ -4965,12 +4966,9 @@ packages:
   better-call@1.1.7:
     resolution: {integrity: sha512-6gaJe1bBIEgVebQu/7q9saahVzvBsGaByEnE8aDVncZEDiJO7sdNB28ot9I6iXSbR25egGmmZ6aIURXyQHRraQ==}
 
-  better-sqlite3@11.10.0:
-    resolution: {integrity: sha512-EwhOpyXiOEL/lKzHz9AW1msWFNzGc/z+LzeB3/jnFJpxu+th2yqvzsSWas1v9jgs9+xiXJcD5A8CJxAG2TaghQ==}
-
-  better-sqlite3@12.5.0:
-    resolution: {integrity: sha512-WwCZ/5Diz7rsF29o27o0Gcc1Du+l7Zsv7SYtVPG0X3G/uUI1LqdxrQI7c9Hs2FWpqXXERjW9hp6g3/tH7DlVKg==}
-    engines: {node: 20.x || 22.x || 23.x || 24.x || 25.x}
+  better-sqlite3@12.11.1:
+    resolution: {integrity: sha512-dq9AtApgg5PGFtBzPFSBl3HZQjHok5gaQCM6zh2Yk0aSmDCs1CbnVI8/HgASQkNKsWFpseIO9beg5xxpYhbIfA==}
+    engines: {node: 20.x || 22.x || 23.x || 24.x || 25.x || 26.x}
 
   bindings@1.5.0:
     resolution: {integrity: sha512-p2q/t/mhvuOj/UeLlV6566GD/guowlr0hHxClI0W9m7MWYkL1F0hLo+0Aexs9HSPCtR1SXQ0TD3MMKrXZajbiQ==}
@@ -11222,7 +11220,7 @@ snapshots:
   '@mikro-orm/better-sqlite@6.6.2':
     dependencies:
       '@mikro-orm/knex': 6.6.2
-      better-sqlite3: 11.10.0
+      better-sqlite3: 12.11.1
       fs-extra: 11.3.2
       sqlstring-sqlite: 0.1.1
 
@@ -13078,12 +13076,7 @@ snapshots:
       rou3: 0.7.12
       set-cookie-parser: 2.7.2
 
-  better-sqlite3@11.10.0:
-    dependencies:
-      bindings: 1.5.0
-      prebuild-install: 7.1.3
-
-  better-sqlite3@12.5.0:
+  better-sqlite3@12.11.1:
     dependencies:
       bindings: 1.5.0
       prebuild-install: 7.1.3

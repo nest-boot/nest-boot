@@ -1,3 +1,14 @@
+## 7.3.6 (2026-08-29)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 7.7.4
+- Updated @nest-boot/eslint-config to 7.3.3
+- Updated @nest-boot/eslint-plugin to 7.2.3
+- Updated @nest-boot/schedule to 7.3.6
+- Updated @nest-boot/tsconfig to 7.3.3
+- Updated @nest-boot/bullmq to 7.3.5
+
 ## 7.3.5 (2026-08-29)
 
 ### 🧱 Updated Dependencies

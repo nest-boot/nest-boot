@@ -64,11 +64,6 @@
       "path": "cz-conventional-changelog"
     }
   },
-  "pnpm": {
-    "overrides": {
-      "zod": "4.3.6"
-    }
-  },
   "volta": {
     "node": "24.14.0"
   }
