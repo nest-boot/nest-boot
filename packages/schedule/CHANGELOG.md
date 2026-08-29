@@ -1,3 +1,13 @@
+## 7.3.5 (2026-08-29)
+
+### 🩹 Fixes
+
+- **schedule:** log worker run failures ([#302](https://github.com/nest-boot/nest-boot/pull/302))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 7.3.4 (2026-08-28)
 
 ### 🧱 Updated Dependencies

@@ -1,3 +1,9 @@
+## 7.3.5 (2026-08-29)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/schedule to 7.3.5
+
 ## 7.3.4 (2026-08-28)
 
 ### 🧱 Updated Dependencies
