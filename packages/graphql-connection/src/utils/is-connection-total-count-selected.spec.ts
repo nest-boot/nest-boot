@@ -65,6 +65,25 @@ describe("isConnectionTotalCountSelected", () => {
     expect(isConnectionTotalCountSelected(info)).toBe(true);
   });
 
+  it("visits a repeated named fragment only once", () => {
+    const info = createResolveInfo(`
+      query {
+        books {
+          ...EdgeFields
+          ...EdgeFields
+        }
+      }
+
+      fragment EdgeFields on BookConnection {
+        edges {
+          cursor
+        }
+      }
+    `);
+
+    expect(isConnectionTotalCountSelected(info)).toBe(false);
+  });
+
   it.each([
     ["$skipCount: Boolean!", "@skip(if: $skipCount)", { skipCount: true }],
     [
