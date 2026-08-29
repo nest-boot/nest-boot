@@ -17,6 +17,7 @@ function createEntity(id: number, data: Partial<TestEntity> = {}) {
 }
 
 function createEntityManager() {
+  const getContext = jest.fn();
   const getById = jest.fn();
   const em = {
     assign: jest.fn(),
@@ -25,6 +26,7 @@ function createEntityManager() {
     find: jest.fn(),
     findOne: jest.fn(),
     flush: jest.fn(),
+    getContext,
     getUnitOfWork: jest.fn(() => ({
       getById,
     })),
@@ -32,6 +34,7 @@ function createEntityManager() {
     remove: jest.fn(),
     transactional: jest.fn(async (handler) => await handler()),
   };
+  getContext.mockImplementation(() => em);
 
   return {
     em: em as unknown as EntityManager,
@@ -65,6 +68,26 @@ describe("EntityService", () => {
         persist: true,
       },
     );
+    expect(mocks.flush).toHaveBeenCalledTimes(1);
+  });
+
+  it("should batch concurrent entity creation", async () => {
+    const { em, mocks } = createEntityManager();
+    const service = new EntityService(TestEntity, em);
+
+    await expect(
+      Promise.all([
+        service.create({ id: 1, name: "first" }),
+        service.create({ id: 2, name: "second" }),
+        service.create({ id: 3, name: "third" }),
+      ]),
+    ).resolves.toEqual([
+      createEntity(1, { name: "first" }),
+      createEntity(2, { name: "second" }),
+      createEntity(3, { name: "third" }),
+    ]);
+
+    expect(mocks.create).toHaveBeenCalledTimes(3);
     expect(mocks.flush).toHaveBeenCalledTimes(1);
   });
 
@@ -118,6 +141,62 @@ describe("EntityService", () => {
     );
   });
 
+  it("should batch concurrent findOne calls by id", async () => {
+    const { em, mocks } = createEntityManager();
+    mocks.find.mockImplementation((_entityClass, where) =>
+      where.id.$in.map((id: number) => createEntity(id)),
+    );
+    const service = new EntityService(TestEntity, em);
+
+    await expect(
+      Promise.all([service.findOne(1), service.findOne(2), service.findOne(3)]),
+    ).resolves.toEqual([createEntity(1), createEntity(2), createEntity(3)]);
+
+    expect(mocks.find).toHaveBeenCalledTimes(1);
+    expect(mocks.find).toHaveBeenCalledWith(
+      TestEntity,
+      {
+        id: {
+          $in: [1, 2, 3],
+        },
+      },
+      {
+        limit: 3,
+      },
+    );
+  });
+
+  it("should isolate batches by resolved entity manager context", async () => {
+    const root = createEntityManager();
+    const firstContext = createEntityManager();
+    const secondContext = createEntityManager();
+    let currentContext = firstContext.em;
+    root.mocks.getContext.mockImplementation(() => currentContext);
+    firstContext.mocks.find.mockImplementation((_entityClass, where) =>
+      where.id.$in.map((id: number) => createEntity(id)),
+    );
+    secondContext.mocks.find.mockImplementation((_entityClass, where) =>
+      where.id.$in.map((id: number) => createEntity(id)),
+    );
+    const service = new EntityService(TestEntity, root.em);
+
+    const firstBatch = [service.findOne(1), service.findOne(2)];
+    currentContext = secondContext.em;
+    const secondBatch = [service.findOne(3), service.findOne(4)];
+
+    await expect(Promise.all([...firstBatch, ...secondBatch])).resolves.toEqual(
+      [createEntity(1), createEntity(2), createEntity(3), createEntity(4)],
+    );
+    expect(firstContext.mocks.find).toHaveBeenCalledTimes(1);
+    expect(firstContext.mocks.find.mock.calls[0][1]).toEqual({
+      id: { $in: [1, 2] },
+    });
+    expect(secondContext.mocks.find).toHaveBeenCalledTimes(1);
+    expect(secondContext.mocks.find.mock.calls[0][1]).toEqual({
+      id: { $in: [3, 4] },
+    });
+  });
+
   it("should resolve entity references by their id", async () => {
     const { em, mocks } = createEntityManager();
     const entity = createEntity(3);
@@ -135,6 +214,15 @@ describe("EntityService", () => {
     await expect(service.findOneOrFail(404)).rejects.toBeInstanceOf(
       NotFoundException,
     );
+  });
+
+  it("should return an entity from findOneOrFail", async () => {
+    const { em, mocks } = createEntityManager();
+    const entity = createEntity(1);
+    mocks.find.mockResolvedValue([entity]);
+    const service = new EntityService(TestEntity, em);
+
+    await expect(service.findOneOrFail(1)).resolves.toBe(entity);
   });
 
   it("should pass through findAll and count calls", async () => {
@@ -203,6 +291,41 @@ describe("EntityService", () => {
     expect(mocks.flush).toHaveBeenCalledTimes(1);
   });
 
+  it("should batch concurrent entity updates", async () => {
+    const { em, mocks } = createEntityManager();
+    mocks.find.mockImplementation((_entityClass, where) =>
+      where.id.$in.map((id: number) => createEntity(id, { name: "old" })),
+    );
+    const service = new EntityService(TestEntity, em);
+
+    await expect(
+      Promise.all([
+        service.update(1, { name: "first" }),
+        service.update(2, { name: "second" }),
+        service.update(3, { name: "third" }),
+      ]),
+    ).resolves.toHaveLength(3);
+
+    expect(mocks.find).toHaveBeenCalledTimes(1);
+    expect(mocks.assign).toHaveBeenCalledTimes(3);
+    expect(mocks.flush).toHaveBeenCalledTimes(1);
+  });
+
+  it("should preserve overridden findOne behavior when updating", async () => {
+    const { em, mocks } = createEntityManager();
+    const service = new EntityService(TestEntity, em);
+    const findOne = jest.spyOn(service, "findOne").mockResolvedValue(null);
+
+    await expect(
+      service.update(1, {
+        name: "blocked",
+      }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+
+    expect(findOne).toHaveBeenCalledWith(1);
+    expect(mocks.assign).not.toHaveBeenCalled();
+  });
+
   it("should throw when update cannot find an entity", async () => {
     const { em, mocks } = createEntityManager();
     mocks.find.mockResolvedValue([]);
@@ -241,6 +364,40 @@ describe("EntityService", () => {
 
     expect(mocks.remove).toHaveBeenCalledWith(entity);
     expect(mocks.transactional).not.toHaveBeenCalled();
+  });
+
+  it("should batch concurrent entity removal", async () => {
+    const { em, mocks } = createEntityManager();
+    mocks.find.mockImplementation((_entityClass, where) =>
+      where.id.$in.map((id: number) => createEntity(id)),
+    );
+    const service = new EntityService(TestEntity, em);
+
+    await expect(
+      Promise.all([
+        service.remove(1, false),
+        service.remove(2, false),
+        service.remove(3, false),
+      ]),
+    ).resolves.toHaveLength(3);
+
+    expect(mocks.find).toHaveBeenCalledTimes(1);
+    expect(mocks.remove).toHaveBeenCalledTimes(3);
+    expect(mocks.flush).toHaveBeenCalledTimes(1);
+    expect(mocks.transactional).toHaveBeenCalledTimes(1);
+  });
+
+  it("should preserve overridden findOne behavior when removing", async () => {
+    const { em, mocks } = createEntityManager();
+    const service = new EntityService(TestEntity, em);
+    const findOne = jest.spyOn(service, "findOne").mockResolvedValue(null);
+
+    await expect(service.remove(1, false)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+
+    expect(findOne).toHaveBeenCalledWith(1);
+    expect(mocks.remove).not.toHaveBeenCalled();
   });
 
   it("should throw when remove cannot find an entity", async () => {
@@ -297,5 +454,19 @@ describe("EntityService", () => {
         },
       },
     );
+  });
+
+  it("should stop chunk iteration when no entities are found", async () => {
+    const { em, mocks } = createEntityManager();
+    mocks.find.mockResolvedValue([]);
+    const callback = jest.fn();
+    const service = new EntityService(TestEntity, em);
+
+    await expect(service.chunkById({}, { limit: 2 }, callback)).resolves.toBe(
+      service,
+    );
+
+    expect(callback).not.toHaveBeenCalled();
+    expect(mocks.find).toHaveBeenCalledTimes(1);
   });
 });
