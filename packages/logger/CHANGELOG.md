@@ -1,3 +1,13 @@
+## 7.3.6 (2026-08-29)
+
+### 🩹 Fixes
+
+- **logger:** apply options outside HTTP contexts ([#290](https://github.com/nest-boot/nest-boot/issues/290), [#310](https://github.com/nest-boot/nest-boot/issues/310))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 7.3.5 (2026-08-29)
 
 ### 🧱 Updated Dependencies

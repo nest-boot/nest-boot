@@ -1,3 +1,9 @@
+## 7.3.6 (2026-08-29)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/logger to 7.3.6
+
 ## 7.3.5 (2026-08-29)
 
 ### 🧱 Updated Dependencies
