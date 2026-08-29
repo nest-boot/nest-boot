@@ -1,3 +1,12 @@
+## 7.7.4 (2026-08-29)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 7.3.3
+- Updated @nest-boot/eslint-plugin to 7.2.3
+- Updated @nest-boot/middleware to 7.6.4
+- Updated @nest-boot/tsconfig to 7.3.3
+
 ## 7.7.3 (2026-08-28)
 
 ### 🧱 Updated Dependencies

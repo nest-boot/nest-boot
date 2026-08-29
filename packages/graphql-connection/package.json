@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/graphql-connection",
-  "version": "7.10.3",
+  "version": "7.10.4",
   "repository": {
     "type": "git",
     "url": "https://github.com/nest-boot/nest-boot.git",
