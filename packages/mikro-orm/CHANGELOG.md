@@ -1,3 +1,13 @@
+## 7.7.6 (2026-08-29)
+
+### 🩹 Fixes
+
+- **mikro-orm:** batch entity service operations per context ([#308](https://github.com/nest-boot/nest-boot/pull/308))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 7.7.5 (2026-08-29)
 
 ### 🧱 Updated Dependencies

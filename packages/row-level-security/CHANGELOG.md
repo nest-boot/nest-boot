@@ -1,3 +1,9 @@
+## 7.4.6 (2026-08-29)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/mikro-orm to 7.7.6
+
 ## 7.4.5 (2026-08-29)
 
 ### 🧱 Updated Dependencies
