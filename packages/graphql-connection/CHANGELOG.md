@@ -1,3 +1,13 @@
+## 7.11.0 (2026-08-29)
+
+### 🚀 Features
+
+- **graphql-connection:** expose bounded total count semantics ([#307](https://github.com/nest-boot/nest-boot/pull/307))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 7.10.5 (2026-08-29)
 
 ### 🧱 Updated Dependencies
