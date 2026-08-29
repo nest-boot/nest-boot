@@ -311,6 +311,21 @@ describe("EntityService", () => {
     expect(mocks.flush).toHaveBeenCalledTimes(1);
   });
 
+  it("should preserve overridden findOne behavior when updating", async () => {
+    const { em, mocks } = createEntityManager();
+    const service = new EntityService(TestEntity, em);
+    const findOne = jest.spyOn(service, "findOne").mockResolvedValue(null);
+
+    await expect(
+      service.update(1, {
+        name: "blocked",
+      }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+
+    expect(findOne).toHaveBeenCalledWith(1);
+    expect(mocks.assign).not.toHaveBeenCalled();
+  });
+
   it("should throw when update cannot find an entity", async () => {
     const { em, mocks } = createEntityManager();
     mocks.find.mockResolvedValue([]);
@@ -370,6 +385,19 @@ describe("EntityService", () => {
     expect(mocks.remove).toHaveBeenCalledTimes(3);
     expect(mocks.flush).toHaveBeenCalledTimes(1);
     expect(mocks.transactional).toHaveBeenCalledTimes(1);
+  });
+
+  it("should preserve overridden findOne behavior when removing", async () => {
+    const { em, mocks } = createEntityManager();
+    const service = new EntityService(TestEntity, em);
+    const findOne = jest.spyOn(service, "findOne").mockResolvedValue(null);
+
+    await expect(service.remove(1, false)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+
+    expect(findOne).toHaveBeenCalledWith(1);
+    expect(mocks.remove).not.toHaveBeenCalled();
   });
 
   it("should throw when remove cannot find an entity", async () => {

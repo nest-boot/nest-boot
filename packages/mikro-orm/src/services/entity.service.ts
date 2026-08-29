@@ -171,7 +171,7 @@ export class EntityService<Entity extends IdEntity> {
       async (items) => {
         const entitiesOrErrors = (
           await Promise.all(
-            items.map(({ idOrEntity }) => findOne.load({ idOrEntity })),
+            items.map(({ idOrEntity }) => this.findOne(idOrEntity)),
           )
         ).map((entity) => {
           if (entity === null) {
@@ -209,7 +209,7 @@ export class EntityService<Entity extends IdEntity> {
       async (items) => {
         const entitiesOrErrors = (
           await Promise.all(
-            items.map(({ idOrEntity }) => findOne.load({ idOrEntity })),
+            items.map(({ idOrEntity }) => this.findOne(idOrEntity)),
           )
         ).map((entity) => {
           if (entity === null) {
