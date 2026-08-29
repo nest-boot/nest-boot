@@ -7,14 +7,13 @@ import {
 } from "@apollo/server";
 import { GraphQLSchemaHost } from "@nest-boot/graphql";
 import { Plugin } from "@nestjs/apollo";
-import { HttpException } from "@nestjs/common";
+import { HttpException, Inject } from "@nestjs/common";
+import { ModuleRef } from "@nestjs/core";
 import {
-  GraphQLEnumType,
   GraphQLInterfaceType,
   GraphQLList,
   GraphQLNonNull,
   GraphQLObjectType,
-  GraphQLScalarType,
   GraphQLType,
   GraphQLUnionType,
 } from "graphql";
@@ -27,8 +26,9 @@ import {
   simpleEstimator,
 } from "graphql-query-complexity";
 
+import { OPTIONS_TOKEN } from "./graphql-rate-limit.module-definition";
 import { GraphQLRateLimitStorage } from "./graphql-rate-limit.storage";
-import { CostResponse } from "./interfaces";
+import { CostResponse, GraphQLRateLimitOptions } from "./interfaces";
 
 // https://shopify.engineering/rate-limiting-graphql-apis-calculating-query-complexity
 function shopifyEstimator(
@@ -55,25 +55,22 @@ function shopifyEstimator(
   ) {
     return 1 + args.childComplexity;
   }
-
-  // Scalar and Enum are part of the Object itself; we've already counted their cost in the Object.
-  // They are just fields on an Object, and returning a few extra fields costs relatively little.
-  if (type instanceof GraphQLScalarType || type instanceof GraphQLEnumType) {
-    return 0;
-  }
 }
 
 @Plugin()
 export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
   private readonly complexityEstimators: ComplexityEstimator[] = [];
 
-  private readonly maxComplexity: number = 1000;
-  private readonly defaultComplexity: number = 0;
+  private readonly maxComplexity: number;
+  private readonly defaultComplexity: number;
 
   constructor(
     private readonly storage: GraphQLRateLimitStorage,
-    private readonly gqlSchemaHost: GraphQLSchemaHost,
+    private readonly moduleRef: ModuleRef,
+    @Inject(OPTIONS_TOKEN) options: GraphQLRateLimitOptions,
   ) {
+    this.maxComplexity = options.maxComplexity;
+    this.defaultComplexity = options.defaultComplexity;
     this.complexityEstimators = [
       directiveEstimator(),
       fieldExtensionsEstimator(),
@@ -83,7 +80,7 @@ export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
   }
 
   async requestDidStart(): Promise<GraphQLRequestListener<BaseContext>> {
-    const { schema } = this.gqlSchemaHost;
+    const { schema } = this.moduleRef.get(GraphQLSchemaHost, { strict: false });
 
     const cost: CostResponse = {
       requestedQueryCost: 0,
