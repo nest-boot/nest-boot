@@ -59,6 +59,12 @@ export class CleanupService {
 
 Each schedule is named `<ClassName>.<methodName>`. At application bootstrap, the registry upserts the discovered schedules and removes stale schedulers that no longer exist in the codebase. Additional decorator options are forwarded as BullMQ job template options.
 
+## Long-running Tasks
+
+All scheduled handlers run through the shared `schedule` queue and compete for that queue's worker concurrency. A long-running handler holds a concurrency slot, which can delay other due schedules and make their effective frequency lower than configured. When the queue has more than one available worker slot—for example, a worker configured with `concurrency > 1` or multiple application replicas—a handler that runs longer than its scheduling interval may overlap with a later invocation of the same schedule. BullMQ job locks prevent the same job instance from being processed twice; they do not serialize distinct jobs produced by the same Job Scheduler.
+
+Keep scheduled handlers short and use them primarily as triggers. Move long-running or resource-intensive work, and work requiring separate concurrency, retry, backoff, or scaling policies, to a [dedicated BullMQ queue and worker](/docs/tutorial/bullmq). The scheduled handler should only enqueue the job.
+
 ## API Reference
 
 For detailed API documentation, see the [Schedule API Reference](/docs/api/schedule).
