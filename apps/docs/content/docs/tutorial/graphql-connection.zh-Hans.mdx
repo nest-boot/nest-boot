@@ -8,9 +8,9 @@ description: "@nest-boot/graphql-connection 模块提供遵循 Relay 连接规�
 ## 安装
 
 ```bash
-npm install @nest-boot/graphql-connection @nest-boot/graphql @mikro-orm/core
+npm install @nest-boot/graphql-connection @nest-boot/graphql @mikro-orm/core @mikro-orm/knex
 # 或
-pnpm add @nest-boot/graphql-connection @nest-boot/graphql @mikro-orm/core
+pnpm add @nest-boot/graphql-connection @nest-boot/graphql @mikro-orm/core @mikro-orm/knex
 ```
 
 ## 基本用法
@@ -51,7 +51,8 @@ export const {
 
 ```typescript
 import { ConnectionManager } from "@nest-boot/graphql-connection";
-import { Args, Query, Resolver } from "@nest-boot/graphql";
+import { Args, Info, Query, Resolver } from "@nest-boot/graphql";
+import type { GraphQLResolveInfo } from "graphql";
 
 import { UserConnection, UserConnectionArgs } from "./user.connection";
 
@@ -60,11 +61,16 @@ export class UserResolver {
   constructor(private readonly connectionManager: ConnectionManager) {}
 
   @Query(() => UserConnection)
-  async users(@Args() args: UserConnectionArgs): Promise<UserConnection> {
-    return await this.connectionManager.find(UserConnection, args);
+  async users(
+    @Args() args: UserConnectionArgs,
+    @Info() info: GraphQLResolveInfo,
+  ) {
+    return await this.connectionManager.find(UserConnection, args, { info });
   }
 }
 ```
+
+传入 `@Info()` 后，只有查询选择了 `totalCount` 或 `totalCountRelation`，`ConnectionManager` 才会执行计数查询。
 
 ## 分页
 
@@ -107,11 +113,17 @@ export const { Connection: BookConnection } = new ConnectionBuilder(Book)
 
 支持面向用户的字段搜索语法，包括 `field:value`、带引号的字符串和否定条件。
 
+## 有界总数
+
+Connection 同时提供 `totalCount` 和 `totalCountRelation`。不超过 10,000 条时返回精确数量和 `EQ`；超过 10,000 条时返回 `totalCount: 10000` 和 `totalCountRelation: GTE`。
+
+计数由数据库侧最多处理 10,001 条匹配记录的有界查询完成。Resolver 按上面的示例传入 `@Info()` 后，如果两个计数字段都没有被选择，就不会执行这条查询。
+
 ## 特性
 
 - **Relay 兼容** - 遵循 Relay 连接规范
 - **类型安全** - 使用 TypeScript 泛型完全类型化
-- **MikroORM 集成** - 与 MikroORM 实体无缝配合
+- **MikroORM SQL 集成** - 与 MikroORM SQL 实体和 QueryBuilder 配合
 - **MongoDB 风格过滤** - 强大的过滤语法和验证
 - **搜索语法** - 人性化的搜索查询解析
 - **游标分页** - 使用不透明游标进行稳定分页

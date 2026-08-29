@@ -144,7 +144,7 @@ describe("ConnectionBuilder", () => {
       fieldNamesAndInvokeTypeFns(
         TypeMetadataStorage.getObjectTypeMetadataByTarget(result.Connection),
       ),
-    ).toEqual(["edges", "pageInfo", "totalCount"]);
+    ).toEqual(["edges", "pageInfo", "totalCount", "totalCountRelation"]);
     expect(
       fieldNamesAndInvokeTypeFns(
         TypeMetadataStorage.getObjectTypeMetadataByTarget(result.Edge),

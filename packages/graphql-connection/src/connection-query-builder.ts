@@ -1,25 +1,28 @@
 import {
-  EntityManager,
   FilterQuery,
   FindOptions,
   QueryOrder,
   QueryOrderMap,
 } from "@mikro-orm/core";
+import { type SqlEntityManager } from "@mikro-orm/knex";
 import compact from "lodash/compact";
 import get from "lodash/get";
 import set from "lodash/set";
 import { parse, type ParseOptions } from "search-syntax";
 
-import { ConnectionFindOptions } from "./connection.manager";
+import { type ConnectionFindOptions } from "./connection.manager";
 import { Cursor } from "./cursor";
-import { OrderDirection, PagingType } from "./enums";
+import { OrderDirection, PagingType, TotalCountRelation } from "./enums";
 import { GRAPHQL_CONNECTION_METADATA } from "./graphql-connection.constants";
 import {
   ConnectionArgsInterface,
   ConnectionMetadata,
+  ConnectionResult,
   EdgeInterface,
 } from "./interfaces";
 import { ConnectionClass } from "./types";
+
+const TOTAL_COUNT_LIMIT = 10_000;
 
 /**
  * Builds and executes paginated queries for GraphQL connections.
@@ -70,7 +73,7 @@ export class ConnectionQueryBuilder<
   private readonly allFilterQuery: FilterQuery<Entity> | null = null;
 
   constructor(
-    private readonly entityManager: EntityManager,
+    private readonly entityManager: SqlEntityManager,
     private readonly connectionClass: ConnectionClass<Entity>,
     private readonly args: ConnectionArgsInterface<Entity>,
     private readonly options?: ConnectionFindOptions<
@@ -79,6 +82,7 @@ export class ConnectionQueryBuilder<
       Fields,
       Excludes
     >,
+    private readonly includeTotalCount = true,
   ) {
     this.metadata = Reflect.getMetadata(
       GRAPHQL_CONNECTION_METADATA,
@@ -285,13 +289,36 @@ export class ConnectionQueryBuilder<
     } as FilterQuery<Entity>;
   }
 
+  private async getTotalCount(): Promise<number> {
+    const limitedCountQueryBuilder = this.entityManager
+      .createQueryBuilder(this.metadata.entityClass)
+      .select("id")
+      .limit(TOTAL_COUNT_LIMIT + 1)
+      .withSchema(this.options?.schema);
+
+    if (this.totalCountFilterQuery !== null) {
+      limitedCountQueryBuilder.where(this.totalCountFilterQuery);
+    }
+
+    await limitedCountQueryBuilder.applyFilters(this.options?.filters);
+
+    return await this.entityManager
+      .createQueryBuilder(limitedCountQueryBuilder, "bounded_count")
+      .count()
+      .getCount();
+  }
+
   /**
    * Executes the paginated query and returns the connection result.
    *
-   * @returns A promise that resolves to the connection with edges, pageInfo, and totalCount
+   * @returns A promise that resolves to the connection with edges, pageInfo,
+   * totalCount, and totalCountRelation
    */
-  async query() {
-    const [entities, totalCount] = await Promise.all([
+  async query(): Promise<ConnectionResult<Entity>> {
+    const matchedCountPromise = this.includeTotalCount
+      ? this.getTotalCount()
+      : Promise.resolve(undefined);
+    const [entities, matchedCount] = await Promise.all([
       this.allFilterQuery === null
         ? this.entityManager.findAll(
             this.metadata.entityClass,
@@ -302,23 +329,19 @@ export class ConnectionQueryBuilder<
             this.allFilterQuery,
             this.findOptions,
           ),
-      (this.totalCountFilterQuery === null
-        ? this.entityManager.findAll(this.metadata.entityClass, {
-            fields: ["id"] as any,
-            limit: 10000,
-            disableIdentityMap: true,
-          })
-        : this.entityManager.find(
-            this.metadata.entityClass,
-            this.totalCountFilterQuery,
-            {
-              fields: ["id"] as any,
-              limit: 10000,
-              disableIdentityMap: true,
-            },
-          )
-      ).then((result) => result.length),
+      matchedCountPromise,
     ]);
+
+    const totalCountFields =
+      typeof matchedCount === "undefined"
+        ? {}
+        : {
+            totalCount: Math.min(matchedCount, TOTAL_COUNT_LIMIT),
+            totalCountRelation:
+              matchedCount > TOTAL_COUNT_LIMIT
+                ? TotalCountRelation.GTE
+                : TotalCountRelation.EQ,
+          };
 
     // Re-sort results
     const sortedEntities =
@@ -343,7 +366,7 @@ export class ConnectionQueryBuilder<
 
     // Return collection
     return {
-      totalCount,
+      ...totalCountFields,
       edges,
       pageInfo: {
         ...(this.pagingType === PagingType.FORWARD
