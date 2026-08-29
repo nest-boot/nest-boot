@@ -1,5 +1,11 @@
 import { RequestContext } from "@nest-boot/request-context";
-import { Controller, Get, INestApplication, Injectable } from "@nestjs/common";
+import {
+  Controller,
+  type DynamicModule,
+  Get,
+  INestApplication,
+  Injectable,
+} from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { type Logger as PinoLogger } from "pino";
 import { type HttpLogger } from "pino-http";
@@ -126,6 +132,31 @@ describe("LoggerModule - e2e", () => {
     expect(output).toEqual([]);
   });
 
+  it("should apply asynchronously registered options outside HTTP contexts", async () => {
+    const output: string[] = [];
+    const useFactory = jest.fn(async (): Promise<LoggerModuleOptions> => {
+      await Promise.resolve();
+
+      return {
+        level: "silent",
+        stream: createOutputStream(output),
+      };
+    });
+    const logger = await createLoggerFromModule(
+      LoggerModule.registerAsync({ useFactory }),
+    );
+
+    logger.log("outside request context");
+    await RequestContext.run(new RequestContext({ type: "queue" }), () => {
+      expect(RequestContext.get<PinoLogger>(PINO_LOGGER)?.level).toBe("silent");
+      logger.log("inside queue context");
+    });
+
+    expect(useFactory).toHaveBeenCalledTimes(1);
+    expect(app.get<HttpLogger>(PINO_HTTP).logger.level).toBe("silent");
+    expect(output).toEqual([]);
+  });
+
   it("should preserve configured logging for HTTP request contexts", async () => {
     const output: string[] = [];
     await createConfiguredLogger({
@@ -158,10 +189,16 @@ describe("LoggerModule - e2e", () => {
   async function createConfiguredLogger(
     options: LoggerModuleOptions,
   ): Promise<Logger> {
+    return await createLoggerFromModule(LoggerModule.register(options));
+  }
+
+  async function createLoggerFromModule(
+    loggerModule: DynamicModule,
+  ): Promise<Logger> {
     await app.close();
 
     const module = await Test.createTestingModule({
-      imports: [LoggerModule.register(options)],
+      imports: [loggerModule],
       controllers: [ConfiguredLoggerController],
       providers: [ConfiguredLoggerConsumer],
     }).compile();

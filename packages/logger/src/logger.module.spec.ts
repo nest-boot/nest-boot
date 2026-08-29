@@ -88,6 +88,32 @@ describe("LoggerModule", () => {
     await moduleRef.close();
   });
 
+  it("should create the configured middleware from asynchronous options", async () => {
+    const useFactory = jest.fn(async () => {
+      await Promise.resolve();
+
+      return {
+        level: "silent" as const,
+        timestamp: false,
+      };
+    });
+    const moduleRef = await Test.createTestingModule({
+      imports: [LoggerModule.registerAsync({ useFactory })],
+    }).compile();
+
+    expect(useFactory).toHaveBeenCalledTimes(1);
+    expect(moduleRef.get(PINO_HTTP)).toBe(mockLoggerMiddleware);
+    expect(mockPinoHttp).toHaveBeenCalledTimes(1);
+    expect(mockPinoHttp).toHaveBeenCalledWith(
+      expect.objectContaining({
+        level: "silent",
+        timestamp: false,
+      }),
+    );
+
+    await moduleRef.close();
+  });
+
   it("should apply defaults while preserving supplied options", async () => {
     const module = await createLoggerModule({
       autoLogging: {
