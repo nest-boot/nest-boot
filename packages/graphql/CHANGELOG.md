@@ -1,3 +1,19 @@
+## 7.3.4 (2026-08-29)
+
+### 🩹 Fixes
+
+- **graphql-rate-limit:** honor complexity options ([#304](https://github.com/nest-boot/nest-boot/pull/304), [#279](https://github.com/nest-boot/nest-boot/issues/279))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 7.3.4
+- Updated @nest-boot/eslint-plugin to 7.2.4
+- Updated @nest-boot/tsconfig to 7.3.4
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 7.3.3 (2026-08-29)
 
 ### 🧱 Updated Dependencies
