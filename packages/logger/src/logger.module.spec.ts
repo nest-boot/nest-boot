@@ -4,15 +4,21 @@ import { Test } from "@nestjs/testing";
 const mockChildLogger = {
   ctx: "child",
 };
+const mockConfiguredPinoLogger = {
+  child: jest.fn(() => mockChildLogger),
+};
 const mockPinoLogger = {
   child: jest.fn(() => mockChildLogger),
 };
 const mockPino = jest.fn(() => mockPinoLogger);
-const mockLoggerMiddleware = jest.fn((req) => {
-  req.log = {
-    child: jest.fn(() => mockChildLogger),
-  };
-});
+const mockLoggerMiddleware = Object.assign(
+  jest.fn((req) => {
+    req.log = {
+      child: jest.fn(() => mockChildLogger),
+    };
+  }),
+  { logger: mockConfiguredPinoLogger },
+);
 const mockPinoHttp = jest.fn(() => mockLoggerMiddleware);
 
 jest.mock("pino", () => ({
@@ -25,7 +31,11 @@ jest.mock("pino-http", () => ({
 }));
 
 import { LoggerModule } from "./logger.module";
-import { MODULE_OPTIONS_TOKEN, PINO_LOGGER } from "./logger.module-definition";
+import {
+  MODULE_OPTIONS_TOKEN,
+  PINO_HTTP,
+  PINO_LOGGER,
+} from "./logger.module-definition";
 import { type LoggerModuleOptions } from "./logger-module-options.interface";
 
 describe("LoggerModule", () => {
@@ -64,15 +74,107 @@ describe("LoggerModule", () => {
     );
   });
 
+  it("should expose only supported logger options", () => {
+    type HasOption<Option extends PropertyKey> =
+      Option extends keyof LoggerModuleOptions ? true : false;
+
+    expect(true satisfies HasOption<"autoLogging">).toBe(true);
+    expect(true satisfies HasOption<"enabled">).toBe(true);
+    expect(true satisfies HasOption<"formatters">).toBe(true);
+    expect(true satisfies HasOption<"genReqId">).toBe(true);
+    expect(true satisfies HasOption<"redact">).toBe(true);
+    expect(true satisfies HasOption<"serializers">).toBe(true);
+    expect(true satisfies HasOption<"stream">).toBe(true);
+    expect(true satisfies HasOption<"timestamp">).toBe(true);
+    expect(false satisfies HasOption<"customLevels">).toBe(false);
+    expect(false satisfies HasOption<"level">).toBe(false);
+    expect(false satisfies HasOption<"useOnlyCustomLevels">).toBe(false);
+  });
+
+  it("should provide one configured pino-http middleware instance", async () => {
+    const moduleRef = await Test.createTestingModule({
+      imports: [LoggerModule.register({ enabled: false })],
+    }).compile();
+
+    expect(moduleRef.get(PINO_HTTP)).toBe(mockLoggerMiddleware);
+    expect(mockPinoHttp).toHaveBeenCalledTimes(1);
+    expect(mockPinoHttp).toHaveBeenCalledWith(
+      expect.objectContaining({ enabled: false }),
+    );
+
+    await moduleRef.close();
+  });
+
+  it("should ignore options outside the public whitelist at runtime", async () => {
+    const customProps = jest.fn(() => ({ unsupported: true }));
+    const customReceivedMessage = jest.fn(() => "unsupported-message");
+    const moduleRef = await Test.createTestingModule({
+      imports: [
+        LoggerModule.register({
+          customLevels: { audit: 35 },
+          customProps,
+          customReceivedMessage,
+          enabled: false,
+          level: "silent",
+          transport: { target: "pino-pretty" },
+          useOnlyCustomLevels: true,
+        } as unknown as LoggerModuleOptions),
+      ],
+    }).compile();
+    const [options] = mockPinoHttp.mock.calls[0] as unknown as [
+      Record<string, unknown>,
+    ];
+
+    expect(options.enabled).toBe(false);
+    expect(options).not.toHaveProperty("customLevels");
+    expect(options).not.toHaveProperty("level");
+    expect(options).not.toHaveProperty("transport");
+    expect(options).not.toHaveProperty("useOnlyCustomLevels");
+    expect(options.customProps).not.toBe(customProps);
+    expect(options.customReceivedMessage).not.toBe(customReceivedMessage);
+
+    await moduleRef.close();
+  });
+
+  it("should create the configured middleware from asynchronous options", async () => {
+    const useFactory = jest.fn(async () => {
+      await Promise.resolve();
+
+      return {
+        enabled: false,
+        timestamp: false,
+      };
+    });
+    const moduleRef = await Test.createTestingModule({
+      imports: [LoggerModule.registerAsync({ useFactory })],
+    }).compile();
+
+    expect(useFactory).toHaveBeenCalledTimes(1);
+    expect(moduleRef.get(PINO_HTTP)).toBe(mockLoggerMiddleware);
+    expect(mockPinoHttp).toHaveBeenCalledTimes(1);
+    expect(mockPinoHttp).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabled: false,
+        timestamp: false,
+      }),
+    );
+
+    await moduleRef.close();
+  });
+
   it("should apply defaults while preserving supplied options", async () => {
+    const genReqId = () => "custom-id";
+    const ignore = () => false;
+    const serializers = {
+      secret: () => "hidden",
+    };
     const module = await createLoggerModule({
       autoLogging: {
-        ignore: () => false,
+        ignore,
       },
-      customProps: () => ({
-        custom: true,
-      }),
-      genReqId: () => "custom-id",
+      genReqId,
+      serializers,
+      timestamp: false,
     });
     const options = (module as unknown as { options: any }).options;
 
@@ -80,11 +182,13 @@ describe("LoggerModule", () => {
       "req.headers.authorization",
       "req.headers.cookie",
     ]);
+    expect(options.autoLogging.ignore).toBe(ignore);
+    expect(options.serializers).toBe(serializers);
+    expect(options.timestamp).toBe(false);
+    expect(options.genReqId).toBe(genReqId);
     expect(options.genReqId()).toBe("custom-id");
     expect(options.customReceivedMessage()).toBe("request received");
-    expect(options.customProps()).toEqual({
-      custom: true,
-    });
+    expect(options.customProps()).toEqual({});
   });
 
   it("should configure default request id, props, and auto logging behavior", async () => {
@@ -185,7 +289,7 @@ describe("LoggerModule", () => {
     expect(ctx.set).toHaveBeenCalledWith(PINO_LOGGER, mockChildLogger);
   });
 
-  it("should register fallback pino logger middleware without request objects", async () => {
+  it("should use the configured pino logger without request objects", async () => {
     const module = await createLoggerModule();
     const registerMiddleware = jest
       .spyOn(RequestContext, "registerMiddleware")
@@ -204,12 +308,13 @@ describe("LoggerModule", () => {
 
     await expect(middleware(ctx as never, next)).resolves.toBe("next-result");
 
-    expect(mockPinoLogger.child).toHaveBeenCalledWith({
+    expect(mockConfiguredPinoLogger.child).toHaveBeenCalledWith({
       ctx: {
         id: "ctx-id",
         type: "job",
       },
     });
+    expect(mockPino).not.toHaveBeenCalled();
     expect(ctx.set).toHaveBeenCalledWith(PINO_LOGGER, mockChildLogger);
   });
 });
