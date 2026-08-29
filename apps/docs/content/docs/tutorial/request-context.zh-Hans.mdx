@@ -62,6 +62,14 @@ const request = RequestContext.get<Request>(REQUEST);
 const workspaceId = request?.headers["x-workspace-id"];
 ```
 
+## 上下文类型
+
+`RequestContext.current().type` 是创建上下文时指定的应用级生命周期分类，并不等同于 NestJS 的 `ExecutionContext.getType()`。
+
+请求中间件或兜底拦截器自动创建的上下文统一使用 `"http"`。GraphQL 解析器也遵循这一规则：NestJS 会将解析器的执行上下文类型报告为 `"graphql"`，而 `RequestContext.type` 仍为 `"http"`，从而保证中间件路径和兜底路径对同一类请求采用一致的分类。
+
+手动创建上下文时，应选择描述其生命周期的分类，例如 `"job"` 或 `"repl"`。如果应用需要区分 GraphQL 执行类型、请求上下文分类或底层传输，应将其作为独立的上下文元数据存储，而不是依赖 `type` 同时表达这些概念。
+
 ## 常见模式
 
 ### 认证 + 工作区上下文

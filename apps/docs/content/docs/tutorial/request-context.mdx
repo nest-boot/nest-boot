@@ -62,6 +62,14 @@ const request = RequestContext.get<Request>(REQUEST);
 const workspaceId = request?.headers["x-workspace-id"];
 ```
 
+## Context Type
+
+`RequestContext.current().type` is an application-level lifecycle category selected when the context is created. It does not mirror NestJS `ExecutionContext.getType()`.
+
+Contexts created automatically by the request middleware or fallback interceptor use `"http"`. This includes GraphQL resolver executions: NestJS reports `"graphql"` for the resolver execution context, while `RequestContext.type` remains `"http"` so middleware and fallback paths classify the same request consistently.
+
+For contexts you create manually, choose a category that describes the lifecycle, such as `"job"` or `"repl"`. If an application needs to distinguish GraphQL execution from its request context category or transport, store that as separate context metadata instead of relying on `type`.
+
 ## Common Patterns
 
 ### Auth + Workspace Context

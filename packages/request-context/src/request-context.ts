@@ -27,7 +27,12 @@ export interface RequestContextCreateOptions {
   id?: string;
 
   /**
-   * The type of context (e.g., 'http', 'graphql', 'repl', 'job').
+   * Application-level lifecycle category for this context.
+   *
+   * This value does not mirror NestJS `ExecutionContext.getType()`. Contexts
+   * created by the built-in request middleware and interceptor use `"http"`,
+   * including GraphQL resolver executions within a request. Custom contexts
+   * may use categories such as `"job"`.
    */
   type: string;
 
@@ -88,7 +93,11 @@ export class RequestContext {
   readonly id: string;
 
   /**
-   * The type of this context (e.g., 'http', 'graphql', 'repl', 'job').
+   * Application-level lifecycle category for this context.
+   *
+   * Built-in request contexts use `"http"`; manually created contexts may use
+   * other categories such as `"job"` or `"repl"`. This value is independent
+   * from the NestJS execution context type.
    */
   readonly type: string;
 
