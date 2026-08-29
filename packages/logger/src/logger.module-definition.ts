@@ -4,6 +4,8 @@ import { type LoggerModuleOptions } from "./logger-module-options.interface";
 
 export const PINO_LOGGER = Symbol("PINO_LOGGER");
 
+export const PINO_HTTP = Symbol("PINO_HTTP");
+
 export const BINDINGS = Symbol("BINDINGS");
 
 export const {

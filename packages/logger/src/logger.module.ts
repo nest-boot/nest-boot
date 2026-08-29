@@ -11,12 +11,12 @@ import {
   Module,
   type OnModuleInit,
   Optional,
+  type Provider,
 } from "@nestjs/common";
 import { APP_INTERCEPTOR } from "@nestjs/core";
 import { randomUUID } from "crypto";
 import { type Request, type Response } from "express";
-import pino from "pino";
-import pinoHttp from "pino-http";
+import pinoHttp, { type HttpLogger } from "pino-http";
 
 import { Logger } from "./logger";
 import { LoggingInterceptor } from "./logger.interceptor";
@@ -26,9 +26,17 @@ import {
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
+  PINO_HTTP,
   PINO_LOGGER,
 } from "./logger.module-definition";
 import { LoggerModuleOptions } from "./logger-module-options.interface";
+
+const pinoHttpProvider: Provider<HttpLogger> = {
+  provide: PINO_HTTP,
+  inject: [{ token: MODULE_OPTIONS_TOKEN, optional: true }],
+  useFactory: (options?: LoggerModuleOptions) =>
+    createLoggerMiddleware(options),
+};
 
 /**
  * Structured logging module powered by Pino.
@@ -41,6 +49,7 @@ import { LoggerModuleOptions } from "./logger-module-options.interface";
 @Module({
   imports: [RequestContextModule],
   providers: [
+    pinoHttpProvider,
     Logger,
     {
       provide: APP_INTERCEPTOR,
@@ -53,6 +62,11 @@ export class LoggerModule
   extends ConfigurableModuleClass
   implements OnModuleInit
 {
+  /** Configured pino-http middleware shared by all logger paths. @internal */
+  @Optional()
+  @Inject(PINO_HTTP)
+  private loggerMiddleware?: HttpLogger;
+
   /**
    * Registers the LoggerModule with the given options.
    * @param options - Pino logger configuration options
@@ -83,29 +97,14 @@ export class LoggerModule
   ) {
     super();
 
-    this.options = {
-      autoLogging: {
-        ignore: (req) =>
-          process.env.NODE_ENV !== "production" &&
-          req.headers["x-logging"] === "false",
-        ...(typeof this.options.autoLogging !== "boolean"
-          ? this.options.autoLogging
-          : {}),
-      },
-      redact: ["req.headers.authorization", "req.headers.cookie"],
-      genReqId:
-        this.options.genReqId ?? (() => RequestContext.id ?? randomUUID()),
-      customReceivedMessage: () => "request received",
-      customProps: () =>
-        RequestContext.isActive() ? (RequestContext.get(BINDINGS) ?? {}) : {},
-      ...this.options,
-    };
+    this.options = createLoggerOptions(this.options);
   }
 
   /** Sets up the pino-http logger and registers it in the request context middleware. */
   onModuleInit(): void {
-    const logger = pino();
-    const loggerMiddleware = pinoHttp(this.options);
+    const loggerMiddleware =
+      this.loggerMiddleware ?? (this.loggerMiddleware = pinoHttp(this.options));
+    const logger = loggerMiddleware.logger;
 
     RequestContext.registerMiddleware("logger", async (ctx, next) => {
       const req = ctx.get<Request>(REQUEST);
@@ -129,4 +128,27 @@ export class LoggerModule
       return await next();
     });
   }
+}
+
+function createLoggerMiddleware(options?: LoggerModuleOptions): HttpLogger {
+  return pinoHttp(createLoggerOptions(options));
+}
+
+function createLoggerOptions(
+  options: LoggerModuleOptions = {},
+): LoggerModuleOptions {
+  return {
+    autoLogging: {
+      ignore: (req) =>
+        process.env.NODE_ENV !== "production" &&
+        req.headers["x-logging"] === "false",
+      ...(typeof options.autoLogging !== "boolean" ? options.autoLogging : {}),
+    },
+    redact: ["req.headers.authorization", "req.headers.cookie"],
+    genReqId: options.genReqId ?? (() => RequestContext.id ?? randomUUID()),
+    customReceivedMessage: () => "request received",
+    customProps: () =>
+      RequestContext.isActive() ? (RequestContext.get(BINDINGS) ?? {}) : {},
+    ...options,
+  };
 }

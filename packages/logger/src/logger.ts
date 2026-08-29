@@ -1,13 +1,20 @@
 import { RequestContext } from "@nest-boot/request-context";
-import { Inject, Injectable, type LoggerService, Scope } from "@nestjs/common";
+import {
+  Inject,
+  Injectable,
+  type LoggerService,
+  Optional,
+  Scope,
+} from "@nestjs/common";
 import { INQUIRER } from "@nestjs/core";
 import pino, {
   type Bindings,
   type Level,
   type Logger as PinoLogger,
 } from "pino";
+import { type HttpLogger } from "pino-http";
 
-import { BINDINGS, PINO_LOGGER } from "./logger.module-definition";
+import { BINDINGS, PINO_HTTP, PINO_LOGGER } from "./logger.module-definition";
 
 /**
  * Request-scoped structured logger built on top of pino.
@@ -19,6 +26,11 @@ import { BINDINGS, PINO_LOGGER } from "./logger.module-definition";
  */
 @Injectable({ scope: Scope.TRANSIENT })
 export class Logger implements LoggerService {
+  /** Configured pino-http middleware supplied by LoggerModule. @internal */
+  @Optional()
+  @Inject(PINO_HTTP)
+  private readonly loggerMiddleware?: HttpLogger;
+
   /** Current logging context name. @internal */
   private context?: string;
 
@@ -112,7 +124,11 @@ export class Logger implements LoggerService {
     }
 
     if (typeof pinoLogger === "undefined") {
-      return this.globalLogger ?? (this.globalLogger = pino());
+      return (
+        this.loggerMiddleware?.logger ??
+        this.globalLogger ??
+        (this.globalLogger = pino())
+      );
     }
 
     return pinoLogger;

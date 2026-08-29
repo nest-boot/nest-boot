@@ -4,15 +4,21 @@ import { Test } from "@nestjs/testing";
 const mockChildLogger = {
   ctx: "child",
 };
+const mockConfiguredPinoLogger = {
+  child: jest.fn(() => mockChildLogger),
+};
 const mockPinoLogger = {
   child: jest.fn(() => mockChildLogger),
 };
 const mockPino = jest.fn(() => mockPinoLogger);
-const mockLoggerMiddleware = jest.fn((req) => {
-  req.log = {
-    child: jest.fn(() => mockChildLogger),
-  };
-});
+const mockLoggerMiddleware = Object.assign(
+  jest.fn((req) => {
+    req.log = {
+      child: jest.fn(() => mockChildLogger),
+    };
+  }),
+  { logger: mockConfiguredPinoLogger },
+);
 const mockPinoHttp = jest.fn(() => mockLoggerMiddleware);
 
 jest.mock("pino", () => ({
@@ -25,7 +31,11 @@ jest.mock("pino-http", () => ({
 }));
 
 import { LoggerModule } from "./logger.module";
-import { MODULE_OPTIONS_TOKEN, PINO_LOGGER } from "./logger.module-definition";
+import {
+  MODULE_OPTIONS_TOKEN,
+  PINO_HTTP,
+  PINO_LOGGER,
+} from "./logger.module-definition";
 import { type LoggerModuleOptions } from "./logger-module-options.interface";
 
 describe("LoggerModule", () => {
@@ -62,6 +72,20 @@ describe("LoggerModule", () => {
         },
       ]),
     );
+  });
+
+  it("should provide one configured pino-http middleware instance", async () => {
+    const moduleRef = await Test.createTestingModule({
+      imports: [LoggerModule.register({ level: "silent" })],
+    }).compile();
+
+    expect(moduleRef.get(PINO_HTTP)).toBe(mockLoggerMiddleware);
+    expect(mockPinoHttp).toHaveBeenCalledTimes(1);
+    expect(mockPinoHttp).toHaveBeenCalledWith(
+      expect.objectContaining({ level: "silent" }),
+    );
+
+    await moduleRef.close();
   });
 
   it("should apply defaults while preserving supplied options", async () => {
@@ -185,7 +209,7 @@ describe("LoggerModule", () => {
     expect(ctx.set).toHaveBeenCalledWith(PINO_LOGGER, mockChildLogger);
   });
 
-  it("should register fallback pino logger middleware without request objects", async () => {
+  it("should use the configured pino logger without request objects", async () => {
     const module = await createLoggerModule();
     const registerMiddleware = jest
       .spyOn(RequestContext, "registerMiddleware")
@@ -204,12 +228,13 @@ describe("LoggerModule", () => {
 
     await expect(middleware(ctx as never, next)).resolves.toBe("next-result");
 
-    expect(mockPinoLogger.child).toHaveBeenCalledWith({
+    expect(mockConfiguredPinoLogger.child).toHaveBeenCalledWith({
       ctx: {
         id: "ctx-id",
         type: "job",
       },
     });
+    expect(mockPino).not.toHaveBeenCalled();
     expect(ctx.set).toHaveBeenCalledWith(PINO_LOGGER, mockChildLogger);
   });
 });

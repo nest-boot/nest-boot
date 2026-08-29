@@ -11,6 +11,16 @@ const mockPinoLogger = {
   warn: jest.fn(),
 };
 const mockPino = jest.fn(() => mockPinoLogger);
+const mockConfiguredPinoLogger = {
+  debug: jest.fn(),
+  error: jest.fn(),
+  info: jest.fn(),
+  trace: jest.fn(),
+  warn: jest.fn(),
+};
+const mockLoggerMiddleware = {
+  logger: mockConfiguredPinoLogger,
+};
 
 jest.mock("pino", () => ({
   __esModule: true,
@@ -18,7 +28,7 @@ jest.mock("pino", () => ({
 }));
 
 import { Logger } from "./logger";
-import { BINDINGS, PINO_LOGGER } from "./logger.module-definition";
+import { BINDINGS, PINO_HTTP, PINO_LOGGER } from "./logger.module-definition";
 
 class ParentService {}
 
@@ -115,6 +125,23 @@ describe("Logger", () => {
     );
   });
 
+  it("should use the module-configured logger when request context is inactive", async () => {
+    jest.spyOn(RequestContext, "get").mockImplementation(() => {
+      throw new Error("Request context is not active");
+    });
+    const logger = await createLogger(true);
+
+    logger.log("configured message");
+
+    expect(mockConfiguredPinoLogger.info).toHaveBeenCalledWith(
+      {
+        context: "ParentService",
+      },
+      "configured message",
+    );
+    expect(mockPino).not.toHaveBeenCalled();
+  });
+
   it("should log with request-scoped pino logger and bindings", async () => {
     const requestLogger = {
       warn: jest.fn(),
@@ -162,15 +189,25 @@ describe("Logger", () => {
   });
 });
 
-async function createLogger() {
-  const moduleRef = await Test.createTestingModule({
-    providers: [
+async function createLogger(configured = false) {
+  const providers: Parameters<typeof Test.createTestingModule>[0]["providers"] =
+    [
       Logger,
       {
         provide: INQUIRER,
         useValue: new ParentService(),
       },
-    ],
+    ];
+
+  if (configured) {
+    providers?.push({
+      provide: PINO_HTTP,
+      useValue: mockLoggerMiddleware,
+    });
+  }
+
+  const moduleRef = await Test.createTestingModule({
+    providers,
   }).compile();
 
   return await moduleRef.resolve(Logger);
