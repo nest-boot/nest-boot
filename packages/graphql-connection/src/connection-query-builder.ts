@@ -202,12 +202,12 @@ export class ConnectionQueryBuilder<
   }
 
   private getCursorFilterQuery(): FilterQuery<Entity> | null {
+    const cursorOperator = this.queryOrder === QueryOrder.ASC ? "$gt" : "$lt";
     const idFilterQuery: FilterQuery<Entity> | null =
       typeof this.cursor?.id !== "undefined"
         ? ({
             id: {
-              [this.pagingType === PagingType.FORWARD ? "$gt" : "$lt"]:
-                this.cursor.id,
+              [cursorOperator]: this.cursor.id,
             },
           } as unknown as FilterQuery<Entity>)
         : null;
@@ -216,17 +216,9 @@ export class ConnectionQueryBuilder<
       typeof this.cursor?.value !== "undefined"
       ? ({
           $or: [
-            set(
-              {},
-              this.args.orderBy.field,
-              (
-                this.pagingType === PagingType.FORWARD
-                  ? this.args.orderBy.direction === OrderDirection.ASC
-                  : this.args.orderBy.direction === OrderDirection.DESC
-              )
-                ? { $gt: this.cursor.value }
-                : { $lt: this.cursor.value },
-            ),
+            set({}, this.args.orderBy.field, {
+              [cursorOperator]: this.cursor.value,
+            }),
             idFilterQuery !== null
               ? {
                   $and: [

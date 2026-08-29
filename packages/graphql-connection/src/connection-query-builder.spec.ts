@@ -209,6 +209,41 @@ describe("ConnectionQueryBuilder", () => {
     expect(new Cursor(result.edges[0].cursor).value).toBe("B");
   });
 
+  it("uses descending ID tie-break filters for forward descending queries", async () => {
+    const { entityManager, find } = createEntityManager();
+    const after = new Cursor({ id: 10, value: "A" }).toString();
+
+    await new ConnectionQueryBuilder(
+      entityManager,
+      BookConnection as unknown as ConnectionClass<Book>,
+      {
+        first: 2,
+        after,
+        orderBy: {
+          field: "title" as never,
+          direction: OrderDirection.DESC,
+        },
+      },
+    ).query();
+
+    expect(find).toHaveBeenNthCalledWith(
+      1,
+      BookEntity,
+      {
+        $or: [
+          { title: { $lt: "A" } },
+          {
+            $and: [{ title: { $eq: "A" } }, { id: { $lt: 10 } }],
+          },
+        ],
+      },
+      expect.objectContaining({
+        limit: 3,
+        orderBy: [{ title: QueryOrder.DESC }, { id: QueryOrder.DESC }],
+      }),
+    );
+  });
+
   it("applies backward cursor filters and reverses returned entities", async () => {
     const rows = [
       { id: 4, title: "D", isbn: "4", searchableTitle: "D" },
@@ -250,6 +285,41 @@ describe("ConnectionQueryBuilder", () => {
     expect(result.edges.map((edge) => edge.node.id)).toEqual([3, 4]);
     expect(result.pageInfo.hasNextPage).toBe(true);
     expect(result.pageInfo.hasPreviousPage).toBe(true);
+  });
+
+  it("uses ascending ID tie-break filters for backward descending queries", async () => {
+    const { entityManager, find } = createEntityManager();
+    const before = new Cursor({ id: 10, value: "A" }).toString();
+
+    await new ConnectionQueryBuilder(
+      entityManager,
+      BookConnection as unknown as ConnectionClass<Book>,
+      {
+        last: 2,
+        before,
+        orderBy: {
+          field: "title" as never,
+          direction: OrderDirection.DESC,
+        },
+      },
+    ).query();
+
+    expect(find).toHaveBeenNthCalledWith(
+      1,
+      BookEntity,
+      {
+        $or: [
+          { title: { $gt: "A" } },
+          {
+            $and: [{ title: { $eq: "A" } }, { id: { $gt: 10 } }],
+          },
+        ],
+      },
+      expect.objectContaining({
+        limit: 3,
+        orderBy: [{ title: QueryOrder.ASC }, { id: QueryOrder.ASC }],
+      }),
+    );
   });
 
   it("rejects ambiguous pagination arguments", () => {
