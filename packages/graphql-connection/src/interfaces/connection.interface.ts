@@ -1,3 +1,4 @@
+import { type TotalCountRelation } from "../enums";
 import { type PageInfo } from "../objects";
 import { type EdgeInterface } from "./edge.interface";
 
@@ -23,7 +24,29 @@ export interface ConnectionInterface<T> {
   pageInfo: PageInfo;
 
   /**
-   * The total number of items matching the query (before pagination).
+   * The number of items matching the query (before pagination), capped at
+   * 10,000. Use {@link totalCountRelation} to determine whether this value is
+   * exact or a lower bound.
    */
   totalCount: number;
+
+  /**
+   * Indicates whether {@link totalCount} is exact or a lower bound.
+   */
+  totalCountRelation: TotalCountRelation;
 }
+
+/**
+ * Resolver source returned by a selection-aware connection query.
+ *
+ * Count fields are omitted when neither field is selected by the GraphQL
+ * operation. They remain non-null in the GraphQL schema and are populated
+ * whenever either count field is selected.
+ *
+ * @typeParam T - The type of entities in the connection
+ */
+export type ConnectionResult<T> = Omit<
+  ConnectionInterface<T>,
+  "totalCount" | "totalCountRelation"
+> &
+  Partial<Pick<ConnectionInterface<T>, "totalCount" | "totalCountRelation">>;

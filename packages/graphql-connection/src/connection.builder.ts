@@ -64,7 +64,7 @@ export type ConnectionBuildResult<Entity extends object> = {
  * Builder class for creating GraphQL connection types following the Relay specification.
  *
  * The ConnectionBuilder generates all necessary GraphQL types for cursor-based pagination:
- * - Connection type with edges, pageInfo, and totalCount
+ * - Connection type with edges, pageInfo, totalCount, and totalCountRelation
  * - Edge type with node and cursor
  * - ConnectionArgs type with first, last, after, before, orderBy, filter, and query
  * - Order input type for sorting

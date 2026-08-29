@@ -4,6 +4,7 @@ import { type Type } from "@nestjs/common";
 import { pluralize } from "inflection";
 import type { ZodType } from "zod";
 
+import { TotalCountRelation } from "../enums";
 import { GRAPHQL_CONNECTION_METADATA } from "../graphql-connection.constants";
 import {
   ConnectionFieldOptions,
@@ -19,7 +20,8 @@ import { PageInfo } from "../objects";
  * The generated Connection type includes:
  * - `edges`: List of edges containing nodes and cursors
  * - `pageInfo`: Pagination information (hasNextPage, hasPreviousPage, cursors)
- * - `totalCount`: Total number of items matching the query
+ * - `totalCount`: Number of items matching the query, capped at 10,000
+ * - `totalCountRelation`: Whether totalCount is exact or a lower bound
  *
  * @typeParam Entity - The entity type for the connection
  * @param entityClass - The MikroORM entity class
@@ -65,9 +67,15 @@ export function createConnection<Entity extends object>(
 
     @Field(() => Int, {
       complexity: 0,
-      description: `Identifies the total count of items in the connection.`,
+      description: `Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.`,
     })
     totalCount!: number;
+
+    @Field(() => TotalCountRelation, {
+      complexity: 0,
+      description: `Indicates whether totalCount is exact or a lower bound.`,
+    })
+    totalCountRelation!: TotalCountRelation;
   }
 
   return Connection;

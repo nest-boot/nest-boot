@@ -8,9 +8,9 @@ The `@nest-boot/graphql-connection` module provides cursor-based pagination for 
 ## Installation
 
 ```bash
-npm install @nest-boot/graphql-connection @nest-boot/graphql @mikro-orm/core
+npm install @nest-boot/graphql-connection @nest-boot/graphql @mikro-orm/core @mikro-orm/knex
 # or
-pnpm add @nest-boot/graphql-connection @nest-boot/graphql @mikro-orm/core
+pnpm add @nest-boot/graphql-connection @nest-boot/graphql @mikro-orm/core @mikro-orm/knex
 ```
 
 ## Basic Usage
@@ -52,8 +52,9 @@ export const {
 ### Using in Resolvers
 
 ```typescript
-import { Resolver, Query, Args } from "@nestjs/graphql";
+import { Args, Info, Query, Resolver } from "@nestjs/graphql";
 import { ConnectionManager } from "@nest-boot/graphql-connection";
+import type { GraphQLResolveInfo } from "graphql";
 import { UserConnection, UserConnectionArgs } from "./user.connection";
 
 @Resolver()
@@ -61,11 +62,16 @@ export class UserResolver {
   constructor(private readonly connectionManager: ConnectionManager) {}
 
   @Query(() => UserConnection)
-  async users(@Args() args: UserConnectionArgs): Promise<UserConnection> {
-    return this.connectionManager.find(UserConnection, args);
+  async users(
+    @Args() args: UserConnectionArgs,
+    @Info() info: GraphQLResolveInfo,
+  ) {
+    return this.connectionManager.find(UserConnection, args, { info });
   }
 }
 ```
+
+Passing `@Info()` lets `ConnectionManager` skip the count query unless the operation selects `totalCount` or `totalCountRelation`.
 
 ## Pagination
 
@@ -108,11 +114,17 @@ With that configuration, `filter: { title: { $fulltext: "nest" } }` and `query: 
 
 Human-friendly search syntax with field-specific filters: `field:value`, quoted strings, and negation.
 
+## Bounded Total Counts
+
+Connections expose `totalCount` together with `totalCountRelation`. Counts up to 10,000 are exact and use `EQ`. Larger result sets return `totalCount: 10000` with `totalCountRelation: GTE`.
+
+The count is computed with a database-side query bounded to 10,001 matching rows. When the resolver passes `@Info()` as shown above and neither count field is selected, this query is not executed.
+
 ## Features
 
 - **Relay Compliant** - Follows the Relay Connection specification
 - **Type-Safe** - Fully typed with TypeScript generics
-- **MikroORM Integration** - Works seamlessly with MikroORM entities
+- **MikroORM SQL Integration** - Works with MikroORM SQL entities and query builders
 - **MongoDB-Style Filtering** - Powerful filter syntax with validation
 - **Search Syntax** - Human-friendly search query parsing
 - **Cursor-Based Pagination** - Stable pagination with opaque cursors

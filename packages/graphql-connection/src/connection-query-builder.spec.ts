@@ -1,10 +1,11 @@
 import "reflect-metadata";
 
-import { type EntityManager, QueryOrder } from "@mikro-orm/core";
+import { QueryOrder } from "@mikro-orm/core";
+import { type SqlEntityManager } from "@mikro-orm/knex";
 
 import { ConnectionQueryBuilder } from "./connection-query-builder";
 import { Cursor } from "./cursor";
-import { OrderDirection } from "./enums";
+import { OrderDirection, TotalCountRelation } from "./enums";
 import { GRAPHQL_CONNECTION_METADATA } from "./graphql-connection.constants";
 import type {
   ConnectionFieldOptions,
@@ -65,14 +66,39 @@ function setConnectionMetadata(
   );
 }
 
-function createEntityManager(entities: Book[] = []) {
+function createEntityManager(
+  entities: Book[] = [],
+  totalCount: number = entities.length,
+) {
   const find = jest.fn().mockResolvedValue(entities);
   const findAll = jest.fn().mockResolvedValue(entities);
+  const limitedCountQueryBuilder = {
+    applyFilters: jest.fn().mockResolvedValue(undefined),
+    limit: jest.fn().mockReturnThis(),
+    select: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    withSchema: jest.fn().mockReturnThis(),
+  };
+  const countQueryBuilder = {
+    count: jest.fn().mockReturnThis(),
+    getCount: jest.fn().mockResolvedValue(totalCount),
+  };
+  const createQueryBuilder = jest
+    .fn()
+    .mockReturnValueOnce(limitedCountQueryBuilder)
+    .mockReturnValueOnce(countQueryBuilder);
 
   return {
-    entityManager: { find, findAll } as unknown as EntityManager,
+    entityManager: {
+      createQueryBuilder,
+      find,
+      findAll,
+    } as unknown as SqlEntityManager,
+    countQueryBuilder,
+    createQueryBuilder,
     find,
     findAll,
+    limitedCountQueryBuilder,
   };
 }
 
@@ -82,7 +108,8 @@ describe("ConnectionQueryBuilder", () => {
   });
 
   it("maps query string fulltext searches to a configured fulltext field path", async () => {
-    const { entityManager, find } = createEntityManager();
+    const { entityManager, find, limitedCountQueryBuilder } =
+      createEntityManager();
 
     await new ConnectionQueryBuilder(
       entityManager,
@@ -96,6 +123,10 @@ describe("ConnectionQueryBuilder", () => {
       { searchableTitle: { $fulltext: "search" } },
       expect.objectContaining({ limit: 11 }),
     );
+    expect(find).toHaveBeenCalledTimes(1);
+    expect(limitedCountQueryBuilder.where).toHaveBeenCalledWith({
+      searchableTitle: { $fulltext: "search" },
+    });
   });
 
   it("keeps query string searches on fields without fulltext enabled", async () => {
@@ -128,7 +159,14 @@ describe("ConnectionQueryBuilder", () => {
       { id: 1, title: "A", isbn: "1", searchableTitle: "A" },
       { id: 2, title: "B", isbn: "2", searchableTitle: "B" },
     ];
-    const { entityManager, find, findAll } = createEntityManager(rows);
+    const {
+      countQueryBuilder,
+      createQueryBuilder,
+      entityManager,
+      find,
+      findAll,
+      limitedCountQueryBuilder,
+    } = createEntityManager(rows);
 
     const result = await new ConnectionQueryBuilder(
       entityManager,
@@ -145,13 +183,24 @@ describe("ConnectionQueryBuilder", () => {
         orderBy: [{ id: QueryOrder.ASC }],
       }),
     );
-    expect(findAll).toHaveBeenNthCalledWith(2, BookEntity, {
-      fields: ["id"],
-      limit: 10000,
-      disableIdentityMap: true,
-    });
+    expect(findAll).toHaveBeenCalledTimes(1);
+    expect(createQueryBuilder).toHaveBeenNthCalledWith(1, BookEntity);
+    expect(limitedCountQueryBuilder.select).toHaveBeenCalledWith("id");
+    expect(limitedCountQueryBuilder.limit).toHaveBeenCalledWith(10001);
+    expect(limitedCountQueryBuilder.where).not.toHaveBeenCalled();
+    expect(limitedCountQueryBuilder.applyFilters).toHaveBeenCalledWith(
+      undefined,
+    );
+    expect(createQueryBuilder).toHaveBeenNthCalledWith(
+      2,
+      limitedCountQueryBuilder,
+      "bounded_count",
+    );
+    expect(countQueryBuilder.count).toHaveBeenCalledTimes(1);
+    expect(countQueryBuilder.getCount).toHaveBeenCalledTimes(1);
     expect(result).toEqual({
       totalCount: 2,
+      totalCountRelation: TotalCountRelation.EQ,
       edges: expect.arrayContaining([
         expect.objectContaining({ node: rows[0] }),
         expect.objectContaining({ node: rows[1] }),
@@ -164,6 +213,29 @@ describe("ConnectionQueryBuilder", () => {
       },
     });
   });
+
+  it.each([
+    [10000, TotalCountRelation.EQ],
+    [10001, TotalCountRelation.GTE],
+  ])(
+    "reports the total count relation for %i matching entities",
+    async (matchingCount, expectedRelation) => {
+      const rows = [{ id: 1, title: "A", isbn: "1", searchableTitle: "A" }];
+      const { entityManager, findAll, limitedCountQueryBuilder } =
+        createEntityManager(rows, matchingCount);
+
+      const result = await new ConnectionQueryBuilder(
+        entityManager,
+        BookConnection as unknown as ConnectionClass<Book>,
+        { first: 1 },
+      ).query();
+
+      expect(result.totalCount).toBe(Math.min(matchingCount, 10000));
+      expect(result.totalCountRelation).toBe(expectedRelation);
+      expect(findAll).toHaveBeenCalledTimes(1);
+      expect(limitedCountQueryBuilder.limit).toHaveBeenCalledWith(10001);
+    },
+  );
 
   it("applies forward cursor filters for ordered queries", async () => {
     const rows = [

@@ -1,10 +1,17 @@
-import { EntityManager, type FilterQuery } from "@mikro-orm/core";
+import { type FilterQuery } from "@mikro-orm/core";
 import type { FindOptions } from "@mikro-orm/core/drivers";
+import { SqlEntityManager } from "@mikro-orm/knex";
 import { Injectable } from "@nestjs/common";
+import type { GraphQLResolveInfo } from "graphql";
 
 import { ConnectionQueryBuilder } from "./connection-query-builder";
-import { ConnectionArgsInterface, ConnectionInterface } from "./interfaces";
+import {
+  ConnectionArgsInterface,
+  ConnectionInterface,
+  ConnectionResult,
+} from "./interfaces";
 import { ConnectionClass } from "./types";
+import { isConnectionTotalCountSelected } from "./utils/is-connection-total-count-selected";
 
 /**
  * Options for the ConnectionManager.find method.
@@ -34,6 +41,31 @@ export interface ConnectionFindOptions<
 }
 
 /**
+ * Selection-aware options for the ConnectionManager.find method.
+ *
+ * @typeParam Entity - The entity type being queried
+ * @typeParam Hint - Type hints for population
+ * @typeParam Fields - Fields to select
+ * @typeParam Excludes - Fields to exclude
+ */
+export interface ConnectionSelectionFindOptions<
+  Entity extends object,
+  Hint extends string = never,
+  Fields extends string = "*",
+  Excludes extends string = never,
+> extends ConnectionFindOptions<Entity, Hint, Fields, Excludes> {
+  /**
+   * GraphQL resolver information used to avoid querying connection counts when
+   * neither `totalCount` nor `totalCountRelation` is selected.
+   *
+   * Pass the value provided by NestJS GraphQL's `@Info()` decorator. When
+   * neither field is selected, the unselected count properties are omitted
+   * from the resolver source object.
+   */
+  info: GraphQLResolveInfo;
+}
+
+/**
  * Service for executing paginated GraphQL connection queries.
  *
  * The ConnectionManager provides a high-level API for querying entities
@@ -46,8 +78,11 @@ export interface ConnectionFindOptions<
  *   constructor(private readonly connectionManager: ConnectionManager) {}
  *
  *   @Query(() => UserConnection)
- *   async users(@Args() args: UserConnectionArgs): Promise<UserConnection> {
- *     return this.connectionManager.find(UserConnection, args);
+ *   async users(
+ *     @Args() args: UserConnectionArgs,
+ *     @Info() info: GraphQLResolveInfo,
+ *   ): Promise<ConnectionResult<User>> {
+ *     return this.connectionManager.find(UserConnection, args, { info });
  *   }
  * }
  * ```
@@ -65,9 +100,9 @@ export interface ConnectionFindOptions<
 @Injectable()
 export class ConnectionManager {
   /** Creates a new ConnectionManager instance.
-   * @param em - MikroORM entity manager for querying entities
+   * @param em - MikroORM SQL entity manager for querying entities
    */
-  constructor(private readonly em: EntityManager) {}
+  constructor(private readonly em: SqlEntityManager) {}
 
   /**
    * Finds entities and returns them as a paginated connection.
@@ -89,13 +124,54 @@ export class ConnectionManager {
   >(
     connectionClass: ConnectionClass<Entity>,
     args: ConnectionArgsInterface<Entity>,
+    options: ConnectionSelectionFindOptions<Entity, Hint, Fields, Excludes>,
+  ): Promise<ConnectionResult<Entity>>;
+
+  async find<
+    Entity extends object,
+    Hint extends string = never,
+    Fields extends string = "*",
+    Excludes extends string = never,
+  >(
+    connectionClass: ConnectionClass<Entity>,
+    args: ConnectionArgsInterface<Entity>,
     options?: ConnectionFindOptions<Entity, Hint, Fields, Excludes>,
-  ): Promise<ConnectionInterface<Entity>> {
+  ): Promise<ConnectionInterface<Entity>>;
+
+  async find<
+    Entity extends object,
+    Hint extends string = never,
+    Fields extends string = "*",
+    Excludes extends string = never,
+  >(
+    connectionClass: ConnectionClass<Entity>,
+    args: ConnectionArgsInterface<Entity>,
+    options?:
+      | ConnectionFindOptions<Entity, Hint, Fields, Excludes>
+      | ConnectionSelectionFindOptions<Entity, Hint, Fields, Excludes>,
+  ): Promise<ConnectionResult<Entity>> {
+    let info: GraphQLResolveInfo | undefined;
+    let findOptions:
+      | ConnectionFindOptions<Entity, Hint, Fields, Excludes>
+      | undefined;
+
+    if (typeof options !== "undefined" && "info" in options) {
+      const { info: resolveInfo, ...databaseFindOptions } = options;
+      info = resolveInfo;
+      findOptions = databaseFindOptions;
+    } else {
+      findOptions = options;
+    }
+
+    const includeTotalCount =
+      typeof info === "undefined" || isConnectionTotalCountSelected(info);
+
     return await new ConnectionQueryBuilder(
       this.em,
       connectionClass,
       args,
-      options,
+      findOptions,
+      includeTotalCount,
     ).query();
   }
 }
