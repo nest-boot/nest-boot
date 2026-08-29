@@ -17,6 +17,9 @@ import { RequestContext } from "./request-context";
  * - Creates a new RequestContext if one doesn't already exist
  * - Uses the `x-request-id` header as the context ID if provided
  * - Supports both HTTP and GraphQL execution contexts
+ * - Categorizes fallback contexts as `"http"` to match contexts created by
+ *   the request middleware; NestJS may still report the resolver execution
+ *   context type as `"graphql"`
  *
  * The interceptor is automatically registered by RequestContextModule.
  *
