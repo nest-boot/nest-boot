@@ -1,3 +1,13 @@
+## 7.10.3 (2026-08-29)
+
+### 🩹 Fixes
+
+- **graphql-connection:** align cursor tie-break direction ([#303](https://github.com/nest-boot/nest-boot/pull/303))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 7.10.2 (2026-08-28)
 
 ### 🧱 Updated Dependencies
