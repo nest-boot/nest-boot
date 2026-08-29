@@ -74,6 +74,22 @@ describe("LoggerModule", () => {
     );
   });
 
+  it("should expose only custom level options compatible with Nest logging", () => {
+    type SupportsCustomLevels = {
+      customLevels: { notice: number };
+    } extends LoggerModuleOptions
+      ? true
+      : false;
+    type SupportsCustomOnlyLevels = {
+      useOnlyCustomLevels: true;
+    } extends LoggerModuleOptions
+      ? true
+      : false;
+
+    expect(true satisfies SupportsCustomLevels).toBe(true);
+    expect(false satisfies SupportsCustomOnlyLevels).toBe(false);
+  });
+
   it("should provide one configured pino-http middleware instance", async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [LoggerModule.register({ level: "silent" })],
