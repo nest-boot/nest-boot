@@ -46,6 +46,13 @@ interface RemoveArgs<Entity extends IdEntity> {
   softDelete: boolean;
 }
 
+interface EntityServiceDataLoaders<Entity extends IdEntity> {
+  create: DataLoader<RequiredEntityData<Entity>, Entity>;
+  findOne: DataLoader<FindOneArgs<Entity>, Entity | null>;
+  remove: DataLoader<RemoveArgs<Entity>, Entity>;
+  update: DataLoader<UpdateArgs<Entity>, Entity>;
+}
+
 /** Options for configuring an {@link EntityService} instance. */
 export interface EntityServiceOptions<Entity extends IdEntity> {
   /** Entity property key used for soft-delete timestamps (defaults to `"deletedAt"`). */
@@ -63,6 +70,11 @@ export interface EntityServiceOptions<Entity extends IdEntity> {
  * @typeParam Entity - The entity type, which must have an `id` property
  */
 export class EntityService<Entity extends IdEntity> {
+  readonly #dataLoadersByEntityManager = new WeakMap<
+    EntityManager,
+    EntityServiceDataLoaders<Entity>
+  >();
+
   /**
    * Creates a new EntityService instance.
    * @param entityClass - The entity class to manage
@@ -75,10 +87,24 @@ export class EntityService<Entity extends IdEntity> {
     protected readonly options?: EntityServiceOptions<Entity>,
   ) {}
 
-  get #getDataLoader() {
-    return new DataLoader<FindOneArgs<Entity>, Entity | null>(
+  get #dataLoaders(): EntityServiceDataLoaders<Entity> {
+    const em = this.em.getContext(false);
+    const existingDataLoaders = this.#dataLoadersByEntityManager.get(em);
+
+    if (existingDataLoaders) {
+      return existingDataLoaders;
+    }
+
+    const dataLoaders = this.#createDataLoaders(em);
+    this.#dataLoadersByEntityManager.set(em, dataLoaders);
+
+    return dataLoaders;
+  }
+
+  #createDataLoaders(em: EntityManager): EntityServiceDataLoaders<Entity> {
+    const findOne = new DataLoader<FindOneArgs<Entity>, Entity | null>(
       async (items: readonly FindOneArgs<Entity>[]) => {
-        const uow = this.em.getUnitOfWork();
+        const uow = em.getUnitOfWork();
 
         // Get all IDs
         const ids = items.map(({ idOrEntity }) =>
@@ -106,7 +132,7 @@ export class EntityService<Entity extends IdEntity> {
         // If there are IDs that need to be fetched from the database, execute the query
         let entitiesFromDb: Loaded<Entity>[] = [];
         if (idsToFetch.length > 0) {
-          entitiesFromDb = await this.em.find(
+          entitiesFromDb = await em.find(
             this.entityClass,
             {
               id: { $in: idsToFetch },
@@ -125,31 +151,27 @@ export class EntityService<Entity extends IdEntity> {
       },
       { cache: false },
     );
-  }
 
-  get #createDataLoader() {
-    return new DataLoader(
+    const create = new DataLoader<RequiredEntityData<Entity>, Entity>(
       async (data: readonly RequiredEntityData<Entity>[]) => {
         const entities = data.map((item) => {
-          return this.em.create<Entity>(this.entityClass, item, {
+          return em.create<Entity>(this.entityClass, item, {
             persist: true,
           });
         });
 
-        await this.em.flush();
+        await em.flush();
 
         return entities;
       },
       { cache: false },
     );
-  }
 
-  get #updateDataLoader() {
-    return new DataLoader<UpdateArgs<Entity>, Entity | Error>(
+    const update = new DataLoader<UpdateArgs<Entity>, Entity>(
       async (items) => {
         const entitiesOrErrors = (
           await Promise.all(
-            items.map(({ idOrEntity }) => this.findOne(idOrEntity)),
+            items.map(({ idOrEntity }) => findOne.load({ idOrEntity })),
           )
         ).map((entity) => {
           if (entity === null) {
@@ -173,23 +195,21 @@ export class EntityService<Entity extends IdEntity> {
             Object.entries(data).filter(([, value]) => value !== undefined),
           ) as typeof data;
 
-          this.em.assign(entityOrError, filteredData, options);
+          em.assign(entityOrError, filteredData, options);
         });
 
-        await this.em.flush();
+        await em.flush();
 
         return entitiesOrErrors;
       },
       { cache: false },
     );
-  }
 
-  get #removeDataLoader() {
-    return new DataLoader<RemoveArgs<Entity>, Entity | Error>(
+    const remove = new DataLoader<RemoveArgs<Entity>, Entity>(
       async (items) => {
         const entitiesOrErrors = (
           await Promise.all(
-            items.map(({ idOrEntity }) => this.findOne(idOrEntity)),
+            items.map(({ idOrEntity }) => findOne.load({ idOrEntity })),
           )
         ).map((entity) => {
           if (entity === null) {
@@ -213,23 +233,30 @@ export class EntityService<Entity extends IdEntity> {
             if (softDelete && softDeleteKey in entityOrError) {
               (entityOrError as any)[softDeleteKey] = new Date();
             } else {
-              this.em.remove(entityOrError);
+              em.remove(entityOrError);
             }
           });
 
-          await this.em.flush();
+          await em.flush();
 
           return entitiesOrErrors;
         };
 
-        if (this.em.isInTransaction()) {
+        if (em.isInTransaction()) {
           return await removeHandler();
         }
 
-        return await this.em.transactional(removeHandler);
+        return await em.transactional(removeHandler);
       },
       { cache: false },
     );
+
+    return {
+      create,
+      findOne,
+      remove,
+      update,
+    };
   }
 
   /**
@@ -238,7 +265,7 @@ export class EntityService<Entity extends IdEntity> {
    * @returns The created entity
    */
   create(data: RequiredEntityData<Entity>): Promise<Entity> {
-    return this.#createDataLoader.load(data);
+    return this.#dataLoaders.create.load(data);
   }
 
   /**
@@ -255,7 +282,7 @@ export class EntityService<Entity extends IdEntity> {
         idOrEntityOrWhere as FilterQuery<NoInfer<Entity>>,
       );
     } else {
-      return (await this.#getDataLoader.load({
+      return (await this.#dataLoaders.findOne.load({
         idOrEntity: idOrEntityOrWhere as IdOrEntity<Entity>,
       })) as Loaded<Entity> | null;
     }
@@ -334,17 +361,11 @@ export class EntityService<Entity extends IdEntity> {
     data: Data & IsSubset<EntityData<Naked, Convert>, Data>,
     options?: AssignOptions<Convert>,
   ): Promise<Entity> {
-    const entity = await this.#updateDataLoader.load({
+    return await this.#dataLoaders.update.load({
       idOrEntity,
       data,
       options,
     } as UpdateArgs<Entity, Naked, Convert, Data> as any);
-
-    if (entity instanceof Error) {
-      throw entity;
-    }
-
-    return entity;
   }
 
   /**
@@ -358,16 +379,10 @@ export class EntityService<Entity extends IdEntity> {
     idOrEntity: IdOrEntity<Entity>,
     softDelete = true,
   ): Promise<Entity> {
-    const entity = await this.#removeDataLoader.load({
+    return await this.#dataLoaders.remove.load({
       idOrEntity,
       softDelete,
     });
-
-    if (entity instanceof Error) {
-      throw entity;
-    }
-
-    return entity;
   }
 
   /**
