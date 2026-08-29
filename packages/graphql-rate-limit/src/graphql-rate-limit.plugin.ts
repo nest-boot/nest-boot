@@ -8,13 +8,12 @@ import {
 import { GraphQLSchemaHost } from "@nest-boot/graphql";
 import { Plugin } from "@nestjs/apollo";
 import { HttpException, Inject } from "@nestjs/common";
+import { ModuleRef } from "@nestjs/core";
 import {
-  GraphQLEnumType,
   GraphQLInterfaceType,
   GraphQLList,
   GraphQLNonNull,
   GraphQLObjectType,
-  GraphQLScalarType,
   GraphQLType,
   GraphQLUnionType,
 } from "graphql";
@@ -56,12 +55,6 @@ function shopifyEstimator(
   ) {
     return 1 + args.childComplexity;
   }
-
-  // Scalar and Enum are part of the Object itself; we've already counted their cost in the Object.
-  // They are just fields on an Object, and returning a few extra fields costs relatively little.
-  if (type instanceof GraphQLScalarType || type instanceof GraphQLEnumType) {
-    return 0;
-  }
 }
 
 @Plugin()
@@ -73,7 +66,7 @@ export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
 
   constructor(
     private readonly storage: GraphQLRateLimitStorage,
-    private readonly gqlSchemaHost: GraphQLSchemaHost,
+    private readonly moduleRef: ModuleRef,
     @Inject(OPTIONS_TOKEN) options: GraphQLRateLimitOptions,
   ) {
     this.maxComplexity = options.maxComplexity;
@@ -87,7 +80,7 @@ export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
   }
 
   async requestDidStart(): Promise<GraphQLRequestListener<BaseContext>> {
-    const { schema } = this.gqlSchemaHost;
+    const { schema } = this.moduleRef.get(GraphQLSchemaHost, { strict: false });
 
     const cost: CostResponse = {
       requestedQueryCost: 0,

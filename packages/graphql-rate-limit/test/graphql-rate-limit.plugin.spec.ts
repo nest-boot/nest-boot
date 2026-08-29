@@ -1,5 +1,6 @@
 import type { BaseContext, GraphQLRequestContext } from "@apollo/server";
 import { GraphQLSchemaHost } from "@nest-boot/graphql";
+import { ModuleRef } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
 import {
   buildSchema,
@@ -85,6 +86,9 @@ describe("GraphQLRateLimitPlugin", () => {
     addPoint,
   } as unknown as GraphQLRateLimitStorage;
   const schemaHost = { schema } as GraphQLSchemaHost;
+  const moduleRef = {
+    get: jest.fn(() => schemaHost),
+  } as unknown as ModuleRef;
   const options: GraphQLRateLimitOptions = {
     maxComplexity: 1000,
     defaultComplexity: 0,
@@ -96,7 +100,7 @@ describe("GraphQLRateLimitPlugin", () => {
   const mockedGetComplexity = jest.mocked(getComplexity);
   const mockedSimpleEstimator = jest.mocked(simpleEstimator);
   const createPlugin = (overrides?: Partial<GraphQLRateLimitOptions>) =>
-    new GraphQLRateLimitPlugin(storage, schemaHost, {
+    new GraphQLRateLimitPlugin(storage, moduleRef, {
       ...options,
       ...overrides,
     });
