@@ -1,23 +1,29 @@
 ---
 title: "Metrics"
-description: "The @nest-boot/metrics module provides application metrics with Prometheus using prom-client."
+description: "Expose Prometheus default and custom metrics from a Nest application with @nest-boot/metrics."
 ---
 
-The `@nest-boot/metrics` module provides application metrics with [Prometheus](https://prometheus.io/) using [prom-client](https://github.com/siimon/prom-client), exposing a `/metrics` endpoint for scraping.
+The `@nest-boot/metrics` module creates a dedicated [prom-client](https://github.com/siimon/prom-client) registry, collects Node.js default metrics, and exposes them through `GET /metrics` in the Prometheus exposition format.
 
 ## Installation
 
+Install the module and its `prom-client` peer dependency:
+
 ```bash
-npm install @nest-boot/metrics prom-client
-# or
 pnpm add @nest-boot/metrics prom-client
 ```
 
-## Basic Usage
+## Module Registration
+
+`MetricsModule` is global. Import and configure it once, normally in the root application module. Feature modules can then inject `Registry` without importing `MetricsModule` again.
+
+### Static Registration
+
+Import the module directly when the default `prom-client` collector settings are sufficient:
 
 ```typescript
-import { Module } from "@nestjs/common";
 import { MetricsModule } from "@nest-boot/metrics";
+import { Module } from "@nestjs/common";
 
 @Module({
   imports: [MetricsModule],
@@ -25,38 +31,48 @@ import { MetricsModule } from "@nest-boot/metrics";
 export class AppModule {}
 ```
 
-`MetricsModule` is global, so it only needs to be imported once. Static module
-registration uses the default `prom-client` collector options.
+### Synchronous Registration
 
-## Configuration
-
-Use `register()` to configure the default metrics collector. All supported
-`prom-client` default collector options except `register` are forwarded:
+Use `register()` to configure the default metrics collector:
 
 ```typescript
+import { MetricsModule } from "@nest-boot/metrics";
+import { Module } from "@nestjs/common";
+
 @Module({
   imports: [
     MetricsModule.register({
-      prefix: "app_",
-      labels: { service: "api" },
+      prefix: "api_",
+      labels: {
+        service: "orders",
+        environment: "production",
+      },
     }),
   ],
 })
 export class AppModule {}
 ```
 
-Use `registerAsync()` when the options come from an asynchronous factory or
-another provider:
+### Asynchronous Registration
+
+Use `registerAsync()` when configuration comes from another provider. The following example reads the prefix and common labels from `@nestjs/config`:
 
 ```typescript
-import { ConfigService } from "@nestjs/config";
+import { MetricsModule } from "@nest-boot/metrics";
+import { Module } from "@nestjs/common";
+import { ConfigModule, ConfigService } from "@nestjs/config";
 
 @Module({
   imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
     MetricsModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        prefix: configService.get("METRICS_PREFIX", ""),
+        prefix: configService.get("METRICS_PREFIX", "api_"),
+        labels: {
+          service: configService.get("SERVICE_NAME", "orders"),
+          environment: configService.get("NODE_ENV", "development"),
+        },
       }),
     }),
   ],
@@ -64,7 +80,52 @@ import { ConfigService } from "@nestjs/config";
 export class AppModule {}
 ```
 
+The async factory may return either the options object or a promise that resolves to it. `registerAsync()` also supports the standard Nest configurable-module `useClass` and `useExisting` patterns.
+
+### Configuration Options
+
+| Option                         | Type       | Description                                                 |
+| ------------------------------ | ---------- | ----------------------------------------------------------- |
+| `prefix`                       | `string`   | Prefix added to every default metric name                   |
+| `labels`                       | `object`   | Static labels added to every default metric                 |
+| `gcDurationBuckets`            | `number[]` | Custom buckets for the garbage-collection duration metric   |
+| `eventLoopMonitoringPrecision` | `number`   | Sampling precision, in milliseconds, for event-loop metrics |
+
+These are the `prom-client` default collector options. The `register` option is intentionally omitted because `MetricsModule` creates and owns the registry used by its controller.
+
+## Scraping the Endpoint
+
+After the Nest application starts, request the built-in endpoint:
+
+```bash
+curl --fail http://localhost:3000/metrics
+```
+
+The response has status `200`, uses the Prometheus content type `text/plain; version=0.0.4; charset=utf-8`, and contains output similar to:
+
+```text
+# HELP api_process_cpu_user_seconds_total Total user CPU time spent in seconds.
+# TYPE api_process_cpu_user_seconds_total counter
+api_process_cpu_user_seconds_total{service="orders",environment="production"} 0.012
+```
+
+Metric values vary at runtime. The `api_` prefix and labels above are present only when configured.
+
+Point Prometheus at the endpoint with a scrape configuration such as:
+
+```yaml
+scrape_configs:
+  - job_name: "nest-app"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["app:3000"]
+```
+
+Replace `app:3000` with the address Prometheus uses to reach the application. If the Nest application uses a global route prefix, include that prefix in `metrics_path` unless `/metrics` is excluded from it.
+
 ## Custom Metrics
+
+Inject `Registry` from `@nest-boot/metrics` and pass it in the metric's `registers` array. This ensures the custom metric is returned by the built-in endpoint instead of being added only to the `prom-client` default global registry.
 
 ```typescript
 import { Registry } from "@nest-boot/metrics";
@@ -73,12 +134,12 @@ import { Counter } from "prom-client";
 
 @Injectable()
 export class OrderMetrics implements OnModuleInit {
-  private ordersCreated!: Counter;
+  private ordersCreated!: Counter<"status">;
 
   constructor(private readonly registry: Registry) {}
 
-  onModuleInit() {
-    this.ordersCreated = new Counter({
+  onModuleInit(): void {
+    this.ordersCreated = new Counter<"status">({
       name: "orders_created_total",
       help: "Total number of orders created",
       labelNames: ["status"],
@@ -86,18 +147,31 @@ export class OrderMetrics implements OnModuleInit {
     });
   }
 
-  recordOrderCreated(status: string) {
+  recordOrderCreated(status: "accepted" | "rejected"): void {
     this.ordersCreated.inc({ status });
   }
 }
 ```
 
-## Features
+Register `OrderMetrics` as a provider in a feature module. Because `MetricsModule` is global, the injected `Registry` is available without another module import:
 
-- **Default Metrics** - Automatic collection of Node.js runtime metrics
-- **Metrics Endpoint** - Built-in `GET /metrics` controller
-- **Custom Metrics** - Full prom-client API (Counter, Histogram, Gauge, Summary)
-- **Prometheus Compatible** - Standard exposition format for scraping
+```typescript
+import { Module } from "@nestjs/common";
+
+@Module({
+  providers: [OrderMetrics],
+  exports: [OrderMetrics],
+})
+export class OrdersModule {}
+```
+
+The same approach works with `Gauge`, `Histogram`, and `Summary` from `prom-client`.
+
+## Operational Notes
+
+- Configure `MetricsModule` only once. Re-importing it can create additional registries and default collectors instead of sharing the intended application registry.
+- Choose low-cardinality labels. Do not use unbounded values such as user IDs, request IDs, or raw URLs as metric labels.
+- The endpoint exposes process and application information. Restrict access at the network, ingress, or proxy layer when it should not be public.
 
 ## API Reference
 
