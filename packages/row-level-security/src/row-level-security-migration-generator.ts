@@ -273,6 +273,10 @@ export class RowLevelSecurityMigrationGenerator extends TSMigrationGenerator {
       throw new Error("MikroORM metadata storage is not available");
     }
 
+    if (allMetadata instanceof Map) {
+      return [...allMetadata.values()];
+    }
+
     return Array.isArray(allMetadata)
       ? allMetadata
       : Object.values(allMetadata);

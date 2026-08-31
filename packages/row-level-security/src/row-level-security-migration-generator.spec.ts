@@ -1039,6 +1039,33 @@ describe("RowLevelSecurityMigrationGenerator", () => {
     );
   });
 
+  it("reads MikroORM 7 map-based entity metadata", () => {
+    const generator = createGenerator(
+      new Map([
+        [
+          "WorkspaceMemberWithGeneratedPolicy",
+          {
+            class: WorkspaceMemberWithGeneratedPolicy,
+            tableName: "workspace_member",
+            properties: {
+              user: {
+                fieldNames: ["user_id"],
+                columnTypes: ["bigint"],
+              },
+            },
+          },
+        ],
+      ]),
+    );
+
+    const file = generator.generateMigrationFile("MigrationTest", {
+      up: [],
+      down: [],
+    });
+
+    expect(file).toContain("create policy workspace_member_user_select_policy");
+  });
+
   it("shortens generated policy names longer than PostgreSQL identifier limit", () => {
     const generator = createGenerator([
       {
@@ -1162,6 +1189,10 @@ describe("RowLevelSecurityMigrationGenerator", () => {
 describe("RowLevelSecurityMigrator", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it("uses the extension name recognized by MikroORM 7 autoloading", () => {
+    expect(RowLevelSecurityMigrator.name).toBe("Migrator");
   });
 
   it("creates a migration when only row-level-security policies changed", async () => {
@@ -1354,7 +1385,7 @@ describe("RowLevelSecurityMigrator", () => {
 });
 
 function createGenerator(
-  metadata: object[],
+  metadata: Map<string, object> | object[],
   driverOptions: Record<string, unknown> = {},
   generatorOptions: Record<string, unknown> = {},
 ) {

@@ -1,15 +1,31 @@
-import { PostgreSqlConnection } from "@mikro-orm/postgresql";
+import { Configuration } from "@mikro-orm/core";
+import {
+  MikroORM as PostgreSqlMikroORM,
+  PostgreSqlConnection,
+} from "@mikro-orm/postgresql";
 import { RequestContext } from "@nest-boot/request-context";
 
 import {
   RowLevelSecurity,
   RowLevelSecurityMode,
 } from "./row-level-security.js";
-import { RowLevelSecurityConnection } from "./row-level-security-driver.js";
+import {
+  RowLevelSecurityConnection,
+  RowLevelSecurityDriver,
+} from "./row-level-security-driver.js";
 
 describe("RowLevelSecurityDriver", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it("exposes the PostgreSQL ORM class for Nest provider discovery", () => {
+    const configuration = new Configuration(
+      { driver: RowLevelSecurityDriver },
+      false,
+    );
+
+    expect(configuration.getDriver().getORMClass()).toBe(PostgreSqlMikroORM);
   });
 
   it("delegates unchanged outside RequestContext by default", async () => {

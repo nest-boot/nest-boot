@@ -8,6 +8,7 @@ import type {
   Transaction,
 } from "@mikro-orm/core";
 import {
+  MikroORM as PostgreSqlMikroORM,
   PostgreSqlConnection,
   PostgreSqlPlatform,
 } from "@mikro-orm/postgresql";
@@ -221,6 +222,11 @@ export class RowLevelSecurityDriver extends AbstractSqlDriver<RowLevelSecurityCo
       "knex",
       "pg",
     ]);
+  }
+
+  /** Exposes the PostgreSQL ORM token used by the MikroORM Nest integration. */
+  override getORMClass() {
+    return PostgreSqlMikroORM;
   }
 }
 

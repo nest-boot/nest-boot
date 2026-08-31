@@ -1,5 +1,5 @@
 import type { MigrationDiff, MigrationResult, MikroORM } from "@mikro-orm/core";
-import { Migrator } from "@mikro-orm/migrations";
+import { Migrator as BaseMigrator } from "@mikro-orm/migrations";
 
 import { RowLevelSecurityMigrationGenerator } from "./row-level-security-migration-generator.js";
 
@@ -21,12 +21,12 @@ interface MigratorInternals {
 }
 
 /** MikroORM migrator that also creates migrations for policy-only RLS changes. */
-export class RowLevelSecurityMigrator extends Migrator {
+class Migrator extends BaseMigrator {
   /** Registers the RLS-aware migrator extension with a MikroORM instance. */
   static override register(orm: MikroORM): void {
     orm.config.registerExtension(
       "@mikro-orm/migrator",
-      () => new RowLevelSecurityMigrator(orm.em as never),
+      () => new Migrator(orm.em as never),
     );
   }
 
@@ -98,3 +98,7 @@ export class RowLevelSecurityMigrator extends Migrator {
     return this as unknown as MigratorInternals;
   }
 }
+
+// MikroORM 7 detects built-in extensions by constructor name before appending
+// its default Migrator. Keep that runtime name while exposing our public API.
+export { Migrator as RowLevelSecurityMigrator };

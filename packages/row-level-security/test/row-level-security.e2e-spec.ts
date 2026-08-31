@@ -568,7 +568,7 @@ describeIfDatabaseConfigured("RowLevelSecurity - database integration", () => {
       expect(fieldChangeMigration.fileName).toMatch(
         new RegExp(`${fieldChangeMigrationName}\\.ts$`),
       );
-      expect(fieldChangeMigration.code).toContain('add column "external_id"');
+      expect(fieldChangeMigration.code).toContain('add "external_id"');
       expect(fieldChangeMigration.code).not.toContain(
         `drop policy if exists ${POLICY_MIGRATION_POLICY_NAME}`,
       );
@@ -789,8 +789,11 @@ describeIfDatabaseConfigured("RowLevelSecurity - database integration", () => {
   }
 
   function getGeneratedMigrationUpStatements(code: string) {
-    const upStart = code.indexOf("async up()");
-    const downStart = code.indexOf("async down()", upStart);
+    const upStart = findMigrationMethod(code, "up");
+    if (upStart === -1) {
+      throw new Error("Generated migration does not contain an up method");
+    }
+    const downStart = findMigrationMethod(code, "down", upStart);
     const upCode = code.slice(
       upStart,
       downStart === -1 ? undefined : downStart,
@@ -799,6 +802,18 @@ describeIfDatabaseConfigured("RowLevelSecurity - database integration", () => {
     return [...upCode.matchAll(/this\.addSql\(`((?:\\.|[^`])*)`\);/g)].map(
       ([, sql]) => unescapeGeneratedMigrationSql(sql),
     );
+  }
+
+  function findMigrationMethod(
+    code: string,
+    method: "down" | "up",
+    fromIndex = 0,
+  ) {
+    const match = new RegExp(
+      `\\b(?:override\\s+)?(?:async\\s+)?${method}\\(\\)`,
+    ).exec(code.slice(fromIndex));
+
+    return match ? fromIndex + match.index : -1;
   }
 
   function unescapeGeneratedMigrationSql(sql: string) {

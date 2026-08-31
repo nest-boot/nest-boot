@@ -36,7 +36,10 @@ export interface EntityTargetMetadataLike {
 }
 
 export interface MetadataStorageLike {
-  getAll(): EntityMetadataLike[] | Record<string, EntityMetadataLike>;
+  getAll():
+    | EntityMetadataLike[]
+    | Map<string, EntityMetadataLike>
+    | Record<string, EntityMetadataLike>;
 }
 
 export interface DatabaseConnectionLike {
