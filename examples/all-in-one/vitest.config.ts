@@ -1,25 +1,13 @@
-import { resolve } from 'node:path';
-
-import swc from 'unplugin-swc';
 import { defineConfig } from 'vitest/config';
+import tsconfigPaths from 'vite-tsconfig-paths';
 
 export default defineConfig({
-  plugins: [
-    swc.vite({
-      module: { type: 'es6' },
-      jsc: {
-        target: 'es2023',
-        transform: { legacyDecorator: true, decoratorMetadata: true },
-      },
-    }),
-  ],
+  // Resolves the path aliases declared in tsconfig.json, including the ones
+  // added by `nest g library`.
+  plugins: [tsconfigPaths()],
   test: {
     globals: true,
     root: './',
-    setupFiles: [
-      resolve(import.meta.dirname, '../../vitest.setup.ts'),
-      './vitest.setup.ts',
-    ],
-    include: ['src/**/*.spec.ts'],
+    include: ['**/*.spec.ts'],
   },
 });
