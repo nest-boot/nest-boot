@@ -30,9 +30,10 @@ import type {
   GraphQLRateLimitOptions,
 } from "./interfaces/index.js";
 
-// The dependency's ESM build loads graphql/index.mjs while Nest loads the
-// package's CommonJS main entry. Use its CJS bridge so GraphQL runtime types
-// come from the same module instance in an ESM Nest application.
+// graphql-query-complexity has a native ESM build, but it loads
+// graphql/index.mjs while Nest's CommonJS packages load graphql/index.js.
+// Keep the complexity library on its CJS export so both sides share the same
+// GraphQL runtime types; otherwise real requests fail the cross-realm checks.
 const {
   directiveEstimator,
   fieldExtensionsEstimator,
