@@ -44,6 +44,10 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
 - 将 Apollo Playground 配置替换为 `graphiql`。
 - 使用 MikroORM 时升级到版本 7，并从受支持的包入口（例如
   `@mikro-orm/sql` 和 `@mikro-orm/sqlite`）导入 SQL 类型与驱动。
+- 文件上传应用必须安装并注册新的全局 `@nest-boot/s3` 模块。从
+  `FileUploadModule` 选项中移除 `client`，改为配置 `S3Module`。静态注册会读取
+  `S3_ENDPOINT_URL`、`S3_ACCESS_KEY_ID`、`S3_SECRET_ACCESS_KEY`、`S3_REGION` 和
+  `S3_FORCE_PATH_STYLE`。
 - 切换 TypeScript 模块解析后，重新生成文件和迁移，确保生成的导入带有有效的
   ESM 扩展名。
 

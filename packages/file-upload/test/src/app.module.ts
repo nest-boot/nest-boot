@@ -1,4 +1,5 @@
 import { GraphQLModule } from "@nest-boot/graphql";
+import { S3Module } from "@nest-boot/s3";
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import bytes from "bytes";
@@ -13,15 +14,6 @@ const FileUploadDynamicModule = FileUploadModule.registerAsync({
   useFactory: (configService: ConfigService) => {
     return {
       bucket: configService.getOrThrow("S3_BUCKET"),
-      client: {
-        endpoint: configService.getOrThrow("S3_ENDPOINT"),
-        region: configService.get("S3_REGION"),
-        forcePathStyle: configService.get("S3_FORCE_PATH_STYLE") === "true",
-        credentials: {
-          accessKeyId: configService.getOrThrow("S3_ACCESS_KEY_ID"),
-          secretAccessKey: configService.getOrThrow("S3_SECRET_ACCESS_KEY"),
-        },
-      },
       limits: [
         {
           // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -50,7 +42,12 @@ const FileUploadDynamicModule = FileUploadModule.registerAsync({
 });
 
 @Module({
-  imports: [ConfigDynamicModule, GraphQLModule, FileUploadDynamicModule],
+  imports: [
+    ConfigDynamicModule,
+    S3Module,
+    GraphQLModule,
+    FileUploadDynamicModule,
+  ],
   providers: [TestResolver],
 })
 export class AppModule {}

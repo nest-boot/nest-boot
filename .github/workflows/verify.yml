@@ -101,7 +101,7 @@ jobs:
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
           REDIS_URL: redis://localhost:6379
-          S3_ENDPOINT: http://localhost:9000
+          S3_ENDPOINT_URL: http://localhost:9000
           S3_REGION: us-east-1
           S3_BUCKET: test-bucket
           S3_FORCE_PATH_STYLE: true
@@ -113,7 +113,7 @@ jobs:
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
           REDIS_URL: redis://localhost:6379
-          S3_ENDPOINT: http://localhost:9000
+          S3_ENDPOINT_URL: http://localhost:9000
           S3_REGION: us-east-1
           S3_BUCKET: test-bucket
           S3_FORCE_PATH_STYLE: true

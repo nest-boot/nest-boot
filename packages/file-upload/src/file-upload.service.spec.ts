@@ -67,18 +67,20 @@ describe("FileUploadService", () => {
   describe("create", () => {
     it("should create presigned upload arguments with limits and a custom public URL", async () => {
       const client = createClient();
-      const service = await createService({
-        bucket: "uploads",
+      const service = await createService(
+        {
+          bucket: "uploads",
+          expires: 120,
+          limits: [
+            {
+              fileSize: 1024,
+              mimeTypes: ["image/*"],
+            },
+          ],
+          url: "https://cdn.example.com/static",
+        },
         client,
-        expires: 120,
-        limits: [
-          {
-            fileSize: 1024,
-            mimeTypes: ["image/*"],
-          },
-        ],
-        url: "https://cdn.example.com/static",
-      });
+      );
 
       await expect(
         service.create([
@@ -127,10 +129,10 @@ describe("FileUploadService", () => {
     });
 
     it("should use the original presigned URL and default expiration when limits are not configured", async () => {
-      const service = await createService({
-        bucket: "uploads",
-        client: createClient(),
-      });
+      const service = await createService(
+        { bucket: "uploads" },
+        createClient(),
+      );
 
       await expect(
         service.create([
@@ -175,16 +177,18 @@ describe("FileUploadService", () => {
     });
 
     it("should reject uploads that do not match configured limits", async () => {
-      const service = await createService({
-        bucket: "uploads",
-        client: createClient(),
-        limits: [
-          {
-            fileSize: 100,
-            mimeTypes: ["image/png"],
-          },
-        ],
-      });
+      const service = await createService(
+        {
+          bucket: "uploads",
+          limits: [
+            {
+              fileSize: 100,
+              mimeTypes: ["image/png"],
+            },
+          ],
+        },
+        createClient(),
+      );
 
       await expect(
         service.create([
@@ -208,10 +212,7 @@ describe("FileUploadService", () => {
         endpoint: "http://s3.local:9000",
         forcePathStyle: true,
       });
-      const service = await createService({
-        bucket: "uploads",
-        client,
-      });
+      const service = await createService({ bucket: "uploads" }, client);
 
       await expect(
         service.persist("http://s3.local:9000/uploads/tmp/photo.jpeg"),
@@ -237,10 +238,7 @@ describe("FileUploadService", () => {
         endpoint: "http://s3.local:9000",
         forcePathStyle: true,
       });
-      const service = await createService({
-        bucket: "uploads",
-        client,
-      });
+      const service = await createService({ bucket: "uploads" }, client);
       const body = Readable.from(["hello"]);
 
       const url = await service.upload(body, {
@@ -268,19 +266,11 @@ describe("FileUploadService", () => {
     it("should use the provided extension and return a virtual-host style URL", async () => {
       vi.useFakeTimers();
       vi.setSystemTime(new Date("2026-01-31T12:00:00.000Z"));
-      const service = await createService({
-        bucket: "uploads",
-        client: {
-          credentials: {
-            accessKeyId: "test-access-key",
-            secretAccessKey: "test-secret-key",
-          },
-          endpoint: "https://s3.example.com",
-          forcePathStyle: false,
-          region: "us-east-1",
-        },
+      const client = createClient({
+        endpoint: "https://s3.example.com",
+        forcePathStyle: false,
       });
-      const client = (service as unknown as { s3Client: S3Client }).s3Client;
+      const service = await createService({ bucket: "uploads" }, client);
       vi.spyOn(client, "send").mockResolvedValue({} as never);
 
       const url = await service.upload("hello", {
@@ -294,13 +284,13 @@ describe("FileUploadService", () => {
     });
 
     it("should persist uploaded files when requested", async () => {
-      const service = await createService({
-        bucket: "uploads",
-        client: createClient({
+      const service = await createService(
+        { bucket: "uploads" },
+        createClient({
           endpoint: "http://s3.local",
           forcePathStyle: true,
         }),
-      });
+      );
       vi.spyOn(service, "persist").mockResolvedValue(
         "http://s3.local/uploads/files/avatar.bin",
       );
@@ -319,13 +309,13 @@ describe("FileUploadService", () => {
     it("should use bin when the MIME type has no known extension", async () => {
       vi.useFakeTimers();
       vi.setSystemTime(new Date("2026-01-31T12:00:00.000Z"));
-      const service = await createService({
-        bucket: "uploads",
-        client: createClient({
+      const service = await createService(
+        { bucket: "uploads" },
+        createClient({
           endpoint: "http://s3.local",
           forcePathStyle: true,
         }),
-      });
+      );
 
       const url = await service.upload("hello", {
         "Content-Type": "unknown/unknown",
@@ -335,10 +325,10 @@ describe("FileUploadService", () => {
     });
 
     it("should throw when the S3 endpoint is not configured", async () => {
-      const service = await createService({
-        bucket: "uploads",
-        client: createClient(),
-      });
+      const service = await createService(
+        { bucket: "uploads" },
+        createClient(),
+      );
 
       await expect(
         service.upload(Buffer.from("hello"), {
@@ -363,10 +353,17 @@ describe("FileUploadService", () => {
   });
 });
 
-async function createService(options: FileUploadModuleOptions) {
+async function createService(
+  options: FileUploadModuleOptions,
+  s3Client: S3Client,
+) {
   const moduleRef = await Test.createTestingModule({
     providers: [
       FileUploadService,
+      {
+        provide: S3Client,
+        useValue: s3Client,
+      },
       {
         provide: MODULE_OPTIONS_TOKEN,
         useValue: options,

@@ -18,10 +18,6 @@ import { MODULE_OPTIONS_TOKEN } from "./file-upload.module-definition.js";
 describe("FileUploadModule", () => {
   const options = {
     bucket: "uploads",
-    client: {
-      endpoint: "http://s3.local",
-      region: "us-east-1",
-    },
   };
 
   it("should register synchronous options", () => {

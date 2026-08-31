@@ -26,20 +26,15 @@ import { FileUploadInput } from "./inputs/file-upload.input.js";
  */
 @Injectable()
 export class FileUploadService {
-  /** S3 client instance. @internal */ private readonly s3Client: S3Client;
-
   /** Creates a new FileUploadService instance.
    * @param options - File upload module configuration options
+   * @param s3Client - S3 client provided by the global S3Module
    */
   constructor(
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly options: FileUploadModuleOptions,
-  ) {
-    this.s3Client =
-      options.client instanceof S3Client
-        ? options.client
-        : new S3Client(options.client);
-  }
+    private readonly s3Client: S3Client,
+  ) {}
 
   /**
    * Creates presigned POST URLs for uploading files.

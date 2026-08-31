@@ -8,28 +8,23 @@ description: "使用 S3 兼容存储处理文件上传，支持 MIME 类型验�
 ## 安装
 
 ```bash
-pnpm add @nest-boot/file-upload @aws-sdk/client-s3 @aws-sdk/s3-presigned-post
+pnpm add @nest-boot/file-upload @nest-boot/s3 @aws-sdk/client-s3 @aws-sdk/s3-presigned-post
 ```
+
+`@nest-boot/s3` 是对等依赖，必须在应用中注册一次。它提供 `FileUploadModule` 消费的全局 `S3Client`。
 
 ## 模块注册
 
 ```typescript
 import { FileUploadModule } from "@nest-boot/file-upload";
+import { S3Module } from "@nest-boot/s3";
+import { Module } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 
 const FileUploadDynamicModule = FileUploadModule.registerAsync({
   inject: [ConfigService],
   useFactory: (configService: ConfigService) => ({
     bucket: configService.getOrThrow("S3_BUCKET"),
-    client: {
-      endpoint: configService.getOrThrow("S3_ENDPOINT"),
-      credentials: {
-        accessKeyId: configService.getOrThrow("S3_ACCESS_KEY_ID"),
-        secretAccessKey: configService.getOrThrow("S3_SECRET_ACCESS_KEY"),
-      },
-      region: configService.get("S3_REGION", "auto"),
-      forcePathStyle: true,
-    },
     expires: 3600,
     limits: [
       {
@@ -39,13 +34,19 @@ const FileUploadDynamicModule = FileUploadModule.registerAsync({
     ],
   }),
 });
+
+@Module({
+  imports: [S3Module, FileUploadDynamicModule],
+})
+export class AppModule {}
 ```
+
+静态导入的 `S3Module` 会读取 `S3_ENDPOINT_URL`、`S3_ACCESS_KEY_ID`、`S3_SECRET_ACCESS_KEY`、`S3_REGION` 和 `S3_FORCE_PATH_STYLE`。显式配置和异步配置方式请参阅 [S3 教程](/docs/tutorial/s3)。
 
 ### 配置选项
 
 | 选项      | 描述                                                                                   |
 | --------- | -------------------------------------------------------------------------------------- |
-| `client`  | `S3Client` 实例或 AWS S3 客户端配置                                                    |
 | `bucket`  | S3 存储桶名称                                                                          |
 | `url`     | 可选的公开前缀，用于替换生成的 presigned POST URL 的 origin/path                       |
 | `expires` | presigned POST 的有效秒数，默认为 `3600`                                               |

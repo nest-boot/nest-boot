@@ -17,31 +17,23 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const requiredS3Env = [
   "S3_ACCESS_KEY_ID",
   "S3_BUCKET",
-  "S3_ENDPOINT",
+  "S3_ENDPOINT_URL",
   "S3_SECRET_ACCESS_KEY",
 ];
 const describeIfS3Configured = requiredS3Env.every((name) => process.env[name])
   ? describe
   : describe.skip;
 
-function getS3Env() {
-  const accessKeyId = process.env.S3_ACCESS_KEY_ID;
+function getS3Bucket() {
   const bucket = process.env.S3_BUCKET;
-  const endpoint = process.env.S3_ENDPOINT;
-  const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
 
-  if (!accessKeyId || !bucket || !endpoint || !secretAccessKey) {
+  if (!bucket) {
     throw new Error(
       "S3 environment variables are required for this test suite",
     );
   }
 
-  return {
-    accessKeyId,
-    bucket,
-    endpoint,
-    secretAccessKey,
-  };
+  return bucket;
 }
 
 function parseFileSize(value: string) {
@@ -54,18 +46,7 @@ function parseFileSize(value: string) {
   return parsed;
 }
 
-async function ensureBucketExists() {
-  const { accessKeyId, bucket, endpoint, secretAccessKey } = getS3Env();
-  const client = new S3Client({
-    credentials: {
-      accessKeyId,
-      secretAccessKey,
-    },
-    endpoint,
-    forcePathStyle: process.env.S3_FORCE_PATH_STYLE === "true",
-    region: process.env.S3_REGION ?? "us-east-1",
-  });
-
+async function ensureBucketExists(client: S3Client, bucket: string) {
   try {
     await client.send(
       new CreateBucketCommand({
@@ -102,8 +83,6 @@ describeIfS3Configured("FileUploadModule - e2e", () => {
   let fileTmpUrl: string;
 
   beforeAll(async () => {
-    await ensureBucketExists();
-
     const [{ AppModule }, { FileUploadService }] = await Promise.all([
       import("./src/app.module.js"),
       import("../src/file-upload.service.js"),
@@ -111,6 +90,8 @@ describeIfS3Configured("FileUploadModule - e2e", () => {
     const module = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
+
+    await ensureBucketExists(module.get(S3Client), getS3Bucket());
 
     app = module.createNestApplication();
     fileUploadService = module.get(FileUploadService);

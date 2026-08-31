@@ -1,5 +1,3 @@
-import { S3Client, S3ClientConfig } from "@aws-sdk/client-s3";
-
 /** Defines file size and MIME type constraints for uploaded files. */
 export interface FileUploadLimit {
   /** Maximum file size in bytes. */
@@ -10,8 +8,6 @@ export interface FileUploadLimit {
 
 /** Configuration options for the FileUploadModule. */
 export interface FileUploadModuleOptions {
-  /** S3 client instance or configuration for creating one. */
-  client: S3Client | S3ClientConfig;
   /** Optional custom URL prefix for presigned upload URLs. */
   url?: string;
   /** S3 bucket name for storing uploaded files. */
