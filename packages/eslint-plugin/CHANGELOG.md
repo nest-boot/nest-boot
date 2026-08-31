@@ -1,3 +1,9 @@
+## 8.0.0-beta.2 (2026-08-31)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/tsconfig to 8.0.0-beta.2
+
 ## 8.0.0-beta.1 (2026-08-31)
 
 ### 🚀 Features

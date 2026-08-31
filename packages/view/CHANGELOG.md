@@ -1,3 +1,19 @@
+## 8.0.0-beta.2 (2026-08-31)
+
+### 🚀 Features
+
+- **view:** replace Handlebars with LiquidJS ([#313](https://github.com/nest-boot/nest-boot/pull/313))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.0-beta.2
+- Updated @nest-boot/eslint-plugin to 8.0.0-beta.2
+- Updated @nest-boot/tsconfig to 8.0.0-beta.2
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.0-beta.1 (2026-08-31)
 
 ### 🚀 Features
