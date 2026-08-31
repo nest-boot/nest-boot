@@ -1,6 +1,6 @@
 import { ConfigurableModuleBuilder } from "@nestjs/common";
 
-import { BullMQMikroORMModuleOptions } from "./bullmq-mikro-orm-module-options.interface";
+import { BullMQMikroORMModuleOptions } from "./bullmq-mikro-orm-module-options.interface.js";
 
 export const { ConfigurableModuleClass, MODULE_OPTIONS_TOKEN } =
   new ConfigurableModuleBuilder<BullMQMikroORMModuleOptions>()

@@ -36,7 +36,7 @@ HashModule.register({
 最终解析出的 secret 必须至少包含 32 个字符，并具有至少 120 bit 的估算熵。可使用以下命令生成：
 
 ```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+node --input-type=module -e "import { randomBytes } from 'node:crypto'; console.log(randomBytes(32).toString('base64url'))"
 ```
 
 ## 用法

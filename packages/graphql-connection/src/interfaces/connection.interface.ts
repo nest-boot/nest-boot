@@ -1,6 +1,6 @@
-import { type TotalCountRelation } from "../enums";
-import { type PageInfo } from "../objects";
-import { type EdgeInterface } from "./edge.interface";
+import { type TotalCountRelation } from "../enums/index.js";
+import { type PageInfo } from "../objects/index.js";
+import { type EdgeInterface } from "./edge.interface.js";
 
 /**
  * Represents a paginated connection following the Relay specification.

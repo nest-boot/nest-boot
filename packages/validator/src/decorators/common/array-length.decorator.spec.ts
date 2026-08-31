@@ -1,8 +1,11 @@
 import { validateSync } from "class-validator";
 
-import { ArrayLength, type ArrayLengthOptions } from "./array-length.decorator";
+import {
+  ArrayLength,
+  type ArrayLengthOptions,
+} from "./array-length.decorator.js";
 
-jest.mock("@nest-boot/i18n", () => ({
+vi.mock("@nest-boot/i18n", () => ({
   t: (key: string): string => key,
 }));
 

@@ -1,7 +1,7 @@
 import { BaseContext, GraphQLRequestContext } from "@apollo/server";
-import { RedisOptions } from "ioredis";
+import { type RedisOptions } from "ioredis";
 
-import { GraphQLRateLimitDriver } from "../drivers";
+import { GraphQLRateLimitDriver } from "../drivers/index.js";
 
 /** Configuration options for GraphQL rate limiting. */
 export interface GraphQLRateLimitOptions {

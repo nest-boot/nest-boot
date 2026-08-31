@@ -10,7 +10,7 @@ import { AsyncResource } from "async_hooks";
 import type { REPLServer } from "repl";
 import { Transform } from "stream";
 
-import { RequestContext } from "./request-context";
+import { RequestContext } from "./request-context.js";
 
 /**
  * Starts a REPL (Read-Eval-Print Loop) session with request context support.
@@ -31,7 +31,7 @@ import { RequestContext } from "./request-context";
  * ```typescript
  * // repl.ts
  * import { repl } from '@nest-boot/request-context';
- * import { AppModule } from './app.module';
+ * import { AppModule } from './app.module.js';
  *
  * async function bootstrap() {
  *   await repl(AppModule);

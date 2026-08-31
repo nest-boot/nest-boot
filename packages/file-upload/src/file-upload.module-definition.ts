@@ -1,6 +1,6 @@
 import { ConfigurableModuleBuilder } from "@nestjs/common";
 
-import { type FileUploadModuleOptions } from "./file-upload-options.interface";
+import { type FileUploadModuleOptions } from "./file-upload-options.interface.js";
 
 export const {
   ConfigurableModuleClass,

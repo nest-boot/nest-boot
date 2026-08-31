@@ -1,10 +1,10 @@
-import type Redis from "ioredis";
+import type { Redis } from "ioredis";
 
 import {
   GraphQLRateLimitDriver,
-  GraphQLRateLimitDriverInput,
-  GraphQLRateLimitDriverResult,
-} from "./graphql-rate-limit.driver";
+  type GraphQLRateLimitDriverInput,
+  type GraphQLRateLimitDriverResult,
+} from "./graphql-rate-limit.driver.js";
 
 const REDIS_COMMAND = "GRAPHQL_RATE_LIMIT";
 

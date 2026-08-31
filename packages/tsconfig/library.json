@@ -3,7 +3,16 @@
   "display": "Library",
   "extends": "./base.json",
   "compilerOptions": {
-    "module": "CommonJS",
-    "target": "ES2021"
-  }
+    "composite": true,
+    "declaration": true,
+    "rootDir": "${configDir}/src",
+    "outDir": "${configDir}/dist"
+  },
+  "include": ["${configDir}/src/**/*"],
+  "exclude": [
+    "${configDir}/node_modules",
+    "${configDir}/dist",
+    "${configDir}/test",
+    "${configDir}/**/*.spec.ts"
+  ]
 }

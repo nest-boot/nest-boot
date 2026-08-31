@@ -1,5 +1,7 @@
-import { DataloaderType, type Options } from "@mikro-orm/core";
+import { DataloaderType } from "@mikro-orm/core";
 import { TsMorphMetadataProvider } from "@mikro-orm/reflection";
+
+import type { MikroOrmModuleOptions } from "../interfaces/mikro-orm-module-options.interface.js";
 
 /** Loads the framework defaults that do not select a database connection. */
 export function loadDefaultConfig() {
@@ -22,5 +24,5 @@ export function loadDefaultConfig() {
       defaultSeeder: "DatabaseSeeder",
       fileName: (className: string) => className,
     },
-  } satisfies Options;
+  } satisfies MikroOrmModuleOptions;
 }

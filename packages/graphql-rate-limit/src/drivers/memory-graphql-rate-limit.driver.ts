@@ -4,7 +4,7 @@ import {
   GraphQLRateLimitDriver,
   GraphQLRateLimitDriverInput,
   GraphQLRateLimitDriverResult,
-} from "./graphql-rate-limit.driver";
+} from "./graphql-rate-limit.driver.js";
 
 interface MemoryBucket {
   currentlyAvailable: number;

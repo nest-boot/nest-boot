@@ -7,13 +7,13 @@ import {
   IsLessThanOrEqual,
   Max,
   Min,
-} from "../../index";
+} from "../../index.js";
 import {
   Comparator,
   ValidateCompareNumber,
-} from "./validate-compare-number.decorator";
+} from "./validate-compare-number.decorator.js";
 
-jest.mock("@nest-boot/i18n", () => ({
+vi.mock("@nest-boot/i18n", () => ({
   t: (key: string): string => key,
 }));
 

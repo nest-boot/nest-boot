@@ -3,13 +3,13 @@ import { BaseContext, GraphQLRequestContext } from "@apollo/server";
 import {
   GraphQLRateLimitDriver,
   GraphQLRateLimitDriverInput,
-} from "../src/drivers";
-import { GraphQLRateLimitStorage } from "../src/graphql-rate-limit.storage";
-import { GraphQLRateLimitOptions } from "../src/interfaces";
+} from "../src/drivers/index.js";
+import { GraphQLRateLimitStorage } from "../src/graphql-rate-limit.storage.js";
+import { GraphQLRateLimitOptions } from "../src/interfaces/index.js";
 
 describe("GraphQLRateLimitStorage", () => {
   const context = {} as GraphQLRequestContext<BaseContext>;
-  const update = jest.fn((_input: GraphQLRateLimitDriverInput) =>
+  const update = vi.fn((_input: GraphQLRateLimitDriverInput) =>
     Promise.resolve({ blocked: false, currentlyAvailable: 80 }),
   );
   const driver = { update } as unknown as GraphQLRateLimitDriver;

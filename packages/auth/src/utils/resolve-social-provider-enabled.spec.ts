@@ -1,4 +1,4 @@
-import { resolveSocialProviderEnabled } from "./resolve-social-provider-enabled";
+import { resolveSocialProviderEnabled } from "./resolve-social-provider-enabled.js";
 
 describe("resolveSocialProviderEnabled", () => {
   beforeEach(() => {

@@ -1,47 +1,60 @@
 import { REQUEST, RequestContext, RESPONSE } from "@nest-boot/request-context";
 import { Test } from "@nestjs/testing";
 
-const mockChildLogger = {
-  ctx: "child",
-};
-const mockConfiguredPinoLogger = {
-  child: jest.fn(() => mockChildLogger),
-};
-const mockPinoLogger = {
-  child: jest.fn(() => mockChildLogger),
-};
-const mockPino = jest.fn(() => mockPinoLogger);
-const mockLoggerMiddleware = Object.assign(
-  jest.fn((req) => {
-    req.log = {
-      child: jest.fn(() => mockChildLogger),
-    };
-  }),
-  { logger: mockConfiguredPinoLogger },
-);
-const mockPinoHttp = jest.fn(() => mockLoggerMiddleware);
+const {
+  mockChildLogger,
+  mockConfiguredPinoLogger,
+  mockLoggerMiddleware,
+  mockPino,
+  mockPinoHttp,
+} = vi.hoisted(() => {
+  const mockChildLogger = {
+    ctx: "child",
+  };
+  const mockConfiguredPinoLogger = {
+    child: vi.fn(() => mockChildLogger),
+  };
+  const mockPino = vi.fn();
+  const mockLoggerMiddleware = Object.assign(
+    vi.fn((req) => {
+      req.log = {
+        child: vi.fn(() => mockChildLogger),
+      };
+    }),
+    { logger: mockConfiguredPinoLogger },
+  );
+  const mockPinoHttp = vi.fn(() => mockLoggerMiddleware);
 
-jest.mock("pino", () => ({
+  return {
+    mockChildLogger,
+    mockConfiguredPinoLogger,
+    mockLoggerMiddleware,
+    mockPino,
+    mockPinoHttp,
+  };
+});
+
+vi.mock("pino", () => ({
   __esModule: true,
   default: mockPino,
 }));
-jest.mock("pino-http", () => ({
+vi.mock("./pino-http.js", () => ({
   __esModule: true,
   default: mockPinoHttp,
 }));
 
-import { LoggerModule } from "./logger.module";
+import { LoggerModule } from "./logger.module.js";
 import {
   MODULE_OPTIONS_TOKEN,
   PINO_HTTP,
   PINO_LOGGER,
-} from "./logger.module-definition";
-import { type LoggerModuleOptions } from "./logger-module-options.interface";
+} from "./logger.module-definition.js";
+import { type LoggerModuleOptions } from "./logger-module-options.interface.js";
 
 describe("LoggerModule", () => {
   afterEach(() => {
-    jest.restoreAllMocks();
-    jest.clearAllMocks();
+    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   it("should register synchronous and asynchronous options", () => {
@@ -106,8 +119,8 @@ describe("LoggerModule", () => {
   });
 
   it("should ignore options outside the public whitelist at runtime", async () => {
-    const customProps = jest.fn(() => ({ unsupported: true }));
-    const customReceivedMessage = jest.fn(() => "unsupported-message");
+    const customProps = vi.fn(() => ({ unsupported: true }));
+    const customReceivedMessage = vi.fn(() => "unsupported-message");
     const moduleRef = await Test.createTestingModule({
       imports: [
         LoggerModule.register({
@@ -137,7 +150,7 @@ describe("LoggerModule", () => {
   });
 
   it("should create the configured middleware from asynchronous options", async () => {
-    const useFactory = jest.fn(async () => {
+    const useFactory = vi.fn(async () => {
       await Promise.resolve();
 
       return {
@@ -194,11 +207,11 @@ describe("LoggerModule", () => {
   it("should configure default request id, props, and auto logging behavior", async () => {
     const module = await createLoggerModule();
     const options = (module as unknown as { options: any }).options;
-    jest.spyOn(RequestContext, "isActive").mockReturnValue(true);
-    jest.spyOn(RequestContext, "get").mockReturnValue({
+    vi.spyOn(RequestContext, "isActive").mockReturnValue(true);
+    vi.spyOn(RequestContext, "get").mockReturnValue({
       tenantId: "tenant-1",
     });
-    jest.spyOn(RequestContext, "id", "get").mockReturnValue("ctx-id");
+    vi.spyOn(RequestContext, "id", "get").mockReturnValue("ctx-id");
 
     process.env.NODE_ENV = "test";
 
@@ -225,10 +238,10 @@ describe("LoggerModule", () => {
       autoLogging: false,
     });
     const options = (module as unknown as { options: any }).options;
-    jest.spyOn(RequestContext, "isActive").mockReturnValueOnce(false);
-    jest
-      .spyOn(RequestContext, "id", "get")
-      .mockReturnValue(undefined as unknown as string);
+    vi.spyOn(RequestContext, "isActive").mockReturnValueOnce(false);
+    vi.spyOn(RequestContext, "id", "get").mockReturnValue(
+      undefined as unknown as string,
+    );
 
     expect(options.autoLogging).toBe(false);
     expect(options.customProps()).toEqual({});
@@ -238,33 +251,29 @@ describe("LoggerModule", () => {
   it("should return empty custom props when bindings are not set", async () => {
     const module = await createLoggerModule();
     const options = (module as unknown as { options: any }).options;
-    jest.spyOn(RequestContext, "isActive").mockReturnValue(true);
-    jest.spyOn(RequestContext, "get").mockReturnValue(undefined);
+    vi.spyOn(RequestContext, "isActive").mockReturnValue(true);
+    vi.spyOn(RequestContext, "get").mockReturnValue(undefined);
 
     expect(options.customProps()).toEqual({});
   });
 
-  it("should emit decorator metadata when options exist at runtime", () => {
-    jest.isolateModules(() => {
-      jest.doMock("./logger-module-options.interface", () => ({
-        LoggerModuleOptions: class LoggerModuleOptions {
-          static readonly marker = true;
-        },
-      }));
+  it("should emit decorator metadata when options exist at runtime", async () => {
+    vi.resetModules();
+    vi.doMock("./logger-module-options.interface.js", () => ({
+      LoggerModuleOptions: class LoggerModuleOptions {
+        static readonly marker = true;
+      },
+    }));
 
-      expect(
-        jest.requireActual<typeof import("./logger.module")>("./logger.module")
-          .LoggerModule,
-      ).toBeDefined();
-      jest.dontMock("./logger-module-options.interface");
-    });
+    expect((await import("./logger.module.js")).LoggerModule).toBeDefined();
+    vi.doUnmock("./logger-module-options.interface.js");
   });
 
   it("should register pino logger middleware for requests", async () => {
     const module = await createLoggerModule();
-    const registerMiddleware = jest
+    const registerMiddleware = vi
       .spyOn(RequestContext, "registerMiddleware")
-      .mockImplementation();
+      .mockImplementation(() => undefined);
 
     module.onModuleInit();
 
@@ -272,16 +281,16 @@ describe("LoggerModule", () => {
     const req = {};
     const res = {};
     const ctx = {
-      get: jest.fn((token) => {
+      get: vi.fn((token) => {
         if (token === REQUEST) return req;
         if (token === RESPONSE) return res;
         return undefined;
       }),
       id: "ctx-id",
-      set: jest.fn(),
+      set: vi.fn(),
       type: "http",
     };
-    const next = jest.fn().mockResolvedValue("next-result");
+    const next = vi.fn().mockResolvedValue("next-result");
 
     await expect(middleware(ctx as never, next)).resolves.toBe("next-result");
 
@@ -291,20 +300,20 @@ describe("LoggerModule", () => {
 
   it("should use the configured pino logger without request objects", async () => {
     const module = await createLoggerModule();
-    const registerMiddleware = jest
+    const registerMiddleware = vi
       .spyOn(RequestContext, "registerMiddleware")
-      .mockImplementation();
+      .mockImplementation(() => undefined);
 
     module.onModuleInit();
 
     const middleware = registerMiddleware.mock.calls[0][1];
     const ctx = {
-      get: jest.fn(() => undefined),
+      get: vi.fn(() => undefined),
       id: "ctx-id",
-      set: jest.fn(),
+      set: vi.fn(),
       type: "job",
     };
-    const next = jest.fn().mockResolvedValue("next-result");
+    const next = vi.fn().mockResolvedValue("next-result");
 
     await expect(middleware(ctx as never, next)).resolves.toBe("next-result");
 

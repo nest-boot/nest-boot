@@ -31,7 +31,7 @@ export class AppModule {}
 - 代码优先自动生成 Schema（`schema.gql`）
 - Schema 排序输出
 - 全局 `GraphQLExceptionFilter` 错误处理
-- 除非显式设置 `playground: false`，否则启用 Apollo 本地 Landing Page
+- 除非显式设置 `graphiql: false`，否则启用 GraphiQL
 
 ### 异步注册
 
@@ -42,7 +42,7 @@ import { ConfigService } from "@nestjs/config";
 const GraphQLDynamicModule = GraphQLModule.forRootAsync({
   inject: [ConfigService],
   useFactory: (configService: ConfigService) => ({
-    playground: configService.get("NODE_ENV") !== "production",
+    graphiql: configService.get("NODE_ENV") !== "production",
   }),
 });
 ```
@@ -244,11 +244,11 @@ import { User } from "./user.entity";
 import {
   UserConnection,
   UserConnectionArgs,
-} from "./user.connection-definition";
+} from "./user.connection-definition.js";
 import {
   PostConnection,
   PostConnectionArgs,
-} from "./post.connection-definition";
+} from "./post.connection-definition.js";
 
 @Resolver(() => User)
 export class UserResolver {

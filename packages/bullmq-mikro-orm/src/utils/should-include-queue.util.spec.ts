@@ -1,4 +1,4 @@
-import { shouldIncludeQueue } from "./should-include-queue.util";
+import { shouldIncludeQueue } from "./should-include-queue.util.js";
 
 describe("shouldIncludeQueue", () => {
   describe("when no filters are set", () => {

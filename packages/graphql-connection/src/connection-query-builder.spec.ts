@@ -1,19 +1,19 @@
 import "reflect-metadata";
 
 import { QueryOrder } from "@mikro-orm/core";
-import { type SqlEntityManager } from "@mikro-orm/knex";
+import { type SqlEntityManager } from "@mikro-orm/sql";
 
-import { ConnectionQueryBuilder } from "./connection-query-builder";
-import { Cursor } from "./cursor";
-import { OrderDirection, TotalCountRelation } from "./enums";
-import { GRAPHQL_CONNECTION_METADATA } from "./graphql-connection.constants";
+import { ConnectionQueryBuilder } from "./connection-query-builder.js";
+import { Cursor } from "./cursor.js";
+import { OrderDirection, TotalCountRelation } from "./enums/index.js";
+import { GRAPHQL_CONNECTION_METADATA } from "./graphql-connection.constants.js";
 import type {
   ConnectionFieldOptions,
   ConnectionMetadata,
   FieldOptions,
-} from "./interfaces";
-import type { ConnectionClass } from "./types";
-import { createFilter } from "./utils";
+} from "./interfaces/index.js";
+import type { ConnectionClass } from "./types/index.js";
+import { createFilter } from "./utils/index.js";
 
 interface Book {
   id: number;
@@ -70,20 +70,20 @@ function createEntityManager(
   entities: Book[] = [],
   totalCount: number = entities.length,
 ) {
-  const find = jest.fn().mockResolvedValue(entities);
-  const findAll = jest.fn().mockResolvedValue(entities);
+  const find = vi.fn().mockResolvedValue(entities);
+  const findAll = vi.fn().mockResolvedValue(entities);
   const limitedCountQueryBuilder = {
-    applyFilters: jest.fn().mockResolvedValue(undefined),
-    limit: jest.fn().mockReturnThis(),
-    select: jest.fn().mockReturnThis(),
-    where: jest.fn().mockReturnThis(),
-    withSchema: jest.fn().mockReturnThis(),
+    applyFilters: vi.fn().mockResolvedValue(undefined),
+    limit: vi.fn().mockReturnThis(),
+    select: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    withSchema: vi.fn().mockReturnThis(),
   };
   const countQueryBuilder = {
-    count: jest.fn().mockReturnThis(),
-    getCount: jest.fn().mockResolvedValue(totalCount),
+    count: vi.fn().mockReturnThis(),
+    getCount: vi.fn().mockResolvedValue(totalCount),
   };
-  const createQueryBuilder = jest
+  const createQueryBuilder = vi
     .fn()
     .mockReturnValueOnce(limitedCountQueryBuilder)
     .mockReturnValueOnce(countQueryBuilder);

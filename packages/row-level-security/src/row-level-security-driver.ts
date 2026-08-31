@@ -4,19 +4,20 @@ import type {
   EntityData,
   LoggingOptions,
   QueryResult,
+  RawQueryFragment,
   Transaction,
 } from "@mikro-orm/core";
 import {
-  AbstractSqlDriver,
-  Knex,
+  MikroORM as PostgreSqlMikroORM,
   PostgreSqlConnection,
   PostgreSqlPlatform,
 } from "@mikro-orm/postgresql";
+import { AbstractSqlDriver, type NativeQueryBuilder } from "@mikro-orm/sql";
 
 import {
   createRowLevelSecurityTransactionSetup,
   RowLevelSecurityTransactionSetup,
-} from "./utils/create-row-level-security-transaction-setup";
+} from "./utils/create-row-level-security-transaction-setup.js";
 
 const ROW_LEVEL_SECURITY_TRANSACTION_SIGNATURE = Symbol(
   "rowLevelSecurityTransactionSignature",
@@ -46,8 +47,8 @@ export class RowLevelSecurityConnection extends PostgreSqlConnection {
     T extends QueryResult | EntityData<AnyEntity> | EntityData<AnyEntity>[] =
       EntityData<AnyEntity>[],
   >(
-    queryOrKnex: string | Knex.QueryBuilder | Knex.Raw,
-    params: unknown[] = [],
+    queryOrKnex: string | NativeQueryBuilder | RawQueryFragment,
+    params: readonly unknown[] = [],
     method: "all" | "get" | "run" = "all",
     ctx?: Transaction,
     loggerContext?: LoggingOptions,
@@ -222,6 +223,11 @@ export class RowLevelSecurityDriver extends AbstractSqlDriver<RowLevelSecurityCo
       "pg",
     ]);
   }
+
+  /** Exposes the PostgreSQL ORM token used by the MikroORM Nest integration. */
+  override getORMClass() {
+    return PostgreSqlMikroORM;
+  }
 }
 
 function getTransactionContext(
@@ -239,20 +245,7 @@ function getTransactionContext(
     return undefined;
   }
 
-  const knexQuery = queryOrKnex as {
-    client?: {
-      transacting?: boolean;
-    };
-  };
-
-  if (!knexQuery.client?.transacting) {
-    return undefined;
-  }
-
-  return {
-    state: knexQuery.client as RowLevelSecurityTransactionState,
-    execution: queryOrKnex as Transaction,
-  };
+  return undefined;
 }
 
 function getStaleContextKeys(previousKeys: string[], nextKeys: string[]) {

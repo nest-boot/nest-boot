@@ -1,4 +1,4 @@
-import { rules } from ".";
+import { rules } from "./index.js";
 
 describe("rules", () => {
   it("should expose all packaged rules", () => {

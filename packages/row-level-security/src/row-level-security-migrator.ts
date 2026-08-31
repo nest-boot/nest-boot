@@ -1,7 +1,7 @@
 import type { MigrationDiff, MigrationResult, MikroORM } from "@mikro-orm/core";
-import { Migrator } from "@mikro-orm/migrations";
+import { Migrator as BaseMigrator } from "@mikro-orm/migrations";
 
-import { RowLevelSecurityMigrationGenerator } from "./row-level-security-migration-generator";
+import { RowLevelSecurityMigrationGenerator } from "./row-level-security-migration-generator.js";
 
 interface MigrationGeneratorLike {
   generate(
@@ -13,34 +13,37 @@ interface MigrationGeneratorLike {
 
 interface MigratorInternals {
   generator: MigrationGeneratorLike;
-  ensureMigrationsDirExists(): Promise<void>;
+  hasSnapshot(): Promise<boolean>;
+  init(): Promise<void>;
+  initPaths(): Promise<void>;
   getSchemaDiff(blank: boolean, initial: boolean): Promise<MigrationDiff>;
   storeCurrentSchema(): Promise<void>;
 }
 
 /** MikroORM migrator that also creates migrations for policy-only RLS changes. */
-export class RowLevelSecurityMigrator extends Migrator {
+class Migrator extends BaseMigrator {
   /** Registers the RLS-aware migrator extension with a MikroORM instance. */
   static override register(orm: MikroORM): void {
     orm.config.registerExtension(
       "@mikro-orm/migrator",
-      () => new RowLevelSecurityMigrator(orm.em as never),
+      () => new Migrator(orm.em as never),
     );
   }
 
-  override async createMigration(
+  override async create(
     path?: string,
     blank = false,
     initial = false,
     name?: string,
   ): Promise<MigrationResult> {
     if (initial) {
-      return await super.createMigration(path, blank, initial, name);
+      return await super.create(path, blank, initial, name);
     }
 
     const internals = this.getInternals();
+    const offline = await internals.hasSnapshot();
 
-    await internals.ensureMigrationsDirExists();
+    await (offline ? internals.initPaths() : internals.init());
 
     const diff = await internals.getSchemaDiff(blank, initial);
 
@@ -64,11 +67,8 @@ export class RowLevelSecurityMigrator extends Migrator {
   }
 
   /** Checks whether schema or RLS policy changes require a new migration. */
-  override async checkMigrationNeeded(): Promise<boolean> {
+  override async checkSchema(): Promise<boolean> {
     const internals = this.getInternals();
-
-    await internals.ensureMigrationsDirExists();
-
     const diff = await internals.getSchemaDiff(false, false);
 
     if (diff.up.length > 0) {
@@ -98,3 +98,7 @@ export class RowLevelSecurityMigrator extends Migrator {
     return this as unknown as MigratorInternals;
   }
 }
+
+// MikroORM 7 detects built-in extensions by constructor name before appending
+// its default Migrator. Keep that runtime name while exposing our public API.
+export { Migrator as RowLevelSecurityMigrator };

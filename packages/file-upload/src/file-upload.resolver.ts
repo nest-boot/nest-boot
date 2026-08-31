@@ -1,8 +1,8 @@
 import { Args, Mutation, Resolver } from "@nest-boot/graphql";
 
-import { FileUpload } from "./file-upload.object";
-import { FileUploadService } from "./file-upload.service";
-import { FileUploadInput } from "./inputs/file-upload.input";
+import { FileUpload } from "./file-upload.object.js";
+import { FileUploadService } from "./file-upload.service.js";
+import { FileUploadInput } from "./inputs/file-upload.input.js";
 
 @Resolver(() => FileUpload)
 export class FileUploadResolver {

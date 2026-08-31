@@ -1,23 +1,30 @@
 import { MODULE_METADATA } from "@nestjs/common/constants";
 
-const mockRedisInstance = {
-  quit: jest.fn(),
-};
-const mockRedis = jest.fn(() => mockRedisInstance);
+const { mockRedis, mockRedisInstance } = vi.hoisted(() => {
+  const mockRedisInstance = {
+    quit: vi.fn(),
+  };
+  const mockRedis = vi.fn(function Redis() {
+    return mockRedisInstance;
+  });
 
-jest.mock("ioredis", () => ({
+  return { mockRedis, mockRedisInstance };
+});
+
+vi.mock("ioredis", () => ({
   __esModule: true,
   default: mockRedis,
+  Redis: mockRedis,
 }));
-jest.mock("./utils/load-config-from-env.util", () => ({
-  loadConfigFromEnv: jest.fn(() => ({
+vi.mock("./utils/load-config-from-env.util.js", () => ({
+  loadConfigFromEnv: vi.fn(() => ({
     host: "redis.local",
   })),
 }));
 
-import { RedisModule } from "./redis.module";
-import { MODULE_OPTIONS_TOKEN } from "./redis.module-definition";
-import { loadConfigFromEnv } from "./utils/load-config-from-env.util";
+import { RedisModule } from "./redis.module.js";
+import { MODULE_OPTIONS_TOKEN } from "./redis.module-definition.js";
+import { loadConfigFromEnv } from "./utils/load-config-from-env.util.js";
 
 interface RedisProvider {
   provide: unknown;
@@ -26,7 +33,7 @@ interface RedisProvider {
 
 describe("RedisModule", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("should register synchronous and asynchronous options", () => {

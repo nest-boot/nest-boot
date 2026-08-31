@@ -1,6 +1,6 @@
 import { Field, ObjectType } from "@nest-boot/graphql";
 
-import { FileUploadField } from "./file-upload-field.object";
+import { FileUploadField } from "./file-upload-field.object.js";
 
 /** GraphQL object type representing a presigned file upload response. */
 @ObjectType()

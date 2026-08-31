@@ -1,6 +1,6 @@
 import { Type } from "@nestjs/common";
 
-import { ConnectionInterface } from "../interfaces";
+import { ConnectionInterface } from "../interfaces/index.js";
 
 /**
  * Type alias for a Connection class type.

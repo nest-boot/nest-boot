@@ -1,10 +1,10 @@
-import { PolicyCommand } from "../enums/policy-command.enum";
-import { PolicyMode } from "../enums/policy-mode.enum";
+import { PolicyCommand } from "../enums/policy-command.enum.js";
+import { PolicyMode } from "../enums/policy-mode.enum.js";
 import {
   getPolicyDefinitions,
   getPolicyMetadata,
   Policy,
-} from "./policy.decorator";
+} from "./policy.decorator.js";
 
 describe("Policy decorator", () => {
   it("stores RLS policy metadata on the entity class", () => {

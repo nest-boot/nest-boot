@@ -1,9 +1,9 @@
-import { PolicyCommand } from "../enums/policy-command.enum";
-import { PolicyMode } from "../enums/policy-mode.enum";
-import type { PolicySqlOptions } from "../interfaces/policy-sql-options.interface";
-import { assertIdentifier } from "./assert-identifier";
-import { escapeSqlLiteral } from "./escape-sql-literal";
-import { quoteQualifiedIdentifier } from "./quote-qualified-identifier";
+import { PolicyCommand } from "../enums/policy-command.enum.js";
+import { PolicyMode } from "../enums/policy-mode.enum.js";
+import type { PolicySqlOptions } from "../interfaces/policy-sql-options.interface.js";
+import { assertIdentifier } from "./assert-identifier.js";
+import { escapeSqlLiteral } from "./escape-sql-literal.js";
+import { quoteQualifiedIdentifier } from "./quote-qualified-identifier.js";
 
 /** Creates SQL statements that enable RLS and recreate a PostgreSQL policy. */
 export function createPolicyUpSqlStatements(options: PolicySqlOptions) {

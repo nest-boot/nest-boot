@@ -1,25 +1,24 @@
-import { ApolloServerPluginLandingPageLocalDefault } from "@apollo/server/plugin/landingPage/default";
 import { ApolloDriver } from "@nestjs/apollo";
 import { type DynamicModule, Global, Logger, Module } from "@nestjs/common";
 import { APP_FILTER } from "@nestjs/core";
 import { GraphQLModule as BaseGraphQLModule } from "@nestjs/graphql";
 
-import { GraphQLExceptionFilter } from "./graphql.exception-filter";
+import { GraphQLExceptionFilter } from "./graphql.exception-filter.js";
 import {
   ASYNC_OPTIONS_TYPE,
   BASE_MODULE_OPTIONS_TOKEN,
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
-} from "./graphql.module-definition";
-import { type GraphQLModuleOptions } from "./graphql-module-options.interface";
+} from "./graphql.module-definition.js";
+import { type GraphQLModuleOptions } from "./graphql-module-options.interface.js";
 
 /**
  * GraphQL module powered by Apollo Server.
  *
  * @remarks
  * Wraps `@nestjs/graphql` with Apollo driver, providing schema-first
- * auto-generation, playground support, and global exception filtering.
+ * auto-generation, GraphiQL support, and global exception filtering.
  */
 @Global()
 @Module({
@@ -32,14 +31,8 @@ import { type GraphQLModuleOptions } from "./graphql-module-options.interface";
           path: "/api/graphql",
           autoSchemaFile: "schema.gql",
           sortSchema: true,
-          playground: false,
+          graphiql: true,
           ...options,
-          plugins: [
-            ...(options.playground === false
-              ? []
-              : [ApolloServerPluginLandingPageLocalDefault()]),
-            ...(options.plugins ?? []),
-          ],
         };
       },
     }),

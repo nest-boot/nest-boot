@@ -2,8 +2,8 @@ import { MiddlewareManager, MiddlewareModule } from "@nest-boot/middleware";
 import { Global, Module } from "@nestjs/common";
 import { APP_INTERCEPTOR } from "@nestjs/core";
 
-import { RequestContextInterceptor } from "./request-context.interceptor";
-import { RequestContextMiddleware } from "./request-context.middleware";
+import { RequestContextInterceptor } from "./request-context.interceptor.js";
+import { RequestContextMiddleware } from "./request-context.middleware.js";
 
 /**
  * NestJS module that provides request context functionality.

@@ -1,6 +1,6 @@
 import { ConfigurableModuleBuilder } from "@nestjs/common";
 
-import { type GraphQLLoggerModuleOptions } from "./graphql-logger-module-options.interface";
+import { type GraphQLLoggerModuleOptions } from "./graphql-logger-module-options.interface.js";
 
 export const {
   ConfigurableModuleClass,

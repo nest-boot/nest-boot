@@ -1,4 +1,4 @@
-import { RequestContext } from "./request-context";
+import { RequestContext } from "./request-context.js";
 
 /**
  * Helper type that extracts the argument types of a method.

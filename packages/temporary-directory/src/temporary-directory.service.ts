@@ -4,7 +4,7 @@ import { join, sep } from "node:path";
 import { RequestContext } from "@nest-boot/request-context";
 import { Injectable } from "@nestjs/common";
 
-import { TEMPORARY_DIRECTORY_ROOT } from "./temporary-directory.constants";
+import { TEMPORARY_DIRECTORY_ROOT } from "./temporary-directory.constants.js";
 
 const NAMESPACE_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 const INVALID_NAMESPACE_MESSAGE =

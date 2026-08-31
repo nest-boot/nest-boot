@@ -1,6 +1,6 @@
 import { compactDecrypt, CompactEncrypt } from "jose";
 
-import { deriveKey } from "./utils/derive-key";
+import { deriveKey } from "./utils/derive-key.js";
 
 /**
  * Service that provides encryption and decryption functionality using JWE (JSON Web Encryption).

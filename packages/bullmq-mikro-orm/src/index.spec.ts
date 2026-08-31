@@ -1,7 +1,7 @@
-import * as publicApi from ".";
-import { BullMQMikroORMModule } from "./bullmq-mikro-orm.module";
-import { JobEntity } from "./entities/job.entity";
-import { JobStatus } from "./enums/job-status.enum";
+import { BullMQMikroORMModule } from "./bullmq-mikro-orm.module.js";
+import { JobEntity } from "./entities/job.entity.js";
+import { JobStatus } from "./enums/job-status.enum.js";
+import * as publicApi from "./index.js";
 
 describe("public API", () => {
   it("should export the module, entity, options, and status enum", () => {

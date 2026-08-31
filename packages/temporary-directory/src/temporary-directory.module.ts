@@ -8,8 +8,8 @@ import {
 } from "@nest-boot/request-context";
 import { Global, Module } from "@nestjs/common";
 
-import { TEMPORARY_DIRECTORY_ROOT } from "./temporary-directory.constants";
-import { TemporaryDirectoryService } from "./temporary-directory.service";
+import { TEMPORARY_DIRECTORY_ROOT } from "./temporary-directory.constants.js";
+import { TemporaryDirectoryService } from "./temporary-directory.service.js";
 
 /** Provides request-context-scoped temporary directories. */
 @Global()

@@ -9,23 +9,23 @@ import { type Auth, betterAuth } from "better-auth";
 import { toNodeHandler } from "better-auth/node";
 import { genericOAuth } from "better-auth/plugins";
 
-import { mikroOrmAdapter } from "./adapters/mikro-orm-adapter";
-import { AUTH_TOKEN } from "./auth.constants";
-import { AuthMiddleware } from "./auth.middleware";
+import { mikroOrmAdapter } from "./adapters/mikro-orm-adapter.js";
+import { AUTH_TOKEN } from "./auth.constants.js";
+import { AuthMiddleware } from "./auth.middleware.js";
 import {
   ASYNC_OPTIONS_TYPE,
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
-} from "./auth.module-definition";
-import { AuthService } from "./auth.service";
-import { AuthModuleOptions } from "./auth-module-options.interface";
-import { assertNoDuplicateGenericOAuthPlugin } from "./utils/assert-no-duplicate-generic-oauth-plugin";
-import { createEmailAndPasswordConfig } from "./utils/create-email-and-password-config";
-import { createOidcConfig } from "./utils/create-oidc-config";
-import { createSocialProvidersConfig } from "./utils/create-social-providers-config";
-import { isEnvTrue } from "./utils/is-env-true";
-import { resolveSecret } from "./utils/resolve-secret";
+} from "./auth.module-definition.js";
+import { AuthService } from "./auth.service.js";
+import { type AuthModuleOptions } from "./auth-module-options.interface.js";
+import { assertNoDuplicateGenericOAuthPlugin } from "./utils/assert-no-duplicate-generic-oauth-plugin.js";
+import { createEmailAndPasswordConfig } from "./utils/create-email-and-password-config.js";
+import { createOidcConfig } from "./utils/create-oidc-config.js";
+import { createSocialProvidersConfig } from "./utils/create-social-providers-config.js";
+import { isEnvTrue } from "./utils/is-env-true.js";
+import { resolveSecret } from "./utils/resolve-secret.js";
 
 /**
  * Authentication module based on better-auth.

@@ -30,7 +30,7 @@ const CryptDynamicModule = CryptModule.registerAsync({
 The resolved secret must be at least 32 characters and have at least 120 bits of estimated entropy. Generate one with:
 
 ```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+node --input-type=module -e "import { randomBytes } from 'node:crypto'; console.log(randomBytes(32).toString('base64url'))"
 ```
 
 ## Usage

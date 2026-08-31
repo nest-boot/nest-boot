@@ -1,6 +1,6 @@
 import { ValidateBy, type ValidationOptions } from "class-validator";
 
-import { buildI18nMessage } from "../../utils";
+import { buildI18nMessage } from "../../utils/index.js";
 
 /**
  * Validates that the property value is less than or equal to the specified maximum.

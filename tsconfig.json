@@ -1,6 +1,16 @@
 {
   "extends": "@nest-boot/tsconfig/library.json",
   "compilerOptions": {
-    "outDir": "./dist"
-  }
+    "outDir": "./dist",
+    "rootDir": "."
+  },
+  "include": ["packages/*/src"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "packages/*/dist/**",
+    "packages/*/test/**",
+    "packages/**/*.spec.ts",
+    "packages/**/*.e2e-spec.ts"
+  ]
 }

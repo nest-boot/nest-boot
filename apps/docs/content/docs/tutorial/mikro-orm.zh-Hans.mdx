@@ -13,7 +13,7 @@ pnpm add @nest-boot/mikro-orm @mikro-orm/core @mikro-orm/nestjs @mikro-orm/refle
 # 安装与 DATABASE_URL 匹配的驱动
 pnpm add @mikro-orm/postgresql
 # 或：pnpm add @mikro-orm/mysql
-# 或：pnpm add @mikro-orm/better-sqlite
+# 或：pnpm add @mikro-orm/sqlite
 ```
 
 ## 模块注册
@@ -21,16 +21,22 @@ pnpm add @mikro-orm/postgresql
 ### 基本注册
 
 ```typescript
+import { PostgreSqlDriver } from "@mikro-orm/postgresql";
 import { MikroOrmModule } from "@nest-boot/mikro-orm";
 
 @Global()
 @Module({
-  imports: [MikroOrmModule],
+  imports: [MikroOrmModule.forRoot({ driver: PostgreSqlDriver })],
 })
 export class CommonModule {}
 ```
 
-未传入连接选项时，模块使用 `loadConfigFromEnv()` 自动加载配置。它读取 `DATABASE_URL`，并解析为结构化 MikroORM 选项，而不会把 URL 交给数据库客户端解析。PostgreSQL 接受其文档定义的 `postgresql:` 和 `postgres:` URI 形式，MySQL 接受 `mysql:`，SQLite 接受 `file:`；其他协议名和驱动兼容形式会被拒绝。SQLite 请使用 `file:///var/lib/app/app.db` 这样的绝对文件 URL。
+显式驱动使 MikroORM 7 能够为依赖注入注册驱动专用的 `EntityManager`。
+其他连接选项可以省略；模块会通过 `loadConfigFromEnv()` 自动加载。它读取
+`DATABASE_URL`，并解析为结构化 MikroORM 选项，而不会把 URL 交给数据库客户端
+解析。PostgreSQL 接受其文档定义的 `postgresql:` 和 `postgres:` URI 形式，
+MySQL 接受 `mysql:`，SQLite 接受 `file:`；其他协议名和驱动兼容形式会被拒绝。
+SQLite 请使用 `file:///var/lib/app/app.db` 这样的绝对文件 URL。
 
 PostgreSQL 的 TLS 文件参数使用 `sslrootcert`、`sslcert` 和 `sslkey`，支持的 `sslmode` 为 `disable`、`require`、`verify-ca` 和 `verify-full`。MySQL 使用 `ssl-ca`、`ssl-cert` 和 `ssl-key`，支持的 `ssl-mode` 为 `DISABLED`、`REQUIRED`、`VERIFY_CA` 和 `VERIFY_IDENTITY`。需要失败后回退到明文连接的模式无法用单份结构化驱动配置准确表达，因此会被拒绝。
 
@@ -42,10 +48,12 @@ PostgreSQL 的 TLS 文件参数使用 `sslrootcert`、`sslcert` 和 `sslkey`，�
 
 ```typescript
 import { loadConfigFromEnv, MikroOrmModule } from "@nest-boot/mikro-orm";
+import { PostgreSqlDriver } from "@mikro-orm/postgresql";
 
 @Module({
   imports: [
     MikroOrmModule.forRootAsync({
+      driverHint: PostgreSqlDriver,
       useFactory: async () => ({
         ...(await loadConfigFromEnv()),
         debug: true,
@@ -61,8 +69,14 @@ export class CommonModule {}
 用于 MikroORM CLI（迁移、Schema 生成），创建 `mikro-orm.config.ts`：
 
 ```typescript
-import "dotenv/config";
+import { existsSync } from "node:fs";
+import { loadEnvFile } from "node:process";
+
 import { loadConfigFromEnv } from "@nest-boot/mikro-orm";
+
+if (existsSync(".env")) {
+  loadEnvFile();
+}
 
 export default loadConfigFromEnv();
 ```
@@ -94,7 +108,7 @@ import { EntityManager, FilterQuery } from "@mikro-orm/postgresql";
 import { EntityService } from "@nest-boot/mikro-orm";
 import { Injectable } from "@nestjs/common";
 
-import { User } from "./user.entity";
+import { User } from "./user.entity.js";
 
 @Injectable()
 export class UserService extends EntityService<User> {

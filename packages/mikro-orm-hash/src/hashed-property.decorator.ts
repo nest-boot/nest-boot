@@ -1,10 +1,9 @@
+import { type EventArgs, type PropertyOptions } from "@mikro-orm/core";
 import {
   BeforeCreate,
   BeforeUpdate,
-  EventArgs,
   Property,
-  PropertyOptions,
-} from "@mikro-orm/core";
+} from "@mikro-orm/decorators/legacy";
 import { HashService } from "@nest-boot/hash";
 
 const HASH_PROPERTIES_KEY = Symbol("hashProperties");
@@ -35,7 +34,10 @@ export function HashedProperty<T extends object>(
       );
     }
 
-    Property({ hidden: true, lazy: true, ...options })(target, propertyKey);
+    Property({ hidden: true, lazy: true, ...options })(
+      target as T,
+      propertyKey,
+    );
 
     // Collect all properties that need to be hashed (create a copy to avoid sharing array during inheritance)
     const existingProperties: string[] = [

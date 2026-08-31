@@ -31,7 +31,7 @@ The module auto-configures Apollo Server with sensible defaults:
 - Code-first auto-generated schema (`schema.gql`)
 - Sorted schema output
 - Global `GraphQLExceptionFilter` for error handling
-- Apollo's local landing page unless `playground` is explicitly `false`
+- GraphiQL unless `graphiql` is explicitly `false`
 
 ### Async Registration
 
@@ -42,7 +42,7 @@ import { ConfigService } from "@nestjs/config";
 const GraphQLDynamicModule = GraphQLModule.forRootAsync({
   inject: [ConfigService],
   useFactory: (configService: ConfigService) => ({
-    playground: configService.get("NODE_ENV") !== "production",
+    graphiql: configService.get("NODE_ENV") !== "production",
   }),
 });
 ```
@@ -244,11 +244,11 @@ import { User } from "./user.entity";
 import {
   UserConnection,
   UserConnectionArgs,
-} from "./user.connection-definition";
+} from "./user.connection-definition.js";
 import {
   PostConnection,
   PostConnectionArgs,
-} from "./post.connection-definition";
+} from "./post.connection-definition.js";
 
 @Resolver(() => User)
 export class UserResolver {

@@ -1,23 +1,48 @@
 {
   "name": "@nest-boot/tsconfig",
-  "version": "7.3.5",
+  "version": "8.0.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/nest-boot/nest-boot.git",
     "directory": "packages/tsconfig"
   },
   "license": "MIT",
+  "files": [
+    "app.json",
+    "base.json",
+    "library.json"
+  ],
   "scripts": {
-    "clean": "rm -rf node_modules"
+    "clean": "rm -rf .nx && rm -rf node_modules && rm -rf coverage && rm -rf dist",
+    "test": "vitest run",
+    "test:cov": "vitest run --coverage",
+    "test:watch": "vitest",
+    "test:debug": "vitest --inspect-brk --no-file-parallelism"
   },
   "publishConfig": {
     "access": "public"
   },
   "dependencies": {
-    "@types/jest": "^29.5.14",
-    "@types/node": "^24.12.4"
+    "@types/node": "^26.0.0",
+    "vitest": "^4.1.11"
   },
   "devDependencies": {
-    "jest": "^29.7.0"
+    "@types/node": "^26.0.0",
+    "@vitest/coverage-v8": "^4.1.11",
+    "typescript": "^6.0.3",
+    "vite-tsconfig-paths": "^5.1.4"
+  },
+  "peerDependencies": {
+    "typescript": "^6.0.0"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=26.0.0"
+  },
+  "exports": {
+    "./app.json": "./app.json",
+    "./base.json": "./base.json",
+    "./library.json": "./library.json",
+    "./package.json": "./package.json"
   }
 }

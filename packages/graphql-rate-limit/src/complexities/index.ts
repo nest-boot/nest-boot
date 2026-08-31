@@ -1,1 +1,1 @@
-export * from "./connection.complexity";
+export * from "./connection.complexity.js";

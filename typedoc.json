@@ -10,11 +10,17 @@
   "exclude": [
     "packages/eslint-config",
     "packages/eslint-plugin",
-    "packages/tsconfig"
+    "packages/tsconfig",
+    "packages/*/dist/**",
+    "packages/*/test/**",
+    "packages/**/*.spec.ts",
+    "packages/**/*.e2e-spec.ts"
   ],
 
   "packageOptions": {
+    "tsconfig": "tsconfig.build.json",
     "entryPoints": ["src/index.ts"],
+    "exclude": ["dist/**", "test/**", "**/*.spec.ts", "**/*.e2e-spec.ts"],
     "excludeInternal": true,
     "excludePrivate": true,
     "excludeExternals": true

@@ -1,14 +1,14 @@
 import { type DynamicModule, Module, type Provider } from "@nestjs/common";
 import { createTransport } from "nodemailer";
-import Mailer from "nodemailer/lib/mailer";
+import Mailer from "nodemailer/lib/mailer/index.js";
 
 import {
   ASYNC_OPTIONS_TYPE,
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
-} from "./mailer.module-definition";
-import { type MailerModuleOptions } from "./mailer-module-options.interface";
+} from "./mailer.module-definition.js";
+import { type MailerModuleOptions } from "./mailer-module-options.interface.js";
 
 const mailerProvider: Provider<Mailer> = {
   provide: Mailer,

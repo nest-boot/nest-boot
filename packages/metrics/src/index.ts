@@ -1,3 +1,3 @@
-export * from "./metrics.module";
-export * from "./metrics-module-options.interface";
+export * from "./metrics.module.js";
+export * from "./metrics-module-options.interface.js";
 export { Registry } from "prom-client";

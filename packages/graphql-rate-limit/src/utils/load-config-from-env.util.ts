@@ -1,4 +1,4 @@
-import { RedisOptions } from "ioredis";
+import { type RedisOptions } from "ioredis";
 
 function normalizeHostname(hostname: string): string {
   if (hostname.startsWith("[") && hostname.endsWith("]")) {

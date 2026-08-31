@@ -1,6 +1,6 @@
 import Redis from "ioredis";
 
-import { RedisGraphQLRateLimitDriver } from "../../src/drivers/redis-graphql-rate-limit.driver";
+import { RedisGraphQLRateLimitDriver } from "../../src/drivers/redis-graphql-rate-limit.driver.js";
 
 const redisUrl = process.env.REDIS_URL;
 const describeWithRedis = redisUrl ? describe : describe.skip;

@@ -1,6 +1,6 @@
 import { ConfigurableModuleBuilder } from "@nestjs/common";
 
-import { GraphQLModuleOptions } from "./graphql-module-options.interface";
+import { GraphQLModuleOptions } from "./graphql-module-options.interface.js";
 
 export const MODULE_OPTIONS_TOKEN = Symbol("GraphQLModuleOptions");
 

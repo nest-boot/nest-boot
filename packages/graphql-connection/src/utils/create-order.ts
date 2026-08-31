@@ -2,14 +2,14 @@ import { Field, InputType, registerEnumType } from "@nest-boot/graphql";
 import { type Type } from "@nestjs/common";
 import { humanize, pluralize, underscore } from "inflection";
 
-import { OrderDirection } from "../enums";
-import {
+import { OrderDirection } from "../enums/index.js";
+import type {
   ConnectionFieldOptions,
   OrderFieldKey,
   OrderFieldType,
   OrderInterface,
   SortableFieldOptions,
-} from "../interfaces";
+} from "../interfaces/index.js";
 
 /**
  * The result of creating order types.

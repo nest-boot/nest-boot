@@ -1,6 +1,7 @@
 packages:
   - website
   - apps/**
+  - examples/**
   - packages/**
 
 overrides:
@@ -8,6 +9,7 @@ overrides:
   zod: 4.3.6
 
 onlyBuiltDependencies:
+  - '@swc/core'
   - better-sqlite3
 
 packageExtensions:

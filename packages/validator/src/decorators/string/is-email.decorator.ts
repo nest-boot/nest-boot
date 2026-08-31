@@ -1,8 +1,13 @@
 import { ValidateBy, type ValidationOptions } from "class-validator";
-import { IsEmailOptions } from "validator";
-import isEmailValidator from "validator/lib/isEmail";
+import { type IsEmailOptions } from "validator";
+import isEmailModule from "validator/lib/isEmail.js";
 
-import { buildI18nMessage } from "../../utils";
+import { buildI18nMessage } from "../../utils/index.js";
+
+const isEmailValidator = isEmailModule as unknown as (
+  str: string,
+  options?: IsEmailOptions,
+) => boolean;
 
 /** Validation name constant for the IsEmail validator. */
 export const IS_EMAIL = "isEmail";

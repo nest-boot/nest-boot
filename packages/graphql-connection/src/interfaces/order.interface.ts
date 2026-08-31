@@ -1,5 +1,5 @@
-import { type OrderDirection } from "../enums";
-import { OrderFieldKey } from "./order-field.type";
+import { type OrderDirection } from "../enums/index.js";
+import { OrderFieldKey } from "./order-field.type.js";
 
 /**
  * Specifies the ordering for a connection query.

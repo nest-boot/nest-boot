@@ -1,4 +1,4 @@
-import { createEmailAndPasswordConfig } from "./create-email-and-password-config";
+import { createEmailAndPasswordConfig } from "./create-email-and-password-config.js";
 
 describe("createEmailAndPasswordConfig", () => {
   beforeEach(() => {

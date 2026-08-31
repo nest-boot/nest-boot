@@ -1,6 +1,6 @@
 import { ValidateBy, type ValidationOptions } from "class-validator";
 
-import { buildI18nMessage } from "../../utils";
+import { buildI18nMessage } from "../../utils/index.js";
 
 /** Validation name constant for the IsDate validator. */
 export const IS_DATE = "isDate";

@@ -1,13 +1,10 @@
+import { BaseEntity, Cascade, type Opt, t } from "@mikro-orm/core";
 import {
-  BaseEntity,
-  Cascade,
   Entity,
   ManyToOne,
-  Opt,
   PrimaryKey,
   Property,
-  t,
-} from "@mikro-orm/core";
+} from "@mikro-orm/decorators/legacy";
 import { randomUUID } from "crypto";
 
 /**
@@ -15,7 +12,7 @@ import { randomUUID } from "crypto";
  *
  * @remarks
  * Maps to the better-auth `account` model. Each account links a provider
- * (e.g. Google, GitHub, credentials) to a {@link BaseUser}.
+ * (e.g. Google, GitHub, credentials) to a `BaseUser`.
  */
 @Entity({ abstract: true })
 export abstract class BaseAccount extends BaseEntity {
@@ -31,8 +28,9 @@ export abstract class BaseAccount extends BaseEntity {
   @Property({ type: t.text })
   providerId!: string;
 
-  /** Foreign key referencing the owning {@link BaseUser}. */
-  @ManyToOne(() => "User", {
+  /** Foreign key referencing the owning `BaseUser`. */
+  @ManyToOne({
+    entity: () => "User" as any,
     fieldName: "user_id",
     mapToPk: true,
     cascade: [Cascade.REMOVE],

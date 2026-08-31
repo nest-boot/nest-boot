@@ -1,5 +1,19 @@
-import { FileUploadModule } from "./file-upload.module";
-import { MODULE_OPTIONS_TOKEN } from "./file-upload.module-definition";
+vi.mock("@nest-boot/graphql", () => {
+  const decorator = () => () => undefined;
+
+  return {
+    Args: decorator,
+    Field: decorator,
+    InputType: decorator,
+    Int: Number,
+    Mutation: decorator,
+    ObjectType: decorator,
+    Resolver: decorator,
+  };
+});
+
+import { FileUploadModule } from "./file-upload.module.js";
+import { MODULE_OPTIONS_TOKEN } from "./file-upload.module-definition.js";
 
 describe("FileUploadModule", () => {
   const options = {

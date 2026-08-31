@@ -1,18 +1,17 @@
 import "reflect-metadata";
 
-import {
-  Entity,
-  EventArgs,
-  MikroORM,
-  PrimaryKey,
-  t,
-  wrap,
-} from "@mikro-orm/better-sqlite";
+import { type EventArgs, t, wrap } from "@mikro-orm/core";
+import { Entity, PrimaryKey } from "@mikro-orm/decorators/legacy";
+import { MikroORM } from "@mikro-orm/pglite";
 import { CryptService } from "@nest-boot/crypt";
 
-import { EncryptedProperty } from ".";
+import { EncryptedProperty } from "./index.js";
 
 const TEST_SECRET = "myTestSecretThatIsAtLeast32Chars!";
+
+function nextDbName() {
+  return `memory://${String(process.pid)}-${String(Date.now())}-${String(Math.random())}`;
+}
 
 @Entity()
 class User {
@@ -72,9 +71,9 @@ describe("EncryptedProperty", () => {
         ChildEntity,
         UserWithNullableEncryptedField,
       ],
-      dbName: ":memory:",
+      dbName: nextDbName(),
     });
-    await orm.schema.createSchema();
+    await orm.schema.create();
   });
 
   afterAll(async () => {
@@ -82,7 +81,7 @@ describe("EncryptedProperty", () => {
   });
 
   beforeEach(async () => {
-    await orm.schema.clearDatabase();
+    await orm.schema.clear();
   });
 
   describe("decorator application", () => {
@@ -110,9 +109,9 @@ describe("EncryptedProperty", () => {
 
       const tempOrm = await MikroORM.init({
         entities: [DuplicateDecoratorEntity],
-        dbName: ":memory:",
+        dbName: nextDbName(),
       });
-      await tempOrm.schema.createSchema();
+      await tempOrm.schema.create();
 
       const em = tempOrm.em.fork();
       const entity = em.create(DuplicateDecoratorEntity, {
@@ -162,7 +161,7 @@ describe("EncryptedProperty", () => {
       // Verify database has encrypted value (JWE format)
       const result = await em
         .getConnection()
-        .execute(`SELECT ssn FROM user WHERE id = ?`, [user.id]);
+        .execute(`SELECT ssn FROM "user" WHERE id = ?`, [user.id]);
       const dbValue = result[0].ssn;
       expect(dbValue.split(".")).toHaveLength(5); // JWE format
       expect(await CryptService.decrypt(dbValue)).toBe("123-45-6789");
@@ -230,7 +229,7 @@ describe("EncryptedProperty", () => {
       // Verify database has new encrypted value
       const result = await em
         .getConnection()
-        .execute(`SELECT ssn FROM user WHERE id = ?`, [user.id]);
+        .execute(`SELECT ssn FROM "user" WHERE id = ?`, [user.id]);
       expect(await CryptService.decrypt(result[0].ssn)).toBe("222-22-2222");
     });
 
@@ -244,7 +243,7 @@ describe("EncryptedProperty", () => {
       // Get the encrypted value from database
       const result1 = await em
         .getConnection()
-        .execute(`SELECT ssn FROM user WHERE id = ?`, [user.id]);
+        .execute(`SELECT ssn FROM "user" WHERE id = ?`, [user.id]);
       const encryptedValue1 = result1[0].ssn;
 
       // Flush again without any changes
@@ -253,7 +252,7 @@ describe("EncryptedProperty", () => {
       // Value in database should remain the same (no re-encryption)
       const result2 = await em
         .getConnection()
-        .execute(`SELECT ssn FROM user WHERE id = ?`, [user.id]);
+        .execute(`SELECT ssn FROM "user" WHERE id = ?`, [user.id]);
       expect(result2[0].ssn).toBe(encryptedValue1);
     });
   });

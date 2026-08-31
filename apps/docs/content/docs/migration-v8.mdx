@@ -1,0 +1,56 @@
+---
+title: "Migrate to version 8"
+description: "Upgrade Nest Boot applications to NestJS 12 and native ESM."
+---
+
+Version 8 is the NestJS 12 release line for all `@nest-boot/*` packages. It is
+published as native ESM and requires Node.js 26 or newer.
+
+## Upgrade dependencies
+
+Upgrade Nest Boot and NestJS packages together:
+
+```bash
+pnpm up "@nest-boot/*@^8" "@nestjs/common@^12" "@nestjs/core@^12"
+```
+
+GraphQL applications should also use `@nestjs/graphql@^14` and
+`@nestjs/apollo@^14`; BullMQ applications should use `@nestjs/bullmq@^12`.
+Packages integrating MikroORM require MikroORM 7.
+
+Follow the upstream [NestJS migration guide](https://docs.nestjs.com/migration-guide)
+for application-level NestJS breaking changes.
+
+## Enable ESM
+
+Add `"type": "module"` to the application `package.json`. Compile with
+`module` and `moduleResolution` set to `NodeNext`, and target ES2023 or newer:
+
+```json
+{
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2023"
+  }
+}
+```
+
+Use explicit `.js` extensions for relative imports in TypeScript source. Replace
+CommonJS `require()` and `module.exports` usage with ESM imports and exports.
+Version 8 package exports intentionally provide an `import` entry and do not
+provide a CommonJS `require` entry.
+
+## Update related integrations
+
+- Replace Apollo Playground configuration with `graphiql`.
+- When using MikroORM, upgrade to version 7 and import SQL types and drivers
+  from the supported package entry points such as `@mikro-orm/sql` and
+  `@mikro-orm/sqlite`.
+- Rebuild generated files and migrations after switching TypeScript module
+  resolution so generated imports include valid ESM extensions.
+
+## Repository tests
+
+Nest Boot version 8 uses Vitest with SWC instead of Jest. Contributors can run
+unit and end-to-end suites with `pnpm test` and `pnpm test:e2e`.

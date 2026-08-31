@@ -1,11 +1,11 @@
 import { AST_NODE_TYPES, TSESTree } from "@typescript-eslint/utils";
 import type { RuleFixer } from "@typescript-eslint/utils/ts-eslint";
 
-import { createRule } from "../../utils/createRule";
+import { createRule } from "../../utils/createRule.js";
 import {
   getPropertyDecorator,
   hasClassDecorator,
-} from "../../utils/decorators";
+} from "../../utils/decorators.js";
 
 // Custom Fix object type for deferred fix application
 interface CustomFix {

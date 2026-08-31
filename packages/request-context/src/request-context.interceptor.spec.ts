@@ -2,8 +2,8 @@ import type { CallHandler, ExecutionContext } from "@nestjs/common";
 import type { Request } from "express";
 import { lastValueFrom, Observable, of, take } from "rxjs";
 
-import { RequestContext } from "./request-context";
-import { RequestContextInterceptor } from "./request-context.interceptor";
+import { RequestContextInterceptor } from "./request-context.interceptor.js";
+import { RequestContext } from "./request-context.js";
 
 describe("RequestContextInterceptor", () => {
   const interceptor = new RequestContextInterceptor();
@@ -303,7 +303,7 @@ describe("RequestContextInterceptor", () => {
       },
     );
 
-    const handle = jest.fn(() => of("value"));
+    const handle = vi.fn(() => of("value"));
     const handler: CallHandler<string> = { handle };
     const subscription = interceptor
       .intercept(createExecutionContext(id), handler)

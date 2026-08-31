@@ -1,15 +1,15 @@
-import Redis from "ioredis";
+import { Redis } from "ioredis";
 
 import {
   GraphQLRateLimitDriver,
   MemoryGraphQLRateLimitDriver,
   RedisGraphQLRateLimitDriver,
-} from "../drivers";
-import { GraphQLRateLimitOptions } from "../interfaces";
+} from "../drivers/index.js";
+import type { GraphQLRateLimitOptions } from "../interfaces/index.js";
 import {
   hasRedisConfigFromEnv,
   loadConfigFromEnv,
-} from "./load-config-from-env.util";
+} from "./load-config-from-env.util.js";
 
 /**
  * Creates the explicitly configured driver or selects a built-in default.

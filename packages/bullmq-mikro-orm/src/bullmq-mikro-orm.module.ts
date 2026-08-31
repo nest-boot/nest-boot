@@ -1,10 +1,10 @@
 import { ConfigurableModuleAsyncOptions, Global, Module } from "@nestjs/common";
 import { DiscoveryModule } from "@nestjs/core";
 
-import { ConfigurableModuleClass } from "./bullmq-mikro-orm.module-definition";
-import { BullMQMikroORMService } from "./bullmq-mikro-orm.service";
-import { BullMQMikroORMModuleOptions } from "./bullmq-mikro-orm-module-options.interface";
-import { JobEntity } from "./entities/job.entity";
+import { ConfigurableModuleClass } from "./bullmq-mikro-orm.module-definition.js";
+import { BullMQMikroORMService } from "./bullmq-mikro-orm.service.js";
+import { BullMQMikroORMModuleOptions } from "./bullmq-mikro-orm-module-options.interface.js";
+import { JobEntity } from "./entities/job.entity.js";
 
 /**
  * Module that integrates BullMQ job events with MikroORM persistence.

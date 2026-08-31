@@ -1,6 +1,6 @@
-import type { MigrationDiff } from ".";
-import * as rowLevelSecurity from ".";
-import * as rowLevelSecurityUtils from "./utils";
+import type { MigrationDiff } from "./index.js";
+import * as rowLevelSecurity from "./index.js";
+import * as rowLevelSecurityUtils from "./utils/index.js";
 
 describe("row level security package exports", () => {
   it("exports the public package API", () => {

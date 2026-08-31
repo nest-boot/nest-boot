@@ -1,25 +1,23 @@
-import { RequestContextModule } from "@nest-boot/request-context";
+import { MiddlewareManager, MiddlewareModule } from "@nest-boot/middleware";
 import {
-  type DynamicModule,
-  type MiddlewareConsumer,
-  Module,
-  type NestModule,
-  type Provider,
-} from "@nestjs/common";
+  RequestContextMiddleware,
+  RequestContextModule,
+} from "@nest-boot/request-context";
+import { type DynamicModule, Module, type Provider } from "@nestjs/common";
 import i18next, { type i18n } from "i18next";
 import Backend from "i18next-fs-backend";
 import { LanguageDetector } from "i18next-http-middleware";
 import path from "path";
 
-import { I18N } from "./i18n.constants";
-import { I18nMiddleware } from "./i18n.middleware";
+import { I18N } from "./i18n.constants.js";
+import { I18nMiddleware } from "./i18n.middleware.js";
 import {
   type ASYNC_OPTIONS_TYPE,
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
   type OPTIONS_TYPE,
-} from "./i18n.module-definition";
-import { type I18nModuleOptions } from "./interfaces/i18n-module-options.interface";
+} from "./i18n.module-definition.js";
+import { type I18nModuleOptions } from "./interfaces/i18n-module-options.interface.js";
 
 i18next.use(Backend).use(LanguageDetector);
 
@@ -32,9 +30,10 @@ i18next.use(Backend).use(LanguageDetector);
  * the request context.
  */
 @Module({
-  imports: [RequestContextModule],
+  imports: [RequestContextModule, MiddlewareModule],
+  providers: [I18nMiddleware],
 })
-export class I18nModule extends ConfigurableModuleClass implements NestModule {
+export class I18nModule extends ConfigurableModuleClass {
   /**
    * Registers the I18nModule with synchronous options.
    * @param options - i18next configuration options
@@ -88,8 +87,16 @@ export class I18nModule extends ConfigurableModuleClass implements NestModule {
     };
   }
 
-  /** Configures i18n middleware for all routes. */
-  configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(I18nMiddleware).forRoutes("*");
+  /** Registers i18n middleware after request context initialization. */
+  constructor(
+    middlewareManager: MiddlewareManager,
+    i18nMiddleware: I18nMiddleware,
+  ) {
+    super();
+
+    middlewareManager
+      .apply(i18nMiddleware)
+      .dependencies(RequestContextMiddleware)
+      .forRoutes("*");
   }
 }

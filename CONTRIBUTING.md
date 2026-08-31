@@ -21,7 +21,7 @@ Use the Bug form for a reproducible contract violation. Use the Improvement form
 
 ## Development setup
 
-The authoritative versions are declared in the root `package.json`. At the time of writing, the repository requires Node.js 24.4+ and pnpm 10.30.3.
+The authoritative versions are declared in the root `package.json`. At the time of writing, the repository requires Node.js 26+ and pnpm 10.30.3.
 
 ```bash
 corepack enable
@@ -44,16 +44,16 @@ Work from an up-to-date `main` on a dedicated branch. Preserve unrelated changes
 - Check public exports, types, official docs, peer dependencies, and cross-package consumers when behavior changes.
 - Do not manually change package versions, tags, or release artifacts unless the current release workflow or a maintainer explicitly requires it.
 
-Run focused checks first. Use the Nx test target when the project exposes one; otherwise run root Jest against the package path:
+Run focused checks first. Use the package's Vitest script or its Nx test target:
 
 ```bash
-pnpm nx run @nest-boot/<package>:test --skip-nx-cache -- --runInBand
-pnpm exec jest --runInBand packages/<package>
+pnpm --filter @nest-boot/<package> test
+pnpm nx run @nest-boot/<package>:test --skip-nx-cache
 pnpm nx run @nest-boot/<package>:build --skip-nx-cache
 pnpm nx run @nest-boot/<package>:lint --skip-nx-cache
 ```
 
-Do not run both test commands unless useful. Not every package defines every target or contains tests; run only targets reported by Nx, then add checks for affected dependants and documentation.
+Do not run both test commands unless useful. Not every package defines every target or contains tests; run only available targets, then add checks for affected dependants and documentation.
 
 ## Match pull request CI
 

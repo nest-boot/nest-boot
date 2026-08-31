@@ -1,15 +1,14 @@
+import { type Opt, t } from "@mikro-orm/core";
 import {
   Entity,
   Enum,
   Index,
-  Opt,
   PrimaryKey,
   Property,
-  t,
-} from "@mikro-orm/core";
-import { JobProgress } from "bullmq";
+} from "@mikro-orm/decorators/legacy";
+import { type JobProgress } from "bullmq";
 
-import { JobStatus } from "../enums/job-status.enum";
+import { JobStatus } from "../enums/job-status.enum.js";
 
 /**
  * Abstract base entity for persisting BullMQ job data in the database.

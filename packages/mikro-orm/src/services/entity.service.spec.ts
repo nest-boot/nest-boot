@@ -1,7 +1,7 @@
 import { EntityManager, QueryOrder } from "@mikro-orm/core";
 import { NotFoundException } from "@nestjs/common";
 
-import { EntityService } from "./entity.service";
+import { EntityService } from "./entity.service.js";
 
 class TestEntity {
   id!: number;
@@ -17,22 +17,22 @@ function createEntity(id: number, data: Partial<TestEntity> = {}) {
 }
 
 function createEntityManager() {
-  const getContext = jest.fn();
-  const getById = jest.fn();
+  const getContext = vi.fn();
+  const getById = vi.fn();
   const em = {
-    assign: jest.fn(),
-    count: jest.fn(),
-    create: jest.fn((_entityClass, data) => createEntity(data.id, data)),
-    find: jest.fn(),
-    findOne: jest.fn(),
-    flush: jest.fn(),
+    assign: vi.fn(),
+    count: vi.fn(),
+    create: vi.fn((_entityClass, data) => createEntity(data.id, data)),
+    find: vi.fn(),
+    findOne: vi.fn(),
+    flush: vi.fn(),
     getContext,
-    getUnitOfWork: jest.fn(() => ({
+    getUnitOfWork: vi.fn(() => ({
       getById,
     })),
-    isInTransaction: jest.fn(() => false),
-    remove: jest.fn(),
-    transactional: jest.fn(async (handler) => await handler()),
+    isInTransaction: vi.fn(() => false),
+    remove: vi.fn(),
+    transactional: vi.fn(async (handler) => await handler()),
   };
   getContext.mockImplementation(() => em);
 
@@ -116,7 +116,7 @@ describe("EntityService", () => {
 
     await expect(service.findOne(1)).resolves.toBe(entity);
 
-    expect(getById).toHaveBeenCalledWith("TestEntity", 1);
+    expect(getById).toHaveBeenCalledWith(TestEntity, 1);
     expect(mocks.find).not.toHaveBeenCalled();
   });
 
@@ -314,7 +314,7 @@ describe("EntityService", () => {
   it("should preserve overridden findOne behavior when updating", async () => {
     const { em, mocks } = createEntityManager();
     const service = new EntityService(TestEntity, em);
-    const findOne = jest.spyOn(service, "findOne").mockResolvedValue(null);
+    const findOne = vi.spyOn(service, "findOne").mockResolvedValue(null);
 
     await expect(
       service.update(1, {
@@ -390,7 +390,7 @@ describe("EntityService", () => {
   it("should preserve overridden findOne behavior when removing", async () => {
     const { em, mocks } = createEntityManager();
     const service = new EntityService(TestEntity, em);
-    const findOne = jest.spyOn(service, "findOne").mockResolvedValue(null);
+    const findOne = vi.spyOn(service, "findOne").mockResolvedValue(null);
 
     await expect(service.remove(1, false)).rejects.toBeInstanceOf(
       NotFoundException,
@@ -415,7 +415,7 @@ describe("EntityService", () => {
     mocks.find
       .mockResolvedValueOnce(firstChunk)
       .mockResolvedValueOnce(secondChunk);
-    const callback = jest.fn();
+    const callback = vi.fn();
     const service = new EntityService(TestEntity, em);
 
     await expect(
@@ -459,7 +459,7 @@ describe("EntityService", () => {
   it("should stop chunk iteration when no entities are found", async () => {
     const { em, mocks } = createEntityManager();
     mocks.find.mockResolvedValue([]);
-    const callback = jest.fn();
+    const callback = vi.fn();
     const service = new EntityService(TestEntity, em);
 
     await expect(service.chunkById({}, { limit: 2 }, callback)).resolves.toBe(

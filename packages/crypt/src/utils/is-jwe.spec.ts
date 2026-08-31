@@ -1,5 +1,5 @@
-import { CryptService } from "../crypt.service";
-import { isJwe } from "./is-jwe";
+import { CryptService } from "../crypt.service.js";
+import { isJwe } from "./is-jwe.js";
 
 const TEST_SECRET = "myTestSecretThatIsAtLeast32Chars!";
 

@@ -1,5 +1,5 @@
-import { AuthModuleOptions } from "../auth-module-options.interface";
-import { isEnvTrue } from "./is-env-true";
+import { AuthModuleOptions } from "../auth-module-options.interface.js";
+import { isEnvTrue } from "./is-env-true.js";
 
 type EmailAndPasswordConfig = NonNullable<
   AuthModuleOptions["emailAndPassword"]

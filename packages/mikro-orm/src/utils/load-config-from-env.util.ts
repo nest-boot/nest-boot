@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 
 import { Configuration, IDatabaseDriver, type Options } from "@mikro-orm/core";
 
-import { loadDefaultConfig } from "./load-default-config.util";
+import { loadDefaultConfig } from "./load-default-config.util.js";
 
 /** Constructor type for a MikroORM database driver. */
 export type DatabaseDriverConstructor = new (
@@ -13,7 +13,7 @@ export type DatabaseDriverConstructor = new (
 async function getDriver(protocol: string): Promise<DatabaseDriverConstructor> {
   switch (protocol) {
     case "file:":
-      return (await import("@mikro-orm/better-sqlite")).BetterSqliteDriver;
+      return (await import("@mikro-orm/sqlite")).SqliteDriver;
     case "mysql:":
       return (await import("@mikro-orm/mysql")).MySqlDriver;
     case "postgres:":

@@ -1,14 +1,14 @@
 import { VectorType as BaseVectorType } from "pgvector/mikro-orm";
 
-import { VectorType } from "./vector.type";
+import { VectorType } from "./vector.type.js";
 
 describe("VectorType", () => {
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("should pass configured dimensions to the base vector type", () => {
-    const getColumnType = jest
+    const getColumnType = vi
       .spyOn(BaseVectorType.prototype, "getColumnType")
       .mockReturnValue("vector(1536)");
     const platform = {} as never;
@@ -32,7 +32,7 @@ describe("VectorType", () => {
   });
 
   it("should allow property dimensions to be used when no dimensions are configured", () => {
-    const getColumnType = jest
+    const getColumnType = vi
       .spyOn(BaseVectorType.prototype, "getColumnType")
       .mockReturnValue("vector(768)");
 

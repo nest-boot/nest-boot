@@ -1,7 +1,7 @@
-import { EntityClass, EntityData } from "@mikro-orm/core";
+import { type EntityClass, type EntityData } from "@mikro-orm/core";
 import { Job } from "bullmq";
 
-import { JobEntity } from "./entities/job.entity";
+import { JobEntity } from "./entities/job.entity.js";
 
 /** Configuration options for the BullMQ-MikroORM integration module. */
 export interface BullMQMikroORMModuleOptions<T extends JobEntity = JobEntity> {

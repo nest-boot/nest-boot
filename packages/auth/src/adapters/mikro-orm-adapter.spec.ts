@@ -7,8 +7,10 @@
  */
 
 // Mock better-auth/adapters to avoid ESM compatibility issues.
-const mockCreateAdapterFactory = jest.fn((config) => config);
-jest.mock("better-auth/adapters", () => ({
+const { mockCreateAdapterFactory } = vi.hoisted(() => ({
+  mockCreateAdapterFactory: vi.fn((config) => config),
+}));
+vi.mock("better-auth/adapters", () => ({
   createAdapterFactory: mockCreateAdapterFactory,
 }));
 
@@ -20,8 +22,11 @@ import {
   BaseSession,
   BaseUser,
   BaseVerification,
-} from "../entities";
-import { convertWhereToMikroOrm, mikroOrmAdapter } from "./mikro-orm-adapter";
+} from "../entities/index.js";
+import {
+  convertWhereToMikroOrm,
+  mikroOrmAdapter,
+} from "./mikro-orm-adapter.js";
 
 /** Helper to construct a Where condition */
 function makeWhere(
@@ -253,17 +258,17 @@ const entities = {
 };
 
 function createOrm() {
-  const flush = jest.fn();
+  const flush = vi.fn();
   const em = {
-    assign: jest.fn(),
-    count: jest.fn(),
-    create: jest.fn((_entity, data) => ({ ...data })),
-    findAll: jest.fn(),
-    findOne: jest.fn(),
+    assign: vi.fn(),
+    count: vi.fn(),
+    create: vi.fn((_entity, data) => ({ ...data })),
+    findAll: vi.fn(),
+    findOne: vi.fn(),
     flush,
-    nativeDelete: jest.fn(),
-    nativeUpdate: jest.fn(),
-    persist: jest.fn(() => ({
+    nativeDelete: vi.fn(),
+    nativeUpdate: vi.fn(),
+    persist: vi.fn(() => ({
       flush,
     })),
   };

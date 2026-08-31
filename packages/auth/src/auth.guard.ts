@@ -6,8 +6,8 @@ import {
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 
-import { IS_PUBLIC_KEY } from "./auth.constants";
-import { BaseSession } from "./entities/session.entity";
+import { IS_PUBLIC_KEY } from "./auth.constants.js";
+import { BaseSession } from "./entities/session.entity.js";
 
 /**
  * Guard that enforces authentication on routes.

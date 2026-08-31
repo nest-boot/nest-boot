@@ -1,6 +1,6 @@
 import { Global, MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
 
-import { MiddlewareManager } from "./middleware.manager";
+import { MiddlewareManager } from "./middleware.manager.js";
 
 /**
  * Global module that provides the {@link MiddlewareManager} for registering

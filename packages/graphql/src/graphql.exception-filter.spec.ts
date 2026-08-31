@@ -10,11 +10,11 @@ import { BaseExceptionFilter } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
 import { GraphQLError } from "graphql";
 
-import { GraphQLExceptionFilter } from "./graphql.exception-filter";
+import { GraphQLExceptionFilter } from "./graphql.exception-filter.js";
 
 function createHost(type: "graphql" | "http") {
   return {
-    getType: jest.fn(() => type),
+    getType: vi.fn(() => type),
   } as unknown as ArgumentsHost;
 }
 
@@ -30,7 +30,7 @@ describe("GraphQLExceptionFilter", () => {
 
   afterEach(() => {
     process.env = ORIGINAL_ENV;
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("should return GraphQL errors unchanged", async () => {
@@ -107,9 +107,9 @@ describe("GraphQLExceptionFilter", () => {
 
   it("should log and delegate HTTP contexts to the base exception filter", async () => {
     const { errorLog, filter } = await createFilter();
-    const baseCatch = jest
+    const baseCatch = vi
       .spyOn(BaseExceptionFilter.prototype, "catch")
-      .mockImplementation();
+      .mockImplementation(() => undefined);
     const error = new Error("http boom");
     const host = createHost("http");
 
@@ -122,7 +122,7 @@ describe("GraphQLExceptionFilter", () => {
 });
 
 async function createFilter() {
-  const errorLog = jest.fn();
+  const errorLog = vi.fn();
   const moduleRef = await Test.createTestingModule({
     providers: [
       GraphQLExceptionFilter,

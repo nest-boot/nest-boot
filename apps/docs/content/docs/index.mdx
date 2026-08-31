@@ -63,7 +63,7 @@ pnpm add @nest-boot/hash @nest-boot/crypt
 Generate a high-entropy secret and expose it as `APP_SECRET` (or use the module-specific `HASH_SECRET` and `CRYPT_SECRET` variables):
 
 ```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+node --input-type=module -e "import { randomBytes } from 'node:crypto'; console.log(randomBytes(32).toString('base64url'))"
 ```
 
 The modules read those environment variables when imported directly:

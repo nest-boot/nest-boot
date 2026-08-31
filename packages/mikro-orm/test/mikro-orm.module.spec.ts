@@ -1,12 +1,12 @@
 import { DataloaderType, EntityManager, MikroORM } from "@mikro-orm/core";
 import { PostgreSqlDriver } from "@mikro-orm/postgresql";
 
-jest.mock("@mikro-orm/nestjs", () => ({
+vi.mock("@mikro-orm/nestjs", () => ({
   MikroOrmModule: {
-    clearStorage: jest.fn(),
-    forFeature: jest.fn(),
-    forMiddleware: jest.fn(),
-    forRootAsync: jest.fn(() => ({
+    clearStorage: vi.fn(),
+    forFeature: vi.fn(),
+    forMiddleware: vi.fn(),
+    forRootAsync: vi.fn(() => ({
       module: class BaseRootModule {},
     })),
   },
@@ -14,21 +14,22 @@ jest.mock("@mikro-orm/nestjs", () => ({
 
 import { MikroOrmModule as BaseMikroOrmModule } from "@mikro-orm/nestjs";
 import { RequestContext } from "@nest-boot/request-context";
+import type { DynamicModule } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 
-import { MikroOrmModule } from "../src";
+import { MikroOrmModule } from "../src/index.js";
 import {
   BASE_MODULE_OPTIONS_TOKEN,
   MODULE_OPTIONS_TOKEN,
-} from "../src/mikro-orm.module-definition";
-import { TestEntity } from "./entities/test.entity";
+} from "../src/mikro-orm.module-definition.js";
+import { TestEntity } from "./entities/test.entity.js";
 
 type RootOptionsFactory = (
   options: Parameters<typeof MikroOrmModule.forRoot>[0],
 ) => Promise<Record<string, unknown>>;
 
 function getRootOptionsFactory(): RootOptionsFactory {
-  const baseModule = jest.mocked(BaseMikroOrmModule);
+  const baseModule = vi.mocked(BaseMikroOrmModule);
   const [rootOptions] = baseModule.forRootAsync.mock.calls[0] as unknown as [
     { useFactory: RootOptionsFactory },
   ];
@@ -36,9 +37,13 @@ function getRootOptionsFactory(): RootOptionsFactory {
   return rootOptions.useFactory;
 }
 
+function getOptionsModule(dynamicModule: DynamicModule): DynamicModule {
+  return dynamicModule.imports?.[0] as DynamicModule;
+}
+
 describe("MikroOrmModule", () => {
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("should register synchronous options", () => {
@@ -48,7 +53,7 @@ describe("MikroOrmModule", () => {
     const dynamicModule = MikroOrmModule.forRoot(options);
 
     expect(dynamicModule.module).toBe(MikroOrmModule);
-    expect(dynamicModule.providers).toEqual(
+    expect(getOptionsModule(dynamicModule).providers).toEqual(
       expect.arrayContaining([
         {
           provide: BASE_MODULE_OPTIONS_TOKEN,
@@ -67,7 +72,7 @@ describe("MikroOrmModule", () => {
     });
 
     expect(dynamicModule.module).toBe(MikroOrmModule);
-    expect(dynamicModule.providers).toEqual(
+    expect(getOptionsModule(dynamicModule).providers).toEqual(
       expect.arrayContaining([
         {
           inject: [],
@@ -108,6 +113,18 @@ describe("MikroOrmModule", () => {
     }
   });
 
+  it("should use explicit runtime entities for TypeScript discovery", async () => {
+    await expect(
+      getRootOptionsFactory()({
+        dbName: ":memory:",
+        entities: [TestEntity],
+      }),
+    ).resolves.toMatchObject({
+      entities: [TestEntity],
+      entitiesTs: [TestEntity],
+    });
+  });
+
   it("should merge ambient database config with non-connection options", async () => {
     const databaseUrl = process.env.DATABASE_URL;
     process.env.DATABASE_URL =
@@ -144,13 +161,13 @@ describe("MikroOrmModule", () => {
     const middlewareModule = {
       module: class MiddlewareModule {},
     };
-    jest
-      .spyOn(BaseMikroOrmModule, "forFeature")
-      .mockReturnValue(featureModule as never);
-    jest
-      .spyOn(BaseMikroOrmModule, "forMiddleware")
-      .mockReturnValue(middlewareModule as never);
-    const clearStorage = jest
+    vi.spyOn(BaseMikroOrmModule, "forFeature").mockReturnValue(
+      featureModule as never,
+    );
+    vi.spyOn(BaseMikroOrmModule, "forMiddleware").mockReturnValue(
+      middlewareModule as never,
+    );
+    const clearStorage = vi
       .spyOn(BaseMikroOrmModule, "clearStorage")
       .mockReturnValue();
 
@@ -162,13 +179,13 @@ describe("MikroOrmModule", () => {
 
   it("should register request context middleware that forks the entity manager", async () => {
     const forkedEm = {} as EntityManager;
-    const fork = jest.fn(() => forkedEm);
+    const fork = vi.fn(() => forkedEm);
     const orm = {
       em: {
         fork,
       },
     } as unknown as MikroORM;
-    const registerMiddleware = jest
+    const registerMiddleware = vi
       .spyOn(RequestContext, "registerMiddleware")
       .mockImplementation(() => undefined);
     const moduleRef = await Test.createTestingModule({
@@ -191,9 +208,9 @@ describe("MikroOrmModule", () => {
 
     const middleware = registerMiddleware.mock.calls[0][1];
     const ctx = {
-      set: jest.fn(),
+      set: vi.fn(),
     };
-    const next = jest.fn(async () => {
+    const next = vi.fn(async () => {
       await Promise.resolve();
       return "next-result";
     });

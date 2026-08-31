@@ -2,10 +2,10 @@ import type { Subject } from "@casl/ability";
 import type { CustomDecorator } from "@nestjs/common";
 import { SetMetadata } from "@nestjs/common";
 
-import type { PermissionAction } from "../enums/permission-action.enum";
-import type { CanOptions } from "../interfaces/can-options.interface";
-import { CAN_METADATA } from "../permission.constants";
-import type { CanSubject } from "../types/can-subject.type";
+import type { PermissionAction } from "../enums/permission-action.enum.js";
+import type { CanOptions } from "../interfaces/can-options.interface.js";
+import { CAN_METADATA } from "../permission.constants.js";
+import type { CanSubject } from "../types/can-subject.type.js";
 
 /**
  * Declares that the current route requires the given action on the given subject.

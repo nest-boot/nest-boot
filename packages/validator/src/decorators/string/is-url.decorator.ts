@@ -1,8 +1,13 @@
 import { ValidateBy, type ValidationOptions } from "class-validator";
-import { IsURLOptions } from "validator";
-import isUrlValidator from "validator/lib/isURL";
+import { type IsURLOptions } from "validator";
+import isUrlModule from "validator/lib/isURL.js";
 
-import { buildI18nMessage } from "../../utils";
+import { buildI18nMessage } from "../../utils/index.js";
+
+const isUrlValidator = isUrlModule as unknown as (
+  str: string,
+  options?: IsURLOptions,
+) => boolean;
 
 /** Validation name constant for the IsUrl validator. */
 export const IS_URL = "isUrl";

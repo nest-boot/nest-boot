@@ -1,6 +1,6 @@
 import { type GraphQLResolveInfo, Kind, parse } from "graphql";
 
-import { isConnectionTotalCountSelected } from "./is-connection-total-count-selected";
+import { isConnectionTotalCountSelected } from "./is-connection-total-count-selected.js";
 
 function createResolveInfo(
   source: string,

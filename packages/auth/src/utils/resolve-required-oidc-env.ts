@@ -1,4 +1,4 @@
-import { RequiredOidcEnvName } from "./oidc.constants";
+import { RequiredOidcEnvName } from "./oidc.constants.js";
 
 export function resolveRequiredOidcEnv(name: RequiredOidcEnvName): string {
   const value = process.env[name];

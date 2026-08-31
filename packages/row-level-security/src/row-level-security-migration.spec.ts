@@ -1,5 +1,5 @@
-import { PolicyCommand } from "./enums/policy-command.enum";
-import { RowLevelSecurityMigration } from "./row-level-security-migration";
+import { PolicyCommand } from "./enums/policy-command.enum.js";
+import { RowLevelSecurityMigration } from "./row-level-security-migration.js";
 
 class TestRowLevelSecurityMigration extends RowLevelSecurityMigration {
   override up() {

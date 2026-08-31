@@ -1,4 +1,4 @@
-import { createSocialProviderConfig } from "./create-social-provider-config";
+import { createSocialProviderConfig } from "./create-social-provider-config.js";
 
 describe("createSocialProviderConfig", () => {
   beforeEach(() => {

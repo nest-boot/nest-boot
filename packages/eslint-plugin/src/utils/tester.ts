@@ -1,7 +1,7 @@
-import { afterAll, describe, it } from "@jest/globals";
 import parser from "@typescript-eslint/parser";
 import { RuleTester } from "@typescript-eslint/rule-tester";
 import path from "path";
+import { afterAll, describe, it } from "vitest";
 
 RuleTester.afterAll = afterAll;
 RuleTester.it = it;

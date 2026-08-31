@@ -1,4 +1,7 @@
-import { TemporaryDirectoryModule, TemporaryDirectoryService } from ".";
+import {
+  TemporaryDirectoryModule,
+  TemporaryDirectoryService,
+} from "./index.js";
 
 describe("temporary-directory public API", () => {
   it("exports the static module and service", () => {

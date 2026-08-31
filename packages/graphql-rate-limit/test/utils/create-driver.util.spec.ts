@@ -1,19 +1,20 @@
-import Redis from "ioredis";
+import { Redis } from "ioredis";
 
 import {
   GraphQLRateLimitDriver,
   MemoryGraphQLRateLimitDriver,
   RedisGraphQLRateLimitDriver,
-} from "../../src/drivers";
-import { GraphQLRateLimitOptions } from "../../src/interfaces";
-import { createGraphQLRateLimitDriver } from "../../src/utils/create-driver.util";
+} from "../../src/drivers/index.js";
+import { GraphQLRateLimitOptions } from "../../src/interfaces/index.js";
+import { createGraphQLRateLimitDriver } from "../../src/utils/create-driver.util.js";
 
-jest.mock("ioredis", () => ({
-  __esModule: true,
-  default: jest.fn().mockImplementation(() => ({
-    defineCommand: jest.fn(),
-    quit: jest.fn(),
-  })),
+vi.mock("ioredis", () => ({
+  Redis: vi.fn().mockImplementation(function RedisMock() {
+    return {
+      defineCommand: vi.fn(),
+      quit: vi.fn(),
+    };
+  }),
 }));
 
 describe("createGraphQLRateLimitDriver", () => {
@@ -33,7 +34,7 @@ describe("createGraphQLRateLimitDriver", () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   afterAll(() => {
@@ -92,8 +93,8 @@ describe("createGraphQLRateLimitDriver", () => {
   it("lets an explicit custom driver override Redis environment config", () => {
     process.env.REDIS_URL = "redis://redis.local";
     const driver = {
-      update: jest.fn(),
-      close: jest.fn(),
+      update: vi.fn(),
+      close: vi.fn(),
     } as unknown as GraphQLRateLimitDriver;
 
     expect(createGraphQLRateLimitDriver({ ...options, driver })).toBe(driver);

@@ -1,18 +1,18 @@
 import { SetMetadata } from "@nestjs/common";
 
-import { PermissionAction } from "../enums/permission-action.enum";
-import { CAN_METADATA } from "../permission.constants";
-import { Can } from "./can.decorator";
+import { PermissionAction } from "../enums/permission-action.enum.js";
+import { CAN_METADATA } from "../permission.constants.js";
+import { Can } from "./can.decorator.js";
 
-jest.mock("@nestjs/common", () => ({
-  SetMetadata: jest.fn((key, value) => ({ key, value })),
+vi.mock("@nestjs/common", () => ({
+  SetMetadata: vi.fn((key, value) => ({ key, value })),
 }));
 
 class Subject {}
 
 describe("Can", () => {
   beforeEach(() => {
-    jest.mocked(SetMetadata).mockClear();
+    vi.mocked(SetMetadata).mockClear();
   });
 
   it("stores action and subject metadata from positional arguments", () => {
@@ -26,7 +26,7 @@ describe("Can", () => {
   });
 
   it("stores subject factory as positional subject argument", () => {
-    const subjectFactory = jest.fn();
+    const subjectFactory = vi.fn();
 
     expect(Can(PermissionAction.READ, subjectFactory)).toEqual({
       key: CAN_METADATA,

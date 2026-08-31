@@ -1,6 +1,6 @@
 import { ConfigurableModuleBuilder } from "@nestjs/common";
 
-import { MikroOrmModuleOptions } from "./interfaces/mikro-orm-module-options.interface";
+import { MikroOrmModuleOptions } from "./interfaces/mikro-orm-module-options.interface.js";
 
 export const MODULE_OPTIONS_TOKEN = Symbol("MikroOrmModuleOptions");
 
@@ -11,4 +11,7 @@ export const {
   ASYNC_OPTIONS_TYPE,
 } = new ConfigurableModuleBuilder<MikroOrmModuleOptions>()
   .setClassMethodName("forRoot")
+  .setExtras<{
+    driverHint?: MikroOrmModuleOptions["driver"];
+  }>({ driverHint: undefined })
   .build();

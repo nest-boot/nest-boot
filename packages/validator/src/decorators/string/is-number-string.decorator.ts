@@ -1,8 +1,13 @@
 import { ValidateBy, type ValidationOptions } from "class-validator";
-import { IsNumericOptions } from "validator";
-import isNumericValidator from "validator/lib/isNumeric";
+import { type IsNumericOptions } from "validator";
+import isNumericModule from "validator/lib/isNumeric.js";
 
-import { buildI18nMessage } from "../../utils";
+import { buildI18nMessage } from "../../utils/index.js";
+
+const isNumericValidator = isNumericModule as unknown as (
+  str: string,
+  options?: IsNumericOptions,
+) => boolean;
 
 /** Validation name constant for the IsNumberString validator. */
 export const IS_NUMBER_STRING = "isNumberString";

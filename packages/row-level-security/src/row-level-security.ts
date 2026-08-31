@@ -3,7 +3,7 @@ import { RequestContext } from "@nest-boot/request-context";
 import {
   RowLevelSecurityContextValue,
   SnakeCase,
-} from "./utils/row-level-security-context-builder.types";
+} from "./utils/row-level-security-context-builder.types.js";
 
 type RowLevelSecurityContextMap = Map<string, RowLevelSecurityContextValue>;
 

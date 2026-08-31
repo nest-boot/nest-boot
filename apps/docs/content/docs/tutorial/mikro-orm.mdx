@@ -13,7 +13,7 @@ pnpm add @nest-boot/mikro-orm @mikro-orm/core @mikro-orm/nestjs @mikro-orm/refle
 # Install the driver matching DATABASE_URL
 pnpm add @mikro-orm/postgresql
 # or: pnpm add @mikro-orm/mysql
-# or: pnpm add @mikro-orm/better-sqlite
+# or: pnpm add @mikro-orm/sqlite
 ```
 
 ## Module Registration
@@ -21,16 +21,24 @@ pnpm add @mikro-orm/postgresql
 ### Basic Registration
 
 ```typescript
+import { PostgreSqlDriver } from "@mikro-orm/postgresql";
 import { MikroOrmModule } from "@nest-boot/mikro-orm";
 
 @Global()
 @Module({
-  imports: [MikroOrmModule],
+  imports: [MikroOrmModule.forRoot({ driver: PostgreSqlDriver })],
 })
 export class CommonModule {}
 ```
 
-When no connection options are passed, the module auto-loads configuration with `loadConfigFromEnv()`. It reads `DATABASE_URL` and parses the URL into structured MikroORM options instead of passing the URL to a database client. PostgreSQL accepts its documented `postgresql:` and `postgres:` URI forms, MySQL accepts `mysql:`, and SQLite accepts `file:`. Other protocol names and driver-specific compatibility forms are rejected. Use an absolute file URL such as `file:///var/lib/app/app.db` for SQLite.
+The explicit driver lets MikroORM 7 register the driver-specific `EntityManager`
+for dependency injection. Other connection options are optional: the module
+auto-loads them with `loadConfigFromEnv()`. It reads `DATABASE_URL` and parses
+the URL into structured MikroORM options instead of passing the URL to a
+database client. PostgreSQL accepts its documented `postgresql:` and
+`postgres:` URI forms, MySQL accepts `mysql:`, and SQLite accepts `file:`.
+Other protocol names and driver-specific compatibility forms are rejected. Use
+an absolute file URL such as `file:///var/lib/app/app.db` for SQLite.
 
 PostgreSQL TLS file parameters use `sslrootcert`, `sslcert`, and `sslkey`; the supported `sslmode` values are `disable`, `require`, `verify-ca`, and `verify-full`. MySQL uses `ssl-ca`, `ssl-cert`, and `ssl-key`; the supported `ssl-mode` values are `DISABLED`, `REQUIRED`, `VERIFY_CA`, and `VERIFY_IDENTITY`. Modes that require retrying with a plaintext connection are rejected because a single structured driver configuration cannot preserve that fallback behavior.
 
@@ -42,10 +50,12 @@ The default config discovers runtime entities from `dist/**/*.entity.js`, TypeSc
 
 ```typescript
 import { loadConfigFromEnv, MikroOrmModule } from "@nest-boot/mikro-orm";
+import { PostgreSqlDriver } from "@mikro-orm/postgresql";
 
 @Module({
   imports: [
     MikroOrmModule.forRootAsync({
+      driverHint: PostgreSqlDriver,
       useFactory: async () => ({
         ...(await loadConfigFromEnv()),
         debug: true,
@@ -61,8 +71,14 @@ export class CommonModule {}
 For MikroORM CLI (migrations, schema generation), create a `mikro-orm.config.ts`:
 
 ```typescript
-import "dotenv/config";
+import { existsSync } from "node:fs";
+import { loadEnvFile } from "node:process";
+
 import { loadConfigFromEnv } from "@nest-boot/mikro-orm";
+
+if (existsSync(".env")) {
+  loadEnvFile();
+}
 
 export default loadConfigFromEnv();
 ```
@@ -94,7 +110,7 @@ import { EntityManager, FilterQuery } from "@mikro-orm/postgresql";
 import { EntityService } from "@nest-boot/mikro-orm";
 import { Injectable } from "@nestjs/common";
 
-import { User } from "./user.entity";
+import { User } from "./user.entity.js";
 
 @Injectable()
 export class UserService extends EntityService<User> {
