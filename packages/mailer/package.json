@@ -42,7 +42,9 @@
     "nodemailer": "^6.10.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^4.1.11"
   },
   "peerDependencies": {
     "@nestjs/common": "^12.0.0",

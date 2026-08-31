@@ -12,7 +12,6 @@
     "dist",
     "test",
     "**/*.spec.ts",
-    "**/*.e2e-spec.ts",
-    "vitest.setup.ts"
+    "**/*.e2e-spec.ts"
   ]
 }

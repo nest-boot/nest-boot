@@ -38,7 +38,6 @@
     "@eslint/eslintrc": "^3.3.3",
     "@eslint/js": "^9.39.2",
     "@nest-boot/tsconfig": "workspace:^",
-    "@swc/core": "^1.16.1",
     "@types/node": "^26.0.0",
     "@typescript-eslint/parser": "^8.56.1",
     "@typescript-eslint/rule-tester": "^8.56.1",
@@ -48,7 +47,7 @@
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.56.1",
-    "unplugin-swc": "^1.5.11",
+    "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^4.1.11"
   },
   "publishConfig": {
