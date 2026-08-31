@@ -640,6 +640,9 @@ importers:
       '@typescript-eslint/parser':
         specifier: ^8.56.1
         version: 8.56.1
+      '@vitest/coverage-v8':
+        specifier: ^4.1.11
+        version: 4.1.11
       eslint:
         specifier: ^9.39.3
         version: 9.39.3
@@ -982,12 +985,18 @@ importers:
       '@apollo/server':
         specifier: ^5.2.0
         version: 5.2.0
+      '@as-integrations/express5':
+        specifier: ^1.1.2
+        version: 1.1.2
       '@nest-boot/eslint-config':
         specifier: workspace:^
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
         specifier: workspace:^
         version: link:../eslint-plugin
+      '@nest-boot/graphql':
+        specifier: workspace:^
+        version: link:../graphql
       '@nest-boot/logger':
         specifier: workspace:^
         version: link:../logger
@@ -1006,6 +1015,9 @@ importers:
       '@nestjs/graphql':
         specifier: ^14.0.0
         version: 14.0.0
+      '@nestjs/platform-express':
+        specifier: ^12.0.1
+        version: 12.0.1
       '@nestjs/testing':
         specifier: ^12.0.1
         version: 12.0.1
@@ -1015,6 +1027,12 @@ importers:
       '@types/node':
         specifier: ^26.0.0
         version: 26.4.0
+      '@types/supertest':
+        specifier: ^7.2.1
+        version: 7.2.1
+      '@vitest/coverage-v8':
+        specifier: ^4.1.11
+        version: 4.1.11
       eslint:
         specifier: ^9.39.3
         version: 9.39.3
@@ -1030,6 +1048,9 @@ importers:
       rxjs:
         specifier: ^7.8.2
         version: 7.8.2
+      supertest:
+        specifier: ^7.2.2
+        version: 7.2.2
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -1185,6 +1206,9 @@ importers:
       '@nest-boot/eslint-plugin':
         specifier: workspace:^
         version: link:../eslint-plugin
+      '@nest-boot/middleware':
+        specifier: workspace:^
+        version: link:../middleware
       '@nest-boot/request-context':
         specifier: workspace:^
         version: link:../request-context

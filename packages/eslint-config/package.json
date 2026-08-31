@@ -9,8 +9,19 @@
   "main": "./eslint.config.mjs",
   "types": "./eslint.config.d.ts",
   "license": "MIT",
+  "files": [
+    "eslint.config.d.ts",
+    "eslint.config.mjs"
+  ],
   "scripts": {
-    "clean": "rm -rf .nx && rm -rf node_modules && rm -rf dist"
+    "clean": "rm -rf .nx && rm -rf node_modules && rm -rf coverage && rm -rf dist",
+    "lint": "eslint \"test/**/*.ts\" \"vitest.config*.ts\"",
+    "lint:fix": "eslint \"test/**/*.ts\" \"vitest.config*.ts\" --fix",
+    "test": "vitest run",
+    "test:cov": "vitest run --coverage",
+    "test:watch": "vitest",
+    "test:debug": "vitest --inspect-brk --no-file-parallelism",
+    "test:e2e": "vitest run --config ./vitest.config.e2e.ts"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",
@@ -20,6 +31,7 @@
     "@types/node": "^26.0.0",
     "@typescript-eslint/eslint-plugin": "^8.56.1",
     "@typescript-eslint/parser": "^8.56.1",
+    "@vitest/coverage-v8": "^4.1.11",
     "eslint": "^9.39.3",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-simple-import-sort": "^12.1.1",
