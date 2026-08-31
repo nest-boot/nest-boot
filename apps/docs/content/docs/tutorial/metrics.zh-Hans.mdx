@@ -1,35 +1,144 @@
 ---
 title: "指标"
-description: "@nest-boot/metrics 模块提供使用 prom-client 的 Prometheus 应用指标。"
+description: "使用 @nest-boot/metrics 从 Nest 应用暴露 Prometheus 默认指标和自定义指标。"
 ---
 
-`@nest-boot/metrics` 模块提供使用 [prom-client](https://github.com/siimon/prom-client) 的 [Prometheus](https://prometheus.io/) 应用指标，暴露 `/metrics` 端点供抓取。
+`@nest-boot/metrics` 模块会创建独立的 [prom-client](https://github.com/siimon/prom-client) Registry，采集 Node.js 默认指标，并通过 `GET /metrics` 以 Prometheus exposition format 输出。
 
 ## 安装
 
+安装模块及其 `prom-client` peer dependency：
+
 ```bash
-npm install @nest-boot/metrics prom-client
-# 或
 pnpm add @nest-boot/metrics prom-client
 ```
 
-## 基本用法
+`@nest-boot/metrics` 要求使用 `prom-client` 15.x。
+
+## 模块注册
+
+`MetricsModule` 是全局模块。通常只需在应用根模块中导入并配置一次，之后功能模块无需再次导入即可注入 `Registry`。
+
+### 静态注册
+
+如果 `prom-client` 默认采集配置已经满足需求，可以直接导入模块：
 
 ```typescript
-import { Module } from "@nestjs/common";
 import { MetricsModule } from "@nest-boot/metrics";
+import { Module } from "@nestjs/common";
 
 @Module({
-  imports: [MetricsModule.register({})],
+  imports: [MetricsModule],
 })
 export class AppModule {}
 ```
 
-`MetricsModule` 会创建独立的 `prom-client` Registry、启用 Node.js 默认指标，并通过 `GET /metrics` 输出 Prometheus exposition format。
+### 同步注册
+
+使用 `register()` 配置默认指标采集器：
+
+```typescript
+import { MetricsModule } from "@nest-boot/metrics";
+import { Module } from "@nestjs/common";
+
+@Module({
+  imports: [
+    MetricsModule.register({
+      prefix: "api_",
+      labels: {
+        service: "orders",
+        environment: "production",
+      },
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+### 异步注册
+
+配置来自其他 provider 时使用 `registerAsync()`。以下示例通过 `@nestjs/config` 读取指标前缀和公共标签：
+
+```typescript
+import { MetricsModule } from "@nest-boot/metrics";
+import { Module } from "@nestjs/common";
+import { ConfigModule, ConfigService } from "@nestjs/config";
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    MetricsModule.registerAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        prefix: configService.get("METRICS_PREFIX", "api_"),
+        labels: {
+          service: configService.get("SERVICE_NAME", "orders"),
+          environment: configService.get("NODE_ENV", "development"),
+        },
+      }),
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+异步工厂可以直接返回配置对象，也可以返回解析为配置对象的 Promise。`registerAsync()` 同样支持 Nest configurable module 标准的 `useClass` 和 `useExisting` 用法。
+
+### 配置选项
+
+| 选项                           | 类型       | 说明                                |
+| ------------------------------ | ---------- | ----------------------------------- |
+| `prefix`                       | `string`   | 添加到所有默认指标名称之前的前缀    |
+| `labels`                       | `object`   | 添加到所有默认指标的静态标签        |
+| `gcDurationBuckets`            | `number[]` | 垃圾回收耗时指标使用的自定义 bucket |
+| `eventLoopMonitoringPrecision` | `number`   | 事件循环指标的采样精度，单位为毫秒  |
+
+这些选项对应 `prom-client` 的默认采集配置。模块有意不暴露 `register` 选项，因为 `MetricsModule` 会创建并管理控制器所使用的 Registry。
+
+## 抓取指标端点
+
+Nest 应用启动后，请求内置端点：
+
+```bash
+curl --fail http://localhost:3000/metrics
+```
+
+响应状态码为 `200`，默认 Content-Type 是 Prometheus 使用的 `text/plain; version=0.0.4; charset=utf-8`，响应内容类似：
+
+```text
+# HELP api_process_cpu_user_seconds_total Total user CPU time spent in seconds.
+# TYPE api_process_cpu_user_seconds_total counter
+api_process_cpu_user_seconds_total{service="orders",environment="production"} 0.012
+```
+
+指标值会随运行状态变化。上面的 `api_` 前缀和标签只会在配置后出现。
+
+如需改用 OpenMetrics，请在应用开始监听前设置注入 Registry 的 Content-Type。端点会为每次响应读取 `registry.contentType`，确保响应头与序列化格式保持一致：
+
+```typescript
+import { Registry } from "@nest-boot/metrics";
+
+const registry = app.get(Registry);
+registry.setContentType(Registry.OPENMETRICS_CONTENT_TYPE);
+
+await app.listen(3000);
+```
+
+可以使用如下配置让 Prometheus 抓取该端点：
+
+```yaml
+scrape_configs:
+  - job_name: "nest-app"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["app:3000"]
+```
+
+请将 `app:3000` 替换为 Prometheus 访问应用时使用的地址。如果 Nest 应用设置了全局路由前缀，请在 `metrics_path` 中包含该前缀，除非应用已将 `/metrics` 排除在全局前缀之外。
 
 ## 自定义指标
 
-从 `@nest-boot/metrics` 注入其导出的 `Registry`，并将自定义指标注册到同一个 Registry：
+从 `@nest-boot/metrics` 注入 `Registry`，并通过指标的 `registers` 数组传入该实例。这样自定义指标才会出现在内置端点的响应中，而不是只注册到 `prom-client` 默认的全局 Registry。
 
 ```typescript
 import { Registry } from "@nest-boot/metrics";
@@ -38,12 +147,12 @@ import { Counter } from "prom-client";
 
 @Injectable()
 export class OrderMetrics implements OnModuleInit {
-  private ordersCreated!: Counter;
+  private ordersCreated!: Counter<"status">;
 
   constructor(private readonly registry: Registry) {}
 
   onModuleInit(): void {
-    this.ordersCreated = new Counter({
+    this.ordersCreated = new Counter<"status">({
       name: "orders_created_total",
       help: "Total number of orders created",
       labelNames: ["status"],
@@ -51,18 +160,31 @@ export class OrderMetrics implements OnModuleInit {
     });
   }
 
-  recordOrderCreated(status: string): void {
+  recordOrderCreated(status: "accepted" | "rejected"): void {
     this.ordersCreated.inc({ status });
   }
 }
 ```
 
-## 特性
+在功能模块中把 `OrderMetrics` 注册为 provider。由于 `MetricsModule` 是全局模块，无需再次导入就能注入同一个 `Registry`：
 
-- **默认指标** - 自动收集 Node.js 运行时指标
-- **指标端点** - 内置 `GET /metrics` 控制器
-- **自定义指标** - 完整 prom-client API
-- **Prometheus 兼容** - 标准暴露格式
+```typescript
+import { Module } from "@nestjs/common";
+
+@Module({
+  providers: [OrderMetrics],
+  exports: [OrderMetrics],
+})
+export class OrdersModule {}
+```
+
+`prom-client` 的 `Gauge`、`Histogram` 和 `Summary` 也采用相同方式注册。
+
+## 运维注意事项
+
+- 只配置一次 `MetricsModule`。重复导入可能创建额外的 Registry 和默认采集器，而不是共享预期的应用 Registry。
+- 使用低基数标签。不要把用户 ID、请求 ID 或原始 URL 等无界值作为指标标签。
+- 指标端点会暴露进程和应用信息。如果不应公开访问，请在网络、Ingress 或代理层限制访问。
 
 ## API 参考
 
