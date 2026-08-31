@@ -1,48 +1,125 @@
 ---
 title: "视图"
-description: "@nest-boot/view 模块提供使用 Handlebars 的服务端模板渲染。"
+description: "@nest-boot/view 模块使用 LiquidJS 提供服务端模板渲染。"
 ---
 
-`@nest-boot/view` 模块提供使用 [Handlebars](https://handlebarsjs.com/) 的服务端模板渲染，支持自动模板发现和注册。
+`@nest-boot/view` 模块通过 Nest 依赖注入提供配置完成的 [LiquidJS](https://liquidjs.com/) `Liquid` 实例。LiquidJS 会按需解析模板、布局和局部模板。
 
 ## 安装
 
 ```bash
-npm install @nest-boot/view handlebars
+npm install @nest-boot/view liquidjs
 # 或
-pnpm add @nest-boot/view handlebars
+pnpm add @nest-boot/view liquidjs
 ```
 
-## 基本用法
+## 静态模块
+
+直接导入 `ViewModule` 即可使用默认配置：
 
 ```typescript
-import { Module } from "@nestjs/common";
 import { ViewModule } from "@nest-boot/view";
+import { Module } from "@nestjs/common";
+
+@Module({
+  imports: [ViewModule],
+})
+export class AppModule {}
+```
+
+默认 LiquidJS 参数为：
+
+```typescript
+{
+  root: ["views/"],
+  partials: ["views/partials/"],
+  layouts: ["views/layouts/"],
+  extname: ".liquid",
+  outputEscape: "escape",
+}
+```
+
+这些路径相对于应用当前工作目录解析。插值默认会进行 HTML 转义；仅对可信内容使用 LiquidJS 的 `raw` 过滤器。典型目录结构如下：
+
+```text
+project/
+├── views/
+│   ├── emails/
+│   │   └── welcome.liquid
+│   ├── layouts/
+│   │   └── email.liquid
+│   └── partials/
+│       └── signature.liquid
+└── src/
+```
+
+## 动态模块
+
+`register()` 接受完整的 LiquidJS `LiquidOptions`，传入的字段会逐项覆盖默认值：
+
+```typescript
+import { ViewModule } from "@nest-boot/view";
+import { Module } from "@nestjs/common";
 
 @Module({
   imports: [
     ViewModule.register({
-      path: ["views"],
+      root: ["templates/"],
+      partials: ["templates/includes/"],
+      layouts: ["templates/layouts/"],
+      extname: ".html",
+      cache: true,
+      strictVariables: true,
     }),
   ],
 })
 export class AppModule {}
 ```
 
-如果没有传入 `path`，模块默认扫描 `views`。它递归加载 `.hbs` 和 `.handlebars` 文件，并将相对路径转换成点号模板名，例如 `views/emails/welcome.hbs` 对应 `emails.welcome`。
+如果需要让配置后的引擎在整个应用中可用，可以在 LiquidJS 参数旁传入 `isGlobal: true`。
+
+## 异步动态模块
+
+配置依赖其他 Provider 时使用 `registerAsync()`：
+
+```typescript
+import { ViewModule } from "@nest-boot/view";
+import { ConfigService } from "@nestjs/config";
+import { Module } from "@nestjs/common";
+
+@Module({
+  imports: [
+    ViewModule.registerAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        root: [config.getOrThrow<string>("VIEW_ROOT")],
+        cache: config.get("NODE_ENV") === "production",
+      }),
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+工厂可以直接返回配置，也可以返回 Promise。
 
 ## 渲染模板
 
+直接注入 LiquidJS 的 `Liquid` 类。模块会向消费者导出同一个配置完成的实例：
+
 ```typescript
-import { ViewService } from "@nest-boot/view";
 import { Injectable } from "@nestjs/common";
+import { Liquid } from "liquidjs";
 
 @Injectable()
 export class EmailService {
-  constructor(private readonly viewService: ViewService) {}
+  constructor(private readonly liquid: Liquid) {}
 
-  renderWelcomeEmail(name: string, activationLink: string) {
-    return this.viewService.render("emails.welcome", {
+  async renderWelcomeEmail(
+    name: string,
+    activationLink: string,
+  ): Promise<unknown> {
+    return await this.liquid.renderFile("emails/welcome", {
       name,
       activationLink,
     });
@@ -50,16 +127,19 @@ export class EmailService {
 }
 ```
 
-`render()` 在模板尚未注册时返回 `undefined`。也可以通过 `register(name, template)` 和 `unregister(name)` 动态维护模板。
+使用默认 `extname` 时，`renderFile("emails/welcome")` 会解析 `views/emails/welcome.liquid`。内联模板和引擎扩展可以直接使用 LiquidJS 的 `parseAndRender()`、`registerFilter()`、`registerTag()` 和 `plugin()` 等 API。
 
-## 特性
+使用 `{{ value }}` 渲染的值默认会进行 HTML 转义。仅当内容已经可信或经过清理时，才使用 `{{ trustedHtml | raw }}`。渲染非 HTML 格式时，可以通过 `register()` 或 `registerAsync()` 覆盖 `outputEscape`。
 
-- **Handlebars 模板** - 完整的 Handlebars 语法，支持助手和部分模板
-- **自动发现** - 自动查找 `.hbs` 和 `.handlebars` 文件
-- **点号表示法** - 按目录路径命名模板
-- **程序化注册** - 通过 `ViewService` 动态注册模板
-- **多目录** - 支持多个模板目录
+## 从 Handlebars 迁移
+
+- 将 `handlebars` 依赖替换为 `liquidjs`。
+- 将 `.hbs` 和 `.handlebars` 模板重命名或重写为 `.liquid` 模板。
+- 将 `ViewService` 注入替换为从 `liquidjs` 导入的 `Liquid`。
+- 文件模板使用 `Liquid.renderFile()`，字符串模板使用 `Liquid.parseAndRender()`。
+- 模板改为由 LiquidJS 按需解析；模块不再扫描并预注册模板文件。
+- 插值仍然默认转义。仅对可信 HTML 使用 LiquidJS 的 `raw` 过滤器。
 
 ## API 参考
 
-详细的 API 文档请参阅[视图 API 参考](/docs/api/view)。
+详细 API 请参阅[视图 API 参考](/docs/api/view)和 [LiquidJS 文档](https://liquidjs.com/)。

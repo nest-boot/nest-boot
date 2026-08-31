@@ -1,13 +1,5 @@
-import {
-  type DynamicModule,
-  Inject,
-  Module,
-  type OnModuleInit,
-  Optional,
-} from "@nestjs/common";
-import glob from "fast-glob";
-import fs from "fs/promises";
-import { basename, dirname, extname, join, relative } from "path";
+import { type DynamicModule, Module, type Provider } from "@nestjs/common";
+import { Liquid } from "liquidjs";
 
 import {
   ASYNC_OPTIONS_TYPE,
@@ -15,24 +7,35 @@ import {
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
 } from "./view.module-definition.js";
-import { ViewService } from "./view.service.js";
 import { type ViewModuleOptions } from "./view-module-options.interface.js";
 
+const liquidProvider: Provider<Liquid> = {
+  provide: Liquid,
+  inject: [{ token: MODULE_OPTIONS_TOKEN, optional: true }],
+  useFactory: (options: ViewModuleOptions = {}) =>
+    new Liquid({
+      ...options,
+      outputEscape: options.outputEscape ?? "escape",
+      root: options.root ?? ["views/"],
+      partials: options.partials ?? ["views/partials/"],
+      layouts: options.layouts ?? ["views/layouts/"],
+      extname: options.extname ?? ".liquid",
+    }),
+};
+
 /**
- * Template rendering module using Handlebars.
+ * Template rendering module powered by LiquidJS.
  *
  * @remarks
- * Automatically discovers and registers Handlebars templates from
- * configured directories, providing them via the {@link ViewService}.
+ * Provides a configured `Liquid` instance. Import the module directly
+ * to use the default `views/` paths, or use {@link ViewModule.register} and
+ * {@link ViewModule.registerAsync} to pass any LiquidJS options.
  */
-@Module({ providers: [ViewService], exports: [ViewService] })
-export class ViewModule
-  extends ConfigurableModuleClass
-  implements OnModuleInit
-{
+@Module({ providers: [liquidProvider], exports: [liquidProvider] })
+export class ViewModule extends ConfigurableModuleClass {
   /**
    * Registers the ViewModule with the given options.
-   * @param options - Configuration options including template paths
+   * @param options - LiquidJS configuration options
    * @returns Dynamic module configuration
    */
   static override register(options: typeof OPTIONS_TYPE): DynamicModule {
@@ -48,43 +51,5 @@ export class ViewModule
     options: typeof ASYNC_OPTIONS_TYPE,
   ): DynamicModule {
     return super.registerAsync(options);
-  }
-
-  /**
-   * Creates a new ViewModule instance.
-   * @param viewService - Service for managing Handlebars templates
-   * @param options - Optional module configuration with template paths
-   */
-  constructor(
-    private readonly viewService: ViewService,
-    @Optional()
-    @Inject(MODULE_OPTIONS_TOKEN)
-    private readonly options?: ViewModuleOptions,
-  ) {
-    super();
-  }
-
-  /** Discovers and registers Handlebars templates from configured paths. */
-  async onModuleInit(): Promise<void> {
-    await Promise.all(
-      (this.options?.path ?? ["views"]).map(async (dir) => {
-        const paths = await glob(join(dir, "/**/*.{hbs,handlebars}"), {
-          onlyFiles: true,
-        });
-
-        await Promise.all(
-          paths.map(async (path) => {
-            const name = join(
-              relative(dir, dirname(path)),
-              basename(path, extname(path)),
-            ).replace(/\/|\\/g, ".");
-
-            const template = await fs.readFile(path, "utf-8");
-
-            this.viewService.register(name, template);
-          }),
-        );
-      }),
-    );
   }
 }
