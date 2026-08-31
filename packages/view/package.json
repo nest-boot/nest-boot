@@ -20,18 +20,19 @@
     "lib": "dist"
   },
   "files": [
-    "dist",
-    "templates"
+    "dist"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "rimraf dist tsconfig.build.tsbuildinfo && tsc -p tsconfig.build.json",
     "clean": "rm -rf .nx && rm -rf node_modules && rm -rf dist",
     "dev": "tsc -w -p tsconfig.build.json",
     "lint": "eslint \"{src,test}/**/*.ts\"",
-    "lint:fix": "eslint \"{src,test}/**/*.ts\" --fix"
-  },
-  "dependencies": {
-    "fast-glob": "^3.3.3"
+    "lint:fix": "eslint \"{src,test}/**/*.ts\" --fix",
+    "test": "vitest run",
+    "test:cov": "vitest run --coverage",
+    "test:watch": "vitest",
+    "test:debug": "vitest --inspect-brk --no-file-parallelism",
+    "test:e2e": "vitest run --config ./vitest.config.e2e.ts"
   },
   "devDependencies": {
     "@nest-boot/eslint-config": "workspace:^",
@@ -39,11 +40,16 @@
     "@nest-boot/tsconfig": "workspace:^",
     "@nestjs/common": "^12.0.1",
     "@nestjs/core": "^12.0.1",
+    "@nestjs/platform-express": "^12.0.1",
+    "@nestjs/testing": "^12.0.1",
     "@types/node": "^26.0.0",
+    "@types/supertest": "^7.2.1",
+    "@vitest/coverage-v8": "^4.1.11",
     "eslint": "^9.39.3",
-    "handlebars": "^4.7.8",
+    "liquidjs": "^10.29.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
+    "supertest": "^7.2.2",
     "typescript": "^6.0.3",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^4.1.11"
@@ -51,7 +57,7 @@
   "peerDependencies": {
     "@nestjs/common": "^12.0.0",
     "@nestjs/core": "^12.0.0",
-    "handlebars": "^4.7.7",
+    "liquidjs": "^10.29.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.0.0"
   },

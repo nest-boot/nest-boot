@@ -1,61 +1,124 @@
 ---
 title: "View"
-description: "The @nest-boot/view module provides server-side template rendering using Handlebars."
+description: "The @nest-boot/view module provides server-side template rendering using LiquidJS."
 ---
 
-The `@nest-boot/view` module provides server-side template rendering using [Handlebars](https://handlebarsjs.com/), with automatic template discovery and registration.
+The `@nest-boot/view` module provides a configured [LiquidJS](https://liquidjs.com/) `Liquid` instance through Nest dependency injection. LiquidJS resolves templates on demand, including layouts and partials.
 
 ## Installation
 
 ```bash
-npm install @nest-boot/view handlebars
+npm install @nest-boot/view liquidjs
 # or
-pnpm add @nest-boot/view handlebars
+pnpm add @nest-boot/view liquidjs
 ```
 
-## Basic Usage
+## Static Module
+
+Import `ViewModule` directly to use the defaults:
 
 ```typescript
-import { Module } from "@nestjs/common";
 import { ViewModule } from "@nest-boot/view";
+import { Module } from "@nestjs/common";
+
+@Module({
+  imports: [ViewModule],
+})
+export class AppModule {}
+```
+
+The default LiquidJS options are:
+
+```typescript
+{
+  root: ["views/"],
+  partials: ["views/partials/"],
+  layouts: ["views/layouts/"],
+  extname: ".liquid",
+}
+```
+
+These paths are resolved from the application's current working directory. A typical layout is:
+
+```text
+project/
+├── views/
+│   ├── emails/
+│   │   └── welcome.liquid
+│   ├── layouts/
+│   │   └── email.liquid
+│   └── partials/
+│       └── signature.liquid
+└── src/
+```
+
+## Dynamic Module
+
+`register()` accepts any LiquidJS `LiquidOptions`. Options you provide override the defaults individually:
+
+```typescript
+import { ViewModule } from "@nest-boot/view";
+import { Module } from "@nestjs/common";
 
 @Module({
   imports: [
     ViewModule.register({
-      path: ["views"],
+      root: ["templates/"],
+      partials: ["templates/includes/"],
+      layouts: ["templates/layouts/"],
+      extname: ".html",
+      cache: true,
+      strictVariables: true,
     }),
   ],
 })
 export class AppModule {}
 ```
 
-## Template Files
+Pass `isGlobal: true` alongside the LiquidJS options when the configured engine should be available application-wide.
 
-```
-project/
-├── views/
-│   ├── emails/
-│   │   ├── welcome.hbs
-│   │   └── reset-password.hbs
-│   └── reports/
-│       └── daily.hbs
-└── src/
+## Asynchronous Dynamic Module
+
+Use `registerAsync()` when options depend on another provider:
+
+```typescript
+import { ViewModule } from "@nest-boot/view";
+import { ConfigService } from "@nestjs/config";
+import { Module } from "@nestjs/common";
+
+@Module({
+  imports: [
+    ViewModule.registerAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        root: [config.getOrThrow<string>("VIEW_ROOT")],
+        cache: config.get("NODE_ENV") === "production",
+      }),
+    }),
+  ],
+})
+export class AppModule {}
 ```
 
-Template names use dot notation: `views/emails/welcome.hbs` → `emails.welcome`
+The factory can return the options directly or return a promise.
 
 ## Rendering Templates
 
+Inject the LiquidJS `Liquid` class directly. The module exports the same configured instance to consumers:
+
 ```typescript
 import { Injectable } from "@nestjs/common";
-import { ViewService } from "@nest-boot/view";
+import { Liquid } from "liquidjs";
 
 @Injectable()
 export class EmailService {
-  constructor(private readonly viewService: ViewService) {}
+  constructor(private readonly liquid: Liquid) {}
 
-  renderWelcomeEmail(name: string, activationLink: string): string {
-    return this.viewService.render("emails.welcome", {
+  async renderWelcomeEmail(
+    name: string,
+    activationLink: string,
+  ): Promise<unknown> {
+    return await this.liquid.renderFile("emails/welcome", {
       name,
       activationLink,
     });
@@ -63,14 +126,16 @@ export class EmailService {
 }
 ```
 
-## Features
+With the default `extname`, `renderFile("emails/welcome")` resolves `views/emails/welcome.liquid`. Use LiquidJS APIs such as `parseAndRender()`, `registerFilter()`, `registerTag()`, and `plugin()` for inline templates and engine customization.
 
-- **Handlebars Templates** - Full Handlebars syntax with helpers and partials
-- **Auto Discovery** - Automatically finds `.hbs` and `.handlebars` files
-- **Dot Notation** - Templates named by directory path
-- **Programmatic Registration** - Register templates dynamically via `ViewService`
-- **Multi-Directory** - Support for multiple template directories
+## Migrating from Handlebars
+
+- Replace the `handlebars` dependency with `liquidjs`.
+- Rename or rewrite `.hbs` and `.handlebars` templates as `.liquid` templates.
+- Replace `ViewService` injection with `Liquid` from `liquidjs`.
+- Replace `ViewService.render()` with `Liquid.renderFile()` for files or `Liquid.parseAndRender()` for template strings.
+- Templates are resolved by LiquidJS on demand; the module no longer scans and pre-registers template files.
 
 ## API Reference
 
-For detailed API documentation, see the [View API Reference](/docs/api/view).
+For detailed API documentation, see the [View API Reference](/docs/api/view) and the [LiquidJS documentation](https://liquidjs.com/).
