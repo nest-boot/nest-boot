@@ -27,12 +27,26 @@ describe("ViewModule", () => {
       partials: ["views/partials/"],
       layouts: ["views/layouts/"],
       extname: ".liquid",
+      outputEscape: expect.any(Function),
     });
     await expect(
       liquid.parseAndRender("Hello, {{ name | upcase }}!", {
         name: "Nest Boot",
       }),
     ).resolves.toBe("Hello, NEST BOOT!");
+  });
+
+  it("escapes output by default and supports explicit raw output", async () => {
+    const module = await compile(ViewModule);
+    const liquid = module.get(Liquid);
+    const html = '<img src=x onerror="alert(1)">';
+
+    await expect(liquid.parseAndRender("{{ html }}", { html })).resolves.toBe(
+      "&lt;img src=x onerror=&#34;alert(1)&#34;&gt;",
+    );
+    await expect(
+      liquid.parseAndRender("{{ html | raw }}", { html }),
+    ).resolves.toBe(html);
   });
 
   it("creates Liquid with synchronous registration options", async () => {

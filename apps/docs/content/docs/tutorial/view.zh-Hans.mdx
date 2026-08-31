@@ -35,10 +35,11 @@ export class AppModule {}
   partials: ["views/partials/"],
   layouts: ["views/layouts/"],
   extname: ".liquid",
+  outputEscape: "escape",
 }
 ```
 
-这些路径相对于应用当前工作目录解析。典型目录结构如下：
+这些路径相对于应用当前工作目录解析。插值默认会进行 HTML 转义；仅对可信内容使用 LiquidJS 的 `raw` 过滤器。典型目录结构如下：
 
 ```text
 project/
@@ -128,6 +129,8 @@ export class EmailService {
 
 使用默认 `extname` 时，`renderFile("emails/welcome")` 会解析 `views/emails/welcome.liquid`。内联模板和引擎扩展可以直接使用 LiquidJS 的 `parseAndRender()`、`registerFilter()`、`registerTag()` 和 `plugin()` 等 API。
 
+使用 `{{ value }}` 渲染的值默认会进行 HTML 转义。仅当内容已经可信或经过清理时，才使用 `{{ trustedHtml | raw }}`。渲染非 HTML 格式时，可以通过 `register()` 或 `registerAsync()` 覆盖 `outputEscape`。
+
 ## 从 Handlebars 迁移
 
 - 将 `handlebars` 依赖替换为 `liquidjs`。
@@ -135,6 +138,7 @@ export class EmailService {
 - 将 `ViewService` 注入替换为从 `liquidjs` 导入的 `Liquid`。
 - 文件模板使用 `Liquid.renderFile()`，字符串模板使用 `Liquid.parseAndRender()`。
 - 模板改为由 LiquidJS 按需解析；模块不再扫描并预注册模板文件。
+- 插值仍然默认转义。仅对可信 HTML 使用 LiquidJS 的 `raw` 过滤器。
 
 ## API 参考
 

@@ -55,6 +55,14 @@ describe("ViewModule HTTP integration", () => {
       .get("/render")
       .query({ name: "Static" })
       .expect(200, "<main>Hello, STATIC!</main>");
+
+    await request(app.getHttpServer())
+      .get("/render")
+      .query({ name: '<img src=x onerror="alert(1)">' })
+      .expect(
+        200,
+        "<main>Hello, &lt;IMG SRC=X ONERROR=&#34;ALERT(1)&#34;&gt;!</main>",
+      );
   });
 
   it("renders with synchronously configured paths", async () => {

@@ -35,10 +35,11 @@ The default LiquidJS options are:
   partials: ["views/partials/"],
   layouts: ["views/layouts/"],
   extname: ".liquid",
+  outputEscape: "escape",
 }
 ```
 
-These paths are resolved from the application's current working directory. A typical layout is:
+These paths are resolved from the application's current working directory. Interpolated values are HTML-escaped by default; use LiquidJS's `raw` filter only for content you trust. A typical layout is:
 
 ```text
 project/
@@ -128,6 +129,8 @@ export class EmailService {
 
 With the default `extname`, `renderFile("emails/welcome")` resolves `views/emails/welcome.liquid`. Use LiquidJS APIs such as `parseAndRender()`, `registerFilter()`, `registerTag()`, and `plugin()` for inline templates and engine customization.
 
+Values rendered with `{{ value }}` are HTML-escaped by default. Use `{{ trustedHtml | raw }}` only when the value is already trusted or sanitized. You can override `outputEscape` through `register()` or `registerAsync()` when rendering a non-HTML output format.
+
 ## Migrating from Handlebars
 
 - Replace the `handlebars` dependency with `liquidjs`.
@@ -135,6 +138,7 @@ With the default `extname`, `renderFile("emails/welcome")` resolves `views/email
 - Replace `ViewService` injection with `Liquid` from `liquidjs`.
 - Replace `ViewService.render()` with `Liquid.renderFile()` for files or `Liquid.parseAndRender()` for template strings.
 - Templates are resolved by LiquidJS on demand; the module no longer scans and pre-registers template files.
+- Interpolated values remain escaped by default. Use LiquidJS's `raw` filter only for trusted HTML.
 
 ## API Reference
 

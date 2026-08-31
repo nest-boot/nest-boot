@@ -15,6 +15,7 @@ const liquidProvider: Provider<Liquid> = {
   useFactory: (options: ViewModuleOptions = {}) =>
     new Liquid({
       ...options,
+      outputEscape: options.outputEscape ?? "escape",
       root: options.root ?? ["views/"],
       partials: options.partials ?? ["views/partials/"],
       layouts: options.layouts ?? ["views/layouts/"],
