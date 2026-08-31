@@ -1,3 +1,17 @@
+## 8.0.0-beta.1 (2026-08-31)
+
+### 🚀 Features
+
+- ⚠️ migrate to NestJS 12 and ESM ([#312](https://github.com/nest-boot/nest-boot/issues/312))
+
+### ⚠️ Breaking Changes
+
+- migrate to NestJS 12 and ESM ([#312](https://github.com/nest-boot/nest-boot/issues/312))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 7.3.5 (2026-08-31)
 
 This was a version bump only for @nest-boot/tsconfig to align it with other projects, there were no code changes.

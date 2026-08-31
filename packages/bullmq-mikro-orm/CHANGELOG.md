@@ -1,3 +1,26 @@
+## 8.0.0-beta.1 (2026-08-31)
+
+### 🚀 Features
+
+- ⚠️  migrate to NestJS 12 and ESM ([#312](https://github.com/nest-boot/nest-boot/issues/312))
+
+### ⚠️  Breaking Changes
+
+- migrate to NestJS 12 and ESM  ([#312](https://github.com/nest-boot/nest-boot/issues/312))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 8.0.0-beta.1
+- Updated @nest-boot/eslint-config to 8.0.0-beta.1
+- Updated @nest-boot/eslint-plugin to 8.0.0-beta.1
+- Updated @nest-boot/schedule to 8.0.0-beta.1
+- Updated @nest-boot/tsconfig to 8.0.0-beta.1
+- Updated @nest-boot/bullmq to 8.0.0-beta.1
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 7.3.8 (2026-08-31)
 
 ### 🧱 Updated Dependencies
