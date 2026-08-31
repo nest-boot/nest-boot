@@ -13,6 +13,8 @@ description: "使用 @nest-boot/metrics 从 Nest 应用暴露 Prometheus 默认�
 pnpm add @nest-boot/metrics prom-client
 ```
 
+`@nest-boot/metrics` 要求使用 `prom-client` 15.x。
+
 ## 模块注册
 
 `MetricsModule` 是全局模块。通常只需在应用根模块中导入并配置一次，之后功能模块无需再次导入即可注入 `Registry`。

@@ -4,9 +4,10 @@ import {
   type Type,
 } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
+import { contentType } from "prom-client";
 import request from "supertest";
 
-import { MetricsModule, Registry } from "../src";
+import { MetricsModule } from "../src";
 
 describe("MetricsModule HTTP integration", () => {
   const apps: INestApplication[] = [];
@@ -63,18 +64,18 @@ describe("MetricsModule HTTP integration", () => {
     const response = await request(app.getHttpServer())
       .get("/metrics")
       .expect(200);
-    const contentType = response.headers["content-type"];
+    const responseContentType = response.headers["content-type"];
 
-    expect(normalizeContentType(contentType)).toEqual(
-      normalizeContentType(Registry.PROMETHEUS_CONTENT_TYPE),
+    expect(normalizeContentType(responseContentType)).toEqual(
+      normalizeContentType(contentType),
     );
 
     return response;
   }
 });
 
-function normalizeContentType(contentType: string): string[] {
-  return contentType
+function normalizeContentType(value: string): string[] {
+  return value
     .split(";")
     .map((part) => part.trim())
     .sort();

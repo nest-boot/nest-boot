@@ -13,6 +13,8 @@ Install the module and its `prom-client` peer dependency:
 pnpm add @nest-boot/metrics prom-client
 ```
 
+`@nest-boot/metrics` requires `prom-client` 15.x.
+
 ## Module Registration
 
 `MetricsModule` is global. Import and configure it once, normally in the root application module. Feature modules can then inject `Registry` without importing `MetricsModule` again.
