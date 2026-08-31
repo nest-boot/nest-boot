@@ -1,8 +1,7 @@
 import { Injectable, Module } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
-import { Registry } from "prom-client";
 
-import { MetricsModule } from "../src/metrics.module";
+import { MetricsModule, Registry } from "../src";
 
 @Injectable()
 class MetricsConsumer {
@@ -15,7 +14,12 @@ class ConsumerModule {}
 describe("MetricsModule", () => {
   it("should forward register options to the default metrics collector", async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [MetricsModule.register({ prefix: "sync_" })],
+      imports: [
+        MetricsModule.register({
+          labels: { service: "sync-test" },
+          prefix: "sync_",
+        }),
+      ],
     }).compile();
 
     const registry = moduleRef.get(Registry);
@@ -24,6 +28,13 @@ describe("MetricsModule", () => {
     );
 
     expect(metricNames).toContain("sync_process_cpu_user_seconds_total");
+    expect(
+      (
+        await registry.getSingleMetricAsString(
+          "sync_process_cpu_user_seconds_total",
+        )
+      ).includes('service="sync-test"'),
+    ).toBe(true);
 
     await moduleRef.close();
   });
