@@ -5,10 +5,10 @@ import {
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
-} from "./crypt.module-definition";
-import { CryptService } from "./crypt.service";
-import { CryptModuleOptions } from "./crypt-module-options.interface";
-import { estimateEntropy } from "./utils/estimate-entropy";
+} from "./crypt.module-definition.js";
+import { CryptService } from "./crypt.service.js";
+import { CryptModuleOptions } from "./crypt-module-options.interface.js";
+import { estimateEntropy } from "./utils/estimate-entropy.js";
 
 /**
  * Module that provides encryption and decryption services using JWE (A256GCMKW + A256GCM).
@@ -31,7 +31,7 @@ import { estimateEntropy } from "./utils/estimate-entropy";
  *
  * Generate a secure secret:
  * ```bash
- * node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+ * node --input-type=module -e "import { randomBytes } from 'node:crypto'; console.log(randomBytes(32).toString('base64url'))"
  * ```
  */
 @Global()
@@ -49,7 +49,7 @@ import { estimateEntropy } from "./utils/estimate-entropy";
             "Crypt secret is required.\n" +
               "Set CRYPT_SECRET or APP_SECRET environment variable, or pass a secret option.\n" +
               "Generate a secure secret with:\n" +
-              "  node -e \"console.log(require('crypto').randomBytes(32).toString('base64url'))\"",
+              "  node --input-type=module -e \"import { randomBytes } from 'node:crypto'; console.log(randomBytes(32).toString('base64url'))\"",
           );
         }
 
@@ -58,7 +58,7 @@ import { estimateEntropy } from "./utils/estimate-entropy";
             "Crypt secret must be at least 32 characters long.\n" +
               "Set CRYPT_SECRET or APP_SECRET environment variable, or pass a secret option.\n" +
               "Generate a secure secret with:\n" +
-              "  node -e \"console.log(require('crypto').randomBytes(32).toString('base64url'))\"",
+              "  node --input-type=module -e \"import { randomBytes } from 'node:crypto'; console.log(randomBytes(32).toString('base64url'))\"",
           );
         }
 
@@ -67,7 +67,7 @@ import { estimateEntropy } from "./utils/estimate-entropy";
             "Crypt secret appears low-entropy.\n" +
               "Use a randomly generated secret for production.\n" +
               "Generate a secure secret with:\n" +
-              "  node -e \"console.log(require('crypto').randomBytes(32).toString('base64url'))\"",
+              "  node --input-type=module -e \"import { randomBytes } from 'node:crypto'; console.log(randomBytes(32).toString('base64url'))\"",
           );
         }
 

@@ -1,5 +1,5 @@
-import { tester } from "../../utils/tester";
-import rule from "./entity-property-config-from-types";
+import { tester } from "../../utils/tester.js";
+import rule from "./entity-property-config-from-types.js";
 
 tester.run("entity-property-config-from-types", rule, {
   valid: [

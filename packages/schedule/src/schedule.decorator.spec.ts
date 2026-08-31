@@ -1,7 +1,7 @@
 import "reflect-metadata";
 
-import { Cron, Interval, Schedule } from "./schedule.decorator";
-import { SCHEDULE_METADATA_KEY } from "./schedule.module-definition";
+import { Cron, Interval, Schedule } from "./schedule.decorator.js";
+import { SCHEDULE_METADATA_KEY } from "./schedule.module-definition.js";
 
 function getMethod(prototype: object, name: string) {
   return Object.getOwnPropertyDescriptor(prototype, name)?.value;

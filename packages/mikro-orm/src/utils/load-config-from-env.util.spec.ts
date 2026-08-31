@@ -2,13 +2,13 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { BetterSqliteDriver } from "@mikro-orm/better-sqlite";
 import { Configuration, DataloaderType, type Options } from "@mikro-orm/core";
 import { MySqlDriver } from "@mikro-orm/mysql";
 import { PostgreSqlDriver } from "@mikro-orm/postgresql";
 import { TsMorphMetadataProvider } from "@mikro-orm/reflection";
+import { SqliteDriver } from "@mikro-orm/sqlite";
 
-import { loadConfigFromEnv } from "./load-config-from-env.util";
+import { loadConfigFromEnv } from "./load-config-from-env.util.js";
 
 const ORIGINAL_ENV = process.env;
 
@@ -125,7 +125,7 @@ describe("loadConfigFromEnv", () => {
 
     await expect(loadConfigFromEnv()).resolves.toMatchObject({
       dbName: "/var/lib/nest-boot/app data.db",
-      driver: BetterSqliteDriver,
+      driver: SqliteDriver,
     });
   });
 

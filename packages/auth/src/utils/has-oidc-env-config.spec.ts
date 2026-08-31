@@ -1,5 +1,5 @@
-import { hasOidcEnvConfig } from "./has-oidc-env-config";
-import { OIDC_ENV_NAMES } from "./oidc.constants";
+import { hasOidcEnvConfig } from "./has-oidc-env-config.js";
+import { OIDC_ENV_NAMES } from "./oidc.constants.js";
 
 describe("hasOidcEnvConfig", () => {
   beforeEach(() => {

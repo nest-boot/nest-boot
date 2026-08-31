@@ -1,12 +1,10 @@
+import { BaseEntity, type Opt, t } from "@mikro-orm/core";
 import {
-  BaseEntity,
   Entity,
-  Opt,
   PrimaryKey,
   Property,
-  t,
   Unique,
-} from "@mikro-orm/core";
+} from "@mikro-orm/decorators/legacy";
 import { randomUUID } from "crypto";
 
 /**

@@ -1,14 +1,11 @@
+import { BaseEntity, Cascade, type Opt, t } from "@mikro-orm/core";
 import {
-  BaseEntity,
-  Cascade,
   Entity,
   ManyToOne,
-  Opt,
   PrimaryKey,
   Property,
-  t,
   Unique,
-} from "@mikro-orm/core";
+} from "@mikro-orm/decorators/legacy";
 import { randomUUID } from "crypto";
 
 /**
@@ -16,7 +13,7 @@ import { randomUUID } from "crypto";
  *
  * @remarks
  * Maps to the better-auth `session` model. Each session is tied to a
- * {@link BaseUser} and identified by a unique token.
+ * `BaseUser` and identified by a unique token.
  */
 @Entity({ abstract: true })
 export class BaseSession extends BaseEntity {
@@ -29,8 +26,9 @@ export class BaseSession extends BaseEntity {
   @Unique()
   token!: string;
 
-  /** Foreign key referencing the owning {@link BaseUser}. */
-  @ManyToOne(() => "User", {
+  /** Foreign key referencing the owning `BaseUser`. */
+  @ManyToOne({
+    entity: () => "User" as any,
     fieldName: "user_id",
     mapToPk: true,
     cascade: [Cascade.REMOVE],

@@ -12,9 +12,9 @@ import {
   IsUrl,
   isURL,
   length,
-} from "../../index";
+} from "../../index.js";
 
-jest.mock("@nest-boot/i18n", () => ({
+vi.mock("@nest-boot/i18n", () => ({
   t: (key: string): string => key,
 }));
 

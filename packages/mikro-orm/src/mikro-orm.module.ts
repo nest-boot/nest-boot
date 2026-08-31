@@ -12,16 +12,16 @@ import {
   OnModuleInit,
 } from "@nestjs/common";
 
-import { MikroOrmModuleOptions } from "./interfaces/mikro-orm-module-options.interface";
+import { MikroOrmModuleOptions } from "./interfaces/mikro-orm-module-options.interface.js";
 import {
   ASYNC_OPTIONS_TYPE,
   BASE_MODULE_OPTIONS_TOKEN,
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
-} from "./mikro-orm.module-definition";
-import { loadConfigFromEnv } from "./utils/load-config-from-env.util";
-import { loadDefaultConfig } from "./utils/load-default-config.util";
+} from "./mikro-orm.module-definition.js";
+import { loadConfigFromEnv } from "./utils/load-config-from-env.util.js";
+import { loadDefaultConfig } from "./utils/load-default-config.util.js";
 
 const CONNECTION_TARGET_OPTION_KEYS = [
   "dbName",
@@ -32,6 +32,9 @@ const CONNECTION_TARGET_OPTION_KEYS = [
   "password",
   "replicas",
 ] as const satisfies readonly (keyof MikroOrmModuleOptions)[];
+
+@Module({})
+class MikroOrmOptionsHostModule {}
 
 function hasExplicitConnectionTarget(options: MikroOrmModuleOptions): boolean {
   return CONNECTION_TARGET_OPTION_KEYS.some(
@@ -51,32 +54,7 @@ function hasExplicitConnectionTarget(options: MikroOrmModuleOptions): boolean {
  */
 @Global()
 @Module({
-  imports: [
-    RequestContextModule,
-    BaseMikroOrmModule.forRootAsync({
-      inject: [MODULE_OPTIONS_TOKEN],
-      useFactory: async (options: MikroOrmModuleOptions) => {
-        const logger = new Logger("MikroORM");
-        const envOptions = hasExplicitConnectionTarget(options)
-          ? loadDefaultConfig()
-          : await loadConfigFromEnv();
-
-        return {
-          registerRequestContext: false,
-          context: () => {
-            if (RequestContext.isActive()) {
-              return RequestContext.get(EntityManager);
-            }
-          },
-          logger: (msg) => {
-            logger.log(msg);
-          },
-          ...envOptions,
-          ...options,
-        };
-      },
-    }),
-  ],
+  imports: [RequestContextModule],
   providers: [
     {
       provide: MODULE_OPTIONS_TOKEN,
@@ -96,7 +74,15 @@ export class MikroOrmModule
    * @returns Dynamic module configuration
    */
   static override forRoot(options: typeof OPTIONS_TYPE): DynamicModule {
-    return super.forRoot(options);
+    const optionsModule = this.createOptionsModule(super.forRoot(options));
+
+    return {
+      module: MikroOrmModule,
+      imports: [
+        optionsModule,
+        this.createRootModule(optionsModule, options.driver),
+      ],
+    };
   }
 
   /**
@@ -107,7 +93,66 @@ export class MikroOrmModule
   static override forRootAsync(
     options: typeof ASYNC_OPTIONS_TYPE,
   ): DynamicModule {
-    return super.forRootAsync(options);
+    const optionsModule = this.createOptionsModule(super.forRootAsync(options));
+
+    return {
+      module: MikroOrmModule,
+      imports: [
+        optionsModule,
+        this.createRootModule(optionsModule, options.driverHint),
+      ],
+    };
+  }
+
+  private static createOptionsModule(
+    configurableModule: DynamicModule,
+  ): DynamicModule {
+    return {
+      module: MikroOrmOptionsHostModule,
+      imports: configurableModule.imports,
+      providers: configurableModule.providers,
+      exports: [BASE_MODULE_OPTIONS_TOKEN],
+    };
+  }
+
+  private static createRootModule(
+    optionsModule: DynamicModule,
+    driver?: MikroOrmModuleOptions["driver"],
+  ) {
+    return BaseMikroOrmModule.forRootAsync({
+      driver,
+      imports: [optionsModule],
+      inject: [BASE_MODULE_OPTIONS_TOKEN],
+      useFactory: async (options: MikroOrmModuleOptions) => {
+        const logger = new Logger("MikroORM");
+        const envOptions = hasExplicitConnectionTarget(options)
+          ? loadDefaultConfig()
+          : await loadConfigFromEnv();
+
+        const resolvedOptions = {
+          registerRequestContext: false,
+          context: () => {
+            if (RequestContext.isActive()) {
+              return RequestContext.get(EntityManager);
+            }
+          },
+          logger: (msg: string) => {
+            logger.log(msg);
+          },
+          ...envOptions,
+          ...options,
+        };
+
+        if (
+          options.entities !== undefined &&
+          options.entitiesTs === undefined
+        ) {
+          resolvedOptions.entitiesTs = options.entities;
+        }
+
+        return resolvedOptions;
+      },
+    });
   }
 
   /** Creates a new MikroOrmModule instance.

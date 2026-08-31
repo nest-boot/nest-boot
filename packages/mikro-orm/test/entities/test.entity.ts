@@ -1,4 +1,5 @@
-import { Entity, Opt, PrimaryKey, Property, t } from "@mikro-orm/core";
+import { type Opt, t } from "@mikro-orm/core";
+import { Entity, PrimaryKey, Property } from "@mikro-orm/decorators/legacy";
 
 @Entity()
 export class TestEntity {

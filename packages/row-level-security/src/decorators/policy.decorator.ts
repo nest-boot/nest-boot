@@ -1,16 +1,16 @@
-import { PolicyCommand } from "../enums/policy-command.enum";
-import { PolicyMode } from "../enums/policy-mode.enum";
+import { PolicyCommand } from "../enums/policy-command.enum.js";
+import { PolicyMode } from "../enums/policy-mode.enum.js";
 import type {
   PolicyEntityMetadata,
   PolicyMetadata,
   PolicyMetadataEntry,
-} from "../interfaces/policy-metadata.interface";
-import type { PolicyOptions } from "../interfaces/policy-options.interface";
-import { assertIdentifier } from "../utils/assert-identifier";
-import { escapeSqlLiteral } from "../utils/escape-sql-literal";
-import { isPostgresKeywordRequiringQuote } from "../utils/is-postgres-keyword-requiring-quote";
-import { normalizePostgresTypeAlias } from "../utils/normalize-postgres-type-alias.util";
-import { quoteIdentifier } from "../utils/quote-identifier";
+} from "../interfaces/policy-metadata.interface.js";
+import type { PolicyOptions } from "../interfaces/policy-options.interface.js";
+import { assertIdentifier } from "../utils/assert-identifier.js";
+import { escapeSqlLiteral } from "../utils/escape-sql-literal.js";
+import { isPostgresKeywordRequiringQuote } from "../utils/is-postgres-keyword-requiring-quote.js";
+import { normalizePostgresTypeAlias } from "../utils/normalize-postgres-type-alias.util.js";
+import { quoteIdentifier } from "../utils/quote-identifier.js";
 
 export type {
   PolicyEntityMetadata,
@@ -19,8 +19,8 @@ export type {
   PolicyMetadata,
   PolicyMetadataEntry,
   PolicyMetadataFactory,
-} from "../interfaces/policy-metadata.interface";
-export type { PolicyOptions } from "../interfaces/policy-options.interface";
+} from "../interfaces/policy-metadata.interface.js";
+export type { PolicyOptions } from "../interfaces/policy-options.interface.js";
 
 const policyMetadata = new WeakMap<object, PolicyMetadataEntry[]>();
 

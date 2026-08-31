@@ -1,7 +1,12 @@
 import { ValidateBy, type ValidationOptions } from "class-validator";
-import isLengthValidator from "validator/lib/isLength";
+import isLengthModule from "validator/lib/isLength.js";
 
-import { buildI18nMessage } from "../../utils/build-i18n-message";
+import { buildI18nMessage } from "../../utils/build-i18n-message.js";
+
+const isLengthValidator = isLengthModule as unknown as (
+  str: string,
+  options?: { min?: number; max?: number },
+) => boolean;
 
 /** Validation name constant for the Length validator. */
 export const IS_LENGTH = "isLength";

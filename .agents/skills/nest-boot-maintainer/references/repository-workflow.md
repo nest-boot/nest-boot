@@ -5,7 +5,7 @@
 ## 当前仓库约束
 
 - 默认分支是 `main`，workspace 使用 pnpm 和 Nx。
-- 根 `package.json` 当前要求 Node 24.4+、pnpm 10.30.3；以 checkout 中声明为准。
+- 根 `package.json` 当前要求 Node 26+、pnpm 10.30.3；以 checkout 中声明为准。
 - `@nest-boot/<name>` 通常对应 `packages/<name>`，先用 package 的 `name` 字段确认，不只依赖目录猜测。
 - PR 标题由 commitlint 校验，使用 `fix(scope): ...`、`feat(scope): ...`、`docs(scope): ...` 等 Conventional Commit 形式。
 - PR CI 构建 packages、检查 Prettier、运行 lint、TypeDoc 和 coverage tests；完整测试需要 PostgreSQL、Redis 与 MinIO 服务。
@@ -27,11 +27,11 @@
 
 ## 实现与验证
 
-先添加能在修复前失败的最小测试，再修改实现。先检查目标 package 暴露的 Nx targets；存在 test target 时使用它，否则让根 Jest 按 package 路径运行：
+先添加能在修复前失败的最小测试，再修改实现。优先运行目标 package 的 Vitest 脚本或 Nx test target：
 
 ```bash
-pnpm nx run @nest-boot/<package>:test --skip-nx-cache -- --runInBand
-pnpm exec jest --runInBand packages/<package>
+pnpm --filter @nest-boot/<package> test
+pnpm nx run @nest-boot/<package>:test --skip-nx-cache
 pnpm nx run @nest-boot/<package>:build --skip-nx-cache
 pnpm nx run @nest-boot/<package>:lint --skip-nx-cache
 ```

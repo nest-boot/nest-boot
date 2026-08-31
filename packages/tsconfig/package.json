@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/tsconfig",
-  "version": "7.3.5",
+  "version": "8.0.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/nest-boot/nest-boot.git",
@@ -14,10 +14,20 @@
     "access": "public"
   },
   "dependencies": {
-    "@types/jest": "^29.5.14",
-    "@types/node": "^24.12.4"
+    "@types/node": "^26.0.0",
+    "vitest": "^4.1.11"
   },
   "devDependencies": {
-    "jest": "^29.7.0"
+    "@types/node": "^26.0.0"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=26.0.0"
+  },
+  "exports": {
+    "./app.json": "./app.json",
+    "./base.json": "./base.json",
+    "./library.json": "./library.json",
+    "./package.json": "./package.json"
   }
 }

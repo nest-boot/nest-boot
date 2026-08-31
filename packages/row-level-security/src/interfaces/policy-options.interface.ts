@@ -1,5 +1,5 @@
-import { PolicyCommand } from "../enums/policy-command.enum";
-import { PolicyMode } from "../enums/policy-mode.enum";
+import { PolicyCommand } from "../enums/policy-command.enum.js";
+import { PolicyMode } from "../enums/policy-mode.enum.js";
 
 /** Options accepted by the {@link Policy} decorator. */
 export interface PolicyOptions {

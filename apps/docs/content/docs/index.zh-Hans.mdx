@@ -63,7 +63,7 @@ pnpm add @nest-boot/hash @nest-boot/crypt
 生成一个高熵密钥，并将它设置为 `APP_SECRET`（也可以分别使用 `HASH_SECRET` 和 `CRYPT_SECRET`）：
 
 ```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+node --input-type=module -e "import { randomBytes } from 'node:crypto'; console.log(randomBytes(32).toString('base64url'))"
 ```
 
 直接导入模块时，它们会读取这些环境变量：

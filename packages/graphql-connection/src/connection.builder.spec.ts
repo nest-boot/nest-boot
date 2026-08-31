@@ -1,13 +1,13 @@
 import "reflect-metadata";
 
-import { LazyMetadataStorage } from "@nestjs/graphql/dist/schema-builder/storages/lazy-metadata.storage";
-import { TypeMetadataStorage } from "@nestjs/graphql/dist/schema-builder/storages/type-metadata.storage";
+import { LazyMetadataStorage } from "@nestjs/graphql/dist/schema-builder/storages/lazy-metadata.storage.js";
+import { TypeMetadataStorage } from "@nestjs/graphql/dist/schema-builder/storages/type-metadata.storage.js";
 import { Kind } from "graphql";
 
-import { ConnectionBuilder } from "./connection.builder";
-import { GRAPHQL_CONNECTION_METADATA } from "./graphql-connection.constants";
-import type { ConnectionMetadata } from "./interfaces";
-import { PageInfo } from "./objects";
+import { ConnectionBuilder } from "./connection.builder.js";
+import { GRAPHQL_CONNECTION_METADATA } from "./graphql-connection.constants.js";
+import type { ConnectionMetadata } from "./interfaces/index.js";
+import { PageInfo } from "./objects/index.js";
 
 interface BuilderBook {
   id: number;

@@ -1,5 +1,5 @@
-import { tester } from "../../utils/tester";
-import rule from "./graphql-field-definite-assignment";
+import { tester } from "../../utils/tester.js";
+import rule from "./graphql-field-definite-assignment.js";
 
 tester.run("graphql-field-definite-assignment", rule, {
   valid: [
@@ -25,6 +25,14 @@ tester.run("graphql-field-definite-assignment", rule, {
       class User {
         @Field()
         age?: number;
+      }
+    `,
+    // Declare properties cannot use definite assignment assertions
+    /* typescript */ `
+      @ObjectType()
+      class User extends BaseUser {
+        @Field()
+        declare name: string;
       }
     `,
     // InputType class

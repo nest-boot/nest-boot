@@ -1,8 +1,8 @@
 import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException } from "@nestjs/common";
 
-import { PERMISSION_ABILITY } from "../permission.constants";
-import { getPermissionAbility } from "./get-permission-ability.util";
+import { PERMISSION_ABILITY } from "../permission.constants.js";
+import { getPermissionAbility } from "./get-permission-ability.util.js";
 
 describe("getPermissionAbility", () => {
   it("throws when no permission ability is cached", async () => {
@@ -20,7 +20,7 @@ describe("getPermissionAbility", () => {
   });
 
   it("reads the permission ability from request context", async () => {
-    const ability = { can: jest.fn() };
+    const ability = { can: vi.fn() };
 
     await RequestContext.run(
       new RequestContext({ type: "http" }),

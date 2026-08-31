@@ -1,7 +1,7 @@
 import { RequestContext } from "@nest-boot/request-context";
 import i18next, { type i18n, type TOptions } from "i18next";
 
-import { I18N } from "../i18n.constants";
+import { I18N } from "../i18n.constants.js";
 
 /**
  * Translates the given key using the request-scoped i18n instance, or the global i18next fallback.

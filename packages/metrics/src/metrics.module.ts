@@ -10,14 +10,14 @@ import {
   type RegistryContentType,
 } from "prom-client";
 
-import { MetricsController } from "./metrics.controller";
+import { MetricsController } from "./metrics.controller.js";
 import {
   ASYNC_OPTIONS_TYPE,
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
-} from "./metrics.module-definition";
-import { type MetricsModuleOptions } from "./metrics-module-options.interface";
+} from "./metrics.module-definition.js";
+import { type MetricsModuleOptions } from "./metrics-module-options.interface.js";
 
 const RegistryProvider: Provider<Registry<RegistryContentType>> = {
   provide: Registry,

@@ -1,15 +1,15 @@
 import type Redis from "ioredis";
 
-import { RedisGraphQLRateLimitDriver } from "../../src/drivers/redis-graphql-rate-limit.driver";
+import { RedisGraphQLRateLimitDriver } from "../../src/drivers/redis-graphql-rate-limit.driver.js";
 
 describe("RedisGraphQLRateLimitDriver", () => {
   it("registers and calls an atomic one-key Redis command", async () => {
-    const command = jest.fn().mockResolvedValue([null, "40"]);
-    const defineCommand = jest.fn();
+    const command = vi.fn().mockResolvedValue([null, "40"]);
+    const defineCommand = vi.fn();
     const redis = {
       defineCommand,
       GRAPHQL_RATE_LIMIT: command,
-      quit: jest.fn(),
+      quit: vi.fn(),
     } as unknown as Redis;
     const driver = new RedisGraphQLRateLimitDriver(redis);
 
@@ -35,9 +35,9 @@ describe("RedisGraphQLRateLimitDriver", () => {
 
   it("normalizes the Redis blocked response", async () => {
     const redis = {
-      defineCommand: jest.fn(),
-      GRAPHQL_RATE_LIMIT: jest.fn().mockResolvedValue([1, 4]),
-      quit: jest.fn(),
+      defineCommand: vi.fn(),
+      GRAPHQL_RATE_LIMIT: vi.fn().mockResolvedValue([1, 4]),
+      quit: vi.fn(),
     } as unknown as Redis;
     const driver = new RedisGraphQLRateLimitDriver(redis);
 
@@ -52,10 +52,10 @@ describe("RedisGraphQLRateLimitDriver", () => {
   });
 
   it("closes its Redis client", async () => {
-    const quit = jest.fn().mockResolvedValue("OK");
+    const quit = vi.fn().mockResolvedValue("OK");
     const redis = {
-      defineCommand: jest.fn(),
-      GRAPHQL_RATE_LIMIT: jest.fn(),
+      defineCommand: vi.fn(),
+      GRAPHQL_RATE_LIMIT: vi.fn(),
       quit,
     } as unknown as Redis;
     const driver = new RedisGraphQLRateLimitDriver(redis);

@@ -7,7 +7,7 @@ import {
 import { Request } from "express";
 import { Observable } from "rxjs";
 
-import { RequestContext } from "./request-context";
+import { RequestContext } from "./request-context.js";
 
 /**
  * NestJS interceptor that creates request context for HTTP and GraphQL requests.

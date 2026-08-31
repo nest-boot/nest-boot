@@ -1,12 +1,17 @@
 import { EntityManager } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
-import { Inject, Injectable, NestMiddleware, Type } from "@nestjs/common";
-import { NextFunction, Request, Response } from "express";
+import {
+  Inject,
+  Injectable,
+  type NestMiddleware,
+  type Type,
+} from "@nestjs/common";
+import { type NextFunction, type Request, type Response } from "express";
 
-import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition";
-import { AuthService } from "./auth.service";
-import { AuthModuleOptions } from "./auth-module-options.interface";
-import { BaseSession, BaseUser } from "./entities";
+import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
+import { AuthService } from "./auth.service.js";
+import { type AuthModuleOptions } from "./auth-module-options.interface.js";
+import { BaseSession, BaseUser } from "./entities/index.js";
 
 /**
  * Middleware that resolves the current user and session from the request.

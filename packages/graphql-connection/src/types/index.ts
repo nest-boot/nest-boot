@@ -1,2 +1,2 @@
-export * from "./connection-class.type";
-export * from "./field-options.type";
+export * from "./connection-class.type.js";
+export * from "./field-options.type.js";

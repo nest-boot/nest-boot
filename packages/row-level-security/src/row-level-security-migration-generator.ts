@@ -4,10 +4,10 @@ import { TSMigrationGenerator } from "@mikro-orm/migrations";
 import type { Expr, SelectStatement } from "pgsql-ast-parser";
 import { parse } from "pgsql-ast-parser";
 
-import { getPolicyDefinitions } from "./decorators/policy.decorator";
-import { PolicyCommand } from "./enums/policy-command.enum";
-import { PolicyMode } from "./enums/policy-mode.enum";
-import type { PolicyEntityMetadata } from "./interfaces/policy-metadata.interface";
+import { getPolicyDefinitions } from "./decorators/policy.decorator.js";
+import { PolicyCommand } from "./enums/policy-command.enum.js";
+import { PolicyMode } from "./enums/policy-mode.enum.js";
+import type { PolicyEntityMetadata } from "./interfaces/policy-metadata.interface.js";
 import type {
   EntityMetadataLike,
   MigrationDiff,
@@ -15,17 +15,17 @@ import type {
   RowLevelSecurityDefinition,
   RowLevelSecurityMigrationGeneratorDriverLike,
   TableReference,
-} from "./interfaces/row-level-security-migration-generator.interface";
-import { createPolicyBootstrapSqlStatements } from "./utils/create-policy-bootstrap-sql-statements";
-import { createPolicyDownSql } from "./utils/create-policy-down-sql";
-import { createPolicyPrivilegeDownSqlStatements } from "./utils/create-policy-privilege-down-sql-statements";
+} from "./interfaces/row-level-security-migration-generator.interface.js";
+import { createPolicyBootstrapSqlStatements } from "./utils/create-policy-bootstrap-sql-statements.js";
+import { createPolicyDownSql } from "./utils/create-policy-down-sql.js";
+import { createPolicyPrivilegeDownSqlStatements } from "./utils/create-policy-privilege-down-sql-statements.js";
 import {
   createPolicyRoleDownSqlStatements,
   createPolicyRoleUpSqlStatements,
   getPolicyRoleNames,
-} from "./utils/create-policy-role-sql-statements";
-import { createPolicyUpSqlStatements } from "./utils/create-policy-up-sql-statements";
-import { normalizePostgresTypeAlias } from "./utils/normalize-postgres-type-alias.util";
+} from "./utils/create-policy-role-sql-statements.js";
+import { createPolicyUpSqlStatements } from "./utils/create-policy-up-sql-statements.js";
+import { normalizePostgresTypeAlias } from "./utils/normalize-postgres-type-alias.util.js";
 
 const POSTGRES_IDENTIFIER_MAX_LENGTH = 63;
 const POLICY_IDENTIFIER_TYPE = "policy";

@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/mikro-orm-crypt",
-  "version": "7.5.5",
+  "version": "8.0.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/nest-boot/nest-boot.git",
@@ -14,8 +14,8 @@
   },
   "homepage": "",
   "license": "MIT",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "directories": {
     "lib": "dist"
   },
@@ -28,26 +28,33 @@
     "dev": "tsc -w -p tsconfig.build.json",
     "lint": "eslint \"{src,test}/**/*.ts\"",
     "lint:fix": "eslint \"{src,test}/**/*.ts\" --fix",
-    "test": "jest"
+    "test": "vitest run",
+    "test:cov": "vitest run --coverage",
+    "test:watch": "vitest",
+    "test:debug": "vitest --inspect-brk --no-file-parallelism"
   },
   "devDependencies": {
-    "@mikro-orm/better-sqlite": "^6.6.2",
-    "@mikro-orm/core": "^6.6.2",
+    "@mikro-orm/sqlite": "7.1.14",
+    "@mikro-orm/core": "7.1.14",
+    "@mikro-orm/decorators": "7.1.14",
+    "@mikro-orm/pglite": "7.1.14",
     "@nest-boot/crypt": "workspace:^",
     "@nest-boot/eslint-config": "workspace:^",
     "@nest-boot/eslint-plugin": "workspace:^",
     "@nest-boot/tsconfig": "workspace:^",
-    "@types/jest": "^29.5.14",
-    "@types/node": "^24.12.4",
+    "@swc/core": "^1.16.1",
+    "@types/node": "^26.0.0",
+    "@vitest/coverage-v8": "^4.1.11",
     "better-sqlite3": "^12.5.0",
-    "jest": "^29.7.0",
     "reflect-metadata": "^0.2.2",
-    "ts-jest": "^29.4.4",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.3",
+    "unplugin-swc": "^1.5.11",
+    "vitest": "^4.1.11"
   },
   "peerDependencies": {
-    "@mikro-orm/core": "^6.0.0",
-    "@nest-boot/crypt": "^7.0.0",
+    "@mikro-orm/core": "^7.0.0",
+    "@mikro-orm/decorators": "^7.0.0",
+    "@nest-boot/crypt": "workspace:^",
     "reflect-metadata": "^0.2.2"
   },
   "publishConfig": {
@@ -59,7 +66,15 @@
       "eslint --fix"
     ]
   },
-  "volta": {
-    "extends": "../../package.json"
+  "type": "module",
+  "engines": {
+    "node": ">=26.0.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
   }
 }

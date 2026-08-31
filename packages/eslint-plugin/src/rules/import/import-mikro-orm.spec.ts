@@ -1,5 +1,5 @@
-import { tester } from "../../utils/tester";
-import rule from "./import-mikro-orm";
+import { tester } from "../../utils/tester.js";
+import rule from "./import-mikro-orm.js";
 
 tester.run("import-mikro-orm", rule, {
   valid: [

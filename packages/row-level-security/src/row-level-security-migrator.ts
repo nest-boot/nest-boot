@@ -1,7 +1,7 @@
 import type { MigrationDiff, MigrationResult, MikroORM } from "@mikro-orm/core";
 import { Migrator } from "@mikro-orm/migrations";
 
-import { RowLevelSecurityMigrationGenerator } from "./row-level-security-migration-generator";
+import { RowLevelSecurityMigrationGenerator } from "./row-level-security-migration-generator.js";
 
 interface MigrationGeneratorLike {
   generate(
@@ -13,7 +13,9 @@ interface MigrationGeneratorLike {
 
 interface MigratorInternals {
   generator: MigrationGeneratorLike;
-  ensureMigrationsDirExists(): Promise<void>;
+  hasSnapshot(): Promise<boolean>;
+  init(): Promise<void>;
+  initPaths(): Promise<void>;
   getSchemaDiff(blank: boolean, initial: boolean): Promise<MigrationDiff>;
   storeCurrentSchema(): Promise<void>;
 }
@@ -28,19 +30,20 @@ export class RowLevelSecurityMigrator extends Migrator {
     );
   }
 
-  override async createMigration(
+  override async create(
     path?: string,
     blank = false,
     initial = false,
     name?: string,
   ): Promise<MigrationResult> {
     if (initial) {
-      return await super.createMigration(path, blank, initial, name);
+      return await super.create(path, blank, initial, name);
     }
 
     const internals = this.getInternals();
+    const offline = await internals.hasSnapshot();
 
-    await internals.ensureMigrationsDirExists();
+    await (offline ? internals.initPaths() : internals.init());
 
     const diff = await internals.getSchemaDiff(blank, initial);
 
@@ -64,11 +67,8 @@ export class RowLevelSecurityMigrator extends Migrator {
   }
 
   /** Checks whether schema or RLS policy changes require a new migration. */
-  override async checkMigrationNeeded(): Promise<boolean> {
+  override async checkSchema(): Promise<boolean> {
     const internals = this.getInternals();
-
-    await internals.ensureMigrationsDirExists();
-
     const diff = await internals.getSchemaDiff(false, false);
 
     if (diff.up.length > 0) {

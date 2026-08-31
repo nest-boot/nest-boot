@@ -1,7 +1,8 @@
 import { Injectable } from "@nestjs/common";
-import type Handlebars from "handlebars";
-import { type RuntimeOptions, type TemplateDelegate } from "handlebars";
-import { create } from "handlebars";
+import Handlebars, {
+  type RuntimeOptions,
+  type TemplateDelegate,
+} from "handlebars";
 
 /**
  * Service for rendering Handlebars templates.
@@ -13,7 +14,7 @@ import { create } from "handlebars";
 @Injectable()
 export class ViewService {
   /** Handlebars instance. @internal */
-  private readonly handlebars: typeof Handlebars = create();
+  private readonly handlebars: typeof Handlebars = Handlebars.create();
 
   /** Map of template names to compiled template delegates. @internal */
   private readonly templates = new Map<string, TemplateDelegate>();

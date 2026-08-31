@@ -66,7 +66,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version-file: .nvmrc
           cache: pnpm
           registry-url: https://registry.npmjs.org/
 
@@ -108,8 +108,20 @@ jobs:
           S3_ACCESS_KEY_ID: minio
           S3_SECRET_ACCESS_KEY: password
 
+      - name: End-to-end test
+        run: pnpm test:e2e
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+          REDIS_URL: redis://localhost:6379
+          S3_ENDPOINT: http://localhost:9000
+          S3_REGION: us-east-1
+          S3_BUCKET: test-bucket
+          S3_FORCE_PATH_STYLE: true
+          S3_ACCESS_KEY_ID: minio
+          S3_SECRET_ACCESS_KEY: password
+
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
@@ -122,13 +134,21 @@ jobs:
       - name: Release packages
         if: inputs.release
         run: |
-          pnpm exec nx release --yes
+          release_args=(--skip-publish)
+          npm_tag="latest"
+
+          if [ "${GITHUB_REF_NAME}" = "beta" ]; then
+            release_args+=(--preid beta)
+            npm_tag="beta"
+          fi
+
+          pnpm exec nx release "${release_args[@]}"
 
           missing_projects="$(
-            node <<'NODE'
-          const { execFileSync } = require('node:child_process');
-          const { existsSync, readdirSync, readFileSync } = require('node:fs');
-          const { join } = require('node:path');
+            node --input-type=module <<'NODE'
+          import { execFileSync } from 'node:child_process';
+          import { existsSync, readdirSync, readFileSync } from 'node:fs';
+          import { join } from 'node:path';
 
           const projects = [];
 
@@ -155,7 +175,7 @@ jobs:
           )"
 
           if [ -n "$missing_projects" ]; then
-            pnpm exec nx release publish --projects "$missing_projects" --yes
+            pnpm exec nx release publish --projects "$missing_projects" --yes --tag "$npm_tag"
           fi
         env:
           GITHUB_TOKEN: ${{ github.token }}

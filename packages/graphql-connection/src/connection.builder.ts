@@ -12,14 +12,14 @@ import {
   FieldOptions,
   OrderFieldType,
   OrderInterface,
-} from "./interfaces";
+} from "./interfaces/index.js";
 import {
   createConnection,
   createConnectionArgs,
   createEdge,
   createFilter,
   createOrder,
-} from "./utils";
+} from "./utils/index.js";
 
 /**
  * The result of building a connection with ConnectionBuilder.
@@ -75,7 +75,7 @@ export type ConnectionBuildResult<Entity extends object> = {
  * @example Basic usage
  * ```typescript
  * import { ConnectionBuilder } from "@nest-boot/graphql-connection";
- * import { User } from "./user.entity";
+ * import { User } from "./user.entity.js";
  *
  * const { Connection, ConnectionArgs, Edge } = new ConnectionBuilder(User)
  *   .addField({ field: "name", type: "string", filterable: true, sortable: true })

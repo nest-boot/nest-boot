@@ -8,15 +8,15 @@ import { BadRequestException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { Readable } from "stream";
 
-import { MODULE_OPTIONS_TOKEN } from "./file-upload.module-definition";
-import { FileUploadService } from "./file-upload.service";
-import { type FileUploadModuleOptions } from "./file-upload-options.interface";
+import { MODULE_OPTIONS_TOKEN } from "./file-upload.module-definition.js";
+import { FileUploadService } from "./file-upload.service.js";
+import { type FileUploadModuleOptions } from "./file-upload-options.interface.js";
 
-jest.mock("@aws-sdk/s3-presigned-post", () => ({
-  createPresignedPost: jest.fn(),
+vi.mock("@aws-sdk/s3-presigned-post", () => ({
+  createPresignedPost: vi.fn(),
 }));
 
-const createPresignedPostMock = jest.mocked(createPresignedPost);
+const createPresignedPostMock = vi.mocked(createPresignedPost);
 
 function createClient(
   options: {
@@ -42,7 +42,7 @@ function createClientWithSend(
     forcePathStyle: options.forcePathStyle,
     region: "us-east-1",
   });
-  const send = jest.spyOn(client, "send").mockResolvedValue({} as never);
+  const send = vi.spyOn(client, "send").mockResolvedValue({} as never);
 
   return { client, send };
 }
@@ -60,8 +60,8 @@ describe("FileUploadService", () => {
   });
 
   afterEach(() => {
-    jest.useRealTimers();
-    jest.resetAllMocks();
+    vi.useRealTimers();
+    vi.resetAllMocks();
   });
 
   describe("create", () => {
@@ -202,8 +202,8 @@ describe("FileUploadService", () => {
 
   describe("persist", () => {
     it("should copy a temporary file to the dated permanent file path", async () => {
-      jest.useFakeTimers();
-      jest.setSystemTime(new Date("2026-01-31T12:00:00.000Z"));
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-01-31T12:00:00.000Z"));
       const { client, send } = createClientWithSend({
         endpoint: "http://s3.local:9000",
         forcePathStyle: true,
@@ -231,8 +231,8 @@ describe("FileUploadService", () => {
 
   describe("upload", () => {
     it("should upload data to a temporary path and return a path-style URL", async () => {
-      jest.useFakeTimers();
-      jest.setSystemTime(new Date("2026-01-31T12:00:00.000Z"));
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-01-31T12:00:00.000Z"));
       const { client, send } = createClientWithSend({
         endpoint: "http://s3.local:9000",
         forcePathStyle: true,
@@ -266,8 +266,8 @@ describe("FileUploadService", () => {
     });
 
     it("should use the provided extension and return a virtual-host style URL", async () => {
-      jest.useFakeTimers();
-      jest.setSystemTime(new Date("2026-01-31T12:00:00.000Z"));
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-01-31T12:00:00.000Z"));
       const service = await createService({
         bucket: "uploads",
         client: {
@@ -281,7 +281,7 @@ describe("FileUploadService", () => {
         },
       });
       const client = (service as unknown as { s3Client: S3Client }).s3Client;
-      jest.spyOn(client, "send").mockResolvedValue({} as never);
+      vi.spyOn(client, "send").mockResolvedValue({} as never);
 
       const url = await service.upload("hello", {
         "Content-Type": "application/octet-stream",
@@ -301,9 +301,9 @@ describe("FileUploadService", () => {
           forcePathStyle: true,
         }),
       });
-      jest
-        .spyOn(service, "persist")
-        .mockResolvedValue("http://s3.local/uploads/files/avatar.bin");
+      vi.spyOn(service, "persist").mockResolvedValue(
+        "http://s3.local/uploads/files/avatar.bin",
+      );
 
       await expect(
         service.upload(
@@ -317,8 +317,8 @@ describe("FileUploadService", () => {
     });
 
     it("should use bin when the MIME type has no known extension", async () => {
-      jest.useFakeTimers();
-      jest.setSystemTime(new Date("2026-01-31T12:00:00.000Z"));
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-01-31T12:00:00.000Z"));
       const service = await createService({
         bucket: "uploads",
         client: createClient({
@@ -348,21 +348,18 @@ describe("FileUploadService", () => {
     });
   });
 
-  it("should emit decorator metadata when module options exist at runtime", () => {
-    jest.isolateModules(() => {
-      jest.doMock("./file-upload-options.interface", () => ({
-        FileUploadModuleOptions: function FileUploadModuleOptions() {
-          return undefined;
-        },
-      }));
+  it("should emit decorator metadata when module options exist at runtime", async () => {
+    vi.resetModules();
+    vi.doMock("./file-upload-options.interface.js", () => ({
+      FileUploadModuleOptions: function FileUploadModuleOptions() {
+        return undefined;
+      },
+    }));
 
-      const isolatedModule = jest.requireActual<
-        typeof import("./file-upload.service")
-      >("./file-upload.service");
+    const isolatedModule = await import("./file-upload.service.js");
 
-      expect(isolatedModule.FileUploadService).toBeDefined();
-      jest.dontMock("./file-upload-options.interface");
-    });
+    expect(isolatedModule.FileUploadService).toBeDefined();
+    vi.doUnmock("./file-upload-options.interface.js");
   });
 });
 

@@ -7,21 +7,21 @@ import {
 } from "@nestjs/common";
 import { Request } from "express";
 
-import { GraphQLRateLimitDriver } from "./drivers";
+import { GraphQLRateLimitDriver } from "./drivers/index.js";
 import {
   ASYNC_OPTIONS_TYPE,
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TOKEN,
   OPTIONS_TYPE,
-} from "./graphql-rate-limit.module-definition";
-import { GraphQLRateLimitPlugin } from "./graphql-rate-limit.plugin";
-import { GraphQLRateLimitStorage } from "./graphql-rate-limit.storage";
+} from "./graphql-rate-limit.module-definition.js";
+import { GraphQLRateLimitPlugin } from "./graphql-rate-limit.plugin.js";
+import { GraphQLRateLimitStorage } from "./graphql-rate-limit.storage.js";
 import {
   GraphQLRateLimitModuleOptions,
   GraphQLRateLimitOptions,
-} from "./interfaces";
-import { createGraphQLRateLimitDriver } from "./utils/create-driver.util";
+} from "./interfaces/index.js";
+import { createGraphQLRateLimitDriver } from "./utils/create-driver.util.js";
 
 /**
  * GraphQL rate limiting module using a pluggable leaky bucket driver.

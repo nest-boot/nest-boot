@@ -1,17 +1,16 @@
-import { type FilterQuery } from "@mikro-orm/core";
-import type { FindOptions } from "@mikro-orm/core/drivers";
-import { SqlEntityManager } from "@mikro-orm/knex";
+import type { FilterQuery, FindOptions } from "@mikro-orm/core";
+import { SqlEntityManager } from "@mikro-orm/sql";
 import { Injectable } from "@nestjs/common";
 import type { GraphQLResolveInfo } from "graphql";
 
-import { ConnectionQueryBuilder } from "./connection-query-builder";
+import { ConnectionQueryBuilder } from "./connection-query-builder.js";
 import {
   ConnectionArgsInterface,
   ConnectionInterface,
   ConnectionResult,
-} from "./interfaces";
-import { ConnectionClass } from "./types";
-import { isConnectionTotalCountSelected } from "./utils/is-connection-total-count-selected";
+} from "./interfaces/index.js";
+import { ConnectionClass } from "./types/index.js";
+import { isConnectionTotalCountSelected } from "./utils/is-connection-total-count-selected.js";
 
 /**
  * Options for the ConnectionManager.find method.
@@ -29,7 +28,7 @@ export interface ConnectionFindOptions<
   Hint extends string = never,
   Fields extends string = "*",
   Excludes extends string = never,
-> extends Exclude<
+> extends Omit<
   FindOptions<Entity, Hint, Fields, Excludes>,
   "limit" | "offset" | "orderBy"
 > {

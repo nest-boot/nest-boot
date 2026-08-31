@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import {
   REQUEST,
   RequestContext,
@@ -14,12 +16,11 @@ import {
   type Provider,
 } from "@nestjs/common";
 import { APP_INTERCEPTOR } from "@nestjs/core";
-import { randomUUID } from "crypto";
 import { type Request, type Response } from "express";
-import pinoHttp, { type HttpLogger, type Options } from "pino-http";
+import { type Options } from "pino-http";
 
-import { Logger } from "./logger";
-import { LoggingInterceptor } from "./logger.interceptor";
+import { LoggingInterceptor } from "./logger.interceptor.js";
+import { Logger } from "./logger.js";
 import {
   ASYNC_OPTIONS_TYPE,
   BINDINGS,
@@ -28,10 +29,11 @@ import {
   OPTIONS_TYPE,
   PINO_HTTP,
   PINO_LOGGER,
-} from "./logger.module-definition";
-import { LoggerModuleOptions } from "./logger-module-options.interface";
+} from "./logger.module-definition.js";
+import type { LoggerModuleOptions } from "./logger-module-options.interface.js";
+import pinoHttp, { type PinoHttpLogger } from "./pino-http.js";
 
-const pinoHttpProvider: Provider<HttpLogger> = {
+const pinoHttpProvider: Provider<PinoHttpLogger> = {
   provide: PINO_HTTP,
   inject: [{ token: MODULE_OPTIONS_TOKEN, optional: true }],
   useFactory: (options?: LoggerModuleOptions) =>
@@ -68,7 +70,7 @@ export class LoggerModule
   /** Configured pino-http middleware shared by all logger paths. @internal */
   @Optional()
   @Inject(PINO_HTTP)
-  private loggerMiddleware?: HttpLogger;
+  private loggerMiddleware?: PinoHttpLogger;
 
   /**
    * Registers the LoggerModule with the given options.
@@ -133,7 +135,7 @@ export class LoggerModule
   }
 }
 
-function createLoggerMiddleware(options?: LoggerModuleOptions): HttpLogger {
+function createLoggerMiddleware(options?: LoggerModuleOptions): PinoHttpLogger {
   return pinoHttp(createLoggerOptions(options));
 }
 

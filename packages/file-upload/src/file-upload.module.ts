@@ -4,9 +4,9 @@ import {
   ASYNC_OPTIONS_TYPE,
   ConfigurableModuleClass,
   OPTIONS_TYPE,
-} from "./file-upload.module-definition";
-import { FileUploadResolver } from "./file-upload.resolver";
-import { FileUploadService } from "./file-upload.service";
+} from "./file-upload.module-definition.js";
+import { FileUploadResolver } from "./file-upload.resolver.js";
+import { FileUploadService } from "./file-upload.service.js";
 
 /**
  * File upload module providing upload handling via GraphQL.

@@ -10,14 +10,16 @@
     "experimentalDecorators": true,
     "incremental": true,
     "isolatedModules": true,
-    "module": "CommonJS",
+    "module": "NodeNext",
     "outDir": "./dist",
     "removeComments": false,
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "sourceMap": true,
     "strict": true,
-    "target": "ES2021",
-    "types": ["jest", "node"]
+    "target": "ES2023",
+    "types": ["vitest/globals", "node"],
+    "moduleResolution": "NodeNext",
+    "resolvePackageJsonExports": true
   }
 }

@@ -4,11 +4,11 @@ import { Test } from "@nestjs/testing";
 import {
   GraphQLRateLimitDriver,
   MemoryGraphQLRateLimitDriver,
-} from "../src/drivers";
-import { GraphQLRateLimitModule } from "../src/graphql-rate-limit.module";
-import { OPTIONS_TOKEN } from "../src/graphql-rate-limit.module-definition";
-import { GraphQLRateLimitPlugin } from "../src/graphql-rate-limit.plugin";
-import { GraphQLRateLimitOptions } from "../src/interfaces";
+} from "../src/drivers/index.js";
+import { GraphQLRateLimitModule } from "../src/graphql-rate-limit.module.js";
+import { OPTIONS_TOKEN } from "../src/graphql-rate-limit.module-definition.js";
+import { GraphQLRateLimitPlugin } from "../src/graphql-rate-limit.plugin.js";
+import { GraphQLRateLimitOptions } from "../src/interfaces/index.js";
 
 describe("GraphQLRateLimitModule", () => {
   const originalRedisUrl = process.env.REDIS_URL;
@@ -57,9 +57,9 @@ describe("GraphQLRateLimitModule", () => {
   });
 
   it("registers an explicit custom driver", async () => {
-    const close = jest.fn();
+    const close = vi.fn();
     const customDriver = {
-      update: jest.fn(),
+      update: vi.fn(),
       close,
     } as unknown as GraphQLRateLimitDriver;
     const moduleRef = await Test.createTestingModule({
@@ -77,8 +77,8 @@ describe("GraphQLRateLimitModule", () => {
 
   it("registers an asynchronously supplied custom driver", async () => {
     const customDriver = {
-      update: jest.fn(),
-      close: jest.fn(),
+      update: vi.fn(),
+      close: vi.fn(),
     } as unknown as GraphQLRateLimitDriver;
     const moduleRef = await Test.createTestingModule({
       imports: [

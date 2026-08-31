@@ -1,14 +1,14 @@
-import { PolicyCommand } from "../enums/policy-command.enum";
-import { PolicyMode } from "../enums/policy-mode.enum";
-import { createPolicyBootstrapSqlStatements } from "./create-policy-bootstrap-sql-statements";
-import { createPolicyDownSql } from "./create-policy-down-sql";
-import { createPolicyPrivilegeDownSqlStatements } from "./create-policy-privilege-down-sql-statements";
+import { PolicyCommand } from "../enums/policy-command.enum.js";
+import { PolicyMode } from "../enums/policy-mode.enum.js";
+import { createPolicyBootstrapSqlStatements } from "./create-policy-bootstrap-sql-statements.js";
+import { createPolicyDownSql } from "./create-policy-down-sql.js";
+import { createPolicyPrivilegeDownSqlStatements } from "./create-policy-privilege-down-sql-statements.js";
 import {
   createPolicyRoleDownSqlStatements,
   createPolicyRoleUpSqlStatements,
   getPolicyRoleNames,
-} from "./create-policy-role-sql-statements";
-import { createPolicyUpSqlStatements } from "./create-policy-up-sql-statements";
+} from "./create-policy-role-sql-statements.js";
+import { createPolicyUpSqlStatements } from "./create-policy-up-sql-statements.js";
 
 describe("policy migration SQL", () => {
   it("generates row level security bootstrap SQL", () => {

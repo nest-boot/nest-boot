@@ -1,5 +1,15 @@
 {
   "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "./src"
+  },
   "include": ["src"],
-  "exclude": ["src/**/*.spec.ts"]
+  "exclude": [
+    "src/**/*.spec.ts",
+    "node_modules",
+    "test",
+    "dist",
+    "**/*.spec.ts",
+    "**/*.e2e-spec.ts"
+  ]
 }

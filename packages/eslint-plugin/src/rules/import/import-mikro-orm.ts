@@ -1,4 +1,4 @@
-import { createRule } from "../../utils/createRule";
+import { createRule } from "../../utils/createRule.js";
 
 export default createRule({
   name: "import-mikro-orm",

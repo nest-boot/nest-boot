@@ -7,7 +7,7 @@ import {
 import { Request } from "express";
 import { Observable } from "rxjs";
 
-import { Logger } from "./logger";
+import { Logger } from "./logger.js";
 
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {

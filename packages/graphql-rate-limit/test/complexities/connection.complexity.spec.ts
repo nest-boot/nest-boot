@@ -1,6 +1,6 @@
 import type { ComplexityEstimatorArgs } from "@nest-boot/graphql";
 
-import { connectionComplexity } from "../../src/complexities";
+import { connectionComplexity } from "../../src/complexities/index.js";
 
 describe("connectionComplexity", () => {
   const estimator = connectionComplexity as (

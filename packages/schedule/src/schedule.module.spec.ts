@@ -2,42 +2,54 @@ import { Logger } from "@nestjs/common";
 import { MODULE_METADATA } from "@nestjs/common/constants";
 import { DiscoveryModule } from "@nestjs/core";
 
-let mockRegisterQueueAsyncOptions: any;
-const mockQueueModule = {
-  module: class QueueModule {},
-};
-const mockRegisterQueueAsync = jest.fn((options) => {
-  mockRegisterQueueAsyncOptions = options;
-  return mockQueueModule;
-});
-const mockProcessorDecorator = jest.fn();
-const mockProcessor = jest.fn(() => mockProcessorDecorator);
+const { mockProcessor, mockQueueModule, mockRegisterQueueAsync, mockState } =
+  vi.hoisted(() => {
+    const mockState = {
+      registerQueueAsyncOptions: undefined as any,
+    };
+    const mockQueueModule = {
+      module: class QueueModule {},
+    };
+    const mockRegisterQueueAsync = vi.fn((options) => {
+      mockState.registerQueueAsyncOptions = options;
+      return mockQueueModule;
+    });
+    const mockProcessorDecorator = vi.fn();
+    const mockProcessor = vi.fn(() => mockProcessorDecorator);
 
-jest.mock("@nest-boot/bullmq", () => ({
+    return {
+      mockProcessor,
+      mockQueueModule,
+      mockRegisterQueueAsync,
+      mockState,
+    };
+  });
+
+vi.mock("@nest-boot/bullmq", () => ({
   BullModule: {
     registerQueueAsync: mockRegisterQueueAsync,
   },
-  InjectQueue: jest.fn(() => jest.fn()),
+  InjectQueue: vi.fn(() => vi.fn()),
   Processor: mockProcessor,
   WorkerHost: class WorkerHost {
     worker = {
       concurrency: 1,
-      run: jest.fn().mockResolvedValue(undefined),
+      run: vi.fn().mockResolvedValue(undefined),
     };
   },
 }));
 
-import { ScheduleModule } from "./schedule.module";
+import { ScheduleModule } from "./schedule.module.js";
 import {
   BASE_MODULE_OPTIONS_TOKEN,
   MODULE_OPTIONS_TOKEN,
-} from "./schedule.module-definition";
-import { ScheduleProcessor } from "./schedule.processor";
-import { ScheduleRegistry } from "./schedule.registry";
+} from "./schedule.module-definition.js";
+import { ScheduleProcessor } from "./schedule.processor.js";
+import { ScheduleRegistry } from "./schedule.registry.js";
 
 describe("ScheduleModule", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("should expose configurable root registrations", () => {
@@ -104,14 +116,14 @@ describe("ScheduleModule", () => {
   });
 
   it("should register the schedule queue from module options", () => {
-    expect(mockRegisterQueueAsyncOptions).toEqual(
+    expect(mockState.registerQueueAsyncOptions).toEqual(
       expect.objectContaining({
         inject: [MODULE_OPTIONS_TOKEN],
         name: "schedule",
       }),
     );
     expect(
-      mockRegisterQueueAsyncOptions.useFactory({
+      mockState.registerQueueAsyncOptions.useFactory({
         concurrency: 2,
       }),
     ).toEqual({

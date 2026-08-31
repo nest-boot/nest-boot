@@ -1,4 +1,4 @@
-import type { BuildAbilityCallback } from "../types/build-ability-callback.type";
+import type { BuildAbilityCallback } from "../types/build-ability-callback.type.js";
 
 /** Permission module options. */
 export interface PermissionModuleOptions {

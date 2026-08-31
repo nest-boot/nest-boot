@@ -1,7 +1,7 @@
 import { Injectable, Module } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 
-import { MetricsModule, Registry } from "../src";
+import { MetricsModule, Registry } from "../src/index.js";
 
 @Injectable()
 class MetricsConsumer {

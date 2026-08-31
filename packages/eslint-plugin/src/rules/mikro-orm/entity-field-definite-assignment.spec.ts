@@ -1,5 +1,5 @@
-import { tester } from "../../utils/tester";
-import rule from "./entity-field-definite-assignment";
+import { tester } from "../../utils/tester.js";
+import rule from "./entity-field-definite-assignment.js";
 
 tester.run("entity-field-definite-assignment", rule, {
   valid: [
@@ -25,6 +25,14 @@ tester.run("entity-field-definite-assignment", rule, {
       class User {
         @Property()
         age?: number;
+      }
+    `,
+    // Declare properties cannot use definite assignment assertions
+    /* typescript */ `
+      @Entity()
+      class User extends BaseUser {
+        @Property()
+        declare name: string;
       }
     `,
     // Nullable property with initializer

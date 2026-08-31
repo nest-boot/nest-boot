@@ -1,17 +1,20 @@
 import { PostgreSqlConnection } from "@mikro-orm/postgresql";
 import { RequestContext } from "@nest-boot/request-context";
 
-import { RowLevelSecurity, RowLevelSecurityMode } from "./row-level-security";
-import { RowLevelSecurityConnection } from "./row-level-security-driver";
+import {
+  RowLevelSecurity,
+  RowLevelSecurityMode,
+} from "./row-level-security.js";
+import { RowLevelSecurityConnection } from "./row-level-security-driver.js";
 
 describe("RowLevelSecurityDriver", () => {
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("delegates unchanged outside RequestContext by default", async () => {
     const executeSpy = mockPostgreSqlExecute("query-result");
-    const transactional = jest.fn();
+    const transactional = vi.fn();
     const connection = createConnection({ transactional });
 
     const result = await RowLevelSecurityConnection.prototype.execute.call(
@@ -35,7 +38,7 @@ describe("RowLevelSecurityDriver", () => {
 
   it("delegates unchanged inside RequestContext when no row level security context is set", async () => {
     const executeSpy = mockPostgreSqlExecute("query-result");
-    const transactional = jest.fn();
+    const transactional = vi.fn();
     const connection = createConnection({ transactional });
 
     const result = await RequestContext.run(
@@ -64,7 +67,7 @@ describe("RowLevelSecurityDriver", () => {
 
   it("delegates unchanged when row level security mode is disabled", async () => {
     const executeSpy = mockPostgreSqlExecute("query-result");
-    const transactional = jest.fn();
+    const transactional = vi.fn();
     const connection = createConnection({ transactional });
 
     const result = await RequestContext.run(
@@ -187,7 +190,7 @@ describe("RowLevelSecurityDriver", () => {
   it("applies anonymous row level security when mode is enabled without context values", async () => {
     const executeSpy = mockPostgreSqlExecute("query-result");
     const transaction = {};
-    const transactional = jest.fn(async (cb: (trx: unknown) => unknown) => {
+    const transactional = vi.fn(async (cb: (trx: unknown) => unknown) => {
       return await cb(transaction);
     });
     const connection = createConnection({ transactional });
@@ -263,7 +266,7 @@ describe("RowLevelSecurityDriver", () => {
   it("opens a short transaction when executing a query outside an existing transaction", async () => {
     const transaction = {};
     const executeSpy = mockPostgreSqlExecute("query-result");
-    const transactional = jest.fn(async (cb: (trx: unknown) => unknown) => {
+    const transactional = vi.fn(async (cb: (trx: unknown) => unknown) => {
       return await cb(transaction);
     });
     const connection = createConnection({ transactional });
@@ -303,14 +306,11 @@ describe("RowLevelSecurityDriver", () => {
     );
   });
 
-  it("reuses the transaction from a transacting Knex query builder", async () => {
-    const queryBuilder = {
-      client: {
-        transacting: true,
-      },
-    };
+  it("reuses the explicit transaction for a native query builder", async () => {
+    const queryBuilder = {};
+    const transaction = {};
     const executeSpy = mockPostgreSqlExecute("query-result");
-    const transactional = jest.fn();
+    const transactional = vi.fn();
     const connection = createConnection({ transactional });
 
     const result = await RequestContext.run(
@@ -323,6 +323,7 @@ describe("RowLevelSecurityDriver", () => {
           queryBuilder as any,
           [],
           "all",
+          transaction,
         );
       },
     );
@@ -334,7 +335,7 @@ describe("RowLevelSecurityDriver", () => {
       "SET LOCAL ROLE authenticated;",
       [],
       "run",
-      queryBuilder,
+      transaction,
       undefined,
     );
     expect(executeSpy).toHaveBeenNthCalledWith(
@@ -342,21 +343,15 @@ describe("RowLevelSecurityDriver", () => {
       queryBuilder,
       [],
       "all",
-      queryBuilder,
+      transaction,
       undefined,
     );
   });
 
-  it("tracks row level security state on the shared transaction client for Knex query builders", async () => {
-    const transactionClient = {
-      transacting: true,
-    };
-    const scopedQueryBuilder = {
-      client: transactionClient,
-    };
-    const unscopedQueryBuilder = {
-      client: transactionClient,
-    };
+  it("tracks row level security state on the shared explicit transaction for native query builders", async () => {
+    const transaction = {};
+    const scopedQueryBuilder = {};
+    const unscopedQueryBuilder = {};
     const executeSpy = mockPostgreSqlExecute("query-result");
 
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
@@ -368,6 +363,7 @@ describe("RowLevelSecurityDriver", () => {
         scopedQueryBuilder as any,
         [],
         "all",
+        transaction,
       );
     });
 
@@ -376,6 +372,7 @@ describe("RowLevelSecurityDriver", () => {
       unscopedQueryBuilder as any,
       [],
       "all",
+      transaction,
     );
 
     expect(executeSpy).toHaveBeenNthCalledWith(
@@ -383,20 +380,16 @@ describe("RowLevelSecurityDriver", () => {
       "SET LOCAL ROLE NONE;\nSELECT set_config('app.tenant_id', null, true);",
       [],
       "run",
-      unscopedQueryBuilder,
+      transaction,
       undefined,
     );
   });
 
-  it("opens a short transaction for a Knex query builder without a transaction", async () => {
-    const queryBuilder = {
-      client: {
-        transacting: false,
-      },
-    };
+  it("opens a short transaction for a native query builder without a transaction", async () => {
+    const queryBuilder = {};
     const transaction = {};
     const executeSpy = mockPostgreSqlExecute("query-result");
-    const transactional = jest.fn(async (cb: (trx: unknown) => unknown) => {
+    const transactional = vi.fn(async (cb: (trx: unknown) => unknown) => {
       return await cb(transaction);
     });
     const connection = createConnection({ transactional });
@@ -529,24 +522,24 @@ describe("RowLevelSecurityDriver", () => {
     const executionOrder: string[] = [];
     let activeTenantId: number | undefined;
 
-    jest
-      .spyOn(PostgreSqlConnection.prototype, "execute")
-      .mockImplementation(async (queryOrKnex) => {
+    vi.spyOn(PostgreSqlConnection.prototype, "execute").mockImplementation(
+      (queryOrKnex) => {
         if (typeof queryOrKnex === "string") {
           if (queryOrKnex.startsWith("SET LOCAL ROLE")) {
             activeTenantId = queryOrKnex.includes("'1'") ? 1 : 2;
             executionOrder.push(`setup:${String(activeTenantId)}`);
 
-            return undefined as any;
+            return Promise.resolve(undefined as any);
           }
 
           executionOrder.push(`${queryOrKnex}:${String(activeTenantId)}`);
 
-          return activeTenantId as any;
+          return Promise.resolve(activeTenantId as any);
         }
 
-        return undefined as any;
-      });
+        return Promise.resolve(undefined as any);
+      },
+    );
 
     const firstQuery = RequestContext.run(
       new RequestContext({ type: "test" }),
@@ -592,13 +585,15 @@ describe("RowLevelSecurityDriver", () => {
 });
 
 function mockPostgreSqlExecute(result: unknown) {
-  return jest
+  return vi
     .spyOn(PostgreSqlConnection.prototype, "execute")
-    .mockImplementation(async (queryOrKnex) => {
-      return typeof queryOrKnex === "string" &&
-        queryOrKnex.startsWith("SET LOCAL ROLE")
-        ? (undefined as any)
-        : (result as any);
+    .mockImplementation((queryOrKnex) => {
+      return Promise.resolve(
+        typeof queryOrKnex === "string" &&
+          queryOrKnex.startsWith("SET LOCAL ROLE")
+          ? (undefined as any)
+          : (result as any),
+      );
     });
 }
 

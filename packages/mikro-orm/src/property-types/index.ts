@@ -1,1 +1,1 @@
-export * from "./vector.type";
+export * from "./vector.type.js";

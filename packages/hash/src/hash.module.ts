@@ -5,10 +5,10 @@ import {
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
-} from "./hash.module-definition";
-import { HashService } from "./hash.service";
-import { HashModuleOptions } from "./hash-module-options.interface";
-import { estimateEntropy } from "./utils/estimate-entropy";
+} from "./hash.module-definition.js";
+import { HashService } from "./hash.service.js";
+import { HashModuleOptions } from "./hash-module-options.interface.js";
+import { estimateEntropy } from "./utils/estimate-entropy.js";
 
 /**
  * Module that provides password hashing services using Argon2.
@@ -29,7 +29,7 @@ import { estimateEntropy } from "./utils/estimate-entropy";
  *
  * Generate a secure secret:
  * ```bash
- * node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+ * node --input-type=module -e "import { randomBytes } from 'node:crypto'; console.log(randomBytes(32).toString('base64url'))"
  * ```
  */
 @Global()
@@ -47,7 +47,7 @@ import { estimateEntropy } from "./utils/estimate-entropy";
             "Hash secret is required.\n" +
               "Set HASH_SECRET or APP_SECRET environment variable, or pass a secret option.\n" +
               "Generate a secure secret with:\n" +
-              "  node -e \"console.log(require('crypto').randomBytes(32).toString('base64url'))\"",
+              "  node --input-type=module -e \"import { randomBytes } from 'node:crypto'; console.log(randomBytes(32).toString('base64url'))\"",
           );
         }
 
@@ -56,7 +56,7 @@ import { estimateEntropy } from "./utils/estimate-entropy";
             "Hash secret must be at least 32 characters long.\n" +
               "Set HASH_SECRET or APP_SECRET environment variable, or pass a secret option.\n" +
               "Generate a secure secret with:\n" +
-              "  node -e \"console.log(require('crypto').randomBytes(32).toString('base64url'))\"",
+              "  node --input-type=module -e \"import { randomBytes } from 'node:crypto'; console.log(randomBytes(32).toString('base64url'))\"",
           );
         }
 
@@ -65,7 +65,7 @@ import { estimateEntropy } from "./utils/estimate-entropy";
             "Hash secret appears low-entropy.\n" +
               "Use a randomly generated secret for production.\n" +
               "Generate a secure secret with:\n" +
-              "  node -e \"console.log(require('crypto').randomBytes(32).toString('base64url'))\"",
+              "  node --input-type=module -e \"import { randomBytes } from 'node:crypto'; console.log(randomBytes(32).toString('base64url'))\"",
           );
         }
 

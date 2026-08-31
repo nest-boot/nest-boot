@@ -1,16 +1,20 @@
-import { EntityData, EntityManager } from "@mikro-orm/core";
+import { type EntityData, EntityManager } from "@mikro-orm/core";
 import { WorkerHost } from "@nest-boot/bullmq";
 import { Cron } from "@nest-boot/schedule";
-import { Inject, Injectable, OnApplicationBootstrap } from "@nestjs/common";
+import {
+  Inject,
+  Injectable,
+  type OnApplicationBootstrap,
+} from "@nestjs/common";
 import { DiscoveryService } from "@nestjs/core";
-import { InstanceWrapper } from "@nestjs/core/injector/instance-wrapper";
-import { Job, JobState, Queue } from "bullmq";
+import { type InstanceWrapper } from "@nestjs/core/injector/instance-wrapper";
+import { type Job, type JobState, Queue } from "bullmq";
 
-import { MODULE_OPTIONS_TOKEN } from "./bullmq-mikro-orm.module-definition";
-import { BullMQMikroORMModuleOptions } from "./bullmq-mikro-orm-module-options.interface";
-import { JobEntity } from "./entities/job.entity";
-import { convertBullmqJobStateToJobStatus } from "./utils/convert-bullmq-job-state-to-job-status.util";
-import { shouldIncludeQueue } from "./utils/should-include-queue.util";
+import { MODULE_OPTIONS_TOKEN } from "./bullmq-mikro-orm.module-definition.js";
+import { type BullMQMikroORMModuleOptions } from "./bullmq-mikro-orm-module-options.interface.js";
+import { JobEntity } from "./entities/job.entity.js";
+import { convertBullmqJobStateToJobStatus } from "./utils/convert-bullmq-job-state-to-job-status.util.js";
+import { shouldIncludeQueue } from "./utils/should-include-queue.util.js";
 
 @Injectable()
 export class BullMQMikroORMService implements OnApplicationBootstrap {

@@ -1,7 +1,7 @@
-import { BaseAccount } from "./account.entity";
-import { BaseSession } from "./session.entity";
-import { BaseUser } from "./user.entity";
-import { BaseVerification } from "./verification.entity";
+import { BaseAccount } from "./account.entity.js";
+import { BaseSession } from "./session.entity.js";
+import { BaseUser } from "./user.entity.js";
+import { BaseVerification } from "./verification.entity.js";
 
 class TestAccount extends BaseAccount {}
 class TestVerification extends BaseVerification {}
@@ -20,80 +20,51 @@ describe("auth entities", () => {
     }
   });
 
-  it("should emit decorator metadata when Opt exists at runtime", () => {
-    jest.isolateModules(() => {
-      jest.doMock("@mikro-orm/core", () => {
-        const actual = jest.requireActual("@mikro-orm/core");
+  it("should load entities in an isolated module", async () => {
+    vi.resetModules();
 
-        return {
-          ...actual,
-          Opt: function Opt() {
-            return undefined;
-          },
-        };
-      });
-
-      expect(
-        jest.requireActual<typeof import("./account.entity")>(
-          "./account.entity",
-        ).BaseAccount,
-      ).toBeDefined();
-      expect(
-        jest.requireActual<typeof import("./session.entity")>(
-          "./session.entity",
-        ).BaseSession,
-      ).toBeDefined();
-      expect(
-        jest.requireActual<typeof import("./user.entity")>("./user.entity")
-          .BaseUser,
-      ).toBeDefined();
-      expect(
-        jest.requireActual<typeof import("./verification.entity")>(
-          "./verification.entity",
-        ).BaseVerification,
-      ).toBeDefined();
-      jest.dontMock("@mikro-orm/core");
-    });
+    expect((await import("./account.entity.js")).BaseAccount).toBeDefined();
+    expect((await import("./session.entity.js")).BaseSession).toBeDefined();
+    expect((await import("./user.entity.js")).BaseUser).toBeDefined();
+    expect(
+      (await import("./verification.entity.js")).BaseVerification,
+    ).toBeDefined();
   });
 
-  it("should pass relation and update callbacks to MikroORM decorators", () => {
+  it("should pass relation and update callbacks to MikroORM decorators", async () => {
     const relationTargets: unknown[] = [];
     const updateValues: unknown[] = [];
     const decorator = () => () => undefined;
 
-    jest.isolateModules(() => {
-      jest.doMock("@mikro-orm/core", () => {
-        const actual = jest.requireActual("@mikro-orm/core");
+    vi.resetModules();
+    vi.doMock("@mikro-orm/decorators/legacy", async () => {
+      const actual = await vi.importActual<
+        typeof import("@mikro-orm/decorators/legacy")
+      >("@mikro-orm/decorators/legacy");
 
-        return {
-          ...actual,
-          Entity: decorator,
-          ManyToOne: (target: () => unknown) => {
-            relationTargets.push(target());
-            return () => undefined;
-          },
-          Opt: function Opt() {
-            return undefined;
-          },
-          PrimaryKey: decorator,
-          Property: (options: { onUpdate?: () => unknown } = {}) => {
-            if (options.onUpdate) {
-              updateValues.push(options.onUpdate());
-            }
-            return () => undefined;
-          },
-          Unique: decorator,
-        };
-      });
-
-      jest.requireActual<typeof import("./account.entity")>("./account.entity");
-      jest.requireActual<typeof import("./session.entity")>("./session.entity");
-      jest.requireActual<typeof import("./user.entity")>("./user.entity");
-      jest.requireActual<typeof import("./verification.entity")>(
-        "./verification.entity",
-      );
-      jest.dontMock("@mikro-orm/core");
+      return {
+        ...actual,
+        Entity: decorator,
+        ManyToOne: (options: { entity?: () => unknown }) => {
+          relationTargets.push(options.entity?.());
+          return () => undefined;
+        },
+        PrimaryKey: decorator,
+        Property: (options: { onUpdate?: () => unknown } = {}) => {
+          if (options.onUpdate) {
+            updateValues.push(options.onUpdate());
+          }
+          return () => undefined;
+        },
+        Unique: decorator,
+      };
     });
+
+    await import("./account.entity.js");
+    await import("./session.entity.js");
+    await import("./user.entity.js");
+    await import("./verification.entity.js");
+    vi.doUnmock("@mikro-orm/decorators/legacy");
 
     expect(relationTargets).toEqual(["User", "User"]);
     expect(updateValues).toHaveLength(4);

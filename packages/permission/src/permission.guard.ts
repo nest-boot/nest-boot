@@ -5,9 +5,9 @@ import { ForbiddenException, Inject, Injectable } from "@nestjs/common";
 import { ContextIdFactory, ModuleRef, Reflector } from "@nestjs/core";
 import type { Request } from "express";
 
-import type { CanOptions } from "./interfaces/can-options.interface";
-import type { PermissionModuleOptions } from "./interfaces/permission-module-options.interface";
-import type { RouteArgumentMetadataValue } from "./interfaces/route-argument-metadata-value.interface";
+import type { CanOptions } from "./interfaces/can-options.interface.js";
+import type { PermissionModuleOptions } from "./interfaces/permission-module-options.interface.js";
+import type { RouteArgumentMetadataValue } from "./interfaces/route-argument-metadata-value.interface.js";
 import {
   CAN_METADATA,
   CUSTOM_ROUTE_ARGS_METADATA,
@@ -16,11 +16,11 @@ import {
   PERMISSION_ABILITY_PROMISE,
   ROUTE_ARGS_METADATA,
   ROUTE_PARAM_TYPES,
-} from "./permission.constants";
-import { MODULE_OPTIONS_TOKEN } from "./permission.module-definition";
-import type { CanSubjectFactory } from "./types/can-subject-factory.type";
-import type { PermissionAbility } from "./types/permission-ability.type";
-import type { RouteArgumentMetadata } from "./types/route-argument-metadata.type";
+} from "./permission.constants.js";
+import { MODULE_OPTIONS_TOKEN } from "./permission.module-definition.js";
+import type { CanSubjectFactory } from "./types/can-subject-factory.type.js";
+import type { PermissionAbility } from "./types/permission-ability.type.js";
+import type { RouteArgumentMetadata } from "./types/route-argument-metadata.type.js";
 
 /** Guard that evaluates CASL permissions from `Can` metadata. */
 @Injectable()

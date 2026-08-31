@@ -1,6 +1,6 @@
 import { ConfigurableModuleBuilder } from "@nestjs/common";
 
-import { type CryptModuleOptions } from "./crypt-module-options.interface";
+import { type CryptModuleOptions } from "./crypt-module-options.interface.js";
 
 export const {
   ConfigurableModuleClass,

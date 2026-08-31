@@ -17,18 +17,29 @@ import {
   GraphQLType,
   GraphQLUnionType,
 } from "graphql";
-import {
+import type {
   ComplexityEstimator,
   ComplexityEstimatorArgs,
+} from "graphql-query-complexity";
+import * as graphqlQueryComplexity from "graphql-query-complexity/cjs";
+
+import { OPTIONS_TOKEN } from "./graphql-rate-limit.module-definition.js";
+import { GraphQLRateLimitStorage } from "./graphql-rate-limit.storage.js";
+import type {
+  CostResponse,
+  GraphQLRateLimitOptions,
+} from "./interfaces/index.js";
+
+// The dependency's ESM build loads graphql/index.mjs while Nest loads the
+// package's CommonJS main entry. Use its CJS bridge so GraphQL runtime types
+// come from the same module instance in an ESM Nest application.
+const {
   directiveEstimator,
   fieldExtensionsEstimator,
   getComplexity,
   simpleEstimator,
-} from "graphql-query-complexity";
-
-import { OPTIONS_TOKEN } from "./graphql-rate-limit.module-definition";
-import { GraphQLRateLimitStorage } from "./graphql-rate-limit.storage";
-import { CostResponse, GraphQLRateLimitOptions } from "./interfaces";
+} =
+  graphqlQueryComplexity as unknown as typeof import("graphql-query-complexity");
 
 // https://shopify.engineering/rate-limiting-graphql-apis-calculating-query-complexity
 function shopifyEstimator(

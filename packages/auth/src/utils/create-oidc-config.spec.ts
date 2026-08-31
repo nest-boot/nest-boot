@@ -1,4 +1,4 @@
-import { createOidcConfig } from "./create-oidc-config";
+import { createOidcConfig } from "./create-oidc-config.js";
 
 describe("createOidcConfig", () => {
   beforeEach(() => {

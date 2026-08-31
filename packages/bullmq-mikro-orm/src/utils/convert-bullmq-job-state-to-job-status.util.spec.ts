@@ -1,5 +1,5 @@
-import { JobStatus } from "../enums/job-status.enum";
-import { convertBullmqJobStateToJobStatus } from "./convert-bullmq-job-state-to-job-status.util";
+import { JobStatus } from "../enums/job-status.enum.js";
+import { convertBullmqJobStateToJobStatus } from "./convert-bullmq-job-state-to-job-status.util.js";
 
 describe("convertBullmqJobStateToJobStatus", () => {
   it.each([

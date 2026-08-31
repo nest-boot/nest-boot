@@ -1,6 +1,6 @@
-import * as publicApi from ".";
-import { BullModule } from "./bullmq.module";
-import { Processor } from "./processor.decorator";
+import { BullModule } from "./bullmq.module.js";
+import * as publicApi from "./index.js";
+import { Processor } from "./processor.decorator.js";
 
 describe("public API", () => {
   it("should export Bull module and upstream BullMQ helpers", () => {

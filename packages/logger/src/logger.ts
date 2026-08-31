@@ -12,9 +12,13 @@ import pino, {
   type Level,
   type Logger as PinoLogger,
 } from "pino";
-import { type HttpLogger } from "pino-http";
 
-import { BINDINGS, PINO_HTTP, PINO_LOGGER } from "./logger.module-definition";
+import {
+  BINDINGS,
+  PINO_HTTP,
+  PINO_LOGGER,
+} from "./logger.module-definition.js";
+import { type PinoHttpLogger } from "./pino-http.js";
 
 /**
  * Request-scoped structured logger built on top of pino.
@@ -29,7 +33,7 @@ export class Logger implements LoggerService {
   /** Configured pino-http middleware supplied by LoggerModule. @internal */
   @Optional()
   @Inject(PINO_HTTP)
-  private readonly loggerMiddleware?: HttpLogger;
+  private readonly loggerMiddleware?: PinoHttpLogger;
 
   /** Current logging context name. @internal */
   private context?: string;

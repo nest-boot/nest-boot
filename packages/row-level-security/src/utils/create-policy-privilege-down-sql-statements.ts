@@ -1,8 +1,8 @@
-import { PolicyCommand } from "../enums/policy-command.enum";
-import type { PolicySqlOptions } from "../interfaces/policy-sql-options.interface";
-import { assertIdentifier } from "./assert-identifier";
-import { escapeSqlLiteral } from "./escape-sql-literal";
-import { quoteQualifiedIdentifier } from "./quote-qualified-identifier";
+import { PolicyCommand } from "../enums/policy-command.enum.js";
+import type { PolicySqlOptions } from "../interfaces/policy-sql-options.interface.js";
+import { assertIdentifier } from "./assert-identifier.js";
+import { escapeSqlLiteral } from "./escape-sql-literal.js";
+import { quoteQualifiedIdentifier } from "./quote-qualified-identifier.js";
 
 /**
  * Creates SQL that revokes table and sequence privileges emitted for a policy.

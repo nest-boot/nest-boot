@@ -3,7 +3,8 @@
   "display": "App",
   "extends": "./base.json",
   "compilerOptions": {
-    "module": "CommonJS",
-    "target": "ES2021"
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2023"
   }
 }

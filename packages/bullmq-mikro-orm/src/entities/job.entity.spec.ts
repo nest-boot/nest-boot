@@ -1,5 +1,5 @@
-import { JobStatus } from "../enums/job-status.enum";
-import { JobEntity } from "./job.entity";
+import { JobStatus } from "../enums/job-status.enum.js";
+import { JobEntity } from "./job.entity.js";
 
 class TestJobEntity extends JobEntity {}
 
@@ -24,24 +24,11 @@ describe("JobEntity", () => {
     });
   });
 
-  it("should emit decorator metadata when Opt exists at runtime", () => {
-    jest.isolateModules(() => {
-      jest.doMock("@mikro-orm/core", () => {
-        const actual = jest.requireActual("@mikro-orm/core");
+  it("should load entity metadata in an isolated module", async () => {
+    vi.resetModules();
 
-        return {
-          ...actual,
-          Opt: function Opt() {
-            return undefined;
-          },
-        };
-      });
+    const isolatedModule = await import("./job.entity.js");
 
-      const isolatedModule =
-        jest.requireActual<typeof import("./job.entity")>("./job.entity");
-
-      expect(isolatedModule.JobEntity).toBeDefined();
-      jest.dontMock("@mikro-orm/core");
-    });
+    expect(isolatedModule.JobEntity).toBeDefined();
   });
 });

@@ -1,17 +1,15 @@
 import "reflect-metadata";
 
-import {
-  Entity,
-  EventArgs,
-  MikroORM,
-  PrimaryKey,
-  Property,
-  t,
-  wrap,
-} from "@mikro-orm/better-sqlite";
+import { type EventArgs, t, wrap } from "@mikro-orm/core";
+import { Entity, PrimaryKey, Property } from "@mikro-orm/decorators/legacy";
+import { MikroORM } from "@mikro-orm/pglite";
 import { HashService } from "@nest-boot/hash";
 
-import { HashedProperty } from ".";
+import { HashedProperty } from "./index.js";
+
+function nextDbName() {
+  return `memory://${String(process.pid)}-${String(Date.now())}-${String(Math.random())}`;
+}
 
 @Entity()
 class User {
@@ -61,9 +59,9 @@ describe("HashedProperty", () => {
     HashService.init();
     orm = await MikroORM.init({
       entities: [User, UserWithMultipleHashFields, ParentEntity, ChildEntity],
-      dbName: ":memory:",
+      dbName: nextDbName(),
     });
-    await orm.schema.createSchema();
+    await orm.schema.create();
   });
 
   afterAll(async () => {
@@ -71,7 +69,7 @@ describe("HashedProperty", () => {
   });
 
   beforeEach(async () => {
-    await orm.schema.clearDatabase();
+    await orm.schema.clear();
   });
 
   describe("decorator application", () => {
@@ -102,9 +100,9 @@ describe("HashedProperty", () => {
 
       const tempOrm = await MikroORM.init({
         entities: [DuplicateDecoratorEntity],
-        dbName: ":memory:",
+        dbName: nextDbName(),
       });
-      await tempOrm.schema.createSchema();
+      await tempOrm.schema.create();
 
       const em = tempOrm.em.fork();
       const entity = em.create(DuplicateDecoratorEntity, {

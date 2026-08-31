@@ -4,15 +4,15 @@ import { type Type } from "@nestjs/common";
 import { pluralize } from "inflection";
 import type { ZodType } from "zod";
 
-import { TotalCountRelation } from "../enums";
-import { GRAPHQL_CONNECTION_METADATA } from "../graphql-connection.constants";
+import { TotalCountRelation } from "../enums/index.js";
+import { GRAPHQL_CONNECTION_METADATA } from "../graphql-connection.constants.js";
 import {
   ConnectionFieldOptions,
   ConnectionInterface,
   ConnectionMetadata,
   EdgeInterface,
-} from "../interfaces";
-import { PageInfo } from "../objects";
+} from "../interfaces/index.js";
+import { PageInfo } from "../objects/index.js";
 
 /**
  * Creates a GraphQL Connection type for cursor-based pagination.

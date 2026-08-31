@@ -1,8 +1,8 @@
-import { Type } from "@nestjs/common";
-import { NestMiddleware, RouteInfo } from "@nestjs/common/interfaces";
+import { NestMiddleware, Type } from "@nestjs/common";
+import type { RouteInfo } from "@nestjs/common/interfaces/middleware/middleware-configuration.interface.js";
 
-import { MiddlewareManager } from "./middleware.manager";
-import { MiddlewareInstanceOrFunction } from "./types";
+import { MiddlewareManager } from "./middleware.manager.js";
+import { MiddlewareInstanceOrFunction } from "./types/index.js";
 
 /**
  * Fluent configurator for applying middlewares to routes.

@@ -1,21 +1,21 @@
 // Common
-export * from "./common/array-length.decorator";
+export * from "./common/array-length.decorator.js";
 
 // String
-export * from "./string/is-domain.decorator";
-export * from "./string/is-email.decorator";
-export * from "./string/is-number-string.decorator";
-export * from "./string/is-timezone.decorator";
-export * from "./string/is-url.decorator";
-export * from "./string/length.decorator";
+export * from "./string/is-domain.decorator.js";
+export * from "./string/is-email.decorator.js";
+export * from "./string/is-number-string.decorator.js";
+export * from "./string/is-timezone.decorator.js";
+export * from "./string/is-url.decorator.js";
+export * from "./string/length.decorator.js";
 
 // Number
-export * from "./number/is-greater-than.decorator";
-export * from "./number/is-greater-than-or-equal.decorator";
-export * from "./number/is-less-than.decorator";
-export * from "./number/is-less-than-or-equal.decorator";
-export * from "./number/max.decorator";
-export * from "./number/min.decorator";
+export * from "./number/is-greater-than.decorator.js";
+export * from "./number/is-greater-than-or-equal.decorator.js";
+export * from "./number/is-less-than.decorator.js";
+export * from "./number/is-less-than-or-equal.decorator.js";
+export * from "./number/max.decorator.js";
+export * from "./number/min.decorator.js";
 
 // Type check
-export * from "./type-check/is-date.decorator";
+export * from "./type-check/is-date.decorator.js";

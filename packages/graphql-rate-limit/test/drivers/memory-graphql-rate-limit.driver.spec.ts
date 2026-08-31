@@ -1,20 +1,24 @@
-import type { GraphQLRateLimitDriverInput } from "../../src";
+import type { GraphQLRateLimitDriverInput } from "../../src/index.js";
 
-let GraphQLRateLimitDriver: typeof import("../../src").GraphQLRateLimitDriver;
-let MemoryGraphQLRateLimitDriver: typeof import("../../src").MemoryGraphQLRateLimitDriver;
+let GraphQLRateLimitDriver: typeof import("../../src/index.js").GraphQLRateLimitDriver;
+let MemoryGraphQLRateLimitDriver: typeof import("../../src/index.js").MemoryGraphQLRateLimitDriver;
 
 describe("MemoryGraphQLRateLimitDriver", () => {
   beforeEach(async () => {
-    jest.resetModules();
-    jest.useFakeTimers();
-    jest.setSystemTime(new Date("2026-08-27T00:00:00.000Z"));
+    vi.resetModules();
+    vi.useFakeTimers({
+      toFake: ["Date", "setTimeout", "clearTimeout"],
+    });
+    vi.setSystemTime(new Date("2026-08-27T00:00:00.000Z"));
+    vi.stubGlobal("performance", { now: () => Date.now() });
 
     ({ GraphQLRateLimitDriver, MemoryGraphQLRateLimitDriver } =
-      await import("../../src"));
+      await import("../../src/index.js"));
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
   it("consumes points and leaves the bucket unchanged when blocked", async () => {
@@ -46,7 +50,7 @@ describe("MemoryGraphQLRateLimitDriver", () => {
     };
 
     await driver.update(input);
-    jest.advanceTimersByTime(2000);
+    vi.advanceTimersByTime(2000);
 
     await expect(driver.update({ ...input, points: 5 })).resolves.toEqual({
       blocked: false,
@@ -98,7 +102,7 @@ describe("MemoryGraphQLRateLimitDriver", () => {
     };
 
     await driver.update(input);
-    jest.advanceTimersByTime(5000);
+    vi.advanceTimersByTime(5001);
 
     await expect(driver.update({ ...input, points: 1 })).resolves.toEqual({
       blocked: false,
@@ -126,7 +130,7 @@ describe("MemoryGraphQLRateLimitDriver", () => {
       restoreRate: 1,
       points: 1,
     });
-    jest.advanceTimersByTime(5000);
+    vi.advanceTimersByTime(5001);
     await driver.update({
       key: "graphql-rate-limit:active",
       maximumAvailable: 60,

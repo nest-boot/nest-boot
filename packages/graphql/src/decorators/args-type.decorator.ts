@@ -1,6 +1,6 @@
-import { LazyMetadataStorage } from "@nestjs/graphql/dist/schema-builder/storages/lazy-metadata.storage";
-import { TypeMetadataStorage } from "@nestjs/graphql/dist/schema-builder/storages/type-metadata.storage";
-import { addClassTypeMetadata } from "@nestjs/graphql/dist/utils/add-class-type-metadata.util";
+import { LazyMetadataStorage } from "@nestjs/graphql/dist/schema-builder/storages/lazy-metadata.storage.js";
+import { TypeMetadataStorage } from "@nestjs/graphql/dist/schema-builder/storages/type-metadata.storage.js";
+import { addClassTypeMetadata } from "@nestjs/graphql/dist/utils/add-class-type-metadata.util.js";
 
 /**
  * Decorator that marks a class as a resolver arguments type.

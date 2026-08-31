@@ -2,5 +2,15 @@
   "extends": "@nest-boot/tsconfig/library.json",
   "compilerOptions": {
     "outDir": "./dist"
-  }
+  },
+  "include": ["packages/*/src"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "packages/*/dist/**",
+    "packages/*/test/**",
+    "packages/**/*.spec.ts",
+    "packages/**/*.e2e-spec.ts",
+    "packages/*/vitest.setup.ts"
+  ]
 }

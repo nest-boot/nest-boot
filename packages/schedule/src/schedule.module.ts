@@ -8,10 +8,10 @@ import {
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
-} from "./schedule.module-definition";
-import { ScheduleProcessor } from "./schedule.processor";
-import { ScheduleRegistry } from "./schedule.registry";
-import { type ScheduleModuleOptions } from "./schedule-module-options.interface";
+} from "./schedule.module-definition.js";
+import { ScheduleProcessor } from "./schedule.processor.js";
+import { ScheduleRegistry } from "./schedule.registry.js";
+import { type ScheduleModuleOptions } from "./schedule-module-options.interface.js";
 
 /**
  * Job scheduling module powered by BullMQ.

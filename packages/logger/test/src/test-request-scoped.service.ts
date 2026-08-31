@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 
-import { Logger } from "../../src";
+import { Logger } from "../../src/index.js";
 
 @Injectable()
 export class TestRequestScopedService {

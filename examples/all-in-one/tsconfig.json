@@ -1,0 +1,10 @@
+{
+  "extends": "@nest-boot/tsconfig/base.json",
+  "compilerOptions": {
+    "removeComments": true,
+    "outDir": "./dist",
+    "strict": false,
+    "strictPropertyInitialization": false
+  },
+  "include": ["src", "test", "vitest.config.ts", "vitest.config.e2e.ts"]
+}

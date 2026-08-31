@@ -1,26 +1,28 @@
 import {
-  FilterQuery,
-  FindOptions,
+  type FilterQuery,
+  type FindOptions,
   QueryOrder,
-  QueryOrderMap,
+  type QueryOrderMap,
 } from "@mikro-orm/core";
-import { type SqlEntityManager } from "@mikro-orm/knex";
-import compact from "lodash/compact";
-import get from "lodash/get";
-import set from "lodash/set";
+import { type SqlEntityManager } from "@mikro-orm/sql";
+import { compact, get, set } from "lodash-es";
 import { parse, type ParseOptions } from "search-syntax";
 
-import { type ConnectionFindOptions } from "./connection.manager";
-import { Cursor } from "./cursor";
-import { OrderDirection, PagingType, TotalCountRelation } from "./enums";
-import { GRAPHQL_CONNECTION_METADATA } from "./graphql-connection.constants";
+import { type ConnectionFindOptions } from "./connection.manager.js";
+import { Cursor } from "./cursor.js";
+import {
+  OrderDirection,
+  PagingType,
+  TotalCountRelation,
+} from "./enums/index.js";
+import { GRAPHQL_CONNECTION_METADATA } from "./graphql-connection.constants.js";
 import {
   ConnectionArgsInterface,
   ConnectionMetadata,
   ConnectionResult,
   EdgeInterface,
-} from "./interfaces";
-import { ConnectionClass } from "./types";
+} from "./interfaces/index.js";
+import { ConnectionClass } from "./types/index.js";
 
 const TOTAL_COUNT_LIMIT = 10_000;
 
@@ -292,18 +294,18 @@ export class ConnectionQueryBuilder<
   private async getTotalCount(): Promise<number> {
     const limitedCountQueryBuilder = this.entityManager
       .createQueryBuilder(this.metadata.entityClass)
-      .select("id")
+      .select("id" as never)
       .limit(TOTAL_COUNT_LIMIT + 1)
       .withSchema(this.options?.schema);
 
     if (this.totalCountFilterQuery !== null) {
-      limitedCountQueryBuilder.where(this.totalCountFilterQuery);
+      limitedCountQueryBuilder.where(this.totalCountFilterQuery as never);
     }
 
     await limitedCountQueryBuilder.applyFilters(this.options?.filters);
 
     return await this.entityManager
-      .createQueryBuilder(limitedCountQueryBuilder, "bounded_count")
+      .createQueryBuilder(limitedCountQueryBuilder as never, "bounded_count")
       .count()
       .getCount();
   }
@@ -322,12 +324,12 @@ export class ConnectionQueryBuilder<
       this.allFilterQuery === null
         ? this.entityManager.findAll(
             this.metadata.entityClass,
-            this.findOptions,
+            this.findOptions as never,
           )
         : this.entityManager.find(
             this.metadata.entityClass,
-            this.allFilterQuery,
-            this.findOptions,
+            this.allFilterQuery as never,
+            this.findOptions as never,
           ),
       matchedCountPromise,
     ]);

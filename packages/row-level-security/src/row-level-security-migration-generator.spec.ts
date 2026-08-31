@@ -4,10 +4,10 @@ import { join } from "node:path";
 
 import { TSMigrationGenerator } from "@mikro-orm/migrations";
 
-import { Policy } from "./decorators/policy.decorator";
-import { PolicyCommand } from "./enums/policy-command.enum";
-import { RowLevelSecurityMigrationGenerator } from "./row-level-security-migration-generator";
-import { RowLevelSecurityMigrator } from "./row-level-security-migrator";
+import { Policy } from "./decorators/policy.decorator.js";
+import { PolicyCommand } from "./enums/policy-command.enum.js";
+import { RowLevelSecurityMigrationGenerator } from "./row-level-security-migration-generator.js";
+import { RowLevelSecurityMigrator } from "./row-level-security-migrator.js";
 
 @Policy({
   name: "workspace_member_user_select_policy",
@@ -105,11 +105,11 @@ const LONG_GENERATED_POLICY_NAME_SHORTENED =
 
 describe("RowLevelSecurityMigrationGenerator", () => {
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("loads existing policies from the database while generating migrations", async () => {
-    const execute = jest.fn((_sql: string) =>
+    const execute = vi.fn((_sql: string) =>
       Promise.resolve([
         {
           policy_name: "workspace_member_user_select_policy",
@@ -193,7 +193,7 @@ describe("RowLevelSecurityMigrationGenerator", () => {
         },
       ]),
     );
-    const superGenerate = jest
+    const superGenerate = vi
       .spyOn(TSMigrationGenerator.prototype, "generate")
       .mockImplementation(function (this: RowLevelSecurityMigrationGenerator) {
         expect((this as any).existingPolicyDefinitions).toEqual(
@@ -279,7 +279,7 @@ describe("RowLevelSecurityMigrationGenerator", () => {
   });
 
   it("continues generation when the driver has no database connection", async () => {
-    const superGenerate = jest
+    const superGenerate = vi
       .spyOn(TSMigrationGenerator.prototype, "generate")
       .mockImplementation(function (this: RowLevelSecurityMigrationGenerator) {
         expect((this as any).existingPolicyDefinitions).toBeUndefined();
@@ -301,7 +301,7 @@ describe("RowLevelSecurityMigrationGenerator", () => {
   });
 
   it("detects pending policy-only changes from existing database policies", async () => {
-    const execute = jest.fn((_sql: string) =>
+    const execute = vi.fn((_sql: string) =>
       Promise.resolve([
         {
           policy_name: "workspace_member_workspace_select_policy",
@@ -399,7 +399,7 @@ describe("RowLevelSecurityMigrationGenerator", () => {
   });
 
   it("does not recreate unchanged generated policies with legacy PostgreSQL-truncated names", async () => {
-    const execute = jest.fn((_sql: string) =>
+    const execute = vi.fn((_sql: string) =>
       Promise.resolve([
         {
           policy_name: LONG_GENERATED_POLICY_NAME_POSTGRES_TRUNCATED,
@@ -601,10 +601,11 @@ describe("RowLevelSecurityMigrationGenerator", () => {
   );
 
   it("skips database policy lookup when metadata has no entity classes", async () => {
-    const execute = jest.fn();
-    jest
-      .spyOn(TSMigrationGenerator.prototype, "generate")
-      .mockResolvedValue(["migration-file", "/tmp/Migration.ts"]);
+    const execute = vi.fn();
+    vi.spyOn(TSMigrationGenerator.prototype, "generate").mockResolvedValue([
+      "migration-file",
+      "/tmp/Migration.ts",
+    ]);
     const generator = createGenerator(
       [
         {
@@ -624,7 +625,7 @@ describe("RowLevelSecurityMigrationGenerator", () => {
   });
 
   it("only diffs existing database policies for tables managed by Policy metadata", async () => {
-    const execute = jest.fn((_sql: string) =>
+    const execute = vi.fn((_sql: string) =>
       Promise.resolve([
         {
           policy_name: "unmanaged_policy",
@@ -638,9 +639,8 @@ describe("RowLevelSecurityMigrationGenerator", () => {
         },
       ]),
     );
-    jest
-      .spyOn(TSMigrationGenerator.prototype, "generate")
-      .mockImplementation(function (this: RowLevelSecurityMigrationGenerator) {
+    vi.spyOn(TSMigrationGenerator.prototype, "generate").mockImplementation(
+      function (this: RowLevelSecurityMigrationGenerator) {
         expect((this as any).existingPolicyDefinitions).toEqual([]);
         expect((this as any).existingPolicyRoleDefinitions).toEqual([
           expect.objectContaining({
@@ -649,7 +649,8 @@ describe("RowLevelSecurityMigrationGenerator", () => {
         ]);
 
         return Promise.resolve(["migration-file", "/tmp/Migration.ts"]);
-      });
+      },
+    );
     const generator = createGenerator(
       [
         {
@@ -732,9 +733,10 @@ describe("RowLevelSecurityMigrationGenerator", () => {
   });
 
   it("throws when MikroORM migration output cannot be converted to the RLS base class", () => {
-    jest
-      .spyOn(TSMigrationGenerator.prototype, "generateMigrationFile")
-      .mockReturnValue("export class MigrationTest {}");
+    vi.spyOn(
+      TSMigrationGenerator.prototype,
+      "generateMigrationFile",
+    ).mockReturnValue("export class MigrationTest {}");
     const generator = createGenerator([
       {
         class: WorkspaceMember,
@@ -1159,31 +1161,34 @@ describe("RowLevelSecurityMigrationGenerator", () => {
 
 describe("RowLevelSecurityMigrator", () => {
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("creates a migration when only row-level-security policies changed", async () => {
     const diff = { up: [], down: [] };
     const generator = createGenerator([]);
-    const hasPendingPolicyChanges = jest
+    const hasPendingPolicyChanges = vi
       .spyOn(generator, "hasPendingPolicyChanges")
       .mockResolvedValue(true);
-    const generate = jest
+    const generate = vi
       .spyOn(generator, "generate")
       .mockResolvedValue(["migration-file", "Migration.ts"]);
-    const storeCurrentSchema = jest.fn();
+    const storeCurrentSchema = vi.fn();
     const migrator = Object.assign(
       Object.create(RowLevelSecurityMigrator.prototype),
       {
         generator,
-        ensureMigrationsDirExists: jest.fn(),
-        getSchemaDiff: jest.fn().mockResolvedValue(diff),
+        ensureMigrationsDirExists: vi.fn(),
+        getSchemaDiff: vi.fn().mockResolvedValue(diff),
+        hasSnapshot: vi.fn().mockResolvedValue(false),
+        init: vi.fn().mockResolvedValue(undefined),
+        initPaths: vi.fn().mockResolvedValue(undefined),
         storeCurrentSchema,
       },
     ) as RowLevelSecurityMigrator;
 
     await expect(
-      migrator.createMigration("/tmp", false, false, "Migration"),
+      migrator.create("/tmp", false, false, "Migration"),
     ).resolves.toEqual({
       fileName: "Migration.ts",
       code: "migration-file",
@@ -1197,7 +1202,7 @@ describe("RowLevelSecurityMigrator", () => {
   it("generates a policy diff after an applied context policy changes", async () => {
     const migrationPath = mkdtempSync(join(tmpdir(), "rls-policy-diff-"));
     const diff = { up: [], down: [] };
-    const execute = jest.fn((_sql: string) =>
+    const execute = vi.fn((_sql: string) =>
       Promise.resolve([
         {
           policy_name: "workspace_member_workspace_select_policy",
@@ -1234,19 +1239,22 @@ describe("RowLevelSecurityMigrator", () => {
         pathTs: migrationPath,
       },
     );
-    const storeCurrentSchema = jest.fn();
+    const storeCurrentSchema = vi.fn();
     const migrator = Object.assign(
       Object.create(RowLevelSecurityMigrator.prototype),
       {
         generator,
-        ensureMigrationsDirExists: jest.fn(),
-        getSchemaDiff: jest.fn().mockResolvedValue(diff),
+        ensureMigrationsDirExists: vi.fn(),
+        getSchemaDiff: vi.fn().mockResolvedValue(diff),
+        hasSnapshot: vi.fn().mockResolvedValue(false),
+        init: vi.fn().mockResolvedValue(undefined),
+        initPaths: vi.fn().mockResolvedValue(undefined),
         storeCurrentSchema,
       },
     ) as RowLevelSecurityMigrator;
 
     try {
-      const result = await migrator.createMigration(
+      const result = await migrator.create(
         migrationPath,
         false,
         false,
@@ -1283,20 +1291,23 @@ describe("RowLevelSecurityMigrator", () => {
   it("keeps MikroORM no-op behavior when schema and policies are unchanged", async () => {
     const diff = { up: [], down: [] };
     const generator = createGenerator([]);
-    jest.spyOn(generator, "hasPendingPolicyChanges").mockResolvedValue(false);
-    const generate = jest.spyOn(generator, "generate");
-    const storeCurrentSchema = jest.fn();
+    vi.spyOn(generator, "hasPendingPolicyChanges").mockResolvedValue(false);
+    const generate = vi.spyOn(generator, "generate");
+    const storeCurrentSchema = vi.fn();
     const migrator = Object.assign(
       Object.create(RowLevelSecurityMigrator.prototype),
       {
         generator,
-        ensureMigrationsDirExists: jest.fn(),
-        getSchemaDiff: jest.fn().mockResolvedValue(diff),
+        ensureMigrationsDirExists: vi.fn(),
+        getSchemaDiff: vi.fn().mockResolvedValue(diff),
+        hasSnapshot: vi.fn().mockResolvedValue(false),
+        init: vi.fn().mockResolvedValue(undefined),
+        initPaths: vi.fn().mockResolvedValue(undefined),
         storeCurrentSchema,
       },
     ) as RowLevelSecurityMigrator;
 
-    await expect(migrator.createMigration()).resolves.toEqual({
+    await expect(migrator.create()).resolves.toEqual({
       fileName: "",
       code: "",
       diff,
@@ -1308,23 +1319,23 @@ describe("RowLevelSecurityMigrator", () => {
   it("reports migration needed when only row-level-security policies changed", async () => {
     const diff = { up: [], down: [] };
     const generator = createGenerator([]);
-    jest.spyOn(generator, "hasPendingPolicyChanges").mockResolvedValue(true);
+    vi.spyOn(generator, "hasPendingPolicyChanges").mockResolvedValue(true);
     const migrator = Object.assign(
       Object.create(RowLevelSecurityMigrator.prototype),
       {
         generator,
-        ensureMigrationsDirExists: jest.fn(),
-        getSchemaDiff: jest.fn().mockResolvedValue(diff),
+        ensureMigrationsDirExists: vi.fn(),
+        getSchemaDiff: vi.fn().mockResolvedValue(diff),
       },
     ) as RowLevelSecurityMigrator;
 
-    await expect(migrator.checkMigrationNeeded()).resolves.toBe(true);
+    await expect(migrator.checkSchema()).resolves.toBe(true);
   });
 
   it("reports migration needed when MikroORM schema diff has up statements", async () => {
     const diff = { up: ["create table workspace (id int);"], down: [] };
     const generator = createGenerator([]);
-    const hasPendingPolicyChanges = jest.spyOn(
+    const hasPendingPolicyChanges = vi.spyOn(
       generator,
       "hasPendingPolicyChanges",
     );
@@ -1332,12 +1343,12 @@ describe("RowLevelSecurityMigrator", () => {
       Object.create(RowLevelSecurityMigrator.prototype),
       {
         generator,
-        ensureMigrationsDirExists: jest.fn(),
-        getSchemaDiff: jest.fn().mockResolvedValue(diff),
+        ensureMigrationsDirExists: vi.fn(),
+        getSchemaDiff: vi.fn().mockResolvedValue(diff),
       },
     ) as RowLevelSecurityMigrator;
 
-    await expect(migrator.checkMigrationNeeded()).resolves.toBe(true);
+    await expect(migrator.checkSchema()).resolves.toBe(true);
     expect(hasPendingPolicyChanges).not.toHaveBeenCalled();
   });
 });
@@ -1370,7 +1381,7 @@ function createGenerator(
 }
 
 function mockBaseMigrationGenerate(diff = WORKSPACE_MEMBER_FIELD_CHANGE_DIFF) {
-  return jest
+  return vi
     .spyOn(TSMigrationGenerator.prototype, "generate")
     .mockImplementation(function (this: RowLevelSecurityMigrationGenerator) {
       return Promise.resolve([
@@ -1381,7 +1392,7 @@ function mockBaseMigrationGenerate(diff = WORKSPACE_MEMBER_FIELD_CHANGE_DIFF) {
 }
 
 function createExistingPolicyLookup(databaseQual: string) {
-  return jest.fn((_sql: string) =>
+  return vi.fn((_sql: string) =>
     Promise.resolve([
       {
         policy_name: "workspace_member_user_select_policy",

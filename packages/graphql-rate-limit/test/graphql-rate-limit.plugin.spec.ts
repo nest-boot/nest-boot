@@ -9,22 +9,28 @@ import {
   Kind,
   parse,
 } from "graphql";
-import { getComplexity, simpleEstimator } from "graphql-query-complexity";
+import * as graphqlQueryComplexity from "graphql-query-complexity/cjs";
 
-import { OPTIONS_TOKEN } from "../src/graphql-rate-limit.module-definition";
-import { GraphQLRateLimitPlugin } from "../src/graphql-rate-limit.plugin";
-import { GraphQLRateLimitStorage } from "../src/graphql-rate-limit.storage";
-import { CostThrottleStatus, GraphQLRateLimitOptions } from "../src/interfaces";
+import { OPTIONS_TOKEN } from "../src/graphql-rate-limit.module-definition.js";
+import { GraphQLRateLimitPlugin } from "../src/graphql-rate-limit.plugin.js";
+import { GraphQLRateLimitStorage } from "../src/graphql-rate-limit.storage.js";
+import {
+  CostThrottleStatus,
+  GraphQLRateLimitOptions,
+} from "../src/interfaces/index.js";
 
-jest.mock("graphql-query-complexity", () => {
-  const actual = jest.requireActual<typeof import("graphql-query-complexity")>(
-    "graphql-query-complexity",
-  );
+const { getComplexity, simpleEstimator } =
+  graphqlQueryComplexity as unknown as typeof import("graphql-query-complexity");
+
+vi.mock("graphql-query-complexity/cjs", async () => {
+  const actual = await vi.importActual<
+    typeof import("graphql-query-complexity/cjs")
+  >("graphql-query-complexity/cjs");
 
   return {
     ...actual,
-    getComplexity: jest.fn(),
-    simpleEstimator: jest.fn(actual.simpleEstimator),
+    getComplexity: vi.fn(),
+    simpleEstimator: vi.fn(actual.simpleEstimator),
   };
 });
 
@@ -79,15 +85,15 @@ describe("GraphQLRateLimitPlugin", () => {
     ...available,
     currentlyAvailable: 97,
   };
-  const subPoint = jest.fn(() => Promise.resolve(available));
-  const addPoint = jest.fn(() => Promise.resolve(restored));
+  const subPoint = vi.fn(() => Promise.resolve(available));
+  const addPoint = vi.fn(() => Promise.resolve(restored));
   const storage = {
     subPoint,
     addPoint,
   } as unknown as GraphQLRateLimitStorage;
   const schemaHost = { schema } as GraphQLSchemaHost;
   const moduleRef = {
-    get: jest.fn(() => schemaHost),
+    get: vi.fn(() => schemaHost),
   } as unknown as ModuleRef;
   const options: GraphQLRateLimitOptions = {
     maxComplexity: 1000,
@@ -97,8 +103,8 @@ describe("GraphQLRateLimitPlugin", () => {
     maximumAvailable: 100,
     getId: () => "client",
   };
-  const mockedGetComplexity = jest.mocked(getComplexity);
-  const mockedSimpleEstimator = jest.mocked(simpleEstimator);
+  const mockedGetComplexity = vi.mocked(getComplexity);
+  const mockedSimpleEstimator = vi.mocked(simpleEstimator);
   const createPlugin = (overrides?: Partial<GraphQLRateLimitOptions>) =>
     new GraphQLRateLimitPlugin(storage, moduleRef, {
       ...options,
@@ -106,7 +112,7 @@ describe("GraphQLRateLimitPlugin", () => {
     });
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockedGetComplexity.mockReturnValue(7);
     subPoint.mockResolvedValue(available);
     addPoint.mockResolvedValue(restored);

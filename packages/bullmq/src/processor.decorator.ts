@@ -4,12 +4,22 @@ import { RequestContext } from "@nest-boot/request-context";
 import {
   JOB_REF,
   Processor as BaseProcessor,
-  ProcessorOptions,
-  WorkerHost,
+  type ProcessorOptions,
+  type WorkerHost,
 } from "@nestjs/bullmq";
-import { NestWorkerOptions } from "@nestjs/bullmq/dist/interfaces/worker-options.interface";
-import { Type } from "@nestjs/common";
-import { Processor as BullMQProcessor, Worker } from "bullmq";
+import type { Type } from "@nestjs/common";
+import type {
+  Processor as BullMQProcessor,
+  Worker,
+  WorkerOptions,
+} from "bullmq";
+
+/** Worker options accepted by Nest's BullMQ processor decorator. */
+export type NestWorkerOptions = Omit<WorkerOptions, "connection"> &
+  Partial<Pick<WorkerOptions, "connection">> & {
+    /** @deprecated BullMQ no longer supports shared connections. */
+    sharedConnection?: boolean;
+  };
 
 /**
  * Decorator that marks a class as a BullMQ queue processor.

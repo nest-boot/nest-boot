@@ -1,3 +1,3 @@
-export * from "./order-direction.enum";
-export * from "./paging-type.enum";
-export * from "./total-count-relation.enum";
+export * from "./order-direction.enum.js";
+export * from "./paging-type.enum.js";
+export * from "./total-count-relation.enum.js";

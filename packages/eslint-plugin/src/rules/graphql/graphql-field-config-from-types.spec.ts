@@ -1,5 +1,5 @@
-import { tester } from "../../utils/tester";
-import rule from "./graphql-field-config-from-types";
+import { tester } from "../../utils/tester.js";
+import rule from "./graphql-field-config-from-types.js";
 
 tester.run("graphql-field-config-from-types", rule, {
   valid: [

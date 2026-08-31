@@ -3,8 +3,8 @@ import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import bytes from "bytes";
 
-import { FileUploadModule } from "../../src";
-import { TestResolver } from "./test.resolver";
+import { FileUploadModule } from "../../src/index.js";
+import { TestResolver } from "./test.resolver.js";
 
 const ConfigDynamicModule = ConfigModule.forRoot({ isGlobal: true });
 

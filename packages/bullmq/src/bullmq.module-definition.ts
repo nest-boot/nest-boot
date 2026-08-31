@@ -1,7 +1,7 @@
 import { ConfigurableModuleBuilder } from "@nestjs/common";
 import { randomUUID } from "crypto";
 
-import { BullModuleOptions } from "./bullmq-module-options.interface";
+import { BullModuleOptions } from "./bullmq-module-options.interface.js";
 
 export const SCHEDULE_QUEUE_NAME = "schedule";
 

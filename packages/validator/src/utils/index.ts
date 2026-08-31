@@ -1,1 +1,1 @@
-export * from "./build-i18n-message";
+export * from "./build-i18n-message.js";

@@ -1,11 +1,11 @@
 import "reflect-metadata";
 
-import { SqlEntityManager } from "@mikro-orm/knex";
+import { SqlEntityManager } from "@mikro-orm/sql";
 import { type GraphQLResolveInfo, Kind, parse } from "graphql";
 
-import { ConnectionBuilder } from "./connection.builder";
-import { ConnectionManager } from "./connection.manager";
-import { TotalCountRelation } from "./enums";
+import { ConnectionBuilder } from "./connection.builder.js";
+import { ConnectionManager } from "./connection.manager.js";
+import { TotalCountRelation } from "./enums/index.js";
 
 interface ManagerBook {
   id: number;
@@ -67,20 +67,20 @@ describe("ConnectionManager", () => {
       { id: 1, title: "A" },
       { id: 2, title: "B" },
     ];
-    const find = jest.fn().mockResolvedValue(rows);
-    const findAll = jest.fn().mockResolvedValue(rows);
+    const find = vi.fn().mockResolvedValue(rows);
+    const findAll = vi.fn().mockResolvedValue(rows);
     const limitedCountQueryBuilder = {
-      applyFilters: jest.fn().mockResolvedValue(undefined),
-      limit: jest.fn().mockReturnThis(),
-      select: jest.fn().mockReturnThis(),
-      where: jest.fn().mockReturnThis(),
-      withSchema: jest.fn().mockReturnThis(),
+      applyFilters: vi.fn().mockResolvedValue(undefined),
+      limit: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      withSchema: vi.fn().mockReturnThis(),
     };
     const countQueryBuilder = {
-      count: jest.fn().mockReturnThis(),
-      getCount: jest.fn().mockResolvedValue(rows.length),
+      count: vi.fn().mockReturnThis(),
+      getCount: vi.fn().mockResolvedValue(rows.length),
     };
-    const createQueryBuilder = jest
+    const createQueryBuilder = vi
       .fn()
       .mockReturnValueOnce(limitedCountQueryBuilder)
       .mockReturnValueOnce(countQueryBuilder);
@@ -133,11 +133,11 @@ describe("ConnectionManager", () => {
 
   it("skips the total count query when count fields are not selected", async () => {
     const { Connection } = new ConnectionBuilder(ManagerBookEntity).build();
-    const findAll = jest.fn().mockResolvedValue([]);
-    const createQueryBuilder = jest.fn();
+    const findAll = vi.fn().mockResolvedValue([]);
+    const createQueryBuilder = vi.fn();
     const entityManager = {
       createQueryBuilder,
-      find: jest.fn(),
+      find: vi.fn(),
       findAll,
     } as unknown as SqlEntityManager;
 
@@ -169,24 +169,24 @@ describe("ConnectionManager", () => {
   it("executes the total count query when totalCountRelation is selected", async () => {
     const { Connection } = new ConnectionBuilder(ManagerBookEntity).build();
     const limitedCountQueryBuilder = {
-      applyFilters: jest.fn().mockResolvedValue(undefined),
-      limit: jest.fn().mockReturnThis(),
-      select: jest.fn().mockReturnThis(),
-      where: jest.fn().mockReturnThis(),
-      withSchema: jest.fn().mockReturnThis(),
+      applyFilters: vi.fn().mockResolvedValue(undefined),
+      limit: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      withSchema: vi.fn().mockReturnThis(),
     };
     const countQueryBuilder = {
-      count: jest.fn().mockReturnThis(),
-      getCount: jest.fn().mockResolvedValue(10_001),
+      count: vi.fn().mockReturnThis(),
+      getCount: vi.fn().mockResolvedValue(10_001),
     };
-    const createQueryBuilder = jest
+    const createQueryBuilder = vi
       .fn()
       .mockReturnValueOnce(limitedCountQueryBuilder)
       .mockReturnValueOnce(countQueryBuilder);
     const entityManager = {
       createQueryBuilder,
-      find: jest.fn(),
-      findAll: jest.fn().mockResolvedValue([]),
+      find: vi.fn(),
+      findAll: vi.fn().mockResolvedValue([]),
     } as unknown as SqlEntityManager;
 
     const result = await new ConnectionManager(entityManager).find(

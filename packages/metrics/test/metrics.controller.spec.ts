@@ -1,7 +1,7 @@
 import { type HttpAdapterHost } from "@nestjs/core";
 import { Registry, type RegistryContentType } from "prom-client";
 
-import { MetricsController } from "../src/metrics.controller";
+import { MetricsController } from "../src/metrics.controller.js";
 
 describe("MetricsController", () => {
   it("should return metrics serialized by the module registry", async () => {
@@ -9,8 +9,8 @@ describe("MetricsController", () => {
       "# HELP test_counter A test counter\n" +
       "# TYPE test_counter counter\n" +
       "test_counter 1\n";
-    const metrics = jest.fn().mockResolvedValue(exposition);
-    const setHeader = jest.fn();
+    const metrics = vi.fn().mockResolvedValue(exposition);
+    const setHeader = vi.fn();
     const controller = new MetricsController(
       {
         contentType:
@@ -34,8 +34,8 @@ describe("MetricsController", () => {
 
   it("should propagate registry serialization failures", async () => {
     const error = new Error("serialization failed");
-    const metrics = jest.fn().mockRejectedValue(error);
-    const setHeader = jest.fn();
+    const metrics = vi.fn().mockRejectedValue(error);
+    const setHeader = vi.fn();
     const controller = new MetricsController(
       {
         contentType: "text/plain; version=0.0.4; charset=utf-8",
