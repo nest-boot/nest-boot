@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "engines": {
-    "node": ">=26.0.0"
+    "node": "24.x"
   },
   "scripts": {
     "docs:generate": "cd ../.. && pnpm build:packages && pnpm docs:generate",
@@ -30,7 +30,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.1",
     "@types/mdx": "^2.0.13",
-    "@types/node": "^26.0.0",
+    "@types/node": "^24.13.3",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "eslint": "^9.39.3",
