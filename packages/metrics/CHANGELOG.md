@@ -1,3 +1,19 @@
+## 7.3.5 (2026-08-31)
+
+### 🩹 Fixes
+
+- **metrics:** honor options and require prom-client 15 ([#311](https://github.com/nest-boot/nest-boot/pull/311))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 7.3.5
+- Updated @nest-boot/eslint-plugin to 7.2.5
+- Updated @nest-boot/tsconfig to 7.3.5
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 7.3.4 (2026-08-29)
 
 ### 🧱 Updated Dependencies

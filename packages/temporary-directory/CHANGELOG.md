@@ -1,3 +1,12 @@
+## 7.1.6 (2026-08-31)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 7.7.6
+- Updated @nest-boot/eslint-config to 7.3.5
+- Updated @nest-boot/eslint-plugin to 7.2.5
+- Updated @nest-boot/tsconfig to 7.3.5
+
 ## 7.1.5 (2026-08-29)
 
 ### 🧱 Updated Dependencies
