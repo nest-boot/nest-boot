@@ -169,6 +169,9 @@ describe("ConnectionBuilder", () => {
       "orderBy",
     ]);
     expect(
+      TypeMetadataStorage.getArgumentsMetadataByTarget(result.ConnectionArgs),
+    ).toMatchObject({ name: "BuilderBookEntityConnectionArgs" });
+    expect(
       fieldNamesAndInvokeTypeFns(
         TypeMetadataStorage.getInputTypeMetadataByTarget(result.Order),
       ),

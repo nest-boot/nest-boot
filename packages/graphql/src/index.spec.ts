@@ -21,6 +21,7 @@ vi.mock("@nestjs/graphql", async () => {
 
   return {
     Args: decorator,
+    ArgsType: decorator,
     Field: decorator,
     GraphQLModule: MockBaseGraphQLModule,
     InputType: decorator,
@@ -34,7 +35,8 @@ vi.mock("@nestjs/graphql", async () => {
   };
 });
 
-import { ArgsType } from "./decorators/args-type.decorator.js";
+import { ArgsType } from "@nestjs/graphql";
+
 import { GraphQLModule } from "./graphql.module.js";
 import * as publicApi from "./index.js";
 
