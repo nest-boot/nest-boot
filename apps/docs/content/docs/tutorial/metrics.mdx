@@ -103,7 +103,7 @@ After the Nest application starts, request the built-in endpoint:
 curl --fail http://localhost:3000/metrics
 ```
 
-The response has status `200`, uses the Prometheus content type `text/plain; version=0.0.4; charset=utf-8`, and contains output similar to:
+The response has status `200`, uses the Prometheus content type `text/plain; version=0.0.4; charset=utf-8` by default, and contains output similar to:
 
 ```text
 # HELP api_process_cpu_user_seconds_total Total user CPU time spent in seconds.
@@ -112,6 +112,17 @@ api_process_cpu_user_seconds_total{service="orders",environment="production"} 0.
 ```
 
 Metric values vary at runtime. The `api_` prefix and labels above are present only when configured.
+
+To expose OpenMetrics instead, set the content type on the injected registry before the application starts listening. The endpoint reads `registry.contentType` for every response, so its header stays aligned with the serialized format:
+
+```typescript
+import { Registry } from "@nest-boot/metrics";
+
+const registry = app.get(Registry);
+registry.setContentType(Registry.OPENMETRICS_CONTENT_TYPE);
+
+await app.listen(3000);
+```
 
 Point Prometheus at the endpoint with a scrape configuration such as:
 

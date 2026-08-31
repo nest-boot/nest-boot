@@ -103,7 +103,7 @@ Nest 应用启动后，请求内置端点：
 curl --fail http://localhost:3000/metrics
 ```
 
-响应状态码为 `200`，Content-Type 是 Prometheus 要求的 `text/plain; version=0.0.4; charset=utf-8`，响应内容类似：
+响应状态码为 `200`，默认 Content-Type 是 Prometheus 使用的 `text/plain; version=0.0.4; charset=utf-8`，响应内容类似：
 
 ```text
 # HELP api_process_cpu_user_seconds_total Total user CPU time spent in seconds.
@@ -112,6 +112,17 @@ api_process_cpu_user_seconds_total{service="orders",environment="production"} 0.
 ```
 
 指标值会随运行状态变化。上面的 `api_` 前缀和标签只会在配置后出现。
+
+如需改用 OpenMetrics，请在应用开始监听前设置注入 Registry 的 Content-Type。端点会为每次响应读取 `registry.contentType`，确保响应头与序列化格式保持一致：
+
+```typescript
+import { Registry } from "@nest-boot/metrics";
+
+const registry = app.get(Registry);
+registry.setContentType(Registry.OPENMETRICS_CONTENT_TYPE);
+
+await app.listen(3000);
+```
 
 可以使用如下配置让 Prometheus 抓取该端点：
 

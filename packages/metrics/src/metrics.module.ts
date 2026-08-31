@@ -19,11 +19,11 @@ import {
 } from "./metrics.module-definition";
 import { type MetricsModuleOptions } from "./metrics-module-options.interface";
 
-const RegistryProvider: Provider<Registry> = {
+const RegistryProvider: Provider<Registry<RegistryContentType>> = {
   provide: Registry,
   inject: [{ token: MODULE_OPTIONS_TOKEN, optional: true }],
   useFactory: (options?: MetricsModuleOptions<RegistryContentType>) => {
-    const registry = new Registry();
+    const registry = new Registry<RegistryContentType>();
 
     collectDefaultMetrics({ ...options, register: registry });
 

@@ -4,10 +4,10 @@ import {
   type Type,
 } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
-import { contentType } from "prom-client";
+import { type RegistryContentType } from "prom-client";
 import request from "supertest";
 
-import { MetricsModule } from "../src";
+import { MetricsModule, Registry } from "../src";
 
 describe("MetricsModule HTTP integration", () => {
   const apps: INestApplication[] = [];
@@ -51,12 +51,26 @@ describe("MetricsModule HTTP integration", () => {
     );
   });
 
+  it("should expose the content type configured on the registry", async () => {
+    const response = await getMetrics(MetricsModule, (registry) => {
+      registry.setContentType(Registry.OPENMETRICS_CONTENT_TYPE);
+    });
+
+    expect(normalizeContentType(response.headers["content-type"])).toEqual(
+      normalizeContentType(Registry.OPENMETRICS_CONTENT_TYPE),
+    );
+    expect(response.text.trimEnd().endsWith("# EOF")).toBe(true);
+  });
+
   async function getMetrics(
     metricsModule: DynamicModule | Type,
+    configureRegistry?: (registry: Registry<RegistryContentType>) => void,
   ): Promise<request.Response> {
     const moduleRef = await Test.createTestingModule({
       imports: [metricsModule],
     }).compile();
+    const registry = moduleRef.get(Registry);
+    configureRegistry?.(registry);
     const app = moduleRef.createNestApplication();
     apps.push(app);
     await app.init();
@@ -67,7 +81,7 @@ describe("MetricsModule HTTP integration", () => {
     const responseContentType = response.headers["content-type"];
 
     expect(normalizeContentType(responseContentType)).toEqual(
-      normalizeContentType(contentType),
+      normalizeContentType(registry.contentType),
     );
 
     return response;
