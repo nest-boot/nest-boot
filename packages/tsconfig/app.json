@@ -1,10 +1,5 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
   "display": "App",
-  "extends": "./base.json",
-  "compilerOptions": {
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "target": "ES2023"
-  }
+  "extends": "./base.json"
 }
