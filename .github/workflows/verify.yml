@@ -135,14 +135,32 @@ jobs:
         if: inputs.release
         run: |
           release_args=(--skip-publish)
+          release_specifier=()
           npm_tag="latest"
 
           if [ "${GITHUB_REF_NAME}" = "beta" ]; then
             release_args+=(--preid beta)
             npm_tag="beta"
+
+            # The previous beta.0 packages remain immutable on npm after their
+            # stale Git tags and GitHub Releases have been removed. Bootstrap
+            # the clean beta line at beta.1, then let Nx calculate later betas.
+            if ! git show-ref --verify --quiet "refs/tags/@nest-boot/auth@8.0.0-beta.1"; then
+              if ! published_beta_version="$(npm view @nest-boot/auth@8.0.0-beta.0 version)"; then
+                echo "::error::Unable to verify the published beta.0 bootstrap version"
+                exit 1
+              fi
+
+              if [ "$published_beta_version" != "8.0.0-beta.0" ]; then
+                echo "::error::Unexpected beta.0 bootstrap version: $published_beta_version"
+                exit 1
+              fi
+
+              release_specifier=(8.0.0-beta.1)
+            fi
           fi
 
-          pnpm exec nx release "${release_args[@]}"
+          pnpm exec nx release "${release_specifier[@]}" "${release_args[@]}"
 
           missing_projects="$(
             node --input-type=module <<'NODE'
