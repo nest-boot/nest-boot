@@ -49,4 +49,18 @@ describe("RequestContext", () => {
     expect(child.get(Provider)).toBe(provider);
     expect(dependencyResolver).toHaveBeenCalledWith(Provider);
   });
+
+  it("uses its own dependency resolver after an empty parent context", () => {
+    const provider = new Provider();
+    const dependencyResolver = vi.fn(() => provider);
+    const parent = new RequestContext({ type: "test" });
+    const child = new RequestContext({
+      dependencyResolver,
+      parent,
+      type: "test",
+    });
+
+    expect(child.get(Provider)).toBe(provider);
+    expect(dependencyResolver).toHaveBeenCalledWith(Provider);
+  });
 });
