@@ -4,13 +4,6 @@
 
 - **storage:** add object storage and staged upload modules ([#314](https://github.com/nest-boot/nest-boot/pull/314))
 
-### 🧱 Updated Dependencies
-
-- Updated @nest-boot/staged-upload to 8.0.0-beta.3
-- Updated @nest-boot/storage to 8.0.0-beta.3
-
 ### ❤️ Thank You
 
 - Xudong Huang @xudongcc
-
-# Changelog
