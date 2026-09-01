@@ -92,7 +92,7 @@ export class DocumentsService {
 }
 ```
 
-`writeFile`, `copyFile`, `moveFile`, and `deleteFile` resolve when S3 accepts the operation and reject with the AWS SDK error otherwise. `deleteFile` accepts one path or an array and automatically splits batches at the S3 limit of 1,000 objects.
+`writeFile`, `copyFile`, `moveFile`, and `deleteFile` resolve when S3 accepts the operation and reject with the AWS SDK error otherwise. `copyFile`, and therefore `moveFile`, accepts source objects up to 5 GB; larger objects are rejected before copying. `deleteFile` accepts one path or an array and automatically splits batches at the S3 limit of 1,000 objects.
 
 ## Node.js-style File I/O
 

@@ -92,7 +92,7 @@ export class DocumentsService {
 }
 ```
 
-`writeFile`、`copyFile`、`moveFile` 和 `deleteFile` 会在 S3 接受操作后完成，否则抛出 AWS SDK 错误。`deleteFile` 同时接受单个路径或路径数组，并按 S3 每批最多 1,000 个对象的限制自动拆分。
+`writeFile`、`copyFile`、`moveFile` 和 `deleteFile` 会在 S3 接受操作后完成，否则抛出 AWS SDK 错误。`copyFile` 以及基于它实现的 `moveFile` 支持最大 5 GB 的源对象；更大的对象会在复制前直接报错。`deleteFile` 同时接受单个路径或路径数组，并按 S3 每批最多 1,000 个对象的限制自动拆分。
 
 ## Node.js 风格的文件 I/O
 

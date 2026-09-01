@@ -6,6 +6,7 @@ import {
   DeleteObjectCommand,
   DeleteObjectsCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
@@ -30,27 +31,76 @@ describe("Storage", () => {
     await storage.moveFile("archive/hello world.txt", "final/hello world.txt");
     await storage.deleteFile("final/hello world.txt");
 
-    expect(send).toHaveBeenCalledTimes(5);
+    expect(send).toHaveBeenCalledTimes(7);
     expect(commandAt(send, 0, PutObjectCommand).input).toEqual({
       Bucket: "test-bucket",
       Key: "tenant/assets/docs/hello world.txt",
       Body: Buffer.from("hello"),
       ContentType: "text/plain",
     });
-    expect(commandAt(send, 1, CopyObjectCommand).input).toMatchObject({
+    expect(commandAt(send, 1, HeadObjectCommand).input).toMatchObject({
+      Bucket: "test-bucket",
+      Key: "tenant/assets/docs/hello world.txt",
+    });
+    expect(commandAt(send, 2, CopyObjectCommand).input).toMatchObject({
       Bucket: "test-bucket",
       CopySource: "test-bucket/tenant/assets/docs/hello%20world.txt",
       Key: "tenant/assets/archive/hello world.txt",
     });
-    expect(commandAt(send, 2, CopyObjectCommand).input).toMatchObject({
+    expect(commandAt(send, 4, CopyObjectCommand).input).toMatchObject({
       CopySource: "test-bucket/tenant/assets/archive/hello%20world.txt",
       Key: "tenant/assets/final/hello world.txt",
     });
-    expect(commandAt(send, 3, DeleteObjectCommand).input.Key).toBe(
+    expect(commandAt(send, 5, DeleteObjectCommand).input.Key).toBe(
       "tenant/assets/archive/hello world.txt",
     );
-    expect(commandAt(send, 4, DeleteObjectCommand).input.Key).toBe(
+    expect(commandAt(send, 6, DeleteObjectCommand).input.Key).toBe(
       "tenant/assets/final/hello world.txt",
+    );
+  });
+
+  it("treats moves to the same normalized key as a no-op", async () => {
+    const { client, send } = createClient();
+    const storage = new Storage(client, {
+      bucket: "test-bucket",
+      root: "root",
+    });
+
+    await storage.moveFile("docs/report.txt", "/docs//./report.txt");
+
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("enforces the 5 GB copy limit before copying", async () => {
+    const maxCopySize = 5 * 1024 * 1024 * 1024;
+    const { client, send } = createClient();
+    send
+      .mockResolvedValueOnce({ ContentLength: maxCopySize })
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({ ContentLength: maxCopySize + 1 })
+      .mockResolvedValueOnce({});
+    const storage = new Storage(client, { bucket: "test-bucket" });
+
+    await expect(
+      storage.copyFile("maximum.bin", "maximum-copy.bin"),
+    ).resolves.toBeUndefined();
+    await expect(
+      storage.copyFile("too-large.bin", "too-large-copy.bin"),
+    ).rejects.toThrow("exceeds the 5 GB limit");
+    await expect(
+      storage.copyFile("unknown-size.bin", "unknown-size-copy.bin"),
+    ).rejects.toThrow("did not return a content length");
+
+    expect(send).toHaveBeenCalledTimes(4);
+    expect(commandAt(send, 1, CopyObjectCommand).input).toMatchObject({
+      CopySource: "test-bucket/maximum.bin",
+      Key: "maximum-copy.bin",
+    });
+    expect(commandAt(send, 2, HeadObjectCommand).input.Key).toBe(
+      "too-large.bin",
+    );
+    expect(commandAt(send, 3, HeadObjectCommand).input.Key).toBe(
+      "unknown-size.bin",
     );
   });
 
@@ -385,7 +435,11 @@ function createClient(config: Partial<S3Client["config"]> = {}): {
   client: S3Client;
   send: ReturnType<typeof vi.fn>;
 } {
-  const send = vi.fn().mockResolvedValue({});
+  const send = vi.fn((command: unknown) =>
+    Promise.resolve(
+      command instanceof HeadObjectCommand ? { ContentLength: 0 } : {},
+    ),
+  );
   const client = {
     send,
     config: {

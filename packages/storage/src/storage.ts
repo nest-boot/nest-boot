@@ -8,6 +8,7 @@ import {
   DeleteObjectsCommand,
   GetObjectCommand,
   type GetObjectCommandInput,
+  HeadObjectCommand,
   ListObjectsV2Command,
   type ListObjectsV2Output,
   type PutObjectCommandInput,
@@ -29,6 +30,7 @@ import {
 import { type StorageModuleOptions } from "./storage-module-options.interface.js";
 
 const MAX_DELETE_OBJECTS = 1000;
+const MAX_SINGLE_COPY_SIZE = 5 * 1024 * 1024 * 1024;
 
 /** Laravel-inspired file storage backed by an S3-compatible object store. */
 export class Storage {
@@ -280,13 +282,40 @@ export class Storage {
     options: Omit<CopyObjectCommandInput, "Bucket" | "CopySource" | "Key"> = {},
   ): Promise<void> {
     const source = this.objectKey(from);
+    const destination = this.objectKey(to);
+    const sourceMetadata = await this.s3Client.send(
+      new HeadObjectCommand({
+        Bucket: this.bucket,
+        Key: source,
+        ExpectedBucketOwner: options.ExpectedSourceBucketOwner,
+        IfMatch: options.CopySourceIfMatch,
+        IfModifiedSince: options.CopySourceIfModifiedSince,
+        IfNoneMatch: options.CopySourceIfNoneMatch,
+        IfUnmodifiedSince: options.CopySourceIfUnmodifiedSince,
+        RequestPayer: options.RequestPayer,
+        SSECustomerAlgorithm: options.CopySourceSSECustomerAlgorithm,
+        SSECustomerKey: options.CopySourceSSECustomerKey,
+        SSECustomerKeyMD5: options.CopySourceSSECustomerKeyMD5,
+      }),
+    );
+
+    if (sourceMetadata.ContentLength === undefined) {
+      throw new Error(`S3 did not return a content length for ${from}`);
+    }
+
+    const copySource = `${this.bucket}/${encodePath(source)}`;
+    if (sourceMetadata.ContentLength > MAX_SINGLE_COPY_SIZE) {
+      throw new RangeError(
+        `Storage copy source exceeds the 5 GB limit: ${from}`,
+      );
+    }
 
     await this.s3Client.send(
       new CopyObjectCommand({
         ...options,
         Bucket: this.bucket,
-        CopySource: `${this.bucket}/${encodePath(source)}`,
-        Key: this.objectKey(to),
+        CopySource: copySource,
+        Key: destination,
       }),
     );
   }
@@ -302,6 +331,10 @@ export class Storage {
     to: string,
     options: Omit<CopyObjectCommandInput, "Bucket" | "CopySource" | "Key"> = {},
   ): Promise<void> {
+    if (this.objectKey(from) === this.objectKey(to)) {
+      return;
+    }
+
     await this.copyFile(from, to, options);
     await this.deleteFile(from);
   }
