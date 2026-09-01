@@ -13,6 +13,7 @@ import {
   type ListObjectsV2Output,
   type PutObjectCommandInput,
   S3Client,
+  type S3ClientConfig,
 } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
@@ -42,31 +43,75 @@ const MAX_SINGLE_COPY_SIZE = 5 * 1024 * 1024 * 1024;
 /** Laravel-inspired file storage backed by an S3-compatible object store. */
 export class Storage {
   private readonly bucket: string;
-  private readonly bucketEndpointUrl?: string;
+  private readonly client: S3Client;
+  private readonly clientBucket: string;
+  private readonly endpointUrl?: string;
+  private readonly internalClient: S3Client;
+  private readonly internalClientBucket: string;
   private readonly rootPath: string;
 
   /**
    * Creates a Storage service.
-   * @param s3Client - S3 client provided by {@link StorageModule}
    * @param options - Storage configuration
-   * @param s3UrlClient - Optional client configured with the external S3 endpoint
-   * @param s3BucketEndpointClient - Optional client configured with a bucket endpoint
    */
-  constructor(
-    private readonly s3Client: S3Client,
-    options: StorageModuleOptions,
-    private readonly s3UrlClient: S3Client = s3Client,
-    private readonly s3BucketEndpointClient: S3Client = s3UrlClient,
-  ) {
+  constructor(options: StorageModuleOptions) {
     if (!options.bucket?.trim()) {
       throw new Error(
         "Storage bucket is required; set STORAGE_BUCKET or register StorageModule with a bucket",
       );
     }
+    if (Boolean(options.accessKeyId) !== Boolean(options.secretAccessKey)) {
+      throw new Error(
+        "Storage credentials require both accessKeyId and secretAccessKey",
+      );
+    }
+    if (options.bucketEndpoint && !options.endpointUrl) {
+      throw new Error("Storage bucketEndpoint requires endpointUrl");
+    }
 
     this.bucket = options.bucket;
-    this.bucketEndpointUrl = options.bucketEndpointUrl;
+    this.endpointUrl = options.endpointUrl;
     this.rootPath = normalizePath(options.rootPath ?? "");
+
+    const bucketEndpoint = options.bucketEndpoint ?? false;
+    const internalBucketEndpoint =
+      options.internalBucketEndpoint ?? bucketEndpoint;
+    const internalEndpointUrl =
+      options.internalEndpointUrl ?? options.endpointUrl;
+
+    if (internalBucketEndpoint && !internalEndpointUrl) {
+      throw new Error(
+        "Storage internalBucketEndpoint requires internalEndpointUrl or endpointUrl",
+      );
+    }
+
+    this.client = new S3Client(
+      createS3ClientConfig(options, options.endpointUrl, bucketEndpoint),
+    );
+    this.clientBucket =
+      bucketEndpoint && options.endpointUrl ? options.endpointUrl : this.bucket;
+    this.internalClientBucket =
+      internalBucketEndpoint && internalEndpointUrl
+        ? internalEndpointUrl
+        : this.bucket;
+    this.internalClient =
+      internalEndpointUrl === options.endpointUrl &&
+      internalBucketEndpoint === bucketEndpoint
+        ? this.client
+        : new S3Client(
+            createS3ClientConfig(
+              options,
+              internalEndpointUrl,
+              internalBucketEndpoint,
+            ),
+          );
+  }
+
+  /** Releases resources held by the AWS SDK clients. */
+  onApplicationShutdown(): void {
+    for (const client of new Set([this.client, this.internalClient])) {
+      client.destroy();
+    }
   }
 
   /**
@@ -77,14 +122,14 @@ export class Storage {
   async getUrl(path: string): Promise<string> {
     const key = encodePath(this.objectKey(path));
 
-    if (this.bucketEndpointUrl) {
-      const url = new URL(this.bucketEndpointUrl);
+    if (this.client.config.bucketEndpoint && this.endpointUrl) {
+      const url = new URL(this.endpointUrl);
       url.pathname = `${url.pathname.replace(/\/$/, "")}/${key}`;
 
       return url.toString();
     }
 
-    const config = this.s3UrlClient.config;
+    const config = this.client.config;
     const configuredEndpoint = await config.endpoint?.();
     const endpoint = config.endpointProvider(
       {
@@ -131,10 +176,10 @@ export class Storage {
     const { expiresIn, ...getObjectOptions } = options;
 
     return await getSignedUrl(
-      this.s3BucketEndpointClient,
+      this.client,
       new GetObjectCommand({
         ...getObjectOptions,
-        Bucket: this.bucketEndpointUrl ?? this.bucket,
+        Bucket: this.clientBucket,
         Key: this.objectKey(path),
       }),
       expiresIn === undefined ? {} : { expiresIn },
@@ -153,7 +198,7 @@ export class Storage {
   ): Promise<StorageTemporaryUpload> {
     const key = this.objectKey(path);
 
-    return await createPresignedPost(this.s3UrlClient, {
+    const upload = await createPresignedPost(this.client, {
       Bucket: this.bucket,
       Key: key,
       Conditions: [
@@ -166,6 +211,10 @@ export class Storage {
         ? {}
         : { Expires: options.expiresIn }),
     });
+
+    return this.client.config.bucketEndpoint && this.endpointUrl
+      ? { ...upload, url: ensureTrailingSlash(this.endpointUrl) }
+      : upload;
   }
 
   /**
@@ -199,10 +248,10 @@ export class Storage {
     const resolvedOptions =
       typeof options === "string" ? { encoding: options } : (options ?? {});
     const { encoding, signal, ...getObjectOptions } = resolvedOptions;
-    const result = await this.s3Client.send(
+    const result = await this.internalClient.send(
       new GetObjectCommand({
         ...getObjectOptions,
-        Bucket: this.bucket,
+        Bucket: this.internalClientBucket,
         Key: this.objectKey(path),
       }),
       { abortSignal: signal },
@@ -279,10 +328,10 @@ export class Storage {
     } = resolvedOptions;
     const { controller, dispose } = linkedAbortController(signal);
     const upload = new Upload({
-      client: this.s3Client,
+      client: this.internalClient,
       params: {
         ...putObjectOptions,
-        Bucket: this.bucket,
+        Bucket: this.internalClientBucket,
         Key: this.objectKey(path),
         Body: uploadBody(data, encoding),
       },
@@ -323,10 +372,10 @@ export class Storage {
     const body = new PassThrough({ highWaterMark });
     const { controller, dispose } = linkedAbortController(signal);
     const upload = new Upload({
-      client: this.s3Client,
+      client: this.internalClient,
       params: {
         ...putObjectOptions,
-        Bucket: this.bucket,
+        Bucket: this.internalClientBucket,
         Key: this.objectKey(path),
         Body: body,
       },
@@ -395,9 +444,9 @@ export class Storage {
   ): Promise<void> {
     const source = this.objectKey(from);
     const destination = this.objectKey(to);
-    const sourceMetadata = await this.s3Client.send(
+    const sourceMetadata = await this.internalClient.send(
       new HeadObjectCommand({
-        Bucket: this.bucket,
+        Bucket: this.internalClientBucket,
         Key: source,
         ExpectedBucketOwner: options.ExpectedSourceBucketOwner,
         IfMatch: options.CopySourceIfMatch,
@@ -422,10 +471,10 @@ export class Storage {
       );
     }
 
-    await this.s3Client.send(
+    await this.internalClient.send(
       new CopyObjectCommand({
         ...options,
-        Bucket: this.bucket,
+        Bucket: this.internalClientBucket,
         CopySource: copySource,
         Key: destination,
       }),
@@ -457,9 +506,9 @@ export class Storage {
    */
   async deleteFile(paths: string | readonly string[]): Promise<void> {
     if (typeof paths === "string") {
-      await this.s3Client.send(
+      await this.internalClient.send(
         new DeleteObjectCommand({
-          Bucket: this.bucket,
+          Bucket: this.internalClientBucket,
           Key: this.objectKey(paths),
         }),
       );
@@ -468,9 +517,9 @@ export class Storage {
 
     for (let index = 0; index < paths.length; index += MAX_DELETE_OBJECTS) {
       const chunk = paths.slice(index, index + MAX_DELETE_OBJECTS);
-      const result = await this.s3Client.send(
+      const result = await this.internalClient.send(
         new DeleteObjectsCommand({
-          Bucket: this.bucket,
+          Bucket: this.internalClientBucket,
           Delete: {
             Objects: chunk.map((path) => ({ Key: this.objectKey(path) })),
             Quiet: true,
@@ -566,10 +615,10 @@ export class Storage {
     options: Omit<GetObjectCommandInput, "Bucket" | "Key">,
     signal: AbortSignal,
   ): Promise<void> {
-    const result = await this.s3Client.send(
+    const result = await this.internalClient.send(
       new GetObjectCommand({
         ...options,
-        Bucket: this.bucket,
+        Bucket: this.internalClientBucket,
         Key: this.objectKey(path),
       }),
       { abortSignal: signal },
@@ -617,9 +666,9 @@ export class Storage {
     let continuationToken: string | undefined;
 
     do {
-      const page = await this.s3Client.send(
+      const page = await this.internalClient.send(
         new ListObjectsV2Command({
-          Bucket: this.bucket,
+          Bucket: this.internalClientBucket,
           Prefix: this.directoryPrefix(directory),
           ...(delimiter ? { Delimiter: delimiter } : {}),
           ...(continuationToken
@@ -639,6 +688,32 @@ export class Storage {
         : undefined;
     } while (continuationToken);
   }
+}
+
+function createS3ClientConfig(
+  options: StorageModuleOptions,
+  endpointUrl: string | undefined,
+  bucketEndpoint: boolean,
+): S3ClientConfig {
+  const { accessKeyId, forcePathStyle, region, secretAccessKey } = options;
+
+  return {
+    ...(accessKeyId && secretAccessKey
+      ? { credentials: { accessKeyId, secretAccessKey } }
+      : {}),
+    ...(endpointUrl ? { endpoint: endpointUrl } : {}),
+    ...(bucketEndpoint ? { bucketEndpoint: true } : {}),
+    ...(bucketEndpoint || forcePathStyle === undefined
+      ? {}
+      : { forcePathStyle }),
+    ...(region ? { region } : {}),
+  };
+}
+
+function ensureTrailingSlash(endpointUrl: string): string {
+  const url = new URL(endpointUrl);
+  url.pathname = `${url.pathname.replace(/\/$/, "")}/`;
+  return url.toString();
 }
 
 function normalizePath(path: string): string {

@@ -14,6 +14,7 @@ import {
 import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
+import { type StorageModuleOptions } from "./interfaces/storage-module-options.interface.js";
 import { Storage } from "./storage.js";
 
 vi.mock("@aws-sdk/s3-presigned-post", () => ({
@@ -26,45 +27,36 @@ const getSignedUrlMock = vi.mocked(getSignedUrl);
 
 describe("Storage", () => {
   it("creates direct path-style and virtual-host URLs relative to its root", async () => {
-    const pathStyle = createClient({
-      endpoint: () =>
-        Promise.resolve({
-          hostname: "s3.local",
-          path: "/",
-          port: 9000,
-          protocol: "http:",
-        }),
-      forcePathStyle: true,
-    });
-    const virtualHost = createClient({
-      endpoint: () => Promise.resolve(testEndpoint()),
-      forcePathStyle: false,
-    });
-
     await expect(
-      new Storage(pathStyle.client, {
+      new Storage({
         bucket: "uploads",
+        endpointUrl: "http://s3.local:9000",
+        forcePathStyle: true,
+        region: "us-east-1",
         rootPath: "tenant/assets",
       }).getUrl("images/hello world.png"),
     ).resolves.toBe(
       "http://s3.local:9000/uploads/tenant/assets/images/hello%20world.png",
     );
     await expect(
-      new Storage(virtualHost.client, { bucket: "uploads" }).getUrl(
-        "images/photo.png",
-      ),
+      new Storage({
+        bucket: "uploads",
+        endpointUrl: "https://s3.example.com",
+        region: "us-east-1",
+      }).getUrl("images/photo.png"),
     ).resolves.toBe("https://uploads.s3.example.com/images/photo.png");
     await expect(
-      new Storage(createClient().client, { bucket: "uploads" }).getUrl(
+      new Storage({ bucket: "uploads", region: "us-east-1" }).getUrl(
         "images/photo.png",
       ),
     ).resolves.toBe(
       "https://uploads.s3.us-east-1.amazonaws.com/images/photo.png",
     );
     await expect(
-      new Storage(pathStyle.client, {
+      new Storage({
         bucket: "uploads",
-        bucketEndpointUrl: "https://cdn.example.com/assets/",
+        bucketEndpoint: true,
+        endpointUrl: "https://cdn.example.com/assets/",
         rootPath: "tenant",
       }).getUrl("images/hello world.png"),
     ).resolves.toBe(
@@ -76,19 +68,16 @@ describe("Storage", () => {
     getSignedUrlMock
       .mockResolvedValueOnce("https://signed.example.com/file.txt")
       .mockResolvedValueOnce("https://signed.example.com/default.txt");
-    const { client } = createClient();
-    const { client: urlClient } = createClient();
-    const { client: publicUrlClient } = createClient();
-    const storage = new Storage(
-      client,
-      {
-        bucket: "uploads",
-        bucketEndpointUrl: "https://cdn.example.com",
-        rootPath: "private",
-      },
-      urlClient,
-      publicUrlClient,
-    );
+    const storage = new Storage({
+      accessKeyId: "access-key",
+      bucket: "uploads",
+      bucketEndpoint: true,
+      endpointUrl: "https://cdn.example.com",
+      region: "us-east-1",
+      rootPath: "private",
+      secretAccessKey: "secret-key",
+    });
+    const { client } = storageClients(storage);
 
     await expect(
       storage.createTemporaryUrl("reports/file.txt", {
@@ -107,12 +96,9 @@ describe("Storage", () => {
       Key: "private/reports/file.txt",
       ResponseContentType: "text/plain",
     });
-    expect(getSignedUrlMock).toHaveBeenNthCalledWith(
-      1,
-      publicUrlClient,
-      command,
-      { expiresIn: 120 },
-    );
+    expect(getSignedUrlMock).toHaveBeenNthCalledWith(1, client, command, {
+      expiresIn: 120,
+    });
     expect(getSignedUrlMock.mock.calls[1]?.[2]).toEqual({});
   });
 
@@ -126,16 +112,12 @@ describe("Storage", () => {
         fields: { key: "private/tmp/default.png" },
         url: "https://s3.example.com/uploads",
       });
-    const { client } = createClient();
-    const { client: urlClient } = createClient();
-    const storage = new Storage(
-      client,
-      {
-        bucket: "uploads",
-        rootPath: "private",
-      },
-      urlClient,
-    );
+    const storage = new Storage({
+      bucket: "uploads",
+      endpointUrl: "https://s3.example.com",
+      rootPath: "private",
+    });
+    const { client } = storageClients(storage);
 
     await expect(
       storage.createTemporaryUploadUrl("tmp/photo.png", {
@@ -152,7 +134,7 @@ describe("Storage", () => {
     });
     await storage.createTemporaryUploadUrl("tmp/default.png");
 
-    expect(createPresignedPostMock).toHaveBeenNthCalledWith(1, urlClient, {
+    expect(createPresignedPostMock).toHaveBeenNthCalledWith(1, client, {
       Bucket: "uploads",
       Key: "private/tmp/photo.png",
       Conditions: [
@@ -164,7 +146,7 @@ describe("Storage", () => {
       Expires: 300,
       Fields: { "Content-Type": "image/png" },
     });
-    expect(createPresignedPostMock).toHaveBeenNthCalledWith(2, urlClient, {
+    expect(createPresignedPostMock).toHaveBeenNthCalledWith(2, client, {
       Bucket: "uploads",
       Key: "private/tmp/default.png",
       Conditions: [
@@ -174,11 +156,65 @@ describe("Storage", () => {
     });
   });
 
-  it("writes, copies, moves, and deletes paths relative to its root", async () => {
-    const { client, send } = createClient({
-      endpoint: () => Promise.resolve(testEndpoint()),
+  it("uses the configured bucket endpoint as the presigned POST target", async () => {
+    createPresignedPostMock.mockResolvedValueOnce({
+      fields: { bucket: "uploads", key: "tmp/photo.png" },
+      url: "https://uploads.uploads.minio.example.com/",
     });
-    const storage = new Storage(client, {
+    const storage = new Storage({
+      bucket: "uploads",
+      bucketEndpoint: true,
+      endpointUrl: "https://uploads.minio.example.com",
+    });
+    const { client } = storageClients(storage);
+
+    await expect(
+      storage.createTemporaryUploadUrl("tmp/photo.png"),
+    ).resolves.toEqual({
+      fields: { bucket: "uploads", key: "tmp/photo.png" },
+      url: "https://uploads.minio.example.com/",
+    });
+    expect(createPresignedPostMock).toHaveBeenCalledWith(client, {
+      Bucket: "uploads",
+      Key: "tmp/photo.png",
+      Conditions: [
+        ["eq", "$bucket", "uploads"],
+        ["eq", "$key", "tmp/photo.png"],
+      ],
+    });
+  });
+
+  it("uses independent bucket endpoints for external and internal clients", async () => {
+    getSignedUrlMock.mockResolvedValueOnce(
+      "https://uploads.public.example.com/file.txt?signature=test",
+    );
+    const { send, storage } = createStorage({
+      bucket: "uploads",
+      bucketEndpoint: true,
+      endpointUrl: "https://uploads.public.example.com",
+      internalBucketEndpoint: true,
+      internalEndpointUrl: "https://uploads.internal.example.com",
+    });
+
+    await storage.writeFile("file.txt", "content");
+    await storage.deleteFile("file.txt");
+    await storage.createTemporaryUrl("file.txt");
+
+    expect(commandAt(send, 0, PutObjectCommand).input.Bucket).toBe(
+      "https://uploads.internal.example.com",
+    );
+    expect(commandAt(send, 1, DeleteObjectCommand).input.Bucket).toBe(
+      "https://uploads.internal.example.com",
+    );
+    const signedCommand = getSignedUrlMock.mock.calls.at(-1)?.[1];
+    expect(signedCommand).toBeInstanceOf(GetObjectCommand);
+    expect(signedCommand?.input.Bucket).toBe(
+      "https://uploads.public.example.com",
+    );
+  });
+
+  it("writes, copies, moves, and deletes paths relative to its root", async () => {
+    const { send, storage } = createStorage({
       bucket: "test-bucket",
       rootPath: "/tenant//assets/",
     });
@@ -219,8 +255,7 @@ describe("Storage", () => {
   });
 
   it("treats moves to the same normalized key as a no-op", async () => {
-    const { client, send } = createClient();
-    const storage = new Storage(client, {
+    const { send, storage } = createStorage({
       bucket: "test-bucket",
       rootPath: "root",
     });
@@ -232,13 +267,12 @@ describe("Storage", () => {
 
   it("enforces the 5 GB copy limit before copying", async () => {
     const maxCopySize = 5 * 1024 * 1024 * 1024;
-    const { client, send } = createClient();
+    const { send, storage } = createStorage({ bucket: "test-bucket" });
     send
       .mockResolvedValueOnce({ ContentLength: maxCopySize })
       .mockResolvedValueOnce({})
       .mockResolvedValueOnce({ ContentLength: maxCopySize + 1 })
       .mockResolvedValueOnce({});
-    const storage = new Storage(client, { bucket: "test-bucket" });
 
     await expect(
       storage.copyFile("maximum.bin", "maximum-copy.bin"),
@@ -264,7 +298,10 @@ describe("Storage", () => {
   });
 
   it("reads files as buffers, encoded strings, and byte-range streams", async () => {
-    const { client, send } = createClient();
+    const { send, storage } = createStorage({
+      bucket: "test-bucket",
+      rootPath: "root",
+    });
     send
       .mockResolvedValueOnce({
         Body: {
@@ -279,10 +316,6 @@ describe("Storage", () => {
         },
       })
       .mockResolvedValueOnce({ Body: Readable.from(["range"]) });
-    const storage = new Storage(client, {
-      bucket: "test-bucket",
-      rootPath: "root",
-    });
 
     await expect(storage.readFile("buffer.txt")).resolves.toEqual(
       Buffer.from("buffer"),
@@ -311,12 +344,11 @@ describe("Storage", () => {
   });
 
   it("reports empty and invalid S3 response bodies and request failures", async () => {
-    const { client, send } = createClient();
+    const { send, storage } = createStorage({ bucket: "test-bucket" });
     send
       .mockResolvedValueOnce({})
       .mockResolvedValueOnce({ Body: "not-a-node-stream" })
       .mockRejectedValueOnce("S3 unavailable");
-    const storage = new Storage(client, { bucket: "test-bucket" });
 
     await expect(storage.readFile("empty.txt", null)).rejects.toThrow(
       "empty response body",
@@ -330,13 +362,10 @@ describe("Storage", () => {
   });
 
   it("supports open-ended ranges, direct buffer views, and abort signals", async () => {
-    const { client, send } = createClient({
-      endpoint: () => Promise.resolve(testEndpoint()),
-    });
+    const { send, storage } = createStorage({ bucket: "test-bucket" });
     send
       .mockResolvedValueOnce({ Body: Readable.from(["start"]) })
       .mockResolvedValueOnce({ Body: Readable.from(["end"]) });
-    const storage = new Storage(client, { bucket: "test-bucket" });
 
     await expect(
       streamText(storage.createReadStream("start.txt", { start: 2 })),
@@ -361,10 +390,7 @@ describe("Storage", () => {
   });
 
   it("writes iterable data and waits for streaming uploads to complete", async () => {
-    const { client, send } = createClient({
-      endpoint: () => Promise.resolve(testEndpoint()),
-    });
-    const storage = new Storage(client, {
+    const { send, storage } = createStorage({
       bucket: "test-bucket",
       rootPath: "root",
     });
@@ -395,11 +421,8 @@ describe("Storage", () => {
   });
 
   it("propagates streaming upload failures", async () => {
-    const { client, send } = createClient({
-      endpoint: () => Promise.resolve(testEndpoint()),
-    });
+    const { send, storage } = createStorage({ bucket: "test-bucket" });
     send.mockRejectedValueOnce(new Error("upload failed"));
-    const storage = new Storage(client, { bucket: "test-bucket" });
     const stream = storage.createWriteStream("stream.txt");
 
     stream.end("content");
@@ -407,8 +430,7 @@ describe("Storage", () => {
   });
 
   it("deletes arrays in S3-sized batches and reports per-object failures", async () => {
-    const { client, send } = createClient();
-    const storage = new Storage(client, { bucket: "test-bucket" });
+    const { send, storage } = createStorage({ bucket: "test-bucket" });
     const paths = Array.from(
       { length: 1001 },
       (_, index) => `${String(index)}.txt`,
@@ -439,7 +461,10 @@ describe("Storage", () => {
   });
 
   it("lists immediate entries with metadata across paginated results", async () => {
-    const { client, send } = createClient();
+    const { send, storage } = createStorage({
+      bucket: "test-bucket",
+      rootPath: "root",
+    });
     const lastModified = new Date("2026-01-01T00:00:00Z");
     send
       .mockResolvedValueOnce({
@@ -461,10 +486,6 @@ describe("Storage", () => {
         CommonPrefixes: [{ Prefix: "root/docs/other/" }],
         IsTruncated: false,
       });
-    const storage = new Storage(client, {
-      bucket: "test-bucket",
-      rootPath: "root",
-    });
 
     await expect(storage.listEntries("docs")).resolves.toEqual([
       { path: "docs/a.txt", type: "file", size: 1 },
@@ -491,7 +512,10 @@ describe("Storage", () => {
   });
 
   it("recursively lists files and inferred directories", async () => {
-    const { client, send } = createClient();
+    const { send, storage } = createStorage({
+      bucket: "test-bucket",
+      rootPath: "root",
+    });
     send
       .mockResolvedValueOnce({
         Contents: [
@@ -504,10 +528,6 @@ describe("Storage", () => {
       .mockResolvedValueOnce({
         Contents: [{ Key: "root/docs/guides/api/reference.txt" }],
       });
-    const storage = new Storage(client, {
-      bucket: "test-bucket",
-      rootPath: "root",
-    });
 
     await expect(
       storage.listEntries("docs", { recursive: true }),
@@ -528,24 +548,23 @@ describe("Storage", () => {
   });
 
   it("ignores incomplete list records and supports an unscoped root", async () => {
-    const { client, send } = createClient();
+    const { send, storage: rootedStorage } = createStorage({
+      bucket: "test-bucket",
+      rootPath: "root",
+    });
     send.mockResolvedValueOnce({
       CommonPrefixes: [{}, { Prefix: "root/docs/" }],
       Contents: [{}, { Key: "root/docs/file.txt" }],
-    });
-    const rootedStorage = new Storage(client, {
-      bucket: "test-bucket",
-      rootPath: "root",
     });
 
     await expect(rootedStorage.listEntries("docs")).resolves.toEqual([
       { path: "docs/file.txt", type: "file" },
     ]);
 
-    const unscoped = createClient();
+    const unscoped = createStorage({ bucket: "test-bucket" });
     unscoped.send.mockResolvedValueOnce({ Contents: [{ Key: "file.txt" }] });
     await expect(
-      new Storage(unscoped.client, { bucket: "test-bucket" }).listEntries("", {
+      unscoped.storage.listEntries("", {
         recursive: true,
       }),
     ).resolves.toEqual([{ path: "file.txt", type: "file" }]);
@@ -555,10 +574,18 @@ describe("Storage", () => {
   });
 
   it("rejects missing buckets, empty object paths, traversal, and invalid ranges", async () => {
-    const { client } = createClient();
-
-    expect(() => new Storage(client, {})).toThrow("Storage bucket is required");
-    const storage = new Storage(client, { bucket: "test-bucket" });
+    expect(() => new Storage({})).toThrow("Storage bucket is required");
+    expect(
+      () => new Storage({ bucket: "test-bucket", bucketEndpoint: true }),
+    ).toThrow("bucketEndpoint requires endpointUrl");
+    expect(
+      () =>
+        new Storage({
+          bucket: "test-bucket",
+          internalBucketEndpoint: true,
+        }),
+    ).toThrow("internalBucketEndpoint requires");
+    const storage = new Storage({ bucket: "test-bucket" });
     await expect(storage.writeFile("/", "content")).rejects.toThrow(
       "Storage path must not be empty",
     );
@@ -574,8 +601,7 @@ describe("Storage", () => {
   });
 
   it("rejects malformed pagination and objects outside the configured root", async () => {
-    const { client, send } = createClient();
-    const storage = new Storage(client, {
+    const { send, storage } = createStorage({
       bucket: "test-bucket",
       rootPath: "root",
     });
@@ -590,61 +616,30 @@ describe("Storage", () => {
   });
 });
 
-function createClient(config: Partial<S3Client["config"]> = {}): {
+function createStorage(options: StorageModuleOptions): {
   client: S3Client;
   send: ReturnType<typeof vi.fn>;
+  storage: Storage;
 } {
+  const storage = new Storage({ region: "us-east-1", ...options });
+  const { internalClient: client } = storageClients(storage);
   const send = vi.fn((command: unknown) =>
     Promise.resolve(
       command instanceof HeadObjectCommand ? { ContentLength: 0 } : {},
     ),
   );
-  const client = {
-    send,
-    config: {
-      disableMultiregionAccessPoints: false,
-      disableS3ExpressSessionAuth: () => Promise.resolve(false),
-      endpoint: undefined,
-      endpointProvider: vi.fn(
-        (params: {
-          Bucket?: string;
-          Endpoint?: string;
-          ForcePathStyle?: boolean;
-        }) => {
-          const endpoint = new URL(
-            params.Endpoint ?? "https://s3.us-east-1.amazonaws.com",
-          );
-          if (params.ForcePathStyle) {
-            endpoint.pathname = `${endpoint.pathname.replace(/\/$/, "")}/${params.Bucket ?? ""}`;
-          } else {
-            endpoint.hostname = `${params.Bucket ?? ""}.${endpoint.hostname}`;
-          }
-          return { url: endpoint };
-        },
-      ),
-      forcePathStyle: false,
-      region: () => Promise.resolve("us-east-1"),
-      useAccelerateEndpoint: false,
-      useArnRegion: () => Promise.resolve(undefined),
-      useDualstackEndpoint: () => Promise.resolve(false),
-      useFipsEndpoint: () => Promise.resolve(false),
-      useGlobalEndpoint: false,
-      ...config,
-    },
-  } as unknown as S3Client;
+  client.send = send as S3Client["send"];
 
-  return { client, send };
+  return { client, send, storage };
 }
 
-function testEndpoint(): {
-  hostname: string;
-  path: string;
-  protocol: string;
+function storageClients(storage: Storage): {
+  client: S3Client;
+  internalClient: S3Client;
 } {
-  return {
-    hostname: "s3.example.com",
-    path: "/",
-    protocol: "https:",
+  return storage as unknown as {
+    client: S3Client;
+    internalClient: S3Client;
   };
 }
 

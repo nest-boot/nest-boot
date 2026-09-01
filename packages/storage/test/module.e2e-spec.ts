@@ -31,10 +31,7 @@ function getS3Bucket(): string {
 
 @Injectable()
 class StorageConsumer {
-  constructor(
-    readonly storage: Storage,
-    readonly s3Client: S3Client,
-  ) {}
+  constructor(readonly storage: Storage) {}
 }
 
 @Module({ providers: [StorageConsumer] })
@@ -53,10 +50,13 @@ describeIfS3Configured("StorageModule - e2e", () => {
   let storage: Storage;
 
   beforeAll(async () => {
+    const setupClient = createSetupClient();
+    await ensureBucketExists(setupClient, getSetupBucket());
+    setupClient.destroy();
+
     const module = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
-    await ensureBucketExists(module.get(S3Client), getS3Bucket());
 
     app = module.createNestApplication();
     await app.init();
@@ -73,11 +73,11 @@ describeIfS3Configured("StorageModule - e2e", () => {
     await app.close();
   }, 60_000);
 
-  it("provides the same global Storage and S3Client to feature modules", () => {
+  it("provides the same global Storage to feature modules", () => {
     const consumer = app.get(StorageConsumer);
 
     expect(consumer.storage).toBe(storage);
-    expect(consumer.s3Client).toBe(app.get(S3Client));
+    expect(() => app.get(S3Client)).toThrow();
   });
 
   it("stores, lists, copies, moves, and deletes files", async () => {
@@ -148,7 +148,7 @@ describeIfS3Configured("StorageModule - e2e", () => {
 
   it("creates direct and temporary object URLs", async () => {
     await expect(storage.getUrl("docs/read me.txt")).resolves.toContain(
-      `${testBucket}/${testRoot}/docs/read%20me.txt`,
+      `${testRoot}/docs/read%20me.txt`,
     );
 
     const temporaryUrl = await storage.createTemporaryUrl("docs/read me.txt", {
@@ -182,4 +182,39 @@ async function ensureBucketExists(
       throw error;
     }
   }
+}
+
+function createSetupClient(): S3Client {
+  const bucketEndpoint =
+    process.env.STORAGE_BUCKET_ENDPOINT?.toLowerCase() === "true";
+
+  return new S3Client({
+    ...(bucketEndpoint ? { bucketEndpoint: true } : {}),
+    credentials: {
+      accessKeyId: requiredStorageEnv("STORAGE_ACCESS_KEY_ID"),
+      secretAccessKey: requiredStorageEnv("STORAGE_SECRET_ACCESS_KEY"),
+    },
+    endpoint: process.env.STORAGE_ENDPOINT_URL,
+    ...(bucketEndpoint
+      ? {}
+      : {
+          forcePathStyle:
+            process.env.STORAGE_FORCE_PATH_STYLE?.toLowerCase() === "true",
+        }),
+    region: process.env.STORAGE_REGION ?? "us-east-1",
+  });
+}
+
+function getSetupBucket(): string {
+  return process.env.STORAGE_BUCKET_ENDPOINT?.toLowerCase() === "true"
+    ? requiredStorageEnv("STORAGE_ENDPOINT_URL")
+    : getS3Bucket();
+}
+
+function requiredStorageEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`${name} is required for this test suite`);
+  }
+  return value;
 }

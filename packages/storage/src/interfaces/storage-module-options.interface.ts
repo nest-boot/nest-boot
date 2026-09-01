@@ -11,8 +11,8 @@ export interface StorageModuleOptions {
    */
   bucket?: string;
 
-  /** Optional bucket URL used for direct and signed read URLs. */
-  bucketEndpointUrl?: string;
+  /** Whether `endpointUrl` already identifies the configured bucket. */
+  bucketEndpoint?: boolean;
 
   /** External S3 endpoint used for uploads and as the public URL fallback. */
   endpointUrl?: string;
@@ -22,6 +22,12 @@ export interface StorageModuleOptions {
 
   /** Internal S3-compatible endpoint used for server-side object operations. */
   internalEndpointUrl?: string;
+
+  /**
+   * Whether `internalEndpointUrl` already identifies the configured bucket.
+   * Defaults to `bucketEndpoint` when omitted.
+   */
+  internalBucketEndpoint?: boolean;
 
   /** AWS region used for signing and endpoint resolution. */
   region?: string;

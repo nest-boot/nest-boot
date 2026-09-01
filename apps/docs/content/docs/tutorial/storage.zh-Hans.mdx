@@ -3,7 +3,7 @@ title: "Storage"
 description: "通过 S3 兼容对象存储使用 Laravel 风格的文件操作。"
 ---
 
-`@nest-boot/storage` 模块会创建全局 AWS SDK `S3Client`，并基于它提供 Laravel 风格的文件操作和 Node.js 风格的文件 I/O。所有路径都相对于可选的 storage root，列表会自动处理分页，并把 S3 prefix 表现为目录。
+`@nest-boot/storage` 模块为 S3 兼容对象存储提供 Laravel 风格的文件操作和 Node.js 风格的文件 I/O。所有路径都相对于可选的 storage root，列表会自动处理分页，并把 S3 prefix 表现为目录。
 
 ## 安装
 
@@ -11,7 +11,7 @@ description: "通过 S3 兼容对象存储使用 Laravel 风格的文件操作�
 pnpm add @nest-boot/storage @aws-sdk/client-s3 @aws-sdk/lib-storage @aws-sdk/s3-presigned-post @aws-sdk/s3-request-presigner
 ```
 
-请在根应用中注册一次 `StorageModule`。它会全局导出 `S3Client` 和 `Storage`。
+请在根应用中注册一次 `StorageModule`。它会全局导出 `Storage`，AWS SDK 客户端则保持为内部实现。
 
 ## 环境变量配置
 
@@ -32,8 +32,9 @@ STORAGE_ACCESS_KEY_ID=minio
 STORAGE_SECRET_ACCESS_KEY=password
 STORAGE_REGION=us-east-1
 STORAGE_ENDPOINT_URL=http://localhost:9000
+STORAGE_BUCKET_ENDPOINT=false
 STORAGE_INTERNAL_ENDPOINT_URL=
-STORAGE_BUCKET_ENDPOINT_URL=
+STORAGE_INTERNAL_BUCKET_ENDPOINT=
 STORAGE_BUCKET=uploads
 STORAGE_ROOT_PATH=
 STORAGE_FORCE_PATH_STYLE=true
@@ -41,9 +42,9 @@ STORAGE_FORCE_PATH_STYLE=true
 
 如果 storage 实例需要限制在某个 key prefix 下，请设置 `STORAGE_ROOT_PATH`；留空则访问 bucket 根路径。
 
-`STORAGE_ENDPOINT_URL` 是临时上传使用的外部可访问 S3 service endpoint；未配置 bucket endpoint 覆盖时，直接 URL 和临时下载 URL 也使用它。服务端对象操作需要使用不同的私网端点时设置 `STORAGE_INTERNAL_ENDPOINT_URL`；未设置时会回退到 S3 端点。
+`STORAGE_ENDPOINT_URL` 是生成直连 URL、临时上传和临时下载时使用的外部可访问 Endpoint。服务端对象操作需要使用不同的私网 Endpoint 时设置 `STORAGE_INTERNAL_ENDPOINT_URL`；未设置时，`Storage` 会复用外部客户端。
 
-当 CDN、CNAME 或代理 URL 已经代表配置的 bucket 时，设置 `STORAGE_BUCKET_ENDPOINT_URL`。`getUrl()` 和 `createTemporaryUrl()` 使用它时不会再次添加 bucket 名；临时下载会启用 AWS SDK 原生的 `bucketEndpoint` 模式。它是选填项，未设置时回退到 `STORAGE_ENDPOINT_URL`。
+当 `STORAGE_ENDPOINT_URL` 已经代表配置的 bucket（例如 `https://uploads.minio.example.com`）时，设置 `STORAGE_BUCKET_ENDPOINT=true`。`STORAGE_INTERNAL_BUCKET_ENDPOINT` 独立描述内网 Endpoint；未设置时继承 `STORAGE_BUCKET_ENDPOINT`。桶级 Endpoint 模式要求对应的 URL，不会重复添加 bucket，并会忽略该客户端的 `forcePathStyle`。
 
 ## 显式配置
 
@@ -52,10 +53,11 @@ STORAGE_FORCE_PATH_STYLE=true
 ```typescript
 StorageModule.register({
   bucket: "uploads",
-  endpointUrl: "https://storage.example.com",
+  bucketEndpoint: true,
+  endpointUrl: "https://uploads.storage.example.com",
   forcePathStyle: true,
   internalEndpointUrl: "http://minio:9000",
-  bucketEndpointUrl: "https://cdn.example.com/assets",
+  internalBucketEndpoint: false,
   region: "us-east-1",
   accessKeyId: "minio",
   secretAccessKey: "password",
@@ -74,10 +76,12 @@ StorageModule.registerAsync({
   inject: [ConfigService],
   useFactory: (config: ConfigService) => ({
     bucket: config.getOrThrow("STORAGE_BUCKET"),
+    bucketEndpoint: config.get("STORAGE_BUCKET_ENDPOINT") === "true",
     endpointUrl: config.get("STORAGE_ENDPOINT_URL"),
     forcePathStyle: config.get("STORAGE_FORCE_PATH_STYLE") === "true",
+    internalBucketEndpoint:
+      config.get("STORAGE_INTERNAL_BUCKET_ENDPOINT") === "true",
     internalEndpointUrl: config.get("STORAGE_INTERNAL_ENDPOINT_URL"),
-    bucketEndpointUrl: config.get("STORAGE_BUCKET_ENDPOINT_URL"),
     region: config.get("STORAGE_REGION"),
     rootPath: config.get("STORAGE_ROOT_PATH"),
   }),
@@ -86,19 +90,15 @@ StorageModule.registerAsync({
 
 ## 依赖注入
 
-两个 provider 都会解析为 `StorageModule` 创建的实例，可以在应用的任意位置注入：
+可以在应用的任意位置注入全局 `Storage` 服务。它的外部与内部 `S3Client` 属于实现细节，不会注册为 Nest provider：
 
 ```typescript
-import { S3Client } from "@aws-sdk/client-s3";
 import { Storage } from "@nest-boot/storage";
 import { Injectable } from "@nestjs/common";
 
 @Injectable()
 export class DocumentsService {
-  constructor(
-    private readonly s3Client: S3Client,
-    private readonly storage: Storage,
-  ) {}
+  constructor(private readonly storage: Storage) {}
 }
 ```
 

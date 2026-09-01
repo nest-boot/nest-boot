@@ -3,7 +3,7 @@ title: "Storage"
 description: "Use Laravel-inspired file operations with an S3-compatible object store."
 ---
 
-The `@nest-boot/storage` module creates a global AWS SDK `S3Client` and provides Laravel-inspired file operations and Node.js-style file I/O on top of it. Paths are relative to an optional storage root, listings are automatically paginated, and S3 prefixes are exposed as directories.
+The `@nest-boot/storage` module provides Laravel-inspired file operations and Node.js-style file I/O for S3-compatible object stores. Paths are relative to an optional storage root, listings are automatically paginated, and S3 prefixes are exposed as directories.
 
 ## Installation
 
@@ -11,7 +11,7 @@ The `@nest-boot/storage` module creates a global AWS SDK `S3Client` and provides
 pnpm add @nest-boot/storage @aws-sdk/client-s3 @aws-sdk/lib-storage @aws-sdk/s3-presigned-post @aws-sdk/s3-request-presigner
 ```
 
-Register `StorageModule` once in the root application. It exposes both `S3Client` and `Storage` globally.
+Register `StorageModule` once in the root application. It exposes `Storage` globally and keeps its AWS SDK clients private.
 
 ## Environment Configuration
 
@@ -32,8 +32,9 @@ STORAGE_ACCESS_KEY_ID=minio
 STORAGE_SECRET_ACCESS_KEY=password
 STORAGE_REGION=us-east-1
 STORAGE_ENDPOINT_URL=http://localhost:9000
+STORAGE_BUCKET_ENDPOINT=false
 STORAGE_INTERNAL_ENDPOINT_URL=
-STORAGE_BUCKET_ENDPOINT_URL=
+STORAGE_INTERNAL_BUCKET_ENDPOINT=
 STORAGE_BUCKET=uploads
 STORAGE_ROOT_PATH=
 STORAGE_FORCE_PATH_STYLE=true
@@ -41,9 +42,9 @@ STORAGE_FORCE_PATH_STYLE=true
 
 Set `STORAGE_ROOT_PATH` when the storage instance must be limited to a key prefix. Leave it empty to address the bucket root.
 
-`STORAGE_ENDPOINT_URL` is the externally reachable S3 service endpoint used for temporary uploads and, without a bucket endpoint override, direct and temporary download URLs. Set `STORAGE_INTERNAL_ENDPOINT_URL` when server-side object operations should use a different private-network endpoint; otherwise it falls back to the S3 endpoint.
+`STORAGE_ENDPOINT_URL` is the externally reachable endpoint used for direct URLs and temporary uploads and downloads. Set `STORAGE_INTERNAL_ENDPOINT_URL` when server-side object operations should use a different private-network endpoint; otherwise `Storage` reuses its external client.
 
-Set `STORAGE_BUCKET_ENDPOINT_URL` when a CDN, CNAME, or proxy URL already identifies the configured bucket. `getUrl()` and `createTemporaryUrl()` use it without adding the bucket name again. The module enables the AWS SDK's native `bucketEndpoint` mode for signed downloads. It is optional and falls back to `STORAGE_ENDPOINT_URL`.
+Set `STORAGE_BUCKET_ENDPOINT=true` when `STORAGE_ENDPOINT_URL` already identifies the configured bucket, such as `https://uploads.minio.example.com`. Set `STORAGE_INTERNAL_BUCKET_ENDPOINT` independently for the internal endpoint; when omitted, it inherits `STORAGE_BUCKET_ENDPOINT`. Bucket endpoint mode requires the corresponding endpoint URL, does not add the bucket again, and ignores `forcePathStyle` for that client.
 
 ## Explicit Configuration
 
@@ -52,10 +53,11 @@ Use `register()` to configure the S3 client, bucket, and root path explicitly:
 ```typescript
 StorageModule.register({
   bucket: "uploads",
-  endpointUrl: "https://storage.example.com",
+  bucketEndpoint: true,
+  endpointUrl: "https://uploads.storage.example.com",
   forcePathStyle: true,
   internalEndpointUrl: "http://minio:9000",
-  bucketEndpointUrl: "https://cdn.example.com/assets",
+  internalBucketEndpoint: false,
   region: "us-east-1",
   accessKeyId: "minio",
   secretAccessKey: "password",
@@ -74,10 +76,12 @@ StorageModule.registerAsync({
   inject: [ConfigService],
   useFactory: (config: ConfigService) => ({
     bucket: config.getOrThrow("STORAGE_BUCKET"),
+    bucketEndpoint: config.get("STORAGE_BUCKET_ENDPOINT") === "true",
     endpointUrl: config.get("STORAGE_ENDPOINT_URL"),
     forcePathStyle: config.get("STORAGE_FORCE_PATH_STYLE") === "true",
+    internalBucketEndpoint:
+      config.get("STORAGE_INTERNAL_BUCKET_ENDPOINT") === "true",
     internalEndpointUrl: config.get("STORAGE_INTERNAL_ENDPOINT_URL"),
-    bucketEndpointUrl: config.get("STORAGE_BUCKET_ENDPOINT_URL"),
     region: config.get("STORAGE_REGION"),
     rootPath: config.get("STORAGE_ROOT_PATH"),
   }),
@@ -86,19 +90,15 @@ StorageModule.registerAsync({
 
 ## Dependency Injection
 
-Both providers resolve to the instances created by `StorageModule` and can be injected anywhere in the application:
+Inject the global `Storage` service anywhere in the application. Its external and internal `S3Client` instances are implementation details and are not registered as Nest providers:
 
 ```typescript
-import { S3Client } from "@aws-sdk/client-s3";
 import { Storage } from "@nest-boot/storage";
 import { Injectable } from "@nestjs/common";
 
 @Injectable()
 export class DocumentsService {
-  constructor(
-    private readonly s3Client: S3Client,
-    private readonly storage: Storage,
-  ) {}
+  constructor(private readonly storage: Storage) {}
 }
 ```
 

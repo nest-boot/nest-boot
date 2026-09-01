@@ -7,10 +7,7 @@ import { StorageModule } from "./storage.module.js";
 
 @Injectable()
 class StorageConsumer {
-  constructor(
-    readonly storage: Storage,
-    readonly s3Client: S3Client,
-  ) {}
+  constructor(readonly storage: Storage) {}
 }
 
 @Module({ providers: [StorageConsumer] })
@@ -24,82 +21,75 @@ describe("StorageModule", () => {
     vi.unstubAllEnvs();
   });
 
-  it("loads storage and S3 client configuration from the environment", async () => {
+  it("loads storage and client configuration from the environment", async () => {
     vi.stubEnv("STORAGE_ACCESS_KEY_ID", "access-key");
     vi.stubEnv("STORAGE_SECRET_ACCESS_KEY", "secret-key");
-    vi.stubEnv("STORAGE_ENDPOINT_URL", "http://s3.local:9000");
+    vi.stubEnv("STORAGE_ENDPOINT_URL", "https://environment-bucket.s3.local");
     vi.stubEnv("STORAGE_INTERNAL_ENDPOINT_URL", "http://s3.internal:9000");
+    vi.stubEnv("STORAGE_BUCKET_ENDPOINT", "true");
+    vi.stubEnv("STORAGE_INTERNAL_BUCKET_ENDPOINT", "false");
     vi.stubEnv("STORAGE_FORCE_PATH_STYLE", "true");
     vi.stubEnv("STORAGE_REGION", "us-west-2");
     vi.stubEnv("STORAGE_BUCKET", "environment-bucket");
-    vi.stubEnv("STORAGE_BUCKET_ENDPOINT_URL", "https://cdn.example.com/assets");
     vi.stubEnv("STORAGE_ROOT_PATH", "environment-root");
     const module = await compile(StorageModule);
-    const client = module.get(S3Client);
     const storage = module.get(Storage);
+    const { client, internalClient } = storageClients(storage);
 
-    expect(storage).toBeInstanceOf(Storage);
     await expect(client.config.region()).resolves.toBe("us-west-2");
-    expect(client.config.forcePathStyle).toBe(true);
+    expect(client.config.bucketEndpoint).toBe(true);
     await expect(client.config.endpoint?.()).resolves.toMatchObject({
+      hostname: "environment-bucket.s3.local",
+      protocol: "https:",
+    });
+    await expect(internalClient.config.endpoint?.()).resolves.toMatchObject({
       hostname: "s3.internal",
       port: 9000,
       protocol: "http:",
     });
-    await expect(client.config.credentials()).resolves.toMatchObject({
+    expect(internalClient.config.bucketEndpoint).toBe(false);
+    expect(internalClient.config.forcePathStyle).toBe(true);
+    await expect(internalClient.config.credentials()).resolves.toMatchObject({
       accessKeyId: "access-key",
       secretAccessKey: "secret-key",
     });
     await expect(storage.getUrl("file.txt")).resolves.toBe(
-      "https://cdn.example.com/assets/environment-root/file.txt",
+      "https://environment-bucket.s3.local/environment-root/file.txt",
     );
-    const temporaryUrl = new URL(await storage.createTemporaryUrl("file.txt"));
-
-    expect(temporaryUrl.hostname).toBe("cdn.example.com");
-    expect(temporaryUrl.pathname).toBe("/assets/environment-root/file.txt");
+    expect(() => module.get(S3Client)).toThrow();
   });
 
-  it("supports synchronous registration and globally exports both providers", async () => {
+  it("supports synchronous registration and globally exports Storage only", async () => {
     const module = await compile(
       StorageModule.register({
         accessKeyId: "registered-access-key",
         bucket: "registered-bucket",
-        endpointUrl: "https://s3.public.example.com",
+        bucketEndpoint: true,
+        endpointUrl: "https://registered-bucket.s3.public.example.com",
         forcePathStyle: true,
-        internalEndpointUrl: "http://s3.internal:9000",
-        bucketEndpointUrl: "https://cdn.example.com/assets",
+        internalBucketEndpoint: true,
+        internalEndpointUrl:
+          "http://registered-bucket.s3.internal.example.com:9000",
         region: "us-east-1",
         rootPath: "tenant",
         secretAccessKey: "registered-secret-key",
       }),
       FeatureModule,
     );
-    const client = module.get(S3Client);
     const storage = module.get(Storage);
     const consumer = module.get(StorageConsumer);
+    const { client, internalClient } = storageClients(storage);
 
     expect(consumer.storage).toBe(storage);
-    expect(consumer.s3Client).toBe(client);
-    await expect(client.config.region()).resolves.toBe("us-east-1");
-    expect(client.config.forcePathStyle).toBe(true);
-    await expect(client.config.endpoint?.()).resolves.toMatchObject({
-      hostname: "s3.internal",
-      port: 9000,
-      protocol: "http:",
-    });
-    await expect(client.config.credentials()).resolves.toMatchObject({
-      accessKeyId: "registered-access-key",
-      secretAccessKey: "registered-secret-key",
-    });
+    expect(client).not.toBe(internalClient);
+    expect(client.config.bucketEndpoint).toBe(true);
+    expect(internalClient.config.bucketEndpoint).toBe(true);
+    expect(client.config.forcePathStyle).toBe(false);
+    expect(internalClient.config.forcePathStyle).toBe(false);
     await expect(storage.getUrl("file.txt")).resolves.toBe(
-      "https://cdn.example.com/assets/tenant/file.txt",
+      "https://registered-bucket.s3.public.example.com/tenant/file.txt",
     );
-    const temporaryUrl = await storage.createTemporaryUrl("file.txt");
-    const temporaryUpload = await storage.createTemporaryUploadUrl("file.txt");
-
-    expect(new URL(temporaryUrl).hostname).toBe("cdn.example.com");
-    expect(new URL(temporaryUrl).pathname).toBe("/assets/tenant/file.txt");
-    expect(new URL(temporaryUpload.url).hostname).toBe("s3.public.example.com");
+    expect(() => module.get(S3Client)).toThrow();
   });
 
   it("supports asynchronous registration", async () => {
@@ -110,30 +100,55 @@ describe("StorageModule", () => {
       }),
     );
     const module = await compile(StorageModule.registerAsync({ useFactory }));
+    const storage = module.get(Storage);
 
     expect(useFactory).toHaveBeenCalledOnce();
-    expect(module.get(Storage)).toBeInstanceOf(Storage);
-    await expect(module.get(S3Client).config.region()).resolves.toBe(
+    await expect(storageClients(storage).client.config.region()).resolves.toBe(
       "eu-west-1",
     );
   });
 
-  it("destroys the S3 client on application shutdown", async () => {
+  it("reuses one client when the internal configuration is identical", async () => {
     const module = await compile(
       StorageModule.register({
         bucket: "registered-bucket",
-        endpointUrl: "https://s3.public.example.com",
-        internalEndpointUrl: "http://s3.shared:9000",
-        bucketEndpointUrl: "http://s3.shared:9000",
+        bucketEndpoint: true,
+        endpointUrl: "https://registered-bucket.s3.public.example.com",
         region: "us-east-1",
       }),
     );
-    const destroy = vi.spyOn(module.get(S3Client), "destroy");
+    const storage = module.get(Storage);
+    const { client, internalClient } = storageClients(storage);
+    const destroy = vi.spyOn(client, "destroy");
+
+    expect(internalClient).toBe(client);
+    expect(internalClient.config.bucketEndpoint).toBe(true);
 
     await module.close();
     modules.splice(modules.indexOf(module), 1);
 
     expect(destroy).toHaveBeenCalledOnce();
+  });
+
+  it("destroys both clients on application shutdown", async () => {
+    const module = await compile(
+      StorageModule.register({
+        bucket: "registered-bucket",
+        endpointUrl: "https://s3.public.example.com",
+        internalEndpointUrl: "http://s3.internal:9000",
+        region: "us-east-1",
+      }),
+    );
+    const storage = module.get(Storage);
+    const { client, internalClient } = storageClients(storage);
+    const destroyClient = vi.spyOn(client, "destroy");
+    const destroyInternalClient = vi.spyOn(internalClient, "destroy");
+
+    await module.close();
+    modules.splice(modules.indexOf(module), 1);
+
+    expect(destroyClient).toHaveBeenCalledOnce();
+    expect(destroyInternalClient).toHaveBeenCalledOnce();
   });
 
   it("fails fast when neither options nor STORAGE_BUCKET define a bucket", async () => {
@@ -172,3 +187,13 @@ describe("StorageModule", () => {
     return module;
   }
 });
+
+function storageClients(storage: Storage): {
+  client: S3Client;
+  internalClient: S3Client;
+} {
+  return storage as unknown as {
+    client: S3Client;
+    internalClient: S3Client;
+  };
+}

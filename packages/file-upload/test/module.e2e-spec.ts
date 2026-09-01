@@ -64,6 +64,41 @@ async function ensureBucketExists(client: S3Client, bucket: string) {
   }
 }
 
+function createSetupClient(): S3Client {
+  const bucketEndpoint =
+    process.env.STORAGE_BUCKET_ENDPOINT?.toLowerCase() === "true";
+
+  return new S3Client({
+    ...(bucketEndpoint ? { bucketEndpoint: true } : {}),
+    credentials: {
+      accessKeyId: requiredStorageEnv("STORAGE_ACCESS_KEY_ID"),
+      secretAccessKey: requiredStorageEnv("STORAGE_SECRET_ACCESS_KEY"),
+    },
+    endpoint: process.env.STORAGE_ENDPOINT_URL,
+    ...(bucketEndpoint
+      ? {}
+      : {
+          forcePathStyle:
+            process.env.STORAGE_FORCE_PATH_STYLE?.toLowerCase() === "true",
+        }),
+    region: process.env.STORAGE_REGION ?? "us-east-1",
+  });
+}
+
+function getSetupBucket(): string {
+  return process.env.STORAGE_BUCKET_ENDPOINT?.toLowerCase() === "true"
+    ? requiredStorageEnv("STORAGE_ENDPOINT_URL")
+    : getS3Bucket();
+}
+
+function requiredStorageEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`${name} is required for this test suite`);
+  }
+  return value;
+}
+
 describeIfS3Configured("FileUploadModule - e2e", () => {
   let app: INestApplication;
   let fileUploadService: FileUploadService;
@@ -91,7 +126,9 @@ describeIfS3Configured("FileUploadModule - e2e", () => {
       imports: [AppModule],
     }).compile();
 
-    await ensureBucketExists(module.get(S3Client), getS3Bucket());
+    const setupClient = createSetupClient();
+    await ensureBucketExists(setupClient, getSetupBucket());
+    setupClient.destroy();
 
     app = module.createNestApplication();
     fileUploadService = module.get(FileUploadService);
