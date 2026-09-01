@@ -61,7 +61,9 @@ STORAGE_FORCE_PATH_STYLE=true
 
 `bucket` is required. Credentials are optional when the runtime already
 provides them through the standard credential provider chain. Explicit module
-options take precedence over environment variables.
+options take precedence over environment variables. Explicit `accessKeyId` and
+`secretAccessKey` options support long-lived credentials only. For temporary
+credentials, leave them unset and use the standard credential provider chain.
 
 ### Explicit options
 

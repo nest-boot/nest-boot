@@ -1,6 +1,6 @@
 /** Configuration options for the global StorageModule and its S3 client. */
 export interface StorageModuleOptions {
-  /** Access key used for S3-compatible authentication. */
+  /** Long-lived access key used for S3-compatible authentication. */
   accessKeyId?: string;
 
   /**
@@ -45,6 +45,6 @@ export interface StorageModuleOptions {
    */
   rootPath?: string;
 
-  /** Secret access key used for S3-compatible authentication. */
+  /** Long-lived secret access key used for S3-compatible authentication. */
   secretAccessKey?: string;
 }

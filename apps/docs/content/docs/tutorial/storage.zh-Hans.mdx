@@ -57,7 +57,8 @@ STORAGE_FORCE_PATH_STYLE=true
 | `STORAGE_FORCE_PATH_STYLE`  | `forcePathStyle`  | 使用 `/bucket/key`，而不是 bucket 子域名形式的寻址方式。 |
 
 `bucket` 是必填项。如果运行环境已经通过标准凭证提供链提供认证信息，则可以不配置
-Access Key 和 Secret Key。显式传入的模块选项优先于环境变量。
+Access Key 和 Secret Key。显式传入的模块选项优先于环境变量。显式的 `accessKeyId`
+和 `secretAccessKey` 仅支持长期凭证；临时凭证请勿配置这两个选项，改用标准凭证提供链。
 
 ### 显式配置
 
