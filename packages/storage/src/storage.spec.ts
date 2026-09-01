@@ -61,6 +61,15 @@ describe("Storage", () => {
     ).resolves.toBe(
       "https://uploads.s3.us-east-1.amazonaws.com/images/photo.png",
     );
+    await expect(
+      new Storage(pathStyle.client, {
+        bucket: "uploads",
+        publicEndpointUrl: "https://cdn.example.com/assets/",
+        rootPath: "tenant",
+      }).getUrl("images/hello world.png"),
+    ).resolves.toBe(
+      "https://cdn.example.com/assets/tenant/images/hello%20world.png",
+    );
   });
 
   it("creates temporary read URLs with S3 response options", async () => {

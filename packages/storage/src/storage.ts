@@ -42,6 +42,7 @@ const MAX_SINGLE_COPY_SIZE = 5 * 1024 * 1024 * 1024;
 /** Laravel-inspired file storage backed by an S3-compatible object store. */
 export class Storage {
   private readonly bucket: string;
+  private readonly publicEndpointUrl?: string;
   private readonly rootPath: string;
 
   /**
@@ -62,6 +63,7 @@ export class Storage {
     }
 
     this.bucket = options.bucket;
+    this.publicEndpointUrl = options.publicEndpointUrl;
     this.rootPath = normalizePath(options.rootPath ?? "");
   }
 
@@ -71,6 +73,15 @@ export class Storage {
    * @returns The path-style or virtual-host-style object URL
    */
   async getUrl(path: string): Promise<string> {
+    const key = encodePath(this.objectKey(path));
+
+    if (this.publicEndpointUrl) {
+      const url = new URL(this.publicEndpointUrl);
+      url.pathname = `${url.pathname.replace(/\/$/, "")}/${key}`;
+
+      return url.toString();
+    }
+
     const config = this.s3UrlClient.config;
     const configuredEndpoint = await config.endpoint?.();
     const endpoint = config.endpointProvider(
@@ -100,7 +111,6 @@ export class Storage {
       {},
     );
     const url = new URL(endpoint.url);
-    const key = encodePath(this.objectKey(path));
     url.pathname = `${url.pathname.replace(/\/$/, "")}/${key}`;
 
     return url.toString();

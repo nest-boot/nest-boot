@@ -20,6 +20,9 @@ export interface StorageModuleOptions {
   /** Internal S3-compatible endpoint used for server-side object operations. */
   internalEndpointUrl?: string;
 
+  /** Optional CDN endpoint used by {@link Storage.getUrl}. */
+  publicEndpointUrl?: string;
+
   /** AWS region used for signing and endpoint resolution. */
   region?: string;
 

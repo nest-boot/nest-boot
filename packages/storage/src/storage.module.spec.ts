@@ -62,6 +62,7 @@ describe("StorageModule", () => {
         endpointUrl: "https://s3.public.example.com",
         forcePathStyle: true,
         internalEndpointUrl: "http://s3.internal:9000",
+        publicEndpointUrl: "https://cdn.example.com/assets",
         region: "us-east-1",
         rootPath: "tenant",
         secretAccessKey: "registered-secret-key",
@@ -86,7 +87,7 @@ describe("StorageModule", () => {
       secretAccessKey: "registered-secret-key",
     });
     await expect(storage.getUrl("file.txt")).resolves.toBe(
-      "https://s3.public.example.com/registered-bucket/tenant/file.txt",
+      "https://cdn.example.com/assets/tenant/file.txt",
     );
   });
 

@@ -33,6 +33,7 @@ STORAGE_SECRET_ACCESS_KEY=password
 STORAGE_REGION=us-east-1
 STORAGE_ENDPOINT_URL=http://localhost:9000
 STORAGE_INTERNAL_ENDPOINT_URL=
+STORAGE_PUBLIC_ENDPOINT_URL=
 STORAGE_BUCKET=uploads
 STORAGE_ROOT_PATH=
 STORAGE_FORCE_PATH_STYLE=true
@@ -40,7 +41,9 @@ STORAGE_FORCE_PATH_STYLE=true
 
 如果 storage 实例需要限制在某个 key prefix 下，请设置 `STORAGE_ROOT_PATH`；留空则访问 bucket 根路径。
 
-`STORAGE_ENDPOINT_URL` 是写入直接 URL 和临时 URL 的公共端点。服务端对象操作需要使用不同的私网端点时设置 `STORAGE_INTERNAL_ENDPOINT_URL`；未设置时会回退到公共端点。
+`STORAGE_ENDPOINT_URL` 是临时 URL 使用的公共 S3 端点；未配置 CDN 覆盖时，直接 URL 也使用它。服务端对象操作需要使用不同的私网端点时设置 `STORAGE_INTERNAL_ENDPOINT_URL`；未设置时会回退到 S3 端点。
+
+需要让 `getUrl()` 返回 CDN 地址时设置 `STORAGE_PUBLIC_ENDPOINT_URL`；它是选填项，未设置时回退到 `STORAGE_ENDPOINT_URL`。临时 URL 仍使用 `STORAGE_ENDPOINT_URL`，以保证 S3 签名有效。
 
 ## 显式配置
 
@@ -52,6 +55,7 @@ StorageModule.register({
   endpointUrl: "https://storage.example.com",
   forcePathStyle: true,
   internalEndpointUrl: "http://minio:9000",
+  publicEndpointUrl: "https://cdn.example.com/assets",
   region: "us-east-1",
   accessKeyId: "minio",
   secretAccessKey: "password",
@@ -73,6 +77,7 @@ StorageModule.registerAsync({
     endpointUrl: config.get("STORAGE_ENDPOINT_URL"),
     forcePathStyle: config.get("STORAGE_FORCE_PATH_STYLE") === "true",
     internalEndpointUrl: config.get("STORAGE_INTERNAL_ENDPOINT_URL"),
+    publicEndpointUrl: config.get("STORAGE_PUBLIC_ENDPOINT_URL"),
     region: config.get("STORAGE_REGION"),
     rootPath: config.get("STORAGE_ROOT_PATH"),
   }),

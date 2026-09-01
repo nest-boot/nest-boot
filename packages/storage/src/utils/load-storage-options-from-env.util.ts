@@ -15,6 +15,8 @@ export function loadStorageOptionsFromEnv(
   const region = options.region ?? process.env.STORAGE_REGION;
   const internalEndpointUrl =
     options.internalEndpointUrl ?? process.env.STORAGE_INTERNAL_ENDPOINT_URL;
+  const publicEndpointUrl =
+    options.publicEndpointUrl ?? process.env.STORAGE_PUBLIC_ENDPOINT_URL;
   const rootPath = options.rootPath ?? process.env.STORAGE_ROOT_PATH;
   const secretAccessKey =
     options.secretAccessKey ?? process.env.STORAGE_SECRET_ACCESS_KEY;
@@ -25,6 +27,7 @@ export function loadStorageOptionsFromEnv(
     ...(endpointUrl ? { endpointUrl } : {}),
     ...(forcePathStyle === undefined ? {} : { forcePathStyle }),
     ...(internalEndpointUrl ? { internalEndpointUrl } : {}),
+    ...(publicEndpointUrl ? { publicEndpointUrl } : {}),
     ...(region ? { region } : {}),
     ...(rootPath ? { rootPath } : {}),
     ...(secretAccessKey ? { secretAccessKey } : {}),
