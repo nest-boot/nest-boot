@@ -15,6 +15,8 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
+import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 import {
   type StorageEntry,
@@ -28,6 +30,11 @@ import {
   type StorageWriteStreamOptions,
 } from "./storage-file-options.interface.js";
 import { type StorageModuleOptions } from "./storage-module-options.interface.js";
+import {
+  type StorageTemporaryUpload,
+  type StorageTemporaryUploadUrlOptions,
+  type StorageTemporaryUrlOptions,
+} from "./storage-url-options.interface.js";
 
 const MAX_DELETE_OBJECTS = 1000;
 const MAX_SINGLE_COPY_SIZE = 5 * 1024 * 1024 * 1024;
@@ -39,7 +46,7 @@ export class Storage {
 
   /**
    * Creates a Storage service.
-   * @param s3Client - S3 client provided by `@nest-boot/s3`
+   * @param s3Client - S3 client provided by {@link StorageModule}
    * @param options - Storage configuration
    */
   constructor(
@@ -54,6 +61,97 @@ export class Storage {
 
     this.bucket = options.bucket;
     this.root = normalizePath(options.root ?? "");
+  }
+
+  /**
+   * Returns the direct URL for an object.
+   * @param path - Object path relative to the configured root
+   * @returns The path-style or virtual-host-style object URL
+   */
+  async getUrl(path: string): Promise<string> {
+    const config = this.s3Client.config;
+    const configuredEndpoint = await config.endpoint?.();
+    const endpoint = config.endpointProvider(
+      {
+        Bucket: this.bucket,
+        Region: await config.region(),
+        UseFIPS: await resolveOptionalBoolean(config.useFipsEndpoint),
+        UseDualStack: await resolveOptionalBoolean(config.useDualstackEndpoint),
+        ...(configuredEndpoint
+          ? {
+              Endpoint: `${configuredEndpoint.protocol}//${configuredEndpoint.hostname}${configuredEndpoint.port ? `:${String(configuredEndpoint.port)}` : ""}${configuredEndpoint.path}`,
+            }
+          : {}),
+        ForcePathStyle: await resolveOptionalBoolean(config.forcePathStyle),
+        Accelerate: await resolveOptionalBoolean(config.useAccelerateEndpoint),
+        UseGlobalEndpoint: await resolveOptionalBoolean(
+          config.useGlobalEndpoint,
+        ),
+        DisableMultiRegionAccessPoints: await resolveOptionalBoolean(
+          config.disableMultiregionAccessPoints,
+        ),
+        UseArnRegion: await resolveOptionalBoolean(config.useArnRegion),
+        DisableS3ExpressSessionAuth: await resolveOptionalBoolean(
+          config.disableS3ExpressSessionAuth,
+        ),
+      },
+      {},
+    );
+    const url = new URL(endpoint.url);
+    const key = encodePath(this.objectKey(path));
+    url.pathname = `${url.pathname.replace(/\/$/, "")}/${key}`;
+
+    return url.toString();
+  }
+
+  /**
+   * Creates a temporary signed URL for reading an object.
+   * @param path - Object path relative to the configured root
+   * @param options - S3 response options and signature lifetime
+   * @returns A temporary signed GET URL
+   */
+  async createTemporaryUrl(
+    path: string,
+    options: StorageTemporaryUrlOptions = {},
+  ): Promise<string> {
+    const { expiresIn, ...getObjectOptions } = options;
+
+    return await getSignedUrl(
+      this.s3Client,
+      new GetObjectCommand({
+        ...getObjectOptions,
+        Bucket: this.bucket,
+        Key: this.objectKey(path),
+      }),
+      expiresIn === undefined ? {} : { expiresIn },
+    );
+  }
+
+  /**
+   * Creates a temporary presigned POST for uploading an object.
+   * @param path - Destination path relative to the configured root
+   * @param options - Form fields, policy conditions, and signature lifetime
+   * @returns The upload URL and required form fields
+   */
+  async createTemporaryUploadUrl(
+    path: string,
+    options: StorageTemporaryUploadUrlOptions = {},
+  ): Promise<StorageTemporaryUpload> {
+    const key = this.objectKey(path);
+
+    return await createPresignedPost(this.s3Client, {
+      Bucket: this.bucket,
+      Key: key,
+      Conditions: [
+        ["eq", "$bucket", this.bucket],
+        ["eq", "$key", key],
+        ...(options.conditions ?? []),
+      ],
+      ...(options.fields ? { Fields: options.fields } : {}),
+      ...(options.expiresIn === undefined
+        ? {}
+        : { Expires: options.expiresIn }),
+    });
   }
 
   /**
@@ -548,6 +646,15 @@ function normalizePath(path: string): string {
 
 function encodePath(path: string): string {
   return path.split("/").map(encodeURIComponent).join("/");
+}
+
+async function resolveOptionalBoolean(
+  value:
+    | boolean
+    | (() => boolean | undefined | Promise<boolean | undefined>)
+    | undefined,
+): Promise<boolean | undefined> {
+  return typeof value === "function" ? await value() : value;
 }
 
 function byteRange(start?: number, end?: number): string | undefined {

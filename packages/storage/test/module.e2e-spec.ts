@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 import { finished } from "node:stream/promises";
 
 import { CreateBucketCommand, S3Client } from "@aws-sdk/client-s3";
-import { S3Module } from "@nest-boot/s3";
 import { type INestApplication, Injectable, Module } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 
@@ -32,7 +31,10 @@ function getS3Bucket(): string {
 
 @Injectable()
 class StorageConsumer {
-  constructor(readonly storage: Storage) {}
+  constructor(
+    readonly storage: Storage,
+    readonly s3Client: S3Client,
+  ) {}
 }
 
 @Module({ providers: [StorageConsumer] })
@@ -40,7 +42,6 @@ class FeatureModule {}
 
 @Module({
   imports: [
-    S3Module,
     StorageModule.register({ bucket: testBucket, root: testRoot }),
     FeatureModule,
   ],
@@ -72,8 +73,11 @@ describeIfS3Configured("StorageModule - e2e", () => {
     await app.close();
   }, 60_000);
 
-  it("provides the same global Storage instance to feature modules", () => {
-    expect(app.get(StorageConsumer).storage).toBe(storage);
+  it("provides the same global Storage and S3Client to feature modules", () => {
+    const consumer = app.get(StorageConsumer);
+
+    expect(consumer.storage).toBe(storage);
+    expect(consumer.s3Client).toBe(app.get(S3Client));
   });
 
   it("stores, lists, copies, moves, and deletes files", async () => {
@@ -140,6 +144,20 @@ describeIfS3Configured("StorageModule - e2e", () => {
     await expect(storage.readFile("streams/output.txt", "utf8")).resolves.toBe(
       "stream upload",
     );
+  }, 30_000);
+
+  it("creates direct and temporary object URLs", async () => {
+    await expect(storage.getUrl("docs/read me.txt")).resolves.toContain(
+      `${testBucket}/${testRoot}/docs/read%20me.txt`,
+    );
+
+    const temporaryUrl = await storage.createTemporaryUrl("docs/read me.txt", {
+      expiresIn: 60,
+    });
+    const response = await fetch(temporaryUrl);
+
+    expect(response.ok).toBe(true);
+    await expect(response.text()).resolves.toBe("read me");
   }, 30_000);
 });
 

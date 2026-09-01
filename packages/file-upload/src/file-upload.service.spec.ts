@@ -1,75 +1,24 @@
-import {
-  CopyObjectCommand,
-  PutObjectCommand,
-  S3Client,
-} from "@aws-sdk/client-s3";
-import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
+import { Readable } from "node:stream";
+
+import { Storage } from "@nest-boot/storage";
 import { BadRequestException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
-import { Readable } from "stream";
 
 import { MODULE_OPTIONS_TOKEN } from "./file-upload.module-definition.js";
 import { FileUploadService } from "./file-upload.service.js";
 import { type FileUploadModuleOptions } from "./file-upload-options.interface.js";
 
-vi.mock("@aws-sdk/s3-presigned-post", () => ({
-  createPresignedPost: vi.fn(),
-}));
-
-const createPresignedPostMock = vi.mocked(createPresignedPost);
-
-function createClient(
-  options: {
-    endpoint?: string;
-    forcePathStyle?: boolean;
-  } = {},
-) {
-  return createClientWithSend(options).client;
-}
-
-function createClientWithSend(
-  options: {
-    endpoint?: string;
-    forcePathStyle?: boolean;
-  } = {},
-) {
-  const client = new S3Client({
-    credentials: {
-      accessKeyId: "test-access-key",
-      secretAccessKey: "test-secret-key",
-    },
-    endpoint: options.endpoint,
-    forcePathStyle: options.forcePathStyle,
-    region: "us-east-1",
-  });
-  const send = vi.spyOn(client, "send").mockResolvedValue({} as never);
-
-  return { client, send };
-}
-
 describe("FileUploadService", () => {
-  beforeEach(() => {
-    createPresignedPostMock.mockResolvedValue({
-      fields: {
-        key: "tmp/generated.jpeg",
-        Policy: "policy",
-        "X-Amz-Signature": "signature",
-      },
-      url: "https://bucket.s3.local/tmp/generated.jpeg?uploads=1",
-    });
-  });
-
   afterEach(() => {
     vi.useRealTimers();
     vi.resetAllMocks();
   });
 
   describe("create", () => {
-    it("should create presigned upload arguments with limits and a custom public URL", async () => {
-      const client = createClient();
+    it("creates constrained uploads and rewrites a custom public URL", async () => {
+      const storage = createStorage();
       const service = await createService(
         {
-          bucket: "uploads",
           expires: 120,
           limits: [
             {
@@ -79,7 +28,7 @@ describe("FileUploadService", () => {
           ],
           url: "https://cdn.example.com/static",
         },
-        client,
+        storage.value,
       );
 
       await expect(
@@ -93,46 +42,34 @@ describe("FileUploadService", () => {
       ).resolves.toEqual([
         {
           fields: [
-            {
-              name: "key",
-              value: "tmp/generated.jpeg",
-            },
-            {
-              name: "Policy",
-              value: "policy",
-            },
-            {
-              name: "X-Amz-Signature",
-              value: "signature",
-            },
+            { name: "key", value: "tmp/generated.jpeg" },
+            { name: "Policy", value: "policy" },
+            { name: "X-Amz-Signature", value: "signature" },
           ],
           url: "https://cdn.example.com/static/tmp/generated.jpeg?uploads=1",
         },
       ]);
 
-      expect(createPresignedPostMock).toHaveBeenCalledWith(client, {
-        Bucket: "uploads",
-        Conditions: [
-          ["content-length-range", 1, 1024],
-          ["eq", "$bucket", "uploads"],
-          ["eq", "$key", expect.stringMatching(/^tmp\/.+\.jpeg$/)],
-          ["eq", "$success_action_status", "201"],
-          ["eq", "$Content-Type", "image/jpeg"],
-        ],
-        Expires: 120,
-        Fields: {
-          "Content-Type": "image/jpeg",
-          success_action_status: "201",
+      expect(storage.createTemporaryUploadUrl).toHaveBeenCalledWith(
+        expect.stringMatching(/^tmp\/.+\.jpeg$/),
+        {
+          conditions: [
+            ["content-length-range", 1, 1024],
+            ["eq", "$success_action_status", "201"],
+            ["eq", "$Content-Type", "image/jpeg"],
+          ],
+          expiresIn: 120,
+          fields: {
+            "Content-Type": "image/jpeg",
+            success_action_status: "201",
+          },
         },
-        Key: expect.stringMatching(/^tmp\/.+\.jpeg$/),
-      });
+      );
     });
 
-    it("should use the original presigned URL and default expiration when limits are not configured", async () => {
-      const service = await createService(
-        { bucket: "uploads" },
-        createClient(),
-      );
+    it("uses the Storage URL and default expiration without limits", async () => {
+      const storage = createStorage();
+      const service = await createService({}, storage.value);
 
       await expect(
         service.create([
@@ -145,41 +82,24 @@ describe("FileUploadService", () => {
       ).resolves.toEqual([
         {
           fields: [
-            {
-              name: "key",
-              value: "tmp/generated.jpeg",
-            },
-            {
-              name: "Policy",
-              value: "policy",
-            },
-            {
-              name: "X-Amz-Signature",
-              value: "signature",
-            },
+            { name: "key", value: "tmp/generated.jpeg" },
+            { name: "Policy", value: "policy" },
+            { name: "X-Amz-Signature", value: "signature" },
           ],
           url: "https://bucket.s3.local/tmp/generated.jpeg?uploads=1",
         },
       ]);
 
-      expect(createPresignedPostMock).toHaveBeenCalledWith(
-        expect.any(S3Client),
-        expect.objectContaining({
-          Conditions: [
-            ["eq", "$bucket", "uploads"],
-            ["eq", "$key", expect.stringMatching(/^tmp\/.+$/)],
-            ["eq", "$success_action_status", "201"],
-            ["eq", "$Content-Type", "text/plain"],
-          ],
-          Expires: 3600,
-        }),
+      expect(storage.createTemporaryUploadUrl).toHaveBeenCalledWith(
+        expect.stringMatching(/^tmp\/.+$/),
+        expect.objectContaining({ expiresIn: 3600 }),
       );
     });
 
-    it("should reject uploads that do not match configured limits", async () => {
+    it("rejects uploads that do not match configured limits", async () => {
+      const storage = createStorage();
       const service = await createService(
         {
-          bucket: "uploads",
           limits: [
             {
               fileSize: 100,
@@ -187,7 +107,7 @@ describe("FileUploadService", () => {
             },
           ],
         },
-        createClient(),
+        storage.value,
       );
 
       await expect(
@@ -200,45 +120,37 @@ describe("FileUploadService", () => {
         ]),
       ).rejects.toBeInstanceOf(BadRequestException);
 
-      expect(createPresignedPostMock).not.toHaveBeenCalled();
+      expect(storage.createTemporaryUploadUrl).not.toHaveBeenCalled();
     });
   });
 
   describe("persist", () => {
-    it("should copy a temporary file to the dated permanent file path", async () => {
+    it("copies a temporary file through Storage", async () => {
       vi.useFakeTimers();
       vi.setSystemTime(new Date("2026-01-31T12:00:00.000Z"));
-      const { client, send } = createClientWithSend({
-        endpoint: "http://s3.local:9000",
-        forcePathStyle: true,
-      });
-      const service = await createService({ bucket: "uploads" }, client);
+      const storage = createStorage();
+      const service = await createService({}, storage.value);
 
       await expect(
         service.persist("http://s3.local:9000/uploads/tmp/photo.jpeg"),
-      ).resolves.toBe(
-        "http://s3.local:9000/uploads/files/2026/01/31/photo.jpeg",
-      );
+      ).resolves.toBe("https://storage.local/files/2026/01/31/photo.jpeg");
 
-      const command = send.mock.calls[0][0];
-      expect(command).toBeInstanceOf(CopyObjectCommand);
-      expect(command.input).toEqual({
-        Bucket: "uploads",
-        CopySource: "uploads/tmp/photo.jpeg",
-        Key: "files/2026/01/31/photo.jpeg",
-      });
+      expect(storage.copyFile).toHaveBeenCalledWith(
+        "tmp/photo.jpeg",
+        "files/2026/01/31/photo.jpeg",
+      );
+      expect(storage.getUrl).toHaveBeenCalledWith(
+        "files/2026/01/31/photo.jpeg",
+      );
     });
   });
 
   describe("upload", () => {
-    it("should upload data to a temporary path and return a path-style URL", async () => {
+    it("writes data to a temporary path through Storage", async () => {
       vi.useFakeTimers();
       vi.setSystemTime(new Date("2026-01-31T12:00:00.000Z"));
-      const { client, send } = createClientWithSend({
-        endpoint: "http://s3.local:9000",
-        forcePathStyle: true,
-      });
-      const service = await createService({ bucket: "uploads" }, client);
+      const storage = createStorage();
+      const service = await createService({}, storage.value);
       const body = Readable.from(["hello"]);
 
       const url = await service.upload(body, {
@@ -247,52 +159,40 @@ describe("FileUploadService", () => {
       });
 
       expect(url).toMatch(
-        /^http:\/\/s3\.local:9000\/uploads\/tmp\/2026\/01\/31\/.+\.png$/,
+        /^https:\/\/storage\.local\/tmp\/2026\/01\/31\/.+\.png$/,
       );
-      const command = send.mock.calls[0][0];
-      expect(command).toBeInstanceOf(PutObjectCommand);
-      expect(command.input).toMatchObject({
-        Body: body,
-        Bucket: "uploads",
-        ContentType: "image/png",
-        Key: expect.stringMatching(/^tmp\/2026\/01\/31\/.+\.png$/),
-        Metadata: {
-          "Content-Type": "image/png",
-          source: "unit-test",
+      expect(storage.writeFile).toHaveBeenCalledWith(
+        expect.stringMatching(/^tmp\/2026\/01\/31\/.+\.png$/),
+        body,
+        {
+          ContentType: "image/png",
+          Metadata: {
+            "Content-Type": "image/png",
+            source: "unit-test",
+          },
         },
-      });
+      );
     });
 
-    it("should use the provided extension and return a virtual-host style URL", async () => {
+    it("uses the provided extension", async () => {
       vi.useFakeTimers();
       vi.setSystemTime(new Date("2026-01-31T12:00:00.000Z"));
-      const client = createClient({
-        endpoint: "https://s3.example.com",
-        forcePathStyle: false,
-      });
-      const service = await createService({ bucket: "uploads" }, client);
-      vi.spyOn(client, "send").mockResolvedValue({} as never);
+      const storage = createStorage();
+      const service = await createService({}, storage.value);
 
       const url = await service.upload("hello", {
         "Content-Type": "application/octet-stream",
         extension: "txt",
       });
 
-      expect(url).toMatch(
-        /^https:\/\/uploads\.s3\.example\.com\/tmp\/2026\/01\/31\/.+\.txt$/,
-      );
+      expect(url).toMatch(/\.txt$/);
     });
 
-    it("should persist uploaded files when requested", async () => {
-      const service = await createService(
-        { bucket: "uploads" },
-        createClient({
-          endpoint: "http://s3.local",
-          forcePathStyle: true,
-        }),
-      );
+    it("persists uploaded files when requested", async () => {
+      const storage = createStorage();
+      const service = await createService({}, storage.value);
       vi.spyOn(service, "persist").mockResolvedValue(
-        "http://s3.local/uploads/files/avatar.bin",
+        "https://storage.local/files/avatar.bin",
       );
 
       await expect(
@@ -303,19 +203,14 @@ describe("FileUploadService", () => {
           },
           true,
         ),
-      ).resolves.toBe("http://s3.local/uploads/files/avatar.bin");
+      ).resolves.toBe("https://storage.local/files/avatar.bin");
     });
 
-    it("should use bin when the MIME type has no known extension", async () => {
+    it("uses bin when the MIME type has no known extension", async () => {
       vi.useFakeTimers();
       vi.setSystemTime(new Date("2026-01-31T12:00:00.000Z"));
-      const service = await createService(
-        { bucket: "uploads" },
-        createClient({
-          endpoint: "http://s3.local",
-          forcePathStyle: true,
-        }),
-      );
+      const storage = createStorage();
+      const service = await createService({}, storage.value);
 
       const url = await service.upload("hello", {
         "Content-Type": "unknown/unknown",
@@ -324,11 +219,10 @@ describe("FileUploadService", () => {
       expect(url).toMatch(/\.bin$/);
     });
 
-    it("should throw when the S3 endpoint is not configured", async () => {
-      const service = await createService(
-        { bucket: "uploads" },
-        createClient(),
-      );
+    it("propagates Storage URL failures", async () => {
+      const storage = createStorage();
+      storage.getUrl.mockRejectedValue(new Error("Endpoint is not configured"));
+      const service = await createService({}, storage.value);
 
       await expect(
         service.upload(Buffer.from("hello"), {
@@ -338,7 +232,7 @@ describe("FileUploadService", () => {
     });
   });
 
-  it("should emit decorator metadata when module options exist at runtime", async () => {
+  it("emits decorator metadata when module options exist at runtime", async () => {
     vi.resetModules();
     vi.doMock("./file-upload-options.interface.js", () => ({
       FileUploadModuleOptions: function FileUploadModuleOptions() {
@@ -353,16 +247,47 @@ describe("FileUploadService", () => {
   });
 });
 
+function createStorage() {
+  const copyFile = vi.fn().mockResolvedValue(undefined);
+  const createTemporaryUploadUrl = vi.fn().mockResolvedValue({
+    fields: {
+      key: "tmp/generated.jpeg",
+      Policy: "policy",
+      "X-Amz-Signature": "signature",
+    },
+    url: "https://bucket.s3.local/tmp/generated.jpeg?uploads=1",
+  });
+  const getUrl = vi
+    .fn()
+    .mockImplementation((path: string) =>
+      Promise.resolve(`https://storage.local/${path}`),
+    );
+  const writeFile = vi.fn().mockResolvedValue(undefined);
+
+  return {
+    copyFile,
+    createTemporaryUploadUrl,
+    getUrl,
+    value: {
+      copyFile,
+      createTemporaryUploadUrl,
+      getUrl,
+      writeFile,
+    } as unknown as Storage,
+    writeFile,
+  };
+}
+
 async function createService(
   options: FileUploadModuleOptions,
-  s3Client: S3Client,
+  storage: Storage,
 ) {
   const moduleRef = await Test.createTestingModule({
     providers: [
       FileUploadService,
       {
-        provide: S3Client,
-        useValue: s3Client,
+        provide: Storage,
+        useValue: storage,
       },
       {
         provide: MODULE_OPTIONS_TOKEN,

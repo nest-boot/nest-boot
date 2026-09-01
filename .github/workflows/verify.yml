@@ -138,6 +138,56 @@ jobs:
           release_specifier=()
           npm_tag="latest"
 
+          release_projects="$(
+            node --input-type=module <<'NODE'
+          import { execFileSync } from 'node:child_process';
+          import { existsSync, readFileSync } from 'node:fs';
+          import { join } from 'node:path';
+
+          const releaseBase = execFileSync(
+            'git',
+            ['log', '-1', '--format=%H', '--grep=^chore(release): publish$'],
+            { encoding: 'utf8' },
+          ).trim();
+
+          if (!releaseBase) {
+            throw new Error('Unable to find the previous release commit');
+          }
+
+          const changedFiles = execFileSync(
+            'git',
+            ['diff', '--name-only', `${releaseBase}...HEAD`, '--', 'packages'],
+            { encoding: 'utf8' },
+          )
+            .trim()
+            .split('\n')
+            .filter(Boolean);
+          const projectRoots = new Set(
+            changedFiles.map((file) => file.split('/').slice(0, 2).join('/')),
+          );
+          const projects = [];
+
+          for (const projectRoot of projectRoots) {
+            const manifestPath = join(projectRoot, 'package.json');
+            if (!existsSync(manifestPath)) continue;
+
+            const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+            if (manifest.private || !manifest.name || !manifest.version) continue;
+
+            projects.push(manifest.name);
+          }
+
+          process.stdout.write(projects.sort().join(','));
+          NODE
+          )"
+
+          if [ -z "$release_projects" ]; then
+            echo "No changed packages to release"
+            exit 0
+          fi
+
+          release_args+=(--projects "$release_projects")
+
           if [ "${GITHUB_REF_NAME}" = "beta" ]; then
             release_args+=(--preid beta)
             npm_tag="beta"

@@ -109,7 +109,6 @@
     "@nest-boot/redis",
     "@nest-boot/request-context",
     "@nest-boot/row-level-security",
-    "@nest-boot/s3",
     "@nest-boot/schedule",
     "@nest-boot/storage",
     "@nest-boot/temporary-directory",

@@ -11,10 +11,144 @@ import {
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
+import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 import { Storage } from "./storage.js";
 
+vi.mock("@aws-sdk/s3-presigned-post", () => ({
+  createPresignedPost: vi.fn(),
+}));
+vi.mock("@aws-sdk/s3-request-presigner", () => ({ getSignedUrl: vi.fn() }));
+
+const createPresignedPostMock = vi.mocked(createPresignedPost);
+const getSignedUrlMock = vi.mocked(getSignedUrl);
+
 describe("Storage", () => {
+  it("creates direct path-style and virtual-host URLs relative to its root", async () => {
+    const pathStyle = createClient({
+      endpoint: () =>
+        Promise.resolve({
+          hostname: "s3.local",
+          path: "/",
+          port: 9000,
+          protocol: "http:",
+        }),
+      forcePathStyle: true,
+    });
+    const virtualHost = createClient({
+      endpoint: () => Promise.resolve(testEndpoint()),
+      forcePathStyle: false,
+    });
+
+    await expect(
+      new Storage(pathStyle.client, {
+        bucket: "uploads",
+        root: "tenant/assets",
+      }).getUrl("images/hello world.png"),
+    ).resolves.toBe(
+      "http://s3.local:9000/uploads/tenant/assets/images/hello%20world.png",
+    );
+    await expect(
+      new Storage(virtualHost.client, { bucket: "uploads" }).getUrl(
+        "images/photo.png",
+      ),
+    ).resolves.toBe("https://uploads.s3.example.com/images/photo.png");
+    await expect(
+      new Storage(createClient().client, { bucket: "uploads" }).getUrl(
+        "images/photo.png",
+      ),
+    ).resolves.toBe(
+      "https://uploads.s3.us-east-1.amazonaws.com/images/photo.png",
+    );
+  });
+
+  it("creates temporary read URLs with S3 response options", async () => {
+    getSignedUrlMock
+      .mockResolvedValueOnce("https://signed.example.com/file.txt")
+      .mockResolvedValueOnce("https://signed.example.com/default.txt");
+    const { client } = createClient();
+    const storage = new Storage(client, {
+      bucket: "uploads",
+      root: "private",
+    });
+
+    await expect(
+      storage.createTemporaryUrl("reports/file.txt", {
+        expiresIn: 120,
+        ResponseContentType: "text/plain",
+      }),
+    ).resolves.toBe("https://signed.example.com/file.txt");
+    await expect(storage.createTemporaryUrl("default.txt")).resolves.toBe(
+      "https://signed.example.com/default.txt",
+    );
+
+    const command = getSignedUrlMock.mock.calls[0]?.[1];
+    expect(command).toBeInstanceOf(GetObjectCommand);
+    expect(command?.input).toEqual({
+      Bucket: "uploads",
+      Key: "private/reports/file.txt",
+      ResponseContentType: "text/plain",
+    });
+    expect(getSignedUrlMock).toHaveBeenNthCalledWith(1, client, command, {
+      expiresIn: 120,
+    });
+    expect(getSignedUrlMock.mock.calls[1]?.[2]).toEqual({});
+  });
+
+  it("creates temporary uploads with scoped keys and enforced identity conditions", async () => {
+    createPresignedPostMock
+      .mockResolvedValueOnce({
+        fields: { key: "private/tmp/photo.png", Policy: "policy" },
+        url: "https://s3.example.com/uploads",
+      })
+      .mockResolvedValueOnce({
+        fields: { key: "private/tmp/default.png" },
+        url: "https://s3.example.com/uploads",
+      });
+    const { client } = createClient();
+    const storage = new Storage(client, {
+      bucket: "uploads",
+      root: "private",
+    });
+
+    await expect(
+      storage.createTemporaryUploadUrl("tmp/photo.png", {
+        conditions: [
+          ["content-length-range", 1, 1024],
+          ["eq", "$Content-Type", "image/png"],
+        ],
+        expiresIn: 300,
+        fields: { "Content-Type": "image/png" },
+      }),
+    ).resolves.toEqual({
+      fields: { key: "private/tmp/photo.png", Policy: "policy" },
+      url: "https://s3.example.com/uploads",
+    });
+    await storage.createTemporaryUploadUrl("tmp/default.png");
+
+    expect(createPresignedPostMock).toHaveBeenNthCalledWith(1, client, {
+      Bucket: "uploads",
+      Key: "private/tmp/photo.png",
+      Conditions: [
+        ["eq", "$bucket", "uploads"],
+        ["eq", "$key", "private/tmp/photo.png"],
+        ["content-length-range", 1, 1024],
+        ["eq", "$Content-Type", "image/png"],
+      ],
+      Expires: 300,
+      Fields: { "Content-Type": "image/png" },
+    });
+    expect(createPresignedPostMock).toHaveBeenNthCalledWith(2, client, {
+      Bucket: "uploads",
+      Key: "private/tmp/default.png",
+      Conditions: [
+        ["eq", "$bucket", "uploads"],
+        ["eq", "$key", "private/tmp/default.png"],
+      ],
+    });
+  });
+
   it("writes, copies, moves, and deletes paths relative to its root", async () => {
     const { client, send } = createClient({
       endpoint: () => Promise.resolve(testEndpoint()),
@@ -443,9 +577,33 @@ function createClient(config: Partial<S3Client["config"]> = {}): {
   const client = {
     send,
     config: {
+      disableMultiregionAccessPoints: false,
+      disableS3ExpressSessionAuth: () => Promise.resolve(false),
       endpoint: undefined,
+      endpointProvider: vi.fn(
+        (params: {
+          Bucket?: string;
+          Endpoint?: string;
+          ForcePathStyle?: boolean;
+        }) => {
+          const endpoint = new URL(
+            params.Endpoint ?? "https://s3.us-east-1.amazonaws.com",
+          );
+          if (params.ForcePathStyle) {
+            endpoint.pathname = `${endpoint.pathname.replace(/\/$/, "")}/${params.Bucket ?? ""}`;
+          } else {
+            endpoint.hostname = `${params.Bucket ?? ""}.${endpoint.hostname}`;
+          }
+          return { url: endpoint };
+        },
+      ),
       forcePathStyle: false,
       region: () => Promise.resolve("us-east-1"),
+      useAccelerateEndpoint: false,
+      useArnRegion: () => Promise.resolve(undefined),
+      useDualstackEndpoint: () => Promise.resolve(false),
+      useFipsEndpoint: () => Promise.resolve(false),
+      useGlobalEndpoint: false,
       ...config,
     },
   } as unknown as S3Client;

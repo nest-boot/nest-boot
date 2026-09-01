@@ -1,7 +1,7 @@
 import { GraphQLModule } from "@nest-boot/graphql";
-import { S3Module } from "@nest-boot/s3";
+import { StorageModule } from "@nest-boot/storage";
 import { Module } from "@nestjs/common";
-import { ConfigModule, ConfigService } from "@nestjs/config";
+import { ConfigModule } from "@nestjs/config";
 import bytes from "bytes";
 
 import { FileUploadModule } from "../../src/index.js";
@@ -10,10 +10,8 @@ import { TestResolver } from "./test.resolver.js";
 const ConfigDynamicModule = ConfigModule.forRoot({ isGlobal: true });
 
 const FileUploadDynamicModule = FileUploadModule.registerAsync({
-  inject: [ConfigService],
-  useFactory: (configService: ConfigService) => {
+  useFactory: () => {
     return {
-      bucket: configService.getOrThrow("S3_BUCKET"),
       limits: [
         {
           // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -44,7 +42,7 @@ const FileUploadDynamicModule = FileUploadModule.registerAsync({
 @Module({
   imports: [
     ConfigDynamicModule,
-    S3Module,
+    StorageModule,
     GraphQLModule,
     FileUploadDynamicModule,
   ],

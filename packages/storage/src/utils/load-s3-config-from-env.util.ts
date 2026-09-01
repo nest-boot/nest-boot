@@ -1,7 +1,7 @@
 import { type S3ClientConfig } from "@aws-sdk/client-s3";
 
 /** Loads S3 client configuration from the supported environment variables. */
-export function loadConfigFromEnv(): S3ClientConfig {
+export function loadS3ConfigFromEnv(): S3ClientConfig {
   const accessKeyId = process.env.S3_ACCESS_KEY_ID;
   const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
   const endpoint = process.env.S3_ENDPOINT_URL;

@@ -8,23 +8,23 @@ description: "使用 S3 兼容存储处理文件上传，支持 MIME 类型验�
 ## 安装
 
 ```bash
-pnpm add @nest-boot/file-upload @nest-boot/s3 @aws-sdk/client-s3 @aws-sdk/s3-presigned-post
+pnpm add @nest-boot/file-upload @nest-boot/storage @aws-sdk/client-s3 @aws-sdk/lib-storage @aws-sdk/s3-presigned-post @aws-sdk/s3-request-presigner
 ```
 
-`@nest-boot/s3` 是对等依赖，必须在应用中注册一次。它提供 `FileUploadModule` 消费的全局 `S3Client`。
+`@nest-boot/storage` 是对等依赖，必须在应用中注册一次。`FileUploadService` 消费全局 `Storage` 服务，不再直接访问 `S3Client`。
 
 ## 模块注册
 
 ```typescript
 import { FileUploadModule } from "@nest-boot/file-upload";
-import { S3Module } from "@nest-boot/s3";
+import { StorageModule } from "@nest-boot/storage";
 import { Module } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 
 const FileUploadDynamicModule = FileUploadModule.registerAsync({
   inject: [ConfigService],
   useFactory: (configService: ConfigService) => ({
-    bucket: configService.getOrThrow("S3_BUCKET"),
+    url: configService.get("FILE_UPLOAD_URL"),
     expires: 3600,
     limits: [
       {
@@ -36,18 +36,17 @@ const FileUploadDynamicModule = FileUploadModule.registerAsync({
 });
 
 @Module({
-  imports: [S3Module, FileUploadDynamicModule],
+  imports: [StorageModule, FileUploadDynamicModule],
 })
 export class AppModule {}
 ```
 
-静态导入的 `S3Module` 会读取 `S3_ENDPOINT_URL`、`S3_ACCESS_KEY_ID`、`S3_SECRET_ACCESS_KEY`、`S3_REGION` 和 `S3_FORCE_PATH_STYLE`。显式配置和异步配置方式请参阅 [S3 教程](/docs/tutorial/s3)。
+静态导入的 `StorageModule` 会读取 `S3_ENDPOINT_URL`、`S3_ACCESS_KEY_ID`、`S3_SECRET_ACCESS_KEY`、`S3_REGION`、`S3_FORCE_PATH_STYLE` 和 `S3_BUCKET`。文件上传选项不再重复配置 bucket 或 client。显式和异步 storage 配置方式请参阅 [Storage 教程](/docs/tutorial/storage)。
 
 ### 配置选项
 
 | 选项      | 描述                                                                                   |
 | --------- | -------------------------------------------------------------------------------------- |
-| `bucket`  | S3 存储桶名称                                                                          |
 | `url`     | 可选的公开前缀，用于替换生成的 presigned POST URL 的 origin/path                       |
 | `expires` | presigned POST 的有效秒数，默认为 `3600`                                               |
 | `limits`  | 可接受的 `{ fileSize, mimeTypes }` 组合；MIME pattern 使用 micromatch 的 glob 匹配语义 |

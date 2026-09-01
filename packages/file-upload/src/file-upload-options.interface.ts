@@ -10,8 +10,6 @@ export interface FileUploadLimit {
 export interface FileUploadModuleOptions {
   /** Optional custom URL prefix for presigned upload URLs. */
   url?: string;
-  /** S3 bucket name for storing uploaded files. */
-  bucket: string;
   /** Presigned URL expiration time in seconds (defaults to 3600). */
   expires?: number;
   /** File upload constraints (size and MIME type limits). */

@@ -3,27 +3,26 @@ title: "Storage"
 description: "Use Laravel-inspired file operations with an S3-compatible object store."
 ---
 
-The `@nest-boot/storage` module provides Laravel-inspired file operations and Node.js-style file I/O on top of the global `S3Client` from `@nest-boot/s3`. Paths are relative to an optional storage root, listings are automatically paginated, and S3 prefixes are exposed as directories.
+The `@nest-boot/storage` module creates a global AWS SDK `S3Client` and provides Laravel-inspired file operations and Node.js-style file I/O on top of it. Paths are relative to an optional storage root, listings are automatically paginated, and S3 prefixes are exposed as directories.
 
 ## Installation
 
 ```bash
-pnpm add @nest-boot/storage @nest-boot/s3 @aws-sdk/client-s3 @aws-sdk/lib-storage
+pnpm add @nest-boot/storage @aws-sdk/client-s3 @aws-sdk/lib-storage @aws-sdk/s3-presigned-post @aws-sdk/s3-request-presigner
 ```
 
-`@nest-boot/s3` is a peer dependency. Register `S3Module` and `StorageModule` once in the root application; both modules expose their providers globally.
+Register `StorageModule` once in the root application. It exposes both `S3Client` and `Storage` globally.
 
 ## Environment Configuration
 
-Direct module imports read the S3 client variables documented by the [S3 module](/docs/tutorial/s3), plus `S3_BUCKET` for storage operations:
+Importing the module directly reads the supported S3 client variables and `S3_BUCKET` from the environment:
 
 ```typescript
-import { S3Module } from "@nest-boot/s3";
 import { StorageModule } from "@nest-boot/storage";
 import { Module } from "@nestjs/common";
 
 @Module({
-  imports: [S3Module, StorageModule],
+  imports: [StorageModule],
 })
 export class AppModule {}
 ```
@@ -41,11 +40,20 @@ There is no `S3_ROOT` environment variable. Configure a root explicitly when a s
 
 ## Explicit Configuration
 
-Use `register()` to select a bucket and key root:
+Use `register()` to configure the S3 client, bucket, and key root explicitly:
 
 ```typescript
 StorageModule.register({
   bucket: "uploads",
+  client: {
+    endpoint: "http://localhost:9000",
+    forcePathStyle: true,
+    region: "us-east-1",
+    credentials: {
+      accessKeyId: "minio",
+      secretAccessKey: "password",
+    },
+  },
   root: "tenants/acme",
 });
 ```
@@ -61,14 +69,37 @@ StorageModule.registerAsync({
   inject: [ConfigService],
   useFactory: (config: ConfigService) => ({
     bucket: config.getOrThrow("S3_BUCKET"),
+    client: {
+      endpoint: config.get("S3_ENDPOINT_URL"),
+      forcePathStyle: config.get("S3_FORCE_PATH_STYLE") === "true",
+      region: config.get("S3_REGION"),
+    },
     root: config.get("STORAGE_ROOT"),
   }),
 });
 ```
 
+## Dependency Injection
+
+Both providers resolve to the instances created by `StorageModule` and can be injected anywhere in the application:
+
+```typescript
+import { S3Client } from "@aws-sdk/client-s3";
+import { Storage } from "@nest-boot/storage";
+import { Injectable } from "@nestjs/common";
+
+@Injectable()
+export class DocumentsService {
+  constructor(
+    private readonly s3Client: S3Client,
+    private readonly storage: Storage,
+  ) {}
+}
+```
+
 ## File Operations
 
-Inject `Storage` into any provider:
+Use the injected `Storage` for file operations:
 
 ```typescript
 import { Storage } from "@nest-boot/storage";
@@ -124,6 +155,33 @@ await finished(writable);
 
 The buffering, encoding, abort signal, and stream behavior follows the core shape of the [Node.js file system API](https://nodejs.org/api/fs.html), while S3-specific request and multipart options remain available.
 
+## Object URLs
+
+`getUrl()` returns a direct path-style or virtual-host-style URL using the S3 client's resolved endpoint. It is appropriate when the bucket or object is already readable by the caller:
+
+```typescript
+const publicUrl = await storage.getUrl("documents/report.pdf");
+```
+
+Use `createTemporaryUrl()` for a signed read URL. The expiration is expressed in seconds:
+
+```typescript
+const downloadUrl = await storage.createTemporaryUrl("documents/report.pdf", {
+  expiresIn: 300,
+  ResponseContentDisposition: 'attachment; filename="report.pdf"',
+});
+```
+
+`createTemporaryUploadUrl()` returns a presigned POST URL and all required form fields. Storage automatically scopes the key to its configured root and enforces the selected bucket and key in the POST policy:
+
+```typescript
+const upload = await storage.createTemporaryUploadUrl("tmp/report.pdf", {
+  conditions: [["content-length-range", 1, 10 * 1024 * 1024]],
+  expiresIn: 300,
+  fields: { "Content-Type": "application/pdf" },
+});
+```
+
 ## File and Directory Listings
 
 ```typescript
@@ -135,7 +193,7 @@ const recursiveEntries = await storage.listEntries("documents", {
 
 `listEntries` returns immediate children by default and every descendant when `recursive` is enabled. Each sorted entry contains a root-relative `path` and a `type` of `file` or `directory`; file entries can also contain `size`, `lastModified`, and `etag`. Because S3 has no physical directories, directory entries are derived from object key prefixes, including empty directory marker objects.
 
-The public surface is deliberately limited to `createReadStream`, `createWriteStream`, `readFile`, `writeFile`, `deleteFile`, `copyFile`, `moveFile`, and `listEntries`. It draws on the [Laravel 13 filesystem API](https://laravel.com/framework/docs/13.x/filesystem) and Node.js naming without attempting complete `node:fs` compatibility.
+The file operation surface consists of `createReadStream`, `createWriteStream`, `readFile`, `writeFile`, `deleteFile`, `copyFile`, `moveFile`, and `listEntries`. URL operations are provided by `getUrl`, `createTemporaryUrl`, and `createTemporaryUploadUrl`. The API draws on the [Laravel 13 filesystem API](https://laravel.com/framework/docs/13.x/filesystem) and Node.js naming without attempting complete `node:fs` compatibility.
 
 ## API Reference
 

@@ -16,9 +16,7 @@ import { FileUploadModule } from "./file-upload.module.js";
 import { MODULE_OPTIONS_TOKEN } from "./file-upload.module-definition.js";
 
 describe("FileUploadModule", () => {
-  const options = {
-    bucket: "uploads",
-  };
+  const options = {};
 
   it("should register synchronous options", () => {
     const dynamicModule = FileUploadModule.register(options);

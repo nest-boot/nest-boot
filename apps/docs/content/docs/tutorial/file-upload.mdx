@@ -8,23 +8,23 @@ The `@nest-boot/file-upload` module creates constrained presigned POST uploads f
 ## Installation
 
 ```bash
-pnpm add @nest-boot/file-upload @nest-boot/s3 @aws-sdk/client-s3 @aws-sdk/s3-presigned-post
+pnpm add @nest-boot/file-upload @nest-boot/storage @aws-sdk/client-s3 @aws-sdk/lib-storage @aws-sdk/s3-presigned-post @aws-sdk/s3-request-presigner
 ```
 
-`@nest-boot/s3` is a peer dependency and must be registered once in the application. It provides the global `S3Client` consumed by `FileUploadModule`.
+`@nest-boot/storage` is a peer dependency and must be registered once in the application. `FileUploadService` consumes the global `Storage` service and does not access `S3Client` directly.
 
 ## Module Registration
 
 ```typescript
 import { FileUploadModule } from "@nest-boot/file-upload";
-import { S3Module } from "@nest-boot/s3";
+import { StorageModule } from "@nest-boot/storage";
 import { Module } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 
 const FileUploadDynamicModule = FileUploadModule.registerAsync({
   inject: [ConfigService],
   useFactory: (configService: ConfigService) => ({
-    bucket: configService.getOrThrow("S3_BUCKET"),
+    url: configService.get("FILE_UPLOAD_URL"),
     expires: 3600,
     limits: [
       {
@@ -36,18 +36,17 @@ const FileUploadDynamicModule = FileUploadModule.registerAsync({
 });
 
 @Module({
-  imports: [S3Module, FileUploadDynamicModule],
+  imports: [StorageModule, FileUploadDynamicModule],
 })
 export class AppModule {}
 ```
 
-The static `S3Module` reads `S3_ENDPOINT_URL`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_REGION`, and `S3_FORCE_PATH_STYLE`. See the [S3 tutorial](/docs/tutorial/s3) for explicit and asynchronous configuration.
+The static `StorageModule` reads `S3_ENDPOINT_URL`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_REGION`, `S3_FORCE_PATH_STYLE`, and `S3_BUCKET`. File upload options no longer repeat the bucket or client. See the [Storage tutorial](/docs/tutorial/storage) for explicit and asynchronous storage configuration.
 
 ### Configuration Options
 
 | Option    | Description                                                                                  |
 | --------- | -------------------------------------------------------------------------------------------- |
-| `bucket`  | S3 bucket name                                                                               |
 | `url`     | Optional public prefix that replaces the origin/path of generated presigned POST URLs        |
 | `expires` | Presigned POST lifetime in seconds; defaults to `3600`                                       |
 | `limits`  | Accepted `{ fileSize, mimeTypes }` combinations; MIME patterns use micromatch glob semantics |

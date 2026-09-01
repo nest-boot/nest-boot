@@ -1,9 +1,7 @@
 import {
-  CopyObjectCommand,
-  PutObjectCommand,
-  S3Client,
-} from "@aws-sdk/client-s3";
-import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
+  Storage,
+  type StorageTemporaryUploadUrlOptions,
+} from "@nest-boot/storage";
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import dayjs from "dayjs";
@@ -28,12 +26,12 @@ import { FileUploadInput } from "./inputs/file-upload.input.js";
 export class FileUploadService {
   /** Creates a new FileUploadService instance.
    * @param options - File upload module configuration options
-   * @param s3Client - S3 client provided by the global S3Module
+   * @param storage - Storage service provided by the global StorageModule
    */
   constructor(
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly options: FileUploadModuleOptions,
-    private readonly s3Client: S3Client,
+    private readonly storage: Storage,
   ) {}
 
   /**
@@ -43,7 +41,7 @@ export class FileUploadService {
    */
   async create(input: FileUploadInput[]): Promise<FileUpload[]> {
     const results = input.map(async (item) => {
-      const key = `tmp/${randomUUID()}${extname(item.name)}`;
+      const path = `tmp/${randomUUID()}${extname(item.name)}`;
 
       const limit = this.options.limits?.find(
         (v) =>
@@ -57,23 +55,23 @@ export class FileUploadService {
         );
       }
 
-      const conditions: any[] = [
-        ...(limit ? [["content-length-range", 1, limit.fileSize]] : []),
-        ["eq", "$bucket", this.options.bucket],
-        ["eq", "$key", key],
+      const conditions: NonNullable<
+        StorageTemporaryUploadUrlOptions["conditions"]
+      > = [
         ["eq", "$success_action_status", "201"],
         ["eq", "$Content-Type", item.mimeType],
       ];
+      if (limit) {
+        conditions.unshift(["content-length-range", 1, limit.fileSize]);
+      }
 
-      const presignedPost = await createPresignedPost(this.s3Client, {
-        Bucket: this.options.bucket,
-        Key: key,
-        Conditions: conditions as any,
-        Fields: {
+      const presignedPost = await this.storage.createTemporaryUploadUrl(path, {
+        conditions,
+        expiresIn: this.options.expires ?? 3600,
+        fields: {
           success_action_status: "201",
           "Content-Type": item.mimeType,
         },
-        Expires: this.options.expires ?? 3600,
       });
 
       return {
@@ -111,13 +109,7 @@ export class FileUploadService {
 
     const targetKey = `files/${dayjs().format("YYYY/MM/DD")}/${tmpKey}`;
 
-    const copyCommand = new CopyObjectCommand({
-      Bucket: this.options.bucket,
-      CopySource: `${this.options.bucket}/${originKey}`,
-      Key: targetKey,
-    });
-
-    await this.s3Client.send(copyCommand);
+    await this.storage.copyFile(originKey, targetKey);
 
     return await this.getFileUrl(targetKey);
   }
@@ -144,15 +136,10 @@ export class FileUploadService {
 
     const filePath = `tmp/${dayjs().format("YYYY/MM/DD")}/${randomUUID()}.${extension}`;
 
-    await this.s3Client.send(
-      new PutObjectCommand({
-        Bucket: this.options.bucket,
-        Key: filePath,
-        Body: data,
-        ContentType: metadata["Content-Type"],
-        Metadata: metadata,
-      }),
-    );
+    await this.storage.writeFile(filePath, data, {
+      ContentType: metadata["Content-Type"],
+      Metadata: metadata,
+    });
 
     const tmpUrl = await this.getFileUrl(filePath);
 
@@ -165,23 +152,6 @@ export class FileUploadService {
 
   /** Constructs the full URL for a file stored in S3. @internal */
   private async getFileUrl(filePath: string): Promise<string> {
-    const config = this.s3Client.config;
-    const forcePathStyle = config.forcePathStyle;
-    const endpoint = await config.endpoint?.();
-
-    if (!endpoint) {
-      throw new Error("Endpoint is not configured");
-    }
-
-    const protocol = endpoint.protocol;
-    const hostname = endpoint.hostname;
-    const port = endpoint.port ? `:${String(endpoint.port)}` : "";
-    const baseUrl = `${protocol}//${hostname}${port}`;
-
-    if (forcePathStyle) {
-      return `${baseUrl}/${this.options.bucket}/${filePath}`;
-    } else {
-      return `${protocol}//${this.options.bucket}.${hostname}${port}/${filePath}`;
-    }
+    return await this.storage.getUrl(filePath);
   }
 }

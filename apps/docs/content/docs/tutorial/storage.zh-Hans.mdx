@@ -3,27 +3,26 @@ title: "Storage"
 description: "通过 S3 兼容对象存储使用 Laravel 风格的文件操作。"
 ---
 
-`@nest-boot/storage` 模块基于 `@nest-boot/s3` 提供的全局 `S3Client`，提供 Laravel 风格的文件操作和 Node.js 风格的文件 I/O。所有路径都相对于可选的 storage root，列表会自动处理分页，并把 S3 prefix 表现为目录。
+`@nest-boot/storage` 模块会创建全局 AWS SDK `S3Client`，并基于它提供 Laravel 风格的文件操作和 Node.js 风格的文件 I/O。所有路径都相对于可选的 storage root，列表会自动处理分页，并把 S3 prefix 表现为目录。
 
 ## 安装
 
 ```bash
-pnpm add @nest-boot/storage @nest-boot/s3 @aws-sdk/client-s3 @aws-sdk/lib-storage
+pnpm add @nest-boot/storage @aws-sdk/client-s3 @aws-sdk/lib-storage @aws-sdk/s3-presigned-post @aws-sdk/s3-request-presigner
 ```
 
-`@nest-boot/s3` 是对等依赖。请在根应用中注册一次 `S3Module` 和 `StorageModule`；两个模块都会全局导出 provider。
+请在根应用中注册一次 `StorageModule`。它会全局导出 `S3Client` 和 `Storage`。
 
 ## 环境变量配置
 
-直接导入模块时，除 [S3 模块](/docs/tutorial/s3)记录的客户端环境变量外，storage 操作还会读取 `S3_BUCKET`：
+直接导入模块时，会从环境变量读取支持的 S3 客户端配置和 `S3_BUCKET`：
 
 ```typescript
-import { S3Module } from "@nest-boot/s3";
 import { StorageModule } from "@nest-boot/storage";
 import { Module } from "@nestjs/common";
 
 @Module({
-  imports: [S3Module, StorageModule],
+  imports: [StorageModule],
 })
 export class AppModule {}
 ```
@@ -41,11 +40,20 @@ S3_FORCE_PATH_STYLE=true
 
 ## 显式配置
 
-通过 `register()` 选择 bucket 与 key root：
+通过 `register()` 显式配置 S3 客户端、bucket 与 key root：
 
 ```typescript
 StorageModule.register({
   bucket: "uploads",
+  client: {
+    endpoint: "http://localhost:9000",
+    forcePathStyle: true,
+    region: "us-east-1",
+    credentials: {
+      accessKeyId: "minio",
+      secretAccessKey: "password",
+    },
+  },
   root: "tenants/acme",
 });
 ```
@@ -61,14 +69,37 @@ StorageModule.registerAsync({
   inject: [ConfigService],
   useFactory: (config: ConfigService) => ({
     bucket: config.getOrThrow("S3_BUCKET"),
+    client: {
+      endpoint: config.get("S3_ENDPOINT_URL"),
+      forcePathStyle: config.get("S3_FORCE_PATH_STYLE") === "true",
+      region: config.get("S3_REGION"),
+    },
     root: config.get("STORAGE_ROOT"),
   }),
 });
 ```
 
+## 依赖注入
+
+两个 provider 都会解析为 `StorageModule` 创建的实例，可以在应用的任意位置注入：
+
+```typescript
+import { S3Client } from "@aws-sdk/client-s3";
+import { Storage } from "@nest-boot/storage";
+import { Injectable } from "@nestjs/common";
+
+@Injectable()
+export class DocumentsService {
+  constructor(
+    private readonly s3Client: S3Client,
+    private readonly storage: Storage,
+  ) {}
+}
+```
+
 ## 文件操作
 
-可以在任意 provider 中注入 `Storage`：
+使用注入的 `Storage` 执行文件操作：
 
 ```typescript
 import { Storage } from "@nest-boot/storage";
@@ -124,6 +155,33 @@ await finished(writable);
 
 buffer、encoding、AbortSignal 和流的行为参考 [Node.js 文件系统 API](https://nodejs.org/api/fs.html)，同时保留 S3 特有的请求与 multipart 选项。
 
+## 对象 URL
+
+`getUrl()` 使用 S3 客户端解析出的 endpoint 返回 path-style 或 virtual-host-style 直连 URL，适用于调用方已经可以读取的 bucket 或对象：
+
+```typescript
+const publicUrl = await storage.getUrl("documents/report.pdf");
+```
+
+需要签名读取 URL 时使用 `createTemporaryUrl()`，过期时间以秒为单位：
+
+```typescript
+const downloadUrl = await storage.createTemporaryUrl("documents/report.pdf", {
+  expiresIn: 300,
+  ResponseContentDisposition: 'attachment; filename="report.pdf"',
+});
+```
+
+`createTemporaryUploadUrl()` 返回 presigned POST URL 和所有必需的表单字段。Storage 会自动把 key 限制在配置的 root 下，并在 POST policy 中约束 bucket 与 key：
+
+```typescript
+const upload = await storage.createTemporaryUploadUrl("tmp/report.pdf", {
+  conditions: [["content-length-range", 1, 10 * 1024 * 1024]],
+  expiresIn: 300,
+  fields: { "Content-Type": "application/pdf" },
+});
+```
+
 ## 文件与目录列表
 
 ```typescript
@@ -135,7 +193,7 @@ const recursiveEntries = await storage.listEntries("documents", {
 
 `listEntries` 默认返回直接子项，启用 `recursive` 后返回所有后代。每个排序后的条目都包含相对于 storage root 的 `path`，以及值为 `file` 或 `directory` 的 `type`；文件条目还可能包含 `size`、`lastModified` 和 `etag`。S3 没有物理目录，因此目录条目通过对象 key prefix 推导，也会识别空目录 marker 对象。
 
-公开接口有意收敛为 `createReadStream`、`createWriteStream`、`readFile`、`writeFile`、`deleteFile`、`copyFile`、`moveFile` 和 `listEntries`。命名参考 [Laravel 13 Filesystem API](https://laravel.com/framework/docs/13.x/filesystem) 与 Node.js，但不追求与 `node:fs` 完全兼容。
+文件操作接口包括 `createReadStream`、`createWriteStream`、`readFile`、`writeFile`、`deleteFile`、`copyFile`、`moveFile` 和 `listEntries`；URL 操作由 `getUrl`、`createTemporaryUrl` 与 `createTemporaryUploadUrl` 提供。命名参考 [Laravel 13 Filesystem API](https://laravel.com/framework/docs/13.x/filesystem) 与 Node.js，但不追求与 `node:fs` 完全兼容。
 
 ## API 参考
 
