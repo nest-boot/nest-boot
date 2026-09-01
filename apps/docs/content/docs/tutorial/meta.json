@@ -19,7 +19,8 @@
     "logger",
     "mailer",
     "metrics",
-    "file-upload",
+    "storage",
+    "staged-upload",
     "validator",
     "view"
   ]

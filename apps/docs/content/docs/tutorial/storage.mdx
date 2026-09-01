@@ -1,0 +1,348 @@
+---
+title: "Storage"
+description: "Configure S3-compatible storage and manage objects from NestJS."
+---
+
+`@nest-boot/storage` provides a global `Storage` service for one S3-compatible
+bucket. It supports buffered and streaming transfers, object management,
+directory-style listings, direct URLs, and temporary upload or download URLs.
+
+Every path is resolved within an optional `rootPath`, so one bucket can be
+divided into isolated storage scopes. External URL traffic and server-side
+object operations can also use different endpoints.
+
+## Installation
+
+```bash
+pnpm add @nest-boot/storage @aws-sdk/client-s3 @aws-sdk/lib-storage @aws-sdk/s3-presigned-post @aws-sdk/s3-request-presigner
+```
+
+`StorageModule` is global. Register it once in the root application, then inject
+`Storage` wherever it is needed.
+
+## Register the Module
+
+### Environment variables
+
+Import `StorageModule` directly to load its configuration from `STORAGE_*`
+environment variables:
+
+```typescript
+import { StorageModule } from "@nest-boot/storage";
+import { Module } from "@nestjs/common";
+
+@Module({
+  imports: [StorageModule],
+})
+export class AppModule {}
+```
+
+A typical service-level endpoint configuration looks like this:
+
+```dotenv
+STORAGE_ACCESS_KEY_ID=minio
+STORAGE_SECRET_ACCESS_KEY=password
+STORAGE_REGION=us-east-1
+STORAGE_ENDPOINT_URL=http://localhost:9000
+STORAGE_BUCKET=uploads
+STORAGE_ROOT_PATH=
+STORAGE_FORCE_PATH_STYLE=true
+```
+
+| Environment variable        | Module option     | Purpose                                                               |
+| --------------------------- | ----------------- | --------------------------------------------------------------------- |
+| `STORAGE_BUCKET`            | `bucket`          | Bucket used by this storage instance.                                 |
+| `STORAGE_ACCESS_KEY_ID`     | `accessKeyId`     | Access key for S3-compatible authentication.                          |
+| `STORAGE_SECRET_ACCESS_KEY` | `secretAccessKey` | Secret key for S3-compatible authentication.                          |
+| `STORAGE_REGION`            | `region`          | Region used for request signing and endpoint resolution.              |
+| `STORAGE_ENDPOINT_URL`      | `endpointUrl`     | Endpoint used for direct and temporary URLs.                          |
+| `STORAGE_ROOT_PATH`         | `rootPath`        | Key prefix applied to every path; defaults to the bucket root `/`.    |
+| `STORAGE_FORCE_PATH_STYLE`  | `forcePathStyle`  | Uses `/bucket/key` addressing instead of bucket subdomain addressing. |
+
+`bucket` is required. Credentials are optional when the runtime already
+provides them through the standard credential provider chain. Explicit module
+options take precedence over environment variables. Explicit `accessKeyId` and
+`secretAccessKey` options support long-lived credentials only. For temporary
+credentials, leave them unset and use the standard credential provider chain.
+
+### Explicit options
+
+Use `register()` when the application owns the configuration directly:
+
+```typescript
+import { StorageModule } from "@nest-boot/storage";
+import { Module } from "@nestjs/common";
+
+@Module({
+  imports: [
+    StorageModule.register({
+      bucket: "uploads",
+      endpointUrl: "http://localhost:9000",
+      forcePathStyle: true,
+      region: "us-east-1",
+      accessKeyId: "minio",
+      secretAccessKey: "password",
+      rootPath: "tenants/acme",
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+Use `registerAsync()` when another provider supplies the options:
+
+```typescript
+import { StorageModule } from "@nest-boot/storage";
+import { ConfigModule, ConfigService } from "@nestjs/config";
+import { Module } from "@nestjs/common";
+
+@Module({
+  imports: [
+    StorageModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        bucket: config.getOrThrow<string>("STORAGE_BUCKET"),
+        endpointUrl: config.get<string>("STORAGE_ENDPOINT_URL"),
+        region: config.get<string>("STORAGE_REGION"),
+        rootPath: config.get<string>("STORAGE_ROOT_PATH"),
+      }),
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+## External Endpoint
+
+`endpointUrl` is the externally reachable S3-compatible endpoint. Storage uses
+it for `getUrl()`, `createTemporaryUrl()`, and `createTemporaryUploadUrl()` so
+the returned URLs are reachable by their callers.
+
+For example, a local S3-compatible service can use:
+
+```typescript
+StorageModule.register({
+  bucket: "uploads",
+  endpointUrl: "http://minio:9000",
+  forcePathStyle: true,
+});
+```
+
+When `endpointUrl` is omitted, the client resolves the endpoint from its region
+and default endpoint provider.
+
+## Internal Endpoint
+
+`internalEndpointUrl` is used for application-side object operations:
+`readFile()`, `writeFile()`, streams, copying, moving, deletion, and listings.
+This is useful when the application can reach the storage service through a
+private network address while generated URLs must remain externally reachable.
+
+```typescript
+StorageModule.register({
+  bucket: "uploads",
+  endpointUrl: "https://storage.example.com",
+  internalEndpointUrl: "http://minio:9000",
+  forcePathStyle: true,
+});
+```
+
+If `internalEndpointUrl` is omitted, application-side operations use
+`endpointUrl`. The equivalent environment variable is
+`STORAGE_INTERNAL_ENDPOINT_URL`.
+
+## Bucket Endpoint
+
+Endpoints normally identify an S3 service, and the client adds `bucket` to each
+request. Some endpoints already identify a specific bucket. Set
+`bucketEndpoint: true` for this form so the bucket is not added again:
+
+```typescript
+StorageModule.register({
+  bucket: "uploads",
+  endpointUrl: "https://uploads.storage.example.com",
+  bucketEndpoint: true,
+});
+```
+
+Configure the internal endpoint independently when it uses a different form:
+
+```typescript
+StorageModule.register({
+  bucket: "uploads",
+  endpointUrl: "https://uploads.storage.example.com",
+  bucketEndpoint: true,
+  internalEndpointUrl: "http://minio:9000",
+  internalBucketEndpoint: false,
+  forcePathStyle: true,
+});
+```
+
+`internalBucketEndpoint` defaults to `bucketEndpoint` when omitted. The
+environment equivalents are `STORAGE_BUCKET_ENDPOINT` and
+`STORAGE_INTERNAL_BUCKET_ENDPOINT`.
+
+Each enabled switch requires its corresponding Endpoint URL. In this mode,
+Storage does not append the bucket and does not apply `forcePathStyle` to that
+Endpoint. Trailing slashes in bucket-bound Endpoint paths are normalized before
+the URL is used for signing or object operations.
+
+## Use Storage
+
+Inject the global service into an application provider:
+
+```typescript
+import { Storage } from "@nest-boot/storage";
+import { Injectable } from "@nestjs/common";
+
+@Injectable()
+export class DocumentsService {
+  constructor(private readonly storage: Storage) {}
+}
+```
+
+### Path scope
+
+All method paths are relative to `rootPath`. It defaults to the bucket root
+(`/`), represented by an empty key prefix. With a `rootPath` of
+`tenants/acme`, the following call writes the object key
+`tenants/acme/documents/report.txt`:
+
+```typescript
+await storage.writeFile("documents/report.txt", "ready");
+```
+
+Paths returned by `listEntries()` are also relative to `rootPath`; the internal
+prefix is never exposed to callers.
+
+### Read and write objects
+
+`readFile()` reads the complete object into memory. It returns a `Buffer` by
+default and a string when an encoding is supplied. `writeFile()` replaces the
+destination object and accepts strings, buffers, typed arrays, iterables, and
+async iterables.
+
+```typescript
+await storage.writeFile("documents/status.txt", "ready", {
+  ContentType: "text/plain",
+  encoding: "utf8",
+});
+
+const contents = await storage.readFile("documents/status.txt");
+const text = await storage.readFile("documents/status.txt", "utf8");
+```
+
+S3 request options can be passed together with `encoding` and `signal`.
+Buffered writes also accept multipart controls such as `partSize`, `queueSize`,
+and `leavePartsOnError`.
+
+### Stream objects
+
+Use `createReadStream()` and `createWriteStream()` when content should be
+processed incrementally:
+
+```typescript
+const readable = storage.createReadStream("videos/input.mp4", {
+  start: 0,
+  end: 1023,
+});
+
+const writable = storage.createWriteStream("videos/output.mp4", {
+  ContentType: "video/mp4",
+  partSize: 8 * 1024 * 1024,
+  queueSize: 4,
+});
+
+readable.pipe(writable);
+```
+
+The `start` and `end` offsets are inclusive. A writable stream emits `finish`
+only after the multipart upload has completed. Closing either stream early
+aborts its active request.
+
+### Copy, move, and delete objects
+
+```typescript
+await storage.copyFile("documents/report.pdf", "archive/report.pdf");
+await storage.moveFile("archive/report.pdf", "published/report.pdf");
+await storage.deleteFile("published/report.pdf");
+await storage.deleteFile(["tmp/one.txt", "tmp/two.txt"]);
+```
+
+`copyFile()` copies within the configured storage instance and rejects source
+objects larger than 5 GB. `moveFile()` copies first and deletes the source only
+after a successful copy. `deleteFile()` accepts one path or an array and splits
+large arrays into batches of 1,000 objects.
+
+### List entries
+
+```typescript
+const children = await storage.listEntries("documents");
+const descendants = await storage.listEntries("documents", {
+  recursive: true,
+});
+```
+
+By default, `listEntries()` returns the immediate children of a path. Set
+`recursive` to include every descendant. Results are sorted by path and contain:
+
+- `path`: path relative to `rootPath`
+- `type`: `file` or `directory`
+- `size`, `lastModified`, and `etag`: available for file entries when returned
+  by the storage service
+
+Directory entries are derived from object prefixes. Empty directory marker
+objects are also returned as directories.
+
+## Generate Object URLs
+
+### Direct URL
+
+`getUrl()` returns an unsigned object URL resolved from the external endpoint.
+The object must already be readable by the caller for this URL to work.
+
+```typescript
+const url = await storage.getUrl("documents/report.pdf");
+```
+
+### Temporary download URL
+
+`createTemporaryUrl()` signs a temporary GET request. `expiresIn` is expressed
+in seconds, and response headers can be customized through the read options.
+
+```typescript
+const url = await storage.createTemporaryUrl("documents/report.pdf", {
+  expiresIn: 300,
+  ResponseContentDisposition: 'attachment; filename="report.pdf"',
+});
+```
+
+### Temporary upload URL
+
+`createTemporaryUploadUrl()` creates a presigned POST destination. It returns
+the destination URL and every form field required by the upload policy.
+
+```typescript
+const upload = await storage.createTemporaryUploadUrl("tmp/report.pdf", {
+  conditions: [["content-length-range", 1, 10 * 1024 * 1024]],
+  expiresIn: 300,
+  fields: { "Content-Type": "application/pdf" },
+});
+
+const form = new FormData();
+for (const [name, value] of Object.entries(upload.fields)) {
+  form.set(name, value);
+}
+form.set("file", file);
+
+await fetch(upload.url, { method: "POST", body: form });
+```
+
+Storage adds `rootPath` to the object key and constrains both the bucket and key
+in the upload policy. The uploader must submit every returned field unchanged.
+
+## API Reference
+
+For complete method signatures and option types, see the
+[Storage API Reference](/docs/api/storage).

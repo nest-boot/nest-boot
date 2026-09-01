@@ -1,0 +1,99 @@
+{
+  "name": "@nest-boot/graphql-staged-upload",
+  "version": "8.0.0-beta.2",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nest-boot/nest-boot.git",
+    "directory": "packages/graphql-staged-upload"
+  },
+  "description": "GraphQL API for @nest-boot/staged-upload.",
+  "author": {
+    "name": "Xudong Huang",
+    "email": "me@huangxudong.com",
+    "url": "https://www.huangxudong.com/"
+  },
+  "homepage": "",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "directories": {
+    "lib": "dist"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rm -rf .nx && rm -rf node_modules && rm -rf dist",
+    "dev": "tsc -w -p tsconfig.build.json",
+    "lint": "eslint \"{src,test}/**/*.ts\"",
+    "lint:fix": "eslint \"{src,test}/**/*.ts\" --fix",
+    "test": "vitest run",
+    "test:cov": "vitest run --coverage",
+    "test:watch": "vitest",
+    "test:debug": "vitest --inspect-brk --no-file-parallelism",
+    "test:e2e": "vitest run --config ./vitest.config.e2e.ts"
+  },
+  "devDependencies": {
+    "@apollo/server": "^5.2.0",
+    "@as-integrations/express5": "^1.1.2",
+    "@nest-boot/eslint-config": "workspace:^",
+    "@nest-boot/eslint-plugin": "workspace:^",
+    "@nest-boot/graphql": "workspace:^",
+    "@nest-boot/staged-upload": "workspace:^",
+    "@nest-boot/storage": "workspace:^",
+    "@nest-boot/tsconfig": "workspace:^",
+    "@nestjs/apollo": "^14.0.0",
+    "@nestjs/common": "^12.0.1",
+    "@nestjs/core": "^12.0.1",
+    "@nestjs/graphql": "^14.0.0",
+    "@nestjs/platform-express": "^12.0.1",
+    "@nestjs/testing": "^12.0.1",
+    "@types/node": "^26.0.0",
+    "@types/supertest": "^7.2.1",
+    "@vitest/coverage-v8": "^4.1.11",
+    "eslint": "^9.39.3",
+    "express": "^5.1.0",
+    "graphql": "^16.11.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "supertest": "^7.2.2",
+    "typescript": "^6.0.3",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^4.1.11"
+  },
+  "peerDependencies": {
+    "@apollo/server": "^5.0.0",
+    "@as-integrations/express5": "^1.0.0",
+    "@nest-boot/graphql": "workspace:^",
+    "@nest-boot/staged-upload": "workspace:^",
+    "@nestjs/apollo": "^14.0.0",
+    "@nestjs/common": "^12.0.0",
+    "@nestjs/core": "^12.0.0",
+    "@nestjs/graphql": "^14.0.0",
+    "express": "^5.0.0",
+    "graphql": "^16.0.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "lint-staged": {
+    "*.ts": [
+      "prettier --write",
+      "eslint --fix"
+    ]
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=26.0.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  }
+}

@@ -1,0 +1,209 @@
+---
+title: "分阶段上传"
+description: "将带约束的上传暂存为临时对象，并在业务确认后持久化。"
+---
+
+`@nest-boot/staged-upload` 为 S3 兼容存储实现两阶段上传流程。默认情况下，新对象先写入
+`/tmp`，业务确认后再通过 `persist()` 复制到按日期组织的 `/files` 路径。两个路径均可配置。
+
+与传输层无关的服务负责创建带约束的 presigned POST、持久化已接受对象以及由应用直接
+发起上传。应用还可以通过下文介绍的 `@nest-boot/graphql-staged-upload` 适配包，使用
+GraphQL 暴露上传创建能力。
+
+## 安装
+
+```bash
+pnpm add @nest-boot/staged-upload @nest-boot/storage @aws-sdk/client-s3 @aws-sdk/lib-storage @aws-sdk/s3-presigned-post @aws-sdk/s3-request-presigner
+```
+
+在根应用中分别注册一次 `StorageModule` 和 `StagedUploadModule`。两个模块都是全局
+模块，功能模块无需再次导入即可注入 `StagedUploadService`。
+
+## 模块注册
+
+```typescript
+import { StagedUploadModule } from "@nest-boot/staged-upload";
+import { StorageModule } from "@nest-boot/storage";
+import { Module } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+
+const StagedUploadDynamicModule = StagedUploadModule.registerAsync({
+  inject: [ConfigService],
+  useFactory: (configService: ConfigService) => ({
+    url: configService.get("STAGED_UPLOAD_URL"),
+    expires: 3600,
+    temporaryPath: "/tmp",
+    permanentPath: "/files",
+    limits: [
+      {
+        fileSize: 10 * 1024 * 1024,
+        mimeTypes: ["image/*", "application/pdf"],
+      },
+    ],
+  }),
+});
+
+@Module({
+  imports: [StorageModule, StagedUploadDynamicModule],
+})
+export class AppModule {}
+```
+
+直接导入 `StorageModule` 时会读取 `STORAGE_*` 环境变量。显式配置、异步配置、内部
+Endpoint 和 Bucket Endpoint 请参阅 [Storage 教程](/docs/tutorial/storage)。
+
+### 配置选项
+
+| 选项            | 描述                                                                                   |
+| --------------- | -------------------------------------------------------------------------------------- |
+| `url`           | 可选的公开前缀，用于替换生成的 presigned POST URL 的 origin/path                       |
+| `expires`       | presigned POST 的有效秒数，默认为 `3600`                                               |
+| `temporaryPath` | 临时对象路径，默认为 `/tmp`                                                            |
+| `permanentPath` | 持久化后的对象路径，默认为 `/files`                                                    |
+| `limits`        | 可接受的 `{ fileSize, mimeTypes }` 组合；MIME pattern 使用 micromatch 的 glob 匹配语义 |
+
+`temporaryPath` 与 `permanentPath` 的前后斜杠会被规范化。每个路径必须至少包含一个
+有效路径段，并且不能使用 `.` 或 `..` 路径段。
+
+两个路径都相对于 `StorageModule.rootPath`。例如 `rootPath` 为
+`/video-localization` 时，默认配置最终使用 `video-localization/tmp/` 和
+`video-localization/files/` 对象 key。模块选项中的前导斜杠只表示逻辑路径，
+不会成为 S3 对象 key 的前导斜杠。路径始终按层级组合，不会自动去重，因此应把
+`rootPath` 配置为两个子路径的共同父路径，不要在其中重复任一子路径。
+
+## 用法
+
+### 创建分阶段上传
+
+调用 `create()` 并传入包含文件名、字节数和 MIME 类型的数组。服务会按 `limits`
+验证每个条目，并返回 presigned POST URL 和必需的表单字段：
+
+```typescript
+const uploads = await stagedUploadService.create([
+  {
+    name: "avatar.png",
+    fileSize: 256_000,
+    mimeType: "image/png",
+  },
+]);
+```
+
+客户端必须把全部返回字段、文件内容以及相同的 `Content-Type` 提交到返回的 URL。
+生成的对象 key 使用配置的 `temporaryPath`。
+
+### 持久化临时对象
+
+客户端上传成功后，把返回的对象 URL 传给 `persist()`。服务会识别临时路径，并将
+对象复制到 `<permanentPath>/YYYY/MM/DD/...`：
+
+```typescript
+import { StagedUploadService } from "@nest-boot/staged-upload";
+import { Injectable } from "@nestjs/common";
+
+@Injectable()
+export class FileService {
+  constructor(private readonly stagedUploadService: StagedUploadService) {}
+
+  async persistFile(tempFileUrl: string): Promise<string> {
+    return await this.stagedUploadService.persist(tempFileUrl);
+  }
+}
+```
+
+`persist()` 返回永久对象 URL，并支持经过编码的对象名以及包含 `tmp` 路径段的
+storage root。大小和 MIME 验证发生在 `create()` 创建预签名上传时；复制操作不会
+删除临时源对象。
+
+### 从应用直接上传
+
+应用已经持有文件数据时可使用 `upload()`。第三个参数传入 `true`，会先写入
+`temporaryPath`，随后直接使用原始对象路径复制到 `permanentPath`：
+
+```typescript
+const url = await stagedUploadService.upload(
+  pdfBuffer,
+  { "Content-Type": "application/pdf" },
+  true,
+);
+```
+
+## GraphQL 集成
+
+`@nest-boot/graphql-staged-upload` 通过 GraphQL 暴露分阶段上传的创建能力。该包提供
+输入类型、对象类型和 `createStagedUploads` Mutation；存储操作与上传策略仍由
+`@nest-boot/staged-upload` 负责。
+
+### 安装
+
+```bash
+pnpm add @nest-boot/graphql-staged-upload @nest-boot/graphql
+```
+
+### 模块注册
+
+先注册一次全局 Storage 与 Staged Upload 模块，再导入 GraphQL 模块和适配包：
+
+```typescript
+import { GraphQLModule } from "@nest-boot/graphql";
+import { GraphQLStagedUploadModule } from "@nest-boot/graphql-staged-upload";
+import { StagedUploadModule } from "@nest-boot/staged-upload";
+import { StorageModule } from "@nest-boot/storage";
+import { Module } from "@nestjs/common";
+
+@Module({
+  imports: [
+    StorageModule,
+    StagedUploadModule.register({
+      temporaryPath: "/tmp",
+      permanentPath: "/files",
+      limits: [
+        {
+          fileSize: 10 * 1024 * 1024,
+          mimeTypes: ["image/*", "application/pdf"],
+        },
+      ],
+    }),
+    GraphQLModule,
+    GraphQLStagedUploadModule,
+  ],
+})
+export class AppModule {}
+```
+
+`GraphQLStagedUploadModule` 没有独立配置，也不会导入一个未配置的
+`StagedUploadModule`。应用必须先通过 `StagedUploadModule.register()` 或
+`registerAsync()` 注册一次全局服务，resolver 才能使用它。
+
+### Mutation
+
+```graphql
+mutation CreateStagedUploads($input: [StagedUploadInput!]!) {
+  createStagedUploads(input: $input) {
+    url
+    fields {
+      name
+      value
+    }
+  }
+}
+```
+
+每个输入包含 `name`、`fileSize` 与 `mimeType`。返回值包含 presigned POST 地址和
+客户端随文件一并提交的全部表单字段。验证规则、有效期与对象路径均来自
+`StagedUploadModule` 的配置。
+
+适配包的 schema 与 resolver API 请参阅
+[GraphQL 分阶段上传 API 参考](/docs/api/graphql-staged-upload)。
+
+## 最佳实践
+
+1. **严格 MIME 类型** — 只允许应用实际需要的 MIME 类型。
+
+2. **合理的大小限制** — 定义一个或多个 `limits` 条目，把最大字节数与 MIME glob pattern 配对。
+
+3. **清理临时对象** — `persist()` 会复制但不会删除源对象；请为最终的 `<rootPath>/<temporaryPath>/` 前缀配置 S3 生命周期规则。
+
+## API 参考
+
+完整的方法签名与选项类型请参阅
+[分阶段上传 API 参考](/docs/api/staged-upload)。
