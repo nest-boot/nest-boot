@@ -1,3 +1,21 @@
+# 8.0.0 (2026-09-01)
+
+### 🚀 Features
+
+- ⚠️  migrate to NestJS 12 and ESM ([#312](https://github.com/nest-boot/nest-boot/issues/312))
+
+### ⚠️  Breaking Changes
+
+- migrate to NestJS 12 and ESM  ([#312](https://github.com/nest-boot/nest-boot/issues/312))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 8.0.0-beta.3
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.0-beta.2 (2026-08-31)
 
 ### 🧱 Updated Dependencies

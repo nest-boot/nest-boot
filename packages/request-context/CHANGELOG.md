@@ -1,3 +1,13 @@
+## 8.0.0-beta.3 (2026-09-01)
+
+### 🚀 Features
+
+- **request-context:** resolve Nest providers from context ([#315](https://github.com/nest-boot/nest-boot/pull/315))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.0-beta.2 (2026-08-31)
 
 ### 🧱 Updated Dependencies
