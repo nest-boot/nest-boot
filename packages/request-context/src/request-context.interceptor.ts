@@ -4,9 +4,11 @@ import {
   Injectable,
   type NestInterceptor,
 } from "@nestjs/common";
+import { ModuleRef } from "@nestjs/core";
 import { Request } from "express";
 import { Observable } from "rxjs";
 
+import { createNestDependencyResolver } from "./nest-dependency-resolver.js";
 import { RequestContext } from "./request-context.js";
 
 /**
@@ -36,6 +38,9 @@ import { RequestContext } from "./request-context.js";
  */
 @Injectable()
 export class RequestContextInterceptor implements NestInterceptor {
+  /** Creates a request context interceptor instance. */
+  constructor(private readonly moduleRef?: ModuleRef) {}
+
   /**
    * Intercepts the request and wraps execution in a request context.
    *
@@ -61,6 +66,9 @@ export class RequestContextInterceptor implements NestInterceptor {
     )?.get?.("x-request-id");
 
     const ctx = new RequestContext({
+      dependencyResolver: this.moduleRef
+        ? createNestDependencyResolver(this.moduleRef)
+        : undefined,
       id,
       type: "http",
     });

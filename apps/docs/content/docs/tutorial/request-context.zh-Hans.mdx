@@ -1,9 +1,11 @@
 ---
 title: "请求上下文"
-description: "使用基于 AsyncLocalStorage 的上下文传播在 NestJS 应用中共享请求作用域状态。"
+description: "在 NestJS 的异步执行过程中共享生命周期数据与应用 Provider。"
 ---
 
-`@nest-boot/request-context` 模块提供基于 Node.js `AsyncLocalStorage` 的请求作用域存储层。它允许你在单个请求的所有服务和解析器之间共享状态（如已认证用户、会话、工作区或实体管理器），无需通过函数参数层层传递。
+`@nest-boot/request-context` 用于在一次异步执行生命周期内共享数据，无需将数据通过每层方法参数传递。每个上下文都包含 ID、生命周期类型、自有数据以及可选的父上下文。
+
+对于 HTTP 请求，`RequestContextModule` 会自动创建并传播上下文。任务、事件、脚本等其他入口可以显式创建上下文。
 
 ## 安装
 
@@ -11,132 +13,207 @@ description: "使用基于 AsyncLocalStorage 的上下文传播在 NestJS 应用
 pnpm add @nest-boot/request-context
 ```
 
-## 模块注册
+## HTTP 配置
+
+在根模块中导入一次 `RequestContextModule`。该模块是全局模块，会自动覆盖 HTTP 请求。
 
 ```typescript
 import { RequestContextModule } from "@nest-boot/request-context";
+import { Module } from "@nestjs/common";
 
-@Global()
 @Module({
   imports: [RequestContextModule],
 })
-export class CommonModule {}
+export class AppModule {}
 ```
 
-## 基本用法
+## 存取上下文数据
 
-### 设置值
-
-从中间件、守卫或任何服务中存储值：
+可以使用类、Symbol 或字符串作为 Token。推荐使用类或导出的 Symbol，以避免命名冲突。
 
 ```typescript
 import { RequestContext } from "@nest-boot/request-context";
-import { User } from "./user.entity";
-import { Workspace } from "./workspace.entity";
 
-// 在中间件或守卫中
+export const CURRENT_TENANT = Symbol("CURRENT_TENANT");
+
 RequestContext.set(User, authenticatedUser);
-RequestContext.set(Workspace, currentWorkspace);
-```
-
-### 获取值
-
-在请求生命周期中的任何位置获取值：
-
-```typescript
-import { RequestContext } from "@nest-boot/request-context";
-import { User } from "./user.entity";
+RequestContext.set(CURRENT_TENANT, tenant);
 
 const user = RequestContext.get(User);
+const currentTenant = RequestContext.get<Tenant>(CURRENT_TENANT);
 ```
 
-### 请求对象
-
-通过 `REQUEST` Token 访问 Express 请求：
+Token 无法解析时，`get()` 返回 `undefined`。需要在首次访问时初始化数据，可以使用 `getOrSet()`：
 
 ```typescript
-import { REQUEST, RequestContext } from "@nest-boot/request-context";
-import { Request } from "express";
+const metadata = RequestContext.getOrSet(
+  "request-metadata",
+  new Map<string, unknown>(),
+);
+```
+
+查找顺序如下：
+
+1. 当前上下文中显式存储的值。
+2. 从父上下文继承的值。
+3. HTTP 上下文能够访问的应用 Provider。
+
+即使显式存储的值是 `null` 或 `undefined`，也会被视为已设置，不再继续回退。这可以用于在请求或子上下文中屏蔽继承值和应用级 Provider。
+
+静态访问方法要求当前存在活动上下文。如果代码可能在托管生命周期之外执行，应先调用 `isActive()`：
+
+```typescript
+if (RequestContext.isActive()) {
+  const user = RequestContext.get(User);
+}
+```
+
+## 获取应用 Provider
+
+HTTP 上下文可以从 Nest 应用容器延迟获取单例 Provider。这适用于在请求中执行、但创建位置不处于 Nest 依赖注入中的回调。
+
+```typescript
+const mailer = RequestContext.get(Mailer);
+
+await mailer?.sendMail({
+  subject: "验证邮箱",
+  text: verificationUrl,
+  to: user.email,
+});
+```
+
+同步查找无法解析请求作用域和瞬态 Provider，此时返回 `undefined`。其他非预期的 Provider 解析异常不会被静默忽略。
+
+## 请求与响应
+
+内置 HTTP 上下文使用 `REQUEST` 和 `RESPONSE` Token 存储 Express 请求与响应对象。
+
+```typescript
+import { REQUEST, RESPONSE, RequestContext } from "@nest-boot/request-context";
+import type { Request, Response } from "express";
 
 const request = RequestContext.get<Request>(REQUEST);
-const workspaceId = request?.headers["x-workspace-id"];
+const response = RequestContext.get<Response>(RESPONSE);
 ```
 
-## 上下文类型
+## 上下文元数据
 
-`RequestContext.current().type` 是创建上下文时指定的应用级生命周期分类，并不等同于 NestJS 的 `ExecutionContext.getType()`。
-
-请求中间件或兜底拦截器自动创建的上下文统一使用 `"http"`。GraphQL 解析器也遵循这一规则：NestJS 会将解析器的执行上下文类型报告为 `"graphql"`，而 `RequestContext.type` 仍为 `"http"`，从而保证中间件路径和兜底路径对同一类请求采用一致的分类。
-
-其他集成可以根据所创建的生命周期选择不同分类。例如，内置 BullMQ 处理器封装使用 `"queue"`，REPL 使用 `"repl"`。直接创建上下文时，应选择描述其生命周期的分类，例如 `"job"`。如果应用需要区分 GraphQL 执行类型、请求上下文分类或底层传输，应将其作为独立的上下文元数据存储，而不是依赖 `type` 同时表达这些概念。
-
-## 常见模式
-
-### 认证 + 工作区上下文
-
-多租户应用中的典型模式：
+使用 `current()` 查看当前活动上下文：
 
 ```typescript
-// 在 AuthModule 配置中
-onAuthenticated: async () => {
-  const user = RequestContext.get(User);
-  const request = RequestContext.get<Request>(REQUEST);
-  const workspaceId = request?.headers["x-workspace-id"];
+const context = RequestContext.current();
 
-  if (user && typeof workspaceId === "string") {
-    const workspaceMember = await em.findOne(
-      WorkspaceMember,
-      { user, workspace: { id: workspaceId } },
-      { populate: ["workspace"] },
-    );
-
-    if (workspaceMember) {
-      RequestContext.set(Workspace, workspaceMember.workspace.getEntity());
-      RequestContext.set(WorkspaceMember, workspaceMember);
-    }
-  }
-},
+console.log(context.id);
+console.log(context.type);
+console.log(context.parent);
 ```
 
-### 在服务中使用
+`RequestContext.id` 是当前上下文 ID 的快捷访问方式。`type` 表示应用生命周期分类，并不等同于 `ExecutionContext.getType()`：
+
+| 上下文来源           | 类型示例 |
+| -------------------- | -------- |
+| HTTP 中间件或拦截器  | `http`   |
+| BullMQ 处理器        | `queue`  |
+| REPL                 | `repl`   |
+| 应用自行创建的上下文 | `job`    |
+
+## 子上下文
+
+`child()` 在当前活动上下文内创建隔离的子上下文。子上下文保持相同的 ID 和类型，可以通过父上下文读取数据与应用 Provider，也可以保存自己的覆盖值而不修改父上下文。
 
 ```typescript
-import { RequestContext } from "@nest-boot/request-context";
+RequestContext.set("tenant-id", "tenant-a");
+
+await RequestContext.child(async (childContext) => {
+  childContext.get<string>("tenant-id"); // tenant-a
+
+  childContext.set("tenant-id", "tenant-b");
+  childContext.set("attempt", 1);
+
+  await processAttempt();
+});
+
+RequestContext.get<string>("tenant-id"); // tenant-a
+RequestContext.get<number>("attempt"); // undefined
+```
+
+在回调内部，`RequestContext.get()` 和 `RequestContext.set()` 等静态方法操作的是子上下文。`child()` 要求父上下文处于活动状态，并且不会重复运行已注册的上下文中间件。
+
+子上下文适合临时覆盖、事务分支、重试，以及其他不能修改外层上下文的嵌套工作。
+
+## 在 HTTP 之外创建上下文
+
+### 显式运行上下文
+
+任务、事件、脚本或测试可以创建 `RequestContext` 并传给 `run()`。已注册的上下文中间件会在回调之前运行。
+
+```typescript
+await RequestContext.run(
+  new RequestContext({ id: job.id, type: "job" }),
+  async (context) => {
+    context.set("job", job);
+    await processJob();
+  },
+);
+```
+
+### 使用装饰器
+
+`CreateRequestContext` 可以根据类实例和方法参数创建上下文，并用该上下文包装整个方法调用。
+
+```typescript
+import {
+  CreateRequestContext,
+  RequestContext,
+} from "@nest-boot/request-context";
 import { Injectable } from "@nestjs/common";
 
 @Injectable()
-export class AuditService {
-  getCurrentUser(): User | undefined {
-    return RequestContext.get(User);
-  }
-
-  getCurrentWorkspace(): Workspace | undefined {
-    return RequestContext.get(Workspace);
+export class EventHandler {
+  @CreateRequestContext(
+    (_handler, event: DomainEvent) =>
+      new RequestContext({ id: event.id, type: "event" }),
+  )
+  async handle(event: DomainEvent): Promise<void> {
+    RequestContext.set("event", event);
+    await dispatchEvent(event);
   }
 }
 ```
 
-## 中间件注册
+## 上下文中间件
 
-模块支持在请求上下文中注册自定义中间件：
+上下文中间件用于初始化数据，或包装通过 `run()` 创建的每个生命周期，其中也包括 HTTP 生命周期。中间件应在应用启动时注册一次。
+
+`registerMiddleware()` 的可选第三个 `dependencies` 参数用于声明必须先运行的中间件名称：
 
 ```typescript
-RequestContext.registerMiddleware("my-middleware", (ctx, next) => {
-  ctx.set(SomeService, someInstance);
+RequestContext.registerMiddleware("authentication", async (context, next) => {
+  context.set(User, await authenticate());
   return next();
 });
+
+RequestContext.registerMiddleware(
+  "authorization",
+  async (context, next) => {
+    const user = context.get(User);
+    context.set(Ability, await createAbility(user));
+    return next();
+  },
+  ["authentication"],
+);
 ```
 
-`MikroOrmModule` 等模块内部使用此机制为每个请求分支实体管理器。
+在这个示例中，无论注册顺序如何，`authentication` 都会先于 `authorization` 运行。多个依赖项都会在声明它们的中间件之前运行；存在循环依赖时会抛出异常。子上下文会继承已经初始化的数据，因此不会再次执行中间件栈。
 
-## 最佳实践
+## 使用建议
 
-1. **使用类作为键** — 使用实体/服务类作为键（如 `User`、`Workspace`）实现类型安全的查找。
-
-2. **尽早设置** — 在中间件或 `onAuthenticated` 回调中填充上下文，而非在解析器或服务中。
-
-3. **服务中只读** — 服务应只从 `RequestContext` 读取，不应写入。
+- `RequestContextModule` 只需导入一次。
+- 优先使用类或导出的 Symbol Token，避免临时字符串。
+- 在中间件、守卫或认证钩子中尽早填充请求数据。
+- 使用 `child()` 隔离嵌套工作，使用 `run()` 创建新的入口上下文。
+- 除非生命周期能够保证 Token 存在，否则应将 `get()` 的结果视为可选值。
 
 ## API 参考
 
-详细的 API 文档请参阅[请求上下文 API 参考](/docs/api/request-context)。
+完整签名与类型请参阅[请求上下文 API 参考](/docs/api/request-context)。
