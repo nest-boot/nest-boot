@@ -323,10 +323,6 @@ export class Storage {
 
     for (let index = 0; index < paths.length; index += MAX_DELETE_OBJECTS) {
       const chunk = paths.slice(index, index + MAX_DELETE_OBJECTS);
-      if (chunk.length === 0) {
-        continue;
-      }
-
       const result = await this.s3Client.send(
         new DeleteObjectsCommand({
           Bucket: this.bucket,

@@ -101,6 +101,56 @@ describe("Storage", () => {
     });
   });
 
+  it("reports empty and invalid S3 response bodies and request failures", async () => {
+    const { client, send } = createClient();
+    send
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({ Body: "not-a-node-stream" })
+      .mockRejectedValueOnce("S3 unavailable");
+    const storage = new Storage(client, { bucket: "test-bucket" });
+
+    await expect(storage.readFile("empty.txt", null)).rejects.toThrow(
+      "empty response body",
+    );
+    await expect(
+      streamText(storage.createReadStream("invalid.txt", "utf8")),
+    ).rejects.toThrow("non-Node.js stream body");
+    await expect(
+      streamText(storage.createReadStream("unavailable.txt")),
+    ).rejects.toThrow("S3 unavailable");
+  });
+
+  it("supports open-ended ranges, direct buffer views, and abort signals", async () => {
+    const { client, send } = createClient({
+      endpoint: () => Promise.resolve(testEndpoint()),
+    });
+    send
+      .mockResolvedValueOnce({ Body: Readable.from(["start"]) })
+      .mockResolvedValueOnce({ Body: Readable.from(["end"]) });
+    const storage = new Storage(client, { bucket: "test-bucket" });
+
+    await expect(
+      streamText(storage.createReadStream("start.txt", { start: 2 })),
+    ).resolves.toBe("start");
+    const controller = new AbortController();
+    controller.abort("cancelled");
+    await expect(
+      streamText(
+        storage.createReadStream("end.txt", {
+          end: 2,
+          signal: controller.signal,
+        }),
+      ),
+    ).resolves.toBe("end");
+    await storage.writeFile("bytes.bin", Uint8Array.from([1, 2, 3]), null);
+
+    expect(commandAt(send, 0, GetObjectCommand).input.Range).toBe("bytes=2-");
+    expect(commandAt(send, 1, GetObjectCommand).input.Range).toBe("bytes=0-2");
+    expect(commandAt(send, 2, PutObjectCommand).input.Body).toEqual(
+      Buffer.from([1, 2, 3]),
+    );
+  });
+
   it("writes iterable data and waits for streaming uploads to complete", async () => {
     const { client, send } = createClient({
       endpoint: () => Promise.resolve(testEndpoint()),
@@ -116,6 +166,7 @@ describe("Storage", () => {
     ]);
     const stream = storage.createWriteStream("stream.txt", {
       ContentType: "text/plain",
+      highWaterMark: 1,
     });
     stream.end("streamed");
     await finished(stream);
@@ -132,6 +183,18 @@ describe("Storage", () => {
       Body: Buffer.from("streamed"),
       ContentType: "text/plain",
     });
+  });
+
+  it("propagates streaming upload failures", async () => {
+    const { client, send } = createClient({
+      endpoint: () => Promise.resolve(testEndpoint()),
+    });
+    send.mockRejectedValueOnce(new Error("upload failed"));
+    const storage = new Storage(client, { bucket: "test-bucket" });
+    const stream = storage.createWriteStream("stream.txt");
+
+    stream.end("content");
+    await expect(finished(stream)).rejects.toThrow("upload failed");
   });
 
   it("deletes arrays in S3-sized batches and reports per-object failures", async () => {
@@ -158,6 +221,11 @@ describe("Storage", () => {
     });
     await expect(storage.deleteFile(["broken.txt"])).rejects.toThrow(
       "broken.txt (AccessDenied)",
+    );
+
+    send.mockResolvedValueOnce({ Errors: [{}] });
+    await expect(storage.deleteFile(["unknown.txt"])).rejects.toThrow(
+      "unknown (unknown)",
     );
   });
 
@@ -248,6 +316,33 @@ describe("Storage", () => {
       { path: "docs/guides/api", type: "directory" },
       { path: "docs/guides/api/reference.txt", type: "file" },
     ]);
+  });
+
+  it("ignores incomplete list records and supports an unscoped root", async () => {
+    const { client, send } = createClient();
+    send.mockResolvedValueOnce({
+      CommonPrefixes: [{}, { Prefix: "root/docs/" }],
+      Contents: [{}, { Key: "root/docs/file.txt" }],
+    });
+    const rootedStorage = new Storage(client, {
+      bucket: "test-bucket",
+      root: "root",
+    });
+
+    await expect(rootedStorage.listEntries("docs")).resolves.toEqual([
+      { path: "docs/file.txt", type: "file" },
+    ]);
+
+    const unscoped = createClient();
+    unscoped.send.mockResolvedValueOnce({ Contents: [{ Key: "file.txt" }] });
+    await expect(
+      new Storage(unscoped.client, { bucket: "test-bucket" }).listEntries("", {
+        recursive: true,
+      }),
+    ).resolves.toEqual([{ path: "file.txt", type: "file" }]);
+    expect(commandAt(unscoped.send, 0, ListObjectsV2Command).input.Prefix).toBe(
+      "",
+    );
   });
 
   it("rejects missing buckets, empty object paths, traversal, and invalid ranges", async () => {
