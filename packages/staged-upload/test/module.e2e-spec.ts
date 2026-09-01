@@ -1,14 +1,9 @@
-import fs from "node:fs";
+import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { CreateBucketCommand, S3Client } from "@aws-sdk/client-s3";
-import { INestApplication } from "@nestjs/common";
-import { Test } from "@nestjs/testing";
-import axios from "axios";
-import bytes from "bytes";
-import FormData from "form-data";
-import request from "supertest";
+import { Test, type TestingModule } from "@nestjs/testing";
 
 import { type StagedUploadService } from "../src/staged-upload.service.js";
 
@@ -34,16 +29,6 @@ function getS3Bucket() {
   }
 
   return bucket;
-}
-
-function parseFileSize(value: string) {
-  const parsed = bytes(value);
-
-  if (typeof parsed !== "number") {
-    throw new Error(`Unable to parse file size: ${value}`);
-  }
-
-  return parsed;
 }
 
 async function ensureBucketExists(client: S3Client, bucket: string) {
@@ -100,12 +85,12 @@ function requiredStorageEnv(name: string): string {
 }
 
 describeIfS3Configured("StagedUploadModule - e2e", () => {
-  let app: INestApplication;
+  let moduleRef: TestingModule;
   let stagedUploadService: StagedUploadService;
 
   const filename = "test.jpeg";
   const fileSize = 48445;
-  const fileSizeLimited = parseFileSize("100mb");
+  const fileSizeLimited = 100 * 1024 * 1024;
   const mimeType = "image/jpeg";
   const filePath = "./attachments/test.jpeg";
 
@@ -122,7 +107,7 @@ describeIfS3Configured("StagedUploadModule - e2e", () => {
       import("./src/app.module.js"),
       import("../src/staged-upload.service.js"),
     ]);
-    const module = await Test.createTestingModule({
+    moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
 
@@ -130,46 +115,21 @@ describeIfS3Configured("StagedUploadModule - e2e", () => {
     await ensureBucketExists(setupClient, getSetupBucket());
     setupClient.destroy();
 
-    app = module.createNestApplication();
-    stagedUploadService = module.get(StagedUploadService);
-
-    await app.init();
+    stagedUploadService = moduleRef.get(StagedUploadService);
+    await moduleRef.init();
   }, 60000);
 
   afterAll(async () => {
-    await app.close();
+    await moduleRef.close();
   }, 60000);
 
-  it("should successfully gets the upload parameter configuration", async () => {
-    const createStagedUploads = await request(app.getHttpServer())
-      .post("/api/graphql")
-      .send({
-        query: /* GraphQL */ `
-          mutation CreateStagedUploads($input: [StagedUploadInput!]!) {
-            createStagedUploads(input: $input) {
-              url
-              fields {
-                name
-                value
-              }
-            }
-          }
-        `,
-        variables: {
-          input: [
-            {
-              name: filename,
-              fileSize,
-              mimeType,
-            },
-          ],
-        },
-      });
+  it("should successfully get the upload parameter configuration", async () => {
+    const [created] = await stagedUploadService.create([
+      { name: filename, fileSize, mimeType },
+    ]);
 
-    expect(createStagedUploads.status).toBe(200);
-    expect(createStagedUploads.body.data.createStagedUploads[0]).toBeTruthy();
-
-    stagedUploadArgs = createStagedUploads.body.data.createStagedUploads[0];
+    expect(created).toBeTruthy();
+    stagedUploadArgs = created;
   }, 10000);
 
   it("should successfully uploads temporary file", async () => {
@@ -182,19 +142,23 @@ describeIfS3Configured("StagedUploadModule - e2e", () => {
       form.append(field.name, field.value);
     });
 
-    const fileStream = fs.createReadStream(resolve(__dirname, filePath));
-    form.append("file", fileStream);
+    const file = await readFile(resolve(__dirname, filePath));
+    form.append("file", new Blob([file], { type: mimeType }), filename);
 
     // Upload temporary file
-    const response = await axios.post(stagedUploadArgs.url, form, {
-      headers: {
-        ...form.getHeaders(),
-      },
+    const response = await fetch(stagedUploadArgs.url, {
+      body: form,
+      method: "POST",
     });
 
     expect(response.status).toBe(201);
 
-    fileTmpUrl = response.data.match(/<Location>(.*?)<\/Location>/)[1];
+    const responseBody = await response.text();
+    const location = /<Location>(.*?)<\/Location>/.exec(responseBody)?.[1];
+    if (!location) {
+      throw new Error("S3 upload response did not contain a Location");
+    }
+    fileTmpUrl = location;
 
     expect(fileTmpUrl).toBeTruthy();
     expect(fileTmpUrl).toContain("/temporary/uploads/");
@@ -210,7 +174,7 @@ describeIfS3Configured("StagedUploadModule - e2e", () => {
   }, 10000);
 
   it("should successfully upload temporary file", async () => {
-    const buffer = fs.readFileSync(resolve(__dirname, filePath));
+    const buffer = await readFile(resolve(__dirname, filePath));
 
     const tmpFileUrl = await stagedUploadService.upload(buffer, {
       "Content-Type": mimeType,
@@ -221,7 +185,7 @@ describeIfS3Configured("StagedUploadModule - e2e", () => {
   }, 10000);
 
   it("should successfully upload persistent file", async () => {
-    const buffer = fs.readFileSync(resolve(__dirname, filePath));
+    const buffer = await readFile(resolve(__dirname, filePath));
 
     const fileUrl = await stagedUploadService.upload(
       buffer,

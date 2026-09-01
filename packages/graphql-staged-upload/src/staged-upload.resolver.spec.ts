@@ -12,22 +12,17 @@ vi.mock("@nest-boot/graphql", () => {
   };
 });
 
+import { StagedUploadService } from "@nest-boot/staged-upload";
 import { Test } from "@nestjs/testing";
 import type { Mock } from "vitest";
 
 import { StagedUploadResolver } from "./staged-upload.resolver.js";
-import { StagedUploadService } from "./staged-upload.service.js";
 
 describe("StagedUploadResolver", () => {
-  it("should delegate staged upload creation to the service", async () => {
+  it("delegates staged upload creation to the core service", async () => {
     const result = [
       {
-        fields: [
-          {
-            name: "key",
-            value: "tmp/file.png",
-          },
-        ],
+        fields: [{ name: "key", value: "tmp/file.png" }],
         url: "https://s3.local/tmp/file.png",
       },
     ];
@@ -52,9 +47,7 @@ async function createResolver(create: Mock) {
       StagedUploadResolver,
       {
         provide: StagedUploadService,
-        useValue: {
-          create,
-        },
+        useValue: { create },
       },
     ],
   }).compile();

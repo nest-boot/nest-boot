@@ -6,7 +6,9 @@ description: "将带约束的上传暂存为临时对象，并在业务确认后
 `@nest-boot/staged-upload` 为 S3 兼容存储实现两阶段上传流程。默认情况下，新对象先写入
 `/tmp`，业务确认后再通过 `persist()` 复制到按日期组织的 `/files` 路径。两个路径均可配置。
 
-模块通过 GraphQL 提供带约束的 presigned POST，也支持由应用直接发起上传。
+与传输层无关的服务负责创建带约束的 presigned POST、持久化已接受对象以及由应用直接
+发起上传。GraphQL 支持由独立的
+[`@nest-boot/graphql-staged-upload`](/docs/tutorial/graphql-staged-upload) 提供。
 
 ## 安装
 
@@ -14,8 +16,8 @@ description: "将带约束的上传暂存为临时对象，并在业务确认后
 pnpm add @nest-boot/staged-upload @nest-boot/storage @aws-sdk/client-s3 @aws-sdk/lib-storage @aws-sdk/s3-presigned-post @aws-sdk/s3-request-presigner
 ```
 
-在根应用中注册一次全局 `StorageModule`。`StagedUploadModule` 使用该 Storage 实例
-执行全部临时与永久对象操作。
+在根应用中分别注册一次 `StorageModule` 和 `StagedUploadModule`。两个模块都是全局
+模块，功能模块无需再次导入即可注入 `StagedUploadService`。
 
 ## 模块注册
 
@@ -73,22 +75,28 @@ Endpoint 和 Bucket Endpoint 请参阅 [Storage 教程](/docs/tutorial/storage)�
 
 ### 创建分阶段上传
 
-`StagedUploadModule` 会注册 `createStagedUploads` GraphQL Mutation。它接收包含文件名、字节数和 MIME 类型的数组，按 `limits` 验证每个条目，并返回 presigned POST URL 和必需的表单字段：
+调用 `create()` 并传入包含文件名、字节数和 MIME 类型的数组。服务会按 `limits`
+验证每个条目，并返回 presigned POST URL 和必需的表单字段：
 
-```graphql
-mutation CreateStagedUploads($input: [StagedUploadInput!]!) {
-  createStagedUploads(input: $input) {
-    url
-    fields {
-      name
-      value
-    }
-  }
-}
+```typescript
+const uploads = await stagedUploadService.create([
+  {
+    name: "avatar.png",
+    fileSize: 256_000,
+    mimeType: "image/png",
+  },
+]);
 ```
 
 客户端必须把全部返回字段、文件内容以及相同的 `Content-Type` 提交到返回的 URL。
 生成的对象 key 使用配置的 `temporaryPath`。
+
+### GraphQL 集成
+
+应用需要内置的 `createStagedUploads` Mutation 时安装
+`@nest-boot/graphql-staged-upload`。适配包只包含 GraphQL schema 与 resolver，并使用
+全局注册的 `StagedUploadService`。详细配置请参阅
+[GraphQL 分阶段上传教程](/docs/tutorial/graphql-staged-upload)。
 
 ### 持久化临时对象
 

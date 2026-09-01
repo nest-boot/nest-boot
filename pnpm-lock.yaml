@@ -1037,6 +1037,87 @@ importers:
         specifier: ^4.1.11
         version: 4.1.11
 
+  packages/graphql-staged-upload:
+    devDependencies:
+      '@apollo/server':
+        specifier: ^5.2.0
+        version: 5.2.0
+      '@as-integrations/express5':
+        specifier: ^1.1.2
+        version: 1.1.2
+      '@nest-boot/eslint-config':
+        specifier: workspace:^
+        version: link:../eslint-config
+      '@nest-boot/eslint-plugin':
+        specifier: workspace:^
+        version: link:../eslint-plugin
+      '@nest-boot/graphql':
+        specifier: workspace:^
+        version: link:../graphql
+      '@nest-boot/staged-upload':
+        specifier: workspace:^
+        version: link:../staged-upload
+      '@nest-boot/storage':
+        specifier: workspace:^
+        version: link:../storage
+      '@nest-boot/tsconfig':
+        specifier: workspace:^
+        version: link:../tsconfig
+      '@nestjs/apollo':
+        specifier: ^14.0.0
+        version: 14.0.0
+      '@nestjs/common':
+        specifier: ^12.0.1
+        version: 12.0.1
+      '@nestjs/core':
+        specifier: ^12.0.1
+        version: 12.0.1
+      '@nestjs/graphql':
+        specifier: ^14.0.0
+        version: 14.0.0
+      '@nestjs/platform-express':
+        specifier: ^12.0.1
+        version: 12.0.1
+      '@nestjs/testing':
+        specifier: ^12.0.1
+        version: 12.0.1
+      '@types/node':
+        specifier: ^26.0.0
+        version: 26.4.0
+      '@types/supertest':
+        specifier: ^7.2.1
+        version: 7.2.1
+      '@vitest/coverage-v8':
+        specifier: ^4.1.11
+        version: 4.1.11
+      eslint:
+        specifier: ^9.39.3
+        version: 9.39.3
+      express:
+        specifier: ^5.1.0
+        version: 5.2.1
+      graphql:
+        specifier: ^16.11.0
+        version: 16.12.0
+      reflect-metadata:
+        specifier: ^0.2.2
+        version: 0.2.2
+      rxjs:
+        specifier: ^7.8.2
+        version: 7.8.2
+      supertest:
+        specifier: ^7.2.2
+        version: 7.2.2
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite-tsconfig-paths:
+        specifier: ^5.1.4
+        version: 5.1.4
+      vitest:
+        specifier: ^4.1.11
+        version: 4.1.11
+
   packages/hash:
     dependencies:
       '@node-rs/argon2':
@@ -1874,9 +1955,6 @@ importers:
       dayjs:
         specifier: ^1.11.18
         version: 1.11.19
-      lodash-es:
-        specifier: ^4.17.21
-        version: 4.17.22
       micromatch:
         specifier: ^4.0.8
         version: 4.0.8
@@ -1884,12 +1962,6 @@ importers:
         specifier: ^2.1.35
         version: 2.1.35
     devDependencies:
-      '@apollo/server':
-        specifier: ^5.2.0
-        version: 5.2.0
-      '@as-integrations/express5':
-        specifier: ^1.1.2
-        version: 1.1.2
       '@aws-sdk/client-s3':
         specifier: ^3.1123.0
         version: 3.1123.0
@@ -1899,18 +1971,12 @@ importers:
       '@nest-boot/eslint-plugin':
         specifier: workspace:^
         version: link:../eslint-plugin
-      '@nest-boot/graphql':
-        specifier: workspace:^
-        version: link:../graphql
       '@nest-boot/storage':
         specifier: workspace:^
         version: link:../storage
       '@nest-boot/tsconfig':
         specifier: workspace:^
         version: link:../tsconfig
-      '@nestjs/apollo':
-        specifier: ^14.0.0
-        version: 14.0.0
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1
@@ -1920,18 +1986,9 @@ importers:
       '@nestjs/core':
         specifier: ^12.0.1
         version: 12.0.1
-      '@nestjs/graphql':
-        specifier: ^14.0.0
-        version: 14.0.0
-      '@nestjs/platform-express':
-        specifier: ^12.0.1
-        version: 12.0.1
       '@nestjs/testing':
         specifier: ^12.0.1
         version: 12.0.1
-      '@types/bytes':
-        specifier: ^3.1.5
-        version: 3.1.5
       '@types/micromatch':
         specifier: ^4.0.9
         version: 4.0.10
@@ -1941,36 +1998,18 @@ importers:
       '@types/node':
         specifier: ^26.0.0
         version: 26.4.0
-      '@types/supertest':
-        specifier: ^6.0.3
-        version: 6.0.3
       '@vitest/coverage-v8':
         specifier: ^4.1.11
         version: 4.1.11
-      axios:
-        specifier: ^1.12.2
-        version: 1.13.2
-      bytes:
-        specifier: ^3.1.2
-        version: 3.1.2
       eslint:
         specifier: ^9.39.3
         version: 9.39.3
-      form-data:
-        specifier: ^4.0.4
-        version: 4.0.5
-      graphql:
-        specifier: ^16.11.0
-        version: 16.12.0
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
       rxjs:
         specifier: ^7.8.2
         version: 7.8.2
-      supertest:
-        specifier: ^7.1.4
-        version: 7.1.4
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -4536,9 +4575,6 @@ packages:
   '@types/braces@3.0.5':
     resolution: {integrity: sha512-SQFof9H+LXeWNz8wDe7oN5zu7ket0qwMu5vZubW4GCJ8Kkeh6nBWUz87+KTz/G3Kqsrp0j/W253XJb3KMEeg3w==}
 
-  '@types/bytes@3.1.5':
-    resolution: {integrity: sha512-VgZkrJckypj85YxEsEavcMmmSOIzkUHqWmM4CCyia5dc54YwsXzJ5uT4fYxBQNEXx+oF1krlhgCbvfubXqZYsQ==}
-
   '@types/chai@5.2.3':
     resolution: {integrity: sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA==}
 
@@ -5032,9 +5068,6 @@ packages:
   axe-core@4.11.1:
     resolution: {integrity: sha512-BASOg+YwO2C+346x3LZOeoovTIoTrRqEsqMa6fmfAV0P+U9mFr9NsyOEpiYvFjbc64NMrSswhV50WdXzdb/Z5A==}
     engines: {node: '>=4'}
-
-  axios@1.13.2:
-    resolution: {integrity: sha512-VPk9ebNqPcy5lRGuSlKx752IlDatOjT9paPlm8A7yOuW2Fbvp4X3JznJtT4f0GzGLLiWE9W8onz51SqLYwzGaA==}
 
   axios@1.16.0:
     resolution: {integrity: sha512-6hp5CwvTPlN2A31g5dxnwAX0orzM7pmCRDLnZSX772mv8WDqICwFjowHuPs04Mc8deIld1+ejhtaMn5vp6b+1w==}
@@ -5997,10 +6030,6 @@ packages:
 
   flatted@3.3.3:
     resolution: {integrity: sha512-GX+ysw4PBCz0PzosHDepZGANEuFCMLrnRTiEy9McGjmkCQYwRq4A/X786G/fjM/+OjsWSU1ZrY5qyARZmO/uwg==}
-
-  follow-redirects@1.15.9:
-    resolution: {integrity: sha512-gew4GsXizNgdoRyqmyfMHyAmXsZDk6mHkSxZFCzW9gwlbtOW44CDtYavM+y+72qD/Vq2l550kMF52DT8fOLJqQ==}
-    engines: {node: '>=4.0'}
 
   follow-redirects@1.16.0:
     resolution: {integrity: sha512-y5rN/uOsadFT/JfYwhxRS5R7Qce+g3zG97+JrtFZlC9klX/W5hD7iiLzScI4nZqUS7DNUdhPgw4xI8W2LuXlUw==}
@@ -7735,9 +7764,6 @@ packages:
   proxy-addr@2.0.7:
     resolution: {integrity: sha512-llQsMLSUDUPT44jdrU/O37qlnifitDP+ZwrmmZcoSKyLKvtZxpyV0n2/bD/N4tBAAZ/gJEdZU7KMraoK1+XYAg==}
     engines: {node: '>= 0.10'}
-
-  proxy-from-env@1.1.0:
-    resolution: {integrity: sha512-D+zkORCbA9f1tdWRK0RaCR3GPv50cMxcrz4X8k5LTSUD1Dkw47mKJEZQNunItRTkWwgtaUSo1RVFRIG9ZXiFYg==}
 
   proxy-from-env@2.1.0:
     resolution: {integrity: sha512-cJ+oHTW1VAEa8cJslgmUZrc+sjRKgAKl3Zyse6+PV38hZe/V6Z14TbCuXcan9F9ghlz4QrFr2c92TNF82UkYHA==}
@@ -11418,8 +11444,6 @@ snapshots:
 
   '@types/braces@3.0.5': {}
 
-  '@types/bytes@3.1.5': {}
-
   '@types/chai@5.2.3':
     dependencies:
       '@types/deep-eql': 4.0.2
@@ -11957,12 +11981,6 @@ snapshots:
   aws-ssl-profiles@1.1.2: {}
 
   axe-core@4.11.1: {}
-
-  axios@1.13.2:
-    dependencies:
-      follow-redirects: 1.15.9
-      form-data: 4.0.5
-      proxy-from-env: 1.1.0
 
   axios@1.16.0:
     dependencies:
@@ -13175,8 +13193,6 @@ snapshots:
   flat@5.0.2: {}
 
   flatted@3.3.3: {}
-
-  follow-redirects@1.15.9: {}
 
   follow-redirects@1.16.0: {}
 
@@ -15355,8 +15371,6 @@ snapshots:
     dependencies:
       forwarded: 0.2.0
       ipaddr.js: 1.9.1
-
-  proxy-from-env@1.1.0: {}
 
   proxy-from-env@2.1.0: {}
 

@@ -44,6 +44,11 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
 - 将 Apollo Playground 配置替换为 `graphiql`。
 - 使用 MikroORM 时升级到版本 7，并从受支持的包入口（例如
   `@mikro-orm/sql` 和 `@mikro-orm/sqlite`）导入 SQL 类型与驱动。
+- 将 `@nest-boot/file-upload` 替换为 `@nest-boot/staged-upload`。核心模块现在是
+  与传输层无关的全局模块；GraphQL 应用还必须安装并导入
+  `@nest-boot/graphql-staged-upload`，才能继续使用 `createStagedUploads` Mutation。
+  `StagedUploadInput`、`StagedUpload` 与 `StagedUploadField` 改从 GraphQL 包导入；
+  与传输层无关的服务类型使用 `StagedUploadRequest` 与 `StagedUploadResult`。
 - 切换 TypeScript 模块解析后，重新生成文件和迁移，确保生成的导入带有有效的
   ESM 扩展名。
 

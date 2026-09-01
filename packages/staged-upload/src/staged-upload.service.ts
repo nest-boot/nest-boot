@@ -11,9 +11,11 @@ import dayjs from "dayjs";
 import micromatch from "micromatch";
 import mimeTypes from "mime-types";
 
-import { StagedUploadInput } from "./inputs/staged-upload.input.js";
+import {
+  type StagedUploadRequest,
+  type StagedUploadResult,
+} from "./interfaces/staged-upload.interface.js";
 import { MODULE_OPTIONS_TOKEN } from "./staged-upload.module-definition.js";
-import { StagedUpload } from "./staged-upload.object.js";
 import { type StagedUploadModuleOptions } from "./staged-upload-options.interface.js";
 
 /**
@@ -54,7 +56,7 @@ export class StagedUploadService {
    * @param input - Upload requests with names, sizes, and MIME types
    * @returns An array of presigned POST data (URL and form fields)
    */
-  async create(input: StagedUploadInput[]): Promise<StagedUpload[]> {
+  async create(input: StagedUploadRequest[]): Promise<StagedUploadResult[]> {
     const results = input.map(async (item) => {
       const path = `${this.temporaryPath}/${randomUUID()}${extname(item.name)}`;
 

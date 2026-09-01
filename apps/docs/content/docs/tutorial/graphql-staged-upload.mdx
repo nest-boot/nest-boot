@@ -1,0 +1,78 @@
+---
+title: "GraphQL Staged Upload"
+description: "Expose staged upload creation through a GraphQL mutation."
+---
+
+`@nest-boot/graphql-staged-upload` exposes the transport-independent
+`@nest-boot/staged-upload` service through GraphQL. It provides the input and
+object types plus the `createStagedUploads` mutation; storage operations and
+upload policy remain in the core package.
+
+## Installation
+
+```bash
+pnpm add @nest-boot/graphql-staged-upload @nest-boot/graphql @nest-boot/staged-upload
+```
+
+Configure the Storage and Staged Upload modules as described in their
+respective tutorials. Their peer dependencies must also be installed.
+
+## Module Registration
+
+Register the global core modules once, then import the GraphQL adapter:
+
+```typescript
+import { GraphQLModule } from "@nest-boot/graphql";
+import { GraphQLStagedUploadModule } from "@nest-boot/graphql-staged-upload";
+import { StagedUploadModule } from "@nest-boot/staged-upload";
+import { StorageModule } from "@nest-boot/storage";
+import { Module } from "@nestjs/common";
+
+@Module({
+  imports: [
+    StorageModule,
+    StagedUploadModule.register({
+      temporaryPath: "/tmp",
+      permanentPath: "/files",
+      limits: [
+        {
+          fileSize: 10 * 1024 * 1024,
+          mimeTypes: ["image/*", "application/pdf"],
+        },
+      ],
+    }),
+    GraphQLModule,
+    GraphQLStagedUploadModule,
+  ],
+})
+export class AppModule {}
+```
+
+`GraphQLStagedUploadModule` has no configuration of its own and does not import
+an unconfigured `StagedUploadModule`. The application must register
+`StagedUploadModule.register()` or `registerAsync()` once before the resolver
+can use its globally exported service.
+
+## Mutation
+
+```graphql
+mutation CreateStagedUploads($input: [StagedUploadInput!]!) {
+  createStagedUploads(input: $input) {
+    url
+    fields {
+      name
+      value
+    }
+  }
+}
+```
+
+Each input contains `name`, `fileSize`, and `mimeType`. The result contains the
+presigned POST destination and every form field that the client must submit
+with the file. Validation, expiry, and object paths use the options registered
+with `StagedUploadModule`.
+
+## API Reference
+
+See the [GraphQL Staged Upload API Reference](/docs/api/graphql-staged-upload)
+and the [Staged Upload API Reference](/docs/api/staged-upload).

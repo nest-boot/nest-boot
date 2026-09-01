@@ -8,8 +8,10 @@ S3-compatible storage. By default, new objects are written below `/tmp`; after
 the application accepts them, `persist()` copies them to a dated `/files` path.
 Both paths are configurable.
 
-The module provides constrained presigned POST uploads through GraphQL and also
-supports uploads initiated directly by the application.
+The transport-independent service creates constrained presigned POST uploads,
+promotes accepted objects, and supports uploads initiated directly by the
+application. GraphQL support is provided separately by
+[`@nest-boot/graphql-staged-upload`](/docs/tutorial/graphql-staged-upload).
 
 ## Installation
 
@@ -17,9 +19,9 @@ supports uploads initiated directly by the application.
 pnpm add @nest-boot/staged-upload @nest-boot/storage @aws-sdk/client-s3 @aws-sdk/lib-storage @aws-sdk/s3-presigned-post @aws-sdk/s3-request-presigner
 ```
 
-Register the global `StorageModule` once in the root application.
-`StagedUploadModule` uses that storage instance for every temporary and
-permanent object operation.
+Register `StorageModule` and `StagedUploadModule` once in the root application.
+Both modules are global. Feature modules can inject `StagedUploadService`
+without importing either module again.
 
 ## Module Registration
 
@@ -80,23 +82,31 @@ their common parent rather than repeating either child path there.
 
 ### Create a Staged Upload
 
-`StagedUploadModule` registers a `createStagedUploads` GraphQL mutation. It accepts an array of names, byte sizes, and MIME types, validates each item against `limits`, and returns a presigned POST URL plus the required form fields:
+Call `create()` with an array of names, byte sizes, and MIME types. The service
+validates each item against `limits` and returns a presigned POST URL plus the
+required form fields:
 
-```graphql
-mutation CreateStagedUploads($input: [StagedUploadInput!]!) {
-  createStagedUploads(input: $input) {
-    url
-    fields {
-      name
-      value
-    }
-  }
-}
+```typescript
+const uploads = await stagedUploadService.create([
+  {
+    name: "avatar.png",
+    fileSize: 256_000,
+    mimeType: "image/png",
+  },
+]);
 ```
 
 The client must submit every returned field, the file body, and the same
 `Content-Type` to the returned URL. Generated object keys use the configured
 `temporaryPath`.
+
+### GraphQL Integration
+
+Install `@nest-boot/graphql-staged-upload` when the application should expose
+the built-in `createStagedUploads` mutation. The adapter contains only the
+GraphQL schema and resolver and uses the globally registered
+`StagedUploadService`. See the
+[GraphQL Staged Upload tutorial](/docs/tutorial/graphql-staged-upload).
 
 ### Promote a Temporary Object
 

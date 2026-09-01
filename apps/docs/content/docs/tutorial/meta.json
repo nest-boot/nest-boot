@@ -15,6 +15,7 @@
     "schedule",
     "graphql",
     "graphql-connection",
+    "graphql-staged-upload",
     "i18n",
     "logger",
     "mailer",

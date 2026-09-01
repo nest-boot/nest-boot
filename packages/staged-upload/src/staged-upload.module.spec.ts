@@ -1,19 +1,18 @@
-vi.mock("@nest-boot/graphql", () => {
-  const decorator = () => () => undefined;
-
-  return {
-    Args: decorator,
-    Field: decorator,
-    InputType: decorator,
-    Int: Number,
-    Mutation: decorator,
-    ObjectType: decorator,
-    Resolver: decorator,
-  };
-});
+import { StorageModule } from "@nest-boot/storage";
+import { Injectable, Module } from "@nestjs/common";
+import { Test } from "@nestjs/testing";
 
 import { StagedUploadModule } from "./staged-upload.module.js";
 import { MODULE_OPTIONS_TOKEN } from "./staged-upload.module-definition.js";
+import { StagedUploadService } from "./staged-upload.service.js";
+
+@Injectable()
+class StagedUploadConsumer {
+  constructor(readonly stagedUploadService: StagedUploadService) {}
+}
+
+@Module({ providers: [StagedUploadConsumer] })
+class FeatureModule {}
 
 describe("StagedUploadModule", () => {
   const options = {};
@@ -48,5 +47,21 @@ describe("StagedUploadModule", () => {
         },
       ]),
     );
+  });
+
+  it("should globally export StagedUploadService", async () => {
+    const moduleRef = await Test.createTestingModule({
+      imports: [
+        StorageModule.register({ bucket: "test-bucket" }),
+        StagedUploadModule.register(options),
+        FeatureModule,
+      ],
+    }).compile();
+
+    expect(moduleRef.get(StagedUploadConsumer).stagedUploadService).toBe(
+      moduleRef.get(StagedUploadService),
+    );
+
+    await moduleRef.close();
   });
 });

@@ -1,21 +1,21 @@
-import { type DynamicModule, Module } from "@nestjs/common";
+import { type DynamicModule, Global, Module } from "@nestjs/common";
 
 import {
   ASYNC_OPTIONS_TYPE,
   ConfigurableModuleClass,
   OPTIONS_TYPE,
 } from "./staged-upload.module-definition.js";
-import { StagedUploadResolver } from "./staged-upload.resolver.js";
 import { StagedUploadService } from "./staged-upload.service.js";
 
 /**
  * Module for staging temporary uploads and promoting accepted objects.
  *
  * @remarks
- * Registers {@link StagedUploadService} and the staged upload GraphQL resolver.
+ * Registers and globally exports {@link StagedUploadService}.
  */
+@Global()
 @Module({
-  providers: [StagedUploadService, StagedUploadResolver],
+  providers: [StagedUploadService],
   exports: [StagedUploadService],
 })
 export class StagedUploadModule extends ConfigurableModuleClass {

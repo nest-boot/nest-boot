@@ -47,6 +47,12 @@ provide a CommonJS `require` entry.
 - When using MikroORM, upgrade to version 7 and import SQL types and drivers
   from the supported package entry points such as `@mikro-orm/sql` and
   `@mikro-orm/sqlite`.
+- Replace `@nest-boot/file-upload` with `@nest-boot/staged-upload`. The core
+  module is now global and transport-independent. GraphQL applications must
+  also install and import `@nest-boot/graphql-staged-upload` to keep the
+  `createStagedUploads` mutation. Import `StagedUploadInput`, `StagedUpload`,
+  and `StagedUploadField` from the GraphQL package; use `StagedUploadRequest`
+  and `StagedUploadResult` for transport-independent service types.
 - Rebuild generated files and migrations after switching TypeScript module
   resolution so generated imports include valid ESM extensions.
 

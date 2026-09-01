@@ -14,7 +14,7 @@ import { StagedUpload } from "./staged-upload.object.js";
 import { StagedUploadField } from "./staged-upload-field.object.js";
 
 describe("staged upload GraphQL models", () => {
-  it("should store staged upload response fields", () => {
+  it("stores staged upload response fields", () => {
     const field = new StagedUploadField();
     field.name = "key";
     field.value = "tmp/file.png";
@@ -24,17 +24,12 @@ describe("staged upload GraphQL models", () => {
     upload.url = "https://s3.local/tmp/file.png";
 
     expect(upload).toEqual({
-      fields: [
-        {
-          name: "key",
-          value: "tmp/file.png",
-        },
-      ],
+      fields: [{ name: "key", value: "tmp/file.png" }],
       url: "https://s3.local/tmp/file.png",
     });
   });
 
-  it("should store upload input values", () => {
+  it("stores upload input values", () => {
     const input = new StagedUploadInput();
     input.fileSize = 123;
     input.mimeType = "image/png";

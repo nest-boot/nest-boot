@@ -1,8 +1,9 @@
 import { Field, InputType, Int } from "@nest-boot/graphql";
+import { type StagedUploadRequest } from "@nest-boot/staged-upload";
 
 /** GraphQL input for requesting a staged upload. */
 @InputType()
-export class StagedUploadInput {
+export class StagedUploadInput implements StagedUploadRequest {
   /** Original file name including extension. */
   @Field(() => String)
   name!: string;
@@ -11,7 +12,7 @@ export class StagedUploadInput {
   @Field(() => Int)
   fileSize!: number;
 
-  /** MIME type of the file (e.g. "image/png"). */
+  /** MIME type of the file. */
   @Field(() => String)
   mimeType!: string;
 }

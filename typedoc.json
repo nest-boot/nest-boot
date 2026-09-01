@@ -96,6 +96,7 @@
     "@nest-boot/graphql-connection",
     "@nest-boot/graphql-logger",
     "@nest-boot/graphql-rate-limit",
+    "@nest-boot/graphql-staged-upload",
     "@nest-boot/hash",
     "@nest-boot/i18n",
     "@nest-boot/logger",
