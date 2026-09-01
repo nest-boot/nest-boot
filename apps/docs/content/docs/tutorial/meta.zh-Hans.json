@@ -14,7 +14,6 @@
     "bullmq",
     "schedule",
     "graphql",
-    "graphql-staged-upload",
     "i18n",
     "logger",
     "mailer",

@@ -10,8 +10,8 @@ Both paths are configurable.
 
 The transport-independent service creates constrained presigned POST uploads,
 promotes accepted objects, and supports uploads initiated directly by the
-application. GraphQL support is provided separately by
-[`@nest-boot/graphql-staged-upload`](/docs/tutorial/graphql-staged-upload).
+application. Applications can optionally expose upload creation through
+GraphQL with the `@nest-boot/graphql-staged-upload` adapter described below.
 
 ## Installation
 
@@ -100,14 +100,6 @@ The client must submit every returned field, the file body, and the same
 `Content-Type` to the returned URL. Generated object keys use the configured
 `temporaryPath`.
 
-### GraphQL Integration
-
-Install `@nest-boot/graphql-staged-upload` when the application should expose
-the built-in `createStagedUploads` mutation. The adapter contains only the
-GraphQL schema and resolver and uses the globally registered
-`StagedUploadService`. See the
-[GraphQL Staged Upload tutorial](/docs/tutorial/graphql-staged-upload).
-
 ### Promote a Temporary Object
 
 After the client upload succeeds, pass the returned object URL to `persist()`.
@@ -146,6 +138,79 @@ const url = await stagedUploadService.upload(
   true,
 );
 ```
+
+## GraphQL Integration
+
+`@nest-boot/graphql-staged-upload` exposes staged upload creation through
+GraphQL. It provides the input and object types plus the
+`createStagedUploads` mutation; storage operations and upload policy remain in
+`@nest-boot/staged-upload`.
+
+### Installation
+
+```bash
+pnpm add @nest-boot/graphql-staged-upload @nest-boot/graphql
+```
+
+### Module Registration
+
+Register the global Storage and Staged Upload modules once, then import the
+GraphQL module and adapter:
+
+```typescript
+import { GraphQLModule } from "@nest-boot/graphql";
+import { GraphQLStagedUploadModule } from "@nest-boot/graphql-staged-upload";
+import { StagedUploadModule } from "@nest-boot/staged-upload";
+import { StorageModule } from "@nest-boot/storage";
+import { Module } from "@nestjs/common";
+
+@Module({
+  imports: [
+    StorageModule,
+    StagedUploadModule.register({
+      temporaryPath: "/tmp",
+      permanentPath: "/files",
+      limits: [
+        {
+          fileSize: 10 * 1024 * 1024,
+          mimeTypes: ["image/*", "application/pdf"],
+        },
+      ],
+    }),
+    GraphQLModule,
+    GraphQLStagedUploadModule,
+  ],
+})
+export class AppModule {}
+```
+
+`GraphQLStagedUploadModule` has no configuration of its own and does not import
+an unconfigured `StagedUploadModule`. The application must register
+`StagedUploadModule.register()` or `registerAsync()` once before the resolver
+can use its globally exported service.
+
+### Mutation
+
+```graphql
+mutation CreateStagedUploads($input: [StagedUploadInput!]!) {
+  createStagedUploads(input: $input) {
+    url
+    fields {
+      name
+      value
+    }
+  }
+}
+```
+
+Each input contains `name`, `fileSize`, and `mimeType`. The result contains the
+presigned POST destination and every form field that the client must submit
+with the file. Validation, expiry, and object paths use the options registered
+with `StagedUploadModule`.
+
+See the
+[GraphQL Staged Upload API Reference](/docs/api/graphql-staged-upload) for the
+adapter's schema and resolver APIs.
 
 ## Best Practices
 
