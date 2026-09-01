@@ -116,6 +116,9 @@ describe("StorageModule", () => {
     const module = await compile(
       StorageModule.register({
         bucket: "registered-bucket",
+        endpointUrl: "https://s3.public.example.com",
+        internalEndpointUrl: "http://s3.shared:9000",
+        publicEndpointUrl: "http://s3.shared:9000",
         region: "us-east-1",
       }),
     );
@@ -136,6 +139,8 @@ describe("StorageModule", () => {
   });
 
   it("requires both flattened credential values", async () => {
+    vi.stubEnv("STORAGE_SECRET_ACCESS_KEY", "");
+
     await expect(
       compile(
         StorageModule.register({
