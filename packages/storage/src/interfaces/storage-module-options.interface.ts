@@ -11,7 +11,10 @@ export interface StorageModuleOptions {
    */
   bucket?: string;
 
-  /** Whether `endpointUrl` already identifies the configured bucket. */
+  /**
+   * Whether `endpointUrl` already identifies the configured bucket.
+   * Trailing slashes in the endpoint path are normalized when enabled.
+   */
   bucketEndpoint?: boolean;
 
   /** External S3 endpoint used for uploads and as the public URL fallback. */
@@ -26,6 +29,7 @@ export interface StorageModuleOptions {
   /**
    * Whether `internalEndpointUrl` already identifies the configured bucket.
    * Defaults to `bucketEndpoint` when omitted.
+   * Trailing slashes in the endpoint path are normalized when enabled.
    */
   internalBucketEndpoint?: boolean;
 

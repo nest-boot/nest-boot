@@ -173,7 +173,8 @@ StorageModule.register({
 `STORAGE_BUCKET_ENDPOINT` 与 `STORAGE_INTERNAL_BUCKET_ENDPOINT`。
 
 启用任意开关时，都必须提供与之对应的 Endpoint URL。在该模式下，Storage 不会追加
-bucket，也不会对该 Endpoint 应用 `forcePathStyle`。
+bucket，也不会对该 Endpoint 应用 `forcePathStyle`。Storage 会先规范化 bucket-bound
+Endpoint 路径末尾的斜杠，再将其用于签名和对象操作。
 
 ## 使用 Storage
 

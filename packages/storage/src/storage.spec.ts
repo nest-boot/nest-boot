@@ -72,7 +72,7 @@ describe("Storage", () => {
       accessKeyId: "access-key",
       bucket: "uploads",
       bucketEndpoint: true,
-      endpointUrl: "https://cdn.example.com",
+      endpointUrl: "https://cdn.example.com/assets/",
       region: "us-east-1",
       rootPath: "private",
       secretAccessKey: "secret-key",
@@ -92,7 +92,7 @@ describe("Storage", () => {
     const command = getSignedUrlMock.mock.calls[0]?.[1];
     expect(command).toBeInstanceOf(GetObjectCommand);
     expect(command?.input).toEqual({
-      Bucket: "https://cdn.example.com",
+      Bucket: "https://cdn.example.com/assets",
       Key: "private/reports/file.txt",
       ResponseContentType: "text/plain",
     });
@@ -191,9 +191,9 @@ describe("Storage", () => {
     const { send, storage } = createStorage({
       bucket: "uploads",
       bucketEndpoint: true,
-      endpointUrl: "https://uploads.public.example.com",
+      endpointUrl: "https://uploads.public.example.com/assets/",
       internalBucketEndpoint: true,
-      internalEndpointUrl: "https://uploads.internal.example.com",
+      internalEndpointUrl: "https://uploads.internal.example.com/storage/",
     });
 
     await storage.writeFile("file.txt", "content");
@@ -201,15 +201,15 @@ describe("Storage", () => {
     await storage.createTemporaryUrl("file.txt");
 
     expect(commandAt(send, 0, PutObjectCommand).input.Bucket).toBe(
-      "https://uploads.internal.example.com",
+      "https://uploads.internal.example.com/storage",
     );
     expect(commandAt(send, 1, DeleteObjectCommand).input.Bucket).toBe(
-      "https://uploads.internal.example.com",
+      "https://uploads.internal.example.com/storage",
     );
     const signedCommand = getSignedUrlMock.mock.calls.at(-1)?.[1];
     expect(signedCommand).toBeInstanceOf(GetObjectCommand);
     expect(signedCommand?.input.Bucket).toBe(
-      "https://uploads.public.example.com",
+      "https://uploads.public.example.com/assets",
     );
   });
 

@@ -183,7 +183,8 @@ environment equivalents are `STORAGE_BUCKET_ENDPOINT` and
 
 Each enabled switch requires its corresponding Endpoint URL. In this mode,
 Storage does not append the bucket and does not apply `forcePathStyle` to that
-Endpoint.
+Endpoint. Trailing slashes in bucket-bound Endpoint paths are normalized before
+the URL is used for signing or object operations.
 
 ## Use Storage
 

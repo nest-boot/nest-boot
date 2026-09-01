@@ -69,15 +69,17 @@ export class Storage {
       throw new Error("Storage bucketEndpoint requires endpointUrl");
     }
 
-    this.bucket = options.bucket;
-    this.endpointUrl = options.endpointUrl;
-    this.rootPath = normalizePath(options.rootPath ?? "");
-
     const bucketEndpoint = options.bucketEndpoint ?? false;
+    const endpointUrl = normalizeBucketEndpointUrl(
+      options.endpointUrl,
+      bucketEndpoint,
+    );
     const internalBucketEndpoint =
       options.internalBucketEndpoint ?? bucketEndpoint;
-    const internalEndpointUrl =
-      options.internalEndpointUrl ?? options.endpointUrl;
+    const internalEndpointUrl = normalizeBucketEndpointUrl(
+      options.internalEndpointUrl ?? options.endpointUrl,
+      internalBucketEndpoint,
+    );
 
     if (internalBucketEndpoint && !internalEndpointUrl) {
       throw new Error(
@@ -85,17 +87,21 @@ export class Storage {
       );
     }
 
+    this.bucket = options.bucket;
+    this.endpointUrl = endpointUrl;
+    this.rootPath = normalizePath(options.rootPath ?? "");
+
     this.client = new S3Client(
-      createS3ClientConfig(options, options.endpointUrl, bucketEndpoint),
+      createS3ClientConfig(options, endpointUrl, bucketEndpoint),
     );
     this.clientBucket =
-      bucketEndpoint && options.endpointUrl ? options.endpointUrl : this.bucket;
+      bucketEndpoint && endpointUrl ? endpointUrl : this.bucket;
     this.internalClientBucket =
       internalBucketEndpoint && internalEndpointUrl
         ? internalEndpointUrl
         : this.bucket;
     this.internalClient =
-      internalEndpointUrl === options.endpointUrl &&
+      internalEndpointUrl === endpointUrl &&
       internalBucketEndpoint === bucketEndpoint
         ? this.client
         : new S3Client(
@@ -713,6 +719,19 @@ function createS3ClientConfig(
 function ensureTrailingSlash(endpointUrl: string): string {
   const url = new URL(endpointUrl);
   url.pathname = `${url.pathname.replace(/\/$/, "")}/`;
+  return url.toString();
+}
+
+function normalizeBucketEndpointUrl(
+  endpointUrl: string | undefined,
+  bucketEndpoint: boolean,
+): string | undefined {
+  if (!endpointUrl || !bucketEndpoint) {
+    return endpointUrl;
+  }
+
+  const url = new URL(endpointUrl);
+  url.pathname = url.pathname.replace(/\/+$/, "");
   return url.toString();
 }
 
