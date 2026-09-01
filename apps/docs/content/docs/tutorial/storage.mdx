@@ -56,7 +56,7 @@ STORAGE_FORCE_PATH_STYLE=true
 | `STORAGE_SECRET_ACCESS_KEY` | `secretAccessKey` | Secret key for S3-compatible authentication.                          |
 | `STORAGE_REGION`            | `region`          | Region used for request signing and endpoint resolution.              |
 | `STORAGE_ENDPOINT_URL`      | `endpointUrl`     | Endpoint used for direct and temporary URLs.                          |
-| `STORAGE_ROOT_PATH`         | `rootPath`        | Optional key prefix applied to every storage path.                    |
+| `STORAGE_ROOT_PATH`         | `rootPath`        | Key prefix applied to every path; defaults to the bucket root `/`.    |
 | `STORAGE_FORCE_PATH_STYLE`  | `forcePathStyle`  | Uses `/bucket/key` addressing instead of bucket subdomain addressing. |
 
 `bucket` is required. Credentials are optional when the runtime already
@@ -201,7 +201,8 @@ export class DocumentsService {
 
 ### Path scope
 
-All method paths are relative to `rootPath`. With a `rootPath` of
+All method paths are relative to `rootPath`. It defaults to the bucket root
+(`/`), represented by an empty key prefix. With a `rootPath` of
 `tenants/acme`, the following call writes the object key
 `tenants/acme/documents/report.txt`:
 

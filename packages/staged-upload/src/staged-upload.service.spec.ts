@@ -14,6 +14,32 @@ describe("StagedUploadService", () => {
     vi.resetAllMocks();
   });
 
+  describe("configuration", () => {
+    it("rejects empty or ambiguous storage paths", async () => {
+      await expect(
+        createService({ temporaryPath: "/" }, createStorage().value),
+      ).rejects.toThrow(
+        "temporaryPath must contain valid storage path segments",
+      );
+      await expect(
+        createService(
+          { permanentPath: "/accepted/../files" },
+          createStorage().value,
+        ),
+      ).rejects.toThrow(
+        "permanentPath must contain valid storage path segments",
+      );
+      await expect(
+        createService(
+          { temporaryPath: "/staging\\pending" },
+          createStorage().value,
+        ),
+      ).rejects.toThrow(
+        "temporaryPath must contain valid storage path segments",
+      );
+    });
+  });
+
   describe("create", () => {
     it("creates constrained uploads and rewrites a custom public URL", async () => {
       const storage = createStorage();
@@ -96,6 +122,27 @@ describe("StagedUploadService", () => {
       );
     });
 
+    it("creates uploads below the configured temporary path", async () => {
+      const storage = createStorage();
+      const service = await createService(
+        { temporaryPath: "/staging/pending/" },
+        storage.value,
+      );
+
+      await service.create([
+        {
+          fileSize: 512,
+          mimeType: "image/jpeg",
+          name: "avatar.jpeg",
+        },
+      ]);
+
+      expect(storage.createTemporaryUploadUrl).toHaveBeenCalledWith(
+        expect.stringMatching(/^staging\/pending\/.+\.jpeg$/),
+        expect.any(Object),
+      );
+    });
+
     it("rejects uploads that do not match configured limits", async () => {
       const storage = createStorage();
       const service = await createService(
@@ -159,6 +206,32 @@ describe("StagedUploadService", () => {
       expect(storage.copyFile).toHaveBeenCalledWith(
         "tmp/photo one.jpeg",
         "files/2026/01/31/photo one.jpeg",
+      );
+    });
+
+    it("uses configured multi-segment temporary and permanent paths", async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-01-31T12:00:00.000Z"));
+      const storage = createStorage();
+      const service = await createService(
+        {
+          permanentPath: "/accepted/files/",
+          temporaryPath: "/staging/pending/",
+        },
+        storage.value,
+      );
+
+      await expect(
+        service.persist(
+          "https://storage.local/staging/pending/root/staging/pending/photo%20one.jpeg",
+        ),
+      ).resolves.toBe(
+        "https://storage.local/accepted/files/2026/01/31/photo one.jpeg",
+      );
+
+      expect(storage.copyFile).toHaveBeenCalledWith(
+        "staging/pending/photo one.jpeg",
+        "accepted/files/2026/01/31/photo one.jpeg",
       );
     });
 
@@ -289,6 +362,33 @@ describe("StagedUploadService", () => {
       ).resolves.toMatch(/^https:\/\/storage\.local\/files\//);
 
       expect(storage.copyFile).toHaveBeenCalledOnce();
+    });
+
+    it("uses configured paths for direct persistent uploads", async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-01-31T12:00:00.000Z"));
+      const storage = createStorage();
+      const service = await createService(
+        {
+          permanentPath: "/accepted/files",
+          temporaryPath: "/staging/pending",
+        },
+        storage.value,
+      );
+
+      await service.upload(
+        Buffer.from("hello"),
+        { "Content-Type": "application/octet-stream" },
+        true,
+      );
+
+      const temporaryPath = String(storage.writeFile.mock.calls[0]?.[0]);
+      const filename = temporaryPath.slice("staging/pending/".length);
+      expect(temporaryPath).toMatch(/^staging\/pending\/[^/]+\.bin$/);
+      expect(storage.copyFile).toHaveBeenCalledWith(
+        temporaryPath,
+        `accepted/files/2026/01/31/${filename}`,
+      );
     });
 
     it("uses bin when the MIME type has no known extension", async () => {

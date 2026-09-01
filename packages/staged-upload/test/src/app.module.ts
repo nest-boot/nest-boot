@@ -12,6 +12,8 @@ const ConfigDynamicModule = ConfigModule.forRoot({ isGlobal: true });
 const StagedUploadDynamicModule = StagedUploadModule.registerAsync({
   useFactory: () => {
     return {
+      permanentPath: "/accepted/files",
+      temporaryPath: "/temporary/uploads",
       limits: [
         {
           // eslint-disable-next-line @typescript-eslint/no-non-null-assertion

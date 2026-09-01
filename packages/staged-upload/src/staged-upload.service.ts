@@ -25,6 +25,10 @@ import { type StagedUploadModuleOptions } from "./staged-upload-options.interfac
  */
 @Injectable()
 export class StagedUploadService {
+  private readonly permanentPath: string;
+  private readonly temporaryPath: string;
+  private readonly temporaryPathSegments: string[];
+
   /** Creates a new StagedUploadService instance.
    * @param options - Staged upload module configuration options
    * @param storage - Storage service provided by the global StorageModule
@@ -33,7 +37,17 @@ export class StagedUploadService {
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly options: StagedUploadModuleOptions,
     private readonly storage: Storage,
-  ) {}
+  ) {
+    this.temporaryPath = normalizeConfiguredPath(
+      options.temporaryPath ?? "/tmp",
+      "temporaryPath",
+    );
+    this.permanentPath = normalizeConfiguredPath(
+      options.permanentPath ?? "/files",
+      "permanentPath",
+    );
+    this.temporaryPathSegments = this.temporaryPath.split("/");
+  }
 
   /**
    * Creates presigned POST URLs for uploading files.
@@ -42,7 +56,7 @@ export class StagedUploadService {
    */
   async create(input: StagedUploadInput[]): Promise<StagedUpload[]> {
     const results = input.map(async (item) => {
-      const path = `tmp/${randomUUID()}${extname(item.name)}`;
+      const path = `${this.temporaryPath}/${randomUUID()}${extname(item.name)}`;
 
       const limit = this.options.limits?.find(
         (v) =>
@@ -131,7 +145,7 @@ export class StagedUploadService {
       throw new BadRequestException("Invalid file extension");
     }
 
-    const filePath = `tmp/${randomUUID()}.${extension}`;
+    const filePath = `${this.temporaryPath}/${randomUUID()}.${extension}`;
 
     await this.storage.writeFile(filePath, data, {
       ContentType: metadata["Content-Type"],
@@ -150,16 +164,17 @@ export class StagedUploadService {
 
   /** Copies a storage-relative temporary path to its permanent dated path. */
   private async persistPath(temporaryPath: string): Promise<string> {
-    if (!temporaryPath.startsWith("tmp/")) {
+    const temporaryPrefix = `${this.temporaryPath}/`;
+    if (!temporaryPath.startsWith(temporaryPrefix)) {
       throw new BadRequestException("Invalid temporary upload path");
     }
 
-    const temporaryKey = temporaryPath.slice("tmp/".length);
+    const temporaryKey = temporaryPath.slice(temporaryPrefix.length);
     if (!temporaryKey) {
       throw new BadRequestException("Invalid temporary upload path");
     }
 
-    const targetPath = `files/${dayjs().format("YYYY/MM/DD")}/${temporaryKey}`;
+    const targetPath = `${this.permanentPath}/${dayjs().format("YYYY/MM/DD")}/${temporaryKey}`;
     await this.storage.copyFile(temporaryPath, targetPath);
 
     return await this.getFileUrl(targetPath);
@@ -178,23 +193,65 @@ export class StagedUploadService {
       throw new BadRequestException("Invalid temporary upload URL");
     }
 
-    const temporaryIndex = segments.lastIndexOf("tmp");
-    const temporarySegments = segments.slice(temporaryIndex);
+    const temporaryIndex = findLastPathSequence(
+      segments,
+      this.temporaryPathSegments,
+    );
+    const objectSegments = segments.slice(
+      temporaryIndex + this.temporaryPathSegments.length,
+    );
     if (
       temporaryIndex < 0 ||
-      temporarySegments.length < 2 ||
-      temporarySegments.some(
-        (segment) =>
-          !segment ||
-          segment === "." ||
-          segment === ".." ||
-          segment.includes("/") ||
-          segment.includes("\\"),
-      )
+      objectSegments.length < 1 ||
+      objectSegments.some((segment) => !isValidPathSegment(segment))
     ) {
       throw new BadRequestException("Invalid temporary upload URL");
     }
 
-    return temporarySegments.join("/");
+    return `${this.temporaryPath}/${objectSegments.join("/")}`;
   }
+}
+
+function normalizeConfiguredPath(path: string, optionName: string): string {
+  const segments = path.split("/").filter(Boolean);
+
+  if (
+    segments.length === 0 ||
+    segments.some((segment) => !isValidPathSegment(segment))
+  ) {
+    throw new Error(`${optionName} must contain valid storage path segments`);
+  }
+
+  return segments.join("/");
+}
+
+function findLastPathSequence(
+  pathSegments: string[],
+  expectedSegments: string[],
+): number {
+  for (
+    let index = pathSegments.length - expectedSegments.length - 1;
+    index >= 0;
+    index -= 1
+  ) {
+    if (
+      expectedSegments.every(
+        (expected, offset) => pathSegments[index + offset] === expected,
+      )
+    ) {
+      return index;
+    }
+  }
+
+  return -1;
+}
+
+function isValidPathSegment(segment: string): boolean {
+  return (
+    Boolean(segment) &&
+    segment !== "." &&
+    segment !== ".." &&
+    !segment.includes("/") &&
+    !segment.includes("\\")
+  );
 }

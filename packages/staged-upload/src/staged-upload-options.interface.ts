@@ -12,6 +12,10 @@ export interface StagedUploadModuleOptions {
   url?: string;
   /** Presigned URL expiration time in seconds (defaults to 3600). */
   expires?: number;
+  /** Temporary upload path relative to Storage rootPath (defaults to "/tmp"). */
+  temporaryPath?: string;
+  /** Persisted upload path relative to Storage rootPath (defaults to "/files"). */
+  permanentPath?: string;
   /** Staged upload constraints pairing size and MIME type limits. */
   limits?: StagedUploadLimit[];
 }

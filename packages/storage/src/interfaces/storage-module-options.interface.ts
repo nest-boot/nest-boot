@@ -33,7 +33,8 @@ export interface StorageModuleOptions {
   region?: string;
 
   /**
-   * Optional key prefix that scopes every storage path.
+   * Optional key prefix that scopes every storage path. Defaults to the bucket
+   * root (`/`), represented internally by an empty prefix.
    *
    * @remarks
    * When omitted, the module reads `STORAGE_ROOT_PATH` from the environment.

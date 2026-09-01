@@ -197,6 +197,7 @@ describeIfS3Configured("StagedUploadModule - e2e", () => {
     fileTmpUrl = response.data.match(/<Location>(.*?)<\/Location>/)[1];
 
     expect(fileTmpUrl).toBeTruthy();
+    expect(fileTmpUrl).toContain("/temporary/uploads/");
   }, 10000);
 
   it("should successfully persists the temporary file", async () => {
@@ -205,6 +206,7 @@ describeIfS3Configured("StagedUploadModule - e2e", () => {
     const fileUrl = await stagedUploadService.persist(fileTmpUrl);
 
     expect(fileUrl).toBeTruthy();
+    expect(fileUrl).toContain("/accepted/files/");
   }, 10000);
 
   it("should successfully upload temporary file", async () => {
@@ -215,7 +217,7 @@ describeIfS3Configured("StagedUploadModule - e2e", () => {
     });
 
     expect(tmpFileUrl).toBeTruthy();
-    expect(tmpFileUrl).toContain("tmp");
+    expect(tmpFileUrl).toContain("/temporary/uploads/");
   }, 10000);
 
   it("should successfully upload persistent file", async () => {
@@ -231,7 +233,7 @@ describeIfS3Configured("StagedUploadModule - e2e", () => {
     );
 
     expect(fileUrl).toBeTruthy();
-    expect(fileUrl).toContain("file");
+    expect(fileUrl).toContain("/accepted/files/");
     expect(fileUrl).toContain(".my%20file");
   }, 10000);
 

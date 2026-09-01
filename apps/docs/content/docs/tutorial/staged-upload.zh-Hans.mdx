@@ -3,8 +3,8 @@ title: "分阶段上传"
 description: "将带约束的上传暂存为临时对象，并在业务确认后持久化。"
 ---
 
-`@nest-boot/staged-upload` 为 S3 兼容存储实现两阶段上传流程。新对象先写入
-`tmp/`，业务确认后再通过 `persist()` 复制到按日期组织的 `files/` 路径。
+`@nest-boot/staged-upload` 为 S3 兼容存储实现两阶段上传流程。默认情况下，新对象先写入
+`/tmp`，业务确认后再通过 `persist()` 复制到按日期组织的 `/files` 路径。两个路径均可配置。
 
 模块通过 GraphQL 提供带约束的 presigned POST，也支持由应用直接发起上传。
 
@@ -30,6 +30,8 @@ const StagedUploadDynamicModule = StagedUploadModule.registerAsync({
   useFactory: (configService: ConfigService) => ({
     url: configService.get("STAGED_UPLOAD_URL"),
     expires: 3600,
+    temporaryPath: "/tmp",
+    permanentPath: "/files",
     limits: [
       {
         fileSize: 10 * 1024 * 1024,
@@ -50,11 +52,22 @@ Endpoint 和 Bucket Endpoint 请参阅 [Storage 教程](/docs/tutorial/storage)�
 
 ### 配置选项
 
-| 选项      | 描述                                                                                   |
-| --------- | -------------------------------------------------------------------------------------- |
-| `url`     | 可选的公开前缀，用于替换生成的 presigned POST URL 的 origin/path                       |
-| `expires` | presigned POST 的有效秒数，默认为 `3600`                                               |
-| `limits`  | 可接受的 `{ fileSize, mimeTypes }` 组合；MIME pattern 使用 micromatch 的 glob 匹配语义 |
+| 选项            | 描述                                                                                   |
+| --------------- | -------------------------------------------------------------------------------------- |
+| `url`           | 可选的公开前缀，用于替换生成的 presigned POST URL 的 origin/path                       |
+| `expires`       | presigned POST 的有效秒数，默认为 `3600`                                               |
+| `temporaryPath` | 临时对象路径，默认为 `/tmp`                                                            |
+| `permanentPath` | 持久化后的对象路径，默认为 `/files`                                                    |
+| `limits`        | 可接受的 `{ fileSize, mimeTypes }` 组合；MIME pattern 使用 micromatch 的 glob 匹配语义 |
+
+`temporaryPath` 与 `permanentPath` 的前后斜杠会被规范化。每个路径必须至少包含一个
+有效路径段，并且不能使用 `.` 或 `..` 路径段。
+
+两个路径都相对于 `StorageModule.rootPath`。例如 `rootPath` 为
+`/video-localization` 时，默认配置最终使用 `video-localization/tmp/` 和
+`video-localization/files/` 对象 key。模块选项中的前导斜杠只表示逻辑路径，
+不会成为 S3 对象 key 的前导斜杠。路径始终按层级组合，不会自动去重，因此应把
+`rootPath` 配置为两个子路径的共同父路径，不要在其中重复任一子路径。
 
 ## 用法
 
@@ -75,12 +88,12 @@ mutation CreateStagedUploads($input: [StagedUploadInput!]!) {
 ```
 
 客户端必须把全部返回字段、文件内容以及相同的 `Content-Type` 提交到返回的 URL。
-生成的对象 key 使用 `tmp/` 前缀。
+生成的对象 key 使用配置的 `temporaryPath`。
 
 ### 持久化临时对象
 
 客户端上传成功后，把返回的对象 URL 传给 `persist()`。服务会识别临时路径，并将
-对象复制到 `files/YYYY/MM/DD/...`：
+对象复制到 `<permanentPath>/YYYY/MM/DD/...`：
 
 ```typescript
 import { StagedUploadService } from "@nest-boot/staged-upload";
@@ -102,8 +115,8 @@ storage root。大小和 MIME 验证发生在 `create()` 创建预签名上传�
 
 ### 从应用直接上传
 
-应用已经持有文件数据时可使用 `upload()`。第三个参数传入 `true`，会先写入 `tmp/`，
-随后直接使用原始对象路径复制到永久存储：
+应用已经持有文件数据时可使用 `upload()`。第三个参数传入 `true`，会先写入
+`temporaryPath`，随后直接使用原始对象路径复制到 `permanentPath`：
 
 ```typescript
 const url = await stagedUploadService.upload(
@@ -119,7 +132,7 @@ const url = await stagedUploadService.upload(
 
 2. **合理的大小限制** — 定义一个或多个 `limits` 条目，把最大字节数与 MIME glob pattern 配对。
 
-3. **清理临时对象** — `persist()` 会复制但不会删除 `tmp/` 源对象；请为临时 key 配置 S3 生命周期规则。
+3. **清理临时对象** — `persist()` 会复制但不会删除源对象；请为最终的 `<rootPath>/<temporaryPath>/` 前缀配置 S3 生命周期规则。
 
 ## API 参考
 

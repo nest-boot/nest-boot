@@ -53,7 +53,7 @@ STORAGE_FORCE_PATH_STYLE=true
 | `STORAGE_SECRET_ACCESS_KEY` | `secretAccessKey` | S3 兼容认证使用的 Secret Key。                           |
 | `STORAGE_REGION`            | `region`          | 请求签名和 Endpoint 解析使用的区域。                     |
 | `STORAGE_ENDPOINT_URL`      | `endpointUrl`     | 生成直连与临时 URL 使用的 Endpoint。                     |
-| `STORAGE_ROOT_PATH`         | `rootPath`        | 应用于所有存储路径的可选 key prefix。                    |
+| `STORAGE_ROOT_PATH`         | `rootPath`        | 应用于所有路径的 key prefix；默认为 bucket 根目录 `/`。  |
 | `STORAGE_FORCE_PATH_STYLE`  | `forcePathStyle`  | 使用 `/bucket/key`，而不是 bucket 子域名形式的寻址方式。 |
 
 `bucket` 是必填项。如果运行环境已经通过标准凭证提供链提供认证信息，则可以不配置
@@ -191,8 +191,9 @@ export class DocumentsService {
 
 ### 路径作用域
 
-所有方法的路径都相对于 `rootPath`。当 `rootPath` 为 `tenants/acme` 时，下面的调用
-实际写入对象 key `tenants/acme/documents/report.txt`：
+所有方法的路径都相对于 `rootPath`。它默认为 bucket 根目录 `/`，内部使用空 key prefix
+表示。当 `rootPath` 为 `tenants/acme` 时，下面的调用实际写入对象 key
+`tenants/acme/documents/report.txt`：
 
 ```typescript
 await storage.writeFile("documents/report.txt", "ready");

@@ -4,8 +4,9 @@ description: "Stage constrained uploads temporarily and promote accepted objects
 ---
 
 `@nest-boot/staged-upload` implements a two-stage upload workflow for
-S3-compatible storage. New objects are written below `tmp/`; after the
-application accepts them, `persist()` copies them to a dated `files/` path.
+S3-compatible storage. By default, new objects are written below `/tmp`; after
+the application accepts them, `persist()` copies them to a dated `/files` path.
+Both paths are configurable.
 
 The module provides constrained presigned POST uploads through GraphQL and also
 supports uploads initiated directly by the application.
@@ -33,6 +34,8 @@ const StagedUploadDynamicModule = StagedUploadModule.registerAsync({
   useFactory: (configService: ConfigService) => ({
     url: configService.get("STAGED_UPLOAD_URL"),
     expires: 3600,
+    temporaryPath: "/tmp",
+    permanentPath: "/files",
     limits: [
       {
         fileSize: 10 * 1024 * 1024,
@@ -54,11 +57,24 @@ internal Endpoint, and Bucket Endpoint configuration.
 
 ### Configuration Options
 
-| Option    | Description                                                                                  |
-| --------- | -------------------------------------------------------------------------------------------- |
-| `url`     | Optional public prefix that replaces the origin/path of generated presigned POST URLs        |
-| `expires` | Presigned POST lifetime in seconds; defaults to `3600`                                       |
-| `limits`  | Accepted `{ fileSize, mimeTypes }` combinations; MIME patterns use micromatch glob semantics |
+| Option          | Description                                                                                  |
+| --------------- | -------------------------------------------------------------------------------------------- |
+| `url`           | Optional public prefix that replaces the origin/path of generated presigned POST URLs        |
+| `expires`       | Presigned POST lifetime in seconds; defaults to `3600`                                       |
+| `temporaryPath` | Temporary object path; defaults to `/tmp`                                                    |
+| `permanentPath` | Persisted object path; defaults to `/files`                                                  |
+| `limits`        | Accepted `{ fileSize, mimeTypes }` combinations; MIME patterns use micromatch glob semantics |
+
+Leading and trailing slashes in `temporaryPath` and `permanentPath` are
+normalized. Each path must contain at least one valid segment and cannot use
+`.` or `..` segments.
+
+Both paths are relative to `StorageModule.rootPath`. For example, with a
+`rootPath` of `/video-localization`, the default paths produce object keys below
+`video-localization/tmp/` and `video-localization/files/`. The leading slash in
+the module options is logical; S3 object keys do not receive a leading slash.
+The paths are always composed and are not deduplicated, so use `rootPath` as
+their common parent rather than repeating either child path there.
 
 ## Usage
 
@@ -79,13 +95,14 @@ mutation CreateStagedUploads($input: [StagedUploadInput!]!) {
 ```
 
 The client must submit every returned field, the file body, and the same
-`Content-Type` to the returned URL. Generated object keys use the `tmp/` prefix.
+`Content-Type` to the returned URL. Generated object keys use the configured
+`temporaryPath`.
 
 ### Promote a Temporary Object
 
 After the client upload succeeds, pass the returned object URL to `persist()`.
 The service identifies the temporary path and copies the object to
-`files/YYYY/MM/DD/...`:
+`<permanentPath>/YYYY/MM/DD/...`:
 
 ```typescript
 import { StagedUploadService } from "@nest-boot/staged-upload";
@@ -109,8 +126,8 @@ the temporary source.
 ### Upload from the Application
 
 Use `upload()` when the application already has the file data. Pass `true` as
-the third argument to write to `tmp/` and immediately copy the original object
-path to permanent storage:
+the third argument to write below `temporaryPath` and immediately copy the
+original object path below `permanentPath`:
 
 ```typescript
 const url = await stagedUploadService.upload(
@@ -126,7 +143,7 @@ const url = await stagedUploadService.upload(
 
 2. **Reasonable Size Limits** — Define one or more `limits` entries that pair a maximum byte size with MIME glob patterns.
 
-3. **Temporary Object Cleanup** — `persist()` copies objects but does not delete the `tmp/` source; configure an S3 lifecycle rule for temporary keys.
+3. **Temporary Object Cleanup** — `persist()` copies objects but does not delete the source; configure an S3 lifecycle rule for the effective `<rootPath>/<temporaryPath>/` prefix.
 
 ## API Reference
 
