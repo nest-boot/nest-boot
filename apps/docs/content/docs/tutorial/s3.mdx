@@ -33,7 +33,7 @@ export class AppModule {}
 | `S3_REGION`            | Optional AWS region                                          |
 | `S3_FORCE_PATH_STYLE`  | Set to `true` for path-style bucket URLs                     |
 
-When credentials or a region are omitted, the AWS SDK uses its default provider chains. `S3_BUCKET` belongs to consumers such as `@nest-boot/file-upload`; it is not an `S3Client` option.
+When credentials or a region are omitted, the AWS SDK uses its default provider chains. `S3_BUCKET` belongs to consumers such as `@nest-boot/storage` and `@nest-boot/file-upload`; it is not an `S3Client` option.
 
 ## Explicit Configuration
 

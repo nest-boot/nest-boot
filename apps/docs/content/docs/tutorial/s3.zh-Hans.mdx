@@ -33,7 +33,7 @@ export class AppModule {}
 | `S3_REGION`            | 可选的 AWS region                                  |
 | `S3_FORCE_PATH_STYLE`  | 设为 `true` 时使用 path-style bucket URL           |
 
-未提供凭证或 region 时，AWS SDK 会使用默认 provider chain。`S3_BUCKET` 属于 `@nest-boot/file-upload` 等消费模块，并不是 `S3Client` 配置项。
+未提供凭证或 region 时，AWS SDK 会使用默认 provider chain。`S3_BUCKET` 属于 `@nest-boot/storage`、`@nest-boot/file-upload` 等消费模块，并不是 `S3Client` 配置项。
 
 ## 显式配置
 

@@ -1,0 +1,142 @@
+---
+title: "Storage"
+description: "Use Laravel-inspired file operations with an S3-compatible object store."
+---
+
+The `@nest-boot/storage` module provides Laravel-inspired file operations and Node.js-style file I/O on top of the global `S3Client` from `@nest-boot/s3`. Paths are relative to an optional storage root, listings are automatically paginated, and S3 prefixes are exposed as directories.
+
+## Installation
+
+```bash
+pnpm add @nest-boot/storage @nest-boot/s3 @aws-sdk/client-s3 @aws-sdk/lib-storage
+```
+
+`@nest-boot/s3` is a peer dependency. Register `S3Module` and `StorageModule` once in the root application; both modules expose their providers globally.
+
+## Environment Configuration
+
+Direct module imports read the S3 client variables documented by the [S3 module](/docs/tutorial/s3), plus `S3_BUCKET` for storage operations:
+
+```typescript
+import { S3Module } from "@nest-boot/s3";
+import { StorageModule } from "@nest-boot/storage";
+import { Module } from "@nestjs/common";
+
+@Module({
+  imports: [S3Module, StorageModule],
+})
+export class AppModule {}
+```
+
+```dotenv
+S3_ACCESS_KEY_ID=minio
+S3_SECRET_ACCESS_KEY=password
+S3_REGION=us-east-1
+S3_ENDPOINT_URL=http://localhost:9000
+S3_BUCKET=uploads
+S3_FORCE_PATH_STYLE=true
+```
+
+There is no `S3_ROOT` environment variable. Configure a root explicitly when a storage instance must be limited to a key prefix.
+
+## Explicit Configuration
+
+Use `register()` to select a bucket and key root:
+
+```typescript
+StorageModule.register({
+  bucket: "uploads",
+  root: "tenants/acme",
+});
+```
+
+All paths passed to `Storage` remain relative to `tenants/acme`. The returned file and directory paths do not expose that root.
+
+Use `registerAsync()` when another provider supplies the options:
+
+```typescript
+import { ConfigService } from "@nestjs/config";
+
+StorageModule.registerAsync({
+  inject: [ConfigService],
+  useFactory: (config: ConfigService) => ({
+    bucket: config.getOrThrow("S3_BUCKET"),
+    root: config.get("STORAGE_ROOT"),
+  }),
+});
+```
+
+## File Operations
+
+Inject `Storage` into any provider:
+
+```typescript
+import { Storage } from "@nest-boot/storage";
+import { Injectable } from "@nestjs/common";
+
+@Injectable()
+export class DocumentsService {
+  constructor(private readonly storage: Storage) {}
+
+  async publish(): Promise<void> {
+    await this.storage.writeFile("documents/report.txt", "ready", {
+      ContentType: "text/plain",
+    });
+    await this.storage.copyFile("documents/report.txt", "archive/report.txt");
+    await this.storage.moveFile("archive/report.txt", "published/report.txt");
+    await this.storage.deleteFile([
+      "documents/report.txt",
+      "published/report.txt",
+    ]);
+  }
+}
+```
+
+`writeFile`, `copyFile`, `moveFile`, and `deleteFile` resolve when S3 accepts the operation and reject with the AWS SDK error otherwise. `deleteFile` accepts one path or an array and automatically splits batches at the S3 limit of 1,000 objects.
+
+## Node.js-style File I/O
+
+`readFile()` returns a `Buffer` by default, or a string when an encoding is provided. `writeFile()` accepts strings, array buffer views, iterables, and async iterables, and replaces the destination object:
+
+```typescript
+await storage.writeFile("documents/status.txt", "ready", "utf8");
+
+const buffer = await storage.readFile("documents/status.txt");
+const text = await storage.readFile("documents/status.txt", "utf8");
+```
+
+Use streams for large or progressively produced objects. `createReadStream()` supports inclusive `start` and `end` byte offsets. `createWriteStream()` uses the AWS managed multipart uploader, and its `finish` event is delayed until S3 completes the upload:
+
+```typescript
+import { finished } from "node:stream/promises";
+
+const readable = storage.createReadStream("videos/input.mp4", {
+  start: 0,
+  end: 1023,
+});
+
+const writable = storage.createWriteStream("videos/output.mp4", {
+  ContentType: "video/mp4",
+});
+readable.pipe(writable);
+await finished(writable);
+```
+
+The buffering, encoding, abort signal, and stream behavior follows the core shape of the [Node.js file system API](https://nodejs.org/api/fs.html), while S3-specific request and multipart options remain available.
+
+## File and Directory Listings
+
+```typescript
+const entries = await storage.listEntries("documents");
+const recursiveEntries = await storage.listEntries("documents", {
+  recursive: true,
+});
+```
+
+`listEntries` returns immediate children by default and every descendant when `recursive` is enabled. Each sorted entry contains a root-relative `path` and a `type` of `file` or `directory`; file entries can also contain `size`, `lastModified`, and `etag`. Because S3 has no physical directories, directory entries are derived from object key prefixes, including empty directory marker objects.
+
+The public surface is deliberately limited to `createReadStream`, `createWriteStream`, `readFile`, `writeFile`, `deleteFile`, `copyFile`, `moveFile`, and `listEntries`. It draws on the [Laravel 13 filesystem API](https://laravel.com/framework/docs/13.x/filesystem) and Node.js naming without attempting complete `node:fs` compatibility.
+
+## API Reference
+
+For exact options and signatures, see the [Storage API Reference](/docs/api/storage).

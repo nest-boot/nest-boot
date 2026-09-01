@@ -19,6 +19,7 @@
     "mailer",
     "metrics",
     "s3",
+    "storage",
     "file-upload",
     "validator",
     "view"
