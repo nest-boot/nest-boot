@@ -1,0 +1,167 @@
+import { randomUUID } from "node:crypto";
+import { finished } from "node:stream/promises";
+
+import { CreateBucketCommand, S3Client } from "@aws-sdk/client-s3";
+import { S3Module } from "@nest-boot/s3";
+import { type INestApplication, Injectable, Module } from "@nestjs/common";
+import { Test } from "@nestjs/testing";
+
+import { Storage, StorageModule } from "../src/index.js";
+
+const requiredS3Env = [
+  "S3_ACCESS_KEY_ID",
+  "S3_BUCKET",
+  "S3_ENDPOINT_URL",
+  "S3_SECRET_ACCESS_KEY",
+];
+const describeIfS3Configured = requiredS3Env.every((name) => process.env[name])
+  ? describe
+  : describe.skip;
+const testRoot = `storage-e2e/${randomUUID()}`;
+const testBucket = process.env.S3_BUCKET ?? "test-bucket";
+
+function getS3Bucket(): string {
+  const bucket = process.env.S3_BUCKET;
+  if (!bucket) {
+    throw new Error(
+      "S3 environment variables are required for this test suite",
+    );
+  }
+  return bucket;
+}
+
+@Injectable()
+class StorageConsumer {
+  constructor(readonly storage: Storage) {}
+}
+
+@Module({ providers: [StorageConsumer] })
+class FeatureModule {}
+
+@Module({
+  imports: [
+    S3Module,
+    StorageModule.register({ bucket: testBucket, root: testRoot }),
+    FeatureModule,
+  ],
+})
+class AppModule {}
+
+describeIfS3Configured("StorageModule - e2e", () => {
+  let app: INestApplication;
+  let storage: Storage;
+
+  beforeAll(async () => {
+    const module = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+    await ensureBucketExists(module.get(S3Client), getS3Bucket());
+
+    app = module.createNestApplication();
+    await app.init();
+    storage = app.get(Storage);
+  }, 60_000);
+
+  afterAll(async () => {
+    const entries = await storage.listEntries("", { recursive: true });
+    await storage.deleteFile(
+      entries
+        .filter((entry) => entry.type === "file")
+        .map((entry) => entry.path),
+    );
+    await app.close();
+  }, 60_000);
+
+  it("provides the same global Storage instance to feature modules", () => {
+    expect(app.get(StorageConsumer).storage).toBe(storage);
+  });
+
+  it("stores, lists, copies, moves, and deletes files", async () => {
+    await Promise.all([
+      storage.writeFile("root.txt", "root", { ContentType: "text/plain" }),
+      storage.writeFile("docs/read me.txt", "read me", {
+        ContentType: "text/plain",
+      }),
+      storage.writeFile("docs/guides/start.txt", "start", {
+        ContentType: "text/plain",
+      }),
+    ]);
+
+    expect(entryKinds(await storage.listEntries())).toEqual([
+      { path: "docs", type: "directory" },
+      { path: "root.txt", type: "file" },
+    ]);
+    expect(entryKinds(await storage.listEntries("docs"))).toEqual([
+      { path: "docs/guides", type: "directory" },
+      { path: "docs/read me.txt", type: "file" },
+    ]);
+    expect(
+      entryKinds(await storage.listEntries("", { recursive: true })),
+    ).toEqual([
+      { path: "docs", type: "directory" },
+      { path: "docs/guides", type: "directory" },
+      { path: "docs/guides/start.txt", type: "file" },
+      { path: "docs/read me.txt", type: "file" },
+      { path: "root.txt", type: "file" },
+    ]);
+
+    await storage.copyFile("docs/read me.txt", "copies/read me.txt");
+    await storage.moveFile("copies/read me.txt", "moved/read me.txt");
+    await storage.deleteFile(["root.txt", "moved/read me.txt"]);
+
+    const entries = await storage.listEntries("", { recursive: true });
+    expect(
+      entries.filter((entry) => entry.type === "file").map(({ path }) => path),
+    ).toEqual(["docs/guides/start.txt", "docs/read me.txt"]);
+  }, 30_000);
+
+  it("reads files and supports readable and writable streams", async () => {
+    await expect(storage.readFile("docs/read me.txt", "utf8")).resolves.toBe(
+      "read me",
+    );
+    await expect(storage.readFile("docs/read me.txt")).resolves.toEqual(
+      Buffer.from("read me"),
+    );
+
+    const chunks: Buffer[] = [];
+    for await (const chunk of storage.createReadStream("docs/read me.txt", {
+      start: 0,
+      end: 3,
+    })) {
+      chunks.push(Buffer.from(chunk));
+    }
+    expect(Buffer.concat(chunks).toString()).toBe("read");
+
+    const writable = storage.createWriteStream("streams/output.txt", {
+      ContentType: "text/plain",
+    });
+    writable.end("stream upload");
+    await finished(writable);
+    await expect(storage.readFile("streams/output.txt", "utf8")).resolves.toBe(
+      "stream upload",
+    );
+  }, 30_000);
+});
+
+function entryKinds(
+  entries: Awaited<ReturnType<Storage["listEntries"]>>,
+): { path: string; type: "file" | "directory" }[] {
+  return entries.map(({ path, type }) => ({ path, type }));
+}
+
+async function ensureBucketExists(
+  client: S3Client,
+  bucket: string,
+): Promise<void> {
+  try {
+    await client.send(new CreateBucketCommand({ Bucket: bucket }));
+  } catch (error) {
+    const errorName = (error as { name?: string }).name;
+    if (
+      errorName !== "BucketAlreadyExists" &&
+      errorName !== "BucketAlreadyOwnedByYou"
+    ) {
+      throw error;
+    }
+  }
+}
