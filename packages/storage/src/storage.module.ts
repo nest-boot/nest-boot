@@ -1,12 +1,14 @@
-import { S3Client } from "@aws-sdk/client-s3";
+import { S3Client, type S3ClientConfig } from "@aws-sdk/client-s3";
 import {
   type DynamicModule,
   Global,
+  Inject,
   Module,
   type OnApplicationShutdown,
   type Provider,
 } from "@nestjs/common";
 
+import { type StorageModuleOptions } from "./interfaces/storage-module-options.interface.js";
 import { Storage } from "./storage.js";
 import {
   ASYNC_OPTIONS_TYPE,
@@ -14,31 +16,78 @@ import {
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
 } from "./storage.module-definition.js";
-import { type StorageModuleOptions } from "./storage-module-options.interface.js";
-import { loadS3ConfigFromEnv } from "./utils/load-s3-config-from-env.util.js";
+import { loadStorageOptionsFromEnv } from "./utils/load-storage-options-from-env.util.js";
+
+const STORAGE_URL_S3_CLIENT = Symbol("STORAGE_URL_S3_CLIENT");
 
 const s3ClientProvider: Provider<S3Client> = {
   provide: S3Client,
   inject: [{ token: MODULE_OPTIONS_TOKEN, optional: true }],
   useFactory: (options: StorageModuleOptions = {}) =>
-    new S3Client({
-      ...loadS3ConfigFromEnv(),
-      ...options.client,
-    }),
+    new S3Client(createS3ClientConfig(options)),
 };
 
-const storageProvider: Provider<Storage> = {
-  provide: Storage,
+const s3UrlClientProvider: Provider<S3Client> = {
+  provide: STORAGE_URL_S3_CLIENT,
   inject: [S3Client, { token: MODULE_OPTIONS_TOKEN, optional: true }],
   useFactory: (
     s3Client: S3Client,
     options: StorageModuleOptions = {},
-  ): Storage =>
-    new Storage(s3Client, {
-      bucket: options.bucket ?? process.env.S3_BUCKET,
-      root: options.root,
-    }),
+  ): S3Client => {
+    const resolvedOptions = loadStorageOptionsFromEnv(options);
+    const internalEndpointUrl =
+      resolvedOptions.internalEndpointUrl ?? resolvedOptions.endpointUrl;
+    const endpointUrl =
+      resolvedOptions.endpointUrl ?? resolvedOptions.internalEndpointUrl;
+
+    return !endpointUrl || endpointUrl === internalEndpointUrl
+      ? s3Client
+      : new S3Client(createS3ClientConfig(resolvedOptions, endpointUrl));
+  },
 };
+
+const storageProvider: Provider<Storage> = {
+  provide: Storage,
+  inject: [
+    S3Client,
+    STORAGE_URL_S3_CLIENT,
+    { token: MODULE_OPTIONS_TOKEN, optional: true },
+  ],
+  useFactory: (
+    s3Client: S3Client,
+    s3UrlClient: S3Client,
+    options: StorageModuleOptions = {},
+  ): Storage =>
+    new Storage(s3Client, loadStorageOptionsFromEnv(options), s3UrlClient),
+};
+
+function createS3ClientConfig(
+  options: StorageModuleOptions,
+  endpointUrl?: string,
+): S3ClientConfig {
+  const resolvedOptions = loadStorageOptionsFromEnv(options);
+  const { accessKeyId, forcePathStyle, region, secretAccessKey } =
+    resolvedOptions;
+  const resolvedEndpointUrl =
+    endpointUrl ??
+    resolvedOptions.internalEndpointUrl ??
+    resolvedOptions.endpointUrl;
+
+  if (Boolean(accessKeyId) !== Boolean(secretAccessKey)) {
+    throw new Error(
+      "Storage credentials require both accessKeyId and secretAccessKey",
+    );
+  }
+
+  return {
+    ...(accessKeyId && secretAccessKey
+      ? { credentials: { accessKeyId, secretAccessKey } }
+      : {}),
+    ...(resolvedEndpointUrl ? { endpoint: resolvedEndpointUrl } : {}),
+    ...(forcePathStyle === undefined ? {} : { forcePathStyle }),
+    ...(region ? { region } : {}),
+  };
+}
 
 /**
  * Global module that provides an S3-backed {@link Storage} service.
@@ -51,7 +100,7 @@ const storageProvider: Provider<Storage> = {
  */
 @Global()
 @Module({
-  providers: [s3ClientProvider, storageProvider],
+  providers: [s3ClientProvider, s3UrlClientProvider, storageProvider],
   exports: [S3Client, Storage],
 })
 export class StorageModule
@@ -81,13 +130,21 @@ export class StorageModule
   /**
    * Creates a StorageModule instance.
    * @param s3Client - The globally injectable AWS SDK S3 client
+   * @param s3UrlClient - Client used to construct public and temporary URLs
    */
-  constructor(private readonly s3Client: S3Client) {
+  constructor(
+    private readonly s3Client: S3Client,
+    @Inject(STORAGE_URL_S3_CLIENT)
+    private readonly s3UrlClient: S3Client,
+  ) {
     super();
   }
 
   /** Releases resources held by the AWS SDK client. */
   onApplicationShutdown(): void {
+    if (this.s3UrlClient !== this.s3Client) {
+      this.s3UrlClient.destroy();
+    }
     this.s3Client.destroy();
   }
 }

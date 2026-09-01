@@ -44,7 +44,7 @@ describe("Storage", () => {
     await expect(
       new Storage(pathStyle.client, {
         bucket: "uploads",
-        root: "tenant/assets",
+        rootPath: "tenant/assets",
       }).getUrl("images/hello world.png"),
     ).resolves.toBe(
       "http://s3.local:9000/uploads/tenant/assets/images/hello%20world.png",
@@ -68,10 +68,15 @@ describe("Storage", () => {
       .mockResolvedValueOnce("https://signed.example.com/file.txt")
       .mockResolvedValueOnce("https://signed.example.com/default.txt");
     const { client } = createClient();
-    const storage = new Storage(client, {
-      bucket: "uploads",
-      root: "private",
-    });
+    const { client: urlClient } = createClient();
+    const storage = new Storage(
+      client,
+      {
+        bucket: "uploads",
+        rootPath: "private",
+      },
+      urlClient,
+    );
 
     await expect(
       storage.createTemporaryUrl("reports/file.txt", {
@@ -90,7 +95,7 @@ describe("Storage", () => {
       Key: "private/reports/file.txt",
       ResponseContentType: "text/plain",
     });
-    expect(getSignedUrlMock).toHaveBeenNthCalledWith(1, client, command, {
+    expect(getSignedUrlMock).toHaveBeenNthCalledWith(1, urlClient, command, {
       expiresIn: 120,
     });
     expect(getSignedUrlMock.mock.calls[1]?.[2]).toEqual({});
@@ -107,10 +112,15 @@ describe("Storage", () => {
         url: "https://s3.example.com/uploads",
       });
     const { client } = createClient();
-    const storage = new Storage(client, {
-      bucket: "uploads",
-      root: "private",
-    });
+    const { client: urlClient } = createClient();
+    const storage = new Storage(
+      client,
+      {
+        bucket: "uploads",
+        rootPath: "private",
+      },
+      urlClient,
+    );
 
     await expect(
       storage.createTemporaryUploadUrl("tmp/photo.png", {
@@ -127,7 +137,7 @@ describe("Storage", () => {
     });
     await storage.createTemporaryUploadUrl("tmp/default.png");
 
-    expect(createPresignedPostMock).toHaveBeenNthCalledWith(1, client, {
+    expect(createPresignedPostMock).toHaveBeenNthCalledWith(1, urlClient, {
       Bucket: "uploads",
       Key: "private/tmp/photo.png",
       Conditions: [
@@ -139,7 +149,7 @@ describe("Storage", () => {
       Expires: 300,
       Fields: { "Content-Type": "image/png" },
     });
-    expect(createPresignedPostMock).toHaveBeenNthCalledWith(2, client, {
+    expect(createPresignedPostMock).toHaveBeenNthCalledWith(2, urlClient, {
       Bucket: "uploads",
       Key: "private/tmp/default.png",
       Conditions: [
@@ -155,7 +165,7 @@ describe("Storage", () => {
     });
     const storage = new Storage(client, {
       bucket: "test-bucket",
-      root: "/tenant//assets/",
+      rootPath: "/tenant//assets/",
     });
 
     await storage.writeFile("/docs//hello world.txt", "hello", {
@@ -197,7 +207,7 @@ describe("Storage", () => {
     const { client, send } = createClient();
     const storage = new Storage(client, {
       bucket: "test-bucket",
-      root: "root",
+      rootPath: "root",
     });
 
     await storage.moveFile("docs/report.txt", "/docs//./report.txt");
@@ -256,7 +266,7 @@ describe("Storage", () => {
       .mockResolvedValueOnce({ Body: Readable.from(["range"]) });
     const storage = new Storage(client, {
       bucket: "test-bucket",
-      root: "root",
+      rootPath: "root",
     });
 
     await expect(storage.readFile("buffer.txt")).resolves.toEqual(
@@ -341,7 +351,7 @@ describe("Storage", () => {
     });
     const storage = new Storage(client, {
       bucket: "test-bucket",
-      root: "root",
+      rootPath: "root",
     });
 
     await storage.writeFile("iterable.txt", [
@@ -438,7 +448,7 @@ describe("Storage", () => {
       });
     const storage = new Storage(client, {
       bucket: "test-bucket",
-      root: "root",
+      rootPath: "root",
     });
 
     await expect(storage.listEntries("docs")).resolves.toEqual([
@@ -481,7 +491,7 @@ describe("Storage", () => {
       });
     const storage = new Storage(client, {
       bucket: "test-bucket",
-      root: "root",
+      rootPath: "root",
     });
 
     await expect(
@@ -510,7 +520,7 @@ describe("Storage", () => {
     });
     const rootedStorage = new Storage(client, {
       bucket: "test-bucket",
-      root: "root",
+      rootPath: "root",
     });
 
     await expect(rootedStorage.listEntries("docs")).resolves.toEqual([
@@ -552,7 +562,7 @@ describe("Storage", () => {
     const { client, send } = createClient();
     const storage = new Storage(client, {
       bucket: "test-bucket",
-      root: "root",
+      rootPath: "root",
     });
 
     send.mockResolvedValueOnce({ IsTruncated: true });

@@ -1,6 +1,6 @@
 import { ConfigurableModuleBuilder } from "@nestjs/common";
 
-import { type StorageModuleOptions } from "./storage-module-options.interface.js";
+import { type StorageModuleOptions } from "./interfaces/storage-module-options.interface.js";
 
 export const {
   ConfigurableModuleClass,

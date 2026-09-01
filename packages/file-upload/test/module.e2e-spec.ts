@@ -15,17 +15,17 @@ import { type FileUploadService } from "../src/file-upload.service.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const requiredS3Env = [
-  "S3_ACCESS_KEY_ID",
-  "S3_BUCKET",
-  "S3_ENDPOINT_URL",
-  "S3_SECRET_ACCESS_KEY",
+  "STORAGE_ACCESS_KEY_ID",
+  "STORAGE_BUCKET",
+  "STORAGE_ENDPOINT_URL",
+  "STORAGE_SECRET_ACCESS_KEY",
 ];
 const describeIfS3Configured = requiredS3Env.every((name) => process.env[name])
   ? describe
   : describe.skip;
 
 function getS3Bucket() {
-  const bucket = process.env.S3_BUCKET;
+  const bucket = process.env.STORAGE_BUCKET;
 
   if (!bucket) {
     throw new Error(

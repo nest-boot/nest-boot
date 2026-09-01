@@ -101,24 +101,24 @@ jobs:
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
           REDIS_URL: redis://localhost:6379
-          S3_ENDPOINT_URL: http://localhost:9000
-          S3_REGION: us-east-1
-          S3_BUCKET: test-bucket
-          S3_FORCE_PATH_STYLE: true
-          S3_ACCESS_KEY_ID: minio
-          S3_SECRET_ACCESS_KEY: password
+          STORAGE_ENDPOINT_URL: http://localhost:9000
+          STORAGE_REGION: us-east-1
+          STORAGE_BUCKET: test-bucket
+          STORAGE_FORCE_PATH_STYLE: true
+          STORAGE_ACCESS_KEY_ID: minio
+          STORAGE_SECRET_ACCESS_KEY: password
 
       - name: End-to-end test
         run: pnpm test:e2e
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
           REDIS_URL: redis://localhost:6379
-          S3_ENDPOINT_URL: http://localhost:9000
-          S3_REGION: us-east-1
-          S3_BUCKET: test-bucket
-          S3_FORCE_PATH_STYLE: true
-          S3_ACCESS_KEY_ID: minio
-          S3_SECRET_ACCESS_KEY: password
+          STORAGE_ENDPOINT_URL: http://localhost:9000
+          STORAGE_REGION: us-east-1
+          STORAGE_BUCKET: test-bucket
+          STORAGE_FORCE_PATH_STYLE: true
+          STORAGE_ACCESS_KEY_ID: minio
+          STORAGE_SECRET_ACCESS_KEY: password
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v7

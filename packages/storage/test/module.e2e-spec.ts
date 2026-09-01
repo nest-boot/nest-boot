@@ -8,19 +8,19 @@ import { Test } from "@nestjs/testing";
 import { Storage, StorageModule } from "../src/index.js";
 
 const requiredS3Env = [
-  "S3_ACCESS_KEY_ID",
-  "S3_BUCKET",
-  "S3_ENDPOINT_URL",
-  "S3_SECRET_ACCESS_KEY",
+  "STORAGE_ACCESS_KEY_ID",
+  "STORAGE_BUCKET",
+  "STORAGE_ENDPOINT_URL",
+  "STORAGE_SECRET_ACCESS_KEY",
 ];
 const describeIfS3Configured = requiredS3Env.every((name) => process.env[name])
   ? describe
   : describe.skip;
 const testRoot = `storage-e2e/${randomUUID()}`;
-const testBucket = process.env.S3_BUCKET ?? "test-bucket";
+const testBucket = process.env.STORAGE_BUCKET ?? "test-bucket";
 
 function getS3Bucket(): string {
-  const bucket = process.env.S3_BUCKET;
+  const bucket = process.env.STORAGE_BUCKET;
   if (!bucket) {
     throw new Error(
       "S3 environment variables are required for this test suite",
@@ -42,7 +42,7 @@ class FeatureModule {}
 
 @Module({
   imports: [
-    StorageModule.register({ bucket: testBucket, root: testRoot }),
+    StorageModule.register({ bucket: testBucket, rootPath: testRoot }),
     FeatureModule,
   ],
 })

@@ -25,20 +25,23 @@ describe("StorageModule", () => {
   });
 
   it("loads storage and S3 client configuration from the environment", async () => {
-    vi.stubEnv("S3_ACCESS_KEY_ID", "access-key");
-    vi.stubEnv("S3_SECRET_ACCESS_KEY", "secret-key");
-    vi.stubEnv("S3_ENDPOINT_URL", "http://s3.local:9000");
-    vi.stubEnv("S3_FORCE_PATH_STYLE", "true");
-    vi.stubEnv("S3_REGION", "us-west-2");
-    vi.stubEnv("S3_BUCKET", "environment-bucket");
+    vi.stubEnv("STORAGE_ACCESS_KEY_ID", "access-key");
+    vi.stubEnv("STORAGE_SECRET_ACCESS_KEY", "secret-key");
+    vi.stubEnv("STORAGE_ENDPOINT_URL", "http://s3.local:9000");
+    vi.stubEnv("STORAGE_INTERNAL_ENDPOINT_URL", "http://s3.internal:9000");
+    vi.stubEnv("STORAGE_FORCE_PATH_STYLE", "true");
+    vi.stubEnv("STORAGE_REGION", "us-west-2");
+    vi.stubEnv("STORAGE_BUCKET", "environment-bucket");
+    vi.stubEnv("STORAGE_ROOT_PATH", "environment-root");
     const module = await compile(StorageModule);
     const client = module.get(S3Client);
+    const storage = module.get(Storage);
 
-    expect(module.get(Storage)).toBeInstanceOf(Storage);
+    expect(storage).toBeInstanceOf(Storage);
     await expect(client.config.region()).resolves.toBe("us-west-2");
     expect(client.config.forcePathStyle).toBe(true);
     await expect(client.config.endpoint?.()).resolves.toMatchObject({
-      hostname: "s3.local",
+      hostname: "s3.internal",
       port: 9000,
       protocol: "http:",
     });
@@ -46,18 +49,22 @@ describe("StorageModule", () => {
       accessKeyId: "access-key",
       secretAccessKey: "secret-key",
     });
+    await expect(storage.getUrl("file.txt")).resolves.toBe(
+      "http://s3.local:9000/environment-bucket/environment-root/file.txt",
+    );
   });
 
   it("supports synchronous registration and globally exports both providers", async () => {
     const module = await compile(
       StorageModule.register({
+        accessKeyId: "registered-access-key",
         bucket: "registered-bucket",
-        client: {
-          endpoint: "http://s3.local:9000",
-          forcePathStyle: true,
-          region: "us-east-1",
-        },
-        root: "tenant",
+        endpointUrl: "https://s3.public.example.com",
+        forcePathStyle: true,
+        internalEndpointUrl: "http://s3.internal:9000",
+        region: "us-east-1",
+        rootPath: "tenant",
+        secretAccessKey: "registered-secret-key",
       }),
       FeatureModule,
     );
@@ -70,17 +77,24 @@ describe("StorageModule", () => {
     await expect(client.config.region()).resolves.toBe("us-east-1");
     expect(client.config.forcePathStyle).toBe(true);
     await expect(client.config.endpoint?.()).resolves.toMatchObject({
-      hostname: "s3.local",
+      hostname: "s3.internal",
       port: 9000,
       protocol: "http:",
     });
+    await expect(client.config.credentials()).resolves.toMatchObject({
+      accessKeyId: "registered-access-key",
+      secretAccessKey: "registered-secret-key",
+    });
+    await expect(storage.getUrl("file.txt")).resolves.toBe(
+      "https://s3.public.example.com/registered-bucket/tenant/file.txt",
+    );
   });
 
   it("supports asynchronous registration", async () => {
     const useFactory = vi.fn(() =>
       Promise.resolve({
         bucket: "async-bucket",
-        client: { region: "eu-west-1" },
+        region: "eu-west-1",
       }),
     );
     const module = await compile(StorageModule.registerAsync({ useFactory }));
@@ -96,7 +110,7 @@ describe("StorageModule", () => {
     const module = await compile(
       StorageModule.register({
         bucket: "registered-bucket",
-        client: { region: "us-east-1" },
+        region: "us-east-1",
       }),
     );
     const destroy = vi.spyOn(module.get(S3Client), "destroy");
@@ -107,11 +121,24 @@ describe("StorageModule", () => {
     expect(destroy).toHaveBeenCalledOnce();
   });
 
-  it("fails fast when neither options nor S3_BUCKET define a bucket", async () => {
-    vi.stubEnv("S3_BUCKET", "");
+  it("fails fast when neither options nor STORAGE_BUCKET define a bucket", async () => {
+    vi.stubEnv("STORAGE_BUCKET", "");
 
     await expect(compile(StorageModule)).rejects.toThrow(
       "Storage bucket is required",
+    );
+  });
+
+  it("requires both flattened credential values", async () => {
+    await expect(
+      compile(
+        StorageModule.register({
+          accessKeyId: "access-key",
+          bucket: "registered-bucket",
+        }),
+      ),
+    ).rejects.toThrow(
+      "Storage credentials require both accessKeyId and secretAccessKey",
     );
   });
 

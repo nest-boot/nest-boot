@@ -21,20 +21,20 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import {
   type StorageEntry,
   type StorageListEntriesOptions,
-} from "./storage-entry.interface.js";
+} from "./interfaces/storage-entry.interface.js";
 import {
   type StorageFileData,
   type StorageReadFileOptions,
   type StorageReadStreamOptions,
   type StorageWriteFileOptions,
   type StorageWriteStreamOptions,
-} from "./storage-file-options.interface.js";
-import { type StorageModuleOptions } from "./storage-module-options.interface.js";
+} from "./interfaces/storage-file-options.interface.js";
+import { type StorageModuleOptions } from "./interfaces/storage-module-options.interface.js";
 import {
   type StorageTemporaryUpload,
   type StorageTemporaryUploadUrlOptions,
   type StorageTemporaryUrlOptions,
-} from "./storage-url-options.interface.js";
+} from "./interfaces/storage-url-options.interface.js";
 
 const MAX_DELETE_OBJECTS = 1000;
 const MAX_SINGLE_COPY_SIZE = 5 * 1024 * 1024 * 1024;
@@ -42,25 +42,27 @@ const MAX_SINGLE_COPY_SIZE = 5 * 1024 * 1024 * 1024;
 /** Laravel-inspired file storage backed by an S3-compatible object store. */
 export class Storage {
   private readonly bucket: string;
-  private readonly root: string;
+  private readonly rootPath: string;
 
   /**
    * Creates a Storage service.
    * @param s3Client - S3 client provided by {@link StorageModule}
    * @param options - Storage configuration
+   * @param s3UrlClient - Optional client configured with the public endpoint
    */
   constructor(
     private readonly s3Client: S3Client,
     options: StorageModuleOptions,
+    private readonly s3UrlClient: S3Client = s3Client,
   ) {
     if (!options.bucket?.trim()) {
       throw new Error(
-        "Storage bucket is required; set S3_BUCKET or register StorageModule with a bucket",
+        "Storage bucket is required; set STORAGE_BUCKET or register StorageModule with a bucket",
       );
     }
 
     this.bucket = options.bucket;
-    this.root = normalizePath(options.root ?? "");
+    this.rootPath = normalizePath(options.rootPath ?? "");
   }
 
   /**
@@ -69,7 +71,7 @@ export class Storage {
    * @returns The path-style or virtual-host-style object URL
    */
   async getUrl(path: string): Promise<string> {
-    const config = this.s3Client.config;
+    const config = this.s3UrlClient.config;
     const configuredEndpoint = await config.endpoint?.();
     const endpoint = config.endpointProvider(
       {
@@ -117,7 +119,7 @@ export class Storage {
     const { expiresIn, ...getObjectOptions } = options;
 
     return await getSignedUrl(
-      this.s3Client,
+      this.s3UrlClient,
       new GetObjectCommand({
         ...getObjectOptions,
         Bucket: this.bucket,
@@ -139,7 +141,7 @@ export class Storage {
   ): Promise<StorageTemporaryUpload> {
     const key = this.objectKey(path);
 
-    return await createPresignedPost(this.s3Client, {
+    return await createPresignedPost(this.s3UrlClient, {
       Bucket: this.bucket,
       Key: key,
       Conditions: [
@@ -574,21 +576,21 @@ export class Storage {
       throw new TypeError("Storage path must not be empty");
     }
 
-    return this.root ? `${this.root}/${relative}` : relative;
+    return this.rootPath ? `${this.rootPath}/${relative}` : relative;
   }
 
   private directoryPrefix(directory: string): string {
     const relative = normalizePath(directory);
-    const prefix = [this.root, relative].filter(Boolean).join("/");
+    const prefix = [this.rootPath, relative].filter(Boolean).join("/");
     return prefix ? `${prefix}/` : "";
   }
 
   private relativePath(key: string): string {
-    if (!this.root) {
+    if (!this.rootPath) {
       return key;
     }
 
-    const prefix = `${this.root}/`;
+    const prefix = `${this.rootPath}/`;
     if (!key.startsWith(prefix)) {
       throw new Error(`S3 returned an object outside the storage root: ${key}`);
     }
