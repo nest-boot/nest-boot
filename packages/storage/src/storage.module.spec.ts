@@ -32,6 +32,7 @@ describe("StorageModule", () => {
     vi.stubEnv("STORAGE_FORCE_PATH_STYLE", "true");
     vi.stubEnv("STORAGE_REGION", "us-west-2");
     vi.stubEnv("STORAGE_BUCKET", "environment-bucket");
+    vi.stubEnv("STORAGE_BUCKET_ENDPOINT_URL", "https://cdn.example.com/assets");
     vi.stubEnv("STORAGE_ROOT_PATH", "environment-root");
     const module = await compile(StorageModule);
     const client = module.get(S3Client);
@@ -50,8 +51,12 @@ describe("StorageModule", () => {
       secretAccessKey: "secret-key",
     });
     await expect(storage.getUrl("file.txt")).resolves.toBe(
-      "http://s3.local:9000/environment-bucket/environment-root/file.txt",
+      "https://cdn.example.com/assets/environment-root/file.txt",
     );
+    const temporaryUrl = new URL(await storage.createTemporaryUrl("file.txt"));
+
+    expect(temporaryUrl.hostname).toBe("cdn.example.com");
+    expect(temporaryUrl.pathname).toBe("/assets/environment-root/file.txt");
   });
 
   it("supports synchronous registration and globally exports both providers", async () => {
@@ -62,7 +67,7 @@ describe("StorageModule", () => {
         endpointUrl: "https://s3.public.example.com",
         forcePathStyle: true,
         internalEndpointUrl: "http://s3.internal:9000",
-        publicEndpointUrl: "https://cdn.example.com/assets",
+        bucketEndpointUrl: "https://cdn.example.com/assets",
         region: "us-east-1",
         rootPath: "tenant",
         secretAccessKey: "registered-secret-key",
@@ -93,6 +98,7 @@ describe("StorageModule", () => {
     const temporaryUpload = await storage.createTemporaryUploadUrl("file.txt");
 
     expect(new URL(temporaryUrl).hostname).toBe("cdn.example.com");
+    expect(new URL(temporaryUrl).pathname).toBe("/assets/tenant/file.txt");
     expect(new URL(temporaryUpload.url).hostname).toBe("s3.public.example.com");
   });
 
@@ -118,7 +124,7 @@ describe("StorageModule", () => {
         bucket: "registered-bucket",
         endpointUrl: "https://s3.public.example.com",
         internalEndpointUrl: "http://s3.shared:9000",
-        publicEndpointUrl: "http://s3.shared:9000",
+        bucketEndpointUrl: "http://s3.shared:9000",
         region: "us-east-1",
       }),
     );

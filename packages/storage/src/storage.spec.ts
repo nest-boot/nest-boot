@@ -64,7 +64,7 @@ describe("Storage", () => {
     await expect(
       new Storage(pathStyle.client, {
         bucket: "uploads",
-        publicEndpointUrl: "https://cdn.example.com/assets/",
+        bucketEndpointUrl: "https://cdn.example.com/assets/",
         rootPath: "tenant",
       }).getUrl("images/hello world.png"),
     ).resolves.toBe(
@@ -83,7 +83,7 @@ describe("Storage", () => {
       client,
       {
         bucket: "uploads",
-        publicEndpointUrl: "https://cdn.example.com",
+        bucketEndpointUrl: "https://cdn.example.com",
         rootPath: "private",
       },
       urlClient,
@@ -103,7 +103,7 @@ describe("Storage", () => {
     const command = getSignedUrlMock.mock.calls[0]?.[1];
     expect(command).toBeInstanceOf(GetObjectCommand);
     expect(command?.input).toEqual({
-      Bucket: "uploads",
+      Bucket: "https://cdn.example.com",
       Key: "private/reports/file.txt",
       ResponseContentType: "text/plain",
     });

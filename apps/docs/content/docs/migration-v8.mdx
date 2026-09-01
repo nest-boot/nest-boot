@@ -51,7 +51,7 @@ provide a CommonJS `require` entry.
   `@nest-boot/storage` module. Remove `client` and `bucket` from
   `FileUploadModule` options; configure `StorageModule` instead. It globally
   provides both `S3Client` and `Storage`, and static registration reads `STORAGE_ENDPOINT_URL`,
-  `STORAGE_INTERNAL_ENDPOINT_URL`, `STORAGE_PUBLIC_ENDPOINT_URL`, `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY`, `STORAGE_REGION`,
+  `STORAGE_INTERNAL_ENDPOINT_URL`, `STORAGE_BUCKET_ENDPOINT_URL`, `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY`, `STORAGE_REGION`,
   `STORAGE_FORCE_PATH_STYLE`, `STORAGE_BUCKET`, and `STORAGE_ROOT_PATH`.
 - Rebuild generated files and migrations after switching TypeScript module
   resolution so generated imports include valid ESM extensions.

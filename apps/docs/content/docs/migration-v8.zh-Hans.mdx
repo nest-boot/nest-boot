@@ -47,7 +47,7 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
 - 文件上传应用必须安装并注册全局 `@nest-boot/storage` 模块。从
   `FileUploadModule` 选项中移除 `client` 与 `bucket`，改为配置 `StorageModule`。
   该模块会全局提供 `S3Client` 与 `Storage`，静态注册会读取 `STORAGE_ENDPOINT_URL`、
-  `STORAGE_INTERNAL_ENDPOINT_URL`、`STORAGE_PUBLIC_ENDPOINT_URL`、`STORAGE_ACCESS_KEY_ID`、`STORAGE_SECRET_ACCESS_KEY`、`STORAGE_REGION`、
+  `STORAGE_INTERNAL_ENDPOINT_URL`、`STORAGE_BUCKET_ENDPOINT_URL`、`STORAGE_ACCESS_KEY_ID`、`STORAGE_SECRET_ACCESS_KEY`、`STORAGE_REGION`、
   `STORAGE_FORCE_PATH_STYLE`、`STORAGE_BUCKET` 和 `STORAGE_ROOT_PATH`。
 - 切换 TypeScript 模块解析后，重新生成文件和迁移，确保生成的导入带有有效的
   ESM 扩展名。

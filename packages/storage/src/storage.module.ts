@@ -19,7 +19,9 @@ import {
 import { loadStorageOptionsFromEnv } from "./utils/load-storage-options-from-env.util.js";
 
 const STORAGE_URL_S3_CLIENT = Symbol("STORAGE_URL_S3_CLIENT");
-const STORAGE_PUBLIC_URL_S3_CLIENT = Symbol("STORAGE_PUBLIC_URL_S3_CLIENT");
+const STORAGE_BUCKET_ENDPOINT_S3_CLIENT = Symbol(
+  "STORAGE_BUCKET_ENDPOINT_S3_CLIENT",
+);
 
 const s3ClientProvider: Provider<S3Client> = {
   provide: S3Client,
@@ -47,34 +49,25 @@ const s3UrlClientProvider: Provider<S3Client> = {
   },
 };
 
-const s3PublicUrlClientProvider: Provider<S3Client> = {
-  provide: STORAGE_PUBLIC_URL_S3_CLIENT,
+const s3BucketEndpointClientProvider: Provider<S3Client> = {
+  provide: STORAGE_BUCKET_ENDPOINT_S3_CLIENT,
   inject: [
-    S3Client,
     STORAGE_URL_S3_CLIENT,
     { token: MODULE_OPTIONS_TOKEN, optional: true },
   ],
   useFactory: (
-    s3Client: S3Client,
     s3UrlClient: S3Client,
     options: StorageModuleOptions = {},
   ): S3Client => {
     const resolvedOptions = loadStorageOptionsFromEnv(options);
-    const internalEndpointUrl =
-      resolvedOptions.internalEndpointUrl ?? resolvedOptions.endpointUrl;
-    const endpointUrl =
-      resolvedOptions.endpointUrl ?? resolvedOptions.internalEndpointUrl;
-    const publicEndpointUrl = resolvedOptions.publicEndpointUrl ?? endpointUrl;
+    const { bucketEndpointUrl } = resolvedOptions;
 
-    if (!publicEndpointUrl || publicEndpointUrl === endpointUrl) {
+    if (!bucketEndpointUrl) {
       return s3UrlClient;
-    }
-    if (publicEndpointUrl === internalEndpointUrl) {
-      return s3Client;
     }
 
     return new S3Client(
-      createS3ClientConfig(resolvedOptions, publicEndpointUrl),
+      createS3ClientConfig(resolvedOptions, bucketEndpointUrl, true),
     );
   },
 };
@@ -84,26 +77,27 @@ const storageProvider: Provider<Storage> = {
   inject: [
     S3Client,
     STORAGE_URL_S3_CLIENT,
-    STORAGE_PUBLIC_URL_S3_CLIENT,
+    STORAGE_BUCKET_ENDPOINT_S3_CLIENT,
     { token: MODULE_OPTIONS_TOKEN, optional: true },
   ],
   useFactory: (
     s3Client: S3Client,
     s3UrlClient: S3Client,
-    s3PublicUrlClient: S3Client,
+    s3BucketEndpointClient: S3Client,
     options: StorageModuleOptions = {},
   ): Storage =>
     new Storage(
       s3Client,
       loadStorageOptionsFromEnv(options),
       s3UrlClient,
-      s3PublicUrlClient,
+      s3BucketEndpointClient,
     ),
 };
 
 function createS3ClientConfig(
   options: StorageModuleOptions,
   endpointUrl?: string,
+  bucketEndpoint = false,
 ): S3ClientConfig {
   const resolvedOptions = loadStorageOptionsFromEnv(options);
   const { accessKeyId, forcePathStyle, region, secretAccessKey } =
@@ -120,11 +114,14 @@ function createS3ClientConfig(
   }
 
   return {
+    ...(bucketEndpoint ? { bucketEndpoint: true } : {}),
     ...(accessKeyId && secretAccessKey
       ? { credentials: { accessKeyId, secretAccessKey } }
       : {}),
     ...(resolvedEndpointUrl ? { endpoint: resolvedEndpointUrl } : {}),
-    ...(forcePathStyle === undefined ? {} : { forcePathStyle }),
+    ...(bucketEndpoint || forcePathStyle === undefined
+      ? {}
+      : { forcePathStyle }),
     ...(region ? { region } : {}),
   };
 }
@@ -143,7 +140,7 @@ function createS3ClientConfig(
   providers: [
     s3ClientProvider,
     s3UrlClientProvider,
-    s3PublicUrlClientProvider,
+    s3BucketEndpointClientProvider,
     storageProvider,
   ],
   exports: [S3Client, Storage],
@@ -176,14 +173,14 @@ export class StorageModule
    * Creates a StorageModule instance.
    * @param s3Client - The globally injectable AWS SDK S3 client
    * @param s3UrlClient - Client used for direct and temporary upload URLs
-   * @param s3PublicUrlClient - Client used for temporary download URLs
+   * @param s3BucketEndpointClient - Client used for bucket-endpoint download URLs
    */
   constructor(
     private readonly s3Client: S3Client,
     @Inject(STORAGE_URL_S3_CLIENT)
     private readonly s3UrlClient: S3Client,
-    @Inject(STORAGE_PUBLIC_URL_S3_CLIENT)
-    private readonly s3PublicUrlClient: S3Client,
+    @Inject(STORAGE_BUCKET_ENDPOINT_S3_CLIENT)
+    private readonly s3BucketEndpointClient: S3Client,
   ) {
     super();
   }
@@ -193,7 +190,7 @@ export class StorageModule
     for (const client of new Set([
       this.s3Client,
       this.s3UrlClient,
-      this.s3PublicUrlClient,
+      this.s3BucketEndpointClient,
     ])) {
       client.destroy();
     }

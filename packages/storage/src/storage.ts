@@ -42,7 +42,7 @@ const MAX_SINGLE_COPY_SIZE = 5 * 1024 * 1024 * 1024;
 /** Laravel-inspired file storage backed by an S3-compatible object store. */
 export class Storage {
   private readonly bucket: string;
-  private readonly publicEndpointUrl?: string;
+  private readonly bucketEndpointUrl?: string;
   private readonly rootPath: string;
 
   /**
@@ -50,13 +50,13 @@ export class Storage {
    * @param s3Client - S3 client provided by {@link StorageModule}
    * @param options - Storage configuration
    * @param s3UrlClient - Optional client configured with the external S3 endpoint
-   * @param s3PublicUrlClient - Optional client configured with the public endpoint
+   * @param s3BucketEndpointClient - Optional client configured with a bucket endpoint
    */
   constructor(
     private readonly s3Client: S3Client,
     options: StorageModuleOptions,
     private readonly s3UrlClient: S3Client = s3Client,
-    private readonly s3PublicUrlClient: S3Client = s3UrlClient,
+    private readonly s3BucketEndpointClient: S3Client = s3UrlClient,
   ) {
     if (!options.bucket?.trim()) {
       throw new Error(
@@ -65,7 +65,7 @@ export class Storage {
     }
 
     this.bucket = options.bucket;
-    this.publicEndpointUrl = options.publicEndpointUrl;
+    this.bucketEndpointUrl = options.bucketEndpointUrl;
     this.rootPath = normalizePath(options.rootPath ?? "");
   }
 
@@ -77,8 +77,8 @@ export class Storage {
   async getUrl(path: string): Promise<string> {
     const key = encodePath(this.objectKey(path));
 
-    if (this.publicEndpointUrl) {
-      const url = new URL(this.publicEndpointUrl);
+    if (this.bucketEndpointUrl) {
+      const url = new URL(this.bucketEndpointUrl);
       url.pathname = `${url.pathname.replace(/\/$/, "")}/${key}`;
 
       return url.toString();
@@ -131,10 +131,10 @@ export class Storage {
     const { expiresIn, ...getObjectOptions } = options;
 
     return await getSignedUrl(
-      this.s3PublicUrlClient,
+      this.s3BucketEndpointClient,
       new GetObjectCommand({
         ...getObjectOptions,
-        Bucket: this.bucket,
+        Bucket: this.bucketEndpointUrl ?? this.bucket,
         Key: this.objectKey(path),
       }),
       expiresIn === undefined ? {} : { expiresIn },

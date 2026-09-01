@@ -6,6 +6,8 @@ export function loadStorageOptionsFromEnv(
 ): StorageModuleOptions {
   const accessKeyId = options.accessKeyId ?? process.env.STORAGE_ACCESS_KEY_ID;
   const bucket = options.bucket ?? process.env.STORAGE_BUCKET;
+  const bucketEndpointUrl =
+    options.bucketEndpointUrl ?? process.env.STORAGE_BUCKET_ENDPOINT_URL;
   const endpointUrl = options.endpointUrl ?? process.env.STORAGE_ENDPOINT_URL;
   const forcePathStyle =
     options.forcePathStyle ??
@@ -15,8 +17,6 @@ export function loadStorageOptionsFromEnv(
   const region = options.region ?? process.env.STORAGE_REGION;
   const internalEndpointUrl =
     options.internalEndpointUrl ?? process.env.STORAGE_INTERNAL_ENDPOINT_URL;
-  const publicEndpointUrl =
-    options.publicEndpointUrl ?? process.env.STORAGE_PUBLIC_ENDPOINT_URL;
   const rootPath = options.rootPath ?? process.env.STORAGE_ROOT_PATH;
   const secretAccessKey =
     options.secretAccessKey ?? process.env.STORAGE_SECRET_ACCESS_KEY;
@@ -24,10 +24,10 @@ export function loadStorageOptionsFromEnv(
   return {
     ...(accessKeyId ? { accessKeyId } : {}),
     ...(bucket ? { bucket } : {}),
+    ...(bucketEndpointUrl ? { bucketEndpointUrl } : {}),
     ...(endpointUrl ? { endpointUrl } : {}),
     ...(forcePathStyle === undefined ? {} : { forcePathStyle }),
     ...(internalEndpointUrl ? { internalEndpointUrl } : {}),
-    ...(publicEndpointUrl ? { publicEndpointUrl } : {}),
     ...(region ? { region } : {}),
     ...(rootPath ? { rootPath } : {}),
     ...(secretAccessKey ? { secretAccessKey } : {}),
