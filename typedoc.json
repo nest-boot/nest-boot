@@ -91,7 +91,7 @@
     "@nest-boot/bullmq",
     "@nest-boot/bullmq-mikro-orm",
     "@nest-boot/crypt",
-    "@nest-boot/file-upload",
+    "@nest-boot/staged-upload",
     "@nest-boot/graphql",
     "@nest-boot/graphql-connection",
     "@nest-boot/graphql-logger",

@@ -12,16 +12,16 @@ vi.mock("@nest-boot/graphql", () => {
   };
 });
 
-import { FileUploadModule } from "./file-upload.module.js";
-import { MODULE_OPTIONS_TOKEN } from "./file-upload.module-definition.js";
+import { StagedUploadModule } from "./staged-upload.module.js";
+import { MODULE_OPTIONS_TOKEN } from "./staged-upload.module-definition.js";
 
-describe("FileUploadModule", () => {
+describe("StagedUploadModule", () => {
   const options = {};
 
   it("should register synchronous options", () => {
-    const dynamicModule = FileUploadModule.register(options);
+    const dynamicModule = StagedUploadModule.register(options);
 
-    expect(dynamicModule.module).toBe(FileUploadModule);
+    expect(dynamicModule.module).toBe(StagedUploadModule);
     expect(dynamicModule.providers).toEqual(
       expect.arrayContaining([
         {
@@ -34,11 +34,11 @@ describe("FileUploadModule", () => {
 
   it("should register asynchronous options", () => {
     const useFactory = () => options;
-    const dynamicModule = FileUploadModule.registerAsync({
+    const dynamicModule = StagedUploadModule.registerAsync({
       useFactory,
     });
 
-    expect(dynamicModule.module).toBe(FileUploadModule);
+    expect(dynamicModule.module).toBe(StagedUploadModule);
     expect(dynamicModule.providers).toEqual(
       expect.arrayContaining([
         {

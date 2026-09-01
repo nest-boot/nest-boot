@@ -1,0 +1,134 @@
+---
+title: "Staged Upload"
+description: "Stage constrained uploads temporarily and promote accepted objects to permanent storage."
+---
+
+`@nest-boot/staged-upload` implements a two-stage upload workflow for
+S3-compatible storage. New objects are written below `tmp/`; after the
+application accepts them, `persist()` copies them to a dated `files/` path.
+
+The module provides constrained presigned POST uploads through GraphQL and also
+supports uploads initiated directly by the application.
+
+## Installation
+
+```bash
+pnpm add @nest-boot/staged-upload @nest-boot/storage @aws-sdk/client-s3 @aws-sdk/lib-storage @aws-sdk/s3-presigned-post @aws-sdk/s3-request-presigner
+```
+
+Register the global `StorageModule` once in the root application.
+`StagedUploadModule` uses that storage instance for every temporary and
+permanent object operation.
+
+## Module Registration
+
+```typescript
+import { StagedUploadModule } from "@nest-boot/staged-upload";
+import { StorageModule } from "@nest-boot/storage";
+import { Module } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+
+const StagedUploadDynamicModule = StagedUploadModule.registerAsync({
+  inject: [ConfigService],
+  useFactory: (configService: ConfigService) => ({
+    url: configService.get("STAGED_UPLOAD_URL"),
+    expires: 3600,
+    limits: [
+      {
+        fileSize: 10 * 1024 * 1024,
+        mimeTypes: ["image/*", "application/pdf"],
+      },
+    ],
+  }),
+});
+
+@Module({
+  imports: [StorageModule, StagedUploadDynamicModule],
+})
+export class AppModule {}
+```
+
+The direct `StorageModule` import reads `STORAGE_*` environment variables. See
+the [Storage tutorial](/docs/tutorial/storage) for explicit, asynchronous,
+internal Endpoint, and Bucket Endpoint configuration.
+
+### Configuration Options
+
+| Option    | Description                                                                                  |
+| --------- | -------------------------------------------------------------------------------------------- |
+| `url`     | Optional public prefix that replaces the origin/path of generated presigned POST URLs        |
+| `expires` | Presigned POST lifetime in seconds; defaults to `3600`                                       |
+| `limits`  | Accepted `{ fileSize, mimeTypes }` combinations; MIME patterns use micromatch glob semantics |
+
+## Usage
+
+### Create a Staged Upload
+
+`StagedUploadModule` registers a `createStagedUploads` GraphQL mutation. It accepts an array of names, byte sizes, and MIME types, validates each item against `limits`, and returns a presigned POST URL plus the required form fields:
+
+```graphql
+mutation CreateStagedUploads($input: [StagedUploadInput!]!) {
+  createStagedUploads(input: $input) {
+    url
+    fields {
+      name
+      value
+    }
+  }
+}
+```
+
+The client must submit every returned field, the file body, and the same
+`Content-Type` to the returned URL. Generated object keys use the `tmp/` prefix.
+
+### Promote a Temporary Object
+
+After the client upload succeeds, pass the returned object URL to `persist()`.
+The service identifies the temporary path and copies the object to
+`files/YYYY/MM/DD/...`:
+
+```typescript
+import { StagedUploadService } from "@nest-boot/staged-upload";
+import { Injectable } from "@nestjs/common";
+
+@Injectable()
+export class FileService {
+  constructor(private readonly stagedUploadService: StagedUploadService) {}
+
+  async persistFile(tempFileUrl: string): Promise<string> {
+    return await this.stagedUploadService.persist(tempFileUrl);
+  }
+}
+```
+
+`persist()` returns the permanent object URL. It supports encoded object names
+and storage roots that contain a `tmp` segment. Size and MIME validation happens
+when `create()` creates the presigned upload; the copy operation does not delete
+the temporary source.
+
+### Upload from the Application
+
+Use `upload()` when the application already has the file data. Pass `true` as
+the third argument to write to `tmp/` and immediately copy the original object
+path to permanent storage:
+
+```typescript
+const url = await stagedUploadService.upload(
+  pdfBuffer,
+  { "Content-Type": "application/pdf" },
+  true,
+);
+```
+
+## Best Practices
+
+1. **Strict MIME Types** — Only allow the MIME types your application actually needs.
+
+2. **Reasonable Size Limits** — Define one or more `limits` entries that pair a maximum byte size with MIME glob patterns.
+
+3. **Temporary Object Cleanup** — `persist()` copies objects but does not delete the `tmp/` source; configure an S3 lifecycle rule for temporary keys.
+
+## API Reference
+
+For complete signatures and option types, see the
+[Staged Upload API Reference](/docs/api/staged-upload).

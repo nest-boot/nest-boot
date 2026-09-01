@@ -10,7 +10,7 @@ import bytes from "bytes";
 import FormData from "form-data";
 import request from "supertest";
 
-import { type FileUploadService } from "../src/file-upload.service.js";
+import { type StagedUploadService } from "../src/staged-upload.service.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -99,9 +99,9 @@ function requiredStorageEnv(name: string): string {
   return value;
 }
 
-describeIfS3Configured("FileUploadModule - e2e", () => {
+describeIfS3Configured("StagedUploadModule - e2e", () => {
   let app: INestApplication;
-  let fileUploadService: FileUploadService;
+  let stagedUploadService: StagedUploadService;
 
   const filename = "test.jpeg";
   const fileSize = 48445;
@@ -109,7 +109,7 @@ describeIfS3Configured("FileUploadModule - e2e", () => {
   const mimeType = "image/jpeg";
   const filePath = "./attachments/test.jpeg";
 
-  let fileUploadArgs: {
+  let stagedUploadArgs: {
     url: string;
     fields: Record<string, string>[];
   };
@@ -118,9 +118,9 @@ describeIfS3Configured("FileUploadModule - e2e", () => {
   let fileTmpUrl: string;
 
   beforeAll(async () => {
-    const [{ AppModule }, { FileUploadService }] = await Promise.all([
+    const [{ AppModule }, { StagedUploadService }] = await Promise.all([
       import("./src/app.module.js"),
-      import("../src/file-upload.service.js"),
+      import("../src/staged-upload.service.js"),
     ]);
     const module = await Test.createTestingModule({
       imports: [AppModule],
@@ -131,7 +131,7 @@ describeIfS3Configured("FileUploadModule - e2e", () => {
     setupClient.destroy();
 
     app = module.createNestApplication();
-    fileUploadService = module.get(FileUploadService);
+    stagedUploadService = module.get(StagedUploadService);
 
     await app.init();
   }, 60000);
@@ -141,12 +141,12 @@ describeIfS3Configured("FileUploadModule - e2e", () => {
   }, 60000);
 
   it("should successfully gets the upload parameter configuration", async () => {
-    const createFileUploads = await request(app.getHttpServer())
+    const createStagedUploads = await request(app.getHttpServer())
       .post("/api/graphql")
       .send({
         query: /* GraphQL */ `
-          mutation CreateFileUploads($input: [FileUploadInput!]!) {
-            createFileUploads(input: $input) {
+          mutation CreateStagedUploads($input: [StagedUploadInput!]!) {
+            createStagedUploads(input: $input) {
               url
               fields {
                 name
@@ -166,19 +166,19 @@ describeIfS3Configured("FileUploadModule - e2e", () => {
         },
       });
 
-    expect(createFileUploads.status).toBe(200);
-    expect(createFileUploads.body.data.createFileUploads[0]).toBeTruthy();
+    expect(createStagedUploads.status).toBe(200);
+    expect(createStagedUploads.body.data.createStagedUploads[0]).toBeTruthy();
 
-    fileUploadArgs = createFileUploads.body.data.createFileUploads[0];
+    stagedUploadArgs = createStagedUploads.body.data.createStagedUploads[0];
   }, 10000);
 
   it("should successfully uploads temporary file", async () => {
-    expect(fileUploadArgs).toBeTruthy();
+    expect(stagedUploadArgs).toBeTruthy();
 
     const form = new FormData();
 
     // Add file and other fields to the form
-    fileUploadArgs.fields.forEach((field) => {
+    stagedUploadArgs.fields.forEach((field) => {
       form.append(field.name, field.value);
     });
 
@@ -186,7 +186,7 @@ describeIfS3Configured("FileUploadModule - e2e", () => {
     form.append("file", fileStream);
 
     // Upload temporary file
-    const response = await axios.post(fileUploadArgs.url, form, {
+    const response = await axios.post(stagedUploadArgs.url, form, {
       headers: {
         ...form.getHeaders(),
       },
@@ -194,9 +194,7 @@ describeIfS3Configured("FileUploadModule - e2e", () => {
 
     expect(response.status).toBe(201);
 
-    fileTmpUrl = decodeURIComponent(
-      response.data.match(/<Location>(.*?)<\/Location>/)[1],
-    );
+    fileTmpUrl = response.data.match(/<Location>(.*?)<\/Location>/)[1];
 
     expect(fileTmpUrl).toBeTruthy();
   }, 10000);
@@ -204,7 +202,7 @@ describeIfS3Configured("FileUploadModule - e2e", () => {
   it("should successfully persists the temporary file", async () => {
     expect(fileTmpUrl).toBeTruthy();
 
-    const fileUrl = await fileUploadService.persist(fileTmpUrl);
+    const fileUrl = await stagedUploadService.persist(fileTmpUrl);
 
     expect(fileUrl).toBeTruthy();
   }, 10000);
@@ -212,7 +210,7 @@ describeIfS3Configured("FileUploadModule - e2e", () => {
   it("should successfully upload temporary file", async () => {
     const buffer = fs.readFileSync(resolve(__dirname, filePath));
 
-    const tmpFileUrl = await fileUploadService.upload(buffer, {
+    const tmpFileUrl = await stagedUploadService.upload(buffer, {
       "Content-Type": mimeType,
     });
 
@@ -223,21 +221,23 @@ describeIfS3Configured("FileUploadModule - e2e", () => {
   it("should successfully upload persistent file", async () => {
     const buffer = fs.readFileSync(resolve(__dirname, filePath));
 
-    const fileUrl = await fileUploadService.upload(
+    const fileUrl = await stagedUploadService.upload(
       buffer,
       {
         "Content-Type": mimeType,
+        extension: "my file",
       },
       true,
     );
 
     expect(fileUrl).toBeTruthy();
     expect(fileUrl).toContain("file");
+    expect(fileUrl).toContain(".my%20file");
   }, 10000);
 
   it("file is too large, should throw an exception", async () => {
     await expect(
-      fileUploadService.create([
+      stagedUploadService.create([
         { name: filename, fileSize: fileSizeLimited, mimeType },
       ]),
     ).rejects.toThrow();

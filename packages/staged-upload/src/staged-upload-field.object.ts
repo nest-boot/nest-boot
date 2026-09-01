@@ -1,8 +1,8 @@
 import { Field, ObjectType } from "@nest-boot/graphql";
 
-/** GraphQL object type representing a single form field in a presigned upload. */
+/** GraphQL object representing one required presigned POST form field. */
 @ObjectType()
-export class FileUploadField {
+export class StagedUploadField {
   /** Form field name. */
   @Field(() => String)
   name!: string;

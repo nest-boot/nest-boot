@@ -1,17 +1,17 @@
-/** Defines file size and MIME type constraints for uploaded files. */
-export interface FileUploadLimit {
+/** Defines file size and MIME type constraints for staged uploads. */
+export interface StagedUploadLimit {
   /** Maximum file size in bytes. */
   fileSize: number;
   /** Allowed MIME type patterns (supports glob matching via micromatch). */
   mimeTypes: string[];
 }
 
-/** Configuration options for the FileUploadModule. */
-export interface FileUploadModuleOptions {
+/** Configuration options for the StagedUploadModule. */
+export interface StagedUploadModuleOptions {
   /** Optional custom URL prefix for presigned upload URLs. */
   url?: string;
   /** Presigned URL expiration time in seconds (defaults to 3600). */
   expires?: number;
-  /** File upload constraints (size and MIME type limits). */
-  limits?: FileUploadLimit[];
+  /** Staged upload constraints pairing size and MIME type limits. */
+  limits?: StagedUploadLimit[];
 }

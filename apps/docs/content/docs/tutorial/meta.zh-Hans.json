@@ -19,7 +19,7 @@
     "mailer",
     "metrics",
     "storage",
-    "file-upload",
+    "staged-upload",
     "validator",
     "view"
   ]

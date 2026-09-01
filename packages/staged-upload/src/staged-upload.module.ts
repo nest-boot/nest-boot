@@ -4,24 +4,23 @@ import {
   ASYNC_OPTIONS_TYPE,
   ConfigurableModuleClass,
   OPTIONS_TYPE,
-} from "./file-upload.module-definition.js";
-import { FileUploadResolver } from "./file-upload.resolver.js";
-import { FileUploadService } from "./file-upload.service.js";
+} from "./staged-upload.module-definition.js";
+import { StagedUploadResolver } from "./staged-upload.resolver.js";
+import { StagedUploadService } from "./staged-upload.service.js";
 
 /**
- * File upload module providing upload handling via GraphQL.
+ * Module for staging temporary uploads and promoting accepted objects.
  *
  * @remarks
- * Registers the {@link FileUploadService} and GraphQL resolver
- * for handling file upload operations.
+ * Registers {@link StagedUploadService} and the staged upload GraphQL resolver.
  */
 @Module({
-  providers: [FileUploadService, FileUploadResolver],
-  exports: [FileUploadService],
+  providers: [StagedUploadService, StagedUploadResolver],
+  exports: [StagedUploadService],
 })
-export class FileUploadModule extends ConfigurableModuleClass {
+export class StagedUploadModule extends ConfigurableModuleClass {
   /**
-   * Registers the FileUploadModule with the given options.
+   * Registers the StagedUploadModule with the given options.
    * @param options - Configuration options
    * @returns Dynamic module configuration
    */
@@ -30,7 +29,7 @@ export class FileUploadModule extends ConfigurableModuleClass {
   }
 
   /**
-   * Registers the FileUploadModule asynchronously with factory functions.
+   * Registers the StagedUploadModule asynchronously with factory functions.
    * @param options - Async configuration options
    * @returns Dynamic module configuration
    */

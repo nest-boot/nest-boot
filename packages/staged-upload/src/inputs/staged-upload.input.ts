@@ -1,8 +1,8 @@
 import { Field, InputType, Int } from "@nest-boot/graphql";
 
-/** GraphQL input type for requesting a file upload. */
+/** GraphQL input for requesting a staged upload. */
 @InputType()
-export class FileUploadInput {
+export class StagedUploadInput {
   /** Original file name including extension. */
   @Field(() => String)
   name!: string;

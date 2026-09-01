@@ -4,12 +4,12 @@ import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import bytes from "bytes";
 
-import { FileUploadModule } from "../../src/index.js";
+import { StagedUploadModule } from "../../src/index.js";
 import { TestResolver } from "./test.resolver.js";
 
 const ConfigDynamicModule = ConfigModule.forRoot({ isGlobal: true });
 
-const FileUploadDynamicModule = FileUploadModule.registerAsync({
+const StagedUploadDynamicModule = StagedUploadModule.registerAsync({
   useFactory: () => {
     return {
       limits: [
@@ -44,7 +44,7 @@ const FileUploadDynamicModule = FileUploadModule.registerAsync({
     ConfigDynamicModule,
     StorageModule,
     GraphQLModule,
-    FileUploadDynamicModule,
+    StagedUploadDynamicModule,
   ],
   providers: [TestResolver],
 })

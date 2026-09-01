@@ -2,26 +2,26 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
-type FileUpload {
-  fields: [FileUploadField!]!
-  url: String!
-}
-
-type FileUploadField {
-  name: String!
-  value: String!
-}
-
-input FileUploadInput {
-  fileSize: Int!
-  mimeType: String!
-  name: String!
-}
-
 type Mutation {
-  createFileUploads(input: [FileUploadInput!]!): [FileUpload!]!
+  createStagedUploads(input: [StagedUploadInput!]!): [StagedUpload!]!
 }
 
 type Query {
   test: String!
+}
+
+type StagedUpload {
+  fields: [StagedUploadField!]!
+  url: String!
+}
+
+type StagedUploadField {
+  name: String!
+  value: String!
+}
+
+input StagedUploadInput {
+  fileSize: Int!
+  mimeType: String!
+  name: String!
 }

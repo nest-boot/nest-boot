@@ -9,17 +9,17 @@ vi.mock("@nest-boot/graphql", () => {
   };
 });
 
-import { FileUpload } from "./file-upload.object.js";
-import { FileUploadField } from "./file-upload-field.object.js";
-import { FileUploadInput } from "./inputs/file-upload.input.js";
+import { StagedUploadInput } from "./inputs/staged-upload.input.js";
+import { StagedUpload } from "./staged-upload.object.js";
+import { StagedUploadField } from "./staged-upload-field.object.js";
 
-describe("file upload GraphQL models", () => {
-  it("should store file upload response fields", () => {
-    const field = new FileUploadField();
+describe("staged upload GraphQL models", () => {
+  it("should store staged upload response fields", () => {
+    const field = new StagedUploadField();
     field.name = "key";
     field.value = "tmp/file.png";
 
-    const upload = new FileUpload();
+    const upload = new StagedUpload();
     upload.fields = [field];
     upload.url = "https://s3.local/tmp/file.png";
 
@@ -35,7 +35,7 @@ describe("file upload GraphQL models", () => {
   });
 
   it("should store upload input values", () => {
-    const input = new FileUploadInput();
+    const input = new StagedUploadInput();
     input.fileSize = 123;
     input.mimeType = "image/png";
     input.name = "file.png";

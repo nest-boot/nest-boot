@@ -4,11 +4,11 @@ import { Storage } from "@nest-boot/storage";
 import { BadRequestException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 
-import { MODULE_OPTIONS_TOKEN } from "./file-upload.module-definition.js";
-import { FileUploadService } from "./file-upload.service.js";
-import { type FileUploadModuleOptions } from "./file-upload-options.interface.js";
+import { MODULE_OPTIONS_TOKEN } from "./staged-upload.module-definition.js";
+import { StagedUploadService } from "./staged-upload.service.js";
+import { type StagedUploadModuleOptions } from "./staged-upload-options.interface.js";
 
-describe("FileUploadService", () => {
+describe("StagedUploadService", () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.resetAllMocks();
@@ -143,6 +143,38 @@ describe("FileUploadService", () => {
         "files/2026/01/31/photo.jpeg",
       );
     });
+
+    it("decodes the temporary key after the final tmp path segment", async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-01-31T12:00:00.000Z"));
+      const storage = createStorage();
+      const service = await createService({}, storage.value);
+
+      await expect(
+        service.persist(
+          "https://storage.local/uploads/tmp/tenant/tmp/photo%20one.jpeg",
+        ),
+      ).resolves.toBe("https://storage.local/files/2026/01/31/photo one.jpeg");
+
+      expect(storage.copyFile).toHaveBeenCalledWith(
+        "tmp/photo one.jpeg",
+        "files/2026/01/31/photo one.jpeg",
+      );
+    });
+
+    it("rejects URLs without a temporary upload path", async () => {
+      const storage = createStorage();
+      const service = await createService({}, storage.value);
+
+      await expect(
+        service.persist("https://storage.local/files/photo.jpeg"),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      await expect(service.persist("not a URL")).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+
+      expect(storage.copyFile).not.toHaveBeenCalled();
+    });
   });
 
   describe("upload", () => {
@@ -158,11 +190,9 @@ describe("FileUploadService", () => {
         source: "unit-test",
       });
 
-      expect(url).toMatch(
-        /^https:\/\/storage\.local\/tmp\/2026\/01\/31\/.+\.png$/,
-      );
+      expect(url).toMatch(/^https:\/\/storage\.local\/tmp\/.+\.png$/);
       expect(storage.writeFile).toHaveBeenCalledWith(
-        expect.stringMatching(/^tmp\/2026\/01\/31\/.+\.png$/),
+        expect.stringMatching(/^tmp\/[^/]+\.png$/),
         body,
         {
           ContentType: "image/png",
@@ -188,12 +218,65 @@ describe("FileUploadService", () => {
       expect(url).toMatch(/\.txt$/);
     });
 
+    it("rejects extensions that change the storage path", async () => {
+      const storage = createStorage();
+      const service = await createService({}, storage.value);
+
+      await expect(
+        service.upload("hello", {
+          "Content-Type": "application/octet-stream",
+          extension: "nested/file",
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      await expect(
+        service.upload("hello", {
+          "Content-Type": "application/octet-stream",
+          extension: "nested\\file",
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+
+      expect(storage.writeFile).not.toHaveBeenCalled();
+    });
+
+    it("persists the original temporary path without duplicating its date", async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-01-31T12:00:00.000Z"));
+      const storage = createStorage();
+      storage.getUrl.mockImplementation((path: string) =>
+        Promise.resolve(
+          `https://storage.local/${path
+            .split("/")
+            .map(encodeURIComponent)
+            .join("/")}`,
+        ),
+      );
+      const service = await createService({}, storage.value);
+
+      const url = await service.upload(
+        Buffer.from("hello"),
+        {
+          "Content-Type": "application/octet-stream",
+          extension: "my file",
+        },
+        true,
+      );
+      const temporaryPath = String(storage.writeFile.mock.calls[0]?.[0]);
+      const filename = temporaryPath.slice("tmp/".length);
+
+      expect(temporaryPath).toMatch(/^tmp\/[^/]+\.my file$/);
+      expect(storage.copyFile).toHaveBeenCalledWith(
+        temporaryPath,
+        `files/2026/01/31/${filename}`,
+      );
+      expect(url).toBe(
+        `https://storage.local/files/2026/01/31/${encodeURIComponent(filename)}`,
+      );
+      expect(storage.getUrl).toHaveBeenCalledTimes(1);
+    });
+
     it("persists uploaded files when requested", async () => {
       const storage = createStorage();
       const service = await createService({}, storage.value);
-      vi.spyOn(service, "persist").mockResolvedValue(
-        "https://storage.local/files/avatar.bin",
-      );
 
       await expect(
         service.upload(
@@ -203,7 +286,9 @@ describe("FileUploadService", () => {
           },
           true,
         ),
-      ).resolves.toBe("https://storage.local/files/avatar.bin");
+      ).resolves.toMatch(/^https:\/\/storage\.local\/files\//);
+
+      expect(storage.copyFile).toHaveBeenCalledOnce();
     });
 
     it("uses bin when the MIME type has no known extension", async () => {
@@ -234,16 +319,16 @@ describe("FileUploadService", () => {
 
   it("emits decorator metadata when module options exist at runtime", async () => {
     vi.resetModules();
-    vi.doMock("./file-upload-options.interface.js", () => ({
-      FileUploadModuleOptions: function FileUploadModuleOptions() {
+    vi.doMock("./staged-upload-options.interface.js", () => ({
+      StagedUploadModuleOptions: function StagedUploadModuleOptions() {
         return undefined;
       },
     }));
 
-    const isolatedModule = await import("./file-upload.service.js");
+    const isolatedModule = await import("./staged-upload.service.js");
 
-    expect(isolatedModule.FileUploadService).toBeDefined();
-    vi.doUnmock("./file-upload-options.interface.js");
+    expect(isolatedModule.StagedUploadService).toBeDefined();
+    vi.doUnmock("./staged-upload-options.interface.js");
   });
 });
 
@@ -279,12 +364,12 @@ function createStorage() {
 }
 
 async function createService(
-  options: FileUploadModuleOptions,
+  options: StagedUploadModuleOptions,
   storage: Storage,
 ) {
   const moduleRef = await Test.createTestingModule({
     providers: [
-      FileUploadService,
+      StagedUploadService,
       {
         provide: Storage,
         useValue: storage,
@@ -296,5 +381,5 @@ async function createService(
     ],
   }).compile();
 
-  return moduleRef.get(FileUploadService);
+  return moduleRef.get(StagedUploadService);
 }

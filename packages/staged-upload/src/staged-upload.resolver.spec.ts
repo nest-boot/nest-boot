@@ -15,11 +15,11 @@ vi.mock("@nest-boot/graphql", () => {
 import { Test } from "@nestjs/testing";
 import type { Mock } from "vitest";
 
-import { FileUploadResolver } from "./file-upload.resolver.js";
-import { FileUploadService } from "./file-upload.service.js";
+import { StagedUploadResolver } from "./staged-upload.resolver.js";
+import { StagedUploadService } from "./staged-upload.service.js";
 
-describe("FileUploadResolver", () => {
-  it("should delegate file upload creation to the service", async () => {
+describe("StagedUploadResolver", () => {
+  it("should delegate staged upload creation to the service", async () => {
     const result = [
       {
         fields: [
@@ -41,7 +41,7 @@ describe("FileUploadResolver", () => {
       },
     ];
 
-    await expect(resolver.createFileUploads(input)).resolves.toBe(result);
+    await expect(resolver.createStagedUploads(input)).resolves.toBe(result);
     expect(create).toHaveBeenCalledWith(input);
   });
 });
@@ -49,9 +49,9 @@ describe("FileUploadResolver", () => {
 async function createResolver(create: Mock) {
   const moduleRef = await Test.createTestingModule({
     providers: [
-      FileUploadResolver,
+      StagedUploadResolver,
       {
-        provide: FileUploadService,
+        provide: StagedUploadService,
         useValue: {
           create,
         },
@@ -59,5 +59,5 @@ async function createResolver(create: Mock) {
     ],
   }).compile();
 
-  return moduleRef.get(FileUploadResolver);
+  return moduleRef.get(StagedUploadResolver);
 }

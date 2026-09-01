@@ -714,118 +714,6 @@ importers:
         specifier: ^4.1.11
         version: 4.1.11
 
-  packages/file-upload:
-    dependencies:
-      dayjs:
-        specifier: ^1.11.18
-        version: 1.11.19
-      lodash-es:
-        specifier: ^4.17.21
-        version: 4.17.22
-      micromatch:
-        specifier: ^4.0.8
-        version: 4.0.8
-      mime-types:
-        specifier: ^2.1.35
-        version: 2.1.35
-    devDependencies:
-      '@apollo/server':
-        specifier: ^5.2.0
-        version: 5.2.0
-      '@as-integrations/express5':
-        specifier: ^1.1.2
-        version: 1.1.2
-      '@aws-sdk/client-s3':
-        specifier: ^3.1123.0
-        version: 3.1123.0
-      '@nest-boot/eslint-config':
-        specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
-      '@nest-boot/graphql':
-        specifier: workspace:^
-        version: link:../graphql
-      '@nest-boot/storage':
-        specifier: workspace:^
-        version: link:../storage
-      '@nest-boot/tsconfig':
-        specifier: workspace:^
-        version: link:../tsconfig
-      '@nestjs/apollo':
-        specifier: ^14.0.0
-        version: 14.0.0
-      '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
-      '@nestjs/config':
-        specifier: ^12.0.0
-        version: 12.0.0
-      '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
-      '@nestjs/graphql':
-        specifier: ^14.0.0
-        version: 14.0.0
-      '@nestjs/platform-express':
-        specifier: ^12.0.1
-        version: 12.0.1
-      '@nestjs/testing':
-        specifier: ^12.0.1
-        version: 12.0.1
-      '@types/bytes':
-        specifier: ^3.1.5
-        version: 3.1.5
-      '@types/micromatch':
-        specifier: ^4.0.9
-        version: 4.0.10
-      '@types/mime-types':
-        specifier: ^2.1.4
-        version: 2.1.4
-      '@types/node':
-        specifier: ^26.0.0
-        version: 26.4.0
-      '@types/supertest':
-        specifier: ^6.0.3
-        version: 6.0.3
-      '@vitest/coverage-v8':
-        specifier: ^4.1.11
-        version: 4.1.11
-      axios:
-        specifier: ^1.12.2
-        version: 1.13.2
-      bytes:
-        specifier: ^3.1.2
-        version: 3.1.2
-      eslint:
-        specifier: ^9.39.3
-        version: 9.39.3
-      form-data:
-        specifier: ^4.0.4
-        version: 4.0.5
-      graphql:
-        specifier: ^16.11.0
-        version: 16.12.0
-      reflect-metadata:
-        specifier: ^0.2.2
-        version: 0.2.2
-      rxjs:
-        specifier: ^7.8.2
-        version: 7.8.2
-      supertest:
-        specifier: ^7.1.4
-        version: 7.1.4
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vite-tsconfig-paths:
-        specifier: ^5.1.4
-        version: 5.1.4
-      vitest:
-        specifier: ^4.1.11
-        version: 4.1.11
-
   packages/graphql:
     devDependencies:
       '@apollo/server':
@@ -1971,6 +1859,118 @@ importers:
       rxjs:
         specifier: ^7.8.2
         version: 7.8.2
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite-tsconfig-paths:
+        specifier: ^5.1.4
+        version: 5.1.4
+      vitest:
+        specifier: ^4.1.11
+        version: 4.1.11
+
+  packages/staged-upload:
+    dependencies:
+      dayjs:
+        specifier: ^1.11.18
+        version: 1.11.19
+      lodash-es:
+        specifier: ^4.17.21
+        version: 4.17.22
+      micromatch:
+        specifier: ^4.0.8
+        version: 4.0.8
+      mime-types:
+        specifier: ^2.1.35
+        version: 2.1.35
+    devDependencies:
+      '@apollo/server':
+        specifier: ^5.2.0
+        version: 5.2.0
+      '@as-integrations/express5':
+        specifier: ^1.1.2
+        version: 1.1.2
+      '@aws-sdk/client-s3':
+        specifier: ^3.1123.0
+        version: 3.1123.0
+      '@nest-boot/eslint-config':
+        specifier: workspace:^
+        version: link:../eslint-config
+      '@nest-boot/eslint-plugin':
+        specifier: workspace:^
+        version: link:../eslint-plugin
+      '@nest-boot/graphql':
+        specifier: workspace:^
+        version: link:../graphql
+      '@nest-boot/storage':
+        specifier: workspace:^
+        version: link:../storage
+      '@nest-boot/tsconfig':
+        specifier: workspace:^
+        version: link:../tsconfig
+      '@nestjs/apollo':
+        specifier: ^14.0.0
+        version: 14.0.0
+      '@nestjs/common':
+        specifier: ^12.0.1
+        version: 12.0.1
+      '@nestjs/config':
+        specifier: ^12.0.0
+        version: 12.0.0
+      '@nestjs/core':
+        specifier: ^12.0.1
+        version: 12.0.1
+      '@nestjs/graphql':
+        specifier: ^14.0.0
+        version: 14.0.0
+      '@nestjs/platform-express':
+        specifier: ^12.0.1
+        version: 12.0.1
+      '@nestjs/testing':
+        specifier: ^12.0.1
+        version: 12.0.1
+      '@types/bytes':
+        specifier: ^3.1.5
+        version: 3.1.5
+      '@types/micromatch':
+        specifier: ^4.0.9
+        version: 4.0.10
+      '@types/mime-types':
+        specifier: ^2.1.4
+        version: 2.1.4
+      '@types/node':
+        specifier: ^26.0.0
+        version: 26.4.0
+      '@types/supertest':
+        specifier: ^6.0.3
+        version: 6.0.3
+      '@vitest/coverage-v8':
+        specifier: ^4.1.11
+        version: 4.1.11
+      axios:
+        specifier: ^1.12.2
+        version: 1.13.2
+      bytes:
+        specifier: ^3.1.2
+        version: 3.1.2
+      eslint:
+        specifier: ^9.39.3
+        version: 9.39.3
+      form-data:
+        specifier: ^4.0.4
+        version: 4.0.5
+      graphql:
+        specifier: ^16.11.0
+        version: 16.12.0
+      reflect-metadata:
+        specifier: ^0.2.2
+        version: 0.2.2
+      rxjs:
+        specifier: ^7.8.2
+        version: 7.8.2
+      supertest:
+        specifier: ^7.1.4
+        version: 7.1.4
       typescript:
         specifier: ^6.0.3
         version: 6.0.3

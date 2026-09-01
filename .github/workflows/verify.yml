@@ -117,6 +117,7 @@ jobs:
           STORAGE_REGION: us-east-1
           STORAGE_BUCKET: test-bucket
           STORAGE_FORCE_PATH_STYLE: true
+          STORAGE_ROOT_PATH: tmp/tenant
           STORAGE_ACCESS_KEY_ID: minio
           STORAGE_SECRET_ACCESS_KEY: password
 
