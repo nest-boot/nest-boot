@@ -41,26 +41,20 @@ STORAGE_ACCESS_KEY_ID=minio
 STORAGE_SECRET_ACCESS_KEY=password
 STORAGE_REGION=us-east-1
 STORAGE_ENDPOINT_URL=http://localhost:9000
-STORAGE_BUCKET_ENDPOINT=false
-STORAGE_INTERNAL_ENDPOINT_URL=
-STORAGE_INTERNAL_BUCKET_ENDPOINT=
 STORAGE_BUCKET=uploads
 STORAGE_ROOT_PATH=
 STORAGE_FORCE_PATH_STYLE=true
 ```
 
-| 环境变量                           | 模块选项                 | 用途                                                     |
-| ---------------------------------- | ------------------------ | -------------------------------------------------------- |
-| `STORAGE_BUCKET`                   | `bucket`                 | 当前 Storage 实例使用的 bucket。                         |
-| `STORAGE_ACCESS_KEY_ID`            | `accessKeyId`            | S3 兼容认证使用的 Access Key。                           |
-| `STORAGE_SECRET_ACCESS_KEY`        | `secretAccessKey`        | S3 兼容认证使用的 Secret Key。                           |
-| `STORAGE_REGION`                   | `region`                 | 请求签名和 Endpoint 解析使用的区域。                     |
-| `STORAGE_ENDPOINT_URL`             | `endpointUrl`            | 生成直连与临时 URL 使用的 Endpoint。                     |
-| `STORAGE_BUCKET_ENDPOINT`          | `bucketEndpoint`         | 外部 Endpoint 是否已经包含 bucket。                      |
-| `STORAGE_INTERNAL_ENDPOINT_URL`    | `internalEndpointUrl`    | 服务端对象操作使用的 Endpoint。                          |
-| `STORAGE_INTERNAL_BUCKET_ENDPOINT` | `internalBucketEndpoint` | 内部 Endpoint 是否已经包含 bucket。                      |
-| `STORAGE_ROOT_PATH`                | `rootPath`               | 应用于所有存储路径的可选 key prefix。                    |
-| `STORAGE_FORCE_PATH_STYLE`         | `forcePathStyle`         | 使用 `/bucket/key`，而不是 bucket 子域名形式的寻址方式。 |
+| 环境变量                    | 模块选项          | 用途                                                     |
+| --------------------------- | ----------------- | -------------------------------------------------------- |
+| `STORAGE_BUCKET`            | `bucket`          | 当前 Storage 实例使用的 bucket。                         |
+| `STORAGE_ACCESS_KEY_ID`     | `accessKeyId`     | S3 兼容认证使用的 Access Key。                           |
+| `STORAGE_SECRET_ACCESS_KEY` | `secretAccessKey` | S3 兼容认证使用的 Secret Key。                           |
+| `STORAGE_REGION`            | `region`          | 请求签名和 Endpoint 解析使用的区域。                     |
+| `STORAGE_ENDPOINT_URL`      | `endpointUrl`     | 生成直连与临时 URL 使用的 Endpoint。                     |
+| `STORAGE_ROOT_PATH`         | `rootPath`        | 应用于所有存储路径的可选 key prefix。                    |
+| `STORAGE_FORCE_PATH_STYLE`  | `forcePathStyle`  | 使用 `/bucket/key`，而不是 bucket 子域名形式的寻址方式。 |
 
 `bucket` 是必填项。如果运行环境已经通过标准凭证提供链提供认证信息，则可以不配置
 Access Key 和 Secret Key。显式传入的模块选项优先于环境变量。
@@ -113,27 +107,46 @@ import { Module } from "@nestjs/common";
 export class AppModule {}
 ```
 
-## 配置 Endpoint 路由
+## 外部 Endpoint
 
-Storage 会区分暴露给调用方的 URL 与应用自身发起的请求：
+`endpointUrl` 是外部可访问的 S3 兼容 Endpoint。Storage 使用它执行 `getUrl()`、
+`createTemporaryUrl()` 和 `createTemporaryUploadUrl()`，从而确保返回的 URL 可以被
+调用方访问。
 
-| 操作                                                       | Endpoint                                          | Bucket Endpoint 模式                                    |
-| ---------------------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------- |
-| `getUrl`、`createTemporaryUrl`、`createTemporaryUploadUrl` | `endpointUrl`                                     | `bucketEndpoint`                                        |
-| 读取、写入、流、复制、移动、删除和列表方法                 | `internalEndpointUrl`，未配置时使用 `endpointUrl` | `internalBucketEndpoint`，未配置时使用 `bucketEndpoint` |
-
-如果 URL 指向 S3 服务，且请求时仍需添加 bucket，请使用服务级 Endpoint：
+例如，本地 S3 兼容服务可以使用以下配置：
 
 ```typescript
 StorageModule.register({
   bucket: "uploads",
   endpointUrl: "http://minio:9000",
-  bucketEndpoint: false,
   forcePathStyle: true,
 });
 ```
 
-如果 URL 已经指向配置的 bucket，请启用 Bucket Endpoint 模式：
+未配置 `endpointUrl` 时，客户端会根据 region 和默认 Endpoint Provider 解析地址。
+
+## 内部 Endpoint
+
+`internalEndpointUrl` 用于应用侧的对象操作，包括 `readFile()`、`writeFile()`、流、
+复制、移动、删除和列表。当应用可以通过私网访问存储服务，而生成的 URL 又必须对外
+可访问时，可以分别配置两个 Endpoint。
+
+```typescript
+StorageModule.register({
+  bucket: "uploads",
+  endpointUrl: "https://storage.example.com",
+  internalEndpointUrl: "http://minio:9000",
+  forcePathStyle: true,
+});
+```
+
+未配置 `internalEndpointUrl` 时，应用侧操作会使用 `endpointUrl`。对应的环境变量是
+`STORAGE_INTERNAL_ENDPOINT_URL`。
+
+## Bucket Endpoint
+
+Endpoint 通常指向 S3 服务，客户端会在每个请求中添加 `bucket`。如果 Endpoint 已经
+指向一个具体 bucket，请设置 `bucketEndpoint: true`，避免再次添加 bucket：
 
 ```typescript
 StorageModule.register({
@@ -143,8 +156,7 @@ StorageModule.register({
 });
 ```
 
-外部与内部 Endpoint 可以使用不同模式。例如，对外使用 bucket 级域名生成 URL，
-应用执行对象操作时走私网内的服务级 Endpoint：
+内部 Endpoint 使用不同形式时，可以独立配置：
 
 ```typescript
 StorageModule.register({
@@ -157,9 +169,11 @@ StorageModule.register({
 });
 ```
 
-未配置 `internalEndpointUrl` 时会使用 `endpointUrl`；未配置
-`internalBucketEndpoint` 时会使用 `bucketEndpoint`。Bucket Endpoint 模式要求
-提供对应的 Endpoint URL，并且不会对该 Endpoint 应用 `forcePathStyle`。
+未配置 `internalBucketEndpoint` 时会继承 `bucketEndpoint`。对应的环境变量是
+`STORAGE_BUCKET_ENDPOINT` 与 `STORAGE_INTERNAL_BUCKET_ENDPOINT`。
+
+启用任意开关时，都必须提供与之对应的 Endpoint URL。在该模式下，Storage 不会追加
+bucket，也不会对该 Endpoint 应用 `forcePathStyle`。
 
 ## 使用 Storage
 

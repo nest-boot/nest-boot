@@ -44,26 +44,20 @@ STORAGE_ACCESS_KEY_ID=minio
 STORAGE_SECRET_ACCESS_KEY=password
 STORAGE_REGION=us-east-1
 STORAGE_ENDPOINT_URL=http://localhost:9000
-STORAGE_BUCKET_ENDPOINT=false
-STORAGE_INTERNAL_ENDPOINT_URL=
-STORAGE_INTERNAL_BUCKET_ENDPOINT=
 STORAGE_BUCKET=uploads
 STORAGE_ROOT_PATH=
 STORAGE_FORCE_PATH_STYLE=true
 ```
 
-| Environment variable               | Module option            | Purpose                                                               |
-| ---------------------------------- | ------------------------ | --------------------------------------------------------------------- |
-| `STORAGE_BUCKET`                   | `bucket`                 | Bucket used by this storage instance.                                 |
-| `STORAGE_ACCESS_KEY_ID`            | `accessKeyId`            | Access key for S3-compatible authentication.                          |
-| `STORAGE_SECRET_ACCESS_KEY`        | `secretAccessKey`        | Secret key for S3-compatible authentication.                          |
-| `STORAGE_REGION`                   | `region`                 | Region used for request signing and endpoint resolution.              |
-| `STORAGE_ENDPOINT_URL`             | `endpointUrl`            | Endpoint used for direct and temporary URLs.                          |
-| `STORAGE_BUCKET_ENDPOINT`          | `bucketEndpoint`         | Whether the external endpoint already contains the bucket.            |
-| `STORAGE_INTERNAL_ENDPOINT_URL`    | `internalEndpointUrl`    | Endpoint used for server-side object operations.                      |
-| `STORAGE_INTERNAL_BUCKET_ENDPOINT` | `internalBucketEndpoint` | Whether the internal endpoint already contains the bucket.            |
-| `STORAGE_ROOT_PATH`                | `rootPath`               | Optional key prefix applied to every storage path.                    |
-| `STORAGE_FORCE_PATH_STYLE`         | `forcePathStyle`         | Uses `/bucket/key` addressing instead of bucket subdomain addressing. |
+| Environment variable        | Module option     | Purpose                                                               |
+| --------------------------- | ----------------- | --------------------------------------------------------------------- |
+| `STORAGE_BUCKET`            | `bucket`          | Bucket used by this storage instance.                                 |
+| `STORAGE_ACCESS_KEY_ID`     | `accessKeyId`     | Access key for S3-compatible authentication.                          |
+| `STORAGE_SECRET_ACCESS_KEY` | `secretAccessKey` | Secret key for S3-compatible authentication.                          |
+| `STORAGE_REGION`            | `region`          | Region used for request signing and endpoint resolution.              |
+| `STORAGE_ENDPOINT_URL`      | `endpointUrl`     | Endpoint used for direct and temporary URLs.                          |
+| `STORAGE_ROOT_PATH`         | `rootPath`        | Optional key prefix applied to every storage path.                    |
+| `STORAGE_FORCE_PATH_STYLE`  | `forcePathStyle`  | Uses `/bucket/key` addressing instead of bucket subdomain addressing. |
 
 `bucket` is required. Credentials are optional when the runtime already
 provides them through the standard credential provider chain. Explicit module
@@ -117,29 +111,50 @@ import { Module } from "@nestjs/common";
 export class AppModule {}
 ```
 
-## Configure Endpoint Routing
+## External Endpoint
 
-Storage separates URLs exposed to callers from traffic issued by the
-application:
+`endpointUrl` is the externally reachable S3-compatible endpoint. Storage uses
+it for `getUrl()`, `createTemporaryUrl()`, and `createTemporaryUploadUrl()` so
+the returned URLs are reachable by their callers.
 
-| Operations                                                       | Endpoint                                             | Bucket endpoint mode                                       |
-| ---------------------------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------- |
-| `getUrl`, `createTemporaryUrl`, `createTemporaryUploadUrl`       | `endpointUrl`                                        | `bucketEndpoint`                                           |
-| Read, write, stream, copy, move, delete, and list object methods | `internalEndpointUrl`, falling back to `endpointUrl` | `internalBucketEndpoint`, falling back to `bucketEndpoint` |
-
-Use a service-level endpoint when the URL identifies the S3 service and the
-bucket still needs to be added to each request:
+For example, a local S3-compatible service can use:
 
 ```typescript
 StorageModule.register({
   bucket: "uploads",
   endpointUrl: "http://minio:9000",
-  bucketEndpoint: false,
   forcePathStyle: true,
 });
 ```
 
-Use bucket endpoint mode when the URL already identifies the configured bucket:
+When `endpointUrl` is omitted, the client resolves the endpoint from its region
+and default endpoint provider.
+
+## Internal Endpoint
+
+`internalEndpointUrl` is used for application-side object operations:
+`readFile()`, `writeFile()`, streams, copying, moving, deletion, and listings.
+This is useful when the application can reach the storage service through a
+private network address while generated URLs must remain externally reachable.
+
+```typescript
+StorageModule.register({
+  bucket: "uploads",
+  endpointUrl: "https://storage.example.com",
+  internalEndpointUrl: "http://minio:9000",
+  forcePathStyle: true,
+});
+```
+
+If `internalEndpointUrl` is omitted, application-side operations use
+`endpointUrl`. The equivalent environment variable is
+`STORAGE_INTERNAL_ENDPOINT_URL`.
+
+## Bucket Endpoint
+
+Endpoints normally identify an S3 service, and the client adds `bucket` to each
+request. Some endpoints already identify a specific bucket. Set
+`bucketEndpoint: true` for this form so the bucket is not added again:
 
 ```typescript
 StorageModule.register({
@@ -149,9 +164,7 @@ StorageModule.register({
 });
 ```
 
-The external and internal endpoints may use different modes. For example, an
-application can generate URLs from a bucket-level public hostname while sending
-object operations to a private service-level endpoint:
+Configure the internal endpoint independently when it uses a different form:
 
 ```typescript
 StorageModule.register({
@@ -164,10 +177,13 @@ StorageModule.register({
 });
 ```
 
-When `internalEndpointUrl` is omitted, it uses `endpointUrl`. When
-`internalBucketEndpoint` is omitted, it uses `bucketEndpoint`. Bucket endpoint
-mode requires a corresponding endpoint URL and does not apply
-`forcePathStyle` to that endpoint.
+`internalBucketEndpoint` defaults to `bucketEndpoint` when omitted. The
+environment equivalents are `STORAGE_BUCKET_ENDPOINT` and
+`STORAGE_INTERNAL_BUCKET_ENDPOINT`.
+
+Each enabled switch requires its corresponding Endpoint URL. In this mode,
+Storage does not append the bucket and does not apply `forcePathStyle` to that
+Endpoint.
 
 ## Use Storage
 
