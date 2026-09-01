@@ -89,6 +89,11 @@ describe("StorageModule", () => {
     await expect(storage.getUrl("file.txt")).resolves.toBe(
       "https://cdn.example.com/assets/tenant/file.txt",
     );
+    const temporaryUrl = await storage.createTemporaryUrl("file.txt");
+    const temporaryUpload = await storage.createTemporaryUploadUrl("file.txt");
+
+    expect(new URL(temporaryUrl).hostname).toBe("cdn.example.com");
+    expect(new URL(temporaryUpload.url).hostname).toBe("s3.public.example.com");
   });
 
   it("supports asynchronous registration", async () => {

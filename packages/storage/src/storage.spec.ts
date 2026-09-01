@@ -78,13 +78,16 @@ describe("Storage", () => {
       .mockResolvedValueOnce("https://signed.example.com/default.txt");
     const { client } = createClient();
     const { client: urlClient } = createClient();
+    const { client: publicUrlClient } = createClient();
     const storage = new Storage(
       client,
       {
         bucket: "uploads",
+        publicEndpointUrl: "https://cdn.example.com",
         rootPath: "private",
       },
       urlClient,
+      publicUrlClient,
     );
 
     await expect(
@@ -104,9 +107,12 @@ describe("Storage", () => {
       Key: "private/reports/file.txt",
       ResponseContentType: "text/plain",
     });
-    expect(getSignedUrlMock).toHaveBeenNthCalledWith(1, urlClient, command, {
-      expiresIn: 120,
-    });
+    expect(getSignedUrlMock).toHaveBeenNthCalledWith(
+      1,
+      publicUrlClient,
+      command,
+      { expiresIn: 120 },
+    );
     expect(getSignedUrlMock.mock.calls[1]?.[2]).toEqual({});
   });
 

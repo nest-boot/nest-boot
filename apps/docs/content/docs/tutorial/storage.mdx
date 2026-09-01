@@ -41,9 +41,9 @@ STORAGE_FORCE_PATH_STYLE=true
 
 Set `STORAGE_ROOT_PATH` when the storage instance must be limited to a key prefix. Leave it empty to address the bucket root.
 
-`STORAGE_ENDPOINT_URL` is the public S3 endpoint used for temporary URLs and, without a CDN override, direct URLs. Set `STORAGE_INTERNAL_ENDPOINT_URL` when server-side object operations should use a different private-network endpoint; otherwise it falls back to the S3 endpoint.
+`STORAGE_ENDPOINT_URL` is the externally reachable S3 endpoint used for temporary uploads and, without a public endpoint override, direct and temporary download URLs. Set `STORAGE_INTERNAL_ENDPOINT_URL` when server-side object operations should use a different private-network endpoint; otherwise it falls back to the S3 endpoint.
 
-Set `STORAGE_PUBLIC_ENDPOINT_URL` to a CDN base URL for `getUrl()`. It is optional and falls back to `STORAGE_ENDPOINT_URL`. Temporary URLs continue to use `STORAGE_ENDPOINT_URL` so S3 signatures remain valid.
+Set `STORAGE_PUBLIC_ENDPOINT_URL` to a public S3-compatible CDN or proxy endpoint for `getUrl()` and `createTemporaryUrl()`. It is optional and falls back to `STORAGE_ENDPOINT_URL`. Because the endpoint hostname participates in the S3 signature, the configured CDN or proxy must forward S3 SigV4 requests without invalidating the signed host.
 
 ## Explicit Configuration
 

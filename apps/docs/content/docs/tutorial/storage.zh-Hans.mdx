@@ -41,9 +41,9 @@ STORAGE_FORCE_PATH_STYLE=true
 
 如果 storage 实例需要限制在某个 key prefix 下，请设置 `STORAGE_ROOT_PATH`；留空则访问 bucket 根路径。
 
-`STORAGE_ENDPOINT_URL` 是临时 URL 使用的公共 S3 端点；未配置 CDN 覆盖时，直接 URL 也使用它。服务端对象操作需要使用不同的私网端点时设置 `STORAGE_INTERNAL_ENDPOINT_URL`；未设置时会回退到 S3 端点。
+`STORAGE_ENDPOINT_URL` 是临时上传使用的外部可访问 S3 端点；未配置公开端点覆盖时，直接 URL 和临时下载 URL 也使用它。服务端对象操作需要使用不同的私网端点时设置 `STORAGE_INTERNAL_ENDPOINT_URL`；未设置时会回退到 S3 端点。
 
-需要让 `getUrl()` 返回 CDN 地址时设置 `STORAGE_PUBLIC_ENDPOINT_URL`；它是选填项，未设置时回退到 `STORAGE_ENDPOINT_URL`。临时 URL 仍使用 `STORAGE_ENDPOINT_URL`，以保证 S3 签名有效。
+需要让 `getUrl()` 和 `createTemporaryUrl()` 使用公开的 S3 兼容 CDN 或代理端点时，设置 `STORAGE_PUBLIC_ENDPOINT_URL`；它是选填项，未设置时回退到 `STORAGE_ENDPOINT_URL`。端点 hostname 会参与 S3 签名，因此 CDN 或代理必须在转发 S3 SigV4 请求时保留签名所需的 host。
 
 ## 显式配置
 

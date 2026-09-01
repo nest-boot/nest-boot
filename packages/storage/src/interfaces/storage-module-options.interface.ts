@@ -11,7 +11,7 @@ export interface StorageModuleOptions {
    */
   bucket?: string;
 
-  /** Public S3-compatible endpoint used in object and temporary URLs. */
+  /** External S3 endpoint used for uploads and as the public URL fallback. */
   endpointUrl?: string;
 
   /** Whether requests use path-style bucket addressing. */
@@ -20,7 +20,7 @@ export interface StorageModuleOptions {
   /** Internal S3-compatible endpoint used for server-side object operations. */
   internalEndpointUrl?: string;
 
-  /** Optional CDN endpoint used by {@link Storage.getUrl}. */
+  /** Optional S3-compatible CDN or proxy used for direct and signed read URLs. */
   publicEndpointUrl?: string;
 
   /** AWS region used for signing and endpoint resolution. */

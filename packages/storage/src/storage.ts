@@ -49,12 +49,14 @@ export class Storage {
    * Creates a Storage service.
    * @param s3Client - S3 client provided by {@link StorageModule}
    * @param options - Storage configuration
-   * @param s3UrlClient - Optional client configured with the public endpoint
+   * @param s3UrlClient - Optional client configured with the external S3 endpoint
+   * @param s3PublicUrlClient - Optional client configured with the public endpoint
    */
   constructor(
     private readonly s3Client: S3Client,
     options: StorageModuleOptions,
     private readonly s3UrlClient: S3Client = s3Client,
+    private readonly s3PublicUrlClient: S3Client = s3UrlClient,
   ) {
     if (!options.bucket?.trim()) {
       throw new Error(
@@ -129,7 +131,7 @@ export class Storage {
     const { expiresIn, ...getObjectOptions } = options;
 
     return await getSignedUrl(
-      this.s3UrlClient,
+      this.s3PublicUrlClient,
       new GetObjectCommand({
         ...getObjectOptions,
         Bucket: this.bucket,
