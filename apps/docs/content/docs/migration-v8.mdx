@@ -47,12 +47,6 @@ provide a CommonJS `require` entry.
 - When using MikroORM, upgrade to version 7 and import SQL types and drivers
   from the supported package entry points such as `@mikro-orm/sql` and
   `@mikro-orm/sqlite`.
-- File upload applications must install and register the global
-  `@nest-boot/storage` module. Remove `client` and `bucket` from
-  `FileUploadModule` options; configure `StorageModule` instead. It globally
-  provides `Storage` while keeping its S3 clients private, and static registration reads `STORAGE_ENDPOINT_URL`,
-  `STORAGE_BUCKET_ENDPOINT`, `STORAGE_INTERNAL_ENDPOINT_URL`, `STORAGE_INTERNAL_BUCKET_ENDPOINT`, `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY`, `STORAGE_REGION`,
-  `STORAGE_FORCE_PATH_STYLE`, `STORAGE_BUCKET`, and `STORAGE_ROOT_PATH`.
 - Rebuild generated files and migrations after switching TypeScript module
   resolution so generated imports include valid ESM extensions.
 

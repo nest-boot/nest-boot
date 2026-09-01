@@ -6,7 +6,7 @@
     "url": "https://github.com/nest-boot/nest-boot.git",
     "directory": "packages/storage"
   },
-  "description": "Laravel-inspired S3 storage for NestJS applications.",
+  "description": "S3-compatible object storage for NestJS applications.",
   "author": {
     "name": "Xudong Huang",
     "email": "me@huangxudong.com",

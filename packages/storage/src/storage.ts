@@ -40,7 +40,7 @@ import {
 const MAX_DELETE_OBJECTS = 1000;
 const MAX_SINGLE_COPY_SIZE = 5 * 1024 * 1024 * 1024;
 
-/** Laravel-inspired file storage backed by an S3-compatible object store. */
+/** File storage backed by an S3-compatible object store. */
 export class Storage {
   private readonly bucket: string;
   private readonly client: S3Client;

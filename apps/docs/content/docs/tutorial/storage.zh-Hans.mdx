@@ -1,9 +1,13 @@
 ---
 title: "Storage"
-description: "通过 S3 兼容对象存储使用 Laravel 风格的文件操作。"
+description: "在 NestJS 应用中配置 S3 兼容存储并管理对象。"
 ---
 
-`@nest-boot/storage` 模块为 S3 兼容对象存储提供 Laravel 风格的文件操作和 Node.js 风格的文件 I/O。所有路径都相对于可选的 storage root，列表会自动处理分页，并把 S3 prefix 表现为目录。
+`@nest-boot/storage` 为一个 S3 兼容 bucket 提供全局 `Storage` 服务，支持缓冲与
+流式传输、对象管理、目录形式的列表，以及直连、临时上传和临时下载 URL。
+
+所有路径都可以限定在可选的 `rootPath` 内，因此同一个 bucket 可以划分出相互
+隔离的存储空间。对外 URL 流量与应用发起的对象操作也可以使用不同的 Endpoint。
 
 ## 安装
 
@@ -11,11 +15,14 @@ description: "通过 S3 兼容对象存储使用 Laravel 风格的文件操作�
 pnpm add @nest-boot/storage @aws-sdk/client-s3 @aws-sdk/lib-storage @aws-sdk/s3-presigned-post @aws-sdk/s3-request-presigner
 ```
 
-请在根应用中注册一次 `StorageModule`。它会全局导出 `Storage`，AWS SDK 客户端则保持为内部实现。
+`StorageModule` 是全局模块。只需在根应用中注册一次，之后即可在需要的位置注入
+`Storage`。
 
-## 环境变量配置
+## 注册模块
 
-直接导入模块时，会从环境变量读取支持的 `STORAGE_*` 配置：
+### 环境变量
+
+直接导入 `StorageModule` 时，模块会从 `STORAGE_*` 环境变量加载配置：
 
 ```typescript
 import { StorageModule } from "@nest-boot/storage";
@@ -26,6 +33,8 @@ import { Module } from "@nestjs/common";
 })
 export class AppModule {}
 ```
+
+下面是一组常见的服务级 Endpoint 配置：
 
 ```dotenv
 STORAGE_ACCESS_KEY_ID=minio
@@ -40,57 +49,121 @@ STORAGE_ROOT_PATH=
 STORAGE_FORCE_PATH_STYLE=true
 ```
 
-如果 storage 实例需要限制在某个 key prefix 下，请设置 `STORAGE_ROOT_PATH`；留空则访问 bucket 根路径。
+| 环境变量                           | 模块选项                 | 用途                                                     |
+| ---------------------------------- | ------------------------ | -------------------------------------------------------- |
+| `STORAGE_BUCKET`                   | `bucket`                 | 当前 Storage 实例使用的 bucket。                         |
+| `STORAGE_ACCESS_KEY_ID`            | `accessKeyId`            | S3 兼容认证使用的 Access Key。                           |
+| `STORAGE_SECRET_ACCESS_KEY`        | `secretAccessKey`        | S3 兼容认证使用的 Secret Key。                           |
+| `STORAGE_REGION`                   | `region`                 | 请求签名和 Endpoint 解析使用的区域。                     |
+| `STORAGE_ENDPOINT_URL`             | `endpointUrl`            | 生成直连与临时 URL 使用的 Endpoint。                     |
+| `STORAGE_BUCKET_ENDPOINT`          | `bucketEndpoint`         | 外部 Endpoint 是否已经包含 bucket。                      |
+| `STORAGE_INTERNAL_ENDPOINT_URL`    | `internalEndpointUrl`    | 服务端对象操作使用的 Endpoint。                          |
+| `STORAGE_INTERNAL_BUCKET_ENDPOINT` | `internalBucketEndpoint` | 内部 Endpoint 是否已经包含 bucket。                      |
+| `STORAGE_ROOT_PATH`                | `rootPath`               | 应用于所有存储路径的可选 key prefix。                    |
+| `STORAGE_FORCE_PATH_STYLE`         | `forcePathStyle`         | 使用 `/bucket/key`，而不是 bucket 子域名形式的寻址方式。 |
 
-`STORAGE_ENDPOINT_URL` 是生成直连 URL、临时上传和临时下载时使用的外部可访问 Endpoint。服务端对象操作需要使用不同的私网 Endpoint 时设置 `STORAGE_INTERNAL_ENDPOINT_URL`；未设置时，`Storage` 会复用外部客户端。
+`bucket` 是必填项。如果运行环境已经通过标准凭证提供链提供认证信息，则可以不配置
+Access Key 和 Secret Key。显式传入的模块选项优先于环境变量。
 
-当 `STORAGE_ENDPOINT_URL` 已经代表配置的 bucket（例如 `https://uploads.minio.example.com`）时，设置 `STORAGE_BUCKET_ENDPOINT=true`。`STORAGE_INTERNAL_BUCKET_ENDPOINT` 独立描述内网 Endpoint；未设置时继承 `STORAGE_BUCKET_ENDPOINT`。桶级 Endpoint 模式要求对应的 URL，不会重复添加 bucket，并会忽略该客户端的 `forcePathStyle`。
+### 显式配置
 
-## 显式配置
+应用直接持有配置时，使用 `register()`：
 
-通过 `register()` 显式配置 S3 客户端、bucket 与 root path：
+```typescript
+import { StorageModule } from "@nest-boot/storage";
+import { Module } from "@nestjs/common";
+
+@Module({
+  imports: [
+    StorageModule.register({
+      bucket: "uploads",
+      endpointUrl: "http://localhost:9000",
+      forcePathStyle: true,
+      region: "us-east-1",
+      accessKeyId: "minio",
+      secretAccessKey: "password",
+      rootPath: "tenants/acme",
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+配置由其他 provider 提供时，使用 `registerAsync()`：
+
+```typescript
+import { StorageModule } from "@nest-boot/storage";
+import { ConfigModule, ConfigService } from "@nestjs/config";
+import { Module } from "@nestjs/common";
+
+@Module({
+  imports: [
+    StorageModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        bucket: config.getOrThrow<string>("STORAGE_BUCKET"),
+        endpointUrl: config.get<string>("STORAGE_ENDPOINT_URL"),
+        region: config.get<string>("STORAGE_REGION"),
+        rootPath: config.get<string>("STORAGE_ROOT_PATH"),
+      }),
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+## 配置 Endpoint 路由
+
+Storage 会区分暴露给调用方的 URL 与应用自身发起的请求：
+
+| 操作                                                       | Endpoint                                          | Bucket Endpoint 模式                                    |
+| ---------------------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------- |
+| `getUrl`、`createTemporaryUrl`、`createTemporaryUploadUrl` | `endpointUrl`                                     | `bucketEndpoint`                                        |
+| 读取、写入、流、复制、移动、删除和列表方法                 | `internalEndpointUrl`，未配置时使用 `endpointUrl` | `internalBucketEndpoint`，未配置时使用 `bucketEndpoint` |
+
+如果 URL 指向 S3 服务，且请求时仍需添加 bucket，请使用服务级 Endpoint：
 
 ```typescript
 StorageModule.register({
   bucket: "uploads",
-  bucketEndpoint: true,
-  endpointUrl: "https://uploads.storage.example.com",
+  endpointUrl: "http://minio:9000",
+  bucketEndpoint: false,
   forcePathStyle: true,
+});
+```
+
+如果 URL 已经指向配置的 bucket，请启用 Bucket Endpoint 模式：
+
+```typescript
+StorageModule.register({
+  bucket: "uploads",
+  endpointUrl: "https://uploads.storage.example.com",
+  bucketEndpoint: true,
+});
+```
+
+外部与内部 Endpoint 可以使用不同模式。例如，对外使用 bucket 级域名生成 URL，
+应用执行对象操作时走私网内的服务级 Endpoint：
+
+```typescript
+StorageModule.register({
+  bucket: "uploads",
+  endpointUrl: "https://uploads.storage.example.com",
+  bucketEndpoint: true,
   internalEndpointUrl: "http://minio:9000",
   internalBucketEndpoint: false,
-  region: "us-east-1",
-  accessKeyId: "minio",
-  secretAccessKey: "password",
-  rootPath: "tenants/acme",
+  forcePathStyle: true,
 });
 ```
 
-传给 `Storage` 的路径仍然相对于 `tenants/acme`，返回的文件和目录路径不会暴露该 root。
+未配置 `internalEndpointUrl` 时会使用 `endpointUrl`；未配置
+`internalBucketEndpoint` 时会使用 `bucketEndpoint`。Bucket Endpoint 模式要求
+提供对应的 Endpoint URL，并且不会对该 Endpoint 应用 `forcePathStyle`。
 
-需要从其他 provider 获取选项时使用 `registerAsync()`：
+## 使用 Storage
 
-```typescript
-import { ConfigService } from "@nestjs/config";
-
-StorageModule.registerAsync({
-  inject: [ConfigService],
-  useFactory: (config: ConfigService) => ({
-    bucket: config.getOrThrow("STORAGE_BUCKET"),
-    bucketEndpoint: config.get("STORAGE_BUCKET_ENDPOINT") === "true",
-    endpointUrl: config.get("STORAGE_ENDPOINT_URL"),
-    forcePathStyle: config.get("STORAGE_FORCE_PATH_STYLE") === "true",
-    internalBucketEndpoint:
-      config.get("STORAGE_INTERNAL_BUCKET_ENDPOINT") === "true",
-    internalEndpointUrl: config.get("STORAGE_INTERNAL_ENDPOINT_URL"),
-    region: config.get("STORAGE_REGION"),
-    rootPath: config.get("STORAGE_ROOT_PATH"),
-  }),
-});
-```
-
-## 依赖注入
-
-可以在应用的任意位置注入全局 `Storage` 服务。它的外部与内部 `S3Client` 属于实现细节，不会注册为 Nest provider：
+在应用 provider 中注入全局服务：
 
 ```typescript
 import { Storage } from "@nest-boot/storage";
@@ -102,50 +175,41 @@ export class DocumentsService {
 }
 ```
 
-## 文件操作
+### 路径作用域
 
-使用注入的 `Storage` 执行文件操作：
+所有方法的路径都相对于 `rootPath`。当 `rootPath` 为 `tenants/acme` 时，下面的调用
+实际写入对象 key `tenants/acme/documents/report.txt`：
 
 ```typescript
-import { Storage } from "@nest-boot/storage";
-import { Injectable } from "@nestjs/common";
-
-@Injectable()
-export class DocumentsService {
-  constructor(private readonly storage: Storage) {}
-
-  async publish(): Promise<void> {
-    await this.storage.writeFile("documents/report.txt", "ready", {
-      ContentType: "text/plain",
-    });
-    await this.storage.copyFile("documents/report.txt", "archive/report.txt");
-    await this.storage.moveFile("archive/report.txt", "published/report.txt");
-    await this.storage.deleteFile([
-      "documents/report.txt",
-      "published/report.txt",
-    ]);
-  }
-}
+await storage.writeFile("documents/report.txt", "ready");
 ```
 
-`writeFile`、`copyFile`、`moveFile` 和 `deleteFile` 会在 S3 接受操作后完成，否则抛出 AWS SDK 错误。`copyFile` 以及基于它实现的 `moveFile` 支持最大 5 GB 的源对象；更大的对象会在复制前直接报错。`deleteFile` 同时接受单个路径或路径数组，并按 S3 每批最多 1,000 个对象的限制自动拆分。
+`listEntries()` 返回的路径同样相对于 `rootPath`，不会向调用方暴露内部 prefix。
 
-## Node.js 风格的文件 I/O
+### 读取与写入对象
 
-`readFile()` 默认返回 `Buffer`，传入 encoding 后返回字符串。`writeFile()` 接受字符串、array buffer view、iterable 和 async iterable，并替换目标对象：
+`readFile()` 会把完整对象读取到内存；默认返回 `Buffer`，指定 encoding 后返回字符串。
+`writeFile()` 会替换目标对象，支持字符串、Buffer、TypedArray、iterable 和 async
+iterable。
 
 ```typescript
-await storage.writeFile("documents/status.txt", "ready", "utf8");
+await storage.writeFile("documents/status.txt", "ready", {
+  ContentType: "text/plain",
+  encoding: "utf8",
+});
 
-const buffer = await storage.readFile("documents/status.txt");
+const contents = await storage.readFile("documents/status.txt");
 const text = await storage.readFile("documents/status.txt", "utf8");
 ```
 
-大文件或渐进生成的内容可以使用流。`createReadStream()` 支持包含边界的 `start` 与 `end` 字节偏移；`createWriteStream()` 使用 AWS managed multipart uploader，并且会等到 S3 完成上传后才触发 `finish`：
+S3 请求选项可以与 `encoding`、`signal` 一起传入。缓冲写入还支持 `partSize`、
+`queueSize` 和 `leavePartsOnError` 等 multipart 控制项。
+
+### 流式处理对象
+
+需要渐进处理内容时，使用 `createReadStream()` 与 `createWriteStream()`：
 
 ```typescript
-import { finished } from "node:stream/promises";
-
 const readable = storage.createReadStream("videos/input.mp4", {
   start: 0,
   end: 1023,
@@ -153,31 +217,74 @@ const readable = storage.createReadStream("videos/input.mp4", {
 
 const writable = storage.createWriteStream("videos/output.mp4", {
   ContentType: "video/mp4",
+  partSize: 8 * 1024 * 1024,
+  queueSize: 4,
 });
+
 readable.pipe(writable);
-await finished(writable);
 ```
 
-buffer、encoding、AbortSignal 和流的行为参考 [Node.js 文件系统 API](https://nodejs.org/api/fs.html)，同时保留 S3 特有的请求与 multipart 选项。
+`start` 和 `end` 都包含边界字节。只有 multipart 上传完成后，可写流才会触发
+`finish`；提前关闭任意一端的流会中止正在执行的请求。
 
-## 对象 URL
-
-`getUrl()` 使用 S3 客户端解析出的 endpoint 返回 path-style 或 virtual-host-style 直连 URL，适用于调用方已经可以读取的 bucket 或对象：
+### 复制、移动与删除对象
 
 ```typescript
-const publicUrl = await storage.getUrl("documents/report.pdf");
+await storage.copyFile("documents/report.pdf", "archive/report.pdf");
+await storage.moveFile("archive/report.pdf", "published/report.pdf");
+await storage.deleteFile("published/report.pdf");
+await storage.deleteFile(["tmp/one.txt", "tmp/two.txt"]);
 ```
 
-需要签名读取 URL 时使用 `createTemporaryUrl()`，过期时间以秒为单位：
+`copyFile()` 在当前 Storage 实例内复制对象，源对象超过 5 GB 时会拒绝操作。
+`moveFile()` 会先复制，成功后再删除源对象。`deleteFile()` 接受单个路径或路径数组，
+并将大数组按每批 1,000 个对象自动拆分。
+
+### 列出条目
 
 ```typescript
-const downloadUrl = await storage.createTemporaryUrl("documents/report.pdf", {
+const children = await storage.listEntries("documents");
+const descendants = await storage.listEntries("documents", {
+  recursive: true,
+});
+```
+
+`listEntries()` 默认返回路径下的直接子项；启用 `recursive` 后返回所有后代。结果按路径
+排序，包含以下字段：
+
+- `path`：相对于 `rootPath` 的路径
+- `type`：`file` 或 `directory`
+- `size`、`lastModified` 和 `etag`：存储服务返回这些信息时出现在文件条目中
+
+目录条目根据对象 prefix 推导，空目录 marker 对象也会作为目录返回。
+
+## 生成对象 URL
+
+### 直连 URL
+
+`getUrl()` 根据外部 Endpoint 返回未签名的对象 URL。对象必须已经允许调用方读取，
+该 URL 才能正常访问。
+
+```typescript
+const url = await storage.getUrl("documents/report.pdf");
+```
+
+### 临时下载 URL
+
+`createTemporaryUrl()` 对临时 GET 请求进行签名。`expiresIn` 使用秒为单位，还可以通过
+读取选项指定响应头。
+
+```typescript
+const url = await storage.createTemporaryUrl("documents/report.pdf", {
   expiresIn: 300,
   ResponseContentDisposition: 'attachment; filename="report.pdf"',
 });
 ```
 
-`createTemporaryUploadUrl()` 返回 presigned POST URL 和所有必需的表单字段。Storage 会自动把 key 限制在配置的 root 下，并在 POST policy 中约束 bucket 与 key：
+### 临时上传 URL
+
+`createTemporaryUploadUrl()` 创建 presigned POST 目标，返回上传地址以及上传策略要求的
+全部表单字段。
 
 ```typescript
 const upload = await storage.createTemporaryUploadUrl("tmp/report.pdf", {
@@ -185,21 +292,19 @@ const upload = await storage.createTemporaryUploadUrl("tmp/report.pdf", {
   expiresIn: 300,
   fields: { "Content-Type": "application/pdf" },
 });
+
+const form = new FormData();
+for (const [name, value] of Object.entries(upload.fields)) {
+  form.set(name, value);
+}
+form.set("file", file);
+
+await fetch(upload.url, { method: "POST", body: form });
 ```
 
-## 文件与目录列表
-
-```typescript
-const entries = await storage.listEntries("documents");
-const recursiveEntries = await storage.listEntries("documents", {
-  recursive: true,
-});
-```
-
-`listEntries` 默认返回直接子项，启用 `recursive` 后返回所有后代。每个排序后的条目都包含相对于 storage root 的 `path`，以及值为 `file` 或 `directory` 的 `type`；文件条目还可能包含 `size`、`lastModified` 和 `etag`。S3 没有物理目录，因此目录条目通过对象 key prefix 推导，也会识别空目录 marker 对象。
-
-文件操作接口包括 `createReadStream`、`createWriteStream`、`readFile`、`writeFile`、`deleteFile`、`copyFile`、`moveFile` 和 `listEntries`；URL 操作由 `getUrl`、`createTemporaryUrl` 与 `createTemporaryUploadUrl` 提供。命名参考 [Laravel 13 Filesystem API](https://laravel.com/framework/docs/13.x/filesystem) 与 Node.js，但不追求与 `node:fs` 完全兼容。
+Storage 会把 `rootPath` 添加到对象 key，并在上传策略中约束 bucket 与 key。上传方必须
+原样提交返回的全部字段。
 
 ## API 参考
 
-精确选项与方法签名请参阅 [Storage API 参考](/docs/api/storage)。
+完整的方法签名和选项类型请参阅 [Storage API 参考](/docs/api/storage)。
