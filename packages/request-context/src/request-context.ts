@@ -167,10 +167,32 @@ export class RequestContext {
    */
   // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
   get<T>(token: string | symbol | Function | Type<T>): T | undefined {
+    if (this.container.has(token)) {
+      return this.container.get(token) as T | undefined;
+    }
+
+    if (this.parent) {
+      const parentValue = this.parent.get<T>(token);
+
+      if (
+        typeof parentValue !== "undefined" ||
+        this.parent.hasContextValue(token)
+      ) {
+        return parentValue;
+      }
+    }
+
+    return this.dependencyResolver?.(token) as T | undefined;
+  }
+
+  /** Checks whether this context hierarchy contains an explicit value. */
+  private hasContextValue(
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
+    token: string | symbol | Function,
+  ): boolean {
     return (
-      this.container.get(token) ??
-      this.parent?.get(token) ??
-      (this.dependencyResolver?.(token) as T | undefined)
+      this.container.has(token) ||
+      (this.parent?.hasContextValue(token) ?? false)
     );
   }
 
