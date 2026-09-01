@@ -16,10 +16,19 @@ export type RequestContextMiddlewareType = <T>(
   next: () => Promise<T>,
 ) => Promise<T>;
 
+/** Resolves a dependency that is not stored directly in the context. */
+export type RequestContextDependencyResolver = (
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
+  token: string | symbol | Function,
+) => unknown;
+
 /**
  * Options for creating a new RequestContext instance.
  */
 export interface RequestContextCreateOptions {
+  /** Lazy fallback used to resolve application dependencies. */
+  dependencyResolver?: RequestContextDependencyResolver;
+
   /**
    * Unique identifier for the request context.
    * If not provided, a random UUID will be generated.
@@ -110,6 +119,9 @@ export class RequestContext {
    */
   readonly parent?: RequestContext;
 
+  /** Application dependency resolver used after contextual lookup. @internal */
+  private readonly dependencyResolver?: RequestContextDependencyResolver;
+
   /** Internal storage map for context values. @internal */
   private readonly container = new Map();
 
@@ -135,6 +147,7 @@ export class RequestContext {
     this.id = options.id ?? randomUUID();
     this.type = options.type;
     this.parent = options.parent;
+    this.dependencyResolver = options.dependencyResolver;
   }
 
   /**
@@ -154,7 +167,11 @@ export class RequestContext {
    */
   // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
   get<T>(token: string | symbol | Function | Type<T>): T | undefined {
-    return this.container.get(token) ?? this.parent?.get(token);
+    return (
+      this.container.get(token) ??
+      this.parent?.get(token) ??
+      (this.dependencyResolver?.(token) as T | undefined)
+    );
   }
 
   /**

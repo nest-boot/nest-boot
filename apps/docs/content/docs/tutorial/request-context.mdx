@@ -50,6 +50,25 @@ import { User } from "./user.entity";
 const user = RequestContext.get(User);
 ```
 
+Values stored explicitly in the context take precedence. When a class or token
+is not present, HTTP contexts created by `RequestContextModule` lazily resolve
+singleton providers from the Nest application container. This is useful in
+callbacks that run inside a request but are created outside Nest dependency
+injection:
+
+```typescript
+const mailer = RequestContext.get(Mailer);
+
+await mailer?.sendMail({
+  to: user.email,
+  subject: "Verify your email",
+  text: verificationUrl,
+});
+```
+
+Request-scoped providers are not resolved by this synchronous fallback. Store
+those explicitly with `RequestContext.set()`.
+
 ### Request Object
 
 Access the Express request via the `REQUEST` token:

@@ -50,6 +50,23 @@ import { User } from "./user.entity";
 const user = RequestContext.get(User);
 ```
 
+显式写入上下文的值优先级最高。当类或 Token 不在上下文中时，
+`RequestContextModule` 创建的 HTTP 上下文会从 Nest 应用容器中延迟获取单例
+Provider。这适合在请求内执行、但创建位置不处于 Nest 依赖注入中的回调：
+
+```typescript
+const mailer = RequestContext.get(Mailer);
+
+await mailer?.sendMail({
+  to: user.email,
+  subject: "验证邮箱",
+  text: verificationUrl,
+});
+```
+
+同步回退不会解析请求作用域 Provider；此类实例应通过
+`RequestContext.set()` 显式写入。
+
 ### 请求对象
 
 通过 `REQUEST` Token 访问 Express 请求：

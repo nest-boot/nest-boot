@@ -1,6 +1,8 @@
 import { Injectable, type NestMiddleware } from "@nestjs/common";
+import { ModuleRef } from "@nestjs/core";
 import { type NextFunction, type Request, type Response } from "express";
 
+import { createNestDependencyResolver } from "./nest-dependency-resolver.js";
 import {
   REQUEST as CTX_REQUEST_TOKEN,
   RESPONSE as CTX_RESPONSE_TOKEN,
@@ -29,6 +31,9 @@ import { RequestContext } from "./request-context.js";
  */
 @Injectable()
 export class RequestContextMiddleware implements NestMiddleware {
+  /** Creates a request context middleware instance. */
+  constructor(private readonly moduleRef?: ModuleRef) {}
+
   /**
    * Processes an incoming HTTP request and establishes request context.
    *
@@ -43,6 +48,9 @@ export class RequestContextMiddleware implements NestMiddleware {
     }
 
     const ctx = new RequestContext({
+      dependencyResolver: this.moduleRef
+        ? createNestDependencyResolver(this.moduleRef)
+        : undefined,
       id: req.get("x-request-id"),
       type: "http",
     });

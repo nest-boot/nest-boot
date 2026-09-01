@@ -1,4 +1,5 @@
 import type { CallHandler, ExecutionContext } from "@nestjs/common";
+import type { ModuleRef } from "@nestjs/core";
 import type { Request } from "express";
 import { lastValueFrom, Observable, of, take } from "rxjs";
 
@@ -6,7 +7,55 @@ import { RequestContextInterceptor } from "./request-context.interceptor.js";
 import { RequestContext } from "./request-context.js";
 
 describe("RequestContextInterceptor", () => {
-  const interceptor = new RequestContextInterceptor();
+  class GlobalProvider {}
+
+  const globalProvider = { source: "nest" };
+  const getProvider = vi.fn((token: unknown) =>
+    token === GlobalProvider ? globalProvider : undefined,
+  );
+  const moduleRef = {
+    get: getProvider,
+  } as unknown as ModuleRef;
+  const interceptor = new RequestContextInterceptor(moduleRef);
+
+  it("resolves Nest providers lazily from the active context", async () => {
+    const result = await lastValueFrom(
+      interceptor.intercept(createExecutionContext("provider-resolution"), {
+        handle: () => of(RequestContext.get(GlobalProvider)),
+      }),
+    );
+
+    expect(result).toBe(globalProvider);
+    expect(getProvider).toHaveBeenCalledWith(GlobalProvider, {
+      strict: false,
+    });
+  });
+
+  it("prefers values stored directly in the context", async () => {
+    const contextualProvider = { source: "request" };
+
+    const result = await lastValueFrom(
+      interceptor.intercept(createExecutionContext("provider-override"), {
+        handle: () => {
+          RequestContext.set(GlobalProvider, contextualProvider);
+          return of(RequestContext.get(GlobalProvider));
+        },
+      }),
+    );
+
+    expect(result).toBe(contextualProvider);
+  });
+
+  it("preserves manual construction without a Nest container", async () => {
+    const manualInterceptor = new RequestContextInterceptor();
+    const result = await lastValueFrom(
+      manualInterceptor.intercept(createExecutionContext("manual"), {
+        handle: () => of(RequestContext.get(GlobalProvider)),
+      }),
+    );
+
+    expect(result).toBeUndefined();
+  });
 
   it("reuses an active request context", async () => {
     const id = "active-context";
