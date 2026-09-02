@@ -15,6 +15,7 @@ describe('WorkspaceMember', () => {
     const member = new WorkspaceMember();
 
     expect(member.type).toBe(WorkspaceMemberType.USER);
+    expect(member.permissions).toEqual({});
   });
 
   it('uses simple workspace and user row-level security policies', () => {

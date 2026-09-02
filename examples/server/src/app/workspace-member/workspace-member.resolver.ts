@@ -37,7 +37,6 @@ import {
 } from './workspace-member.connection-definition.js';
 import { WorkspaceMember } from './workspace-member.entity.js';
 import { WorkspaceMemberService } from './workspace-member.service.js';
-import { WorkspaceMemberPermission } from './workspace-member-permission.enum.js';
 
 /** 工作区成员 GraphQL 解析器。 */
 @Resolver(() => WorkspaceMember)
@@ -387,19 +386,5 @@ export class WorkspaceMemberResolver {
     } catch {
       return null;
     }
-  }
-
-  /**
-   * 解析工作区成员的有效权限。
-   *
-   * @param workspaceMember - 父级工作区成员。
-   * @returns 成员直接配置的去重权限列表。
-   */
-  @Can(PermissionAction.READ, WorkspaceMember)
-  @ResolveField(() => [WorkspaceMemberPermission])
-  effectivePermissions(
-    @Parent() workspaceMember: WorkspaceMember,
-  ): WorkspaceMemberPermission[] {
-    return this.workspaceMemberService.getPermissions(workspaceMember);
   }
 }

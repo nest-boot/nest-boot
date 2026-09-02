@@ -34,6 +34,11 @@ export type Scalars = {
   ApiKeyFilter: { input: any; output: any };
   /** A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format. */
   DateTime: { input: any; output: any };
+  /** The `JSONObject` scalar type represents JSON objects as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf). */
+  JSONObject: {
+    input: Record<string, string[]>;
+    output: Record<string, string[]>;
+  };
   /**
    * A filter for Workspace that accepts MongoDB query syntax.
    * Supported fields: name, created_at
@@ -121,7 +126,7 @@ export type CreateApiKeyResult = {
 
 export type CreateServiceAccountWorkspaceMemberInput = {
   name: Scalars["String"]["input"];
-  permissions?: InputMaybe<Array<WorkspacePermission>>;
+  permissions?: InputMaybe<Scalars["JSONObject"]["input"]>;
   role?: InputMaybe<WorkspaceMemberRole>;
 };
 
@@ -291,7 +296,7 @@ export type UpdateWorkspaceInput = {
 export type UpdateWorkspaceMemberInput = {
   email?: InputMaybe<Scalars["String"]["input"]>;
   name?: InputMaybe<Scalars["String"]["input"]>;
-  permissions?: InputMaybe<Array<WorkspacePermission>>;
+  permissions?: InputMaybe<Scalars["JSONObject"]["input"]>;
   role?: InputMaybe<WorkspaceMemberRole>;
   status?: InputMaybe<WorkspaceMemberStatus>;
 };
@@ -343,7 +348,6 @@ export enum WorkspaceFeature {
 export type WorkspaceMember = {
   __typename?: "WorkspaceMember";
   createdAt: Scalars["DateTime"]["output"];
-  effectivePermissions: Array<WorkspacePermission>;
   email?: Maybe<Scalars["String"]["output"]>;
   id: Scalars["ID"]["output"];
   inviteExpiresAt?: Maybe<Scalars["DateTime"]["output"]>;
@@ -351,7 +355,7 @@ export type WorkspaceMember = {
   invitedBy?: Maybe<User>;
   invitedByUserName?: Maybe<Scalars["String"]["output"]>;
   name: Scalars["String"]["output"];
-  permissions: Array<WorkspacePermission>;
+  permissions: Scalars["JSONObject"]["output"];
   role: WorkspaceMemberRole;
   status: WorkspaceMemberStatus;
   type: WorkspaceMemberType;
@@ -424,11 +428,6 @@ export type WorkspaceOrder = {
 export enum WorkspaceOrderField {
   CREATED_AT = "CREATED_AT",
   ID = "ID",
-}
-
-export enum WorkspacePermission {
-  MANAGE_MEMBERS = "MANAGE_MEMBERS",
-  MANAGE_WORKSPACE = "MANAGE_WORKSPACE",
 }
 
 export type GetCurrentUserFromAuthenticatedRouteQueryVariables = Exact<{
@@ -619,8 +618,7 @@ export type GetCurrentWorkspaceMemberFromWorkspaceMemberContextQuery = {
     role: WorkspaceMemberRole;
     name: string;
     email?: string | null;
-    permissions: Array<WorkspacePermission>;
-    effectivePermissions: Array<WorkspacePermission>;
+    permissions: Record<string, string[]>;
     inviteToken?: string | null;
     status: WorkspaceMemberStatus;
     inviteExpiresAt?: any | null;
@@ -668,7 +666,7 @@ export type GetWorkspaceMemberFromMemberRouteQuery = {
     name: string;
     email?: string | null;
     role: WorkspaceMemberRole;
-    permissions: Array<WorkspacePermission>;
+    permissions: Record<string, string[]>;
     inviteToken?: string | null;
     status: WorkspaceMemberStatus;
     inviteExpiresAt?: any | null;
@@ -691,7 +689,7 @@ export type UpdateWorkspaceMemberFromMemberRouteMutation = {
     name: string;
     email?: string | null;
     role: WorkspaceMemberRole;
-    permissions: Array<WorkspacePermission>;
+    permissions: Record<string, string[]>;
     inviteToken?: string | null;
     status: WorkspaceMemberStatus;
     inviteExpiresAt?: any | null;
@@ -1663,10 +1661,6 @@ export const GetCurrentWorkspaceMemberFromWorkspaceMemberContextDocument = {
                 { kind: "Field", name: { kind: "Name", value: "name" } },
                 { kind: "Field", name: { kind: "Name", value: "email" } },
                 { kind: "Field", name: { kind: "Name", value: "permissions" } },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "effectivePermissions" },
-                },
                 { kind: "Field", name: { kind: "Name", value: "inviteToken" } },
                 { kind: "Field", name: { kind: "Name", value: "status" } },
                 {

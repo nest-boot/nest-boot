@@ -87,7 +87,7 @@ type CreateApiKeyResult {
 
 input CreateServiceAccountWorkspaceMemberInput {
   name: String!
-  permissions: [WorkspacePermission!]
+  permissions: JSONObject
   role: WorkspaceMemberRole
 }
 
@@ -104,6 +104,11 @@ input CreateWorkspaceInviteInput {
 A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
 """
 scalar DateTime
+
+"""
+The `JSONObject` scalar type represents JSON objects as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
+"""
+scalar JSONObject
 
 type Mutation {
   acceptWorkspaceInvite(input: AcceptWorkspaceInviteInput, token: String!): AcceptWorkspaceInviteResult!
@@ -244,7 +249,7 @@ input UpdateWorkspaceInput {
 input UpdateWorkspaceMemberInput {
   email: String
   name: String
-  permissions: [WorkspacePermission!]
+  permissions: JSONObject
   role: WorkspaceMemberRole
   status: WorkspaceMemberStatus
 }
@@ -305,7 +310,6 @@ scalar WorkspaceFilter
 
 type WorkspaceMember {
   createdAt: DateTime!
-  effectivePermissions: [WorkspacePermission!]!
   email: String
   id: ID!
   inviteExpiresAt: DateTime
@@ -313,7 +317,7 @@ type WorkspaceMember {
   invitedBy: User
   invitedByUserName: String
   name: String!
-  permissions: [WorkspacePermission!]!
+  permissions: JSONObject!
   role: WorkspaceMemberRole!
   status: WorkspaceMemberStatus!
   type: WorkspaceMemberType!
@@ -400,9 +404,4 @@ input WorkspaceOrder {
 enum WorkspaceOrderField {
   CREATED_AT
   ID
-}
-
-enum WorkspacePermission {
-  MANAGE_MEMBERS
-  MANAGE_WORKSPACE
 }

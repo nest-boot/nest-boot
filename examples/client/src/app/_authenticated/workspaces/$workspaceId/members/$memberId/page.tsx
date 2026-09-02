@@ -13,6 +13,7 @@ import { t } from "i18next";
 
 import { useCurrentWorkspaceMemberContext } from "../../contexts/current-workspace-member-context";
 import type { UpdateWorkspaceMemberInput } from "@/gql/graphql";
+import type { WorkspacePermission } from "@/lib/workspace-permissions";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import {
   Page,
@@ -27,13 +28,13 @@ import { Field, FieldGroup, FieldSet } from "@/components/ui/field";
 import { Input } from "@/components/thread-ui/input";
 import { RadioGroup } from "@/components/thread-ui/radio-group";
 import { graphql } from "@/gql";
-import {
-  WorkspaceMemberRole,
-  WorkspaceMemberStatus,
-  WorkspacePermission,
-} from "@/gql/graphql";
+import { WorkspaceMemberRole, WorkspaceMemberStatus } from "@/gql/graphql";
 import { getRoleLabel } from "@/utils/get-role-label";
-import { workspacePermissions } from "@/lib/workspace-permissions";
+import {
+  flattenWorkspacePermissions,
+  groupWorkspacePermissions,
+  workspacePermissions,
+} from "@/lib/workspace-permissions";
 import { PermissionCheckboxGroup } from "@/components/permission-checkbox-group";
 
 const GET_CURRENT_WORKSPACE_MEMBER_FROM_MEMBER_ROUTE = graphql(`
@@ -117,7 +118,11 @@ const formSchema = z.object({
     .email(t("workspace-member:details.form.email.invalid"))
     .or(z.literal("")),
   role: z.nativeEnum(WorkspaceMemberRole),
-  permissions: z.array(z.nativeEnum(WorkspacePermission)),
+  permissions: z.array(
+    z.custom<WorkspacePermission>(
+      (value) => typeof value === "string" && value in workspacePermissions,
+    ),
+  ),
 });
 
 export const Route = createFileRoute(
@@ -222,7 +227,7 @@ function MemberComponent() {
         WorkspaceMemberRole.ADMIN,
       ].includes(member.role)
         ? allPermissions
-        : member.permissions,
+        : flattenWorkspacePermissions(member.permissions),
     },
     validators: {
       onSubmit: formSchema,
@@ -247,7 +252,9 @@ function MemberComponent() {
         }
 
         // 比较权限数组是否变化
-        const currentPermissions = member.permissions;
+        const currentPermissions = flattenWorkspacePermissions(
+          member.permissions,
+        );
         const hasPermissionChanged =
           value.permissions.length !== currentPermissions.length ||
           value.permissions.some(
@@ -265,7 +272,7 @@ function MemberComponent() {
           ) &&
           hasPermissionChanged
         ) {
-          input.permissions = value.permissions;
+          input.permissions = groupWorkspacePermissions(value.permissions);
         }
 
         await updateWorkspaceMember({
@@ -501,7 +508,7 @@ function MemberComponent() {
                       if (value === WorkspaceMemberRole.MEMBER) {
                         form.setFieldValue(
                           "permissions",
-                          member?.permissions || [],
+                          flattenWorkspacePermissions(member?.permissions),
                         );
                       } else {
                         form.setFieldValue("permissions", allPermissions);

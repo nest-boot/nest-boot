@@ -21,6 +21,12 @@ const config: CodegenConfig = {
           enumValues: "keep",
         },
         inlineFragmentTypes: "mask",
+        scalars: {
+          JSONObject: {
+            input: "Record<string, string[]>",
+            output: "Record<string, string[]>",
+          },
+        },
       },
     },
   },
