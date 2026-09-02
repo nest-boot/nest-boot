@@ -251,21 +251,45 @@ currentWorkspace(
 
 ## API Key
 
-`ApiKeyService` 管理工作区范围的 API Key。每个 Key 始终代表一个工作区成员，因此认证成功时会同时恢复对应的工作区与成员身份。所有者和管理员可以管理其他成员的 Key，普通成员只能管理自己的 Key。
+`ApiKeyService` 同时管理 User 与 Workspace 所有的 API Key。User Key 会恢复所属用户；只有该用户仍是所选工作区的成员时，才能访问工作区资源。Workspace Key 是独立服务身份，只恢复所属工作区，不会创建当前用户或工作区成员。用户管理自己的 User Key，只有工作区所有者可以管理 Workspace Key。
 
 服务提供：
 
-- `getApiKey(id, currentMember)` 与 `getListFilter(workspace, currentMember)`
-- `createKey(workspace, currentMember, options)`
-- `updateKey(id, currentMember, input)` 与 `deleteKey(id, currentMember)`
+- `getUserApiKey`、`createUserKey`、`updateUserKey` 与 `deleteUserKey`
+- `getWorkspaceApiKey`、`createWorkspaceKey`、`updateWorkspaceKey` 与 `deleteWorkspaceKey`
+- `getUserListFilter` 与 `getWorkspaceListFilter`
 - `validate(plaintextKey)` 与 `recordUsage(apiKey)`
 
-明文 Key 只会由 `createKey` 返回一次，数据库仅持久化查询标识和加密后的 secret。认证成功的请求会自动更新 `lastUsedAt`。
+创建方法只会返回一次明文 Key。数据库会保存完整 Key 的 SHA-256 哈希、可安全展示的 `start` 与 `prefix`、启用状态、权限、过期时间和使用时间。认证成功的请求会自动更新 `lastUsedAt`。
+
+`@nest-boot/auth` 使用字符串存储和判断权限。封闭的权限目录由应用定义，
+因此每个产品都可以使用自己的资源和操作：
+
+```typescript
+import { UserPermission } from "./auth/enums/user-permission.enum";
+import { WorkspacePermission } from "./auth/enums/workspace-permission.enum";
+
+const workspacePermissions: WorkspacePermission[] = [
+  WorkspacePermission.WORKSPACE_UPDATE,
+  WorkspacePermission.WORKSPACE_MEMBER_CREATE,
+];
+
+const userKeyPermissions: (UserPermission | WorkspacePermission)[] = [
+  UserPermission.USER_GET,
+  WorkspacePermission.WORKSPACE_UPDATE,
+];
+```
+
+在示例应用中，`User.permissions` 保存 `UserPermission[]`，
+`WorkspaceMember.permissions` 保存 `WorkspacePermission[]`，API Key 保存
+`(UserPermission | WorkspacePermission)[]`。Workspace Key 只接受工作区域权限，
+User Key 可以同时包含两个权限域。数据库使用 `text[]` 列保存权限，应用在写入前
+校验每一个值；auth 模块自身始终将这些字段公开为 `string[]`。
 
 API Key 使用 Bearer 方式发送：
 
 ```http
-Authorization: Bearer sk-0123456789abcdefabcdef0123456789
+Authorization: Bearer sk-4tR9s...
 ```
 
 不支持 `x-api-key`。客户端还需要 Bearer Session 认证时，按异步注册示例加入 better-auth 的 `bearer()` 插件。Session 认证优先执行：如果 Bearer 凭证能解析为有效 Session，API Key 校验会跳过；否则同一个 Bearer 凭证会作为 API Key 校验。
@@ -282,14 +306,10 @@ audit(@CurrentApiKey() apiKey: ApiKey | null) {
 
 ## 权限授权
 
-通过 `AuthModule` 的 `buildAbility` 配置权限能力。只有路由声明了 `@Can` 时才会调用该回调，并且每个请求最多执行一次；生成的 CASL ability 会缓存在 `RequestContext` 中。回调可以返回 `null`，此时权限检查会抛出 `ForbiddenException`。
+通过 `AuthModule` 的 `buildWorkspaceAbility` 和 `buildUserAbility` 分别配置工作区权限与用户权限。路由检查对应权限域时，每个回调在一次请求中最多执行一次，两套 CASL ability 会分别缓存在 `RequestContext` 中。回调可以返回 `null`，此时对应的权限检查会抛出 `ForbiddenException`。
 
 ```typescript
-import {
-  AuthModule,
-  PermissionAbilityBuilder,
-  PermissionAction,
-} from "@nest-boot/auth";
+import { AuthModule, PermissionAbilityBuilder } from "@nest-boot/auth";
 import { RequestContext } from "@nest-boot/request-context";
 
 import { User } from "./user.entity";
@@ -305,7 +325,14 @@ export const AuthDynamicModule = AuthModule.forRoot({
     workspaceMember: WorkspaceMember,
     apiKey: ApiKey,
   },
-  buildAbility: () => {
+  buildWorkspaceAbility: () => {
+    const { can, build } = new PermissionAbilityBuilder();
+
+    can("read", Post);
+
+    return build();
+  },
+  buildUserAbility: () => {
     const user = RequestContext.get(User);
 
     if (!user) {
@@ -314,8 +341,8 @@ export const AuthDynamicModule = AuthModule.forRoot({
 
     const { can, build } = new PermissionAbilityBuilder();
 
-    can(PermissionAction.READ, Post);
-    can(PermissionAction.UPDATE, Post, { authorId: user.id });
+    can("read", Post);
+    can("update", Post, { authorId: user.id });
 
     return build();
   },
@@ -324,19 +351,21 @@ export const AuthDynamicModule = AuthModule.forRoot({
 
 同一个全局 `AuthGuard` 会先检查身份认证，再执行 `@Can` 权限元数据，不需要注册第二个权限模块或守卫。`@Public()` 只跳过认证要求；如果公开路由同时声明了 `@Can`，权限检查仍会执行。
 
+`@Can` 默认检查工作区 Ability。对于属于已认证用户、而非当前工作区的接口，在第三个参数中传入 `{ scope: "user" }`。Workspace API Key 只能通过工作区权限检查；User API Key 可以通过用户权限检查。应用自行决定 `User.permissions` 如何参与 `buildUserAbility`，API Key 请求再将该 Ability 与 Key permissions 取交集。访问工作区时还必须拥有实时有效的成员身份，并将工作区 Ability 与 Key permissions 取交集。读取操作属于认证后的基础访问，应用定义的权限字符串用于限制权限目录中声明的管理操作。
+
 ### 保护路由
 
 当权限只依赖资源类型时，直接传入 subject class。
 
 ```typescript
-import { Can, PermissionAction } from "@nest-boot/auth";
+import { Can } from "@nest-boot/auth";
 import { Query, Resolver } from "@nestjs/graphql";
 
 import { Post } from "./post.entity";
 
 @Resolver(() => Post)
 export class PostResolver {
-  @Can(PermissionAction.READ, Post)
+  @Can("read", Post)
   @Query(() => [Post])
   posts() {
     return this.postService.findAll();
@@ -344,17 +373,29 @@ export class PostResolver {
 }
 ```
 
+个人资源或应用级操作使用用户权限域：
+
+```typescript
+import { Can } from "@nest-boot/auth";
+
+@Can("read", User, { scope: "user" })
+@Query(() => User)
+me(@CurrentUser() user: User) {
+  return user;
+}
+```
+
 当 ability 需要具体资源实例时，使用 subject factory。factory 的第一个参数是当前 controller 或 resolver 实例，后续参数是被装饰的方法参数。它支持 HTTP、GraphQL 和自定义参数装饰器。
 
 ```typescript
-import { Can, PermissionAction } from "@nest-boot/auth";
+import { Can } from "@nest-boot/auth";
 import { Args, Mutation, Resolver } from "@nestjs/graphql";
 
 @Resolver(() => Post)
 export class PostResolver {
   constructor(private readonly postService: PostService) {}
 
-  @Can(PermissionAction.UPDATE, (self: PostResolver, id: string) =>
+  @Can("update", (self: PostResolver, id: string) =>
     self.postService.findOneOrFail({ id }),
   )
   @Mutation(() => Post)
@@ -366,16 +407,16 @@ export class PostResolver {
 
 ### 在服务中检查权限
 
-`AuthGuard` 为当前请求准备 ability 后，可以在底层代码中使用 `can` 同步检查权限，或通过 `getPermissionAbility()` 直接访问 CASL ability。
+`AuthGuard` 为当前请求准备 ability 后，可以在底层代码中使用 `can` 同步检查权限，或通过 `getPermissionAbility()` 直接访问 CASL ability。两个工具默认使用工作区权限域，也可以显式选择用户权限域。
 
 ```typescript
-import { can, PermissionAction } from "@nest-boot/auth";
+import { can } from "@nest-boot/auth";
 import { ForbiddenException, Injectable } from "@nestjs/common";
 
 @Injectable()
 export class PostService {
   update(post: Post) {
-    if (!can(PermissionAction.UPDATE, post)) {
+    if (!can("update", post)) {
       throw new ForbiddenException();
     }
 
@@ -385,6 +426,11 @@ export class PostService {
 ```
 
 两个工具都要求路由上的 `@Can` 已经让守卫准备好 ability；如果 ability 不存在，它们会抛出 `ForbiddenException`。
+
+```typescript
+can("read", user, { scope: "user" });
+getPermissionAbility("user");
+```
 
 ## 装饰器
 
@@ -440,7 +486,7 @@ export class User extends BaseUser {
 }
 ```
 
-同样继承 `BaseAccount`、`BaseSession` 和 `BaseVerification` 来定义其他 better-auth 实体。应用自己的工作区、工作区成员和 API Key 实体必须分别满足 `AuthWorkspaceEntity`、`AuthWorkspaceMemberEntity` 和 `AuthApiKeyEntity`。这样持久化与 GraphQL 注解仍留在应用中，而认证包可以统一负责领域规则。
+模块还提供 `BaseAccount`、`BaseSession`、`BaseVerification`、`BaseWorkspace`、`BaseWorkspaceMember` 和 `BaseApiKey`。每个配置实体都应继承对应的基础类。基础类定义认证服务需要的字段和关联；子类可以按应用需要重新声明字段的列类型、GraphQL 注解、索引，并添加其他属性。
 
 ## NestJS 集成
 

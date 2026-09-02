@@ -14,7 +14,6 @@ import { AuthGuard } from "./auth.guard.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
 import { BaseSession } from "./entities/index.js";
-import { PermissionAction } from "./enums/permission-action.enum.js";
 import { CAN_METADATA } from "./permission.constants.js";
 
 class PromiseAuthGuard extends AuthGuard {
@@ -110,10 +109,14 @@ describe("AuthGuard", () => {
       AuthGuard,
       vi.fn((key) =>
         key === CAN_METADATA
-          ? { action: PermissionAction.READ, subject: Subject }
+          ? {
+              action: "read",
+              scope: "user",
+              subject: Subject,
+            }
           : false,
       ),
-      { buildAbility },
+      { buildUserAbility: buildAbility },
     );
 
     await RequestContext.run(new RequestContext({ type: "http" }), async () => {
@@ -135,12 +138,16 @@ describe("AuthGuard", () => {
         }
 
         if (key === CAN_METADATA) {
-          return { action: PermissionAction.READ, subject: Subject };
+          return {
+            action: "read",
+            scope: "user",
+            subject: Subject,
+          };
         }
 
         return undefined;
       }),
-      { buildAbility: buildAbility as never },
+      { buildUserAbility: buildAbility as never },
     );
 
     await RequestContext.run(new RequestContext({ type: "http" }), async () => {
@@ -148,7 +155,7 @@ describe("AuthGuard", () => {
     });
 
     expect(buildAbility).toHaveBeenCalledOnce();
-    expect(can).toHaveBeenCalledWith(PermissionAction.READ, Subject);
+    expect(can).toHaveBeenCalledWith("read", Subject);
   });
 });
 

@@ -4,6 +4,12 @@ import { Test } from "@nestjs/testing";
 import { NextFunction, Request } from "express";
 import type { Mock } from "vitest";
 
+import { ApiKeyService } from "./api-key.service.js";
+import {
+  CURRENT_API_KEY,
+  CURRENT_WORKSPACE,
+  CURRENT_WORKSPACE_MEMBER,
+} from "./auth.constants.js";
 import { AuthMiddleware } from "./auth.middleware.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import { AuthService } from "./auth.service.js";
@@ -16,6 +22,7 @@ async function createMiddleware(
   getSession: Mock,
   findOne: Mock,
   onAuthenticated = vi.fn(),
+  validate = vi.fn(),
 ) {
   const authService = {
     api: {
@@ -48,6 +55,10 @@ async function createMiddleware(
         useValue: authService,
       },
       {
+        provide: ApiKeyService,
+        useValue: { validate },
+      },
+      {
         provide: EntityManager,
         useValue: em,
       },
@@ -57,6 +68,7 @@ async function createMiddleware(
   return {
     middleware: moduleRef.get(AuthMiddleware),
     onAuthenticated,
+    validate,
   };
 }
 
@@ -162,5 +174,124 @@ describe("AuthMiddleware", () => {
     expect(requestContextSet).not.toHaveBeenCalled();
     expect(onAuthenticated).not.toHaveBeenCalled();
     expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  it("gives a valid session precedence over a Bearer API key", async () => {
+    const user = Object.assign(new TestUser(), { id: "user-1" });
+    const session = Object.assign(new TestSession(), {
+      token: "session-token",
+    });
+    const getSession = vi.fn().mockResolvedValue({ session, user });
+    const findOne = vi
+      .fn()
+      .mockResolvedValueOnce(user)
+      .mockResolvedValueOnce(session);
+    const validate = vi.fn();
+    const { middleware } = await createMiddleware(
+      getSession,
+      findOne,
+      vi.fn(),
+      validate,
+    );
+
+    await middleware.use(
+      { headers: { authorization: "Bearer sk-key" } } as Request,
+      {} as never,
+      vi.fn(),
+    );
+
+    expect(validate).not.toHaveBeenCalled();
+  });
+
+  it("restores a user key and resolves membership in the selected workspace", async () => {
+    class TestWorkspace {}
+    class TestWorkspaceMember {}
+    const workspace = Object.assign(new TestWorkspace(), {
+      id: "workspace-1",
+      name: "Acme",
+    });
+    const user = Object.assign(new TestUser(), { id: "user-1" });
+    const member = Object.assign(new TestWorkspaceMember(), {
+      id: "member-1",
+    });
+    const apiKey = { id: "key-1" };
+    const findOne = vi
+      .fn()
+      .mockResolvedValueOnce(workspace)
+      .mockResolvedValueOnce(member);
+    const validate = vi.fn().mockResolvedValue({
+      apiKey,
+      ownerType: "user",
+      user,
+    });
+    const { middleware } = await createMiddleware(
+      vi.fn().mockResolvedValue(null),
+      findOne,
+      vi.fn(),
+      validate,
+    );
+    const set = vi.spyOn(RequestContext, "set");
+
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      await middleware.use(
+        {
+          headers: {
+            authorization: "Bearer sk-key",
+            "x-workspace-id": "workspace-1",
+          },
+        } as Request,
+        {} as never,
+        vi.fn(),
+      );
+    });
+
+    expect(validate).toHaveBeenCalledWith("sk-key");
+    expect(set).toHaveBeenCalledWith(CURRENT_WORKSPACE, workspace);
+    expect(set).toHaveBeenCalledWith(CURRENT_API_KEY, apiKey);
+    expect(set).toHaveBeenCalledWith(BaseUser, user);
+    expect(findOne).toHaveBeenLastCalledWith(expect.any(Function), {
+      user,
+      workspace,
+    });
+    expect(set).toHaveBeenCalledWith(CURRENT_WORKSPACE_MEMBER, member);
+  });
+
+  it("restores a workspace key and rejects a conflicting workspace selector", async () => {
+    class TestWorkspace {}
+    const selectedWorkspace = Object.assign(new TestWorkspace(), {
+      id: "workspace-1",
+      name: "Selected",
+    });
+    const ownerWorkspace = Object.assign(new TestWorkspace(), {
+      id: "workspace-2",
+      name: "Owner",
+    });
+    const validate = vi.fn().mockResolvedValue({
+      apiKey: { id: "key-1" },
+      ownerType: "workspace",
+      workspace: ownerWorkspace,
+    });
+    const { middleware } = await createMiddleware(
+      vi.fn().mockResolvedValue(null),
+      vi.fn().mockResolvedValue(selectedWorkspace),
+      vi.fn(),
+      validate,
+    );
+    const next = vi.fn();
+
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      await middleware.use(
+        {
+          headers: {
+            authorization: "Bearer sk-key",
+            "x-workspace-id": "workspace-1",
+          },
+        } as Request,
+        {} as never,
+        next,
+      );
+    });
+
+    expect(next).toHaveBeenCalledWith(expect.objectContaining({ status: 401 }));
   });
 });

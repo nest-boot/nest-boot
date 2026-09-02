@@ -9,26 +9,28 @@ import { ForbiddenException } from "@nestjs/common";
 import type { Mocked } from "vitest";
 
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
-import { BaseUser } from "./entities/user.entity.js";
-import type {
-  AuthWorkspaceEntity,
-  AuthWorkspaceMemberEntity,
-} from "./interfaces/auth-entities.interface.js";
+import {
+  BaseUser,
+  BaseWorkspace,
+  BaseWorkspaceMember,
+} from "./entities/index.js";
 import { WorkspaceService } from "./workspace.service.js";
 
-class TestWorkspace implements AuthWorkspaceEntity {
-  id = "workspace-1";
-  name = "Acme";
-  deletedAt: Date | null = null;
+class TestWorkspace extends BaseWorkspace {
+  override id = "workspace-1";
+  override name = "Acme";
+  override deletedAt: Date | null = null;
 }
 
-class TestWorkspaceMember implements AuthWorkspaceMemberEntity {
-  id = "member-1";
-  name = "Alice";
-  email: string | null = null;
-  role = "MEMBER" as const;
-  status = "ACTIVE" as const;
-  workspace = { id: "workspace-1" } as AuthWorkspaceMemberEntity["workspace"];
+class TestWorkspaceMember extends BaseWorkspaceMember {
+  override id = "member-1";
+  override name = "Alice";
+  override email: string | null = null;
+  override role = "MEMBER" as const;
+  override status = "ACTIVE" as const;
+  override workspace = {
+    id: "workspace-1",
+  } as BaseWorkspaceMember["workspace"];
 }
 
 class TestUser extends BaseUser {}
@@ -95,7 +97,7 @@ describe("WorkspaceService", () => {
       role: "OWNER" as const,
       workspace: {
         id: "workspace-2",
-      } as AuthWorkspaceMemberEntity["workspace"],
+      } as BaseWorkspaceMember["workspace"],
     });
 
     await expect(

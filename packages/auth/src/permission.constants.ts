@@ -7,6 +7,14 @@ export const PERMISSION_ABILITY = Symbol("PERMISSION_ABILITY");
 /** Request context key that stores the in-flight permission ability promise. */
 export const PERMISSION_ABILITY_PROMISE = Symbol("PERMISSION_ABILITY_PROMISE");
 
+/** Request context key that stores the resolved user-scoped permission ability. */
+export const USER_PERMISSION_ABILITY = Symbol("USER_PERMISSION_ABILITY");
+
+/** Request context key that stores the in-flight user-scoped ability promise. */
+export const USER_PERMISSION_ABILITY_PROMISE = Symbol(
+  "USER_PERMISSION_ABILITY_PROMISE",
+);
+
 /** Nest route arguments metadata key. */
 export const ROUTE_ARGS_METADATA = "__routeArguments__";
 

@@ -1,3 +1,5 @@
+import '../auth/enums/auth-permission.enum.js';
+
 import type { Opt, Ref } from '@mikro-orm/core';
 import { t } from '@mikro-orm/core';
 import {
@@ -10,14 +12,15 @@ import {
   Unique,
 } from '@mikro-orm/decorators/legacy';
 import { FullTextType } from '@mikro-orm/postgresql';
+import { BaseWorkspaceMember } from '@nest-boot/auth';
 import { Field, HideField, ID, ObjectType } from '@nest-boot/graphql';
 import { Policy } from '@nest-boot/row-level-security';
-import { GraphQLJSONObject } from 'graphql-type-json';
 import { Sonyflake } from 'sonyflake-js';
 
 import { SearchableProperty } from '../../common/decorators/searchable-property.decorator.js';
+import { WorkspacePermission } from '../auth/enums/workspace-permission.enum.js';
 import { User } from '../user/user.entity.js';
-import { Workspace } from '../workspace/workspace.entity.js';
+import type { Workspace } from '../workspace/workspace.entity.js';
 import { WorkspaceMemberRole } from './enums/workspace-member-role.enum.js';
 import { WorkspaceMemberStatus } from './enums/workspace-member-status.enum.js';
 import { WorkspaceMemberType } from './enums/workspace-member-type.enum.js';
@@ -47,23 +50,23 @@ import { WorkspaceMemberType } from './enums/workspace-member-type.enum.js';
 @Index({ properties: ['workspace'] })
 @Index({ properties: ['type'] })
 @Index({ properties: ['searchableName'], type: 'fulltext' })
-export class WorkspaceMember {
+export class WorkspaceMember extends BaseWorkspaceMember {
   /** 工作区成员唯一标识。 */
   @Field(() => ID)
   @PrimaryKey({
     type: t.bigint,
   })
-  id: Opt<string> = Sonyflake.next().toString();
+  override id: Opt<string> = Sonyflake.next().toString();
 
   /** 成员显示名称。 */
   @Field(() => String)
   @Property({ type: t.string })
-  name!: string;
+  declare name: string;
 
   /** 成员邮箱。 */
   @Field(() => String, { nullable: true })
   @Property({ type: t.string, nullable: true })
-  email?: Opt<string> | null = null;
+  override email?: Opt<string> | null = null;
 
   /** 用于全文搜索的成员名称分词字段。 */
   // eslint-disable-next-line @nest-boot/entity-property-config-from-types
@@ -89,12 +92,13 @@ export class WorkspaceMember {
     items: () => WorkspaceMemberRole,
     default: WorkspaceMemberRole.MEMBER,
   })
-  role: Opt<WorkspaceMemberRole> = WorkspaceMemberRole.MEMBER;
+  override role: Opt<WorkspaceMemberRole> = WorkspaceMemberRole.MEMBER;
 
-  /** 按资源和操作分组的成员权限。 */
-  @Field(() => GraphQLJSONObject)
-  @Property({ type: t.json, defaultRaw: "'{}'::jsonb" })
-  permissions: Opt<Record<string, string[]>> = {};
+  /** 额外授予成员的工作区域权限。 */
+  @Field(() => [WorkspacePermission])
+  // eslint-disable-next-line @nest-boot/entity-property-config-from-types
+  @Property({ type: t.array, defaultRaw: "'{}'" })
+  override permissions: Opt<WorkspacePermission[]> = [];
 
   /** 邀请者，删除时设置为空值。 */
   @ManyToOne(() => User, { nullable: true, deleteRule: 'set null' })
@@ -116,7 +120,7 @@ export class WorkspaceMember {
     items: () => WorkspaceMemberStatus,
     default: WorkspaceMemberStatus.ACTIVE,
   })
-  status: Opt<WorkspaceMemberStatus> = WorkspaceMemberStatus.ACTIVE;
+  override status: Opt<WorkspaceMemberStatus> = WorkspaceMemberStatus.ACTIVE;
 
   /** 邀请过期时间。 */
   @Field(() => Date, { nullable: true })
@@ -126,7 +130,7 @@ export class WorkspaceMember {
   /** 创建时间。 */
   @Field(() => Date)
   @Property({ type: t.datetime, defaultRaw: 'now()' })
-  createdAt: Opt<Date> = new Date();
+  override createdAt: Opt<Date> = new Date();
 
   /** 更新时间。 */
   @Field(() => Date)
@@ -135,13 +139,13 @@ export class WorkspaceMember {
     defaultRaw: 'now()',
     onUpdate: () => new Date(),
   })
-  updatedAt: Opt<Date> = new Date();
+  override updatedAt: Opt<Date> = new Date();
 
   /** 成员绑定的用户；服务账号和未接受邀请时为空。 */
-  @ManyToOne({ updateRule: 'cascade', deleteRule: 'cascade', nullable: true })
-  user?: Ref<User>;
+  // eslint-disable-next-line @nest-boot/entity-property-config-from-types, @nest-boot/graphql-field-config-from-types
+  declare user?: Ref<User> | null;
 
   /** 成员所属工作区。 */
-  @ManyToOne({ updateRule: 'cascade', deleteRule: 'cascade' })
-  workspace!: Ref<Workspace>;
+  // eslint-disable-next-line @nest-boot/entity-property-config-from-types, @nest-boot/graphql-field-config-from-types
+  declare workspace: Ref<Workspace>;
 }

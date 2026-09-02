@@ -4,12 +4,88 @@
     "description": "Select or deselect all permissions at once",
     "name": "All Permissions"
   },
-  "manage_members": {
-    "description": "Can add, delete, and modify workspace members",
-    "name": "Manage Members"
+  "workspace_update": {
+    "name": "Update Workspace",
+    "description": "Change workspace settings and configuration"
   },
-  "manage_workspace": {
-    "description": "Can modify workspace settings and configuration",
-    "name": "Manage Workspace"
+  "workspace_delete": {
+    "name": "Delete Workspace",
+    "description": "Permanently delete the workspace"
+  },
+  "workspace_member_create": {
+    "name": "Create Members",
+    "description": "Add members and service accounts to the workspace"
+  },
+  "workspace_member_update": {
+    "name": "Update Members",
+    "description": "Change workspace member details and access"
+  },
+  "workspace_member_delete": {
+    "name": "Delete Members",
+    "description": "Remove members and service accounts from the workspace"
+  },
+  "workspace_invitation_create": {
+    "name": "Create Invitations",
+    "description": "Invite people to join the workspace"
+  },
+  "workspace_invitation_cancel": {
+    "name": "Cancel Invitations",
+    "description": "Cancel pending workspace invitations"
+  },
+  "user_create": {
+    "name": "Create Users",
+    "description": "Create user accounts"
+  },
+  "user_list": {
+    "name": "List Users",
+    "description": "Browse user accounts"
+  },
+  "user_set_role": {
+    "name": "Set User Roles",
+    "description": "Change user administration roles"
+  },
+  "user_ban": {
+    "name": "Ban Users",
+    "description": "Ban or unban user accounts"
+  },
+  "user_impersonate": {
+    "name": "Impersonate Users",
+    "description": "Start sessions as other users"
+  },
+  "user_impersonate_admins": {
+    "name": "Impersonate Administrators",
+    "description": "Start sessions as administrator users"
+  },
+  "user_delete": {
+    "name": "Delete Users",
+    "description": "Permanently delete user accounts"
+  },
+  "user_set_password": {
+    "name": "Set User Passwords",
+    "description": "Replace user passwords"
+  },
+  "user_set_email": {
+    "name": "Set User Emails",
+    "description": "Replace user email addresses"
+  },
+  "user_get": {
+    "name": "Get Users",
+    "description": "Read individual user accounts"
+  },
+  "user_update": {
+    "name": "Update Users",
+    "description": "Change user account details"
+  },
+  "session_list": {
+    "name": "List Sessions",
+    "description": "Browse user sessions"
+  },
+  "session_revoke": {
+    "name": "Revoke Sessions",
+    "description": "Revoke active user sessions"
+  },
+  "session_delete": {
+    "name": "Delete Sessions",
+    "description": "Delete user session records"
   }
 }

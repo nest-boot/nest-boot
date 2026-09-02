@@ -1,5 +1,6 @@
 import type { Mocked } from 'vitest';
-vi.mock('@nest-boot/auth', () => ({
+vi.mock('@nest-boot/auth', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@nest-boot/auth')>()),
   BaseUser: class BaseUser {},
 }));
 
@@ -8,9 +9,9 @@ import { RowLevelSecurity } from '@nest-boot/row-level-security';
 import { CallHandler, ExecutionContext } from '@nestjs/common';
 import { lastValueFrom, of } from 'rxjs';
 
+import { ApiKey } from '../api-key/api-key.entity.js';
 import { User } from '../user/user.entity.js';
 import { Workspace } from '../workspace/workspace.entity.js';
-import { WorkspaceMember } from '../workspace-member/workspace-member.entity.js';
 import { RowLevelSecurityInterceptor } from './row-level-security.interceptor.js';
 
 describe('RowLevelSecurityInterceptor', () => {
@@ -33,13 +34,13 @@ describe('RowLevelSecurityInterceptor', () => {
     });
   });
 
-  it('sets authenticated role for API key workspace member requests', async () => {
+  it('sets authenticated role for API key requests', async () => {
     const { interceptor } = createInterceptor();
     const next = createNext();
-    const workspaceMember = { id: 'member_1' } as unknown as WorkspaceMember;
+    const apiKey = { id: 'api_key_1' } as ApiKey;
 
     await RequestContext.run(new RequestContext({ type: 'http' }), async () => {
-      RequestContext.set(WorkspaceMember, workspaceMember);
+      RequestContext.set(ApiKey, apiKey);
 
       await lastValueFrom(interceptor.intercept(createContext(), next));
 

@@ -1,4 +1,3 @@
-import { PermissionAction } from "./enums/permission-action.enum.js";
 import { PermissionAbilityBuilder } from "./permission.ability-builder.js";
 
 class Post {}
@@ -7,10 +6,10 @@ describe("PermissionAbilityBuilder", () => {
   it("should build a CASL mongo ability", () => {
     const builder = new PermissionAbilityBuilder();
 
-    builder.can(PermissionAction.READ, Post);
+    builder.can("publish", Post);
     const ability = builder.build();
 
-    expect(ability.can(PermissionAction.READ, Post)).toBe(true);
-    expect(ability.can(PermissionAction.DELETE, Post)).toBe(false);
+    expect(ability.can("publish", Post)).toBe(true);
+    expect(ability.can("archive", Post)).toBe(false);
   });
 });

@@ -1,15 +1,21 @@
 import type { Subject } from "@casl/ability";
+import { Reference } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import type { CanActivate, ExecutionContext, Type } from "@nestjs/common";
 import { ForbiddenException, Inject, Injectable } from "@nestjs/common";
 import { ContextIdFactory, ModuleRef, Reflector } from "@nestjs/core";
 import type { Request } from "express";
 
-import { CURRENT_API_KEY, IS_PUBLIC_KEY } from "./auth.constants.js";
+import {
+  CURRENT_API_KEY,
+  CURRENT_WORKSPACE_MEMBER,
+  IS_PUBLIC_KEY,
+} from "./auth.constants.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
+import type { BaseApiKey } from "./entities/index.js";
 import { BaseSession } from "./entities/session.entity.js";
-import type { CanOptions } from "./interfaces/can-options.interface.js";
+import type { CanMetadata } from "./interfaces/can-metadata.interface.js";
 import type { RouteArgumentMetadataValue } from "./interfaces/route-argument-metadata-value.interface.js";
 import {
   CAN_METADATA,
@@ -19,6 +25,8 @@ import {
   PERMISSION_ABILITY_PROMISE,
   ROUTE_ARGS_METADATA,
   ROUTE_PARAM_TYPES,
+  USER_PERMISSION_ABILITY,
+  USER_PERMISSION_ABILITY_PROMISE,
 } from "./permission.constants.js";
 import type { CanSubjectFactory } from "./types/can-subject-factory.type.js";
 import type { PermissionAbility } from "./types/permission-ability.type.js";
@@ -78,7 +86,7 @@ export class AuthGuard implements CanActivate {
       return Promise.resolve(false);
     }
 
-    const canOptions = this.reflector.getAllAndOverride<CanOptions>(
+    const canOptions = this.reflector.getAllAndOverride<CanMetadata>(
       CAN_METADATA,
       [context.getHandler(), context.getClass()],
     );
@@ -91,69 +99,152 @@ export class AuthGuard implements CanActivate {
   }
 
   private async checkPermission(
-    canOptions: CanOptions,
+    canOptions: CanMetadata,
     context: ExecutionContext,
   ): Promise<boolean> {
-    const ability = await this.getOrBuildAbility(context);
+    const apiKey = RequestContext.get<BaseApiKey>(CURRENT_API_KEY);
+    const scope = canOptions.scope ?? "workspace";
 
+    if (apiKey && this.isWorkspaceApiKey(apiKey)) {
+      const subject = await this.resolveSubject(canOptions, context);
+      return (
+        scope === "workspace" && this.apiKeyCan(canOptions.action, subject)
+      );
+    }
+
+    if (
+      apiKey &&
+      scope === "workspace" &&
+      !RequestContext.get(CURRENT_WORKSPACE_MEMBER)
+    ) {
+      return false;
+    }
+
+    const abilityPromise = this.getOrBuildAbility(context, scope);
+    const subject = await this.resolveSubject(canOptions, context);
+    const ability = await abilityPromise;
     if (!ability) {
       throw new ForbiddenException("Permission ability is not available");
     }
 
-    return ability.can(
-      canOptions.action,
-      await this.resolveSubject(canOptions, context),
+    return (
+      ability.can(canOptions.action, subject) &&
+      this.apiKeyCan(canOptions.action, subject)
     );
+  }
+
+  private isWorkspaceApiKey(apiKey: BaseApiKey): boolean {
+    const owner = Reference.unwrapReference(apiKey.owner as never) as unknown;
+    return owner instanceof this.options.entities.workspace;
+  }
+
+  private apiKeyCan(action: string, subject: Subject): boolean {
+    const apiKey = RequestContext.get<BaseApiKey>(CURRENT_API_KEY);
+    if (!apiKey) {
+      return true;
+    }
+    const permission = this.getPermission(action, subject);
+
+    if (action === "read") {
+      return true;
+    }
+
+    return (
+      !!permission &&
+      Array.isArray(apiKey.permissions) &&
+      apiKey.permissions.includes(permission)
+    );
+  }
+
+  private getPermission(action: string, subject: Subject): string | null {
+    const resource = this.getPermissionResource(subject);
+    return resource ? `${resource}:${action}` : null;
+  }
+
+  private getPermissionResource(subject: Subject): string | null {
+    const value = subject as unknown;
+    let name: string | null = null;
+
+    if (typeof value === "string") {
+      name = value;
+    } else if (typeof value === "function") {
+      name = value.name;
+    } else if (value && typeof value === "object") {
+      name = value.constructor.name;
+    }
+
+    return name ? `${name[0].toLowerCase()}${name.slice(1)}` : null;
   }
 
   private getOrBuildAbility(
     context: ExecutionContext,
+    scope: "user" | "workspace",
   ): Promise<PermissionAbility | null> {
-    const cachedAbility = this.getCachedAbility();
+    const cachedAbility = this.getCachedAbility(scope);
 
     if (cachedAbility) {
       return Promise.resolve(cachedAbility);
     }
 
-    const cachedAbilityPromise = this.getCachedAbilityPromise();
+    const cachedAbilityPromise = this.getCachedAbilityPromise(scope);
 
     if (cachedAbilityPromise) {
       return cachedAbilityPromise;
     }
 
-    return this.buildAndCacheAbility(context);
+    return this.buildAndCacheAbility(context, scope);
   }
 
-  private getCachedAbility(): PermissionAbility | null {
+  private getCachedAbility(
+    scope: "user" | "workspace",
+  ): PermissionAbility | null {
     return (
-      RequestContext.get<PermissionAbility | null>(PERMISSION_ABILITY) ?? null
+      RequestContext.get<PermissionAbility | null>(this.getAbilityKey(scope)) ??
+      null
     );
   }
 
-  private getCachedAbilityPromise(): Promise<PermissionAbility | null> | null {
+  private getCachedAbilityPromise(
+    scope: "user" | "workspace",
+  ): Promise<PermissionAbility | null> | null {
     return (
       RequestContext.get<Promise<PermissionAbility | null>>(
-        PERMISSION_ABILITY_PROMISE,
+        this.getAbilityPromiseKey(scope),
       ) ?? null
     );
   }
 
   private buildAndCacheAbility(
     context: ExecutionContext,
+    scope: "user" | "workspace",
   ): Promise<PermissionAbility | null> {
+    const buildAbility =
+      scope === "user"
+        ? this.options.buildUserAbility
+        : this.options.buildWorkspaceAbility;
     const abilityPromise = Promise.resolve()
-      .then(() => this.options.buildAbility?.(context) ?? null)
+      .then(() => buildAbility?.(context) ?? null)
       .then((ability) => {
-        RequestContext.set(PERMISSION_ABILITY, ability);
+        RequestContext.set(this.getAbilityKey(scope), ability);
         return ability;
       });
 
-    RequestContext.set(PERMISSION_ABILITY_PROMISE, abilityPromise);
+    RequestContext.set(this.getAbilityPromiseKey(scope), abilityPromise);
     return abilityPromise;
   }
 
+  private getAbilityKey(scope: "user" | "workspace"): symbol {
+    return scope === "user" ? USER_PERMISSION_ABILITY : PERMISSION_ABILITY;
+  }
+
+  private getAbilityPromiseKey(scope: "user" | "workspace"): symbol {
+    return scope === "user"
+      ? USER_PERMISSION_ABILITY_PROMISE
+      : PERMISSION_ABILITY_PROMISE;
+  }
+
   private async resolveSubject(
-    canOptions: CanOptions,
+    canOptions: CanMetadata,
     context: ExecutionContext,
   ): Promise<Subject> {
     const { subject } = canOptions;
@@ -166,7 +257,7 @@ export class AuthGuard implements CanActivate {
   }
 
   private isSubjectType(
-    subject: CanOptions["subject"],
+    subject: CanMetadata["subject"],
   ): subject is Type<Subject> {
     return Function.prototype.toString.call(subject).startsWith("class ");
   }

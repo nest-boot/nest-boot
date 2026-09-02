@@ -9,6 +9,7 @@
     "workspaces": "Workspaces"
   },
   "user": {
+    "api_keys": "Personal API Keys",
     "logout": "Log out"
   }
 }

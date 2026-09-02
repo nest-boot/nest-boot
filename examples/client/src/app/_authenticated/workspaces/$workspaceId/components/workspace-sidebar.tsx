@@ -2,6 +2,7 @@ import { KeyRound, Settings, User } from "lucide-react";
 
 import { linkOptions, useParams } from "@tanstack/react-router";
 import { t } from "i18next";
+import { useCurrentWorkspaceMemberContext } from "../contexts/current-workspace-member-context";
 import { SidebarLogo } from "./sidebar-logo";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 import { SidebarUser } from "./sidebar-user";
@@ -22,6 +23,7 @@ import {
 } from "@/components/ui/sidebar";
 
 import { Link } from "@/components/link";
+import { WorkspaceMemberRole } from "@/gql/graphql";
 
 type SidebarItem = {
   title: string;
@@ -37,6 +39,7 @@ export const WorkspaceSidebar: FC<ComponentProps<typeof Sidebar>> = ({
     from: "/_authenticated/workspaces/$workspaceId",
     select: (params) => params.workspaceId,
   });
+  const currentWorkspaceMember = useCurrentWorkspaceMemberContext();
 
   const sidebarGroups: Array<{
     title: string;
@@ -45,15 +48,19 @@ export const WorkspaceSidebar: FC<ComponentProps<typeof Sidebar>> = ({
     {
       title: t("sidebar:navigation.settings"),
       items: [
-        {
-          title: t("sidebar:navigation.api_keys"),
-          icon: KeyRound,
-          link: linkOptions({
-            to: "/workspaces/$workspaceId/api-keys",
-            params: { workspaceId },
-          }),
-          testId: "workspace-sidebar-api-keys-link",
-        },
+        ...(currentWorkspaceMember.role === WorkspaceMemberRole.OWNER
+          ? [
+              {
+                title: t("sidebar:navigation.api_keys"),
+                icon: KeyRound,
+                link: linkOptions({
+                  to: "/workspaces/$workspaceId/api-keys",
+                  params: { workspaceId },
+                }),
+                testId: "workspace-sidebar-api-keys-link",
+              },
+            ]
+          : []),
         {
           title: t("sidebar:navigation.members"),
           icon: User,

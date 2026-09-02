@@ -3,7 +3,6 @@ import {
   CurrentUser,
   CurrentWorkspace,
   CurrentWorkspaceMember,
-  PermissionAction,
   WorkspaceService,
 } from '@nest-boot/auth';
 import { Args, ID, Mutation, Query, Resolver } from '@nest-boot/graphql';
@@ -45,7 +44,7 @@ export class WorkspaceResolver {
    * @param workspace - 当前请求工作区。
    * @returns 当前工作区；请求未选择工作区时返回 null。
    */
-  @Can(PermissionAction.READ, Workspace)
+  @Can('read', Workspace)
   @Query(() => Workspace, { nullable: true })
   currentWorkspace(
     @CurrentWorkspace() workspace?: Workspace,
@@ -59,7 +58,7 @@ export class WorkspaceResolver {
    * @param id - 工作区标识。
    * @returns 匹配的工作区；不存在时返回空值。
    */
-  @Can(PermissionAction.READ, Workspace)
+  @Can('read', Workspace, { scope: 'user' })
   @Query(() => Workspace, { nullable: true })
   async workspace(
     @Args({ name: 'id', type: () => ID }) id: string,
@@ -74,7 +73,7 @@ export class WorkspaceResolver {
    * @param args - 连接分页与过滤参数。
    * @returns 工作区分页查询结果。
    */
-  @Can(PermissionAction.READ, Workspace)
+  @Can('read', Workspace, { scope: 'user' })
   @Query(() => WorkspaceConnection)
   async workspaces(
     @CurrentUser() user: User,
@@ -96,7 +95,7 @@ export class WorkspaceResolver {
    * @param input - 创建工作区输入参数。
    * @returns 创建完成的工作区。
    */
-  @Can(PermissionAction.CREATE, Workspace)
+  @Can('create', Workspace, { scope: 'user' })
   @Mutation(() => Workspace)
   async createWorkspace(
     @CurrentUser() user: User,
@@ -112,7 +111,7 @@ export class WorkspaceResolver {
    * @param input - 更新工作区输入参数。
    * @returns 更新后的工作区。
    */
-  @Can(PermissionAction.UPDATE, Workspace)
+  @Can('update', Workspace)
   @Mutation(() => Workspace)
   async updateWorkspace(
     @CurrentWorkspace() workspace: Workspace,
@@ -128,7 +127,7 @@ export class WorkspaceResolver {
    * @param workspaceMember - 当前请求的工作区成员。
    * @returns 已删除的工作区。
    */
-  @Can(PermissionAction.DELETE, Workspace)
+  @Can('delete', Workspace)
   @Mutation(() => Workspace, {
     deprecationReason: 'Use deleteWorkspace instead',
   })
@@ -146,7 +145,7 @@ export class WorkspaceResolver {
    * @param workspaceMember - 当前请求的工作区成员。
    * @returns 已软删除的工作区。
    */
-  @Can(PermissionAction.DELETE, Workspace)
+  @Can('delete', Workspace)
   @Mutation(() => Workspace)
   async deleteWorkspace(
     @CurrentWorkspace() workspace: Workspace,

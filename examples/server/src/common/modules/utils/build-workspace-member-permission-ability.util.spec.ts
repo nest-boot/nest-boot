@@ -4,174 +4,107 @@ vi.mock('@nest-boot/auth', async (importOriginal) => ({
 }));
 
 import { subject } from '@casl/ability';
-import { PermissionAction } from '@nest-boot/auth';
-import { RequestContext } from '@nest-boot/request-context';
 
 import { ApiKey } from '../../../app/api-key/api-key.entity.js';
+import { UserPermission } from '../../../app/auth/enums/user-permission.enum.js';
+import { WorkspacePermission } from '../../../app/auth/enums/workspace-permission.enum.js';
 import { User } from '../../../app/user/user.entity.js';
 import { Workspace } from '../../../app/workspace/workspace.entity.js';
 import { WorkspaceMemberRole } from '../../../app/workspace-member/enums/workspace-member-role.enum.js';
 import { WorkspaceMemberStatus } from '../../../app/workspace-member/enums/workspace-member-status.enum.js';
 import { WorkspaceMember } from '../../../app/workspace-member/workspace-member.entity.js';
-import { buildWorkspaceMemberPermissionAbility } from './build-workspace-member-permission-ability.util.js';
+import {
+  buildUserPermissionAbility,
+  buildWorkspaceMemberPermissionAbility,
+} from './build-workspace-member-permission-ability.util.js';
 
-vi.mock('@nest-boot/request-context', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@nest-boot/request-context')>()),
-  RequestContext: {
-    get: vi.fn(),
-  },
-}));
+describe('permission ability builders', () => {
+  it('builds user permissions independently of workspace membership', () => {
+    const ability = buildUserPermissionAbility([UserPermission.USER_DELETE]);
 
-describe('buildWorkspaceMemberPermissionAbility', () => {
-  beforeEach(() => {
-    vi.mocked(RequestContext.get).mockReset();
+    expect(ability.can('read', User)).toBe(true);
+    expect(ability.can('create', Workspace)).toBe(true);
+    expect(ability.can('manage', ApiKey)).toBe(true);
+    expect(ability.can('delete', Workspace)).toBe(false);
+    expect(ability.can('delete', User)).toBe(true);
   });
 
-  it('grants base permissions when there is no active workspace member', () => {
-    vi.mocked(RequestContext.get).mockReturnValue(undefined);
-
-    const ability = buildWorkspaceMemberPermissionAbility({});
-
-    expect(ability.can(PermissionAction.READ, User)).toBe(true);
-    expect(ability.can(PermissionAction.CREATE, Workspace)).toBe(true);
-    expect(ability.can(PermissionAction.READ, Workspace)).toBe(true);
-    expect(ability.can(PermissionAction.UPDATE, Workspace)).toBe(false);
-  });
-
-  it('only grants base permissions for disabled workspace members', () => {
-    vi.mocked(RequestContext.get).mockReturnValue({
-      status: WorkspaceMemberStatus.DISABLED,
-    });
-
-    const ability = buildWorkspaceMemberPermissionAbility({});
-
-    expect(ability.can(PermissionAction.CREATE, Workspace)).toBe(true);
-    expect(ability.can(PermissionAction.MANAGE, ApiKey)).toBe(false);
-  });
-
-  it('grants owners full management permissions', () => {
-    const ability = buildAbility({
-      role: WorkspaceMemberRole.OWNER,
-      permissions: {},
-      workspace: {
-        id: 'workspace_1',
-      } as WorkspaceMember['workspace'],
-    });
-
-    expect(ability.can(PermissionAction.MANAGE, Workspace)).toBe(true);
-    expect(ability.can(PermissionAction.DELETE, Workspace)).toBe(true);
+  it('only grants workspace discovery permissions without an active member', () => {
     expect(
-      ability.can(
-        PermissionAction.UPDATE,
-        subject('Workspace', { id: 'workspace_1' }),
-      ),
+      buildWorkspaceMemberPermissionAbility([]).can('read', Workspace),
     ).toBe(true);
     expect(
-      ability.can(
-        PermissionAction.UPDATE,
-        subject('Workspace', { id: 'workspace_2' }),
-      ),
+      buildWorkspaceMemberPermissionAbility(
+        [],
+        member({ status: WorkspaceMemberStatus.DISABLED }),
+      ).can('read', Workspace),
+    ).toBe(true);
+    expect(
+      buildWorkspaceMemberPermissionAbility([]).can('update', Workspace),
     ).toBe(false);
   });
 
-  it('allows admins to manage everything except workspace deletion', () => {
-    const ability = buildAbility({
-      role: WorkspaceMemberRole.ADMIN,
-      permissions: {},
-      workspace: {
-        id: 'workspace_1',
-      } as WorkspaceMember['workspace'],
-    });
-
-    expect(ability.can(PermissionAction.MANAGE, ApiKey)).toBe(true);
-    expect(ability.can(PermissionAction.DELETE, Workspace)).toBe(false);
-    expect(
-      ability.can(
-        PermissionAction.UPDATE,
-        subject('Workspace', { id: 'workspace_1' }),
-      ),
-    ).toBe(true);
-    expect(
-      ability.can(
-        PermissionAction.UPDATE,
-        subject('Workspace', { id: 'workspace_2' }),
-      ),
-    ).toBe(false);
-  });
-
-  it('applies effective permissions for regular members', () => {
-    const ability = buildAbility(
-      {
-        role: WorkspaceMemberRole.MEMBER,
-        permissions: { workspace: [PermissionAction.MANAGE] },
-        workspace: {
-          id: 'workspace_1',
-        } as WorkspaceMember['workspace'],
-      },
-      {
-        workspace: [PermissionAction.MANAGE],
-        workspaceMember: [PermissionAction.MANAGE],
-      },
+  it('grants owners full management only inside their workspace', () => {
+    const ability = buildWorkspaceMemberPermissionAbility(
+      [],
+      member({ role: WorkspaceMemberRole.OWNER }),
     );
 
-    expect(ability.can(PermissionAction.READ, Workspace)).toBe(true);
-    expect(ability.can(PermissionAction.MANAGE, Workspace)).toBe(true);
+    expect(ability.can('manage', ApiKey)).toBe(true);
+    expect(ability.can('delete', Workspace)).toBe(true);
     expect(
-      ability.can(
-        PermissionAction.UPDATE,
-        subject('Workspace', { id: 'workspace_1' }),
-      ),
+      ability.can('update', subject('Workspace', { id: 'workspace_1' })),
     ).toBe(true);
     expect(
-      ability.can(
-        PermissionAction.UPDATE,
-        subject('Workspace', { id: 'workspace_2' }),
-      ),
+      ability.can('update', subject('Workspace', { id: 'workspace_2' })),
     ).toBe(false);
-    expect(ability.can(PermissionAction.MANAGE, WorkspaceMember)).toBe(true);
-    expect(ability.can(PermissionAction.CREATE, ApiKey)).toBe(true);
   });
 
-  it('uses provided effective permissions', () => {
-    vi.mocked(RequestContext.get).mockReturnValue({
-      status: WorkspaceMemberStatus.ACTIVE,
-      role: WorkspaceMemberRole.MEMBER,
-    });
-
-    const ability = buildWorkspaceMemberPermissionAbility({
-      workspaceMember: [PermissionAction.MANAGE],
-    });
-
-    expect(ability.can(PermissionAction.MANAGE, WorkspaceMember)).toBe(true);
-  });
-
-  it('ignores unknown resources and unsupported actions', () => {
-    const ability = buildAbility(
-      {
-        role: WorkspaceMemberRole.MEMBER,
-        workspace: {
-          id: 'workspace_1',
-        } as WorkspaceMember['workspace'],
-      },
-      {
-        workspace: ['publish'],
-        unknown: [PermissionAction.MANAGE],
-      },
+  it('keeps workspace API keys and deletion away from admins', () => {
+    const ability = buildWorkspaceMemberPermissionAbility(
+      [],
+      member({ role: WorkspaceMemberRole.ADMIN }),
     );
 
-    expect(ability.can(PermissionAction.MANAGE, Workspace)).toBe(false);
-    expect(ability.can(PermissionAction.UPDATE, Workspace)).toBe(false);
+    expect(ability.can('manage', ApiKey)).toBe(false);
+    expect(ability.can('delete', Workspace)).toBe(false);
+    expect(
+      ability.can('update', subject('Workspace', { id: 'workspace_1' })),
+    ).toBe(true);
+  });
+
+  it('applies member permissions without reading API-key context', () => {
+    const ability = buildWorkspaceMemberPermissionAbility(
+      [
+        WorkspacePermission.WORKSPACE_UPDATE,
+        WorkspacePermission.WORKSPACE_MEMBER_DELETE,
+      ],
+      member({ role: WorkspaceMemberRole.MEMBER }),
+    );
+
+    expect(ability.can('update', Workspace)).toBe(true);
+    expect(ability.can('delete', WorkspaceMember)).toBe(true);
+    expect(ability.can('create', ApiKey)).toBe(false);
+  });
+
+  it('supports application-defined action strings', () => {
+    const ability = buildWorkspaceMemberPermissionAbility(
+      ['workspace:publish' as WorkspacePermission],
+      member({ role: WorkspaceMemberRole.MEMBER }),
+    );
+
+    expect(ability.can('publish', Workspace)).toBe(true);
   });
 });
 
-function buildAbility(
-  member: Partial<WorkspaceMember>,
-  permissions: Record<string, string[]> = member.permissions ?? {},
-) {
-  vi.mocked(RequestContext.get).mockReturnValue({
+function member(overrides: Partial<WorkspaceMember> = {}): WorkspaceMember {
+  return {
+    id: 'member_1',
+    name: 'Alice',
+    permissions: [],
+    role: WorkspaceMemberRole.MEMBER,
     status: WorkspaceMemberStatus.ACTIVE,
-    ...member,
-  });
-
-  return buildWorkspaceMemberPermissionAbility(permissions);
+    workspace: { id: 'workspace_1' } as WorkspaceMember['workspace'],
+    ...overrides,
+  } as WorkspaceMember;
 }

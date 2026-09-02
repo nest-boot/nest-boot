@@ -8,6 +8,7 @@ import {
   PrimaryKey,
   Property,
 } from '@mikro-orm/decorators/legacy';
+import { BaseWorkspace } from '@nest-boot/auth';
 import { Field, ID, ObjectType } from '@nest-boot/graphql';
 import { Policy, PolicyCommand } from '@nest-boot/row-level-security';
 import { Sonyflake } from 'sonyflake-js';
@@ -43,18 +44,18 @@ import { WorkspaceFeature } from './enums/features.enum.js';
 @Entity()
 @Index({ properties: ['createdAt'] })
 @Index({ properties: ['deletedAt'] })
-export class Workspace {
+export class Workspace extends BaseWorkspace {
   /** 工作区唯一标识。 */
   @Field(() => ID)
   @PrimaryKey({
     type: t.bigint,
   })
-  id: Opt<string> = Sonyflake.next().toString();
+  override id: Opt<string> = Sonyflake.next().toString();
 
   /** 工作区名称。 */
   @Field(() => String)
   @Property({ type: t.string })
-  name!: string;
+  declare name: string;
 
   /** 工作区已启用的功能。 */
   @Field(() => [WorkspaceFeature])
@@ -64,7 +65,7 @@ export class Workspace {
   /** 创建时间。 */
   @Field(() => Date)
   @Property({ type: t.datetime, defaultRaw: 'now()' })
-  createdAt: Opt<Date> = new Date();
+  override createdAt: Opt<Date> = new Date();
 
   /** 更新时间。 */
   @Field(() => Date)
@@ -73,12 +74,12 @@ export class Workspace {
     defaultRaw: 'now()',
     onUpdate: () => new Date(),
   })
-  updatedAt: Opt<Date> = new Date();
+  override updatedAt: Opt<Date> = new Date();
 
   /** 软删除时间，为空表示未删除。 */
   @Field(() => Date, { nullable: true })
   @Property({ type: t.datetime, nullable: true })
-  deletedAt?: Date;
+  declare deletedAt?: Date | null;
 
   /** 工作区成员集合。 */
   @OneToMany(() => WorkspaceMember, (member) => member.workspace)

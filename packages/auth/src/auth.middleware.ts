@@ -5,90 +5,178 @@ import {
   Injectable,
   type NestMiddleware,
   type Type,
+  UnauthorizedException,
 } from "@nestjs/common";
 import { type NextFunction, type Request, type Response } from "express";
 
+import { ApiKeyService } from "./api-key.service.js";
+import {
+  CURRENT_API_KEY,
+  CURRENT_WORKSPACE,
+  CURRENT_WORKSPACE_MEMBER,
+} from "./auth.constants.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import { AuthService } from "./auth.service.js";
-import { type AuthModuleOptions } from "./auth-module-options.interface.js";
+import type { AuthModuleOptions } from "./auth-module-options.interface.js";
+import type {
+  BaseApiKey,
+  BaseWorkspace,
+  BaseWorkspaceMember,
+} from "./entities/index.js";
 import { BaseSession, BaseUser } from "./entities/index.js";
+import { extractApiKey } from "./utils/extract-api-key.util.js";
 
-/**
- * Middleware that resolves the current user and session from the request.
- *
- * @remarks
- * Extracts the session token from headers via the better-auth API,
- * loads the corresponding user and session entities, and stores
- * them in the {@link RequestContext}.
- */
+/** Builds the complete authentication context for an incoming request. */
 @Injectable()
 export class AuthMiddleware implements NestMiddleware {
-  /**
-   * Creates a new AuthMiddleware instance.
-   * @param options - Auth module configuration options
-   * @param authService - Service exposing the better-auth API
-   * @param em - MikroORM entity manager for loading user/session entities
-   */
+  /** Creates the authentication-context middleware. */
   constructor(
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly options: AuthModuleOptions,
     private readonly authService: AuthService,
+    private readonly apiKeyService: ApiKeyService,
     private readonly em: EntityManager,
   ) {}
-  /** Retrieves the session from the request headers via the better-auth API. */
-  private async getSession(req: Request) {
-    return await this.authService.api.getSession({
-      headers: Object.entries(req.headers).reduce((headers, [key, value]) => {
-        if (value) {
-          if (Array.isArray(value)) {
-            for (const item of value) {
-              headers.append(key, item);
-            }
-          } else {
-            headers.append(key, value);
-          }
-        }
-        return headers;
-      }, new Headers()),
-    });
+
+  /** Resolves workspace, credentials, and membership in their required order. */
+  async use(req: Request, _res: Response, next: NextFunction) {
+    try {
+      await this.resolveSelectedWorkspace(req);
+      const hasSession = await this.resolveSession(req);
+      if (!hasSession) await this.resolveApiKey(req);
+      await this.resolveWorkspaceMember();
+      next();
+    } catch (error) {
+      next(error);
+    }
   }
 
-  /**
-   * Resolves authentication state and attaches user/session to the request context.
-   * @param req - Express request object
-   * @param res - Express response object
-   * @param next - Express next function
-   */
-  async use(req: Request, res: Response, next: NextFunction) {
-    const data = await this.getSession(req);
+  private async resolveSelectedWorkspace(req: Request): Promise<void> {
+    const headerWorkspaceId = req.headers["x-workspace-id"];
+    const cookieWorkspaceId = (req.cookies as Record<string, unknown> | null)
+      ?.workspace_id;
+    const workspaceId = (
+      (Array.isArray(headerWorkspaceId)
+        ? headerWorkspaceId[0]
+        : headerWorkspaceId) ??
+      (typeof cookieWorkspaceId === "string" ? cookieWorkspaceId : undefined)
+    )?.trim();
+    if (!workspaceId) return;
 
-    if (!data) {
-      next();
-      return;
+    const workspace = await this.em.findOne(this.options.entities.workspace, {
+      deletedAt: null,
+      id: workspaceId,
+    });
+    if (workspace) this.setWorkspace(workspace);
+  }
+
+  private async resolveSession(req: Request): Promise<boolean> {
+    const headers = this.toWebHeaders(req);
+    const candidateHeaders: Headers[] = [];
+    if (headers.has("cookie") && headers.has("authorization")) {
+      const cookieHeaders = new Headers(headers);
+      cookieHeaders.delete("authorization");
+      candidateHeaders.push(cookieHeaders);
     }
+    candidateHeaders.push(headers);
+
+    let data: Awaited<ReturnType<AuthService["api"]["getSession"]>> | null =
+      null;
+    for (const candidate of candidateHeaders) {
+      data = await this.authService.api.getSession({ headers: candidate });
+      if (data) break;
+    }
+    if (!data) return false;
 
     const [user, session] = await Promise.all([
-      this.em.findOne(this.options.entities.user, {
-        id: data.user.id,
-      }),
+      this.em.findOne(this.options.entities.user, { id: data.user.id }),
       this.em.findOne(this.options.entities.session, {
         token: data.session.token,
       }),
     ]);
+    if (!user || !session) return false;
 
-    if (user && session) {
-      RequestContext.set(BaseUser, user);
-      RequestContext.set(BaseSession, session);
+    this.setUser(user);
+    RequestContext.set(BaseSession, session);
+    RequestContext.set(
+      this.options.entities.session as Type<BaseSession>,
+      session,
+    );
+    await this.options.onAuthenticated?.();
+    return true;
+  }
 
-      RequestContext.set(this.options.entities.user as Type<BaseUser>, user);
-      RequestContext.set(
-        this.options.entities.session as Type<BaseSession>,
-        session,
-      );
+  private async resolveApiKey(req: Request): Promise<void> {
+    const plaintextApiKey = extractApiKey(req);
+    if (!plaintextApiKey) return;
 
-      await this.options.onAuthenticated?.();
+    const validation = await this.apiKeyService.validate(plaintextApiKey);
+    this.setApiKey(validation.apiKey);
+    if (validation.ownerType === "user") {
+      this.setUser(validation.user);
+      return;
     }
 
-    next();
+    const selectedWorkspace =
+      RequestContext.get<BaseWorkspace>(CURRENT_WORKSPACE);
+    if (selectedWorkspace && selectedWorkspace.id !== validation.workspace.id) {
+      throw new UnauthorizedException(
+        "Workspace API key does not belong to the selected workspace",
+      );
+    }
+    this.setWorkspace(validation.workspace);
+  }
+
+  private async resolveWorkspaceMember(): Promise<void> {
+    const user = RequestContext.get(BaseUser);
+    const workspace = RequestContext.get<BaseWorkspace>(CURRENT_WORKSPACE);
+    if (!user || !workspace) return;
+
+    const member = await this.em.findOne(
+      this.options.entities.workspaceMember,
+      {
+        user,
+        workspace,
+      },
+    );
+    if (!member) return;
+
+    RequestContext.set(CURRENT_WORKSPACE_MEMBER, member);
+    RequestContext.set(
+      this.options.entities.workspaceMember as Type<BaseWorkspaceMember>,
+      member,
+    );
+  }
+
+  private setApiKey(apiKey: BaseApiKey): void {
+    RequestContext.set(CURRENT_API_KEY, apiKey);
+    RequestContext.set(
+      this.options.entities.apiKey as Type<BaseApiKey>,
+      apiKey,
+    );
+  }
+
+  private setUser(user: BaseUser): void {
+    RequestContext.set(BaseUser, user);
+    RequestContext.set(this.options.entities.user as Type<BaseUser>, user);
+  }
+
+  private setWorkspace(workspace: BaseWorkspace): void {
+    RequestContext.set(CURRENT_WORKSPACE, workspace);
+    RequestContext.set(
+      this.options.entities.workspace as Type<BaseWorkspace>,
+      workspace,
+    );
+  }
+
+  private toWebHeaders(req: Request): Headers {
+    return Object.entries(req.headers).reduce((headers, [key, value]) => {
+      if (Array.isArray(value)) {
+        for (const item of value) headers.append(key, item);
+      } else if (value) {
+        headers.append(key, value);
+      }
+      return headers;
+    }, new Headers());
   }
 }

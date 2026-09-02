@@ -1,4 +1,5 @@
-vi.mock('@nest-boot/auth', () => ({
+vi.mock('@nest-boot/auth', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@nest-boot/auth')>()),
   BaseUser: class BaseUser {},
 }));
 

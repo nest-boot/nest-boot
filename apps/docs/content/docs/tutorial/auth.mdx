@@ -251,21 +251,48 @@ Creating a workspace also creates an active owner membership. Deletion is a soft
 
 ## API Keys
 
-`ApiKeyService` manages workspace-scoped API keys. A key always represents one workspace member, so it restores both workspace and member identity when authentication succeeds. Owners and administrators can manage keys for other members; regular members can only manage their own keys.
+`ApiKeyService` manages API keys owned by either a user or a workspace. A user key restores its owning user and may access a selected workspace only while that user remains a member. A workspace key is an independent service identity: it restores its owning workspace but does not create a current user or workspace member. Only the workspace owner can manage workspace keys; users manage their own user keys.
 
 The service provides:
 
-- `getApiKey(id, currentMember)` and `getListFilter(workspace, currentMember)`
-- `createKey(workspace, currentMember, options)`
-- `updateKey(id, currentMember, input)` and `deleteKey(id, currentMember)`
+- `getUserApiKey`, `createUserKey`, `updateUserKey`, and `deleteUserKey`
+- `getWorkspaceApiKey`, `createWorkspaceKey`, `updateWorkspaceKey`, and `deleteWorkspaceKey`
+- `getUserListFilter` and `getWorkspaceListFilter`
 - `validate(plaintextKey)` and `recordUsage(apiKey)`
 
-The plaintext key is returned only by `createKey`. Only its lookup identifier and encrypted secret are persisted. Successful authenticated requests update `lastUsedAt` automatically.
+The create methods return the plaintext key only once. The database stores a SHA-256 hash of the complete key, the display-safe `start` and `prefix`, its enabled state, permissions, expiration, and usage timestamps. Successful authenticated requests update `lastUsedAt` automatically.
+
+`@nest-boot/auth` stores and evaluates permissions as strings. Define the closed
+permission catalog in the application so each product can use its own resources
+and actions:
+
+```typescript
+import { UserPermission } from "./auth/enums/user-permission.enum";
+import { WorkspacePermission } from "./auth/enums/workspace-permission.enum";
+
+const workspacePermissions: WorkspacePermission[] = [
+  WorkspacePermission.WORKSPACE_UPDATE,
+  WorkspacePermission.WORKSPACE_MEMBER_CREATE,
+];
+
+const userKeyPermissions: (UserPermission | WorkspacePermission)[] = [
+  UserPermission.USER_GET,
+  WorkspacePermission.WORKSPACE_UPDATE,
+];
+```
+
+In the example application, `User.permissions` stores `UserPermission[]`,
+`WorkspaceMember.permissions` stores `WorkspacePermission[]`, and an API key
+stores `(UserPermission | WorkspacePermission)[]`. A workspace-owned key only
+accepts workspace permissions, while a user-owned key may contain both domains.
+The database persists these values in `text[]` columns, and the application
+validates every value before writing it. The auth module itself always exposes
+these fields as `string[]`.
 
 Send API keys with the Bearer scheme:
 
 ```http
-Authorization: Bearer sk-0123456789abcdefabcdef0123456789
+Authorization: Bearer sk-4tR9s...
 ```
 
 `x-api-key` is not supported. Add better-auth's `bearer()` plugin when clients also need Bearer Session authentication, as shown in the async registration example. Session authentication runs first: if the Bearer credential resolves to a valid session, API-key validation is skipped. Otherwise, the same Bearer credential is treated as an API key.
@@ -282,14 +309,10 @@ audit(@CurrentApiKey() apiKey: ApiKey | null) {
 
 ## Authorization
 
-Configure `buildAbility` on `AuthModule`. The callback runs at most once per request when a route declares `@Can`; the resulting CASL ability is cached in `RequestContext`. It may return `null`, in which case the permission check fails with `ForbiddenException`.
+Configure `buildWorkspaceAbility` and `buildUserAbility` on `AuthModule`. Each callback runs at most once per request when a route checks its authorization domain, and each resulting CASL ability is cached separately in `RequestContext`. A callback may return `null`, in which case its permission check fails with `ForbiddenException`.
 
 ```typescript
-import {
-  AuthModule,
-  PermissionAbilityBuilder,
-  PermissionAction,
-} from "@nest-boot/auth";
+import { AuthModule, PermissionAbilityBuilder } from "@nest-boot/auth";
 import { RequestContext } from "@nest-boot/request-context";
 
 import { User } from "./user.entity";
@@ -305,7 +328,14 @@ export const AuthDynamicModule = AuthModule.forRoot({
     workspaceMember: WorkspaceMember,
     apiKey: ApiKey,
   },
-  buildAbility: () => {
+  buildWorkspaceAbility: () => {
+    const { can, build } = new PermissionAbilityBuilder();
+
+    can("read", Post);
+
+    return build();
+  },
+  buildUserAbility: () => {
     const user = RequestContext.get(User);
 
     if (!user) {
@@ -314,8 +344,8 @@ export const AuthDynamicModule = AuthModule.forRoot({
 
     const { can, build } = new PermissionAbilityBuilder();
 
-    can(PermissionAction.READ, Post);
-    can(PermissionAction.UPDATE, Post, { authorId: user.id });
+    can("read", Post);
+    can("update", Post, { authorId: user.id });
 
     return build();
   },
@@ -324,19 +354,21 @@ export const AuthDynamicModule = AuthModule.forRoot({
 
 The same globally registered `AuthGuard` first enforces authentication and then evaluates `@Can` metadata. No second permission guard or module is required. `@Public()` only skips the authentication requirement; if a public route also declares `@Can`, its permission is still checked.
 
+`@Can` checks the workspace ability by default. Pass `{ scope: "user" }` as its third argument for routes that belong to the authenticated user rather than the selected workspace. Workspace API keys can only pass workspace checks. User API keys can pass user checks. The application decides how `User.permissions` contributes to `buildUserAbility`; API-key requests then intersect that ability with the key permissions. Workspace checks additionally require a live workspace membership and intersect the workspace ability with the key permissions. Read operations remain baseline authenticated access; application-defined permission strings gate the catalogued management operations.
+
 ### Protect Routes
 
 Use a subject class when authorization only depends on the resource type.
 
 ```typescript
-import { Can, PermissionAction } from "@nest-boot/auth";
+import { Can } from "@nest-boot/auth";
 import { Query, Resolver } from "@nestjs/graphql";
 
 import { Post } from "./post.entity";
 
 @Resolver(() => Post)
 export class PostResolver {
-  @Can(PermissionAction.READ, Post)
+  @Can("read", Post)
   @Query(() => [Post])
   posts() {
     return this.postService.findAll();
@@ -344,17 +376,29 @@ export class PostResolver {
 }
 ```
 
+Use the user scope for personal or application-level operations:
+
+```typescript
+import { Can } from "@nest-boot/auth";
+
+@Can("read", User, { scope: "user" })
+@Query(() => User)
+me(@CurrentUser() user: User) {
+  return user;
+}
+```
+
 Use a subject factory when the ability needs a concrete resource instance. The factory receives the controller or resolver instance first, followed by its decorated method parameters. HTTP, GraphQL, and custom parameter decorators are supported.
 
 ```typescript
-import { Can, PermissionAction } from "@nest-boot/auth";
+import { Can } from "@nest-boot/auth";
 import { Args, Mutation, Resolver } from "@nestjs/graphql";
 
 @Resolver(() => Post)
 export class PostResolver {
   constructor(private readonly postService: PostService) {}
 
-  @Can(PermissionAction.UPDATE, (self: PostResolver, id: string) =>
+  @Can("update", (self: PostResolver, id: string) =>
     self.postService.findOneOrFail({ id }),
   )
   @Mutation(() => Post)
@@ -366,16 +410,16 @@ export class PostResolver {
 
 ### Check Permissions in Services
 
-After `AuthGuard` prepares the request ability, use `can` for synchronous checks in lower-level code or `getPermissionAbility()` for direct CASL access.
+After `AuthGuard` prepares the request ability, use `can` for synchronous checks in lower-level code or `getPermissionAbility()` for direct CASL access. Both helpers default to the workspace scope and accept the same explicit user scope when needed.
 
 ```typescript
-import { can, PermissionAction } from "@nest-boot/auth";
+import { can } from "@nest-boot/auth";
 import { ForbiddenException, Injectable } from "@nestjs/common";
 
 @Injectable()
 export class PostService {
   update(post: Post) {
-    if (!can(PermissionAction.UPDATE, post)) {
+    if (!can("update", post)) {
       throw new ForbiddenException();
     }
 
@@ -385,6 +429,11 @@ export class PostService {
 ```
 
 Both helpers require the ability to have been prepared by a route-level `@Can` check. They throw `ForbiddenException` when no ability is available.
+
+```typescript
+can("read", user, { scope: "user" });
+getPermissionAbility("user");
+```
 
 ## Decorators
 
@@ -440,7 +489,7 @@ export class User extends BaseUser {
 }
 ```
 
-Similarly extend `BaseAccount`, `BaseSession`, and `BaseVerification` for the other better-auth entities. Application-owned workspace, workspace-member, and API-key entities must satisfy `AuthWorkspaceEntity`, `AuthWorkspaceMemberEntity`, and `AuthApiKeyEntity`. This keeps persistence and GraphQL annotations in the application while allowing the auth package to own their domain rules.
+The module also provides `BaseAccount`, `BaseSession`, `BaseVerification`, `BaseWorkspace`, `BaseWorkspaceMember`, and `BaseApiKey`. Extend the corresponding base class for every configured entity. The base classes define the fields and relations required by the authentication services; subclasses can redeclare fields with application-specific column types, GraphQL annotations, indexes, and additional properties.
 
 ## NestJS Integration
 

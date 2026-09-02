@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
+import { createHash } from "node:crypto";
+
 import { EntityManager } from "@mikro-orm/core";
-import type { CryptService } from "@nest-boot/crypt";
 import { RequestContext } from "@nest-boot/request-context";
 import {
   RowLevelSecurity,
@@ -9,45 +10,54 @@ import {
 import {
   BadRequestException,
   ForbiddenException,
-  NotFoundException,
   UnauthorizedException,
 } from "@nestjs/common";
 import type { Mocked } from "vitest";
 
 import { ApiKeyService } from "./api-key.service.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
-import type {
-  AuthApiKeyEntity,
-  AuthWorkspaceEntity,
-  AuthWorkspaceMemberEntity,
-} from "./interfaces/auth-entities.interface.js";
+import {
+  BaseApiKey,
+  BaseUser,
+  BaseWorkspace,
+  BaseWorkspaceMember,
+} from "./entities/index.js";
 
-class TestWorkspace implements AuthWorkspaceEntity {
-  id = "workspace-1";
-  name = "Acme";
+class TestWorkspace extends BaseWorkspace {
+  override id = "workspace-1";
+  override name = "Acme";
 }
 
-class TestWorkspaceMember implements AuthWorkspaceMemberEntity {
-  id = "member-1";
-  name = "Alice";
-  role = "MEMBER" as const;
-  status = "ACTIVE" as const;
-  workspace = { id: "workspace-1" } as AuthWorkspaceMemberEntity["workspace"];
+class TestUser extends BaseUser {
+  override id = "user-1";
+  override name = "Alice";
+  override email = "alice@example.com";
+  override emailVerified = true;
 }
 
-class TestApiKey implements AuthApiKeyEntity {
-  id = "api-key-1";
-  name = "Deploy key";
-  keyId = "0123456789abcdef";
-  keyPrefix = "sk-";
-  encryptedSecret = "encrypted-secret";
-  updatedAt = new Date();
-  expiresAt: Date | null = null;
-  workspace = { id: "workspace-1" } as TestWorkspace;
-  member = {
-    id: "member-1",
-    loadOrFail: vi.fn(),
-  } as never;
+class TestWorkspaceMember extends BaseWorkspaceMember {
+  override id = "member-1";
+  override name = "Alice";
+  override role = "OWNER" as const;
+  override status = "ACTIVE" as const;
+  override permissions: string[] = [];
+  override workspace = {
+    id: "workspace-1",
+  } as BaseWorkspaceMember["workspace"];
+}
+
+class TestApiKey extends BaseApiKey {
+  override id = "api-key-1";
+  override name = "Deploy key";
+  override start = "sk-01234";
+  override prefix = "sk-";
+  override key = "hashed-key";
+  override enabled = true;
+  override permissions: string[] = [];
+  override updatedAt = new Date();
+  override lastUsedAt: Date | null = null;
+  override expiresAt: Date | null = null;
+  override owner = new TestWorkspace() as BaseApiKey["owner"];
 }
 
 describe("ApiKeyService", () => {
@@ -56,31 +66,108 @@ describe("ApiKeyService", () => {
     vi.unstubAllEnvs();
   });
 
-  it("creates a prefixed key and stores only its encrypted secret", async () => {
+  it("creates a prefixed key and stores only its SHA-256 hash", async () => {
     vi.stubEnv("API_KEY_PREFIX", "nb-");
-    const { cryptService, em, service } = createService();
+    const { em, service } = createService();
     const workspace = new TestWorkspace();
     const member = new TestWorkspaceMember();
     member.workspace = workspace as never;
 
-    const result = await service.createKey(workspace, member, {
+    const result = await service.createWorkspaceKey(workspace, member, {
       name: "Deploy key",
     });
 
-    expect(result.apiKey).toMatch(/^nb-[0-9a-f]{32}$/);
-    const secret = result.apiKey.slice(-16);
-    expect(cryptService.encrypt).toHaveBeenCalledWith(secret);
+    expect(result.apiKey).toMatch(/^nb-[A-Za-z0-9_-]{64}$/);
     expect(em.create).toHaveBeenCalledWith(
       TestApiKey,
       expect.objectContaining({
-        encryptedSecret: "encrypted-secret",
-        member,
+        enabled: true,
+        key: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
         name: "Deploy key",
-        workspace,
+        permissions: [],
+        prefix: "nb-",
+        start: result.apiKey.slice(0, 8),
+        owner: workspace,
       }),
     );
-    expect(JSON.stringify(result.entity)).not.toContain(secret);
+    expect(JSON.stringify(result.entity)).not.toContain(result.apiKey);
     expect(em.flush).toHaveBeenCalledTimes(1);
+  });
+
+  it("stores workspace permissions as enum values", async () => {
+    const { em, service } = createService();
+    const workspace = new TestWorkspace();
+    const member = new TestWorkspaceMember();
+    const permissions = ["workspace:update"];
+
+    await service.createWorkspaceKey(workspace, member, {
+      name: "Deploy key",
+      permissions,
+    });
+
+    expect(em.create).toHaveBeenCalledWith(
+      TestApiKey,
+      expect.objectContaining({ permissions }),
+    );
+  });
+
+  it("creates, lists, updates, and deletes keys owned by the current user", async () => {
+    const { em, service } = createService();
+    const user = new TestUser();
+    const created = await service.createUserKey(user, {
+      name: "Personal automation",
+      permissions: ["user:get", "workspace:update"],
+    });
+
+    expect(service.getUserListFilter(user)).toEqual({ owner: user });
+    expect(em.create).toHaveBeenCalledWith(
+      TestApiKey,
+      expect.objectContaining({ owner: user }),
+    );
+
+    em.findOne.mockResolvedValue(created.entity);
+    await expect(service.getUserApiKey(created.entity.id, user)).resolves.toBe(
+      created.entity,
+    );
+    await expect(
+      service.updateUserKey(created.entity.id, user, { name: "Renamed" }),
+    ).resolves.toBe(created.entity);
+    await expect(service.deleteUserKey(created.entity.id, user)).resolves.toBe(
+      created.entity,
+    );
+  });
+
+  it("does not let one user manage another user's key", async () => {
+    const { em, service } = createService();
+    const apiKey = Object.assign(new TestApiKey(), {
+      owner: new TestUser(),
+    });
+    em.findOne.mockResolvedValue(apiKey);
+    const otherUser = Object.assign(new TestUser(), { id: "user-2" });
+
+    await expect(
+      service.getUserApiKey(apiKey.id, otherUser),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it("rejects invalid prefixes and permission values", async () => {
+    const { em, service } = createService();
+    const workspace = new TestWorkspace();
+    const member = new TestWorkspaceMember();
+
+    await expect(
+      service.createWorkspaceKey(workspace, member, {
+        name: "Invalid prefix",
+        prefix: "",
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.createWorkspaceKey(workspace, member, {
+        name: "Invalid permissions",
+        permissions: [""],
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(em.create).not.toHaveBeenCalled();
   });
 
   it("rejects inactive members and past expiration timestamps", async () => {
@@ -91,11 +178,11 @@ describe("ApiKeyService", () => {
     });
 
     await expect(
-      service.createKey(workspace, member, { name: "Deploy key" }),
+      service.createWorkspaceKey(workspace, member, { name: "Deploy key" }),
     ).rejects.toBeInstanceOf(BadRequestException);
     member.status = "ACTIVE";
     await expect(
-      service.createKey(workspace, member, {
+      service.createWorkspaceKey(workspace, member, {
         expiresAt: new Date(Date.now() - 1_000),
         name: "Deploy key",
       }),
@@ -110,49 +197,29 @@ describe("ApiKeyService", () => {
     });
 
     await expect(
-      service.createKey(new TestWorkspace(), member, { name: "Deploy key" }),
+      service.createWorkspaceKey(new TestWorkspace(), member, {
+        name: "Deploy key",
+      }),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(em.create).not.toHaveBeenCalled();
   });
 
-  it("allows administrators to create keys for another workspace member", async () => {
-    const { em, service } = createService();
-    const workspace = new TestWorkspace();
-    const owner = Object.assign(new TestWorkspaceMember(), {
-      id: "owner-1",
-      role: "OWNER" as const,
-    });
-    const target = Object.assign(new TestWorkspaceMember(), {
-      id: "member-2",
-    });
-    em.findOne.mockResolvedValueOnce(target);
+  it.each(["ADMIN", "MEMBER"] as const)(
+    "rejects creation by a %s because workspace keys are owner-managed",
+    async (role) => {
+      const { em, service } = createService();
+      const member = Object.assign(new TestWorkspaceMember(), {
+        role,
+      });
 
-    await service.createKey(workspace, owner, {
-      name: "Member key",
-      workspaceMemberId: target.id,
-    });
-
-    expect(em.findOne).toHaveBeenCalledWith(TestWorkspaceMember, {
-      id: target.id,
-      workspace,
-    });
-    expect(em.create).toHaveBeenCalledWith(
-      TestApiKey,
-      expect.objectContaining({ member: target }),
-    );
-  });
-
-  it("rejects cross-member creation without a management role", async () => {
-    const { em, service } = createService();
-
-    await expect(
-      service.createKey(new TestWorkspace(), new TestWorkspaceMember(), {
-        name: "Member key",
-        workspaceMemberId: "member-2",
-      }),
-    ).rejects.toBeInstanceOf(ForbiddenException);
-    expect(em.findOne).not.toHaveBeenCalled();
-  });
+      await expect(
+        service.createWorkspaceKey(new TestWorkspace(), member, {
+          name: "Workspace key",
+        }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(em.create).not.toHaveBeenCalled();
+    },
+  );
 
   it("rejects creation from a member of another workspace", async () => {
     const { em, service } = createService();
@@ -160,43 +227,37 @@ describe("ApiKeyService", () => {
       role: "OWNER" as const,
       workspace: {
         id: "workspace-2",
-      } as AuthWorkspaceMemberEntity["workspace"],
+      } as BaseWorkspaceMember["workspace"],
     });
 
     await expect(
-      service.createKey(new TestWorkspace(), member, { name: "Cross key" }),
+      service.createWorkspaceKey(new TestWorkspace(), member, {
+        name: "Cross key",
+      }),
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(em.create).not.toHaveBeenCalled();
   });
 
-  it("reports a missing selected member", async () => {
-    const { em, service } = createService();
-    const owner = Object.assign(new TestWorkspaceMember(), {
-      role: "OWNER" as const,
-    });
-    em.findOne.mockResolvedValueOnce(null);
-
-    await expect(
-      service.createKey(new TestWorkspace(), owner, {
-        name: "Member key",
-        workspaceMemberId: "missing",
-      }),
-    ).rejects.toBeInstanceOf(NotFoundException);
-  });
-
-  it("limits member lists to their own keys and lets managers list the workspace", () => {
+  it("lists workspace keys only for workspace owners", () => {
     const { service } = createService();
     const workspace = new TestWorkspace();
-    const member = new TestWorkspaceMember();
-    const owner = Object.assign(new TestWorkspaceMember(), {
-      role: "OWNER" as const,
+    const owner = new TestWorkspaceMember();
+    const member = Object.assign(new TestWorkspaceMember(), {
+      role: "MEMBER" as const,
+    });
+    const admin = Object.assign(new TestWorkspaceMember(), {
+      role: "ADMIN" as const,
     });
 
-    expect(service.getListFilter(workspace, member)).toEqual({
-      member,
-      workspace,
+    expect(service.getWorkspaceListFilter(workspace, owner)).toEqual({
+      owner: workspace,
     });
-    expect(service.getListFilter(workspace, owner)).toEqual({ workspace });
+    expect(() => service.getWorkspaceListFilter(workspace, admin)).toThrow(
+      ForbiddenException,
+    );
+    expect(() => service.getWorkspaceListFilter(workspace, member)).toThrow(
+      ForbiddenException,
+    );
   });
 
   it("rejects list filters for a member of another workspace", () => {
@@ -204,67 +265,80 @@ describe("ApiKeyService", () => {
     const member = Object.assign(new TestWorkspaceMember(), {
       workspace: {
         id: "workspace-2",
-      } as AuthWorkspaceMemberEntity["workspace"],
+      } as BaseWorkspaceMember["workspace"],
     });
 
-    expect(() => service.getListFilter(new TestWorkspace(), member)).toThrow(
-      ForbiddenException,
-    );
+    expect(() =>
+      service.getWorkspaceListFilter(new TestWorkspace(), member),
+    ).toThrow(ForbiddenException);
   });
 
   it("enforces key ownership for reads, updates, and deletion", async () => {
     const { em, service } = createService();
     const apiKey = new TestApiKey();
-    apiKey.member.loadOrFail.mockResolvedValue({ id: "member-2" });
     em.findOne.mockResolvedValue(apiKey);
-    const member = new TestWorkspaceMember();
+    const member = Object.assign(new TestWorkspaceMember(), {
+      role: "MEMBER" as const,
+    });
 
-    await expect(service.getApiKey(apiKey.id, member)).rejects.toBeInstanceOf(
-      ForbiddenException,
-    );
     await expect(
-      service.updateKey(apiKey.id, member, { name: "New" }),
+      service.getWorkspaceApiKey(apiKey.id, member),
     ).rejects.toBeInstanceOf(ForbiddenException);
-    await expect(service.deleteKey(apiKey.id, member)).rejects.toBeInstanceOf(
-      ForbiddenException,
-    );
+    await expect(
+      service.updateWorkspaceKey(apiKey.id, member, { name: "New" }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(
+      service.deleteWorkspaceKey(apiKey.id, member),
+    ).rejects.toBeInstanceOf(ForbiddenException);
     expect(em.flush).not.toHaveBeenCalled();
   });
 
-  it("does not let managers access keys from another workspace", async () => {
+  it("does not let owners access keys from another workspace", async () => {
     const { em, service } = createService();
     const apiKey = new TestApiKey();
-    apiKey.workspace = { id: "workspace-2" } as AuthApiKeyEntity["workspace"];
-    apiKey.member.loadOrFail.mockResolvedValue({ id: "member-2" });
+    apiKey.owner = Object.assign(new TestWorkspace(), {
+      id: "workspace-2",
+    }) as BaseApiKey["owner"];
     em.findOne.mockResolvedValue(apiKey);
     const owner = Object.assign(new TestWorkspaceMember(), {
       role: "OWNER" as const,
     });
 
-    await expect(service.getApiKey(apiKey.id, owner)).rejects.toBeInstanceOf(
-      ForbiddenException,
-    );
+    await expect(
+      service.getWorkspaceApiKey(apiKey.id, owner),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it("updates and deletes accessible keys", async () => {
     const { em, service } = createService();
     const apiKey = new TestApiKey();
-    apiKey.member.loadOrFail.mockResolvedValue({ id: "member-1" });
     em.findOne.mockResolvedValue(apiKey);
     const member = new TestWorkspaceMember();
 
+    const expiresAt = new Date(Date.now() + 60_000);
+    const permissions = ["workspace:update"];
     await expect(
-      service.updateKey(apiKey.id, member, { name: "Renamed" }),
+      service.updateWorkspaceKey(apiKey.id, member, {
+        enabled: false,
+        expiresAt,
+        name: "Renamed",
+        permissions,
+      }),
     ).resolves.toBe(apiKey);
-    await expect(service.deleteKey(apiKey.id, member)).resolves.toBe(apiKey);
+    await expect(service.deleteWorkspaceKey(apiKey.id, member)).resolves.toBe(
+      apiKey,
+    );
 
     expect(apiKey.name).toBe("Renamed");
+    expect(apiKey.enabled).toBe(false);
+    expect(apiKey.expiresAt).toBe(expiresAt);
+    expect(apiKey.permissions).toBe(permissions);
     expect(em.remove).toHaveBeenCalledWith(apiKey);
     expect(em.flush).toHaveBeenCalledTimes(2);
   });
 
-  it("rejects missing, malformed, expired, disabled, and mismatched keys", async () => {
-    const { cryptService, em, service } = createService();
+  it("rejects missing, unknown, and expired keys", async () => {
+    const { em, service } = createService();
 
     await expect(service.validate("")).rejects.toBeInstanceOf(
       UnauthorizedException,
@@ -276,81 +350,61 @@ describe("ApiKeyService", () => {
     const expired = new TestApiKey();
     expired.expiresAt = new Date(Date.now() - 1_000);
     em.findOne.mockResolvedValueOnce(expired);
-    cryptService.decrypt.mockResolvedValueOnce("abcdef0123456789");
-    em.findOne.mockResolvedValueOnce(new TestWorkspaceMember());
-    em.findOne.mockResolvedValueOnce(new TestWorkspace());
-    await expect(
-      service.validate("sk-0123456789abcdefabcdef0123456789"),
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(service.validate("sk-valid-key")).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
 
     em.findOne.mockReset();
-    const mismatched = new TestApiKey();
-    em.findOne.mockResolvedValueOnce(mismatched);
-    cryptService.decrypt.mockResolvedValueOnce("0000000000000000");
-    await expect(
-      service.validate("sk-0123456789abcdefabcdef0123456789"),
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    em.findOne.mockResolvedValueOnce(null);
+    await expect(service.validate("sk-unknown-key")).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
   });
 
-  it("rejects a key when its plaintext prefix was changed", async () => {
-    const { cryptService, em, service } = createService();
-    em.findOne.mockResolvedValueOnce(new TestApiKey());
+  it("rejects disabled keys", async () => {
+    const { em, service } = createService();
+    const disabled = Object.assign(new TestApiKey(), { enabled: false });
+    em.findOne.mockResolvedValueOnce(disabled);
 
-    await expect(
-      service.validate("xx-0123456789abcdefabcdef0123456789"),
-    ).rejects.toBeInstanceOf(UnauthorizedException);
-    expect(cryptService.decrypt).not.toHaveBeenCalled();
+    await expect(service.validate("sk-disabled-key")).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
   });
 
-  it("rejects keys for inactive members and deleted workspaces", async () => {
-    const { cryptService, em, service } = createService();
+  it("rejects keys for deleted workspaces", async () => {
+    const { em, service } = createService();
     const apiKey = new TestApiKey();
-    const member = Object.assign(new TestWorkspaceMember(), {
-      status: "INVITE_EXPIRED" as const,
-    });
-    em.findOne
-      .mockResolvedValueOnce(apiKey)
-      .mockResolvedValueOnce(member)
-      .mockResolvedValueOnce(new TestWorkspace());
-    cryptService.decrypt.mockResolvedValueOnce("abcdef0123456789");
-
+    apiKey.owner = Object.assign(new TestWorkspace(), {
+      deletedAt: new Date(),
+    }) as BaseApiKey["owner"];
+    em.findOne.mockResolvedValueOnce(apiKey);
     await expect(
-      service.validate("sk-0123456789abcdefabcdef0123456789"),
-    ).rejects.toBeInstanceOf(UnauthorizedException);
-
-    em.findOne.mockReset();
-    em.findOne
-      .mockResolvedValueOnce(apiKey)
-      .mockResolvedValueOnce(new TestWorkspaceMember())
-      .mockResolvedValueOnce(null);
-    cryptService.decrypt.mockResolvedValueOnce("abcdef0123456789");
-    await expect(
-      service.validate("sk-0123456789abcdefabcdef0123456789"),
+      service.validate("sk-deleted-workspace-key"),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
   it("validates keys with RLS disabled and restores the outer mode", async () => {
-    const { cryptService, em, service } = createService();
+    const { em, service } = createService();
     const apiKey = new TestApiKey();
-    const member = new TestWorkspaceMember();
     const workspace = new TestWorkspace();
-    em.findOne.mockImplementation((entity) => {
+    const plaintextApiKey = "sk-valid-key";
+    em.findOne.mockImplementation((entity, where) => {
       expect(RowLevelSecurity.getMode()).toBe(RowLevelSecurityMode.DISABLED);
-      return Promise.resolve(
-        entity === TestApiKey
-          ? apiKey
-          : entity === TestWorkspaceMember
-            ? member
-            : workspace,
-      );
+      if (entity === TestApiKey) {
+        expect(where).toEqual({
+          key: createHash("sha256").update(plaintextApiKey).digest("base64url"),
+        });
+      }
+      return Promise.resolve(entity === TestApiKey ? apiKey : null);
     });
-    cryptService.decrypt.mockResolvedValue("abcdef0123456789");
 
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       RowLevelSecurity.setMode(RowLevelSecurityMode.ENABLED);
-      await expect(
-        service.validate("sk-0123456789abcdefabcdef0123456789"),
-      ).resolves.toEqual({ apiKey, workspace, workspaceMember: member });
+      await expect(service.validate(plaintextApiKey)).resolves.toEqual({
+        apiKey,
+        ownerType: "workspace",
+        workspace,
+      });
       expect(RowLevelSecurity.getMode()).toBe(RowLevelSecurityMode.ENABLED);
     });
   });
@@ -375,25 +429,22 @@ function createService() {
     remove: vi.fn(),
   } as unknown as Mocked<EntityManager>;
   em.persist.mockReturnValue(em);
-  const cryptService = {
-    decrypt: vi.fn(),
-    encrypt: vi.fn(() => Promise.resolve("encrypted-secret")),
-  } as unknown as Mocked<CryptService>;
   const options = {
     entities: {
       apiKey: TestApiKey,
+      user: TestUser,
       workspace: TestWorkspace,
       workspaceMember: TestWorkspaceMember,
     },
   } as unknown as AuthModuleOptions;
 
   return {
-    cryptService,
     em,
-    service: new ApiKeyService<TestApiKey, TestWorkspace, TestWorkspaceMember>(
-      em,
-      cryptService,
-      options,
-    ),
+    service: new ApiKeyService<
+      TestApiKey,
+      TestUser,
+      TestWorkspace,
+      TestWorkspaceMember
+    >(em, options),
   };
 }

@@ -1,4 +1,5 @@
-vi.mock('@nest-boot/auth', () => ({
+vi.mock('@nest-boot/auth', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@nest-boot/auth')>()),
   BaseUser: class BaseUser {},
 }));
 
@@ -95,7 +96,7 @@ describe('WorkspaceMemberService', () => {
       name: 'Deploy Bot',
       workspace,
       role: WorkspaceMemberRole.MEMBER,
-      permissions: {},
+      permissions: [],
       type: WorkspaceMemberType.SERVICE_ACCOUNT,
       user: null,
       email: null,

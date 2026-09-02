@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@apollo/client/react";
 import {
   createFileRoute,
+  redirect,
   useLocation,
   useNavigate,
 } from "@tanstack/react-router";
@@ -15,7 +16,6 @@ import { toast } from "sonner";
 import z from "zod";
 
 import type { DataFilterItemProps } from "@/components/thread-ui/data-filter";
-import type { GetApiKeysFromApiKeysRouteQuery } from "@/gql/graphql";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import { Badge } from "@/components/thread-ui/badge";
 import { Button } from "@/components/thread-ui/button";
@@ -26,6 +26,7 @@ import {
 } from "@/lib/format-filter-values";
 import { DataTable } from "@/components/thread-ui/data-table";
 import { Input } from "@/components/thread-ui/input";
+import { PermissionCheckboxGroup } from "@/components/permission-checkbox-group";
 import {
   Page,
   PageActions,
@@ -45,7 +46,8 @@ import {
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { graphql } from "@/gql";
-import { ApiKeyOrderField } from "@/gql/graphql";
+import * as Gql from "@/gql/graphql";
+import { getApiKeyStatus } from "@/lib/api-key-status";
 import {
   OrderDirection,
   createConnectionSearchSchema,
@@ -56,7 +58,14 @@ import {
   createDataFilterInputSearchSchema,
   dataFilterDateSearchSchema,
 } from "@/lib/data-filter-search-schema";
-import { truncateEmail } from "@/utils/truncate-email";
+import {
+  workspaceApiKeyPermissionOptions,
+  workspaceApiKeyPermissionValues,
+} from "@/lib/permissions";
+
+const { ApiKeyOrderField, WorkspaceMemberRole } = Gql;
+type AuthPermission = Gql.AuthPermission;
+type GetApiKeysFromApiKeysRouteQuery = Gql.GetApiKeysFromApiKeysRouteQuery;
 
 const GET_API_KEYS_FROM_API_KEYS_ROUTE = graphql(`
   query getApiKeysFromApiKeysRoute(
@@ -81,15 +90,13 @@ const GET_API_KEYS_FROM_API_KEYS_ROUTE = graphql(`
         node {
           id
           name
-          keyPrefix
+          start
+          prefix
+          enabled
+          permissions
           createdAt
           lastUsedAt
           expiresAt
-          member {
-            id
-            name
-            email
-          }
         }
       }
       pageInfo {
@@ -109,15 +116,13 @@ const CREATE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
       entity {
         id
         name
-        keyPrefix
+        start
+        prefix
+        enabled
+        permissions
         createdAt
         lastUsedAt
         expiresAt
-        member {
-          id
-          name
-          email
-        }
       }
     }
   }
@@ -128,15 +133,13 @@ const UPDATE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
     updateApiKey(id: $id, input: $input) {
       id
       name
-      keyPrefix
+      start
+      prefix
+      enabled
+      permissions
       createdAt
       lastUsedAt
       expiresAt
-      member {
-        id
-        name
-        email
-      }
     }
   }
 `);
@@ -146,15 +149,13 @@ const DELETE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
     deleteApiKey(id: $id) {
       id
       name
-      keyPrefix
+      start
+      prefix
+      enabled
+      permissions
       createdAt
       lastUsedAt
       expiresAt
-      member {
-        id
-        name
-        email
-      }
     }
   }
 `);
@@ -163,6 +164,14 @@ export const Route = createFileRoute(
   "/_authenticated/workspaces/$workspaceId/api-keys/",
 )({
   component: ApiKeysComponent,
+  beforeLoad: ({ context, params }) => {
+    if (context.currentWorkspaceMember.role !== WorkspaceMemberRole.OWNER) {
+      throw redirect({
+        to: "/workspaces/$workspaceId",
+        params: { workspaceId: params.workspaceId },
+      });
+    }
+  },
   validateSearch: zodValidator(
     createConnectionSearchSchema({
       filterSchema: z
@@ -172,7 +181,7 @@ export const Route = createFileRoute(
           })
             .optional()
             .catch(undefined),
-          key_prefix: createDataFilterInputSearchSchema()
+          prefix: createDataFilterInputSearchSchema()
             .optional()
             .catch(undefined),
           created_at: dataFilterDateSearchSchema.optional().catch(undefined),
@@ -219,6 +228,7 @@ function ApiKeysComponent() {
   const createForm = useForm({
     defaultValues: {
       name: "",
+      permissions: [...workspaceApiKeyPermissionValues],
     },
     validators: {
       onSubmit: z.object({
@@ -227,6 +237,7 @@ function ApiKeysComponent() {
           .trim()
           .min(1, t("api-key:form.name.required"))
           .max(255, t("api-key:form.name.too_long")),
+        permissions: z.array(z.enum(workspaceApiKeyPermissionValues)),
       }),
     },
     onSubmit: async ({ value }) => {
@@ -235,6 +246,7 @@ function ApiKeysComponent() {
           variables: {
             input: {
               name: value.name.trim(),
+              permissions: value.permissions,
             },
           },
         });
@@ -260,6 +272,7 @@ function ApiKeysComponent() {
   const renameForm = useForm({
     defaultValues: {
       name: "",
+      permissions: [] as Array<AuthPermission>,
     },
     validators: {
       onSubmit: z.object({
@@ -268,6 +281,7 @@ function ApiKeysComponent() {
           .trim()
           .min(1, t("api-key:form.name.required"))
           .max(255, t("api-key:form.name.too_long")),
+        permissions: z.array(z.enum(workspaceApiKeyPermissionValues)),
       }),
     },
     onSubmit: async ({ value }) => {
@@ -279,6 +293,7 @@ function ApiKeysComponent() {
             id: renamingApiKey.id,
             input: {
               name: value.name.trim(),
+              permissions: value.permissions,
             },
           },
         });
@@ -287,7 +302,7 @@ function ApiKeysComponent() {
         setRenamingApiKey(null);
         renameForm.reset();
         await refetch();
-        toast.success(t("api-key:toast.renamed_success"));
+        toast.success(t("api-key:toast.updated_success"));
       } catch (err) {
         if (err instanceof Error) {
           toast.error(err.message);
@@ -307,10 +322,10 @@ function ApiKeysComponent() {
         defaultOperator: "$fulltext",
       },
       {
-        label: t("api-key:filter.items.key_prefix.label"),
-        field: "key_prefix",
+        label: t("api-key:filter.items.prefix.label"),
+        field: "prefix",
         type: "input",
-        placeholder: t("api-key:filter.items.key_prefix.placeholder"),
+        placeholder: t("api-key:filter.items.prefix.placeholder"),
         operators: ["$eq", "$ne"],
         defaultOperator: "$eq",
       },
@@ -353,6 +368,7 @@ function ApiKeysComponent() {
   const handleOpenRename = (apiKey: ApiKeyRow) => {
     setRenamingApiKey(apiKey);
     renameForm.setFieldValue("name", apiKey.name);
+    renameForm.setFieldValue("permissions", apiKey.permissions);
     setRenameDialogOpen(true);
   };
 
@@ -376,6 +392,29 @@ function ApiKeysComponent() {
 
       await refetch();
       toast.success(t("api-key:toast.deleted_success"));
+    } catch (err) {
+      if (err instanceof Error) {
+        toast.error(err.message);
+      }
+    }
+  };
+
+  const handleToggleApiKey = async (apiKey: ApiKeyRow) => {
+    try {
+      await updateApiKey({
+        variables: {
+          id: apiKey.id,
+          input: { enabled: !apiKey.enabled },
+        },
+      });
+      await refetch();
+      toast.success(
+        t(
+          apiKey.enabled
+            ? "api-key:toast.disabled_success"
+            : "api-key:toast.enabled_success",
+        ),
+      );
     } catch (err) {
       if (err instanceof Error) {
         toast.error(err.message);
@@ -460,29 +499,14 @@ function ApiKeysComponent() {
               },
             },
             {
-              accessorKey: "keyPrefix",
-              header: t("api-key:table.key_prefix"),
+              accessorKey: "start",
+              header: t("api-key:table.key_start"),
               size: 100,
               cell: ({ row }) => (
-                <code className="text-xs">{row.original.keyPrefix}</code>
+                <code className="text-xs">
+                  {row.original.start ?? row.original.prefix ?? "—"}
+                </code>
               ),
-            },
-            {
-              accessorKey: "member",
-              header: t("api-key:table.owner"),
-              size: 200,
-              cell: ({ row }) => {
-                const member = row.original.member;
-
-                return (
-                  <div className="flex flex-col gap-1">
-                    <span className="text-xs font-medium">{member.name}</span>
-                    <span className="text-muted-foreground text-xs">
-                      {truncateEmail(member.email)}
-                    </span>
-                  </div>
-                );
-              },
             },
             {
               accessorKey: "lastUsedAt",
@@ -527,7 +551,14 @@ function ApiKeysComponent() {
           rowActions={(row) => [
             {
               disabled: updateLoading,
-              label: t("action.rename"),
+              label: row.original.enabled
+                ? t("action.disable")
+                : t("action.enable"),
+              onClick: () => handleToggleApiKey(row.original),
+            },
+            {
+              disabled: updateLoading,
+              label: t("action.edit"),
               onClick: () => handleOpenRename(row.original),
             },
             {
@@ -581,6 +612,16 @@ function ApiKeysComponent() {
                     />
                   )}
                 </createForm.Field>
+                <createForm.Field name="permissions">
+                  {(field) => (
+                    <PermissionCheckboxGroup
+                      options={workspaceApiKeyPermissionOptions}
+                      value={field.state.value}
+                      onChange={field.handleChange}
+                      disabled={createLoading}
+                    />
+                  )}
+                </createForm.Field>
               </div>
               <DialogFooter>
                 <Button
@@ -608,9 +649,9 @@ function ApiKeysComponent() {
         >
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{t("api-key:rename.title")}</DialogTitle>
+              <DialogTitle>{t("api-key:edit.title")}</DialogTitle>
               <DialogDescription>
-                {t("api-key:rename.description")}
+                {t("api-key:edit.description")}
               </DialogDescription>
             </DialogHeader>
             <form
@@ -642,6 +683,16 @@ function ApiKeysComponent() {
                               .join(", ")
                           : undefined
                       }
+                    />
+                  )}
+                </renameForm.Field>
+                <renameForm.Field name="permissions">
+                  {(field) => (
+                    <PermissionCheckboxGroup
+                      options={workspaceApiKeyPermissionOptions}
+                      value={field.state.value}
+                      onChange={field.handleChange}
+                      disabled={updateLoading}
                     />
                   )}
                 </renameForm.Field>
@@ -736,16 +787,3 @@ function ApiKeysComponent() {
 
 type ApiKeyRow =
   GetApiKeysFromApiKeysRouteQuery["apiKeys"]["edges"][number]["node"];
-
-type ApiKeyStatus = {
-  color: "green" | "yellow";
-  label: "active" | "expired";
-};
-
-function getApiKeyStatus(apiKey: { expiresAt?: string | null }): ApiKeyStatus {
-  if (apiKey.expiresAt && dayjs(apiKey.expiresAt).isBefore(dayjs())) {
-    return { color: "yellow", label: "expired" };
-  }
-
-  return { color: "green", label: "active" };
-}

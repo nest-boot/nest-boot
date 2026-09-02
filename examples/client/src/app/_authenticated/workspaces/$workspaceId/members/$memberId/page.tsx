@@ -12,8 +12,6 @@ import { toast } from "sonner";
 import { t } from "i18next";
 
 import { useCurrentWorkspaceMemberContext } from "../../contexts/current-workspace-member-context";
-import type { UpdateWorkspaceMemberInput } from "@/gql/graphql";
-import type { WorkspacePermission } from "@/lib/workspace-permissions";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import {
   Page,
@@ -28,14 +26,17 @@ import { Field, FieldGroup, FieldSet } from "@/components/ui/field";
 import { Input } from "@/components/thread-ui/input";
 import { RadioGroup } from "@/components/thread-ui/radio-group";
 import { graphql } from "@/gql";
-import { WorkspaceMemberRole, WorkspaceMemberStatus } from "@/gql/graphql";
+import * as Gql from "@/gql/graphql";
 import { getRoleLabel } from "@/utils/get-role-label";
 import {
-  flattenWorkspacePermissions,
-  groupWorkspacePermissions,
-  workspacePermissions,
-} from "@/lib/workspace-permissions";
+  workspacePermissionOptions,
+  workspacePermissionValues,
+} from "@/lib/permissions";
 import { PermissionCheckboxGroup } from "@/components/permission-checkbox-group";
+
+const { WorkspaceMemberRole, WorkspaceMemberStatus } = Gql;
+type UpdateWorkspaceMemberInput = Gql.UpdateWorkspaceMemberInput;
+type WorkspacePermission = Gql.WorkspacePermission;
 
 const GET_CURRENT_WORKSPACE_MEMBER_FROM_MEMBER_ROUTE = graphql(`
   query getCurrentWorkspaceMemberFromMemberRoute {
@@ -103,10 +104,7 @@ const REMOVE_WORKSPACE_MEMBER_FROM_MEMBER_ROUTE = graphql(`
   }
 `);
 
-// 扁平化权限列表
-const allPermissions = Object.keys(
-  workspacePermissions,
-) as Array<WorkspacePermission>;
+const allPermissions = [...workspacePermissionValues];
 
 const formSchema = z.object({
   name: z
@@ -118,11 +116,7 @@ const formSchema = z.object({
     .email(t("workspace-member:details.form.email.invalid"))
     .or(z.literal("")),
   role: z.nativeEnum(WorkspaceMemberRole),
-  permissions: z.array(
-    z.custom<WorkspacePermission>(
-      (value) => typeof value === "string" && value in workspacePermissions,
-    ),
-  ),
+  permissions: z.array(z.enum(workspacePermissionValues)),
 });
 
 export const Route = createFileRoute(
@@ -227,7 +221,7 @@ function MemberComponent() {
         WorkspaceMemberRole.ADMIN,
       ].includes(member.role)
         ? allPermissions
-        : flattenWorkspacePermissions(member.permissions),
+        : member.permissions,
     },
     validators: {
       onSubmit: formSchema,
@@ -252,9 +246,7 @@ function MemberComponent() {
         }
 
         // 比较权限数组是否变化
-        const currentPermissions = flattenWorkspacePermissions(
-          member.permissions,
-        );
+        const currentPermissions = member.permissions;
         const hasPermissionChanged =
           value.permissions.length !== currentPermissions.length ||
           value.permissions.some(
@@ -272,7 +264,7 @@ function MemberComponent() {
           ) &&
           hasPermissionChanged
         ) {
-          input.permissions = groupWorkspacePermissions(value.permissions);
+          input.permissions = value.permissions;
         }
 
         await updateWorkspaceMember({
@@ -502,13 +494,13 @@ function MemberComponent() {
                           role === WorkspaceMemberRole.OWNER || !canEditRole,
                       }))}
                     value={field.state.value}
-                    onValueChange={(value: WorkspaceMemberRole) => {
+                    onValueChange={(value: Gql.WorkspaceMemberRole) => {
                       field.handleChange(value);
 
                       if (value === WorkspaceMemberRole.MEMBER) {
                         form.setFieldValue(
                           "permissions",
-                          flattenWorkspacePermissions(member?.permissions),
+                          member?.permissions ?? [],
                         );
                       } else {
                         form.setFieldValue("permissions", allPermissions);
@@ -522,6 +514,7 @@ function MemberComponent() {
               <form.Field name="permissions">
                 {(field) => (
                   <PermissionCheckboxGroup
+                    options={workspacePermissionOptions}
                     value={field.state.value}
                     onChange={field.handleChange}
                     disabled={updateLoading || isOwnerOrAdmin}

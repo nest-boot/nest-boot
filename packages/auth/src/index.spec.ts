@@ -33,11 +33,13 @@ import {
 } from "./decorators/index.js";
 import {
   BaseAccount,
+  BaseApiKey,
   BaseSession,
   BaseUser,
   BaseVerification,
+  BaseWorkspace,
+  BaseWorkspaceMember,
 } from "./entities/index.js";
-import { PermissionAction } from "./enums/permission-action.enum.js";
 import * as publicApi from "./index.js";
 import { PermissionAbilityBuilder } from "./permission.ability-builder.js";
 import { can } from "./utils/can.util.js";
@@ -63,10 +65,12 @@ describe("public API", () => {
     expect(publicApi.CurrentWorkspaceMember).toBe(CurrentWorkspaceMember);
     expect(publicApi.Public).toBe(Public);
     expect(publicApi.BaseAccount).toBe(BaseAccount);
+    expect(publicApi.BaseApiKey).toBe(BaseApiKey);
     expect(publicApi.BaseSession).toBe(BaseSession);
     expect(publicApi.BaseUser).toBe(BaseUser);
     expect(publicApi.BaseVerification).toBe(BaseVerification);
-    expect(publicApi.PermissionAction).toBe(PermissionAction);
+    expect(publicApi.BaseWorkspace).toBe(BaseWorkspace);
+    expect(publicApi.BaseWorkspaceMember).toBe(BaseWorkspaceMember);
     expect(publicApi.PermissionAbilityBuilder).toBe(PermissionAbilityBuilder);
     expect(publicApi.can).toBe(can);
     expect(publicApi.getPermissionAbility).toBe(getPermissionAbility);

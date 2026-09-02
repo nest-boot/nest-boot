@@ -5,7 +5,10 @@ import { ConfigService } from '@nestjs/config';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { bearer, genericOAuth } from 'better-auth/plugins';
 
-import { buildWorkspaceMemberPermissionAbility } from '../../common/modules/utils/build-workspace-member-permission-ability.util.js';
+import {
+  buildUserPermissionAbility,
+  buildWorkspaceMemberPermissionAbility,
+} from '../../common/modules/utils/build-workspace-member-permission-ability.util.js';
 import { ApiKey } from '../api-key/api-key.entity.js';
 import { User } from '../user/user.entity.js';
 import { Workspace } from '../workspace/workspace.entity.js';
@@ -36,11 +39,16 @@ import { RowLevelSecurityInterceptor } from './row-level-security.interceptor.js
         emailAndPassword: {
           enabled: true,
         },
-        buildAbility: () => {
+        buildUserAbility: () =>
+          buildUserPermissionAbility(
+            RequestContext.get(User)?.permissions ?? [],
+          ),
+        buildWorkspaceAbility: () => {
           const workspaceMember = RequestContext.get(WorkspaceMember);
 
           return buildWorkspaceMemberPermissionAbility(
-            workspaceMember?.permissions ?? {},
+            workspaceMember?.permissions ?? [],
+            workspaceMember,
           );
         },
         plugins: [

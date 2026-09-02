@@ -5,14 +5,15 @@ import { Test } from "@nestjs/testing";
 import type { Request, Response } from "express";
 import type { Mock, MockedFunction } from "vitest";
 
+import { CURRENT_API_KEY, CURRENT_WORKSPACE_MEMBER } from "./auth.constants.js";
 import { AuthGuard } from "./auth.guard.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
-import { PermissionAction } from "./enums/permission-action.enum.js";
+import { BaseUser } from "./entities/user.entity.js";
 import {
   CUSTOM_ROUTE_ARGS_METADATA,
-  PERMISSION_ABILITY,
-  PERMISSION_ABILITY_PROMISE,
   ROUTE_ARGS_METADATA,
+  USER_PERMISSION_ABILITY,
+  USER_PERMISSION_ABILITY_PROMISE,
 } from "./permission.constants.js";
 import type { BuildAbilityCallback } from "./types/build-ability-callback.type.js";
 import type { PermissionAbility } from "./types/permission-ability.type.js";
@@ -20,7 +21,11 @@ import type { RouteArgumentMetadata } from "./types/route-argument-metadata.type
 import { getPermissionAbility } from "./utils/get-permission-ability.util.js";
 
 class Subject {}
+class User {}
+class Workspace {}
 class Controller {}
+class UserOwner {}
+class WorkspaceOwner {}
 
 class PermissionAuthGuard extends AuthGuard {
   protected override isAuthenticated(): boolean {
@@ -52,7 +57,8 @@ describe("AuthGuard permissions", () => {
   it("throws when permission metadata exists but no ability is available", async () => {
     const { guard, reflector, buildAbility } = await createGuard();
     reflector.getAllAndOverride.mockReturnValue({
-      action: PermissionAction.READ,
+      scope: "user",
+      action: "read",
       subject: Subject,
     });
 
@@ -78,23 +84,45 @@ describe("AuthGuard permissions", () => {
     );
 
     reflector.getAllAndOverride.mockReturnValue({
-      action: PermissionAction.UPDATE,
+      scope: "user",
+      action: "publish",
       subject: Subject,
     });
 
     const context = createContext(req, res);
 
     await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+      RequestContext.set(BaseUser, { permissions: ["subject:publish"] });
       await expect(guard.canActivate(context)).resolves.toBe(true);
       await expect(
-        RequestContext.get(PERMISSION_ABILITY_PROMISE),
+        RequestContext.get(USER_PERMISSION_ABILITY_PROMISE),
       ).resolves.toBe(ability);
-      expect(RequestContext.get(PERMISSION_ABILITY)).toBe(ability);
-      expect(getPermissionAbility()).toBe(ability);
+      expect(RequestContext.get(USER_PERMISSION_ABILITY)).toBe(ability);
+      expect(getPermissionAbility("user")).toBe(ability);
     });
 
     expect(buildAbility).toHaveBeenCalledWith(context);
-    expect(canMock).toHaveBeenCalledWith(PermissionAction.UPDATE, Subject);
+    expect(canMock).toHaveBeenCalledWith("publish", Subject);
+  });
+
+  it("uses the workspace ability when permission scope is omitted", async () => {
+    const ability = {
+      can: vi.fn(() => true),
+    } as unknown as PermissionAbility;
+    const { guard, reflector, buildUserAbility, buildWorkspaceAbility } =
+      await createGuard(ability);
+
+    reflector.getAllAndOverride.mockReturnValue({
+      action: "read",
+      subject: Subject,
+    });
+
+    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+      await expect(guard.canActivate(createContext())).resolves.toBe(true);
+    });
+
+    expect(buildWorkspaceAbility).toHaveBeenCalledOnce();
+    expect(buildUserAbility).not.toHaveBeenCalled();
   });
 
   it("passes GraphQL execution context to buildAbility", async () => {
@@ -108,7 +136,8 @@ describe("AuthGuard permissions", () => {
     const gqlContext = { req, res };
 
     reflector.getAllAndOverride.mockReturnValue({
-      action: PermissionAction.UPDATE,
+      scope: "user",
+      action: "read",
       subject: Subject,
     });
     const context = createContext(
@@ -136,18 +165,19 @@ describe("AuthGuard permissions", () => {
     const { guard, reflector, buildAbility } = await createGuard();
 
     reflector.getAllAndOverride.mockReturnValue({
-      action: PermissionAction.UPDATE,
+      scope: "user",
+      action: "read",
       subject: Subject,
     });
 
     await RequestContext.run(new RequestContext({ type: "http" }), () => {
-      RequestContext.set(PERMISSION_ABILITY, ability);
+      RequestContext.set(USER_PERMISSION_ABILITY, ability);
 
       return expect(guard.canActivate(createContext())).resolves.toBe(true);
     });
 
     expect(buildAbility).not.toHaveBeenCalled();
-    expect(canMock).toHaveBeenCalledWith(PermissionAction.UPDATE, Subject);
+    expect(canMock).toHaveBeenCalledWith("read", Subject);
   });
 
   it("checks ability against subject resolved from self and decorated method args", async () => {
@@ -177,7 +207,8 @@ describe("AuthGuard permissions", () => {
       },
     });
     reflector.getAllAndOverride.mockReturnValue({
-      action: PermissionAction.UPDATE,
+      scope: "user",
+      action: "read",
       subject: subjectFactory,
     });
 
@@ -203,10 +234,7 @@ describe("AuthGuard permissions", () => {
     expect(handlerThis.workspaceMemberService.findOne).toHaveBeenCalledWith(
       123,
     );
-    expect(canMock).toHaveBeenCalledWith(
-      PermissionAction.UPDATE,
-      subjectInstance,
-    );
+    expect(canMock).toHaveBeenCalledWith("read", subjectInstance);
   });
 
   it("passes GraphQL resolver arguments in decorated parameter order", async () => {
@@ -243,7 +271,8 @@ describe("AuthGuard permissions", () => {
       },
     });
     reflector.getAllAndOverride.mockReturnValue({
-      action: PermissionAction.UPDATE,
+      scope: "user",
+      action: "read",
       subject: subjectFactory,
     });
 
@@ -305,7 +334,8 @@ describe("AuthGuard permissions", () => {
       },
     });
     reflector.getAllAndOverride.mockReturnValue({
-      action: PermissionAction.READ,
+      scope: "user",
+      action: "read",
       subject: subjectFactory,
     });
 
@@ -333,10 +363,7 @@ describe("AuthGuard permissions", () => {
       info,
       undefined,
     );
-    expect(canMock).toHaveBeenCalledWith(
-      PermissionAction.READ,
-      subjectInstance,
-    );
+    expect(canMock).toHaveBeenCalledWith("read", subjectInstance);
   });
 
   it("passes HTTP controller arguments in decorated parameter order", async () => {
@@ -373,7 +400,8 @@ describe("AuthGuard permissions", () => {
       },
     });
     reflector.getAllAndOverride.mockReturnValue({
-      action: PermissionAction.UPDATE,
+      scope: "user",
+      action: "read",
       subject: subjectFactory,
     });
 
@@ -482,7 +510,8 @@ describe("AuthGuard permissions", () => {
       },
     });
     reflector.getAllAndOverride.mockReturnValue({
-      action: PermissionAction.READ,
+      scope: "user",
+      action: "read",
       subject: subjectFactory,
     });
 
@@ -512,10 +541,7 @@ describe("AuthGuard permissions", () => {
       req.ip,
       undefined,
     );
-    expect(canMock).toHaveBeenCalledWith(
-      PermissionAction.READ,
-      subjectInstance,
-    );
+    expect(canMock).toHaveBeenCalledWith("read", subjectInstance);
   });
 
   it("passes custom HTTP controller arguments to subject factories", async () => {
@@ -562,7 +588,8 @@ describe("AuthGuard permissions", () => {
       },
     });
     reflector.getAllAndOverride.mockReturnValue({
-      action: PermissionAction.UPDATE,
+      scope: "user",
+      action: "read",
       subject: subjectFactory,
     });
 
@@ -591,10 +618,7 @@ describe("AuthGuard permissions", () => {
       workspace,
       "post-1",
     );
-    expect(canMock).toHaveBeenCalledWith(
-      PermissionAction.UPDATE,
-      subjectInstance,
-    );
+    expect(canMock).toHaveBeenCalledWith("read", subjectInstance);
   });
 
   it("awaits async custom controller arguments before invoking subject factories", async () => {
@@ -636,7 +660,8 @@ describe("AuthGuard permissions", () => {
       },
     });
     reflector.getAllAndOverride.mockReturnValue({
-      action: PermissionAction.UPDATE,
+      scope: "user",
+      action: "read",
       subject: subjectFactory,
     });
 
@@ -679,7 +704,8 @@ describe("AuthGuard permissions", () => {
 
     buildAbility.mockImplementation(() => abilityPromise);
     reflector.getAllAndOverride.mockReturnValue({
-      action: PermissionAction.UPDATE,
+      scope: "user",
+      action: "read",
       subject: Subject,
     });
 
@@ -718,7 +744,8 @@ describe("AuthGuard permissions", () => {
     );
 
     reflector.getAllAndOverride.mockReturnValue({
-      action: PermissionAction.READ,
+      scope: "user",
+      action: "read",
       subject: subjectFactory,
     });
 
@@ -764,7 +791,8 @@ describe("AuthGuard permissions", () => {
       "matched",
     );
     reflector.getAllAndOverride.mockReturnValue({
-      action: PermissionAction.READ,
+      scope: "user",
+      action: "read",
       subject: subjectFactory,
     });
 
@@ -808,12 +836,159 @@ describe("AuthGuard permissions", () => {
     } as unknown as PermissionAbility);
 
     reflector.getAllAndOverride.mockReturnValue({
-      action: PermissionAction.DELETE,
+      scope: "user",
+      action: "delete",
       subject: Subject,
     });
 
     await RequestContext.run(new RequestContext({ type: "http" }), async () => {
       await expect(guard.canActivate(createContext())).resolves.toBe(false);
+    });
+  });
+
+  it("restricts API-key requests to the key permissions", async () => {
+    const { guard, reflector } = await createGuard({
+      can: vi.fn(() => true),
+    } as unknown as PermissionAbility);
+
+    reflector.getAllAndOverride.mockReturnValue({
+      scope: "user",
+      action: "get",
+      subject: User,
+    });
+
+    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+      RequestContext.set(CURRENT_API_KEY, {
+        owner: new UserOwner(),
+        permissions: ["user:get"],
+      });
+      RequestContext.set(BaseUser, {
+        permissions: ["user:get"],
+      });
+
+      await expect(guard.canActivate(createContext())).resolves.toBe(true);
+
+      reflector.getAllAndOverride.mockReturnValue({
+        scope: "user",
+        action: "update",
+        subject: User,
+      });
+      await expect(guard.canActivate(createContext())).resolves.toBe(false);
+    });
+  });
+
+  it("rejects missing API-key permissions", async () => {
+    const { guard, reflector } = await createGuard({
+      can: vi.fn(() => true),
+    } as unknown as PermissionAbility);
+
+    reflector.getAllAndOverride.mockReturnValue({
+      scope: "user",
+      action: "delete",
+      subject: User,
+    });
+
+    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+      RequestContext.set(CURRENT_API_KEY, {
+        owner: new UserOwner(),
+        permissions: null,
+      });
+      RequestContext.set(BaseUser, {
+        permissions: ["user:delete"],
+      });
+      await expect(guard.canActivate(createContext())).resolves.toBe(false);
+
+      RequestContext.set(CURRENT_API_KEY, {
+        owner: new UserOwner(),
+        permissions: [],
+      });
+      await expect(guard.canActivate(createContext())).resolves.toBe(false);
+    });
+  });
+
+  it("authorizes workspace keys directly from key permissions", async () => {
+    const { guard, reflector, buildAbility } = await createGuard();
+    reflector.getAllAndOverride.mockReturnValue({
+      action: "update",
+      scope: "workspace",
+      subject: Workspace,
+    });
+
+    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+      RequestContext.set(CURRENT_API_KEY, {
+        owner: new WorkspaceOwner(),
+        permissions: ["workspace:update"],
+      });
+
+      await expect(guard.canActivate(createContext())).resolves.toBe(true);
+      reflector.getAllAndOverride.mockReturnValue({
+        action: "update",
+        scope: "user",
+        subject: Workspace,
+      });
+      await expect(guard.canActivate(createContext())).resolves.toBe(false);
+    });
+
+    expect(buildAbility).not.toHaveBeenCalled();
+  });
+
+  it("intersects user-key permissions with workspace-member permissions", async () => {
+    const canMock = vi.fn(() => true);
+    const { guard, reflector } = await createGuard({
+      can: canMock,
+    } as unknown as PermissionAbility);
+    reflector.getAllAndOverride.mockReturnValue({
+      action: "update",
+      scope: "workspace",
+      subject: Workspace,
+    });
+
+    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+      RequestContext.set(CURRENT_API_KEY, {
+        owner: new UserOwner(),
+        permissions: ["workspace:update"],
+      });
+      await expect(guard.canActivate(createContext())).resolves.toBe(false);
+
+      RequestContext.set(CURRENT_WORKSPACE_MEMBER, { id: "member-1" });
+      await expect(guard.canActivate(createContext())).resolves.toBe(true);
+
+      RequestContext.set(CURRENT_API_KEY, {
+        owner: new UserOwner(),
+        permissions: ["workspace:delete"],
+      });
+      await expect(guard.canActivate(createContext())).resolves.toBe(false);
+    });
+
+    expect(canMock).toHaveBeenCalledWith("update", Workspace);
+  });
+
+  it("intersects user-owned API-key permissions with the user ability", async () => {
+    const { guard, reflector } = await createGuard({
+      can: vi.fn(
+        () =>
+          RequestContext.get(BaseUser)?.permissions.includes("user:get") ??
+          false,
+      ),
+    } as unknown as PermissionAbility);
+    reflector.getAllAndOverride.mockReturnValue({
+      action: "get",
+      scope: "user",
+      subject: User,
+    });
+
+    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+      RequestContext.set(CURRENT_API_KEY, {
+        owner: new UserOwner(),
+        permissions: ["user:get"],
+      });
+      RequestContext.set(BaseUser, { permissions: [] });
+      await expect(guard.canActivate(createContext())).resolves.toBe(false);
+
+      RequestContext.set(BaseUser, {
+        permissions: ["user:get"],
+      });
+      await expect(guard.canActivate(createContext())).resolves.toBe(true);
     });
   });
 });
@@ -827,7 +1002,10 @@ async function createGuard(
   } as unknown as Reflector & {
     getAllAndOverride: Mock;
   };
-  const buildAbility: MockedFunction<BuildAbilityCallback> = vi.fn(
+  const buildUserAbility: MockedFunction<BuildAbilityCallback> = vi.fn(
+    (_ctx) => ability,
+  );
+  const buildWorkspaceAbility: MockedFunction<BuildAbilityCallback> = vi.fn(
     (_ctx) => ability,
   );
   const moduleRefMock = {
@@ -847,7 +1025,12 @@ async function createGuard(
       {
         provide: MODULE_OPTIONS_TOKEN,
         useValue: {
-          buildAbility,
+          buildUserAbility,
+          buildWorkspaceAbility,
+          entities: {
+            user: UserOwner,
+            workspace: WorkspaceOwner,
+          },
         },
       },
       {
@@ -860,7 +1043,9 @@ async function createGuard(
   return {
     guard: testingModule.get(PermissionAuthGuard),
     reflector,
-    buildAbility,
+    buildAbility: buildUserAbility,
+    buildUserAbility,
+    buildWorkspaceAbility,
     moduleRef: moduleRefMock,
     req,
     res,
