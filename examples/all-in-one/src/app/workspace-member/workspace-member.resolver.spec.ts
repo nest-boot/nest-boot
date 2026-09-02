@@ -1,7 +1,14 @@
 import type { Mocked } from 'vitest';
 vi.mock('@nest-boot/auth', () => ({
   BaseUser: class BaseUser {},
+  Can: () => () => undefined,
   CurrentUser: () => () => undefined,
+  PermissionAction: {
+    CREATE: 'create',
+    DELETE: 'delete',
+    READ: 'read',
+    UPDATE: 'update',
+  },
 }));
 
 vi.mock('@nest-boot/graphql-connection', () => ({

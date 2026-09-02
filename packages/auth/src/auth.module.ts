@@ -11,6 +11,7 @@ import { genericOAuth } from "better-auth/plugins";
 
 import { mikroOrmAdapter } from "./adapters/mikro-orm-adapter.js";
 import { AUTH_TOKEN } from "./auth.constants.js";
+import { AuthGuard } from "./auth.guard.js";
 import { AuthMiddleware } from "./auth.middleware.js";
 import {
   ASYNC_OPTIONS_TYPE,
@@ -39,11 +40,14 @@ import { resolveSecret } from "./utils/resolve-secret.js";
   imports: [RequestContextModule, MiddlewareModule],
   providers: [
     AuthService,
+    AuthGuard,
     AuthMiddleware,
     {
       provide: AUTH_TOKEN,
       inject: [MODULE_OPTIONS_TOKEN, MikroORM],
       useFactory: (options: AuthModuleOptions, orm: MikroORM) => {
+        const optionsWithoutAbility = { ...options };
+        delete optionsWithoutAbility.buildAbility;
         const secret = resolveSecret(options);
         const disableSignUp = isEnvTrue("AUTH_DISABLE_SIGN_UP");
         const oidcConfig = createOidcConfig(disableSignUp);
@@ -52,7 +56,7 @@ import { resolveSecret } from "./utils/resolve-secret.js";
           plugins,
           socialProviders,
           ...betterAuthOptions
-        } = options;
+        } = optionsWithoutAbility;
         const emailAndPasswordConfig = createEmailAndPasswordConfig(
           disableSignUp,
           emailAndPassword,
@@ -96,7 +100,7 @@ import { resolveSecret } from "./utils/resolve-secret.js";
       },
     },
   ],
-  exports: [AuthService],
+  exports: [MODULE_OPTIONS_TOKEN, AuthGuard, AuthService],
 })
 export class AuthModule extends ConfigurableModuleClass {
   /**

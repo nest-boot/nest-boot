@@ -5,6 +5,8 @@ import { Test } from "@nestjs/testing";
 import type { Request, Response } from "express";
 import type { Mock, MockedFunction } from "vitest";
 
+import { AuthGuard } from "./auth.guard.js";
+import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import { PermissionAction } from "./enums/permission-action.enum.js";
 import {
   CUSTOM_ROUTE_ARGS_METADATA,
@@ -12,8 +14,6 @@ import {
   PERMISSION_ABILITY_PROMISE,
   ROUTE_ARGS_METADATA,
 } from "./permission.constants.js";
-import { PermissionGuard } from "./permission.guard.js";
-import { MODULE_OPTIONS_TOKEN } from "./permission.module-definition.js";
 import type { BuildAbilityCallback } from "./types/build-ability-callback.type.js";
 import type { PermissionAbility } from "./types/permission-ability.type.js";
 import type { RouteArgumentMetadata } from "./types/route-argument-metadata.type.js";
@@ -22,6 +22,12 @@ import { getPermissionAbility } from "./utils/get-permission-ability.util.js";
 class Subject {}
 class Controller {}
 
+class PermissionAuthGuard extends AuthGuard {
+  protected override isAuthenticated(): boolean {
+    return true;
+  }
+}
+
 interface PermissionTestRequest extends Request {
   files?: unknown;
   rawBody?: Buffer;
@@ -29,7 +35,7 @@ interface PermissionTestRequest extends Request {
   upload?: unknown;
 }
 
-describe("PermissionGuard", () => {
+describe("AuthGuard permissions", () => {
   afterEach(() => {
     Reflect.deleteMetadata(ROUTE_ARGS_METADATA, Controller, "handler");
   });
@@ -833,7 +839,7 @@ async function createGuard(
   const res = {} as Response;
   const testingModule = await Test.createTestingModule({
     providers: [
-      PermissionGuard,
+      PermissionAuthGuard,
       {
         provide: Reflector,
         useValue: reflector,
@@ -852,7 +858,7 @@ async function createGuard(
   }).compile();
 
   return {
-    guard: testingModule.get(PermissionGuard),
+    guard: testingModule.get(PermissionAuthGuard),
     reflector,
     buildAbility,
     moduleRef: moduleRefMock,

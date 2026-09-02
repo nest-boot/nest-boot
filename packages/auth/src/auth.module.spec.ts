@@ -42,6 +42,7 @@ vi.mock("./adapters/mikro-orm-adapter.js", () => ({
 }));
 
 import { AUTH_TOKEN } from "./auth.constants.js";
+import { AuthGuard } from "./auth.guard.js";
 import { AuthMiddleware } from "./auth.middleware.js";
 import { AuthModule } from "./auth.module.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
@@ -181,6 +182,21 @@ describe("AuthModule", () => {
     delete process.env.AUTH_URL;
   });
 
+  it("provides and exports the combined auth guard", () => {
+    const providers = Reflect.getMetadata(
+      MODULE_METADATA.PROVIDERS,
+      AuthModule,
+    ) as unknown[];
+    const exports = Reflect.getMetadata(
+      MODULE_METADATA.EXPORTS,
+      AuthModule,
+    ) as unknown[];
+
+    expect(providers).toContain(AuthGuard);
+    expect(exports).toContain(MODULE_OPTIONS_TOKEN);
+    expect(exports).toContain(AuthGuard);
+  });
+
   it("should register synchronous options", () => {
     const options = {
       entities,
@@ -259,6 +275,23 @@ describe("AuthModule", () => {
         entities,
         secret,
       }),
+    );
+  });
+
+  it("should not pass the permission builder to better-auth", () => {
+    const authProvider = getAuthProvider();
+
+    authProvider.useFactory(
+      {
+        buildAbility: vi.fn(),
+        entities,
+        secret,
+      },
+      { em: {} } as unknown as MikroORM,
+    );
+
+    expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty(
+      "buildAbility",
     );
   });
 

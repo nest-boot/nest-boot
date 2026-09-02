@@ -17,14 +17,18 @@ import { AuthMiddleware } from "./auth.middleware.js";
 import { AuthModule } from "./auth.module.js";
 import { AuthService } from "./auth.service.js";
 import { AuthTransactionContext } from "./auth.transaction-context.js";
-import { Public } from "./decorators/index.js";
+import { Can, Public } from "./decorators/index.js";
 import {
   BaseAccount,
   BaseSession,
   BaseUser,
   BaseVerification,
 } from "./entities/index.js";
+import { PermissionAction } from "./enums/permission-action.enum.js";
 import * as publicApi from "./index.js";
+import { PermissionAbilityBuilder } from "./permission.ability-builder.js";
+import { can } from "./utils/can.util.js";
+import { getPermissionAbility } from "./utils/get-permission-ability.util.js";
 
 describe("public API", () => {
   it("should export auth modules, services, decorators, and entities", () => {
@@ -35,10 +39,15 @@ describe("public API", () => {
     expect(publicApi.AuthModule).toBe(AuthModule);
     expect(publicApi.AuthService).toBe(AuthService);
     expect(publicApi.AuthTransactionContext).toBe(AuthTransactionContext);
+    expect(publicApi.Can).toBe(Can);
     expect(publicApi.Public).toBe(Public);
     expect(publicApi.BaseAccount).toBe(BaseAccount);
     expect(publicApi.BaseSession).toBe(BaseSession);
     expect(publicApi.BaseUser).toBe(BaseUser);
     expect(publicApi.BaseVerification).toBe(BaseVerification);
+    expect(publicApi.PermissionAction).toBe(PermissionAction);
+    expect(publicApi.PermissionAbilityBuilder).toBe(PermissionAbilityBuilder);
+    expect(publicApi.can).toBe(can);
+    expect(publicApi.getPermissionAbility).toBe(getPermissionAbility);
   });
 });

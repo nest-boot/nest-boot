@@ -1,10 +1,14 @@
 import { AuthModule as BaseAuthModule } from '@nest-boot/auth';
+import { RequestContext } from '@nest-boot/request-context';
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { genericOAuth } from 'better-auth/plugins';
 
+import { buildWorkspaceMemberPermissionAbility } from '../../common/modules/utils/build-workspace-member-permission-ability.util.js';
 import { User } from '../user/user.entity.js';
+import { WorkspaceMember } from '../workspace-member/workspace-member.entity.js';
+import { WorkspaceMemberService } from '../workspace-member/workspace-member.service.js';
 import { AuthGuard } from './auth.guard.js';
 import { Account } from './entities/account.entity.js';
 import { Session } from './entities/session.entity.js';
@@ -28,6 +32,18 @@ import { RowLevelSecurityInterceptor } from './row-level-security.interceptor.js
         },
         emailAndPassword: {
           enabled: true,
+        },
+        buildAbility: async () => {
+          const workspaceMember = RequestContext.get(WorkspaceMember);
+          const workspaceMemberService = RequestContext.get(
+            WorkspaceMemberService,
+          );
+          const permissions =
+            workspaceMember && workspaceMemberService
+              ? await workspaceMemberService.getPermissions(workspaceMember)
+              : [];
+
+          return buildWorkspaceMemberPermissionAbility(permissions);
         },
         plugins: [
           genericOAuth({

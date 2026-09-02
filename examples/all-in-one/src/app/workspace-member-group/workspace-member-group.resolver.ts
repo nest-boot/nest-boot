@@ -1,3 +1,4 @@
+import { Can, PermissionAction } from '@nest-boot/auth';
 import {
   Args,
   ID,
@@ -8,7 +9,6 @@ import {
   Resolver,
 } from '@nest-boot/graphql';
 import { ConnectionManager } from '@nest-boot/graphql-connection';
-import { Can, PermissionAction } from '@nest-boot/permission';
 
 import { CurrentWorkspace } from '../../common/decorators/current-workspace.decorator.js';
 import { Workspace } from '../workspace/workspace.entity.js';

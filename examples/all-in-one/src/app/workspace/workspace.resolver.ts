@@ -1,7 +1,7 @@
 import { CurrentUser } from '@nest-boot/auth';
+import { Can, PermissionAction } from '@nest-boot/auth';
 import { Args, ID, Mutation, Query, Resolver } from '@nest-boot/graphql';
 import { ConnectionManager } from '@nest-boot/graphql-connection';
-import { Can, PermissionAction } from '@nest-boot/permission';
 import { ForbiddenException } from '@nestjs/common';
 
 import { CurrentWorkspace } from '../../common/decorators/current-workspace.decorator.js';

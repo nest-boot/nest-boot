@@ -1,4 +1,5 @@
 import { CurrentUser } from '@nest-boot/auth';
+import { Can, PermissionAction } from '@nest-boot/auth';
 import {
   Args,
   ID,
@@ -9,7 +10,6 @@ import {
   Resolver,
 } from '@nest-boot/graphql';
 import { ConnectionManager } from '@nest-boot/graphql-connection';
-import { Can, PermissionAction } from '@nest-boot/permission';
 import {
   BadRequestException,
   ForbiddenException,
