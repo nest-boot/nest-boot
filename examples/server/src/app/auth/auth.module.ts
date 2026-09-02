@@ -37,14 +37,14 @@ import { RowLevelSecurityInterceptor } from './row-level-security.interceptor.js
         emailAndPassword: {
           enabled: true,
         },
-        buildAbility: async () => {
+        buildAbility: () => {
           const workspaceMember = RequestContext.get(WorkspaceMember);
           const workspaceMemberService = RequestContext.get(
             WorkspaceMemberService,
           );
           const permissions =
             workspaceMember && workspaceMemberService
-              ? await workspaceMemberService.getPermissions(workspaceMember)
+              ? workspaceMemberService.getPermissions(workspaceMember)
               : [];
 
           return buildWorkspaceMemberPermissionAbility(permissions);

@@ -1,4 +1,5 @@
 {
+  "label": "Permissions",
   "all": {
     "description": "Select or deselect all permissions at once",
     "name": "All Permissions"

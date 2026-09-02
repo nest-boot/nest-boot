@@ -8,8 +8,6 @@ import { WorkspaceMemberRole } from '../../../app/workspace-member/enums/workspa
 import { WorkspaceMemberStatus } from '../../../app/workspace-member/enums/workspace-member-status.enum.js';
 import { WorkspaceMember } from '../../../app/workspace-member/workspace-member.entity.js';
 import { WorkspaceMemberPermission } from '../../../app/workspace-member/workspace-member-permission.enum.js';
-import { WorkspaceMemberGroup } from '../../../app/workspace-member-group/workspace-member-group.entity.js';
-import { WorkspaceMemberGroupMember } from '../../../app/workspace-member-group-member/workspace-member-group-member.entity.js';
 
 /**
  * 基于当前工作区成员角色和有效权限构建 CASL 权限能力。
@@ -65,8 +63,6 @@ export function buildWorkspaceMemberPermissionAbility(
 
   if (permissions.includes(WorkspaceMemberPermission.MANAGE_MEMBERS)) {
     can(PermissionAction.MANAGE, WorkspaceMember);
-    can(PermissionAction.MANAGE, WorkspaceMemberGroup);
-    can(PermissionAction.MANAGE, WorkspaceMemberGroupMember);
   }
 
   return build();

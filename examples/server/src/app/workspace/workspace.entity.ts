@@ -14,7 +14,6 @@ import { Sonyflake } from 'sonyflake-js';
 
 import { SoftDeletePolicy } from '../../common/decorators/soft-delete-policy.decorator.js';
 import { WorkspaceMember } from '../workspace-member/workspace-member.entity.js';
-import { WorkspaceMemberGroup } from '../workspace-member-group/workspace-member-group.entity.js';
 import { WorkspaceFeature } from './enums/features.enum.js';
 
 /**
@@ -84,8 +83,4 @@ export class Workspace {
   /** 工作区成员集合。 */
   @OneToMany(() => WorkspaceMember, (member) => member.workspace)
   members = new Collection<WorkspaceMember>(this);
-
-  /** 工作区成员组集合。 */
-  @OneToMany(() => WorkspaceMemberGroup, (group) => group.workspace)
-  memberGroups = new Collection<WorkspaceMemberGroup>(this);
 }

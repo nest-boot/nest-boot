@@ -38,7 +38,6 @@ import {
 import { User } from '../user/user.entity.js';
 import { UserService } from '../user/user.service.js';
 import { Workspace } from '../workspace/workspace.entity.js';
-import { WorkspaceMemberGroup } from '../workspace-member-group/workspace-member-group.entity.js';
 import { WorkspaceMemberRole } from './enums/workspace-member-role.enum.js';
 import { WorkspaceMember } from './workspace-member.entity.js';
 import { WorkspaceMemberResolver } from './workspace-member.resolver.js';
@@ -622,33 +621,15 @@ describe('WorkspaceMemberResolver', () => {
     const workspaceMember = { id: 'member_1' } as WorkspaceMember;
     const { resolver, workspaceMemberService } = createResolver({
       workspaceMemberService: {
-        getPermissions: vi.fn(async () => permissions),
+        getPermissions: vi.fn(() => permissions),
       },
     });
 
-    await expect(
-      resolver.effectivePermissions(workspaceMember),
-    ).resolves.toEqual(permissions);
+    expect(resolver.effectivePermissions(workspaceMember)).toEqual(permissions);
 
     expect(workspaceMemberService.getPermissions).toHaveBeenCalledWith(
       workspaceMember,
     );
-  });
-
-  it('loads groups through connection manager using the group membership join', async () => {
-    const { resolver, cm } = createResolver();
-    const workspaceMember = { id: 'member_1' } as WorkspaceMember;
-    const args = { first: 10 } as never;
-
-    await resolver.groups(workspaceMember, args);
-
-    expect(cm.find).toHaveBeenCalledWith(expect.any(Function), args, {
-      where: {
-        groupMembers: {
-          member: workspaceMember,
-        },
-      },
-    });
   });
 });
 

@@ -13,7 +13,6 @@ import { BadRequestException, ForbiddenException } from '@nestjs/common';
 
 import { User } from '../user/user.entity.js';
 import { Workspace } from '../workspace/workspace.entity.js';
-import { WorkspaceMemberGroup } from '../workspace-member-group/workspace-member-group.entity.js';
 import { WorkspaceMemberRole } from './enums/workspace-member-role.enum.js';
 import { WorkspaceMemberStatus } from './enums/workspace-member-status.enum.js';
 import { WorkspaceMemberType } from './enums/workspace-member-type.enum.js';
@@ -372,41 +371,27 @@ describe('WorkspaceMemberService', () => {
     expect(em.flush).toHaveBeenCalledTimes(1);
   });
 
-  it('merges direct and group permissions without duplicates', async () => {
-    const { service, em } = createService();
+  it('deduplicates direct permissions', async () => {
+    const { service } = createService();
     const member = {
       permissions: [
         WorkspaceMemberPermission.MANAGE_WORKSPACE,
         WorkspaceMemberPermission.MANAGE_MEMBERS,
+        WorkspaceMemberPermission.MANAGE_WORKSPACE,
       ],
     } as WorkspaceMember;
-    em.find.mockResolvedValue([
-      {
-        permissions: [
-          WorkspaceMemberPermission.MANAGE_MEMBERS,
-          WorkspaceMemberPermission.MANAGE_WORKSPACE,
-        ],
-      } as WorkspaceMemberGroup,
-    ]);
 
-    await expect(service.getPermissions(member)).resolves.toEqual([
+    expect(service.getPermissions(member)).toEqual([
       WorkspaceMemberPermission.MANAGE_WORKSPACE,
       WorkspaceMemberPermission.MANAGE_MEMBERS,
     ]);
   });
 
-  it('merges group permissions when direct permissions are empty', async () => {
-    const { service, em } = createService();
+  it('returns an empty list when direct permissions are absent', async () => {
+    const { service } = createService();
     const member = {} as WorkspaceMember;
-    em.find.mockResolvedValue([
-      {
-        permissions: [WorkspaceMemberPermission.MANAGE_MEMBERS],
-      } as WorkspaceMemberGroup,
-    ]);
 
-    await expect(service.getPermissions(member)).resolves.toEqual([
-      WorkspaceMemberPermission.MANAGE_MEMBERS,
-    ]);
+    expect(service.getPermissions(member)).toEqual([]);
   });
 });
 
