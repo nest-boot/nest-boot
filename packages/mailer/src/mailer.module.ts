@@ -1,4 +1,9 @@
-import { type DynamicModule, Module, type Provider } from "@nestjs/common";
+import {
+  type DynamicModule,
+  Global,
+  Module,
+  type Provider,
+} from "@nestjs/common";
 import { createTransport } from "nodemailer";
 import Mailer from "nodemailer/lib/mailer/index.js";
 
@@ -9,20 +14,30 @@ import {
   OPTIONS_TYPE,
 } from "./mailer.module-definition.js";
 import { type MailerModuleOptions } from "./mailer-module-options.interface.js";
+import {
+  loadMailerDefaultsFromEnv,
+  loadMailerOptionsFromEnv,
+} from "./utils/load-mailer-options-from-env.util.js";
 
 const mailerProvider: Provider<Mailer> = {
   provide: Mailer,
-  inject: [MODULE_OPTIONS_TOKEN],
-  useFactory: (options: MailerModuleOptions) => createTransport(options),
+  inject: [{ token: MODULE_OPTIONS_TOKEN, optional: true }],
+  useFactory: (options?: MailerModuleOptions) =>
+    createTransport(
+      loadMailerOptionsFromEnv(options),
+      loadMailerDefaultsFromEnv(),
+    ),
 };
 
 /**
- * Email sending module powered by Nodemailer.
+ * Global email sending module powered by Nodemailer.
  *
  * @remarks
- * Provides a configured Nodemailer transport instance for sending emails.
- * Accepts standard Nodemailer transport options for SMTP configuration.
+ * Import the module directly to configure SMTP from environment variables, or
+ * use {@link MailerModule.register} and {@link MailerModule.registerAsync} for
+ * explicit Nodemailer transport options.
  */
+@Global()
 @Module({ providers: [mailerProvider], exports: [mailerProvider] })
 export class MailerModule extends ConfigurableModuleClass {
   /**
