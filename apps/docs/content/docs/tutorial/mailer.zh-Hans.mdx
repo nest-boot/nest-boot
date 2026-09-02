@@ -15,21 +15,41 @@ pnpm add @nest-boot/mailer nodemailer
 
 ## 基本用法
 
+使用环境变量配置 SMTP transport：
+
+```dotenv
+SMTP_URL=smtp://user:password@smtp.example.com
+SMTP_FROM="Example <no-reply@example.com>"
+```
+
+`SMTP_URL` 的优先级高于下面的拆分连接变量。端口可选：Nodemailer 会使用原生默认值，
+`smtp://` 为 `587`，`smtps://` 为 `465`。
+
+```dotenv
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USERNAME=user@example.com
+SMTP_PASSWORD=password
+SMTP_FROM="Example <no-reply@example.com>"
+```
+
+只需导入一次 `MailerModule`。该模块是全局模块，功能模块无需重复导入即可注入
+`Mailer`。
+
 ```typescript
 import { Module } from "@nestjs/common";
 import { MailerModule } from "@nest-boot/mailer";
 
 @Module({
-  imports: [
-    MailerModule.register({
-      host: "smtp.example.com",
-      port: 587,
-      auth: { user: "user@example.com", pass: "password" },
-    }),
-  ],
+  imports: [MailerModule],
 })
 export class AppModule {}
 ```
+
+需要显式配置连接时，使用 `MailerModule.register()` 或
+`MailerModule.registerAsync()`；显式选项的优先级高于所有连接环境变量。
+`SMTP_FROM` 仍是默认发件人，可通过 `sendMail({ from })` 覆盖。
 
 ## 发送邮件
 
@@ -45,7 +65,6 @@ export class NotificationService {
 
   async sendWelcomeEmail(to: string, name: string): Promise<void> {
     await this.mailer.sendMail({
-      from: '"App" <noreply@example.com>',
       to,
       subject: `欢迎，${name}！`,
       text: `${name}，感谢注册。`,
@@ -57,6 +76,7 @@ export class NotificationService {
 ## 特性
 
 - **Nodemailer 集成** - 通过 NestJS 依赖注入使用完整 Nodemailer API
+- **环境变量配置** - 通过 `SMTP_*` 环境变量静态导入
 - **SMTP 支持** - 标准 SMTP 传输配置
 - **模板支持** - 结合 ViewModule 使用 HTML 模板
 - **异步配置** - 基于工厂的环境或配置服务配置

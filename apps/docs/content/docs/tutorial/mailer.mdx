@@ -15,25 +15,43 @@ pnpm add @nest-boot/mailer nodemailer
 
 ## Basic Usage
 
+Configure the SMTP transport with environment variables:
+
+```dotenv
+SMTP_URL=smtp://user:password@smtp.example.com
+SMTP_FROM="Example <no-reply@example.com>"
+```
+
+`SMTP_URL` takes precedence over the split connection variables below. The
+port is optional: Nodemailer uses its native defaults of `587` for `smtp://`
+and `465` for `smtps://`.
+
+```dotenv
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USERNAME=user@example.com
+SMTP_PASSWORD=password
+SMTP_FROM="Example <no-reply@example.com>"
+```
+
+Import `MailerModule` once. It is global, so feature modules can inject
+`Mailer` without importing it again.
+
 ```typescript
 import { Module } from "@nestjs/common";
 import { MailerModule } from "@nest-boot/mailer";
 
 @Module({
-  imports: [
-    MailerModule.register({
-      host: "smtp.example.com",
-      port: 587,
-      secure: false,
-      auth: {
-        user: "user@example.com",
-        pass: "password",
-      },
-    }),
-  ],
+  imports: [MailerModule],
 })
 export class AppModule {}
 ```
+
+For explicit connection configuration, use `MailerModule.register()` or
+`MailerModule.registerAsync()`; explicit options take precedence over all
+connection environment variables. `SMTP_FROM` remains the default sender and
+can be overridden by `sendMail({ from })`.
 
 ## Sending Emails
 
@@ -47,7 +65,6 @@ export class NotificationService {
 
   async sendWelcomeEmail(to: string, name: string) {
     await this.mailer.sendMail({
-      from: '"App" <noreply@example.com>',
       to,
       subject: `Welcome, ${name}!`,
       text: `Hi ${name}, thanks for signing up.`,
@@ -59,6 +76,7 @@ export class NotificationService {
 ## Features
 
 - **Nodemailer Integration** - Full Nodemailer API with NestJS DI
+- **Environment Configuration** - Static import with `SMTP_*` variables
 - **SMTP Support** - Standard SMTP transport configuration
 - **Template Support** - Combine with ViewModule for HTML templates
 - **Async Config** - Factory-based configuration from environment or config service
