@@ -1,7 +1,4 @@
-import {
-  PermissionAbilityBuilder,
-  PermissionAction,
-} from '@nest-boot/permission';
+import { PermissionAbilityBuilder, PermissionAction } from '@nest-boot/auth';
 import { RequestContext } from '@nest-boot/request-context';
 
 import { ApiKey } from '../../../app/api-key/api-key.entity.js';

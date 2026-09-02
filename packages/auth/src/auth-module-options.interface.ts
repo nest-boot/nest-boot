@@ -3,6 +3,7 @@ import type { RouteInfo } from "@nestjs/common/interfaces/middleware/middleware-
 import { BetterAuthOptions } from "better-auth";
 
 import { MikroOrmAdapterConfig } from "./adapters/mikro-orm-adapter.js";
+import type { BuildAbilityCallback } from "./types/build-ability-callback.type.js";
 
 /** Options for configuring auth middleware route registration. */
 export interface AuthModuleMiddlewareOptions {
@@ -24,6 +25,9 @@ export interface AuthModuleOptions extends Omit<BetterAuthOptions, "database"> {
 
   /** Middleware registration options. */
   middleware?: AuthModuleMiddlewareOptions;
+
+  /** Builds the CASL permission ability for the current request. */
+  buildAbility?: BuildAbilityCallback;
 
   /** Callback invoked after successful authentication. */
   onAuthenticated?: () => void | Promise<void>;

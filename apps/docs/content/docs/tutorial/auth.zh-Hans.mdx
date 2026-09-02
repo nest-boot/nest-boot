@@ -1,14 +1,14 @@
 ---
 title: "Auth"
-description: "使用 better-auth 为 NestJS 应用添加认证，支持会话、OAuth/OIDC、守卫和中间件。"
+description: "通过会话、OAuth/OIDC、中间件与统一守卫提供身份认证和基于 CASL 的授权。"
 ---
 
-`@nest-boot/auth` 模块提供基于 [better-auth](https://www.better-auth.com/) 的认证功能，包括 MikroORM 会话持久化、自动中间件注册，以及可由应用注册为全局守卫的 `AuthGuard`。
+`@nest-boot/auth` 模块提供基于 [better-auth](https://www.better-auth.com/) 的身份认证与基于 CASL 的授权，包括 MikroORM 会话持久化、自动中间件注册，以及同时负责认证和路由权限检查的统一 `AuthGuard`。
 
 ## 安装
 
 ```bash
-pnpm add @nest-boot/auth better-auth
+pnpm add @nest-boot/auth better-auth @casl/ability
 ```
 
 ## 模块注册
@@ -201,7 +201,7 @@ import { APP_GUARD } from "@nestjs/core";
   providers: [
     {
       provide: APP_GUARD,
-      useClass: AuthGuard,
+      useExisting: AuthGuard,
     },
   ],
 })
@@ -227,6 +227,109 @@ export class HealthResolver {
   }
 }
 ```
+
+## 权限授权
+
+通过 `AuthModule` 的 `buildAbility` 配置权限能力。只有路由声明了 `@Can` 时才会调用该回调，并且每个请求最多执行一次；生成的 CASL ability 会缓存在 `RequestContext` 中。回调可以返回 `null`，此时权限检查会抛出 `ForbiddenException`。
+
+```typescript
+import {
+  AuthModule,
+  PermissionAbilityBuilder,
+  PermissionAction,
+} from "@nest-boot/auth";
+import { RequestContext } from "@nest-boot/request-context";
+
+import { User } from "./user.entity";
+import { Post } from "./post.entity";
+
+export const AuthDynamicModule = AuthModule.forRoot({
+  entities: {
+    user: User,
+    account: Account,
+    session: Session,
+    verification: Verification,
+  },
+  buildAbility: () => {
+    const user = RequestContext.get(User);
+
+    if (!user) {
+      return null;
+    }
+
+    const { can, build } = new PermissionAbilityBuilder();
+
+    can(PermissionAction.READ, Post);
+    can(PermissionAction.UPDATE, Post, { authorId: user.id });
+
+    return build();
+  },
+});
+```
+
+同一个全局 `AuthGuard` 会先检查身份认证，再执行 `@Can` 权限元数据，不需要注册第二个权限模块或守卫。`@Public()` 只跳过会话要求；如果公开路由同时声明了 `@Can`，权限检查仍会执行。
+
+### 保护路由
+
+当权限只依赖资源类型时，直接传入 subject class。
+
+```typescript
+import { Can, PermissionAction } from "@nest-boot/auth";
+import { Query, Resolver } from "@nestjs/graphql";
+
+import { Post } from "./post.entity";
+
+@Resolver(() => Post)
+export class PostResolver {
+  @Can(PermissionAction.READ, Post)
+  @Query(() => [Post])
+  posts() {
+    return this.postService.findAll();
+  }
+}
+```
+
+当 ability 需要具体资源实例时，使用 subject factory。factory 的第一个参数是当前 controller 或 resolver 实例，后续参数是被装饰的方法参数。它支持 HTTP、GraphQL 和自定义参数装饰器。
+
+```typescript
+import { Can, PermissionAction } from "@nest-boot/auth";
+import { Args, Mutation, Resolver } from "@nestjs/graphql";
+
+@Resolver(() => Post)
+export class PostResolver {
+  constructor(private readonly postService: PostService) {}
+
+  @Can(PermissionAction.UPDATE, (self: PostResolver, id: string) =>
+    self.postService.findOneOrFail({ id }),
+  )
+  @Mutation(() => Post)
+  updatePost(@Args("id") id: string) {
+    return this.postService.update(id);
+  }
+}
+```
+
+### 在服务中检查权限
+
+`AuthGuard` 为当前请求准备 ability 后，可以在底层代码中使用 `can` 同步检查权限，或通过 `getPermissionAbility()` 直接访问 CASL ability。
+
+```typescript
+import { can, PermissionAction } from "@nest-boot/auth";
+import { ForbiddenException, Injectable } from "@nestjs/common";
+
+@Injectable()
+export class PostService {
+  update(post: Post) {
+    if (!can(PermissionAction.UPDATE, post)) {
+      throw new ForbiddenException();
+    }
+
+    // 更新 Post。
+  }
+}
+```
+
+两个工具都要求路由上的 `@Can` 已经让守卫准备好 ability；如果 ability 不存在，它们会抛出 `ForbiddenException`。
 
 ## 装饰器
 

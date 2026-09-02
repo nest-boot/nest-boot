@@ -1,6 +1,8 @@
 vi.mock('@nest-boot/auth', () => ({
   BaseUser: class BaseUser {},
+  Can: () => () => undefined,
   CurrentUser: () => () => undefined,
+  PermissionAction: { READ: 'read' },
 }));
 
 import { User } from './user.entity.js';

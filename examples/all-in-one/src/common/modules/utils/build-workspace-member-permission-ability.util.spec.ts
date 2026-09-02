@@ -1,9 +1,10 @@
-vi.mock('@nest-boot/auth', () => ({
+vi.mock('@nest-boot/auth', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@nest-boot/auth')>()),
   BaseUser: class BaseUser {},
 }));
 
 import { subject } from '@casl/ability';
-import { PermissionAction } from '@nest-boot/permission';
+import { PermissionAction } from '@nest-boot/auth';
 import { RequestContext } from '@nest-boot/request-context';
 
 import { ApiKey } from '../../../app/api-key/api-key.entity.js';
@@ -17,7 +18,8 @@ import { WorkspaceMemberGroup } from '../../../app/workspace-member-group/worksp
 import { WorkspaceMemberGroupMember } from '../../../app/workspace-member-group-member/workspace-member-group-member.entity.js';
 import { buildWorkspaceMemberPermissionAbility } from './build-workspace-member-permission-ability.util.js';
 
-vi.mock('@nest-boot/request-context', () => ({
+vi.mock('@nest-boot/request-context', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@nest-boot/request-context')>()),
   RequestContext: {
     get: vi.fn(),
   },

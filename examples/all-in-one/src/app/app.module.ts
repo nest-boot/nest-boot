@@ -1,4 +1,3 @@
-import { PermissionGuard } from '@nest-boot/permission';
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 
@@ -28,10 +27,6 @@ import { WorkspaceMemberGroupMemberModule } from './workspace-member-group-membe
     {
       provide: APP_GUARD,
       useExisting: AuthGuard,
-    },
-    {
-      provide: APP_GUARD,
-      useExisting: PermissionGuard,
     },
   ],
 })

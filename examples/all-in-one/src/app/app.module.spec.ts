@@ -13,7 +13,7 @@ import {
 const currentDir = dirname(fileURLToPath(import.meta.url));
 
 describe('AppModule', () => {
-  it('registers authentication before permission guards', () => {
+  it('registers the combined authentication and permission guard', () => {
     const sourceFile = new Project().createSourceFile(
       'app.module.ts',
       readFileSync(join(currentDir, 'app.module.ts'), 'utf8'),
@@ -34,7 +34,7 @@ describe('AppModule', () => {
       )
       .map((provider) => getPropertyText(provider, 'useExisting'));
 
-    expect(guardProviders).toEqual(['AuthGuard', 'PermissionGuard']);
+    expect(guardProviders).toEqual(['AuthGuard']);
   });
 });
 

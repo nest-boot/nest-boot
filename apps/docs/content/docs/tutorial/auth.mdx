@@ -1,14 +1,14 @@
 ---
 title: "Auth"
-description: "Add authentication to your NestJS app with better-auth, supporting sessions, OAuth/OIDC, guards, and middleware."
+description: "Add authentication and CASL-based authorization with sessions, OAuth/OIDC, middleware, and one unified guard."
 ---
 
-The `@nest-boot/auth` module provides authentication powered by [better-auth](https://www.better-auth.com/), with MikroORM-based session persistence, automatic middleware registration, and an `AuthGuard` that applications can register globally.
+The `@nest-boot/auth` module provides authentication powered by [better-auth](https://www.better-auth.com/) and CASL-based authorization. It includes MikroORM session persistence, automatic middleware registration, and one `AuthGuard` for both authentication and route permission checks.
 
 ## Installation
 
 ```bash
-pnpm add @nest-boot/auth better-auth
+pnpm add @nest-boot/auth better-auth @casl/ability
 ```
 
 ## Module Registration
@@ -201,7 +201,7 @@ import { APP_GUARD } from "@nestjs/core";
   providers: [
     {
       provide: APP_GUARD,
-      useClass: AuthGuard,
+      useExisting: AuthGuard,
     },
   ],
 })
@@ -227,6 +227,109 @@ export class HealthResolver {
   }
 }
 ```
+
+## Authorization
+
+Configure `buildAbility` on `AuthModule`. The callback runs at most once per request when a route declares `@Can`; the resulting CASL ability is cached in `RequestContext`. It may return `null`, in which case the permission check fails with `ForbiddenException`.
+
+```typescript
+import {
+  AuthModule,
+  PermissionAbilityBuilder,
+  PermissionAction,
+} from "@nest-boot/auth";
+import { RequestContext } from "@nest-boot/request-context";
+
+import { User } from "./user.entity";
+import { Post } from "./post.entity";
+
+export const AuthDynamicModule = AuthModule.forRoot({
+  entities: {
+    user: User,
+    account: Account,
+    session: Session,
+    verification: Verification,
+  },
+  buildAbility: () => {
+    const user = RequestContext.get(User);
+
+    if (!user) {
+      return null;
+    }
+
+    const { can, build } = new PermissionAbilityBuilder();
+
+    can(PermissionAction.READ, Post);
+    can(PermissionAction.UPDATE, Post, { authorId: user.id });
+
+    return build();
+  },
+});
+```
+
+The same globally registered `AuthGuard` first enforces authentication and then evaluates `@Can` metadata. No second permission guard or module is required. `@Public()` only skips the session requirement; if a public route also declares `@Can`, its permission is still checked.
+
+### Protect Routes
+
+Use a subject class when authorization only depends on the resource type.
+
+```typescript
+import { Can, PermissionAction } from "@nest-boot/auth";
+import { Query, Resolver } from "@nestjs/graphql";
+
+import { Post } from "./post.entity";
+
+@Resolver(() => Post)
+export class PostResolver {
+  @Can(PermissionAction.READ, Post)
+  @Query(() => [Post])
+  posts() {
+    return this.postService.findAll();
+  }
+}
+```
+
+Use a subject factory when the ability needs a concrete resource instance. The factory receives the controller or resolver instance first, followed by its decorated method parameters. HTTP, GraphQL, and custom parameter decorators are supported.
+
+```typescript
+import { Can, PermissionAction } from "@nest-boot/auth";
+import { Args, Mutation, Resolver } from "@nestjs/graphql";
+
+@Resolver(() => Post)
+export class PostResolver {
+  constructor(private readonly postService: PostService) {}
+
+  @Can(PermissionAction.UPDATE, (self: PostResolver, id: string) =>
+    self.postService.findOneOrFail({ id }),
+  )
+  @Mutation(() => Post)
+  updatePost(@Args("id") id: string) {
+    return this.postService.update(id);
+  }
+}
+```
+
+### Check Permissions in Services
+
+After `AuthGuard` prepares the request ability, use `can` for synchronous checks in lower-level code or `getPermissionAbility()` for direct CASL access.
+
+```typescript
+import { can, PermissionAction } from "@nest-boot/auth";
+import { ForbiddenException, Injectable } from "@nestjs/common";
+
+@Injectable()
+export class PostService {
+  update(post: Post) {
+    if (!can(PermissionAction.UPDATE, post)) {
+      throw new ForbiddenException();
+    }
+
+    // Update the post.
+  }
+}
+```
+
+Both helpers require the ability to have been prepared by a route-level `@Can` check. They throw `ForbiddenException` when no ability is available.
 
 ## Decorators
 

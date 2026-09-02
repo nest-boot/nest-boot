@@ -11,7 +11,11 @@ import type { Mock } from "vitest";
 
 import { IS_PUBLIC_KEY } from "./auth.constants.js";
 import { AuthGuard } from "./auth.guard.js";
+import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
+import type { AuthModuleOptions } from "./auth-module-options.interface.js";
 import { BaseSession } from "./entities/index.js";
+import { PermissionAction } from "./enums/permission-action.enum.js";
+import { CAN_METADATA } from "./permission.constants.js";
 
 class PromiseAuthGuard extends AuthGuard {
   override canActivate(
@@ -54,7 +58,7 @@ describe("AuthGuard", () => {
       getHandler: vi.fn(() => handler),
     } as unknown as ExecutionContext;
 
-    const getAllAndOverride = vi.fn(() => true);
+    const getAllAndOverride = vi.fn((key) => key === IS_PUBLIC_KEY);
     const { guard } = await createGuard(
       PublicAwareAuthGuard,
       getAllAndOverride,
@@ -70,14 +74,14 @@ describe("AuthGuard", () => {
   it("allows public routes without a session", async () => {
     const { guard } = await createGuard(
       AuthGuard,
-      vi.fn(() => true),
+      vi.fn((key) => key === IS_PUBLIC_KEY),
     );
     const context = {
       getClass: vi.fn(),
       getHandler: vi.fn(),
     } as unknown as ExecutionContext;
 
-    expect(guard.canActivate(context)).toBe(true);
+    await expect(guard.canActivate(context)).resolves.toBe(true);
   });
 
   it("requires a session for non-public routes", async () => {
@@ -92,17 +96,66 @@ describe("AuthGuard", () => {
     const get = vi.spyOn(RequestContext, "get");
 
     get.mockReturnValueOnce(undefined);
-    expect(guard.canActivate(context)).toBe(false);
+    await expect(guard.canActivate(context)).resolves.toBe(false);
     expect(get).toHaveBeenCalledWith(BaseSession);
 
     get.mockReturnValueOnce(new BaseSession());
-    expect(guard.canActivate(context)).toBe(true);
+    await expect(guard.canActivate(context)).resolves.toBe(true);
+  });
+
+  it("does not build an ability for unauthenticated protected routes", async () => {
+    class Subject {}
+    const buildAbility = vi.fn();
+    const { guard } = await createGuard(
+      AuthGuard,
+      vi.fn((key) =>
+        key === CAN_METADATA
+          ? { action: PermissionAction.READ, subject: Subject }
+          : false,
+      ),
+      { buildAbility },
+    );
+
+    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+      await expect(guard.canActivate(createContext())).resolves.toBe(false);
+    });
+
+    expect(buildAbility).not.toHaveBeenCalled();
+  });
+
+  it("checks Can metadata on public routes without requiring a session", async () => {
+    class Subject {}
+    const can = vi.fn(() => true);
+    const buildAbility = vi.fn(() => ({ can }));
+    const { guard } = await createGuard(
+      AuthGuard,
+      vi.fn((key) => {
+        if (key === IS_PUBLIC_KEY) {
+          return true;
+        }
+
+        if (key === CAN_METADATA) {
+          return { action: PermissionAction.READ, subject: Subject };
+        }
+
+        return undefined;
+      }),
+      { buildAbility: buildAbility as never },
+    );
+
+    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+      await expect(guard.canActivate(createContext())).resolves.toBe(true);
+    });
+
+    expect(buildAbility).toHaveBeenCalledOnce();
+    expect(can).toHaveBeenCalledWith(PermissionAction.READ, Subject);
   });
 });
 
 async function createGuard<T extends AuthGuard>(
   guardType: Type<T>,
   getAllAndOverride: Mock,
+  options: Partial<AuthModuleOptions> = {},
 ) {
   const moduleRef = await Test.createTestingModule({
     providers: [
@@ -113,10 +166,21 @@ async function createGuard<T extends AuthGuard>(
           getAllAndOverride,
         },
       },
+      {
+        provide: MODULE_OPTIONS_TOKEN,
+        useValue: options,
+      },
     ],
   }).compile();
 
   return {
     guard: moduleRef.get(guardType),
   };
+}
+
+function createContext() {
+  return {
+    getClass: vi.fn(),
+    getHandler: vi.fn(),
+  } as unknown as ExecutionContext;
 }

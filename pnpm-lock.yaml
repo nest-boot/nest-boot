@@ -221,9 +221,6 @@ importers:
       '@nest-boot/mikro-orm':
         specifier: workspace:^
         version: link:../../packages/mikro-orm
-      '@nest-boot/permission':
-        specifier: workspace:^
-        version: link:../../packages/permission
       '@nest-boot/request-context':
         specifier: workspace:^
         version: link:../../packages/request-context
@@ -375,6 +372,9 @@ importers:
 
   packages/auth:
     devDependencies:
+      '@casl/ability':
+        specifier: ^6.7.5
+        version: 6.8.1
       '@mikro-orm/core':
         specifier: 7.1.14
         version: 7.1.14
@@ -1645,63 +1645,6 @@ importers:
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vite-tsconfig-paths:
-        specifier: ^5.1.4
-        version: 5.1.4
-      vitest:
-        specifier: ^4.1.11
-        version: 4.1.11
-
-  packages/permission:
-    devDependencies:
-      '@casl/ability':
-        specifier: ^6.7.5
-        version: 6.8.1
-      '@nest-boot/eslint-config':
-        specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
-      '@nest-boot/request-context':
-        specifier: workspace:^
-        version: link:../request-context
-      '@nest-boot/tsconfig':
-        specifier: workspace:^
-        version: link:../tsconfig
-      '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
-      '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
-      '@nestjs/testing':
-        specifier: ^12.0.1
-        version: 12.0.1
-      '@types/express':
-        specifier: ^5.0.3
-        version: 5.0.6
-      '@types/node':
-        specifier: ^26.0.0
-        version: 26.4.0
-      '@vitest/coverage-v8':
-        specifier: ^4.1.11
-        version: 4.1.11
-      eslint:
-        specifier: ^9.39.3
-        version: 9.39.3
-      express:
-        specifier: ^5.1.0
-        version: 5.2.1
-      reflect-metadata:
-        specifier: ^0.2.2
-        version: 0.2.2
-      rxjs:
-        specifier: ^7.8.2
-        version: 7.8.2
       typescript:
         specifier: ^6.0.3
         version: 6.0.3

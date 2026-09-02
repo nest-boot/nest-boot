@@ -9,7 +9,6 @@ import { Global, Module } from '@nestjs/common';
 import type { Request, Response } from 'express';
 
 import { ConfigModule } from './modules/config.module.js';
-import { PermissionModule } from './modules/permission.module.js';
 
 const GraphQLDynamicModule = GraphQLModule.forRoot({
   context: ({ req, res }: { req: Request; res: Response }) => ({ req, res }),
@@ -29,9 +28,7 @@ const MikroORMDynamicModule = MikroOrmModule.forRoot({
     GraphQLDynamicModule,
     GraphQLConnectionModule,
     LoggerModule,
-    PermissionModule,
     CryptModule,
   ],
-  exports: [PermissionModule],
 })
 export class CommonModule {}
