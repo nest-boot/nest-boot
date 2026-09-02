@@ -1,0 +1,14 @@
+{
+  "all": {
+    "description": "Select or deselect all permissions at once",
+    "name": "All Permissions"
+  },
+  "manage_members": {
+    "description": "Can add, delete, and modify workspace members",
+    "name": "Manage Members"
+  },
+  "manage_workspace": {
+    "description": "Can modify workspace settings and configuration",
+    "name": "Manage Workspace"
+  }
+}

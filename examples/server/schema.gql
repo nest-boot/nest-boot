@@ -1,0 +1,562 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+input AcceptWorkspaceInviteInput {
+  name: String
+}
+
+type AcceptWorkspaceInviteResult {
+  workspaceId: ID!
+  workspaceMember: WorkspaceMember!
+}
+
+input AddWorkspaceMemberInput {
+  email: String!
+}
+
+type ApiKey {
+  createdAt: DateTime!
+  expiresAt: DateTime
+  id: ID!
+  keyPrefix: String!
+  lastUsedAt: DateTime
+  member: WorkspaceMember!
+  name: String!
+  updatedAt: DateTime!
+}
+
+type ApiKeyConnection {
+  """A list of edges."""
+  edges: [ApiKeyEdge!]!
+
+  """Information to aid in pagination."""
+  pageInfo: PageInfo!
+
+  """
+  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
+  """
+  totalCount: Int!
+
+  """Indicates whether totalCount is exact or a lower bound."""
+  totalCountRelation: TotalCountRelation!
+}
+
+"""
+An auto-generated type which holds one ApiKey and a cursor during pagination.
+"""
+type ApiKeyEdge {
+  """A cursor for use in pagination."""
+  cursor: String!
+
+  """The item at the end of ApiKeyEdge."""
+  node: ApiKey!
+}
+
+"""
+A filter for ApiKey that accepts MongoDB query syntax.
+Supported fields: name, key_prefix, created_at
+"""
+scalar ApiKeyFilter
+
+"""Ordering options for apikey connections"""
+input ApiKeyOrder {
+  """The ordering direction."""
+  direction: OrderDirection!
+
+  """The field to order apikeys by."""
+  field: ApiKeyOrderField!
+}
+
+"""Properties by which apikey connections can be ordered."""
+enum ApiKeyOrderField {
+  CREATED_AT
+  ID
+}
+
+input CreateApiKeyInput {
+  expiresAt: DateTime
+  name: String!
+  workspaceMemberId: ID
+}
+
+type CreateApiKeyResult {
+  apiKey: String!
+  entity: ApiKey!
+}
+
+input CreateServiceAccountWorkspaceMemberInput {
+  name: String!
+  permissions: [WorkspacePermission!]
+  role: WorkspaceMemberRole
+}
+
+input CreateWorkspaceInput {
+  name: String!
+}
+
+input CreateWorkspaceInviteInput {
+  email: String
+  role: WorkspaceMemberRole!
+}
+
+input CreateWorkspaceMemberGroupInput {
+  description: String
+  memberIds: [String!]
+  name: String!
+  permissions: [WorkspacePermission!]
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+type Mutation {
+  acceptWorkspaceInvite(input: AcceptWorkspaceInviteInput, token: String!): AcceptWorkspaceInviteResult!
+  addMembersToWorkspaceMemberGroup(id: ID!, memberIds: [ID!]!): WorkspaceMemberGroup!
+  addWorkspaceMember(input: AddWorkspaceMemberInput!): WorkspaceMember!
+  createApiKey(input: CreateApiKeyInput!): CreateApiKeyResult!
+  createServiceAccountWorkspaceMember(input: CreateServiceAccountWorkspaceMemberInput!): WorkspaceMember!
+  createWorkspace(input: CreateWorkspaceInput!): Workspace!
+  createWorkspaceInvite(input: CreateWorkspaceInviteInput!): WorkspaceMember!
+  createWorkspaceMemberGroup(input: CreateWorkspaceMemberGroupInput!): WorkspaceMemberGroup!
+  deleteApiKey(id: ID!): ApiKey!
+  deleteWorkspace: Workspace!
+  deleteWorkspaceMemberGroup(id: ID!): WorkspaceMemberGroup!
+  removeMembersFromWorkspaceMemberGroup(id: ID!, memberIds: [ID!]!): WorkspaceMemberGroup!
+  removeWorkspace: Workspace! @deprecated(reason: "Use deleteWorkspace instead")
+  removeWorkspaceMember(id: ID!): WorkspaceMember!
+  updateApiKey(id: ID!, input: UpdateApiKeyInput!): ApiKey!
+  updateWorkspace(input: UpdateWorkspaceInput!): Workspace!
+  updateWorkspaceMember(id: ID!, input: UpdateWorkspaceMemberInput!): WorkspaceMember
+  updateWorkspaceMemberGroup(id: ID!, input: UpdateWorkspaceMemberGroupInput!): WorkspaceMemberGroup!
+}
+
+enum OrderDirection {
+  ASC
+  DESC
+}
+
+"""
+Returns information about pagination in a connection, in accordance with the [Relay specification](https://relay.dev/graphql/connections.htm#sec-undefined.PageInfo).
+"""
+type PageInfo {
+  endCursor: String
+
+  """Whether there are more pages to fetch following the current page."""
+  hasNextPage: Boolean!
+
+  """Whether there are any pages prior to the current page."""
+  hasPreviousPage: Boolean!
+  startCursor: String
+}
+
+type Query {
+  apiKey(id: ID!): ApiKey
+  apiKeys(
+    """Returns the elements that come after the specified cursor."""
+    after: String
+
+    """Returns the elements that come before the specified cursor."""
+    before: String
+
+    """Filter apikeys using MongoDB query syntax."""
+    filter: ApiKeyFilter
+
+    """Returns up to the first `n` elements from the list."""
+    first: Int
+
+    """Returns up to the last `n` elements from the list."""
+    last: Int
+
+    """Ordering options for the returned apikeys."""
+    orderBy: ApiKeyOrder
+
+    """
+    Apply one or multiple filters to the query.
+    Supported filter parameters:
+    `name`, `key_prefix`, `created_at`
+    """
+    query: String
+  ): ApiKeyConnection!
+  currentUser: User!
+  currentWorkspace: Workspace
+  currentWorkspaceMember: WorkspaceMember
+  workspace(id: ID!): Workspace
+  workspaceMember(id: ID!): WorkspaceMember
+  workspaceMemberByToken(token: String!): WorkspaceMember
+  workspaceMemberGroup(id: ID!): WorkspaceMemberGroup!
+  workspaceMemberGroups(
+    """Returns the elements that come after the specified cursor."""
+    after: String
+
+    """Returns the elements that come before the specified cursor."""
+    before: String
+
+    """Filter workspacemembergroups using MongoDB query syntax."""
+    filter: WorkspaceMemberGroupFilter
+
+    """Returns up to the first `n` elements from the list."""
+    first: Int
+
+    """Returns up to the last `n` elements from the list."""
+    last: Int
+
+    """Ordering options for the returned workspacemembergroups."""
+    orderBy: WorkspaceMemberGroupOrder
+
+    """
+    Apply one or multiple filters to the query.
+    Supported filter parameters:
+    `name`, `description`, `created_at`
+    """
+    query: String
+  ): WorkspaceMemberGroupConnection!
+  workspaceMembers(
+    """Returns the elements that come after the specified cursor."""
+    after: String
+
+    """Returns the elements that come before the specified cursor."""
+    before: String
+
+    """Filter workspacemembers using MongoDB query syntax."""
+    filter: WorkspaceMemberFilter
+
+    """Returns up to the first `n` elements from the list."""
+    first: Int
+
+    """Returns up to the last `n` elements from the list."""
+    last: Int
+
+    """Ordering options for the returned workspacemembers."""
+    orderBy: WorkspaceMemberOrder
+
+    """
+    Apply one or multiple filters to the query.
+    Supported filter parameters:
+    `name`, `role`, `type`, `email`, `status`, `created_at`
+    """
+    query: String
+  ): WorkspaceMemberConnection!
+  workspaces(
+    """Returns the elements that come after the specified cursor."""
+    after: String
+
+    """Returns the elements that come before the specified cursor."""
+    before: String
+
+    """Filter workspaces using MongoDB query syntax."""
+    filter: WorkspaceFilter
+
+    """Returns up to the first `n` elements from the list."""
+    first: Int
+
+    """Returns up to the last `n` elements from the list."""
+    last: Int
+
+    """Ordering options for the returned workspaces."""
+    orderBy: WorkspaceOrder
+
+    """
+    Apply one or multiple filters to the query.
+    Supported filter parameters:
+    `name`, `created_at`
+    """
+    query: String
+  ): WorkspaceConnection!
+}
+
+enum TotalCountRelation {
+  EQ
+  GTE
+}
+
+input UpdateApiKeyInput {
+  name: String
+}
+
+input UpdateWorkspaceInput {
+  name: String
+}
+
+input UpdateWorkspaceMemberGroupInput {
+  description: String
+  name: String
+  permissions: [WorkspacePermission!]
+}
+
+input UpdateWorkspaceMemberInput {
+  email: String
+  name: String
+  permissions: [WorkspacePermission!]
+  role: WorkspaceMemberRole
+  status: WorkspaceMemberStatus
+}
+
+type User {
+  createdAt: DateTime!
+  email: String!
+  id: ID!
+  name: String!
+  updatedAt: DateTime!
+}
+
+type Workspace {
+  createdAt: DateTime!
+  deletedAt: DateTime
+  features: [WorkspaceFeature!]!
+  id: ID!
+  name: String!
+  updatedAt: DateTime!
+}
+
+type WorkspaceConnection {
+  """A list of edges."""
+  edges: [WorkspaceEdge!]!
+
+  """Information to aid in pagination."""
+  pageInfo: PageInfo!
+
+  """
+  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
+  """
+  totalCount: Int!
+
+  """Indicates whether totalCount is exact or a lower bound."""
+  totalCountRelation: TotalCountRelation!
+}
+
+"""
+An auto-generated type which holds one Workspace and a cursor during pagination.
+"""
+type WorkspaceEdge {
+  """A cursor for use in pagination."""
+  cursor: String!
+
+  """The item at the end of WorkspaceEdge."""
+  node: Workspace!
+}
+
+enum WorkspaceFeature {
+  AI
+}
+
+"""
+A filter for Workspace that accepts MongoDB query syntax.
+Supported fields: name, created_at
+"""
+scalar WorkspaceFilter
+
+type WorkspaceMember {
+  createdAt: DateTime!
+  effectivePermissions: [WorkspacePermission!]!
+  email: String
+  groups(
+    """Returns the elements that come after the specified cursor."""
+    after: String
+
+    """Returns the elements that come before the specified cursor."""
+    before: String
+
+    """Filter workspacemembergroups using MongoDB query syntax."""
+    filter: WorkspaceMemberGroupFilter
+
+    """Returns up to the first `n` elements from the list."""
+    first: Int
+
+    """Returns up to the last `n` elements from the list."""
+    last: Int
+
+    """Ordering options for the returned workspacemembergroups."""
+    orderBy: WorkspaceMemberGroupOrder
+
+    """
+    Apply one or multiple filters to the query.
+    Supported filter parameters:
+    `name`, `description`, `created_at`
+    """
+    query: String
+  ): WorkspaceMemberGroupConnection!
+  id: ID!
+  inviteExpiresAt: DateTime
+  inviteToken: String
+  invitedBy: User
+  invitedByUserName: String
+  name: String!
+  permissions: [WorkspacePermission!]!
+  role: WorkspaceMemberRole!
+  status: WorkspaceMemberStatus!
+  type: WorkspaceMemberType!
+  updatedAt: DateTime!
+  user: User
+}
+
+type WorkspaceMemberConnection {
+  """A list of edges."""
+  edges: [WorkspaceMemberEdge!]!
+
+  """Information to aid in pagination."""
+  pageInfo: PageInfo!
+
+  """
+  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
+  """
+  totalCount: Int!
+
+  """Indicates whether totalCount is exact or a lower bound."""
+  totalCountRelation: TotalCountRelation!
+}
+
+"""
+An auto-generated type which holds one WorkspaceMember and a cursor during pagination.
+"""
+type WorkspaceMemberEdge {
+  """A cursor for use in pagination."""
+  cursor: String!
+
+  """The item at the end of WorkspaceMemberEdge."""
+  node: WorkspaceMember!
+}
+
+"""
+A filter for WorkspaceMember that accepts MongoDB query syntax.
+Supported fields: name, role, type, email, status, created_at
+"""
+scalar WorkspaceMemberFilter
+
+type WorkspaceMemberGroup {
+  createdAt: DateTime!
+  description: String
+  id: ID!
+  members(
+    """Returns the elements that come after the specified cursor."""
+    after: String
+
+    """Returns the elements that come before the specified cursor."""
+    before: String
+
+    """Filter workspacemembers using MongoDB query syntax."""
+    filter: WorkspaceMemberFilter
+
+    """Returns up to the first `n` elements from the list."""
+    first: Int
+
+    """Returns up to the last `n` elements from the list."""
+    last: Int
+
+    """Ordering options for the returned workspacemembers."""
+    orderBy: WorkspaceMemberOrder
+
+    """
+    Apply one or multiple filters to the query.
+    Supported filter parameters:
+    `name`, `role`, `type`, `email`, `status`, `created_at`
+    """
+    query: String
+  ): WorkspaceMemberConnection!
+  name: String!
+  permissions: [WorkspacePermission!]!
+  updatedAt: DateTime!
+}
+
+type WorkspaceMemberGroupConnection {
+  """A list of edges."""
+  edges: [WorkspaceMemberGroupEdge!]!
+
+  """Information to aid in pagination."""
+  pageInfo: PageInfo!
+
+  """
+  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
+  """
+  totalCount: Int!
+
+  """Indicates whether totalCount is exact or a lower bound."""
+  totalCountRelation: TotalCountRelation!
+}
+
+"""
+An auto-generated type which holds one WorkspaceMemberGroup and a cursor during pagination.
+"""
+type WorkspaceMemberGroupEdge {
+  """A cursor for use in pagination."""
+  cursor: String!
+
+  """The item at the end of WorkspaceMemberGroupEdge."""
+  node: WorkspaceMemberGroup!
+}
+
+"""
+A filter for WorkspaceMemberGroup that accepts MongoDB query syntax.
+Supported fields: name, description, created_at
+"""
+scalar WorkspaceMemberGroupFilter
+
+"""Ordering options for workspacemembergroup connections"""
+input WorkspaceMemberGroupOrder {
+  """The ordering direction."""
+  direction: OrderDirection!
+
+  """The field to order workspacemembergroups by."""
+  field: WorkspaceMemberGroupOrderField!
+}
+
+"""Properties by which workspacemembergroup connections can be ordered."""
+enum WorkspaceMemberGroupOrderField {
+  CREATED_AT
+  ID
+}
+
+"""Ordering options for workspacemember connections"""
+input WorkspaceMemberOrder {
+  """The ordering direction."""
+  direction: OrderDirection!
+
+  """The field to order workspacemembers by."""
+  field: WorkspaceMemberOrderField!
+}
+
+"""Properties by which workspacemember connections can be ordered."""
+enum WorkspaceMemberOrderField {
+  CREATED_AT
+  ID
+}
+
+enum WorkspaceMemberRole {
+  ADMIN
+  MEMBER
+  OWNER
+}
+
+enum WorkspaceMemberStatus {
+  ACTIVE
+  DISABLED
+  INVITE_EXPIRED
+  INVITING
+}
+
+enum WorkspaceMemberType {
+  SERVICE_ACCOUNT
+  USER
+}
+
+"""Ordering options for workspace connections"""
+input WorkspaceOrder {
+  """The ordering direction."""
+  direction: OrderDirection!
+
+  """The field to order workspaces by."""
+  field: WorkspaceOrderField!
+}
+
+"""Properties by which workspace connections can be ordered."""
+enum WorkspaceOrderField {
+  CREATED_AT
+  ID
+}
+
+enum WorkspacePermission {
+  MANAGE_MEMBERS
+  MANAGE_WORKSPACE
+}

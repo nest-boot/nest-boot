@@ -1,0 +1,49 @@
+{
+  "deleteWorkspace": {
+    "confirmHint": "Please type {{name}} to confirm.",
+    "confirmLabel": "Workspace Name",
+    "description": "Are you sure you want to delete the workspace {{name}}? This action cannot be undone and all associated data will be permanently deleted.",
+    "title": "Delete Workspace"
+  },
+  "invite": {
+    "description": "Please fill in your information to join the workspace",
+    "error": {
+      "accept_failed": "Failed to accept invitation",
+      "back_button": "Back to Workspaces",
+      "invalid_token": "Invalid or expired invitation token",
+      "title": "Invalid Invitation"
+    },
+    "form": {
+      "email": {
+        "invalid": "Please enter a valid email address",
+        "label": "Email",
+        "mismatch_error": "This invitation was limited to another email address. Please ask the inviter to send a new invitation.",
+        "required": "Email is required"
+      },
+      "name": {
+        "description": "Your display name in the workspace",
+        "label": "Name"
+      },
+      "submit": "Accept Invitation"
+    },
+    "loading": "Loading...",
+    "success": "Successfully joined the workspace",
+    "title": "Accept Workspace Invitation"
+  },
+  "settings": {
+    "dangerZone": {
+      "deleteButton": "Delete Workspace",
+      "description": "Once a workspace is deleted, it cannot be recovered, This will permanently delete the workspace and all its related data.",
+      "title": "Danger Zone"
+    },
+    "description": "Update your workspace name and other settings.",
+    "form": {
+      "name": {
+        "label": "Name",
+        "placeholder": "My Workspace",
+        "required": "Workspace name is required"
+      }
+    }
+  },
+  "title": "Settings"
+}

@@ -1,0 +1,118 @@
+{
+  "create": {
+    "error_toast": "创建成员组失败",
+    "success_toast": "创建成员组成功",
+    "title": "创建成员组"
+  },
+  "detail": {
+    "form": {
+      "description_field": {
+        "description": "描述成员组的作用或用途",
+        "label": "描述",
+        "placeholder": "添加成员组描述（可选）"
+      },
+      "name_field": {
+        "description": "成员组的显示名称",
+        "label": "名称",
+        "rules": {
+          "max": "名称不能超过255个字符",
+          "min": "名称不能为空"
+        }
+      },
+      "permissions_field": {
+        "label": "权限"
+      }
+    },
+    "members": {
+      "management": {
+        "add_member": {
+          "btn": "添加成员",
+          "dialog": {
+            "description": "从左侧列表选择成员添加到组内，右侧显示已添加的成员",
+            "title": "添加成员"
+          },
+          "error_toast": "添加成员失败",
+          "success_toast": "添加成员成功",
+          "tooltip": "添加成员"
+        },
+        "added_members": {
+          "empty_state": {
+            "description": "从成员列表中选择成员添加到组内",
+            "title": "还没有成员"
+          },
+          "title": "已添加的成员"
+        },
+        "all_members": {
+          "empty_state": {
+            "description": "所有成员都已添加到该成员组中",
+            "no_search_results": {
+              "description": "请尝试其他搜索关键词",
+              "title": "没有找到成员"
+            },
+            "title": "全部成员已加入到组内"
+          },
+          "title": "工作空间全部成员"
+        },
+        "delete_member": {
+          "dialog": {
+            "description": "确定要从成员组中删除该成员吗？此操作无法撤销。",
+            "title": "确认删除成员"
+          },
+          "error_toast": "删除成员失败",
+          "success_toast": "删除成员成功",
+          "tooltip": "删除成员"
+        }
+      },
+      "search": {
+        "placeholder": "搜索成员名称或邮箱"
+      }
+    },
+    "page": {
+      "actions": {
+        "delete_btn": {
+          "content": "删除",
+          "dialog": {
+            "description": "确定要删除此成员组吗？此操作无法撤销，组内所有成员将被移除。",
+            "title": "确认删除成员组"
+          },
+          "error_toast": "删除失败",
+          "success_toast": "删除成功"
+        },
+        "save_btn": {
+          "error_toast": "保存失败",
+          "success_toast": "保存成功"
+        }
+      },
+      "tabs": {
+        "members": "成员",
+        "settings": "设置"
+      },
+      "title": "成员组详情"
+    },
+    "permission_denied": "您没有权限访问此页面"
+  },
+  "filter": {
+    "items": {
+      "created_at": {
+        "label": "创建时间"
+      },
+      "description": {
+        "label": "描述",
+        "placeholder": "搜索成员组描述"
+      },
+      "name": {
+        "label": "名称",
+        "placeholder": "搜索成员组名称"
+      }
+    },
+    "search": {
+      "placeholder": "搜索"
+    }
+  },
+  "table": {
+    "createdAt": "创建时间",
+    "description": "描述",
+    "name": "名称"
+  },
+  "title": "成员组"
+}

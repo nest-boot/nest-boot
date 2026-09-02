@@ -1,0 +1,70 @@
+{
+  "create": {
+    "button": "Create API Key",
+    "description": "Create a key for API access. The full key is shown only once.",
+    "title": "Create API Key"
+  },
+  "created": {
+    "copied": "Copied",
+    "copy": "Copy API Key",
+    "description": "This is the only time you will be able to view this key. Please copy and store it securely now. Once this window is closed, you will not be able to see it again.",
+    "title": "API Key Created",
+    "warning": "Attention: This key will only be shown once!"
+  },
+  "description": "Create and manage API keys for this workspace.",
+  "filter": {
+    "items": {
+      "created_at": {
+        "label": "Created"
+      },
+      "key_prefix": {
+        "label": "Key Prefix",
+        "placeholder": "Search key prefix"
+      },
+      "name": {
+        "label": "Name",
+        "placeholder": "Search API key name"
+      }
+    },
+    "search": {
+      "placeholder": "Search API keys"
+    }
+  },
+  "form": {
+    "name": {
+      "label": "Name",
+      "placeholder": "Enter a name for this API key",
+      "required": "API key name is required",
+      "too_long": "API key name is too long"
+    }
+  },
+  "never_expires": "Never expires",
+  "never_used": "Never used",
+  "rename": {
+    "description": "Update the display name for this API key.",
+    "title": "Rename API Key"
+  },
+  "delete": {
+    "description": "Delete {{name}}? This action cannot be undone.",
+    "title": "Delete API Key"
+  },
+  "status": {
+    "active": "Active",
+    "expired": "Expired"
+  },
+  "table": {
+    "created_at": "Created",
+    "expires_at": "Expires",
+    "key_prefix": "Key Prefix",
+    "last_used": "Last Used",
+    "name": "Name",
+    "owner": "Owner",
+    "status": "Status"
+  },
+  "title": "API Keys",
+  "toast": {
+    "created_success": "API key created",
+    "renamed_success": "API key renamed",
+    "deleted_success": "API key deleted"
+  }
+}
