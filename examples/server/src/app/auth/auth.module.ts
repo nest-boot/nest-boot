@@ -3,13 +3,14 @@ import { RequestContext } from '@nest-boot/request-context';
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { APP_INTERCEPTOR } from '@nestjs/core';
-import { genericOAuth } from 'better-auth/plugins';
+import { bearer, genericOAuth } from 'better-auth/plugins';
 
 import { buildWorkspaceMemberPermissionAbility } from '../../common/modules/utils/build-workspace-member-permission-ability.util.js';
+import { ApiKey } from '../api-key/api-key.entity.js';
 import { User } from '../user/user.entity.js';
+import { Workspace } from '../workspace/workspace.entity.js';
 import { WorkspaceMember } from '../workspace-member/workspace-member.entity.js';
 import { WorkspaceMemberService } from '../workspace-member/workspace-member.service.js';
-import { AuthGuard } from './auth.guard.js';
 import { Account } from './entities/account.entity.js';
 import { Session } from './entities/session.entity.js';
 import { Verification } from './entities/verification.entity.js';
@@ -29,6 +30,9 @@ import { RowLevelSecurityInterceptor } from './row-level-security.interceptor.js
           account: Account,
           session: Session,
           verification: Verification,
+          workspace: Workspace,
+          workspaceMember: WorkspaceMember,
+          apiKey: ApiKey,
         },
         emailAndPassword: {
           enabled: true,
@@ -46,6 +50,7 @@ import { RowLevelSecurityInterceptor } from './row-level-security.interceptor.js
           return buildWorkspaceMemberPermissionAbility(permissions);
         },
         plugins: [
+          bearer(),
           genericOAuth({
             config: [
               {
@@ -65,13 +70,11 @@ import { RowLevelSecurityInterceptor } from './row-level-security.interceptor.js
     }),
   ],
   providers: [
-    AuthGuard,
     RowLevelSecurityInterceptor,
     {
       provide: APP_INTERCEPTOR,
       useExisting: RowLevelSecurityInterceptor,
     },
   ],
-  exports: [AuthGuard],
 })
 export class AuthModule {}

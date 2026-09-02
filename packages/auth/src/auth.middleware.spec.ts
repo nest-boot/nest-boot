@@ -33,9 +33,12 @@ async function createMiddleware(
         useValue: {
           entities: {
             account: class {},
+            apiKey: class {},
             session: TestSession,
             user: TestUser,
             verification: class {},
+            workspace: class {},
+            workspaceMember: class {},
           },
           onAuthenticated,
         },

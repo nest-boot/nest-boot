@@ -426,9 +426,6 @@ importers:
       '@nest-boot/auth':
         specifier: workspace:^
         version: link:../../packages/auth
-      '@nest-boot/crypt':
-        specifier: workspace:^
-        version: link:../../packages/crypt
       '@nest-boot/graphql':
         specifier: workspace:^
         version: link:../../packages/graphql
@@ -438,9 +435,6 @@ importers:
       '@nest-boot/logger':
         specifier: workspace:^
         version: link:../../packages/logger
-      '@nest-boot/middleware':
-        specifier: workspace:^
-        version: link:../../packages/middleware
       '@nest-boot/mikro-orm':
         specifier: workspace:^
         version: link:../../packages/mikro-orm
@@ -604,6 +598,9 @@ importers:
       '@mikro-orm/decorators':
         specifier: 7.1.14
         version: 7.1.14
+      '@nest-boot/crypt':
+        specifier: workspace:^
+        version: link:../crypt
       '@nest-boot/eslint-config':
         specifier: workspace:^
         version: link:../eslint-config
@@ -616,6 +613,9 @@ importers:
       '@nest-boot/request-context':
         specifier: workspace:^
         version: link:../request-context
+      '@nest-boot/row-level-security':
+        specifier: workspace:^
+        version: link:../row-level-security
       '@nest-boot/tsconfig':
         specifier: workspace:^
         version: link:../tsconfig

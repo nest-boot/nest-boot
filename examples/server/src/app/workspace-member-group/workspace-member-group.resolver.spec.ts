@@ -2,6 +2,7 @@ import type { Mocked } from 'vitest';
 vi.mock('@nest-boot/auth', () => ({
   BaseUser: class BaseUser {},
   Can: () => () => undefined,
+  CurrentWorkspace: () => () => undefined,
   PermissionAction: {
     CREATE: 'create',
     DELETE: 'delete',

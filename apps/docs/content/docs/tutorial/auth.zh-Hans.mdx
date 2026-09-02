@@ -1,9 +1,9 @@
 ---
 title: "Auth"
-description: "通过会话、OAuth/OIDC、中间件与统一守卫提供身份认证和基于 CASL 的授权。"
+description: "通过会话、API Key、工作区身份与统一守卫提供认证和基于 CASL 的授权。"
 ---
 
-`@nest-boot/auth` 模块提供基于 [better-auth](https://www.better-auth.com/) 的身份认证与基于 CASL 的授权，包括 MikroORM 会话持久化、自动中间件注册，以及同时负责认证和路由权限检查的统一 `AuthGuard`。
+`@nest-boot/auth` 提供基于 [better-auth](https://www.better-auth.com/) 的身份认证、工作区 API Key 与基于 CASL 的授权，包括 MikroORM 持久化、自动请求上下文中间件，以及同时负责认证和路由权限检查的统一 `AuthGuard`。
 
 ## 安装
 
@@ -20,8 +20,11 @@ import { AuthModule } from "@nest-boot/auth";
 import { Global, Module } from "@nestjs/common";
 import { User } from "./user.entity";
 import { Account } from "./account.entity";
+import { ApiKey } from "./api-key.entity";
 import { Session } from "./session.entity";
 import { Verification } from "./verification.entity";
+import { Workspace } from "./workspace.entity";
+import { WorkspaceMember } from "./workspace-member.entity";
 
 export const AuthDynamicModule = AuthModule.forRoot({
   entities: {
@@ -29,6 +32,9 @@ export const AuthDynamicModule = AuthModule.forRoot({
     account: Account,
     session: Session,
     verification: Verification,
+    workspace: Workspace,
+    workspaceMember: WorkspaceMember,
+    apiKey: ApiKey,
   },
 });
 
@@ -43,7 +49,8 @@ export class CommonModule {}
 
 - 使用 MikroORM 适配器创建 better-auth 实例
 - 在 `/api/auth/` 注册认证 API 路由（可通过 `basePath` 配置）
-- 在所有路由上注册认证中间件用于会话解析
+- 将会话、选中的工作区、工作区成员和 API Key 解析到 `RequestContext`
+- 提供工作区和 API Key 生命周期服务
 - 从环境变量读取常用认证配置
 
 ### 环境变量
@@ -64,6 +71,7 @@ export class CommonModule {}
 | `AUTH_URL`             | 公开的认证基础 URL。未设置时回退到 `APP_URL`。                                              | 未设置                     |
 | `APP_URL`              | 未设置 `AUTH_URL` 时使用的备用公开基础 URL。                                                | 未设置                     |
 | `AUTH_DISABLE_SIGN_UP` | 设置为 `true` 时，禁止所有已配置登录方式的新用户注册。已有用户仍可登录。                    | 允许注册                   |
+| `API_KEY_PREFIX`       | 创建工作区 API Key 时使用的前缀。                                                           | `sk-`                      |
 
 #### Email
 
@@ -119,49 +127,33 @@ Generic OIDC 默认禁用。设置 `AUTH_OIDC_ENABLED=true` 后，模块会注�
 在实际应用中，使用 `forRootAsync` 注入 `ConfigService` 并配置 OAuth/OIDC 提供商：
 
 ```typescript
-import { EntityManager } from "@mikro-orm/postgresql";
 import { AuthModule } from "@nest-boot/auth";
-import { REQUEST, RequestContext } from "@nest-boot/request-context";
 import { ConfigService } from "@nestjs/config";
-import { genericOAuth } from "better-auth/plugins";
-import { Request } from "express";
+import { bearer, genericOAuth } from "better-auth/plugins";
 
 import { User } from "./user.entity";
 import { Account } from "./account.entity";
+import { ApiKey } from "./api-key.entity";
 import { Session } from "./session.entity";
 import { Verification } from "./verification.entity";
 import { Workspace } from "./workspace.entity";
 import { WorkspaceMember } from "./workspace-member.entity";
 
 const AuthDynamicModule = AuthModule.forRootAsync({
-  inject: [ConfigService, EntityManager],
-  useFactory: (configService: ConfigService, em: EntityManager) => ({
+  inject: [ConfigService],
+  useFactory: (configService: ConfigService) => ({
     trustedOrigins: ["*"],
     entities: {
       user: User,
       account: Account,
       session: Session,
       verification: Verification,
-    },
-    onAuthenticated: async () => {
-      const user = RequestContext.get(User);
-      const request = RequestContext.get<Request>(REQUEST);
-      const workspaceId = request?.headers["x-workspace-id"];
-
-      if (user && typeof workspaceId === "string") {
-        const workspaceMember = await em.findOne(
-          WorkspaceMember,
-          { user, workspace: { id: workspaceId } },
-          { populate: ["workspace"] },
-        );
-
-        if (workspaceMember) {
-          RequestContext.set(Workspace, workspaceMember.workspace.getEntity());
-          RequestContext.set(WorkspaceMember, workspaceMember);
-        }
-      }
+      workspace: Workspace,
+      workspaceMember: WorkspaceMember,
+      apiKey: ApiKey,
     },
     plugins: [
+      bearer(),
       genericOAuth({
         config: [
           {
@@ -181,8 +173,8 @@ const AuthDynamicModule = AuthModule.forRootAsync({
 
 关键选项：
 
-- **`entities`** — 映射 MikroORM 实体类（user、account、session、verification）
-- **`onAuthenticated`** — 会话解析成功后的回调，用于将工作区/租户上下文加载到 `RequestContext`
+- **`entities`** — 映射 user、account、session、verification、workspace、workspace-member 和 API key 的 MikroORM 实体类
+- **`onAuthenticated`** — 会话解析成功后的可选回调，用于补充应用自己的上下文
 - **`plugins`** — better-auth 插件（如 `genericOAuth`、`twoFactor` 等）
 - **`basePath`** — 自定义认证 API 路径（默认：`/api/auth/`）
 - **`trustedOrigins`** — 允许的 CORS 来源
@@ -208,7 +200,7 @@ import { APP_GUARD } from "@nestjs/core";
 export class CommonModule {}
 ```
 
-守卫检查 `RequestContext` 中是否存在有效会话。如果没有会话，请求将返回 403 错误。
+守卫接受 `RequestContext` 中的有效会话或 API Key。两种身份都不存在时，请求会被拒绝。
 
 ### 公开路由
 
@@ -225,6 +217,66 @@ export class HealthResolver {
   health(): string {
     return "ok";
   }
+}
+```
+
+## 工作区上下文
+
+`AuthModule` 会在认证中间件前解析请求选择的工作区。客户端通过 `x-workspace-id` 请求头或 `workspace_id` Cookie 选择工作区；模块随后解析已认证用户在该工作区中的成员身份，并将两个对象写入 `RequestContext`。
+
+使用内置装饰器读取身份，可以让传输层代码不直接依赖 `RequestContext`：
+
+```typescript
+import {
+  CurrentWorkspace,
+  CurrentWorkspaceMember,
+} from "@nest-boot/auth";
+
+currentWorkspace(
+  @CurrentWorkspace() workspace: Workspace,
+  @CurrentWorkspaceMember() member: WorkspaceMember,
+) {
+  return { workspace, member };
+}
+```
+
+`WorkspaceService` 负责与传输协议无关的工作区生命周期：
+
+- `findOne(where)`
+- `createWorkspace(user, { name })`
+- `updateWorkspace(workspace, { name })`
+- `deleteWorkspace(workspace, currentMember)`
+
+创建工作区时会同时创建一个已激活的所有者成员。删除操作是软删除，并且只允许所有者执行。GraphQL Resolver 或 HTTP Controller 只需映射输入输出，并把这些规则委托给服务。
+
+## API Key
+
+`ApiKeyService` 管理工作区范围的 API Key。每个 Key 始终代表一个工作区成员，因此认证成功时会同时恢复对应的工作区与成员身份。所有者和管理员可以管理其他成员的 Key，普通成员只能管理自己的 Key。
+
+服务提供：
+
+- `getApiKey(id, currentMember)` 与 `getListFilter(workspace, currentMember)`
+- `createKey(workspace, currentMember, options)`
+- `updateKey(id, currentMember, input)` 与 `deleteKey(id, currentMember)`
+- `validate(plaintextKey)` 与 `recordUsage(apiKey)`
+
+明文 Key 只会由 `createKey` 返回一次，数据库仅持久化查询标识和加密后的 secret。认证成功的请求会自动更新 `lastUsedAt`。
+
+API Key 使用 Bearer 方式发送：
+
+```http
+Authorization: Bearer sk-0123456789abcdefabcdef0123456789
+```
+
+不支持 `x-api-key`。客户端还需要 Bearer Session 认证时，按异步注册示例加入 better-auth 的 `bearer()` 插件。Session 认证优先执行：如果 Bearer 凭证能解析为有效 Session，API Key 校验会跳过；否则同一个 Bearer 凭证会作为 API Key 校验。
+
+处理器需要知道当前使用的 Key 实体时，可以使用 `@CurrentApiKey()`：
+
+```typescript
+import { CurrentApiKey } from "@nest-boot/auth";
+
+audit(@CurrentApiKey() apiKey: ApiKey | null) {
+  return apiKey;
 }
 ```
 
@@ -249,6 +301,9 @@ export const AuthDynamicModule = AuthModule.forRoot({
     account: Account,
     session: Session,
     verification: Verification,
+    workspace: Workspace,
+    workspaceMember: WorkspaceMember,
+    apiKey: ApiKey,
   },
   buildAbility: () => {
     const user = RequestContext.get(User);
@@ -267,7 +322,7 @@ export const AuthDynamicModule = AuthModule.forRoot({
 });
 ```
 
-同一个全局 `AuthGuard` 会先检查身份认证，再执行 `@Can` 权限元数据，不需要注册第二个权限模块或守卫。`@Public()` 只跳过会话要求；如果公开路由同时声明了 `@Can`，权限检查仍会执行。
+同一个全局 `AuthGuard` 会先检查身份认证，再执行 `@Can` 权限元数据，不需要注册第二个权限模块或守卫。`@Public()` 只跳过认证要求；如果公开路由同时声明了 `@Can`，权限检查仍会执行。
 
 ### 保护路由
 
@@ -385,7 +440,7 @@ export class User extends BaseUser {
 }
 ```
 
-同样继承 `BaseAccount`、`BaseSession` 和 `BaseVerification` 来定义其他认证实体。
+同样继承 `BaseAccount`、`BaseSession` 和 `BaseVerification` 来定义其他 better-auth 实体。应用自己的工作区、工作区成员和 API Key 实体必须分别满足 `AuthWorkspaceEntity`、`AuthWorkspaceMemberEntity` 和 `AuthApiKeyEntity`。这样持久化与 GraphQL 注解仍留在应用中，而认证包可以统一负责领域规则。
 
 ## NestJS 集成
 
@@ -419,11 +474,11 @@ void bootstrap();
 
 1. **全局守卫** — 始终将 `AuthGuard` 注册为 `APP_GUARD`，对例外路由使用 `@Public()`，而不是逐路由添加守卫。
 
-2. **onAuthenticated 加载上下文** — 使用 `onAuthenticated` 回调将工作区/租户数据加载到 `RequestContext`，使其在整个请求生命周期内可用。
+2. **稳定的上下文装饰器** — 传输层使用 `CurrentWorkspace`、`CurrentWorkspaceMember` 和 `CurrentApiKey`，避免直接依赖应用实体 token。
 
 3. **环境变量** — 将 `AUTH_SECRET` 存储在环境变量中，确保至少 32 个字符且具有高熵值。
 
-4. **RLS 上下文** — 将认证与 PostgreSQL RLS 结合时，在 `onAuthenticated` 中加载租户或工作区，并写入 `RowLevelSecurity`。参见 [Row-Level Security 教程](/docs/tutorial/row-level-security)。
+4. **RLS 上下文** — 将认证与 PostgreSQL RLS 结合时，从 `RequestContext` 中已有的工作区和成员身份派生数据库上下文。参见 [Row-Level Security 教程](/docs/tutorial/row-level-security)。
 
 ## API 参考
 

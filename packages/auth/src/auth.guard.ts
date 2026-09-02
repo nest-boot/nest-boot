@@ -5,7 +5,7 @@ import { ForbiddenException, Inject, Injectable } from "@nestjs/common";
 import { ContextIdFactory, ModuleRef, Reflector } from "@nestjs/core";
 import type { Request } from "express";
 
-import { IS_PUBLIC_KEY } from "./auth.constants.js";
+import { CURRENT_API_KEY, IS_PUBLIC_KEY } from "./auth.constants.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
 import { BaseSession } from "./entities/session.entity.js";
@@ -60,7 +60,9 @@ export class AuthGuard implements CanActivate {
    * @returns `true` when the request is authenticated.
    */
   protected isAuthenticated(): boolean {
-    return !!RequestContext.get(BaseSession);
+    return (
+      !!RequestContext.get(BaseSession) || !!RequestContext.get(CURRENT_API_KEY)
+    );
   }
 
   /**

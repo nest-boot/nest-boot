@@ -53,6 +53,7 @@ const oldEnv = new Map<string, string | undefined>();
 let uniqueCounter = 0;
 
 interface AuthenticatedUser {
+  bearerToken: string;
   cookies: string[];
   email: string;
   password: string;
@@ -157,6 +158,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       password,
     });
     const sessionCookies = collectSetCookies(loggedIn);
+    const sessionBearerToken = loggedIn.headers['set-auth-token'];
 
     expect(loggedIn.status).toBe(200);
     expect(loggedIn.body.user).toMatchObject({
@@ -164,6 +166,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       email,
     });
     expect(sessionCookies.length).toBeGreaterThan(0);
+    expect(sessionBearerToken).toBeTypeOf('string');
 
     const rejectedCurrentUser = await gql(/* GraphQL */ `
       query {
@@ -190,6 +193,25 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     expectNoGraphQLErrors(currentUser);
     expect(currentUser.body.data.currentUser).toMatchObject({
+      name: 'Alice',
+      email,
+    });
+
+    const currentUserByBearer = await gql(
+      /* GraphQL */ `
+        query {
+          currentUser {
+            id
+            name
+            email
+          }
+        }
+      `,
+      { bearerToken: sessionBearerToken },
+    );
+
+    expectNoGraphQLErrors(currentUserByBearer);
+    expect(currentUserByBearer.body.data.currentUser).toMatchObject({
       name: 'Alice',
       email,
     });
@@ -1088,7 +1110,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       workspaceMemberId: serviceAccount.id,
     });
 
-    const byHeader = await gql(
+    const byBearer = await gql(
       /* GraphQL */ `
         query {
           currentWorkspace {
@@ -1114,18 +1136,18 @@ describe('Server application PostgreSQL integration (e2e)', () => {
           }
         }
       `,
-      { apiKey: serviceKey.apiKey, workspaceId: workspace.id },
+      { bearerToken: serviceKey.apiKey, workspaceId: workspace.id },
     );
 
-    expectNoGraphQLErrors(byHeader);
-    expect(byHeader.body.data.currentWorkspace).toEqual(workspace);
-    expect(byHeader.body.data.currentWorkspaceMember).toEqual({
+    expectNoGraphQLErrors(byBearer);
+    expect(byBearer.body.data.currentWorkspace).toEqual(workspace);
+    expect(byBearer.body.data.currentWorkspaceMember).toEqual({
       id: serviceAccount.id,
       name: 'Deploy Bot',
       type: 'SERVICE_ACCOUNT',
       user: null,
     });
-    expect(byHeader.body.data.apiKeys).toMatchObject({
+    expect(byBearer.body.data.apiKeys).toMatchObject({
       totalCount: 1,
       edges: [
         {
@@ -1145,7 +1167,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
           }
         }
       `,
-      { apiKey: serviceKey.apiKey, workspaceId: workspace.id },
+      { bearerToken: serviceKey.apiKey, workspaceId: workspace.id },
     );
 
     expectGraphQLError(serviceAccountUser);
@@ -1205,7 +1227,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
           }
         }
       `,
-      { apiKey: serviceKey.apiKey, workspaceId: workspace.id },
+      { bearerToken: serviceKey.apiKey, workspaceId: workspace.id },
     );
 
     expect(rejectedDeletedKey.status).toBe(401);
@@ -1227,11 +1249,14 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     const loggedIn = await signInWithEmail({ email, password });
     const cookies = collectSetCookies(loggedIn);
+    const bearerToken = loggedIn.headers['set-auth-token'];
 
     expect(loggedIn.status).toBe(200);
     expect(cookies.length).toBeGreaterThan(0);
+    expect(bearerToken).toBeTypeOf('string');
 
     return {
+      bearerToken,
       cookies,
       email,
       password,
@@ -1547,10 +1572,6 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       req.set('Authorization', `Bearer ${options.bearerToken}`);
     }
 
-    if (options.apiKey) {
-      req.set('x-api-key', options.apiKey);
-    }
-
     return req;
   }
 
@@ -1573,7 +1594,6 @@ interface EmailSignUpInput extends EmailSignInInput {
 }
 
 interface GraphQLRequestOptions {
-  apiKey?: string;
   bearerToken?: string;
   cookies?: string[];
   workspaceId?: string;

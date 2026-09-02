@@ -1,13 +1,15 @@
-import { CurrentUser } from '@nest-boot/auth';
-import { Can, PermissionAction } from '@nest-boot/auth';
+import {
+  Can,
+  CurrentUser,
+  CurrentWorkspace,
+  CurrentWorkspaceMember,
+  PermissionAction,
+  WorkspaceService,
+} from '@nest-boot/auth';
 import { Args, ID, Mutation, Query, Resolver } from '@nest-boot/graphql';
 import { ConnectionManager } from '@nest-boot/graphql-connection';
-import { ForbiddenException } from '@nestjs/common';
 
-import { CurrentWorkspace } from '../../common/decorators/current-workspace.decorator.js';
-import { CurrentWorkspaceMember } from '../../common/decorators/current-workspace-member.decorator.js';
 import { User } from '../user/user.entity.js';
-import { WorkspaceMemberRole } from '../workspace-member/enums/workspace-member-role.enum.js';
 import { WorkspaceMember } from '../workspace-member/workspace-member.entity.js';
 import { CreateWorkspaceInput } from './inputs/create-workspace.input.js';
 import { UpdateWorkspaceInput } from './inputs/update-workspace.input.js';
@@ -16,7 +18,6 @@ import {
   WorkspaceConnectionArgs,
 } from './workspace.connection-definition.js';
 import { Workspace } from './workspace.entity.js';
-import { WorkspaceService } from './workspace.service.js';
 
 /**
  * 提供工作区查询、创建、更新和删除的 GraphQL 接口。
@@ -30,7 +31,11 @@ export class WorkspaceResolver {
    * @param cm - GraphQL 连接分页管理器。
    */
   constructor(
-    private readonly workspaceService: WorkspaceService,
+    private readonly workspaceService: WorkspaceService<
+      Workspace,
+      WorkspaceMember,
+      User
+    >,
     private readonly cm: ConnectionManager,
   ) {}
 
@@ -113,7 +118,7 @@ export class WorkspaceResolver {
     @CurrentWorkspace() workspace: Workspace,
     @Args('input') input: UpdateWorkspaceInput,
   ): Promise<Workspace> {
-    return await this.workspaceService.update(workspace, input);
+    return await this.workspaceService.updateWorkspace(workspace, input);
   }
 
   /**
@@ -147,10 +152,9 @@ export class WorkspaceResolver {
     @CurrentWorkspace() workspace: Workspace,
     @CurrentWorkspaceMember() workspaceMember: WorkspaceMember,
   ): Promise<Workspace> {
-    if (![WorkspaceMemberRole.OWNER].includes(workspaceMember.role)) {
-      throw new ForbiddenException('Workspace member not admin or owner');
-    }
-
-    return await this.workspaceService.softDelete(workspace);
+    return await this.workspaceService.deleteWorkspace(
+      workspace,
+      workspaceMember,
+    );
   }
 }

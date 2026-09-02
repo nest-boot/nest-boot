@@ -1,9 +1,9 @@
+import { AuthGuard } from '@nest-boot/auth';
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 
 import { CommonModule } from '../common/common.module.js';
 import { ApiKeyModule } from './api-key/api-key.module.js';
-import { AuthGuard } from './auth/auth.guard.js';
 import { AuthModule } from './auth/auth.module.js';
 import { UserModule } from './user/user.module.js';
 import { WorkspaceModule } from './workspace/workspace.module.js';

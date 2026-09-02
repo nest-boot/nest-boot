@@ -95,11 +95,11 @@ describe("AuthGuard", () => {
     } as unknown as ExecutionContext;
     const get = vi.spyOn(RequestContext, "get");
 
-    get.mockReturnValueOnce(undefined);
+    get.mockReturnValue(undefined);
     await expect(guard.canActivate(context)).resolves.toBe(false);
     expect(get).toHaveBeenCalledWith(BaseSession);
 
-    get.mockReturnValueOnce(new BaseSession());
+    get.mockReturnValue(new BaseSession());
     await expect(guard.canActivate(context)).resolves.toBe(true);
   });
 

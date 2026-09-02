@@ -1,9 +1,9 @@
 ---
 title: "Auth"
-description: "Add authentication and CASL-based authorization with sessions, OAuth/OIDC, middleware, and one unified guard."
+description: "Add session and API-key authentication, workspace identity, and CASL-based authorization with one unified guard."
 ---
 
-The `@nest-boot/auth` module provides authentication powered by [better-auth](https://www.better-auth.com/) and CASL-based authorization. It includes MikroORM session persistence, automatic middleware registration, and one `AuthGuard` for both authentication and route permission checks.
+`@nest-boot/auth` provides authentication powered by [better-auth](https://www.better-auth.com/), workspace-aware API keys, and CASL-based authorization. It includes MikroORM persistence, automatic request-context middleware, and one `AuthGuard` for authentication and route permission checks.
 
 ## Installation
 
@@ -20,8 +20,11 @@ import { AuthModule } from "@nest-boot/auth";
 import { Global, Module } from "@nestjs/common";
 import { User } from "./user.entity";
 import { Account } from "./account.entity";
+import { ApiKey } from "./api-key.entity";
 import { Session } from "./session.entity";
 import { Verification } from "./verification.entity";
+import { Workspace } from "./workspace.entity";
+import { WorkspaceMember } from "./workspace-member.entity";
 
 export const AuthDynamicModule = AuthModule.forRoot({
   entities: {
@@ -29,6 +32,9 @@ export const AuthDynamicModule = AuthModule.forRoot({
     account: Account,
     session: Session,
     verification: Verification,
+    workspace: Workspace,
+    workspaceMember: WorkspaceMember,
+    apiKey: ApiKey,
   },
 });
 
@@ -43,7 +49,8 @@ The module automatically:
 
 - Creates a better-auth instance with MikroORM adapter
 - Registers auth API routes at `/api/auth/` (configurable via `basePath`)
-- Registers auth middleware on all routes for session resolution
+- Resolves sessions, selected workspaces, workspace members, and API keys into `RequestContext`
+- Provides workspace and API-key lifecycle services
 - Reads common auth settings from environment variables
 
 ### Environment Variables
@@ -64,6 +71,7 @@ Set these once for the whole auth instance.
 | `AUTH_URL`             | Public auth base URL. Falls back to `APP_URL`.                                                                          | unset                                |
 | `APP_URL`              | Fallback public base URL when `AUTH_URL` is not set.                                                                    | unset                                |
 | `AUTH_DISABLE_SIGN_UP` | Set to `true` to disable signup for every configured auth method. Sign-in still works for existing users.               | signup enabled                       |
+| `API_KEY_PREFIX`       | Prefix used when creating workspace API keys.                                                                           | `sk-`                                |
 
 #### Email
 
@@ -119,49 +127,33 @@ If OIDC is not needed, leave `AUTH_OIDC_ENABLED` unset. If you need multiple gen
 In real-world applications, use `forRootAsync` to inject `ConfigService` and configure OAuth/OIDC providers:
 
 ```typescript
-import { EntityManager } from "@mikro-orm/postgresql";
 import { AuthModule } from "@nest-boot/auth";
-import { REQUEST, RequestContext } from "@nest-boot/request-context";
 import { ConfigService } from "@nestjs/config";
-import { genericOAuth } from "better-auth/plugins";
-import { Request } from "express";
+import { bearer, genericOAuth } from "better-auth/plugins";
 
 import { User } from "./user.entity";
 import { Account } from "./account.entity";
+import { ApiKey } from "./api-key.entity";
 import { Session } from "./session.entity";
 import { Verification } from "./verification.entity";
 import { Workspace } from "./workspace.entity";
 import { WorkspaceMember } from "./workspace-member.entity";
 
 const AuthDynamicModule = AuthModule.forRootAsync({
-  inject: [ConfigService, EntityManager],
-  useFactory: (configService: ConfigService, em: EntityManager) => ({
+  inject: [ConfigService],
+  useFactory: (configService: ConfigService) => ({
     trustedOrigins: ["*"],
     entities: {
       user: User,
       account: Account,
       session: Session,
       verification: Verification,
-    },
-    onAuthenticated: async () => {
-      const user = RequestContext.get(User);
-      const request = RequestContext.get<Request>(REQUEST);
-      const workspaceId = request?.headers["x-workspace-id"];
-
-      if (user && typeof workspaceId === "string") {
-        const workspaceMember = await em.findOne(
-          WorkspaceMember,
-          { user, workspace: { id: workspaceId } },
-          { populate: ["workspace"] },
-        );
-
-        if (workspaceMember) {
-          RequestContext.set(Workspace, workspaceMember.workspace.getEntity());
-          RequestContext.set(WorkspaceMember, workspaceMember);
-        }
-      }
+      workspace: Workspace,
+      workspaceMember: WorkspaceMember,
+      apiKey: ApiKey,
     },
     plugins: [
+      bearer(),
       genericOAuth({
         config: [
           {
@@ -181,8 +173,8 @@ const AuthDynamicModule = AuthModule.forRootAsync({
 
 Key options:
 
-- **`entities`** — Map your MikroORM entity classes for user, account, session, and verification
-- **`onAuthenticated`** — Callback invoked after successful session resolution, useful for loading workspace/tenant context into `RequestContext`
+- **`entities`** — Map the user, account, session, verification, workspace, workspace-member, and API-key MikroORM entity classes
+- **`onAuthenticated`** — Optional callback invoked after successful session resolution for additional application context
 - **`plugins`** — better-auth plugins (e.g., `genericOAuth`, `twoFactor`, etc.)
 - **`basePath`** — Customize the auth API path (default: `/api/auth/`)
 - **`trustedOrigins`** — Allowed CORS origins
@@ -208,7 +200,7 @@ import { APP_GUARD } from "@nestjs/core";
 export class CommonModule {}
 ```
 
-The guard checks for a valid session in `RequestContext`. If no session is found, the request is rejected with a 403 error.
+The guard accepts either a valid session or API key in `RequestContext`. If neither identity is available, the request is rejected.
 
 ### Public Routes
 
@@ -225,6 +217,66 @@ export class HealthResolver {
   health(): string {
     return "ok";
   }
+}
+```
+
+## Workspace Context
+
+`AuthModule` resolves the selected workspace before authentication middleware runs. Clients select a workspace with the `x-workspace-id` header or the `workspace_id` cookie. The module then resolves the authenticated user's membership in that workspace and stores both objects in `RequestContext`.
+
+Use the built-in decorators to access this identity without coupling transport code to `RequestContext`:
+
+```typescript
+import {
+  CurrentWorkspace,
+  CurrentWorkspaceMember,
+} from "@nest-boot/auth";
+
+currentWorkspace(
+  @CurrentWorkspace() workspace: Workspace,
+  @CurrentWorkspaceMember() member: WorkspaceMember,
+) {
+  return { workspace, member };
+}
+```
+
+`WorkspaceService` owns the transport-independent workspace lifecycle:
+
+- `findOne(where)`
+- `createWorkspace(user, { name })`
+- `updateWorkspace(workspace, { name })`
+- `deleteWorkspace(workspace, currentMember)`
+
+Creating a workspace also creates an active owner membership. Deletion is a soft delete and is restricted to the owner. GraphQL resolvers or HTTP controllers should only map their input/output types and delegate these rules to the service.
+
+## API Keys
+
+`ApiKeyService` manages workspace-scoped API keys. A key always represents one workspace member, so it restores both workspace and member identity when authentication succeeds. Owners and administrators can manage keys for other members; regular members can only manage their own keys.
+
+The service provides:
+
+- `getApiKey(id, currentMember)` and `getListFilter(workspace, currentMember)`
+- `createKey(workspace, currentMember, options)`
+- `updateKey(id, currentMember, input)` and `deleteKey(id, currentMember)`
+- `validate(plaintextKey)` and `recordUsage(apiKey)`
+
+The plaintext key is returned only by `createKey`. Only its lookup identifier and encrypted secret are persisted. Successful authenticated requests update `lastUsedAt` automatically.
+
+Send API keys with the Bearer scheme:
+
+```http
+Authorization: Bearer sk-0123456789abcdefabcdef0123456789
+```
+
+`x-api-key` is not supported. Add better-auth's `bearer()` plugin when clients also need Bearer Session authentication, as shown in the async registration example. Session authentication runs first: if the Bearer credential resolves to a valid session, API-key validation is skipped. Otherwise, the same Bearer credential is treated as an API key.
+
+Use `@CurrentApiKey()` when a handler needs the key entity that authenticated the request:
+
+```typescript
+import { CurrentApiKey } from "@nest-boot/auth";
+
+audit(@CurrentApiKey() apiKey: ApiKey | null) {
+  return apiKey;
 }
 ```
 
@@ -249,6 +301,9 @@ export const AuthDynamicModule = AuthModule.forRoot({
     account: Account,
     session: Session,
     verification: Verification,
+    workspace: Workspace,
+    workspaceMember: WorkspaceMember,
+    apiKey: ApiKey,
   },
   buildAbility: () => {
     const user = RequestContext.get(User);
@@ -267,7 +322,7 @@ export const AuthDynamicModule = AuthModule.forRoot({
 });
 ```
 
-The same globally registered `AuthGuard` first enforces authentication and then evaluates `@Can` metadata. No second permission guard or module is required. `@Public()` only skips the session requirement; if a public route also declares `@Can`, its permission is still checked.
+The same globally registered `AuthGuard` first enforces authentication and then evaluates `@Can` metadata. No second permission guard or module is required. `@Public()` only skips the authentication requirement; if a public route also declares `@Can`, its permission is still checked.
 
 ### Protect Routes
 
@@ -385,7 +440,7 @@ export class User extends BaseUser {
 }
 ```
 
-Similarly extend `BaseAccount`, `BaseSession`, and `BaseVerification` for the other auth entities.
+Similarly extend `BaseAccount`, `BaseSession`, and `BaseVerification` for the other better-auth entities. Application-owned workspace, workspace-member, and API-key entities must satisfy `AuthWorkspaceEntity`, `AuthWorkspaceMemberEntity`, and `AuthApiKeyEntity`. This keeps persistence and GraphQL annotations in the application while allowing the auth package to own their domain rules.
 
 ## NestJS Integration
 
@@ -419,11 +474,11 @@ void bootstrap();
 
 1. **Global Guard** — Always register `AuthGuard` as `APP_GUARD` and use `@Public()` for exceptions, rather than adding guards per-route.
 
-2. **onAuthenticated for Context** — Use the `onAuthenticated` callback to load workspace/tenant data into `RequestContext` so it's available throughout the request lifecycle.
+2. **Stable Context Decorators** — Use `CurrentWorkspace`, `CurrentWorkspaceMember`, and `CurrentApiKey` instead of reaching into the application entity tokens from transport code.
 
 3. **Environment Variables** — Store `AUTH_SECRET` in environment variables and ensure it's at least 32 characters with high entropy.
 
-4. **RLS Context** — When combining auth with PostgreSQL RLS, load the tenant or workspace in `onAuthenticated` and write it to `RowLevelSecurity`. See the [Row-Level Security tutorial](/docs/tutorial/row-level-security).
+4. **RLS Context** — When combining auth with PostgreSQL RLS, derive database context from the workspace and member already stored in `RequestContext`. See the [Row-Level Security tutorial](/docs/tutorial/row-level-security).
 
 ## API Reference
 
