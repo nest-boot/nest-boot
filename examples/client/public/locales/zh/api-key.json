@@ -17,7 +17,7 @@
       "created_at": {
         "label": "创建时间"
       },
-      "key_prefix": {
+      "prefix": {
         "label": "密钥前缀",
         "placeholder": "搜索密钥前缀"
       },
@@ -40,9 +40,9 @@
   },
   "never_expires": "永不过期",
   "never_used": "从未使用",
-  "rename": {
-    "description": "更新此 API 密钥的显示名称。",
-    "title": "重命名 API 密钥"
+  "edit": {
+    "description": "更新此 API 密钥的显示名称和权限。",
+    "title": "编辑 API 密钥"
   },
   "delete": {
     "description": "删除 {{name}}？此操作无法撤销。",
@@ -50,21 +50,27 @@
   },
   "status": {
     "active": "活跃",
+    "disabled": "已禁用",
     "expired": "已过期"
   },
   "table": {
     "created_at": "创建时间",
     "expires_at": "过期时间",
-    "key_prefix": "密钥前缀",
+    "key_start": "密钥",
     "last_used": "最近使用",
     "name": "名称",
-    "owner": "所有者",
     "status": "状态"
   },
   "title": "API 密钥",
+  "user": {
+    "description": "创建和管理属于当前用户账号的 API 密钥。",
+    "title": "个人 API 密钥"
+  },
   "toast": {
     "created_success": "API 密钥创建成功",
-    "renamed_success": "API 密钥重命名成功",
+    "disabled_success": "API 密钥已禁用",
+    "enabled_success": "API 密钥已启用",
+    "updated_success": "API 密钥更新成功",
     "deleted_success": "API 密钥删除成功"
   }
 }

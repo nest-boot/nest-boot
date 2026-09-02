@@ -37,6 +37,10 @@ export class BaseUser extends BaseEntity {
   @Property({ type: t.text, nullable: true })
   image?: Opt<string>;
 
+  /** User-administration and session permissions granted to this identity. */
+  @Property({ type: t.array })
+  permissions: Opt<string[]> = [];
+
   /** Timestamp when the user was created. */
   @Property({ type: t.datetime, defaultRaw: "now()" })
   createdAt: Opt<Date> = new Date();

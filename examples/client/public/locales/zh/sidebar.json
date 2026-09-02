@@ -9,6 +9,7 @@
     "workspaces": "工作空间"
   },
   "user": {
+    "api_keys": "个人 API 密钥",
     "logout": "退出登录"
   }
 }

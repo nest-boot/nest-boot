@@ -1,19 +1,14 @@
 import {
   ApiKeyService,
+  Can,
+  CurrentUser,
   CurrentWorkspace,
   CurrentWorkspaceMember,
 } from '@nest-boot/auth';
-import {
-  Args,
-  ID,
-  Mutation,
-  Parent,
-  Query,
-  ResolveField,
-  Resolver,
-} from '@nest-boot/graphql';
+import { Args, ID, Mutation, Query, Resolver } from '@nest-boot/graphql';
 import { ConnectionManager } from '@nest-boot/graphql-connection';
 
+import { User } from '../user/user.entity.js';
 import { Workspace } from '../workspace/workspace.entity.js';
 import { WorkspaceMember } from '../workspace-member/workspace-member.entity.js';
 import {
@@ -39,6 +34,7 @@ export class ApiKeyResolver {
   constructor(
     private readonly apiKeyService: ApiKeyService<
       ApiKey,
+      User,
       Workspace,
       WorkspaceMember
     >,
@@ -53,11 +49,15 @@ export class ApiKeyResolver {
    * @returns 可访问时返回 API Key，否则返回空值。
    */
   @Query(() => ApiKey, { nullable: true })
+  @Can('read', ApiKey)
   async apiKey(
     @Args('id', { type: () => ID }) id: string,
     @CurrentWorkspaceMember() currentWorkspaceMember: WorkspaceMember,
   ): Promise<ApiKey | null> {
-    return await this.apiKeyService.getApiKey(id, currentWorkspaceMember);
+    return await this.apiKeyService.getWorkspaceApiKey(
+      id,
+      currentWorkspaceMember,
+    );
   }
 
   /**
@@ -69,18 +69,24 @@ export class ApiKeyResolver {
    * @returns API Key 连接分页结果。
    */
   @Query(() => ApiKeyConnection)
+  @Can('read', ApiKey)
   async apiKeys(
     @Args() args: ApiKeyConnectionArgs,
     @CurrentWorkspace() workspace: Workspace,
     @CurrentWorkspaceMember() workspaceMember: WorkspaceMember,
   ): Promise<ApiKeyConnection> {
-    const where = this.apiKeyService.getListFilter(workspace, workspaceMember);
+    const where = this.apiKeyService.getWorkspaceListFilter(
+      workspace,
+      workspaceMember,
+    );
 
-    return await this.cm.find(ApiKeyConnection, args, { where });
+    return await this.apiKeyService.runUnrestricted(
+      async () => await this.cm.find(ApiKeyConnection, args, { where }),
+    );
   }
 
   /**
-   * 为当前成员或有管理权限的目标成员创建 API Key。
+   * 为当前工作区创建 API Key。
    *
    * @param input - 创建 API Key 的输入参数。
    * @param workspace - 当前工作区。
@@ -88,12 +94,13 @@ export class ApiKeyResolver {
    * @returns 创建结果，包含实体和仅返回一次的明文 API Key。
    */
   @Mutation(() => CreateApiKeyResult)
+  @Can('create', ApiKey)
   async createApiKey(
     @Args('input') input: CreateApiKeyInput,
     @CurrentWorkspace() workspace: Workspace,
     @CurrentWorkspaceMember() currentWorkspaceMember: WorkspaceMember,
   ): Promise<CreateApiKeyResult> {
-    return await this.apiKeyService.createKey(
+    return await this.apiKeyService.createWorkspaceKey(
       workspace,
       currentWorkspaceMember,
       {
@@ -112,12 +119,13 @@ export class ApiKeyResolver {
    * @returns 更新后的 API Key。
    */
   @Mutation(() => ApiKey)
+  @Can('update', ApiKey)
   async updateApiKey(
     @Args('id', { type: () => ID }) id: string,
     @Args('input') input: UpdateApiKeyInput,
     @CurrentWorkspaceMember() currentWorkspaceMember: WorkspaceMember,
   ): Promise<ApiKey> {
-    return await this.apiKeyService.updateKey(
+    return await this.apiKeyService.updateWorkspaceKey(
       id,
       currentWorkspaceMember,
       input,
@@ -132,21 +140,73 @@ export class ApiKeyResolver {
    * @returns 已删除的 API Key。
    */
   @Mutation(() => ApiKey)
+  @Can('delete', ApiKey)
   async deleteApiKey(
     @Args('id', { type: () => ID }) id: string,
     @CurrentWorkspaceMember() currentWorkspaceMember: WorkspaceMember,
   ): Promise<ApiKey> {
-    return await this.apiKeyService.deleteKey(id, currentWorkspaceMember);
+    return await this.apiKeyService.deleteWorkspaceKey(
+      id,
+      currentWorkspaceMember,
+    );
   }
 
-  /**
-   * 解析 API Key 绑定的工作区成员字段。
-   *
-   * @param apiKey - 父级 API Key 实体。
-   * @returns API Key 绑定的工作区成员。
-   */
-  @ResolveField(() => WorkspaceMember)
-  async member(@Parent() apiKey: ApiKey): Promise<WorkspaceMember> {
-    return await apiKey.member.loadOrFail();
+  /** Returns one API key owned by the authenticated user. */
+  @Query(() => ApiKey, { nullable: true })
+  @Can('read', ApiKey, { scope: 'user' })
+  async userApiKey(
+    @Args('id', { type: () => ID }) id: string,
+    @CurrentUser() user: User,
+  ): Promise<ApiKey | null> {
+    return await this.apiKeyService.getUserApiKey(id, user);
+  }
+
+  /** Lists API keys owned by the authenticated user. */
+  @Query(() => ApiKeyConnection)
+  @Can('read', ApiKey, { scope: 'user' })
+  async userApiKeys(
+    @Args() args: ApiKeyConnectionArgs,
+    @CurrentUser() user: User,
+  ): Promise<ApiKeyConnection> {
+    return await this.apiKeyService.runUnrestricted(
+      async () =>
+        await this.cm.find(ApiKeyConnection, args, {
+          where: this.apiKeyService.getUserListFilter(user),
+        }),
+    );
+  }
+
+  /** Creates an API key owned by the authenticated user. */
+  @Mutation(() => CreateApiKeyResult)
+  @Can('create', ApiKey, { scope: 'user' })
+  async createUserApiKey(
+    @Args('input') input: CreateApiKeyInput,
+    @CurrentUser() user: User,
+  ): Promise<CreateApiKeyResult> {
+    return await this.apiKeyService.createUserKey(user, {
+      ...input,
+      expiresAt: input.expiresAt ?? null,
+    });
+  }
+
+  /** Updates an API key owned by the authenticated user. */
+  @Mutation(() => ApiKey)
+  @Can('update', ApiKey, { scope: 'user' })
+  async updateUserApiKey(
+    @Args('id', { type: () => ID }) id: string,
+    @Args('input') input: UpdateApiKeyInput,
+    @CurrentUser() user: User,
+  ): Promise<ApiKey> {
+    return await this.apiKeyService.updateUserKey(id, user, input);
+  }
+
+  /** Deletes an API key owned by the authenticated user. */
+  @Mutation(() => ApiKey)
+  @Can('delete', ApiKey, { scope: 'user' })
+  async deleteUserApiKey(
+    @Args('id', { type: () => ID }) id: string,
+    @CurrentUser() user: User,
+  ): Promise<ApiKey> {
+    return await this.apiKeyService.deleteUserKey(id, user);
   }
 }

@@ -9,7 +9,7 @@ import { mergeMap, type Observable } from "rxjs";
 
 import { ApiKeyService } from "./api-key.service.js";
 import { CURRENT_API_KEY } from "./auth.constants.js";
-import type { AuthApiKeyEntity } from "./interfaces/auth-entities.interface.js";
+import type { BaseApiKey } from "./entities/index.js";
 
 /** Records successful requests authenticated with an API key. */
 @Injectable()
@@ -24,7 +24,7 @@ export class ApiKeyUsageInterceptor implements NestInterceptor {
   ): Observable<unknown> {
     return next.handle().pipe(
       mergeMap(async (value: unknown) => {
-        const apiKey = RequestContext.get<AuthApiKeyEntity>(CURRENT_API_KEY);
+        const apiKey = RequestContext.get<BaseApiKey>(CURRENT_API_KEY);
 
         if (apiKey) {
           await this.apiKeyService.recordUsage(apiKey);

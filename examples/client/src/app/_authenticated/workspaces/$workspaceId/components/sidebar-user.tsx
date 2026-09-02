@@ -1,4 +1,4 @@
-import { EllipsisVertical, LogOut } from "lucide-react";
+import { EllipsisVertical, KeyRound, LogOut } from "lucide-react";
 import md5 from "md5";
 
 import { useMemo } from "react";
@@ -41,6 +41,7 @@ export function SidebarUser() {
       <SidebarMenuItem>
         <DropdownMenu>
           <DropdownMenuTrigger
+            data-testid="sidebar-user-menu"
             render={
               <SidebarMenuButton
                 size="lg"
@@ -90,6 +91,13 @@ export function SidebarUser() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              <DropdownMenuItem
+                data-testid="sidebar-user-api-keys-link"
+                onClick={() => navigate({ to: "/user/api-keys" })}
+              >
+                <KeyRound />
+                {t("sidebar:user.api_keys")}
+              </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => {
                   authClient.signOut({

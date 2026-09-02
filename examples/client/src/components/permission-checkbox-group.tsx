@@ -1,36 +1,21 @@
-import { useMemo } from "react";
 import { t } from "i18next";
 
-import type { WorkspacePermission } from "@/lib/workspace-permissions";
+import type { PermissionOption } from "@/lib/permissions";
 import { CheckboxGroup } from "@/components/thread-ui/checkbox-group";
-import { workspacePermissions } from "@/lib/workspace-permissions";
 
-export interface PermissionCheckboxGroupProps {
-  value: Array<WorkspacePermission>;
-  onChange: (value: Array<WorkspacePermission>) => void;
+export interface PermissionCheckboxGroupProps<Permission extends string> {
+  options: ReadonlyArray<PermissionOption<Permission>>;
+  value: Array<Permission>;
+  onChange: (value: Array<Permission>) => void;
   disabled?: boolean;
 }
 
-export function PermissionCheckboxGroup({
+export function PermissionCheckboxGroup<Permission extends string>({
+  options,
   value,
   onChange,
   disabled = false,
-}: PermissionCheckboxGroupProps) {
-  const allPermissions = useMemo(
-    () => Object.keys(workspacePermissions) as Array<WorkspacePermission>,
-    [],
-  );
-
-  const items = useMemo(
-    () =>
-      allPermissions.map((permission) => ({
-        value: permission,
-        label: t(workspacePermissions[permission].name),
-        description: t(workspacePermissions[permission].description),
-      })),
-    [allPermissions],
-  );
-
+}: PermissionCheckboxGroupProps<Permission>) {
   return (
     <CheckboxGroup
       label={t("permission:label")}
@@ -41,7 +26,11 @@ export function PermissionCheckboxGroup({
         label: t("permission:all.name"),
         description: t("permission:all.description"),
       }}
-      items={items}
+      items={options.map((option) => ({
+        value: option.value,
+        label: t(option.name),
+        description: t(option.description),
+      }))}
     />
   );
 }

@@ -249,12 +249,13 @@ class TestAccount extends BaseAccount {}
 class TestApiKey {
   id!: string;
   name!: string;
-  keyId!: string;
-  keyPrefix!: string;
-  encryptedSecret!: string;
+  start!: string;
+  prefix!: string;
+  key!: string;
+  enabled!: boolean;
+  permissions!: string[];
   updatedAt!: Date;
   workspace!: never;
-  member!: never;
 }
 class TestSession extends BaseSession {}
 class TestUser extends BaseUser {}

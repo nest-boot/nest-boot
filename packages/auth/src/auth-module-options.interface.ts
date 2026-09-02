@@ -5,15 +5,13 @@ import { BetterAuthOptions } from "better-auth";
 
 import type {
   BaseAccount,
+  BaseApiKey,
   BaseSession,
   BaseUser,
   BaseVerification,
+  BaseWorkspace,
+  BaseWorkspaceMember,
 } from "./entities/index.js";
-import type {
-  AuthApiKeyEntity,
-  AuthWorkspaceEntity,
-  AuthWorkspaceMemberEntity,
-} from "./interfaces/auth-entities.interface.js";
 import type { BuildAbilityCallback } from "./types/build-ability-callback.type.js";
 
 /** Options for configuring auth middleware route registration. */
@@ -42,18 +40,21 @@ export interface AuthModuleOptions extends Omit<BetterAuthOptions, "database"> {
     /** Verification entity class. */
     verification: EntityClass<BaseVerification>;
     /** Workspace entity class. */
-    workspace: EntityClass<AuthWorkspaceEntity>;
+    workspace: EntityClass<BaseWorkspace>;
     /** Workspace-member entity class. */
-    workspaceMember: EntityClass<AuthWorkspaceMemberEntity>;
+    workspaceMember: EntityClass<BaseWorkspaceMember>;
     /** API key entity class. */
-    apiKey: EntityClass<AuthApiKeyEntity>;
+    apiKey: EntityClass<BaseApiKey>;
   };
 
   /** Middleware registration options. */
   middleware?: AuthModuleMiddlewareOptions;
 
-  /** Builds the CASL permission ability for the current request. */
-  buildAbility?: BuildAbilityCallback;
+  /** Builds the workspace-scoped CASL permission ability for the current request. */
+  buildWorkspaceAbility?: BuildAbilityCallback;
+
+  /** Builds the user-scoped CASL permission ability for the current request. */
+  buildUserAbility?: BuildAbilityCallback;
 
   /** Callback invoked after successful authentication. */
   onAuthenticated?: () => void | Promise<void>;

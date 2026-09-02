@@ -101,7 +101,7 @@ export class WorkspaceMemberService extends EntityService<WorkspaceMember> {
       name: input.name,
       workspace,
       role: input.role ?? WorkspaceMemberRole.MEMBER,
-      permissions: input.permissions ?? {},
+      permissions: input.permissions ?? [],
       type: WorkspaceMemberType.SERVICE_ACCOUNT,
       user: null,
       email: null,

@@ -4,12 +4,88 @@
     "description": "一键选择或取消所有权限",
     "name": "所有权限"
   },
-  "manage_members": {
-    "description": "可以添加、删除和修改工作空间成员",
-    "name": "管理成员"
+  "workspace_update": {
+    "name": "更新工作区",
+    "description": "修改工作区设置和配置"
   },
-  "manage_workspace": {
-    "description": "可以修改工作空间设置和配置",
-    "name": "管理工作空间"
+  "workspace_delete": {
+    "name": "删除工作区",
+    "description": "永久删除工作区"
+  },
+  "workspace_member_create": {
+    "name": "创建成员",
+    "description": "向工作区添加成员和服务账号"
+  },
+  "workspace_member_update": {
+    "name": "更新成员",
+    "description": "修改工作区成员资料和访问权限"
+  },
+  "workspace_member_delete": {
+    "name": "删除成员",
+    "description": "从工作区移除成员和服务账号"
+  },
+  "workspace_invitation_create": {
+    "name": "创建邀请",
+    "description": "邀请用户加入工作区"
+  },
+  "workspace_invitation_cancel": {
+    "name": "取消邀请",
+    "description": "取消待接受的工作区邀请"
+  },
+  "user_create": {
+    "name": "创建用户",
+    "description": "创建用户账号"
+  },
+  "user_list": {
+    "name": "列出用户",
+    "description": "浏览用户账号"
+  },
+  "user_set_role": {
+    "name": "设置用户角色",
+    "description": "修改用户管理角色"
+  },
+  "user_ban": {
+    "name": "封禁用户",
+    "description": "封禁或解除封禁用户账号"
+  },
+  "user_impersonate": {
+    "name": "模拟用户",
+    "description": "以其他用户身份创建会话"
+  },
+  "user_impersonate_admins": {
+    "name": "模拟管理员",
+    "description": "以管理员用户身份创建会话"
+  },
+  "user_delete": {
+    "name": "删除用户",
+    "description": "永久删除用户账号"
+  },
+  "user_set_password": {
+    "name": "设置用户密码",
+    "description": "替换用户密码"
+  },
+  "user_set_email": {
+    "name": "设置用户邮箱",
+    "description": "替换用户邮箱地址"
+  },
+  "user_get": {
+    "name": "获取用户",
+    "description": "读取单个用户账号"
+  },
+  "user_update": {
+    "name": "更新用户",
+    "description": "修改用户账号资料"
+  },
+  "session_list": {
+    "name": "列出会话",
+    "description": "浏览用户会话"
+  },
+  "session_revoke": {
+    "name": "撤销会话",
+    "description": "撤销活跃用户会话"
+  },
+  "session_delete": {
+    "name": "删除会话",
+    "description": "删除用户会话记录"
   }
 }

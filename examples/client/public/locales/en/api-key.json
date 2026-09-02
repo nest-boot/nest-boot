@@ -17,7 +17,7 @@
       "created_at": {
         "label": "Created"
       },
-      "key_prefix": {
+      "prefix": {
         "label": "Key Prefix",
         "placeholder": "Search key prefix"
       },
@@ -40,9 +40,9 @@
   },
   "never_expires": "Never expires",
   "never_used": "Never used",
-  "rename": {
-    "description": "Update the display name for this API key.",
-    "title": "Rename API Key"
+  "edit": {
+    "description": "Update the display name and permissions for this API key.",
+    "title": "Edit API Key"
   },
   "delete": {
     "description": "Delete {{name}}? This action cannot be undone.",
@@ -50,21 +50,27 @@
   },
   "status": {
     "active": "Active",
+    "disabled": "Disabled",
     "expired": "Expired"
   },
   "table": {
     "created_at": "Created",
     "expires_at": "Expires",
-    "key_prefix": "Key Prefix",
+    "key_start": "Key",
     "last_used": "Last Used",
     "name": "Name",
-    "owner": "Owner",
     "status": "Status"
   },
   "title": "API Keys",
+  "user": {
+    "description": "Create and manage API keys owned by your user account.",
+    "title": "Personal API Keys"
+  },
   "toast": {
     "created_success": "API key created",
-    "renamed_success": "API key renamed",
+    "disabled_success": "API key disabled",
+    "enabled_success": "API key enabled",
+    "updated_success": "API key updated",
     "deleted_success": "API key deleted"
   }
 }

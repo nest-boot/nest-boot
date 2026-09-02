@@ -1,5 +1,4 @@
 import { MikroORM } from "@mikro-orm/core";
-import { CryptService } from "@nest-boot/crypt";
 import {
   type MiddlewareConfigurator,
   MiddlewareManager,
@@ -16,7 +15,6 @@ import { toNodeHandler } from "better-auth/node";
 import { genericOAuth } from "better-auth/plugins";
 
 import { mikroOrmAdapter } from "./adapters/mikro-orm-adapter.js";
-import { ApiKeyMiddleware } from "./api-key.middleware.js";
 import { ApiKeyService } from "./api-key.service.js";
 import { ApiKeyUsageInterceptor } from "./api-key-usage.interceptor.js";
 import { AUTH_TOKEN } from "./auth.constants.js";
@@ -36,9 +34,7 @@ import { createOidcConfig } from "./utils/create-oidc-config.js";
 import { createSocialProvidersConfig } from "./utils/create-social-providers-config.js";
 import { isEnvTrue } from "./utils/is-env-true.js";
 import { resolveSecret } from "./utils/resolve-secret.js";
-import { WorkspaceMiddleware } from "./workspace.middleware.js";
 import { WorkspaceService } from "./workspace.service.js";
-import { WorkspaceMemberMiddleware } from "./workspace-member.middleware.js";
 
 /**
  * Authentication module based on better-auth.
@@ -51,21 +47,12 @@ import { WorkspaceMemberMiddleware } from "./workspace-member.middleware.js";
 @Module({
   imports: [RequestContextModule, MiddlewareModule],
   providers: [
-    ApiKeyMiddleware,
     ApiKeyService,
     ApiKeyUsageInterceptor,
     AuthService,
     AuthGuard,
     AuthMiddleware,
-    WorkspaceMiddleware,
-    WorkspaceMemberMiddleware,
     WorkspaceService,
-    {
-      provide: CryptService,
-      inject: [MODULE_OPTIONS_TOKEN],
-      useFactory: (options: AuthModuleOptions) =>
-        new CryptService(resolveSecret(options)),
-    },
     {
       provide: APP_INTERCEPTOR,
       useExisting: ApiKeyUsageInterceptor,
@@ -77,7 +64,8 @@ import { WorkspaceMemberMiddleware } from "./workspace-member.middleware.js";
         const betterAuthModuleOptions: Partial<AuthModuleOptions> = {
           ...options,
         };
-        delete betterAuthModuleOptions.buildAbility;
+        delete betterAuthModuleOptions.buildWorkspaceAbility;
+        delete betterAuthModuleOptions.buildUserAbility;
         delete betterAuthModuleOptions.entities;
         delete betterAuthModuleOptions.middleware;
         delete betterAuthModuleOptions.onAuthenticated;
@@ -168,9 +156,6 @@ export class AuthModule extends ConfigurableModuleClass {
    * @param options - Auth module configuration options
    * @param middlewareManager - Middleware manager for registering auth middleware
    * @param authMiddleware - The auth middleware instance
-   * @param workspaceMiddleware - The workspace selection middleware
-   * @param apiKeyMiddleware - The API-key authentication middleware
-   * @param workspaceMemberMiddleware - The workspace membership middleware
    */
   constructor(
     @Inject(AUTH_TOKEN)
@@ -179,9 +164,6 @@ export class AuthModule extends ConfigurableModuleClass {
     private readonly options: AuthModuleOptions,
     private readonly middlewareManager: MiddlewareManager,
     private readonly authMiddleware: AuthMiddleware,
-    private readonly workspaceMiddleware: WorkspaceMiddleware,
-    private readonly apiKeyMiddleware: ApiKeyMiddleware,
-    private readonly workspaceMemberMiddleware: WorkspaceMemberMiddleware,
   ) {
     super();
 
@@ -197,25 +179,8 @@ export class AuthModule extends ConfigurableModuleClass {
     if (this.options.middleware?.register !== false) {
       this.configureRequestMiddleware(
         this.middlewareManager
-          .apply(this.workspaceMiddleware)
-          .dependencies(RequestContextMiddleware)
-          .before(AuthMiddleware),
-      );
-      this.configureRequestMiddleware(
-        this.middlewareManager
           .apply(this.authMiddleware)
-          .dependencies(RequestContextMiddleware)
-          .after(WorkspaceMiddleware),
-      );
-      this.configureRequestMiddleware(
-        this.middlewareManager
-          .apply(this.apiKeyMiddleware)
-          .after(AuthMiddleware, WorkspaceMiddleware),
-      );
-      this.configureRequestMiddleware(
-        this.middlewareManager
-          .apply(this.workspaceMemberMiddleware)
-          .after(AuthMiddleware, ApiKeyMiddleware),
+          .dependencies(RequestContextMiddleware),
       );
     }
   }

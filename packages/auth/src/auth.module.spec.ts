@@ -1,5 +1,4 @@
 import { MikroORM } from "@mikro-orm/core";
-import { CryptService } from "@nest-boot/crypt";
 import { MiddlewareManager } from "@nest-boot/middleware";
 import { RequestContextMiddleware } from "@nest-boot/request-context";
 import { MODULE_METADATA } from "@nestjs/common/constants";
@@ -42,16 +41,13 @@ vi.mock("./adapters/mikro-orm-adapter.js", () => ({
   mikroOrmAdapter: mockMikroOrmAdapter,
 }));
 
-import { ApiKeyMiddleware } from "./api-key.middleware.js";
 import { ApiKeyService } from "./api-key.service.js";
 import { AUTH_TOKEN } from "./auth.constants.js";
 import { AuthGuard } from "./auth.guard.js";
 import { AuthMiddleware } from "./auth.middleware.js";
 import { AuthModule } from "./auth.module.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
-import { WorkspaceMiddleware } from "./workspace.middleware.js";
 import { WorkspaceService } from "./workspace.service.js";
-import { WorkspaceMemberMiddleware } from "./workspace-member.middleware.js";
 
 class Account {}
 class ApiKey {}
@@ -141,15 +137,6 @@ async function createAuthModule(
   middlewareManager: unknown,
   authMiddleware: AuthMiddleware,
 ) {
-  const apiKeyMiddleware = Object.create(
-    ApiKeyMiddleware.prototype,
-  ) as ApiKeyMiddleware;
-  const workspaceMiddleware = Object.create(
-    WorkspaceMiddleware.prototype,
-  ) as WorkspaceMiddleware;
-  const workspaceMemberMiddleware = Object.create(
-    WorkspaceMemberMiddleware.prototype,
-  ) as WorkspaceMemberMiddleware;
   const moduleRef = await Test.createTestingModule({
     providers: [
       AuthModule,
@@ -169,26 +156,11 @@ async function createAuthModule(
         provide: AuthMiddleware,
         useValue: authMiddleware,
       },
-      {
-        provide: ApiKeyMiddleware,
-        useValue: apiKeyMiddleware,
-      },
-      {
-        provide: WorkspaceMiddleware,
-        useValue: workspaceMiddleware,
-      },
-      {
-        provide: WorkspaceMemberMiddleware,
-        useValue: workspaceMemberMiddleware,
-      },
     ],
   }).compile();
 
   return {
-    apiKeyMiddleware,
     authModule: moduleRef.get(AuthModule),
-    workspaceMemberMiddleware,
-    workspaceMiddleware,
   };
 }
 
@@ -243,29 +215,6 @@ describe("AuthModule", () => {
     expect(exports).toContain(ApiKeyService);
     expect(exports).toContain(AuthGuard);
     expect(exports).toContain(WorkspaceService);
-  });
-
-  it("derives the API-key crypt service from the auth secret", async () => {
-    const providers = Reflect.getMetadata(
-      MODULE_METADATA.PROVIDERS,
-      AuthModule,
-    ) as {
-      provide?: unknown;
-      useFactory?: (options: { secret: string }) => CryptService;
-    }[];
-    const cryptProvider = providers.find(
-      (provider) => provider.provide === CryptService,
-    );
-    const cryptService = cryptProvider?.useFactory?.({ secret });
-
-    if (!cryptService) {
-      throw new Error("CryptService provider is missing");
-    }
-
-    const encrypted = await cryptService.encrypt("api-key-secret");
-    await expect(cryptService.decrypt(encrypted)).resolves.toBe(
-      "api-key-secret",
-    );
   });
 
   it("should register synchronous options", () => {
@@ -354,7 +303,8 @@ describe("AuthModule", () => {
 
     authProvider.useFactory(
       {
-        buildAbility: vi.fn(),
+        buildUserAbility: vi.fn(),
+        buildWorkspaceAbility: vi.fn(),
         entities,
         middleware: { register: false },
         onAuthenticated: vi.fn(),
@@ -364,7 +314,10 @@ describe("AuthModule", () => {
     );
 
     expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty(
-      "buildAbility",
+      "buildUserAbility",
+    );
+    expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty(
+      "buildWorkspaceAbility",
     );
     expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty("entities");
     expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty("middleware");
@@ -881,20 +834,19 @@ describe("AuthModule", () => {
     const { authProxy, middlewareManager, middlewareProxy } =
       createMiddlewareManager();
 
-    const { apiKeyMiddleware, workspaceMemberMiddleware, workspaceMiddleware } =
-      await createAuthModule(
-        auth as never,
-        {
-          basePath: "/auth",
-          entities,
-          middleware: {
-            excludeRoutes: ["/public"],
-            includeRoutes: ["/private"],
-          },
-        } as never,
-        middlewareManager as never,
-        authMiddleware,
-      );
+    await createAuthModule(
+      auth as never,
+      {
+        basePath: "/auth",
+        entities,
+        middleware: {
+          excludeRoutes: ["/public"],
+          includeRoutes: ["/private"],
+        },
+      } as never,
+      middlewareManager as never,
+      authMiddleware,
+    );
 
     expect(middlewareManager.globalExclude).toHaveBeenCalledWith("/auth");
     expect(mockToNodeHandler).toHaveBeenCalledWith(auth);
@@ -904,25 +856,12 @@ describe("AuthModule", () => {
     });
     expect(authProxy.disableGlobalExcludeRoutes).toHaveBeenCalledTimes(1);
     expect(authProxy.forRoutes).toHaveBeenCalledWith("/auth");
-    expect(middlewareManager.apply).toHaveBeenCalledWith(workspaceMiddleware);
     expect(middlewareManager.apply).toHaveBeenCalledWith(authMiddleware);
-    expect(middlewareManager.apply).toHaveBeenCalledWith(apiKeyMiddleware);
-    expect(middlewareManager.apply).toHaveBeenCalledWith(
-      workspaceMemberMiddleware,
-    );
     expect(middlewareProxy.dependencies).toHaveBeenCalledWith(
       RequestContextMiddleware,
     );
-    expect(middlewareProxy.before).toHaveBeenCalledWith(AuthMiddleware);
-    expect(middlewareProxy.after).toHaveBeenCalledWith(WorkspaceMiddleware);
-    expect(middlewareProxy.after).toHaveBeenCalledWith(
-      AuthMiddleware,
-      WorkspaceMiddleware,
-    );
-    expect(middlewareProxy.after).toHaveBeenCalledWith(
-      AuthMiddleware,
-      ApiKeyMiddleware,
-    );
+    expect(middlewareProxy.before).not.toHaveBeenCalled();
+    expect(middlewareProxy.after).not.toHaveBeenCalled();
     expect(middlewareProxy.exclude).toHaveBeenCalledWith("/public");
     expect(middlewareProxy.forRoutes).toHaveBeenCalledWith("/private");
   });

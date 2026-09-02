@@ -1,18 +1,13 @@
 import type { WorkspaceService } from '@nest-boot/auth';
 import type { Mocked } from 'vitest';
 
-vi.mock('@nest-boot/auth', () => ({
+vi.mock('@nest-boot/auth', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@nest-boot/auth')>()),
   BaseUser: class BaseUser {},
   Can: () => () => undefined,
   CurrentUser: () => () => undefined,
   CurrentWorkspace: () => () => undefined,
   CurrentWorkspaceMember: () => () => undefined,
-  PermissionAction: {
-    CREATE: 'create',
-    DELETE: 'delete',
-    READ: 'read',
-    UPDATE: 'update',
-  },
   WorkspaceService: class WorkspaceService {},
 }));
 

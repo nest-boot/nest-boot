@@ -1,5 +1,4 @@
-import { CurrentUser } from '@nest-boot/auth';
-import { Can, PermissionAction } from '@nest-boot/auth';
+import { Can, CurrentUser } from '@nest-boot/auth';
 import { Query, Resolver } from '@nest-boot/graphql';
 
 import { User } from './user.entity.js';
@@ -15,7 +14,7 @@ export class UserResolver {
    * @param user - 当前认证用户。
    * @returns 当前认证用户。
    */
-  @Can(PermissionAction.READ, User)
+  @Can('read', User, { scope: 'user' })
   @Query(() => User)
   currentUser(@CurrentUser() user: User) {
     return user;

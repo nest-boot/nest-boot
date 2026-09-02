@@ -1,12 +1,12 @@
-import { randomBytes, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 
 import {
   type EntityClass,
   EntityManager,
   type FilterQuery,
+  Reference,
   type RequiredEntityData,
 } from "@mikro-orm/core";
-import { CryptService } from "@nest-boot/crypt";
 import { RequestContext } from "@nest-boot/request-context";
 import {
   RowLevelSecurity,
@@ -25,10 +25,11 @@ import {
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
 import type {
-  AuthApiKeyEntity,
-  AuthWorkspaceEntity,
-  AuthWorkspaceMemberEntity,
-} from "./interfaces/auth-entities.interface.js";
+  BaseApiKey,
+  BaseUser,
+  BaseWorkspace,
+  BaseWorkspaceMember,
+} from "./entities/index.js";
 
 /** Input accepted when creating an API key. */
 export interface CreateApiKeyOptions {
@@ -36,53 +37,74 @@ export interface CreateApiKeyOptions {
   name: string;
   /** Optional expiration timestamp. */
   expiresAt?: Date | null;
-  /** Member to represent; defaults to the current workspace member. */
-  workspaceMemberId?: string;
+  /** Operations that this API key may perform. */
+  permissions?: string[] | null;
+  /** Plaintext prefix prepended to the generated key. */
+  prefix?: string;
+}
+
+/** Input accepted when updating an API key. */
+export interface UpdateApiKeyOptions {
+  /** Whether the key can authenticate requests. */
+  enabled?: boolean;
+  /** Optional expiration timestamp; `null` removes expiration. */
+  expiresAt?: Date | null;
+  /** API-key display name. */
+  name?: string;
+  /** Operations that this API key may perform. */
+  permissions?: string[] | null;
 }
 
 /** API-key creation result. The plaintext key is returned only once. */
-export interface CreatedApiKey<ApiKey extends AuthApiKeyEntity> {
+export interface CreatedApiKey<ApiKey extends BaseApiKey> {
   /** Persisted API-key entity. */
   entity: ApiKey;
   /** Plaintext API key. */
   apiKey: string;
 }
 
-/** Successful API-key authentication result. */
-export interface ApiKeyValidation<
-  ApiKey extends AuthApiKeyEntity,
-  Workspace extends AuthWorkspaceEntity,
-  WorkspaceMember extends AuthWorkspaceMemberEntity,
+/** Successful authentication for a user-owned API key. */
+export interface UserApiKeyValidation<
+  ApiKey extends BaseApiKey,
+  User extends BaseUser,
 > {
   /** Validated API-key entity. */
   apiKey: ApiKey;
+  /** Identifies the polymorphic owner branch. */
+  ownerType: "user";
+  /** User represented by the key. */
+  user: User;
+}
+
+/** Successful authentication for a workspace-owned API key. */
+export interface WorkspaceApiKeyValidation<
+  ApiKey extends BaseApiKey,
+  Workspace extends BaseWorkspace,
+> {
+  /** Validated API-key entity. */
+  apiKey: ApiKey;
+  /** Identifies the polymorphic owner branch. */
+  ownerType: "workspace";
   /** Workspace represented by the key. */
   workspace: Workspace;
-  /** Workspace member represented by the key. */
-  workspaceMember: WorkspaceMember;
 }
 
-interface ParsedApiKey {
-  keyId: string;
-  prefix: string;
-  secret: string;
-}
+/** Successful API-key authentication result. */
+export type ApiKeyValidation<
+  ApiKey extends BaseApiKey,
+  User extends BaseUser,
+  Workspace extends BaseWorkspace,
+> =
+  | UserApiKeyValidation<ApiKey, User>
+  | WorkspaceApiKeyValidation<ApiKey, Workspace>;
 
-interface ApiKeyValidationRow<
-  ApiKey extends AuthApiKeyEntity,
-  Workspace extends AuthWorkspaceEntity,
-  WorkspaceMember extends AuthWorkspaceMemberEntity,
-> extends ApiKeyValidation<ApiKey, Workspace, WorkspaceMember> {
-  expiresAt: Date | string | null;
-  memberStatus: AuthWorkspaceMemberEntity["status"];
-}
-
-/** Domain service for API-key lifecycle, access control, and authentication. */
+/** Domain service for user and workspace API-key lifecycle and authentication. */
 @Injectable()
 export class ApiKeyService<
-  ApiKey extends AuthApiKeyEntity = AuthApiKeyEntity,
-  Workspace extends AuthWorkspaceEntity = AuthWorkspaceEntity,
-  WorkspaceMember extends AuthWorkspaceMemberEntity = AuthWorkspaceMemberEntity,
+  ApiKey extends BaseApiKey = BaseApiKey,
+  User extends BaseUser = BaseUser,
+  Workspace extends BaseWorkspace = BaseWorkspace,
+  WorkspaceMember extends BaseWorkspaceMember = BaseWorkspaceMember,
 > {
   private readonly logger = new Logger(ApiKeyService.name);
 
@@ -90,151 +112,121 @@ export class ApiKeyService<
   constructor(
     /** MikroORM entity manager used for API-key persistence. */
     protected readonly em: EntityManager,
-    private readonly cryptService: CryptService,
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly authOptions: AuthModuleOptions,
   ) {}
 
-  private async findOne(where: FilterQuery<ApiKey>): Promise<ApiKey | null> {
-    return await this.em.findOne(this.apiKeyEntity, where);
+  /** Returns a user-owned API key when it belongs to the current user. */
+  async getUserApiKey(id: string, user: User): Promise<ApiKey | null> {
+    return await this.getOwnedApiKey(id, user);
   }
 
-  /** Returns an API key when the current member may access it. */
-  async getApiKey(
+  /** Returns a workspace-owned API key when the member may manage it. */
+  async getWorkspaceApiKey(
     id: string,
-    currentWorkspaceMember: WorkspaceMember,
+    member: WorkspaceMember,
   ): Promise<ApiKey | null> {
     const apiKey = await this.findOne({ id } as FilterQuery<ApiKey>);
-
     if (apiKey) {
-      await this.assertCanAccessApiKey(currentWorkspaceMember, apiKey);
+      this.assertCanManageWorkspaceApiKey(member, apiKey);
     }
-
     return apiKey;
   }
 
-  /** Builds the workspace-scoped filter used to list accessible API keys. */
-  getListFilter(
-    workspace: Workspace,
-    currentWorkspaceMember: WorkspaceMember,
-  ): FilterQuery<ApiKey> {
-    this.assertWorkspaceMembership(workspace, currentWorkspaceMember);
-
-    return (this.canManageWorkspaceApiKeys(currentWorkspaceMember)
-      ? { workspace }
-      : {
-          member: currentWorkspaceMember,
-          workspace,
-        }) as unknown as FilterQuery<ApiKey>;
+  /** Builds a filter for the current user's API keys. */
+  getUserListFilter(user: User): FilterQuery<ApiKey> {
+    return { owner: user } as unknown as FilterQuery<ApiKey>;
   }
 
-  /** Creates an API key for the current or an administratively selected member. */
-  async createKey(
+  /** Builds a filter for workspace keys manageable by the current member. */
+  getWorkspaceListFilter(
     workspace: Workspace,
-    currentWorkspaceMember: WorkspaceMember,
+    member: WorkspaceMember,
+  ): FilterQuery<ApiKey> {
+    this.assertWorkspaceMembership(workspace, member);
+    this.assertCanManageWorkspaceApiKeys(member);
+    return { owner: workspace } as unknown as FilterQuery<ApiKey>;
+  }
+
+  /** Creates an API key owned by a user. */
+  async createUserKey(
+    user: User,
     options: CreateApiKeyOptions,
   ): Promise<CreatedApiKey<ApiKey>> {
-    this.assertWorkspaceMembership(workspace, currentWorkspaceMember);
+    return await this.createKey(user, options);
+  }
 
-    const member = await this.resolveTargetMember(
-      workspace,
-      currentWorkspaceMember,
-      options.workspaceMemberId,
-    );
-
+  /** Creates an API key owned by a workspace. */
+  async createWorkspaceKey(
+    workspace: Workspace,
+    member: WorkspaceMember,
+    options: CreateApiKeyOptions,
+  ): Promise<CreatedApiKey<ApiKey>> {
+    this.assertWorkspaceMembership(workspace, member);
+    this.assertCanManageWorkspaceApiKeys(member);
     if (member.status !== "ACTIVE") {
       throw new BadRequestException(
         "Cannot create API key for inactive member",
       );
     }
-
-    if (options.expiresAt && options.expiresAt <= new Date()) {
-      throw new BadRequestException("API key expiration must be in the future");
-    }
-
-    const keyPrefix = process.env.API_KEY_PREFIX ?? "sk-";
-    const keyId = randomBytes(8).toString("hex");
-    const secret = randomBytes(8).toString("hex");
-    const plaintextApiKey = `${keyPrefix}${keyId}${secret}`;
-    const encryptedSecret = await this.cryptService.encrypt(secret);
-    const entity = this.em.create(this.apiKeyEntity, {
-      encryptedSecret,
-      expiresAt: options.expiresAt ?? null,
-      keyId,
-      keyPrefix,
-      member,
-      name: options.name,
-      workspace,
-    } as RequiredEntityData<ApiKey>);
-
-    await this.em.persist(entity).flush();
-    this.logger.log("API key created", {
-      apiKeyId: entity.id,
-      workspaceMemberId: member.id,
-    });
-
-    return { apiKey: plaintextApiKey, entity };
+    return await this.createKey(workspace, options);
   }
 
-  /** Updates an accessible API key. */
-  async updateKey(
+  /** Updates an API key owned by the current user. */
+  async updateUserKey(
     id: string,
-    currentWorkspaceMember: WorkspaceMember,
-    input: { name?: string },
+    user: User,
+    input: UpdateApiKeyOptions,
   ): Promise<ApiKey> {
-    const apiKey = await this.findAccessibleApiKey(id, currentWorkspaceMember);
-
-    if (input.name !== undefined) {
-      apiKey.name = input.name;
-    }
-
-    await this.em.flush();
-    return apiKey;
+    return await this.updateKey(await this.findOwnedApiKey(id, user), input);
   }
 
-  /** Deletes an accessible API key. */
-  async deleteKey(
+  /** Updates a workspace API key manageable by the current member. */
+  async updateWorkspaceKey(
     id: string,
-    currentWorkspaceMember: WorkspaceMember,
+    member: WorkspaceMember,
+    input: UpdateApiKeyOptions,
   ): Promise<ApiKey> {
-    const apiKey = await this.findAccessibleApiKey(id, currentWorkspaceMember);
-
-    this.em.remove(apiKey);
-    await this.em.flush();
-    return apiKey;
+    return await this.updateKey(
+      await this.findManageableWorkspaceApiKey(id, member),
+      input,
+    );
   }
 
-  /** Validates a plaintext API key and resolves its workspace identity. */
+  /** Deletes an API key owned by the current user. */
+  async deleteUserKey(id: string, user: User): Promise<ApiKey> {
+    return await this.deleteKey(await this.findOwnedApiKey(id, user));
+  }
+
+  /** Deletes a workspace API key manageable by the current member. */
+  async deleteWorkspaceKey(
+    id: string,
+    member: WorkspaceMember,
+  ): Promise<ApiKey> {
+    return await this.deleteKey(
+      await this.findManageableWorkspaceApiKey(id, member),
+    );
+  }
+
+  /** Validates a plaintext API key and resolves its polymorphic owner. */
   async validate(
     apiKey: string,
-  ): Promise<ApiKeyValidation<ApiKey, Workspace, WorkspaceMember>> {
+  ): Promise<ApiKeyValidation<ApiKey, User, Workspace>> {
     if (!apiKey) {
       throw new UnauthorizedException("Missing API key");
     }
 
-    const parsedApiKey = this.parseApiKey(apiKey);
-    if (!parsedApiKey) {
-      throw new UnauthorizedException("Invalid API key");
-    }
-
-    const row = await this.findValidationRow(parsedApiKey);
+    const row = await this.findValidationRow(apiKey);
     if (!row) {
       throw new UnauthorizedException("Invalid API key");
     }
-
-    if (row.expiresAt && new Date(row.expiresAt) <= new Date()) {
+    if (!row.apiKey.enabled) {
+      throw new UnauthorizedException("API key is disabled");
+    }
+    if (row.apiKey.expiresAt && new Date(row.apiKey.expiresAt) <= new Date()) {
       throw new UnauthorizedException("API key has expired");
     }
-
-    if (row.memberStatus !== "ACTIVE") {
-      throw new UnauthorizedException("Workspace member is not active");
-    }
-
-    return {
-      apiKey: row.apiKey,
-      workspace: row.workspace,
-      workspaceMember: row.workspaceMember,
-    };
+    return row;
   }
 
   /** Records the last successful use of an API key. */
@@ -242,60 +234,137 @@ export class ApiKeyService<
     const now = new Date();
     apiKey.lastUsedAt = now;
     apiKey.updatedAt = now;
-    await this.em.flush();
+    await this.runUnrestricted(() => this.em.flush());
     return apiKey;
   }
 
-  private async resolveTargetMember(
-    workspace: Workspace,
-    currentWorkspaceMember: WorkspaceMember,
-    workspaceMemberId?: string,
-  ): Promise<WorkspaceMember> {
-    if (!workspaceMemberId || workspaceMemberId === currentWorkspaceMember.id) {
-      return currentWorkspaceMember;
-    }
-
-    if (!this.canManageWorkspaceApiKeys(currentWorkspaceMember)) {
-      throw new ForbiddenException(
-        "You are not allowed to create API keys for other members",
-      );
-    }
-
-    const member = await this.em.findOne(this.workspaceMemberEntity, {
-      id: workspaceMemberId,
-      workspace,
-    } as FilterQuery<WorkspaceMember>);
-
-    if (!member) {
-      throw new NotFoundException("Workspace member not found");
-    }
-
-    return member;
+  /** Runs a service-authorized API-key persistence operation without RLS. */
+  async runUnrestricted<T>(callback: () => Promise<T>): Promise<T> {
+    const run = () => {
+      RowLevelSecurity.setMode(RowLevelSecurityMode.DISABLED);
+      return callback();
+    };
+    if (RequestContext.isActive()) return await RequestContext.child(run);
+    return await RequestContext.run(
+      new RequestContext({ type: "api-key-persistence" }),
+      run,
+    );
   }
 
-  private async findAccessibleApiKey(
+  private async findOne(where: FilterQuery<ApiKey>): Promise<ApiKey | null> {
+    return await this.runUnrestricted(
+      async () =>
+        await this.em.findOne(this.apiKeyEntity, where, {
+          populate: ["owner"] as never,
+        }),
+    );
+  }
+
+  private async createKey(
+    owner: User | Workspace,
+    options: CreateApiKeyOptions,
+  ): Promise<CreatedApiKey<ApiKey>> {
+    if (options.expiresAt && options.expiresAt <= new Date()) {
+      throw new BadRequestException("API key expiration must be in the future");
+    }
+    const prefix = options.prefix ?? process.env.API_KEY_PREFIX ?? "sk-";
+    this.assertValidPrefix(prefix);
+    this.assertValidPermissions(options.permissions);
+
+    const plaintextApiKey = `${prefix}${randomBytes(48).toString("base64url")}`;
+    const entity = this.em.create(this.apiKeyEntity, {
+      enabled: true,
+      expiresAt: options.expiresAt ?? null,
+      key: this.hashApiKey(plaintextApiKey),
+      name: options.name,
+      owner,
+      permissions: options.permissions ?? [],
+      prefix,
+      start: plaintextApiKey.slice(0, 8),
+    } as RequiredEntityData<ApiKey>);
+
+    await this.runUnrestricted(() => this.em.persist(entity).flush());
+    this.logger.log("API key created", {
+      apiKeyId: entity.id,
+      ownerId: owner.id,
+      ownerType: this.getOwnerType(owner),
+    });
+    return { apiKey: plaintextApiKey, entity };
+  }
+
+  private async updateKey(
+    apiKey: ApiKey,
+    input: UpdateApiKeyOptions,
+  ): Promise<ApiKey> {
+    if (input.expiresAt && input.expiresAt <= new Date()) {
+      throw new BadRequestException("API key expiration must be in the future");
+    }
+    this.assertValidPermissions(input.permissions);
+    if (input.name !== undefined) apiKey.name = input.name;
+    if (input.enabled !== undefined) apiKey.enabled = input.enabled;
+    if (input.expiresAt !== undefined) apiKey.expiresAt = input.expiresAt;
+    if (input.permissions !== undefined) {
+      apiKey.permissions = input.permissions ?? [];
+    }
+    await this.runUnrestricted(() => this.em.flush());
+    return apiKey;
+  }
+
+  private async deleteKey(apiKey: ApiKey): Promise<ApiKey> {
+    this.em.remove(apiKey);
+    await this.runUnrestricted(() => this.em.flush());
+    return apiKey;
+  }
+
+  private async getOwnedApiKey(
     id: string,
-    currentWorkspaceMember: WorkspaceMember,
+    owner: User | Workspace,
+  ): Promise<ApiKey | null> {
+    const apiKey = await this.findOne({ id } as FilterQuery<ApiKey>);
+    if (apiKey) this.assertOwner(apiKey, owner);
+    return apiKey;
+  }
+
+  private async findOwnedApiKey(
+    id: string,
+    owner: User | Workspace,
+  ): Promise<ApiKey> {
+    const apiKey = await this.getOwnedApiKey(id, owner);
+    if (!apiKey) throw new NotFoundException("API key not found");
+    return apiKey;
+  }
+
+  private async findManageableWorkspaceApiKey(
+    id: string,
+    member: WorkspaceMember,
   ): Promise<ApiKey> {
     const apiKey = await this.findOne({ id } as FilterQuery<ApiKey>);
-    if (!apiKey) {
-      throw new NotFoundException("API key not found");
-    }
-
-    await this.assertCanAccessApiKey(currentWorkspaceMember, apiKey);
+    if (!apiKey) throw new NotFoundException("API key not found");
+    this.assertCanManageWorkspaceApiKey(member, apiKey);
     return apiKey;
   }
 
-  private async assertCanAccessApiKey(
-    currentWorkspaceMember: WorkspaceMember,
+  private assertCanManageWorkspaceApiKey(
+    member: WorkspaceMember,
     apiKey: ApiKey,
-  ): Promise<void> {
-    const member = (await apiKey.member.loadOrFail()) as WorkspaceMember;
-
+  ): void {
+    const owner = this.unwrapOwner(apiKey);
     if (
-      apiKey.workspace.id !== currentWorkspaceMember.workspace.id ||
-      (member.id !== currentWorkspaceMember.id &&
-        !this.canManageWorkspaceApiKeys(currentWorkspaceMember))
+      !(owner instanceof this.workspaceEntity) ||
+      owner.id !== Reference.unwrapReference(member.workspace).id
+    ) {
+      throw new ForbiddenException(
+        "You are not allowed to access this API key",
+      );
+    }
+    this.assertCanManageWorkspaceApiKeys(member);
+  }
+
+  private assertOwner(apiKey: ApiKey, expectedOwner: User | Workspace): void {
+    const owner = this.unwrapOwner(apiKey);
+    if (
+      this.getOwnerType(owner) !== this.getOwnerType(expectedOwner) ||
+      owner.id !== expectedOwner.id
     ) {
       throw new ForbiddenException(
         "You are not allowed to access this API key",
@@ -303,124 +372,93 @@ export class ApiKeyService<
     }
   }
 
-  private canManageWorkspaceApiKeys(member: WorkspaceMember): boolean {
-    return member.role === "ADMIN" || member.role === "OWNER";
+  private assertCanManageWorkspaceApiKeys(member: WorkspaceMember): void {
+    if (member.role !== "OWNER") {
+      throw new ForbiddenException(
+        "You are not allowed to manage workspace API keys",
+      );
+    }
   }
 
   private assertWorkspaceMembership(
     workspace: Workspace,
     member: WorkspaceMember,
   ): void {
-    if (member.workspace.id !== workspace.id) {
+    if (Reference.unwrapReference(member.workspace).id !== workspace.id) {
       throw new ForbiddenException(
         "Workspace member does not belong to this workspace",
       );
     }
   }
 
-  private parseApiKey(apiKey: string): ParsedApiKey | null {
-    const suffix = apiKey.slice(-32);
-    if (!/^[0-9a-f]{32}$/.test(suffix)) {
-      return null;
-    }
-
-    return {
-      keyId: suffix.slice(0, 16),
-      prefix: apiKey.slice(0, -32),
-      secret: suffix.slice(16),
-    };
-  }
-
   private async findValidationRow(
-    parsedApiKey: ParsedApiKey,
-  ): Promise<ApiKeyValidationRow<ApiKey, Workspace, WorkspaceMember> | null> {
-    return await this.withRlsDisabled(async () => {
+    plaintextApiKey: string,
+  ): Promise<ApiKeyValidation<ApiKey, User, Workspace> | null> {
+    return await this.runUnrestricted(async () => {
       const entity = await this.findOne({
-        keyId: parsedApiKey.keyId,
+        key: this.hashApiKey(plaintextApiKey),
       } as FilterQuery<ApiKey>);
-      if (!entity) {
-        return null;
-      }
+      if (!entity) return null;
 
-      if (entity.keyPrefix !== parsedApiKey.prefix) {
-        return null;
+      const owner = this.unwrapOwner(entity);
+      const ownerType = this.getOwnerType(owner);
+      if (ownerType === "user") {
+        return { apiKey: entity, ownerType, user: owner as User };
       }
-
-      let secret: string;
-      try {
-        secret = await this.cryptService.decrypt(entity.encryptedSecret);
-      } catch {
-        return null;
-      }
-      if (!this.secretsEqual(secret, parsedApiKey.secret)) {
-        return null;
-      }
-
-      const workspaceMember = await this.em.findOne(
-        this.workspaceMemberEntity,
-        {
-          id: entity.member.id,
-          workspace: { id: entity.workspace.id },
-        } as FilterQuery<WorkspaceMember>,
-      );
-      if (!workspaceMember) {
-        return null;
-      }
-
-      const workspace = await this.em.findOne(this.workspaceEntity, {
-        deletedAt: null,
-        id: entity.workspace.id,
-      } as FilterQuery<Workspace>);
-      if (!workspace) {
-        return null;
-      }
-
-      return {
-        apiKey: entity,
-        expiresAt: entity.expiresAt ?? null,
-        memberStatus: workspaceMember.status,
-        workspace,
-        workspaceMember,
-      };
+      if ((owner as Workspace).deletedAt) return null;
+      return { apiKey: entity, ownerType, workspace: owner as Workspace };
     });
   }
 
-  private secretsEqual(actual: string, expected: string): boolean {
-    const actualBuffer = Buffer.from(actual);
-    const expectedBuffer = Buffer.from(expected);
+  private getOwnerType(owner: User | Workspace): "user" | "workspace" {
+    if (owner instanceof this.userEntity) return "user";
+    if (owner instanceof this.workspaceEntity) return "workspace";
+    throw new TypeError("Unsupported API key owner type");
+  }
 
-    return (
-      actualBuffer.length === expectedBuffer.length &&
-      timingSafeEqual(actualBuffer, expectedBuffer)
-    );
+  private unwrapOwner(apiKey: ApiKey): User | Workspace {
+    return Reference.unwrapReference(apiKey.owner as never) as unknown as
+      | User
+      | Workspace;
+  }
+
+  private hashApiKey(apiKey: string): string {
+    return createHash("sha256").update(apiKey).digest("base64url");
+  }
+
+  private assertValidPrefix(prefix: string): void {
+    if (prefix.length < 1 || prefix.length > 32) {
+      throw new BadRequestException(
+        "API key prefix must contain between 1 and 32 characters",
+      );
+    }
+  }
+
+  private assertValidPermissions(
+    permissions: string[] | null | undefined,
+  ): void {
+    if (permissions == null) return;
+    const isValid =
+      Array.isArray(permissions) &&
+      permissions.every(
+        (permission) => typeof permission === "string" && permission.length > 0,
+      );
+    if (!isValid) {
+      throw new BadRequestException(
+        "API key permissions must contain non-empty strings",
+      );
+    }
   }
 
   private get apiKeyEntity(): EntityClass<ApiKey> {
     return this.authOptions.entities.apiKey as EntityClass<ApiKey>;
   }
 
+  private get userEntity(): EntityClass<User> {
+    return this.authOptions.entities.user as EntityClass<User>;
+  }
+
   private get workspaceEntity(): EntityClass<Workspace> {
     return this.authOptions.entities.workspace as EntityClass<Workspace>;
-  }
-
-  private get workspaceMemberEntity(): EntityClass<WorkspaceMember> {
-    return this.authOptions.entities
-      .workspaceMember as EntityClass<WorkspaceMember>;
-  }
-
-  private async withRlsDisabled<T>(callback: () => Promise<T>): Promise<T> {
-    const run = () => {
-      RowLevelSecurity.setMode(RowLevelSecurityMode.DISABLED);
-      return callback();
-    };
-
-    if (RequestContext.isActive()) {
-      return await RequestContext.child(run);
-    }
-
-    return await RequestContext.run(
-      new RequestContext({ type: "api-key-validation" }),
-      run,
-    );
   }
 }

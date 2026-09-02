@@ -1,14 +1,17 @@
+import '../../auth/enums/auth-permission.enum.js';
+
 import { Field, InputType } from '@nest-boot/graphql';
 import {
+  IsArray,
   IsEmail,
+  IsEnum,
   IsIn,
-  IsObject,
   IsOptional,
   IsString,
   MaxLength,
 } from 'class-validator';
-import { GraphQLJSONObject } from 'graphql-type-json';
 
+import { WorkspacePermission } from '../../auth/enums/workspace-permission.enum.js';
 import { WorkspaceMemberRole } from '../enums/workspace-member-role.enum.js';
 import { WorkspaceMemberStatus } from '../enums/workspace-member-status.enum.js';
 
@@ -36,11 +39,12 @@ export class UpdateWorkspaceMemberInput {
   @Field(() => WorkspaceMemberRole, { nullable: true })
   role?: WorkspaceMemberRole;
 
-  /** 按资源和操作分组的成员权限。 */
+  /** 额外授予成员的工作区域权限。 */
   @IsOptional()
-  @IsObject()
-  @Field(() => GraphQLJSONObject, { nullable: true })
-  permissions?: Record<string, string[]>;
+  @IsArray()
+  @IsEnum(WorkspacePermission, { each: true })
+  @Field(() => [WorkspacePermission], { nullable: true })
+  permissions?: WorkspacePermission[];
 
   /** 成员状态。 */
   @IsOptional()

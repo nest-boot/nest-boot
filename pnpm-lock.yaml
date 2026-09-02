@@ -601,9 +601,6 @@ importers:
       '@mikro-orm/decorators':
         specifier: 7.1.14
         version: 7.1.14
-      '@nest-boot/crypt':
-        specifier: workspace:^
-        version: link:../crypt
       '@nest-boot/eslint-config':
         specifier: workspace:^
         version: link:../eslint-config

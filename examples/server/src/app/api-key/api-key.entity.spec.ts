@@ -1,39 +1,33 @@
-vi.mock('@nest-boot/auth', () => ({
+vi.mock('@nest-boot/auth', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@nest-boot/auth')>()),
   BaseUser: class BaseUser {},
 }));
 
-import {
-  getPolicyDefinitions,
-  PolicyCommand,
-} from '@nest-boot/row-level-security';
+import { BaseApiKey } from '@nest-boot/auth';
+import { getPolicyDefinitions } from '@nest-boot/row-level-security';
 
 import { ApiKey } from './api-key.entity.js';
 
 describe('ApiKey', () => {
-  it('uses a simple workspace row-level security policy', () => {
+  it('extends the auth API-key base entity', () => {
+    expect(new ApiKey()).toBeInstanceOf(BaseApiKey);
+  });
+
+  it('uses Better Auth compatible defaults for optional API-key fields', () => {
+    const apiKey = new ApiKey();
+
+    expect(apiKey.enabled).toBe(true);
+    expect(apiKey.permissions).toEqual([]);
+  });
+
+  it('uses service authorization for its polymorphic owner', () => {
     const policies = getPolicyDefinitions(ApiKey, {
       entityName: 'ApiKey',
       schemaName: 'public',
       tableName: 'api_key',
-      properties: {
-        workspace: {
-          fieldNames: ['workspace_id'],
-          columnTypes: ['bigint'],
-        },
-      },
+      properties: {},
     });
 
-    expect(policies).toHaveLength(1);
-    expect(policies).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          name: 'api_key_workspace_all_authenticated_policy',
-          command: PolicyCommand.ALL,
-          roles: ['authenticated'],
-          using: expect.stringContaining('workspace_id'),
-          withCheck: expect.stringContaining('workspace_id'),
-        }),
-      ]),
-    );
+    expect(policies).toEqual([]);
   });
 });

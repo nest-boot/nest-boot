@@ -1,10 +1,5 @@
 import { CurrentUser } from '@nest-boot/auth';
-import {
-  Can,
-  CurrentWorkspace,
-  CurrentWorkspaceMember,
-  PermissionAction,
-} from '@nest-boot/auth';
+import { Can, CurrentWorkspace, CurrentWorkspaceMember } from '@nest-boot/auth';
 import {
   Args,
   ID,
@@ -31,6 +26,7 @@ import { CreateServiceAccountWorkspaceMemberInput } from './inputs/create-servic
 import { CreateWorkspaceInviteInput } from './inputs/create-workspace-invite.input.js';
 import { UpdateWorkspaceMemberInput } from './inputs/update-workspace-member.input.js';
 import { AcceptWorkspaceInviteResult } from './types/accept-workspace-invite-result.type.js';
+import { WorkspaceInvitation } from './workspace-invitation.js';
 import {
   WorkspaceMemberConnection,
   WorkspaceMemberConnectionArgs,
@@ -63,7 +59,7 @@ export class WorkspaceMemberResolver {
    * @param workspaceMember - 当前请求上下文中的工作区成员。
    * @returns 当前工作区成员；请求未解析出成员时返回 null。
    */
-  @Can(PermissionAction.READ, WorkspaceMember)
+  @Can('read', WorkspaceMember)
   @Query(() => WorkspaceMember, { nullable: true })
   currentWorkspaceMember(
     @CurrentWorkspaceMember() workspaceMember?: WorkspaceMember,
@@ -77,7 +73,7 @@ export class WorkspaceMemberResolver {
    * @param id - 工作区成员 ID。
    * @returns 匹配的工作区成员，不存在时返回 null。
    */
-  @Can(PermissionAction.READ, WorkspaceMember)
+  @Can('read', WorkspaceMember)
   @Query(() => WorkspaceMember, { nullable: true })
   async workspaceMember(
     @Args('id', { type: () => ID }) id: string,
@@ -93,7 +89,7 @@ export class WorkspaceMemberResolver {
    * @param workspaceMember - 当前请求中的工作区成员。
    * @returns 工作区成员分页结果。
    */
-  @Can(PermissionAction.READ, WorkspaceMember)
+  @Can('read', WorkspaceMember)
   @Query(() => WorkspaceMemberConnection)
   async workspaceMembers(
     @Args() args: WorkspaceMemberConnectionArgs,
@@ -121,7 +117,7 @@ export class WorkspaceMemberResolver {
    * @param token - 工作区邀请令牌。
    * @returns 匹配的邀请成员。
    */
-  @Can(PermissionAction.READ, WorkspaceMember)
+  @Can('read', WorkspaceMember, { scope: 'user' })
   @Query(() => WorkspaceMember, { nullable: true })
   async workspaceMemberByToken(
     @Args('token', { type: () => String }) token: string,
@@ -147,7 +143,7 @@ export class WorkspaceMemberResolver {
    * @param input - 添加成员输入参数。
    * @returns 新创建的工作区成员。
    */
-  @Can(PermissionAction.CREATE, WorkspaceMember)
+  @Can('create', WorkspaceMember)
   @Mutation(() => WorkspaceMember)
   async addWorkspaceMember(
     @CurrentWorkspace() workspace: Workspace,
@@ -195,7 +191,7 @@ export class WorkspaceMemberResolver {
    * @param input - 服务账号创建参数。
    * @returns 新创建的服务账号成员。
    */
-  @Can(PermissionAction.CREATE, WorkspaceMember)
+  @Can('create', WorkspaceMember)
   @Mutation(() => WorkspaceMember)
   async createServiceAccountWorkspaceMember(
     @CurrentWorkspace() workspace: Workspace,
@@ -226,7 +222,7 @@ export class WorkspaceMemberResolver {
    * @param input - 成员更新参数。
    * @returns 更新后的工作区成员。
    */
-  @Can(PermissionAction.UPDATE, WorkspaceMember)
+  @Can('update', WorkspaceMember)
   @Mutation(() => WorkspaceMember, { nullable: true })
   async updateWorkspaceMember(
     @CurrentWorkspaceMember() currentWorkspaceMember: WorkspaceMember,
@@ -265,7 +261,7 @@ export class WorkspaceMemberResolver {
    * @param id - 待移除的工作区成员 ID。
    * @returns 被移除的工作区成员。
    */
-  @Can(PermissionAction.DELETE, WorkspaceMember)
+  @Can('delete', WorkspaceMember)
   @Mutation(() => WorkspaceMember)
   async removeWorkspaceMember(
     @CurrentWorkspaceMember() workspaceMember: WorkspaceMember,
@@ -292,7 +288,7 @@ export class WorkspaceMemberResolver {
    * @param input - 工作区邀请创建参数。
    * @returns 待接受邀请的工作区成员。
    */
-  @Can(PermissionAction.CREATE, WorkspaceMember)
+  @Can('create', WorkspaceInvitation)
   @Mutation(() => WorkspaceMember)
   async createWorkspaceInvite(
     @CurrentWorkspace() currentWorkspace: Workspace,
@@ -323,7 +319,9 @@ export class WorkspaceMemberResolver {
    * @param currentUser - 当前登录用户。
    * @returns 接受邀请后的成员和工作区信息。
    */
-  @Can(PermissionAction.UPDATE, WorkspaceMember)
+  @Can('update', WorkspaceMember, {
+    scope: 'user',
+  })
   @Mutation(() => AcceptWorkspaceInviteResult)
   async acceptWorkspaceInvite(
     @Args('token', { type: () => String }) token: string,
@@ -351,7 +349,7 @@ export class WorkspaceMemberResolver {
    * @param workspaceMember - 父级工作区成员。
    * @returns 绑定用户，不存在时返回 null。
    */
-  @Can(PermissionAction.READ, User)
+  @Can('read', User)
   @ResolveField(() => User, { nullable: true })
   async user(@Parent() workspaceMember: WorkspaceMember): Promise<User | null> {
     if (!workspaceMember.user || !workspaceMember.user.id) {
@@ -367,7 +365,7 @@ export class WorkspaceMemberResolver {
    * @param workspaceMember - 父级工作区成员。
    * @returns 邀请者用户，不存在或名称不可用时返回 null。
    */
-  @Can(PermissionAction.READ, User)
+  @Can('read', User)
   @ResolveField(() => User, { nullable: true })
   async invitedBy(
     @Parent() workspaceMember: WorkspaceMember,

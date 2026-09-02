@@ -398,7 +398,7 @@ describe("RowLevelSecurityMigrationGenerator", () => {
     expect(file).not.toContain("workspace_member_user_select_policy");
   });
 
-  it("does not recreate unchanged generated policies with legacy PostgreSQL-truncated names", async () => {
+  it("recreates legacy policies that do not guard empty context settings", async () => {
     const execute = vi.fn((_sql: string) =>
       Promise.resolve([
         {
@@ -443,10 +443,13 @@ describe("RowLevelSecurityMigrationGenerator", () => {
     expect(file).toContain(
       'alter table "workspace_member_group_member" add column "display_name" text null;',
     );
-    expect(file).toContain("extends Migration");
-    expect(file).not.toContain(LONG_GENERATED_POLICY_NAME_POSTGRES_TRUNCATED);
+    expect(file).toContain("extends RowLevelSecurityMigration");
+    expect(file).toContain(LONG_GENERATED_POLICY_NAME_POSTGRES_TRUNCATED);
     expect(file).not.toContain(LONG_GENERATED_POLICY_NAME);
-    expect(file).not.toContain(LONG_GENERATED_POLICY_NAME_SHORTENED);
+    expect(file).toContain(LONG_GENERATED_POLICY_NAME_SHORTENED);
+    expect(file).toContain(
+      "nullif(current_setting('app.workspace_id', true), '')::bigint",
+    );
   });
 
   it.each([
@@ -1035,7 +1038,7 @@ describe("RowLevelSecurityMigrationGenerator", () => {
     });
 
     expect(file).toContain(
-      'this.addSql(`create policy workspace_member_user_select_policy on "public"."workspace_member" as permissive for select using ((select current_setting(\'app.user_id\', true)::bigint) = user_id);`);',
+      "this.addSql(`create policy workspace_member_user_select_policy on \"public\".\"workspace_member\" as permissive for select using ((select nullif(current_setting('app.user_id', true), '')::bigint) = user_id);`);",
     );
   });
 
@@ -1115,7 +1118,7 @@ describe("RowLevelSecurityMigrationGenerator", () => {
     });
 
     expect(file).toContain(
-      "current_setting('app.workspace_id', true)::integer",
+      "nullif(current_setting('app.workspace_id', true), '')::integer",
     );
   });
 
@@ -1139,7 +1142,7 @@ describe("RowLevelSecurityMigrationGenerator", () => {
     });
 
     expect(file).toContain(
-      `using ((select current_setting('app.workspace_id', true)::integer) = "between")`,
+      `using ((select nullif(current_setting('app.workspace_id', true), '')::integer) = "between")`,
     );
   });
 
@@ -1299,7 +1302,7 @@ describe("RowLevelSecurityMigrator", () => {
         "drop policy if exists workspace_member_workspace_select_policy",
       );
       expect(result.code).toContain(
-        "current_setting('app.workspace_id', true)::bigint",
+        "nullif(current_setting('app.workspace_id', true), '')::bigint",
       );
       expect(result.code).toContain(
         "current_setting('app.tenant_id'::text, true)::bigint",

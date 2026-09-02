@@ -13,11 +13,11 @@ import { ForbiddenException, Inject, Injectable } from "@nestjs/common";
 
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
-import type { BaseUser } from "./entities/user.entity.js";
 import type {
-  AuthWorkspaceEntity,
-  AuthWorkspaceMemberEntity,
-} from "./interfaces/auth-entities.interface.js";
+  BaseUser,
+  BaseWorkspace,
+  BaseWorkspaceMember,
+} from "./entities/index.js";
 
 /** Input accepted when creating a workspace. */
 export interface CreateWorkspaceOptions {
@@ -34,8 +34,8 @@ export interface UpdateWorkspaceOptions {
 /** Domain service for workspace lifecycle operations. */
 @Injectable()
 export class WorkspaceService<
-  Workspace extends AuthWorkspaceEntity = AuthWorkspaceEntity,
-  WorkspaceMember extends AuthWorkspaceMemberEntity = AuthWorkspaceMemberEntity,
+  Workspace extends BaseWorkspace = BaseWorkspace,
+  WorkspaceMember extends BaseWorkspaceMember = BaseWorkspaceMember,
   User extends BaseUser = BaseUser,
 > {
   /** Creates a workspace domain service. */

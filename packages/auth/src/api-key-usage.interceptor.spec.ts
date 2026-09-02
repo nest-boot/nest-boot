@@ -7,13 +7,13 @@ import type { Mocked } from "vitest";
 import type { ApiKeyService } from "./api-key.service.js";
 import { ApiKeyUsageInterceptor } from "./api-key-usage.interceptor.js";
 import { CURRENT_API_KEY } from "./auth.constants.js";
-import type { AuthApiKeyEntity } from "./interfaces/auth-entities.interface.js";
+import type { BaseApiKey } from "./entities/index.js";
 
 describe("ApiKeyUsageInterceptor", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it("records usage only after a successful API-key request", async () => {
-    const apiKey = { id: "api-key-1" } as AuthApiKeyEntity;
+    const apiKey = { id: "api-key-1" } as BaseApiKey;
     const service = {
       recordUsage: vi.fn(() => Promise.resolve(apiKey)),
     } as unknown as Mocked<ApiKeyService>;

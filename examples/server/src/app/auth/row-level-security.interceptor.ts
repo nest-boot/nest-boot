@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 
+import { ApiKey } from '../api-key/api-key.entity.js';
 import { User } from '../user/user.entity.js';
 import { Workspace } from '../workspace/workspace.entity.js';
 import { WorkspaceMember } from '../workspace-member/workspace-member.entity.js';
@@ -30,6 +31,7 @@ export class RowLevelSecurityInterceptor implements NestInterceptor {
   ): Observable<unknown> {
     if (RequestContext.isActive()) {
       const user = RequestContext.get(User);
+      const apiKey = RequestContext.get(ApiKey);
       const workspace = RequestContext.get(Workspace);
       const workspaceMember = RequestContext.get(WorkspaceMember);
 
@@ -41,7 +43,7 @@ export class RowLevelSecurityInterceptor implements NestInterceptor {
         RowLevelSecurity.setContext('workspace_id', workspace.id);
       }
 
-      if (user || workspaceMember) {
+      if (user || workspaceMember || apiKey) {
         RowLevelSecurity.setRole('authenticated');
       }
     }

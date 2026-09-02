@@ -8,8 +8,6 @@
   "excludeExternals": true,
   "excludePrivate": true,
   "intentionallyNotDocumented": [
-    "app/api-key/api-key.entity.ApiKey.workspace.__type.id",
-    "app/api-key/api-key.entity.ApiKey.member.__type.id",
     "app/workspace-member/workspace-member.entity.WorkspaceMember.invitedBy.__type.id",
     "app/workspace-member/workspace-member.entity.WorkspaceMember.user.__type.id",
     "app/workspace-member/workspace-member.entity.WorkspaceMember.workspace.__type.id"

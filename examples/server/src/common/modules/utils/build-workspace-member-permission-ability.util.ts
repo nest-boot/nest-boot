@@ -1,86 +1,91 @@
-import { PermissionAbilityBuilder, PermissionAction } from '@nest-boot/auth';
-import { RequestContext } from '@nest-boot/request-context';
+import { PermissionAbilityBuilder } from '@nest-boot/auth';
 
 import { ApiKey } from '../../../app/api-key/api-key.entity.js';
+import { Session } from '../../../app/auth/entities/session.entity.js';
+import { WorkspacePermission } from '../../../app/auth/enums/workspace-permission.enum.js';
+import type { AuthPermission } from '../../../app/auth/types/auth-permission.type.js';
 import { User } from '../../../app/user/user.entity.js';
 import { Workspace } from '../../../app/workspace/workspace.entity.js';
 import { WorkspaceMemberRole } from '../../../app/workspace-member/enums/workspace-member-role.enum.js';
 import { WorkspaceMemberStatus } from '../../../app/workspace-member/enums/workspace-member-status.enum.js';
+import { WorkspaceInvitation } from '../../../app/workspace-member/workspace-invitation.js';
 import { WorkspaceMember } from '../../../app/workspace-member/workspace-member.entity.js';
 
-/**
- * 基于当前工作区成员角色和有效权限构建 CASL 权限能力。
- *
- * @param permissions - 当前工作区成员按资源和操作分组的有效权限。
- * @returns 可用于权限守卫判断的能力对象。
- */
-export function buildWorkspaceMemberPermissionAbility(
-  permissions: Record<string, string[]>,
-) {
-  const workspaceMember = RequestContext.get(WorkspaceMember);
-  const { can, cannot, build } = new PermissionAbilityBuilder();
+/** Builds permissions that belong to an authenticated user. */
+export function buildUserPermissionAbility(permissions: AuthPermission[]) {
+  const { can, build } = new PermissionAbilityBuilder();
 
-  can(PermissionAction.READ, User);
-  can(PermissionAction.READ, Workspace);
-  can(PermissionAction.READ, WorkspaceMember);
-  can(PermissionAction.CREATE, Workspace);
-  can(PermissionAction.UPDATE, WorkspaceMember);
+  can('read', User);
+  can('read', Workspace);
+  can('create', Workspace);
+  can(['read', 'update'], WorkspaceMember);
+  can('manage', ApiKey);
 
-  if (
-    !workspaceMember ||
-    workspaceMember.status === WorkspaceMemberStatus.DISABLED
-  ) {
-    return build();
-  }
-
-  can(PermissionAction.CREATE, ApiKey);
-
-  if (workspaceMember.role === WorkspaceMemberRole.OWNER) {
-    can(PermissionAction.MANAGE, 'all');
-    cannot(PermissionAction.UPDATE, 'Workspace', {
-      id: { $ne: workspaceMember.workspace.id },
-    });
-    cannot(PermissionAction.DELETE, 'Workspace', {
-      id: { $ne: workspaceMember.workspace.id },
-    });
-  } else if (workspaceMember.role === WorkspaceMemberRole.ADMIN) {
-    can(PermissionAction.MANAGE, 'all');
-    cannot(PermissionAction.DELETE, Workspace);
-    cannot(PermissionAction.UPDATE, 'Workspace', {
-      id: { $ne: workspaceMember.workspace.id },
-    });
-  } else {
-    can(PermissionAction.READ, 'all');
-  }
-
-  const workspaceActions = getPermissionActions(permissions.workspace);
-
-  if (workspaceActions.length > 0) {
-    can(workspaceActions, Workspace);
-    can(workspaceActions, 'Workspace', {
-      id: workspaceMember.workspace.id,
-    });
-  }
-
-  const workspaceMemberActions = getPermissionActions(
-    permissions.workspaceMember,
-  );
-
-  if (workspaceMemberActions.length > 0) {
-    can(workspaceMemberActions, WorkspaceMember);
-  }
+  addPermissions(can, permissions, {
+    session: Session,
+    user: User,
+  });
 
   return build();
 }
 
-function getPermissionActions(actions?: string[]): PermissionAction[] {
-  if (!Array.isArray(actions)) {
-    return [];
+/** Builds permissions granted by the current workspace membership. */
+export function buildWorkspaceMemberPermissionAbility(
+  permissions: WorkspacePermission[],
+  workspaceMember?: WorkspaceMember | null,
+) {
+  const { can, cannot, build } = new PermissionAbilityBuilder();
+
+  can('read', User);
+  can('read', Workspace);
+  can('read', WorkspaceMember);
+
+  if (workspaceMember?.status !== WorkspaceMemberStatus.ACTIVE) {
+    return build();
   }
 
-  const supportedActions = new Set<string>(Object.values(PermissionAction));
+  can('update', WorkspaceMember);
 
-  return Array.from(new Set(actions)).filter(
-    (action): action is PermissionAction => supportedActions.has(action),
-  );
+  if (workspaceMember.role === WorkspaceMemberRole.OWNER) {
+    can('manage', 'all');
+    cannot('update', 'Workspace', {
+      id: { $ne: workspaceMember.workspace.id },
+    });
+    cannot('delete', 'Workspace', {
+      id: { $ne: workspaceMember.workspace.id },
+    });
+  } else if (workspaceMember.role === WorkspaceMemberRole.ADMIN) {
+    can('manage', 'all');
+    cannot('manage', ApiKey);
+    cannot('delete', Workspace);
+    cannot('update', 'Workspace', {
+      id: { $ne: workspaceMember.workspace.id },
+    });
+  } else {
+    can('read', 'all');
+    cannot('read', ApiKey);
+  }
+
+  addPermissions(can, permissions, {
+    workspace: Workspace,
+    workspaceInvitation: WorkspaceInvitation,
+    workspaceMember: WorkspaceMember,
+  });
+
+  return build();
+}
+
+function addPermissions(
+  can: PermissionAbilityBuilder['can'],
+  permissions: readonly string[],
+  subjects: Record<string, Parameters<PermissionAbilityBuilder['can']>[1]>,
+): void {
+  for (const permission of new Set(permissions)) {
+    const [resource, action] = permission.split(':');
+    const subject = subjects[resource];
+
+    if (subject && action) {
+      can(action, subject);
+    }
+  }
 }

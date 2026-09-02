@@ -11,10 +11,21 @@ const { Connection, ConnectionArgs } = new ConnectionBuilder(ApiKey)
     type: 'string',
   })
   .addField({
-    field: 'key_prefix',
-    replacement: 'keyPrefix',
+    field: 'prefix',
     filterable: true,
     type: 'string',
+  })
+  .addField({
+    field: 'enabled',
+    filterable: true,
+    type: 'boolean',
+  })
+  .addField({
+    field: 'last_used_at',
+    replacement: 'lastUsedAt',
+    filterable: true,
+    sortable: true,
+    type: 'date',
   })
   .addField({
     field: 'created_at',

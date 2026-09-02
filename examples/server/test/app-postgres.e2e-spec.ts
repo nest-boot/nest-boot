@@ -548,17 +548,14 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       workspace.id,
       member.id,
       {
-        permissions: {
-          workspace: ['update'],
-          workspaceMember: ['read'],
-        },
+        permissions: ['WORKSPACE_UPDATE', 'WORKSPACE_MEMBER_UPDATE'],
       },
     );
 
-    expect(updatedMember.permissions).toEqual({
-      workspace: ['update'],
-      workspaceMember: ['read'],
-    });
+    expect(updatedMember.permissions).toEqual([
+      'WORKSPACE_UPDATE',
+      'WORKSPACE_MEMBER_UPDATE',
+    ]);
 
     const memberPermissions = await gql(
       /* GraphQL */ `
@@ -576,10 +573,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     expectNoGraphQLErrors(memberPermissions);
     expect(memberPermissions.body.data.currentWorkspaceMember).toEqual({
-      permissions: {
-        workspace: ['update'],
-        workspaceMember: ['read'],
-      },
+      permissions: ['WORKSPACE_UPDATE', 'WORKSPACE_MEMBER_UPDATE'],
     });
 
     const rejectedMemberAdd = await gql(
@@ -750,21 +744,23 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     expect(rejectedRemovedMember.body.data.currentWorkspaceMember).toBeNull();
   });
 
-  it('authenticates user-owned API keys as the owning workspace member', async () => {
+  it('authenticates workspace API keys without creating a member identity', async () => {
     const owner = await createAuthenticatedUser('API Owner');
-    const memberUser = await createAuthenticatedUser('API Member');
-    const workspace = await createWorkspace(owner, 'User API Workspace');
+    const workspace = await createWorkspace(owner, 'Workspace API Key');
     const createdKey = await createApiKey(owner, workspace.id, {
-      name: 'Owner runtime key',
+      name: 'Runtime key',
+      permissions: ['WORKSPACE_UPDATE'],
     });
-    await addWorkspaceMember(owner, workspace.id, memberUser.email);
 
     const byBearer = await gql(
       /* GraphQL */ `
         query {
+          currentWorkspace {
+            id
+            name
+          }
           currentWorkspaceMember {
             id
-            type
           }
         }
       `,
@@ -772,16 +768,14 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     );
 
     expectNoGraphQLErrors(byBearer);
-    expect(byBearer.body.data.currentWorkspaceMember).toMatchObject({
-      type: 'USER',
-    });
+    expect(byBearer.body.data.currentWorkspace).toEqual(workspace);
+    expect(byBearer.body.data.currentWorkspaceMember).toBeNull();
 
     const apiKeyWithWorkspaceHeader = await gql(
       /* GraphQL */ `
         query {
-          currentWorkspaceMember {
+          currentWorkspace {
             id
-            type
           }
         }
       `,
@@ -789,10 +783,8 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     );
 
     expectNoGraphQLErrors(apiKeyWithWorkspaceHeader);
-    expect(
-      apiKeyWithWorkspaceHeader.body.data.currentWorkspaceMember,
-    ).toMatchObject({
-      type: 'USER',
+    expect(apiKeyWithWorkspaceHeader.body.data.currentWorkspace).toEqual({
+      id: workspace.id,
     });
 
     const apiKeyCurrentUser = await gql(
@@ -808,6 +800,24 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     expectGraphQLError(apiKeyCurrentUser);
 
+    const sessionTakesPrecedence = await gql(
+      /* GraphQL */ `
+        query {
+          currentUser {
+            id
+          }
+        }
+      `,
+      {
+        bearerToken: createdKey.apiKey,
+        cookies: owner.cookies,
+        workspaceId: workspace.id,
+      },
+    );
+
+    expectNoGraphQLErrors(sessionTakesPrecedence);
+    expect(sessionTakesPrecedence.body.data.currentUser.id).toBe(owner.user.id);
+
     const touchedKey = await gql(
       /* GraphQL */ `
         query ApiKey($id: ID!) {
@@ -815,11 +825,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
             id
             name
             lastUsedAt
-            member {
-              user {
-                email
-              }
-            }
+            permissions
           }
         }
       `,
@@ -835,12 +841,8 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     expectNoGraphQLErrors(touchedKey);
     expect(touchedKey.body.data.apiKey).toMatchObject({
       id: createdKey.entity.id,
-      name: 'Owner runtime key',
-      member: {
-        user: {
-          email: owner.email,
-        },
-      },
+      name: 'Runtime key',
+      permissions: ['WORKSPACE_UPDATE'],
     });
     expect(touchedKey.body.data.apiKey.lastUsedAt).toEqual(expect.any(String));
 
@@ -859,7 +861,8 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         variables: {
           id: createdKey.entity.id,
           input: {
-            name: 'Renamed owner runtime key',
+            name: 'Renamed runtime key',
+            permissions: ['WORKSPACE_UPDATE'],
           },
         },
       },
@@ -868,36 +871,67 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     expectNoGraphQLErrors(renamed);
     expect(renamed.body.data.updateApiKey).toEqual({
       id: createdKey.entity.id,
-      name: 'Renamed owner runtime key',
+      name: 'Renamed runtime key',
+    });
+  });
+
+  it('authenticates user API keys and intersects them with live membership', async () => {
+    const user = await createAuthenticatedUser('User API Owner');
+    const outsider = await createAuthenticatedUser('User API Outsider');
+    const workspace = await createWorkspace(user, 'User API Workspace');
+    const outsiderWorkspace = await createWorkspace(
+      outsider,
+      'Outsider Workspace',
+    );
+    const createdKey = await createUserApiKey(user, {
+      name: 'Personal automation',
+      permissions: ['USER_GET', 'WORKSPACE_UPDATE', 'WORKSPACE_MEMBER_UPDATE'],
     });
 
-    const rejectedMemberRead = await gql(
+    const authenticated = await gql(
       /* GraphQL */ `
-        query ApiKey($id: ID!) {
-          apiKey(id: $id) {
+        query {
+          currentUser {
+            id
+          }
+          currentWorkspace {
+            id
+          }
+          currentWorkspaceMember {
+            id
+          }
+        }
+      `,
+      { bearerToken: createdKey.apiKey, workspaceId: workspace.id },
+    );
+
+    expectNoGraphQLErrors(authenticated);
+    expect(authenticated.body.data.currentUser.id).toBe(user.user.id);
+    expect(authenticated.body.data.currentWorkspace.id).toBe(workspace.id);
+    expect(authenticated.body.data.currentWorkspaceMember.id).toEqual(
+      expect.any(String),
+    );
+
+    const rejectedCrossWorkspace = await gql(
+      /* GraphQL */ `
+        query {
+          currentWorkspace {
             id
           }
         }
       `,
       {
-        cookies: memberUser.cookies,
-        workspaceId: workspace.id,
-        variables: {
-          id: createdKey.entity.id,
-        },
+        bearerToken: createdKey.apiKey,
+        workspaceId: outsiderWorkspace.id,
       },
     );
 
-    expectGraphQLError(rejectedMemberRead);
+    expectGraphQLError(rejectedCrossWorkspace);
 
-    const memberKey = await createApiKey(memberUser, workspace.id, {
-      name: 'Member runtime key',
-    });
-
-    const memberVisibleKeys = await gql(
+    const listed = await gql(
       /* GraphQL */ `
         query {
-          apiKeys(first: 10) {
+          userApiKeys(first: 10) {
             totalCount
             edges {
               node {
@@ -908,136 +942,83 @@ describe('Server application PostgreSQL integration (e2e)', () => {
           }
         }
       `,
-      {
-        cookies: memberUser.cookies,
-        workspaceId: workspace.id,
-      },
+      { cookies: user.cookies },
     );
 
-    expectNoGraphQLErrors(memberVisibleKeys);
-    expect(memberVisibleKeys.body.data.apiKeys).toMatchObject({
+    expectNoGraphQLErrors(listed);
+    expect(listed.body.data.userApiKeys).toMatchObject({
       totalCount: 1,
       edges: [
         {
           node: {
-            id: memberKey.entity.id,
-            name: 'Member runtime key',
+            id: createdKey.entity.id,
+            name: 'Personal automation',
           },
         },
       ],
     });
   });
 
-  it('authenticates service account API keys without a user and scopes API key access by member', async () => {
-    const owner = await createAuthenticatedUser('Service Owner');
-    const workspace = await createWorkspace(owner, 'Service API Workspace');
-    const ownerKey = await createApiKey(owner, workspace.id, {
-      name: 'Owner key',
-    });
-    const serviceAccount = await createServiceAccount(
-      owner,
-      workspace.id,
-      'Deploy Bot',
-    );
-    const serviceKey = await createApiKey(owner, workspace.id, {
-      name: 'Deploy key',
-      workspaceMemberId: serviceAccount.id,
+  it('enforces workspace API-key permissions and enabled state', async () => {
+    const owner = await createAuthenticatedUser('Restricted Key Owner');
+    const workspace = await createWorkspace(owner, 'Restricted API Workspace');
+    const restrictedKey = await createApiKey(owner, workspace.id, {
+      name: 'Read workspace key',
+      permissions: ['WORKSPACE_UPDATE'],
     });
 
-    const byBearer = await gql(
+    const allowed = await gql(
       /* GraphQL */ `
         query {
           currentWorkspace {
             id
             name
           }
-          currentWorkspaceMember {
+        }
+      `,
+      { bearerToken: restrictedKey.apiKey },
+    );
+
+    expectNoGraphQLErrors(allowed);
+    expect(allowed.body.data.currentWorkspace).toEqual(workspace);
+
+    const updated = await gql(
+      /* GraphQL */ `
+        mutation {
+          updateWorkspace(input: { name: "Updated by API Key" }) {
             id
             name
-            type
-            user {
-              id
-            }
-          }
-          apiKeys(first: 10) {
-            totalCount
-            edges {
-              node {
-                id
-                name
-              }
-            }
           }
         }
       `,
-      { bearerToken: serviceKey.apiKey, workspaceId: workspace.id },
+      { bearerToken: restrictedKey.apiKey },
     );
 
-    expectNoGraphQLErrors(byBearer);
-    expect(byBearer.body.data.currentWorkspace).toEqual(workspace);
-    expect(byBearer.body.data.currentWorkspaceMember).toEqual({
-      id: serviceAccount.id,
-      name: 'Deploy Bot',
-      type: 'SERVICE_ACCOUNT',
-      user: null,
-    });
-    expect(byBearer.body.data.apiKeys).toMatchObject({
-      totalCount: 1,
-      edges: [
-        {
-          node: {
-            id: serviceKey.entity.id,
-            name: 'Deploy key',
-          },
-        },
-      ],
+    expectNoGraphQLErrors(updated);
+    expect(updated.body.data.updateWorkspace).toEqual({
+      id: workspace.id,
+      name: 'Updated by API Key',
     });
 
-    const serviceAccountUser = await gql(
+    const denied = await gql(
       /* GraphQL */ `
-        query {
-          currentUser {
+        mutation {
+          deleteWorkspace {
             id
           }
         }
       `,
-      { bearerToken: serviceKey.apiKey, workspaceId: workspace.id },
+      { bearerToken: restrictedKey.apiKey },
     );
 
-    expectGraphQLError(serviceAccountUser);
+    expectGraphQLError(denied);
 
-    const ownerVisibleKeys = await gql(
+    const disabled = await gql(
       /* GraphQL */ `
-        query {
-          apiKeys(first: 10) {
-            totalCount
-            edges {
-              node {
-                id
-                name
-              }
-            }
-          }
-        }
-      `,
-      { cookies: owner.cookies, workspaceId: workspace.id },
-    );
-
-    expectNoGraphQLErrors(ownerVisibleKeys);
-    expect(ownerVisibleKeys.body.data.apiKeys.totalCount).toBe(2);
-    expect(
-      ownerVisibleKeys.body.data.apiKeys.edges.map(
-        (edge: { node: { id: string } }) => edge.node.id,
-      ),
-    ).toEqual(
-      expect.arrayContaining([ownerKey.entity.id, serviceKey.entity.id]),
-    );
-
-    const deleted = await gql(
-      /* GraphQL */ `
-        mutation DeleteApiKey($id: ID!) {
-          deleteApiKey(id: $id) {
+        mutation UpdateApiKey($id: ID!, $input: UpdateApiKeyInput!) {
+          updateApiKey(id: $id, input: $input) {
             id
+            enabled
           }
         }
       `,
@@ -1045,15 +1026,16 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         cookies: owner.cookies,
         workspaceId: workspace.id,
         variables: {
-          id: serviceKey.entity.id,
+          id: restrictedKey.entity.id,
+          input: { enabled: false },
         },
       },
     );
 
-    expectNoGraphQLErrors(deleted);
-    expect(deleted.body.data.deleteApiKey.id).toBe(serviceKey.entity.id);
+    expectNoGraphQLErrors(disabled);
+    expect(disabled.body.data.updateApiKey.enabled).toBe(false);
 
-    const rejectedDeletedKey = await gql(
+    const rejectedDisabledKey = await gql(
       /* GraphQL */ `
         query {
           currentWorkspace {
@@ -1061,12 +1043,12 @@ describe('Server application PostgreSQL integration (e2e)', () => {
           }
         }
       `,
-      { bearerToken: serviceKey.apiKey, workspaceId: workspace.id },
+      { bearerToken: restrictedKey.apiKey },
     );
 
-    expect(rejectedDeletedKey.status).toBe(401);
-    expect(rejectedDeletedKey.body).toMatchObject({
-      message: 'Invalid API key',
+    expect(rejectedDisabledKey.status).toBe(401);
+    expect(rejectedDisabledKey.body).toMatchObject({
+      message: 'API key is disabled',
       statusCode: 401,
     });
   });
@@ -1248,7 +1230,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       email: string | null;
       role: string;
       status: string;
-      permissions: Record<string, string[]>;
+      permissions: string[];
     };
   }
 
@@ -1296,7 +1278,12 @@ describe('Server application PostgreSQL integration (e2e)', () => {
   async function createApiKey(
     user: AuthenticatedUser,
     workspaceId: string,
-    input: { expiresAt?: string; name: string; workspaceMemberId?: string },
+    input: {
+      expiresAt?: string;
+      name: string;
+      permissions?: string[];
+      prefix?: string;
+    },
   ) {
     const response = await gql(
       /* GraphQL */ `
@@ -1306,7 +1293,10 @@ describe('Server application PostgreSQL integration (e2e)', () => {
             entity {
               id
               name
-              keyPrefix
+              enabled
+              permissions
+              prefix
+              start
             }
           }
         }
@@ -1321,15 +1311,69 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     );
 
     expectNoGraphQLErrors(response);
-    expect(response.body.data.createApiKey.apiKey).toMatch(/^sk-[0-9a-f]{32}$/);
-    expect(response.body.data.createApiKey.entity.keyPrefix).toBe('sk-');
+    expect(response.body.data.createApiKey.apiKey).toMatch(
+      /^sk-[A-Za-z0-9_-]{64}$/,
+    );
+    expect(response.body.data.createApiKey.entity).toMatchObject({
+      enabled: true,
+      permissions: input.permissions ?? [],
+      prefix: input.prefix ?? 'sk-',
+      start: response.body.data.createApiKey.apiKey.slice(0, 8),
+    });
 
     return response.body.data.createApiKey as {
       apiKey: string;
       entity: {
         id: string;
         name: string;
-        keyPrefix: string;
+        enabled: boolean;
+        permissions: string[];
+        prefix: string;
+        start: string;
+      };
+    };
+  }
+
+  async function createUserApiKey(
+    user: AuthenticatedUser,
+    input: {
+      expiresAt?: string;
+      name: string;
+      permissions?: string[];
+      prefix?: string;
+    },
+  ) {
+    const response = await gql(
+      /* GraphQL */ `
+        mutation CreateUserApiKey($input: CreateApiKeyInput!) {
+          createUserApiKey(input: $input) {
+            apiKey
+            entity {
+              id
+              name
+              enabled
+              permissions
+              prefix
+              start
+            }
+          }
+        }
+      `,
+      {
+        cookies: user.cookies,
+        variables: { input },
+      },
+    );
+
+    expectNoGraphQLErrors(response);
+    expect(response.body.data.createUserApiKey.apiKey).toMatch(
+      /^sk-[A-Za-z0-9_-]{64}$/,
+    );
+    return response.body.data.createUserApiKey as {
+      apiKey: string;
+      entity: {
+        id: string;
+        name: string;
       };
     };
   }

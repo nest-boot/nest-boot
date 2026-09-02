@@ -29,16 +29,11 @@ export type Scalars = {
   Float: { input: number; output: number };
   /**
    * A filter for ApiKey that accepts MongoDB query syntax.
-   * Supported fields: name, key_prefix, created_at
+   * Supported fields: name, prefix, enabled, last_used_at, created_at
    */
   ApiKeyFilter: { input: any; output: any };
   /** A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format. */
   DateTime: { input: any; output: any };
-  /** The `JSONObject` scalar type represents JSON objects as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf). */
-  JSONObject: {
-    input: Record<string, string[]>;
-    output: Record<string, string[]>;
-  };
   /**
    * A filter for Workspace that accepts MongoDB query syntax.
    * Supported fields: name, created_at
@@ -68,12 +63,14 @@ export type AddWorkspaceMemberInput = {
 export type ApiKey = {
   __typename?: "ApiKey";
   createdAt: Scalars["DateTime"]["output"];
+  enabled: Scalars["Boolean"]["output"];
   expiresAt?: Maybe<Scalars["DateTime"]["output"]>;
   id: Scalars["ID"]["output"];
-  keyPrefix: Scalars["String"]["output"];
   lastUsedAt?: Maybe<Scalars["DateTime"]["output"]>;
-  member: WorkspaceMember;
   name: Scalars["String"]["output"];
+  permissions: Array<AuthPermission>;
+  prefix?: Maybe<Scalars["String"]["output"]>;
+  start?: Maybe<Scalars["String"]["output"]>;
   updatedAt: Scalars["DateTime"]["output"];
 };
 
@@ -110,12 +107,38 @@ export type ApiKeyOrder = {
 export enum ApiKeyOrderField {
   CREATED_AT = "CREATED_AT",
   ID = "ID",
+  LAST_USED_AT = "LAST_USED_AT",
+}
+
+export enum AuthPermission {
+  SESSION_DELETE = "SESSION_DELETE",
+  SESSION_LIST = "SESSION_LIST",
+  SESSION_REVOKE = "SESSION_REVOKE",
+  USER_BAN = "USER_BAN",
+  USER_CREATE = "USER_CREATE",
+  USER_DELETE = "USER_DELETE",
+  USER_GET = "USER_GET",
+  USER_IMPERSONATE = "USER_IMPERSONATE",
+  USER_IMPERSONATE_ADMINS = "USER_IMPERSONATE_ADMINS",
+  USER_LIST = "USER_LIST",
+  USER_SET_EMAIL = "USER_SET_EMAIL",
+  USER_SET_PASSWORD = "USER_SET_PASSWORD",
+  USER_SET_ROLE = "USER_SET_ROLE",
+  USER_UPDATE = "USER_UPDATE",
+  WORKSPACE_DELETE = "WORKSPACE_DELETE",
+  WORKSPACE_INVITATION_CANCEL = "WORKSPACE_INVITATION_CANCEL",
+  WORKSPACE_INVITATION_CREATE = "WORKSPACE_INVITATION_CREATE",
+  WORKSPACE_MEMBER_CREATE = "WORKSPACE_MEMBER_CREATE",
+  WORKSPACE_MEMBER_DELETE = "WORKSPACE_MEMBER_DELETE",
+  WORKSPACE_MEMBER_UPDATE = "WORKSPACE_MEMBER_UPDATE",
+  WORKSPACE_UPDATE = "WORKSPACE_UPDATE",
 }
 
 export type CreateApiKeyInput = {
   expiresAt?: InputMaybe<Scalars["DateTime"]["input"]>;
   name: Scalars["String"]["input"];
-  workspaceMemberId?: InputMaybe<Scalars["ID"]["input"]>;
+  permissions?: InputMaybe<Array<AuthPermission>>;
+  prefix?: InputMaybe<Scalars["String"]["input"]>;
 };
 
 export type CreateApiKeyResult = {
@@ -126,7 +149,7 @@ export type CreateApiKeyResult = {
 
 export type CreateServiceAccountWorkspaceMemberInput = {
   name: Scalars["String"]["input"];
-  permissions?: InputMaybe<Scalars["JSONObject"]["input"]>;
+  permissions?: InputMaybe<Array<WorkspacePermission>>;
   role?: InputMaybe<WorkspaceMemberRole>;
 };
 
@@ -145,14 +168,17 @@ export type Mutation = {
   addWorkspaceMember: WorkspaceMember;
   createApiKey: CreateApiKeyResult;
   createServiceAccountWorkspaceMember: WorkspaceMember;
+  createUserApiKey: CreateApiKeyResult;
   createWorkspace: Workspace;
   createWorkspaceInvite: WorkspaceMember;
   deleteApiKey: ApiKey;
+  deleteUserApiKey: ApiKey;
   deleteWorkspace: Workspace;
   /** @deprecated Use deleteWorkspace instead */
   removeWorkspace: Workspace;
   removeWorkspaceMember: WorkspaceMember;
   updateApiKey: ApiKey;
+  updateUserApiKey: ApiKey;
   updateWorkspace: Workspace;
   updateWorkspaceMember?: Maybe<WorkspaceMember>;
 };
@@ -174,6 +200,10 @@ export type MutationCreateServiceAccountWorkspaceMemberArgs = {
   input: CreateServiceAccountWorkspaceMemberInput;
 };
 
+export type MutationCreateUserApiKeyArgs = {
+  input: CreateApiKeyInput;
+};
+
 export type MutationCreateWorkspaceArgs = {
   input: CreateWorkspaceInput;
 };
@@ -186,11 +216,20 @@ export type MutationDeleteApiKeyArgs = {
   id: Scalars["ID"]["input"];
 };
 
+export type MutationDeleteUserApiKeyArgs = {
+  id: Scalars["ID"]["input"];
+};
+
 export type MutationRemoveWorkspaceMemberArgs = {
   id: Scalars["ID"]["input"];
 };
 
 export type MutationUpdateApiKeyArgs = {
+  id: Scalars["ID"]["input"];
+  input: UpdateApiKeyInput;
+};
+
+export type MutationUpdateUserApiKeyArgs = {
   id: Scalars["ID"]["input"];
   input: UpdateApiKeyInput;
 };
@@ -227,6 +266,8 @@ export type Query = {
   currentUser: User;
   currentWorkspace?: Maybe<Workspace>;
   currentWorkspaceMember?: Maybe<WorkspaceMember>;
+  userApiKey?: Maybe<ApiKey>;
+  userApiKeys: ApiKeyConnection;
   workspace?: Maybe<Workspace>;
   workspaceMember?: Maybe<WorkspaceMember>;
   workspaceMemberByToken?: Maybe<WorkspaceMember>;
@@ -239,6 +280,20 @@ export type QueryApiKeyArgs = {
 };
 
 export type QueryApiKeysArgs = {
+  after?: InputMaybe<Scalars["String"]["input"]>;
+  before?: InputMaybe<Scalars["String"]["input"]>;
+  filter?: InputMaybe<Scalars["ApiKeyFilter"]["input"]>;
+  first?: InputMaybe<Scalars["Int"]["input"]>;
+  last?: InputMaybe<Scalars["Int"]["input"]>;
+  orderBy?: InputMaybe<ApiKeyOrder>;
+  query?: InputMaybe<Scalars["String"]["input"]>;
+};
+
+export type QueryUserApiKeyArgs = {
+  id: Scalars["ID"]["input"];
+};
+
+export type QueryUserApiKeysArgs = {
   after?: InputMaybe<Scalars["String"]["input"]>;
   before?: InputMaybe<Scalars["String"]["input"]>;
   filter?: InputMaybe<Scalars["ApiKeyFilter"]["input"]>;
@@ -286,7 +341,10 @@ export enum TotalCountRelation {
 }
 
 export type UpdateApiKeyInput = {
+  enabled?: InputMaybe<Scalars["Boolean"]["input"]>;
+  expiresAt?: InputMaybe<Scalars["DateTime"]["input"]>;
   name?: InputMaybe<Scalars["String"]["input"]>;
+  permissions?: InputMaybe<Array<AuthPermission>>;
 };
 
 export type UpdateWorkspaceInput = {
@@ -296,7 +354,7 @@ export type UpdateWorkspaceInput = {
 export type UpdateWorkspaceMemberInput = {
   email?: InputMaybe<Scalars["String"]["input"]>;
   name?: InputMaybe<Scalars["String"]["input"]>;
-  permissions?: InputMaybe<Scalars["JSONObject"]["input"]>;
+  permissions?: InputMaybe<Array<WorkspacePermission>>;
   role?: InputMaybe<WorkspaceMemberRole>;
   status?: InputMaybe<WorkspaceMemberStatus>;
 };
@@ -307,8 +365,26 @@ export type User = {
   email: Scalars["String"]["output"];
   id: Scalars["ID"]["output"];
   name: Scalars["String"]["output"];
+  permissions: Array<UserPermission>;
   updatedAt: Scalars["DateTime"]["output"];
 };
+
+export enum UserPermission {
+  SESSION_DELETE = "SESSION_DELETE",
+  SESSION_LIST = "SESSION_LIST",
+  SESSION_REVOKE = "SESSION_REVOKE",
+  USER_BAN = "USER_BAN",
+  USER_CREATE = "USER_CREATE",
+  USER_DELETE = "USER_DELETE",
+  USER_GET = "USER_GET",
+  USER_IMPERSONATE = "USER_IMPERSONATE",
+  USER_IMPERSONATE_ADMINS = "USER_IMPERSONATE_ADMINS",
+  USER_LIST = "USER_LIST",
+  USER_SET_EMAIL = "USER_SET_EMAIL",
+  USER_SET_PASSWORD = "USER_SET_PASSWORD",
+  USER_SET_ROLE = "USER_SET_ROLE",
+  USER_UPDATE = "USER_UPDATE",
+}
 
 export type Workspace = {
   __typename?: "Workspace";
@@ -355,7 +431,7 @@ export type WorkspaceMember = {
   invitedBy?: Maybe<User>;
   invitedByUserName?: Maybe<Scalars["String"]["output"]>;
   name: Scalars["String"]["output"];
-  permissions: Scalars["JSONObject"]["output"];
+  permissions: Array<WorkspacePermission>;
   role: WorkspaceMemberRole;
   status: WorkspaceMemberStatus;
   type: WorkspaceMemberType;
@@ -430,6 +506,16 @@ export enum WorkspaceOrderField {
   ID = "ID",
 }
 
+export enum WorkspacePermission {
+  WORKSPACE_DELETE = "WORKSPACE_DELETE",
+  WORKSPACE_INVITATION_CANCEL = "WORKSPACE_INVITATION_CANCEL",
+  WORKSPACE_INVITATION_CREATE = "WORKSPACE_INVITATION_CREATE",
+  WORKSPACE_MEMBER_CREATE = "WORKSPACE_MEMBER_CREATE",
+  WORKSPACE_MEMBER_DELETE = "WORKSPACE_MEMBER_DELETE",
+  WORKSPACE_MEMBER_UPDATE = "WORKSPACE_MEMBER_UPDATE",
+  WORKSPACE_UPDATE = "WORKSPACE_UPDATE",
+}
+
 export type GetCurrentUserFromAuthenticatedRouteQueryVariables = Exact<{
   [key: string]: never;
 }>;
@@ -437,6 +523,110 @@ export type GetCurrentUserFromAuthenticatedRouteQueryVariables = Exact<{
 export type GetCurrentUserFromAuthenticatedRouteQuery = {
   __typename?: "Query";
   currentUser: { __typename?: "User"; id: string };
+};
+
+export type GetUserApiKeysFromUserApiKeysRouteQueryVariables = Exact<{
+  after?: InputMaybe<Scalars["String"]["input"]>;
+  before?: InputMaybe<Scalars["String"]["input"]>;
+  first?: InputMaybe<Scalars["Int"]["input"]>;
+  last?: InputMaybe<Scalars["Int"]["input"]>;
+  filter?: InputMaybe<Scalars["ApiKeyFilter"]["input"]>;
+  orderBy?: InputMaybe<ApiKeyOrder>;
+  query?: InputMaybe<Scalars["String"]["input"]>;
+}>;
+
+export type GetUserApiKeysFromUserApiKeysRouteQuery = {
+  __typename?: "Query";
+  userApiKeys: {
+    __typename?: "ApiKeyConnection";
+    edges: Array<{
+      __typename?: "ApiKeyEdge";
+      node: {
+        __typename?: "ApiKey";
+        id: string;
+        name: string;
+        start?: string | null;
+        prefix?: string | null;
+        enabled: boolean;
+        permissions: Array<AuthPermission>;
+        createdAt: any;
+        lastUsedAt?: any | null;
+        expiresAt?: any | null;
+      };
+    }>;
+    pageInfo: {
+      __typename?: "PageInfo";
+      endCursor?: string | null;
+      hasNextPage: boolean;
+      hasPreviousPage: boolean;
+      startCursor?: string | null;
+    };
+  };
+};
+
+export type CreateUserApiKeyFromUserApiKeysRouteMutationVariables = Exact<{
+  input: CreateApiKeyInput;
+}>;
+
+export type CreateUserApiKeyFromUserApiKeysRouteMutation = {
+  __typename?: "Mutation";
+  createUserApiKey: {
+    __typename?: "CreateApiKeyResult";
+    apiKey: string;
+    entity: {
+      __typename?: "ApiKey";
+      id: string;
+      name: string;
+      start?: string | null;
+      prefix?: string | null;
+      enabled: boolean;
+      permissions: Array<AuthPermission>;
+      createdAt: any;
+      lastUsedAt?: any | null;
+      expiresAt?: any | null;
+    };
+  };
+};
+
+export type UpdateUserApiKeyFromUserApiKeysRouteMutationVariables = Exact<{
+  id: Scalars["ID"]["input"];
+  input: UpdateApiKeyInput;
+}>;
+
+export type UpdateUserApiKeyFromUserApiKeysRouteMutation = {
+  __typename?: "Mutation";
+  updateUserApiKey: {
+    __typename?: "ApiKey";
+    id: string;
+    name: string;
+    start?: string | null;
+    prefix?: string | null;
+    enabled: boolean;
+    permissions: Array<AuthPermission>;
+    createdAt: any;
+    lastUsedAt?: any | null;
+    expiresAt?: any | null;
+  };
+};
+
+export type DeleteUserApiKeyFromUserApiKeysRouteMutationVariables = Exact<{
+  id: Scalars["ID"]["input"];
+}>;
+
+export type DeleteUserApiKeyFromUserApiKeysRouteMutation = {
+  __typename?: "Mutation";
+  deleteUserApiKey: {
+    __typename?: "ApiKey";
+    id: string;
+    name: string;
+    start?: string | null;
+    prefix?: string | null;
+    enabled: boolean;
+    permissions: Array<AuthPermission>;
+    createdAt: any;
+    lastUsedAt?: any | null;
+    expiresAt?: any | null;
+  };
 };
 
 export type GetApiKeysFromApiKeysRouteQueryVariables = Exact<{
@@ -459,16 +649,13 @@ export type GetApiKeysFromApiKeysRouteQuery = {
         __typename?: "ApiKey";
         id: string;
         name: string;
-        keyPrefix: string;
+        start?: string | null;
+        prefix?: string | null;
+        enabled: boolean;
+        permissions: Array<AuthPermission>;
         createdAt: any;
         lastUsedAt?: any | null;
         expiresAt?: any | null;
-        member: {
-          __typename?: "WorkspaceMember";
-          id: string;
-          name: string;
-          email?: string | null;
-        };
       };
     }>;
     pageInfo: {
@@ -494,16 +681,13 @@ export type CreateApiKeyFromApiKeysRouteMutation = {
       __typename?: "ApiKey";
       id: string;
       name: string;
-      keyPrefix: string;
+      start?: string | null;
+      prefix?: string | null;
+      enabled: boolean;
+      permissions: Array<AuthPermission>;
       createdAt: any;
       lastUsedAt?: any | null;
       expiresAt?: any | null;
-      member: {
-        __typename?: "WorkspaceMember";
-        id: string;
-        name: string;
-        email?: string | null;
-      };
     };
   };
 };
@@ -519,16 +703,13 @@ export type UpdateApiKeyFromApiKeysRouteMutation = {
     __typename?: "ApiKey";
     id: string;
     name: string;
-    keyPrefix: string;
+    start?: string | null;
+    prefix?: string | null;
+    enabled: boolean;
+    permissions: Array<AuthPermission>;
     createdAt: any;
     lastUsedAt?: any | null;
     expiresAt?: any | null;
-    member: {
-      __typename?: "WorkspaceMember";
-      id: string;
-      name: string;
-      email?: string | null;
-    };
   };
 };
 
@@ -542,16 +723,13 @@ export type DeleteApiKeyFromApiKeysRouteMutation = {
     __typename?: "ApiKey";
     id: string;
     name: string;
-    keyPrefix: string;
+    start?: string | null;
+    prefix?: string | null;
+    enabled: boolean;
+    permissions: Array<AuthPermission>;
     createdAt: any;
     lastUsedAt?: any | null;
     expiresAt?: any | null;
-    member: {
-      __typename?: "WorkspaceMember";
-      id: string;
-      name: string;
-      email?: string | null;
-    };
   };
 };
 
@@ -618,7 +796,7 @@ export type GetCurrentWorkspaceMemberFromWorkspaceMemberContextQuery = {
     role: WorkspaceMemberRole;
     name: string;
     email?: string | null;
-    permissions: Record<string, string[]>;
+    permissions: Array<WorkspacePermission>;
     inviteToken?: string | null;
     status: WorkspaceMemberStatus;
     inviteExpiresAt?: any | null;
@@ -638,6 +816,7 @@ export type GetCurrentWorkspaceFromWorkspaceLayoutQuery = {
   currentWorkspaceMember?: {
     __typename?: "WorkspaceMember";
     id: string;
+    role: WorkspaceMemberRole;
   } | null;
 };
 
@@ -666,7 +845,7 @@ export type GetWorkspaceMemberFromMemberRouteQuery = {
     name: string;
     email?: string | null;
     role: WorkspaceMemberRole;
-    permissions: Record<string, string[]>;
+    permissions: Array<WorkspacePermission>;
     inviteToken?: string | null;
     status: WorkspaceMemberStatus;
     inviteExpiresAt?: any | null;
@@ -689,7 +868,7 @@ export type UpdateWorkspaceMemberFromMemberRouteMutation = {
     name: string;
     email?: string | null;
     role: WorkspaceMemberRole;
-    permissions: Record<string, string[]>;
+    permissions: Array<WorkspacePermission>;
     inviteToken?: string | null;
     status: WorkspaceMemberStatus;
     inviteExpiresAt?: any | null;
@@ -921,6 +1100,455 @@ export const GetCurrentUserFromAuthenticatedRouteDocument = {
   GetCurrentUserFromAuthenticatedRouteQuery,
   GetCurrentUserFromAuthenticatedRouteQueryVariables
 >;
+export const GetUserApiKeysFromUserApiKeysRouteDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "getUserApiKeysFromUserApiKeysRoute" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "after" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "before" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "first" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "last" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "filter" },
+          },
+          type: {
+            kind: "NamedType",
+            name: { kind: "Name", value: "ApiKeyFilter" },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "orderBy" },
+          },
+          type: {
+            kind: "NamedType",
+            name: { kind: "Name", value: "ApiKeyOrder" },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "query" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "userApiKeys" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "after" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "after" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "before" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "before" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "first" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "first" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "last" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "last" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "orderBy" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "orderBy" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "filter" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "filter" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "query" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "query" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "edges" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "node" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "id" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "name" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "start" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "prefix" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "enabled" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "permissions" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "createdAt" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "lastUsedAt" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "expiresAt" },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "pageInfo" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "endCursor" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "hasNextPage" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "hasPreviousPage" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "startCursor" },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  GetUserApiKeysFromUserApiKeysRouteQuery,
+  GetUserApiKeysFromUserApiKeysRouteQueryVariables
+>;
+export const CreateUserApiKeyFromUserApiKeysRouteDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "createUserApiKeyFromUserApiKeysRoute" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "input" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: {
+              kind: "NamedType",
+              name: { kind: "Name", value: "CreateApiKeyInput" },
+            },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "createUserApiKey" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "input" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "input" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "apiKey" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "entity" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                      { kind: "Field", name: { kind: "Name", value: "name" } },
+                      { kind: "Field", name: { kind: "Name", value: "start" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "prefix" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "enabled" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "permissions" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "createdAt" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "lastUsedAt" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "expiresAt" },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  CreateUserApiKeyFromUserApiKeysRouteMutation,
+  CreateUserApiKeyFromUserApiKeysRouteMutationVariables
+>;
+export const UpdateUserApiKeyFromUserApiKeysRouteDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "updateUserApiKeyFromUserApiKeysRoute" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "input" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: {
+              kind: "NamedType",
+              name: { kind: "Name", value: "UpdateApiKeyInput" },
+            },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "updateUserApiKey" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "id" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "id" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "input" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "input" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "name" } },
+                { kind: "Field", name: { kind: "Name", value: "start" } },
+                { kind: "Field", name: { kind: "Name", value: "prefix" } },
+                { kind: "Field", name: { kind: "Name", value: "enabled" } },
+                { kind: "Field", name: { kind: "Name", value: "permissions" } },
+                { kind: "Field", name: { kind: "Name", value: "createdAt" } },
+                { kind: "Field", name: { kind: "Name", value: "lastUsedAt" } },
+                { kind: "Field", name: { kind: "Name", value: "expiresAt" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  UpdateUserApiKeyFromUserApiKeysRouteMutation,
+  UpdateUserApiKeyFromUserApiKeysRouteMutationVariables
+>;
+export const DeleteUserApiKeyFromUserApiKeysRouteDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "deleteUserApiKeyFromUserApiKeysRoute" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "deleteUserApiKey" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "id" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "id" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "name" } },
+                { kind: "Field", name: { kind: "Name", value: "start" } },
+                { kind: "Field", name: { kind: "Name", value: "prefix" } },
+                { kind: "Field", name: { kind: "Name", value: "enabled" } },
+                { kind: "Field", name: { kind: "Name", value: "permissions" } },
+                { kind: "Field", name: { kind: "Name", value: "createdAt" } },
+                { kind: "Field", name: { kind: "Name", value: "lastUsedAt" } },
+                { kind: "Field", name: { kind: "Name", value: "expiresAt" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  DeleteUserApiKeyFromUserApiKeysRouteMutation,
+  DeleteUserApiKeyFromUserApiKeysRouteMutationVariables
+>;
 export const GetApiKeysFromApiKeysRouteDocument = {
   kind: "Document",
   definitions: [
@@ -1078,7 +1706,19 @@ export const GetApiKeysFromApiKeysRouteDocument = {
                             },
                             {
                               kind: "Field",
-                              name: { kind: "Name", value: "keyPrefix" },
+                              name: { kind: "Name", value: "start" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "prefix" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "enabled" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "permissions" },
                             },
                             {
                               kind: "Field",
@@ -1091,27 +1731,6 @@ export const GetApiKeysFromApiKeysRouteDocument = {
                             {
                               kind: "Field",
                               name: { kind: "Name", value: "expiresAt" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "member" },
-                              selectionSet: {
-                                kind: "SelectionSet",
-                                selections: [
-                                  {
-                                    kind: "Field",
-                                    name: { kind: "Name", value: "id" },
-                                  },
-                                  {
-                                    kind: "Field",
-                                    name: { kind: "Name", value: "name" },
-                                  },
-                                  {
-                                    kind: "Field",
-                                    name: { kind: "Name", value: "email" },
-                                  },
-                                ],
-                              },
                             },
                           ],
                         },
@@ -1206,9 +1825,18 @@ export const CreateApiKeyFromApiKeysRouteDocument = {
                     selections: [
                       { kind: "Field", name: { kind: "Name", value: "id" } },
                       { kind: "Field", name: { kind: "Name", value: "name" } },
+                      { kind: "Field", name: { kind: "Name", value: "start" } },
                       {
                         kind: "Field",
-                        name: { kind: "Name", value: "keyPrefix" },
+                        name: { kind: "Name", value: "prefix" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "enabled" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "permissions" },
                       },
                       {
                         kind: "Field",
@@ -1221,27 +1849,6 @@ export const CreateApiKeyFromApiKeysRouteDocument = {
                       {
                         kind: "Field",
                         name: { kind: "Name", value: "expiresAt" },
-                      },
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "member" },
-                        selectionSet: {
-                          kind: "SelectionSet",
-                          selections: [
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "id" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "name" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "email" },
-                            },
-                          ],
-                        },
                       },
                     ],
                   },
@@ -1317,22 +1924,13 @@ export const UpdateApiKeyFromApiKeysRouteDocument = {
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "id" } },
                 { kind: "Field", name: { kind: "Name", value: "name" } },
-                { kind: "Field", name: { kind: "Name", value: "keyPrefix" } },
+                { kind: "Field", name: { kind: "Name", value: "start" } },
+                { kind: "Field", name: { kind: "Name", value: "prefix" } },
+                { kind: "Field", name: { kind: "Name", value: "enabled" } },
+                { kind: "Field", name: { kind: "Name", value: "permissions" } },
                 { kind: "Field", name: { kind: "Name", value: "createdAt" } },
                 { kind: "Field", name: { kind: "Name", value: "lastUsedAt" } },
                 { kind: "Field", name: { kind: "Name", value: "expiresAt" } },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "member" },
-                  selectionSet: {
-                    kind: "SelectionSet",
-                    selections: [
-                      { kind: "Field", name: { kind: "Name", value: "id" } },
-                      { kind: "Field", name: { kind: "Name", value: "name" } },
-                      { kind: "Field", name: { kind: "Name", value: "email" } },
-                    ],
-                  },
-                },
               ],
             },
           },
@@ -1382,22 +1980,13 @@ export const DeleteApiKeyFromApiKeysRouteDocument = {
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "id" } },
                 { kind: "Field", name: { kind: "Name", value: "name" } },
-                { kind: "Field", name: { kind: "Name", value: "keyPrefix" } },
+                { kind: "Field", name: { kind: "Name", value: "start" } },
+                { kind: "Field", name: { kind: "Name", value: "prefix" } },
+                { kind: "Field", name: { kind: "Name", value: "enabled" } },
+                { kind: "Field", name: { kind: "Name", value: "permissions" } },
                 { kind: "Field", name: { kind: "Name", value: "createdAt" } },
                 { kind: "Field", name: { kind: "Name", value: "lastUsedAt" } },
                 { kind: "Field", name: { kind: "Name", value: "expiresAt" } },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "member" },
-                  selectionSet: {
-                    kind: "SelectionSet",
-                    selections: [
-                      { kind: "Field", name: { kind: "Name", value: "id" } },
-                      { kind: "Field", name: { kind: "Name", value: "name" } },
-                      { kind: "Field", name: { kind: "Name", value: "email" } },
-                    ],
-                  },
-                },
               ],
             },
           },
@@ -1753,6 +2342,7 @@ export const GetCurrentWorkspaceFromWorkspaceLayoutDocument = {
               kind: "SelectionSet",
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "role" } },
               ],
             },
           },

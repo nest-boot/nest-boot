@@ -1,3 +1,4 @@
+import { BaseWorkspace } from '@nest-boot/auth';
 import {
   getPolicyMetadata,
   PolicyCommand,
@@ -7,8 +8,8 @@ import {
 import { Workspace } from './workspace.entity.js';
 
 describe('Workspace', () => {
-  it('does not inherit from a workspace base entity', () => {
-    expect(Object.getPrototypeOf(Workspace.prototype)).toBe(Object.prototype);
+  it('extends the auth workspace base entity', () => {
+    expect(new Workspace()).toBeInstanceOf(BaseWorkspace);
   });
 
   it('uses restrictive row-level security policies for soft deletion', () => {

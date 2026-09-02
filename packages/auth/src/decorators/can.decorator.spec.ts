@@ -1,6 +1,5 @@
 import { SetMetadata } from "@nestjs/common";
 
-import { PermissionAction } from "../enums/permission-action.enum.js";
 import { CAN_METADATA } from "../permission.constants.js";
 import { Can } from "./can.decorator.js";
 
@@ -16,43 +15,35 @@ describe("Can", () => {
   });
 
   it("stores action and subject metadata from positional arguments", () => {
-    expect(Can(PermissionAction.READ, Subject)).toEqual({
+    expect(Can("read", Subject)).toEqual({
       key: CAN_METADATA,
       value: {
-        action: PermissionAction.READ,
+        action: "read",
+        scope: "workspace",
         subject: Subject,
       },
     });
   });
 
-  it("stores subject factory as positional subject argument", () => {
+  it("stores an explicit scope with a subject factory", () => {
     const subjectFactory = vi.fn();
 
-    expect(Can(PermissionAction.READ, subjectFactory)).toEqual({
+    expect(
+      Can("read", subjectFactory, {
+        scope: "user",
+      }),
+    ).toEqual({
       key: CAN_METADATA,
       value: {
-        action: PermissionAction.READ,
+        action: "read",
+        scope: "user",
         subject: subjectFactory,
       },
     });
   });
 
-  it("stores full permission options when an options object is provided", () => {
-    const options = {
-      action: PermissionAction.UPDATE,
-      subject: Subject,
-    };
-
-    expect(Can(options)).toEqual({
-      key: CAN_METADATA,
-      value: options,
-    });
-  });
-
   it("throws when positional arguments omit the subject", () => {
-    expect(() => Can(PermissionAction.READ as never)).toThrow(
-      "Permission subject is required.",
-    );
+    expect(() => Can("read")).toThrow("Permission subject is required.");
     expect(SetMetadata).not.toHaveBeenCalled();
   });
 });

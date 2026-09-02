@@ -1,3 +1,5 @@
+import '../auth/enums/auth-permission.enum.js';
+
 import type { Opt } from '@mikro-orm/core';
 import { Collection, t } from '@mikro-orm/core';
 import {
@@ -12,6 +14,7 @@ import { Field, ID, ObjectType } from '@nest-boot/graphql';
 import { Policy, PolicyCommand } from '@nest-boot/row-level-security';
 import { Sonyflake } from 'sonyflake-js';
 
+import { UserPermission } from '../auth/enums/user-permission.enum.js';
 import { WorkspaceMember } from '../workspace-member/workspace-member.entity.js';
 
 /**
@@ -48,6 +51,12 @@ export class User extends BaseUser {
   @Field(() => String)
   @Property({ type: t.string })
   declare email: string;
+
+  /** 用户管理与会话权限。 */
+  @Field(() => [UserPermission])
+  // eslint-disable-next-line @nest-boot/entity-property-config-from-types
+  @Property({ type: t.array })
+  declare permissions: Opt<UserPermission[]>;
 
   /** 创建时间。 */
   @Field(() => Date)
