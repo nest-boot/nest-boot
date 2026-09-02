@@ -25,7 +25,6 @@ import { CreateWorkspaceInviteInput } from './inputs/create-workspace-invite.inp
 import { UpdateWorkspaceMemberInput } from './inputs/update-workspace-member.input.js';
 import { AcceptWorkspaceInviteResult } from './types/accept-workspace-invite-result.type.js';
 import { WorkspaceMember } from './workspace-member.entity.js';
-import { WorkspaceMemberPermission } from './workspace-member-permission.enum.js';
 
 /** 工作区成员领域服务。 */
 @Injectable()
@@ -102,7 +101,7 @@ export class WorkspaceMemberService extends EntityService<WorkspaceMember> {
       name: input.name,
       workspace,
       role: input.role ?? WorkspaceMemberRole.MEMBER,
-      permissions: input.permissions ?? [],
+      permissions: input.permissions ?? {},
       type: WorkspaceMemberType.SERVICE_ACCOUNT,
       user: null,
       email: null,
@@ -282,17 +281,5 @@ export class WorkspaceMemberService extends EntityService<WorkspaceMember> {
     await this.em.flush();
 
     return member;
-  }
-
-  /**
-   * 获取成员的有效权限。
-   *
-   * @param workspaceMember - 工作区成员。
-   * @returns 成员直接配置的去重权限列表。
-   */
-  getPermissions(
-    workspaceMember: WorkspaceMember,
-  ): WorkspaceMemberPermission[] {
-    return Array.from(new Set(workspaceMember.permissions ?? []));
   }
 }

@@ -12,6 +12,7 @@ import {
 import { FullTextType } from '@mikro-orm/postgresql';
 import { Field, HideField, ID, ObjectType } from '@nest-boot/graphql';
 import { Policy } from '@nest-boot/row-level-security';
+import { GraphQLJSONObject } from 'graphql-type-json';
 import { Sonyflake } from 'sonyflake-js';
 
 import { SearchableProperty } from '../../common/decorators/searchable-property.decorator.js';
@@ -20,7 +21,6 @@ import { Workspace } from '../workspace/workspace.entity.js';
 import { WorkspaceMemberRole } from './enums/workspace-member-role.enum.js';
 import { WorkspaceMemberStatus } from './enums/workspace-member-status.enum.js';
 import { WorkspaceMemberType } from './enums/workspace-member-type.enum.js';
-import { WorkspaceMemberPermission } from './workspace-member-permission.enum.js';
 
 /**
  * 工作区成员实体。
@@ -91,14 +91,10 @@ export class WorkspaceMember {
   })
   role: Opt<WorkspaceMemberRole> = WorkspaceMemberRole.MEMBER;
 
-  /** 成员直接拥有的权限列表。 */
-  @Field(() => [WorkspaceMemberPermission])
-  @Enum({
-    array: true,
-    items: () => WorkspaceMemberPermission,
-    default: [],
-  })
-  permissions: Opt<WorkspaceMemberPermission[]> = [];
+  /** 按资源和操作分组的成员权限。 */
+  @Field(() => GraphQLJSONObject)
+  @Property({ type: t.json, defaultRaw: "'{}'::jsonb" })
+  permissions: Opt<Record<string, string[]>> = {};
 
   /** 邀请者，删除时设置为空值。 */
   @ManyToOne(() => User, { nullable: true, deleteRule: 'set null' })

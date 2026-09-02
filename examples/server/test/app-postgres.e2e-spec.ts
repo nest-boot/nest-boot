@@ -543,6 +543,45 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       },
     });
 
+    const updatedMember = await updateWorkspaceMember(
+      owner,
+      workspace.id,
+      member.id,
+      {
+        permissions: {
+          workspace: ['update'],
+          workspaceMember: ['read'],
+        },
+      },
+    );
+
+    expect(updatedMember.permissions).toEqual({
+      workspace: ['update'],
+      workspaceMember: ['read'],
+    });
+
+    const memberPermissions = await gql(
+      /* GraphQL */ `
+        query {
+          currentWorkspaceMember {
+            permissions
+          }
+        }
+      `,
+      {
+        cookies: memberUser.cookies,
+        workspaceId: workspace.id,
+      },
+    );
+
+    expectNoGraphQLErrors(memberPermissions);
+    expect(memberPermissions.body.data.currentWorkspaceMember).toEqual({
+      permissions: {
+        workspace: ['update'],
+        workspaceMember: ['read'],
+      },
+    });
+
     const rejectedMemberAdd = await gql(
       /* GraphQL */ `
         mutation AddWorkspaceMember($input: AddWorkspaceMemberInput!) {
@@ -1209,7 +1248,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       email: string | null;
       role: string;
       status: string;
-      permissions: string[];
+      permissions: Record<string, string[]>;
     };
   }
 

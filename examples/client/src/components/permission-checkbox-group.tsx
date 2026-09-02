@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { t } from "i18next";
 
-import type { WorkspacePermission } from "@/gql/graphql";
+import type { WorkspacePermission } from "@/lib/workspace-permissions";
 import { CheckboxGroup } from "@/components/thread-ui/checkbox-group";
 import { workspacePermissions } from "@/lib/workspace-permissions";
 

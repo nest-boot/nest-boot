@@ -1,14 +1,14 @@
 import { Field, InputType } from '@nest-boot/graphql';
 import {
-  IsArray,
   IsIn,
+  IsObject,
   IsOptional,
   IsString,
   MaxLength,
 } from 'class-validator';
+import { GraphQLJSONObject } from 'graphql-type-json';
 
 import { WorkspaceMemberRole } from '../enums/workspace-member-role.enum.js';
-import { WorkspaceMemberPermission } from '../workspace-member-permission.enum.js';
 
 /** 创建服务账号成员的输入参数。 */
 @InputType()
@@ -27,9 +27,9 @@ export class CreateServiceAccountWorkspaceMemberInput {
   @Field(() => WorkspaceMemberRole, { nullable: true })
   role?: WorkspaceMemberRole;
 
-  /** 直接授予服务账号的权限列表。 */
+  /** 按资源和操作分组的服务账号权限。 */
   @IsOptional()
-  @IsArray()
-  @Field(() => [WorkspaceMemberPermission], { nullable: true })
-  permissions?: WorkspaceMemberPermission[];
+  @IsObject()
+  @Field(() => GraphQLJSONObject, { nullable: true })
+  permissions?: Record<string, string[]>;
 }

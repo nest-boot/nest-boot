@@ -13,7 +13,6 @@ import { Workspace } from '../../../app/workspace/workspace.entity.js';
 import { WorkspaceMemberRole } from '../../../app/workspace-member/enums/workspace-member-role.enum.js';
 import { WorkspaceMemberStatus } from '../../../app/workspace-member/enums/workspace-member-status.enum.js';
 import { WorkspaceMember } from '../../../app/workspace-member/workspace-member.entity.js';
-import { WorkspaceMemberPermission } from '../../../app/workspace-member/workspace-member-permission.enum.js';
 import { buildWorkspaceMemberPermissionAbility } from './build-workspace-member-permission-ability.util.js';
 
 vi.mock('@nest-boot/request-context', async (importOriginal) => ({
@@ -31,7 +30,7 @@ describe('buildWorkspaceMemberPermissionAbility', () => {
   it('grants base permissions when there is no active workspace member', () => {
     vi.mocked(RequestContext.get).mockReturnValue(undefined);
 
-    const ability = buildWorkspaceMemberPermissionAbility([]);
+    const ability = buildWorkspaceMemberPermissionAbility({});
 
     expect(ability.can(PermissionAction.READ, User)).toBe(true);
     expect(ability.can(PermissionAction.CREATE, Workspace)).toBe(true);
@@ -44,7 +43,7 @@ describe('buildWorkspaceMemberPermissionAbility', () => {
       status: WorkspaceMemberStatus.DISABLED,
     });
 
-    const ability = buildWorkspaceMemberPermissionAbility([]);
+    const ability = buildWorkspaceMemberPermissionAbility({});
 
     expect(ability.can(PermissionAction.CREATE, Workspace)).toBe(true);
     expect(ability.can(PermissionAction.MANAGE, ApiKey)).toBe(false);
@@ -53,7 +52,7 @@ describe('buildWorkspaceMemberPermissionAbility', () => {
   it('grants owners full management permissions', () => {
     const ability = buildAbility({
       role: WorkspaceMemberRole.OWNER,
-      permissions: [],
+      permissions: {},
       workspace: {
         id: 'workspace_1',
       } as WorkspaceMember['workspace'],
@@ -78,7 +77,7 @@ describe('buildWorkspaceMemberPermissionAbility', () => {
   it('allows admins to manage everything except workspace deletion', () => {
     const ability = buildAbility({
       role: WorkspaceMemberRole.ADMIN,
-      permissions: [],
+      permissions: {},
       workspace: {
         id: 'workspace_1',
       } as WorkspaceMember['workspace'],
@@ -104,15 +103,15 @@ describe('buildWorkspaceMemberPermissionAbility', () => {
     const ability = buildAbility(
       {
         role: WorkspaceMemberRole.MEMBER,
-        permissions: [WorkspaceMemberPermission.MANAGE_WORKSPACE],
+        permissions: { workspace: [PermissionAction.MANAGE] },
         workspace: {
           id: 'workspace_1',
         } as WorkspaceMember['workspace'],
       },
-      [
-        WorkspaceMemberPermission.MANAGE_WORKSPACE,
-        WorkspaceMemberPermission.MANAGE_MEMBERS,
-      ],
+      {
+        workspace: [PermissionAction.MANAGE],
+        workspaceMember: [PermissionAction.MANAGE],
+      },
     );
 
     expect(ability.can(PermissionAction.READ, Workspace)).toBe(true);
@@ -139,17 +138,35 @@ describe('buildWorkspaceMemberPermissionAbility', () => {
       role: WorkspaceMemberRole.MEMBER,
     });
 
-    const ability = buildWorkspaceMemberPermissionAbility([
-      WorkspaceMemberPermission.MANAGE_MEMBERS,
-    ]);
+    const ability = buildWorkspaceMemberPermissionAbility({
+      workspaceMember: [PermissionAction.MANAGE],
+    });
 
     expect(ability.can(PermissionAction.MANAGE, WorkspaceMember)).toBe(true);
+  });
+
+  it('ignores unknown resources and unsupported actions', () => {
+    const ability = buildAbility(
+      {
+        role: WorkspaceMemberRole.MEMBER,
+        workspace: {
+          id: 'workspace_1',
+        } as WorkspaceMember['workspace'],
+      },
+      {
+        workspace: ['publish'],
+        unknown: [PermissionAction.MANAGE],
+      },
+    );
+
+    expect(ability.can(PermissionAction.MANAGE, Workspace)).toBe(false);
+    expect(ability.can(PermissionAction.UPDATE, Workspace)).toBe(false);
   });
 });
 
 function buildAbility(
   member: Partial<WorkspaceMember>,
-  permissions: WorkspaceMemberPermission[] = member.permissions ?? [],
+  permissions: Record<string, string[]> = member.permissions ?? {},
 ) {
   vi.mocked(RequestContext.get).mockReturnValue({
     status: WorkspaceMemberStatus.ACTIVE,

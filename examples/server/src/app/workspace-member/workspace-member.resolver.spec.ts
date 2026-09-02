@@ -42,7 +42,6 @@ import { WorkspaceMemberRole } from './enums/workspace-member-role.enum.js';
 import { WorkspaceMember } from './workspace-member.entity.js';
 import { WorkspaceMemberResolver } from './workspace-member.resolver.js';
 import { WorkspaceMemberService } from './workspace-member.service.js';
-import { WorkspaceMemberPermission } from './workspace-member-permission.enum.js';
 
 describe('WorkspaceMemberResolver', () => {
   it('returns the current workspace member from request context', () => {
@@ -615,22 +614,6 @@ describe('WorkspaceMemberResolver', () => {
 
     await expect(resolver.invitedBy(member)).resolves.toBeNull();
   });
-
-  it('loads effective permissions through the service', async () => {
-    const permissions = [WorkspaceMemberPermission.MANAGE_MEMBERS];
-    const workspaceMember = { id: 'member_1' } as WorkspaceMember;
-    const { resolver, workspaceMemberService } = createResolver({
-      workspaceMemberService: {
-        getPermissions: vi.fn(() => permissions),
-      },
-    });
-
-    expect(resolver.effectivePermissions(workspaceMember)).toEqual(permissions);
-
-    expect(workspaceMemberService.getPermissions).toHaveBeenCalledWith(
-      workspaceMember,
-    );
-  });
 });
 
 function createResolver(overrides?: {
@@ -649,7 +632,6 @@ function createResolver(overrides?: {
     findWorkspaceInviteByToken: vi.fn(),
     acceptWorkspaceInvite: vi.fn(),
     acceptWorkspaceInviteByToken: vi.fn(),
-    getPermissions: vi.fn(),
     ...overrides?.workspaceMemberService,
   } as unknown as Mocked<WorkspaceMemberService>;
   const userService = {

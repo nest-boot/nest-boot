@@ -10,7 +10,6 @@ import { ApiKey } from '../api-key/api-key.entity.js';
 import { User } from '../user/user.entity.js';
 import { Workspace } from '../workspace/workspace.entity.js';
 import { WorkspaceMember } from '../workspace-member/workspace-member.entity.js';
-import { WorkspaceMemberService } from '../workspace-member/workspace-member.service.js';
 import { Account } from './entities/account.entity.js';
 import { Session } from './entities/session.entity.js';
 import { Verification } from './entities/verification.entity.js';
@@ -39,15 +38,10 @@ import { RowLevelSecurityInterceptor } from './row-level-security.interceptor.js
         },
         buildAbility: () => {
           const workspaceMember = RequestContext.get(WorkspaceMember);
-          const workspaceMemberService = RequestContext.get(
-            WorkspaceMemberService,
-          );
-          const permissions =
-            workspaceMember && workspaceMemberService
-              ? workspaceMemberService.getPermissions(workspaceMember)
-              : [];
 
-          return buildWorkspaceMemberPermissionAbility(permissions);
+          return buildWorkspaceMemberPermissionAbility(
+            workspaceMember?.permissions ?? {},
+          );
         },
         plugins: [
           bearer(),

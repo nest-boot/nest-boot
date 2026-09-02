@@ -18,7 +18,6 @@ import { WorkspaceMemberStatus } from './enums/workspace-member-status.enum.js';
 import { WorkspaceMemberType } from './enums/workspace-member-type.enum.js';
 import { WorkspaceMember } from './workspace-member.entity.js';
 import { WorkspaceMemberService } from './workspace-member.service.js';
-import { WorkspaceMemberPermission } from './workspace-member-permission.enum.js';
 
 describe('WorkspaceMemberService', () => {
   it('creates an invitation from the current workspace member user', async () => {
@@ -96,7 +95,7 @@ describe('WorkspaceMemberService', () => {
       name: 'Deploy Bot',
       workspace,
       role: WorkspaceMemberRole.MEMBER,
-      permissions: [],
+      permissions: {},
       type: WorkspaceMemberType.SERVICE_ACCOUNT,
       user: null,
       email: null,
@@ -369,29 +368,6 @@ describe('WorkspaceMemberService', () => {
 
     expect(member.status).toBe(WorkspaceMemberStatus.INVITING);
     expect(em.flush).toHaveBeenCalledTimes(1);
-  });
-
-  it('deduplicates direct permissions', async () => {
-    const { service } = createService();
-    const member = {
-      permissions: [
-        WorkspaceMemberPermission.MANAGE_WORKSPACE,
-        WorkspaceMemberPermission.MANAGE_MEMBERS,
-        WorkspaceMemberPermission.MANAGE_WORKSPACE,
-      ],
-    } as WorkspaceMember;
-
-    expect(service.getPermissions(member)).toEqual([
-      WorkspaceMemberPermission.MANAGE_WORKSPACE,
-      WorkspaceMemberPermission.MANAGE_MEMBERS,
-    ]);
-  });
-
-  it('returns an empty list when direct permissions are absent', async () => {
-    const { service } = createService();
-    const member = {} as WorkspaceMember;
-
-    expect(service.getPermissions(member)).toEqual([]);
   });
 });
 

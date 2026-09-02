@@ -486,6 +486,9 @@ importers:
       graphql:
         specifier: ^16.11.0
         version: 16.12.0
+      graphql-type-json:
+        specifier: ^0.3.2
+        version: 0.3.2
       ioredis:
         specifier: ^5.8.0
         version: 5.8.2
@@ -7992,6 +7995,9 @@ packages:
   graphql-tag@2.12.7:
     resolution: {integrity: sha512-xnE/NFzy+0eIesvAsREJZ284zTl/wYuBAvpsFSDhRGRdRHdnE90M21Q3xAWyYInb0J756c6x0pIQ62+vtvOs1Q==}
     engines: {node: '>=10'}
+
+  graphql-type-json@0.3.2:
+    resolution: {integrity: sha512-J+vjof74oMlCWXSvt0DOf2APEdZOCdubEvGDUAlqH//VBYcOYsGgRW7Xzorr44LvkjiuvecWc8fChxuZZbChtg==}
 
   graphql-ws@6.2.1:
     resolution: {integrity: sha512-NMbPNeTwXpUOxmczdMtzEnynLNbbR267E9hRcJ81SSbQeIvZup3cMjbD1ZT3jpS2xkpxooisitvO7LZNOyz17Q==}
@@ -18346,6 +18352,8 @@ snapshots:
   graphql-tag@2.12.7:
     dependencies:
       tslib: 2.8.1
+
+  graphql-type-json@0.3.2: {}
 
   graphql-ws@6.2.1: {}
 
