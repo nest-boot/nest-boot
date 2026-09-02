@@ -1,0 +1,90 @@
+name: nest-boot
+
+x-rustfs-environment: &rustfs-environment
+  RUSTFS_ACCESS_KEY: rustfs
+  RUSTFS_BUCKET: default
+  RUSTFS_SECRET_KEY: secretsecret
+
+services:
+  postgresql:
+    image: postgres:18.6
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD: secret
+      POSTGRES_USER: postgres
+    ports:
+      - "35432:5432"
+    volumes:
+      - postgresql-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  valkey:
+    image: valkey/valkey:9.1.2
+    command: ["valkey-server", "--appendonly", "yes"]
+    ports:
+      - "36379:6379"
+    volumes:
+      - valkey-data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rustfs:
+    image: rustfs/rustfs:1.0.0-rc.4
+    environment:
+      <<: *rustfs-environment
+      RUSTFS_ADDRESS: 0.0.0.0:9000
+      RUSTFS_CONSOLE_ADDRESS: 0.0.0.0:9001
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_VOLUMES: /data
+    ports:
+      - "39000:9000"
+      - "39001:9001"
+    volumes:
+      - rustfs-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:9000/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  rustfs-init:
+    image: rustfs/rc:v0.1.31
+    depends_on:
+      rustfs:
+        condition: service_healthy
+    environment: *rustfs-environment
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        rc alias set local \
+          http://rustfs:9000 \
+          "$${RUSTFS_ACCESS_KEY}" \
+          "$${RUSTFS_SECRET_KEY}"
+        rc mb -p "local/$${RUSTFS_BUCKET}"
+    restart: "no"
+
+  mailpit:
+    image: axllent/mailpit:v1.31.0
+    ports:
+      - "31025:1025"
+      - "38025:8025"
+    healthcheck:
+      test:
+        ["CMD", "wget", "--quiet", "--spider", "http://localhost:8025/livez"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgresql-data:
+  rustfs-data:
+  valkey-data:
