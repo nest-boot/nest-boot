@@ -1,4 +1,4 @@
-/** Injection token for the better-auth instance. */
+/** @internal Injection token for the private better-auth instance. */
 export const AUTH_TOKEN = Symbol("AUTH");
 
 /** Request-context token for the API key used to authenticate a request. */

@@ -12,6 +12,7 @@ import {
 import { ApiKey } from '../api-key/api-key.entity.js';
 import { User } from '../user/user.entity.js';
 import { Workspace } from '../workspace/workspace.entity.js';
+import { WorkspaceInvitation } from '../workspace-member/workspace-invitation.entity.js';
 import { WorkspaceMember } from '../workspace-member/workspace-member.entity.js';
 import { Account } from './entities/account.entity.js';
 import { Session } from './entities/session.entity.js';
@@ -33,11 +34,13 @@ import { RowLevelSecurityInterceptor } from './row-level-security.interceptor.js
           session: Session,
           verification: Verification,
           workspace: Workspace,
+          workspaceInvitation: WorkspaceInvitation,
           workspaceMember: WorkspaceMember,
           apiKey: ApiKey,
         },
         emailAndPassword: {
           enabled: true,
+          requireEmailVerification: true,
         },
         buildUserAbility: () =>
           buildUserPermissionAbility(
@@ -57,6 +60,8 @@ import { RowLevelSecurityInterceptor } from './row-level-security.interceptor.js
             config: [
               {
                 providerId: 'oidc',
+                accountIssuer:
+                  configService.getOrThrow('AUTH_OIDC_ISSUER'),
                 clientId: configService.getOrThrow('AUTH_OIDC_ID'),
                 clientSecret: configService.getOrThrow('AUTH_OIDC_SECRET'),
                 discoveryUrl: configService.getOrThrow(

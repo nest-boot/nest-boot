@@ -8,7 +8,7 @@ import { User } from '../../../app/user/user.entity.js';
 import { Workspace } from '../../../app/workspace/workspace.entity.js';
 import { WorkspaceMemberRole } from '../../../app/workspace-member/enums/workspace-member-role.enum.js';
 import { WorkspaceMemberStatus } from '../../../app/workspace-member/enums/workspace-member-status.enum.js';
-import { WorkspaceInvitation } from '../../../app/workspace-member/workspace-invitation.js';
+import { WorkspaceInvitation } from '../../../app/workspace-member/workspace-invitation.entity.js';
 import { WorkspaceMember } from '../../../app/workspace-member/workspace-member.entity.js';
 
 /** Builds permissions that belong to an authenticated user. */
@@ -18,6 +18,7 @@ export function buildUserPermissionAbility(permissions: AuthPermission[]) {
   can('read', User);
   can('read', Workspace);
   can('create', Workspace);
+  can(['read', 'update'], WorkspaceInvitation);
   can(['read', 'update'], WorkspaceMember);
   can('manage', ApiKey);
 

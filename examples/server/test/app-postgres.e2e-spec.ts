@@ -33,6 +33,8 @@ const DbProbeSchema = new EntitySchema<DbProbe>({
 const adminDatabaseUrl =
   process.env.SERVER_E2E_DATABASE_URL ??
   'postgresql://postgres:secret@localhost:35432/postgres';
+const mailpitUrl =
+  process.env.SERVER_E2E_MAILPIT_URL ?? 'http://127.0.0.1:38025';
 const databaseName = `nest_boot_example_e2e_${process.pid}_${Date.now()}`;
 const databaseUrl = databaseUrlFor(databaseName);
 const execFileAsync = promisify(execFile);
@@ -45,8 +47,11 @@ const envKeys = [
   'APP_SECRET',
   'AUTH_SECRET',
   'AUTH_OIDC_ID',
+  'AUTH_OIDC_ISSUER',
   'AUTH_OIDC_SECRET',
   'AUTH_OIDC_DISCOVERY_URL',
+  'SMTP_HOST',
+  'SMTP_PORT',
   'PORT',
 ] as const;
 const oldEnv = new Map<string, string | undefined>();
@@ -98,6 +103,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     const port = await getFreePort();
     process.env.PORT = String(port);
     baseUrl = `http://127.0.0.1:${port}`;
+    process.env.AUTH_URL = baseUrl;
     serverProcess = spawn(
       process.execPath,
       ['--trace-uncaught', 'dist/main.js'],
@@ -144,7 +150,17 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       name: 'Alice',
       email,
     });
-    expect(collectSetCookies(registered).length).toBeGreaterThan(0);
+    expect(collectSetCookies(registered)).toEqual([]);
+
+    const [credentialAccount] = await migrationOrm.em
+      .getConnection()
+      .execute<
+        { account_id: string; issuer: string }[]
+      >('select account_id, issuer from account where user_id = ?', [registered.body.user.id]);
+    expect(credentialAccount).toEqual({
+      account_id: String(registered.body.user.id),
+      issuer: 'local:credential',
+    });
 
     const rejectedLogin = await signInWithEmail({
       email,
@@ -152,6 +168,15 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     });
 
     expect(rejectedLogin.status).toBe(401);
+
+    const rejectedUnverifiedLogin = await signInWithEmail({
+      email,
+      password,
+    });
+
+    expect(rejectedUnverifiedLogin.status).toBe(403);
+
+    await verifyEmail(email);
 
     const loggedIn = await signInWithEmail({
       email,
@@ -215,6 +240,45 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       name: 'Alice',
       email,
     });
+
+    const passwordResetRequested = await request(baseUrl)
+      .post('/api/auth/request-password-reset')
+      .send({
+        email,
+        redirectTo: `${baseUrl}/auth/reset-password`,
+      });
+
+    expect(passwordResetRequested.status).toBe(200);
+    const passwordResetUrl = new URL(
+      await waitForEmailUrl(email, 'Reset your password'),
+    );
+    const passwordResetToken = passwordResetUrl.pathname.split('/').at(-1);
+
+    expect(passwordResetToken).toBeTypeOf('string');
+
+    const passwordResetCallback = await request(baseUrl).get(
+      `${passwordResetUrl.pathname}${passwordResetUrl.search}`,
+    );
+
+    expect(passwordResetCallback.status).toBe(302);
+    expect(passwordResetCallback.headers.location).toContain(
+      '/auth/reset-password?token=',
+    );
+
+    const newPassword = 'updated-correct-horse-battery-staple';
+    const passwordReset = await request(baseUrl)
+      .post('/api/auth/reset-password')
+      .send({
+        newPassword,
+        token: passwordResetToken,
+      });
+
+    expect(passwordReset.status).toBe(200);
+    expect(passwordReset.body).toEqual({ status: true });
+    expect((await signInWithEmail({ email, password })).status).toBe(401);
+    expect(
+      (await signInWithEmail({ email, password: newPassword })).status,
+    ).toBe(200);
   });
 
   it('resolves workspace context from header and cookie while returning null for missing member context', async () => {
@@ -597,20 +661,21 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     expectGraphQLError(rejectedMemberAdd);
 
-    const invite = await createWorkspaceInvite(owner, workspace.id, {
+    const invite = await createWorkspaceInvitation(owner, workspace.id, {
       email: invitee.email,
       role: 'MEMBER',
     });
 
-    const inviteByToken = await gql(
+    const invitationById = await gql(
       /* GraphQL */ `
-        query WorkspaceMemberByToken($token: String!) {
-          workspaceMemberByToken(token: $token) {
+        query WorkspaceInvitation($id: ID!) {
+          workspaceInvitation(id: $id) {
             id
             email
             role
             status
-            invitedBy {
+            expiresAt
+            inviter {
               email
             }
           }
@@ -619,40 +684,36 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       {
         cookies: invitee.cookies,
         variables: {
-          token: invite.inviteToken,
+          id: invite.id,
         },
       },
     );
 
-    expectNoGraphQLErrors(inviteByToken);
-    expect(inviteByToken.body.data.workspaceMemberByToken).toMatchObject({
+    expectNoGraphQLErrors(invitationById);
+    expect(invitationById.body.data.workspaceInvitation).toMatchObject({
       id: invite.id,
       email: invitee.email,
       role: 'MEMBER',
-      status: 'INVITING',
-      invitedBy: {
+      status: 'PENDING',
+      inviter: {
         email: owner.email,
       },
     });
 
     const rejectedWrongEmail = await gql(
       /* GraphQL */ `
-        mutation AcceptWorkspaceInvite(
-          $token: String!
-          $input: AcceptWorkspaceInviteInput
-        ) {
-          acceptWorkspaceInvite(token: $token, input: $input) {
-            workspaceId
+        mutation AcceptWorkspaceInvitation($invitationId: ID!) {
+          acceptWorkspaceInvitation(invitationId: $invitationId) {
+            invitation {
+              id
+            }
           }
         }
       `,
       {
         cookies: wrongInvitee.cookies,
         variables: {
-          token: invite.inviteToken,
-          input: {
-            name: 'Wrong Invitee',
-          },
+          invitationId: invite.id,
         },
       },
     );
@@ -661,13 +722,13 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     const accepted = await gql(
       /* GraphQL */ `
-        mutation AcceptWorkspaceInvite(
-          $token: String!
-          $input: AcceptWorkspaceInviteInput
-        ) {
-          acceptWorkspaceInvite(token: $token, input: $input) {
-            workspaceId
-            workspaceMember {
+        mutation AcceptWorkspaceInvitation($invitationId: ID!) {
+          acceptWorkspaceInvitation(invitationId: $invitationId) {
+            invitation {
+              id
+              status
+            }
+            member {
               id
               name
               email
@@ -683,20 +744,18 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       {
         cookies: invitee.cookies,
         variables: {
-          token: invite.inviteToken,
-          input: {
-            name: 'Accepted Invitee',
-          },
+          invitationId: invite.id,
         },
       },
     );
 
     expectNoGraphQLErrors(accepted);
-    expect(accepted.body.data.acceptWorkspaceInvite).toMatchObject({
-      workspaceId: workspace.id,
-      workspaceMember: {
+    expect(accepted.body.data.acceptWorkspaceInvitation).toMatchObject({
+      invitation: {
         id: invite.id,
-        name: 'Accepted Invitee',
+        status: 'ACCEPTED',
+      },
+      member: {
         email: invitee.email,
         role: 'MEMBER',
         status: 'ACTIVE',
@@ -705,6 +764,8 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         },
       },
     });
+    const acceptedMemberId =
+      accepted.body.data.acceptWorkspaceInvitation.member.id;
 
     const removed = await gql(
       /* GraphQL */ `
@@ -718,13 +779,13 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         cookies: owner.cookies,
         workspaceId: workspace.id,
         variables: {
-          id: invite.id,
+          id: acceptedMemberId,
         },
       },
     );
 
     expectNoGraphQLErrors(removed);
-    expect(removed.body.data.removeWorkspaceMember.id).toBe(invite.id);
+    expect(removed.body.data.removeWorkspaceMember.id).toBe(acceptedMemberId);
 
     const rejectedRemovedMember = await gql(
       /* GraphQL */ `
@@ -1062,6 +1123,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     const registered = await signUpWithEmail({ name, email, password });
 
     expect(registered.status).toBe(200);
+    await verifyEmail(email);
 
     const loggedIn = await signInWithEmail({ email, password });
     const cookies = collectSetCookies(loggedIn);
@@ -1234,21 +1296,23 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     };
   }
 
-  async function createWorkspaceInvite(
+  async function createWorkspaceInvitation(
     user: AuthenticatedUser,
     workspaceId: string,
-    input: { email?: string; role: string },
+    input: { email: string; role: string },
   ) {
     const response = await gql(
       /* GraphQL */ `
-        mutation CreateWorkspaceInvite($input: CreateWorkspaceInviteInput!) {
-          createWorkspaceInvite(input: $input) {
+        mutation CreateWorkspaceInvitation(
+          $input: CreateWorkspaceInvitationInput!
+        ) {
+          createWorkspaceInvitation(input: $input) {
             id
             email
-            inviteToken
+            expiresAt
             role
             status
-            invitedBy {
+            inviter {
               email
             }
           }
@@ -1265,13 +1329,13 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     expectNoGraphQLErrors(response);
 
-    return response.body.data.createWorkspaceInvite as {
+    return response.body.data.createWorkspaceInvitation as {
       id: string;
-      email: string | null;
-      inviteToken: string;
+      email: string;
+      expiresAt: string;
       role: string;
       status: string;
-      invitedBy: { email: string } | null;
+      inviter: { email: string };
     };
   }
 
@@ -1406,6 +1470,17 @@ describe('Server application PostgreSQL integration (e2e)', () => {
   function signInWithEmail(input: EmailSignInInput) {
     return request(baseUrl).post('/api/auth/sign-in/email').send(input);
   }
+
+  async function verifyEmail(email: string): Promise<void> {
+    const verificationUrl = await waitForEmailUrl(
+      email,
+      'Verify your email address',
+    );
+    const url = new URL(verificationUrl);
+    const response = await request(baseUrl).get(`${url.pathname}${url.search}`);
+
+    expect(response.status).toBe(302);
+  }
 });
 
 interface EmailSignInInput {
@@ -1424,12 +1499,67 @@ interface GraphQLRequestOptions {
   variables?: Record<string, unknown>;
 }
 
+interface MailpitMessageSummary {
+  ID: string;
+  Subject: string;
+  To: {
+    Address: string;
+  }[];
+}
+
+interface MailpitMessagesResponse {
+  messages: MailpitMessageSummary[];
+}
+
+interface MailpitMessage {
+  Text: string;
+}
+
 function uniqueEmail(seed: string) {
   const normalizedSeed = seed.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
   uniqueCounter += 1;
 
   return `${normalizedSeed}-${process.pid}-${Date.now()}-${uniqueCounter}@example.com`;
+}
+
+async function waitForEmailUrl(
+  email: string,
+  subject: string,
+): Promise<string> {
+  const timeoutAt = Date.now() + 5_000;
+
+  while (Date.now() < timeoutAt) {
+    const messagesResponse = await fetch(`${mailpitUrl}/api/v1/messages`);
+    if (!messagesResponse.ok) {
+      throw new Error(`Mailpit returned ${messagesResponse.status}`);
+    }
+
+    const { messages } =
+      (await messagesResponse.json()) as MailpitMessagesResponse;
+    const message = messages.find(
+      (candidate) =>
+        candidate.Subject === subject &&
+        candidate.To.some((recipient) => recipient.Address === email),
+    );
+
+    if (message) {
+      const messageResponse = await fetch(
+        `${mailpitUrl}/api/v1/message/${message.ID}`,
+      );
+      if (!messageResponse.ok) {
+        throw new Error(`Mailpit returned ${messageResponse.status}`);
+      }
+
+      const { Text: text } = (await messageResponse.json()) as MailpitMessage;
+      const match = /https?:\/\/\S+/u.exec(text);
+      if (match?.[0]) return match[0];
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+
+  throw new Error(`${subject} email was not received for ${email}`);
 }
 
 function collectSetCookies(response: request.Response) {
@@ -1548,9 +1678,12 @@ function setTestEnv() {
   process.env.APP_SECRET = '1oAdy3zpD3S0t1AdAqPTlj4Hhkyx83pT2UlNGfS4P2c';
   process.env.AUTH_SECRET = 'R4vWrEDXeeor7VzGzQsdbQobOFtv2nRrlhOVTGpOteA';
   process.env.AUTH_OIDC_ID = 'nest-boot-example-e2e';
+  process.env.AUTH_OIDC_ISSUER = 'https://auth.example.test';
   process.env.AUTH_OIDC_SECRET = 'nest-boot-example-e2e-secret';
   process.env.AUTH_OIDC_DISCOVERY_URL =
     'https://auth.example.test/.well-known/openid-configuration';
+  process.env.SMTP_HOST = '127.0.0.1';
+  process.env.SMTP_PORT = '31025';
 }
 
 function restoreEnv() {

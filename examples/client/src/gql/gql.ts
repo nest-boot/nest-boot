@@ -26,14 +26,15 @@ type Documents = {
   "\n  query getWorkspacesFromWorkspaceSwitcher(\n    $first: Int\n    $after: String\n    $before: String\n    $query: String\n    $orderBy: WorkspaceOrder\n  ) {\n    workspaces(\n      first: $first\n      after: $after\n      before: $before\n      query: $query\n      orderBy: $orderBy\n    ) {\n      edges {\n        node {\n          id\n          name\n        }\n      }\n      pageInfo {\n        hasNextPage\n        hasPreviousPage\n        startCursor\n        endCursor\n      }\n      totalCount\n    }\n  }\n": typeof types.GetWorkspacesFromWorkspaceSwitcherDocument;
   "\n  query getCurrentUserFromCurrentUserContext {\n    currentUser {\n      id\n      name\n      email\n    }\n  }\n": typeof types.GetCurrentUserFromCurrentUserContextDocument;
   "\n  query getCurrentWorkspaceFromWorkspaceContext {\n    currentWorkspace {\n      id\n      name\n      features\n      createdAt\n      updatedAt\n    }\n  }\n": typeof types.GetCurrentWorkspaceFromWorkspaceContextDocument;
-  "\n  query getCurrentWorkspaceMemberFromWorkspaceMemberContext {\n    currentWorkspaceMember {\n      id\n      role\n      name\n      email\n      permissions\n      inviteToken\n      status\n      inviteExpiresAt\n      invitedBy {\n        name\n        email\n      }\n      invitedByUserName\n      user {\n        email\n      }\n    }\n  }\n": typeof types.GetCurrentWorkspaceMemberFromWorkspaceMemberContextDocument;
+  "\n  query getCurrentWorkspaceMemberFromWorkspaceMemberContext {\n    currentWorkspaceMember {\n      id\n      role\n      name\n      email\n      permissions\n      status\n      user {\n        email\n      }\n    }\n  }\n": typeof types.GetCurrentWorkspaceMemberFromWorkspaceMemberContextDocument;
   "\n  query getCurrentWorkspaceFromWorkspaceLayout($workspaceId: ID!) {\n    workspace(id: $workspaceId) {\n      id\n    }\n    currentWorkspaceMember {\n      id\n      role\n    }\n  }\n": typeof types.GetCurrentWorkspaceFromWorkspaceLayoutDocument;
   "\n  query getCurrentWorkspaceMemberFromMemberRoute {\n    currentWorkspaceMember {\n      id\n      role\n    }\n  }\n": typeof types.GetCurrentWorkspaceMemberFromMemberRouteDocument;
-  "\n  query getWorkspaceMemberFromMemberRoute($id: ID!) {\n    workspaceMember(id: $id) {\n      id\n      name\n      email\n      role\n      permissions\n      inviteToken\n      status\n      inviteExpiresAt\n      invitedBy {\n        name\n        email\n      }\n      invitedByUserName\n      user {\n        email\n      }\n    }\n  }\n": typeof types.GetWorkspaceMemberFromMemberRouteDocument;
-  "\n  mutation updateWorkspaceMemberFromMemberRoute(\n    $id: ID!\n    $input: UpdateWorkspaceMemberInput!\n  ) {\n    updateWorkspaceMember(id: $id, input: $input) {\n      id\n      name\n      email\n      role\n      permissions\n      inviteToken\n      status\n      inviteExpiresAt\n      invitedBy {\n        name\n        email\n      }\n      invitedByUserName\n      user {\n        email\n      }\n    }\n  }\n": typeof types.UpdateWorkspaceMemberFromMemberRouteDocument;
+  "\n  query getWorkspaceMemberFromMemberRoute($id: ID!) {\n    workspaceMember(id: $id) {\n      id\n      name\n      email\n      role\n      permissions\n      status\n      user {\n        email\n      }\n    }\n  }\n": typeof types.GetWorkspaceMemberFromMemberRouteDocument;
+  "\n  mutation updateWorkspaceMemberFromMemberRoute(\n    $id: ID!\n    $input: UpdateWorkspaceMemberInput!\n  ) {\n    updateWorkspaceMember(id: $id, input: $input) {\n      id\n      name\n      email\n      role\n      permissions\n      status\n      user {\n        email\n      }\n    }\n  }\n": typeof types.UpdateWorkspaceMemberFromMemberRouteDocument;
   "\n  mutation removeWorkspaceMemberFromMemberRoute($id: ID!) {\n    removeWorkspaceMember(id: $id) {\n      id\n    }\n  }\n": typeof types.RemoveWorkspaceMemberFromMemberRouteDocument;
-  "\n  mutation createWorkspaceInviteFromInviteMemberDialog(\n    $input: CreateWorkspaceInviteInput!\n  ) {\n    createWorkspaceInvite(input: $input) {\n      id\n      inviteToken\n    }\n  }\n": typeof types.CreateWorkspaceInviteFromInviteMemberDialogDocument;
-  "\n  query getWorkspaceMembersFromMembersRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $filter: WorkspaceMemberFilter\n    $orderBy: WorkspaceMemberOrder\n    $query: String\n  ) {\n    workspaceMembers(\n      after: $after\n      before: $before\n      first: $first\n      last: $last\n      orderBy: $orderBy\n      filter: $filter\n      query: $query\n    ) {\n      edges {\n        node {\n          id\n          name\n          email\n          role\n          status\n          createdAt\n          user {\n            id\n            name\n            email\n          }\n        }\n      }\n      pageInfo {\n        endCursor\n        hasNextPage\n        hasPreviousPage\n        startCursor\n      }\n    }\n  }\n": typeof types.GetWorkspaceMembersFromMembersRouteDocument;
+  "\n  mutation createWorkspaceInvitationFromInviteMemberDialog(\n    $input: CreateWorkspaceInvitationInput!\n  ) {\n    createWorkspaceInvitation(input: $input) {\n      id\n    }\n  }\n": typeof types.CreateWorkspaceInvitationFromInviteMemberDialogDocument;
+  "\n  query getWorkspaceMembersFromMembersRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $filter: WorkspaceMemberFilter\n    $orderBy: WorkspaceMemberOrder\n    $query: String\n  ) {\n    workspaceMembers(\n      after: $after\n      before: $before\n      first: $first\n      last: $last\n      orderBy: $orderBy\n      filter: $filter\n      query: $query\n    ) {\n      edges {\n        node {\n          id\n          name\n          email\n          role\n          status\n          createdAt\n          user {\n            id\n            name\n            email\n          }\n        }\n      }\n      pageInfo {\n        endCursor\n        hasNextPage\n        hasPreviousPage\n        startCursor\n      }\n    }\n    workspaceInvitations {\n      id\n      email\n      role\n      status\n      expiresAt\n    }\n  }\n": typeof types.GetWorkspaceMembersFromMembersRouteDocument;
+  "\n  mutation cancelWorkspaceInvitationFromMembersRoute($invitationId: ID!) {\n    cancelWorkspaceInvitation(invitationId: $invitationId) {\n      id\n      status\n    }\n  }\n": typeof types.CancelWorkspaceInvitationFromMembersRouteDocument;
   "\n  mutation removeWorkspaceMemberFromMembersRoute($id: ID!) {\n    removeWorkspaceMember(id: $id) {\n      id\n    }\n  }\n": typeof types.RemoveWorkspaceMemberFromMembersRouteDocument;
   "\n  mutation updateWorkspaceMemberStatusFromMembersRoute(\n    $id: ID!\n    $input: UpdateWorkspaceMemberInput!\n  ) {\n    updateWorkspaceMember(id: $id, input: $input) {\n      id\n      status\n    }\n  }\n": typeof types.UpdateWorkspaceMemberStatusFromMembersRouteDocument;
   "\n  mutation updateWorkspaceFromSettingsRoute($input: UpdateWorkspaceInput!) {\n    updateWorkspace(input: $input) {\n      id\n      name\n    }\n  }\n": typeof types.UpdateWorkspaceFromSettingsRouteDocument;
@@ -43,8 +44,8 @@ type Documents = {
   "\n  query getFirstWorkspaceFromWorkspacesRoute {\n    workspaces(first: 1) {\n      edges {\n        node {\n          id\n        }\n      }\n    }\n  }\n": typeof types.GetFirstWorkspaceFromWorkspacesRouteDocument;
   "\n  query getCurrentUserFromAuthLayout {\n    currentUser {\n      id\n    }\n  }\n": typeof types.GetCurrentUserFromAuthLayoutDocument;
   "\n  query getCurrentUserFromInviteRoute {\n    currentUser {\n      id\n      name\n      email\n    }\n  }\n": typeof types.GetCurrentUserFromInviteRouteDocument;
-  "\n  query getWorkspaceMemberByTokenFromInviteRoute($token: String!) {\n    workspaceMemberByToken(token: $token) {\n      id\n      name\n      email\n      role\n      status\n      inviteExpiresAt\n    }\n  }\n": typeof types.GetWorkspaceMemberByTokenFromInviteRouteDocument;
-  "\n  mutation acceptWorkspaceInviteFromInviteRoute(\n    $token: String!\n    $input: AcceptWorkspaceInviteInput\n  ) {\n    acceptWorkspaceInvite(token: $token, input: $input) {\n      workspaceMember {\n        id\n        name\n        role\n      }\n      workspaceId\n    }\n  }\n": typeof types.AcceptWorkspaceInviteFromInviteRouteDocument;
+  "\n  query getWorkspaceInvitationFromInviteRoute($id: ID!) {\n    workspaceInvitation(id: $id) {\n      id\n      email\n      role\n      status\n      expiresAt\n      workspace {\n        id\n        name\n      }\n    }\n  }\n": typeof types.GetWorkspaceInvitationFromInviteRouteDocument;
+  "\n  mutation acceptWorkspaceInvitationFromInviteRoute($invitationId: ID!) {\n    acceptWorkspaceInvitation(invitationId: $invitationId) {\n      invitation {\n        id\n        status\n        workspace {\n          id\n        }\n      }\n      member {\n        id\n        name\n        role\n      }\n    }\n  }\n": typeof types.AcceptWorkspaceInvitationFromInviteRouteDocument;
 };
 const documents: Documents = {
   "\n  query getCurrentUserFromAuthenticatedRoute {\n    currentUser {\n      id\n    }\n  }\n":
@@ -71,22 +72,24 @@ const documents: Documents = {
     types.GetCurrentUserFromCurrentUserContextDocument,
   "\n  query getCurrentWorkspaceFromWorkspaceContext {\n    currentWorkspace {\n      id\n      name\n      features\n      createdAt\n      updatedAt\n    }\n  }\n":
     types.GetCurrentWorkspaceFromWorkspaceContextDocument,
-  "\n  query getCurrentWorkspaceMemberFromWorkspaceMemberContext {\n    currentWorkspaceMember {\n      id\n      role\n      name\n      email\n      permissions\n      inviteToken\n      status\n      inviteExpiresAt\n      invitedBy {\n        name\n        email\n      }\n      invitedByUserName\n      user {\n        email\n      }\n    }\n  }\n":
+  "\n  query getCurrentWorkspaceMemberFromWorkspaceMemberContext {\n    currentWorkspaceMember {\n      id\n      role\n      name\n      email\n      permissions\n      status\n      user {\n        email\n      }\n    }\n  }\n":
     types.GetCurrentWorkspaceMemberFromWorkspaceMemberContextDocument,
   "\n  query getCurrentWorkspaceFromWorkspaceLayout($workspaceId: ID!) {\n    workspace(id: $workspaceId) {\n      id\n    }\n    currentWorkspaceMember {\n      id\n      role\n    }\n  }\n":
     types.GetCurrentWorkspaceFromWorkspaceLayoutDocument,
   "\n  query getCurrentWorkspaceMemberFromMemberRoute {\n    currentWorkspaceMember {\n      id\n      role\n    }\n  }\n":
     types.GetCurrentWorkspaceMemberFromMemberRouteDocument,
-  "\n  query getWorkspaceMemberFromMemberRoute($id: ID!) {\n    workspaceMember(id: $id) {\n      id\n      name\n      email\n      role\n      permissions\n      inviteToken\n      status\n      inviteExpiresAt\n      invitedBy {\n        name\n        email\n      }\n      invitedByUserName\n      user {\n        email\n      }\n    }\n  }\n":
+  "\n  query getWorkspaceMemberFromMemberRoute($id: ID!) {\n    workspaceMember(id: $id) {\n      id\n      name\n      email\n      role\n      permissions\n      status\n      user {\n        email\n      }\n    }\n  }\n":
     types.GetWorkspaceMemberFromMemberRouteDocument,
-  "\n  mutation updateWorkspaceMemberFromMemberRoute(\n    $id: ID!\n    $input: UpdateWorkspaceMemberInput!\n  ) {\n    updateWorkspaceMember(id: $id, input: $input) {\n      id\n      name\n      email\n      role\n      permissions\n      inviteToken\n      status\n      inviteExpiresAt\n      invitedBy {\n        name\n        email\n      }\n      invitedByUserName\n      user {\n        email\n      }\n    }\n  }\n":
+  "\n  mutation updateWorkspaceMemberFromMemberRoute(\n    $id: ID!\n    $input: UpdateWorkspaceMemberInput!\n  ) {\n    updateWorkspaceMember(id: $id, input: $input) {\n      id\n      name\n      email\n      role\n      permissions\n      status\n      user {\n        email\n      }\n    }\n  }\n":
     types.UpdateWorkspaceMemberFromMemberRouteDocument,
   "\n  mutation removeWorkspaceMemberFromMemberRoute($id: ID!) {\n    removeWorkspaceMember(id: $id) {\n      id\n    }\n  }\n":
     types.RemoveWorkspaceMemberFromMemberRouteDocument,
-  "\n  mutation createWorkspaceInviteFromInviteMemberDialog(\n    $input: CreateWorkspaceInviteInput!\n  ) {\n    createWorkspaceInvite(input: $input) {\n      id\n      inviteToken\n    }\n  }\n":
-    types.CreateWorkspaceInviteFromInviteMemberDialogDocument,
-  "\n  query getWorkspaceMembersFromMembersRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $filter: WorkspaceMemberFilter\n    $orderBy: WorkspaceMemberOrder\n    $query: String\n  ) {\n    workspaceMembers(\n      after: $after\n      before: $before\n      first: $first\n      last: $last\n      orderBy: $orderBy\n      filter: $filter\n      query: $query\n    ) {\n      edges {\n        node {\n          id\n          name\n          email\n          role\n          status\n          createdAt\n          user {\n            id\n            name\n            email\n          }\n        }\n      }\n      pageInfo {\n        endCursor\n        hasNextPage\n        hasPreviousPage\n        startCursor\n      }\n    }\n  }\n":
+  "\n  mutation createWorkspaceInvitationFromInviteMemberDialog(\n    $input: CreateWorkspaceInvitationInput!\n  ) {\n    createWorkspaceInvitation(input: $input) {\n      id\n    }\n  }\n":
+    types.CreateWorkspaceInvitationFromInviteMemberDialogDocument,
+  "\n  query getWorkspaceMembersFromMembersRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $filter: WorkspaceMemberFilter\n    $orderBy: WorkspaceMemberOrder\n    $query: String\n  ) {\n    workspaceMembers(\n      after: $after\n      before: $before\n      first: $first\n      last: $last\n      orderBy: $orderBy\n      filter: $filter\n      query: $query\n    ) {\n      edges {\n        node {\n          id\n          name\n          email\n          role\n          status\n          createdAt\n          user {\n            id\n            name\n            email\n          }\n        }\n      }\n      pageInfo {\n        endCursor\n        hasNextPage\n        hasPreviousPage\n        startCursor\n      }\n    }\n    workspaceInvitations {\n      id\n      email\n      role\n      status\n      expiresAt\n    }\n  }\n":
     types.GetWorkspaceMembersFromMembersRouteDocument,
+  "\n  mutation cancelWorkspaceInvitationFromMembersRoute($invitationId: ID!) {\n    cancelWorkspaceInvitation(invitationId: $invitationId) {\n      id\n      status\n    }\n  }\n":
+    types.CancelWorkspaceInvitationFromMembersRouteDocument,
   "\n  mutation removeWorkspaceMemberFromMembersRoute($id: ID!) {\n    removeWorkspaceMember(id: $id) {\n      id\n    }\n  }\n":
     types.RemoveWorkspaceMemberFromMembersRouteDocument,
   "\n  mutation updateWorkspaceMemberStatusFromMembersRoute(\n    $id: ID!\n    $input: UpdateWorkspaceMemberInput!\n  ) {\n    updateWorkspaceMember(id: $id, input: $input) {\n      id\n      status\n    }\n  }\n":
@@ -105,10 +108,10 @@ const documents: Documents = {
     types.GetCurrentUserFromAuthLayoutDocument,
   "\n  query getCurrentUserFromInviteRoute {\n    currentUser {\n      id\n      name\n      email\n    }\n  }\n":
     types.GetCurrentUserFromInviteRouteDocument,
-  "\n  query getWorkspaceMemberByTokenFromInviteRoute($token: String!) {\n    workspaceMemberByToken(token: $token) {\n      id\n      name\n      email\n      role\n      status\n      inviteExpiresAt\n    }\n  }\n":
-    types.GetWorkspaceMemberByTokenFromInviteRouteDocument,
-  "\n  mutation acceptWorkspaceInviteFromInviteRoute(\n    $token: String!\n    $input: AcceptWorkspaceInviteInput\n  ) {\n    acceptWorkspaceInvite(token: $token, input: $input) {\n      workspaceMember {\n        id\n        name\n        role\n      }\n      workspaceId\n    }\n  }\n":
-    types.AcceptWorkspaceInviteFromInviteRouteDocument,
+  "\n  query getWorkspaceInvitationFromInviteRoute($id: ID!) {\n    workspaceInvitation(id: $id) {\n      id\n      email\n      role\n      status\n      expiresAt\n      workspace {\n        id\n        name\n      }\n    }\n  }\n":
+    types.GetWorkspaceInvitationFromInviteRouteDocument,
+  "\n  mutation acceptWorkspaceInvitationFromInviteRoute($invitationId: ID!) {\n    acceptWorkspaceInvitation(invitationId: $invitationId) {\n      invitation {\n        id\n        status\n        workspace {\n          id\n        }\n      }\n      member {\n        id\n        name\n        role\n      }\n    }\n  }\n":
+    types.AcceptWorkspaceInvitationFromInviteRouteDocument,
 };
 
 /**
@@ -201,8 +204,8 @@ export function graphql(
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
-  source: "\n  query getCurrentWorkspaceMemberFromWorkspaceMemberContext {\n    currentWorkspaceMember {\n      id\n      role\n      name\n      email\n      permissions\n      inviteToken\n      status\n      inviteExpiresAt\n      invitedBy {\n        name\n        email\n      }\n      invitedByUserName\n      user {\n        email\n      }\n    }\n  }\n",
-): (typeof documents)["\n  query getCurrentWorkspaceMemberFromWorkspaceMemberContext {\n    currentWorkspaceMember {\n      id\n      role\n      name\n      email\n      permissions\n      inviteToken\n      status\n      inviteExpiresAt\n      invitedBy {\n        name\n        email\n      }\n      invitedByUserName\n      user {\n        email\n      }\n    }\n  }\n"];
+  source: "\n  query getCurrentWorkspaceMemberFromWorkspaceMemberContext {\n    currentWorkspaceMember {\n      id\n      role\n      name\n      email\n      permissions\n      status\n      user {\n        email\n      }\n    }\n  }\n",
+): (typeof documents)["\n  query getCurrentWorkspaceMemberFromWorkspaceMemberContext {\n    currentWorkspaceMember {\n      id\n      role\n      name\n      email\n      permissions\n      status\n      user {\n        email\n      }\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -219,14 +222,14 @@ export function graphql(
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
-  source: "\n  query getWorkspaceMemberFromMemberRoute($id: ID!) {\n    workspaceMember(id: $id) {\n      id\n      name\n      email\n      role\n      permissions\n      inviteToken\n      status\n      inviteExpiresAt\n      invitedBy {\n        name\n        email\n      }\n      invitedByUserName\n      user {\n        email\n      }\n    }\n  }\n",
-): (typeof documents)["\n  query getWorkspaceMemberFromMemberRoute($id: ID!) {\n    workspaceMember(id: $id) {\n      id\n      name\n      email\n      role\n      permissions\n      inviteToken\n      status\n      inviteExpiresAt\n      invitedBy {\n        name\n        email\n      }\n      invitedByUserName\n      user {\n        email\n      }\n    }\n  }\n"];
+  source: "\n  query getWorkspaceMemberFromMemberRoute($id: ID!) {\n    workspaceMember(id: $id) {\n      id\n      name\n      email\n      role\n      permissions\n      status\n      user {\n        email\n      }\n    }\n  }\n",
+): (typeof documents)["\n  query getWorkspaceMemberFromMemberRoute($id: ID!) {\n    workspaceMember(id: $id) {\n      id\n      name\n      email\n      role\n      permissions\n      status\n      user {\n        email\n      }\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
-  source: "\n  mutation updateWorkspaceMemberFromMemberRoute(\n    $id: ID!\n    $input: UpdateWorkspaceMemberInput!\n  ) {\n    updateWorkspaceMember(id: $id, input: $input) {\n      id\n      name\n      email\n      role\n      permissions\n      inviteToken\n      status\n      inviteExpiresAt\n      invitedBy {\n        name\n        email\n      }\n      invitedByUserName\n      user {\n        email\n      }\n    }\n  }\n",
-): (typeof documents)["\n  mutation updateWorkspaceMemberFromMemberRoute(\n    $id: ID!\n    $input: UpdateWorkspaceMemberInput!\n  ) {\n    updateWorkspaceMember(id: $id, input: $input) {\n      id\n      name\n      email\n      role\n      permissions\n      inviteToken\n      status\n      inviteExpiresAt\n      invitedBy {\n        name\n        email\n      }\n      invitedByUserName\n      user {\n        email\n      }\n    }\n  }\n"];
+  source: "\n  mutation updateWorkspaceMemberFromMemberRoute(\n    $id: ID!\n    $input: UpdateWorkspaceMemberInput!\n  ) {\n    updateWorkspaceMember(id: $id, input: $input) {\n      id\n      name\n      email\n      role\n      permissions\n      status\n      user {\n        email\n      }\n    }\n  }\n",
+): (typeof documents)["\n  mutation updateWorkspaceMemberFromMemberRoute(\n    $id: ID!\n    $input: UpdateWorkspaceMemberInput!\n  ) {\n    updateWorkspaceMember(id: $id, input: $input) {\n      id\n      name\n      email\n      role\n      permissions\n      status\n      user {\n        email\n      }\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -237,14 +240,20 @@ export function graphql(
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
-  source: "\n  mutation createWorkspaceInviteFromInviteMemberDialog(\n    $input: CreateWorkspaceInviteInput!\n  ) {\n    createWorkspaceInvite(input: $input) {\n      id\n      inviteToken\n    }\n  }\n",
-): (typeof documents)["\n  mutation createWorkspaceInviteFromInviteMemberDialog(\n    $input: CreateWorkspaceInviteInput!\n  ) {\n    createWorkspaceInvite(input: $input) {\n      id\n      inviteToken\n    }\n  }\n"];
+  source: "\n  mutation createWorkspaceInvitationFromInviteMemberDialog(\n    $input: CreateWorkspaceInvitationInput!\n  ) {\n    createWorkspaceInvitation(input: $input) {\n      id\n    }\n  }\n",
+): (typeof documents)["\n  mutation createWorkspaceInvitationFromInviteMemberDialog(\n    $input: CreateWorkspaceInvitationInput!\n  ) {\n    createWorkspaceInvitation(input: $input) {\n      id\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
-  source: "\n  query getWorkspaceMembersFromMembersRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $filter: WorkspaceMemberFilter\n    $orderBy: WorkspaceMemberOrder\n    $query: String\n  ) {\n    workspaceMembers(\n      after: $after\n      before: $before\n      first: $first\n      last: $last\n      orderBy: $orderBy\n      filter: $filter\n      query: $query\n    ) {\n      edges {\n        node {\n          id\n          name\n          email\n          role\n          status\n          createdAt\n          user {\n            id\n            name\n            email\n          }\n        }\n      }\n      pageInfo {\n        endCursor\n        hasNextPage\n        hasPreviousPage\n        startCursor\n      }\n    }\n  }\n",
-): (typeof documents)["\n  query getWorkspaceMembersFromMembersRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $filter: WorkspaceMemberFilter\n    $orderBy: WorkspaceMemberOrder\n    $query: String\n  ) {\n    workspaceMembers(\n      after: $after\n      before: $before\n      first: $first\n      last: $last\n      orderBy: $orderBy\n      filter: $filter\n      query: $query\n    ) {\n      edges {\n        node {\n          id\n          name\n          email\n          role\n          status\n          createdAt\n          user {\n            id\n            name\n            email\n          }\n        }\n      }\n      pageInfo {\n        endCursor\n        hasNextPage\n        hasPreviousPage\n        startCursor\n      }\n    }\n  }\n"];
+  source: "\n  query getWorkspaceMembersFromMembersRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $filter: WorkspaceMemberFilter\n    $orderBy: WorkspaceMemberOrder\n    $query: String\n  ) {\n    workspaceMembers(\n      after: $after\n      before: $before\n      first: $first\n      last: $last\n      orderBy: $orderBy\n      filter: $filter\n      query: $query\n    ) {\n      edges {\n        node {\n          id\n          name\n          email\n          role\n          status\n          createdAt\n          user {\n            id\n            name\n            email\n          }\n        }\n      }\n      pageInfo {\n        endCursor\n        hasNextPage\n        hasPreviousPage\n        startCursor\n      }\n    }\n    workspaceInvitations {\n      id\n      email\n      role\n      status\n      expiresAt\n    }\n  }\n",
+): (typeof documents)["\n  query getWorkspaceMembersFromMembersRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $filter: WorkspaceMemberFilter\n    $orderBy: WorkspaceMemberOrder\n    $query: String\n  ) {\n    workspaceMembers(\n      after: $after\n      before: $before\n      first: $first\n      last: $last\n      orderBy: $orderBy\n      filter: $filter\n      query: $query\n    ) {\n      edges {\n        node {\n          id\n          name\n          email\n          role\n          status\n          createdAt\n          user {\n            id\n            name\n            email\n          }\n        }\n      }\n      pageInfo {\n        endCursor\n        hasNextPage\n        hasPreviousPage\n        startCursor\n      }\n    }\n    workspaceInvitations {\n      id\n      email\n      role\n      status\n      expiresAt\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
+  source: "\n  mutation cancelWorkspaceInvitationFromMembersRoute($invitationId: ID!) {\n    cancelWorkspaceInvitation(invitationId: $invitationId) {\n      id\n      status\n    }\n  }\n",
+): (typeof documents)["\n  mutation cancelWorkspaceInvitationFromMembersRoute($invitationId: ID!) {\n    cancelWorkspaceInvitation(invitationId: $invitationId) {\n      id\n      status\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -303,14 +312,14 @@ export function graphql(
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
-  source: "\n  query getWorkspaceMemberByTokenFromInviteRoute($token: String!) {\n    workspaceMemberByToken(token: $token) {\n      id\n      name\n      email\n      role\n      status\n      inviteExpiresAt\n    }\n  }\n",
-): (typeof documents)["\n  query getWorkspaceMemberByTokenFromInviteRoute($token: String!) {\n    workspaceMemberByToken(token: $token) {\n      id\n      name\n      email\n      role\n      status\n      inviteExpiresAt\n    }\n  }\n"];
+  source: "\n  query getWorkspaceInvitationFromInviteRoute($id: ID!) {\n    workspaceInvitation(id: $id) {\n      id\n      email\n      role\n      status\n      expiresAt\n      workspace {\n        id\n        name\n      }\n    }\n  }\n",
+): (typeof documents)["\n  query getWorkspaceInvitationFromInviteRoute($id: ID!) {\n    workspaceInvitation(id: $id) {\n      id\n      email\n      role\n      status\n      expiresAt\n      workspace {\n        id\n        name\n      }\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
-  source: "\n  mutation acceptWorkspaceInviteFromInviteRoute(\n    $token: String!\n    $input: AcceptWorkspaceInviteInput\n  ) {\n    acceptWorkspaceInvite(token: $token, input: $input) {\n      workspaceMember {\n        id\n        name\n        role\n      }\n      workspaceId\n    }\n  }\n",
-): (typeof documents)["\n  mutation acceptWorkspaceInviteFromInviteRoute(\n    $token: String!\n    $input: AcceptWorkspaceInviteInput\n  ) {\n    acceptWorkspaceInvite(token: $token, input: $input) {\n      workspaceMember {\n        id\n        name\n        role\n      }\n      workspaceId\n    }\n  }\n"];
+  source: "\n  mutation acceptWorkspaceInvitationFromInviteRoute($invitationId: ID!) {\n    acceptWorkspaceInvitation(invitationId: $invitationId) {\n      invitation {\n        id\n        status\n        workspace {\n          id\n        }\n      }\n      member {\n        id\n        name\n        role\n      }\n    }\n  }\n",
+): (typeof documents)["\n  mutation acceptWorkspaceInvitationFromInviteRoute($invitationId: ID!) {\n    acceptWorkspaceInvitation(invitationId: $invitationId) {\n      invitation {\n        id\n        status\n        workspace {\n          id\n        }\n      }\n      member {\n        id\n        name\n        role\n      }\n    }\n  }\n"];
 
 export function graphql(source: string) {
   return (documents as any)[source] ?? {};

@@ -5,7 +5,7 @@ import { createFirstWorkspace } from "./utils/workspace";
 import { uniqueSeed } from "./utils/unique";
 
 test.describe("workspace invitations", () => {
-  test("removes a pending invite from the detail page and refreshes the members list", async ({
+  test("cancels a pending invitation without creating a member row", async ({
     context,
     page,
   }) => {
@@ -30,30 +30,16 @@ test.describe("workspace invitations", () => {
     await page.getByTestId("workspace-invite-confirm").click();
     await page.getByTestId("workspace-invite-link-close").click();
 
-    const memberRow = page.getByRole("row").filter({
-      has: page.getByTestId(`workspace-member-row-${inviteeEmail}`),
-    });
-
-    await expect(memberRow).toBeVisible();
-    await memberRow.getByRole("button").click();
-    await page.getByRole("menuitem", { name: "删除" }).click();
-    await expect(page.getByTestId("alert-dialog")).toBeVisible();
-    await expect(page).toHaveURL(
-      new RegExp(`/workspaces/${workspaceId}/members(?:\\?.*)?$`),
-    );
-    await page.getByTestId("alert-dialog-cancel").click();
-
-    await page.getByTestId(`workspace-member-row-${inviteeEmail}`).click();
-    await page.getByRole("button", { name: "More actions" }).click();
-    await page.getByRole("menuitem", { name: "删除" }).click();
-    await page.getByTestId("alert-dialog-confirm").click();
-
-    await expect(page).toHaveURL(
-      new RegExp(`/workspaces/${workspaceId}/members(?:\\?.*)?$`),
-    );
+    const invitation = page.getByTestId(`workspace-invitation-${inviteeEmail}`);
+    await expect(invitation).toBeVisible();
     await expect(
       page.getByTestId(`workspace-member-row-${inviteeEmail}`),
     ).toHaveCount(0);
+
+    await invitation.getByRole("button", { name: "取消" }).click();
+    await page.getByTestId("alert-dialog-confirm").click();
+
+    await expect(invitation).toHaveCount(0);
   });
 
   test("invites a member and accepts the invite through registration", async ({
@@ -86,7 +72,9 @@ test.describe("workspace invitations", () => {
     const inviteLink = (
       await inviteDialog.getByTestId("workspace-invite-link").textContent()
     )?.trim();
-    expect(inviteLink).toMatch(/\/invite\?token=[a-f0-9]+$/);
+    expect(inviteLink).toMatch(
+      /\/invite\?invitationId=[0-9a-f]{8}-[0-9a-f-]{27}$/,
+    );
     await inviteDialog.getByTestId("workspace-invite-link-close").click();
 
     const inviteeContext = await browser.newContext({
@@ -105,7 +93,7 @@ test.describe("workspace invitations", () => {
       await inviteePage.getByTestId("auth-password-input").fill(testPassword);
       await inviteePage.getByTestId("auth-submit").click();
 
-      await expect(inviteePage).toHaveURL(/\/invite\?token=/);
+      await expect(inviteePage).toHaveURL(/\/invite\?invitationId=/);
       await expect(inviteePage.getByTestId("invite-accept-page")).toBeVisible();
       await inviteePage.getByTestId("invite-accept-submit").click();
       await expect(inviteePage).toHaveURL(
@@ -164,7 +152,9 @@ test.describe("workspace invitations", () => {
     const inviteLink = (
       await inviteDialog.getByTestId("workspace-invite-link").textContent()
     )?.trim();
-    expect(inviteLink).toMatch(/\/invite\?token=[a-f0-9]+$/);
+    expect(inviteLink).toMatch(
+      /\/invite\?invitationId=[0-9a-f]{8}-[0-9a-f-]{27}$/,
+    );
     await inviteDialog.getByTestId("workspace-invite-link-close").click();
 
     const inviteeContext = await browser.newContext({
@@ -183,7 +173,7 @@ test.describe("workspace invitations", () => {
       await inviteePage.getByTestId("auth-password-input").fill(testPassword);
       await inviteePage.getByTestId("auth-submit").click();
 
-      await expect(inviteePage).toHaveURL(/\/invite\?token=/);
+      await expect(inviteePage).toHaveURL(/\/invite\?invitationId=/);
       await expect(inviteePage.getByTestId("invite-accept-page")).toBeVisible();
       await inviteePage.getByTestId("invite-accept-submit").click();
       await expect(inviteePage).toHaveURL(

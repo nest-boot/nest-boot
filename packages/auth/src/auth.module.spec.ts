@@ -1,4 +1,6 @@
 import { MikroORM } from "@mikro-orm/core";
+import { HashService } from "@nest-boot/hash";
+import { Mailer } from "@nest-boot/mailer";
 import { MiddlewareManager } from "@nest-boot/middleware";
 import { RequestContextMiddleware } from "@nest-boot/request-context";
 import { MODULE_METADATA } from "@nestjs/common/constants";
@@ -41,12 +43,16 @@ vi.mock("./adapters/mikro-orm-adapter.js", () => ({
   mikroOrmAdapter: mockMikroOrmAdapter,
 }));
 
+import { AdminService } from "./admin.service.js";
 import { ApiKeyService } from "./api-key.service.js";
 import { AUTH_TOKEN } from "./auth.constants.js";
 import { AuthGuard } from "./auth.guard.js";
 import { AuthMiddleware } from "./auth.middleware.js";
 import { AuthModule } from "./auth.module.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
+import { AuthService } from "./auth.service.js";
+import { AuthHandlerMiddleware } from "./auth-handler.middleware.js";
+import { SessionService } from "./session.service.js";
 import { WorkspaceService } from "./workspace.service.js";
 
 class Account {}
@@ -55,6 +61,7 @@ class Session {}
 class User {}
 class Verification {}
 class Workspace {}
+class WorkspaceInvitation {}
 class WorkspaceMember {}
 
 const entities = {
@@ -64,6 +71,7 @@ const entities = {
   user: User,
   verification: Verification,
   workspace: Workspace,
+  workspaceInvitation: WorkspaceInvitation,
   workspaceMember: WorkspaceMember,
 };
 
@@ -117,9 +125,7 @@ function createMiddlewareManager() {
   middlewareProxy.forRoutes.mockReturnValue(middlewareProxy);
   const middlewareManager = {
     apply: vi.fn((middleware) =>
-      (middleware as { type?: string }).type === "node-handler"
-        ? authProxy
-        : middlewareProxy,
+      middleware instanceof AuthHandlerMiddleware ? authProxy : middlewareProxy,
     ),
     globalExclude: vi.fn(),
   };
@@ -156,11 +162,13 @@ async function createAuthModule(
         provide: AuthMiddleware,
         useValue: authMiddleware,
       },
+      AuthHandlerMiddleware,
     ],
   }).compile();
 
   return {
     authModule: moduleRef.get(AuthModule),
+    authHandlerMiddleware: moduleRef.get(AuthHandlerMiddleware),
   };
 }
 
@@ -179,6 +187,7 @@ describe("AuthModule", () => {
     delete process.env.AUTH_DISABLE_SIGN_UP;
     delete process.env.AUTH_EMAIL_ENABLED;
     delete process.env.AUTH_EMAIL_DISABLE_SIGN_UP;
+    delete process.env.AUTH_EMAIL_REQUIRE_VERIFICATION;
     delete process.env.AUTH_GITHUB_CLIENT_ID;
     delete process.env.AUTH_GITHUB_CLIENT_SECRET;
     delete process.env.AUTH_GITHUB_DISABLE_SIGN_UP;
@@ -209,11 +218,18 @@ describe("AuthModule", () => {
     ) as unknown[];
 
     expect(providers).toContain(AuthGuard);
+    expect(providers).toContain(AuthHandlerMiddleware);
+    expect(providers).toContain(AdminService);
     expect(providers).toContain(ApiKeyService);
+    expect(providers).toContain(AuthService);
+    expect(providers).toContain(SessionService);
     expect(providers).toContain(WorkspaceService);
     expect(exports).toContain(MODULE_OPTIONS_TOKEN);
+    expect(exports).toContain(AdminService);
     expect(exports).toContain(ApiKeyService);
     expect(exports).toContain(AuthGuard);
+    expect(exports).toContain(AuthService);
+    expect(exports).toContain(SessionService);
     expect(exports).toContain(WorkspaceService);
   });
 
@@ -262,6 +278,9 @@ describe("AuthModule", () => {
       em: {},
     } as unknown as MikroORM;
     const authProvider = getAuthProvider();
+    const mailer = {
+      sendMail: vi.fn(),
+    } as unknown as Mailer;
 
     const auth = authProvider.useFactory(
       {
@@ -269,6 +288,7 @@ describe("AuthModule", () => {
         secret,
       },
       orm,
+      mailer,
     );
 
     expect(auth).toEqual({
@@ -296,6 +316,67 @@ describe("AuthModule", () => {
       }),
     );
     expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty("entities");
+    expect(authProvider.inject).toEqual([
+      MODULE_OPTIONS_TOKEN,
+      MikroORM,
+      Mailer,
+      HashService,
+    ]);
+  });
+
+  it("should merge account options with the module OAuth state default", () => {
+    const authProvider = getAuthProvider();
+
+    authProvider.useFactory(
+      {
+        account: {
+          updateAccountOnSignIn: false,
+        },
+        entities,
+        secret,
+      },
+      { em: {} } as unknown as MikroORM,
+    );
+
+    expect(mockBetterAuth).toHaveBeenCalledWith(
+      expect.objectContaining({
+        account: {
+          skipStateCookieCheck: true,
+          updateAccountOnSignIn: false,
+        },
+      }),
+    );
+  });
+
+  it("should send verification emails through the injected mailer", async () => {
+    const sendMail = vi.fn().mockResolvedValue(undefined);
+    const authProvider = getAuthProvider();
+
+    authProvider.useFactory(
+      {
+        entities,
+        secret,
+      },
+      { em: {} } as unknown as MikroORM,
+      { sendMail } as unknown as Mailer,
+    );
+
+    await mockBetterAuth.mock.calls[0]?.[0].emailVerification.sendVerificationEmail(
+      {
+        token: "verification-token",
+        url: "https://app.example.com/verify-email",
+        user: {
+          email: "user@example.com",
+        },
+      },
+      undefined,
+    );
+
+    expect(sendMail).toHaveBeenCalledWith({
+      subject: "Verify your email address",
+      text: "Click the link to verify your email: https://app.example.com/verify-email",
+      to: "user@example.com",
+    });
   });
 
   it("should not pass Nest module extensions to better-auth", () => {
@@ -345,6 +426,12 @@ describe("AuthModule", () => {
         emailAndPassword: {
           disableSignUp: false,
           enabled: true,
+          password: {
+            hash: expect.any(Function),
+            verify: expect.any(Function),
+          },
+          requireEmailVerification: true,
+          sendResetPassword: expect.any(Function),
         },
       }),
     );
@@ -742,6 +829,12 @@ describe("AuthModule", () => {
           disableSignUp: true,
           enabled: true,
           maxPasswordLength: 128,
+          password: {
+            hash: expect.any(Function),
+            verify: expect.any(Function),
+          },
+          requireEmailVerification: true,
+          sendResetPassword: expect.any(Function),
         },
       }),
     );
@@ -834,7 +927,7 @@ describe("AuthModule", () => {
     const { authProxy, middlewareManager, middlewareProxy } =
       createMiddlewareManager();
 
-    await createAuthModule(
+    const { authHandlerMiddleware } = await createAuthModule(
       auth as never,
       {
         basePath: "/auth",
@@ -850,10 +943,7 @@ describe("AuthModule", () => {
 
     expect(middlewareManager.globalExclude).toHaveBeenCalledWith("/auth");
     expect(mockToNodeHandler).toHaveBeenCalledWith(auth);
-    expect(middlewareManager.apply).toHaveBeenCalledWith({
-      auth,
-      type: "node-handler",
-    });
+    expect(middlewareManager.apply).toHaveBeenCalledWith(authHandlerMiddleware);
     expect(authProxy.disableGlobalExcludeRoutes).toHaveBeenCalledTimes(1);
     expect(authProxy.forRoutes).toHaveBeenCalledWith("/auth");
     expect(middlewareManager.apply).toHaveBeenCalledWith(authMiddleware);

@@ -2,13 +2,9 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
-input AcceptWorkspaceInviteInput {
-  name: String
-}
-
-type AcceptWorkspaceInviteResult {
-  workspaceId: ID!
-  workspaceMember: WorkspaceMember!
+type AcceptWorkspaceInvitationResult {
+  invitation: WorkspaceInvitation!
+  member: WorkspaceMember!
 }
 
 input AddWorkspaceMemberInput {
@@ -123,8 +119,8 @@ input CreateWorkspaceInput {
   name: String!
 }
 
-input CreateWorkspaceInviteInput {
-  email: String
+input CreateWorkspaceInvitationInput {
+  email: String!
   role: WorkspaceMemberRole!
 }
 
@@ -134,16 +130,18 @@ A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date
 scalar DateTime
 
 type Mutation {
-  acceptWorkspaceInvite(input: AcceptWorkspaceInviteInput, token: String!): AcceptWorkspaceInviteResult!
+  acceptWorkspaceInvitation(invitationId: ID!): AcceptWorkspaceInvitationResult!
   addWorkspaceMember(input: AddWorkspaceMemberInput!): WorkspaceMember!
+  cancelWorkspaceInvitation(invitationId: ID!): WorkspaceInvitation!
   createApiKey(input: CreateApiKeyInput!): CreateApiKeyResult!
   createServiceAccountWorkspaceMember(input: CreateServiceAccountWorkspaceMemberInput!): WorkspaceMember!
   createUserApiKey(input: CreateApiKeyInput!): CreateApiKeyResult!
   createWorkspace(input: CreateWorkspaceInput!): Workspace!
-  createWorkspaceInvite(input: CreateWorkspaceInviteInput!): WorkspaceMember!
+  createWorkspaceInvitation(input: CreateWorkspaceInvitationInput!): WorkspaceInvitation!
   deleteApiKey(id: ID!): ApiKey!
   deleteUserApiKey(id: ID!): ApiKey!
   deleteWorkspace: Workspace!
+  rejectWorkspaceInvitation(invitationId: ID!): WorkspaceInvitation!
   removeWorkspace: Workspace! @deprecated(reason: "Use deleteWorkspace instead")
   removeWorkspaceMember(id: ID!): WorkspaceMember!
   updateApiKey(id: ID!, input: UpdateApiKeyInput!): ApiKey!
@@ -200,6 +198,7 @@ type Query {
     query: String
   ): ApiKeyConnection!
   currentUser: User!
+  currentUserWorkspaceInvitations: [WorkspaceInvitation!]!
   currentWorkspace: Workspace
   currentWorkspaceMember: WorkspaceMember
   userApiKey(id: ID!): ApiKey
@@ -230,8 +229,9 @@ type Query {
     query: String
   ): ApiKeyConnection!
   workspace(id: ID!): Workspace
+  workspaceInvitation(id: ID!): WorkspaceInvitation
+  workspaceInvitations: [WorkspaceInvitation!]!
   workspaceMember(id: ID!): WorkspaceMember
-  workspaceMemberByToken(token: String!): WorkspaceMember
   workspaceMembers(
     """Returns the elements that come after the specified cursor."""
     after: String
@@ -382,14 +382,28 @@ Supported fields: name, created_at
 """
 scalar WorkspaceFilter
 
+type WorkspaceInvitation {
+  createdAt: DateTime!
+  email: String!
+  expiresAt: DateTime!
+  id: ID!
+  inviter: User!
+  role: WorkspaceMemberRole!
+  status: WorkspaceInvitationStatus!
+  workspace: Workspace!
+}
+
+enum WorkspaceInvitationStatus {
+  ACCEPTED
+  CANCELED
+  PENDING
+  REJECTED
+}
+
 type WorkspaceMember {
   createdAt: DateTime!
   email: String
   id: ID!
-  inviteExpiresAt: DateTime
-  inviteToken: String
-  invitedBy: User
-  invitedByUserName: String
   name: String!
   permissions: [WorkspacePermission!]!
   role: WorkspaceMemberRole!
@@ -456,8 +470,6 @@ enum WorkspaceMemberRole {
 enum WorkspaceMemberStatus {
   ACTIVE
   DISABLED
-  INVITE_EXPIRED
-  INVITING
 }
 
 enum WorkspaceMemberType {

@@ -4,4 +4,5 @@ export * from "./session.entity.js";
 export * from "./user.entity.js";
 export * from "./verification.entity.js";
 export * from "./workspace.entity.js";
+export * from "./workspace-invitation.entity.js";
 export * from "./workspace-member.entity.js";

@@ -172,4 +172,23 @@ describe("createSocialProviderConfig", () => {
       enabled: true,
     });
   });
+
+  it("should preserve lazy provider configuration introduced by Better Auth 1.7", async () => {
+    process.env.AUTH_GOOGLE_DISABLE_SIGN_UP = "true";
+    const resolveOptions = vi.fn(() =>
+      Promise.resolve({
+        clientId: "option-client-id",
+        clientSecret: "option-client-secret",
+      }),
+    );
+    const config = createSocialProviderConfig("google", false, resolveOptions);
+
+    expect(config).toEqual(expect.any(Function));
+    await expect((config as () => Promise<unknown>)()).resolves.toEqual({
+      clientId: "option-client-id",
+      clientSecret: "option-client-secret",
+      disableSignUp: true,
+    });
+    expect(resolveOptions).toHaveBeenCalledTimes(1);
+  });
 });

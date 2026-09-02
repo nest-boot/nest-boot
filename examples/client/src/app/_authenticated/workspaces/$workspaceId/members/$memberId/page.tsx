@@ -34,7 +34,7 @@ import {
 } from "@/lib/permissions";
 import { PermissionCheckboxGroup } from "@/components/permission-checkbox-group";
 
-const { WorkspaceMemberRole, WorkspaceMemberStatus } = Gql;
+const { WorkspaceMemberRole } = Gql;
 type UpdateWorkspaceMemberInput = Gql.UpdateWorkspaceMemberInput;
 type WorkspacePermission = Gql.WorkspacePermission;
 
@@ -55,14 +55,7 @@ const GET_WORKSPACE_MEMBER_FROM_MEMBER_ROUTE = graphql(`
       email
       role
       permissions
-      inviteToken
       status
-      inviteExpiresAt
-      invitedBy {
-        name
-        email
-      }
-      invitedByUserName
       user {
         email
       }
@@ -81,14 +74,7 @@ const UPDATE_WORKSPACE_MEMBER_FROM_MEMBER_ROUTE = graphql(`
       email
       role
       permissions
-      inviteToken
       status
-      inviteExpiresAt
-      invitedBy {
-        name
-        email
-      }
-      invitedByUserName
       user {
         email
       }
@@ -180,19 +166,6 @@ function MemberComponent() {
       params: { workspaceId },
     });
   }
-
-  // 判断是否是待邀请状态
-  const isPendingInvite = useMemo(() => {
-    return !member.user && member.status === WorkspaceMemberStatus.INVITING;
-  }, [member.user, member.status]);
-
-  // 获取邀请链接
-  const inviteLink = useMemo(() => {
-    if (!member.inviteToken) {
-      return null;
-    }
-    return `${typeof window !== "undefined" ? window.location.origin : ""}/invite?token=${member.inviteToken}`;
-  }, [member.inviteToken]);
 
   // 判断是否可以修改角色
   const canEditRole = useMemo(() => {
@@ -327,30 +300,9 @@ function MemberComponent() {
     }
   }, [removeWorkspaceMember, memberId, navigate, workspaceId]);
 
-  const handleCopyInviteLink = useCallback(async (link: string) => {
-    try {
-      await navigator.clipboard.writeText(link);
-      toast.success(t("workspace-member:details.toast.link_copied"));
-    } catch (err) {
-      if (err instanceof Error) {
-        toast.error(err.message);
-      }
-    }
-  }, []);
-
-  const canManagePendingInvite = [
-    WorkspaceMemberRole.OWNER,
-    WorkspaceMemberRole.ADMIN,
-  ].includes(currentWorkspaceMember.role);
-
-  const canCopyInviteLink =
-    canManagePendingInvite && isPendingInvite && Boolean(inviteLink);
-
   const canRemove =
     memberId !== currentWorkspaceMember.id &&
-    (currentWorkspaceMember.role === WorkspaceMemberRole.OWNER ||
-      (currentWorkspaceMember.role === WorkspaceMemberRole.ADMIN &&
-        isPendingInvite));
+    currentWorkspaceMember.role === WorkspaceMemberRole.OWNER;
 
   const handleRemoveClick = async () => {
     const confirmed = await alertDialog({
@@ -369,16 +321,8 @@ function MemberComponent() {
     <Page variant="compact">
       <PageHeader>
         <PageTitle>{member.name}</PageTitle>
-        {canCopyInviteLink || canRemove ? (
+        {canRemove ? (
           <PageActions>
-            {canCopyInviteLink && inviteLink ? (
-              <PageSecondaryAction
-                data-testid="workspace-member-copy-invite-link-action"
-                onAction={() => handleCopyInviteLink(inviteLink)}
-              >
-                {t("workspace-member:details.actions.copy_invite_link")}
-              </PageSecondaryAction>
-            ) : null}
             {canRemove ? (
               <PageSecondaryAction
                 data-testid="workspace-member-delete-action"

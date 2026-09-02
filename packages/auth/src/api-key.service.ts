@@ -403,7 +403,14 @@ export class ApiKeyService<
       const owner = this.unwrapOwner(entity);
       const ownerType = this.getOwnerType(owner);
       if (ownerType === "user") {
-        return { apiKey: entity, ownerType, user: owner as User };
+        const user = owner as User;
+        if (
+          user.banned &&
+          (!user.banExpiresAt || user.banExpiresAt.getTime() > Date.now())
+        ) {
+          return null;
+        }
+        return { apiKey: entity, ownerType, user };
       }
       if ((owner as Workspace).deletedAt) return null;
       return { apiKey: entity, ownerType, workspace: owner as Workspace };

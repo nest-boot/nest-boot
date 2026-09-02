@@ -14,6 +14,7 @@ import { isEmpty, pick } from "lodash";
 import { useCurrentWorkspaceMemberContext } from "../contexts/current-workspace-member-context";
 import { InviteMemberDialog } from "./components/invite-member-dialog";
 import type { DataFilterItemProps } from "@/components/thread-ui/data-filter";
+import { Button } from "@/components/thread-ui/button";
 import { DataFilter } from "@/components/thread-ui/data-filter";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import {
@@ -28,6 +29,7 @@ import {
 import { DataTable } from "@/components/thread-ui/data-table";
 import { graphql } from "@/gql";
 import {
+  WorkspaceInvitationStatus,
   WorkspaceMemberOrderField,
   WorkspaceMemberRole,
   WorkspaceMemberStatus,
@@ -93,6 +95,22 @@ const GET_WORKSPACE_MEMBERS_FROM_MEMBERS_ROUTE = graphql(`
         startCursor
       }
     }
+    workspaceInvitations {
+      id
+      email
+      role
+      status
+      expiresAt
+    }
+  }
+`);
+
+const CANCEL_WORKSPACE_INVITATION_FROM_MEMBERS_ROUTE = graphql(`
+  mutation cancelWorkspaceInvitationFromMembersRoute($invitationId: ID!) {
+    cancelWorkspaceInvitation(invitationId: $invitationId) {
+      id
+      status
+    }
   }
 `);
 
@@ -141,11 +159,7 @@ const getTypeLabel = (type: WorkspaceMemberType) => {
 };
 
 const statusMap = {
-  [WorkspaceMemberStatus.INVITING]: t("workspace-member:status.inviting"),
   [WorkspaceMemberStatus.ACTIVE]: t("workspace-member:status.active"),
-  [WorkspaceMemberStatus.INVITE_EXPIRED]: t(
-    "workspace-member:status.invite_expired",
-  ),
   [WorkspaceMemberStatus.DISABLED]: t("workspace-member:status.disabled"),
 };
 
@@ -153,11 +167,7 @@ const getStatusLabel = (status: WorkspaceMemberStatus | null | undefined) => {
   if (!status) return null;
 
   switch (status) {
-    case WorkspaceMemberStatus.INVITING:
-      return statusMap[status];
     case WorkspaceMemberStatus.ACTIVE:
-      return statusMap[status];
-    case WorkspaceMemberStatus.INVITE_EXPIRED:
       return statusMap[status];
     case WorkspaceMemberStatus.DISABLED:
       return statusMap[status];
@@ -239,6 +249,10 @@ function MembersComponent() {
   });
 
   const members = data?.workspaceMembers.edges.map((edge) => edge.node) ?? [];
+  const pendingInvitations =
+    data?.workspaceInvitations.filter(
+      ({ status }) => status === WorkspaceInvitationStatus.PENDING,
+    ) ?? [];
   const pageInfo = data?.workspaceMembers.pageInfo;
 
   const filters: Array<DataFilterItemProps> = useMemo(() => {
@@ -309,6 +323,27 @@ function MembersComponent() {
 
   const [updateWorkspaceMemberStatus, { loading: updateStatusLoading }] =
     useMutation(UPDATE_WORKSPACE_MEMBER_STATUS_FROM_MEMBERS_ROUTE);
+  const [cancelWorkspaceInvitation, { loading: cancelInvitationLoading }] =
+    useMutation(CANCEL_WORKSPACE_INVITATION_FROM_MEMBERS_ROUTE);
+
+  const handleCopyInvitation = async (invitationId: string) => {
+    const link = `${window.location.origin}/invite?invitationId=${invitationId}`;
+    await navigator.clipboard.writeText(link);
+    toast.success(t("workspace-member:invite.link_copied"));
+  };
+
+  const handleCancelInvitation = async (invitationId: string) => {
+    const confirmed = await alertDialog({
+      title: t("workspace-member:invite.title"),
+      description: t("workspace-member:delete.description"),
+      cancelText: t("action.cancel"),
+      confirmText: t("action.confirm"),
+    });
+    if (!confirmed) return;
+
+    await cancelWorkspaceInvitation({ variables: { invitationId } });
+    await refetch();
+  };
 
   const handleRemoveMemberClick = async (memberId: string) => {
     const confirmed = await alertDialog({
@@ -465,8 +500,6 @@ function MembersComponent() {
                   "green" | "yellow" | "red" | "gray"
                 > = {
                   [WorkspaceMemberStatus.ACTIVE]: "green",
-                  [WorkspaceMemberStatus.INVITING]: "yellow",
-                  [WorkspaceMemberStatus.INVITE_EXPIRED]: "red",
                   [WorkspaceMemberStatus.DISABLED]: "gray",
                 };
 
@@ -545,6 +578,49 @@ function MembersComponent() {
             },
           }}
         />
+
+        {pendingInvitations.length > 0 ? (
+          <section
+            className="mt-8 space-y-3"
+            data-testid="workspace-invitations"
+          >
+            <h2 className="text-base font-semibold">
+              {t("workspace-member:invite.title")}
+            </h2>
+            {pendingInvitations.map((invitation) => (
+              <div
+                className="flex items-center justify-between gap-4 rounded-md border p-3"
+                data-testid={`workspace-invitation-${invitation.email}`}
+                key={invitation.id}
+              >
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{invitation.email}</p>
+                  <p className="text-muted-foreground text-xs">
+                    {getRoleLabel(invitation.role)} ·{" "}
+                    {dayjs(invitation.expiresAt).format("YYYY-MM-DD HH:mm")}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleCopyInvitation(invitation.id)}
+                  >
+                    {t("workspace-member:details.actions.copy_invite_link")}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    disabled={cancelInvitationLoading}
+                    onClick={() => handleCancelInvitation(invitation.id)}
+                  >
+                    {t("action.cancel")}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </section>
+        ) : null}
 
         <InviteMemberDialog
           inviteOpen={inviteOpen}

@@ -1,7 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { useMutation, useQuery } from "@apollo/client/react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useForm } from "@tanstack/react-form";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
@@ -17,9 +16,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/thread-ui/input";
 
-const INVITE_TOKEN_KEY = "workspace_invite_token";
+const INVITATION_ID_KEY = "workspace_invitation_id";
 
 const GET_CURRENT_USER_FROM_INVITE_ROUTE = graphql(`
   query getCurrentUserFromInviteRoute {
@@ -31,31 +29,37 @@ const GET_CURRENT_USER_FROM_INVITE_ROUTE = graphql(`
   }
 `);
 
-const GET_WORKSPACE_MEMBER_BY_TOKEN_FROM_INVITE_ROUTE = graphql(`
-  query getWorkspaceMemberByTokenFromInviteRoute($token: String!) {
-    workspaceMemberByToken(token: $token) {
+const GET_WORKSPACE_INVITATION_FROM_INVITE_ROUTE = graphql(`
+  query getWorkspaceInvitationFromInviteRoute($id: ID!) {
+    workspaceInvitation(id: $id) {
       id
-      name
       email
       role
       status
-      inviteExpiresAt
+      expiresAt
+      workspace {
+        id
+        name
+      }
     }
   }
 `);
 
-const ACCEPT_WORKSPACE_INVITE_FROM_INVITE_ROUTE = graphql(`
-  mutation acceptWorkspaceInviteFromInviteRoute(
-    $token: String!
-    $input: AcceptWorkspaceInviteInput
-  ) {
-    acceptWorkspaceInvite(token: $token, input: $input) {
-      workspaceMember {
+const ACCEPT_WORKSPACE_INVITATION_FROM_INVITE_ROUTE = graphql(`
+  mutation acceptWorkspaceInvitationFromInviteRoute($invitationId: ID!) {
+    acceptWorkspaceInvitation(invitationId: $invitationId) {
+      invitation {
+        id
+        status
+        workspace {
+          id
+        }
+      }
+      member {
         id
         name
         role
       }
-      workspaceId
     }
   }
 `);
@@ -64,7 +68,7 @@ export const Route = createFileRoute("/invite/")({
   component: InviteComponent,
   validateSearch: zodValidator(
     z.object({
-      token: z.string().optional(),
+      invitationId: z.string().optional(),
     }),
   ),
 });
@@ -73,7 +77,7 @@ function InviteComponent() {
   const navigate = useNavigate();
   const search = Route.useSearch();
 
-  const token = search.token || null;
+  const invitationId = search.invitationId || null;
 
   // 查询当前用户信息
   const { data: meData, loading: meLoading } = useQuery(
@@ -89,14 +93,14 @@ function InviteComponent() {
     data: inviteData,
     loading: inviteLoading,
     error: inviteError,
-  } = useQuery(GET_WORKSPACE_MEMBER_BY_TOKEN_FROM_INVITE_ROUTE, {
-    variables: { token: token! },
-    skip: !token,
+  } = useQuery(GET_WORKSPACE_INVITATION_FROM_INVITE_ROUTE, {
+    variables: { id: invitationId! },
+    skip: !invitationId,
     errorPolicy: "all",
   });
 
-  const [acceptInvite, { loading: acceptLoading }] = useMutation(
-    ACCEPT_WORKSPACE_INVITE_FROM_INVITE_ROUTE,
+  const [acceptInvitation, { loading: acceptLoading }] = useMutation(
+    ACCEPT_WORKSPACE_INVITATION_FROM_INVITE_ROUTE,
   );
 
   // 如果未登录，立即跳转到登录页（避免闪烁）
@@ -104,76 +108,53 @@ function InviteComponent() {
     // 只有在查询完成且确实没有用户数据时才跳转
     // 如果查询还在进行中，或者有错误但可能是网络问题，不跳转
     if (!meLoading && meData !== undefined && !meData?.currentUser) {
-      if (token && typeof window !== "undefined") {
-        localStorage.setItem(INVITE_TOKEN_KEY, token);
+      if (invitationId && typeof window !== "undefined") {
+        localStorage.setItem(INVITATION_ID_KEY, invitationId);
       }
       if (typeof window !== "undefined") {
         window.location.href = `${window.location.origin}/auth/login`;
       }
     }
-  }, [meLoading, meData, token]);
+  }, [meLoading, meData, invitationId]);
 
   // 检查邮箱是否匹配
   const emailMismatch = useMemo(() => {
     const userEmail = meData?.currentUser?.email || "";
-    const inviteEmail = inviteData?.workspaceMemberByToken?.email || null;
-    // 如果邀请者指定了 email，且与用户 email 不一致，则显示错误
-    return inviteEmail && inviteEmail !== userEmail;
+    const inviteEmail = inviteData?.workspaceInvitation?.email || null;
+    return inviteEmail && inviteEmail.toLowerCase() !== userEmail.toLowerCase();
   }, [meData, inviteData]);
 
-  const form = useForm({
-    defaultValues: {
-      name: meData?.currentUser?.name || "",
-      email: meData?.currentUser?.email || "",
-    },
-    onSubmit: async ({ value }) => {
-      if (!token) {
-        toast.error(t("workspace:invite.error.invalid_token"));
-        return;
-      }
-
-      try {
-        const result = await acceptInvite({
-          variables: {
-            token,
-            input: {
-              name: value.name?.trim() || undefined,
-            },
-          },
-        });
-
-        if (result.data?.acceptWorkspaceInvite) {
-          localStorage.removeItem(INVITE_TOKEN_KEY);
-          toast.success(t("workspace:invite.success"));
-
-          const workspaceId = result.data.acceptWorkspaceInvite.workspaceId;
-          navigate({
-            to: "/workspaces/$workspaceId",
-            params: { workspaceId },
-          });
-        }
-      } catch (error) {
-        const errorMessage =
-          (error instanceof Error && error.message) ||
-          (error && typeof error === "object" && "graphQLErrors" in error
-            ? (error as { graphQLErrors?: Array<{ message?: string }> })
-                .graphQLErrors?.[0]?.message
-            : undefined) ||
-          t("workspace:invite.error.accept_failed");
-        toast.error(errorMessage);
-      }
-    },
-  });
-
-  // 当数据加载完成后更新表单值
-  useEffect(() => {
-    if (meData?.currentUser) {
-      form.reset({
-        name: meData.currentUser.name || "",
-        email: meData.currentUser.email || "",
-      });
+  const handleAccept = async () => {
+    if (!invitationId) {
+      toast.error(t("workspace:invite.error.invalid_token"));
+      return;
     }
-  }, [meData, form]);
+
+    try {
+      const result = await acceptInvitation({
+        variables: { invitationId },
+      });
+      const workspaceId =
+        result.data?.acceptWorkspaceInvitation?.invitation.workspace.id;
+      if (workspaceId) {
+        localStorage.removeItem(INVITATION_ID_KEY);
+        toast.success(t("workspace:invite.success"));
+        navigate({
+          to: "/workspaces/$workspaceId",
+          params: { workspaceId },
+        });
+      }
+    } catch (error) {
+      const errorMessage =
+        (error instanceof Error && error.message) ||
+        (error && typeof error === "object" && "graphQLErrors" in error
+          ? (error as { graphQLErrors?: Array<{ message?: string }> })
+              .graphQLErrors?.[0]?.message
+          : undefined) ||
+        t("workspace:invite.error.accept_failed");
+      toast.error(errorMessage);
+    }
+  };
 
   // 如果未登录，不渲染后续内容（避免闪烁）
   // 只有在查询完成且确实没有用户数据时才显示加载状态
@@ -220,7 +201,7 @@ function InviteComponent() {
     meLoading ||
     inviteLoading ||
     !meData?.currentUser ||
-    !inviteData?.workspaceMemberByToken
+    !inviteData?.workspaceInvitation
   ) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -245,47 +226,16 @@ function InviteComponent() {
           <CardDescription>{t("workspace:invite.description")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              form.handleSubmit();
-            }}
-            className="space-y-4"
-          >
-            <form.Field name="name">
-              {(field) => (
-                <Input
-                  id="name"
-                  data-testid="invite-accept-name-input"
-                  label={t("workspace:invite.form.name.label")}
-                  description={t("workspace:invite.form.name.description")}
-                  value={field.state.value}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  onBlur={field.handleBlur}
-                />
-              )}
-            </form.Field>
-
-            <form.Field name="email">
-              {(field) => (
-                <Input
-                  id="email"
-                  data-testid="invite-accept-email-input"
-                  type="email"
-                  label={t("workspace:invite.form.email.label")}
-                  disabled={true}
-                  value={field.state.value}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  error={
-                    emailMismatch
-                      ? t("workspace:invite.form.email.mismatch_error")
-                      : undefined
-                  }
-                />
-              )}
-            </form.Field>
-
+          <div className="space-y-4">
+            <p className="text-muted-foreground text-sm">
+              {inviteData.workspaceInvitation.workspace.name} ·{" "}
+              {inviteData.workspaceInvitation.email}
+            </p>
+            {emailMismatch ? (
+              <p className="text-destructive text-sm">
+                {t("workspace:invite.form.email.mismatch_error")}
+              </p>
+            ) : null}
             <div className="flex gap-2">
               <Button
                 type="button"
@@ -295,21 +245,18 @@ function InviteComponent() {
               >
                 {t("action.cancel")}
               </Button>
-              <form.Subscribe selector={(state) => state.isSubmitting}>
-                {(isSubmitting) => (
-                  <Button
-                    type="submit"
-                    data-testid="invite-accept-submit"
-                    disabled={!!emailMismatch}
-                    loading={isSubmitting || acceptLoading}
-                    className="flex-1"
-                  >
-                    {t("workspace:invite.form.submit")}
-                  </Button>
-                )}
-              </form.Subscribe>
+              <Button
+                type="button"
+                data-testid="invite-accept-submit"
+                disabled={!!emailMismatch}
+                loading={acceptLoading}
+                className="flex-1"
+                onClick={handleAccept}
+              >
+                {t("workspace:invite.form.submit")}
+              </Button>
             </div>
-          </form>
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -1,230 +1,55 @@
-import { type EntityClass, type MikroORM } from "@mikro-orm/core";
+import type { MikroORM } from "@mikro-orm/core";
+import type { BetterAuthOptions } from "better-auth";
 import {
   createAdapterFactory,
   type DBAdapterDebugLogOption,
-  Where,
 } from "better-auth/adapters";
 
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
+import { createMikroOrmAdapterConfig } from "./mikro-orm/adapter-config.js";
+import { createMikroOrmCustomAdapter } from "./mikro-orm/create-custom-adapter.js";
+
+export { convertWhereToMikroOrm } from "./mikro-orm/where-compiler.js";
 
 export interface MikroOrmAdapterConfig {
-  /**
-   * The MikroORM instance.
-   */
+  /** The MikroORM instance. */
   orm: MikroORM;
-  /**
-   * The entities to use for the adapter.
-   */
+  /** The entities to use for the adapter. */
   entities: AuthModuleOptions["entities"];
-  /**
-   * Helps you debug issues with the adapter.
-   */
+  /** Helps you debug issues with the adapter. */
   debugLogs?: DBAdapterDebugLogOption;
-}
-
-export function convertWhereToMikroOrm(where: Required<Where>[]) {
-  const conditions = where.map(({ field, operator, value }) => {
-    switch (operator) {
-      case "eq":
-        return {
-          [field]: {
-            $eq: value,
-          },
-        };
-      case "ne":
-        return {
-          [field]: {
-            $ne: value,
-          },
-        };
-      case "lt":
-        return {
-          [field]: {
-            $lt: value,
-          },
-        };
-      case "lte":
-        return {
-          [field]: {
-            $lte: value,
-          },
-        };
-      case "gt":
-        return {
-          [field]: {
-            $gt: value,
-          },
-        };
-      case "gte":
-        return {
-          [field]: {
-            $gte: value,
-          },
-        };
-      case "in":
-        return {
-          [field]: {
-            $in: value,
-          },
-        };
-      case "not_in":
-        return {
-          [field]: {
-            $nin: value,
-          },
-        };
-      case "contains":
-        if (typeof value !== "string") {
-          throw new Error("Value must be a string");
-        }
-
-        return {
-          [field]: {
-            $like: `%${value}%`,
-          },
-        };
-      case "starts_with":
-        if (typeof value !== "string") {
-          throw new Error("Value must be a string");
-        }
-
-        return {
-          [field]: {
-            $like: `${value}%`,
-          },
-        };
-      case "ends_with":
-        if (typeof value !== "string") {
-          throw new Error("Value must be a string");
-        }
-
-        return {
-          [field]: {
-            $like: `%${value}`,
-          },
-        };
-      default:
-        throw new Error(`Unsupported operator: ${String(operator)}`);
-    }
-  });
-
-  const hasOr = where.some((w) => w.connector === "OR");
-
-  if (!hasOr) {
-    return { $and: conditions };
-  }
-
-  const groups: Record<string, unknown>[][] = [[]];
-
-  for (let i = 0; i < conditions.length; i++) {
-    if (i > 0 && where[i].connector === "OR") {
-      groups.push([]);
-    }
-    groups[groups.length - 1].push(conditions[i]);
-  }
-
-  const orBranches = groups.map((group) =>
-    group.length === 1 ? group[0] : { $and: group },
-  );
-
-  return orBranches.length === 1 ? orBranches[0] : { $or: orBranches };
 }
 
 export const mikroOrmAdapter = ({
   orm,
   entities,
-  ...config
+  debugLogs,
 }: MikroOrmAdapterConfig) => {
-  const getEntityClass = (model: string): EntityClass<object> => {
-    return entities[model as keyof typeof entities];
+  return (options: BetterAuthOptions) => {
+    const adapterConfig = createMikroOrmAdapterConfig(debugLogs);
+    const adapterFactory = createAdapterFactory({
+      config: {
+        ...adapterConfig,
+        transaction: async (callback) =>
+          await orm.em.transactional(async (em) => {
+            const transactionAdapter = createAdapterFactory({
+              config: {
+                ...adapterConfig,
+                transaction: false,
+              },
+              adapter: createMikroOrmCustomAdapter({
+                em,
+                entities,
+                inTransaction: true,
+              }),
+            })(options);
+
+            return await callback(transactionAdapter);
+          }),
+      },
+      adapter: createMikroOrmCustomAdapter({ em: orm.em, entities }),
+    });
+
+    return adapterFactory(options);
   };
-
-  return createAdapterFactory({
-    config: {
-      adapterId: "mikro-orm-adapter", // A unique identifier for the adapter.
-      adapterName: "MikroORM Adapter", // The name of the adapter.
-      usePlural: false, // Whether the table names in the schema are plural.
-      debugLogs: config.debugLogs ?? false, // Whether to enable debug logs.
-      supportsJSON: true, // Whether the database supports JSON. (Default: false)
-      supportsDates: true, // Whether the database supports dates. (Default: true)
-      supportsBooleans: true, // Whether the database supports booleans. (Default: true)
-      supportsNumericIds: true, // Whether the database supports auto-incrementing numeric IDs. (Default: true)
-      disableIdGeneration: true, // Whether to disable id generation. (Default: false)
-      ...config,
-    },
-    adapter: () => {
-      return {
-        create: async ({ data, model }) => {
-          const entity = orm.em.create(getEntityClass(model), data as any);
-          await orm.em.persist(entity).flush();
-          return entity as any;
-        },
-        update: async ({ model, where, update }) => {
-          const entity = await orm.em.findOne(
-            getEntityClass(model),
-            convertWhereToMikroOrm(where),
-          );
-
-          if (!entity) {
-            return null;
-          }
-
-          orm.em.assign(entity, update as any);
-
-          await orm.em.flush();
-
-          return entity as any;
-        },
-        updateMany: async ({ model, where, update }) => {
-          return await orm.em.nativeUpdate(
-            getEntityClass(model),
-            convertWhereToMikroOrm(where),
-            update,
-          );
-        },
-        delete: async ({ model, where }) => {
-          await orm.em.nativeDelete(
-            getEntityClass(model),
-            convertWhereToMikroOrm(where),
-          );
-        },
-        deleteMany: async ({ model, where }) => {
-          return await orm.em.nativeDelete(
-            getEntityClass(model),
-            convertWhereToMikroOrm(where),
-          );
-        },
-        findOne: async ({ model, where }) => {
-          const entity = await orm.em.findOne(
-            getEntityClass(model),
-            convertWhereToMikroOrm(where),
-          );
-
-          return entity as any;
-        },
-        findMany: async ({ model, where, limit, offset, sortBy }) => {
-          const result = await orm.em.findAll(getEntityClass(model), {
-            ...(where ? { where: convertWhereToMikroOrm(where) } : {}),
-            limit: limit,
-            offset: offset ?? 0,
-            ...(sortBy
-              ? {
-                  orderBy: {
-                    [sortBy.field]: sortBy.direction,
-                  },
-                }
-              : {}),
-          });
-
-          return result as any;
-        },
-        count: async ({ model, where }) => {
-          return await orm.em.count(
-            getEntityClass(model),
-            where ? convertWhereToMikroOrm(where) : undefined,
-          );
-        },
-      };
-    },
-  });
 };

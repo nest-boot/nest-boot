@@ -5,7 +5,7 @@ export class Migration20260902080630_Baseline extends RowLevelSecurityMigration 
 
   override up(): void | Promise<void> {
     this.addSql(
-      `create table "user" ("id" bigserial primary key, "email_verified" boolean not null default false, "image" text null, "permissions" text[] not null default '{}', "name" varchar(255) not null, "email" varchar(255) not null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now());`,
+      `create table "user" ("id" bigserial primary key, "email_verified" boolean not null default false, "image" text null, "permissions" text[] not null default '{}', "banned" boolean not null default false, "ban_reason" text null, "ban_expires_at" timestamptz null, "name" varchar(255) not null, "email" varchar(255) not null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now());`,
     );
     this.addSql(
       `alter table "user" add constraint "user_email_unique" unique ("email");`,
@@ -15,10 +15,13 @@ export class Migration20260902080630_Baseline extends RowLevelSecurityMigration 
     );
 
     this.addSql(
-      `create table "session" ("id" uuid not null, "token" text not null, "user_id" bigint not null, "expires_at" timestamptz not null, "ip_address" text null, "user_agent" text null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now(), primary key ("id"));`,
+      `create table "session" ("id" uuid not null, "token" text not null, "user_id" bigint not null, "expires_at" timestamptz not null, "ip_address" text null, "user_agent" text null, "impersonated_by_id" bigint null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now(), primary key ("id"));`,
     );
     this.addSql(
       `alter table "session" add constraint "session_token_unique" unique ("token");`,
+    );
+    this.addSql(
+      `create index "session_user_id_index" on "session" ("user_id");`,
     );
 
     this.addSql(
@@ -37,11 +40,20 @@ export class Migration20260902080630_Baseline extends RowLevelSecurityMigration 
     );
 
     this.addSql(
-      `create table "account" ("id" uuid not null, "account_id" text not null, "provider_id" text not null, "user_id" bigint not null, "access_token" text null, "refresh_token" text null, "id_token" text null, "access_token_expires_at" timestamptz null, "refresh_token_expires_at" timestamptz null, "scope" text null, "password" text null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now(), primary key ("id"));`,
+      `create table "account" ("id" uuid not null, "account_id" text not null, "issuer" text not null, "provider_id" text not null, "user_id" bigint not null, "access_token" text null, "refresh_token" text null, "id_token" text null, "access_token_expires_at" timestamptz null, "refresh_token_expires_at" timestamptz null, "scope" text null, "password" text null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now(), primary key ("id"));`,
+    );
+    this.addSql(
+      `alter table "account" add constraint "account_issuer_account_id_unique" unique ("issuer", "account_id");`,
+    );
+    this.addSql(
+      `create index "account_user_id_index" on "account" ("user_id");`,
     );
 
     this.addSql(
       `create table "verification" ("id" uuid not null, "identifier" text not null, "value" text not null, "expires_at" timestamptz not null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now(), primary key ("id"));`,
+    );
+    this.addSql(
+      `create index "verification_identifier_index" on "verification" ("identifier");`,
     );
 
     this.addSql(
@@ -58,7 +70,32 @@ export class Migration20260902080630_Baseline extends RowLevelSecurityMigration 
     );
 
     this.addSql(
-      `create table "workspace_member" ("id" bigserial primary key, "name" varchar(255) not null, "email" varchar(255) null, "searchable_name" tsvector null, "type" text not null default 'USER', "role" text not null default 'MEMBER', "permissions" text[] not null default '{}', "invited_by_id" bigint null, "invited_by_user_name" varchar(255) null, "invite_token" text null, "status" text not null default 'ACTIVE', "invite_expires_at" timestamptz null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now(), "user_id" bigint null, "workspace_id" bigint not null);`,
+      `create table "workspace_invitation" ("id" uuid not null, "email" varchar(255) not null, "role" text not null default 'MEMBER', "status" text not null default 'pending', "expires_at" timestamptz not null, "created_at" timestamptz not null default now(), "inviter_id" bigint not null, "workspace_id" bigint not null, primary key ("id"));`,
+    );
+    this.addSql(
+      `create index "workspace_invitation_workspace_id_index" on "workspace_invitation" ("workspace_id");`,
+    );
+    this.addSql(
+      `create index "workspace_invitation_status_index" on "workspace_invitation" ("status");`,
+    );
+    this.addSql(
+      `create index "workspace_invitation_email_index" on "workspace_invitation" ("email");`,
+    );
+    this.addSql(
+      `create index "workspace_invitation_created_at_index" on "workspace_invitation" ("created_at");`,
+    );
+    this.addSql(
+      `alter table "workspace_invitation" add constraint "workspace_invitation_role_check" check ("role" in ('OWNER', 'ADMIN', 'MEMBER'));`,
+    );
+    this.addSql(
+      `alter table "workspace_invitation" add constraint "workspace_invitation_status_check" check ("status" in ('accepted', 'canceled', 'pending', 'rejected'));`,
+    );
+    this.addSql(
+      `grant select, insert, update, delete on table "public"."workspace_invitation" to authenticated;`,
+    );
+
+    this.addSql(
+      `create table "workspace_member" ("id" bigserial primary key, "name" varchar(255) not null, "email" varchar(255) null, "searchable_name" tsvector null, "type" text not null default 'USER', "role" text not null default 'MEMBER', "permissions" text[] not null default '{}', "status" text not null default 'ACTIVE', "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now(), "user_id" bigint null, "workspace_id" bigint not null);`,
     );
     this.addSql(
       `create index "workspace_member_searchable_name_index" on "public"."workspace_member" using gin("searchable_name");`,
@@ -76,16 +113,10 @@ export class Migration20260902080630_Baseline extends RowLevelSecurityMigration 
       `create index "workspace_member_created_at_index" on "workspace_member" ("created_at");`,
     );
     this.addSql(
-      `create index "workspace_member_invite_token_index" on "workspace_member" ("invite_token");`,
-    );
-    this.addSql(
       `create index "workspace_member_role_index" on "workspace_member" ("role");`,
     );
     this.addSql(
       `alter table "workspace_member" add constraint "workspace_member_email_workspace_id_unique" unique ("email", "workspace_id");`,
-    );
-    this.addSql(
-      `alter table "workspace_member" add constraint "workspace_member_invite_token_workspace_id_unique" unique ("invite_token", "workspace_id");`,
     );
     this.addSql(
       `alter table "workspace_member" add constraint "workspace_member_user_id_workspace_id_unique" unique ("user_id", "workspace_id");`,
@@ -97,11 +128,14 @@ export class Migration20260902080630_Baseline extends RowLevelSecurityMigration 
       `alter table "workspace_member" add constraint "workspace_member_role_check" check ("role" in ('OWNER', 'ADMIN', 'MEMBER'));`,
     );
     this.addSql(
-      `alter table "workspace_member" add constraint "workspace_member_status_check" check ("status" in ('ACTIVE', 'INVITING', 'INVITE_EXPIRED', 'DISABLED'));`,
+      `alter table "workspace_member" add constraint "workspace_member_status_check" check ("status" in ('ACTIVE', 'DISABLED'));`,
     );
 
     this.addSql(
       `alter table "session" add constraint "session_user_id_foreign" foreign key ("user_id") references "user" ("id");`,
+    );
+    this.addSql(
+      `alter table "session" add constraint "session_impersonated_by_id_foreign" foreign key ("impersonated_by_id") references "user" ("id") on delete set null;`,
     );
 
     this.addSql(
@@ -109,7 +143,10 @@ export class Migration20260902080630_Baseline extends RowLevelSecurityMigration 
     );
 
     this.addSql(
-      `alter table "workspace_member" add constraint "workspace_member_invited_by_id_foreign" foreign key ("invited_by_id") references "user" ("id") on delete set null;`,
+      `alter table "workspace_invitation" add constraint "workspace_invitation_inviter_id_foreign" foreign key ("inviter_id") references "user" ("id") on update cascade on delete cascade;`,
+    );
+    this.addSql(
+      `alter table "workspace_invitation" add constraint "workspace_invitation_workspace_id_foreign" foreign key ("workspace_id") references "workspace" ("id") on update cascade on delete cascade;`,
     );
     this.addSql(
       `alter table "workspace_member" add constraint "workspace_member_user_id_foreign" foreign key ("user_id") references "user" ("id") on update cascade on delete cascade;`,
@@ -391,6 +428,9 @@ end
       `revoke select, update on table "public"."user" from authenticated;`,
     );
     this.addSql(
+      `revoke select, insert, update, delete on table "public"."workspace_invitation" from authenticated;`,
+    );
+    this.addSql(
       `revoke select, insert, update, delete on table "public"."workspace_member" from authenticated;`,
     );
     this.addSql(
@@ -415,6 +455,7 @@ end
       `revoke select, update on table "public"."workspace" from authenticated;`,
     );
     this.addSql(`drop table if exists "workspace_member" cascade;`);
+    this.addSql(`drop table if exists "workspace_invitation" cascade;`);
     this.addSql(`drop table if exists "workspace" cascade;`);
     this.addSql(`drop table if exists "verification" cascade;`);
     this.addSql(`drop table if exists "account" cascade;`);

@@ -16,7 +16,6 @@ import {
   CURRENT_WORKSPACE_MEMBER,
 } from "./auth.constants.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
-import { AuthService } from "./auth.service.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
 import type {
   BaseApiKey,
@@ -24,6 +23,7 @@ import type {
   BaseWorkspaceMember,
 } from "./entities/index.js";
 import { BaseSession, BaseUser } from "./entities/index.js";
+import { SessionService } from "./session.service.js";
 import { extractApiKey } from "./utils/extract-api-key.util.js";
 
 /** Builds the complete authentication context for an incoming request. */
@@ -33,7 +33,7 @@ export class AuthMiddleware implements NestMiddleware {
   constructor(
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly options: AuthModuleOptions,
-    private readonly authService: AuthService,
+    private readonly sessionService: SessionService,
     private readonly apiKeyService: ApiKeyService,
     private readonly em: EntityManager,
   ) {}
@@ -80,27 +80,18 @@ export class AuthMiddleware implements NestMiddleware {
     }
     candidateHeaders.push(headers);
 
-    let data: Awaited<ReturnType<AuthService["api"]["getSession"]>> | null =
-      null;
+    let data: Awaited<ReturnType<SessionService["getSession"]>> = null;
     for (const candidate of candidateHeaders) {
-      data = await this.authService.api.getSession({ headers: candidate });
+      data = await this.sessionService.getSession(candidate);
       if (data) break;
     }
     if (!data) return false;
 
-    const [user, session] = await Promise.all([
-      this.em.findOne(this.options.entities.user, { id: data.user.id }),
-      this.em.findOne(this.options.entities.session, {
-        token: data.session.token,
-      }),
-    ]);
-    if (!user || !session) return false;
-
-    this.setUser(user);
-    RequestContext.set(BaseSession, session);
+    this.setUser(data.user);
+    RequestContext.set(BaseSession, data.session);
     RequestContext.set(
       this.options.entities.session as Type<BaseSession>,
-      session,
+      data.session,
     );
     await this.options.onAuthenticated?.();
     return true;

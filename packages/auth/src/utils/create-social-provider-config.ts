@@ -12,6 +12,10 @@ type SocialProvidersConfig = NonNullable<AuthModuleOptions["socialProviders"]>;
 type SocialProviderConfig<T extends SocialProviderId> = NonNullable<
   SocialProvidersConfig[T]
 >;
+type ResolvedSocialProviderConfig<T extends SocialProviderId> = Exclude<
+  SocialProviderConfig<T>,
+  (...args: never[]) => unknown
+>;
 
 export function createSocialProviderConfig<T extends SocialProviderId>(
   provider: T,
@@ -29,6 +33,17 @@ export function createSocialProviderConfig<T extends SocialProviderId>(
 
   if (!shouldCreateProvider) {
     return undefined;
+  }
+
+  if (typeof options === "function") {
+    return (async () => {
+      const resolvedOptions = (await options()) as SocialProviderConfig<T>;
+      return createSocialProviderConfig(
+        provider,
+        disableSignUp,
+        resolvedOptions,
+      ) as ResolvedSocialProviderConfig<T>;
+    }) as SocialProviderConfig<T>;
   }
 
   if (!shouldUseCredentialEnv) {

@@ -148,6 +148,7 @@ function createServerEnv() {
   env.APP_SECRET = '1oAdy3zpD3S0t1AdAqPTlj4Hhkyx83pT2UlNGfS4P2c';
   env.AUTH_SECRET = 'R4vWrEDXeeor7VzGzQsdbQobOFtv2nRrlhOVTGpOteA';
   env.AUTH_OIDC_ID = 'nest-boot-example-e2e';
+  env.AUTH_OIDC_ISSUER = 'https://auth.example.test';
   env.AUTH_OIDC_SECRET = 'nest-boot-example-e2e-secret';
   env.AUTH_OIDC_DISCOVERY_URL =
     'https://auth.example.test/.well-known/openid-configuration';

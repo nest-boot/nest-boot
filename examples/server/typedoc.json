@@ -8,7 +8,9 @@
   "excludeExternals": true,
   "excludePrivate": true,
   "intentionallyNotDocumented": [
-    "app/workspace-member/workspace-member.entity.WorkspaceMember.invitedBy.__type.id",
+    "app/auth/entities/session.entity.Session.impersonatedBy.__type.id",
+    "app/workspace-member/workspace-invitation.entity.WorkspaceInvitation.inviter.__type.id",
+    "app/workspace-member/workspace-invitation.entity.WorkspaceInvitation.workspace.__type.id",
     "app/workspace-member/workspace-member.entity.WorkspaceMember.user.__type.id",
     "app/workspace-member/workspace-member.entity.WorkspaceMember.workspace.__type.id"
   ],
