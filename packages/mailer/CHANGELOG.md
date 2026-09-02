@@ -1,3 +1,17 @@
+## 8.0.0-beta.3 (2026-09-02)
+
+### 🚀 Features
+
+- ⚠️  **mailer:** add global SMTP environment configuration ([#318](https://github.com/nest-boot/nest-boot/pull/318))
+
+### ⚠️  Breaking Changes
+
+- **mailer:** add global SMTP environment configuration  ([#318](https://github.com/nest-boot/nest-boot/pull/318))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.0-beta.2 (2026-08-31)
 
 ### 🧱 Updated Dependencies
