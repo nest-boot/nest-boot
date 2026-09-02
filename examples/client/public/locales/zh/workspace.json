@@ -1,0 +1,49 @@
+{
+  "deleteWorkspace": {
+    "confirmHint": "请输入 {{name}} 以确认。",
+    "confirmLabel": "工作空间名称",
+    "description": "您确定要删除工作空间 {{name}} 吗？此操作无法撤销，将永久删除工作空间及其所有相关数据。",
+    "title": "删除工作空间"
+  },
+  "invite": {
+    "description": "请填写您的信息以加入工作空间",
+    "error": {
+      "accept_failed": "接受邀请失败",
+      "back_button": "返回工作空间",
+      "invalid_token": "无效或已过期的邀请令牌",
+      "title": "无效的邀请"
+    },
+    "form": {
+      "email": {
+        "invalid": "请输入有效的邮箱地址",
+        "label": "邮箱",
+        "mismatch_error": "此邀请链接已被邀请者限定给其他邮箱，请联系邀请者重新发送邀请。",
+        "required": "邮箱是必填的"
+      },
+      "name": {
+        "description": "您在工作空间中的显示名称",
+        "label": "姓名"
+      },
+      "submit": "接受邀请"
+    },
+    "loading": "加载中...",
+    "success": "成功加入工作空间",
+    "title": "接受工作空间邀请"
+  },
+  "settings": {
+    "dangerZone": {
+      "deleteButton": "删除工作空间",
+      "description": "一旦删除工作空间，将无法恢复，这将永久删除工作空间及其所有相关数据。",
+      "title": "危险区域"
+    },
+    "description": "更新您的工作空间名称和其他设置。",
+    "form": {
+      "name": {
+        "label": "名称",
+        "placeholder": "我的工作空间",
+        "required": "工作空间名称是必填的"
+      }
+    }
+  },
+  "title": "设置"
+}

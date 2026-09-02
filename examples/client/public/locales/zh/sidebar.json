@@ -1,0 +1,15 @@
+{
+  "navigation": {
+    "api_keys": "API 密钥",
+    "member_groups": "成员组",
+    "members": "成员",
+    "settings": "设置"
+  },
+  "switcher": {
+    "createWorkspace": "创建工作空间",
+    "workspaces": "工作空间"
+  },
+  "user": {
+    "logout": "退出登录"
+  }
+}

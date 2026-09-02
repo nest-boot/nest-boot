@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title">
+  <title id="title">Nest Boot</title>
+  <rect width="96" height="96" rx="22" fill="#111827" />
+  <path d="M26 69V27h11l22 25V27h11v42H59L37 44v25H26Z" fill="#fff" />
+</svg>

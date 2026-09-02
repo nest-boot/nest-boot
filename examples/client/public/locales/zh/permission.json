@@ -1,0 +1,14 @@
+{
+  "all": {
+    "description": "一键选择或取消所有权限",
+    "name": "所有权限"
+  },
+  "manage_members": {
+    "description": "可以添加、删除和修改工作空间成员",
+    "name": "管理成员"
+  },
+  "manage_workspace": {
+    "description": "可以修改工作空间设置和配置",
+    "name": "管理工作空间"
+  }
+}

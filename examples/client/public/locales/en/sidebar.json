@@ -1,0 +1,15 @@
+{
+  "navigation": {
+    "api_keys": "API Keys",
+    "member_groups": "Member Groups",
+    "members": "Members",
+    "settings": "Settings"
+  },
+  "switcher": {
+    "createWorkspace": "Create workspace",
+    "workspaces": "Workspaces"
+  },
+  "user": {
+    "logout": "Log out"
+  }
+}
