@@ -24,14 +24,6 @@ type Documents = {
   "\n  query getCurrentWorkspaceFromWorkspaceContext {\n    currentWorkspace {\n      id\n      name\n      features\n      createdAt\n      updatedAt\n    }\n  }\n": typeof types.GetCurrentWorkspaceFromWorkspaceContextDocument;
   "\n  query getCurrentWorkspaceMemberFromWorkspaceMemberContext {\n    currentWorkspaceMember {\n      id\n      role\n      name\n      email\n      permissions\n      effectivePermissions\n      inviteToken\n      status\n      inviteExpiresAt\n      invitedBy {\n        name\n        email\n      }\n      invitedByUserName\n      user {\n        email\n      }\n    }\n  }\n": typeof types.GetCurrentWorkspaceMemberFromWorkspaceMemberContextDocument;
   "\n  query getCurrentWorkspaceFromWorkspaceLayout($workspaceId: ID!) {\n    workspace(id: $workspaceId) {\n      id\n    }\n    currentWorkspaceMember {\n      id\n    }\n  }\n": typeof types.GetCurrentWorkspaceFromWorkspaceLayoutDocument;
-  "\n  query getWorkspaceMemberGroupFromMemberGroupRoute($id: ID!, $first: Int) {\n    workspaceMemberGroup(id: $id) {\n      id\n      name\n      description\n      permissions\n      members(first: $first) {\n        edges {\n          node {\n            id\n            name\n            email\n            user {\n              id\n              name\n              email\n            }\n          }\n        }\n      }\n    }\n  }\n": typeof types.GetWorkspaceMemberGroupFromMemberGroupRouteDocument;
-  "\n  mutation updateWorkspaceMemberGroupFromMemberGroupRoute(\n    $id: ID!\n    $input: UpdateWorkspaceMemberGroupInput!\n  ) {\n    updateWorkspaceMemberGroup(id: $id, input: $input) {\n      id\n      name\n      description\n      permissions\n    }\n  }\n": typeof types.UpdateWorkspaceMemberGroupFromMemberGroupRouteDocument;
-  "\n  mutation deleteWorkspaceMemberGroupFromMemberGroupRoute($id: ID!) {\n    deleteWorkspaceMemberGroup(id: $id) {\n      id\n    }\n  }\n": typeof types.DeleteWorkspaceMemberGroupFromMemberGroupRouteDocument;
-  "\n  mutation addMembersToWorkspaceMemberGroupFromMemberGroupRoute(\n    $id: ID!\n    $memberIds: [ID!]!\n  ) {\n    addMembersToWorkspaceMemberGroup(id: $id, memberIds: $memberIds) {\n      id\n    }\n  }\n": typeof types.AddMembersToWorkspaceMemberGroupFromMemberGroupRouteDocument;
-  "\n    mutation removeMembersFromWorkspaceMemberGroupFromMemberGroupRoute(\n      $id: ID!\n      $memberIds: [ID!]!\n    ) {\n      removeMembersFromWorkspaceMemberGroup(id: $id, memberIds: $memberIds) {\n        id\n      }\n    }\n  ": typeof types.RemoveMembersFromWorkspaceMemberGroupFromMemberGroupRouteDocument;
-  "\n    query getWorkspaceMembersFromWorkspaceMemberGroupMembersManager(\n      $after: String\n      $before: String\n      $first: Int\n      $last: Int\n      $orderBy: WorkspaceMemberOrder\n      $query: String\n    ) {\n      workspaceMembers(\n        after: $after\n        before: $before\n        first: $first\n        last: $last\n        orderBy: $orderBy\n        query: $query\n      ) {\n        edges {\n          node {\n            id\n            name\n            email\n            status\n            user {\n              id\n              name\n              email\n            }\n          }\n        }\n        pageInfo {\n          endCursor\n          hasNextPage\n          hasPreviousPage\n          startCursor\n        }\n        totalCount\n      }\n    }\n  ": typeof types.GetWorkspaceMembersFromWorkspaceMemberGroupMembersManagerDocument;
-  "\n    mutation createWorkspaceMemberGroupFromCreateWorkspaceMemberGroupRoute(\n      $input: CreateWorkspaceMemberGroupInput!\n    ) {\n      createWorkspaceMemberGroup(input: $input) {\n        id\n        name\n      }\n    }\n  ": typeof types.CreateWorkspaceMemberGroupFromCreateWorkspaceMemberGroupRouteDocument;
-  "\n  query getWorkspaceMemberGroupsFromMemberGroupsRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $filter: WorkspaceMemberGroupFilter\n    $orderBy: WorkspaceMemberGroupOrder\n    $query: String\n  ) {\n    workspaceMemberGroups(\n      after: $after\n      before: $before\n      first: $first\n      last: $last\n      filter: $filter\n      orderBy: $orderBy\n      query: $query\n    ) {\n      edges {\n        node {\n          id\n          name\n          description\n          createdAt\n        }\n        cursor\n      }\n      pageInfo {\n        endCursor\n        hasNextPage\n        hasPreviousPage\n        startCursor\n      }\n    }\n  }\n": typeof types.GetWorkspaceMemberGroupsFromMemberGroupsRouteDocument;
   "\n  query getCurrentWorkspaceMemberFromMemberRoute {\n    currentWorkspaceMember {\n      id\n      role\n    }\n  }\n": typeof types.GetCurrentWorkspaceMemberFromMemberRouteDocument;
   "\n  query getWorkspaceMemberFromMemberRoute($id: ID!) {\n    workspaceMember(id: $id) {\n      id\n      name\n      email\n      role\n      permissions\n      inviteToken\n      status\n      inviteExpiresAt\n      invitedBy {\n        name\n        email\n      }\n      invitedByUserName\n      user {\n        email\n      }\n    }\n  }\n": typeof types.GetWorkspaceMemberFromMemberRouteDocument;
   "\n  mutation updateWorkspaceMemberFromMemberRoute(\n    $id: ID!\n    $input: UpdateWorkspaceMemberInput!\n  ) {\n    updateWorkspaceMember(id: $id, input: $input) {\n      id\n      name\n      email\n      role\n      permissions\n      inviteToken\n      status\n      inviteExpiresAt\n      invitedBy {\n        name\n        email\n      }\n      invitedByUserName\n      user {\n        email\n      }\n    }\n  }\n": typeof types.UpdateWorkspaceMemberFromMemberRouteDocument;
@@ -71,22 +63,6 @@ const documents: Documents = {
     types.GetCurrentWorkspaceMemberFromWorkspaceMemberContextDocument,
   "\n  query getCurrentWorkspaceFromWorkspaceLayout($workspaceId: ID!) {\n    workspace(id: $workspaceId) {\n      id\n    }\n    currentWorkspaceMember {\n      id\n    }\n  }\n":
     types.GetCurrentWorkspaceFromWorkspaceLayoutDocument,
-  "\n  query getWorkspaceMemberGroupFromMemberGroupRoute($id: ID!, $first: Int) {\n    workspaceMemberGroup(id: $id) {\n      id\n      name\n      description\n      permissions\n      members(first: $first) {\n        edges {\n          node {\n            id\n            name\n            email\n            user {\n              id\n              name\n              email\n            }\n          }\n        }\n      }\n    }\n  }\n":
-    types.GetWorkspaceMemberGroupFromMemberGroupRouteDocument,
-  "\n  mutation updateWorkspaceMemberGroupFromMemberGroupRoute(\n    $id: ID!\n    $input: UpdateWorkspaceMemberGroupInput!\n  ) {\n    updateWorkspaceMemberGroup(id: $id, input: $input) {\n      id\n      name\n      description\n      permissions\n    }\n  }\n":
-    types.UpdateWorkspaceMemberGroupFromMemberGroupRouteDocument,
-  "\n  mutation deleteWorkspaceMemberGroupFromMemberGroupRoute($id: ID!) {\n    deleteWorkspaceMemberGroup(id: $id) {\n      id\n    }\n  }\n":
-    types.DeleteWorkspaceMemberGroupFromMemberGroupRouteDocument,
-  "\n  mutation addMembersToWorkspaceMemberGroupFromMemberGroupRoute(\n    $id: ID!\n    $memberIds: [ID!]!\n  ) {\n    addMembersToWorkspaceMemberGroup(id: $id, memberIds: $memberIds) {\n      id\n    }\n  }\n":
-    types.AddMembersToWorkspaceMemberGroupFromMemberGroupRouteDocument,
-  "\n    mutation removeMembersFromWorkspaceMemberGroupFromMemberGroupRoute(\n      $id: ID!\n      $memberIds: [ID!]!\n    ) {\n      removeMembersFromWorkspaceMemberGroup(id: $id, memberIds: $memberIds) {\n        id\n      }\n    }\n  ":
-    types.RemoveMembersFromWorkspaceMemberGroupFromMemberGroupRouteDocument,
-  "\n    query getWorkspaceMembersFromWorkspaceMemberGroupMembersManager(\n      $after: String\n      $before: String\n      $first: Int\n      $last: Int\n      $orderBy: WorkspaceMemberOrder\n      $query: String\n    ) {\n      workspaceMembers(\n        after: $after\n        before: $before\n        first: $first\n        last: $last\n        orderBy: $orderBy\n        query: $query\n      ) {\n        edges {\n          node {\n            id\n            name\n            email\n            status\n            user {\n              id\n              name\n              email\n            }\n          }\n        }\n        pageInfo {\n          endCursor\n          hasNextPage\n          hasPreviousPage\n          startCursor\n        }\n        totalCount\n      }\n    }\n  ":
-    types.GetWorkspaceMembersFromWorkspaceMemberGroupMembersManagerDocument,
-  "\n    mutation createWorkspaceMemberGroupFromCreateWorkspaceMemberGroupRoute(\n      $input: CreateWorkspaceMemberGroupInput!\n    ) {\n      createWorkspaceMemberGroup(input: $input) {\n        id\n        name\n      }\n    }\n  ":
-    types.CreateWorkspaceMemberGroupFromCreateWorkspaceMemberGroupRouteDocument,
-  "\n  query getWorkspaceMemberGroupsFromMemberGroupsRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $filter: WorkspaceMemberGroupFilter\n    $orderBy: WorkspaceMemberGroupOrder\n    $query: String\n  ) {\n    workspaceMemberGroups(\n      after: $after\n      before: $before\n      first: $first\n      last: $last\n      filter: $filter\n      orderBy: $orderBy\n      query: $query\n    ) {\n      edges {\n        node {\n          id\n          name\n          description\n          createdAt\n        }\n        cursor\n      }\n      pageInfo {\n        endCursor\n        hasNextPage\n        hasPreviousPage\n        startCursor\n      }\n    }\n  }\n":
-    types.GetWorkspaceMemberGroupsFromMemberGroupsRouteDocument,
   "\n  query getCurrentWorkspaceMemberFromMemberRoute {\n    currentWorkspaceMember {\n      id\n      role\n    }\n  }\n":
     types.GetCurrentWorkspaceMemberFromMemberRouteDocument,
   "\n  query getWorkspaceMemberFromMemberRoute($id: ID!) {\n    workspaceMember(id: $id) {\n      id\n      name\n      email\n      role\n      permissions\n      inviteToken\n      status\n      inviteExpiresAt\n      invitedBy {\n        name\n        email\n      }\n      invitedByUserName\n      user {\n        email\n      }\n    }\n  }\n":
@@ -197,54 +173,6 @@ export function graphql(
 export function graphql(
   source: "\n  query getCurrentWorkspaceFromWorkspaceLayout($workspaceId: ID!) {\n    workspace(id: $workspaceId) {\n      id\n    }\n    currentWorkspaceMember {\n      id\n    }\n  }\n",
 ): (typeof documents)["\n  query getCurrentWorkspaceFromWorkspaceLayout($workspaceId: ID!) {\n    workspace(id: $workspaceId) {\n      id\n    }\n    currentWorkspaceMember {\n      id\n    }\n  }\n"];
-/**
- * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
- */
-export function graphql(
-  source: "\n  query getWorkspaceMemberGroupFromMemberGroupRoute($id: ID!, $first: Int) {\n    workspaceMemberGroup(id: $id) {\n      id\n      name\n      description\n      permissions\n      members(first: $first) {\n        edges {\n          node {\n            id\n            name\n            email\n            user {\n              id\n              name\n              email\n            }\n          }\n        }\n      }\n    }\n  }\n",
-): (typeof documents)["\n  query getWorkspaceMemberGroupFromMemberGroupRoute($id: ID!, $first: Int) {\n    workspaceMemberGroup(id: $id) {\n      id\n      name\n      description\n      permissions\n      members(first: $first) {\n        edges {\n          node {\n            id\n            name\n            email\n            user {\n              id\n              name\n              email\n            }\n          }\n        }\n      }\n    }\n  }\n"];
-/**
- * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
- */
-export function graphql(
-  source: "\n  mutation updateWorkspaceMemberGroupFromMemberGroupRoute(\n    $id: ID!\n    $input: UpdateWorkspaceMemberGroupInput!\n  ) {\n    updateWorkspaceMemberGroup(id: $id, input: $input) {\n      id\n      name\n      description\n      permissions\n    }\n  }\n",
-): (typeof documents)["\n  mutation updateWorkspaceMemberGroupFromMemberGroupRoute(\n    $id: ID!\n    $input: UpdateWorkspaceMemberGroupInput!\n  ) {\n    updateWorkspaceMemberGroup(id: $id, input: $input) {\n      id\n      name\n      description\n      permissions\n    }\n  }\n"];
-/**
- * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
- */
-export function graphql(
-  source: "\n  mutation deleteWorkspaceMemberGroupFromMemberGroupRoute($id: ID!) {\n    deleteWorkspaceMemberGroup(id: $id) {\n      id\n    }\n  }\n",
-): (typeof documents)["\n  mutation deleteWorkspaceMemberGroupFromMemberGroupRoute($id: ID!) {\n    deleteWorkspaceMemberGroup(id: $id) {\n      id\n    }\n  }\n"];
-/**
- * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
- */
-export function graphql(
-  source: "\n  mutation addMembersToWorkspaceMemberGroupFromMemberGroupRoute(\n    $id: ID!\n    $memberIds: [ID!]!\n  ) {\n    addMembersToWorkspaceMemberGroup(id: $id, memberIds: $memberIds) {\n      id\n    }\n  }\n",
-): (typeof documents)["\n  mutation addMembersToWorkspaceMemberGroupFromMemberGroupRoute(\n    $id: ID!\n    $memberIds: [ID!]!\n  ) {\n    addMembersToWorkspaceMemberGroup(id: $id, memberIds: $memberIds) {\n      id\n    }\n  }\n"];
-/**
- * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
- */
-export function graphql(
-  source: "\n    mutation removeMembersFromWorkspaceMemberGroupFromMemberGroupRoute(\n      $id: ID!\n      $memberIds: [ID!]!\n    ) {\n      removeMembersFromWorkspaceMemberGroup(id: $id, memberIds: $memberIds) {\n        id\n      }\n    }\n  ",
-): (typeof documents)["\n    mutation removeMembersFromWorkspaceMemberGroupFromMemberGroupRoute(\n      $id: ID!\n      $memberIds: [ID!]!\n    ) {\n      removeMembersFromWorkspaceMemberGroup(id: $id, memberIds: $memberIds) {\n        id\n      }\n    }\n  "];
-/**
- * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
- */
-export function graphql(
-  source: "\n    query getWorkspaceMembersFromWorkspaceMemberGroupMembersManager(\n      $after: String\n      $before: String\n      $first: Int\n      $last: Int\n      $orderBy: WorkspaceMemberOrder\n      $query: String\n    ) {\n      workspaceMembers(\n        after: $after\n        before: $before\n        first: $first\n        last: $last\n        orderBy: $orderBy\n        query: $query\n      ) {\n        edges {\n          node {\n            id\n            name\n            email\n            status\n            user {\n              id\n              name\n              email\n            }\n          }\n        }\n        pageInfo {\n          endCursor\n          hasNextPage\n          hasPreviousPage\n          startCursor\n        }\n        totalCount\n      }\n    }\n  ",
-): (typeof documents)["\n    query getWorkspaceMembersFromWorkspaceMemberGroupMembersManager(\n      $after: String\n      $before: String\n      $first: Int\n      $last: Int\n      $orderBy: WorkspaceMemberOrder\n      $query: String\n    ) {\n      workspaceMembers(\n        after: $after\n        before: $before\n        first: $first\n        last: $last\n        orderBy: $orderBy\n        query: $query\n      ) {\n        edges {\n          node {\n            id\n            name\n            email\n            status\n            user {\n              id\n              name\n              email\n            }\n          }\n        }\n        pageInfo {\n          endCursor\n          hasNextPage\n          hasPreviousPage\n          startCursor\n        }\n        totalCount\n      }\n    }\n  "];
-/**
- * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
- */
-export function graphql(
-  source: "\n    mutation createWorkspaceMemberGroupFromCreateWorkspaceMemberGroupRoute(\n      $input: CreateWorkspaceMemberGroupInput!\n    ) {\n      createWorkspaceMemberGroup(input: $input) {\n        id\n        name\n      }\n    }\n  ",
-): (typeof documents)["\n    mutation createWorkspaceMemberGroupFromCreateWorkspaceMemberGroupRoute(\n      $input: CreateWorkspaceMemberGroupInput!\n    ) {\n      createWorkspaceMemberGroup(input: $input) {\n        id\n        name\n      }\n    }\n  "];
-/**
- * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
- */
-export function graphql(
-  source: "\n  query getWorkspaceMemberGroupsFromMemberGroupsRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $filter: WorkspaceMemberGroupFilter\n    $orderBy: WorkspaceMemberGroupOrder\n    $query: String\n  ) {\n    workspaceMemberGroups(\n      after: $after\n      before: $before\n      first: $first\n      last: $last\n      filter: $filter\n      orderBy: $orderBy\n      query: $query\n    ) {\n      edges {\n        node {\n          id\n          name\n          description\n          createdAt\n        }\n        cursor\n      }\n      pageInfo {\n        endCursor\n        hasNextPage\n        hasPreviousPage\n        startCursor\n      }\n    }\n  }\n",
-): (typeof documents)["\n  query getWorkspaceMemberGroupsFromMemberGroupsRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $filter: WorkspaceMemberGroupFilter\n    $orderBy: WorkspaceMemberGroupOrder\n    $query: String\n  ) {\n    workspaceMemberGroups(\n      after: $after\n      before: $before\n      first: $first\n      last: $last\n      filter: $filter\n      orderBy: $orderBy\n      query: $query\n    ) {\n      edges {\n        node {\n          id\n          name\n          description\n          createdAt\n        }\n        cursor\n      }\n      pageInfo {\n        endCursor\n        hasNextPage\n        hasPreviousPage\n        startCursor\n      }\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

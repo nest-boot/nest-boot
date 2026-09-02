@@ -12,11 +12,7 @@
     "app/api-key/api-key.entity.ApiKey.member.__type.id",
     "app/workspace-member/workspace-member.entity.WorkspaceMember.invitedBy.__type.id",
     "app/workspace-member/workspace-member.entity.WorkspaceMember.user.__type.id",
-    "app/workspace-member/workspace-member.entity.WorkspaceMember.workspace.__type.id",
-    "app/workspace-member-group/workspace-member-group.entity.WorkspaceMemberGroup.workspace.__type.id",
-    "app/workspace-member-group-member/workspace-member-group-member.entity.WorkspaceMemberGroupMember.workspace.__type.id",
-    "app/workspace-member-group-member/workspace-member-group-member.entity.WorkspaceMemberGroupMember.group.__type.id",
-    "app/workspace-member-group-member/workspace-member-group-member.entity.WorkspaceMemberGroupMember.member.__type.id"
+    "app/workspace-member/workspace-member.entity.WorkspaceMember.workspace.__type.id"
   ],
   "requiredToBeDocumented": [
     "Accessor",

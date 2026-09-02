@@ -100,13 +100,6 @@ input CreateWorkspaceInviteInput {
   role: WorkspaceMemberRole!
 }
 
-input CreateWorkspaceMemberGroupInput {
-  description: String
-  memberIds: [String!]
-  name: String!
-  permissions: [WorkspacePermission!]
-}
-
 """
 A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
 """
@@ -114,23 +107,18 @@ scalar DateTime
 
 type Mutation {
   acceptWorkspaceInvite(input: AcceptWorkspaceInviteInput, token: String!): AcceptWorkspaceInviteResult!
-  addMembersToWorkspaceMemberGroup(id: ID!, memberIds: [ID!]!): WorkspaceMemberGroup!
   addWorkspaceMember(input: AddWorkspaceMemberInput!): WorkspaceMember!
   createApiKey(input: CreateApiKeyInput!): CreateApiKeyResult!
   createServiceAccountWorkspaceMember(input: CreateServiceAccountWorkspaceMemberInput!): WorkspaceMember!
   createWorkspace(input: CreateWorkspaceInput!): Workspace!
   createWorkspaceInvite(input: CreateWorkspaceInviteInput!): WorkspaceMember!
-  createWorkspaceMemberGroup(input: CreateWorkspaceMemberGroupInput!): WorkspaceMemberGroup!
   deleteApiKey(id: ID!): ApiKey!
   deleteWorkspace: Workspace!
-  deleteWorkspaceMemberGroup(id: ID!): WorkspaceMemberGroup!
-  removeMembersFromWorkspaceMemberGroup(id: ID!, memberIds: [ID!]!): WorkspaceMemberGroup!
   removeWorkspace: Workspace! @deprecated(reason: "Use deleteWorkspace instead")
   removeWorkspaceMember(id: ID!): WorkspaceMember!
   updateApiKey(id: ID!, input: UpdateApiKeyInput!): ApiKey!
   updateWorkspace(input: UpdateWorkspaceInput!): Workspace!
   updateWorkspaceMember(id: ID!, input: UpdateWorkspaceMemberInput!): WorkspaceMember
-  updateWorkspaceMemberGroup(id: ID!, input: UpdateWorkspaceMemberGroupInput!): WorkspaceMemberGroup!
 }
 
 enum OrderDirection {
@@ -186,33 +174,6 @@ type Query {
   workspace(id: ID!): Workspace
   workspaceMember(id: ID!): WorkspaceMember
   workspaceMemberByToken(token: String!): WorkspaceMember
-  workspaceMemberGroup(id: ID!): WorkspaceMemberGroup!
-  workspaceMemberGroups(
-    """Returns the elements that come after the specified cursor."""
-    after: String
-
-    """Returns the elements that come before the specified cursor."""
-    before: String
-
-    """Filter workspacemembergroups using MongoDB query syntax."""
-    filter: WorkspaceMemberGroupFilter
-
-    """Returns up to the first `n` elements from the list."""
-    first: Int
-
-    """Returns up to the last `n` elements from the list."""
-    last: Int
-
-    """Ordering options for the returned workspacemembergroups."""
-    orderBy: WorkspaceMemberGroupOrder
-
-    """
-    Apply one or multiple filters to the query.
-    Supported filter parameters:
-    `name`, `description`, `created_at`
-    """
-    query: String
-  ): WorkspaceMemberGroupConnection!
   workspaceMembers(
     """Returns the elements that come after the specified cursor."""
     after: String
@@ -278,12 +239,6 @@ input UpdateApiKeyInput {
 
 input UpdateWorkspaceInput {
   name: String
-}
-
-input UpdateWorkspaceMemberGroupInput {
-  description: String
-  name: String
-  permissions: [WorkspacePermission!]
 }
 
 input UpdateWorkspaceMemberInput {
@@ -352,32 +307,6 @@ type WorkspaceMember {
   createdAt: DateTime!
   effectivePermissions: [WorkspacePermission!]!
   email: String
-  groups(
-    """Returns the elements that come after the specified cursor."""
-    after: String
-
-    """Returns the elements that come before the specified cursor."""
-    before: String
-
-    """Filter workspacemembergroups using MongoDB query syntax."""
-    filter: WorkspaceMemberGroupFilter
-
-    """Returns up to the first `n` elements from the list."""
-    first: Int
-
-    """Returns up to the last `n` elements from the list."""
-    last: Int
-
-    """Ordering options for the returned workspacemembergroups."""
-    orderBy: WorkspaceMemberGroupOrder
-
-    """
-    Apply one or multiple filters to the query.
-    Supported filter parameters:
-    `name`, `description`, `created_at`
-    """
-    query: String
-  ): WorkspaceMemberGroupConnection!
   id: ID!
   inviteExpiresAt: DateTime
   inviteToken: String
@@ -424,89 +353,6 @@ A filter for WorkspaceMember that accepts MongoDB query syntax.
 Supported fields: name, role, type, email, status, created_at
 """
 scalar WorkspaceMemberFilter
-
-type WorkspaceMemberGroup {
-  createdAt: DateTime!
-  description: String
-  id: ID!
-  members(
-    """Returns the elements that come after the specified cursor."""
-    after: String
-
-    """Returns the elements that come before the specified cursor."""
-    before: String
-
-    """Filter workspacemembers using MongoDB query syntax."""
-    filter: WorkspaceMemberFilter
-
-    """Returns up to the first `n` elements from the list."""
-    first: Int
-
-    """Returns up to the last `n` elements from the list."""
-    last: Int
-
-    """Ordering options for the returned workspacemembers."""
-    orderBy: WorkspaceMemberOrder
-
-    """
-    Apply one or multiple filters to the query.
-    Supported filter parameters:
-    `name`, `role`, `type`, `email`, `status`, `created_at`
-    """
-    query: String
-  ): WorkspaceMemberConnection!
-  name: String!
-  permissions: [WorkspacePermission!]!
-  updatedAt: DateTime!
-}
-
-type WorkspaceMemberGroupConnection {
-  """A list of edges."""
-  edges: [WorkspaceMemberGroupEdge!]!
-
-  """Information to aid in pagination."""
-  pageInfo: PageInfo!
-
-  """
-  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
-  """
-  totalCount: Int!
-
-  """Indicates whether totalCount is exact or a lower bound."""
-  totalCountRelation: TotalCountRelation!
-}
-
-"""
-An auto-generated type which holds one WorkspaceMemberGroup and a cursor during pagination.
-"""
-type WorkspaceMemberGroupEdge {
-  """A cursor for use in pagination."""
-  cursor: String!
-
-  """The item at the end of WorkspaceMemberGroupEdge."""
-  node: WorkspaceMemberGroup!
-}
-
-"""
-A filter for WorkspaceMemberGroup that accepts MongoDB query syntax.
-Supported fields: name, description, created_at
-"""
-scalar WorkspaceMemberGroupFilter
-
-"""Ordering options for workspacemembergroup connections"""
-input WorkspaceMemberGroupOrder {
-  """The ordering direction."""
-  direction: OrderDirection!
-
-  """The field to order workspacemembergroups by."""
-  field: WorkspaceMemberGroupOrderField!
-}
-
-"""Properties by which workspacemembergroup connections can be ordered."""
-enum WorkspaceMemberGroupOrderField {
-  CREATED_AT
-  ID
-}
 
 """Ordering options for workspacemember connections"""
 input WorkspaceMemberOrder {

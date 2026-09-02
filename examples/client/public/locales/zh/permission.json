@@ -1,4 +1,5 @@
 {
+  "label": "权限",
   "all": {
     "description": "一键选择或取消所有权限",
     "name": "所有权限"

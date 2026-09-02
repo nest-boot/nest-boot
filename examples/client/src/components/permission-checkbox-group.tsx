@@ -33,7 +33,7 @@ export function PermissionCheckboxGroup({
 
   return (
     <CheckboxGroup
-      label={t("workspace-member-group:detail.form.permissions_field.label")}
+      label={t("permission:label")}
       value={value}
       onValueChange={(newValue) => onChange(newValue)}
       disabled={disabled}

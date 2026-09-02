@@ -16,7 +16,6 @@ import dayjs from 'dayjs';
 
 import { User } from '../user/user.entity.js';
 import { Workspace } from '../workspace/workspace.entity.js';
-import { WorkspaceMemberGroup } from '../workspace-member-group/workspace-member-group.entity.js';
 import { WorkspaceMemberRole } from './enums/workspace-member-role.enum.js';
 import { WorkspaceMemberStatus } from './enums/workspace-member-status.enum.js';
 import { WorkspaceMemberType } from './enums/workspace-member-type.enum.js';
@@ -289,24 +288,11 @@ export class WorkspaceMemberService extends EntityService<WorkspaceMember> {
    * 获取成员的有效权限。
    *
    * @param workspaceMember - 工作区成员。
-   * @returns 合并成员直接权限和成员组权限后的去重权限列表。
+   * @returns 成员直接配置的去重权限列表。
    */
-  async getPermissions(
+  getPermissions(
     workspaceMember: WorkspaceMember,
-  ): Promise<WorkspaceMemberPermission[]> {
-    // 查询当前成员所在的所有成员组
-    const groups = await this.em.find(WorkspaceMemberGroup, {
-      groupMembers: {
-        member: workspaceMember,
-      },
-    });
-
-    // 合并成员的权限和组权限，并去重
-    return Array.from(
-      new Set([
-        ...(workspaceMember.permissions ?? []),
-        ...groups.flatMap((group) => group.permissions ?? []),
-      ]),
-    );
+  ): WorkspaceMemberPermission[] {
+    return Array.from(new Set(workspaceMember.permissions ?? []));
   }
 }

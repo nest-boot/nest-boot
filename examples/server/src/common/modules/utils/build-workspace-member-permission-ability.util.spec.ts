@@ -14,8 +14,6 @@ import { WorkspaceMemberRole } from '../../../app/workspace-member/enums/workspa
 import { WorkspaceMemberStatus } from '../../../app/workspace-member/enums/workspace-member-status.enum.js';
 import { WorkspaceMember } from '../../../app/workspace-member/workspace-member.entity.js';
 import { WorkspaceMemberPermission } from '../../../app/workspace-member/workspace-member-permission.enum.js';
-import { WorkspaceMemberGroup } from '../../../app/workspace-member-group/workspace-member-group.entity.js';
-import { WorkspaceMemberGroupMember } from '../../../app/workspace-member-group-member/workspace-member-group-member.entity.js';
 import { buildWorkspaceMemberPermissionAbility } from './build-workspace-member-permission-ability.util.js';
 
 vi.mock('@nest-boot/request-context', async (importOriginal) => ({
@@ -102,7 +100,7 @@ describe('buildWorkspaceMemberPermissionAbility', () => {
     ).toBe(false);
   });
 
-  it('combines direct and group permissions for regular members', () => {
+  it('applies effective permissions for regular members', () => {
     const ability = buildAbility(
       {
         role: WorkspaceMemberRole.MEMBER,
@@ -132,12 +130,6 @@ describe('buildWorkspaceMemberPermissionAbility', () => {
       ),
     ).toBe(false);
     expect(ability.can(PermissionAction.MANAGE, WorkspaceMember)).toBe(true);
-    expect(ability.can(PermissionAction.MANAGE, WorkspaceMemberGroup)).toBe(
-      true,
-    );
-    expect(
-      ability.can(PermissionAction.MANAGE, WorkspaceMemberGroupMember),
-    ).toBe(true);
     expect(ability.can(PermissionAction.CREATE, ApiKey)).toBe(true);
   });
 

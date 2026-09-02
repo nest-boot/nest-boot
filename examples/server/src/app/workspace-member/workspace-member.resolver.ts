@@ -24,11 +24,6 @@ import {
 import { User } from '../user/user.entity.js';
 import { UserService } from '../user/user.service.js';
 import { Workspace } from '../workspace/workspace.entity.js';
-import {
-  WorkspaceMemberGroupConnection,
-  WorkspaceMemberGroupConnectionArgs,
-} from '../workspace-member-group/workspace-member-group.connection-definition.js';
-import { WorkspaceMemberGroup } from '../workspace-member-group/workspace-member-group.entity.js';
 import { WorkspaceMemberRole } from './enums/workspace-member-role.enum.js';
 import { AcceptWorkspaceInviteInput } from './inputs/accept-workspace-invite.input.js';
 import { AddWorkspaceMemberInput } from './inputs/add-workspace-member.input.js';
@@ -395,38 +390,16 @@ export class WorkspaceMemberResolver {
   }
 
   /**
-   * 分页解析工作区成员所属的成员组。
-   *
-   * @param workspaceMember - 父级工作区成员。
-   * @param args - 分页、筛选和排序参数。
-   * @returns 工作区成员组分页结果。
-   */
-  @Can(PermissionAction.READ, WorkspaceMemberGroup)
-  @ResolveField(() => WorkspaceMemberGroupConnection)
-  async groups(
-    @Parent() workspaceMember: WorkspaceMember,
-    @Args() args: WorkspaceMemberGroupConnectionArgs,
-  ): Promise<WorkspaceMemberGroupConnection> {
-    return await this.cm.find(WorkspaceMemberGroupConnection, args, {
-      where: {
-        groupMembers: {
-          member: workspaceMember,
-        },
-      },
-    });
-  }
-
-  /**
    * 解析工作区成员的有效权限。
    *
    * @param workspaceMember - 父级工作区成员。
-   * @returns 合并成员直接权限和成员组权限后的去重权限列表。
+   * @returns 成员直接配置的去重权限列表。
    */
   @Can(PermissionAction.READ, WorkspaceMember)
   @ResolveField(() => [WorkspaceMemberPermission])
-  async effectivePermissions(
+  effectivePermissions(
     @Parent() workspaceMember: WorkspaceMember,
-  ): Promise<WorkspaceMemberPermission[]> {
-    return await this.workspaceMemberService.getPermissions(workspaceMember);
+  ): WorkspaceMemberPermission[] {
+    return this.workspaceMemberService.getPermissions(workspaceMember);
   }
 }

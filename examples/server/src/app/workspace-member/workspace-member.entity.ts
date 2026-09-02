@@ -1,11 +1,10 @@
 import type { Opt, Ref } from '@mikro-orm/core';
-import { Collection, t } from '@mikro-orm/core';
+import { t } from '@mikro-orm/core';
 import {
   Entity,
   Enum,
   Index,
   ManyToOne,
-  OneToMany,
   PrimaryKey,
   Property,
   Unique,
@@ -18,7 +17,6 @@ import { Sonyflake } from 'sonyflake-js';
 import { SearchableProperty } from '../../common/decorators/searchable-property.decorator.js';
 import { User } from '../user/user.entity.js';
 import { Workspace } from '../workspace/workspace.entity.js';
-import { WorkspaceMemberGroupMember } from '../workspace-member-group-member/workspace-member-group-member.entity.js';
 import { WorkspaceMemberRole } from './enums/workspace-member-role.enum.js';
 import { WorkspaceMemberStatus } from './enums/workspace-member-status.enum.js';
 import { WorkspaceMemberType } from './enums/workspace-member-type.enum.js';
@@ -150,11 +148,4 @@ export class WorkspaceMember {
   /** 成员所属工作区。 */
   @ManyToOne({ updateRule: 'cascade', deleteRule: 'cascade' })
   workspace!: Ref<Workspace>;
-
-  /** 成员所属的成员组关系集合。 */
-  @OneToMany(
-    () => WorkspaceMemberGroupMember,
-    (groupMember) => groupMember.member,
-  )
-  groupMembers = new Collection<WorkspaceMemberGroupMember>(this);
 }

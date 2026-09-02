@@ -8,8 +8,6 @@ import { AuthModule } from './auth/auth.module.js';
 import { UserModule } from './user/user.module.js';
 import { WorkspaceModule } from './workspace/workspace.module.js';
 import { WorkspaceMemberModule } from './workspace-member/workspace-member.module.js';
-import { WorkspaceMemberGroupModule } from './workspace-member-group/workspace-member-group.module.js';
-import { WorkspaceMemberGroupMemberModule } from './workspace-member-group-member/workspace-member-group-member.module.js';
 
 /** 服务端根模块。 */
 @Module({
@@ -20,8 +18,6 @@ import { WorkspaceMemberGroupMemberModule } from './workspace-member-group-membe
     UserModule,
     WorkspaceModule,
     WorkspaceMemberModule,
-    WorkspaceMemberGroupModule,
-    WorkspaceMemberGroupMemberModule,
   ],
   providers: [
     {

@@ -1,4 +1,4 @@
-import { KeyRound, Settings, User, Users } from "lucide-react";
+import { KeyRound, Settings, User } from "lucide-react";
 
 import { linkOptions, useParams } from "@tanstack/react-router";
 import { t } from "i18next";
@@ -59,14 +59,6 @@ export const WorkspaceSidebar: FC<ComponentProps<typeof Sidebar>> = ({
           icon: User,
           link: linkOptions({
             to: "/workspaces/$workspaceId/members",
-            params: { workspaceId },
-          }),
-        },
-        {
-          title: t("sidebar:navigation.member_groups"),
-          icon: Users,
-          link: linkOptions({
-            to: "/workspaces/$workspaceId/member-groups",
             params: { workspaceId },
           }),
         },
