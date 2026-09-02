@@ -1,5 +1,10 @@
 import { BaseEntity, type Opt, t } from "@mikro-orm/core";
-import { Entity, PrimaryKey, Property } from "@mikro-orm/decorators/legacy";
+import {
+  Entity,
+  Index,
+  PrimaryKey,
+  Property,
+} from "@mikro-orm/decorators/legacy";
 import { randomUUID } from "crypto";
 
 /**
@@ -16,6 +21,7 @@ export abstract class BaseVerification extends BaseEntity {
   id: Opt<string> = randomUUID();
 
   /** Identifier associated with this verification (e.g. email address). */
+  @Index()
   @Property({ type: t.text })
   identifier!: string;
 

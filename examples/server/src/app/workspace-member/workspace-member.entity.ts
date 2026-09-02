@@ -6,7 +6,6 @@ import {
   Entity,
   Enum,
   Index,
-  ManyToOne,
   PrimaryKey,
   Property,
   Unique,
@@ -19,7 +18,7 @@ import { Sonyflake } from 'sonyflake-js';
 
 import { SearchableProperty } from '../../common/decorators/searchable-property.decorator.js';
 import { WorkspacePermission } from '../auth/enums/workspace-permission.enum.js';
-import { User } from '../user/user.entity.js';
+import type { User } from '../user/user.entity.js';
 import type { Workspace } from '../workspace/workspace.entity.js';
 import { WorkspaceMemberRole } from './enums/workspace-member-role.enum.js';
 import { WorkspaceMemberStatus } from './enums/workspace-member-status.enum.js';
@@ -41,10 +40,8 @@ import { WorkspaceMemberType } from './enums/workspace-member-type.enum.js';
 })
 @Entity()
 @Unique({ properties: ['user', 'workspace'] })
-@Unique({ properties: ['inviteToken', 'workspace'] })
 @Unique({ properties: ['email', 'workspace'] })
 @Index({ properties: ['role'] })
-@Index({ properties: ['inviteToken'] })
 @Index({ properties: ['createdAt'] })
 @Index({ properties: ['user'] })
 @Index({ properties: ['workspace'] })
@@ -100,20 +97,6 @@ export class WorkspaceMember extends BaseWorkspaceMember {
   @Property({ type: t.array, defaultRaw: "'{}'" })
   override permissions: Opt<WorkspacePermission[]> = [];
 
-  /** 邀请者，删除时设置为空值。 */
-  @ManyToOne(() => User, { nullable: true, deleteRule: 'set null' })
-  invitedBy?: Ref<User>;
-
-  /** 存储邀请者名称，避免 `invitedBy` 被删除后丢失邀请者信息。 */
-  @Field(() => String, { nullable: true })
-  @Property({ type: t.string, nullable: true })
-  invitedByUserName?: Opt<string> | null = null;
-
-  /** 邀请令牌，用于邀请用户加入工作区。 */
-  @Field(() => String, { nullable: true })
-  @Property({ type: t.text, nullable: true })
-  inviteToken?: Opt<string> | null = null;
-
   /** 成员状态。 */
   @Field(() => WorkspaceMemberStatus)
   @Enum({
@@ -121,11 +104,6 @@ export class WorkspaceMember extends BaseWorkspaceMember {
     default: WorkspaceMemberStatus.ACTIVE,
   })
   override status: Opt<WorkspaceMemberStatus> = WorkspaceMemberStatus.ACTIVE;
-
-  /** 邀请过期时间。 */
-  @Field(() => Date, { nullable: true })
-  @Property({ type: t.datetime, nullable: true })
-  inviteExpiresAt?: Opt<Date> | null = null;
 
   /** 创建时间。 */
   @Field(() => Date)
@@ -141,7 +119,7 @@ export class WorkspaceMember extends BaseWorkspaceMember {
   })
   override updatedAt: Opt<Date> = new Date();
 
-  /** 成员绑定的用户；服务账号和未接受邀请时为空。 */
+  /** 成员绑定的用户；服务账号为空。 */
   // eslint-disable-next-line @nest-boot/entity-property-config-from-types, @nest-boot/graphql-field-config-from-types
   declare user?: Ref<User> | null;
 

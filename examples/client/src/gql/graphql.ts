@@ -46,14 +46,10 @@ export type Scalars = {
   WorkspaceMemberFilter: { input: any; output: any };
 };
 
-export type AcceptWorkspaceInviteInput = {
-  name?: InputMaybe<Scalars["String"]["input"]>;
-};
-
-export type AcceptWorkspaceInviteResult = {
-  __typename?: "AcceptWorkspaceInviteResult";
-  workspaceId: Scalars["ID"]["output"];
-  workspaceMember: WorkspaceMember;
+export type AcceptWorkspaceInvitationResult = {
+  __typename?: "AcceptWorkspaceInvitationResult";
+  invitation: WorkspaceInvitation;
+  member: WorkspaceMember;
 };
 
 export type AddWorkspaceMemberInput = {
@@ -157,23 +153,25 @@ export type CreateWorkspaceInput = {
   name: Scalars["String"]["input"];
 };
 
-export type CreateWorkspaceInviteInput = {
-  email?: InputMaybe<Scalars["String"]["input"]>;
+export type CreateWorkspaceInvitationInput = {
+  email: Scalars["String"]["input"];
   role: WorkspaceMemberRole;
 };
 
 export type Mutation = {
   __typename?: "Mutation";
-  acceptWorkspaceInvite: AcceptWorkspaceInviteResult;
+  acceptWorkspaceInvitation: AcceptWorkspaceInvitationResult;
   addWorkspaceMember: WorkspaceMember;
+  cancelWorkspaceInvitation: WorkspaceInvitation;
   createApiKey: CreateApiKeyResult;
   createServiceAccountWorkspaceMember: WorkspaceMember;
   createUserApiKey: CreateApiKeyResult;
   createWorkspace: Workspace;
-  createWorkspaceInvite: WorkspaceMember;
+  createWorkspaceInvitation: WorkspaceInvitation;
   deleteApiKey: ApiKey;
   deleteUserApiKey: ApiKey;
   deleteWorkspace: Workspace;
+  rejectWorkspaceInvitation: WorkspaceInvitation;
   /** @deprecated Use deleteWorkspace instead */
   removeWorkspace: Workspace;
   removeWorkspaceMember: WorkspaceMember;
@@ -183,13 +181,16 @@ export type Mutation = {
   updateWorkspaceMember?: Maybe<WorkspaceMember>;
 };
 
-export type MutationAcceptWorkspaceInviteArgs = {
-  input?: InputMaybe<AcceptWorkspaceInviteInput>;
-  token: Scalars["String"]["input"];
+export type MutationAcceptWorkspaceInvitationArgs = {
+  invitationId: Scalars["ID"]["input"];
 };
 
 export type MutationAddWorkspaceMemberArgs = {
   input: AddWorkspaceMemberInput;
+};
+
+export type MutationCancelWorkspaceInvitationArgs = {
+  invitationId: Scalars["ID"]["input"];
 };
 
 export type MutationCreateApiKeyArgs = {
@@ -208,8 +209,8 @@ export type MutationCreateWorkspaceArgs = {
   input: CreateWorkspaceInput;
 };
 
-export type MutationCreateWorkspaceInviteArgs = {
-  input: CreateWorkspaceInviteInput;
+export type MutationCreateWorkspaceInvitationArgs = {
+  input: CreateWorkspaceInvitationInput;
 };
 
 export type MutationDeleteApiKeyArgs = {
@@ -218,6 +219,10 @@ export type MutationDeleteApiKeyArgs = {
 
 export type MutationDeleteUserApiKeyArgs = {
   id: Scalars["ID"]["input"];
+};
+
+export type MutationRejectWorkspaceInvitationArgs = {
+  invitationId: Scalars["ID"]["input"];
 };
 
 export type MutationRemoveWorkspaceMemberArgs = {
@@ -264,13 +269,15 @@ export type Query = {
   apiKey?: Maybe<ApiKey>;
   apiKeys: ApiKeyConnection;
   currentUser: User;
+  currentUserWorkspaceInvitations: Array<WorkspaceInvitation>;
   currentWorkspace?: Maybe<Workspace>;
   currentWorkspaceMember?: Maybe<WorkspaceMember>;
   userApiKey?: Maybe<ApiKey>;
   userApiKeys: ApiKeyConnection;
   workspace?: Maybe<Workspace>;
+  workspaceInvitation?: Maybe<WorkspaceInvitation>;
+  workspaceInvitations: Array<WorkspaceInvitation>;
   workspaceMember?: Maybe<WorkspaceMember>;
-  workspaceMemberByToken?: Maybe<WorkspaceMember>;
   workspaceMembers: WorkspaceMemberConnection;
   workspaces: WorkspaceConnection;
 };
@@ -307,12 +314,12 @@ export type QueryWorkspaceArgs = {
   id: Scalars["ID"]["input"];
 };
 
-export type QueryWorkspaceMemberArgs = {
+export type QueryWorkspaceInvitationArgs = {
   id: Scalars["ID"]["input"];
 };
 
-export type QueryWorkspaceMemberByTokenArgs = {
-  token: Scalars["String"]["input"];
+export type QueryWorkspaceMemberArgs = {
+  id: Scalars["ID"]["input"];
 };
 
 export type QueryWorkspaceMembersArgs = {
@@ -421,15 +428,30 @@ export enum WorkspaceFeature {
   AI = "AI",
 }
 
+export type WorkspaceInvitation = {
+  __typename?: "WorkspaceInvitation";
+  createdAt: Scalars["DateTime"]["output"];
+  email: Scalars["String"]["output"];
+  expiresAt: Scalars["DateTime"]["output"];
+  id: Scalars["ID"]["output"];
+  inviter: User;
+  role: WorkspaceMemberRole;
+  status: WorkspaceInvitationStatus;
+  workspace: Workspace;
+};
+
+export enum WorkspaceInvitationStatus {
+  ACCEPTED = "ACCEPTED",
+  CANCELED = "CANCELED",
+  PENDING = "PENDING",
+  REJECTED = "REJECTED",
+}
+
 export type WorkspaceMember = {
   __typename?: "WorkspaceMember";
   createdAt: Scalars["DateTime"]["output"];
   email?: Maybe<Scalars["String"]["output"]>;
   id: Scalars["ID"]["output"];
-  inviteExpiresAt?: Maybe<Scalars["DateTime"]["output"]>;
-  inviteToken?: Maybe<Scalars["String"]["output"]>;
-  invitedBy?: Maybe<User>;
-  invitedByUserName?: Maybe<Scalars["String"]["output"]>;
   name: Scalars["String"]["output"];
   permissions: Array<WorkspacePermission>;
   role: WorkspaceMemberRole;
@@ -483,8 +505,6 @@ export enum WorkspaceMemberRole {
 export enum WorkspaceMemberStatus {
   ACTIVE = "ACTIVE",
   DISABLED = "DISABLED",
-  INVITE_EXPIRED = "INVITE_EXPIRED",
-  INVITING = "INVITING",
 }
 
 export enum WorkspaceMemberType {
@@ -797,11 +817,7 @@ export type GetCurrentWorkspaceMemberFromWorkspaceMemberContextQuery = {
     name: string;
     email?: string | null;
     permissions: Array<WorkspacePermission>;
-    inviteToken?: string | null;
     status: WorkspaceMemberStatus;
-    inviteExpiresAt?: any | null;
-    invitedByUserName?: string | null;
-    invitedBy?: { __typename?: "User"; name: string; email: string } | null;
     user?: { __typename?: "User"; email: string } | null;
   } | null;
 };
@@ -846,11 +862,7 @@ export type GetWorkspaceMemberFromMemberRouteQuery = {
     email?: string | null;
     role: WorkspaceMemberRole;
     permissions: Array<WorkspacePermission>;
-    inviteToken?: string | null;
     status: WorkspaceMemberStatus;
-    inviteExpiresAt?: any | null;
-    invitedByUserName?: string | null;
-    invitedBy?: { __typename?: "User"; name: string; email: string } | null;
     user?: { __typename?: "User"; email: string } | null;
   } | null;
 };
@@ -869,11 +881,7 @@ export type UpdateWorkspaceMemberFromMemberRouteMutation = {
     email?: string | null;
     role: WorkspaceMemberRole;
     permissions: Array<WorkspacePermission>;
-    inviteToken?: string | null;
     status: WorkspaceMemberStatus;
-    inviteExpiresAt?: any | null;
-    invitedByUserName?: string | null;
-    invitedBy?: { __typename?: "User"; name: string; email: string } | null;
     user?: { __typename?: "User"; email: string } | null;
   } | null;
 };
@@ -887,18 +895,14 @@ export type RemoveWorkspaceMemberFromMemberRouteMutation = {
   removeWorkspaceMember: { __typename?: "WorkspaceMember"; id: string };
 };
 
-export type CreateWorkspaceInviteFromInviteMemberDialogMutationVariables =
+export type CreateWorkspaceInvitationFromInviteMemberDialogMutationVariables =
   Exact<{
-    input: CreateWorkspaceInviteInput;
+    input: CreateWorkspaceInvitationInput;
   }>;
 
-export type CreateWorkspaceInviteFromInviteMemberDialogMutation = {
+export type CreateWorkspaceInvitationFromInviteMemberDialogMutation = {
   __typename?: "Mutation";
-  createWorkspaceInvite: {
-    __typename?: "WorkspaceMember";
-    id: string;
-    inviteToken?: string | null;
-  };
+  createWorkspaceInvitation: { __typename?: "WorkspaceInvitation"; id: string };
 };
 
 export type GetWorkspaceMembersFromMembersRouteQueryVariables = Exact<{
@@ -940,6 +944,27 @@ export type GetWorkspaceMembersFromMembersRouteQuery = {
       hasPreviousPage: boolean;
       startCursor?: string | null;
     };
+  };
+  workspaceInvitations: Array<{
+    __typename?: "WorkspaceInvitation";
+    id: string;
+    email: string;
+    role: WorkspaceMemberRole;
+    status: WorkspaceInvitationStatus;
+    expiresAt: any;
+  }>;
+};
+
+export type CancelWorkspaceInvitationFromMembersRouteMutationVariables = Exact<{
+  invitationId: Scalars["ID"]["input"];
+}>;
+
+export type CancelWorkspaceInvitationFromMembersRouteMutation = {
+  __typename?: "Mutation";
+  cancelWorkspaceInvitation: {
+    __typename?: "WorkspaceInvitation";
+    id: string;
+    status: WorkspaceInvitationStatus;
   };
 };
 
@@ -1036,34 +1061,38 @@ export type GetCurrentUserFromInviteRouteQuery = {
   currentUser: { __typename?: "User"; id: string; name: string; email: string };
 };
 
-export type GetWorkspaceMemberByTokenFromInviteRouteQueryVariables = Exact<{
-  token: Scalars["String"]["input"];
+export type GetWorkspaceInvitationFromInviteRouteQueryVariables = Exact<{
+  id: Scalars["ID"]["input"];
 }>;
 
-export type GetWorkspaceMemberByTokenFromInviteRouteQuery = {
+export type GetWorkspaceInvitationFromInviteRouteQuery = {
   __typename?: "Query";
-  workspaceMemberByToken?: {
-    __typename?: "WorkspaceMember";
+  workspaceInvitation?: {
+    __typename?: "WorkspaceInvitation";
     id: string;
-    name: string;
-    email?: string | null;
+    email: string;
     role: WorkspaceMemberRole;
-    status: WorkspaceMemberStatus;
-    inviteExpiresAt?: any | null;
+    status: WorkspaceInvitationStatus;
+    expiresAt: any;
+    workspace: { __typename?: "Workspace"; id: string; name: string };
   } | null;
 };
 
-export type AcceptWorkspaceInviteFromInviteRouteMutationVariables = Exact<{
-  token: Scalars["String"]["input"];
-  input?: InputMaybe<AcceptWorkspaceInviteInput>;
+export type AcceptWorkspaceInvitationFromInviteRouteMutationVariables = Exact<{
+  invitationId: Scalars["ID"]["input"];
 }>;
 
-export type AcceptWorkspaceInviteFromInviteRouteMutation = {
+export type AcceptWorkspaceInvitationFromInviteRouteMutation = {
   __typename?: "Mutation";
-  acceptWorkspaceInvite: {
-    __typename?: "AcceptWorkspaceInviteResult";
-    workspaceId: string;
-    workspaceMember: {
+  acceptWorkspaceInvitation: {
+    __typename?: "AcceptWorkspaceInvitationResult";
+    invitation: {
+      __typename?: "WorkspaceInvitation";
+      id: string;
+      status: WorkspaceInvitationStatus;
+      workspace: { __typename?: "Workspace"; id: string };
+    };
+    member: {
       __typename?: "WorkspaceMember";
       id: string;
       name: string;
@@ -2250,27 +2279,7 @@ export const GetCurrentWorkspaceMemberFromWorkspaceMemberContextDocument = {
                 { kind: "Field", name: { kind: "Name", value: "name" } },
                 { kind: "Field", name: { kind: "Name", value: "email" } },
                 { kind: "Field", name: { kind: "Name", value: "permissions" } },
-                { kind: "Field", name: { kind: "Name", value: "inviteToken" } },
                 { kind: "Field", name: { kind: "Name", value: "status" } },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "inviteExpiresAt" },
-                },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "invitedBy" },
-                  selectionSet: {
-                    kind: "SelectionSet",
-                    selections: [
-                      { kind: "Field", name: { kind: "Name", value: "name" } },
-                      { kind: "Field", name: { kind: "Name", value: "email" } },
-                    ],
-                  },
-                },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "invitedByUserName" },
-                },
                 {
                   kind: "Field",
                   name: { kind: "Name", value: "user" },
@@ -2424,27 +2433,7 @@ export const GetWorkspaceMemberFromMemberRouteDocument = {
                 { kind: "Field", name: { kind: "Name", value: "email" } },
                 { kind: "Field", name: { kind: "Name", value: "role" } },
                 { kind: "Field", name: { kind: "Name", value: "permissions" } },
-                { kind: "Field", name: { kind: "Name", value: "inviteToken" } },
                 { kind: "Field", name: { kind: "Name", value: "status" } },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "inviteExpiresAt" },
-                },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "invitedBy" },
-                  selectionSet: {
-                    kind: "SelectionSet",
-                    selections: [
-                      { kind: "Field", name: { kind: "Name", value: "name" } },
-                      { kind: "Field", name: { kind: "Name", value: "email" } },
-                    ],
-                  },
-                },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "invitedByUserName" },
-                },
                 {
                   kind: "Field",
                   name: { kind: "Name", value: "user" },
@@ -2529,27 +2518,7 @@ export const UpdateWorkspaceMemberFromMemberRouteDocument = {
                 { kind: "Field", name: { kind: "Name", value: "email" } },
                 { kind: "Field", name: { kind: "Name", value: "role" } },
                 { kind: "Field", name: { kind: "Name", value: "permissions" } },
-                { kind: "Field", name: { kind: "Name", value: "inviteToken" } },
                 { kind: "Field", name: { kind: "Name", value: "status" } },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "inviteExpiresAt" },
-                },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "invitedBy" },
-                  selectionSet: {
-                    kind: "SelectionSet",
-                    selections: [
-                      { kind: "Field", name: { kind: "Name", value: "name" } },
-                      { kind: "Field", name: { kind: "Name", value: "email" } },
-                    ],
-                  },
-                },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "invitedByUserName" },
-                },
                 {
                   kind: "Field",
                   name: { kind: "Name", value: "user" },
@@ -2619,7 +2588,7 @@ export const RemoveWorkspaceMemberFromMemberRouteDocument = {
   RemoveWorkspaceMemberFromMemberRouteMutation,
   RemoveWorkspaceMemberFromMemberRouteMutationVariables
 >;
-export const CreateWorkspaceInviteFromInviteMemberDialogDocument = {
+export const CreateWorkspaceInvitationFromInviteMemberDialogDocument = {
   kind: "Document",
   definitions: [
     {
@@ -2627,7 +2596,7 @@ export const CreateWorkspaceInviteFromInviteMemberDialogDocument = {
       operation: "mutation",
       name: {
         kind: "Name",
-        value: "createWorkspaceInviteFromInviteMemberDialog",
+        value: "createWorkspaceInvitationFromInviteMemberDialog",
       },
       variableDefinitions: [
         {
@@ -2640,7 +2609,7 @@ export const CreateWorkspaceInviteFromInviteMemberDialogDocument = {
             kind: "NonNullType",
             type: {
               kind: "NamedType",
-              name: { kind: "Name", value: "CreateWorkspaceInviteInput" },
+              name: { kind: "Name", value: "CreateWorkspaceInvitationInput" },
             },
           },
         },
@@ -2650,7 +2619,7 @@ export const CreateWorkspaceInviteFromInviteMemberDialogDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "createWorkspaceInvite" },
+            name: { kind: "Name", value: "createWorkspaceInvitation" },
             arguments: [
               {
                 kind: "Argument",
@@ -2665,7 +2634,6 @@ export const CreateWorkspaceInviteFromInviteMemberDialogDocument = {
               kind: "SelectionSet",
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "id" } },
-                { kind: "Field", name: { kind: "Name", value: "inviteToken" } },
               ],
             },
           },
@@ -2674,8 +2642,8 @@ export const CreateWorkspaceInviteFromInviteMemberDialogDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  CreateWorkspaceInviteFromInviteMemberDialogMutation,
-  CreateWorkspaceInviteFromInviteMemberDialogMutationVariables
+  CreateWorkspaceInvitationFromInviteMemberDialogMutation,
+  CreateWorkspaceInvitationFromInviteMemberDialogMutationVariables
 >;
 export const GetWorkspaceMembersFromMembersRouteDocument = {
   kind: "Document",
@@ -2903,6 +2871,20 @@ export const GetWorkspaceMembersFromMembersRouteDocument = {
               ],
             },
           },
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "workspaceInvitations" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "email" } },
+                { kind: "Field", name: { kind: "Name", value: "role" } },
+                { kind: "Field", name: { kind: "Name", value: "status" } },
+                { kind: "Field", name: { kind: "Name", value: "expiresAt" } },
+              ],
+            },
+          },
         ],
       },
     },
@@ -2910,6 +2892,61 @@ export const GetWorkspaceMembersFromMembersRouteDocument = {
 } as unknown as DocumentNode<
   GetWorkspaceMembersFromMembersRouteQuery,
   GetWorkspaceMembersFromMembersRouteQueryVariables
+>;
+export const CancelWorkspaceInvitationFromMembersRouteDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: {
+        kind: "Name",
+        value: "cancelWorkspaceInvitationFromMembersRoute",
+      },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "invitationId" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "cancelWorkspaceInvitation" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "invitationId" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "invitationId" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "status" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  CancelWorkspaceInvitationFromMembersRouteMutation,
+  CancelWorkspaceInvitationFromMembersRouteMutationVariables
 >;
 export const RemoveWorkspaceMemberFromMembersRouteDocument = {
   kind: "Document",
@@ -3338,26 +3375,20 @@ export const GetCurrentUserFromInviteRouteDocument = {
   GetCurrentUserFromInviteRouteQuery,
   GetCurrentUserFromInviteRouteQueryVariables
 >;
-export const GetWorkspaceMemberByTokenFromInviteRouteDocument = {
+export const GetWorkspaceInvitationFromInviteRouteDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "query",
-      name: { kind: "Name", value: "getWorkspaceMemberByTokenFromInviteRoute" },
+      name: { kind: "Name", value: "getWorkspaceInvitationFromInviteRoute" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "token" },
-          },
+          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
           type: {
             kind: "NonNullType",
-            type: {
-              kind: "NamedType",
-              name: { kind: "Name", value: "String" },
-            },
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
           },
         },
       ],
@@ -3366,14 +3397,14 @@ export const GetWorkspaceMemberByTokenFromInviteRouteDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "workspaceMemberByToken" },
+            name: { kind: "Name", value: "workspaceInvitation" },
             arguments: [
               {
                 kind: "Argument",
-                name: { kind: "Name", value: "token" },
+                name: { kind: "Name", value: "id" },
                 value: {
                   kind: "Variable",
-                  name: { kind: "Name", value: "token" },
+                  name: { kind: "Name", value: "id" },
                 },
               },
             ],
@@ -3381,13 +3412,20 @@ export const GetWorkspaceMemberByTokenFromInviteRouteDocument = {
               kind: "SelectionSet",
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "id" } },
-                { kind: "Field", name: { kind: "Name", value: "name" } },
                 { kind: "Field", name: { kind: "Name", value: "email" } },
                 { kind: "Field", name: { kind: "Name", value: "role" } },
                 { kind: "Field", name: { kind: "Name", value: "status" } },
+                { kind: "Field", name: { kind: "Name", value: "expiresAt" } },
                 {
                   kind: "Field",
-                  name: { kind: "Name", value: "inviteExpiresAt" },
+                  name: { kind: "Name", value: "workspace" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                      { kind: "Field", name: { kind: "Name", value: "name" } },
+                    ],
+                  },
                 },
               ],
             },
@@ -3397,40 +3435,26 @@ export const GetWorkspaceMemberByTokenFromInviteRouteDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  GetWorkspaceMemberByTokenFromInviteRouteQuery,
-  GetWorkspaceMemberByTokenFromInviteRouteQueryVariables
+  GetWorkspaceInvitationFromInviteRouteQuery,
+  GetWorkspaceInvitationFromInviteRouteQueryVariables
 >;
-export const AcceptWorkspaceInviteFromInviteRouteDocument = {
+export const AcceptWorkspaceInvitationFromInviteRouteDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "mutation",
-      name: { kind: "Name", value: "acceptWorkspaceInviteFromInviteRoute" },
+      name: { kind: "Name", value: "acceptWorkspaceInvitationFromInviteRoute" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
           variable: {
             kind: "Variable",
-            name: { kind: "Name", value: "token" },
+            name: { kind: "Name", value: "invitationId" },
           },
           type: {
             kind: "NonNullType",
-            type: {
-              kind: "NamedType",
-              name: { kind: "Name", value: "String" },
-            },
-          },
-        },
-        {
-          kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "input" },
-          },
-          type: {
-            kind: "NamedType",
-            name: { kind: "Name", value: "AcceptWorkspaceInviteInput" },
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
           },
         },
       ],
@@ -3439,22 +3463,14 @@ export const AcceptWorkspaceInviteFromInviteRouteDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "acceptWorkspaceInvite" },
+            name: { kind: "Name", value: "acceptWorkspaceInvitation" },
             arguments: [
               {
                 kind: "Argument",
-                name: { kind: "Name", value: "token" },
+                name: { kind: "Name", value: "invitationId" },
                 value: {
                   kind: "Variable",
-                  name: { kind: "Name", value: "token" },
-                },
-              },
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "input" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "input" },
+                  name: { kind: "Name", value: "invitationId" },
                 },
               },
             ],
@@ -3463,7 +3479,34 @@ export const AcceptWorkspaceInviteFromInviteRouteDocument = {
               selections: [
                 {
                   kind: "Field",
-                  name: { kind: "Name", value: "workspaceMember" },
+                  name: { kind: "Name", value: "invitation" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "status" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "workspace" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "id" },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "member" },
                   selectionSet: {
                     kind: "SelectionSet",
                     selections: [
@@ -3473,7 +3516,6 @@ export const AcceptWorkspaceInviteFromInviteRouteDocument = {
                     ],
                   },
                 },
-                { kind: "Field", name: { kind: "Name", value: "workspaceId" } },
               ],
             },
           },
@@ -3482,6 +3524,6 @@ export const AcceptWorkspaceInviteFromInviteRouteDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  AcceptWorkspaceInviteFromInviteRouteMutation,
-  AcceptWorkspaceInviteFromInviteRouteMutationVariables
+  AcceptWorkspaceInvitationFromInviteRouteMutation,
+  AcceptWorkspaceInvitationFromInviteRouteMutationVariables
 >;

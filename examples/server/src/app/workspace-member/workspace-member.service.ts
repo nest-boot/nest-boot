@@ -1,29 +1,14 @@
 import { EntityManager } from '@mikro-orm/core';
 import { Logger } from '@nest-boot/logger';
 import { EntityService } from '@nest-boot/mikro-orm';
-import { RequestContext } from '@nest-boot/request-context';
-import {
-  RowLevelSecurity,
-  RowLevelSecurityMode,
-} from '@nest-boot/row-level-security';
-import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-} from '@nestjs/common';
-import { randomBytes } from 'crypto';
-import dayjs from 'dayjs';
+import { BadRequestException, Injectable } from '@nestjs/common';
 
-import { User } from '../user/user.entity.js';
 import { Workspace } from '../workspace/workspace.entity.js';
 import { WorkspaceMemberRole } from './enums/workspace-member-role.enum.js';
 import { WorkspaceMemberStatus } from './enums/workspace-member-status.enum.js';
 import { WorkspaceMemberType } from './enums/workspace-member-type.enum.js';
-import { AcceptWorkspaceInviteInput } from './inputs/accept-workspace-invite.input.js';
 import { CreateServiceAccountWorkspaceMemberInput } from './inputs/create-service-account-workspace-member.input.js';
-import { CreateWorkspaceInviteInput } from './inputs/create-workspace-invite.input.js';
 import { UpdateWorkspaceMemberInput } from './inputs/update-workspace-member.input.js';
-import { AcceptWorkspaceInviteResult } from './types/accept-workspace-invite-result.type.js';
 import { WorkspaceMember } from './workspace-member.entity.js';
 
 /** 工作区成员领域服务。 */
@@ -43,47 +28,6 @@ export class WorkspaceMemberService extends EntityService<WorkspaceMember> {
   ) {
     super(WorkspaceMember, em);
     this.logger.setContext(WorkspaceMemberService.name);
-  }
-
-  /**
-   * 创建工作区邀请成员。
-   *
-   * @param currentWorkspaceMember - 当前发起邀请的工作区成员。
-   * @param currentWorkspace - 当前工作区。
-   * @param input - 创建邀请的输入参数。
-   * @returns 待接受邀请的工作区成员。
-   */
-  async createWorkspaceInvite(
-    currentWorkspaceMember: WorkspaceMember,
-    currentWorkspace: Workspace,
-    input: CreateWorkspaceInviteInput,
-  ): Promise<WorkspaceMember> {
-    // 生成邀请 token
-    const inviteToken = randomBytes(16).toString('hex');
-
-    // 设置过期时间（7 天后）
-    const inviteExpiresAt = dayjs().add(7, 'day').toDate();
-
-    // 加载出邀请者信息
-    const invitedBy = (await currentWorkspaceMember.user?.loadOrFail()) ?? null;
-
-    if (!invitedBy) {
-      throw new ForbiddenException('Invited by user not found');
-    }
-
-    // 创建邀请
-    return await this.create({
-      name: '待接受邀请',
-      workspace: currentWorkspace,
-      role: input.role,
-      email: input.email ?? null,
-      invitedBy,
-      invitedByUserName: invitedBy.name,
-      inviteToken,
-      inviteExpiresAt,
-      status: WorkspaceMemberStatus.INVITING,
-      user: null,
-    });
   }
 
   /**
@@ -107,113 +51,6 @@ export class WorkspaceMemberService extends EntityService<WorkspaceMember> {
       email: null,
       status: WorkspaceMemberStatus.ACTIVE,
     });
-  }
-
-  /**
-   * 根据邀请令牌查找待接受的工作区邀请。
-   *
-   * @param inviteToken - 邀请令牌。
-   * @returns 匹配的邀请成员，不存在时返回 null。
-   */
-  async findWorkspaceInviteByToken(
-    inviteToken: string,
-  ): Promise<WorkspaceMember | null> {
-    return await RequestContext.child(() => {
-      RowLevelSecurity.setMode(RowLevelSecurityMode.DISABLED);
-
-      return this.findOne({
-        inviteToken,
-        user: null,
-      });
-    });
-  }
-
-  /**
-   * 使用邀请令牌接受工作区邀请。
-   *
-   * @param currentUser - 当前接受邀请的登录用户。
-   * @param inviteToken - 邀请令牌。
-   * @param input - 接受邀请时补充的成员信息。
-   * @returns 接受邀请后的成员和工作区信息；邀请不存在时返回 null。
-   */
-  async acceptWorkspaceInviteByToken(
-    currentUser: User,
-    inviteToken: string,
-    input: AcceptWorkspaceInviteInput | null = null,
-  ): Promise<AcceptWorkspaceInviteResult | null> {
-    const member = await this.findWorkspaceInviteByToken(inviteToken);
-
-    if (!member) {
-      return null;
-    }
-
-    return await this.acceptWorkspaceInvite(currentUser, member, input);
-  }
-
-  /**
-   * 接受指定工作区邀请成员。
-   *
-   * @param currentUser - 当前接受邀请的登录用户。
-   * @param member - 待接受邀请的工作区成员。
-   * @param input - 接受邀请时补充的成员信息。
-   * @returns 接受邀请后的成员和工作区信息。
-   */
-  async acceptWorkspaceInvite(
-    currentUser: User,
-    member: WorkspaceMember,
-    input: AcceptWorkspaceInviteInput | null = null,
-  ): Promise<AcceptWorkspaceInviteResult> {
-    // 检查是否过期
-    if (member.inviteExpiresAt && member.inviteExpiresAt < new Date()) {
-      member.status = WorkspaceMemberStatus.INVITE_EXPIRED;
-      throw new BadRequestException('邀请链接已过期');
-    }
-
-    // 检查是否已经接受过
-    if (member.status === WorkspaceMemberStatus.ACTIVE) {
-      throw new BadRequestException('已接受过邀请，此链接已失效');
-    }
-    // 检查用户是否已经是该工作空间的成员
-    const existingMember = await this.findOne({
-      user: currentUser,
-      workspace: member.workspace,
-    });
-
-    if (existingMember) {
-      throw new BadRequestException('您已经是该工作空间的成员');
-    }
-
-    // 如果邀请者设置了 email，需要核对用户的 email
-    if (member.email) {
-      if (currentUser.email !== member.email) {
-        throw new BadRequestException(
-          '邀请链接仅限指定的邮箱地址使用，请使用正确的邮箱账户接受邀请',
-        );
-      }
-    }
-
-    // 更新邀请状态，填充用户信息
-    // 如果邀请者没有指定 email，使用用户的 email；如果已指定，保持邀请者指定的 email
-    // 如果用户提供了 name，使用用户提供的；否则使用用户的默认 name
-    const updatedMember = await RequestContext.child(() => {
-      RowLevelSecurity.clear();
-      RowLevelSecurity.setRole('authenticated');
-      RowLevelSecurity.setContext('user_id', currentUser.id);
-      RowLevelSecurity.setContext('workspace_id', member.workspace.id);
-
-      return this.update(member, {
-        user: currentUser,
-        name: input?.name ?? currentUser.name, // 如果用户提供了 name，使用用户提供的；否则使用用户的默认 name
-        email: member.email ?? currentUser.email, // 如果邀请者已指定，保持；否则使用用户的邮箱
-        status: WorkspaceMemberStatus.ACTIVE,
-        updatedAt: new Date(),
-      });
-    });
-
-    return {
-      workspaceMember: updatedMember,
-      workspaceId: updatedMember.workspace.id,
-    };
   }
 
   /**

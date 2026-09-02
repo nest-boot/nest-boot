@@ -67,9 +67,10 @@
     "confirm_and_copy": "Confirm and Copy Link",
     "description": "The system will generate an invite link",
     "email_label": "Email",
-    "email_placeholder": "user@example.com (optional)",
+    "email_placeholder": "user@example.com",
+    "email_required": "Enter the invitee's email address",
     "link_copied": "The link will be automatically copied to clipboard",
-    "link_expires": "The link will expire in 7 days",
+    "link_expires": "The invitation will expire in 48 hours",
     "link_generated": "Invite Link Generated",
     "link_generated_description": "The invite link has been copied to your clipboard. You can also copy it again using the button below.",
     "link_user_join": "Invited users can join the workspace by clicking the link",
@@ -84,9 +85,7 @@
   },
   "status": {
     "active": "Active",
-    "disabled": "Disabled",
-    "invite_expired": "Invite Expired",
-    "inviting": "Inviting"
+    "disabled": "Disabled"
   },
   "type": {
     "service_account": "Service Account",

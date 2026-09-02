@@ -18,13 +18,12 @@ import { WorkspaceMemberRole } from "@/gql/graphql";
 import { getRoleLabel } from "@/utils/get-role-label";
 import { graphql } from "@/gql";
 
-const CREATE_WORKSPACE_INVITE_FROM_INVITE_MEMBER_DIALOG = graphql(`
-  mutation createWorkspaceInviteFromInviteMemberDialog(
-    $input: CreateWorkspaceInviteInput!
+const CREATE_WORKSPACE_INVITATION_FROM_INVITE_MEMBER_DIALOG = graphql(`
+  mutation createWorkspaceInvitationFromInviteMemberDialog(
+    $input: CreateWorkspaceInvitationInput!
   ) {
-    createWorkspaceInvite(input: $input) {
+    createWorkspaceInvitation(input: $input) {
       id
-      inviteToken
     }
   }
 `);
@@ -41,9 +40,8 @@ export function InviteMemberDialog({
   const [inviteLinkOpen, setInviteLinkOpen] = useState(false);
   const [inviteLink, setInviteLink] = useState("");
 
-  const [createWorkspaceInvite, { loading: createInviteLoading }] = useMutation(
-    CREATE_WORKSPACE_INVITE_FROM_INVITE_MEMBER_DIALOG,
-  );
+  const [createWorkspaceInvitation, { loading: createInviteLoading }] =
+    useMutation(CREATE_WORKSPACE_INVITATION_FROM_INVITE_MEMBER_DIALOG);
 
   const inviteForm = useForm({
     defaultValues: {
@@ -51,19 +49,25 @@ export function InviteMemberDialog({
       email: "",
     },
     onSubmit: async ({ value }) => {
+      const email = value.email.trim();
+      if (!email) {
+        toast.error(t("workspace-member:invite.email_required"));
+        return;
+      }
+
       try {
-        const result = await createWorkspaceInvite({
+        const result = await createWorkspaceInvitation({
           variables: {
             input: {
-              email: value.email.trim() || undefined,
+              email,
               role: value.role,
             },
           },
         });
 
-        if (result.data?.createWorkspaceInvite?.inviteToken) {
-          const token = result.data.createWorkspaceInvite.inviteToken;
-          const link = `${window.location.origin}/invite?token=${token}`;
+        if (result.data?.createWorkspaceInvitation?.id) {
+          const invitationId = result.data.createWorkspaceInvitation.id;
+          const link = `${window.location.origin}/invite?invitationId=${invitationId}`;
           setInviteLink(link);
 
           // 自动复制到剪切板

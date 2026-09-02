@@ -9,6 +9,7 @@ import { Args, ID, Mutation, Query, Resolver } from '@nest-boot/graphql';
 import { ConnectionManager } from '@nest-boot/graphql-connection';
 
 import { User } from '../user/user.entity.js';
+import { WorkspaceInvitation } from '../workspace-member/workspace-invitation.entity.js';
 import { WorkspaceMember } from '../workspace-member/workspace-member.entity.js';
 import { CreateWorkspaceInput } from './inputs/create-workspace.input.js';
 import { UpdateWorkspaceInput } from './inputs/update-workspace.input.js';
@@ -33,6 +34,7 @@ export class WorkspaceResolver {
     private readonly workspaceService: WorkspaceService<
       Workspace,
       WorkspaceMember,
+      WorkspaceInvitation,
       User
     >,
     private readonly cm: ConnectionManager,

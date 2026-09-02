@@ -67,9 +67,10 @@
     "confirm_and_copy": "确认并复制链接",
     "description": "系统将生成一个邀请链接",
     "email_label": "邮箱",
-    "email_placeholder": "user@example.com (可选)",
+    "email_placeholder": "user@example.com",
+    "email_required": "请输入受邀人的邮箱地址",
     "link_copied": "链接将自动复制到剪贴板",
-    "link_expires": "链接将在 7 天后过期",
+    "link_expires": "邀请将在 48 小时后过期",
     "link_generated": "邀请链接已生成",
     "link_generated_description": "邀请链接已复制到您的剪贴板。您也可以使用下面的按钮再次复制。",
     "link_user_join": "邀请的用户可以通过点击链接加入工作空间",
@@ -84,9 +85,7 @@
   },
   "status": {
     "active": "活跃",
-    "disabled": "禁用",
-    "invite_expired": "邀请过期",
-    "inviting": "待接受"
+    "disabled": "禁用"
   },
   "type": {
     "service_account": "服务账号",

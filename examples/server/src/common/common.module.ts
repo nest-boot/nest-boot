@@ -1,6 +1,8 @@
 import { GraphQLModule } from '@nest-boot/graphql';
 import { GraphQLConnectionModule } from '@nest-boot/graphql-connection';
+import { HashModule } from '@nest-boot/hash';
 import { LoggerModule } from '@nest-boot/logger';
+import { MailerModule } from '@nest-boot/mailer';
 import { MikroOrmModule } from '@nest-boot/mikro-orm';
 import { RequestContextModule } from '@nest-boot/request-context';
 import { RowLevelSecurityDriver } from '@nest-boot/row-level-security';
@@ -23,6 +25,8 @@ const MikroORMDynamicModule = MikroOrmModule.forRoot({
   imports: [
     RequestContextModule,
     ConfigModule,
+    HashModule,
+    MailerModule,
     MikroORMDynamicModule,
     GraphQLDynamicModule,
     GraphQLConnectionModule,

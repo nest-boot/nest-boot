@@ -4,6 +4,7 @@ import { BaseSession } from "./session.entity.js";
 import { BaseUser } from "./user.entity.js";
 import { BaseVerification } from "./verification.entity.js";
 import { BaseWorkspace } from "./workspace.entity.js";
+import { BaseWorkspaceInvitation } from "./workspace-invitation.entity.js";
 import { BaseWorkspaceMember } from "./workspace-member.entity.js";
 
 class TestAccount extends BaseAccount {}
@@ -17,6 +18,7 @@ describe("auth entities", () => {
     const user = new BaseUser();
     const verification = new TestVerification();
     const workspace = new BaseWorkspace();
+    const workspaceInvitation = new BaseWorkspaceInvitation();
     const workspaceMember = new BaseWorkspaceMember();
 
     for (const entity of [
@@ -26,16 +28,23 @@ describe("auth entities", () => {
       user,
       verification,
       workspace,
+      workspaceInvitation,
       workspaceMember,
     ]) {
       expect(entity.id).toEqual(expect.any(String));
       expect(entity.createdAt).toBeInstanceOf(Date);
-      expect(entity.updatedAt).toBeInstanceOf(Date);
+      if ("updatedAt" in entity) {
+        expect(entity.updatedAt).toBeInstanceOf(Date);
+      }
     }
     expect(apiKey.enabled).toBe(true);
     expect(apiKey.permissions).toEqual([]);
     expect(user.permissions).toEqual([]);
+    expect(user.banned).toBe(false);
+    expect(user.banReason).toBeNull();
+    expect(user.banExpiresAt).toBeNull();
     expect(workspace.deletedAt).toBeNull();
+    expect(workspaceInvitation.status).toBe("pending");
     expect(workspaceMember.permissions).toEqual([]);
     expect(workspaceMember.role).toBe("MEMBER");
     expect(workspaceMember.status).toBe("ACTIVE");
@@ -54,6 +63,10 @@ describe("auth entities", () => {
     expect(
       (await import("./workspace-member.entity.js")).BaseWorkspaceMember,
     ).toBeDefined();
+    expect(
+      (await import("./workspace-invitation.entity.js"))
+        .BaseWorkspaceInvitation,
+    ).toBeDefined();
     expect((await import("./workspace.entity.js")).BaseWorkspace).toBeDefined();
   });
 
@@ -71,6 +84,7 @@ describe("auth entities", () => {
       return {
         ...actual,
         Entity: decorator,
+        Index: decorator,
         ManyToOne: (options: { entity?: () => unknown }) => {
           relationTargets.push(options.entity?.());
           return () => undefined;
@@ -92,6 +106,7 @@ describe("auth entities", () => {
     await import("./user.entity.js");
     await import("./verification.entity.js");
     await import("./workspace-member.entity.js");
+    await import("./workspace-invitation.entity.js");
     await import("./workspace.entity.js");
     vi.doUnmock("@mikro-orm/decorators/legacy");
 
@@ -99,6 +114,9 @@ describe("auth entities", () => {
       "User",
       ["User", "Workspace"],
       "User",
+      "User",
+      "User",
+      "Workspace",
       "User",
       "Workspace",
     ]);

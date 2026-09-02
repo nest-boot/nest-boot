@@ -12,14 +12,7 @@ const GET_CURRENT_WORKSPACE_MEMBER_FROM_WORKSPACE_MEMBER_CONTEXT = graphql(`
       name
       email
       permissions
-      inviteToken
       status
-      inviteExpiresAt
-      invitedBy {
-        name
-        email
-      }
-      invitedByUserName
       user {
         email
       }

@@ -190,20 +190,6 @@ describe("ApiKeyService", () => {
     expect(em.create).not.toHaveBeenCalled();
   });
 
-  it("rejects invited members", async () => {
-    const { em, service } = createService();
-    const member = Object.assign(new TestWorkspaceMember(), {
-      status: "INVITING" as const,
-    });
-
-    await expect(
-      service.createWorkspaceKey(new TestWorkspace(), member, {
-        name: "Deploy key",
-      }),
-    ).rejects.toBeInstanceOf(BadRequestException);
-    expect(em.create).not.toHaveBeenCalled();
-  });
-
   it.each(["ADMIN", "MEMBER"] as const)(
     "rejects creation by a %s because workspace keys are owner-managed",
     async (role) => {
@@ -383,6 +369,22 @@ describe("ApiKeyService", () => {
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
+  it("rejects personal keys owned by an actively banned user", async () => {
+    const { em, service } = createService();
+    const user = Object.assign(new TestUser(), {
+      banned: true,
+      banExpiresAt: null,
+    });
+    const apiKey = Object.assign(new TestApiKey(), {
+      owner: user as BaseApiKey["owner"],
+    });
+    em.findOne.mockResolvedValueOnce(apiKey);
+
+    await expect(service.validate("sk-banned-user-key")).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+  });
+
   it("validates keys with RLS disabled and restores the outer mode", async () => {
     const { em, service } = createService();
     const apiKey = new TestApiKey();
@@ -434,6 +436,7 @@ function createService() {
       apiKey: TestApiKey,
       user: TestUser,
       workspace: TestWorkspace,
+      workspaceInvitation: class {},
       workspaceMember: TestWorkspaceMember,
     },
   } as unknown as AuthModuleOptions;

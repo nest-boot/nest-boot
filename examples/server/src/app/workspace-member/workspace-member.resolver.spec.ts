@@ -103,32 +103,6 @@ describe('WorkspaceMemberResolver', () => {
     });
   });
 
-  it('returns a member for a valid invite token', async () => {
-    const member = { id: 'member_1' } as WorkspaceMember;
-    const { resolver, workspaceMemberService } = createResolver({
-      workspaceMemberService: {
-        findWorkspaceInviteByToken: vi.fn(async () => member),
-      },
-    });
-
-    await expect(resolver.workspaceMemberByToken('token_1')).resolves.toBe(
-      member,
-    );
-
-    expect(
-      workspaceMemberService.findWorkspaceInviteByToken,
-    ).toHaveBeenCalledWith('token_1');
-  });
-
-  it('throws a bad request for consumed or missing invite tokens', async () => {
-    const { resolver, workspaceMemberService } = createResolver();
-    workspaceMemberService.findWorkspaceInviteByToken.mockResolvedValue(null);
-
-    await expect(
-      resolver.workspaceMemberByToken('missing_token'),
-    ).rejects.toBeInstanceOf(BadRequestException);
-  });
-
   it('allows owners to add existing users as workspace members', async () => {
     const workspace = {
       id: 'workspace_1',
@@ -465,87 +439,6 @@ describe('WorkspaceMemberResolver', () => {
     expect(workspaceMemberService.remove).toHaveBeenCalledWith(member);
   });
 
-  it('allows admins to create workspace invites', async () => {
-    const workspace = { id: 'workspace_1' } as Workspace;
-    const member = {
-      id: 'member_1',
-      role: WorkspaceMemberRole.ADMIN,
-    } as WorkspaceMember;
-    const invitedMember = { id: 'member_2' } as WorkspaceMember;
-    const input = {
-      email: 'alice@example.com',
-      role: WorkspaceMemberRole.MEMBER,
-    };
-    const { resolver, workspaceMemberService } = createResolver({
-      workspaceMemberService: {
-        createWorkspaceInvite: vi.fn(async () => invitedMember),
-      },
-    });
-
-    await expect(
-      resolver.createWorkspaceInvite(workspace, member, input),
-    ).resolves.toBe(invitedMember);
-
-    expect(workspaceMemberService.createWorkspaceInvite).toHaveBeenCalledWith(
-      member,
-      workspace,
-      input,
-    );
-  });
-
-  it('rejects workspace invite creation by regular members', async () => {
-    const { resolver, workspaceMemberService } = createResolver();
-
-    await expect(
-      resolver.createWorkspaceInvite(
-        { id: 'workspace_1' } as Workspace,
-        { role: WorkspaceMemberRole.MEMBER } as WorkspaceMember,
-        {
-          email: 'alice@example.com',
-          role: WorkspaceMemberRole.MEMBER,
-        },
-      ),
-    ).rejects.toBeInstanceOf(ForbiddenException);
-
-    expect(workspaceMemberService.createWorkspaceInvite).not.toHaveBeenCalled();
-  });
-
-  it('rejects invitation acceptance when token is missing', async () => {
-    const { resolver, workspaceMemberService } = createResolver({
-      workspaceMemberService: {
-        acceptWorkspaceInviteByToken: vi.fn(async () => null),
-      },
-    });
-
-    await expect(
-      resolver.acceptWorkspaceInvite('missing_token', null, {
-        id: 'user_1',
-      } as User),
-    ).rejects.toBeInstanceOf(NotFoundException);
-  });
-
-  it('delegates invitation acceptance after resolving the token', async () => {
-    const member = { id: 'member_1' } as WorkspaceMember;
-    const user = { id: 'user_1' } as User;
-    const result = {
-      workspaceMember: member,
-      workspaceId: 'workspace_1',
-    };
-    const { resolver, workspaceMemberService } = createResolver({
-      workspaceMemberService: {
-        acceptWorkspaceInviteByToken: vi.fn(async () => result),
-      },
-    });
-
-    await expect(
-      resolver.acceptWorkspaceInvite('token_1', { name: 'Alice' }, user),
-    ).resolves.toBe(result);
-
-    expect(
-      workspaceMemberService.acceptWorkspaceInviteByToken,
-    ).toHaveBeenCalledWith(user, 'token_1', { name: 'Alice' });
-  });
-
   it('returns null user fields when the member has no user reference', async () => {
     const { resolver } = createResolver();
 
@@ -564,51 +457,6 @@ describe('WorkspaceMemberResolver', () => {
 
     await expect(resolver.user(member)).resolves.toBe(user);
   });
-
-  it('returns null invitedBy fields when no inviter is referenced', async () => {
-    const { resolver } = createResolver();
-
-    await expect(resolver.invitedBy({} as WorkspaceMember)).resolves.toBeNull();
-  });
-
-  it('returns null invitedBy when the inviter has no name', async () => {
-    const { resolver } = createResolver();
-    const member = {
-      invitedBy: {
-        id: 'user_1',
-        loadOrFail: vi.fn(async () => ({ id: 'user_1', name: '' })),
-      },
-    } as unknown as WorkspaceMember;
-
-    await expect(resolver.invitedBy(member)).resolves.toBeNull();
-  });
-
-  it('returns invitedBy user when it can be loaded', async () => {
-    const { resolver } = createResolver();
-    const user = { id: 'user_1', name: 'Alice' } as User;
-    const member = {
-      invitedBy: {
-        id: 'user_1',
-        loadOrFail: vi.fn(async () => user),
-      },
-    } as unknown as WorkspaceMember;
-
-    await expect(resolver.invitedBy(member)).resolves.toBe(user);
-  });
-
-  it('returns null invitedBy when loading fails', async () => {
-    const { resolver } = createResolver();
-    const member = {
-      invitedBy: {
-        id: 'user_1',
-        loadOrFail: vi.fn(async () => {
-          throw new Error('missing');
-        }),
-      },
-    } as unknown as WorkspaceMember;
-
-    await expect(resolver.invitedBy(member)).resolves.toBeNull();
-  });
 });
 
 function createResolver(overrides?: {
@@ -623,10 +471,6 @@ function createResolver(overrides?: {
     createServiceAccount: vi.fn(),
     updateWorkspaceMember: vi.fn(),
     remove: vi.fn(),
-    createWorkspaceInvite: vi.fn(),
-    findWorkspaceInviteByToken: vi.fn(),
-    acceptWorkspaceInvite: vi.fn(),
-    acceptWorkspaceInviteByToken: vi.fn(),
     ...overrides?.workspaceMemberService,
   } as unknown as Mocked<WorkspaceMemberService>;
   const userService = {

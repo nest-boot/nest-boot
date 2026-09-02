@@ -8,7 +8,7 @@ description: "Add session and API-key authentication, workspace identity, and CA
 ## Installation
 
 ```bash
-pnpm add @nest-boot/auth better-auth @casl/ability
+pnpm add @nest-boot/auth @nest-boot/hash @nest-boot/mailer better-auth @casl/ability nodemailer
 ```
 
 ## Module Registration
@@ -17,6 +17,8 @@ pnpm add @nest-boot/auth better-auth @casl/ability
 
 ```typescript
 import { AuthModule } from "@nest-boot/auth";
+import { HashModule } from "@nest-boot/hash";
+import { MailerModule } from "@nest-boot/mailer";
 import { Global, Module } from "@nestjs/common";
 import { User } from "./user.entity";
 import { Account } from "./account.entity";
@@ -24,15 +26,21 @@ import { ApiKey } from "./api-key.entity";
 import { Session } from "./session.entity";
 import { Verification } from "./verification.entity";
 import { Workspace } from "./workspace.entity";
+import { WorkspaceInvitation } from "./workspace-invitation.entity";
 import { WorkspaceMember } from "./workspace-member.entity";
 
 export const AuthDynamicModule = AuthModule.forRoot({
+  emailAndPassword: {
+    enabled: true,
+    requireEmailVerification: true,
+  },
   entities: {
     user: User,
     account: Account,
     session: Session,
     verification: Verification,
     workspace: Workspace,
+    workspaceInvitation: WorkspaceInvitation,
     workspaceMember: WorkspaceMember,
     apiKey: ApiKey,
   },
@@ -40,7 +48,7 @@ export const AuthDynamicModule = AuthModule.forRoot({
 
 @Global()
 @Module({
-  imports: [AuthDynamicModule],
+  imports: [HashModule, MailerModule, AuthDynamicModule],
 })
 export class CommonModule {}
 ```
@@ -48,6 +56,8 @@ export class CommonModule {}
 The module automatically:
 
 - Creates a better-auth instance with MikroORM adapter
+- Hashes and verifies credential passwords through the globally registered `HashModule`
+- Sends verification emails through the globally registered `MailerModule`
 - Registers auth API routes at `/api/auth/` (configurable via `basePath`)
 - Resolves sessions, selected workspaces, workspace members, and API keys into `RequestContext`
 - Provides workspace and API-key lifecycle services
@@ -57,30 +67,32 @@ The module automatically:
 
 `AuthModule` can configure the default better-auth instance from environment variables. Values passed through `AuthModule.forRoot()` or `AuthModule.forRootAsync()` are merged with these defaults; environment variables can still override nested provider flags where noted below.
 
-By default, email/password auth is enabled, Google/GitHub/OIDC auth are disabled, and signup is allowed. Set `AUTH_DISABLE_SIGN_UP=true` when you want to stop new signups for every configured method at once.
+By default, email/password auth is enabled, email verification is required, Google/GitHub/OIDC auth are disabled, and signup is allowed. Set `AUTH_DISABLE_SIGN_UP=true` when you want to stop new signups for every configured method at once.
 
 #### Common
 
 Set these once for the whole auth instance.
 
-| Variable               | Purpose                                                                                                                 | Default                              |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| `AUTH_SECRET`          | Secret used to sign and encrypt auth data. Falls back to `APP_SECRET`. Must be at least 32 characters and high entropy. | Required                             |
-| `APP_SECRET`           | Fallback secret when `AUTH_SECRET` is not set.                                                                          | Required when `AUTH_SECRET` is unset |
-| `APP_NAME`             | App name passed to better-auth.                                                                                         | unset                                |
-| `AUTH_URL`             | Public auth base URL. Falls back to `APP_URL`.                                                                          | unset                                |
-| `APP_URL`              | Fallback public base URL when `AUTH_URL` is not set.                                                                    | unset                                |
-| `AUTH_DISABLE_SIGN_UP` | Set to `true` to disable signup for every configured auth method. Sign-in still works for existing users.               | signup enabled                       |
-| `API_KEY_PREFIX`       | Prefix used when creating workspace API keys.                                                                           | `sk-`                                |
+| Variable               | Purpose                                                                                                                            | Default                              |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| `AUTH_SECRET`          | Secret used to sign and encrypt auth data. Falls back to `APP_SECRET`. Must be at least 32 characters and high entropy.            | Required                             |
+| `HASH_SECRET`          | Pepper used by `HashModule` for credential passwords. Falls back to `APP_SECRET`. Must be at least 32 characters and high entropy. | Required when `APP_SECRET` is unset  |
+| `APP_SECRET`           | Fallback secret when `AUTH_SECRET` is not set.                                                                                     | Required when `AUTH_SECRET` is unset |
+| `APP_NAME`             | App name passed to better-auth.                                                                                                    | unset                                |
+| `AUTH_URL`             | Public auth base URL. Falls back to `APP_URL`.                                                                                     | unset                                |
+| `APP_URL`              | Fallback public base URL when `AUTH_URL` is not set.                                                                               | unset                                |
+| `AUTH_DISABLE_SIGN_UP` | Set to `true` to disable signup for every configured auth method. Sign-in still works for existing users.                          | signup enabled                       |
+| `API_KEY_PREFIX`       | Prefix used when creating workspace API keys.                                                                                      | `sk-`                                |
 
 #### Email
 
-Email/password auth is on unless you explicitly set `AUTH_EMAIL_ENABLED=false`. To keep email sign-in but block new email signups, set `AUTH_EMAIL_DISABLE_SIGN_UP=true`.
+Email/password auth is on and requires email verification by default. Set `AUTH_EMAIL_REQUIRE_VERIFICATION=false` if an application does not require verification. To disable email/password auth, set `AUTH_EMAIL_ENABLED=false`. To keep email sign-in but block new email signups, set `AUTH_EMAIL_DISABLE_SIGN_UP=true`.
 
-| Variable                     | Purpose                                               | Default        |
-| ---------------------------- | ----------------------------------------------------- | -------------- |
-| `AUTH_EMAIL_ENABLED`         | Enables email/password auth unless set to `false`.    | enabled        |
-| `AUTH_EMAIL_DISABLE_SIGN_UP` | Blocks new email/password signups when set to `true`. | signup enabled |
+| Variable                          | Purpose                                               | Default        |
+| --------------------------------- | ----------------------------------------------------- | -------------- |
+| `AUTH_EMAIL_ENABLED`              | Enables email/password auth unless set to `false`.    | enabled        |
+| `AUTH_EMAIL_REQUIRE_VERIFICATION` | Requires verified email unless set to `false`.        | required       |
+| `AUTH_EMAIL_DISABLE_SIGN_UP`      | Blocks new email/password signups when set to `true`. | signup enabled |
 
 #### Google
 
@@ -137,6 +149,7 @@ import { ApiKey } from "./api-key.entity";
 import { Session } from "./session.entity";
 import { Verification } from "./verification.entity";
 import { Workspace } from "./workspace.entity";
+import { WorkspaceInvitation } from "./workspace-invitation.entity";
 import { WorkspaceMember } from "./workspace-member.entity";
 
 const AuthDynamicModule = AuthModule.forRootAsync({
@@ -149,6 +162,7 @@ const AuthDynamicModule = AuthModule.forRootAsync({
       session: Session,
       verification: Verification,
       workspace: Workspace,
+      workspaceInvitation: WorkspaceInvitation,
       workspaceMember: WorkspaceMember,
       apiKey: ApiKey,
     },
@@ -173,7 +187,12 @@ const AuthDynamicModule = AuthModule.forRootAsync({
 
 Key options:
 
-- **`entities`** — Map the user, account, session, verification, workspace, workspace-member, and API-key MikroORM entity classes
+- **`entities`** — Map the user, account, session, verification, workspace, workspace-invitation, workspace-member, and API-key MikroORM entity classes
+- **`emailAndPassword.enabled`** — Enable or disable email/password authentication; defaults to `true`
+- **`emailAndPassword.requireEmailVerification`** — Require a verified email before sign-in; defaults to `true`
+- **`emailAndPassword.password`** — Override password hashing; by default both `hash` and `verify` use the injected `HashService`
+- **`emailAndPassword.sendResetPassword`** — Override password-reset delivery; the default implementation uses the injected `Mailer`
+- **`emailVerification.sendVerificationEmail`** — Override verification delivery; the default implementation uses the injected `Mailer`
 - **`onAuthenticated`** — Optional callback invoked after successful session resolution for additional application context
 - **`plugins`** — better-auth plugins (e.g., `genericOAuth`, `twoFactor`, etc.)
 - **`basePath`** — Customize the auth API path (default: `/api/auth/`)
@@ -325,6 +344,7 @@ export const AuthDynamicModule = AuthModule.forRoot({
     session: Session,
     verification: Verification,
     workspace: Workspace,
+    workspaceInvitation: WorkspaceInvitation,
     workspaceMember: WorkspaceMember,
     apiKey: ApiKey,
   },
@@ -489,9 +509,51 @@ export class User extends BaseUser {
 }
 ```
 
-The module also provides `BaseAccount`, `BaseSession`, `BaseVerification`, `BaseWorkspace`, `BaseWorkspaceMember`, and `BaseApiKey`. Extend the corresponding base class for every configured entity. The base classes define the fields and relations required by the authentication services; subclasses can redeclare fields with application-specific column types, GraphQL annotations, indexes, and additional properties.
+The module also provides `BaseAccount`, `BaseSession`, `BaseVerification`, `BaseWorkspace`, `BaseWorkspaceInvitation`, `BaseWorkspaceMember`, and `BaseApiKey`. Extend the corresponding base class for every configured entity. The base classes define the fields and relations required by the authentication services; subclasses can redeclare fields with application-specific column types, GraphQL annotations, indexes, and additional properties.
+
+Better Auth 1.7 identifies an account by the required `issuer` and `accountId` pair. `BaseAccount` includes both fields and a compound unique constraint; it also includes the user index required by Better Auth. `BaseSession` indexes `userId`, and `BaseVerification` indexes `identifier`. Generate or update the application migration after upgrading. Do not add a required `issuer` column directly to a populated pre-1.7 account table: backfill a stable issuer for every existing account and resolve duplicate `(issuer, accountId)` pairs before enforcing the constraint.
 
 ## NestJS Integration
+
+The underlying Better Auth instance and its injection token are internal implementation details and are not exported. Inject the service that owns the required domain instead:
+
+| Service            | Responsibility                                                                                                       |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `AuthService`      | Email/password authentication, verification, password recovery, current-user profile, and linked accounts            |
+| `SessionService`   | Resolve the current application session, list active sessions, and revoke sessions                                   |
+| `AdminService`     | User creation and administration, permissions, bans, impersonation, passwords, and administrative session management |
+| `WorkspaceService` | Workspace lifecycle, memberships, invitations, and workspace permission checks                                       |
+| `ApiKeyService`    | Personal and workspace API-key lifecycle and validation                                                              |
+
+`AdminService` and `WorkspaceService` operate directly on the MikroORM entities configured in `AuthModule`. They do not require the Better Auth admin or organization plugins. `AuthService` can start email-verification and password-reset flows, while the verification links and reset callbacks remain available through the auth endpoint mounted by `AuthModule`.
+
+```typescript
+import {
+  AdminService,
+  AuthService,
+  SessionService,
+  WorkspaceService,
+} from "@nest-boot/auth";
+import { Injectable } from "@nestjs/common";
+
+@Injectable()
+export class AccountApplicationService {
+  constructor(
+    private readonly authService: AuthService,
+    private readonly sessionService: SessionService,
+    private readonly adminService: AdminService,
+    private readonly workspaceService: WorkspaceService,
+  ) {}
+}
+```
+
+`SessionService.getSession()` resolves the configured application `User` and `Session` entities rather than returning Better Auth transport objects. The other session methods are `listSessions()`, `revokeSession()`, `revokeOtherSessions()`, and `revokeSessions()`.
+
+`AuthService` exposes `signUp()`, `signIn()`, `signOut()`, `sendVerificationEmail()`, `requestPasswordReset()`, `resetPassword()`, `verifyPassword()`, `changePassword()`, `updateUser()`, `changeEmail()`, `setPassword()`, `deleteUser()`, `listAccounts()`, and `unlinkAccount()`. `sendVerificationEmail()` manually starts email verification, `requestPasswordReset()` sends an enumeration-safe reset request, and `resetPassword()` consumes the token delivered to the configured reset page. `verifyPassword()` validates the current user's credential without exposing password hashes. `listAccounts()` returns each account's local `id`, `issuer`, provider identifier, and provider-side account identifier; pass that local `id` as `accountId` to `unlinkAccount()`. Their inputs and results are declared by `@nest-boot/auth`, so application code does not depend on Better Auth's inferred API types. Operations that require request validation or session authorization accept Fetch-standard `HeadersInit`; in particular, `verifyPassword()` and `changePassword()` require the current session headers.
+
+`AdminService` exposes user CRUD, search and offset pagination, permission replacement and checks, banning, password replacement, impersonation, and per-user session management. Impersonation creates a normal persisted session and returns its token; the transport layer decides whether to deliver it as a Bearer token or session cookie.
+
+`WorkspaceService` exposes workspace CRUD, user workspace listing, full workspace details, member lifecycle, invitations, and permission checks. Invitations use a dedicated entity with `pending`, `accepted`, `rejected`, and `canceled` states. Accepting an invitation creates a separate workspace member, while the invitation remains available as a lifecycle record.
 
 A complete `main.ts` setup with auth:
 

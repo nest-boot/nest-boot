@@ -26,7 +26,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { authClient } from "@/lib/auth-client";
 
-const INVITE_TOKEN_KEY = "workspace_invite_token";
+const INVITATION_ID_KEY = "workspace_invitation_id";
 const DEFAULT_REDIRECT = "/workspaces";
 
 type AuthMode = "login" | "register";
@@ -66,18 +66,18 @@ export function LoginForm({
   );
 
   const handleOidcLogin = () => {
-    // 检查是否有邀请 token（在用户交互时访问，此时肯定在客户端）
-    const inviteToken =
+    // 检查是否有待处理邀请（在用户交互时访问，此时肯定在客户端）
+    const invitationId =
       typeof window !== "undefined"
-        ? localStorage.getItem(INVITE_TOKEN_KEY)
+        ? localStorage.getItem(INVITATION_ID_KEY)
         : null;
 
-    // 如果有邀请 token，登录成功后跳转到接受邀请页面
+    // 如果有邀请，登录成功后跳转到接受邀请页面
     // 使用 tanstack router 的方式构建 URL
-    const callbackURL = resolvePostAuthUrl(redirect, inviteToken);
+    const callbackURL = resolvePostAuthUrl(redirect, invitationId);
 
-    authClient.signIn.oauth2({
-      providerId: "oidc",
+    authClient.signIn.social({
+      provider: "oidc",
       callbackURL,
     });
   };
@@ -298,15 +298,15 @@ function createRegisterSchema(
   });
 }
 
-function resolvePostAuthUrl(redirect?: string, inviteToken?: string | null) {
-  const storedInviteToken =
-    inviteToken ??
+function resolvePostAuthUrl(redirect?: string, invitationId?: string | null) {
+  const storedInvitationId =
+    invitationId ??
     (typeof window !== "undefined"
-      ? localStorage.getItem(INVITE_TOKEN_KEY)
+      ? localStorage.getItem(INVITATION_ID_KEY)
       : null);
 
-  if (storedInviteToken) {
-    return `/invite?token=${encodeURIComponent(storedInviteToken)}`;
+  if (storedInvitationId) {
+    return `/invite?invitationId=${encodeURIComponent(storedInvitationId)}`;
   }
 
   if (!redirect || typeof window === "undefined") {

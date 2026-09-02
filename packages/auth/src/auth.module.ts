@@ -1,4 +1,6 @@
 import { MikroORM } from "@mikro-orm/core";
+import { HashService } from "@nest-boot/hash";
+import { Mailer } from "@nest-boot/mailer";
 import {
   type MiddlewareConfigurator,
   MiddlewareManager,
@@ -8,13 +10,19 @@ import {
   RequestContextMiddleware,
   RequestContextModule,
 } from "@nest-boot/request-context";
-import { type DynamicModule, Global, Inject, Module } from "@nestjs/common";
+import {
+  type DynamicModule,
+  Global,
+  Inject,
+  Module,
+  type NestMiddleware,
+} from "@nestjs/common";
 import { APP_INTERCEPTOR } from "@nestjs/core";
-import { type Auth, betterAuth } from "better-auth";
-import { toNodeHandler } from "better-auth/node";
+import { betterAuth } from "better-auth";
 import { genericOAuth } from "better-auth/plugins";
 
 import { mikroOrmAdapter } from "./adapters/mikro-orm-adapter.js";
+import { AdminService } from "./admin.service.js";
 import { ApiKeyService } from "./api-key.service.js";
 import { ApiKeyUsageInterceptor } from "./api-key-usage.interceptor.js";
 import { AUTH_TOKEN } from "./auth.constants.js";
@@ -27,9 +35,12 @@ import {
   OPTIONS_TYPE,
 } from "./auth.module-definition.js";
 import { AuthService } from "./auth.service.js";
+import { AuthHandlerMiddleware } from "./auth-handler.middleware.js";
 import { type AuthModuleOptions } from "./auth-module-options.interface.js";
+import { SessionService } from "./session.service.js";
 import { assertNoDuplicateGenericOAuthPlugin } from "./utils/assert-no-duplicate-generic-oauth-plugin.js";
 import { createEmailAndPasswordConfig } from "./utils/create-email-and-password-config.js";
+import { createEmailVerificationConfig } from "./utils/create-email-verification-config.js";
 import { createOidcConfig } from "./utils/create-oidc-config.js";
 import { createSocialProvidersConfig } from "./utils/create-social-providers-config.js";
 import { isEnvTrue } from "./utils/is-env-true.js";
@@ -47,10 +58,13 @@ import { WorkspaceService } from "./workspace.service.js";
 @Module({
   imports: [RequestContextModule, MiddlewareModule],
   providers: [
+    AdminService,
     ApiKeyService,
     ApiKeyUsageInterceptor,
     AuthService,
+    SessionService,
     AuthGuard,
+    AuthHandlerMiddleware,
     AuthMiddleware,
     WorkspaceService,
     {
@@ -59,8 +73,13 @@ import { WorkspaceService } from "./workspace.service.js";
     },
     {
       provide: AUTH_TOKEN,
-      inject: [MODULE_OPTIONS_TOKEN, MikroORM],
-      useFactory: (options: AuthModuleOptions, orm: MikroORM) => {
+      inject: [MODULE_OPTIONS_TOKEN, MikroORM, Mailer, HashService],
+      useFactory: (
+        options: AuthModuleOptions,
+        orm: MikroORM,
+        mailer: Mailer,
+        hashService: HashService,
+      ) => {
         const betterAuthModuleOptions: Partial<AuthModuleOptions> = {
           ...options,
         };
@@ -73,14 +92,22 @@ import { WorkspaceService } from "./workspace.service.js";
         const disableSignUp = isEnvTrue("AUTH_DISABLE_SIGN_UP");
         const oidcConfig = createOidcConfig(disableSignUp);
         const {
+          account,
           emailAndPassword,
+          emailVerification,
           plugins,
           socialProviders,
           ...betterAuthOptions
         } = betterAuthModuleOptions;
         const emailAndPasswordConfig = createEmailAndPasswordConfig(
           disableSignUp,
+          mailer,
+          hashService,
           emailAndPassword,
+        );
+        const emailVerificationConfig = createEmailVerificationConfig(
+          mailer,
+          emailVerification,
         );
         const socialProvidersConfig = createSocialProvidersConfig(
           disableSignUp,
@@ -97,9 +124,11 @@ import { WorkspaceService } from "./workspace.service.js";
           secret,
           account: {
             skipStateCookieCheck: true,
+            ...account,
           },
           ...betterAuthOptions,
           emailAndPassword: emailAndPasswordConfig,
+          emailVerification: emailVerificationConfig,
           ...(socialProvidersConfig
             ? { socialProviders: socialProvidersConfig }
             : {}),
@@ -123,9 +152,11 @@ import { WorkspaceService } from "./workspace.service.js";
   ],
   exports: [
     MODULE_OPTIONS_TOKEN,
+    AdminService,
     ApiKeyService,
     AuthGuard,
     AuthService,
+    SessionService,
     WorkspaceService,
   ],
 })
@@ -152,17 +183,17 @@ export class AuthModule extends ConfigurableModuleClass {
 
   /**
    * Creates a new AuthModule instance.
-   * @param auth - The better-auth instance
    * @param options - Auth module configuration options
    * @param middlewareManager - Middleware manager for registering auth middleware
+   * @param authHandlerMiddleware - The dependency-injected auth endpoint handler
    * @param authMiddleware - The auth middleware instance
    */
   constructor(
-    @Inject(AUTH_TOKEN)
-    private readonly auth: Auth,
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly options: AuthModuleOptions,
     private readonly middlewareManager: MiddlewareManager,
+    @Inject(AuthHandlerMiddleware)
+    private readonly authHandlerMiddleware: NestMiddleware,
     private readonly authMiddleware: AuthMiddleware,
   ) {
     super();
@@ -172,7 +203,7 @@ export class AuthModule extends ConfigurableModuleClass {
     this.middlewareManager.globalExclude(basePath);
 
     this.middlewareManager
-      .apply(toNodeHandler(this.auth))
+      .apply(this.authHandlerMiddleware)
       .disableGlobalExcludeRoutes()
       .forRoutes(basePath);
 

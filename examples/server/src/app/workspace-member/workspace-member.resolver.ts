@@ -1,4 +1,3 @@
-import { CurrentUser } from '@nest-boot/auth';
 import { Can, CurrentWorkspace, CurrentWorkspaceMember } from '@nest-boot/auth';
 import {
   Args,
@@ -10,23 +9,15 @@ import {
   Resolver,
 } from '@nest-boot/graphql';
 import { ConnectionManager } from '@nest-boot/graphql-connection';
-import {
-  BadRequestException,
-  ForbiddenException,
-  NotFoundException,
-} from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 
 import { User } from '../user/user.entity.js';
 import { UserService } from '../user/user.service.js';
 import { Workspace } from '../workspace/workspace.entity.js';
 import { WorkspaceMemberRole } from './enums/workspace-member-role.enum.js';
-import { AcceptWorkspaceInviteInput } from './inputs/accept-workspace-invite.input.js';
 import { AddWorkspaceMemberInput } from './inputs/add-workspace-member.input.js';
 import { CreateServiceAccountWorkspaceMemberInput } from './inputs/create-service-account-workspace-member.input.js';
-import { CreateWorkspaceInviteInput } from './inputs/create-workspace-invite.input.js';
 import { UpdateWorkspaceMemberInput } from './inputs/update-workspace-member.input.js';
-import { AcceptWorkspaceInviteResult } from './types/accept-workspace-invite-result.type.js';
-import { WorkspaceInvitation } from './workspace-invitation.js';
 import {
   WorkspaceMemberConnection,
   WorkspaceMemberConnectionArgs,
@@ -109,30 +100,6 @@ export class WorkspaceMemberResolver {
     }
 
     return await this.cm.find(WorkspaceMemberConnection, args);
-  }
-
-  /**
-   * 根据邀请令牌查询待接受的工作区成员邀请。
-   *
-   * @param token - 工作区邀请令牌。
-   * @returns 匹配的邀请成员。
-   */
-  @Can('read', WorkspaceMember, { scope: 'user' })
-  @Query(() => WorkspaceMember, { nullable: true })
-  async workspaceMemberByToken(
-    @Args('token', { type: () => String }) token: string,
-  ): Promise<WorkspaceMember | null> {
-    const member =
-      await this.workspaceMemberService.findWorkspaceInviteByToken(token);
-
-    // 如果搜不到邀请信息，则说明两种情况：
-    // 1. 邀请链接不存在；2. user_id 已经不为空且不等于当前用户，被 RLS 过滤掉了
-    // 此时直接视为邀请链接已被使用或已过期
-    if (!member) {
-      throw new BadRequestException('邀请链接已被使用或已过期');
-    }
-
-    return member;
   }
 
   /**
@@ -281,69 +248,6 @@ export class WorkspaceMemberResolver {
   }
 
   /**
-   * 创建工作区邀请。
-   *
-   * @param currentWorkspace - 当前工作区。
-   * @param currentWorkspaceMember - 当前执行操作的工作区成员。
-   * @param input - 工作区邀请创建参数。
-   * @returns 待接受邀请的工作区成员。
-   */
-  @Can('create', WorkspaceInvitation)
-  @Mutation(() => WorkspaceMember)
-  async createWorkspaceInvite(
-    @CurrentWorkspace() currentWorkspace: Workspace,
-    @CurrentWorkspaceMember() currentWorkspaceMember: WorkspaceMember,
-    @Args('input') input: CreateWorkspaceInviteInput,
-  ): Promise<WorkspaceMember> {
-    // 只有管理员和所有者可以创建邀请
-    if (
-      ![WorkspaceMemberRole.ADMIN, WorkspaceMemberRole.OWNER].includes(
-        currentWorkspaceMember?.role,
-      )
-    ) {
-      throw new ForbiddenException('You are not allowed to create invites');
-    }
-
-    return await this.workspaceMemberService.createWorkspaceInvite(
-      currentWorkspaceMember,
-      currentWorkspace,
-      input,
-    );
-  }
-
-  /**
-   * 接受工作区邀请。
-   *
-   * @param token - 工作区邀请令牌。
-   * @param input - 接受邀请时补充的成员信息。
-   * @param currentUser - 当前登录用户。
-   * @returns 接受邀请后的成员和工作区信息。
-   */
-  @Can('update', WorkspaceMember, {
-    scope: 'user',
-  })
-  @Mutation(() => AcceptWorkspaceInviteResult)
-  async acceptWorkspaceInvite(
-    @Args('token', { type: () => String }) token: string,
-    @Args('input', { type: () => AcceptWorkspaceInviteInput, nullable: true })
-    input: AcceptWorkspaceInviteInput | null,
-    @CurrentUser() currentUser: User,
-  ): Promise<AcceptWorkspaceInviteResult> {
-    const result =
-      await this.workspaceMemberService.acceptWorkspaceInviteByToken(
-        currentUser,
-        token,
-        input,
-      );
-
-    if (!result) {
-      throw new NotFoundException('邀请链接无效或已过期');
-    }
-
-    return result;
-  }
-
-  /**
    * 解析工作区成员绑定的用户。
    *
    * @param workspaceMember - 父级工作区成员。
@@ -357,32 +261,5 @@ export class WorkspaceMemberResolver {
     }
 
     return (await workspaceMember.user.loadOrFail()) ?? null;
-  }
-
-  /**
-   * 解析工作区成员邀请者。
-   *
-   * @param workspaceMember - 父级工作区成员。
-   * @returns 邀请者用户，不存在或名称不可用时返回 null。
-   */
-  @Can('read', User)
-  @ResolveField(() => User, { nullable: true })
-  async invitedBy(
-    @Parent() workspaceMember: WorkspaceMember,
-  ): Promise<User | null> {
-    if (!workspaceMember.invitedBy || !workspaceMember.invitedBy.id) {
-      return null;
-    }
-
-    try {
-      const user = await workspaceMember.invitedBy.loadOrFail();
-      // 如果 user 存在但 name 为 null，返回 null，让前端使用 invitedByUserName
-      if (!user.name) {
-        return null;
-      }
-      return user;
-    } catch {
-      return null;
-    }
   }
 }

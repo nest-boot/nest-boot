@@ -1,6 +1,12 @@
+export * from "./admin.service.js";
 export * from "./api-key.service.js";
 export * from "./api-key-usage.interceptor.js";
-export * from "./auth.constants.js";
+export {
+  CURRENT_API_KEY,
+  CURRENT_WORKSPACE,
+  CURRENT_WORKSPACE_MEMBER,
+  IS_PUBLIC_KEY,
+} from "./auth.constants.js";
 export * from "./auth.guard.js";
 export * from "./auth.middleware.js";
 export * from "./auth.module.js";
@@ -9,10 +15,15 @@ export * from "./auth.transaction-context.js";
 export * from "./auth-module-options.interface.js";
 export * from "./decorators/index.js";
 export * from "./entities/index.js";
+export * from "./interfaces/admin-service.interface.js";
+export * from "./interfaces/auth-service.interface.js";
 export * from "./interfaces/can-options.interface.js";
 export * from "./interfaces/route-argument-metadata-value.interface.js";
+export * from "./interfaces/session-service.interface.js";
+export * from "./interfaces/workspace-service.interface.js";
 export * from "./permission.ability-builder.js";
 export * from "./permission.constants.js";
+export * from "./session.service.js";
 export * from "./types/build-ability-callback.type.js";
 export * from "./types/can-subject.type.js";
 export * from "./types/can-subject-factory.type.js";

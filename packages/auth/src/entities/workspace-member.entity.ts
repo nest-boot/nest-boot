@@ -15,18 +15,14 @@ import type { BaseWorkspace } from "./workspace.entity.js";
 export type AuthWorkspaceMemberRole = "ADMIN" | "MEMBER" | "OWNER";
 
 /** Workspace-member states understood by the built-in authentication services. */
-export type AuthWorkspaceMemberStatus =
-  | "ACTIVE"
-  | "DISABLED"
-  | "INVITE_EXPIRED"
-  | "INVITING";
+export type AuthWorkspaceMemberStatus = "ACTIVE" | "DISABLED";
 
 /**
  * Abstract base entity for workspace-member records.
  *
  * @remarks
  * Provides the membership fields required by workspace and API-key
- * authorization. Applications may extend it with invitation or profile data.
+ * authorization.
  */
 @Entity({ abstract: true })
 export class BaseWorkspaceMember extends BaseEntity {

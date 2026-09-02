@@ -11,9 +11,9 @@ vi.mock("./adapters/mikro-orm-adapter.js", () => ({
   mikroOrmAdapter: vi.fn(),
 }));
 
+import { AdminService } from "./admin.service.js";
 import { ApiKeyService } from "./api-key.service.js";
 import {
-  AUTH_TOKEN,
   CURRENT_API_KEY,
   CURRENT_WORKSPACE,
   CURRENT_WORKSPACE_MEMBER,
@@ -38,17 +38,20 @@ import {
   BaseUser,
   BaseVerification,
   BaseWorkspace,
+  BaseWorkspaceInvitation,
   BaseWorkspaceMember,
 } from "./entities/index.js";
 import * as publicApi from "./index.js";
 import { PermissionAbilityBuilder } from "./permission.ability-builder.js";
+import { SessionService } from "./session.service.js";
 import { can } from "./utils/can.util.js";
 import { getPermissionAbility } from "./utils/get-permission-ability.util.js";
 import { WorkspaceService } from "./workspace.service.js";
 
 describe("public API", () => {
   it("should export auth modules, services, decorators, and entities", () => {
-    expect(publicApi.AUTH_TOKEN).toBe(AUTH_TOKEN);
+    expect("AUTH_TOKEN" in publicApi).toBe(false);
+    expect(publicApi.AdminService).toBe(AdminService);
     expect(publicApi.IS_PUBLIC_KEY).toBe(IS_PUBLIC_KEY);
     expect(publicApi.CURRENT_API_KEY).toBe(CURRENT_API_KEY);
     expect(publicApi.CURRENT_WORKSPACE).toBe(CURRENT_WORKSPACE);
@@ -70,10 +73,12 @@ describe("public API", () => {
     expect(publicApi.BaseUser).toBe(BaseUser);
     expect(publicApi.BaseVerification).toBe(BaseVerification);
     expect(publicApi.BaseWorkspace).toBe(BaseWorkspace);
+    expect(publicApi.BaseWorkspaceInvitation).toBe(BaseWorkspaceInvitation);
     expect(publicApi.BaseWorkspaceMember).toBe(BaseWorkspaceMember);
     expect(publicApi.PermissionAbilityBuilder).toBe(PermissionAbilityBuilder);
     expect(publicApi.can).toBe(can);
     expect(publicApi.getPermissionAbility).toBe(getPermissionAbility);
+    expect(publicApi.SessionService).toBe(SessionService);
     expect(publicApi.WorkspaceService).toBe(WorkspaceService);
   });
 });
