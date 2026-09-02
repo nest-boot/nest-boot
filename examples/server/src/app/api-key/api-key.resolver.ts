@@ -1,4 +1,9 @@
 import {
+  ApiKeyService,
+  CurrentWorkspace,
+  CurrentWorkspaceMember,
+} from '@nest-boot/auth';
+import {
   Args,
   ID,
   Mutation,
@@ -8,20 +13,14 @@ import {
   Resolver,
 } from '@nest-boot/graphql';
 import { ConnectionManager } from '@nest-boot/graphql-connection';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
 
-import { CurrentWorkspace } from '../../common/decorators/current-workspace.decorator.js';
-import { CurrentWorkspaceMember } from '../../common/decorators/current-workspace-member.decorator.js';
 import { Workspace } from '../workspace/workspace.entity.js';
-import { WorkspaceMemberRole } from '../workspace-member/enums/workspace-member-role.enum.js';
 import { WorkspaceMember } from '../workspace-member/workspace-member.entity.js';
-import { WorkspaceMemberService } from '../workspace-member/workspace-member.service.js';
 import {
   ApiKeyConnection,
   ApiKeyConnectionArgs,
 } from './api-key.connection-definition.js';
 import { ApiKey } from './api-key.entity.js';
-import { ApiKeyService } from './api-key.service.js';
 import { CreateApiKeyInput } from './inputs/create-api-key.input.js';
 import { UpdateApiKeyInput } from './inputs/update-api-key.input.js';
 import { CreateApiKeyResult } from './types/create-api-key-result.type.js';
@@ -35,12 +34,14 @@ export class ApiKeyResolver {
    * 创建 API Key Resolver。
    *
    * @param apiKeyService - API Key 业务服务。
-   * @param workspaceMemberService - 工作区成员查询服务。
    * @param cm - GraphQL 连接分页管理器。
    */
   constructor(
-    private readonly apiKeyService: ApiKeyService,
-    private readonly workspaceMemberService: WorkspaceMemberService,
+    private readonly apiKeyService: ApiKeyService<
+      ApiKey,
+      Workspace,
+      WorkspaceMember
+    >,
     private readonly cm: ConnectionManager,
   ) {}
 
@@ -56,15 +57,7 @@ export class ApiKeyResolver {
     @Args('id', { type: () => ID }) id: string,
     @CurrentWorkspaceMember() currentWorkspaceMember: WorkspaceMember,
   ): Promise<ApiKey | null> {
-    const apiKey = await this.apiKeyService.findOne({ id });
-
-    if (!apiKey) {
-      return null;
-    }
-
-    await this.assertCanAccessApiKey(currentWorkspaceMember, apiKey);
-
-    return apiKey;
+    return await this.apiKeyService.getApiKey(id, currentWorkspaceMember);
   }
 
   /**
@@ -81,9 +74,7 @@ export class ApiKeyResolver {
     @CurrentWorkspace() workspace: Workspace,
     @CurrentWorkspaceMember() workspaceMember: WorkspaceMember,
   ): Promise<ApiKeyConnection> {
-    const where = this.canManageWorkspaceApiKeys(workspaceMember)
-      ? { workspace }
-      : { workspace, member: workspaceMember };
+    const where = this.apiKeyService.getListFilter(workspace, workspaceMember);
 
     return await this.cm.find(ApiKeyConnection, args, { where });
   }
@@ -102,18 +93,14 @@ export class ApiKeyResolver {
     @CurrentWorkspace() workspace: Workspace,
     @CurrentWorkspaceMember() currentWorkspaceMember: WorkspaceMember,
   ): Promise<CreateApiKeyResult> {
-    const member = await this.resolveTargetMember(
+    return await this.apiKeyService.createKey(
       workspace,
       currentWorkspaceMember,
-      input.workspaceMemberId,
+      {
+        ...input,
+        expiresAt: input.expiresAt ?? null,
+      },
     );
-
-    const result = await this.apiKeyService.createKey(member, {
-      name: input.name,
-      expiresAt: input.expiresAt ?? null,
-    });
-
-    return result;
   }
 
   /**
@@ -130,9 +117,11 @@ export class ApiKeyResolver {
     @Args('input') input: UpdateApiKeyInput,
     @CurrentWorkspaceMember() currentWorkspaceMember: WorkspaceMember,
   ): Promise<ApiKey> {
-    const apiKey = await this.findAccessibleApiKey(id, currentWorkspaceMember);
-
-    return await this.apiKeyService.updateName(apiKey, input.name);
+    return await this.apiKeyService.updateKey(
+      id,
+      currentWorkspaceMember,
+      input,
+    );
   }
 
   /**
@@ -147,9 +136,7 @@ export class ApiKeyResolver {
     @Args('id', { type: () => ID }) id: string,
     @CurrentWorkspaceMember() currentWorkspaceMember: WorkspaceMember,
   ): Promise<ApiKey> {
-    const apiKey = await this.findAccessibleApiKey(id, currentWorkspaceMember);
-
-    return await this.apiKeyService.remove(apiKey);
+    return await this.apiKeyService.deleteKey(id, currentWorkspaceMember);
   }
 
   /**
@@ -161,63 +148,5 @@ export class ApiKeyResolver {
   @ResolveField(() => WorkspaceMember)
   async member(@Parent() apiKey: ApiKey): Promise<WorkspaceMember> {
     return await apiKey.member.loadOrFail();
-  }
-
-  private async resolveTargetMember(
-    workspace: Workspace,
-    currentWorkspaceMember: WorkspaceMember,
-    workspaceMemberId?: string,
-  ) {
-    if (!workspaceMemberId || workspaceMemberId === currentWorkspaceMember.id) {
-      return currentWorkspaceMember;
-    }
-
-    if (!this.canManageWorkspaceApiKeys(currentWorkspaceMember)) {
-      throw new ForbiddenException(
-        'You are not allowed to create API keys for other members',
-      );
-    }
-
-    return await this.workspaceMemberService.findOneOrFail({
-      id: workspaceMemberId,
-      workspace,
-    });
-  }
-
-  private async findAccessibleApiKey(
-    id: string,
-    currentWorkspaceMember: WorkspaceMember,
-  ) {
-    const apiKey = await this.apiKeyService.findOne({ id });
-
-    if (!apiKey) {
-      throw new NotFoundException('API key not found');
-    }
-
-    await this.assertCanAccessApiKey(currentWorkspaceMember, apiKey);
-
-    return apiKey;
-  }
-
-  private async assertCanAccessApiKey(
-    currentWorkspaceMember: WorkspaceMember,
-    apiKey: ApiKey,
-  ) {
-    const member = await apiKey.member.loadOrFail();
-
-    if (
-      member.id !== currentWorkspaceMember.id &&
-      !this.canManageWorkspaceApiKeys(currentWorkspaceMember)
-    ) {
-      throw new ForbiddenException(
-        'You are not allowed to access this API key',
-      );
-    }
-  }
-
-  private canManageWorkspaceApiKeys(workspaceMember: WorkspaceMember) {
-    return [WorkspaceMemberRole.ADMIN, WorkspaceMemberRole.OWNER].includes(
-      workspaceMember.role,
-    );
   }
 }

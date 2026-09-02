@@ -1,5 +1,10 @@
 import { CurrentUser } from '@nest-boot/auth';
-import { Can, PermissionAction } from '@nest-boot/auth';
+import {
+  Can,
+  CurrentWorkspace,
+  CurrentWorkspaceMember,
+  PermissionAction,
+} from '@nest-boot/auth';
 import {
   Args,
   ID,
@@ -16,8 +21,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { CurrentWorkspace } from '../../common/decorators/current-workspace.decorator.js';
-import { CurrentWorkspaceMember } from '../../common/decorators/current-workspace-member.decorator.js';
 import { User } from '../user/user.entity.js';
 import { UserService } from '../user/user.service.js';
 import { Workspace } from '../workspace/workspace.entity.js';

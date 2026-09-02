@@ -1,14 +1,19 @@
+import type { WorkspaceService } from '@nest-boot/auth';
 import type { Mocked } from 'vitest';
+
 vi.mock('@nest-boot/auth', () => ({
   BaseUser: class BaseUser {},
   Can: () => () => undefined,
   CurrentUser: () => () => undefined,
+  CurrentWorkspace: () => () => undefined,
+  CurrentWorkspaceMember: () => () => undefined,
   PermissionAction: {
     CREATE: 'create',
     DELETE: 'delete',
     READ: 'read',
     UPDATE: 'update',
   },
+  WorkspaceService: class WorkspaceService {},
 }));
 
 vi.mock('@nest-boot/graphql-connection', () => ({
@@ -27,30 +32,21 @@ vi.mock('@nest-boot/graphql-connection', () => ({
   ConnectionManager: class ConnectionManager {},
 }));
 
-import { ForbiddenException } from '@nestjs/common';
-
 import { User } from '../user/user.entity.js';
-import { WorkspaceMemberRole } from '../workspace-member/enums/workspace-member-role.enum.js';
 import { WorkspaceMember } from '../workspace-member/workspace-member.entity.js';
 import { Workspace } from './workspace.entity.js';
 import { WorkspaceResolver } from './workspace.resolver.js';
-import { WorkspaceService } from './workspace.service.js';
 
 describe('WorkspaceResolver', () => {
-  it('returns the current workspace from request context', () => {
+  it('returns the selected workspace or null', () => {
     const { resolver } = createResolver();
     const workspace = { id: 'workspace_1' } as Workspace;
 
     expect(resolver.currentWorkspace(workspace)).toBe(workspace);
-  });
-
-  it('returns null when no workspace is selected', () => {
-    const { resolver } = createResolver();
-
     expect(resolver.currentWorkspace()).toBeNull();
   });
 
-  it('filters workspace connection by current user membership', async () => {
+  it('filters workspace connections by the current user membership', async () => {
     const { resolver, cm } = createResolver();
     const user = { id: 'user_1' } as User;
     const args = { first: 20 } as never;
@@ -58,120 +54,56 @@ describe('WorkspaceResolver', () => {
     await resolver.workspaces(user, args);
 
     expect(cm.find).toHaveBeenCalledWith(expect.any(Function), args, {
-      where: {
-        members: {
-          user,
-        },
-      },
+      where: { members: { user } },
     });
   });
 
-  it('delegates workspace creation to the service', async () => {
+  it('delegates workspace lifecycle operations to the auth service', async () => {
     const workspace = { id: 'workspace_1', name: 'Acme' } as Workspace;
-    const { resolver, workspaceService } = createResolver({
-      workspaceService: {
-        createWorkspace: vi.fn(async () => workspace),
-      },
-    });
+    const member = { id: 'member_1' } as WorkspaceMember;
     const user = { id: 'user_1' } as User;
+    const { resolver, workspaceService } = createResolver({
+      createWorkspace: vi.fn(async () => workspace),
+      updateWorkspace: vi.fn(async () => workspace),
+      deleteWorkspace: vi.fn(async () => workspace),
+    });
 
     await expect(
       resolver.createWorkspace(user, { name: 'Acme' }),
     ).resolves.toBe(workspace);
+    await expect(
+      resolver.updateWorkspace(workspace, { name: 'New' }),
+    ).resolves.toBe(workspace);
+    await expect(resolver.deleteWorkspace(workspace, member)).resolves.toBe(
+      workspace,
+    );
 
     expect(workspaceService.createWorkspace).toHaveBeenCalledWith(user, {
       name: 'Acme',
     });
-  });
-
-  it('allows admins to update a workspace', async () => {
-    const workspace = { id: 'workspace_1', name: 'Old' } as Workspace;
-    const updatedWorkspace = { id: 'workspace_1', name: 'New' } as Workspace;
-    const { resolver, workspaceService } = createResolver({
-      workspaceService: {
-        update: vi.fn(async () => updatedWorkspace),
-      },
-    });
-
-    await expect(
-      resolver.updateWorkspace(workspace, { name: 'New' }),
-    ).resolves.toBe(updatedWorkspace);
-
-    expect(workspaceService.update).toHaveBeenCalledWith(workspace, {
+    expect(workspaceService.updateWorkspace).toHaveBeenCalledWith(workspace, {
       name: 'New',
     });
-  });
-
-  it('delegates workspace update authorization to the permission guard', async () => {
-    const workspace = { id: 'workspace_1', name: 'Old' } as Workspace;
-    const updatedWorkspace = { id: 'workspace_1', name: 'New' } as Workspace;
-    const { resolver, workspaceService } = createResolver({
-      workspaceService: {
-        update: vi.fn(async () => updatedWorkspace),
-      },
-    });
-
-    await expect(
-      resolver.updateWorkspace(workspace, { name: 'New' }),
-    ).resolves.toBe(updatedWorkspace);
-
-    expect(workspaceService.update).toHaveBeenCalledWith(workspace, {
-      name: 'New',
-    });
-  });
-
-  it('soft deletes a workspace only for owners', async () => {
-    const workspace = { id: 'workspace_1' } as Workspace;
-    const deletedWorkspace = {
-      id: 'workspace_1',
-      deletedAt: new Date(),
-    } as Workspace;
-    const { resolver, workspaceService } = createResolver({
-      workspaceService: {
-        softDelete: vi.fn(async () => deletedWorkspace),
-      },
-    });
-
-    await expect(
-      resolver.deleteWorkspace(workspace, {
-        role: WorkspaceMemberRole.OWNER,
-      } as WorkspaceMember),
-    ).resolves.toBe(deletedWorkspace);
-
-    expect(workspaceService.softDelete).toHaveBeenCalledWith(workspace);
-  });
-
-  it('rejects workspace deletion from non owners', async () => {
-    const { resolver, workspaceService } = createResolver();
-
-    await expect(
-      resolver.deleteWorkspace(
-        { id: 'workspace_1' } as Workspace,
-        { role: WorkspaceMemberRole.ADMIN } as WorkspaceMember,
-      ),
-    ).rejects.toBeInstanceOf(ForbiddenException);
-
-    expect(workspaceService.update).not.toHaveBeenCalled();
+    expect(workspaceService.deleteWorkspace).toHaveBeenCalledWith(
+      workspace,
+      member,
+    );
   });
 });
 
-function createResolver(overrides?: {
-  workspaceService?: Partial<WorkspaceService>;
-  cm?: { find: Mock };
-}) {
+function createResolver(overrides: Partial<WorkspaceService> = {}) {
   const workspaceService = {
-    findOne: vi.fn(),
     createWorkspace: vi.fn(),
-    update: vi.fn(),
-    softDelete: vi.fn(),
-    ...overrides?.workspaceService,
-  } as unknown as WorkspaceService;
-  const cm = overrides?.cm ?? { find: vi.fn() };
-  const resolver = new WorkspaceResolver(workspaceService, cm as never);
+    deleteWorkspace: vi.fn(),
+    findOne: vi.fn(),
+    updateWorkspace: vi.fn(),
+    ...overrides,
+  } as unknown as Mocked<WorkspaceService>;
+  const cm = { find: vi.fn() };
 
   return {
-    resolver,
-    workspaceService: workspaceService as Mocked<WorkspaceService>,
+    resolver: new WorkspaceResolver(workspaceService, cm as never),
+    workspaceService,
     cm,
   };
 }

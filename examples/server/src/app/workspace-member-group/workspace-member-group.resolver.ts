@@ -1,4 +1,4 @@
-import { Can, PermissionAction } from '@nest-boot/auth';
+import { Can, CurrentWorkspace, PermissionAction } from '@nest-boot/auth';
 import {
   Args,
   ID,
@@ -10,7 +10,6 @@ import {
 } from '@nest-boot/graphql';
 import { ConnectionManager } from '@nest-boot/graphql-connection';
 
-import { CurrentWorkspace } from '../../common/decorators/current-workspace.decorator.js';
 import { Workspace } from '../workspace/workspace.entity.js';
 import {
   WorkspaceMemberConnection,

@@ -3,6 +3,8 @@ vi.mock('@nest-boot/auth', () => ({
   BaseUser: class BaseUser {},
   Can: () => () => undefined,
   CurrentUser: () => () => undefined,
+  CurrentWorkspace: () => () => undefined,
+  CurrentWorkspaceMember: () => () => undefined,
   PermissionAction: {
     CREATE: 'create',
     DELETE: 'delete',

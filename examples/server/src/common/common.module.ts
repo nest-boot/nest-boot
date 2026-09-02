@@ -1,4 +1,3 @@
-import { CryptModule } from '@nest-boot/crypt';
 import { GraphQLModule } from '@nest-boot/graphql';
 import { GraphQLConnectionModule } from '@nest-boot/graphql-connection';
 import { LoggerModule } from '@nest-boot/logger';
@@ -28,7 +27,6 @@ const MikroORMDynamicModule = MikroOrmModule.forRoot({
     GraphQLDynamicModule,
     GraphQLConnectionModule,
     LoggerModule,
-    CryptModule,
   ],
 })
 export class CommonModule {}

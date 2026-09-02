@@ -1,20 +1,11 @@
-import {
-  type BaseEntity,
-  type EntityClass,
-  type MikroORM,
-} from "@mikro-orm/core";
+import { type EntityClass, type MikroORM } from "@mikro-orm/core";
 import {
   createAdapterFactory,
   type DBAdapterDebugLogOption,
   Where,
 } from "better-auth/adapters";
 
-import {
-  BaseAccount,
-  BaseSession,
-  BaseUser,
-  BaseVerification,
-} from "../entities/index.js";
+import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 
 export interface MikroOrmAdapterConfig {
   /**
@@ -24,16 +15,7 @@ export interface MikroOrmAdapterConfig {
   /**
    * The entities to use for the adapter.
    */
-  entities: {
-    /** Account entity class. */
-    account: EntityClass<BaseAccount>;
-    /** Session entity class. */
-    session: EntityClass<BaseSession>;
-    /** User entity class. */
-    user: EntityClass<BaseUser>;
-    /** Verification entity class. */
-    verification: EntityClass<BaseVerification>;
-  };
+  entities: AuthModuleOptions["entities"];
   /**
    * Helps you debug issues with the adapter.
    */
@@ -153,7 +135,7 @@ export const mikroOrmAdapter = ({
   entities,
   ...config
 }: MikroOrmAdapterConfig) => {
-  const getEntityClass = (model: string): EntityClass<BaseEntity> => {
+  const getEntityClass = (model: string): EntityClass<object> => {
     return entities[model as keyof typeof entities];
   };
 

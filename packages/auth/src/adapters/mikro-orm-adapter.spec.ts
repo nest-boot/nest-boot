@@ -246,15 +246,39 @@ describe("convertWhereToMikroOrm", () => {
 });
 
 class TestAccount extends BaseAccount {}
+class TestApiKey {
+  id!: string;
+  name!: string;
+  keyId!: string;
+  keyPrefix!: string;
+  encryptedSecret!: string;
+  updatedAt!: Date;
+  workspace!: never;
+  member!: never;
+}
 class TestSession extends BaseSession {}
 class TestUser extends BaseUser {}
 class TestVerification extends BaseVerification {}
+class TestWorkspace {
+  id!: string;
+  name!: string;
+}
+class TestWorkspaceMember {
+  id!: string;
+  name!: string;
+  role!: "ADMIN" | "MEMBER" | "OWNER";
+  status!: "ACTIVE" | "DISABLED" | "INVITE_EXPIRED" | "INVITING";
+  workspace!: never;
+}
 
 const entities = {
   account: TestAccount,
+  apiKey: TestApiKey,
   session: TestSession,
   user: TestUser,
   verification: TestVerification,
+  workspace: TestWorkspace,
+  workspaceMember: TestWorkspaceMember,
 };
 
 function createOrm() {
@@ -336,6 +360,21 @@ describe("mikroOrmAdapter", () => {
       email: "user@example.com",
     });
     expect(flush).toHaveBeenCalledTimes(1);
+  });
+
+  it("should resolve workspace and API key entities", async () => {
+    const { em, orm } = createOrm();
+    const adapter = (mikroOrmAdapter({ entities, orm }) as any).adapter();
+
+    await adapter.create({ data: { name: "Workspace" }, model: "workspace" });
+    await adapter.create({ data: { name: "Key" }, model: "apiKey" });
+
+    expect(em.create).toHaveBeenNthCalledWith(1, TestWorkspace, {
+      name: "Workspace",
+    });
+    expect(em.create).toHaveBeenNthCalledWith(2, TestApiKey, {
+      name: "Key",
+    });
   });
 
   it("should update an existing entity", async () => {
