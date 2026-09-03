@@ -81,6 +81,54 @@ describe('WorkspaceInvitationResolver', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
+  it('lists invitations addressed to the current user', async () => {
+    const user = { id: 'user_1' } as User;
+    const invitations = [
+      { id: 'invitation_1' } as WorkspaceInvitation,
+      { id: 'invitation_2' } as WorkspaceInvitation,
+    ];
+    const { resolver, workspaceService } = createResolver({
+      listUserInvitations: vi.fn(async () => invitations),
+    });
+
+    await expect(resolver.currentUserWorkspaceInvitations(user)).resolves.toBe(
+      invitations,
+    );
+    expect(workspaceService.listUserInvitations).toHaveBeenCalledWith(user);
+  });
+
+  it('rejects an invitation addressed to the current user', async () => {
+    const user = { id: 'user_1' } as User;
+    const invitation = { id: 'invitation_1' } as WorkspaceInvitation;
+    const rejectedInvitation = {
+      ...invitation,
+      status: 'rejected',
+    } as WorkspaceInvitation;
+    const { resolver, workspaceService } = createResolver({
+      getInvitation: vi.fn(async () => invitation),
+      rejectInvitation: vi.fn(async () => rejectedInvitation),
+    });
+
+    await expect(
+      resolver.rejectWorkspaceInvitation(invitation.id, user),
+    ).resolves.toBe(rejectedInvitation);
+    expect(workspaceService.rejectInvitation).toHaveBeenCalledWith(
+      user,
+      invitation,
+    );
+  });
+
+  it('reports missing invitations when rejecting', async () => {
+    const { resolver, workspaceService } = createResolver({
+      getInvitation: vi.fn(async () => null),
+    });
+
+    await expect(
+      resolver.rejectWorkspaceInvitation('missing', {} as User),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(workspaceService.rejectInvitation).not.toHaveBeenCalled();
+  });
+
   it('does not cancel an invitation from another workspace', async () => {
     const invitation = {
       id: 'invitation_1',

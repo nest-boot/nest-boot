@@ -1022,6 +1022,45 @@ export type GetWorkspacesFromUserWorkspacesRouteQuery = {
       startCursor?: string | null;
     };
   };
+  currentUserWorkspaceInvitations: Array<{
+    __typename?: "WorkspaceInvitation";
+    id: string;
+    role: WorkspaceMemberRole;
+    expiresAt: any;
+    workspace: { __typename?: "Workspace"; id: string; name: string };
+  }>;
+};
+
+export type AcceptWorkspaceInvitationFromUserWorkspacesRouteMutationVariables =
+  Exact<{
+    invitationId: Scalars["ID"]["input"];
+  }>;
+
+export type AcceptWorkspaceInvitationFromUserWorkspacesRouteMutation = {
+  __typename?: "Mutation";
+  acceptWorkspaceInvitation: {
+    __typename?: "AcceptWorkspaceInvitationResult";
+    invitation: {
+      __typename?: "WorkspaceInvitation";
+      id: string;
+      status: WorkspaceInvitationStatus;
+    };
+    member: { __typename?: "WorkspaceMember"; id: string };
+  };
+};
+
+export type RejectWorkspaceInvitationFromUserWorkspacesRouteMutationVariables =
+  Exact<{
+    invitationId: Scalars["ID"]["input"];
+  }>;
+
+export type RejectWorkspaceInvitationFromUserWorkspacesRouteMutation = {
+  __typename?: "Mutation";
+  rejectWorkspaceInvitation: {
+    __typename?: "WorkspaceInvitation";
+    id: string;
+    status: WorkspaceInvitationStatus;
+  };
 };
 
 export type GetApiKeysFromApiKeysRouteQueryVariables = Exact<{
@@ -2494,6 +2533,29 @@ export const GetWorkspacesFromUserWorkspacesRouteDocument = {
               ],
             },
           },
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "currentUserWorkspaceInvitations" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "role" } },
+                { kind: "Field", name: { kind: "Name", value: "expiresAt" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "workspace" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                      { kind: "Field", name: { kind: "Name", value: "name" } },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
         ],
       },
     },
@@ -2501,6 +2563,138 @@ export const GetWorkspacesFromUserWorkspacesRouteDocument = {
 } as unknown as DocumentNode<
   GetWorkspacesFromUserWorkspacesRouteQuery,
   GetWorkspacesFromUserWorkspacesRouteQueryVariables
+>;
+export const AcceptWorkspaceInvitationFromUserWorkspacesRouteDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: {
+        kind: "Name",
+        value: "acceptWorkspaceInvitationFromUserWorkspacesRoute",
+      },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "invitationId" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "acceptWorkspaceInvitation" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "invitationId" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "invitationId" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "invitation" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "status" },
+                      },
+                    ],
+                  },
+                },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "member" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  AcceptWorkspaceInvitationFromUserWorkspacesRouteMutation,
+  AcceptWorkspaceInvitationFromUserWorkspacesRouteMutationVariables
+>;
+export const RejectWorkspaceInvitationFromUserWorkspacesRouteDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: {
+        kind: "Name",
+        value: "rejectWorkspaceInvitationFromUserWorkspacesRoute",
+      },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "invitationId" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "rejectWorkspaceInvitation" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "invitationId" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "invitationId" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "status" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  RejectWorkspaceInvitationFromUserWorkspacesRouteMutation,
+  RejectWorkspaceInvitationFromUserWorkspacesRouteMutationVariables
 >;
 export const GetApiKeysFromApiKeysRouteDocument = {
   kind: "Document",

@@ -1,9 +1,11 @@
 import { expect, test } from "@playwright/test";
 
 import { registerUser, testPassword } from "./utils/auth";
+import { graphqlRequest } from "./utils/graphql";
 import { waitForEmailUrl } from "./utils/mailpit";
 import { uniqueSeed } from "./utils/unique";
 import { createFirstWorkspace } from "./utils/workspace";
+import type { Page } from "@playwright/test";
 
 test.describe("user pages", () => {
   test("manages the profile and navigates personal resources", async ({
@@ -107,4 +109,141 @@ test.describe("user pages", () => {
       await otherContext.close();
     }
   });
+
+  test("accepts and rejects pending workspace invitations", async ({
+    browser,
+    page,
+  }) => {
+    const seed = uniqueSeed("user-workspace-invitations");
+    const inviteeEmail = `${seed}-invitee@example.com`;
+    const ownerEmail = `${seed}-owner@example.com`;
+    const acceptedWorkspaceName = `接受邀请工作空间 ${seed}`;
+    const rejectedWorkspaceName = `拒绝邀请工作空间 ${seed}`;
+
+    await registerUser(page, {
+      email: inviteeEmail,
+      name: `Invitee ${seed}`,
+    });
+
+    const ownerContext = await browser.newContext({
+      locale: "zh-CN",
+      timezoneId: "Asia/Shanghai",
+    });
+    const ownerPage = await ownerContext.newPage();
+
+    try {
+      await registerUser(ownerPage, {
+        email: ownerEmail,
+        name: `Owner ${seed}`,
+      });
+
+      const acceptedWorkspace = await createWorkspaceByApi(
+        ownerPage,
+        acceptedWorkspaceName,
+      );
+      const rejectedWorkspace = await createWorkspaceByApi(
+        ownerPage,
+        rejectedWorkspaceName,
+      );
+      const acceptedInvitation = await createInvitationByApi(
+        ownerPage,
+        acceptedWorkspace.id,
+        inviteeEmail,
+      );
+      const rejectedInvitation = await createInvitationByApi(
+        ownerPage,
+        rejectedWorkspace.id,
+        inviteeEmail,
+      );
+
+      await page.reload();
+      await expect(
+        page.getByTestId("user-workspace-invitations"),
+      ).toBeVisible();
+      await expect(
+        page.getByTestId(`user-workspace-invitation-${acceptedInvitation.id}`),
+      ).toHaveText(acceptedWorkspaceName);
+      await expect(
+        page.getByTestId(`user-workspace-invitation-${rejectedInvitation.id}`),
+      ).toHaveText(rejectedWorkspaceName);
+
+      await page
+        .getByTestId(
+          `user-workspace-invitation-accept-${acceptedInvitation.id}`,
+        )
+        .click();
+      await expect(page.getByText("已接受邀请", { exact: true })).toBeVisible();
+      await expect(
+        page.getByTestId(`user-workspace-invitation-${acceptedInvitation.id}`),
+      ).toHaveCount(0);
+      await expect(
+        page.getByTestId(`user-workspace-row-${acceptedWorkspace.id}`),
+      ).toHaveText(acceptedWorkspaceName);
+
+      await page
+        .getByTestId(
+          `user-workspace-invitation-reject-${rejectedInvitation.id}`,
+        )
+        .click();
+      await expect(page.getByText("已拒绝邀请", { exact: true })).toBeVisible();
+      await expect(
+        page.getByTestId(`user-workspace-invitation-${rejectedInvitation.id}`),
+      ).toHaveCount(0);
+      await expect(
+        page.getByTestId(`user-workspace-row-${rejectedWorkspace.id}`),
+      ).toHaveCount(0);
+    } finally {
+      await ownerContext.close();
+    }
+  });
 });
+
+async function createWorkspaceByApi(page: Page, name: string) {
+  return (
+    await graphqlRequest<{
+      createWorkspace: { id: string };
+    }>(
+      page.request,
+      /* GraphQL */ `
+        mutation CreateWorkspaceForUserInvitationTest(
+          $input: CreateWorkspaceInput!
+        ) {
+          createWorkspace(input: $input) {
+            id
+          }
+        }
+      `,
+      { input: { name } },
+    )
+  ).createWorkspace;
+}
+
+async function createInvitationByApi(
+  page: Page,
+  workspaceId: string,
+  email: string,
+) {
+  return (
+    await graphqlRequest<{
+      createWorkspaceInvitation: { id: string };
+    }>(
+      page.request,
+      /* GraphQL */ `
+        mutation CreateWorkspaceInvitationForUserInvitationTest(
+          $input: CreateWorkspaceInvitationInput!
+        ) {
+          createWorkspaceInvitation(input: $input) {
+            id
+          }
+        }
+      `,
+      {
+        input: {
+          email,
+          role: "MEMBER",
+        },
+      },
+      { "x-workspace-id": workspaceId },
+    )
+  ).createWorkspaceInvitation;
+}
