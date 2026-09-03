@@ -14,12 +14,15 @@ import { createEntityMetadataResolver } from "./entity-metadata-resolver.js";
 import { convertWhereToMikroOrm } from "./where-compiler.js";
 
 export interface CreateCustomAdapterOptions {
+  /** Role applied to user entities when Better Auth omits one. */
+  defaultUserRole?: string;
   em: EntityManager;
   entities: AuthModuleOptions["entities"];
   inTransaction?: boolean;
 }
 
 export function createMikroOrmCustomAdapter({
+  defaultUserRole,
   em,
   entities,
   inTransaction = false,
@@ -69,10 +72,16 @@ export function createMikroOrmCustomAdapter({
     return {
       create: async ({ data, model }) =>
         await runUnrestricted(async () => {
-          const entity = em.create(
-            resolver.getEntityClass(model),
-            resolver.toEntityData(model, data) as any,
-          );
+          const entityClass = resolver.getEntityClass(model);
+          const entityData = resolver.toEntityData(model, data);
+          if (
+            defaultUserRole &&
+            entityClass === entities.user &&
+            !("roles" in entityData)
+          ) {
+            entityData.roles = [defaultUserRole];
+          }
+          const entity = em.create(entityClass, entityData as any);
           await em.persist(entity).flush();
           return resolver.toAdapterRecord(model, entity) as any;
         }),

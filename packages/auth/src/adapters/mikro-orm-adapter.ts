@@ -16,6 +16,8 @@ export interface MikroOrmAdapterConfig {
   orm: MikroORM;
   /** The entities to use for the adapter. */
   entities: AuthModuleOptions["entities"];
+  /** Role applied when Better Auth creates a user without an explicit role. */
+  defaultUserRole?: string;
   /** Helps you debug issues with the adapter. */
   debugLogs?: DBAdapterDebugLogOption;
 }
@@ -23,6 +25,7 @@ export interface MikroOrmAdapterConfig {
 export const mikroOrmAdapter = ({
   orm,
   entities,
+  defaultUserRole,
   debugLogs,
 }: MikroOrmAdapterConfig) => {
   return (options: BetterAuthOptions) => {
@@ -38,6 +41,7 @@ export const mikroOrmAdapter = ({
                 transaction: false,
               },
               adapter: createMikroOrmCustomAdapter({
+                defaultUserRole,
                 em,
                 entities,
                 inTransaction: true,
@@ -47,7 +51,11 @@ export const mikroOrmAdapter = ({
             return await callback(transactionAdapter);
           }),
       },
-      adapter: createMikroOrmCustomAdapter({ em: orm.em, entities }),
+      adapter: createMikroOrmCustomAdapter({
+        defaultUserRole,
+        em: orm.em,
+        entities,
+      }),
     });
 
     return adapterFactory(options);

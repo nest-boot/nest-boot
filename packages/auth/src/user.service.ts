@@ -36,12 +36,15 @@ import type {
 } from "./interfaces/user-service.interface.js";
 import type { AuthModuleRoles } from "./types/auth-module-roles.type.js";
 import {
+  DEFAULT_USER_ADMIN_ROLES,
   DEFAULT_USER_PERMISSIONS,
+  DEFAULT_USER_ROLE,
   DEFAULT_USER_ROLES,
 } from "./user.constants.js";
 import {
   listAuthPermissions,
   listAuthRoles,
+  normalizeAuthPermissions,
   normalizeAuthRoles,
   resolveAuthPermissions,
 } from "./utils/auth-role.util.js";
@@ -67,6 +70,8 @@ export class UserService<
 
   /** Creates a user and its credential account atomically. */
   async createUser(input: CreateUserOptions): Promise<User> {
+    const permissions = this.normalizePermissions(input.permissions ?? []);
+
     return await this.runUnrestricted(async () => {
       const password = await this.hashPassword(input.password);
       const user = this.em.create(this.userEntity, {
@@ -74,8 +79,8 @@ export class UserService<
         email: input.email,
         emailVerified: false,
         name: input.name,
-        permissions: input.permissions ?? [],
-        roles: this.normalizeRoles(input.roles ?? ["user"]),
+        permissions,
+        roles: this.normalizeRoles(input.roles ?? [this.defaultRole]),
       } as unknown as RequiredEntityData<User>);
       const account = this.em.create(this.accountEntity, {
         accountId: String(user.id),
@@ -128,7 +133,7 @@ export class UserService<
 
   /** Replaces a user's application permissions. */
   async setUserPermissions(user: User, permissions: string[]): Promise<User> {
-    user.permissions = [...permissions];
+    user.permissions = this.normalizePermissions(permissions);
     await this.runUnrestricted(() => this.em.flush());
     return user;
   }
@@ -153,7 +158,7 @@ export class UserService<
   /** Resolves permissions inherited from roles plus direct user permissions. */
   getUserPermissions(user: User): string[] {
     return resolveAuthPermissions(
-      user.roles ?? ["user"],
+      user.roles ?? [this.defaultRole],
       user.permissions ?? [],
       this.roles,
     );
@@ -234,6 +239,21 @@ export class UserService<
     user: User,
     input: ImpersonationOptions = {},
   ): Promise<AuthenticatedSession<User, Session>> {
+    if (
+      !this.hasPermission(administrator, {
+        permissions: { user: ["impersonate"] },
+      })
+    ) {
+      throw new ForbiddenException("You are not allowed to impersonate users");
+    }
+    if (
+      this.isAdmin(user) &&
+      !this.hasPermission(administrator, {
+        permissions: { user: ["impersonate-admins"] },
+      })
+    ) {
+      throw new ForbiddenException("You are not allowed to impersonate admins");
+    }
     if (this.isActivelyBanned(user)) {
       throw new ForbiddenException("Banned users cannot be impersonated");
     }
@@ -348,12 +368,30 @@ export class UserService<
     );
   }
 
+  /** Returns whether any assigned role is classified as administrative. */
+  isAdmin(user: User): boolean {
+    const adminRoles = new Set(
+      this.options.user?.adminRoles ?? DEFAULT_USER_ADMIN_ROLES,
+    );
+    return (user.roles ?? [this.defaultRole]).some((role) =>
+      adminRoles.has(role),
+    );
+  }
+
   private normalizeRoles(role: string | readonly string[]): string[] {
     return normalizeAuthRoles(role, this.roles);
   }
 
+  private normalizePermissions(permissions: readonly string[]): string[] {
+    return normalizeAuthPermissions(permissions, this.permissions, "User");
+  }
+
   private get roles(): AuthModuleRoles {
     return this.options.user?.roles ?? DEFAULT_USER_ROLES;
+  }
+
+  private get defaultRole(): string {
+    return this.options.user?.defaultRole ?? DEFAULT_USER_ROLE;
   }
 
   private get permissions(): readonly string[] {

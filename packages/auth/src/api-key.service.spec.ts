@@ -137,6 +137,99 @@ describe("ApiKeyService", () => {
     );
   });
 
+  it("allows user keys to combine configured user and workspace permissions", async () => {
+    const { em, service } = createService();
+    const permissions = ["user:get", "workspace:update"];
+
+    await service.createUserKey(new TestUser(), {
+      name: "Cross-scope automation",
+      permissions,
+    });
+
+    expect(em.create).toHaveBeenCalledWith(
+      TestApiKey,
+      expect.objectContaining({ permissions }),
+    );
+  });
+
+  it("validates API-key permissions according to the owner type", async () => {
+    const { em, service } = createService();
+    const workspace = new TestWorkspace();
+    const member = new TestWorkspaceMember();
+
+    await expect(
+      service.createWorkspaceKey(workspace, member, {
+        name: "Invalid workspace key",
+        permissions: ["user:get"],
+      }),
+    ).rejects.toThrow(
+      "Workspace API key contains unknown permissions: user:get",
+    );
+    await expect(
+      service.createUserKey(new TestUser(), {
+        name: "Invalid user key",
+        permissions: ["unknown:execute"],
+      }),
+    ).rejects.toThrow(
+      "User API key contains unknown permissions: unknown:execute",
+    );
+    expect(em.create).not.toHaveBeenCalled();
+  });
+
+  it("uses configured permission catalogs instead of the defaults", async () => {
+    const { em, service } = createService({
+      user: { permissions: ["project:read"] },
+      workspace: { permissions: ["deployment:run"] },
+    });
+    const workspace = new TestWorkspace();
+    const member = new TestWorkspaceMember();
+
+    await service.createWorkspaceKey(workspace, member, {
+      name: "Deployment key",
+      permissions: ["deployment:run"],
+    });
+    await service.createUserKey(new TestUser(), {
+      name: "Project deployment key",
+      permissions: ["project:read", "deployment:run"],
+    });
+    await expect(
+      service.createWorkspaceKey(workspace, member, {
+        name: "Replaced default key",
+        permissions: ["workspace:update"],
+      }),
+    ).rejects.toThrow(
+      "Workspace API key contains unknown permissions: workspace:update",
+    );
+
+    expect(em.create).toHaveBeenCalledTimes(2);
+  });
+
+  it("validates updated API-key permissions according to the owner type", async () => {
+    const { em, service } = createService();
+    const workspaceKey = new TestApiKey();
+    em.findOne.mockResolvedValue(workspaceKey);
+
+    await expect(
+      service.updateWorkspaceKey(workspaceKey.id, new TestWorkspaceMember(), {
+        permissions: ["user:get"],
+      }),
+    ).rejects.toThrow(
+      "Workspace API key contains unknown permissions: user:get",
+    );
+
+    const user = new TestUser();
+    const userKey = Object.assign(new TestApiKey(), {
+      owner: user as BaseApiKey["owner"],
+    });
+    em.findOne.mockResolvedValue(userKey);
+    await expect(
+      service.updateUserKey(userKey.id, user, {
+        permissions: ["workspace:update"],
+      }),
+    ).resolves.toBe(userKey);
+    expect(userKey.permissions).toEqual(["workspace:update"]);
+  });
+
   it("does not let one user manage another user's key", async () => {
     const { em, service } = createService();
     const apiKey = Object.assign(new TestApiKey(), {
@@ -246,6 +339,30 @@ describe("ApiKeyService", () => {
     );
   });
 
+  it("uses the configured workspace creator role for key management", () => {
+    const { service } = createService({
+      workspace: {
+        creatorRole: "founder",
+        permissions: [],
+        roles: { founder: [], member: [] },
+      },
+    });
+    const workspace = new TestWorkspace();
+    const founder = Object.assign(new TestWorkspaceMember(), {
+      roles: ["founder"],
+    });
+    const builtInOwner = Object.assign(new TestWorkspaceMember(), {
+      roles: ["owner"],
+    });
+
+    expect(service.getWorkspaceListFilter(workspace, founder)).toEqual({
+      owner: workspace,
+    });
+    expect(() =>
+      service.getWorkspaceListFilter(workspace, builtInOwner),
+    ).toThrow(ForbiddenException);
+  });
+
   it("rejects list filters for a member of another workspace", () => {
     const { service } = createService();
     const member = Object.assign(new TestWorkspaceMember(), {
@@ -318,7 +435,7 @@ describe("ApiKeyService", () => {
     expect(apiKey.name).toBe("Renamed");
     expect(apiKey.enabled).toBe(false);
     expect(apiKey.expiresAt).toBe(expiresAt);
-    expect(apiKey.permissions).toBe(permissions);
+    expect(apiKey.permissions).toEqual(permissions);
     expect(em.remove).toHaveBeenCalledWith(apiKey);
     expect(em.flush).toHaveBeenCalledTimes(2);
   });
@@ -422,7 +539,9 @@ describe("ApiKeyService", () => {
   });
 });
 
-function createService() {
+function createService(
+  authorization: Pick<AuthModuleOptions, "user" | "workspace"> = {},
+) {
   const em = {
     create: vi.fn((_entity, data) => Object.assign(new TestApiKey(), data)),
     findOne: vi.fn(),
@@ -432,6 +551,7 @@ function createService() {
   } as unknown as Mocked<EntityManager>;
   em.persist.mockReturnValue(em);
   const options = {
+    ...authorization,
     entities: {
       apiKey: TestApiKey,
       user: TestUser,

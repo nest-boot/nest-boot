@@ -16,6 +16,50 @@ export function listAuthPermissions(permissions: readonly string[]): string[] {
   return [...new Set(permissions)];
 }
 
+/** Validates permission values against one configured permission catalog. */
+export function normalizeAuthPermissions(
+  value: readonly string[],
+  availablePermissions: readonly string[],
+  label: string,
+): string[] {
+  if (
+    !Array.isArray(value) ||
+    value.some(
+      (permission) =>
+        typeof permission !== "string" ||
+        permission.length === 0 ||
+        permission.trim() !== permission,
+    )
+  ) {
+    throw new BadRequestException(
+      `${label} permissions must contain non-empty strings`,
+    );
+  }
+
+  const duplicatePermissions = [
+    ...new Set(
+      value.filter((permission, index) => value.indexOf(permission) !== index),
+    ),
+  ];
+  if (duplicatePermissions.length > 0) {
+    throw new BadRequestException(
+      `${label} contains duplicate permissions: ${duplicatePermissions.join(", ")}`,
+    );
+  }
+
+  const availablePermissionSet = new Set(availablePermissions);
+  const unknownPermissions = value.filter(
+    (permission) => !availablePermissionSet.has(permission),
+  );
+  if (unknownPermissions.length > 0) {
+    throw new BadRequestException(
+      `${label} contains unknown permissions: ${unknownPermissions.join(", ")}`,
+    );
+  }
+
+  return [...value];
+}
+
 /** Ensures every role grant belongs to its scope's permission catalog. */
 export function assertAuthRolePermissions(
   roles: AuthModuleRoles,
@@ -33,6 +77,26 @@ export function assertAuthRolePermissions(
         `Role "${role}" contains unknown ${scope} permissions: ${unknownPermissions.join(", ")}`,
       );
     }
+  }
+}
+
+/** Ensures configured lifecycle roles exist in their role registry. */
+export function assertAuthRolesExist(
+  roles: AuthModuleRoles,
+  roleNames: readonly string[],
+  option: string,
+): void {
+  const invalidRoleNames = roleNames.filter(
+    (role) =>
+      typeof role !== "string" ||
+      role.length === 0 ||
+      role.trim() !== role ||
+      !(role in roles),
+  );
+  if (invalidRoleNames.length > 0) {
+    throw new Error(
+      `${option} references unknown role${invalidRoleNames.length === 1 ? "" : "s"} ${invalidRoleNames.map((role) => JSON.stringify(role)).join(", ")}`,
+    );
   }
 }
 

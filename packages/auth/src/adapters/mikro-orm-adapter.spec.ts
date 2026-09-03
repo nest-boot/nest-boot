@@ -391,8 +391,9 @@ function createAdapter(
     getFieldName?: (input: { field: string; model: string }) => string;
     schema?: Record<string, { fields: Record<string, unknown> }>;
   } = {},
+  defaultUserRole?: string,
 ) {
-  mikroOrmAdapter({ entities, orm })({} as never);
+  mikroOrmAdapter({ defaultUserRole, entities, orm })({} as never);
   const adapterOptions = mockCreateAdapterFactory.mock.calls.at(-1)?.[0] as {
     adapter: (
       context: unknown,
@@ -537,6 +538,21 @@ describe("mikroOrmAdapter", () => {
       email: "user@example.com",
     });
     expect(flush).toHaveBeenCalledTimes(1);
+  });
+
+  it("applies the configured default role to users created by Better Auth", async () => {
+    const { em, orm } = createOrm();
+    const adapter = createAdapter(orm, {}, "customer");
+
+    await adapter.create({
+      data: { email: "user@example.com" },
+      model: "user",
+    });
+
+    expect(em.create).toHaveBeenCalledWith(TestUser, {
+      email: "user@example.com",
+      roles: ["customer"],
+    });
   });
 
   it("should resolve workspace and API key entities", async () => {

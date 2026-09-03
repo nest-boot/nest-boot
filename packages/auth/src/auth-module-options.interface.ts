@@ -142,6 +142,10 @@ export interface AuthModuleEmailVerificationOptions extends Omit<
 export interface AuthModuleWorkspaceOptions<
   Permission extends string = string,
 > {
+  /** Role assigned to members and invitations when none is supplied. Defaults to `member`. */
+  defaultRole?: string;
+  /** Role assigned to a workspace creator. Defaults to `owner`. */
+  creatorRole?: string;
   /** Workspace permission catalog. Defaults to `DEFAULT_WORKSPACE_PERMISSIONS`. */
   permissions?: readonly Permission[];
   /** Named workspace roles and their permissions. Defaults to `DEFAULT_WORKSPACE_ROLES`. */
@@ -156,6 +160,10 @@ export interface AuthModuleWorkspaceOptions<
 export interface AuthModuleUserOptions<
   Permission extends string = string,
 > extends BetterAuthUserOptions {
+  /** Role assigned to users when none is supplied. Defaults to `user`. */
+  defaultRole?: string;
+  /** Roles classified as administrators. Defaults to `admin`. */
+  adminRoles?: readonly string[];
   /** User permission catalog. Defaults to `DEFAULT_USER_PERMISSIONS`. */
   permissions?: readonly Permission[];
   /** Named user roles and their permissions. Defaults to `DEFAULT_USER_ROLES`. */

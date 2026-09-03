@@ -23,7 +23,8 @@ description: "使用带权限范围的 API Key 认证个人和工作区自动化
 
 ## 权限值
 
-auth 包以 `string[]` 存储和判断权限。应用负责定义封闭的权限目录，并在写入前校验值。
+auth 包以 `string[]` 存储和判断权限。应用负责定义封闭的用户与工作区权限目录；
+`ApiKeyService` 会在创建和更新 Key 时依据这些目录校验权限值。
 
 ```typescript
 const workspacePermissions = [
@@ -33,16 +34,13 @@ const workspacePermissions = [
 
 type WorkspacePermission = (typeof workspacePermissions)[number];
 
-const userKeyPermissions = [
-  "user:get",
-  ...workspacePermissions,
-] as const;
+const userKeyPermissions = ["user:get", ...workspacePermissions] as const;
 ```
 
 示例的实体属性、GraphQL 输入与数据库列都统一使用字符串。应用通过 `as const`
-权限目录生成表单选项和本地 TypeScript 类型，也可以在接收不可信输入时增加运行时
-校验。Workspace Key 只接受工作区权限，User Key 可以包含两个权限域。PostgreSQL
-使用 `text[]` 列持久化这些值。
+权限目录生成表单选项和本地 TypeScript 类型。Workspace Key 只接受配置的工作区权限；
+User Key 接受用户与工作区权限目录的并集。格式错误、重复和未知权限都会被拒绝。
+PostgreSQL 使用 `text[]` 列持久化这些值。
 
 ## 传输方式
 
@@ -65,4 +63,6 @@ audit(@CurrentApiKey() apiKey: ApiKey | null) {
 }
 ```
 
-API Key 权限会与所属用户或工作区的 Ability 取交集，不能超出所有者的有效权限。
+User Key 权限会与所属用户的 User Ability 取交集；访问工作区路由时还会与当前成员的
+Workspace Ability 取交集。Workspace Key 是服务身份，直接依据已经过目录校验的工作区
+权限列表进行判断。

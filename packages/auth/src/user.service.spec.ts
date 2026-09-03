@@ -51,6 +51,32 @@ describe("UserService", () => {
     expect(user.email).toBe("alice@example.com");
   });
 
+  it("uses the configured default user role", async () => {
+    const { em, hash, service } = createService(true, {
+      defaultRole: "customer",
+      permissions: [],
+      roles: { customer: [] },
+    });
+    hash.mockResolvedValue("hashed-password");
+
+    await service.createUser({
+      email: "alice@example.com",
+      name: "Alice",
+      password: "password",
+    });
+
+    expect(em.create).toHaveBeenNthCalledWith(
+      1,
+      TestUser,
+      expect.objectContaining({ roles: ["customer"] }),
+    );
+    expect(
+      service.getUserPermissions(
+        Object.assign(new TestUser(), { roles: undefined }),
+      ),
+    ).toEqual([]);
+  });
+
   it("gets and updates configured user entities", async () => {
     const { em, service } = createService();
     const user = Object.assign(new TestUser(), { id: "user-1" });
@@ -74,6 +100,30 @@ describe("UserService", () => {
     await expect(
       service.updateUser(user, { roles: ["admin"] } as never),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("validates direct user permissions against the configured catalog", async () => {
+    const { em, hash, service } = createService();
+    hash.mockResolvedValue("hashed-password");
+
+    await expect(
+      service.createUser({
+        email: "invalid@example.com",
+        name: "Invalid",
+        password: "password",
+        permissions: ["workspace:update"],
+      }),
+    ).rejects.toThrow("User contains unknown permissions: workspace:update");
+    expect(em.create).not.toHaveBeenCalled();
+
+    const user = new TestUser();
+    await expect(
+      service.setUserPermissions(user, ["user:get", "user:get"]),
+    ).rejects.toThrow("User contains duplicate permissions: user:get");
+    await expect(service.setUserPermissions(user, ["user:get"])).resolves.toBe(
+      user,
+    );
+    expect(user.permissions).toEqual(["user:get"]);
   });
 
   it("gets a configured user by normalized email", async () => {
@@ -134,6 +184,23 @@ describe("UserService", () => {
     await expect(service.setRole(user, ["unknown"])).rejects.toBeInstanceOf(
       BadRequestException,
     );
+  });
+
+  it("classifies users with any configured admin role as administrators", () => {
+    const { service } = createService(true, {
+      adminRoles: ["admin", "superadmin"],
+      permissions: [],
+      roles: { admin: [], superadmin: [], user: [] },
+    });
+
+    expect(
+      service.isAdmin(Object.assign(new TestUser(), { roles: ["auditor"] })),
+    ).toBe(false);
+    expect(
+      service.isAdmin(
+        Object.assign(new TestUser(), { roles: ["auditor", "superadmin"] }),
+      ),
+    ).toBe(true);
   });
 
   it("lists users with search, filter, order, and pagination", async () => {
@@ -222,7 +289,10 @@ describe("UserService", () => {
 
   it("creates and restores impersonation sessions", async () => {
     const { em, service } = createService();
-    const administrator = Object.assign(new TestUser(), { id: "admin-1" });
+    const administrator = Object.assign(new TestUser(), {
+      id: "admin-1",
+      roles: ["admin"],
+    });
     const user = Object.assign(new TestUser(), { id: "user-1" });
 
     const impersonation = await service.impersonateUser(administrator, user, {
@@ -239,6 +309,26 @@ describe("UserService", () => {
     expect(em.remove).toHaveBeenCalledWith(impersonation.session);
   });
 
+  it("requires the additional permission when impersonating an administrator", async () => {
+    const { service } = createService();
+    const target = Object.assign(new TestUser(), { roles: ["admin"] });
+    const ordinaryImpersonator = Object.assign(new TestUser(), {
+      permissions: ["user:impersonate"],
+      roles: ["user"],
+    });
+    const privilegedImpersonator = Object.assign(new TestUser(), {
+      permissions: ["user:impersonate", "user:impersonate-admins"],
+      roles: ["user"],
+    });
+
+    await expect(
+      service.impersonateUser(ordinaryImpersonator, target),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(
+      service.impersonateUser(privilegedImpersonator, target),
+    ).resolves.toEqual(expect.objectContaining({ user: target }));
+  });
+
   it("revokes an impersonation session instead of restoring a banned administrator", async () => {
     const { em, service } = createService();
     const administrator = Object.assign(new TestUser(), {
@@ -248,7 +338,7 @@ describe("UserService", () => {
     });
     const user = Object.assign(new TestUser(), { id: "user-1" });
     const impersonation = await service.impersonateUser(
-      Object.assign(new TestUser(), { id: "issuer-1" }),
+      Object.assign(new TestUser(), { id: "issuer-1", roles: ["admin"] }),
       user,
     );
     impersonation.session.impersonatedBy = administrator;

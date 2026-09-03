@@ -59,7 +59,9 @@ describe("createUserConfig", () => {
   it("passes only allowlisted Better Auth user options", () => {
     const buildAbility = vi.fn();
     const config = createUserConfig({} as Mailer, {
+      adminRoles: ["admin"],
       buildAbility,
+      defaultRole: "user",
       modelName: "user",
       permissions: ["user:list"],
       roles: { admin: ["user:list"] },
@@ -67,6 +69,8 @@ describe("createUserConfig", () => {
 
     expect(config).toEqual({ modelName: "user" });
     expect(config).not.toHaveProperty("buildAbility");
+    expect(config).not.toHaveProperty("defaultRole");
+    expect(config).not.toHaveProperty("adminRoles");
     expect(config).not.toHaveProperty("permissions");
     expect(config).not.toHaveProperty("roles");
   });

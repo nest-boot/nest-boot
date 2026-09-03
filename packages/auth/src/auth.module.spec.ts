@@ -296,6 +296,7 @@ describe("AuthModule", () => {
       options: expect.any(Object),
     });
     expect(mockMikroOrmAdapter).toHaveBeenCalledWith({
+      defaultUserRole: "user",
       entities,
       orm,
     });
@@ -307,6 +308,7 @@ describe("AuthModule", () => {
         baseURL: "https://auth.example.com",
         database: {
           options: {
+            defaultUserRole: "user",
             entities,
             orm,
           },
@@ -358,6 +360,62 @@ describe("AuthModule", () => {
       expect(mockBetterAuth).not.toHaveBeenCalled();
     },
   );
+
+  it.each([
+    [
+      "user defaultRole",
+      {
+        user: {
+          defaultRole: "customer",
+          permissions: [],
+          roles: { user: [] },
+        },
+      },
+      'user.defaultRole references unknown role "customer"',
+    ],
+    [
+      "user adminRoles",
+      {
+        user: {
+          adminRoles: ["administrator"],
+          permissions: [],
+          roles: { admin: [], user: [] },
+        },
+      },
+      'user.adminRoles references unknown role "administrator"',
+    ],
+    [
+      "workspace defaultRole",
+      {
+        workspace: {
+          defaultRole: "viewer",
+          permissions: [],
+          roles: { member: [], owner: [] },
+        },
+      },
+      'workspace.defaultRole references unknown role "viewer"',
+    ],
+    [
+      "workspace creatorRole",
+      {
+        workspace: {
+          creatorRole: "creator",
+          permissions: [],
+          roles: { member: [], owner: [] },
+        },
+      },
+      'workspace.creatorRole references unknown role "creator"',
+    ],
+  ])("rejects an unknown %s", (_, config, error) => {
+    const authProvider = getAuthProvider();
+
+    expect(() =>
+      authProvider.useFactory({ entities, secret, ...config }, {
+        em: {},
+      } as unknown as MikroORM),
+    ).toThrow(error);
+    expect(mockBetterAuth).not.toHaveBeenCalled();
+  });
 
   it("should merge account options with the module OAuth state default", () => {
     const authProvider = getAuthProvider();

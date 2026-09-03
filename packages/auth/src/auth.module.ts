@@ -37,11 +37,16 @@ import { AuthHandlerMiddleware } from "./auth-handler.middleware.js";
 import { type AuthModuleOptions } from "./auth-module-options.interface.js";
 import { SessionService } from "./session.service.js";
 import {
+  DEFAULT_USER_ADMIN_ROLES,
   DEFAULT_USER_PERMISSIONS,
+  DEFAULT_USER_ROLE,
   DEFAULT_USER_ROLES,
 } from "./user.constants.js";
 import { UserService } from "./user.service.js";
-import { assertAuthRolePermissions } from "./utils/auth-role.util.js";
+import {
+  assertAuthRolePermissions,
+  assertAuthRolesExist,
+} from "./utils/auth-role.util.js";
 import { createEmailAndPasswordConfig } from "./utils/create-email-and-password-config.js";
 import { createEmailVerificationConfig } from "./utils/create-email-verification-config.js";
 import { createOidcConfig } from "./utils/create-oidc-config.js";
@@ -50,7 +55,9 @@ import { createUserConfig } from "./utils/create-user-config.js";
 import { isEnvTrue } from "./utils/is-env-true.js";
 import { resolveSecret } from "./utils/resolve-secret.js";
 import {
+  DEFAULT_WORKSPACE_CREATOR_ROLE,
   DEFAULT_WORKSPACE_PERMISSIONS,
+  DEFAULT_WORKSPACE_ROLE,
   DEFAULT_WORKSPACE_ROLES,
 } from "./workspace.constants.js";
 import { WorkspaceService } from "./workspace.service.js";
@@ -88,15 +95,39 @@ import { WorkspaceService } from "./workspace.service.js";
         mailer: Mailer,
         hashService: HashService,
       ) => {
+        const userRoles = options.user?.roles ?? DEFAULT_USER_ROLES;
+        const workspaceRoles =
+          options.workspace?.roles ?? DEFAULT_WORKSPACE_ROLES;
+
         assertAuthRolePermissions(
-          options.user?.roles ?? DEFAULT_USER_ROLES,
+          userRoles,
           options.user?.permissions ?? DEFAULT_USER_PERMISSIONS,
           "user",
         );
         assertAuthRolePermissions(
-          options.workspace?.roles ?? DEFAULT_WORKSPACE_ROLES,
+          workspaceRoles,
           options.workspace?.permissions ?? DEFAULT_WORKSPACE_PERMISSIONS,
           "workspace",
+        );
+        assertAuthRolesExist(
+          userRoles,
+          [options.user?.defaultRole ?? DEFAULT_USER_ROLE],
+          "user.defaultRole",
+        );
+        assertAuthRolesExist(
+          userRoles,
+          options.user?.adminRoles ?? DEFAULT_USER_ADMIN_ROLES,
+          "user.adminRoles",
+        );
+        assertAuthRolesExist(
+          workspaceRoles,
+          [options.workspace?.defaultRole ?? DEFAULT_WORKSPACE_ROLE],
+          "workspace.defaultRole",
+        );
+        assertAuthRolesExist(
+          workspaceRoles,
+          [options.workspace?.creatorRole ?? DEFAULT_WORKSPACE_CREATOR_ROLE],
+          "workspace.creatorRole",
         );
 
         const secret = resolveSecret(options);
@@ -143,6 +174,7 @@ import { WorkspaceService } from "./workspace.service.js";
               : []),
           ],
           database: mikroOrmAdapter({
+            defaultUserRole: options.user?.defaultRole ?? DEFAULT_USER_ROLE,
             orm,
             entities: options.entities,
           }),

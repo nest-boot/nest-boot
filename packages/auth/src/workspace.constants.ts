@@ -1,5 +1,11 @@
 import type { AuthModuleRoles } from "./types/auth-module-roles.type.js";
 
+/** Role assigned to regular workspace members by default. */
+export const DEFAULT_WORKSPACE_ROLE = "member";
+
+/** Role assigned to workspace creators by default. */
+export const DEFAULT_WORKSPACE_CREATOR_ROLE = "owner";
+
 /** Permissions available to the default workspace roles. */
 export const DEFAULT_WORKSPACE_PERMISSIONS = [
   "workspace:update",

@@ -8,9 +8,9 @@ export interface CreateUserOptions {
   name: string;
   /** Initial credential password. */
   password: string;
-  /** Initial user roles. Defaults to `user`. */
+  /** Initial user roles. Defaults to `user.defaultRole`. */
   roles?: string[];
-  /** Initial user permissions. */
+  /** Initial permissions from the configured user permission catalog. */
   permissions?: string[];
   /** Application-defined user fields. */
   data?: Record<string, unknown>;

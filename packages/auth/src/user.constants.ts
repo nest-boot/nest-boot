@@ -1,5 +1,11 @@
 import type { AuthModuleRoles } from "./types/auth-module-roles.type.js";
 
+/** Role assigned to users by default. */
+export const DEFAULT_USER_ROLE = "user";
+
+/** Roles classified as administrators by default. */
+export const DEFAULT_USER_ADMIN_ROLES = ["admin"] as const;
+
 /** Permissions available to the default user roles. */
 export const DEFAULT_USER_PERMISSIONS = [
   "user:create",
