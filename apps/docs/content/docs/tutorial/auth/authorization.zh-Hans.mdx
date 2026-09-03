@@ -106,11 +106,20 @@ await workspaceService.updateMemberRole(member, ["admin"]);
 ```
 
 `setRole()` 与 `updateMemberRole()` 会拒绝空角色列表和不存在的角色。
-`updateMemberRole()` 不能修改当前所有者或赋予所有者角色；此类变更应使用
-`transferOwnership()`。
+`updateMemberRole()` 不能修改当前创建者或赋予配置的创建者角色；此类变更应使用
+`transferOwnership()`。所有权转移会把 `workspace.creatorRole` 赋给下一位所有者，并将
+原所有者降级为 `workspace.defaultRole`。
+
+`user.defaultRole` 与 `workspace.defaultRole` 分别为新用户和新成员提供默认角色；
+`workspace.creatorRole` 标识所有权角色；`user.adminRoles` 可以包含多个角色，并由
+`UserService.isAdmin()` 用于识别管理员用户。所有配置的生命周期角色都会在启动时依据
+对应角色映射进行校验。
 
 `getUserPermissions()` 与 `getMemberPermissions()` 返回所有角色继承权限和实体直接权限
 去重后的合集；`hasPermission()` 使用同一份结果进行判断。
+`createUser()`、`addMember()`、`setUserPermissions()` 与
+`setMemberPermissions()` 会拒绝格式错误、重复或不在配置目录中的直接权限，避免将未知
+权限写入实体。
 
 示例 GraphQL 应用提供 `userRoles`、`userPermissions`、`workspaceRoles` 与
 `workspacePermissions` 查询。角色修改分别使用 `setUserRoles` 和

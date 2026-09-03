@@ -35,8 +35,11 @@ import type { AuthModuleRoles } from "./types/auth-module-roles.type.js";
 import type { CanSubjectFactory } from "./types/can-subject-factory.type.js";
 import type { PermissionAbility } from "./types/permission-ability.type.js";
 import type { RouteArgumentMetadata } from "./types/route-argument-metadata.type.js";
-import { DEFAULT_USER_ROLES } from "./user.constants.js";
-import { DEFAULT_WORKSPACE_ROLES } from "./workspace.constants.js";
+import { DEFAULT_USER_ROLE, DEFAULT_USER_ROLES } from "./user.constants.js";
+import {
+  DEFAULT_WORKSPACE_ROLE,
+  DEFAULT_WORKSPACE_ROLES,
+} from "./workspace.constants.js";
 
 /** Guard that enforces authentication and evaluates route permissions. */
 @Injectable()
@@ -319,7 +322,9 @@ export class AuthGuard implements CanActivate {
 
     return [
       ...new Set([
-        ...(user.roles ?? ["user"]).flatMap((role) => roles[role] ?? []),
+        ...(
+          user.roles ?? [this.options.user?.defaultRole ?? DEFAULT_USER_ROLE]
+        ).flatMap((role) => roles[role] ?? []),
         ...(user.permissions ?? []),
       ]),
     ];
@@ -335,7 +340,11 @@ export class AuthGuard implements CanActivate {
 
     return [
       ...new Set([
-        ...(member.roles ?? ["member"]).flatMap((role) => roles[role] ?? []),
+        ...(
+          member.roles ?? [
+            this.options.workspace?.defaultRole ?? DEFAULT_WORKSPACE_ROLE,
+          ]
+        ).flatMap((role) => roles[role] ?? []),
         ...(member.permissions ?? []),
       ]),
     ];

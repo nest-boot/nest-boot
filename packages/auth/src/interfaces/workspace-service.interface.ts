@@ -19,9 +19,9 @@ export interface UpdateWorkspaceOptions {
 
 /** Input accepted when adding a workspace member. */
 export interface AddWorkspaceMemberOptions {
-  /** Member roles. */
+  /** Member roles. Defaults to `workspace.defaultRole`. */
   roles?: string[];
-  /** Additional workspace permissions. */
+  /** Additional permissions from the configured workspace permission catalog. */
   permissions?: string[];
 }
 
@@ -39,7 +39,7 @@ export interface UpdateWorkspaceMemberOptions {
 export interface CreateWorkspaceInvitationOptions {
   /** Email address allowed to accept the invitation. */
   email: string;
-  /** Roles granted after acceptance. */
+  /** Roles granted after acceptance. Defaults to `workspace.defaultRole`. */
   roles?: string[];
   /** Invitation lifetime in seconds; defaults to 48 hours. */
   expiresIn?: number;

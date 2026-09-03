@@ -76,6 +76,89 @@ describe("WorkspaceService", () => {
     expect(em.flush).toHaveBeenCalledTimes(1);
   });
 
+  it("uses configured creator and default member roles", async () => {
+    const { em, service } = createService({
+      creatorRole: "founder",
+      defaultRole: "viewer",
+      permissions: [],
+      roles: { founder: [], viewer: [] },
+    });
+    const user = Object.assign(new TestUser(), {
+      email: "alice@example.com",
+      name: "Alice",
+    });
+
+    await service.createWorkspace(user, { name: "Acme" });
+    em.findOne.mockResolvedValueOnce(null);
+    await service.addMember(new TestWorkspace(), user);
+
+    expect(em.create).toHaveBeenNthCalledWith(
+      2,
+      TestWorkspaceMember,
+      expect.objectContaining({ roles: ["founder"] }),
+    );
+    expect(em.create).toHaveBeenNthCalledWith(
+      3,
+      TestWorkspaceMember,
+      expect.objectContaining({ roles: ["viewer"] }),
+    );
+    expect(
+      service.getMemberPermissions(
+        Object.assign(new TestWorkspaceMember(), { roles: undefined }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("uses the configured default role for invitations", async () => {
+    const { em, service } = createService({
+      creatorRole: "founder",
+      defaultRole: "viewer",
+      permissions: [],
+      roles: { founder: [], viewer: [] },
+    });
+    const workspace = new TestWorkspace();
+    const inviter = Object.assign(new TestUser(), {
+      email: "owner@example.com",
+      name: "Owner",
+    });
+    em.findOne.mockResolvedValue(null);
+
+    const invitation = await service.createInvitation(workspace, inviter, {
+      email: "alice@example.com",
+    });
+
+    expect(invitation.roles).toEqual(["viewer"]);
+    expect(em.create).toHaveBeenCalledWith(
+      TestWorkspaceInvitation,
+      expect.objectContaining({ roles: ["viewer"] }),
+    );
+  });
+
+  it("uses the configured creator role for owner invariants", async () => {
+    const { service } = createService({
+      creatorRole: "founder",
+      defaultRole: "viewer",
+      permissions: [],
+      roles: { founder: [], viewer: [] },
+    });
+    const workspace = new TestWorkspace();
+    const founder = Object.assign(new TestWorkspaceMember(), {
+      roles: ["founder"],
+      workspace,
+    });
+    const builtInOwner = Object.assign(new TestWorkspaceMember(), {
+      roles: ["owner"],
+      workspace,
+    });
+
+    await expect(service.deleteWorkspace(workspace, founder)).resolves.toBe(
+      workspace,
+    );
+    await expect(
+      service.deleteWorkspace(workspace, builtInOwner),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
   it("updates mutable workspace fields", async () => {
     const { em, service } = createService();
     const workspace = new TestWorkspace();
@@ -221,6 +304,35 @@ describe("WorkspaceService", () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it("validates direct member permissions against the workspace catalog", async () => {
+    const { em, service } = createService();
+    const workspace = new TestWorkspace();
+    const user = new TestUser();
+    em.findOne.mockResolvedValue(null);
+
+    await expect(
+      service.addMember(workspace, user, {
+        permissions: ["user:get"],
+      }),
+    ).rejects.toThrow(
+      "Workspace member contains unknown permissions: user:get",
+    );
+
+    const member = new TestWorkspaceMember();
+    await expect(
+      service.setMemberPermissions(member, [
+        "workspace:update",
+        "workspace:update",
+      ]),
+    ).rejects.toThrow(
+      "Workspace member contains duplicate permissions: workspace:update",
+    );
+    await expect(
+      service.setMemberPermissions(member, ["workspace:update"]),
+    ).resolves.toBe(member);
+    expect(member.permissions).toEqual(["workspace:update"]);
+  });
+
   it("lists configured roles and updates member roles", async () => {
     const { service } = createService({
       permissions: [
@@ -315,7 +427,7 @@ describe("WorkspaceService", () => {
       nextOwner,
       LockMode.PESSIMISTIC_WRITE,
     );
-    expect(currentOwner.roles).toEqual(["admin"]);
+    expect(currentOwner.roles).toEqual(["member"]);
     expect(nextOwner.roles).toEqual(["owner"]);
   });
 

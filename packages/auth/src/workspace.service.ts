@@ -46,11 +46,14 @@ import type { AuthModuleRoles } from "./types/auth-module-roles.type.js";
 import {
   listAuthPermissions,
   listAuthRoles,
+  normalizeAuthPermissions,
   normalizeAuthRoles,
   resolveAuthPermissions,
 } from "./utils/auth-role.util.js";
 import {
+  DEFAULT_WORKSPACE_CREATOR_ROLE,
   DEFAULT_WORKSPACE_PERMISSIONS,
+  DEFAULT_WORKSPACE_ROLE,
   DEFAULT_WORKSPACE_ROLES,
 } from "./workspace.constants.js";
 
@@ -101,7 +104,7 @@ export class WorkspaceService<
     const workspaceMember = this.em.create(this.workspaceMemberEntity, {
       email: user.email,
       name: user.name,
-      roles: ["owner"],
+      roles: [this.creatorRole],
       status: "ACTIVE",
       user,
       workspace,
@@ -157,7 +160,7 @@ export class WorkspaceService<
     currentWorkspaceMember: WorkspaceMember,
   ): Promise<Workspace> {
     if (
-      !currentWorkspaceMember.roles.includes("owner") ||
+      !currentWorkspaceMember.roles.includes(this.creatorRole) ||
       this.unwrapWorkspace(currentWorkspaceMember).id !== workspace.id
     ) {
       throw new ForbiddenException("Only workspace owners can delete it");
@@ -221,6 +224,7 @@ export class WorkspaceService<
     user: User,
     input: AddWorkspaceMemberOptions = {},
   ): Promise<WorkspaceMember> {
+    const permissions = this.normalizePermissions(input.permissions ?? []);
     const existing = await this.withRlsDisabled(
       async () =>
         await this.em.findOne(
@@ -234,8 +238,8 @@ export class WorkspaceService<
     const member = this.em.create(this.workspaceMemberEntity, {
       email: user.email,
       name: user.name,
-      permissions: input.permissions ?? [],
-      roles: this.normalizeRoles(input.roles ?? ["member"]),
+      permissions,
+      roles: this.normalizeRoles(input.roles ?? [this.defaultRole]),
       status: "ACTIVE",
       user,
       workspace,
@@ -264,14 +268,14 @@ export class WorkspaceService<
     member: WorkspaceMember,
     role: string | readonly string[],
   ): Promise<WorkspaceMember> {
-    if (member.roles.includes("owner")) {
+    if (member.roles.includes(this.creatorRole)) {
       throw new ForbiddenException(
         "Workspace owner roles can only be changed by transferring ownership",
       );
     }
 
     const roles = this.normalizeRoles(role);
-    if (roles.includes("owner")) {
+    if (roles.includes(this.creatorRole)) {
       throw new ForbiddenException(
         "The owner role can only be assigned by transferring ownership",
       );
@@ -287,14 +291,14 @@ export class WorkspaceService<
     member: WorkspaceMember,
     permissions: readonly string[],
   ): Promise<WorkspaceMember> {
-    member.permissions = [...new Set(permissions)];
+    member.permissions = this.normalizePermissions(permissions);
     await this.em.flush();
     return member;
   }
 
   /** Removes a non-owner member from its workspace. */
   async removeMember(member: WorkspaceMember): Promise<WorkspaceMember> {
-    if (member.roles.includes("owner")) {
+    if (member.roles.includes(this.creatorRole)) {
       throw new ForbiddenException("Workspace owners cannot be removed");
     }
     await this.em.remove(member).flush();
@@ -313,7 +317,7 @@ export class WorkspaceService<
     nextOwner: WorkspaceMember,
   ): Promise<WorkspaceMember> {
     if (
-      !currentOwner.roles.includes("owner") ||
+      !currentOwner.roles.includes(this.creatorRole) ||
       this.unwrapWorkspace(currentOwner).id !== workspace.id
     ) {
       throw new ForbiddenException(
@@ -336,14 +340,14 @@ export class WorkspaceService<
           await em.lock(currentOwner, LockMode.PESSIMISTIC_WRITE);
           await em.lock(nextOwner, LockMode.PESSIMISTIC_WRITE);
 
-          if (!currentOwner.roles.includes("owner")) {
+          if (!currentOwner.roles.includes(this.creatorRole)) {
             throw new ForbiddenException(
               "Workspace ownership has already changed",
             );
           }
 
-          currentOwner.roles = ["admin"];
-          nextOwner.roles = ["owner"];
+          currentOwner.roles = [this.defaultRole];
+          nextOwner.roles = [this.creatorRole];
           await em.flush();
           return nextOwner;
         }),
@@ -418,7 +422,7 @@ export class WorkspaceService<
                 now.getTime() + (input.expiresIn ?? 60 * 60 * 48) * 1000,
               ),
               inviter,
-              roles: this.normalizeRoles(input.roles ?? ["member"]),
+              roles: this.normalizeRoles(input.roles ?? [this.defaultRole]),
               status: "pending",
               workspace,
             } as unknown as RequiredEntityData<WorkspaceInvitation>);
@@ -643,7 +647,7 @@ export class WorkspaceService<
   /** Resolves permissions inherited from roles plus direct member permissions. */
   getMemberPermissions(member: WorkspaceMember): string[] {
     return resolveAuthPermissions(
-      member.roles ?? ["member"],
+      member.roles ?? [this.defaultRole],
       member.permissions ?? [],
       this.roles,
     );
@@ -653,8 +657,26 @@ export class WorkspaceService<
     return normalizeAuthRoles(role, this.roles);
   }
 
+  private normalizePermissions(permissions: readonly string[]): string[] {
+    return normalizeAuthPermissions(
+      permissions,
+      this.permissions,
+      "Workspace member",
+    );
+  }
+
   private get roles(): AuthModuleRoles {
     return this.authOptions.workspace?.roles ?? DEFAULT_WORKSPACE_ROLES;
+  }
+
+  private get defaultRole(): string {
+    return this.authOptions.workspace?.defaultRole ?? DEFAULT_WORKSPACE_ROLE;
+  }
+
+  private get creatorRole(): string {
+    return (
+      this.authOptions.workspace?.creatorRole ?? DEFAULT_WORKSPACE_CREATOR_ROLE
+    );
   }
 
   private get permissions(): readonly string[] {

@@ -19,8 +19,8 @@ Important Nest Boot options include:
 - **`emailAndPassword.sendResetPassword`** — overrides password-reset delivery;
 - **`emailVerification.sendVerificationEmail`** — overrides verification delivery;
 - **`user.changeEmail.enabled`** — enables the two-stage email-change flow;
-- **`user.permissions`**, **`user.roles`**, and **`user.buildAbility`** — define the user-administration permission catalog and roles, then build its request ability;
-- **`workspace.permissions`**, **`workspace.roles`**, and **`workspace.buildAbility`** — define the workspace permission catalog and roles, then build its request ability;
+- **`user.defaultRole`**, **`user.adminRoles`**, **`user.permissions`**, **`user.roles`**, and **`user.buildAbility`** — define user role lifecycles and authorization;
+- **`workspace.defaultRole`**, **`workspace.creatorRole`**, **`workspace.permissions`**, **`workspace.roles`**, and **`workspace.buildAbility`** — define workspace role lifecycles and authorization;
 - **`workspace.sendInvitationEmail`** — delivers persisted workspace invitations;
 - **`onAuthenticated`** — enriches application context after session resolution;
 - **`middleware`** — controls auth middleware registration and route selection;
@@ -30,25 +30,33 @@ Important Nest Boot options include:
 `user.permissions` defaults to the standard `user:*` and `session:*` catalog.
 `user.roles` defaults to `admin` and `user`. The `admin` role grants the full
 default catalog, while `user` grants none. A configured permission array or role
-map replaces its corresponding default.
+map replaces its corresponding default. `user.defaultRole` defaults to `user`.
+`user.adminRoles` defaults to `['admin']` and classifies administrative
+identities, including targets that require `user:impersonate-admins` to
+impersonate.
 
 `workspace.permissions` defaults to the standard workspace permission catalog.
 `workspace.roles` defaults to `owner`, `admin`, and `member`. Owners receive the
 full default catalog. Administrators receive the same permissions except
 `workspace:delete`, and members receive none. A configured permission array or
-role map replaces its corresponding default.
+role map replaces its corresponding default. `workspace.defaultRole` defaults
+to `member` for additions and invitations. `workspace.creatorRole` defaults to
+`owner` and identifies the protected workspace creator lifecycle.
 
 Every permission granted by a configured role must be present in the matching
 permission catalog. `forRoot()` infers literal permission unions and rejects
 unknown role grants in TypeScript; runtime validation also protects dynamic and
-asynchronous configuration. Invalid role configuration prevents application
-startup.
+asynchronous configuration. Each default, administrator, and creator role must
+also exist in its corresponding role map. Invalid role configuration prevents
+application startup.
 
 Users, workspace members, and invitations store role names as `string[]`, so a
 subject may receive permissions from multiple configured roles. Permission
 properties are also `string[]`. Role assignment methods validate names against
 the configured role map, while the module options keep the configured catalogs
 typed without coupling the GraphQL or database schema to literal unions.
+Direct user, workspace-member, and API-key permission writes are also validated
+against these catalogs at runtime.
 
 ## Environment Variables
 

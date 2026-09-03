@@ -30,6 +30,12 @@ import type {
   BaseWorkspace,
   BaseWorkspaceMember,
 } from "./entities/index.js";
+import { DEFAULT_USER_PERMISSIONS } from "./user.constants.js";
+import { normalizeAuthPermissions } from "./utils/auth-role.util.js";
+import {
+  DEFAULT_WORKSPACE_CREATOR_ROLE,
+  DEFAULT_WORKSPACE_PERMISSIONS,
+} from "./workspace.constants.js";
 
 /** Input accepted when creating an API key. */
 export interface CreateApiKeyOptions {
@@ -37,7 +43,7 @@ export interface CreateApiKeyOptions {
   name: string;
   /** Optional expiration timestamp. */
   expiresAt?: Date | null;
-  /** Operations that this API key may perform. */
+  /** Operations from the permission catalogs allowed for this key's owner type. */
   permissions?: string[] | null;
   /** Plaintext prefix prepended to the generated key. */
   prefix?: string;
@@ -51,7 +57,7 @@ export interface UpdateApiKeyOptions {
   expiresAt?: Date | null;
   /** API-key display name. */
   name?: string;
-  /** Operations that this API key may perform. */
+  /** Operations from the permission catalogs allowed for this key's owner type. */
   permissions?: string[] | null;
 }
 
@@ -269,7 +275,10 @@ export class ApiKeyService<
     }
     const prefix = options.prefix ?? process.env.API_KEY_PREFIX ?? "sk-";
     this.assertValidPrefix(prefix);
-    this.assertValidPermissions(options.permissions);
+    const permissions = this.normalizePermissions(
+      owner,
+      options.permissions ?? [],
+    );
 
     const plaintextApiKey = `${prefix}${randomBytes(48).toString("base64url")}`;
     const entity = this.em.create(this.apiKeyEntity, {
@@ -278,7 +287,7 @@ export class ApiKeyService<
       key: this.hashApiKey(plaintextApiKey),
       name: options.name,
       owner,
-      permissions: options.permissions ?? [],
+      permissions,
       prefix,
       start: plaintextApiKey.slice(0, 8),
     } as RequiredEntityData<ApiKey>);
@@ -299,12 +308,18 @@ export class ApiKeyService<
     if (input.expiresAt && input.expiresAt <= new Date()) {
       throw new BadRequestException("API key expiration must be in the future");
     }
-    this.assertValidPermissions(input.permissions);
+    const permissions =
+      input.permissions === undefined
+        ? undefined
+        : this.normalizePermissions(
+            this.unwrapOwner(apiKey),
+            input.permissions ?? [],
+          );
     if (input.name !== undefined) apiKey.name = input.name;
     if (input.enabled !== undefined) apiKey.enabled = input.enabled;
     if (input.expiresAt !== undefined) apiKey.expiresAt = input.expiresAt;
-    if (input.permissions !== undefined) {
-      apiKey.permissions = input.permissions ?? [];
+    if (permissions !== undefined) {
+      apiKey.permissions = permissions;
     }
     await this.runUnrestricted(() => this.em.flush());
     return apiKey;
@@ -373,7 +388,9 @@ export class ApiKeyService<
   }
 
   private assertCanManageWorkspaceApiKeys(member: WorkspaceMember): void {
-    if (!member.roles.includes("owner")) {
+    const creatorRole =
+      this.authOptions.workspace?.creatorRole ?? DEFAULT_WORKSPACE_CREATOR_ROLE;
+    if (!member.roles.includes(creatorRole)) {
       throw new ForbiddenException(
         "You are not allowed to manage workspace API keys",
       );
@@ -441,20 +458,25 @@ export class ApiKeyService<
     }
   }
 
-  private assertValidPermissions(
-    permissions: string[] | null | undefined,
-  ): void {
-    if (permissions == null) return;
-    const isValid =
-      Array.isArray(permissions) &&
-      permissions.every(
-        (permission) => typeof permission === "string" && permission.length > 0,
-      );
-    if (!isValid) {
-      throw new BadRequestException(
-        "API key permissions must contain non-empty strings",
-      );
-    }
+  private normalizePermissions(
+    owner: User | Workspace,
+    permissions: readonly string[],
+  ): string[] {
+    const ownerType = this.getOwnerType(owner);
+    const userPermissions =
+      this.authOptions.user?.permissions ?? DEFAULT_USER_PERMISSIONS;
+    const workspacePermissions =
+      this.authOptions.workspace?.permissions ?? DEFAULT_WORKSPACE_PERMISSIONS;
+    const availablePermissions =
+      ownerType === "user"
+        ? [...userPermissions, ...workspacePermissions]
+        : workspacePermissions;
+
+    return normalizeAuthPermissions(
+      permissions,
+      availablePermissions,
+      ownerType === "user" ? "User API key" : "Workspace API key",
+    );
   }
 
   private get apiKeyEntity(): EntityClass<ApiKey> {

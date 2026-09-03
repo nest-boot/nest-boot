@@ -112,12 +112,23 @@ await workspaceService.updateMemberRole(member, ["admin"]);
 ```
 
 `setRole()` and `updateMemberRole()` reject empty or unknown role names.
-`updateMemberRole()` cannot modify a current owner or assign the owner role;
-use `transferOwnership()` for that transition.
+`updateMemberRole()` cannot modify a current creator or assign the configured
+creator role; use `transferOwnership()` for that transition. An ownership
+transfer assigns `workspace.creatorRole` to the next owner and demotes the
+previous owner to `workspace.defaultRole`.
+
+`user.defaultRole` and `workspace.defaultRole` provide fallback roles for new
+users and members. `workspace.creatorRole` identifies the ownership role.
+`user.adminRoles` may contain multiple roles and is used by
+`UserService.isAdmin()` to classify administrative users. Every configured
+lifecycle role is validated against its role map at startup.
 
 `getUserPermissions()` and `getMemberPermissions()` return the deduplicated
 union of permissions inherited from every assigned role and permissions stored
 directly on the entity. `hasPermission()` evaluates against the same result.
+`createUser()`, `addMember()`, `setUserPermissions()`, and
+`setMemberPermissions()` reject malformed, duplicate, or unknown direct
+permissions instead of persisting values outside the configured catalog.
 
 The example GraphQL application exposes `userRoles`, `userPermissions`,
 `workspaceRoles`, and `workspacePermissions` queries. Role changes use the

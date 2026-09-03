@@ -27,8 +27,8 @@ requests update `lastUsedAt` automatically.
 ## Permission Values
 
 The auth package stores and evaluates permissions as `string[]`. Applications
-define their own closed permission catalog and validate values before writing
-them.
+define closed user and workspace permission catalogs. `ApiKeyService` validates
+permission values against those catalogs during key creation and updates.
 
 ```typescript
 const workspacePermissions = [
@@ -38,17 +38,15 @@ const workspacePermissions = [
 
 type WorkspacePermission = (typeof workspacePermissions)[number];
 
-const userKeyPermissions = [
-  "user:get",
-  ...workspacePermissions,
-] as const;
+const userKeyPermissions = ["user:get", ...workspacePermissions] as const;
 ```
 
 In the example, entity properties, GraphQL inputs, and database columns all use
 strings. The application keeps an `as const` catalog for form options and local
-TypeScript types, and may add runtime validation when accepting untrusted
-values. A workspace key accepts only workspace permissions; a user key may
-contain both domains. PostgreSQL persists the values in `text[]` columns.
+TypeScript types. A workspace key accepts only configured workspace
+permissions; a user key accepts the union of the configured user and workspace
+catalogs. Malformed, duplicate, and unknown values are rejected. PostgreSQL
+persists the values in `text[]` columns.
 
 ## Transport
 
@@ -72,5 +70,7 @@ audit(@CurrentApiKey() apiKey: ApiKey | null) {
 }
 ```
 
-API-key permissions are intersected with the owning user or workspace ability;
-they cannot grant access outside the owner's effective authorization.
+User-key permissions are intersected with the owning user's user ability and,
+for workspace routes, the user's current workspace-member ability. Workspace
+keys are service identities and are evaluated directly from their validated
+workspace permission list.

@@ -625,6 +625,121 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     });
   });
 
+  it('rejects permissions outside the configured owner catalogs', async () => {
+    const administrator = await createAuthenticatedUser(
+      'Permission Catalog Administrator',
+    );
+    const target = await createAuthenticatedUser('Permission Catalog Target');
+    await migrationOrm.em
+      .getConnection()
+      .execute(`update "user" set roles = array['admin'] where id = ?`, [
+        administrator.user.id,
+      ]);
+
+    const invalidUserPermission = await gql(
+      /* GraphQL */ `
+        mutation SetUserPermissions(
+          $id: ID!
+          $input: SetUserPermissionsInput!
+        ) {
+          setUserPermissions(id: $id, input: $input) {
+            id
+          }
+        }
+      `,
+      {
+        cookies: administrator.cookies,
+        variables: {
+          id: target.user.id,
+          input: { permissions: ['workspace:update'] },
+        },
+      },
+    );
+    expectGraphQLError(invalidUserPermission);
+
+    const workspace = await createWorkspace(
+      administrator,
+      'Permission Catalog Workspace',
+    );
+    const currentMember = await gql(
+      /* GraphQL */ `
+        query {
+          currentWorkspaceMember {
+            id
+          }
+        }
+      `,
+      {
+        cookies: administrator.cookies,
+        workspaceId: workspace.id,
+      },
+    );
+    expectNoGraphQLErrors(currentMember);
+
+    const invalidMemberPermission = await gql(
+      /* GraphQL */ `
+        mutation SetWorkspaceMemberPermissions(
+          $id: ID!
+          $input: SetWorkspaceMemberPermissionsInput!
+        ) {
+          setWorkspaceMemberPermissions(id: $id, input: $input) {
+            id
+          }
+        }
+      `,
+      {
+        cookies: administrator.cookies,
+        variables: {
+          id: currentMember.body.data.currentWorkspaceMember.id,
+          input: { permissions: ['user:get'] },
+        },
+        workspaceId: workspace.id,
+      },
+    );
+    expectGraphQLError(invalidMemberPermission);
+
+    const invalidWorkspaceKey = await gql(
+      /* GraphQL */ `
+        mutation CreateApiKey($input: CreateApiKeyInput!) {
+          createApiKey(input: $input) {
+            apiKey
+          }
+        }
+      `,
+      {
+        cookies: administrator.cookies,
+        variables: {
+          input: {
+            name: 'Invalid workspace key',
+            permissions: ['user:get'],
+          },
+        },
+        workspaceId: workspace.id,
+      },
+    );
+    expectGraphQLError(invalidWorkspaceKey);
+
+    const invalidUserKey = await gql(
+      /* GraphQL */ `
+        mutation CreateUserApiKey($input: CreateApiKeyInput!) {
+          createUserApiKey(input: $input) {
+            apiKey
+          }
+        }
+      `,
+      {
+        cookies: target.cookies,
+        variables: {
+          input: {
+            name: 'Invalid user key',
+            permissions: ['unknown:execute'],
+          },
+        },
+      },
+    );
+    expectGraphQLError(invalidUserKey);
+  });
+
   it('resolves workspace context from header and cookie while returning null for missing member context', async () => {
     const alice = await createAuthenticatedUser('Alice');
     const bob = await createAuthenticatedUser('Bob');
