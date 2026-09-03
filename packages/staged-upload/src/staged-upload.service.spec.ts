@@ -191,6 +191,22 @@ describe("StagedUploadService", () => {
       );
     });
 
+    it("accepts a root-relative S3 upload Location", async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-01-31T12:00:00.000Z"));
+      const storage = createStorage();
+      const service = await createService({}, storage.value);
+
+      await expect(
+        service.persist("/uploads/tenant/tmp/photo.jpeg"),
+      ).resolves.toBe("https://storage.local/files/2026/01/31/photo.jpeg");
+
+      expect(storage.copyFile).toHaveBeenCalledWith(
+        "tmp/photo.jpeg",
+        "files/2026/01/31/photo.jpeg",
+      );
+    });
+
     it("decodes the temporary key after the final tmp path segment", async () => {
       vi.useFakeTimers();
       vi.setSystemTime(new Date("2026-01-31T12:00:00.000Z"));
