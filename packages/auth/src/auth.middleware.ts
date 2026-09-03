@@ -126,6 +126,7 @@ export class AuthMiddleware implements NestMiddleware {
     const member = await this.em.findOne(
       this.options.entities.workspaceMember,
       {
+        status: "ACTIVE",
         user,
         workspace,
       },

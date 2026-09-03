@@ -340,6 +340,24 @@ describe("AuthService", () => {
     expect(api.deleteUser).toHaveBeenCalledWith({ body: {}, headers });
   });
 
+  it("returns user-deletion response headers when requested", async () => {
+    const { api, service } = await createService();
+    const responseHeaders = new Headers({
+      "set-cookie": "better-auth.session_token=; Max-Age=0",
+    });
+    const response = { message: "User deleted", success: true };
+    api.deleteUser.mockResolvedValue({ headers: responseHeaders, response });
+
+    await expect(
+      service.deleteUser(headers, {}, { returnHeaders: true }),
+    ).resolves.toEqual({ headers: responseHeaders, response });
+    expect(api.deleteUser).toHaveBeenCalledWith({
+      body: {},
+      headers,
+      returnHeaders: true,
+    });
+  });
+
   it("lists safe linked-account summaries", async () => {
     const { api, service } = await createService();
     const accounts = [

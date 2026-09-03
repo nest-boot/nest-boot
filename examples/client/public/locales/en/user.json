@@ -85,6 +85,29 @@
         "revoke_failed": "Unable to sign out the session",
         "revoked": "Session signed out"
       }
+    },
+    "accounts": {
+      "description": "Review credential and social identities linked to your account.",
+      "loading": "Loading linked accounts…",
+      "refresh": "Refresh token",
+      "refresh_failed": "Unable to refresh the provider token",
+      "refreshed": "Provider token refreshed",
+      "title": "Linked accounts",
+      "unlink": "Unlink",
+      "unlink_confirm_description": "You will no longer be able to sign in with this provider.",
+      "unlink_confirm_title": "Unlink this account?",
+      "unlink_failed": "Unable to unlink the account",
+      "unlinked": "Account unlinked"
+    },
+    "delete": {
+      "action": "Delete account",
+      "confirm_description": "Your account, sessions, API keys, and memberships will be permanently removed.",
+      "confirm_title": "Permanently delete your account?",
+      "description": "Permanently remove your account and authentication data.",
+      "failed": "Unable to delete the account",
+      "password": "Current password",
+      "success": "Account deleted",
+      "title": "Delete account"
     }
   },
   "workspaces": {

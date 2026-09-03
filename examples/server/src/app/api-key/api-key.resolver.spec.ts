@@ -5,10 +5,11 @@ vi.mock('@nest-boot/auth', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@nest-boot/auth')>()),
   ApiKeyService: class ApiKeyService {},
   BaseUser: class BaseUser {},
-  Can: () => () => undefined,
   CurrentUser: () => () => undefined,
   CurrentWorkspace: () => () => undefined,
   CurrentWorkspaceMember: () => () => undefined,
+  UserCan: () => () => undefined,
+  WorkspaceCan: () => () => undefined,
 }));
 
 vi.mock('@nest-boot/graphql-connection', () => ({

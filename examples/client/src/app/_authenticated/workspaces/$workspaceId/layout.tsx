@@ -17,7 +17,7 @@ const GET_CURRENT_WORKSPACE_FROM_WORKSPACE_LAYOUT = graphql(`
     }
     currentWorkspaceMember {
       id
-      role
+      roles
     }
   }
 `);
@@ -32,7 +32,7 @@ export const Route = createFileRoute("/_authenticated/workspaces/$workspaceId")(
           workspaceId: params.workspaceId,
         },
         errorPolicy: "ignore",
-        fetchPolicy: "cache-first",
+        fetchPolicy: "network-only",
       });
 
       if (!data?.workspace || !data.currentWorkspaceMember) {

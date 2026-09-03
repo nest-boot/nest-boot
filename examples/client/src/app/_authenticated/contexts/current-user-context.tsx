@@ -11,6 +11,7 @@ const GET_CURRENT_USER_FROM_CURRENT_USER_CONTEXT = graphql(`
       id
       name
       email
+      permissions
     }
   }
 `);

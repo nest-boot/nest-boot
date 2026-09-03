@@ -1,6 +1,62 @@
-import { AuthPermission, WorkspacePermission } from "@/gql/graphql";
+import {
+  WORKSPACE_ADMIN_ROLE,
+  WORKSPACE_OWNER_ROLE,
+} from "@/lib/workspace-roles";
 
 const t = (key: string) => key;
+
+export const workspacePermissionValues = [
+  "workspace:update",
+  "workspace:delete",
+  "workspaceMember:create",
+  "workspaceMember:update",
+  "workspaceMember:delete",
+  "workspaceInvitation:create",
+  "workspaceInvitation:cancel",
+] as const;
+
+export type WorkspacePermission = (typeof workspacePermissionValues)[number];
+
+export const userPermissionValues = [
+  "user:create",
+  "user:list",
+  "user:set-role",
+  "user:ban",
+  "user:impersonate",
+  "user:impersonate-admins",
+  "user:delete",
+  "user:set-password",
+  "user:set-email",
+  "user:get",
+  "user:update",
+  "session:list",
+  "session:revoke",
+  "session:delete",
+] as const;
+
+export type UserPermission = (typeof userPermissionValues)[number];
+
+export const workspaceApiKeyPermissionValues = workspacePermissionValues;
+export const authPermissionValues = [
+  ...userPermissionValues,
+  ...workspacePermissionValues,
+] as const;
+
+export type AuthPermission = (typeof authPermissionValues)[number];
+
+export function isWorkspacePermission(
+  value: string,
+): value is WorkspacePermission {
+  return (workspacePermissionValues as ReadonlyArray<string>).includes(value);
+}
+
+export function isUserPermission(value: string): value is UserPermission {
+  return (userPermissionValues as ReadonlyArray<string>).includes(value);
+}
+
+export function isAuthPermission(value: string): value is AuthPermission {
+  return (authPermissionValues as ReadonlyArray<string>).includes(value);
+}
 
 export interface PermissionOption<Permission extends string> {
   value: Permission;
@@ -20,78 +76,53 @@ function option<Permission extends string>(
 }
 
 export const workspacePermissionOptions = [
-  option(WorkspacePermission.WORKSPACE_UPDATE, "workspace_update"),
-  option(WorkspacePermission.WORKSPACE_DELETE, "workspace_delete"),
-  option(
-    WorkspacePermission.WORKSPACE_MEMBER_CREATE,
-    "workspace_member_create",
-  ),
-  option(
-    WorkspacePermission.WORKSPACE_MEMBER_UPDATE,
-    "workspace_member_update",
-  ),
-  option(
-    WorkspacePermission.WORKSPACE_MEMBER_DELETE,
-    "workspace_member_delete",
-  ),
-  option(
-    WorkspacePermission.WORKSPACE_INVITATION_CREATE,
-    "workspace_invitation_create",
-  ),
-  option(
-    WorkspacePermission.WORKSPACE_INVITATION_CANCEL,
-    "workspace_invitation_cancel",
-  ),
+  option("workspace:update", "workspace_update"),
+  option("workspace:delete", "workspace_delete"),
+  option("workspaceMember:create", "workspace_member_create"),
+  option("workspaceMember:update", "workspace_member_update"),
+  option("workspaceMember:delete", "workspace_member_delete"),
+  option("workspaceInvitation:create", "workspace_invitation_create"),
+  option("workspaceInvitation:cancel", "workspace_invitation_cancel"),
 ] as const satisfies ReadonlyArray<PermissionOption<WorkspacePermission>>;
 
-export const workspaceApiKeyPermissionOptions = [
-  option(AuthPermission.WORKSPACE_UPDATE, "workspace_update"),
-  option(AuthPermission.WORKSPACE_DELETE, "workspace_delete"),
-  option(AuthPermission.WORKSPACE_MEMBER_CREATE, "workspace_member_create"),
-  option(AuthPermission.WORKSPACE_MEMBER_UPDATE, "workspace_member_update"),
-  option(AuthPermission.WORKSPACE_MEMBER_DELETE, "workspace_member_delete"),
-  option(
-    AuthPermission.WORKSPACE_INVITATION_CREATE,
-    "workspace_invitation_create",
-  ),
-  option(
-    AuthPermission.WORKSPACE_INVITATION_CANCEL,
-    "workspace_invitation_cancel",
-  ),
-] as const satisfies ReadonlyArray<PermissionOption<AuthPermission>>;
+export const workspaceApiKeyPermissionOptions = workspacePermissionOptions;
 
 export const userPermissionOptions = [
-  option(AuthPermission.USER_CREATE, "user_create"),
-  option(AuthPermission.USER_LIST, "user_list"),
-  option(AuthPermission.USER_SET_ROLE, "user_set_role"),
-  option(AuthPermission.USER_BAN, "user_ban"),
-  option(AuthPermission.USER_IMPERSONATE, "user_impersonate"),
-  option(AuthPermission.USER_IMPERSONATE_ADMINS, "user_impersonate_admins"),
-  option(AuthPermission.USER_DELETE, "user_delete"),
-  option(AuthPermission.USER_SET_PASSWORD, "user_set_password"),
-  option(AuthPermission.USER_SET_EMAIL, "user_set_email"),
-  option(AuthPermission.USER_GET, "user_get"),
-  option(AuthPermission.USER_UPDATE, "user_update"),
-  option(AuthPermission.SESSION_LIST, "session_list"),
-  option(AuthPermission.SESSION_REVOKE, "session_revoke"),
-  option(AuthPermission.SESSION_DELETE, "session_delete"),
-] as const satisfies ReadonlyArray<PermissionOption<AuthPermission>>;
+  option("user:create", "user_create"),
+  option("user:list", "user_list"),
+  option("user:set-role", "user_set_role"),
+  option("user:ban", "user_ban"),
+  option("user:impersonate", "user_impersonate"),
+  option("user:impersonate-admins", "user_impersonate_admins"),
+  option("user:delete", "user_delete"),
+  option("user:set-password", "user_set_password"),
+  option("user:set-email", "user_set_email"),
+  option("user:get", "user_get"),
+  option("user:update", "user_update"),
+  option("session:list", "session_list"),
+  option("session:revoke", "session_revoke"),
+  option("session:delete", "session_delete"),
+] as const satisfies ReadonlyArray<PermissionOption<UserPermission>>;
 
 export const authPermissionOptions = [
   ...userPermissionOptions,
-  ...workspaceApiKeyPermissionOptions,
+  ...workspacePermissionOptions,
 ] as const satisfies ReadonlyArray<PermissionOption<AuthPermission>>;
 
-export const workspacePermissionValues = workspacePermissionOptions.map(
-  ({ value }) => value,
-) as [WorkspacePermission, ...Array<WorkspacePermission>];
+/** Mirrors the example server's workspace role and direct-permission policy. */
+export function workspaceMemberCan(
+  member: {
+    permissions: ReadonlyArray<string>;
+    roles: ReadonlyArray<string>;
+  },
+  permission: WorkspacePermission,
+): boolean {
+  if (member.permissions.includes(permission)) return true;
+  if (member.roles.includes(WORKSPACE_OWNER_ROLE)) return true;
 
-export const workspaceApiKeyPermissionValues =
-  workspaceApiKeyPermissionOptions.map(({ value }) => value) as [
-    AuthPermission,
-    ...Array<AuthPermission>,
-  ];
+  if (member.roles.includes(WORKSPACE_ADMIN_ROLE)) {
+    return permission !== "workspace:delete";
+  }
 
-export const authPermissionValues = authPermissionOptions.map(
-  ({ value }) => value,
-) as [AuthPermission, ...Array<AuthPermission>];
+  return false;
+}

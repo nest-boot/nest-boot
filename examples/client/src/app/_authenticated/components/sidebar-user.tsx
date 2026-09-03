@@ -7,6 +7,7 @@ import {
   EllipsisVertical,
   KeyRound,
   LogOut,
+  ShieldCheck,
 } from "lucide-react";
 import md5 from "md5";
 import { useMemo } from "react";
@@ -125,6 +126,15 @@ export function SidebarUser() {
                 <KeyRound />
                 {t("sidebar:user.api_keys")}
               </DropdownMenuItem>
+              {currentUser.permissions.includes("user:list") ? (
+                <DropdownMenuItem
+                  data-testid="sidebar-admin-link"
+                  onClick={() => navigate({ to: "/admin/users" })}
+                >
+                  <ShieldCheck />
+                  {t("sidebar:admin.title")}
+                </DropdownMenuItem>
+              ) : null}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={async () => {

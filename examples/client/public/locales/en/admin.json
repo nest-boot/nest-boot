@@ -1,0 +1,84 @@
+{
+  "failed": "The operation failed",
+  "title": "Administration",
+  "user": {
+    "ban": {
+      "action": "Ban user",
+      "banned": "User banned",
+      "description": "Banning a user immediately revokes their active and impersonated sessions.",
+      "reason": "Reason",
+      "title": "Ban user",
+      "unban": "Remove ban",
+      "unban_title": "User is banned",
+      "unbanned": "User ban removed"
+    },
+    "delete": {
+      "action": "Delete user",
+      "confirm_description": "The user and their authentication records will be permanently deleted.",
+      "confirm_title": "Delete this user?",
+      "success": "User deleted"
+    },
+    "loading": "Loading user…",
+    "not_found": "User not found",
+    "password": {
+      "action": "Set password",
+      "description": "Replace the user's credential password.",
+      "new": "New password",
+      "success": "Password updated",
+      "title": "Password"
+    },
+    "permissions": {
+      "description": "Set the user's administrative permission ceiling.",
+      "success": "Permissions updated",
+      "title": "Permissions"
+    },
+    "profile": {
+      "description": "Update identity and email-verification fields.",
+      "email_verified": "Email verified",
+      "success": "User updated",
+      "title": "Profile"
+    },
+    "roles": {
+      "description": "Assign one or more configured administrative roles.",
+      "label": "Roles",
+      "success": "Roles updated",
+      "title": "Roles"
+    },
+    "sessions": {
+      "description": "Review and revoke this user's active sessions.",
+      "revoke": "Revoke",
+      "revoke_all": "Revoke all sessions",
+      "revoked": "Session revoked",
+      "revoked_all": "All sessions revoked",
+      "title": "Sessions",
+      "unknown": "Unknown client"
+    },
+    "title": "User"
+  },
+  "users": {
+    "active": "Active",
+    "banned": "Banned",
+    "create": {
+      "action": "Create user",
+      "description": "Create an email-and-password user account.",
+      "failed": "Unable to create the user",
+      "password": "Temporary password",
+      "success": "User created",
+      "title": "Create user"
+    },
+    "description": "Search, review, and administer application users.",
+    "loading": "Loading users…",
+    "search": "Search by email or name",
+    "search_action": "Search",
+    "table": {
+      "created_at": "Created",
+      "email": "Email",
+      "email_status": "Email",
+      "name": "Name",
+      "status": "Status"
+    },
+    "title": "Users",
+    "unverified": "Unverified",
+    "verified": "Verified"
+  }
+}

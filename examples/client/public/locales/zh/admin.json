@@ -1,0 +1,84 @@
+{
+  "failed": "操作失败",
+  "title": "管理后台",
+  "user": {
+    "ban": {
+      "action": "封禁用户",
+      "banned": "用户已封禁",
+      "description": "封禁用户会立即撤销其活跃会话和模拟会话。",
+      "reason": "原因",
+      "title": "封禁用户",
+      "unban": "解除封禁",
+      "unban_title": "用户已被封禁",
+      "unbanned": "用户封禁已解除"
+    },
+    "delete": {
+      "action": "删除用户",
+      "confirm_description": "该用户及其认证记录将被永久删除。",
+      "confirm_title": "删除此用户？",
+      "success": "用户已删除"
+    },
+    "loading": "正在加载用户…",
+    "not_found": "未找到用户",
+    "password": {
+      "action": "设置密码",
+      "description": "替换用户的密码凭证。",
+      "new": "新密码",
+      "success": "密码已更新",
+      "title": "密码"
+    },
+    "permissions": {
+      "description": "设置用户的管理权限上限。",
+      "success": "权限已更新",
+      "title": "权限"
+    },
+    "profile": {
+      "description": "更新身份信息与邮箱验证状态。",
+      "email_verified": "邮箱已验证",
+      "success": "用户已更新",
+      "title": "资料"
+    },
+    "roles": {
+      "description": "为用户分配一个或多个已配置的管理角色。",
+      "label": "角色",
+      "success": "角色已更新",
+      "title": "角色"
+    },
+    "sessions": {
+      "description": "查看并撤销该用户的活跃会话。",
+      "revoke": "撤销",
+      "revoke_all": "撤销全部会话",
+      "revoked": "会话已撤销",
+      "revoked_all": "全部会话已撤销",
+      "title": "会话",
+      "unknown": "未知客户端"
+    },
+    "title": "用户"
+  },
+  "users": {
+    "active": "正常",
+    "banned": "已封禁",
+    "create": {
+      "action": "创建用户",
+      "description": "创建一个邮箱密码用户账户。",
+      "failed": "无法创建用户",
+      "password": "临时密码",
+      "success": "用户已创建",
+      "title": "创建用户"
+    },
+    "description": "搜索、查看和管理应用用户。",
+    "loading": "正在加载用户…",
+    "search": "按邮箱或名称搜索",
+    "search_action": "搜索",
+    "table": {
+      "created_at": "创建时间",
+      "email": "邮箱",
+      "email_status": "邮箱",
+      "name": "名称",
+      "status": "状态"
+    },
+    "title": "用户",
+    "unverified": "未验证",
+    "verified": "已验证"
+  }
+}

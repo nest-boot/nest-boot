@@ -210,10 +210,58 @@ describe("AuthMiddleware", () => {
     expect(set).toHaveBeenCalledWith(CURRENT_API_KEY, apiKey);
     expect(set).toHaveBeenCalledWith(BaseUser, user);
     expect(findOne).toHaveBeenLastCalledWith(expect.any(Function), {
+      status: "ACTIVE",
       user,
       workspace,
     });
     expect(set).toHaveBeenCalledWith(CURRENT_WORKSPACE_MEMBER, member);
+  });
+
+  it("does not restore a disabled membership into the auth context", async () => {
+    class TestWorkspace {}
+    const workspace = Object.assign(new TestWorkspace(), {
+      id: "workspace-1",
+    });
+    const user = Object.assign(new TestUser(), { id: "user-1" });
+    const findOne = vi
+      .fn()
+      .mockResolvedValueOnce(workspace)
+      .mockResolvedValueOnce(null);
+    const validate = vi.fn().mockResolvedValue({
+      apiKey: { id: "key-1" },
+      ownerType: "user",
+      user,
+    });
+    const { middleware } = await createMiddleware(
+      vi.fn().mockResolvedValue(null),
+      findOne,
+      vi.fn(),
+      validate,
+    );
+    const set = vi.spyOn(RequestContext, "set");
+
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      await middleware.use(
+        {
+          headers: {
+            authorization: "Bearer sk-key",
+            "x-workspace-id": "workspace-1",
+          },
+        } as Request,
+        {} as never,
+        vi.fn(),
+      );
+    });
+
+    expect(findOne).toHaveBeenLastCalledWith(expect.any(Function), {
+      status: "ACTIVE",
+      user,
+      workspace,
+    });
+    expect(set).not.toHaveBeenCalledWith(
+      CURRENT_WORKSPACE_MEMBER,
+      expect.anything(),
+    );
   });
 
   it("restores a workspace key and rejects a conflicting workspace selector", async () => {

@@ -43,7 +43,6 @@ vi.mock("./adapters/mikro-orm-adapter.js", () => ({
   mikroOrmAdapter: mockMikroOrmAdapter,
 }));
 
-import { AdminService } from "./admin.service.js";
 import { ApiKeyService } from "./api-key.service.js";
 import { AUTH_TOKEN } from "./auth.constants.js";
 import { AuthGuard } from "./auth.guard.js";
@@ -53,6 +52,7 @@ import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import { AuthService } from "./auth.service.js";
 import { AuthHandlerMiddleware } from "./auth-handler.middleware.js";
 import { SessionService } from "./session.service.js";
+import { UserService } from "./user.service.js";
 import { WorkspaceService } from "./workspace.service.js";
 
 class Account {}
@@ -219,13 +219,13 @@ describe("AuthModule", () => {
 
     expect(providers).toContain(AuthGuard);
     expect(providers).toContain(AuthHandlerMiddleware);
-    expect(providers).toContain(AdminService);
+    expect(providers).toContain(UserService);
     expect(providers).toContain(ApiKeyService);
     expect(providers).toContain(AuthService);
     expect(providers).toContain(SessionService);
     expect(providers).toContain(WorkspaceService);
     expect(exports).toContain(MODULE_OPTIONS_TOKEN);
-    expect(exports).toContain(AdminService);
+    expect(exports).toContain(UserService);
     expect(exports).toContain(ApiKeyService);
     expect(exports).toContain(AuthGuard);
     expect(exports).toContain(AuthService);
@@ -324,6 +324,41 @@ describe("AuthModule", () => {
     ]);
   });
 
+  it.each([
+    [
+      "user",
+      {
+        user: {
+          permissions: ["user:list"],
+          roles: { admin: ["user:delete"] },
+        },
+      },
+      'Role "admin" contains unknown user permissions: user:delete',
+    ],
+    [
+      "workspace",
+      {
+        workspace: {
+          permissions: ["workspace:update"],
+          roles: { owner: ["workspace:delete"] },
+        },
+      },
+      'Role "owner" contains unknown workspace permissions: workspace:delete',
+    ],
+  ])(
+    "rejects %s roles outside their permission catalog",
+    (_, config, error) => {
+      const authProvider = getAuthProvider();
+
+      expect(() =>
+        authProvider.useFactory({ entities, secret, ...config }, {
+          em: {},
+        } as unknown as MikroORM),
+      ).toThrow(error);
+      expect(mockBetterAuth).not.toHaveBeenCalled();
+    },
+  );
+
   it("should merge account options with the module OAuth state default", () => {
     const authProvider = getAuthProvider();
 
@@ -384,29 +419,35 @@ describe("AuthModule", () => {
 
     authProvider.useFactory(
       {
-        buildUserAbility: vi.fn(),
-        buildWorkspaceAbility: vi.fn(),
         entities,
         middleware: { register: false },
         onAuthenticated: vi.fn(),
         secret,
-        workspace: { sendInvitationEmail: vi.fn() },
+        unexpectedOption: "must-not-pass-through",
+        user: { buildAbility: vi.fn(), modelName: "application_user" },
+        workspace: {
+          buildAbility: vi.fn(),
+          sendInvitationEmail: vi.fn(),
+        },
       },
       { em: {} } as unknown as MikroORM,
     );
 
-    expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty(
-      "buildUserAbility",
+    expect(mockBetterAuth.mock.calls[0]?.[0].user).not.toHaveProperty(
+      "buildAbility",
     );
-    expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty(
-      "buildWorkspaceAbility",
-    );
+    expect(mockBetterAuth.mock.calls[0]?.[0].user).toEqual({
+      modelName: "application_user",
+    });
     expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty("entities");
     expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty("middleware");
     expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty(
       "onAuthenticated",
     );
     expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty("workspace");
+    expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty(
+      "unexpectedOption",
+    );
   });
 
   it("should enable email auth by default when AUTH_EMAIL_ENABLED is unset", () => {

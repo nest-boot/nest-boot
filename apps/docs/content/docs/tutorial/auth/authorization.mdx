@@ -1,6 +1,6 @@
 ---
 title: "Authorization"
-description: "Protect routes with AuthGuard, @Can, and user or workspace abilities."
+description: "Protect routes with AuthGuard and scoped user or workspace permissions."
 ---
 
 ## Global Guard
@@ -21,7 +21,7 @@ export class CommonModule {}
 ```
 
 Use `@Public()` for routes that do not require authentication. If a public route
-also declares `@Can`, its permission is still evaluated.
+also declares a permission decorator, its permission is still evaluated.
 
 ```typescript
 @Public()
@@ -41,42 +41,117 @@ causes that authorization scope to fail.
 import { AuthModule, PermissionAbilityBuilder } from "@nest-boot/auth";
 import { RequestContext } from "@nest-boot/request-context";
 
+const userRoles = {
+  admin: ["project:create"],
+  user: [],
+} as const;
+const userPermissions = ["project:create", "project:archive"] as const;
+
+const workspaceRoles = {
+  owner: ["project:create", "project:delete"],
+  member: ["project:create"],
+} as const;
+const workspacePermissions = [
+  "project:create",
+  "project:delete",
+  "project:archive",
+] as const;
+
 AuthModule.forRoot({
   // ...
-  buildWorkspaceAbility: () => {
-    const { can, build } = new PermissionAbilityBuilder();
-    can("read", Post);
-    return build();
+  workspace: {
+    permissions: workspacePermissions,
+    roles: workspaceRoles,
+    buildAbility: (_context, permissions) => {
+      const { can, build } = new PermissionAbilityBuilder();
+      for (const permission of permissions) {
+        const [subject, action] = permission.split(":");
+        if (subject === "post" && action) can(action, Post);
+      }
+      return build();
+    },
   },
-  buildUserAbility: () => {
-    const user = RequestContext.get(User);
-    if (!user) return null;
+  user: {
+    permissions: userPermissions,
+    roles: userRoles,
+    buildAbility: () => {
+      const user = RequestContext.get(User);
+      if (!user) return null;
 
-    const { can, build } = new PermissionAbilityBuilder();
-    can("read", Post);
-    can("update", Post, { authorId: user.id });
-    return build();
+      const { can, build } = new PermissionAbilityBuilder();
+      can("read", Post);
+      can("update", Post, { authorId: user.id });
+      return build();
+    },
   },
 });
 ```
 
-## Protect Routes
+Each scope owns its permission catalog, role registry, and ability builder.
+Every permission granted by a role must exist in that scope's `permissions`
+array, otherwise application startup fails. AuthModule resolves role permissions
+and direct entity permissions first. The builder receives only the deduplicated
+effective permission list as its second argument.
 
-`@Can` uses the workspace scope by default. Pass `{ scope: "user" }` for
-personal or application-level operations.
+## Manage Roles
+
+Permission catalogs and role definitions come from `user.permissions`,
+`user.roles`, `workspace.permissions`, and `workspace.roles`; they are not
+stored or managed by a separate role service. `UserService` and
+`WorkspaceService` expose the configured catalogs to transports and validate
+role assignments.
 
 ```typescript
-@Can("read", Post)
+const userRoles = userService.listRoles();
+const userPermissions = userService.listPermissions();
+await userService.setRole(user, ["admin", "auditor"]);
+
+const workspaceRoles = workspaceService.listRoles();
+const workspacePermissions = workspaceService.listPermissions();
+await workspaceService.updateMemberRole(member, ["admin"]);
+```
+
+`setRole()` and `updateMemberRole()` reject empty or unknown role names.
+`updateMemberRole()` cannot modify a current owner or assign the owner role;
+use `transferOwnership()` for that transition.
+
+`getUserPermissions()` and `getMemberPermissions()` return the deduplicated
+union of permissions inherited from every assigned role and permissions stored
+directly on the entity. `hasPermission()` evaluates against the same result.
+
+The example GraphQL application exposes `userRoles`, `userPermissions`,
+`workspaceRoles`, and `workspacePermissions` queries. Role changes use the
+dedicated `setUserRoles` and `updateWorkspaceMemberRole` mutations. Direct
+workspace-member grants use `setWorkspaceMemberPermissions`; ordinary member
+profile updates do not accept authorization fields.
+
+## Protect Routes
+
+Use `@WorkspaceCan` for workspace permissions and `@UserCan` for personal or
+application-level permissions. They write separate metadata and are evaluated
+by the same `AuthGuard`.
+
+```typescript
+@WorkspaceCan("read", Post)
 @Query(() => [Post])
 posts() {
   return this.postService.findAll();
 }
 
-@Can("read", User, { scope: "user" })
+@UserCan("read", User)
 @Query(() => User)
 me(@CurrentUser() user: User) {
   return user;
 }
+```
+
+If both decorators are present on a route, both permissions must pass. `@Can`
+is a thin alias that delegates to the scoped decorator; omitted `scope`
+delegates to `@WorkspaceCan`.
+
+```typescript
+@Can("read", Post) // @WorkspaceCan("read", Post)
+@Can("read", User, { scope: "user" }) // @UserCan("read", User)
 ```
 
 Use a subject factory when authorization depends on a concrete object. The
@@ -84,7 +159,7 @@ factory receives the controller or resolver instance first, followed by its
 decorated method parameters.
 
 ```typescript
-@Can("update", (self: PostResolver, id: string) =>
+@WorkspaceCan("update", (self: PostResolver, id: string) =>
   self.postService.findOneOrFail({ id }),
 )
 @Mutation(() => Post)
@@ -99,18 +174,22 @@ intersected with the corresponding ability.
 
 ## Lower-Level Checks
 
-After route-level `@Can` prepares an ability, lower-level code can use `can()`
-or `getPermissionAbility()`. Both default to workspace scope and accept the same
-explicit user scope.
+After a route-level decorator prepares an ability, lower-level code can use the
+matching scoped helpers. `can()` is a thin alias that routes to them by `scope`
+and defaults to `workspaceCan()`.
 
 ```typescript
-if (!can("update", post)) {
+if (!workspaceCan("update", post)) {
   throw new ForbiddenException();
 }
 
-can("read", user, { scope: "user" });
-getPermissionAbility("user");
+userCan("read", user);
+getWorkspaceAbility();
+getUserAbility();
+
+can("read", post); // workspaceCan(...)
+can("read", user, { scope: "user" }); // userCan(...)
 ```
 
-Both helpers throw `ForbiddenException` if the route did not prepare the
+These helpers throw `ForbiddenException` if the route did not prepare the
 requested ability.

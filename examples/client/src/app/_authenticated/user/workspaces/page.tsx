@@ -25,13 +25,14 @@ import {
 } from "@/components/thread-ui/page";
 import { Button } from "@/components/thread-ui/button";
 import { graphql } from "@/gql";
-import { WorkspaceMemberRole, WorkspaceOrderField } from "@/gql/graphql";
+import { WorkspaceOrderField } from "@/gql/graphql";
 import {
   OrderDirection,
   createConnectionSearchSchema,
   getNextPageSearch,
   getPreviousPageSearch,
 } from "@/lib/connection-search";
+import { getRolesLabel } from "@/utils/get-role-label";
 
 const GET_WORKSPACES_FROM_USER_WORKSPACES_ROUTE = graphql(`
   query getWorkspacesFromUserWorkspacesRoute(
@@ -65,7 +66,7 @@ const GET_WORKSPACES_FROM_USER_WORKSPACES_ROUTE = graphql(`
     }
     currentUserWorkspaceInvitations {
       id
-      role
+      roles
       expiresAt
       workspace {
         id
@@ -234,9 +235,9 @@ function UserWorkspacesComponent() {
                   ),
                 },
                 {
-                  accessorKey: "role",
+                  accessorKey: "roles",
                   header: t("user:workspaces.invitations.table.role"),
-                  cell: ({ row }) => getRoleLabel(row.original.role),
+                  cell: ({ row }) => getRolesLabel(row.original.roles),
                 },
                 {
                   accessorKey: "expiresAt",
@@ -359,15 +360,4 @@ function UserWorkspacesComponent() {
       </PageContent>
     </Page>
   );
-}
-
-function getRoleLabel(role: WorkspaceMemberRole): string {
-  switch (role) {
-    case WorkspaceMemberRole.OWNER:
-      return t("workspace-member:role.owner");
-    case WorkspaceMemberRole.ADMIN:
-      return t("workspace-member:role.admin");
-    case WorkspaceMemberRole.MEMBER:
-      return t("workspace-member:role.member");
-  }
 }

@@ -5,7 +5,6 @@ import { APP_GUARD } from '@nestjs/core';
 import { CommonModule } from '../common/common.module.js';
 import { ApiKeyModule } from './api-key/api-key.module.js';
 import { AuthModule } from './auth/auth.module.js';
-import { UserModule } from './user/user.module.js';
 import { WorkspaceModule } from './workspace/workspace.module.js';
 import { WorkspaceMemberModule } from './workspace-member/workspace-member.module.js';
 
@@ -15,7 +14,6 @@ import { WorkspaceMemberModule } from './workspace-member/workspace-member.modul
     CommonModule,
     AuthModule,
     ApiKeyModule,
-    UserModule,
     WorkspaceModule,
     WorkspaceMemberModule,
   ],

@@ -37,6 +37,10 @@ export class BaseUser extends BaseEntity {
   @Property({ type: t.text, nullable: true })
   image?: Opt<string>;
 
+  /** Application roles used to resolve user-administration permissions. */
+  @Property({ type: t.array })
+  roles: Opt<string[]> = ["user"];
+
   /** User-administration and session permissions granted to this identity. */
   @Property({ type: t.array })
   permissions: Opt<string[]> = [];

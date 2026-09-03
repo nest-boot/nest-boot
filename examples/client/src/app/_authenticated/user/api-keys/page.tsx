@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import z from "zod";
 
 import type { DataFilterItemProps } from "@/components/thread-ui/data-filter";
+import type { AuthPermission } from "@/lib/permissions";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import { Badge } from "@/components/thread-ui/badge";
 import { Button } from "@/components/thread-ui/button";
@@ -57,10 +58,13 @@ import {
   createDataFilterInputSearchSchema,
   dataFilterDateSearchSchema,
 } from "@/lib/data-filter-search-schema";
-import { authPermissionOptions, authPermissionValues } from "@/lib/permissions";
+import {
+  authPermissionOptions,
+  authPermissionValues,
+  isAuthPermission,
+} from "@/lib/permissions";
 
 const { ApiKeyOrderField } = Gql;
-type AuthPermission = Gql.AuthPermission;
 type GetUserApiKeysFromUserApiKeysRouteQuery =
   Gql.GetUserApiKeysFromUserApiKeysRouteQuery;
 
@@ -360,7 +364,10 @@ function ApiKeysComponent() {
   const handleOpenRename = (apiKey: ApiKeyRow) => {
     setRenamingApiKey(apiKey);
     renameForm.setFieldValue("name", apiKey.name);
-    renameForm.setFieldValue("permissions", apiKey.permissions);
+    renameForm.setFieldValue(
+      "permissions",
+      apiKey.permissions.filter(isAuthPermission),
+    );
     setRenameDialogOpen(true);
   };
 

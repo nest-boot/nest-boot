@@ -4,7 +4,6 @@ import type { RouteInfo } from "@nestjs/common/interfaces/middleware/middleware-
 import type { BetterAuthOptions } from "better-auth";
 
 import type {
-  AuthWorkspaceMemberRole,
   BaseAccount,
   BaseApiKey,
   BaseSession,
@@ -15,6 +14,7 @@ import type {
   BaseWorkspaceMember,
 } from "./entities/index.js";
 import type { AuthUser } from "./interfaces/auth-service.interface.js";
+import type { AuthModuleRoles } from "./types/auth-module-roles.type.js";
 import type { BuildAbilityCallback } from "./types/build-ability-callback.type.js";
 
 type BetterAuthEmailAndPasswordOptions = NonNullable<
@@ -23,6 +23,7 @@ type BetterAuthEmailAndPasswordOptions = NonNullable<
 type BetterAuthEmailVerificationOptions = NonNullable<
   BetterAuthOptions["emailVerification"]
 >;
+type BetterAuthUserOptions = NonNullable<BetterAuthOptions["user"]>;
 type SupportedBetterAuthOptions = Pick<
   BetterAuthOptions,
   | "account"
@@ -43,7 +44,6 @@ type SupportedBetterAuthOptions = Pick<
   | "socialProviders"
   | "telemetry"
   | "trustedOrigins"
-  | "user"
   | "verification"
 >;
 
@@ -96,8 +96,8 @@ export type AuthWorkspaceInvitationEmailInviter = Omit<
 export interface AuthWorkspaceInvitationEmailData {
   /** Invitation identifier used by the application to construct an accept URL. */
   id: string;
-  /** Role granted when the recipient accepts the invitation. */
-  role: AuthWorkspaceMemberRole;
+  /** Roles granted when the recipient accepts the invitation. */
+  roles: string[];
   /** Normalized recipient email address. */
   email: string;
   /** Workspace the recipient is invited to join. */
@@ -139,9 +139,29 @@ export interface AuthModuleEmailVerificationOptions extends Omit<
 }
 
 /** Workspace lifecycle options owned by AuthModule. */
-export interface AuthModuleWorkspaceOptions {
+export interface AuthModuleWorkspaceOptions<
+  Permission extends string = string,
+> {
+  /** Workspace permission catalog. Defaults to `DEFAULT_WORKSPACE_PERMISSIONS`. */
+  permissions?: readonly Permission[];
+  /** Named workspace roles and their permissions. Defaults to `DEFAULT_WORKSPACE_ROLES`. */
+  roles?: AuthModuleRoles<NoInfer<Permission>>;
+  /** Builds the workspace-scoped CASL ability from resolved request permissions. */
+  buildAbility?: BuildAbilityCallback;
   /** Sends the invitation link through an application-defined delivery flow. */
   sendInvitationEmail?: AuthSendWorkspaceInvitationEmail;
+}
+
+/** User lifecycle and authorization options owned by AuthModule. */
+export interface AuthModuleUserOptions<
+  Permission extends string = string,
+> extends BetterAuthUserOptions {
+  /** User permission catalog. Defaults to `DEFAULT_USER_PERMISSIONS`. */
+  permissions?: readonly Permission[];
+  /** Named user roles and their permissions. Defaults to `DEFAULT_USER_ROLES`. */
+  roles?: AuthModuleRoles<NoInfer<Permission>>;
+  /** Builds the user-scoped CASL ability from resolved request permissions. */
+  buildAbility?: BuildAbilityCallback;
 }
 
 /** Options for configuring auth middleware route registration. */
@@ -155,18 +175,24 @@ export interface AuthModuleMiddlewareOptions {
 }
 
 /** Configuration options for the AuthModule. */
-export interface AuthModuleOptions extends SupportedBetterAuthOptions {
+export interface AuthModuleOptions<
+  UserPermission extends string = string,
+  WorkspacePermission extends string = string,
+> extends SupportedBetterAuthOptions {
   /** Base path for the auth API endpoints. */
   basePath?: string;
 
   /** Email and password authentication options. */
   emailAndPassword?: AuthModuleEmailAndPasswordOptions;
 
+  /** User lifecycle, roles, permissions, and authorization ability. */
+  user?: AuthModuleUserOptions<UserPermission>;
+
   /** Email verification delivery and lifecycle options. */
   emailVerification?: AuthModuleEmailVerificationOptions;
 
   /** Workspace lifecycle and invitation-delivery options. */
-  workspace?: AuthModuleWorkspaceOptions;
+  workspace?: AuthModuleWorkspaceOptions<WorkspacePermission>;
 
   /** Entity classes used for authentication and workspace access. */
   entities: {
@@ -190,12 +216,6 @@ export interface AuthModuleOptions extends SupportedBetterAuthOptions {
 
   /** Middleware registration options. */
   middleware?: AuthModuleMiddlewareOptions;
-
-  /** Builds the workspace-scoped CASL permission ability for the current request. */
-  buildWorkspaceAbility?: BuildAbilityCallback;
-
-  /** Builds the user-scoped CASL permission ability for the current request. */
-  buildUserAbility?: BuildAbilityCallback;
 
   /** Callback invoked after successful authentication. */
   onAuthenticated?: () => void | Promise<void>;

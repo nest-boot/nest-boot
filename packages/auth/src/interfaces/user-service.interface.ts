@@ -1,21 +1,23 @@
 import type { BaseUser } from "../entities/index.js";
 
-/** Options for creating a user through `AdminService`. */
-export interface AdminCreateUserOptions {
+/** Options for creating a user through `UserService`. */
+export interface CreateUserOptions {
   /** User email address. */
   email: string;
   /** User display name. */
   name: string;
   /** Initial credential password. */
   password: string;
+  /** Initial user roles. Defaults to `user`. */
+  roles?: string[];
   /** Initial user permissions. */
   permissions?: string[];
   /** Application-defined user fields. */
   data?: Record<string, unknown>;
 }
 
-/** Fields accepted when an administrator updates a user. */
-export interface AdminUpdateUserOptions {
+/** Fields accepted when updating a user through `UserService`. */
+export interface UpdateUserOptions {
   /** New email address. */
   email?: string;
   /** Whether the email address has been verified. */
@@ -24,14 +26,12 @@ export interface AdminUpdateUserOptions {
   image?: string | null;
   /** New display name. */
   name?: string;
-  /** Replacement user permissions. */
-  permissions?: string[];
   /** Application-defined user fields. */
   [field: string]: unknown;
 }
 
-/** Search, filter, ordering, and pagination accepted by the admin user list. */
-export interface AdminListUsersOptions {
+/** Search, filter, ordering, and pagination accepted by the user list. */
+export interface ListUsersOptions {
   /** Search field. */
   searchField?: "email" | "name";
   /** Search comparison. */
@@ -54,8 +54,8 @@ export interface AdminListUsersOptions {
   filterValue?: boolean | number | string;
 }
 
-/** One page returned by the admin user list. */
-export interface AdminListUsersResult<User extends BaseUser = BaseUser> {
+/** One page returned by the user list. */
+export interface ListUsersResult<User extends BaseUser = BaseUser> {
   /** User entities in result order. */
   users: User[];
   /** Total number of users matching the query. */
@@ -67,7 +67,7 @@ export interface AdminListUsersResult<User extends BaseUser = BaseUser> {
 }
 
 /** Options for banning a user. */
-export interface AdminBanUserOptions {
+export interface BanUserOptions {
   /** Optional reason displayed for the ban. */
   banReason?: string;
   /** Optional ban duration in seconds; omission creates a permanent ban. */
@@ -75,7 +75,7 @@ export interface AdminBanUserOptions {
 }
 
 /** Client metadata stored when an administrator starts impersonation. */
-export interface AdminImpersonationOptions {
+export interface ImpersonationOptions {
   /** Client IP address. */
   ipAddress?: string;
   /** Client User-Agent value. */
@@ -83,7 +83,7 @@ export interface AdminImpersonationOptions {
 }
 
 /** Permission statements checked against a user's flattened permissions. */
-export interface AdminHasPermissionOptions {
+export interface UserHasPermissionOptions {
   /** Permission actions grouped by subject name. */
   permissions: Record<string, string[]>;
 }

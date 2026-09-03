@@ -9,11 +9,11 @@ description: "将 Auth 服务接入传输适配器、RequestContext 与 RLS。"
 | ------------------ | ------------------------------------------------------ |
 | `AuthService`      | 身份认证、邮箱验证、密码找回、用户资料与 provider 账号 |
 | `SessionService`   | 当前会话解析、活动会话列表与撤销                       |
-| `AdminService`     | 用户管理、权限、封禁、模拟登录、密码和用户会话         |
+| `UserService`      | 用户管理、权限、封禁、模拟登录、密码和用户会话         |
 | `WorkspaceService` | 工作区、成员、邀请与工作区权限生命周期                 |
 | `ApiKeyService`    | 个人与工作区 API Key 生命周期和校验                    |
 
-`AdminService` 与 `WorkspaceService` 直接操作 `AuthModule` 中配置的 MikroORM 实体，
+`UserService` 与 `WorkspaceService` 直接操作 `AuthModule` 中配置的 MikroORM 实体，
 不依赖 Better Auth 的 admin 或 organization 插件。
 
 ```typescript
@@ -22,7 +22,7 @@ export class AccountApplicationService {
   constructor(
     private readonly authService: AuthService,
     private readonly sessionService: SessionService,
-    private readonly adminService: AdminService,
+    private readonly userService: UserService,
     private readonly workspaceService: WorkspaceService,
     private readonly apiKeyService: ApiKeyService,
   ) {}

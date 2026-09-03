@@ -10,7 +10,13 @@
     "error": {
       "accept_failed": "接受邀请失败",
       "back_button": "返回工作空间",
+      "expired": "该邀请已过期，请联系工作空间管理员重新发送邀请。",
       "invalid_token": "无效或已过期的邀请令牌",
+      "status": {
+        "ACCEPTED": "该邀请已经被接受。",
+        "CANCELED": "该邀请已被取消。",
+        "REJECTED": "该邀请已经被拒绝。"
+      },
       "title": "无效的邀请"
     },
     "form": {
@@ -43,6 +49,26 @@
         "placeholder": "我的工作空间",
         "required": "工作空间名称是必填的"
       }
+    },
+    "leave": {
+      "action": "退出工作空间",
+      "confirm_description": "退出后将失去该工作空间的访问权限，需要重新接受邀请才能加入。",
+      "confirm_title": "退出此工作空间？",
+      "description": "移除你在此工作空间中的成员身份。",
+      "failed": "退出工作空间失败",
+      "success": "已退出工作空间",
+      "title": "退出工作空间"
+    },
+    "ownership": {
+      "action": "转移所有权",
+      "confirm_description": "{{name}} 将成为所有者，你将变为管理员。",
+      "confirm_title": "转移工作空间所有权？",
+      "description": "选择另一位活跃用户成员作为新所有者，你将保留管理员身份。",
+      "failed": "转移所有权失败",
+      "member": "新所有者",
+      "placeholder": "选择成员",
+      "success": "工作空间所有权已转移",
+      "title": "转移所有权"
     }
   },
   "title": "设置"

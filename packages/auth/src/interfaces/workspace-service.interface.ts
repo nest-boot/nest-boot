@@ -1,5 +1,4 @@
 import type {
-  AuthWorkspaceMemberRole,
   AuthWorkspaceMemberStatus,
   BaseWorkspace,
   BaseWorkspaceInvitation,
@@ -20,8 +19,8 @@ export interface UpdateWorkspaceOptions {
 
 /** Input accepted when adding a workspace member. */
 export interface AddWorkspaceMemberOptions {
-  /** Member role. */
-  role?: AuthWorkspaceMemberRole;
+  /** Member roles. */
+  roles?: string[];
   /** Additional workspace permissions. */
   permissions?: string[];
 }
@@ -32,20 +31,16 @@ export interface UpdateWorkspaceMemberOptions {
   name?: string;
   /** Member email address. */
   email?: string | null;
-  /** Member role. */
-  role?: AuthWorkspaceMemberRole;
   /** Member lifecycle status. */
   status?: Extract<AuthWorkspaceMemberStatus, "ACTIVE" | "DISABLED">;
-  /** Replacement additional permissions. */
-  permissions?: string[];
 }
 
 /** Input accepted when creating a workspace invitation. */
 export interface CreateWorkspaceInvitationOptions {
   /** Email address allowed to accept the invitation. */
   email: string;
-  /** Role granted after acceptance. */
-  role?: AuthWorkspaceMemberRole;
+  /** Roles granted after acceptance. */
+  roles?: string[];
   /** Invitation lifetime in seconds; defaults to 48 hours. */
   expiresIn?: number;
 }

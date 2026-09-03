@@ -18,7 +18,7 @@ type ApiKey {
   id: ID!
   lastUsedAt: DateTime
   name: String!
-  permissions: [AuthPermission!]!
+  permissions: [String!]!
   prefix: String
   start: String
   updatedAt: DateTime!
@@ -135,30 +135,6 @@ type AuthDeleteUserResultType {
   success: Boolean!
 }
 
-enum AuthPermission {
-  SESSION_DELETE
-  SESSION_LIST
-  SESSION_REVOKE
-  USER_BAN
-  USER_CREATE
-  USER_DELETE
-  USER_GET
-  USER_IMPERSONATE
-  USER_IMPERSONATE_ADMINS
-  USER_LIST
-  USER_SET_EMAIL
-  USER_SET_PASSWORD
-  USER_SET_ROLE
-  USER_UPDATE
-  WORKSPACE_DELETE
-  WORKSPACE_INVITATION_CANCEL
-  WORKSPACE_INVITATION_CREATE
-  WORKSPACE_MEMBER_CREATE
-  WORKSPACE_MEMBER_DELETE
-  WORKSPACE_MEMBER_UPDATE
-  WORKSPACE_UPDATE
-}
-
 type AuthRefreshedTokenType {
   accessToken: String
   accessTokenExpiresAt: DateTime
@@ -183,6 +159,11 @@ type AuthRequestPasswordResetResultType {
 input AuthResetPasswordInput {
   newPassword: String!
   token: String!
+}
+
+type AuthRoleType {
+  name: String!
+  permissions: [String!]!
 }
 
 input AuthSendVerificationEmailInput {
@@ -244,10 +225,15 @@ type AuthUserType {
   updatedAt: DateTime!
 }
 
+input BanUserInput {
+  expiresIn: Int
+  reason: String
+}
+
 input CreateApiKeyInput {
   expiresAt: DateTime
   name: String!
-  permissions: [AuthPermission!]
+  permissions: [String!]
   prefix: String
 }
 
@@ -258,8 +244,16 @@ type CreateApiKeyResult {
 
 input CreateServiceAccountWorkspaceMemberInput {
   name: String!
-  permissions: [WorkspacePermission!]
-  role: WorkspaceMemberRole
+  permissions: [String!]
+  roles: [String!]
+}
+
+input CreateUserInput {
+  email: String!
+  name: String!
+  password: String!
+  permissions: [String!]
+  roles: [String!]
 }
 
 input CreateWorkspaceInput {
@@ -268,7 +262,7 @@ input CreateWorkspaceInput {
 
 input CreateWorkspaceInvitationInput {
   email: String!
-  role: WorkspaceMemberRole!
+  roles: [String!]!
 }
 
 """
@@ -280,6 +274,12 @@ scalar DateTime
 The `JSONObject` scalar type represents JSON objects as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
 """
 scalar JSONObject
+
+input ListUsersInput {
+  limit: Int
+  offset: Int
+  search: String
+}
 
 type Mutation {
   acceptWorkspaceInvitation(invitationId: ID!): AcceptWorkspaceInvitationResult!
@@ -300,22 +300,36 @@ type Mutation {
   authSignUp(input: AuthSignUpInput!): AuthSignUpResultType!
   authUnlinkAccount(accountId: ID!): Boolean!
   authUpdateUser(input: AuthUpdateUserInput!): Boolean!
+  banUser(id: ID!, input: BanUserInput): User!
   cancelWorkspaceInvitation(invitationId: ID!): WorkspaceInvitation!
   createApiKey(input: CreateApiKeyInput!): CreateApiKeyResult!
   createServiceAccountWorkspaceMember(input: CreateServiceAccountWorkspaceMemberInput!): WorkspaceMember!
+  createUser(input: CreateUserInput!): User!
   createUserApiKey(input: CreateApiKeyInput!): CreateApiKeyResult!
   createWorkspace(input: CreateWorkspaceInput!): Workspace!
   createWorkspaceInvitation(input: CreateWorkspaceInvitationInput!): WorkspaceInvitation!
   deleteApiKey(id: ID!): ApiKey!
+  deleteUser(id: ID!): User!
   deleteUserApiKey(id: ID!): ApiKey!
   deleteWorkspace: Workspace!
+  leaveWorkspace: WorkspaceMember!
   rejectWorkspaceInvitation(invitationId: ID!): WorkspaceInvitation!
   removeWorkspace: Workspace! @deprecated(reason: "Use deleteWorkspace instead")
   removeWorkspaceMember(id: ID!): WorkspaceMember!
+  revokeUserSession(token: String!, userId: ID!): Boolean!
+  revokeUserSessions(userId: ID!): Boolean!
+  setUserPassword(id: ID!, input: SetUserPasswordInput!): Boolean!
+  setUserPermissions(id: ID!, input: SetUserPermissionsInput!): User!
+  setUserRoles(id: ID!, input: SetUserRolesInput!): User!
+  setWorkspaceMemberPermissions(id: ID!, input: SetWorkspaceMemberPermissionsInput!): WorkspaceMember!
+  transferWorkspaceOwnership(memberId: ID!): WorkspaceMember!
+  unbanUser(id: ID!): User!
   updateApiKey(id: ID!, input: UpdateApiKeyInput!): ApiKey!
+  updateUser(id: ID!, input: UpdateUserInput!): User!
   updateUserApiKey(id: ID!, input: UpdateApiKeyInput!): ApiKey!
   updateWorkspace(input: UpdateWorkspaceInput!): Workspace!
   updateWorkspaceMember(id: ID!, input: UpdateWorkspaceMemberInput!): WorkspaceMember
+  updateWorkspaceMemberRole(id: ID!, input: UpdateWorkspaceMemberRoleInput!): WorkspaceMember!
 }
 
 enum OrderDirection {
@@ -373,6 +387,7 @@ type Query {
   currentUserWorkspaceInvitations: [WorkspaceInvitation!]!
   currentWorkspace: Workspace
   currentWorkspaceMember: WorkspaceMember
+  user(id: ID!): User
   userApiKey(id: ID!): ApiKey
   userApiKeys(
     """Returns the elements that come after the specified cursor."""
@@ -400,6 +415,10 @@ type Query {
     """
     query: String
   ): ApiKeyConnection!
+  userPermissions: [String!]!
+  userRoles: [AuthRoleType!]!
+  userSessions(userId: ID!): [AuthSessionType!]!
+  users(input: ListUsersInput): UserListType!
   workspace(id: ID!): Workspace
   workspaceInvitation(id: ID!): WorkspaceInvitation
   workspaceInvitations: [WorkspaceInvitation!]!
@@ -426,10 +445,12 @@ type Query {
     """
     Apply one or multiple filters to the query.
     Supported filter parameters:
-    `name`, `role`, `type`, `email`, `status`, `created_at`
+    `name`, `type`, `email`, `status`, `created_at`
     """
     query: String
   ): WorkspaceMemberConnection!
+  workspacePermissions: [String!]!
+  workspaceRoles: [AuthRoleType!]!
   workspaces(
     """Returns the elements that come after the specified cursor."""
     after: String
@@ -458,6 +479,22 @@ type Query {
   ): WorkspaceConnection!
 }
 
+input SetUserPasswordInput {
+  password: String!
+}
+
+input SetUserPermissionsInput {
+  permissions: [String!]!
+}
+
+input SetUserRolesInput {
+  roles: [String!]!
+}
+
+input SetWorkspaceMemberPermissionsInput {
+  permissions: [String!]!
+}
+
 enum TotalCountRelation {
   EQ
   GTE
@@ -467,7 +504,14 @@ input UpdateApiKeyInput {
   enabled: Boolean
   expiresAt: DateTime
   name: String
-  permissions: [AuthPermission!]
+  permissions: [String!]
+}
+
+input UpdateUserInput {
+  email: String
+  emailVerified: Boolean
+  image: String
+  name: String
 }
 
 input UpdateWorkspaceInput {
@@ -477,35 +521,33 @@ input UpdateWorkspaceInput {
 input UpdateWorkspaceMemberInput {
   email: String
   name: String
-  permissions: [WorkspacePermission!]
-  role: WorkspaceMemberRole
   status: WorkspaceMemberStatus
 }
 
+input UpdateWorkspaceMemberRoleInput {
+  roles: [String!]!
+}
+
 type User {
+  banExpiresAt: DateTime
+  banReason: String
+  banned: Boolean!
   createdAt: DateTime!
   email: String!
+  emailVerified: Boolean!
   id: ID!
+  image: String
   name: String!
-  permissions: [UserPermission!]!
+  permissions: [String!]!
+  roles: [String!]!
   updatedAt: DateTime!
 }
 
-enum UserPermission {
-  SESSION_DELETE
-  SESSION_LIST
-  SESSION_REVOKE
-  USER_BAN
-  USER_CREATE
-  USER_DELETE
-  USER_GET
-  USER_IMPERSONATE
-  USER_IMPERSONATE_ADMINS
-  USER_LIST
-  USER_SET_EMAIL
-  USER_SET_PASSWORD
-  USER_SET_ROLE
-  USER_UPDATE
+type UserListType {
+  limit: Int!
+  offset: Int!
+  total: Int!
+  users: [User!]!
 }
 
 type Workspace {
@@ -560,7 +602,7 @@ type WorkspaceInvitation {
   expiresAt: DateTime!
   id: ID!
   inviter: User!
-  role: WorkspaceMemberRole!
+  roles: [String!]!
   status: WorkspaceInvitationStatus!
   workspace: Workspace!
 }
@@ -577,8 +619,8 @@ type WorkspaceMember {
   email: String
   id: ID!
   name: String!
-  permissions: [WorkspacePermission!]!
-  role: WorkspaceMemberRole!
+  permissions: [String!]!
+  roles: [String!]!
   status: WorkspaceMemberStatus!
   type: WorkspaceMemberType!
   updatedAt: DateTime!
@@ -614,7 +656,7 @@ type WorkspaceMemberEdge {
 
 """
 A filter for WorkspaceMember that accepts MongoDB query syntax.
-Supported fields: name, role, type, email, status, created_at
+Supported fields: name, type, email, status, created_at
 """
 scalar WorkspaceMemberFilter
 
@@ -631,12 +673,6 @@ input WorkspaceMemberOrder {
 enum WorkspaceMemberOrderField {
   CREATED_AT
   ID
-}
-
-enum WorkspaceMemberRole {
-  ADMIN
-  MEMBER
-  OWNER
 }
 
 enum WorkspaceMemberStatus {
@@ -662,14 +698,4 @@ input WorkspaceOrder {
 enum WorkspaceOrderField {
   CREATED_AT
   ID
-}
-
-enum WorkspacePermission {
-  WORKSPACE_DELETE
-  WORKSPACE_INVITATION_CANCEL
-  WORKSPACE_INVITATION_CREATE
-  WORKSPACE_MEMBER_CREATE
-  WORKSPACE_MEMBER_DELETE
-  WORKSPACE_MEMBER_UPDATE
-  WORKSPACE_UPDATE
 }

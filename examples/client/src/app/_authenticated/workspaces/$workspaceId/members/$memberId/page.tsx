@@ -6,12 +6,13 @@ import {
   useNavigate,
   useRouter,
 } from "@tanstack/react-router";
-import { useForm, useStore } from "@tanstack/react-form";
+import { useForm } from "@tanstack/react-form";
 import * as z from "zod";
 import { toast } from "sonner";
 import { t } from "i18next";
 
 import { useCurrentWorkspaceMemberContext } from "../../contexts/current-workspace-member-context";
+import type * as Gql from "@/gql/graphql";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import {
   Page,
@@ -22,27 +23,28 @@ import {
   PageTitle,
 } from "@/components/thread-ui/page";
 import { Button } from "@/components/thread-ui/button";
+import { CheckboxGroup } from "@/components/thread-ui/checkbox-group";
 import { Field, FieldGroup, FieldSet } from "@/components/ui/field";
 import { Input } from "@/components/thread-ui/input";
-import { RadioGroup } from "@/components/thread-ui/radio-group";
 import { graphql } from "@/gql";
-import * as Gql from "@/gql/graphql";
 import { getRoleLabel } from "@/utils/get-role-label";
 import {
+  isWorkspacePermission,
+  workspaceMemberCan,
   workspacePermissionOptions,
   workspacePermissionValues,
 } from "@/lib/permissions";
 import { PermissionCheckboxGroup } from "@/components/permission-checkbox-group";
+import { WORKSPACE_OWNER_ROLE, hasWorkspaceRole } from "@/lib/workspace-roles";
 
-const { WorkspaceMemberRole } = Gql;
 type UpdateWorkspaceMemberInput = Gql.UpdateWorkspaceMemberInput;
-type WorkspacePermission = Gql.WorkspacePermission;
 
 const GET_CURRENT_WORKSPACE_MEMBER_FROM_MEMBER_ROUTE = graphql(`
   query getCurrentWorkspaceMemberFromMemberRoute {
     currentWorkspaceMember {
       id
-      role
+      roles
+      permissions
     }
   }
 `);
@@ -53,13 +55,18 @@ const GET_WORKSPACE_MEMBER_FROM_MEMBER_ROUTE = graphql(`
       id
       name
       email
-      role
+      roles
       permissions
       status
       user {
         email
       }
     }
+    workspaceRoles {
+      name
+      permissions
+    }
+    workspacePermissions
   }
 `);
 
@@ -72,12 +79,36 @@ const UPDATE_WORKSPACE_MEMBER_FROM_MEMBER_ROUTE = graphql(`
       id
       name
       email
-      role
+      roles
       permissions
       status
       user {
         email
       }
+    }
+  }
+`);
+
+const UPDATE_WORKSPACE_MEMBER_ROLE_FROM_MEMBER_ROUTE = graphql(`
+  mutation updateWorkspaceMemberRoleFromMemberRoute(
+    $id: ID!
+    $input: UpdateWorkspaceMemberRoleInput!
+  ) {
+    updateWorkspaceMemberRole(id: $id, input: $input) {
+      id
+      roles
+    }
+  }
+`);
+
+const SET_WORKSPACE_MEMBER_PERMISSIONS_FROM_MEMBER_ROUTE = graphql(`
+  mutation setWorkspaceMemberPermissionsFromMemberRoute(
+    $id: ID!
+    $input: SetWorkspaceMemberPermissionsInput!
+  ) {
+    setWorkspaceMemberPermissions(id: $id, input: $input) {
+      id
+      permissions
     }
   }
 `);
@@ -90,8 +121,6 @@ const REMOVE_WORKSPACE_MEMBER_FROM_MEMBER_ROUTE = graphql(`
   }
 `);
 
-const allPermissions = [...workspacePermissionValues];
-
 const formSchema = z.object({
   name: z
     .string()
@@ -101,7 +130,7 @@ const formSchema = z.object({
     .string()
     .email(t("workspace-member:details.form.email.invalid"))
     .or(z.literal("")),
-  role: z.nativeEnum(WorkspaceMemberRole),
+  roles: z.array(z.string()).min(1),
   permissions: z.array(z.enum(workspacePermissionValues)),
 });
 
@@ -117,10 +146,9 @@ export const Route = createFileRoute(
       query: GET_CURRENT_WORKSPACE_MEMBER_FROM_MEMBER_ROUTE,
     });
 
-    // 普通用户不能访问此页面
     if (
       !data?.currentWorkspaceMember ||
-      data.currentWorkspaceMember.role === WorkspaceMemberRole.MEMBER
+      !workspaceMemberCan(data.currentWorkspaceMember, "workspaceMember:update")
     ) {
       throw redirect({
         to: "/workspaces/$workspaceId/members",
@@ -167,34 +195,30 @@ function MemberComponent() {
     });
   }
 
-  // 判断是否可以修改角色
-  const canEditRole = useMemo(() => {
+  const canManageRoles = useMemo(() => {
     if (!currentWorkspaceMember || !member) return false;
 
-    return !(
-      (currentWorkspaceMember.role === WorkspaceMemberRole.OWNER &&
-        memberId === currentWorkspaceMember.id) ||
-      (memberId !== currentWorkspaceMember.id &&
-        member.role === WorkspaceMemberRole.OWNER)
+    return (
+      workspaceMemberCan(currentWorkspaceMember, "workspaceMember:update") &&
+      !hasWorkspaceRole(member.roles, WORKSPACE_OWNER_ROLE)
     );
   }, [
-    currentWorkspaceMember.role,
+    currentWorkspaceMember.roles,
     currentWorkspaceMember.id,
     memberId,
-    member.role,
+    member.roles,
   ]);
+
+  const canManagePermissions =
+    hasWorkspaceRole(currentWorkspaceMember.roles, WORKSPACE_OWNER_ROLE) &&
+    !hasWorkspaceRole(member.roles, WORKSPACE_OWNER_ROLE);
 
   const form = useForm({
     defaultValues: {
       name: member.name,
       email: member.email ?? member.user?.email ?? "",
-      role: member.role,
-      permissions: [
-        WorkspaceMemberRole.OWNER,
-        WorkspaceMemberRole.ADMIN,
-      ].includes(member.role)
-        ? allPermissions
-        : member.permissions,
+      roles: member.roles,
+      permissions: member.permissions.filter(isWorkspacePermission),
     },
     validators: {
       onSubmit: formSchema,
@@ -214,38 +238,57 @@ function MemberComponent() {
           input.email = value.email;
         }
 
-        if (value.role !== member.role) {
-          input.role = value.role;
-        }
+        const hasRolesChanged =
+          value.roles.length !== member.roles.length ||
+          value.roles.some((role) => !member.roles.includes(role));
 
         // 比较权限数组是否变化
-        const currentPermissions = member.permissions;
+        const currentPermissions = member.permissions.filter(
+          isWorkspacePermission,
+        );
         const hasPermissionChanged =
           value.permissions.length !== currentPermissions.length ||
           value.permissions.some(
-            (permission: WorkspacePermission) =>
-              !currentPermissions.includes(permission),
+            (permission) => !currentPermissions.includes(permission),
           ) ||
           currentPermissions.some(
-            (permission: WorkspacePermission) =>
-              !value.permissions.includes(permission),
+            (permission) => !value.permissions.includes(permission),
           );
 
-        if (
-          ![WorkspaceMemberRole.OWNER, WorkspaceMemberRole.ADMIN].includes(
-            value.role,
-          ) &&
-          hasPermissionChanged
-        ) {
-          input.permissions = value.permissions;
+        const operations: Array<Promise<unknown>> = [];
+
+        if (Object.keys(input).length > 0) {
+          operations.push(
+            updateWorkspaceMember({
+              variables: {
+                id: memberId,
+                input,
+              },
+            }),
+          );
+        }
+        if (canManageRoles && hasRolesChanged) {
+          operations.push(
+            updateWorkspaceMemberRole({
+              variables: {
+                id: memberId,
+                input: { roles: value.roles },
+              },
+            }),
+          );
+        }
+        if (canManagePermissions && hasPermissionChanged) {
+          operations.push(
+            setWorkspaceMemberPermissions({
+              variables: {
+                id: memberId,
+                input: { permissions: value.permissions },
+              },
+            }),
+          );
         }
 
-        await updateWorkspaceMember({
-          variables: {
-            id: memberId,
-            input,
-          },
-        });
+        await Promise.all(operations);
 
         router.invalidate();
 
@@ -260,15 +303,14 @@ function MemberComponent() {
     },
   });
 
-  const isOwnerOrAdmin = useStore(form.store, (state) => {
-    return [WorkspaceMemberRole.OWNER, WorkspaceMemberRole.ADMIN].includes(
-      state.values.role,
-    );
-  });
-
   const [updateWorkspaceMember, { loading: updateLoading }] = useMutation(
     UPDATE_WORKSPACE_MEMBER_FROM_MEMBER_ROUTE,
   );
+  const [updateWorkspaceMemberRole, { loading: updatingRole }] = useMutation(
+    UPDATE_WORKSPACE_MEMBER_ROLE_FROM_MEMBER_ROUTE,
+  );
+  const [setWorkspaceMemberPermissions, { loading: updatingPermissions }] =
+    useMutation(SET_WORKSPACE_MEMBER_PERMISSIONS_FROM_MEMBER_ROUTE);
   const [removeWorkspaceMember] = useMutation(
     REMOVE_WORKSPACE_MEMBER_FROM_MEMBER_ROUTE,
   );
@@ -302,7 +344,8 @@ function MemberComponent() {
 
   const canRemove =
     memberId !== currentWorkspaceMember.id &&
-    currentWorkspaceMember.role === WorkspaceMemberRole.OWNER;
+    !hasWorkspaceRole(member.roles, WORKSPACE_OWNER_ROLE) &&
+    workspaceMemberCan(currentWorkspaceMember, "workspaceMember:delete");
 
   const handleRemoveClick = async () => {
     const confirmed = await alertDialog({
@@ -421,36 +464,27 @@ function MemberComponent() {
                 )}
               </form.Field>
 
-              <form.Field name="role">
+              <form.Field name="roles">
                 {(field) => (
-                  <RadioGroup
+                  <CheckboxGroup
                     label={t("workspace-member:details.form.role.label")}
-                    items={Object.values(WorkspaceMemberRole)
-                      .filter(
-                        (role) =>
-                          role !== WorkspaceMemberRole.OWNER ||
-                          field.state.value === WorkspaceMemberRole.OWNER,
-                      )
-                      .map((role) => ({
-                        label: getRoleLabel(role),
-                        value: role,
-                        disabled:
-                          role === WorkspaceMemberRole.OWNER || !canEditRole,
-                      }))}
+                    items={(hasWorkspaceRole(
+                      field.state.value,
+                      WORKSPACE_OWNER_ROLE,
+                    )
+                      ? data.workspaceRoles
+                      : data.workspaceRoles.filter(
+                          (role) => role.name !== WORKSPACE_OWNER_ROLE,
+                        )
+                    ).map((role) => ({
+                      label: getRoleLabel(role.name),
+                      value: role.name,
+                      disabled:
+                        role.name === WORKSPACE_OWNER_ROLE || !canManageRoles,
+                    }))}
                     value={field.state.value}
-                    onValueChange={(value: Gql.WorkspaceMemberRole) => {
-                      field.handleChange(value);
-
-                      if (value === WorkspaceMemberRole.MEMBER) {
-                        form.setFieldValue(
-                          "permissions",
-                          member?.permissions ?? [],
-                        );
-                      } else {
-                        form.setFieldValue("permissions", allPermissions);
-                      }
-                    }}
-                    disabled={!canEditRole}
+                    onValueChange={(value) => field.handleChange(value)}
+                    disabled={!canManageRoles}
                   />
                 )}
               </form.Field>
@@ -461,7 +495,11 @@ function MemberComponent() {
                     options={workspacePermissionOptions}
                     value={field.state.value}
                     onChange={field.handleChange}
-                    disabled={updateLoading || isOwnerOrAdmin}
+                    disabled={
+                      updateLoading ||
+                      updatingPermissions ||
+                      !canManagePermissions
+                    }
                   />
                 )}
               </form.Field>
@@ -478,7 +516,9 @@ function MemberComponent() {
                     <Button
                       type="submit"
                       disabled={!isDirty || !canSubmit}
-                      loading={isSubmitting}
+                      loading={
+                        isSubmitting || updatingRole || updatingPermissions
+                      }
                     >
                       {t("action.save")}
                     </Button>

@@ -2,10 +2,10 @@ import type { Mocked } from 'vitest';
 vi.mock('@nest-boot/auth', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@nest-boot/auth')>()),
   BaseUser: class BaseUser {},
-  Can: () => () => undefined,
   CurrentUser: () => () => undefined,
   CurrentWorkspace: () => () => undefined,
   CurrentWorkspaceMember: () => () => undefined,
+  WorkspaceCan: () => () => undefined,
 }));
 
 vi.mock('@nest-boot/graphql-connection', () => ({
@@ -24,6 +24,7 @@ vi.mock('@nest-boot/graphql-connection', () => ({
   ConnectionManager: class ConnectionManager {},
 }));
 
+import type { UserService, WorkspaceService } from '@nest-boot/auth';
 import {
   BadRequestException,
   ForbiddenException,
@@ -31,9 +32,7 @@ import {
 } from '@nestjs/common';
 
 import { User } from '../user/user.entity.js';
-import { UserService } from '../user/user.service.js';
 import { Workspace } from '../workspace/workspace.entity.js';
-import { WorkspaceMemberRole } from './enums/workspace-member-role.enum.js';
 import { WorkspaceMember } from './workspace-member.entity.js';
 import { WorkspaceMemberResolver } from './workspace-member.resolver.js';
 import { WorkspaceMemberService } from './workspace-member.service.js';
@@ -90,16 +89,20 @@ describe('WorkspaceMemberResolver', () => {
 
   it('finds a member by id through the service', async () => {
     const member = { id: 'member_1' } as WorkspaceMember;
+    const workspace = { id: 'workspace_1' } as Workspace;
     const { resolver, workspaceMemberService } = createResolver({
       workspaceMemberService: {
         findOne: vi.fn(async () => member),
       },
     });
 
-    await expect(resolver.workspaceMember('member_1')).resolves.toBe(member);
+    await expect(resolver.workspaceMember('member_1', workspace)).resolves.toBe(
+      member,
+    );
 
     expect(workspaceMemberService.findOne).toHaveBeenCalledWith({
       id: 'member_1',
+      workspace,
     });
   });
 
@@ -118,7 +121,7 @@ describe('WorkspaceMemberResolver', () => {
     const createdMember = { id: 'member_2' } as WorkspaceMember;
     const { resolver, workspaceMemberService, userService } = createResolver({
       userService: {
-        findOne: vi.fn(async () => user),
+        getUserByEmail: vi.fn(async () => user),
       },
       workspaceMemberService: {
         create: vi.fn(async () => createdMember),
@@ -126,16 +129,12 @@ describe('WorkspaceMemberResolver', () => {
     });
 
     await expect(
-      resolver.addWorkspaceMember(
-        workspace,
-        { role: WorkspaceMemberRole.OWNER } as WorkspaceMember,
-        { email: 'alice@example.com' },
-      ),
+      resolver.addWorkspaceMember(workspace, { email: 'alice@example.com' }),
     ).resolves.toBe(createdMember);
 
-    expect(userService.findOne).toHaveBeenCalledWith({
-      email: 'alice@example.com',
-    });
+    expect(userService.getUserByEmail).toHaveBeenCalledWith(
+      'alice@example.com',
+    );
     expect(workspace.members.loadCount).toHaveBeenCalledWith({
       where: {
         user: {
@@ -150,38 +149,22 @@ describe('WorkspaceMemberResolver', () => {
     });
   });
 
-  it('rejects adding members by non owners', async () => {
-    const { resolver, workspaceMemberService } = createResolver();
-
-    await expect(
-      resolver.addWorkspaceMember(
-        { id: 'workspace_1' } as Workspace,
-        { role: WorkspaceMemberRole.ADMIN } as WorkspaceMember,
-        { email: 'alice@example.com' },
-      ),
-    ).rejects.toBeInstanceOf(ForbiddenException);
-
-    expect(workspaceMemberService.create).not.toHaveBeenCalled();
-  });
-
   it('rejects adding users that are not found', async () => {
     const { resolver, userService } = createResolver({
       userService: {
-        findOne: vi.fn(async () => null),
+        getUserByEmail: vi.fn(async () => null),
       },
     });
 
     await expect(
-      resolver.addWorkspaceMember(
-        { id: 'workspace_1' } as Workspace,
-        { role: WorkspaceMemberRole.OWNER } as WorkspaceMember,
-        { email: 'missing@example.com' },
-      ),
+      resolver.addWorkspaceMember({ id: 'workspace_1' } as Workspace, {
+        email: 'missing@example.com',
+      }),
     ).rejects.toBeInstanceOf(NotFoundException);
 
-    expect(userService.findOne).toHaveBeenCalledWith({
-      email: 'missing@example.com',
-    });
+    expect(userService.getUserByEmail).toHaveBeenCalledWith(
+      'missing@example.com',
+    );
   });
 
   it('rejects adding users already in the workspace', async () => {
@@ -192,7 +175,7 @@ describe('WorkspaceMemberResolver', () => {
     } as unknown as Workspace;
     const { resolver } = createResolver({
       userService: {
-        findOne: vi.fn(
+        getUserByEmail: vi.fn(
           async () =>
             ({
               id: 'user_1',
@@ -204,11 +187,7 @@ describe('WorkspaceMemberResolver', () => {
     });
 
     await expect(
-      resolver.addWorkspaceMember(
-        workspace,
-        { role: WorkspaceMemberRole.OWNER } as WorkspaceMember,
-        { email: 'alice@example.com' },
-      ),
+      resolver.addWorkspaceMember(workspace, { email: 'alice@example.com' }),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
@@ -226,7 +205,7 @@ describe('WorkspaceMemberResolver', () => {
     const createdMember = { id: 'member_2' } as WorkspaceMember;
     const { resolver, workspaceMemberService } = createResolver({
       userService: {
-        findOne: vi.fn(async () => user),
+        getUserByEmail: vi.fn(async () => user),
       },
       workspaceMemberService: {
         create: vi.fn(async () => createdMember),
@@ -234,11 +213,7 @@ describe('WorkspaceMemberResolver', () => {
     });
 
     await expect(
-      resolver.addWorkspaceMember(
-        workspace,
-        { role: WorkspaceMemberRole.OWNER } as WorkspaceMember,
-        { email: 'alice@example.com' },
-      ),
+      resolver.addWorkspaceMember(workspace, { email: 'alice@example.com' }),
     ).resolves.toBe(createdMember);
 
     expect(workspaceMemberService.create).toHaveBeenCalledWith({
@@ -258,11 +233,9 @@ describe('WorkspaceMemberResolver', () => {
     });
 
     await expect(
-      resolver.createServiceAccountWorkspaceMember(
-        workspace,
-        { role: WorkspaceMemberRole.ADMIN } as WorkspaceMember,
-        { name: 'Deploy Bot' },
-      ),
+      resolver.createServiceAccountWorkspaceMember(workspace, {
+        name: 'Deploy Bot',
+      }),
     ).resolves.toBe(created);
 
     expect(workspaceMemberService.createServiceAccount).toHaveBeenCalledWith(
@@ -271,32 +244,32 @@ describe('WorkspaceMemberResolver', () => {
     );
   });
 
-  it('rejects service account creation by regular members', async () => {
-    const { resolver, workspaceMemberService } = createResolver();
+  it('rejects direct permission changes by non owners', async () => {
+    const workspace = { id: 'workspace_1' } as Workspace;
+    const target = {
+      id: 'member_2',
+      roles: ['member'],
+    } as WorkspaceMember;
+    const { resolver, workspaceMemberService, workspaceService } =
+      createResolver({
+        workspaceMemberService: {
+          findOneOrFail: vi.fn(async () => target),
+        },
+        workspaceService: {
+          setMemberPermissions: vi.fn(async () => target),
+        },
+      });
 
     await expect(
-      resolver.createServiceAccountWorkspaceMember(
-        { id: 'workspace_1' } as Workspace,
-        { role: WorkspaceMemberRole.MEMBER } as WorkspaceMember,
-        { name: 'Deploy Bot' },
+      resolver.setWorkspaceMemberPermissions(
+        workspace,
+        { roles: ['admin'] } as WorkspaceMember,
+        target.id,
+        { permissions: [] },
       ),
     ).rejects.toBeInstanceOf(ForbiddenException);
-
-    expect(workspaceMemberService.createServiceAccount).not.toHaveBeenCalled();
-  });
-
-  it('rejects member updates by regular members', async () => {
-    const { resolver, workspaceMemberService } = createResolver();
-
-    await expect(
-      resolver.updateWorkspaceMember(
-        { role: WorkspaceMemberRole.MEMBER } as WorkspaceMember,
-        'member_2',
-        { name: 'New' },
-      ),
-    ).rejects.toBeInstanceOf(ForbiddenException);
-
     expect(workspaceMemberService.findOneOrFail).not.toHaveBeenCalled();
+    expect(workspaceService.setMemberPermissions).not.toHaveBeenCalled();
   });
 
   it('rejects updating other owners', async () => {
@@ -306,7 +279,7 @@ describe('WorkspaceMemberResolver', () => {
           async () =>
             ({
               id: 'member_2',
-              role: WorkspaceMemberRole.OWNER,
+              roles: ['owner'],
             }) as WorkspaceMember,
         ),
       },
@@ -314,9 +287,10 @@ describe('WorkspaceMemberResolver', () => {
 
     await expect(
       resolver.updateWorkspaceMember(
+        { id: 'workspace_1' } as Workspace,
         {
           id: 'member_1',
-          role: WorkspaceMemberRole.ADMIN,
+          roles: ['admin'],
         } as WorkspaceMember,
         'member_2',
         { name: 'New' },
@@ -326,10 +300,11 @@ describe('WorkspaceMemberResolver', () => {
     expect(workspaceMemberService.updateWorkspaceMember).not.toHaveBeenCalled();
   });
 
-  it('allows admins to update regular members', async () => {
+  it('allows authorized members to update regular member fields', async () => {
+    const workspace = { id: 'workspace_1' } as Workspace;
     const member = {
       id: 'member_2',
-      role: WorkspaceMemberRole.MEMBER,
+      roles: ['member'],
     } as WorkspaceMember;
     const updated = {
       ...member,
@@ -344,9 +319,10 @@ describe('WorkspaceMemberResolver', () => {
 
     await expect(
       resolver.updateWorkspaceMember(
+        workspace,
         {
           id: 'member_1',
-          role: WorkspaceMemberRole.ADMIN,
+          roles: ['admin'],
         } as WorkspaceMember,
         'member_2',
         { name: 'Alice' },
@@ -357,12 +333,48 @@ describe('WorkspaceMemberResolver', () => {
       member,
       { name: 'Alice' },
     );
+    expect(workspaceMemberService.findOneOrFail).toHaveBeenCalledWith({
+      id: 'member_2',
+      workspace,
+    });
+  });
+
+  it('lists roles and updates member roles through WorkspaceService', async () => {
+    const workspace = { id: 'workspace_1' } as Workspace;
+    const member = { id: 'member_2', roles: ['member'] } as WorkspaceMember;
+    const roles = [{ name: 'admin', permissions: ['workspace:update'] }];
+    const { resolver, workspaceMemberService, workspaceService } =
+      createResolver({
+        workspaceMemberService: {
+          findOneOrFail: vi.fn(async () => member),
+        },
+        workspaceService: {
+          listPermissions: vi.fn(() => ['workspace:update']),
+          listRoles: vi.fn(() => roles),
+          updateMemberRole: vi.fn(async () => member),
+        },
+      });
+
+    expect(resolver.workspaceRoles()).toEqual(roles);
+    expect(resolver.workspacePermissions()).toEqual(['workspace:update']);
+    await expect(
+      resolver.updateWorkspaceMemberRole(workspace, member.id, {
+        roles: ['admin'],
+      }),
+    ).resolves.toBe(member);
+    expect(workspaceMemberService.findOneOrFail).toHaveBeenCalledWith({
+      id: member.id,
+      workspace,
+    });
+    expect(workspaceService.updateMemberRole).toHaveBeenCalledWith(member, [
+      'admin',
+    ]);
   });
 
   it('allows owners to update their own owner member record', async () => {
     const member = {
       id: 'member_1',
-      role: WorkspaceMemberRole.OWNER,
+      roles: ['owner'],
     } as WorkspaceMember;
     const { resolver, workspaceMemberService } = createResolver({
       workspaceMemberService: {
@@ -372,24 +384,13 @@ describe('WorkspaceMemberResolver', () => {
     });
 
     await expect(
-      resolver.updateWorkspaceMember(member, 'member_1', { name: 'Owner' }),
-    ).resolves.toBe(member);
-  });
-
-  it('rejects member removal by non owners', async () => {
-    const { resolver, workspaceMemberService } = createResolver();
-
-    await expect(
-      resolver.removeWorkspaceMember(
-        {
-          id: 'member_1',
-          role: WorkspaceMemberRole.ADMIN,
-        } as WorkspaceMember,
-        'member_2',
+      resolver.updateWorkspaceMember(
+        { id: 'workspace_1' } as Workspace,
+        member,
+        'member_1',
+        { name: 'Owner' },
       ),
-    ).rejects.toBeInstanceOf(ForbiddenException);
-
-    expect(workspaceMemberService.findOneOrFail).not.toHaveBeenCalled();
+    ).resolves.toBe(member);
   });
 
   it('rejects self removal', async () => {
@@ -406,9 +407,10 @@ describe('WorkspaceMemberResolver', () => {
 
     await expect(
       resolver.removeWorkspaceMember(
+        { id: 'workspace_1' } as Workspace,
         {
           id: 'member_1',
-          role: WorkspaceMemberRole.OWNER,
+          roles: ['owner'],
         } as WorkspaceMember,
         'member_1',
       ),
@@ -428,9 +430,10 @@ describe('WorkspaceMemberResolver', () => {
 
     await expect(
       resolver.removeWorkspaceMember(
+        { id: 'workspace_1' } as Workspace,
         {
           id: 'member_1',
-          role: WorkspaceMemberRole.OWNER,
+          roles: ['owner'],
         } as WorkspaceMember,
         'member_2',
       ),
@@ -461,6 +464,7 @@ describe('WorkspaceMemberResolver', () => {
 
 function createResolver(overrides?: {
   workspaceMemberService?: Partial<WorkspaceMemberService>;
+  workspaceService?: Partial<WorkspaceService>;
   userService?: Partial<UserService>;
   cm?: { find: Mock };
 }) {
@@ -474,14 +478,22 @@ function createResolver(overrides?: {
     ...overrides?.workspaceMemberService,
   } as unknown as Mocked<WorkspaceMemberService>;
   const userService = {
-    findOne: vi.fn(),
+    getUserByEmail: vi.fn(),
     ...overrides?.userService,
   } as unknown as Mocked<UserService>;
   const cm = overrides?.cm ?? { find: vi.fn() };
+  const workspaceService = {
+    listPermissions: vi.fn(() => []),
+    listRoles: vi.fn(() => []),
+    setMemberPermissions: vi.fn(),
+    updateMemberRole: vi.fn(),
+    ...overrides?.workspaceService,
+  } as unknown as Mocked<WorkspaceService>;
   const resolver = new WorkspaceMemberResolver(
     workspaceMemberService,
     userService,
     cm as never,
+    workspaceService,
   );
 
   return {
@@ -489,5 +501,6 @@ function createResolver(overrides?: {
     workspaceMemberService,
     userService,
     cm,
+    workspaceService,
   };
 }

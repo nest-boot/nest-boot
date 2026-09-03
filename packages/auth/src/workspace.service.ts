@@ -2,8 +2,10 @@ import {
   type EntityClass,
   EntityManager,
   type FilterQuery,
+  LockMode,
   Reference,
   type RequiredEntityData,
+  UniqueConstraintViolationException,
 } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import {
@@ -29,6 +31,7 @@ import type {
   BaseWorkspaceInvitation,
   BaseWorkspaceMember,
 } from "./entities/index.js";
+import type { AuthRole } from "./interfaces/auth-role.interface.js";
 import type {
   AcceptWorkspaceInvitationResult,
   AddWorkspaceMemberOptions,
@@ -39,6 +42,17 @@ import type {
   UpdateWorkspaceOptions,
   WorkspaceHasPermissionOptions,
 } from "./interfaces/workspace-service.interface.js";
+import type { AuthModuleRoles } from "./types/auth-module-roles.type.js";
+import {
+  listAuthPermissions,
+  listAuthRoles,
+  normalizeAuthRoles,
+  resolveAuthPermissions,
+} from "./utils/auth-role.util.js";
+import {
+  DEFAULT_WORKSPACE_PERMISSIONS,
+  DEFAULT_WORKSPACE_ROLES,
+} from "./workspace.constants.js";
 
 /** Workspace, membership, and invitation domain operations. */
 @Injectable()
@@ -87,7 +101,7 @@ export class WorkspaceService<
     const workspaceMember = this.em.create(this.workspaceMemberEntity, {
       email: user.email,
       name: user.name,
-      role: "OWNER",
+      roles: ["owner"],
       status: "ACTIVE",
       user,
       workspace,
@@ -143,7 +157,7 @@ export class WorkspaceService<
     currentWorkspaceMember: WorkspaceMember,
   ): Promise<Workspace> {
     if (
-      currentWorkspaceMember.role !== "OWNER" ||
+      !currentWorkspaceMember.roles.includes("owner") ||
       this.unwrapWorkspace(currentWorkspaceMember).id !== workspace.id
     ) {
       throw new ForbiddenException("Only workspace owners can delete it");
@@ -166,6 +180,21 @@ export class WorkspaceService<
         await this.em.findOne(
           this.workspaceMemberEntity,
           { status: "ACTIVE", user, workspace } as FilterQuery<WorkspaceMember>,
+          { filters: false },
+        ),
+    );
+  }
+
+  /** Finds a workspace member by identifier inside the supplied workspace. */
+  async getMemberById(
+    workspace: Workspace,
+    memberId: string,
+  ): Promise<WorkspaceMember | null> {
+    return await this.withRlsDisabled(
+      async () =>
+        await this.em.findOne(
+          this.workspaceMemberEntity,
+          { id: memberId, workspace } as FilterQuery<WorkspaceMember>,
           { filters: false },
         ),
     );
@@ -206,7 +235,7 @@ export class WorkspaceService<
       email: user.email,
       name: user.name,
       permissions: input.permissions ?? [],
-      role: input.role ?? "MEMBER",
+      roles: this.normalizeRoles(input.roles ?? ["member"]),
       status: "ACTIVE",
       user,
       workspace,
@@ -215,19 +244,57 @@ export class WorkspaceService<
     return member;
   }
 
-  /** Updates a member's profile, role, permissions, or active state. */
+  /** Updates a member's profile or active state. */
   async updateMember(
     member: WorkspaceMember,
     input: UpdateWorkspaceMemberOptions,
   ): Promise<WorkspaceMember> {
+    if ("roles" in input || "permissions" in input) {
+      throw new BadRequestException(
+        "Use updateMemberRole or setMemberPermissions to update authorization fields",
+      );
+    }
     this.em.assign(member, input as never);
+    await this.em.flush();
+    return member;
+  }
+
+  /** Replaces the roles assigned to a non-owner workspace member. */
+  async updateMemberRole(
+    member: WorkspaceMember,
+    role: string | readonly string[],
+  ): Promise<WorkspaceMember> {
+    if (member.roles.includes("owner")) {
+      throw new ForbiddenException(
+        "Workspace owner roles can only be changed by transferring ownership",
+      );
+    }
+
+    const roles = this.normalizeRoles(role);
+    if (roles.includes("owner")) {
+      throw new ForbiddenException(
+        "The owner role can only be assigned by transferring ownership",
+      );
+    }
+
+    member.roles = roles;
+    await this.em.flush();
+    return member;
+  }
+
+  /** Replaces direct permissions assigned to a workspace member. */
+  async setMemberPermissions(
+    member: WorkspaceMember,
+    permissions: readonly string[],
+  ): Promise<WorkspaceMember> {
+    member.permissions = [...new Set(permissions)];
     await this.em.flush();
     return member;
   }
 
   /** Removes a non-owner member from its workspace. */
   async removeMember(member: WorkspaceMember): Promise<WorkspaceMember> {
-    if (member.role === "OWNER") {
+    if (member.roles.includes("owner")) {
       throw new ForbiddenException("Workspace owners cannot be removed");
     }
     await this.em.remove(member).flush();
@@ -239,6 +306,50 @@ export class WorkspaceService<
     return await this.removeMember(member);
   }
 
+  /** Transfers ownership and keeps the previous owner as an administrator. */
+  async transferOwnership(
+    workspace: Workspace,
+    currentOwner: WorkspaceMember,
+    nextOwner: WorkspaceMember,
+  ): Promise<WorkspaceMember> {
+    if (
+      !currentOwner.roles.includes("owner") ||
+      this.unwrapWorkspace(currentOwner).id !== workspace.id
+    ) {
+      throw new ForbiddenException(
+        "Only the current workspace owner can transfer ownership",
+      );
+    }
+    if (
+      currentOwner.id === nextOwner.id ||
+      this.unwrapWorkspace(nextOwner).id !== workspace.id ||
+      nextOwner.status !== "ACTIVE"
+    ) {
+      throw new BadRequestException(
+        "The next owner must be another active workspace member",
+      );
+    }
+
+    return await this.withRlsDisabled(
+      async () =>
+        await this.em.transactional(async (em) => {
+          await em.lock(currentOwner, LockMode.PESSIMISTIC_WRITE);
+          await em.lock(nextOwner, LockMode.PESSIMISTIC_WRITE);
+
+          if (!currentOwner.roles.includes("owner")) {
+            throw new ForbiddenException(
+              "Workspace ownership has already changed",
+            );
+          }
+
+          currentOwner.roles = ["admin"];
+          nextOwner.roles = ["owner"];
+          await em.flush();
+          return nextOwner;
+        }),
+    );
+  }
+
   /** Creates a pending workspace invitation. */
   async createInvitation(
     workspace: Workspace,
@@ -247,53 +358,84 @@ export class WorkspaceService<
     request?: Request,
   ): Promise<WorkspaceInvitation> {
     const email = input.email.toLowerCase();
-    const [member, invitation] = await this.withRlsDisabled(
-      async () =>
-        await Promise.all([
-          this.em.findOne(
-            this.workspaceMemberEntity,
-            { email, workspace } as FilterQuery<WorkspaceMember>,
-            { filters: false },
-          ),
-          this.em.findOne(
-            this.workspaceInvitationEntity,
-            {
+    const now = new Date();
+    const sendInvitationEmail = this.authOptions.workspace?.sendInvitationEmail;
+    let transactionResult: {
+      created: WorkspaceInvitation;
+      inviterMember: WorkspaceMember | null;
+    };
+
+    try {
+      transactionResult = await this.withRlsDisabled(
+        async () =>
+          await this.em.transactional(async (em) => {
+            const [member, invitation, inviterMember] = await Promise.all([
+              em.findOne(
+                this.workspaceMemberEntity,
+                { email, workspace } as FilterQuery<WorkspaceMember>,
+                { filters: false },
+              ),
+              em.findOne(
+                this.workspaceInvitationEntity,
+                {
+                  email,
+                  status: "pending",
+                  workspace,
+                } as FilterQuery<WorkspaceInvitation>,
+                { filters: false },
+              ),
+              sendInvitationEmail
+                ? em.findOne(
+                    this.workspaceMemberEntity,
+                    {
+                      status: "ACTIVE",
+                      user: inviter,
+                      workspace,
+                    } as FilterQuery<WorkspaceMember>,
+                    { filters: false },
+                  )
+                : Promise.resolve(null),
+            ]);
+
+            if (member) {
+              throw new ConflictException("User is already a member");
+            }
+            if (invitation && invitation.expiresAt.getTime() > now.getTime()) {
+              throw new ConflictException(
+                "User is already invited to this workspace",
+              );
+            }
+            if (sendInvitationEmail && !inviterMember) {
+              throw new ForbiddenException(
+                "Invitation sender is not an active workspace member",
+              );
+            }
+            if (invitation) invitation.status = "canceled";
+
+            const created = em.create(this.workspaceInvitationEntity, {
               email,
+              expiresAt: new Date(
+                now.getTime() + (input.expiresIn ?? 60 * 60 * 48) * 1000,
+              ),
+              inviter,
+              roles: this.normalizeRoles(input.roles ?? ["member"]),
               status: "pending",
               workspace,
-            } as FilterQuery<WorkspaceInvitation>,
-            { filters: false },
-          ),
-        ]),
-    );
-    if (member) {
-      throw new ConflictException("User is already a member");
-    }
-    if (invitation) {
-      throw new ConflictException("User is already invited to this workspace");
-    }
-
-    const sendInvitationEmail = this.authOptions.workspace?.sendInvitationEmail;
-    const inviterMember = sendInvitationEmail
-      ? await this.getMember(workspace, inviter)
-      : null;
-    if (sendInvitationEmail && !inviterMember) {
-      throw new ForbiddenException(
-        "Invitation sender is not an active workspace member",
+            } as unknown as RequiredEntityData<WorkspaceInvitation>);
+            await em.persist(created).flush();
+            return { created, inviterMember };
+          }),
       );
+    } catch (error) {
+      if (error instanceof UniqueConstraintViolationException) {
+        throw new ConflictException(
+          "User is already invited to this workspace",
+        );
+      }
+      throw error;
     }
 
-    const created = this.em.create(this.workspaceInvitationEntity, {
-      email,
-      expiresAt: new Date(
-        Date.now() + (input.expiresIn ?? 60 * 60 * 48) * 1000,
-      ),
-      inviter,
-      role: input.role ?? "MEMBER",
-      status: "pending",
-      workspace,
-    } as unknown as RequiredEntityData<WorkspaceInvitation>);
-    await this.em.persist(created).flush();
+    const { created, inviterMember } = transactionResult;
 
     if (sendInvitationEmail && inviterMember) {
       const callbackInviter = Object.assign(
@@ -308,7 +450,7 @@ export class WorkspaceService<
           id: created.id,
           invitation: created,
           inviter: callbackInviter,
-          role: created.role,
+          roles: [...created.roles],
           workspace,
         },
         request,
@@ -330,6 +472,39 @@ export class WorkspaceService<
     );
   }
 
+  /** Finds an invitation when it is addressed to the supplied user. */
+  async getUserInvitation(
+    id: string,
+    user: User,
+  ): Promise<WorkspaceInvitation | null> {
+    return await this.withRlsDisabled(
+      async () =>
+        await this.em.findOne(
+          this.workspaceInvitationEntity,
+          {
+            id,
+            email: user.email.toLowerCase(),
+          } as FilterQuery<WorkspaceInvitation>,
+          { filters: false },
+        ),
+    );
+  }
+
+  /** Finds an invitation owned by the supplied workspace. */
+  async getWorkspaceInvitation(
+    id: string,
+    workspace: Workspace,
+  ): Promise<WorkspaceInvitation | null> {
+    return await this.withRlsDisabled(
+      async () =>
+        await this.em.findOne(
+          this.workspaceInvitationEntity,
+          { id, workspace } as FilterQuery<WorkspaceInvitation>,
+          { filters: false },
+        ),
+    );
+  }
+
   /** Lists invitations for a workspace. */
   async listInvitations(workspace: Workspace): Promise<WorkspaceInvitation[]> {
     return await this.withRlsDisabled(
@@ -344,12 +519,14 @@ export class WorkspaceService<
 
   /** Lists pending invitations addressed to a user. */
   async listUserInvitations(user: User): Promise<WorkspaceInvitation[]> {
+    const now = new Date();
     return await this.withRlsDisabled(
       async () =>
         await this.em.find(
           this.workspaceInvitationEntity,
           {
             email: user.email.toLowerCase(),
+            expiresAt: { $gt: now },
             status: "pending",
           } as FilterQuery<WorkspaceInvitation>,
           { filters: false, orderBy: { createdAt: "desc" } as never },
@@ -365,43 +542,51 @@ export class WorkspaceService<
     WorkspaceInvitation,
     WorkspaceMember
   > | null> {
-    const invitation = await this.getInvitation(invitationId);
-    if (!invitation) return null;
-    if (invitation.status !== "pending") {
-      throw new BadRequestException("Workspace invitation is not pending");
-    }
-    if (invitation.expiresAt.getTime() <= Date.now()) {
-      throw new BadRequestException("Workspace invitation has expired");
-    }
-    if (invitation.email.toLowerCase() !== user.email.toLowerCase()) {
-      throw new ForbiddenException(
-        "Workspace invitation belongs to another email address",
-      );
-    }
-
-    const workspace = this.unwrapInvitationWorkspace(invitation);
-    const existing = await this.withRlsDisabled(
+    return await this.withRlsDisabled(
       async () =>
-        await this.em.findOne(
-          this.workspaceMemberEntity,
-          { user, workspace } as FilterQuery<WorkspaceMember>,
-          { filters: false },
-        ),
-    );
-    if (existing) throw new ConflictException("User is already a member");
+        await this.em.transactional(async (em) => {
+          const invitation = await em.findOne(
+            this.workspaceInvitationEntity,
+            { id: invitationId } as FilterQuery<WorkspaceInvitation>,
+            { filters: false, lockMode: LockMode.PESSIMISTIC_WRITE },
+          );
+          if (!invitation) return null;
+          if (invitation.status !== "pending") {
+            throw new BadRequestException(
+              "Workspace invitation is not pending",
+            );
+          }
+          if (invitation.expiresAt.getTime() <= Date.now()) {
+            throw new BadRequestException("Workspace invitation has expired");
+          }
+          if (invitation.email.toLowerCase() !== user.email.toLowerCase()) {
+            throw new ForbiddenException(
+              "Workspace invitation belongs to another email address",
+            );
+          }
 
-    const member = this.em.create(this.workspaceMemberEntity, {
-      email: user.email,
-      name: user.name,
-      permissions: [],
-      role: invitation.role,
-      status: "ACTIVE",
-      user,
-      workspace,
-    } as unknown as RequiredEntityData<WorkspaceMember>);
-    invitation.status = "accepted";
-    await this.withRlsDisabled(() => this.em.persist(member).flush());
-    return { invitation, member };
+          const workspace = this.unwrapInvitationWorkspace(invitation);
+          const existing = await em.findOne(
+            this.workspaceMemberEntity,
+            { user, workspace } as FilterQuery<WorkspaceMember>,
+            { filters: false },
+          );
+          if (existing) throw new ConflictException("User is already a member");
+
+          const member = em.create(this.workspaceMemberEntity, {
+            email: user.email,
+            name: user.name,
+            permissions: [],
+            roles: this.normalizeRoles(invitation.roles),
+            status: "ACTIVE",
+            user,
+            workspace,
+          } as unknown as RequiredEntityData<WorkspaceMember>);
+          invitation.status = "accepted";
+          await em.persist(member).flush();
+          return { invitation, member };
+        }),
+    );
   }
 
   /** Cancels a pending invitation. */
@@ -439,10 +624,42 @@ export class WorkspaceService<
     member: WorkspaceMember,
     input: WorkspaceHasPermissionOptions,
   ): boolean {
+    const permissions = new Set(this.getMemberPermissions(member));
     return Object.entries(input.permissions).every(([subject, actions]) =>
-      actions.every((action) =>
-        member.permissions.includes(`${subject}:${action}`),
-      ),
+      actions.every((action) => permissions.has(`${subject}:${action}`)),
+    );
+  }
+
+  /** Lists configured workspace roles. */
+  listRoles(): AuthRole[] {
+    return listAuthRoles(this.roles);
+  }
+
+  /** Lists configured workspace permissions. */
+  listPermissions(): string[] {
+    return listAuthPermissions(this.permissions);
+  }
+
+  /** Resolves permissions inherited from roles plus direct member permissions. */
+  getMemberPermissions(member: WorkspaceMember): string[] {
+    return resolveAuthPermissions(
+      member.roles ?? ["member"],
+      member.permissions ?? [],
+      this.roles,
+    );
+  }
+
+  private normalizeRoles(role: string | readonly string[]): string[] {
+    return normalizeAuthRoles(role, this.roles);
+  }
+
+  private get roles(): AuthModuleRoles {
+    return this.authOptions.workspace?.roles ?? DEFAULT_WORKSPACE_ROLES;
+  }
+
+  private get permissions(): readonly string[] {
+    return (
+      this.authOptions.workspace?.permissions ?? DEFAULT_WORKSPACE_PERMISSIONS
     );
   }
 

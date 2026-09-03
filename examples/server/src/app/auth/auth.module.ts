@@ -1,4 +1,8 @@
-import { AuthModule as BaseAuthModule } from '@nest-boot/auth';
+import {
+  AuthModule as BaseAuthModule,
+  DEFAULT_WORKSPACE_PERMISSIONS,
+  DEFAULT_WORKSPACE_ROLES,
+} from '@nest-boot/auth';
 import { Mailer } from '@nest-boot/mailer';
 import { RequestContext } from '@nest-boot/request-context';
 import { Module } from '@nestjs/common';
@@ -18,6 +22,7 @@ import { Account } from './entities/account.entity.js';
 import { Session } from './entities/session.entity.js';
 import { Verification } from './entities/verification.entity.js';
 import { RowLevelSecurityInterceptor } from './row-level-security.interceptor.js';
+import { UserResolver } from './user.resolver.js';
 
 /**
  * 应用认证模块。
@@ -25,7 +30,7 @@ import { RowLevelSecurityInterceptor } from './row-level-security.interceptor.js
 @Module({
   imports: [
     BaseAuthModule.forRoot({
-      trustedOrigins: ['*'],
+      trustedOrigins: [process.env.APP_URL ?? 'http://localhost:3000'],
       entities: {
         user: User,
         account: Account,
@@ -41,11 +46,41 @@ import { RowLevelSecurityInterceptor } from './row-level-security.interceptor.js
         requireEmailVerification: true,
       },
       user: {
+        buildAbility: (_context, permissions) =>
+          buildUserPermissionAbility(permissions),
         changeEmail: {
+          enabled: true,
+        },
+        deleteUser: {
           enabled: true,
         },
       },
       workspace: {
+        permissions: [
+          ...DEFAULT_WORKSPACE_PERMISSIONS,
+          'apiKey:read',
+          'apiKey:create',
+          'apiKey:update',
+          'apiKey:delete',
+        ],
+        roles: {
+          ...DEFAULT_WORKSPACE_ROLES,
+          owner: [
+            ...DEFAULT_WORKSPACE_ROLES.owner,
+            'apiKey:read',
+            'apiKey:create',
+            'apiKey:update',
+            'apiKey:delete',
+          ] as const,
+        },
+        buildAbility: (_context, permissions) => {
+          const workspaceMember = RequestContext.get(WorkspaceMember);
+
+          return buildWorkspaceMemberPermissionAbility(
+            permissions,
+            workspaceMember,
+          );
+        },
         sendInvitationEmail: async ({ email, id, inviter, workspace }) => {
           const url = new URL(
             '/invite',
@@ -63,20 +98,11 @@ import { RowLevelSecurityInterceptor } from './row-level-security.interceptor.js
           });
         },
       },
-      buildUserAbility: () =>
-        buildUserPermissionAbility(RequestContext.get(User)?.permissions ?? []),
-      buildWorkspaceAbility: () => {
-        const workspaceMember = RequestContext.get(WorkspaceMember);
-
-        return buildWorkspaceMemberPermissionAbility(
-          workspaceMember?.permissions ?? [],
-          workspaceMember,
-        );
-      },
     }),
   ],
   providers: [
     AuthResolver,
+    UserResolver,
     RowLevelSecurityInterceptor,
     {
       provide: APP_INTERCEPTOR,

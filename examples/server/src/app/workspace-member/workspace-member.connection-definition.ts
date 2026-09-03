@@ -13,11 +13,6 @@ const { Connection, ConnectionArgs } = new ConnectionBuilder(WorkspaceMember)
     type: 'string',
   })
   .addField({
-    field: 'role',
-    filterable: true,
-    type: 'string',
-  })
-  .addField({
     field: 'type',
     filterable: true,
     type: 'string',

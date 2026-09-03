@@ -1,15 +1,18 @@
 import { t } from "i18next";
-import { WorkspaceMemberRole } from "@/gql/graphql";
 
-export function getRoleLabel(role: WorkspaceMemberRole) {
+export function getRoleLabel(role: string) {
   switch (role) {
-    case WorkspaceMemberRole.OWNER:
+    case "owner":
       return t("workspace-member:role.owner");
-    case WorkspaceMemberRole.ADMIN:
+    case "admin":
       return t("workspace-member:role.admin");
-    case WorkspaceMemberRole.MEMBER:
+    case "member":
       return t("workspace-member:role.member");
     default:
       return role;
   }
+}
+
+export function getRolesLabel(roles: ReadonlyArray<string>): string {
+  return roles.map(getRoleLabel).join(", ");
 }

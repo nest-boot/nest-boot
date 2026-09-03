@@ -1,9 +1,10 @@
 import {
   ApiKeyService,
-  Can,
   CurrentUser,
   CurrentWorkspace,
   CurrentWorkspaceMember,
+  UserCan,
+  WorkspaceCan,
 } from '@nest-boot/auth';
 import { Args, ID, Mutation, Query, Resolver } from '@nest-boot/graphql';
 import { ConnectionManager } from '@nest-boot/graphql-connection';
@@ -49,7 +50,7 @@ export class ApiKeyResolver {
    * @returns 可访问时返回 API Key，否则返回空值。
    */
   @Query(() => ApiKey, { nullable: true })
-  @Can('read', ApiKey)
+  @WorkspaceCan('read', ApiKey)
   async apiKey(
     @Args('id', { type: () => ID }) id: string,
     @CurrentWorkspaceMember() currentWorkspaceMember: WorkspaceMember,
@@ -69,7 +70,7 @@ export class ApiKeyResolver {
    * @returns API Key 连接分页结果。
    */
   @Query(() => ApiKeyConnection)
-  @Can('read', ApiKey)
+  @WorkspaceCan('read', ApiKey)
   async apiKeys(
     @Args() args: ApiKeyConnectionArgs,
     @CurrentWorkspace() workspace: Workspace,
@@ -94,7 +95,7 @@ export class ApiKeyResolver {
    * @returns 创建结果，包含实体和仅返回一次的明文 API Key。
    */
   @Mutation(() => CreateApiKeyResult)
-  @Can('create', ApiKey)
+  @WorkspaceCan('create', ApiKey)
   async createApiKey(
     @Args('input') input: CreateApiKeyInput,
     @CurrentWorkspace() workspace: Workspace,
@@ -119,7 +120,7 @@ export class ApiKeyResolver {
    * @returns 更新后的 API Key。
    */
   @Mutation(() => ApiKey)
-  @Can('update', ApiKey)
+  @WorkspaceCan('update', ApiKey)
   async updateApiKey(
     @Args('id', { type: () => ID }) id: string,
     @Args('input') input: UpdateApiKeyInput,
@@ -140,7 +141,7 @@ export class ApiKeyResolver {
    * @returns 已删除的 API Key。
    */
   @Mutation(() => ApiKey)
-  @Can('delete', ApiKey)
+  @WorkspaceCan('delete', ApiKey)
   async deleteApiKey(
     @Args('id', { type: () => ID }) id: string,
     @CurrentWorkspaceMember() currentWorkspaceMember: WorkspaceMember,
@@ -153,7 +154,7 @@ export class ApiKeyResolver {
 
   /** Returns one API key owned by the authenticated user. */
   @Query(() => ApiKey, { nullable: true })
-  @Can('read', ApiKey, { scope: 'user' })
+  @UserCan('read', ApiKey)
   async userApiKey(
     @Args('id', { type: () => ID }) id: string,
     @CurrentUser() user: User,
@@ -163,7 +164,7 @@ export class ApiKeyResolver {
 
   /** Lists API keys owned by the authenticated user. */
   @Query(() => ApiKeyConnection)
-  @Can('read', ApiKey, { scope: 'user' })
+  @UserCan('read', ApiKey)
   async userApiKeys(
     @Args() args: ApiKeyConnectionArgs,
     @CurrentUser() user: User,
@@ -178,7 +179,7 @@ export class ApiKeyResolver {
 
   /** Creates an API key owned by the authenticated user. */
   @Mutation(() => CreateApiKeyResult)
-  @Can('create', ApiKey, { scope: 'user' })
+  @UserCan('create', ApiKey)
   async createUserApiKey(
     @Args('input') input: CreateApiKeyInput,
     @CurrentUser() user: User,
@@ -191,7 +192,7 @@ export class ApiKeyResolver {
 
   /** Updates an API key owned by the authenticated user. */
   @Mutation(() => ApiKey)
-  @Can('update', ApiKey, { scope: 'user' })
+  @UserCan('update', ApiKey)
   async updateUserApiKey(
     @Args('id', { type: () => ID }) id: string,
     @Args('input') input: UpdateApiKeyInput,
@@ -202,7 +203,7 @@ export class ApiKeyResolver {
 
   /** Deletes an API key owned by the authenticated user. */
   @Mutation(() => ApiKey)
-  @Can('delete', ApiKey, { scope: 'user' })
+  @UserCan('delete', ApiKey)
   async deleteUserApiKey(
     @Args('id', { type: () => ID }) id: string,
     @CurrentUser() user: User,

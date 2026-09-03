@@ -8,6 +8,7 @@ import z from "zod";
 import { t } from "i18next";
 
 import { graphql } from "@/gql";
+import { WorkspaceInvitationStatus } from "@/gql/graphql";
 import { Button } from "@/components/thread-ui/button";
 import {
   Card,
@@ -34,7 +35,7 @@ const GET_WORKSPACE_INVITATION_FROM_INVITE_ROUTE = graphql(`
     workspaceInvitation(id: $id) {
       id
       email
-      role
+      roles
       status
       expiresAt
       workspace {
@@ -58,7 +59,7 @@ const ACCEPT_WORKSPACE_INVITATION_FROM_INVITE_ROUTE = graphql(`
       member {
         id
         name
-        role
+        roles
       }
     }
   }
@@ -102,6 +103,19 @@ function InviteComponent() {
   const [acceptInvitation, { loading: acceptLoading }] = useMutation(
     ACCEPT_WORKSPACE_INVITATION_FROM_INVITE_ROUTE,
   );
+  const invitation = inviteData?.workspaceInvitation;
+  const invitationUnavailableMessage = useMemo(() => {
+    if (!invitationId) return t("workspace:invite.error.invalid_token");
+    if (inviteError) return inviteError.message;
+    if (!invitation) return null;
+    if (invitation.status !== WorkspaceInvitationStatus.PENDING) {
+      return t(`workspace:invite.error.status.${invitation.status}`);
+    }
+    if (new Date(invitation.expiresAt).getTime() <= Date.now()) {
+      return t("workspace:invite.error.expired");
+    }
+    return null;
+  }, [invitation, invitationId, inviteError]);
 
   // 如果未登录，立即跳转到登录页（避免闪烁）
   useEffect(() => {
@@ -116,6 +130,17 @@ function InviteComponent() {
       }
     }
   }, [meLoading, meData, invitationId]);
+
+  useEffect(() => {
+    if (
+      !meLoading &&
+      meData?.currentUser &&
+      !inviteLoading &&
+      invitationUnavailableMessage
+    ) {
+      localStorage.removeItem(INVITATION_ID_KEY);
+    }
+  }, [invitationUnavailableMessage, inviteLoading, meData, meLoading]);
 
   // 检查邮箱是否匹配
   const emailMismatch = useMemo(() => {
@@ -143,6 +168,8 @@ function InviteComponent() {
           to: "/workspaces/$workspaceId",
           params: { workspaceId },
         });
+      } else {
+        throw new Error(t("workspace:invite.error.accept_failed"));
       }
     } catch (error) {
       const errorMessage =
@@ -154,6 +181,11 @@ function InviteComponent() {
         t("workspace:invite.error.accept_failed");
       toast.error(errorMessage);
     }
+  };
+
+  const handleExit = () => {
+    localStorage.removeItem(INVITATION_ID_KEY);
+    navigate({ to: "/workspaces" });
   };
 
   // 如果未登录，不渲染后续内容（避免闪烁）
@@ -172,22 +204,16 @@ function InviteComponent() {
   }
 
   // 错误处理（只有在查询完成且确实有错误或没有数据时才显示）
-  if (!inviteLoading && inviteError) {
+  if (!inviteLoading && invitationUnavailableMessage) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>{t("workspace:invite.error.title")}</CardTitle>
-            <CardDescription>
-              {inviteError?.message ||
-                t("workspace:invite.error.invalid_token")}
-            </CardDescription>
+            <CardDescription>{invitationUnavailableMessage}</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button
-              onClick={() => navigate({ to: "/workspaces" })}
-              className="w-full"
-            >
+            <Button onClick={handleExit} className="w-full">
               {t("workspace:invite.error.back_button")}
             </Button>
           </CardContent>
@@ -240,7 +266,7 @@ function InviteComponent() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => navigate({ to: "/workspaces" })}
+                onClick={handleExit}
                 className="flex-1"
               >
                 {t("action.cancel")}

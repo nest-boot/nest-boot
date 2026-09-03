@@ -1,4 +1,13 @@
-import { Can, CurrentWorkspace, CurrentWorkspaceMember } from '@nest-boot/auth';
+import {
+  type BaseApiKey,
+  CurrentApiKey,
+  CurrentUser,
+  CurrentWorkspace,
+  CurrentWorkspaceMember,
+  UserService,
+  WorkspaceCan,
+  WorkspaceService,
+} from '@nest-boot/auth';
 import {
   Args,
   ID,
@@ -11,13 +20,14 @@ import {
 import { ConnectionManager } from '@nest-boot/graphql-connection';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 
+import { AuthRoleType } from '../auth/types/auth-role.type.js';
 import { User } from '../user/user.entity.js';
-import { UserService } from '../user/user.service.js';
 import { Workspace } from '../workspace/workspace.entity.js';
-import { WorkspaceMemberRole } from './enums/workspace-member-role.enum.js';
 import { AddWorkspaceMemberInput } from './inputs/add-workspace-member.input.js';
 import { CreateServiceAccountWorkspaceMemberInput } from './inputs/create-service-account-workspace-member.input.js';
+import { SetWorkspaceMemberPermissionsInput } from './inputs/set-workspace-member-permissions.input.js';
 import { UpdateWorkspaceMemberInput } from './inputs/update-workspace-member.input.js';
+import { UpdateWorkspaceMemberRoleInput } from './inputs/update-workspace-member-role.input.js';
 import {
   WorkspaceMemberConnection,
   WorkspaceMemberConnectionArgs,
@@ -39,10 +49,26 @@ export class WorkspaceMemberResolver {
     /** 工作区成员领域服务。 */
     private readonly workspaceMemberService: WorkspaceMemberService,
     /** 用户查询服务。 */
-    private readonly userService: UserService,
+    private readonly userService: UserService<User>,
     /** GraphQL 连接查询管理器。 */
     private readonly cm: ConnectionManager,
+    /** Auth-owned workspace role and permission operations. */
+    private readonly workspaceService: WorkspaceService,
   ) {}
+
+  /** Lists configured workspace roles. */
+  @WorkspaceCan('read', WorkspaceMember)
+  @Query(() => [AuthRoleType])
+  workspaceRoles(): AuthRoleType[] {
+    return this.workspaceService.listRoles();
+  }
+
+  /** Lists permissions available to workspace roles. */
+  @WorkspaceCan('read', WorkspaceMember)
+  @Query(() => [String])
+  workspacePermissions(): string[] {
+    return this.workspaceService.listPermissions();
+  }
 
   /**
    * 获取当前请求中的工作区成员。
@@ -50,11 +76,17 @@ export class WorkspaceMemberResolver {
    * @param workspaceMember - 当前请求上下文中的工作区成员。
    * @returns 当前工作区成员；请求未解析出成员时返回 null。
    */
-  @Can('read', WorkspaceMember)
   @Query(() => WorkspaceMember, { nullable: true })
   currentWorkspaceMember(
     @CurrentWorkspaceMember() workspaceMember?: WorkspaceMember,
+    @CurrentUser() user?: User,
+    @CurrentApiKey() apiKey?: BaseApiKey,
   ): WorkspaceMember | null {
+    if (apiKey && user && !workspaceMember) {
+      throw new ForbiddenException(
+        'The API key owner is not a member of this workspace',
+      );
+    }
     return workspaceMember ?? null;
   }
 
@@ -64,12 +96,13 @@ export class WorkspaceMemberResolver {
    * @param id - 工作区成员 ID。
    * @returns 匹配的工作区成员，不存在时返回 null。
    */
-  @Can('read', WorkspaceMember)
+  @WorkspaceCan('read', WorkspaceMember)
   @Query(() => WorkspaceMember, { nullable: true })
   async workspaceMember(
     @Args('id', { type: () => ID }) id: string,
+    @CurrentWorkspace() workspace: Workspace,
   ): Promise<WorkspaceMember | null> {
-    return await this.workspaceMemberService.findOne({ id });
+    return await this.workspaceMemberService.findOne({ id, workspace });
   }
 
   /**
@@ -80,7 +113,7 @@ export class WorkspaceMemberResolver {
    * @param workspaceMember - 当前请求中的工作区成员。
    * @returns 工作区成员分页结果。
    */
-  @Can('read', WorkspaceMember)
+  @WorkspaceCan('read', WorkspaceMember)
   @Query(() => WorkspaceMemberConnection)
   async workspaceMembers(
     @Args() args: WorkspaceMemberConnectionArgs,
@@ -106,41 +139,26 @@ export class WorkspaceMemberResolver {
    * 通过邮箱直接添加已有用户为工作区成员。
    *
    * @param workspace - 当前工作区。
-   * @param workspaceMember - 当前执行操作的工作区成员。
    * @param input - 添加成员输入参数。
    * @returns 新创建的工作区成员。
    */
-  @Can('create', WorkspaceMember)
+  @WorkspaceCan('create', WorkspaceMember)
   @Mutation(() => WorkspaceMember)
   async addWorkspaceMember(
     @CurrentWorkspace() workspace: Workspace,
-    @CurrentWorkspaceMember() workspaceMember: WorkspaceMember,
     @Args('input') input: AddWorkspaceMemberInput,
   ): Promise<WorkspaceMember> {
-    // 只有所有者可以添加成员
-    if (workspaceMember.role !== WorkspaceMemberRole.OWNER) {
-      throw new ForbiddenException('You are not allowed to add members');
-    }
-
-    const user = await this.userService.findOne({
-      email: input.email,
-    });
+    const user = await this.userService.getUserByEmail(input.email);
 
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    // 检查新用户是否已经存在于当前工作空间
     const alreadyExist = await workspace.members.loadCount({
-      where: {
-        user: {
-          id: user.id,
-        },
-      },
+      where: { user: { id: user.id } },
     });
-
     if (alreadyExist > 0) {
-      throw new ForbiddenException('User already exists in the workspace');
+      throw new ForbiddenException('User is already a workspace member');
     }
 
     return await this.workspaceMemberService.create({
@@ -154,27 +172,15 @@ export class WorkspaceMemberResolver {
    * 创建服务账号工作区成员。
    *
    * @param workspace - 当前工作区。
-   * @param workspaceMember - 当前执行操作的工作区成员。
    * @param input - 服务账号创建参数。
    * @returns 新创建的服务账号成员。
    */
-  @Can('create', WorkspaceMember)
+  @WorkspaceCan('create', WorkspaceMember)
   @Mutation(() => WorkspaceMember)
   async createServiceAccountWorkspaceMember(
     @CurrentWorkspace() workspace: Workspace,
-    @CurrentWorkspaceMember() workspaceMember: WorkspaceMember,
     @Args('input') input: CreateServiceAccountWorkspaceMemberInput,
   ): Promise<WorkspaceMember> {
-    if (
-      ![WorkspaceMemberRole.ADMIN, WorkspaceMemberRole.OWNER].includes(
-        workspaceMember.role,
-      )
-    ) {
-      throw new ForbiddenException(
-        'You are not allowed to create service accounts',
-      );
-    }
-
     return await this.workspaceMemberService.createServiceAccount(
       workspace,
       input,
@@ -189,36 +195,73 @@ export class WorkspaceMemberResolver {
    * @param input - 成员更新参数。
    * @returns 更新后的工作区成员。
    */
-  @Can('update', WorkspaceMember)
+  @WorkspaceCan('update', WorkspaceMember)
   @Mutation(() => WorkspaceMember, { nullable: true })
   async updateWorkspaceMember(
+    @CurrentWorkspace() workspace: Workspace,
     @CurrentWorkspaceMember() currentWorkspaceMember: WorkspaceMember,
     @Args('id', { type: () => ID }) id: string,
     @Args('input') input: UpdateWorkspaceMemberInput,
   ): Promise<WorkspaceMember | null> {
-    // 普通用户不能修改其他成员的角色
-    if (currentWorkspaceMember.role === WorkspaceMemberRole.MEMBER) {
-      throw new ForbiddenException('You are not allowed to update members');
-    }
-
     const member = await this.workspaceMemberService.findOneOrFail({
       id,
+      workspace,
     });
 
-    // 不能修改角色为所有者的成员
     if (
-      member.id !== currentWorkspaceMember.id &&
-      member.role === WorkspaceMemberRole.OWNER
+      member.roles.includes('owner') &&
+      !currentWorkspaceMember.roles.includes('owner')
     ) {
       throw new ForbiddenException(
-        'You are not allowed to update other members',
+        'Only workspace owners can update owner members',
       );
     }
-
     return await this.workspaceMemberService.updateWorkspaceMember(
       member,
       input,
     );
+  }
+
+  /** Replaces roles assigned to a non-owner workspace member. */
+  @WorkspaceCan('update', WorkspaceMember)
+  @Mutation(() => WorkspaceMember)
+  async updateWorkspaceMemberRole(
+    @CurrentWorkspace() workspace: Workspace,
+    @Args('id', { type: () => ID }) id: string,
+    @Args('input') input: UpdateWorkspaceMemberRoleInput,
+  ): Promise<WorkspaceMember> {
+    const member = await this.workspaceMemberService.findOneOrFail({
+      id,
+      workspace,
+    });
+    return (await this.workspaceService.updateMemberRole(
+      member,
+      input.roles,
+    )) as WorkspaceMember;
+  }
+
+  /** Replaces direct permissions assigned to a workspace member. */
+  @WorkspaceCan('update', WorkspaceMember)
+  @Mutation(() => WorkspaceMember)
+  async setWorkspaceMemberPermissions(
+    @CurrentWorkspace() workspace: Workspace,
+    @CurrentWorkspaceMember() currentWorkspaceMember: WorkspaceMember,
+    @Args('id', { type: () => ID }) id: string,
+    @Args('input') input: SetWorkspaceMemberPermissionsInput,
+  ): Promise<WorkspaceMember> {
+    if (!currentWorkspaceMember.roles.includes('owner')) {
+      throw new ForbiddenException(
+        'Only workspace owners can update direct permissions',
+      );
+    }
+    const member = await this.workspaceMemberService.findOneOrFail({
+      id,
+      workspace,
+    });
+    return (await this.workspaceService.setMemberPermissions(
+      member,
+      input.permissions,
+    )) as WorkspaceMember;
   }
 
   /**
@@ -228,17 +271,17 @@ export class WorkspaceMemberResolver {
    * @param id - 待移除的工作区成员 ID。
    * @returns 被移除的工作区成员。
    */
-  @Can('delete', WorkspaceMember)
+  @WorkspaceCan('delete', WorkspaceMember)
   @Mutation(() => WorkspaceMember)
   async removeWorkspaceMember(
+    @CurrentWorkspace() workspace: Workspace,
     @CurrentWorkspaceMember() workspaceMember: WorkspaceMember,
     @Args('id', { type: () => ID }) id: string,
   ): Promise<WorkspaceMember> {
-    if (workspaceMember.role !== WorkspaceMemberRole.OWNER) {
-      throw new ForbiddenException('You are not allowed to remove members');
-    }
-
-    const member = await this.workspaceMemberService.findOneOrFail({ id });
+    const member = await this.workspaceMemberService.findOneOrFail({
+      id,
+      workspace,
+    });
 
     if (member.id === workspaceMember.id) {
       throw new ForbiddenException('You are not allowed to remove yourself');
@@ -253,7 +296,7 @@ export class WorkspaceMemberResolver {
    * @param workspaceMember - 父级工作区成员。
    * @returns 绑定用户，不存在时返回 null。
    */
-  @Can('read', User)
+  @WorkspaceCan('read', User)
   @ResolveField(() => User, { nullable: true })
   async user(@Parent() workspaceMember: WorkspaceMember): Promise<User | null> {
     if (!workspaceMember.user || !workspaceMember.user.id) {

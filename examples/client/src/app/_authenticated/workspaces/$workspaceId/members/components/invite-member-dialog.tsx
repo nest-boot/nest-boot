@@ -5,8 +5,8 @@ import { useForm } from "@tanstack/react-form";
 import { toast } from "sonner";
 import { t } from "i18next";
 import { Button } from "@/components/thread-ui/button";
+import { CheckboxGroup } from "@/components/thread-ui/checkbox-group";
 import { Input } from "@/components/thread-ui/input";
-import { RadioGroup } from "@/components/thread-ui/radio-group";
 import {
   Dialog,
   DialogContent,
@@ -14,9 +14,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { WorkspaceMemberRole } from "@/gql/graphql";
 import { getRoleLabel } from "@/utils/get-role-label";
 import { graphql } from "@/gql";
+import {
+  WORKSPACE_MEMBER_ROLE,
+  workspaceAssignableRoles,
+} from "@/lib/workspace-roles";
 
 const CREATE_WORKSPACE_INVITATION_FROM_INVITE_MEMBER_DIALOG = graphql(`
   mutation createWorkspaceInvitationFromInviteMemberDialog(
@@ -35,7 +38,7 @@ export function InviteMemberDialog({
 }: {
   inviteOpen: boolean;
   onInviteOpenChange: (open: boolean) => void;
-  onSuccess?: () => void;
+  onSuccess?: () => void | Promise<void>;
 }) {
   const [inviteLinkOpen, setInviteLinkOpen] = useState(false);
   const [inviteLink, setInviteLink] = useState("");
@@ -45,7 +48,7 @@ export function InviteMemberDialog({
 
   const inviteForm = useForm({
     defaultValues: {
-      role: WorkspaceMemberRole.MEMBER,
+      roles: [WORKSPACE_MEMBER_ROLE],
       email: "",
     },
     onSubmit: async ({ value }) => {
@@ -54,13 +57,17 @@ export function InviteMemberDialog({
         toast.error(t("workspace-member:invite.email_required"));
         return;
       }
+      if (value.roles.length === 0) {
+        toast.error(t("workspace-member:invite.role_label"));
+        return;
+      }
 
       try {
         const result = await createWorkspaceInvitation({
           variables: {
             input: {
               email,
-              role: value.role,
+              roles: value.roles,
             },
           },
         });
@@ -69,18 +76,17 @@ export function InviteMemberDialog({
           const invitationId = result.data.createWorkspaceInvitation.id;
           const link = `${window.location.origin}/invite?invitationId=${invitationId}`;
           setInviteLink(link);
-
-          // 自动复制到剪切板
-          await navigator.clipboard.writeText(link);
-          toast.success(t("workspace-member:invite.link_copied"));
-
-          // 关闭第一个对话框，打开第二个对话框
           onInviteOpenChange(false);
           setInviteLinkOpen(true);
           inviteForm.reset();
+          await onSuccess?.();
 
-          // 调用成功回调
-          onSuccess?.();
+          try {
+            await navigator.clipboard.writeText(link);
+            toast.success(t("workspace-member:invite.link_copied"));
+          } catch {
+            toast.error(t("workspace-member:invite.copy_failed"));
+          }
         }
       } catch (err) {
         if (err instanceof Error) {
@@ -161,20 +167,16 @@ export function InviteMemberDialog({
                 )}
               </inviteForm.Field>
 
-              <inviteForm.Field name="role">
+              <inviteForm.Field name="roles">
                 {(field) => (
-                  <RadioGroup
+                  <CheckboxGroup
                     label={t("workspace-member:invite.role_label")}
-                    items={Object.values(WorkspaceMemberRole)
-                      .filter((role) => role !== WorkspaceMemberRole.OWNER)
-                      .map((role) => ({
-                        label: getRoleLabel(role),
-                        value: role,
-                      }))}
+                    items={workspaceAssignableRoles.map((role) => ({
+                      label: getRoleLabel(role),
+                      value: role,
+                    }))}
                     value={field.state.value}
-                    onValueChange={(value: WorkspaceMemberRole) =>
-                      field.handleChange(value)
-                    }
+                    onValueChange={(value) => field.handleChange(value)}
                   />
                 )}
               </inviteForm.Field>
@@ -200,7 +202,6 @@ export function InviteMemberDialog({
         </DialogContent>
       </Dialog>
 
-      {/* 邀请链接对话框 */}
       <Dialog open={inviteLinkOpen} onOpenChange={setInviteLinkOpen}>
         <DialogContent
           className="max-w-md"

@@ -4,10 +4,11 @@ import type { Mocked } from 'vitest';
 vi.mock('@nest-boot/auth', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@nest-boot/auth')>()),
   BaseUser: class BaseUser {},
-  Can: () => () => undefined,
   CurrentUser: () => () => undefined,
   CurrentWorkspace: () => () => undefined,
   CurrentWorkspaceMember: () => () => undefined,
+  UserCan: () => () => undefined,
+  WorkspaceCan: () => () => undefined,
   WorkspaceService: class WorkspaceService {},
 }));
 
@@ -53,6 +54,23 @@ describe('WorkspaceResolver', () => {
     });
   });
 
+  it('returns a workspace only when the current user is an active member', async () => {
+    const workspace = { id: 'workspace_1' } as Workspace;
+    const user = { id: 'user_1' } as User;
+    const { resolver, workspaceService } = createResolver({
+      findOne: vi.fn(async () => workspace),
+      getMember: vi.fn(async () => ({ id: 'member_1' }) as WorkspaceMember),
+    });
+
+    await expect(resolver.workspace(workspace.id, user)).resolves.toBe(
+      workspace,
+    );
+    expect(workspaceService.getMember).toHaveBeenCalledWith(workspace, user);
+
+    workspaceService.getMember.mockResolvedValueOnce(null);
+    await expect(resolver.workspace(workspace.id, user)).resolves.toBeNull();
+  });
+
   it('delegates workspace lifecycle operations to the auth service', async () => {
     const workspace = { id: 'workspace_1', name: 'Acme' } as Workspace;
     const member = { id: 'member_1' } as WorkspaceMember;
@@ -84,6 +102,42 @@ describe('WorkspaceResolver', () => {
       member,
     );
   });
+
+  it('transfers ownership to a workspace user member', async () => {
+    const workspace = { id: 'workspace_1' } as Workspace;
+    const currentOwner = { id: 'member_1' } as WorkspaceMember;
+    const nextOwner = {
+      id: 'member_2',
+      user: { id: 'user_2' },
+    } as WorkspaceMember;
+    const { resolver, workspaceService } = createResolver({
+      getMemberById: vi.fn(async () => nextOwner),
+      transferOwnership: vi.fn(async () => nextOwner),
+    });
+
+    await expect(
+      resolver.transferWorkspaceOwnership(
+        nextOwner.id,
+        workspace,
+        currentOwner,
+      ),
+    ).resolves.toBe(nextOwner);
+    expect(workspaceService.transferOwnership).toHaveBeenCalledWith(
+      workspace,
+      currentOwner,
+      nextOwner,
+    );
+  });
+
+  it('delegates leaving a workspace to the auth service', async () => {
+    const member = { id: 'member_1' } as WorkspaceMember;
+    const { resolver, workspaceService } = createResolver({
+      leaveWorkspace: vi.fn(async () => member),
+    });
+
+    await expect(resolver.leaveWorkspace(member)).resolves.toBe(member);
+    expect(workspaceService.leaveWorkspace).toHaveBeenCalledWith(member);
+  });
 });
 
 function createResolver(overrides: Partial<WorkspaceService> = {}) {
@@ -91,6 +145,10 @@ function createResolver(overrides: Partial<WorkspaceService> = {}) {
     createWorkspace: vi.fn(),
     deleteWorkspace: vi.fn(),
     findOne: vi.fn(),
+    getMember: vi.fn(),
+    getMemberById: vi.fn(),
+    leaveWorkspace: vi.fn(),
+    transferOwnership: vi.fn(),
     updateWorkspace: vi.fn(),
     ...overrides,
   } as unknown as Mocked<WorkspaceService>;

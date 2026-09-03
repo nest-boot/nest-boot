@@ -10,8 +10,6 @@ import { BaseApiKey } from '@nest-boot/auth';
 import { Field, HideField, ID, ObjectType } from '@nest-boot/graphql';
 import { Sonyflake } from 'sonyflake-js';
 
-import { AuthPermissionEnum } from '../auth/enums/auth-permission.enum.js';
-import type { AuthPermission } from '../auth/types/auth-permission.type.js';
 import type { User } from '../user/user.entity.js';
 import type { Workspace } from '../workspace/workspace.entity.js';
 
@@ -56,10 +54,9 @@ export class ApiKey extends BaseApiKey {
   override enabled: Opt<boolean> = true;
 
   /** 此 API Key 可以执行的用户域与工作区域操作。 */
-  // eslint-disable-next-line @nest-boot/entity-property-config-from-types, @nest-boot/graphql-field-config-from-types
-  @Field(() => [AuthPermissionEnum])
+  @Field(() => [String])
   @Property({ type: t.array, defaultRaw: "'{}'" })
-  override permissions: Opt<AuthPermission[]> = [];
+  override permissions: Opt<string[]> = [];
 
   /** 创建时间。 */
   @Field(() => Date)

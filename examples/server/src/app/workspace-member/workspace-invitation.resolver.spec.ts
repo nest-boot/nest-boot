@@ -4,7 +4,6 @@ import type { Mocked } from 'vitest';
 
 import { User } from '../user/user.entity.js';
 import { Workspace } from '../workspace/workspace.entity.js';
-import { WorkspaceMemberRole } from './enums/workspace-member-role.enum.js';
 import { WorkspaceInvitation } from './workspace-invitation.entity.js';
 import { WorkspaceInvitationResolver } from './workspace-invitation.resolver.js';
 import { WorkspaceMember } from './workspace-member.entity.js';
@@ -16,7 +15,7 @@ describe('WorkspaceInvitationResolver', () => {
     const user = { id: 'user_1' } as User;
     const input = {
       email: 'invited@example.com',
-      role: WorkspaceMemberRole.MEMBER,
+      roles: ['member'],
     };
     const { resolver, workspaceService } = createResolver({
       createInvitation: vi.fn(async () => invitation),
@@ -25,7 +24,7 @@ describe('WorkspaceInvitationResolver', () => {
     await expect(
       resolver.createWorkspaceInvitation(
         workspace,
-        { role: WorkspaceMemberRole.ADMIN } as WorkspaceMember,
+        { roles: ['admin'] } as WorkspaceMember,
         user,
         input,
       ),
@@ -37,21 +36,37 @@ describe('WorkspaceInvitationResolver', () => {
     );
   });
 
-  it('rejects invitation creation by regular members', async () => {
+  it('rejects owner invitations created by non owners', async () => {
     const { resolver, workspaceService } = createResolver();
 
     await expect(
       resolver.createWorkspaceInvitation(
         { id: 'workspace_1' } as Workspace,
-        { role: WorkspaceMemberRole.MEMBER } as WorkspaceMember,
+        { roles: ['member'] } as WorkspaceMember,
         { id: 'user_1' } as User,
         {
           email: 'invited@example.com',
-          role: WorkspaceMemberRole.MEMBER,
+          roles: ['owner'],
         },
       ),
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(workspaceService.createInvitation).not.toHaveBeenCalled();
+  });
+
+  it('scopes invitation lookup to the current user email', async () => {
+    const user = { id: 'user_1' } as User;
+    const invitation = { id: 'invitation_1' } as WorkspaceInvitation;
+    const { resolver, workspaceService } = createResolver({
+      getUserInvitation: vi.fn(async () => invitation),
+    });
+
+    await expect(
+      resolver.workspaceInvitation(invitation.id, user),
+    ).resolves.toBe(invitation);
+    expect(workspaceService.getUserInvitation).toHaveBeenCalledWith(
+      invitation.id,
+      user,
+    );
   });
 
   it('returns the accepted invitation and newly created member', async () => {
@@ -105,7 +120,7 @@ describe('WorkspaceInvitationResolver', () => {
       status: 'rejected',
     } as WorkspaceInvitation;
     const { resolver, workspaceService } = createResolver({
-      getInvitation: vi.fn(async () => invitation),
+      getUserInvitation: vi.fn(async () => invitation),
       rejectInvitation: vi.fn(async () => rejectedInvitation),
     });
 
@@ -120,7 +135,7 @@ describe('WorkspaceInvitationResolver', () => {
 
   it('reports missing invitations when rejecting', async () => {
     const { resolver, workspaceService } = createResolver({
-      getInvitation: vi.fn(async () => null),
+      getUserInvitation: vi.fn(async () => null),
     });
 
     await expect(
@@ -129,20 +144,20 @@ describe('WorkspaceInvitationResolver', () => {
     expect(workspaceService.rejectInvitation).not.toHaveBeenCalled();
   });
 
-  it('does not cancel an invitation from another workspace', async () => {
+  it('does not reveal or cancel an invitation from another workspace', async () => {
     const invitation = {
       id: 'invitation_1',
       workspace: { id: 'workspace_2' },
     } as WorkspaceInvitation;
     const { resolver, workspaceService } = createResolver({
-      getInvitation: vi.fn(async () => invitation),
+      getWorkspaceInvitation: vi.fn(async () => null),
     });
 
     await expect(
       resolver.cancelWorkspaceInvitation(invitation.id, {
         id: 'workspace_1',
       } as Workspace),
-    ).rejects.toBeInstanceOf(ForbiddenException);
+    ).rejects.toBeInstanceOf(NotFoundException);
     expect(workspaceService.cancelInvitation).not.toHaveBeenCalled();
   });
 
@@ -166,6 +181,8 @@ function createResolver(overrides: Record<string, unknown> = {}) {
     cancelInvitation: vi.fn(),
     createInvitation: vi.fn(),
     getInvitation: vi.fn(),
+    getUserInvitation: vi.fn(),
+    getWorkspaceInvitation: vi.fn(),
     listInvitations: vi.fn(),
     listUserInvitations: vi.fn(),
     rejectInvitation: vi.fn(),

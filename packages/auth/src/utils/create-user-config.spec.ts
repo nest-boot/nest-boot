@@ -55,4 +55,19 @@ describe("createUserConfig", () => {
     expect(createUserConfig({} as Mailer, undefined)).toBeUndefined();
     expect(createUserConfig({} as Mailer, {})).toEqual({});
   });
+
+  it("passes only allowlisted Better Auth user options", () => {
+    const buildAbility = vi.fn();
+    const config = createUserConfig({} as Mailer, {
+      buildAbility,
+      modelName: "user",
+      permissions: ["user:list"],
+      roles: { admin: ["user:list"] },
+    });
+
+    expect(config).toEqual({ modelName: "user" });
+    expect(config).not.toHaveProperty("buildAbility");
+    expect(config).not.toHaveProperty("permissions");
+    expect(config).not.toHaveProperty("roles");
+  });
 });

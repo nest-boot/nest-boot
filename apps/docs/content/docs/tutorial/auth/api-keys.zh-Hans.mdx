@@ -26,24 +26,23 @@ description: "使用带权限范围的 API Key 认证个人和工作区自动化
 auth 包以 `string[]` 存储和判断权限。应用负责定义封闭的权限目录，并在写入前校验值。
 
 ```typescript
-import { UserPermission } from "./auth/enums/user-permission.enum";
-import { WorkspacePermission } from "./auth/enums/workspace-permission.enum";
+const workspacePermissions = [
+  "workspace:update",
+  "workspaceMember:create",
+] as const;
 
-const workspacePermissions: WorkspacePermission[] = [
-  WorkspacePermission.WORKSPACE_UPDATE,
-  WorkspacePermission.WORKSPACE_MEMBER_CREATE,
-];
+type WorkspacePermission = (typeof workspacePermissions)[number];
 
-const userKeyPermissions: (UserPermission | WorkspacePermission)[] = [
-  UserPermission.USER_GET,
-  WorkspacePermission.WORKSPACE_UPDATE,
-];
+const userKeyPermissions = [
+  "user:get",
+  ...workspacePermissions,
+] as const;
 ```
 
-示例中，`User.permissions` 保存 `UserPermission[]`，
-`WorkspaceMember.permissions` 保存 `WorkspacePermission[]`，API Key 保存
-`(UserPermission | WorkspacePermission)[]`。Workspace Key 只接受工作区权限，
-User Key 可以包含两个权限域。PostgreSQL 使用 `text[]` 列持久化这些值。
+示例的实体属性、GraphQL 输入与数据库列都统一使用字符串。应用通过 `as const`
+权限目录生成表单选项和本地 TypeScript 类型，也可以在接收不可信输入时增加运行时
+校验。Workspace Key 只接受工作区权限，User Key 可以包含两个权限域。PostgreSQL
+使用 `text[]` 列持久化这些值。
 
 ## 传输方式
 

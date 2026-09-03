@@ -12,13 +12,16 @@ import { BaseUser } from "./entities/user.entity.js";
 import {
   CUSTOM_ROUTE_ARGS_METADATA,
   ROUTE_ARGS_METADATA,
+  USER_CAN_METADATA,
   USER_PERMISSION_ABILITY,
   USER_PERMISSION_ABILITY_PROMISE,
+  WORKSPACE_CAN_METADATA,
 } from "./permission.constants.js";
+import type { AuthModuleRoles } from "./types/auth-module-roles.type.js";
 import type { BuildAbilityCallback } from "./types/build-ability-callback.type.js";
 import type { PermissionAbility } from "./types/permission-ability.type.js";
 import type { RouteArgumentMetadata } from "./types/route-argument-metadata.type.js";
-import { getPermissionAbility } from "./utils/get-permission-ability.util.js";
+import { getUserAbility } from "./utils/get-user-ability.util.js";
 
 class Subject {}
 class User {}
@@ -56,7 +59,7 @@ describe("AuthGuard permissions", () => {
 
   it("throws when permission metadata exists but no ability is available", async () => {
     const { guard, reflector, buildAbility } = await createGuard();
-    reflector.getAllAndOverride.mockReturnValue({
+    setCanMetadata(reflector, {
       scope: "user",
       action: "read",
       subject: Subject,
@@ -83,7 +86,7 @@ describe("AuthGuard permissions", () => {
       ability as unknown as PermissionAbility,
     );
 
-    reflector.getAllAndOverride.mockReturnValue({
+    setCanMetadata(reflector, {
       scope: "user",
       action: "publish",
       subject: Subject,
@@ -98,22 +101,23 @@ describe("AuthGuard permissions", () => {
         RequestContext.get(USER_PERMISSION_ABILITY_PROMISE),
       ).resolves.toBe(ability);
       expect(RequestContext.get(USER_PERMISSION_ABILITY)).toBe(ability);
-      expect(getPermissionAbility("user")).toBe(ability);
+      expect(getUserAbility()).toBe(ability);
     });
 
-    expect(buildAbility).toHaveBeenCalledWith(context);
+    expect(buildAbility).toHaveBeenCalledWith(context, ["subject:publish"]);
     expect(canMock).toHaveBeenCalledWith("publish", Subject);
   });
 
-  it("uses the workspace ability when permission scope is omitted", async () => {
+  it("uses the workspace ability for workspace metadata", async () => {
     const ability = {
       can: vi.fn(() => true),
     } as unknown as PermissionAbility;
     const { guard, reflector, buildUserAbility, buildWorkspaceAbility } =
       await createGuard(ability);
 
-    reflector.getAllAndOverride.mockReturnValue({
+    setCanMetadata(reflector, {
       action: "read",
+      scope: "workspace",
       subject: Subject,
     });
 
@@ -122,7 +126,43 @@ describe("AuthGuard permissions", () => {
     });
 
     expect(buildWorkspaceAbility).toHaveBeenCalledOnce();
+    expect(buildWorkspaceAbility).toHaveBeenCalledWith(expect.anything(), []);
     expect(buildUserAbility).not.toHaveBeenCalled();
+  });
+
+  it("resolves configured role and direct permissions before buildAbility", async () => {
+    const roles = {
+      auditor: ["project:read"],
+      owner: ["project:create"],
+    };
+    const ability = {
+      can: vi.fn(() => true),
+    } as unknown as PermissionAbility;
+    const { guard, reflector, buildWorkspaceAbility } = await createGuard(
+      ability,
+      {},
+      { workspace: roles },
+    );
+
+    setCanMetadata(reflector, {
+      action: "read",
+      scope: "workspace",
+      subject: Subject,
+    });
+
+    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+      RequestContext.set(CURRENT_WORKSPACE_MEMBER, {
+        permissions: ["project:share", "project:create"],
+        roles: ["owner", "auditor"],
+      });
+      await expect(guard.canActivate(createContext())).resolves.toBe(true);
+    });
+
+    expect(buildWorkspaceAbility).toHaveBeenCalledWith(expect.anything(), [
+      "project:create",
+      "project:read",
+      "project:share",
+    ]);
   });
 
   it("passes GraphQL execution context to buildAbility", async () => {
@@ -135,7 +175,7 @@ describe("AuthGuard permissions", () => {
     );
     const gqlContext = { req, res };
 
-    reflector.getAllAndOverride.mockReturnValue({
+    setCanMetadata(reflector, {
       scope: "user",
       action: "read",
       subject: Subject,
@@ -154,7 +194,7 @@ describe("AuthGuard permissions", () => {
       },
     );
 
-    expect(buildAbility).toHaveBeenCalledWith(context);
+    expect(buildAbility).toHaveBeenCalledWith(context, []);
   });
 
   it("uses cached ability before building a new one", async () => {
@@ -164,7 +204,7 @@ describe("AuthGuard permissions", () => {
     };
     const { guard, reflector, buildAbility } = await createGuard();
 
-    reflector.getAllAndOverride.mockReturnValue({
+    setCanMetadata(reflector, {
       scope: "user",
       action: "read",
       subject: Subject,
@@ -206,7 +246,7 @@ describe("AuthGuard permissions", () => {
         index: 0,
       },
     });
-    reflector.getAllAndOverride.mockReturnValue({
+    setCanMetadata(reflector, {
       scope: "user",
       action: "read",
       subject: subjectFactory,
@@ -270,7 +310,7 @@ describe("AuthGuard permissions", () => {
         data: "input",
       },
     });
-    reflector.getAllAndOverride.mockReturnValue({
+    setCanMetadata(reflector, {
       scope: "user",
       action: "read",
       subject: subjectFactory,
@@ -333,7 +373,7 @@ describe("AuthGuard permissions", () => {
         index: 4,
       },
     });
-    reflector.getAllAndOverride.mockReturnValue({
+    setCanMetadata(reflector, {
       scope: "user",
       action: "read",
       subject: subjectFactory,
@@ -399,7 +439,7 @@ describe("AuthGuard permissions", () => {
         data: "input",
       },
     });
-    reflector.getAllAndOverride.mockReturnValue({
+    setCanMetadata(reflector, {
       scope: "user",
       action: "read",
       subject: subjectFactory,
@@ -509,7 +549,7 @@ describe("AuthGuard permissions", () => {
         index: 14,
       },
     });
-    reflector.getAllAndOverride.mockReturnValue({
+    setCanMetadata(reflector, {
       scope: "user",
       action: "read",
       subject: subjectFactory,
@@ -587,7 +627,7 @@ describe("AuthGuard permissions", () => {
         data: "id",
       },
     });
-    reflector.getAllAndOverride.mockReturnValue({
+    setCanMetadata(reflector, {
       scope: "user",
       action: "read",
       subject: subjectFactory,
@@ -659,7 +699,7 @@ describe("AuthGuard permissions", () => {
         data: "id",
       },
     });
-    reflector.getAllAndOverride.mockReturnValue({
+    setCanMetadata(reflector, {
       scope: "user",
       action: "read",
       subject: subjectFactory,
@@ -703,7 +743,7 @@ describe("AuthGuard permissions", () => {
     });
 
     buildAbility.mockImplementation(() => abilityPromise);
-    reflector.getAllAndOverride.mockReturnValue({
+    setCanMetadata(reflector, {
       scope: "user",
       action: "read",
       subject: Subject,
@@ -743,7 +783,7 @@ describe("AuthGuard permissions", () => {
       handlerThis,
     );
 
-    reflector.getAllAndOverride.mockReturnValue({
+    setCanMetadata(reflector, {
       scope: "user",
       action: "read",
       subject: subjectFactory,
@@ -790,7 +830,7 @@ describe("AuthGuard permissions", () => {
       Controller,
       "matched",
     );
-    reflector.getAllAndOverride.mockReturnValue({
+    setCanMetadata(reflector, {
       scope: "user",
       action: "read",
       subject: subjectFactory,
@@ -835,7 +875,7 @@ describe("AuthGuard permissions", () => {
       can: canMock,
     } as unknown as PermissionAbility);
 
-    reflector.getAllAndOverride.mockReturnValue({
+    setCanMetadata(reflector, {
       scope: "user",
       action: "delete",
       subject: Subject,
@@ -846,12 +886,37 @@ describe("AuthGuard permissions", () => {
     });
   });
 
+  it("requires both permissions when both metadata types are declared", async () => {
+    const canMock = vi.fn((action: string) => action === "read");
+    const { guard, reflector, buildUserAbility, buildWorkspaceAbility } =
+      await createGuard({ can: canMock } as unknown as PermissionAbility);
+
+    reflector.getAllAndOverride.mockImplementation((key) => {
+      if (key === USER_CAN_METADATA) {
+        return { action: "read", subject: User };
+      }
+      if (key === WORKSPACE_CAN_METADATA) {
+        return { action: "update", subject: Workspace };
+      }
+      return undefined;
+    });
+
+    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+      await expect(guard.canActivate(createContext())).resolves.toBe(false);
+    });
+
+    expect(buildUserAbility).toHaveBeenCalledOnce();
+    expect(buildWorkspaceAbility).toHaveBeenCalledOnce();
+    expect(canMock).toHaveBeenNthCalledWith(1, "read", User);
+    expect(canMock).toHaveBeenNthCalledWith(2, "update", Workspace);
+  });
+
   it("restricts API-key requests to the key permissions", async () => {
     const { guard, reflector } = await createGuard({
       can: vi.fn(() => true),
     } as unknown as PermissionAbility);
 
-    reflector.getAllAndOverride.mockReturnValue({
+    setCanMetadata(reflector, {
       scope: "user",
       action: "get",
       subject: User,
@@ -868,7 +933,7 @@ describe("AuthGuard permissions", () => {
 
       await expect(guard.canActivate(createContext())).resolves.toBe(true);
 
-      reflector.getAllAndOverride.mockReturnValue({
+      setCanMetadata(reflector, {
         scope: "user",
         action: "update",
         subject: User,
@@ -882,7 +947,7 @@ describe("AuthGuard permissions", () => {
       can: vi.fn(() => true),
     } as unknown as PermissionAbility);
 
-    reflector.getAllAndOverride.mockReturnValue({
+    setCanMetadata(reflector, {
       scope: "user",
       action: "delete",
       subject: User,
@@ -908,7 +973,7 @@ describe("AuthGuard permissions", () => {
 
   it("authorizes workspace keys directly from key permissions", async () => {
     const { guard, reflector, buildAbility } = await createGuard();
-    reflector.getAllAndOverride.mockReturnValue({
+    setCanMetadata(reflector, {
       action: "update",
       scope: "workspace",
       subject: Workspace,
@@ -921,7 +986,7 @@ describe("AuthGuard permissions", () => {
       });
 
       await expect(guard.canActivate(createContext())).resolves.toBe(true);
-      reflector.getAllAndOverride.mockReturnValue({
+      setCanMetadata(reflector, {
         action: "update",
         scope: "user",
         subject: Workspace,
@@ -937,7 +1002,7 @@ describe("AuthGuard permissions", () => {
     const { guard, reflector } = await createGuard({
       can: canMock,
     } as unknown as PermissionAbility);
-    reflector.getAllAndOverride.mockReturnValue({
+    setCanMetadata(reflector, {
       action: "update",
       scope: "workspace",
       subject: Workspace,
@@ -971,7 +1036,7 @@ describe("AuthGuard permissions", () => {
           false,
       ),
     } as unknown as PermissionAbility);
-    reflector.getAllAndOverride.mockReturnValue({
+    setCanMetadata(reflector, {
       action: "get",
       scope: "user",
       subject: User,
@@ -996,6 +1061,10 @@ describe("AuthGuard permissions", () => {
 async function createGuard(
   ability: PermissionAbility | null = null,
   handlerThis: unknown = {},
+  roles: {
+    user?: AuthModuleRoles;
+    workspace?: AuthModuleRoles;
+  } = {},
 ) {
   const reflector = {
     getAllAndOverride: vi.fn(),
@@ -1025,11 +1094,17 @@ async function createGuard(
       {
         provide: MODULE_OPTIONS_TOKEN,
         useValue: {
-          buildUserAbility,
-          buildWorkspaceAbility,
+          user: {
+            buildAbility: buildUserAbility,
+            roles: roles.user,
+          },
           entities: {
             user: UserOwner,
             workspace: WorkspaceOwner,
+          },
+          workspace: {
+            buildAbility: buildWorkspaceAbility,
+            roles: roles.workspace,
           },
         },
       },
@@ -1088,4 +1163,21 @@ function createUnnamedHandler() {
   return function () {
     return undefined;
   };
+}
+
+function setCanMetadata(
+  reflector: Reflector & { getAllAndOverride: Mock },
+  metadata: {
+    action: string;
+    scope: "user" | "workspace";
+    subject: unknown;
+  },
+): void {
+  const { scope, ...scopedMetadata } = metadata;
+  const metadataKey =
+    scope === "user" ? USER_CAN_METADATA : WORKSPACE_CAN_METADATA;
+
+  reflector.getAllAndOverride.mockImplementation((key) =>
+    key === metadataKey ? scopedMetadata : undefined,
+  );
 }

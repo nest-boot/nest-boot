@@ -27,6 +27,7 @@ export function CurrentWorkspaceProvider({
 }) {
   const { data } = useSuspenseQuery(
     GET_CURRENT_WORKSPACE_FROM_WORKSPACE_CONTEXT,
+    { fetchPolicy: "network-only" },
   );
 
   return (

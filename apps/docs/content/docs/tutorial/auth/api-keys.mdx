@@ -31,25 +31,24 @@ define their own closed permission catalog and validate values before writing
 them.
 
 ```typescript
-import { UserPermission } from "./auth/enums/user-permission.enum";
-import { WorkspacePermission } from "./auth/enums/workspace-permission.enum";
+const workspacePermissions = [
+  "workspace:update",
+  "workspaceMember:create",
+] as const;
 
-const workspacePermissions: WorkspacePermission[] = [
-  WorkspacePermission.WORKSPACE_UPDATE,
-  WorkspacePermission.WORKSPACE_MEMBER_CREATE,
-];
+type WorkspacePermission = (typeof workspacePermissions)[number];
 
-const userKeyPermissions: (UserPermission | WorkspacePermission)[] = [
-  UserPermission.USER_GET,
-  WorkspacePermission.WORKSPACE_UPDATE,
-];
+const userKeyPermissions = [
+  "user:get",
+  ...workspacePermissions,
+] as const;
 ```
 
-In the example, `User.permissions` stores `UserPermission[]`,
-`WorkspaceMember.permissions` stores `WorkspacePermission[]`, and an API key
-stores `(UserPermission | WorkspacePermission)[]`. A workspace key accepts only
-workspace permissions; a user key may contain both domains. PostgreSQL persists
-the values in `text[]` columns.
+In the example, entity properties, GraphQL inputs, and database columns all use
+strings. The application keeps an `as const` catalog for form options and local
+TypeScript types, and may add runtime validation when accepting untrusted
+values. A workspace key accepts only workspace permissions; a user key may
+contain both domains. PostgreSQL persists the values in `text[]` columns.
 
 ## Transport
 

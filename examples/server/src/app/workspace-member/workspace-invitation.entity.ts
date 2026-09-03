@@ -16,7 +16,6 @@ import { Field, ID, ObjectType } from '@nest-boot/graphql';
 import { User } from '../user/user.entity.js';
 import { Workspace } from '../workspace/workspace.entity.js';
 import { WorkspaceInvitationStatus } from './enums/workspace-invitation-status.enum.js';
-import { WorkspaceMemberRole } from './enums/workspace-member-role.enum.js';
 
 /** 独立于成员记录的工作区邀请。 */
 @ObjectType()
@@ -37,12 +36,9 @@ export class WorkspaceInvitation extends BaseWorkspaceInvitation {
   declare email: string;
 
   /** 接受邀请后授予的成员角色。 */
-  @Field(() => WorkspaceMemberRole)
-  @Enum({
-    items: () => WorkspaceMemberRole,
-    default: WorkspaceMemberRole.MEMBER,
-  })
-  override role: Opt<WorkspaceMemberRole> = WorkspaceMemberRole.MEMBER;
+  @Field(() => [String])
+  @Property({ type: t.array, defaultRaw: "'{member}'" })
+  override roles: Opt<string[]> = ['member'];
 
   /** 邀请生命周期状态。 */
   @Field(() => WorkspaceInvitationStatus)

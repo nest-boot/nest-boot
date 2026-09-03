@@ -3,8 +3,10 @@ import {
   AuthService,
   type BaseSession,
   CurrentSession,
+  CurrentUser,
   Public,
   SessionService,
+  UserCan,
 } from '@nest-boot/auth';
 import {
   Args,
@@ -17,6 +19,7 @@ import {
 import { BadRequestException } from '@nestjs/common';
 import type { Request, Response } from 'express';
 
+import { User } from '../user/user.entity.js';
 import {
   AuthAccountSelectorInput,
   AuthChangeEmailInput,
@@ -53,6 +56,13 @@ export class AuthResolver {
     private readonly authService: AuthService,
     private readonly sessionService: SessionService,
   ) {}
+
+  /** Returns the currently authenticated user. */
+  @UserCan('read', User)
+  @Query(() => User)
+  currentUser(@CurrentUser() user: User): User {
+    return user;
+  }
 
   /** Registers a user with an email address and password. */
   @Public()
@@ -241,12 +251,16 @@ export class AuthResolver {
   @Mutation(() => AuthDeleteUserResultType)
   async authDeleteUser(
     @Context('req') request: Request,
+    @Context('res') response: Response,
     @Args('input', { nullable: true }) input?: AuthDeleteUserInput,
   ): Promise<AuthDeleteUserResultType> {
-    return await this.authService.deleteUser(
+    const result = await this.authService.deleteUser(
       toWebHeaders(request),
       input ?? {},
+      { returnHeaders: true },
     );
+    applyAuthResponseHeaders(response, result.headers);
+    return result.response;
   }
 
   /** Lists authentication accounts linked to the current user. */

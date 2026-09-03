@@ -373,7 +373,7 @@ export class ApiKeyService<
   }
 
   private assertCanManageWorkspaceApiKeys(member: WorkspaceMember): void {
-    if (member.role !== "OWNER") {
+    if (!member.roles.includes("owner")) {
       throw new ForbiddenException(
         "You are not allowed to manage workspace API keys",
       );
