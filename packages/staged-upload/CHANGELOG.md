@@ -1,3 +1,13 @@
+## 8.0.0-beta.4 (2026-09-03)
+
+### 🩹 Fixes
+
+- **staged-upload:** accept root-relative upload locations ([#320](https://github.com/nest-boot/nest-boot/pull/320))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.0-beta.3 (2026-09-01)
 
 ### 🚀 Features
