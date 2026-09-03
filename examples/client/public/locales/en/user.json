@@ -92,6 +92,23 @@
     "description": "View and open the workspaces available to your account.",
     "create": "Create workspace",
     "open": "Open workspace",
+    "invitations": {
+      "title": "Pending invitations",
+      "description": "Review workspaces that have invited you to join.",
+      "accept": "Accept",
+      "reject": "Reject",
+      "table": {
+        "workspace": "Workspace",
+        "role": "Role",
+        "expires_at": "Expires"
+      },
+      "toast": {
+        "accepted": "Invitation accepted",
+        "accept_failed": "Unable to accept the invitation",
+        "rejected": "Invitation rejected",
+        "reject_failed": "Unable to reject the invitation"
+      }
+    },
     "table": {
       "name": "Name",
       "created_at": "Created",

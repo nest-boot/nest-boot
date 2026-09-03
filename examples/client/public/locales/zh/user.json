@@ -92,6 +92,23 @@
     "description": "查看并进入当前账户可访问的工作空间。",
     "create": "创建工作空间",
     "open": "进入工作空间",
+    "invitations": {
+      "title": "待处理邀请",
+      "description": "查看邀请您加入的工作空间。",
+      "accept": "接受",
+      "reject": "拒绝",
+      "table": {
+        "workspace": "工作空间",
+        "role": "角色",
+        "expires_at": "过期时间"
+      },
+      "toast": {
+        "accepted": "已接受邀请",
+        "accept_failed": "无法接受邀请",
+        "rejected": "已拒绝邀请",
+        "reject_failed": "无法拒绝邀请"
+      }
+    },
     "table": {
       "name": "名称",
       "created_at": "创建时间",
