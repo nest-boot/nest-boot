@@ -10,11 +10,11 @@ service that owns the required domain:
 | ------------------ | -------------------------------------------------------------------------------------- |
 | `AuthService`      | Authentication, email verification, password recovery, profiles, and provider accounts |
 | `SessionService`   | Current session resolution, active-session lists, and revocation                       |
-| `AdminService`     | User administration, permissions, bans, impersonation, passwords, and user sessions    |
+| `UserService`      | User administration, permissions, bans, impersonation, passwords, and user sessions    |
 | `WorkspaceService` | Workspace, membership, invitation, and workspace-permission lifecycle                  |
 | `ApiKeyService`    | Personal and workspace API-key lifecycle and validation                                |
 
-`AdminService` and `WorkspaceService` operate directly on the MikroORM entities
+`UserService` and `WorkspaceService` operate directly on the MikroORM entities
 configured in `AuthModule`; they do not require Better Auth's admin or
 organization plugins.
 
@@ -24,7 +24,7 @@ export class AccountApplicationService {
   constructor(
     private readonly authService: AuthService,
     private readonly sessionService: SessionService,
-    private readonly adminService: AdminService,
+    private readonly userService: UserService,
     private readonly workspaceService: WorkspaceService,
     private readonly apiKeyService: ApiKeyService,
   ) {}

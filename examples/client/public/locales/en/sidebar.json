@@ -1,4 +1,8 @@
 {
+  "admin": {
+    "title": "Administration",
+    "users": "Users"
+  },
   "navigation": {
     "api_keys": "API Keys",
     "members": "Members",
@@ -6,7 +10,9 @@
   },
   "switcher": {
     "createWorkspace": "Create workspace",
-    "workspaces": "Workspaces"
+    "workspaces": "Workspaces",
+    "loadMore": "Load more",
+    "manageWorkspaces": "Manage workspaces"
   },
   "user": {
     "account": "Account",

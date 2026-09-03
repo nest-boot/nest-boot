@@ -40,13 +40,14 @@ describe("auth entities", () => {
     expect(apiKey.enabled).toBe(true);
     expect(apiKey.permissions).toEqual([]);
     expect(user.permissions).toEqual([]);
+    expect(user.roles).toEqual(["user"]);
     expect(user.banned).toBe(false);
     expect(user.banReason).toBeNull();
     expect(user.banExpiresAt).toBeNull();
     expect(workspace.deletedAt).toBeNull();
     expect(workspaceInvitation.status).toBe("pending");
     expect(workspaceMember.permissions).toEqual([]);
-    expect(workspaceMember.role).toBe("MEMBER");
+    expect(workspaceMember.roles).toEqual(["member"]);
     expect(workspaceMember.status).toBe("ACTIVE");
   });
 

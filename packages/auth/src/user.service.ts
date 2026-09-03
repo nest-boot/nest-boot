@@ -13,33 +13,50 @@ import {
   RowLevelSecurity,
   RowLevelSecurityMode,
 } from "@nest-boot/row-level-security";
-import { ForbiddenException, Inject, Injectable } from "@nestjs/common";
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+} from "@nestjs/common";
 
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
 import type { BaseAccount, BaseSession, BaseUser } from "./entities/index.js";
-import type {
-  AdminBanUserOptions,
-  AdminCreateUserOptions,
-  AdminHasPermissionOptions,
-  AdminImpersonationOptions,
-  AdminListUsersOptions,
-  AdminListUsersResult,
-  AdminUpdateUserOptions,
-} from "./interfaces/admin-service.interface.js";
+import type { AuthRole } from "./interfaces/auth-role.interface.js";
 import type { AuthenticatedSession } from "./interfaces/session-service.interface.js";
+import type {
+  BanUserOptions,
+  CreateUserOptions,
+  ImpersonationOptions,
+  ListUsersOptions,
+  ListUsersResult,
+  UpdateUserOptions,
+  UserHasPermissionOptions,
+} from "./interfaces/user-service.interface.js";
+import type { AuthModuleRoles } from "./types/auth-module-roles.type.js";
+import {
+  DEFAULT_USER_PERMISSIONS,
+  DEFAULT_USER_ROLES,
+} from "./user.constants.js";
+import {
+  listAuthPermissions,
+  listAuthRoles,
+  normalizeAuthRoles,
+  resolveAuthPermissions,
+} from "./utils/auth-role.util.js";
 
 const CREDENTIAL_ISSUER = "local:credential";
 const CREDENTIAL_PROVIDER_ID = "credential";
 
-/** User administration implemented with the configured MikroORM entities. */
+/** User management implemented with the configured MikroORM entities. */
 @Injectable()
-export class AdminService<
+export class UserService<
   User extends BaseUser = BaseUser,
   Account extends BaseAccount = BaseAccount,
   Session extends BaseSession = BaseSession,
 > {
-  /** Creates a new AdminService instance. */
+  /** Creates a new UserService instance. */
   constructor(
     /** MikroORM entity manager used for authentication persistence. */
     private readonly em: EntityManager,
@@ -49,7 +66,7 @@ export class AdminService<
   ) {}
 
   /** Creates a user and its credential account atomically. */
-  async createUser(input: AdminCreateUserOptions): Promise<User> {
+  async createUser(input: CreateUserOptions): Promise<User> {
     return await this.runUnrestricted(async () => {
       const password = await this.hashPassword(input.password);
       const user = this.em.create(this.userEntity, {
@@ -58,6 +75,7 @@ export class AdminService<
         emailVerified: false,
         name: input.name,
         permissions: input.permissions ?? [],
+        roles: this.normalizeRoles(input.roles ?? ["user"]),
       } as unknown as RequiredEntityData<User>);
       const account = this.em.create(this.accountEntity, {
         accountId: String(user.id),
@@ -84,8 +102,25 @@ export class AdminService<
     );
   }
 
+  /** Gets a user by normalized email without applying application RLS filters. */
+  async getUserByEmail(email: string): Promise<User | null> {
+    return await this.runUnrestricted(
+      async () =>
+        await this.em.findOne(
+          this.userEntity,
+          { email: email.trim().toLowerCase() } as FilterQuery<User>,
+          { filters: false },
+        ),
+    );
+  }
+
   /** Updates mutable user fields. */
-  async updateUser(user: User, input: AdminUpdateUserOptions): Promise<User> {
+  async updateUser(user: User, input: UpdateUserOptions): Promise<User> {
+    if ("roles" in input || "permissions" in input) {
+      throw new BadRequestException(
+        "Use setRole or setUserPermissions to update authorization fields",
+      );
+    }
     this.em.assign(user, input as never);
     await this.runUnrestricted(() => this.em.flush());
     return user;
@@ -98,10 +133,36 @@ export class AdminService<
     return user;
   }
 
+  /** Replaces the roles assigned to a user. */
+  async setRole(user: User, role: string | readonly string[]): Promise<User> {
+    user.roles = this.normalizeRoles(role);
+    await this.runUnrestricted(() => this.em.flush());
+    return user;
+  }
+
+  /** Lists configured user-administration roles. */
+  listRoles(): AuthRole[] {
+    return listAuthRoles(this.roles);
+  }
+
+  /** Lists configured user-administration permissions. */
+  listPermissions(): string[] {
+    return listAuthPermissions(this.permissions);
+  }
+
+  /** Resolves permissions inherited from roles plus direct user permissions. */
+  getUserPermissions(user: User): string[] {
+    return resolveAuthPermissions(
+      user.roles ?? ["user"],
+      user.permissions ?? [],
+      this.roles,
+    );
+  }
+
   /** Lists users with Better Auth-compatible search and pagination concepts. */
   async listUsers(
-    input: AdminListUsersOptions = {},
-  ): Promise<AdminListUsersResult<User>> {
+    input: ListUsersOptions = {},
+  ): Promise<ListUsersResult<User>> {
     return await this.runUnrestricted(async () => {
       const where = this.createUserFilter(input);
       const [users, total] = await this.em.findAndCount(
@@ -142,7 +203,7 @@ export class AdminService<
   }
 
   /** Bans a user and immediately revokes all of their sessions. */
-  async banUser(user: User, input: AdminBanUserOptions = {}): Promise<User> {
+  async banUser(user: User, input: BanUserOptions = {}): Promise<User> {
     user.banned = true;
     user.banReason = input.banReason ?? null;
     user.banExpiresAt = input.banExpiresIn
@@ -151,7 +212,7 @@ export class AdminService<
 
     await this.runUnrestricted(async () => {
       await this.em.nativeDelete(this.sessionEntity, {
-        userId: String(user.id),
+        $or: [{ userId: String(user.id) }, { impersonatedBy: user }],
       } as FilterQuery<Session>);
       await this.em.flush();
     });
@@ -171,12 +232,9 @@ export class AdminService<
   async impersonateUser(
     administrator: User,
     user: User,
-    input: AdminImpersonationOptions = {},
+    input: ImpersonationOptions = {},
   ): Promise<AuthenticatedSession<User, Session>> {
-    if (
-      user.banned &&
-      (!user.banExpiresAt || user.banExpiresAt.getTime() > Date.now())
-    ) {
+    if (this.isActivelyBanned(user)) {
       throw new ForbiddenException("Banned users cannot be impersonated");
     }
     const session = this.createSession(user, {
@@ -190,7 +248,7 @@ export class AdminService<
   /** Ends impersonation and creates a replacement administrator session. */
   async stopImpersonating(
     currentSession: Session,
-    input: AdminImpersonationOptions = {},
+    input: ImpersonationOptions = {},
   ): Promise<AuthenticatedSession<User, Session> | null> {
     const impersonatedByReference = currentSession.impersonatedBy;
     if (!impersonatedByReference) return null;
@@ -205,6 +263,12 @@ export class AdminService<
         { filters: false },
       );
       if (!administrator) return null;
+      if (this.isActivelyBanned(administrator)) {
+        await this.em.remove(currentSession).flush();
+        throw new ForbiddenException(
+          "Banned administrators cannot restore their session",
+        );
+      }
 
       const session = this.createSession(administrator, input);
       this.em.remove(currentSession).persist(session);
@@ -277,17 +341,28 @@ export class AdminService<
   }
 
   /** Checks flattened `subject:action` values against a user's permissions. */
-  hasPermission(user: User, input: AdminHasPermissionOptions): boolean {
+  hasPermission(user: User, input: UserHasPermissionOptions): boolean {
+    const permissions = new Set(this.getUserPermissions(user));
     return Object.entries(input.permissions).every(([subject, actions]) =>
-      actions.every((action) =>
-        user.permissions.includes(`${subject}:${action}`),
-      ),
+      actions.every((action) => permissions.has(`${subject}:${action}`)),
     );
+  }
+
+  private normalizeRoles(role: string | readonly string[]): string[] {
+    return normalizeAuthRoles(role, this.roles);
+  }
+
+  private get roles(): AuthModuleRoles {
+    return this.options.user?.roles ?? DEFAULT_USER_ROLES;
+  }
+
+  private get permissions(): readonly string[] {
+    return this.options.user?.permissions ?? DEFAULT_USER_PERMISSIONS;
   }
 
   private createSession(
     user: User,
-    input: AdminImpersonationOptions & { impersonatedBy?: User },
+    input: ImpersonationOptions & { impersonatedBy?: User },
   ): Session {
     const expiresIn = this.options.session?.expiresIn ?? 60 * 60 * 24 * 7;
     return this.em.create(this.sessionEntity, {
@@ -300,7 +375,7 @@ export class AdminService<
     } as unknown as RequiredEntityData<Session>);
   }
 
-  private createUserFilter(input: AdminListUsersOptions): FilterQuery<User> {
+  private createUserFilter(input: ListUsersOptions): FilterQuery<User> {
     const where: Record<string, unknown> = {};
 
     if (input.searchValue) {
@@ -334,6 +409,13 @@ export class AdminService<
     )(password);
   }
 
+  private isActivelyBanned(user: BaseUser): boolean {
+    return (
+      user.banned &&
+      (!user.banExpiresAt || user.banExpiresAt.getTime() > Date.now())
+    );
+  }
+
   private async runUnrestricted<T>(callback: () => Promise<T>): Promise<T> {
     const run = () => {
       RowLevelSecurity.setMode(RowLevelSecurityMode.DISABLED);
@@ -342,7 +424,7 @@ export class AdminService<
 
     if (RequestContext.isActive()) return await RequestContext.child(run);
     return await RequestContext.run(
-      new RequestContext({ type: "auth-admin" }),
+      new RequestContext({ type: "auth-user" }),
       run,
     );
   }

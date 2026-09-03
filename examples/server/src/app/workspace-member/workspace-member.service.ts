@@ -1,10 +1,10 @@
 import { EntityManager } from '@mikro-orm/core';
+import { WorkspaceService } from '@nest-boot/auth';
 import { Logger } from '@nest-boot/logger';
 import { EntityService } from '@nest-boot/mikro-orm';
 import { BadRequestException, Injectable } from '@nestjs/common';
 
 import { Workspace } from '../workspace/workspace.entity.js';
-import { WorkspaceMemberRole } from './enums/workspace-member-role.enum.js';
 import { WorkspaceMemberStatus } from './enums/workspace-member-status.enum.js';
 import { WorkspaceMemberType } from './enums/workspace-member-type.enum.js';
 import { CreateServiceAccountWorkspaceMemberInput } from './inputs/create-service-account-workspace-member.input.js';
@@ -25,6 +25,8 @@ export class WorkspaceMemberService extends EntityService<WorkspaceMember> {
     protected readonly em: EntityManager,
     /** 结构化日志记录器。 */
     private readonly logger: Logger,
+    /** Auth-owned workspace role catalog. */
+    private readonly workspaceService: WorkspaceService,
   ) {
     super(WorkspaceMember, em);
     this.logger.setContext(WorkspaceMemberService.name);
@@ -41,10 +43,26 @@ export class WorkspaceMemberService extends EntityService<WorkspaceMember> {
     workspace: Workspace,
     input: CreateServiceAccountWorkspaceMemberInput,
   ): Promise<WorkspaceMember> {
+    const roles = input.roles ?? ['member'];
+    if (roles.includes('owner')) {
+      throw new BadRequestException(
+        'The owner role can only be assigned by transferring ownership',
+      );
+    }
+    const knownRoles = new Set(
+      this.workspaceService.listRoles().map((role) => role.name),
+    );
+    const unknownRoles = roles.filter((role) => !knownRoles.has(role));
+    if (unknownRoles.length > 0) {
+      throw new BadRequestException(
+        `Unknown roles: ${unknownRoles.join(', ')}`,
+      );
+    }
+
     return await this.create({
       name: input.name,
       workspace,
-      role: input.role ?? WorkspaceMemberRole.MEMBER,
+      roles,
       permissions: input.permissions ?? [],
       type: WorkspaceMemberType.SERVICE_ACCOUNT,
       user: null,
@@ -104,19 +122,15 @@ export class WorkspaceMemberService extends EntityService<WorkspaceMember> {
       if (isValidTransition) {
         member.status = newStatus;
       }
-      // 其他状态变更直接忽略，不更新状态字段
     }
 
-    // 遍历 member 的可更新字段，从 input 中取对应值更新（排除 status，因为已经单独处理）
     Object.entries(input).forEach(([key, value]) => {
       if (key !== 'status' && value !== undefined && key in member) {
         (member as unknown as Record<string, unknown>)[key] = value;
       }
     });
 
-    // 先修改实体，再 flush
     await this.em.flush();
-
     return member;
   }
 }

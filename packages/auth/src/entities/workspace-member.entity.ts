@@ -6,13 +6,11 @@ import {
   ManyToOne,
   PrimaryKey,
   Property,
+  Unique,
 } from "@mikro-orm/decorators/legacy";
 
 import type { BaseUser } from "./user.entity.js";
 import type { BaseWorkspace } from "./workspace.entity.js";
-
-/** Workspace roles understood by the built-in authorization services. */
-export type AuthWorkspaceMemberRole = "ADMIN" | "MEMBER" | "OWNER";
 
 /** Workspace-member states understood by the built-in authentication services. */
 export type AuthWorkspaceMemberStatus = "ACTIVE" | "DISABLED";
@@ -25,6 +23,7 @@ export type AuthWorkspaceMemberStatus = "ACTIVE" | "DISABLED";
  * authorization.
  */
 @Entity({ abstract: true })
+@Unique({ properties: ["user", "workspace"] })
 export class BaseWorkspaceMember extends BaseEntity {
   /** Primary key (UUID v4, auto-generated). */
   @PrimaryKey({ type: t.uuid })
@@ -38,10 +37,9 @@ export class BaseWorkspaceMember extends BaseEntity {
   @Property({ type: t.text, nullable: true })
   email?: Opt<string> | null = null;
 
-  /** Member role used by workspace and API-key authorization. */
-  // eslint-disable-next-line @nest-boot/entity-property-config-from-types
-  @Property({ type: t.string, default: "MEMBER" })
-  role: Opt<AuthWorkspaceMemberRole> = "MEMBER";
+  /** Member roles used to resolve workspace permissions. */
+  @Property({ type: t.array })
+  roles: Opt<string[]> = ["member"];
 
   /** Member lifecycle status. */
   // eslint-disable-next-line @nest-boot/entity-property-config-from-types

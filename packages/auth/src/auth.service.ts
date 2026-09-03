@@ -133,6 +133,11 @@ interface InternalAuth {
       body: DeleteAuthUserOptions;
       headers: HeadersInit;
     }): Promise<DeleteAuthUserResult>;
+    deleteUser(options: {
+      body: DeleteAuthUserOptions;
+      headers: HeadersInit;
+      returnHeaders: true;
+    }): Promise<AuthServiceResponse<DeleteAuthUserResult>>;
     listUserAccounts(options: { headers: HeadersInit }): Promise<AuthAccount[]>;
     unlinkAccount(options: {
       body: UnlinkAuthAccountOptions;
@@ -394,8 +399,26 @@ export class AuthService {
   /** Requests deletion of the authenticated user's account. */
   async deleteUser(
     headers: HeadersInit,
+    options: DeleteAuthUserOptions,
+    responseOptions: AuthServiceResponseOptions,
+  ): Promise<AuthServiceResponse<DeleteAuthUserResult>>;
+  async deleteUser(
+    headers: HeadersInit,
+    options?: DeleteAuthUserOptions,
+  ): Promise<DeleteAuthUserResult>;
+  async deleteUser(
+    headers: HeadersInit,
     options: DeleteAuthUserOptions = {},
-  ): Promise<DeleteAuthUserResult> {
+    responseOptions?: AuthServiceResponseOptions,
+  ): Promise<DeleteAuthUserResult | AuthServiceResponse<DeleteAuthUserResult>> {
+    if (responseOptions?.returnHeaders) {
+      return await this.auth.api.deleteUser({
+        body: options,
+        headers,
+        returnHeaders: true,
+      });
+    }
+
     return await this.auth.api.deleteUser({ body: options, headers });
   }
 

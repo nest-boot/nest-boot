@@ -2,15 +2,11 @@ import { Field, InputType } from '@nest-boot/graphql';
 import {
   IsArray,
   IsDate,
-  IsEnum,
   IsOptional,
   IsString,
   MaxLength,
   MinLength,
 } from 'class-validator';
-
-import { AuthPermissionEnum } from '../../auth/enums/auth-permission.enum.js';
-import type { AuthPermission } from '../../auth/types/auth-permission.type.js';
 
 /**
  * 创建 API Key 的输入参数。
@@ -38,10 +34,9 @@ export class CreateApiKeyInput {
   prefix?: string;
 
   /** API Key 权限。 */
-  // eslint-disable-next-line @nest-boot/graphql-field-config-from-types
   @IsOptional()
   @IsArray()
-  @IsEnum(AuthPermissionEnum, { each: true })
-  @Field(() => [AuthPermissionEnum], { nullable: true })
-  permissions?: AuthPermission[];
+  @IsString({ each: true })
+  @Field(() => [String], { nullable: true })
+  permissions?: string[];
 }

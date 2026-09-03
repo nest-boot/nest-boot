@@ -5,7 +5,7 @@ export class Migration20260902080630_Baseline extends RowLevelSecurityMigration 
 
   override up(): void | Promise<void> {
     this.addSql(
-      `create table "user" ("id" bigserial primary key, "email_verified" boolean not null default false, "image" text null, "permissions" text[] not null default '{}', "banned" boolean not null default false, "ban_reason" text null, "ban_expires_at" timestamptz null, "name" varchar(255) not null, "email" varchar(255) not null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now());`,
+      `create table "user" ("id" bigserial primary key, "email_verified" boolean not null default false, "image" text null, "roles" text[] not null default '{user}', "permissions" text[] not null default '{}', "banned" boolean not null default false, "ban_reason" text null, "ban_expires_at" timestamptz null, "name" varchar(255) not null, "email" varchar(255) not null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now());`,
     );
     this.addSql(
       `alter table "user" add constraint "user_email_unique" unique ("email");`,
@@ -70,7 +70,7 @@ export class Migration20260902080630_Baseline extends RowLevelSecurityMigration 
     );
 
     this.addSql(
-      `create table "workspace_invitation" ("id" uuid not null, "email" varchar(255) not null, "role" text not null default 'MEMBER', "status" text not null default 'pending', "expires_at" timestamptz not null, "created_at" timestamptz not null default now(), "inviter_id" bigint not null, "workspace_id" bigint not null, primary key ("id"));`,
+      `create table "workspace_invitation" ("id" uuid not null, "email" varchar(255) not null, "roles" text[] not null default '{member}', "status" text not null default 'pending', "expires_at" timestamptz not null, "created_at" timestamptz not null default now(), "inviter_id" bigint not null, "workspace_id" bigint not null, primary key ("id"));`,
     );
     this.addSql(
       `create index "workspace_invitation_workspace_id_index" on "workspace_invitation" ("workspace_id");`,
@@ -85,7 +85,7 @@ export class Migration20260902080630_Baseline extends RowLevelSecurityMigration 
       `create index "workspace_invitation_created_at_index" on "workspace_invitation" ("created_at");`,
     );
     this.addSql(
-      `alter table "workspace_invitation" add constraint "workspace_invitation_role_check" check ("role" in ('OWNER', 'ADMIN', 'MEMBER'));`,
+      `create unique index "workspace_invitation_email_workspace_id_unique" on "workspace_invitation" ("email", "workspace_id") where "status" = 'pending';`,
     );
     this.addSql(
       `alter table "workspace_invitation" add constraint "workspace_invitation_status_check" check ("status" in ('accepted', 'canceled', 'pending', 'rejected'));`,
@@ -95,7 +95,7 @@ export class Migration20260902080630_Baseline extends RowLevelSecurityMigration 
     );
 
     this.addSql(
-      `create table "workspace_member" ("id" bigserial primary key, "name" varchar(255) not null, "email" varchar(255) null, "searchable_name" tsvector null, "type" text not null default 'USER', "role" text not null default 'MEMBER', "permissions" text[] not null default '{}', "status" text not null default 'ACTIVE', "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now(), "user_id" bigint null, "workspace_id" bigint not null);`,
+      `create table "workspace_member" ("id" bigserial primary key, "name" varchar(255) not null, "email" varchar(255) null, "searchable_name" tsvector null, "type" text not null default 'USER', "roles" text[] not null default '{member}', "permissions" text[] not null default '{}', "status" text not null default 'ACTIVE', "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now(), "user_id" bigint null, "workspace_id" bigint not null);`,
     );
     this.addSql(
       `create index "workspace_member_searchable_name_index" on "public"."workspace_member" using gin("searchable_name");`,
@@ -113,9 +113,6 @@ export class Migration20260902080630_Baseline extends RowLevelSecurityMigration 
       `create index "workspace_member_created_at_index" on "workspace_member" ("created_at");`,
     );
     this.addSql(
-      `create index "workspace_member_role_index" on "workspace_member" ("role");`,
-    );
-    this.addSql(
       `alter table "workspace_member" add constraint "workspace_member_email_workspace_id_unique" unique ("email", "workspace_id");`,
     );
     this.addSql(
@@ -123,9 +120,6 @@ export class Migration20260902080630_Baseline extends RowLevelSecurityMigration 
     );
     this.addSql(
       `alter table "workspace_member" add constraint "workspace_member_type_check" check ("type" in ('USER', 'SERVICE_ACCOUNT'));`,
-    );
-    this.addSql(
-      `alter table "workspace_member" add constraint "workspace_member_role_check" check ("role" in ('OWNER', 'ADMIN', 'MEMBER'));`,
     );
     this.addSql(
       `alter table "workspace_member" add constraint "workspace_member_status_check" check ("status" in ('ACTIVE', 'DISABLED'));`,

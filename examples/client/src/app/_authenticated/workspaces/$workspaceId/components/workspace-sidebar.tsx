@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/sidebar";
 
 import { Link } from "@/components/link";
-import { WorkspaceMemberRole } from "@/gql/graphql";
+import { WORKSPACE_OWNER_ROLE, hasWorkspaceRole } from "@/lib/workspace-roles";
 
 type SidebarItem = {
   title: string;
@@ -48,7 +48,7 @@ export const WorkspaceSidebar: FC<ComponentProps<typeof Sidebar>> = ({
     {
       title: t("sidebar:navigation.settings"),
       items: [
-        ...(currentWorkspaceMember.role === WorkspaceMemberRole.OWNER
+        ...(hasWorkspaceRole(currentWorkspaceMember.roles, WORKSPACE_OWNER_ROLE)
           ? [
               {
                 title: t("sidebar:navigation.api_keys"),

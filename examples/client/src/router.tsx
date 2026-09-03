@@ -23,24 +23,26 @@ export const getRouter = () => {
     link: ApolloLink.from([
       new ErrorLink(({ error }) => {
         if (CombinedGraphQLErrors.is(error)) {
-          let hasAuthError = false;
-
-          error.errors.forEach(({ message, extensions }) => {
+          const hasAuthError = error.errors.some(({ message, extensions }) => {
             console.log(`GraphQL error: ${message}`);
-
-            if (
+            return (
               extensions?.code &&
               ["UNAUTHORIZED", "UNAUTHENTICATED"].includes(
                 extensions.code as string,
               )
-            ) {
-              hasAuthError = true;
-            }
-
-            if (hasAuthError) {
-              window.location.href = "/auth/login";
-            }
+            );
           });
+
+          const isPublicAuthFlow =
+            location.pathname.startsWith("/auth/") ||
+            location.pathname === "/invite" ||
+            location.pathname === "/invite/";
+          if (hasAuthError && !isPublicAuthFlow) {
+            const redirect = `${location.pathname}${location.search}${location.hash}`;
+            const loginUrl = new URL("/auth/login", location.origin);
+            loginUrl.searchParams.set("redirect", redirect);
+            window.location.assign(loginUrl);
+          }
         } else if (ServerError.is(error)) {
           console.log(`Server error: ${error.message}`);
         } else if (UnconventionalError.is(error)) {

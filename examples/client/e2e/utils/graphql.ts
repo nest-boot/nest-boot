@@ -19,7 +19,7 @@ export async function graphqlRequest<TData = Record<string, unknown>>(
     errors?: unknown;
   };
 
-  expect(response.ok()).toBeTruthy();
+  expect(response.ok(), JSON.stringify(body)).toBeTruthy();
   expect(body.errors, JSON.stringify(body.errors ?? [])).toBeUndefined();
   expect(body.data).toBeDefined();
 

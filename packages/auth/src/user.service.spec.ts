@@ -1,17 +1,18 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { EntityManager } from "@mikro-orm/core";
 import { HashService } from "@nest-boot/hash";
+import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import type { Mocked } from "vitest";
 
-import { AdminService } from "./admin.service.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
 import { BaseAccount, BaseSession, BaseUser } from "./entities/index.js";
+import { UserService } from "./user.service.js";
 
 class TestAccount extends BaseAccount {}
 class TestSession extends BaseSession {}
 class TestUser extends BaseUser {}
 
-describe("AdminService", () => {
+describe("UserService", () => {
   it("creates a user and credential account with the configured hasher", async () => {
     const { em, hash, service } = createService();
     hash.mockResolvedValue("hashed-password");
@@ -70,6 +71,69 @@ describe("AdminService", () => {
     );
     expect(em.assign).toHaveBeenCalledWith(user, { name: "Renamed" });
     expect(user.permissions).toEqual(["user:get"]);
+    await expect(
+      service.updateUser(user, { roles: ["admin"] } as never),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("gets a configured user by normalized email", async () => {
+    const { em, service } = createService();
+    const user = Object.assign(new TestUser(), {
+      email: "alice@example.com",
+      id: "user-1",
+    });
+    em.findOne.mockResolvedValue(user);
+
+    await expect(service.getUserByEmail(" Alice@Example.com ")).resolves.toBe(
+      user,
+    );
+    expect(em.findOne).toHaveBeenCalledWith(
+      TestUser,
+      { email: "alice@example.com" },
+      { filters: false },
+    );
+  });
+
+  it("lists configured roles and assigns only known roles", async () => {
+    const { service } = createService(true, {
+      permissions: ["user:create", "user:set-role", "user:list", "user:delete"],
+      roles: {
+        admin: ["user:create", "user:set-role"],
+        auditor: ["user:list"],
+        user: [],
+      },
+    });
+    const user = Object.assign(new TestUser(), {
+      permissions: ["session:list"],
+      roles: ["user"],
+    });
+
+    expect(service.listRoles()).toEqual([
+      {
+        name: "admin",
+        permissions: ["user:create", "user:set-role"],
+      },
+      { name: "auditor", permissions: ["user:list"] },
+      { name: "user", permissions: [] },
+    ]);
+    expect(service.listPermissions()).toEqual([
+      "user:create",
+      "user:set-role",
+      "user:list",
+      "user:delete",
+    ]);
+
+    await expect(service.setRole(user, ["auditor", "user"])).resolves.toBe(
+      user,
+    );
+    expect(user.roles).toEqual(["auditor", "user"]);
+    expect(service.getUserPermissions(user)).toEqual([
+      "user:list",
+      "session:list",
+    ]);
+    await expect(service.setRole(user, ["unknown"])).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
   });
 
   it("lists users with search, filter, order, and pagination", async () => {
@@ -145,6 +209,9 @@ describe("AdminService", () => {
     expect(user.banReason).toBe("abuse");
     expect(user.banExpiresAt).toEqual(new Date("2026-09-02T01:00:00Z"));
     expect(em.nativeDelete).toHaveBeenCalledTimes(1);
+    expect(em.nativeDelete).toHaveBeenCalledWith(TestSession, {
+      $or: [{ userId: user.id }, { impersonatedBy: user }],
+    });
 
     await service.unbanUser(user);
     expect(user.banned).toBe(false);
@@ -170,6 +237,28 @@ describe("AdminService", () => {
     expect(restored?.user).toBe(administrator);
     expect(restored?.session.userId).toBe("admin-1");
     expect(em.remove).toHaveBeenCalledWith(impersonation.session);
+  });
+
+  it("revokes an impersonation session instead of restoring a banned administrator", async () => {
+    const { em, service } = createService();
+    const administrator = Object.assign(new TestUser(), {
+      banned: true,
+      banExpiresAt: null,
+      id: "admin-1",
+    });
+    const user = Object.assign(new TestUser(), { id: "user-1" });
+    const impersonation = await service.impersonateUser(
+      Object.assign(new TestUser(), { id: "issuer-1" }),
+      user,
+    );
+    impersonation.session.impersonatedBy = administrator;
+    em.findOne.mockResolvedValue(administrator);
+
+    await expect(
+      service.stopImpersonating(impersonation.session),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(em.remove).toHaveBeenCalledWith(impersonation.session);
+    expect(em.flush).toHaveBeenCalled();
   });
 
   it("sets an existing credential password or creates the account", async () => {
@@ -228,7 +317,10 @@ describe("AdminService", () => {
   });
 });
 
-function createService(useCustomHash = true) {
+function createService(
+  useCustomHash = true,
+  user: NonNullable<AuthModuleOptions["user"]> = {},
+) {
   const em = {
     assign: vi.fn((entity, input) => Object.assign(entity, input)),
     create: vi.fn((Entity, input) => Object.assign(new Entity(), input)),
@@ -251,6 +343,7 @@ function createService(useCustomHash = true) {
     ...(useCustomHash
       ? { emailAndPassword: { password: { hash } } }
       : { emailAndPassword: {} }),
+    user,
     entities: {
       account: TestAccount,
       session: TestSession,
@@ -258,12 +351,11 @@ function createService(useCustomHash = true) {
     },
     session: { expiresIn: 3600 },
   } as unknown as AuthModuleOptions;
-
   return {
     em,
     hash,
     hashServiceHash,
-    service: new AdminService<TestUser, TestAccount, TestSession>(
+    service: new UserService<TestUser, TestAccount, TestSession>(
       em,
       options,
       hashService,

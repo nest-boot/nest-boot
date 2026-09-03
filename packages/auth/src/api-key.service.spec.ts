@@ -38,7 +38,7 @@ class TestUser extends BaseUser {
 class TestWorkspaceMember extends BaseWorkspaceMember {
   override id = "member-1";
   override name = "Alice";
-  override role = "OWNER" as const;
+  override roles = ["owner"];
   override status = "ACTIVE" as const;
   override permissions: string[] = [];
   override workspace = {
@@ -195,7 +195,7 @@ describe("ApiKeyService", () => {
     async (role) => {
       const { em, service } = createService();
       const member = Object.assign(new TestWorkspaceMember(), {
-        role,
+        roles: [role.toLowerCase()],
       });
 
       await expect(
@@ -210,7 +210,7 @@ describe("ApiKeyService", () => {
   it("rejects creation from a member of another workspace", async () => {
     const { em, service } = createService();
     const member = Object.assign(new TestWorkspaceMember(), {
-      role: "OWNER" as const,
+      roles: ["owner"],
       workspace: {
         id: "workspace-2",
       } as BaseWorkspaceMember["workspace"],
@@ -229,10 +229,10 @@ describe("ApiKeyService", () => {
     const workspace = new TestWorkspace();
     const owner = new TestWorkspaceMember();
     const member = Object.assign(new TestWorkspaceMember(), {
-      role: "MEMBER" as const,
+      roles: ["member"],
     });
     const admin = Object.assign(new TestWorkspaceMember(), {
-      role: "ADMIN" as const,
+      roles: ["admin"],
     });
 
     expect(service.getWorkspaceListFilter(workspace, owner)).toEqual({
@@ -264,7 +264,7 @@ describe("ApiKeyService", () => {
     const apiKey = new TestApiKey();
     em.findOne.mockResolvedValue(apiKey);
     const member = Object.assign(new TestWorkspaceMember(), {
-      role: "MEMBER" as const,
+      roles: ["member"],
     });
 
     await expect(
@@ -287,7 +287,7 @@ describe("ApiKeyService", () => {
     }) as BaseApiKey["owner"];
     em.findOne.mockResolvedValue(apiKey);
     const owner = Object.assign(new TestWorkspaceMember(), {
-      role: "OWNER" as const,
+      roles: ["owner"],
     });
 
     await expect(

@@ -4,11 +4,11 @@ vi.mock('@nest-boot/auth', async (importOriginal) => ({
 }));
 
 import { EntityManager } from '@mikro-orm/core';
+import type { WorkspaceService } from '@nest-boot/auth';
 import { Logger } from '@nest-boot/logger';
 import { BadRequestException } from '@nestjs/common';
 
 import { Workspace } from '../workspace/workspace.entity.js';
-import { WorkspaceMemberRole } from './enums/workspace-member-role.enum.js';
 import { WorkspaceMemberStatus } from './enums/workspace-member-status.enum.js';
 import { WorkspaceMemberType } from './enums/workspace-member-type.enum.js';
 import { WorkspaceMember } from './workspace-member.entity.js';
@@ -32,7 +32,7 @@ describe('WorkspaceMemberService', () => {
     expect(createSpy).toHaveBeenCalledWith({
       name: 'Deploy Bot',
       workspace,
-      role: WorkspaceMemberRole.MEMBER,
+      roles: ['member'],
       permissions: [],
       type: WorkspaceMemberType.SERVICE_ACCOUNT,
       user: null,
@@ -55,6 +55,17 @@ describe('WorkspaceMemberService', () => {
     await expect(
       service.updateWorkspaceMember(member, {
         email: 'duplicate@example.com',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejects service-account roles outside the configured catalog', async () => {
+    const { service } = createService();
+
+    await expect(
+      service.createServiceAccount({ id: 'workspace_1' } as Workspace, {
+        name: 'Deploy Bot',
+        roles: ['missing'],
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
@@ -90,9 +101,17 @@ function createService() {
   const logger = {
     setContext: vi.fn(),
   };
+  const workspaceService = {
+    listRoles: vi.fn(() => [
+      { name: 'admin', permissions: [] },
+      { name: 'member', permissions: [] },
+      { name: 'owner', permissions: [] },
+    ]),
+  };
   const service = new WorkspaceMemberService(
     em as unknown as EntityManager,
     logger as unknown as Logger,
+    workspaceService as unknown as WorkspaceService,
   );
 
   return { service, em, logger };

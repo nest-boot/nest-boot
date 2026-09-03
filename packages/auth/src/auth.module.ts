@@ -11,6 +11,7 @@ import {
   RequestContextModule,
 } from "@nest-boot/request-context";
 import {
+  type ConfigurableModuleAsyncOptions,
   type DynamicModule,
   Global,
   Inject,
@@ -18,26 +19,29 @@ import {
   type NestMiddleware,
 } from "@nestjs/common";
 import { APP_INTERCEPTOR } from "@nestjs/core";
-import { betterAuth } from "better-auth";
+import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { genericOAuth } from "better-auth/plugins";
 
 import { mikroOrmAdapter } from "./adapters/mikro-orm-adapter.js";
-import { AdminService } from "./admin.service.js";
 import { ApiKeyService } from "./api-key.service.js";
 import { ApiKeyUsageInterceptor } from "./api-key-usage.interceptor.js";
 import { AUTH_TOKEN } from "./auth.constants.js";
 import { AuthGuard } from "./auth.guard.js";
 import { AuthMiddleware } from "./auth.middleware.js";
 import {
-  ASYNC_OPTIONS_TYPE,
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
-  OPTIONS_TYPE,
 } from "./auth.module-definition.js";
 import { AuthService } from "./auth.service.js";
 import { AuthHandlerMiddleware } from "./auth-handler.middleware.js";
 import { type AuthModuleOptions } from "./auth-module-options.interface.js";
 import { SessionService } from "./session.service.js";
+import {
+  DEFAULT_USER_PERMISSIONS,
+  DEFAULT_USER_ROLES,
+} from "./user.constants.js";
+import { UserService } from "./user.service.js";
+import { assertAuthRolePermissions } from "./utils/auth-role.util.js";
 import { createEmailAndPasswordConfig } from "./utils/create-email-and-password-config.js";
 import { createEmailVerificationConfig } from "./utils/create-email-verification-config.js";
 import { createOidcConfig } from "./utils/create-oidc-config.js";
@@ -45,6 +49,10 @@ import { createSocialProvidersConfig } from "./utils/create-social-providers-con
 import { createUserConfig } from "./utils/create-user-config.js";
 import { isEnvTrue } from "./utils/is-env-true.js";
 import { resolveSecret } from "./utils/resolve-secret.js";
+import {
+  DEFAULT_WORKSPACE_PERMISSIONS,
+  DEFAULT_WORKSPACE_ROLES,
+} from "./workspace.constants.js";
 import { WorkspaceService } from "./workspace.service.js";
 
 /**
@@ -58,7 +66,7 @@ import { WorkspaceService } from "./workspace.service.js";
 @Module({
   imports: [RequestContextModule, MiddlewareModule],
   providers: [
-    AdminService,
+    UserService,
     ApiKeyService,
     ApiKeyUsageInterceptor,
     AuthService,
@@ -80,51 +88,45 @@ import { WorkspaceService } from "./workspace.service.js";
         mailer: Mailer,
         hashService: HashService,
       ) => {
-        const betterAuthModuleOptions: Partial<AuthModuleOptions> = {
-          ...options,
-        };
-        delete betterAuthModuleOptions.buildWorkspaceAbility;
-        delete betterAuthModuleOptions.buildUserAbility;
-        delete betterAuthModuleOptions.entities;
-        delete betterAuthModuleOptions.middleware;
-        delete betterAuthModuleOptions.onAuthenticated;
-        delete betterAuthModuleOptions.workspace;
+        assertAuthRolePermissions(
+          options.user?.roles ?? DEFAULT_USER_ROLES,
+          options.user?.permissions ?? DEFAULT_USER_PERMISSIONS,
+          "user",
+        );
+        assertAuthRolePermissions(
+          options.workspace?.roles ?? DEFAULT_WORKSPACE_ROLES,
+          options.workspace?.permissions ?? DEFAULT_WORKSPACE_PERMISSIONS,
+          "workspace",
+        );
+
         const secret = resolveSecret(options);
         const disableSignUp = isEnvTrue("AUTH_DISABLE_SIGN_UP");
         const oidcConfig = createOidcConfig(disableSignUp);
-        const {
-          account,
-          emailAndPassword,
-          emailVerification,
-          socialProviders,
-          user,
-          ...betterAuthOptions
-        } = betterAuthModuleOptions;
         const emailAndPasswordConfig = createEmailAndPasswordConfig(
           disableSignUp,
           mailer,
           hashService,
-          emailAndPassword,
+          options.emailAndPassword,
         );
         const emailVerificationConfig = createEmailVerificationConfig(
           mailer,
-          emailVerification,
+          options.emailVerification,
         );
         const socialProvidersConfig = createSocialProvidersConfig(
           disableSignUp,
-          socialProviders,
+          options.socialProviders,
         );
-        const userConfig = createUserConfig(mailer, user);
+        const userConfig = createUserConfig(mailer, options.user);
 
-        return betterAuth({
-          appName: process.env.APP_NAME,
-          baseURL: process.env.AUTH_URL ?? process.env.APP_URL,
+        const betterAuthOptions: BetterAuthOptions = {
+          appName: options.appName ?? process.env.APP_NAME,
+          baseURL:
+            options.baseURL ?? process.env.AUTH_URL ?? process.env.APP_URL,
           secret,
           account: {
             skipStateCookieCheck: true,
-            ...account,
+            ...options.account,
           },
-          ...betterAuthOptions,
           emailAndPassword: emailAndPasswordConfig,
           emailVerification: emailVerificationConfig,
           ...(userConfig ? { user: userConfig } : {}),
@@ -144,13 +146,16 @@ import { WorkspaceService } from "./workspace.service.js";
             orm,
             entities: options.entities,
           }),
-        });
+        };
+
+        copyBetterAuthOptions(betterAuthOptions, options);
+        return betterAuth(betterAuthOptions);
       },
     },
   ],
   exports: [
     MODULE_OPTIONS_TOKEN,
-    AdminService,
+    UserService,
     ApiKeyService,
     AuthGuard,
     AuthService,
@@ -164,7 +169,14 @@ export class AuthModule extends ConfigurableModuleClass {
    * @param options - Configuration options including secret and middleware settings
    * @returns Dynamic module configuration
    */
-  static override forRoot(options: typeof OPTIONS_TYPE): DynamicModule {
+  static override forRoot<
+    const UserPermission extends string =
+      (typeof DEFAULT_USER_PERMISSIONS)[number],
+    const WorkspacePermission extends string =
+      (typeof DEFAULT_WORKSPACE_PERMISSIONS)[number],
+  >(
+    options: AuthModuleOptions<UserPermission, WorkspacePermission>,
+  ): DynamicModule {
     return super.forRoot(options);
   }
 
@@ -173,8 +185,15 @@ export class AuthModule extends ConfigurableModuleClass {
    * @param options - Async configuration options
    * @returns Dynamic module configuration
    */
-  static override forRootAsync(
-    options: typeof ASYNC_OPTIONS_TYPE,
+  static override forRootAsync<
+    const UserPermission extends string =
+      (typeof DEFAULT_USER_PERMISSIONS)[number],
+    const WorkspacePermission extends string =
+      (typeof DEFAULT_WORKSPACE_PERMISSIONS)[number],
+  >(
+    options: ConfigurableModuleAsyncOptions<
+      AuthModuleOptions<UserPermission, WorkspacePermission>
+    >,
   ): DynamicModule {
     return super.forRootAsync(options);
   }
@@ -220,5 +239,35 @@ export class AuthModule extends ConfigurableModuleClass {
     }
 
     proxy.forRoutes(...(this.options.middleware?.includeRoutes ?? ["*"]));
+  }
+}
+
+function copyBetterAuthOptions(
+  target: BetterAuthOptions,
+  source: AuthModuleOptions,
+): void {
+  if (source.advanced !== undefined) target.advanced = source.advanced;
+  if (source.basePath !== undefined) target.basePath = source.basePath;
+  if (source.databaseHooks !== undefined) {
+    target.databaseHooks = source.databaseHooks;
+  }
+  if (source.disabledPaths !== undefined) {
+    target.disabledPaths = source.disabledPaths;
+  }
+  if (source.hooks !== undefined) target.hooks = source.hooks;
+  if (source.logger !== undefined) target.logger = source.logger;
+  if (source.onAPIError !== undefined) target.onAPIError = source.onAPIError;
+  if (source.rateLimit !== undefined) target.rateLimit = source.rateLimit;
+  if (source.secrets !== undefined) target.secrets = source.secrets;
+  if (source.secondaryStorage !== undefined) {
+    target.secondaryStorage = source.secondaryStorage;
+  }
+  if (source.session !== undefined) target.session = source.session;
+  if (source.telemetry !== undefined) target.telemetry = source.telemetry;
+  if (source.trustedOrigins !== undefined) {
+    target.trustedOrigins = source.trustedOrigins;
+  }
+  if (source.verification !== undefined) {
+    target.verification = source.verification;
   }
 }

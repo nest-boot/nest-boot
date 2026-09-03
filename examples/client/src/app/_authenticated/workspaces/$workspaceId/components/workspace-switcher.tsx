@@ -1,8 +1,8 @@
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 
 import { useQuery } from "@apollo/client/react";
 import { t } from "i18next";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useCurrentWorkspaceContext } from "../contexts/current-workspace-context";
 import {
   DropdownMenu,
@@ -60,8 +60,9 @@ export function WorkspaceSwitcher() {
   const { isMobile } = useSidebar();
 
   const currentWorkspace = useCurrentWorkspaceContext();
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  const { data } = useQuery(GET_WORKSPACES_FROM_WORKSPACE_SWITCHER, {
+  const { data, fetchMore } = useQuery(GET_WORKSPACES_FROM_WORKSPACE_SWITCHER, {
     variables: { first: 10 },
   });
 
@@ -69,6 +70,29 @@ export function WorkspaceSwitcher() {
     () => (data?.workspaces?.edges || []).map(({ node }) => node),
     [data],
   );
+  const handleLoadMore = async () => {
+    const endCursor = data?.workspaces.pageInfo.endCursor;
+    if (!endCursor) return;
+
+    setLoadingMore(true);
+    try {
+      await fetchMore({
+        variables: { after: endCursor, first: 10 },
+        updateQuery: (previous, { fetchMoreResult }) => ({
+          ...fetchMoreResult,
+          workspaces: {
+            ...fetchMoreResult.workspaces,
+            edges: [
+              ...previous.workspaces.edges,
+              ...fetchMoreResult.workspaces.edges,
+            ],
+          },
+        }),
+      });
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   return (
     <SidebarMenu>
@@ -114,7 +138,6 @@ export function WorkspaceSwitcher() {
                       key={workspace.id}
                       to="/workspaces/$workspaceId"
                       params={{ workspaceId: workspace.id }}
-                      reloadDocument
                     >
                       {workspace.name}
 
@@ -126,7 +149,29 @@ export function WorkspaceSwitcher() {
                 />
               ))}
 
+              {data?.workspaces.pageInfo.hasNextPage ? (
+                <DropdownMenuItem
+                  className="gap-2 p-2"
+                  disabled={loadingMore}
+                  onSelect={(event) => {
+                    event.preventDefault();
+                    void handleLoadMore();
+                  }}
+                >
+                  {loadingMore ? <Loader2 className="animate-spin" /> : null}
+                  {t("sidebar:switcher.loadMore")}
+                </DropdownMenuItem>
+              ) : null}
+
               <DropdownMenuSeparator />
+
+              <Link to="/user/workspaces">
+                <DropdownMenuItem className="gap-2 p-2">
+                  <div className="text-muted-foreground font-medium">
+                    {t("sidebar:switcher.manageWorkspaces")}
+                  </div>
+                </DropdownMenuItem>
+              </Link>
 
               <Link to="/workspaces/create">
                 <DropdownMenuItem className="gap-2 p-2">

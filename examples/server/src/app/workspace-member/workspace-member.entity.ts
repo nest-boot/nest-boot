@@ -1,5 +1,3 @@
-import '../auth/enums/auth-permission.enum.js';
-
 import type { Opt, Ref } from '@mikro-orm/core';
 import { t } from '@mikro-orm/core';
 import {
@@ -17,10 +15,8 @@ import { Policy } from '@nest-boot/row-level-security';
 import { Sonyflake } from 'sonyflake-js';
 
 import { SearchableProperty } from '../../common/decorators/searchable-property.decorator.js';
-import { WorkspacePermission } from '../auth/enums/workspace-permission.enum.js';
 import type { User } from '../user/user.entity.js';
 import type { Workspace } from '../workspace/workspace.entity.js';
-import { WorkspaceMemberRole } from './enums/workspace-member-role.enum.js';
 import { WorkspaceMemberStatus } from './enums/workspace-member-status.enum.js';
 import { WorkspaceMemberType } from './enums/workspace-member-type.enum.js';
 
@@ -41,7 +37,6 @@ import { WorkspaceMemberType } from './enums/workspace-member-type.enum.js';
 @Entity()
 @Unique({ properties: ['user', 'workspace'] })
 @Unique({ properties: ['email', 'workspace'] })
-@Index({ properties: ['role'] })
 @Index({ properties: ['createdAt'] })
 @Index({ properties: ['user'] })
 @Index({ properties: ['workspace'] })
@@ -84,18 +79,14 @@ export class WorkspaceMember extends BaseWorkspaceMember {
   type: Opt<WorkspaceMemberType> = WorkspaceMemberType.USER;
 
   /** 成员角色。 */
-  @Field(() => WorkspaceMemberRole)
-  @Enum({
-    items: () => WorkspaceMemberRole,
-    default: WorkspaceMemberRole.MEMBER,
-  })
-  override role: Opt<WorkspaceMemberRole> = WorkspaceMemberRole.MEMBER;
+  @Field(() => [String])
+  @Property({ type: t.array, defaultRaw: "'{member}'" })
+  override roles: Opt<string[]> = ['member'];
 
   /** 额外授予成员的工作区域权限。 */
-  @Field(() => [WorkspacePermission])
-  // eslint-disable-next-line @nest-boot/entity-property-config-from-types
+  @Field(() => [String])
   @Property({ type: t.array, defaultRaw: "'{}'" })
-  override permissions: Opt<WorkspacePermission[]> = [];
+  override permissions: Opt<string[]> = [];
 
   /** 成员状态。 */
   @Field(() => WorkspaceMemberStatus)

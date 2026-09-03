@@ -14,7 +14,7 @@ import { AuthGuard } from "./auth.guard.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
 import { BaseSession } from "./entities/index.js";
-import { CAN_METADATA } from "./permission.constants.js";
+import { USER_CAN_METADATA } from "./permission.constants.js";
 
 class PromiseAuthGuard extends AuthGuard {
   override canActivate(
@@ -108,15 +108,14 @@ describe("AuthGuard", () => {
     const { guard } = await createGuard(
       AuthGuard,
       vi.fn((key) =>
-        key === CAN_METADATA
+        key === USER_CAN_METADATA
           ? {
               action: "read",
-              scope: "user",
               subject: Subject,
             }
           : false,
       ),
-      { buildUserAbility: buildAbility },
+      { user: { buildAbility } },
     );
 
     await RequestContext.run(new RequestContext({ type: "http" }), async () => {
@@ -137,17 +136,16 @@ describe("AuthGuard", () => {
           return true;
         }
 
-        if (key === CAN_METADATA) {
+        if (key === USER_CAN_METADATA) {
           return {
             action: "read",
-            scope: "user",
             subject: Subject,
           };
         }
 
         return undefined;
       }),
-      { buildUserAbility: buildAbility as never },
+      { user: { buildAbility: buildAbility as never } },
     );
 
     await RequestContext.run(new RequestContext({ type: "http" }), async () => {

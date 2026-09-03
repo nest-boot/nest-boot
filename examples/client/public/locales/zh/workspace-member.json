@@ -65,6 +65,7 @@
   "invite": {
     "button": "邀请",
     "confirm_and_copy": "确认并复制链接",
+    "copy_failed": "邀请已创建，但无法自动复制链接",
     "description": "系统将生成一个邀请链接",
     "email_label": "邮箱",
     "email_placeholder": "user@example.com",
@@ -72,7 +73,7 @@
     "link_copied": "链接将自动复制到剪贴板",
     "link_expires": "邀请将在 48 小时后过期",
     "link_generated": "邀请链接已生成",
-    "link_generated_description": "邀请链接已复制到您的剪贴板。您也可以使用下面的按钮再次复制。",
+    "link_generated_description": "请将该链接发送给受邀用户，也可以使用下面的按钮复制。",
     "link_user_join": "邀请的用户可以通过点击链接加入工作空间",
     "role_label": "角色",
     "select_role_placeholder": "选择角色",

@@ -6,11 +6,11 @@ import {
   ManyToOne,
   PrimaryKey,
   Property,
+  Unique,
 } from "@mikro-orm/decorators/legacy";
 
 import type { BaseUser } from "./user.entity.js";
 import type { BaseWorkspace } from "./workspace.entity.js";
-import type { AuthWorkspaceMemberRole } from "./workspace-member.entity.js";
 
 /** Workspace-invitation states understood by the built-in auth services. */
 export type AuthWorkspaceInvitationStatus =
@@ -27,6 +27,10 @@ export type AuthWorkspaceInvitationStatus =
  * lifecycle. Accepting it creates a new workspace-member record.
  */
 @Entity({ abstract: true })
+@Unique({
+  properties: ["email", "workspace"],
+  where: { status: "pending" },
+})
 export class BaseWorkspaceInvitation extends BaseEntity {
   /** Primary key (UUID v4, auto-generated). */
   @PrimaryKey({ type: t.uuid })
@@ -36,10 +40,9 @@ export class BaseWorkspaceInvitation extends BaseEntity {
   @Property({ type: t.text })
   email!: string;
 
-  /** Role granted to the member after acceptance. */
-  // eslint-disable-next-line @nest-boot/entity-property-config-from-types
-  @Property({ type: t.string, default: "MEMBER" })
-  role: Opt<AuthWorkspaceMemberRole> = "MEMBER";
+  /** Roles granted to the member after acceptance. */
+  @Property({ type: t.array })
+  roles: Opt<string[]> = ["member"];
 
   /** Invitation lifecycle status. */
   // eslint-disable-next-line @nest-boot/entity-property-config-from-types

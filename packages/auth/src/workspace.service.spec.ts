@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-import { EntityManager } from "@mikro-orm/core";
+import { EntityManager, LockMode } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import {
   RowLevelSecurity,
   RowLevelSecurityMode,
 } from "@nest-boot/row-level-security";
-import { ForbiddenException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import type { Mocked } from "vitest";
 
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
@@ -66,7 +66,7 @@ describe("WorkspaceService", () => {
       expect.objectContaining({
         email: "alice@example.com",
         name: "Alice",
-        role: "OWNER",
+        roles: ["owner"],
         status: "ACTIVE",
         user,
         workspace,
@@ -102,7 +102,7 @@ describe("WorkspaceService", () => {
   it("does not let an owner delete a different workspace", async () => {
     const { em, service } = createService();
     const owner = Object.assign(new TestWorkspaceMember(), {
-      role: "OWNER" as const,
+      roles: ["owner"],
       workspace: {
         id: "workspace-2",
       } as BaseWorkspaceMember["workspace"],
@@ -118,7 +118,7 @@ describe("WorkspaceService", () => {
     const { em, service } = createService();
     const workspace = new TestWorkspace();
     const owner = Object.assign(new TestWorkspaceMember(), {
-      role: "OWNER" as const,
+      roles: ["owner"],
     });
     em.assign.mockImplementation((entity, data) => {
       expect(RowLevelSecurity.getMode()).toBe(RowLevelSecurityMode.DISABLED);
@@ -197,15 +197,15 @@ describe("WorkspaceService", () => {
     em.findOne.mockResolvedValue(null);
 
     const member = await service.addMember(workspace, user, {
-      permissions: ["project:read"],
-      role: "ADMIN",
+      permissions: ["workspace:update"],
+      roles: ["admin"],
     });
     expect(member).toEqual(
       expect.objectContaining({
         email: "bob@example.com",
         name: "Bob",
-        permissions: ["project:read"],
-        role: "ADMIN",
+        permissions: ["workspace:update"],
+        roles: ["admin"],
         user,
         workspace,
       }),
@@ -216,6 +216,107 @@ describe("WorkspaceService", () => {
     ).resolves.toBe(member);
     expect(member.name).toBe("Robert");
     expect(member.status).toBe("DISABLED");
+    await expect(
+      service.updateMember(member, { roles: ["member"] } as never),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("lists configured roles and updates member roles", async () => {
+    const { service } = createService({
+      permissions: [
+        "workspace:update",
+        "workspaceMember:update",
+        "workspace:delete",
+        "workspaceInvitation:cancel",
+      ],
+      roles: {
+        admin: ["workspace:update", "workspaceMember:update"],
+        member: [],
+        owner: ["workspace:delete"],
+      },
+    });
+    const member = Object.assign(new TestWorkspaceMember(), {
+      permissions: ["workspaceInvitation:create"],
+      roles: ["member"],
+    });
+
+    expect(service.listRoles()).toEqual([
+      {
+        name: "admin",
+        permissions: ["workspace:update", "workspaceMember:update"],
+      },
+      { name: "member", permissions: [] },
+      { name: "owner", permissions: ["workspace:delete"] },
+    ]);
+    expect(service.listPermissions()).toEqual([
+      "workspace:update",
+      "workspaceMember:update",
+      "workspace:delete",
+      "workspaceInvitation:cancel",
+    ]);
+
+    await expect(service.updateMemberRole(member, ["admin"])).resolves.toBe(
+      member,
+    );
+    expect(member.roles).toEqual(["admin"]);
+    expect(service.getMemberPermissions(member)).toEqual([
+      "workspace:update",
+      "workspaceMember:update",
+      "workspaceInvitation:create",
+    ]);
+    await expect(
+      service.updateMemberRole(member, ["missing"]),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.updateMemberRole(member, ["owner"]),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it("finds members by workspace and identifier", async () => {
+    const { em, service } = createService();
+    const workspace = new TestWorkspace();
+    const member = new TestWorkspaceMember();
+    em.findOne.mockResolvedValue(member);
+
+    await expect(service.getMemberById(workspace, member.id)).resolves.toBe(
+      member,
+    );
+    expect(em.findOne).toHaveBeenCalledWith(
+      TestWorkspaceMember,
+      { id: member.id, workspace },
+      { filters: false },
+    );
+  });
+
+  it("transfers workspace ownership atomically", async () => {
+    const { em, service } = createService();
+    const workspace = new TestWorkspace();
+    const currentOwner = Object.assign(new TestWorkspaceMember(), {
+      roles: ["owner"],
+      workspace,
+    });
+    const nextOwner = Object.assign(new TestWorkspaceMember(), {
+      id: "member-2",
+      roles: ["admin"],
+      workspace,
+    });
+
+    await expect(
+      service.transferOwnership(workspace, currentOwner, nextOwner),
+    ).resolves.toBe(nextOwner);
+
+    expect(em.lock).toHaveBeenNthCalledWith(
+      1,
+      currentOwner,
+      LockMode.PESSIMISTIC_WRITE,
+    );
+    expect(em.lock).toHaveBeenNthCalledWith(
+      2,
+      nextOwner,
+      LockMode.PESSIMISTIC_WRITE,
+    );
+    expect(currentOwner.roles).toEqual(["admin"]);
+    expect(nextOwner.roles).toEqual(["owner"]);
   });
 
   it("creates and accepts an email-bound invitation", async () => {
@@ -233,7 +334,7 @@ describe("WorkspaceService", () => {
 
     const invitation = await service.createInvitation(workspace, inviter, {
       email: "alice@example.com",
-      role: "MEMBER",
+      roles: ["member"],
     });
     expect(invitation.status).toBe("pending");
     expect(invitation.inviter).toBe(inviter);
@@ -245,7 +346,7 @@ describe("WorkspaceService", () => {
     ).resolves.toEqual({
       invitation,
       member: expect.objectContaining({
-        role: "MEMBER",
+        roles: ["member"],
         status: "ACTIVE",
         user,
       }),
@@ -264,7 +365,7 @@ describe("WorkspaceService", () => {
     const inviterMember = Object.assign(new TestWorkspaceMember(), {
       email: inviter.email,
       name: inviter.name,
-      role: "OWNER" as const,
+      roles: ["owner"],
       user: inviter,
       workspace,
     });
@@ -279,7 +380,7 @@ describe("WorkspaceService", () => {
       inviter,
       {
         email: "INVITED@example.com",
-        role: "ADMIN",
+        roles: ["admin"],
       },
       request,
     );
@@ -291,10 +392,10 @@ describe("WorkspaceService", () => {
         invitation,
         inviter: expect.objectContaining({
           id: inviterMember.id,
-          role: "OWNER",
+          roles: ["owner"],
           user: inviter,
         }),
-        role: "ADMIN",
+        roles: ["admin"],
         workspace,
       },
       request,
@@ -321,6 +422,12 @@ describe("WorkspaceService", () => {
     await expect(service.getInvitation(invitation.id)).resolves.toBe(
       invitation,
     );
+    await expect(service.getUserInvitation(invitation.id, user)).resolves.toBe(
+      invitation,
+    );
+    await expect(
+      service.getWorkspaceInvitation(invitation.id, workspace),
+    ).resolves.toBe(invitation);
     await expect(service.listInvitations(workspace)).resolves.toEqual([
       invitation,
     ]);
@@ -333,6 +440,16 @@ describe("WorkspaceService", () => {
       { id: invitation.id },
       { filters: false },
     );
+    expect(em.findOne).toHaveBeenCalledWith(
+      TestWorkspaceInvitation,
+      { email: "alice@example.com", id: invitation.id },
+      { filters: false },
+    );
+    expect(em.findOne).toHaveBeenCalledWith(
+      TestWorkspaceInvitation,
+      { id: invitation.id, workspace },
+      { filters: false },
+    );
     expect(em.find).toHaveBeenNthCalledWith(
       1,
       TestWorkspaceInvitation,
@@ -342,9 +459,46 @@ describe("WorkspaceService", () => {
     expect(em.find).toHaveBeenNthCalledWith(
       2,
       TestWorkspaceInvitation,
-      { email: "alice@example.com", status: "pending" },
+      {
+        email: "alice@example.com",
+        expiresAt: { $gt: expect.any(Date) },
+        status: "pending",
+      },
       { filters: false, orderBy: { createdAt: "desc" } },
     );
+  });
+
+  it("ignores expired pending invitations when creating a replacement", async () => {
+    const { em, service } = createService();
+    const workspace = new TestWorkspace();
+    const inviter = Object.assign(new TestUser(), {
+      email: "owner@example.com",
+      name: "Owner",
+    });
+    const expired = Object.assign(new TestWorkspaceInvitation(), {
+      email: "alice@example.com",
+      expiresAt: new Date(Date.now() - 60_000),
+      status: "pending" as const,
+      workspace,
+    });
+    em.findOne.mockResolvedValueOnce(null).mockResolvedValueOnce(expired);
+
+    await expect(
+      service.createInvitation(workspace, inviter, {
+        email: "alice@example.com",
+      }),
+    ).resolves.toBeInstanceOf(TestWorkspaceInvitation);
+    expect(em.findOne).toHaveBeenNthCalledWith(
+      2,
+      TestWorkspaceInvitation,
+      {
+        email: "alice@example.com",
+        status: "pending",
+        workspace,
+      },
+      { filters: false },
+    );
+    expect(expired.status).toBe("canceled");
   });
 
   it("cancels a pending invitation while retaining its lifecycle record", async () => {
@@ -415,7 +569,7 @@ describe("WorkspaceService", () => {
     const { em, service } = createService();
     const owner = Object.assign(new TestWorkspaceMember(), {
       permissions: ["project:read", "project:update"],
-      role: "OWNER" as const,
+      roles: ["owner"],
     });
 
     await expect(service.removeMember(owner)).rejects.toBeInstanceOf(
@@ -444,11 +598,14 @@ function createService(
     find: vi.fn(),
     findOne: vi.fn(),
     flush: vi.fn(),
+    lock: vi.fn(),
     persist: vi.fn(),
     remove: vi.fn(),
+    transactional: vi.fn(),
   } as unknown as Mocked<EntityManager>;
   em.persist.mockReturnValue(em);
   em.remove.mockReturnValue(em);
+  em.transactional.mockImplementation(async (callback) => await callback(em));
 
   const options = {
     entities: {
@@ -458,7 +615,6 @@ function createService(
     },
     workspace,
   } as unknown as AuthModuleOptions;
-
   return {
     em,
     service: new WorkspaceService<

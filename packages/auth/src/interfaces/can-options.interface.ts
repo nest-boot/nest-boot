@@ -1,5 +1,5 @@
-/** Optional authorization-domain settings for `Can` checks. */
+/** Selects the scoped implementation used by a `Can` alias. */
 export interface CanOptions {
-  /** Authorization domain, defaulting to the current workspace. */
+  /** Authorization scope, defaulting to `WorkspaceCan`. */
   scope?: "user" | "workspace";
 }

@@ -5,4 +5,5 @@ import type { PermissionAbility } from "./permission-ability.type.js";
 /** Callback used to build the permission ability for the current execution context. */
 export type BuildAbilityCallback = (
   ctx: ExecutionContext,
+  permissions: readonly string[],
 ) => PermissionAbility | null | Promise<PermissionAbility | null>;

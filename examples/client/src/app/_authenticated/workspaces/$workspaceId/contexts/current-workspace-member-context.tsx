@@ -8,7 +8,7 @@ const GET_CURRENT_WORKSPACE_MEMBER_FROM_WORKSPACE_MEMBER_CONTEXT = graphql(`
   query getCurrentWorkspaceMemberFromWorkspaceMemberContext {
     currentWorkspaceMember {
       id
-      role
+      roles
       name
       email
       permissions
@@ -32,6 +32,7 @@ export function CurrentWorkspaceMemberProvider({
 }) {
   const { data } = useSuspenseQuery(
     GET_CURRENT_WORKSPACE_MEMBER_FROM_WORKSPACE_MEMBER_CONTEXT,
+    { fetchPolicy: "network-only" },
   );
 
   return (

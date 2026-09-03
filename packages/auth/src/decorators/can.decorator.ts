@@ -1,14 +1,17 @@
 import type { Subject } from "@casl/ability";
 import type { CustomDecorator } from "@nestjs/common";
-import { SetMetadata } from "@nestjs/common";
 
-import type { CanMetadata } from "../interfaces/can-metadata.interface.js";
 import type { CanOptions } from "../interfaces/can-options.interface.js";
-import { CAN_METADATA } from "../permission.constants.js";
+import {
+  USER_CAN_METADATA,
+  WORKSPACE_CAN_METADATA,
+} from "../permission.constants.js";
 import type { CanSubject } from "../types/can-subject.type.js";
+import { UserCan } from "./user-can.decorator.js";
+import { WorkspaceCan } from "./workspace-can.decorator.js";
 
 /**
- * Declares that the current route requires the given action on the given subject.
+ * Routes a permission declaration to `UserCan` or `WorkspaceCan`.
  *
  * @param action - Permission action that must be allowed.
  * @param subject - Permission subject type or subject resolver factory to check.
@@ -19,10 +22,10 @@ export function Can<T extends Subject = Subject>(
   action: string,
   subject: CanSubject<T>,
   options?: CanOptions,
-): CustomDecorator<typeof CAN_METADATA>;
+): CustomDecorator<typeof USER_CAN_METADATA | typeof WORKSPACE_CAN_METADATA>;
 
 /**
- * Creates permission metadata for the current route handler.
+ * Routes a permission declaration to its scoped decorator.
  *
  * @param action - Permission action that must be allowed.
  * @param subject - Permission subject type or subject resolver factory to check.
@@ -33,16 +36,8 @@ export function Can<T extends Subject = Subject>(
   action: string,
   subject: CanSubject<T>,
   options: CanOptions = {},
-): CustomDecorator<typeof CAN_METADATA> {
-  if (!subject) {
-    throw new TypeError("Permission subject is required.");
-  }
-
-  const metadata: CanMetadata<T> = {
-    action,
-    scope: options.scope ?? "workspace",
-    subject,
-  };
-
-  return SetMetadata(CAN_METADATA, metadata);
+): CustomDecorator<typeof USER_CAN_METADATA | typeof WORKSPACE_CAN_METADATA> {
+  return options.scope === "user"
+    ? UserCan(action, subject)
+    : WorkspaceCan(action, subject);
 }

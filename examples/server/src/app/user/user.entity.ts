@@ -1,5 +1,3 @@
-import '../auth/enums/auth-permission.enum.js';
-
 import type { Opt } from '@mikro-orm/core';
 import { Collection, t } from '@mikro-orm/core';
 import {
@@ -14,7 +12,6 @@ import { Field, ID, ObjectType } from '@nest-boot/graphql';
 import { Policy, PolicyCommand } from '@nest-boot/row-level-security';
 import { Sonyflake } from 'sonyflake-js';
 
-import { UserPermission } from '../auth/enums/user-permission.enum.js';
 import { WorkspaceMember } from '../workspace-member/workspace-member.entity.js';
 
 /**
@@ -52,11 +49,40 @@ export class User extends BaseUser {
   @Property({ type: t.string })
   declare email: string;
 
+  /** 邮箱是否已经完成验证。 */
+  @Property({ type: t.boolean })
+  @Field(() => Boolean)
+  declare emailVerified: boolean;
+
+  /** 用户头像地址。 */
+  @Property({ type: t.string, nullable: true })
+  @Field(() => String, { nullable: true })
+  declare image?: Opt<string>;
+
   /** 用户管理与会话权限。 */
-  @Field(() => [UserPermission])
-  // eslint-disable-next-line @nest-boot/entity-property-config-from-types
+  @Field(() => [String])
   @Property({ type: t.array })
-  declare permissions: Opt<UserPermission[]>;
+  declare permissions: Opt<string[]>;
+
+  /** 用户角色。 */
+  @Field(() => [String])
+  @Property({ type: t.array })
+  declare roles: Opt<string[]>;
+
+  /** 用户是否被禁止登录。 */
+  @Property({ type: t.boolean })
+  @Field(() => Boolean)
+  declare banned: Opt<boolean>;
+
+  /** 当前封禁原因。 */
+  @Property({ type: t.string, nullable: true })
+  @Field(() => String, { nullable: true })
+  declare banReason?: Opt<string> | null;
+
+  /** 当前封禁的结束时间；空值表示永久封禁。 */
+  @Property({ type: t.datetime, nullable: true })
+  @Field(() => Date, { nullable: true })
+  declare banExpiresAt?: Opt<Date> | null;
 
   /** 创建时间。 */
   @Field(() => Date)

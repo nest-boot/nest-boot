@@ -31,7 +31,6 @@ import { graphql } from "@/gql";
 import {
   WorkspaceInvitationStatus,
   WorkspaceMemberOrderField,
-  WorkspaceMemberRole,
   WorkspaceMemberStatus,
   WorkspaceMemberType,
 } from "@/gql/graphql";
@@ -53,6 +52,9 @@ import {
 } from "@/lib/format-filter-values";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/thread-ui/badge";
+import { workspaceMemberCan } from "@/lib/permissions";
+import { getRolesLabel } from "@/utils/get-role-label";
+import { WORKSPACE_OWNER_ROLE, hasWorkspaceRole } from "@/lib/workspace-roles";
 
 const GET_WORKSPACE_MEMBERS_FROM_MEMBERS_ROUTE = graphql(`
   query getWorkspaceMembersFromMembersRoute(
@@ -78,7 +80,7 @@ const GET_WORKSPACE_MEMBERS_FROM_MEMBERS_ROUTE = graphql(`
           id
           name
           email
-          role
+          roles
           status
           createdAt
           user {
@@ -98,7 +100,7 @@ const GET_WORKSPACE_MEMBERS_FROM_MEMBERS_ROUTE = graphql(`
     workspaceInvitations {
       id
       email
-      role
+      roles
       status
       expiresAt
     }
@@ -134,19 +136,6 @@ const UPDATE_WORKSPACE_MEMBER_STATUS_FROM_MEMBERS_ROUTE = graphql(`
   }
 `);
 
-const getRoleLabel = (role: WorkspaceMemberRole) => {
-  switch (role) {
-    case WorkspaceMemberRole.OWNER:
-      return t("workspace-member:role.owner");
-    case WorkspaceMemberRole.ADMIN:
-      return t("workspace-member:role.admin");
-    case WorkspaceMemberRole.MEMBER:
-      return t("workspace-member:role.member");
-    default:
-      return role;
-  }
-};
-
 const getTypeLabel = (type: WorkspaceMemberType) => {
   switch (type) {
     case WorkspaceMemberType.USER:
@@ -158,19 +147,14 @@ const getTypeLabel = (type: WorkspaceMemberType) => {
   }
 };
 
-const statusMap = {
-  [WorkspaceMemberStatus.ACTIVE]: t("workspace-member:status.active"),
-  [WorkspaceMemberStatus.DISABLED]: t("workspace-member:status.disabled"),
-};
-
 const getStatusLabel = (status: WorkspaceMemberStatus | null | undefined) => {
   if (!status) return null;
 
   switch (status) {
     case WorkspaceMemberStatus.ACTIVE:
-      return statusMap[status];
+      return t("workspace-member:status.active");
     case WorkspaceMemberStatus.DISABLED:
-      return statusMap[status];
+      return t("workspace-member:status.disabled");
     default:
       return status;
   }
@@ -184,12 +168,6 @@ export const Route = createFileRoute(
     createConnectionSearchSchema({
       filterSchema: z
         .object({
-          role: createDataFilterSelectSearchSchema(
-            z.nativeEnum(WorkspaceMemberRole),
-            Object.values(WorkspaceMemberRole).length,
-          )
-            .optional()
-            .catch(undefined),
           type: createDataFilterSelectSearchSchema(
             z.nativeEnum(WorkspaceMemberType),
             Object.values(WorkspaceMemberType).length,
@@ -230,6 +208,22 @@ function MembersComponent() {
   const location = useLocation();
 
   const currentWorkspaceMember = useCurrentWorkspaceMemberContext();
+  const canCreateInvitation = workspaceMemberCan(
+    currentWorkspaceMember,
+    "workspaceInvitation:create",
+  );
+  const canCancelInvitation = workspaceMemberCan(
+    currentWorkspaceMember,
+    "workspaceInvitation:cancel",
+  );
+  const canUpdateMember = workspaceMemberCan(
+    currentWorkspaceMember,
+    "workspaceMember:update",
+  );
+  const canDeleteMember = workspaceMemberCan(
+    currentWorkspaceMember,
+    "workspaceMember:delete",
+  );
 
   const query = search?.query ?? "";
   const filterValues = (search?.filter ?? {}) as Record<string, unknown>;
@@ -278,19 +272,8 @@ function MembersComponent() {
         field: "status",
         type: "select",
         options: Object.values(WorkspaceMemberStatus).map((status) => ({
-          label: statusMap[status],
+          label: getStatusLabel(status) ?? status,
           value: status,
-        })),
-        operators: ["$in"],
-        defaultOperator: "$in",
-      },
-      {
-        label: t("workspace-member:filter.items.role.label"),
-        field: "role",
-        type: "select",
-        options: Object.values(WorkspaceMemberRole).map((role) => ({
-          label: getRoleLabel(role),
-          value: role,
         })),
         operators: ["$in"],
         defaultOperator: "$in",
@@ -422,14 +405,16 @@ function MembersComponent() {
       <PageHeader>
         <PageTitle>{t("workspace-member:title")}</PageTitle>
         <PageDescription>{t("workspace-member:description")}</PageDescription>
-        <PageActions>
-          <PagePrimaryAction
-            data-testid="workspace-members-invite-action"
-            onClick={() => setInviteOpen(true)}
-          >
-            {t("workspace-member:invite.button")}
-          </PagePrimaryAction>
-        </PageActions>
+        {canCreateInvitation ? (
+          <PageActions>
+            <PagePrimaryAction
+              data-testid="workspace-members-invite-action"
+              onClick={() => setInviteOpen(true)}
+            >
+              {t("workspace-member:invite.button")}
+            </PagePrimaryAction>
+          </PageActions>
+        ) : null}
       </PageHeader>
       <PageContent>
         <div className="mb-4" data-testid="workspace-members-page">
@@ -465,9 +450,7 @@ function MembersComponent() {
                     }`}
                     className={cn(
                       "flex flex-col",
-                      currentWorkspaceMember.role ===
-                        WorkspaceMemberRole.MEMBER &&
-                        "pointer-events-none opacity-50",
+                      !canUpdateMember && "pointer-events-none opacity-50",
                     )}
                   >
                     <span className="font-medium">{member.name}</span>
@@ -479,12 +462,12 @@ function MembersComponent() {
               },
             },
             {
-              accessorKey: "role",
+              accessorKey: "roles",
               header: t("workspace-member:table.role"),
               cell: ({ row }) => {
                 return (
                   <Badge variant="outline">
-                    {getRoleLabel(row.original.role)}
+                    {getRolesLabel(row.original.roles)}
                   </Badge>
                 );
               },
@@ -528,6 +511,7 @@ function MembersComponent() {
             },
           ]}
           onRowClick={(row) => {
+            if (!canUpdateMember) return;
             navigate({
               to: "/workspaces/$workspaceId/members/$memberId",
               params: {
@@ -537,8 +521,10 @@ function MembersComponent() {
             });
           }}
           rowActions={(row) => [
-            ...(row.original.status === WorkspaceMemberStatus.ACTIVE ||
-            row.original.status === WorkspaceMemberStatus.DISABLED
+            ...(canUpdateMember &&
+            !hasWorkspaceRole(row.original.roles, WORKSPACE_OWNER_ROLE) &&
+            (row.original.status === WorkspaceMemberStatus.ACTIVE ||
+              row.original.status === WorkspaceMemberStatus.DISABLED)
               ? [
                   {
                     disabled: updateStatusLoading,
@@ -554,11 +540,17 @@ function MembersComponent() {
                   },
                 ]
               : []),
-            {
-              disabled: removeMemberLoading,
-              label: t("action.delete"),
-              onClick: () => handleRemoveMemberClick(row.original.id),
-            },
+            ...(canDeleteMember &&
+            !hasWorkspaceRole(row.original.roles, WORKSPACE_OWNER_ROLE) &&
+            row.original.id !== currentWorkspaceMember.id
+              ? [
+                  {
+                    disabled: removeMemberLoading,
+                    label: t("action.delete"),
+                    onClick: () => handleRemoveMemberClick(row.original.id),
+                  },
+                ]
+              : []),
           ]}
           data={members}
           pagination={{
@@ -596,7 +588,7 @@ function MembersComponent() {
                 <div className="min-w-0">
                   <p className="truncate font-medium">{invitation.email}</p>
                   <p className="text-muted-foreground text-xs">
-                    {getRoleLabel(invitation.role)} ·{" "}
+                    {getRolesLabel(invitation.roles)} ·{" "}
                     {dayjs(invitation.expiresAt).format("YYYY-MM-DD HH:mm")}
                   </p>
                 </div>
@@ -608,27 +600,31 @@ function MembersComponent() {
                   >
                     {t("workspace-member:details.actions.copy_invite_link")}
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    disabled={cancelInvitationLoading}
-                    onClick={() => handleCancelInvitation(invitation.id)}
-                  >
-                    {t("action.cancel")}
-                  </Button>
+                  {canCancelInvitation ? (
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      disabled={cancelInvitationLoading}
+                      onClick={() => handleCancelInvitation(invitation.id)}
+                    >
+                      {t("action.cancel")}
+                    </Button>
+                  ) : null}
                 </div>
               </div>
             ))}
           </section>
         ) : null}
 
-        <InviteMemberDialog
-          inviteOpen={inviteOpen}
-          onInviteOpenChange={setInviteOpen}
-          onSuccess={() => {
-            refetch();
-          }}
-        />
+        {canCreateInvitation ? (
+          <InviteMemberDialog
+            inviteOpen={inviteOpen}
+            onInviteOpenChange={setInviteOpen}
+            onSuccess={async () => {
+              await refetch();
+            }}
+          />
+        ) : null}
       </PageContent>
     </Page>
   );

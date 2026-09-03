@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import z from "zod";
 
 import type { DataFilterItemProps } from "@/components/thread-ui/data-filter";
+import type { WorkspacePermission } from "@/lib/permissions";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import { Badge } from "@/components/thread-ui/badge";
 import { Button } from "@/components/thread-ui/button";
@@ -59,12 +60,13 @@ import {
   dataFilterDateSearchSchema,
 } from "@/lib/data-filter-search-schema";
 import {
+  isWorkspacePermission,
   workspaceApiKeyPermissionOptions,
   workspaceApiKeyPermissionValues,
 } from "@/lib/permissions";
+import { WORKSPACE_OWNER_ROLE, hasWorkspaceRole } from "@/lib/workspace-roles";
 
-const { ApiKeyOrderField, WorkspaceMemberRole } = Gql;
-type AuthPermission = Gql.AuthPermission;
+const { ApiKeyOrderField } = Gql;
 type GetApiKeysFromApiKeysRouteQuery = Gql.GetApiKeysFromApiKeysRouteQuery;
 
 const GET_API_KEYS_FROM_API_KEYS_ROUTE = graphql(`
@@ -165,7 +167,12 @@ export const Route = createFileRoute(
 )({
   component: ApiKeysComponent,
   beforeLoad: ({ context, params }) => {
-    if (context.currentWorkspaceMember.role !== WorkspaceMemberRole.OWNER) {
+    if (
+      !hasWorkspaceRole(
+        context.currentWorkspaceMember.roles,
+        WORKSPACE_OWNER_ROLE,
+      )
+    ) {
       throw redirect({
         to: "/workspaces/$workspaceId",
         params: { workspaceId: params.workspaceId },
@@ -272,7 +279,7 @@ function ApiKeysComponent() {
   const renameForm = useForm({
     defaultValues: {
       name: "",
-      permissions: [] as Array<AuthPermission>,
+      permissions: [] as Array<WorkspacePermission>,
     },
     validators: {
       onSubmit: z.object({
@@ -367,7 +374,10 @@ function ApiKeysComponent() {
   const handleOpenRename = (apiKey: ApiKeyRow) => {
     setRenamingApiKey(apiKey);
     renameForm.setFieldValue("name", apiKey.name);
-    renameForm.setFieldValue("permissions", apiKey.permissions);
+    renameForm.setFieldValue(
+      "permissions",
+      apiKey.permissions.filter(isWorkspacePermission),
+    );
     setRenameDialogOpen(true);
   };
 

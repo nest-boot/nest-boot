@@ -1,8 +1,9 @@
 import {
-  Can,
   CurrentUser,
   CurrentWorkspace,
   CurrentWorkspaceMember,
+  UserCan,
+  WorkspaceCan,
   WorkspaceService,
 } from '@nest-boot/auth';
 import {
@@ -18,7 +19,6 @@ import { ForbiddenException, NotFoundException } from '@nestjs/common';
 
 import { User } from '../user/user.entity.js';
 import { Workspace } from '../workspace/workspace.entity.js';
-import { WorkspaceMemberRole } from './enums/workspace-member-role.enum.js';
 import { CreateWorkspaceInvitationInput } from './inputs/create-workspace-invitation.input.js';
 import { AcceptWorkspaceInvitationResult } from './types/accept-workspace-invitation-result.type.js';
 import { WorkspaceInvitation } from './workspace-invitation.entity.js';
@@ -39,16 +39,17 @@ export class WorkspaceInvitationResolver {
   ) {}
 
   /** 根据邀请 ID 查询邀请。 */
-  @Can('read', WorkspaceInvitation, { scope: 'user' })
+  @UserCan('read', WorkspaceInvitation)
   @Query(() => WorkspaceInvitation, { nullable: true })
   async workspaceInvitation(
     @Args('id', { type: () => ID }) id: string,
+    @CurrentUser() user: User,
   ): Promise<WorkspaceInvitation | null> {
-    return await this.workspaceService.getInvitation(id);
+    return await this.workspaceService.getUserInvitation(id, user);
   }
 
   /** 查询当前工作区的邀请记录。 */
-  @Can('read', WorkspaceInvitation)
+  @WorkspaceCan('read', WorkspaceInvitation)
   @Query(() => [WorkspaceInvitation])
   async workspaceInvitations(
     @CurrentWorkspace() workspace: Workspace,
@@ -57,7 +58,7 @@ export class WorkspaceInvitationResolver {
   }
 
   /** 查询当前用户收到的待处理邀请。 */
-  @Can('read', WorkspaceInvitation, { scope: 'user' })
+  @UserCan('read', WorkspaceInvitation)
   @Query(() => [WorkspaceInvitation])
   async currentUserWorkspaceInvitations(
     @CurrentUser() user: User,
@@ -66,7 +67,7 @@ export class WorkspaceInvitationResolver {
   }
 
   /** 创建当前工作区的邀请。 */
-  @Can('create', WorkspaceInvitation)
+  @WorkspaceCan('create', WorkspaceInvitation)
   @Mutation(() => WorkspaceInvitation)
   async createWorkspaceInvitation(
     @CurrentWorkspace() workspace: Workspace,
@@ -74,19 +75,16 @@ export class WorkspaceInvitationResolver {
     @CurrentUser() user: User,
     @Args('input') input: CreateWorkspaceInvitationInput,
   ): Promise<WorkspaceInvitation> {
-    if (
-      ![WorkspaceMemberRole.ADMIN, WorkspaceMemberRole.OWNER].includes(
-        member.role,
-      )
-    ) {
-      throw new ForbiddenException('You are not allowed to create invitations');
+    if (input.roles.includes('owner') && !member.roles.includes('owner')) {
+      throw new ForbiddenException(
+        'Only workspace owners can invite another owner',
+      );
     }
-
     return await this.workspaceService.createInvitation(workspace, user, input);
   }
 
   /** 接受发送给当前用户的邀请。 */
-  @Can('update', WorkspaceInvitation, { scope: 'user' })
+  @UserCan('update', WorkspaceInvitation)
   @Mutation(() => AcceptWorkspaceInvitationResult)
   async acceptWorkspaceInvitation(
     @Args('invitationId', { type: () => ID }) invitationId: string,
@@ -101,45 +99,46 @@ export class WorkspaceInvitationResolver {
   }
 
   /** 拒绝发送给当前用户的邀请。 */
-  @Can('update', WorkspaceInvitation, { scope: 'user' })
+  @UserCan('update', WorkspaceInvitation)
   @Mutation(() => WorkspaceInvitation)
   async rejectWorkspaceInvitation(
     @Args('invitationId', { type: () => ID }) invitationId: string,
     @CurrentUser() user: User,
   ): Promise<WorkspaceInvitation> {
-    const invitation = await this.workspaceService.getInvitation(invitationId);
+    const invitation = await this.workspaceService.getUserInvitation(
+      invitationId,
+      user,
+    );
     if (!invitation)
       throw new NotFoundException('Workspace invitation not found');
     return await this.workspaceService.rejectInvitation(user, invitation);
   }
 
   /** 取消当前工作区的邀请。 */
-  @Can('cancel', WorkspaceInvitation)
+  @WorkspaceCan('cancel', WorkspaceInvitation)
   @Mutation(() => WorkspaceInvitation)
   async cancelWorkspaceInvitation(
     @Args('invitationId', { type: () => ID }) invitationId: string,
     @CurrentWorkspace() workspace: Workspace,
   ): Promise<WorkspaceInvitation> {
-    const invitation = await this.workspaceService.getInvitation(invitationId);
+    const invitation = await this.workspaceService.getWorkspaceInvitation(
+      invitationId,
+      workspace,
+    );
     if (!invitation)
       throw new NotFoundException('Workspace invitation not found');
-    if (invitation.workspace.id !== workspace.id) {
-      throw new ForbiddenException(
-        'Invitation does not belong to the current workspace',
-      );
-    }
     return await this.workspaceService.cancelInvitation(invitation);
   }
 
   /** 解析邀请者。 */
-  @Can('read', User)
+  @WorkspaceCan('read', User)
   @ResolveField(() => User)
   async inviter(@Parent() invitation: WorkspaceInvitation): Promise<User> {
     return await invitation.inviter.loadOrFail();
   }
 
   /** 解析邀请所属工作区。 */
-  @Can('read', Workspace)
+  @WorkspaceCan('read', Workspace)
   @ResolveField(() => Workspace)
   async workspace(
     @Parent() invitation: WorkspaceInvitation,

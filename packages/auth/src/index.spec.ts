@@ -11,7 +11,6 @@ vi.mock("./adapters/mikro-orm-adapter.js", () => ({
   mikroOrmAdapter: vi.fn(),
 }));
 
-import { AdminService } from "./admin.service.js";
 import { ApiKeyService } from "./api-key.service.js";
 import {
   CURRENT_API_KEY,
@@ -30,6 +29,8 @@ import {
   CurrentWorkspace,
   CurrentWorkspaceMember,
   Public,
+  UserCan,
+  WorkspaceCan,
 } from "./decorators/index.js";
 import {
   BaseAccount,
@@ -44,14 +45,18 @@ import {
 import * as publicApi from "./index.js";
 import { PermissionAbilityBuilder } from "./permission.ability-builder.js";
 import { SessionService } from "./session.service.js";
+import { UserService } from "./user.service.js";
 import { can } from "./utils/can.util.js";
-import { getPermissionAbility } from "./utils/get-permission-ability.util.js";
+import { getUserAbility } from "./utils/get-user-ability.util.js";
+import { getWorkspaceAbility } from "./utils/get-workspace-ability.util.js";
+import { userCan } from "./utils/user-can.util.js";
+import { workspaceCan } from "./utils/workspace-can.util.js";
 import { WorkspaceService } from "./workspace.service.js";
 
 describe("public API", () => {
   it("should export auth modules, services, decorators, and entities", () => {
     expect("AUTH_TOKEN" in publicApi).toBe(false);
-    expect(publicApi.AdminService).toBe(AdminService);
+    expect(publicApi.UserService).toBe(UserService);
     expect(publicApi.IS_PUBLIC_KEY).toBe(IS_PUBLIC_KEY);
     expect(publicApi.CURRENT_API_KEY).toBe(CURRENT_API_KEY);
     expect(publicApi.CURRENT_WORKSPACE).toBe(CURRENT_WORKSPACE);
@@ -63,6 +68,8 @@ describe("public API", () => {
     expect(publicApi.AuthService).toBe(AuthService);
     expect(publicApi.AuthTransactionContext).toBe(AuthTransactionContext);
     expect(publicApi.Can).toBe(Can);
+    expect(publicApi.UserCan).toBe(UserCan);
+    expect(publicApi.WorkspaceCan).toBe(WorkspaceCan);
     expect(publicApi.CurrentApiKey).toBe(CurrentApiKey);
     expect(publicApi.CurrentWorkspace).toBe(CurrentWorkspace);
     expect(publicApi.CurrentWorkspaceMember).toBe(CurrentWorkspaceMember);
@@ -77,7 +84,10 @@ describe("public API", () => {
     expect(publicApi.BaseWorkspaceMember).toBe(BaseWorkspaceMember);
     expect(publicApi.PermissionAbilityBuilder).toBe(PermissionAbilityBuilder);
     expect(publicApi.can).toBe(can);
-    expect(publicApi.getPermissionAbility).toBe(getPermissionAbility);
+    expect(publicApi.getUserAbility).toBe(getUserAbility);
+    expect(publicApi.getWorkspaceAbility).toBe(getWorkspaceAbility);
+    expect(publicApi.userCan).toBe(userCan);
+    expect(publicApi.workspaceCan).toBe(workspaceCan);
     expect(publicApi.SessionService).toBe(SessionService);
     expect(publicApi.WorkspaceService).toBe(WorkspaceService);
   });

@@ -1,16 +1,16 @@
 import type { Subject } from "@casl/ability";
 
 import type { CanOptions } from "../interfaces/can-options.interface.js";
-import { getPermissionAbility } from "./get-permission-ability.util.js";
+import { userCan } from "./user-can.util.js";
+import { workspaceCan } from "./workspace-can.util.js";
 
-/** Checks a permission with the ability prepared for the current request. */
+/** Routes a permission check to its scoped implementation. */
 export function can(
   action: string,
   subject: Subject,
   options: CanOptions = {},
 ): boolean {
-  return getPermissionAbility(options.scope ?? "workspace").can(
-    action,
-    subject,
-  );
+  return options.scope === "user"
+    ? userCan(action, subject)
+    : workspaceCan(action, subject);
 }

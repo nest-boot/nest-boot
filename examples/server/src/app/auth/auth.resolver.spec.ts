@@ -5,12 +5,22 @@ import type { Mocked } from 'vitest';
 vi.mock('@nest-boot/auth', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@nest-boot/auth')>()),
   AuthService: class AuthService {},
+  CurrentUser: () => () => undefined,
   Public: () => () => undefined,
+  UserCan: () => () => undefined,
 }));
 
+import { User } from '../user/user.entity.js';
 import { AuthResolver } from './auth.resolver.js';
 
 describe('AuthResolver', () => {
+  it('returns the current authenticated user', () => {
+    const { resolver } = createResolver();
+    const user = { id: 'user-1' } as User;
+
+    expect(resolver.currentUser(user)).toBe(user);
+  });
+
   it('signs in through AuthService and forwards session cookies', async () => {
     const headers = new Headers();
     headers.append('set-cookie', 'session=value; Path=/; HttpOnly');
@@ -138,6 +148,29 @@ describe('AuthResolver', () => {
     );
     expect(response.append).toHaveBeenCalledWith('set-cookie', [
       'session_data=updated; Path=/; HttpOnly',
+    ]);
+  });
+
+  it('deletes the current user and forwards cookie removal headers', async () => {
+    const headers = new Headers();
+    headers.append('set-cookie', 'session=; Max-Age=0; Path=/; HttpOnly');
+    const result = { message: 'User deleted', success: true };
+    const { authService, resolver } = createResolver({
+      deleteUser: vi.fn(async () => ({ headers, response: result })),
+    });
+    const request = { headers: { cookie: 'session=value' } } as Request;
+    const response = { append: vi.fn() } as unknown as Response;
+
+    await expect(
+      resolver.authDeleteUser(request, response, { password: 'password' }),
+    ).resolves.toBe(result);
+    expect(authService.deleteUser).toHaveBeenCalledWith(
+      expect.any(Headers),
+      { password: 'password' },
+      { returnHeaders: true },
+    );
+    expect(response.append).toHaveBeenCalledWith('set-cookie', [
+      'session=; Max-Age=0; Path=/; HttpOnly',
     ]);
   });
 

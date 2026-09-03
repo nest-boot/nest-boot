@@ -1,51 +1,51 @@
 import { RequestContext } from "@nest-boot/request-context";
-import { ForbiddenException } from "@nestjs/common";
 
-import { USER_PERMISSION_ABILITY } from "../permission.constants.js";
+import {
+  USER_PERMISSION_ABILITY,
+  WORKSPACE_PERMISSION_ABILITY,
+} from "../permission.constants.js";
 import type { PermissionAbility } from "../types/permission-ability.type.js";
 import { can } from "./can.util.js";
 
 class TestSubject {}
 
 describe("can", () => {
-  it("checks permissions with cached current ability", async () => {
+  it("routes to workspaceCan by default", async () => {
     const canMock = vi.fn(() => true);
-    const ability = {
-      can: canMock,
-    } as unknown as PermissionAbility;
+    const ability = { can: canMock } as unknown as PermissionAbility;
 
     await RequestContext.run(new RequestContext({ type: "http" }), () => {
-      RequestContext.set(USER_PERMISSION_ABILITY, ability);
+      RequestContext.set(WORKSPACE_PERMISSION_ABILITY, ability);
 
-      expect(
-        can("update", TestSubject, {
-          scope: "user",
-        }),
-      ).toBe(true);
+      expect(can("update", TestSubject)).toBe(true);
     });
 
     expect(canMock).toHaveBeenCalledWith("update", TestSubject);
   });
 
-  it("throws when permission ability is not cached", async () => {
+  it("routes an explicit user scope to userCan", async () => {
+    const canMock = vi.fn(() => true);
+    const ability = { can: canMock } as unknown as PermissionAbility;
+
     await RequestContext.run(new RequestContext({ type: "http" }), () => {
-      expect(() =>
-        can("update", TestSubject, {
-          scope: "user",
-        }),
-      ).toThrow(ForbiddenException);
+      RequestContext.set(USER_PERMISSION_ABILITY, ability);
+
+      expect(can("update", TestSubject, { scope: "user" })).toBe(true);
     });
+
+    expect(canMock).toHaveBeenCalledWith("update", TestSubject);
   });
 
-  it("throws when cached permission ability is null", async () => {
-    await RequestContext.run(new RequestContext({ type: "http" }), () => {
-      RequestContext.set(USER_PERMISSION_ABILITY, null);
+  it("routes an explicit workspace scope to workspaceCan", async () => {
+    const canMock = vi.fn(() => true);
+    const ability = { can: canMock } as unknown as PermissionAbility;
 
-      expect(() =>
-        can("update", TestSubject, {
-          scope: "user",
-        }),
-      ).toThrow(ForbiddenException);
+    await RequestContext.run(new RequestContext({ type: "http" }), () => {
+      RequestContext.set(WORKSPACE_PERMISSION_ABILITY, ability);
+
+      expect(can("update", TestSubject, { scope: "workspace" })).toBe(true);
     });
+
+    expect(canMock).toHaveBeenCalledWith("update", TestSubject);
   });
 });
