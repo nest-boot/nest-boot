@@ -440,7 +440,7 @@ describeIfDatabaseConfigured("RowLevelSecurity - database integration", () => {
       ).createInitial(migrationPath, "InitialPolicyContext");
 
       expect(initialMigration.code).toContain(
-        "current_setting('app.tenant_id', true)::integer",
+        "nullif(current_setting('app.tenant_id', true), '')::integer",
       );
 
       await runGeneratedMigrationUpStatements(tenantOrm, initialMigration.code);
@@ -462,7 +462,7 @@ describeIfDatabaseConfigured("RowLevelSecurity - database integration", () => {
         `drop policy if exists ${POLICY_MIGRATION_POLICY_NAME}`,
       );
       expect(policyDiffMigration.code).toContain(
-        "current_setting('app.workspace_id', true)::integer",
+        "nullif(current_setting('app.workspace_id', true), '')::integer",
       );
       expect(policyDiffMigration.code).toContain(
         "current_setting('app.tenant_id'::text, true)",
