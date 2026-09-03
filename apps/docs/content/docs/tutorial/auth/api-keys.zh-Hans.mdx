@@ -1,0 +1,69 @@
+---
+title: "API Key"
+description: "使用带权限范围的 API Key 认证个人和工作区自动化任务。"
+---
+
+`ApiKeyService` 管理由用户或工作区拥有的 API Key。
+
+- **User Key** 会恢复所属用户；只有该用户仍是所选工作区的活动成员时，才能访问工作区资源。
+- **Workspace Key** 是独立服务身份；它会恢复所属工作区，但不会创建当前用户或工作区成员。
+
+用户管理自己的 Key，只有工作区所有者可以管理 Workspace Key。
+
+## 服务 API
+
+- `getUserApiKey`、`createUserKey`、`updateUserKey` 与 `deleteUserKey`；
+- `getWorkspaceApiKey`、`createWorkspaceKey`、`updateWorkspaceKey` 与 `deleteWorkspaceKey`；
+- `getUserListFilter` 与 `getWorkspaceListFilter`；
+- `validate(plaintextKey)` 与 `recordUsage(apiKey)`。
+
+创建方法只会返回一次明文 Key。数据库保存完整 Key 的 SHA-256 哈希、可安全展示的
+`start` 与 `prefix`、启用状态、权限、过期时间和使用时间。认证成功的请求会自动更新
+`lastUsedAt`。
+
+## 权限值
+
+auth 包以 `string[]` 存储和判断权限。应用负责定义封闭的权限目录，并在写入前校验值。
+
+```typescript
+import { UserPermission } from "./auth/enums/user-permission.enum";
+import { WorkspacePermission } from "./auth/enums/workspace-permission.enum";
+
+const workspacePermissions: WorkspacePermission[] = [
+  WorkspacePermission.WORKSPACE_UPDATE,
+  WorkspacePermission.WORKSPACE_MEMBER_CREATE,
+];
+
+const userKeyPermissions: (UserPermission | WorkspacePermission)[] = [
+  UserPermission.USER_GET,
+  WorkspacePermission.WORKSPACE_UPDATE,
+];
+```
+
+示例中，`User.permissions` 保存 `UserPermission[]`，
+`WorkspaceMember.permissions` 保存 `WorkspacePermission[]`，API Key 保存
+`(UserPermission | WorkspacePermission)[]`。Workspace Key 只接受工作区权限，
+User Key 可以包含两个权限域。PostgreSQL 使用 `text[]` 列持久化这些值。
+
+## 传输方式
+
+API Key 使用 Bearer 方式发送：
+
+```http
+Authorization: Bearer sk-4tR9s...
+```
+
+不支持 `x-api-key`。模块会优先解析 Cookie Session；没有有效 Cookie Session 时，
+Bearer 凭据才会作为 API Key 校验。
+
+处理器需要读取本次请求使用的 Key 时，可以使用 `@CurrentApiKey()`：
+
+```typescript
+import { CurrentApiKey } from "@nest-boot/auth";
+
+audit(@CurrentApiKey() apiKey: ApiKey | null) {
+  return apiKey;
+}
+```
+
+API Key 权限会与所属用户或工作区的 Ability 取交集，不能超出所有者的有效权限。

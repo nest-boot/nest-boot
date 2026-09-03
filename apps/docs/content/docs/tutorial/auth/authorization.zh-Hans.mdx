@@ -1,0 +1,110 @@
+---
+title: "权限授权"
+description: "使用 AuthGuard、@Can 与用户或工作区 Ability 保护路由。"
+---
+
+## 全局守卫
+
+将已配置模块的 `AuthGuard` 注册为全局守卫。它接受有效的 Cookie Session 或 API Key，
+并使用同一个守卫检查路由权限。
+
+```typescript
+import { AuthGuard } from "@nest-boot/auth";
+import { APP_GUARD } from "@nestjs/core";
+
+@Global()
+@Module({
+  imports: [AuthDynamicModule],
+  providers: [{ provide: APP_GUARD, useExisting: AuthGuard }],
+})
+export class CommonModule {}
+```
+
+不需要认证的路由使用 `@Public()`。如果公开路由同时声明 `@Can`，权限检查仍会执行。
+
+```typescript
+@Public()
+@Query(() => String)
+health(): string {
+  return "ok";
+}
+```
+
+## 构建 Ability
+
+分别配置用户与工作区 Ability。每个回调在一次请求中最多执行一次，结果会缓存在
+`RequestContext` 中。返回 `null` 会使对应权限域的检查失败。
+
+```typescript
+import { AuthModule, PermissionAbilityBuilder } from "@nest-boot/auth";
+import { RequestContext } from "@nest-boot/request-context";
+
+AuthModule.forRoot({
+  // ...
+  buildWorkspaceAbility: () => {
+    const { can, build } = new PermissionAbilityBuilder();
+    can("read", Post);
+    return build();
+  },
+  buildUserAbility: () => {
+    const user = RequestContext.get(User);
+    if (!user) return null;
+
+    const { can, build } = new PermissionAbilityBuilder();
+    can("read", Post);
+    can("update", Post, { authorId: user.id });
+    return build();
+  },
+});
+```
+
+## 保护路由
+
+`@Can` 默认使用工作区权限域。个人或应用级操作通过 `{ scope: "user" }` 选择用户
+权限域。
+
+```typescript
+@Can("read", Post)
+@Query(() => [Post])
+posts() {
+  return this.postService.findAll();
+}
+
+@Can("read", User, { scope: "user" })
+@Query(() => User)
+me(@CurrentUser() user: User) {
+  return user;
+}
+```
+
+权限取决于具体对象时，使用 subject factory。factory 的第一个参数是 Controller 或
+Resolver 实例，后续参数是被装饰方法的参数。
+
+```typescript
+@Can("update", (self: PostResolver, id: string) =>
+  self.postService.findOneOrFail({ id }),
+)
+@Mutation(() => Post)
+updatePost(@Args("id") id: string) {
+  return this.postService.update(id);
+}
+```
+
+Workspace API Key 只能通过工作区权限检查。User API Key 可以通过用户权限检查，并在
+具有有效成员身份时通过工作区权限检查。API Key 权限会与相应 Ability 取交集。
+
+## 底层权限检查
+
+路由级 `@Can` 准备好 Ability 后，底层代码可以使用 `can()` 或
+`getPermissionAbility()`。两者都默认使用工作区权限域，也接受显式用户权限域。
+
+```typescript
+if (!can("update", post)) {
+  throw new ForbiddenException();
+}
+
+can("read", user, { scope: "user" });
+getPermissionAbility("user");
+```
+
+如果路由没有准备对应的 Ability，两个工具都会抛出 `ForbiddenException`。

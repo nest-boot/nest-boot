@@ -1,0 +1,72 @@
+---
+title: "Auth"
+description: "Add authentication, workspace identity, API keys, and authorization with one integrated module."
+---
+
+`@nest-boot/auth` combines Better Auth authentication, MikroORM persistence,
+workspace identity, API keys, and CASL authorization. It resolves the current
+identity into `RequestContext` and uses one `AuthGuard` for authentication and
+permission checks.
+
+## Installation
+
+```bash
+pnpm add @nest-boot/auth @nest-boot/hash @nest-boot/mailer better-auth @casl/ability nodemailer
+```
+
+## Quick Start
+
+```typescript
+import { AuthModule } from "@nest-boot/auth";
+import { HashModule } from "@nest-boot/hash";
+import { MailerModule } from "@nest-boot/mailer";
+import { Global, Module } from "@nestjs/common";
+
+export const AuthDynamicModule = AuthModule.forRoot({
+  entities: {
+    user: User,
+    account: Account,
+    session: Session,
+    verification: Verification,
+    workspace: Workspace,
+    workspaceInvitation: WorkspaceInvitation,
+    workspaceMember: WorkspaceMember,
+    apiKey: ApiKey,
+  },
+  emailAndPassword: {
+    enabled: true,
+    requireEmailVerification: true,
+  },
+  user: {
+    changeEmail: { enabled: true },
+  },
+});
+
+@Global()
+@Module({
+  imports: [HashModule, MailerModule, AuthDynamicModule],
+})
+export class CommonModule {}
+```
+
+The module automatically:
+
+- creates the internal Better Auth instance with the MikroORM adapter;
+- hashes credential passwords through the global `HashModule`;
+- sends built-in verification and password-reset messages through `MailerModule`;
+- mounts authentication endpoints at `/api/auth/`;
+- resolves sessions, workspaces, members, and API keys into `RequestContext`;
+- provides authentication, session, administration, workspace, and API-key services.
+
+## Continue Reading
+
+- [Configuration](/docs/tutorial/auth/configuration) — module options, environment variables, and entities
+- [Email and Password](/docs/tutorial/auth/email-password) — registration, verification, recovery, and profile changes
+- [Sessions](/docs/tutorial/auth/sessions) — Cookie sessions, current identity, and revocation
+- [Workspaces](/docs/tutorial/auth/workspaces) — workspace and member lifecycle
+- [Invitations](/docs/tutorial/auth/invitations) — invitation delivery and acceptance
+- [API Keys](/docs/tutorial/auth/api-keys) — personal and workspace credentials
+- [Authorization](/docs/tutorial/auth/authorization) — `AuthGuard`, `@Can`, and CASL abilities
+- [NestJS Integration](/docs/tutorial/auth/integration) — services, middleware, GraphQL, and RLS
+
+For detailed symbols and signatures, see the [Auth API Reference](/docs/api/auth).

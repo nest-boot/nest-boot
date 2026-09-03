@@ -172,6 +172,94 @@ export interface AuthAccount {
   updatedAt: Date;
 }
 
+/** Identifies a linked authentication account. */
+export type AuthAccountSelector =
+  | {
+      /** Better Auth account record identifier. */
+      accountId: string;
+      /** Optional user identifier for trusted server-side administration flows. */
+      userId?: string;
+    }
+  | {
+      /** Selects the account stored in Better Auth's short-lived account cookie. */
+      useAccountCookie: true;
+      /** Optional user identifier for trusted server-side administration flows. */
+      userId?: string;
+    };
+
+/** Provider access token returned for a linked authentication account. */
+export interface AuthAccessToken {
+  /** OAuth access token. */
+  accessToken: string;
+  /** Access-token expiration time, or `null` when the provider omits it. */
+  accessTokenExpiresAt: Date | null;
+  /** OAuth scopes associated with the token. */
+  scopes: string[];
+  /** OpenID Connect ID token, or `null` when unavailable. */
+  idToken: string | null;
+}
+
+/** Refreshed provider credentials for a linked authentication account. */
+export interface AuthRefreshedToken {
+  /** Refreshed OAuth access token, or `null` when the provider omits it. */
+  accessToken: string | null;
+  /** OAuth refresh token. */
+  refreshToken: string;
+  /** Access-token expiration time, or `null` when unavailable. */
+  accessTokenExpiresAt: Date | null;
+  /** Refresh-token expiration time, or `null` when unavailable. */
+  refreshTokenExpiresAt: Date | null;
+  /** Space-delimited provider scope, or `null` when unavailable. */
+  scope: string | null;
+  /** OpenID Connect ID token, or `null` when unavailable. */
+  idToken: string | null;
+  /** Authentication provider identifier. */
+  providerId: string;
+  /** Better Auth account record identifier. */
+  accountId: string;
+}
+
+/** Provider user information returned for a linked authentication account. */
+export interface AuthProviderUserInfo {
+  /** Provider display name, when supplied. */
+  name?: string;
+  /** Provider email address, when supplied. */
+  email?: string | null;
+  /** Whether the provider considers the email verified. */
+  emailVerified: boolean;
+  /** Provider avatar URL, when supplied. */
+  image?: string;
+  /** Provider-defined user-info fields. */
+  [field: string]: unknown;
+}
+
+/** Information associated with a linked authentication account. */
+export interface AuthAccountInfo<
+  UserInfo extends AuthProviderUserInfo = AuthProviderUserInfo,
+  Data extends object = Record<string, unknown>,
+> {
+  /** Linked account identity. */
+  account: Pick<AuthAccount, "id" | "providerId" | "issuer" | "accountId">;
+  /** Provider user information. */
+  user: UserInfo;
+  /** Provider-specific account data. */
+  data: Data;
+}
+
+/** Authentication result paired with response headers produced by the operation. */
+export interface AuthServiceResponse<Result> {
+  /** Response headers, including any session cookies. */
+  headers: globalThis.Headers;
+  /** Normalized authentication operation result. */
+  response: Result;
+}
+
+/** Requests response headers from an AuthService transport operation. */
+export interface AuthServiceResponseOptions {
+  /** Enables the response envelope. */
+  returnHeaders: true;
+}
+
 /** Identifies an authentication account to unlink. */
 export interface UnlinkAuthAccountOptions {
   /** Better Auth account record identifier returned by {@link AuthAccount.id}. */

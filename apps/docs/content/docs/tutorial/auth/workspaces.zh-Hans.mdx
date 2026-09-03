@@ -1,0 +1,55 @@
+---
+title: "工作区"
+description: "解析工作区上下文并管理工作区成员。"
+---
+
+## 选择工作区
+
+客户端通过 `x-workspace-id` 请求头或 `workspace_id` Cookie 选择工作区。
+`AuthMiddleware` 会校验该选择，解析已认证用户的活动成员身份，并把两个实体保存到
+`RequestContext`。
+
+```typescript
+import {
+  CurrentWorkspace,
+  CurrentWorkspaceMember,
+} from "@nest-boot/auth";
+
+currentWorkspace(
+  @CurrentWorkspace() workspace: Workspace,
+  @CurrentWorkspaceMember() member: WorkspaceMember,
+) {
+  return { workspace, member };
+}
+```
+
+路由或请求头始终是工作区选择的来源。Session 不需要 `activeWorkspaceId`，因此不同的
+浏览器标签页可以同时使用不同工作区。
+
+## 工作区生命周期
+
+`WorkspaceService` 提供与传输协议无关的工作区操作：
+
+- `findOne(where)`；
+- `listWorkspaces(user)`；
+- `createWorkspace(user, input)`；
+- `getFullWorkspace(workspace)`；
+- `updateWorkspace(workspace, input)`；
+- `deleteWorkspace(workspace, currentMember)`。
+
+创建工作区会同时创建已激活的所有者成员。删除采用软删除，并且只能由该工作区的
+所有者执行。
+
+## 成员生命周期
+
+- `getMember(workspace, user)`；
+- `listMembers(workspace)`；
+- `addMember(workspace, user, input)`；
+- `updateMember(member, input)`；
+- `removeMember(member)`；
+- `leaveWorkspace(member)`。
+
+所有者不能通过普通成员操作被移除或离开。GraphQL Resolver 与 HTTP Controller 应只
+负责输入输出映射，把这些约束留在 `WorkspaceService` 中。
+
+邀请投递和状态流转单独记录在[邀请](/docs/tutorial/auth/invitations)章节中。

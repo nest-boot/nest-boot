@@ -1,0 +1,48 @@
+---
+title: "Sessions"
+description: "Resolve, list, and revoke authenticated sessions."
+---
+
+Browser authentication uses HttpOnly Cookie sessions. Same-origin GraphQL and
+auth requests must enable credentials so the browser stores and returns those
+cookies. API keys use a separate Bearer flow described in
+[API Keys](/docs/tutorial/auth/api-keys).
+
+## Current Identity
+
+`AuthMiddleware` resolves the authenticated application `User` and `Session`
+entities into `RequestContext`. Transport code should use decorators instead of
+reading context tokens directly.
+
+```typescript
+import { CurrentSession, CurrentUser } from "@nest-boot/auth";
+
+profile(
+  @CurrentUser() user: User,
+  @CurrentSession() session: Session,
+) {
+  return { user, session };
+}
+```
+
+Both decorators return `null` when the corresponding identity is unavailable,
+allowing public handlers to declare nullable parameters explicitly.
+
+## SessionService
+
+`SessionService` provides:
+
+- `getSession(headers)` — resolves the current application entities;
+- `listSessions(headers)` — lists the current user's active sessions;
+- `revokeSession(token, headers)` — revokes one session;
+- `revokeOtherSessions(headers)` — keeps only the current session;
+- `revokeSessions(headers)` — revokes every session for the current user.
+
+Session lists preserve backend order and include the token required to revoke a
+specific session. A UI should identify the current session and avoid presenting
+it as an ordinary remote-device revoke action.
+
+When PostgreSQL RLS is enabled, application entity lookup runs in an isolated
+auth context with RLS disabled. Business database roles therefore do not need
+direct access to authentication tables, and the parent request context remains
+unchanged.

@@ -1,4 +1,9 @@
 import { EntityManager } from "@mikro-orm/core";
+import { RequestContext } from "@nest-boot/request-context";
+import {
+  RowLevelSecurity,
+  RowLevelSecurityMode,
+} from "@nest-boot/row-level-security";
 import { Test } from "@nestjs/testing";
 
 import { AUTH_TOKEN } from "./auth.constants.js";
@@ -166,6 +171,30 @@ describe("SessionService", () => {
     expect(em.find).toHaveBeenCalledWith(TestSession, {
       token: { $in: ["session-2", "missing", "session-1"] },
     });
+  });
+
+  it("resolves session entities outside the application RLS role", async () => {
+    const api = createApi();
+    api.listSessions.mockResolvedValue([{ token: "session-1" }]);
+    const session = Object.assign(new TestSession(), { token: "session-1" });
+    const em = {
+      find: vi.fn(() => {
+        expect(RowLevelSecurity.getMode()).toBe(RowLevelSecurityMode.DISABLED);
+        return Promise.resolve([session]);
+      }),
+      findOne: vi.fn(),
+    };
+    const { service } = await createService(api, em);
+
+    await RequestContext.run(
+      new RequestContext({ type: "request" }),
+      async () => {
+        RowLevelSecurity.setRole("authenticated");
+        await expect(service.listSessions(headers)).resolves.toEqual([session]);
+        expect(RowLevelSecurity.getMode()).toBe(RowLevelSecurityMode.AUTO);
+        expect(RowLevelSecurity.getRole()).toBe("authenticated");
+      },
+    );
   });
 
   it("does not query persistence for an empty session list", async () => {

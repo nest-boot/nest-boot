@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { useApolloClient } from "@apollo/client/react";
-import { useSearch } from "@tanstack/react-router";
+import { useApolloClient, useMutation } from "@apollo/client/react";
+import { Link, useSearch } from "@tanstack/react-router";
 import { LogIn, ShieldCheck, UserPlus } from "lucide-react";
 import { t } from "i18next";
 import { toast } from "sonner";
@@ -24,10 +24,37 @@ import {
   FieldSeparator,
 } from "@/components/ui/field";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
+import {
+  createEmailVerificationCallbackUrl,
+  createEmailVerificationPagePath,
+  resolvePostAuthPath,
+} from "@/lib/auth-redirect";
+import { graphql } from "@/gql";
+
+const AUTH_SIGN_IN_FROM_LOGIN_FORM = graphql(`
+  mutation authSignInFromLoginForm($input: AuthSignInInput!) {
+    authSignIn(input: $input) {
+      user {
+        id
+      }
+    }
+  }
+`);
+
+const AUTH_SIGN_UP_FROM_LOGIN_FORM = graphql(`
+  mutation authSignUpFromLoginForm($input: AuthSignUpInput!) {
+    authSignUp(input: $input) {
+      user {
+        id
+      }
+    }
+  }
+`);
 
 const INVITATION_ID_KEY = "workspace_invitation_id";
-const DEFAULT_REDIRECT = "/workspaces";
 
 type AuthMode = "login" | "register";
 
@@ -35,6 +62,7 @@ interface AuthFormValues {
   email: string;
   name: string;
   password: string;
+  rememberMe: boolean;
 }
 
 type AuthFormErrors = Partial<Record<keyof AuthFormValues | "form", string>>;
@@ -44,11 +72,14 @@ export function LoginForm({
   ...props
 }: Omit<ComponentProps<"div">, "ref">) {
   const apolloClient = useApolloClient();
+  const [signIn] = useMutation(AUTH_SIGN_IN_FROM_LOGIN_FORM);
+  const [signUp] = useMutation(AUTH_SIGN_UP_FROM_LOGIN_FORM);
   const [mode, setMode] = useState<AuthMode>("login");
   const [values, setValues] = useState<AuthFormValues>({
     email: "",
     name: "",
     password: "",
+    rememberMe: true,
   });
   const [errors, setErrors] = useState<AuthFormErrors>({});
   const [loading, setLoading] = useState(false);
@@ -113,25 +144,45 @@ export function LoginForm({
     try {
       if (mode === "login") {
         const input = loginSchema.parse(values);
-        const result = await authClient.signIn.email({
-          email: input.email,
-          password: input.password,
+        const result = await signIn({
+          variables: {
+            input: {
+              email: input.email,
+              password: input.password,
+              rememberMe: input.rememberMe,
+            },
+          },
         });
 
-        if (result.error) {
-          throw new Error(result.error.message ?? t("auth:form.authFailed"));
+        if (!result.data?.authSignIn.user.id) {
+          throw new Error(t("auth:form.authFailed"));
         }
       } else {
         const input = registerSchema.parse(values);
-        const result = await authClient.signUp.email({
-          email: input.email,
-          name: input.name,
-          password: input.password,
+        const postAuthPath = resolvePostAuthUrl(redirect);
+        const result = await signUp({
+          variables: {
+            input: {
+              callbackURL: createEmailVerificationCallbackUrl(
+                window.location.origin,
+                postAuthPath,
+              ),
+              email: input.email,
+              name: input.name,
+              password: input.password,
+            },
+          },
         });
 
-        if (result.error) {
-          throw new Error(result.error.message ?? t("auth:form.authFailed"));
+        if (!result.data?.authSignUp.user.id) {
+          throw new Error(t("auth:form.authFailed"));
         }
+
+        await apolloClient.clearStore();
+        window.location.assign(
+          createEmailVerificationPagePath(input.email, postAuthPath),
+        );
+        return;
       }
 
       await apolloClient.clearStore();
@@ -237,6 +288,35 @@ export function LoginForm({
                   error={errors.password}
                 />
 
+                {mode === "login" && (
+                  <div className="flex items-center justify-between gap-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="remember-me"
+                        data-testid="auth-remember-me"
+                        checked={values.rememberMe}
+                        onCheckedChange={(checked) =>
+                          setValues((current) => ({
+                            ...current,
+                            rememberMe: checked,
+                          }))
+                        }
+                      />
+                      <Label htmlFor="remember-me">
+                        {t("auth:form.rememberMe")}
+                      </Label>
+                    </div>
+
+                    <Link
+                      to="/auth/forgot-password"
+                      className="text-primary underline-offset-4 hover:underline"
+                      data-testid="auth-forgot-password-link"
+                    >
+                      {t("auth:form.forgotPassword")}
+                    </Link>
+                  </div>
+                )}
+
                 {errors.form && (
                   <FieldDescription className="text-destructive">
                     {errors.form}
@@ -287,6 +367,7 @@ function createLoginSchema() {
   return z.object({
     email: z.string().email(t("auth:form.email.invalid")),
     password: z.string().min(8, t("auth:form.password.min")),
+    rememberMe: z.boolean(),
   });
 }
 
@@ -305,27 +386,9 @@ function resolvePostAuthUrl(redirect?: string, invitationId?: string | null) {
       ? localStorage.getItem(INVITATION_ID_KEY)
       : null);
 
-  if (storedInvitationId) {
-    return `/invite?invitationId=${encodeURIComponent(storedInvitationId)}`;
-  }
-
-  if (!redirect || typeof window === "undefined") {
-    return DEFAULT_REDIRECT;
-  }
-
-  if (redirect.startsWith("/") && !redirect.startsWith("//")) {
-    return redirect;
-  }
-
-  try {
-    const url = new URL(redirect);
-
-    if (url.origin === window.location.origin) {
-      return `${url.pathname}${url.search}${url.hash}`;
-    }
-  } catch {
-    return DEFAULT_REDIRECT;
-  }
-
-  return DEFAULT_REDIRECT;
+  return resolvePostAuthPath(
+    redirect,
+    typeof window === "undefined" ? "http://localhost" : window.location.origin,
+    storedInvitationId,
+  );
 }

@@ -46,9 +46,9 @@ const envKeys = [
   'AUTH_URL',
   'APP_SECRET',
   'AUTH_SECRET',
-  'AUTH_OIDC_ID',
-  'AUTH_OIDC_ISSUER',
-  'AUTH_OIDC_SECRET',
+  'AUTH_OIDC_ENABLED',
+  'AUTH_OIDC_CLIENT_ID',
+  'AUTH_OIDC_CLIENT_SECRET',
   'AUTH_OIDC_DISCOVERY_URL',
   'SMTP_HOST',
   'SMTP_PORT',
@@ -58,7 +58,6 @@ const oldEnv = new Map<string, string | undefined>();
 let uniqueCounter = 0;
 
 interface AuthenticatedUser {
-  bearerToken: string;
   cookies: string[];
   email: string;
   password: string;
@@ -183,7 +182,6 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       password,
     });
     const sessionCookies = collectSetCookies(loggedIn);
-    const sessionBearerToken = loggedIn.headers['set-auth-token'];
 
     expect(loggedIn.status).toBe(200);
     expect(loggedIn.body.user).toMatchObject({
@@ -191,7 +189,6 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       email,
     });
     expect(sessionCookies.length).toBeGreaterThan(0);
-    expect(sessionBearerToken).toBeTypeOf('string');
 
     const rejectedCurrentUser = await gql(/* GraphQL */ `
       query {
@@ -218,25 +215,6 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     expectNoGraphQLErrors(currentUser);
     expect(currentUser.body.data.currentUser).toMatchObject({
-      name: 'Alice',
-      email,
-    });
-
-    const currentUserByBearer = await gql(
-      /* GraphQL */ `
-        query {
-          currentUser {
-            id
-            name
-            email
-          }
-        }
-      `,
-      { bearerToken: sessionBearerToken },
-    );
-
-    expectNoGraphQLErrors(currentUserByBearer);
-    expect(currentUserByBearer.body.data.currentUser).toMatchObject({
       name: 'Alice',
       email,
     });
@@ -279,6 +257,316 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     expect(
       (await signInWithEmail({ email, password: newPassword })).status,
     ).toBe(200);
+  });
+
+  it('supports email authentication through GraphQL with cookie sessions', async () => {
+    const email = uniqueEmail('graphql-auth');
+    const password = 'correct-horse-battery-staple';
+    const registered = await gql(
+      /* GraphQL */ `
+        mutation SignUp($input: AuthSignUpInput!) {
+          authSignUp(input: $input) {
+            token
+            user {
+              id
+              name
+              email
+            }
+          }
+        }
+      `,
+      {
+        variables: {
+          input: { email, name: 'GraphQL User', password },
+        },
+      },
+    );
+
+    expectNoGraphQLErrors(registered);
+    expect(registered.body.data.authSignUp).toMatchObject({
+      token: null,
+      user: { email, name: 'GraphQL User' },
+    });
+    await verifyEmail(email);
+
+    const loggedIn = await gql(
+      /* GraphQL */ `
+        mutation SignIn($input: AuthSignInInput!) {
+          authSignIn(input: $input) {
+            token
+            user {
+              id
+              email
+            }
+          }
+        }
+      `,
+      { variables: { input: { email, password, rememberMe: false } } },
+    );
+    const cookies = collectSetCookies(loggedIn);
+    const sessionCookie = collectRawSetCookies(loggedIn).find((cookie) =>
+      cookie.includes('session_token='),
+    );
+
+    expectNoGraphQLErrors(loggedIn);
+    expect(loggedIn.body.data.authSignIn.user.email).toBe(email);
+    expect(cookies.length).toBeGreaterThan(0);
+    expect(sessionCookie).toBeDefined();
+    expect(sessionCookie).not.toMatch(/(?:max-age|expires)=/iu);
+
+    const otherLogin = await signInWithEmail({ email, password });
+    const otherCookies = collectSetCookies(otherLogin);
+    const listedSessions = await gql(
+      /* GraphQL */ `
+        query {
+          authSessions {
+            id
+            token
+            current
+            ipAddress
+            userAgent
+            createdAt
+            expiresAt
+          }
+        }
+      `,
+      { cookies },
+    );
+
+    expectNoGraphQLErrors(listedSessions);
+    expect(listedSessions.body.data.authSessions).toHaveLength(2);
+    expect(
+      listedSessions.body.data.authSessions.filter(
+        (session: { current: boolean }) => session.current,
+      ),
+    ).toHaveLength(1);
+    const otherSession = listedSessions.body.data.authSessions.find(
+      (session: { current: boolean }) => !session.current,
+    );
+    expect(otherSession?.token).toBeTypeOf('string');
+
+    const revokedSession = await gql(
+      /* GraphQL */ `
+        mutation RevokeSession($token: String!) {
+          authRevokeSession(token: $token)
+        }
+      `,
+      {
+        cookies,
+        variables: { token: otherSession.token },
+      },
+    );
+
+    expectNoGraphQLErrors(revokedSession);
+    expect(revokedSession.body.data.authRevokeSession).toBe(true);
+    expectGraphQLError(
+      await gql(
+        /* GraphQL */ `
+          query {
+            currentUser {
+              id
+            }
+          }
+        `,
+        { cookies: otherCookies },
+      ),
+    );
+
+    const changedPassword = 'graphql-changed-password';
+    const passwordChanged = await gql(
+      /* GraphQL */ `
+        mutation ChangePassword($input: AuthChangePasswordInput!) {
+          authChangePassword(input: $input) {
+            token
+          }
+        }
+      `,
+      {
+        cookies,
+        variables: {
+          input: {
+            currentPassword: password,
+            newPassword: changedPassword,
+            revokeOtherSessions: true,
+          },
+        },
+      },
+    );
+    const replacementCookies = collectSetCookies(passwordChanged);
+
+    expectNoGraphQLErrors(passwordChanged);
+    expect(passwordChanged.body.data.authChangePassword.token).toBeTypeOf(
+      'string',
+    );
+    expect(replacementCookies.length).toBeGreaterThan(0);
+    expect((await signInWithEmail({ email, password })).status).toBe(401);
+    expect(
+      (await signInWithEmail({ email, password: changedPassword })).status,
+    ).toBe(200);
+
+    const passwordResetRequested = await gql(
+      /* GraphQL */ `
+        mutation RequestPasswordReset($input: AuthRequestPasswordResetInput!) {
+          authRequestPasswordReset(input: $input) {
+            status
+          }
+        }
+      `,
+      {
+        variables: {
+          input: {
+            email,
+            redirectTo: `${baseUrl}/auth/reset-password`,
+          },
+        },
+      },
+    );
+
+    expectNoGraphQLErrors(passwordResetRequested);
+    expect(
+      passwordResetRequested.body.data.authRequestPasswordReset.status,
+    ).toBe(true);
+
+    const passwordResetUrl = new URL(
+      await waitForEmailUrl(email, 'Reset your password'),
+    );
+    const passwordResetCallback = await request(baseUrl).get(
+      `${passwordResetUrl.pathname}${passwordResetUrl.search}`,
+    );
+    const passwordResetLocation = new URL(
+      passwordResetCallback.headers.location ?? '',
+      baseUrl,
+    );
+    const passwordResetToken = passwordResetLocation.searchParams.get('token');
+
+    expect(passwordResetCallback.status).toBe(302);
+    expect(passwordResetToken).toBeTypeOf('string');
+    if (!passwordResetToken) throw new Error('Password reset token is missing');
+
+    const resetPassword = 'graphql-reset-password';
+    const passwordReset = await gql(
+      /* GraphQL */ `
+        mutation ResetPassword($input: AuthResetPasswordInput!) {
+          authResetPassword(input: $input)
+        }
+      `,
+      {
+        variables: {
+          input: {
+            newPassword: resetPassword,
+            token: passwordResetToken,
+          },
+        },
+      },
+    );
+
+    expectNoGraphQLErrors(passwordReset);
+    expect(passwordReset.body.data.authResetPassword).toBe(true);
+    expect(
+      (await signInWithEmail({ email, password: changedPassword })).status,
+    ).toBe(401);
+    const resetPasswordLogin = await signInWithEmail({
+      email,
+      password: resetPassword,
+    });
+    expect(resetPasswordLogin.status).toBe(200);
+
+    const signedOut = await gql(
+      /* GraphQL */ `
+        mutation {
+          authSignOut
+        }
+      `,
+      { cookies: collectSetCookies(resetPasswordLogin) },
+    );
+
+    expectNoGraphQLErrors(signedOut);
+    expect(signedOut.body.data.authSignOut).toBe(true);
+    expect(collectSetCookies(signedOut).length).toBeGreaterThan(0);
+  });
+
+  it('changes a verified email through GraphQL after verifying the new address', async () => {
+    const email = uniqueEmail('graphql-change-email');
+    const newEmail = uniqueEmail('graphql-changed-email');
+    const password = 'correct-horse-battery-staple';
+    const registered = await signUpWithEmail({
+      email,
+      name: 'Email Change User',
+      password,
+    });
+
+    expect(registered.status).toBe(200);
+    await verifyEmail(email);
+
+    const loggedIn = await signInWithEmail({ email, password });
+    const cookies = collectSetCookies(loggedIn);
+    expect(loggedIn.status).toBe(200);
+
+    const changeRequested = await gql(
+      /* GraphQL */ `
+        mutation ChangeEmail($input: AuthChangeEmailInput!) {
+          authChangeEmail(input: $input)
+        }
+      `,
+      {
+        cookies,
+        variables: {
+          input: {
+            callbackURL: `${baseUrl}/user?emailChangeCallback=true&newEmail=${encodeURIComponent(newEmail)}`,
+            newEmail,
+          },
+        },
+      },
+    );
+
+    expectNoGraphQLErrors(changeRequested);
+    expect(changeRequested.body.data.authChangeEmail).toBe(true);
+
+    const confirmationUrl = new URL(
+      await waitForEmailUrl(email, 'Confirm your email change'),
+    );
+    const confirmed = await request(baseUrl).get(
+      `${confirmationUrl.pathname}${confirmationUrl.search}`,
+    );
+
+    expect(confirmed.status).toBe(302);
+    expect(confirmed.headers.location).toContain('emailChangeCallback=true');
+
+    const verificationUrl = new URL(
+      await waitForEmailUrl(newEmail, 'Verify your email address'),
+    );
+    const verified = await request(baseUrl).get(
+      `${verificationUrl.pathname}${verificationUrl.search}`,
+    );
+    const verificationCookies = collectSetCookies(verified);
+
+    expect(verified.status).toBe(302);
+    expect(verified.headers.location).toContain('emailChangeCallback=true');
+    expect(verificationCookies.length).toBeGreaterThan(0);
+
+    const currentUser = await gql(
+      /* GraphQL */ `
+        query {
+          currentUser {
+            email
+          }
+        }
+      `,
+      { cookies: verificationCookies },
+    );
+
+    expectNoGraphQLErrors(currentUser);
+    expect(currentUser.body.data.currentUser).toEqual({ email: newEmail });
+    const [updatedUser] = await migrationOrm.em
+      .getConnection()
+      .execute<
+        { email: string; email_verified: boolean }[]
+      >('select email, email_verified from "user" where email = ?', [newEmail]);
+    expect(updatedUser).toEqual({ email: newEmail, email_verified: true });
+    expect((await signInWithEmail({ email, password })).status).toBe(401);
+    expect((await signInWithEmail({ email: newEmail, password })).status).toBe(
+      200,
+    );
   });
 
   it('resolves workspace context from header and cookie while returning null for missing member context', async () => {
@@ -1127,14 +1415,11 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     const loggedIn = await signInWithEmail({ email, password });
     const cookies = collectSetCookies(loggedIn);
-    const bearerToken = loggedIn.headers['set-auth-token'];
 
     expect(loggedIn.status).toBe(200);
     expect(cookies.length).toBeGreaterThan(0);
-    expect(bearerToken).toBeTypeOf('string');
 
     return {
-      bearerToken,
       cookies,
       email,
       password,
@@ -1563,15 +1848,12 @@ async function waitForEmailUrl(
 }
 
 function collectSetCookies(response: request.Response) {
+  return collectRawSetCookies(response).map((cookie) => cookie.split(';')[0]);
+}
+
+function collectRawSetCookies(response: request.Response): string[] {
   const header = response.headers['set-cookie'];
-
-  if (!header) {
-    return [];
-  }
-
-  return (Array.isArray(header) ? header : [header]).map(
-    (cookie) => cookie.split(';')[0],
-  );
+  return header ? (Array.isArray(header) ? header : [header]) : [];
 }
 
 function expectNoGraphQLErrors(response: request.Response) {
@@ -1677,11 +1959,7 @@ function setTestEnv() {
   process.env.AUTH_URL = 'http://127.0.0.1';
   process.env.APP_SECRET = '1oAdy3zpD3S0t1AdAqPTlj4Hhkyx83pT2UlNGfS4P2c';
   process.env.AUTH_SECRET = 'R4vWrEDXeeor7VzGzQsdbQobOFtv2nRrlhOVTGpOteA';
-  process.env.AUTH_OIDC_ID = 'nest-boot-example-e2e';
-  process.env.AUTH_OIDC_ISSUER = 'https://auth.example.test';
-  process.env.AUTH_OIDC_SECRET = 'nest-boot-example-e2e-secret';
-  process.env.AUTH_OIDC_DISCOVERY_URL =
-    'https://auth.example.test/.well-known/openid-configuration';
+  process.env.AUTH_OIDC_ENABLED = 'false';
   process.env.SMTP_HOST = '127.0.0.1';
   process.env.SMTP_PORT = '31025';
 }

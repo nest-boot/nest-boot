@@ -147,11 +147,10 @@ function createServerEnv() {
   env.AUTH_URL = authUrl;
   env.APP_SECRET = '1oAdy3zpD3S0t1AdAqPTlj4Hhkyx83pT2UlNGfS4P2c';
   env.AUTH_SECRET = 'R4vWrEDXeeor7VzGzQsdbQobOFtv2nRrlhOVTGpOteA';
-  env.AUTH_OIDC_ID = 'nest-boot-example-e2e';
-  env.AUTH_OIDC_ISSUER = 'https://auth.example.test';
-  env.AUTH_OIDC_SECRET = 'nest-boot-example-e2e-secret';
-  env.AUTH_OIDC_DISCOVERY_URL =
-    'https://auth.example.test/.well-known/openid-configuration';
+  env.AUTH_EMAIL_REQUIRE_VERIFICATION = 'true';
+  env.AUTH_OIDC_ENABLED = 'false';
+  env.SMTP_URL = 'smtp://127.0.0.1:31025';
+  env.SMTP_FROM = 'Nest Boot Example <no-reply@example.com>';
   env.PORT = port;
 
   return env;

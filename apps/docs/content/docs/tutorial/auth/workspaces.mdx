@@ -1,0 +1,58 @@
+---
+title: "Workspaces"
+description: "Resolve workspace context and manage workspace membership."
+---
+
+## Selecting a Workspace
+
+Clients select a workspace with the `x-workspace-id` header or `workspace_id`
+Cookie. `AuthMiddleware` verifies that selection, resolves the authenticated
+user's active membership, and stores both entities in `RequestContext`.
+
+```typescript
+import {
+  CurrentWorkspace,
+  CurrentWorkspaceMember,
+} from "@nest-boot/auth";
+
+currentWorkspace(
+  @CurrentWorkspace() workspace: Workspace,
+  @CurrentWorkspaceMember() member: WorkspaceMember,
+) {
+  return { workspace, member };
+}
+```
+
+The route or header remains the source of workspace selection. A session does
+not need an `activeWorkspaceId`, which lets separate browser tabs work in
+different workspaces.
+
+## Workspace Lifecycle
+
+`WorkspaceService` owns transport-independent workspace operations:
+
+- `findOne(where)`;
+- `listWorkspaces(user)`;
+- `createWorkspace(user, input)`;
+- `getFullWorkspace(workspace)`;
+- `updateWorkspace(workspace, input)`;
+- `deleteWorkspace(workspace, currentMember)`.
+
+Creating a workspace also creates its active owner membership. Deletion is a
+soft delete and only the owner of that workspace may perform it.
+
+## Member Lifecycle
+
+- `getMember(workspace, user)`;
+- `listMembers(workspace)`;
+- `addMember(workspace, user, input)`;
+- `updateMember(member, input)`;
+- `removeMember(member)`;
+- `leaveWorkspace(member)`.
+
+Owners cannot be removed or leave through the ordinary member operation.
+GraphQL resolvers and HTTP controllers should map input/output types and leave
+these invariants in `WorkspaceService`.
+
+Workspace invitation delivery and state transitions are documented separately
+under [Invitations](/docs/tutorial/auth/invitations).

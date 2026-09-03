@@ -9,7 +9,11 @@
     "workspaces": "工作空间"
   },
   "user": {
+    "account": "个人账户",
     "api_keys": "个人 API 密钥",
-    "logout": "退出登录"
+    "logout": "退出登录",
+    "security": "安全",
+    "title": "个人中心",
+    "workspaces": "工作空间"
   }
 }

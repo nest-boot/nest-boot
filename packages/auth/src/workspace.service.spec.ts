@@ -253,6 +253,115 @@ describe("WorkspaceService", () => {
     expect(invitation.status).toBe("accepted");
   });
 
+  it("sends the configured invitation email after persisting the invitation", async () => {
+    const sendInvitationEmail = vi.fn().mockResolvedValue(undefined);
+    const { em, service } = createService({ sendInvitationEmail });
+    const workspace = new TestWorkspace();
+    const inviter = Object.assign(new TestUser(), {
+      email: "owner@example.com",
+      name: "Owner",
+    });
+    const inviterMember = Object.assign(new TestWorkspaceMember(), {
+      email: inviter.email,
+      name: inviter.name,
+      role: "OWNER" as const,
+      user: inviter,
+      workspace,
+    });
+    const request = new Request("https://app.example.com/invitations");
+    em.findOne
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(inviterMember);
+
+    const invitation = await service.createInvitation(
+      workspace,
+      inviter,
+      {
+        email: "INVITED@example.com",
+        role: "ADMIN",
+      },
+      request,
+    );
+
+    expect(sendInvitationEmail).toHaveBeenCalledWith(
+      {
+        email: "invited@example.com",
+        id: invitation.id,
+        invitation,
+        inviter: expect.objectContaining({
+          id: inviterMember.id,
+          role: "OWNER",
+          user: inviter,
+        }),
+        role: "ADMIN",
+        workspace,
+      },
+      request,
+    );
+    expect(em.flush.mock.invocationCallOrder[0]).toBeLessThan(
+      sendInvitationEmail.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("gets and lists workspace and current-user invitations", async () => {
+    const { em, service } = createService();
+    const workspace = new TestWorkspace();
+    const user = Object.assign(new TestUser(), {
+      email: "ALICE@example.com",
+    });
+    const invitation = Object.assign(new TestWorkspaceInvitation(), {
+      email: "alice@example.com",
+    });
+    em.findOne.mockResolvedValue(invitation);
+    em.find
+      .mockResolvedValueOnce([invitation])
+      .mockResolvedValueOnce([invitation]);
+
+    await expect(service.getInvitation(invitation.id)).resolves.toBe(
+      invitation,
+    );
+    await expect(service.listInvitations(workspace)).resolves.toEqual([
+      invitation,
+    ]);
+    await expect(service.listUserInvitations(user)).resolves.toEqual([
+      invitation,
+    ]);
+
+    expect(em.findOne).toHaveBeenCalledWith(
+      TestWorkspaceInvitation,
+      { id: invitation.id },
+      { filters: false },
+    );
+    expect(em.find).toHaveBeenNthCalledWith(
+      1,
+      TestWorkspaceInvitation,
+      { workspace },
+      { filters: false, orderBy: { createdAt: "desc" } },
+    );
+    expect(em.find).toHaveBeenNthCalledWith(
+      2,
+      TestWorkspaceInvitation,
+      { email: "alice@example.com", status: "pending" },
+      { filters: false, orderBy: { createdAt: "desc" } },
+    );
+  });
+
+  it("cancels a pending invitation while retaining its lifecycle record", async () => {
+    const { em, service } = createService();
+    const invitation = Object.assign(new TestWorkspaceInvitation(), {
+      status: "pending" as const,
+    });
+
+    await expect(service.cancelInvitation(invitation)).resolves.toBe(
+      invitation,
+    );
+
+    expect(invitation.status).toBe("canceled");
+    expect(em.remove).not.toHaveBeenCalled();
+    expect(em.flush).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps rejected invitations as separate audit records", async () => {
     const { em, service } = createService();
     const user = Object.assign(new TestUser(), {
@@ -326,7 +435,9 @@ describe("WorkspaceService", () => {
   });
 });
 
-function createService() {
+function createService(
+  workspace: NonNullable<AuthModuleOptions["workspace"]> = {},
+) {
   const em = {
     assign: vi.fn((entity, data) => Object.assign(entity, data)),
     create: vi.fn((Entity, data) => Object.assign(new Entity(), data)),
@@ -345,6 +456,7 @@ function createService() {
       workspaceInvitation: TestWorkspaceInvitation,
       workspaceMember: TestWorkspaceMember,
     },
+    workspace,
   } as unknown as AuthModuleOptions;
 
   return {

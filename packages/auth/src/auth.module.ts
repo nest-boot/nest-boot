@@ -38,11 +38,11 @@ import { AuthService } from "./auth.service.js";
 import { AuthHandlerMiddleware } from "./auth-handler.middleware.js";
 import { type AuthModuleOptions } from "./auth-module-options.interface.js";
 import { SessionService } from "./session.service.js";
-import { assertNoDuplicateGenericOAuthPlugin } from "./utils/assert-no-duplicate-generic-oauth-plugin.js";
 import { createEmailAndPasswordConfig } from "./utils/create-email-and-password-config.js";
 import { createEmailVerificationConfig } from "./utils/create-email-verification-config.js";
 import { createOidcConfig } from "./utils/create-oidc-config.js";
 import { createSocialProvidersConfig } from "./utils/create-social-providers-config.js";
+import { createUserConfig } from "./utils/create-user-config.js";
 import { isEnvTrue } from "./utils/is-env-true.js";
 import { resolveSecret } from "./utils/resolve-secret.js";
 import { WorkspaceService } from "./workspace.service.js";
@@ -88,6 +88,7 @@ import { WorkspaceService } from "./workspace.service.js";
         delete betterAuthModuleOptions.entities;
         delete betterAuthModuleOptions.middleware;
         delete betterAuthModuleOptions.onAuthenticated;
+        delete betterAuthModuleOptions.workspace;
         const secret = resolveSecret(options);
         const disableSignUp = isEnvTrue("AUTH_DISABLE_SIGN_UP");
         const oidcConfig = createOidcConfig(disableSignUp);
@@ -95,8 +96,8 @@ import { WorkspaceService } from "./workspace.service.js";
           account,
           emailAndPassword,
           emailVerification,
-          plugins,
           socialProviders,
+          user,
           ...betterAuthOptions
         } = betterAuthModuleOptions;
         const emailAndPasswordConfig = createEmailAndPasswordConfig(
@@ -113,10 +114,7 @@ import { WorkspaceService } from "./workspace.service.js";
           disableSignUp,
           socialProviders,
         );
-
-        if (oidcConfig) {
-          assertNoDuplicateGenericOAuthPlugin(plugins);
-        }
+        const userConfig = createUserConfig(mailer, user);
 
         return betterAuth({
           appName: process.env.APP_NAME,
@@ -129,6 +127,7 @@ import { WorkspaceService } from "./workspace.service.js";
           ...betterAuthOptions,
           emailAndPassword: emailAndPasswordConfig,
           emailVerification: emailVerificationConfig,
+          ...(userConfig ? { user: userConfig } : {}),
           ...(socialProvidersConfig
             ? { socialProviders: socialProvidersConfig }
             : {}),
@@ -140,7 +139,6 @@ import { WorkspaceService } from "./workspace.service.js";
                   }),
                 ]
               : []),
-            ...(plugins ?? []),
           ],
           database: mikroOrmAdapter({
             orm,

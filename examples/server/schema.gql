@@ -73,6 +73,68 @@ enum ApiKeyOrderField {
   LAST_USED_AT
 }
 
+type AuthAccessTokenType {
+  accessToken: String!
+  accessTokenExpiresAt: DateTime
+  idToken: String
+  scopes: [String!]!
+}
+
+type AuthAccountIdentityType {
+  accountId: ID!
+  id: ID!
+  issuer: String!
+  providerId: ID!
+}
+
+type AuthAccountInfoType {
+  account: AuthAccountIdentityType!
+  data: JSONObject!
+  user: JSONObject!
+}
+
+input AuthAccountSelectorInput {
+  accountId: ID
+  useAccountCookie: Boolean
+}
+
+type AuthAccountType {
+  accountId: ID!
+  createdAt: DateTime!
+  id: ID!
+  issuer: String!
+  providerId: ID!
+  scopes: [String!]!
+  updatedAt: DateTime!
+  userId: ID!
+}
+
+input AuthChangeEmailInput {
+  callbackURL: String
+  newEmail: String!
+}
+
+input AuthChangePasswordInput {
+  currentPassword: String!
+  newPassword: String!
+  revokeOtherSessions: Boolean
+}
+
+type AuthChangePasswordResultType {
+  token: String
+}
+
+input AuthDeleteUserInput {
+  callbackURL: String
+  password: String
+  token: String
+}
+
+type AuthDeleteUserResultType {
+  message: String!
+  success: Boolean!
+}
+
 enum AuthPermission {
   SESSION_DELETE
   SESSION_LIST
@@ -95,6 +157,91 @@ enum AuthPermission {
   WORKSPACE_MEMBER_DELETE
   WORKSPACE_MEMBER_UPDATE
   WORKSPACE_UPDATE
+}
+
+type AuthRefreshedTokenType {
+  accessToken: String
+  accessTokenExpiresAt: DateTime
+  accountId: ID!
+  idToken: String
+  providerId: ID!
+  refreshToken: String!
+  refreshTokenExpiresAt: DateTime
+  scope: String
+}
+
+input AuthRequestPasswordResetInput {
+  email: String!
+  redirectTo: String
+}
+
+type AuthRequestPasswordResetResultType {
+  message: String!
+  status: Boolean!
+}
+
+input AuthResetPasswordInput {
+  newPassword: String!
+  token: String!
+}
+
+input AuthSendVerificationEmailInput {
+  callbackURL: String
+  email: String!
+}
+
+type AuthSessionType {
+  createdAt: DateTime!
+  current: Boolean!
+  expiresAt: DateTime!
+  id: ID!
+  ipAddress: String
+  token: String!
+  updatedAt: DateTime!
+  userAgent: String
+}
+
+input AuthSignInInput {
+  callbackURL: String
+  email: String!
+  password: String!
+  rememberMe: Boolean
+}
+
+type AuthSignInResultType {
+  redirect: Boolean!
+  token: String!
+  url: String
+  user: AuthUserType!
+}
+
+input AuthSignUpInput {
+  callbackURL: String
+  email: String!
+  image: String
+  name: String!
+  password: String!
+  rememberMe: Boolean
+}
+
+type AuthSignUpResultType {
+  token: String
+  user: AuthUserType!
+}
+
+input AuthUpdateUserInput {
+  image: String
+  name: String
+}
+
+type AuthUserType {
+  createdAt: DateTime!
+  email: String!
+  emailVerified: Boolean!
+  id: ID!
+  image: String
+  name: String!
+  updatedAt: DateTime!
 }
 
 input CreateApiKeyInput {
@@ -129,9 +276,30 @@ A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date
 """
 scalar DateTime
 
+"""
+The `JSONObject` scalar type represents JSON objects as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
+"""
+scalar JSONObject
+
 type Mutation {
   acceptWorkspaceInvitation(invitationId: ID!): AcceptWorkspaceInvitationResult!
   addWorkspaceMember(input: AddWorkspaceMemberInput!): WorkspaceMember!
+  authChangeEmail(input: AuthChangeEmailInput!): Boolean!
+  authChangePassword(input: AuthChangePasswordInput!): AuthChangePasswordResultType!
+  authDeleteUser(input: AuthDeleteUserInput): AuthDeleteUserResultType!
+  authRefreshToken(input: AuthAccountSelectorInput!): AuthRefreshedTokenType!
+  authRequestPasswordReset(input: AuthRequestPasswordResetInput!): AuthRequestPasswordResetResultType!
+  authResetPassword(input: AuthResetPasswordInput!): Boolean!
+  authRevokeOtherSessions: Boolean!
+  authRevokeSession(token: String!): Boolean!
+  authRevokeSessions: Boolean!
+  authSendVerificationEmail(input: AuthSendVerificationEmailInput!): Boolean!
+  authSetPassword(newPassword: String!): Boolean!
+  authSignIn(input: AuthSignInInput!): AuthSignInResultType!
+  authSignOut: Boolean!
+  authSignUp(input: AuthSignUpInput!): AuthSignUpResultType!
+  authUnlinkAccount(accountId: ID!): Boolean!
+  authUpdateUser(input: AuthUpdateUserInput!): Boolean!
   cancelWorkspaceInvitation(invitationId: ID!): WorkspaceInvitation!
   createApiKey(input: CreateApiKeyInput!): CreateApiKeyResult!
   createServiceAccountWorkspaceMember(input: CreateServiceAccountWorkspaceMemberInput!): WorkspaceMember!
@@ -197,6 +365,10 @@ type Query {
     """
     query: String
   ): ApiKeyConnection!
+  authAccessToken(input: AuthAccountSelectorInput!): AuthAccessTokenType!
+  authAccountInfo(input: AuthAccountSelectorInput!): AuthAccountInfoType!
+  authAccounts: [AuthAccountType!]!
+  authSessions: [AuthSessionType!]!
   currentUser: User!
   currentUserWorkspaceInvitations: [WorkspaceInvitation!]!
   currentWorkspace: Workspace

@@ -1,0 +1,120 @@
+---
+title: "Configuration"
+description: "Configure AuthModule, environment variables, and MikroORM entities."
+---
+
+## Module Options
+
+Register `AuthModule` with `forRoot()` or `forRootAsync()`. The module exposes an
+explicit allowlist of Better Auth options so upgrades do not silently expand the
+public Nest Boot API. Better Auth plugins are internal and cannot be supplied
+through `AuthModuleOptions`.
+
+Important Nest Boot options include:
+
+- **`entities`** — application entity classes for every authentication model;
+- **`emailAndPassword.enabled`** — enables email/password authentication, defaulting to `true`;
+- **`emailAndPassword.requireEmailVerification`** — requires verified email before sign-in, defaulting to `true`;
+- **`emailAndPassword.password`** — overrides password hashing; the default uses `HashService`;
+- **`emailAndPassword.sendResetPassword`** — overrides password-reset delivery;
+- **`emailVerification.sendVerificationEmail`** — overrides verification delivery;
+- **`user.changeEmail.enabled`** — enables the two-stage email-change flow;
+- **`workspace.sendInvitationEmail`** — delivers persisted workspace invitations;
+- **`buildUserAbility`** and **`buildWorkspaceAbility`** — build request authorization abilities;
+- **`onAuthenticated`** — enriches application context after session resolution;
+- **`middleware`** — controls auth middleware registration and route selection;
+- **`basePath`** — changes the auth endpoint path from `/api/auth/`;
+- **`trustedOrigins`** — configures allowed browser origins.
+
+## Environment Variables
+
+Options passed to `forRoot()` or `forRootAsync()` are merged with environment
+defaults. Provider-specific environment flags can override the matching nested
+provider settings.
+
+### Common
+
+| Variable               | Purpose                                                                                                         | Default                              |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| `AUTH_SECRET`          | Secret used to sign and encrypt auth data. Falls back to `APP_SECRET`; use at least 32 high-entropy characters. | Required                             |
+| `HASH_SECRET`          | Pepper used by `HashModule`. Falls back to `APP_SECRET`; use at least 32 high-entropy characters.               | Required when `APP_SECRET` is unset  |
+| `APP_SECRET`           | Shared fallback when an auth- or hash-specific secret is absent.                                                | Required when `AUTH_SECRET` is unset |
+| `APP_NAME`             | Application name passed to Better Auth.                                                                         | unset                                |
+| `AUTH_URL`             | Public authentication base URL. Falls back to `APP_URL`.                                                        | unset                                |
+| `APP_URL`              | Public application URL and fallback for `AUTH_URL`.                                                             | unset                                |
+| `AUTH_DISABLE_SIGN_UP` | Disables new signup for every configured authentication method without disabling sign-in.                       | signup enabled                       |
+| `API_KEY_PREFIX`       | Prefix used when creating API keys.                                                                             | `sk-`                                |
+
+### Email
+
+| Variable                          | Purpose                                               | Default        |
+| --------------------------------- | ----------------------------------------------------- | -------------- |
+| `AUTH_EMAIL_ENABLED`              | Enables email/password auth unless set to `false`.    | enabled        |
+| `AUTH_EMAIL_REQUIRE_VERIFICATION` | Requires verified email unless set to `false`.        | required       |
+| `AUTH_EMAIL_DISABLE_SIGN_UP`      | Blocks new email/password signups when set to `true`. | signup enabled |
+
+### Google and GitHub
+
+Google and GitHub remain disabled until their `*_ENABLED` flag is `true`.
+Enabling either provider requires both its client ID and client secret.
+
+| Variable                      | Purpose                                           |
+| ----------------------------- | ------------------------------------------------- |
+| `AUTH_GOOGLE_ENABLED`         | Enables Google authentication.                    |
+| `AUTH_GOOGLE_CLIENT_ID`       | Google OAuth client ID.                           |
+| `AUTH_GOOGLE_CLIENT_SECRET`   | Google OAuth client secret.                       |
+| `AUTH_GOOGLE_DISABLE_SIGN_UP` | Blocks new Google users while preserving sign-in. |
+| `AUTH_GITHUB_ENABLED`         | Enables GitHub authentication.                    |
+| `AUTH_GITHUB_CLIENT_ID`       | GitHub OAuth client ID.                           |
+| `AUTH_GITHUB_CLIENT_SECRET`   | GitHub OAuth client secret.                       |
+| `AUTH_GITHUB_DISABLE_SIGN_UP` | Blocks new GitHub users while preserving sign-in. |
+
+### OIDC
+
+Generic OIDC remains disabled until `AUTH_OIDC_ENABLED=true`. When enabled,
+`AuthModule` registers one internal `genericOAuth` provider with
+`providerId: "oidc"`.
+
+| Variable                    | Purpose                                                                                                                | Default                |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| `AUTH_OIDC_ENABLED`         | Enables the generic OIDC provider.                                                                                     | disabled               |
+| `AUTH_OIDC_CLIENT_ID`       | OIDC client ID.                                                                                                        | Required when enabled  |
+| `AUTH_OIDC_CLIENT_SECRET`   | OIDC client secret.                                                                                                    | Required when enabled  |
+| `AUTH_OIDC_DISCOVERY_URL`   | OIDC discovery document URL.                                                                                           | Required when enabled  |
+| `AUTH_OIDC_PROMPT`          | Optional prompt: `none`, `login`, `create`, `consent`, `select_account`, `select_account consent`, or `login consent`. | unset                  |
+| `AUTH_OIDC_SCOPES`          | Comma-separated scopes; whitespace and empty entries are ignored.                                                      | `openid,profile,email` |
+| `AUTH_OIDC_DISABLE_SIGN_UP` | Blocks new OIDC users while preserving sign-in.                                                                        | signup enabled         |
+
+## Entity Setup
+
+Every class in `entities` must extend the matching base entity. Subclasses may
+redeclare columns to add GraphQL metadata, indexes, database-specific types, or
+application fields.
+
+```typescript
+import { BaseUser } from "@nest-boot/auth";
+import { Field, ID, ObjectType } from "@nest-boot/graphql";
+import { Entity, PrimaryKey, Property, t } from "@mikro-orm/postgresql";
+
+@ObjectType()
+@Entity()
+export class User extends BaseUser {
+  @Field(() => ID)
+  @PrimaryKey({ type: t.bigint })
+  override id!: string;
+
+  @Field(() => String)
+  @Property({ type: t.string })
+  declare name: string;
+}
+```
+
+The package provides `BaseUser`, `BaseAccount`, `BaseSession`,
+`BaseVerification`, `BaseWorkspace`, `BaseWorkspaceInvitation`,
+`BaseWorkspaceMember`, and `BaseApiKey`.
+
+Better Auth 1.7 identifies accounts by the required `(issuer, accountId)` pair.
+Before making `issuer` non-null in an existing database, backfill a stable value
+and resolve duplicate pairs. `BaseSession` indexes `userId`, and
+`BaseVerification` indexes `identifier`. Generate a fresh application migration
+after changing any configured entity.

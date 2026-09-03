@@ -5,10 +5,13 @@ import { AuthService } from "./auth.service.js";
 
 function createApi() {
   return {
+    accountInfo: vi.fn(),
     changeEmail: vi.fn(),
     changePassword: vi.fn(),
     deleteUser: vi.fn(),
+    getAccessToken: vi.fn(),
     listUserAccounts: vi.fn(),
+    refreshToken: vi.fn(),
     requestPasswordReset: vi.fn(),
     resetPassword: vi.fn(),
     sendVerificationEmail: vi.fn(),
@@ -99,6 +102,42 @@ describe("AuthService", () => {
     expect(api.signInEmail).toHaveBeenCalledWith({ body: options, headers });
   });
 
+  it("returns response headers for transport-aware sign in", async () => {
+    const { api, service } = await createService();
+    const responseHeaders = new Headers({ "set-cookie": "session=value" });
+    const options = {
+      email: "alice@example.com",
+      password: "password",
+    };
+    api.signInEmail.mockResolvedValue({
+      headers: responseHeaders,
+      response: {
+        redirect: false,
+        token: "session-token",
+        user: {
+          createdAt: new Date("2026-01-01"),
+          email: options.email,
+          emailVerified: true,
+          id: "user-1",
+          name: "Alice",
+          updatedAt: new Date("2026-01-01"),
+        },
+      },
+    });
+
+    await expect(
+      service.signIn(headers, options, { returnHeaders: true }),
+    ).resolves.toEqual({
+      headers: responseHeaders,
+      response: expect.objectContaining({ url: null }),
+    });
+    expect(api.signInEmail).toHaveBeenCalledWith({
+      body: options,
+      headers,
+      returnHeaders: true,
+    });
+  });
+
   it("signs out the session represented by the request headers", async () => {
     const { api, service } = await createService();
     api.signOut.mockResolvedValue({ success: true });
@@ -171,6 +210,27 @@ describe("AuthService", () => {
     expect("api" in service).toBe(false);
   });
 
+  it("returns response headers when updating the current user", async () => {
+    const { api, service } = await createService();
+    const responseHeaders = new Headers({
+      "set-cookie": "better-auth.session_data=updated",
+    });
+    const options = { name: "Alice" };
+    api.updateUser.mockResolvedValue({
+      headers: responseHeaders,
+      response: { status: true },
+    });
+
+    await expect(
+      service.updateUser(headers, options, { returnHeaders: true }),
+    ).resolves.toEqual({ headers: responseHeaders, response: true });
+    expect(api.updateUser).toHaveBeenCalledWith({
+      body: options,
+      headers,
+      returnHeaders: true,
+    });
+  });
+
   it("changes the current user's email", async () => {
     const { api, service } = await createService();
     api.changeEmail.mockResolvedValue({ status: true });
@@ -181,6 +241,30 @@ describe("AuthService", () => {
 
     await expect(service.changeEmail(headers, options)).resolves.toBe(true);
     expect(api.changeEmail).toHaveBeenCalledWith({ body: options, headers });
+  });
+
+  it("returns email-change response headers when requested", async () => {
+    const { api, service } = await createService();
+    const responseHeaders = new Headers({
+      "set-cookie": "session_data=updated; Path=/; HttpOnly",
+    });
+    const options = {
+      callbackURL: "/user?emailChanged=true",
+      newEmail: "next@example.com",
+    };
+    api.changeEmail.mockResolvedValue({
+      headers: responseHeaders,
+      response: { status: true },
+    });
+
+    await expect(
+      service.changeEmail(headers, options, { returnHeaders: true }),
+    ).resolves.toEqual({ headers: responseHeaders, response: true });
+    expect(api.changeEmail).toHaveBeenCalledWith({
+      body: options,
+      headers,
+      returnHeaders: true,
+    });
   });
 
   it("changes the password and only exposes the replacement token", async () => {
@@ -199,6 +283,34 @@ describe("AuthService", () => {
       token: "replacement-token",
     });
     expect(api.changePassword).toHaveBeenCalledWith({ body: options, headers });
+  });
+
+  it("returns password-change response headers when requested", async () => {
+    const { api, service } = await createService();
+    const responseHeaders = new Headers({
+      "set-cookie": "session=replacement; Path=/; HttpOnly",
+    });
+    const options = {
+      currentPassword: "old-password",
+      newPassword: "new-password",
+      revokeOtherSessions: true,
+    };
+    api.changePassword.mockResolvedValue({
+      headers: responseHeaders,
+      response: { token: "replacement-token", user: { id: "user-1" } },
+    });
+
+    await expect(
+      service.changePassword(headers, options, { returnHeaders: true }),
+    ).resolves.toEqual({
+      headers: responseHeaders,
+      response: { token: "replacement-token" },
+    });
+    expect(api.changePassword).toHaveBeenCalledWith({
+      body: options,
+      headers,
+      returnHeaders: true,
+    });
   });
 
   it("adds a password to an account without credentials", async () => {
@@ -255,5 +367,71 @@ describe("AuthService", () => {
 
     await expect(service.unlinkAccount(headers, options)).resolves.toBe(true);
     expect(api.unlinkAccount).toHaveBeenCalledWith({ body: options, headers });
+  });
+
+  it("gets and normalizes a provider access token", async () => {
+    const { api, service } = await createService();
+    api.getAccessToken.mockResolvedValue({
+      accessToken: "access-token",
+      scopes: ["openid", "profile"],
+    });
+
+    await expect(
+      service.getAccessToken(headers, { accountId: "account-1" }),
+    ).resolves.toEqual({
+      accessToken: "access-token",
+      accessTokenExpiresAt: null,
+      idToken: null,
+      scopes: ["openid", "profile"],
+    });
+    expect(api.getAccessToken).toHaveBeenCalledWith({
+      body: { accountId: "account-1" },
+      headers,
+    });
+  });
+
+  it("refreshes and normalizes provider credentials", async () => {
+    const { api, service } = await createService();
+    api.refreshToken.mockResolvedValue({
+      accountId: "account-1",
+      providerId: "oidc",
+      refreshToken: "refresh-token",
+    });
+
+    await expect(
+      service.refreshToken(headers, { accountId: "account-1" }),
+    ).resolves.toEqual({
+      accessToken: null,
+      accessTokenExpiresAt: null,
+      accountId: "account-1",
+      idToken: null,
+      providerId: "oidc",
+      refreshToken: "refresh-token",
+      refreshTokenExpiresAt: null,
+      scope: null,
+    });
+  });
+
+  it("returns provider account information", async () => {
+    const { api, service } = await createService();
+    const result = {
+      account: {
+        accountId: "provider-user",
+        id: "account-1",
+        issuer: "https://issuer.example.com",
+        providerId: "oidc",
+      },
+      data: { tenant: "acme" },
+      user: { emailVerified: true, name: "Alice" },
+    };
+    api.accountInfo.mockResolvedValue(result);
+
+    await expect(
+      service.accountInfo(headers, { accountId: "account-1" }),
+    ).resolves.toBe(result);
+    expect(api.accountInfo).toHaveBeenCalledWith({
+      headers,
+      query: { accountId: "account-1" },
+    });
   });
 });

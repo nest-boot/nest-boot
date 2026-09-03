@@ -4,6 +4,7 @@ import type { RouteInfo } from "@nestjs/common/interfaces/middleware/middleware-
 import type { BetterAuthOptions } from "better-auth";
 
 import type {
+  AuthWorkspaceMemberRole,
   BaseAccount,
   BaseApiKey,
   BaseSession,
@@ -21,6 +22,29 @@ type BetterAuthEmailAndPasswordOptions = NonNullable<
 >;
 type BetterAuthEmailVerificationOptions = NonNullable<
   BetterAuthOptions["emailVerification"]
+>;
+type SupportedBetterAuthOptions = Pick<
+  BetterAuthOptions,
+  | "account"
+  | "advanced"
+  | "appName"
+  | "basePath"
+  | "baseURL"
+  | "databaseHooks"
+  | "disabledPaths"
+  | "hooks"
+  | "logger"
+  | "onAPIError"
+  | "rateLimit"
+  | "secrets"
+  | "secondaryStorage"
+  | "secret"
+  | "session"
+  | "socialProviders"
+  | "telemetry"
+  | "trustedOrigins"
+  | "user"
+  | "verification"
 >;
 
 /** Data supplied when an email verification message must be sent. */
@@ -59,6 +83,39 @@ export type AuthSendResetPassword = (
   request?: Request,
 ) => Promise<void>;
 
+/** Workspace member and user that issued an invitation. */
+export type AuthWorkspaceInvitationEmailInviter = Omit<
+  BaseWorkspaceMember,
+  "user"
+> & {
+  /** Authenticated user represented by the workspace membership. */
+  user: BaseUser;
+};
+
+/** Data supplied when a workspace invitation message must be sent. */
+export interface AuthWorkspaceInvitationEmailData {
+  /** Invitation identifier used by the application to construct an accept URL. */
+  id: string;
+  /** Role granted when the recipient accepts the invitation. */
+  role: AuthWorkspaceMemberRole;
+  /** Normalized recipient email address. */
+  email: string;
+  /** Workspace the recipient is invited to join. */
+  workspace: BaseWorkspace;
+  /** Persisted invitation lifecycle record. */
+  invitation: BaseWorkspaceInvitation;
+  /** Active workspace member that issued the invitation and its user. */
+  inviter: AuthWorkspaceInvitationEmailInviter;
+}
+
+/** Sends a workspace invitation message. */
+export type AuthSendWorkspaceInvitationEmail = (
+  /** Invitation, workspace, and inviter data. */
+  data: AuthWorkspaceInvitationEmailData,
+  /** Request that initiated the invitation, when supplied by the caller. */
+  request?: Request,
+) => Promise<void>;
+
 /** Email and password authentication options owned by AuthModule. */
 export interface AuthModuleEmailAndPasswordOptions extends Omit<
   BetterAuthEmailAndPasswordOptions,
@@ -81,6 +138,12 @@ export interface AuthModuleEmailVerificationOptions extends Omit<
   sendVerificationEmail?: AuthSendVerificationEmail;
 }
 
+/** Workspace lifecycle options owned by AuthModule. */
+export interface AuthModuleWorkspaceOptions {
+  /** Sends the invitation link through an application-defined delivery flow. */
+  sendInvitationEmail?: AuthSendWorkspaceInvitationEmail;
+}
+
 /** Options for configuring auth middleware route registration. */
 export interface AuthModuleMiddlewareOptions {
   /** Whether to register the auth middleware (defaults to true). */
@@ -92,10 +155,7 @@ export interface AuthModuleMiddlewareOptions {
 }
 
 /** Configuration options for the AuthModule. */
-export interface AuthModuleOptions extends Omit<
-  BetterAuthOptions,
-  "database" | "emailAndPassword" | "emailVerification"
-> {
+export interface AuthModuleOptions extends SupportedBetterAuthOptions {
   /** Base path for the auth API endpoints. */
   basePath?: string;
 
@@ -104,6 +164,9 @@ export interface AuthModuleOptions extends Omit<
 
   /** Email verification delivery and lifecycle options. */
   emailVerification?: AuthModuleEmailVerificationOptions;
+
+  /** Workspace lifecycle and invitation-delivery options. */
+  workspace?: AuthModuleWorkspaceOptions;
 
   /** Entity classes used for authentication and workspace access. */
   entities: {

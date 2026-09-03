@@ -14,10 +14,16 @@ import { Route as AuthLayoutRouteImport } from './app/auth/layout'
 import { Route as AuthenticatedPageRouteImport } from './app/_authenticated/page'
 import { Route as AuthenticatedUserLayoutRouteImport } from './app/_authenticated/user/layout'
 import { Route as InvitePageRouteImport } from './app/invite/page'
+import { Route as AuthenticatedUserPageRouteImport } from './app/_authenticated/user/page'
 import { Route as AuthenticatedWorkspacesPageRouteImport } from './app/_authenticated/workspaces/page'
 import { Route as AuthenticatedWorkspacesWorkspaceIdLayoutRouteImport } from './app/_authenticated/workspaces/$workspaceId/layout'
+import { Route as AuthForgotPasswordPageRouteImport } from './app/auth/forgot-password/page'
 import { Route as AuthLoginPageRouteImport } from './app/auth/login/page'
+import { Route as AuthResetPasswordPageRouteImport } from './app/auth/reset-password/page'
+import { Route as AuthVerifyEmailPageRouteImport } from './app/auth/verify-email/page'
 import { Route as AuthenticatedUserApiKeysPageRouteImport } from './app/_authenticated/user/api-keys/page'
+import { Route as AuthenticatedUserSecurityPageRouteImport } from './app/_authenticated/user/security/page'
+import { Route as AuthenticatedUserWorkspacesPageRouteImport } from './app/_authenticated/user/workspaces/page'
 import { Route as AuthenticatedWorkspacesWorkspaceIdPageRouteImport } from './app/_authenticated/workspaces/$workspaceId/page'
 import { Route as AuthenticatedWorkspacesWorkspaceIdApiKeysLayoutRouteImport } from './app/_authenticated/workspaces/$workspaceId/api-keys/layout'
 import { Route as AuthenticatedWorkspacesWorkspaceIdMembersLayoutRouteImport } from './app/_authenticated/workspaces/$workspaceId/members/layout'
@@ -51,6 +57,11 @@ const InvitePageRoute = InvitePageRouteImport.update({
   path: '/invite/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedUserPageRoute = AuthenticatedUserPageRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedUserLayoutRoute,
+} as any)
 const AuthenticatedWorkspacesPageRoute =
   AuthenticatedWorkspacesPageRouteImport.update({
     id: '/workspaces/',
@@ -63,15 +74,42 @@ const AuthenticatedWorkspacesWorkspaceIdLayoutRoute =
     path: '/workspaces/$workspaceId',
     getParentRoute: () => AuthenticatedLayoutRoute,
   } as any)
+const AuthForgotPasswordPageRoute = AuthForgotPasswordPageRouteImport.update({
+  id: '/forgot-password/',
+  path: '/forgot-password/',
+  getParentRoute: () => AuthLayoutRoute,
+} as any)
 const AuthLoginPageRoute = AuthLoginPageRouteImport.update({
   id: '/login/',
   path: '/login/',
+  getParentRoute: () => AuthLayoutRoute,
+} as any)
+const AuthResetPasswordPageRoute = AuthResetPasswordPageRouteImport.update({
+  id: '/reset-password/',
+  path: '/reset-password/',
+  getParentRoute: () => AuthLayoutRoute,
+} as any)
+const AuthVerifyEmailPageRoute = AuthVerifyEmailPageRouteImport.update({
+  id: '/verify-email/',
+  path: '/verify-email/',
   getParentRoute: () => AuthLayoutRoute,
 } as any)
 const AuthenticatedUserApiKeysPageRoute =
   AuthenticatedUserApiKeysPageRouteImport.update({
     id: '/api-keys/',
     path: '/api-keys/',
+    getParentRoute: () => AuthenticatedUserLayoutRoute,
+  } as any)
+const AuthenticatedUserSecurityPageRoute =
+  AuthenticatedUserSecurityPageRouteImport.update({
+    id: '/security/',
+    path: '/security/',
+    getParentRoute: () => AuthenticatedUserLayoutRoute,
+  } as any)
+const AuthenticatedUserWorkspacesPageRoute =
+  AuthenticatedUserWorkspacesPageRouteImport.update({
+    id: '/workspaces/',
+    path: '/workspaces/',
     getParentRoute: () => AuthenticatedUserLayoutRoute,
   } as any)
 const AuthenticatedWorkspacesWorkspaceIdPageRoute =
@@ -129,11 +167,17 @@ export interface FileRoutesByFullPath {
   '/user': typeof AuthenticatedUserLayoutRouteWithChildren
   '/invite/': typeof InvitePageRoute
   '/workspaces/$workspaceId': typeof AuthenticatedWorkspacesWorkspaceIdLayoutRouteWithChildren
+  '/user/': typeof AuthenticatedUserPageRoute
   '/workspaces/': typeof AuthenticatedWorkspacesPageRoute
+  '/auth/forgot-password/': typeof AuthForgotPasswordPageRoute
   '/auth/login/': typeof AuthLoginPageRoute
+  '/auth/reset-password/': typeof AuthResetPasswordPageRoute
+  '/auth/verify-email/': typeof AuthVerifyEmailPageRoute
   '/workspaces/$workspaceId/api-keys': typeof AuthenticatedWorkspacesWorkspaceIdApiKeysLayoutRouteWithChildren
   '/workspaces/$workspaceId/members': typeof AuthenticatedWorkspacesWorkspaceIdMembersLayoutRouteWithChildren
   '/user/api-keys/': typeof AuthenticatedUserApiKeysPageRoute
+  '/user/security/': typeof AuthenticatedUserSecurityPageRoute
+  '/user/workspaces/': typeof AuthenticatedUserWorkspacesPageRoute
   '/workspaces/$workspaceId/': typeof AuthenticatedWorkspacesWorkspaceIdPageRoute
   '/workspaces/create/': typeof AuthenticatedWorkspacesCreatePageRoute
   '/workspaces/$workspaceId/api-keys/': typeof AuthenticatedWorkspacesWorkspaceIdApiKeysPageRoute
@@ -143,12 +187,17 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthLayoutRouteWithChildren
-  '/user': typeof AuthenticatedUserLayoutRouteWithChildren
   '/': typeof AuthenticatedPageRoute
   '/invite': typeof InvitePageRoute
+  '/user': typeof AuthenticatedUserPageRoute
   '/workspaces': typeof AuthenticatedWorkspacesPageRoute
+  '/auth/forgot-password': typeof AuthForgotPasswordPageRoute
   '/auth/login': typeof AuthLoginPageRoute
+  '/auth/reset-password': typeof AuthResetPasswordPageRoute
+  '/auth/verify-email': typeof AuthVerifyEmailPageRoute
   '/user/api-keys': typeof AuthenticatedUserApiKeysPageRoute
+  '/user/security': typeof AuthenticatedUserSecurityPageRoute
+  '/user/workspaces': typeof AuthenticatedUserWorkspacesPageRoute
   '/workspaces/$workspaceId': typeof AuthenticatedWorkspacesWorkspaceIdPageRoute
   '/workspaces/create': typeof AuthenticatedWorkspacesCreatePageRoute
   '/workspaces/$workspaceId/api-keys': typeof AuthenticatedWorkspacesWorkspaceIdApiKeysPageRoute
@@ -164,11 +213,17 @@ export interface FileRoutesById {
   '/_authenticated/': typeof AuthenticatedPageRoute
   '/invite/': typeof InvitePageRoute
   '/_authenticated/workspaces/$workspaceId': typeof AuthenticatedWorkspacesWorkspaceIdLayoutRouteWithChildren
+  '/_authenticated/user/': typeof AuthenticatedUserPageRoute
   '/_authenticated/workspaces/': typeof AuthenticatedWorkspacesPageRoute
+  '/auth/forgot-password/': typeof AuthForgotPasswordPageRoute
   '/auth/login/': typeof AuthLoginPageRoute
+  '/auth/reset-password/': typeof AuthResetPasswordPageRoute
+  '/auth/verify-email/': typeof AuthVerifyEmailPageRoute
   '/_authenticated/workspaces/$workspaceId/api-keys': typeof AuthenticatedWorkspacesWorkspaceIdApiKeysLayoutRouteWithChildren
   '/_authenticated/workspaces/$workspaceId/members': typeof AuthenticatedWorkspacesWorkspaceIdMembersLayoutRouteWithChildren
   '/_authenticated/user/api-keys/': typeof AuthenticatedUserApiKeysPageRoute
+  '/_authenticated/user/security/': typeof AuthenticatedUserSecurityPageRoute
+  '/_authenticated/user/workspaces/': typeof AuthenticatedUserWorkspacesPageRoute
   '/_authenticated/workspaces/$workspaceId/': typeof AuthenticatedWorkspacesWorkspaceIdPageRoute
   '/_authenticated/workspaces/create/': typeof AuthenticatedWorkspacesCreatePageRoute
   '/_authenticated/workspaces/$workspaceId/api-keys/': typeof AuthenticatedWorkspacesWorkspaceIdApiKeysPageRoute
@@ -184,11 +239,17 @@ export interface FileRouteTypes {
     | '/user'
     | '/invite/'
     | '/workspaces/$workspaceId'
+    | '/user/'
     | '/workspaces/'
+    | '/auth/forgot-password/'
     | '/auth/login/'
+    | '/auth/reset-password/'
+    | '/auth/verify-email/'
     | '/workspaces/$workspaceId/api-keys'
     | '/workspaces/$workspaceId/members'
     | '/user/api-keys/'
+    | '/user/security/'
+    | '/user/workspaces/'
     | '/workspaces/$workspaceId/'
     | '/workspaces/create/'
     | '/workspaces/$workspaceId/api-keys/'
@@ -198,12 +259,17 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
-    | '/user'
     | '/'
     | '/invite'
+    | '/user'
     | '/workspaces'
+    | '/auth/forgot-password'
     | '/auth/login'
+    | '/auth/reset-password'
+    | '/auth/verify-email'
     | '/user/api-keys'
+    | '/user/security'
+    | '/user/workspaces'
     | '/workspaces/$workspaceId'
     | '/workspaces/create'
     | '/workspaces/$workspaceId/api-keys'
@@ -218,11 +284,17 @@ export interface FileRouteTypes {
     | '/_authenticated/'
     | '/invite/'
     | '/_authenticated/workspaces/$workspaceId'
+    | '/_authenticated/user/'
     | '/_authenticated/workspaces/'
+    | '/auth/forgot-password/'
     | '/auth/login/'
+    | '/auth/reset-password/'
+    | '/auth/verify-email/'
     | '/_authenticated/workspaces/$workspaceId/api-keys'
     | '/_authenticated/workspaces/$workspaceId/members'
     | '/_authenticated/user/api-keys/'
+    | '/_authenticated/user/security/'
+    | '/_authenticated/user/workspaces/'
     | '/_authenticated/workspaces/$workspaceId/'
     | '/_authenticated/workspaces/create/'
     | '/_authenticated/workspaces/$workspaceId/api-keys/'
@@ -274,6 +346,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InvitePageRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/user/': {
+      id: '/_authenticated/user/'
+      path: '/'
+      fullPath: '/user/'
+      preLoaderRoute: typeof AuthenticatedUserPageRouteImport
+      parentRoute: typeof AuthenticatedUserLayoutRoute
+    }
     '/_authenticated/workspaces/': {
       id: '/_authenticated/workspaces/'
       path: '/workspaces'
@@ -288,6 +367,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWorkspacesWorkspaceIdLayoutRouteImport
       parentRoute: typeof AuthenticatedLayoutRoute
     }
+    '/auth/forgot-password/': {
+      id: '/auth/forgot-password/'
+      path: '/forgot-password'
+      fullPath: '/auth/forgot-password/'
+      preLoaderRoute: typeof AuthForgotPasswordPageRouteImport
+      parentRoute: typeof AuthLayoutRoute
+    }
     '/auth/login/': {
       id: '/auth/login/'
       path: '/login'
@@ -295,11 +381,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthLoginPageRouteImport
       parentRoute: typeof AuthLayoutRoute
     }
+    '/auth/reset-password/': {
+      id: '/auth/reset-password/'
+      path: '/reset-password'
+      fullPath: '/auth/reset-password/'
+      preLoaderRoute: typeof AuthResetPasswordPageRouteImport
+      parentRoute: typeof AuthLayoutRoute
+    }
+    '/auth/verify-email/': {
+      id: '/auth/verify-email/'
+      path: '/verify-email'
+      fullPath: '/auth/verify-email/'
+      preLoaderRoute: typeof AuthVerifyEmailPageRouteImport
+      parentRoute: typeof AuthLayoutRoute
+    }
     '/_authenticated/user/api-keys/': {
       id: '/_authenticated/user/api-keys/'
       path: '/api-keys'
       fullPath: '/user/api-keys/'
       preLoaderRoute: typeof AuthenticatedUserApiKeysPageRouteImport
+      parentRoute: typeof AuthenticatedUserLayoutRoute
+    }
+    '/_authenticated/user/security/': {
+      id: '/_authenticated/user/security/'
+      path: '/security'
+      fullPath: '/user/security/'
+      preLoaderRoute: typeof AuthenticatedUserSecurityPageRouteImport
+      parentRoute: typeof AuthenticatedUserLayoutRoute
+    }
+    '/_authenticated/user/workspaces/': {
+      id: '/_authenticated/user/workspaces/'
+      path: '/workspaces'
+      fullPath: '/user/workspaces/'
+      preLoaderRoute: typeof AuthenticatedUserWorkspacesPageRouteImport
       parentRoute: typeof AuthenticatedUserLayoutRoute
     }
     '/_authenticated/workspaces/$workspaceId/': {
@@ -362,12 +476,18 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedUserLayoutRouteChildren {
+  AuthenticatedUserPageRoute: typeof AuthenticatedUserPageRoute
   AuthenticatedUserApiKeysPageRoute: typeof AuthenticatedUserApiKeysPageRoute
+  AuthenticatedUserSecurityPageRoute: typeof AuthenticatedUserSecurityPageRoute
+  AuthenticatedUserWorkspacesPageRoute: typeof AuthenticatedUserWorkspacesPageRoute
 }
 
 const AuthenticatedUserLayoutRouteChildren: AuthenticatedUserLayoutRouteChildren =
   {
+    AuthenticatedUserPageRoute: AuthenticatedUserPageRoute,
     AuthenticatedUserApiKeysPageRoute: AuthenticatedUserApiKeysPageRoute,
+    AuthenticatedUserSecurityPageRoute: AuthenticatedUserSecurityPageRoute,
+    AuthenticatedUserWorkspacesPageRoute: AuthenticatedUserWorkspacesPageRoute,
   }
 
 const AuthenticatedUserLayoutRouteWithChildren =
@@ -454,11 +574,17 @@ const AuthenticatedLayoutRouteWithChildren =
   AuthenticatedLayoutRoute._addFileChildren(AuthenticatedLayoutRouteChildren)
 
 interface AuthLayoutRouteChildren {
+  AuthForgotPasswordPageRoute: typeof AuthForgotPasswordPageRoute
   AuthLoginPageRoute: typeof AuthLoginPageRoute
+  AuthResetPasswordPageRoute: typeof AuthResetPasswordPageRoute
+  AuthVerifyEmailPageRoute: typeof AuthVerifyEmailPageRoute
 }
 
 const AuthLayoutRouteChildren: AuthLayoutRouteChildren = {
+  AuthForgotPasswordPageRoute: AuthForgotPasswordPageRoute,
   AuthLoginPageRoute: AuthLoginPageRoute,
+  AuthResetPasswordPageRoute: AuthResetPasswordPageRoute,
+  AuthVerifyEmailPageRoute: AuthVerifyEmailPageRoute,
 }
 
 const AuthLayoutRouteWithChildren = AuthLayoutRoute._addFileChildren(

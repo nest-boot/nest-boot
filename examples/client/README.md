@@ -1,8 +1,17 @@
 # Example client
 
 TanStack Start client for the Nest Boot full-stack example. It uses Apollo
-Client for GraphQL, Better Auth for browser authentication, shadcn-based UI
-components, internationalization, and Playwright end-to-end tests.
+Client and GraphQL for browser authentication and application APIs. The Better
+Auth client is retained only for the OIDC redirect flow. The UI uses shadcn,
+internationalization, and Playwright end-to-end tests.
+
+Email/password flows use GraphQL end to end. The example includes persistent
+and browser-session sign-in, enumeration-safe password recovery, reset-token
+handling, registration verification with resend and callback states, and
+authenticated password changes under `/user/security`. The security page also
+lists active sessions and can revoke one or every other session. The personal
+profile page supports a two-stage email change that confirms the current
+address before verifying the new address.
 
 ## Run locally
 

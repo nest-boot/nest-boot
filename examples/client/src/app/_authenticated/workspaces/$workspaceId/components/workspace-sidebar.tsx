@@ -3,9 +3,9 @@ import { KeyRound, Settings, User } from "lucide-react";
 import { linkOptions, useParams } from "@tanstack/react-router";
 import { t } from "i18next";
 import { useCurrentWorkspaceMemberContext } from "../contexts/current-workspace-member-context";
+import { SidebarUser } from "../../../components/sidebar-user";
 import { SidebarLogo } from "./sidebar-logo";
 import { WorkspaceSwitcher } from "./workspace-switcher";
-import { SidebarUser } from "./sidebar-user";
 import type { LinkProps } from "@tanstack/react-router";
 import type { ComponentProps, ComponentType, FC } from "react";
 import {

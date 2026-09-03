@@ -1,0 +1,65 @@
+---
+title: "Invitations"
+description: "Create, deliver, accept, reject, and cancel workspace invitations."
+---
+
+Workspace invitations are independent lifecycle entities. They use `pending`,
+`accepted`, `rejected`, and `canceled` states; accepting one creates a separate
+active member while retaining the invitation record.
+
+## Invitation Email
+
+Configure `workspace.sendInvitationEmail` to deliver an application-owned
+acceptance link. Nest Boot persists the invitation before calling the sender and
+supplies its normalized email, ID, role, workspace, record, and the inviting
+member with its authenticated user.
+
+```typescript
+import { Mailer } from "@nest-boot/mailer";
+import { RequestContext } from "@nest-boot/request-context";
+
+AuthModule.forRoot({
+  // ...
+  workspace: {
+    async sendInvitationEmail({ email, id, inviter, workspace }) {
+      const url = new URL(
+        "/invite",
+        process.env.APP_URL ?? "http://localhost:3000",
+      );
+      url.searchParams.set("invitationId", id);
+
+      const mailer = RequestContext.get(Mailer);
+      if (!mailer) throw new Error("Mailer is unavailable");
+
+      await mailer.sendMail({
+        to: email,
+        subject: `Invitation to join ${workspace.name}`,
+        text: `${inviter.user.name} invited you: ${url}`,
+      });
+    },
+  },
+});
+```
+
+The application owns the URL because acceptance may be exposed through
+GraphQL, REST, or another transport. The sender receives an optional Fetch
+`Request` when the `createInvitation()` caller supplies one.
+
+## WorkspaceService API
+
+- `createInvitation(workspace, inviter, input, request?)`;
+- `getInvitation(id)`;
+- `listInvitations(workspace)`;
+- `listUserInvitations(user)`;
+- `acceptInvitation(user, invitationId)`;
+- `rejectInvitation(user, invitation)`;
+- `cancelInvitation(invitation)`.
+
+Invitations expire after 48 hours unless `input.expiresIn` supplies another
+lifetime in seconds. Creation rejects existing members and duplicate pending
+invitations. Acceptance and rejection require the invitation email to match the
+authenticated user. Only pending, unexpired invitations can be accepted.
+
+Keep authorization in the transport boundary: workspace administrators create
+and cancel invitations, while the addressed user gets, accepts, or rejects an
+invitation.

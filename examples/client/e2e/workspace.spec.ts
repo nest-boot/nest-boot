@@ -32,7 +32,7 @@ test.describe("workspace management", () => {
     await page.getByTestId("workspace-settings-delete").click();
     await page.getByTestId("alert-dialog-confirm").click();
 
-    await expect(page).toHaveURL(/\/workspaces$/);
-    await expect(page.getByTestId("workspace-empty-state")).toBeVisible();
+    await expect(page).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
+    await expect(page.getByTestId("user-workspaces-page")).toBeVisible();
   });
 });

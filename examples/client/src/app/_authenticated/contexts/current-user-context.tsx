@@ -1,5 +1,6 @@
-import { createContext, useContext } from "react";
 import { useSuspenseQuery } from "@apollo/client/react";
+import { createContext, useContext } from "react";
+
 import type { ReactNode } from "react";
 import type { GetCurrentUserFromCurrentUserContextQuery } from "@/gql/graphql";
 import { graphql } from "@/gql";
@@ -31,8 +32,9 @@ export function useCurrentUserContext() {
 
   if (context == null) {
     throw new Error(
-      "useCurrentUserContext must be used within a CurrentUserContext",
+      "useCurrentUserContext must be used within a CurrentUserProvider",
     );
   }
+
   return context;
 }

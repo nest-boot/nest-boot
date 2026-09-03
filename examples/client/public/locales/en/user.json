@@ -1,0 +1,101 @@
+{
+  "title": "Account",
+  "profile": {
+    "title": "Profile",
+    "description": "Manage the profile information associated with your account.",
+    "card": {
+      "title": "Profile information",
+      "description": "Your name is shown to other members in shared workspaces."
+    },
+    "form": {
+      "name": {
+        "label": "Name",
+        "required": "Name is required"
+      },
+      "email": {
+        "label": "Email"
+      }
+    },
+    "toast": {
+      "updated": "Profile updated",
+      "update_failed": "Unable to update profile"
+    }
+  },
+  "email": {
+    "card": {
+      "title": "Change email",
+      "description": "Confirm the change from your current email address, then verify the new address."
+    },
+    "form": {
+      "current_email": "Current email",
+      "new_email": "New email",
+      "invalid": "Enter a valid email address",
+      "submit": "Send verification email"
+    },
+    "changed": {
+      "title": "Email changed",
+      "description": "Your new email address has been verified and is now active."
+    },
+    "confirmed": {
+      "title": "Email change confirmed",
+      "description": "We sent a verification link to {{email}}. Open it to finish changing your email."
+    },
+    "error": {
+      "title": "Email verification failed",
+      "description": "The verification link is invalid or has expired. Request another email change and try again."
+    },
+    "toast": {
+      "confirmation_sent": "Confirmation email sent to your current address",
+      "request_failed": "Unable to request an email change"
+    }
+  },
+  "security": {
+    "title": "Security",
+    "description": "Manage your account password and active sessions.",
+    "card": {
+      "title": "Change password",
+      "description": "Use a strong password that you do not reuse on other services."
+    },
+    "form": {
+      "current_password": "Current password",
+      "current_required": "Enter your current password",
+      "new_password": "New password",
+      "confirm_password": "Confirm new password",
+      "revoke_other_sessions": "Sign out other sessions",
+      "submit": "Change password"
+    },
+    "toast": {
+      "updated": "Password changed",
+      "update_failed": "Unable to change password"
+    },
+    "sessions": {
+      "created": "Created {{date}}",
+      "current": "Current session",
+      "description": "Review browsers and devices signed in to your account.",
+      "empty": "No active sessions were found.",
+      "expires": "Expires {{date}}",
+      "loading": "Loading active sessions…",
+      "revoke": "Sign out",
+      "revoke_others": "Sign out other sessions",
+      "title": "Active sessions",
+      "unknown_device": "Unknown browser or device",
+      "unknown_ip": "Unknown IP address",
+      "toast": {
+        "others_revoked": "Other sessions signed out",
+        "revoke_failed": "Unable to sign out the session",
+        "revoked": "Session signed out"
+      }
+    }
+  },
+  "workspaces": {
+    "title": "Workspaces",
+    "description": "View and open the workspaces available to your account.",
+    "create": "Create workspace",
+    "open": "Open workspace",
+    "table": {
+      "name": "Name",
+      "created_at": "Created",
+      "updated_at": "Updated"
+    }
+  }
+}

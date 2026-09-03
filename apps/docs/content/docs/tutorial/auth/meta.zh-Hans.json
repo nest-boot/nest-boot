@@ -1,0 +1,14 @@
+{
+  "title": "身份验证",
+  "pages": [
+    "index",
+    "configuration",
+    "email-password",
+    "sessions",
+    "workspaces",
+    "invitations",
+    "api-keys",
+    "authorization",
+    "integration"
+  ]
+}
