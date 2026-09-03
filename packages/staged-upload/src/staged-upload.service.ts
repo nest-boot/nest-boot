@@ -187,7 +187,10 @@ export class StagedUploadService {
     let segments: string[];
 
     try {
-      segments = new URL(temporaryUrl).pathname
+      const url = temporaryUrl.startsWith("/")
+        ? new URL(temporaryUrl, "http://storage.local")
+        : new URL(temporaryUrl);
+      segments = url.pathname
         .split("/")
         .filter(Boolean)
         .map((segment) => decodeURIComponent(segment));
