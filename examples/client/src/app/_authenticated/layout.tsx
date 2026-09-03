@@ -1,5 +1,6 @@
 import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
 
+import { CurrentUserProvider } from "./contexts/current-user-context";
 import { graphql } from "@/gql";
 
 const GET_CURRENT_USER_FROM_AUTHENTICATED_ROUTE = graphql(`
@@ -11,7 +12,7 @@ const GET_CURRENT_USER_FROM_AUTHENTICATED_ROUTE = graphql(`
 `);
 
 export const Route = createFileRoute("/_authenticated")({
-  component: () => <Outlet />,
+  component: AuthenticatedLayout,
   beforeLoad: async ({ context: { apolloClient } }) => {
     try {
       const { data } = await apolloClient.query({
@@ -32,3 +33,11 @@ export const Route = createFileRoute("/_authenticated")({
     }
   },
 });
+
+function AuthenticatedLayout() {
+  return (
+    <CurrentUserProvider>
+      <Outlet />
+    </CurrentUserProvider>
+  );
+}

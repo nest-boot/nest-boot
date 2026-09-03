@@ -19,7 +19,10 @@ import {
 } from "@nestjs/common";
 
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
-import type { AuthModuleOptions } from "./auth-module-options.interface.js";
+import type {
+  AuthModuleOptions,
+  AuthWorkspaceInvitationEmailInviter,
+} from "./auth-module-options.interface.js";
 import type {
   BaseUser,
   BaseWorkspace,
@@ -241,6 +244,7 @@ export class WorkspaceService<
     workspace: Workspace,
     inviter: User,
     input: CreateWorkspaceInvitationOptions,
+    request?: Request,
   ): Promise<WorkspaceInvitation> {
     const email = input.email.toLowerCase();
     const [member, invitation] = await this.withRlsDisabled(
@@ -269,6 +273,16 @@ export class WorkspaceService<
       throw new ConflictException("User is already invited to this workspace");
     }
 
+    const sendInvitationEmail = this.authOptions.workspace?.sendInvitationEmail;
+    const inviterMember = sendInvitationEmail
+      ? await this.getMember(workspace, inviter)
+      : null;
+    if (sendInvitationEmail && !inviterMember) {
+      throw new ForbiddenException(
+        "Invitation sender is not an active workspace member",
+      );
+    }
+
     const created = this.em.create(this.workspaceInvitationEntity, {
       email,
       expiresAt: new Date(
@@ -280,6 +294,27 @@ export class WorkspaceService<
       workspace,
     } as unknown as RequiredEntityData<WorkspaceInvitation>);
     await this.em.persist(created).flush();
+
+    if (sendInvitationEmail && inviterMember) {
+      const callbackInviter = Object.assign(
+        Object.create(Object.getPrototypeOf(inviterMember)) as WorkspaceMember,
+        inviterMember,
+        { user: inviter },
+      ) as unknown as AuthWorkspaceInvitationEmailInviter;
+
+      await sendInvitationEmail(
+        {
+          email,
+          id: created.id,
+          invitation: created,
+          inviter: callbackInviter,
+          role: created.role,
+          workspace,
+        },
+        request,
+      );
+    }
+
     return created;
   }
 

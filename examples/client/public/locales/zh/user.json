@@ -1,0 +1,101 @@
+{
+  "title": "个人中心",
+  "profile": {
+    "title": "个人资料",
+    "description": "管理与个人账户关联的资料。",
+    "card": {
+      "title": "资料信息",
+      "description": "您的名称会向同一工作空间内的其他成员显示。"
+    },
+    "form": {
+      "name": {
+        "label": "名称",
+        "required": "名称不能为空"
+      },
+      "email": {
+        "label": "电子邮箱"
+      }
+    },
+    "toast": {
+      "updated": "个人资料已更新",
+      "update_failed": "个人资料更新失败"
+    }
+  },
+  "email": {
+    "card": {
+      "title": "修改邮箱",
+      "description": "请先通过当前邮箱确认修改，再验证新的邮箱地址。"
+    },
+    "form": {
+      "current_email": "当前邮箱",
+      "new_email": "新邮箱",
+      "invalid": "请输入有效的邮箱地址",
+      "submit": "发送验证邮件"
+    },
+    "changed": {
+      "title": "邮箱已修改",
+      "description": "新邮箱地址已完成验证并正式生效。"
+    },
+    "confirmed": {
+      "title": "邮箱修改已确认",
+      "description": "验证邮件已发送至 {{email}}，请完成验证以更新账户邮箱。"
+    },
+    "error": {
+      "title": "邮箱验证失败",
+      "description": "验证链接无效或已过期，请重新提交邮箱修改请求。"
+    },
+    "toast": {
+      "confirmation_sent": "确认邮件已发送至当前邮箱",
+      "request_failed": "无法提交邮箱修改请求"
+    }
+  },
+  "security": {
+    "title": "账户安全",
+    "description": "管理账户密码和活跃会话。",
+    "card": {
+      "title": "修改密码",
+      "description": "请使用未在其他服务中重复使用的高强度密码。"
+    },
+    "form": {
+      "current_password": "当前密码",
+      "current_required": "请输入当前密码",
+      "new_password": "新密码",
+      "confirm_password": "确认新密码",
+      "revoke_other_sessions": "退出其他会话",
+      "submit": "修改密码"
+    },
+    "toast": {
+      "updated": "密码已修改",
+      "update_failed": "无法修改密码"
+    },
+    "sessions": {
+      "created": "创建于 {{date}}",
+      "current": "当前会话",
+      "description": "查看当前登录账户的浏览器和设备。",
+      "empty": "没有找到活跃会话。",
+      "expires": "过期于 {{date}}",
+      "loading": "正在加载活跃会话…",
+      "revoke": "退出",
+      "revoke_others": "退出其他会话",
+      "title": "活跃会话",
+      "unknown_device": "未知浏览器或设备",
+      "unknown_ip": "未知 IP 地址",
+      "toast": {
+        "others_revoked": "其他会话已退出",
+        "revoke_failed": "无法退出该会话",
+        "revoked": "会话已退出"
+      }
+    }
+  },
+  "workspaces": {
+    "title": "工作空间",
+    "description": "查看并进入当前账户可访问的工作空间。",
+    "create": "创建工作空间",
+    "open": "进入工作空间",
+    "table": {
+      "name": "名称",
+      "created_at": "创建时间",
+      "updated_at": "更新时间"
+    }
+  }
+}

@@ -1,4 +1,9 @@
 import { EntityManager } from "@mikro-orm/core";
+import { RequestContext } from "@nest-boot/request-context";
+import {
+  RowLevelSecurity,
+  RowLevelSecurityMode,
+} from "@nest-boot/row-level-security";
 import { Inject, Injectable } from "@nestjs/common";
 
 import { AUTH_TOKEN } from "./auth.constants.js";
@@ -66,12 +71,15 @@ export class SessionService {
     const data = await this.auth.api.getSession({ headers });
     if (!data) return null;
 
-    const [user, session] = await Promise.all([
-      this.em.findOne(this.options.entities.user, { id: data.user.id }),
-      this.em.findOne(this.options.entities.session, {
-        token: data.session.token,
-      }),
-    ]);
+    const [user, session] = await this.runUnrestricted(
+      async () =>
+        await Promise.all([
+          this.em.findOne(this.options.entities.user, { id: data.user.id }),
+          this.em.findOne(this.options.entities.session, {
+            token: data.session.token,
+          }),
+        ]),
+    );
 
     if (!user || !session) return null;
     if (
@@ -99,9 +107,12 @@ export class SessionService {
     const data = await this.auth.api.listSessions({ headers });
     if (data.length === 0) return [];
 
-    const sessions = await this.em.find(this.options.entities.session, {
-      token: { $in: data.map(({ token }) => token) },
-    });
+    const sessions = await this.runUnrestricted(
+      async () =>
+        await this.em.find(this.options.entities.session, {
+          token: { $in: data.map(({ token }) => token) },
+        }),
+    );
     const sessionsByToken = new Map(
       sessions.map((session) => [session.token, session]),
     );
@@ -131,5 +142,18 @@ export class SessionService {
   async revokeSessions(headers: HeadersInit): Promise<boolean> {
     const result = await this.auth.api.revokeSessions({ headers });
     return result.status;
+  }
+
+  private async runUnrestricted<T>(callback: () => Promise<T>): Promise<T> {
+    const run = () => {
+      RowLevelSecurity.setMode(RowLevelSecurityMode.DISABLED);
+      return callback();
+    };
+
+    if (RequestContext.isActive()) return await RequestContext.child(run);
+    return await RequestContext.run(
+      new RequestContext({ type: "auth-session" }),
+      run,
+    );
   }
 }

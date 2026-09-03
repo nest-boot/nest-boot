@@ -471,9 +471,6 @@ importers:
       '@node-rs/jieba':
         specifier: ^2.0.1
         version: 2.0.2
-      better-auth:
-        specifier: ^1.7.2
-        version: 1.7.2
       class-transformer:
         specifier: ^0.5.1
         version: 0.5.1

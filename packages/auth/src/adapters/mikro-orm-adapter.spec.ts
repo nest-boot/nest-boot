@@ -21,6 +21,11 @@ vi.mock("better-auth/adapters", () => ({
 
 // Import the function under test
 import { LockMode, MikroORM, Raw } from "@mikro-orm/core";
+import { RequestContext } from "@nest-boot/request-context";
+import {
+  RowLevelSecurity,
+  RowLevelSecurityMode,
+} from "@nest-boot/row-level-security";
 
 import {
   BaseAccount,
@@ -713,6 +718,32 @@ describe("mikroOrmAdapter", () => {
       name: "New",
     });
     expect(em.flush).toHaveBeenCalledTimes(1);
+  });
+
+  it("runs Better Auth persistence outside application RLS", async () => {
+    const { em, orm } = createOrm();
+    const entity = { id: "user-1", name: "Old" };
+    em.findOne.mockImplementation(() => {
+      expect(RowLevelSecurity.getMode()).toBe(RowLevelSecurityMode.DISABLED);
+      return Promise.resolve(entity);
+    });
+    em.flush.mockImplementation(() => {
+      expect(RowLevelSecurity.getMode()).toBe(RowLevelSecurityMode.DISABLED);
+      return Promise.resolve();
+    });
+    const adapter = createAdapter(orm);
+
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      RowLevelSecurity.setMode(RowLevelSecurityMode.ENABLED);
+
+      await adapter.update({
+        model: "user",
+        update: { name: "New" },
+        where: [makeWhere("id", "eq", "user-1")],
+      });
+
+      expect(RowLevelSecurity.getMode()).toBe(RowLevelSecurityMode.ENABLED);
+    });
   });
 
   it("should return null when update cannot find an entity", async () => {

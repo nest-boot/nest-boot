@@ -1,7 +1,6 @@
 import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
 import { CurrentWorkspaceProvider } from "./contexts/current-workspace-context";
 import { CurrentWorkspaceMemberProvider } from "./contexts/current-workspace-member-context";
-import { CurrentUserProvider } from "./contexts/current-user-context";
 import { WorkspaceSidebar } from "./components/workspace-sidebar";
 import { graphql } from "@/gql";
 import {
@@ -47,26 +46,24 @@ export const Route = createFileRoute("/_authenticated/workspaces/$workspaceId")(
 
 function WorkspaceLayout() {
   return (
-    <CurrentUserProvider>
-      <CurrentWorkspaceProvider>
-        <CurrentWorkspaceMemberProvider>
-          <SidebarProvider>
-            <WorkspaceSidebar />
+    <CurrentWorkspaceProvider>
+      <CurrentWorkspaceMemberProvider>
+        <SidebarProvider>
+          <WorkspaceSidebar />
 
-            <SidebarInset>
-              <header className="bg-background flex h-16 shrink-0 items-center gap-2 border-b transition-[width,height] duration-200 ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 md:left-(--sidebar-width) md:group-has-data-[collapsible=icon]/sidebar-wrapper:left-(--sidebar-width-icon)">
-                <div className="flex items-center gap-2 px-4">
-                  <SidebarTrigger />
+          <SidebarInset>
+            <header className="bg-background flex h-16 shrink-0 items-center gap-2 border-b transition-[width,height] duration-200 ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 md:left-(--sidebar-width) md:group-has-data-[collapsible=icon]/sidebar-wrapper:left-(--sidebar-width-icon)">
+              <div className="flex items-center gap-2 px-4">
+                <SidebarTrigger />
 
-                  <Breadcrumbs />
-                </div>
-              </header>
+                <Breadcrumbs />
+              </div>
+            </header>
 
-              <Outlet />
-            </SidebarInset>
-          </SidebarProvider>
-        </CurrentWorkspaceMemberProvider>
-      </CurrentWorkspaceProvider>
-    </CurrentUserProvider>
+            <Outlet />
+          </SidebarInset>
+        </SidebarProvider>
+      </CurrentWorkspaceMemberProvider>
+    </CurrentWorkspaceProvider>
   );
 }

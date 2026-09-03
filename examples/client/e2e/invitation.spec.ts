@@ -1,6 +1,11 @@
 import { expect, test } from "@playwright/test";
 
-import { registerUser, testPassword } from "./utils/auth";
+import {
+  completeEmailVerification,
+  registerUser,
+  testPassword,
+} from "./utils/auth";
+import { waitForEmailUrl } from "./utils/mailpit";
 import { createFirstWorkspace } from "./utils/workspace";
 import { uniqueSeed } from "./utils/unique";
 
@@ -46,6 +51,7 @@ test.describe("workspace invitations", () => {
     browser,
     context,
     page,
+    request,
   }) => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
 
@@ -75,6 +81,13 @@ test.describe("workspace invitations", () => {
     expect(inviteLink).toMatch(
       /\/invite\?invitationId=[0-9a-f]{8}-[0-9a-f-]{27}$/,
     );
+    await expect(
+      waitForEmailUrl(
+        request,
+        inviteeEmail,
+        `Invitation to join ${workspaceName}`,
+      ),
+    ).resolves.toBe(inviteLink);
     await inviteDialog.getByTestId("workspace-invite-link-close").click();
 
     const inviteeContext = await browser.newContext({
@@ -92,6 +105,8 @@ test.describe("workspace invitations", () => {
       await inviteePage.getByTestId("auth-email-input").fill(inviteeEmail);
       await inviteePage.getByTestId("auth-password-input").fill(testPassword);
       await inviteePage.getByTestId("auth-submit").click();
+
+      await completeEmailVerification(inviteePage, inviteeEmail);
 
       await expect(inviteePage).toHaveURL(/\/invite\?invitationId=/);
       await expect(inviteePage.getByTestId("invite-accept-page")).toBeVisible();
@@ -173,6 +188,8 @@ test.describe("workspace invitations", () => {
       await inviteePage.getByTestId("auth-password-input").fill(testPassword);
       await inviteePage.getByTestId("auth-submit").click();
 
+      await completeEmailVerification(inviteePage, inviteeEmail);
+
       await expect(inviteePage).toHaveURL(/\/invite\?invitationId=/);
       await expect(inviteePage.getByTestId("invite-accept-page")).toBeVisible();
       await inviteePage.getByTestId("invite-accept-submit").click();
@@ -194,9 +211,9 @@ test.describe("workspace invitations", () => {
       ).toHaveCount(0);
 
       await inviteePage.reload();
-      await expect(inviteePage).toHaveURL(/\/workspaces$/);
+      await expect(inviteePage).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
       await expect(
-        inviteePage.getByTestId("workspace-empty-state"),
+        inviteePage.getByTestId("user-workspaces-page"),
       ).toBeVisible();
       await expect(
         inviteePage.getByText(

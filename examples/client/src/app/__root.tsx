@@ -20,6 +20,7 @@ export const Route = createRootRouteWithContext<
     title?: string;
   }
 >()({
+  ssr: false,
   head: () => ({
     meta: [
       {

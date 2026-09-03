@@ -294,7 +294,6 @@ function ApiKeysComponent() {
         setRenameDialogOpen(false);
         setRenamingApiKey(null);
         renameForm.reset();
-        await refetch();
         toast.success(t("api-key:toast.updated_success"));
       } catch (err) {
         if (err instanceof Error) {
@@ -400,7 +399,6 @@ function ApiKeysComponent() {
           input: { enabled: !apiKey.enabled },
         },
       });
-      await refetch();
       toast.success(
         t(
           apiKey.enabled

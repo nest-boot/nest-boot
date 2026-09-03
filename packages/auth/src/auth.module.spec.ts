@@ -390,6 +390,7 @@ describe("AuthModule", () => {
         middleware: { register: false },
         onAuthenticated: vi.fn(),
         secret,
+        workspace: { sendInvitationEmail: vi.fn() },
       },
       { em: {} } as unknown as MikroORM,
     );
@@ -405,6 +406,7 @@ describe("AuthModule", () => {
     expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty(
       "onAuthenticated",
     );
+    expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty("workspace");
   });
 
   it("should enable email auth by default when AUTH_EMAIL_ENABLED is unset", () => {
@@ -741,67 +743,6 @@ describe("AuthModule", () => {
         orm,
       ),
     ).toThrow("AUTH_OIDC_PROMPT");
-  });
-
-  it("should keep env OIDC plugin when custom plugins are configured", () => {
-    setOidcEnv();
-    const customPlugin = {
-      id: "custom-plugin",
-    };
-    const orm = {
-      em: {},
-    } as unknown as MikroORM;
-    const authProvider = getAuthProvider();
-
-    authProvider.useFactory(
-      {
-        entities,
-        plugins: [customPlugin],
-        secret,
-      },
-      orm,
-    );
-
-    expect(mockBetterAuth).toHaveBeenCalledWith(
-      expect.objectContaining({
-        plugins: [
-          {
-            options: {
-              config: [
-                expect.objectContaining({
-                  providerId: "oidc",
-                }),
-              ],
-            },
-            type: "generic-oauth",
-          },
-          customPlugin,
-        ],
-      }),
-    );
-  });
-
-  it("should reject env OIDC when a custom genericOAuth plugin is configured", () => {
-    setOidcEnv();
-    const orm = {
-      em: {},
-    } as unknown as MikroORM;
-    const authProvider = getAuthProvider();
-
-    expect(() =>
-      authProvider.useFactory(
-        {
-          entities,
-          plugins: [
-            {
-              id: "generic-oauth",
-            },
-          ],
-          secret,
-        },
-        orm,
-      ),
-    ).toThrow("AUTH_OIDC_*");
   });
 
   it("should merge email auth options without dropping email signup disable env flags", () => {

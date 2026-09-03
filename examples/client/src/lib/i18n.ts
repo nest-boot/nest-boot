@@ -29,6 +29,7 @@ i18n
       "permission",
       "workspace",
       "workspace-member",
+      "user",
       "thread-ui",
     ],
     defaultNS: "common",

@@ -3,7 +3,9 @@ import { graphqlRequest } from "./graphql";
 import type { Page } from "@playwright/test";
 
 export async function createFirstWorkspace(page: Page, name: string) {
-  await expect(page.getByTestId("workspace-empty-state")).toBeVisible();
+  await expect(page.getByTestId("user-workspaces-page")).toBeVisible();
+  await page.getByTestId("user-workspace-create-action").click();
+  await expect(page).toHaveURL(/\/workspaces\/create$/);
   await page.getByTestId("workspace-create-name-input").fill(name);
   await page.getByTestId("workspace-create-submit").click();
   await expect(page).toHaveURL(/\/workspaces\/\d+\/settings$/);

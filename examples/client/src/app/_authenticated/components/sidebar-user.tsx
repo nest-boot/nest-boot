@@ -1,9 +1,16 @@
-import { EllipsisVertical, KeyRound, LogOut } from "lucide-react";
-import md5 from "md5";
-
-import { useMemo } from "react";
+import { useApolloClient, useMutation } from "@apollo/client/react";
 import { useNavigate } from "@tanstack/react-router";
 import { t } from "i18next";
+import {
+  Boxes,
+  CircleUserRound,
+  EllipsisVertical,
+  KeyRound,
+  LogOut,
+} from "lucide-react";
+import md5 from "md5";
+import { useMemo } from "react";
+
 import { useCurrentUserContext } from "../contexts/current-user-context";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -21,13 +28,19 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { authClient } from "@/lib/auth-client";
+import { graphql } from "@/gql";
+
+const AUTH_SIGN_OUT_FROM_SIDEBAR_USER = graphql(`
+  mutation authSignOutFromSidebarUser {
+    authSignOut
+  }
+`);
 
 export function SidebarUser() {
   const { isMobile } = useSidebar();
-
   const navigate = useNavigate();
-
+  const apolloClient = useApolloClient();
+  const [signOut] = useMutation(AUTH_SIGN_OUT_FROM_SIDEBAR_USER);
   const currentUser = useCurrentUserContext();
 
   const userAvatar = useMemo(
@@ -92,21 +105,32 @@ export function SidebarUser() {
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem
+                data-testid="sidebar-user-account-link"
+                onClick={() => navigate({ to: "/user" })}
+              >
+                <CircleUserRound />
+                {t("sidebar:user.account")}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                data-testid="sidebar-user-workspaces-link"
+                onClick={() => navigate({ to: "/user/workspaces" })}
+              >
+                <Boxes />
+                {t("sidebar:user.workspaces")}
+              </DropdownMenuItem>
+              <DropdownMenuItem
                 data-testid="sidebar-user-api-keys-link"
                 onClick={() => navigate({ to: "/user/api-keys" })}
               >
                 <KeyRound />
                 {t("sidebar:user.api_keys")}
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={() => {
-                  authClient.signOut({
-                    fetchOptions: {
-                      onSuccess: () => {
-                        navigate({ to: "/auth/login" });
-                      },
-                    },
-                  });
+                onClick={async () => {
+                  await signOut();
+                  await apolloClient.clearStore();
+                  await navigate({ to: "/auth/login" });
                 }}
               >
                 <LogOut />

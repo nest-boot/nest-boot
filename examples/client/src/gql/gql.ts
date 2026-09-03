@@ -14,17 +14,26 @@ import { TypedDocumentNode as DocumentNode } from "@graphql-typed-document-node/
  * Learn more about it here: https://the-guild.dev/graphql/codegen/plugins/presets/preset-client#reducing-bundle-size
  */
 type Documents = {
+  "\n  mutation authSignOutFromSidebarUser {\n    authSignOut\n  }\n": typeof types.AuthSignOutFromSidebarUserDocument;
+  "\n  query getCurrentUserFromCurrentUserContext {\n    currentUser {\n      id\n      name\n      email\n    }\n  }\n": typeof types.GetCurrentUserFromCurrentUserContextDocument;
   "\n  query getCurrentUserFromAuthenticatedRoute {\n    currentUser {\n      id\n    }\n  }\n": typeof types.GetCurrentUserFromAuthenticatedRouteDocument;
   "\n  query getUserApiKeysFromUserApiKeysRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $filter: ApiKeyFilter\n    $orderBy: ApiKeyOrder\n    $query: String\n  ) {\n    userApiKeys(\n      after: $after\n      before: $before\n      first: $first\n      last: $last\n      orderBy: $orderBy\n      filter: $filter\n      query: $query\n    ) {\n      edges {\n        node {\n          id\n          name\n          start\n          prefix\n          enabled\n          permissions\n          createdAt\n          lastUsedAt\n          expiresAt\n        }\n      }\n      pageInfo {\n        endCursor\n        hasNextPage\n        hasPreviousPage\n        startCursor\n      }\n    }\n  }\n": typeof types.GetUserApiKeysFromUserApiKeysRouteDocument;
   "\n  mutation createUserApiKeyFromUserApiKeysRoute($input: CreateApiKeyInput!) {\n    createUserApiKey(input: $input) {\n      apiKey\n      entity {\n        id\n        name\n        start\n        prefix\n        enabled\n        permissions\n        createdAt\n        lastUsedAt\n        expiresAt\n      }\n    }\n  }\n": typeof types.CreateUserApiKeyFromUserApiKeysRouteDocument;
   "\n  mutation updateUserApiKeyFromUserApiKeysRoute(\n    $id: ID!\n    $input: UpdateApiKeyInput!\n  ) {\n    updateUserApiKey(id: $id, input: $input) {\n      id\n      name\n      start\n      prefix\n      enabled\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n": typeof types.UpdateUserApiKeyFromUserApiKeysRouteDocument;
   "\n  mutation deleteUserApiKeyFromUserApiKeysRoute($id: ID!) {\n    deleteUserApiKey(id: $id) {\n      id\n      name\n      start\n      prefix\n      enabled\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n": typeof types.DeleteUserApiKeyFromUserApiKeysRouteDocument;
+  "\n  query getCurrentUserFromUserRoute {\n    currentUser {\n      id\n      name\n      email\n      createdAt\n    }\n  }\n": typeof types.GetCurrentUserFromUserRouteDocument;
+  "\n  mutation updateUserFromUserRoute($input: AuthUpdateUserInput!) {\n    authUpdateUser(input: $input)\n  }\n": typeof types.UpdateUserFromUserRouteDocument;
+  "\n  mutation changeEmailFromUserRoute($input: AuthChangeEmailInput!) {\n    authChangeEmail(input: $input)\n  }\n": typeof types.ChangeEmailFromUserRouteDocument;
+  "\n  mutation changePasswordFromUserSecurity($input: AuthChangePasswordInput!) {\n    authChangePassword(input: $input) {\n      token\n    }\n  }\n": typeof types.ChangePasswordFromUserSecurityDocument;
+  "\n  query getSessionsFromUserSecurity {\n    authSessions {\n      id\n      token\n      current\n      expiresAt\n      ipAddress\n      userAgent\n      createdAt\n    }\n  }\n": typeof types.GetSessionsFromUserSecurityDocument;
+  "\n  mutation revokeSessionFromUserSecurity($token: String!) {\n    authRevokeSession(token: $token)\n  }\n": typeof types.RevokeSessionFromUserSecurityDocument;
+  "\n  mutation revokeOtherSessionsFromUserSecurity {\n    authRevokeOtherSessions\n  }\n": typeof types.RevokeOtherSessionsFromUserSecurityDocument;
+  "\n  query getWorkspacesFromUserWorkspacesRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $orderBy: WorkspaceOrder\n  ) {\n    workspaces(\n      after: $after\n      before: $before\n      first: $first\n      last: $last\n      orderBy: $orderBy\n    ) {\n      edges {\n        node {\n          id\n          name\n          createdAt\n          updatedAt\n        }\n      }\n      pageInfo {\n        endCursor\n        hasNextPage\n        hasPreviousPage\n        startCursor\n      }\n    }\n  }\n": typeof types.GetWorkspacesFromUserWorkspacesRouteDocument;
   "\n  query getApiKeysFromApiKeysRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $filter: ApiKeyFilter\n    $orderBy: ApiKeyOrder\n    $query: String\n  ) {\n    apiKeys(\n      after: $after\n      before: $before\n      first: $first\n      last: $last\n      orderBy: $orderBy\n      filter: $filter\n      query: $query\n    ) {\n      edges {\n        node {\n          id\n          name\n          start\n          prefix\n          enabled\n          permissions\n          createdAt\n          lastUsedAt\n          expiresAt\n        }\n      }\n      pageInfo {\n        endCursor\n        hasNextPage\n        hasPreviousPage\n        startCursor\n      }\n    }\n  }\n": typeof types.GetApiKeysFromApiKeysRouteDocument;
   "\n  mutation createApiKeyFromApiKeysRoute($input: CreateApiKeyInput!) {\n    createApiKey(input: $input) {\n      apiKey\n      entity {\n        id\n        name\n        start\n        prefix\n        enabled\n        permissions\n        createdAt\n        lastUsedAt\n        expiresAt\n      }\n    }\n  }\n": typeof types.CreateApiKeyFromApiKeysRouteDocument;
   "\n  mutation updateApiKeyFromApiKeysRoute($id: ID!, $input: UpdateApiKeyInput!) {\n    updateApiKey(id: $id, input: $input) {\n      id\n      name\n      start\n      prefix\n      enabled\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n": typeof types.UpdateApiKeyFromApiKeysRouteDocument;
   "\n  mutation deleteApiKeyFromApiKeysRoute($id: ID!) {\n    deleteApiKey(id: $id) {\n      id\n      name\n      start\n      prefix\n      enabled\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n": typeof types.DeleteApiKeyFromApiKeysRouteDocument;
   "\n  query getWorkspacesFromWorkspaceSwitcher(\n    $first: Int\n    $after: String\n    $before: String\n    $query: String\n    $orderBy: WorkspaceOrder\n  ) {\n    workspaces(\n      first: $first\n      after: $after\n      before: $before\n      query: $query\n      orderBy: $orderBy\n    ) {\n      edges {\n        node {\n          id\n          name\n        }\n      }\n      pageInfo {\n        hasNextPage\n        hasPreviousPage\n        startCursor\n        endCursor\n      }\n      totalCount\n    }\n  }\n": typeof types.GetWorkspacesFromWorkspaceSwitcherDocument;
-  "\n  query getCurrentUserFromCurrentUserContext {\n    currentUser {\n      id\n      name\n      email\n    }\n  }\n": typeof types.GetCurrentUserFromCurrentUserContextDocument;
   "\n  query getCurrentWorkspaceFromWorkspaceContext {\n    currentWorkspace {\n      id\n      name\n      features\n      createdAt\n      updatedAt\n    }\n  }\n": typeof types.GetCurrentWorkspaceFromWorkspaceContextDocument;
   "\n  query getCurrentWorkspaceMemberFromWorkspaceMemberContext {\n    currentWorkspaceMember {\n      id\n      role\n      name\n      email\n      permissions\n      status\n      user {\n        email\n      }\n    }\n  }\n": typeof types.GetCurrentWorkspaceMemberFromWorkspaceMemberContextDocument;
   "\n  query getCurrentWorkspaceFromWorkspaceLayout($workspaceId: ID!) {\n    workspace(id: $workspaceId) {\n      id\n    }\n    currentWorkspaceMember {\n      id\n      role\n    }\n  }\n": typeof types.GetCurrentWorkspaceFromWorkspaceLayoutDocument;
@@ -42,12 +51,21 @@ type Documents = {
   "\n  mutation createWorkspaceFromCreateWorkspaceForm(\n    $input: CreateWorkspaceInput!\n  ) {\n    createWorkspace(input: $input) {\n      id\n    }\n  }\n": typeof types.CreateWorkspaceFromCreateWorkspaceFormDocument;
   "\n  mutation createWorkspaceFromCreateWorkspaceRoute(\n    $input: CreateWorkspaceInput!\n  ) {\n    createWorkspace(input: $input) {\n      id\n    }\n  }\n": typeof types.CreateWorkspaceFromCreateWorkspaceRouteDocument;
   "\n  query getFirstWorkspaceFromWorkspacesRoute {\n    workspaces(first: 1) {\n      edges {\n        node {\n          id\n        }\n      }\n    }\n  }\n": typeof types.GetFirstWorkspaceFromWorkspacesRouteDocument;
+  "\n  mutation authSignInFromLoginForm($input: AuthSignInInput!) {\n    authSignIn(input: $input) {\n      user {\n        id\n      }\n    }\n  }\n": typeof types.AuthSignInFromLoginFormDocument;
+  "\n  mutation authSignUpFromLoginForm($input: AuthSignUpInput!) {\n    authSignUp(input: $input) {\n      user {\n        id\n      }\n    }\n  }\n": typeof types.AuthSignUpFromLoginFormDocument;
+  "\n  mutation requestPasswordResetFromForgotPassword(\n    $input: AuthRequestPasswordResetInput!\n  ) {\n    authRequestPasswordReset(input: $input) {\n      status\n    }\n  }\n": typeof types.RequestPasswordResetFromForgotPasswordDocument;
   "\n  query getCurrentUserFromAuthLayout {\n    currentUser {\n      id\n    }\n  }\n": typeof types.GetCurrentUserFromAuthLayoutDocument;
+  "\n  mutation resetPasswordFromResetPassword($input: AuthResetPasswordInput!) {\n    authResetPassword(input: $input)\n  }\n": typeof types.ResetPasswordFromResetPasswordDocument;
+  "\n  mutation sendVerificationEmailFromVerifyEmail(\n    $input: AuthSendVerificationEmailInput!\n  ) {\n    authSendVerificationEmail(input: $input)\n  }\n": typeof types.SendVerificationEmailFromVerifyEmailDocument;
   "\n  query getCurrentUserFromInviteRoute {\n    currentUser {\n      id\n      name\n      email\n    }\n  }\n": typeof types.GetCurrentUserFromInviteRouteDocument;
   "\n  query getWorkspaceInvitationFromInviteRoute($id: ID!) {\n    workspaceInvitation(id: $id) {\n      id\n      email\n      role\n      status\n      expiresAt\n      workspace {\n        id\n        name\n      }\n    }\n  }\n": typeof types.GetWorkspaceInvitationFromInviteRouteDocument;
   "\n  mutation acceptWorkspaceInvitationFromInviteRoute($invitationId: ID!) {\n    acceptWorkspaceInvitation(invitationId: $invitationId) {\n      invitation {\n        id\n        status\n        workspace {\n          id\n        }\n      }\n      member {\n        id\n        name\n        role\n      }\n    }\n  }\n": typeof types.AcceptWorkspaceInvitationFromInviteRouteDocument;
 };
 const documents: Documents = {
+  "\n  mutation authSignOutFromSidebarUser {\n    authSignOut\n  }\n":
+    types.AuthSignOutFromSidebarUserDocument,
+  "\n  query getCurrentUserFromCurrentUserContext {\n    currentUser {\n      id\n      name\n      email\n    }\n  }\n":
+    types.GetCurrentUserFromCurrentUserContextDocument,
   "\n  query getCurrentUserFromAuthenticatedRoute {\n    currentUser {\n      id\n    }\n  }\n":
     types.GetCurrentUserFromAuthenticatedRouteDocument,
   "\n  query getUserApiKeysFromUserApiKeysRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $filter: ApiKeyFilter\n    $orderBy: ApiKeyOrder\n    $query: String\n  ) {\n    userApiKeys(\n      after: $after\n      before: $before\n      first: $first\n      last: $last\n      orderBy: $orderBy\n      filter: $filter\n      query: $query\n    ) {\n      edges {\n        node {\n          id\n          name\n          start\n          prefix\n          enabled\n          permissions\n          createdAt\n          lastUsedAt\n          expiresAt\n        }\n      }\n      pageInfo {\n        endCursor\n        hasNextPage\n        hasPreviousPage\n        startCursor\n      }\n    }\n  }\n":
@@ -58,6 +76,22 @@ const documents: Documents = {
     types.UpdateUserApiKeyFromUserApiKeysRouteDocument,
   "\n  mutation deleteUserApiKeyFromUserApiKeysRoute($id: ID!) {\n    deleteUserApiKey(id: $id) {\n      id\n      name\n      start\n      prefix\n      enabled\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n":
     types.DeleteUserApiKeyFromUserApiKeysRouteDocument,
+  "\n  query getCurrentUserFromUserRoute {\n    currentUser {\n      id\n      name\n      email\n      createdAt\n    }\n  }\n":
+    types.GetCurrentUserFromUserRouteDocument,
+  "\n  mutation updateUserFromUserRoute($input: AuthUpdateUserInput!) {\n    authUpdateUser(input: $input)\n  }\n":
+    types.UpdateUserFromUserRouteDocument,
+  "\n  mutation changeEmailFromUserRoute($input: AuthChangeEmailInput!) {\n    authChangeEmail(input: $input)\n  }\n":
+    types.ChangeEmailFromUserRouteDocument,
+  "\n  mutation changePasswordFromUserSecurity($input: AuthChangePasswordInput!) {\n    authChangePassword(input: $input) {\n      token\n    }\n  }\n":
+    types.ChangePasswordFromUserSecurityDocument,
+  "\n  query getSessionsFromUserSecurity {\n    authSessions {\n      id\n      token\n      current\n      expiresAt\n      ipAddress\n      userAgent\n      createdAt\n    }\n  }\n":
+    types.GetSessionsFromUserSecurityDocument,
+  "\n  mutation revokeSessionFromUserSecurity($token: String!) {\n    authRevokeSession(token: $token)\n  }\n":
+    types.RevokeSessionFromUserSecurityDocument,
+  "\n  mutation revokeOtherSessionsFromUserSecurity {\n    authRevokeOtherSessions\n  }\n":
+    types.RevokeOtherSessionsFromUserSecurityDocument,
+  "\n  query getWorkspacesFromUserWorkspacesRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $orderBy: WorkspaceOrder\n  ) {\n    workspaces(\n      after: $after\n      before: $before\n      first: $first\n      last: $last\n      orderBy: $orderBy\n    ) {\n      edges {\n        node {\n          id\n          name\n          createdAt\n          updatedAt\n        }\n      }\n      pageInfo {\n        endCursor\n        hasNextPage\n        hasPreviousPage\n        startCursor\n      }\n    }\n  }\n":
+    types.GetWorkspacesFromUserWorkspacesRouteDocument,
   "\n  query getApiKeysFromApiKeysRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $filter: ApiKeyFilter\n    $orderBy: ApiKeyOrder\n    $query: String\n  ) {\n    apiKeys(\n      after: $after\n      before: $before\n      first: $first\n      last: $last\n      orderBy: $orderBy\n      filter: $filter\n      query: $query\n    ) {\n      edges {\n        node {\n          id\n          name\n          start\n          prefix\n          enabled\n          permissions\n          createdAt\n          lastUsedAt\n          expiresAt\n        }\n      }\n      pageInfo {\n        endCursor\n        hasNextPage\n        hasPreviousPage\n        startCursor\n      }\n    }\n  }\n":
     types.GetApiKeysFromApiKeysRouteDocument,
   "\n  mutation createApiKeyFromApiKeysRoute($input: CreateApiKeyInput!) {\n    createApiKey(input: $input) {\n      apiKey\n      entity {\n        id\n        name\n        start\n        prefix\n        enabled\n        permissions\n        createdAt\n        lastUsedAt\n        expiresAt\n      }\n    }\n  }\n":
@@ -68,8 +102,6 @@ const documents: Documents = {
     types.DeleteApiKeyFromApiKeysRouteDocument,
   "\n  query getWorkspacesFromWorkspaceSwitcher(\n    $first: Int\n    $after: String\n    $before: String\n    $query: String\n    $orderBy: WorkspaceOrder\n  ) {\n    workspaces(\n      first: $first\n      after: $after\n      before: $before\n      query: $query\n      orderBy: $orderBy\n    ) {\n      edges {\n        node {\n          id\n          name\n        }\n      }\n      pageInfo {\n        hasNextPage\n        hasPreviousPage\n        startCursor\n        endCursor\n      }\n      totalCount\n    }\n  }\n":
     types.GetWorkspacesFromWorkspaceSwitcherDocument,
-  "\n  query getCurrentUserFromCurrentUserContext {\n    currentUser {\n      id\n      name\n      email\n    }\n  }\n":
-    types.GetCurrentUserFromCurrentUserContextDocument,
   "\n  query getCurrentWorkspaceFromWorkspaceContext {\n    currentWorkspace {\n      id\n      name\n      features\n      createdAt\n      updatedAt\n    }\n  }\n":
     types.GetCurrentWorkspaceFromWorkspaceContextDocument,
   "\n  query getCurrentWorkspaceMemberFromWorkspaceMemberContext {\n    currentWorkspaceMember {\n      id\n      role\n      name\n      email\n      permissions\n      status\n      user {\n        email\n      }\n    }\n  }\n":
@@ -104,8 +136,18 @@ const documents: Documents = {
     types.CreateWorkspaceFromCreateWorkspaceRouteDocument,
   "\n  query getFirstWorkspaceFromWorkspacesRoute {\n    workspaces(first: 1) {\n      edges {\n        node {\n          id\n        }\n      }\n    }\n  }\n":
     types.GetFirstWorkspaceFromWorkspacesRouteDocument,
+  "\n  mutation authSignInFromLoginForm($input: AuthSignInInput!) {\n    authSignIn(input: $input) {\n      user {\n        id\n      }\n    }\n  }\n":
+    types.AuthSignInFromLoginFormDocument,
+  "\n  mutation authSignUpFromLoginForm($input: AuthSignUpInput!) {\n    authSignUp(input: $input) {\n      user {\n        id\n      }\n    }\n  }\n":
+    types.AuthSignUpFromLoginFormDocument,
+  "\n  mutation requestPasswordResetFromForgotPassword(\n    $input: AuthRequestPasswordResetInput!\n  ) {\n    authRequestPasswordReset(input: $input) {\n      status\n    }\n  }\n":
+    types.RequestPasswordResetFromForgotPasswordDocument,
   "\n  query getCurrentUserFromAuthLayout {\n    currentUser {\n      id\n    }\n  }\n":
     types.GetCurrentUserFromAuthLayoutDocument,
+  "\n  mutation resetPasswordFromResetPassword($input: AuthResetPasswordInput!) {\n    authResetPassword(input: $input)\n  }\n":
+    types.ResetPasswordFromResetPasswordDocument,
+  "\n  mutation sendVerificationEmailFromVerifyEmail(\n    $input: AuthSendVerificationEmailInput!\n  ) {\n    authSendVerificationEmail(input: $input)\n  }\n":
+    types.SendVerificationEmailFromVerifyEmailDocument,
   "\n  query getCurrentUserFromInviteRoute {\n    currentUser {\n      id\n      name\n      email\n    }\n  }\n":
     types.GetCurrentUserFromInviteRouteDocument,
   "\n  query getWorkspaceInvitationFromInviteRoute($id: ID!) {\n    workspaceInvitation(id: $id) {\n      id\n      email\n      role\n      status\n      expiresAt\n      workspace {\n        id\n        name\n      }\n    }\n  }\n":
@@ -128,6 +170,18 @@ const documents: Documents = {
  */
 export function graphql(source: string): unknown;
 
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
+  source: "\n  mutation authSignOutFromSidebarUser {\n    authSignOut\n  }\n",
+): (typeof documents)["\n  mutation authSignOutFromSidebarUser {\n    authSignOut\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
+  source: "\n  query getCurrentUserFromCurrentUserContext {\n    currentUser {\n      id\n      name\n      email\n    }\n  }\n",
+): (typeof documents)["\n  query getCurrentUserFromCurrentUserContext {\n    currentUser {\n      id\n      name\n      email\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -162,6 +216,54 @@ export function graphql(
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
+  source: "\n  query getCurrentUserFromUserRoute {\n    currentUser {\n      id\n      name\n      email\n      createdAt\n    }\n  }\n",
+): (typeof documents)["\n  query getCurrentUserFromUserRoute {\n    currentUser {\n      id\n      name\n      email\n      createdAt\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
+  source: "\n  mutation updateUserFromUserRoute($input: AuthUpdateUserInput!) {\n    authUpdateUser(input: $input)\n  }\n",
+): (typeof documents)["\n  mutation updateUserFromUserRoute($input: AuthUpdateUserInput!) {\n    authUpdateUser(input: $input)\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
+  source: "\n  mutation changeEmailFromUserRoute($input: AuthChangeEmailInput!) {\n    authChangeEmail(input: $input)\n  }\n",
+): (typeof documents)["\n  mutation changeEmailFromUserRoute($input: AuthChangeEmailInput!) {\n    authChangeEmail(input: $input)\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
+  source: "\n  mutation changePasswordFromUserSecurity($input: AuthChangePasswordInput!) {\n    authChangePassword(input: $input) {\n      token\n    }\n  }\n",
+): (typeof documents)["\n  mutation changePasswordFromUserSecurity($input: AuthChangePasswordInput!) {\n    authChangePassword(input: $input) {\n      token\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
+  source: "\n  query getSessionsFromUserSecurity {\n    authSessions {\n      id\n      token\n      current\n      expiresAt\n      ipAddress\n      userAgent\n      createdAt\n    }\n  }\n",
+): (typeof documents)["\n  query getSessionsFromUserSecurity {\n    authSessions {\n      id\n      token\n      current\n      expiresAt\n      ipAddress\n      userAgent\n      createdAt\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
+  source: "\n  mutation revokeSessionFromUserSecurity($token: String!) {\n    authRevokeSession(token: $token)\n  }\n",
+): (typeof documents)["\n  mutation revokeSessionFromUserSecurity($token: String!) {\n    authRevokeSession(token: $token)\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
+  source: "\n  mutation revokeOtherSessionsFromUserSecurity {\n    authRevokeOtherSessions\n  }\n",
+): (typeof documents)["\n  mutation revokeOtherSessionsFromUserSecurity {\n    authRevokeOtherSessions\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
+  source: "\n  query getWorkspacesFromUserWorkspacesRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $orderBy: WorkspaceOrder\n  ) {\n    workspaces(\n      after: $after\n      before: $before\n      first: $first\n      last: $last\n      orderBy: $orderBy\n    ) {\n      edges {\n        node {\n          id\n          name\n          createdAt\n          updatedAt\n        }\n      }\n      pageInfo {\n        endCursor\n        hasNextPage\n        hasPreviousPage\n        startCursor\n      }\n    }\n  }\n",
+): (typeof documents)["\n  query getWorkspacesFromUserWorkspacesRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $orderBy: WorkspaceOrder\n  ) {\n    workspaces(\n      after: $after\n      before: $before\n      first: $first\n      last: $last\n      orderBy: $orderBy\n    ) {\n      edges {\n        node {\n          id\n          name\n          createdAt\n          updatedAt\n        }\n      }\n      pageInfo {\n        endCursor\n        hasNextPage\n        hasPreviousPage\n        startCursor\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
   source: "\n  query getApiKeysFromApiKeysRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $filter: ApiKeyFilter\n    $orderBy: ApiKeyOrder\n    $query: String\n  ) {\n    apiKeys(\n      after: $after\n      before: $before\n      first: $first\n      last: $last\n      orderBy: $orderBy\n      filter: $filter\n      query: $query\n    ) {\n      edges {\n        node {\n          id\n          name\n          start\n          prefix\n          enabled\n          permissions\n          createdAt\n          lastUsedAt\n          expiresAt\n        }\n      }\n      pageInfo {\n        endCursor\n        hasNextPage\n        hasPreviousPage\n        startCursor\n      }\n    }\n  }\n",
 ): (typeof documents)["\n  query getApiKeysFromApiKeysRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $filter: ApiKeyFilter\n    $orderBy: ApiKeyOrder\n    $query: String\n  ) {\n    apiKeys(\n      after: $after\n      before: $before\n      first: $first\n      last: $last\n      orderBy: $orderBy\n      filter: $filter\n      query: $query\n    ) {\n      edges {\n        node {\n          id\n          name\n          start\n          prefix\n          enabled\n          permissions\n          createdAt\n          lastUsedAt\n          expiresAt\n        }\n      }\n      pageInfo {\n        endCursor\n        hasNextPage\n        hasPreviousPage\n        startCursor\n      }\n    }\n  }\n"];
 /**
@@ -188,12 +290,6 @@ export function graphql(
 export function graphql(
   source: "\n  query getWorkspacesFromWorkspaceSwitcher(\n    $first: Int\n    $after: String\n    $before: String\n    $query: String\n    $orderBy: WorkspaceOrder\n  ) {\n    workspaces(\n      first: $first\n      after: $after\n      before: $before\n      query: $query\n      orderBy: $orderBy\n    ) {\n      edges {\n        node {\n          id\n          name\n        }\n      }\n      pageInfo {\n        hasNextPage\n        hasPreviousPage\n        startCursor\n        endCursor\n      }\n      totalCount\n    }\n  }\n",
 ): (typeof documents)["\n  query getWorkspacesFromWorkspaceSwitcher(\n    $first: Int\n    $after: String\n    $before: String\n    $query: String\n    $orderBy: WorkspaceOrder\n  ) {\n    workspaces(\n      first: $first\n      after: $after\n      before: $before\n      query: $query\n      orderBy: $orderBy\n    ) {\n      edges {\n        node {\n          id\n          name\n        }\n      }\n      pageInfo {\n        hasNextPage\n        hasPreviousPage\n        startCursor\n        endCursor\n      }\n      totalCount\n    }\n  }\n"];
-/**
- * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
- */
-export function graphql(
-  source: "\n  query getCurrentUserFromCurrentUserContext {\n    currentUser {\n      id\n      name\n      email\n    }\n  }\n",
-): (typeof documents)["\n  query getCurrentUserFromCurrentUserContext {\n    currentUser {\n      id\n      name\n      email\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -300,8 +396,38 @@ export function graphql(
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
+  source: "\n  mutation authSignInFromLoginForm($input: AuthSignInInput!) {\n    authSignIn(input: $input) {\n      user {\n        id\n      }\n    }\n  }\n",
+): (typeof documents)["\n  mutation authSignInFromLoginForm($input: AuthSignInInput!) {\n    authSignIn(input: $input) {\n      user {\n        id\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
+  source: "\n  mutation authSignUpFromLoginForm($input: AuthSignUpInput!) {\n    authSignUp(input: $input) {\n      user {\n        id\n      }\n    }\n  }\n",
+): (typeof documents)["\n  mutation authSignUpFromLoginForm($input: AuthSignUpInput!) {\n    authSignUp(input: $input) {\n      user {\n        id\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
+  source: "\n  mutation requestPasswordResetFromForgotPassword(\n    $input: AuthRequestPasswordResetInput!\n  ) {\n    authRequestPasswordReset(input: $input) {\n      status\n    }\n  }\n",
+): (typeof documents)["\n  mutation requestPasswordResetFromForgotPassword(\n    $input: AuthRequestPasswordResetInput!\n  ) {\n    authRequestPasswordReset(input: $input) {\n      status\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
   source: "\n  query getCurrentUserFromAuthLayout {\n    currentUser {\n      id\n    }\n  }\n",
 ): (typeof documents)["\n  query getCurrentUserFromAuthLayout {\n    currentUser {\n      id\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
+  source: "\n  mutation resetPasswordFromResetPassword($input: AuthResetPasswordInput!) {\n    authResetPassword(input: $input)\n  }\n",
+): (typeof documents)["\n  mutation resetPasswordFromResetPassword($input: AuthResetPasswordInput!) {\n    authResetPassword(input: $input)\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
+  source: "\n  mutation sendVerificationEmailFromVerifyEmail(\n    $input: AuthSendVerificationEmailInput!\n  ) {\n    authSendVerificationEmail(input: $input)\n  }\n",
+): (typeof documents)["\n  mutation sendVerificationEmailFromVerifyEmail(\n    $input: AuthSendVerificationEmailInput!\n  ) {\n    authSendVerificationEmail(input: $input)\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
