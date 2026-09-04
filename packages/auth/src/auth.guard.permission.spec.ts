@@ -910,10 +910,10 @@ describe("AuthGuard permissions", () => {
 
     reflector.getAllAndOverride.mockImplementation((key) => {
       if (key === USER_CAN_METADATA) {
-        return { action: "read", subject: User };
+        return [{ action: "read", subject: User }];
       }
       if (key === WORKSPACE_CAN_METADATA) {
-        return { action: "update", subject: Workspace };
+        return [{ action: "update", subject: Workspace }];
       }
       return undefined;
     });
@@ -925,6 +925,52 @@ describe("AuthGuard permissions", () => {
     expect(buildUserAbility).toHaveBeenCalledOnce();
     expect(buildWorkspaceAbility).toHaveBeenCalledOnce();
     expect(canMock).toHaveBeenNthCalledWith(1, "read", User);
+    expect(canMock).toHaveBeenNthCalledWith(2, "update", Workspace);
+  });
+
+  it("requires all repeated user permission declarations", async () => {
+    const canMock = vi.fn((action: string) => action === "read");
+    const { guard, reflector } = await createGuard({
+      can: canMock,
+    } as unknown as PermissionAbility);
+
+    reflector.getAllAndOverride.mockImplementation((key) =>
+      key === USER_CAN_METADATA
+        ? [
+            { action: "read", subject: User },
+            { action: "update", subject: User },
+          ]
+        : undefined,
+    );
+
+    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+      await expect(guard.canActivate(createContext())).resolves.toBe(false);
+    });
+
+    expect(canMock).toHaveBeenNthCalledWith(1, "read", User);
+    expect(canMock).toHaveBeenNthCalledWith(2, "update", User);
+  });
+
+  it("requires all repeated workspace permission declarations", async () => {
+    const canMock = vi.fn((action: string) => action === "read");
+    const { guard, reflector } = await createGuard({
+      can: canMock,
+    } as unknown as PermissionAbility);
+
+    reflector.getAllAndOverride.mockImplementation((key) =>
+      key === WORKSPACE_CAN_METADATA
+        ? [
+            { action: "read", subject: Workspace },
+            { action: "update", subject: Workspace },
+          ]
+        : undefined,
+    );
+
+    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+      await expect(guard.canActivate(createContext())).resolves.toBe(false);
+    });
+
+    expect(canMock).toHaveBeenNthCalledWith(1, "read", Workspace);
     expect(canMock).toHaveBeenNthCalledWith(2, "update", Workspace);
   });
 
@@ -1195,6 +1241,6 @@ function setCanMetadata(
     scope === "user" ? USER_CAN_METADATA : WORKSPACE_CAN_METADATA;
 
   reflector.getAllAndOverride.mockImplementation((key) =>
-    key === metadataKey ? scopedMetadata : undefined,
+    key === metadataKey ? [scopedMetadata] : undefined,
   );
 }

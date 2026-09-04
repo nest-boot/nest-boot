@@ -18,10 +18,12 @@ describe("Can", () => {
     );
     expect(
       Reflect.getMetadata(WORKSPACE_CAN_METADATA, decorate(decorator)),
-    ).toEqual({
-      action: "read",
-      subject: Subject,
-    });
+    ).toEqual([
+      {
+        action: "read",
+        subject: Subject,
+      },
+    ]);
   });
 
   it("routes an explicit user scope to UserCan", () => {
@@ -30,10 +32,12 @@ describe("Can", () => {
 
     expect(decorator.KEY).toBe(USER_CAN_METADATA);
     expect(Reflect.getMetadata(USER_CAN_METADATA, decorate(decorator))).toEqual(
-      {
-        action: "read",
-        subject: subjectFactory,
-      },
+      [
+        {
+          action: "read",
+          subject: subjectFactory,
+        },
+      ],
     );
   });
 
@@ -43,10 +47,12 @@ describe("Can", () => {
     expect(decorator.KEY).toBe(WORKSPACE_CAN_METADATA);
     expect(
       Reflect.getMetadata(WORKSPACE_CAN_METADATA, decorate(decorator)),
-    ).toEqual({
-      action: "read",
-      subject: Subject,
-    });
+    ).toEqual([
+      {
+        action: "read",
+        subject: Subject,
+      },
+    ]);
   });
 
   it("delegates subject validation to the scoped decorator", () => {

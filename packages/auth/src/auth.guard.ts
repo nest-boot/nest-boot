@@ -107,44 +107,40 @@ export class AuthGuard implements CanActivate {
     }
 
     const targets = [context.getHandler(), context.getClass()];
-    const userCanMetadata = this.reflector.getAllAndOverride<UserCanMetadata>(
+    const userCanMetadata = this.reflector.getAllAndOverride<UserCanMetadata[]>(
       USER_CAN_METADATA,
       targets,
     );
-    const workspaceCanMetadata =
-      this.reflector.getAllAndOverride<WorkspaceCanMetadata>(
-        WORKSPACE_CAN_METADATA,
-        targets,
-      );
+    const workspaceCanMetadata = this.reflector.getAllAndOverride<
+      WorkspaceCanMetadata[]
+    >(WORKSPACE_CAN_METADATA, targets);
 
-    if (!userCanMetadata && !workspaceCanMetadata) {
+    if (!userCanMetadata?.length && !workspaceCanMetadata?.length) {
       return true;
     }
 
     return await this.checkPermissions(
-      userCanMetadata,
-      workspaceCanMetadata,
+      userCanMetadata ?? [],
+      workspaceCanMetadata ?? [],
       context,
     );
   }
 
   private async checkPermissions(
-    userCanMetadata: UserCanMetadata | undefined,
-    workspaceCanMetadata: WorkspaceCanMetadata | undefined,
+    userCanMetadata: readonly UserCanMetadata[],
+    workspaceCanMetadata: readonly WorkspaceCanMetadata[],
     context: ExecutionContext,
   ): Promise<boolean> {
-    if (
-      userCanMetadata &&
-      !(await this.checkUserPermission(userCanMetadata, context))
-    ) {
-      return false;
+    for (const metadata of userCanMetadata) {
+      if (!(await this.checkUserPermission(metadata, context))) {
+        return false;
+      }
     }
 
-    if (
-      workspaceCanMetadata &&
-      !(await this.checkWorkspacePermission(workspaceCanMetadata, context))
-    ) {
-      return false;
+    for (const metadata of workspaceCanMetadata) {
+      if (!(await this.checkWorkspacePermission(metadata, context))) {
+        return false;
+      }
     }
 
     return true;

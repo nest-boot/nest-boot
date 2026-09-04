@@ -38,9 +38,9 @@
 
 ### Follow-ups
 
-- [ ] Support multiple requirements from the same authorization scope on one
-      handler, with explicit `all` and `any` matching semantics for repeated
-      `@UserCan` and `@WorkspaceCan` declarations.
+- [x] Support multiple requirements from the same authorization scope on one
+      handler. Repeated `@UserCan` and `@WorkspaceCan` declarations always use
+      `all` matching semantics.
 - [ ] Document permission catalogs, direct-permission validation, reserved-role
       invariants, API-key permission ceilings, and multi-requirement behavior
       after the contracts above are finalized.
