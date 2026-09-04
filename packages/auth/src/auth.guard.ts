@@ -77,9 +77,14 @@ export class AuthGuard implements CanActivate {
    * @returns `true` when the request is authenticated.
    */
   protected isAuthenticated(): boolean {
-    return (
-      !!RequestContext.get(BaseSession) || !!RequestContext.get(CURRENT_API_KEY)
-    );
+    try {
+      return (
+        !!RequestContext.get(BaseSession) ||
+        !!RequestContext.get(CURRENT_API_KEY)
+      );
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -88,11 +93,17 @@ export class AuthGuard implements CanActivate {
    * @param context - Current Nest execution context.
    * @returns `true` when access is allowed.
    */
-  canActivate(
-    context: ExecutionContext,
-  ): ReturnType<CanActivate["canActivate"]> {
-    if (!this.isPublic(context) && !this.isAuthenticated()) {
-      return Promise.resolve(false);
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const authenticated = this.isAuthenticated();
+    if (!this.isPublic(context) && !authenticated) {
+      return false;
+    }
+
+    if (authenticated && RequestContext.isActive()) {
+      await Promise.all([
+        this.getOrBuildUserAbility(context),
+        this.getOrBuildWorkspaceAbility(context),
+      ]);
     }
 
     const targets = [context.getHandler(), context.getClass()];
@@ -107,10 +118,10 @@ export class AuthGuard implements CanActivate {
       );
 
     if (!userCanMetadata && !workspaceCanMetadata) {
-      return Promise.resolve(true);
+      return true;
     }
 
-    return this.checkPermissions(
+    return await this.checkPermissions(
       userCanMetadata,
       workspaceCanMetadata,
       context,
@@ -203,10 +214,6 @@ export class AuthGuard implements CanActivate {
       return true;
     }
     const permission = this.getPermission(action, subject);
-
-    if (action === "read") {
-      return true;
-    }
 
     return (
       !!permission &&

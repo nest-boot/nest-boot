@@ -8,7 +8,9 @@ description: "使用带权限范围的 API Key 认证个人和工作区自动化
 - **User Key** 会恢复所属用户；只有该用户仍是所选工作区的活动成员时，才能访问工作区资源。
 - **Workspace Key** 是独立服务身份；它会恢复所属工作区，但不会创建当前用户或工作区成员。
 
-用户管理自己的 Key，只有工作区所有者可以管理 Workspace Key。
+用户管理自己的 Key。活动工作区成员只有在最终 Workspace Ability 包含对应的
+`apiKey:create`、`apiKey:read`、`apiKey:update` 或 `apiKey:delete` 权限时，才能管理
+Workspace Key。
 
 ## 服务 API
 

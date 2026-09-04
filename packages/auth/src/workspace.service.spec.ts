@@ -9,6 +9,7 @@ import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import type { Mocked } from "vitest";
 
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
+import type { AuthorizationService } from "./authorization.service.js";
 import {
   BaseUser,
   BaseWorkspace,
@@ -46,6 +47,21 @@ class TestWorkspaceInvitation extends BaseWorkspaceInvitation {
 describe("WorkspaceService", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it("fails before persistence when a service-level permission is denied", async () => {
+    const { authorizationService, em, service } = createService();
+    vi.mocked(authorizationService.assertWorkspaceCan).mockImplementation(
+      () => {
+        throw new ForbiddenException();
+      },
+    );
+
+    await expect(
+      service.updateWorkspace(new TestWorkspace(), { name: "Denied" }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(em.assign).not.toHaveBeenCalled();
+    expect(em.flush).not.toHaveBeenCalled();
   });
 
   it("creates a workspace and its owner membership atomically", async () => {
@@ -107,6 +123,31 @@ describe("WorkspaceService", () => {
         Object.assign(new TestWorkspaceMember(), { roles: undefined }),
       ),
     ).toEqual([]);
+  });
+
+  it("adds a member by normalized email inside the workspace permission boundary", async () => {
+    const { authorizationService, em, service } = createService();
+    const workspace = new TestWorkspace();
+    const user = Object.assign(new TestUser(), {
+      email: "alice@example.com",
+      name: "Alice",
+    });
+    em.findOne.mockResolvedValueOnce(user).mockResolvedValueOnce(null);
+
+    await expect(
+      service.addMemberByEmail(workspace, " Alice@Example.com "),
+    ).resolves.toEqual(expect.objectContaining({ user, workspace }));
+
+    expect(em.findOne).toHaveBeenNthCalledWith(
+      1,
+      TestUser,
+      { email: "alice@example.com" },
+      { filters: false },
+    );
+    expect(authorizationService.assertWorkspaceCan).toHaveBeenCalledWith(
+      "create",
+      TestWorkspaceMember,
+    );
   });
 
   it("uses the configured default role for invitations", async () => {
@@ -531,9 +572,6 @@ describe("WorkspaceService", () => {
       .mockResolvedValueOnce([invitation])
       .mockResolvedValueOnce([invitation]);
 
-    await expect(service.getInvitation(invitation.id)).resolves.toBe(
-      invitation,
-    );
     await expect(service.getUserInvitation(invitation.id, user)).resolves.toBe(
       invitation,
     );
@@ -547,11 +585,6 @@ describe("WorkspaceService", () => {
       invitation,
     ]);
 
-    expect(em.findOne).toHaveBeenCalledWith(
-      TestWorkspaceInvitation,
-      { id: invitation.id },
-      { filters: false },
-    );
     expect(em.findOne).toHaveBeenCalledWith(
       TestWorkspaceInvitation,
       { email: "alice@example.com", id: invitation.id },
@@ -721,19 +754,27 @@ function createService(
 
   const options = {
     entities: {
+      user: TestUser,
       workspace: TestWorkspace,
       workspaceInvitation: TestWorkspaceInvitation,
       workspaceMember: TestWorkspaceMember,
     },
     workspace,
   } as unknown as AuthModuleOptions;
+  const authorizationService = {
+    assertCurrentUser: vi.fn(),
+    assertCurrentWorkspaceMember: vi.fn(),
+    assertUserCan: vi.fn(),
+    assertWorkspaceCan: vi.fn(),
+  } as unknown as AuthorizationService;
   return {
+    authorizationService,
     em,
     service: new WorkspaceService<
       TestWorkspace,
       TestWorkspaceMember,
       TestWorkspaceInvitation,
       TestUser
-    >(em, options),
+    >(em, options, authorizationService),
   };
 }

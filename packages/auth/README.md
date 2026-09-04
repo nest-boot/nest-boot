@@ -4,9 +4,9 @@
 
 ### Release blockers
 
-- [ ] Decide and document API-key `read` semantics. Better Auth Organization
-      treats member reads as implicit; either preserve that behavior explicitly
-      or require matching `resource:read` permissions for API keys.
+- [x] Require matching API-key permissions for every protected action,
+      including `read`, while keeping ordinary workspace-member reads implicit
+      through the configured workspace ability.
 - [x] Add one shared permission normalizer and validator for configured user and
       workspace permission catalogs. Reject empty, duplicate, and unknown
       permission values at service boundaries.
@@ -22,18 +22,19 @@
       workspace permissions. User Key access to a workspace must continue to be
       intersected with the user's current membership permissions at request
       time.
-- [ ] Enforce `userCan` and `workspaceCan` inside authorization-sensitive
-      service operations, so direct service injection cannot bypass Resolver or
-      Controller metadata. Define explicit internal/system entry points for
-      trusted jobs instead of relying on transport guards.
+- [x] Enforce user and workspace abilities inside authorization-sensitive
+      `UserService`, `WorkspaceService`, and `ApiKeyService` operations, so
+      direct service injection cannot bypass Resolver or Controller metadata.
+      Authentication middleware primitives remain internal identity-resolution
+      paths rather than privileged business operations.
 - [x] Make lifecycle roles explicit with `user.defaultRole`,
       `user.adminRoles`, `workspace.defaultRole`, and
       `workspace.creatorRole`. Validate every configured lifecycle role at
       startup and use it throughout User, Workspace, API Key, guard, and adapter
       paths.
-- [ ] Add the remaining regression tests for API-key reads without permission
-      and over-privileged API-key creation and updates. Unknown direct
-      permissions and invalid lifecycle role configuration are covered.
+- [ ] Add the remaining regression tests for over-privileged API-key creation
+      and updates. Unknown direct permissions, API-key reads, service-level
+      authorization, and invalid lifecycle role configuration are covered.
 
 ### Follow-ups
 

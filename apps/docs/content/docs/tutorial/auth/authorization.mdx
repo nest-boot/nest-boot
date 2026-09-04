@@ -33,9 +33,10 @@ health(): string {
 
 ## Build Abilities
 
-Configure separate user and workspace abilities. Each callback runs at most
-once per request and its result is cached in `RequestContext`. Returning `null`
-causes that authorization scope to fail.
+Configure separate user and workspace abilities. For an authenticated request,
+`AuthGuard` prepares both abilities even when the handler has no permission
+decorator. Each callback runs at most once and its result is cached in
+`RequestContext`. Returning `null` causes that authorization scope to fail.
 
 ```typescript
 import { AuthModule, PermissionAbilityBuilder } from "@nest-boot/auth";
@@ -181,11 +182,34 @@ updatePost(@Args("id") id: string) {
 
 Workspace API keys can pass only workspace checks. User API keys can pass user
 checks and, with a live membership, workspace checks. API-key permissions are
-intersected with the corresponding ability.
+intersected with the corresponding ability, including `read` operations.
+
+## Service Authorization Boundary
+
+`UserService`, `WorkspaceService`, and `ApiKeyService` enforce their permissions
+before reading or mutating authentication data. Resolver and controller
+decorators provide early rejection and declare intent, but they are not the
+security boundary: omitting one does not make a protected service operation
+public.
+
+The services follow the same split as Better Auth's admin and organization
+access control:
+
+- user administration uses `user:*` and `session:*` permissions;
+- workspace mutations use `workspace:*`, `workspaceMember:*`, and
+  `workspaceInvitation:*` permissions;
+- workspace API-key management uses `apiKey:create/read/update/delete`;
+- current-user authentication, session management, invitation acceptance, and
+  leaving a workspace use authenticated identity and ownership checks.
+
+`AuthorizationService` exposes `assertUserCan()` and `assertWorkspaceCan()` for
+application services that need the same fail-closed boundary. An ability must
+have been prepared by the global `AuthGuard`; calls outside that request
+lifecycle are denied rather than implicitly trusted.
 
 ## Lower-Level Checks
 
-After a route-level decorator prepares an ability, lower-level code can use the
+After `AuthGuard` prepares the request abilities, lower-level code can use the
 matching scoped helpers. `can()` is a thin alias that routes to them by `scope`
 and defaults to `workspaceCan()`.
 
@@ -202,5 +226,7 @@ can("read", post); // workspaceCan(...)
 can("read", user, { scope: "user" }); // userCan(...)
 ```
 
-These helpers throw `ForbiddenException` if the route did not prepare the
-requested ability.
+The `userCan()` and `workspaceCan()` helpers fail closed by returning `false`
+when the requested ability is unavailable. The lower-level
+`getUserAbility()` and `getWorkspaceAbility()` accessors throw
+`ForbiddenException` instead.

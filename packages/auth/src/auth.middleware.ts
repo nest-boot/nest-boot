@@ -42,7 +42,7 @@ export class AuthMiddleware implements NestMiddleware {
   async use(req: Request, _res: Response, next: NextFunction) {
     try {
       await this.resolveSelectedWorkspace(req);
-      const hasSession = await this.resolveSession(req);
+      const hasSession = await this.resolveSession();
       if (!hasSession) await this.resolveApiKey(req);
       await this.resolveWorkspaceMember();
       next();
@@ -70,21 +70,8 @@ export class AuthMiddleware implements NestMiddleware {
     if (workspace) this.setWorkspace(workspace);
   }
 
-  private async resolveSession(req: Request): Promise<boolean> {
-    const headers = this.toWebHeaders(req);
-    const candidateHeaders: Headers[] = [];
-    if (headers.has("cookie") && headers.has("authorization")) {
-      const cookieHeaders = new Headers(headers);
-      cookieHeaders.delete("authorization");
-      candidateHeaders.push(cookieHeaders);
-    }
-    candidateHeaders.push(headers);
-
-    let data: Awaited<ReturnType<SessionService["getSession"]>> = null;
-    for (const candidate of candidateHeaders) {
-      data = await this.sessionService.getSession(candidate);
-      if (data) break;
-    }
+  private async resolveSession(): Promise<boolean> {
+    const data = await this.sessionService.getSession();
     if (!data) return false;
 
     this.setUser(data.user);
@@ -159,16 +146,5 @@ export class AuthMiddleware implements NestMiddleware {
       this.options.entities.workspace as Type<BaseWorkspace>,
       workspace,
     );
-  }
-
-  private toWebHeaders(req: Request): Headers {
-    return Object.entries(req.headers).reduce((headers, [key, value]) => {
-      if (Array.isArray(value)) {
-        for (const item of value) headers.append(key, item);
-      } else if (value) {
-        headers.append(key, value);
-      }
-      return headers;
-    }, new Headers());
   }
 }

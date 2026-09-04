@@ -1,4 +1,4 @@
-import type { Mocked } from 'vitest';
+import type { Mock, Mocked } from 'vitest';
 vi.mock('@nest-boot/auth', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@nest-boot/auth')>()),
   BaseUser: class BaseUser {},
@@ -24,12 +24,8 @@ vi.mock('@nest-boot/graphql-connection', () => ({
   ConnectionManager: class ConnectionManager {},
 }));
 
-import type { UserService, WorkspaceService } from '@nest-boot/auth';
-import {
-  BadRequestException,
-  ForbiddenException,
-  NotFoundException,
-} from '@nestjs/common';
+import type { WorkspaceService } from '@nest-boot/auth';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 
 import { User } from '../user/user.entity.js';
 import { Workspace } from '../workspace/workspace.entity.js';
@@ -106,25 +102,12 @@ describe('WorkspaceMemberResolver', () => {
     });
   });
 
-  it('allows owners to add existing users as workspace members', async () => {
-    const workspace = {
-      id: 'workspace_1',
-      members: {
-        loadCount: vi.fn(async () => 0),
-      },
-    } as unknown as Workspace;
-    const user = {
-      id: 'user_1',
-      name: 'Alice',
-      email: 'alice@example.com',
-    } as User;
+  it('delegates adding an existing user to WorkspaceService', async () => {
+    const workspace = { id: 'workspace_1' } as Workspace;
     const createdMember = { id: 'member_2' } as WorkspaceMember;
-    const { resolver, workspaceMemberService, userService } = createResolver({
-      userService: {
-        getUserByEmail: vi.fn(async () => user),
-      },
-      workspaceMemberService: {
-        create: vi.fn(async () => createdMember),
+    const { resolver, workspaceService } = createResolver({
+      workspaceService: {
+        addMemberByEmail: vi.fn(async () => createdMember),
       },
     });
 
@@ -132,95 +115,10 @@ describe('WorkspaceMemberResolver', () => {
       resolver.addWorkspaceMember(workspace, { email: 'alice@example.com' }),
     ).resolves.toBe(createdMember);
 
-    expect(userService.getUserByEmail).toHaveBeenCalledWith(
+    expect(workspaceService.addMemberByEmail).toHaveBeenCalledWith(
+      workspace,
       'alice@example.com',
     );
-    expect(workspace.members.loadCount).toHaveBeenCalledWith({
-      where: {
-        user: {
-          id: 'user_1',
-        },
-      },
-    });
-    expect(workspaceMemberService.create).toHaveBeenCalledWith({
-      name: 'Alice',
-      user,
-      workspace,
-    });
-  });
-
-  it('rejects adding users that are not found', async () => {
-    const { resolver, userService } = createResolver({
-      userService: {
-        getUserByEmail: vi.fn(async () => null),
-      },
-    });
-
-    await expect(
-      resolver.addWorkspaceMember({ id: 'workspace_1' } as Workspace, {
-        email: 'missing@example.com',
-      }),
-    ).rejects.toBeInstanceOf(NotFoundException);
-
-    expect(userService.getUserByEmail).toHaveBeenCalledWith(
-      'missing@example.com',
-    );
-  });
-
-  it('rejects adding users already in the workspace', async () => {
-    const workspace = {
-      members: {
-        loadCount: vi.fn(async () => 1),
-      },
-    } as unknown as Workspace;
-    const { resolver } = createResolver({
-      userService: {
-        getUserByEmail: vi.fn(
-          async () =>
-            ({
-              id: 'user_1',
-              name: 'Alice',
-              email: 'alice@example.com',
-            }) as unknown as User,
-        ),
-      },
-    });
-
-    await expect(
-      resolver.addWorkspaceMember(workspace, { email: 'alice@example.com' }),
-    ).rejects.toBeInstanceOf(ForbiddenException);
-  });
-
-  it('uses email prefix when adding a user without a name', async () => {
-    const workspace = {
-      members: {
-        loadCount: vi.fn(async () => 0),
-      },
-    } as unknown as Workspace;
-    const user = {
-      id: 'user_1',
-      name: undefined,
-      email: 'alice@example.com',
-    } as unknown as User;
-    const createdMember = { id: 'member_2' } as WorkspaceMember;
-    const { resolver, workspaceMemberService } = createResolver({
-      userService: {
-        getUserByEmail: vi.fn(async () => user),
-      },
-      workspaceMemberService: {
-        create: vi.fn(async () => createdMember),
-      },
-    });
-
-    await expect(
-      resolver.addWorkspaceMember(workspace, { email: 'alice@example.com' }),
-    ).resolves.toBe(createdMember);
-
-    expect(workspaceMemberService.create).toHaveBeenCalledWith({
-      name: 'alice',
-      user,
-      workspace,
-    });
   });
 
   it('allows admins to create service account members', async () => {
@@ -465,7 +363,6 @@ describe('WorkspaceMemberResolver', () => {
 function createResolver(overrides?: {
   workspaceMemberService?: Partial<WorkspaceMemberService>;
   workspaceService?: Partial<WorkspaceService>;
-  userService?: Partial<UserService>;
   cm?: { find: Mock };
 }) {
   const workspaceMemberService = {
@@ -477,12 +374,9 @@ function createResolver(overrides?: {
     remove: vi.fn(),
     ...overrides?.workspaceMemberService,
   } as unknown as Mocked<WorkspaceMemberService>;
-  const userService = {
-    getUserByEmail: vi.fn(),
-    ...overrides?.userService,
-  } as unknown as Mocked<UserService>;
   const cm = overrides?.cm ?? { find: vi.fn() };
   const workspaceService = {
+    addMemberByEmail: vi.fn(),
     listPermissions: vi.fn(() => []),
     listRoles: vi.fn(() => []),
     setMemberPermissions: vi.fn(),
@@ -491,7 +385,6 @@ function createResolver(overrides?: {
   } as unknown as Mocked<WorkspaceService>;
   const resolver = new WorkspaceMemberResolver(
     workspaceMemberService,
-    userService,
     cm as never,
     workspaceService,
   );
@@ -499,7 +392,6 @@ function createResolver(overrides?: {
   return {
     resolver,
     workspaceMemberService,
-    userService,
     cm,
     workspaceService,
   };

@@ -1,5 +1,5 @@
 import type { AuthService, SessionService } from '@nest-boot/auth';
-import type { Request, Response } from 'express';
+import type { Response } from 'express';
 import type { Mocked } from 'vitest';
 
 vi.mock('@nest-boot/auth', async (importOriginal) => ({
@@ -33,18 +33,15 @@ describe('AuthResolver', () => {
     const { authService, resolver } = createResolver({
       signIn: vi.fn(async () => ({ headers, response: result })),
     });
-    const request = { headers: { cookie: 'existing=value' } } as Request;
     const response = { append: vi.fn() } as unknown as Response;
 
     await expect(
       resolver.authSignIn(
         { email: 'alice@example.com', password: 'password' },
-        request,
         response,
       ),
     ).resolves.toBe(result);
     expect(authService.signIn).toHaveBeenCalledWith(
-      expect.objectContaining({}),
       { email: 'alice@example.com', password: 'password' },
       { returnHeaders: true },
     );
@@ -65,14 +62,11 @@ describe('AuthResolver', () => {
     });
 
     await expect(
-      resolver.authAccessToken({ accountId: 'account-1' }, {
-        headers: {},
-      } as Request),
+      resolver.authAccessToken({ accountId: 'account-1' }),
     ).resolves.toBe(token);
-    expect(authService.getAccessToken).toHaveBeenCalledWith(
-      expect.any(Headers),
-      { accountId: 'account-1' },
-    );
+    expect(authService.getAccessToken).toHaveBeenCalledWith({
+      accountId: 'account-1',
+    });
   });
 
   it('updates the user and forwards refreshed session cookies', async () => {
@@ -81,14 +75,12 @@ describe('AuthResolver', () => {
     const { authService, resolver } = createResolver({
       updateUser: vi.fn(async () => ({ headers, response: true })),
     });
-    const request = { headers: { cookie: 'session=value' } } as Request;
     const response = { append: vi.fn() } as unknown as Response;
 
     await expect(
-      resolver.authUpdateUser({ name: 'Renamed' }, request, response),
+      resolver.authUpdateUser({ name: 'Renamed' }, response),
     ).resolves.toBe(true);
     expect(authService.updateUser).toHaveBeenCalledWith(
-      expect.any(Headers),
       { name: 'Renamed' },
       { returnHeaders: true },
     );
@@ -104,7 +96,6 @@ describe('AuthResolver', () => {
     const { authService, resolver } = createResolver({
       changePassword: vi.fn(async () => ({ headers, response: result })),
     });
-    const request = { headers: { cookie: 'session=old' } } as Request;
     const response = { append: vi.fn() } as unknown as Response;
     const input = {
       currentPassword: 'old-password',
@@ -112,14 +103,12 @@ describe('AuthResolver', () => {
       revokeOtherSessions: true,
     };
 
-    await expect(
-      resolver.authChangePassword(input, request, response),
-    ).resolves.toBe(result);
-    expect(authService.changePassword).toHaveBeenCalledWith(
-      expect.any(Headers),
-      input,
-      { returnHeaders: true },
+    await expect(resolver.authChangePassword(input, response)).resolves.toBe(
+      result,
     );
+    expect(authService.changePassword).toHaveBeenCalledWith(input, {
+      returnHeaders: true,
+    });
     expect(response.append).toHaveBeenCalledWith('set-cookie', [
       'session=replacement; Path=/; HttpOnly',
     ]);
@@ -131,21 +120,16 @@ describe('AuthResolver', () => {
     const { authService, resolver } = createResolver({
       changeEmail: vi.fn(async () => ({ headers, response: true })),
     });
-    const request = { headers: { cookie: 'session=value' } } as Request;
     const response = { append: vi.fn() } as unknown as Response;
     const input = {
       callbackURL: 'https://app.example.com/user?emailChanged=true',
       newEmail: 'next@example.com',
     };
 
-    await expect(
-      resolver.authChangeEmail(input, request, response),
-    ).resolves.toBe(true);
-    expect(authService.changeEmail).toHaveBeenCalledWith(
-      expect.any(Headers),
-      input,
-      { returnHeaders: true },
-    );
+    await expect(resolver.authChangeEmail(input, response)).resolves.toBe(true);
+    expect(authService.changeEmail).toHaveBeenCalledWith(input, {
+      returnHeaders: true,
+    });
     expect(response.append).toHaveBeenCalledWith('set-cookie', [
       'session_data=updated; Path=/; HttpOnly',
     ]);
@@ -158,14 +142,12 @@ describe('AuthResolver', () => {
     const { authService, resolver } = createResolver({
       deleteUser: vi.fn(async () => ({ headers, response: result })),
     });
-    const request = { headers: { cookie: 'session=value' } } as Request;
     const response = { append: vi.fn() } as unknown as Response;
 
     await expect(
-      resolver.authDeleteUser(request, response, { password: 'password' }),
+      resolver.authDeleteUser(response, { password: 'password' }),
     ).resolves.toBe(result);
     expect(authService.deleteUser).toHaveBeenCalledWith(
-      expect.any(Headers),
       { password: 'password' },
       { returnHeaders: true },
     );
@@ -192,18 +174,11 @@ describe('AuthResolver', () => {
       },
     );
 
-    await expect(
-      resolver.authSessions(
-        { headers: { cookie: 'session=value' } } as Request,
-        sessions[0] as never,
-      ),
-    ).resolves.toEqual([
+    await expect(resolver.authSessions(sessions[0] as never)).resolves.toEqual([
       expect.objectContaining({ current: true, id: 'session-1' }),
       expect.objectContaining({ current: false, id: 'session-2' }),
     ]);
-    expect(sessionService.listSessions).toHaveBeenCalledWith(
-      expect.any(Headers),
-    );
+    expect(sessionService.listSessions).toHaveBeenCalledWith();
   });
 
   it('delegates session revocation operations', async () => {
@@ -215,37 +190,26 @@ describe('AuthResolver', () => {
         revokeSessions: vi.fn(async () => true),
       },
     );
-    const request = { headers: { cookie: 'session=value' } } as Request;
-
-    await expect(resolver.authRevokeSession('token-2', request)).resolves.toBe(
-      true,
-    );
-    await expect(resolver.authRevokeOtherSessions(request)).resolves.toBe(true);
-    await expect(resolver.authRevokeSessions(request)).resolves.toBe(true);
-    expect(sessionService.revokeSession).toHaveBeenCalledWith(
-      expect.any(Headers),
-      'token-2',
-    );
-    expect(sessionService.revokeOtherSessions).toHaveBeenCalledWith(
-      expect.any(Headers),
-    );
-    expect(sessionService.revokeSessions).toHaveBeenCalledWith(
-      expect.any(Headers),
-    );
+    await expect(resolver.authRevokeSession('token-2')).resolves.toBe(true);
+    await expect(resolver.authRevokeOtherSessions()).resolves.toBe(true);
+    await expect(resolver.authRevokeSessions()).resolves.toBe(true);
+    expect(sessionService.revokeSession).toHaveBeenCalledWith('token-2');
+    expect(sessionService.revokeOtherSessions).toHaveBeenCalledWith();
+    expect(sessionService.revokeSessions).toHaveBeenCalledWith();
   });
 
   it('rejects an empty provider account selector', async () => {
     const { resolver } = createResolver();
 
-    await expect(
-      resolver.authAccessToken({}, { headers: {} } as Request),
-    ).rejects.toThrow('Either accountId or useAccountCookie');
+    await expect(resolver.authAccessToken({})).rejects.toThrow(
+      'Either accountId or useAccountCookie',
+    );
   });
 });
 
 function createResolver(
-  overrides: Partial<AuthService> = {},
-  sessionOverrides: Partial<SessionService> = {},
+  overrides: Record<string, unknown> = {},
+  sessionOverrides: Record<string, unknown> = {},
 ) {
   const authService = {
     ...overrides,

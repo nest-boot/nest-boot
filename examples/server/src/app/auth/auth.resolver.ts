@@ -6,7 +6,6 @@ import {
   CurrentUser,
   Public,
   SessionService,
-  UserCan,
 } from '@nest-boot/auth';
 import {
   Args,
@@ -17,7 +16,7 @@ import {
   Resolver,
 } from '@nest-boot/graphql';
 import { BadRequestException } from '@nestjs/common';
-import type { Request, Response } from 'express';
+import type { Response } from 'express';
 
 import { User } from '../user/user.entity.js';
 import {
@@ -58,7 +57,6 @@ export class AuthResolver {
   ) {}
 
   /** Returns the currently authenticated user. */
-  @UserCan('read', User)
   @Query(() => User)
   currentUser(@CurrentUser() user: User): User {
     return user;
@@ -69,11 +67,9 @@ export class AuthResolver {
   @Mutation(() => AuthSignUpResultType)
   async authSignUp(
     @Args('input') input: AuthSignUpInput,
-    @Context('req') request: Request,
     @Context('res') response: Response,
   ): Promise<AuthSignUpResultType> {
     const result = await this.authService.signUp(
-      toWebHeaders(request),
       { ...input },
       {
         returnHeaders: true,
@@ -88,10 +84,9 @@ export class AuthResolver {
   @Mutation(() => AuthSignInResultType)
   async authSignIn(
     @Args('input') input: AuthSignInInput,
-    @Context('req') request: Request,
     @Context('res') response: Response,
   ): Promise<AuthSignInResultType> {
-    const result = await this.authService.signIn(toWebHeaders(request), input, {
+    const result = await this.authService.signIn(input, {
       returnHeaders: true,
     });
     applyAuthResponseHeaders(response, result.headers);
@@ -101,11 +96,8 @@ export class AuthResolver {
   /** Signs out and forwards the session-cookie removal header. */
   @Public()
   @Mutation(() => Boolean)
-  async authSignOut(
-    @Context('req') request: Request,
-    @Context('res') response: Response,
-  ): Promise<boolean> {
-    const result = await this.authService.signOut(toWebHeaders(request), {
+  async authSignOut(@Context('res') response: Response): Promise<boolean> {
+    const result = await this.authService.signOut({
       returnHeaders: true,
     });
     applyAuthResponseHeaders(response, result.headers);
@@ -143,11 +135,9 @@ export class AuthResolver {
   @Mutation(() => Boolean)
   async authUpdateUser(
     @Args('input') input: AuthUpdateUserInput,
-    @Context('req') request: Request,
     @Context('res') response: Response,
   ): Promise<boolean> {
     const result = await this.authService.updateUser(
-      toWebHeaders(request),
       { ...input },
       { returnHeaders: true },
     );
@@ -159,14 +149,11 @@ export class AuthResolver {
   @Mutation(() => Boolean)
   async authChangeEmail(
     @Args('input') input: AuthChangeEmailInput,
-    @Context('req') request: Request,
     @Context('res') response: Response,
   ): Promise<boolean> {
-    const result = await this.authService.changeEmail(
-      toWebHeaders(request),
-      input,
-      { returnHeaders: true },
-    );
+    const result = await this.authService.changeEmail(input, {
+      returnHeaders: true,
+    });
     applyAuthResponseHeaders(response, result.headers);
     return result.response;
   }
@@ -175,14 +162,11 @@ export class AuthResolver {
   @Mutation(() => AuthChangePasswordResultType)
   async authChangePassword(
     @Args('input') input: AuthChangePasswordInput,
-    @Context('req') request: Request,
     @Context('res') response: Response,
   ): Promise<AuthChangePasswordResultType> {
-    const result = await this.authService.changePassword(
-      toWebHeaders(request),
-      input,
-      { returnHeaders: true },
-    );
+    const result = await this.authService.changePassword(input, {
+      returnHeaders: true,
+    });
     applyAuthResponseHeaders(response, result.headers);
     return result.response;
   }
@@ -190,12 +174,9 @@ export class AuthResolver {
   /** Lists active sessions belonging to the authenticated user. */
   @Query(() => [AuthSessionType])
   async authSessions(
-    @Context('req') request: Request,
     @CurrentSession() currentSession: BaseSession,
   ): Promise<AuthSessionType[]> {
-    const sessions = await this.sessionService.listSessions(
-      toWebHeaders(request),
-    );
+    const sessions = await this.sessionService.listSessions();
 
     return sessions.map((session) => ({
       id: session.id,
@@ -211,73 +192,55 @@ export class AuthResolver {
 
   /** Revokes one active session owned by the authenticated user. */
   @Mutation(() => Boolean)
-  async authRevokeSession(
-    @Args('token') token: string,
-    @Context('req') request: Request,
-  ): Promise<boolean> {
-    return await this.sessionService.revokeSession(
-      toWebHeaders(request),
-      token,
-    );
+  async authRevokeSession(@Args('token') token: string): Promise<boolean> {
+    return await this.sessionService.revokeSession(token);
   }
 
   /** Revokes every active session except the current session. */
   @Mutation(() => Boolean)
-  async authRevokeOtherSessions(
-    @Context('req') request: Request,
-  ): Promise<boolean> {
-    return await this.sessionService.revokeOtherSessions(toWebHeaders(request));
+  async authRevokeOtherSessions(): Promise<boolean> {
+    return await this.sessionService.revokeOtherSessions();
   }
 
   /** Revokes every active session owned by the authenticated user. */
   @Mutation(() => Boolean)
-  async authRevokeSessions(@Context('req') request: Request): Promise<boolean> {
-    return await this.sessionService.revokeSessions(toWebHeaders(request));
+  async authRevokeSessions(): Promise<boolean> {
+    return await this.sessionService.revokeSessions();
   }
 
   /** Adds a credential password to the authenticated account. */
   @Mutation(() => Boolean)
   async authSetPassword(
     @Args('newPassword') newPassword: string,
-    @Context('req') request: Request,
   ): Promise<boolean> {
-    return await this.authService.setPassword(
-      toWebHeaders(request),
-      newPassword,
-    );
+    return await this.authService.setPassword(newPassword);
   }
 
   /** Requests deletion of the authenticated user. */
   @Mutation(() => AuthDeleteUserResultType)
   async authDeleteUser(
-    @Context('req') request: Request,
     @Context('res') response: Response,
     @Args('input', { nullable: true }) input?: AuthDeleteUserInput,
   ): Promise<AuthDeleteUserResultType> {
-    const result = await this.authService.deleteUser(
-      toWebHeaders(request),
-      input ?? {},
-      { returnHeaders: true },
-    );
+    const result = await this.authService.deleteUser(input ?? {}, {
+      returnHeaders: true,
+    });
     applyAuthResponseHeaders(response, result.headers);
     return result.response;
   }
 
   /** Lists authentication accounts linked to the current user. */
   @Query(() => [AuthAccountType])
-  async authAccounts(
-    @Context('req') request: Request,
-  ): Promise<AuthAccountType[]> {
-    return await this.authService.listAccounts(toWebHeaders(request));
+  async authAccounts(): Promise<AuthAccountType[]> {
+    return await this.authService.listAccounts();
   }
 
   /** Unlinks an authentication account from the current user. */
   @Mutation(() => Boolean)
   async authUnlinkAccount(
     @Args('accountId', { type: () => ID }) accountId: string,
-    @Context('req') request: Request,
   ): Promise<boolean> {
-    return await this.authService.unlinkAccount(toWebHeaders(request), {
+    return await this.authService.unlinkAccount({
       accountId,
     });
   }
@@ -286,36 +249,24 @@ export class AuthResolver {
   @Query(() => AuthAccessTokenType)
   async authAccessToken(
     @Args('input') input: AuthAccountSelectorInput,
-    @Context('req') request: Request,
   ): Promise<AuthAccessTokenType> {
-    return await this.authService.getAccessToken(
-      toWebHeaders(request),
-      toAccountSelector(input),
-    );
+    return await this.authService.getAccessToken(toAccountSelector(input));
   }
 
   /** Refreshes provider credentials for a linked account. */
   @Mutation(() => AuthRefreshedTokenType)
   async authRefreshToken(
     @Args('input') input: AuthAccountSelectorInput,
-    @Context('req') request: Request,
   ): Promise<AuthRefreshedTokenType> {
-    return await this.authService.refreshToken(
-      toWebHeaders(request),
-      toAccountSelector(input),
-    );
+    return await this.authService.refreshToken(toAccountSelector(input));
   }
 
   /** Returns provider identity and metadata for a linked account. */
   @Query(() => AuthAccountInfoType)
   async authAccountInfo(
     @Args('input') input: AuthAccountSelectorInput,
-    @Context('req') request: Request,
   ): Promise<AuthAccountInfoType> {
-    return await this.authService.accountInfo(
-      toWebHeaders(request),
-      toAccountSelector(input),
-    );
+    return await this.authService.accountInfo(toAccountSelector(input));
   }
 }
 
@@ -333,22 +284,6 @@ function toAccountSelector(
   throw new BadRequestException(
     'Either accountId or useAccountCookie must be provided.',
   );
-}
-
-function toWebHeaders(request: Request): Headers {
-  const headers = new Headers();
-
-  for (const [name, value] of Object.entries(request.headers)) {
-    if (Array.isArray(value)) {
-      for (const item of value) {
-        headers.append(name, item);
-      }
-    } else if (value !== undefined) {
-      headers.set(name, value);
-    }
-  }
-
-  return headers;
 }
 
 function applyAuthResponseHeaders(response: Response, headers: Headers): void {

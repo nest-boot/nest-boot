@@ -1,5 +1,5 @@
 import { EntityManager } from "@mikro-orm/core";
-import { RequestContext } from "@nest-boot/request-context";
+import { headers, RequestContext } from "@nest-boot/request-context";
 import {
   RowLevelSecurity,
   RowLevelSecurityMode,
@@ -58,17 +58,37 @@ export class SessionService {
   private readonly auth: InternalAuth;
 
   /**
-   * Resolves the persisted user and session represented by request headers.
+   * Resolves the persisted user and session represented by the current request.
    *
-   * @param headers - Fetch-compatible request headers containing the session
-   * cookie or Bearer session token.
    * @returns Application entities for a valid session, otherwise `null`.
    */
   async getSession<
     User extends BaseUser = BaseUser,
     Session extends BaseSession = BaseSession,
-  >(headers: HeadersInit): Promise<AuthenticatedSession<User, Session> | null> {
-    const data = await this.auth.api.getSession({ headers });
+  >(): Promise<AuthenticatedSession<User, Session> | null> {
+    const requestHeaders = headers();
+    const candidates = [requestHeaders];
+    if (requestHeaders.has("cookie") && requestHeaders.has("authorization")) {
+      const cookieHeaders = new Headers(requestHeaders);
+      cookieHeaders.delete("authorization");
+      candidates.unshift(cookieHeaders);
+    }
+
+    for (const candidate of candidates) {
+      const session = await this.resolveSession<User, Session>(candidate);
+      if (session) return session;
+    }
+
+    return null;
+  }
+
+  private async resolveSession<
+    User extends BaseUser,
+    Session extends BaseSession,
+  >(
+    requestHeaders: HeadersInit,
+  ): Promise<AuthenticatedSession<User, Session> | null> {
+    const data = await this.auth.api.getSession({ headers: requestHeaders });
     if (!data) return null;
 
     const [user, session] = await this.runUnrestricted(
@@ -98,13 +118,12 @@ export class SessionService {
   /**
    * Lists the persisted active sessions belonging to the authenticated user.
    *
-   * @param headers - Request headers containing the current session.
    * @returns Active session entities in the order returned by the auth backend.
    */
-  async listSessions<Session extends BaseSession = BaseSession>(
-    headers: HeadersInit,
-  ): Promise<Session[]> {
-    const data = await this.auth.api.listSessions({ headers });
+  async listSessions<Session extends BaseSession = BaseSession>(): Promise<
+    Session[]
+  > {
+    const data = await this.auth.api.listSessions({ headers: headers() });
     if (data.length === 0) return [];
 
     const sessions = await this.runUnrestricted(
@@ -124,23 +143,25 @@ export class SessionService {
   }
 
   /** Revokes one session owned by the authenticated user. */
-  async revokeSession(headers: HeadersInit, token: string): Promise<boolean> {
+  async revokeSession(token: string): Promise<boolean> {
     const result = await this.auth.api.revokeSession({
       body: { token },
-      headers,
+      headers: headers(),
     });
     return result.status;
   }
 
   /** Revokes every session except the authenticated user's current session. */
-  async revokeOtherSessions(headers: HeadersInit): Promise<boolean> {
-    const result = await this.auth.api.revokeOtherSessions({ headers });
+  async revokeOtherSessions(): Promise<boolean> {
+    const result = await this.auth.api.revokeOtherSessions({
+      headers: headers(),
+    });
     return result.status;
   }
 
   /** Revokes every session belonging to the authenticated user. */
-  async revokeSessions(headers: HeadersInit): Promise<boolean> {
-    const result = await this.auth.api.revokeSessions({ headers });
+  async revokeSessions(): Promise<boolean> {
+    const result = await this.auth.api.revokeSessions({ headers: headers() });
     return result.status;
   }
 

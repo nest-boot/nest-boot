@@ -93,8 +93,7 @@ describe("AuthMiddleware", () => {
       next,
     );
 
-    const headers = getSession.mock.calls[0][0] as Headers;
-    expect(headers.get("x-test")).toBe("a, b");
+    expect(getSession).toHaveBeenCalledWith();
     expect(findOne).not.toHaveBeenCalled();
     expect(next).toHaveBeenCalledTimes(1);
   });

@@ -1,3 +1,4 @@
+import { headers } from "@nest-boot/request-context";
 import { Inject, Injectable } from "@nestjs/common";
 
 import { AUTH_TOKEN } from "./auth.constants.js";
@@ -161,52 +162,48 @@ export class AuthService {
 
   /** Signs up a user with an email address and password. */
   async signUp<User extends AuthUser = AuthUser>(
-    headers: HeadersInit,
     options: SignUpOptions,
     responseOptions: AuthServiceResponseOptions,
   ): Promise<AuthServiceResponse<SignUpResult<User>>>;
   async signUp<User extends AuthUser = AuthUser>(
-    headers: HeadersInit,
     options: SignUpOptions,
   ): Promise<SignUpResult<User>>;
   async signUp<User extends AuthUser = AuthUser>(
-    headers: HeadersInit,
     options: SignUpOptions,
     responseOptions?: AuthServiceResponseOptions,
   ): Promise<SignUpResult<User> | AuthServiceResponse<SignUpResult<User>>> {
+    const requestHeaders = headers();
     if (responseOptions?.returnHeaders) {
       return (await this.auth.api.signUpEmail({
         body: options,
-        headers,
+        headers: requestHeaders,
         returnHeaders: true,
       })) as AuthServiceResponse<SignUpResult<User>>;
     }
 
     return (await this.auth.api.signUpEmail({
       body: options,
-      headers,
+      headers: requestHeaders,
     })) as SignUpResult<User>;
   }
 
   /** Signs in a user with an email address and password. */
   async signIn<User extends AuthUser = AuthUser>(
-    headers: HeadersInit,
     options: SignInOptions,
     responseOptions: AuthServiceResponseOptions,
   ): Promise<AuthServiceResponse<SignInResult<User>>>;
   async signIn<User extends AuthUser = AuthUser>(
-    headers: HeadersInit,
     options: SignInOptions,
   ): Promise<SignInResult<User>>;
   async signIn<User extends AuthUser = AuthUser>(
-    headers: HeadersInit,
     options: SignInOptions,
     responseOptions?: AuthServiceResponseOptions,
   ): Promise<SignInResult<User> | AuthServiceResponse<SignInResult<User>>> {
+    const requestHeaders = headers();
     if (responseOptions?.returnHeaders) {
       const result = await this.auth.api.signInEmail({
         body: options,
-        headers,
+        headers: requestHeaders,
         returnHeaders: true,
       });
 
@@ -218,25 +215,24 @@ export class AuthService {
 
     const result = await this.auth.api.signInEmail({
       body: options,
-      headers,
+      headers: requestHeaders,
     });
 
     return this.normalizeSignInResult<User>(result);
   }
 
-  /** Signs out the session represented by the supplied request headers. */
+  /** Signs out the session represented by the current request context. */
   async signOut(
-    headers: HeadersInit,
     responseOptions: AuthServiceResponseOptions,
   ): Promise<AuthServiceResponse<boolean>>;
-  async signOut(headers: HeadersInit): Promise<boolean>;
+  async signOut(): Promise<boolean>;
   async signOut(
-    headers: HeadersInit,
     responseOptions?: AuthServiceResponseOptions,
   ): Promise<boolean | AuthServiceResponse<boolean>> {
+    const requestHeaders = headers();
     if (responseOptions?.returnHeaders) {
       const result = await this.auth.api.signOut({
-        headers,
+        headers: requestHeaders,
         returnHeaders: true,
       });
 
@@ -246,7 +242,7 @@ export class AuthService {
       };
     }
 
-    const result = await this.auth.api.signOut({ headers });
+    const result = await this.auth.api.signOut({ headers: requestHeaders });
     return result.success;
   }
 
@@ -272,36 +268,29 @@ export class AuthService {
   }
 
   /** Verifies the authenticated user's credential password. */
-  async verifyPassword(
-    headers: HeadersInit,
-    password: string,
-  ): Promise<boolean> {
+  async verifyPassword(password: string): Promise<boolean> {
     const result = await this.auth.api.verifyPassword({
       body: { password },
-      headers,
+      headers: headers(),
     });
     return result.status;
   }
 
   /** Updates the authenticated user's profile and configured custom fields. */
   async updateUser(
-    headers: HeadersInit,
     options: UpdateAuthUserOptions,
     responseOptions: AuthServiceResponseOptions,
   ): Promise<AuthServiceResponse<boolean>>;
+  async updateUser(options: UpdateAuthUserOptions): Promise<boolean>;
   async updateUser(
-    headers: HeadersInit,
-    options: UpdateAuthUserOptions,
-  ): Promise<boolean>;
-  async updateUser(
-    headers: HeadersInit,
     options: UpdateAuthUserOptions,
     responseOptions?: AuthServiceResponseOptions,
   ): Promise<boolean | AuthServiceResponse<boolean>> {
+    const requestHeaders = headers();
     if (responseOptions?.returnHeaders) {
       const result = await this.auth.api.updateUser({
         body: options,
-        headers,
+        headers: requestHeaders,
         returnHeaders: true,
       });
 
@@ -311,29 +300,28 @@ export class AuthService {
       };
     }
 
-    const result = await this.auth.api.updateUser({ body: options, headers });
+    const result = await this.auth.api.updateUser({
+      body: options,
+      headers: requestHeaders,
+    });
     return result.status;
   }
 
   /** Starts or completes the authenticated user's configured email-change flow. */
   async changeEmail(
-    headers: HeadersInit,
     options: ChangeAuthEmailOptions,
     responseOptions: AuthServiceResponseOptions,
   ): Promise<AuthServiceResponse<boolean>>;
+  async changeEmail(options: ChangeAuthEmailOptions): Promise<boolean>;
   async changeEmail(
-    headers: HeadersInit,
-    options: ChangeAuthEmailOptions,
-  ): Promise<boolean>;
-  async changeEmail(
-    headers: HeadersInit,
     options: ChangeAuthEmailOptions,
     responseOptions?: AuthServiceResponseOptions,
   ): Promise<boolean | AuthServiceResponse<boolean>> {
+    const requestHeaders = headers();
     if (responseOptions?.returnHeaders) {
       const result = await this.auth.api.changeEmail({
         body: options,
-        headers,
+        headers: requestHeaders,
         returnHeaders: true,
       });
 
@@ -343,31 +331,32 @@ export class AuthService {
       };
     }
 
-    const result = await this.auth.api.changeEmail({ body: options, headers });
+    const result = await this.auth.api.changeEmail({
+      body: options,
+      headers: requestHeaders,
+    });
     return result.status;
   }
 
   /** Changes the authenticated user's credential password. */
   async changePassword(
-    headers: HeadersInit,
     options: ChangeAuthPasswordOptions,
     responseOptions: AuthServiceResponseOptions,
   ): Promise<AuthServiceResponse<ChangeAuthPasswordResult>>;
   async changePassword(
-    headers: HeadersInit,
     options: ChangeAuthPasswordOptions,
   ): Promise<ChangeAuthPasswordResult>;
   async changePassword(
-    headers: HeadersInit,
     options: ChangeAuthPasswordOptions,
     responseOptions?: AuthServiceResponseOptions,
   ): Promise<
     ChangeAuthPasswordResult | AuthServiceResponse<ChangeAuthPasswordResult>
   > {
+    const requestHeaders = headers();
     if (responseOptions?.returnHeaders) {
       const result = await this.auth.api.changePassword({
         body: options,
-        headers,
+        headers: requestHeaders,
         returnHeaders: true,
       });
 
@@ -379,74 +368,68 @@ export class AuthService {
 
     const result = await this.auth.api.changePassword({
       body: options,
-      headers,
+      headers: requestHeaders,
     });
     return { token: result.token };
   }
 
   /** Adds a credential password to an authenticated account that has none. */
-  async setPassword(
-    headers: HeadersInit,
-    newPassword: string,
-  ): Promise<boolean> {
+  async setPassword(newPassword: string): Promise<boolean> {
     const result = await this.auth.api.setPassword({
       body: { newPassword },
-      headers,
+      headers: headers(),
     });
     return result.status;
   }
 
   /** Requests deletion of the authenticated user's account. */
   async deleteUser(
-    headers: HeadersInit,
     options: DeleteAuthUserOptions,
     responseOptions: AuthServiceResponseOptions,
   ): Promise<AuthServiceResponse<DeleteAuthUserResult>>;
   async deleteUser(
-    headers: HeadersInit,
     options?: DeleteAuthUserOptions,
   ): Promise<DeleteAuthUserResult>;
   async deleteUser(
-    headers: HeadersInit,
     options: DeleteAuthUserOptions = {},
     responseOptions?: AuthServiceResponseOptions,
   ): Promise<DeleteAuthUserResult | AuthServiceResponse<DeleteAuthUserResult>> {
+    const requestHeaders = headers();
     if (responseOptions?.returnHeaders) {
       return await this.auth.api.deleteUser({
         body: options,
-        headers,
+        headers: requestHeaders,
         returnHeaders: true,
       });
     }
 
-    return await this.auth.api.deleteUser({ body: options, headers });
+    return await this.auth.api.deleteUser({
+      body: options,
+      headers: requestHeaders,
+    });
   }
 
   /** Lists safe summaries of authentication accounts linked to the current user. */
-  async listAccounts(headers: HeadersInit): Promise<AuthAccount[]> {
-    return await this.auth.api.listUserAccounts({ headers });
+  async listAccounts(): Promise<AuthAccount[]> {
+    return await this.auth.api.listUserAccounts({ headers: headers() });
   }
 
   /** Unlinks an authentication account from the current user. */
-  async unlinkAccount(
-    headers: HeadersInit,
-    options: UnlinkAuthAccountOptions,
-  ): Promise<boolean> {
+  async unlinkAccount(options: UnlinkAuthAccountOptions): Promise<boolean> {
     const result = await this.auth.api.unlinkAccount({
       body: options,
-      headers,
+      headers: headers(),
     });
     return result.status;
   }
 
   /** Returns a usable provider access token for a linked account. */
   async getAccessToken(
-    headers: HeadersInit,
     selector: AuthAccountSelector,
   ): Promise<AuthAccessToken> {
     const result = await this.auth.api.getAccessToken({
       body: selector,
-      headers,
+      headers: headers(),
     });
 
     return {
@@ -459,12 +442,11 @@ export class AuthService {
 
   /** Refreshes provider credentials for a linked account. */
   async refreshToken(
-    headers: HeadersInit,
     selector: AuthAccountSelector,
   ): Promise<AuthRefreshedToken> {
     const result = await this.auth.api.refreshToken({
       body: selector,
-      headers,
+      headers: headers(),
     });
 
     return {
@@ -483,13 +465,10 @@ export class AuthService {
   async accountInfo<
     UserInfo extends AuthProviderUserInfo = AuthProviderUserInfo,
     Data extends object = Record<string, unknown>,
-  >(
-    headers: HeadersInit,
-    selector: AuthAccountSelector,
-  ): Promise<AuthAccountInfo<UserInfo, Data>> {
+  >(selector: AuthAccountSelector): Promise<AuthAccountInfo<UserInfo, Data>> {
     return (await this.auth.api.accountInfo({
       query: selector,
-      headers,
+      headers: headers(),
     })) as AuthAccountInfo<UserInfo, Data>;
   }
 
