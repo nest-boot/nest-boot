@@ -109,10 +109,12 @@ describe("AuthGuard", () => {
       AuthGuard,
       vi.fn((key) =>
         key === USER_CAN_METADATA
-          ? {
-              action: "read",
-              subject: Subject,
-            }
+          ? [
+              {
+                action: "read",
+                subject: Subject,
+              },
+            ]
           : false,
       ),
       { user: { buildAbility } },
@@ -137,10 +139,12 @@ describe("AuthGuard", () => {
         }
 
         if (key === USER_CAN_METADATA) {
-          return {
-            action: "read",
-            subject: Subject,
-          };
+          return [
+            {
+              action: "read",
+              subject: Subject,
+            },
+          ];
         }
 
         return undefined;

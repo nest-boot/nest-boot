@@ -10,10 +10,25 @@ describe("UserCan", () => {
     decorator(Controller);
 
     expect(decorator.KEY).toBe(USER_CAN_METADATA);
-    expect(Reflect.getMetadata(USER_CAN_METADATA, Controller)).toEqual({
-      action: "read",
-      subject: subjectFactory,
-    });
+    expect(Reflect.getMetadata(USER_CAN_METADATA, Controller)).toEqual([
+      {
+        action: "read",
+        subject: subjectFactory,
+      },
+    ]);
+  });
+
+  it("appends repeated requirements using all semantics", () => {
+    class Subject {}
+    class Controller {}
+
+    UserCan("read", Subject)(Controller);
+    UserCan("update", Subject)(Controller);
+
+    expect(Reflect.getMetadata(USER_CAN_METADATA, Controller)).toEqual([
+      { action: "read", subject: Subject },
+      { action: "update", subject: Subject },
+    ]);
   });
 
   it("requires a subject", () => {

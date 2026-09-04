@@ -146,12 +146,22 @@ me(@CurrentUser() user: User) {
 }
 ```
 
-同一路由同时声明两个装饰器时，两项权限都必须通过。`@Can` 是按 `scope` 转发的
-薄别名；省略 `scope` 时转发给 `@WorkspaceCan`。
+路由声明的每项权限都必须通过，包括同一作用域内重复声明的 `@UserCan` 或
+`@WorkspaceCan`，以及两个作用域的组合。权限要求固定采用 `all` 语义。`@Can` 是按
+`scope` 转发的薄别名；省略 `scope` 时转发给 `@WorkspaceCan`。
 
 ```typescript
 @Can("read", Post) // @WorkspaceCan("read", Post)
 @Can("read", User, { scope: "user" }) // @UserCan("read", User)
+```
+
+```typescript
+@WorkspaceCan("read", Post)
+@WorkspaceCan("update", Post)
+@Mutation(() => Post)
+updatePost() {
+  // 必须同时拥有 Post:read 与 Post:update。
+}
 ```
 
 权限取决于具体对象时，使用 subject factory。factory 的第一个参数是 Controller 或

@@ -11,10 +11,24 @@ describe("WorkspaceCan", () => {
     decorator(Controller);
 
     expect(decorator.KEY).toBe(WORKSPACE_CAN_METADATA);
-    expect(Reflect.getMetadata(WORKSPACE_CAN_METADATA, Controller)).toEqual({
-      action: "read",
-      subject: Subject,
-    });
+    expect(Reflect.getMetadata(WORKSPACE_CAN_METADATA, Controller)).toEqual([
+      {
+        action: "read",
+        subject: Subject,
+      },
+    ]);
+  });
+
+  it("appends repeated requirements using all semantics", () => {
+    class Controller {}
+
+    WorkspaceCan("read", Subject)(Controller);
+    WorkspaceCan("update", Subject)(Controller);
+
+    expect(Reflect.getMetadata(WORKSPACE_CAN_METADATA, Controller)).toEqual([
+      { action: "read", subject: Subject },
+      { action: "update", subject: Subject },
+    ]);
   });
 
   it("requires a subject", () => {

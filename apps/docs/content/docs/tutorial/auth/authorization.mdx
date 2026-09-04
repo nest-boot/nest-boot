@@ -157,13 +157,24 @@ me(@CurrentUser() user: User) {
 }
 ```
 
-If both decorators are present on a route, both permissions must pass. `@Can`
-is a thin alias that delegates to the scoped decorator; omitted `scope`
-delegates to `@WorkspaceCan`.
+Every permission declared on a route must pass. This includes repeated
+`@UserCan` or `@WorkspaceCan` declarations in the same scope as well as a mix
+of both scopes. Permission requirements always use `all` semantics. `@Can` is
+a thin alias that delegates to the scoped decorator; omitted `scope` delegates
+to `@WorkspaceCan`.
 
 ```typescript
 @Can("read", Post) // @WorkspaceCan("read", Post)
 @Can("read", User, { scope: "user" }) // @UserCan("read", User)
+```
+
+```typescript
+@WorkspaceCan("read", Post)
+@WorkspaceCan("update", Post)
+@Mutation(() => Post)
+updatePost() {
+  // Requires both Post:read and Post:update.
+}
 ```
 
 Use a subject factory when authorization depends on a concrete object. The
