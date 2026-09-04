@@ -1,3 +1,10 @@
+## 8.0.1 (2026-09-04)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 8.0.0-beta.4
+- Updated @nest-boot/mikro-orm to 8.0.1
+
 # 8.0.0 (2026-09-01)
 
 ### 🚀 Features

@@ -1,3 +1,13 @@
+## 8.0.0-beta.4 (2026-09-04)
+
+### 🚀 Features
+
+- **request-context:** support token aliases ([#322](https://github.com/nest-boot/nest-boot/pull/322), [#321](https://github.com/nest-boot/nest-boot/issues/321))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.0-beta.3 (2026-09-01)
 
 ### 🚀 Features
