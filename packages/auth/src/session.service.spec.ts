@@ -12,6 +12,15 @@ import type { AuthModuleOptions } from "./auth-module-options.interface.js";
 import { BaseSession, BaseUser } from "./entities/index.js";
 import { SessionService } from "./session.service.js";
 
+const requestHeaders = vi.hoisted(
+  () => new Headers({ cookie: "session=value" }),
+);
+
+vi.mock("@nest-boot/request-context", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@nest-boot/request-context")>()),
+  headers: () => requestHeaders,
+}));
+
 class TestSession extends BaseSession {}
 class TestUser extends BaseUser {}
 
@@ -64,7 +73,10 @@ async function createService(
 }
 
 describe("SessionService", () => {
-  const headers = new Headers({ cookie: "session=value" });
+  beforeEach(() => {
+    requestHeaders.delete("authorization");
+    requestHeaders.set("cookie", "session=value");
+  });
 
   it("resolves configured application user and session entities", async () => {
     const api = createApi();
@@ -85,11 +97,11 @@ describe("SessionService", () => {
     };
     const { service } = await createService(api, em);
 
-    await expect(service.getSession(headers)).resolves.toEqual({
+    await expect(service.getSession()).resolves.toEqual({
       session,
       user,
     });
-    expect(api.getSession).toHaveBeenCalledWith({ headers });
+    expect(api.getSession).toHaveBeenCalledWith({ headers: requestHeaders });
     expect(em.findOne).toHaveBeenNthCalledWith(1, TestUser, { id: "user-1" });
     expect(em.findOne).toHaveBeenNthCalledWith(2, TestSession, {
       token: "session-token",
@@ -102,8 +114,39 @@ describe("SessionService", () => {
     api.getSession.mockResolvedValue(null);
     const { em, service } = await createService(api);
 
-    await expect(service.getSession(headers)).resolves.toBeNull();
+    await expect(service.getSession()).resolves.toBeNull();
     expect(em.findOne).not.toHaveBeenCalled();
+  });
+
+  it("tries the cookie session before an Authorization credential", async () => {
+    requestHeaders.set("authorization", "Bearer api-key");
+    const api = createApi();
+    const user = Object.assign(new TestUser(), { id: "user-1" });
+    const session = Object.assign(new TestSession(), {
+      token: "session-token",
+    });
+    api.getSession.mockResolvedValueOnce(null).mockResolvedValueOnce({
+      session: { token: session.token },
+      user: { id: user.id },
+    });
+    const em = {
+      find: vi.fn(),
+      findOne: vi
+        .fn()
+        .mockResolvedValueOnce(user)
+        .mockResolvedValueOnce(session),
+    };
+    const { service } = await createService(api, em);
+
+    await expect(service.getSession()).resolves.toEqual({ session, user });
+
+    const cookieOnlyHeaders = api.getSession.mock.calls[0][0]
+      .headers as Headers;
+    expect(cookieOnlyHeaders.get("cookie")).toBe("session=value");
+    expect(cookieOnlyHeaders.has("authorization")).toBe(false);
+    expect(api.getSession.mock.calls[1][0]).toEqual({
+      headers: requestHeaders,
+    });
   });
 
   it("returns null when a persisted application entity no longer exists", async () => {
@@ -120,7 +163,7 @@ describe("SessionService", () => {
     };
     const { service } = await createService(api, em);
 
-    await expect(service.getSession(headers)).resolves.toBeNull();
+    await expect(service.getSession()).resolves.toBeNull();
   });
 
   it("rejects sessions belonging to an actively banned user", async () => {
@@ -146,7 +189,7 @@ describe("SessionService", () => {
     };
     const { service } = await createService(api, em);
 
-    await expect(service.getSession(headers)).resolves.toBeNull();
+    await expect(service.getSession()).resolves.toBeNull();
   });
 
   it("lists active persisted sessions in backend order", async () => {
@@ -164,10 +207,7 @@ describe("SessionService", () => {
     };
     const { service } = await createService(api, em);
 
-    await expect(service.listSessions(headers)).resolves.toEqual([
-      session2,
-      session1,
-    ]);
+    await expect(service.listSessions()).resolves.toEqual([session2, session1]);
     expect(em.find).toHaveBeenCalledWith(TestSession, {
       token: { $in: ["session-2", "missing", "session-1"] },
     });
@@ -190,7 +230,7 @@ describe("SessionService", () => {
       new RequestContext({ type: "request" }),
       async () => {
         RowLevelSecurity.setRole("authenticated");
-        await expect(service.listSessions(headers)).resolves.toEqual([session]);
+        await expect(service.listSessions()).resolves.toEqual([session]);
         expect(RowLevelSecurity.getMode()).toBe(RowLevelSecurityMode.AUTO);
         expect(RowLevelSecurity.getRole()).toBe("authenticated");
       },
@@ -202,7 +242,7 @@ describe("SessionService", () => {
     api.listSessions.mockResolvedValue([]);
     const { em, service } = await createService(api);
 
-    await expect(service.listSessions(headers)).resolves.toEqual([]);
+    await expect(service.listSessions()).resolves.toEqual([]);
     expect(em.find).not.toHaveBeenCalled();
   });
 
@@ -211,12 +251,10 @@ describe("SessionService", () => {
     api.revokeSession.mockResolvedValue({ status: true });
     const { service } = await createService(api);
 
-    await expect(service.revokeSession(headers, "session-1")).resolves.toBe(
-      true,
-    );
+    await expect(service.revokeSession("session-1")).resolves.toBe(true);
     expect(api.revokeSession).toHaveBeenCalledWith({
       body: { token: "session-1" },
-      headers,
+      headers: requestHeaders,
     });
   });
 
@@ -225,8 +263,10 @@ describe("SessionService", () => {
     api.revokeOtherSessions.mockResolvedValue({ status: true });
     const { service } = await createService(api);
 
-    await expect(service.revokeOtherSessions(headers)).resolves.toBe(true);
-    expect(api.revokeOtherSessions).toHaveBeenCalledWith({ headers });
+    await expect(service.revokeOtherSessions()).resolves.toBe(true);
+    expect(api.revokeOtherSessions).toHaveBeenCalledWith({
+      headers: requestHeaders,
+    });
   });
 
   it("revokes every session", async () => {
@@ -234,7 +274,9 @@ describe("SessionService", () => {
     api.revokeSessions.mockResolvedValue({ status: true });
     const { service } = await createService(api);
 
-    await expect(service.revokeSessions(headers)).resolves.toBe(true);
-    expect(api.revokeSessions).toHaveBeenCalledWith({ headers });
+    await expect(service.revokeSessions()).resolves.toBe(true);
+    expect(api.revokeSessions).toHaveBeenCalledWith({
+      headers: requestHeaders,
+    });
   });
 });

@@ -3,6 +3,15 @@ import { Test } from "@nestjs/testing";
 import { AUTH_TOKEN } from "./auth.constants.js";
 import { AuthService } from "./auth.service.js";
 
+const requestHeaders = vi.hoisted(
+  () => new Headers({ cookie: "session=value" }),
+);
+
+vi.mock("@nest-boot/request-context", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@nest-boot/request-context")>()),
+  headers: () => requestHeaders,
+}));
+
 function createApi() {
   return {
     accountInfo: vi.fn(),
@@ -43,8 +52,6 @@ async function createService(api = createApi()) {
 }
 
 describe("AuthService", () => {
-  const headers = new Headers({ cookie: "session=value" });
-
   it("signs up with email and password through the internal auth adapter", async () => {
     const { api, service } = await createService();
     const options = {
@@ -69,8 +76,11 @@ describe("AuthService", () => {
     };
     api.signUpEmail.mockResolvedValue(result);
 
-    await expect(service.signUp(headers, options)).resolves.toBe(result);
-    expect(api.signUpEmail).toHaveBeenCalledWith({ body: options, headers });
+    await expect(service.signUp(options)).resolves.toBe(result);
+    expect(api.signUpEmail).toHaveBeenCalledWith({
+      body: options,
+      headers: requestHeaders,
+    });
   });
 
   it("signs in with email and password and normalizes an absent URL", async () => {
@@ -93,13 +103,16 @@ describe("AuthService", () => {
       },
     });
 
-    await expect(service.signIn(headers, options)).resolves.toEqual({
+    await expect(service.signIn(options)).resolves.toEqual({
       redirect: false,
       token: "session-token",
       url: null,
       user: expect.objectContaining({ id: "user-1" }),
     });
-    expect(api.signInEmail).toHaveBeenCalledWith({ body: options, headers });
+    expect(api.signInEmail).toHaveBeenCalledWith({
+      body: options,
+      headers: requestHeaders,
+    });
   });
 
   it("returns response headers for transport-aware sign in", async () => {
@@ -126,14 +139,14 @@ describe("AuthService", () => {
     });
 
     await expect(
-      service.signIn(headers, options, { returnHeaders: true }),
+      service.signIn(options, { returnHeaders: true }),
     ).resolves.toEqual({
       headers: responseHeaders,
       response: expect.objectContaining({ url: null }),
     });
     expect(api.signInEmail).toHaveBeenCalledWith({
       body: options,
-      headers,
+      headers: requestHeaders,
       returnHeaders: true,
     });
   });
@@ -142,8 +155,8 @@ describe("AuthService", () => {
     const { api, service } = await createService();
     api.signOut.mockResolvedValue({ success: true });
 
-    await expect(service.signOut(headers)).resolves.toBe(true);
-    expect(api.signOut).toHaveBeenCalledWith({ headers });
+    await expect(service.signOut()).resolves.toBe(true);
+    expect(api.signOut).toHaveBeenCalledWith({ headers: requestHeaders });
   });
 
   it("sends an email verification link", async () => {
@@ -191,12 +204,10 @@ describe("AuthService", () => {
     const { api, service } = await createService();
     api.verifyPassword.mockResolvedValue({ status: true });
 
-    await expect(service.verifyPassword(headers, "password")).resolves.toBe(
-      true,
-    );
+    await expect(service.verifyPassword("password")).resolves.toBe(true);
     expect(api.verifyPassword).toHaveBeenCalledWith({
       body: { password: "password" },
-      headers,
+      headers: requestHeaders,
     });
   });
 
@@ -205,8 +216,11 @@ describe("AuthService", () => {
     api.updateUser.mockResolvedValue({ status: true });
     const options = { image: null, name: "Alice", timezone: "UTC" };
 
-    await expect(service.updateUser(headers, options)).resolves.toBe(true);
-    expect(api.updateUser).toHaveBeenCalledWith({ body: options, headers });
+    await expect(service.updateUser(options)).resolves.toBe(true);
+    expect(api.updateUser).toHaveBeenCalledWith({
+      body: options,
+      headers: requestHeaders,
+    });
     expect("api" in service).toBe(false);
   });
 
@@ -222,11 +236,11 @@ describe("AuthService", () => {
     });
 
     await expect(
-      service.updateUser(headers, options, { returnHeaders: true }),
+      service.updateUser(options, { returnHeaders: true }),
     ).resolves.toEqual({ headers: responseHeaders, response: true });
     expect(api.updateUser).toHaveBeenCalledWith({
       body: options,
-      headers,
+      headers: requestHeaders,
       returnHeaders: true,
     });
   });
@@ -239,8 +253,11 @@ describe("AuthService", () => {
       newEmail: "next@example.com",
     };
 
-    await expect(service.changeEmail(headers, options)).resolves.toBe(true);
-    expect(api.changeEmail).toHaveBeenCalledWith({ body: options, headers });
+    await expect(service.changeEmail(options)).resolves.toBe(true);
+    expect(api.changeEmail).toHaveBeenCalledWith({
+      body: options,
+      headers: requestHeaders,
+    });
   });
 
   it("returns email-change response headers when requested", async () => {
@@ -258,11 +275,11 @@ describe("AuthService", () => {
     });
 
     await expect(
-      service.changeEmail(headers, options, { returnHeaders: true }),
+      service.changeEmail(options, { returnHeaders: true }),
     ).resolves.toEqual({ headers: responseHeaders, response: true });
     expect(api.changeEmail).toHaveBeenCalledWith({
       body: options,
-      headers,
+      headers: requestHeaders,
       returnHeaders: true,
     });
   });
@@ -279,10 +296,13 @@ describe("AuthService", () => {
       revokeOtherSessions: true,
     };
 
-    await expect(service.changePassword(headers, options)).resolves.toEqual({
+    await expect(service.changePassword(options)).resolves.toEqual({
       token: "replacement-token",
     });
-    expect(api.changePassword).toHaveBeenCalledWith({ body: options, headers });
+    expect(api.changePassword).toHaveBeenCalledWith({
+      body: options,
+      headers: requestHeaders,
+    });
   });
 
   it("returns password-change response headers when requested", async () => {
@@ -301,14 +321,14 @@ describe("AuthService", () => {
     });
 
     await expect(
-      service.changePassword(headers, options, { returnHeaders: true }),
+      service.changePassword(options, { returnHeaders: true }),
     ).resolves.toEqual({
       headers: responseHeaders,
       response: { token: "replacement-token" },
     });
     expect(api.changePassword).toHaveBeenCalledWith({
       body: options,
-      headers,
+      headers: requestHeaders,
       returnHeaders: true,
     });
   });
@@ -317,12 +337,10 @@ describe("AuthService", () => {
     const { api, service } = await createService();
     api.setPassword.mockResolvedValue({ status: true });
 
-    await expect(service.setPassword(headers, "new-password")).resolves.toBe(
-      true,
-    );
+    await expect(service.setPassword("new-password")).resolves.toBe(true);
     expect(api.setPassword).toHaveBeenCalledWith({
       body: { newPassword: "new-password" },
-      headers,
+      headers: requestHeaders,
     });
   });
 
@@ -333,11 +351,14 @@ describe("AuthService", () => {
       success: true,
     });
 
-    await expect(service.deleteUser(headers)).resolves.toEqual({
+    await expect(service.deleteUser()).resolves.toEqual({
       message: "User deleted",
       success: true,
     });
-    expect(api.deleteUser).toHaveBeenCalledWith({ body: {}, headers });
+    expect(api.deleteUser).toHaveBeenCalledWith({
+      body: {},
+      headers: requestHeaders,
+    });
   });
 
   it("returns user-deletion response headers when requested", async () => {
@@ -349,11 +370,11 @@ describe("AuthService", () => {
     api.deleteUser.mockResolvedValue({ headers: responseHeaders, response });
 
     await expect(
-      service.deleteUser(headers, {}, { returnHeaders: true }),
+      service.deleteUser({}, { returnHeaders: true }),
     ).resolves.toEqual({ headers: responseHeaders, response });
     expect(api.deleteUser).toHaveBeenCalledWith({
       body: {},
-      headers,
+      headers: requestHeaders,
       returnHeaders: true,
     });
   });
@@ -374,8 +395,10 @@ describe("AuthService", () => {
     ];
     api.listUserAccounts.mockResolvedValue(accounts);
 
-    await expect(service.listAccounts(headers)).resolves.toBe(accounts);
-    expect(api.listUserAccounts).toHaveBeenCalledWith({ headers });
+    await expect(service.listAccounts()).resolves.toBe(accounts);
+    expect(api.listUserAccounts).toHaveBeenCalledWith({
+      headers: requestHeaders,
+    });
   });
 
   it("unlinks an account", async () => {
@@ -383,8 +406,11 @@ describe("AuthService", () => {
     api.unlinkAccount.mockResolvedValue({ status: true });
     const options = { accountId: "account-1" };
 
-    await expect(service.unlinkAccount(headers, options)).resolves.toBe(true);
-    expect(api.unlinkAccount).toHaveBeenCalledWith({ body: options, headers });
+    await expect(service.unlinkAccount(options)).resolves.toBe(true);
+    expect(api.unlinkAccount).toHaveBeenCalledWith({
+      body: options,
+      headers: requestHeaders,
+    });
   });
 
   it("gets and normalizes a provider access token", async () => {
@@ -395,7 +421,7 @@ describe("AuthService", () => {
     });
 
     await expect(
-      service.getAccessToken(headers, { accountId: "account-1" }),
+      service.getAccessToken({ accountId: "account-1" }),
     ).resolves.toEqual({
       accessToken: "access-token",
       accessTokenExpiresAt: null,
@@ -404,7 +430,7 @@ describe("AuthService", () => {
     });
     expect(api.getAccessToken).toHaveBeenCalledWith({
       body: { accountId: "account-1" },
-      headers,
+      headers: requestHeaders,
     });
   });
 
@@ -417,7 +443,7 @@ describe("AuthService", () => {
     });
 
     await expect(
-      service.refreshToken(headers, { accountId: "account-1" }),
+      service.refreshToken({ accountId: "account-1" }),
     ).resolves.toEqual({
       accessToken: null,
       accessTokenExpiresAt: null,
@@ -444,11 +470,11 @@ describe("AuthService", () => {
     };
     api.accountInfo.mockResolvedValue(result);
 
-    await expect(
-      service.accountInfo(headers, { accountId: "account-1" }),
-    ).resolves.toBe(result);
+    await expect(service.accountInfo({ accountId: "account-1" })).resolves.toBe(
+      result,
+    );
     expect(api.accountInfo).toHaveBeenCalledWith({
-      headers,
+      headers: requestHeaders,
       query: { accountId: "account-1" },
     });
   });

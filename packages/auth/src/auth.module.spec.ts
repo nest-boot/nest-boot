@@ -51,6 +51,7 @@ import { AuthModule } from "./auth.module.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import { AuthService } from "./auth.service.js";
 import { AuthHandlerMiddleware } from "./auth-handler.middleware.js";
+import { AuthorizationService } from "./authorization.service.js";
 import { SessionService } from "./session.service.js";
 import { UserService } from "./user.service.js";
 import { WorkspaceService } from "./workspace.service.js";
@@ -222,6 +223,7 @@ describe("AuthModule", () => {
     expect(providers).toContain(UserService);
     expect(providers).toContain(ApiKeyService);
     expect(providers).toContain(AuthService);
+    expect(providers).toContain(AuthorizationService);
     expect(providers).toContain(SessionService);
     expect(providers).toContain(WorkspaceService);
     expect(exports).toContain(MODULE_OPTIONS_TOKEN);
@@ -229,6 +231,7 @@ describe("AuthModule", () => {
     expect(exports).toContain(ApiKeyService);
     expect(exports).toContain(AuthGuard);
     expect(exports).toContain(AuthService);
+    expect(exports).toContain(AuthorizationService);
     expect(exports).toContain(SessionService);
     expect(exports).toContain(WorkspaceService);
   });

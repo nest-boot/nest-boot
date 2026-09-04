@@ -10,7 +10,9 @@ description: "Authenticate personal and workspace automation with scoped API key
 - A **workspace key** is an independent service identity. It restores its
   workspace without creating a current user or workspace member.
 
-Users manage their own keys. Only a workspace owner may manage workspace keys.
+Users manage their own keys. Active workspace members manage workspace keys
+when their resolved workspace ability grants the corresponding
+`apiKey:create`, `apiKey:read`, `apiKey:update`, or `apiKey:delete` permission.
 
 ## Service API
 

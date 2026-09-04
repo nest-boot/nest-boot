@@ -18,6 +18,7 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  NotFoundException,
 } from "@nestjs/common";
 
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
@@ -25,6 +26,7 @@ import type {
   AuthModuleOptions,
   AuthWorkspaceInvitationEmailInviter,
 } from "./auth-module-options.interface.js";
+import { AuthorizationService } from "./authorization.service.js";
 import type {
   BaseUser,
   BaseWorkspace,
@@ -71,15 +73,19 @@ export class WorkspaceService<
     protected readonly em: EntityManager,
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly authOptions: AuthModuleOptions,
+    private readonly authorizationService: AuthorizationService,
   ) {}
 
   /** Finds a workspace matching the supplied filter. */
   async findOne(where: FilterQuery<Workspace>): Promise<Workspace | null> {
+    this.authorizationService.assertUserCan("read", this.workspaceEntity);
     return await this.em.findOne(this.workspaceEntity, where);
   }
 
   /** Lists active workspaces to which a user belongs. */
   async listWorkspaces(user: User): Promise<Workspace[]> {
+    this.authorizationService.assertCurrentUser(user);
+    this.authorizationService.assertUserCan("read", this.workspaceEntity);
     return await this.withRlsDisabled(async () => {
       const memberships = await this.em.find(
         this.workspaceMemberEntity,
@@ -98,6 +104,8 @@ export class WorkspaceService<
     user: User,
     input: CreateWorkspaceOptions,
   ): Promise<Workspace> {
+    this.authorizationService.assertCurrentUser(user);
+    this.authorizationService.assertUserCan("create", this.workspaceEntity);
     const workspace = this.em.create(this.workspaceEntity, {
       name: input.name,
     } as unknown as RequiredEntityData<Workspace>);
@@ -118,6 +126,7 @@ export class WorkspaceService<
   async getFullWorkspace(
     workspace: Workspace,
   ): Promise<FullWorkspace<Workspace, WorkspaceMember, WorkspaceInvitation>> {
+    this.authorizationService.assertWorkspaceCan("read", workspace);
     const [members, invitations] = await this.withRlsDisabled(
       async () =>
         await Promise.all([
@@ -149,6 +158,7 @@ export class WorkspaceService<
     workspace: Workspace,
     input: UpdateWorkspaceOptions,
   ): Promise<Workspace> {
+    this.authorizationService.assertWorkspaceCan("update", workspace);
     this.em.assign(workspace, input as never);
     await this.em.flush();
     return workspace;
@@ -159,6 +169,10 @@ export class WorkspaceService<
     workspace: Workspace,
     currentWorkspaceMember: WorkspaceMember,
   ): Promise<Workspace> {
+    this.authorizationService.assertCurrentWorkspaceMember(
+      currentWorkspaceMember,
+    );
+    this.authorizationService.assertWorkspaceCan("delete", workspace);
     if (
       !currentWorkspaceMember.roles.includes(this.creatorRole) ||
       this.unwrapWorkspace(currentWorkspaceMember).id !== workspace.id
@@ -178,6 +192,8 @@ export class WorkspaceService<
     workspace: Workspace,
     user: User,
   ): Promise<WorkspaceMember | null> {
+    this.authorizationService.assertCurrentUser(user);
+    this.authorizationService.assertUserCan("read", this.workspaceEntity);
     return await this.withRlsDisabled(
       async () =>
         await this.em.findOne(
@@ -193,6 +209,10 @@ export class WorkspaceService<
     workspace: Workspace,
     memberId: string,
   ): Promise<WorkspaceMember | null> {
+    this.authorizationService.assertWorkspaceCan(
+      "read",
+      this.workspaceMemberEntity,
+    );
     return await this.withRlsDisabled(
       async () =>
         await this.em.findOne(
@@ -205,6 +225,10 @@ export class WorkspaceService<
 
   /** Lists active and disabled members of a workspace. */
   async listMembers(workspace: Workspace): Promise<WorkspaceMember[]> {
+    this.authorizationService.assertWorkspaceCan(
+      "read",
+      this.workspaceMemberEntity,
+    );
     return await this.withRlsDisabled(
       async () =>
         await this.em.find(
@@ -224,6 +248,10 @@ export class WorkspaceService<
     user: User,
     input: AddWorkspaceMemberOptions = {},
   ): Promise<WorkspaceMember> {
+    this.authorizationService.assertWorkspaceCan(
+      "create",
+      this.workspaceMemberEntity,
+    );
     const permissions = this.normalizePermissions(input.permissions ?? []);
     const existing = await this.withRlsDisabled(
       async () =>
@@ -248,11 +276,35 @@ export class WorkspaceService<
     return member;
   }
 
+  /** Adds an existing user to a workspace by normalized email address. */
+  async addMemberByEmail(
+    workspace: Workspace,
+    email: string,
+    input: AddWorkspaceMemberOptions = {},
+  ): Promise<WorkspaceMember> {
+    this.authorizationService.assertWorkspaceCan(
+      "create",
+      this.workspaceMemberEntity,
+    );
+    const user = await this.withRlsDisabled(
+      async () =>
+        await this.em.findOne(
+          this.userEntity,
+          { email: email.trim().toLowerCase() } as FilterQuery<User>,
+          { filters: false },
+        ),
+    );
+    if (!user) throw new NotFoundException("User not found");
+
+    return await this.addMember(workspace, user, input);
+  }
+
   /** Updates a member's profile or active state. */
   async updateMember(
     member: WorkspaceMember,
     input: UpdateWorkspaceMemberOptions,
   ): Promise<WorkspaceMember> {
+    this.authorizationService.assertWorkspaceCan("update", member);
     if ("roles" in input || "permissions" in input) {
       throw new BadRequestException(
         "Use updateMemberRole or setMemberPermissions to update authorization fields",
@@ -268,6 +320,7 @@ export class WorkspaceService<
     member: WorkspaceMember,
     role: string | readonly string[],
   ): Promise<WorkspaceMember> {
+    this.authorizationService.assertWorkspaceCan("update", member);
     if (member.roles.includes(this.creatorRole)) {
       throw new ForbiddenException(
         "Workspace owner roles can only be changed by transferring ownership",
@@ -291,6 +344,7 @@ export class WorkspaceService<
     member: WorkspaceMember,
     permissions: readonly string[],
   ): Promise<WorkspaceMember> {
+    this.authorizationService.assertWorkspaceCan("update", member);
     member.permissions = this.normalizePermissions(permissions);
     await this.em.flush();
     return member;
@@ -298,6 +352,7 @@ export class WorkspaceService<
 
   /** Removes a non-owner member from its workspace. */
   async removeMember(member: WorkspaceMember): Promise<WorkspaceMember> {
+    this.authorizationService.assertWorkspaceCan("delete", member);
     if (member.roles.includes(this.creatorRole)) {
       throw new ForbiddenException("Workspace owners cannot be removed");
     }
@@ -307,7 +362,12 @@ export class WorkspaceService<
 
   /** Lets a non-owner member leave its workspace. */
   async leaveWorkspace(member: WorkspaceMember): Promise<WorkspaceMember> {
-    return await this.removeMember(member);
+    this.authorizationService.assertCurrentWorkspaceMember(member);
+    if (member.roles.includes(this.creatorRole)) {
+      throw new ForbiddenException("Workspace owners cannot leave");
+    }
+    await this.em.remove(member).flush();
+    return member;
   }
 
   /** Transfers ownership and keeps the previous owner as an administrator. */
@@ -316,6 +376,8 @@ export class WorkspaceService<
     currentOwner: WorkspaceMember,
     nextOwner: WorkspaceMember,
   ): Promise<WorkspaceMember> {
+    this.authorizationService.assertCurrentWorkspaceMember(currentOwner);
+    this.authorizationService.assertWorkspaceCan("update", workspace);
     if (
       !currentOwner.roles.includes(this.creatorRole) ||
       this.unwrapWorkspace(currentOwner).id !== workspace.id
@@ -361,6 +423,11 @@ export class WorkspaceService<
     input: CreateWorkspaceInvitationOptions,
     request?: Request,
   ): Promise<WorkspaceInvitation> {
+    this.authorizationService.assertCurrentUser(inviter);
+    this.authorizationService.assertWorkspaceCan(
+      "create",
+      this.workspaceInvitationEntity,
+    );
     const email = input.email.toLowerCase();
     const now = new Date();
     const sendInvitationEmail = this.authOptions.workspace?.sendInvitationEmail;
@@ -464,23 +531,12 @@ export class WorkspaceService<
     return created;
   }
 
-  /** Finds an invitation by its ID. */
-  async getInvitation(id: string): Promise<WorkspaceInvitation | null> {
-    return await this.withRlsDisabled(
-      async () =>
-        await this.em.findOne(
-          this.workspaceInvitationEntity,
-          { id } as FilterQuery<WorkspaceInvitation>,
-          { filters: false },
-        ),
-    );
-  }
-
   /** Finds an invitation when it is addressed to the supplied user. */
   async getUserInvitation(
     id: string,
     user: User,
   ): Promise<WorkspaceInvitation | null> {
+    this.authorizationService.assertCurrentUser(user);
     return await this.withRlsDisabled(
       async () =>
         await this.em.findOne(
@@ -499,6 +555,10 @@ export class WorkspaceService<
     id: string,
     workspace: Workspace,
   ): Promise<WorkspaceInvitation | null> {
+    this.authorizationService.assertWorkspaceCan(
+      "read",
+      this.workspaceInvitationEntity,
+    );
     return await this.withRlsDisabled(
       async () =>
         await this.em.findOne(
@@ -511,6 +571,10 @@ export class WorkspaceService<
 
   /** Lists invitations for a workspace. */
   async listInvitations(workspace: Workspace): Promise<WorkspaceInvitation[]> {
+    this.authorizationService.assertWorkspaceCan(
+      "read",
+      this.workspaceInvitationEntity,
+    );
     return await this.withRlsDisabled(
       async () =>
         await this.em.find(
@@ -523,6 +587,7 @@ export class WorkspaceService<
 
   /** Lists pending invitations addressed to a user. */
   async listUserInvitations(user: User): Promise<WorkspaceInvitation[]> {
+    this.authorizationService.assertCurrentUser(user);
     const now = new Date();
     return await this.withRlsDisabled(
       async () =>
@@ -546,6 +611,7 @@ export class WorkspaceService<
     WorkspaceInvitation,
     WorkspaceMember
   > | null> {
+    this.authorizationService.assertCurrentUser(user);
     return await this.withRlsDisabled(
       async () =>
         await this.em.transactional(async (em) => {
@@ -597,6 +663,7 @@ export class WorkspaceService<
   async cancelInvitation(
     invitation: WorkspaceInvitation,
   ): Promise<WorkspaceInvitation> {
+    this.authorizationService.assertWorkspaceCan("cancel", invitation);
     if (invitation.status !== "pending") {
       throw new BadRequestException("Workspace invitation is not pending");
     }
@@ -610,6 +677,7 @@ export class WorkspaceService<
     user: User,
     invitation: WorkspaceInvitation,
   ): Promise<WorkspaceInvitation> {
+    this.authorizationService.assertCurrentUser(user);
     if (invitation.status !== "pending") {
       throw new BadRequestException("Workspace invitation is not pending");
     }
@@ -636,11 +704,19 @@ export class WorkspaceService<
 
   /** Lists configured workspace roles. */
   listRoles(): AuthRole[] {
+    this.authorizationService.assertWorkspaceCan(
+      "read",
+      this.workspaceMemberEntity,
+    );
     return listAuthRoles(this.roles);
   }
 
   /** Lists configured workspace permissions. */
   listPermissions(): string[] {
+    this.authorizationService.assertWorkspaceCan(
+      "read",
+      this.workspaceMemberEntity,
+    );
     return listAuthPermissions(this.permissions);
   }
 
@@ -712,6 +788,10 @@ export class WorkspaceService<
 
   private get workspaceEntity(): EntityClass<Workspace> {
     return this.authOptions.entities.workspace as EntityClass<Workspace>;
+  }
+
+  private get userEntity(): EntityClass<User> {
+    return this.authOptions.entities.user as EntityClass<User>;
   }
 
   private get workspaceMemberEntity(): EntityClass<WorkspaceMember> {

@@ -57,6 +57,22 @@ describe("AuthGuard permissions", () => {
     expect(buildAbility).not.toHaveBeenCalled();
   });
 
+  it("prepares both abilities for authenticated requests without permission metadata", async () => {
+    const ability = {
+      can: vi.fn(() => true),
+    } as unknown as PermissionAbility;
+    const { guard, reflector, buildUserAbility, buildWorkspaceAbility } =
+      await createGuard(ability);
+    reflector.getAllAndOverride.mockReturnValue(undefined);
+
+    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+      await expect(guard.canActivate(createContext())).resolves.toBe(true);
+    });
+
+    expect(buildUserAbility).toHaveBeenCalledOnce();
+    expect(buildWorkspaceAbility).toHaveBeenCalledOnce();
+  });
+
   it("throws when permission metadata exists but no ability is available", async () => {
     const { guard, reflector, buildAbility } = await createGuard();
     setCanMetadata(reflector, {
@@ -127,7 +143,8 @@ describe("AuthGuard permissions", () => {
 
     expect(buildWorkspaceAbility).toHaveBeenCalledOnce();
     expect(buildWorkspaceAbility).toHaveBeenCalledWith(expect.anything(), []);
-    expect(buildUserAbility).not.toHaveBeenCalled();
+    expect(buildUserAbility).toHaveBeenCalledOnce();
+    expect(buildUserAbility).toHaveBeenCalledWith(expect.anything(), []);
   });
 
   it("resolves configured role and direct permissions before buildAbility", async () => {
@@ -994,7 +1011,7 @@ describe("AuthGuard permissions", () => {
       await expect(guard.canActivate(createContext())).resolves.toBe(false);
     });
 
-    expect(buildAbility).not.toHaveBeenCalled();
+    expect(buildAbility).toHaveBeenCalledOnce();
   });
 
   it("intersects user-key permissions with workspace-member permissions", async () => {

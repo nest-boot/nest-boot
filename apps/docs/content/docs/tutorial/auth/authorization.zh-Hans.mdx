@@ -32,7 +32,8 @@ health(): string {
 
 ## 构建 Ability
 
-分别配置用户与工作区 Ability。每个回调在一次请求中最多执行一次，结果会缓存在
+分别配置用户与工作区 Ability。对于已认证请求，即使处理器没有权限装饰器，
+`AuthGuard` 也会准备两套 Ability。每个回调在一次请求中最多执行一次，结果会缓存在
 `RequestContext` 中。返回 `null` 会使对应权限域的检查失败。
 
 ```typescript
@@ -167,12 +168,31 @@ updatePost(@Args("id") id: string) {
 ```
 
 Workspace API Key 只能通过工作区权限检查。User API Key 可以通过用户权限检查，并在
-具有有效成员身份时通过工作区权限检查。API Key 权限会与相应 Ability 取交集。
+具有有效成员身份时通过工作区权限检查。API Key 权限会与相应 Ability 取交集，`read`
+操作也不例外。
+
+## Service 授权边界
+
+`UserService`、`WorkspaceService` 与 `ApiKeyService` 会在读取或修改认证数据前强制校验
+权限。Resolver 和 Controller 上的装饰器用于提前拒绝并声明接口意图，但不是安全边界；
+即使遗漏装饰器，受保护的 Service 操作也不会变成公开操作。
+
+Service 权限划分与 Better Auth 的 admin、organization 访问控制保持一致：
+
+- 用户管理使用 `user:*` 与 `session:*` 权限；
+- 工作区变更使用 `workspace:*`、`workspaceMember:*` 与
+  `workspaceInvitation:*` 权限；
+- 工作区 API Key 管理使用 `apiKey:create/read/update/delete`；
+- 当前用户认证、会话管理、接受邀请和退出工作区使用已认证身份与资源归属校验。
+
+应用 Service 可以注入 `AuthorizationService`，使用 `assertUserCan()` 与
+`assertWorkspaceCan()` 建立同样的默认拒绝边界。Ability 必须由全局 `AuthGuard` 在当前
+请求生命周期准备；生命周期外的调用不会被隐式信任。
 
 ## 底层权限检查
 
-路由级装饰器准备好 Ability 后，底层代码可以使用对应的作用域辅助函数。`can()` 是按
-`scope` 转发的薄别名，默认转发到 `workspaceCan()`。
+`AuthGuard` 准备好当前请求的 Ability 后，底层代码可以使用对应的作用域辅助函数。
+`can()` 是按 `scope` 转发的薄别名，默认转发到 `workspaceCan()`。
 
 ```typescript
 if (!workspaceCan("update", post)) {
@@ -187,4 +207,6 @@ can("read", post); // workspaceCan(...)
 can("read", user, { scope: "user" }); // userCan(...)
 ```
 
-如果路由没有准备对应的 Ability，这些工具都会抛出 `ForbiddenException`。
+请求生命周期没有准备对应 Ability 时，`userCan()` 与 `workspaceCan()` 会按默认拒绝
+返回 `false`；更底层的 `getUserAbility()` 与 `getWorkspaceAbility()` 则会抛出
+`ForbiddenException`。

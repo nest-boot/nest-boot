@@ -32,11 +32,14 @@ allowing public handlers to declare nullable parameters explicitly.
 
 `SessionService` provides:
 
-- `getSession(headers)` — resolves the current application entities;
-- `listSessions(headers)` — lists the current user's active sessions;
-- `revokeSession(token, headers)` — revokes one session;
-- `revokeOtherSessions(headers)` — keeps only the current session;
-- `revokeSessions(headers)` — revokes every session for the current user.
+- `getSession()` — resolves the current application entities;
+- `listSessions()` — lists the current user's active sessions;
+- `revokeSession(token)` — revokes one session;
+- `revokeOtherSessions()` — keeps only the current session;
+- `revokeSessions()` — revokes every session for the current user.
+
+Each method reads the current request headers from `RequestContext`. Transport
+code does not need to convert or forward Express headers.
 
 Session lists preserve backend order and include the token required to revoke a
 specific session. A UI should identify the current session and avoid presenting

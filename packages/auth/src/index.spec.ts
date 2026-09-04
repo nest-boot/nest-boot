@@ -23,6 +23,7 @@ import { AuthMiddleware } from "./auth.middleware.js";
 import { AuthModule } from "./auth.module.js";
 import { AuthService } from "./auth.service.js";
 import { AuthTransactionContext } from "./auth.transaction-context.js";
+import { AuthorizationService } from "./authorization.service.js";
 import {
   Can,
   CurrentApiKey,
@@ -66,6 +67,7 @@ describe("public API", () => {
     expect(publicApi.AuthMiddleware).toBe(AuthMiddleware);
     expect(publicApi.AuthModule).toBe(AuthModule);
     expect(publicApi.AuthService).toBe(AuthService);
+    expect(publicApi.AuthorizationService).toBe(AuthorizationService);
     expect(publicApi.AuthTransactionContext).toBe(AuthTransactionContext);
     expect(publicApi.Can).toBe(Can);
     expect(publicApi.UserCan).toBe(UserCan);

@@ -5,6 +5,7 @@ import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import type { Mocked } from "vitest";
 
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
+import type { AuthorizationService } from "./authorization.service.js";
 import { BaseAccount, BaseSession, BaseUser } from "./entities/index.js";
 import { UserService } from "./user.service.js";
 
@@ -13,6 +14,18 @@ class TestSession extends BaseSession {}
 class TestUser extends BaseUser {}
 
 describe("UserService", () => {
+  it("fails before persistence when a service-level permission is denied", async () => {
+    const { authorizationService, em, service } = createService();
+    vi.mocked(authorizationService.assertUserCan).mockImplementation(() => {
+      throw new ForbiddenException();
+    });
+
+    await expect(service.listUsers()).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+    expect(em.findAndCount).not.toHaveBeenCalled();
+  });
+
   it("creates a user and credential account with the configured hasher", async () => {
     const { em, hash, service } = createService();
     hash.mockResolvedValue("hashed-password");
@@ -78,7 +91,7 @@ describe("UserService", () => {
   });
 
   it("gets and updates configured user entities", async () => {
-    const { em, service } = createService();
+    const { authorizationService, em, service } = createService();
     const user = Object.assign(new TestUser(), { id: "user-1" });
     em.findOne.mockResolvedValue(user);
 
@@ -97,6 +110,14 @@ describe("UserService", () => {
     );
     expect(em.assign).toHaveBeenCalledWith(user, { name: "Renamed" });
     expect(user.permissions).toEqual(["user:get"]);
+    expect(authorizationService.assertUserCan).toHaveBeenCalledWith(
+      "get",
+      TestUser,
+    );
+    expect(authorizationService.assertUserCan).toHaveBeenCalledWith(
+      "update",
+      user,
+    );
     await expect(
       service.updateUser(user, { roles: ["admin"] } as never),
     ).rejects.toBeInstanceOf(BadRequestException);
@@ -441,7 +462,13 @@ function createService(
     },
     session: { expiresIn: 3600 },
   } as unknown as AuthModuleOptions;
+  const authorizationService = {
+    assertCurrentSession: vi.fn(),
+    assertCurrentUser: vi.fn(),
+    assertUserCan: vi.fn(),
+  } as unknown as AuthorizationService;
   return {
+    authorizationService,
     em,
     hash,
     hashServiceHash,
@@ -449,6 +476,7 @@ function createService(
       em,
       options,
       hashService,
+      authorizationService,
     ),
   };
 }

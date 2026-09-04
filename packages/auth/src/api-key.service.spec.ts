@@ -16,6 +16,7 @@ import type { Mocked } from "vitest";
 
 import { ApiKeyService } from "./api-key.service.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
+import type { AuthorizationService } from "./authorization.service.js";
 import {
   BaseApiKey,
   BaseUser,
@@ -283,22 +284,26 @@ describe("ApiKeyService", () => {
     expect(em.create).not.toHaveBeenCalled();
   });
 
-  it.each(["ADMIN", "MEMBER"] as const)(
-    "rejects creation by a %s because workspace keys are owner-managed",
-    async (role) => {
-      const { em, service } = createService();
-      const member = Object.assign(new TestWorkspaceMember(), {
-        roles: [role.toLowerCase()],
-      });
+  it("checks workspace permissions instead of hard-coding an owner role", async () => {
+    const { authorizationService, service } = createService();
+    const workspace = new TestWorkspace();
+    const member = Object.assign(new TestWorkspaceMember(), {
+      roles: ["custom-api-key-manager"],
+      workspace,
+    });
 
-      await expect(
-        service.createWorkspaceKey(new TestWorkspace(), member, {
-          name: "Workspace key",
-        }),
-      ).rejects.toBeInstanceOf(ForbiddenException);
-      expect(em.create).not.toHaveBeenCalled();
-    },
-  );
+    await service.createWorkspaceKey(workspace, member, {
+      name: "Workspace key",
+    });
+
+    expect(
+      authorizationService.assertCurrentWorkspaceMember,
+    ).toHaveBeenCalledWith(member);
+    expect(authorizationService.assertWorkspaceCan).toHaveBeenCalledWith(
+      "create",
+      TestApiKey,
+    );
+  });
 
   it("rejects creation from a member of another workspace", async () => {
     const { em, service } = createService();
@@ -317,50 +322,18 @@ describe("ApiKeyService", () => {
     expect(em.create).not.toHaveBeenCalled();
   });
 
-  it("lists workspace keys only for workspace owners", () => {
-    const { service } = createService();
+  it("checks workspace read permission before building a list filter", () => {
+    const { authorizationService, service } = createService();
     const workspace = new TestWorkspace();
-    const owner = new TestWorkspaceMember();
-    const member = Object.assign(new TestWorkspaceMember(), {
-      roles: ["member"],
-    });
-    const admin = Object.assign(new TestWorkspaceMember(), {
-      roles: ["admin"],
-    });
+    const member = new TestWorkspaceMember();
 
-    expect(service.getWorkspaceListFilter(workspace, owner)).toEqual({
+    expect(service.getWorkspaceListFilter(workspace, member)).toEqual({
       owner: workspace,
     });
-    expect(() => service.getWorkspaceListFilter(workspace, admin)).toThrow(
-      ForbiddenException,
+    expect(authorizationService.assertWorkspaceCan).toHaveBeenCalledWith(
+      "read",
+      TestApiKey,
     );
-    expect(() => service.getWorkspaceListFilter(workspace, member)).toThrow(
-      ForbiddenException,
-    );
-  });
-
-  it("uses the configured workspace creator role for key management", () => {
-    const { service } = createService({
-      workspace: {
-        creatorRole: "founder",
-        permissions: [],
-        roles: { founder: [], member: [] },
-      },
-    });
-    const workspace = new TestWorkspace();
-    const founder = Object.assign(new TestWorkspaceMember(), {
-      roles: ["founder"],
-    });
-    const builtInOwner = Object.assign(new TestWorkspaceMember(), {
-      roles: ["owner"],
-    });
-
-    expect(service.getWorkspaceListFilter(workspace, founder)).toEqual({
-      owner: workspace,
-    });
-    expect(() =>
-      service.getWorkspaceListFilter(workspace, builtInOwner),
-    ).toThrow(ForbiddenException);
   });
 
   it("rejects list filters for a member of another workspace", () => {
@@ -376,13 +349,16 @@ describe("ApiKeyService", () => {
     ).toThrow(ForbiddenException);
   });
 
-  it("enforces key ownership for reads, updates, and deletion", async () => {
-    const { em, service } = createService();
+  it("rejects workspace key access before persistence when permission fails", async () => {
+    const { authorizationService, em, service } = createService();
     const apiKey = new TestApiKey();
     em.findOne.mockResolvedValue(apiKey);
-    const member = Object.assign(new TestWorkspaceMember(), {
-      roles: ["member"],
-    });
+    const member = new TestWorkspaceMember();
+    vi.mocked(authorizationService.assertWorkspaceCan).mockImplementation(
+      () => {
+        throw new ForbiddenException();
+      },
+    );
 
     await expect(
       service.getWorkspaceApiKey(apiKey.id, member),
@@ -393,6 +369,7 @@ describe("ApiKeyService", () => {
     await expect(
       service.deleteWorkspaceKey(apiKey.id, member),
     ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(em.findOne).not.toHaveBeenCalled();
     expect(em.flush).not.toHaveBeenCalled();
   });
 
@@ -560,14 +537,21 @@ function createService(
       workspaceMember: TestWorkspaceMember,
     },
   } as unknown as AuthModuleOptions;
+  const authorizationService = {
+    assertCurrentUser: vi.fn(),
+    assertCurrentWorkspaceMember: vi.fn(),
+    assertUserCan: vi.fn(),
+    assertWorkspaceCan: vi.fn(),
+  } as unknown as AuthorizationService;
 
   return {
+    authorizationService,
     em,
     service: new ApiKeyService<
       TestApiKey,
       TestUser,
       TestWorkspace,
       TestWorkspaceMember
-    >(em, options),
+    >(em, options, authorizationService),
   };
 }

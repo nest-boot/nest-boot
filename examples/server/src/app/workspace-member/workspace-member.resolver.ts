@@ -4,7 +4,6 @@ import {
   CurrentUser,
   CurrentWorkspace,
   CurrentWorkspaceMember,
-  UserService,
   WorkspaceCan,
   WorkspaceService,
 } from '@nest-boot/auth';
@@ -18,7 +17,7 @@ import {
   Resolver,
 } from '@nest-boot/graphql';
 import { ConnectionManager } from '@nest-boot/graphql-connection';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { ForbiddenException } from '@nestjs/common';
 
 import { AuthRoleType } from '../auth/types/auth-role.type.js';
 import { User } from '../user/user.entity.js';
@@ -42,14 +41,11 @@ export class WorkspaceMemberResolver {
    * 创建工作区成员解析器。
    *
    * @param workspaceMemberService - 工作区成员领域服务。
-   * @param userService - 用户查询服务。
    * @param cm - GraphQL 连接查询管理器。
    */
   constructor(
     /** 工作区成员领域服务。 */
     private readonly workspaceMemberService: WorkspaceMemberService,
-    /** 用户查询服务。 */
-    private readonly userService: UserService<User>,
     /** GraphQL 连接查询管理器。 */
     private readonly cm: ConnectionManager,
     /** Auth-owned workspace role and permission operations. */
@@ -148,24 +144,10 @@ export class WorkspaceMemberResolver {
     @CurrentWorkspace() workspace: Workspace,
     @Args('input') input: AddWorkspaceMemberInput,
   ): Promise<WorkspaceMember> {
-    const user = await this.userService.getUserByEmail(input.email);
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    const alreadyExist = await workspace.members.loadCount({
-      where: { user: { id: user.id } },
-    });
-    if (alreadyExist > 0) {
-      throw new ForbiddenException('User is already a workspace member');
-    }
-
-    return await this.workspaceMemberService.create({
-      name: user.name ?? user.email.split('@')[0],
-      user,
+    return (await this.workspaceService.addMemberByEmail(
       workspace,
-    });
+      input.email,
+    )) as WorkspaceMember;
   }
 
   /**

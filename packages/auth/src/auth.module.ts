@@ -35,6 +35,7 @@ import {
 import { AuthService } from "./auth.service.js";
 import { AuthHandlerMiddleware } from "./auth-handler.middleware.js";
 import { type AuthModuleOptions } from "./auth-module-options.interface.js";
+import { AuthorizationService } from "./authorization.service.js";
 import { SessionService } from "./session.service.js";
 import {
   DEFAULT_USER_ADMIN_ROLES,
@@ -77,6 +78,7 @@ import { WorkspaceService } from "./workspace.service.js";
     ApiKeyService,
     ApiKeyUsageInterceptor,
     AuthService,
+    AuthorizationService,
     SessionService,
     AuthGuard,
     AuthHandlerMiddleware,
@@ -191,6 +193,7 @@ import { WorkspaceService } from "./workspace.service.js";
     ApiKeyService,
     AuthGuard,
     AuthService,
+    AuthorizationService,
     SessionService,
     WorkspaceService,
   ],

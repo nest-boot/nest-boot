@@ -29,11 +29,14 @@ profile(
 
 `SessionService` 提供：
 
-- `getSession(headers)` — 解析当前应用实体；
-- `listSessions(headers)` — 列出当前用户的活动会话；
-- `revokeSession(token, headers)` — 撤销指定会话；
-- `revokeOtherSessions(headers)` — 只保留当前会话；
-- `revokeSessions(headers)` — 撤销当前用户的全部会话。
+- `getSession()` — 解析当前应用实体；
+- `listSessions()` — 列出当前用户的活动会话；
+- `revokeSession(token)` — 撤销指定会话；
+- `revokeOtherSessions()` — 只保留当前会话；
+- `revokeSessions()` — 撤销当前用户的全部会话。
+
+这些方法都从 `RequestContext` 读取当前请求 Header，传输层无需转换或继续传递
+Express Header。
 
 会话列表保持认证后端的返回顺序，并包含撤销指定会话所需的 token。UI 应识别当前
 会话，不要把它当作普通远程设备提供撤销操作。
