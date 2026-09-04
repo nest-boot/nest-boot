@@ -10,8 +10,8 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 
 import {
   buildUserPermissionAbility,
-  buildWorkspaceMemberPermissionAbility,
-} from '../../common/modules/utils/build-workspace-member-permission-ability.util.js';
+  buildWorkspacePermissionAbility,
+} from '../../common/modules/utils/build-permission-ability.util.js';
 import { ApiKey } from '../api-key/api-key.entity.js';
 import { User } from '../user/user.entity.js';
 import { Workspace } from '../workspace/workspace.entity.js';
@@ -46,8 +46,8 @@ import { UserResolver } from './user.resolver.js';
         requireEmailVerification: true,
       },
       user: {
-        buildAbility: (_context, permissions) =>
-          buildUserPermissionAbility(permissions),
+        buildAbility: (builder, permissions, _user) =>
+          buildUserPermissionAbility(builder, permissions),
         changeEmail: {
           enabled: true,
         },
@@ -73,14 +73,8 @@ import { UserResolver } from './user.resolver.js';
             'apiKey:delete',
           ] as const,
         },
-        buildAbility: (_context, permissions) => {
-          const workspaceMember = RequestContext.get(WorkspaceMember);
-
-          return buildWorkspaceMemberPermissionAbility(
-            permissions,
-            workspaceMember,
-          );
-        },
+        buildAbility: (builder, permissions, _workspace) =>
+          buildWorkspacePermissionAbility(builder, permissions),
         sendInvitationEmail: async ({ email, id, inviter, workspace }) => {
           const url = new URL(
             '/invite',

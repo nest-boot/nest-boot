@@ -1,13 +1,11 @@
 import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException } from "@nestjs/common";
 
-import { USER_PERMISSION_ABILITY } from "../permission.constants.js";
-import type { PermissionAbility } from "../types/permission-ability.type.js";
+import { UserAbility } from "../abilities/user.ability.js";
 
 /** Reads the user ability prepared for the current request. */
-export function getUserAbility(): PermissionAbility {
-  const ability =
-    RequestContext.get<PermissionAbility>(USER_PERMISSION_ABILITY) ?? null;
+export function getUserAbility(): UserAbility {
+  const ability = RequestContext.get(UserAbility) ?? null;
 
   if (!ability) {
     throw new ForbiddenException("User permission ability is not available");

@@ -1,11 +1,7 @@
+export * from "./abilities/index.js";
 export * from "./api-key.service.js";
 export * from "./api-key-usage.interceptor.js";
-export {
-  CURRENT_API_KEY,
-  CURRENT_WORKSPACE,
-  CURRENT_WORKSPACE_MEMBER,
-  IS_PUBLIC_KEY,
-} from "./auth.constants.js";
+export { IS_PUBLIC_KEY } from "./auth.constants.js";
 export * from "./auth.guard.js";
 export * from "./auth.middleware.js";
 export * from "./auth.module.js";
@@ -22,14 +18,13 @@ export * from "./interfaces/route-argument-metadata-value.interface.js";
 export * from "./interfaces/session-service.interface.js";
 export * from "./interfaces/user-service.interface.js";
 export * from "./interfaces/workspace-service.interface.js";
-export * from "./permission.ability-builder.js";
 export * from "./permission.constants.js";
 export * from "./session.service.js";
 export * from "./types/auth-module-roles.type.js";
-export * from "./types/build-ability-callback.type.js";
+export * from "./types/build-user-ability-callback.type.js";
+export * from "./types/build-workspace-ability-callback.type.js";
 export * from "./types/can-subject.type.js";
 export * from "./types/can-subject-factory.type.js";
-export * from "./types/permission-ability.type.js";
 export * from "./types/route-argument-metadata.type.js";
 export * from "./user.constants.js";
 export * from "./user.service.js";

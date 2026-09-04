@@ -1,8 +1,7 @@
 import { RequestContext } from "@nest-boot/request-context";
 
+import { UserAbility } from "../abilities/user.ability.js";
 import { AuthorizationService } from "../authorization.service.js";
-import { USER_PERMISSION_ABILITY } from "../permission.constants.js";
-import type { PermissionAbility } from "../types/permission-ability.type.js";
 import { userCan } from "./user-can.util.js";
 
 class TestSubject {}
@@ -10,10 +9,11 @@ class TestSubject {}
 describe("userCan", () => {
   it("checks a permission with the cached user ability", async () => {
     const canMock = vi.fn(() => true);
-    const ability = { can: canMock } as unknown as PermissionAbility;
+    const ability = new UserAbility();
+    vi.spyOn(ability, "can").mockImplementation(canMock);
 
     await RequestContext.run(new RequestContext({ type: "http" }), () => {
-      RequestContext.set(USER_PERMISSION_ABILITY, ability);
+      RequestContext.set(UserAbility, ability);
 
       expect(userCan("update", TestSubject)).toBe(true);
     });

@@ -15,7 +15,8 @@ import type {
 } from "./entities/index.js";
 import type { AuthUser } from "./interfaces/auth-service.interface.js";
 import type { AuthModuleRoles } from "./types/auth-module-roles.type.js";
-import type { BuildAbilityCallback } from "./types/build-ability-callback.type.js";
+import type { BuildUserAbilityCallback } from "./types/build-user-ability-callback.type.js";
+import type { BuildWorkspaceAbilityCallback } from "./types/build-workspace-ability-callback.type.js";
 
 type BetterAuthEmailAndPasswordOptions = NonNullable<
   BetterAuthOptions["emailAndPassword"]
@@ -141,6 +142,7 @@ export interface AuthModuleEmailVerificationOptions extends Omit<
 /** Workspace lifecycle options owned by AuthModule. */
 export interface AuthModuleWorkspaceOptions<
   Permission extends string = string,
+  Workspace extends BaseWorkspace = BaseWorkspace,
 > {
   /** Role assigned to members and invitations when none is supplied. Defaults to `member`. */
   defaultRole?: string;
@@ -150,8 +152,8 @@ export interface AuthModuleWorkspaceOptions<
   permissions?: readonly Permission[];
   /** Named workspace roles and their permissions. Defaults to `DEFAULT_WORKSPACE_ROLES`. */
   roles?: AuthModuleRoles<NoInfer<Permission>>;
-  /** Builds the workspace-scoped CASL ability from resolved request permissions. */
-  buildAbility?: BuildAbilityCallback;
+  /** Builds the workspace-scoped CASL ability from resolved member permissions and the selected workspace. */
+  buildAbility?: BuildWorkspaceAbilityCallback<Permission, Workspace>;
   /** Sends the invitation link through an application-defined delivery flow. */
   sendInvitationEmail?: AuthSendWorkspaceInvitationEmail;
 }
@@ -159,6 +161,7 @@ export interface AuthModuleWorkspaceOptions<
 /** User lifecycle and authorization options owned by AuthModule. */
 export interface AuthModuleUserOptions<
   Permission extends string = string,
+  User extends BaseUser = BaseUser,
 > extends BetterAuthUserOptions {
   /** Role assigned to users when none is supplied. Defaults to `user`. */
   defaultRole?: string;
@@ -168,8 +171,8 @@ export interface AuthModuleUserOptions<
   permissions?: readonly Permission[];
   /** Named user roles and their permissions. Defaults to `DEFAULT_USER_ROLES`. */
   roles?: AuthModuleRoles<NoInfer<Permission>>;
-  /** Builds the user-scoped CASL ability from resolved request permissions. */
-  buildAbility?: BuildAbilityCallback;
+  /** Builds the user-scoped CASL ability from resolved permissions and the authenticated user. */
+  buildAbility?: BuildUserAbilityCallback<Permission, User>;
 }
 
 /** Options for configuring auth middleware route registration. */
@@ -186,6 +189,8 @@ export interface AuthModuleMiddlewareOptions {
 export interface AuthModuleOptions<
   UserPermission extends string = string,
   WorkspacePermission extends string = string,
+  User extends BaseUser = BaseUser,
+  Workspace extends BaseWorkspace = BaseWorkspace,
 > extends SupportedBetterAuthOptions {
   /** Base path for the auth API endpoints. */
   basePath?: string;
@@ -194,18 +199,18 @@ export interface AuthModuleOptions<
   emailAndPassword?: AuthModuleEmailAndPasswordOptions;
 
   /** User lifecycle, roles, permissions, and authorization ability. */
-  user?: AuthModuleUserOptions<UserPermission>;
+  user?: AuthModuleUserOptions<UserPermission, User>;
 
   /** Email verification delivery and lifecycle options. */
   emailVerification?: AuthModuleEmailVerificationOptions;
 
   /** Workspace lifecycle and invitation-delivery options. */
-  workspace?: AuthModuleWorkspaceOptions<WorkspacePermission>;
+  workspace?: AuthModuleWorkspaceOptions<WorkspacePermission, Workspace>;
 
   /** Entity classes used for authentication and workspace access. */
   entities: {
     /** User entity class. */
-    user: EntityClass<BaseUser>;
+    user: EntityClass<User>;
     /** Account entity class. */
     account: EntityClass<BaseAccount>;
     /** Session entity class. */
@@ -213,7 +218,7 @@ export interface AuthModuleOptions<
     /** Verification entity class. */
     verification: EntityClass<BaseVerification>;
     /** Workspace entity class. */
-    workspace: EntityClass<BaseWorkspace>;
+    workspace: EntityClass<Workspace>;
     /** Workspace-invitation entity class. */
     workspaceInvitation: EntityClass<BaseWorkspaceInvitation>;
     /** Workspace-member entity class. */

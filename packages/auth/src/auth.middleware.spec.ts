@@ -5,24 +5,47 @@ import { NextFunction, Request } from "express";
 import type { Mock } from "vitest";
 
 import { ApiKeyService } from "./api-key.service.js";
-import {
-  CURRENT_API_KEY,
-  CURRENT_WORKSPACE,
-  CURRENT_WORKSPACE_MEMBER,
-} from "./auth.constants.js";
 import { AuthMiddleware } from "./auth.middleware.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
-import { BaseSession, BaseUser } from "./entities/index.js";
+import type { AuthModuleOptions } from "./auth-module-options.interface.js";
+import {
+  BaseAccount,
+  BaseApiKey,
+  BaseSession,
+  BaseUser,
+  BaseVerification,
+  BaseWorkspace,
+  BaseWorkspaceInvitation,
+  BaseWorkspaceMember,
+} from "./entities/index.js";
 import { SessionService } from "./session.service.js";
 
+class TestAccount extends BaseAccount {}
+class TestApiKey extends BaseApiKey {}
 class TestUser extends BaseUser {}
 class TestSession extends BaseSession {}
+class TestVerification extends BaseVerification {}
+class TestWorkspace extends BaseWorkspace {}
+class TestWorkspaceInvitation extends BaseWorkspaceInvitation {}
+class TestWorkspaceMember extends BaseWorkspaceMember {}
+
+const testEntities = {
+  account: TestAccount,
+  apiKey: TestApiKey,
+  session: TestSession,
+  user: TestUser,
+  verification: TestVerification,
+  workspace: TestWorkspace,
+  workspaceInvitation: TestWorkspaceInvitation,
+  workspaceMember: TestWorkspaceMember,
+};
 
 async function createMiddleware(
   getSession: Mock,
   findOne: Mock,
   onAuthenticated = vi.fn(),
   validate = vi.fn(),
+  entities: AuthModuleOptions["entities"] = testEntities,
 ) {
   const sessionService = {
     getSession,
@@ -36,16 +59,7 @@ async function createMiddleware(
       {
         provide: MODULE_OPTIONS_TOKEN,
         useValue: {
-          entities: {
-            account: class {},
-            apiKey: class {},
-            session: TestSession,
-            user: TestUser,
-            verification: class {},
-            workspace: class {},
-            workspaceInvitation: class {},
-            workspaceMember: class {},
-          },
+          entities,
           onAuthenticated,
         },
       },
@@ -82,20 +96,50 @@ describe("AuthMiddleware", () => {
     const next = vi.fn() as NextFunction;
     const { middleware } = await createMiddleware(getSession, findOne);
 
-    await middleware.use(
-      {
-        headers: {
-          "x-empty": undefined,
-          "x-test": ["a", "b"],
-        },
-      } as unknown as Request,
-      {} as never,
-      next,
-    );
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      await middleware.use(
+        {
+          headers: {
+            "x-empty": undefined,
+            "x-test": ["a", "b"],
+          },
+        } as unknown as Request,
+        {} as never,
+        next,
+      );
+    });
 
     expect(getSession).toHaveBeenCalledWith();
     expect(findOne).not.toHaveBeenCalled();
     expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not register self aliases when base entities are configured", async () => {
+    const next = vi.fn() as NextFunction;
+    const alias = vi.spyOn(RequestContext, "alias");
+    const { middleware } = await createMiddleware(
+      vi.fn().mockResolvedValue(null),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      {
+        account: BaseAccount,
+        apiKey: BaseApiKey,
+        session: BaseSession,
+        user: BaseUser,
+        verification: BaseVerification,
+        workspace: BaseWorkspace,
+        workspaceInvitation: BaseWorkspaceInvitation,
+        workspaceMember: BaseWorkspaceMember,
+      },
+    );
+
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      await middleware.use({ headers: {} } as Request, {} as never, next);
+    });
+
+    expect(alias).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledOnce();
   });
 
   it("should store authenticated user and session in request context", async () => {
@@ -110,30 +154,56 @@ describe("AuthMiddleware", () => {
       user,
     });
     const findOne = vi.fn();
-    const requestContextSet = vi
-      .spyOn(RequestContext, "set")
-      .mockImplementation(() => undefined);
+    const requestContextSet = vi.spyOn(RequestContext, "set");
+    const requestContextAlias = vi.spyOn(RequestContext, "alias");
     const next = vi.fn() as NextFunction;
     const { middleware, onAuthenticated } = await createMiddleware(
       getSession,
       findOne,
     );
 
-    await middleware.use(
-      {
-        headers: {
-          authorization: "Bearer token",
-        },
-      } as unknown as Request,
-      {} as never,
-      next,
-    );
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      await middleware.use(
+        {
+          headers: {
+            authorization: "Bearer token",
+          },
+        } as unknown as Request,
+        {} as never,
+        next,
+      );
+
+      expect(RequestContext.get(BaseUser)).toBe(user);
+      expect(RequestContext.get(TestUser)).toBe(user);
+      expect(RequestContext.get(BaseSession)).toBe(session);
+      expect(RequestContext.get(TestSession)).toBe(session);
+    });
 
     expect(findOne).not.toHaveBeenCalled();
     expect(requestContextSet).toHaveBeenCalledWith(BaseUser, user);
     expect(requestContextSet).toHaveBeenCalledWith(BaseSession, session);
-    expect(requestContextSet).toHaveBeenCalledWith(TestUser, user);
-    expect(requestContextSet).toHaveBeenCalledWith(TestSession, session);
+    expect(requestContextAlias).toHaveBeenCalledWith(TestAccount, BaseAccount);
+    expect(requestContextAlias).toHaveBeenCalledWith(TestApiKey, BaseApiKey);
+    expect(requestContextAlias).toHaveBeenCalledWith(TestUser, BaseUser);
+    expect(requestContextAlias).toHaveBeenCalledWith(TestSession, BaseSession);
+    expect(requestContextAlias).toHaveBeenCalledWith(
+      TestVerification,
+      BaseVerification,
+    );
+    expect(requestContextAlias).toHaveBeenCalledWith(
+      TestWorkspace,
+      BaseWorkspace,
+    );
+    expect(requestContextAlias).toHaveBeenCalledWith(
+      TestWorkspaceInvitation,
+      BaseWorkspaceInvitation,
+    );
+    expect(requestContextAlias).toHaveBeenCalledWith(
+      TestWorkspaceMember,
+      BaseWorkspaceMember,
+    );
+    expect(requestContextSet).not.toHaveBeenCalledWith(TestUser, user);
+    expect(requestContextSet).not.toHaveBeenCalledWith(TestSession, session);
     expect(onAuthenticated).toHaveBeenCalledTimes(1);
     expect(next).toHaveBeenCalledTimes(1);
   });
@@ -153,18 +223,18 @@ describe("AuthMiddleware", () => {
       validate,
     );
 
-    await middleware.use(
-      { headers: { authorization: "Bearer sk-key" } } as Request,
-      {} as never,
-      vi.fn(),
-    );
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      await middleware.use(
+        { headers: { authorization: "Bearer sk-key" } } as Request,
+        {} as never,
+        vi.fn(),
+      );
+    });
 
     expect(validate).not.toHaveBeenCalled();
   });
 
   it("restores a user key and resolves membership in the selected workspace", async () => {
-    class TestWorkspace {}
-    class TestWorkspaceMember {}
     const workspace = Object.assign(new TestWorkspace(), {
       id: "workspace-1",
       name: "Acme",
@@ -202,22 +272,26 @@ describe("AuthMiddleware", () => {
         {} as never,
         vi.fn(),
       );
+
+      expect(RequestContext.get(TestWorkspace)).toBe(workspace);
+      expect(RequestContext.get(TestApiKey)).toBe(apiKey);
+      expect(RequestContext.get(TestUser)).toBe(user);
+      expect(RequestContext.get(TestWorkspaceMember)).toBe(member);
     });
 
     expect(validate).toHaveBeenCalledWith("sk-key");
-    expect(set).toHaveBeenCalledWith(CURRENT_WORKSPACE, workspace);
-    expect(set).toHaveBeenCalledWith(CURRENT_API_KEY, apiKey);
+    expect(set).toHaveBeenCalledWith(BaseWorkspace, workspace);
+    expect(set).toHaveBeenCalledWith(BaseApiKey, apiKey);
     expect(set).toHaveBeenCalledWith(BaseUser, user);
     expect(findOne).toHaveBeenLastCalledWith(expect.any(Function), {
       status: "ACTIVE",
       user,
       workspace,
     });
-    expect(set).toHaveBeenCalledWith(CURRENT_WORKSPACE_MEMBER, member);
+    expect(set).toHaveBeenCalledWith(BaseWorkspaceMember, member);
   });
 
   it("does not restore a disabled membership into the auth context", async () => {
-    class TestWorkspace {}
     const workspace = Object.assign(new TestWorkspace(), {
       id: "workspace-1",
     });
@@ -258,13 +332,12 @@ describe("AuthMiddleware", () => {
       workspace,
     });
     expect(set).not.toHaveBeenCalledWith(
-      CURRENT_WORKSPACE_MEMBER,
+      BaseWorkspaceMember,
       expect.anything(),
     );
   });
 
   it("restores a workspace key and rejects a conflicting workspace selector", async () => {
-    class TestWorkspace {}
     const selectedWorkspace = Object.assign(new TestWorkspace(), {
       id: "workspace-1",
       name: "Selected",

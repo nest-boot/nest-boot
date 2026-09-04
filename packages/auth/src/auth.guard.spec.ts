@@ -13,7 +13,7 @@ import { IS_PUBLIC_KEY } from "./auth.constants.js";
 import { AuthGuard } from "./auth.guard.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
-import { BaseSession } from "./entities/index.js";
+import { BaseSession, BaseUser } from "./entities/index.js";
 import { USER_CAN_METADATA } from "./permission.constants.js";
 
 class PromiseAuthGuard extends AuthGuard {
@@ -153,6 +153,7 @@ describe("AuthGuard", () => {
     );
 
     await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+      RequestContext.set(BaseUser, new BaseUser());
       await expect(guard.canActivate(createContext())).resolves.toBe(true);
     });
 

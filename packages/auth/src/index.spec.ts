@@ -11,13 +11,9 @@ vi.mock("./adapters/mikro-orm-adapter.js", () => ({
   mikroOrmAdapter: vi.fn(),
 }));
 
+import { UserAbility, WorkspaceAbility } from "./abilities/index.js";
 import { ApiKeyService } from "./api-key.service.js";
-import {
-  CURRENT_API_KEY,
-  CURRENT_WORKSPACE,
-  CURRENT_WORKSPACE_MEMBER,
-  IS_PUBLIC_KEY,
-} from "./auth.constants.js";
+import { IS_PUBLIC_KEY } from "./auth.constants.js";
 import { AuthGuard } from "./auth.guard.js";
 import { AuthMiddleware } from "./auth.middleware.js";
 import { AuthModule } from "./auth.module.js";
@@ -44,7 +40,6 @@ import {
   BaseWorkspaceMember,
 } from "./entities/index.js";
 import * as publicApi from "./index.js";
-import { PermissionAbilityBuilder } from "./permission.ability-builder.js";
 import { SessionService } from "./session.service.js";
 import { UserService } from "./user.service.js";
 import { can } from "./utils/can.util.js";
@@ -59,9 +54,9 @@ describe("public API", () => {
     expect("AUTH_TOKEN" in publicApi).toBe(false);
     expect(publicApi.UserService).toBe(UserService);
     expect(publicApi.IS_PUBLIC_KEY).toBe(IS_PUBLIC_KEY);
-    expect(publicApi.CURRENT_API_KEY).toBe(CURRENT_API_KEY);
-    expect(publicApi.CURRENT_WORKSPACE).toBe(CURRENT_WORKSPACE);
-    expect(publicApi.CURRENT_WORKSPACE_MEMBER).toBe(CURRENT_WORKSPACE_MEMBER);
+    expect("CURRENT_API_KEY" in publicApi).toBe(false);
+    expect("CURRENT_WORKSPACE" in publicApi).toBe(false);
+    expect("CURRENT_WORKSPACE_MEMBER" in publicApi).toBe(false);
     expect(publicApi.ApiKeyService).toBe(ApiKeyService);
     expect(publicApi.AuthGuard).toBe(AuthGuard);
     expect(publicApi.AuthMiddleware).toBe(AuthMiddleware);
@@ -84,7 +79,8 @@ describe("public API", () => {
     expect(publicApi.BaseWorkspace).toBe(BaseWorkspace);
     expect(publicApi.BaseWorkspaceInvitation).toBe(BaseWorkspaceInvitation);
     expect(publicApi.BaseWorkspaceMember).toBe(BaseWorkspaceMember);
-    expect(publicApi.PermissionAbilityBuilder).toBe(PermissionAbilityBuilder);
+    expect(publicApi.UserAbility).toBe(UserAbility);
+    expect(publicApi.WorkspaceAbility).toBe(WorkspaceAbility);
     expect(publicApi.can).toBe(can);
     expect(publicApi.getUserAbility).toBe(getUserAbility);
     expect(publicApi.getWorkspaceAbility).toBe(getWorkspaceAbility);

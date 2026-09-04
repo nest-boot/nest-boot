@@ -37,7 +37,7 @@
   "dependencies": {
     "@apollo/server": "^5.2.0",
     "@as-integrations/express5": "^1.1.2",
-    "@casl/ability": "^6.7.5",
+    "@casl/ability": "^7.0.1",
     "@mikro-orm/core": "7.1.14",
     "@mikro-orm/decorators": "7.1.14",
     "@mikro-orm/migrations": "7.1.14",

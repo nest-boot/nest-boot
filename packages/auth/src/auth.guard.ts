@@ -1,4 +1,4 @@
-import type { Subject } from "@casl/ability";
+import { AbilityBuilder, type Subject } from "@casl/ability";
 import { Reference } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import type { CanActivate, ExecutionContext, Type } from "@nestjs/common";
@@ -6,14 +6,16 @@ import { ForbiddenException, Inject, Injectable } from "@nestjs/common";
 import { ContextIdFactory, ModuleRef, Reflector } from "@nestjs/core";
 import type { Request } from "express";
 
-import {
-  CURRENT_API_KEY,
-  CURRENT_WORKSPACE_MEMBER,
-  IS_PUBLIC_KEY,
-} from "./auth.constants.js";
+import { UserAbility } from "./abilities/user.ability.js";
+import { WorkspaceAbility } from "./abilities/workspace.ability.js";
+import { IS_PUBLIC_KEY } from "./auth.constants.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
-import type { BaseApiKey, BaseWorkspaceMember } from "./entities/index.js";
+import {
+  BaseApiKey,
+  BaseWorkspace,
+  BaseWorkspaceMember,
+} from "./entities/index.js";
 import { BaseSession } from "./entities/session.entity.js";
 import { BaseUser } from "./entities/user.entity.js";
 import type { RouteArgumentMetadataValue } from "./interfaces/route-argument-metadata-value.interface.js";
@@ -25,15 +27,10 @@ import {
   ROUTE_ARGS_METADATA,
   ROUTE_PARAM_TYPES,
   USER_CAN_METADATA,
-  USER_PERMISSION_ABILITY,
-  USER_PERMISSION_ABILITY_PROMISE,
   WORKSPACE_CAN_METADATA,
-  WORKSPACE_PERMISSION_ABILITY,
-  WORKSPACE_PERMISSION_ABILITY_PROMISE,
 } from "./permission.constants.js";
 import type { AuthModuleRoles } from "./types/auth-module-roles.type.js";
 import type { CanSubjectFactory } from "./types/can-subject-factory.type.js";
-import type { PermissionAbility } from "./types/permission-ability.type.js";
 import type { RouteArgumentMetadata } from "./types/route-argument-metadata.type.js";
 import { DEFAULT_USER_ROLE, DEFAULT_USER_ROLES } from "./user.constants.js";
 import {
@@ -79,8 +76,7 @@ export class AuthGuard implements CanActivate {
   protected isAuthenticated(): boolean {
     try {
       return (
-        !!RequestContext.get(BaseSession) ||
-        !!RequestContext.get(CURRENT_API_KEY)
+        !!RequestContext.get(BaseSession) || !!RequestContext.get(BaseApiKey)
       );
     } catch {
       return false;
@@ -100,10 +96,8 @@ export class AuthGuard implements CanActivate {
     }
 
     if (authenticated && RequestContext.isActive()) {
-      await Promise.all([
-        this.getOrBuildUserAbility(context),
-        this.getOrBuildWorkspaceAbility(context),
-      ]);
+      this.getOrBuildUserAbility();
+      this.getOrBuildWorkspaceAbility();
     }
 
     const targets = [context.getHandler(), context.getClass()];
@@ -150,15 +144,14 @@ export class AuthGuard implements CanActivate {
     canOptions: UserCanMetadata,
     context: ExecutionContext,
   ): Promise<boolean> {
-    const apiKey = RequestContext.get<BaseApiKey>(CURRENT_API_KEY);
+    const apiKey = RequestContext.get(BaseApiKey);
 
     if (apiKey && this.isWorkspaceApiKey(apiKey)) {
       return false;
     }
 
-    const abilityPromise = this.getOrBuildUserAbility(context);
+    const ability = this.getOrBuildUserAbility();
     const subject = await this.resolveSubject(canOptions, context);
-    const ability = await abilityPromise;
     if (!ability) {
       throw new ForbiddenException("User permission ability is not available");
     }
@@ -173,20 +166,19 @@ export class AuthGuard implements CanActivate {
     canOptions: WorkspaceCanMetadata,
     context: ExecutionContext,
   ): Promise<boolean> {
-    const apiKey = RequestContext.get<BaseApiKey>(CURRENT_API_KEY);
+    const apiKey = RequestContext.get(BaseApiKey);
 
     if (apiKey && this.isWorkspaceApiKey(apiKey)) {
       const subject = await this.resolveSubject(canOptions, context);
       return this.apiKeyCan(canOptions.action, subject);
     }
 
-    if (apiKey && !RequestContext.get(CURRENT_WORKSPACE_MEMBER)) {
+    if (apiKey && !RequestContext.get(BaseWorkspaceMember)) {
       return false;
     }
 
-    const abilityPromise = this.getOrBuildWorkspaceAbility(context);
+    const ability = this.getOrBuildWorkspaceAbility();
     const subject = await this.resolveSubject(canOptions, context);
-    const ability = await abilityPromise;
     if (!ability) {
       throw new ForbiddenException(
         "Workspace permission ability is not available",
@@ -205,7 +197,7 @@ export class AuthGuard implements CanActivate {
   }
 
   private apiKeyCan(action: string, subject: Subject): boolean {
-    const apiKey = RequestContext.get<BaseApiKey>(CURRENT_API_KEY);
+    const apiKey = RequestContext.get(BaseApiKey);
     if (!apiKey) {
       return true;
     }
@@ -238,85 +230,53 @@ export class AuthGuard implements CanActivate {
     return name ? `${name[0].toLowerCase()}${name.slice(1)}` : null;
   }
 
-  private getOrBuildUserAbility(
-    context: ExecutionContext,
-  ): Promise<PermissionAbility | null> {
-    const cachedAbility =
-      RequestContext.get<PermissionAbility | null>(USER_PERMISSION_ABILITY) ??
-      null;
+  private getOrBuildUserAbility(): UserAbility | null {
+    const cachedAbility = RequestContext.get(UserAbility) ?? null;
 
     if (cachedAbility) {
-      return Promise.resolve(cachedAbility);
+      return cachedAbility;
     }
 
-    const cachedAbilityPromise =
-      RequestContext.get<Promise<PermissionAbility | null>>(
-        USER_PERMISSION_ABILITY_PROMISE,
-      ) ?? null;
-
-    if (cachedAbilityPromise) {
-      return cachedAbilityPromise;
-    }
-
-    return this.buildAndCacheUserAbility(context);
+    return this.buildAndCacheUserAbility();
   }
 
-  private getOrBuildWorkspaceAbility(
-    context: ExecutionContext,
-  ): Promise<PermissionAbility | null> {
-    const cachedAbility =
-      RequestContext.get<PermissionAbility | null>(
-        WORKSPACE_PERMISSION_ABILITY,
-      ) ?? null;
+  private getOrBuildWorkspaceAbility(): WorkspaceAbility | null {
+    const cachedAbility = RequestContext.get(WorkspaceAbility) ?? null;
 
     if (cachedAbility) {
-      return Promise.resolve(cachedAbility);
+      return cachedAbility;
     }
 
-    const cachedAbilityPromise =
-      RequestContext.get<Promise<PermissionAbility | null>>(
-        WORKSPACE_PERMISSION_ABILITY_PROMISE,
-      ) ?? null;
-
-    if (cachedAbilityPromise) {
-      return cachedAbilityPromise;
-    }
-
-    return this.buildAndCacheWorkspaceAbility(context);
+    return this.buildAndCacheWorkspaceAbility();
   }
 
-  private buildAndCacheUserAbility(
-    context: ExecutionContext,
-  ): Promise<PermissionAbility | null> {
+  private buildAndCacheUserAbility(): UserAbility | null {
     const buildAbility = this.options.user?.buildAbility;
+    const user = RequestContext.get(BaseUser);
+    if (!buildAbility || !user) return null;
+
+    const builder = new AbilityBuilder(UserAbility);
     const roles = this.options.user?.roles ?? DEFAULT_USER_ROLES;
     const permissions = this.resolveUserPermissions(roles);
-    const abilityPromise = Promise.resolve()
-      .then(() => buildAbility?.(context, permissions) ?? null)
-      .then((ability) => {
-        RequestContext.set(USER_PERMISSION_ABILITY, ability);
-        return ability;
-      });
+    const ability = buildAbility(builder, permissions, user);
 
-    RequestContext.set(USER_PERMISSION_ABILITY_PROMISE, abilityPromise);
-    return abilityPromise;
+    RequestContext.set(UserAbility, ability);
+    return ability;
   }
 
-  private buildAndCacheWorkspaceAbility(
-    context: ExecutionContext,
-  ): Promise<PermissionAbility | null> {
+  private buildAndCacheWorkspaceAbility(): WorkspaceAbility | null {
     const buildAbility = this.options.workspace?.buildAbility;
+    const workspace = RequestContext.get(BaseWorkspace);
+    const member = RequestContext.get(BaseWorkspaceMember);
+    if (!buildAbility || !workspace || !member) return null;
+
+    const builder = new AbilityBuilder(WorkspaceAbility);
     const roles = this.options.workspace?.roles ?? DEFAULT_WORKSPACE_ROLES;
     const permissions = this.resolveWorkspacePermissions(roles);
-    const abilityPromise = Promise.resolve()
-      .then(() => buildAbility?.(context, permissions) ?? null)
-      .then((ability) => {
-        RequestContext.set(WORKSPACE_PERMISSION_ABILITY, ability);
-        return ability;
-      });
+    const ability = buildAbility(builder, permissions, workspace);
 
-    RequestContext.set(WORKSPACE_PERMISSION_ABILITY_PROMISE, abilityPromise);
-    return abilityPromise;
+    RequestContext.set(WorkspaceAbility, ability);
+    return ability;
   }
 
   private resolveUserPermissions(roles: AuthModuleRoles): readonly string[] {
@@ -336,9 +296,7 @@ export class AuthGuard implements CanActivate {
   private resolveWorkspacePermissions(
     roles: AuthModuleRoles,
   ): readonly string[] {
-    const member = RequestContext.get<BaseWorkspaceMember>(
-      CURRENT_WORKSPACE_MEMBER,
-    );
+    const member = RequestContext.get(BaseWorkspaceMember);
     if (!member) return [];
 
     return [

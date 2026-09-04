@@ -3,22 +3,16 @@ import { Reference } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException, Inject, Injectable } from "@nestjs/common";
 
-import { CURRENT_API_KEY, CURRENT_WORKSPACE_MEMBER } from "./auth.constants.js";
+import { UserAbility } from "./abilities/user.ability.js";
+import { WorkspaceAbility } from "./abilities/workspace.ability.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
-import type {
+import {
   BaseApiKey,
   BaseSession,
   BaseUser,
   BaseWorkspaceMember,
 } from "./entities/index.js";
-import { BaseSession as BaseSessionEntity } from "./entities/session.entity.js";
-import { BaseUser as BaseUserEntity } from "./entities/user.entity.js";
-import {
-  USER_PERMISSION_ABILITY,
-  WORKSPACE_PERMISSION_ABILITY,
-} from "./permission.constants.js";
-import type { PermissionAbility } from "./types/permission-ability.type.js";
 
 /** Enforces user and workspace permissions prepared for the current request. */
 @Injectable()
@@ -33,13 +27,11 @@ export class AuthorizationService {
   userCan(action: string, subject: Subject): boolean {
     if (!RequestContext.isActive()) return false;
 
-    const user = RequestContext.get<BaseUser>(BaseUserEntity);
-    const apiKey = RequestContext.get<BaseApiKey>(CURRENT_API_KEY);
+    const user = RequestContext.get(BaseUser);
+    const apiKey = RequestContext.get(BaseApiKey);
     if (!user || (apiKey && this.isWorkspaceApiKey(apiKey))) return false;
 
-    const ability = RequestContext.get<PermissionAbility>(
-      USER_PERMISSION_ABILITY,
-    );
+    const ability = RequestContext.get(UserAbility);
 
     return (
       !!ability &&
@@ -61,19 +53,15 @@ export class AuthorizationService {
   workspaceCan(action: string, subject: Subject): boolean {
     if (!RequestContext.isActive()) return false;
 
-    const apiKey = RequestContext.get<BaseApiKey>(CURRENT_API_KEY);
+    const apiKey = RequestContext.get(BaseApiKey);
     if (apiKey && this.isWorkspaceApiKey(apiKey)) {
       return this.apiKeyCan(apiKey, action, subject);
     }
 
-    const member = RequestContext.get<BaseWorkspaceMember>(
-      CURRENT_WORKSPACE_MEMBER,
-    );
+    const member = RequestContext.get(BaseWorkspaceMember);
     if (!member) return false;
 
-    const ability = RequestContext.get<PermissionAbility>(
-      WORKSPACE_PERMISSION_ABILITY,
-    );
+    const ability = RequestContext.get(WorkspaceAbility);
 
     return (
       !!ability &&
@@ -94,7 +82,7 @@ export class AuthorizationService {
   /** Throws unless the supplied user is the authenticated user. */
   assertCurrentUser(user: BaseUser): void {
     const currentUser = RequestContext.isActive()
-      ? RequestContext.get<BaseUser>(BaseUserEntity)
+      ? RequestContext.get(BaseUser)
       : undefined;
 
     if (!currentUser || String(currentUser.id) !== String(user.id)) {
@@ -105,7 +93,7 @@ export class AuthorizationService {
   /** Throws unless the supplied session is the authenticated session. */
   assertCurrentSession(session: BaseSession): void {
     const currentSession = RequestContext.isActive()
-      ? RequestContext.get<BaseSession>(BaseSessionEntity)
+      ? RequestContext.get(BaseSession)
       : undefined;
 
     if (currentSession?.token !== session.token) {
@@ -116,7 +104,7 @@ export class AuthorizationService {
   /** Throws unless the supplied member is the current workspace member. */
   assertCurrentWorkspaceMember(member: BaseWorkspaceMember): void {
     const currentMember = RequestContext.isActive()
-      ? RequestContext.get<BaseWorkspaceMember>(CURRENT_WORKSPACE_MEMBER)
+      ? RequestContext.get(BaseWorkspaceMember)
       : undefined;
 
     if (!currentMember || String(currentMember.id) !== String(member.id)) {

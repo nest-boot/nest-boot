@@ -1,16 +1,19 @@
-import { PermissionAbilityBuilder } from '@nest-boot/auth';
+import type { AbilityBuilder } from '@casl/ability';
+import { UserAbility, WorkspaceAbility } from '@nest-boot/auth';
 
 import { ApiKey } from '../../../app/api-key/api-key.entity.js';
 import { Session } from '../../../app/auth/entities/session.entity.js';
 import { User } from '../../../app/user/user.entity.js';
 import { Workspace } from '../../../app/workspace/workspace.entity.js';
-import { WorkspaceMemberStatus } from '../../../app/workspace-member/enums/workspace-member-status.enum.js';
 import { WorkspaceInvitation } from '../../../app/workspace-member/workspace-invitation.entity.js';
 import { WorkspaceMember } from '../../../app/workspace-member/workspace-member.entity.js';
 
 /** Builds permissions that belong to an authenticated user. */
-export function buildUserPermissionAbility(permissions: readonly string[]) {
-  const { can, build } = new PermissionAbilityBuilder();
+export function buildUserPermissionAbility(
+  builder: AbilityBuilder<UserAbility>,
+  permissions: readonly string[],
+) {
+  const { can, build } = builder;
 
   can('read', User);
   can('read', Workspace);
@@ -19,51 +22,44 @@ export function buildUserPermissionAbility(permissions: readonly string[]) {
   can(['read', 'update'], WorkspaceMember);
   can('manage', ApiKey);
 
-  addPermissions(can, permissions, {
+  const subjects = {
     session: Session,
     user: User,
-  });
+  } as const;
+
+  for (const permission of new Set(permissions)) {
+    const [resource, action] = permission.split(':');
+    const subject = subjects[resource as keyof typeof subjects];
+    if (subject && action) can(action, subject);
+  }
 
   return build();
 }
 
-/** Builds permissions granted by the current workspace membership. */
-export function buildWorkspaceMemberPermissionAbility(
+/** Builds permissions resolved for the current workspace. */
+export function buildWorkspacePermissionAbility(
+  builder: AbilityBuilder<WorkspaceAbility>,
   permissions: readonly string[],
-  workspaceMember?: WorkspaceMember | null,
 ) {
-  const { can, build } = new PermissionAbilityBuilder();
-
-  if (workspaceMember?.status !== WorkspaceMemberStatus.ACTIVE) {
-    return build();
-  }
+  const { can, build } = builder;
 
   can('read', User);
   can('read', Workspace);
   can('read', WorkspaceInvitation);
   can('read', WorkspaceMember);
 
-  addPermissions(can, permissions, {
+  const subjects = {
     apiKey: ApiKey,
     workspace: Workspace,
     workspaceInvitation: WorkspaceInvitation,
     workspaceMember: WorkspaceMember,
-  });
+  } as const;
 
-  return build();
-}
-
-function addPermissions(
-  can: PermissionAbilityBuilder['can'],
-  permissions: readonly string[],
-  subjects: Record<string, Parameters<PermissionAbilityBuilder['can']>[1]>,
-): void {
   for (const permission of new Set(permissions)) {
     const [resource, action] = permission.split(':');
-    const subject = subjects[resource];
-
-    if (subject && action) {
-      can(action, subject);
-    }
+    const subject = subjects[resource as keyof typeof subjects];
+    if (subject && action) can(action, subject);
   }
+
+  return build();
 }

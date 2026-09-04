@@ -5,21 +5,25 @@ import { Test } from "@nestjs/testing";
 import type { Request, Response } from "express";
 import type { Mock, MockedFunction } from "vitest";
 
-import { CURRENT_API_KEY, CURRENT_WORKSPACE_MEMBER } from "./auth.constants.js";
+import { UserAbility } from "./abilities/user.ability.js";
+import { WorkspaceAbility } from "./abilities/workspace.ability.js";
 import { AuthGuard } from "./auth.guard.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
-import { BaseUser } from "./entities/user.entity.js";
+import {
+  BaseApiKey,
+  BaseUser,
+  BaseWorkspace,
+  BaseWorkspaceMember,
+} from "./entities/index.js";
 import {
   CUSTOM_ROUTE_ARGS_METADATA,
   ROUTE_ARGS_METADATA,
   USER_CAN_METADATA,
-  USER_PERMISSION_ABILITY,
-  USER_PERMISSION_ABILITY_PROMISE,
   WORKSPACE_CAN_METADATA,
 } from "./permission.constants.js";
 import type { AuthModuleRoles } from "./types/auth-module-roles.type.js";
-import type { BuildAbilityCallback } from "./types/build-ability-callback.type.js";
-import type { PermissionAbility } from "./types/permission-ability.type.js";
+import type { BuildUserAbilityCallback } from "./types/build-user-ability-callback.type.js";
+import type { BuildWorkspaceAbilityCallback } from "./types/build-workspace-ability-callback.type.js";
 import type { RouteArgumentMetadata } from "./types/route-argument-metadata.type.js";
 import { getUserAbility } from "./utils/get-user-ability.util.js";
 
@@ -29,6 +33,8 @@ class Workspace {}
 class Controller {}
 class UserOwner {}
 class WorkspaceOwner {}
+
+type TestAbility = UserAbility & WorkspaceAbility;
 
 class PermissionAuthGuard extends AuthGuard {
   protected override isAuthenticated(): boolean {
@@ -60,17 +66,32 @@ describe("AuthGuard permissions", () => {
   it("prepares both abilities for authenticated requests without permission metadata", async () => {
     const ability = {
       can: vi.fn(() => true),
-    } as unknown as PermissionAbility;
+    } as unknown as TestAbility;
     const { guard, reflector, buildUserAbility, buildWorkspaceAbility } =
       await createGuard(ability);
     reflector.getAllAndOverride.mockReturnValue(undefined);
 
-    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+    const user = { permissions: [] };
+    const workspace = { id: "workspace-1" };
+
+    await RequestContext.run(createAuthRequestContext("http"), async () => {
+      RequestContext.set(BaseUser, user);
+      RequestContext.set(BaseWorkspace, workspace);
       await expect(guard.canActivate(createContext())).resolves.toBe(true);
     });
 
-    expect(buildUserAbility).toHaveBeenCalledOnce();
-    expect(buildWorkspaceAbility).toHaveBeenCalledOnce();
+    expect(buildUserAbility).toHaveBeenCalledWith(expect.anything(), [], user);
+    expect(buildWorkspaceAbility).toHaveBeenCalledWith(
+      expect.anything(),
+      [],
+      workspace,
+    );
+    expect(buildUserAbility.mock.calls[0]?.[0].build()).toBeInstanceOf(
+      UserAbility,
+    );
+    expect(buildWorkspaceAbility.mock.calls[0]?.[0].build()).toBeInstanceOf(
+      WorkspaceAbility,
+    );
   });
 
   it("throws when permission metadata exists but no ability is available", async () => {
@@ -81,7 +102,7 @@ describe("AuthGuard permissions", () => {
       subject: Subject,
     });
 
-    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+    await RequestContext.run(createAuthRequestContext("http"), async () => {
       await expect(guard.canActivate(createContext())).rejects.toBeInstanceOf(
         ForbiddenException,
       );
@@ -90,7 +111,7 @@ describe("AuthGuard permissions", () => {
       );
     });
 
-    expect(buildAbility).toHaveBeenCalledTimes(1);
+    expect(buildAbility).not.toHaveBeenCalled();
   });
 
   it("builds, caches, and checks ability against configured permission metadata", async () => {
@@ -99,7 +120,7 @@ describe("AuthGuard permissions", () => {
       can: canMock,
     };
     const { guard, reflector, buildAbility, req, res } = await createGuard(
-      ability as unknown as PermissionAbility,
+      ability as unknown as TestAbility,
     );
 
     setCanMetadata(reflector, {
@@ -110,24 +131,27 @@ describe("AuthGuard permissions", () => {
 
     const context = createContext(req, res);
 
-    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
-      RequestContext.set(BaseUser, { permissions: ["subject:publish"] });
+    const user = { permissions: ["subject:publish"] };
+
+    await RequestContext.run(createAuthRequestContext("http"), async () => {
+      RequestContext.set(BaseUser, user);
       await expect(guard.canActivate(context)).resolves.toBe(true);
-      await expect(
-        RequestContext.get(USER_PERMISSION_ABILITY_PROMISE),
-      ).resolves.toBe(ability);
-      expect(RequestContext.get(USER_PERMISSION_ABILITY)).toBe(ability);
+      expect(RequestContext.get(UserAbility)).toBe(ability);
       expect(getUserAbility()).toBe(ability);
     });
 
-    expect(buildAbility).toHaveBeenCalledWith(context, ["subject:publish"]);
+    expect(buildAbility).toHaveBeenCalledWith(
+      expect.anything(),
+      ["subject:publish"],
+      user,
+    );
     expect(canMock).toHaveBeenCalledWith("publish", Subject);
   });
 
   it("uses the workspace ability for workspace metadata", async () => {
     const ability = {
       can: vi.fn(() => true),
-    } as unknown as PermissionAbility;
+    } as unknown as TestAbility;
     const { guard, reflector, buildUserAbility, buildWorkspaceAbility } =
       await createGuard(ability);
 
@@ -137,14 +161,24 @@ describe("AuthGuard permissions", () => {
       subject: Subject,
     });
 
-    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+    const workspace = { id: "workspace-1" };
+
+    await RequestContext.run(createWorkspaceRequestContext(), async () => {
+      RequestContext.set(BaseWorkspace, workspace);
+      RequestContext.set(BaseWorkspaceMember, {
+        permissions: [],
+        roles: ["member"],
+      });
       await expect(guard.canActivate(createContext())).resolves.toBe(true);
     });
 
     expect(buildWorkspaceAbility).toHaveBeenCalledOnce();
-    expect(buildWorkspaceAbility).toHaveBeenCalledWith(expect.anything(), []);
-    expect(buildUserAbility).toHaveBeenCalledOnce();
-    expect(buildUserAbility).toHaveBeenCalledWith(expect.anything(), []);
+    expect(buildWorkspaceAbility).toHaveBeenCalledWith(
+      expect.anything(),
+      [],
+      workspace,
+    );
+    expect(buildUserAbility).not.toHaveBeenCalled();
   });
 
   it("resolves configured role and direct permissions before buildAbility", async () => {
@@ -154,7 +188,7 @@ describe("AuthGuard permissions", () => {
     };
     const ability = {
       can: vi.fn(() => true),
-    } as unknown as PermissionAbility;
+    } as unknown as TestAbility;
     const { guard, reflector, buildWorkspaceAbility } = await createGuard(
       ability,
       {},
@@ -167,28 +201,31 @@ describe("AuthGuard permissions", () => {
       subject: Subject,
     });
 
-    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
-      RequestContext.set(CURRENT_WORKSPACE_MEMBER, {
+    const workspace = { id: "workspace-1" };
+
+    await RequestContext.run(createAuthRequestContext("http"), async () => {
+      RequestContext.set(BaseWorkspace, workspace);
+      RequestContext.set(BaseWorkspaceMember, {
         permissions: ["project:share", "project:create"],
         roles: ["owner", "auditor"],
       });
       await expect(guard.canActivate(createContext())).resolves.toBe(true);
     });
 
-    expect(buildWorkspaceAbility).toHaveBeenCalledWith(expect.anything(), [
-      "project:create",
-      "project:read",
-      "project:share",
-    ]);
+    expect(buildWorkspaceAbility).toHaveBeenCalledWith(
+      expect.anything(),
+      ["project:create", "project:read", "project:share"],
+      workspace,
+    );
   });
 
-  it("passes GraphQL execution context to buildAbility", async () => {
+  it("passes the current user instead of the GraphQL execution context", async () => {
     const canMock = vi.fn(() => true);
     const ability = {
       can: canMock,
     };
     const { guard, reflector, buildAbility, req, res } = await createGuard(
-      ability as unknown as PermissionAbility,
+      ability as unknown as TestAbility,
     );
     const gqlContext = { req, res };
 
@@ -204,14 +241,42 @@ describe("AuthGuard permissions", () => {
       "graphql",
     );
 
-    await RequestContext.run(
-      new RequestContext({ type: "graphql" }),
-      async () => {
-        await expect(guard.canActivate(context)).resolves.toBe(true);
-      },
-    );
+    const user = { permissions: [] };
 
-    expect(buildAbility).toHaveBeenCalledWith(context, []);
+    await RequestContext.run(createAuthRequestContext("graphql"), async () => {
+      RequestContext.set(BaseUser, user);
+      await expect(guard.canActivate(context)).resolves.toBe(true);
+    });
+
+    expect(buildAbility).toHaveBeenCalledWith(expect.anything(), [], user);
+  });
+
+  it("does not call ability builders when their current entities are missing", async () => {
+    const { guard, reflector, buildUserAbility, buildWorkspaceAbility } =
+      await createGuard({
+        can: vi.fn(() => true),
+      } as unknown as TestAbility);
+    reflector.getAllAndOverride.mockReturnValue(undefined);
+
+    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+      await expect(guard.canActivate(createContext())).resolves.toBe(true);
+    });
+
+    expect(buildUserAbility).not.toHaveBeenCalled();
+    expect(buildWorkspaceAbility).not.toHaveBeenCalled();
+  });
+
+  it("does not build a workspace ability without an active membership", async () => {
+    const { guard, reflector, buildWorkspaceAbility } = await createGuard({
+      can: vi.fn(() => true),
+    } as unknown as TestAbility);
+    reflector.getAllAndOverride.mockReturnValue(undefined);
+
+    await RequestContext.run(createWorkspaceRequestContext(), async () => {
+      await expect(guard.canActivate(createContext())).resolves.toBe(true);
+    });
+
+    expect(buildWorkspaceAbility).not.toHaveBeenCalled();
   });
 
   it("uses cached ability before building a new one", async () => {
@@ -227,8 +292,8 @@ describe("AuthGuard permissions", () => {
       subject: Subject,
     });
 
-    await RequestContext.run(new RequestContext({ type: "http" }), () => {
-      RequestContext.set(USER_PERMISSION_ABILITY, ability);
+    await RequestContext.run(createAuthRequestContext("http"), () => {
+      RequestContext.set(UserAbility, ability);
 
       return expect(guard.canActivate(createContext())).resolves.toBe(true);
     });
@@ -254,7 +319,7 @@ describe("AuthGuard permissions", () => {
       can: canMock,
     };
     const { guard, reflector, moduleRef } = await createGuard(
-      ability as unknown as PermissionAbility,
+      ability as unknown as TestAbility,
       handlerThis,
     );
 
@@ -269,7 +334,7 @@ describe("AuthGuard permissions", () => {
       subject: subjectFactory,
     });
 
-    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+    await RequestContext.run(createAuthRequestContext("http"), async () => {
       await expect(
         guard.canActivate(
           createContext(
@@ -313,7 +378,7 @@ describe("AuthGuard permissions", () => {
       can: canMock,
     };
     const { guard, reflector, req, res } = await createGuard(
-      ability as unknown as PermissionAbility,
+      ability as unknown as TestAbility,
       handlerThis,
     );
 
@@ -333,21 +398,18 @@ describe("AuthGuard permissions", () => {
       subject: subjectFactory,
     });
 
-    await RequestContext.run(
-      new RequestContext({ type: "graphql" }),
-      async () => {
-        await expect(
-          guard.canActivate(
-            createContext(
-              undefined,
-              undefined,
-              [undefined, { input, id: "post-1" }, { req, res }, {}],
-              "graphql",
-            ),
+    await RequestContext.run(createAuthRequestContext("graphql"), async () => {
+      await expect(
+        guard.canActivate(
+          createContext(
+            undefined,
+            undefined,
+            [undefined, { input, id: "post-1" }, { req, res }, {}],
+            "graphql",
           ),
-        ).resolves.toBe(true);
-      },
-    );
+        ),
+      ).resolves.toBe(true);
+    });
 
     expect(subjectFactory).toHaveBeenCalledWith(handlerThis, "post-1", input);
     expect(handlerThis.postService.findOneOrFail).toHaveBeenCalledWith(
@@ -367,7 +429,7 @@ describe("AuthGuard permissions", () => {
       can: canMock,
     };
     const { guard, reflector, req } = await createGuard(
-      ability as unknown as PermissionAbility,
+      ability as unknown as TestAbility,
       handlerThis,
     );
 
@@ -396,21 +458,18 @@ describe("AuthGuard permissions", () => {
       subject: subjectFactory,
     });
 
-    await RequestContext.run(
-      new RequestContext({ type: "graphql" }),
-      async () => {
-        await expect(
-          guard.canActivate(
-            createContext(
-              undefined,
-              undefined,
-              [root, { id: "post-1" }, { req, viewer: "user-1" }, info],
-              "graphql",
-            ),
+    await RequestContext.run(createAuthRequestContext("graphql"), async () => {
+      await expect(
+        guard.canActivate(
+          createContext(
+            undefined,
+            undefined,
+            [root, { id: "post-1" }, { req, viewer: "user-1" }, info],
+            "graphql",
           ),
-        ).resolves.toBe(true);
-      },
-    );
+        ),
+      ).resolves.toBe(true);
+    });
 
     expect(subjectFactory).toHaveBeenCalledWith(
       handlerThis,
@@ -442,7 +501,7 @@ describe("AuthGuard permissions", () => {
       can: canMock,
     };
     const { guard, reflector } = await createGuard(
-      ability as unknown as PermissionAbility,
+      ability as unknown as TestAbility,
       handlerThis,
     );
 
@@ -462,7 +521,7 @@ describe("AuthGuard permissions", () => {
       subject: subjectFactory,
     });
 
-    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+    await RequestContext.run(createAuthRequestContext("http"), async () => {
       await expect(
         guard.canActivate(
           createContext(
@@ -510,7 +569,7 @@ describe("AuthGuard permissions", () => {
       can: canMock,
     };
     const { guard, reflector } = await createGuard(
-      ability as unknown as PermissionAbility,
+      ability as unknown as TestAbility,
       handlerThis,
     );
 
@@ -572,7 +631,7 @@ describe("AuthGuard permissions", () => {
       subject: subjectFactory,
     });
 
-    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+    await RequestContext.run(createAuthRequestContext("http"), async () => {
       await expect(
         guard.canActivate(
           createContext(req, res, [undefined, undefined, next]),
@@ -629,7 +688,7 @@ describe("AuthGuard permissions", () => {
       can: canMock,
     };
     const { guard, reflector } = await createGuard(
-      ability as unknown as PermissionAbility,
+      ability as unknown as TestAbility,
       handlerThis,
     );
 
@@ -650,7 +709,7 @@ describe("AuthGuard permissions", () => {
       subject: subjectFactory,
     });
 
-    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+    await RequestContext.run(createAuthRequestContext("http"), async () => {
       await expect(
         guard.canActivate(
           createContext(
@@ -701,7 +760,7 @@ describe("AuthGuard permissions", () => {
       can: canMock,
     };
     const { guard, reflector } = await createGuard(
-      ability as unknown as PermissionAbility,
+      ability as unknown as TestAbility,
       handlerThis,
     );
 
@@ -722,7 +781,7 @@ describe("AuthGuard permissions", () => {
       subject: subjectFactory,
     });
 
-    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+    await RequestContext.run(createAuthRequestContext("http"), async () => {
       await expect(
         guard.canActivate(
           createContext(
@@ -748,43 +807,28 @@ describe("AuthGuard permissions", () => {
     );
   });
 
-  it("shares a pending ability build across concurrent checks", async () => {
+  it("reuses a synchronously built ability across concurrent checks", async () => {
     const canMock = vi.fn(() => true);
     const ability = {
       can: canMock,
     };
-    const { guard, reflector, buildAbility } = await createGuard();
-    let resolveAbility!: (ability: PermissionAbility) => void;
-    const abilityPromise = new Promise<PermissionAbility>((resolve) => {
-      resolveAbility = resolve;
-    });
-
-    buildAbility.mockImplementation(() => abilityPromise);
+    const { guard, reflector, buildAbility } = await createGuard(
+      ability as unknown as TestAbility,
+    );
     setCanMetadata(reflector, {
       scope: "user",
       action: "read",
       subject: Subject,
     });
 
-    await RequestContext.run(
-      new RequestContext({ type: "graphql" }),
-      async () => {
-        const first = guard.canActivate(createContext());
-        const second = guard.canActivate(createContext());
+    await RequestContext.run(createAuthRequestContext("graphql"), async () => {
+      const first = guard.canActivate(createContext());
+      const second = guard.canActivate(createContext());
 
-        await Promise.resolve();
+      await expect(Promise.all([first, second])).resolves.toEqual([true, true]);
+    });
 
-        expect(buildAbility).toHaveBeenCalledTimes(1);
-
-        resolveAbility(ability as unknown as PermissionAbility);
-
-        await expect(Promise.all([first, second])).resolves.toEqual([
-          true,
-          true,
-        ]);
-      },
-    );
-
+    expect(buildAbility).toHaveBeenCalledTimes(1);
     expect(canMock).toHaveBeenCalledTimes(2);
   });
 
@@ -796,7 +840,7 @@ describe("AuthGuard permissions", () => {
     const { guard, reflector, moduleRef } = await createGuard(
       {
         can: canMock,
-      } as unknown as PermissionAbility,
+      } as unknown as TestAbility,
       handlerThis,
     );
 
@@ -806,7 +850,7 @@ describe("AuthGuard permissions", () => {
       subject: subjectFactory,
     });
 
-    await RequestContext.run(new RequestContext({ type: "rpc" }), async () => {
+    await RequestContext.run(createAuthRequestContext("rpc"), async () => {
       await expect(
         guard.canActivate(createContext(undefined, undefined, [], "rpc")),
       ).resolves.toBe(true);
@@ -826,7 +870,7 @@ describe("AuthGuard permissions", () => {
     const { guard, reflector } = await createGuard(
       {
         can: canMock,
-      } as unknown as PermissionAbility,
+      } as unknown as TestAbility,
       handlerThis,
     );
     const matchedHandler = createUnnamedHandler();
@@ -853,7 +897,7 @@ describe("AuthGuard permissions", () => {
       subject: subjectFactory,
     });
 
-    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+    await RequestContext.run(createAuthRequestContext("http"), async () => {
       const matchedContext = createContext(
         {
           body: { input: true },
@@ -890,7 +934,7 @@ describe("AuthGuard permissions", () => {
     const canMock = vi.fn(() => false);
     const { guard, reflector } = await createGuard({
       can: canMock,
-    } as unknown as PermissionAbility);
+    } as unknown as TestAbility);
 
     setCanMetadata(reflector, {
       scope: "user",
@@ -898,7 +942,7 @@ describe("AuthGuard permissions", () => {
       subject: Subject,
     });
 
-    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+    await RequestContext.run(createAuthRequestContext("http"), async () => {
       await expect(guard.canActivate(createContext())).resolves.toBe(false);
     });
   });
@@ -906,7 +950,7 @@ describe("AuthGuard permissions", () => {
   it("requires both permissions when both metadata types are declared", async () => {
     const canMock = vi.fn((action: string) => action === "read");
     const { guard, reflector, buildUserAbility, buildWorkspaceAbility } =
-      await createGuard({ can: canMock } as unknown as PermissionAbility);
+      await createGuard({ can: canMock } as unknown as TestAbility);
 
     reflector.getAllAndOverride.mockImplementation((key) => {
       if (key === USER_CAN_METADATA) {
@@ -918,7 +962,7 @@ describe("AuthGuard permissions", () => {
       return undefined;
     });
 
-    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+    await RequestContext.run(createAuthRequestContext("http"), async () => {
       await expect(guard.canActivate(createContext())).resolves.toBe(false);
     });
 
@@ -932,7 +976,7 @@ describe("AuthGuard permissions", () => {
     const canMock = vi.fn((action: string) => action === "read");
     const { guard, reflector } = await createGuard({
       can: canMock,
-    } as unknown as PermissionAbility);
+    } as unknown as TestAbility);
 
     reflector.getAllAndOverride.mockImplementation((key) =>
       key === USER_CAN_METADATA
@@ -943,7 +987,7 @@ describe("AuthGuard permissions", () => {
         : undefined,
     );
 
-    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+    await RequestContext.run(createAuthRequestContext("http"), async () => {
       await expect(guard.canActivate(createContext())).resolves.toBe(false);
     });
 
@@ -955,7 +999,7 @@ describe("AuthGuard permissions", () => {
     const canMock = vi.fn((action: string) => action === "read");
     const { guard, reflector } = await createGuard({
       can: canMock,
-    } as unknown as PermissionAbility);
+    } as unknown as TestAbility);
 
     reflector.getAllAndOverride.mockImplementation((key) =>
       key === WORKSPACE_CAN_METADATA
@@ -966,7 +1010,7 @@ describe("AuthGuard permissions", () => {
         : undefined,
     );
 
-    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+    await RequestContext.run(createAuthRequestContext("http"), async () => {
       await expect(guard.canActivate(createContext())).resolves.toBe(false);
     });
 
@@ -977,7 +1021,7 @@ describe("AuthGuard permissions", () => {
   it("restricts API-key requests to the key permissions", async () => {
     const { guard, reflector } = await createGuard({
       can: vi.fn(() => true),
-    } as unknown as PermissionAbility);
+    } as unknown as TestAbility);
 
     setCanMetadata(reflector, {
       scope: "user",
@@ -985,8 +1029,8 @@ describe("AuthGuard permissions", () => {
       subject: User,
     });
 
-    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
-      RequestContext.set(CURRENT_API_KEY, {
+    await RequestContext.run(createAuthRequestContext("http"), async () => {
+      RequestContext.set(BaseApiKey, {
         owner: new UserOwner(),
         permissions: ["user:get"],
       });
@@ -1008,7 +1052,7 @@ describe("AuthGuard permissions", () => {
   it("rejects missing API-key permissions", async () => {
     const { guard, reflector } = await createGuard({
       can: vi.fn(() => true),
-    } as unknown as PermissionAbility);
+    } as unknown as TestAbility);
 
     setCanMetadata(reflector, {
       scope: "user",
@@ -1016,8 +1060,8 @@ describe("AuthGuard permissions", () => {
       subject: User,
     });
 
-    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
-      RequestContext.set(CURRENT_API_KEY, {
+    await RequestContext.run(createAuthRequestContext("http"), async () => {
+      RequestContext.set(BaseApiKey, {
         owner: new UserOwner(),
         permissions: null,
       });
@@ -1026,7 +1070,7 @@ describe("AuthGuard permissions", () => {
       });
       await expect(guard.canActivate(createContext())).resolves.toBe(false);
 
-      RequestContext.set(CURRENT_API_KEY, {
+      RequestContext.set(BaseApiKey, {
         owner: new UserOwner(),
         permissions: [],
       });
@@ -1042,8 +1086,8 @@ describe("AuthGuard permissions", () => {
       subject: Workspace,
     });
 
-    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
-      RequestContext.set(CURRENT_API_KEY, {
+    await RequestContext.run(createWorkspaceRequestContext(), async () => {
+      RequestContext.set(BaseApiKey, {
         owner: new WorkspaceOwner(),
         permissions: ["workspace:update"],
       });
@@ -1057,31 +1101,38 @@ describe("AuthGuard permissions", () => {
       await expect(guard.canActivate(createContext())).resolves.toBe(false);
     });
 
-    expect(buildAbility).toHaveBeenCalledOnce();
+    expect(buildAbility).not.toHaveBeenCalled();
   });
 
   it("intersects user-key permissions with workspace-member permissions", async () => {
     const canMock = vi.fn(() => true);
     const { guard, reflector } = await createGuard({
       can: canMock,
-    } as unknown as PermissionAbility);
+    } as unknown as TestAbility);
     setCanMetadata(reflector, {
       action: "update",
       scope: "workspace",
       subject: Workspace,
     });
 
-    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
-      RequestContext.set(CURRENT_API_KEY, {
+    await RequestContext.run(createUserWorkspaceRequestContext(), async () => {
+      RequestContext.set(BaseApiKey, {
         owner: new UserOwner(),
         permissions: ["workspace:update"],
       });
       await expect(guard.canActivate(createContext())).resolves.toBe(false);
+    });
 
-      RequestContext.set(CURRENT_WORKSPACE_MEMBER, { id: "member-1" });
+    await RequestContext.run(createAuthRequestContext("http"), async () => {
+      RequestContext.set(BaseApiKey, {
+        owner: new UserOwner(),
+        permissions: ["workspace:update"],
+      });
       await expect(guard.canActivate(createContext())).resolves.toBe(true);
+    });
 
-      RequestContext.set(CURRENT_API_KEY, {
+    await RequestContext.run(createAuthRequestContext("http"), async () => {
+      RequestContext.set(BaseApiKey, {
         owner: new UserOwner(),
         permissions: ["workspace:delete"],
       });
@@ -1098,15 +1149,15 @@ describe("AuthGuard permissions", () => {
           RequestContext.get(BaseUser)?.permissions.includes("user:get") ??
           false,
       ),
-    } as unknown as PermissionAbility);
+    } as unknown as TestAbility);
     setCanMetadata(reflector, {
       action: "get",
       scope: "user",
       subject: User,
     });
 
-    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
-      RequestContext.set(CURRENT_API_KEY, {
+    await RequestContext.run(createAuthRequestContext("http"), async () => {
+      RequestContext.set(BaseApiKey, {
         owner: new UserOwner(),
         permissions: ["user:get"],
       });
@@ -1122,7 +1173,7 @@ describe("AuthGuard permissions", () => {
 });
 
 async function createGuard(
-  ability: PermissionAbility | null = null,
+  ability: TestAbility | null = null,
   handlerThis: unknown = {},
   roles: {
     user?: AuthModuleRoles;
@@ -1134,12 +1185,19 @@ async function createGuard(
   } as unknown as Reflector & {
     getAllAndOverride: Mock;
   };
-  const buildUserAbility: MockedFunction<BuildAbilityCallback> = vi.fn(
-    (_ctx) => ability,
+  const buildUserAbility: MockedFunction<BuildUserAbilityCallback> = vi.fn(
+    () => {
+      if (!ability) throw new Error("Test user ability is not configured");
+      return ability;
+    },
   );
-  const buildWorkspaceAbility: MockedFunction<BuildAbilityCallback> = vi.fn(
-    (_ctx) => ability,
-  );
+  const buildWorkspaceAbility: MockedFunction<BuildWorkspaceAbilityCallback> =
+    vi.fn(() => {
+      if (!ability) {
+        throw new Error("Test workspace ability is not configured");
+      }
+      return ability;
+    });
   const moduleRefMock = {
     resolve: vi.fn(() => Promise.resolve(handlerThis)),
   } as unknown as ModuleRef & { resolve: Mock };
@@ -1158,7 +1216,7 @@ async function createGuard(
         provide: MODULE_OPTIONS_TOKEN,
         useValue: {
           user: {
-            buildAbility: buildUserAbility,
+            ...(ability ? { buildAbility: buildUserAbility } : {}),
             roles: roles.user,
           },
           entities: {
@@ -1166,7 +1224,7 @@ async function createGuard(
             workspace: WorkspaceOwner,
           },
           workspace: {
-            buildAbility: buildWorkspaceAbility,
+            ...(ability ? { buildAbility: buildWorkspaceAbility } : {}),
             roles: roles.workspace,
           },
         },
@@ -1216,6 +1274,29 @@ function createContext(
     ),
     getClass: vi.fn(() => Controller),
   } as unknown as ExecutionContext;
+}
+
+function createAuthRequestContext(type: string): RequestContext {
+  const context = new RequestContext({ type });
+  context.set(BaseUser, new BaseUser());
+  context.set(BaseWorkspace, { id: "workspace-1" });
+  context.set(BaseWorkspaceMember, {
+    permissions: [],
+    roles: ["member"],
+  });
+  return context;
+}
+
+function createWorkspaceRequestContext(): RequestContext {
+  const context = new RequestContext({ type: "http" });
+  context.set(BaseWorkspace, { id: "workspace-1" });
+  return context;
+}
+
+function createUserWorkspaceRequestContext(): RequestContext {
+  const context = createWorkspaceRequestContext();
+  context.set(BaseUser, new BaseUser());
+  return context;
 }
 
 function setRouteArgsMetadata(metadata: RouteArgumentMetadata) {

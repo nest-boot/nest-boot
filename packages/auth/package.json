@@ -34,7 +34,7 @@
     "test:debug": "vitest --inspect-brk --no-file-parallelism"
   },
   "devDependencies": {
-    "@casl/ability": "^6.7.5",
+    "@casl/ability": "^7.0.1",
     "@mikro-orm/core": "7.1.14",
     "@mikro-orm/decorators": "7.1.14",
     "@nest-boot/eslint-config": "workspace:^",
@@ -61,7 +61,7 @@
     "vitest": "^4.1.11"
   },
   "peerDependencies": {
-    "@casl/ability": "^6.0.0",
+    "@casl/ability": "^7.0.0",
     "@mikro-orm/core": "^7.0.0",
     "@mikro-orm/decorators": "^7.0.0",
     "@nest-boot/hash": "workspace:^",
