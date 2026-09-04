@@ -1,4 +1,4 @@
-import { type Type } from "@nestjs/common";
+import { type InjectionToken } from "@nestjs/common";
 import { AsyncLocalStorage } from "async_hooks";
 import { randomUUID } from "crypto";
 
@@ -16,10 +16,16 @@ export type RequestContextMiddlewareType = <T>(
   next: () => Promise<T>,
 ) => Promise<T>;
 
+/**
+ * Nest-compatible token used to store, resolve, or alias a request-context value.
+ *
+ * @typeParam T - The value associated with the token
+ */
+export type RequestContextToken<T = unknown> = InjectionToken<T>;
+
 /** Resolves a dependency that is not stored directly in the context. */
 export type RequestContextDependencyResolver = (
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-  token: string | symbol | Function,
+  token: RequestContextToken,
 ) => unknown;
 
 /**
@@ -125,6 +131,12 @@ export class RequestContext {
   /** Internal storage map for context values. @internal */
   private readonly container = new Map();
 
+  /** Token aliases registered directly on this context. @internal */
+  private readonly aliases = new Map<
+    RequestContextToken,
+    RequestContextToken
+  >();
+
   /** Async local storage backing the request context. @internal */
   private static readonly storage = new AsyncLocalStorage<RequestContext>();
 
@@ -148,11 +160,18 @@ export class RequestContext {
     this.type = options.type;
     this.parent = options.parent;
     this.dependencyResolver = options.dependencyResolver;
+
+    if (this.parent) {
+      for (const [aliasToken, targetToken] of this.parent.aliases) {
+        this.aliases.set(aliasToken, targetToken);
+      }
+    }
   }
 
   /**
    * Gets a value from the context by its token.
-   * If not found in this context, looks up the parent context.
+   * Alias tokens are resolved to their final canonical token. If no value is
+   * found in this context, the parent context and dependency resolver are used.
    *
    * @typeParam T - The expected type of the value
    * @param token - The key to look up (string, symbol, function, or class)
@@ -165,42 +184,105 @@ export class RequestContext {
    * const service = ctx.get(MyService);
    * ```
    */
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-  get<T>(token: string | symbol | Function | Type<T>): T | undefined {
-    if (this.container.has(token)) {
-      return this.container.get(token) as T | undefined;
+  get<T>(token: RequestContextToken<T>): T | undefined {
+    const resolvedToken = this.resolveToken(token);
+    const contextValue = this.findContextValue(resolvedToken);
+
+    if (contextValue.found) {
+      return contextValue.value as T | undefined;
     }
 
-    if (this.parent) {
-      const parentValue = this.parent.get<T>(token);
-
-      if (
-        typeof parentValue !== "undefined" ||
-        this.parent.hasContextValue(token)
-      ) {
-        return parentValue;
-      }
-    }
-
-    return this.dependencyResolver?.(token) as T | undefined;
+    return this.resolveDependency(resolvedToken) as T | undefined;
   }
 
-  /** Checks whether this context hierarchy contains an explicit value. */
-  private hasContextValue(
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    token: string | symbol | Function,
-  ): boolean {
+  /** Finds an explicitly stored value without resolving aliases or providers. */
+  private findContextValue(token: RequestContextToken): {
+    found: boolean;
+    value: unknown;
+  } {
+    if (this.container.has(token)) {
+      return {
+        found: true,
+        value: this.container.get(token),
+      };
+    }
+
     return (
-      this.container.has(token) ||
-      (this.parent?.hasContextValue(token) ?? false)
+      this.parent?.findContextValue(token) ?? {
+        found: false,
+        value: undefined,
+      }
     );
+  }
+
+  /** Resolves a dependency through parent resolvers before the local resolver. */
+  private resolveDependency(token: RequestContextToken): unknown {
+    const parentValue = this.parent?.resolveDependency(token);
+
+    if (typeof parentValue !== "undefined") {
+      return parentValue;
+    }
+
+    return this.dependencyResolver?.(token);
+  }
+
+  /** Gets the effective alias target for a token in this context hierarchy. */
+  private getAliasTarget(
+    aliasToken: RequestContextToken,
+  ): RequestContextToken | undefined {
+    return this.aliases.get(aliasToken);
+  }
+
+  /** Resolves an alias chain and rejects circular aliases. */
+  private resolveToken(aliasToken: RequestContextToken): RequestContextToken {
+    const path = [aliasToken];
+    const seen = new Map<RequestContextToken, number>([[aliasToken, 0]]);
+    let token = aliasToken;
+
+    while (true) {
+      const targetToken = this.getAliasTarget(token);
+
+      if (typeof targetToken === "undefined") {
+        return token;
+      }
+
+      path.push(targetToken);
+
+      const cycleStart = seen.get(targetToken);
+
+      if (typeof cycleStart !== "undefined") {
+        const cycle = path
+          .slice(cycleStart)
+          .map((currentToken) => RequestContext.formatToken(currentToken))
+          .join(" -> ");
+
+        throw new Error(`Circular request context alias detected: ${cycle}`);
+      }
+
+      seen.set(targetToken, path.length - 1);
+      token = targetToken;
+    }
+  }
+
+  /** Formats a token for use in alias validation errors. */
+  private static formatToken(token: RequestContextToken): string {
+    if (typeof token === "string") {
+      return JSON.stringify(token);
+    }
+
+    if (typeof token === "symbol") {
+      return token.toString();
+    }
+
+    return token.name || "(anonymous function)";
   }
 
   /**
    * Sets a value in the context.
+   * Alias tokens are resolved to their final canonical token before storage.
    *
    * @typeParam T - The type of the value
-   * @param typeOrToken - The key to store the value under
+   * @param typeOrToken - The token to resolve and store the value under
    * @param value - The value to store
    *
    * @example
@@ -210,12 +292,68 @@ export class RequestContext {
    * ctx.set(UserService, userServiceInstance);
    * ```
    */
-  set<T>(typeOrToken: string | symbol | Type<T>, value: T): void {
-    this.container.set(typeOrToken, value);
+  set<T>(typeOrToken: RequestContextToken<T>, value: T): void {
+    this.container.set(this.resolveToken(typeOrToken), value);
+  }
+
+  /**
+   * Registers an alias for another token in this context.
+   * The alias token is resolved to the canonical target token. Child contexts
+   * snapshot inherited aliases when they are created and may override them
+   * without modifying their parent.
+   *
+   * @param aliasToken - The token consumers use to request the value
+   * @param targetToken - The canonical token that provides the value
+   * @throws Error if the alias would create a circular alias chain
+   *
+   * @example
+   * ```typescript
+   * context.alias(BaseUser, User);
+   * context.set(BaseUser, user);
+   * context.get(User); // user
+   * ```
+   */
+  alias(
+    aliasToken: RequestContextToken,
+    targetToken: RequestContextToken,
+  ): void {
+    const hadAlias = this.aliases.has(aliasToken);
+    const previousTarget = this.aliases.get(aliasToken);
+
+    this.aliases.set(aliasToken, targetToken);
+
+    try {
+      this.resolveToken(aliasToken);
+    } catch (error) {
+      if (hadAlias && typeof previousTarget !== "undefined") {
+        this.aliases.set(aliasToken, previousTarget);
+      } else {
+        this.aliases.delete(aliasToken);
+      }
+
+      throw error;
+    }
+  }
+
+  /**
+   * Cancels an alias in this context.
+   * An inherited alias is removed only from this context; existing parent and
+   * child snapshots remain unchanged. Registering the alias again re-enables it.
+   *
+   * @param aliasToken - The alias token to cancel
+   *
+   * @example
+   * ```typescript
+   * context.unalias(BaseUser);
+   * ```
+   */
+  unalias(aliasToken: RequestContextToken): void {
+    this.aliases.delete(aliasToken);
   }
 
   /**
    * Gets a value from the context, or sets it if not present.
+   * Alias tokens are resolved to the same canonical token for both operations.
    *
    * @typeParam T - The type of the value
    * @param typeOrToken - The key to look up or store under
@@ -228,8 +366,8 @@ export class RequestContext {
    * const cache = ctx.getOrSet('cache', new Map());
    * ```
    */
-  getOrSet<T>(typeOrToken: string | symbol | Type<T>, value: T): T {
-    const existing = this.get(typeOrToken);
+  getOrSet<T>(typeOrToken: RequestContextToken<T>, value: T): T {
+    const existing = this.get<T>(typeOrToken);
 
     if (typeof existing !== "undefined") {
       return existing;
@@ -254,8 +392,7 @@ export class RequestContext {
    * const userId = RequestContext.get<number>('userId');
    * ```
    */
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-  static get<T>(key: string | symbol | Function | Type<T>): T | undefined {
+  static get<T>(key: RequestContextToken<T>): T | undefined {
     const ctx = this.current();
 
     return ctx.get(key);
@@ -275,12 +412,46 @@ export class RequestContext {
    * RequestContext.set('userId', 123);
    * ```
    */
-  static set<T>(key: string | symbol | Type<T>, value: T): void {
+  static set<T>(key: RequestContextToken<T>, value: T): void {
     const ctx = this.current();
 
     if (typeof key !== "undefined") {
       ctx.set(key, value);
     }
+  }
+
+  /**
+   * Registers a token alias in the current context.
+   *
+   * @param aliasToken - The token consumers use to request the value
+   * @param targetToken - The canonical token that provides the value
+   * @throws Error if no request context is active or the alias creates a cycle
+   *
+   * @example
+   * ```typescript
+   * RequestContext.alias(BaseUser, User);
+   * ```
+   */
+  static alias(
+    aliasToken: RequestContextToken,
+    targetToken: RequestContextToken,
+  ): void {
+    this.current().alias(aliasToken, targetToken);
+  }
+
+  /**
+   * Cancels a token alias in the current context.
+   *
+   * @param aliasToken - The alias token to cancel
+   * @throws Error if no request context is active
+   *
+   * @example
+   * ```typescript
+   * RequestContext.unalias(BaseUser);
+   * ```
+   */
+  static unalias(aliasToken: RequestContextToken): void {
+    this.current().unalias(aliasToken);
   }
 
   /**
@@ -298,7 +469,7 @@ export class RequestContext {
    * const cache = RequestContext.getOrSet('cache', new Map());
    * ```
    */
-  static getOrSet<T>(key: string | symbol | Type<T>, value: T): T {
+  static getOrSet<T>(key: RequestContextToken<T>, value: T): T {
     const ctx = this.current();
 
     return ctx.getOrSet(key, value);

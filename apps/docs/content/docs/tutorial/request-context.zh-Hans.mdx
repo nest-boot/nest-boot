@@ -54,9 +54,9 @@ const metadata = RequestContext.getOrSet(
 
 查找顺序如下：
 
-1. 当前上下文中显式存储的值。
-2. 从父上下文继承的值。
-3. HTTP 上下文能够访问的应用 Provider。
+1. 沿当前上下文层级中显式注册的 Token 别名，解析到最终的规范 Token。
+2. 当前上下文层级中为规范 Token 显式存储的值，从当前上下文开始查找。
+3. HTTP 上下文能够访问的应用 Provider，使用最终的规范 Token 解析。
 
 即使显式存储的值是 `null` 或 `undefined`，也会被视为已设置，不再继续回退。这可以用于在请求或子上下文中屏蔽继承值和应用级 Provider。
 
@@ -66,6 +66,33 @@ const metadata = RequestContext.getOrSet(
 if (RequestContext.isActive()) {
   const user = RequestContext.get(User);
 }
+```
+
+## Token 别名
+
+当多个 Token 应解析为同一个请求作用域对象时，可以使用 `alias(aliasToken, targetToken)`。供调用方使用的别名 Token 是第一个参数，存储或提供值的规范 Token 是第二个参数：
+
+```typescript
+context.alias(BaseUser, User);
+context.set(BaseUser, authenticatedUser); // 存储在 User 下
+
+context.get(BaseUser) === authenticatedUser; // true
+context.get(User) === authenticatedUser; // true
+```
+
+静态形式会在当前活动上下文中注册别名：
+
+```typescript
+RequestContext.alias(BaseUser, User);
+```
+
+别名属于具体上下文，而不是全局状态。子上下文创建时会为父上下文的别名生成快照，因此任一上下文后续修改别名都不会追溯改变另一个上下文。子上下文可以覆盖继承的别名或规范 Token 对应的值，而不修改父上下文。别名支持链式解析；注册循环别名链时会抛出异常。`get()`、`set()` 和 `getOrSet()` 都会解析完整的别名链，因此读写使用同一个规范 Token。
+
+使用 `unalias(aliasToken)` 可以取消当前上下文中的别名。已有的父上下文和子上下文快照保持不变；之后创建的子上下文会继承更新后的别名集合。再次为同一 Token 调用 `alias()` 即可重新启用别名。
+
+```typescript
+context.unalias(BaseUser);
+RequestContext.unalias(BaseUser); // 当前活动上下文
 ```
 
 ## 获取应用 Provider
