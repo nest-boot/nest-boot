@@ -1,4 +1,4 @@
-import { AuthModuleOptions } from "../auth-module-options.interface.js";
+import type { AuthModuleSocialProviders } from "../auth-module-options.interface.js";
 import { hasSocialProviderCredentialEnvConfig } from "./has-social-provider-credential-env-config.js";
 import { isEnvTrue } from "./is-env-true.js";
 import { resolveRequiredSocialProviderEnv } from "./resolve-required-social-provider-env.js";
@@ -8,9 +8,13 @@ import {
   SocialProviderId,
 } from "./social-provider.constants.js";
 
-type SocialProvidersConfig = NonNullable<AuthModuleOptions["socialProviders"]>;
+type SocialProvidersConfig = AuthModuleSocialProviders;
 type SocialProviderConfig<T extends SocialProviderId> = NonNullable<
   SocialProvidersConfig[T]
+>;
+type ResolvedSocialProviderConfig<T extends SocialProviderId> = Exclude<
+  SocialProviderConfig<T>,
+  (...args: never[]) => unknown
 >;
 
 export function createSocialProviderConfig<T extends SocialProviderId>(
@@ -29,6 +33,17 @@ export function createSocialProviderConfig<T extends SocialProviderId>(
 
   if (!shouldCreateProvider) {
     return undefined;
+  }
+
+  if (typeof options === "function") {
+    return (async () => {
+      const resolvedOptions = (await options()) as SocialProviderConfig<T>;
+      return createSocialProviderConfig(
+        provider,
+        disableSignUp,
+        resolvedOptions,
+      ) as ResolvedSocialProviderConfig<T>;
+    }) as SocialProviderConfig<T>;
   }
 
   if (!shouldUseCredentialEnv) {

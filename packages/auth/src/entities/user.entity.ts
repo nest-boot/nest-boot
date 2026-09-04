@@ -37,6 +37,26 @@ export class BaseUser extends BaseEntity {
   @Property({ type: t.text, nullable: true })
   image?: Opt<string>;
 
+  /** Application roles used to resolve user-administration permissions. */
+  @Property({ type: t.array })
+  roles: Opt<string[]> = ["user"];
+
+  /** User-administration and session permissions granted to this identity. */
+  @Property({ type: t.array })
+  permissions: Opt<string[]> = [];
+
+  /** Whether the user is currently banned from authenticating. */
+  @Property({ type: t.boolean, default: false })
+  banned: Opt<boolean> = false;
+
+  /** Administrative reason for the current ban. */
+  @Property({ type: t.text, nullable: true })
+  banReason?: Opt<string> | null = null;
+
+  /** Time when the current ban expires; `null` means it is permanent. */
+  @Property({ type: t.datetime, nullable: true })
+  banExpiresAt?: Opt<Date> | null = null;
+
   /** Timestamp when the user was created. */
   @Property({ type: t.datetime, defaultRaw: "now()" })
   createdAt: Opt<Date> = new Date();

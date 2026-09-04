@@ -1,7 +1,7 @@
-import { AuthModuleOptions } from "../auth-module-options.interface.js";
+import type { AuthModuleSocialProviders } from "../auth-module-options.interface.js";
 import { createSocialProviderConfig } from "./create-social-provider-config.js";
 
-type SocialProvidersConfig = NonNullable<AuthModuleOptions["socialProviders"]>;
+type SocialProvidersConfig = AuthModuleSocialProviders;
 
 export function createSocialProvidersConfig(
   disableSignUp: boolean,

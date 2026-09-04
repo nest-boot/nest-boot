@@ -1,0 +1,173 @@
+---
+title: "配置"
+description: "配置 AuthModule、环境变量与 MikroORM 实体。"
+---
+
+## 模块选项
+
+通过 `forRoot()` 或 `forRootAsync()` 注册 `AuthModule`。模块仅开放经过明确允许的
+Better Auth 选项，避免上游升级无意中扩大 Nest Boot 的公开 API。Better Auth 插件仍由
+模块内部管理；内置社交登录与自定义 OAuth 统一使用扁平的 `providers` 选项。
+
+主要选项包括：
+
+- **`entities`** — 每个认证模型对应的应用实体类；
+- **`emailAndPassword.enabled`** — 启用邮箱密码认证，默认为 `true`；
+- **`emailAndPassword.requireEmailVerification`** — 登录前要求验证邮箱，默认为 `true`；
+- **`emailAndPassword.password`** — 覆盖密码哈希，默认使用 `HashService`；
+- **`emailAndPassword.sendResetPassword`** — 覆盖密码重置邮件发送逻辑；
+- **`emailVerification.sendVerificationEmail`** — 覆盖验证邮件发送逻辑；
+- **`user.changeEmail.enabled`** — 启用两阶段邮箱修改；
+- **`user.defaultRole`**、**`user.adminRoles`**、**`user.permissions`**、**`user.roles`** 与 **`user.buildAbility`** — 定义用户角色生命周期与授权；
+- **`workspace.defaultRole`**、**`workspace.creatorRole`**、**`workspace.permissions`**、**`workspace.roles`** 与 **`workspace.buildAbility`** — 定义工作区角色生命周期与授权；
+- **`workspace.sendInvitationEmail`** — 发送已持久化的工作区邀请；
+- **`onAuthenticated`** — 会话解析后补充应用上下文；
+- **`middleware`** — 控制认证中间件的注册和路由范围；
+- **`basePath`** — 修改默认的 `/api/auth/` 认证端点路径；
+- **`trustedOrigins`** — 配置允许的浏览器来源；
+- **`providers`** — 配置内置社交、自定义 OAuth 2.0 与 OpenID Connect Provider。
+
+`user.permissions` 默认为标准 `user:*` 与 `session:*` 权限目录。
+`user.roles` 默认包含 `admin` 与 `user` 两个角色。`admin` 拥有完整默认权限目录，
+`user` 不拥有任何管理权限。显式配置权限数组或角色映射时，会分别替换对应默认值。
+`user.defaultRole` 默认为 `user`；`user.adminRoles` 默认为 `['admin']`，用于识别
+管理员身份，包括模拟时需要额外 `user:impersonate-admins` 权限的目标用户。
+
+`workspace.permissions` 默认为标准工作区权限目录。`workspace.roles` 默认包含
+`owner`、`admin` 与 `member`。`owner` 拥有完整默认权限目录；`admin` 除
+`workspace:delete` 外拥有其他标准权限；`member` 不拥有管理权限。显式配置权限数组
+或角色映射时，会分别替换对应默认值。`workspace.defaultRole` 默认为 `member`，用于
+新增成员和邀请；`workspace.creatorRole` 默认为 `owner`，标识受保护的工作区创建者
+生命周期。
+
+配置角色授予的每项权限都必须存在于对应权限目录中。`forRoot()` 会推导权限字面量
+联合，并在 TypeScript 中拒绝未知角色权限；运行时校验同时覆盖动态配置与异步配置。
+默认角色、管理员角色与创建者角色也必须存在于对应角色映射中。无效角色配置会阻止
+应用启动。
+
+用户、工作区成员和邀请均以 `string[]` 保存角色名，因此一个主体可以同时继承多个
+已配置角色的权限。权限字段同样使用 `string[]`。角色赋值方法会依据已配置角色映射
+校验角色名；模块选项会保留权限目录类型，同时不让 GraphQL Schema 或数据库结构
+耦合到字面量联合类型。
+用户、工作区成员与 API Key 的直接权限写入也会在运行时依据相应目录进行校验。
+
+## 环境变量
+
+传给 `forRoot()` 或 `forRootAsync()` 的选项会与环境变量默认值合并。认证提供方的
+环境变量开关可以覆盖对应的嵌套 provider 设置。
+
+### 通用
+
+| 变量                   | 用途                                                                                  | 默认值                     |
+| ---------------------- | ------------------------------------------------------------------------------------- | -------------------------- |
+| `AUTH_SECRET`          | 用于签名和加密认证数据的密钥。未设置时回退到 `APP_SECRET`；应至少包含 32 个高熵字符。 | 必填                       |
+| `HASH_SECRET`          | `HashModule` 使用的 pepper。未设置时回退到 `APP_SECRET`；应至少包含 32 个高熵字符。   | `APP_SECRET` 未设置时必填  |
+| `APP_SECRET`           | auth 或 hash 专用密钥缺失时使用的共享备用密钥。                                       | `AUTH_SECRET` 未设置时必填 |
+| `APP_NAME`             | 传给 Better Auth 的应用名称。                                                         | 未设置                     |
+| `AUTH_URL`             | 公开的认证基础 URL，未设置时回退到 `APP_URL`。                                        | 未设置                     |
+| `APP_URL`              | 应用公开 URL，同时作为 `AUTH_URL` 的备用值。                                          | 未设置                     |
+| `AUTH_DISABLE_SIGN_UP` | 禁止所有已配置认证方式的新用户注册，但不影响已有用户登录。                            | 允许注册                   |
+| `API_KEY_PREFIX`       | 创建 API Key 时使用的前缀。                                                           | `sk-`                      |
+
+### Email
+
+| 变量                              | 用途                                     | 默认值   |
+| --------------------------------- | ---------------------------------------- | -------- |
+| `AUTH_EMAIL_ENABLED`              | 除非设为 `false`，否则启用邮箱密码认证。 | 启用     |
+| `AUTH_EMAIL_REQUIRE_VERIFICATION` | 除非设为 `false`，否则要求验证邮箱。     | 要求验证 |
+| `AUTH_EMAIL_DISABLE_SIGN_UP`      | 设为 `true` 时禁止新的邮箱密码注册。     | 允许注册 |
+
+### Google 与 GitHub
+
+Google 与 GitHub 只有在对应的 `*_ENABLED` 为 `true` 时才会启用。启用后必须同时提供
+client ID 与 client secret。
+
+| 变量                          | 用途                                 |
+| ----------------------------- | ------------------------------------ |
+| `AUTH_GOOGLE_ENABLED`         | 启用 Google 认证。                   |
+| `AUTH_GOOGLE_CLIENT_ID`       | Google OAuth 客户端 ID。             |
+| `AUTH_GOOGLE_CLIENT_SECRET`   | Google OAuth 客户端密钥。            |
+| `AUTH_GOOGLE_DISABLE_SIGN_UP` | 禁止新 Google 用户注册，但保留登录。 |
+| `AUTH_GITHUB_ENABLED`         | 启用 GitHub 认证。                   |
+| `AUTH_GITHUB_CLIENT_ID`       | GitHub OAuth 客户端 ID。             |
+| `AUTH_GITHUB_CLIENT_SECRET`   | GitHub OAuth 客户端密钥。            |
+| `AUTH_GITHUB_DISABLE_SIGN_UP` | 禁止新 GitHub 用户注册，但保留登录。 |
+
+### 认证 Provider
+
+每个 Provider 都是以 `id` 标识的扁平对象。Better Auth 能识别的 ID（例如 `github`）
+使用其内置社交 Provider 实现，其他 ID 使用 Generic OAuth。`providers` 中的 ID 与
+环境变量配置的 `oidc` Provider 之间必须保持唯一。
+
+```typescript
+AuthModule.forRoot({
+  // ...实体和其他选项
+  providers: [
+    {
+      id: "github",
+      clientId: process.env.GITHUB_CLIENT_ID!,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+    },
+    {
+      id: "company",
+      name: "企业 SSO",
+      clientId: process.env.COMPANY_OAUTH_CLIENT_ID!,
+      clientSecret: process.env.COMPANY_OAUTH_CLIENT_SECRET!,
+      discoveryUrl:
+        "https://accounts.example.com/.well-known/openid-configuration",
+      scopes: ["openid", "profile", "email"],
+    },
+  ],
+});
+```
+
+带 discovery 元数据的 Provider 可以使用 OpenID Connect。普通 OAuth Provider 可显式
+配置 `authorizationUrl`、`tokenUrl` 与 `userInfoUrl`。同时支持 `getToken`、
+`getUserInfo`、`mapProfileToUser` 等高级回调。Generic Provider 与内置社交 Provider
+共用 `AuthService.signInSocial()`、`AuthService.linkSocialAccount()` 和回调路由。
+`AUTH_DISABLE_SIGN_UP=true` 会覆盖所有 Provider 的注册设置。
+
+### OIDC
+
+对于单个常规 OIDC Provider，以下环境变量是 `providers` 配置项的简化方式。
+默认关闭；设置 `AUTH_OIDC_ENABLED=true` 后，其 ID 为 `oidc`。
+
+| 变量                        | 用途                                                                                                               | 默认值                 |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------- |
+| `AUTH_OIDC_ENABLED`         | 启用 generic OIDC provider。                                                                                       | 禁用                   |
+| `AUTH_OIDC_CLIENT_ID`       | OIDC 客户端 ID。                                                                                                   | 启用时必填             |
+| `AUTH_OIDC_CLIENT_SECRET`   | OIDC 客户端密钥。                                                                                                  | 启用时必填             |
+| `AUTH_OIDC_DISCOVERY_URL`   | OIDC discovery 文档 URL。                                                                                          | 启用时必填             |
+| `AUTH_OIDC_PROMPT`          | 可选 prompt：`none`、`login`、`create`、`consent`、`select_account`、`select_account consent` 或 `login consent`。 | 未设置                 |
+| `AUTH_OIDC_SCOPES`          | 逗号分隔的 scope；空白和空项会被忽略。                                                                             | `openid,profile,email` |
+| `AUTH_OIDC_DISABLE_SIGN_UP` | 禁止新的 OIDC 用户注册，但保留登录。                                                                               | 允许注册               |
+
+## 实体设置
+
+`entities` 中的每个类都必须继承对应的基础实体。子类可以重新声明列，以添加 GraphQL
+元数据、索引、数据库类型或应用字段。
+
+```typescript
+import { BaseUser } from "@nest-boot/auth";
+import { Field, ID, ObjectType } from "@nest-boot/graphql";
+import { Entity, PrimaryKey, Property, t } from "@mikro-orm/postgresql";
+
+@ObjectType()
+@Entity()
+export class User extends BaseUser {
+  @Field(() => ID)
+  @PrimaryKey({ type: t.bigint })
+  override id!: string;
+
+  @Field(() => String)
+  @Property({ type: t.string })
+  declare name: string;
+}
+```
+
+包内提供 `BaseUser`、`BaseAccount`、`BaseSession`、`BaseVerification`、
+`BaseWorkspace`、`BaseWorkspaceInvitation`、`BaseWorkspaceMember` 与 `BaseApiKey`。
+
+Better Auth 1.7 使用必填的 `(issuer, accountId)` 组合标识账号。现有数据库在把
+`issuer` 改为非空之前，应先回填稳定值并处理重复组合。`BaseSession` 会索引
+`userId`，`BaseVerification` 会索引 `identifier`。修改配置实体后应重新生成应用迁移。

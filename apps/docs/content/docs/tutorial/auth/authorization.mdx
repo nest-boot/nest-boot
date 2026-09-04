@@ -1,0 +1,270 @@
+---
+title: "Authorization"
+description: "Protect routes with AuthGuard and scoped user or workspace permissions."
+---
+
+## Global Guard
+
+Register the configured module's `AuthGuard` globally. It accepts a valid Cookie
+session or API key and evaluates route permissions with the same guard.
+
+```typescript
+import { AuthGuard } from "@nest-boot/auth";
+import { APP_GUARD } from "@nestjs/core";
+
+@Global()
+@Module({
+  imports: [AuthDynamicModule],
+  providers: [{ provide: APP_GUARD, useExisting: AuthGuard }],
+})
+export class CommonModule {}
+```
+
+Use `@Public()` for routes that do not require authentication. If a public route
+also declares a permission decorator, its permission is still evaluated.
+
+```typescript
+@Public()
+@Query(() => String)
+health(): string {
+  return "ok";
+}
+```
+
+## Build Abilities
+
+Configure separate user and workspace abilities. For an authenticated request,
+`AuthGuard` prepares the user ability when a current user exists and the
+workspace ability when a workspace and active membership are selected, even
+when the handler has no permission decorator. Each callback runs at most once
+and its result is cached in `RequestContext`. The callback runs synchronously
+and must return its scoped ability directly.
+
+```typescript
+import { AuthModule } from "@nest-boot/auth";
+
+const userRoles = {
+  admin: ["project:create"],
+  user: [],
+} as const;
+const userPermissions = ["project:create", "project:archive"] as const;
+
+const workspaceRoles = {
+  owner: ["project:create", "project:delete"],
+  member: ["project:create"],
+} as const;
+const workspacePermissions = [
+  "project:create",
+  "project:delete",
+  "project:archive",
+] as const;
+
+AuthModule.forRoot({
+  // ...
+  workspace: {
+    permissions: workspacePermissions,
+    roles: workspaceRoles,
+    buildAbility: ({ can, build }, permissions, workspace) => {
+      for (const permission of permissions) {
+        const [subject, action] = permission.split(":");
+        if (subject === "post" && action) {
+          can(action, Post, { workspaceId: workspace.id });
+        }
+      }
+      return build();
+    },
+  },
+  user: {
+    permissions: userPermissions,
+    roles: userRoles,
+    buildAbility: ({ can, build }, _permissions, user) => {
+      can("read", Post);
+      can("update", Post, { authorId: user.id });
+      return build();
+    },
+  },
+});
+```
+
+Each scope owns its permission catalog, role registry, and ability builder.
+Every permission granted by a role must exist in that scope's `permissions`
+array, otherwise application startup fails. AuthModule resolves role permissions
+and direct entity permissions first. A user builder receives the deduplicated
+permission list and current user. A workspace builder receives the deduplicated
+member permission list and selected workspace. Workspace membership participates
+in permission resolution but is not passed to the builder. AuthModule supplies
+an `AbilityBuilder` configured for the corresponding ability class as the first
+callback argument.
+
+## Manage Roles
+
+Permission catalogs and role definitions come from `user.permissions`,
+`user.roles`, `workspace.permissions`, and `workspace.roles`; they are not
+stored or managed by a separate role service. `UserService` and
+`WorkspaceService` expose the configured catalogs to transports and validate
+role assignments.
+
+```typescript
+const userRoles = userService.listRoles();
+const userPermissions = userService.listPermissions();
+await userService.setRole(user, ["admin", "auditor"]);
+
+const workspaceRoles = workspaceService.listRoles();
+const workspacePermissions = workspaceService.listPermissions();
+await workspaceService.updateMemberRole(member, ["admin"]);
+```
+
+`setRole()` and `updateMemberRole()` reject empty or unknown role names.
+`updateMemberRole()` cannot modify a current creator or assign the configured
+creator role; use `transferOwnership()` for that transition. An ownership
+transfer assigns `workspace.creatorRole` to the next owner and demotes the
+previous owner to `workspace.defaultRole`.
+
+`user.defaultRole` and `workspace.defaultRole` provide fallback roles for new
+users and members. `workspace.creatorRole` identifies the ownership role.
+`user.adminRoles` may contain multiple roles and is used by
+`UserService.isAdmin()` to classify administrative users. Every configured
+lifecycle role is validated against its role map at startup.
+
+`getUserPermissions()` and `getMemberPermissions()` return the deduplicated
+union of permissions inherited from every assigned role and permissions stored
+directly on the entity. `hasPermission()` evaluates against the same result.
+`createUser()`, `addMember()`, `setUserPermissions()`, and
+`setMemberPermissions()` reject malformed, duplicate, or unknown direct
+permissions instead of persisting values outside the configured catalog.
+
+The example GraphQL application exposes `userRoles`, `userPermissions`,
+`workspaceRoles`, and `workspacePermissions` queries. Role changes use the
+dedicated `setUserRoles` and `updateWorkspaceMemberRole` mutations. Direct
+workspace-member grants use `setWorkspaceMemberPermissions`; ordinary member
+profile updates do not accept authorization fields.
+
+## Protect Routes
+
+Use `@WorkspaceCan` for workspace permissions and `@UserCan` for personal or
+application-level permissions. They write separate metadata and are evaluated
+by the same `AuthGuard`.
+
+```typescript
+@WorkspaceCan("read", Post)
+@Query(() => [Post])
+posts() {
+  return this.postService.findAll();
+}
+
+@UserCan("read", User)
+@Query(() => User)
+me(@CurrentUser() user: User) {
+  return user;
+}
+```
+
+Every permission declared on a route must pass. This includes repeated
+`@UserCan` or `@WorkspaceCan` declarations in the same scope as well as a mix
+of both scopes. Permission requirements always use `all` semantics. `@Can` is
+a thin alias that delegates to the scoped decorator; omitted `scope` delegates
+to `@WorkspaceCan`.
+
+```typescript
+@Can("read", Post) // @WorkspaceCan("read", Post)
+@Can("read", User, { scope: "user" }) // @UserCan("read", User)
+```
+
+```typescript
+@WorkspaceCan("read", Post)
+@WorkspaceCan("update", Post)
+@Mutation(() => Post)
+updatePost() {
+  // Requires both Post:read and Post:update.
+}
+```
+
+Use a subject factory when authorization depends on a concrete object. The
+factory receives the controller or resolver instance first, followed by its
+decorated method parameters.
+
+```typescript
+@WorkspaceCan("update", (self: PostResolver, id: string) =>
+  self.postService.findOneOrFail({ id }),
+)
+@Mutation(() => Post)
+updatePost(@Args("id") id: string) {
+  return this.postService.update(id);
+}
+```
+
+Workspace API keys can pass only workspace checks. User API keys can pass user
+checks and, with a live membership, workspace checks. API-key permissions are
+intersected with the corresponding ability, including `read` operations.
+
+## Service Authorization Boundary
+
+`UserService`, `WorkspaceService`, and `ApiKeyService` enforce their permissions
+before reading or mutating authentication data. Resolver and controller
+decorators provide early rejection and declare intent, but they are not the
+security boundary: omitting one does not make a protected service operation
+public.
+
+The services follow the same split as Better Auth's admin and organization
+access control:
+
+- user administration uses `user:*` and `session:*` permissions;
+- workspace mutations use `workspace:*`, `workspaceMember:*`, and
+  `workspaceInvitation:*` permissions;
+- workspace API-key management uses `apiKey:create/read/update/delete`;
+- current-user authentication, session management, invitation acceptance, and
+  leaving a workspace use authenticated identity and ownership checks.
+
+`AuthorizationService` exposes `assertUserCan()` and `assertWorkspaceCan()` for
+application services that need the same fail-closed boundary. An ability must
+have been prepared by the global `AuthGuard`; calls outside that request
+lifecycle are denied rather than implicitly trusted.
+
+## Lower-Level Checks
+
+After `AuthGuard` prepares the request abilities, lower-level code can use the
+matching scoped helpers. `can()` is a thin alias that routes to them by `scope`
+and defaults to `workspaceCan()`.
+
+```typescript
+if (!workspaceCan("update", post)) {
+  throw new ForbiddenException();
+}
+
+userCan("read", user);
+getWorkspaceAbility();
+getUserAbility();
+
+can("read", post); // workspaceCan(...)
+can("read", user, { scope: "user" }); // userCan(...)
+```
+
+The ability classes are also the request-context tokens:
+
+```typescript
+import { UserAbility, WorkspaceAbility } from "@nest-boot/auth";
+import { RequestContext } from "@nest-boot/request-context";
+
+const userAbility = RequestContext.get(UserAbility);
+const workspaceAbility = RequestContext.get(WorkspaceAbility);
+```
+
+The `userCan()` and `workspaceCan()` helpers fail closed by returning `false`
+when the requested ability is unavailable. The lower-level
+`getUserAbility()` and `getWorkspaceAbility()` accessors throw
+`ForbiddenException` instead.
+
+## Client Ability Rules
+
+Use `serializeAbilityRules()` when a transport needs to send an already-built
+ability to a browser or another process. It converts class subjects to their
+stable class names and preserves actions, fields, conditions, inverted rules,
+and reasons. The result is JSON-safe and can be rehydrated with CASL's
+`createMongoAbility()`.
+
+```typescript
+const rules = serializeAbilityRules(getWorkspaceAbility());
+```
+
+Treat transported rules as a user-interface capability model only. The server
+guard and service authorization checks remain authoritative for every request.

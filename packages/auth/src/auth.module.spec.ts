@@ -1,4 +1,6 @@
 import { MikroORM } from "@mikro-orm/core";
+import { HashService } from "@nest-boot/hash";
+import { Mailer } from "@nest-boot/mailer";
 import { MiddlewareManager } from "@nest-boot/middleware";
 import { RequestContextMiddleware } from "@nest-boot/request-context";
 import { MODULE_METADATA } from "@nestjs/common/constants";
@@ -41,21 +43,37 @@ vi.mock("./adapters/mikro-orm-adapter.js", () => ({
   mikroOrmAdapter: mockMikroOrmAdapter,
 }));
 
+import { ApiKeyService } from "./api-key.service.js";
 import { AUTH_TOKEN } from "./auth.constants.js";
+import { AuthGuard } from "./auth.guard.js";
 import { AuthMiddleware } from "./auth.middleware.js";
 import { AuthModule } from "./auth.module.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
+import { AuthService } from "./auth.service.js";
+import { AuthHandlerMiddleware } from "./auth-handler.middleware.js";
+import { AuthorizationService } from "./authorization.service.js";
+import { SessionService } from "./session.service.js";
+import { UserService } from "./user.service.js";
+import { WorkspaceService } from "./workspace.service.js";
 
 class Account {}
+class ApiKey {}
 class Session {}
 class User {}
 class Verification {}
+class Workspace {}
+class WorkspaceInvitation {}
+class WorkspaceMember {}
 
 const entities = {
   account: Account,
+  apiKey: ApiKey,
   session: Session,
   user: User,
   verification: Verification,
+  workspace: Workspace,
+  workspaceInvitation: WorkspaceInvitation,
+  workspaceMember: WorkspaceMember,
 };
 
 function setOidcEnv() {
@@ -93,18 +111,22 @@ function createMiddlewareManager() {
     forRoutes: vi.fn(),
   };
   const middlewareProxy = {
+    after: vi.fn(),
+    before: vi.fn(),
     dependencies: vi.fn(),
     exclude: vi.fn(),
     forRoutes: vi.fn(),
   };
   authProxy.disableGlobalExcludeRoutes.mockReturnValue(authProxy);
   authProxy.forRoutes.mockReturnValue(authProxy);
+  middlewareProxy.after.mockReturnValue(middlewareProxy);
+  middlewareProxy.before.mockReturnValue(middlewareProxy);
   middlewareProxy.dependencies.mockReturnValue(middlewareProxy);
   middlewareProxy.exclude.mockReturnValue(middlewareProxy);
   middlewareProxy.forRoutes.mockReturnValue(middlewareProxy);
   const middlewareManager = {
     apply: vi.fn((middleware) =>
-      middleware instanceof AuthMiddleware ? middlewareProxy : authProxy,
+      middleware instanceof AuthHandlerMiddleware ? authProxy : middlewareProxy,
     ),
     globalExclude: vi.fn(),
   };
@@ -141,10 +163,14 @@ async function createAuthModule(
         provide: AuthMiddleware,
         useValue: authMiddleware,
       },
+      AuthHandlerMiddleware,
     ],
   }).compile();
 
-  return moduleRef.get(AuthModule);
+  return {
+    authModule: moduleRef.get(AuthModule),
+    authHandlerMiddleware: moduleRef.get(AuthHandlerMiddleware),
+  };
 }
 
 describe("AuthModule", () => {
@@ -162,6 +188,7 @@ describe("AuthModule", () => {
     delete process.env.AUTH_DISABLE_SIGN_UP;
     delete process.env.AUTH_EMAIL_ENABLED;
     delete process.env.AUTH_EMAIL_DISABLE_SIGN_UP;
+    delete process.env.AUTH_EMAIL_REQUIRE_VERIFICATION;
     delete process.env.AUTH_GITHUB_CLIENT_ID;
     delete process.env.AUTH_GITHUB_CLIENT_SECRET;
     delete process.env.AUTH_GITHUB_DISABLE_SIGN_UP;
@@ -179,6 +206,34 @@ describe("AuthModule", () => {
     delete process.env.AUTH_OIDC_SCOPES;
     delete process.env.APP_URL;
     delete process.env.AUTH_URL;
+  });
+
+  it("provides and exports the combined auth guard", () => {
+    const providers = Reflect.getMetadata(
+      MODULE_METADATA.PROVIDERS,
+      AuthModule,
+    ) as unknown[];
+    const exports = Reflect.getMetadata(
+      MODULE_METADATA.EXPORTS,
+      AuthModule,
+    ) as unknown[];
+
+    expect(providers).toContain(AuthGuard);
+    expect(providers).toContain(AuthHandlerMiddleware);
+    expect(providers).toContain(UserService);
+    expect(providers).toContain(ApiKeyService);
+    expect(providers).toContain(AuthService);
+    expect(providers).toContain(AuthorizationService);
+    expect(providers).toContain(SessionService);
+    expect(providers).toContain(WorkspaceService);
+    expect(exports).toContain(MODULE_OPTIONS_TOKEN);
+    expect(exports).toContain(UserService);
+    expect(exports).toContain(ApiKeyService);
+    expect(exports).toContain(AuthGuard);
+    expect(exports).toContain(AuthService);
+    expect(exports).toContain(AuthorizationService);
+    expect(exports).toContain(SessionService);
+    expect(exports).toContain(WorkspaceService);
   });
 
   it("should register synchronous options", () => {
@@ -226,6 +281,9 @@ describe("AuthModule", () => {
       em: {},
     } as unknown as MikroORM;
     const authProvider = getAuthProvider();
+    const mailer = {
+      sendMail: vi.fn(),
+    } as unknown as Mailer;
 
     const auth = authProvider.useFactory(
       {
@@ -233,6 +291,7 @@ describe("AuthModule", () => {
         secret,
       },
       orm,
+      mailer,
     );
 
     expect(auth).toEqual({
@@ -240,6 +299,7 @@ describe("AuthModule", () => {
       options: expect.any(Object),
     });
     expect(mockMikroOrmAdapter).toHaveBeenCalledWith({
+      defaultUserRole: "user",
       entities,
       orm,
     });
@@ -251,14 +311,203 @@ describe("AuthModule", () => {
         baseURL: "https://auth.example.com",
         database: {
           options: {
+            defaultUserRole: "user",
             entities,
             orm,
           },
           type: "mikro-orm-adapter",
         },
-        entities,
         secret,
       }),
+    );
+    expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty("entities");
+    expect(authProvider.inject).toEqual([
+      MODULE_OPTIONS_TOKEN,
+      MikroORM,
+      Mailer,
+      HashService,
+    ]);
+  });
+
+  it.each([
+    [
+      "user",
+      {
+        user: {
+          permissions: ["user:list"],
+          roles: { admin: ["user:delete"] },
+        },
+      },
+      'Role "admin" contains unknown user permissions: user:delete',
+    ],
+    [
+      "workspace",
+      {
+        workspace: {
+          permissions: ["workspace:update"],
+          roles: { owner: ["workspace:delete"] },
+        },
+      },
+      'Role "owner" contains unknown workspace permissions: workspace:delete',
+    ],
+  ])(
+    "rejects %s roles outside their permission catalog",
+    (_, config, error) => {
+      const authProvider = getAuthProvider();
+
+      expect(() =>
+        authProvider.useFactory({ entities, secret, ...config }, {
+          em: {},
+        } as unknown as MikroORM),
+      ).toThrow(error);
+      expect(mockBetterAuth).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    [
+      "user defaultRole",
+      {
+        user: {
+          defaultRole: "customer",
+          permissions: [],
+          roles: { user: [] },
+        },
+      },
+      'user.defaultRole references unknown role "customer"',
+    ],
+    [
+      "user adminRoles",
+      {
+        user: {
+          adminRoles: ["administrator"],
+          permissions: [],
+          roles: { admin: [], user: [] },
+        },
+      },
+      'user.adminRoles references unknown role "administrator"',
+    ],
+    [
+      "workspace defaultRole",
+      {
+        workspace: {
+          defaultRole: "viewer",
+          permissions: [],
+          roles: { member: [], owner: [] },
+        },
+      },
+      'workspace.defaultRole references unknown role "viewer"',
+    ],
+    [
+      "workspace creatorRole",
+      {
+        workspace: {
+          creatorRole: "creator",
+          permissions: [],
+          roles: { member: [], owner: [] },
+        },
+      },
+      'workspace.creatorRole references unknown role "creator"',
+    ],
+  ])("rejects an unknown %s", (_, config, error) => {
+    const authProvider = getAuthProvider();
+
+    expect(() =>
+      authProvider.useFactory({ entities, secret, ...config }, {
+        em: {},
+      } as unknown as MikroORM),
+    ).toThrow(error);
+    expect(mockBetterAuth).not.toHaveBeenCalled();
+  });
+
+  it("should merge account options with the module OAuth state default", () => {
+    const authProvider = getAuthProvider();
+
+    authProvider.useFactory(
+      {
+        account: {
+          updateAccountOnSignIn: false,
+        },
+        entities,
+        secret,
+      },
+      { em: {} } as unknown as MikroORM,
+    );
+
+    expect(mockBetterAuth).toHaveBeenCalledWith(
+      expect.objectContaining({
+        account: {
+          skipStateCookieCheck: true,
+          updateAccountOnSignIn: false,
+        },
+      }),
+    );
+  });
+
+  it("should send verification emails through the injected mailer", async () => {
+    const sendMail = vi.fn().mockResolvedValue(undefined);
+    const authProvider = getAuthProvider();
+
+    authProvider.useFactory(
+      {
+        entities,
+        secret,
+      },
+      { em: {} } as unknown as MikroORM,
+      { sendMail } as unknown as Mailer,
+    );
+
+    await mockBetterAuth.mock.calls[0]?.[0].emailVerification.sendVerificationEmail(
+      {
+        token: "verification-token",
+        url: "https://app.example.com/verify-email",
+        user: {
+          email: "user@example.com",
+        },
+      },
+      undefined,
+    );
+
+    expect(sendMail).toHaveBeenCalledWith({
+      subject: "Verify your email address",
+      text: "Click the link to verify your email: https://app.example.com/verify-email",
+      to: "user@example.com",
+    });
+  });
+
+  it("should not pass Nest module extensions to better-auth", () => {
+    const authProvider = getAuthProvider();
+
+    authProvider.useFactory(
+      {
+        entities,
+        middleware: { register: false },
+        onAuthenticated: vi.fn(),
+        secret,
+        unexpectedOption: "must-not-pass-through",
+        user: { buildAbility: vi.fn(), modelName: "application_user" },
+        workspace: {
+          buildAbility: vi.fn(),
+          sendInvitationEmail: vi.fn(),
+        },
+      },
+      { em: {} } as unknown as MikroORM,
+    );
+
+    expect(mockBetterAuth.mock.calls[0]?.[0].user).not.toHaveProperty(
+      "buildAbility",
+    );
+    expect(mockBetterAuth.mock.calls[0]?.[0].user).toEqual({
+      modelName: "application_user",
+    });
+    expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty("entities");
+    expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty("middleware");
+    expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty(
+      "onAuthenticated",
+    );
+    expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty("workspace");
+    expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty(
+      "unexpectedOption",
     );
   });
 
@@ -281,6 +530,12 @@ describe("AuthModule", () => {
         emailAndPassword: {
           disableSignUp: false,
           enabled: true,
+          password: {
+            hash: expect.any(Function),
+            verify: expect.any(Function),
+          },
+          requireEmailVerification: true,
+          sendResetPassword: expect.any(Function),
         },
       }),
     );
@@ -435,13 +690,14 @@ describe("AuthModule", () => {
       {
         entities,
         secret,
-        socialProviders: {
-          github: {
+        providers: [
+          {
+            id: "github",
             clientId: "github-client-id",
             clientSecret: "github-client-secret",
             enabled: true,
           },
-        },
+        ],
       },
       orm,
     );
@@ -510,6 +766,106 @@ describe("AuthModule", () => {
         }),
       ],
     });
+  });
+
+  it("should register custom Generic OAuth providers alongside environment OIDC", () => {
+    setOidcEnv();
+    const orm = {
+      em: {},
+    } as unknown as MikroORM;
+    const authProvider = getAuthProvider();
+    const companyProvider = {
+      id: "company",
+      name: "Company SSO",
+      clientId: "company-client-id",
+      clientSecret: "company-client-secret",
+      discoveryUrl:
+        "https://accounts.example.com/.well-known/openid-configuration",
+    };
+
+    authProvider.useFactory(
+      {
+        entities,
+        providers: [companyProvider],
+        secret,
+      },
+      orm,
+    );
+
+    expect(mockGenericOAuth).toHaveBeenCalledWith({
+      config: [
+        {
+          clientId: companyProvider.clientId,
+          clientSecret: companyProvider.clientSecret,
+          discoveryUrl: companyProvider.discoveryUrl,
+          name: companyProvider.name,
+          providerId: companyProvider.id,
+        },
+        expect.objectContaining({ providerId: "oidc" }),
+      ],
+    });
+  });
+
+  it("should apply the global signup restriction to custom Generic OAuth providers", () => {
+    process.env.AUTH_DISABLE_SIGN_UP = "true";
+    const orm = {
+      em: {},
+    } as unknown as MikroORM;
+    const authProvider = getAuthProvider();
+
+    authProvider.useFactory(
+      {
+        entities,
+        providers: [
+          {
+            id: "company",
+            clientId: "company-client-id",
+            clientSecret: "company-client-secret",
+            authorizationUrl: "https://accounts.example.com/authorize",
+            tokenUrl: "https://accounts.example.com/token",
+            userInfoUrl: "https://accounts.example.com/userinfo",
+          },
+        ],
+        secret,
+      },
+      orm,
+    );
+
+    expect(mockGenericOAuth).toHaveBeenCalledWith({
+      config: [
+        expect.objectContaining({
+          disableSignUp: true,
+          providerId: "company",
+        }),
+      ],
+    });
+  });
+
+  it("should reject duplicate Generic OAuth provider identifiers", () => {
+    setOidcEnv();
+    const orm = {
+      em: {},
+    } as unknown as MikroORM;
+    const authProvider = getAuthProvider();
+
+    expect(() =>
+      authProvider.useFactory(
+        {
+          entities,
+          providers: [
+            {
+              id: "oidc",
+              clientId: "duplicate-client-id",
+              clientSecret: "duplicate-client-secret",
+              discoveryUrl:
+                "https://duplicate.example.com/.well-known/openid-configuration",
+            },
+          ],
+          secret,
+        },
+        orm,
+      ),
+    ).toThrow('Generic OAuth provider ID "oidc" is configured more than once.');
   });
 
   it("should skip OIDC plugin registration when OIDC env is not configured", () => {
@@ -592,67 +948,6 @@ describe("AuthModule", () => {
     ).toThrow("AUTH_OIDC_PROMPT");
   });
 
-  it("should keep env OIDC plugin when custom plugins are configured", () => {
-    setOidcEnv();
-    const customPlugin = {
-      id: "custom-plugin",
-    };
-    const orm = {
-      em: {},
-    } as unknown as MikroORM;
-    const authProvider = getAuthProvider();
-
-    authProvider.useFactory(
-      {
-        entities,
-        plugins: [customPlugin],
-        secret,
-      },
-      orm,
-    );
-
-    expect(mockBetterAuth).toHaveBeenCalledWith(
-      expect.objectContaining({
-        plugins: [
-          {
-            options: {
-              config: [
-                expect.objectContaining({
-                  providerId: "oidc",
-                }),
-              ],
-            },
-            type: "generic-oauth",
-          },
-          customPlugin,
-        ],
-      }),
-    );
-  });
-
-  it("should reject env OIDC when a custom genericOAuth plugin is configured", () => {
-    setOidcEnv();
-    const orm = {
-      em: {},
-    } as unknown as MikroORM;
-    const authProvider = getAuthProvider();
-
-    expect(() =>
-      authProvider.useFactory(
-        {
-          entities,
-          plugins: [
-            {
-              id: "generic-oauth",
-            },
-          ],
-          secret,
-        },
-        orm,
-      ),
-    ).toThrow("AUTH_OIDC_*");
-  });
-
   it("should merge email auth options without dropping email signup disable env flags", () => {
     process.env.AUTH_EMAIL_DISABLE_SIGN_UP = "true";
     const orm = {
@@ -678,6 +973,12 @@ describe("AuthModule", () => {
           disableSignUp: true,
           enabled: true,
           maxPasswordLength: 128,
+          password: {
+            hash: expect.any(Function),
+            verify: expect.any(Function),
+          },
+          requireEmailVerification: true,
+          sendResetPassword: expect.any(Function),
         },
       }),
     );
@@ -694,17 +995,19 @@ describe("AuthModule", () => {
       {
         entities,
         secret,
-        socialProviders: {
-          apple: {
+        providers: [
+          {
+            id: "apple",
             clientId: "apple-client-id",
             clientSecret: "apple-client-secret",
           },
-          google: {
+          {
+            id: "google",
             clientId: "google-client-id",
             clientSecret: "google-client-secret",
             scope: ["email"],
           },
-        },
+        ],
       },
       orm,
     );
@@ -770,7 +1073,7 @@ describe("AuthModule", () => {
     const { authProxy, middlewareManager, middlewareProxy } =
       createMiddlewareManager();
 
-    await createAuthModule(
+    const { authHandlerMiddleware } = await createAuthModule(
       auth as never,
       {
         basePath: "/auth",
@@ -786,16 +1089,15 @@ describe("AuthModule", () => {
 
     expect(middlewareManager.globalExclude).toHaveBeenCalledWith("/auth");
     expect(mockToNodeHandler).toHaveBeenCalledWith(auth);
-    expect(middlewareManager.apply).toHaveBeenCalledWith({
-      auth,
-      type: "node-handler",
-    });
+    expect(middlewareManager.apply).toHaveBeenCalledWith(authHandlerMiddleware);
     expect(authProxy.disableGlobalExcludeRoutes).toHaveBeenCalledTimes(1);
     expect(authProxy.forRoutes).toHaveBeenCalledWith("/auth");
     expect(middlewareManager.apply).toHaveBeenCalledWith(authMiddleware);
     expect(middlewareProxy.dependencies).toHaveBeenCalledWith(
       RequestContextMiddleware,
     );
+    expect(middlewareProxy.before).not.toHaveBeenCalled();
+    expect(middlewareProxy.after).not.toHaveBeenCalled();
     expect(middlewareProxy.exclude).toHaveBeenCalledWith("/public");
     expect(middlewareProxy.forRoutes).toHaveBeenCalledWith("/private");
   });

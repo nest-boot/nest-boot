@@ -1,0 +1,25 @@
+{
+  "action": {
+    "cancel": "取消",
+    "close": "关闭",
+    "confirm": "确认",
+    "create": "创建",
+    "creating": "创建中...",
+    "delete": "删除",
+    "deleting": "删除中...",
+    "disable": "禁用",
+    "edit": "编辑",
+    "rename": "重命名",
+    "revoke": "撤销",
+    "enable": "启用",
+    "save": "保存",
+    "saving": "保存中..."
+  },
+  "app": {
+    "name": "Nest Boot 示例"
+  },
+  "contextualSaveBar": {
+    "discard": "丢弃",
+    "message": "有未保存的更改"
+  }
+}

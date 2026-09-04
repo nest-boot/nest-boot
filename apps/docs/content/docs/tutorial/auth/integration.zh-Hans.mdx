@@ -1,0 +1,91 @@
+---
+title: "NestJS 集成"
+description: "将 Auth 服务接入传输适配器、RequestContext 与 RLS。"
+---
+
+底层 Better Auth 实例及其注入 token 属于内部实现。应用应注入负责对应领域的服务：
+
+| 服务               | 职责                                                   |
+| ------------------ | ------------------------------------------------------ |
+| `AuthService`      | 身份认证、邮箱验证、密码找回、用户资料与 provider 账号 |
+| `SessionService`   | 当前会话解析、活动会话列表与撤销                       |
+| `UserService`      | 用户管理、权限、封禁、模拟登录、密码和用户会话         |
+| `WorkspaceService` | 工作区、成员、邀请与工作区权限生命周期                 |
+| `ApiKeyService`    | 个人与工作区 API Key 生命周期和校验                    |
+
+`UserService` 与 `WorkspaceService` 直接操作 `AuthModule` 中配置的 MikroORM 实体，
+不依赖 Better Auth 的 admin 或 organization 插件。
+
+```typescript
+@Injectable()
+export class AccountApplicationService {
+  constructor(
+    private readonly authService: AuthService,
+    private readonly sessionService: SessionService,
+    private readonly userService: UserService,
+    private readonly workspaceService: WorkspaceService,
+    private readonly apiKeyService: ApiKeyService,
+  ) {}
+}
+```
+
+## 传输适配器
+
+Resolver 与 Controller 应负责转换协议类型，并把领域规则委托给这些服务。方法返回响应头
+时，需要转发所有 `Set-Cookie`，不能只转发第一项。密码修改撤销其他会话并替换当前
+Cookie 时，这一点尤其重要。
+
+内置认证端点处理器挂载在 `basePath`。`AuthMiddleware` 在
+`RequestContextMiddleware` 之后运行，负责解析身份，并让装饰器与守卫可以读取应用实体。
+
+Auth 会把通过 `options.entities` 配置的每个应用实体类注册为对应 Base 实体类的请求
+上下文别名。当前身份始终使用稳定的 Base 实体类作为主 token，因此两种方式会返回
+同一个应用实体实例：
+
+```typescript
+RequestContext.get(BaseUser); // 框架内部使用的稳定 token
+RequestContext.get(User); // 配置的应用实体类别名
+```
+
+同一约定适用于所有配置的 Auth 实体。传输层代码通常应优先使用当前身份装饰器。
+
+## PostgreSQL RLS
+
+需要时，认证表查询会在隔离的子上下文中运行。业务查询应从 auth 已写入
+`RequestContext` 的工作区和成员派生 RLS 上下文。参见
+[Row-Level Security 教程](/docs/tutorial/row-level-security)。
+
+## 应用启动
+
+```typescript
+import { Logger } from "@nest-boot/logger";
+import { ValidationPipe } from "@nestjs/common";
+import { NestFactory } from "@nestjs/core";
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule, {
+    bufferLogs: true,
+    cors: true,
+  });
+
+  app.useLogger(await app.resolve(Logger));
+  app.useGlobalPipes(
+    new ValidationPipe({ transform: true, forbidUnknownValues: false }),
+  );
+  app.enableShutdownHooks();
+
+  await app.listen(process.env.PORT ?? 4000);
+}
+
+void bootstrap();
+```
+
+## 运行建议
+
+- 将 `AuthGuard` 作为 `APP_GUARD` 注册一次，并使用 `@Public()` 标记例外；
+- 传输层使用当前身份装饰器，不直接依赖上下文 token；
+- 把高熵 `AUTH_SECRET` 与 `HASH_SECRET` 保存在源码仓库之外；
+- 通过路由、请求头或 Cookie 显式选择工作区；
+- 在应用中映射 GraphQL 输入输出类型，把生命周期规则保留在 Auth 服务中。
+
+具体符号文档请参阅 [Auth API 参考](/docs/api/auth)。

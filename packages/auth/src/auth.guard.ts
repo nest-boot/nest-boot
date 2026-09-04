@@ -1,32 +1,66 @@
+import { AbilityBuilder, type Subject } from "@casl/ability";
+import { Reference } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
-import {
-  type CanActivate,
-  type ExecutionContext,
-  Injectable,
-} from "@nestjs/common";
-import { Reflector } from "@nestjs/core";
+import type { CanActivate, ExecutionContext, Type } from "@nestjs/common";
+import { ForbiddenException, Inject, Injectable } from "@nestjs/common";
+import { ContextIdFactory, ModuleRef, Reflector } from "@nestjs/core";
+import type { Request } from "express";
 
+import { UserAbility } from "./abilities/user.ability.js";
+import { WorkspaceAbility } from "./abilities/workspace.ability.js";
 import { IS_PUBLIC_KEY } from "./auth.constants.js";
+import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
+import type { AuthModuleOptions } from "./auth-module-options.interface.js";
+import {
+  BaseApiKey,
+  BaseWorkspace,
+  BaseWorkspaceMember,
+} from "./entities/index.js";
 import { BaseSession } from "./entities/session.entity.js";
+import { BaseUser } from "./entities/user.entity.js";
+import type { RouteArgumentMetadataValue } from "./interfaces/route-argument-metadata-value.interface.js";
+import type { UserCanMetadata } from "./interfaces/user-can-metadata.interface.js";
+import type { WorkspaceCanMetadata } from "./interfaces/workspace-can-metadata.interface.js";
+import {
+  CUSTOM_ROUTE_ARGS_METADATA,
+  GQL_PARAM_TYPES,
+  ROUTE_ARGS_METADATA,
+  ROUTE_PARAM_TYPES,
+  USER_CAN_METADATA,
+  WORKSPACE_CAN_METADATA,
+} from "./permission.constants.js";
+import type { AuthModuleRoles } from "./types/auth-module-roles.type.js";
+import type { CanSubjectFactory } from "./types/can-subject-factory.type.js";
+import type { RouteArgumentMetadata } from "./types/route-argument-metadata.type.js";
+import { DEFAULT_USER_ROLE, DEFAULT_USER_ROLES } from "./user.constants.js";
+import { resolveAuthPermissions } from "./utils/auth-role.util.js";
+import {
+  DEFAULT_WORKSPACE_ROLE,
+  DEFAULT_WORKSPACE_ROLES,
+} from "./workspace.constants.js";
 
-/**
- * Guard that enforces authentication on routes.
- *
- * @remarks
- * Allows access if the route is marked with {@link Public}, otherwise
- * requires a valid session in the request context.
- */
+/** Guard that enforces authentication and evaluates route permissions. */
 @Injectable()
 export class AuthGuard implements CanActivate {
-  /** Creates a new AuthGuard instance.
-   * @param reflector - NestJS reflector for reading route metadata
+  /**
+   * Creates the authentication and permission guard.
+   *
+   * @param reflector - Nest metadata reflector.
+   * @param options - Auth module options.
+   * @param moduleRef - Nest module reference used to resolve handler instances.
    */
-  constructor(protected readonly reflector: Reflector) {}
+  constructor(
+    protected readonly reflector: Reflector,
+    @Inject(MODULE_OPTIONS_TOKEN)
+    private readonly options: AuthModuleOptions,
+    private readonly moduleRef: ModuleRef,
+  ) {}
 
   /**
    * Determines whether the current route is marked as public.
-   * @param context - The execution context of the current request
-   * @returns True when authentication should be skipped
+   *
+   * @param context - Current Nest execution context.
+   * @returns `true` when session authentication should be skipped.
    */
   protected isPublic(context: ExecutionContext): boolean {
     return !!this.reflector.getAllAndOverride(IS_PUBLIC_KEY, [
@@ -36,17 +70,472 @@ export class AuthGuard implements CanActivate {
   }
 
   /**
-   * Determines whether the current request is allowed to proceed.
-   * @param context - The execution context of the current request
-   * @returns A NestJS guard activation result
+   * Determines whether the request has an authenticated session.
+   *
+   * @returns `true` when the request is authenticated.
    */
-  canActivate(
-    context: ExecutionContext,
-  ): ReturnType<CanActivate["canActivate"]> {
-    if (this.isPublic(context)) {
+  protected isAuthenticated(): boolean {
+    try {
+      return (
+        !!RequestContext.get(BaseSession) || !!RequestContext.get(BaseApiKey)
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Checks authentication and route permission metadata.
+   *
+   * @param context - Current Nest execution context.
+   * @returns `true` when access is allowed.
+   */
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const authenticated = this.isAuthenticated();
+    if (!this.isPublic(context) && !authenticated) {
+      return false;
+    }
+
+    if (authenticated && RequestContext.isActive()) {
+      this.getOrBuildUserAbility();
+      this.getOrBuildWorkspaceAbility();
+    }
+
+    const targets = [context.getHandler(), context.getClass()];
+    const userCanMetadata = this.reflector.getAllAndOverride<UserCanMetadata[]>(
+      USER_CAN_METADATA,
+      targets,
+    );
+    const workspaceCanMetadata = this.reflector.getAllAndOverride<
+      WorkspaceCanMetadata[]
+    >(WORKSPACE_CAN_METADATA, targets);
+
+    if (!userCanMetadata?.length && !workspaceCanMetadata?.length) {
       return true;
     }
 
-    return !!RequestContext.get(BaseSession);
+    return await this.checkPermissions(
+      userCanMetadata ?? [],
+      workspaceCanMetadata ?? [],
+      context,
+    );
+  }
+
+  private async checkPermissions(
+    userCanMetadata: readonly UserCanMetadata[],
+    workspaceCanMetadata: readonly WorkspaceCanMetadata[],
+    context: ExecutionContext,
+  ): Promise<boolean> {
+    for (const metadata of userCanMetadata) {
+      if (!(await this.checkUserPermission(metadata, context))) {
+        return false;
+      }
+    }
+
+    for (const metadata of workspaceCanMetadata) {
+      if (!(await this.checkWorkspacePermission(metadata, context))) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  private async checkUserPermission(
+    canOptions: UserCanMetadata,
+    context: ExecutionContext,
+  ): Promise<boolean> {
+    const apiKey = RequestContext.get(BaseApiKey);
+
+    if (apiKey && this.isWorkspaceApiKey(apiKey)) {
+      return false;
+    }
+
+    const ability = this.getOrBuildUserAbility();
+    const subject = await this.resolveSubject(canOptions, context);
+    if (!ability) {
+      throw new ForbiddenException("User permission ability is not available");
+    }
+
+    return (
+      ability.can(canOptions.action, subject) &&
+      this.apiKeyCan(canOptions.action, subject)
+    );
+  }
+
+  private async checkWorkspacePermission(
+    canOptions: WorkspaceCanMetadata,
+    context: ExecutionContext,
+  ): Promise<boolean> {
+    const apiKey = RequestContext.get(BaseApiKey);
+
+    if (apiKey && this.isWorkspaceApiKey(apiKey)) {
+      const subject = await this.resolveSubject(canOptions, context);
+      return this.apiKeyCan(canOptions.action, subject);
+    }
+
+    if (apiKey && !RequestContext.get(BaseWorkspaceMember)) {
+      return false;
+    }
+
+    const ability = this.getOrBuildWorkspaceAbility();
+    const subject = await this.resolveSubject(canOptions, context);
+    if (!ability) {
+      throw new ForbiddenException(
+        "Workspace permission ability is not available",
+      );
+    }
+
+    return (
+      ability.can(canOptions.action, subject) &&
+      this.apiKeyCan(canOptions.action, subject)
+    );
+  }
+
+  private isWorkspaceApiKey(apiKey: BaseApiKey): boolean {
+    const owner = Reference.unwrapReference(apiKey.owner as never) as unknown;
+    return owner instanceof this.options.entities.workspace;
+  }
+
+  private apiKeyCan(action: string, subject: Subject): boolean {
+    const apiKey = RequestContext.get(BaseApiKey);
+    if (!apiKey) {
+      return true;
+    }
+    const permission = this.getPermission(action, subject);
+
+    return (
+      !!permission &&
+      Array.isArray(apiKey.permissions) &&
+      apiKey.permissions.includes(permission)
+    );
+  }
+
+  private getPermission(action: string, subject: Subject): string | null {
+    const resource = this.getPermissionResource(subject);
+    return resource ? `${resource}:${action}` : null;
+  }
+
+  private getPermissionResource(subject: Subject): string | null {
+    const value = subject as unknown;
+    let name: string | null = null;
+
+    if (typeof value === "string") {
+      name = value;
+    } else if (typeof value === "function") {
+      name = value.name;
+    } else if (value && typeof value === "object") {
+      name = value.constructor.name;
+    }
+
+    return name ? `${name[0].toLowerCase()}${name.slice(1)}` : null;
+  }
+
+  private getOrBuildUserAbility(): UserAbility | null {
+    const cachedAbility = RequestContext.get(UserAbility) ?? null;
+
+    if (cachedAbility) {
+      return cachedAbility;
+    }
+
+    return this.buildAndCacheUserAbility();
+  }
+
+  private getOrBuildWorkspaceAbility(): WorkspaceAbility | null {
+    const cachedAbility = RequestContext.get(WorkspaceAbility) ?? null;
+
+    if (cachedAbility) {
+      return cachedAbility;
+    }
+
+    return this.buildAndCacheWorkspaceAbility();
+  }
+
+  private buildAndCacheUserAbility(): UserAbility | null {
+    const buildAbility = this.options.user?.buildAbility;
+    const user = RequestContext.get(BaseUser);
+    if (!buildAbility || !user) return null;
+
+    const builder = new AbilityBuilder(UserAbility);
+    const roles = this.options.user?.roles ?? DEFAULT_USER_ROLES;
+    const permissions = this.resolveUserPermissions(roles);
+    const ability = buildAbility(builder, permissions, user);
+
+    RequestContext.set(UserAbility, ability);
+    return ability;
+  }
+
+  private buildAndCacheWorkspaceAbility(): WorkspaceAbility | null {
+    const buildAbility = this.options.workspace?.buildAbility;
+    const workspace = RequestContext.get(BaseWorkspace);
+    const member = RequestContext.get(BaseWorkspaceMember);
+    if (!buildAbility || !workspace || !member) return null;
+
+    const builder = new AbilityBuilder(WorkspaceAbility);
+    const roles = this.options.workspace?.roles ?? DEFAULT_WORKSPACE_ROLES;
+    const permissions = this.resolveWorkspacePermissions(roles);
+    const ability = buildAbility(builder, permissions, workspace);
+
+    RequestContext.set(WorkspaceAbility, ability);
+    return ability;
+  }
+
+  private resolveUserPermissions(roles: AuthModuleRoles): readonly string[] {
+    const user = RequestContext.get(BaseUser);
+    if (!user) return [];
+
+    return resolveAuthPermissions(
+      user.roles ?? [this.options.user?.defaultRole ?? DEFAULT_USER_ROLE],
+      user.permissions ?? [],
+      roles,
+    );
+  }
+
+  private resolveWorkspacePermissions(
+    roles: AuthModuleRoles,
+  ): readonly string[] {
+    const member = RequestContext.get(BaseWorkspaceMember);
+    if (!member) return [];
+
+    return resolveAuthPermissions(
+      member.roles ?? [
+        this.options.workspace?.defaultRole ?? DEFAULT_WORKSPACE_ROLE,
+      ],
+      member.permissions ?? [],
+      roles,
+    );
+  }
+
+  private async resolveSubject(
+    canOptions: UserCanMetadata | WorkspaceCanMetadata,
+    context: ExecutionContext,
+  ): Promise<Subject> {
+    const { subject } = canOptions;
+
+    if (this.isSubjectType(subject)) {
+      return subject;
+    }
+
+    return await this.resolveSubjectFactory(subject, context);
+  }
+
+  private isSubjectType(
+    subject: UserCanMetadata["subject"],
+  ): subject is Type<Subject> {
+    return Function.prototype.toString.call(subject).startsWith("class ");
+  }
+
+  private async resolveProvider<T>(
+    provider: Type<T>,
+    context: ExecutionContext,
+  ): Promise<T> {
+    return await this.moduleRef.resolve(provider, this.getContextId(context), {
+      strict: false,
+    });
+  }
+
+  private async resolveSubjectFactory(
+    subjectFactory: CanSubjectFactory,
+    context: ExecutionContext,
+  ): Promise<Subject> {
+    const handlerSelf = await this.resolveHandlerSelf(context);
+    const args = await this.getSubjectFactoryArgs(context);
+
+    return await subjectFactory(handlerSelf, ...args);
+  }
+
+  private async resolveHandlerSelf(
+    context: ExecutionContext,
+  ): Promise<unknown> {
+    return await this.resolveProvider(context.getClass(), context);
+  }
+
+  private getContextId(context: ExecutionContext): { id: number } | undefined {
+    const request = this.getRequest(context);
+
+    return request ? ContextIdFactory.getByRequest(request) : undefined;
+  }
+
+  private getRequest(context: ExecutionContext): Request | undefined {
+    switch (context.getType<string>()) {
+      case "http":
+        return context.switchToHttp().getRequest<Request | undefined>();
+      case "graphql":
+        return (context.getArgs()[2] as { req?: Request } | undefined)?.req;
+      default:
+        return undefined;
+    }
+  }
+
+  private async getSubjectFactoryArgs(
+    context: ExecutionContext,
+  ): Promise<unknown[]> {
+    const routeArgsMetadata = this.getRouteArgsMetadata(context);
+
+    if (routeArgsMetadata) {
+      return await this.createRouteArguments(context, routeArgsMetadata);
+    }
+
+    return [];
+  }
+
+  private getRouteArgsMetadata(
+    context: ExecutionContext,
+  ): RouteArgumentMetadata | null {
+    const methodName = this.getHandlerMethodName(context);
+
+    if (!methodName) {
+      return null;
+    }
+
+    return (
+      Reflect.getMetadata(
+        ROUTE_ARGS_METADATA,
+        context.getClass(),
+        methodName,
+      ) ?? null
+    );
+  }
+
+  private getHandlerMethodName(
+    context: ExecutionContext,
+  ): string | symbol | null {
+    const handler = context.getHandler();
+
+    if (handler.name) {
+      return handler.name;
+    }
+
+    const handlerName = Object.getOwnPropertyNames(
+      context.getClass().prototype,
+    ).find(
+      (propertyName) => context.getClass().prototype[propertyName] === handler,
+    );
+
+    return handlerName ?? null;
+  }
+
+  private async createRouteArguments(
+    context: ExecutionContext,
+    metadata: RouteArgumentMetadata,
+  ): Promise<unknown[]> {
+    const args: unknown[] = [];
+
+    await Promise.all(
+      Object.entries(metadata).map(async ([key, parameterMetadata]) => {
+        args[parameterMetadata.index] = await this.extractRouteArgument(
+          context,
+          key,
+          parameterMetadata,
+        );
+      }),
+    );
+
+    return args;
+  }
+
+  private extractRouteArgument(
+    context: ExecutionContext,
+    key: string,
+    metadata: RouteArgumentMetadataValue,
+  ): unknown {
+    if (key.includes(CUSTOM_ROUTE_ARGS_METADATA) && metadata.factory) {
+      return metadata.factory(metadata.data, context);
+    }
+
+    const type = Number(key.split(":")[0]);
+
+    if (context.getType<string>() === "graphql") {
+      return this.resolveGraphqlRouteArgument(context, type, metadata.data);
+    }
+    return this.resolveHttpRouteArgument(context, type, metadata.data);
+  }
+
+  private resolveGraphqlRouteArgument(
+    context: ExecutionContext,
+    type: number,
+    data: unknown,
+  ): unknown {
+    const args = context.getArgs();
+
+    switch (type) {
+      case GQL_PARAM_TYPES.ROOT:
+        return args[0];
+      case GQL_PARAM_TYPES.ARGS:
+        return this.getObjectValue(args[1], data);
+      case GQL_PARAM_TYPES.CONTEXT:
+        return this.getObjectValue(args[2], data);
+      case GQL_PARAM_TYPES.INFO:
+        return args[3];
+      default:
+        return undefined;
+    }
+  }
+
+  private resolveHttpRouteArgument(
+    context: ExecutionContext,
+    type: number,
+    data: unknown,
+  ): unknown {
+    const httpContext = context.switchToHttp();
+    const req = httpContext.getRequest();
+    const res = httpContext.getResponse();
+    const next = httpContext.getNext();
+
+    switch (type) {
+      case ROUTE_PARAM_TYPES.REQUEST:
+        return req;
+      case ROUTE_PARAM_TYPES.RESPONSE:
+        return res;
+      case ROUTE_PARAM_TYPES.NEXT:
+        return next;
+      case ROUTE_PARAM_TYPES.BODY:
+        return this.getObjectValue(this.getRecord(req).body, data);
+      case ROUTE_PARAM_TYPES.RAW_BODY:
+        return this.getRecord(req).rawBody;
+      case ROUTE_PARAM_TYPES.PARAM:
+        return this.getObjectValue(this.getRecord(req).params, data);
+      case ROUTE_PARAM_TYPES.HOST:
+        return this.getObjectValue(this.getRecord(req).hosts, data);
+      case ROUTE_PARAM_TYPES.QUERY:
+        return this.getObjectValue(this.getRecord(req).query, data);
+      case ROUTE_PARAM_TYPES.HEADERS:
+        return this.getObjectValue(this.getRecord(req).headers, data, true);
+      case ROUTE_PARAM_TYPES.SESSION:
+        return this.getRecord(req).session;
+      case ROUTE_PARAM_TYPES.FILE:
+        return this.getRecord(req)[this.getStringData(data) ?? "file"];
+      case ROUTE_PARAM_TYPES.FILES:
+        return this.getRecord(req).files;
+      case ROUTE_PARAM_TYPES.IP:
+        return this.getRecord(req).ip;
+      default:
+        return undefined;
+    }
+  }
+
+  private getObjectValue(
+    value: unknown,
+    data: unknown,
+    normalizeKey = false,
+  ): unknown {
+    const record = this.getRecord(value);
+    const key = this.getStringData(data);
+
+    if (!key) {
+      return value;
+    }
+
+    return record[normalizeKey ? key.toLowerCase() : key];
+  }
+
+  private getStringData(data: unknown): string | null {
+    return typeof data === "string" ? data : null;
+  }
+
+  private getRecord(value: unknown): Record<string, unknown> {
+    return value && typeof value === "object"
+      ? (value as Record<string, unknown>)
+      : {};
   }
 }

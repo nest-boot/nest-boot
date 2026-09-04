@@ -1,0 +1,76 @@
+{
+  "create": {
+    "button": "创建 API 密钥",
+    "description": "创建用于 API 访问的密钥。完整密钥只会显示一次。",
+    "title": "创建 API 密钥"
+  },
+  "created": {
+    "copied": "已复制",
+    "copy": "复制 API 密钥",
+    "description": "这是您唯一一次查看该密钥的机会。请立即复制并妥善保管，一旦关闭此窗口，您将无法再次查看它。",
+    "title": "API 密钥已创建",
+    "warning": "请注意：此密钥只显示一次！"
+  },
+  "description": "创建和管理此工作空间的 API 密钥。",
+  "filter": {
+    "items": {
+      "created_at": {
+        "label": "创建时间"
+      },
+      "prefix": {
+        "label": "密钥前缀",
+        "placeholder": "搜索密钥前缀"
+      },
+      "name": {
+        "label": "名称",
+        "placeholder": "搜索 API 密钥名称"
+      }
+    },
+    "search": {
+      "placeholder": "搜索 API 密钥"
+    }
+  },
+  "form": {
+    "name": {
+      "label": "名称",
+      "placeholder": "为此 API 密钥输入名称",
+      "required": "API 密钥名称是必填的",
+      "too_long": "API 密钥名称过长"
+    }
+  },
+  "never_expires": "永不过期",
+  "never_used": "从未使用",
+  "edit": {
+    "description": "更新此 API 密钥的显示名称和权限。",
+    "title": "编辑 API 密钥"
+  },
+  "delete": {
+    "description": "删除 {{name}}？此操作无法撤销。",
+    "title": "删除 API 密钥"
+  },
+  "status": {
+    "active": "活跃",
+    "disabled": "已禁用",
+    "expired": "已过期"
+  },
+  "table": {
+    "created_at": "创建时间",
+    "expires_at": "过期时间",
+    "key_start": "密钥",
+    "last_used": "最近使用",
+    "name": "名称",
+    "status": "状态"
+  },
+  "title": "API 密钥",
+  "user": {
+    "description": "创建和管理属于当前用户账号的 API 密钥。",
+    "title": "个人 API 密钥"
+  },
+  "toast": {
+    "created_success": "API 密钥创建成功",
+    "disabled_success": "API 密钥已禁用",
+    "enabled_success": "API 密钥已启用",
+    "updated_success": "API 密钥更新成功",
+    "deleted_success": "API 密钥删除成功"
+  }
+}

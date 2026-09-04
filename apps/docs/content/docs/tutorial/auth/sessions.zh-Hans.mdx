@@ -1,0 +1,51 @@
+---
+title: "会话"
+description: "解析、列出和撤销已认证会话。"
+---
+
+浏览器认证使用 HttpOnly Cookie Session。同源 GraphQL 与认证请求必须启用
+credentials，让浏览器能够保存并自动携带 Cookie。API Key 使用独立的 Bearer 流程，
+详见 [API Key](/docs/tutorial/auth/api-keys)。
+
+## 当前身份
+
+`AuthMiddleware` 会把已认证的应用 `User` 与 `Session` 实体解析到
+`RequestContext`。传输层代码应使用装饰器，而不是直接读取上下文 token。
+
+```typescript
+import { CurrentSession, CurrentUser } from "@nest-boot/auth";
+
+profile(
+  @CurrentUser() user: User,
+  @CurrentSession() session: Session,
+) {
+  return { user, session };
+}
+```
+
+当对应身份不存在时，两个装饰器都会返回 `null`，公开处理器可以显式声明可空参数。
+
+## SessionService
+
+`SessionService` 提供：
+
+- `getSession()` — 解析当前应用实体；
+- `listSessions()` — 列出当前用户的活动会话；
+- `revokeSession(token)` — 撤销指定会话；
+- `revokeOtherSessions()` — 只保留当前会话；
+- `revokeSessions()` — 撤销当前用户的全部会话。
+- `createSessionHeaders(token)` — 为应用自行创建的会话生成签名的浏览器 Session Cookie
+  响应头，例如模拟登录流程。
+
+这些方法都从 `RequestContext` 读取当前请求 Header，传输层无需转换或继续传递
+Express Header。
+
+会话列表保持认证后端的返回顺序，并包含撤销指定会话所需的 token。UI 应识别当前
+会话，不要把它当作普通远程设备提供撤销操作。
+
+`createSessionHeaders()` 还会清除缓存的会话与账号 Cookie。Resolver 或 Controller 必须
+转发所有返回的 `Set-Cookie`。示例在 `UserService.impersonateUser()` 与
+`stopImpersonating()` 切换浏览器身份时使用该方法。
+
+启用 PostgreSQL RLS 时，应用实体查询会在关闭 RLS 的隔离认证上下文中执行。因此业务
+数据库角色无需直接访问认证表，父级请求上下文也不会被修改。

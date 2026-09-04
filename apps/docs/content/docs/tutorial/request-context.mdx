@@ -151,6 +151,16 @@ const request = RequestContext.get<Request>(REQUEST);
 const response = RequestContext.get<Response>(RESPONSE);
 ```
 
+Use `headers()` when an API expects Fetch-standard `Headers`. It reads the
+current Express request from `RequestContext`, preserves repeated values, and
+throws when no HTTP request is active.
+
+```typescript
+import { headers } from "@nest-boot/request-context";
+
+const session = await auth.api.getSession({ headers: headers() });
+```
+
 ## Context Metadata
 
 Use `current()` to inspect the active context:

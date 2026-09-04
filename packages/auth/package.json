@@ -6,7 +6,7 @@
     "url": "https://github.com/nest-boot/nest-boot.git",
     "directory": "packages/auth"
   },
-  "description": "",
+  "description": "Authentication, workspace identity, API keys, and CASL-based authorization for Nest Boot applications",
   "author": {
     "name": "Xudong Huang",
     "email": "me@huangxudong.com",
@@ -34,12 +34,16 @@
     "test:debug": "vitest --inspect-brk --no-file-parallelism"
   },
   "devDependencies": {
+    "@casl/ability": "^7.0.1",
     "@mikro-orm/core": "7.1.14",
     "@mikro-orm/decorators": "7.1.14",
     "@nest-boot/eslint-config": "workspace:^",
     "@nest-boot/eslint-plugin": "workspace:^",
+    "@nest-boot/hash": "workspace:^",
+    "@nest-boot/mailer": "workspace:^",
     "@nest-boot/middleware": "workspace:^",
     "@nest-boot/request-context": "workspace:^",
+    "@nest-boot/row-level-security": "workspace:^",
     "@nest-boot/tsconfig": "workspace:^",
     "@nestjs/common": "^12.0.1",
     "@nestjs/config": "^12.0.0",
@@ -48,7 +52,7 @@
     "@types/express": "^5.0.3",
     "@types/node": "^26.0.0",
     "@vitest/coverage-v8": "^4.1.11",
-    "better-auth": "^1.4.10",
+    "better-auth": "^1.7.2",
     "express": "^5.1.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
@@ -57,13 +61,17 @@
     "vitest": "^4.1.11"
   },
   "peerDependencies": {
+    "@casl/ability": "^7.0.0",
     "@mikro-orm/core": "^7.0.0",
     "@mikro-orm/decorators": "^7.0.0",
+    "@nest-boot/hash": "workspace:^",
+    "@nest-boot/mailer": "workspace:^",
     "@nest-boot/middleware": "workspace:^",
     "@nest-boot/request-context": "workspace:^",
+    "@nest-boot/row-level-security": "workspace:^",
     "@nestjs/common": "^12.0.0",
     "@nestjs/core": "^12.0.0",
-    "better-auth": "^1.4.10",
+    "better-auth": "^1.7.2",
     "express": "^5.0.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.0.0"

@@ -1,0 +1,98 @@
+---
+title: "NestJS Integration"
+description: "Connect Auth services to transport adapters, RequestContext, and RLS."
+---
+
+The underlying Better Auth instance and injection token are internal. Inject the
+service that owns the required domain:
+
+| Service            | Responsibility                                                                         |
+| ------------------ | -------------------------------------------------------------------------------------- |
+| `AuthService`      | Authentication, email verification, password recovery, profiles, and provider accounts |
+| `SessionService`   | Current session resolution, active-session lists, and revocation                       |
+| `UserService`      | User administration, permissions, bans, impersonation, passwords, and user sessions    |
+| `WorkspaceService` | Workspace, membership, invitation, and workspace-permission lifecycle                  |
+| `ApiKeyService`    | Personal and workspace API-key lifecycle and validation                                |
+
+`UserService` and `WorkspaceService` operate directly on the MikroORM entities
+configured in `AuthModule`; they do not require Better Auth's admin or
+organization plugins.
+
+```typescript
+@Injectable()
+export class AccountApplicationService {
+  constructor(
+    private readonly authService: AuthService,
+    private readonly sessionService: SessionService,
+    private readonly userService: UserService,
+    private readonly workspaceService: WorkspaceService,
+    private readonly apiKeyService: ApiKeyService,
+  ) {}
+}
+```
+
+## Transport Adapters
+
+Resolvers and controllers should translate their protocol types and delegate
+domain rules to these services. When a method returns headers, forward every
+`Set-Cookie` value rather than only the first one. This is especially important
+when password changes revoke other sessions and replace the current Cookie.
+
+The built-in auth endpoint handler is mounted at `basePath`. `AuthMiddleware`
+runs after `RequestContextMiddleware`, resolves identity, and makes application
+entities available to decorators and guards.
+
+Auth registers every application entity class configured through
+`options.entities` as a request-context alias of its stable base entity class.
+Current identity values are stored under the base tokens, so both lookups
+return the same application entity instance:
+
+```typescript
+RequestContext.get(BaseUser); // internal stable token
+RequestContext.get(User); // configured application entity alias
+```
+
+This convention applies to every configured Auth entity. Transport code should
+normally prefer the current identity decorators.
+
+## PostgreSQL RLS
+
+Authentication-table lookups run in isolated child contexts where necessary.
+For business queries, derive the RLS context from the workspace and member that
+auth already stored in `RequestContext`. See the
+[Row-Level Security tutorial](/docs/tutorial/row-level-security).
+
+## Bootstrap
+
+```typescript
+import { Logger } from "@nest-boot/logger";
+import { ValidationPipe } from "@nestjs/common";
+import { NestFactory } from "@nestjs/core";
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule, {
+    bufferLogs: true,
+    cors: true,
+  });
+
+  app.useLogger(await app.resolve(Logger));
+  app.useGlobalPipes(
+    new ValidationPipe({ transform: true, forbidUnknownValues: false }),
+  );
+  app.enableShutdownHooks();
+
+  await app.listen(process.env.PORT ?? 4000);
+}
+
+void bootstrap();
+```
+
+## Operational Guidance
+
+- Register `AuthGuard` once as `APP_GUARD` and mark exceptions with `@Public()`.
+- Use current-identity decorators in transport code instead of raw context tokens.
+- Store high-entropy `AUTH_SECRET` and `HASH_SECRET` values outside source control.
+- Keep workspace selection explicit in the route, header, or Cookie.
+- Map GraphQL input and output types in the application; keep lifecycle rules in Auth services.
+
+For symbol-level documentation, see the [Auth API Reference](/docs/api/auth).

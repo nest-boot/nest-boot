@@ -1,0 +1,107 @@
+{
+  "delete": {
+    "description": "Are you sure you want to delete this member?",
+    "title": "Delete Member"
+  },
+  "description": "Manage workspace members and invitations",
+  "details": {
+    "actions": {
+      "copy_invite_link": "Copy Invite Link",
+      "delete_member": "Delete"
+    },
+    "form": {
+      "email": {
+        "invalid": "Invalid email",
+        "label": "Email",
+        "placeholder": "user@example.com"
+      },
+      "name": {
+        "description": "The display name for this member",
+        "label": "Name",
+        "required": "Name is required",
+        "too_long": "Name is too long"
+      },
+      "role": {
+        "label": "Role",
+        "placeholder": "Select a role"
+      }
+    },
+    "title": "Member Details",
+    "toast": {
+      "delete_failed": "Failed to delete member",
+      "deleted_success": "Member deleted successfully",
+      "link_copied": "Link copied to clipboard",
+      "update_failed": "Failed to update member",
+      "updated_success": "Member updated successfully"
+    }
+  },
+  "filter": {
+    "items": {
+      "created_at": {
+        "label": "Joined At"
+      },
+      "email": {
+        "label": "Email",
+        "placeholder": "Search member email"
+      },
+      "name": {
+        "label": "Name",
+        "placeholder": "Search member name"
+      },
+      "role": {
+        "label": "Role"
+      },
+      "status": {
+        "label": "Status"
+      },
+      "type": {
+        "label": "Type"
+      }
+    },
+    "search": {
+      "placeholder": "Search member name or email"
+    }
+  },
+  "invite": {
+    "button": "Invite",
+    "confirm_and_copy": "Confirm and Copy Link",
+    "copy_failed": "The invitation was created, but the link could not be copied automatically",
+    "description": "The system will generate an invite link",
+    "email_label": "Email",
+    "email_placeholder": "user@example.com",
+    "email_required": "Enter the invitee's email address",
+    "link_copied": "The link will be automatically copied to clipboard",
+    "link_expires": "The invitation will expire in 48 hours",
+    "link_generated": "Invite Link Generated",
+    "link_generated_description": "Share this link with the invited user. You can copy it using the button below.",
+    "link_user_join": "Invited users can join the workspace by clicking the link",
+    "role_label": "Role",
+    "select_role_placeholder": "Select a role",
+    "title": "Invite Workspace Member"
+  },
+  "role": {
+    "admin": "Admin",
+    "member": "Member",
+    "owner": "Owner"
+  },
+  "status": {
+    "active": "Active",
+    "disabled": "Disabled"
+  },
+  "type": {
+    "service_account": "Service Account",
+    "user": "User"
+  },
+  "table": {
+    "joined": "Joined",
+    "name": "Name",
+    "role": "Role",
+    "status": "Status"
+  },
+  "title": "Members",
+  "toast": {
+    "deleted_success": "Member deleted successfully",
+    "disabled_success": "Member disabled successfully",
+    "enabled_success": "Member enabled successfully"
+  }
+}

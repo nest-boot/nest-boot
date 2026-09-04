@@ -123,6 +123,16 @@ const request = RequestContext.get<Request>(REQUEST);
 const response = RequestContext.get<Response>(RESPONSE);
 ```
 
+当 API 需要 Fetch 标准的 `Headers` 时，可以使用 `headers()`。它从
+`RequestContext` 读取当前 Express 请求、保留重复 Header，并在不存在活动 HTTP
+请求时抛出异常。
+
+```typescript
+import { headers } from "@nest-boot/request-context";
+
+const session = await auth.api.getSession({ headers: headers() });
+```
+
 ## 上下文元数据
 
 使用 `current()` 查看当前活动上下文：

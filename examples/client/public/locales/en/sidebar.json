@@ -1,0 +1,25 @@
+{
+  "admin": {
+    "title": "Administration",
+    "users": "Users"
+  },
+  "navigation": {
+    "api_keys": "API Keys",
+    "members": "Members",
+    "settings": "Settings"
+  },
+  "switcher": {
+    "createWorkspace": "Create workspace",
+    "workspaces": "Workspaces",
+    "loadMore": "Load more",
+    "manageWorkspaces": "Manage workspaces"
+  },
+  "user": {
+    "account": "Account",
+    "api_keys": "Personal API Keys",
+    "logout": "Log out",
+    "security": "Security",
+    "title": "Personal",
+    "workspaces": "Workspaces"
+  }
+}
