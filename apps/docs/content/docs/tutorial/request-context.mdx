@@ -61,9 +61,12 @@ const metadata = RequestContext.getOrSet(
 
 Lookups use the following order:
 
-1. A value stored in the current context.
-2. A value inherited from a parent context.
-3. An application provider available through the HTTP context.
+1. Any explicit token aliases in the current context hierarchy are followed to
+   the final canonical token.
+2. A value stored for the canonical token in the current context hierarchy,
+   starting with the current context.
+3. An application provider available through the HTTP context, resolved with
+   the final canonical token.
 
 An explicitly stored value takes precedence even when it is `null` or
 `undefined`. This allows a child or request context to mask an inherited or
@@ -76,6 +79,43 @@ context data from code that may run outside a managed lifecycle.
 if (RequestContext.isActive()) {
   const user = RequestContext.get(User);
 }
+```
+
+## Token Aliases
+
+Use `alias(aliasToken, targetToken)` when multiple tokens should resolve the same
+request-scoped object. The alias used by consumers is the first argument and the
+canonical token that stores or provides the value is the second:
+
+```typescript
+context.alias(BaseUser, User);
+context.set(BaseUser, authenticatedUser); // stored under User
+
+context.get(BaseUser) === authenticatedUser; // true
+context.get(User) === authenticatedUser; // true
+```
+
+The static form registers an alias on the active context:
+
+```typescript
+RequestContext.alias(BaseUser, User);
+```
+
+Aliases belong to a context rather than global state. A child snapshots its
+parent's aliases when it is created, so later alias changes in either context do
+not retroactively alter the other. The child can override either an inherited
+alias or its canonical value without changing the parent. Alias chains are
+supported, while a circular chain throws an error when it is registered.
+`get()`, `set()`, and `getOrSet()` all follow the complete alias chain, so reads
+and writes use the same canonical token.
+
+Use `unalias(aliasToken)` to cancel an alias in the current context. Existing
+parent and child snapshots remain unchanged; children created afterward inherit
+the updated alias set. Calling `alias()` again for the same token re-enables it.
+
+```typescript
+context.unalias(BaseUser);
+RequestContext.unalias(BaseUser); // active context
 ```
 
 ## Accessing Application Providers
