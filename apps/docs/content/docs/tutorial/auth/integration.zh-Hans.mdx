@@ -38,6 +38,17 @@ Cookie 时，这一点尤其重要。
 内置认证端点处理器挂载在 `basePath`。`AuthMiddleware` 在
 `RequestContextMiddleware` 之后运行，负责解析身份，并让装饰器与守卫可以读取应用实体。
 
+Auth 会把通过 `options.entities` 配置的每个应用实体类注册为对应 Base 实体类的请求
+上下文别名。当前身份始终使用稳定的 Base 实体类作为主 token，因此两种方式会返回
+同一个应用实体实例：
+
+```typescript
+RequestContext.get(BaseUser); // 框架内部使用的稳定 token
+RequestContext.get(User); // 配置的应用实体类别名
+```
+
+同一约定适用于所有配置的 Auth 实体。传输层代码通常应优先使用当前身份装饰器。
+
 ## PostgreSQL RLS
 
 需要时，认证表查询会在隔离的子上下文中运行。业务查询应从 auth 已写入

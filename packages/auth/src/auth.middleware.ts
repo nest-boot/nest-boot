@@ -1,28 +1,29 @@
 import { EntityManager } from "@mikro-orm/core";
-import { RequestContext } from "@nest-boot/request-context";
+import {
+  RequestContext,
+  type RequestContextToken,
+} from "@nest-boot/request-context";
 import {
   Inject,
   Injectable,
   type NestMiddleware,
-  type Type,
   UnauthorizedException,
 } from "@nestjs/common";
 import { type NextFunction, type Request, type Response } from "express";
 
 import { ApiKeyService } from "./api-key.service.js";
-import {
-  CURRENT_API_KEY,
-  CURRENT_WORKSPACE,
-  CURRENT_WORKSPACE_MEMBER,
-} from "./auth.constants.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
-import type {
+import {
+  BaseAccount,
   BaseApiKey,
+  BaseSession,
+  BaseUser,
+  BaseVerification,
   BaseWorkspace,
+  BaseWorkspaceInvitation,
   BaseWorkspaceMember,
 } from "./entities/index.js";
-import { BaseSession, BaseUser } from "./entities/index.js";
 import { SessionService } from "./session.service.js";
 import { extractApiKey } from "./utils/extract-api-key.util.js";
 
@@ -41,6 +42,7 @@ export class AuthMiddleware implements NestMiddleware {
   /** Resolves workspace, credentials, and membership in their required order. */
   async use(req: Request, _res: Response, next: NextFunction) {
     try {
+      this.registerEntityAliases();
       await this.resolveSelectedWorkspace(req);
       const hasSession = await this.resolveSession();
       if (!hasSession) await this.resolveApiKey(req);
@@ -76,10 +78,6 @@ export class AuthMiddleware implements NestMiddleware {
 
     this.setUser(data.user);
     RequestContext.set(BaseSession, data.session);
-    RequestContext.set(
-      this.options.entities.session as Type<BaseSession>,
-      data.session,
-    );
     await this.options.onAuthenticated?.();
     return true;
   }
@@ -95,8 +93,7 @@ export class AuthMiddleware implements NestMiddleware {
       return;
     }
 
-    const selectedWorkspace =
-      RequestContext.get<BaseWorkspace>(CURRENT_WORKSPACE);
+    const selectedWorkspace = RequestContext.get(BaseWorkspace);
     if (selectedWorkspace && selectedWorkspace.id !== validation.workspace.id) {
       throw new UnauthorizedException(
         "Workspace API key does not belong to the selected workspace",
@@ -107,7 +104,7 @@ export class AuthMiddleware implements NestMiddleware {
 
   private async resolveWorkspaceMember(): Promise<void> {
     const user = RequestContext.get(BaseUser);
-    const workspace = RequestContext.get<BaseWorkspace>(CURRENT_WORKSPACE);
+    const workspace = RequestContext.get(BaseWorkspace);
     if (!user || !workspace) return;
 
     const member = await this.em.findOne(
@@ -120,31 +117,45 @@ export class AuthMiddleware implements NestMiddleware {
     );
     if (!member) return;
 
-    RequestContext.set(CURRENT_WORKSPACE_MEMBER, member);
-    RequestContext.set(
-      this.options.entities.workspaceMember as Type<BaseWorkspaceMember>,
-      member,
-    );
+    RequestContext.set(BaseWorkspaceMember, member);
   }
 
   private setApiKey(apiKey: BaseApiKey): void {
-    RequestContext.set(CURRENT_API_KEY, apiKey);
-    RequestContext.set(
-      this.options.entities.apiKey as Type<BaseApiKey>,
-      apiKey,
-    );
+    RequestContext.set(BaseApiKey, apiKey);
   }
 
   private setUser(user: BaseUser): void {
     RequestContext.set(BaseUser, user);
-    RequestContext.set(this.options.entities.user as Type<BaseUser>, user);
   }
 
   private setWorkspace(workspace: BaseWorkspace): void {
-    RequestContext.set(CURRENT_WORKSPACE, workspace);
-    RequestContext.set(
-      this.options.entities.workspace as Type<BaseWorkspace>,
-      workspace,
+    RequestContext.set(BaseWorkspace, workspace);
+  }
+
+  private registerEntityAliases(): void {
+    this.registerEntityAlias(this.options.entities.account, BaseAccount);
+    this.registerEntityAlias(this.options.entities.user, BaseUser);
+    this.registerEntityAlias(this.options.entities.session, BaseSession);
+    this.registerEntityAlias(this.options.entities.apiKey, BaseApiKey);
+    this.registerEntityAlias(
+      this.options.entities.verification,
+      BaseVerification,
     );
+    this.registerEntityAlias(this.options.entities.workspace, BaseWorkspace);
+    this.registerEntityAlias(
+      this.options.entities.workspaceInvitation,
+      BaseWorkspaceInvitation,
+    );
+    this.registerEntityAlias(
+      this.options.entities.workspaceMember,
+      BaseWorkspaceMember,
+    );
+  }
+
+  private registerEntityAlias(
+    entity: RequestContextToken,
+    baseEntity: RequestContextToken,
+  ): void {
+    if (entity !== baseEntity) RequestContext.alias(entity, baseEntity);
   }
 }

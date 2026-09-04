@@ -6,8 +6,7 @@ import type { Mocked } from "vitest";
 
 import type { ApiKeyService } from "./api-key.service.js";
 import { ApiKeyUsageInterceptor } from "./api-key-usage.interceptor.js";
-import { CURRENT_API_KEY } from "./auth.constants.js";
-import type { BaseApiKey } from "./entities/index.js";
+import { BaseApiKey } from "./entities/index.js";
 
 describe("ApiKeyUsageInterceptor", () => {
   afterEach(() => vi.restoreAllMocks());
@@ -19,7 +18,7 @@ describe("ApiKeyUsageInterceptor", () => {
     } as unknown as Mocked<ApiKeyService>;
     const interceptor = new ApiKeyUsageInterceptor(service);
     vi.spyOn(RequestContext, "get").mockImplementation((token) =>
-      token === CURRENT_API_KEY ? apiKey : undefined,
+      token === BaseApiKey ? apiKey : undefined,
     );
 
     await expect(

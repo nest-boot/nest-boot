@@ -1,13 +1,11 @@
 import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException } from "@nestjs/common";
 
-import { WORKSPACE_PERMISSION_ABILITY } from "../permission.constants.js";
-import type { PermissionAbility } from "../types/permission-ability.type.js";
+import { WorkspaceAbility } from "../abilities/workspace.ability.js";
 
 /** Reads the workspace ability prepared for the current request. */
-export function getWorkspaceAbility(): PermissionAbility {
-  const ability =
-    RequestContext.get<PermissionAbility>(WORKSPACE_PERMISSION_ABILITY) ?? null;
+export function getWorkspaceAbility(): WorkspaceAbility {
+  const ability = RequestContext.get(WorkspaceAbility) ?? null;
 
   if (!ability) {
     throw new ForbiddenException(

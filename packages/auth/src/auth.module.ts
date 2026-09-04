@@ -36,6 +36,7 @@ import { AuthService } from "./auth.service.js";
 import { AuthHandlerMiddleware } from "./auth-handler.middleware.js";
 import { type AuthModuleOptions } from "./auth-module-options.interface.js";
 import { AuthorizationService } from "./authorization.service.js";
+import type { BaseUser, BaseWorkspace } from "./entities/index.js";
 import { SessionService } from "./session.service.js";
 import {
   DEFAULT_USER_ADMIN_ROLES,
@@ -209,10 +210,17 @@ export class AuthModule extends ConfigurableModuleClass {
       (typeof DEFAULT_USER_PERMISSIONS)[number],
     const WorkspacePermission extends string =
       (typeof DEFAULT_WORKSPACE_PERMISSIONS)[number],
+    User extends BaseUser = BaseUser,
+    Workspace extends BaseWorkspace = BaseWorkspace,
   >(
-    options: AuthModuleOptions<UserPermission, WorkspacePermission>,
+    options: AuthModuleOptions<
+      UserPermission,
+      WorkspacePermission,
+      User,
+      Workspace
+    >,
   ): DynamicModule {
-    return super.forRoot(options);
+    return super.forRoot(options as unknown as AuthModuleOptions);
   }
 
   /**
@@ -225,12 +233,16 @@ export class AuthModule extends ConfigurableModuleClass {
       (typeof DEFAULT_USER_PERMISSIONS)[number],
     const WorkspacePermission extends string =
       (typeof DEFAULT_WORKSPACE_PERMISSIONS)[number],
+    User extends BaseUser = BaseUser,
+    Workspace extends BaseWorkspace = BaseWorkspace,
   >(
     options: ConfigurableModuleAsyncOptions<
-      AuthModuleOptions<UserPermission, WorkspacePermission>
+      AuthModuleOptions<UserPermission, WorkspacePermission, User, Workspace>
     >,
   ): DynamicModule {
-    return super.forRootAsync(options);
+    return super.forRootAsync(
+      options as unknown as ConfigurableModuleAsyncOptions<AuthModuleOptions>,
+    );
   }
 
   /**

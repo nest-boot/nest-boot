@@ -68,13 +68,13 @@ describe("auth decorators", () => {
     const apiKey = { id: "api-key-1" };
     const workspace = { id: "workspace-1" };
     const workspaceMember = { id: "member-1" };
-    const get = vi.fn((token: symbol) => {
-      switch (token.description) {
-        case "CURRENT_API_KEY":
+    const get = vi.fn((token: { name?: string }) => {
+      switch (token.name) {
+        case "BaseApiKey":
           return apiKey;
-        case "CURRENT_WORKSPACE":
+        case "BaseWorkspace":
           return workspace;
-        case "CURRENT_WORKSPACE_MEMBER":
+        case "BaseWorkspaceMember":
           return workspaceMember;
         default:
           return undefined;
@@ -106,6 +106,11 @@ describe("auth decorators", () => {
     expect(CurrentApiKey()).toBe(apiKey);
     expect(CurrentWorkspace()).toBe(workspace);
     expect(CurrentWorkspaceMember()).toBe(workspaceMember);
+    expect(get.mock.calls.map(([token]) => token.name)).toEqual([
+      "BaseApiKey",
+      "BaseWorkspace",
+      "BaseWorkspaceMember",
+    ]);
     vi.doUnmock("@nest-boot/request-context");
     vi.doUnmock("@nestjs/common");
   });

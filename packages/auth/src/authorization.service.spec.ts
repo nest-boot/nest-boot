@@ -1,7 +1,8 @@
 import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException } from "@nestjs/common";
 
-import { CURRENT_API_KEY, CURRENT_WORKSPACE_MEMBER } from "./auth.constants.js";
+import { UserAbility } from "./abilities/user.ability.js";
+import { WorkspaceAbility } from "./abilities/workspace.ability.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
 import { AuthorizationService } from "./authorization.service.js";
 import {
@@ -11,10 +12,6 @@ import {
   BaseWorkspace,
   BaseWorkspaceMember,
 } from "./entities/index.js";
-import {
-  USER_PERMISSION_ABILITY,
-  WORKSPACE_PERMISSION_ABILITY,
-} from "./permission.constants.js";
 
 class TestApiKey extends BaseApiKey {}
 class TestSession extends BaseSession {}
@@ -37,9 +34,9 @@ describe("AuthorizationService", () => {
 
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
       RequestContext.set(BaseUser, user);
-      RequestContext.set(USER_PERMISSION_ABILITY, {
-        can: vi.fn().mockReturnValue(true),
-      } as never);
+      const ability = new UserAbility();
+      vi.spyOn(ability, "can").mockReturnValue(true);
+      RequestContext.set(UserAbility, ability);
 
       expect(service.userCan("read", Subject)).toBe(true);
       expect(() => {
@@ -68,10 +65,10 @@ describe("AuthorizationService", () => {
 
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
       RequestContext.set(BaseUser, user);
-      RequestContext.set(CURRENT_API_KEY, apiKey);
-      RequestContext.set(USER_PERMISSION_ABILITY, {
-        can: vi.fn().mockReturnValue(true),
-      } as never);
+      RequestContext.set(BaseApiKey, apiKey);
+      const ability = new UserAbility();
+      vi.spyOn(ability, "can").mockReturnValue(true);
+      RequestContext.set(UserAbility, ability);
 
       expect(service.userCan("read", Subject)).toBe(true);
       expect(service.userCan("update", Subject)).toBe(false);
@@ -86,7 +83,7 @@ describe("AuthorizationService", () => {
     });
 
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
-      RequestContext.set(CURRENT_API_KEY, apiKey);
+      RequestContext.set(BaseApiKey, apiKey);
 
       expect(service.workspaceCan("read", Subject)).toBe(true);
       expect(service.workspaceCan("update", Subject)).toBe(false);
@@ -96,10 +93,12 @@ describe("AuthorizationService", () => {
 
   it("requires a membership and ability for workspace session access", async () => {
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
-      RequestContext.set(CURRENT_WORKSPACE_MEMBER, new TestWorkspaceMember());
-      RequestContext.set(WORKSPACE_PERMISSION_ABILITY, {
-        can: vi.fn().mockImplementation((action) => action === "read"),
-      } as never);
+      RequestContext.set(BaseWorkspaceMember, new TestWorkspaceMember());
+      const ability = new WorkspaceAbility();
+      vi.spyOn(ability, "can").mockImplementation(
+        (action) => action === "read",
+      );
+      RequestContext.set(WorkspaceAbility, ability);
 
       expect(service.workspaceCan("read", Subject)).toBe(true);
       expect(service.workspaceCan("update", Subject)).toBe(false);
@@ -118,7 +117,7 @@ describe("AuthorizationService", () => {
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
       RequestContext.set(BaseUser, currentUser);
       RequestContext.set(BaseSession, currentSession);
-      RequestContext.set(CURRENT_WORKSPACE_MEMBER, currentMember);
+      RequestContext.set(BaseWorkspaceMember, currentMember);
 
       expect(() => {
         service.assertCurrentUser(currentUser);

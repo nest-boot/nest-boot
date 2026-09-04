@@ -1,7 +1,8 @@
 import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException } from "@nestjs/common";
 
-import { WORKSPACE_PERMISSION_ABILITY } from "../permission.constants.js";
+import { UserAbility } from "../abilities/user.ability.js";
+import { WorkspaceAbility } from "../abilities/workspace.ability.js";
 import { getWorkspaceAbility } from "./get-workspace-ability.util.js";
 
 describe("getWorkspaceAbility", () => {
@@ -11,21 +12,21 @@ describe("getWorkspaceAbility", () => {
     });
   });
 
-  it("throws when the cached workspace ability is null", async () => {
+  it("does not read a user ability as a workspace ability", async () => {
     await RequestContext.run(new RequestContext({ type: "http" }), () => {
-      RequestContext.set(WORKSPACE_PERMISSION_ABILITY, null);
+      RequestContext.set(UserAbility, new UserAbility());
 
       expect(() => getWorkspaceAbility()).toThrow(ForbiddenException);
     });
   });
 
   it("reads the workspace ability from request context", async () => {
-    const ability = { can: vi.fn() };
+    const ability = new WorkspaceAbility();
 
     await RequestContext.run(
       new RequestContext({ type: "http" }),
       (context) => {
-        context.set(WORKSPACE_PERMISSION_ABILITY, ability);
+        context.set(WorkspaceAbility, ability);
 
         expect(getWorkspaceAbility()).toBe(ability);
       },

@@ -34,13 +34,14 @@ health(): string {
 ## Build Abilities
 
 Configure separate user and workspace abilities. For an authenticated request,
-`AuthGuard` prepares both abilities even when the handler has no permission
-decorator. Each callback runs at most once and its result is cached in
-`RequestContext`. Returning `null` causes that authorization scope to fail.
+`AuthGuard` prepares the user ability when a current user exists and the
+workspace ability when a workspace and active membership are selected, even
+when the handler has no permission decorator. Each callback runs at most once
+and its result is cached in `RequestContext`. The callback runs synchronously
+and must return its scoped ability directly.
 
 ```typescript
-import { AuthModule, PermissionAbilityBuilder } from "@nest-boot/auth";
-import { RequestContext } from "@nest-boot/request-context";
+import { AuthModule } from "@nest-boot/auth";
 
 const userRoles = {
   admin: ["project:create"],
@@ -63,11 +64,12 @@ AuthModule.forRoot({
   workspace: {
     permissions: workspacePermissions,
     roles: workspaceRoles,
-    buildAbility: (_context, permissions) => {
-      const { can, build } = new PermissionAbilityBuilder();
+    buildAbility: ({ can, build }, permissions, workspace) => {
       for (const permission of permissions) {
         const [subject, action] = permission.split(":");
-        if (subject === "post" && action) can(action, Post);
+        if (subject === "post" && action) {
+          can(action, Post, { workspaceId: workspace.id });
+        }
       }
       return build();
     },
@@ -75,11 +77,7 @@ AuthModule.forRoot({
   user: {
     permissions: userPermissions,
     roles: userRoles,
-    buildAbility: () => {
-      const user = RequestContext.get(User);
-      if (!user) return null;
-
-      const { can, build } = new PermissionAbilityBuilder();
+    buildAbility: ({ can, build }, _permissions, user) => {
       can("read", Post);
       can("update", Post, { authorId: user.id });
       return build();
@@ -91,8 +89,12 @@ AuthModule.forRoot({
 Each scope owns its permission catalog, role registry, and ability builder.
 Every permission granted by a role must exist in that scope's `permissions`
 array, otherwise application startup fails. AuthModule resolves role permissions
-and direct entity permissions first. The builder receives only the deduplicated
-effective permission list as its second argument.
+and direct entity permissions first. A user builder receives the deduplicated
+permission list and current user. A workspace builder receives the deduplicated
+member permission list and selected workspace. Workspace membership participates
+in permission resolution but is not passed to the builder. AuthModule supplies
+an `AbilityBuilder` configured for the corresponding ability class as the first
+callback argument.
 
 ## Manage Roles
 
@@ -235,6 +237,16 @@ getUserAbility();
 
 can("read", post); // workspaceCan(...)
 can("read", user, { scope: "user" }); // userCan(...)
+```
+
+The ability classes are also the request-context tokens:
+
+```typescript
+import { UserAbility, WorkspaceAbility } from "@nest-boot/auth";
+import { RequestContext } from "@nest-boot/request-context";
+
+const userAbility = RequestContext.get(UserAbility);
+const workspaceAbility = RequestContext.get(WorkspaceAbility);
 ```
 
 The `userCan()` and `workspaceCan()` helpers fail closed by returning `false`

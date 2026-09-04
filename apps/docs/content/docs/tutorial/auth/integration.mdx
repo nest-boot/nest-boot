@@ -42,6 +42,19 @@ The built-in auth endpoint handler is mounted at `basePath`. `AuthMiddleware`
 runs after `RequestContextMiddleware`, resolves identity, and makes application
 entities available to decorators and guards.
 
+Auth registers every application entity class configured through
+`options.entities` as a request-context alias of its stable base entity class.
+Current identity values are stored under the base tokens, so both lookups
+return the same application entity instance:
+
+```typescript
+RequestContext.get(BaseUser); // internal stable token
+RequestContext.get(User); // configured application entity alias
+```
+
+This convention applies to every configured Auth entity. Transport code should
+normally prefer the current identity decorators.
+
 ## PostgreSQL RLS
 
 Authentication-table lookups run in isolated child contexts where necessary.

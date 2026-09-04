@@ -4,24 +4,6 @@ export const USER_CAN_METADATA = Symbol("USER_CAN_METADATA");
 /** Reflection metadata key used by the `WorkspaceCan` decorator. */
 export const WORKSPACE_CAN_METADATA = Symbol("WORKSPACE_CAN_METADATA");
 
-/** Request context key that stores the resolved workspace permission ability. */
-export const WORKSPACE_PERMISSION_ABILITY = Symbol(
-  "WORKSPACE_PERMISSION_ABILITY",
-);
-
-/** Request context key that stores the in-flight workspace ability promise. */
-export const WORKSPACE_PERMISSION_ABILITY_PROMISE = Symbol(
-  "WORKSPACE_PERMISSION_ABILITY_PROMISE",
-);
-
-/** Request context key that stores the resolved user-scoped permission ability. */
-export const USER_PERMISSION_ABILITY = Symbol("USER_PERMISSION_ABILITY");
-
-/** Request context key that stores the in-flight user-scoped ability promise. */
-export const USER_PERMISSION_ABILITY_PROMISE = Symbol(
-  "USER_PERMISSION_ABILITY_PROMISE",
-);
-
 /** Nest route arguments metadata key. */
 export const ROUTE_ARGS_METADATA = "__routeArguments__";
 

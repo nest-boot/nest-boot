@@ -32,13 +32,13 @@ health(): string {
 
 ## 构建 Ability
 
-分别配置用户与工作区 Ability。对于已认证请求，即使处理器没有权限装饰器，
-`AuthGuard` 也会准备两套 Ability。每个回调在一次请求中最多执行一次，结果会缓存在
-`RequestContext` 中。返回 `null` 会使对应权限域的检查失败。
+分别配置用户与工作区 Ability。对于已认证请求，即使处理器没有权限装饰器，存在当前
+用户时 `AuthGuard` 也会准备用户 Ability，选中工作区且存在有效成员关系时则会准备
+工作区 Ability。每个回调在一次请求中最多执行一次，结果会缓存在 `RequestContext`
+中。回调会同步执行，并且必须直接返回对应作用域的 Ability。
 
 ```typescript
-import { AuthModule, PermissionAbilityBuilder } from "@nest-boot/auth";
-import { RequestContext } from "@nest-boot/request-context";
+import { AuthModule } from "@nest-boot/auth";
 
 const userRoles = {
   admin: ["project:create"],
@@ -61,11 +61,12 @@ AuthModule.forRoot({
   workspace: {
     permissions: workspacePermissions,
     roles: workspaceRoles,
-    buildAbility: (_context, permissions) => {
-      const { can, build } = new PermissionAbilityBuilder();
+    buildAbility: ({ can, build }, permissions, workspace) => {
       for (const permission of permissions) {
         const [subject, action] = permission.split(":");
-        if (subject === "post" && action) can(action, Post);
+        if (subject === "post" && action) {
+          can(action, Post, { workspaceId: workspace.id });
+        }
       }
       return build();
     },
@@ -73,11 +74,7 @@ AuthModule.forRoot({
   user: {
     permissions: userPermissions,
     roles: userRoles,
-    buildAbility: () => {
-      const user = RequestContext.get(User);
-      if (!user) return null;
-
-      const { can, build } = new PermissionAbilityBuilder();
+    buildAbility: ({ can, build }, _permissions, user) => {
       can("read", Post);
       can("update", Post, { authorId: user.id });
       return build();
@@ -88,7 +85,10 @@ AuthModule.forRoot({
 
 每个作用域分别维护权限目录、角色注册表和 Ability 构建器。角色授予的每项权限都
 必须存在于对应作用域的 `permissions` 数组中，否则应用会启动失败。AuthModule 会先
-解析角色权限与实体直接权限，构建器的第二个参数只接收去重后的最终权限列表。
+解析角色权限与实体直接权限。用户构建器依次接收去重后的权限列表和当前用户；工作区
+构建器依次接收去重后的成员权限列表和当前工作区。WorkspaceMember 会参与权限解析，
+但不会传入构建器。AuthModule 会将已经绑定对应 Ability 类的 `AbilityBuilder` 作为
+回调的第一个参数传入。
 
 ## 管理角色
 
@@ -215,6 +215,16 @@ getUserAbility();
 
 can("read", post); // workspaceCan(...)
 can("read", user, { scope: "user" }); // userCan(...)
+```
+
+两个 Ability 类本身也是请求上下文 token：
+
+```typescript
+import { UserAbility, WorkspaceAbility } from "@nest-boot/auth";
+import { RequestContext } from "@nest-boot/request-context";
+
+const userAbility = RequestContext.get(UserAbility);
+const workspaceAbility = RequestContext.get(WorkspaceAbility);
 ```
 
 请求生命周期没有准备对应 Ability 时，`userCan()` 与 `workspaceCan()` 会按默认拒绝
