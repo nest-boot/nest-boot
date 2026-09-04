@@ -166,6 +166,51 @@ describe("RequestContext", () => {
       );
     });
 
+    it.each([
+      [
+        "string",
+        "provider-alias",
+        "provider",
+        '"provider" -> "provider-alias" -> "provider"',
+      ],
+      [
+        "symbol",
+        Symbol("provider-alias"),
+        Symbol("provider"),
+        "Symbol(provider) -> Symbol(provider-alias) -> Symbol(provider)",
+      ],
+    ])(
+      "formats %s tokens in alias cycle errors",
+      (_kind, aliasToken, targetToken, cycle) => {
+        const context = new RequestContext({ type: "test" });
+
+        context.alias(aliasToken, targetToken);
+
+        expect(() => {
+          context.alias(targetToken, aliasToken);
+        }).toThrow(`Circular request context alias detected: ${cycle}`);
+      },
+    );
+
+    it("restores an existing alias after rejecting its replacement", () => {
+      const context = new RequestContext({ type: "test" });
+      const provider = new ApplicationProvider();
+
+      context.alias(BaseProvider, ApplicationProvider);
+      context.alias(AlternativeProvider, BaseProvider);
+
+      expect(() => {
+        context.alias(BaseProvider, AlternativeProvider);
+      }).toThrow(
+        "Circular request context alias detected: BaseProvider -> AlternativeProvider -> BaseProvider",
+      );
+
+      context.set(ApplicationProvider, provider);
+
+      expect(context.get(BaseProvider)).toBe(provider);
+      expect(context.get(AlternativeProvider)).toBe(provider);
+    });
+
     it("redirects writes through an alias", () => {
       const context = new RequestContext({ type: "test" });
       const provider = new ApplicationProvider();
