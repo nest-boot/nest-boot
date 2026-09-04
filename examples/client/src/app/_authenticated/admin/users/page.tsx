@@ -8,7 +8,7 @@ import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
-import { useCurrentUserContext } from "../../contexts/current-user-context";
+import { useCurrentUserAbility } from "../../contexts/current-user-context";
 import { Badge } from "@/components/thread-ui/badge";
 import { Button } from "@/components/thread-ui/button";
 import { DataTable } from "@/components/thread-ui/data-table";
@@ -79,7 +79,7 @@ export const Route = createFileRoute("/_authenticated/admin/users/")({
 function AdminUsersPage() {
   const search = Route.useSearch();
   const navigate = useNavigate();
-  const currentUser = useCurrentUserContext();
+  const currentUserAbility = useCurrentUserAbility();
   const [searchInput, setSearchInput] = useState(search.search ?? "");
   const [createOpen, setCreateOpen] = useState(false);
   const [name, setName] = useState("");
@@ -101,7 +101,7 @@ function AdminUsersPage() {
   );
   const users = data?.users.users ?? [];
   const total = data?.users.total ?? 0;
-  const canCreate = currentUser.permissions.includes("user:create");
+  const canCreate = currentUserAbility.can("create", "User");
 
   const handleCreate = async () => {
     try {

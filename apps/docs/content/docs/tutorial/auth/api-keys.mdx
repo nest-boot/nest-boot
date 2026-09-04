@@ -50,6 +50,13 @@ permissions; a user key accepts the union of the configured user and workspace
 catalogs. Malformed, duplicate, and unknown values are rejected. PostgreSQL
 persists the values in `text[]` columns.
 
+Creation and update also enforce a permission ceiling. User-scoped permissions
+on a User Key cannot exceed the owning user's current role and direct
+permissions. A Workspace Key cannot exceed the issuing member's current role
+and direct permissions. Workspace permissions on a User Key are checked again
+against the selected member at request time, so one key can be used across
+workspaces without freezing or copying membership privileges.
+
 ## Transport
 
 Send API keys with the Bearer scheme:

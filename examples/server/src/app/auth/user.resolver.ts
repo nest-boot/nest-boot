@@ -1,8 +1,24 @@
-import { UserCan, UserService } from '@nest-boot/auth';
-import { Args, ID, Mutation, Query, Resolver } from '@nest-boot/graphql';
+import {
+  type BaseSession,
+  CurrentSession,
+  CurrentUser,
+  SessionService,
+  UserCan,
+  UserService,
+} from '@nest-boot/auth';
+import {
+  Args,
+  Context,
+  ID,
+  Mutation,
+  Query,
+  Resolver,
+} from '@nest-boot/graphql';
 import { NotFoundException } from '@nestjs/common';
+import type { Response } from 'express';
 
 import { User } from '../user/user.entity.js';
+import { applyAuthResponseHeaders } from './auth-response-headers.util.js';
 import { Account } from './entities/account.entity.js';
 import { Session } from './entities/session.entity.js';
 import {
@@ -24,6 +40,7 @@ export class UserResolver {
   /** Creates the user-management GraphQL resolver. */
   constructor(
     private readonly userService: UserService<User, Account, Session>,
+    private readonly sessionService: SessionService,
   ) {}
 
   /** Lists configured user-administration roles. */
@@ -142,6 +159,9 @@ export class UserResolver {
       expiresAt: session.expiresAt,
       ipAddress: session.ipAddress ?? null,
       userAgent: session.userAgent ?? null,
+      impersonatedById: session.impersonatedBy
+        ? String(session.impersonatedBy.id)
+        : null,
       createdAt: session.createdAt,
       updatedAt: session.updatedAt,
     }));
@@ -189,6 +209,40 @@ export class UserResolver {
   @Mutation(() => User)
   async deleteUser(@Args('id', { type: () => ID }) id: string) {
     return await this.userService.removeUser(await this.getUserOrFail(id));
+  }
+
+  /** Starts a browser session that acts as another user. */
+  @Mutation(() => User)
+  async impersonateUser(
+    @Args('id', { type: () => ID }) id: string,
+    @CurrentUser() administrator: User,
+    @Context('res') response: Response,
+  ): Promise<User> {
+    const result = await this.userService.impersonateUser(
+      administrator,
+      await this.getUserOrFail(id),
+    );
+    applyAuthResponseHeaders(
+      response,
+      await this.sessionService.createSessionHeaders(result.session.token),
+    );
+    return result.user;
+  }
+
+  /** Restores the administrator session that started impersonation. */
+  @Mutation(() => User, { nullable: true })
+  async stopImpersonating(
+    @CurrentSession() currentSession: BaseSession,
+    @Context('res') response: Response,
+  ): Promise<User | null> {
+    const result = await this.userService.stopImpersonating(currentSession);
+    if (!result) return null;
+
+    applyAuthResponseHeaders(
+      response,
+      await this.sessionService.createSessionHeaders(result.session.token),
+    );
+    return result.user;
   }
 
   private async getUserOrFail(id: string): Promise<User> {

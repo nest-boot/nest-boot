@@ -12,10 +12,11 @@ test.describe("email authentication", () => {
   }) => {
     const email = `${uniqueSeed("auth")}@example.com`;
 
-    await page.goto("/auth/login");
+    await page.goto("/auth/register");
     await expect(page.getByTestId("auth-view")).toBeVisible();
-
-    await page.getByTestId("auth-tab-register").click();
+    await expect(page.getByTestId("auth-tab-register")).toHaveAttribute(
+      "data-active",
+    );
     await page.getByTestId("auth-name-input").fill("Playwright User");
     await page.getByTestId("auth-email-input").fill(email);
     await page.getByTestId("auth-password-input").fill(testPassword);
@@ -46,8 +47,7 @@ test.describe("email authentication", () => {
     const resetPassword = "reset-correct-horse-battery-staple";
     const changedPassword = "changed-correct-horse-battery-staple";
 
-    await page.goto("/auth/login");
-    await page.getByTestId("auth-tab-register").click();
+    await page.goto("/auth/register");
     await page.getByTestId("auth-name-input").fill("Password Flow User");
     await page.getByTestId("auth-email-input").fill(email);
     await page.getByTestId("auth-password-input").fill(testPassword);
@@ -90,6 +90,9 @@ test.describe("email authentication", () => {
 
     await page.goto("/user/security");
     await expect(page.getByTestId("user-security-page")).toBeVisible();
+    await expect(
+      page.getByTestId("user-link-social-account-github"),
+    ).toBeVisible();
     await page.getByTestId("user-current-password").fill(resetPassword);
     await page.getByTestId("user-new-password").fill(changedPassword);
     await page.getByTestId("user-confirm-password").fill(changedPassword);
@@ -123,5 +126,60 @@ test.describe("email authentication", () => {
       "验证失败",
     );
     await expect(page.getByTestId("verify-email-sign-in")).toHaveCount(0);
+  });
+
+  test("keeps login and registration on canonical routes", async ({ page }) => {
+    await page.goto("/auth/login?redirect=%2Fuser%2Fsecurity");
+    await expect(page.getByTestId("auth-social-submit-github")).toBeVisible();
+    await page.getByTestId("auth-tab-register").click();
+    await expect(page).toHaveURL(
+      /\/auth\/register\?redirect=%2Fuser%2Fsecurity$/,
+    );
+
+    await page.getByTestId("auth-tab-login").click();
+    await expect(page).toHaveURL(/\/auth\/login\?redirect=%2Fuser%2Fsecurity$/);
+  });
+
+  test("starts configured social login through GraphQL", async ({ page }) => {
+    await page.route("**/api/graphql", async (route) => {
+      const request = route.request();
+      const body = request.postDataJSON() as {
+        operationName?: string;
+        variables?: {
+          input?: {
+            callbackURL?: string;
+            errorCallbackURL?: string;
+            provider?: string;
+          };
+        };
+      };
+
+      if (body.operationName !== "authSignInSocialFromLoginForm") {
+        await route.continue();
+        return;
+      }
+
+      expect(body.variables?.input).toMatchObject({
+        callbackURL: "http://127.0.0.1:3100/user/security",
+        errorCallbackURL:
+          "http://127.0.0.1:3100/auth/login?redirect=%2Fuser%2Fsecurity",
+        provider: "github",
+      });
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          data: {
+            authSignInSocial: {
+              redirect: true,
+              url: "http://127.0.0.1:3100/auth/forgot-password",
+            },
+          },
+        }),
+      });
+    });
+
+    await page.goto("/auth/login?redirect=%2Fuser%2Fsecurity");
+    await page.getByTestId("auth-social-submit-github").click();
+    await expect(page).toHaveURL(/\/auth\/forgot-password$/);
   });
 });

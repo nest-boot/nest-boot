@@ -88,6 +88,8 @@
     },
     "accounts": {
       "description": "查看与账户关联的密码及第三方身份。",
+      "link": "关联 {{provider}}",
+      "link_failed": "无法开始账户关联",
       "loading": "正在加载关联账户…",
       "refresh": "刷新令牌",
       "refresh_failed": "无法刷新第三方令牌",

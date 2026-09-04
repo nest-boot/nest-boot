@@ -61,34 +61,42 @@ export function WorkspaceSwitcher() {
 
   const currentWorkspace = useCurrentWorkspaceContext();
   const [loadingMore, setLoadingMore] = useState(false);
+  const [additionalWorkspaces, setAdditionalWorkspaces] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
+  const [additionalPageInfo, setAdditionalPageInfo] = useState<{
+    endCursor?: string | null;
+    hasNextPage: boolean;
+  }>();
 
   const { data, fetchMore } = useQuery(GET_WORKSPACES_FROM_WORKSPACE_SWITCHER, {
     variables: { first: 10 },
   });
 
-  const workspaces = useMemo(
-    () => (data?.workspaces?.edges || []).map(({ node }) => node),
-    [data],
-  );
+  const workspaces = useMemo(() => {
+    const byId = new Map(
+      [
+        ...(data?.workspaces.edges.map(({ node }) => node) ?? []),
+        ...additionalWorkspaces,
+      ].map((workspace) => [workspace.id, workspace]),
+    );
+    return [...byId.values()];
+  }, [additionalWorkspaces, data]);
   const handleLoadMore = async () => {
-    const endCursor = data?.workspaces.pageInfo.endCursor;
+    const endCursor =
+      additionalPageInfo?.endCursor ?? data?.workspaces.pageInfo.endCursor;
     if (!endCursor) return;
 
     setLoadingMore(true);
     try {
-      await fetchMore({
+      const result = await fetchMore({
         variables: { after: endCursor, first: 10 },
-        updateQuery: (previous, { fetchMoreResult }) => ({
-          ...fetchMoreResult,
-          workspaces: {
-            ...fetchMoreResult.workspaces,
-            edges: [
-              ...previous.workspaces.edges,
-              ...fetchMoreResult.workspaces.edges,
-            ],
-          },
-        }),
       });
+      setAdditionalWorkspaces((current) => [
+        ...current,
+        ...result.data.workspaces.edges.map(({ node }) => node),
+      ]);
+      setAdditionalPageInfo(result.data.workspaces.pageInfo);
     } finally {
       setLoadingMore(false);
     }
@@ -103,6 +111,7 @@ export function WorkspaceSwitcher() {
               <SidebarMenuButton
                 size="lg"
                 className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                data-testid="workspace-switcher-trigger"
               >
                 <Avatar>
                   <AvatarFallback>
@@ -138,6 +147,7 @@ export function WorkspaceSwitcher() {
                       key={workspace.id}
                       to="/workspaces/$workspaceId"
                       params={{ workspaceId: workspace.id }}
+                      data-testid={`workspace-switcher-workspace-${workspace.id}`}
                     >
                       {workspace.name}
 
@@ -149,14 +159,14 @@ export function WorkspaceSwitcher() {
                 />
               ))}
 
-              {data?.workspaces.pageInfo.hasNextPage ? (
+              {(additionalPageInfo?.hasNextPage ??
+              data?.workspaces.pageInfo.hasNextPage) ? (
                 <DropdownMenuItem
                   className="gap-2 p-2"
                   disabled={loadingMore}
-                  onSelect={(event) => {
-                    event.preventDefault();
-                    void handleLoadMore();
-                  }}
+                  data-testid="workspace-switcher-load-more"
+                  closeOnClick={false}
+                  onClick={() => void handleLoadMore()}
                 >
                   {loadingMore ? <Loader2 className="animate-spin" /> : null}
                   {t("sidebar:switcher.loadMore")}
@@ -165,7 +175,10 @@ export function WorkspaceSwitcher() {
 
               <DropdownMenuSeparator />
 
-              <Link to="/user/workspaces">
+              <Link
+                to="/user/workspaces"
+                data-testid="workspace-switcher-manage"
+              >
                 <DropdownMenuItem className="gap-2 p-2">
                   <div className="text-muted-foreground font-medium">
                     {t("sidebar:switcher.manageWorkspaces")}
@@ -173,7 +186,10 @@ export function WorkspaceSwitcher() {
                 </DropdownMenuItem>
               </Link>
 
-              <Link to="/workspaces/create">
+              <Link
+                to="/workspaces/create"
+                data-testid="workspace-switcher-create"
+              >
                 <DropdownMenuItem className="gap-2 p-2">
                   <div className="text-muted-foreground font-medium">
                     {t("sidebar:switcher.createWorkspace")}

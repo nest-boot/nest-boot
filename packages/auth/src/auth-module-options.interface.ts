@@ -2,6 +2,7 @@ import type { EntityClass } from "@mikro-orm/core";
 import type { Type } from "@nestjs/common";
 import type { RouteInfo } from "@nestjs/common/interfaces/middleware/middleware-configuration.interface.js";
 import type { BetterAuthOptions } from "better-auth";
+import type { GenericOAuthConfig } from "better-auth/plugins";
 
 import type {
   BaseAccount,
@@ -42,7 +43,6 @@ type SupportedBetterAuthOptions = Pick<
   | "secondaryStorage"
   | "secret"
   | "session"
-  | "socialProviders"
   | "telemetry"
   | "trustedOrigins"
   | "verification"
@@ -185,6 +185,33 @@ export interface AuthModuleMiddlewareOptions {
   excludeRoutes?: (string | RouteInfo)[];
 }
 
+/** Better Auth's built-in social-provider configuration map. */
+export type AuthModuleSocialProviders = NonNullable<
+  BetterAuthOptions["socialProviders"]
+>;
+
+/** One built-in social provider registered through AuthModule. */
+export type AuthModuleSocialProvider = {
+  [ProviderId in keyof AuthModuleSocialProviders]-?: Exclude<
+    NonNullable<AuthModuleSocialProviders[ProviderId]>,
+    (...args: never[]) => unknown
+  > & {
+    /** Built-in provider identifier. */
+    id: ProviderId;
+  };
+}[keyof AuthModuleSocialProviders];
+
+/** One custom OAuth 2.0 or OpenID Connect provider. */
+export type AuthModuleOAuthProvider = Omit<GenericOAuthConfig, "providerId"> & {
+  /** Custom provider identifier. */
+  id: string;
+};
+
+/** Authentication provider accepted by {@link AuthModuleOptions.providers}. */
+export type AuthModuleProvider =
+  | AuthModuleSocialProvider
+  | AuthModuleOAuthProvider;
+
 /** Configuration options for the AuthModule. */
 export interface AuthModuleOptions<
   UserPermission extends string = string,
@@ -206,6 +233,9 @@ export interface AuthModuleOptions<
 
   /** Workspace lifecycle and invitation-delivery options. */
   workspace?: AuthModuleWorkspaceOptions<WorkspacePermission, Workspace>;
+
+  /** Built-in social and custom OAuth providers, identified by `id`. */
+  providers?: readonly AuthModuleProvider[];
 
   /** Entity classes used for authentication and workspace access. */
   entities: {

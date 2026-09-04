@@ -230,3 +230,17 @@ const workspaceAbility = RequestContext.get(WorkspaceAbility);
 请求生命周期没有准备对应 Ability 时，`userCan()` 与 `workspaceCan()` 会按默认拒绝
 返回 `false`；更底层的 `getUserAbility()` 与 `getWorkspaceAbility()` 则会抛出
 `ForbiddenException`。
+
+## 客户端 Ability Rules
+
+传输层需要把已经构建的 Ability 发送给浏览器或其他进程时，可以使用
+`serializeAbilityRules()`。它会把类 subject 转换为稳定的类名，同时保留 action、字段、
+条件、反向规则与原因。返回值可安全 JSON 化，客户端可以通过 CASL 的
+`createMongoAbility()` 还原。
+
+```typescript
+const rules = serializeAbilityRules(getWorkspaceAbility());
+```
+
+客户端 rules 只用于界面能力展示。每次请求仍必须以服务端 Guard 与 Service 权限检查
+为最终授权边界。

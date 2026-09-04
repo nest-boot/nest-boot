@@ -3,6 +3,8 @@ import { BadRequestException } from "@nestjs/common";
 import {
   assertAuthRolesExist,
   normalizeAuthPermissions,
+  normalizeAuthRoles,
+  resolveAuthPermissions,
 } from "./auth-role.util.js";
 
 describe("assertAuthRolesExist", () => {
@@ -20,6 +22,34 @@ describe("assertAuthRolesExist", () => {
     expect(() => {
       assertAuthRolesExist({ user: [] }, ["admin"], "user.adminRoles");
     }).toThrow('user.adminRoles references unknown role "admin"');
+  });
+
+  it.each(["constructor", "toString"])(
+    "rejects inherited lifecycle role %s",
+    (role) => {
+      expect(() => {
+        assertAuthRolesExist({ user: [] }, [role], "user.adminRoles");
+      }).toThrow(`user.adminRoles references unknown role "${role}"`);
+    },
+  );
+});
+
+describe("role assignment", () => {
+  it.each(["constructor", "toString"])(
+    "rejects inherited assigned role %s",
+    (role) => {
+      expect(() => normalizeAuthRoles([role], { user: [] })).toThrow(
+        `Unknown role: ${role}`,
+      );
+    },
+  );
+
+  it("ignores inherited role names when resolving persisted assignments", () => {
+    expect(
+      resolveAuthPermissions(["toString", "user"], ["profile:update"], {
+        user: ["profile:read"],
+      }),
+    ).toEqual(["profile:read", "profile:update"]);
   });
 });
 

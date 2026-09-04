@@ -6,8 +6,8 @@ description: "配置 AuthModule、环境变量与 MikroORM 实体。"
 ## 模块选项
 
 通过 `forRoot()` 或 `forRootAsync()` 注册 `AuthModule`。模块仅开放经过明确允许的
-Better Auth 选项，避免上游升级无意中扩大 Nest Boot 的公开 API。
-`AuthModuleOptions` 不允许注入 Better Auth 插件。
+Better Auth 选项，避免上游升级无意中扩大 Nest Boot 的公开 API。Better Auth 插件仍由
+模块内部管理；内置社交登录与自定义 OAuth 统一使用扁平的 `providers` 选项。
 
 主要选项包括：
 
@@ -24,7 +24,8 @@ Better Auth 选项，避免上游升级无意中扩大 Nest Boot 的公开 API�
 - **`onAuthenticated`** — 会话解析后补充应用上下文；
 - **`middleware`** — 控制认证中间件的注册和路由范围；
 - **`basePath`** — 修改默认的 `/api/auth/` 认证端点路径；
-- **`trustedOrigins`** — 配置允许的浏览器来源。
+- **`trustedOrigins`** — 配置允许的浏览器来源；
+- **`providers`** — 配置内置社交、自定义 OAuth 2.0 与 OpenID Connect Provider。
 
 `user.permissions` 默认为标准 `user:*` 与 `session:*` 权限目录。
 `user.roles` 默认包含 `admin` 与 `user` 两个角色。`admin` 拥有完整默认权限目录，
@@ -92,10 +93,44 @@ client ID 与 client secret。
 | `AUTH_GITHUB_CLIENT_SECRET`   | GitHub OAuth 客户端密钥。            |
 | `AUTH_GITHUB_DISABLE_SIGN_UP` | 禁止新 GitHub 用户注册，但保留登录。 |
 
+### 认证 Provider
+
+每个 Provider 都是以 `id` 标识的扁平对象。Better Auth 能识别的 ID（例如 `github`）
+使用其内置社交 Provider 实现，其他 ID 使用 Generic OAuth。`providers` 中的 ID 与
+环境变量配置的 `oidc` Provider 之间必须保持唯一。
+
+```typescript
+AuthModule.forRoot({
+  // ...实体和其他选项
+  providers: [
+    {
+      id: "github",
+      clientId: process.env.GITHUB_CLIENT_ID!,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+    },
+    {
+      id: "company",
+      name: "企业 SSO",
+      clientId: process.env.COMPANY_OAUTH_CLIENT_ID!,
+      clientSecret: process.env.COMPANY_OAUTH_CLIENT_SECRET!,
+      discoveryUrl:
+        "https://accounts.example.com/.well-known/openid-configuration",
+      scopes: ["openid", "profile", "email"],
+    },
+  ],
+});
+```
+
+带 discovery 元数据的 Provider 可以使用 OpenID Connect。普通 OAuth Provider 可显式
+配置 `authorizationUrl`、`tokenUrl` 与 `userInfoUrl`。同时支持 `getToken`、
+`getUserInfo`、`mapProfileToUser` 等高级回调。Generic Provider 与内置社交 Provider
+共用 `AuthService.signInSocial()`、`AuthService.linkSocialAccount()` 和回调路由。
+`AUTH_DISABLE_SIGN_UP=true` 会覆盖所有 Provider 的注册设置。
+
 ### OIDC
 
-Generic OIDC 默认关闭。设置 `AUTH_OIDC_ENABLED=true` 后，`AuthModule` 会注册一个
-`providerId: "oidc"` 的内部 `genericOAuth` provider。
+对于单个常规 OIDC Provider，以下环境变量是 `providers` 配置项的简化方式。
+默认关闭；设置 `AUTH_OIDC_ENABLED=true` 后，其 ID 为 `oidc`。
 
 | 变量                        | 用途                                                                                                               | 默认值                 |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------- |

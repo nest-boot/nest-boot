@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { useApolloClient, useMutation } from "@apollo/client/react";
-import { Link, useSearch } from "@tanstack/react-router";
+import { useApolloClient, useMutation, useQuery } from "@apollo/client/react";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { LogIn, ShieldCheck, UserPlus } from "lucide-react";
 import { t } from "i18next";
 import { toast } from "sonner";
@@ -26,7 +26,6 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { authClient } from "@/lib/auth-client";
 import {
   createEmailVerificationCallbackUrl,
   createEmailVerificationPagePath,
@@ -54,6 +53,24 @@ const AUTH_SIGN_UP_FROM_LOGIN_FORM = graphql(`
   }
 `);
 
+const GET_SOCIAL_PROVIDERS_FROM_LOGIN_FORM = graphql(`
+  query getSocialProvidersFromLoginForm {
+    authSocialProviders {
+      id
+      name
+    }
+  }
+`);
+
+const AUTH_SIGN_IN_SOCIAL_FROM_LOGIN_FORM = graphql(`
+  mutation authSignInSocialFromLoginForm($input: AuthSignInSocialInput!) {
+    authSignInSocial(input: $input) {
+      redirect
+      url
+    }
+  }
+`);
+
 const INVITATION_ID_KEY = "workspace_invitation_id";
 
 type AuthMode = "login" | "register";
@@ -69,12 +86,21 @@ type AuthFormErrors = Partial<Record<keyof AuthFormValues | "form", string>>;
 
 export function LoginForm({
   className,
+  mode,
+  redirect,
   ...props
-}: Omit<ComponentProps<"div">, "ref">) {
+}: Omit<ComponentProps<"div">, "ref"> & {
+  mode: AuthMode;
+  redirect?: string;
+}) {
   const apolloClient = useApolloClient();
+  const navigate = useNavigate();
   const [signIn] = useMutation(AUTH_SIGN_IN_FROM_LOGIN_FORM);
   const [signUp] = useMutation(AUTH_SIGN_UP_FROM_LOGIN_FORM);
-  const [mode, setMode] = useState<AuthMode>("login");
+  const [signInSocial] = useMutation(AUTH_SIGN_IN_SOCIAL_FROM_LOGIN_FORM);
+  const { data: socialProviderData } = useQuery(
+    GET_SOCIAL_PROVIDERS_FROM_LOGIN_FORM,
+  );
   const [values, setValues] = useState<AuthFormValues>({
     email: "",
     name: "",
@@ -83,11 +109,8 @@ export function LoginForm({
   });
   const [errors, setErrors] = useState<AuthFormErrors>({});
   const [loading, setLoading] = useState(false);
-  const redirect = useSearch({
-    from: "/auth/login/",
-    select: (search) => search.redirect,
-  });
-
+  const [socialProviderId, setSocialProviderId] = useState<string>();
+  const socialProviders = socialProviderData?.authSocialProviders ?? [];
   const submitLabel = useMemo(
     () =>
       mode === "login"
@@ -96,21 +119,43 @@ export function LoginForm({
     [mode],
   );
 
-  const handleOidcLogin = () => {
-    // 检查是否有待处理邀请（在用户交互时访问，此时肯定在客户端）
-    const invitationId =
-      typeof window !== "undefined"
-        ? localStorage.getItem(INVITATION_ID_KEY)
-        : null;
+  const handleSocialLogin = async (provider: { id: string; name: string }) => {
+    setErrors((current) => ({ ...current, form: undefined }));
+    setSocialProviderId(provider.id);
 
-    // 如果有邀请，登录成功后跳转到接受邀请页面
-    // 使用 tanstack router 的方式构建 URL
-    const callbackURL = resolvePostAuthUrl(redirect, invitationId);
+    try {
+      const callbackURL = new URL(
+        resolvePostAuthUrl(redirect),
+        window.location.origin,
+      ).toString();
+      const errorCallbackURL = new URL(
+        mode === "register" ? "/auth/register" : "/auth/login",
+        window.location.origin,
+      );
+      if (redirect) errorCallbackURL.searchParams.set("redirect", redirect);
 
-    authClient.signIn.social({
-      provider: "oidc",
-      callbackURL,
-    });
+      const result = await signInSocial({
+        variables: {
+          input: {
+            callbackURL,
+            errorCallbackURL: errorCallbackURL.toString(),
+            newUserCallbackURL: callbackURL,
+            provider: provider.id,
+            requestSignUp: mode === "register" ? true : undefined,
+          },
+        },
+      });
+      const url = result.data?.authSignInSocial.url;
+      if (!url) throw new Error(t("auth:form.authFailed"));
+
+      window.location.assign(url);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : t("auth:form.authFailed");
+      setErrors((current) => ({ ...current, form: message }));
+      toast.error(message);
+      setSocialProviderId(undefined);
+    }
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -230,10 +275,12 @@ export function LoginForm({
         <CardContent>
           <Tabs
             value={mode}
-            onValueChange={(value) => {
-              setMode(value as AuthMode);
-              setErrors({});
-            }}
+            onValueChange={(value) =>
+              navigate({
+                to: value === "register" ? "/auth/register" : "/auth/login",
+                search: redirect ? { redirect } : {},
+              })
+            }
             className="w-full"
           >
             <TabsList className="grid w-full grid-cols-2">
@@ -333,22 +380,32 @@ export function LoginForm({
                   {submitLabel}
                 </Button>
 
-                <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card">
-                  {t("auth:form.or")}
-                </FieldSeparator>
+                {socialProviders.length > 0 && (
+                  <>
+                    <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card">
+                      {t("auth:form.or")}
+                    </FieldSeparator>
 
-                <Field>
-                  <Button
-                    className="w-full"
-                    variant="outline"
-                    type="button"
-                    onClick={handleOidcLogin}
-                    disabled={loading}
-                  >
-                    <ShieldCheck />
-                    {t("auth:loginWithOIDC")}
-                  </Button>
-                </Field>
+                    {socialProviders.map((provider) => (
+                      <Field key={provider.id}>
+                        <Button
+                          className="w-full"
+                          variant="outline"
+                          type="button"
+                          onClick={() => handleSocialLogin(provider)}
+                          disabled={loading || socialProviderId !== undefined}
+                          loading={socialProviderId === provider.id}
+                          data-testid={`auth-social-submit-${provider.id}`}
+                        >
+                          <ShieldCheck />
+                          {t("auth:continueWithProvider", {
+                            provider: provider.name,
+                          })}
+                        </Button>
+                      </Field>
+                    ))}
+                  </>
+                )}
               </FieldGroup>
             </form>
           </Tabs>

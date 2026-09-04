@@ -73,6 +73,15 @@ enum ApiKeyOrderField {
   LAST_USED_AT
 }
 
+type AuthAbilityRuleType {
+  actions: [String!]!
+  conditions: JSONObject
+  fields: [String!]
+  inverted: Boolean!
+  reason: String
+  subjects: [String!]!
+}
+
 type AuthAccessTokenType {
   accessToken: String!
   accessTokenExpiresAt: DateTime
@@ -135,6 +144,19 @@ type AuthDeleteUserResultType {
   success: Boolean!
 }
 
+input AuthLinkSocialAccountInput {
+  callbackURL: String
+  errorCallbackURL: String
+  loginHint: String
+  provider: String!
+  scopes: [String!]
+}
+
+type AuthLinkSocialAccountResultType {
+  redirect: Boolean!
+  url: String!
+}
+
 type AuthRefreshedTokenType {
   accessToken: String
   accessTokenExpiresAt: DateTime
@@ -176,6 +198,7 @@ type AuthSessionType {
   current: Boolean!
   expiresAt: DateTime!
   id: ID!
+  impersonatedById: ID
   ipAddress: String
   token: String!
   updatedAt: DateTime!
@@ -196,6 +219,23 @@ type AuthSignInResultType {
   user: AuthUserType!
 }
 
+input AuthSignInSocialInput {
+  callbackURL: String
+  errorCallbackURL: String
+  loginHint: String
+  newUserCallbackURL: String
+  provider: String!
+  requestSignUp: Boolean
+  scopes: [String!]
+}
+
+type AuthSignInSocialResultType {
+  redirect: Boolean!
+  token: String
+  url: String
+  user: AuthUserType
+}
+
 input AuthSignUpInput {
   callbackURL: String
   email: String!
@@ -208,6 +248,11 @@ input AuthSignUpInput {
 type AuthSignUpResultType {
   token: String
   user: AuthUserType!
+}
+
+type AuthSocialProviderType {
+  id: ID!
+  name: String!
 }
 
 input AuthUpdateUserInput {
@@ -262,6 +307,7 @@ input CreateWorkspaceInput {
 
 input CreateWorkspaceInvitationInput {
   email: String!
+  expiresIn: Int
   roles: [String!]!
 }
 
@@ -287,6 +333,7 @@ type Mutation {
   authChangeEmail(input: AuthChangeEmailInput!): Boolean!
   authChangePassword(input: AuthChangePasswordInput!): AuthChangePasswordResultType!
   authDeleteUser(input: AuthDeleteUserInput): AuthDeleteUserResultType!
+  authLinkSocialAccount(input: AuthLinkSocialAccountInput!): AuthLinkSocialAccountResultType!
   authRefreshToken(input: AuthAccountSelectorInput!): AuthRefreshedTokenType!
   authRequestPasswordReset(input: AuthRequestPasswordResetInput!): AuthRequestPasswordResetResultType!
   authResetPassword(input: AuthResetPasswordInput!): Boolean!
@@ -296,6 +343,7 @@ type Mutation {
   authSendVerificationEmail(input: AuthSendVerificationEmailInput!): Boolean!
   authSetPassword(newPassword: String!): Boolean!
   authSignIn(input: AuthSignInInput!): AuthSignInResultType!
+  authSignInSocial(input: AuthSignInSocialInput!): AuthSignInSocialResultType!
   authSignOut: Boolean!
   authSignUp(input: AuthSignUpInput!): AuthSignUpResultType!
   authUnlinkAccount(accountId: ID!): Boolean!
@@ -312,6 +360,7 @@ type Mutation {
   deleteUser(id: ID!): User!
   deleteUserApiKey(id: ID!): ApiKey!
   deleteWorkspace: Workspace!
+  impersonateUser(id: ID!): User!
   leaveWorkspace: WorkspaceMember!
   rejectWorkspaceInvitation(invitationId: ID!): WorkspaceInvitation!
   removeWorkspace: Workspace! @deprecated(reason: "Use deleteWorkspace instead")
@@ -322,6 +371,7 @@ type Mutation {
   setUserPermissions(id: ID!, input: SetUserPermissionsInput!): User!
   setUserRoles(id: ID!, input: SetUserRolesInput!): User!
   setWorkspaceMemberPermissions(id: ID!, input: SetWorkspaceMemberPermissionsInput!): WorkspaceMember!
+  stopImpersonating: User
   transferWorkspaceOwnership(memberId: ID!): WorkspaceMember!
   unbanUser(id: ID!): User!
   updateApiKey(id: ID!, input: UpdateApiKeyInput!): ApiKey!
@@ -383,9 +433,13 @@ type Query {
   authAccountInfo(input: AuthAccountSelectorInput!): AuthAccountInfoType!
   authAccounts: [AuthAccountType!]!
   authSessions: [AuthSessionType!]!
+  authSocialProviders: [AuthSocialProviderType!]!
+  currentAuthSession: AuthSessionType
   currentUser: User!
+  currentUserAbilityRules: [AuthAbilityRuleType!]!
   currentUserWorkspaceInvitations: [WorkspaceInvitation!]!
   currentWorkspace: Workspace
+  currentWorkspaceAbilityRules: [AuthAbilityRuleType!]!
   currentWorkspaceMember: WorkspaceMember
   user(id: ID!): User
   userApiKey(id: ID!): ApiKey

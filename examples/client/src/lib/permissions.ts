@@ -1,8 +1,3 @@
-import {
-  WORKSPACE_ADMIN_ROLE,
-  WORKSPACE_OWNER_ROLE,
-} from "@/lib/workspace-roles";
-
 const t = (key: string) => key;
 
 export const workspacePermissionValues = [
@@ -108,21 +103,3 @@ export const authPermissionOptions = [
   ...userPermissionOptions,
   ...workspacePermissionOptions,
 ] as const satisfies ReadonlyArray<PermissionOption<AuthPermission>>;
-
-/** Mirrors the example server's workspace role and direct-permission policy. */
-export function workspaceMemberCan(
-  member: {
-    permissions: ReadonlyArray<string>;
-    roles: ReadonlyArray<string>;
-  },
-  permission: WorkspacePermission,
-): boolean {
-  if (member.permissions.includes(permission)) return true;
-  if (member.roles.includes(WORKSPACE_OWNER_ROLE)) return true;
-
-  if (member.roles.includes(WORKSPACE_ADMIN_ROLE)) {
-    return permission !== "workspace:delete";
-  }
-
-  return false;
-}

@@ -115,6 +115,7 @@ describe("ApiKeyService", () => {
   it("creates, lists, updates, and deletes keys owned by the current user", async () => {
     const { em, service } = createService();
     const user = new TestUser();
+    user.permissions = ["user:get"];
     const created = await service.createUserKey(user, {
       name: "Personal automation",
       permissions: ["user:get", "workspace:update"],
@@ -141,8 +142,10 @@ describe("ApiKeyService", () => {
   it("allows user keys to combine configured user and workspace permissions", async () => {
     const { em, service } = createService();
     const permissions = ["user:get", "workspace:update"];
+    const user = new TestUser();
+    user.permissions = ["user:get"];
 
-    await service.createUserKey(new TestUser(), {
+    await service.createUserKey(user, {
       name: "Cross-scope automation",
       permissions,
     });
@@ -179,17 +182,25 @@ describe("ApiKeyService", () => {
 
   it("uses configured permission catalogs instead of the defaults", async () => {
     const { em, service } = createService({
-      user: { permissions: ["project:read"] },
-      workspace: { permissions: ["deployment:run"] },
+      user: {
+        permissions: ["project:read"],
+        roles: { user: [], admin: ["project:read"] },
+      },
+      workspace: {
+        permissions: ["deployment:run"],
+        roles: { member: [], owner: ["deployment:run"] },
+      },
     });
     const workspace = new TestWorkspace();
     const member = new TestWorkspaceMember();
+    const user = new TestUser();
+    user.permissions = ["project:read"];
 
     await service.createWorkspaceKey(workspace, member, {
       name: "Deployment key",
       permissions: ["deployment:run"],
     });
-    await service.createUserKey(new TestUser(), {
+    await service.createUserKey(user, {
       name: "Project deployment key",
       permissions: ["project:read", "deployment:run"],
     });
@@ -203,6 +214,60 @@ describe("ApiKeyService", () => {
     );
 
     expect(em.create).toHaveBeenCalledTimes(2);
+  });
+
+  it("prevents user keys from exceeding the owner's user permissions", async () => {
+    const { em, service } = createService();
+    const user = new TestUser();
+
+    await expect(
+      service.createUserKey(user, {
+        name: "Workspace automation",
+        permissions: ["workspace:update"],
+      }),
+    ).resolves.toBeDefined();
+    await expect(
+      service.createUserKey(user, {
+        name: "Escalated user key",
+        permissions: ["user:get"],
+      }),
+    ).rejects.toThrow(
+      "User API key permissions exceed owner permissions: user:get",
+    );
+
+    user.roles = ["admin"];
+    await expect(
+      service.createUserKey(user, {
+        name: "Administrator key",
+        permissions: ["user:get"],
+      }),
+    ).resolves.toBeDefined();
+    expect(em.create).toHaveBeenCalledTimes(2);
+  });
+
+  it("prevents workspace keys from exceeding the issuing member's permissions", async () => {
+    const { em, service } = createService();
+    const workspace = new TestWorkspace();
+    const member = new TestWorkspaceMember();
+    member.roles = ["admin"];
+
+    await expect(
+      service.createWorkspaceKey(workspace, member, {
+        name: "Escalated workspace key",
+        permissions: ["workspace:delete"],
+      }),
+    ).rejects.toThrow(
+      "Workspace API key permissions exceed issuer permissions: workspace:delete",
+    );
+
+    member.permissions = ["workspace:delete"];
+    await expect(
+      service.createWorkspaceKey(workspace, member, {
+        name: "Direct permission key",
+        permissions: ["workspace:delete"],
+      }),
+    ).resolves.toBeDefined();
+    expect(em.create).toHaveBeenCalledOnce();
   });
 
   it("validates updated API-key permissions according to the owner type", async () => {
@@ -229,6 +294,38 @@ describe("ApiKeyService", () => {
       }),
     ).resolves.toBe(userKey);
     expect(userKey.permissions).toEqual(["workspace:update"]);
+  });
+
+  it("enforces owner permission ceilings when API-key permissions are updated", async () => {
+    const { em, service } = createService();
+    const member = new TestWorkspaceMember();
+    member.roles = ["admin"];
+    const workspaceKey = new TestApiKey();
+    em.findOne.mockResolvedValue(workspaceKey);
+
+    await expect(
+      service.updateWorkspaceKey(workspaceKey.id, member, {
+        permissions: ["workspace:delete"],
+      }),
+    ).rejects.toThrow(
+      "Workspace API key permissions exceed issuer permissions: workspace:delete",
+    );
+    expect(workspaceKey.permissions).toEqual([]);
+
+    const user = new TestUser();
+    const userKey = Object.assign(new TestApiKey(), {
+      owner: user as BaseApiKey["owner"],
+    });
+    em.findOne.mockResolvedValue(userKey);
+    await expect(
+      service.updateUserKey(userKey.id, user, {
+        permissions: ["user:get"],
+      }),
+    ).rejects.toThrow(
+      "User API key permissions exceed owner permissions: user:get",
+    );
+    expect(userKey.permissions).toEqual([]);
+    expect(em.flush).not.toHaveBeenCalled();
   });
 
   it("does not let one user manage another user's key", async () => {

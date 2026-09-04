@@ -1,5 +1,13 @@
-import { Field, InputType } from '@nest-boot/graphql';
-import { ArrayNotEmpty, IsArray, IsEmail, IsString } from 'class-validator';
+import { Field, InputType, Int } from '@nest-boot/graphql';
+import {
+  ArrayNotEmpty,
+  IsArray,
+  IsEmail,
+  IsInt,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
 
 /** 创建工作区邀请的输入参数。 */
 @InputType()
@@ -15,4 +23,11 @@ export class CreateWorkspaceInvitationInput {
   @IsEmail()
   @Field(() => String)
   email!: string;
+
+  /** 邀请有效期，单位为秒；默认 48 小时。 */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Field(() => Int, { nullable: true })
+  expiresIn?: number;
 }

@@ -51,11 +51,13 @@ import {
 } from "./utils/auth-role.util.js";
 import { createEmailAndPasswordConfig } from "./utils/create-email-and-password-config.js";
 import { createEmailVerificationConfig } from "./utils/create-email-verification-config.js";
+import { createGenericOAuthConfig } from "./utils/create-generic-oauth-config.js";
 import { createOidcConfig } from "./utils/create-oidc-config.js";
 import { createSocialProvidersConfig } from "./utils/create-social-providers-config.js";
 import { createUserConfig } from "./utils/create-user-config.js";
 import { isEnvTrue } from "./utils/is-env-true.js";
 import { resolveSecret } from "./utils/resolve-secret.js";
+import { splitAuthProviders } from "./utils/split-auth-providers.js";
 import {
   DEFAULT_WORKSPACE_CREATOR_ROLE,
   DEFAULT_WORKSPACE_PERMISSIONS,
@@ -135,7 +137,13 @@ import { WorkspaceService } from "./workspace.service.js";
 
         const secret = resolveSecret(options);
         const disableSignUp = isEnvTrue("AUTH_DISABLE_SIGN_UP");
+        const providers = splitAuthProviders(options.providers);
         const oidcConfig = createOidcConfig(disableSignUp);
+        const genericOAuthConfig = createGenericOAuthConfig(
+          disableSignUp,
+          providers.genericOAuthProviders,
+          oidcConfig,
+        );
         const emailAndPasswordConfig = createEmailAndPasswordConfig(
           disableSignUp,
           mailer,
@@ -148,7 +156,7 @@ import { WorkspaceService } from "./workspace.service.js";
         );
         const socialProvidersConfig = createSocialProvidersConfig(
           disableSignUp,
-          options.socialProviders,
+          providers.socialProviders,
         );
         const userConfig = createUserConfig(mailer, options.user);
 
@@ -168,10 +176,10 @@ import { WorkspaceService } from "./workspace.service.js";
             ? { socialProviders: socialProvidersConfig }
             : {}),
           plugins: [
-            ...(oidcConfig
+            ...(genericOAuthConfig.length > 0
               ? [
                   genericOAuth({
-                    config: [oidcConfig],
+                    config: genericOAuthConfig,
                   }),
                 ]
               : []),

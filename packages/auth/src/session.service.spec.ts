@@ -34,6 +34,33 @@ function createApi() {
   };
 }
 
+const authContext = {
+  authCookies: {
+    accountData: {
+      name: "better-auth.account_data",
+      attributes: { httpOnly: true, path: "/", sameSite: "lax" as const },
+    },
+    dontRememberToken: {
+      name: "better-auth.dont_remember",
+      attributes: { httpOnly: true, path: "/", sameSite: "lax" as const },
+    },
+    sessionData: {
+      name: "better-auth.session_data",
+      attributes: { httpOnly: true, path: "/", sameSite: "lax" as const },
+    },
+    sessionToken: {
+      name: "better-auth.session_token",
+      attributes: {
+        httpOnly: true,
+        maxAge: 604800,
+        path: "/",
+        sameSite: "lax" as const,
+      },
+    },
+  },
+  secret: "R4vWrEDXeeor7VzGzQsdbQobOFtv2nRrlhOVTGpOteA",
+};
+
 async function createService(
   api = createApi(),
   em: { find: ReturnType<typeof vi.fn>; findOne: ReturnType<typeof vi.fn> } = {
@@ -52,7 +79,7 @@ async function createService(
       SessionService,
       {
         provide: AUTH_TOKEN,
-        useValue: { api },
+        useValue: { $context: Promise.resolve(authContext), api },
       },
       {
         provide: EntityManager,
@@ -116,6 +143,24 @@ describe("SessionService", () => {
 
     await expect(service.getSession()).resolves.toBeNull();
     expect(em.findOne).not.toHaveBeenCalled();
+  });
+
+  it("creates a session-scoped signed cookie and expires cached auth data", async () => {
+    const { service } = await createService();
+
+    const responseHeaders = await service.createSessionHeaders("session-token");
+    const cookies = responseHeaders.getSetCookie();
+
+    expect(cookies).toHaveLength(4);
+    expect(cookies[0]).toMatch(
+      /^better-auth\.session_token=session-token\.[^;]+; Path=\/; HttpOnly; SameSite=Lax$/,
+    );
+    expect(cookies[0]).not.toContain("Max-Age");
+    expect(cookies[1]).toMatch(
+      /^better-auth\.dont_remember=true\.[^;]+; Path=\/; HttpOnly; SameSite=Lax$/,
+    );
+    expect(cookies[2]).toContain("better-auth.session_data=; Max-Age=0");
+    expect(cookies[3]).toContain("better-auth.account_data=; Max-Age=0");
   });
 
   it("tries the cookie session before an Authorization credential", async () => {

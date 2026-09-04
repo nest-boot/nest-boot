@@ -33,6 +33,7 @@ import type { AuthModuleRoles } from "./types/auth-module-roles.type.js";
 import type { CanSubjectFactory } from "./types/can-subject-factory.type.js";
 import type { RouteArgumentMetadata } from "./types/route-argument-metadata.type.js";
 import { DEFAULT_USER_ROLE, DEFAULT_USER_ROLES } from "./user.constants.js";
+import { resolveAuthPermissions } from "./utils/auth-role.util.js";
 import {
   DEFAULT_WORKSPACE_ROLE,
   DEFAULT_WORKSPACE_ROLES,
@@ -283,14 +284,11 @@ export class AuthGuard implements CanActivate {
     const user = RequestContext.get(BaseUser);
     if (!user) return [];
 
-    return [
-      ...new Set([
-        ...(
-          user.roles ?? [this.options.user?.defaultRole ?? DEFAULT_USER_ROLE]
-        ).flatMap((role) => roles[role] ?? []),
-        ...(user.permissions ?? []),
-      ]),
-    ];
+    return resolveAuthPermissions(
+      user.roles ?? [this.options.user?.defaultRole ?? DEFAULT_USER_ROLE],
+      user.permissions ?? [],
+      roles,
+    );
   }
 
   private resolveWorkspacePermissions(
@@ -299,16 +297,13 @@ export class AuthGuard implements CanActivate {
     const member = RequestContext.get(BaseWorkspaceMember);
     if (!member) return [];
 
-    return [
-      ...new Set([
-        ...(
-          member.roles ?? [
-            this.options.workspace?.defaultRole ?? DEFAULT_WORKSPACE_ROLE,
-          ]
-        ).flatMap((role) => roles[role] ?? []),
-        ...(member.permissions ?? []),
-      ]),
-    ];
+    return resolveAuthPermissions(
+      member.roles ?? [
+        this.options.workspace?.defaultRole ?? DEFAULT_WORKSPACE_ROLE,
+      ],
+      member.permissions ?? [],
+      roles,
+    );
   }
 
   private async resolveSubject(

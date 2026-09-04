@@ -88,6 +88,8 @@
     },
     "accounts": {
       "description": "Review credential and social identities linked to your account.",
+      "link": "Link {{provider}}",
+      "link_failed": "Unable to start account linking",
       "loading": "Loading linked accounts…",
       "refresh": "Refresh token",
       "refresh_failed": "Unable to refresh the provider token",

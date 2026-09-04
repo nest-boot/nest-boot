@@ -37,6 +37,8 @@ allowing public handlers to declare nullable parameters explicitly.
 - `revokeSession(token)` — revokes one session;
 - `revokeOtherSessions()` — keeps only the current session;
 - `revokeSessions()` — revokes every session for the current user.
+- `createSessionHeaders(token)` — creates signed browser-session Cookie headers
+  for a session created by an application-owned flow such as impersonation.
 
 Each method reads the current request headers from `RequestContext`. Transport
 code does not need to convert or forward Express headers.
@@ -44,6 +46,11 @@ code does not need to convert or forward Express headers.
 Session lists preserve backend order and include the token required to revoke a
 specific session. A UI should identify the current session and avoid presenting
 it as an ordinary remote-device revoke action.
+
+`createSessionHeaders()` also expires cached session and account cookies. A
+Resolver or Controller must forward every returned `Set-Cookie` header. The
+example uses this method when `UserService.impersonateUser()` and
+`stopImpersonating()` switch browser identity.
 
 When PostgreSQL RLS is enabled, application entity lookup runs in an isolated
 auth context with RLS disabled. Business database roles therefore do not need

@@ -68,6 +68,50 @@ export interface SignInResult<User extends AuthUser = AuthUser> {
   user: User;
 }
 
+/** A social or generic OAuth provider enabled by the authentication backend. */
+export interface AuthSocialProvider {
+  /** Stable provider identifier supplied to social authentication operations. */
+  id: string;
+  /** Human-readable provider name suitable for login and account-linking UI. */
+  name: string;
+}
+
+/** Options accepted when starting a social or generic OAuth sign-in flow. */
+export interface SignInSocialOptions {
+  /** Configured provider identifier. */
+  provider: string;
+  /** URL returned to after a successful provider callback. */
+  callbackURL?: string;
+  /** URL returned to after a newly created user's provider callback. */
+  newUserCallbackURL?: string;
+  /** URL returned to after a failed provider callback. */
+  errorCallbackURL?: string;
+  /** Whether the provider authorization URL should be returned without redirecting. */
+  disableRedirect?: boolean;
+  /** Additional OAuth scopes requested from the provider. */
+  scopes?: string[];
+  /** Whether this flow may create a new user. */
+  requestSignUp?: boolean;
+  /** Optional provider login hint. */
+  loginHint?: string;
+  /** Additional provider authorization parameters. */
+  additionalParams?: Record<string, string>;
+  /** Application-defined data forwarded through the provider flow. */
+  additionalData?: Record<string, unknown>;
+}
+
+/** Result returned when starting a social or generic OAuth sign-in flow. */
+export interface SignInSocialResult<User extends AuthUser = AuthUser> {
+  /** Whether a browser client should navigate to {@link url}. */
+  redirect: boolean;
+  /** Provider authorization URL, or `null` for direct token sign-in. */
+  url: string | null;
+  /** Session token returned by direct token sign-in, or `null` for a redirect flow. */
+  token: string | null;
+  /** Authenticated user returned by direct token sign-in, or `null` for a redirect flow. */
+  user: User | null;
+}
+
 /** Options for sending an email-verification link. */
 export interface SendVerificationEmailOptions {
   /** Email address to verify. */
@@ -264,4 +308,34 @@ export interface AuthServiceResponseOptions {
 export interface UnlinkAuthAccountOptions {
   /** Better Auth account record identifier returned by {@link AuthAccount.id}. */
   accountId: string;
+}
+
+/** Options for linking a social or OpenID Connect account. */
+export interface LinkAuthSocialAccountOptions {
+  /** Configured provider identifier. */
+  provider: string;
+  /** URL returned to after a successful provider callback. */
+  callbackURL?: string;
+  /** URL returned to after a failed provider callback. */
+  errorCallbackURL?: string;
+  /** Whether the provider authorization URL should be returned without redirecting. */
+  disableRedirect?: boolean;
+  /** Whether the provider may create a new account when linking cannot complete. */
+  requestSignUp?: boolean;
+  /** Additional OAuth scopes requested from the provider. */
+  scopes?: string[];
+  /** Optional provider login hint. */
+  loginHint?: string;
+  /** Additional provider authorization parameters. */
+  additionalParams?: Record<string, string>;
+  /** Application-defined data forwarded through the provider flow. */
+  additionalData?: Record<string, unknown>;
+}
+
+/** Provider authorization target returned when linking an account. */
+export interface LinkAuthSocialAccountResult {
+  /** Provider authorization URL. */
+  url: string;
+  /** Whether a browser client should navigate to {@link url}. */
+  redirect: boolean;
 }

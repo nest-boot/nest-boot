@@ -9,6 +9,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { createAbility } from "@/lib/ability";
 
 const GET_CURRENT_WORKSPACE_FROM_WORKSPACE_LAYOUT = graphql(`
   query getCurrentWorkspaceFromWorkspaceLayout($workspaceId: ID!) {
@@ -18,6 +19,14 @@ const GET_CURRENT_WORKSPACE_FROM_WORKSPACE_LAYOUT = graphql(`
     currentWorkspaceMember {
       id
       roles
+    }
+    currentWorkspaceAbilityRules {
+      actions
+      subjects
+      fields
+      conditions
+      inverted
+      reason
     }
   }
 `);
@@ -39,7 +48,12 @@ export const Route = createFileRoute("/_authenticated/workspaces/$workspaceId")(
         throw redirect({ to: "/workspaces" });
       }
 
-      return { currentWorkspaceMember: data.currentWorkspaceMember };
+      return {
+        currentWorkspaceMember: data.currentWorkspaceMember,
+        currentWorkspaceAbility: createAbility(
+          data.currentWorkspaceAbilityRules,
+        ),
+      };
     },
   },
 );

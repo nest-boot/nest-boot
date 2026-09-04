@@ -23,6 +23,7 @@ export type CheckboxGroupOptionProps<Value extends string> = {
   description?: ReactNode;
   value: Value;
   disabled?: boolean;
+  testId?: string;
 };
 
 export type CheckboxGroupParentProps = {
@@ -140,6 +141,7 @@ export function CheckboxGroup<Value extends string>({
                 disabled={disabled || item.disabled}
                 name={name}
                 value={item.value}
+                data-testid={item.testId}
               >
                 {item.label}
               </CheckboxGroupItem>

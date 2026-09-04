@@ -3,136 +3,101 @@
   "items": [
     {
       "domain": "Auth",
-      "scenario": "Email/password registration",
+      "scenario": "Email/password registration on the canonical register route",
       "status": "covered",
       "specs": ["auth.spec.ts"],
-      "notes": "Registers from the login page and lands on the workspace empty state."
+      "notes": "Registers at /auth/register, verifies the email address, and lands on the workspace empty state."
     },
     {
       "domain": "Auth",
-      "scenario": "Email/password login",
+      "scenario": "Email/password login and remember-me",
       "status": "covered",
       "specs": ["auth.spec.ts"],
-      "notes": "Clears cookies, logs in again, and returns to the workspace entry."
+      "notes": "Clears cookies, signs in at /auth/login, and exercises the remember-me control."
     },
     {
       "domain": "Auth",
-      "scenario": "Explicit logout and session restoration",
-      "status": "missing",
-      "specs": [],
-      "notes": "No direct UI logout or refresh/session persistence flow is asserted yet."
+      "scenario": "Password reset and authenticated password change",
+      "status": "covered",
+      "specs": ["auth.spec.ts"],
+      "notes": "Completes the email reset flow and then changes the password through GraphQL."
+    },
+    {
+      "domain": "Auth",
+      "scenario": "Current-user session list and remote-session revocation",
+      "status": "covered",
+      "specs": ["user.spec.ts"],
+      "notes": "Creates two browser sessions, revokes the other session, and verifies it can no longer access the application."
+    },
+    {
+      "domain": "Auth",
+      "scenario": "Social and generic OAuth sign-in, linking, and unlinking",
+      "status": "partial",
+      "specs": ["auth.spec.ts", "user.spec.ts"],
+      "notes": "Dynamic provider rendering, GraphQL authorization initiation, and account-linking availability are covered; the external provider callback and unlinking a real social identity remain outside Playwright."
+    },
+    {
+      "domain": "Auth",
+      "scenario": "Administrator impersonation and global status banner",
+      "status": "covered",
+      "specs": ["admin.spec.ts"],
+      "notes": "Starts impersonation from the administrator user page, verifies the global banner across personal routes, stops impersonation, and confirms that the administrator session is restored."
     },
     {
       "domain": "Workspace",
-      "scenario": "First workspace creation from empty state",
+      "scenario": "First workspace creation, rename persistence, and deletion",
       "status": "covered",
       "specs": ["workspace.spec.ts"],
-      "notes": "Creates the first workspace after user registration."
-    },
-    {
-      "domain": "Workspace",
-      "scenario": "Workspace rename persists after reload",
-      "status": "covered",
-      "specs": ["workspace.spec.ts"],
-      "notes": "Updates the workspace name, reloads, and verifies the saved value."
-    },
-    {
-      "domain": "Workspace",
-      "scenario": "Workspace deletion returns to empty state",
-      "status": "covered",
-      "specs": ["workspace.spec.ts"],
-      "notes": "Deletes the only workspace and verifies the empty workspace page."
+      "notes": "Creates the first workspace, reloads after rename, then deletes it and returns to the empty state."
     },
     {
       "domain": "Workspace",
       "scenario": "Multiple workspace creation and switcher navigation",
-      "status": "missing",
-      "specs": [],
-      "notes": "The sidebar workspace switcher and create-from-switcher path are not exercised."
+      "status": "covered",
+      "specs": ["workspace.spec.ts"],
+      "notes": "Creates more than one cursor page of workspaces, loads the next page in the switcher, switches workspaces, and opens the create path."
+    },
+    {
+      "domain": "Workspace",
+      "scenario": "Ownership transfer and member exit",
+      "status": "covered",
+      "specs": ["workspace.spec.ts"],
+      "notes": "Transfers ownership to an active user member, verifies the new owner, and removes the previous owner through the leave flow."
     },
     {
       "domain": "Invitations",
-      "scenario": "Owner creates an invite link",
+      "scenario": "Create, cancel, register through, accept, and reject invitations",
+      "status": "covered",
+      "specs": ["invitation.spec.ts", "user.spec.ts"],
+      "notes": "Covers owner and recipient flows, including the personal pending-invitation list."
+    },
+    {
+      "domain": "Invitations",
+      "scenario": "Invalid and expired invitation states",
       "status": "covered",
       "specs": ["invitation.spec.ts"],
-      "notes": "Creates an invite from the members page and verifies the generated link."
-    },
-    {
-      "domain": "Invitations",
-      "scenario": "Unauthenticated invitee registers and accepts invite",
-      "status": "covered",
-      "specs": ["invitation.spec.ts"],
-      "notes": "Follows the invite URL, registers, returns to the invite page, and accepts."
-    },
-    {
-      "domain": "Invitations",
-      "scenario": "Existing authenticated user accepts invite",
-      "status": "missing",
-      "specs": [],
-      "notes": "The already-registered invitee path is not covered."
-    },
-    {
-      "domain": "Invitations",
-      "scenario": "Invalid or expired invite token handling",
-      "status": "missing",
-      "specs": [],
-      "notes": "The invalid-token and expired-token UI states are not covered."
+      "notes": "Covers invalid, canceled, and expired invitation states, including cleanup of the pending invitation redirect."
     },
     {
       "domain": "Members",
-      "scenario": "Accepted member appears as active in the member list",
+      "scenario": "Member status actions, removal, role changes, and direct permissions",
       "status": "covered",
       "specs": ["invitation.spec.ts"],
-      "notes": "The owner sees the accepted invitee and active status after acceptance."
+      "notes": "Covers status and removal actions, role editing, direct permission editing, persistence after reload, and resulting UI authorization."
     },
     {
-      "domain": "Members",
-      "scenario": "Member list search, filters, pagination, and status actions",
-      "status": "partial",
-      "specs": ["invitation.spec.ts"],
-      "notes": "The list is opened and checked, but search/filter/pagination/status actions are not asserted."
-    },
-    {
-      "domain": "Members",
-      "scenario": "Member detail role, permission, resend-link, and removal flows",
-      "status": "missing",
-      "specs": [],
-      "notes": "The member detail route and permission editing controls are not covered."
-    },
-    {
-      "domain": "Member groups",
-      "scenario": "Create, edit, and delete member group",
+      "domain": "Authorization",
+      "scenario": "Transported CASL rules control user and workspace UI",
       "status": "covered",
-      "specs": ["member-group.spec.ts"],
-      "notes": "Creates a group, edits its name, then deletes it."
-    },
-    {
-      "domain": "Member groups",
-      "scenario": "Add and remove group members",
-      "status": "covered",
-      "specs": ["member-group.spec.ts"],
-      "notes": "Adds an existing workspace member to the group and removes that member."
-    },
-    {
-      "domain": "Member groups",
-      "scenario": "Group list search, filters, and pagination",
-      "status": "partial",
-      "specs": ["member-group.spec.ts"],
-      "notes": "The group list is visited through the create flow, but list filtering and pagination are not asserted."
-    },
-    {
-      "domain": "Permissions",
-      "scenario": "Member-role UI restrictions and denial redirects",
-      "status": "missing",
-      "specs": [],
-      "notes": "Owner/admin/member UI differences and guarded-route redirects need explicit e2e coverage."
+      "specs": ["api-key.spec.ts", "invitation.spec.ts", "workspace.spec.ts"],
+      "notes": "Serialized conditional rules have unit coverage; browser tests cover role denial and direct-permission authorization paths."
     },
     {
       "domain": "API keys",
-      "scenario": "API key create, reveal once, update, revoke, and authenticated use",
-      "status": "partial",
+      "scenario": "User and workspace API key lifecycle",
+      "status": "covered",
       "specs": ["api-key.spec.ts"],
-      "notes": "Covers the client management flow; authenticated API use is still covered by server integration tests."
+      "notes": "Creates, reveals, disables, edits, and deletes both owner types. Bearer authentication and privilege ceilings are covered by server PostgreSQL E2E."
     }
   ]
 }

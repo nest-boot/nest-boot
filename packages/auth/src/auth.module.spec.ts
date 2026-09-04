@@ -690,13 +690,14 @@ describe("AuthModule", () => {
       {
         entities,
         secret,
-        socialProviders: {
-          github: {
+        providers: [
+          {
+            id: "github",
             clientId: "github-client-id",
             clientSecret: "github-client-secret",
             enabled: true,
           },
-        },
+        ],
       },
       orm,
     );
@@ -765,6 +766,106 @@ describe("AuthModule", () => {
         }),
       ],
     });
+  });
+
+  it("should register custom Generic OAuth providers alongside environment OIDC", () => {
+    setOidcEnv();
+    const orm = {
+      em: {},
+    } as unknown as MikroORM;
+    const authProvider = getAuthProvider();
+    const companyProvider = {
+      id: "company",
+      name: "Company SSO",
+      clientId: "company-client-id",
+      clientSecret: "company-client-secret",
+      discoveryUrl:
+        "https://accounts.example.com/.well-known/openid-configuration",
+    };
+
+    authProvider.useFactory(
+      {
+        entities,
+        providers: [companyProvider],
+        secret,
+      },
+      orm,
+    );
+
+    expect(mockGenericOAuth).toHaveBeenCalledWith({
+      config: [
+        {
+          clientId: companyProvider.clientId,
+          clientSecret: companyProvider.clientSecret,
+          discoveryUrl: companyProvider.discoveryUrl,
+          name: companyProvider.name,
+          providerId: companyProvider.id,
+        },
+        expect.objectContaining({ providerId: "oidc" }),
+      ],
+    });
+  });
+
+  it("should apply the global signup restriction to custom Generic OAuth providers", () => {
+    process.env.AUTH_DISABLE_SIGN_UP = "true";
+    const orm = {
+      em: {},
+    } as unknown as MikroORM;
+    const authProvider = getAuthProvider();
+
+    authProvider.useFactory(
+      {
+        entities,
+        providers: [
+          {
+            id: "company",
+            clientId: "company-client-id",
+            clientSecret: "company-client-secret",
+            authorizationUrl: "https://accounts.example.com/authorize",
+            tokenUrl: "https://accounts.example.com/token",
+            userInfoUrl: "https://accounts.example.com/userinfo",
+          },
+        ],
+        secret,
+      },
+      orm,
+    );
+
+    expect(mockGenericOAuth).toHaveBeenCalledWith({
+      config: [
+        expect.objectContaining({
+          disableSignUp: true,
+          providerId: "company",
+        }),
+      ],
+    });
+  });
+
+  it("should reject duplicate Generic OAuth provider identifiers", () => {
+    setOidcEnv();
+    const orm = {
+      em: {},
+    } as unknown as MikroORM;
+    const authProvider = getAuthProvider();
+
+    expect(() =>
+      authProvider.useFactory(
+        {
+          entities,
+          providers: [
+            {
+              id: "oidc",
+              clientId: "duplicate-client-id",
+              clientSecret: "duplicate-client-secret",
+              discoveryUrl:
+                "https://duplicate.example.com/.well-known/openid-configuration",
+            },
+          ],
+          secret,
+        },
+        orm,
+      ),
+    ).toThrow('Generic OAuth provider ID "oidc" is configured more than once.');
   });
 
   it("should skip OIDC plugin registration when OIDC env is not configured", () => {
@@ -894,17 +995,19 @@ describe("AuthModule", () => {
       {
         entities,
         secret,
-        socialProviders: {
-          apple: {
+        providers: [
+          {
+            id: "apple",
             clientId: "apple-client-id",
             clientSecret: "apple-client-secret",
           },
-          google: {
+          {
+            id: "google",
             clientId: "google-client-id",
             clientSecret: "google-client-secret",
             scope: ["email"],
           },
-        },
+        ],
       },
       orm,
     );

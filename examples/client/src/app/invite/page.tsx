@@ -107,7 +107,7 @@ function InviteComponent() {
   const invitationUnavailableMessage = useMemo(() => {
     if (!invitationId) return t("workspace:invite.error.invalid_token");
     if (inviteError) return inviteError.message;
-    if (!invitation) return null;
+    if (!invitation) return t("workspace:invite.error.invalid_token");
     if (invitation.status !== WorkspaceInvitationStatus.PENDING) {
       return t(`workspace:invite.error.status.${invitation.status}`);
     }
@@ -206,14 +206,21 @@ function InviteComponent() {
   // 错误处理（只有在查询完成且确实有错误或没有数据时才显示）
   if (!inviteLoading && invitationUnavailableMessage) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div
+        className="flex min-h-screen items-center justify-center"
+        data-testid="invite-error-page"
+      >
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>{t("workspace:invite.error.title")}</CardTitle>
             <CardDescription>{invitationUnavailableMessage}</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={handleExit} className="w-full">
+            <Button
+              onClick={handleExit}
+              className="w-full"
+              data-testid="invite-error-exit"
+            >
               {t("workspace:invite.error.back_button")}
             </Button>
           </CardContent>

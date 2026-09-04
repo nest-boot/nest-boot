@@ -30,6 +30,7 @@ export function PermissionCheckboxGroup<Permission extends string>({
         value: option.value,
         label: t(option.name),
         description: t(option.description),
+        testId: `permission-${option.value}`,
       }))}
     />
   );

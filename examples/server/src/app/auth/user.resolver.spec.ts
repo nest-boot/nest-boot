@@ -1,4 +1,5 @@
-import type { UserService } from '@nest-boot/auth';
+import type { SessionService, UserService } from '@nest-boot/auth';
+import type { Response } from 'express';
 import type { Mocked } from 'vitest';
 
 vi.mock('@nest-boot/auth', async (importOriginal) => ({
@@ -93,12 +94,57 @@ describe('UserResolver', () => {
     ).resolves.toBe(true);
     expect(service.revokeUserSession).toHaveBeenCalledWith(user, session.token);
   });
+
+  it('starts and stops impersonation while forwarding signed cookies', async () => {
+    const administrator = { id: 'admin-1' } as User;
+    const target = { id: 'user-1' } as User;
+    const session = { token: 'impersonation-token' };
+    const restoredSession = { token: 'restored-token' };
+    const responseHeaders = new Headers({
+      'set-cookie': 'better-auth.session_token=signed; Path=/',
+    });
+    const { resolver, service, sessionService } = createResolver(
+      {
+        getUser: vi.fn(async () => target),
+        impersonateUser: vi.fn(async () => ({ session, user: target })),
+        stopImpersonating: vi.fn(async () => ({
+          session: restoredSession,
+          user: administrator,
+        })),
+      },
+      {
+        createSessionHeaders: vi.fn(async () => responseHeaders),
+      },
+    );
+    const response = { append: vi.fn() } as unknown as Response;
+
+    await expect(
+      resolver.impersonateUser(target.id, administrator, response),
+    ).resolves.toBe(target);
+    expect(service.impersonateUser).toHaveBeenCalledWith(administrator, target);
+    expect(sessionService.createSessionHeaders).toHaveBeenCalledWith(
+      session.token,
+    );
+
+    await expect(
+      resolver.stopImpersonating(restoredSession as never, response),
+    ).resolves.toBe(administrator);
+    expect(service.stopImpersonating).toHaveBeenCalledWith(restoredSession);
+    expect(response.append).toHaveBeenCalledTimes(2);
+  });
 });
 
-function createResolver(overrides: Partial<UserService> = {}) {
+function createResolver(
+  overrides: Partial<UserService> = {},
+  sessionOverrides: Partial<SessionService> = {},
+) {
   const service = { ...overrides } as unknown as Mocked<UserService>;
+  const sessionService = {
+    ...sessionOverrides,
+  } as unknown as Mocked<SessionService>;
   return {
-    resolver: new UserResolver(service as never),
+    resolver: new UserResolver(service as never, sessionService),
     service,
+    sessionService,
   };
 }

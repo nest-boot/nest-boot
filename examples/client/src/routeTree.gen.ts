@@ -21,6 +21,7 @@ import { Route as AuthenticatedWorkspacesPageRouteImport } from './app/_authenti
 import { Route as AuthenticatedWorkspacesWorkspaceIdLayoutRouteImport } from './app/_authenticated/workspaces/$workspaceId/layout'
 import { Route as AuthForgotPasswordPageRouteImport } from './app/auth/forgot-password/page'
 import { Route as AuthLoginPageRouteImport } from './app/auth/login/page'
+import { Route as AuthRegisterPageRouteImport } from './app/auth/register/page'
 import { Route as AuthResetPasswordPageRouteImport } from './app/auth/reset-password/page'
 import { Route as AuthVerifyEmailPageRouteImport } from './app/auth/verify-email/page'
 import { Route as AuthenticatedAdminUsersPageRouteImport } from './app/_authenticated/admin/users/page'
@@ -97,6 +98,11 @@ const AuthForgotPasswordPageRoute = AuthForgotPasswordPageRouteImport.update({
 const AuthLoginPageRoute = AuthLoginPageRouteImport.update({
   id: '/login/',
   path: '/login/',
+  getParentRoute: () => AuthLayoutRoute,
+} as any)
+const AuthRegisterPageRoute = AuthRegisterPageRouteImport.update({
+  id: '/register/',
+  path: '/register/',
   getParentRoute: () => AuthLayoutRoute,
 } as any)
 const AuthResetPasswordPageRoute = AuthResetPasswordPageRouteImport.update({
@@ -200,6 +206,7 @@ export interface FileRoutesByFullPath {
   '/workspaces/': typeof AuthenticatedWorkspacesPageRoute
   '/auth/forgot-password/': typeof AuthForgotPasswordPageRoute
   '/auth/login/': typeof AuthLoginPageRoute
+  '/auth/register/': typeof AuthRegisterPageRoute
   '/auth/reset-password/': typeof AuthResetPasswordPageRoute
   '/auth/verify-email/': typeof AuthVerifyEmailPageRoute
   '/workspaces/$workspaceId/api-keys': typeof AuthenticatedWorkspacesWorkspaceIdApiKeysLayoutRouteWithChildren
@@ -225,6 +232,7 @@ export interface FileRoutesByTo {
   '/workspaces': typeof AuthenticatedWorkspacesPageRoute
   '/auth/forgot-password': typeof AuthForgotPasswordPageRoute
   '/auth/login': typeof AuthLoginPageRoute
+  '/auth/register': typeof AuthRegisterPageRoute
   '/auth/reset-password': typeof AuthResetPasswordPageRoute
   '/auth/verify-email': typeof AuthVerifyEmailPageRoute
   '/admin/users': typeof AuthenticatedAdminUsersPageRoute
@@ -253,6 +261,7 @@ export interface FileRoutesById {
   '/_authenticated/workspaces/': typeof AuthenticatedWorkspacesPageRoute
   '/auth/forgot-password/': typeof AuthForgotPasswordPageRoute
   '/auth/login/': typeof AuthLoginPageRoute
+  '/auth/register/': typeof AuthRegisterPageRoute
   '/auth/reset-password/': typeof AuthResetPasswordPageRoute
   '/auth/verify-email/': typeof AuthVerifyEmailPageRoute
   '/_authenticated/workspaces/$workspaceId/api-keys': typeof AuthenticatedWorkspacesWorkspaceIdApiKeysLayoutRouteWithChildren
@@ -283,6 +292,7 @@ export interface FileRouteTypes {
     | '/workspaces/'
     | '/auth/forgot-password/'
     | '/auth/login/'
+    | '/auth/register/'
     | '/auth/reset-password/'
     | '/auth/verify-email/'
     | '/workspaces/$workspaceId/api-keys'
@@ -308,6 +318,7 @@ export interface FileRouteTypes {
     | '/workspaces'
     | '/auth/forgot-password'
     | '/auth/login'
+    | '/auth/register'
     | '/auth/reset-password'
     | '/auth/verify-email'
     | '/admin/users'
@@ -335,6 +346,7 @@ export interface FileRouteTypes {
     | '/_authenticated/workspaces/'
     | '/auth/forgot-password/'
     | '/auth/login/'
+    | '/auth/register/'
     | '/auth/reset-password/'
     | '/auth/verify-email/'
     | '/_authenticated/workspaces/$workspaceId/api-keys'
@@ -442,6 +454,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/auth/login/'
       preLoaderRoute: typeof AuthLoginPageRouteImport
+      parentRoute: typeof AuthLayoutRoute
+    }
+    '/auth/register/': {
+      id: '/auth/register/'
+      path: '/register'
+      fullPath: '/auth/register/'
+      preLoaderRoute: typeof AuthRegisterPageRouteImport
       parentRoute: typeof AuthLayoutRoute
     }
     '/auth/reset-password/': {
@@ -674,6 +693,7 @@ const AuthenticatedLayoutRouteWithChildren =
 interface AuthLayoutRouteChildren {
   AuthForgotPasswordPageRoute: typeof AuthForgotPasswordPageRoute
   AuthLoginPageRoute: typeof AuthLoginPageRoute
+  AuthRegisterPageRoute: typeof AuthRegisterPageRoute
   AuthResetPasswordPageRoute: typeof AuthResetPasswordPageRoute
   AuthVerifyEmailPageRoute: typeof AuthVerifyEmailPageRoute
 }
@@ -681,6 +701,7 @@ interface AuthLayoutRouteChildren {
 const AuthLayoutRouteChildren: AuthLayoutRouteChildren = {
   AuthForgotPasswordPageRoute: AuthForgotPasswordPageRoute,
   AuthLoginPageRoute: AuthLoginPageRoute,
+  AuthRegisterPageRoute: AuthRegisterPageRoute,
   AuthResetPasswordPageRoute: AuthResetPasswordPageRoute,
   AuthVerifyEmailPageRoute: AuthVerifyEmailPageRoute,
 }

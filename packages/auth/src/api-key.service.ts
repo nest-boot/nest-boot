@@ -31,9 +31,20 @@ import type {
   BaseWorkspace,
   BaseWorkspaceMember,
 } from "./entities/index.js";
-import { DEFAULT_USER_PERMISSIONS } from "./user.constants.js";
-import { normalizeAuthPermissions } from "./utils/auth-role.util.js";
-import { DEFAULT_WORKSPACE_PERMISSIONS } from "./workspace.constants.js";
+import {
+  DEFAULT_USER_PERMISSIONS,
+  DEFAULT_USER_ROLE,
+  DEFAULT_USER_ROLES,
+} from "./user.constants.js";
+import {
+  normalizeAuthPermissions,
+  resolveAuthPermissions,
+} from "./utils/auth-role.util.js";
+import {
+  DEFAULT_WORKSPACE_PERMISSIONS,
+  DEFAULT_WORKSPACE_ROLE,
+  DEFAULT_WORKSPACE_ROLES,
+} from "./workspace.constants.js";
 
 /** Input accepted when creating an API key. */
 export interface CreateApiKeyOptions {
@@ -167,7 +178,12 @@ export class ApiKeyService<
   ): Promise<CreatedApiKey<ApiKey>> {
     this.authorizationService.assertCurrentUser(user);
     this.authorizationService.assertUserCan("create", this.apiKeyEntity);
-    return await this.createKey(user, options);
+    const permissions = this.normalizePermissions(
+      user,
+      options.permissions ?? [],
+    );
+    this.assertUserPermissionCeiling(user, permissions);
+    return await this.createKey(user, options, permissions);
   }
 
   /** Creates an API key owned by a workspace. */
@@ -184,7 +200,12 @@ export class ApiKeyService<
         "Cannot create API key for inactive member",
       );
     }
-    return await this.createKey(workspace, options);
+    const permissions = this.normalizePermissions(
+      workspace,
+      options.permissions ?? [],
+    );
+    this.assertWorkspacePermissionCeiling(member, permissions);
+    return await this.createKey(workspace, options, permissions);
   }
 
   /** Updates an API key owned by the current user. */
@@ -195,7 +216,10 @@ export class ApiKeyService<
   ): Promise<ApiKey> {
     this.authorizationService.assertCurrentUser(user);
     this.authorizationService.assertUserCan("update", this.apiKeyEntity);
-    return await this.updateKey(await this.findOwnedApiKey(id, user), input);
+    const apiKey = await this.findOwnedApiKey(id, user);
+    const permissions = this.normalizeUpdatedPermissions(apiKey, input);
+    if (permissions) this.assertUserPermissionCeiling(user, permissions);
+    return await this.updateKey(apiKey, input, permissions);
   }
 
   /** Updates a workspace API key manageable by the current member. */
@@ -206,10 +230,12 @@ export class ApiKeyService<
   ): Promise<ApiKey> {
     this.authorizationService.assertCurrentWorkspaceMember(member);
     this.authorizationService.assertWorkspaceCan("update", this.apiKeyEntity);
-    return await this.updateKey(
-      await this.findManageableWorkspaceApiKey(id, member),
-      input,
-    );
+    const apiKey = await this.findManageableWorkspaceApiKey(id, member);
+    const permissions = this.normalizeUpdatedPermissions(apiKey, input);
+    if (permissions) {
+      this.assertWorkspacePermissionCeiling(member, permissions);
+    }
+    return await this.updateKey(apiKey, input, permissions);
   }
 
   /** Deletes an API key owned by the current user. */
@@ -286,17 +312,13 @@ export class ApiKeyService<
   private async createKey(
     owner: User | Workspace,
     options: CreateApiKeyOptions,
+    permissions: string[],
   ): Promise<CreatedApiKey<ApiKey>> {
     if (options.expiresAt && options.expiresAt <= new Date()) {
       throw new BadRequestException("API key expiration must be in the future");
     }
     const prefix = options.prefix ?? process.env.API_KEY_PREFIX ?? "sk-";
     this.assertValidPrefix(prefix);
-    const permissions = this.normalizePermissions(
-      owner,
-      options.permissions ?? [],
-    );
-
     const plaintextApiKey = `${prefix}${randomBytes(48).toString("base64url")}`;
     const entity = this.em.create(this.apiKeyEntity, {
       enabled: true,
@@ -321,17 +343,11 @@ export class ApiKeyService<
   private async updateKey(
     apiKey: ApiKey,
     input: UpdateApiKeyOptions,
+    permissions: string[] | undefined,
   ): Promise<ApiKey> {
     if (input.expiresAt && input.expiresAt <= new Date()) {
       throw new BadRequestException("API key expiration must be in the future");
     }
-    const permissions =
-      input.permissions === undefined
-        ? undefined
-        : this.normalizePermissions(
-            this.unwrapOwner(apiKey),
-            input.permissions ?? [],
-          );
     if (input.name !== undefined) apiKey.name = input.name;
     if (input.enabled !== undefined) apiKey.enabled = input.enabled;
     if (input.expiresAt !== undefined) apiKey.expiresAt = input.expiresAt;
@@ -483,6 +499,76 @@ export class ApiKeyService<
       availablePermissions,
       ownerType === "user" ? "User API key" : "Workspace API key",
     );
+  }
+
+  private normalizeUpdatedPermissions(
+    apiKey: ApiKey,
+    input: UpdateApiKeyOptions,
+  ): string[] | undefined {
+    return input.permissions === undefined
+      ? undefined
+      : this.normalizePermissions(
+          this.unwrapOwner(apiKey),
+          input.permissions ?? [],
+        );
+  }
+
+  private assertUserPermissionCeiling(
+    user: User,
+    permissions: readonly string[],
+  ): void {
+    const userPermissionCatalog = new Set(
+      this.authOptions.user?.permissions ?? DEFAULT_USER_PERMISSIONS,
+    );
+    const requestedUserPermissions = permissions.filter((permission) =>
+      userPermissionCatalog.has(permission),
+    );
+    const effectivePermissions = resolveAuthPermissions(
+      user.roles ?? [this.authOptions.user?.defaultRole ?? DEFAULT_USER_ROLE],
+      user.permissions ?? [],
+      this.authOptions.user?.roles ?? DEFAULT_USER_ROLES,
+    );
+
+    this.assertPermissionCeiling(
+      requestedUserPermissions,
+      effectivePermissions,
+      "User API key permissions exceed owner permissions",
+    );
+  }
+
+  private assertWorkspacePermissionCeiling(
+    member: WorkspaceMember,
+    permissions: readonly string[],
+  ): void {
+    const effectivePermissions = resolveAuthPermissions(
+      member.roles ?? [
+        this.authOptions.workspace?.defaultRole ?? DEFAULT_WORKSPACE_ROLE,
+      ],
+      member.permissions ?? [],
+      this.authOptions.workspace?.roles ?? DEFAULT_WORKSPACE_ROLES,
+    );
+
+    this.assertPermissionCeiling(
+      permissions,
+      effectivePermissions,
+      "Workspace API key permissions exceed issuer permissions",
+    );
+  }
+
+  private assertPermissionCeiling(
+    requestedPermissions: readonly string[],
+    effectivePermissions: readonly string[],
+    message: string,
+  ): void {
+    const effectivePermissionSet = new Set(effectivePermissions);
+    const excessivePermissions = requestedPermissions.filter(
+      (permission) => !effectivePermissionSet.has(permission),
+    );
+    if (excessivePermissions.length > 0) {
+      throw new ForbiddenException(
+        `${message}: ${excessivePermissions.join(", ")}`,
+      );
+    }
   }
 
   private get apiKeyEntity(): EntityClass<ApiKey> {

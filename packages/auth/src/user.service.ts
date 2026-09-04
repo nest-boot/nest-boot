@@ -23,7 +23,14 @@ import {
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
 import { AuthorizationService } from "./authorization.service.js";
-import type { BaseAccount, BaseSession, BaseUser } from "./entities/index.js";
+import type {
+  BaseAccount,
+  BaseApiKey,
+  BaseSession,
+  BaseUser,
+  BaseWorkspaceInvitation,
+  BaseWorkspaceMember,
+} from "./entities/index.js";
 import type { AuthRole } from "./interfaces/auth-role.interface.js";
 import type { AuthenticatedSession } from "./interfaces/session-service.interface.js";
 import type {
@@ -77,12 +84,13 @@ export class UserService<
       this.authorizationService.assertUserCan("set-role", this.userEntity);
     }
     const permissions = this.normalizePermissions(input.permissions ?? []);
+    const email = input.email.trim().toLowerCase();
 
     return await this.runUnrestricted(async () => {
       const password = await this.hashPassword(input.password);
       const user = this.em.create(this.userEntity, {
         ...(input.data ?? {}),
-        email: input.email,
+        email,
         emailVerified: false,
         name: input.name,
         permissions,
@@ -141,7 +149,12 @@ export class UserService<
         "Use setRole or setUserPermissions to update authorization fields",
       );
     }
-    this.em.assign(user, input as never);
+    this.em.assign(
+      user,
+      input.email === undefined
+        ? (input as never)
+        : ({ ...input, email: input.email.trim().toLowerCase() } as never),
+    );
     await this.runUnrestricted(() => this.em.flush());
     return user;
   }
@@ -350,10 +363,28 @@ export class UserService<
     );
   }
 
-  /** Permanently removes a user and their cascaded authentication records. */
+  /** Permanently removes a user and all dependent authentication records. */
   async removeUser(user: User): Promise<User> {
     this.authorizationService.assertUserCan("delete", user);
-    await this.runUnrestricted(() => this.em.remove(user).flush());
+    await this.runUnrestricted(async () => {
+      const userId = String(user.id);
+      await this.em.nativeDelete(this.sessionEntity, {
+        $or: [{ userId }, { impersonatedBy: user }],
+      } as FilterQuery<Session>);
+      await this.em.nativeDelete(this.accountEntity, {
+        userId,
+      } as FilterQuery<Account>);
+      await this.em.nativeDelete(this.apiKeyEntity, {
+        owner: user,
+      } as FilterQuery<BaseApiKey>);
+      await this.em.nativeDelete(this.workspaceInvitationEntity, {
+        inviter: user,
+      } as FilterQuery<BaseWorkspaceInvitation>);
+      await this.em.nativeDelete(this.workspaceMemberEntity, {
+        user,
+      } as FilterQuery<BaseWorkspaceMember>);
+      await this.em.remove(user).flush();
+    });
     return user;
   }
 
@@ -501,11 +532,23 @@ export class UserService<
     return this.options.entities.account as EntityClass<Account>;
   }
 
+  private get apiKeyEntity(): EntityClass<BaseApiKey> {
+    return this.options.entities.apiKey;
+  }
+
   private get sessionEntity(): EntityClass<Session> {
     return this.options.entities.session as EntityClass<Session>;
   }
 
   private get userEntity(): EntityClass<User> {
     return this.options.entities.user as EntityClass<User>;
+  }
+
+  private get workspaceInvitationEntity(): EntityClass<BaseWorkspaceInvitation> {
+    return this.options.entities.workspaceInvitation;
+  }
+
+  private get workspaceMemberEntity(): EntityClass<BaseWorkspaceMember> {
+    return this.options.entities.workspaceMember;
   }
 }

@@ -7,7 +7,6 @@ import {
   isWorkspacePermission,
   userPermissionValues,
   workspaceApiKeyPermissionValues,
-  workspaceMemberCan,
   workspacePermissionValues,
 } from "./permissions";
 
@@ -46,32 +45,5 @@ describe("permission options", () => {
     expect(isUserPermission("user:get")).toBe(true);
     expect(isWorkspacePermission("workspace:update")).toBe(true);
     expect(isAuthPermission("custom:unknown")).toBe(false);
-  });
-
-  it("mirrors owner, admin, and member workspace permissions", () => {
-    expect(
-      workspaceMemberCan(
-        { permissions: [], roles: ["owner"] },
-        "workspace:delete",
-      ),
-    ).toBe(true);
-    expect(
-      workspaceMemberCan(
-        {
-          permissions: ["workspace:delete"],
-          roles: ["admin"],
-        },
-        "workspace:delete",
-      ),
-    ).toBe(true);
-    expect(
-      workspaceMemberCan(
-        {
-          permissions: ["workspaceMember:update"],
-          roles: ["member"],
-        },
-        "workspaceMember:update",
-      ),
-    ).toBe(true);
   });
 });

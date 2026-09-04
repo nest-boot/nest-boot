@@ -3,6 +3,10 @@ import { waitForEmailUrl } from "./mailpit";
 import type { APIRequestContext, Page } from "@playwright/test";
 
 export const testPassword = "correct-horse-battery-staple";
+export const e2eAdministratorEmail =
+  process.env.E2E_ADMIN_EMAIL ?? "e2e-administrator@example.com";
+export const e2eAdministratorPassword =
+  process.env.E2E_ADMIN_PASSWORD ?? "e2e-administrator-password";
 
 type TestUser = {
   email: string;
@@ -10,8 +14,7 @@ type TestUser = {
 };
 
 export async function registerUser(page: Page, user: TestUser) {
-  await page.goto("/auth/login");
-  await page.getByTestId("auth-tab-register").click();
+  await page.goto("/auth/register");
   await page.getByTestId("auth-name-input").fill(user.name);
   await page.getByTestId("auth-email-input").fill(user.email);
   await page.getByTestId("auth-password-input").fill(testPassword);
@@ -58,6 +61,26 @@ export async function registerUserByApi(
       })
     ).ok(),
   ).toBeTruthy();
+}
+
+export async function signInAsE2eAdministrator(page: Page) {
+  await expect
+    .poll(
+      async () => {
+        const response = await page.request.post("/api/auth/sign-in/email", {
+          data: {
+            email: e2eAdministratorEmail,
+            password: e2eAdministratorPassword,
+          },
+        });
+        return response.status();
+      },
+      {
+        message: "waiting for the E2E administrator seed",
+        timeout: 15_000,
+      },
+    )
+    .toBe(200);
 }
 
 export async function completeEmailVerification(page: Page, email: string) {

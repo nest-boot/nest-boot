@@ -1,10 +1,14 @@
+import { Reference } from '@mikro-orm/core';
 import {
   type AuthAccountSelector,
   AuthService,
   type BaseSession,
   CurrentSession,
   CurrentUser,
+  getUserAbility,
+  getWorkspaceAbility,
   Public,
+  serializeAbilityRules,
   SessionService,
 } from '@nest-boot/auth';
 import {
@@ -19,29 +23,36 @@ import { BadRequestException } from '@nestjs/common';
 import type { Response } from 'express';
 
 import { User } from '../user/user.entity.js';
+import { applyAuthResponseHeaders } from './auth-response-headers.util.js';
 import {
   AuthAccountSelectorInput,
   AuthChangeEmailInput,
   AuthChangePasswordInput,
   AuthDeleteUserInput,
+  AuthLinkSocialAccountInput,
   AuthRequestPasswordResetInput,
   AuthResetPasswordInput,
   AuthSendVerificationEmailInput,
   AuthSignInInput,
+  AuthSignInSocialInput,
   AuthSignUpInput,
   AuthUpdateUserInput,
 } from './inputs/auth.input.js';
 import {
+  AuthAbilityRuleType,
   AuthAccessTokenType,
   AuthAccountInfoType,
   AuthAccountType,
   AuthChangePasswordResultType,
   AuthDeleteUserResultType,
+  AuthLinkSocialAccountResultType,
   AuthRefreshedTokenType,
   AuthRequestPasswordResetResultType,
   AuthSessionType,
   AuthSignInResultType,
+  AuthSignInSocialResultType,
   AuthSignUpResultType,
+  AuthSocialProviderType,
 } from './types/auth.type.js';
 
 /** GraphQL transport for application authentication operations. */
@@ -60,6 +71,33 @@ export class AuthResolver {
   @Query(() => User)
   currentUser(@CurrentUser() user: User): User {
     return user;
+  }
+
+  /** Returns the social and generic OAuth providers enabled by the server. */
+  @Public()
+  @Query(() => [AuthSocialProviderType])
+  async authSocialProviders(): Promise<AuthSocialProviderType[]> {
+    return await this.authService.listSocialProviders();
+  }
+
+  /** Returns the current user's effective CASL rules in a transport-safe form. */
+  @Query(() => [AuthAbilityRuleType])
+  currentUserAbilityRules(): AuthAbilityRuleType[] {
+    return toAbilityRuleTypes(serializeAbilityRules(getUserAbility()));
+  }
+
+  /** Returns the selected workspace's effective CASL rules. */
+  @Query(() => [AuthAbilityRuleType])
+  currentWorkspaceAbilityRules(): AuthAbilityRuleType[] {
+    return toAbilityRuleTypes(serializeAbilityRules(getWorkspaceAbility()));
+  }
+
+  /** Returns the session represented by the current request. */
+  @Query(() => AuthSessionType, { nullable: true })
+  currentAuthSession(
+    @CurrentSession() currentSession: BaseSession | null,
+  ): AuthSessionType | null {
+    return currentSession ? toAuthSessionType(currentSession, true) : null;
   }
 
   /** Registers a user with an email address and password. */
@@ -89,6 +127,21 @@ export class AuthResolver {
     const result = await this.authService.signIn(input, {
       returnHeaders: true,
     });
+    applyAuthResponseHeaders(response, result.headers);
+    return result.response;
+  }
+
+  /** Starts a social or generic OAuth sign-in flow. */
+  @Public()
+  @Mutation(() => AuthSignInSocialResultType)
+  async authSignInSocial(
+    @Args('input') input: AuthSignInSocialInput,
+    @Context('res') response: Response,
+  ): Promise<AuthSignInSocialResultType> {
+    const result = await this.authService.signInSocial(
+      { ...input, disableRedirect: true },
+      { returnHeaders: true },
+    );
     applyAuthResponseHeaders(response, result.headers);
     return result.response;
   }
@@ -178,16 +231,9 @@ export class AuthResolver {
   ): Promise<AuthSessionType[]> {
     const sessions = await this.sessionService.listSessions();
 
-    return sessions.map((session) => ({
-      id: session.id,
-      token: session.token,
-      current: session.id === currentSession.id,
-      expiresAt: session.expiresAt,
-      ipAddress: session.ipAddress ?? null,
-      userAgent: session.userAgent ?? null,
-      createdAt: session.createdAt,
-      updatedAt: session.updatedAt,
-    }));
+    return sessions.map((session) =>
+      toAuthSessionType(session, session.id === currentSession.id),
+    );
   }
 
   /** Revokes one active session owned by the authenticated user. */
@@ -233,6 +279,23 @@ export class AuthResolver {
   @Query(() => [AuthAccountType])
   async authAccounts(): Promise<AuthAccountType[]> {
     return await this.authService.listAccounts();
+  }
+
+  /** Starts a social or OpenID Connect account-linking flow. */
+  @Mutation(() => AuthLinkSocialAccountResultType)
+  async authLinkSocialAccount(
+    @Args('input') input: AuthLinkSocialAccountInput,
+    @Context('res') response: Response,
+  ): Promise<AuthLinkSocialAccountResultType> {
+    const result = await this.authService.linkSocialAccount(
+      {
+        ...input,
+        disableRedirect: true,
+      },
+      { returnHeaders: true },
+    );
+    applyAuthResponseHeaders(response, result.headers);
+    return result.response;
   }
 
   /** Unlinks an authentication account from the current user. */
@@ -286,10 +349,41 @@ function toAccountSelector(
   );
 }
 
-function applyAuthResponseHeaders(response: Response, headers: Headers): void {
-  const cookies = headers.getSetCookie();
+function toAbilityRuleTypes(
+  rules: ReturnType<typeof serializeAbilityRules>,
+): AuthAbilityRuleType[] {
+  return rules.map((rule) => ({
+    actions: Array.isArray(rule.action) ? rule.action : [rule.action],
+    subjects: Array.isArray(rule.subject) ? rule.subject : [rule.subject],
+    fields:
+      rule.fields === undefined
+        ? null
+        : Array.isArray(rule.fields)
+          ? rule.fields
+          : [rule.fields],
+    conditions: rule.conditions ?? null,
+    inverted: rule.inverted ?? false,
+    reason: rule.reason ?? null,
+  }));
+}
 
-  if (cookies.length > 0) {
-    response.append('set-cookie', cookies);
-  }
+function toAuthSessionType(
+  session: BaseSession,
+  current: boolean,
+): AuthSessionType {
+  const impersonatedBy = session.impersonatedBy
+    ? Reference.unwrapReference(session.impersonatedBy)
+    : null;
+
+  return {
+    id: session.id,
+    token: session.token,
+    current,
+    expiresAt: session.expiresAt,
+    ipAddress: session.ipAddress ?? null,
+    userAgent: session.userAgent ?? null,
+    impersonatedById: impersonatedBy ? String(impersonatedBy.id) : null,
+    createdAt: session.createdAt,
+    updatedAt: session.updatedAt,
+  };
 }

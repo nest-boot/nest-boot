@@ -12,7 +12,10 @@ import {
 import md5 from "md5";
 import { useMemo } from "react";
 
-import { useCurrentUserContext } from "../contexts/current-user-context";
+import {
+  useCurrentUserAbility,
+  useCurrentUserContext,
+} from "../contexts/current-user-context";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -43,6 +46,7 @@ export function SidebarUser() {
   const apolloClient = useApolloClient();
   const [signOut] = useMutation(AUTH_SIGN_OUT_FROM_SIDEBAR_USER);
   const currentUser = useCurrentUserContext();
+  const currentUserAbility = useCurrentUserAbility();
 
   const userAvatar = useMemo(
     () =>
@@ -126,7 +130,7 @@ export function SidebarUser() {
                 <KeyRound />
                 {t("sidebar:user.api_keys")}
               </DropdownMenuItem>
-              {currentUser.permissions.includes("user:list") ? (
+              {currentUserAbility.can("list", "User") ? (
                 <DropdownMenuItem
                   data-testid="sidebar-admin-link"
                   onClick={() => navigate({ to: "/admin/users" })}

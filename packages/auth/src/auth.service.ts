@@ -11,18 +11,23 @@ import type {
   AuthRefreshedToken,
   AuthServiceResponse,
   AuthServiceResponseOptions,
+  AuthSocialProvider,
   AuthUser,
   ChangeAuthEmailOptions,
   ChangeAuthPasswordOptions,
   ChangeAuthPasswordResult,
   DeleteAuthUserOptions,
   DeleteAuthUserResult,
+  LinkAuthSocialAccountOptions,
+  LinkAuthSocialAccountResult,
   RequestPasswordResetOptions,
   RequestPasswordResetResult,
   ResetPasswordOptions,
   SendVerificationEmailOptions,
   SignInOptions,
   SignInResult,
+  SignInSocialOptions,
+  SignInSocialResult,
   SignUpOptions,
   SignUpResult,
   UnlinkAuthAccountOptions,
@@ -34,6 +39,9 @@ interface StatusResult {
 }
 
 interface InternalAuth {
+  $context: Promise<{
+    socialProviders: { id: string; name: string }[];
+  }>;
   api: {
     accountInfo(options: {
       query: AuthAccountSelector;
@@ -80,6 +88,27 @@ interface InternalAuth {
       returnHeaders: true;
     }): Promise<
       AuthServiceResponse<Omit<SignInResult, "url"> & { url?: string }>
+    >;
+    signInSocial(options: {
+      body: SignInSocialOptions;
+      headers: HeadersInit;
+    }): Promise<{
+      redirect: boolean;
+      url?: string;
+      token?: string;
+      user?: AuthUser;
+    }>;
+    signInSocial(options: {
+      body: SignInSocialOptions;
+      headers: HeadersInit;
+      returnHeaders: true;
+    }): Promise<
+      AuthServiceResponse<{
+        redirect: boolean;
+        url?: string;
+        token?: string;
+        user?: AuthUser;
+      }>
     >;
     signOut(options: { headers: HeadersInit }): Promise<{ success: boolean }>;
     signOut(options: {
@@ -140,6 +169,15 @@ interface InternalAuth {
       returnHeaders: true;
     }): Promise<AuthServiceResponse<DeleteAuthUserResult>>;
     listUserAccounts(options: { headers: HeadersInit }): Promise<AuthAccount[]>;
+    linkSocialAccount(options: {
+      body: LinkAuthSocialAccountOptions;
+      headers: HeadersInit;
+    }): Promise<LinkAuthSocialAccountResult>;
+    linkSocialAccount(options: {
+      body: LinkAuthSocialAccountOptions;
+      headers: HeadersInit;
+      returnHeaders: true;
+    }): Promise<AuthServiceResponse<LinkAuthSocialAccountResult>>;
     unlinkAccount(options: {
       body: UnlinkAuthAccountOptions;
       headers: HeadersInit;
@@ -159,6 +197,15 @@ export class AuthService {
   }
 
   private readonly auth: InternalAuth;
+
+  /** Lists social and generic OAuth providers currently enabled. */
+  async listSocialProviders(): Promise<AuthSocialProvider[]> {
+    const context = await this.auth.$context;
+    return context.socialProviders.map(({ id, name }) => ({
+      id,
+      name,
+    }));
+  }
 
   /** Signs up a user with an email address and password. */
   async signUp<User extends AuthUser = AuthUser>(
@@ -219,6 +266,41 @@ export class AuthService {
     });
 
     return this.normalizeSignInResult<User>(result);
+  }
+
+  /** Starts a social or generic OAuth sign-in flow. */
+  async signInSocial<User extends AuthUser = AuthUser>(
+    options: SignInSocialOptions,
+    responseOptions: AuthServiceResponseOptions,
+  ): Promise<AuthServiceResponse<SignInSocialResult<User>>>;
+  async signInSocial<User extends AuthUser = AuthUser>(
+    options: SignInSocialOptions,
+  ): Promise<SignInSocialResult<User>>;
+  async signInSocial<User extends AuthUser = AuthUser>(
+    options: SignInSocialOptions,
+    responseOptions?: AuthServiceResponseOptions,
+  ): Promise<
+    SignInSocialResult<User> | AuthServiceResponse<SignInSocialResult<User>>
+  > {
+    const requestHeaders = headers();
+    if (responseOptions?.returnHeaders) {
+      const result = await this.auth.api.signInSocial({
+        body: options,
+        headers: requestHeaders,
+        returnHeaders: true,
+      });
+
+      return {
+        headers: result.headers,
+        response: this.normalizeSignInSocialResult<User>(result.response),
+      };
+    }
+
+    const result = await this.auth.api.signInSocial({
+      body: options,
+      headers: requestHeaders,
+    });
+    return this.normalizeSignInSocialResult<User>(result);
   }
 
   /** Signs out the session represented by the current request context. */
@@ -414,6 +496,35 @@ export class AuthService {
     return await this.auth.api.listUserAccounts({ headers: headers() });
   }
 
+  /** Starts a social or OpenID Connect account-linking flow. */
+  async linkSocialAccount(
+    options: LinkAuthSocialAccountOptions,
+    responseOptions: AuthServiceResponseOptions,
+  ): Promise<AuthServiceResponse<LinkAuthSocialAccountResult>>;
+  async linkSocialAccount(
+    options: LinkAuthSocialAccountOptions,
+  ): Promise<LinkAuthSocialAccountResult>;
+  async linkSocialAccount(
+    options: LinkAuthSocialAccountOptions,
+    responseOptions?: AuthServiceResponseOptions,
+  ): Promise<
+    | LinkAuthSocialAccountResult
+    | AuthServiceResponse<LinkAuthSocialAccountResult>
+  > {
+    if (responseOptions?.returnHeaders) {
+      return await this.auth.api.linkSocialAccount({
+        body: options,
+        headers: headers(),
+        returnHeaders: true,
+      });
+    }
+
+    return await this.auth.api.linkSocialAccount({
+      body: options,
+      headers: headers(),
+    });
+  }
+
   /** Unlinks an authentication account from the current user. */
   async unlinkAccount(options: UnlinkAuthAccountOptions): Promise<boolean> {
     const result = await this.auth.api.unlinkAccount({
@@ -479,5 +590,19 @@ export class AuthService {
       ...result,
       url: result.url ?? null,
     } as SignInResult<User>;
+  }
+
+  private normalizeSignInSocialResult<User extends AuthUser>(result: {
+    redirect: boolean;
+    url?: string;
+    token?: string;
+    user?: AuthUser;
+  }): SignInSocialResult<User> {
+    return {
+      redirect: result.redirect,
+      url: result.url ?? null,
+      token: result.token ?? null,
+      user: (result.user as User | undefined) ?? null,
+    };
   }
 }

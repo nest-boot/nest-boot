@@ -11,7 +11,10 @@ import * as z from "zod";
 import { toast } from "sonner";
 import { t } from "i18next";
 
-import { useCurrentWorkspaceMemberContext } from "../../contexts/current-workspace-member-context";
+import {
+  useCurrentWorkspaceAbility,
+  useCurrentWorkspaceMemberContext,
+} from "../../contexts/current-workspace-member-context";
 import type * as Gql from "@/gql/graphql";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import {
@@ -30,12 +33,12 @@ import { graphql } from "@/gql";
 import { getRoleLabel } from "@/utils/get-role-label";
 import {
   isWorkspacePermission,
-  workspaceMemberCan,
   workspacePermissionOptions,
   workspacePermissionValues,
 } from "@/lib/permissions";
 import { PermissionCheckboxGroup } from "@/components/permission-checkbox-group";
 import { WORKSPACE_OWNER_ROLE, hasWorkspaceRole } from "@/lib/workspace-roles";
+import { createAbilitySubject } from "@/lib/ability";
 
 type UpdateWorkspaceMemberInput = Gql.UpdateWorkspaceMemberInput;
 
@@ -139,7 +142,7 @@ export const Route = createFileRoute(
 )({
   component: MemberComponent,
   beforeLoad: async ({
-    context: { apolloClient },
+    context: { apolloClient, currentWorkspaceAbility },
     params: { memberId, workspaceId },
   }) => {
     const { data } = await apolloClient.query({
@@ -148,7 +151,7 @@ export const Route = createFileRoute(
 
     if (
       !data?.currentWorkspaceMember ||
-      !workspaceMemberCan(data.currentWorkspaceMember, "workspaceMember:update")
+      !currentWorkspaceAbility.can("update", "WorkspaceMember")
     ) {
       throw redirect({
         to: "/workspaces/$workspaceId/members",
@@ -181,6 +184,7 @@ function MemberComponent() {
   const { memberId, workspaceId } = Route.useParams();
 
   const currentWorkspaceMember = useCurrentWorkspaceMemberContext();
+  const currentWorkspaceAbility = useCurrentWorkspaceAbility();
 
   const { data } = useSuspenseQuery(GET_WORKSPACE_MEMBER_FROM_MEMBER_ROUTE, {
     variables: { id: memberId },
@@ -199,19 +203,20 @@ function MemberComponent() {
     if (!currentWorkspaceMember || !member) return false;
 
     return (
-      workspaceMemberCan(currentWorkspaceMember, "workspaceMember:update") &&
-      !hasWorkspaceRole(member.roles, WORKSPACE_OWNER_ROLE)
+      currentWorkspaceAbility.can(
+        "update",
+        createAbilitySubject("WorkspaceMember", member),
+      ) && !hasWorkspaceRole(member.roles, WORKSPACE_OWNER_ROLE)
     );
   }, [
     currentWorkspaceMember.roles,
     currentWorkspaceMember.id,
+    currentWorkspaceAbility,
     memberId,
     member.roles,
   ]);
 
-  const canManagePermissions =
-    hasWorkspaceRole(currentWorkspaceMember.roles, WORKSPACE_OWNER_ROLE) &&
-    !hasWorkspaceRole(member.roles, WORKSPACE_OWNER_ROLE);
+  const canManagePermissions = canManageRoles;
 
   const form = useForm({
     defaultValues: {
@@ -345,7 +350,10 @@ function MemberComponent() {
   const canRemove =
     memberId !== currentWorkspaceMember.id &&
     !hasWorkspaceRole(member.roles, WORKSPACE_OWNER_ROLE) &&
-    workspaceMemberCan(currentWorkspaceMember, "workspaceMember:delete");
+    currentWorkspaceAbility.can(
+      "delete",
+      createAbilitySubject("WorkspaceMember", member),
+    );
 
   const handleRemoveClick = async () => {
     const confirmed = await alertDialog({
@@ -361,7 +369,7 @@ function MemberComponent() {
   };
 
   return (
-    <Page variant="compact">
+    <Page variant="compact" data-testid="workspace-member-detail-page">
       <PageHeader>
         <PageTitle>{member.name}</PageTitle>
         {canRemove ? (
@@ -479,6 +487,7 @@ function MemberComponent() {
                     ).map((role) => ({
                       label: getRoleLabel(role.name),
                       value: role.name,
+                      testId: `workspace-member-role-${role.name}`,
                       disabled:
                         role.name === WORKSPACE_OWNER_ROLE || !canManageRoles,
                     }))}
@@ -515,6 +524,7 @@ function MemberComponent() {
                   <Field orientation="horizontal">
                     <Button
                       type="submit"
+                      data-testid="workspace-member-save"
                       disabled={!isDirty || !canSubmit}
                       loading={
                         isSubmitting || updatingRole || updatingPermissions
