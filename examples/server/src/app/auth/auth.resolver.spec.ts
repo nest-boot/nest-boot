@@ -21,6 +21,25 @@ describe('AuthResolver', () => {
     expect(resolver.currentUser(user)).toBe(user);
   });
 
+  it('returns null when API key authentication has no session', () => {
+    const { resolver } = createResolver();
+
+    expect(resolver.currentAuthSession(null)).toBeNull();
+  });
+
+  it('exposes configured social providers without requiring a session', async () => {
+    const { authService, resolver } = createResolver({
+      listSocialProviders: vi.fn(async () => [
+        { id: 'company', name: 'Company SSO' },
+      ]),
+    });
+
+    await expect(resolver.authSocialProviders()).resolves.toEqual([
+      { id: 'company', name: 'Company SSO' },
+    ]);
+    expect(authService.listSocialProviders).toHaveBeenCalledWith();
+  });
+
   it('signs in through AuthService and forwards session cookies', async () => {
     const headers = new Headers();
     headers.append('set-cookie', 'session=value; Path=/; HttpOnly');
@@ -50,6 +69,36 @@ describe('AuthResolver', () => {
     ]);
   });
 
+  it('starts social sign-in through AuthService and forwards state cookies', async () => {
+    const headers = new Headers();
+    headers.append('set-cookie', 'oauth-state=value; Path=/; HttpOnly');
+    const result = {
+      redirect: true,
+      token: null,
+      url: 'https://identity.example.com/authorize',
+      user: null,
+    };
+    const { authService, resolver } = createResolver({
+      signInSocial: vi.fn(async () => ({ headers, response: result })),
+    });
+    const response = { append: vi.fn() } as unknown as Response;
+    const input = {
+      callbackURL: 'https://app.example.com',
+      provider: 'company',
+    };
+
+    await expect(resolver.authSignInSocial(input, response)).resolves.toBe(
+      result,
+    );
+    expect(authService.signInSocial).toHaveBeenCalledWith(
+      { ...input, disableRedirect: true },
+      { returnHeaders: true },
+    );
+    expect(response.append).toHaveBeenCalledWith('set-cookie', [
+      'oauth-state=value; Path=/; HttpOnly',
+    ]);
+  });
+
   it('delegates provider token operations with an account selector', async () => {
     const token = {
       accessToken: 'access-token',
@@ -67,6 +116,38 @@ describe('AuthResolver', () => {
     expect(authService.getAccessToken).toHaveBeenCalledWith({
       accountId: 'account-1',
     });
+  });
+
+  it('starts social account linking without exposing Better Auth directly', async () => {
+    const headers = new Headers();
+    headers.append('set-cookie', 'oauth-state=value; Path=/; HttpOnly');
+    const result = {
+      redirect: false,
+      url: 'https://identity.example.com/authorize',
+    };
+    const { authService, resolver } = createResolver({
+      linkSocialAccount: vi.fn(async () => ({ headers, response: result })),
+    });
+    const response = { append: vi.fn() } as unknown as Response;
+    const input = {
+      callbackURL: 'https://app.example.com/user/security',
+      provider: 'oidc',
+      scopes: ['openid'],
+    };
+
+    await expect(resolver.authLinkSocialAccount(input, response)).resolves.toBe(
+      result,
+    );
+    expect(authService.linkSocialAccount).toHaveBeenCalledWith(
+      {
+        ...input,
+        disableRedirect: true,
+      },
+      { returnHeaders: true },
+    );
+    expect(response.append).toHaveBeenCalledWith('set-cookie', [
+      'oauth-state=value; Path=/; HttpOnly',
+    ]);
   });
 
   it('updates the user and forwards refreshed session cookies', async () => {

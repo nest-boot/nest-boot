@@ -44,6 +44,11 @@ const userKeyPermissions = ["user:get", ...workspacePermissions] as const;
 User Key 接受用户与工作区权限目录的并集。格式错误、重复和未知权限都会被拒绝。
 PostgreSQL 使用 `text[]` 列持久化这些值。
 
+创建和更新还会检查权限上限。User Key 中的用户作用域权限不能超过所属用户当前由角色
+与直接授权得到的权限；Workspace Key 不能超过签发成员当前由角色与直接授权得到的
+权限。User Key 中的工作区权限会在每次请求时再次与所选工作区的成员权限取交集，因此
+一个 Key 可以跨工作区使用，但不会固化或复制成员权限。
+
 ## 传输方式
 
 API Key 使用 Bearer 方式发送：

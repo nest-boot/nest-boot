@@ -1,0 +1,56 @@
+---
+title: "Social Login"
+description: "Start social and custom OAuth sign-in and account-linking flows."
+---
+
+Built-in social providers and custom OAuth 2.0 or OpenID Connect providers use
+one application-facing flow and one flat `AuthModuleOptions.providers` array.
+Each item uses `id`; built-in IDs use Better Auth's optimized provider, while
+other IDs use Generic OAuth.
+
+`AuthService` keeps Better Auth internal while exposing these stable operations:
+
+- `listSocialProviders()` returns each enabled provider's `id` and display `name`;
+- `signInSocial()` starts login or signup with any returned provider;
+- `linkSocialAccount()` links another provider identity to the current user;
+- `listAccounts()` and `unlinkAccount()` manage linked identities;
+- `getAccessToken()`, `refreshToken()`, and `accountInfo()` access provider data.
+
+## Starting Sign-In
+
+Use the provider ID returned by `listSocialProviders()`. A browser transport
+should request response headers and forward every `Set-Cookie` header because
+the OAuth state and PKCE verifier are stored in cookies.
+
+```typescript
+const result = await authService.signInSocial(
+  {
+    provider: "company",
+    callbackURL: "https://app.example.com/user/workspaces",
+    errorCallbackURL: "https://app.example.com/auth/login",
+    disableRedirect: true,
+  },
+  { returnHeaders: true },
+);
+
+applyResponseHeaders(response, result.headers);
+return result.response;
+```
+
+When `disableRedirect` is true, navigate the browser to `result.response.url`.
+The provider returns to `/api/auth/callback/:providerId` by default; register
+that complete URL in the provider console. `basePath` changes the `/api/auth`
+prefix.
+
+## Linking Accounts
+
+Account linking requires an authenticated session. Pass the same provider ID to
+`linkSocialAccount()`, forward its state cookie, and navigate to the returned
+URL. After the callback, `listAccounts()` contains the new identity. Do not
+offer a provider that is already linked unless the product explicitly supports
+multiple accounts for that provider.
+
+Generic providers are implemented by Better Auth's
+[Generic OAuth plugin](https://better-auth.com/docs/plugins/generic-oauth), so
+PKCE, state validation, OIDC discovery, issuer validation, token exchange, and
+callback handling remain server-side.

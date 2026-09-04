@@ -1,8 +1,9 @@
-import { createContext, useContext } from "react";
+import { createContext, useContext, useMemo } from "react";
 import { useSuspenseQuery } from "@apollo/client/react";
 import type { ReactNode } from "react";
 import type { GetCurrentWorkspaceMemberFromWorkspaceMemberContextQuery } from "@/gql/graphql";
 import { graphql } from "@/gql";
+import { createAbility } from "@/lib/ability";
 
 const GET_CURRENT_WORKSPACE_MEMBER_FROM_WORKSPACE_MEMBER_CONTEXT = graphql(`
   query getCurrentWorkspaceMemberFromWorkspaceMemberContext {
@@ -17,6 +18,14 @@ const GET_CURRENT_WORKSPACE_MEMBER_FROM_WORKSPACE_MEMBER_CONTEXT = graphql(`
         email
       }
     }
+    currentWorkspaceAbilityRules {
+      actions
+      subjects
+      fields
+      conditions
+      inverted
+      reason
+    }
   }
 `);
 
@@ -24,6 +33,9 @@ const CurrentWorkspaceMemberContext = createContext<
   | GetCurrentWorkspaceMemberFromWorkspaceMemberContextQuery["currentWorkspaceMember"]
   | null
 >(null);
+const CurrentWorkspaceAbilityContext = createContext<ReturnType<
+  typeof createAbility
+> | null>(null);
 
 export function CurrentWorkspaceMemberProvider({
   children,
@@ -34,12 +46,30 @@ export function CurrentWorkspaceMemberProvider({
     GET_CURRENT_WORKSPACE_MEMBER_FROM_WORKSPACE_MEMBER_CONTEXT,
     { fetchPolicy: "network-only" },
   );
+  const ability = useMemo(
+    () => createAbility(data.currentWorkspaceAbilityRules),
+    [data.currentWorkspaceAbilityRules],
+  );
 
   return (
     <CurrentWorkspaceMemberContext value={data.currentWorkspaceMember}>
-      {children}
+      <CurrentWorkspaceAbilityContext value={ability}>
+        {children}
+      </CurrentWorkspaceAbilityContext>
     </CurrentWorkspaceMemberContext>
   );
+}
+
+export function useCurrentWorkspaceAbility() {
+  const ability = useContext(CurrentWorkspaceAbilityContext);
+
+  if (ability == null) {
+    throw new Error(
+      "useCurrentWorkspaceAbility must be used within a CurrentWorkspaceMemberProvider",
+    );
+  }
+
+  return ability;
 }
 
 export function useCurrentWorkspaceMemberContext() {

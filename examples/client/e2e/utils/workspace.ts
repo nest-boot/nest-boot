@@ -44,6 +44,28 @@ export async function addWorkspaceMemberByApi(
   return data.addWorkspaceMember.id;
 }
 
+export async function createWorkspaceByApi(page: Page, name: string) {
+  const data = await graphqlRequest<{
+    createWorkspace: {
+      id: string;
+      name: string;
+    };
+  }>(
+    page.request,
+    /* GraphQL */ `
+      mutation CreateWorkspace($input: CreateWorkspaceInput!) {
+        createWorkspace(input: $input) {
+          id
+          name
+        }
+      }
+    `,
+    { input: { name } },
+  );
+
+  return data.createWorkspace;
+}
+
 function currentWorkspaceId(page: Page) {
   const match = page.url().match(/\/workspaces\/(\d+)/);
 

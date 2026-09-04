@@ -253,3 +253,18 @@ The `userCan()` and `workspaceCan()` helpers fail closed by returning `false`
 when the requested ability is unavailable. The lower-level
 `getUserAbility()` and `getWorkspaceAbility()` accessors throw
 `ForbiddenException` instead.
+
+## Client Ability Rules
+
+Use `serializeAbilityRules()` when a transport needs to send an already-built
+ability to a browser or another process. It converts class subjects to their
+stable class names and preserves actions, fields, conditions, inverted rules,
+and reasons. The result is JSON-safe and can be rehydrated with CASL's
+`createMongoAbility()`.
+
+```typescript
+const rules = serializeAbilityRules(getWorkspaceAbility());
+```
+
+Treat transported rules as a user-interface capability model only. The server
+guard and service authorization checks remain authoritative for every request.

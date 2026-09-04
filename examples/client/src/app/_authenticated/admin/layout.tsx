@@ -4,6 +4,7 @@ import { t } from "i18next";
 import { AdminSidebar } from "./components/admin-sidebar";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { graphql } from "@/gql";
+import { createAbility } from "@/lib/ability";
 import {
   SidebarInset,
   SidebarProvider,
@@ -12,8 +13,13 @@ import {
 
 const GET_ADMIN_ACCESS_FROM_ADMIN_LAYOUT = graphql(`
   query getAdminAccessFromAdminLayout {
-    currentUser {
-      permissions
+    currentUserAbilityRules {
+      actions
+      subjects
+      fields
+      conditions
+      inverted
+      reason
     }
   }
 `);
@@ -25,7 +31,10 @@ export const Route = createFileRoute("/_authenticated/admin")({
       query: GET_ADMIN_ACCESS_FROM_ADMIN_LAYOUT,
       fetchPolicy: "network-only",
     });
-    if (!data?.currentUser.permissions.includes("user:list")) {
+    if (
+      !data ||
+      !createAbility(data.currentUserAbilityRules).can("list", "User")
+    ) {
       throw redirect({ to: "/user" });
     }
     return { title: t("admin:title") };

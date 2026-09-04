@@ -345,6 +345,47 @@ describe("WorkspaceService", () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it("rejects assigning the creator role outside ownership transfer", async () => {
+    const { em, service } = createService();
+    const workspace = new TestWorkspace();
+    const inviter = Object.assign(new TestUser(), {
+      email: "owner@example.com",
+      name: "Owner",
+    });
+    const user = Object.assign(new TestUser(), {
+      email: "alice@example.com",
+      name: "Alice",
+    });
+    em.findOne.mockResolvedValue(null);
+
+    await expect(
+      service.addMember(workspace, user, { roles: ["owner"] }),
+    ).rejects.toThrow(
+      "The owner role can only be assigned by transferring ownership",
+    );
+    await expect(
+      service.createInvitation(workspace, inviter, {
+        email: user.email,
+        roles: ["owner"],
+      }),
+    ).rejects.toThrow(
+      "The owner role can only be assigned by transferring ownership",
+    );
+
+    const invitation = Object.assign(new TestWorkspaceInvitation(), {
+      email: user.email,
+      expiresAt: new Date(Date.now() + 60_000),
+      roles: ["owner"],
+      status: "pending" as const,
+      workspace,
+    });
+    em.findOne.mockReset();
+    em.findOne.mockResolvedValueOnce(invitation).mockResolvedValueOnce(null);
+    await expect(service.acceptInvitation(user, invitation.id)).rejects.toThrow(
+      "The owner role can only be assigned by transferring ownership",
+    );
+  });
+
   it("validates direct member permissions against the workspace catalog", async () => {
     const { em, service } = createService();
     const workspace = new TestWorkspace();

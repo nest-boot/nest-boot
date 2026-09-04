@@ -6,11 +6,95 @@ import {
   testPassword,
 } from "./utils/auth";
 import { waitForEmailUrl } from "./utils/mailpit";
-import { createFirstWorkspace } from "./utils/workspace";
+import {
+  addWorkspaceMemberByApi,
+  createFirstWorkspace,
+} from "./utils/workspace";
+import { graphqlRequest } from "./utils/graphql";
 import { uniqueSeed } from "./utils/unique";
 
 test.describe("workspace invitations", () => {
+  test("shows an expired invitation and clears the pending redirect", async ({
+    browser,
+    page,
+  }) => {
+    const seed = uniqueSeed("expired-invite");
+    const ownerEmail = `${seed}-owner@example.com`;
+    const inviteeEmail = `${seed}-invitee@example.com`;
+    const workspaceName = `过期邀请工作空间 ${seed}`;
+    const inviteeContext = await browser.newContext({
+      locale: "zh-CN",
+      timezoneId: "Asia/Shanghai",
+    });
+    const inviteePage = await inviteeContext.newPage();
+
+    try {
+      await registerUser(inviteePage, {
+        email: inviteeEmail,
+        name: "Expired Invitee",
+      });
+      await registerUser(page, {
+        email: ownerEmail,
+        name: "Expired Invite Owner",
+      });
+      const workspaceId = await createFirstWorkspace(page, workspaceName);
+      const { createWorkspaceInvitation } = await graphqlRequest<{
+        createWorkspaceInvitation: { expiresAt: string; id: string };
+      }>(
+        page.request,
+        /* GraphQL */ `
+          mutation CreateExpiringWorkspaceInvitation(
+            $input: CreateWorkspaceInvitationInput!
+          ) {
+            createWorkspaceInvitation(input: $input) {
+              id
+              expiresAt
+            }
+          }
+        `,
+        {
+          input: {
+            email: inviteeEmail,
+            expiresIn: 1,
+            roles: ["member"],
+          },
+        },
+        { "x-workspace-id": workspaceId },
+      );
+
+      await inviteePage.evaluate((invitationId) => {
+        localStorage.setItem("workspace_invitation_id", invitationId);
+      }, createWorkspaceInvitation.id);
+      await expect
+        .poll(() => Date.now())
+        .toBeGreaterThan(
+          new Date(createWorkspaceInvitation.expiresAt).getTime(),
+        );
+
+      await inviteePage.goto(
+        `/invite?invitationId=${createWorkspaceInvitation.id}`,
+      );
+      await expect(inviteePage.getByTestId("invite-error-page")).toBeVisible();
+      await expect(
+        inviteePage.getByText(
+          "该邀请已过期，请联系工作空间管理员重新发送邀请。",
+        ),
+      ).toBeVisible();
+      expect(
+        await inviteePage.evaluate(() =>
+          localStorage.getItem("workspace_invitation_id"),
+        ),
+      ).toBeNull();
+
+      await inviteePage.getByTestId("invite-error-exit").click();
+      await expect(inviteePage).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
+    } finally {
+      await inviteeContext.close();
+    }
+  });
+
   test("cancels a pending invitation without creating a member row", async ({
+    browser,
     context,
     page,
   }) => {
@@ -20,31 +104,67 @@ test.describe("workspace invitations", () => {
     const ownerEmail = `${seed}-owner@example.com`;
     const inviteeEmail = `${seed}-invitee@example.com`;
     const workspaceName = `删除邀请工作空间 ${seed}`;
-
-    await registerUser(page, {
-      email: ownerEmail,
-      name: "Invite Owner",
+    const inviteeContext = await browser.newContext({
+      locale: "zh-CN",
+      timezoneId: "Asia/Shanghai",
     });
-    const workspaceId = await createFirstWorkspace(page, workspaceName);
+    const inviteePage = await inviteeContext.newPage();
 
-    await page.goto(`/workspaces/${workspaceId}/members`);
-    await expect(page.getByTestId("workspace-members-page")).toBeVisible();
+    try {
+      await registerUser(inviteePage, {
+        email: inviteeEmail,
+        name: "Canceled Invitee",
+      });
+      await registerUser(page, {
+        email: ownerEmail,
+        name: "Invite Owner",
+      });
+      const workspaceId = await createFirstWorkspace(page, workspaceName);
 
-    await page.getByTestId("workspace-members-invite-action").click();
-    await page.getByTestId("workspace-invite-email-input").fill(inviteeEmail);
-    await page.getByTestId("workspace-invite-confirm").click();
-    await page.getByTestId("workspace-invite-link-close").click();
+      await page.goto(`/workspaces/${workspaceId}/members`);
+      await expect(page.getByTestId("workspace-members-page")).toBeVisible();
 
-    const invitation = page.getByTestId(`workspace-invitation-${inviteeEmail}`);
-    await expect(invitation).toBeVisible();
-    await expect(
-      page.getByTestId(`workspace-member-row-${inviteeEmail}`),
-    ).toHaveCount(0);
+      await page.getByTestId("workspace-members-invite-action").click();
+      await page.getByTestId("workspace-invite-email-input").fill(inviteeEmail);
+      await page.getByTestId("workspace-invite-confirm").click();
+      const inviteLink = (
+        await page.getByTestId("workspace-invite-link").textContent()
+      )?.trim();
+      expect(inviteLink).toContain("/invite?invitationId=");
+      await page.getByTestId("workspace-invite-link-close").click();
 
-    await invitation.getByRole("button", { name: "取消" }).click();
-    await page.getByTestId("alert-dialog-confirm").click();
+      const invitation = page.getByTestId(
+        `workspace-invitation-${inviteeEmail}`,
+      );
+      await expect(invitation).toBeVisible();
+      await expect(
+        page.getByTestId(`workspace-member-row-${inviteeEmail}`),
+      ).toHaveCount(0);
 
-    await expect(invitation).toHaveCount(0);
+      await invitation.getByRole("button", { name: "取消" }).click();
+      await page.getByTestId("alert-dialog-confirm").click();
+
+      await expect(invitation).toHaveCount(0);
+
+      await inviteePage.evaluate((invitationId) => {
+        localStorage.setItem("workspace_invitation_id", invitationId);
+      }, new URL(inviteLink!).searchParams.get("invitationId")!);
+      await inviteePage.goto(inviteLink!);
+      await expect(inviteePage.getByTestId("invite-error-page")).toBeVisible();
+      await expect(inviteePage.getByText("该邀请已被取消。")).toBeVisible();
+      expect(
+        await inviteePage.evaluate(() =>
+          localStorage.getItem("workspace_invitation_id"),
+        ),
+      ).toBeNull();
+
+      await inviteePage.goto(
+        "/invite?invitationId=00000000-0000-4000-8000-000000000000",
+      );
+      await expect(inviteePage.getByTestId("invite-error-page")).toBeVisible();
+    } finally {
+      await inviteeContext.close();
+    }
   });
 
   test("invites a member and accepts the invite through registration", async ({
@@ -222,6 +342,82 @@ test.describe("workspace invitations", () => {
       ).toHaveCount(0);
     } finally {
       await inviteeContext.close();
+    }
+  });
+
+  test("edits member roles and direct permissions", async ({
+    browser,
+    page,
+  }) => {
+    const seed = uniqueSeed("member-authorization");
+    const ownerEmail = `${seed}-owner@example.com`;
+    const memberEmail = `${seed}-member@example.com`;
+    const workspaceName = `成员权限工作空间 ${seed}`;
+    const renamedWorkspace = `成员已更新 ${seed}`;
+    const memberContext = await browser.newContext({
+      locale: "zh-CN",
+      timezoneId: "Asia/Shanghai",
+    });
+    const memberPage = await memberContext.newPage();
+
+    try {
+      await registerUser(memberPage, {
+        email: memberEmail,
+        name: "Authorized Member",
+      });
+      await registerUser(page, {
+        email: ownerEmail,
+        name: "Authorization Owner",
+      });
+      const workspaceId = await createFirstWorkspace(page, workspaceName);
+      const memberId = await addWorkspaceMemberByApi(
+        page,
+        workspaceId,
+        memberEmail,
+      );
+
+      await memberPage.goto(`/workspaces/${workspaceId}/settings`);
+      await memberPage
+        .getByTestId("workspace-settings-name-input")
+        .fill(renamedWorkspace);
+      await expect(
+        memberPage.getByTestId("workspace-settings-save"),
+      ).toBeDisabled();
+
+      await page.goto(`/workspaces/${workspaceId}/members/${memberId}`);
+      await expect(
+        page.getByTestId("workspace-member-detail-page"),
+      ).toBeVisible();
+      await page.getByTestId("workspace-member-role-admin").click();
+      await page.getByTestId("workspace-member-role-member").click();
+      await page.getByTestId("permission-workspace:update").click();
+      await page.getByTestId("workspace-member-save").click();
+      await expect(page.getByText("成员更新成功")).toBeVisible();
+
+      await page.reload();
+      await expect(
+        page.getByTestId("workspace-member-role-admin"),
+      ).toBeChecked();
+      await expect(
+        page.getByTestId("permission-workspace:update"),
+      ).toBeChecked();
+
+      await page.getByTestId("workspace-member-role-member").click();
+      await page.getByTestId("workspace-member-role-admin").click();
+      await page.getByTestId("workspace-member-save").click();
+      await expect(page.getByText("成员更新成功")).toBeVisible();
+
+      await memberPage.reload();
+      await memberPage
+        .getByTestId("workspace-settings-name-input")
+        .fill(renamedWorkspace);
+      await expect(
+        memberPage.getByTestId("workspace-settings-save"),
+      ).toBeEnabled();
+      await memberPage.getByTestId("workspace-settings-save").click();
+      await expect(memberPage.getByText("保存成功")).toBeVisible();
+    } finally {
+      await memberContext.close();
     }
   });
 });

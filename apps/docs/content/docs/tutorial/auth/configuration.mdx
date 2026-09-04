@@ -7,8 +7,8 @@ description: "Configure AuthModule, environment variables, and MikroORM entities
 
 Register `AuthModule` with `forRoot()` or `forRootAsync()`. The module exposes an
 explicit allowlist of Better Auth options so upgrades do not silently expand the
-public Nest Boot API. Better Auth plugins are internal and cannot be supplied
-through `AuthModuleOptions`.
+public Nest Boot API. Better Auth plugins remain internal. Built-in social and
+custom OAuth providers share one flat `providers` option.
 
 Important Nest Boot options include:
 
@@ -25,7 +25,8 @@ Important Nest Boot options include:
 - **`onAuthenticated`** — enriches application context after session resolution;
 - **`middleware`** — controls auth middleware registration and route selection;
 - **`basePath`** — changes the auth endpoint path from `/api/auth/`;
-- **`trustedOrigins`** — configures allowed browser origins.
+- **`trustedOrigins`** — configures allowed browser origins;
+- **`providers`** — configures built-in social, custom OAuth 2.0, and OpenID Connect providers.
 
 `user.permissions` defaults to the standard `user:*` and `session:*` catalog.
 `user.roles` defaults to `admin` and `user`. The `admin` role grants the full
@@ -101,11 +102,48 @@ Enabling either provider requires both its client ID and client secret.
 | `AUTH_GITHUB_CLIENT_SECRET`   | GitHub OAuth client secret.                       |
 | `AUTH_GITHUB_DISABLE_SIGN_UP` | Blocks new GitHub users while preserving sign-in. |
 
+### Authentication Providers
+
+Every provider is a flat object identified by `id`. An ID recognized by Better
+Auth, such as `github`, uses its built-in social-provider implementation. Other
+IDs use Generic OAuth. Each ID must be unique across `providers` and the
+environment-configured `oidc` provider.
+
+```typescript
+AuthModule.forRoot({
+  // ...entities and other options
+  providers: [
+    {
+      id: "github",
+      clientId: process.env.GITHUB_CLIENT_ID!,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+    },
+    {
+      id: "company",
+      name: "Company SSO",
+      clientId: process.env.COMPANY_OAUTH_CLIENT_ID!,
+      clientSecret: process.env.COMPANY_OAUTH_CLIENT_SECRET!,
+      discoveryUrl:
+        "https://accounts.example.com/.well-known/openid-configuration",
+      scopes: ["openid", "profile", "email"],
+    },
+  ],
+});
+```
+
+Providers with discovery metadata can use OpenID Connect. Plain OAuth providers
+can configure `authorizationUrl`, `tokenUrl`, and `userInfoUrl` explicitly.
+Advanced provider callbacks such as `getToken`, `getUserInfo`, and
+`mapProfileToUser` are also supported. Generic providers use the same
+`AuthService.signInSocial()`, `AuthService.linkSocialAccount()`, and callback
+routes as built-in social providers. `AUTH_DISABLE_SIGN_UP=true` overrides every
+provider's signup setting.
+
 ### OIDC
 
-Generic OIDC remains disabled until `AUTH_OIDC_ENABLED=true`. When enabled,
-`AuthModule` registers one internal `genericOAuth` provider with
-`providerId: "oidc"`.
+For a single conventional OIDC provider, the following environment variables
+are a concise alternative to a `providers` entry. The provider remains disabled
+until `AUTH_OIDC_ENABLED=true`; when enabled, its ID is `oidc`.
 
 | Variable                    | Purpose                                                                                                                | Default                |
 | --------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ---------------------- |

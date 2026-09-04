@@ -34,12 +34,18 @@ profile(
 - `revokeSession(token)` — 撤销指定会话；
 - `revokeOtherSessions()` — 只保留当前会话；
 - `revokeSessions()` — 撤销当前用户的全部会话。
+- `createSessionHeaders(token)` — 为应用自行创建的会话生成签名的浏览器 Session Cookie
+  响应头，例如模拟登录流程。
 
 这些方法都从 `RequestContext` 读取当前请求 Header，传输层无需转换或继续传递
 Express Header。
 
 会话列表保持认证后端的返回顺序，并包含撤销指定会话所需的 token。UI 应识别当前
 会话，不要把它当作普通远程设备提供撤销操作。
+
+`createSessionHeaders()` 还会清除缓存的会话与账号 Cookie。Resolver 或 Controller 必须
+转发所有返回的 `Set-Cookie`。示例在 `UserService.impersonateUser()` 与
+`stopImpersonating()` 切换浏览器身份时使用该方法。
 
 启用 PostgreSQL RLS 时，应用实体查询会在关闭 RLS 的隔离认证上下文中执行。因此业务
 数据库角色无需直接访问认证表，父级请求上下文也不会被修改。

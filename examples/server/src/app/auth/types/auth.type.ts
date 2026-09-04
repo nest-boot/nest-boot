@@ -65,6 +65,38 @@ export class AuthSignInResultType {
   user!: AuthUserType;
 }
 
+/** Social or generic OAuth provider enabled by the server. */
+@ObjectType()
+export class AuthSocialProviderType {
+  /** Stable provider identifier. */
+  @Field(() => ID)
+  id!: string;
+
+  /** Human-readable provider name. */
+  @Field(() => String)
+  name!: string;
+}
+
+/** Social or generic OAuth sign-in result. */
+@ObjectType()
+export class AuthSignInSocialResultType {
+  /** Whether the browser should navigate to the provider URL. */
+  @Field(() => Boolean)
+  redirect!: boolean;
+
+  /** Provider authorization URL for redirect flows. */
+  @Field(() => String, { nullable: true })
+  url!: string | null;
+
+  /** Session token returned by direct token flows. */
+  @Field(() => String, { nullable: true })
+  token!: string | null;
+
+  /** Authenticated user returned by direct token flows. */
+  @Field(() => AuthUserType, { nullable: true })
+  user!: AuthUserType | null;
+}
+
 /** Password-reset request result. */
 @ObjectType()
 export class AuthRequestPasswordResetResultType {
@@ -112,6 +144,10 @@ export class AuthSessionType {
   @Field(() => String, { nullable: true })
   userAgent?: string | null;
 
+  /** Administrator that started this impersonation session. */
+  @Field(() => ID, { nullable: true })
+  impersonatedById!: string | null;
+
   /** Session creation time. */
   @Field(() => Date)
   createdAt!: Date;
@@ -119,6 +155,34 @@ export class AuthSessionType {
   /** Session update time. */
   @Field(() => Date)
   updatedAt!: Date;
+}
+
+/** JSON-safe CASL rule exposed to authenticated clients. */
+@ObjectType()
+export class AuthAbilityRuleType {
+  /** Action names matched by the rule. */
+  @Field(() => [String])
+  actions!: string[];
+
+  /** Subject names matched by the rule. */
+  @Field(() => [String])
+  subjects!: string[];
+
+  /** Optional fields constrained by the rule. */
+  @Field(() => [String], { nullable: true })
+  fields!: string[] | null;
+
+  /** Optional Mongo-style conditions constrained by the rule. */
+  @Field(() => GraphQLJSONObject, { nullable: true })
+  conditions!: Record<string, unknown> | null;
+
+  /** Whether this is an inverted (`cannot`) rule. */
+  @Field(() => Boolean)
+  inverted!: boolean;
+
+  /** Optional human-readable denial reason. */
+  @Field(() => String, { nullable: true })
+  reason!: string | null;
 }
 
 /** User deletion result. */
@@ -167,6 +231,18 @@ export class AuthAccountType {
   /** Account update time. */
   @Field(() => Date)
   updatedAt!: Date;
+}
+
+/** Provider authorization target returned when linking an account. */
+@ObjectType()
+export class AuthLinkSocialAccountResultType {
+  /** Provider authorization URL. */
+  @Field(() => String)
+  url!: string;
+
+  /** Whether the browser should navigate to the provider URL. */
+  @Field(() => Boolean)
+  redirect!: boolean;
 }
 
 /** Identity fields returned by the provider account-info endpoint. */

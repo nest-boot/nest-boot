@@ -6,12 +6,22 @@ import type { Mocked } from "vitest";
 
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
 import type { AuthorizationService } from "./authorization.service.js";
-import { BaseAccount, BaseSession, BaseUser } from "./entities/index.js";
+import {
+  BaseAccount,
+  BaseApiKey,
+  BaseSession,
+  BaseUser,
+  BaseWorkspaceInvitation,
+  BaseWorkspaceMember,
+} from "./entities/index.js";
 import { UserService } from "./user.service.js";
 
 class TestAccount extends BaseAccount {}
+class TestApiKey extends BaseApiKey {}
 class TestSession extends BaseSession {}
 class TestUser extends BaseUser {}
+class TestWorkspaceInvitation extends BaseWorkspaceInvitation {}
+class TestWorkspaceMember extends BaseWorkspaceMember {}
 
 describe("UserService", () => {
   it("fails before persistence when a service-level permission is denied", async () => {
@@ -32,7 +42,7 @@ describe("UserService", () => {
 
     const user = await service.createUser({
       data: { locale: "en" },
-      email: "alice@example.com",
+      email: " Alice@Example.com ",
       name: "Alice",
       password: "password",
       permissions: ["user:list"],
@@ -121,6 +131,18 @@ describe("UserService", () => {
     await expect(
       service.updateUser(user, { roles: ["admin"] } as never),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("normalizes email addresses when updating a user", async () => {
+    const { em, service } = createService();
+    const user = Object.assign(new TestUser(), { email: "old@example.com" });
+
+    await service.updateUser(user, { email: " New@Example.com " });
+
+    expect(em.assign).toHaveBeenCalledWith(user, {
+      email: "new@example.com",
+    });
+    expect(user.email).toBe("new@example.com");
   });
 
   it("validates direct user permissions against the configured catalog", async () => {
@@ -372,6 +394,33 @@ describe("UserService", () => {
     expect(em.flush).toHaveBeenCalled();
   });
 
+  it("removes dependent records before deleting a user", async () => {
+    const { em, service } = createService();
+    const user = Object.assign(new TestUser(), { id: "user-1" });
+
+    await expect(service.removeUser(user)).resolves.toBe(user);
+
+    expect(em.nativeDelete).toHaveBeenNthCalledWith(1, TestSession, {
+      $or: [{ userId: "user-1" }, { impersonatedBy: user }],
+    });
+    expect(em.nativeDelete).toHaveBeenNthCalledWith(2, TestAccount, {
+      userId: "user-1",
+    });
+    expect(em.nativeDelete).toHaveBeenNthCalledWith(3, TestApiKey, {
+      owner: user,
+    });
+    expect(em.nativeDelete).toHaveBeenNthCalledWith(
+      4,
+      TestWorkspaceInvitation,
+      { inviter: user },
+    );
+    expect(em.nativeDelete).toHaveBeenNthCalledWith(5, TestWorkspaceMember, {
+      user,
+    });
+    expect(em.remove).toHaveBeenCalledWith(user);
+    expect(em.flush).toHaveBeenCalled();
+  });
+
   it("sets an existing credential password or creates the account", async () => {
     const { em, hash, service } = createService();
     const user = Object.assign(new TestUser(), { id: "user-1" });
@@ -457,8 +506,11 @@ function createService(
     user,
     entities: {
       account: TestAccount,
+      apiKey: TestApiKey,
       session: TestSession,
       user: TestUser,
+      workspaceInvitation: TestWorkspaceInvitation,
+      workspaceMember: TestWorkspaceMember,
     },
     session: { expiresIn: 3600 },
   } as unknown as AuthModuleOptions;

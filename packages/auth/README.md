@@ -16,7 +16,7 @@
 - [x] Validate API-key permissions by owner type: Workspace Keys may contain
       workspace permissions only; User Keys may contain configured user and
       workspace permissions.
-- [ ] Prevent API-key privilege escalation on creation and update. User-scoped
+- [x] Prevent API-key privilege escalation on creation and update. User-scoped
       permissions must not exceed the owning user's effective permissions;
       Workspace Key permissions must not exceed the issuing member's effective
       workspace permissions. User Key access to a workspace must continue to be
@@ -32,7 +32,7 @@
       `workspace.creatorRole`. Validate every configured lifecycle role at
       startup and use it throughout User, Workspace, API Key, guard, and adapter
       paths.
-- [ ] Add the remaining regression tests for over-privileged API-key creation
+- [x] Add the remaining regression tests for over-privileged API-key creation
       and updates. Unknown direct permissions, API-key reads, service-level
       authorization, and invalid lifecycle role configuration are covered.
 
@@ -41,6 +41,6 @@
 - [x] Support multiple requirements from the same authorization scope on one
       handler. Repeated `@UserCan` and `@WorkspaceCan` declarations always use
       `all` matching semantics.
-- [ ] Document permission catalogs, direct-permission validation, reserved-role
+- [x] Document permission catalogs, direct-permission validation, reserved-role
       invariants, API-key permission ceilings, and multi-requirement behavior
       after the contracts above are finalized.

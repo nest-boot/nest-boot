@@ -23,8 +23,8 @@ const config: CodegenConfig = {
         inlineFragmentTypes: "mask",
         scalars: {
           JSONObject: {
-            input: "Record<string, string[]>",
-            output: "Record<string, string[]>",
+            input: "Record<string, unknown>",
+            output: "Record<string, unknown>",
           },
         },
       },

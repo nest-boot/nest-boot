@@ -11,7 +11,10 @@ import { t } from "i18next";
 import { toast } from "sonner";
 import z from "zod";
 import { isEmpty, pick } from "lodash";
-import { useCurrentWorkspaceMemberContext } from "../contexts/current-workspace-member-context";
+import {
+  useCurrentWorkspaceAbility,
+  useCurrentWorkspaceMemberContext,
+} from "../contexts/current-workspace-member-context";
 import { InviteMemberDialog } from "./components/invite-member-dialog";
 import type { DataFilterItemProps } from "@/components/thread-ui/data-filter";
 import { Button } from "@/components/thread-ui/button";
@@ -52,7 +55,6 @@ import {
 } from "@/lib/format-filter-values";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/thread-ui/badge";
-import { workspaceMemberCan } from "@/lib/permissions";
 import { getRolesLabel } from "@/utils/get-role-label";
 import { WORKSPACE_OWNER_ROLE, hasWorkspaceRole } from "@/lib/workspace-roles";
 
@@ -208,21 +210,22 @@ function MembersComponent() {
   const location = useLocation();
 
   const currentWorkspaceMember = useCurrentWorkspaceMemberContext();
-  const canCreateInvitation = workspaceMemberCan(
-    currentWorkspaceMember,
-    "workspaceInvitation:create",
+  const currentWorkspaceAbility = useCurrentWorkspaceAbility();
+  const canCreateInvitation = currentWorkspaceAbility.can(
+    "create",
+    "WorkspaceInvitation",
   );
-  const canCancelInvitation = workspaceMemberCan(
-    currentWorkspaceMember,
-    "workspaceInvitation:cancel",
+  const canCancelInvitation = currentWorkspaceAbility.can(
+    "cancel",
+    "WorkspaceInvitation",
   );
-  const canUpdateMember = workspaceMemberCan(
-    currentWorkspaceMember,
-    "workspaceMember:update",
+  const canUpdateMember = currentWorkspaceAbility.can(
+    "update",
+    "WorkspaceMember",
   );
-  const canDeleteMember = workspaceMemberCan(
-    currentWorkspaceMember,
-    "workspaceMember:delete",
+  const canDeleteMember = currentWorkspaceAbility.can(
+    "delete",
+    "WorkspaceMember",
   );
 
   const query = search?.query ?? "";

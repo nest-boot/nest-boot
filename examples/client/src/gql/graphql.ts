@@ -36,8 +36,8 @@ export type Scalars = {
   DateTime: { input: any; output: any };
   /** The `JSONObject` scalar type represents JSON objects as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf). */
   JSONObject: {
-    input: Record<string, string[]>;
-    output: Record<string, string[]>;
+    input: Record<string, unknown>;
+    output: Record<string, unknown>;
   };
   /**
    * A filter for Workspace that accepts MongoDB query syntax.
@@ -111,6 +111,16 @@ export enum ApiKeyOrderField {
   LAST_USED_AT = "LAST_USED_AT",
 }
 
+export type AuthAbilityRuleType = {
+  __typename?: "AuthAbilityRuleType";
+  actions: Array<Scalars["String"]["output"]>;
+  conditions?: Maybe<Scalars["JSONObject"]["output"]>;
+  fields?: Maybe<Array<Scalars["String"]["output"]>>;
+  inverted: Scalars["Boolean"]["output"];
+  reason?: Maybe<Scalars["String"]["output"]>;
+  subjects: Array<Scalars["String"]["output"]>;
+};
+
 export type AuthAccessTokenType = {
   __typename?: "AuthAccessTokenType";
   accessToken: Scalars["String"]["output"];
@@ -179,6 +189,20 @@ export type AuthDeleteUserResultType = {
   success: Scalars["Boolean"]["output"];
 };
 
+export type AuthLinkSocialAccountInput = {
+  callbackURL?: InputMaybe<Scalars["String"]["input"]>;
+  errorCallbackURL?: InputMaybe<Scalars["String"]["input"]>;
+  loginHint?: InputMaybe<Scalars["String"]["input"]>;
+  provider: Scalars["String"]["input"];
+  scopes?: InputMaybe<Array<Scalars["String"]["input"]>>;
+};
+
+export type AuthLinkSocialAccountResultType = {
+  __typename?: "AuthLinkSocialAccountResultType";
+  redirect: Scalars["Boolean"]["output"];
+  url: Scalars["String"]["output"];
+};
+
 export type AuthRefreshedTokenType = {
   __typename?: "AuthRefreshedTokenType";
   accessToken?: Maybe<Scalars["String"]["output"]>;
@@ -224,6 +248,7 @@ export type AuthSessionType = {
   current: Scalars["Boolean"]["output"];
   expiresAt: Scalars["DateTime"]["output"];
   id: Scalars["ID"]["output"];
+  impersonatedById?: Maybe<Scalars["ID"]["output"]>;
   ipAddress?: Maybe<Scalars["String"]["output"]>;
   token: Scalars["String"]["output"];
   updatedAt: Scalars["DateTime"]["output"];
@@ -245,6 +270,24 @@ export type AuthSignInResultType = {
   user: AuthUserType;
 };
 
+export type AuthSignInSocialInput = {
+  callbackURL?: InputMaybe<Scalars["String"]["input"]>;
+  errorCallbackURL?: InputMaybe<Scalars["String"]["input"]>;
+  loginHint?: InputMaybe<Scalars["String"]["input"]>;
+  newUserCallbackURL?: InputMaybe<Scalars["String"]["input"]>;
+  provider: Scalars["String"]["input"];
+  requestSignUp?: InputMaybe<Scalars["Boolean"]["input"]>;
+  scopes?: InputMaybe<Array<Scalars["String"]["input"]>>;
+};
+
+export type AuthSignInSocialResultType = {
+  __typename?: "AuthSignInSocialResultType";
+  redirect: Scalars["Boolean"]["output"];
+  token?: Maybe<Scalars["String"]["output"]>;
+  url?: Maybe<Scalars["String"]["output"]>;
+  user?: Maybe<AuthUserType>;
+};
+
 export type AuthSignUpInput = {
   callbackURL?: InputMaybe<Scalars["String"]["input"]>;
   email: Scalars["String"]["input"];
@@ -258,6 +301,12 @@ export type AuthSignUpResultType = {
   __typename?: "AuthSignUpResultType";
   token?: Maybe<Scalars["String"]["output"]>;
   user: AuthUserType;
+};
+
+export type AuthSocialProviderType = {
+  __typename?: "AuthSocialProviderType";
+  id: Scalars["ID"]["output"];
+  name: Scalars["String"]["output"];
 };
 
 export type AuthUpdateUserInput = {
@@ -314,6 +363,7 @@ export type CreateWorkspaceInput = {
 
 export type CreateWorkspaceInvitationInput = {
   email: Scalars["String"]["input"];
+  expiresIn?: InputMaybe<Scalars["Int"]["input"]>;
   roles: Array<Scalars["String"]["input"]>;
 };
 
@@ -330,6 +380,7 @@ export type Mutation = {
   authChangeEmail: Scalars["Boolean"]["output"];
   authChangePassword: AuthChangePasswordResultType;
   authDeleteUser: AuthDeleteUserResultType;
+  authLinkSocialAccount: AuthLinkSocialAccountResultType;
   authRefreshToken: AuthRefreshedTokenType;
   authRequestPasswordReset: AuthRequestPasswordResetResultType;
   authResetPassword: Scalars["Boolean"]["output"];
@@ -339,6 +390,7 @@ export type Mutation = {
   authSendVerificationEmail: Scalars["Boolean"]["output"];
   authSetPassword: Scalars["Boolean"]["output"];
   authSignIn: AuthSignInResultType;
+  authSignInSocial: AuthSignInSocialResultType;
   authSignOut: Scalars["Boolean"]["output"];
   authSignUp: AuthSignUpResultType;
   authUnlinkAccount: Scalars["Boolean"]["output"];
@@ -355,6 +407,7 @@ export type Mutation = {
   deleteUser: User;
   deleteUserApiKey: ApiKey;
   deleteWorkspace: Workspace;
+  impersonateUser: User;
   leaveWorkspace: WorkspaceMember;
   rejectWorkspaceInvitation: WorkspaceInvitation;
   /** @deprecated Use deleteWorkspace instead */
@@ -366,6 +419,7 @@ export type Mutation = {
   setUserPermissions: User;
   setUserRoles: User;
   setWorkspaceMemberPermissions: WorkspaceMember;
+  stopImpersonating?: Maybe<User>;
   transferWorkspaceOwnership: WorkspaceMember;
   unbanUser: User;
   updateApiKey: ApiKey;
@@ -396,6 +450,10 @@ export type MutationAuthDeleteUserArgs = {
   input?: InputMaybe<AuthDeleteUserInput>;
 };
 
+export type MutationAuthLinkSocialAccountArgs = {
+  input: AuthLinkSocialAccountInput;
+};
+
 export type MutationAuthRefreshTokenArgs = {
   input: AuthAccountSelectorInput;
 };
@@ -422,6 +480,10 @@ export type MutationAuthSetPasswordArgs = {
 
 export type MutationAuthSignInArgs = {
   input: AuthSignInInput;
+};
+
+export type MutationAuthSignInSocialArgs = {
+  input: AuthSignInSocialInput;
 };
 
 export type MutationAuthSignUpArgs = {
@@ -478,6 +540,10 @@ export type MutationDeleteUserArgs = {
 };
 
 export type MutationDeleteUserApiKeyArgs = {
+  id: Scalars["ID"]["input"];
+};
+
+export type MutationImpersonateUserArgs = {
   id: Scalars["ID"]["input"];
 };
 
@@ -579,9 +645,13 @@ export type Query = {
   authAccountInfo: AuthAccountInfoType;
   authAccounts: Array<AuthAccountType>;
   authSessions: Array<AuthSessionType>;
+  authSocialProviders: Array<AuthSocialProviderType>;
+  currentAuthSession?: Maybe<AuthSessionType>;
   currentUser: User;
+  currentUserAbilityRules: Array<AuthAbilityRuleType>;
   currentUserWorkspaceInvitations: Array<WorkspaceInvitation>;
   currentWorkspace?: Maybe<Workspace>;
+  currentWorkspaceAbilityRules: Array<AuthAbilityRuleType>;
   currentWorkspaceMember?: Maybe<WorkspaceMember>;
   user?: Maybe<User>;
   userApiKey?: Maybe<ApiKey>;
@@ -886,7 +956,15 @@ export type GetAdminAccessFromAdminLayoutQueryVariables = Exact<{
 
 export type GetAdminAccessFromAdminLayoutQuery = {
   __typename?: "Query";
-  currentUser: { __typename?: "User"; permissions: Array<string> };
+  currentUserAbilityRules: Array<{
+    __typename?: "AuthAbilityRuleType";
+    actions: Array<string>;
+    subjects: Array<string>;
+    fields?: Array<string> | null;
+    conditions?: Record<string, unknown> | null;
+    inverted: boolean;
+    reason?: string | null;
+  }>;
 };
 
 export type GetUserFromUserRouteQueryVariables = Exact<{
@@ -1037,6 +1115,15 @@ export type DeleteUserFromUserRouteMutation = {
   deleteUser: { __typename?: "User"; id: string };
 };
 
+export type ImpersonateUserFromUserRouteMutationVariables = Exact<{
+  id: Scalars["ID"]["input"];
+}>;
+
+export type ImpersonateUserFromUserRouteMutation = {
+  __typename?: "Mutation";
+  impersonateUser: { __typename?: "User"; id: string };
+};
+
 export type GetUsersFromUsersRouteQueryVariables = Exact<{
   input?: InputMaybe<ListUsersInput>;
 }>;
@@ -1099,6 +1186,15 @@ export type GetCurrentUserFromCurrentUserContextQuery = {
     email: string;
     permissions: Array<string>;
   };
+  currentUserAbilityRules: Array<{
+    __typename?: "AuthAbilityRuleType";
+    actions: Array<string>;
+    subjects: Array<string>;
+    fields?: Array<string> | null;
+    conditions?: Record<string, unknown> | null;
+    inverted: boolean;
+    reason?: string | null;
+  }>;
 };
 
 export type GetCurrentUserFromAuthenticatedRouteQueryVariables = Exact<{
@@ -1108,6 +1204,27 @@ export type GetCurrentUserFromAuthenticatedRouteQueryVariables = Exact<{
 export type GetCurrentUserFromAuthenticatedRouteQuery = {
   __typename?: "Query";
   currentUser: { __typename?: "User"; id: string };
+};
+
+export type GetImpersonationFromAuthenticatedRouteQueryVariables = Exact<{
+  [key: string]: never;
+}>;
+
+export type GetImpersonationFromAuthenticatedRouteQuery = {
+  __typename?: "Query";
+  currentAuthSession?: {
+    __typename?: "AuthSessionType";
+    impersonatedById?: string | null;
+  } | null;
+};
+
+export type StopImpersonatingFromAuthenticatedRouteMutationVariables = Exact<{
+  [key: string]: never;
+}>;
+
+export type StopImpersonatingFromAuthenticatedRouteMutation = {
+  __typename?: "Mutation";
+  stopImpersonating?: { __typename?: "User"; id: string } | null;
 };
 
 export type GetUserApiKeysFromUserApiKeysRouteQueryVariables = Exact<{
@@ -1312,6 +1429,19 @@ export type GetAccountsFromUserSecurityQuery = {
   }>;
 };
 
+export type GetSocialProvidersFromUserSecurityQueryVariables = Exact<{
+  [key: string]: never;
+}>;
+
+export type GetSocialProvidersFromUserSecurityQuery = {
+  __typename?: "Query";
+  authSocialProviders: Array<{
+    __typename?: "AuthSocialProviderType";
+    id: string;
+    name: string;
+  }>;
+};
+
 export type UnlinkAccountFromUserSecurityMutationVariables = Exact<{
   accountId: Scalars["ID"]["input"];
 }>;
@@ -1319,6 +1449,19 @@ export type UnlinkAccountFromUserSecurityMutationVariables = Exact<{
 export type UnlinkAccountFromUserSecurityMutation = {
   __typename?: "Mutation";
   authUnlinkAccount: boolean;
+};
+
+export type LinkAccountFromUserSecurityMutationVariables = Exact<{
+  input: AuthLinkSocialAccountInput;
+}>;
+
+export type LinkAccountFromUserSecurityMutation = {
+  __typename?: "Mutation";
+  authLinkSocialAccount: {
+    __typename?: "AuthLinkSocialAccountResultType";
+    url: string;
+    redirect: boolean;
+  };
 };
 
 export type RefreshAccountFromUserSecurityMutationVariables = Exact<{
@@ -1580,6 +1723,15 @@ export type GetCurrentWorkspaceMemberFromWorkspaceMemberContextQuery = {
     status: WorkspaceMemberStatus;
     user?: { __typename?: "User"; email: string } | null;
   } | null;
+  currentWorkspaceAbilityRules: Array<{
+    __typename?: "AuthAbilityRuleType";
+    actions: Array<string>;
+    subjects: Array<string>;
+    fields?: Array<string> | null;
+    conditions?: Record<string, unknown> | null;
+    inverted: boolean;
+    reason?: string | null;
+  }>;
 };
 
 export type GetCurrentWorkspaceFromWorkspaceLayoutQueryVariables = Exact<{
@@ -1594,6 +1746,15 @@ export type GetCurrentWorkspaceFromWorkspaceLayoutQuery = {
     id: string;
     roles: Array<string>;
   } | null;
+  currentWorkspaceAbilityRules: Array<{
+    __typename?: "AuthAbilityRuleType";
+    actions: Array<string>;
+    subjects: Array<string>;
+    fields?: Array<string> | null;
+    conditions?: Record<string, unknown> | null;
+    inverted: boolean;
+    reason?: string | null;
+  }>;
 };
 
 export type GetCurrentWorkspaceMemberFromMemberRouteQueryVariables = Exact<{
@@ -1909,6 +2070,32 @@ export type AuthSignUpFromLoginFormMutation = {
   };
 };
 
+export type GetSocialProvidersFromLoginFormQueryVariables = Exact<{
+  [key: string]: never;
+}>;
+
+export type GetSocialProvidersFromLoginFormQuery = {
+  __typename?: "Query";
+  authSocialProviders: Array<{
+    __typename?: "AuthSocialProviderType";
+    id: string;
+    name: string;
+  }>;
+};
+
+export type AuthSignInSocialFromLoginFormMutationVariables = Exact<{
+  input: AuthSignInSocialInput;
+}>;
+
+export type AuthSignInSocialFromLoginFormMutation = {
+  __typename?: "Mutation";
+  authSignInSocial: {
+    __typename?: "AuthSignInSocialResultType";
+    redirect: boolean;
+    url?: string | null;
+  };
+};
+
 export type RequestPasswordResetFromForgotPasswordMutationVariables = Exact<{
   input: AuthRequestPasswordResetInput;
 }>;
@@ -2009,11 +2196,16 @@ export const GetAdminAccessFromAdminLayoutDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "currentUser" },
+            name: { kind: "Name", value: "currentUserAbilityRules" },
             selectionSet: {
               kind: "SelectionSet",
               selections: [
-                { kind: "Field", name: { kind: "Name", value: "permissions" } },
+                { kind: "Field", name: { kind: "Name", value: "actions" } },
+                { kind: "Field", name: { kind: "Name", value: "subjects" } },
+                { kind: "Field", name: { kind: "Name", value: "fields" } },
+                { kind: "Field", name: { kind: "Name", value: "conditions" } },
+                { kind: "Field", name: { kind: "Name", value: "inverted" } },
+                { kind: "Field", name: { kind: "Name", value: "reason" } },
               ],
             },
           },
@@ -2697,6 +2889,54 @@ export const DeleteUserFromUserRouteDocument = {
   DeleteUserFromUserRouteMutation,
   DeleteUserFromUserRouteMutationVariables
 >;
+export const ImpersonateUserFromUserRouteDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "impersonateUserFromUserRoute" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "impersonateUser" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "id" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "id" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  ImpersonateUserFromUserRouteMutation,
+  ImpersonateUserFromUserRouteMutationVariables
+>;
 export const GetUsersFromUsersRouteDocument = {
   kind: "Document",
   definitions: [
@@ -2878,6 +3118,21 @@ export const GetCurrentUserFromCurrentUserContextDocument = {
               ],
             },
           },
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "currentUserAbilityRules" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "actions" } },
+                { kind: "Field", name: { kind: "Name", value: "subjects" } },
+                { kind: "Field", name: { kind: "Name", value: "fields" } },
+                { kind: "Field", name: { kind: "Name", value: "conditions" } },
+                { kind: "Field", name: { kind: "Name", value: "inverted" } },
+                { kind: "Field", name: { kind: "Name", value: "reason" } },
+              ],
+            },
+          },
         ],
       },
     },
@@ -2913,6 +3168,65 @@ export const GetCurrentUserFromAuthenticatedRouteDocument = {
 } as unknown as DocumentNode<
   GetCurrentUserFromAuthenticatedRouteQuery,
   GetCurrentUserFromAuthenticatedRouteQueryVariables
+>;
+export const GetImpersonationFromAuthenticatedRouteDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "getImpersonationFromAuthenticatedRoute" },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "currentAuthSession" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "impersonatedById" },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  GetImpersonationFromAuthenticatedRouteQuery,
+  GetImpersonationFromAuthenticatedRouteQueryVariables
+>;
+export const StopImpersonatingFromAuthenticatedRouteDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "stopImpersonatingFromAuthenticatedRoute" },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "stopImpersonating" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  StopImpersonatingFromAuthenticatedRouteMutation,
+  StopImpersonatingFromAuthenticatedRouteMutationVariables
 >;
 export const GetUserApiKeysFromUserApiKeysRouteDocument = {
   kind: "Document",
@@ -3681,6 +3995,35 @@ export const GetAccountsFromUserSecurityDocument = {
   GetAccountsFromUserSecurityQuery,
   GetAccountsFromUserSecurityQueryVariables
 >;
+export const GetSocialProvidersFromUserSecurityDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "getSocialProvidersFromUserSecurity" },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "authSocialProviders" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "name" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  GetSocialProvidersFromUserSecurityQuery,
+  GetSocialProvidersFromUserSecurityQueryVariables
+>;
 export const UnlinkAccountFromUserSecurityDocument = {
   kind: "Document",
   definitions: [
@@ -3725,6 +4068,61 @@ export const UnlinkAccountFromUserSecurityDocument = {
 } as unknown as DocumentNode<
   UnlinkAccountFromUserSecurityMutation,
   UnlinkAccountFromUserSecurityMutationVariables
+>;
+export const LinkAccountFromUserSecurityDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "linkAccountFromUserSecurity" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "input" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: {
+              kind: "NamedType",
+              name: { kind: "Name", value: "AuthLinkSocialAccountInput" },
+            },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "authLinkSocialAccount" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "input" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "input" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "url" } },
+                { kind: "Field", name: { kind: "Name", value: "redirect" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  LinkAccountFromUserSecurityMutation,
+  LinkAccountFromUserSecurityMutationVariables
 >;
 export const RefreshAccountFromUserSecurityDocument = {
   kind: "Document",
@@ -4843,6 +5241,21 @@ export const GetCurrentWorkspaceMemberFromWorkspaceMemberContextDocument = {
               ],
             },
           },
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "currentWorkspaceAbilityRules" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "actions" } },
+                { kind: "Field", name: { kind: "Name", value: "subjects" } },
+                { kind: "Field", name: { kind: "Name", value: "fields" } },
+                { kind: "Field", name: { kind: "Name", value: "conditions" } },
+                { kind: "Field", name: { kind: "Name", value: "inverted" } },
+                { kind: "Field", name: { kind: "Name", value: "reason" } },
+              ],
+            },
+          },
         ],
       },
     },
@@ -4902,6 +5315,21 @@ export const GetCurrentWorkspaceFromWorkspaceLayoutDocument = {
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "id" } },
                 { kind: "Field", name: { kind: "Name", value: "roles" } },
+              ],
+            },
+          },
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "currentWorkspaceAbilityRules" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "actions" } },
+                { kind: "Field", name: { kind: "Name", value: "subjects" } },
+                { kind: "Field", name: { kind: "Name", value: "fields" } },
+                { kind: "Field", name: { kind: "Name", value: "conditions" } },
+                { kind: "Field", name: { kind: "Name", value: "inverted" } },
+                { kind: "Field", name: { kind: "Name", value: "reason" } },
               ],
             },
           },
@@ -6315,6 +6743,90 @@ export const AuthSignUpFromLoginFormDocument = {
 } as unknown as DocumentNode<
   AuthSignUpFromLoginFormMutation,
   AuthSignUpFromLoginFormMutationVariables
+>;
+export const GetSocialProvidersFromLoginFormDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "getSocialProvidersFromLoginForm" },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "authSocialProviders" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "name" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  GetSocialProvidersFromLoginFormQuery,
+  GetSocialProvidersFromLoginFormQueryVariables
+>;
+export const AuthSignInSocialFromLoginFormDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "authSignInSocialFromLoginForm" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "input" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: {
+              kind: "NamedType",
+              name: { kind: "Name", value: "AuthSignInSocialInput" },
+            },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "authSignInSocial" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "input" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "input" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "redirect" } },
+                { kind: "Field", name: { kind: "Name", value: "url" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  AuthSignInSocialFromLoginFormMutation,
+  AuthSignInSocialFromLoginFormMutationVariables
 >;
 export const RequestPasswordResetFromForgotPasswordDocument = {
   kind: "Document",

@@ -64,7 +64,6 @@ import {
   workspaceApiKeyPermissionOptions,
   workspaceApiKeyPermissionValues,
 } from "@/lib/permissions";
-import { WORKSPACE_OWNER_ROLE, hasWorkspaceRole } from "@/lib/workspace-roles";
 
 const { ApiKeyOrderField } = Gql;
 type GetApiKeysFromApiKeysRouteQuery = Gql.GetApiKeysFromApiKeysRouteQuery;
@@ -167,12 +166,7 @@ export const Route = createFileRoute(
 )({
   component: ApiKeysComponent,
   beforeLoad: ({ context, params }) => {
-    if (
-      !hasWorkspaceRole(
-        context.currentWorkspaceMember.roles,
-        WORKSPACE_OWNER_ROLE,
-      )
-    ) {
+    if (!context.currentWorkspaceAbility.can("read", "ApiKey")) {
       throw redirect({
         to: "/workspaces/$workspaceId",
         params: { workspaceId: params.workspaceId },

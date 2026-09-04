@@ -62,6 +62,7 @@ import {
   authPermissionOptions,
   authPermissionValues,
   isAuthPermission,
+  workspacePermissionValues,
 } from "@/lib/permissions";
 
 const { ApiKeyOrderField } = Gql;
@@ -225,7 +226,7 @@ function ApiKeysComponent() {
   const createForm = useForm({
     defaultValues: {
       name: "",
-      permissions: [...authPermissionValues],
+      permissions: [...workspacePermissionValues] as Array<AuthPermission>,
     },
     validators: {
       onSubmit: z.object({

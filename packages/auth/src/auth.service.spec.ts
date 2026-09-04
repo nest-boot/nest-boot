@@ -20,12 +20,14 @@ function createApi() {
     deleteUser: vi.fn(),
     getAccessToken: vi.fn(),
     listUserAccounts: vi.fn(),
+    linkSocialAccount: vi.fn(),
     refreshToken: vi.fn(),
     requestPasswordReset: vi.fn(),
     resetPassword: vi.fn(),
     sendVerificationEmail: vi.fn(),
     setPassword: vi.fn(),
     signInEmail: vi.fn(),
+    signInSocial: vi.fn(),
     signOut: vi.fn(),
     signUpEmail: vi.fn(),
     unlinkAccount: vi.fn(),
@@ -34,13 +36,21 @@ function createApi() {
   };
 }
 
-async function createService(api = createApi()) {
+async function createService(
+  api = createApi(),
+  socialProviders: { id: string; name: string }[] = [],
+) {
   const moduleRef = await Test.createTestingModule({
     providers: [
       AuthService,
       {
         provide: AUTH_TOKEN,
-        useValue: { api },
+        useValue: {
+          $context: Promise.resolve({
+            socialProviders,
+          }),
+          api,
+        },
       },
     ],
   }).compile();
@@ -52,6 +62,18 @@ async function createService(api = createApi()) {
 }
 
 describe("AuthService", () => {
+  it("lists the configured social and generic OAuth providers", async () => {
+    const { service } = await createService(createApi(), [
+      { id: "github", name: "GitHub" },
+      { id: "company", name: "Company SSO" },
+    ]);
+
+    await expect(service.listSocialProviders()).resolves.toEqual([
+      { id: "github", name: "GitHub" },
+      { id: "company", name: "Company SSO" },
+    ]);
+  });
+
   it("signs up with email and password through the internal auth adapter", async () => {
     const { api, service } = await createService();
     const options = {
@@ -145,6 +167,69 @@ describe("AuthService", () => {
       response: expect.objectContaining({ url: null }),
     });
     expect(api.signInEmail).toHaveBeenCalledWith({
+      body: options,
+      headers: requestHeaders,
+      returnHeaders: true,
+    });
+  });
+
+  it("starts a social sign-in flow and normalizes redirect results", async () => {
+    const { api, service } = await createService();
+    const options = {
+      callbackURL: "https://app.example.com",
+      disableRedirect: true,
+      provider: "company",
+    };
+    api.signInSocial.mockResolvedValue({
+      redirect: true,
+      url: "https://identity.example.com/authorize",
+    });
+
+    await expect(service.signInSocial(options)).resolves.toEqual({
+      redirect: true,
+      token: null,
+      url: "https://identity.example.com/authorize",
+      user: null,
+    });
+    expect(api.signInSocial).toHaveBeenCalledWith({
+      body: options,
+      headers: requestHeaders,
+    });
+  });
+
+  it("returns social sign-in response headers and direct-token results", async () => {
+    const { api, service } = await createService();
+    const responseHeaders = new Headers({ "set-cookie": "session=value" });
+    const options = { provider: "github" };
+    const user = {
+      createdAt: new Date("2026-01-01"),
+      email: "alice@example.com",
+      emailVerified: true,
+      id: "user-1",
+      name: "Alice",
+      updatedAt: new Date("2026-01-01"),
+    };
+    api.signInSocial.mockResolvedValue({
+      headers: responseHeaders,
+      response: {
+        redirect: false,
+        token: "session-token",
+        user,
+      },
+    });
+
+    await expect(
+      service.signInSocial(options, { returnHeaders: true }),
+    ).resolves.toEqual({
+      headers: responseHeaders,
+      response: {
+        redirect: false,
+        token: "session-token",
+        url: null,
+        user,
+      },
+    });
+    expect(api.signInSocial).toHaveBeenCalledWith({
       body: options,
       headers: requestHeaders,
       returnHeaders: true,
@@ -398,6 +483,51 @@ describe("AuthService", () => {
     await expect(service.listAccounts()).resolves.toBe(accounts);
     expect(api.listUserAccounts).toHaveBeenCalledWith({
       headers: requestHeaders,
+    });
+  });
+
+  it("starts a social account-linking flow", async () => {
+    const { api, service } = await createService();
+    const options = {
+      callbackURL: "/user/security",
+      disableRedirect: true,
+      provider: "oidc",
+      scopes: ["openid", "profile"],
+    };
+    const result = {
+      redirect: true,
+      url: "https://identity.example.com/authorize",
+    };
+    api.linkSocialAccount.mockResolvedValue(result);
+
+    await expect(service.linkSocialAccount(options)).resolves.toBe(result);
+    expect(api.linkSocialAccount).toHaveBeenCalledWith({
+      body: options,
+      headers: requestHeaders,
+    });
+  });
+
+  it("returns account-linking response headers when requested", async () => {
+    const { api, service } = await createService();
+    const options = {
+      callbackURL: "/user/security",
+      disableRedirect: true,
+      provider: "company",
+    };
+    const headers = new Headers({ "set-cookie": "oauth-state=value" });
+    const response = {
+      redirect: false,
+      url: "https://identity.example.com/authorize",
+    };
+    api.linkSocialAccount.mockResolvedValue({ headers, response });
+
+    await expect(
+      service.linkSocialAccount(options, { returnHeaders: true }),
+    ).resolves.toEqual({ headers, response });
+    expect(api.linkSocialAccount).toHaveBeenCalledWith({
+      body: options,
+      headers: requestHeaders,
+      returnHeaders: true,
     });
   });
 

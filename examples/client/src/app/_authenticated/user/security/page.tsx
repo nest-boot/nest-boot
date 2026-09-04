@@ -82,9 +82,27 @@ const GET_ACCOUNTS_FROM_USER_SECURITY = graphql(`
   }
 `);
 
+const GET_SOCIAL_PROVIDERS_FROM_USER_SECURITY = graphql(`
+  query getSocialProvidersFromUserSecurity {
+    authSocialProviders {
+      id
+      name
+    }
+  }
+`);
+
 const UNLINK_ACCOUNT_FROM_USER_SECURITY = graphql(`
   mutation unlinkAccountFromUserSecurity($accountId: ID!) {
     authUnlinkAccount(accountId: $accountId)
+  }
+`);
+
+const LINK_ACCOUNT_FROM_USER_SECURITY = graphql(`
+  mutation linkAccountFromUserSecurity($input: AuthLinkSocialAccountInput!) {
+    authLinkSocialAccount(input: $input) {
+      url
+      redirect
+    }
   }
 `);
 
@@ -123,12 +141,16 @@ function UserSecurityComponent() {
     loading: accountsLoading,
     refetch: refetchAccounts,
   } = useQuery(GET_ACCOUNTS_FROM_USER_SECURITY);
+  const { data: socialProviderData } = useQuery(
+    GET_SOCIAL_PROVIDERS_FROM_USER_SECURITY,
+  );
   const [changePassword] = useMutation(CHANGE_PASSWORD_FROM_USER_SECURITY);
   const [revokeSession] = useMutation(REVOKE_SESSION_FROM_USER_SECURITY);
   const [revokeOtherSessionList] = useMutation(
     REVOKE_OTHER_SESSIONS_FROM_USER_SECURITY,
   );
   const [unlinkAccount] = useMutation(UNLINK_ACCOUNT_FROM_USER_SECURITY);
+  const [linkAccount] = useMutation(LINK_ACCOUNT_FROM_USER_SECURITY);
   const [refreshAccount] = useMutation(REFRESH_ACCOUNT_FROM_USER_SECURITY);
   const [deleteUser, { client }] = useMutation(DELETE_USER_FROM_USER_SECURITY);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -140,11 +162,17 @@ function UserSecurityComponent() {
   const [revokingToken, setRevokingToken] = useState<string>();
   const [revokingOthers, setRevokingOthers] = useState(false);
   const [unlinkingAccountId, setUnlinkingAccountId] = useState<string>();
+  const [linkingProviderId, setLinkingProviderId] = useState<string>();
   const [refreshingAccountId, setRefreshingAccountId] = useState<string>();
   const [deletePassword, setDeletePassword] = useState("");
   const [deletingUser, setDeletingUser] = useState(false);
   const sessions = sessionData?.authSessions ?? [];
   const accounts = accountData?.authAccounts ?? [];
+  const socialProviders = socialProviderData?.authSocialProviders ?? [];
+  const linkableProviders = socialProviders.filter(
+    (provider) =>
+      !accounts.some((account) => account.providerId === provider.id),
+  );
   const otherSessionCount = sessions.filter(
     (session) => !session.current,
   ).length;
@@ -261,6 +289,32 @@ function UserSecurityComponent() {
       );
     } finally {
       setUnlinkingAccountId(undefined);
+    }
+  };
+
+  const handleLinkAccount = async (providerId: string) => {
+    setLinkingProviderId(providerId);
+    try {
+      const callbackURL = new URL("/user/security", window.location.origin);
+      const result = await linkAccount({
+        variables: {
+          input: {
+            provider: providerId,
+            callbackURL: callbackURL.toString(),
+            errorCallbackURL: callbackURL.toString(),
+          },
+        },
+      });
+      const url = result.data?.authLinkSocialAccount.url;
+      if (!url) throw new Error(t("user:security.accounts.link_failed"));
+      window.location.assign(url);
+    } catch (cause) {
+      toast.error(
+        cause instanceof Error
+          ? cause.message
+          : t("user:security.accounts.link_failed"),
+      );
+      setLinkingProviderId(undefined);
     }
   };
 
@@ -491,10 +545,33 @@ function UserSecurityComponent() {
 
         <Card data-testid="user-accounts-card">
           <CardHeader>
-            <CardTitle>{t("user:security.accounts.title")}</CardTitle>
-            <CardDescription>
-              {t("user:security.accounts.description")}
-            </CardDescription>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="space-y-1.5">
+                <CardTitle>{t("user:security.accounts.title")}</CardTitle>
+                <CardDescription>
+                  {t("user:security.accounts.description")}
+                </CardDescription>
+              </div>
+              {linkableProviders.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {linkableProviders.map((provider) => (
+                    <Button
+                      key={provider.id}
+                      type="button"
+                      variant="outline"
+                      disabled={linkingProviderId !== undefined}
+                      loading={linkingProviderId === provider.id}
+                      onClick={() => handleLinkAccount(provider.id)}
+                      data-testid={`user-link-social-account-${provider.id}`}
+                    >
+                      {t("user:security.accounts.link", {
+                        provider: provider.name,
+                      })}
+                    </Button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
           </CardHeader>
           <CardContent>
             {accountsLoading ? (
@@ -513,7 +590,9 @@ function UserSecurityComponent() {
                     >
                       <div>
                         <p className="font-medium capitalize">
-                          {account.providerId}
+                          {socialProviders.find(
+                            (provider) => provider.id === account.providerId,
+                          )?.name ?? account.providerId}
                         </p>
                         <p className="text-muted-foreground text-xs">
                           {account.issuer} · {account.accountId}

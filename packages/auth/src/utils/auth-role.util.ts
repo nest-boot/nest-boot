@@ -91,7 +91,7 @@ export function assertAuthRolesExist(
       typeof role !== "string" ||
       role.length === 0 ||
       role.trim() !== role ||
-      !(role in roles),
+      !Object.hasOwn(roles, role),
   );
   if (invalidRoleNames.length > 0) {
     throw new Error(
@@ -116,7 +116,7 @@ export function normalizeAuthRoles(
     throw new BadRequestException("At least one role is required");
   }
 
-  const unknownRoles = normalized.filter((role) => !(role in roles));
+  const unknownRoles = normalized.filter((role) => !Object.hasOwn(roles, role));
   if (unknownRoles.length > 0) {
     throw new BadRequestException(
       `Unknown role${unknownRoles.length === 1 ? "" : "s"}: ${unknownRoles.join(", ")}`,
@@ -134,7 +134,9 @@ export function resolveAuthPermissions(
 ): string[] {
   return [
     ...new Set([
-      ...assignedRoles.flatMap((role) => roles[role] ?? []),
+      ...assignedRoles.flatMap((role) =>
+        Object.hasOwn(roles, role) ? (roles[role] ?? []) : [],
+      ),
       ...directPermissions,
     ]),
   ];

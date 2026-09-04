@@ -2,7 +2,7 @@ import { KeyRound, Settings, User } from "lucide-react";
 
 import { linkOptions, useParams } from "@tanstack/react-router";
 import { t } from "i18next";
-import { useCurrentWorkspaceMemberContext } from "../contexts/current-workspace-member-context";
+import { useCurrentWorkspaceAbility } from "../contexts/current-workspace-member-context";
 import { SidebarUser } from "../../../components/sidebar-user";
 import { SidebarLogo } from "./sidebar-logo";
 import { WorkspaceSwitcher } from "./workspace-switcher";
@@ -23,7 +23,6 @@ import {
 } from "@/components/ui/sidebar";
 
 import { Link } from "@/components/link";
-import { WORKSPACE_OWNER_ROLE, hasWorkspaceRole } from "@/lib/workspace-roles";
 
 type SidebarItem = {
   title: string;
@@ -39,7 +38,7 @@ export const WorkspaceSidebar: FC<ComponentProps<typeof Sidebar>> = ({
     from: "/_authenticated/workspaces/$workspaceId",
     select: (params) => params.workspaceId,
   });
-  const currentWorkspaceMember = useCurrentWorkspaceMemberContext();
+  const currentWorkspaceAbility = useCurrentWorkspaceAbility();
 
   const sidebarGroups: Array<{
     title: string;
@@ -48,7 +47,7 @@ export const WorkspaceSidebar: FC<ComponentProps<typeof Sidebar>> = ({
     {
       title: t("sidebar:navigation.settings"),
       items: [
-        ...(hasWorkspaceRole(currentWorkspaceMember.roles, WORKSPACE_OWNER_ROLE)
+        ...(currentWorkspaceAbility.can("read", "ApiKey")
           ? [
               {
                 title: t("sidebar:navigation.api_keys"),

@@ -14,9 +14,11 @@ export const Route = createFileRoute("/auth/login/")({
 });
 
 function LoginComponent() {
+  const { redirect } = Route.useSearch();
+
   return (
     <AuthPageShell>
-      <LoginForm />
+      <LoginForm mode="login" redirect={redirect} />
     </AuthPageShell>
   );
 }

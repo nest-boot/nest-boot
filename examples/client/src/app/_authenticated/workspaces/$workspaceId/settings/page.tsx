@@ -6,7 +6,10 @@ import { t } from "i18next";
 import { toast } from "sonner";
 
 import { useCurrentWorkspaceContext } from "../contexts/current-workspace-context";
-import { useCurrentWorkspaceMemberContext } from "../contexts/current-workspace-member-context";
+import {
+  useCurrentWorkspaceAbility,
+  useCurrentWorkspaceMemberContext,
+} from "../contexts/current-workspace-member-context";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import {
   Page,
@@ -29,8 +32,8 @@ import { Input } from "@/components/thread-ui/input";
 import { Select } from "@/components/thread-ui/select";
 import { graphql } from "@/gql";
 import { WorkspaceMemberStatus, WorkspaceMemberType } from "@/gql/graphql";
-import { workspaceMemberCan } from "@/lib/permissions";
 import { WORKSPACE_OWNER_ROLE, hasWorkspaceRole } from "@/lib/workspace-roles";
+import { createAbilitySubject } from "@/lib/ability";
 
 const UPDATE_WORKSPACE_FROM_SETTINGS_ROUTE = graphql(`
   mutation updateWorkspaceFromSettingsRoute($input: UpdateWorkspaceInput!) {
@@ -99,18 +102,20 @@ function SettingsComponent() {
 
   const workspace = useCurrentWorkspaceContext();
   const currentWorkspaceMember = useCurrentWorkspaceMemberContext();
+  const currentWorkspaceAbility = useCurrentWorkspaceAbility();
   const isOwner = hasWorkspaceRole(
     currentWorkspaceMember.roles,
     WORKSPACE_OWNER_ROLE,
   );
   const [nextOwnerId, setNextOwnerId] = useState<string | null>(null);
-  const canUpdateWorkspace = workspaceMemberCan(
-    currentWorkspaceMember,
-    "workspace:update",
+  const workspaceSubject = createAbilitySubject("Workspace", workspace);
+  const canUpdateWorkspace = currentWorkspaceAbility.can(
+    "update",
+    workspaceSubject,
   );
-  const canDeleteWorkspace = workspaceMemberCan(
-    currentWorkspaceMember,
-    "workspace:delete",
+  const canDeleteWorkspace = currentWorkspaceAbility.can(
+    "delete",
+    workspaceSubject,
   );
 
   const [updateWorkspace] = useMutation(UPDATE_WORKSPACE_FROM_SETTINGS_ROUTE);

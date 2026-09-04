@@ -46,6 +46,9 @@ const envKeys = [
   'AUTH_URL',
   'APP_SECRET',
   'AUTH_SECRET',
+  'AUTH_GITHUB_ENABLED',
+  'AUTH_GITHUB_CLIENT_ID',
+  'AUTH_GITHUB_CLIENT_SECRET',
   'AUTH_OIDC_ENABLED',
   'AUTH_OIDC_CLIENT_ID',
   'AUTH_OIDC_CLIENT_SECRET',
@@ -133,6 +136,57 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     await dropDatabase();
     restoreEnv();
   }, 30_000);
+
+  it('exposes only social providers enabled by the server', async () => {
+    const result = await gql(/* GraphQL */ `
+      query {
+        authSocialProviders {
+          id
+          name
+        }
+      }
+    `);
+
+    expectNoGraphQLErrors(result);
+    expect(result.body.data.authSocialProviders).toEqual([
+      { id: 'github', name: 'GitHub' },
+    ]);
+
+    const socialSignIn = await gql(
+      /* GraphQL */ `
+        mutation SignInSocial($input: AuthSignInSocialInput!) {
+          authSignInSocial(input: $input) {
+            redirect
+            url
+            token
+            user {
+              id
+            }
+          }
+        }
+      `,
+      {
+        variables: {
+          input: {
+            provider: 'github',
+            callbackURL: 'http://127.0.0.1/user/workspaces',
+            errorCallbackURL: 'http://127.0.0.1/auth/login',
+          },
+        },
+      },
+    );
+
+    expectNoGraphQLErrors(socialSignIn);
+    expect(socialSignIn.body.data.authSignInSocial).toMatchObject({
+      redirect: false,
+      token: null,
+      user: null,
+    });
+    expect(new URL(socialSignIn.body.data.authSignInSocial.url).origin).toBe(
+      'https://github.com',
+    );
+    expect(collectRawSetCookies(socialSignIn).length).toBeGreaterThan(0);
+  });
 
   it('authenticates users with real email and password sessions', async () => {
     const email = uniqueEmail('alice');
@@ -625,6 +679,75 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     });
   });
 
+  it('deletes users together with dependent authentication records', async () => {
+    const administrator = await createAuthenticatedUser(
+      'Deletion Administrator',
+    );
+    const target = await createAuthenticatedUser('Deletion Target');
+    await migrationOrm.em
+      .getConnection()
+      .execute(`update "user" set roles = array['admin'] where id = ?`, [
+        administrator.user.id,
+      ]);
+
+    const workspace = await createWorkspace(target, 'Deletion Workspace');
+    await createUserApiKey(target, {
+      name: 'Deletion target key',
+      permissions: ['workspace:update'],
+    });
+
+    const deleted = await gql(
+      /* GraphQL */ `
+        mutation DeleteUser($id: ID!) {
+          deleteUser(id: $id) {
+            id
+          }
+        }
+      `,
+      {
+        cookies: administrator.cookies,
+        variables: { id: target.user.id },
+      },
+    );
+
+    expectNoGraphQLErrors(deleted);
+    expect(deleted.body.data.deleteUser.id).toBe(target.user.id);
+
+    const [counts] = await migrationOrm.em.getConnection().execute<
+      {
+        accounts: number;
+        api_keys: number;
+        members: number;
+        sessions: number;
+        users: number;
+      }[]
+    >(
+      /* SQL */ `
+        select
+          (select count(*)::int from "user" where id = ?) as users,
+          (select count(*)::int from account where user_id = ?) as accounts,
+          (select count(*)::int from session where user_id = ?) as sessions,
+          (select count(*)::int from api_key where owner_id = ?) as api_keys,
+          (select count(*)::int from workspace_member where user_id = ? and workspace_id = ?) as members
+      `,
+      [
+        target.user.id,
+        target.user.id,
+        target.user.id,
+        target.user.id,
+        target.user.id,
+        workspace.id,
+      ],
+    );
+    expect(counts).toEqual({
+      accounts: 0,
+      api_keys: 0,
+      members: 0,
+      sessions: 0,
+      users: 0,
+    });
+  });
+
   it('rejects permissions outside the configured owner catalogs', async () => {
     const administrator = await createAuthenticatedUser(
       'Permission Catalog Administrator',
@@ -740,6 +863,107 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     expectGraphQLError(invalidUserKey);
   });
 
+  it('starts and stops administrator impersonation with signed session cookies', async () => {
+    const administrator = await createAuthenticatedUser(
+      'Impersonation Administrator',
+    );
+    const target = await createAuthenticatedUser('Impersonation Target');
+    await migrationOrm.em
+      .getConnection()
+      .execute(`update "user" set roles = array['admin'] where id = ?`, [
+        administrator.user.id,
+      ]);
+
+    const started = await gql(
+      /* GraphQL */ `
+        mutation ImpersonateUser($id: ID!) {
+          impersonateUser(id: $id) {
+            id
+          }
+        }
+      `,
+      {
+        cookies: administrator.cookies,
+        variables: { id: target.user.id },
+      },
+    );
+    const impersonationCookies = collectSetCookies(started);
+
+    expectNoGraphQLErrors(started);
+    expect(started.body.data.impersonateUser.id).toBe(target.user.id);
+    expect(impersonationCookies).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('better-auth.session_token='),
+      ]),
+    );
+
+    const impersonated = await gql(
+      /* GraphQL */ `
+        query {
+          currentUser {
+            id
+          }
+          currentAuthSession {
+            impersonatedById
+          }
+        }
+      `,
+      { cookies: impersonationCookies },
+    );
+
+    expectNoGraphQLErrors(impersonated);
+    expect(impersonated.body.data).toEqual({
+      currentUser: { id: target.user.id },
+      currentAuthSession: { impersonatedById: administrator.user.id },
+    });
+
+    const stopped = await gql(
+      /* GraphQL */ `
+        mutation {
+          stopImpersonating {
+            id
+          }
+        }
+      `,
+      { cookies: impersonationCookies },
+    );
+    const restoredCookies = collectSetCookies(stopped);
+
+    expectNoGraphQLErrors(stopped);
+    expect(stopped.body.data.stopImpersonating.id).toBe(administrator.user.id);
+
+    const restored = await gql(
+      /* GraphQL */ `
+        query {
+          currentUser {
+            id
+          }
+          currentAuthSession {
+            impersonatedById
+          }
+        }
+      `,
+      { cookies: restoredCookies },
+    );
+    expectNoGraphQLErrors(restored);
+    expect(restored.body.data).toEqual({
+      currentUser: { id: administrator.user.id },
+      currentAuthSession: { impersonatedById: null },
+    });
+    expectGraphQLError(
+      await gql(
+        /* GraphQL */ `
+          query {
+            currentUser {
+              id
+            }
+          }
+        `,
+        { cookies: impersonationCookies },
+      ),
+    );
+  });
+
   it('resolves workspace context from header and cookie while returning null for missing member context', async () => {
     const alice = await createAuthenticatedUser('Alice');
     const bob = await createAuthenticatedUser('Bob');
@@ -807,6 +1031,9 @@ describe('Server application PostgreSQL integration (e2e)', () => {
             name
           }
           currentWorkspaceMember {
+            id
+          }
+          currentAuthSession {
             id
           }
         }
@@ -1426,9 +1653,30 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       outsider,
       'Outsider Workspace',
     );
+    const rejectedEscalatedKey = await gql(
+      /* GraphQL */ `
+        mutation CreateUserApiKey($input: CreateApiKeyInput!) {
+          createUserApiKey(input: $input) {
+            apiKey
+          }
+        }
+      `,
+      {
+        cookies: user.cookies,
+        variables: {
+          input: {
+            name: 'Escalated personal key',
+            permissions: ['user:get'],
+          },
+        },
+      },
+    );
+
+    expectGraphQLError(rejectedEscalatedKey);
+
     const createdKey = await createUserApiKey(user, {
       name: 'Personal automation',
-      permissions: ['user:get', 'workspace:update', 'workspaceMember:update'],
+      permissions: ['workspace:update', 'workspaceMember:update'],
     });
 
     const authenticated = await gql(
@@ -1443,6 +1691,9 @@ describe('Server application PostgreSQL integration (e2e)', () => {
           currentWorkspaceMember {
             id
           }
+          currentAuthSession {
+            id
+          }
         }
       `,
       { bearerToken: createdKey.apiKey, workspaceId: workspace.id },
@@ -1454,6 +1705,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     expect(authenticated.body.data.currentWorkspaceMember.id).toEqual(
       expect.any(String),
     );
+    expect(authenticated.body.data.currentAuthSession).toBeNull();
 
     const rejectedCrossWorkspace = await gql(
       /* GraphQL */ `
@@ -1594,6 +1846,70 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       message: 'API key is disabled',
       statusCode: 401,
     });
+  });
+
+  it('prevents workspace administrators from issuing keys above their permissions', async () => {
+    const owner = await createAuthenticatedUser('Key Ceiling Owner');
+    const administrator = await createAuthenticatedUser(
+      'Key Ceiling Administrator',
+    );
+    const workspace = await createWorkspace(owner, 'Key Ceiling Workspace');
+    const member = await addWorkspaceMember(
+      owner,
+      workspace.id,
+      administrator.email,
+    );
+    await updateWorkspaceMemberRole(owner, workspace.id, member.id, ['admin']);
+    await setWorkspaceMemberPermissions(owner, workspace.id, member.id, [
+      'apiKey:create',
+      'apiKey:update',
+    ]);
+
+    const rejectedCreate = await gql(
+      /* GraphQL */ `
+        mutation CreateApiKey($input: CreateApiKeyInput!) {
+          createApiKey(input: $input) {
+            apiKey
+          }
+        }
+      `,
+      {
+        cookies: administrator.cookies,
+        workspaceId: workspace.id,
+        variables: {
+          input: {
+            name: 'Escalated workspace key',
+            permissions: ['workspace:delete'],
+          },
+        },
+      },
+    );
+
+    expectGraphQLError(rejectedCreate);
+
+    const key = await createApiKey(administrator, workspace.id, {
+      name: 'Administrator workspace key',
+      permissions: ['workspace:update'],
+    });
+    const rejectedUpdate = await gql(
+      /* GraphQL */ `
+        mutation UpdateApiKey($id: ID!, $input: UpdateApiKeyInput!) {
+          updateApiKey(id: $id, input: $input) {
+            id
+          }
+        }
+      `,
+      {
+        cookies: administrator.cookies,
+        workspaceId: workspace.id,
+        variables: {
+          id: key.entity.id,
+          input: { permissions: ['workspace:delete'] },
+        },
+      },
+    );
+
+    expectGraphQLError(rejectedUpdate);
   });
 
   async function createAuthenticatedUser(
@@ -2173,6 +2489,9 @@ function setTestEnv() {
   process.env.AUTH_URL = 'http://127.0.0.1';
   process.env.APP_SECRET = '1oAdy3zpD3S0t1AdAqPTlj4Hhkyx83pT2UlNGfS4P2c';
   process.env.AUTH_SECRET = 'R4vWrEDXeeor7VzGzQsdbQobOFtv2nRrlhOVTGpOteA';
+  process.env.AUTH_GITHUB_ENABLED = 'true';
+  process.env.AUTH_GITHUB_CLIENT_ID = 'github-client-id';
+  process.env.AUTH_GITHUB_CLIENT_SECRET = 'github-client-secret';
   process.env.AUTH_OIDC_ENABLED = 'false';
   process.env.SMTP_HOST = '127.0.0.1';
   process.env.SMTP_PORT = '31025';

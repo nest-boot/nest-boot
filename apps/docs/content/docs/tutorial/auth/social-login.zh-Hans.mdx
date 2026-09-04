@@ -1,0 +1,50 @@
+---
+title: "社交登录"
+description: "发起社交登录、自定义 OAuth 登录与账号关联流程。"
+---
+
+内置社交 Provider 与自定义 OAuth 2.0 或 OpenID Connect Provider 使用同一套应用层
+流程，并统一配置在扁平的 `AuthModuleOptions.providers` 数组中。每项使用 `id`；内置
+ID 使用 Better Auth 的专用 Provider 实现，其他 ID 使用 Generic OAuth。
+
+`AuthService` 将 Better Auth 保持在模块内部，同时提供以下稳定接口：
+
+- `listSocialProviders()` 返回每个已启用 Provider 的 `id` 与显示名称 `name`；
+- `signInSocial()` 使用任意已返回的 Provider 发起登录或注册；
+- `linkSocialAccount()` 为当前用户关联另一个 Provider 身份；
+- `listAccounts()` 与 `unlinkAccount()` 管理已关联身份；
+- `getAccessToken()`、`refreshToken()` 与 `accountInfo()` 访问 Provider 数据。
+
+## 发起登录
+
+使用 `listSocialProviders()` 返回的 Provider ID。浏览器传输层应请求响应 Headers，并
+转发全部 `Set-Cookie`，因为 OAuth state 与 PKCE verifier 会保存在 Cookie 中。
+
+```typescript
+const result = await authService.signInSocial(
+  {
+    provider: "company",
+    callbackURL: "https://app.example.com/user/workspaces",
+    errorCallbackURL: "https://app.example.com/auth/login",
+    disableRedirect: true,
+  },
+  { returnHeaders: true },
+);
+
+applyResponseHeaders(response, result.headers);
+return result.response;
+```
+
+`disableRedirect` 为 true 时，前端跳转到 `result.response.url`。Provider 默认回调到
+`/api/auth/callback/:providerId`，需要在 Provider 控制台登记完整 URL；`basePath` 会
+改变其中的 `/api/auth` 前缀。
+
+## 关联账号
+
+账号关联要求已有认证会话。把相同的 Provider ID 传给 `linkSocialAccount()`，转发它
+返回的 state Cookie，并跳转到返回的 URL。回调完成后，`listAccounts()` 会包含新身份。
+除非产品明确允许同一 Provider 关联多个账号，否则不要展示已经关联的 Provider。
+
+Generic Provider 由 Better Auth 的
+[Generic OAuth 插件](https://better-auth.com/docs/plugins/generic-oauth) 实现，因此 PKCE、
+state 校验、OIDC discovery、issuer 校验、令牌交换与回调处理都保留在服务端。

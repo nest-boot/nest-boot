@@ -5,7 +5,10 @@ import dayjs from "dayjs";
 import { t } from "i18next";
 import { toast } from "sonner";
 
-import { useCurrentUserContext } from "../../../contexts/current-user-context";
+import {
+  useCurrentUserAbility,
+  useCurrentUserContext,
+} from "../../../contexts/current-user-context";
 import type { UserPermission } from "@/lib/permissions";
 import { PermissionCheckboxGroup } from "@/components/permission-checkbox-group";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
@@ -34,6 +37,7 @@ import {
   userPermissionValues,
 } from "@/lib/permissions";
 import { getRoleLabel } from "@/utils/get-role-label";
+import { createAbilitySubject } from "@/lib/ability";
 
 const GET_USER_FROM_USER_ROUTE = graphql(`
   query getUserFromUserRoute($id: ID!) {
@@ -151,6 +155,14 @@ const DELETE_USER_FROM_USER_ROUTE = graphql(`
   }
 `);
 
+const IMPERSONATE_USER_FROM_USER_ROUTE = graphql(`
+  mutation impersonateUserFromUserRoute($id: ID!) {
+    impersonateUser(id: $id) {
+      id
+    }
+  }
+`);
+
 export const Route = createFileRoute("/_authenticated/admin/users/$userId/")({
   component: AdminUserPage,
   beforeLoad: () => ({ title: t("admin:user.title") }),
@@ -160,6 +172,7 @@ function AdminUserPage() {
   const { userId } = Route.useParams();
   const navigate = useNavigate();
   const currentUser = useCurrentUserContext();
+  const currentUserAbility = useCurrentUserAbility();
   const { data, loading, refetch } = useQuery(GET_USER_FROM_USER_ROUTE, {
     fetchPolicy: "network-only",
     variables: { id: userId },
@@ -208,6 +221,9 @@ function AdminUserPage() {
   const [deleteUser, { loading: deleting }] = useMutation(
     DELETE_USER_FROM_USER_ROUTE,
   );
+  const [impersonateUser, { loading: impersonating }] = useMutation(
+    IMPERSONATE_USER_FROM_USER_ROUTE,
+  );
 
   if (loading) {
     return <Page>{t("admin:user.loading")}</Page>;
@@ -231,6 +247,31 @@ function AdminUserPage() {
       <PageHeader>
         <PageTitle>{user.name}</PageTitle>
         <PageDescription>{user.email}</PageDescription>
+        {user.id !== currentUser.id &&
+        currentUserAbility.can(
+          "impersonate",
+          createAbilitySubject("User", user),
+        ) ? (
+          <Button
+            variant="outline"
+            loading={impersonating}
+            data-testid="admin-impersonate-user"
+            onClick={async () => {
+              try {
+                await impersonateUser({ variables: { id: user.id } });
+                window.location.assign("/user");
+              } catch (error) {
+                toast.error(
+                  error instanceof Error
+                    ? error.message
+                    : t("admin:impersonation.failed"),
+                );
+              }
+            }}
+          >
+            {t("admin:impersonation.start")}
+          </Button>
+        ) : null}
       </PageHeader>
       <PageContent className="space-y-6">
         <Card>

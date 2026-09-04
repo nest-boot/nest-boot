@@ -4,6 +4,7 @@
     "index",
     "configuration",
     "email-password",
+    "social-login",
     "sessions",
     "workspaces",
     "invitations",

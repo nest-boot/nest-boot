@@ -267,7 +267,7 @@ export class WorkspaceService<
       email: user.email,
       name: user.name,
       permissions,
-      roles: this.normalizeRoles(input.roles ?? [this.defaultRole]),
+      roles: this.normalizeAssignableRoles(input.roles ?? [this.defaultRole]),
       status: "ACTIVE",
       user,
       workspace,
@@ -489,7 +489,9 @@ export class WorkspaceService<
                 now.getTime() + (input.expiresIn ?? 60 * 60 * 48) * 1000,
               ),
               inviter,
-              roles: this.normalizeRoles(input.roles ?? [this.defaultRole]),
+              roles: this.normalizeAssignableRoles(
+                input.roles ?? [this.defaultRole],
+              ),
               status: "pending",
               workspace,
             } as unknown as RequiredEntityData<WorkspaceInvitation>);
@@ -647,7 +649,7 @@ export class WorkspaceService<
             email: user.email,
             name: user.name,
             permissions: [],
-            roles: this.normalizeRoles(invitation.roles),
+            roles: this.normalizeAssignableRoles(invitation.roles),
             status: "ACTIVE",
             user,
             workspace,
@@ -731,6 +733,16 @@ export class WorkspaceService<
 
   private normalizeRoles(role: string | readonly string[]): string[] {
     return normalizeAuthRoles(role, this.roles);
+  }
+
+  private normalizeAssignableRoles(role: string | readonly string[]): string[] {
+    const roles = this.normalizeRoles(role);
+    if (roles.includes(this.creatorRole)) {
+      throw new ForbiddenException(
+        "The owner role can only be assigned by transferring ownership",
+      );
+    }
+    return roles;
   }
 
   private normalizePermissions(permissions: readonly string[]): string[] {

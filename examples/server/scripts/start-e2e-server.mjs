@@ -12,6 +12,10 @@ const adminDatabaseUrl =
 const port = process.env.PORT ?? '4100';
 const appUrl = process.env.APP_URL ?? 'http://127.0.0.1:3100';
 const authUrl = process.env.AUTH_URL ?? `http://127.0.0.1:${port}`;
+const administratorEmail =
+  process.env.E2E_ADMIN_EMAIL ?? 'e2e-administrator@example.com';
+const administratorPassword =
+  process.env.E2E_ADMIN_PASSWORD ?? 'e2e-administrator-password';
 const databaseName = `nest_boot_example_e2e_${process.pid}_${Date.now()}`;
 const databaseUrl = databaseUrlFor(databaseName);
 let serverProcess;
@@ -47,6 +51,7 @@ try {
   });
 
   await waitForServer();
+  await seedAdministrator();
   console.log(`example server ready ${databaseName} ${authUrl}`);
 } catch (error) {
   console.error(error);
@@ -135,6 +140,50 @@ async function createDatabase() {
   }
 }
 
+async function seedAdministrator() {
+  const response = await fetch(`${authUrl}/api/auth/sign-up/email`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      origin: appUrl,
+    },
+    body: JSON.stringify({
+      email: administratorEmail,
+      name: 'E2E Administrator',
+      password: administratorPassword,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Could not create the E2E administrator: ${response.status} ${await response.text()}`,
+    );
+  }
+
+  const orm = await adminOrm(databaseUrl);
+  try {
+    await orm.em
+      .getConnection()
+      .execute(
+        `update "user" set roles = array['admin'], email_verified = true where email = ?`,
+        [administratorEmail],
+      );
+    const [administrator] = await orm.em
+      .getConnection()
+      .execute(`select email_verified, roles from "user" where email = ?`, [
+        administratorEmail,
+      ]);
+    if (
+      !administrator?.email_verified ||
+      !administrator.roles?.includes('admin')
+    ) {
+      throw new Error('Could not promote the E2E administrator');
+    }
+  } finally {
+    await orm.close(true);
+  }
+}
+
 function createServerEnv() {
   const env = { ...process.env };
 
@@ -148,6 +197,9 @@ function createServerEnv() {
   env.APP_SECRET = '1oAdy3zpD3S0t1AdAqPTlj4Hhkyx83pT2UlNGfS4P2c';
   env.AUTH_SECRET = 'R4vWrEDXeeor7VzGzQsdbQobOFtv2nRrlhOVTGpOteA';
   env.AUTH_EMAIL_REQUIRE_VERIFICATION = 'true';
+  env.AUTH_GITHUB_ENABLED = 'true';
+  env.AUTH_GITHUB_CLIENT_ID = 'github-client-id';
+  env.AUTH_GITHUB_CLIENT_SECRET = 'github-client-secret';
   env.AUTH_OIDC_ENABLED = 'false';
   env.SMTP_URL = 'smtp://127.0.0.1:31025';
   env.SMTP_FROM = 'Nest Boot Example <no-reply@example.com>';

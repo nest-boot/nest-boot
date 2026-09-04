@@ -5,6 +5,8 @@ import {
   RowLevelSecurityMode,
 } from "@nest-boot/row-level-security";
 import { Inject, Injectable } from "@nestjs/common";
+import { makeSignature } from "better-auth/crypto";
+import type { BetterAuthCookies } from "better-auth/types";
 
 import { AUTH_TOKEN } from "./auth.constants.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
@@ -17,6 +19,10 @@ interface StatusResult {
 }
 
 interface InternalAuth {
+  $context: Promise<{
+    authCookies: BetterAuthCookies;
+    secret: string;
+  }>;
   api: {
     getSession(options: { headers: HeadersInit }): Promise<{
       session: { token: string };
@@ -165,6 +171,45 @@ export class SessionService {
     return result.status;
   }
 
+  /**
+   * Creates response headers that select a persisted session in a browser.
+   *
+   * @remarks
+   * The session cookie is intentionally browser-session scoped. Cached session
+   * and account cookies are expired so the next request resolves fresh data.
+   */
+  async createSessionHeaders(sessionToken: string): Promise<Headers> {
+    const { authCookies, secret } = await this.auth.$context;
+    const responseHeaders = new Headers();
+
+    responseHeaders.append(
+      "set-cookie",
+      await serializeSignedCookie(
+        authCookies.sessionToken,
+        sessionToken,
+        secret,
+      ),
+    );
+    responseHeaders.append(
+      "set-cookie",
+      await serializeSignedCookie(
+        authCookies.dontRememberToken,
+        "true",
+        secret,
+      ),
+    );
+    responseHeaders.append(
+      "set-cookie",
+      serializeExpiredCookie(authCookies.sessionData),
+    );
+    responseHeaders.append(
+      "set-cookie",
+      serializeExpiredCookie(authCookies.accountData),
+    );
+
+    return responseHeaders;
+  }
+
   private async runUnrestricted<T>(callback: () => Promise<T>): Promise<T> {
     const run = () => {
       RowLevelSecurity.setMode(RowLevelSecurityMode.DISABLED);
@@ -177,4 +222,51 @@ export class SessionService {
       run,
     );
   }
+}
+
+interface AuthCookie {
+  name: string;
+  attributes: BetterAuthCookies[keyof BetterAuthCookies]["attributes"];
+}
+
+async function serializeSignedCookie(
+  cookie: AuthCookie,
+  value: string,
+  secret: string,
+): Promise<string> {
+  const signature = await makeSignature(value, secret);
+  return serializeCookie(cookie.name, `${value}.${signature}`, {
+    ...cookie.attributes,
+    maxAge: undefined,
+  });
+}
+
+function serializeExpiredCookie(cookie: AuthCookie): string {
+  return serializeCookie(cookie.name, "", {
+    ...cookie.attributes,
+    expires: new Date(0),
+    maxAge: 0,
+  });
+}
+
+function serializeCookie(
+  name: string,
+  value: string,
+  options: AuthCookie["attributes"],
+): string {
+  let serialized = `${name}=${value}`;
+  if (options.maxAge !== undefined) {
+    serialized += `; Max-Age=${String(Math.floor(options.maxAge))}`;
+  }
+  if (options.domain) serialized += `; Domain=${options.domain}`;
+  if (options.path) serialized += `; Path=${options.path}`;
+  if (options.expires)
+    serialized += `; Expires=${options.expires.toUTCString()}`;
+  if (options.httpOnly) serialized += "; HttpOnly";
+  if (options.secure) serialized += "; Secure";
+  if (options.sameSite) {
+    serialized += `; SameSite=${options.sameSite[0].toUpperCase()}${options.sameSite.slice(1)}`;
+  }
+  if (options.partitioned) serialized += "; Partitioned";
+  return serialized;
 }
