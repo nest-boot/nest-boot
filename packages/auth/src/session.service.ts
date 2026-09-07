@@ -1,5 +1,10 @@
 import { EntityManager } from "@mikro-orm/core";
-import { headers, RequestContext } from "@nest-boot/request-context";
+import {
+  type CookieOptions,
+  cookies,
+  headers,
+  RequestContext,
+} from "@nest-boot/request-context";
 import {
   RowLevelSecurity,
   RowLevelSecurityMode,
@@ -172,42 +177,36 @@ export class SessionService {
   }
 
   /**
-   * Creates response headers that select a persisted session in a browser.
+   * Selects a persisted session for the current browser response.
    *
    * @remarks
    * The session cookie is intentionally browser-session scoped. Cached session
    * and account cookies are expired so the next request resolves fresh data.
    */
-  async createSessionHeaders(sessionToken: string): Promise<Headers> {
+  async setSession(sessionToken: string): Promise<void> {
     const { authCookies, secret } = await this.auth.$context;
-    const responseHeaders = new Headers();
+    const cookieStore = cookies();
 
-    responseHeaders.append(
-      "set-cookie",
-      await serializeSignedCookie(
-        authCookies.sessionToken,
-        sessionToken,
-        secret,
-      ),
+    cookieStore.set(
+      authCookies.sessionToken.name,
+      await createSignedCookieValue(sessionToken, secret),
+      createSessionCookieOptions(authCookies.sessionToken),
     );
-    responseHeaders.append(
-      "set-cookie",
-      await serializeSignedCookie(
-        authCookies.dontRememberToken,
-        "true",
-        secret,
-      ),
+    cookieStore.set(
+      authCookies.dontRememberToken.name,
+      await createSignedCookieValue("true", secret),
+      createSessionCookieOptions(authCookies.dontRememberToken),
     );
-    responseHeaders.append(
-      "set-cookie",
-      serializeExpiredCookie(authCookies.sessionData),
+    cookieStore.set(
+      authCookies.sessionData.name,
+      "",
+      createExpiredCookieOptions(authCookies.sessionData),
     );
-    responseHeaders.append(
-      "set-cookie",
-      serializeExpiredCookie(authCookies.accountData),
+    cookieStore.set(
+      authCookies.accountData.name,
+      "",
+      createExpiredCookieOptions(authCookies.accountData),
     );
-
-    return responseHeaders;
   }
 
   private async runUnrestricted<T>(callback: () => Promise<T>): Promise<T> {
@@ -229,44 +228,41 @@ interface AuthCookie {
   attributes: BetterAuthCookies[keyof BetterAuthCookies]["attributes"];
 }
 
-async function serializeSignedCookie(
-  cookie: AuthCookie,
+async function createSignedCookieValue(
   value: string,
   secret: string,
 ): Promise<string> {
   const signature = await makeSignature(value, secret);
-  return serializeCookie(cookie.name, `${value}.${signature}`, {
-    ...cookie.attributes,
-    maxAge: undefined,
-  });
+  return `${value}.${signature}`;
 }
 
-function serializeExpiredCookie(cookie: AuthCookie): string {
-  return serializeCookie(cookie.name, "", {
-    ...cookie.attributes,
+function createSessionCookieOptions(cookie: AuthCookie): CookieOptions {
+  const options = createCookieOptions(cookie);
+  delete options.maxAge;
+  return options;
+}
+
+function createExpiredCookieOptions(cookie: AuthCookie): CookieOptions {
+  return {
+    ...createCookieOptions(cookie),
     expires: new Date(0),
     maxAge: 0,
-  });
+  };
 }
 
-function serializeCookie(
-  name: string,
-  value: string,
-  options: AuthCookie["attributes"],
-): string {
-  let serialized = `${name}=${value}`;
-  if (options.maxAge !== undefined) {
-    serialized += `; Max-Age=${String(Math.floor(options.maxAge))}`;
-  }
-  if (options.domain) serialized += `; Domain=${options.domain}`;
-  if (options.path) serialized += `; Path=${options.path}`;
-  if (options.expires)
-    serialized += `; Expires=${options.expires.toUTCString()}`;
-  if (options.httpOnly) serialized += "; HttpOnly";
-  if (options.secure) serialized += "; Secure";
-  if (options.sameSite) {
-    serialized += `; SameSite=${options.sameSite[0].toUpperCase()}${options.sameSite.slice(1)}`;
-  }
-  if (options.partitioned) serialized += "; Partitioned";
-  return serialized;
+function createCookieOptions(cookie: AuthCookie): CookieOptions {
+  const { attributes } = cookie;
+  return {
+    domain: attributes.domain,
+    expires: attributes.expires,
+    httpOnly: attributes.httpOnly,
+    maxAge: attributes.maxAge,
+    partitioned: attributes.partitioned,
+    path: attributes.path,
+    sameSite:
+      typeof attributes.sameSite === "string"
+        ? (attributes.sameSite.toLowerCase() as CookieOptions["sameSite"])
+        : attributes.sameSite,
+    secure: attributes.secure,
+  };
 }

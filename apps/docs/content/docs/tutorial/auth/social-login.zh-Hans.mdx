@@ -17,32 +17,26 @@ ID 使用 Better Auth 的专用 Provider 实现，其他 ID 使用 Generic OAuth
 
 ## 发起登录
 
-使用 `listSocialProviders()` 返回的 Provider ID。浏览器传输层应请求响应 Headers，并
-转发全部 `Set-Cookie`，因为 OAuth state 与 PKCE verifier 会保存在 Cookie 中。
+使用 `listSocialProviders()` 返回的 Provider ID。`AuthService` 会通过请求级 `cookies()`
+存储自动转发 OAuth state 与 PKCE verifier 的全部 `Set-Cookie`。
 
 ```typescript
-const result = await authService.signInSocial(
-  {
-    provider: "company",
-    callbackURL: "https://app.example.com/user/workspaces",
-    errorCallbackURL: "https://app.example.com/auth/login",
-    disableRedirect: true,
-  },
-  { returnHeaders: true },
-);
-
-applyResponseHeaders(response, result.headers);
-return result.response;
+return await authService.signInSocial({
+  provider: "company",
+  callbackURL: "https://app.example.com/user/workspaces",
+  errorCallbackURL: "https://app.example.com/auth/login",
+  disableRedirect: true,
+});
 ```
 
-`disableRedirect` 为 true 时，前端跳转到 `result.response.url`。Provider 默认回调到
+`disableRedirect` 为 true 时，前端跳转到 `result.url`。Provider 默认回调到
 `/api/auth/callback/:providerId`，需要在 Provider 控制台登记完整 URL；`basePath` 会
 改变其中的 `/api/auth` 前缀。
 
 ## 关联账号
 
-账号关联要求已有认证会话。把相同的 Provider ID 传给 `linkSocialAccount()`，转发它
-返回的 state Cookie，并跳转到返回的 URL。回调完成后，`listAccounts()` 会包含新身份。
+账号关联要求已有认证会话。把相同的 Provider ID 传给 `linkSocialAccount()` 并跳转到
+返回的 URL；state Cookie 会自动写入。回调完成后，`listAccounts()` 会包含新身份。
 除非产品明确允许同一 Provider 关联多个账号，否则不要展示已经关联的 Provider。
 
 Generic Provider 由 Better Auth 的

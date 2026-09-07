@@ -1,5 +1,5 @@
 import { EntityManager } from "@mikro-orm/core";
-import { RequestContext } from "@nest-boot/request-context";
+import { REQUEST, RequestContext, RESPONSE } from "@nest-boot/request-context";
 import {
   RowLevelSecurity,
   RowLevelSecurityMode,
@@ -145,11 +145,20 @@ describe("SessionService", () => {
     expect(em.findOne).not.toHaveBeenCalled();
   });
 
-  it("creates a session-scoped signed cookie and expires cached auth data", async () => {
+  it("sets a session-scoped signed cookie and expires cached auth data", async () => {
     const { service } = await createService();
+    const appendHeader = vi.fn();
+    const context = new RequestContext({ type: "http" });
+    context.set(REQUEST, { headers: {} });
+    context.set(RESPONSE, { appendHeader });
 
-    const responseHeaders = await service.createSessionHeaders("session-token");
-    const cookies = responseHeaders.getSetCookie();
+    await RequestContext.run(context, () =>
+      service.setSession("session-token"),
+    );
+
+    expect(appendHeader).toHaveBeenCalledTimes(4);
+    expect(appendHeader).toHaveBeenCalledWith("Set-Cookie", expect.any(String));
+    const cookies = appendHeader.mock.calls.map(([, value]) => value as string);
 
     expect(cookies).toHaveLength(4);
     expect(cookies[0]).toMatch(

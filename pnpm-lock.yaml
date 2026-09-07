@@ -367,6 +367,10 @@ importers:
         version: 4.1.11
 
   packages/auth:
+    dependencies:
+      cookie:
+        specifier: ^2.0.1
+        version: 2.0.1
     devDependencies:
       '@casl/ability':
         specifier: ^7.0.1

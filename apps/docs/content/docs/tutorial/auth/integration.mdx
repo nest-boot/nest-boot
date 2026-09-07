@@ -34,9 +34,9 @@ export class AccountApplicationService {
 ## Transport Adapters
 
 Resolvers and controllers should translate their protocol types and delegate
-domain rules to these services. When a method returns headers, forward every
-`Set-Cookie` value rather than only the first one. This is especially important
-when password changes revoke other sessions and replace the current Cookie.
+domain rules to these services. Authentication methods automatically forward
+every `Set-Cookie` value through the request-scoped `cookies()` store, including
+password changes that replace the current session Cookie.
 
 The built-in auth endpoint handler is mounted at `basePath`. `AuthMiddleware`
 runs after `RequestContextMiddleware`, resolves identity, and makes application

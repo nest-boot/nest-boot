@@ -1,5 +1,4 @@
 import type { SessionService, UserService } from '@nest-boot/auth';
-import type { Response } from 'express';
 import type { Mocked } from 'vitest';
 
 vi.mock('@nest-boot/auth', async (importOriginal) => ({
@@ -95,14 +94,11 @@ describe('UserResolver', () => {
     expect(service.revokeUserSession).toHaveBeenCalledWith(user, session.token);
   });
 
-  it('starts and stops impersonation while forwarding signed cookies', async () => {
+  it('starts and stops impersonation while selecting each created session', async () => {
     const administrator = { id: 'admin-1' } as User;
     const target = { id: 'user-1' } as User;
     const session = { token: 'impersonation-token' };
     const restoredSession = { token: 'restored-token' };
-    const responseHeaders = new Headers({
-      'set-cookie': 'better-auth.session_token=signed; Path=/',
-    });
     const { resolver, service, sessionService } = createResolver(
       {
         getUser: vi.fn(async () => target),
@@ -113,24 +109,23 @@ describe('UserResolver', () => {
         })),
       },
       {
-        createSessionHeaders: vi.fn(async () => responseHeaders),
+        setSession: vi.fn(async () => undefined),
       },
     );
-    const response = { append: vi.fn() } as unknown as Response;
 
     await expect(
-      resolver.impersonateUser(target.id, administrator, response),
+      resolver.impersonateUser(target.id, administrator),
     ).resolves.toBe(target);
     expect(service.impersonateUser).toHaveBeenCalledWith(administrator, target);
-    expect(sessionService.createSessionHeaders).toHaveBeenCalledWith(
-      session.token,
-    );
+    expect(sessionService.setSession).toHaveBeenCalledWith(session.token);
 
     await expect(
-      resolver.stopImpersonating(restoredSession as never, response),
+      resolver.stopImpersonating(restoredSession as never),
     ).resolves.toBe(administrator);
     expect(service.stopImpersonating).toHaveBeenCalledWith(restoredSession);
-    expect(response.append).toHaveBeenCalledTimes(2);
+    expect(sessionService.setSession).toHaveBeenLastCalledWith(
+      restoredSession.token,
+    );
   });
 });
 

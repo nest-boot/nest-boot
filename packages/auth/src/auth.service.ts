@@ -9,8 +9,6 @@ import type {
   AuthAccountSelector,
   AuthProviderUserInfo,
   AuthRefreshedToken,
-  AuthServiceResponse,
-  AuthServiceResponseOptions,
   AuthSocialProvider,
   AuthUser,
   ChangeAuthEmailOptions,
@@ -33,6 +31,12 @@ import type {
   UnlinkAuthAccountOptions,
   UpdateAuthUserOptions,
 } from "./interfaces/auth-service.interface.js";
+import { applyAuthResponseCookies } from "./utils/apply-auth-response-cookies.util.js";
+
+interface InternalAuthResponse<Result> {
+  headers: Headers;
+  response: Result;
+}
 
 interface StatusResult {
   status: boolean;
@@ -72,49 +76,31 @@ interface InternalAuth {
     signUpEmail(options: {
       body: SignUpOptions;
       headers: HeadersInit;
-    }): Promise<SignUpResult>;
-    signUpEmail(options: {
-      body: SignUpOptions;
-      headers: HeadersInit;
       returnHeaders: true;
-    }): Promise<AuthServiceResponse<SignUpResult>>;
-    signInEmail(options: {
-      body: SignInOptions;
-      headers: HeadersInit;
-    }): Promise<Omit<SignInResult, "url"> & { url?: string }>;
+    }): Promise<InternalAuthResponse<SignUpResult>>;
     signInEmail(options: {
       body: SignInOptions;
       headers: HeadersInit;
       returnHeaders: true;
     }): Promise<
-      AuthServiceResponse<Omit<SignInResult, "url"> & { url?: string }>
+      InternalAuthResponse<Omit<SignInResult, "url"> & { url?: string }>
     >;
     signInSocial(options: {
       body: SignInSocialOptions;
       headers: HeadersInit;
-    }): Promise<{
-      redirect: boolean;
-      url?: string;
-      token?: string;
-      user?: AuthUser;
-    }>;
-    signInSocial(options: {
-      body: SignInSocialOptions;
-      headers: HeadersInit;
       returnHeaders: true;
     }): Promise<
-      AuthServiceResponse<{
+      InternalAuthResponse<{
         redirect: boolean;
         url?: string;
         token?: string;
         user?: AuthUser;
       }>
     >;
-    signOut(options: { headers: HeadersInit }): Promise<{ success: boolean }>;
     signOut(options: {
       headers: HeadersInit;
       returnHeaders: true;
-    }): Promise<AuthServiceResponse<{ success: boolean }>>;
+    }): Promise<InternalAuthResponse<{ success: boolean }>>;
     sendVerificationEmail(options: {
       body: SendVerificationEmailOptions;
     }): Promise<StatusResult>;
@@ -131,30 +117,18 @@ interface InternalAuth {
     updateUser(options: {
       body: UpdateAuthUserOptions;
       headers: HeadersInit;
-    }): Promise<StatusResult>;
-    updateUser(options: {
-      body: UpdateAuthUserOptions;
-      headers: HeadersInit;
       returnHeaders: true;
-    }): Promise<AuthServiceResponse<StatusResult>>;
-    changeEmail(options: {
-      body: ChangeAuthEmailOptions;
-      headers: HeadersInit;
-    }): Promise<StatusResult>;
+    }): Promise<InternalAuthResponse<StatusResult>>;
     changeEmail(options: {
       body: ChangeAuthEmailOptions;
       headers: HeadersInit;
       returnHeaders: true;
-    }): Promise<AuthServiceResponse<StatusResult>>;
-    changePassword(options: {
-      body: ChangeAuthPasswordOptions;
-      headers: HeadersInit;
-    }): Promise<{ token: string | null }>;
+    }): Promise<InternalAuthResponse<StatusResult>>;
     changePassword(options: {
       body: ChangeAuthPasswordOptions;
       headers: HeadersInit;
       returnHeaders: true;
-    }): Promise<AuthServiceResponse<{ token: string | null }>>;
+    }): Promise<InternalAuthResponse<{ token: string | null }>>;
     setPassword(options: {
       body: { newPassword: string };
       headers: HeadersInit;
@@ -162,22 +136,14 @@ interface InternalAuth {
     deleteUser(options: {
       body: DeleteAuthUserOptions;
       headers: HeadersInit;
-    }): Promise<DeleteAuthUserResult>;
-    deleteUser(options: {
-      body: DeleteAuthUserOptions;
-      headers: HeadersInit;
       returnHeaders: true;
-    }): Promise<AuthServiceResponse<DeleteAuthUserResult>>;
+    }): Promise<InternalAuthResponse<DeleteAuthUserResult>>;
     listUserAccounts(options: { headers: HeadersInit }): Promise<AuthAccount[]>;
     linkSocialAccount(options: {
       body: LinkAuthSocialAccountOptions;
       headers: HeadersInit;
-    }): Promise<LinkAuthSocialAccountResult>;
-    linkSocialAccount(options: {
-      body: LinkAuthSocialAccountOptions;
-      headers: HeadersInit;
       returnHeaders: true;
-    }): Promise<AuthServiceResponse<LinkAuthSocialAccountResult>>;
+    }): Promise<InternalAuthResponse<LinkAuthSocialAccountResult>>;
     unlinkAccount(options: {
       body: UnlinkAuthAccountOptions;
       headers: HeadersInit;
@@ -210,122 +176,50 @@ export class AuthService {
   /** Signs up a user with an email address and password. */
   async signUp<User extends AuthUser = AuthUser>(
     options: SignUpOptions,
-    responseOptions: AuthServiceResponseOptions,
-  ): Promise<AuthServiceResponse<SignUpResult<User>>>;
-  async signUp<User extends AuthUser = AuthUser>(
-    options: SignUpOptions,
-  ): Promise<SignUpResult<User>>;
-  async signUp<User extends AuthUser = AuthUser>(
-    options: SignUpOptions,
-    responseOptions?: AuthServiceResponseOptions,
-  ): Promise<SignUpResult<User> | AuthServiceResponse<SignUpResult<User>>> {
-    const requestHeaders = headers();
-    if (responseOptions?.returnHeaders) {
-      return (await this.auth.api.signUpEmail({
-        body: options,
-        headers: requestHeaders,
-        returnHeaders: true,
-      })) as AuthServiceResponse<SignUpResult<User>>;
-    }
-
-    return (await this.auth.api.signUpEmail({
+  ): Promise<SignUpResult<User>> {
+    const result = await this.auth.api.signUpEmail({
       body: options,
-      headers: requestHeaders,
-    })) as SignUpResult<User>;
+      headers: headers(),
+      returnHeaders: true,
+    });
+    applyAuthResponseCookies(result.headers);
+    return result.response as SignUpResult<User>;
   }
 
   /** Signs in a user with an email address and password. */
   async signIn<User extends AuthUser = AuthUser>(
     options: SignInOptions,
-    responseOptions: AuthServiceResponseOptions,
-  ): Promise<AuthServiceResponse<SignInResult<User>>>;
-  async signIn<User extends AuthUser = AuthUser>(
-    options: SignInOptions,
-  ): Promise<SignInResult<User>>;
-  async signIn<User extends AuthUser = AuthUser>(
-    options: SignInOptions,
-    responseOptions?: AuthServiceResponseOptions,
-  ): Promise<SignInResult<User> | AuthServiceResponse<SignInResult<User>>> {
-    const requestHeaders = headers();
-    if (responseOptions?.returnHeaders) {
-      const result = await this.auth.api.signInEmail({
-        body: options,
-        headers: requestHeaders,
-        returnHeaders: true,
-      });
-
-      return {
-        headers: result.headers,
-        response: this.normalizeSignInResult<User>(result.response),
-      };
-    }
-
+  ): Promise<SignInResult<User>> {
     const result = await this.auth.api.signInEmail({
       body: options,
-      headers: requestHeaders,
+      headers: headers(),
+      returnHeaders: true,
     });
-
-    return this.normalizeSignInResult<User>(result);
+    applyAuthResponseCookies(result.headers);
+    return this.normalizeSignInResult<User>(result.response);
   }
 
   /** Starts a social or generic OAuth sign-in flow. */
   async signInSocial<User extends AuthUser = AuthUser>(
     options: SignInSocialOptions,
-    responseOptions: AuthServiceResponseOptions,
-  ): Promise<AuthServiceResponse<SignInSocialResult<User>>>;
-  async signInSocial<User extends AuthUser = AuthUser>(
-    options: SignInSocialOptions,
-  ): Promise<SignInSocialResult<User>>;
-  async signInSocial<User extends AuthUser = AuthUser>(
-    options: SignInSocialOptions,
-    responseOptions?: AuthServiceResponseOptions,
-  ): Promise<
-    SignInSocialResult<User> | AuthServiceResponse<SignInSocialResult<User>>
-  > {
-    const requestHeaders = headers();
-    if (responseOptions?.returnHeaders) {
-      const result = await this.auth.api.signInSocial({
-        body: options,
-        headers: requestHeaders,
-        returnHeaders: true,
-      });
-
-      return {
-        headers: result.headers,
-        response: this.normalizeSignInSocialResult<User>(result.response),
-      };
-    }
-
+  ): Promise<SignInSocialResult<User>> {
     const result = await this.auth.api.signInSocial({
       body: options,
-      headers: requestHeaders,
+      headers: headers(),
+      returnHeaders: true,
     });
-    return this.normalizeSignInSocialResult<User>(result);
+    applyAuthResponseCookies(result.headers);
+    return this.normalizeSignInSocialResult<User>(result.response);
   }
 
   /** Signs out the session represented by the current request context. */
-  async signOut(
-    responseOptions: AuthServiceResponseOptions,
-  ): Promise<AuthServiceResponse<boolean>>;
-  async signOut(): Promise<boolean>;
-  async signOut(
-    responseOptions?: AuthServiceResponseOptions,
-  ): Promise<boolean | AuthServiceResponse<boolean>> {
-    const requestHeaders = headers();
-    if (responseOptions?.returnHeaders) {
-      const result = await this.auth.api.signOut({
-        headers: requestHeaders,
-        returnHeaders: true,
-      });
-
-      return {
-        headers: result.headers,
-        response: result.response.success,
-      };
-    }
-
-    const result = await this.auth.api.signOut({ headers: requestHeaders });
-    return result.success;
+  async signOut(): Promise<boolean> {
+    const result = await this.auth.api.signOut({
+      headers: headers(),
+      returnHeaders: true,
+    });
+    applyAuthResponseCookies(result.headers);
+    return result.response.success;
   }
 
   /** Sends an email-verification link to an unverified email address. */
@@ -359,100 +253,38 @@ export class AuthService {
   }
 
   /** Updates the authenticated user's profile and configured custom fields. */
-  async updateUser(
-    options: UpdateAuthUserOptions,
-    responseOptions: AuthServiceResponseOptions,
-  ): Promise<AuthServiceResponse<boolean>>;
-  async updateUser(options: UpdateAuthUserOptions): Promise<boolean>;
-  async updateUser(
-    options: UpdateAuthUserOptions,
-    responseOptions?: AuthServiceResponseOptions,
-  ): Promise<boolean | AuthServiceResponse<boolean>> {
-    const requestHeaders = headers();
-    if (responseOptions?.returnHeaders) {
-      const result = await this.auth.api.updateUser({
-        body: options,
-        headers: requestHeaders,
-        returnHeaders: true,
-      });
-
-      return {
-        headers: result.headers,
-        response: result.response.status,
-      };
-    }
-
+  async updateUser(options: UpdateAuthUserOptions): Promise<boolean> {
     const result = await this.auth.api.updateUser({
       body: options,
-      headers: requestHeaders,
+      headers: headers(),
+      returnHeaders: true,
     });
-    return result.status;
+    applyAuthResponseCookies(result.headers);
+    return result.response.status;
   }
 
   /** Starts or completes the authenticated user's configured email-change flow. */
-  async changeEmail(
-    options: ChangeAuthEmailOptions,
-    responseOptions: AuthServiceResponseOptions,
-  ): Promise<AuthServiceResponse<boolean>>;
-  async changeEmail(options: ChangeAuthEmailOptions): Promise<boolean>;
-  async changeEmail(
-    options: ChangeAuthEmailOptions,
-    responseOptions?: AuthServiceResponseOptions,
-  ): Promise<boolean | AuthServiceResponse<boolean>> {
-    const requestHeaders = headers();
-    if (responseOptions?.returnHeaders) {
-      const result = await this.auth.api.changeEmail({
-        body: options,
-        headers: requestHeaders,
-        returnHeaders: true,
-      });
-
-      return {
-        headers: result.headers,
-        response: result.response.status,
-      };
-    }
-
+  async changeEmail(options: ChangeAuthEmailOptions): Promise<boolean> {
     const result = await this.auth.api.changeEmail({
       body: options,
-      headers: requestHeaders,
+      headers: headers(),
+      returnHeaders: true,
     });
-    return result.status;
+    applyAuthResponseCookies(result.headers);
+    return result.response.status;
   }
 
   /** Changes the authenticated user's credential password. */
   async changePassword(
     options: ChangeAuthPasswordOptions,
-    responseOptions: AuthServiceResponseOptions,
-  ): Promise<AuthServiceResponse<ChangeAuthPasswordResult>>;
-  async changePassword(
-    options: ChangeAuthPasswordOptions,
-  ): Promise<ChangeAuthPasswordResult>;
-  async changePassword(
-    options: ChangeAuthPasswordOptions,
-    responseOptions?: AuthServiceResponseOptions,
-  ): Promise<
-    ChangeAuthPasswordResult | AuthServiceResponse<ChangeAuthPasswordResult>
-  > {
-    const requestHeaders = headers();
-    if (responseOptions?.returnHeaders) {
-      const result = await this.auth.api.changePassword({
-        body: options,
-        headers: requestHeaders,
-        returnHeaders: true,
-      });
-
-      return {
-        headers: result.headers,
-        response: { token: result.response.token },
-      };
-    }
-
+  ): Promise<ChangeAuthPasswordResult> {
     const result = await this.auth.api.changePassword({
       body: options,
-      headers: requestHeaders,
+      headers: headers(),
+      returnHeaders: true,
     });
-    return { token: result.token };
+    applyAuthResponseCookies(result.headers);
+    return { token: result.response.token };
   }
 
   /** Adds a credential password to an authenticated account that has none. */
@@ -466,29 +298,15 @@ export class AuthService {
 
   /** Requests deletion of the authenticated user's account. */
   async deleteUser(
-    options: DeleteAuthUserOptions,
-    responseOptions: AuthServiceResponseOptions,
-  ): Promise<AuthServiceResponse<DeleteAuthUserResult>>;
-  async deleteUser(
     options?: DeleteAuthUserOptions,
-  ): Promise<DeleteAuthUserResult>;
-  async deleteUser(
-    options: DeleteAuthUserOptions = {},
-    responseOptions?: AuthServiceResponseOptions,
-  ): Promise<DeleteAuthUserResult | AuthServiceResponse<DeleteAuthUserResult>> {
-    const requestHeaders = headers();
-    if (responseOptions?.returnHeaders) {
-      return await this.auth.api.deleteUser({
-        body: options,
-        headers: requestHeaders,
-        returnHeaders: true,
-      });
-    }
-
-    return await this.auth.api.deleteUser({
-      body: options,
-      headers: requestHeaders,
+  ): Promise<DeleteAuthUserResult> {
+    const result = await this.auth.api.deleteUser({
+      body: options ?? {},
+      headers: headers(),
+      returnHeaders: true,
     });
+    applyAuthResponseCookies(result.headers);
+    return result.response;
   }
 
   /** Lists safe summaries of authentication accounts linked to the current user. */
@@ -499,30 +317,14 @@ export class AuthService {
   /** Starts a social or OpenID Connect account-linking flow. */
   async linkSocialAccount(
     options: LinkAuthSocialAccountOptions,
-    responseOptions: AuthServiceResponseOptions,
-  ): Promise<AuthServiceResponse<LinkAuthSocialAccountResult>>;
-  async linkSocialAccount(
-    options: LinkAuthSocialAccountOptions,
-  ): Promise<LinkAuthSocialAccountResult>;
-  async linkSocialAccount(
-    options: LinkAuthSocialAccountOptions,
-    responseOptions?: AuthServiceResponseOptions,
-  ): Promise<
-    | LinkAuthSocialAccountResult
-    | AuthServiceResponse<LinkAuthSocialAccountResult>
-  > {
-    if (responseOptions?.returnHeaders) {
-      return await this.auth.api.linkSocialAccount({
-        body: options,
-        headers: headers(),
-        returnHeaders: true,
-      });
-    }
-
-    return await this.auth.api.linkSocialAccount({
+  ): Promise<LinkAuthSocialAccountResult> {
+    const result = await this.auth.api.linkSocialAccount({
       body: options,
       headers: headers(),
+      returnHeaders: true,
     });
+    applyAuthResponseCookies(result.headers);
+    return result.response;
   }
 
   /** Unlinks an authentication account from the current user. */

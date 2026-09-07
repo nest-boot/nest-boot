@@ -1,5 +1,4 @@
 import type { AuthService, SessionService } from '@nest-boot/auth';
-import type { Response } from 'express';
 import type { Mocked } from 'vitest';
 
 vi.mock('@nest-boot/auth', async (importOriginal) => ({
@@ -40,9 +39,7 @@ describe('AuthResolver', () => {
     expect(authService.listSocialProviders).toHaveBeenCalledWith();
   });
 
-  it('signs in through AuthService and forwards session cookies', async () => {
-    const headers = new Headers();
-    headers.append('set-cookie', 'session=value; Path=/; HttpOnly');
+  it('signs in through AuthService', async () => {
     const result = {
       redirect: false,
       token: 'session-token',
@@ -50,28 +47,22 @@ describe('AuthResolver', () => {
       user: { id: 'user-1' },
     };
     const { authService, resolver } = createResolver({
-      signIn: vi.fn(async () => ({ headers, response: result })),
+      signIn: vi.fn(async () => result),
     });
-    const response = { append: vi.fn() } as unknown as Response;
 
     await expect(
-      resolver.authSignIn(
-        { email: 'alice@example.com', password: 'password' },
-        response,
-      ),
+      resolver.authSignIn({
+        email: 'alice@example.com',
+        password: 'password',
+      }),
     ).resolves.toBe(result);
-    expect(authService.signIn).toHaveBeenCalledWith(
-      { email: 'alice@example.com', password: 'password' },
-      { returnHeaders: true },
-    );
-    expect(response.append).toHaveBeenCalledWith('set-cookie', [
-      'session=value; Path=/; HttpOnly',
-    ]);
+    expect(authService.signIn).toHaveBeenCalledWith({
+      email: 'alice@example.com',
+      password: 'password',
+    });
   });
 
-  it('starts social sign-in through AuthService and forwards state cookies', async () => {
-    const headers = new Headers();
-    headers.append('set-cookie', 'oauth-state=value; Path=/; HttpOnly');
+  it('starts social sign-in through AuthService', async () => {
     const result = {
       redirect: true,
       token: null,
@@ -79,24 +70,18 @@ describe('AuthResolver', () => {
       user: null,
     };
     const { authService, resolver } = createResolver({
-      signInSocial: vi.fn(async () => ({ headers, response: result })),
+      signInSocial: vi.fn(async () => result),
     });
-    const response = { append: vi.fn() } as unknown as Response;
     const input = {
       callbackURL: 'https://app.example.com',
       provider: 'company',
     };
 
-    await expect(resolver.authSignInSocial(input, response)).resolves.toBe(
-      result,
-    );
-    expect(authService.signInSocial).toHaveBeenCalledWith(
-      { ...input, disableRedirect: true },
-      { returnHeaders: true },
-    );
-    expect(response.append).toHaveBeenCalledWith('set-cookie', [
-      'oauth-state=value; Path=/; HttpOnly',
-    ]);
+    await expect(resolver.authSignInSocial(input)).resolves.toBe(result);
+    expect(authService.signInSocial).toHaveBeenCalledWith({
+      ...input,
+      disableRedirect: true,
+    });
   });
 
   it('delegates provider token operations with an account selector', async () => {
@@ -119,122 +104,77 @@ describe('AuthResolver', () => {
   });
 
   it('starts social account linking without exposing Better Auth directly', async () => {
-    const headers = new Headers();
-    headers.append('set-cookie', 'oauth-state=value; Path=/; HttpOnly');
     const result = {
       redirect: false,
       url: 'https://identity.example.com/authorize',
     };
     const { authService, resolver } = createResolver({
-      linkSocialAccount: vi.fn(async () => ({ headers, response: result })),
+      linkSocialAccount: vi.fn(async () => result),
     });
-    const response = { append: vi.fn() } as unknown as Response;
     const input = {
       callbackURL: 'https://app.example.com/user/security',
       provider: 'oidc',
       scopes: ['openid'],
     };
 
-    await expect(resolver.authLinkSocialAccount(input, response)).resolves.toBe(
-      result,
-    );
-    expect(authService.linkSocialAccount).toHaveBeenCalledWith(
-      {
-        ...input,
-        disableRedirect: true,
-      },
-      { returnHeaders: true },
-    );
-    expect(response.append).toHaveBeenCalledWith('set-cookie', [
-      'oauth-state=value; Path=/; HttpOnly',
-    ]);
-  });
-
-  it('updates the user and forwards refreshed session cookies', async () => {
-    const headers = new Headers();
-    headers.append('set-cookie', 'session_data=updated; Path=/; HttpOnly');
-    const { authService, resolver } = createResolver({
-      updateUser: vi.fn(async () => ({ headers, response: true })),
+    await expect(resolver.authLinkSocialAccount(input)).resolves.toBe(result);
+    expect(authService.linkSocialAccount).toHaveBeenCalledWith({
+      ...input,
+      disableRedirect: true,
     });
-    const response = { append: vi.fn() } as unknown as Response;
-
-    await expect(
-      resolver.authUpdateUser({ name: 'Renamed' }, response),
-    ).resolves.toBe(true);
-    expect(authService.updateUser).toHaveBeenCalledWith(
-      { name: 'Renamed' },
-      { returnHeaders: true },
-    );
-    expect(response.append).toHaveBeenCalledWith('set-cookie', [
-      'session_data=updated; Path=/; HttpOnly',
-    ]);
   });
 
-  it('changes the password and forwards the replacement session cookie', async () => {
-    const headers = new Headers();
-    headers.append('set-cookie', 'session=replacement; Path=/; HttpOnly');
+  it('updates the user through AuthService', async () => {
+    const { authService, resolver } = createResolver({
+      updateUser: vi.fn(async () => true),
+    });
+
+    await expect(resolver.authUpdateUser({ name: 'Renamed' })).resolves.toBe(
+      true,
+    );
+    expect(authService.updateUser).toHaveBeenCalledWith({ name: 'Renamed' });
+  });
+
+  it('changes the password through AuthService', async () => {
     const result = { token: 'replacement-token' };
     const { authService, resolver } = createResolver({
-      changePassword: vi.fn(async () => ({ headers, response: result })),
+      changePassword: vi.fn(async () => result),
     });
-    const response = { append: vi.fn() } as unknown as Response;
     const input = {
       currentPassword: 'old-password',
       newPassword: 'new-password',
       revokeOtherSessions: true,
     };
 
-    await expect(resolver.authChangePassword(input, response)).resolves.toBe(
-      result,
-    );
-    expect(authService.changePassword).toHaveBeenCalledWith(input, {
-      returnHeaders: true,
-    });
-    expect(response.append).toHaveBeenCalledWith('set-cookie', [
-      'session=replacement; Path=/; HttpOnly',
-    ]);
+    await expect(resolver.authChangePassword(input)).resolves.toBe(result);
+    expect(authService.changePassword).toHaveBeenCalledWith(input);
   });
 
-  it('starts an email change and forwards refreshed session cookies', async () => {
-    const headers = new Headers();
-    headers.append('set-cookie', 'session_data=updated; Path=/; HttpOnly');
+  it('starts an email change through AuthService', async () => {
     const { authService, resolver } = createResolver({
-      changeEmail: vi.fn(async () => ({ headers, response: true })),
+      changeEmail: vi.fn(async () => true),
     });
-    const response = { append: vi.fn() } as unknown as Response;
     const input = {
       callbackURL: 'https://app.example.com/user?emailChanged=true',
       newEmail: 'next@example.com',
     };
 
-    await expect(resolver.authChangeEmail(input, response)).resolves.toBe(true);
-    expect(authService.changeEmail).toHaveBeenCalledWith(input, {
-      returnHeaders: true,
-    });
-    expect(response.append).toHaveBeenCalledWith('set-cookie', [
-      'session_data=updated; Path=/; HttpOnly',
-    ]);
+    await expect(resolver.authChangeEmail(input)).resolves.toBe(true);
+    expect(authService.changeEmail).toHaveBeenCalledWith(input);
   });
 
-  it('deletes the current user and forwards cookie removal headers', async () => {
-    const headers = new Headers();
-    headers.append('set-cookie', 'session=; Max-Age=0; Path=/; HttpOnly');
+  it('deletes the current user through AuthService', async () => {
     const result = { message: 'User deleted', success: true };
     const { authService, resolver } = createResolver({
-      deleteUser: vi.fn(async () => ({ headers, response: result })),
+      deleteUser: vi.fn(async () => result),
     });
-    const response = { append: vi.fn() } as unknown as Response;
 
     await expect(
-      resolver.authDeleteUser(response, { password: 'password' }),
+      resolver.authDeleteUser({ password: 'password' }),
     ).resolves.toBe(result);
-    expect(authService.deleteUser).toHaveBeenCalledWith(
-      { password: 'password' },
-      { returnHeaders: true },
-    );
-    expect(response.append).toHaveBeenCalledWith('set-cookie', [
-      'session=; Max-Age=0; Path=/; HttpOnly',
-    ]);
+    expect(authService.deleteUser).toHaveBeenCalledWith({
+      password: 'password',
+    });
   });
 
   it('lists sessions and marks the current session', async () => {

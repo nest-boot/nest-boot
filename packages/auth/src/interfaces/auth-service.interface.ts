@@ -290,20 +290,6 @@ export interface AuthAccountInfo<
   data: Data;
 }
 
-/** Authentication result paired with response headers produced by the operation. */
-export interface AuthServiceResponse<Result> {
-  /** Response headers, including any session cookies. */
-  headers: globalThis.Headers;
-  /** Normalized authentication operation result. */
-  response: Result;
-}
-
-/** Requests response headers from an AuthService transport operation. */
-export interface AuthServiceResponseOptions {
-  /** Enables the response envelope. */
-  returnHeaders: true;
-}
-
 /** Identifies an authentication account to unlink. */
 export interface UnlinkAuthAccountOptions {
   /** Better Auth account record identifier returned by {@link AuthAccount.id}. */

@@ -11,19 +11,10 @@ import {
   serializeAbilityRules,
   SessionService,
 } from '@nest-boot/auth';
-import {
-  Args,
-  Context,
-  ID,
-  Mutation,
-  Query,
-  Resolver,
-} from '@nest-boot/graphql';
+import { Args, ID, Mutation, Query, Resolver } from '@nest-boot/graphql';
 import { BadRequestException } from '@nestjs/common';
-import type { Response } from 'express';
 
 import { User } from '../user/user.entity.js';
-import { applyAuthResponseHeaders } from './auth-response-headers.util.js';
 import {
   AuthAccountSelectorInput,
   AuthChangeEmailInput,
@@ -105,16 +96,8 @@ export class AuthResolver {
   @Mutation(() => AuthSignUpResultType)
   async authSignUp(
     @Args('input') input: AuthSignUpInput,
-    @Context('res') response: Response,
   ): Promise<AuthSignUpResultType> {
-    const result = await this.authService.signUp(
-      { ...input },
-      {
-        returnHeaders: true,
-      },
-    );
-    applyAuthResponseHeaders(response, result.headers);
-    return result.response;
+    return await this.authService.signUp({ ...input });
   }
 
   /** Signs in with an email address and password. */
@@ -122,13 +105,8 @@ export class AuthResolver {
   @Mutation(() => AuthSignInResultType)
   async authSignIn(
     @Args('input') input: AuthSignInInput,
-    @Context('res') response: Response,
   ): Promise<AuthSignInResultType> {
-    const result = await this.authService.signIn(input, {
-      returnHeaders: true,
-    });
-    applyAuthResponseHeaders(response, result.headers);
-    return result.response;
+    return await this.authService.signIn(input);
   }
 
   /** Starts a social or generic OAuth sign-in flow. */
@@ -136,25 +114,18 @@ export class AuthResolver {
   @Mutation(() => AuthSignInSocialResultType)
   async authSignInSocial(
     @Args('input') input: AuthSignInSocialInput,
-    @Context('res') response: Response,
   ): Promise<AuthSignInSocialResultType> {
-    const result = await this.authService.signInSocial(
-      { ...input, disableRedirect: true },
-      { returnHeaders: true },
-    );
-    applyAuthResponseHeaders(response, result.headers);
-    return result.response;
+    return await this.authService.signInSocial({
+      ...input,
+      disableRedirect: true,
+    });
   }
 
   /** Signs out and forwards the session-cookie removal header. */
   @Public()
   @Mutation(() => Boolean)
-  async authSignOut(@Context('res') response: Response): Promise<boolean> {
-    const result = await this.authService.signOut({
-      returnHeaders: true,
-    });
-    applyAuthResponseHeaders(response, result.headers);
-    return result.response;
+  async authSignOut(): Promise<boolean> {
+    return await this.authService.signOut();
   }
 
   /** Sends an email-verification message. */
@@ -188,40 +159,24 @@ export class AuthResolver {
   @Mutation(() => Boolean)
   async authUpdateUser(
     @Args('input') input: AuthUpdateUserInput,
-    @Context('res') response: Response,
   ): Promise<boolean> {
-    const result = await this.authService.updateUser(
-      { ...input },
-      { returnHeaders: true },
-    );
-    applyAuthResponseHeaders(response, result.headers);
-    return result.response;
+    return await this.authService.updateUser({ ...input });
   }
 
   /** Starts or completes an authenticated email change. */
   @Mutation(() => Boolean)
   async authChangeEmail(
     @Args('input') input: AuthChangeEmailInput,
-    @Context('res') response: Response,
   ): Promise<boolean> {
-    const result = await this.authService.changeEmail(input, {
-      returnHeaders: true,
-    });
-    applyAuthResponseHeaders(response, result.headers);
-    return result.response;
+    return await this.authService.changeEmail(input);
   }
 
   /** Changes the authenticated user's password. */
   @Mutation(() => AuthChangePasswordResultType)
   async authChangePassword(
     @Args('input') input: AuthChangePasswordInput,
-    @Context('res') response: Response,
   ): Promise<AuthChangePasswordResultType> {
-    const result = await this.authService.changePassword(input, {
-      returnHeaders: true,
-    });
-    applyAuthResponseHeaders(response, result.headers);
-    return result.response;
+    return await this.authService.changePassword(input);
   }
 
   /** Lists active sessions belonging to the authenticated user. */
@@ -265,14 +220,9 @@ export class AuthResolver {
   /** Requests deletion of the authenticated user. */
   @Mutation(() => AuthDeleteUserResultType)
   async authDeleteUser(
-    @Context('res') response: Response,
     @Args('input', { nullable: true }) input?: AuthDeleteUserInput,
   ): Promise<AuthDeleteUserResultType> {
-    const result = await this.authService.deleteUser(input ?? {}, {
-      returnHeaders: true,
-    });
-    applyAuthResponseHeaders(response, result.headers);
-    return result.response;
+    return await this.authService.deleteUser(input ?? {});
   }
 
   /** Lists authentication accounts linked to the current user. */
@@ -285,17 +235,11 @@ export class AuthResolver {
   @Mutation(() => AuthLinkSocialAccountResultType)
   async authLinkSocialAccount(
     @Args('input') input: AuthLinkSocialAccountInput,
-    @Context('res') response: Response,
   ): Promise<AuthLinkSocialAccountResultType> {
-    const result = await this.authService.linkSocialAccount(
-      {
-        ...input,
-        disableRedirect: true,
-      },
-      { returnHeaders: true },
-    );
-    applyAuthResponseHeaders(response, result.headers);
-    return result.response;
+    return await this.authService.linkSocialAccount({
+      ...input,
+      disableRedirect: true,
+    });
   }
 
   /** Unlinks an authentication account from the current user. */

@@ -1,3 +1,4 @@
+import { REQUEST, RequestContext, RESPONSE } from "@nest-boot/request-context";
 import { Test } from "@nestjs/testing";
 
 import { AUTH_TOKEN } from "./auth.constants.js";
@@ -61,6 +62,18 @@ async function createService(
   };
 }
 
+async function withResponse<T>(callback: () => Promise<T>) {
+  const appendHeader = vi.fn();
+  const context = new RequestContext({ type: "http" });
+  context.set(REQUEST, { headers: {} });
+  context.set(RESPONSE, { appendHeader });
+
+  return {
+    appendHeader,
+    result: await RequestContext.run(context, callback),
+  };
+}
+
 describe("AuthService", () => {
   it("lists the configured social and generic OAuth providers", async () => {
     const { service } = await createService(createApi(), [
@@ -96,12 +109,16 @@ describe("AuthService", () => {
         updatedAt: new Date("2026-01-01"),
       },
     };
-    api.signUpEmail.mockResolvedValue(result);
+    api.signUpEmail.mockResolvedValue({
+      headers: new Headers(),
+      response: result,
+    });
 
     await expect(service.signUp(options)).resolves.toBe(result);
     expect(api.signUpEmail).toHaveBeenCalledWith({
       body: options,
       headers: requestHeaders,
+      returnHeaders: true,
     });
   });
 
@@ -113,15 +130,18 @@ describe("AuthService", () => {
       rememberMe: true,
     };
     api.signInEmail.mockResolvedValue({
-      redirect: false,
-      token: "session-token",
-      user: {
-        createdAt: new Date("2026-01-01"),
-        email: options.email,
-        emailVerified: true,
-        id: "user-1",
-        name: "Alice",
-        updatedAt: new Date("2026-01-01"),
+      headers: new Headers(),
+      response: {
+        redirect: false,
+        token: "session-token",
+        user: {
+          createdAt: new Date("2026-01-01"),
+          email: options.email,
+          emailVerified: true,
+          id: "user-1",
+          name: "Alice",
+          updatedAt: new Date("2026-01-01"),
+        },
       },
     });
 
@@ -134,12 +154,15 @@ describe("AuthService", () => {
     expect(api.signInEmail).toHaveBeenCalledWith({
       body: options,
       headers: requestHeaders,
+      returnHeaders: true,
     });
   });
 
-  it("returns response headers for transport-aware sign in", async () => {
+  it("applies every sign-in cookie to the current HTTP response", async () => {
     const { api, service } = await createService();
-    const responseHeaders = new Headers({ "set-cookie": "session=value" });
+    const responseHeaders = new Headers();
+    responseHeaders.append("set-cookie", "session=value; Path=/");
+    responseHeaders.append("set-cookie", "session-data=value; Path=/");
     const options = {
       email: "alice@example.com",
       password: "password",
@@ -160,17 +183,54 @@ describe("AuthService", () => {
       },
     });
 
-    await expect(
-      service.signIn(options, { returnHeaders: true }),
-    ).resolves.toEqual({
-      headers: responseHeaders,
-      response: expect.objectContaining({ url: null }),
-    });
+    const { appendHeader, result: actual } = await withResponse(() =>
+      service.signIn(options),
+    );
+
+    expect(actual).toEqual(expect.objectContaining({ url: null }));
+    expect(appendHeader).toHaveBeenNthCalledWith(
+      1,
+      "Set-Cookie",
+      "session=value; Path=/",
+    );
+    expect(appendHeader).toHaveBeenNthCalledWith(
+      2,
+      "Set-Cookie",
+      "session-data=value; Path=/",
+    );
     expect(api.signInEmail).toHaveBeenCalledWith({
       body: options,
       headers: requestHeaders,
       returnHeaders: true,
     });
+  });
+
+  it("rejects response cookies outside an HTTP response context", async () => {
+    const { api, service } = await createService();
+    api.signInEmail.mockResolvedValue({
+      headers: new Headers({ "set-cookie": "session=value" }),
+      response: {
+        redirect: false,
+        token: "session-token",
+        user: {
+          createdAt: new Date("2026-01-01"),
+          email: "alice@example.com",
+          emailVerified: true,
+          id: "user-1",
+          name: "Alice",
+          updatedAt: new Date("2026-01-01"),
+        },
+      },
+    });
+
+    await expect(
+      service.signIn({
+        email: "alice@example.com",
+        password: "password",
+      }),
+    ).rejects.toThrow(
+      "cookies() is only available within an HTTP request context",
+    );
   });
 
   it("starts a social sign-in flow and normalizes redirect results", async () => {
@@ -181,8 +241,11 @@ describe("AuthService", () => {
       provider: "company",
     };
     api.signInSocial.mockResolvedValue({
-      redirect: true,
-      url: "https://identity.example.com/authorize",
+      headers: new Headers(),
+      response: {
+        redirect: true,
+        url: "https://identity.example.com/authorize",
+      },
     });
 
     await expect(service.signInSocial(options)).resolves.toEqual({
@@ -194,12 +257,15 @@ describe("AuthService", () => {
     expect(api.signInSocial).toHaveBeenCalledWith({
       body: options,
       headers: requestHeaders,
+      returnHeaders: true,
     });
   });
 
-  it("returns social sign-in response headers and direct-token results", async () => {
+  it("applies social sign-in cookies and normalizes direct-token results", async () => {
     const { api, service } = await createService();
-    const responseHeaders = new Headers({ "set-cookie": "session=value" });
+    const responseHeaders = new Headers({
+      "set-cookie": "session=value; Path=/",
+    });
     const options = { provider: "github" };
     const user = {
       createdAt: new Date("2026-01-01"),
@@ -218,17 +284,20 @@ describe("AuthService", () => {
       },
     });
 
-    await expect(
-      service.signInSocial(options, { returnHeaders: true }),
-    ).resolves.toEqual({
-      headers: responseHeaders,
-      response: {
-        redirect: false,
-        token: "session-token",
-        url: null,
-        user,
-      },
+    const { appendHeader, result } = await withResponse(() =>
+      service.signInSocial(options),
+    );
+
+    expect(result).toEqual({
+      redirect: false,
+      token: "session-token",
+      url: null,
+      user,
     });
+    expect(appendHeader).toHaveBeenCalledWith(
+      "Set-Cookie",
+      "session=value; Path=/",
+    );
     expect(api.signInSocial).toHaveBeenCalledWith({
       body: options,
       headers: requestHeaders,
@@ -238,10 +307,16 @@ describe("AuthService", () => {
 
   it("signs out the session represented by the request headers", async () => {
     const { api, service } = await createService();
-    api.signOut.mockResolvedValue({ success: true });
+    api.signOut.mockResolvedValue({
+      headers: new Headers(),
+      response: { success: true },
+    });
 
     await expect(service.signOut()).resolves.toBe(true);
-    expect(api.signOut).toHaveBeenCalledWith({ headers: requestHeaders });
+    expect(api.signOut).toHaveBeenCalledWith({
+      headers: requestHeaders,
+      returnHeaders: true,
+    });
   });
 
   it("sends an email verification link", async () => {
@@ -298,21 +373,25 @@ describe("AuthService", () => {
 
   it("updates the current user without exposing the Better Auth API", async () => {
     const { api, service } = await createService();
-    api.updateUser.mockResolvedValue({ status: true });
+    api.updateUser.mockResolvedValue({
+      headers: new Headers(),
+      response: { status: true },
+    });
     const options = { image: null, name: "Alice", timezone: "UTC" };
 
     await expect(service.updateUser(options)).resolves.toBe(true);
     expect(api.updateUser).toHaveBeenCalledWith({
       body: options,
       headers: requestHeaders,
+      returnHeaders: true,
     });
     expect("api" in service).toBe(false);
   });
 
-  it("returns response headers when updating the current user", async () => {
+  it("applies refreshed session cookies when updating the current user", async () => {
     const { api, service } = await createService();
     const responseHeaders = new Headers({
-      "set-cookie": "better-auth.session_data=updated",
+      "set-cookie": "better-auth.session_data=updated; Path=/",
     });
     const options = { name: "Alice" };
     api.updateUser.mockResolvedValue({
@@ -320,9 +399,14 @@ describe("AuthService", () => {
       response: { status: true },
     });
 
-    await expect(
-      service.updateUser(options, { returnHeaders: true }),
-    ).resolves.toEqual({ headers: responseHeaders, response: true });
+    const { appendHeader, result } = await withResponse(() =>
+      service.updateUser(options),
+    );
+    expect(result).toBe(true);
+    expect(appendHeader).toHaveBeenCalledWith(
+      "Set-Cookie",
+      "better-auth.session_data=updated; Path=/",
+    );
     expect(api.updateUser).toHaveBeenCalledWith({
       body: options,
       headers: requestHeaders,
@@ -332,7 +416,10 @@ describe("AuthService", () => {
 
   it("changes the current user's email", async () => {
     const { api, service } = await createService();
-    api.changeEmail.mockResolvedValue({ status: true });
+    api.changeEmail.mockResolvedValue({
+      headers: new Headers(),
+      response: { status: true },
+    });
     const options = {
       callbackURL: "/account",
       newEmail: "next@example.com",
@@ -342,10 +429,11 @@ describe("AuthService", () => {
     expect(api.changeEmail).toHaveBeenCalledWith({
       body: options,
       headers: requestHeaders,
+      returnHeaders: true,
     });
   });
 
-  it("returns email-change response headers when requested", async () => {
+  it("applies refreshed session cookies during an email change", async () => {
     const { api, service } = await createService();
     const responseHeaders = new Headers({
       "set-cookie": "session_data=updated; Path=/; HttpOnly",
@@ -359,9 +447,14 @@ describe("AuthService", () => {
       response: { status: true },
     });
 
-    await expect(
-      service.changeEmail(options, { returnHeaders: true }),
-    ).resolves.toEqual({ headers: responseHeaders, response: true });
+    const { appendHeader, result } = await withResponse(() =>
+      service.changeEmail(options),
+    );
+    expect(result).toBe(true);
+    expect(appendHeader).toHaveBeenCalledWith(
+      "Set-Cookie",
+      "session_data=updated; Path=/; HttpOnly",
+    );
     expect(api.changeEmail).toHaveBeenCalledWith({
       body: options,
       headers: requestHeaders,
@@ -372,8 +465,11 @@ describe("AuthService", () => {
   it("changes the password and only exposes the replacement token", async () => {
     const { api, service } = await createService();
     api.changePassword.mockResolvedValue({
-      token: "replacement-token",
-      user: { id: "user-1" },
+      headers: new Headers(),
+      response: {
+        token: "replacement-token",
+        user: { id: "user-1" },
+      },
     });
     const options = {
       currentPassword: "old-password",
@@ -387,10 +483,11 @@ describe("AuthService", () => {
     expect(api.changePassword).toHaveBeenCalledWith({
       body: options,
       headers: requestHeaders,
+      returnHeaders: true,
     });
   });
 
-  it("returns password-change response headers when requested", async () => {
+  it("applies the replacement session cookie after a password change", async () => {
     const { api, service } = await createService();
     const responseHeaders = new Headers({
       "set-cookie": "session=replacement; Path=/; HttpOnly",
@@ -405,12 +502,14 @@ describe("AuthService", () => {
       response: { token: "replacement-token", user: { id: "user-1" } },
     });
 
-    await expect(
-      service.changePassword(options, { returnHeaders: true }),
-    ).resolves.toEqual({
-      headers: responseHeaders,
-      response: { token: "replacement-token" },
-    });
+    const { appendHeader, result } = await withResponse(() =>
+      service.changePassword(options),
+    );
+    expect(result).toEqual({ token: "replacement-token" });
+    expect(appendHeader).toHaveBeenCalledWith(
+      "Set-Cookie",
+      "session=replacement; Path=/; HttpOnly",
+    );
     expect(api.changePassword).toHaveBeenCalledWith({
       body: options,
       headers: requestHeaders,
@@ -432,8 +531,11 @@ describe("AuthService", () => {
   it("requests user deletion with empty default options", async () => {
     const { api, service } = await createService();
     api.deleteUser.mockResolvedValue({
-      message: "User deleted",
-      success: true,
+      headers: new Headers(),
+      response: {
+        message: "User deleted",
+        success: true,
+      },
     });
 
     await expect(service.deleteUser()).resolves.toEqual({
@@ -443,20 +545,26 @@ describe("AuthService", () => {
     expect(api.deleteUser).toHaveBeenCalledWith({
       body: {},
       headers: requestHeaders,
+      returnHeaders: true,
     });
   });
 
-  it("returns user-deletion response headers when requested", async () => {
+  it("applies cookie removal headers after deleting the current user", async () => {
     const { api, service } = await createService();
     const responseHeaders = new Headers({
-      "set-cookie": "better-auth.session_token=; Max-Age=0",
+      "set-cookie": "better-auth.session_token=; Max-Age=0; Path=/",
     });
     const response = { message: "User deleted", success: true };
     api.deleteUser.mockResolvedValue({ headers: responseHeaders, response });
 
-    await expect(
-      service.deleteUser({}, { returnHeaders: true }),
-    ).resolves.toEqual({ headers: responseHeaders, response });
+    const { appendHeader, result } = await withResponse(() =>
+      service.deleteUser({}),
+    );
+    expect(result).toEqual(response);
+    expect(appendHeader).toHaveBeenCalledWith(
+      "Set-Cookie",
+      "better-auth.session_token=; Max-Age=0; Path=/",
+    );
     expect(api.deleteUser).toHaveBeenCalledWith({
       body: {},
       headers: requestHeaders,
@@ -498,32 +606,43 @@ describe("AuthService", () => {
       redirect: true,
       url: "https://identity.example.com/authorize",
     };
-    api.linkSocialAccount.mockResolvedValue(result);
+    api.linkSocialAccount.mockResolvedValue({
+      headers: new Headers(),
+      response: result,
+    });
 
     await expect(service.linkSocialAccount(options)).resolves.toBe(result);
     expect(api.linkSocialAccount).toHaveBeenCalledWith({
       body: options,
       headers: requestHeaders,
+      returnHeaders: true,
     });
   });
 
-  it("returns account-linking response headers when requested", async () => {
+  it("applies account-linking state cookies", async () => {
     const { api, service } = await createService();
     const options = {
       callbackURL: "/user/security",
       disableRedirect: true,
       provider: "company",
     };
-    const headers = new Headers({ "set-cookie": "oauth-state=value" });
+    const headers = new Headers({
+      "set-cookie": "oauth-state=value; Path=/",
+    });
     const response = {
       redirect: false,
       url: "https://identity.example.com/authorize",
     };
     api.linkSocialAccount.mockResolvedValue({ headers, response });
 
-    await expect(
-      service.linkSocialAccount(options, { returnHeaders: true }),
-    ).resolves.toEqual({ headers, response });
+    const { appendHeader, result } = await withResponse(() =>
+      service.linkSocialAccount(options),
+    );
+    expect(result).toEqual(response);
+    expect(appendHeader).toHaveBeenCalledWith(
+      "Set-Cookie",
+      "oauth-state=value; Path=/",
+    );
     expect(api.linkSocialAccount).toHaveBeenCalledWith({
       body: options,
       headers: requestHeaders,

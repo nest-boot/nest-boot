@@ -6,19 +6,10 @@ import {
   UserCan,
   UserService,
 } from '@nest-boot/auth';
-import {
-  Args,
-  Context,
-  ID,
-  Mutation,
-  Query,
-  Resolver,
-} from '@nest-boot/graphql';
+import { Args, ID, Mutation, Query, Resolver } from '@nest-boot/graphql';
 import { NotFoundException } from '@nestjs/common';
-import type { Response } from 'express';
 
 import { User } from '../user/user.entity.js';
-import { applyAuthResponseHeaders } from './auth-response-headers.util.js';
 import { Account } from './entities/account.entity.js';
 import { Session } from './entities/session.entity.js';
 import {
@@ -216,16 +207,12 @@ export class UserResolver {
   async impersonateUser(
     @Args('id', { type: () => ID }) id: string,
     @CurrentUser() administrator: User,
-    @Context('res') response: Response,
   ): Promise<User> {
     const result = await this.userService.impersonateUser(
       administrator,
       await this.getUserOrFail(id),
     );
-    applyAuthResponseHeaders(
-      response,
-      await this.sessionService.createSessionHeaders(result.session.token),
-    );
+    await this.sessionService.setSession(result.session.token);
     return result.user;
   }
 
@@ -233,15 +220,11 @@ export class UserResolver {
   @Mutation(() => User, { nullable: true })
   async stopImpersonating(
     @CurrentSession() currentSession: BaseSession,
-    @Context('res') response: Response,
   ): Promise<User | null> {
     const result = await this.userService.stopImpersonating(currentSession);
     if (!result) return null;
 
-    applyAuthResponseHeaders(
-      response,
-      await this.sessionService.createSessionHeaders(result.session.token),
-    );
+    await this.sessionService.setSession(result.session.token);
     return result.user;
   }
 

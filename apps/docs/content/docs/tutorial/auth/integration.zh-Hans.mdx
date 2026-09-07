@@ -31,9 +31,9 @@ export class AccountApplicationService {
 
 ## 传输适配器
 
-Resolver 与 Controller 应负责转换协议类型，并把领域规则委托给这些服务。方法返回响应头
-时，需要转发所有 `Set-Cookie`，不能只转发第一项。密码修改撤销其他会话并替换当前
-Cookie 时，这一点尤其重要。
+Resolver 与 Controller 应负责转换协议类型，并把领域规则委托给这些服务。认证方法会
+通过请求级 `cookies()` 存储自动转发全部 `Set-Cookie`，包括密码修改后替换当前 Session
+Cookie 的场景。
 
 内置认证端点处理器挂载在 `basePath`。`AuthMiddleware` 在
 `RequestContextMiddleware` 之后运行，负责解析身份，并让装饰器与守卫可以读取应用实体。
