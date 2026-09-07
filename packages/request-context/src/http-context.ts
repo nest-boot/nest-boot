@@ -12,6 +12,15 @@ export interface HttpResponseLike {
   setHeader?(name: string, value: string | string[]): unknown;
 }
 
+export type WritableHttpResponseLike =
+  | {
+      appendHeader(name: string, value: string): unknown;
+    }
+  | {
+      getHeader(name: string): number | string | string[] | undefined;
+      setHeader(name: string, value: string | string[]): unknown;
+    };
+
 export function getHttpRequest(helper: "cookies" | "headers"): HttpRequestLike {
   if (!RequestContext.isActive() || RequestContext.current().type !== "http") {
     throw unavailableError(helper);
@@ -26,7 +35,7 @@ export function getHttpRequest(helper: "cookies" | "headers"): HttpRequestLike {
   return request;
 }
 
-export function getWritableHttpResponse(): HttpResponseLike {
+export function getWritableHttpResponse(): WritableHttpResponseLike {
   if (!RequestContext.isActive() || RequestContext.current().type !== "http") {
     throw new Error("Cookie writes require a writable HTTP response context");
   }
@@ -51,7 +60,7 @@ export function getWritableHttpResponse(): HttpResponseLike {
     throw new Error("Cookie writes require a writable HTTP response context");
   }
 
-  return response;
+  return response as WritableHttpResponseLike;
 }
 
 function unavailableError(helper: "cookies" | "headers"): Error {

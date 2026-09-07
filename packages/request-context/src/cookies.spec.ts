@@ -235,6 +235,18 @@ describe("cookies", () => {
     });
   });
 
+  it("fails when a retained store writes outside its request context", async () => {
+    let store: ReturnType<typeof cookies> | undefined;
+
+    await runWithHttpContext({ headers: {} }, createResponse(), () => {
+      store = cookies();
+    });
+
+    expect(() => store?.set("session", "value")).toThrow(
+      "Cookie writes require a writable HTTP response context",
+    );
+  });
+
   it("fails when the response cannot append or set headers", async () => {
     await runWithHttpContext({ headers: {} }, { headersSent: false }, () => {
       expect(() => {

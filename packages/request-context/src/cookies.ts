@@ -3,7 +3,7 @@ import { parseCookie, stringifyCookie, stringifySetCookie } from "cookie";
 import {
   getHttpRequest,
   getWritableHttpResponse,
-  type HttpResponseLike,
+  type WritableHttpResponseLike,
 } from "./http-context.js";
 
 /** A name/value pair read from the incoming `Cookie` header. */
@@ -205,13 +205,13 @@ function parseRequestCookies(header: string | undefined): RequestCookie[] {
   if (!header) return [];
 
   return header.split(";").flatMap((pair) =>
-    Object.entries(parseCookie(pair)).flatMap(([name, value]) => {
-      if (value === undefined) return [];
+    Object.entries(parseCookie(pair))
+      .filter((entry): entry is [string, string] => entry[1] !== undefined)
+      .flatMap(([name, value]) => {
+        const cookie = { name, value };
 
-      const cookie = { name, value };
-
-      return isSerializableCookie(cookie) ? [cookie] : [];
-    }),
+        return isSerializableCookie(cookie) ? [cookie] : [];
+      }),
   );
 }
 
@@ -247,14 +247,13 @@ function getHeader(
   return Array.isArray(value) ? value.join("; ") : value;
 }
 
-function appendSetCookie(response: HttpResponseLike, value: string): void {
-  if (response.appendHeader) {
+function appendSetCookie(
+  response: WritableHttpResponseLike,
+  value: string,
+): void {
+  if (supportsAppendHeader(response)) {
     response.appendHeader("Set-Cookie", value);
     return;
-  }
-
-  if (!response.getHeader || !response.setHeader) {
-    throw new Error("Cookie writes require a writable HTTP response context");
   }
 
   const current = response.getHeader("Set-Cookie");
@@ -266,4 +265,12 @@ function appendSetCookie(response: HttpResponseLike, value: string): void {
         : [String(current)];
 
   response.setHeader("Set-Cookie", [...values, value]);
+}
+
+function supportsAppendHeader(
+  response: WritableHttpResponseLike,
+): response is Extract<WritableHttpResponseLike, { appendHeader: unknown }> {
+  return (
+    "appendHeader" in response && typeof response.appendHeader === "function"
+  );
 }
