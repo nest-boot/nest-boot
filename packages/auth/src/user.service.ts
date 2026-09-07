@@ -288,20 +288,8 @@ export class UserService<
   ): Promise<AuthenticatedSession<User, Session>> {
     this.accessControlService.assertCurrentUser(administrator);
     this.accessControlService.assertUserCan("impersonate", user);
-    if (
-      !this.hasPermission(administrator, {
-        permissions: { User: ["impersonate"] },
-      })
-    ) {
-      throw new ForbiddenException("You are not allowed to impersonate users");
-    }
-    if (
-      this.isAdmin(user) &&
-      !this.hasPermission(administrator, {
-        permissions: { User: ["impersonate-admins"] },
-      })
-    ) {
-      throw new ForbiddenException("You are not allowed to impersonate admins");
+    if (this.isAdmin(user)) {
+      this.accessControlService.assertUserCan("impersonate-admins", user);
     }
     if (this.isActivelyBanned(user)) {
       throw new ForbiddenException("Banned users cannot be impersonated");

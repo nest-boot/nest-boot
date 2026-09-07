@@ -130,15 +130,13 @@ export class WorkspaceInvitationResolver {
     return await this.workspaceService.cancelInvitation(invitation);
   }
 
-  /** 解析邀请者。 */
-  @WorkspaceCan('read', User)
+  /** 解析邀请者；访问权限已由返回父邀请对象的根操作校验。 */
   @ResolveField(() => User)
   async inviter(@Parent() invitation: WorkspaceInvitation): Promise<User> {
     return await invitation.inviter.loadOrFail();
   }
 
-  /** 解析邀请所属工作区。 */
-  @WorkspaceCan('read', Workspace)
+  /** 解析邀请所属工作区；访问权限已由返回父邀请对象的根操作校验。 */
   @ResolveField(() => Workspace)
   async workspace(
     @Parent() invitation: WorkspaceInvitation,

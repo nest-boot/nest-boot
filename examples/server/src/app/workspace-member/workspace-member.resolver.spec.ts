@@ -48,38 +48,18 @@ describe('WorkspaceMemberResolver', () => {
     expect(resolver.currentWorkspaceMember()).toBeNull();
   });
 
-  it('rejects listing members without a current workspace member', async () => {
-    const { resolver } = createResolver();
-
-    await expect(
-      resolver.workspaceMembers({} as never, undefined, undefined),
-    ).rejects.toBeInstanceOf(ForbiddenException);
-  });
-
-  it('filters listed members by current workspace when present', async () => {
+  it('filters listed members by the current workspace', async () => {
     const { resolver, cm } = createResolver();
     const workspace = { id: 'workspace_1' } as Workspace;
-    const workspaceMember = { id: 'member_1' } as WorkspaceMember;
     const args = { first: 10 } as never;
 
-    await resolver.workspaceMembers(args, workspace, workspaceMember);
+    await resolver.workspaceMembers(args, workspace);
 
     expect(cm.find).toHaveBeenCalledWith(expect.any(Function), args, {
       where: {
         workspace,
       },
     });
-  });
-
-  it('lists members without a workspace filter when only member context is available', async () => {
-    const { resolver, cm } = createResolver();
-    const args = { first: 10 } as never;
-
-    await resolver.workspaceMembers(args, undefined, {
-      id: 'member_1',
-    } as WorkspaceMember);
-
-    expect(cm.find).toHaveBeenCalledWith(expect.any(Function), args);
   });
 
   it('finds a member by id through the service', async () => {

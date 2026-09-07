@@ -24,7 +24,8 @@ when their resolved workspace ability grants the corresponding
 Create methods return the plaintext key exactly once. The database stores a
 SHA-256 hash of the complete key, the display-safe `start` and `prefix`, enabled
 state, permissions, expiration, and usage timestamps. Successful authenticated
-requests update `lastUsedAt` automatically.
+requests update `lastUsedAt` automatically. A custom prefix must contain 1–32
+non-whitespace characters so the resulting key remains safe in a Bearer header.
 
 ## Permission Values
 

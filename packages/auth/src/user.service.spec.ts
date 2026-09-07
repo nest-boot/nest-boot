@@ -406,24 +406,33 @@ describe("UserService", () => {
     expect(em.remove).toHaveBeenCalledWith(impersonation.session);
   });
 
-  it("requires the additional permission when impersonating an administrator", async () => {
-    const { service } = createService();
+  it("checks the scoped ability when impersonating an administrator", async () => {
+    const { accessControlService, service } = createService();
     const target = Object.assign(new TestUser(), { roles: ["admin"] });
-    const ordinaryImpersonator = Object.assign(new TestUser(), {
-      permissions: ["User:impersonate"],
-      roles: ["user"],
+    const administrator = Object.assign(new TestUser(), {
+      roles: ["admin"],
     });
-    const privilegedImpersonator = Object.assign(new TestUser(), {
-      permissions: ["User:impersonate", "User:impersonate-admins"],
-      roles: ["user"],
-    });
+    vi.mocked(accessControlService.assertUserCan).mockImplementation(
+      (action) => {
+        if (action === "impersonate-admins") {
+          throw new ForbiddenException();
+        }
+      },
+    );
 
     await expect(
-      service.impersonateUser(ordinaryImpersonator, target),
+      service.impersonateUser(administrator, target),
     ).rejects.toBeInstanceOf(ForbiddenException);
-    await expect(
-      service.impersonateUser(privilegedImpersonator, target),
-    ).resolves.toEqual(expect.objectContaining({ user: target }));
+    expect(accessControlService.assertUserCan).toHaveBeenNthCalledWith(
+      1,
+      "impersonate",
+      target,
+    );
+    expect(accessControlService.assertUserCan).toHaveBeenNthCalledWith(
+      2,
+      "impersonate-admins",
+      target,
+    );
   });
 
   it("revokes an impersonation session instead of restoring a banned administrator", async () => {

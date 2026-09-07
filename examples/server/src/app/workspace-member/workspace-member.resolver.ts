@@ -113,22 +113,13 @@ export class WorkspaceMemberResolver {
   @Query(() => WorkspaceMemberConnection)
   async workspaceMembers(
     @Args() args: WorkspaceMemberConnectionArgs,
-    @CurrentWorkspace() workspace?: Workspace,
-    @CurrentWorkspaceMember() workspaceMember?: WorkspaceMember,
+    @CurrentWorkspace() workspace: Workspace,
   ): Promise<WorkspaceMemberConnection> {
-    if (!workspaceMember) {
-      throw new ForbiddenException('You are not allowed to view members');
-    }
-
-    if (workspace) {
-      return await this.cm.find(WorkspaceMemberConnection, args, {
-        where: {
-          workspace,
-        },
-      });
-    }
-
-    return await this.cm.find(WorkspaceMemberConnection, args);
+    return await this.cm.find(WorkspaceMemberConnection, args, {
+      where: {
+        workspace,
+      },
+    });
   }
 
   /**

@@ -909,6 +909,31 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       .execute(`update "user" set roles = array['admin'] where id = ?`, [
         administrator.user.id,
       ]);
+    await migrationOrm.em
+      .getConnection()
+      .execute(`update "user" set roles = array['admin'] where id = ?`, [
+        target.user.id,
+      ]);
+
+    const restrictedKey = await createUserApiKey(administrator, {
+      name: 'Restricted impersonation key',
+      permissions: ['User:impersonate'],
+    });
+    const rejectedAdminImpersonation = await gql(
+      /* GraphQL */ `
+        mutation ImpersonateUser($id: ID!) {
+          impersonateUser(id: $id) {
+            id
+          }
+        }
+      `,
+      {
+        bearerToken: restrictedKey.apiKey,
+        variables: { id: target.user.id },
+      },
+    );
+
+    expectGraphQLError(rejectedAdminImpersonation);
 
     const started = await gql(
       /* GraphQL */ `
@@ -1449,6 +1474,10 @@ describe('Server application PostgreSQL integration (e2e)', () => {
             inviter {
               email
             }
+            workspace {
+              id
+              name
+            }
           }
         }
       `,
@@ -1469,6 +1498,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       inviter: {
         email: owner.email,
       },
+      workspace,
     });
 
     const rejectedWrongEmail = await gql(
@@ -1498,6 +1528,9 @@ describe('Server application PostgreSQL integration (e2e)', () => {
             invitation {
               id
               status
+              workspace {
+                id
+              }
             }
             member {
               id
@@ -1525,6 +1558,9 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       invitation: {
         id: invite.id,
         status: 'ACCEPTED',
+        workspace: {
+          id: workspace.id,
+        },
       },
       member: {
         email: invitee.email,
@@ -1602,6 +1638,26 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     expectNoGraphQLErrors(byBearer);
     expect(byBearer.body.data.currentWorkspace).toEqual(workspace);
     expect(byBearer.body.data.currentWorkspaceMember).toBeNull();
+
+    const membersByBearer = await gql(
+      /* GraphQL */ `
+        query {
+          workspaceMembers(first: 10) {
+            edges {
+              node {
+                id
+              }
+            }
+          }
+        }
+      `,
+      { bearerToken: createdKey.apiKey },
+    );
+
+    expectNoGraphQLErrors(membersByBearer);
+    expect(membersByBearer.body.data.workspaceMembers.edges).not.toHaveLength(
+      0,
+    );
 
     const apiKeyWithWorkspaceHeader = await gql(
       /* GraphQL */ `

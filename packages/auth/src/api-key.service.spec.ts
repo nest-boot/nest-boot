@@ -354,6 +354,14 @@ describe("ApiKeyService", () => {
     ).rejects.toBeInstanceOf(BadRequestException);
     await expect(
       service.createWorkspaceKey(workspace, member, {
+        name: "Whitespace prefix",
+        prefix: "bad prefix-",
+      }),
+    ).rejects.toThrow(
+      "API key prefix must contain between 1 and 32 non-whitespace characters",
+    );
+    await expect(
+      service.createWorkspaceKey(workspace, member, {
         name: "Invalid permissions",
         permissions: [""],
       }),

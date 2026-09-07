@@ -52,6 +52,8 @@ import { AuthModule } from "./auth.module.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import { AuthService } from "./auth.service.js";
 import { AuthHandlerMiddleware } from "./auth-handler.middleware.js";
+import { BaseUser, BaseWorkspace } from "./entities/index.js";
+import { resolveAuthRelationTarget } from "./entities/resolve-auth-relation-target.js";
 import { SessionService } from "./session.service.js";
 import { UserService } from "./user.service.js";
 import {
@@ -259,24 +261,51 @@ describe("AuthModule", () => {
     );
   });
 
-  it("should register asynchronous options", () => {
-    const useFactory = () => ({
-      entities,
-      secret,
-    });
+  it("should register asynchronous options and configure relation targets", async () => {
+    class AsyncUser extends BaseUser {}
+    class AsyncWorkspace extends BaseWorkspace {}
+    const asyncEntities = {
+      ...entities,
+      user: AsyncUser,
+      workspace: AsyncWorkspace,
+    };
+    const useFactory = vi.fn(() =>
+      Promise.resolve({
+        entities: asyncEntities,
+        secret,
+      }),
+    );
     const dynamicModule = AuthModule.forRootAsync({
       useFactory,
     } as never);
+    const optionsProvider = dynamicModule.providers?.find(
+      (provider) =>
+        typeof provider === "object" &&
+        provider !== null &&
+        "provide" in provider &&
+        provider.provide === MODULE_OPTIONS_TOKEN,
+    );
 
     expect(dynamicModule.module).toBe(AuthModule);
-    expect(dynamicModule.providers).toEqual(
-      expect.arrayContaining([
-        {
-          inject: [],
-          provide: MODULE_OPTIONS_TOKEN,
-          useFactory,
-        },
-      ]),
+    expect(optionsProvider).toEqual(
+      expect.objectContaining({
+        inject: [],
+        provide: MODULE_OPTIONS_TOKEN,
+        useFactory: expect.any(Function),
+      }),
+    );
+    if (!optionsProvider || !("useFactory" in optionsProvider)) {
+      throw new TypeError("Auth module options provider is unavailable");
+    }
+
+    await expect(optionsProvider.useFactory()).resolves.toEqual({
+      entities: asyncEntities,
+      secret,
+    });
+    expect(useFactory).toHaveBeenCalledTimes(1);
+    expect(resolveAuthRelationTarget(BaseUser, "User")).toBe(AsyncUser);
+    expect(resolveAuthRelationTarget(BaseWorkspace, "Workspace")).toBe(
+      AsyncWorkspace,
     );
   });
 

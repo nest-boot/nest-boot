@@ -13,10 +13,12 @@ import {
 import {
   type ConfigurableModuleAsyncOptions,
   type DynamicModule,
+  type FactoryProvider,
   Global,
   Inject,
   Module,
   type NestMiddleware,
+  type Provider,
 } from "@nestjs/common";
 import { APP_INTERCEPTOR } from "@nestjs/core";
 import { betterAuth, type BetterAuthOptions } from "better-auth";
@@ -71,6 +73,26 @@ import {
   DEFAULT_WORKSPACE_ROLES,
 } from "./workspace.constants.js";
 import { WorkspaceService } from "./workspace.service.js";
+
+function configureRelationTargets(options: AuthModuleOptions): void {
+  configureAuthRelationTargets([
+    [BaseUser, options.entities.user],
+    [BaseWorkspace, options.entities.workspace],
+  ]);
+}
+
+function isAuthOptionsFactoryProvider(
+  provider: Provider,
+): provider is FactoryProvider<AuthModuleOptions> {
+  return (
+    typeof provider === "object" &&
+    provider !== null &&
+    "provide" in provider &&
+    provider.provide === MODULE_OPTIONS_TOKEN &&
+    "useFactory" in provider &&
+    typeof provider.useFactory === "function"
+  );
+}
 
 /**
  * Authentication module based on better-auth.
@@ -252,10 +274,7 @@ export class AuthModule extends ConfigurableModuleClass {
       Workspace
     >,
   ): DynamicModule {
-    configureAuthRelationTargets([
-      [BaseUser, options.entities.user],
-      [BaseWorkspace, options.entities.workspace],
-    ]);
+    configureRelationTargets(options as unknown as AuthModuleOptions);
     return super.forRoot(options as unknown as AuthModuleOptions);
   }
 
@@ -276,9 +295,26 @@ export class AuthModule extends ConfigurableModuleClass {
       AuthModuleOptions<UserPermission, WorkspacePermission, User, Workspace>
     >,
   ): DynamicModule {
-    return super.forRootAsync(
+    const dynamicModule = super.forRootAsync(
       options as unknown as ConfigurableModuleAsyncOptions<AuthModuleOptions>,
     );
+
+    return {
+      ...dynamicModule,
+      providers: dynamicModule.providers?.map((provider) => {
+        if (!isAuthOptionsFactoryProvider(provider)) return provider;
+
+        const useFactory = provider.useFactory;
+        return {
+          ...provider,
+          useFactory: async (...args: Parameters<typeof useFactory>) => {
+            const resolvedOptions = await useFactory(...args);
+            configureRelationTargets(resolvedOptions);
+            return resolvedOptions;
+          },
+        } satisfies FactoryProvider<AuthModuleOptions>;
+      }),
+    };
   }
 
   /**

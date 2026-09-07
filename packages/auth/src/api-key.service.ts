@@ -473,9 +473,9 @@ export class ApiKeyService<
   }
 
   private assertValidPrefix(prefix: string): void {
-    if (prefix.length < 1 || prefix.length > 32) {
+    if (prefix.length < 1 || prefix.length > 32 || /\s/u.test(prefix)) {
       throw new BadRequestException(
-        "API key prefix must contain between 1 and 32 characters",
+        "API key prefix must contain between 1 and 32 non-whitespace characters",
       );
     }
   }
