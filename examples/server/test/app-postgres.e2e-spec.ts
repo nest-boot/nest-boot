@@ -1077,9 +1077,12 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       { cookies: alice.cookies, workspaceId: bobWorkspace.id },
     );
 
-    expectNoGraphQLErrors(crossWorkspace);
-    expect(crossWorkspace.body.data.currentWorkspace).toEqual(bobWorkspace);
+    expectGraphQLError(crossWorkspace);
+    expect(crossWorkspace.body.data.currentWorkspace).toBeNull();
     expect(crossWorkspace.body.data.currentWorkspaceMember).toBeNull();
+    expect(crossWorkspace.body.data.currentAuthSession.id).toEqual(
+      expect.any(String),
+    );
 
     const withoutWorkspace = await gql(
       /* GraphQL */ `
@@ -1384,6 +1387,29 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     expect(memberPermissions.body.data.currentWorkspaceMember).toEqual({
       permissions: ['Workspace:update', 'WorkspaceMember:update'],
     });
+
+    const rejectedPermissionEscalation = await gql(
+      /* GraphQL */ `
+        mutation SetWorkspaceMemberPermissions(
+          $id: ID!
+          $input: SetWorkspaceMemberPermissionsInput!
+        ) {
+          setWorkspaceMemberPermissions(id: $id, input: $input) {
+            id
+          }
+        }
+      `,
+      {
+        cookies: memberUser.cookies,
+        variables: {
+          id: member.id,
+          input: { permissions: ['Workspace:delete'] },
+        },
+        workspaceId: workspace.id,
+      },
+    );
+
+    expectGraphQLError(rejectedPermissionEscalation);
 
     const rejectedMemberAdd = await gql(
       /* GraphQL */ `

@@ -43,6 +43,7 @@ vi.mock("./adapters/mikro-orm-adapter.js", () => ({
   mikroOrmAdapter: mockMikroOrmAdapter,
 }));
 
+import { AccessControlService } from "./access-control.service.js";
 import { ApiKeyService } from "./api-key.service.js";
 import { AUTH_TOKEN } from "./auth.constants.js";
 import { AuthGuard } from "./auth.guard.js";
@@ -51,7 +52,6 @@ import { AuthModule } from "./auth.module.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import { AuthService } from "./auth.service.js";
 import { AuthHandlerMiddleware } from "./auth-handler.middleware.js";
-import { AuthorizationService } from "./authorization.service.js";
 import { SessionService } from "./session.service.js";
 import { UserService } from "./user.service.js";
 import {
@@ -228,7 +228,7 @@ describe("AuthModule", () => {
     expect(providers).toContain(UserDeletionService);
     expect(providers).toContain(ApiKeyService);
     expect(providers).toContain(AuthService);
-    expect(providers).toContain(AuthorizationService);
+    expect(providers).toContain(AccessControlService);
     expect(providers).toContain(SessionService);
     expect(providers).toContain(WorkspaceService);
     expect(exports).toContain(MODULE_OPTIONS_TOKEN);
@@ -236,7 +236,7 @@ describe("AuthModule", () => {
     expect(exports).toContain(ApiKeyService);
     expect(exports).toContain(AuthGuard);
     expect(exports).toContain(AuthService);
-    expect(exports).toContain(AuthorizationService);
+    expect(exports).toContain(AccessControlService);
     expect(exports).toContain(SessionService);
     expect(exports).toContain(WorkspaceService);
   });

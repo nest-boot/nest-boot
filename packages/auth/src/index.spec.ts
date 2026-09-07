@@ -12,13 +12,13 @@ vi.mock("./adapters/mikro-orm-adapter.js", () => ({
 }));
 
 import { UserAbility, WorkspaceAbility } from "./abilities/index.js";
+import { AccessControlService } from "./access-control.service.js";
 import { ApiKeyService } from "./api-key.service.js";
 import { IS_PUBLIC_KEY } from "./auth.constants.js";
 import { AuthGuard } from "./auth.guard.js";
 import { AuthMiddleware } from "./auth.middleware.js";
 import { AuthModule } from "./auth.module.js";
 import { AuthService } from "./auth.service.js";
-import { AuthorizationService } from "./authorization.service.js";
 import {
   Can,
   CurrentApiKey,
@@ -62,7 +62,7 @@ describe("public API", () => {
     expect(publicApi.AuthModule).toBe(AuthModule);
     expect(publicApi.AuthService).toBe(AuthService);
     expect("AuthTransactionContext" in publicApi).toBe(false);
-    expect(publicApi.AuthorizationService).toBe(AuthorizationService);
+    expect(publicApi.AccessControlService).toBe(AccessControlService);
     expect(publicApi.Can).toBe(Can);
     expect(publicApi.UserCan).toBe(UserCan);
     expect(publicApi.WorkspaceCan).toBe(WorkspaceCan);

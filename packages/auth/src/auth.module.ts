@@ -23,6 +23,7 @@ import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { APIError } from "better-auth/api";
 import { genericOAuth } from "better-auth/plugins";
 
+import { AccessControlService } from "./access-control.service.js";
 import { mikroOrmAdapter } from "./adapters/mikro-orm-adapter.js";
 import { ApiKeyService } from "./api-key.service.js";
 import { ApiKeyUsageInterceptor } from "./api-key-usage.interceptor.js";
@@ -36,7 +37,6 @@ import {
 import { AuthService } from "./auth.service.js";
 import { AuthHandlerMiddleware } from "./auth-handler.middleware.js";
 import { type AuthModuleOptions } from "./auth-module-options.interface.js";
-import { AuthorizationService } from "./authorization.service.js";
 import type { BaseUser, BaseWorkspace } from "./entities/index.js";
 import { SessionService } from "./session.service.js";
 import {
@@ -86,7 +86,7 @@ import { WorkspaceService } from "./workspace.service.js";
     ApiKeyService,
     ApiKeyUsageInterceptor,
     AuthService,
-    AuthorizationService,
+    AccessControlService,
     SessionService,
     UserDeletionService,
     AuthGuard,
@@ -225,7 +225,7 @@ import { WorkspaceService } from "./workspace.service.js";
     ApiKeyService,
     AuthGuard,
     AuthService,
-    AuthorizationService,
+    AccessControlService,
     SessionService,
     WorkspaceService,
   ],

@@ -1,7 +1,7 @@
 import { RequestContext } from "@nest-boot/request-context";
 
 import { UserAbility } from "../abilities/user.ability.js";
-import { AuthorizationService } from "../authorization.service.js";
+import { AccessControlService } from "../access-control.service.js";
 import { userCan } from "./user-can.util.js";
 
 class TestSubject {}
@@ -31,21 +31,21 @@ describe("userCan", () => {
     expect(userCan("update", TestSubject)).toBe(false);
   });
 
-  it("delegates to AuthorizationService when dependency injection is available", async () => {
-    const authorizationService = {
+  it("delegates to AccessControlService when dependency injection is available", async () => {
+    const accessControlService = {
       userCan: vi.fn().mockReturnValue(false),
     };
 
     await RequestContext.run(new RequestContext({ type: "http" }), () => {
       RequestContext.set(
-        AuthorizationService,
-        authorizationService as unknown as AuthorizationService,
+        AccessControlService,
+        accessControlService as unknown as AccessControlService,
       );
 
       expect(userCan("update", TestSubject)).toBe(false);
     });
 
-    expect(authorizationService.userCan).toHaveBeenCalledWith(
+    expect(accessControlService.userCan).toHaveBeenCalledWith(
       "update",
       TestSubject,
     );

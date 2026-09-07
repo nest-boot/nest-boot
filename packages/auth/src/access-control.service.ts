@@ -11,12 +11,18 @@ import {
   BaseApiKey,
   BaseSession,
   BaseUser,
+  BaseWorkspace,
   BaseWorkspaceMember,
 } from "./entities/index.js";
+import { resolveAuthPermissions } from "./utils/auth-role.util.js";
+import {
+  DEFAULT_WORKSPACE_ROLE,
+  DEFAULT_WORKSPACE_ROLES,
+} from "./workspace.constants.js";
 
 /** Enforces user and workspace permissions prepared for the current request. */
 @Injectable()
-export class AuthorizationService {
+export class AccessControlService {
   /** Creates the authorization service. */
   constructor(
     @Inject(MODULE_OPTIONS_TOKEN)
@@ -90,6 +96,22 @@ export class AuthorizationService {
     }
   }
 
+  /** Throws unless the supplied workspace is selected for the current request. */
+  assertCurrentWorkspace(workspace: BaseWorkspace): void {
+    const currentWorkspace = RequestContext.isActive()
+      ? RequestContext.get(BaseWorkspace)
+      : undefined;
+
+    if (
+      !currentWorkspace ||
+      String(currentWorkspace.id) !== String(workspace.id)
+    ) {
+      throw new ForbiddenException(
+        "The operation belongs to another workspace",
+      );
+    }
+  }
+
   /** Throws unless the supplied member is the current workspace member. */
   assertCurrentWorkspaceMember(member: BaseWorkspaceMember): void {
     const currentMember = RequestContext.isActive()
@@ -99,6 +121,51 @@ export class AuthorizationService {
     if (!currentMember || String(currentMember.id) !== String(member.id)) {
       throw new ForbiddenException(
         "The operation belongs to another workspace member",
+      );
+    }
+  }
+
+  /** Throws when a workspace grant exceeds the current principal's permissions. */
+  assertCanGrantWorkspacePermissions(
+    requestedPermissions: readonly string[],
+  ): void {
+    const apiKey = RequestContext.isActive()
+      ? RequestContext.get(BaseApiKey)
+      : undefined;
+    const member = RequestContext.isActive()
+      ? RequestContext.get(BaseWorkspaceMember)
+      : undefined;
+    const workspaceApiKey = apiKey && this.isWorkspaceApiKey(apiKey);
+
+    let effectivePermissions: readonly string[];
+    if (workspaceApiKey) {
+      effectivePermissions = apiKey.permissions ?? [];
+    } else if (member) {
+      effectivePermissions = resolveAuthPermissions(
+        member.roles ?? [
+          this.options.workspace?.defaultRole ?? DEFAULT_WORKSPACE_ROLE,
+        ],
+        member.permissions ?? [],
+        this.options.workspace?.roles ?? DEFAULT_WORKSPACE_ROLES,
+      );
+
+      if (apiKey) {
+        const apiKeyPermissions = new Set(apiKey.permissions ?? []);
+        effectivePermissions = effectivePermissions.filter((permission) =>
+          apiKeyPermissions.has(permission),
+        );
+      }
+    } else {
+      effectivePermissions = [];
+    }
+
+    const effectivePermissionSet = new Set(effectivePermissions);
+    const excessivePermissions = requestedPermissions.filter(
+      (permission) => !effectivePermissionSet.has(permission),
+    );
+    if (excessivePermissions.length > 0) {
+      throw new ForbiddenException(
+        `Workspace permissions exceed issuer permissions: ${excessivePermissions.join(", ")}`,
       );
     }
   }

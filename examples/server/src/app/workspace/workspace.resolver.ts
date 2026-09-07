@@ -1,6 +1,4 @@
 import {
-  type BaseApiKey,
-  CurrentApiKey,
   CurrentUser,
   CurrentWorkspace,
   CurrentWorkspaceMember,
@@ -59,11 +57,10 @@ export class WorkspaceResolver {
     @CurrentWorkspace() workspace?: Workspace,
     @CurrentWorkspaceMember() workspaceMember?: WorkspaceMember,
     @CurrentUser() user?: User,
-    @CurrentApiKey() apiKey?: BaseApiKey,
   ): Workspace | null {
-    if (apiKey && user && workspace && !workspaceMember) {
+    if (user && workspace && !workspaceMember) {
       throw new ForbiddenException(
-        'The API key owner is not a member of this workspace',
+        'The authenticated user is not a member of this workspace',
       );
     }
     return workspace ?? null;

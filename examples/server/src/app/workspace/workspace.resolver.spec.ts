@@ -1,4 +1,5 @@
 import type { WorkspaceService } from '@nest-boot/auth';
+import { ForbiddenException } from '@nestjs/common';
 import type { Mocked } from 'vitest';
 
 vi.mock('@nest-boot/auth', async (importOriginal) => ({
@@ -40,6 +41,18 @@ describe('WorkspaceResolver', () => {
 
     expect(resolver.currentWorkspace(workspace)).toBe(workspace);
     expect(resolver.currentWorkspace()).toBeNull();
+  });
+
+  it('rejects a user-selected workspace without an active membership', () => {
+    const { resolver } = createResolver();
+    const workspace = { id: 'workspace_1' } as Workspace;
+    const user = { id: 'user_1' } as User;
+    const member = { id: 'member_1' } as WorkspaceMember;
+
+    expect(() => resolver.currentWorkspace(workspace, undefined, user)).toThrow(
+      ForbiddenException,
+    );
+    expect(resolver.currentWorkspace(workspace, member, user)).toBe(workspace);
   });
 
   it('filters workspace connections by the current user membership', async () => {

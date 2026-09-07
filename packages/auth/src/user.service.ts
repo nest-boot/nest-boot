@@ -21,9 +21,9 @@ import {
   Injectable,
 } from "@nestjs/common";
 
+import { AccessControlService } from "./access-control.service.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
-import { AuthorizationService } from "./authorization.service.js";
 import type { BaseAccount, BaseSession, BaseUser } from "./entities/index.js";
 import type { AuthRole } from "./interfaces/auth-role.interface.js";
 import type { AuthenticatedSession } from "./interfaces/session-service.interface.js";
@@ -72,7 +72,7 @@ export class UserService<
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly options: AuthModuleOptions,
     private readonly hashService: HashService,
-    private readonly authorizationService: AuthorizationService,
+    private readonly accessControlService: AccessControlService,
     @Inject(UserDeletionService)
     private readonly userDeletionService: {
       deleteUser(userId: string): Promise<BaseUser | null>;
@@ -81,10 +81,11 @@ export class UserService<
 
   /** Creates a user and its credential account atomically. */
   async createUser(input: CreateUserOptions): Promise<User> {
-    this.authorizationService.assertUserCan("create", this.userEntity);
+    this.accessControlService.assertUserCan("create", this.userEntity);
     if (input.roles !== undefined || input.permissions !== undefined) {
-      this.authorizationService.assertUserCan("set-role", this.userEntity);
+      this.accessControlService.assertUserCan("set-role", this.userEntity);
     }
+    this.assertPasswordLength(input.password);
     const permissions = this.normalizePermissions(input.permissions ?? []);
     const email = input.email.trim().toLowerCase();
 
@@ -113,7 +114,7 @@ export class UserService<
 
   /** Gets a user by identifier without applying application RLS filters. */
   async getUser(userId: string): Promise<User | null> {
-    this.authorizationService.assertUserCan("get", this.userEntity);
+    this.accessControlService.assertUserCan("get", this.userEntity);
     return await this.runUnrestricted(
       async () =>
         await this.em.findOne(
@@ -126,7 +127,7 @@ export class UserService<
 
   /** Gets a user by normalized email without applying application RLS filters. */
   async getUserByEmail(email: string): Promise<User | null> {
-    this.authorizationService.assertUserCan("get", this.userEntity);
+    this.accessControlService.assertUserCan("get", this.userEntity);
     return await this.runUnrestricted(
       async () =>
         await this.em.findOne(
@@ -139,12 +140,12 @@ export class UserService<
 
   /** Updates mutable user fields. */
   async updateUser(user: User, input: UpdateUserOptions): Promise<User> {
-    this.authorizationService.assertUserCan("update", user);
+    this.accessControlService.assertUserCan("update", user);
     if (input.email !== undefined) {
-      this.authorizationService.assertUserCan("set-email", user);
+      this.accessControlService.assertUserCan("set-email", user);
     }
     if ("banned" in input || "banReason" in input || "banExpiresAt" in input) {
-      this.authorizationService.assertUserCan("ban", user);
+      this.accessControlService.assertUserCan("ban", user);
     }
     if ("roles" in input || "permissions" in input) {
       throw new BadRequestException(
@@ -163,7 +164,7 @@ export class UserService<
 
   /** Replaces a user's application permissions. */
   async setUserPermissions(user: User, permissions: string[]): Promise<User> {
-    this.authorizationService.assertUserCan("set-role", user);
+    this.accessControlService.assertUserCan("set-role", user);
     user.permissions = this.normalizePermissions(permissions);
     await this.runUnrestricted(() => this.em.flush());
     return user;
@@ -171,7 +172,7 @@ export class UserService<
 
   /** Replaces the roles assigned to a user. */
   async setRole(user: User, role: string | readonly string[]): Promise<User> {
-    this.authorizationService.assertUserCan("set-role", user);
+    this.accessControlService.assertUserCan("set-role", user);
     user.roles = this.normalizeRoles(role);
     await this.runUnrestricted(() => this.em.flush());
     return user;
@@ -179,13 +180,13 @@ export class UserService<
 
   /** Lists configured user-administration roles. */
   listRoles(): AuthRole[] {
-    this.authorizationService.assertUserCan("set-role", this.userEntity);
+    this.accessControlService.assertUserCan("set-role", this.userEntity);
     return listAuthRoles(this.roles);
   }
 
   /** Lists configured user-administration permissions. */
   listPermissions(): string[] {
-    this.authorizationService.assertUserCan("set-role", this.userEntity);
+    this.accessControlService.assertUserCan("set-role", this.userEntity);
     return listAuthPermissions(this.permissions);
   }
 
@@ -202,7 +203,7 @@ export class UserService<
   async listUsers(
     input: ListUsersOptions = {},
   ): Promise<ListUsersResult<User>> {
-    this.authorizationService.assertUserCan("list", this.userEntity);
+    this.accessControlService.assertUserCan("list", this.userEntity);
     return await this.runUnrestricted(async () => {
       const where = this.createUserFilter(input);
       const [users, total] = await this.em.findAndCount(
@@ -229,7 +230,7 @@ export class UserService<
 
   /** Lists a user's active sessions. */
   async listUserSessions(user: User): Promise<Session[]> {
-    this.authorizationService.assertUserCan("list", this.sessionEntity);
+    this.accessControlService.assertUserCan("list", this.sessionEntity);
     return await this.runUnrestricted(
       async () =>
         await this.em.find(
@@ -245,7 +246,7 @@ export class UserService<
 
   /** Bans a user and immediately revokes all of their sessions. */
   async banUser(user: User, input: BanUserOptions = {}): Promise<User> {
-    this.authorizationService.assertUserCan("ban", user);
+    this.accessControlService.assertUserCan("ban", user);
     user.banned = true;
     user.banReason = input.banReason ?? null;
     user.banExpiresAt = input.banExpiresIn
@@ -263,7 +264,7 @@ export class UserService<
 
   /** Removes a user's ban. */
   async unbanUser(user: User): Promise<User> {
-    this.authorizationService.assertUserCan("ban", user);
+    this.accessControlService.assertUserCan("ban", user);
     user.banned = false;
     user.banReason = null;
     user.banExpiresAt = null;
@@ -277,8 +278,8 @@ export class UserService<
     user: User,
     input: ImpersonationOptions = {},
   ): Promise<AuthenticatedSession<User, Session>> {
-    this.authorizationService.assertCurrentUser(administrator);
-    this.authorizationService.assertUserCan("impersonate", user);
+    this.accessControlService.assertCurrentUser(administrator);
+    this.accessControlService.assertUserCan("impersonate", user);
     if (
       !this.hasPermission(administrator, {
         permissions: { User: ["impersonate"] },
@@ -310,7 +311,7 @@ export class UserService<
     currentSession: Session,
     input: ImpersonationOptions = {},
   ): Promise<AuthenticatedSession<User, Session> | null> {
-    this.authorizationService.assertCurrentSession(currentSession);
+    this.accessControlService.assertCurrentSession(currentSession);
     const impersonatedByReference = currentSession.impersonatedBy;
     if (!impersonatedByReference) return null;
 
@@ -340,7 +341,7 @@ export class UserService<
 
   /** Revokes one session when it belongs to the supplied user. */
   async revokeUserSession(user: User, token: string): Promise<boolean> {
-    this.authorizationService.assertUserCan("revoke", this.sessionEntity);
+    this.accessControlService.assertUserCan("revoke", this.sessionEntity);
     return await this.runUnrestricted(async () => {
       const session = await this.em.findOne(
         this.sessionEntity,
@@ -356,7 +357,7 @@ export class UserService<
 
   /** Revokes every session belonging to a user. */
   async revokeUserSessions(user: User): Promise<number> {
-    this.authorizationService.assertUserCan("revoke", this.sessionEntity);
+    this.accessControlService.assertUserCan("revoke", this.sessionEntity);
     return await this.runUnrestricted(
       async () =>
         await this.em.nativeDelete(this.sessionEntity, {
@@ -367,7 +368,7 @@ export class UserService<
 
   /** Permanently removes a user and all dependent authentication records. */
   async removeUser(user: User): Promise<User> {
-    this.authorizationService.assertUserCan("delete", user);
+    this.accessControlService.assertUserCan("delete", user);
     try {
       await this.userDeletionService.deleteUser(String(user.id));
     } catch (error) {
@@ -381,7 +382,8 @@ export class UserService<
 
   /** Sets or replaces a user's credential password. */
   async setUserPassword(user: User, newPassword: string): Promise<void> {
-    this.authorizationService.assertUserCan("set-password", user);
+    this.accessControlService.assertUserCan("set-password", user);
+    this.assertPasswordLength(newPassword);
     await this.runUnrestricted(async () => {
       const password = await this.hashPassword(newPassword);
       const account = await this.em.findOne(
@@ -497,6 +499,22 @@ export class UserService<
       this.options.emailAndPassword?.password?.hash ??
       ((value: string) => this.hashService.hash(value))
     )(password);
+  }
+
+  private assertPasswordLength(password: string): void {
+    const minimum = this.options.emailAndPassword?.minPasswordLength ?? 8;
+    const maximum = this.options.emailAndPassword?.maxPasswordLength ?? 128;
+
+    if (password.length < minimum) {
+      throw new BadRequestException(
+        `Password must contain at least ${String(minimum)} characters`,
+      );
+    }
+    if (password.length > maximum) {
+      throw new BadRequestException(
+        `Password must contain at most ${String(maximum)} characters`,
+      );
+    }
   }
 
   private isActivelyBanned(user: BaseUser): boolean {

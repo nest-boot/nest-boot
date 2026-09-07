@@ -22,9 +22,9 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 
+import { AccessControlService } from "./access-control.service.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
-import { AuthorizationService } from "./authorization.service.js";
 import type {
   BaseApiKey,
   BaseUser,
@@ -129,13 +129,13 @@ export class ApiKeyService<
     protected readonly em: EntityManager,
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly authOptions: AuthModuleOptions,
-    private readonly authorizationService: AuthorizationService,
+    private readonly accessControlService: AccessControlService,
   ) {}
 
   /** Returns a user-owned API key when it belongs to the current user. */
   async getUserApiKey(id: string, user: User): Promise<ApiKey | null> {
-    this.authorizationService.assertCurrentUser(user);
-    this.authorizationService.assertUserCan("read", this.apiKeyEntity);
+    this.accessControlService.assertCurrentUser(user);
+    this.accessControlService.assertUserCan("read", this.apiKeyEntity);
     return await this.getOwnedApiKey(id, user);
   }
 
@@ -144,8 +144,8 @@ export class ApiKeyService<
     id: string,
     member: WorkspaceMember,
   ): Promise<ApiKey | null> {
-    this.authorizationService.assertCurrentWorkspaceMember(member);
-    this.authorizationService.assertWorkspaceCan("read", this.apiKeyEntity);
+    this.accessControlService.assertCurrentWorkspaceMember(member);
+    this.accessControlService.assertWorkspaceCan("read", this.apiKeyEntity);
     const apiKey = await this.findOne({ id } as FilterQuery<ApiKey>);
     if (apiKey) {
       this.assertCanManageWorkspaceApiKey(member, apiKey);
@@ -155,8 +155,8 @@ export class ApiKeyService<
 
   /** Builds a filter for the current user's API keys. */
   getUserListFilter(user: User): FilterQuery<ApiKey> {
-    this.authorizationService.assertCurrentUser(user);
-    this.authorizationService.assertUserCan("read", this.apiKeyEntity);
+    this.accessControlService.assertCurrentUser(user);
+    this.accessControlService.assertUserCan("read", this.apiKeyEntity);
     return { owner: user } as unknown as FilterQuery<ApiKey>;
   }
 
@@ -165,8 +165,8 @@ export class ApiKeyService<
     workspace: Workspace,
     member: WorkspaceMember,
   ): FilterQuery<ApiKey> {
-    this.authorizationService.assertCurrentWorkspaceMember(member);
-    this.authorizationService.assertWorkspaceCan("read", this.apiKeyEntity);
+    this.accessControlService.assertCurrentWorkspaceMember(member);
+    this.accessControlService.assertWorkspaceCan("read", this.apiKeyEntity);
     this.assertWorkspaceMembership(workspace, member);
     return { owner: workspace } as unknown as FilterQuery<ApiKey>;
   }
@@ -176,8 +176,8 @@ export class ApiKeyService<
     user: User,
     options: CreateApiKeyOptions,
   ): Promise<CreatedApiKey<ApiKey>> {
-    this.authorizationService.assertCurrentUser(user);
-    this.authorizationService.assertUserCan("create", this.apiKeyEntity);
+    this.accessControlService.assertCurrentUser(user);
+    this.accessControlService.assertUserCan("create", this.apiKeyEntity);
     const permissions = this.normalizePermissions(
       user,
       options.permissions ?? [],
@@ -192,8 +192,8 @@ export class ApiKeyService<
     member: WorkspaceMember,
     options: CreateApiKeyOptions,
   ): Promise<CreatedApiKey<ApiKey>> {
-    this.authorizationService.assertCurrentWorkspaceMember(member);
-    this.authorizationService.assertWorkspaceCan("create", this.apiKeyEntity);
+    this.accessControlService.assertCurrentWorkspaceMember(member);
+    this.accessControlService.assertWorkspaceCan("create", this.apiKeyEntity);
     this.assertWorkspaceMembership(workspace, member);
     if (member.status !== "ACTIVE") {
       throw new BadRequestException(
@@ -214,8 +214,8 @@ export class ApiKeyService<
     user: User,
     input: UpdateApiKeyOptions,
   ): Promise<ApiKey> {
-    this.authorizationService.assertCurrentUser(user);
-    this.authorizationService.assertUserCan("update", this.apiKeyEntity);
+    this.accessControlService.assertCurrentUser(user);
+    this.accessControlService.assertUserCan("update", this.apiKeyEntity);
     const apiKey = await this.findOwnedApiKey(id, user);
     const permissions = this.normalizeUpdatedPermissions(apiKey, input);
     if (permissions) this.assertUserPermissionCeiling(user, permissions);
@@ -228,8 +228,8 @@ export class ApiKeyService<
     member: WorkspaceMember,
     input: UpdateApiKeyOptions,
   ): Promise<ApiKey> {
-    this.authorizationService.assertCurrentWorkspaceMember(member);
-    this.authorizationService.assertWorkspaceCan("update", this.apiKeyEntity);
+    this.accessControlService.assertCurrentWorkspaceMember(member);
+    this.accessControlService.assertWorkspaceCan("update", this.apiKeyEntity);
     const apiKey = await this.findManageableWorkspaceApiKey(id, member);
     const permissions = this.normalizeUpdatedPermissions(apiKey, input);
     if (permissions) {
@@ -240,8 +240,8 @@ export class ApiKeyService<
 
   /** Deletes an API key owned by the current user. */
   async deleteUserKey(id: string, user: User): Promise<ApiKey> {
-    this.authorizationService.assertCurrentUser(user);
-    this.authorizationService.assertUserCan("delete", this.apiKeyEntity);
+    this.accessControlService.assertCurrentUser(user);
+    this.accessControlService.assertUserCan("delete", this.apiKeyEntity);
     return await this.deleteKey(await this.findOwnedApiKey(id, user));
   }
 
@@ -250,8 +250,8 @@ export class ApiKeyService<
     id: string,
     member: WorkspaceMember,
   ): Promise<ApiKey> {
-    this.authorizationService.assertCurrentWorkspaceMember(member);
-    this.authorizationService.assertWorkspaceCan("delete", this.apiKeyEntity);
+    this.accessControlService.assertCurrentWorkspaceMember(member);
+    this.accessControlService.assertWorkspaceCan("delete", this.apiKeyEntity);
     return await this.deleteKey(
       await this.findManageableWorkspaceApiKey(id, member),
     );

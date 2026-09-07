@@ -227,7 +227,7 @@ access control:
 - current-user authentication, session management, invitation acceptance, and
   leaving a workspace use authenticated identity and ownership checks.
 
-`AuthorizationService` exposes `assertUserCan()` and `assertWorkspaceCan()` for
+`AccessControlService` exposes `assertUserCan()` and `assertWorkspaceCan()` for
 application services that need the same fail-closed boundary. An ability must
 have been prepared by the global `AuthGuard`; calls outside that request
 lifecycle are denied rather than implicitly trusted.

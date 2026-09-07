@@ -8,8 +8,8 @@ import {
 } from "@nestjs/common";
 import type { Mocked } from "vitest";
 
+import type { AccessControlService } from "./access-control.service.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
-import type { AuthorizationService } from "./authorization.service.js";
 import {
   BaseAccount,
   BaseApiKey,
@@ -33,8 +33,8 @@ class TestWorkspaceMember extends BaseWorkspaceMember {}
 
 describe("UserService", () => {
   it("fails before persistence when a service-level permission is denied", async () => {
-    const { authorizationService, em, service } = createService();
-    vi.mocked(authorizationService.assertUserCan).mockImplementation(() => {
+    const { accessControlService, em, service } = createService();
+    vi.mocked(accessControlService.assertUserCan).mockImplementation(() => {
       throw new ForbiddenException();
     });
 
@@ -109,7 +109,7 @@ describe("UserService", () => {
   });
 
   it("gets and updates configured user entities", async () => {
-    const { authorizationService, em, service } = createService();
+    const { accessControlService, em, service } = createService();
     const user = Object.assign(new TestUser(), { id: "user-1" });
     em.findOne.mockResolvedValue(user);
 
@@ -128,11 +128,11 @@ describe("UserService", () => {
     );
     expect(em.assign).toHaveBeenCalledWith(user, { name: "Renamed" });
     expect(user.permissions).toEqual(["User:get"]);
-    expect(authorizationService.assertUserCan).toHaveBeenCalledWith(
+    expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
       "get",
       TestUser,
     );
-    expect(authorizationService.assertUserCan).toHaveBeenCalledWith(
+    expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
       "update",
       user,
     );
@@ -447,6 +447,27 @@ describe("UserService", () => {
     );
   });
 
+  it("enforces the configured password length before hashing", async () => {
+    const { hash, service } = createService(
+      true,
+      {},
+      { maxPasswordLength: 16, minPasswordLength: 12 },
+    );
+    const user = new TestUser();
+
+    await expect(
+      service.createUser({
+        email: "alice@example.com",
+        name: "Alice",
+        password: "too-short",
+      }),
+    ).rejects.toThrow("Password must contain at least 12 characters");
+    await expect(
+      service.setUserPassword(user, "password-that-is-too-long"),
+    ).rejects.toThrow("Password must contain at most 16 characters");
+    expect(hash).not.toHaveBeenCalled();
+  });
+
   it("uses HashService when no Better Auth password override is configured", async () => {
     const { hashServiceHash, service } = createService(false);
     hashServiceHash.mockResolvedValue("hash-service-password");
@@ -482,6 +503,7 @@ describe("UserService", () => {
 function createService(
   useCustomHash = true,
   user: NonNullable<AuthModuleOptions["user"]> = {},
+  emailAndPassword: NonNullable<AuthModuleOptions["emailAndPassword"]> = {},
 ) {
   const em = {
     assign: vi.fn((entity, input) => Object.assign(entity, input)),
@@ -502,9 +524,13 @@ function createService(
     hash: hashServiceHash,
   } as unknown as HashService;
   const options = {
-    ...(useCustomHash
-      ? { emailAndPassword: { password: { hash } } }
-      : { emailAndPassword: {} }),
+    emailAndPassword: {
+      ...emailAndPassword,
+      password: {
+        ...emailAndPassword.password,
+        ...(useCustomHash ? { hash } : {}),
+      },
+    },
     user,
     entities: {
       account: TestAccount,
@@ -516,16 +542,16 @@ function createService(
     },
     session: { expiresIn: 3600 },
   } as unknown as AuthModuleOptions;
-  const authorizationService = {
+  const accessControlService = {
     assertCurrentSession: vi.fn(),
     assertCurrentUser: vi.fn(),
     assertUserCan: vi.fn(),
-  } as unknown as AuthorizationService;
+  } as unknown as AccessControlService;
   const userDeletionService = {
     deleteUser: vi.fn(),
   } as unknown as Mocked<UserDeletionService>;
   return {
-    authorizationService,
+    accessControlService,
     em,
     hash,
     hashServiceHash,
@@ -534,7 +560,7 @@ function createService(
       em,
       options,
       hashService,
-      authorizationService,
+      accessControlService,
       userDeletionService,
     ),
   };

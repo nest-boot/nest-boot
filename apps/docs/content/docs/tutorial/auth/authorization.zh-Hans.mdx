@@ -204,7 +204,7 @@ Service 权限划分与 Better Auth 的 admin、organization 访问控制保持�
 - 工作区 API Key 管理使用 `ApiKey:create/read/update/delete`；
 - 当前用户认证、会话管理、接受邀请和退出工作区使用已认证身份与资源归属校验。
 
-应用 Service 可以注入 `AuthorizationService`，使用 `assertUserCan()` 与
+应用 Service 可以注入 `AccessControlService`，使用 `assertUserCan()` 与
 `assertWorkspaceCan()` 建立同样的默认拒绝边界。Ability 必须由全局 `AuthGuard` 在当前
 请求生命周期准备；生命周期外的调用不会被隐式信任。
 

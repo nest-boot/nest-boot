@@ -14,9 +14,9 @@ import {
 } from "@nestjs/common";
 import type { Mocked } from "vitest";
 
+import type { AccessControlService } from "./access-control.service.js";
 import { ApiKeyService } from "./api-key.service.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
-import type { AuthorizationService } from "./authorization.service.js";
 import {
   BaseApiKey,
   BaseUser,
@@ -382,7 +382,7 @@ describe("ApiKeyService", () => {
   });
 
   it("checks workspace permissions instead of hard-coding an owner role", async () => {
-    const { authorizationService, service } = createService();
+    const { accessControlService, service } = createService();
     const workspace = new TestWorkspace();
     const member = Object.assign(new TestWorkspaceMember(), {
       roles: ["custom-api-key-manager"],
@@ -394,9 +394,9 @@ describe("ApiKeyService", () => {
     });
 
     expect(
-      authorizationService.assertCurrentWorkspaceMember,
+      accessControlService.assertCurrentWorkspaceMember,
     ).toHaveBeenCalledWith(member);
-    expect(authorizationService.assertWorkspaceCan).toHaveBeenCalledWith(
+    expect(accessControlService.assertWorkspaceCan).toHaveBeenCalledWith(
       "create",
       TestApiKey,
     );
@@ -420,14 +420,14 @@ describe("ApiKeyService", () => {
   });
 
   it("checks workspace read permission before building a list filter", () => {
-    const { authorizationService, service } = createService();
+    const { accessControlService, service } = createService();
     const workspace = new TestWorkspace();
     const member = new TestWorkspaceMember();
 
     expect(service.getWorkspaceListFilter(workspace, member)).toEqual({
       owner: workspace,
     });
-    expect(authorizationService.assertWorkspaceCan).toHaveBeenCalledWith(
+    expect(accessControlService.assertWorkspaceCan).toHaveBeenCalledWith(
       "read",
       TestApiKey,
     );
@@ -447,11 +447,11 @@ describe("ApiKeyService", () => {
   });
 
   it("rejects workspace key access before persistence when permission fails", async () => {
-    const { authorizationService, em, service } = createService();
+    const { accessControlService, em, service } = createService();
     const apiKey = new TestApiKey();
     em.findOne.mockResolvedValue(apiKey);
     const member = new TestWorkspaceMember();
-    vi.mocked(authorizationService.assertWorkspaceCan).mockImplementation(
+    vi.mocked(accessControlService.assertWorkspaceCan).mockImplementation(
       () => {
         throw new ForbiddenException();
       },
@@ -634,21 +634,21 @@ function createService(
       workspaceMember: TestWorkspaceMember,
     },
   } as unknown as AuthModuleOptions;
-  const authorizationService = {
+  const accessControlService = {
     assertCurrentUser: vi.fn(),
     assertCurrentWorkspaceMember: vi.fn(),
     assertUserCan: vi.fn(),
     assertWorkspaceCan: vi.fn(),
-  } as unknown as AuthorizationService;
+  } as unknown as AccessControlService;
 
   return {
-    authorizationService,
+    accessControlService,
     em,
     service: new ApiKeyService<
       TestApiKey,
       TestUser,
       TestWorkspace,
       TestWorkspaceMember
-    >(em, options, authorizationService),
+    >(em, options, accessControlService),
   };
 }

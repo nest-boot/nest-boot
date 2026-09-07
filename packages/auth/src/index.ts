@@ -1,4 +1,5 @@
 export * from "./abilities/index.js";
+export * from "./access-control.service.js";
 export * from "./api-key.service.js";
 export * from "./api-key-usage.interceptor.js";
 export { IS_PUBLIC_KEY } from "./auth.constants.js";
@@ -7,7 +8,6 @@ export * from "./auth.middleware.js";
 export * from "./auth.module.js";
 export * from "./auth.service.js";
 export * from "./auth-module-options.interface.js";
-export * from "./authorization.service.js";
 export * from "./decorators/index.js";
 export * from "./entities/index.js";
 export * from "./interfaces/auth-role.interface.js";

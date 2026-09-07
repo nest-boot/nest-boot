@@ -8,8 +8,8 @@ import {
 import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import type { Mocked } from "vitest";
 
+import type { AccessControlService } from "./access-control.service.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
-import type { AuthorizationService } from "./authorization.service.js";
 import {
   BaseUser,
   BaseWorkspace,
@@ -50,8 +50,8 @@ describe("WorkspaceService", () => {
   });
 
   it("fails before persistence when a service-level permission is denied", async () => {
-    const { authorizationService, em, service } = createService();
-    vi.mocked(authorizationService.assertWorkspaceCan).mockImplementation(
+    const { accessControlService, em, service } = createService();
+    vi.mocked(accessControlService.assertWorkspaceCan).mockImplementation(
       () => {
         throw new ForbiddenException();
       },
@@ -126,7 +126,7 @@ describe("WorkspaceService", () => {
   });
 
   it("adds a member by normalized email inside the workspace permission boundary", async () => {
-    const { authorizationService, em, service } = createService();
+    const { accessControlService, em, service } = createService();
     const workspace = new TestWorkspace();
     const user = Object.assign(new TestUser(), {
       email: "alice@example.com",
@@ -144,7 +144,7 @@ describe("WorkspaceService", () => {
       { email: "alice@example.com" },
       { filters: false },
     );
-    expect(authorizationService.assertWorkspaceCan).toHaveBeenCalledWith(
+    expect(accessControlService.assertWorkspaceCan).toHaveBeenCalledWith(
       "create",
       TestWorkspaceMember,
     );
@@ -201,7 +201,7 @@ describe("WorkspaceService", () => {
   });
 
   it("updates mutable workspace fields", async () => {
-    const { em, service } = createService();
+    const { accessControlService, em, service } = createService();
     const workspace = new TestWorkspace();
 
     await expect(
@@ -210,6 +210,24 @@ describe("WorkspaceService", () => {
 
     expect(em.assign).toHaveBeenCalledWith(workspace, { name: "Renamed" });
     expect(em.flush).toHaveBeenCalledTimes(1);
+    expect(accessControlService.assertCurrentWorkspace).toHaveBeenCalledWith(
+      workspace,
+    );
+  });
+
+  it("rejects workspace resources outside the selected request context", async () => {
+    const { accessControlService, em, service } = createService();
+    const workspace = new TestWorkspace();
+    vi.mocked(accessControlService.assertCurrentWorkspace).mockImplementation(
+      () => {
+        throw new ForbiddenException();
+      },
+    );
+
+    await expect(service.listMembers(workspace)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+    expect(em.find).not.toHaveBeenCalled();
   });
 
   it("only lets owners soft-delete workspaces", async () => {
@@ -425,7 +443,7 @@ describe("WorkspaceService", () => {
   });
 
   it("validates direct member permissions against the workspace catalog", async () => {
-    const { em, service } = createService();
+    const { accessControlService, em, service } = createService();
     const workspace = new TestWorkspace();
     const user = new TestUser();
     em.findOne.mockResolvedValue(null);
@@ -451,6 +469,24 @@ describe("WorkspaceService", () => {
       service.setMemberPermissions(member, ["Workspace:update"]),
     ).resolves.toBe(member);
     expect(member.permissions).toEqual(["Workspace:update"]);
+    expect(
+      accessControlService.assertCanGrantWorkspacePermissions,
+    ).toHaveBeenCalledWith(["Workspace:update"]);
+  });
+
+  it("checks role grants against the issuer permission ceiling", async () => {
+    const { accessControlService, service } = createService();
+    const member = Object.assign(new TestWorkspaceMember(), {
+      roles: ["member"],
+    });
+
+    await service.updateMemberRole(member, ["admin"]);
+
+    expect(
+      accessControlService.assertCanGrantWorkspacePermissions,
+    ).toHaveBeenCalledWith(
+      expect.arrayContaining(["Workspace:update", "WorkspaceMember:create"]),
+    );
   });
 
   it("lists configured roles and updates member roles", async () => {
@@ -840,20 +876,22 @@ function createService(
     },
     workspace,
   } as unknown as AuthModuleOptions;
-  const authorizationService = {
+  const accessControlService = {
     assertCurrentUser: vi.fn(),
+    assertCurrentWorkspace: vi.fn(),
     assertCurrentWorkspaceMember: vi.fn(),
     assertUserCan: vi.fn(),
     assertWorkspaceCan: vi.fn(),
-  } as unknown as AuthorizationService;
+    assertCanGrantWorkspacePermissions: vi.fn(),
+  } as unknown as AccessControlService;
   return {
-    authorizationService,
+    accessControlService,
     em,
     service: new WorkspaceService<
       TestWorkspace,
       TestWorkspaceMember,
       TestWorkspaceInvitation,
       TestUser
-    >(em, options, authorizationService),
+    >(em, options, accessControlService),
   };
 }
