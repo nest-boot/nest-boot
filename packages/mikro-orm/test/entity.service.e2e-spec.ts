@@ -1,7 +1,7 @@
 import "reflect-metadata";
 
 import { EntityManager } from "@mikro-orm/core";
-import { MikroORM } from "@mikro-orm/sqlite";
+import { MikroORM } from "@mikro-orm/pglite";
 import { RequestContext } from "@nest-boot/request-context";
 
 import { EntityService } from "../src/services/entity.service.js";
@@ -19,7 +19,7 @@ describe("EntityService request context integration", () => {
           return RequestContext.get(EntityManager);
         }
       },
-      dbName: ":memory:",
+      dbName: "memory://",
       entities: [TestEntity],
     });
     await orm.schema.create();

@@ -13,9 +13,8 @@ export type DatabaseDriverConstructor = new (
 async function getDriver(protocol: string): Promise<DatabaseDriverConstructor> {
   switch (protocol) {
     case "file:":
-      return (await import("@mikro-orm/sqlite")).SqliteDriver;
-    case "mysql:":
-      return (await import("@mikro-orm/mysql")).MySqlDriver;
+    case "memory:":
+      return (await import("@mikro-orm/pglite")).PgliteDriver;
     case "postgres:":
     case "postgresql:":
       return (await import("@mikro-orm/postgresql")).PostgreSqlDriver;
@@ -64,86 +63,8 @@ async function loadPostgreSqlTlsFiles(
   return ssl;
 }
 
-async function loadMySqlTlsConfig(
-  connection: Record<string, unknown>,
-): Promise<void> {
-  const supportedParameters = ["ssl-mode", "ssl-ca", "ssl-cert", "ssl-key"];
-
-  for (const parameter of Object.keys(connection)) {
-    if (!supportedParameters.includes(parameter)) {
-      throw new TypeError(
-        `Unsupported MySQL DATABASE_URL parameter: ${parameter}`,
-      );
-    }
-  }
-
-  const sslMode = connection["ssl-mode"];
-  const tlsFiles = [
-    [connection["ssl-ca"], "ca"],
-    [connection["ssl-cert"], "cert"],
-    [connection["ssl-key"], "key"],
-  ] as const;
-
-  delete connection["ssl-ca"];
-  delete connection["ssl-cert"];
-  delete connection["ssl-key"];
-  delete connection["ssl-mode"];
-
-  const normalizedSslMode =
-    typeof sslMode === "string" ? sslMode.toUpperCase() : sslMode;
-
-  if (normalizedSslMode === "DISABLED") {
-    connection.ssl = false;
-    return;
-  }
-
-  if (normalizedSslMode === "PREFERRED") {
-    throw new TypeError("Unsupported MySQL ssl-mode: PREFERRED");
-  }
-
-  const ssl = await loadTlsFiles(tlsFiles);
-
-  switch (normalizedSslMode) {
-    case "REQUIRED":
-      connection.ssl = { ...ssl, rejectUnauthorized: false };
-      break;
-    case "VERIFY_CA":
-      if (!ssl?.ca) {
-        throw new TypeError("MySQL ssl-mode=VERIFY_CA requires ssl-ca");
-      }
-      connection.ssl = {
-        ...ssl,
-        rejectUnauthorized: true,
-        verifyIdentity: false,
-      };
-      break;
-    case "VERIFY_IDENTITY":
-      if (!ssl?.ca) {
-        throw new TypeError("MySQL ssl-mode=VERIFY_IDENTITY requires ssl-ca");
-      }
-      connection.ssl = {
-        ...ssl,
-        rejectUnauthorized: true,
-        verifyIdentity: true,
-      };
-      break;
-    case undefined:
-      if (ssl) {
-        connection.ssl = {
-          ...ssl,
-          rejectUnauthorized: true,
-          verifyIdentity: false,
-        };
-      }
-      break;
-    default:
-      throw new TypeError(`Unsupported MySQL ssl-mode: ${String(sslMode)}`);
-  }
-}
-
 async function loadQueryConfig(
   url: URL,
-  protocol: string,
 ): Promise<Pick<HostConfig, "driverOptions" | "schema">> {
   const connection: Record<string, unknown> = Object.fromEntries(
     url.searchParams,
@@ -153,64 +74,58 @@ async function loadQueryConfig(
 
   delete connection.schema;
 
-  if (protocol === "mysql:") {
-    await loadMySqlTlsConfig(connection);
+  if (connection.ssl !== undefined) {
+    throw new TypeError("Unsupported PostgreSQL DATABASE_URL parameter: ssl");
   }
 
-  if (protocol === "postgres:" || protocol === "postgresql:") {
-    if (connection.ssl !== undefined) {
-      throw new TypeError("Unsupported PostgreSQL DATABASE_URL parameter: ssl");
+  if (connection.uselibpqcompat !== undefined) {
+    throw new TypeError(
+      "Unsupported PostgreSQL DATABASE_URL parameter: uselibpqcompat",
+    );
+  }
+
+  const sslMode = connection.sslmode;
+
+  delete connection.uselibpqcompat;
+  delete connection.sslmode;
+
+  if (sslMode === "disable") {
+    delete connection.sslrootcert;
+    delete connection.sslcert;
+    delete connection.sslkey;
+    connection.ssl = false;
+  } else if (sslMode === "allow" || sslMode === "prefer") {
+    throw new TypeError(`Unsupported PostgreSQL sslmode: ${sslMode}`);
+  } else {
+    const tls = await loadPostgreSqlTlsFiles(connection);
+
+    if (tls) {
+      connection.ssl = tls;
     }
 
-    if (connection.uselibpqcompat !== undefined) {
-      throw new TypeError(
-        "Unsupported PostgreSQL DATABASE_URL parameter: uselibpqcompat",
-      );
-    }
-
-    const sslMode = connection.sslmode;
-
-    delete connection.uselibpqcompat;
-    delete connection.sslmode;
-
-    if (sslMode === "disable") {
-      delete connection.sslrootcert;
-      delete connection.sslcert;
-      delete connection.sslkey;
-      connection.ssl = false;
-    } else if (sslMode === "allow" || sslMode === "prefer") {
-      throw new TypeError(`Unsupported PostgreSQL sslmode: ${sslMode}`);
-    } else {
-      const tls = await loadPostgreSqlTlsFiles(connection);
-
-      if (tls) {
-        connection.ssl = tls;
-      }
-
-      switch (sslMode) {
-        case "require":
-          connection.ssl = tls?.ca
-            ? { ...tls, checkServerIdentity: () => undefined }
-            : { ...tls, rejectUnauthorized: false };
-          break;
-        case "verify-ca":
-          if (!tls?.ca) {
-            throw new TypeError(
-              "PostgreSQL sslmode=verify-ca requires sslrootcert",
-            );
-          }
-          connection.ssl = { ...tls, checkServerIdentity: () => undefined };
-          break;
-        case "verify-full":
-          connection.ssl = tls ?? {};
-          break;
-        case undefined:
-          break;
-        default:
+    switch (sslMode) {
+      case "require":
+        connection.ssl = tls?.ca
+          ? { ...tls, checkServerIdentity: () => undefined }
+          : { ...tls, rejectUnauthorized: false };
+        break;
+      case "verify-ca":
+        if (!tls?.ca) {
           throw new TypeError(
-            `Unsupported PostgreSQL sslmode: ${String(sslMode)}`,
+            "PostgreSQL sslmode=verify-ca requires sslrootcert",
           );
-      }
+        }
+        connection.ssl = { ...tls, checkServerIdentity: () => undefined };
+        break;
+      case "verify-full":
+        connection.ssl = tls ?? {};
+        break;
+      case undefined:
+        break;
+      default:
+        throw new TypeError(
+          `Unsupported PostgreSQL sslmode: ${String(sslMode)}`,
+        );
     }
   }
 
@@ -256,13 +171,12 @@ export interface HostConfig {
  * @remarks
  * Supports `DATABASE_URL`, which is parsed into individual connection options,
  * including structured query options. The `postgresql:` and `postgres:`
- * protocols select PostgreSQL, `mysql:` selects MySQL, and `file:` selects
- * SQLite. Only the URL forms documented by those databases are accepted;
- * other protocol names and driver-specific compatibility forms are rejected.
+ * protocols select PostgreSQL, while `file:` selects persistent PGlite and
+ * `memory:` selects in-memory PGlite. Other protocol names and driver-specific
+ * compatibility forms are rejected.
  * PostgreSQL supports `sslmode=disable`, `require`, `verify-ca`, and
- * `verify-full`; MySQL supports `ssl-mode=DISABLED`, `REQUIRED`, `VERIFY_CA`,
- * and `VERIFY_IDENTITY`. Modes that require a plaintext fallback are rejected
- * because one structured driver configuration cannot preserve that behavior.
+ * `verify-full`. Modes that require a plaintext fallback are rejected because
+ * one structured driver configuration cannot preserve that behavior.
  *
  * @returns MikroORM options derived from environment variables
  */
@@ -275,11 +189,11 @@ export async function loadConfigFromEnv(): Promise<DriverConfig & HostConfig> {
     const url = new URL(databaseUrl);
     const driver = await getDriver(url.protocol);
 
-    if (url.protocol === "file:") {
+    if (url.protocol === "file:" || url.protocol === "memory:") {
       return {
         ...baseConfig,
         driver,
-        dbName: fileURLToPath(url),
+        dbName: url.protocol === "file:" ? fileURLToPath(url) : url.href,
       };
     }
 
@@ -293,7 +207,7 @@ export async function loadConfigFromEnv(): Promise<DriverConfig & HostConfig> {
       dbName: dbName ? decodeURIComponent(dbName) : undefined,
       user: decodeURIComponent(url.username),
       password: decodeURIComponent(url.password),
-      ...(await loadQueryConfig(url, url.protocol)),
+      ...(await loadQueryConfig(url)),
     };
   }
 
