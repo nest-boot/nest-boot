@@ -12,7 +12,7 @@ description: "Authenticate personal and workspace automation with scoped API key
 
 Users manage their own keys. Active workspace members manage workspace keys
 when their resolved workspace ability grants the corresponding
-`apiKey:create`, `apiKey:read`, `apiKey:update`, or `apiKey:delete` permission.
+`ApiKey:create`, `ApiKey:read`, `ApiKey:update`, or `ApiKey:delete` permission.
 
 ## Service API
 
@@ -31,16 +31,18 @@ requests update `lastUsedAt` automatically.
 The auth package stores and evaluates permissions as `string[]`. Applications
 define closed user and workspace permission catalogs. `ApiKeyService` validates
 permission values against those catalogs during key creation and updates.
+The resource segment is the exact, case-sensitive CASL subject type; it is not
+lowercased or otherwise normalized.
 
 ```typescript
 const workspacePermissions = [
-  "workspace:update",
-  "workspaceMember:create",
+  "Workspace:update",
+  "WorkspaceMember:create",
 ] as const;
 
 type WorkspacePermission = (typeof workspacePermissions)[number];
 
-const userKeyPermissions = ["user:get", ...workspacePermissions] as const;
+const userKeyPermissions = ["User:get", ...workspacePermissions] as const;
 ```
 
 In the example, entity properties, GraphQL inputs, and database columns all use
@@ -79,7 +81,8 @@ audit(@CurrentApiKey() apiKey: ApiKey | null) {
 }
 ```
 
-User-key permissions are intersected with the owning user's user ability and,
-for workspace routes, the user's current workspace-member ability. Workspace
-keys are service identities and are evaluated directly from their validated
-workspace permission list.
+Before the configured builder runs, User Key permissions are intersected with
+the owning user's effective permissions and, for workspace routes, the user's
+current membership permissions. Workspace Keys are service identities; their
+validated permissions are passed directly to the workspace builder. The guard
+then checks only the resulting `UserAbility` or `WorkspaceAbility`.

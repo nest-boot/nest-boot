@@ -53,6 +53,14 @@ provide a CommonJS `require` entry.
   `createStagedUploads` mutation. Import `StagedUploadInput`, `StagedUpload`,
   and `StagedUploadField` from the GraphQL package; use `StagedUploadRequest`
   and `StagedUploadResult` for transport-independent service types.
+- Replace the removed `AuthTransactionContext` with
+  `RowLevelSecurity.setContext()` from `@nest-boot/row-level-security`. RLS
+  transaction settings no longer belong to the authentication package.
+- Update auth permission resource names to their exact CASL subject types. The
+  built-in catalogs now use `User:*`, `Session:*`, `Workspace:*`,
+  `WorkspaceMember:*`, and `WorkspaceInvitation:*`. Update configured role
+  permissions and rewrite persisted direct and API-key permissions that used
+  the previous lowercase names.
 - Rebuild generated files and migrations after switching TypeScript module
   resolution so generated imports include valid ESM extensions.
 

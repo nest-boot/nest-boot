@@ -321,14 +321,14 @@ describe("WorkspaceService", () => {
     em.findOne.mockResolvedValue(null);
 
     const member = await service.addMember(workspace, user, {
-      permissions: ["workspace:update"],
+      permissions: ["Workspace:update"],
       roles: ["admin"],
     });
     expect(member).toEqual(
       expect.objectContaining({
         email: "bob@example.com",
         name: "Bob",
-        permissions: ["workspace:update"],
+        permissions: ["Workspace:update"],
         roles: ["admin"],
         user,
         workspace,
@@ -352,7 +352,7 @@ describe("WorkspaceService", () => {
     const member = await service.createServiceAccount(workspace, {
       data: { type: "SERVICE_ACCOUNT" },
       name: "Deploy Bot",
-      permissions: ["workspace:update"],
+      permissions: ["Workspace:update"],
       roles: ["admin"],
     });
 
@@ -361,7 +361,7 @@ describe("WorkspaceService", () => {
       expect.objectContaining({
         email: null,
         name: "Deploy Bot",
-        permissions: ["workspace:update"],
+        permissions: ["Workspace:update"],
         roles: ["admin"],
         status: "ACTIVE",
         type: "SERVICE_ACCOUNT",
@@ -432,59 +432,59 @@ describe("WorkspaceService", () => {
 
     await expect(
       service.addMember(workspace, user, {
-        permissions: ["user:get"],
+        permissions: ["User:get"],
       }),
     ).rejects.toThrow(
-      "Workspace member contains unknown permissions: user:get",
+      "Workspace member contains unknown permissions: User:get",
     );
 
     const member = new TestWorkspaceMember();
     await expect(
       service.setMemberPermissions(member, [
-        "workspace:update",
-        "workspace:update",
+        "Workspace:update",
+        "Workspace:update",
       ]),
     ).rejects.toThrow(
-      "Workspace member contains duplicate permissions: workspace:update",
+      "Workspace member contains duplicate permissions: Workspace:update",
     );
     await expect(
-      service.setMemberPermissions(member, ["workspace:update"]),
+      service.setMemberPermissions(member, ["Workspace:update"]),
     ).resolves.toBe(member);
-    expect(member.permissions).toEqual(["workspace:update"]);
+    expect(member.permissions).toEqual(["Workspace:update"]);
   });
 
   it("lists configured roles and updates member roles", async () => {
     const { service } = createService({
       permissions: [
-        "workspace:update",
-        "workspaceMember:update",
-        "workspace:delete",
-        "workspaceInvitation:cancel",
+        "Workspace:update",
+        "WorkspaceMember:update",
+        "Workspace:delete",
+        "WorkspaceInvitation:cancel",
       ],
       roles: {
-        admin: ["workspace:update", "workspaceMember:update"],
+        admin: ["Workspace:update", "WorkspaceMember:update"],
         member: [],
-        owner: ["workspace:delete"],
+        owner: ["Workspace:delete"],
       },
     });
     const member = Object.assign(new TestWorkspaceMember(), {
-      permissions: ["workspaceInvitation:create"],
+      permissions: ["WorkspaceInvitation:create"],
       roles: ["member"],
     });
 
     expect(service.listRoles()).toEqual([
       {
         name: "admin",
-        permissions: ["workspace:update", "workspaceMember:update"],
+        permissions: ["Workspace:update", "WorkspaceMember:update"],
       },
       { name: "member", permissions: [] },
-      { name: "owner", permissions: ["workspace:delete"] },
+      { name: "owner", permissions: ["Workspace:delete"] },
     ]);
     expect(service.listPermissions()).toEqual([
-      "workspace:update",
-      "workspaceMember:update",
-      "workspace:delete",
-      "workspaceInvitation:cancel",
+      "Workspace:update",
+      "WorkspaceMember:update",
+      "Workspace:delete",
+      "WorkspaceInvitation:cancel",
     ]);
 
     await expect(service.updateMemberRole(member, ["admin"])).resolves.toBe(
@@ -492,9 +492,9 @@ describe("WorkspaceService", () => {
     );
     expect(member.roles).toEqual(["admin"]);
     expect(service.getMemberPermissions(member)).toEqual([
-      "workspace:update",
-      "workspaceMember:update",
-      "workspaceInvitation:create",
+      "Workspace:update",
+      "WorkspaceMember:update",
+      "WorkspaceInvitation:create",
     ]);
     await expect(
       service.updateMemberRole(member, ["missing"]),

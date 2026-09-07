@@ -81,7 +81,7 @@ describe('ApiKeyResolver', () => {
       resolver.createApiKey(
         {
           name: 'Deploy key',
-          permissions: ['workspace:update'],
+          permissions: ['Workspace:update'],
         },
         workspace,
         member,
@@ -93,7 +93,7 @@ describe('ApiKeyResolver', () => {
       {
         name: 'Deploy key',
         expiresAt: null,
-        permissions: ['workspace:update'],
+        permissions: ['Workspace:update'],
       },
     );
   });
@@ -112,7 +112,7 @@ describe('ApiKeyResolver', () => {
         {
           enabled: false,
           name: 'New',
-          permissions: ['workspace:update'],
+          permissions: ['Workspace:update'],
         },
         member,
       ),
@@ -126,7 +126,7 @@ describe('ApiKeyResolver', () => {
       {
         enabled: false,
         name: 'New',
-        permissions: ['workspace:update'],
+        permissions: ['Workspace:update'],
       },
     );
     expect(apiKeyService.deleteWorkspaceKey).toHaveBeenCalledWith(

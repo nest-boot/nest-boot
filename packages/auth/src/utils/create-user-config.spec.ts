@@ -97,8 +97,8 @@ describe("createUserConfig", () => {
       buildAbility,
       defaultRole: "user",
       modelName: "user",
-      permissions: ["user:list"],
-      roles: { admin: ["user:list"] },
+      permissions: ["User:list"],
+      roles: { admin: ["User:list"] },
     });
 
     expect(config).toEqual({ modelName: "user" });

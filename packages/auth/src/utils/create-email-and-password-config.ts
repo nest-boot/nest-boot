@@ -47,7 +47,10 @@ export function createEmailAndPasswordConfig(
     enabled,
     requireEmailVerification,
     sendResetPassword: options?.sendResetPassword ?? sendResetPassword,
-    password: options?.password ?? password,
+    password: {
+      hash: options?.password?.hash ?? password.hash,
+      verify: options?.password?.verify ?? password.verify,
+    },
     disableSignUp: shouldDisableSignUp || options?.disableSignUp === true,
   };
 }

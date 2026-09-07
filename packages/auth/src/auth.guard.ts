@@ -2,7 +2,12 @@ import { AbilityBuilder, type Subject } from "@casl/ability";
 import { Reference } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import type { CanActivate, ExecutionContext, Type } from "@nestjs/common";
-import { ForbiddenException, Inject, Injectable } from "@nestjs/common";
+import {
+  ForbiddenException,
+  Inject,
+  Injectable,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { ContextIdFactory, ModuleRef, Reflector } from "@nestjs/core";
 import type { Request } from "express";
 
@@ -93,7 +98,7 @@ export class AuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const authenticated = this.isAuthenticated();
     if (!this.isPublic(context) && !authenticated) {
-      return false;
+      throw new UnauthorizedException("Authentication is required");
     }
 
     if (authenticated && RequestContext.isActive()) {
@@ -157,10 +162,7 @@ export class AuthGuard implements CanActivate {
       throw new ForbiddenException("User permission ability is not available");
     }
 
-    return (
-      ability.can(canOptions.action, subject) &&
-      this.apiKeyCan(canOptions.action, subject)
-    );
+    return ability.can(canOptions.action, subject);
   }
 
   private async checkWorkspacePermission(
@@ -168,13 +170,13 @@ export class AuthGuard implements CanActivate {
     context: ExecutionContext,
   ): Promise<boolean> {
     const apiKey = RequestContext.get(BaseApiKey);
+    const workspaceApiKey = apiKey && this.isWorkspaceApiKey(apiKey);
 
-    if (apiKey && this.isWorkspaceApiKey(apiKey)) {
-      const subject = await this.resolveSubject(canOptions, context);
-      return this.apiKeyCan(canOptions.action, subject);
-    }
-
-    if (apiKey && !RequestContext.get(BaseWorkspaceMember)) {
+    if (
+      apiKey &&
+      !workspaceApiKey &&
+      !RequestContext.get(BaseWorkspaceMember)
+    ) {
       return false;
     }
 
@@ -186,49 +188,12 @@ export class AuthGuard implements CanActivate {
       );
     }
 
-    return (
-      ability.can(canOptions.action, subject) &&
-      this.apiKeyCan(canOptions.action, subject)
-    );
+    return ability.can(canOptions.action, subject);
   }
 
   private isWorkspaceApiKey(apiKey: BaseApiKey): boolean {
     const owner = Reference.unwrapReference(apiKey.owner as never) as unknown;
     return owner instanceof this.options.entities.workspace;
-  }
-
-  private apiKeyCan(action: string, subject: Subject): boolean {
-    const apiKey = RequestContext.get(BaseApiKey);
-    if (!apiKey) {
-      return true;
-    }
-    const permission = this.getPermission(action, subject);
-
-    return (
-      !!permission &&
-      Array.isArray(apiKey.permissions) &&
-      apiKey.permissions.includes(permission)
-    );
-  }
-
-  private getPermission(action: string, subject: Subject): string | null {
-    const resource = this.getPermissionResource(subject);
-    return resource ? `${resource}:${action}` : null;
-  }
-
-  private getPermissionResource(subject: Subject): string | null {
-    const value = subject as unknown;
-    let name: string | null = null;
-
-    if (typeof value === "string") {
-      name = value;
-    } else if (typeof value === "function") {
-      name = value.name;
-    } else if (value && typeof value === "object") {
-      name = value.constructor.name;
-    }
-
-    return name ? `${name[0].toLowerCase()}${name.slice(1)}` : null;
   }
 
   private getOrBuildUserAbility(): UserAbility | null {
@@ -258,7 +223,9 @@ export class AuthGuard implements CanActivate {
 
     const builder = new AbilityBuilder(UserAbility);
     const roles = this.options.user?.roles ?? DEFAULT_USER_ROLES;
-    const permissions = this.resolveUserPermissions(roles);
+    const permissions = this.intersectApiKeyPermissions(
+      this.resolveUserPermissions(roles),
+    );
     const ability = buildAbility(builder, permissions, user);
 
     RequestContext.set(UserAbility, ability);
@@ -269,15 +236,37 @@ export class AuthGuard implements CanActivate {
     const buildAbility = this.options.workspace?.buildAbility;
     const workspace = RequestContext.get(BaseWorkspace);
     const member = RequestContext.get(BaseWorkspaceMember);
-    if (!buildAbility || !workspace || !member) return null;
+    const apiKey = RequestContext.get(BaseApiKey);
+    const workspaceApiKey = apiKey && this.isWorkspaceApiKey(apiKey);
+    if (!buildAbility || !workspace || (!member && !workspaceApiKey)) {
+      return null;
+    }
 
     const builder = new AbilityBuilder(WorkspaceAbility);
     const roles = this.options.workspace?.roles ?? DEFAULT_WORKSPACE_ROLES;
-    const permissions = this.resolveWorkspacePermissions(roles);
+    const permissions = workspaceApiKey
+      ? apiKey.permissions
+      : this.intersectApiKeyPermissions(
+          this.resolveWorkspacePermissions(roles),
+        );
     const ability = buildAbility(builder, permissions, workspace);
 
     RequestContext.set(WorkspaceAbility, ability);
     return ability;
+  }
+
+  private intersectApiKeyPermissions(
+    permissions: readonly string[],
+  ): readonly string[] {
+    const apiKey = RequestContext.get(BaseApiKey);
+    if (!apiKey) return permissions;
+
+    const apiKeyPermissions = new Set(
+      Array.isArray(apiKey.permissions) ? apiKey.permissions : [],
+    );
+    return permissions.filter((permission) =>
+      apiKeyPermissions.has(permission),
+    );
   }
 
   private resolveUserPermissions(roles: AuthModuleRoles): readonly string[] {

@@ -4,9 +4,9 @@
 
 ### Release blockers
 
-- [x] Require matching API-key permissions for every protected action,
-      including `read`, while keeping ordinary workspace-member reads implicit
-      through the configured workspace ability.
+- [x] Restrict the permissions supplied to configured user and workspace
+      Ability builders: User Keys use the intersection with their principal's
+      effective permissions, while Workspace Keys use their own permissions.
 - [x] Add one shared permission normalizer and validator for configured user and
       workspace permission catalogs. Reject empty, duplicate, and unknown
       permission values at service boundaries.

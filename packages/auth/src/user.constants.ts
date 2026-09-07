@@ -8,20 +8,20 @@ export const DEFAULT_USER_ADMIN_ROLES = ["admin"] as const;
 
 /** Permissions available to the default user roles. */
 export const DEFAULT_USER_PERMISSIONS = [
-  "user:create",
-  "user:list",
-  "user:set-role",
-  "user:ban",
-  "user:impersonate",
-  "user:impersonate-admins",
-  "user:delete",
-  "user:set-password",
-  "user:set-email",
-  "user:get",
-  "user:update",
-  "session:list",
-  "session:revoke",
-  "session:delete",
+  "User:create",
+  "User:list",
+  "User:set-role",
+  "User:ban",
+  "User:impersonate",
+  "User:impersonate-admins",
+  "User:delete",
+  "User:set-password",
+  "User:set-email",
+  "User:get",
+  "User:update",
+  "Session:list",
+  "Session:revoke",
+  "Session:delete",
 ] as const;
 
 /** Default user roles modelled after Better Auth's admin access control. */

@@ -22,6 +22,8 @@ export class CommonModule {}
 
 Use `@Public()` for routes that do not require authentication. If a public route
 also declares a permission decorator, its permission is still evaluated.
+Unauthenticated access to a protected route returns `401 Unauthorized`;
+authenticated requests that fail a permission check return `403 Forbidden`.
 
 ```typescript
 @Public()
@@ -44,19 +46,19 @@ and must return its scoped ability directly.
 import { AuthModule } from "@nest-boot/auth";
 
 const userRoles = {
-  admin: ["project:create"],
+  admin: ["Post:create"],
   user: [],
 } as const;
-const userPermissions = ["project:create", "project:archive"] as const;
+const userPermissions = ["Post:create", "Post:archive"] as const;
 
 const workspaceRoles = {
-  owner: ["project:create", "project:delete"],
-  member: ["project:create"],
+  owner: ["Post:create", "Post:delete"],
+  member: ["Post:create"],
 } as const;
 const workspacePermissions = [
-  "project:create",
-  "project:delete",
-  "project:archive",
+  "Post:create",
+  "Post:delete",
+  "Post:archive",
 ] as const;
 
 AuthModule.forRoot({
@@ -67,7 +69,7 @@ AuthModule.forRoot({
     buildAbility: ({ can, build }, permissions, workspace) => {
       for (const permission of permissions) {
         const [subject, action] = permission.split(":");
-        if (subject === "post" && action) {
+        if (subject === "Post" && action) {
           can(action, Post, { workspaceId: workspace.id });
         }
       }
@@ -195,8 +197,17 @@ updatePost(@Args("id") id: string) {
 ```
 
 Workspace API keys can pass only workspace checks. User API keys can pass user
-checks and, with a live membership, workspace checks. API-key permissions are
-intersected with the corresponding ability, including `read` operations.
+checks and, with a live membership, workspace checks. Before `buildAbility` is
+called, User Key permissions are intersected with the user's effective user
+permissions or the current member's effective workspace permissions. Workspace
+Key permissions are passed directly to the workspace builder. The resulting
+`UserAbility` or `WorkspaceAbility` is the only ability checked by the guard.
+
+The application builder must translate every supplied permission it wants to
+enforce into a CASL rule. Permission resource names preserve the exact,
+case-sensitive CASL subject type: both the `Post` class and
+`subject("Post", object)` resolve to `Post`, so the matching permission is
+`Post:read`. Rules added unconditionally by the builder apply to API keys too.
 
 ## Service Authorization Boundary
 
@@ -209,10 +220,10 @@ public.
 The services follow the same split as Better Auth's admin and organization
 access control:
 
-- user administration uses `user:*` and `session:*` permissions;
-- workspace mutations use `workspace:*`, `workspaceMember:*`, and
-  `workspaceInvitation:*` permissions;
-- workspace API-key management uses `apiKey:create/read/update/delete`;
+- user administration uses `User:*` and `Session:*` permissions;
+- workspace mutations use `Workspace:*`, `WorkspaceMember:*`, and
+  `WorkspaceInvitation:*` permissions;
+- workspace API-key management uses `ApiKey:create/read/update/delete`;
 - current-user authentication, session management, invitation acceptance, and
   leaving a workspace use authenticated identity and ownership checks.
 

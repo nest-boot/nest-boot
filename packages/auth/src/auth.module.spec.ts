@@ -338,21 +338,21 @@ describe("AuthModule", () => {
       "user",
       {
         user: {
-          permissions: ["user:list"],
-          roles: { admin: ["user:delete"] },
+          permissions: ["User:list"],
+          roles: { admin: ["User:delete"] },
         },
       },
-      'Role "admin" contains unknown user permissions: user:delete',
+      'Role "admin" contains unknown user permissions: User:delete',
     ],
     [
       "workspace",
       {
         workspace: {
-          permissions: ["workspace:update"],
-          roles: { owner: ["workspace:delete"] },
+          permissions: ["Workspace:update"],
+          roles: { owner: ["Workspace:delete"] },
         },
       },
-      'Role "owner" contains unknown workspace permissions: workspace:delete',
+      'Role "owner" contains unknown workspace permissions: Workspace:delete',
     ],
   ])(
     "rejects %s roles outside their permission catalog",

@@ -281,7 +281,7 @@ export class UserService<
     this.authorizationService.assertUserCan("impersonate", user);
     if (
       !this.hasPermission(administrator, {
-        permissions: { user: ["impersonate"] },
+        permissions: { User: ["impersonate"] },
       })
     ) {
       throw new ForbiddenException("You are not allowed to impersonate users");
@@ -289,7 +289,7 @@ export class UserService<
     if (
       this.isAdmin(user) &&
       !this.hasPermission(administrator, {
-        permissions: { user: ["impersonate-admins"] },
+        permissions: { User: ["impersonate-admins"] },
       })
     ) {
       throw new ForbiddenException("You are not allowed to impersonate admins");

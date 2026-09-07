@@ -652,7 +652,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         expect.objectContaining({ name: 'user' }),
       ]),
     );
-    expect(catalog.body.data.userPermissions).toContain('user:set-role');
+    expect(catalog.body.data.userPermissions).toContain('User:set-role');
 
     const assigned = await gql(
       /* GraphQL */ `
@@ -693,7 +693,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     const workspace = await createWorkspace(target, 'Deletion Workspace');
     await createUserApiKey(target, {
       name: 'Deletion target key',
-      permissions: ['workspace:update'],
+      permissions: ['Workspace:update'],
     });
 
     const rejectedOwnerDeletion = await gql(
@@ -810,7 +810,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         cookies: administrator.cookies,
         variables: {
           id: target.user.id,
-          input: { permissions: ['workspace:update'] },
+          input: { permissions: ['Workspace:update'] },
         },
       },
     );
@@ -850,7 +850,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         cookies: administrator.cookies,
         variables: {
           id: currentMember.body.data.currentWorkspaceMember.id,
-          input: { permissions: ['user:get'] },
+          input: { permissions: ['User:get'] },
         },
         workspaceId: workspace.id,
       },
@@ -870,7 +870,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         variables: {
           input: {
             name: 'Invalid workspace key',
-            permissions: ['user:get'],
+            permissions: ['User:get'],
           },
         },
         workspaceId: workspace.id,
@@ -1320,7 +1320,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       ]),
     );
     expect(roleCatalog.body.data.workspacePermissions).toContain(
-      'workspaceMember:update',
+      'WorkspaceMember:update',
     );
 
     const currentMember = await gql(
@@ -1358,12 +1358,12 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       owner,
       workspace.id,
       member.id,
-      ['workspace:update', 'workspaceMember:update'],
+      ['Workspace:update', 'WorkspaceMember:update'],
     );
 
     expect(updatedMember.permissions).toEqual([
-      'workspace:update',
-      'workspaceMember:update',
+      'Workspace:update',
+      'WorkspaceMember:update',
     ]);
 
     const memberPermissions = await gql(
@@ -1382,7 +1382,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     expectNoGraphQLErrors(memberPermissions);
     expect(memberPermissions.body.data.currentWorkspaceMember).toEqual({
-      permissions: ['workspace:update', 'workspaceMember:update'],
+      permissions: ['Workspace:update', 'WorkspaceMember:update'],
     });
 
     const rejectedMemberAdd = await gql(
@@ -1555,7 +1555,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     const workspace = await createWorkspace(owner, 'Workspace API Key');
     const createdKey = await createApiKey(owner, workspace.id, {
       name: 'Runtime key',
-      permissions: ['workspace:update'],
+      permissions: ['Workspace:update'],
     });
 
     const byBearer = await gql(
@@ -1648,7 +1648,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     expect(touchedKey.body.data.apiKey).toMatchObject({
       id: createdKey.entity.id,
       name: 'Runtime key',
-      permissions: ['workspace:update'],
+      permissions: ['Workspace:update'],
     });
     expect(touchedKey.body.data.apiKey.lastUsedAt).toEqual(expect.any(String));
 
@@ -1668,7 +1668,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
           id: createdKey.entity.id,
           input: {
             name: 'Renamed runtime key',
-            permissions: ['workspace:update'],
+            permissions: ['Workspace:update'],
           },
         },
       },
@@ -1702,7 +1702,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         variables: {
           input: {
             name: 'Escalated personal key',
-            permissions: ['user:get'],
+            permissions: ['User:get'],
           },
         },
       },
@@ -1712,7 +1712,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     const createdKey = await createUserApiKey(user, {
       name: 'Personal automation',
-      permissions: ['workspace:update', 'workspaceMember:update'],
+      permissions: ['Workspace:update', 'WorkspaceMember:update'],
     });
 
     const authenticated = await gql(
@@ -1795,7 +1795,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     const workspace = await createWorkspace(owner, 'Restricted API Workspace');
     const restrictedKey = await createApiKey(owner, workspace.id, {
       name: 'Read workspace key',
-      permissions: ['workspace:update'],
+      permissions: ['Workspace:update'],
     });
 
     const allowed = await gql(
@@ -1897,8 +1897,8 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     );
     await updateWorkspaceMemberRole(owner, workspace.id, member.id, ['admin']);
     await setWorkspaceMemberPermissions(owner, workspace.id, member.id, [
-      'apiKey:create',
-      'apiKey:update',
+      'ApiKey:create',
+      'ApiKey:update',
     ]);
 
     const rejectedCreate = await gql(
@@ -1915,7 +1915,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         variables: {
           input: {
             name: 'Escalated workspace key',
-            permissions: ['workspace:delete'],
+            permissions: ['Workspace:delete'],
           },
         },
       },
@@ -1925,7 +1925,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     const key = await createApiKey(administrator, workspace.id, {
       name: 'Administrator workspace key',
-      permissions: ['workspace:update'],
+      permissions: ['Workspace:update'],
     });
     const rejectedUpdate = await gql(
       /* GraphQL */ `
@@ -1940,7 +1940,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         workspaceId: workspace.id,
         variables: {
           id: key.entity.id,
-          input: { permissions: ['workspace:delete'] },
+          input: { permissions: ['Workspace:delete'] },
         },
       },
     );

@@ -14,27 +14,27 @@ describe("DEFAULT_USER_ROLES", () => {
   });
 
   it("declares the complete default user permission catalog", () => {
-    expect(DEFAULT_USER_PERMISSIONS).toContain("user:set-role");
-    expect(DEFAULT_USER_PERMISSIONS).toContain("session:revoke");
+    expect(DEFAULT_USER_PERMISSIONS).toContain("User:set-role");
+    expect(DEFAULT_USER_PERMISSIONS).toContain("Session:revoke");
   });
 
   it("grants the standard admin permissions and no permissions to users", () => {
     expect(DEFAULT_USER_ROLES).toEqual({
       admin: [
-        "user:create",
-        "user:list",
-        "user:set-role",
-        "user:ban",
-        "user:impersonate",
-        "user:impersonate-admins",
-        "user:delete",
-        "user:set-password",
-        "user:set-email",
-        "user:get",
-        "user:update",
-        "session:list",
-        "session:revoke",
-        "session:delete",
+        "User:create",
+        "User:list",
+        "User:set-role",
+        "User:ban",
+        "User:impersonate",
+        "User:impersonate-admins",
+        "User:delete",
+        "User:set-password",
+        "User:set-email",
+        "User:get",
+        "User:update",
+        "Session:list",
+        "Session:revoke",
+        "Session:delete",
       ],
       user: [],
     });

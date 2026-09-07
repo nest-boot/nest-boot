@@ -13,22 +13,22 @@ import {
 describe("permission options", () => {
   it("exposes the workspace permission catalog", () => {
     expect(workspacePermissionValues).toEqual([
-      "workspace:update",
-      "workspace:delete",
-      "workspaceMember:create",
-      "workspaceMember:update",
-      "workspaceMember:delete",
-      "workspaceInvitation:create",
-      "workspaceInvitation:cancel",
+      "Workspace:update",
+      "Workspace:delete",
+      "WorkspaceMember:create",
+      "WorkspaceMember:update",
+      "WorkspaceMember:delete",
+      "WorkspaceInvitation:create",
+      "WorkspaceInvitation:cancel",
     ]);
   });
 
   it("keeps workspace API-key permissions inside the mixed catalog", () => {
-    expect(workspaceApiKeyPermissionValues).toContain("workspace:update");
+    expect(workspaceApiKeyPermissionValues).toContain("Workspace:update");
     expect(workspaceApiKeyPermissionValues).toContain(
-      "workspaceInvitation:cancel",
+      "WorkspaceInvitation:cancel",
     );
-    expect(workspaceApiKeyPermissionValues).not.toContain("user:delete");
+    expect(workspaceApiKeyPermissionValues).not.toContain("User:delete");
   });
 
   it("exposes user and workspace permissions for personal API keys", () => {
@@ -42,8 +42,8 @@ describe("permission options", () => {
   });
 
   it("narrows server strings against the local permission catalog", () => {
-    expect(isUserPermission("user:get")).toBe(true);
-    expect(isWorkspacePermission("workspace:update")).toBe(true);
+    expect(isUserPermission("User:get")).toBe(true);
+    expect(isWorkspacePermission("Workspace:update")).toBe(true);
     expect(isAuthPermission("custom:unknown")).toBe(false);
   });
 });

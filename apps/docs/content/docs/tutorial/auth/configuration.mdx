@@ -28,18 +28,18 @@ Important Nest Boot options include:
 - **`account`** — forwards Better Auth account lifecycle options;
 - **`providers`** — configures built-in social, custom OAuth 2.0, and OpenID Connect providers.
 
-`user.permissions` defaults to the standard `user:*` and `session:*` catalog.
+`user.permissions` defaults to the standard `User:*` and `Session:*` catalog.
 `user.roles` defaults to `admin` and `user`. The `admin` role grants the full
 default catalog, while `user` grants none. A configured permission array or role
 map replaces its corresponding default. `user.defaultRole` defaults to `user`.
 `user.adminRoles` defaults to `['admin']` and classifies administrative
-identities, including targets that require `user:impersonate-admins` to
+identities, including targets that require `User:impersonate-admins` to
 impersonate.
 
 `workspace.permissions` defaults to the standard workspace permission catalog.
 `workspace.roles` defaults to `owner`, `admin`, and `member`. Owners receive the
 full default catalog. Administrators receive the same permissions except
-`workspace:delete`, and members receive none. A configured permission array or
+`Workspace:delete`, and members receive none. A configured permission array or
 role map replaces its corresponding default. `workspace.defaultRole` defaults
 to `member` for additions and invitations. `workspace.creatorRole` defaults to
 `owner` and identifies the protected workspace creator lifecycle.

@@ -11,7 +11,7 @@ const hashService = { hash, verify } as unknown as HashService;
 
 function createEmailAndPasswordConfig(
   disableSignUp: boolean,
-  options?: Parameters<typeof createEmailAndPasswordConfigWithMailer>[2],
+  options?: Parameters<typeof createEmailAndPasswordConfigWithMailer>[3],
 ) {
   return createEmailAndPasswordConfigWithMailer(
     disableSignUp,
@@ -253,8 +253,53 @@ describe("createEmailAndPasswordConfig", () => {
       verify: vi.fn(),
     };
 
-    expect(createEmailAndPasswordConfig(false, { password }).password).toBe(
+    expect(createEmailAndPasswordConfig(false, { password }).password).toEqual(
       password,
     );
+  });
+
+  it("should preserve the default verifier when only password hashing is configured", async () => {
+    const customHash = vi.fn().mockResolvedValue("custom-hash");
+    verify.mockResolvedValue(true);
+    const password = createEmailAndPasswordConfig(false, {
+      password: { hash: customHash },
+    }).password;
+
+    await expect(password?.hash?.("plain-password")).resolves.toBe(
+      "custom-hash",
+    );
+    await expect(
+      password?.verify?.({
+        hash: "stored-hash",
+        password: "plain-password",
+      }),
+    ).resolves.toBe(true);
+
+    expect(customHash).toHaveBeenCalledWith("plain-password");
+    expect(verify).toHaveBeenCalledWith("stored-hash", "plain-password");
+  });
+
+  it("should preserve the default hasher when only password verification is configured", async () => {
+    const customVerify = vi.fn().mockResolvedValue(true);
+    hash.mockResolvedValue("default-hash");
+    const password = createEmailAndPasswordConfig(false, {
+      password: { verify: customVerify },
+    }).password;
+
+    await expect(password?.hash?.("plain-password")).resolves.toBe(
+      "default-hash",
+    );
+    await expect(
+      password?.verify?.({
+        hash: "stored-hash",
+        password: "plain-password",
+      }),
+    ).resolves.toBe(true);
+
+    expect(hash).toHaveBeenCalledWith("plain-password");
+    expect(customVerify).toHaveBeenCalledWith({
+      hash: "stored-hash",
+      password: "plain-password",
+    });
   });
 });

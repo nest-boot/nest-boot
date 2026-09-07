@@ -6,7 +6,6 @@ export * from "./auth.guard.js";
 export * from "./auth.middleware.js";
 export * from "./auth.module.js";
 export * from "./auth.service.js";
-export * from "./auth.transaction-context.js";
 export * from "./auth-module-options.interface.js";
 export * from "./authorization.service.js";
 export * from "./decorators/index.js";

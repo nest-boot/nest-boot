@@ -1,3 +1,4 @@
+import { subject as caslSubject } from "@casl/ability";
 import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException } from "@nestjs/common";
 
@@ -60,14 +61,16 @@ describe("AuthorizationService", () => {
     const user = new TestUser();
     const apiKey = Object.assign(new TestApiKey(), {
       owner: user as BaseApiKey["owner"],
-      permissions: ["subject:read"],
+      permissions: ["Subject:read"],
     });
 
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
       RequestContext.set(BaseUser, user);
       RequestContext.set(BaseApiKey, apiKey);
       const ability = new UserAbility();
-      vi.spyOn(ability, "can").mockReturnValue(true);
+      vi.spyOn(ability, "can").mockImplementation(
+        (action) => action === "read",
+      );
       RequestContext.set(UserAbility, ability);
 
       expect(service.userCan("read", Subject)).toBe(true);
@@ -79,15 +82,56 @@ describe("AuthorizationService", () => {
     const workspace = new TestWorkspace();
     const apiKey = Object.assign(new TestApiKey(), {
       owner: workspace as BaseApiKey["owner"],
-      permissions: ["subject:read"],
+      permissions: ["Subject:read"],
     });
 
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
       RequestContext.set(BaseApiKey, apiKey);
+      const ability = new WorkspaceAbility();
+      vi.spyOn(ability, "can").mockImplementation(
+        (action) => action === "read",
+      );
+      RequestContext.set(WorkspaceAbility, ability);
 
       expect(service.workspaceCan("read", Subject)).toBe(true);
       expect(service.workspaceCan("update", Subject)).toBe(false);
       expect(service.userCan("read", Subject)).toBe(false);
+    });
+  });
+
+  it("uses the forced CASL subject type for service-level API-key checks", async () => {
+    const workspace = new TestWorkspace();
+    const apiKey = Object.assign(new TestApiKey(), {
+      owner: workspace as BaseApiKey["owner"],
+      permissions: ["Post:read"],
+    });
+    const post = caslSubject("Post", { id: "post-1" });
+
+    await RequestContext.run(new RequestContext({ type: "test" }), () => {
+      RequestContext.set(BaseApiKey, apiKey);
+      const ability = new WorkspaceAbility();
+      vi.spyOn(ability, "can").mockImplementation(
+        (action) => action === "read",
+      );
+      RequestContext.set(WorkspaceAbility, ability);
+
+      expect(service.workspaceCan("read", post)).toBe(true);
+      expect(service.workspaceCan("update", post)).toBe(false);
+    });
+  });
+
+  it("uses the workspace ability built from API-key permissions", async () => {
+    const workspace = new TestWorkspace();
+    const apiKey = Object.assign(new TestApiKey(), {
+      owner: workspace as BaseApiKey["owner"],
+      permissions: ["Subject:read"],
+    });
+
+    await RequestContext.run(new RequestContext({ type: "test" }), () => {
+      RequestContext.set(BaseApiKey, apiKey);
+      RequestContext.set(WorkspaceAbility, new WorkspaceAbility());
+
+      expect(service.workspaceCan("read", Subject)).toBe(false);
     });
   });
 

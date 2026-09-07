@@ -9,7 +9,7 @@ description: "使用带权限范围的 API Key 认证个人和工作区自动化
 - **Workspace Key** 是独立服务身份；它会恢复所属工作区，但不会创建当前用户或工作区成员。
 
 用户管理自己的 Key。活动工作区成员只有在最终 Workspace Ability 包含对应的
-`apiKey:create`、`apiKey:read`、`apiKey:update` 或 `apiKey:delete` 权限时，才能管理
+`ApiKey:create`、`ApiKey:read`、`ApiKey:update` 或 `ApiKey:delete` 权限时，才能管理
 Workspace Key。
 
 ## 服务 API
@@ -27,16 +27,18 @@ Workspace Key。
 
 auth 包以 `string[]` 存储和判断权限。应用负责定义封闭的用户与工作区权限目录；
 `ApiKeyService` 会在创建和更新 Key 时依据这些目录校验权限值。
+资源部分必须与 CASL subject type 的原始值完全一致并区分大小写，不会自动转换为小写
+或进行其他规范化。
 
 ```typescript
 const workspacePermissions = [
-  "workspace:update",
-  "workspaceMember:create",
+  "Workspace:update",
+  "WorkspaceMember:create",
 ] as const;
 
 type WorkspacePermission = (typeof workspacePermissions)[number];
 
-const userKeyPermissions = ["user:get", ...workspacePermissions] as const;
+const userKeyPermissions = ["User:get", ...workspacePermissions] as const;
 ```
 
 示例的实体属性、GraphQL 输入与数据库列都统一使用字符串。应用通过 `as const`
@@ -70,6 +72,6 @@ audit(@CurrentApiKey() apiKey: ApiKey | null) {
 }
 ```
 
-User Key 权限会与所属用户的 User Ability 取交集；访问工作区路由时还会与当前成员的
-Workspace Ability 取交集。Workspace Key 是服务身份，直接依据已经过目录校验的工作区
-权限列表进行判断。
+调用配置的构建器前，User Key 权限会与所属用户的有效权限取交集；访问工作区路由时则
+与当前成员的有效权限取交集。Workspace Key 是服务身份，其经过校验的权限会直接传给
+工作区构建器。守卫随后只检查最终得到的 `UserAbility` 或 `WorkspaceAbility`。

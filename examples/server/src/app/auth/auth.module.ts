@@ -58,19 +58,19 @@ import { UserResolver } from './user.resolver.js';
       workspace: {
         permissions: [
           ...DEFAULT_WORKSPACE_PERMISSIONS,
-          'apiKey:read',
-          'apiKey:create',
-          'apiKey:update',
-          'apiKey:delete',
+          'ApiKey:read',
+          'ApiKey:create',
+          'ApiKey:update',
+          'ApiKey:delete',
         ],
         roles: {
           ...DEFAULT_WORKSPACE_ROLES,
           owner: [
             ...DEFAULT_WORKSPACE_ROLES.owner,
-            'apiKey:read',
-            'apiKey:create',
-            'apiKey:update',
-            'apiKey:delete',
+            'ApiKey:read',
+            'ApiKey:create',
+            'ApiKey:update',
+            'ApiKey:delete',
           ] as const,
         },
         buildAbility: (builder, permissions, _workspace) =>

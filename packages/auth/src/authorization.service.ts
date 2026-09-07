@@ -33,11 +33,7 @@ export class AuthorizationService {
 
     const ability = RequestContext.get(UserAbility);
 
-    return (
-      !!ability &&
-      ability.can(action, subject) &&
-      this.apiKeyCan(apiKey, action, subject)
-    );
+    return !!ability && ability.can(action, subject);
   }
 
   /** Throws unless the current principal may perform a user-scoped action. */
@@ -54,20 +50,13 @@ export class AuthorizationService {
     if (!RequestContext.isActive()) return false;
 
     const apiKey = RequestContext.get(BaseApiKey);
-    if (apiKey && this.isWorkspaceApiKey(apiKey)) {
-      return this.apiKeyCan(apiKey, action, subject);
-    }
-
+    const workspaceApiKey = apiKey && this.isWorkspaceApiKey(apiKey);
     const member = RequestContext.get(BaseWorkspaceMember);
-    if (!member) return false;
+    if (!workspaceApiKey && !member) return false;
 
     const ability = RequestContext.get(WorkspaceAbility);
 
-    return (
-      !!ability &&
-      ability.can(action, subject) &&
-      this.apiKeyCan(apiKey, action, subject)
-    );
+    return !!ability && ability.can(action, subject);
   }
 
   /** Throws unless the current principal may perform a workspace action. */
@@ -114,38 +103,8 @@ export class AuthorizationService {
     }
   }
 
-  private apiKeyCan(
-    apiKey: BaseApiKey | undefined,
-    action: string,
-    subject: Subject,
-  ): boolean {
-    if (!apiKey) return true;
-
-    const resource = this.getPermissionResource(subject);
-    return (
-      !!resource &&
-      Array.isArray(apiKey.permissions) &&
-      apiKey.permissions.includes(`${resource}:${action}`)
-    );
-  }
-
   private isWorkspaceApiKey(apiKey: BaseApiKey): boolean {
     const owner = Reference.unwrapReference(apiKey.owner as never) as unknown;
     return owner instanceof this.options.entities.workspace;
-  }
-
-  private getPermissionResource(subject: Subject): string | null {
-    const value = subject as unknown;
-    let name: string | null = null;
-
-    if (typeof value === "string") {
-      name = value;
-    } else if (typeof value === "function") {
-      name = value.name;
-    } else if (value && typeof value === "object") {
-      name = value.constructor.name;
-    }
-
-    return name ? `${name[0].toLowerCase()}${name.slice(1)}` : null;
   }
 }

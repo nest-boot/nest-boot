@@ -3,6 +3,7 @@ import {
   type CanActivate,
   type ExecutionContext,
   type Type,
+  UnauthorizedException,
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
@@ -83,7 +84,7 @@ describe("AuthGuard", () => {
     await expect(guard.canActivate(context)).resolves.toBe(true);
   });
 
-  it("requires a session for non-public routes", async () => {
+  it("throws an unauthorized exception for unauthenticated protected routes", async () => {
     const { guard } = await createGuard(
       AuthGuard,
       vi.fn(() => false),
@@ -95,7 +96,9 @@ describe("AuthGuard", () => {
     const get = vi.spyOn(RequestContext, "get");
 
     get.mockReturnValue(undefined);
-    await expect(guard.canActivate(context)).resolves.toBe(false);
+    await expect(guard.canActivate(context)).rejects.toMatchObject({
+      status: 401,
+    });
     expect(get).toHaveBeenCalledWith(BaseSession);
 
     get.mockReturnValue(new BaseSession());
@@ -121,7 +124,9 @@ describe("AuthGuard", () => {
     );
 
     await RequestContext.run(new RequestContext({ type: "http" }), async () => {
-      await expect(guard.canActivate(createContext())).resolves.toBe(false);
+      await expect(guard.canActivate(createContext())).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
     });
 
     expect(buildAbility).not.toHaveBeenCalled();

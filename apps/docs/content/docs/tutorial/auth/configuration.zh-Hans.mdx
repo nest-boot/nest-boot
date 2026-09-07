@@ -27,15 +27,15 @@ Better Auth 选项，避免上游升级无意中扩大 Nest Boot 的公开 API�
 - **`account`** — 转发 Better Auth 的 Account 生命周期选项；
 - **`providers`** — 配置内置社交、自定义 OAuth 2.0 与 OpenID Connect Provider。
 
-`user.permissions` 默认为标准 `user:*` 与 `session:*` 权限目录。
+`user.permissions` 默认为标准 `User:*` 与 `Session:*` 权限目录。
 `user.roles` 默认包含 `admin` 与 `user` 两个角色。`admin` 拥有完整默认权限目录，
 `user` 不拥有任何管理权限。显式配置权限数组或角色映射时，会分别替换对应默认值。
 `user.defaultRole` 默认为 `user`；`user.adminRoles` 默认为 `['admin']`，用于识别
-管理员身份，包括模拟时需要额外 `user:impersonate-admins` 权限的目标用户。
+管理员身份，包括模拟时需要额外 `User:impersonate-admins` 权限的目标用户。
 
 `workspace.permissions` 默认为标准工作区权限目录。`workspace.roles` 默认包含
 `owner`、`admin` 与 `member`。`owner` 拥有完整默认权限目录；`admin` 除
-`workspace:delete` 外拥有其他标准权限；`member` 不拥有管理权限。显式配置权限数组
+`Workspace:delete` 外拥有其他标准权限；`member` 不拥有管理权限。显式配置权限数组
 或角色映射时，会分别替换对应默认值。`workspace.defaultRole` 默认为 `member`，用于
 新增成员和邀请；`workspace.creatorRole` 默认为 `owner`，标识受保护的工作区创建者
 生命周期。

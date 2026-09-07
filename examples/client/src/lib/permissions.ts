@@ -1,32 +1,32 @@
 const t = (key: string) => key;
 
 export const workspacePermissionValues = [
-  "workspace:update",
-  "workspace:delete",
-  "workspaceMember:create",
-  "workspaceMember:update",
-  "workspaceMember:delete",
-  "workspaceInvitation:create",
-  "workspaceInvitation:cancel",
+  "Workspace:update",
+  "Workspace:delete",
+  "WorkspaceMember:create",
+  "WorkspaceMember:update",
+  "WorkspaceMember:delete",
+  "WorkspaceInvitation:create",
+  "WorkspaceInvitation:cancel",
 ] as const;
 
 export type WorkspacePermission = (typeof workspacePermissionValues)[number];
 
 export const userPermissionValues = [
-  "user:create",
-  "user:list",
-  "user:set-role",
-  "user:ban",
-  "user:impersonate",
-  "user:impersonate-admins",
-  "user:delete",
-  "user:set-password",
-  "user:set-email",
-  "user:get",
-  "user:update",
-  "session:list",
-  "session:revoke",
-  "session:delete",
+  "User:create",
+  "User:list",
+  "User:set-role",
+  "User:ban",
+  "User:impersonate",
+  "User:impersonate-admins",
+  "User:delete",
+  "User:set-password",
+  "User:set-email",
+  "User:get",
+  "User:update",
+  "Session:list",
+  "Session:revoke",
+  "Session:delete",
 ] as const;
 
 export type UserPermission = (typeof userPermissionValues)[number];
@@ -71,32 +71,32 @@ function option<Permission extends string>(
 }
 
 export const workspacePermissionOptions = [
-  option("workspace:update", "workspace_update"),
-  option("workspace:delete", "workspace_delete"),
-  option("workspaceMember:create", "workspace_member_create"),
-  option("workspaceMember:update", "workspace_member_update"),
-  option("workspaceMember:delete", "workspace_member_delete"),
-  option("workspaceInvitation:create", "workspace_invitation_create"),
-  option("workspaceInvitation:cancel", "workspace_invitation_cancel"),
+  option("Workspace:update", "workspace_update"),
+  option("Workspace:delete", "workspace_delete"),
+  option("WorkspaceMember:create", "workspace_member_create"),
+  option("WorkspaceMember:update", "workspace_member_update"),
+  option("WorkspaceMember:delete", "workspace_member_delete"),
+  option("WorkspaceInvitation:create", "workspace_invitation_create"),
+  option("WorkspaceInvitation:cancel", "workspace_invitation_cancel"),
 ] as const satisfies ReadonlyArray<PermissionOption<WorkspacePermission>>;
 
 export const workspaceApiKeyPermissionOptions = workspacePermissionOptions;
 
 export const userPermissionOptions = [
-  option("user:create", "user_create"),
-  option("user:list", "user_list"),
-  option("user:set-role", "user_set_role"),
-  option("user:ban", "user_ban"),
-  option("user:impersonate", "user_impersonate"),
-  option("user:impersonate-admins", "user_impersonate_admins"),
-  option("user:delete", "user_delete"),
-  option("user:set-password", "user_set_password"),
-  option("user:set-email", "user_set_email"),
-  option("user:get", "user_get"),
-  option("user:update", "user_update"),
-  option("session:list", "session_list"),
-  option("session:revoke", "session_revoke"),
-  option("session:delete", "session_delete"),
+  option("User:create", "user_create"),
+  option("User:list", "user_list"),
+  option("User:set-role", "user_set_role"),
+  option("User:ban", "user_ban"),
+  option("User:impersonate", "user_impersonate"),
+  option("User:impersonate-admins", "user_impersonate_admins"),
+  option("User:delete", "user_delete"),
+  option("User:set-password", "user_set_password"),
+  option("User:set-email", "user_set_email"),
+  option("User:get", "user_get"),
+  option("User:update", "user_update"),
+  option("Session:list", "session_list"),
+  option("Session:revoke", "session_revoke"),
+  option("Session:delete", "session_delete"),
 ] as const satisfies ReadonlyArray<PermissionOption<UserPermission>>;
 
 export const authPermissionOptions = [

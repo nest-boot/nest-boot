@@ -20,7 +20,7 @@ describe('permission ability builders', () => {
   it('builds user permissions independently of workspace membership', () => {
     const ability = buildUserPermissionAbility(
       new AbilityBuilder(UserAbility),
-      ['user:delete'],
+      ['User:delete'],
     );
 
     expect(ability.can('read', User)).toBe(true);
@@ -45,11 +45,11 @@ describe('permission ability builders', () => {
     const ability = buildWorkspacePermissionAbility(
       new AbilityBuilder(WorkspaceAbility),
       [
-        'workspace:update',
-        'workspace:delete',
-        'apiKey:create',
-        'apiKey:update',
-        'apiKey:delete',
+        'Workspace:update',
+        'Workspace:delete',
+        'ApiKey:create',
+        'ApiKey:update',
+        'ApiKey:delete',
       ],
     );
 
@@ -64,7 +64,7 @@ describe('permission ability builders', () => {
   it('only grants the supplied resolved permissions', () => {
     const ability = buildWorkspacePermissionAbility(
       new AbilityBuilder(WorkspaceAbility),
-      ['workspace:update', 'workspaceMember:update'],
+      ['Workspace:update', 'WorkspaceMember:update'],
     );
 
     expect(ability.can('create', ApiKey)).toBe(false);
@@ -76,7 +76,7 @@ describe('permission ability builders', () => {
   it('supports application-defined action strings', () => {
     const ability = buildWorkspacePermissionAbility(
       new AbilityBuilder(WorkspaceAbility),
-      ['workspace:publish'],
+      ['Workspace:publish'],
     );
 
     expect(ability.can('publish', Workspace)).toBe(true);

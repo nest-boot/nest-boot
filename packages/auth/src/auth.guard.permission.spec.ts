@@ -1,3 +1,4 @@
+import { subject as caslSubject } from "@casl/ability";
 import { RequestContext } from "@nest-boot/request-context";
 import { ExecutionContext, ForbiddenException } from "@nestjs/common";
 import { ModuleRef, Reflector } from "@nestjs/core";
@@ -1019,9 +1020,7 @@ describe("AuthGuard permissions", () => {
   });
 
   it("restricts API-key requests to the key permissions", async () => {
-    const { guard, reflector } = await createGuard({
-      can: vi.fn(() => true),
-    } as unknown as TestAbility);
+    const { guard, reflector } = await createPermissionAwareGuard();
 
     setCanMetadata(reflector, {
       scope: "user",
@@ -1032,10 +1031,10 @@ describe("AuthGuard permissions", () => {
     await RequestContext.run(createAuthRequestContext("http"), async () => {
       RequestContext.set(BaseApiKey, {
         owner: new UserOwner(),
-        permissions: ["user:get"],
+        permissions: ["User:get"],
       });
       RequestContext.set(BaseUser, {
-        permissions: ["user:get"],
+        permissions: ["User:get"],
       });
 
       await expect(guard.canActivate(createContext())).resolves.toBe(true);
@@ -1050,9 +1049,7 @@ describe("AuthGuard permissions", () => {
   });
 
   it("rejects missing API-key permissions", async () => {
-    const { guard, reflector } = await createGuard({
-      can: vi.fn(() => true),
-    } as unknown as TestAbility);
+    const { guard, reflector } = await createPermissionAwareGuard();
 
     setCanMetadata(reflector, {
       scope: "user",
@@ -1066,7 +1063,7 @@ describe("AuthGuard permissions", () => {
         permissions: null,
       });
       RequestContext.set(BaseUser, {
-        permissions: ["user:delete"],
+        permissions: ["User:delete"],
       });
       await expect(guard.canActivate(createContext())).resolves.toBe(false);
 
@@ -1079,7 +1076,8 @@ describe("AuthGuard permissions", () => {
   });
 
   it("authorizes workspace keys directly from key permissions", async () => {
-    const { guard, reflector, buildAbility } = await createGuard();
+    const { guard, reflector, buildWorkspaceAbility } =
+      await createPermissionAwareGuard();
     setCanMetadata(reflector, {
       action: "update",
       scope: "workspace",
@@ -1089,7 +1087,7 @@ describe("AuthGuard permissions", () => {
     await RequestContext.run(createWorkspaceRequestContext(), async () => {
       RequestContext.set(BaseApiKey, {
         owner: new WorkspaceOwner(),
-        permissions: ["workspace:update"],
+        permissions: ["Workspace:update"],
       });
 
       await expect(guard.canActivate(createContext())).resolves.toBe(true);
@@ -1101,14 +1099,35 @@ describe("AuthGuard permissions", () => {
       await expect(guard.canActivate(createContext())).resolves.toBe(false);
     });
 
-    expect(buildAbility).not.toHaveBeenCalled();
+    expect(buildWorkspaceAbility).toHaveBeenCalledWith(
+      expect.anything(),
+      ["Workspace:update"],
+      { id: "workspace-1" },
+    );
+  });
+
+  it("uses the forced CASL subject type for API-key permissions", async () => {
+    const { guard, reflector } = await createPermissionAwareGuard();
+    const post = caslSubject("Post", { id: "post-1" });
+    setCanMetadata(reflector, {
+      action: "read",
+      scope: "workspace",
+      subject: () => post,
+    });
+
+    await RequestContext.run(createWorkspaceRequestContext(), async () => {
+      RequestContext.set(BaseApiKey, {
+        owner: new WorkspaceOwner(),
+        permissions: ["Post:read"],
+      });
+
+      await expect(guard.canActivate(createContext())).resolves.toBe(true);
+    });
   });
 
   it("intersects user-key permissions with workspace-member permissions", async () => {
-    const canMock = vi.fn(() => true);
-    const { guard, reflector } = await createGuard({
-      can: canMock,
-    } as unknown as TestAbility);
+    const { guard, reflector, buildWorkspaceAbility } =
+      await createPermissionAwareGuard();
     setCanMetadata(reflector, {
       action: "update",
       scope: "workspace",
@@ -1118,38 +1137,48 @@ describe("AuthGuard permissions", () => {
     await RequestContext.run(createUserWorkspaceRequestContext(), async () => {
       RequestContext.set(BaseApiKey, {
         owner: new UserOwner(),
-        permissions: ["workspace:update"],
+        permissions: ["Workspace:update"],
       });
       await expect(guard.canActivate(createContext())).resolves.toBe(false);
     });
 
     await RequestContext.run(createAuthRequestContext("http"), async () => {
+      RequestContext.set(BaseWorkspaceMember, {
+        permissions: ["Workspace:update"],
+        roles: ["member"],
+      });
       RequestContext.set(BaseApiKey, {
         owner: new UserOwner(),
-        permissions: ["workspace:update"],
+        permissions: ["Workspace:update"],
       });
       await expect(guard.canActivate(createContext())).resolves.toBe(true);
     });
 
     await RequestContext.run(createAuthRequestContext("http"), async () => {
+      RequestContext.set(BaseWorkspaceMember, {
+        permissions: ["Workspace:update"],
+        roles: ["member"],
+      });
       RequestContext.set(BaseApiKey, {
         owner: new UserOwner(),
-        permissions: ["workspace:delete"],
+        permissions: ["Workspace:delete"],
       });
       await expect(guard.canActivate(createContext())).resolves.toBe(false);
     });
 
-    expect(canMock).toHaveBeenCalledWith("update", Workspace);
+    expect(buildWorkspaceAbility).toHaveBeenCalledWith(
+      expect.anything(),
+      ["Workspace:update"],
+      { id: "workspace-1" },
+    );
+    expect(buildWorkspaceAbility).toHaveBeenCalledWith(expect.anything(), [], {
+      id: "workspace-1",
+    });
   });
 
   it("intersects user-owned API-key permissions with the user ability", async () => {
-    const { guard, reflector } = await createGuard({
-      can: vi.fn(
-        () =>
-          RequestContext.get(BaseUser)?.permissions.includes("user:get") ??
-          false,
-      ),
-    } as unknown as TestAbility);
+    const { guard, reflector, buildUserAbility } =
+      await createPermissionAwareGuard();
     setCanMetadata(reflector, {
       action: "get",
       scope: "user",
@@ -1159,18 +1188,37 @@ describe("AuthGuard permissions", () => {
     await RequestContext.run(createAuthRequestContext("http"), async () => {
       RequestContext.set(BaseApiKey, {
         owner: new UserOwner(),
-        permissions: ["user:get"],
+        permissions: ["User:get"],
       });
       RequestContext.set(BaseUser, { permissions: [] });
       await expect(guard.canActivate(createContext())).resolves.toBe(false);
+    });
 
+    await RequestContext.run(createAuthRequestContext("http"), async () => {
+      RequestContext.set(BaseApiKey, {
+        owner: new UserOwner(),
+        permissions: ["User:get"],
+      });
       RequestContext.set(BaseUser, {
-        permissions: ["user:get"],
+        permissions: ["User:get"],
       });
       await expect(guard.canActivate(createContext())).resolves.toBe(true);
     });
+
+    expect(buildUserAbility).toHaveBeenCalledWith(expect.anything(), [], {
+      permissions: [],
+    });
+    expect(buildUserAbility).toHaveBeenCalledWith(
+      expect.anything(),
+      ["User:get"],
+      { permissions: ["User:get"] },
+    );
   });
 });
+
+async function createPermissionAwareGuard() {
+  return await createGuard(null, {}, {}, true);
+}
 
 async function createGuard(
   ability: TestAbility | null = null,
@@ -1179,6 +1227,7 @@ async function createGuard(
     user?: AuthModuleRoles;
     workspace?: AuthModuleRoles;
   } = {},
+  buildFromPermissions = false,
 ) {
   const reflector = {
     getAllAndMerge: vi.fn(),
@@ -1188,13 +1237,33 @@ async function createGuard(
     getAllAndOverride: Mock;
   };
   const buildUserAbility: MockedFunction<BuildUserAbilityCallback> = vi.fn(
-    () => {
+    (builder, permissions) => {
+      if (buildFromPermissions) {
+        for (const permission of permissions) {
+          const [resource, action] = permission.split(":");
+          if (resource && action) {
+            builder.can(action, resolveTestPermissionSubject(resource));
+          }
+        }
+        return builder.build();
+      }
+
       if (!ability) throw new Error("Test user ability is not configured");
       return ability;
     },
   );
   const buildWorkspaceAbility: MockedFunction<BuildWorkspaceAbilityCallback> =
-    vi.fn(() => {
+    vi.fn((builder, permissions) => {
+      if (buildFromPermissions) {
+        for (const permission of permissions) {
+          const [resource, action] = permission.split(":");
+          if (resource && action) {
+            builder.can(action, resolveTestPermissionSubject(resource));
+          }
+        }
+        return builder.build();
+      }
+
       if (!ability) {
         throw new Error("Test workspace ability is not configured");
       }
@@ -1218,7 +1287,9 @@ async function createGuard(
         provide: MODULE_OPTIONS_TOKEN,
         useValue: {
           user: {
-            ...(ability ? { buildAbility: buildUserAbility } : {}),
+            ...(ability || buildFromPermissions
+              ? { buildAbility: buildUserAbility }
+              : {}),
             roles: roles.user,
           },
           entities: {
@@ -1226,7 +1297,9 @@ async function createGuard(
             workspace: WorkspaceOwner,
           },
           workspace: {
-            ...(ability ? { buildAbility: buildWorkspaceAbility } : {}),
+            ...(ability || buildFromPermissions
+              ? { buildAbility: buildWorkspaceAbility }
+              : {}),
             roles: roles.workspace,
           },
         },
@@ -1248,6 +1321,19 @@ async function createGuard(
     req,
     res,
   };
+}
+
+function resolveTestPermissionSubject(resource: string) {
+  switch (resource) {
+    case "Subject":
+      return Subject;
+    case "User":
+      return User;
+    case "Workspace":
+      return Workspace;
+    default:
+      return resource;
+  }
 }
 
 function createContext(

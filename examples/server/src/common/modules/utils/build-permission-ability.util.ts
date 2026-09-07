@@ -23,8 +23,8 @@ export function buildUserPermissionAbility(
   can('manage', ApiKey);
 
   const subjects = {
-    session: Session,
-    user: User,
+    Session,
+    User,
   } as const;
 
   for (const permission of new Set(permissions)) {
@@ -49,10 +49,10 @@ export function buildWorkspacePermissionAbility(
   can('read', WorkspaceMember);
 
   const subjects = {
-    apiKey: ApiKey,
-    workspace: Workspace,
-    workspaceInvitation: WorkspaceInvitation,
-    workspaceMember: WorkspaceMember,
+    ApiKey,
+    Workspace,
+    WorkspaceInvitation,
+    WorkspaceMember,
   } as const;
 
   for (const permission of new Set(permissions)) {

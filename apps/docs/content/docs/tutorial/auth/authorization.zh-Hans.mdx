@@ -21,6 +21,8 @@ export class CommonModule {}
 ```
 
 不需要认证的路由使用 `@Public()`。如果公开路由同时声明权限装饰器，权限检查仍会执行。
+未认证访问受保护路由会返回 `401 Unauthorized`；已认证但权限检查失败会返回
+`403 Forbidden`。
 
 ```typescript
 @Public()
@@ -41,19 +43,19 @@ health(): string {
 import { AuthModule } from "@nest-boot/auth";
 
 const userRoles = {
-  admin: ["project:create"],
+  admin: ["Post:create"],
   user: [],
 } as const;
-const userPermissions = ["project:create", "project:archive"] as const;
+const userPermissions = ["Post:create", "Post:archive"] as const;
 
 const workspaceRoles = {
-  owner: ["project:create", "project:delete"],
-  member: ["project:create"],
+  owner: ["Post:create", "Post:delete"],
+  member: ["Post:create"],
 } as const;
 const workspacePermissions = [
-  "project:create",
-  "project:delete",
-  "project:archive",
+  "Post:create",
+  "Post:delete",
+  "Post:archive",
 ] as const;
 
 AuthModule.forRoot({
@@ -64,7 +66,7 @@ AuthModule.forRoot({
     buildAbility: ({ can, build }, permissions, workspace) => {
       for (const permission of permissions) {
         const [subject, action] = permission.split(":");
-        if (subject === "post" && action) {
+        if (subject === "Post" && action) {
           can(action, Post, { workspaceId: workspace.id });
         }
       }
@@ -179,8 +181,14 @@ updatePost(@Args("id") id: string) {
 ```
 
 Workspace API Key 只能通过工作区权限检查。User API Key 可以通过用户权限检查，并在
-具有有效成员身份时通过工作区权限检查。API Key 权限会与相应 Ability 取交集，`read`
-操作也不例外。
+具有有效成员身份时通过工作区权限检查。调用 `buildAbility` 前，User Key 权限会与用户
+有效权限或当前成员有效权限取交集；Workspace Key 权限则直接传给工作区构建器。守卫只
+检查最终得到的 `UserAbility` 或 `WorkspaceAbility`。
+
+应用的构建器必须把需要校验的每项传入权限转换为 CASL rule。权限资源名会保留 CASL
+subject type 的原始大小写，并且区分大小写：`Post` 类与
+`subject("Post", object)` 都会解析为 `Post`，对应权限是 `Post:read`。构建器无条件添加
+的规则也会对 API Key 生效。
 
 ## Service 授权边界
 
@@ -190,10 +198,10 @@ Workspace API Key 只能通过工作区权限检查。User API Key 可以通过�
 
 Service 权限划分与 Better Auth 的 admin、organization 访问控制保持一致：
 
-- 用户管理使用 `user:*` 与 `session:*` 权限；
-- 工作区变更使用 `workspace:*`、`workspaceMember:*` 与
-  `workspaceInvitation:*` 权限；
-- 工作区 API Key 管理使用 `apiKey:create/read/update/delete`；
+- 用户管理使用 `User:*` 与 `Session:*` 权限；
+- 工作区变更使用 `Workspace:*`、`WorkspaceMember:*` 与
+  `WorkspaceInvitation:*` 权限；
+- 工作区 API Key 管理使用 `ApiKey:create/read/update/delete`；
 - 当前用户认证、会话管理、接受邀请和退出工作区使用已认证身份与资源归属校验。
 
 应用 Service 可以注入 `AuthorizationService`，使用 `assertUserCan()` 与

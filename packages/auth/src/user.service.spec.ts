@@ -53,7 +53,7 @@ describe("UserService", () => {
       email: " Alice@Example.com ",
       name: "Alice",
       password: "password",
-      permissions: ["user:list"],
+      permissions: ["User:list"],
     });
 
     expect(hash).toHaveBeenCalledWith("password");
@@ -65,7 +65,7 @@ describe("UserService", () => {
         emailVerified: false,
         locale: "en",
         name: "Alice",
-        permissions: ["user:list"],
+        permissions: ["User:list"],
       }),
     );
     expect(em.create).toHaveBeenNthCalledWith(
@@ -117,7 +117,7 @@ describe("UserService", () => {
     await expect(service.updateUser(user, { name: "Renamed" })).resolves.toBe(
       user,
     );
-    await expect(service.setUserPermissions(user, ["user:get"])).resolves.toBe(
+    await expect(service.setUserPermissions(user, ["User:get"])).resolves.toBe(
       user,
     );
 
@@ -127,7 +127,7 @@ describe("UserService", () => {
       { filters: false },
     );
     expect(em.assign).toHaveBeenCalledWith(user, { name: "Renamed" });
-    expect(user.permissions).toEqual(["user:get"]);
+    expect(user.permissions).toEqual(["User:get"]);
     expect(authorizationService.assertUserCan).toHaveBeenCalledWith(
       "get",
       TestUser,
@@ -162,19 +162,19 @@ describe("UserService", () => {
         email: "invalid@example.com",
         name: "Invalid",
         password: "password",
-        permissions: ["workspace:update"],
+        permissions: ["Workspace:update"],
       }),
-    ).rejects.toThrow("User contains unknown permissions: workspace:update");
+    ).rejects.toThrow("User contains unknown permissions: Workspace:update");
     expect(em.create).not.toHaveBeenCalled();
 
     const user = new TestUser();
     await expect(
-      service.setUserPermissions(user, ["user:get", "user:get"]),
-    ).rejects.toThrow("User contains duplicate permissions: user:get");
-    await expect(service.setUserPermissions(user, ["user:get"])).resolves.toBe(
+      service.setUserPermissions(user, ["User:get", "User:get"]),
+    ).rejects.toThrow("User contains duplicate permissions: User:get");
+    await expect(service.setUserPermissions(user, ["User:get"])).resolves.toBe(
       user,
     );
-    expect(user.permissions).toEqual(["user:get"]);
+    expect(user.permissions).toEqual(["User:get"]);
   });
 
   it("gets a configured user by normalized email", async () => {
@@ -197,31 +197,31 @@ describe("UserService", () => {
 
   it("lists configured roles and assigns only known roles", async () => {
     const { service } = createService(true, {
-      permissions: ["user:create", "user:set-role", "user:list", "user:delete"],
+      permissions: ["User:create", "User:set-role", "User:list", "User:delete"],
       roles: {
-        admin: ["user:create", "user:set-role"],
-        auditor: ["user:list"],
+        admin: ["User:create", "User:set-role"],
+        auditor: ["User:list"],
         user: [],
       },
     });
     const user = Object.assign(new TestUser(), {
-      permissions: ["session:list"],
+      permissions: ["Session:list"],
       roles: ["user"],
     });
 
     expect(service.listRoles()).toEqual([
       {
         name: "admin",
-        permissions: ["user:create", "user:set-role"],
+        permissions: ["User:create", "User:set-role"],
       },
-      { name: "auditor", permissions: ["user:list"] },
+      { name: "auditor", permissions: ["User:list"] },
       { name: "user", permissions: [] },
     ]);
     expect(service.listPermissions()).toEqual([
-      "user:create",
-      "user:set-role",
-      "user:list",
-      "user:delete",
+      "User:create",
+      "User:set-role",
+      "User:list",
+      "User:delete",
     ]);
 
     await expect(service.setRole(user, ["auditor", "user"])).resolves.toBe(
@@ -229,8 +229,8 @@ describe("UserService", () => {
     );
     expect(user.roles).toEqual(["auditor", "user"]);
     expect(service.getUserPermissions(user)).toEqual([
-      "user:list",
-      "session:list",
+      "User:list",
+      "Session:list",
     ]);
     await expect(service.setRole(user, ["unknown"])).rejects.toBeInstanceOf(
       BadRequestException,
@@ -364,11 +364,11 @@ describe("UserService", () => {
     const { service } = createService();
     const target = Object.assign(new TestUser(), { roles: ["admin"] });
     const ordinaryImpersonator = Object.assign(new TestUser(), {
-      permissions: ["user:impersonate"],
+      permissions: ["User:impersonate"],
       roles: ["user"],
     });
     const privilegedImpersonator = Object.assign(new TestUser(), {
-      permissions: ["user:impersonate", "user:impersonate-admins"],
+      permissions: ["User:impersonate", "User:impersonate-admins"],
       roles: ["user"],
     });
 
@@ -463,17 +463,17 @@ describe("UserService", () => {
   it("checks flattened permissions without an admin plugin", () => {
     const { service } = createService();
     const user = Object.assign(new TestUser(), {
-      permissions: ["user:list", "session:revoke"],
+      permissions: ["User:list", "Session:revoke"],
     });
 
     expect(
       service.hasPermission(user, {
-        permissions: { session: ["revoke"], user: ["list"] },
+        permissions: { Session: ["revoke"], User: ["list"] },
       }),
     ).toBe(true);
     expect(
       service.hasPermission(user, {
-        permissions: { user: ["delete"] },
+        permissions: { User: ["delete"] },
       }),
     ).toBe(false);
   });
