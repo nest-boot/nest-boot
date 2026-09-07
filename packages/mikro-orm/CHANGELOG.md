@@ -1,3 +1,17 @@
+## 9.0.0-beta.0 (2026-09-07)
+
+### 🚀 Features
+
+- ⚠️  **mikro-orm:** replace MySQL and SQLite with PGlite ([#326](https://github.com/nest-boot/nest-boot/pull/326))
+
+### ⚠️  Breaking Changes
+
+- **mikro-orm:** replace MySQL and SQLite with PGlite  ([#326](https://github.com/nest-boot/nest-boot/pull/326))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.2 (2026-09-07)
 
 ### 🧱 Updated Dependencies
