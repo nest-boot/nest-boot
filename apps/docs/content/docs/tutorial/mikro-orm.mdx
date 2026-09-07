@@ -12,8 +12,7 @@ pnpm add @nest-boot/mikro-orm @mikro-orm/core @mikro-orm/nestjs @mikro-orm/refle
 
 # Install the driver matching DATABASE_URL
 pnpm add @mikro-orm/postgresql
-# or: pnpm add @mikro-orm/mysql
-# or: pnpm add @mikro-orm/sqlite
+# or: pnpm add @mikro-orm/pglite
 ```
 
 ## Module Registration
@@ -36,11 +35,14 @@ for dependency injection. Other connection options are optional: the module
 auto-loads them with `loadConfigFromEnv()`. It reads `DATABASE_URL` and parses
 the URL into structured MikroORM options instead of passing the URL to a
 database client. PostgreSQL accepts its documented `postgresql:` and
-`postgres:` URI forms, MySQL accepts `mysql:`, and SQLite accepts `file:`.
-Other protocol names and driver-specific compatibility forms are rejected. Use
-an absolute file URL such as `file:///var/lib/app/app.db` for SQLite.
+`postgres:` URI forms. PGlite accepts `file:` for persistent storage and
+`memory:` for an in-memory database. Other protocol names and driver-specific
+compatibility forms are rejected. Use an absolute URL such as
+`file:///var/lib/app/pgdata` for persistent PGlite, or `memory://` for an
+ephemeral database. An absent `DATABASE_URL` remains unconfigured instead of
+silently falling back to ephemeral storage.
 
-PostgreSQL TLS file parameters use `sslrootcert`, `sslcert`, and `sslkey`; the supported `sslmode` values are `disable`, `require`, `verify-ca`, and `verify-full`. MySQL uses `ssl-ca`, `ssl-cert`, and `ssl-key`; the supported `ssl-mode` values are `DISABLED`, `REQUIRED`, `VERIFY_CA`, and `VERIFY_IDENTITY`. Modes that require retrying with a plaintext connection are rejected because a single structured driver configuration cannot preserve that fallback behavior.
+PostgreSQL TLS file parameters use `sslrootcert`, `sslcert`, and `sslkey`; the supported `sslmode` values are `disable`, `require`, `verify-ca`, and `verify-full`. Modes that require retrying with a plaintext connection are rejected because a single structured driver configuration cannot preserve that fallback behavior.
 
 An explicit `clientUrl` or host-style connection target such as `host` or `dbName` takes full precedence and prevents ambient `DATABASE_URL` values from being merged into that connection. Supplemental options such as `driver`, `schema`, `pool`, or `debug` continue to augment automatic environment configuration.
 

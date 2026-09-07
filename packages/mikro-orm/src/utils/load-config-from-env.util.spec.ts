@@ -3,10 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { Configuration, DataloaderType, type Options } from "@mikro-orm/core";
-import { MySqlDriver } from "@mikro-orm/mysql";
+import { PgliteDriver } from "@mikro-orm/pglite";
 import { PostgreSqlDriver } from "@mikro-orm/postgresql";
 import { TsMorphMetadataProvider } from "@mikro-orm/reflection";
-import { SqliteDriver } from "@mikro-orm/sqlite";
 
 import { loadConfigFromEnv } from "./load-config-from-env.util.js";
 
@@ -50,9 +49,9 @@ describe("loadConfigFromEnv", () => {
     process.env = ORIGINAL_ENV;
   });
 
-  it("should load URL-based MySQL config", async () => {
+  it("should load URL-based PostgreSQL config", async () => {
     process.env.DATABASE_URL =
-      "mysql://user%40example.com:p%40ss%2Fword@localhost:3306/app";
+      "postgresql://user%40example.com:p%40ss%2Fword@localhost:5432/app";
 
     const config = await loadConfigFromEnv();
 
@@ -61,7 +60,7 @@ describe("loadConfigFromEnv", () => {
       dataloader: DataloaderType.ALL,
       dbName: "app",
       debug: false,
-      driver: MySqlDriver,
+      driver: PostgreSqlDriver,
       entities: ["dist/**/*.entity.js"],
       entitiesTs: ["src/**/*.entity.ts"],
       host: "localhost",
@@ -77,7 +76,7 @@ describe("loadConfigFromEnv", () => {
         pathTs: "src/database/seeders",
       },
       password: "p@ss/word",
-      port: 3306,
+      port: 5432,
       timezone: "UTC",
       user: "user@example.com",
     });
@@ -87,7 +86,7 @@ describe("loadConfigFromEnv", () => {
     );
   });
 
-  it("should load URL-based PostgreSQL config", async () => {
+  it("should load PostgreSQL query options", async () => {
     process.env.DATABASE_URL =
       "postgresql://user:pass@[2001:db8::1]:5432/app?schema=tenant&sslmode=require&application_name=nest-boot";
 
@@ -120,18 +119,25 @@ describe("loadConfigFromEnv", () => {
     });
   });
 
-  it("should load a file URL as SQLite config", async () => {
+  it("should load a file URL as persistent PGlite config", async () => {
     process.env.DATABASE_URL = "file:///var/lib/nest-boot/app%20data.db";
 
     await expect(loadConfigFromEnv()).resolves.toMatchObject({
       dbName: "/var/lib/nest-boot/app data.db",
-      driver: SqliteDriver,
+      driver: PgliteDriver,
+    });
+  });
+
+  it("should load a memory URL as in-memory PGlite config", async () => {
+    process.env.DATABASE_URL = "memory://";
+
+    await expect(loadConfigFromEnv()).resolves.toMatchObject({
+      dbName: "memory://",
+      driver: PgliteDriver,
     });
   });
 
   it.each([
-    ["mysql", "ssl-mode=DISABLED", { ssl: false }],
-    ["mysql", "ssl-mode=REQUIRED", { ssl: { rejectUnauthorized: false } }],
     ["postgresql", "sslmode=disable", { ssl: false }],
     ["postgresql", "sslmode=require", { ssl: { rejectUnauthorized: false } }],
     ["postgresql", "sslmode=verify-full", { ssl: {} }],
@@ -223,81 +229,7 @@ describe("loadConfigFromEnv", () => {
     },
   );
 
-  it("should load MySQL TLS files into structured SSL options", async () => {
-    await withTlsFiles(async ({ clientCert, clientKey, rootCert }) => {
-      const databaseUrl = new URL("mysql://user:pass@localhost/app");
-      databaseUrl.searchParams.set("ssl-ca", rootCert);
-      databaseUrl.searchParams.set("ssl-cert", clientCert);
-      databaseUrl.searchParams.set("ssl-key", clientKey);
-      process.env.DATABASE_URL = databaseUrl.href;
-
-      const config = await loadConfigFromEnv();
-
-      expect(config.driverOptions).toEqual({
-        connection: {
-          ssl: {
-            ca: "root certificate",
-            cert: "client certificate",
-            key: "client key",
-            rejectUnauthorized: true,
-            verifyIdentity: false,
-          },
-        },
-      });
-    });
-  });
-
   it.each([
-    ["VERIFY_CA", false],
-    ["VERIFY_IDENTITY", true],
-  ])(
-    "should map MySQL ssl-mode=%s with a CA certificate",
-    async (sslMode, verifyIdentity) => {
-      await withTlsFiles(async ({ rootCert }) => {
-        const databaseUrl = new URL("mysql://user:pass@localhost/app");
-        databaseUrl.searchParams.set("ssl-mode", sslMode);
-        databaseUrl.searchParams.set("ssl-ca", rootCert);
-        process.env.DATABASE_URL = databaseUrl.href;
-
-        await expect(loadConfigFromEnv()).resolves.toMatchObject({
-          driverOptions: {
-            connection: {
-              ssl: {
-                ca: "root certificate",
-                rejectUnauthorized: true,
-                verifyIdentity,
-              },
-            },
-          },
-        });
-      });
-    },
-  );
-
-  it("should not read MySQL TLS files when SSL is disabled", async () => {
-    process.env.DATABASE_URL =
-      "mysql://user:pass@localhost/app?ssl-mode=DISABLED&ssl-ca=/missing/ca.pem";
-
-    await expect(loadConfigFromEnv()).resolves.toMatchObject({
-      driverOptions: {
-        connection: {
-          ssl: false,
-        },
-      },
-    });
-  });
-
-  it("should reject unsupported MySQL SSL modes", async () => {
-    process.env.DATABASE_URL =
-      "mysql://user:pass@localhost/app?ssl-mode=VERIFY_HOSTNAME";
-
-    await expect(loadConfigFromEnv()).rejects.toThrow(
-      "Unsupported MySQL ssl-mode: VERIFY_HOSTNAME",
-    );
-  });
-
-  it.each([
-    ["mysql://user:pass@localhost/app?ssl-mode=PREFERRED", "PREFERRED"],
     ["postgresql://user:pass@localhost/app?sslmode=allow", "allow"],
     ["postgresql://user:pass@localhost/app?sslmode=prefer", "prefer"],
   ])(
@@ -306,18 +238,7 @@ describe("loadConfigFromEnv", () => {
       process.env.DATABASE_URL = databaseUrl;
 
       await expect(loadConfigFromEnv()).rejects.toThrow(
-        `Unsupported ${databaseUrl.startsWith("mysql:") ? "MySQL ssl-mode" : "PostgreSQL sslmode"}: ${sslMode}`,
-      );
-    },
-  );
-
-  it.each(["VERIFY_CA", "VERIFY_IDENTITY"])(
-    "should require ssl-ca for MySQL ssl-mode=%s",
-    async (sslMode) => {
-      process.env.DATABASE_URL = `mysql://user:pass@localhost/app?ssl-mode=${sslMode}`;
-
-      await expect(loadConfigFromEnv()).rejects.toThrow(
-        `MySQL ssl-mode=${sslMode} requires ssl-ca`,
+        `Unsupported PostgreSQL sslmode: ${sslMode}`,
       );
     },
   );
@@ -332,14 +253,6 @@ describe("loadConfigFromEnv", () => {
   });
 
   it.each([
-    [
-      "mysql://user:pass@localhost/app?ssl=true",
-      "Unsupported MySQL DATABASE_URL parameter: ssl",
-    ],
-    [
-      "mysql://user:pass@localhost/app?multipleStatements=false",
-      "Unsupported MySQL DATABASE_URL parameter: multipleStatements",
-    ],
     [
       "postgresql://user:pass@localhost/app?ssl=true",
       "Unsupported PostgreSQL DATABASE_URL parameter: ssl",
@@ -362,16 +275,17 @@ describe("loadConfigFromEnv", () => {
     await expect(loadConfigFromEnv()).rejects.toThrow(error);
   });
 
-  it.each(["mysql2://localhost/app", "sqlite:///var/lib/app.db"])(
-    "should reject non-standard database URL %s",
-    async (databaseUrl) => {
-      process.env.DATABASE_URL = databaseUrl;
+  it.each([
+    "mysql://localhost/app",
+    "mysql2://localhost/app",
+    "sqlite:///var/lib/app.db",
+  ])("should reject non-standard database URL %s", async (databaseUrl) => {
+    process.env.DATABASE_URL = databaseUrl;
 
-      await expect(loadConfigFromEnv()).rejects.toThrow(
-        `Unsupported DATABASE_URL protocol: ${new URL(databaseUrl).protocol}`,
-      );
-    },
-  );
+    await expect(loadConfigFromEnv()).rejects.toThrow(
+      `Unsupported DATABASE_URL protocol: ${new URL(databaseUrl).protocol}`,
+    );
+  });
 
   it("should reject unsupported database URL protocols", async () => {
     process.env.DATABASE_URL = "mongodb://localhost/app";

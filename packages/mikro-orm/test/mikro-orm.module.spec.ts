@@ -116,7 +116,7 @@ describe("MikroOrmModule", () => {
   it("should use explicit runtime entities for TypeScript discovery", async () => {
     await expect(
       getRootOptionsFactory()({
-        dbName: ":memory:",
+        dbName: "memory://",
         entities: [TestEntity],
       }),
     ).resolves.toMatchObject({

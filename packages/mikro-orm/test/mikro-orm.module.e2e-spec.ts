@@ -1,8 +1,8 @@
 import { MikroORM } from "@mikro-orm/core";
 import {
-  EntityManager as SqliteEntityManager,
-  SqliteDriver,
-} from "@mikro-orm/sqlite";
+  EntityManager as PgliteEntityManager,
+  PgliteDriver,
+} from "@mikro-orm/pglite";
 import { Test } from "@nestjs/testing";
 
 import { MikroOrmModule } from "../src/index.js";
@@ -13,8 +13,8 @@ describe("MikroOrmModule driver integration", () => {
     const moduleRef = await Test.createTestingModule({
       imports: [
         MikroOrmModule.forRoot({
-          driver: SqliteDriver,
-          dbName: ":memory:",
+          driver: PgliteDriver,
+          dbName: "memory://",
           entities: [TestEntity],
         }),
       ],
@@ -24,7 +24,7 @@ describe("MikroOrmModule driver integration", () => {
 
     const orm = moduleRef.get(MikroORM);
 
-    expect(moduleRef.get(SqliteEntityManager)).toBe(orm.em);
+    expect(moduleRef.get(PgliteEntityManager)).toBe(orm.em);
 
     await moduleRef.close();
   });

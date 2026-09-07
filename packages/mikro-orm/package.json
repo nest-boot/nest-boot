@@ -44,11 +44,10 @@
   "devDependencies": {
     "@mikro-orm/core": "7.1.14",
     "@mikro-orm/decorators": "7.1.14",
-    "@mikro-orm/mysql": "7.1.14",
     "@mikro-orm/nestjs": "^7.0.2",
+    "@mikro-orm/pglite": "7.1.14",
     "@mikro-orm/postgresql": "7.1.14",
     "@mikro-orm/reflection": "7.1.14",
-    "@mikro-orm/sqlite": "7.1.14",
     "@nest-boot/eslint-config": "workspace:^",
     "@nest-boot/eslint-plugin": "workspace:^",
     "@nest-boot/request-context": "workspace:^",
