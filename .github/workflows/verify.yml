@@ -80,6 +80,9 @@ jobs:
       - name: Build packages
         run: pnpm build:packages --skip-nx-cache
 
+      - name: Build examples
+        run: pnpm build:examples --skip-nx-cache
+
       - name: Format
         run: pnpm format:check
 
