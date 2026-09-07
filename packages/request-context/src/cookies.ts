@@ -204,13 +204,24 @@ class RequestCookieStore implements CookieStore {
 function parseRequestCookies(header: string | undefined): RequestCookie[] {
   if (!header) return [];
 
-  return header
-    .split(";")
-    .flatMap((pair) =>
-      Object.entries(parseCookie(pair)).flatMap(([name, value]) =>
-        value === undefined ? [] : [{ name, value }],
-      ),
-    );
+  return header.split(";").flatMap((pair) =>
+    Object.entries(parseCookie(pair)).flatMap(([name, value]) => {
+      if (value === undefined) return [];
+
+      const cookie = { name, value };
+
+      return isSerializableCookie(cookie) ? [cookie] : [];
+    }),
+  );
+}
+
+function isSerializableCookie(cookie: RequestCookie): boolean {
+  try {
+    stringifyCookie({ [cookie.name]: cookie.value });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function normalizeResponseCookie(cookie: ResponseCookie) {

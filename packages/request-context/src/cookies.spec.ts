@@ -67,6 +67,27 @@ describe("cookies", () => {
     );
   });
 
+  it("ignores malformed incoming cookies that cannot be serialized", async () => {
+    await runWithHttpContext(
+      {
+        headers: {
+          cookie: "valid=one; bad name=value; another=two",
+        },
+      },
+      undefined,
+      () => {
+        const store = cookies();
+
+        expect(store.get("bad name")).toBeUndefined();
+        expect(store.getAll()).toEqual([
+          { name: "valid", value: "one" },
+          { name: "another", value: "two" },
+        ]);
+        expect(store.toString()).toBe("valid=one; another=two");
+      },
+    );
+  });
+
   it("takes a snapshot of incoming cookies", async () => {
     const request = { headers: { cookie: "session=initial" } };
 
