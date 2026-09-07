@@ -35,4 +35,12 @@ describe("serializeAbilityRules", () => {
       { action: "manage", subject: "all" },
     ]);
   });
+
+  it("rejects subjects that cannot be serialized safely", () => {
+    expect(() =>
+      serializeAbilityRules({
+        rules: [{ action: "read", subject: {} }],
+      } as never),
+    ).toThrow("CASL rule subject must be a string or named class");
+  });
 });

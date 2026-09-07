@@ -30,6 +30,21 @@ describe("AccessControlService", () => {
   } as AuthModuleOptions;
   const service = new AccessControlService(options);
 
+  it("fails closed when no request identity is available", async () => {
+    expect(service.userCan("read", Subject)).toBe(false);
+    expect(service.workspaceCan("read", Subject)).toBe(false);
+    expect(() => {
+      service.assertWorkspaceCan("read", Subject);
+    }).toThrow(ForbiddenException);
+
+    await RequestContext.run(new RequestContext({ type: "test" }), () => {
+      expect(service.workspaceCan("read", Subject)).toBe(false);
+      expect(() => {
+        service.assertCanGrantWorkspacePermissions(["Subject:read"]);
+      }).toThrow("Workspace permissions exceed issuer permissions");
+    });
+  });
+
   it("checks the cached user ability", async () => {
     const user = Object.assign(new TestUser(), { id: "user-1" });
 

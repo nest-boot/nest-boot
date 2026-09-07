@@ -1,5 +1,9 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-import { EntityManager, LockMode } from "@mikro-orm/core";
+import {
+  EntityManager,
+  LockMode,
+  UniqueConstraintViolationException,
+} from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import {
   RowLevelSecurity,
@@ -315,6 +319,36 @@ describe("WorkspaceService", () => {
     );
   });
 
+  it("finds workspaces and memberships through the public lookup APIs", async () => {
+    const { em, service } = createService();
+    const workspace = new TestWorkspace();
+    const user = new TestUser();
+    const member = Object.assign(new TestWorkspaceMember(), { workspace });
+    em.findOne.mockResolvedValueOnce(workspace).mockResolvedValueOnce(member);
+    em.find.mockResolvedValue([member]);
+
+    await expect(service.findOne({ id: workspace.id })).resolves.toBe(
+      workspace,
+    );
+    await expect(service.getMember(workspace, user)).resolves.toBe(member);
+    await expect(service.listMembers(workspace)).resolves.toEqual([member]);
+
+    expect(em.findOne).toHaveBeenNthCalledWith(1, TestWorkspace, {
+      id: workspace.id,
+    });
+    expect(em.findOne).toHaveBeenNthCalledWith(
+      2,
+      TestWorkspaceMember,
+      { status: "ACTIVE", user, workspace },
+      { filters: false },
+    );
+    expect(em.find).toHaveBeenCalledWith(
+      TestWorkspaceMember,
+      { status: { $in: ["ACTIVE", "DISABLED"] }, workspace },
+      { filters: false, orderBy: { createdAt: "asc" } },
+    );
+  });
+
   it("returns full workspace details split into members and invitations", async () => {
     const { em, service } = createService();
     const workspace = new TestWorkspace();
@@ -366,6 +400,65 @@ describe("WorkspaceService", () => {
     await expect(
       service.updateMember(member, { roles: ["member"] } as never),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("rejects a member email already used in the workspace", async () => {
+    const { em, service } = createService();
+    const workspace = new TestWorkspace();
+    const member = Object.assign(new TestWorkspaceMember(), { workspace });
+    const duplicate = Object.assign(new TestWorkspaceMember(), {
+      id: "member-2",
+      workspace,
+    });
+    em.findOne.mockResolvedValue(duplicate);
+
+    await expect(
+      service.updateMember(member, { email: " Duplicate@Example.com " }),
+    ).rejects.toThrow("A workspace member already uses this email address");
+    expect(em.findOne).toHaveBeenCalledWith(
+      TestWorkspaceMember,
+      {
+        email: "duplicate@example.com",
+        id: { $ne: member.id },
+        workspace,
+      },
+      { filters: false },
+    );
+    expect(em.assign).not.toHaveBeenCalled();
+  });
+
+  it("rejects duplicate members, missing users, and owner mutations", async () => {
+    const { em, service } = createService();
+    const workspace = new TestWorkspace();
+    const user = Object.assign(new TestUser(), {
+      email: "alice@example.com",
+    });
+    const member = Object.assign(new TestWorkspaceMember(), {
+      user,
+      workspace,
+    });
+    em.findOne.mockResolvedValueOnce(member);
+
+    await expect(service.addMember(workspace, user)).rejects.toThrow(
+      "User is already a member",
+    );
+
+    em.findOne.mockReset();
+    em.findOne.mockResolvedValueOnce(null);
+    await expect(
+      service.addMemberByEmail(workspace, "missing@example.com"),
+    ).rejects.toThrow("User not found");
+
+    const owner = Object.assign(new TestWorkspaceMember(), {
+      roles: ["owner"],
+      workspace,
+    });
+    await expect(service.updateMemberRole(owner, ["admin"])).rejects.toThrow(
+      "Workspace owner roles can only be changed by transferring ownership",
+    );
+    await expect(service.leaveWorkspace(owner)).rejects.toThrow(
+      "Workspace owners cannot leave",
+    );
   });
 
   it("creates service accounts through the auth workspace service", async () => {
@@ -619,6 +712,68 @@ describe("WorkspaceService", () => {
     expect(em.findOne).not.toHaveBeenCalled();
   });
 
+  it("rejects stale ownership state after locking transfer participants", async () => {
+    const { em, service } = createService();
+    const workspace = new TestWorkspace();
+    const currentOwner = Object.assign(new TestWorkspaceMember(), {
+      roles: ["owner"],
+      user: new TestUser(),
+      workspace,
+    });
+    const nextOwner = Object.assign(new TestWorkspaceMember(), {
+      id: "member-2",
+      roles: ["admin"],
+      user: new TestUser(),
+      workspace,
+    });
+
+    em.findOne.mockResolvedValueOnce(null);
+    await expect(
+      service.transferOwnership(workspace, currentOwner, nextOwner),
+    ).rejects.toThrow("Workspace ownership has already changed");
+
+    em.findOne.mockReset();
+    em.findOne
+      .mockResolvedValueOnce(
+        Object.assign(new TestWorkspaceMember(), {
+          roles: ["member"],
+          workspace,
+        }),
+      )
+      .mockResolvedValueOnce(nextOwner);
+    await expect(
+      service.transferOwnership(workspace, currentOwner, nextOwner),
+    ).rejects.toThrow("Workspace ownership has already changed");
+
+    em.findOne.mockReset();
+    em.findOne.mockResolvedValueOnce(currentOwner).mockResolvedValueOnce(null);
+    await expect(
+      service.transferOwnership(workspace, currentOwner, nextOwner),
+    ).rejects.toThrow("The next owner must be another active user member");
+  });
+
+  it("rejects a transfer attempted by a non-owner", async () => {
+    const { em, service } = createService();
+    const workspace = new TestWorkspace();
+    const member = Object.assign(new TestWorkspaceMember(), {
+      roles: ["member"],
+      user: new TestUser(),
+      workspace,
+    });
+    const nextOwner = Object.assign(new TestWorkspaceMember(), {
+      id: "member-2",
+      user: new TestUser(),
+      workspace,
+    });
+
+    await expect(
+      service.transferOwnership(workspace, member, nextOwner),
+    ).rejects.toThrow(
+      "Only the current workspace owner can transfer ownership",
+    );
+    expect(em.findOne).not.toHaveBeenCalled();
+  });
+
   it("rechecks owner status under a row lock before removing a member", async () => {
     const { em, service } = createService();
     const workspace = new TestWorkspace();
@@ -645,6 +800,19 @@ describe("WorkspaceService", () => {
       { filters: false, lockMode: LockMode.PESSIMISTIC_WRITE },
     );
     expect(em.remove).not.toHaveBeenCalled();
+  });
+
+  it("removes a non-owner only after reloading it under a row lock", async () => {
+    const { em, service } = createService();
+    const workspace = new TestWorkspace();
+    const member = Object.assign(new TestWorkspaceMember(), {
+      roles: ["member"],
+      workspace,
+    });
+    em.findOne.mockResolvedValue(member);
+
+    await expect(service.removeMember(member)).resolves.toBe(member);
+    expect(em.remove).toHaveBeenCalledWith(member);
   });
 
   it("creates and accepts an email-bound invitation", async () => {
@@ -710,6 +878,52 @@ describe("WorkspaceService", () => {
       },
       { filters: false },
     );
+  });
+
+  it("rejects duplicate active invitations and unauthenticated email senders", async () => {
+    const workspace = new TestWorkspace();
+    const inviter = Object.assign(new TestUser(), {
+      email: "owner@example.com",
+    });
+    const activeInvitation = Object.assign(new TestWorkspaceInvitation(), {
+      email: "alice@example.com",
+      expiresAt: new Date(Date.now() + 60_000),
+      status: "pending" as const,
+      workspace,
+    });
+    const duplicate = createService();
+    duplicate.em.findOne
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(activeInvitation);
+
+    await expect(
+      duplicate.service.createInvitation(workspace, inviter, {
+        email: activeInvitation.email,
+      }),
+    ).rejects.toThrow("User is already invited to this workspace");
+
+    const missingSender = createService({
+      sendInvitationEmail: vi.fn().mockResolvedValue(undefined),
+    });
+    missingSender.em.findOne.mockResolvedValue(null);
+    await expect(
+      missingSender.service.createInvitation(workspace, inviter, {
+        email: "bob@example.com",
+      }),
+    ).rejects.toThrow("Invitation sender is not an active workspace member");
+  });
+
+  it("maps invitation uniqueness races to a conflict response", async () => {
+    const { em, service } = createService();
+    em.transactional.mockRejectedValue(
+      new UniqueConstraintViolationException(new Error("duplicate")),
+    );
+
+    await expect(
+      service.createInvitation(new TestWorkspace(), new TestUser(), {
+        email: "alice@example.com",
+      }),
+    ).rejects.toThrow("User is already invited to this workspace");
   });
 
   it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY, 1.5])(
@@ -1034,6 +1248,76 @@ describe("WorkspaceService", () => {
       "Workspace has been deleted",
     );
     expect(em.persist).not.toHaveBeenCalled();
+  });
+
+  it("rejects missing, mismatched, and already-member invitation acceptance", async () => {
+    const { em, service } = createService();
+    const user = Object.assign(new TestUser(), {
+      email: "alice@example.com",
+    });
+
+    em.findOne.mockResolvedValueOnce(null);
+    await expect(service.acceptInvitation(user, "missing")).resolves.toBeNull();
+
+    const invitation = Object.assign(new TestWorkspaceInvitation(), {
+      email: "other@example.com",
+      expiresAt: new Date(Date.now() + 60_000),
+      status: "pending" as const,
+      workspace: new TestWorkspace(),
+    });
+    em.findOne.mockResolvedValueOnce(invitation);
+    await expect(service.acceptInvitation(user, invitation.id)).rejects.toThrow(
+      "Workspace invitation belongs to another email address",
+    );
+
+    invitation.email = user.email;
+    em.findOne
+      .mockResolvedValueOnce(invitation)
+      .mockResolvedValueOnce(new TestWorkspaceMember());
+    await expect(service.acceptInvitation(user, invitation.id)).rejects.toThrow(
+      "User is already a member",
+    );
+  });
+
+  it("rejects invalid invitation state transitions and missing members", async () => {
+    const { em, service } = createService();
+    const workspace = new TestWorkspace();
+    const user = Object.assign(new TestUser(), {
+      email: "alice@example.com",
+    });
+    const completed = Object.assign(new TestWorkspaceInvitation(), {
+      email: user.email,
+      status: "accepted" as const,
+      workspace,
+    });
+
+    await expect(service.cancelInvitation(completed)).rejects.toThrow(
+      "Workspace invitation is not pending",
+    );
+    await expect(service.rejectInvitation(user, completed)).rejects.toThrow(
+      "Workspace invitation is not pending",
+    );
+
+    const addressedToAnotherUser = Object.assign(
+      new TestWorkspaceInvitation(),
+      {
+        email: "other@example.com",
+        status: "pending" as const,
+        workspace,
+      },
+    );
+    await expect(
+      service.rejectInvitation(user, addressedToAnotherUser),
+    ).rejects.toThrow("Workspace invitation belongs to another email address");
+
+    const member = Object.assign(new TestWorkspaceMember(), {
+      roles: ["member"],
+      workspace,
+    });
+    em.findOne.mockResolvedValue(null);
+    await expect(service.removeMember(member)).rejects.toThrow(
+      "Workspace member not found",
+    );
   });
 
   it("protects owners and checks flattened member permissions", async () => {

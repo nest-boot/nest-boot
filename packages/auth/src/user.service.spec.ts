@@ -197,6 +197,12 @@ describe("UserService", () => {
       "set-email",
       user,
     );
+
+    await service.updateUser(user, { banned: true } as never);
+    expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
+      "ban",
+      user,
+    );
   });
 
   it("validates direct user permissions against the configured catalog", async () => {
@@ -346,6 +352,10 @@ describe("UserService", () => {
     await expect(service.revokeUserSession(user, session.id)).resolves.toBe(
       true,
     );
+    em.findOne.mockResolvedValueOnce(null);
+    await expect(service.revokeUserSession(user, "missing")).resolves.toBe(
+      false,
+    );
     await expect(service.revokeUserSessions(user)).resolves.toBe(2);
 
     expect(em.find).toHaveBeenCalledWith(
@@ -461,6 +471,39 @@ describe("UserService", () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(em.remove).toHaveBeenCalledWith(impersonation.session);
     expect(em.flush).toHaveBeenCalled();
+  });
+
+  it("rejects banned targets and handles incomplete impersonation state", async () => {
+    const { em, service } = createService();
+    const administrator = Object.assign(new TestUser(), {
+      id: "admin-1",
+      roles: ["admin"],
+    });
+    const bannedUser = Object.assign(new TestUser(), {
+      banned: true,
+      id: "user-1",
+    });
+
+    await expect(
+      service.impersonateUser(administrator, bannedUser),
+    ).rejects.toThrow("Banned users cannot be impersonated");
+
+    const session = Object.assign(new TestSession(), {
+      impersonatedBy: null,
+    });
+    await expect(service.stopImpersonating(session)).resolves.toBeNull();
+
+    session.impersonatedBy = administrator;
+    em.findOne.mockResolvedValue(null);
+    await expect(service.stopImpersonating(session)).resolves.toBeNull();
+  });
+
+  it("propagates unexpected user deletion failures", async () => {
+    const { service, userDeletionService } = createService();
+    const error = new Error("database unavailable");
+    userDeletionService.deleteUser.mockRejectedValue(error);
+
+    await expect(service.removeUser(new TestUser())).rejects.toBe(error);
   });
 
   it("delegates user removal to the transactional deletion coordinator", async () => {
