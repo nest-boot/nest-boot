@@ -114,6 +114,25 @@ describe("RequestContextInterceptor", () => {
     expect(response.headers["set-cookie"]).toEqual(["theme=dark; Path=/"]);
   });
 
+  it("recovers the response from Apollo's default GraphQL request context", async () => {
+    const response = createResponse();
+    const request = createRequest("apollo-default", {
+      cookie: "session=graphql",
+    });
+    request.res = response as unknown as Response;
+
+    await lastValueFrom(
+      interceptor.intercept(createGraphqlExecutionContext({ req: request }), {
+        handle: () => {
+          cookies().set("theme", "dark");
+          return of(undefined);
+        },
+      }),
+    );
+
+    expect(response.headers["set-cookie"]).toEqual(["theme=dark; Path=/"]);
+  });
+
   it("allows cookie reads but rejects writes in GraphQL subscription contexts", async () => {
     const result = await lastValueFrom(
       interceptor.intercept(
