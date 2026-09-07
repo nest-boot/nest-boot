@@ -1,3 +1,13 @@
+## 8.0.0-beta.5 (2026-09-07)
+
+### 🚀 Features
+
+- **request-context:** add header and cookie helpers ([#324](https://github.com/nest-boot/nest-boot/pull/324))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.0-beta.4 (2026-09-04)
 
 ### 🚀 Features

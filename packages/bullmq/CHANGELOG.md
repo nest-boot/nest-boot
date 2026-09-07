@@ -1,3 +1,9 @@
+## 8.0.2 (2026-09-07)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 8.0.0-beta.5
+
 ## 8.0.1 (2026-09-04)
 
 ### 🧱 Updated Dependencies
