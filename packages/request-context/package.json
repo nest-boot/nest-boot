@@ -22,6 +22,9 @@
   "files": [
     "dist"
   ],
+  "dependencies": {
+    "cookie": "^2.0.1"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "clean": "rm -rf .nx && rm -rf node_modules && rm -rf dist",

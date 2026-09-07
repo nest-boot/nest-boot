@@ -138,10 +138,62 @@ Request-scoped and transient providers cannot be resolved by this synchronous
 lookup and return `undefined`. Unexpected provider resolution errors are not
 suppressed.
 
-## Request and Response
+## Request Headers and Cookies
+
+Use `headers()` to read a Fetch-compatible snapshot of the incoming request
+headers without passing an Express request through every service:
+
+```typescript
+import { headers } from "@nest-boot/request-context";
+
+const authorization = headers().get("authorization");
+```
+
+Changing the returned `Headers` instance does not change the original request.
+The helper is synchronous and throws when there is no active HTTP request
+context.
+
+Use `cookies()` to read incoming cookies and emit response cookies:
+
+```typescript
+import { cookies } from "@nest-boot/request-context";
+
+const cookieStore = cookies();
+const session = cookieStore.get("session");
+
+cookieStore.set("session", token, {
+  httpOnly: true,
+  path: "/",
+  sameSite: "lax",
+  secure: true,
+});
+
+cookieStore.set({
+  httpOnly: true,
+  name: "preference",
+  value: "compact",
+});
+
+cookieStore.delete("session");
+```
+
+`get()`, `getAll()`, `has()`, and `toString()` read a snapshot of the incoming
+`Cookie` header. `set()` and `delete()` append separate `Set-Cookie` response
+header values, so writing one cookie does not combine or overwrite another.
+`set()` and `delete()` accept the same structured object style as Next.js and
+return the store for chaining. Both default to `Path=/`. Deletion expires the
+cookie immediately; pass the original cookie's `path` or `domain` in an object
+when those attributes differ.
+
+Cookie reads work in GraphQL request contexts when a request is available.
+Writes require a writable response and throw for subscription-only contexts or
+after response headers have already been sent.
+
+## Low-Level Request and Response Access
 
 The built-in HTTP context stores the Express request and response under the
-`REQUEST` and `RESPONSE` tokens.
+`REQUEST` and `RESPONSE` tokens. Prefer `headers()` and `cookies()` when they
+cover the use case; use these tokens when direct adapter access is required.
 
 ```typescript
 import { REQUEST, RESPONSE, RequestContext } from "@nest-boot/request-context";
