@@ -25,6 +25,7 @@ Important Nest Boot options include:
 - **`middleware`** — controls auth middleware registration and route selection;
 - **`basePath`** — changes the auth endpoint path from `/api/auth/`;
 - **`trustedOrigins`** — configures allowed browser origins;
+- **`account`** — forwards Better Auth account lifecycle options;
 - **`providers`** — configures built-in social, custom OAuth 2.0, and OpenID Connect providers.
 
 `user.permissions` defaults to the standard `user:*` and `session:*` catalog.
@@ -137,6 +138,11 @@ Advanced provider callbacks such as `getToken`, `getUserInfo`, and
 `AuthService.signInSocial()`, `AuthService.linkSocialAccount()`, and callback
 routes as built-in social providers. `AUTH_DISABLE_SIGN_UP=true` overrides every
 provider's signup setting.
+
+OAuth state Cookie validation remains enabled by default for every provider.
+Do not set `account.skipStateCookieCheck` unless an exceptional deployment
+cannot preserve the signed state Cookie across the authorization redirect and
+the resulting login CSRF trade-off has been explicitly accepted.
 
 ### OIDC
 

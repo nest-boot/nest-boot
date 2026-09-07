@@ -39,6 +39,7 @@ import type {
   AddWorkspaceMemberOptions,
   CreateWorkspaceInvitationOptions,
   CreateWorkspaceOptions,
+  CreateWorkspaceServiceAccountOptions,
   FullWorkspace,
   UpdateWorkspaceMemberOptions,
   UpdateWorkspaceOptions,
@@ -299,6 +300,29 @@ export class WorkspaceService<
     return await this.addMember(workspace, user, input);
   }
 
+  /** Creates a workspace-owned service account without a user identity. */
+  async createServiceAccount(
+    workspace: Workspace,
+    input: CreateWorkspaceServiceAccountOptions,
+  ): Promise<WorkspaceMember> {
+    this.authorizationService.assertWorkspaceCan(
+      "create",
+      this.workspaceMemberEntity,
+    );
+    const member = this.em.create(this.workspaceMemberEntity, {
+      ...(input.data ?? {}),
+      email: null,
+      name: input.name,
+      permissions: this.normalizePermissions(input.permissions ?? []),
+      roles: this.normalizeAssignableRoles(input.roles ?? [this.defaultRole]),
+      status: "ACTIVE",
+      user: null,
+      workspace,
+    } as unknown as RequiredEntityData<WorkspaceMember>);
+    await this.em.persist(member).flush();
+    return member;
+  }
+
   /** Updates a member's profile or active state. */
   async updateMember(
     member: WorkspaceMember,
@@ -310,7 +334,42 @@ export class WorkspaceService<
         "Use updateMemberRole or setMemberPermissions to update authorization fields",
       );
     }
-    this.em.assign(member, input as never);
+    if (
+      input.status === "DISABLED" &&
+      member.roles.includes(this.creatorRole)
+    ) {
+      throw new ForbiddenException("Workspace owners cannot be disabled");
+    }
+    const email =
+      typeof input.email === "string"
+        ? input.email.trim().toLowerCase()
+        : input.email;
+    if (email) {
+      const workspace = this.unwrapWorkspace(member);
+      const duplicate = await this.withRlsDisabled(
+        async () =>
+          await this.em.findOne(
+            this.workspaceMemberEntity,
+            {
+              email,
+              id: { $ne: member.id },
+              workspace,
+            } as FilterQuery<WorkspaceMember>,
+            { filters: false },
+          ),
+      );
+      if (duplicate) {
+        throw new ConflictException(
+          "A workspace member already uses this email address",
+        );
+      }
+    }
+    this.em.assign(
+      member,
+      input.email === undefined
+        ? (input as never)
+        : ({ ...input, email } as never),
+    );
     await this.em.flush();
     return member;
   }

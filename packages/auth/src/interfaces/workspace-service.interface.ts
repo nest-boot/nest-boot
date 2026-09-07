@@ -25,6 +25,14 @@ export interface AddWorkspaceMemberOptions {
   permissions?: string[];
 }
 
+/** Input accepted when creating a workspace-owned service account. */
+export interface CreateWorkspaceServiceAccountOptions extends AddWorkspaceMemberOptions {
+  /** Service-account display name. */
+  name: string;
+  /** Application entity fields added without overriding auth-owned fields. */
+  data?: Record<string, unknown>;
+}
+
 /** Mutable workspace-member fields. */
 export interface UpdateWorkspaceMemberOptions {
   /** Member display name. */

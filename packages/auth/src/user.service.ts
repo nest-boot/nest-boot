@@ -15,6 +15,7 @@ import {
 } from "@nest-boot/row-level-security";
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Inject,
   Injectable,
@@ -23,14 +24,7 @@ import {
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
 import { AuthorizationService } from "./authorization.service.js";
-import type {
-  BaseAccount,
-  BaseApiKey,
-  BaseSession,
-  BaseUser,
-  BaseWorkspaceInvitation,
-  BaseWorkspaceMember,
-} from "./entities/index.js";
+import type { BaseAccount, BaseSession, BaseUser } from "./entities/index.js";
 import type { AuthRole } from "./interfaces/auth-role.interface.js";
 import type { AuthenticatedSession } from "./interfaces/session-service.interface.js";
 import type {
@@ -49,6 +43,10 @@ import {
   DEFAULT_USER_ROLE,
   DEFAULT_USER_ROLES,
 } from "./user.constants.js";
+import {
+  UserDeletionService,
+  WorkspaceOwnershipConflictError,
+} from "./user-deletion.service.js";
 import {
   listAuthPermissions,
   listAuthRoles,
@@ -75,6 +73,10 @@ export class UserService<
     private readonly options: AuthModuleOptions,
     private readonly hashService: HashService,
     private readonly authorizationService: AuthorizationService,
+    @Inject(UserDeletionService)
+    private readonly userDeletionService: {
+      deleteUser(userId: string): Promise<BaseUser | null>;
+    },
   ) {}
 
   /** Creates a user and its credential account atomically. */
@@ -366,25 +368,14 @@ export class UserService<
   /** Permanently removes a user and all dependent authentication records. */
   async removeUser(user: User): Promise<User> {
     this.authorizationService.assertUserCan("delete", user);
-    await this.runUnrestricted(async () => {
-      const userId = String(user.id);
-      await this.em.nativeDelete(this.sessionEntity, {
-        $or: [{ userId }, { impersonatedBy: user }],
-      } as FilterQuery<Session>);
-      await this.em.nativeDelete(this.accountEntity, {
-        userId,
-      } as FilterQuery<Account>);
-      await this.em.nativeDelete(this.apiKeyEntity, {
-        owner: user,
-      } as FilterQuery<BaseApiKey>);
-      await this.em.nativeDelete(this.workspaceInvitationEntity, {
-        inviter: user,
-      } as FilterQuery<BaseWorkspaceInvitation>);
-      await this.em.nativeDelete(this.workspaceMemberEntity, {
-        user,
-      } as FilterQuery<BaseWorkspaceMember>);
-      await this.em.remove(user).flush();
-    });
+    try {
+      await this.userDeletionService.deleteUser(String(user.id));
+    } catch (error) {
+      if (error instanceof WorkspaceOwnershipConflictError) {
+        throw new ConflictException(error.message);
+      }
+      throw error;
+    }
     return user;
   }
 
@@ -532,23 +523,11 @@ export class UserService<
     return this.options.entities.account as EntityClass<Account>;
   }
 
-  private get apiKeyEntity(): EntityClass<BaseApiKey> {
-    return this.options.entities.apiKey;
-  }
-
   private get sessionEntity(): EntityClass<Session> {
     return this.options.entities.session as EntityClass<Session>;
   }
 
   private get userEntity(): EntityClass<User> {
     return this.options.entities.user as EntityClass<User>;
-  }
-
-  private get workspaceInvitationEntity(): EntityClass<BaseWorkspaceInvitation> {
-    return this.options.entities.workspaceInvitation;
-  }
-
-  private get workspaceMemberEntity(): EntityClass<BaseWorkspaceMember> {
-    return this.options.entities.workspaceMember;
   }
 }

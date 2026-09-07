@@ -51,6 +51,40 @@ describe("createUserConfig", () => {
     expect(config?.changeEmail?.sendChangeEmailConfirmation).toBe(customSender);
   });
 
+  it("runs the Better Auth before-delete callback inside coordinated deletion", async () => {
+    const beforeDelete = vi.fn();
+    const deleteUser = vi.fn(
+      async (_userId: string, callback?: () => Promise<void>) => {
+        await callback?.();
+      },
+    );
+    const config = createUserConfig(
+      {} as Mailer,
+      {
+        deleteUser: {
+          beforeDelete,
+          enabled: true,
+        },
+      },
+      deleteUser,
+    );
+    const user = {
+      createdAt: new Date(),
+      email: "user@example.com",
+      emailVerified: true,
+      id: "user-1",
+      image: null,
+      name: "User",
+      updatedAt: new Date(),
+    };
+    const request = new Request("https://app.example.com/delete-user");
+
+    await config?.deleteUser?.beforeDelete?.(user, request);
+
+    expect(deleteUser).toHaveBeenCalledWith("user-1", expect.any(Function));
+    expect(beforeDelete).toHaveBeenCalledWith(user, request);
+  });
+
   it("does not enable change-email implicitly", () => {
     expect(createUserConfig({} as Mailer, undefined)).toBeUndefined();
     expect(createUserConfig({} as Mailer, {})).toEqual({});

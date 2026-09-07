@@ -17,11 +17,12 @@ import {
   Resolver,
 } from '@nest-boot/graphql';
 import { ConnectionManager } from '@nest-boot/graphql-connection';
-import { ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 
 import { AuthRoleType } from '../auth/types/auth-role.type.js';
 import { User } from '../user/user.entity.js';
 import { Workspace } from '../workspace/workspace.entity.js';
+import { WorkspaceMemberType } from './enums/workspace-member-type.enum.js';
 import { AddWorkspaceMemberInput } from './inputs/add-workspace-member.input.js';
 import { CreateServiceAccountWorkspaceMemberInput } from './inputs/create-service-account-workspace-member.input.js';
 import { SetWorkspaceMemberPermissionsInput } from './inputs/set-workspace-member-permissions.input.js';
@@ -32,7 +33,6 @@ import {
   WorkspaceMemberConnectionArgs,
 } from './workspace-member.connection-definition.js';
 import { WorkspaceMember } from './workspace-member.entity.js';
-import { WorkspaceMemberService } from './workspace-member.service.js';
 
 /** 工作区成员 GraphQL 解析器。 */
 @Resolver(() => WorkspaceMember)
@@ -40,12 +40,9 @@ export class WorkspaceMemberResolver {
   /**
    * 创建工作区成员解析器。
    *
-   * @param workspaceMemberService - 工作区成员领域服务。
    * @param cm - GraphQL 连接查询管理器。
    */
   constructor(
-    /** 工作区成员领域服务。 */
-    private readonly workspaceMemberService: WorkspaceMemberService,
     /** GraphQL 连接查询管理器。 */
     private readonly cm: ConnectionManager,
     /** Auth-owned workspace role and permission operations. */
@@ -98,7 +95,10 @@ export class WorkspaceMemberResolver {
     @Args('id', { type: () => ID }) id: string,
     @CurrentWorkspace() workspace: Workspace,
   ): Promise<WorkspaceMember | null> {
-    return await this.workspaceMemberService.findOne({ id, workspace });
+    return (await this.workspaceService.getMemberById(
+      workspace,
+      id,
+    )) as WorkspaceMember | null;
   }
 
   /**
@@ -163,10 +163,10 @@ export class WorkspaceMemberResolver {
     @CurrentWorkspace() workspace: Workspace,
     @Args('input') input: CreateServiceAccountWorkspaceMemberInput,
   ): Promise<WorkspaceMember> {
-    return await this.workspaceMemberService.createServiceAccount(
-      workspace,
-      input,
-    );
+    return (await this.workspaceService.createServiceAccount(workspace, {
+      ...input,
+      data: { type: WorkspaceMemberType.SERVICE_ACCOUNT },
+    })) as WorkspaceMember;
   }
 
   /**
@@ -185,10 +185,7 @@ export class WorkspaceMemberResolver {
     @Args('id', { type: () => ID }) id: string,
     @Args('input') input: UpdateWorkspaceMemberInput,
   ): Promise<WorkspaceMember | null> {
-    const member = await this.workspaceMemberService.findOneOrFail({
-      id,
-      workspace,
-    });
+    const member = await this.getMemberOrFail(workspace, id);
 
     if (
       member.roles.includes('owner') &&
@@ -198,10 +195,10 @@ export class WorkspaceMemberResolver {
         'Only workspace owners can update owner members',
       );
     }
-    return await this.workspaceMemberService.updateWorkspaceMember(
+    return (await this.workspaceService.updateMember(
       member,
       input,
-    );
+    )) as WorkspaceMember;
   }
 
   /** Replaces roles assigned to a non-owner workspace member. */
@@ -212,10 +209,7 @@ export class WorkspaceMemberResolver {
     @Args('id', { type: () => ID }) id: string,
     @Args('input') input: UpdateWorkspaceMemberRoleInput,
   ): Promise<WorkspaceMember> {
-    const member = await this.workspaceMemberService.findOneOrFail({
-      id,
-      workspace,
-    });
+    const member = await this.getMemberOrFail(workspace, id);
     return (await this.workspaceService.updateMemberRole(
       member,
       input.roles,
@@ -236,10 +230,7 @@ export class WorkspaceMemberResolver {
         'Only workspace owners can update direct permissions',
       );
     }
-    const member = await this.workspaceMemberService.findOneOrFail({
-      id,
-      workspace,
-    });
+    const member = await this.getMemberOrFail(workspace, id);
     return (await this.workspaceService.setMemberPermissions(
       member,
       input.permissions,
@@ -260,16 +251,15 @@ export class WorkspaceMemberResolver {
     @CurrentWorkspaceMember() workspaceMember: WorkspaceMember,
     @Args('id', { type: () => ID }) id: string,
   ): Promise<WorkspaceMember> {
-    const member = await this.workspaceMemberService.findOneOrFail({
-      id,
-      workspace,
-    });
+    const member = await this.getMemberOrFail(workspace, id);
 
     if (member.id === workspaceMember.id) {
       throw new ForbiddenException('You are not allowed to remove yourself');
     }
 
-    return await this.workspaceMemberService.remove(member);
+    return (await this.workspaceService.removeMember(
+      member,
+    )) as WorkspaceMember;
   }
 
   /**
@@ -286,5 +276,17 @@ export class WorkspaceMemberResolver {
     }
 
     return (await workspaceMember.user.loadOrFail()) ?? null;
+  }
+
+  private async getMemberOrFail(
+    workspace: Workspace,
+    id: string,
+  ): Promise<WorkspaceMember> {
+    const member = (await this.workspaceService.getMemberById(
+      workspace,
+      id,
+    )) as WorkspaceMember | null;
+    if (!member) throw new NotFoundException('Workspace member not found');
+    return member;
   }
 }

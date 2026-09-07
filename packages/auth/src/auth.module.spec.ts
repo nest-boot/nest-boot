@@ -54,6 +54,10 @@ import { AuthHandlerMiddleware } from "./auth-handler.middleware.js";
 import { AuthorizationService } from "./authorization.service.js";
 import { SessionService } from "./session.service.js";
 import { UserService } from "./user.service.js";
+import {
+  UserDeletionService,
+  WorkspaceOwnershipConflictError,
+} from "./user-deletion.service.js";
 import { WorkspaceService } from "./workspace.service.js";
 
 class Account {}
@@ -221,6 +225,7 @@ describe("AuthModule", () => {
     expect(providers).toContain(AuthGuard);
     expect(providers).toContain(AuthHandlerMiddleware);
     expect(providers).toContain(UserService);
+    expect(providers).toContain(UserDeletionService);
     expect(providers).toContain(ApiKeyService);
     expect(providers).toContain(AuthService);
     expect(providers).toContain(AuthorizationService);
@@ -305,9 +310,6 @@ describe("AuthModule", () => {
     });
     expect(mockBetterAuth).toHaveBeenCalledWith(
       expect.objectContaining({
-        account: {
-          skipStateCookieCheck: true,
-        },
         baseURL: "https://auth.example.com",
         database: {
           options: {
@@ -320,12 +322,14 @@ describe("AuthModule", () => {
         secret,
       }),
     );
+    expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty("account");
     expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty("entities");
     expect(authProvider.inject).toEqual([
       MODULE_OPTIONS_TOKEN,
       MikroORM,
       Mailer,
       HashService,
+      UserDeletionService,
     ]);
   });
 
@@ -420,7 +424,7 @@ describe("AuthModule", () => {
     expect(mockBetterAuth).not.toHaveBeenCalled();
   });
 
-  it("should merge account options with the module OAuth state default", () => {
+  it("should forward account options without weakening OAuth state checks", () => {
     const authProvider = getAuthProvider();
 
     authProvider.useFactory(
@@ -437,11 +441,97 @@ describe("AuthModule", () => {
     expect(mockBetterAuth).toHaveBeenCalledWith(
       expect.objectContaining({
         account: {
-          skipStateCookieCheck: true,
           updateAccountOnSignIn: false,
         },
       }),
     );
+  });
+
+  it("should allow explicitly opting out of the OAuth state cookie check", () => {
+    const authProvider = getAuthProvider();
+
+    authProvider.useFactory(
+      {
+        account: {
+          skipStateCookieCheck: true,
+        },
+        entities,
+        secret,
+      },
+      { em: {} } as unknown as MikroORM,
+    );
+
+    expect(mockBetterAuth).toHaveBeenCalledWith(
+      expect.objectContaining({
+        account: {
+          skipStateCookieCheck: true,
+        },
+      }),
+    );
+  });
+
+  it("should coordinate Better Auth user deletion through one transaction", async () => {
+    const beforeDelete = vi.fn();
+    const deleteUser = vi.fn();
+    const authProvider = getAuthProvider();
+    const user = { id: "user-1" };
+    const request = new Request("https://app.example.com/api/auth/delete-user");
+
+    authProvider.useFactory(
+      {
+        entities,
+        secret,
+        user: {
+          deleteUser: { beforeDelete, enabled: true },
+        },
+      },
+      { em: {} } as unknown as MikroORM,
+      {} as Mailer,
+      {} as HashService,
+      { deleteUser } as unknown as UserDeletionService,
+    );
+
+    await mockBetterAuth.mock.calls[0]?.[0].user.deleteUser.beforeDelete(
+      user,
+      request,
+    );
+
+    expect(deleteUser).toHaveBeenCalledWith("user-1", expect.any(Function));
+    const lifecycle = deleteUser.mock.calls[0]?.[1];
+    await lifecycle();
+    expect(beforeDelete).toHaveBeenCalledWith(user, request);
+  });
+
+  it("should reject Better Auth user deletion when an active workspace is owned", async () => {
+    const authProvider = getAuthProvider();
+    const deleteUser = vi
+      .fn()
+      .mockRejectedValue(new WorkspaceOwnershipConflictError());
+
+    authProvider.useFactory(
+      {
+        entities,
+        secret,
+        user: { deleteUser: { enabled: true } },
+      },
+      { em: {} } as unknown as MikroORM,
+      {} as Mailer,
+      {} as HashService,
+      { deleteUser } as unknown as UserDeletionService,
+    );
+
+    await expect(
+      mockBetterAuth.mock.calls[0]?.[0].user.deleteUser.beforeDelete(
+        { id: "owner-1" },
+        new Request("https://app.example.com/api/auth/delete-user"),
+      ),
+    ).rejects.toMatchObject({
+      body: {
+        message: "Transfer or delete owned workspaces before deleting the user",
+      },
+      status: "CONFLICT",
+      statusCode: 409,
+    });
   });
 
   it("should send verification emails through the injected mailer", async () => {

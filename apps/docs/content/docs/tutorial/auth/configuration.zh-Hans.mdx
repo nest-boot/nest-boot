@@ -24,6 +24,7 @@ Better Auth 选项，避免上游升级无意中扩大 Nest Boot 的公开 API�
 - **`middleware`** — 控制认证中间件的注册和路由范围；
 - **`basePath`** — 修改默认的 `/api/auth/` 认证端点路径；
 - **`trustedOrigins`** — 配置允许的浏览器来源；
+- **`account`** — 转发 Better Auth 的 Account 生命周期选项；
 - **`providers`** — 配置内置社交、自定义 OAuth 2.0 与 OpenID Connect Provider。
 
 `user.permissions` 默认为标准 `user:*` 与 `session:*` 权限目录。
@@ -125,6 +126,10 @@ AuthModule.forRoot({
 `getUserInfo`、`mapProfileToUser` 等高级回调。Generic Provider 与内置社交 Provider
 共用 `AuthService.signInSocial()`、`AuthService.linkSocialAccount()` 和回调路由。
 `AUTH_DISABLE_SIGN_UP=true` 会覆盖所有 Provider 的注册设置。
+
+所有 Provider 默认都会校验 OAuth state Cookie。只有特殊部署环境确实无法在授权跳转
+前后保留签名 state Cookie，并且已经明确接受登录 CSRF 风险时，才应设置
+`account.skipStateCookieCheck`。
 
 ### OIDC
 

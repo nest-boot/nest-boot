@@ -20,6 +20,7 @@ import {
 } from "@nestjs/common";
 import { APP_INTERCEPTOR } from "@nestjs/core";
 import { betterAuth, type BetterAuthOptions } from "better-auth";
+import { APIError } from "better-auth/api";
 import { genericOAuth } from "better-auth/plugins";
 
 import { mikroOrmAdapter } from "./adapters/mikro-orm-adapter.js";
@@ -45,6 +46,10 @@ import {
   DEFAULT_USER_ROLES,
 } from "./user.constants.js";
 import { UserService } from "./user.service.js";
+import {
+  UserDeletionService,
+  WorkspaceOwnershipConflictError,
+} from "./user-deletion.service.js";
 import {
   assertAuthRolePermissions,
   assertAuthRolesExist,
@@ -83,6 +88,7 @@ import { WorkspaceService } from "./workspace.service.js";
     AuthService,
     AuthorizationService,
     SessionService,
+    UserDeletionService,
     AuthGuard,
     AuthHandlerMiddleware,
     AuthMiddleware,
@@ -93,12 +99,19 @@ import { WorkspaceService } from "./workspace.service.js";
     },
     {
       provide: AUTH_TOKEN,
-      inject: [MODULE_OPTIONS_TOKEN, MikroORM, Mailer, HashService],
+      inject: [
+        MODULE_OPTIONS_TOKEN,
+        MikroORM,
+        Mailer,
+        HashService,
+        UserDeletionService,
+      ],
       useFactory: (
         options: AuthModuleOptions,
         orm: MikroORM,
         mailer: Mailer,
         hashService: HashService,
+        userDeletionService: UserDeletionService,
       ) => {
         const userRoles = options.user?.roles ?? DEFAULT_USER_ROLES;
         const workspaceRoles =
@@ -158,17 +171,27 @@ import { WorkspaceService } from "./workspace.service.js";
           disableSignUp,
           providers.socialProviders,
         );
-        const userConfig = createUserConfig(mailer, options.user);
+        const userConfig = createUserConfig(
+          mailer,
+          options.user,
+          async (userId, beforeDelete) => {
+            try {
+              await userDeletionService.deleteUser(userId, beforeDelete);
+            } catch (error) {
+              if (error instanceof WorkspaceOwnershipConflictError) {
+                throw new APIError("CONFLICT", { message: error.message });
+              }
+              throw error;
+            }
+          },
+        );
 
         const betterAuthOptions: BetterAuthOptions = {
           appName: options.appName ?? process.env.APP_NAME,
           baseURL:
             options.baseURL ?? process.env.AUTH_URL ?? process.env.APP_URL,
+          ...(options.account ? { account: options.account } : {}),
           secret,
-          account: {
-            skipStateCookieCheck: true,
-            ...options.account,
-          },
           emailAndPassword: emailAndPasswordConfig,
           emailVerification: emailVerificationConfig,
           ...(userConfig ? { user: userConfig } : {}),

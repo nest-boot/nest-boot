@@ -160,12 +160,53 @@ describe("AuthGuard", () => {
     expect(buildAbility).toHaveBeenCalledOnce();
     expect(can).toHaveBeenCalledWith("read", Subject);
   });
+
+  it("requires class-level and handler-level permissions together", async () => {
+    class Subject {}
+    const can = vi.fn((action: string) => action === "read");
+    const getAllAndOverride = vi.fn((key) => {
+      if (key === IS_PUBLIC_KEY) return false;
+      return key === USER_CAN_METADATA
+        ? [{ action: "read", subject: Subject }]
+        : undefined;
+    });
+    const getAllAndMerge = vi.fn((key) =>
+      key === USER_CAN_METADATA
+        ? [
+            { action: "read", subject: Subject },
+            { action: "update", subject: Subject },
+          ]
+        : undefined,
+    );
+    const { guard } = await createGuard(
+      AuthGuard,
+      getAllAndOverride,
+      { user: { buildAbility: vi.fn(() => ({ can })) as never } },
+      getAllAndMerge,
+    );
+    const context = createContext();
+
+    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+      RequestContext.set(BaseSession, new BaseSession());
+      RequestContext.set(BaseUser, new BaseUser());
+
+      await expect(guard.canActivate(context)).resolves.toBe(false);
+    });
+
+    expect(getAllAndMerge).toHaveBeenCalledWith(USER_CAN_METADATA, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    expect(can).toHaveBeenNthCalledWith(1, "read", Subject);
+    expect(can).toHaveBeenNthCalledWith(2, "update", Subject);
+  });
 });
 
 async function createGuard<T extends AuthGuard>(
   guardType: Type<T>,
   getAllAndOverride: Mock,
   options: Partial<AuthModuleOptions> = {},
+  getAllAndMerge: Mock = getAllAndOverride,
 ) {
   const moduleRef = await Test.createTestingModule({
     providers: [
@@ -173,6 +214,7 @@ async function createGuard<T extends AuthGuard>(
       {
         provide: Reflector,
         useValue: {
+          getAllAndMerge,
           getAllAndOverride,
         },
       },

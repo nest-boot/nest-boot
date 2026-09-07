@@ -679,7 +679,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     });
   });
 
-  it('deletes users together with dependent authentication records', async () => {
+  it('enforces ownership and transactionally deletes auth records through both user deletion paths', async () => {
     const administrator = await createAuthenticatedUser(
       'Deletion Administrator',
     );
@@ -696,7 +696,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       permissions: ['workspace:update'],
     });
 
-    const deleted = await gql(
+    const rejectedOwnerDeletion = await gql(
       /* GraphQL */ `
         mutation DeleteUser($id: ID!) {
           deleteUser(id: $id) {
@@ -710,8 +710,44 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       },
     );
 
+    expect(rejectedOwnerDeletion.body.data).toBeNull();
+    expect(rejectedOwnerDeletion.body.errors).toEqual([
+      expect.objectContaining({
+        extensions: expect.objectContaining({ code: 'CONFLICT' }),
+        message: 'Transfer or delete owned workspaces before deleting the user',
+      }),
+    ]);
+
+    const deletedWorkspace = await gql(
+      /* GraphQL */ `
+        mutation {
+          deleteWorkspace {
+            id
+          }
+        }
+      `,
+      {
+        cookies: target.cookies,
+        workspaceId: workspace.id,
+      },
+    );
+    expectNoGraphQLErrors(deletedWorkspace);
+
+    const deleted = await gql(
+      /* GraphQL */ `
+        mutation {
+          authDeleteUser {
+            success
+          }
+        }
+      `,
+      {
+        cookies: target.cookies,
+      },
+    );
+
     expectNoGraphQLErrors(deleted);
-    expect(deleted.body.data.deleteUser.id).toBe(target.user.id);
+    expect(deleted.body.data.authDeleteUser.success).toBe(true);
 
     const [counts] = await migrationOrm.em.getConnection().execute<
       {

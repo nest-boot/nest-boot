@@ -31,7 +31,6 @@ import { User } from '../user/user.entity.js';
 import { Workspace } from '../workspace/workspace.entity.js';
 import { WorkspaceMember } from './workspace-member.entity.js';
 import { WorkspaceMemberResolver } from './workspace-member.resolver.js';
-import { WorkspaceMemberService } from './workspace-member.service.js';
 
 describe('WorkspaceMemberResolver', () => {
   it('returns the current workspace member from request context', () => {
@@ -86,9 +85,9 @@ describe('WorkspaceMemberResolver', () => {
   it('finds a member by id through the service', async () => {
     const member = { id: 'member_1' } as WorkspaceMember;
     const workspace = { id: 'workspace_1' } as Workspace;
-    const { resolver, workspaceMemberService } = createResolver({
-      workspaceMemberService: {
-        findOne: vi.fn(async () => member),
+    const { resolver, workspaceService } = createResolver({
+      workspaceService: {
+        getMemberById: vi.fn(async () => member),
       },
     });
 
@@ -96,10 +95,10 @@ describe('WorkspaceMemberResolver', () => {
       member,
     );
 
-    expect(workspaceMemberService.findOne).toHaveBeenCalledWith({
-      id: 'member_1',
+    expect(workspaceService.getMemberById).toHaveBeenCalledWith(
       workspace,
-    });
+      'member_1',
+    );
   });
 
   it('delegates adding an existing user to WorkspaceService', async () => {
@@ -124,8 +123,8 @@ describe('WorkspaceMemberResolver', () => {
   it('allows admins to create service account members', async () => {
     const workspace = { id: 'workspace_1' } as Workspace;
     const created = { id: 'member_1' } as WorkspaceMember;
-    const { resolver, workspaceMemberService } = createResolver({
-      workspaceMemberService: {
+    const { resolver, workspaceService } = createResolver({
+      workspaceService: {
         createServiceAccount: vi.fn(async () => created),
       },
     });
@@ -136,9 +135,12 @@ describe('WorkspaceMemberResolver', () => {
       }),
     ).resolves.toBe(created);
 
-    expect(workspaceMemberService.createServiceAccount).toHaveBeenCalledWith(
+    expect(workspaceService.createServiceAccount).toHaveBeenCalledWith(
       workspace,
-      { name: 'Deploy Bot' },
+      {
+        data: { type: 'SERVICE_ACCOUNT' },
+        name: 'Deploy Bot',
+      },
     );
   });
 
@@ -148,15 +150,12 @@ describe('WorkspaceMemberResolver', () => {
       id: 'member_2',
       roles: ['member'],
     } as WorkspaceMember;
-    const { resolver, workspaceMemberService, workspaceService } =
-      createResolver({
-        workspaceMemberService: {
-          findOneOrFail: vi.fn(async () => target),
-        },
-        workspaceService: {
-          setMemberPermissions: vi.fn(async () => target),
-        },
-      });
+    const { resolver, workspaceService } = createResolver({
+      workspaceService: {
+        getMemberById: vi.fn(async () => target),
+        setMemberPermissions: vi.fn(async () => target),
+      },
+    });
 
     await expect(
       resolver.setWorkspaceMemberPermissions(
@@ -166,14 +165,14 @@ describe('WorkspaceMemberResolver', () => {
         { permissions: [] },
       ),
     ).rejects.toBeInstanceOf(ForbiddenException);
-    expect(workspaceMemberService.findOneOrFail).not.toHaveBeenCalled();
+    expect(workspaceService.getMemberById).not.toHaveBeenCalled();
     expect(workspaceService.setMemberPermissions).not.toHaveBeenCalled();
   });
 
   it('rejects updating other owners', async () => {
-    const { resolver, workspaceMemberService } = createResolver({
-      workspaceMemberService: {
-        findOneOrFail: vi.fn(
+    const { resolver, workspaceService } = createResolver({
+      workspaceService: {
+        getMemberById: vi.fn(
           async () =>
             ({
               id: 'member_2',
@@ -195,7 +194,7 @@ describe('WorkspaceMemberResolver', () => {
       ),
     ).rejects.toBeInstanceOf(ForbiddenException);
 
-    expect(workspaceMemberService.updateWorkspaceMember).not.toHaveBeenCalled();
+    expect(workspaceService.updateMember).not.toHaveBeenCalled();
   });
 
   it('allows authorized members to update regular member fields', async () => {
@@ -208,10 +207,10 @@ describe('WorkspaceMemberResolver', () => {
       ...member,
       name: 'Alice',
     } as WorkspaceMember;
-    const { resolver, workspaceMemberService } = createResolver({
-      workspaceMemberService: {
-        findOneOrFail: vi.fn(async () => member),
-        updateWorkspaceMember: vi.fn(async () => updated),
+    const { resolver, workspaceService } = createResolver({
+      workspaceService: {
+        getMemberById: vi.fn(async () => member),
+        updateMember: vi.fn(async () => updated),
       },
     });
 
@@ -227,31 +226,27 @@ describe('WorkspaceMemberResolver', () => {
       ),
     ).resolves.toBe(updated);
 
-    expect(workspaceMemberService.updateWorkspaceMember).toHaveBeenCalledWith(
-      member,
-      { name: 'Alice' },
-    );
-    expect(workspaceMemberService.findOneOrFail).toHaveBeenCalledWith({
-      id: 'member_2',
-      workspace,
+    expect(workspaceService.updateMember).toHaveBeenCalledWith(member, {
+      name: 'Alice',
     });
+    expect(workspaceService.getMemberById).toHaveBeenCalledWith(
+      workspace,
+      'member_2',
+    );
   });
 
   it('lists roles and updates member roles through WorkspaceService', async () => {
     const workspace = { id: 'workspace_1' } as Workspace;
     const member = { id: 'member_2', roles: ['member'] } as WorkspaceMember;
     const roles = [{ name: 'admin', permissions: ['workspace:update'] }];
-    const { resolver, workspaceMemberService, workspaceService } =
-      createResolver({
-        workspaceMemberService: {
-          findOneOrFail: vi.fn(async () => member),
-        },
-        workspaceService: {
-          listPermissions: vi.fn(() => ['workspace:update']),
-          listRoles: vi.fn(() => roles),
-          updateMemberRole: vi.fn(async () => member),
-        },
-      });
+    const { resolver, workspaceService } = createResolver({
+      workspaceService: {
+        getMemberById: vi.fn(async () => member),
+        listPermissions: vi.fn(() => ['workspace:update']),
+        listRoles: vi.fn(() => roles),
+        updateMemberRole: vi.fn(async () => member),
+      },
+    });
 
     expect(resolver.workspaceRoles()).toEqual(roles);
     expect(resolver.workspacePermissions()).toEqual(['workspace:update']);
@@ -260,10 +255,10 @@ describe('WorkspaceMemberResolver', () => {
         roles: ['admin'],
       }),
     ).resolves.toBe(member);
-    expect(workspaceMemberService.findOneOrFail).toHaveBeenCalledWith({
-      id: member.id,
+    expect(workspaceService.getMemberById).toHaveBeenCalledWith(
       workspace,
-    });
+      member.id,
+    );
     expect(workspaceService.updateMemberRole).toHaveBeenCalledWith(member, [
       'admin',
     ]);
@@ -274,10 +269,10 @@ describe('WorkspaceMemberResolver', () => {
       id: 'member_1',
       roles: ['owner'],
     } as WorkspaceMember;
-    const { resolver, workspaceMemberService } = createResolver({
-      workspaceMemberService: {
-        findOneOrFail: vi.fn(async () => member),
-        updateWorkspaceMember: vi.fn(async () => member),
+    const { resolver, workspaceService } = createResolver({
+      workspaceService: {
+        getMemberById: vi.fn(async () => member),
+        updateMember: vi.fn(async () => member),
       },
     });
 
@@ -292,9 +287,9 @@ describe('WorkspaceMemberResolver', () => {
   });
 
   it('rejects self removal', async () => {
-    const { resolver, workspaceMemberService } = createResolver({
-      workspaceMemberService: {
-        findOneOrFail: vi.fn(
+    const { resolver, workspaceService } = createResolver({
+      workspaceService: {
+        getMemberById: vi.fn(
           async () =>
             ({
               id: 'member_1',
@@ -314,15 +309,15 @@ describe('WorkspaceMemberResolver', () => {
       ),
     ).rejects.toBeInstanceOf(ForbiddenException);
 
-    expect(workspaceMemberService.remove).not.toHaveBeenCalled();
+    expect(workspaceService.removeMember).not.toHaveBeenCalled();
   });
 
   it('allows owners to remove other members', async () => {
     const member = { id: 'member_2' } as WorkspaceMember;
-    const { resolver, workspaceMemberService } = createResolver({
-      workspaceMemberService: {
-        findOneOrFail: vi.fn(async () => member),
-        remove: vi.fn(async () => member),
+    const { resolver, workspaceService } = createResolver({
+      workspaceService: {
+        getMemberById: vi.fn(async () => member),
+        removeMember: vi.fn(async () => member),
       },
     });
 
@@ -337,7 +332,7 @@ describe('WorkspaceMemberResolver', () => {
       ),
     ).resolves.toBe(member);
 
-    expect(workspaceMemberService.remove).toHaveBeenCalledWith(member);
+    expect(workspaceService.removeMember).toHaveBeenCalledWith(member);
   });
 
   it('returns null user fields when the member has no user reference', async () => {
@@ -361,37 +356,26 @@ describe('WorkspaceMemberResolver', () => {
 });
 
 function createResolver(overrides?: {
-  workspaceMemberService?: Partial<WorkspaceMemberService>;
   workspaceService?: Partial<WorkspaceService>;
   cm?: { find: Mock };
 }) {
-  const workspaceMemberService = {
-    findOne: vi.fn(),
-    findOneOrFail: vi.fn(),
-    create: vi.fn(),
-    createServiceAccount: vi.fn(),
-    updateWorkspaceMember: vi.fn(),
-    remove: vi.fn(),
-    ...overrides?.workspaceMemberService,
-  } as unknown as Mocked<WorkspaceMemberService>;
   const cm = overrides?.cm ?? { find: vi.fn() };
   const workspaceService = {
     addMemberByEmail: vi.fn(),
+    createServiceAccount: vi.fn(),
+    getMemberById: vi.fn(),
     listPermissions: vi.fn(() => []),
     listRoles: vi.fn(() => []),
+    removeMember: vi.fn(),
     setMemberPermissions: vi.fn(),
+    updateMember: vi.fn(),
     updateMemberRole: vi.fn(),
     ...overrides?.workspaceService,
   } as unknown as Mocked<WorkspaceService>;
-  const resolver = new WorkspaceMemberResolver(
-    workspaceMemberService,
-    cm as never,
-    workspaceService,
-  );
+  const resolver = new WorkspaceMemberResolver(cm as never, workspaceService);
 
   return {
     resolver,
-    workspaceMemberService,
     cm,
     workspaceService,
   };

@@ -4,11 +4,16 @@ import type { BetterAuthOptions } from "better-auth";
 import type { AuthModuleUserOptions } from "../auth-module-options.interface.js";
 
 type UserConfig = NonNullable<BetterAuthOptions["user"]>;
+type DeleteUser = (
+  userId: string,
+  beforeDelete?: () => Promise<void>,
+) => Promise<void>;
 
 /** Adds Nest Boot's mailer-backed defaults to Better Auth user options. */
 export function createUserConfig(
   mailer: Mailer,
   options?: AuthModuleUserOptions,
+  deleteUser?: DeleteUser,
 ): UserConfig | undefined {
   if (!options) return undefined;
 
@@ -20,7 +25,24 @@ export function createUserConfig(
     config.changeEmail = options.changeEmail;
   }
   if (options.deleteUser !== undefined) {
-    config.deleteUser = options.deleteUser;
+    const beforeDelete = options.deleteUser.beforeDelete;
+    config.deleteUser = {
+      ...options.deleteUser,
+      ...(deleteUser
+        ? {
+            beforeDelete: async (user, request) => {
+              await deleteUser(
+                user.id,
+                beforeDelete
+                  ? async () => {
+                      await beforeDelete(user, request);
+                    }
+                  : undefined,
+              );
+            },
+          }
+        : {}),
+    };
   }
   if (options.fields !== undefined) config.fields = options.fields;
   if (options.modelName !== undefined) config.modelName = options.modelName;

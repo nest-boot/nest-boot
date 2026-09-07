@@ -102,11 +102,11 @@ export class AuthGuard implements CanActivate {
     }
 
     const targets = [context.getHandler(), context.getClass()];
-    const userCanMetadata = this.reflector.getAllAndOverride<UserCanMetadata[]>(
+    const userCanMetadata = this.reflector.getAllAndMerge<UserCanMetadata[]>(
       USER_CAN_METADATA,
       targets,
     );
-    const workspaceCanMetadata = this.reflector.getAllAndOverride<
+    const workspaceCanMetadata = this.reflector.getAllAndMerge<
       WorkspaceCanMetadata[]
     >(WORKSPACE_CAN_METADATA, targets);
 

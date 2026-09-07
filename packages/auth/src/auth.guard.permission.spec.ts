@@ -952,7 +952,7 @@ describe("AuthGuard permissions", () => {
     const { guard, reflector, buildUserAbility, buildWorkspaceAbility } =
       await createGuard({ can: canMock } as unknown as TestAbility);
 
-    reflector.getAllAndOverride.mockImplementation((key) => {
+    reflector.getAllAndMerge.mockImplementation((key) => {
       if (key === USER_CAN_METADATA) {
         return [{ action: "read", subject: User }];
       }
@@ -978,7 +978,7 @@ describe("AuthGuard permissions", () => {
       can: canMock,
     } as unknown as TestAbility);
 
-    reflector.getAllAndOverride.mockImplementation((key) =>
+    reflector.getAllAndMerge.mockImplementation((key) =>
       key === USER_CAN_METADATA
         ? [
             { action: "read", subject: User },
@@ -1001,7 +1001,7 @@ describe("AuthGuard permissions", () => {
       can: canMock,
     } as unknown as TestAbility);
 
-    reflector.getAllAndOverride.mockImplementation((key) =>
+    reflector.getAllAndMerge.mockImplementation((key) =>
       key === WORKSPACE_CAN_METADATA
         ? [
             { action: "read", subject: Workspace },
@@ -1181,8 +1181,10 @@ async function createGuard(
   } = {},
 ) {
   const reflector = {
+    getAllAndMerge: vi.fn(),
     getAllAndOverride: vi.fn(),
   } as unknown as Reflector & {
+    getAllAndMerge: Mock;
     getAllAndOverride: Mock;
   };
   const buildUserAbility: MockedFunction<BuildUserAbilityCallback> = vi.fn(
@@ -1310,7 +1312,7 @@ function createUnnamedHandler() {
 }
 
 function setCanMetadata(
-  reflector: Reflector & { getAllAndOverride: Mock },
+  reflector: Reflector & { getAllAndMerge: Mock },
   metadata: {
     action: string;
     scope: "user" | "workspace";
@@ -1321,7 +1323,7 @@ function setCanMetadata(
   const metadataKey =
     scope === "user" ? USER_CAN_METADATA : WORKSPACE_CAN_METADATA;
 
-  reflector.getAllAndOverride.mockImplementation((key) =>
+  reflector.getAllAndMerge.mockImplementation((key) =>
     key === metadataKey ? [scopedMetadata] : undefined,
   );
 }

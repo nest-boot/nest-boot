@@ -345,6 +345,44 @@ describe("WorkspaceService", () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it("creates service accounts through the auth workspace service", async () => {
+    const { em, service } = createService();
+    const workspace = new TestWorkspace();
+
+    const member = await service.createServiceAccount(workspace, {
+      data: { type: "SERVICE_ACCOUNT" },
+      name: "Deploy Bot",
+      permissions: ["workspace:update"],
+      roles: ["admin"],
+    });
+
+    expect(em.create).toHaveBeenCalledWith(
+      TestWorkspaceMember,
+      expect.objectContaining({
+        email: null,
+        name: "Deploy Bot",
+        permissions: ["workspace:update"],
+        roles: ["admin"],
+        status: "ACTIVE",
+        type: "SERVICE_ACCOUNT",
+        user: null,
+        workspace,
+      }),
+    );
+    expect(member).toEqual(expect.objectContaining({ name: "Deploy Bot" }));
+  });
+
+  it("does not allow disabling a workspace owner", async () => {
+    const { service } = createService();
+    const owner = Object.assign(new TestWorkspaceMember(), {
+      roles: ["owner"],
+    });
+
+    await expect(
+      service.updateMember(owner, { status: "DISABLED" }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
   it("rejects assigning the creator role outside ownership transfer", async () => {
     const { em, service } = createService();
     const workspace = new TestWorkspace();

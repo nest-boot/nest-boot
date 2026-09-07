@@ -161,9 +161,10 @@ me(@CurrentUser() user: User) {
 
 Every permission declared on a route must pass. This includes repeated
 `@UserCan` or `@WorkspaceCan` declarations in the same scope as well as a mix
-of both scopes. Permission requirements always use `all` semantics. `@Can` is
-a thin alias that delegates to the scoped decorator; omitted `scope` delegates
-to `@WorkspaceCan`.
+of both scopes. Class-level requirements are merged with method-level
+requirements rather than replaced by them. Permission requirements always use
+`all` semantics. `@Can` is a thin alias that delegates to the scoped decorator;
+omitted `scope` delegates to `@WorkspaceCan`.
 
 ```typescript
 @Can("read", Post) // @WorkspaceCan("read", Post)

@@ -43,11 +43,17 @@ currentWorkspace(
 ## 成员生命周期
 
 - `getMember(workspace, user)`；
+- `getMemberById(workspace, memberId)`；
 - `listMembers(workspace)`；
 - `addMember(workspace, user, input)`；
+- `addMemberByEmail(workspace, email, input)`；
+- `createServiceAccount(workspace, input)`；
 - `updateMember(member, input)`；
+- `updateMemberRole(member, roles)`；
+- `setMemberPermissions(member, permissions)`；
 - `removeMember(member)`；
-- `leaveWorkspace(member)`。
+- `leaveWorkspace(member)`；
+- `transferOwnership(workspace, currentOwner, nextOwner)`。
 
 所有者不能通过普通成员操作被移除或离开。GraphQL Resolver 与 HTTP Controller 应只
 负责输入输出映射，把这些约束留在 `WorkspaceService` 中。

@@ -147,8 +147,9 @@ me(@CurrentUser() user: User) {
 ```
 
 路由声明的每项权限都必须通过，包括同一作用域内重复声明的 `@UserCan` 或
-`@WorkspaceCan`，以及两个作用域的组合。权限要求固定采用 `all` 语义。`@Can` 是按
-`scope` 转发的薄别名；省略 `scope` 时转发给 `@WorkspaceCan`。
+`@WorkspaceCan`，以及两个作用域的组合。类级权限要求会与方法级权限要求合并，不会被
+方法级元数据覆盖。权限要求固定采用 `all` 语义。`@Can` 是按 `scope` 转发的薄别名；
+省略 `scope` 时转发给 `@WorkspaceCan`。
 
 ```typescript
 @Can("read", Post) // @WorkspaceCan("read", Post)

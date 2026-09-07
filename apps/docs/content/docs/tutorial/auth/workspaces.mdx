@@ -44,11 +44,17 @@ soft delete and only the owner of that workspace may perform it.
 ## Member Lifecycle
 
 - `getMember(workspace, user)`;
+- `getMemberById(workspace, memberId)`;
 - `listMembers(workspace)`;
 - `addMember(workspace, user, input)`;
+- `addMemberByEmail(workspace, email, input)`;
+- `createServiceAccount(workspace, input)`;
 - `updateMember(member, input)`;
+- `updateMemberRole(member, roles)`;
+- `setMemberPermissions(member, permissions)`;
 - `removeMember(member)`;
-- `leaveWorkspace(member)`.
+- `leaveWorkspace(member)`;
+- `transferOwnership(workspace, currentOwner, nextOwner)`.
 
 Owners cannot be removed or leave through the ordinary member operation.
 GraphQL resolvers and HTTP controllers should map input/output types and leave

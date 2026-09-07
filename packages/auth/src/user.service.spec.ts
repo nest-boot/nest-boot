@@ -1,7 +1,11 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { EntityManager } from "@mikro-orm/core";
 import { HashService } from "@nest-boot/hash";
-import { BadRequestException, ForbiddenException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+} from "@nestjs/common";
 import type { Mocked } from "vitest";
 
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
@@ -15,6 +19,10 @@ import {
   BaseWorkspaceMember,
 } from "./entities/index.js";
 import { UserService } from "./user.service.js";
+import {
+  UserDeletionService,
+  WorkspaceOwnershipConflictError,
+} from "./user-deletion.service.js";
 
 class TestAccount extends BaseAccount {}
 class TestApiKey extends BaseApiKey {}
@@ -394,31 +402,25 @@ describe("UserService", () => {
     expect(em.flush).toHaveBeenCalled();
   });
 
-  it("removes dependent records before deleting a user", async () => {
-    const { em, service } = createService();
+  it("delegates user removal to the transactional deletion coordinator", async () => {
+    const { service, userDeletionService } = createService();
     const user = Object.assign(new TestUser(), { id: "user-1" });
 
     await expect(service.removeUser(user)).resolves.toBe(user);
 
-    expect(em.nativeDelete).toHaveBeenNthCalledWith(1, TestSession, {
-      $or: [{ userId: "user-1" }, { impersonatedBy: user }],
-    });
-    expect(em.nativeDelete).toHaveBeenNthCalledWith(2, TestAccount, {
-      userId: "user-1",
-    });
-    expect(em.nativeDelete).toHaveBeenNthCalledWith(3, TestApiKey, {
-      owner: user,
-    });
-    expect(em.nativeDelete).toHaveBeenNthCalledWith(
-      4,
-      TestWorkspaceInvitation,
-      { inviter: user },
+    expect(userDeletionService.deleteUser).toHaveBeenCalledWith("user-1");
+  });
+
+  it("maps workspace ownership conflicts to a Nest conflict response", async () => {
+    const { service, userDeletionService } = createService();
+    const user = Object.assign(new TestUser(), { id: "owner-1" });
+    userDeletionService.deleteUser.mockRejectedValue(
+      new WorkspaceOwnershipConflictError(),
     );
-    expect(em.nativeDelete).toHaveBeenNthCalledWith(5, TestWorkspaceMember, {
-      user,
-    });
-    expect(em.remove).toHaveBeenCalledWith(user);
-    expect(em.flush).toHaveBeenCalled();
+
+    await expect(service.removeUser(user)).rejects.toBeInstanceOf(
+      ConflictException,
+    );
   });
 
   it("sets an existing credential password or creates the account", async () => {
@@ -519,16 +521,21 @@ function createService(
     assertCurrentUser: vi.fn(),
     assertUserCan: vi.fn(),
   } as unknown as AuthorizationService;
+  const userDeletionService = {
+    deleteUser: vi.fn(),
+  } as unknown as Mocked<UserDeletionService>;
   return {
     authorizationService,
     em,
     hash,
     hashServiceHash,
+    userDeletionService,
     service: new UserService<TestUser, TestAccount, TestSession>(
       em,
       options,
       hashService,
       authorizationService,
+      userDeletionService,
     ),
   };
 }
