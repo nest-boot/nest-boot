@@ -104,6 +104,7 @@ describe("cookies", () => {
 
     await runWithHttpContext({ headers: {} }, response, () => {
       cookies().set("session", "token value", {
+        expires: 0,
         httpOnly: true,
         path: "/",
         priority: "high",
@@ -113,7 +114,7 @@ describe("cookies", () => {
     });
 
     expect(response.headers["set-cookie"]).toEqual([
-      "session=token%20value; Path=/; HttpOnly; Secure; Priority=High; SameSite=Lax",
+      "session=token%20value; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; Priority=High; SameSite=Lax",
     ]);
   });
 
