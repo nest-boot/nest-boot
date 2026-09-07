@@ -193,8 +193,10 @@ export class AuthResolver {
 
   /** Revokes one active session owned by the authenticated user. */
   @Mutation(() => Boolean)
-  async authRevokeSession(@Args('token') token: string): Promise<boolean> {
-    return await this.sessionService.revokeSession(token);
+  async authRevokeSession(
+    @Args('sessionId', { type: () => ID }) sessionId: string,
+  ): Promise<boolean> {
+    return await this.sessionService.revokeSession(sessionId);
   }
 
   /** Revokes every active session except the current session. */
@@ -321,7 +323,6 @@ function toAuthSessionType(
 
   return {
     id: session.id,
-    token: session.token,
     current,
     expiresAt: session.expiresAt,
     ipAddress: session.ipAddress ?? null,

@@ -48,7 +48,8 @@ GraphQL, REST, or another transport. The sender receives an optional Fetch
 ## WorkspaceService API
 
 - `createInvitation(workspace, inviter, input, request?)`;
-- `getInvitation(id)`;
+- `getUserInvitation(id, user)`;
+- `getWorkspaceInvitation(id, workspace)`;
 - `listInvitations(workspace)`;
 - `listUserInvitations(user)`;
 - `acceptInvitation(user, invitationId)`;
@@ -56,10 +57,11 @@ GraphQL, REST, or another transport. The sender receives an optional Fetch
 - `cancelInvitation(invitation)`.
 
 Invitations expire after 48 hours unless `input.expiresIn` supplies another
-lifetime in seconds. Creation rejects existing members and duplicate pending
-invitations. Acceptance and rejection require the invitation email to match the
-authenticated user. Only pending, unexpired invitations can be accepted.
+positive integer lifetime in seconds. Creation rejects existing members and
+duplicate pending invitations. Acceptance and rejection require the invitation
+email to match the authenticated user. Only pending, unexpired invitations can
+be accepted.
 
-Keep authorization in the transport boundary: workspace administrators create
-and cancel invitations, while the addressed user gets, accepts, or rejects an
-invitation.
+`WorkspaceService` enforces the relevant workspace or current-user permission
+for every operation. Workspace administrators create and cancel invitations,
+while the addressed user gets, accepts, or rejects an invitation.

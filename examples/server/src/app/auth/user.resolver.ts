@@ -145,7 +145,6 @@ export class UserResolver {
     );
     return sessions.map((session) => ({
       id: session.id,
-      token: session.token,
       current: false,
       expiresAt: session.expiresAt,
       ipAddress: session.ipAddress ?? null,
@@ -158,16 +157,16 @@ export class UserResolver {
     }));
   }
 
-  /** Revokes one user session by token. */
+  /** Revokes one user session by its public ID. */
   @UserCan('revoke', Session)
   @Mutation(() => Boolean)
   async revokeUserSession(
     @Args('userId', { type: () => ID }) userId: string,
-    @Args('token') token: string,
+    @Args('sessionId', { type: () => ID }) sessionId: string,
   ): Promise<boolean> {
     return await this.userService.revokeUserSession(
       await this.getUserOrFail(userId),
-      token,
+      sessionId,
     );
   }
 

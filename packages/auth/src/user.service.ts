@@ -335,13 +335,13 @@ export class UserService<
     });
   }
 
-  /** Revokes one session when it belongs to the supplied user. */
-  async revokeUserSession(user: User, token: string): Promise<boolean> {
+  /** Revokes one session by ID when it belongs to the supplied user. */
+  async revokeUserSession(user: User, sessionId: string): Promise<boolean> {
     this.accessControlService.assertUserCan("revoke", this.sessionEntity);
     return await this.runUnrestricted(async () => {
       const session = await this.em.findOne(
         this.sessionEntity,
-        { token, userId: String(user.id) } as FilterQuery<Session>,
+        { id: sessionId, userId: String(user.id) } as FilterQuery<Session>,
         { filters: false },
       );
       if (!session) return false;

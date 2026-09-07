@@ -62,7 +62,6 @@ const GET_USER_FROM_USER_ROUTE = graphql(`
     userPermissions
     userSessions(userId: $id) {
       id
-      token
       expiresAt
       ipAddress
       userAgent
@@ -136,8 +135,8 @@ const SET_USER_PASSWORD_FROM_USER_ROUTE = graphql(`
 `);
 
 const REVOKE_USER_SESSION_FROM_USER_ROUTE = graphql(`
-  mutation revokeUserSessionFromUserRoute($userId: ID!, $token: String!) {
-    revokeUserSession(userId: $userId, token: $token)
+  mutation revokeUserSessionFromUserRoute($userId: ID!, $sessionId: ID!) {
+    revokeUserSession(userId: $userId, sessionId: $sessionId)
   }
 `);
 
@@ -186,7 +185,7 @@ function AdminUserPage() {
   const [roles, setRoles] = useState<Array<string>>([]);
   const [banReason, setBanReason] = useState("");
   const [newPassword, setNewPassword] = useState("");
-  const [revokingToken, setRevokingToken] = useState<string>();
+  const [revokingSessionId, setRevokingSessionId] = useState<string>();
 
   useEffect(() => {
     if (!user) return;
@@ -423,17 +422,17 @@ function AdminUserPage() {
                 <Button
                   size="sm"
                   variant="outline"
-                  loading={revokingToken === session.token}
+                  loading={revokingSessionId === session.id}
                   onClick={async () => {
-                    setRevokingToken(session.token);
+                    setRevokingSessionId(session.id);
                     await run(
                       () =>
                         revokeUserSession({
-                          variables: { userId, token: session.token },
+                          variables: { userId, sessionId: session.id },
                         }),
                       t("admin:user.sessions.revoked"),
                     );
-                    setRevokingToken(undefined);
+                    setRevokingSessionId(undefined);
                   }}
                 >
                   {t("admin:user.sessions.revoke")}

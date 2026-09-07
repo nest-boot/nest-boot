@@ -334,6 +334,7 @@ describe("UserService", () => {
     const { em, service } = createService();
     const user = Object.assign(new TestUser(), { id: "user-1" });
     const session = Object.assign(new TestSession(), {
+      id: "session-1",
       token: "session-token",
       userId: "user-1",
     });
@@ -342,15 +343,20 @@ describe("UserService", () => {
     em.nativeDelete.mockResolvedValue(2);
 
     await expect(service.listUserSessions(user)).resolves.toEqual([session]);
-    await expect(
-      service.revokeUserSession(user, "session-token"),
-    ).resolves.toBe(true);
+    await expect(service.revokeUserSession(user, session.id)).resolves.toBe(
+      true,
+    );
     await expect(service.revokeUserSessions(user)).resolves.toBe(2);
 
     expect(em.find).toHaveBeenCalledWith(
       TestSession,
       expect.objectContaining({ userId: "user-1" }),
       { filters: false, orderBy: { createdAt: "desc" } },
+    );
+    expect(em.findOne).toHaveBeenCalledWith(
+      TestSession,
+      { id: session.id, userId: "user-1" },
+      { filters: false },
     );
     expect(em.remove).toHaveBeenCalledWith(session);
     expect(em.nativeDelete).toHaveBeenCalledWith(TestSession, {

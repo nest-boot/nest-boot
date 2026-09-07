@@ -375,7 +375,6 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         query {
           authSessions {
             id
-            token
             current
             ipAddress
             userAgent
@@ -397,17 +396,18 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     const otherSession = listedSessions.body.data.authSessions.find(
       (session: { current: boolean }) => !session.current,
     );
-    expect(otherSession?.token).toBeTypeOf('string');
+    expect(otherSession?.id).toBeTypeOf('string');
+    expect(otherSession).not.toHaveProperty('token');
 
     const revokedSession = await gql(
       /* GraphQL */ `
-        mutation RevokeSession($token: String!) {
-          authRevokeSession(token: $token)
+        mutation RevokeSession($sessionId: ID!) {
+          authRevokeSession(sessionId: $sessionId)
         }
       `,
       {
         cookies,
-        variables: { token: otherSession.token },
+        variables: { sessionId: otherSession.id },
       },
     );
 

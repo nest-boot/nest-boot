@@ -45,16 +45,17 @@ AuthModule.forRoot({
 ## WorkspaceService API
 
 - `createInvitation(workspace, inviter, input, request?)`；
-- `getInvitation(id)`；
+- `getUserInvitation(id, user)`；
+- `getWorkspaceInvitation(id, workspace)`；
 - `listInvitations(workspace)`；
 - `listUserInvitations(user)`；
 - `acceptInvitation(user, invitationId)`；
 - `rejectInvitation(user, invitation)`；
 - `cancelInvitation(invitation)`。
 
-邀请默认在 48 小时后过期，也可以通过 `input.expiresIn` 指定秒数。创建邀请时会拒绝
-已有成员与重复的待处理邀请；接受和拒绝时，收件邮箱必须与已认证用户一致；只有仍在
-有效期内的 `pending` 邀请可以被接受。
+邀请默认在 48 小时后过期，也可以通过 `input.expiresIn` 指定正整数秒数。创建邀请时
+会拒绝已有成员与重复的待处理邀请；接受和拒绝时，收件邮箱必须与已认证用户一致；只有
+仍在有效期内的 `pending` 邀请可以被接受。
 
-权限检查应放在传输边界：工作区管理员负责创建和取消邀请，被邀请用户负责查询、接受
-或拒绝自己的邀请。
+`WorkspaceService` 会在每个操作中校验对应的工作区或当前用户权限。工作区管理员负责
+创建和取消邀请，被邀请用户负责查询、接受或拒绝自己的邀请。

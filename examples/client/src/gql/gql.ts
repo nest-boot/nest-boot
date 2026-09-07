@@ -15,14 +15,14 @@ import { TypedDocumentNode as DocumentNode } from "@graphql-typed-document-node/
  */
 type Documents = {
   "\n  query getAdminAccessFromAdminLayout {\n    currentUserAbilityRules {\n      actions\n      subjects\n      fields\n      conditions\n      inverted\n      reason\n    }\n  }\n": typeof types.GetAdminAccessFromAdminLayoutDocument;
-  "\n  query getUserFromUserRoute($id: ID!) {\n    user(id: $id) {\n      id\n      name\n      email\n      emailVerified\n      image\n      roles\n      permissions\n      banned\n      banReason\n      banExpiresAt\n      createdAt\n      updatedAt\n    }\n    userRoles {\n      name\n      permissions\n    }\n    userPermissions\n    userSessions(userId: $id) {\n      id\n      token\n      expiresAt\n      ipAddress\n      userAgent\n      createdAt\n    }\n  }\n": typeof types.GetUserFromUserRouteDocument;
+  "\n  query getUserFromUserRoute($id: ID!) {\n    user(id: $id) {\n      id\n      name\n      email\n      emailVerified\n      image\n      roles\n      permissions\n      banned\n      banReason\n      banExpiresAt\n      createdAt\n      updatedAt\n    }\n    userRoles {\n      name\n      permissions\n    }\n    userPermissions\n    userSessions(userId: $id) {\n      id\n      expiresAt\n      ipAddress\n      userAgent\n      createdAt\n    }\n  }\n": typeof types.GetUserFromUserRouteDocument;
   "\n  mutation updateManagedUserFromUserRoute($id: ID!, $input: UpdateUserInput!) {\n    updateUser(id: $id, input: $input) {\n      id\n      name\n      email\n      emailVerified\n      image\n    }\n  }\n": typeof types.UpdateManagedUserFromUserRouteDocument;
   "\n  mutation setUserPermissionsFromUserRoute(\n    $id: ID!\n    $input: SetUserPermissionsInput!\n  ) {\n    setUserPermissions(id: $id, input: $input) {\n      id\n      permissions\n    }\n  }\n": typeof types.SetUserPermissionsFromUserRouteDocument;
   "\n  mutation setUserRolesFromUserRoute($id: ID!, $input: SetUserRolesInput!) {\n    setUserRoles(id: $id, input: $input) {\n      id\n      roles\n    }\n  }\n": typeof types.SetUserRolesFromUserRouteDocument;
   "\n  mutation banUserFromUserRoute($id: ID!, $input: BanUserInput) {\n    banUser(id: $id, input: $input) {\n      id\n      banned\n      banReason\n      banExpiresAt\n    }\n  }\n": typeof types.BanUserFromUserRouteDocument;
   "\n  mutation unbanUserFromUserRoute($id: ID!) {\n    unbanUser(id: $id) {\n      id\n      banned\n      banReason\n      banExpiresAt\n    }\n  }\n": typeof types.UnbanUserFromUserRouteDocument;
   "\n  mutation setUserPasswordFromUserRoute(\n    $id: ID!\n    $input: SetUserPasswordInput!\n  ) {\n    setUserPassword(id: $id, input: $input)\n  }\n": typeof types.SetUserPasswordFromUserRouteDocument;
-  "\n  mutation revokeUserSessionFromUserRoute($userId: ID!, $token: String!) {\n    revokeUserSession(userId: $userId, token: $token)\n  }\n": typeof types.RevokeUserSessionFromUserRouteDocument;
+  "\n  mutation revokeUserSessionFromUserRoute($userId: ID!, $sessionId: ID!) {\n    revokeUserSession(userId: $userId, sessionId: $sessionId)\n  }\n": typeof types.RevokeUserSessionFromUserRouteDocument;
   "\n  mutation revokeUserSessionsFromUserRoute($userId: ID!) {\n    revokeUserSessions(userId: $userId)\n  }\n": typeof types.RevokeUserSessionsFromUserRouteDocument;
   "\n  mutation deleteUserFromUserRoute($id: ID!) {\n    deleteUser(id: $id) {\n      id\n    }\n  }\n": typeof types.DeleteUserFromUserRouteDocument;
   "\n  mutation impersonateUserFromUserRoute($id: ID!) {\n    impersonateUser(id: $id) {\n      id\n    }\n  }\n": typeof types.ImpersonateUserFromUserRouteDocument;
@@ -41,8 +41,8 @@ type Documents = {
   "\n  mutation updateUserFromUserRoute($input: AuthUpdateUserInput!) {\n    authUpdateUser(input: $input)\n  }\n": typeof types.UpdateUserFromUserRouteDocument;
   "\n  mutation changeEmailFromUserRoute($input: AuthChangeEmailInput!) {\n    authChangeEmail(input: $input)\n  }\n": typeof types.ChangeEmailFromUserRouteDocument;
   "\n  mutation changePasswordFromUserSecurity($input: AuthChangePasswordInput!) {\n    authChangePassword(input: $input) {\n      token\n    }\n  }\n": typeof types.ChangePasswordFromUserSecurityDocument;
-  "\n  query getSessionsFromUserSecurity {\n    authSessions {\n      id\n      token\n      current\n      expiresAt\n      ipAddress\n      userAgent\n      createdAt\n    }\n  }\n": typeof types.GetSessionsFromUserSecurityDocument;
-  "\n  mutation revokeSessionFromUserSecurity($token: String!) {\n    authRevokeSession(token: $token)\n  }\n": typeof types.RevokeSessionFromUserSecurityDocument;
+  "\n  query getSessionsFromUserSecurity {\n    authSessions {\n      id\n      current\n      expiresAt\n      ipAddress\n      userAgent\n      createdAt\n    }\n  }\n": typeof types.GetSessionsFromUserSecurityDocument;
+  "\n  mutation revokeSessionFromUserSecurity($sessionId: ID!) {\n    authRevokeSession(sessionId: $sessionId)\n  }\n": typeof types.RevokeSessionFromUserSecurityDocument;
   "\n  mutation revokeOtherSessionsFromUserSecurity {\n    authRevokeOtherSessions\n  }\n": typeof types.RevokeOtherSessionsFromUserSecurityDocument;
   "\n  query getAccountsFromUserSecurity {\n    authAccounts {\n      id\n      accountId\n      issuer\n      providerId\n      scopes\n      createdAt\n    }\n  }\n": typeof types.GetAccountsFromUserSecurityDocument;
   "\n  query getSocialProvidersFromUserSecurity {\n    authSocialProviders {\n      id\n      name\n    }\n  }\n": typeof types.GetSocialProvidersFromUserSecurityDocument;
@@ -95,7 +95,7 @@ type Documents = {
 const documents: Documents = {
   "\n  query getAdminAccessFromAdminLayout {\n    currentUserAbilityRules {\n      actions\n      subjects\n      fields\n      conditions\n      inverted\n      reason\n    }\n  }\n":
     types.GetAdminAccessFromAdminLayoutDocument,
-  "\n  query getUserFromUserRoute($id: ID!) {\n    user(id: $id) {\n      id\n      name\n      email\n      emailVerified\n      image\n      roles\n      permissions\n      banned\n      banReason\n      banExpiresAt\n      createdAt\n      updatedAt\n    }\n    userRoles {\n      name\n      permissions\n    }\n    userPermissions\n    userSessions(userId: $id) {\n      id\n      token\n      expiresAt\n      ipAddress\n      userAgent\n      createdAt\n    }\n  }\n":
+  "\n  query getUserFromUserRoute($id: ID!) {\n    user(id: $id) {\n      id\n      name\n      email\n      emailVerified\n      image\n      roles\n      permissions\n      banned\n      banReason\n      banExpiresAt\n      createdAt\n      updatedAt\n    }\n    userRoles {\n      name\n      permissions\n    }\n    userPermissions\n    userSessions(userId: $id) {\n      id\n      expiresAt\n      ipAddress\n      userAgent\n      createdAt\n    }\n  }\n":
     types.GetUserFromUserRouteDocument,
   "\n  mutation updateManagedUserFromUserRoute($id: ID!, $input: UpdateUserInput!) {\n    updateUser(id: $id, input: $input) {\n      id\n      name\n      email\n      emailVerified\n      image\n    }\n  }\n":
     types.UpdateManagedUserFromUserRouteDocument,
@@ -109,7 +109,7 @@ const documents: Documents = {
     types.UnbanUserFromUserRouteDocument,
   "\n  mutation setUserPasswordFromUserRoute(\n    $id: ID!\n    $input: SetUserPasswordInput!\n  ) {\n    setUserPassword(id: $id, input: $input)\n  }\n":
     types.SetUserPasswordFromUserRouteDocument,
-  "\n  mutation revokeUserSessionFromUserRoute($userId: ID!, $token: String!) {\n    revokeUserSession(userId: $userId, token: $token)\n  }\n":
+  "\n  mutation revokeUserSessionFromUserRoute($userId: ID!, $sessionId: ID!) {\n    revokeUserSession(userId: $userId, sessionId: $sessionId)\n  }\n":
     types.RevokeUserSessionFromUserRouteDocument,
   "\n  mutation revokeUserSessionsFromUserRoute($userId: ID!) {\n    revokeUserSessions(userId: $userId)\n  }\n":
     types.RevokeUserSessionsFromUserRouteDocument,
@@ -147,9 +147,9 @@ const documents: Documents = {
     types.ChangeEmailFromUserRouteDocument,
   "\n  mutation changePasswordFromUserSecurity($input: AuthChangePasswordInput!) {\n    authChangePassword(input: $input) {\n      token\n    }\n  }\n":
     types.ChangePasswordFromUserSecurityDocument,
-  "\n  query getSessionsFromUserSecurity {\n    authSessions {\n      id\n      token\n      current\n      expiresAt\n      ipAddress\n      userAgent\n      createdAt\n    }\n  }\n":
+  "\n  query getSessionsFromUserSecurity {\n    authSessions {\n      id\n      current\n      expiresAt\n      ipAddress\n      userAgent\n      createdAt\n    }\n  }\n":
     types.GetSessionsFromUserSecurityDocument,
-  "\n  mutation revokeSessionFromUserSecurity($token: String!) {\n    authRevokeSession(token: $token)\n  }\n":
+  "\n  mutation revokeSessionFromUserSecurity($sessionId: ID!) {\n    authRevokeSession(sessionId: $sessionId)\n  }\n":
     types.RevokeSessionFromUserSecurityDocument,
   "\n  mutation revokeOtherSessionsFromUserSecurity {\n    authRevokeOtherSessions\n  }\n":
     types.RevokeOtherSessionsFromUserSecurityDocument,
@@ -273,8 +273,8 @@ export function graphql(
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
-  source: "\n  query getUserFromUserRoute($id: ID!) {\n    user(id: $id) {\n      id\n      name\n      email\n      emailVerified\n      image\n      roles\n      permissions\n      banned\n      banReason\n      banExpiresAt\n      createdAt\n      updatedAt\n    }\n    userRoles {\n      name\n      permissions\n    }\n    userPermissions\n    userSessions(userId: $id) {\n      id\n      token\n      expiresAt\n      ipAddress\n      userAgent\n      createdAt\n    }\n  }\n",
-): (typeof documents)["\n  query getUserFromUserRoute($id: ID!) {\n    user(id: $id) {\n      id\n      name\n      email\n      emailVerified\n      image\n      roles\n      permissions\n      banned\n      banReason\n      banExpiresAt\n      createdAt\n      updatedAt\n    }\n    userRoles {\n      name\n      permissions\n    }\n    userPermissions\n    userSessions(userId: $id) {\n      id\n      token\n      expiresAt\n      ipAddress\n      userAgent\n      createdAt\n    }\n  }\n"];
+  source: "\n  query getUserFromUserRoute($id: ID!) {\n    user(id: $id) {\n      id\n      name\n      email\n      emailVerified\n      image\n      roles\n      permissions\n      banned\n      banReason\n      banExpiresAt\n      createdAt\n      updatedAt\n    }\n    userRoles {\n      name\n      permissions\n    }\n    userPermissions\n    userSessions(userId: $id) {\n      id\n      expiresAt\n      ipAddress\n      userAgent\n      createdAt\n    }\n  }\n",
+): (typeof documents)["\n  query getUserFromUserRoute($id: ID!) {\n    user(id: $id) {\n      id\n      name\n      email\n      emailVerified\n      image\n      roles\n      permissions\n      banned\n      banReason\n      banExpiresAt\n      createdAt\n      updatedAt\n    }\n    userRoles {\n      name\n      permissions\n    }\n    userPermissions\n    userSessions(userId: $id) {\n      id\n      expiresAt\n      ipAddress\n      userAgent\n      createdAt\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -315,8 +315,8 @@ export function graphql(
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
-  source: "\n  mutation revokeUserSessionFromUserRoute($userId: ID!, $token: String!) {\n    revokeUserSession(userId: $userId, token: $token)\n  }\n",
-): (typeof documents)["\n  mutation revokeUserSessionFromUserRoute($userId: ID!, $token: String!) {\n    revokeUserSession(userId: $userId, token: $token)\n  }\n"];
+  source: "\n  mutation revokeUserSessionFromUserRoute($userId: ID!, $sessionId: ID!) {\n    revokeUserSession(userId: $userId, sessionId: $sessionId)\n  }\n",
+): (typeof documents)["\n  mutation revokeUserSessionFromUserRoute($userId: ID!, $sessionId: ID!) {\n    revokeUserSession(userId: $userId, sessionId: $sessionId)\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -429,14 +429,14 @@ export function graphql(
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
-  source: "\n  query getSessionsFromUserSecurity {\n    authSessions {\n      id\n      token\n      current\n      expiresAt\n      ipAddress\n      userAgent\n      createdAt\n    }\n  }\n",
-): (typeof documents)["\n  query getSessionsFromUserSecurity {\n    authSessions {\n      id\n      token\n      current\n      expiresAt\n      ipAddress\n      userAgent\n      createdAt\n    }\n  }\n"];
+  source: "\n  query getSessionsFromUserSecurity {\n    authSessions {\n      id\n      current\n      expiresAt\n      ipAddress\n      userAgent\n      createdAt\n    }\n  }\n",
+): (typeof documents)["\n  query getSessionsFromUserSecurity {\n    authSessions {\n      id\n      current\n      expiresAt\n      ipAddress\n      userAgent\n      createdAt\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
-  source: "\n  mutation revokeSessionFromUserSecurity($token: String!) {\n    authRevokeSession(token: $token)\n  }\n",
-): (typeof documents)["\n  mutation revokeSessionFromUserSecurity($token: String!) {\n    authRevokeSession(token: $token)\n  }\n"];
+  source: "\n  mutation revokeSessionFromUserSecurity($sessionId: ID!) {\n    authRevokeSession(sessionId: $sessionId)\n  }\n",
+): (typeof documents)["\n  mutation revokeSessionFromUserSecurity($sessionId: ID!) {\n    authRevokeSession(sessionId: $sessionId)\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

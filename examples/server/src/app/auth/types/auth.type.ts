@@ -124,10 +124,6 @@ export class AuthSessionType {
   @Field(() => ID)
   id!: string;
 
-  /** Opaque token used when revoking this session. */
-  @Field(() => String)
-  token!: string;
-
   /** Whether this is the session making the current request. */
   @Field(() => Boolean)
   current!: boolean;

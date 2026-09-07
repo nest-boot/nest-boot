@@ -250,7 +250,6 @@ export type AuthSessionType = {
   id: Scalars["ID"]["output"];
   impersonatedById?: Maybe<Scalars["ID"]["output"]>;
   ipAddress?: Maybe<Scalars["String"]["output"]>;
-  token: Scalars["String"]["output"];
   updatedAt: Scalars["DateTime"]["output"];
   userAgent?: Maybe<Scalars["String"]["output"]>;
 };
@@ -467,7 +466,7 @@ export type MutationAuthResetPasswordArgs = {
 };
 
 export type MutationAuthRevokeSessionArgs = {
-  token: Scalars["String"]["input"];
+  sessionId: Scalars["ID"]["input"];
 };
 
 export type MutationAuthSendVerificationEmailArgs = {
@@ -556,7 +555,7 @@ export type MutationRemoveWorkspaceMemberArgs = {
 };
 
 export type MutationRevokeUserSessionArgs = {
-  token: Scalars["String"]["input"];
+  sessionId: Scalars["ID"]["input"];
   userId: Scalars["ID"]["input"];
 };
 
@@ -997,7 +996,6 @@ export type GetUserFromUserRouteQuery = {
   userSessions: Array<{
     __typename?: "AuthSessionType";
     id: string;
-    token: string;
     expiresAt: any;
     ipAddress?: string | null;
     userAgent?: string | null;
@@ -1089,7 +1087,7 @@ export type SetUserPasswordFromUserRouteMutation = {
 
 export type RevokeUserSessionFromUserRouteMutationVariables = Exact<{
   userId: Scalars["ID"]["input"];
-  token: Scalars["String"]["input"];
+  sessionId: Scalars["ID"]["input"];
 }>;
 
 export type RevokeUserSessionFromUserRouteMutation = {
@@ -1385,7 +1383,6 @@ export type GetSessionsFromUserSecurityQuery = {
   authSessions: Array<{
     __typename?: "AuthSessionType";
     id: string;
-    token: string;
     current: boolean;
     expiresAt: any;
     ipAddress?: string | null;
@@ -1395,7 +1392,7 @@ export type GetSessionsFromUserSecurityQuery = {
 };
 
 export type RevokeSessionFromUserSecurityMutationVariables = Exact<{
-  token: Scalars["String"]["input"];
+  sessionId: Scalars["ID"]["input"];
 }>;
 
 export type RevokeSessionFromUserSecurityMutation = {
@@ -2303,7 +2300,6 @@ export const GetUserFromUserRouteDocument = {
               kind: "SelectionSet",
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "id" } },
-                { kind: "Field", name: { kind: "Name", value: "token" } },
                 { kind: "Field", name: { kind: "Name", value: "expiresAt" } },
                 { kind: "Field", name: { kind: "Name", value: "ipAddress" } },
                 { kind: "Field", name: { kind: "Name", value: "userAgent" } },
@@ -2752,14 +2748,11 @@ export const RevokeUserSessionFromUserRouteDocument = {
           kind: "VariableDefinition",
           variable: {
             kind: "Variable",
-            name: { kind: "Name", value: "token" },
+            name: { kind: "Name", value: "sessionId" },
           },
           type: {
             kind: "NonNullType",
-            type: {
-              kind: "NamedType",
-              name: { kind: "Name", value: "String" },
-            },
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
           },
         },
       ],
@@ -2780,10 +2773,10 @@ export const RevokeUserSessionFromUserRouteDocument = {
               },
               {
                 kind: "Argument",
-                name: { kind: "Name", value: "token" },
+                name: { kind: "Name", value: "sessionId" },
                 value: {
                   kind: "Variable",
-                  name: { kind: "Name", value: "token" },
+                  name: { kind: "Name", value: "sessionId" },
                 },
               },
             ],
@@ -3875,7 +3868,6 @@ export const GetSessionsFromUserSecurityDocument = {
               kind: "SelectionSet",
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "id" } },
-                { kind: "Field", name: { kind: "Name", value: "token" } },
                 { kind: "Field", name: { kind: "Name", value: "current" } },
                 { kind: "Field", name: { kind: "Name", value: "expiresAt" } },
                 { kind: "Field", name: { kind: "Name", value: "ipAddress" } },
@@ -3904,14 +3896,11 @@ export const RevokeSessionFromUserSecurityDocument = {
           kind: "VariableDefinition",
           variable: {
             kind: "Variable",
-            name: { kind: "Name", value: "token" },
+            name: { kind: "Name", value: "sessionId" },
           },
           type: {
             kind: "NonNullType",
-            type: {
-              kind: "NamedType",
-              name: { kind: "Name", value: "String" },
-            },
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
           },
         },
       ],
@@ -3924,10 +3913,10 @@ export const RevokeSessionFromUserSecurityDocument = {
             arguments: [
               {
                 kind: "Argument",
-                name: { kind: "Name", value: "token" },
+                name: { kind: "Name", value: "sessionId" },
                 value: {
                   kind: "Variable",
-                  name: { kind: "Name", value: "token" },
+                  name: { kind: "Name", value: "sessionId" },
                 },
               },
             ],

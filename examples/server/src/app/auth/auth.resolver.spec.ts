@@ -199,6 +199,8 @@ describe('AuthResolver', () => {
       expect.objectContaining({ current: true, id: 'session-1' }),
       expect.objectContaining({ current: false, id: 'session-2' }),
     ]);
+    const result = await resolver.authSessions(sessions[0] as never);
+    expect(result.every((session) => !('token' in session))).toBe(true);
     expect(sessionService.listSessions).toHaveBeenCalledWith();
   });
 
@@ -211,10 +213,10 @@ describe('AuthResolver', () => {
         revokeSessions: vi.fn(async () => true),
       },
     );
-    await expect(resolver.authRevokeSession('token-2')).resolves.toBe(true);
+    await expect(resolver.authRevokeSession('session-2')).resolves.toBe(true);
     await expect(resolver.authRevokeOtherSessions()).resolves.toBe(true);
     await expect(resolver.authRevokeSessions()).resolves.toBe(true);
-    expect(sessionService.revokeSession).toHaveBeenCalledWith('token-2');
+    expect(sessionService.revokeSession).toHaveBeenCalledWith('session-2');
     expect(sessionService.revokeOtherSessions).toHaveBeenCalledWith();
     expect(sessionService.revokeSessions).toHaveBeenCalledWith();
   });

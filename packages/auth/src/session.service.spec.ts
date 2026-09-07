@@ -300,16 +300,30 @@ describe("SessionService", () => {
     expect(em.find).not.toHaveBeenCalled();
   });
 
-  it("revokes one session", async () => {
+  it("revokes one session by public ID without exposing its token", async () => {
     const api = createApi();
     api.revokeSession.mockResolvedValue({ status: true });
     const { service } = await createService(api);
+    const session = Object.assign(new TestSession(), {
+      id: "session-1",
+      token: "secret-session-token",
+    });
+    vi.spyOn(service, "listSessions").mockResolvedValue([session]);
 
     await expect(service.revokeSession("session-1")).resolves.toBe(true);
     expect(api.revokeSession).toHaveBeenCalledWith({
-      body: { token: "session-1" },
+      body: { token: "secret-session-token" },
       headers: requestHeaders,
     });
+  });
+
+  it("does not revoke a session ID outside the authenticated user's sessions", async () => {
+    const api = createApi();
+    const { service } = await createService(api);
+    vi.spyOn(service, "listSessions").mockResolvedValue([]);
+
+    await expect(service.revokeSession("session-1")).resolves.toBe(false);
+    expect(api.revokeSession).not.toHaveBeenCalled();
   });
 
   it("revokes every other session", async () => {

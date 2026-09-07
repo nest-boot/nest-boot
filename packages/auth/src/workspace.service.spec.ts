@@ -574,20 +574,25 @@ describe("WorkspaceService", () => {
       user: new TestUser(),
       workspace,
     });
+    em.findOne
+      .mockResolvedValueOnce(currentOwner)
+      .mockResolvedValueOnce(nextOwner);
 
     await expect(
       service.transferOwnership(workspace, currentOwner, nextOwner),
     ).resolves.toBe(nextOwner);
 
-    expect(em.lock).toHaveBeenNthCalledWith(
+    expect(em.findOne).toHaveBeenNthCalledWith(
       1,
-      currentOwner,
-      LockMode.PESSIMISTIC_WRITE,
+      TestWorkspaceMember,
+      { id: currentOwner.id, workspace },
+      { filters: false, lockMode: LockMode.PESSIMISTIC_WRITE },
     );
-    expect(em.lock).toHaveBeenNthCalledWith(
+    expect(em.findOne).toHaveBeenNthCalledWith(
       2,
-      nextOwner,
-      LockMode.PESSIMISTIC_WRITE,
+      TestWorkspaceMember,
+      { id: nextOwner.id, workspace },
+      { filters: false, lockMode: LockMode.PESSIMISTIC_WRITE },
     );
     expect(currentOwner.roles).toEqual(["member"]);
     expect(nextOwner.roles).toEqual(["owner"]);
@@ -611,7 +616,35 @@ describe("WorkspaceService", () => {
     await expect(
       service.transferOwnership(workspace, currentOwner, serviceAccount),
     ).rejects.toThrow("another active user member");
-    expect(em.lock).not.toHaveBeenCalled();
+    expect(em.findOne).not.toHaveBeenCalled();
+  });
+
+  it("rechecks owner status under a row lock before removing a member", async () => {
+    const { em, service } = createService();
+    const workspace = new TestWorkspace();
+    const staleMember = Object.assign(new TestWorkspaceMember(), {
+      roles: ["member"],
+      workspace,
+    });
+    const promotedMember = Object.assign(new TestWorkspaceMember(), {
+      id: staleMember.id,
+      roles: ["owner"],
+      workspace,
+    });
+    em.findOne.mockResolvedValue(promotedMember);
+
+    await expect(service.removeMember(staleMember)).rejects.toThrow(
+      "Workspace owners cannot be removed",
+    );
+    await expect(service.leaveWorkspace(staleMember)).rejects.toThrow(
+      "Workspace owners cannot leave",
+    );
+    expect(em.findOne).toHaveBeenCalledWith(
+      TestWorkspaceMember,
+      { id: staleMember.id, workspace },
+      { filters: false, lockMode: LockMode.PESSIMISTIC_WRITE },
+    );
+    expect(em.remove).not.toHaveBeenCalled();
   });
 
   it("creates and accepts an email-bound invitation", async () => {
@@ -648,6 +681,54 @@ describe("WorkspaceService", () => {
     });
     expect(invitation.status).toBe("accepted");
   });
+
+  it("rejects an invitation when the same user is already a member under an old email", async () => {
+    const { em, service } = createService();
+    const workspace = new TestWorkspace();
+    const inviter = Object.assign(new TestUser(), {
+      email: "owner@example.com",
+    });
+    const user = Object.assign(new TestUser(), {
+      email: "alice@example.com",
+    });
+    const member = Object.assign(new TestWorkspaceMember(), {
+      email: "old-address@example.com",
+      user,
+      workspace,
+    });
+    em.findOne.mockResolvedValueOnce(member).mockResolvedValueOnce(null);
+
+    await expect(
+      service.createInvitation(workspace, inviter, { email: user.email }),
+    ).rejects.toThrow("User is already a member");
+    expect(em.findOne).toHaveBeenNthCalledWith(
+      1,
+      TestWorkspaceMember,
+      {
+        workspace,
+        $or: [{ email: "alice@example.com" }, { user: { email: user.email } }],
+      },
+      { filters: false },
+    );
+  });
+
+  it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY, 1.5])(
+    "rejects invalid invitation lifetime %s at the service boundary",
+    async (expiresIn) => {
+      const { em, service } = createService();
+
+      await expect(
+        service.createInvitation(new TestWorkspace(), new TestUser(), {
+          email: "alice@example.com",
+          expiresIn,
+        }),
+      ).rejects.toThrow(
+        "Workspace invitation lifetime must be a positive integer",
+      );
+      expect(em.findOne).not.toHaveBeenCalled();
+      expect(em.persist).not.toHaveBeenCalled();
+    },
+  );
 
   it("sends the configured invitation email after persisting the invitation", async () => {
     const sendInvitationEmail = vi.fn().mockResolvedValue(undefined);

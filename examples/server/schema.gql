@@ -200,7 +200,6 @@ type AuthSessionType {
   id: ID!
   impersonatedById: ID
   ipAddress: String
-  token: String!
   updatedAt: DateTime!
   userAgent: String
 }
@@ -338,7 +337,7 @@ type Mutation {
   authRequestPasswordReset(input: AuthRequestPasswordResetInput!): AuthRequestPasswordResetResultType!
   authResetPassword(input: AuthResetPasswordInput!): Boolean!
   authRevokeOtherSessions: Boolean!
-  authRevokeSession(token: String!): Boolean!
+  authRevokeSession(sessionId: ID!): Boolean!
   authRevokeSessions: Boolean!
   authSendVerificationEmail(input: AuthSendVerificationEmailInput!): Boolean!
   authSetPassword(newPassword: String!): Boolean!
@@ -365,7 +364,7 @@ type Mutation {
   rejectWorkspaceInvitation(invitationId: ID!): WorkspaceInvitation!
   removeWorkspace: Workspace! @deprecated(reason: "Use deleteWorkspace instead")
   removeWorkspaceMember(id: ID!): WorkspaceMember!
-  revokeUserSession(token: String!, userId: ID!): Boolean!
+  revokeUserSession(sessionId: ID!, userId: ID!): Boolean!
   revokeUserSessions(userId: ID!): Boolean!
   setUserPassword(id: ID!, input: SetUserPasswordInput!): Boolean!
   setUserPermissions(id: ID!, input: SetUserPermissionsInput!): User!

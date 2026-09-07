@@ -88,10 +88,12 @@ describe('UserResolver', () => {
     await expect(resolver.userSessions(user.id)).resolves.toEqual([
       expect.objectContaining({ current: false, id: session.id }),
     ]);
-    await expect(
-      resolver.revokeUserSession(user.id, session.token),
-    ).resolves.toBe(true);
-    expect(service.revokeUserSession).toHaveBeenCalledWith(user, session.token);
+    const sessions = await resolver.userSessions(user.id);
+    expect(sessions.every((listed) => !('token' in listed))).toBe(true);
+    await expect(resolver.revokeUserSession(user.id, session.id)).resolves.toBe(
+      true,
+    );
+    expect(service.revokeUserSession).toHaveBeenCalledWith(user, session.id);
   });
 
   it('starts and stops impersonation while selecting each created session', async () => {

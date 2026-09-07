@@ -443,28 +443,32 @@ export class WorkspaceService<
 
   /** Removes a non-owner member from its workspace. */
   async removeMember(member: WorkspaceMember): Promise<WorkspaceMember> {
-    this.accessControlService.assertCurrentWorkspace(
-      this.unwrapWorkspace(member),
-    );
+    const workspace = this.unwrapWorkspace(member);
+    this.accessControlService.assertCurrentWorkspace(workspace);
     this.accessControlService.assertWorkspaceCan("delete", member);
     if (member.roles.includes(this.creatorRole)) {
       throw new ForbiddenException("Workspace owners cannot be removed");
     }
-    await this.em.remove(member).flush();
-    return member;
+    return await this.removeNonOwnerMember(
+      workspace,
+      member,
+      "Workspace owners cannot be removed",
+    );
   }
 
   /** Lets a non-owner member leave its workspace. */
   async leaveWorkspace(member: WorkspaceMember): Promise<WorkspaceMember> {
-    this.accessControlService.assertCurrentWorkspace(
-      this.unwrapWorkspace(member),
-    );
+    const workspace = this.unwrapWorkspace(member);
+    this.accessControlService.assertCurrentWorkspace(workspace);
     this.accessControlService.assertCurrentWorkspaceMember(member);
     if (member.roles.includes(this.creatorRole)) {
       throw new ForbiddenException("Workspace owners cannot leave");
     }
-    await this.em.remove(member).flush();
-    return member;
+    return await this.removeNonOwnerMember(
+      workspace,
+      member,
+      "Workspace owners cannot leave",
+    );
   }
 
   /** Transfers ownership and keeps the previous owner as an administrator. */
@@ -498,24 +502,42 @@ export class WorkspaceService<
     return await this.withRlsDisabled(
       async () =>
         await this.em.transactional(async (em) => {
-          await em.lock(currentOwner, LockMode.PESSIMISTIC_WRITE);
-          await em.lock(nextOwner, LockMode.PESSIMISTIC_WRITE);
-
-          if (!currentOwner.roles.includes(this.creatorRole)) {
+          const lockedCurrentOwner = await em.findOne(
+            this.workspaceMemberEntity,
+            { id: currentOwner.id, workspace } as FilterQuery<WorkspaceMember>,
+            { filters: false, lockMode: LockMode.PESSIMISTIC_WRITE },
+          );
+          if (!lockedCurrentOwner) {
             throw new ForbiddenException(
               "Workspace ownership has already changed",
             );
           }
-          if (nextOwner.status !== "ACTIVE" || !nextOwner.user) {
+
+          const lockedNextOwner = await em.findOne(
+            this.workspaceMemberEntity,
+            { id: nextOwner.id, workspace } as FilterQuery<WorkspaceMember>,
+            { filters: false, lockMode: LockMode.PESSIMISTIC_WRITE },
+          );
+
+          if (!lockedCurrentOwner.roles.includes(this.creatorRole)) {
+            throw new ForbiddenException(
+              "Workspace ownership has already changed",
+            );
+          }
+          if (
+            !lockedNextOwner ||
+            lockedNextOwner.status !== "ACTIVE" ||
+            !lockedNextOwner.user
+          ) {
             throw new BadRequestException(
               "The next owner must be another active user member",
             );
           }
 
-          currentOwner.roles = [this.defaultRole];
-          nextOwner.roles = [this.creatorRole];
+          lockedCurrentOwner.roles = [this.defaultRole];
+          lockedNextOwner.roles = [this.creatorRole];
           await em.flush();
-          return nextOwner;
+          return lockedNextOwner;
         }),
     );
   }
@@ -535,6 +557,12 @@ export class WorkspaceService<
     );
     const email = input.email.trim().toLowerCase();
     const roles = this.normalizeGrantedRoles(input.roles ?? [this.defaultRole]);
+    const expiresIn = input.expiresIn ?? 60 * 60 * 48;
+    if (!Number.isSafeInteger(expiresIn) || expiresIn <= 0) {
+      throw new BadRequestException(
+        "Workspace invitation lifetime must be a positive integer",
+      );
+    }
     const now = new Date();
     const sendInvitationEmail = this.authOptions.workspace?.sendInvitationEmail;
     let transactionResult: {
@@ -549,7 +577,10 @@ export class WorkspaceService<
             const [member, invitation, inviterMember] = await Promise.all([
               em.findOne(
                 this.workspaceMemberEntity,
-                { email, workspace } as FilterQuery<WorkspaceMember>,
+                {
+                  workspace,
+                  $or: [{ email }, { user: { email } }],
+                } as unknown as FilterQuery<WorkspaceMember>,
                 { filters: false },
               ),
               em.findOne(
@@ -594,9 +625,7 @@ export class WorkspaceService<
 
             const created = em.create(this.workspaceInvitationEntity, {
               email,
-              expiresAt: new Date(
-                now.getTime() + (input.expiresIn ?? 60 * 60 * 48) * 1000,
-              ),
+              expiresAt: new Date(now.getTime() + expiresIn * 1000),
               inviter,
               roles,
               status: "pending",
@@ -920,6 +949,32 @@ export class WorkspaceService<
       permissions,
       this.permissions,
       "Workspace member",
+    );
+  }
+
+  private async removeNonOwnerMember(
+    workspace: Workspace,
+    member: WorkspaceMember,
+    ownerMessage: string,
+  ): Promise<WorkspaceMember> {
+    return await this.withRlsDisabled(
+      async () =>
+        await this.em.transactional(async (em) => {
+          const lockedMember = await em.findOne(
+            this.workspaceMemberEntity,
+            { id: member.id, workspace } as FilterQuery<WorkspaceMember>,
+            { filters: false, lockMode: LockMode.PESSIMISTIC_WRITE },
+          );
+          if (!lockedMember) {
+            throw new NotFoundException("Workspace member not found");
+          }
+          if (lockedMember.roles.includes(this.creatorRole)) {
+            throw new ForbiddenException(ownerMessage);
+          }
+
+          await em.remove(lockedMember).flush();
+          return lockedMember;
+        }),
     );
   }
 

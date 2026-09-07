@@ -31,7 +31,7 @@ profile(
 
 - `getSession()` — 解析当前应用实体；
 - `listSessions()` — 列出当前用户的活动会话；
-- `revokeSession(token)` — 撤销指定会话；
+- `revokeSession(id)` — 通过公开 ID 撤销指定会话；
 - `revokeOtherSessions()` — 只保留当前会话；
 - `revokeSessions()` — 撤销当前用户的全部会话；
 - `setSession(token)` — 把应用自行创建的会话设置到当前浏览器 Response，例如模拟登录流程。
@@ -39,8 +39,9 @@ profile(
 这些方法都从 `RequestContext` 读取当前请求 Header，传输层无需转换或继续传递
 Express Header。
 
-会话列表保持认证后端的返回顺序，并包含撤销指定会话所需的 token。UI 应识别当前
-会话，不要把它当作普通远程设备提供撤销操作。
+会话列表保持认证后端的返回顺序，并公开撤销指定会话所需的非敏感会话 ID。认证
+token 仅在服务端内部和 HttpOnly Cookie 中使用。UI 应识别当前会话，不要把它当作
+普通远程设备提供撤销操作。
 
 `setSession()` 会通过请求级 `cookies()` 存储写入已签名的浏览器 Cookie，同时清除缓存
 的会话与账号 Cookie。示例在 `UserService.impersonateUser()` 与

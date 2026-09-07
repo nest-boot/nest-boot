@@ -153,10 +153,15 @@ export class SessionService {
     });
   }
 
-  /** Revokes one session owned by the authenticated user. */
-  async revokeSession(token: string): Promise<boolean> {
+  /** Revokes one session owned by the authenticated user by its public ID. */
+  async revokeSession(id: string): Promise<boolean> {
+    const session = (await this.listSessions()).find(
+      (candidate) => String(candidate.id) === id,
+    );
+    if (!session) return false;
+
     const result = await this.auth.api.revokeSession({
-      body: { token },
+      body: { token: session.token },
       headers: headers(),
     });
     return result.status;

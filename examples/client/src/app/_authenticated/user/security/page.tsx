@@ -47,7 +47,6 @@ const GET_SESSIONS_FROM_USER_SECURITY = graphql(`
   query getSessionsFromUserSecurity {
     authSessions {
       id
-      token
       current
       expiresAt
       ipAddress
@@ -58,8 +57,8 @@ const GET_SESSIONS_FROM_USER_SECURITY = graphql(`
 `);
 
 const REVOKE_SESSION_FROM_USER_SECURITY = graphql(`
-  mutation revokeSessionFromUserSecurity($token: String!) {
-    authRevokeSession(token: $token)
+  mutation revokeSessionFromUserSecurity($sessionId: ID!) {
+    authRevokeSession(sessionId: $sessionId)
   }
 `);
 
@@ -159,7 +158,7 @@ function UserSecurityComponent() {
   const [revokeOtherSessions, setRevokeOtherSessions] = useState(true);
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(false);
-  const [revokingToken, setRevokingToken] = useState<string>();
+  const [revokingSessionId, setRevokingSessionId] = useState<string>();
   const [revokingOthers, setRevokingOthers] = useState(false);
   const [unlinkingAccountId, setUnlinkingAccountId] = useState<string>();
   const [linkingProviderId, setLinkingProviderId] = useState<string>();
@@ -177,10 +176,10 @@ function UserSecurityComponent() {
     (session) => !session.current,
   ).length;
 
-  const handleRevokeSession = async (token: string) => {
-    setRevokingToken(token);
+  const handleRevokeSession = async (sessionId: string) => {
+    setRevokingSessionId(sessionId);
     try {
-      const result = await revokeSession({ variables: { token } });
+      const result = await revokeSession({ variables: { sessionId } });
       if (!result.data?.authRevokeSession) {
         throw new Error(t("user:security.sessions.toast.revoke_failed"));
       }
@@ -193,7 +192,7 @@ function UserSecurityComponent() {
           : t("user:security.sessions.toast.revoke_failed"),
       );
     } finally {
-      setRevokingToken(undefined);
+      setRevokingSessionId(undefined);
     }
   };
 
@@ -529,8 +528,8 @@ function UserSecurityComponent() {
                         type="button"
                         size="sm"
                         variant="outline"
-                        loading={revokingToken === session.token}
-                        onClick={() => handleRevokeSession(session.token)}
+                        loading={revokingSessionId === session.id}
+                        onClick={() => handleRevokeSession(session.id)}
                         data-testid="user-revoke-session"
                       >
                         {t("user:security.sessions.revoke")}
