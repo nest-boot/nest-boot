@@ -259,7 +259,4 @@ export interface AuthModuleOptions<
 
   /** Middleware registration options. */
   middleware?: AuthModuleMiddlewareOptions;
-
-  /** Callback invoked after successful authentication. */
-  onAuthenticated?: () => void | Promise<void>;
 }

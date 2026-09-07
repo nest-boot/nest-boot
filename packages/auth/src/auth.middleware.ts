@@ -78,7 +78,6 @@ export class AuthMiddleware implements NestMiddleware {
 
     this.setUser(data.user);
     RequestContext.set(BaseSession, data.session);
-    await this.options.onAuthenticated?.();
     return true;
   }
 

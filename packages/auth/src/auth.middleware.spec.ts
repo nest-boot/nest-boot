@@ -43,7 +43,6 @@ const testEntities = {
 async function createMiddleware(
   getSession: Mock,
   findOne: Mock,
-  onAuthenticated = vi.fn(),
   validate = vi.fn(),
   entities: AuthModuleOptions["entities"] = testEntities,
 ) {
@@ -60,7 +59,6 @@ async function createMiddleware(
         provide: MODULE_OPTIONS_TOKEN,
         useValue: {
           entities,
-          onAuthenticated,
         },
       },
       {
@@ -80,7 +78,6 @@ async function createMiddleware(
 
   return {
     middleware: moduleRef.get(AuthMiddleware),
-    onAuthenticated,
     validate,
   };
 }
@@ -121,7 +118,6 @@ describe("AuthMiddleware", () => {
       vi.fn().mockResolvedValue(null),
       vi.fn(),
       vi.fn(),
-      vi.fn(),
       {
         account: BaseAccount,
         apiKey: BaseApiKey,
@@ -157,10 +153,7 @@ describe("AuthMiddleware", () => {
     const requestContextSet = vi.spyOn(RequestContext, "set");
     const requestContextAlias = vi.spyOn(RequestContext, "alias");
     const next = vi.fn() as NextFunction;
-    const { middleware, onAuthenticated } = await createMiddleware(
-      getSession,
-      findOne,
-    );
+    const { middleware } = await createMiddleware(getSession, findOne);
 
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       await middleware.use(
@@ -204,7 +197,6 @@ describe("AuthMiddleware", () => {
     );
     expect(requestContextSet).not.toHaveBeenCalledWith(TestUser, user);
     expect(requestContextSet).not.toHaveBeenCalledWith(TestSession, session);
-    expect(onAuthenticated).toHaveBeenCalledTimes(1);
     expect(next).toHaveBeenCalledTimes(1);
   });
 
@@ -219,7 +211,6 @@ describe("AuthMiddleware", () => {
     const { middleware } = await createMiddleware(
       getSession,
       findOne,
-      vi.fn(),
       validate,
     );
 
@@ -256,7 +247,6 @@ describe("AuthMiddleware", () => {
     const { middleware } = await createMiddleware(
       vi.fn().mockResolvedValue(null),
       findOne,
-      vi.fn(),
       validate,
     );
     const set = vi.spyOn(RequestContext, "set");
@@ -308,7 +298,6 @@ describe("AuthMiddleware", () => {
     const { middleware } = await createMiddleware(
       vi.fn().mockResolvedValue(null),
       findOne,
-      vi.fn(),
       validate,
     );
     const set = vi.spyOn(RequestContext, "set");
@@ -354,7 +343,6 @@ describe("AuthMiddleware", () => {
     const { middleware } = await createMiddleware(
       vi.fn().mockResolvedValue(null),
       vi.fn().mockResolvedValue(selectedWorkspace),
-      vi.fn(),
       validate,
     );
     const next = vi.fn();

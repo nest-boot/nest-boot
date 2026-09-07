@@ -482,7 +482,6 @@ describe("AuthModule", () => {
       {
         entities,
         middleware: { register: false },
-        onAuthenticated: vi.fn(),
         secret,
         unexpectedOption: "must-not-pass-through",
         user: { buildAbility: vi.fn(), modelName: "application_user" },
@@ -502,9 +501,6 @@ describe("AuthModule", () => {
     });
     expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty("entities");
     expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty("middleware");
-    expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty(
-      "onAuthenticated",
-    );
     expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty("workspace");
     expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty(
       "unexpectedOption",
