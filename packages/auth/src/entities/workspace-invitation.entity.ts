@@ -9,8 +9,9 @@ import {
   Unique,
 } from "@mikro-orm/decorators/legacy";
 
-import type { BaseUser } from "./user.entity.js";
-import type { BaseWorkspace } from "./workspace.entity.js";
+import { resolveAuthRelationTarget } from "./resolve-auth-relation-target.js";
+import { BaseUser } from "./user.entity.js";
+import { BaseWorkspace } from "./workspace.entity.js";
 
 /** Workspace-invitation states understood by the built-in auth services. */
 export type AuthWorkspaceInvitationStatus =
@@ -59,7 +60,7 @@ export class BaseWorkspaceInvitation extends BaseEntity {
 
   /** User that created the invitation. */
   @ManyToOne({
-    entity: () => "User" as any,
+    entity: () => resolveAuthRelationTarget(BaseUser, "User") as any,
     updateRule: "cascade",
     deleteRule: "cascade",
   })
@@ -67,7 +68,7 @@ export class BaseWorkspaceInvitation extends BaseEntity {
 
   /** Workspace to which the recipient was invited. */
   @ManyToOne({
-    entity: () => "Workspace" as any,
+    entity: () => resolveAuthRelationTarget(BaseWorkspace, "Workspace") as any,
     updateRule: "cascade",
     deleteRule: "cascade",
   })

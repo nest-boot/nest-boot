@@ -9,6 +9,9 @@ import {
 } from "@mikro-orm/decorators/legacy";
 import { randomUUID } from "crypto";
 
+import { resolveAuthRelationTarget } from "./resolve-auth-relation-target.js";
+import { BaseUser } from "./user.entity.js";
+
 /**
  * Abstract base entity for OAuth/credential account records.
  *
@@ -38,7 +41,7 @@ export abstract class BaseAccount extends BaseEntity {
   /** Foreign key referencing the owning `BaseUser`. */
   @Index()
   @ManyToOne({
-    entity: () => "User" as any,
+    entity: () => resolveAuthRelationTarget(BaseUser, "User") as any,
     fieldName: "user_id",
     mapToPk: true,
     cascade: [Cascade.REMOVE],

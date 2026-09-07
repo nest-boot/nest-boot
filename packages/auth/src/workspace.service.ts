@@ -184,11 +184,22 @@ export class WorkspaceService<
       throw new ForbiddenException("Only workspace owners can delete it");
     }
 
-    return await this.withRlsDisabled(async () => {
-      this.em.assign(workspace, { deletedAt: new Date() } as never);
-      await this.em.flush();
-      return workspace;
-    });
+    return await this.withRlsDisabled(
+      async () =>
+        await this.em.transactional(async (em) => {
+          await em.nativeUpdate(
+            this.workspaceInvitationEntity,
+            {
+              status: "pending",
+              workspace,
+            } as FilterQuery<WorkspaceInvitation>,
+            { status: "canceled" } as never,
+          );
+          em.assign(workspace, { deletedAt: new Date() } as never);
+          await em.flush();
+          return workspace;
+        }),
+    );
   }
 
   /** Finds the active membership linking a user and workspace. */
@@ -476,10 +487,11 @@ export class WorkspaceService<
     if (
       currentOwner.id === nextOwner.id ||
       this.unwrapWorkspace(nextOwner).id !== workspace.id ||
-      nextOwner.status !== "ACTIVE"
+      nextOwner.status !== "ACTIVE" ||
+      !nextOwner.user
     ) {
       throw new BadRequestException(
-        "The next owner must be another active workspace member",
+        "The next owner must be another active user member",
       );
     }
 
@@ -492,6 +504,11 @@ export class WorkspaceService<
           if (!currentOwner.roles.includes(this.creatorRole)) {
             throw new ForbiddenException(
               "Workspace ownership has already changed",
+            );
+          }
+          if (nextOwner.status !== "ACTIVE" || !nextOwner.user) {
+            throw new BadRequestException(
+              "The next owner must be another active user member",
             );
           }
 
@@ -516,7 +533,7 @@ export class WorkspaceService<
       "create",
       this.workspaceInvitationEntity,
     );
-    const email = input.email.toLowerCase();
+    const email = input.email.trim().toLowerCase();
     const roles = this.normalizeGrantedRoles(input.roles ?? [this.defaultRole]);
     const now = new Date();
     const sendInvitationEmail = this.authOptions.workspace?.sendInvitationEmail;
@@ -570,7 +587,10 @@ export class WorkspaceService<
                 "Invitation sender is not an active workspace member",
               );
             }
-            if (invitation) invitation.status = "canceled";
+            if (invitation) {
+              invitation.status = "canceled";
+              await em.flush();
+            }
 
             const created = em.create(this.workspaceInvitationEntity, {
               email,
@@ -604,17 +624,32 @@ export class WorkspaceService<
         { user: inviter },
       ) as unknown as AuthWorkspaceInvitationEmailInviter;
 
-      await sendInvitationEmail(
-        {
-          email,
-          id: created.id,
-          invitation: created,
-          inviter: callbackInviter,
-          roles: [...created.roles],
-          workspace,
-        },
-        request,
-      );
+      try {
+        await sendInvitationEmail(
+          {
+            email,
+            id: created.id,
+            invitation: created,
+            inviter: callbackInviter,
+            roles: [...created.roles],
+            workspace,
+          },
+          request,
+        );
+      } catch (error) {
+        await this.withRlsDisabled(
+          async () =>
+            await this.em.nativeUpdate(
+              this.workspaceInvitationEntity,
+              {
+                id: created.id,
+                status: "pending",
+              } as FilterQuery<WorkspaceInvitation>,
+              { status: "canceled" } as never,
+            ),
+        );
+        throw error;
+      }
     }
 
     return created;
@@ -688,6 +723,7 @@ export class WorkspaceService<
             email: user.email.toLowerCase(),
             expiresAt: { $gt: now },
             status: "pending",
+            workspace: { deletedAt: null },
           } as FilterQuery<WorkspaceInvitation>,
           { filters: false, orderBy: { createdAt: "desc" } as never },
         ),
@@ -709,7 +745,11 @@ export class WorkspaceService<
           const invitation = await em.findOne(
             this.workspaceInvitationEntity,
             { id: invitationId } as FilterQuery<WorkspaceInvitation>,
-            { filters: false, lockMode: LockMode.PESSIMISTIC_WRITE },
+            {
+              filters: false,
+              lockMode: LockMode.PESSIMISTIC_WRITE,
+              populate: ["workspace"] as never,
+            },
           );
           if (!invitation) return null;
           if (invitation.status !== "pending") {
@@ -727,6 +767,9 @@ export class WorkspaceService<
           }
 
           const workspace = this.unwrapInvitationWorkspace(invitation);
+          if (workspace.deletedAt) {
+            throw new BadRequestException("Workspace has been deleted");
+          }
           const existing = await em.findOne(
             this.workspaceMemberEntity,
             { user, workspace } as FilterQuery<WorkspaceMember>,
@@ -754,15 +797,28 @@ export class WorkspaceService<
   async cancelInvitation(
     invitation: WorkspaceInvitation,
   ): Promise<WorkspaceInvitation> {
-    this.accessControlService.assertCurrentWorkspace(
-      this.unwrapInvitationWorkspace(invitation),
-    );
+    const workspace = this.unwrapInvitationWorkspace(invitation);
+    this.accessControlService.assertCurrentWorkspace(workspace);
     this.accessControlService.assertWorkspaceCan("cancel", invitation);
     if (invitation.status !== "pending") {
       throw new BadRequestException("Workspace invitation is not pending");
     }
+    const updated = await this.withRlsDisabled(
+      async () =>
+        await this.em.nativeUpdate(
+          this.workspaceInvitationEntity,
+          {
+            id: invitation.id,
+            status: "pending",
+            workspace,
+          } as FilterQuery<WorkspaceInvitation>,
+          { status: "canceled" } as never,
+        ),
+    );
+    if (updated !== 1) {
+      throw new BadRequestException("Workspace invitation is not pending");
+    }
     invitation.status = "canceled";
-    await this.withRlsDisabled(() => this.em.flush());
     return invitation;
   }
 
@@ -780,8 +836,22 @@ export class WorkspaceService<
         "Workspace invitation belongs to another email address",
       );
     }
+    const updated = await this.withRlsDisabled(
+      async () =>
+        await this.em.nativeUpdate(
+          this.workspaceInvitationEntity,
+          {
+            email: user.email.trim().toLowerCase(),
+            id: invitation.id,
+            status: "pending",
+          } as FilterQuery<WorkspaceInvitation>,
+          { status: "rejected" } as never,
+        ),
+    );
+    if (updated !== 1) {
+      throw new BadRequestException("Workspace invitation is not pending");
+    }
     invitation.status = "rejected";
-    await this.withRlsDisabled(() => this.em.flush());
     return invitation;
   }
 

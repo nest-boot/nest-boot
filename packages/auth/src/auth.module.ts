@@ -37,7 +37,8 @@ import {
 import { AuthService } from "./auth.service.js";
 import { AuthHandlerMiddleware } from "./auth-handler.middleware.js";
 import { type AuthModuleOptions } from "./auth-module-options.interface.js";
-import type { BaseUser, BaseWorkspace } from "./entities/index.js";
+import { BaseUser, BaseWorkspace } from "./entities/index.js";
+import { configureAuthRelationTargets } from "./entities/resolve-auth-relation-target.js";
 import { SessionService } from "./session.service.js";
 import {
   DEFAULT_USER_ADMIN_ROLES,
@@ -251,6 +252,10 @@ export class AuthModule extends ConfigurableModuleClass {
       Workspace
     >,
   ): DynamicModule {
+    configureAuthRelationTargets([
+      [BaseUser, options.entities.user],
+      [BaseWorkspace, options.entities.workspace],
+    ]);
     return super.forRoot(options as unknown as AuthModuleOptions);
   }
 

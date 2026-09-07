@@ -9,8 +9,9 @@ import {
   Unique,
 } from "@mikro-orm/decorators/legacy";
 
-import type { BaseUser } from "./user.entity.js";
-import type { BaseWorkspace } from "./workspace.entity.js";
+import { resolveAuthRelationTarget } from "./resolve-auth-relation-target.js";
+import { BaseUser } from "./user.entity.js";
+import { BaseWorkspace } from "./workspace.entity.js";
 
 /**
  * Abstract base entity for user- or workspace-owned API keys.
@@ -71,6 +72,12 @@ export class BaseApiKey extends BaseEntity {
   expiresAt?: Opt<Date> | null = null;
 
   /** User or workspace that owns the key. */
-  @ManyToOne({ entity: () => ["User", "Workspace"] as any })
+  @ManyToOne({
+    entity: () =>
+      [
+        resolveAuthRelationTarget(BaseUser, "User"),
+        resolveAuthRelationTarget(BaseWorkspace, "Workspace"),
+      ] as any,
+  })
   owner!: Ref<BaseUser | BaseWorkspace>;
 }

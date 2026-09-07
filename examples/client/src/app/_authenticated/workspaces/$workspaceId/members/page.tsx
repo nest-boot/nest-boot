@@ -165,7 +165,7 @@ const getStatusLabel = (status: WorkspaceMemberStatus | null | undefined) => {
 export const Route = createFileRoute(
   "/_authenticated/workspaces/$workspaceId/members/",
 )({
-  component: MembersComponent,
+  component: ScopedMembersComponent,
   validateSearch: zodValidator(
     createConnectionSearchSchema({
       filterSchema: z
@@ -203,6 +203,11 @@ export const Route = createFileRoute(
   ),
 });
 
+function ScopedMembersComponent() {
+  const { workspaceId } = Route.useParams();
+  return <MembersComponent key={workspaceId} />;
+}
+
 function MembersComponent() {
   const search = Route.useSearch();
   const { workspaceId } = Route.useParams();
@@ -234,6 +239,7 @@ function MembersComponent() {
   const [inviteOpen, setInviteOpen] = useState(false);
 
   const { data, refetch } = useQuery(GET_WORKSPACE_MEMBERS_FROM_MEMBERS_ROUTE, {
+    fetchPolicy: "network-only",
     variables: {
       ...pick(search, ["after", "before", "first", "last"]),
       query,

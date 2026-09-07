@@ -89,27 +89,35 @@ export class UserService<
     const permissions = this.normalizePermissions(input.permissions ?? []);
     const email = input.email.trim().toLowerCase();
 
-    return await this.runUnrestricted(async () => {
-      const password = await this.hashPassword(input.password);
-      const user = this.em.create(this.userEntity, {
-        ...(input.data ?? {}),
-        email,
-        emailVerified: false,
-        name: input.name,
-        permissions,
-        roles: this.normalizeRoles(input.roles ?? [this.defaultRole]),
-      } as unknown as RequiredEntityData<User>);
-      const account = this.em.create(this.accountEntity, {
-        accountId: String(user.id),
-        issuer: CREDENTIAL_ISSUER,
-        password,
-        providerId: CREDENTIAL_PROVIDER_ID,
-        userId: String(user.id),
-      } as unknown as RequiredEntityData<Account>);
+    const password = await this.hashPassword(input.password);
 
-      await this.em.persist(user).persist(account).flush();
-      return user;
-    });
+    return await this.runUnrestricted(
+      async () =>
+        await this.em.transactional(async (em) => {
+          const user = em.create(this.userEntity, {
+            ...(input.data ?? {}),
+            email,
+            emailVerified: false,
+            name: input.name,
+            permissions,
+            roles: this.normalizeRoles(input.roles ?? [this.defaultRole]),
+          } as unknown as RequiredEntityData<User>);
+          em.persist(user);
+          await em.flush();
+
+          const userId = String(user.id);
+          const account = em.create(this.accountEntity, {
+            accountId: userId,
+            issuer: CREDENTIAL_ISSUER,
+            password,
+            providerId: CREDENTIAL_PROVIDER_ID,
+            userId,
+          } as unknown as RequiredEntityData<Account>);
+          em.persist(account);
+          await em.flush();
+          return user;
+        }),
+    );
   }
 
   /** Gets a user by identifier without applying application RLS filters. */
@@ -141,7 +149,7 @@ export class UserService<
   /** Updates mutable user fields. */
   async updateUser(user: User, input: UpdateUserOptions): Promise<User> {
     this.accessControlService.assertUserCan("update", user);
-    if (input.email !== undefined) {
+    if (input.email !== undefined || input.emailVerified !== undefined) {
       this.accessControlService.assertUserCan("set-email", user);
     }
     if ("banned" in input || "banReason" in input || "banExpiresAt" in input) {

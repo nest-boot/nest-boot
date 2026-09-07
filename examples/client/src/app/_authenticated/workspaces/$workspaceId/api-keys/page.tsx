@@ -164,7 +164,7 @@ const DELETE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
 export const Route = createFileRoute(
   "/_authenticated/workspaces/$workspaceId/api-keys/",
 )({
-  component: ApiKeysComponent,
+  component: ScopedApiKeysComponent,
   beforeLoad: ({ context, params }) => {
     if (!context.currentWorkspaceAbility.can("read", "ApiKey")) {
       throw redirect({
@@ -196,6 +196,11 @@ export const Route = createFileRoute(
   ),
 });
 
+function ScopedApiKeysComponent() {
+  const { workspaceId } = Route.useParams();
+  return <ApiKeysComponent key={workspaceId} />;
+}
+
 function ApiKeysComponent() {
   const search = Route.useSearch();
   const navigate = useNavigate();
@@ -212,6 +217,7 @@ function ApiKeysComponent() {
   const [copied, setCopied] = useState(false);
 
   const { data, refetch } = useQuery(GET_API_KEYS_FROM_API_KEYS_ROUTE, {
+    fetchPolicy: "network-only",
     variables: {
       ...pick(search, ["after", "before", "first", "last"]),
       query,

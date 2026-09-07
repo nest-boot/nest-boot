@@ -5,6 +5,14 @@ export class Migration20260902080630_Baseline extends RowLevelSecurityMigration 
 
   override up(): void | Promise<void> {
     this.addSql(
+      `do \$\$ begin if not exists (select 1 from pg_roles where rolname = 'anonymous') then create role anonymous nologin; end if; end \$\$;`,
+    );
+    this.addSql(
+      `do \$\$ begin if not exists (select 1 from pg_roles where rolname = 'authenticated') then create role authenticated nologin; end if; end \$\$;`,
+    );
+    this.addSql(`grant anonymous, authenticated to current_user;`);
+
+    this.addSql(
       `create table "user" ("id" bigserial primary key, "email_verified" boolean not null default false, "image" text null, "roles" text[] not null default '{user}', "permissions" text[] not null default '{}', "banned" boolean not null default false, "ban_reason" text null, "ban_expires_at" timestamptz null, "name" varchar(255) not null, "email" varchar(255) not null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now());`,
     );
     this.addSql(

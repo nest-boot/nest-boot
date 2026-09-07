@@ -63,7 +63,7 @@ describe('WorkspaceResolver', () => {
     await resolver.workspaces(user, args);
 
     expect(cm.find).toHaveBeenCalledWith(expect.any(Function), args, {
-      where: { members: { user } },
+      where: { members: { status: 'ACTIVE', user } },
     });
   });
 

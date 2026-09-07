@@ -9,8 +9,9 @@ import {
   Unique,
 } from "@mikro-orm/decorators/legacy";
 
-import type { BaseUser } from "./user.entity.js";
-import type { BaseWorkspace } from "./workspace.entity.js";
+import { resolveAuthRelationTarget } from "./resolve-auth-relation-target.js";
+import { BaseUser } from "./user.entity.js";
+import { BaseWorkspace } from "./workspace.entity.js";
 
 /** Workspace-member states understood by the built-in authentication services. */
 export type AuthWorkspaceMemberStatus = "ACTIVE" | "DISABLED";
@@ -64,7 +65,7 @@ export class BaseWorkspaceMember extends BaseEntity {
 
   /** User associated with this member, when it represents a user. */
   @ManyToOne({
-    entity: () => "User" as any,
+    entity: () => resolveAuthRelationTarget(BaseUser, "User") as any,
     nullable: true,
     updateRule: "cascade",
     deleteRule: "cascade",
@@ -73,7 +74,7 @@ export class BaseWorkspaceMember extends BaseEntity {
 
   /** Workspace that owns this member. */
   @ManyToOne({
-    entity: () => "Workspace" as any,
+    entity: () => resolveAuthRelationTarget(BaseWorkspace, "Workspace") as any,
     updateRule: "cascade",
     deleteRule: "cascade",
   })

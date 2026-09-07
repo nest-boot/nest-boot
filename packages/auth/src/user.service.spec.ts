@@ -78,8 +78,38 @@ describe("UserService", () => {
       }),
     );
     expect(em.persist).toHaveBeenCalledTimes(2);
-    expect(em.flush).toHaveBeenCalledTimes(1);
+    expect(em.flush).toHaveBeenCalledTimes(2);
     expect(user.email).toBe("alice@example.com");
+  });
+
+  it("flushes a database-generated user id before creating the credential account", async () => {
+    const { em, hash, service } = createService();
+    hash.mockResolvedValue("hashed-password");
+    em.create.mockImplementation((Entity, input) => {
+      const entity = Object.assign(new Entity(), input);
+      if (Entity === TestUser) Reflect.deleteProperty(entity, "id");
+      return entity;
+    });
+    em.flush.mockImplementationOnce(() => {
+      const user = em.create.mock.results[0]?.value as TestUser;
+      user.id = "generated-user-id";
+      return Promise.resolve();
+    });
+
+    await service.createUser({
+      email: "alice@example.com",
+      name: "Alice",
+      password: "password",
+    });
+
+    expect(em.create).toHaveBeenNthCalledWith(
+      2,
+      TestAccount,
+      expect.objectContaining({
+        accountId: "generated-user-id",
+        userId: "generated-user-id",
+      }),
+    );
   });
 
   it("uses the configured default user role", async () => {
@@ -142,7 +172,7 @@ describe("UserService", () => {
   });
 
   it("normalizes email addresses when updating a user", async () => {
-    const { em, service } = createService();
+    const { accessControlService, em, service } = createService();
     const user = Object.assign(new TestUser(), { email: "old@example.com" });
 
     await service.updateUser(user, { email: " New@Example.com " });
@@ -151,6 +181,22 @@ describe("UserService", () => {
       email: "new@example.com",
     });
     expect(user.email).toBe("new@example.com");
+    expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
+      "set-email",
+      user,
+    );
+  });
+
+  it("requires set-email permission when changing email verification", async () => {
+    const { accessControlService, service } = createService();
+    const user = Object.assign(new TestUser(), { emailVerified: false });
+
+    await service.updateUser(user, { emailVerified: true });
+
+    expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
+      "set-email",
+      user,
+    );
   });
 
   it("validates direct user permissions against the configured catalog", async () => {
@@ -515,9 +561,11 @@ function createService(
     nativeDelete: vi.fn(),
     persist: vi.fn(),
     remove: vi.fn(),
+    transactional: vi.fn(),
   } as unknown as Mocked<EntityManager>;
   em.persist.mockReturnValue(em);
   em.remove.mockReturnValue(em);
+  em.transactional.mockImplementation(async (callback) => await callback(em));
   const hash = vi.fn();
   const hashServiceHash = vi.fn();
   const hashService = {

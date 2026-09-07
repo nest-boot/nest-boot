@@ -89,13 +89,18 @@ const LEAVE_WORKSPACE_FROM_SETTINGS_ROUTE = graphql(`
 export const Route = createFileRoute(
   "/_authenticated/workspaces/$workspaceId/settings/",
 )({
-  component: SettingsComponent,
+  component: ScopedSettingsComponent,
   beforeLoad: () => {
     return {
       title: "设置",
     };
   },
 });
+
+function ScopedSettingsComponent() {
+  const { workspaceId } = Route.useParams();
+  return <SettingsComponent key={workspaceId} />;
+}
 
 function SettingsComponent() {
   const navigate = useNavigate();
@@ -124,7 +129,7 @@ function SettingsComponent() {
   );
   const { data: memberData } = useQuery(
     GET_TRANSFER_CANDIDATES_FROM_SETTINGS_ROUTE,
-    { skip: !isOwner },
+    { fetchPolicy: "network-only", skip: !isOwner },
   );
   const [transferWorkspaceOwnership, { loading: transferring }] = useMutation(
     TRANSFER_WORKSPACE_OWNERSHIP_FROM_SETTINGS_ROUTE,

@@ -281,6 +281,11 @@ describe("WorkspaceService", () => {
     });
 
     expect(workspace.deletedAt).toBeInstanceOf(Date);
+    expect(em.nativeUpdate).toHaveBeenCalledWith(
+      TestWorkspaceInvitation,
+      { status: "pending", workspace },
+      { status: "canceled" },
+    );
   });
 
   it("lists only non-deleted workspaces for active memberships", async () => {
@@ -566,6 +571,7 @@ describe("WorkspaceService", () => {
     const nextOwner = Object.assign(new TestWorkspaceMember(), {
       id: "member-2",
       roles: ["admin"],
+      user: new TestUser(),
       workspace,
     });
 
@@ -585,6 +591,27 @@ describe("WorkspaceService", () => {
     );
     expect(currentOwner.roles).toEqual(["member"]);
     expect(nextOwner.roles).toEqual(["owner"]);
+  });
+
+  it("does not transfer ownership to a service account", async () => {
+    const { em, service } = createService();
+    const workspace = new TestWorkspace();
+    const currentOwner = Object.assign(new TestWorkspaceMember(), {
+      roles: ["owner"],
+      user: new TestUser(),
+      workspace,
+    });
+    const serviceAccount = Object.assign(new TestWorkspaceMember(), {
+      id: "member-2",
+      roles: ["admin"],
+      user: null,
+      workspace,
+    });
+
+    await expect(
+      service.transferOwnership(workspace, currentOwner, serviceAccount),
+    ).rejects.toThrow("another active user member");
+    expect(em.lock).not.toHaveBeenCalled();
   });
 
   it("creates and accepts an email-bound invitation", async () => {
@@ -647,7 +674,7 @@ describe("WorkspaceService", () => {
       workspace,
       inviter,
       {
-        email: "INVITED@example.com",
+        email: " INVITED@example.com ",
         roles: ["admin"],
       },
       request,
@@ -670,6 +697,40 @@ describe("WorkspaceService", () => {
     );
     expect(em.flush.mock.invocationCallOrder[0]).toBeLessThan(
       sendInvitationEmail.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("cancels a pending invitation when email delivery fails", async () => {
+    const deliveryError = new Error("SMTP unavailable");
+    const sendInvitationEmail = vi.fn().mockRejectedValue(deliveryError);
+    const { em, service } = createService({ sendInvitationEmail });
+    const workspace = new TestWorkspace();
+    const inviter = Object.assign(new TestUser(), {
+      email: "owner@example.com",
+      name: "Owner",
+    });
+    const inviterMember = Object.assign(new TestWorkspaceMember(), {
+      roles: ["owner"],
+      user: inviter,
+      workspace,
+    });
+    em.findOne
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(inviterMember);
+
+    await expect(
+      service.createInvitation(workspace, inviter, {
+        email: "invited@example.com",
+      }),
+    ).rejects.toBe(deliveryError);
+
+    const invitation = em.create.mock.results.at(-1)
+      ?.value as TestWorkspaceInvitation;
+    expect(em.nativeUpdate).toHaveBeenCalledWith(
+      TestWorkspaceInvitation,
+      { id: invitation.id, status: "pending" },
+      { status: "canceled" },
     );
   });
 
@@ -723,6 +784,7 @@ describe("WorkspaceService", () => {
         email: "alice@example.com",
         expiresAt: { $gt: expect.any(Date) },
         status: "pending",
+        workspace: { deletedAt: null },
       },
       { filters: false, orderBy: { createdAt: "desc" } },
     );
@@ -759,6 +821,7 @@ describe("WorkspaceService", () => {
       { filters: false },
     );
     expect(expired.status).toBe("canceled");
+    expect(em.flush).toHaveBeenCalledTimes(2);
   });
 
   it("cancels a pending invitation while retaining its lifecycle record", async () => {
@@ -773,7 +836,27 @@ describe("WorkspaceService", () => {
 
     expect(invitation.status).toBe("canceled");
     expect(em.remove).not.toHaveBeenCalled();
-    expect(em.flush).toHaveBeenCalledTimes(1);
+    expect(em.nativeUpdate).toHaveBeenCalledWith(
+      TestWorkspaceInvitation,
+      expect.objectContaining({
+        id: invitation.id,
+        status: "pending",
+      }),
+      { status: "canceled" },
+    );
+  });
+
+  it("rejects a concurrent invitation cancellation", async () => {
+    const { em, service } = createService();
+    const invitation = Object.assign(new TestWorkspaceInvitation(), {
+      status: "pending" as const,
+    });
+    em.nativeUpdate.mockResolvedValueOnce(0);
+
+    await expect(service.cancelInvitation(invitation)).rejects.toThrow(
+      "Workspace invitation is not pending",
+    );
+    expect(invitation.status).toBe("pending");
   });
 
   it("keeps rejected invitations as separate audit records", async () => {
@@ -791,7 +874,32 @@ describe("WorkspaceService", () => {
     );
     expect(invitation.status).toBe("rejected");
     expect(em.remove).not.toHaveBeenCalled();
-    expect(em.flush).toHaveBeenCalledTimes(1);
+    expect(em.nativeUpdate).toHaveBeenCalledWith(
+      TestWorkspaceInvitation,
+      {
+        email: "alice@example.com",
+        id: invitation.id,
+        status: "pending",
+      },
+      { status: "rejected" },
+    );
+  });
+
+  it("rejects a concurrent invitation rejection", async () => {
+    const { em, service } = createService();
+    const user = Object.assign(new TestUser(), {
+      email: "alice@example.com",
+    });
+    const invitation = Object.assign(new TestWorkspaceInvitation(), {
+      email: user.email,
+      status: "pending" as const,
+    });
+    em.nativeUpdate.mockResolvedValueOnce(0);
+
+    await expect(service.rejectInvitation(user, invitation)).rejects.toThrow(
+      "Workspace invitation is not pending",
+    );
+    expect(invitation.status).toBe("pending");
   });
 
   it("does not accept expired or already completed invitations", async () => {
@@ -821,6 +929,28 @@ describe("WorkspaceService", () => {
 
     await expect(service.acceptInvitation(user, accepted.id)).rejects.toThrow(
       "Workspace invitation is not pending",
+    );
+    expect(em.persist).not.toHaveBeenCalled();
+  });
+
+  it("does not accept invitations for a deleted workspace", async () => {
+    const { em, service } = createService();
+    const user = Object.assign(new TestUser(), {
+      email: "alice@example.com",
+    });
+    const workspace = Object.assign(new TestWorkspace(), {
+      deletedAt: new Date(),
+    });
+    const invitation = Object.assign(new TestWorkspaceInvitation(), {
+      email: user.email,
+      expiresAt: new Date(Date.now() + 60_000),
+      status: "pending" as const,
+      workspace,
+    });
+    em.findOne.mockResolvedValueOnce(invitation);
+
+    await expect(service.acceptInvitation(user, invitation.id)).rejects.toThrow(
+      "Workspace has been deleted",
     );
     expect(em.persist).not.toHaveBeenCalled();
   });
@@ -859,12 +989,14 @@ function createService(
     findOne: vi.fn(),
     flush: vi.fn(),
     lock: vi.fn(),
+    nativeUpdate: vi.fn(),
     persist: vi.fn(),
     remove: vi.fn(),
     transactional: vi.fn(),
   } as unknown as Mocked<EntityManager>;
   em.persist.mockReturnValue(em);
   em.remove.mockReturnValue(em);
+  em.nativeUpdate.mockResolvedValue(1);
   em.transactional.mockImplementation(async (callback) => await callback(em));
 
   const options = {

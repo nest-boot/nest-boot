@@ -15,6 +15,7 @@ import {
 } from '@nestjs/common';
 
 import { User } from '../user/user.entity.js';
+import { WorkspaceMemberStatus } from '../workspace-member/enums/workspace-member-status.enum.js';
 import { WorkspaceInvitation } from '../workspace-member/workspace-invitation.entity.js';
 import { WorkspaceMember } from '../workspace-member/workspace-member.entity.js';
 import { CreateWorkspaceInput } from './inputs/create-workspace.input.js';
@@ -102,6 +103,7 @@ export class WorkspaceResolver {
     return await this.cm.find(WorkspaceConnection, args, {
       where: {
         members: {
+          status: WorkspaceMemberStatus.ACTIVE,
           user,
         },
       },
