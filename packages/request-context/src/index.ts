@@ -1,4 +1,6 @@
+export * from "./cookies.js";
 export * from "./create-request-context.decorator.js";
+export * from "./headers.js";
 export * from "./repl.js";
 export * from "./request-context.constants.js";
 export * from "./request-context.interceptor.js";

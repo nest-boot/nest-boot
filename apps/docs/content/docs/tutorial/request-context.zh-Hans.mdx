@@ -111,9 +111,43 @@ await mailer?.sendMail({
 
 同步查找无法解析请求作用域和瞬态 Provider，此时返回 `undefined`。其他非预期的 Provider 解析异常不会被静默忽略。
 
-## 请求与响应
+## 请求头与 Cookie
 
-内置 HTTP 上下文使用 `REQUEST` 和 `RESPONSE` Token 存储 Express 请求与响应对象。
+使用 `headers()` 可以读取传入请求头的 Fetch 兼容快照，无需在各层服务之间传递 Express 请求：
+
+```typescript
+import { headers } from "@nest-boot/request-context";
+
+const authorization = headers().get("authorization");
+```
+
+修改返回的 `Headers` 实例不会改变原始请求。该方法为同步方法；当前不存在活动的 HTTP 请求上下文时会抛出异常。
+
+使用 `cookies()` 可以读取传入 Cookie 并写入响应 Cookie：
+
+```typescript
+import { cookies } from "@nest-boot/request-context";
+
+const cookieStore = cookies();
+const session = cookieStore.get("session");
+
+cookieStore.set("session", token, {
+  httpOnly: true,
+  path: "/",
+  sameSite: "lax",
+  secure: true,
+});
+
+cookieStore.delete("session");
+```
+
+`get()`、`getAll()`、`has()` 和 `toString()` 读取传入 `Cookie` 请求头的快照。`set()` 和 `delete()` 会分别追加独立的 `Set-Cookie` 响应头，因此写入一个 Cookie 不会合并或覆盖其他 Cookie。删除操作会立即让 Cookie 过期，并默认使用 `/` 路径；如果原 Cookie 使用了其他 `path` 或 `domain`，删除时应传入相同属性。
+
+GraphQL 请求上下文包含请求对象时可以读取 Cookie。写入操作要求上下文具有可写响应；仅订阅的上下文或响应头已经发送时会抛出异常。
+
+## 底层请求与响应访问
+
+内置 HTTP 上下文使用 `REQUEST` 和 `RESPONSE` Token 存储 Express 请求与响应对象。能够满足需求时优先使用 `headers()` 和 `cookies()`；只有需要直接访问适配器时才使用这些 Token。
 
 ```typescript
 import { REQUEST, RESPONSE, RequestContext } from "@nest-boot/request-context";

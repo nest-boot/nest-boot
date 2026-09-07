@@ -1,8 +1,10 @@
 import type { CallHandler, ExecutionContext } from "@nestjs/common";
 import type { ModuleRef } from "@nestjs/core";
-import type { Request } from "express";
+import type { Request, Response } from "express";
 import { lastValueFrom, Observable, of, take } from "rxjs";
 
+import { cookies } from "./cookies.js";
+import { headers } from "./headers.js";
 import { RequestContextInterceptor } from "./request-context.interceptor.js";
 import { RequestContext } from "./request-context.js";
 
@@ -55,6 +57,95 @@ describe("RequestContextInterceptor", () => {
     );
 
     expect(result).toBeUndefined();
+  });
+
+  it("exposes HTTP request and response helpers in fallback contexts", async () => {
+    const response = createResponse();
+    const result = await lastValueFrom(
+      interceptor.intercept(
+        createExecutionContext("http-helpers", {
+          headers: { cookie: "session=http", "x-client": "web" },
+          response,
+        }),
+        {
+          handle: () => {
+            const store = cookies();
+            store.set("theme", "dark", { path: "/" });
+
+            return of({
+              client: headers().get("x-client"),
+              session: store.get("session")?.value,
+            });
+          },
+        },
+      ),
+    );
+
+    expect(result).toEqual({ client: "web", session: "http" });
+    expect(response.headers["set-cookie"]).toEqual(["theme=dark; Path=/"]);
+  });
+
+  it("exposes request and response helpers in GraphQL query contexts", async () => {
+    const response = createResponse();
+    const result = await lastValueFrom(
+      interceptor.intercept(
+        createGraphqlExecutionContext({
+          req: createRequest("graphql-query", {
+            cookie: "session=graphql",
+            "x-client": "web",
+          }),
+          res: response as unknown as Response,
+        }),
+        {
+          handle: () => {
+            const store = cookies();
+            store.set("theme", "dark", { path: "/" });
+
+            return of({
+              client: headers().get("x-client"),
+              session: store.get("session")?.value,
+            });
+          },
+        },
+      ),
+    );
+
+    expect(result).toEqual({ client: "web", session: "graphql" });
+    expect(response.headers["set-cookie"]).toEqual(["theme=dark; Path=/"]);
+  });
+
+  it("allows cookie reads but rejects writes in GraphQL subscription contexts", async () => {
+    const result = await lastValueFrom(
+      interceptor.intercept(
+        createGraphqlExecutionContext({
+          req: createRequest("graphql-subscription", {
+            cookie: "session=subscription",
+          }),
+        }),
+        {
+          handle: () => {
+            const store = cookies();
+            let writeError: unknown;
+
+            try {
+              store.set("theme", "dark");
+            } catch (error) {
+              writeError = error;
+            }
+
+            return of({
+              session: store.get("session")?.value,
+              writeError,
+            });
+          },
+        },
+      ),
+    );
+
+    expect(result.session).toBe("subscription");
+    expect(result.writeError).toEqual(
+      new Error("Cookie writes require a writable HTTP response context"),
+    );
   });
 
   it("reuses an active request context", async () => {
@@ -387,15 +478,65 @@ function createCallHandler<T>(observable: Observable<T>): CallHandler<T> {
   };
 }
 
-function createExecutionContext(id: string): ExecutionContext {
-  const request = {
-    get: (name: string) => (name === "x-request-id" ? id : undefined),
-  } as Request;
+function createExecutionContext(
+  id: string,
+  options: {
+    headers?: Record<string, string | string[]>;
+    response?: TestResponse;
+  } = {},
+): ExecutionContext {
+  const request = createRequest(id, options.headers);
 
   return {
     getType: () => "http",
     switchToHttp: () => ({
       getRequest: () => request,
+      getResponse: () => options.response,
     }),
   } as unknown as ExecutionContext;
+}
+
+function createGraphqlExecutionContext(context: {
+  req?: Request;
+  res?: Response;
+}): ExecutionContext {
+  return {
+    getArgByIndex: (index: number) => (index === 2 ? context : undefined),
+    getType: () => "graphql",
+    switchToHttp: () => ({
+      getRequest: () => undefined,
+      getResponse: () => undefined,
+    }),
+  } as unknown as ExecutionContext;
+}
+
+function createRequest(
+  id: string,
+  headers: Record<string, string | string[]> = {},
+): Request {
+  return {
+    get: (name: string) =>
+      name.toLowerCase() === "x-request-id" ? id : headers[name.toLowerCase()],
+    headers,
+  } as unknown as Request;
+}
+
+interface TestResponse {
+  headers: Record<string, string | string[]>;
+  headersSent: boolean;
+  getHeader(name: string): string | string[] | undefined;
+  setHeader(name: string, value: string | string[]): void;
+}
+
+function createResponse(): TestResponse {
+  return {
+    headers: {},
+    headersSent: false,
+    getHeader(name) {
+      return this.headers[name.toLowerCase()];
+    },
+    setHeader(name, value) {
+      this.headers[name.toLowerCase()] = value;
+    },
+  };
 }
