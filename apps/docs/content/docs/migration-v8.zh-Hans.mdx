@@ -55,6 +55,9 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
   `User:*`、`Session:*`、`Workspace:*`、`WorkspaceMember:*` 与
   `WorkspaceInvitation:*`。需要更新角色配置中的权限，并改写此前持久化的直接权限与
   API Key 权限。
+- 认证 Session 现在只使用主数据库；请移除 `AuthModuleOptions.secondaryStorage` 配置。
+  API Key 默认权限与授予上限可分别通过 `apiKey.defaultPermissions` 和
+  `apiKey.allowedPermissions` 配置。
 - 切换 TypeScript 模块解析后，重新生成文件和迁移，确保生成的导入带有有效的
   ESM 扩展名。
 

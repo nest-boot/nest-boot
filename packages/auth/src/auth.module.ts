@@ -54,6 +54,8 @@ import {
   WorkspaceOwnershipConflictError,
 } from "./user-deletion.service.js";
 import {
+  assertAuthPermissionList,
+  assertAuthPermissionSubset,
   assertAuthRolePermissions,
   assertAuthRolesExist,
 } from "./utils/auth-role.util.js";
@@ -139,16 +141,38 @@ function isAuthOptionsFactoryProvider(
         const userRoles = options.user?.roles ?? DEFAULT_USER_ROLES;
         const workspaceRoles =
           options.workspace?.roles ?? DEFAULT_WORKSPACE_ROLES;
+        const userPermissions =
+          options.user?.permissions ?? DEFAULT_USER_PERMISSIONS;
+        const workspacePermissions =
+          options.workspace?.permissions ?? DEFAULT_WORKSPACE_PERMISSIONS;
+        const apiKeyPermissionCatalog = [
+          ...new Set([...userPermissions, ...workspacePermissions]),
+        ];
+        const allowedApiKeyPermissions =
+          options.apiKey?.allowedPermissions ?? apiKeyPermissionCatalog;
+        const defaultApiKeyPermissions =
+          options.apiKey?.defaultPermissions ?? [];
 
-        assertAuthRolePermissions(
-          userRoles,
-          options.user?.permissions ?? DEFAULT_USER_PERMISSIONS,
-          "user",
-        );
+        assertAuthRolePermissions(userRoles, userPermissions, "user");
         assertAuthRolePermissions(
           workspaceRoles,
-          options.workspace?.permissions ?? DEFAULT_WORKSPACE_PERMISSIONS,
+          workspacePermissions,
           "workspace",
+        );
+        assertAuthPermissionList(
+          allowedApiKeyPermissions,
+          apiKeyPermissionCatalog,
+          "apiKey.allowedPermissions",
+        );
+        assertAuthPermissionList(
+          defaultApiKeyPermissions,
+          apiKeyPermissionCatalog,
+          "apiKey.defaultPermissions",
+        );
+        assertAuthPermissionSubset(
+          defaultApiKeyPermissions,
+          allowedApiKeyPermissions,
+          "apiKey.defaultPermissions",
         );
         assertAuthRolesExist(
           userRoles,
@@ -378,9 +402,6 @@ function copyBetterAuthOptions(
   if (source.onAPIError !== undefined) target.onAPIError = source.onAPIError;
   if (source.rateLimit !== undefined) target.rateLimit = source.rateLimit;
   if (source.secrets !== undefined) target.secrets = source.secrets;
-  if (source.secondaryStorage !== undefined) {
-    target.secondaryStorage = source.secondaryStorage;
-  }
   if (source.session !== undefined) target.session = source.session;
   if (source.telemetry !== undefined) target.telemetry = source.telemetry;
   if (source.trustedOrigins !== undefined) {

@@ -21,6 +21,8 @@ Better Auth 选项，避免上游升级无意中扩大 Nest Boot 的公开 API�
 - **`user.defaultRole`**、**`user.adminRoles`**、**`user.permissions`**、**`user.roles`** 与 **`user.buildAbility`** — 定义用户角色生命周期与授权；
 - **`workspace.defaultRole`**、**`workspace.creatorRole`**、**`workspace.permissions`**、**`workspace.roles`** 与 **`workspace.buildAbility`** — 定义工作区角色生命周期与授权；
 - **`workspace.sendInvitationEmail`** — 发送已持久化的工作区邀请；
+- **`apiKey.defaultPermissions`** — 创建 Key 时省略权限字段所使用的默认权限；
+- **`apiKey.allowedPermissions`** — 限制所有 API Key 可以被授予的权限；
 - **`middleware`** — 控制认证中间件的注册和路由范围；
 - **`basePath`** — 修改默认的 `/api/auth/` 认证端点路径；
 - **`trustedOrigins`** — 配置允许的浏览器来源；
@@ -50,6 +52,11 @@ Better Auth 选项，避免上游升级无意中扩大 Nest Boot 的公开 API�
 校验角色名；模块选项会保留权限目录类型，同时不让 GraphQL Schema 或数据库结构
 耦合到字面量联合类型。
 用户、工作区成员与 API Key 的直接权限写入也会在运行时依据相应目录进行校验。
+
+`apiKey.defaultPermissions` 默认为空数组；`apiKey.allowedPermissions` 默认使用用户与
+工作区权限目录的并集。模块会在启动时校验两个列表，并要求默认权限是白名单的子集。
+User Key 可以使用两个目录中的权限，Workspace Key 只能使用工作区权限。这两个配置
+只是额外上限；创建和更新时仍会同时检查签发者权限与当前认证 API Key 自身的权限。
 
 ## 环境变量
 

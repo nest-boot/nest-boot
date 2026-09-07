@@ -22,6 +22,8 @@
       workspace permissions. User Key access to a workspace must continue to be
       intersected with the user's current membership permissions at request
       time.
+- [x] Add module-level API-key defaults and grant limits, and prevent an
+      authenticating API key from delegating permissions it does not have.
 - [x] Enforce user and workspace abilities inside authorization-sensitive
       `UserService`, `WorkspaceService`, and `ApiKeyService` operations, so
       direct service injection cannot bypass Resolver or Controller metadata.

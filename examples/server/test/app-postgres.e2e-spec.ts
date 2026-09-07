@@ -1872,6 +1872,82 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     });
   });
 
+  it('prevents user API keys from delegating permissions they do not have', async () => {
+    const user = await createAuthenticatedUser('Delegated Key Owner');
+    const authenticatingKey = await createUserApiKey(user, {
+      name: 'Restricted delegator',
+      permissions: ['Workspace:update'],
+    });
+    const targetKey = await createUserApiKey(user, {
+      name: 'Delegation target',
+      permissions: ['Workspace:update'],
+    });
+
+    const rejectedCreate = await gql(
+      /* GraphQL */ `
+        mutation CreateUserApiKey($input: CreateApiKeyInput!) {
+          createUserApiKey(input: $input) {
+            apiKey
+          }
+        }
+      `,
+      {
+        bearerToken: authenticatingKey.apiKey,
+        variables: {
+          input: {
+            name: 'Escalated delegated key',
+            permissions: ['Workspace:delete'],
+          },
+        },
+      },
+    );
+    expectGraphQLError(rejectedCreate);
+
+    const rejectedUpdate = await gql(
+      /* GraphQL */ `
+        mutation UpdateUserApiKey($id: ID!, $input: UpdateApiKeyInput!) {
+          updateUserApiKey(id: $id, input: $input) {
+            id
+          }
+        }
+      `,
+      {
+        bearerToken: authenticatingKey.apiKey,
+        variables: {
+          id: targetKey.entity.id,
+          input: { permissions: ['Workspace:delete'] },
+        },
+      },
+    );
+    expectGraphQLError(rejectedUpdate);
+
+    const allowedCreate = await gql(
+      /* GraphQL */ `
+        mutation CreateUserApiKey($input: CreateApiKeyInput!) {
+          createUserApiKey(input: $input) {
+            entity {
+              permissions
+            }
+          }
+        }
+      `,
+      {
+        bearerToken: authenticatingKey.apiKey,
+        variables: {
+          input: {
+            name: 'Bounded delegated key',
+            permissions: ['Workspace:update'],
+          },
+        },
+      },
+    );
+
+    expectNoGraphQLErrors(allowedCreate);
+    expect(allowedCreate.body.data.createUserApiKey.entity.permissions).toEqual(
+      ['Workspace:update'],
+    );
+  });
+
   it('enforces workspace API-key permissions and enabled state', async () => {
     const owner = await createAuthenticatedUser('Restricted Key Owner');
     const workspace = await createWorkspace(owner, 'Restricted API Workspace');

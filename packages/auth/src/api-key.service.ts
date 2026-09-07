@@ -25,11 +25,11 @@ import {
 import { AccessControlService } from "./access-control.service.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
-import type {
+import {
   BaseApiKey,
-  BaseUser,
-  BaseWorkspace,
-  BaseWorkspaceMember,
+  type BaseUser,
+  type BaseWorkspace,
+  type BaseWorkspaceMember,
 } from "./entities/index.js";
 import {
   DEFAULT_USER_PERMISSIONS,
@@ -52,7 +52,10 @@ export interface CreateApiKeyOptions {
   name: string;
   /** Optional expiration timestamp. */
   expiresAt?: Date | null;
-  /** Operations from the permission catalogs allowed for this key's owner type. */
+  /**
+   * Operations granted to the key. Omission uses the configured defaults;
+   * `null` or an empty list creates a key without permissions.
+   */
   permissions?: string[] | null;
   /** Plaintext prefix prepended to the generated key. */
   prefix?: string;
@@ -66,7 +69,10 @@ export interface UpdateApiKeyOptions {
   expiresAt?: Date | null;
   /** API-key display name. */
   name?: string;
-  /** Operations from the permission catalogs allowed for this key's owner type. */
+  /**
+   * Replacement permission list. Omission preserves the stored permissions;
+   * `null` clears them.
+   */
   permissions?: string[] | null;
 }
 
@@ -178,10 +184,7 @@ export class ApiKeyService<
   ): Promise<CreatedApiKey<ApiKey>> {
     this.accessControlService.assertCurrentUser(user);
     this.accessControlService.assertUserCan("create", this.apiKeyEntity);
-    const permissions = this.normalizePermissions(
-      user,
-      options.permissions ?? [],
-    );
+    const permissions = this.normalizeCreatePermissions(user, options);
     this.assertUserPermissionCeiling(user, permissions);
     return await this.createKey(user, options, permissions);
   }
@@ -200,10 +203,7 @@ export class ApiKeyService<
         "Cannot create API key for inactive member",
       );
     }
-    const permissions = this.normalizePermissions(
-      workspace,
-      options.permissions ?? [],
-    );
+    const permissions = this.normalizeCreatePermissions(workspace, options);
     this.assertWorkspacePermissionCeiling(member, permissions);
     return await this.createKey(workspace, options, permissions);
   }
@@ -218,7 +218,9 @@ export class ApiKeyService<
     this.accessControlService.assertUserCan("update", this.apiKeyEntity);
     const apiKey = await this.findOwnedApiKey(id, user);
     const permissions = this.normalizeUpdatedPermissions(apiKey, input);
-    if (permissions) this.assertUserPermissionCeiling(user, permissions);
+    const finalPermissions =
+      permissions ?? this.normalizePermissions(user, apiKey.permissions ?? []);
+    this.assertUserPermissionCeiling(user, finalPermissions);
     return await this.updateKey(apiKey, input, permissions);
   }
 
@@ -232,9 +234,13 @@ export class ApiKeyService<
     this.accessControlService.assertWorkspaceCan("update", this.apiKeyEntity);
     const apiKey = await this.findManageableWorkspaceApiKey(id, member);
     const permissions = this.normalizeUpdatedPermissions(apiKey, input);
-    if (permissions) {
-      this.assertWorkspacePermissionCeiling(member, permissions);
-    }
+    const finalPermissions =
+      permissions ??
+      this.normalizePermissions(
+        this.unwrapOwner(apiKey),
+        apiKey.permissions ?? [],
+      );
+    this.assertWorkspacePermissionCeiling(member, finalPermissions);
     return await this.updateKey(apiKey, input, permissions);
   }
 
@@ -494,10 +500,31 @@ export class ApiKeyService<
         ? [...userPermissions, ...workspacePermissions]
         : workspacePermissions;
 
-    return normalizeAuthPermissions(
+    const normalizedPermissions = normalizeAuthPermissions(
       permissions,
       availablePermissions,
       ownerType === "user" ? "User API key" : "Workspace API key",
+    );
+    this.assertPermissionCeiling(
+      normalizedPermissions,
+      this.authOptions.apiKey?.allowedPermissions ?? [
+        ...userPermissions,
+        ...workspacePermissions,
+      ],
+      "API key permissions exceed configured allowedPermissions",
+    );
+    return normalizedPermissions;
+  }
+
+  private normalizeCreatePermissions(
+    owner: User | Workspace,
+    options: CreateApiKeyOptions,
+  ): string[] {
+    return this.normalizePermissions(
+      owner,
+      options.permissions === undefined
+        ? (this.authOptions.apiKey?.defaultPermissions ?? [])
+        : (options.permissions ?? []),
     );
   }
 
@@ -534,6 +561,7 @@ export class ApiKeyService<
       effectivePermissions,
       "User API key permissions exceed owner permissions",
     );
+    this.assertDelegatedApiKeyPermissionCeiling(permissions);
   }
 
   private assertWorkspacePermissionCeiling(
@@ -552,6 +580,22 @@ export class ApiKeyService<
       permissions,
       effectivePermissions,
       "Workspace API key permissions exceed issuer permissions",
+    );
+    this.assertDelegatedApiKeyPermissionCeiling(permissions);
+  }
+
+  private assertDelegatedApiKeyPermissionCeiling(
+    permissions: readonly string[],
+  ): void {
+    const apiKey = RequestContext.isActive()
+      ? RequestContext.get(BaseApiKey)
+      : undefined;
+    if (!apiKey) return;
+
+    this.assertPermissionCeiling(
+      permissions,
+      apiKey.permissions ?? [],
+      "API key permissions exceed authenticating API key permissions",
     );
   }
 

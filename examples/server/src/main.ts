@@ -1,7 +1,6 @@
 import { Logger } from '@nest-boot/logger';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import cookieParser from 'cookie-parser';
 
 import { AppModule } from './app/app.module.js';
 
@@ -22,7 +21,6 @@ async function bootstrap() {
   });
 
   app.useLogger(logger);
-  app.use(cookieParser());
 
   app.useGlobalPipes(
     new ValidationPipe({ transform: true, forbidUnknownValues: false }),

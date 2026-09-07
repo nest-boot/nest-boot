@@ -80,6 +80,39 @@ export function assertAuthRolePermissions(
   }
 }
 
+/** Ensures one configured permission list belongs to the available catalog. */
+export function assertAuthPermissionList(
+  permissions: readonly string[],
+  availablePermissions: readonly string[],
+  option: string,
+): void {
+  try {
+    normalizeAuthPermissions(permissions, availablePermissions, option);
+  } catch (error) {
+    throw new Error(
+      error instanceof Error ? error.message : `${option} is invalid`,
+      { cause: error },
+    );
+  }
+}
+
+/** Ensures every permission in one configured list is allowed by another. */
+export function assertAuthPermissionSubset(
+  permissions: readonly string[],
+  allowedPermissions: readonly string[],
+  option: string,
+): void {
+  const allowedPermissionSet = new Set(allowedPermissions);
+  const disallowedPermissions = permissions.filter(
+    (permission) => !allowedPermissionSet.has(permission),
+  );
+  if (disallowedPermissions.length > 0) {
+    throw new Error(
+      `${option} contains permissions outside apiKey.allowedPermissions: ${disallowedPermissions.join(", ")}`,
+    );
+  }
+}
+
 /** Ensures configured lifecycle roles exist in their role registry. */
 export function assertAuthRolesExist(
   roles: AuthModuleRoles,

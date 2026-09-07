@@ -22,6 +22,8 @@ Important Nest Boot options include:
 - **`user.defaultRole`**, **`user.adminRoles`**, **`user.permissions`**, **`user.roles`**, and **`user.buildAbility`** — define user role lifecycles and authorization;
 - **`workspace.defaultRole`**, **`workspace.creatorRole`**, **`workspace.permissions`**, **`workspace.roles`**, and **`workspace.buildAbility`** — define workspace role lifecycles and authorization;
 - **`workspace.sendInvitationEmail`** — delivers persisted workspace invitations;
+- **`apiKey.defaultPermissions`** — supplies permissions when key creation omits them;
+- **`apiKey.allowedPermissions`** — limits permissions that may be granted to API keys;
 - **`middleware`** — controls auth middleware registration and route selection;
 - **`basePath`** — changes the auth endpoint path from `/api/auth/`;
 - **`trustedOrigins`** — configures allowed browser origins;
@@ -58,6 +60,14 @@ the configured role map, while the module options keep the configured catalogs
 typed without coupling the GraphQL or database schema to literal unions.
 Direct user, workspace-member, and API-key permission writes are also validated
 against these catalogs at runtime.
+
+`apiKey.defaultPermissions` defaults to an empty list.
+`apiKey.allowedPermissions` defaults to the combined user and workspace
+permission catalogs. Both lists are validated at startup, and defaults must be
+a subset of the allowlist. A User Key may use entries from either catalog; a
+Workspace Key may use only workspace permissions. These settings are additional
+limits: issuer permissions and the authenticating API Key's own permissions are
+still enforced during creation and update.
 
 ## Environment Variables
 

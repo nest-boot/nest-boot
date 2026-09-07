@@ -453,6 +453,42 @@ describe("AuthModule", () => {
     expect(mockBetterAuth).not.toHaveBeenCalled();
   });
 
+  it.each([
+    [
+      "allowed permissions outside the configured catalogs",
+      {
+        apiKey: { allowedPermissions: ["Unknown:read"] },
+      },
+      "apiKey.allowedPermissions contains unknown permissions: Unknown:read",
+    ],
+    [
+      "default permissions outside the configured catalogs",
+      {
+        apiKey: { defaultPermissions: ["Unknown:read"] },
+      },
+      "apiKey.defaultPermissions contains unknown permissions: Unknown:read",
+    ],
+    [
+      "default permissions outside allowedPermissions",
+      {
+        apiKey: {
+          allowedPermissions: ["Workspace:update"],
+          defaultPermissions: ["Workspace:delete"],
+        },
+      },
+      "apiKey.defaultPermissions contains permissions outside apiKey.allowedPermissions: Workspace:delete",
+    ],
+  ])("rejects API-key %s", (_, config, error) => {
+    const authProvider = getAuthProvider();
+
+    expect(() =>
+      authProvider.useFactory({ entities, secret, ...config }, {
+        em: {},
+      } as unknown as MikroORM),
+    ).toThrow(error);
+    expect(mockBetterAuth).not.toHaveBeenCalled();
+  });
+
   it("should forward account options without weakening OAuth state checks", () => {
     const authProvider = getAuthProvider();
 
@@ -599,8 +635,13 @@ describe("AuthModule", () => {
 
     authProvider.useFactory(
       {
+        apiKey: {
+          allowedPermissions: ["User:get"],
+          defaultPermissions: [],
+        },
         entities,
         middleware: { register: false },
+        secondaryStorage: { get: vi.fn() },
         secret,
         unexpectedOption: "must-not-pass-through",
         user: { buildAbility: vi.fn(), modelName: "application_user" },
@@ -619,7 +660,11 @@ describe("AuthModule", () => {
       modelName: "application_user",
     });
     expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty("entities");
+    expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty("apiKey");
     expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty("middleware");
+    expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty(
+      "secondaryStorage",
+    );
     expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty("workspace");
     expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty(
       "unexpectedOption",

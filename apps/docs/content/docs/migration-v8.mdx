@@ -61,6 +61,10 @@ provide a CommonJS `require` entry.
   `WorkspaceMember:*`, and `WorkspaceInvitation:*`. Update configured role
   permissions and rewrite persisted direct and API-key permissions that used
   the previous lowercase names.
+- Auth sessions now use the primary database exclusively; remove any
+  `AuthModuleOptions.secondaryStorage` configuration. API-key defaults and
+  grant ceilings can be configured with `apiKey.defaultPermissions` and
+  `apiKey.allowedPermissions`.
 - Rebuild generated files and migrations after switching TypeScript module
   resolution so generated imports include valid ESM extensions.
 

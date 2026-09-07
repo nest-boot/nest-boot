@@ -52,6 +52,26 @@ PostgreSQL 使用 `text[]` 列持久化这些值。
 权限。User Key 中的工作区权限会在每次请求时再次与所选工作区的成员权限取交集，因此
 一个 Key 可以跨工作区使用，但不会固化或复制成员权限。
 
+通过 `apiKey` 配置默认权限与模块级授予白名单：
+
+```typescript
+AuthModule.forRoot({
+  // ...entities、user 与 workspace 配置
+  apiKey: {
+    defaultPermissions: ["Workspace:update"],
+    allowedPermissions: ["User:get", "Workspace:update", "Workspace:delete"],
+  },
+});
+```
+
+`defaultPermissions` 默认为 `[]`，仅在创建时省略 `permissions` 字段的情况下生效；
+显式传入 `null` 或 `[]` 会创建无权限 Key。`allowedPermissions` 默认使用已配置用户与
+工作区权限目录的并集。模块会在启动时校验两个数组，并要求默认权限是白名单的子集。
+
+白名单只是额外上限，不会自动授予权限。请求权限仍必须符合 Key 所有者类型，并且不能
+超过签发者的有效权限。如果当前请求本身使用 API Key 认证，新建或更新的 Key 也不能
+获得当前 Key 没有的权限。更新时省略 `permissions` 会保留原值，传入 `null` 则会清空。
+
 ## 传输方式
 
 API Key 使用 Bearer 方式发送：

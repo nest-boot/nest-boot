@@ -60,6 +60,31 @@ and direct permissions. Workspace permissions on a User Key are checked again
 against the selected member at request time, so one key can be used across
 workspaces without freezing or copying membership privileges.
 
+Configure defaults and a module-wide grant allowlist with `apiKey`:
+
+```typescript
+AuthModule.forRoot({
+  // ...entities, user, and workspace options
+  apiKey: {
+    defaultPermissions: ["Workspace:update"],
+    allowedPermissions: ["User:get", "Workspace:update", "Workspace:delete"],
+  },
+});
+```
+
+`defaultPermissions` defaults to `[]` and applies only when creation omits the
+`permissions` field. Passing `null` or `[]` creates a key without permissions.
+`allowedPermissions` defaults to the union of the configured user and workspace
+permission catalogs. Both options are validated at startup, and defaults must
+be a subset of the allowlist.
+
+The allowlist is an additional ceiling, not an automatic grant. Requested
+permissions must also belong to the key owner's supported scope and remain
+within the issuer's effective permissions. When an API key creates or updates
+another key, the delegated permissions cannot exceed the authenticating key's
+own permissions. Updates that omit `permissions` preserve the stored value;
+passing `null` clears it.
+
 ## Transport
 
 Send API keys with the Bearer scheme:

@@ -1,5 +1,6 @@
 import { EntityManager } from "@mikro-orm/core";
 import {
+  cookies,
   RequestContext,
   type RequestContextToken,
 } from "@nest-boot/request-context";
@@ -55,13 +56,11 @@ export class AuthMiddleware implements NestMiddleware {
 
   private async resolveSelectedWorkspace(req: Request): Promise<void> {
     const headerWorkspaceId = req.headers["x-workspace-id"];
-    const cookieWorkspaceId = (req.cookies as Record<string, unknown> | null)
-      ?.workspace_id;
+    const cookieWorkspaceId = cookies().get("workspace_id")?.value;
     const workspaceId = (
       (Array.isArray(headerWorkspaceId)
         ? headerWorkspaceId[0]
-        : headerWorkspaceId) ??
-      (typeof cookieWorkspaceId === "string" ? cookieWorkspaceId : undefined)
+        : headerWorkspaceId) ?? cookieWorkspaceId
     )?.trim();
     if (!workspaceId) return;
 

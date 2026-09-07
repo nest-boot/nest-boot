@@ -40,7 +40,6 @@ type SupportedBetterAuthOptions = Pick<
   | "onAPIError"
   | "rateLimit"
   | "secrets"
-  | "secondaryStorage"
   | "secret"
   | "session"
   | "telemetry"
@@ -185,6 +184,20 @@ export interface AuthModuleMiddlewareOptions {
   excludeRoutes?: (string | RouteInfo)[];
 }
 
+/** API-key permission defaults and grant limits owned by AuthModule. */
+export interface AuthModuleApiKeyOptions<Permission extends string = string> {
+  /**
+   * Permissions assigned when key creation omits `permissions`.
+   * Defaults to an empty list.
+   */
+  defaultPermissions?: readonly Permission[];
+  /**
+   * Permissions that may be granted to any API key.
+   * Defaults to the combined user and workspace permission catalogs.
+   */
+  allowedPermissions?: readonly Permission[];
+}
+
 /** Better Auth's built-in social-provider configuration map. */
 export type AuthModuleSocialProviders = NonNullable<
   BetterAuthOptions["socialProviders"]
@@ -233,6 +246,11 @@ export interface AuthModuleOptions<
 
   /** Workspace lifecycle and invitation-delivery options. */
   workspace?: AuthModuleWorkspaceOptions<WorkspacePermission, Workspace>;
+
+  /** API-key permission defaults and grant limits. */
+  apiKey?: AuthModuleApiKeyOptions<
+    NoInfer<UserPermission | WorkspacePermission>
+  >;
 
   /** Built-in social and custom OAuth providers, identified by `id`. */
   providers?: readonly AuthModuleProvider[];

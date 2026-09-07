@@ -1,5 +1,5 @@
 import { EntityManager } from "@mikro-orm/core";
-import { RequestContext } from "@nest-boot/request-context";
+import { REQUEST, RequestContext } from "@nest-boot/request-context";
 import { Test } from "@nestjs/testing";
 import { NextFunction, Request } from "express";
 import type { Mock } from "vitest";
@@ -82,6 +82,15 @@ async function createMiddleware(
   };
 }
 
+async function runInRequestContext<T>(
+  request: Request,
+  callback: () => Promise<T>,
+): Promise<T> {
+  const context = new RequestContext({ type: "http" });
+  context.set(REQUEST, request);
+  return await RequestContext.run(context, callback);
+}
+
 describe("AuthMiddleware", () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -92,18 +101,15 @@ describe("AuthMiddleware", () => {
     const findOne = vi.fn();
     const next = vi.fn() as NextFunction;
     const { middleware } = await createMiddleware(getSession, findOne);
+    const request = {
+      headers: {
+        "x-empty": undefined,
+        "x-test": ["a", "b"],
+      },
+    } as unknown as Request;
 
-    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      await middleware.use(
-        {
-          headers: {
-            "x-empty": undefined,
-            "x-test": ["a", "b"],
-          },
-        } as unknown as Request,
-        {} as never,
-        next,
-      );
+    await runInRequestContext(request, async () => {
+      await middleware.use(request, {} as never, next);
     });
 
     expect(getSession).toHaveBeenCalledWith();
@@ -129,9 +135,10 @@ describe("AuthMiddleware", () => {
         workspaceMember: BaseWorkspaceMember,
       },
     );
+    const request = { headers: {} } as Request;
 
-    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      await middleware.use({ headers: {} } as Request, {} as never, next);
+    await runInRequestContext(request, async () => {
+      await middleware.use(request, {} as never, next);
     });
 
     expect(alias).not.toHaveBeenCalled();
@@ -154,17 +161,14 @@ describe("AuthMiddleware", () => {
     const requestContextAlias = vi.spyOn(RequestContext, "alias");
     const next = vi.fn() as NextFunction;
     const { middleware } = await createMiddleware(getSession, findOne);
+    const request = {
+      headers: {
+        authorization: "Bearer token",
+      },
+    } as unknown as Request;
 
-    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      await middleware.use(
-        {
-          headers: {
-            authorization: "Bearer token",
-          },
-        } as unknown as Request,
-        {} as never,
-        next,
-      );
+    await runInRequestContext(request, async () => {
+      await middleware.use(request, {} as never, next);
 
       expect(RequestContext.get(BaseUser)).toBe(user);
       expect(RequestContext.get(TestUser)).toBe(user);
@@ -213,13 +217,12 @@ describe("AuthMiddleware", () => {
       findOne,
       validate,
     );
+    const request = {
+      headers: { authorization: "Bearer sk-key" },
+    } as Request;
 
-    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      await middleware.use(
-        { headers: { authorization: "Bearer sk-key" } } as Request,
-        {} as never,
-        vi.fn(),
-      );
+    await runInRequestContext(request, async () => {
+      await middleware.use(request, {} as never, vi.fn());
     });
 
     expect(validate).not.toHaveBeenCalled();
@@ -250,18 +253,15 @@ describe("AuthMiddleware", () => {
       validate,
     );
     const set = vi.spyOn(RequestContext, "set");
+    const request = {
+      headers: {
+        authorization: "Bearer sk-key",
+        "x-workspace-id": "workspace-1",
+      },
+    } as unknown as Request;
 
-    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      await middleware.use(
-        {
-          headers: {
-            authorization: "Bearer sk-key",
-            "x-workspace-id": "workspace-1",
-          },
-        } as Request,
-        {} as never,
-        vi.fn(),
-      );
+    await runInRequestContext(request, async () => {
+      await middleware.use(request, {} as never, vi.fn());
 
       expect(RequestContext.get(TestWorkspace)).toBe(workspace);
       expect(RequestContext.get(TestApiKey)).toBe(apiKey);
@@ -301,18 +301,15 @@ describe("AuthMiddleware", () => {
       validate,
     );
     const set = vi.spyOn(RequestContext, "set");
+    const request = {
+      headers: {
+        authorization: "Bearer sk-key",
+        "x-workspace-id": "workspace-1",
+      },
+    } as unknown as Request;
 
-    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      await middleware.use(
-        {
-          headers: {
-            authorization: "Bearer sk-key",
-            "x-workspace-id": "workspace-1",
-          },
-        } as Request,
-        {} as never,
-        vi.fn(),
-      );
+    await runInRequestContext(request, async () => {
+      await middleware.use(request, {} as never, vi.fn());
     });
 
     expect(findOne).toHaveBeenLastCalledWith(expect.any(Function), {
@@ -346,20 +343,44 @@ describe("AuthMiddleware", () => {
       validate,
     );
     const next = vi.fn();
+    const request = {
+      headers: {
+        authorization: "Bearer sk-key",
+        "x-workspace-id": "workspace-1",
+      },
+    } as unknown as Request;
 
-    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      await middleware.use(
-        {
-          headers: {
-            authorization: "Bearer sk-key",
-            "x-workspace-id": "workspace-1",
-          },
-        } as Request,
-        {} as never,
-        next,
-      );
+    await runInRequestContext(request, async () => {
+      await middleware.use(request, {} as never, next);
     });
 
     expect(next).toHaveBeenCalledWith(expect.objectContaining({ status: 401 }));
+  });
+
+  it("reads the selected workspace from the raw Cookie header", async () => {
+    const workspace = Object.assign(new TestWorkspace(), {
+      id: "workspace-1",
+      name: "Acme",
+    });
+    const findOne = vi.fn().mockResolvedValue(workspace);
+    const { middleware } = await createMiddleware(
+      vi.fn().mockResolvedValue(null),
+      findOne,
+    );
+    const request = {
+      headers: {
+        cookie: "unrelated=value; workspace_id=workspace-1",
+      },
+    } as unknown as Request;
+
+    await runInRequestContext(request, async () => {
+      await middleware.use(request, {} as never, vi.fn());
+      expect(RequestContext.get(BaseWorkspace)).toBe(workspace);
+    });
+
+    expect(findOne).toHaveBeenCalledWith(TestWorkspace, {
+      deletedAt: null,
+      id: "workspace-1",
+    });
   });
 });
