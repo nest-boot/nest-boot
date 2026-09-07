@@ -46,6 +46,27 @@ describe("cookies", () => {
     );
   });
 
+  it("preserves duplicate incoming cookie names in request order", async () => {
+    await runWithHttpContext(
+      {
+        headers: {
+          cookie: "theme=light; session=value; theme=dark",
+        },
+      },
+      undefined,
+      () => {
+        const store = cookies();
+
+        expect(store.get("theme")).toEqual({ name: "theme", value: "light" });
+        expect(store.getAll("theme")).toEqual([
+          { name: "theme", value: "light" },
+          { name: "theme", value: "dark" },
+        ]);
+        expect(store.toString()).toBe("theme=light; session=value; theme=dark");
+      },
+    );
+  });
+
   it("takes a snapshot of incoming cookies", async () => {
     const request = { headers: { cookie: "session=initial" } };
 
@@ -75,6 +96,33 @@ describe("cookies", () => {
     ]);
   });
 
+  it("supports Next.js-style object arguments and chainable writes", async () => {
+    const response = createResponse();
+
+    await runWithHttpContext({ headers: {} }, response, () => {
+      const store = cookies();
+
+      expect(
+        store.set({
+          httpOnly: true,
+          name: "session",
+          value: "token",
+        }),
+      ).toBe(store);
+      expect(
+        store.delete({
+          name: "legacy",
+          path: "/account",
+        }),
+      ).toBe(store);
+    });
+
+    expect(response.headers["set-cookie"]).toEqual([
+      "session=token; Path=/; HttpOnly",
+      "legacy=; Path=/account; Expires=Thu, 01 Jan 1970 00:00:00 GMT",
+    ]);
+  });
+
   it("keeps multiple outgoing Set-Cookie values separate", async () => {
     const response = createResponse({
       "set-cookie": "existing=value; Path=/",
@@ -88,8 +136,8 @@ describe("cookies", () => {
 
     expect(response.headers["set-cookie"]).toEqual([
       "existing=value; Path=/",
-      "first=one",
-      "second=two",
+      "first=one; Path=/",
+      "second=two; Path=/",
     ]);
   });
 
@@ -109,7 +157,7 @@ describe("cookies", () => {
       store.set("second", "two");
     });
 
-    expect(values).toEqual(["first=one", "second=two"]);
+    expect(values).toEqual(["first=one; Path=/", "second=two; Path=/"]);
   });
 
   it("deletes a cookie from the root path by default", async () => {
@@ -120,7 +168,7 @@ describe("cookies", () => {
     });
 
     expect(response.headers["set-cookie"]).toEqual([
-      "session=; Max-Age=0; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT",
+      "session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT",
     ]);
   });
 
@@ -128,8 +176,9 @@ describe("cookies", () => {
     const response = createResponse();
 
     await runWithHttpContext({ headers: {} }, response, () => {
-      cookies().delete("session", {
+      cookies().delete({
         domain: "example.com",
+        name: "session",
         path: "/account",
         sameSite: "strict",
         secure: true,
@@ -137,7 +186,7 @@ describe("cookies", () => {
     });
 
     expect(response.headers["set-cookie"]).toEqual([
-      "session=; Max-Age=0; Domain=example.com; Path=/account; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure; SameSite=Strict",
+      "session=; Domain=example.com; Path=/account; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure; SameSite=Strict",
     ]);
   });
 

@@ -67,15 +67,20 @@ export class RequestContextInterceptor implements NestInterceptor {
       return next.handle();
     }
 
-    const http = executionContext.switchToHttp();
-    const graphqlContext =
-      contextType === "graphql"
-        ? executionContext.getArgByIndex<GraphqlHttpContext | undefined>(2)
-        : undefined;
-    const request =
-      http.getRequest<Request | undefined>() ?? graphqlContext?.req;
-    const response =
-      http.getResponse<Response | undefined>() ?? graphqlContext?.res;
+    let request: Request | undefined;
+    let response: Response | undefined;
+
+    if (contextType === "graphql") {
+      const graphqlContext = executionContext.getArgByIndex<
+        GraphqlHttpContext | undefined
+      >(2);
+      request = graphqlContext?.req;
+      response = graphqlContext?.res;
+    } else {
+      const http = executionContext.switchToHttp();
+      request = http.getRequest<Request | undefined>();
+      response = http.getResponse<Response | undefined>();
+    }
 
     const ctx = new RequestContext({
       dependencyResolver: this.moduleRef

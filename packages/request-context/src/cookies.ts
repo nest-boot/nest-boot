@@ -1,9 +1,4 @@
-import {
-  parseCookie,
-  type SerializeOptions,
-  stringifyCookie,
-  stringifySetCookie,
-} from "cookie";
+import { parseCookie, stringifyCookie, stringifySetCookie } from "cookie";
 
 import {
   getHttpRequest,
@@ -21,10 +16,46 @@ export interface RequestCookie {
 }
 
 /** Attributes used when emitting a `Set-Cookie` response header. */
-export type CookieOptions = SerializeOptions;
+export interface CookieOptions {
+  /** Domain to which the cookie belongs. */
+  domain?: string;
+
+  /** Exact expiration time. Numbers are interpreted as Unix milliseconds. */
+  expires?: Date | number;
+
+  /** Prevents client-side JavaScript from reading the cookie. */
+  httpOnly?: boolean;
+
+  /** Cookie lifetime in seconds. */
+  maxAge?: number;
+
+  /** Enables partitioned cookie storage. */
+  partitioned?: boolean;
+
+  /** Cookie path. Defaults to `/`. */
+  path?: string;
+
+  /** Cookie eviction priority. */
+  priority?: "high" | "low" | "medium";
+
+  /** Same-site cookie policy. */
+  sameSite?: boolean | "lax" | "none" | "strict";
+
+  /** Restricts the cookie to secure connections. */
+  secure?: boolean;
+}
+
+/** A cookie and its response attributes. */
+export interface ResponseCookie extends CookieOptions, RequestCookie {}
 
 /** Attributes used to identify a cookie that should be deleted. */
-export type CookieDeleteOptions = Omit<CookieOptions, "expires" | "maxAge">;
+export interface CookieDeleteOptions extends Omit<
+  CookieOptions,
+  "expires" | "maxAge"
+> {
+  /** Cookie name. */
+  name: string;
+}
 
 /**
  * Request-scoped cookie access backed by the incoming request and outgoing
@@ -61,18 +92,27 @@ export interface CookieStore {
    * @param name - Cookie name
    * @param value - Cookie value
    * @param options - Optional response cookie attributes
+   * @returns This cookie store
    * @throws Error when no writable response exists or headers were already sent
    */
-  set(name: string, value: string, options?: CookieOptions): void;
+  set(name: string, value: string, options?: CookieOptions): this;
+
+  /**
+   * Emits a `Set-Cookie` response header from a structured cookie value.
+   *
+   * @param cookie - Cookie name, value, and response attributes
+   * @returns This cookie store
+   */
+  set(cookie: ResponseCookie): this;
 
   /**
    * Emits an expired `Set-Cookie` response header. The path defaults to `/`.
    *
-   * @param name - Cookie name
-   * @param options - Attributes identifying the cookie to delete
+   * @param nameOrOptions - Cookie name, or its name and identifying attributes
+   * @returns This cookie store
    * @throws Error when no writable response exists or headers were already sent
    */
-  delete(name: string, options?: CookieDeleteOptions): void;
+  delete(nameOrOptions: CookieDeleteOptions | string): this;
 
   /** @returns The normalized incoming `Cookie` header value. */
   toString(): string;
@@ -97,9 +137,7 @@ class RequestCookieStore implements CookieStore {
   private readonly entries: RequestCookie[];
 
   constructor(header: string | undefined) {
-    this.entries = Object.entries(parseCookie(header ?? "")).flatMap(
-      ([name, value]) => (value === undefined ? [] : [{ name, value }]),
-    );
+    this.entries = parseRequestCookies(header);
   }
 
   get(name: string): RequestCookie | undefined {
@@ -116,32 +154,74 @@ class RequestCookieStore implements CookieStore {
     return this.entries.some((cookie) => cookie.name === name);
   }
 
-  set(name: string, value: string, options: CookieOptions = {}): void {
+  set(name: string, value: string, options?: CookieOptions): this;
+  set(cookie: ResponseCookie): this;
+  set(
+    nameOrCookie: ResponseCookie | string,
+    value?: string,
+    options: CookieOptions = {},
+  ): this {
+    const cookie =
+      typeof nameOrCookie === "string"
+        ? { name: nameOrCookie, value: value ?? "", ...options }
+        : nameOrCookie;
+
     appendSetCookie(
       getWritableHttpResponse(),
-      stringifySetCookie({ name, value, ...options }),
+      stringifySetCookie(normalizeResponseCookie(cookie)),
     );
+
+    return this;
   }
 
-  delete(name: string, options: CookieDeleteOptions = {}): void {
+  delete(nameOrOptions: CookieDeleteOptions | string): this {
+    const { name, ...options } =
+      typeof nameOrOptions === "string"
+        ? { name: nameOrOptions }
+        : nameOrOptions;
+
     appendSetCookie(
       getWritableHttpResponse(),
       stringifySetCookie({
         ...options,
         expires: new Date(0),
-        maxAge: 0,
         name,
         path: options.path ?? "/",
         value: "",
       }),
     );
+
+    return this;
   }
 
   toString(): string {
-    return stringifyCookie(
-      Object.fromEntries(this.entries.map(({ name, value }) => [name, value])),
-    );
+    return this.entries
+      .map(({ name, value }) => stringifyCookie({ [name]: value }))
+      .join("; ");
   }
+}
+
+function parseRequestCookies(header: string | undefined): RequestCookie[] {
+  if (!header) return [];
+
+  return header
+    .split(";")
+    .flatMap((pair) =>
+      Object.entries(parseCookie(pair)).flatMap(([name, value]) =>
+        value === undefined ? [] : [{ name, value }],
+      ),
+    );
+}
+
+function normalizeResponseCookie(cookie: ResponseCookie) {
+  return {
+    ...cookie,
+    expires:
+      typeof cookie.expires === "number"
+        ? new Date(cookie.expires)
+        : cookie.expires,
+    path: cookie.path ?? "/",
+  };
 }
 
 function getHeader(

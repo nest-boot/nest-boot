@@ -500,12 +500,17 @@ function createGraphqlExecutionContext(context: {
   req?: Request;
   res?: Response;
 }): ExecutionContext {
+  const root = { source: "graphql-root" };
+  const args = { source: "graphql-args" };
+
   return {
-    getArgByIndex: (index: number) => (index === 2 ? context : undefined),
+    getArgByIndex: (index: number) => [root, args, context][index],
     getType: () => "graphql",
     switchToHttp: () => ({
-      getRequest: () => undefined,
-      getResponse: () => undefined,
+      // Nest's ExecutionContextHost returns resolver root/args here. The
+      // interceptor must read the GraphQL context at argument index 2 instead.
+      getRequest: () => root,
+      getResponse: () => args,
     }),
   } as unknown as ExecutionContext;
 }

@@ -168,14 +168,22 @@ cookieStore.set("session", token, {
   secure: true,
 });
 
+cookieStore.set({
+  httpOnly: true,
+  name: "preference",
+  value: "compact",
+});
+
 cookieStore.delete("session");
 ```
 
 `get()`, `getAll()`, `has()`, and `toString()` read a snapshot of the incoming
 `Cookie` header. `set()` and `delete()` append separate `Set-Cookie` response
 header values, so writing one cookie does not combine or overwrite another.
-Deletion expires the cookie immediately and uses `/` as its default path; pass
-the original cookie's `path` or `domain` when those attributes differ.
+`set()` and `delete()` accept the same structured object style as Next.js and
+return the store for chaining. Both default to `Path=/`. Deletion expires the
+cookie immediately; pass the original cookie's `path` or `domain` in an object
+when those attributes differ.
 
 Cookie reads work in GraphQL request contexts when a request is available.
 Writes require a writable response and throw for subscription-only contexts or

@@ -138,10 +138,16 @@ cookieStore.set("session", token, {
   secure: true,
 });
 
+cookieStore.set({
+  httpOnly: true,
+  name: "preference",
+  value: "compact",
+});
+
 cookieStore.delete("session");
 ```
 
-`get()`、`getAll()`、`has()` 和 `toString()` 读取传入 `Cookie` 请求头的快照。`set()` 和 `delete()` 会分别追加独立的 `Set-Cookie` 响应头，因此写入一个 Cookie 不会合并或覆盖其他 Cookie。删除操作会立即让 Cookie 过期，并默认使用 `/` 路径；如果原 Cookie 使用了其他 `path` 或 `domain`，删除时应传入相同属性。
+`get()`、`getAll()`、`has()` 和 `toString()` 读取传入 `Cookie` 请求头的快照。`set()` 和 `delete()` 会分别追加独立的 `Set-Cookie` 响应头，因此写入一个 Cookie 不会合并或覆盖其他 Cookie。两者都支持与 Next.js 相同的结构化对象形式，返回 Cookie Store 以支持链式调用，并默认使用 `Path=/`。删除操作会立即让 Cookie 过期；如果原 Cookie 使用了其他 `path` 或 `domain`，删除时应通过对象传入相同属性。
 
 GraphQL 请求上下文包含请求对象时可以读取 Cookie。写入操作要求上下文具有可写响应；仅订阅的上下文或响应头已经发送时会抛出异常。
 

@@ -47,7 +47,7 @@ describe("HTTP request helpers", () => {
       });
       expect(response.headers.getSetCookie()).toEqual([
         "first=one; Path=/; HttpOnly",
-        "second=two; SameSite=Lax",
+        "second=two; Path=/; SameSite=Lax",
       ]);
     } finally {
       await close(server);
