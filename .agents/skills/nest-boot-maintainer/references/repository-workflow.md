@@ -5,7 +5,7 @@
 ## 当前仓库约束
 
 - 默认分支是 `main`，workspace 使用 pnpm 和 Nx。
-- 根 `package.json` 当前要求 Node 26+、pnpm 10.30.3；以 checkout 中声明为准。
+- 根 `package.json` 当前要求 Node 24.4+、pnpm 10.30.3；以 checkout 中声明为准。
 - `@nest-boot/<name>` 通常对应 `packages/<name>`，先用 package 的 `name` 字段确认，不只依赖目录猜测。
 - PR 标题由 commitlint 校验，使用 `fix(scope): ...`、`feat(scope): ...`、`docs(scope): ...` 等 Conventional Commit 形式。
 - PR CI 构建 packages、检查 Prettier、运行 lint、TypeDoc 和 coverage tests；完整测试需要 PostgreSQL、Redis 与 MinIO 服务。

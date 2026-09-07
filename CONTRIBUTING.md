@@ -21,7 +21,7 @@ Use the Bug form for a reproducible contract violation. Use the Improvement form
 
 ## Development setup
 
-The authoritative versions are declared in the root `package.json`. At the time of writing, the repository requires Node.js 26+ and pnpm 10.30.3.
+The authoritative versions are declared in the root `package.json`. At the time of writing, the repository requires Node.js 24.4+ and pnpm 10.30.3.
 
 ```bash
 corepack enable

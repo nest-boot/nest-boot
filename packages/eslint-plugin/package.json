@@ -38,7 +38,7 @@
     "@eslint/eslintrc": "^3.3.3",
     "@eslint/js": "^9.39.2",
     "@nest-boot/tsconfig": "workspace:^",
-    "@types/node": "^26.0.0",
+    "@types/node": "^24.0.0",
     "@typescript-eslint/parser": "^8.56.1",
     "@typescript-eslint/rule-tester": "^8.56.1",
     "@vitest/coverage-v8": "^4.1.11",
@@ -55,7 +55,7 @@
   },
   "type": "module",
   "engines": {
-    "node": ">=26.0.0"
+    "node": ">=24.4.0"
   },
   "types": "./dist/index.d.ts"
 }

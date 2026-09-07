@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=26.0.0"
+    "node": ">=24.4.0"
   },
   "scripts": {
     "dev": "concurrently \"vite dev --port 3000\" \"gql-gen --watch\"",
@@ -85,7 +85,7 @@
     "@testing-library/react": "^16.3.0",
     "@types/lodash": "^4.17.21",
     "@types/md5": "^2.3.6",
-    "@types/node": "^26.0.0",
+    "@types/node": "^24.0.0",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
