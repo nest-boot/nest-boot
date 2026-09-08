@@ -25,7 +25,7 @@ export class CreateApiKeyInput {
   @Field(() => Date, { nullable: true })
   expiresAt?: Date;
 
-  /** API Key 的明文前缀。 */
+  /** 明文前缀：1–32 位小写英文字母或数字，首位必须是字母，默认为 sk。 */
   @IsOptional()
   @IsString()
   @MinLength(1)

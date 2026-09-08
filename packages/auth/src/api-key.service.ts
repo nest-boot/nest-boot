@@ -53,7 +53,7 @@ export interface CreateApiKeyOptions {
    * `null` or an empty list creates a key without permissions.
    */
   permissions?: string[] | null;
-  /** Plaintext prefix prepended to the generated key. */
+  /** 1–32 lowercase letters or digits, starting with a letter. Defaults to `sk`. */
   prefix?: string;
 }
 
@@ -300,7 +300,7 @@ export class ApiKeyService<
     if (options.expiresAt && options.expiresAt <= new Date()) {
       throw new BadRequestException("API key expiration must be in the future");
     }
-    const prefix = options.prefix ?? process.env.API_KEY_PREFIX ?? "sk-";
+    const prefix = options.prefix ?? process.env.API_KEY_PREFIX ?? "sk";
     this.assertValidPrefix(prefix);
     const plaintextApiKey = `${prefix}${randomBytes(48).toString("base64url")}`;
     const entity = this.em.create(this.apiKeyEntity, {
@@ -455,9 +455,14 @@ export class ApiKeyService<
   }
 
   private assertValidPrefix(prefix: string): void {
-    if (prefix.length < 1 || prefix.length > 32 || /\s/u.test(prefix)) {
+    if (
+      prefix.length < 1 ||
+      prefix.length > 32 ||
+      !/^[a-z]/u.test(prefix) ||
+      /[^a-z0-9]/u.test(prefix)
+    ) {
       throw new BadRequestException(
-        "API key prefix must contain between 1 and 32 non-whitespace characters",
+        "API key prefix must contain 1–32 lowercase letters or digits and start with a lowercase letter",
       );
     }
   }

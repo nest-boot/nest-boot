@@ -36,7 +36,7 @@ Create methods return the plaintext key exactly once. The database stores a
 SHA-256 hash of the complete key, the display-safe `start` and `prefix`, enabled
 state, permissions, expiration, and usage timestamps. Successful authenticated
 requests update `lastUsedAt` automatically. A custom prefix must contain 1–32
-non-whitespace characters so the resulting key remains safe in a Bearer header.
+lowercase ASCII letters or digits and start with a letter. The default prefix is `sk`.
 
 ## Permission Values
 
@@ -109,7 +109,7 @@ passing `null` clears it.
 Send API keys with the Bearer scheme:
 
 ```http
-Authorization: Bearer sk-4tR9s...
+Authorization: Bearer sk4tR9s...
 ```
 
 `x-api-key` is not supported. Cookie session resolution runs first. When no

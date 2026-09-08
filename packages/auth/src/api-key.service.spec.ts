@@ -50,8 +50,8 @@ class TestWorkspaceMember extends BaseWorkspaceMember {
 class TestApiKey extends BaseApiKey {
   override id = "api-key-1";
   override name = "Deploy key";
-  override start = "sk-01234";
-  override prefix = "sk-";
+  override start = "sk012345";
+  override prefix = "sk";
   override key = "hashed-key";
   override enabled = true;
   override permissions: string[] = [];
@@ -68,7 +68,7 @@ describe("ApiKeyService", () => {
   });
 
   it("creates a prefixed key and stores only its SHA-256 hash", async () => {
-    vi.stubEnv("API_KEY_PREFIX", "nb-");
+    vi.stubEnv("API_KEY_PREFIX", "nb");
     const { em, service } = createService();
     const workspace = new TestWorkspace();
     const member = RequestContext.get(
@@ -80,7 +80,7 @@ describe("ApiKeyService", () => {
       name: "Deploy key",
     });
 
-    expect(result.apiKey).toMatch(/^nb-[A-Za-z0-9_-]{64}$/);
+    expect(result.apiKey).toMatch(/^nb[A-Za-z0-9_-]{64}$/);
     expect(em.create).toHaveBeenCalledWith(
       TestApiKey,
       expect.objectContaining({
@@ -88,7 +88,7 @@ describe("ApiKeyService", () => {
         key: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
         name: "Deploy key",
         permissions: [],
-        prefix: "nb-",
+        prefix: "nb",
         start: result.apiKey.slice(0, 8),
         owner: workspace,
       }),
@@ -673,7 +673,7 @@ describe("ApiKeyService", () => {
         prefix: "bad prefix-",
       }),
     ).rejects.toThrow(
-      "API key prefix must contain between 1 and 32 non-whitespace characters",
+      "API key prefix must contain 1–32 lowercase letters or digits and start with a lowercase letter",
     );
     await expect(
       service.createWorkspaceKey(workspace, {
@@ -682,6 +682,69 @@ describe("ApiKeyService", () => {
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(em.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects every prefix outside lowercase alphanumerics starting with a letter", async () => {
+    const { em, service } = createService();
+    const workspace = new TestWorkspace();
+    const user = new TestUser();
+    for (const prefix of [
+      "",
+      "1a",
+      "ABC",
+      "aB",
+      "sk-",
+      "sk_",
+      "a.b",
+      "a b",
+      " a",
+      "a\n",
+      "a\r",
+      "a\u0000",
+      "a\u007f",
+      "é",
+      "a😀",
+      "a".repeat(33),
+    ]) {
+      await expect(
+        service.createWorkspaceKey(workspace, { name: "Invalid", prefix }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      await expect(
+        service.createUserKey(user, { name: "Invalid", prefix }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      // Environment variables cannot contain NUL (Node truncates at that byte).
+      if (!prefix.includes("\u0000")) {
+        vi.stubEnv("API_KEY_PREFIX", prefix);
+        await expect(
+          service.createUserKey(user, { name: "Invalid environment prefix" }),
+        ).rejects.toBeInstanceOf(BadRequestException);
+      }
+    }
+    expect(em.create).not.toHaveBeenCalled();
+    expect(em.flush).not.toHaveBeenCalled();
+  });
+
+  it("accepts valid prefix boundaries and uses sk by default", async () => {
+    vi.stubEnv("API_KEY_PREFIX", undefined);
+    const { service } = createService();
+    const user = new TestUser();
+    const defaultKey = await service.createUserKey(user, { name: "Default" });
+    expect(defaultKey.entity.prefix).toBe("sk");
+    for (const prefix of ["a", "abc123", "a".repeat(32)]) {
+      const created = await service.createUserKey(user, {
+        name: "Valid",
+        prefix,
+      });
+      expect(created.entity.prefix).toBe(prefix);
+      expect(created.apiKey.slice(0, prefix.length)).toBe(prefix);
+      expect(created.apiKey.slice(prefix.length)).toMatch(
+        /^[A-Za-z0-9_-]{64}$/u,
+      );
+    }
+    vi.stubEnv("API_KEY_PREFIX", "invalid-");
+    await expect(
+      service.createUserKey(user, { name: "Explicit override", prefix: "a1" }),
+    ).resolves.toBeDefined();
   });
 
   it("rejects inactive members and past expiration timestamps", async () => {

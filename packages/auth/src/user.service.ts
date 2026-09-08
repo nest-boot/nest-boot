@@ -93,6 +93,10 @@ export class UserService<
     }
     this.assertPasswordLength(input.password);
     const permissions = this.normalizePermissions(input.permissions ?? []);
+    const roles = this.normalizeRoles(input.roles ?? [this.defaultRole]);
+    this.accessControlService.assertCanGrantUserPermissions(
+      resolveAuthPermissions(roles, permissions, this.roles),
+    );
     const email = input.email.trim().toLowerCase();
 
     const password = await this.hashPassword(input.password);
@@ -106,7 +110,7 @@ export class UserService<
             emailVerified: false,
             name: input.name,
             permissions,
-            roles: this.normalizeRoles(input.roles ?? [this.defaultRole]),
+            roles,
           } as unknown as RequiredEntityData<User>);
           em.persist(user);
           await em.flush();
@@ -167,7 +171,9 @@ export class UserService<
   /** Replaces a user's application permissions. */
   async setUserPermissions(user: User, permissions: string[]): Promise<User> {
     this.accessControlService.assertUserCan("set-role", user);
-    user.permissions = this.normalizePermissions(permissions);
+    const normalized = this.normalizePermissions(permissions);
+    this.accessControlService.assertCanGrantUserPermissions(normalized);
+    user.permissions = normalized;
     await this.runUnrestricted(() => this.em.flush());
     return user;
   }
@@ -175,7 +181,11 @@ export class UserService<
   /** Replaces the roles assigned to a user. */
   async setRole(user: User, role: string | readonly string[]): Promise<User> {
     this.accessControlService.assertUserCan("set-role", user);
-    user.roles = this.normalizeRoles(role);
+    const roles = this.normalizeRoles(role);
+    this.accessControlService.assertCanGrantUserPermissions(
+      resolveAuthPermissions(roles, [], this.roles),
+    );
+    user.roles = roles;
     await this.runUnrestricted(() => this.em.flush());
     return user;
   }

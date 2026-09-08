@@ -69,12 +69,12 @@ async function exerciseApiKeyLifecycle(
   await page.getByTestId("api-key-create-submit").click();
 
   const revealedKey = page.getByTestId("api-key-created-value");
-  await expect(revealedKey).toContainText(/^sk-/);
+  await expect(revealedKey).toContainText(/^sk[A-Za-z0-9_-]{64}$/);
   await page.getByTestId("api-key-created-close").click();
 
   const row = page.getByRole("row").filter({ hasText: names.name });
   await expect(row).toBeVisible();
-  await expect(row).toContainText("sk-");
+  await expect(row).toContainText("sk");
 
   await row.getByRole("button").click();
   await page.getByRole("menuitem", { name: "禁用" }).click();

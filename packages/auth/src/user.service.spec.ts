@@ -32,6 +32,46 @@ class TestWorkspaceInvitation extends BaseWorkspaceInvitation {}
 class TestWorkspaceMember extends BaseWorkspaceMember {}
 
 describe("UserService", () => {
+  it("checks direct and inherited grants before mutation or hashing", async () => {
+    const { service, accessControlService, em, hash } = createService(true, {
+      defaultRole: "reader",
+      permissions: ["User:get", "User:delete"],
+      roles: { reader: ["User:get"], administrator: ["User:delete"] },
+    });
+    const user = Object.assign(new TestUser(), {
+      roles: ["reader"],
+      permissions: [],
+    });
+    const assertGrant = vi.mocked(
+      accessControlService.assertCanGrantUserPermissions,
+    );
+    assertGrant.mockImplementation(() => {
+      throw new ForbiddenException("grant denied");
+    });
+    await expect(
+      service.setUserPermissions(user, ["User:delete"]),
+    ).rejects.toThrow("grant denied");
+    expect(assertGrant).toHaveBeenLastCalledWith(["User:delete"]);
+    await expect(service.setRole(user, "administrator")).rejects.toThrow(
+      "grant denied",
+    );
+    expect(assertGrant).toHaveBeenLastCalledWith(["User:delete"]);
+    await expect(
+      service.createUser({
+        name: "New",
+        email: "new@example.com",
+        password: "password",
+        permissions: ["User:delete"],
+      }),
+    ).rejects.toThrow("grant denied");
+    expect(assertGrant).toHaveBeenLastCalledWith(["User:get", "User:delete"]);
+    expect(user.roles).toEqual(["reader"]);
+    expect(user.permissions).toEqual([]);
+    expect(em.flush).not.toHaveBeenCalled();
+    expect(em.create).not.toHaveBeenCalled();
+    expect(hash).not.toHaveBeenCalled();
+  });
+
   it("fails before persistence when a service-level permission is denied", async () => {
     const { accessControlService, em, service } = createService();
     vi.mocked(accessControlService.assertUserCan).mockImplementation(() => {
@@ -671,6 +711,7 @@ function createService(
     session: { expiresIn: 3600 },
   } as unknown as AuthModuleOptions;
   const accessControlService = {
+    assertCanGrantUserPermissions: vi.fn(),
     assertCurrentSession: vi.fn(),
     assertCurrentUser: vi.fn(),
     assertUserCan: vi.fn(),

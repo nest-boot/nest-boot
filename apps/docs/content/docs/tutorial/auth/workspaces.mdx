@@ -40,6 +40,10 @@ different workspaces.
 
 Creating a workspace also creates its active owner membership. Deletion is a
 soft delete and only the owner of that workspace may perform it.
+Deletion, member/service-account creation, and invitation creation/acceptance
+lock the workspace row and recheck its active state inside their transaction.
+Requests that selected a workspace before deletion cannot create new children
+after the deletion commits.
 
 ## Member Lifecycle
 

@@ -49,6 +49,103 @@ class TestWorkspaceInvitation extends BaseWorkspaceInvitation {
 }
 
 describe("WorkspaceService", () => {
+  it("cancels pending invitations in the same transaction when adding a member", async () => {
+    const { em, service } = createService();
+    const workspace = new TestWorkspace();
+    const user = Object.assign(new TestUser(), {
+      email: "ALICE@example.com",
+      name: "Alice",
+    });
+    await service.addMember(workspace, user);
+    expect(em.transactional).toHaveBeenCalledTimes(1);
+    expect(em.refreshOrFail).toHaveBeenCalledWith(
+      workspace,
+      expect.objectContaining({
+        filters: false,
+        lockMode: LockMode.PESSIMISTIC_WRITE,
+      }),
+    );
+    expect(em.nativeUpdate).toHaveBeenCalledWith(
+      TestWorkspaceInvitation,
+      { workspace, email: "alice@example.com", status: "pending" },
+      { status: "canceled" },
+    );
+  });
+
+  it.each(["member", "serviceAccount", "invitation", "delete"] as const)(
+    "rechecks deleted workspace state under a row lock before %s",
+    async (operation) => {
+      const sendInvitationEmail = vi.fn();
+      const { service, em } = createService({ sendInvitationEmail });
+      const workspace = new TestWorkspace();
+      const user = Object.assign(new TestUser(), {
+        email: "alice@example.com",
+      });
+      const owner = Object.assign(new TestWorkspaceMember(), {
+        workspace,
+        roles: ["owner"],
+      });
+      em.refreshOrFail.mockImplementation((entity) =>
+        Promise.resolve(Object.assign(entity, { deletedAt: new Date() })),
+      );
+      const operations = {
+        member: () => service.addMember(workspace, user),
+        serviceAccount: () =>
+          service.createServiceAccount(workspace, { name: "Bot" }),
+        invitation: () =>
+          service.createInvitation(workspace, user, {
+            email: "invitee@example.com",
+          }),
+        delete: () => service.deleteWorkspace(workspace, owner),
+      };
+      await expect(operations[operation]()).rejects.toThrow(
+        "Workspace has been deleted",
+      );
+      expect(em.refreshOrFail).toHaveBeenCalledWith(
+        workspace,
+        expect.objectContaining({
+          filters: false,
+          lockMode: LockMode.PESSIMISTIC_WRITE,
+        }),
+      );
+      expect(em.create).not.toHaveBeenCalled();
+      expect(em.nativeUpdate).not.toHaveBeenCalled();
+      expect(em.flush).not.toHaveBeenCalled();
+      expect(sendInvitationEmail).not.toHaveBeenCalled();
+    },
+  );
+
+  it("locks workspace before invitation and rechecks a concurrent cancellation", async () => {
+    const { service, em } = createService();
+    const workspace = new TestWorkspace();
+    const user = Object.assign(new TestUser(), { email: "alice@example.com" });
+    const invitation = Object.assign(new TestWorkspaceInvitation(), {
+      email: user.email,
+      workspace,
+      status: "pending",
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    em.findOne.mockResolvedValueOnce(invitation);
+    em.refreshOrFail.mockImplementation((entity) => {
+      if (entity === invitation) invitation.status = "canceled";
+      return Promise.resolve(entity);
+    });
+    await expect(service.acceptInvitation(user, invitation.id)).rejects.toThrow(
+      "Workspace invitation is not pending",
+    );
+    expect(em.refreshOrFail).toHaveBeenNthCalledWith(
+      1,
+      workspace,
+      expect.objectContaining({ lockMode: LockMode.PESSIMISTIC_WRITE }),
+    );
+    expect(em.refreshOrFail).toHaveBeenNthCalledWith(
+      2,
+      invitation,
+      expect.objectContaining({ lockMode: LockMode.PESSIMISTIC_WRITE }),
+    );
+    expect(em.create).not.toHaveBeenCalled();
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -1451,6 +1548,7 @@ function createService(
     lock: vi.fn(),
     nativeUpdate: vi.fn(),
     persist: vi.fn(),
+    refreshOrFail: vi.fn((entity) => Promise.resolve(entity)),
     remove: vi.fn(),
     transactional: vi.fn(),
   } as unknown as Mocked<EntityManager>;

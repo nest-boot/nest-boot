@@ -187,6 +187,7 @@ export class WorkspaceService<
     return await this.withRlsDisabled(
       async () =>
         await this.em.transactional(async (em) => {
+          await this.lockActiveWorkspace(em, workspace);
           await em.nativeUpdate(
             this.workspaceInvitationEntity,
             {
@@ -273,27 +274,38 @@ export class WorkspaceService<
     const permissions = this.normalizePermissions(input.permissions ?? []);
     this.accessControlService.assertCanGrantWorkspacePermissions(permissions);
     const roles = this.normalizeGrantedRoles(input.roles ?? [this.defaultRole]);
-    const existing = await this.withRlsDisabled(
+    return await this.withRlsDisabled(
       async () =>
-        await this.em.findOne(
-          this.workspaceMemberEntity,
-          { user, workspace } as FilterQuery<WorkspaceMember>,
-          { filters: false },
-        ),
+        await this.em.transactional(async (em) => {
+          await this.lockActiveWorkspace(em, workspace);
+          const existing = await em.findOne(
+            this.workspaceMemberEntity,
+            { user, workspace } as FilterQuery<WorkspaceMember>,
+            { filters: false },
+          );
+          if (existing) throw new ConflictException("User is already a member");
+          const member = em.create(this.workspaceMemberEntity, {
+            email: user.email,
+            name: user.name,
+            permissions,
+            roles,
+            status: "ACTIVE",
+            user,
+            workspace,
+          } as unknown as RequiredEntityData<WorkspaceMember>);
+          await em.persist(member).flush();
+          await em.nativeUpdate(
+            this.workspaceInvitationEntity,
+            {
+              email: user.email.trim().toLowerCase(),
+              status: "pending",
+              workspace,
+            } as FilterQuery<WorkspaceInvitation>,
+            { status: "canceled" } as never,
+          );
+          return member;
+        }),
     );
-    if (existing) throw new ConflictException("User is already a member");
-
-    const member = this.em.create(this.workspaceMemberEntity, {
-      email: user.email,
-      name: user.name,
-      permissions,
-      roles,
-      status: "ACTIVE",
-      user,
-      workspace,
-    } as unknown as RequiredEntityData<WorkspaceMember>);
-    await this.em.persist(member).flush();
-    return member;
   }
 
   /** Adds an existing user to a workspace by normalized email address. */
@@ -333,18 +345,24 @@ export class WorkspaceService<
     const permissions = this.normalizePermissions(input.permissions ?? []);
     this.accessControlService.assertCanGrantWorkspacePermissions(permissions);
     const roles = this.normalizeGrantedRoles(input.roles ?? [this.defaultRole]);
-    const member = this.em.create(this.workspaceMemberEntity, {
-      ...(input.data ?? {}),
-      email: null,
-      name: input.name,
-      permissions,
-      roles,
-      status: "ACTIVE",
-      user: null,
-      workspace,
-    } as unknown as RequiredEntityData<WorkspaceMember>);
-    await this.em.persist(member).flush();
-    return member;
+    return await this.withRlsDisabled(
+      async () =>
+        await this.em.transactional(async (em) => {
+          await this.lockActiveWorkspace(em, workspace);
+          const member = em.create(this.workspaceMemberEntity, {
+            ...(input.data ?? {}),
+            email: null,
+            name: input.name,
+            permissions,
+            roles,
+            status: "ACTIVE",
+            user: null,
+            workspace,
+          } as unknown as RequiredEntityData<WorkspaceMember>);
+          await em.persist(member).flush();
+          return member;
+        }),
+    );
   }
 
   /** Updates a member's profile or active state. */
@@ -610,6 +628,7 @@ export class WorkspaceService<
       transactionResult = await this.withRlsDisabled(
         async () =>
           await this.em.transactional(async (em) => {
+            await this.lockActiveWorkspace(em, workspace);
             const [member, invitation, inviterMember] = await Promise.all([
               em.findOne(
                 this.workspaceMemberEntity,
@@ -812,11 +831,25 @@ export class WorkspaceService<
             { id: invitationId } as FilterQuery<WorkspaceInvitation>,
             {
               filters: false,
-              lockMode: LockMode.PESSIMISTIC_WRITE,
               populate: ["workspace"] as never,
             },
           );
           if (!invitation) return null;
+          if (invitation.email.toLowerCase() !== user.email.toLowerCase()) {
+            throw new ForbiddenException(
+              "Workspace invitation belongs to another email address",
+            );
+          }
+          // All membership/invitation creation takes the workspace lock first.
+          // Refresh the invitation only afterwards so direct addition and deletion
+          // cannot race acceptance or acquire these locks in the opposite order.
+          const workspace = this.unwrapInvitationWorkspace(invitation);
+          await this.lockActiveWorkspace(em, workspace);
+          await em.refreshOrFail(invitation, {
+            filters: false,
+            lockMode: LockMode.PESSIMISTIC_WRITE,
+            populate: [],
+          });
           if (invitation.status !== "pending") {
             throw new BadRequestException(
               "Workspace invitation is not pending",
@@ -831,10 +864,6 @@ export class WorkspaceService<
             );
           }
 
-          const workspace = this.unwrapInvitationWorkspace(invitation);
-          if (workspace.deletedAt) {
-            throw new BadRequestException("Workspace has been deleted");
-          }
           const existing = await em.findOne(
             this.workspaceMemberEntity,
             { user, workspace } as FilterQuery<WorkspaceMember>,
@@ -956,6 +985,21 @@ export class WorkspaceService<
       member.permissions ?? [],
       this.roles,
     );
+  }
+
+  private async lockActiveWorkspace(
+    em: EntityManager,
+    workspace: Workspace,
+  ): Promise<void> {
+    await em.refreshOrFail(workspace, {
+      filters: false,
+      lockMode: LockMode.PESSIMISTIC_WRITE,
+      populate: [],
+      failHandler: () => new NotFoundException("Workspace not found"),
+    });
+    if (workspace.deletedAt) {
+      throw new BadRequestException("Workspace has been deleted");
+    }
   }
 
   private normalizeRoles(role: string | readonly string[]): string[] {

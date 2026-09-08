@@ -135,6 +135,13 @@ directly on the entity. `hasPermission()` evaluates against the same result.
 `setMemberPermissions()` reject malformed, duplicate, or unknown direct
 permissions instead of persisting values outside the configured catalog.
 
+User administration also enforces a grant ceiling: `createUser()`, `setRole()`,
+and `setUserPermissions()` cannot grant permissions the caller does not hold.
+Role assignments include their inherited permissions, including the default role
+on user creation. For a personal API key, the ceiling is the intersection of the
+user's role/direct permissions and the key's permissions. Holding `User:set-role`
+alone does not allow promotion to a more privileged role.
+
 The example GraphQL application exposes `userRoles`, `userPermissions`,
 `workspaceRoles`, and `workspacePermissions` queries. Role changes use the
 dedicated `setUserRoles` and `updateWorkspaceMemberRole` mutations. Direct

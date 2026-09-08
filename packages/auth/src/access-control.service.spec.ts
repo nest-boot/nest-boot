@@ -217,6 +217,61 @@ describe("AccessControlService", () => {
     });
   });
 
+  it("limits user grants to role and direct permissions, intersected with a personal key", async () => {
+    const ceilingService = new AccessControlService({
+      ...options,
+      user: {
+        defaultRole: "reader",
+        roles: { reader: ["User:get"], admin: ["User:delete"] },
+      },
+    });
+    const user = Object.assign(new TestUser(), {
+      roles: ["reader"],
+      permissions: ["User:set-role"],
+    });
+    expect(() => {
+      ceilingService.assertCanGrantUserPermissions(["User:get"]);
+    }).toThrow(ForbiddenException);
+    await RequestContext.run(new RequestContext({ type: "test" }), () => {
+      RequestContext.set(BaseUser, user);
+      expect(() => {
+        ceilingService.assertCanGrantUserPermissions([
+          "User:get",
+          "User:set-role",
+        ]);
+      }).not.toThrow();
+      expect(() => {
+        ceilingService.assertCanGrantUserPermissions(["User:delete"]);
+      }).toThrow("User permissions exceed issuer permissions: User:delete");
+      RequestContext.set(
+        BaseApiKey,
+        Object.assign(new TestApiKey(), {
+          owner: user,
+          permissions: ["User:get", "User:delete"],
+        }),
+      );
+      expect(() => {
+        ceilingService.assertCanGrantUserPermissions(["User:get"]);
+      }).not.toThrow();
+      expect(() => {
+        ceilingService.assertCanGrantUserPermissions(["User:set-role"]);
+      }).toThrow(ForbiddenException);
+      expect(() => {
+        ceilingService.assertCanGrantUserPermissions(["User:delete"]);
+      }).toThrow(ForbiddenException);
+      RequestContext.set(
+        BaseApiKey,
+        Object.assign(new TestApiKey(), {
+          owner: new TestWorkspace(),
+          permissions: ["User:get"],
+        }),
+      );
+      expect(() => {
+        ceilingService.assertCanGrantUserPermissions(["User:get"]);
+      }).toThrow(ForbiddenException);
+    });
+  });
+
   it("prevents workspace grants from exceeding the current principal", async () => {
     const ceilingService = new AccessControlService({
       ...options,

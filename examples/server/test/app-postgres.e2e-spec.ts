@@ -679,6 +679,99 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     });
   });
 
+  it.each(['session', 'apiKey'] as const)(
+    'caps user grants for a restricted %s',
+    async (authentication) => {
+      const issuer = await createAuthenticatedUser('Restricted Grant Issuer');
+      const permissions = ['User:get', 'User:create', 'User:set-role'];
+      const connection = migrationOrm.em.getConnection();
+      await connection.execute(
+        'update "user" set roles = ?, permissions = ? where id = ?',
+        [
+          authentication === 'apiKey' ? '{admin}' : '{}',
+          `{${permissions.join(',')}}`,
+          issuer.user.id,
+        ],
+      );
+      const credentials =
+        authentication === 'session'
+          ? { cookies: issuer.cookies }
+          : {
+              bearerToken: (
+                await createUserApiKey(issuer, {
+                  name: 'Limited administration',
+                  permissions,
+                })
+              ).apiKey,
+            };
+      const grant = (grantedPermissions: string[]) =>
+        gql(
+          `mutation ($id: ID!, $input: SetUserPermissionsInput!) {
+      setUserPermissions(id: $id, input: $input) { id permissions }
+    }`,
+          {
+            ...credentials,
+            variables: {
+              id: issuer.user.id,
+              input: { permissions: grantedPermissions },
+            },
+          },
+        );
+      for (const permission of ['User:delete', 'User:impersonate-admins']) {
+        const denied = await grant([permission]);
+        expect(denied.body.errors).toEqual([
+          expect.objectContaining({
+            message: `User permissions exceed issuer permissions: ${permission}`,
+          }),
+        ]);
+      }
+      const rolesDenied = await gql(
+        `mutation ($id: ID!, $input: SetUserRolesInput!) {
+      setUserRoles(id: $id, input: $input) { id }
+    }`,
+        {
+          ...credentials,
+          variables: { id: issuer.user.id, input: { roles: ['admin'] } },
+        },
+      );
+      expect(rolesDenied.body.errors[0].message).toContain(
+        'User permissions exceed issuer permissions',
+      );
+      const email = uniqueEmail('Denied Grant');
+      const createDenied = await gql(
+        `mutation ($input: CreateUserInput!) { createUser(input: $input) { id } }`,
+        {
+          ...credentials,
+          variables: {
+            input: {
+              name: 'Denied Grant',
+              email,
+              password: issuer.password,
+              roles: ['admin'],
+            },
+          },
+        },
+      );
+      expect(createDenied.body.errors[0].message).toContain(
+        'User permissions exceed issuer permissions',
+      );
+      expect(
+        await connection.execute('select id from "user" where email = ?', [
+          email,
+        ]),
+      ).toEqual([]);
+      const [unchanged] = await connection.execute(
+        'select roles, permissions from "user" where id = ?',
+        [issuer.user.id],
+      );
+      expect(unchanged).toEqual({
+        roles: authentication === 'apiKey' ? ['admin'] : [],
+        permissions,
+      });
+      expectNoGraphQLErrors(await grant(['User:get']));
+    },
+  );
+
   it('enforces ownership and transactionally deletes auth records through both user deletion paths', async () => {
     const administrator = await createAuthenticatedUser(
       'Deletion Administrator',
@@ -1236,6 +1329,150 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       } finally {
         await Promise.allSettled(requests);
       }
+    },
+    20_000,
+  );
+
+  it.each(['member', 'serviceAccount', 'invitation', 'acceptance'] as const)(
+    'blocks %s after a concurrent workspace deletion',
+    async (kind) => {
+      const owner = await createAuthenticatedUser('Deletion Race Owner');
+      const invitee = await createAuthenticatedUser('Deletion Race Invitee');
+      const workspace = await createWorkspace(owner, 'Deletion Race');
+      const invitation =
+        kind === 'acceptance'
+          ? await createWorkspaceInvitation(owner, workspace.id, {
+              email: invitee.email,
+              roles: ['member'],
+            })
+          : null;
+      const createOperations = {
+        member: () =>
+          gql(
+            `mutation ($input: AddWorkspaceMemberInput!) { addWorkspaceMember(input: $input) { id } }`,
+            {
+              cookies: owner.cookies,
+              workspaceId: workspace.id,
+              variables: { input: { email: invitee.email } },
+            },
+          ),
+        serviceAccount: () =>
+          gql(
+            `mutation ($input: CreateServiceAccountWorkspaceMemberInput!) { createServiceAccountWorkspaceMember(input: $input) { id } }`,
+            {
+              cookies: owner.cookies,
+              workspaceId: workspace.id,
+              variables: { input: { name: 'Race Bot' } },
+            },
+          ),
+        invitation: () =>
+          gql(
+            `mutation ($input: CreateWorkspaceInvitationInput!) { createWorkspaceInvitation(input: $input) { id } }`,
+            {
+              cookies: owner.cookies,
+              workspaceId: workspace.id,
+              variables: { input: { email: invitee.email, roles: ['member'] } },
+            },
+          ),
+        acceptance: () =>
+          gql(
+            `mutation ($invitationId: ID!) { acceptWorkspaceInvitation(invitationId: $invitationId) { invitation { id } } }`,
+            {
+              cookies: invitee.cookies,
+              variables: { invitationId: invitation?.id },
+            },
+          ),
+      };
+      const responses = await raceWithWorkspaceLock(workspace.id, [
+        () =>
+          gql('mutation { deleteWorkspace { id } }', {
+            cookies: owner.cookies,
+            workspaceId: workspace.id,
+          }),
+        createOperations[kind],
+      ]);
+      expectNoGraphQLErrors(responses[0]);
+      expect(responses[1].body.errors).toEqual([
+        expect.objectContaining({ message: 'Workspace has been deleted' }),
+      ]);
+      const connection = migrationOrm.em.getConnection();
+      expect(
+        await connection.execute(
+          'select user_id from workspace_member where workspace_id = ?',
+          [workspace.id],
+        ),
+      ).toEqual([{ user_id: owner.user.id }]);
+      expect(
+        await connection.execute(
+          'select status from workspace_invitation where workspace_id = ?',
+          [workspace.id],
+        ),
+      ).toEqual(invitation ? [{ status: 'canceled' }] : []);
+    },
+    20_000,
+  );
+
+  it.each(['add', 'accept'] as const)(
+    'keeps invitations terminal when %s wins a concurrent membership creation',
+    async (first) => {
+      const owner = await createAuthenticatedUser('Membership Race Owner');
+      const invitee = await createAuthenticatedUser('Membership Race Invitee');
+      const workspace = await createWorkspace(owner, 'Membership Race');
+      const invitation = await createWorkspaceInvitation(owner, workspace.id, {
+        email: invitee.email,
+        roles: ['member'],
+      });
+      const operations = {
+        add: () =>
+          gql(
+            `mutation ($input: AddWorkspaceMemberInput!) { addWorkspaceMember(input: $input) { id } }`,
+            {
+              cookies: owner.cookies,
+              workspaceId: workspace.id,
+              variables: { input: { email: invitee.email } },
+            },
+          ),
+        accept: () =>
+          gql(
+            `mutation ($invitationId: ID!) { acceptWorkspaceInvitation(invitationId: $invitationId) { invitation { id } } }`,
+            {
+              cookies: invitee.cookies,
+              variables: { invitationId: invitation.id },
+            },
+          ),
+      };
+      const responses = await raceWithWorkspaceLock(workspace.id, [
+        operations[first],
+        operations[first === 'add' ? 'accept' : 'add'],
+      ]);
+      expectNoGraphQLErrors(responses[0]);
+      expect(responses[1].body.errors).toEqual([
+        expect.objectContaining({
+          message:
+            first === 'add'
+              ? 'Workspace invitation is not pending'
+              : 'User is already a member',
+        }),
+      ]);
+      const connection = migrationOrm.em.getConnection();
+      expect(
+        await connection.execute(
+          'select user_id from workspace_member where workspace_id = ? and user_id = ?',
+          [workspace.id, invitee.user.id],
+        ),
+      ).toEqual([{ user_id: invitee.user.id }]);
+      expect(
+        await connection.execute(
+          'select status from workspace_invitation where id = ?',
+          [invitation.id],
+        ),
+      ).toEqual([{ status: first === 'add' ? 'canceled' : 'accepted' }]);
+      const pending = await gql(
+        'query { currentUserWorkspaceInvitations { id } }',
+        { cookies: invitee.cookies },
+      );
+      expectNoGraphQLErrors(pending);
+      expect(pending.body.data.currentUserWorkspaceInvitations).toEqual([]);
     },
     20_000,
   );
@@ -2484,6 +2721,94 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     expectGraphQLError(rejectedUpdate);
   });
 
+  it('validates user and workspace key prefixes through GraphQL and authenticates valid custom prefixes', async () => {
+    const owner = await createAuthenticatedUser('Prefix Owner');
+    const workspace = await createWorkspace(owner, 'Prefix Workspace');
+    for (const prefix of [
+      '1a',
+      'ABC',
+      'aB',
+      'sk-',
+      'sk_',
+      'a\n',
+      'a\u0000',
+      'é',
+      'a😀',
+      'a'.repeat(33),
+    ]) {
+      for (const mutation of ['createApiKey', 'createUserApiKey']) {
+        const response = await gql(
+          `mutation ($input: CreateApiKeyInput!) { ${mutation}(input: $input) { apiKey } }`,
+          {
+            cookies: owner.cookies,
+            workspaceId: workspace.id,
+            variables: { input: { name: 'Invalid prefix', prefix } },
+          },
+        );
+        expectGraphQLError(response);
+      }
+    }
+    const connection = migrationOrm.em.getConnection();
+    expect(
+      await connection.execute(
+        "select id from api_key where name = 'Invalid prefix'",
+      ),
+    ).toEqual([]);
+    const workspaceKey = await createApiKey(owner, workspace.id, {
+      name: 'Custom workspace prefix',
+      prefix: 'abc123',
+      permissions: ['Workspace:update'],
+    });
+    const personalKey = await createUserApiKey(owner, {
+      name: 'Custom user prefix',
+      prefix: 'a',
+      permissions: [],
+    });
+    expectNoGraphQLErrors(
+      await gql('query { currentWorkspace { id } }', {
+        bearerToken: workspaceKey.apiKey,
+      }),
+    );
+    const personal = await gql('query { currentUser { id } }', {
+      bearerToken: personalKey.apiKey,
+    });
+    expectNoGraphQLErrors(personal);
+    expect(personal.body.data.currentUser.id).toBe(owner.user.id);
+  });
+
+  async function raceWithWorkspaceLock(
+    workspaceId: string,
+    operations: (() => PromiseLike<request.Response>)[],
+  ) {
+    const connection = migrationOrm.em.getConnection();
+    const requests: Promise<request.Response>[] = [];
+    try {
+      await connection.transactional(async (transaction) => {
+        await connection.execute(
+          'select id from workspace where id = ? for update',
+          [workspaceId],
+          'all',
+          transaction,
+        );
+        for (const operation of operations) {
+          requests.push(Promise.resolve(operation()));
+          await vi.waitFor(
+            async () => {
+              const [waiting] = await connection.execute<{ count: number }[]>(
+                `select count(*)::int as count from pg_stat_activity where datname = current_database() and wait_event_type = 'Lock' and query like '%"workspace"%'`,
+              );
+              expect(waiting.count).toBe(requests.length);
+            },
+            { timeout: 5000, interval: 20 },
+          );
+        }
+      });
+      return await Promise.all(requests);
+    } finally {
+      await Promise.allSettled(requests);
+    }
+  }
+
   async function createAuthenticatedUser(
     name: string,
   ): Promise<AuthenticatedUser> {
@@ -2763,12 +3088,12 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     expectNoGraphQLErrors(response);
     expect(response.body.data.createApiKey.apiKey).toMatch(
-      /^sk-[A-Za-z0-9_-]{64}$/,
+      new RegExp(`^${input.prefix ?? 'sk'}[A-Za-z0-9_-]{64}$`),
     );
     expect(response.body.data.createApiKey.entity).toMatchObject({
       enabled: true,
       permissions: input.permissions ?? [],
-      prefix: input.prefix ?? 'sk-',
+      prefix: input.prefix ?? 'sk',
       start: response.body.data.createApiKey.apiKey.slice(0, 8),
     });
 
@@ -2818,7 +3143,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     expectNoGraphQLErrors(response);
     expect(response.body.data.createUserApiKey.apiKey).toMatch(
-      /^sk-[A-Za-z0-9_-]{64}$/,
+      new RegExp(`^${input.prefix ?? 'sk'}[A-Za-z0-9_-]{64}$`),
     );
     return response.body.data.createUserApiKey as {
       apiKey: string;

@@ -14,6 +14,7 @@ import {
   BaseWorkspace,
   BaseWorkspaceMember,
 } from "./entities/index.js";
+import { DEFAULT_USER_ROLE, DEFAULT_USER_ROLES } from "./user.constants.js";
 import { resolveAuthPermissions } from "./utils/auth-role.util.js";
 import {
   DEFAULT_WORKSPACE_ROLE,
@@ -121,6 +122,37 @@ export class AccessControlService {
     if (!currentMember || String(currentMember.id) !== String(member.id)) {
       throw new ForbiddenException(
         "The operation belongs to another workspace member",
+      );
+    }
+  }
+
+  /** Throws when a user grant exceeds the current principal's permissions. */
+  assertCanGrantUserPermissions(requestedPermissions: readonly string[]): void {
+    const user = RequestContext.isActive()
+      ? RequestContext.get(BaseUser)
+      : null;
+    const apiKey = RequestContext.isActive()
+      ? RequestContext.get(BaseApiKey)
+      : null;
+    let permissions =
+      user && !(apiKey && this.isWorkspaceApiKey(apiKey))
+        ? resolveAuthPermissions(
+            user.roles ?? [this.options.user?.defaultRole ?? DEFAULT_USER_ROLE],
+            user.permissions ?? [],
+            this.options.user?.roles ?? DEFAULT_USER_ROLES,
+          )
+        : [];
+    if (apiKey) {
+      const allowed = new Set(apiKey.permissions ?? []);
+      permissions = permissions.filter((permission) => allowed.has(permission));
+    }
+    const allowed = new Set(permissions);
+    const excessive = requestedPermissions.filter(
+      (permission) => !allowed.has(permission),
+    );
+    if (excessive.length > 0) {
+      throw new ForbiddenException(
+        `User permissions exceed issuer permissions: ${excessive.join(", ")}`,
       );
     }
   }

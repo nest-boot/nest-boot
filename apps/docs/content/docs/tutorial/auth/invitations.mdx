@@ -62,6 +62,12 @@ duplicate pending invitations. Acceptance and rejection require the invitation
 email to match the authenticated user. Only pending, unexpired invitations can
 be accepted.
 
+Directly adding an existing user with `addMember()` or `addMemberByEmail()`
+cancels pending invitations for the same workspace and email in the membership
+transaction. The invitation remains as a `canceled` audit record and disappears
+from the user's pending list. Concurrent direct addition and acceptance can
+create only one membership.
+
 `WorkspaceService` enforces the relevant workspace or current-user permission
 for every operation. Workspace administrators create and cancel invitations,
 while the addressed user gets, accepts, or rejects an invitation.
