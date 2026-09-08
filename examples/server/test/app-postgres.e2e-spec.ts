@@ -1025,6 +1025,221 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     );
   });
 
+  it('revokes administrator impersonation sessions without revoking the target user sessions', async () => {
+    const administrator = await createAuthenticatedUser(
+      'Revoked Administrator',
+    );
+    const target = await createAuthenticatedUser('Impersonated User');
+    await migrationOrm.em
+      .getConnection()
+      .execute(`update "user" set roles = array['admin'] where id = ?`, [
+        administrator.user.id,
+      ]);
+
+    const started = await gql(
+      /* GraphQL */ `
+        mutation ImpersonateUser($id: ID!) {
+          impersonateUser(id: $id) {
+            id
+          }
+        }
+      `,
+      { cookies: administrator.cookies, variables: { id: target.user.id } },
+    );
+    expectNoGraphQLErrors(started);
+    const impersonationCookies = collectSetCookies(started);
+
+    const revoked = await gql(
+      /* GraphQL */ `
+        mutation RevokeUserSessions($userId: ID!) {
+          revokeUserSessions(userId: $userId)
+        }
+      `,
+      {
+        cookies: administrator.cookies,
+        variables: { userId: administrator.user.id },
+      },
+    );
+    expectNoGraphQLErrors(revoked);
+    expect(revoked.body.data.revokeUserSessions).toBe(true);
+
+    const restored = await gql(
+      /* GraphQL */ `
+        mutation {
+          stopImpersonating {
+            id
+          }
+        }
+      `,
+      { cookies: impersonationCookies },
+    );
+    expect(restored.body.errors).toEqual([
+      expect.objectContaining({
+        extensions: expect.objectContaining({ code: 'UNAUTHORIZED' }),
+      }),
+    ]);
+    expect(
+      collectRawSetCookies(restored).some((cookie) =>
+        /session_token=[^;]/.test(cookie),
+      ),
+    ).toBe(false);
+
+    for (const cookies of [administrator.cookies, impersonationCookies]) {
+      const rejected = await gql(
+        /* GraphQL */ `
+          query {
+            currentUser {
+              id
+            }
+          }
+        `,
+        { cookies },
+      );
+      expect(rejected.body.errors).toEqual([
+        expect.objectContaining({
+          extensions: expect.objectContaining({ code: 'UNAUTHORIZED' }),
+        }),
+      ]);
+    }
+
+    const unaffected = await gql(
+      /* GraphQL */ `
+        query {
+          currentUser {
+            id
+          }
+        }
+      `,
+      { cookies: target.cookies },
+    );
+    expectNoGraphQLErrors(unaffected);
+    expect(unaffected.body.data.currentUser.id).toBe(target.user.id);
+    const sessions = await migrationOrm.em
+      .getConnection()
+      .execute(
+        'select id from session where user_id = ? or impersonated_by_id = ?',
+        [administrator.user.id, administrator.user.id],
+      );
+    expect(sessions).toEqual([]);
+  });
+
+  it.each(['transfer', 'disable'] as const)(
+    'keeps an active owner when %s acquires the membership lock first',
+    async (firstOperation) => {
+      const owner = await createAuthenticatedUser('Concurrent Owner');
+      const administrator = await createAuthenticatedUser('Concurrent Admin');
+      const nextOwner = await createAuthenticatedUser('Concurrent Next Owner');
+      const workspace = await createWorkspace(owner, 'Concurrent Workspace');
+      const adminMember = await addWorkspaceMember(
+        owner,
+        workspace.id,
+        administrator.email,
+      );
+      await updateWorkspaceMemberRole(owner, workspace.id, adminMember.id, [
+        'admin',
+      ]);
+      const nextMember = await addWorkspaceMember(
+        owner,
+        workspace.id,
+        nextOwner.email,
+      );
+      const connection = migrationOrm.em.getConnection();
+      const requests: Promise<request.Response>[] = [];
+      const operations = {
+        transfer: () =>
+          gql(
+            /* GraphQL */ `
+              mutation TransferWorkspaceOwnership($memberId: ID!) {
+                transferWorkspaceOwnership(memberId: $memberId) {
+                  id
+                  roles
+                  status
+                }
+              }
+            `,
+            {
+              cookies: owner.cookies,
+              workspaceId: workspace.id,
+              variables: { memberId: nextMember.id },
+            },
+          ).then((response) => response),
+        disable: () =>
+          gql(
+            /* GraphQL */ `
+              mutation UpdateWorkspaceMember(
+                $id: ID!
+                $input: UpdateWorkspaceMemberInput!
+              ) {
+                updateWorkspaceMember(id: $id, input: $input) {
+                  id
+                  status
+                }
+              }
+            `,
+            {
+              cookies: administrator.cookies,
+              workspaceId: workspace.id,
+              variables: { id: nextMember.id, input: { status: 'DISABLED' } },
+            },
+          ).then((response) => response),
+      };
+      const order =
+        firstOperation === 'transfer'
+          ? (['transfer', 'disable'] as const)
+          : (['disable', 'transfer'] as const);
+
+      try {
+        await connection.transactional(async (transaction) => {
+          await connection.execute(
+            'select id from workspace_member where id = ? for update',
+            [nextMember.id],
+            'all',
+            transaction,
+          );
+          for (const operation of order) {
+            requests.push(operations[operation]());
+            // Observe real lock waits so both requests read the pre-update member.
+            await vi.waitFor(
+              async () => {
+                const [waiting] = await connection.execute<{ count: number }[]>(
+                  `select count(*)::int as count from pg_stat_activity
+                 where datname = current_database() and wait_event_type = 'Lock'
+                 and query like '%workspace_member%'`,
+                );
+                expect(waiting.count).toBe(requests.length);
+              },
+              { timeout: 5000, interval: 20 },
+            );
+          }
+        });
+        const [succeeded, rejected] = await Promise.all(requests);
+        expectNoGraphQLErrors(succeeded);
+        expect(rejected.body.errors).toEqual([
+          expect.objectContaining({
+            message:
+              firstOperation === 'transfer'
+                ? 'Workspace owners cannot be disabled'
+                : 'The next owner must be another active user member',
+          }),
+        ]);
+        const activeOwners = await connection.execute<{ user_id: string }[]>(
+          `select user_id from workspace_member
+           where workspace_id = ? and 'owner' = any(roles) and status = 'ACTIVE'`,
+          [workspace.id],
+        );
+        expect(activeOwners).toEqual([
+          {
+            user_id:
+              firstOperation === 'transfer' ? nextOwner.user.id : owner.user.id,
+          },
+        ]);
+      } finally {
+        await Promise.allSettled(requests);
+      }
+    },
+    20_000,
+  );
+
   it('resolves workspace context from header and cookie while returning null for missing member context', async () => {
     const alice = await createAuthenticatedUser('Alice');
     const bob = await createAuthenticatedUser('Bob');
@@ -1687,6 +1902,12 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     );
 
     expectGraphQLError(apiKeyCurrentUser);
+    expect(apiKeyCurrentUser.body.errors).toEqual([
+      expect.objectContaining({
+        message: 'A user identity is required',
+        extensions: expect.objectContaining({ code: 'FORBIDDEN' }),
+      }),
+    ]);
 
     const sessionTakesPrecedence = await gql(
       /* GraphQL */ `

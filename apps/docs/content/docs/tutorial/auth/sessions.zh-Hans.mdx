@@ -47,5 +47,9 @@ token 仅在服务端内部和 HttpOnly Cookie 中使用。UI 应识别当前会
 的会话与账号 Cookie。示例在 `UserService.impersonateUser()` 与
 `stopImpersonating()` 切换浏览器身份时使用该方法。
 
+管理员通过 `UserService.revokeUserSessions(user)` 撤销会话时，会同时删除该用户自身的
+会话和由其发起的模拟会话。已撤销的模拟会话无法恢复管理员身份；被模拟用户独立登录
+的会话不受影响。
+
 启用 PostgreSQL RLS 时，应用实体查询会在关闭 RLS 的隔离认证上下文中执行。因此业务
 数据库角色无需直接访问认证表，父级请求上下文也不会被修改。

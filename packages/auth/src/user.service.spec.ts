@@ -377,7 +377,7 @@ describe("UserService", () => {
     );
     expect(em.remove).toHaveBeenCalledWith(session);
     expect(em.nativeDelete).toHaveBeenCalledWith(TestSession, {
-      userId: "user-1",
+      $or: [{ userId: "user-1" }, { impersonatedBy: user }],
     });
   });
 

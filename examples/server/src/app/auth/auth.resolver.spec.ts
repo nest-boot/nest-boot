@@ -1,4 +1,5 @@
 import type { AuthService, SessionService } from '@nest-boot/auth';
+import { ForbiddenException } from '@nestjs/common';
 import type { Mocked } from 'vitest';
 
 vi.mock('@nest-boot/auth', async (importOriginal) => ({
@@ -18,6 +19,12 @@ describe('AuthResolver', () => {
     const user = { id: 'user-1' } as User;
 
     expect(resolver.currentUser(user)).toBe(user);
+  });
+
+  it('rejects an authenticated principal without a user identity', () => {
+    const { resolver } = createResolver();
+
+    expect(() => resolver.currentUser(null)).toThrow(ForbiddenException);
   });
 
   it('returns null when API key authentication has no session', () => {

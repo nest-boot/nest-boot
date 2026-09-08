@@ -352,9 +352,8 @@ export class WorkspaceService<
     member: WorkspaceMember,
     input: UpdateWorkspaceMemberOptions,
   ): Promise<WorkspaceMember> {
-    this.accessControlService.assertCurrentWorkspace(
-      this.unwrapWorkspace(member),
-    );
+    const workspace = this.unwrapWorkspace(member);
+    this.accessControlService.assertCurrentWorkspace(workspace);
     this.accessControlService.assertWorkspaceCan("update", member);
     if ("roles" in input || "permissions" in input) {
       throw new BadRequestException(
@@ -371,34 +370,53 @@ export class WorkspaceService<
       typeof input.email === "string"
         ? input.email.trim().toLowerCase()
         : input.email;
-    if (email) {
-      const workspace = this.unwrapWorkspace(member);
-      const duplicate = await this.withRlsDisabled(
-        async () =>
-          await this.em.findOne(
+    return await this.withRlsDisabled(
+      async () =>
+        await this.em.transactional(async (em) => {
+          const lockedMember = await em.findOne(
             this.workspaceMemberEntity,
+            { id: member.id, workspace } as FilterQuery<WorkspaceMember>,
             {
-              email,
-              id: { $ne: member.id },
-              workspace,
-            } as FilterQuery<WorkspaceMember>,
-            { filters: false },
-          ),
-      );
-      if (duplicate) {
-        throw new ConflictException(
-          "A workspace member already uses this email address",
-        );
-      }
-    }
-    this.em.assign(
-      member,
-      input.email === undefined
-        ? (input as never)
-        : ({ ...input, email } as never),
+              filters: false,
+              lockMode: LockMode.PESSIMISTIC_WRITE,
+              refresh: true,
+            },
+          );
+          if (!lockedMember) {
+            throw new NotFoundException("Workspace member not found");
+          }
+          this.accessControlService.assertWorkspaceCan("update", lockedMember);
+          if (
+            input.status === "DISABLED" &&
+            lockedMember.roles.includes(this.creatorRole)
+          ) {
+            throw new ForbiddenException("Workspace owners cannot be disabled");
+          }
+          if (email) {
+            const duplicate = await em.findOne(
+              this.workspaceMemberEntity,
+              {
+                email,
+                id: { $ne: lockedMember.id },
+                workspace,
+              } as FilterQuery<WorkspaceMember>,
+              { filters: false },
+            );
+            if (duplicate) {
+              throw new ConflictException(
+                "A workspace member already uses this email address",
+              );
+            }
+          }
+          em.assign(lockedMember, {
+            ...(input.name !== undefined ? { name: input.name } : {}),
+            ...(input.email !== undefined ? { email } : {}),
+            ...(input.status !== undefined ? { status: input.status } : {}),
+          } as never);
+          await em.flush();
+          return lockedMember;
+        }),
     );
-    await this.em.flush();
-    return member;
   }
 
   /** Replaces the roles assigned to a non-owner workspace member. */

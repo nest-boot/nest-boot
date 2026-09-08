@@ -392,6 +392,7 @@ describe("WorkspaceService", () => {
       }),
     );
 
+    em.findOne.mockResolvedValue(member);
     await expect(
       service.updateMember(member, { name: "Robert", status: "DISABLED" }),
     ).resolves.toBe(member);
@@ -410,7 +411,7 @@ describe("WorkspaceService", () => {
       id: "member-2",
       workspace,
     });
-    em.findOne.mockResolvedValue(duplicate);
+    em.findOne.mockResolvedValueOnce(member).mockResolvedValueOnce(duplicate);
 
     await expect(
       service.updateMember(member, { email: " Duplicate@Example.com " }),
@@ -497,6 +498,69 @@ describe("WorkspaceService", () => {
     await expect(
       service.updateMember(owner, { status: "DISABLED" }),
     ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it("rechecks ownership under a row lock before disabling a member", async () => {
+    const { em, service } = createService();
+    const workspace = new TestWorkspace();
+    const staleMember = Object.assign(new TestWorkspaceMember(), {
+      roles: ["member"],
+      workspace,
+    });
+    const promotedMember = Object.assign(new TestWorkspaceMember(), {
+      id: staleMember.id,
+      roles: ["owner"],
+      workspace,
+    });
+    em.findOne.mockResolvedValue(promotedMember);
+
+    await expect(
+      service.updateMember(staleMember, { status: "DISABLED" }),
+    ).rejects.toThrow("Workspace owners cannot be disabled");
+
+    expect(em.transactional).toHaveBeenCalledTimes(1);
+    expect(em.findOne).toHaveBeenCalledWith(
+      TestWorkspaceMember,
+      { id: staleMember.id, workspace },
+      {
+        filters: false,
+        lockMode: LockMode.PESSIMISTIC_WRITE,
+        refresh: true,
+      },
+    );
+    expect(promotedMember.status).toBe("ACTIVE");
+    expect(em.assign).not.toHaveBeenCalled();
+    expect(em.flush).not.toHaveBeenCalled();
+  });
+
+  it("rejects updates when the member was removed before acquiring its lock", async () => {
+    const { em, service } = createService();
+    em.findOne.mockResolvedValue(null);
+
+    await expect(
+      service.updateMember(new TestWorkspaceMember(), { status: "DISABLED" }),
+    ).rejects.toThrow("Workspace member not found");
+    expect(em.assign).not.toHaveBeenCalled();
+    expect(em.flush).not.toHaveBeenCalled();
+  });
+
+  it("preserves omitted member fields when updating status through a DTO", async () => {
+    const { em, service } = createService();
+    const member = Object.assign(new TestWorkspaceMember(), {
+      email: "alice@example.com",
+    });
+    em.findOne.mockResolvedValue(member);
+
+    await service.updateMember(member, {
+      email: undefined,
+      name: undefined,
+      status: "DISABLED",
+    });
+
+    expect(member.name).toBe("Alice");
+    expect(member.email).toBe("alice@example.com");
+    expect(member.status).toBe("DISABLED");
+    expect(em.assign).toHaveBeenCalledWith(member, { status: "DISABLED" });
   });
 
   it("rejects assigning the creator role outside ownership transfer", async () => {

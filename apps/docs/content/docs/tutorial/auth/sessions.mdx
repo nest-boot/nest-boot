@@ -53,6 +53,11 @@ presenting it as an ordinary remote-device revoke action.
 uses it when `UserService.impersonateUser()` and `stopImpersonating()` switch
 browser identity.
 
+For administrative revocation, `UserService.revokeUserSessions(user)` removes
+both the user's own sessions and impersonation sessions started by that user.
+Revoked impersonation sessions cannot restore the administrator's identity;
+the impersonated user's independent sessions remain valid.
+
 When PostgreSQL RLS is enabled, application entity lookup runs in an isolated
 auth context with RLS disabled. Business database roles therefore do not need
 direct access to authentication tables, and the parent request context remains

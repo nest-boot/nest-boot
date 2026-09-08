@@ -55,7 +55,8 @@ currentWorkspace(
 - `leaveWorkspace(member)`；
 - `transferOwnership(workspace, currentOwner, nextOwner)`。
 
-所有者不能通过普通成员操作被移除或离开。GraphQL Resolver 与 HTTP Controller 应只
+所有者不能通过普通成员操作被禁用、移除或离开。成员状态更新与所有权转移会锁定相关
+成员记录，并在同一事务内重新检查状态。GraphQL Resolver 与 HTTP Controller 应只
 负责输入输出映射，把这些约束留在 `WorkspaceService` 中。
 
 邀请投递和状态流转单独记录在[邀请](/docs/tutorial/auth/invitations)章节中。

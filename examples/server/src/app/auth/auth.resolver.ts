@@ -12,7 +12,7 @@ import {
   SessionService,
 } from '@nest-boot/auth';
 import { Args, ID, Mutation, Query, Resolver } from '@nest-boot/graphql';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 
 import { User } from '../user/user.entity.js';
 import {
@@ -60,7 +60,10 @@ export class AuthResolver {
 
   /** Returns the currently authenticated user. */
   @Query(() => User)
-  currentUser(@CurrentUser() user: User): User {
+  currentUser(@CurrentUser() user: User | null): User {
+    if (!user) {
+      throw new ForbiddenException('A user identity is required');
+    }
     return user;
   }
 

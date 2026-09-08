@@ -56,7 +56,9 @@ soft delete and only the owner of that workspace may perform it.
 - `leaveWorkspace(member)`;
 - `transferOwnership(workspace, currentOwner, nextOwner)`.
 
-Owners cannot be removed or leave through the ordinary member operation.
+Owners cannot be disabled, removed, or leave through ordinary member operations.
+Member status changes and ownership transfers lock the affected memberships
+and recheck their state in the same transaction.
 GraphQL resolvers and HTTP controllers should map input/output types and leave
 these invariants in `WorkspaceService`.
 

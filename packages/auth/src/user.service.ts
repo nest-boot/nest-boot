@@ -357,13 +357,13 @@ export class UserService<
     });
   }
 
-  /** Revokes every session belonging to a user. */
+  /** Revokes the user's sessions, including impersonation sessions they started. */
   async revokeUserSessions(user: User): Promise<number> {
     this.accessControlService.assertUserCan("revoke", this.sessionEntity);
     return await this.runUnrestricted(
       async () =>
         await this.em.nativeDelete(this.sessionEntity, {
-          userId: String(user.id),
+          $or: [{ userId: String(user.id) }, { impersonatedBy: user }],
         } as FilterQuery<Session>),
     );
   }
