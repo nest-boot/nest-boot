@@ -1,0 +1,70 @@
+---
+title: "Workspaces"
+description: "Resolve workspace context and manage workspace membership."
+---
+
+## Selecting a Workspace
+
+Clients select a workspace with the `x-workspace-id` header or `workspace_id`
+Cookie. `AuthMiddleware` verifies that selection, resolves the authenticated
+user's active membership, and stores both entities in `RequestContext`.
+
+```typescript
+import {
+  CurrentWorkspace,
+  CurrentWorkspaceMember,
+} from "@nest-boot/auth";
+
+currentWorkspace(
+  @CurrentWorkspace() workspace: Workspace,
+  @CurrentWorkspaceMember() member: WorkspaceMember,
+) {
+  return { workspace, member };
+}
+```
+
+The route or header remains the source of workspace selection. A session does
+not need an `activeWorkspaceId`, which lets separate browser tabs work in
+different workspaces.
+
+## Workspace Lifecycle
+
+`WorkspaceService` owns transport-independent workspace operations:
+
+- `findOne(where)`;
+- `listWorkspaces(user)`;
+- `createWorkspace(user, input)`;
+- `getFullWorkspace(workspace)`;
+- `updateWorkspace(workspace, input)`;
+- `deleteWorkspace(workspace, currentMember)`.
+
+Creating a workspace also creates its active owner membership. Deletion is a
+soft delete and only the owner of that workspace may perform it.
+Deletion, member/service-account creation, and invitation creation/acceptance
+lock the workspace row and recheck its active state inside their transaction.
+Requests that selected a workspace before deletion cannot create new children
+after the deletion commits.
+
+## Member Lifecycle
+
+- `getMember(workspace, user)`;
+- `getMemberById(workspace, memberId)`;
+- `listMembers(workspace)`;
+- `addMember(workspace, user, input)`;
+- `addMemberByEmail(workspace, email, input)`;
+- `createServiceAccount(workspace, input)`;
+- `updateMember(member, input)`;
+- `updateMemberRole(member, roles)`;
+- `setMemberPermissions(member, permissions)`;
+- `removeMember(member)`;
+- `leaveWorkspace(member)`;
+- `transferOwnership(workspace, currentOwner, nextOwner)`.
+
+Owners cannot be disabled, removed, or leave through ordinary member operations.
+Member status changes and ownership transfers lock the affected memberships
+and recheck their state in the same transaction.
+GraphQL resolvers and HTTP controllers should map input/output types and leave
+these invariants in `WorkspaceService`.
+
+Workspace invitation delivery and state transitions are documented separately
+under [Invitations](/docs/tutorial/auth/invitations).

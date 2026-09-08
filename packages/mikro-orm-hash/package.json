@@ -41,7 +41,7 @@
     "@nest-boot/eslint-plugin": "workspace:^",
     "@nest-boot/hash": "workspace:^",
     "@nest-boot/tsconfig": "workspace:^",
-    "@types/node": "^26.0.0",
+    "@types/node": "^24.0.0",
     "@vitest/coverage-v8": "^4.1.11",
     "reflect-metadata": "^0.2.2",
     "typescript": "^6.0.3",
@@ -65,7 +65,7 @@
   },
   "type": "module",
   "engines": {
-    "node": ">=26.0.0"
+    "node": ">=24.4.0"
   },
   "exports": {
     ".": {

@@ -4,7 +4,7 @@ description: "将 Nest Boot 应用升级到 NestJS 12 和原生 ESM。"
 ---
 
 版本 8 是所有 `@nest-boot/*` 包面向 NestJS 12 的发布线。所有包均以原生
-ESM 发布，并要求 Node.js 26 或更高版本。
+ESM 发布，并要求 Node.js 24.4 或更高版本。
 
 ## 升级依赖
 
@@ -49,6 +49,15 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
   `@nest-boot/graphql-staged-upload`，才能继续使用 `createStagedUploads` Mutation。
   `StagedUploadInput`、`StagedUpload` 与 `StagedUploadField` 改从 GraphQL 包导入；
   与传输层无关的服务类型使用 `StagedUploadRequest` 与 `StagedUploadResult`。
+- 使用 `@nest-boot/row-level-security` 的 `RowLevelSecurity.setContext()` 替换已移除的
+  `AuthTransactionContext`。RLS 事务设置不再属于认证包。
+- 将认证权限的资源名更新为 CASL subject type 的原始值。内置目录现在使用
+  `User:*`、`Session:*`、`Workspace:*`、`WorkspaceMember:*` 与
+  `WorkspaceInvitation:*`。需要更新角色配置中的权限，并改写此前持久化的直接权限与
+  API Key 权限。
+- 认证 Session 现在只使用主数据库；请移除 `AuthModuleOptions.secondaryStorage` 配置。
+  API Key 默认权限与授予上限可分别通过 `apiKey.defaultPermissions` 和
+  `apiKey.allowedPermissions` 配置。
 - 切换 TypeScript 模块解析后，重新生成文件和迁移，确保生成的导入带有有效的
   ESM 扩展名。
 

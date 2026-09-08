@@ -1,0 +1,25 @@
+{
+  "admin": {
+    "title": "管理后台",
+    "users": "用户"
+  },
+  "navigation": {
+    "api_keys": "API 密钥",
+    "members": "成员",
+    "settings": "设置"
+  },
+  "switcher": {
+    "createWorkspace": "创建工作空间",
+    "workspaces": "工作空间",
+    "loadMore": "加载更多",
+    "manageWorkspaces": "管理工作空间"
+  },
+  "user": {
+    "account": "个人账户",
+    "api_keys": "个人 API 密钥",
+    "logout": "退出登录",
+    "security": "安全",
+    "title": "个人中心",
+    "workspaces": "工作空间"
+  }
+}

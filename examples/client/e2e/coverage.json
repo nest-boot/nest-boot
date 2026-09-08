@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "domain": "Auth",
+      "scenario": "Email/password registration on the canonical register route",
+      "status": "covered",
+      "specs": ["auth.spec.ts"],
+      "notes": "Registers at /auth/register, verifies the email address, and lands on the workspace empty state."
+    },
+    {
+      "domain": "Auth",
+      "scenario": "Email/password login and remember-me",
+      "status": "covered",
+      "specs": ["auth.spec.ts"],
+      "notes": "Clears cookies, signs in at /auth/login, and exercises the remember-me control."
+    },
+    {
+      "domain": "Auth",
+      "scenario": "Password reset and authenticated password change",
+      "status": "covered",
+      "specs": ["auth.spec.ts"],
+      "notes": "Completes the email reset flow and then changes the password through GraphQL."
+    },
+    {
+      "domain": "Auth",
+      "scenario": "Current-user session list and remote-session revocation",
+      "status": "covered",
+      "specs": ["user.spec.ts"],
+      "notes": "Creates two browser sessions, revokes the other session, and verifies it can no longer access the application."
+    },
+    {
+      "domain": "Auth",
+      "scenario": "Social and generic OAuth sign-in, linking, and unlinking",
+      "status": "partial",
+      "specs": ["auth.spec.ts", "user.spec.ts"],
+      "notes": "Dynamic provider rendering, GraphQL authorization initiation, and account-linking availability are covered; the external provider callback and unlinking a real social identity remain outside Playwright."
+    },
+    {
+      "domain": "Auth",
+      "scenario": "Administrator impersonation and global status banner",
+      "status": "covered",
+      "specs": ["admin.spec.ts"],
+      "notes": "Starts impersonation from the administrator user page, verifies the global banner across personal routes, stops impersonation, and confirms that the administrator session is restored."
+    },
+    {
+      "domain": "Workspace",
+      "scenario": "First workspace creation, rename persistence, and deletion",
+      "status": "covered",
+      "specs": ["workspace.spec.ts"],
+      "notes": "Creates the first workspace, reloads after rename, then deletes it and returns to the empty state."
+    },
+    {
+      "domain": "Workspace",
+      "scenario": "Multiple workspace creation and switcher navigation",
+      "status": "covered",
+      "specs": ["workspace.spec.ts"],
+      "notes": "Creates more than one cursor page of workspaces, loads the next page in the switcher, switches workspaces, and opens the create path."
+    },
+    {
+      "domain": "Workspace",
+      "scenario": "Ownership transfer and member exit",
+      "status": "covered",
+      "specs": ["workspace.spec.ts"],
+      "notes": "Transfers ownership to an active user member, verifies the new owner, and removes the previous owner through the leave flow."
+    },
+    {
+      "domain": "Invitations",
+      "scenario": "Create, cancel, register through, accept, and reject invitations",
+      "status": "covered",
+      "specs": ["invitation.spec.ts", "user.spec.ts"],
+      "notes": "Covers owner and recipient flows, including the personal pending-invitation list."
+    },
+    {
+      "domain": "Invitations",
+      "scenario": "Invalid and expired invitation states",
+      "status": "covered",
+      "specs": ["invitation.spec.ts"],
+      "notes": "Covers invalid, canceled, and expired invitation states, including cleanup of the pending invitation redirect."
+    },
+    {
+      "domain": "Members",
+      "scenario": "Member status actions, removal, role changes, and direct permissions",
+      "status": "covered",
+      "specs": ["invitation.spec.ts"],
+      "notes": "Covers status and removal actions, role editing, direct permission editing, persistence after reload, and resulting UI authorization."
+    },
+    {
+      "domain": "Authorization",
+      "scenario": "Transported CASL rules control user and workspace UI",
+      "status": "covered",
+      "specs": ["api-key.spec.ts", "invitation.spec.ts", "workspace.spec.ts"],
+      "notes": "Serialized conditional rules have unit coverage; browser tests cover role denial and direct-permission authorization paths."
+    },
+    {
+      "domain": "API keys",
+      "scenario": "User and workspace API key lifecycle",
+      "status": "covered",
+      "specs": ["api-key.spec.ts"],
+      "notes": "Creates, reveals, disables, edits, and deletes both owner types. Bearer authentication and privilege ceilings are covered by server PostgreSQL E2E."
+    }
+  ]
+}

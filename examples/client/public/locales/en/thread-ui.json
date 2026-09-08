@@ -1,0 +1,203 @@
+{
+  "complexFilter": {
+    "operators": {
+      "$eq": "Equals",
+      "$ne": "Not equal",
+      "$gt": "Greater than",
+      "$gte": "Greater than or equal",
+      "$lt": "Less than",
+      "$lte": "Less than or equal",
+      "$in": "Includes",
+      "$nin": "Excludes",
+      "$fulltext": "Contains"
+    },
+    "logicals": {
+      "$and": "AND",
+      "$or": "OR"
+    },
+    "addCondition": "Add condition",
+    "addGroup": "Add group",
+    "clearAll": "Clear all",
+    "selectField": "Select field",
+    "selectOperator": "Select operator",
+    "selectValue": "Select value"
+  },
+  "dataFilter": {
+    "addFilter": "Add Filter",
+    "removeFilter": "Remove filter",
+    "empty": "empty",
+    "isEmpty": "is empty",
+    "isNotEmpty": "is not empty",
+    "checked": "Checked",
+    "unchecked": "Unchecked",
+    "operators": {
+      "$eq": "is",
+      "$ne": "is not",
+      "$gt": "greater than",
+      "$gte": "greater than or equal",
+      "$lt": "less than",
+      "$lte": "less than or equal",
+      "$between": "between",
+      "$fulltext": "contains",
+      "$in": "contains",
+      "$nin": "does not contain"
+    },
+    "minimumAriaLabel": "{{label}} minimum",
+    "maximumAriaLabel": "{{label}} maximum"
+  },
+  "dataTable": {
+    "allSelected": "All selected",
+    "emptyDescription": "Try changing the filters or search term.",
+    "emptyTitle": "No items found",
+    "nextPage": "Next page",
+    "openRowActions": "Open row actions",
+    "previousPage": "Previous page",
+    "selectAll": "Select all",
+    "selectAllRows": "Select all rows",
+    "selectAllRowsOnPage": "Select all {{count}} on page",
+    "selectAllRowsOnPage_other": "Select all {{count}} on page",
+    "selectedRows": "{{count}} selected",
+    "selectedRows_other": "{{count}} selected",
+    "selectRow": "Select row",
+    "unselectAll": "Unselect all"
+  },
+  "calendar": {
+    "code": "en-US",
+    "options": {
+      "weekStartsOn": 0,
+      "firstWeekContainsDate": 1
+    },
+    "ordinalNumber": "{{number}}",
+    "eras": {
+      "narrow": ["B", "A"],
+      "abbreviated": ["BC", "AD"],
+      "wide": ["Before Christ", "Anno Domini"]
+    },
+    "quarters": {
+      "narrow": ["1", "2", "3", "4"],
+      "abbreviated": ["Q1", "Q2", "Q3", "Q4"],
+      "wide": ["1st quarter", "2nd quarter", "3rd quarter", "4th quarter"]
+    },
+    "months": {
+      "narrow": ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"],
+      "abbreviated": [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec"
+      ],
+      "wide": [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December"
+      ]
+    },
+    "weekdays": {
+      "narrow": ["S", "M", "T", "W", "T", "F", "S"],
+      "short": ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"],
+      "abbreviated": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+      "wide": [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday"
+      ]
+    },
+    "dayPeriods": {
+      "narrow": {
+        "am": "a",
+        "pm": "p",
+        "midnight": "mi",
+        "noon": "n",
+        "morning": "morning",
+        "afternoon": "afternoon",
+        "evening": "evening",
+        "night": "night"
+      },
+      "abbreviated": {
+        "am": "AM",
+        "pm": "PM",
+        "midnight": "midnight",
+        "noon": "noon",
+        "morning": "morning",
+        "afternoon": "afternoon",
+        "evening": "evening",
+        "night": "night"
+      },
+      "wide": {
+        "am": "a.m.",
+        "pm": "p.m.",
+        "midnight": "midnight",
+        "noon": "noon",
+        "morning": "morning",
+        "afternoon": "afternoon",
+        "evening": "evening",
+        "night": "night"
+      }
+    },
+    "formattingDayPeriods": {
+      "narrow": {
+        "am": "a",
+        "pm": "p",
+        "midnight": "mi",
+        "noon": "n",
+        "morning": "in the morning",
+        "afternoon": "in the afternoon",
+        "evening": "in the evening",
+        "night": "at night"
+      },
+      "abbreviated": {
+        "am": "AM",
+        "pm": "PM",
+        "midnight": "midnight",
+        "noon": "noon",
+        "morning": "in the morning",
+        "afternoon": "in the afternoon",
+        "evening": "in the evening",
+        "night": "at night"
+      },
+      "wide": {
+        "am": "a.m.",
+        "pm": "p.m.",
+        "midnight": "midnight",
+        "noon": "noon",
+        "morning": "in the morning",
+        "afternoon": "in the afternoon",
+        "evening": "in the evening",
+        "night": "at night"
+      }
+    },
+    "labels": {
+      "today": "Today, {{label}}",
+      "selected": "{{label}}, selected",
+      "monthDropdown": "Choose the Month",
+      "next": "Go to the Next Month",
+      "previous": "Go to the Previous Month",
+      "weekNumber": "Week {{weekNumber}}",
+      "yearDropdown": "Choose the Year",
+      "grid": "{{month}} {{year}}",
+      "nav": "Navigation bar",
+      "weekNumberHeader": "Week Number"
+    }
+  }
+}

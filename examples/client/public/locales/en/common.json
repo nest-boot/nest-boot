@@ -1,0 +1,25 @@
+{
+  "action": {
+    "cancel": "Cancel",
+    "close": "Close",
+    "confirm": "Confirm",
+    "create": "Create",
+    "creating": "Creating...",
+    "delete": "Delete",
+    "deleting": "Deleting...",
+    "disable": "Disable",
+    "edit": "Edit",
+    "rename": "Rename",
+    "revoke": "Revoke",
+    "enable": "Enable",
+    "save": "Save",
+    "saving": "Saving..."
+  },
+  "app": {
+    "name": "Nest Boot Example"
+  },
+  "contextualSaveBar": {
+    "discard": "Discard",
+    "message": "Unsaved changes"
+  }
+}

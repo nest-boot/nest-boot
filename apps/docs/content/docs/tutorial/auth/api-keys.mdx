@@ -1,0 +1,133 @@
+---
+title: "API Keys"
+description: "Authenticate personal and workspace automation with scoped API keys."
+---
+
+`ApiKeyService` manages keys owned by either a user or a workspace.
+
+- A **user key** restores its user and may access a selected workspace only
+  while that user remains an active member.
+- A **workspace key** is an independent service identity. It restores its
+  workspace without creating a current user or workspace member.
+
+Users manage their own keys. Active workspace members and workspace keys manage workspace keys
+when their resolved workspace ability grants the corresponding
+`ApiKey:create`, `ApiKey:read`, `ApiKey:update`, or `ApiKey:delete` permission.
+In the example, both user roles include personal key-management permissions.
+API-key requests receive only the explicitly granted actions after permission
+intersection; they do not inherit an unconditional `manage ApiKey` rule.
+The example UI exposes all four key-management permissions, but leaves them
+unchecked when creating a key so delegation must be enabled explicitly.
+
+## Service API
+
+- `getUserApiKey`, `createUserKey`, `updateUserKey`, and `deleteUserKey`;
+- `getWorkspaceApiKey`, `createWorkspaceKey`, `updateWorkspaceKey`, and `deleteWorkspaceKey`;
+- `getUserListFilter` and `getWorkspaceListFilter`;
+- `validate(plaintextKey)` and `recordUsage(apiKey)`.
+
+Workspace methods accept the selected `Workspace`, not a `WorkspaceMember`:
+`createWorkspaceKey(workspace, options)`, `getWorkspaceApiKey(id, workspace)`,
+`updateWorkspaceKey(id, workspace, input)`, `deleteWorkspaceKey(id, workspace)`,
+and `getWorkspaceListFilter(workspace)`. The service validates the current
+workspace and resolves the issuing member or workspace-key identity internally.
+
+Create methods return the plaintext key exactly once. The database stores a
+SHA-256 hash of the complete key, the display-safe `start` and `prefix`, enabled
+state, permissions, expiration, and usage timestamps. Successful authenticated
+requests update `lastUsedAt` automatically. A custom prefix must contain 1–32
+lowercase ASCII letters or digits and start with a letter. The default prefix is `sk`.
+
+## Permission Values
+
+The auth package stores and evaluates permissions as `string[]`. Applications
+define closed user and workspace permission catalogs. `ApiKeyService` validates
+permission values against those catalogs during key creation and updates.
+The resource segment is the exact, case-sensitive CASL subject type; it is not
+lowercased or otherwise normalized.
+
+```typescript
+const workspacePermissions = [
+  "Workspace:update",
+  "WorkspaceMember:create",
+] as const;
+
+type WorkspacePermission = (typeof workspacePermissions)[number];
+
+const userKeyPermissions = ["User:get", ...workspacePermissions] as const;
+```
+
+In the example, entity properties, GraphQL inputs, and database columns all use
+strings. The application keeps an `as const` catalog for form options and local
+TypeScript types. A workspace key accepts only configured workspace
+permissions; a user key accepts the union of the configured user and workspace
+catalogs. Malformed, duplicate, and unknown values are rejected. PostgreSQL
+persists the values in `text[]` columns.
+
+Creation and update also enforce a permission ceiling. User-scoped permissions
+on a User Key cannot exceed the owning user's current role and direct
+permissions. A Workspace Key cannot exceed the issuing member's current role
+and direct permissions, or the authenticating Workspace Key's permissions.
+Workspace permissions on a User Key are checked again
+against the selected member at request time, so one key can be used across
+workspaces without freezing or copying membership privileges.
+
+Configure defaults and a module-wide grant allowlist with `apiKey`:
+
+```typescript
+AuthModule.forRoot({
+  // ...entities, user, and workspace options
+  apiKey: {
+    defaultPermissions: ["Workspace:update"],
+    allowedPermissions: ["User:get", "Workspace:update", "Workspace:delete"],
+  },
+});
+```
+
+`defaultPermissions` defaults to `[]` and applies only when creation omits the
+`permissions` field. Passing `null` or `[]` creates a key without permissions.
+`allowedPermissions` defaults to the union of the configured user and workspace
+permission catalogs. Both options are validated at startup, and defaults must
+be a subset of the allowlist. Defaults are shared by both owner types, so they
+must also belong to the workspace catalog. User-only defaults such as `User:get`
+are rejected at startup; pass them explicitly when creating a personal key.
+
+The allowlist is an additional ceiling, not an automatic grant. Requested
+permissions must also belong to the key owner's supported scope and remain
+within the issuer's effective permissions. When an API key creates or updates
+another key, the delegated permissions cannot exceed the authenticating key's
+own permissions. Reading, updating, or deleting an existing key also requires
+that its **stored** permissions fit inside the authenticating key's scope;
+replacing its permissions with an empty list cannot bypass this check. Lists
+apply the same restriction in the database, including pagination counts.
+Browser sessions can still manage all keys they own, subject to the normal
+ability checks. Updates that omit `permissions` preserve the stored value;
+passing `null` clears it.
+
+## Transport
+
+Send API keys with the Bearer scheme:
+
+```http
+Authorization: Bearer sk4tR9s...
+```
+
+`x-api-key` is not supported. Cookie session resolution runs first. When no
+valid Cookie session exists, the Bearer credential is treated as an API key.
+
+Use `@CurrentApiKey()` when a handler needs the credential that authenticated
+the request:
+
+```typescript
+import { CurrentApiKey } from "@nest-boot/auth";
+
+audit(@CurrentApiKey() apiKey: ApiKey | null) {
+  return apiKey;
+}
+```
+
+Before the configured builder runs, User Key permissions are intersected with
+the owning user's effective permissions and, for workspace routes, the user's
+current membership permissions. Workspace Keys are service identities; their
+validated permissions are passed directly to the workspace builder. The guard
+then checks only the resulting `UserAbility` or `WorkspaceAbility`.

@@ -1,0 +1,75 @@
+{
+  "deleteWorkspace": {
+    "confirmHint": "Please type {{name}} to confirm.",
+    "confirmLabel": "Workspace Name",
+    "description": "Are you sure you want to delete the workspace {{name}}? This action cannot be undone and all associated data will be permanently deleted.",
+    "title": "Delete Workspace"
+  },
+  "invite": {
+    "description": "Please fill in your information to join the workspace",
+    "error": {
+      "accept_failed": "Failed to accept invitation",
+      "back_button": "Back to Workspaces",
+      "expired": "This invitation has expired. Ask a workspace administrator to send a new one.",
+      "invalid_token": "Invalid or expired invitation token",
+      "status": {
+        "ACCEPTED": "This invitation has already been accepted.",
+        "CANCELED": "This invitation has been canceled.",
+        "REJECTED": "This invitation has already been rejected."
+      },
+      "title": "Invalid Invitation"
+    },
+    "form": {
+      "email": {
+        "invalid": "Please enter a valid email address",
+        "label": "Email",
+        "mismatch_error": "This invitation was limited to another email address. Please ask the inviter to send a new invitation.",
+        "required": "Email is required"
+      },
+      "name": {
+        "description": "Your display name in the workspace",
+        "label": "Name"
+      },
+      "submit": "Accept Invitation"
+    },
+    "loading": "Loading...",
+    "success": "Successfully joined the workspace",
+    "title": "Accept Workspace Invitation"
+  },
+  "settings": {
+    "dangerZone": {
+      "deleteButton": "Delete Workspace",
+      "description": "Once a workspace is deleted, it cannot be recovered, This will permanently delete the workspace and all its related data.",
+      "title": "Danger Zone"
+    },
+    "description": "Update your workspace name and other settings.",
+    "form": {
+      "name": {
+        "label": "Name",
+        "placeholder": "My Workspace",
+        "required": "Workspace name is required"
+      }
+    },
+    "leave": {
+      "action": "Leave workspace",
+      "confirm_description": "You will lose access to this workspace. You must be invited again to return.",
+      "confirm_title": "Leave this workspace?",
+      "description": "Remove your membership from this workspace.",
+      "failed": "Failed to leave the workspace",
+      "success": "You left the workspace",
+      "title": "Leave workspace"
+    },
+    "ownership": {
+      "action": "Transfer ownership",
+      "confirm_description": "{{name}} will become the owner and you will become an administrator.",
+      "confirm_title": "Transfer workspace ownership?",
+      "description": "Choose another active user member as the new owner. You will remain an administrator.",
+      "failed": "Failed to transfer ownership",
+      "member": "New owner",
+      "placeholder": "Select a member",
+      "success": "Workspace ownership transferred",
+      "title": "Transfer ownership"
+    }
+  },
+  "title": "Settings"
+}

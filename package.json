@@ -7,7 +7,7 @@
   },
   "packageManager": "pnpm@10.30.3",
   "engines": {
-    "node": ">=26.0.0"
+    "node": ">=24.4.0"
   },
   "scripts": {
     "commit:check": "lint-staged && pnpm docs:check",
@@ -16,7 +16,8 @@
     "prepare": "husky install",
     "build": "nx run-many -t build",
     "build:docs": "nx run @nest-boot/docs:build",
-    "build:packages": "nx run-many -t build --exclude=@nest-boot/docs",
+    "build:packages": "nx run-many -t build --projects='packages/*'",
+    "build:examples": "nx run-many -t build --projects='examples/*'",
     "clean": "nx reset && nx run-many -t clean && rm -rf node_modules",
     "dev": "nx run-many -t dev --exclude=@nest-boot/docs --parallel=100 --skip-nx-cache",
     "dev:docs": "nx run @nest-boot/docs:dev",
@@ -44,7 +45,7 @@
     "@nestjs/platform-express": "^12.0.1",
     "@nestjs/testing": "^12.0.1",
     "@nx/js": "^22.7.5",
-    "@types/node": "^26.0.0",
+    "@types/node": "^24.0.0",
     "@vitest/coverage-v8": "^4.1.11",
     "commitizen": "^4.3.1",
     "cz-conventional-changelog": "^3.3.0",

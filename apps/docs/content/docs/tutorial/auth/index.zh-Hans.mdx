@@ -1,0 +1,71 @@
+---
+title: "Auth"
+description: "通过一个集成模块提供身份认证、工作区身份、API Key 与权限授权。"
+---
+
+`@nest-boot/auth` 集成 Better Auth 身份认证、MikroORM 持久化、工作区身份、
+API Key 与 CASL 权限授权。模块会把当前身份解析到 `RequestContext`，并通过同一个
+`AuthGuard` 完成身份认证与权限检查。
+
+## 安装
+
+```bash
+pnpm add @nest-boot/auth @nest-boot/hash @nest-boot/mailer better-auth @casl/ability nodemailer
+```
+
+## 快速开始
+
+```typescript
+import { AuthModule } from "@nest-boot/auth";
+import { HashModule } from "@nest-boot/hash";
+import { MailerModule } from "@nest-boot/mailer";
+import { Global, Module } from "@nestjs/common";
+
+export const AuthDynamicModule = AuthModule.forRoot({
+  entities: {
+    user: User,
+    account: Account,
+    session: Session,
+    verification: Verification,
+    workspace: Workspace,
+    workspaceInvitation: WorkspaceInvitation,
+    workspaceMember: WorkspaceMember,
+    apiKey: ApiKey,
+  },
+  emailAndPassword: {
+    enabled: true,
+    requireEmailVerification: true,
+  },
+  user: {
+    changeEmail: { enabled: true },
+  },
+});
+
+@Global()
+@Module({
+  imports: [HashModule, MailerModule, AuthDynamicModule],
+})
+export class CommonModule {}
+```
+
+模块会自动：
+
+- 使用 MikroORM 适配器创建内部 Better Auth 实例；
+- 通过全局 `HashModule` 对凭据密码进行哈希与验证；
+- 通过 `MailerModule` 发送内置的验证和密码重置邮件；
+- 在 `/api/auth/` 挂载认证端点；
+- 将会话、工作区、成员与 API Key 解析到 `RequestContext`；
+- 提供身份认证、会话、用户管理、工作区与 API Key 服务。
+
+## 继续阅读
+
+- [配置](/docs/tutorial/auth/configuration) — 模块选项、环境变量与实体
+- [邮箱与密码](/docs/tutorial/auth/email-password) — 注册、验证、找回密码与资料修改
+- [会话](/docs/tutorial/auth/sessions) — Cookie Session、当前身份与会话撤销
+- [工作区](/docs/tutorial/auth/workspaces) — 工作区与成员生命周期
+- [邀请](/docs/tutorial/auth/invitations) — 邀请发送与接受流程
+- [API Key](/docs/tutorial/auth/api-keys) — 个人与工作区凭据
+- [权限授权](/docs/tutorial/auth/authorization) — `AuthGuard`、作用域权限装饰器与 CASL Ability
+- [NestJS 集成](/docs/tutorial/auth/integration) — 服务、中间件、GraphQL 与 RLS
+
+具体符号和方法签名请参阅 [Auth API 参考](/docs/api/auth)。

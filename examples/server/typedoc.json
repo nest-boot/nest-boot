@@ -1,0 +1,41 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "emit": "none",
+  "entryPoints": ["src"],
+  "entryPointStrategy": "expand",
+  "exclude": ["**/*.spec.ts", "**/database/migrations/**"],
+  "excludeInternal": true,
+  "excludeExternals": true,
+  "excludePrivate": true,
+  "intentionallyNotDocumented": [
+    "app/auth/entities/session.entity.Session.impersonatedBy.__type.id",
+    "app/workspace-member/workspace-invitation.entity.WorkspaceInvitation.inviter.__type.id",
+    "app/workspace-member/workspace-invitation.entity.WorkspaceInvitation.workspace.__type.id",
+    "app/workspace-member/workspace-member.entity.WorkspaceMember.user.__type.id",
+    "app/workspace-member/workspace-member.entity.WorkspaceMember.workspace.__type.id"
+  ],
+  "requiredToBeDocumented": [
+    "Accessor",
+    "Class",
+    "Constructor",
+    "Enum",
+    "EnumMember",
+    "Function",
+    "Interface",
+    "Method",
+    "Property",
+    "Reference",
+    "TypeAlias",
+    "Variable"
+  ],
+  "treatValidationWarningsAsErrors": true,
+  "validation": {
+    "notExported": true,
+    "invalidLink": true,
+    "invalidPath": true,
+    "rewrittenLink": true,
+    "notDocumented": true,
+    "unusedMergeModuleWith": true
+  },
+  "tsconfig": "tsconfig.build.json"
+}

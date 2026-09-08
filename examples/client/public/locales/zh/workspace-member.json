@@ -1,0 +1,107 @@
+{
+  "delete": {
+    "description": "您确定要删除此成员吗？",
+    "title": "删除成员"
+  },
+  "description": "管理工作空间成员和邀请",
+  "details": {
+    "actions": {
+      "copy_invite_link": "复制邀请链接",
+      "delete_member": "删除"
+    },
+    "form": {
+      "email": {
+        "invalid": "无效的邮箱地址",
+        "label": "邮箱",
+        "placeholder": "user@example.com"
+      },
+      "name": {
+        "description": "该成员的显示名称",
+        "label": "姓名",
+        "required": "姓名是必填的",
+        "too_long": "姓名过长"
+      },
+      "role": {
+        "label": "角色",
+        "placeholder": "选择角色"
+      }
+    },
+    "title": "成员详情",
+    "toast": {
+      "delete_failed": "删除成员失败",
+      "deleted_success": "成员删除成功",
+      "link_copied": "链接已复制到剪贴板",
+      "update_failed": "更新成员失败",
+      "updated_success": "成员更新成功"
+    }
+  },
+  "filter": {
+    "items": {
+      "created_at": {
+        "label": "加入时间"
+      },
+      "email": {
+        "label": "邮箱",
+        "placeholder": "搜索成员邮箱"
+      },
+      "name": {
+        "label": "名称",
+        "placeholder": "搜索成员名称"
+      },
+      "role": {
+        "label": "角色"
+      },
+      "status": {
+        "label": "状态"
+      },
+      "type": {
+        "label": "类型"
+      }
+    },
+    "search": {
+      "placeholder": "搜索成员名称或邮箱"
+    }
+  },
+  "invite": {
+    "button": "邀请",
+    "confirm_and_copy": "确认并复制链接",
+    "copy_failed": "邀请已创建，但无法自动复制链接",
+    "description": "系统将生成一个邀请链接",
+    "email_label": "邮箱",
+    "email_placeholder": "user@example.com",
+    "email_required": "请输入受邀人的邮箱地址",
+    "link_copied": "链接将自动复制到剪贴板",
+    "link_expires": "邀请将在 48 小时后过期",
+    "link_generated": "邀请链接已生成",
+    "link_generated_description": "请将该链接发送给受邀用户，也可以使用下面的按钮复制。",
+    "link_user_join": "邀请的用户可以通过点击链接加入工作空间",
+    "role_label": "角色",
+    "select_role_placeholder": "选择角色",
+    "title": "邀请工作空间成员"
+  },
+  "role": {
+    "admin": "管理员",
+    "member": "成员",
+    "owner": "所有者"
+  },
+  "status": {
+    "active": "活跃",
+    "disabled": "禁用"
+  },
+  "type": {
+    "service_account": "服务账号",
+    "user": "用户"
+  },
+  "table": {
+    "joined": "加入时间",
+    "name": "姓名",
+    "role": "角色",
+    "status": "状态"
+  },
+  "title": "成员",
+  "toast": {
+    "deleted_success": "成员删除成功",
+    "disabled_success": "成员已禁用",
+    "enabled_success": "成员已启用"
+  }
+}

@@ -1,12 +1,16 @@
-import { BaseEntity, Cascade, type Opt, t } from "@mikro-orm/core";
+import { BaseEntity, Cascade, type Opt, type Ref, t } from "@mikro-orm/core";
 import {
   Entity,
+  Index,
   ManyToOne,
   PrimaryKey,
   Property,
   Unique,
 } from "@mikro-orm/decorators/legacy";
 import { randomUUID } from "crypto";
+
+import { resolveAuthRelationTarget } from "./resolve-auth-relation-target.js";
+import { BaseUser } from "./user.entity.js";
 
 /**
  * Abstract base entity for user session records.
@@ -27,8 +31,9 @@ export class BaseSession extends BaseEntity {
   token!: string;
 
   /** Foreign key referencing the owning `BaseUser`. */
+  @Index()
   @ManyToOne({
-    entity: () => "User" as any,
+    entity: () => resolveAuthRelationTarget(BaseUser, "User") as any,
     fieldName: "user_id",
     mapToPk: true,
     cascade: [Cascade.REMOVE],
@@ -46,6 +51,15 @@ export class BaseSession extends BaseEntity {
   /** User-Agent header from the client that created or last used this session. */
   @Property({ type: t.text, nullable: true })
   userAgent?: Opt<string>;
+
+  /** Administrator that created this impersonation session. */
+  @ManyToOne({
+    entity: () => resolveAuthRelationTarget(BaseUser, "User") as any,
+    fieldName: "impersonated_by_id",
+    nullable: true,
+    deleteRule: "set null",
+  })
+  impersonatedBy?: Ref<BaseUser> | null;
 
   /** Timestamp when the session was created. */
   @Property({ type: t.datetime, defaultRaw: "now()" })

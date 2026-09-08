@@ -46,7 +46,7 @@
     "@nest-boot/tsconfig": "workspace:^",
     "@nestjs/common": "^12.0.1",
     "@nestjs/core": "^12.0.1",
-    "@types/node": "^26.0.0",
+    "@types/node": "^24.0.0",
     "@types/validator": "^13.15.3",
     "@vitest/coverage-v8": "^4.1.11",
     "class-transformer": "^0.5.1",
@@ -78,7 +78,7 @@
   },
   "type": "module",
   "engines": {
-    "node": ">=26.0.0"
+    "node": ">=24.4.0"
   },
   "exports": {
     ".": {

@@ -1,0 +1,105 @@
+import type { Mailer } from "@nest-boot/mailer";
+
+import { createUserConfig } from "./create-user-config.js";
+
+describe("createUserConfig", () => {
+  it("adds a mailer-backed current-email confirmation sender", async () => {
+    const sendMail = vi.fn().mockResolvedValue(undefined);
+    const config = createUserConfig({ sendMail } as unknown as Mailer, {
+      changeEmail: {
+        enabled: true,
+      },
+    });
+
+    await config?.changeEmail?.sendChangeEmailConfirmation?.(
+      {
+        newEmail: "next@example.com",
+        token: "confirmation-token",
+        url: "https://app.example.com/confirm-email-change",
+        user: {
+          createdAt: new Date(),
+          email: "current@example.com",
+          emailVerified: true,
+          id: "user-1",
+          image: null,
+          name: "User",
+          updatedAt: new Date(),
+        },
+      },
+      undefined,
+    );
+
+    expect(sendMail).toHaveBeenCalledWith({
+      subject: "Confirm your email change",
+      text: [
+        "Confirm changing your email address to next@example.com:",
+        "https://app.example.com/confirm-email-change",
+      ].join("\n\n"),
+      to: "current@example.com",
+    });
+  });
+
+  it("preserves a custom current-email confirmation sender", () => {
+    const customSender = vi.fn();
+    const config = createUserConfig({} as Mailer, {
+      changeEmail: {
+        enabled: true,
+        sendChangeEmailConfirmation: customSender,
+      },
+    });
+
+    expect(config?.changeEmail?.sendChangeEmailConfirmation).toBe(customSender);
+  });
+
+  it("runs the Better Auth before-delete callback inside coordinated deletion", async () => {
+    const beforeDelete = vi.fn();
+    const deleteUser = vi.fn(
+      async (_userId: string, callback?: () => Promise<void>) => {
+        await callback?.();
+      },
+    );
+    const config = createUserConfig(
+      {} as Mailer,
+      {
+        deleteUser: {
+          beforeDelete,
+          enabled: true,
+        },
+      },
+      deleteUser,
+    );
+    const user = {
+      createdAt: new Date(),
+      email: "user@example.com",
+      emailVerified: true,
+      id: "user-1",
+      image: null,
+      name: "User",
+      updatedAt: new Date(),
+    };
+    const request = new Request("https://app.example.com/delete-user");
+
+    await config?.deleteUser?.beforeDelete?.(user, request);
+
+    expect(deleteUser).toHaveBeenCalledWith("user-1", expect.any(Function));
+    expect(beforeDelete).toHaveBeenCalledWith(user, request);
+  });
+
+  it("does not enable change-email implicitly", () => {
+    expect(createUserConfig({} as Mailer, undefined)).toBeUndefined();
+    expect(createUserConfig({} as Mailer, {})).toBeUndefined();
+  });
+
+  it("does not pass Nest Boot authorization options to Better Auth", () => {
+    const buildAbility = vi.fn();
+    const config = createUserConfig({} as Mailer, {
+      adminRoles: ["admin"],
+      buildAbility,
+      defaultRole: "user",
+      permissions: ["User:list"],
+      roles: { admin: ["User:list"] },
+    });
+
+    expect(config).toBeUndefined();
+  });
+});

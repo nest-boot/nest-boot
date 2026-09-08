@@ -1,0 +1,392 @@
+import { EntityManager } from "@mikro-orm/core";
+import { REQUEST, RequestContext, RESPONSE } from "@nest-boot/request-context";
+import {
+  RowLevelSecurity,
+  RowLevelSecurityMode,
+} from "@nest-boot/row-level-security";
+import { Test } from "@nestjs/testing";
+
+import { AUTH_TOKEN } from "./auth.constants.js";
+import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
+import type { AuthModuleOptions } from "./auth-module-options.interface.js";
+import { BaseSession, BaseUser } from "./entities/index.js";
+import { SessionService } from "./session.service.js";
+
+const requestHeaders = vi.hoisted(
+  () => new Headers({ cookie: "session=value" }),
+);
+
+vi.mock("@nest-boot/request-context", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@nest-boot/request-context")>()),
+  headers: () => requestHeaders,
+}));
+
+class TestSession extends BaseSession {}
+class TestUser extends BaseUser {}
+
+function createApi() {
+  return {
+    getSession: vi.fn(),
+    listSessions: vi.fn(),
+    revokeOtherSessions: vi.fn(),
+    revokeSession: vi.fn(),
+    revokeSessions: vi.fn(),
+  };
+}
+
+const authContext = {
+  authCookies: {
+    accountData: {
+      name: "better-auth.account_data",
+      attributes: { httpOnly: true, path: "/", sameSite: "lax" as const },
+    },
+    dontRememberToken: {
+      name: "better-auth.dont_remember",
+      attributes: { httpOnly: true, path: "/", sameSite: "lax" as const },
+    },
+    sessionData: {
+      name: "better-auth.session_data",
+      attributes: { httpOnly: true, path: "/", sameSite: "lax" as const },
+    },
+    sessionToken: {
+      name: "better-auth.session_token",
+      attributes: {
+        httpOnly: true,
+        maxAge: 604800,
+        path: "/",
+        sameSite: "lax" as const,
+      },
+    },
+  },
+  secret: "R4vWrEDXeeor7VzGzQsdbQobOFtv2nRrlhOVTGpOteA",
+};
+
+async function createService(
+  api = createApi(),
+  em: { find: ReturnType<typeof vi.fn>; findOne: ReturnType<typeof vi.fn> } = {
+    find: vi.fn(),
+    findOne: vi.fn(),
+  },
+) {
+  const options = {
+    entities: {
+      session: TestSession,
+      user: TestUser,
+    },
+  } as unknown as AuthModuleOptions;
+  const moduleRef = await Test.createTestingModule({
+    providers: [
+      SessionService,
+      {
+        provide: AUTH_TOKEN,
+        useValue: { $context: Promise.resolve(authContext), api },
+      },
+      {
+        provide: EntityManager,
+        useValue: em,
+      },
+      {
+        provide: MODULE_OPTIONS_TOKEN,
+        useValue: options,
+      },
+    ],
+  }).compile();
+
+  return {
+    api,
+    em,
+    service: moduleRef.get(SessionService),
+  };
+}
+
+describe("SessionService", () => {
+  beforeEach(() => {
+    requestHeaders.delete("authorization");
+    requestHeaders.set("cookie", "session=value");
+  });
+
+  it("resolves configured application user and session entities", async () => {
+    const api = createApi();
+    const user = Object.assign(new TestUser(), { id: "user-1" });
+    const session = Object.assign(new TestSession(), {
+      token: "session-token",
+    });
+    api.getSession.mockResolvedValue({
+      session: { token: session.token },
+      user: { id: user.id },
+    });
+    const em = {
+      find: vi.fn(),
+      findOne: vi
+        .fn()
+        .mockResolvedValueOnce(user)
+        .mockResolvedValueOnce(session),
+    };
+    const { service } = await createService(api, em);
+
+    await expect(service.getSession()).resolves.toEqual({
+      session,
+      user,
+    });
+    expect(api.getSession).toHaveBeenCalledWith({ headers: requestHeaders });
+    expect(em.findOne).toHaveBeenNthCalledWith(1, TestUser, { id: "user-1" });
+    expect(em.findOne).toHaveBeenNthCalledWith(2, TestSession, {
+      token: "session-token",
+    });
+    expect("api" in service).toBe(false);
+  });
+
+  it("returns null when the backend does not resolve a session", async () => {
+    const api = createApi();
+    api.getSession.mockResolvedValue(null);
+    const { em, service } = await createService(api);
+
+    await expect(service.getSession()).resolves.toBeNull();
+    expect(em.findOne).not.toHaveBeenCalled();
+  });
+
+  it("sets a session-scoped signed cookie and expires cached auth data", async () => {
+    const { service } = await createService();
+    const appendHeader = vi.fn();
+    const context = new RequestContext({ type: "http" });
+    context.set(REQUEST, { headers: {} });
+    context.set(RESPONSE, { appendHeader });
+
+    await RequestContext.run(context, () =>
+      service.setSession("session-token"),
+    );
+
+    expect(appendHeader).toHaveBeenCalledTimes(4);
+    expect(appendHeader).toHaveBeenCalledWith("Set-Cookie", expect.any(String));
+    const cookies = appendHeader.mock.calls.map(([, value]) => value as string);
+
+    expect(cookies).toHaveLength(4);
+    expect(cookies[0]).toMatch(
+      /^better-auth\.session_token=session-token\.[^;]+; Path=\/; HttpOnly; SameSite=Lax$/,
+    );
+    expect(cookies[0]).not.toContain("Max-Age");
+    expect(cookies[1]).toMatch(
+      /^better-auth\.dont_remember=true\.[^;]+; Path=\/; HttpOnly; SameSite=Lax$/,
+    );
+    expect(cookies[2]).toContain("better-auth.session_data=; Max-Age=0");
+    expect(cookies[3]).toContain("better-auth.account_data=; Max-Age=0");
+  });
+
+  it("expires every numbered cache-cookie chunk from the request", async () => {
+    const { service } = await createService();
+    const appendHeader = vi.fn();
+    const context = new RequestContext({ type: "http" });
+    context.set(REQUEST, {
+      headers: {
+        cookie: [
+          "better-auth.session_data.0=first",
+          "better-auth.session_data.1=second",
+          "better-auth.session_data.01=invalid",
+          "better-auth.account_data.0=account",
+          "better-auth.account_data.other=invalid",
+        ].join("; "),
+      },
+    });
+    context.set(RESPONSE, { appendHeader });
+
+    await RequestContext.run(context, () =>
+      service.setSession("session-token"),
+    );
+
+    const responseCookies = appendHeader.mock.calls.map(
+      ([, value]) => value as string,
+    );
+    expect(responseCookies).toHaveLength(7);
+    expect(responseCookies).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("better-auth.session_data=; Max-Age=0"),
+        expect.stringContaining("better-auth.session_data.0=; Max-Age=0"),
+        expect.stringContaining("better-auth.session_data.1=; Max-Age=0"),
+        expect.stringContaining("better-auth.account_data=; Max-Age=0"),
+        expect.stringContaining("better-auth.account_data.0=; Max-Age=0"),
+      ]),
+    );
+    expect(responseCookies).not.toContainEqual(
+      expect.stringContaining("better-auth.session_data.01="),
+    );
+    expect(responseCookies).not.toContainEqual(
+      expect.stringContaining("better-auth.account_data.other="),
+    );
+  });
+
+  it("tries the cookie session before an Authorization credential", async () => {
+    requestHeaders.set("authorization", "Bearer api-key");
+    const api = createApi();
+    const user = Object.assign(new TestUser(), { id: "user-1" });
+    const session = Object.assign(new TestSession(), {
+      token: "session-token",
+    });
+    api.getSession.mockResolvedValueOnce(null).mockResolvedValueOnce({
+      session: { token: session.token },
+      user: { id: user.id },
+    });
+    const em = {
+      find: vi.fn(),
+      findOne: vi
+        .fn()
+        .mockResolvedValueOnce(user)
+        .mockResolvedValueOnce(session),
+    };
+    const { service } = await createService(api, em);
+
+    await expect(service.getSession()).resolves.toEqual({ session, user });
+
+    const cookieOnlyHeaders = api.getSession.mock.calls[0][0]
+      .headers as Headers;
+    expect(cookieOnlyHeaders.get("cookie")).toBe("session=value");
+    expect(cookieOnlyHeaders.has("authorization")).toBe(false);
+    expect(api.getSession.mock.calls[1][0]).toEqual({
+      headers: requestHeaders,
+    });
+  });
+
+  it("returns null when a persisted application entity no longer exists", async () => {
+    const api = createApi();
+    api.getSession.mockResolvedValue({
+      session: { token: "session-token" },
+      user: { id: "user-1" },
+    });
+    const em = {
+      find: vi.fn(),
+      findOne: vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce({
+        token: "session-token",
+      }),
+    };
+    const { service } = await createService(api, em);
+
+    await expect(service.getSession()).resolves.toBeNull();
+  });
+
+  it("rejects sessions belonging to an actively banned user", async () => {
+    const api = createApi();
+    api.getSession.mockResolvedValue({
+      session: { token: "session-token" },
+      user: { id: "user-1" },
+    });
+    const user = Object.assign(new TestUser(), {
+      banned: true,
+      banExpiresAt: null,
+      id: "user-1",
+    });
+    const session = Object.assign(new TestSession(), {
+      token: "session-token",
+    });
+    const em = {
+      find: vi.fn(),
+      findOne: vi
+        .fn()
+        .mockResolvedValueOnce(user)
+        .mockResolvedValueOnce(session),
+    };
+    const { service } = await createService(api, em);
+
+    await expect(service.getSession()).resolves.toBeNull();
+  });
+
+  it("lists active persisted sessions in backend order", async () => {
+    const api = createApi();
+    api.listSessions.mockResolvedValue([
+      { token: "session-2" },
+      { token: "missing" },
+      { token: "session-1" },
+    ]);
+    const session1 = Object.assign(new TestSession(), { token: "session-1" });
+    const session2 = Object.assign(new TestSession(), { token: "session-2" });
+    const em = {
+      find: vi.fn().mockResolvedValue([session1, session2]),
+      findOne: vi.fn(),
+    };
+    const { service } = await createService(api, em);
+
+    await expect(service.listSessions()).resolves.toEqual([session2, session1]);
+    expect(em.find).toHaveBeenCalledWith(TestSession, {
+      token: { $in: ["session-2", "missing", "session-1"] },
+    });
+  });
+
+  it("resolves session entities outside the application RLS role", async () => {
+    const api = createApi();
+    api.listSessions.mockResolvedValue([{ token: "session-1" }]);
+    const session = Object.assign(new TestSession(), { token: "session-1" });
+    const em = {
+      find: vi.fn(() => {
+        expect(RowLevelSecurity.getMode()).toBe(RowLevelSecurityMode.DISABLED);
+        return Promise.resolve([session]);
+      }),
+      findOne: vi.fn(),
+    };
+    const { service } = await createService(api, em);
+
+    await RequestContext.run(
+      new RequestContext({ type: "request" }),
+      async () => {
+        RowLevelSecurity.setRole("authenticated");
+        await expect(service.listSessions()).resolves.toEqual([session]);
+        expect(RowLevelSecurity.getMode()).toBe(RowLevelSecurityMode.AUTO);
+        expect(RowLevelSecurity.getRole()).toBe("authenticated");
+      },
+    );
+  });
+
+  it("does not query persistence for an empty session list", async () => {
+    const api = createApi();
+    api.listSessions.mockResolvedValue([]);
+    const { em, service } = await createService(api);
+
+    await expect(service.listSessions()).resolves.toEqual([]);
+    expect(em.find).not.toHaveBeenCalled();
+  });
+
+  it("revokes one session by public ID without exposing its token", async () => {
+    const api = createApi();
+    api.revokeSession.mockResolvedValue({ status: true });
+    const { service } = await createService(api);
+    const session = Object.assign(new TestSession(), {
+      id: "session-1",
+      token: "secret-session-token",
+    });
+    vi.spyOn(service, "listSessions").mockResolvedValue([session]);
+
+    await expect(service.revokeSession("session-1")).resolves.toBe(true);
+    expect(api.revokeSession).toHaveBeenCalledWith({
+      body: { token: "secret-session-token" },
+      headers: requestHeaders,
+    });
+  });
+
+  it("does not revoke a session ID outside the authenticated user's sessions", async () => {
+    const api = createApi();
+    const { service } = await createService(api);
+    vi.spyOn(service, "listSessions").mockResolvedValue([]);
+
+    await expect(service.revokeSession("session-1")).resolves.toBe(false);
+    expect(api.revokeSession).not.toHaveBeenCalled();
+  });
+
+  it("revokes every other session", async () => {
+    const api = createApi();
+    api.revokeOtherSessions.mockResolvedValue({ status: true });
+    const { service } = await createService(api);
+
+    await expect(service.revokeOtherSessions()).resolves.toBe(true);
+    expect(api.revokeOtherSessions).toHaveBeenCalledWith({
+      headers: requestHeaders,
+    });
+  });
+
+  it("revokes every session", async () => {
+    const api = createApi();
+    api.revokeSessions.mockResolvedValue({ status: true });
+    const { service } = await createService(api);
+
+    await expect(service.revokeSessions()).resolves.toBe(true);
+    expect(api.revokeSessions).toHaveBeenCalledWith({
+      headers: requestHeaders,
+    });
+  });
+});
