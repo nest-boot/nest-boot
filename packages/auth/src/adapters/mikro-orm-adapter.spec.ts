@@ -29,9 +29,13 @@ import {
 
 import {
   BaseAccount,
+  BaseApiKey,
   BaseSession,
   BaseUser,
   BaseVerification,
+  BaseWorkspace,
+  BaseWorkspaceInvitation,
+  BaseWorkspaceMember,
 } from "../entities/index.js";
 import {
   convertWhereToMikroOrm,
@@ -310,32 +314,13 @@ describe("convertWhereToMikroOrm", () => {
 });
 
 class TestAccount extends BaseAccount {}
-class TestApiKey {
-  id!: string;
-  name!: string;
-  start!: string;
-  prefix!: string;
-  key!: string;
-  enabled!: boolean;
-  permissions!: string[];
-  updatedAt!: Date;
-  workspace!: never;
-}
+class TestApiKey extends BaseApiKey {}
 class TestSession extends BaseSession {}
 class TestUser extends BaseUser {}
 class TestVerification extends BaseVerification {}
-class TestWorkspace {
-  id!: string;
-  name!: string;
-}
-class TestWorkspaceMember {
-  id!: string;
-  name!: string;
-  role!: "ADMIN" | "MEMBER" | "OWNER";
-  status!: "ACTIVE" | "DISABLED";
-  workspace!: never;
-}
-class TestWorkspaceInvitation {}
+class TestWorkspace extends BaseWorkspace {}
+class TestWorkspaceMember extends BaseWorkspaceMember {}
+class TestWorkspaceInvitation extends BaseWorkspaceInvitation {}
 
 const entities = {
   account: TestAccount,

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { createHash } from "node:crypto";
 
-import { EntityManager } from "@mikro-orm/core";
+import { EntityManager, ref } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import {
   RowLevelSecurity,
@@ -40,7 +40,7 @@ class TestWorkspaceMember extends BaseWorkspaceMember {
   override id = "member-1";
   override name = "Alice";
   override roles = ["owner"];
-  override status = "ACTIVE" as const;
+  override status: BaseWorkspaceMember["status"] = "ACTIVE";
   override permissions: string[] = [];
   override workspace = {
     id: "workspace-1",
@@ -58,7 +58,7 @@ class TestApiKey extends BaseApiKey {
   override updatedAt = new Date();
   override lastUsedAt: Date | null = null;
   override expiresAt: Date | null = null;
-  override owner = new TestWorkspace() as BaseApiKey["owner"];
+  override owner: BaseApiKey["owner"] = ref(TestWorkspace, new TestWorkspace());
 }
 
 describe("ApiKeyService", () => {
@@ -356,7 +356,7 @@ describe("ApiKeyService", () => {
 
     const user = new TestUser();
     const userKey = Object.assign(new TestApiKey(), {
-      owner: user as BaseApiKey["owner"],
+      owner: ref(TestUser, user),
     });
     em.findOne.mockResolvedValue(userKey);
     await expect(
@@ -387,7 +387,7 @@ describe("ApiKeyService", () => {
 
     const user = new TestUser();
     const userKey = Object.assign(new TestApiKey(), {
-      owner: user as BaseApiKey["owner"],
+      owner: ref(TestUser, user),
     });
     em.findOne.mockResolvedValue(userKey);
     await expect(
@@ -423,11 +423,11 @@ describe("ApiKeyService", () => {
     const { em, service } = createService();
     const user = Object.assign(new TestUser(), { roles: ["admin"] });
     const targetKey = Object.assign(new TestApiKey(), {
-      owner: user as unknown as BaseApiKey["owner"],
+      owner: ref(TestUser, user),
     });
     em.findOne.mockResolvedValue(targetKey);
     const authenticatingKey = Object.assign(new TestApiKey(), {
-      owner: user as unknown as BaseApiKey["owner"],
+      owner: ref(TestUser, user),
       permissions: ["User:get"],
     });
 
@@ -473,7 +473,7 @@ describe("ApiKeyService", () => {
     const targetKey = new TestApiKey();
     em.findOne.mockResolvedValue(targetKey);
     const authenticatingKey = Object.assign(new TestApiKey(), {
-      owner: new TestUser() as unknown as BaseApiKey["owner"],
+      owner: ref(TestUser, new TestUser()),
       permissions: ["Workspace:update"],
     });
 
@@ -750,9 +750,8 @@ describe("ApiKeyService", () => {
   it("rejects inactive members and past expiration timestamps", async () => {
     const { em, service } = createService();
     const workspace = new TestWorkspace();
-    const member = Object.assign(new TestWorkspaceMember(), {
-      status: "DISABLED" as const,
-    });
+    const member = new TestWorkspaceMember();
+    member.status = "DISABLED";
     RequestContext.set(BaseWorkspaceMember, member);
 
     await expect(
@@ -863,9 +862,12 @@ describe("ApiKeyService", () => {
   it("does not let owners access keys from another workspace", async () => {
     const { em, service } = createService();
     const apiKey = new TestApiKey();
-    apiKey.owner = Object.assign(new TestWorkspace(), {
-      id: "workspace-2",
-    }) as BaseApiKey["owner"];
+    apiKey.owner = ref(
+      TestWorkspace,
+      Object.assign(new TestWorkspace(), {
+        id: "workspace-2",
+      }),
+    );
     em.findOne.mockResolvedValue(apiKey);
     RequestContext.set(BaseWorkspaceMember, new TestWorkspaceMember());
 
@@ -938,9 +940,12 @@ describe("ApiKeyService", () => {
   it("rejects keys for deleted workspaces", async () => {
     const { em, service } = createService();
     const apiKey = new TestApiKey();
-    apiKey.owner = Object.assign(new TestWorkspace(), {
-      deletedAt: new Date(),
-    }) as BaseApiKey["owner"];
+    apiKey.owner = ref(
+      TestWorkspace,
+      Object.assign(new TestWorkspace(), {
+        deletedAt: new Date(),
+      }),
+    );
     em.findOne.mockResolvedValueOnce(apiKey);
     await expect(
       service.validate("sk-deleted-workspace-key"),
@@ -954,7 +959,7 @@ describe("ApiKeyService", () => {
       banExpiresAt: null,
     });
     const apiKey = Object.assign(new TestApiKey(), {
-      owner: user as BaseApiKey["owner"],
+      owner: ref(TestUser, user),
     });
     em.findOne.mockResolvedValueOnce(apiKey);
 

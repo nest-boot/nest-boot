@@ -1,4 +1,5 @@
 import { subject as caslSubject } from "@casl/ability";
+import { ref } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException } from "@nestjs/common";
 
@@ -7,10 +8,13 @@ import { WorkspaceAbility } from "./abilities/workspace.ability.js";
 import { AccessControlService } from "./access-control.service.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
 import {
+  BaseAccount,
   BaseApiKey,
   BaseSession,
   BaseUser,
+  BaseVerification,
   BaseWorkspace,
+  BaseWorkspaceInvitation,
   BaseWorkspaceMember,
 } from "./entities/index.js";
 
@@ -22,12 +26,18 @@ class TestWorkspaceMember extends BaseWorkspaceMember {}
 class Subject {}
 
 describe("AccessControlService", () => {
-  const options = {
+  const options: AuthModuleOptions = {
     entities: {
+      account: BaseAccount,
+      apiKey: TestApiKey,
+      session: TestSession,
       user: TestUser,
+      verification: BaseVerification,
       workspace: TestWorkspace,
+      workspaceMember: TestWorkspaceMember,
+      workspaceInvitation: BaseWorkspaceInvitation,
     },
-  } as AuthModuleOptions;
+  };
   const service = new AccessControlService(options);
 
   it("fails closed when no request identity is available", async () => {
@@ -75,7 +85,7 @@ describe("AccessControlService", () => {
   it("intersects user API-key permissions with the user ability", async () => {
     const user = new TestUser();
     const apiKey = Object.assign(new TestApiKey(), {
-      owner: user as BaseApiKey["owner"],
+      owner: ref(TestUser, user),
       permissions: ["Subject:read"],
     });
 
@@ -96,7 +106,7 @@ describe("AccessControlService", () => {
   it("allows workspace keys only through their explicit permissions", async () => {
     const workspace = new TestWorkspace();
     const apiKey = Object.assign(new TestApiKey(), {
-      owner: workspace as BaseApiKey["owner"],
+      owner: ref(TestWorkspace, workspace),
       permissions: ["Subject:read"],
     });
 
@@ -117,7 +127,7 @@ describe("AccessControlService", () => {
   it("uses the forced CASL subject type for service-level API-key checks", async () => {
     const workspace = new TestWorkspace();
     const apiKey = Object.assign(new TestApiKey(), {
-      owner: workspace as BaseApiKey["owner"],
+      owner: ref(TestWorkspace, workspace),
       permissions: ["Post:read"],
     });
     const post = caslSubject("Post", { id: "post-1" });
@@ -138,7 +148,7 @@ describe("AccessControlService", () => {
   it("uses the workspace ability built from API-key permissions", async () => {
     const workspace = new TestWorkspace();
     const apiKey = Object.assign(new TestApiKey(), {
-      owner: workspace as BaseApiKey["owner"],
+      owner: ref(TestWorkspace, workspace),
       permissions: ["Subject:read"],
     });
 
@@ -289,7 +299,7 @@ describe("AccessControlService", () => {
       roles: ["member"],
     });
     const userApiKey = Object.assign(new TestApiKey(), {
-      owner: user as BaseApiKey["owner"],
+      owner: ref(TestUser, user),
       permissions: ["Post:read"],
     });
 
@@ -315,7 +325,7 @@ describe("AccessControlService", () => {
   it("uses a workspace API key's permissions as its grant ceiling", async () => {
     const workspace = new TestWorkspace();
     const apiKey = Object.assign(new TestApiKey(), {
-      owner: workspace as BaseApiKey["owner"],
+      owner: ref(TestWorkspace, workspace),
       permissions: ["Post:read"],
     });
 

@@ -56,7 +56,10 @@ describe("Can", () => {
   });
 
   it("delegates subject validation to the scoped decorator", () => {
-    expect(() => Can("read")).toThrow("Permission subject is required.");
+    expect(() => {
+      // @ts-expect-error Deliberately omit the required subject to test runtime validation.
+      return Can("read");
+    }).toThrow("Permission subject is required.");
   });
 });
 

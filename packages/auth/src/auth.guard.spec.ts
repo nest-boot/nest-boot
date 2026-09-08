@@ -1,13 +1,12 @@
 import { RequestContext } from "@nest-boot/request-context";
 import {
-  type CanActivate,
   type ExecutionContext,
   type Type,
   UnauthorizedException,
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
-import { of } from "rxjs";
+import { firstValueFrom, of } from "rxjs";
 import type { Mock } from "vitest";
 
 import { IS_PUBLIC_KEY } from "./auth.constants.js";
@@ -18,18 +17,14 @@ import { BaseSession, BaseUser } from "./entities/index.js";
 import { USER_CAN_METADATA } from "./permission.constants.js";
 
 class PromiseAuthGuard extends AuthGuard {
-  override canActivate(
-    _context: ExecutionContext,
-  ): ReturnType<CanActivate["canActivate"]> {
+  override canActivate(_context: ExecutionContext): Promise<boolean> {
     return Promise.resolve(true);
   }
 }
 
-class ObservableAuthGuard extends AuthGuard {
-  override canActivate(
-    _context: ExecutionContext,
-  ): ReturnType<CanActivate["canActivate"]> {
-    return of(true);
+class ObservableDelegateAuthGuard extends AuthGuard {
+  override canActivate(_context: ExecutionContext): Promise<boolean> {
+    return firstValueFrom(of(true));
   }
 }
 
@@ -44,9 +39,15 @@ describe("AuthGuard", () => {
     vi.restoreAllMocks();
   });
 
-  it("allows subclasses to return the full CanActivate result type", () => {
-    expect(PromiseAuthGuard).toBeDefined();
-    expect(ObservableAuthGuard).toBeDefined();
+  it("allows promise-returning subclasses and adapted observable results", async () => {
+    const promise = await createGuard(PromiseAuthGuard, vi.fn());
+    const observable = await createGuard(ObservableDelegateAuthGuard, vi.fn());
+    await expect(promise.guard.canActivate(createContext())).resolves.toBe(
+      true,
+    );
+    await expect(observable.guard.canActivate(createContext())).resolves.toBe(
+      true,
+    );
   });
 
   it("allows subclasses to reuse the public route metadata lookup", async () => {

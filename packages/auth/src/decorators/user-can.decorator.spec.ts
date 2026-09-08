@@ -32,6 +32,9 @@ describe("UserCan", () => {
   });
 
   it("requires a subject", () => {
-    expect(() => UserCan("read")).toThrow("Permission subject is required.");
+    expect(() => {
+      // @ts-expect-error Deliberately omit the required subject to test runtime validation.
+      return UserCan("read");
+    }).toThrow("Permission subject is required.");
   });
 });

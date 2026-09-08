@@ -32,7 +32,7 @@ class TestWorkspaceMember extends BaseWorkspaceMember {
   override id = "member-1";
   override name = "Alice";
   override email: string | null = null;
-  override role = "MEMBER" as const;
+  override roles = ["member"];
   override status = "ACTIVE" as const;
   override workspace = {
     id: "workspace-1",

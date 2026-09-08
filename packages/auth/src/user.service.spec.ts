@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-import { EntityManager } from "@mikro-orm/core";
+import { EntityManager, ref } from "@mikro-orm/core";
 import { HashService } from "@nest-boot/hash";
 import {
   BadRequestException,
@@ -126,7 +126,13 @@ describe("UserService", () => {
     const { em, hash, service } = createService();
     hash.mockResolvedValue("hashed-password");
     em.create.mockImplementation((Entity, input) => {
-      const entity = Object.assign(new Entity(), input);
+      if (Entity !== TestUser && Entity !== TestAccount) {
+        throw new Error("Unexpected entity in credential user creation");
+      }
+      const entity = Object.assign(
+        Entity === TestUser ? new TestUser() : new TestAccount(),
+        input,
+      );
       if (Entity === TestUser) Reflect.deleteProperty(entity, "id");
       return entity;
     });
@@ -525,7 +531,7 @@ describe("UserService", () => {
       Object.assign(new TestUser(), { id: "issuer-1", roles: ["admin"] }),
       user,
     );
-    impersonation.session.impersonatedBy = administrator;
+    impersonation.session.impersonatedBy = ref(TestUser, administrator);
     em.findOne.mockResolvedValue(administrator);
 
     await expect(
@@ -550,12 +556,11 @@ describe("UserService", () => {
       service.impersonateUser(administrator, bannedUser),
     ).rejects.toThrow("Banned users cannot be impersonated");
 
-    const session = Object.assign(new TestSession(), {
-      impersonatedBy: null,
-    });
+    const session = new TestSession();
+    session.impersonatedBy = null;
     await expect(service.stopImpersonating(session)).resolves.toBeNull();
 
-    session.impersonatedBy = administrator;
+    session.impersonatedBy = ref(TestUser, administrator);
     em.findOne.mockResolvedValue(null);
     await expect(service.stopImpersonating(session)).resolves.toBeNull();
   });

@@ -83,6 +83,9 @@ jobs:
       - name: Build examples
         run: pnpm build:examples --skip-nx-cache
 
+      - name: Typecheck Auth source and tests
+        run: pnpm --filter @nest-boot/auth typecheck
+
       - name: Format
         run: pnpm format:check
 
