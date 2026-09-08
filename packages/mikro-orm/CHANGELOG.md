@@ -1,3 +1,23 @@
+## 8.0.3-beta.0 (2026-09-08)
+
+### 🚀 Features
+
+- ⚠️  **auth:** rebuild authentication and authorization ([#316](https://github.com/nest-boot/nest-boot/pull/316))
+- ⚠️  **mikro-orm:** replace MySQL and SQLite with PGlite ([#326](https://github.com/nest-boot/nest-boot/pull/326))
+
+### 🩹 Fixes
+
+- **release:** keep beta releases on the v8 line ([#328](https://github.com/nest-boot/nest-boot/pull/328))
+
+### ⚠️  Breaking Changes
+
+- **auth:** rebuild authentication and authorization  ([#316](https://github.com/nest-boot/nest-boot/pull/316))
+- **mikro-orm:** replace MySQL and SQLite with PGlite  ([#326](https://github.com/nest-boot/nest-boot/pull/326))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 9.0.0-beta.1 (2026-09-08)
 
 ### 🚀 Features

@@ -1,3 +1,25 @@
+## 8.0.3-beta.0 (2026-09-08)
+
+### 🚀 Features
+
+- ⚠️  **auth:** rebuild authentication and authorization ([#316](https://github.com/nest-boot/nest-boot/pull/316))
+
+### 🩹 Fixes
+
+- **release:** keep beta releases on the v8 line ([#328](https://github.com/nest-boot/nest-boot/pull/328))
+
+### ⚠️  Breaking Changes
+
+- **auth:** rebuild authentication and authorization  ([#316](https://github.com/nest-boot/nest-boot/pull/316))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/row-level-security to 8.0.5-beta.0
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 9.0.0-beta.0 (2026-09-08)
 
 ### 🚀 Features

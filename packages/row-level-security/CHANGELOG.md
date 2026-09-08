@@ -1,3 +1,9 @@
+## 8.0.5-beta.0 (2026-09-08)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/mikro-orm to 8.0.3-beta.0
+
 ## 8.0.4-beta.0 (2026-09-08)
 
 ### 🚀 Features
