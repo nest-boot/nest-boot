@@ -573,10 +573,11 @@ describe("WorkspaceService", () => {
   });
 
   it("checks role grants against the issuer permission ceiling", async () => {
-    const { accessControlService, service } = createService();
+    const { accessControlService, em, service } = createService();
     const member = Object.assign(new TestWorkspaceMember(), {
       roles: ["member"],
     });
+    em.findOne.mockResolvedValue(member);
 
     await service.updateMemberRole(member, ["admin"]);
 
@@ -588,7 +589,7 @@ describe("WorkspaceService", () => {
   });
 
   it("lists configured roles and updates member roles", async () => {
-    const { service } = createService({
+    const { em, service } = createService({
       permissions: [
         "Workspace:update",
         "WorkspaceMember:update",
@@ -605,6 +606,7 @@ describe("WorkspaceService", () => {
       permissions: ["WorkspaceInvitation:create"],
       roles: ["member"],
     });
+    em.findOne.mockResolvedValue(member);
 
     expect(service.listRoles()).toEqual([
       {
@@ -636,6 +638,35 @@ describe("WorkspaceService", () => {
     await expect(
       service.updateMemberRole(member, ["owner"]),
     ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it("rechecks ownership under a row lock before changing member roles", async () => {
+    const { em, service } = createService();
+    const workspace = new TestWorkspace();
+    const staleMember = Object.assign(new TestWorkspaceMember(), {
+      roles: ["member"],
+      workspace,
+    });
+    const promotedMember = Object.assign(new TestWorkspaceMember(), {
+      id: staleMember.id,
+      roles: ["owner"],
+      workspace,
+    });
+    em.findOne.mockResolvedValue(promotedMember);
+
+    await expect(
+      service.updateMemberRole(staleMember, ["admin"]),
+    ).rejects.toThrow(
+      "Workspace owner roles can only be changed by transferring ownership",
+    );
+
+    expect(em.findOne).toHaveBeenCalledWith(
+      TestWorkspaceMember,
+      { id: staleMember.id, workspace },
+      { filters: false, lockMode: LockMode.PESSIMISTIC_WRITE },
+    );
+    expect(promotedMember.roles).toEqual(["owner"]);
+    expect(em.flush).not.toHaveBeenCalled();
   });
 
   it("finds members by workspace and identifier", async () => {

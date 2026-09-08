@@ -57,6 +57,16 @@ import {
 
 const CREDENTIAL_ISSUER = "local:credential";
 const CREDENTIAL_PROVIDER_ID = "credential";
+const AUTH_OWNED_USER_FIELDS = new Set([
+  "banExpiresAt",
+  "banned",
+  "banReason",
+  "createdAt",
+  "id",
+  "permissions",
+  "roles",
+  "updatedAt",
+]);
 
 /** User management implemented with the configured MikroORM entities. */
 @Injectable()
@@ -149,23 +159,11 @@ export class UserService<
   /** Updates mutable user fields. */
   async updateUser(user: User, input: UpdateUserOptions): Promise<User> {
     this.accessControlService.assertUserCan("update", user);
+    const data = this.createUserUpdateData(input);
     if (input.email !== undefined || input.emailVerified !== undefined) {
       this.accessControlService.assertUserCan("set-email", user);
     }
-    if ("banned" in input || "banReason" in input || "banExpiresAt" in input) {
-      this.accessControlService.assertUserCan("ban", user);
-    }
-    if ("roles" in input || "permissions" in input) {
-      throw new BadRequestException(
-        "Use setRole or setUserPermissions to update authorization fields",
-      );
-    }
-    this.em.assign(
-      user,
-      input.email === undefined
-        ? (input as never)
-        : ({ ...input, email: input.email.trim().toLowerCase() } as never),
-    );
+    this.em.assign(user, data as never);
     await this.runUnrestricted(() => this.em.flush());
     return user;
   }
@@ -255,11 +253,23 @@ export class UserService<
   /** Bans a user and immediately revokes all of their sessions. */
   async banUser(user: User, input: BanUserOptions = {}): Promise<User> {
     this.accessControlService.assertUserCan("ban", user);
+    const banExpiresAt =
+      input.banExpiresIn === undefined
+        ? null
+        : new Date(Date.now() + input.banExpiresIn * 1000);
+    if (
+      input.banExpiresIn !== undefined &&
+      (!Number.isSafeInteger(input.banExpiresIn) ||
+        input.banExpiresIn <= 0 ||
+        Number.isNaN(banExpiresAt?.getTime()))
+    ) {
+      throw new BadRequestException(
+        "Ban duration must be a positive integer number of seconds",
+      );
+    }
     user.banned = true;
     user.banReason = input.banReason ?? null;
-    user.banExpiresAt = input.banExpiresIn
-      ? new Date(Date.now() + input.banExpiresIn * 1000)
-      : null;
+    user.banExpiresAt = banExpiresAt;
 
     await this.runUnrestricted(async () => {
       await this.em.nativeDelete(this.sessionEntity, {
@@ -434,6 +444,35 @@ export class UserService<
 
   private normalizePermissions(permissions: readonly string[]): string[] {
     return normalizeAuthPermissions(permissions, this.permissions, "User");
+  }
+
+  private createUserUpdateData(
+    input: UpdateUserOptions,
+  ): Record<string, unknown> {
+    const mutableFields = new Set(["email", "emailVerified", "image", "name"]);
+    for (const [field, attributes] of Object.entries(
+      this.options.user?.additionalFields ?? {},
+    )) {
+      if (attributes.input !== false && !AUTH_OWNED_USER_FIELDS.has(field)) {
+        mutableFields.add(field);
+      }
+    }
+
+    const unsupportedFields = Object.keys(input).filter(
+      (field) => !mutableFields.has(field),
+    );
+    if (unsupportedFields.length > 0) {
+      throw new BadRequestException(
+        `User update contains unsupported fields: ${unsupportedFields.join(", ")}`,
+      );
+    }
+
+    return {
+      ...input,
+      ...(input.email === undefined
+        ? {}
+        : { email: input.email.trim().toLowerCase() }),
+    };
   }
 
   private get roles(): AuthModuleRoles {

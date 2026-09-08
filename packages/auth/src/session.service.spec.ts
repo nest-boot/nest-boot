@@ -172,6 +172,48 @@ describe("SessionService", () => {
     expect(cookies[3]).toContain("better-auth.account_data=; Max-Age=0");
   });
 
+  it("expires every numbered cache-cookie chunk from the request", async () => {
+    const { service } = await createService();
+    const appendHeader = vi.fn();
+    const context = new RequestContext({ type: "http" });
+    context.set(REQUEST, {
+      headers: {
+        cookie: [
+          "better-auth.session_data.0=first",
+          "better-auth.session_data.1=second",
+          "better-auth.session_data.01=invalid",
+          "better-auth.account_data.0=account",
+          "better-auth.account_data.other=invalid",
+        ].join("; "),
+      },
+    });
+    context.set(RESPONSE, { appendHeader });
+
+    await RequestContext.run(context, () =>
+      service.setSession("session-token"),
+    );
+
+    const responseCookies = appendHeader.mock.calls.map(
+      ([, value]) => value as string,
+    );
+    expect(responseCookies).toHaveLength(7);
+    expect(responseCookies).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("better-auth.session_data=; Max-Age=0"),
+        expect.stringContaining("better-auth.session_data.0=; Max-Age=0"),
+        expect.stringContaining("better-auth.session_data.1=; Max-Age=0"),
+        expect.stringContaining("better-auth.account_data=; Max-Age=0"),
+        expect.stringContaining("better-auth.account_data.0=; Max-Age=0"),
+      ]),
+    );
+    expect(responseCookies).not.toContainEqual(
+      expect.stringContaining("better-auth.session_data.01="),
+    );
+    expect(responseCookies).not.toContainEqual(
+      expect.stringContaining("better-auth.account_data.other="),
+    );
+  });
+
   it("tries the cookie session before an Authorization credential", async () => {
     requestHeaders.set("authorization", "Bearer api-key");
     const api = createApi();

@@ -202,16 +202,8 @@ export class SessionService {
       await createSignedCookieValue("true", secret),
       createSessionCookieOptions(authCookies.dontRememberToken),
     );
-    cookieStore.set(
-      authCookies.sessionData.name,
-      "",
-      createExpiredCookieOptions(authCookies.sessionData),
-    );
-    cookieStore.set(
-      authCookies.accountData.name,
-      "",
-      createExpiredCookieOptions(authCookies.accountData),
-    );
+    expireCookieAndChunks(cookieStore, authCookies.sessionData);
+    expireCookieAndChunks(cookieStore, authCookies.accountData);
   }
 
   private async runUnrestricted<T>(callback: () => Promise<T>): Promise<T> {
@@ -253,6 +245,29 @@ function createExpiredCookieOptions(cookie: AuthCookie): CookieOptions {
     expires: new Date(0),
     maxAge: 0,
   };
+}
+
+function expireCookieAndChunks(
+  cookieStore: ReturnType<typeof cookies>,
+  cookie: AuthCookie,
+): void {
+  const options = createExpiredCookieOptions(cookie);
+  cookieStore.set(cookie.name, "", options);
+
+  for (const { name } of cookieStore.getAll()) {
+    if (isCookieChunk(name, cookie.name)) {
+      cookieStore.set(name, "", options);
+    }
+  }
+}
+
+function isCookieChunk(name: string, cookieName: string): boolean {
+  const prefix = `${cookieName}.`;
+  if (!name.startsWith(prefix)) return false;
+
+  const suffix = name.slice(prefix.length);
+  const index = Number(suffix);
+  return Number.isSafeInteger(index) && index >= 0 && String(index) === suffix;
 }
 
 function createCookieOptions(cookie: AuthCookie): CookieOptions {

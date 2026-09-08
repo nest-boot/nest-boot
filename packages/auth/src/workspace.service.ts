@@ -406,9 +406,8 @@ export class WorkspaceService<
     member: WorkspaceMember,
     role: string | readonly string[],
   ): Promise<WorkspaceMember> {
-    this.accessControlService.assertCurrentWorkspace(
-      this.unwrapWorkspace(member),
-    );
+    const workspace = this.unwrapWorkspace(member);
+    this.accessControlService.assertCurrentWorkspace(workspace);
     this.accessControlService.assertWorkspaceCan("update", member);
     if (member.roles.includes(this.creatorRole)) {
       throw new ForbiddenException(
@@ -418,9 +417,28 @@ export class WorkspaceService<
 
     const roles = this.normalizeGrantedRoles(role);
 
-    member.roles = roles;
-    await this.em.flush();
-    return member;
+    return await this.withRlsDisabled(
+      async () =>
+        await this.em.transactional(async (em) => {
+          const lockedMember = await em.findOne(
+            this.workspaceMemberEntity,
+            { id: member.id, workspace } as FilterQuery<WorkspaceMember>,
+            { filters: false, lockMode: LockMode.PESSIMISTIC_WRITE },
+          );
+          if (!lockedMember) {
+            throw new NotFoundException("Workspace member not found");
+          }
+          if (lockedMember.roles.includes(this.creatorRole)) {
+            throw new ForbiddenException(
+              "Workspace owner roles can only be changed by transferring ownership",
+            );
+          }
+
+          lockedMember.roles = roles;
+          await em.flush();
+          return lockedMember;
+        }),
+    );
   }
 
   /** Replaces direct permissions assigned to a workspace member. */

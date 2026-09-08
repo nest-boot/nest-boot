@@ -26,7 +26,7 @@ export interface UpdateUserOptions {
   image?: string | null;
   /** New display name. */
   name?: string;
-  /** Application-defined user fields. */
+  /** Application-defined fields declared by `user.additionalFields`. */
   [field: string]: unknown;
 }
 
@@ -70,7 +70,7 @@ export interface ListUsersResult<User extends BaseUser = BaseUser> {
 export interface BanUserOptions {
   /** Optional reason displayed for the ban. */
   banReason?: string;
-  /** Optional ban duration in seconds; omission creates a permanent ban. */
+  /** Positive integer ban duration in seconds; omission creates a permanent ban. */
   banExpiresIn?: number;
 }
 

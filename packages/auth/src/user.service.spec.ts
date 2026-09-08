@@ -187,6 +187,32 @@ describe("UserService", () => {
     );
   });
 
+  it("only updates documented and explicitly configured user fields", async () => {
+    const { em, service } = createService(true, {
+      additionalFields: {
+        id: { type: "string" },
+        internalNote: { input: false, type: "string" },
+        locale: { type: "string" },
+      },
+    });
+    const user = Object.assign(new TestUser(), {
+      id: "user-1",
+      locale: "en",
+    });
+
+    await expect(service.updateUser(user, { locale: "zh-CN" })).resolves.toBe(
+      user,
+    );
+    expect(em.assign).toHaveBeenCalledWith(user, { locale: "zh-CN" });
+
+    for (const field of ["id", "createdAt", "banned", "internalNote"]) {
+      await expect(
+        service.updateUser(user, { [field]: "overwritten" }),
+      ).rejects.toThrow(`User update contains unsupported fields: ${field}`);
+    }
+    expect(user.id).toBe("user-1");
+  });
+
   it("requires set-email permission when changing email verification", async () => {
     const { accessControlService, service } = createService();
     const user = Object.assign(new TestUser(), { emailVerified: false });
@@ -195,12 +221,6 @@ describe("UserService", () => {
 
     expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
       "set-email",
-      user,
-    );
-
-    await service.updateUser(user, { banned: true } as never);
-    expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
-      "ban",
       user,
     );
   });
@@ -399,6 +419,21 @@ describe("UserService", () => {
     expect(user.banExpiresAt).toBeNull();
     vi.useRealTimers();
   });
+
+  it.each([0, -1, 1.5, Number.POSITIVE_INFINITY, Number.MAX_SAFE_INTEGER])(
+    "rejects an invalid ban lifetime of %s seconds",
+    async (banExpiresIn) => {
+      const { em, service } = createService();
+      const user = new TestUser();
+
+      await expect(service.banUser(user, { banExpiresIn })).rejects.toThrow(
+        "Ban duration must be a positive integer",
+      );
+      expect(user.banned).toBe(false);
+      expect(em.nativeDelete).not.toHaveBeenCalled();
+      expect(em.flush).not.toHaveBeenCalled();
+    },
+  );
 
   it("creates and restores impersonation sessions", async () => {
     const { em, service } = createService();
