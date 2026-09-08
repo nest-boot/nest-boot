@@ -1,5 +1,21 @@
 {
   "label": "Permissions",
+  "api_key_read": {
+    "name": "Read API Keys",
+    "description": "View API keys within the authorized scope"
+  },
+  "api_key_create": {
+    "name": "Create API Keys",
+    "description": "Issue API keys within the allowed permission ceiling"
+  },
+  "api_key_update": {
+    "name": "Update API Keys",
+    "description": "Modify API keys within the authorized scope"
+  },
+  "api_key_delete": {
+    "name": "Delete API Keys",
+    "description": "Revoke API keys within the authorized scope"
+  },
   "all": {
     "description": "Select or deselect all permissions at once",
     "name": "All Permissions"

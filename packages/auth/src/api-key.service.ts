@@ -29,7 +29,7 @@ import {
   BaseApiKey,
   type BaseUser,
   type BaseWorkspace,
-  type BaseWorkspaceMember,
+  BaseWorkspaceMember,
 } from "./entities/index.js";
 import {
   DEFAULT_USER_PERMISSIONS,
@@ -40,11 +40,7 @@ import {
   normalizeAuthPermissions,
   resolveAuthPermissions,
 } from "./utils/auth-role.util.js";
-import {
-  DEFAULT_WORKSPACE_PERMISSIONS,
-  DEFAULT_WORKSPACE_ROLE,
-  DEFAULT_WORKSPACE_ROLES,
-} from "./workspace.constants.js";
+import { DEFAULT_WORKSPACE_PERMISSIONS } from "./workspace.constants.js";
 
 /** Input accepted when creating an API key. */
 export interface CreateApiKeyOptions {
@@ -125,7 +121,6 @@ export class ApiKeyService<
   ApiKey extends BaseApiKey = BaseApiKey,
   User extends BaseUser = BaseUser,
   Workspace extends BaseWorkspace = BaseWorkspace,
-  WorkspaceMember extends BaseWorkspaceMember = BaseWorkspaceMember,
 > {
   private readonly logger = new Logger(ApiKeyService.name);
 
@@ -145,36 +140,28 @@ export class ApiKeyService<
     return await this.getOwnedApiKey(id, user);
   }
 
-  /** Returns a workspace-owned API key when the member may manage it. */
+  /** Returns a key owned by the authenticated workspace and within the caller's scope. */
   async getWorkspaceApiKey(
     id: string,
-    member: WorkspaceMember,
+    workspace: Workspace,
   ): Promise<ApiKey | null> {
-    this.accessControlService.assertCurrentWorkspaceMember(member);
+    this.assertWorkspacePrincipal(workspace);
     this.accessControlService.assertWorkspaceCan("read", this.apiKeyEntity);
-    const apiKey = await this.findOne({ id } as FilterQuery<ApiKey>);
-    if (apiKey) {
-      this.assertCanManageWorkspaceApiKey(member, apiKey);
-    }
-    return apiKey;
+    return await this.getOwnedApiKey(id, workspace);
   }
 
   /** Builds a filter for the current user's API keys. */
   getUserListFilter(user: User): FilterQuery<ApiKey> {
     this.accessControlService.assertCurrentUser(user);
     this.accessControlService.assertUserCan("read", this.apiKeyEntity);
-    return { owner: user } as unknown as FilterQuery<ApiKey>;
+    return this.getOwnedListFilter(user);
   }
 
-  /** Builds a filter for workspace keys manageable by the current member. */
-  getWorkspaceListFilter(
-    workspace: Workspace,
-    member: WorkspaceMember,
-  ): FilterQuery<ApiKey> {
-    this.accessControlService.assertCurrentWorkspaceMember(member);
+  /** Builds an ownership and permission-ceiling filter for workspace keys. */
+  getWorkspaceListFilter(workspace: Workspace): FilterQuery<ApiKey> {
+    this.assertWorkspacePrincipal(workspace);
     this.accessControlService.assertWorkspaceCan("read", this.apiKeyEntity);
-    this.assertWorkspaceMembership(workspace, member);
-    return { owner: workspace } as unknown as FilterQuery<ApiKey>;
+    return this.getOwnedListFilter(workspace);
   }
 
   /** Creates an API key owned by a user. */
@@ -192,19 +179,12 @@ export class ApiKeyService<
   /** Creates an API key owned by a workspace. */
   async createWorkspaceKey(
     workspace: Workspace,
-    member: WorkspaceMember,
     options: CreateApiKeyOptions,
   ): Promise<CreatedApiKey<ApiKey>> {
-    this.accessControlService.assertCurrentWorkspaceMember(member);
+    this.assertWorkspacePrincipal(workspace);
     this.accessControlService.assertWorkspaceCan("create", this.apiKeyEntity);
-    this.assertWorkspaceMembership(workspace, member);
-    if (member.status !== "ACTIVE") {
-      throw new BadRequestException(
-        "Cannot create API key for inactive member",
-      );
-    }
     const permissions = this.normalizeCreatePermissions(workspace, options);
-    this.assertWorkspacePermissionCeiling(member, permissions);
+    this.accessControlService.assertCanGrantWorkspacePermissions(permissions);
     return await this.createKey(workspace, options, permissions);
   }
 
@@ -224,15 +204,15 @@ export class ApiKeyService<
     return await this.updateKey(apiKey, input, permissions);
   }
 
-  /** Updates a workspace API key manageable by the current member. */
+  /** Updates a key owned by the authenticated workspace. */
   async updateWorkspaceKey(
     id: string,
-    member: WorkspaceMember,
+    workspace: Workspace,
     input: UpdateApiKeyOptions,
   ): Promise<ApiKey> {
-    this.accessControlService.assertCurrentWorkspaceMember(member);
+    this.assertWorkspacePrincipal(workspace);
     this.accessControlService.assertWorkspaceCan("update", this.apiKeyEntity);
-    const apiKey = await this.findManageableWorkspaceApiKey(id, member);
+    const apiKey = await this.findOwnedApiKey(id, workspace);
     const permissions = this.normalizeUpdatedPermissions(apiKey, input);
     const finalPermissions =
       permissions ??
@@ -240,7 +220,9 @@ export class ApiKeyService<
         this.unwrapOwner(apiKey),
         apiKey.permissions ?? [],
       );
-    this.assertWorkspacePermissionCeiling(member, finalPermissions);
+    this.accessControlService.assertCanGrantWorkspacePermissions(
+      finalPermissions,
+    );
     return await this.updateKey(apiKey, input, permissions);
   }
 
@@ -251,16 +233,11 @@ export class ApiKeyService<
     return await this.deleteKey(await this.findOwnedApiKey(id, user));
   }
 
-  /** Deletes a workspace API key manageable by the current member. */
-  async deleteWorkspaceKey(
-    id: string,
-    member: WorkspaceMember,
-  ): Promise<ApiKey> {
-    this.accessControlService.assertCurrentWorkspaceMember(member);
+  /** Deletes a key owned by the authenticated workspace. */
+  async deleteWorkspaceKey(id: string, workspace: Workspace): Promise<ApiKey> {
+    this.assertWorkspacePrincipal(workspace);
     this.accessControlService.assertWorkspaceCan("delete", this.apiKeyEntity);
-    return await this.deleteKey(
-      await this.findManageableWorkspaceApiKey(id, member),
-    );
+    return await this.deleteKey(await this.findOwnedApiKey(id, workspace));
   }
 
   /** Validates a plaintext API key and resolves its polymorphic owner. */
@@ -375,7 +352,10 @@ export class ApiKeyService<
     owner: User | Workspace,
   ): Promise<ApiKey | null> {
     const apiKey = await this.findOne({ id } as FilterQuery<ApiKey>);
-    if (apiKey) this.assertOwner(apiKey, owner);
+    if (apiKey) {
+      this.assertOwner(apiKey, owner);
+      this.assertDelegatedApiKeyPermissionCeiling(apiKey.permissions ?? []);
+    }
     return apiKey;
   }
 
@@ -388,27 +368,34 @@ export class ApiKeyService<
     return apiKey;
   }
 
-  private async findManageableWorkspaceApiKey(
-    id: string,
-    member: WorkspaceMember,
-  ): Promise<ApiKey> {
-    const apiKey = await this.findOne({ id } as FilterQuery<ApiKey>);
-    if (!apiKey) throw new NotFoundException("API key not found");
-    this.assertCanManageWorkspaceApiKey(member, apiKey);
-    return apiKey;
+  private getOwnedListFilter(owner: User | Workspace): FilterQuery<ApiKey> {
+    const apiKey = this.getAuthenticatingApiKey();
+    return {
+      owner,
+      ...(apiKey
+        ? { permissions: { $contained: apiKey.permissions ?? [] } }
+        : {}),
+    } as unknown as FilterQuery<ApiKey>;
   }
 
-  private assertCanManageWorkspaceApiKey(
-    member: WorkspaceMember,
-    apiKey: ApiKey,
-  ): void {
-    const owner = this.unwrapOwner(apiKey);
+  private assertWorkspacePrincipal(workspace: Workspace): void {
+    this.accessControlService.assertCurrentWorkspace(workspace);
+    const apiKey = this.getAuthenticatingApiKey();
     if (
-      !(owner instanceof this.workspaceEntity) ||
-      owner.id !== Reference.unwrapReference(member.workspace).id
+      apiKey &&
+      this.getOwnerType(this.unwrapOwner(apiKey as ApiKey)) === "workspace"
     ) {
+      this.assertOwner(apiKey as ApiKey, workspace);
+      return;
+    }
+    const member = RequestContext.get(BaseWorkspaceMember);
+    if (member?.status !== "ACTIVE") {
+      throw new ForbiddenException("An active workspace member is required");
+    }
+    this.accessControlService.assertCurrentWorkspaceMember(member);
+    if (Reference.unwrapReference(member.workspace).id !== workspace.id) {
       throw new ForbiddenException(
-        "You are not allowed to access this API key",
+        "Workspace member does not belong to this workspace",
       );
     }
   }
@@ -421,17 +408,6 @@ export class ApiKeyService<
     ) {
       throw new ForbiddenException(
         "You are not allowed to access this API key",
-      );
-    }
-  }
-
-  private assertWorkspaceMembership(
-    workspace: Workspace,
-    member: WorkspaceMember,
-  ): void {
-    if (Reference.unwrapReference(member.workspace).id !== workspace.id) {
-      throw new ForbiddenException(
-        "Workspace member does not belong to this workspace",
       );
     }
   }
@@ -564,32 +540,16 @@ export class ApiKeyService<
     this.assertDelegatedApiKeyPermissionCeiling(permissions);
   }
 
-  private assertWorkspacePermissionCeiling(
-    member: WorkspaceMember,
-    permissions: readonly string[],
-  ): void {
-    const effectivePermissions = resolveAuthPermissions(
-      member.roles ?? [
-        this.authOptions.workspace?.defaultRole ?? DEFAULT_WORKSPACE_ROLE,
-      ],
-      member.permissions ?? [],
-      this.authOptions.workspace?.roles ?? DEFAULT_WORKSPACE_ROLES,
-    );
-
-    this.assertPermissionCeiling(
-      permissions,
-      effectivePermissions,
-      "Workspace API key permissions exceed issuer permissions",
-    );
-    this.assertDelegatedApiKeyPermissionCeiling(permissions);
+  private getAuthenticatingApiKey(): BaseApiKey | null {
+    return RequestContext.isActive()
+      ? (RequestContext.get(BaseApiKey) ?? null)
+      : null;
   }
 
   private assertDelegatedApiKeyPermissionCeiling(
     permissions: readonly string[],
   ): void {
-    const apiKey = RequestContext.isActive()
-      ? RequestContext.get(BaseApiKey)
-      : undefined;
+    const apiKey = this.getAuthenticatingApiKey();
     if (!apiKey) return;
 
     this.assertPermissionCeiling(

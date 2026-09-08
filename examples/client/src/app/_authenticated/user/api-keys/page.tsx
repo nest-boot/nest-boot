@@ -226,7 +226,9 @@ function ApiKeysComponent() {
   const createForm = useForm({
     defaultValues: {
       name: "",
-      permissions: [...workspacePermissionValues] as Array<AuthPermission>,
+      permissions: workspacePermissionValues.filter(
+        (permission) => !permission.startsWith("ApiKey:"),
+      ) as Array<AuthPermission>,
     },
     validators: {
       onSubmit: z.object({

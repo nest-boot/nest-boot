@@ -20,9 +20,9 @@ export function buildUserPermissionAbility(
   can('create', Workspace);
   can(['read', 'update'], WorkspaceInvitation);
   can(['read', 'update'], WorkspaceMember);
-  can('manage', ApiKey);
 
   const subjects = {
+    ApiKey,
     Session,
     User,
   } as const;

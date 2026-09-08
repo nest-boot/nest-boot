@@ -10,9 +10,14 @@ description: "Authenticate personal and workspace automation with scoped API key
 - A **workspace key** is an independent service identity. It restores its
   workspace without creating a current user or workspace member.
 
-Users manage their own keys. Active workspace members manage workspace keys
+Users manage their own keys. Active workspace members and workspace keys manage workspace keys
 when their resolved workspace ability grants the corresponding
 `ApiKey:create`, `ApiKey:read`, `ApiKey:update`, or `ApiKey:delete` permission.
+In the example, both user roles include personal key-management permissions.
+API-key requests receive only the explicitly granted actions after permission
+intersection; they do not inherit an unconditional `manage ApiKey` rule.
+The example UI exposes all four key-management permissions, but leaves them
+unchecked when creating a key so delegation must be enabled explicitly.
 
 ## Service API
 
@@ -20,6 +25,12 @@ when their resolved workspace ability grants the corresponding
 - `getWorkspaceApiKey`, `createWorkspaceKey`, `updateWorkspaceKey`, and `deleteWorkspaceKey`;
 - `getUserListFilter` and `getWorkspaceListFilter`;
 - `validate(plaintextKey)` and `recordUsage(apiKey)`.
+
+Workspace methods accept the selected `Workspace`, not a `WorkspaceMember`:
+`createWorkspaceKey(workspace, options)`, `getWorkspaceApiKey(id, workspace)`,
+`updateWorkspaceKey(id, workspace, input)`, `deleteWorkspaceKey(id, workspace)`,
+and `getWorkspaceListFilter(workspace)`. The service validates the current
+workspace and resolves the issuing member or workspace-key identity internally.
 
 Create methods return the plaintext key exactly once. The database stores a
 SHA-256 hash of the complete key, the display-safe `start` and `prefix`, enabled
@@ -56,7 +67,8 @@ persists the values in `text[]` columns.
 Creation and update also enforce a permission ceiling. User-scoped permissions
 on a User Key cannot exceed the owning user's current role and direct
 permissions. A Workspace Key cannot exceed the issuing member's current role
-and direct permissions. Workspace permissions on a User Key are checked again
+and direct permissions, or the authenticating Workspace Key's permissions.
+Workspace permissions on a User Key are checked again
 against the selected member at request time, so one key can be used across
 workspaces without freezing or copying membership privileges.
 
@@ -76,13 +88,20 @@ AuthModule.forRoot({
 `permissions` field. Passing `null` or `[]` creates a key without permissions.
 `allowedPermissions` defaults to the union of the configured user and workspace
 permission catalogs. Both options are validated at startup, and defaults must
-be a subset of the allowlist.
+be a subset of the allowlist. Defaults are shared by both owner types, so they
+must also belong to the workspace catalog. User-only defaults such as `User:get`
+are rejected at startup; pass them explicitly when creating a personal key.
 
 The allowlist is an additional ceiling, not an automatic grant. Requested
 permissions must also belong to the key owner's supported scope and remain
 within the issuer's effective permissions. When an API key creates or updates
 another key, the delegated permissions cannot exceed the authenticating key's
-own permissions. Updates that omit `permissions` preserve the stored value;
+own permissions. Reading, updating, or deleting an existing key also requires
+that its **stored** permissions fit inside the authenticating key's scope;
+replacing its permissions with an empty list cannot bypass this check. Lists
+apply the same restriction in the database, including pagination counts.
+Browser sessions can still manage all keys they own, subject to the normal
+ability checks. Updates that omit `permissions` preserve the stored value;
 passing `null` clears it.
 
 ## Transport

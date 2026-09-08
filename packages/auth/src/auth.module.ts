@@ -166,7 +166,7 @@ function isAuthOptionsFactoryProvider(
         );
         assertAuthPermissionList(
           defaultApiKeyPermissions,
-          apiKeyPermissionCatalog,
+          workspacePermissions,
           "apiKey.defaultPermissions",
         );
         assertAuthPermissionSubset(

@@ -1,5 +1,21 @@
 {
   "label": "权限",
+  "api_key_read": {
+    "name": "查看 API Key",
+    "description": "查看授权范围内的 API Key"
+  },
+  "api_key_create": {
+    "name": "创建 API Key",
+    "description": "在允许的权限上限内签发 API Key"
+  },
+  "api_key_update": {
+    "name": "更新 API Key",
+    "description": "修改授权范围内的 API Key"
+  },
+  "api_key_delete": {
+    "name": "删除 API Key",
+    "description": "吊销授权范围内的 API Key"
+  },
   "all": {
     "description": "一键选择或取消所有权限",
     "name": "所有权限"

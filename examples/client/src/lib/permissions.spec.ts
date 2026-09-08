@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  authPermissionOptions,
   authPermissionValues,
   isAuthPermission,
   isUserPermission,
@@ -20,6 +21,10 @@ describe("permission options", () => {
       "WorkspaceMember:delete",
       "WorkspaceInvitation:create",
       "WorkspaceInvitation:cancel",
+      "ApiKey:read",
+      "ApiKey:create",
+      "ApiKey:update",
+      "ApiKey:delete",
     ]);
   });
 
@@ -32,13 +37,24 @@ describe("permission options", () => {
   });
 
   it("exposes user and workspace permissions for personal API keys", () => {
-    expect(authPermissionValues).toHaveLength(
-      userPermissionValues.length + workspacePermissionValues.length,
-    );
     expect(authPermissionValues).toEqual([
-      ...userPermissionValues,
-      ...workspacePermissionValues,
+      ...new Set([...userPermissionValues, ...workspacePermissionValues]),
     ]);
+    expect(authPermissionOptions.map((entry) => entry.value)).toEqual(
+      authPermissionValues,
+    );
+    for (const permission of [
+      "ApiKey:read",
+      "ApiKey:create",
+      "ApiKey:update",
+      "ApiKey:delete",
+    ]) {
+      expect(userPermissionValues).toContain(permission);
+      expect(workspaceApiKeyPermissionValues).toContain(permission);
+      expect(
+        authPermissionValues.filter((value) => value === permission),
+      ).toHaveLength(1);
+    }
   });
 
   it("narrows server strings against the local permission catalog", () => {

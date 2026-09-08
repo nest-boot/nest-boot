@@ -1,5 +1,7 @@
 import {
   AuthModule as BaseAuthModule,
+  DEFAULT_USER_PERMISSIONS,
+  DEFAULT_USER_ROLES,
   DEFAULT_WORKSPACE_PERMISSIONS,
   DEFAULT_WORKSPACE_ROLES,
 } from '@nest-boot/auth';
@@ -46,6 +48,28 @@ import { UserResolver } from './user.resolver.js';
         requireEmailVerification: true,
       },
       user: {
+        permissions: [
+          ...DEFAULT_USER_PERMISSIONS,
+          'ApiKey:read',
+          'ApiKey:create',
+          'ApiKey:update',
+          'ApiKey:delete',
+        ],
+        roles: {
+          user: [
+            'ApiKey:read',
+            'ApiKey:create',
+            'ApiKey:update',
+            'ApiKey:delete',
+          ],
+          admin: [
+            ...DEFAULT_USER_ROLES.admin,
+            'ApiKey:read',
+            'ApiKey:create',
+            'ApiKey:update',
+            'ApiKey:delete',
+          ],
+        },
         buildAbility: (builder, permissions, _user) =>
           buildUserPermissionAbility(builder, permissions),
         changeEmail: {

@@ -1,5 +1,12 @@
 const t = (key: string) => key;
 
+const apiKeyPermissionValues = [
+  "ApiKey:read",
+  "ApiKey:create",
+  "ApiKey:update",
+  "ApiKey:delete",
+] as const;
+
 export const workspacePermissionValues = [
   "Workspace:update",
   "Workspace:delete",
@@ -8,6 +15,7 @@ export const workspacePermissionValues = [
   "WorkspaceMember:delete",
   "WorkspaceInvitation:create",
   "WorkspaceInvitation:cancel",
+  ...apiKeyPermissionValues,
 ] as const;
 
 export type WorkspacePermission = (typeof workspacePermissionValues)[number];
@@ -27,15 +35,15 @@ export const userPermissionValues = [
   "Session:list",
   "Session:revoke",
   "Session:delete",
+  ...apiKeyPermissionValues,
 ] as const;
 
 export type UserPermission = (typeof userPermissionValues)[number];
 
 export const workspaceApiKeyPermissionValues = workspacePermissionValues;
 export const authPermissionValues = [
-  ...userPermissionValues,
-  ...workspacePermissionValues,
-] as const;
+  ...new Set([...userPermissionValues, ...workspacePermissionValues]),
+];
 
 export type AuthPermission = (typeof authPermissionValues)[number];
 
@@ -70,6 +78,13 @@ function option<Permission extends string>(
   };
 }
 
+const apiKeyPermissionOptions = [
+  option("ApiKey:read", "api_key_read"),
+  option("ApiKey:create", "api_key_create"),
+  option("ApiKey:update", "api_key_update"),
+  option("ApiKey:delete", "api_key_delete"),
+] as const;
+
 export const workspacePermissionOptions = [
   option("Workspace:update", "workspace_update"),
   option("Workspace:delete", "workspace_delete"),
@@ -78,6 +93,7 @@ export const workspacePermissionOptions = [
   option("WorkspaceMember:delete", "workspace_member_delete"),
   option("WorkspaceInvitation:create", "workspace_invitation_create"),
   option("WorkspaceInvitation:cancel", "workspace_invitation_cancel"),
+  ...apiKeyPermissionOptions,
 ] as const satisfies ReadonlyArray<PermissionOption<WorkspacePermission>>;
 
 export const workspaceApiKeyPermissionOptions = workspacePermissionOptions;
@@ -97,9 +113,14 @@ export const userPermissionOptions = [
   option("Session:list", "session_list"),
   option("Session:revoke", "session_revoke"),
   option("Session:delete", "session_delete"),
+  ...apiKeyPermissionOptions,
 ] as const satisfies ReadonlyArray<PermissionOption<UserPermission>>;
 
 export const authPermissionOptions = [
-  ...userPermissionOptions,
-  ...workspacePermissionOptions,
-] as const satisfies ReadonlyArray<PermissionOption<AuthPermission>>;
+  ...new Map(
+    [...userPermissionOptions, ...workspacePermissionOptions].map((entry) => [
+      entry.value,
+      entry,
+    ]),
+  ).values(),
+] satisfies ReadonlyArray<PermissionOption<AuthPermission>>;

@@ -2097,7 +2097,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     const user = await createAuthenticatedUser('Delegated Key Owner');
     const authenticatingKey = await createUserApiKey(user, {
       name: 'Restricted delegator',
-      permissions: ['Workspace:update'],
+      permissions: ['ApiKey:create', 'ApiKey:update', 'Workspace:update'],
     });
     const targetKey = await createUserApiKey(user, {
       name: 'Delegation target',
@@ -2168,6 +2168,163 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       ['Workspace:update'],
     );
   });
+
+  it.each(['user', 'workspace'] as const)(
+    'limits %s API-key management to explicitly granted actions and bounded credentials',
+    async (scope) => {
+      const user = await createAuthenticatedUser(`${scope} key manager`);
+      const workspace = await createWorkspace(
+        user,
+        `${scope} managed workspace`,
+      );
+      const createKey = (permissions: string[]) =>
+        scope === 'user'
+          ? createUserApiKey(user, { name: 'Managed key', permissions })
+          : createApiKey(user, workspace.id, {
+              name: 'Managed key',
+              permissions,
+            });
+      const management = [
+        'ApiKey:read',
+        'ApiKey:create',
+        'ApiKey:update',
+        'ApiKey:delete',
+      ];
+      const manager = await createKey([...management, 'Workspace:update']);
+      const broader = await createKey([...management, 'Workspace:delete']);
+      const empty = await createKey([]);
+      const narrow = await createKey(['Workspace:update']);
+      const names =
+        scope === 'user'
+          ? {
+              read: 'userApiKey',
+              list: 'userApiKeys',
+              create: 'createUserApiKey',
+              update: 'updateUserApiKey',
+              delete: 'deleteUserApiKey',
+            }
+          : {
+              read: 'apiKey',
+              list: 'apiKeys',
+              create: 'createApiKey',
+              update: 'updateApiKey',
+              delete: 'deleteApiKey',
+            };
+      const queries = {
+        read: `query($id: ID!) { result: ${names.read}(id: $id) { id permissions } }`,
+        list: `query { result: ${names.list}(first: 100) { totalCount edges { node { id } } } }`,
+        create: `mutation($input: CreateApiKeyInput!) { result: ${names.create}(input: $input) { entity { id permissions } } }`,
+        update: `mutation($id: ID!, $input: UpdateApiKeyInput!) { result: ${names.update}(id: $id, input: $input) { id permissions name } }`,
+        delete: `mutation($id: ID!) { result: ${names.delete}(id: $id) { id } }`,
+      };
+      const call = (
+        operation: keyof typeof queries,
+        bearerToken: string,
+        variables: Record<string, unknown> = {},
+      ) => gql(queries[operation], { bearerToken, variables });
+      const expectForbidden = (result: Awaited<ReturnType<typeof gql>>) => {
+        expectGraphQLError(result);
+        expect(result.body.errors[0].extensions.code).toBe('FORBIDDEN');
+      };
+
+      for (const key of [empty, narrow]) {
+        expectForbidden(await call('list', key.apiKey));
+        expectForbidden(
+          await call('read', key.apiKey, { id: broader.entity.id }),
+        );
+        expectForbidden(
+          await call('create', key.apiKey, {
+            input: { name: 'Denied', permissions: [] },
+          }),
+        );
+        expectForbidden(
+          await call('update', key.apiKey, {
+            id: empty.entity.id,
+            input: { name: 'Denied' },
+          }),
+        );
+        expectForbidden(
+          await call('delete', key.apiKey, { id: broader.entity.id }),
+        );
+      }
+      const listed = await call('list', manager.apiKey);
+      expectNoGraphQLErrors(listed);
+      expect(listed.body.data.result.totalCount).toBe(3);
+      expect(
+        listed.body.data.result.edges
+          .map((edge: { node: { id: string } }) => edge.node.id)
+          .sort(),
+      ).toEqual([manager.entity.id, empty.entity.id, narrow.entity.id].sort());
+
+      expectForbidden(
+        await call('read', manager.apiKey, { id: broader.entity.id }),
+      );
+      expectForbidden(
+        await call('update', manager.apiKey, {
+          id: broader.entity.id,
+          input: { permissions: [] },
+        }),
+      );
+      expectForbidden(
+        await call('delete', manager.apiKey, { id: broader.entity.id }),
+      );
+      expectForbidden(
+        await call('create', manager.apiKey, {
+          input: { name: 'Escalated', permissions: ['Workspace:delete'] },
+        }),
+      );
+      expectForbidden(
+        await call('update', manager.apiKey, {
+          id: narrow.entity.id,
+          input: { permissions: ['Workspace:delete'] },
+        }),
+      );
+
+      const delegated = await call('create', manager.apiKey, {
+        input: { name: 'Delegated', permissions: ['Workspace:update'] },
+      });
+      expectNoGraphQLErrors(delegated);
+      const id = delegated.body.data.result.entity.id as string;
+      expectNoGraphQLErrors(await call('read', manager.apiKey, { id }));
+      const renamed = await call('update', manager.apiKey, {
+        id,
+        input: { name: 'Renamed' },
+      });
+      expectNoGraphQLErrors(renamed);
+      expect(renamed.body.data.result.name).toBe('Renamed');
+      expectNoGraphQLErrors(await call('delete', manager.apiKey, { id }));
+
+      const otherUser = await createAuthenticatedUser(`${scope} other owner`);
+      const otherWorkspace = await createWorkspace(
+        otherUser,
+        `${scope} other workspace`,
+      );
+      const otherKey =
+        scope === 'user'
+          ? await createUserApiKey(otherUser, {
+              name: 'Other key',
+              permissions: [],
+            })
+          : await createApiKey(otherUser, otherWorkspace.id, {
+              name: 'Other key',
+              permissions: [],
+            });
+      expectForbidden(
+        await call('read', manager.apiKey, { id: otherKey.entity.id }),
+      );
+      expectForbidden(
+        await call('delete', manager.apiKey, { id: otherKey.entity.id }),
+      );
+
+      // A browser session still manages every key owned by this user/workspace.
+      const sessionList = await gql(queries.list, {
+        cookies: user.cookies,
+        workspaceId: workspace.id,
+      });
+      expectNoGraphQLErrors(sessionList);
+      expect(sessionList.body.data.result.totalCount).toBe(4);
+    },
+  );
 
   it('enforces workspace API-key permissions and enabled state', async () => {
     const owner = await createAuthenticatedUser('Restricted Key Owner');

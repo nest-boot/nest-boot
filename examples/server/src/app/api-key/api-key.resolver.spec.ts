@@ -7,7 +7,6 @@ vi.mock('@nest-boot/auth', async (importOriginal) => ({
   BaseUser: class BaseUser {},
   CurrentUser: () => () => undefined,
   CurrentWorkspace: () => () => undefined,
-  CurrentWorkspaceMember: () => () => undefined,
   UserCan: () => () => undefined,
   WorkspaceCan: () => () => undefined,
 }));
@@ -29,46 +28,42 @@ vi.mock('@nest-boot/graphql-connection', () => ({
 }));
 
 import { Workspace } from '../workspace/workspace.entity.js';
-import { WorkspaceMember } from '../workspace-member/workspace-member.entity.js';
 import { ApiKey } from './api-key.entity.js';
 import { ApiKeyResolver } from './api-key.resolver.js';
 
 describe('ApiKeyResolver', () => {
   it('delegates single-key access checks to the auth service', async () => {
-    const member = { id: 'member_1' } as WorkspaceMember;
+    const workspace = { id: 'workspace_1' } as Workspace;
     const apiKey = { id: 'api_key_1' } as ApiKey;
     const { resolver, apiKeyService } = createResolver({
       getWorkspaceApiKey: vi.fn(async () => apiKey),
     });
 
-    await expect(resolver.apiKey('api_key_1', member)).resolves.toBe(apiKey);
+    await expect(resolver.apiKey('api_key_1', workspace)).resolves.toBe(apiKey);
     expect(apiKeyService.getWorkspaceApiKey).toHaveBeenCalledWith(
       'api_key_1',
-      member,
+      workspace,
     );
   });
 
   it('uses the auth service list filter for connection pagination', async () => {
     const workspace = { id: 'workspace_1' } as Workspace;
-    const member = { id: 'member_1' } as WorkspaceMember;
-    const where = { workspace, member };
+    const where = { owner: workspace };
     const args = { first: 10 } as never;
     const { resolver, apiKeyService, cm } = createResolver({
       getWorkspaceListFilter: vi.fn(() => where),
     });
 
-    await resolver.apiKeys(args, workspace, member);
+    await resolver.apiKeys(args, workspace);
 
     expect(apiKeyService.getWorkspaceListFilter).toHaveBeenCalledWith(
       workspace,
-      member,
     );
     expect(cm.find).toHaveBeenCalledWith(expect.any(Function), args, { where });
   });
 
   it('delegates API-key creation to the auth service', async () => {
     const workspace = { id: 'workspace_1' } as Workspace;
-    const member = { id: 'member_1' } as WorkspaceMember;
     const result = {
       entity: { id: 'api_key_1' } as ApiKey,
       apiKey: 'sk-0123456789abcdefabcdef0123456789',
@@ -84,22 +79,17 @@ describe('ApiKeyResolver', () => {
           permissions: ['Workspace:update'],
         },
         workspace,
-        member,
       ),
     ).resolves.toBe(result);
-    expect(apiKeyService.createWorkspaceKey).toHaveBeenCalledWith(
-      workspace,
-      member,
-      {
-        name: 'Deploy key',
-        expiresAt: null,
-        permissions: ['Workspace:update'],
-      },
-    );
+    expect(apiKeyService.createWorkspaceKey).toHaveBeenCalledWith(workspace, {
+      name: 'Deploy key',
+      expiresAt: null,
+      permissions: ['Workspace:update'],
+    });
   });
 
   it('delegates API-key updates and deletion to the auth service', async () => {
-    const member = { id: 'member_1' } as WorkspaceMember;
+    const workspace = { id: 'workspace_1' } as Workspace;
     const apiKey = { id: 'api_key_1' } as ApiKey;
     const { resolver, apiKeyService } = createResolver({
       updateWorkspaceKey: vi.fn(async () => apiKey),
@@ -114,15 +104,15 @@ describe('ApiKeyResolver', () => {
           name: 'New',
           permissions: ['Workspace:update'],
         },
-        member,
+        workspace,
       ),
     ).resolves.toBe(apiKey);
-    await expect(resolver.deleteApiKey('api_key_1', member)).resolves.toBe(
+    await expect(resolver.deleteApiKey('api_key_1', workspace)).resolves.toBe(
       apiKey,
     );
     expect(apiKeyService.updateWorkspaceKey).toHaveBeenCalledWith(
       'api_key_1',
-      member,
+      workspace,
       {
         enabled: false,
         name: 'New',
@@ -131,7 +121,7 @@ describe('ApiKeyResolver', () => {
     );
     expect(apiKeyService.deleteWorkspaceKey).toHaveBeenCalledWith(
       'api_key_1',
-      member,
+      workspace,
     );
   });
 });

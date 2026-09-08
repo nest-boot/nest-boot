@@ -17,6 +17,37 @@ import {
 } from './build-permission-ability.util.js';
 
 describe('permission ability builders', () => {
+  it.each(['read', 'create', 'update', 'delete'])(
+    'grants only the requested API-key %s action',
+    (action) => {
+      for (const build of [
+        buildUserPermissionAbility,
+        buildWorkspacePermissionAbility,
+      ]) {
+        const ability =
+          build === buildUserPermissionAbility
+            ? buildUserPermissionAbility(new AbilityBuilder(UserAbility), [
+                `ApiKey:${action}`,
+              ])
+            : buildWorkspacePermissionAbility(
+                new AbilityBuilder(WorkspaceAbility),
+                [`ApiKey:${action}`],
+              );
+        for (const candidate of ['read', 'create', 'update', 'delete']) {
+          expect(ability.can(candidate, ApiKey)).toBe(candidate === action);
+        }
+      }
+    },
+  );
+  it('does not grant key management to an empty-permission API key', () => {
+    const ability = buildUserPermissionAbility(
+      new AbilityBuilder(UserAbility),
+      [],
+    );
+    for (const action of ['read', 'create', 'update', 'delete']) {
+      expect(ability.can(action, ApiKey)).toBe(false);
+    }
+  });
   it('builds user permissions independently of workspace membership', () => {
     const ability = buildUserPermissionAbility(
       new AbilityBuilder(UserAbility),
@@ -25,7 +56,7 @@ describe('permission ability builders', () => {
 
     expect(ability.can('read', User)).toBe(true);
     expect(ability.can('create', Workspace)).toBe(true);
-    expect(ability.can('manage', ApiKey)).toBe(true);
+    expect(ability.can('manage', ApiKey)).toBe(false);
     expect(ability.can('delete', Workspace)).toBe(false);
     expect(ability.can('delete', User)).toBe(true);
   });

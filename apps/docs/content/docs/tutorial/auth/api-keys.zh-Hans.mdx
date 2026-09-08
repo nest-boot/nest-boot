@@ -8,9 +8,12 @@ description: "使用带权限范围的 API Key 认证个人和工作区自动化
 - **User Key** 会恢复所属用户；只有该用户仍是所选工作区的活动成员时，才能访问工作区资源。
 - **Workspace Key** 是独立服务身份；它会恢复所属工作区，但不会创建当前用户或工作区成员。
 
-用户管理自己的 Key。活动工作区成员只有在最终 Workspace Ability 包含对应的
+用户管理自己的 Key。活动工作区成员和 Workspace Key 只有在最终 Workspace Ability 包含对应的
 `ApiKey:create`、`ApiKey:read`、`ApiKey:update` 或 `ApiKey:delete` 权限时，才能管理
 Workspace Key。
+示例的两个用户角色均包含个人 Key 管理权限。API Key 请求只会获得权限取交集后明确
+授予的操作，不再无条件继承 `manage ApiKey` 规则。
+前端提供四项 Key 管理权限，但创建时默认不勾选，需用户主动授权。
 
 ## 服务 API
 
@@ -18,6 +21,12 @@ Workspace Key。
 - `getWorkspaceApiKey`、`createWorkspaceKey`、`updateWorkspaceKey` 与 `deleteWorkspaceKey`；
 - `getUserListFilter` 与 `getWorkspaceListFilter`；
 - `validate(plaintextKey)` 与 `recordUsage(apiKey)`。
+
+工作区方法接收当前 `Workspace`，不再接收 `WorkspaceMember`：
+`createWorkspaceKey(workspace, options)`、`getWorkspaceApiKey(id, workspace)`、
+`updateWorkspaceKey(id, workspace, input)`、`deleteWorkspaceKey(id, workspace)`
+与 `getWorkspaceListFilter(workspace)`。Service 校验当前工作区，并在内部获取签发成员
+或 Workspace Key 身份。
 
 创建方法只会返回一次明文 Key。数据库保存完整 Key 的 SHA-256 哈希、可安全展示的
 `start` 与 `prefix`、启用状态、权限、过期时间和使用时间。认证成功的请求会自动更新
@@ -49,7 +58,8 @@ PostgreSQL 使用 `text[]` 列持久化这些值。
 
 创建和更新还会检查权限上限。User Key 中的用户作用域权限不能超过所属用户当前由角色
 与直接授权得到的权限；Workspace Key 不能超过签发成员当前由角色与直接授权得到的
-权限。User Key 中的工作区权限会在每次请求时再次与所选工作区的成员权限取交集，因此
+权限；由 Workspace Key 签发时，则不能超过当前 Key 的权限。
+User Key 中的工作区权限会在每次请求时再次与所选工作区的成员权限取交集，因此
 一个 Key 可以跨工作区使用，但不会固化或复制成员权限。
 
 通过 `apiKey` 配置默认权限与模块级授予白名单：
@@ -67,10 +77,16 @@ AuthModule.forRoot({
 `defaultPermissions` 默认为 `[]`，仅在创建时省略 `permissions` 字段的情况下生效；
 显式传入 `null` 或 `[]` 会创建无权限 Key。`allowedPermissions` 默认使用已配置用户与
 工作区权限目录的并集。模块会在启动时校验两个数组，并要求默认权限是白名单的子集。
+默认数组同时用于两种 Key，因此还必须属于工作区权限目录；例如 `User:get` 这种用户
+专属权限不能用作共享默认值，启动时就会报错，应在创建个人 Key 时显式传入。
 
 白名单只是额外上限，不会自动授予权限。请求权限仍必须符合 Key 所有者类型，并且不能
 超过签发者的有效权限。如果当前请求本身使用 API Key 认证，新建或更新的 Key 也不能
-获得当前 Key 没有的权限。更新时省略 `permissions` 会保留原值，传入 `null` 则会清空。
+获得当前 Key 没有的权限。读取、更新和删除现有 Key 时，其**已存储权限**也必须在
+当前 Key 的权限范围内，不能通过将权限改成空数组绕过检查。列表在数据库查询阶段
+应用相同限制，分页总数也只计算范围内的 Key。浏览器 Session 在常规 Ability 检查
+通过后，仍可管理所属范围内的全部 Key。
+更新时省略 `permissions` 会保留原值，传入 `null` 则会清空。
 
 ## 传输方式
 

@@ -455,6 +455,11 @@ describe("AuthModule", () => {
 
   it.each([
     [
+      "user-only defaults that cannot be applied to workspace keys",
+      { apiKey: { defaultPermissions: ["User:get"] } },
+      "apiKey.defaultPermissions contains unknown permissions: User:get",
+    ],
+    [
       "allowed permissions outside the configured catalogs",
       {
         apiKey: { allowedPermissions: ["Unknown:read"] },
