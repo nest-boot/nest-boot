@@ -56,6 +56,7 @@
     },
     "version": {
       "conventionalCommits": true,
+      "applyPreidToDependents": true,
       "fallbackCurrentVersionResolver": "disk"
     }
   },
