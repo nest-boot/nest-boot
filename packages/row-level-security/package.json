@@ -6,7 +6,7 @@
     "url": "https://github.com/nest-boot/nest-boot.git",
     "directory": "packages/row-level-security"
   },
-  "description": "PostgreSQL row level security helpers for Nest Boot applications",
+  "description": "PostgreSQL and PGlite row level security helpers for Nest Boot applications",
   "author": {
     "name": "Xudong Huang",
     "email": "me@huangxudong.com",
@@ -36,6 +36,7 @@
   },
   "peerDependencies": {
     "@mikro-orm/migrations": "^7.0.0",
+    "@mikro-orm/pglite": "^7.1.14",
     "@mikro-orm/postgresql": "^7.0.0",
     "@mikro-orm/sql": "^7.0.0",
     "@nest-boot/request-context": "workspace:^",
@@ -46,6 +47,7 @@
     "@mikro-orm/decorators": "7.1.14",
     "@mikro-orm/migrations": "7.1.14",
     "@mikro-orm/nestjs": "^7.0.2",
+    "@mikro-orm/pglite": "7.1.14",
     "@mikro-orm/postgresql": "7.1.14",
     "@mikro-orm/reflection": "7.1.14",
     "@mikro-orm/sql": "7.1.14",
@@ -87,6 +89,14 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./postgresql": {
+      "types": "./dist/postgresql.d.ts",
+      "import": "./dist/postgresql.js"
+    },
+    "./pglite": {
+      "types": "./dist/pglite.d.ts",
+      "import": "./dist/pglite.js"
     },
     "./package.json": "./package.json"
   }

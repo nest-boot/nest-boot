@@ -3,13 +3,15 @@ title: "Row-Level Security"
 description: "PostgreSQL row-level security helpers for MikroORM entities, request context values, and generated migrations."
 ---
 
-The `@nest-boot/row-level-security` package helps Nest Boot applications use PostgreSQL Row-Level Security (RLS) with MikroORM. It provides policy metadata for entities, migration helpers that generate SQL from that metadata, and a PostgreSQL driver that applies request-scoped roles and context values inside transaction-local query execution.
+The `@nest-boot/row-level-security` package helps Nest Boot applications use PostgreSQL Row-Level Security (RLS) with MikroORM. It provides policy metadata for entities, migration helpers that generate SQL from that metadata, and PostgreSQL and PGlite drivers that apply request-scoped roles and context values inside transaction-local query execution.
 
 ## Installation
 
 ```bash
-pnpm add @nest-boot/row-level-security @nest-boot/request-context @mikro-orm/postgresql @mikro-orm/migrations
+pnpm add @nest-boot/row-level-security @nest-boot/request-context @mikro-orm/postgresql @mikro-orm/pglite @mikro-orm/migrations
 ```
+
+Keep all MikroORM packages on the same version. The PGlite integration requires MikroORM 7.1.14 or later in the 7.x release line. Both database drivers are peer dependencies because the root entry point exports both implementations.
 
 ## Configure MikroORM
 
@@ -35,6 +37,65 @@ export default {
 Policy-only migration detection currently requires `migrations.snapshot: false`. With MikroORM snapshot mode enabled, generated policy migrations are not represented in the schema snapshot, so running `migration:create` again before applying the generated migration can emit the same policy diff again. Keep snapshots disabled until snapshot-backed RLS policy tracking is supported.
 
 The driver applies RLS only when a `RequestContext` is active and the current context has row-level security values set through `RowLevelSecurity`. If no row-level security role or context values are present, it delegates to MikroORM unchanged unless it needs to clear RLS state previously applied to the same transaction.
+
+## Driver Entry Points
+
+The root entry point exports both drivers. Each driver is also available through its own subpath:
+
+```typescript
+import {
+  RowLevelSecurityConnection,
+  RowLevelSecurityDriver,
+} from "@nest-boot/row-level-security/postgresql";
+import {
+  PgliteRowLevelSecurityConnection,
+  PgliteRowLevelSecurityDriver,
+} from "@nest-boot/row-level-security/pglite";
+```
+
+The subpaths export only the corresponding driver and connection. Import shared APIs such as `RowLevelSecurity`, `Policy`, and the migration helpers from `@nest-boot/row-level-security`.
+
+## PGlite
+
+Use PGlite for isolated integration tests without an external PostgreSQL service:
+
+```typescript
+import { MikroORM } from "@mikro-orm/pglite";
+import {
+  RowLevelSecurityMigrationGenerator,
+  RowLevelSecurityMigrator,
+} from "@nest-boot/row-level-security";
+import { PgliteRowLevelSecurityDriver } from "@nest-boot/row-level-security/pglite";
+
+import { Document } from "./document.entity.js";
+
+const orm = await MikroORM.init({
+  driver: PgliteRowLevelSecurityDriver,
+  dbName: "memory://",
+  entities: [Document],
+  extensions: [RowLevelSecurityMigrator],
+  migrations: {
+    generator: RowLevelSecurityMigrationGenerator,
+    snapshot: false,
+  },
+});
+
+// In-memory test databases still need administrator-provisioned roles.
+await orm.em.getConnection().execute("create role anonymous nologin");
+await orm.em.getConnection().execute("create role authenticated nologin");
+await orm.migrator.up();
+
+// Close the ORM after the test to release the PGlite instance.
+await orm.close();
+```
+
+The same driver configuration can be passed to `MikroOrmModule.forRoot()`. Use a directory as `dbName` for persistent storage, following [MikroORM's PGlite configuration](https://mikro-orm.io/docs/usage-with-pglite). Provision roles once for persistent databases rather than recreating them on each startup.
+
+Both drivers share role selection, transaction-local context synchronization, stale-value cleanup, and serialization of queries within the same transaction. PGlite executes RLS setup statements individually inside that transaction. Policy migrations and live policy introspection use the same helpers; keep `migrations.snapshot: false`.
+
+Selecting an RLS driver does not enable isolation for every query. The default remains `AUTO`, and policies must be installed through migrations. Configuring MikroORM's upstream `PgliteDriver` directly does not apply Nest Boot's RLS context automatically.
+
+PGlite uses a single connection. It can verify PostgreSQL policy semantics, but it does not replace real PostgreSQL tests for connection pools, network behavior, or contention between separate database connections. Keep those PostgreSQL tests alongside the PGlite suite.
 
 ## Define Entity Policies
 

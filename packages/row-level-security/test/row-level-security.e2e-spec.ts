@@ -4,7 +4,15 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import type { EntityClass, Ref, Transaction } from "@mikro-orm/core";
+import type {
+  AnyEntity,
+  EntityClass,
+  EntityData,
+  MikroORM as CoreMikroORM,
+  QueryResult,
+  Ref,
+  Transaction,
+} from "@mikro-orm/core";
 import {
   Entity,
   ManyToOne,
@@ -52,6 +60,8 @@ const hasDatabaseConfig = Boolean(
 const describeIfDatabaseConfigured = hasDatabaseConfig
   ? describe
   : describe.skip;
+
+type RlsMikroORM = CoreMikroORM<RowLevelSecurityDriver>;
 
 @Entity({ schema: DOCUMENT_SCHEMA_NAME, tableName: MEMBER_TABLE_NAME })
 class RowLevelSecurityMemberEntity {
@@ -181,7 +191,7 @@ class RowLevelSecurityMigrationExplicitWorkspacePolicyWithExtraFieldEntity {
 }
 
 describeIfDatabaseConfigured("RowLevelSecurity - database integration", () => {
-  let orm: MikroORM;
+  let orm: RlsMikroORM;
   let testingModule: TestingModule;
 
   beforeAll(async () => {
@@ -423,8 +433,8 @@ describeIfDatabaseConfigured("RowLevelSecurity - database integration", () => {
 
   it("generates a policy diff after applying a migration and changing only context", async () => {
     const migrationPath = mkdtempSync(join(tmpdir(), "rls-policy-migrations-"));
-    let tenantOrm: MikroORM | undefined;
-    let workspaceOrm: MikroORM | undefined;
+    let tenantOrm: RlsMikroORM | undefined;
+    let workspaceOrm: RlsMikroORM | undefined;
 
     try {
       await dropGeneratedTestArtifacts(orm);
@@ -531,8 +541,8 @@ describeIfDatabaseConfigured("RowLevelSecurity - database integration", () => {
     migrationPathPrefix: string;
   }) {
     const migrationPath = mkdtempSync(join(tmpdir(), migrationPathPrefix));
-    let initialOrm: MikroORM | undefined;
-    let fieldChangeOrm: MikroORM | undefined;
+    let initialOrm: RlsMikroORM | undefined;
+    let fieldChangeOrm: RlsMikroORM | undefined;
 
     try {
       await dropGeneratedTestArtifacts(orm);
@@ -680,11 +690,10 @@ describeIfDatabaseConfigured("RowLevelSecurity - database integration", () => {
     }
   }
 
-  async function execute<T = unknown>(
-    sql: string,
-    ctx?: Transaction,
-    method: "all" | "get" | "run" = "all",
-  ) {
+  async function execute<
+    T extends QueryResult | EntityData<AnyEntity> | EntityData<AnyEntity>[] =
+      EntityData<AnyEntity>[],
+  >(sql: string, ctx?: Transaction, method: "all" | "get" | "run" = "all") {
     return await orm.em.getConnection().execute<T>(sql, [], method, ctx);
   }
 
@@ -732,7 +741,7 @@ describeIfDatabaseConfigured("RowLevelSecurity - database integration", () => {
     });
   }
 
-  async function dropPolicyMigrationSchema(targetOrm: MikroORM) {
+  async function dropPolicyMigrationSchema(targetOrm: RlsMikroORM) {
     await targetOrm.schema.drop({
       dropDb: false,
       dropMigrationsTable: false,
@@ -747,7 +756,7 @@ describeIfDatabaseConfigured("RowLevelSecurity - database integration", () => {
       );
   }
 
-  async function dropGeneratedTestArtifacts(targetOrm: MikroORM) {
+  async function dropGeneratedTestArtifacts(targetOrm: RlsMikroORM) {
     const schemas = await targetOrm.em.getConnection().execute<
       { nspname: string }[]
     >(/* SQL */ `
@@ -780,7 +789,7 @@ describeIfDatabaseConfigured("RowLevelSecurity - database integration", () => {
   }
 
   async function runGeneratedMigrationUpStatements(
-    targetOrm: MikroORM,
+    targetOrm: RlsMikroORM,
     code: string,
   ) {
     for (const statement of getGeneratedMigrationUpStatements(code)) {
@@ -820,7 +829,7 @@ describeIfDatabaseConfigured("RowLevelSecurity - database integration", () => {
     return sql.replace(/\\([`$\\])/g, "$1");
   }
 
-  async function getGeneratedPolicyExpression(targetOrm: MikroORM) {
+  async function getGeneratedPolicyExpression(targetOrm: RlsMikroORM) {
     return await targetOrm.em.getConnection().execute<{ qual: string }>(
       /* SQL */ `
         SELECT pg_get_expr(p.polqual, p.polrelid) AS qual

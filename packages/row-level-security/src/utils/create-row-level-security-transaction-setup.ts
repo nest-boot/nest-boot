@@ -18,8 +18,8 @@ export type RowLevelSecurityTransactionSetup =
 export interface RowLevelSecurityApplyTransactionSetup {
   /** Applies row level security state to the transaction. */
   action: "apply";
-  /** Transaction-local SQL that applies the PostgreSQL role and context settings. */
-  sql: string;
+  /** Individual statements that apply the transaction-local role and context. */
+  statements: string[];
   /** Stable cache key used to skip repeated setup on the same transaction. */
   signature: string;
   /** Context setting keys emitted by this setup. */
@@ -66,9 +66,10 @@ export function createRowLevelSecurityTransactionSetup():
   assertSnakeCase(databaseRole, "Row level security database role");
 
   const contextSql = builder.entries().length > 0 ? builder.toSQL() : "";
-  const sql = [/* SQL */ `SET LOCAL ROLE ${databaseRole};`, contextSql]
-    .filter(Boolean)
-    .join("\n");
+  const statements = [
+    /* SQL */ `SET LOCAL ROLE ${databaseRole};`,
+    contextSql,
+  ].filter(Boolean);
   const signature = JSON.stringify({
     context: builder.entries(),
     role: databaseRole,
@@ -78,7 +79,7 @@ export function createRowLevelSecurityTransactionSetup():
     action: "apply",
     contextKeys: builder.entries().map(([key]) => key),
     signature,
-    sql,
+    statements,
   };
 }
 

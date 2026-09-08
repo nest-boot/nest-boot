@@ -3,13 +3,15 @@ title: "Row-Level Security"
 description: "面向 MikroORM 实体、请求上下文和迁移生成的 PostgreSQL 行级安全辅助工具。"
 ---
 
-`@nest-boot/row-level-security` 包帮助 Nest Boot 应用在 MikroORM 中使用 PostgreSQL Row-Level Security（RLS）。它提供实体策略元数据、根据元数据生成 SQL 的迁移辅助工具，以及在事务级查询执行中应用请求作用域角色和上下文值的 PostgreSQL 驱动。
+`@nest-boot/row-level-security` 包帮助 Nest Boot 应用在 MikroORM 中使用 PostgreSQL Row-Level Security（RLS）。它提供实体策略元数据、根据元数据生成 SQL 的迁移辅助工具，以及在事务级查询执行中应用请求作用域角色和上下文值的 PostgreSQL 和 PGlite 驱动。
 
 ## 安装
 
 ```bash
-pnpm add @nest-boot/row-level-security @nest-boot/request-context @mikro-orm/postgresql @mikro-orm/migrations
+pnpm add @nest-boot/row-level-security @nest-boot/request-context @mikro-orm/postgresql @mikro-orm/pglite @mikro-orm/migrations
 ```
+
+所有 MikroORM 包应保持版本一致。PGlite 集成要求 MikroORM 7.1.14 或更高的 7.x 版本。由于根入口同时导出两种实现，两个数据库驱动均为对等依赖。
 
 ## 配置 MikroORM
 
@@ -35,6 +37,65 @@ export default {
 策略差异检测目前要求 `migrations.snapshot: false`。开启 MikroORM snapshot 模式时，生成的 policy migration 不会写入 schema snapshot；如果在应用该迁移之前再次运行 `migration:create`，可能会再次生成同一个 policy diff。在支持基于 snapshot 的 RLS policy tracking 前，请保持关闭 snapshot。
 
 驱动只会在 `RequestContext` 处于活动状态，并且当前上下文中通过 `RowLevelSecurity` 设置了行级安全值时应用 RLS。如果没有设置 RLS role 或 context 值，它会按 MikroORM 原始逻辑执行；但如果同一个事务之前已经应用过 RLS 状态，驱动会先清理这些状态。
+
+## 驱动入口
+
+根入口同时导出两种驱动，也可以通过各自的子路径导入：
+
+```typescript
+import {
+  RowLevelSecurityConnection,
+  RowLevelSecurityDriver,
+} from "@nest-boot/row-level-security/postgresql";
+import {
+  PgliteRowLevelSecurityConnection,
+  PgliteRowLevelSecurityDriver,
+} from "@nest-boot/row-level-security/pglite";
+```
+
+子路径仅导出对应的驱动和连接类。`RowLevelSecurity`、`Policy` 和迁移辅助工具等公共 API 仍从 `@nest-boot/row-level-security` 导入。
+
+## PGlite
+
+PGlite 可以用于不依赖外部 PostgreSQL 服务的独立集成测试：
+
+```typescript
+import { MikroORM } from "@mikro-orm/pglite";
+import {
+  RowLevelSecurityMigrationGenerator,
+  RowLevelSecurityMigrator,
+} from "@nest-boot/row-level-security";
+import { PgliteRowLevelSecurityDriver } from "@nest-boot/row-level-security/pglite";
+
+import { Document } from "./document.entity.js";
+
+const orm = await MikroORM.init({
+  driver: PgliteRowLevelSecurityDriver,
+  dbName: "memory://",
+  entities: [Document],
+  extensions: [RowLevelSecurityMigrator],
+  migrations: {
+    generator: RowLevelSecurityMigrationGenerator,
+    snapshot: false,
+  },
+});
+
+// 内存测试数据库同样需要由管理员预置角色。
+await orm.em.getConnection().execute("create role anonymous nologin");
+await orm.em.getConnection().execute("create role authenticated nologin");
+await orm.migrator.up();
+
+// 测试结束后关闭 ORM，释放 PGlite 实例。
+await orm.close();
+```
+
+同样的驱动配置可以传入 `MikroOrmModule.forRoot()`。需要持久化时，将 `dbName` 设置为目录，具体参考 [MikroORM 的 PGlite 配置](https://mikro-orm.io/docs/usage-with-pglite)。持久化数据库应在初始化时预置角色，而不是每次启动时重复创建。
+
+两种驱动共享角色选择、事务级上下文同步、旧值清理和同一事务内查询串行化逻辑。PGlite 会在事务内逐条执行 RLS 初始化语句。策略迁移和数据库策略读取也使用同一套辅助工具；请保持 `migrations.snapshot: false`。
+
+选择 RLS 驱动不等于所有查询默认受到隔离保护。默认模式仍为 `AUTO`，策略需要通过迁移安装。直接配置 MikroORM 上游的 `PgliteDriver` 不会自动应用 Nest Boot 的 RLS 上下文。
+
+PGlite 使用单连接，可以验证 PostgreSQL 策略语义，但不能替代连接池、网络行为和多个数据库连接间竞争的真实 PostgreSQL 测试。应同时保留这些 PostgreSQL 测试。
 
 ## 定义实体策略
 

@@ -1996,6 +1996,9 @@ importers:
       '@mikro-orm/nestjs':
         specifier: ^7.0.2
         version: 7.0.2
+      '@mikro-orm/pglite':
+        specifier: 7.1.14
+        version: 7.1.14
       '@mikro-orm/postgresql':
         specifier: 7.1.14
         version: 7.1.14
