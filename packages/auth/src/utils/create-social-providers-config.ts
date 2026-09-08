@@ -1,7 +1,8 @@
-import type { AuthModuleSocialProviders } from "../auth-module-options.interface.js";
+import type { BetterAuthOptions } from "better-auth";
+
 import { createSocialProviderConfig } from "./create-social-provider-config.js";
 
-type SocialProvidersConfig = AuthModuleSocialProviders;
+type SocialProvidersConfig = NonNullable<BetterAuthOptions["socialProviders"]>;
 
 export function createSocialProvidersConfig(
   disableSignUp: boolean,

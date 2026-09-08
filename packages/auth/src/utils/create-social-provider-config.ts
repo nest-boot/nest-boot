@@ -1,4 +1,5 @@
-import type { AuthModuleSocialProviders } from "../auth-module-options.interface.js";
+import type { BetterAuthOptions } from "better-auth";
+
 import { hasSocialProviderCredentialEnvConfig } from "./has-social-provider-credential-env-config.js";
 import { isEnvTrue } from "./is-env-true.js";
 import { resolveRequiredSocialProviderEnv } from "./resolve-required-social-provider-env.js";
@@ -8,7 +9,7 @@ import {
   SocialProviderId,
 } from "./social-provider.constants.js";
 
-type SocialProvidersConfig = AuthModuleSocialProviders;
+type SocialProvidersConfig = NonNullable<BetterAuthOptions["socialProviders"]>;
 type SocialProviderConfig<T extends SocialProviderId> = NonNullable<
   SocialProvidersConfig[T]
 >;

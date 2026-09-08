@@ -644,7 +644,7 @@ describe("AuthModule", () => {
         secondaryStorage: { get: vi.fn() },
         secret,
         unexpectedOption: "must-not-pass-through",
-        user: { buildAbility: vi.fn(), modelName: "application_user" },
+        user: { buildAbility: vi.fn() },
         workspace: {
           buildAbility: vi.fn(),
           sendInvitationEmail: vi.fn(),
@@ -653,12 +653,7 @@ describe("AuthModule", () => {
       { em: {} } as unknown as MikroORM,
     );
 
-    expect(mockBetterAuth.mock.calls[0]?.[0].user).not.toHaveProperty(
-      "buildAbility",
-    );
-    expect(mockBetterAuth.mock.calls[0]?.[0].user).toEqual({
-      modelName: "application_user",
-    });
+    expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty("user");
     expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty("entities");
     expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty("apiKey");
     expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty("middleware");

@@ -5,9 +5,9 @@ description: "配置 AuthModule、环境变量与 MikroORM 实体。"
 
 ## 模块选项
 
-通过 `forRoot()` 或 `forRootAsync()` 注册 `AuthModule`。模块仅开放经过明确允许的
-Better Auth 选项，避免上游升级无意中扩大 Nest Boot 的公开 API。Better Auth 插件仍由
-模块内部管理；内置社交登录与自定义 OAuth 统一使用扁平的 `providers` 选项。
+通过 `forRoot()` 或 `forRootAsync()` 注册 `AuthModule`。所有公开选项都由 Nest Boot
+显式声明，并在内部转换为认证后端配置，因此依赖升级不会悄悄扩大公开 API。内置社交
+登录与自定义 OAuth 统一使用扁平的 `providers` 选项。
 
 主要选项包括：
 
@@ -26,7 +26,7 @@ Better Auth 选项，避免上游升级无意中扩大 Nest Boot 的公开 API�
 - **`middleware`** — 控制认证中间件的注册和路由范围；
 - **`basePath`** — 修改默认的 `/api/auth/` 认证端点路径；
 - **`trustedOrigins`** — 配置允许的浏览器来源；
-- **`account`** — 转发 Better Auth 的 Account 生命周期选项；
+- **`account`** — 配置 OAuth 账号关联、存储与 state 校验；
 - **`providers`** — 配置内置社交、自定义 OAuth 2.0 与 OpenID Connect Provider。
 
 `user.permissions` 默认为标准 `User:*` 与 `Session:*` 权限目录。

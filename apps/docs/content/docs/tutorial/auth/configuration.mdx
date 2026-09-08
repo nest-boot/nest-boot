@@ -5,9 +5,9 @@ description: "Configure AuthModule, environment variables, and MikroORM entities
 
 ## Module Options
 
-Register `AuthModule` with `forRoot()` or `forRootAsync()`. The module exposes an
-explicit allowlist of Better Auth options so upgrades do not silently expand the
-public Nest Boot API. Better Auth plugins remain internal. Built-in social and
+Register `AuthModule` with `forRoot()` or `forRootAsync()`. Every public option is
+declared by Nest Boot and translated to the internal authentication backend, so
+dependency upgrades cannot silently expand the public API. Built-in social and
 custom OAuth providers share one flat `providers` option.
 
 Important Nest Boot options include:
@@ -27,7 +27,7 @@ Important Nest Boot options include:
 - **`middleware`** — controls auth middleware registration and route selection;
 - **`basePath`** — changes the auth endpoint path from `/api/auth/`;
 - **`trustedOrigins`** — configures allowed browser origins;
-- **`account`** — forwards Better Auth account lifecycle options;
+- **`account`** — configures OAuth account linking, storage, and state validation;
 - **`providers`** — configures built-in social, custom OAuth 2.0, and OpenID Connect providers.
 
 `user.permissions` defaults to the standard `User:*` and `Session:*` catalog.

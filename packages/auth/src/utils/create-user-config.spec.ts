@@ -87,25 +87,19 @@ describe("createUserConfig", () => {
 
   it("does not enable change-email implicitly", () => {
     expect(createUserConfig({} as Mailer, undefined)).toBeUndefined();
-    expect(createUserConfig({} as Mailer, {})).toEqual({});
+    expect(createUserConfig({} as Mailer, {})).toBeUndefined();
   });
 
-  it("passes only allowlisted Better Auth user options", () => {
+  it("does not pass Nest Boot authorization options to Better Auth", () => {
     const buildAbility = vi.fn();
     const config = createUserConfig({} as Mailer, {
       adminRoles: ["admin"],
       buildAbility,
       defaultRole: "user",
-      modelName: "user",
       permissions: ["User:list"],
       roles: { admin: ["User:list"] },
     });
 
-    expect(config).toEqual({ modelName: "user" });
-    expect(config).not.toHaveProperty("buildAbility");
-    expect(config).not.toHaveProperty("defaultRole");
-    expect(config).not.toHaveProperty("adminRoles");
-    expect(config).not.toHaveProperty("permissions");
-    expect(config).not.toHaveProperty("roles");
+    expect(config).toBeUndefined();
   });
 });

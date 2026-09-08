@@ -187,30 +187,17 @@ describe("UserService", () => {
     );
   });
 
-  it("only updates documented and explicitly configured user fields", async () => {
-    const { em, service } = createService(true, {
-      additionalFields: {
-        id: { type: "string" },
-        internalNote: { input: false, type: "string" },
-        locale: { type: "string" },
-      },
-    });
-    const user = Object.assign(new TestUser(), {
-      id: "user-1",
-      locale: "en",
-    });
+  it("only updates documented user fields", async () => {
+    const { em, service } = createService();
+    const user = Object.assign(new TestUser(), { id: "user-1" });
 
-    await expect(service.updateUser(user, { locale: "zh-CN" })).resolves.toBe(
-      user,
-    );
-    expect(em.assign).toHaveBeenCalledWith(user, { locale: "zh-CN" });
-
-    for (const field of ["id", "createdAt", "banned", "internalNote"]) {
+    for (const field of ["id", "createdAt", "banned", "locale"]) {
       await expect(
-        service.updateUser(user, { [field]: "overwritten" }),
+        service.updateUser(user, { [field]: "overwritten" } as never),
       ).rejects.toThrow(`User update contains unsupported fields: ${field}`);
     }
     expect(user.id).toBe("user-1");
+    expect(em.assign).not.toHaveBeenCalled();
   });
 
   it("requires set-email permission when changing email verification", async () => {

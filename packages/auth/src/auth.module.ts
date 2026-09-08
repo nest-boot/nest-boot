@@ -389,25 +389,9 @@ function copyBetterAuthOptions(
   target: BetterAuthOptions,
   source: AuthModuleOptions,
 ): void {
-  if (source.advanced !== undefined) target.advanced = source.advanced;
   if (source.basePath !== undefined) target.basePath = source.basePath;
-  if (source.databaseHooks !== undefined) {
-    target.databaseHooks = source.databaseHooks;
-  }
-  if (source.disabledPaths !== undefined) {
-    target.disabledPaths = source.disabledPaths;
-  }
-  if (source.hooks !== undefined) target.hooks = source.hooks;
-  if (source.logger !== undefined) target.logger = source.logger;
-  if (source.onAPIError !== undefined) target.onAPIError = source.onAPIError;
-  if (source.rateLimit !== undefined) target.rateLimit = source.rateLimit;
-  if (source.secrets !== undefined) target.secrets = source.secrets;
   if (source.session !== undefined) target.session = source.session;
-  if (source.telemetry !== undefined) target.telemetry = source.telemetry;
   if (source.trustedOrigins !== undefined) {
     target.trustedOrigins = source.trustedOrigins;
-  }
-  if (source.verification !== undefined) {
-    target.verification = source.verification;
   }
 }

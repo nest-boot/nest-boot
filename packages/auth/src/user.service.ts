@@ -57,15 +57,11 @@ import {
 
 const CREDENTIAL_ISSUER = "local:credential";
 const CREDENTIAL_PROVIDER_ID = "credential";
-const AUTH_OWNED_USER_FIELDS = new Set([
-  "banExpiresAt",
-  "banned",
-  "banReason",
-  "createdAt",
-  "id",
-  "permissions",
-  "roles",
-  "updatedAt",
+const MUTABLE_USER_FIELDS = new Set([
+  "email",
+  "emailVerified",
+  "image",
+  "name",
 ]);
 
 /** User management implemented with the configured MikroORM entities. */
@@ -449,17 +445,8 @@ export class UserService<
   private createUserUpdateData(
     input: UpdateUserOptions,
   ): Record<string, unknown> {
-    const mutableFields = new Set(["email", "emailVerified", "image", "name"]);
-    for (const [field, attributes] of Object.entries(
-      this.options.user?.additionalFields ?? {},
-    )) {
-      if (attributes.input !== false && !AUTH_OWNED_USER_FIELDS.has(field)) {
-        mutableFields.add(field);
-      }
-    }
-
     const unsupportedFields = Object.keys(input).filter(
-      (field) => !mutableFields.has(field),
+      (field) => !MUTABLE_USER_FIELDS.has(field),
     );
     if (unsupportedFields.length > 0) {
       throw new BadRequestException(

@@ -1,16 +1,15 @@
+import type { BetterAuthOptions } from "better-auth";
 import { socialProviderList } from "better-auth/social-providers";
 
-import type {
-  AuthModuleProvider,
-  AuthModuleSocialProviders,
-} from "../auth-module-options.interface.js";
+import type { AuthModuleProvider } from "../auth-module-options.interface.js";
 import type { GenericOAuthProviderConfig } from "./generic-oauth-provider-config.type.js";
 
 const BUILT_IN_PROVIDER_IDS = new Set<string>(socialProviderList);
+type SocialProvidersConfig = NonNullable<BetterAuthOptions["socialProviders"]>;
 
 interface SplitAuthProvidersResult {
   genericOAuthProviders: GenericOAuthProviderConfig[];
-  socialProviders: AuthModuleSocialProviders | undefined;
+  socialProviders: SocialProvidersConfig | undefined;
 }
 
 /** Splits the unified public provider list into Better Auth configurations. */
@@ -48,7 +47,7 @@ export function splitAuthProviders(
     genericOAuthProviders,
     socialProviders:
       Object.keys(socialProviders).length > 0
-        ? (socialProviders as AuthModuleSocialProviders)
+        ? (socialProviders as SocialProvidersConfig)
         : undefined,
   };
 }

@@ -32,8 +32,6 @@ export interface SignUpOptions {
   callbackURL?: string;
   /** Whether the created session should persist across browser restarts. */
   rememberMe?: boolean;
-  /** Application-defined user fields accepted during registration. */
-  [field: string]: unknown;
 }
 
 /** Result returned after signing up with email and password. */
@@ -150,8 +148,6 @@ export interface UpdateAuthUserOptions {
   name?: string;
   /** New avatar URL, or `null` to remove the current avatar. */
   image?: string | null;
-  /** Application-defined user fields configured through Better Auth. */
-  [field: string]: unknown;
 }
 
 /** Options for changing the authenticated user's email address. */

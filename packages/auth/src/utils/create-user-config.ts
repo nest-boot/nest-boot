@@ -18,9 +18,6 @@ export function createUserConfig(
   if (!options) return undefined;
 
   const config: UserConfig = {};
-  if (options.additionalFields !== undefined) {
-    config.additionalFields = options.additionalFields;
-  }
   if (options.changeEmail !== undefined) {
     config.changeEmail = options.changeEmail;
   }
@@ -44,11 +41,8 @@ export function createUserConfig(
         : {}),
     };
   }
-  if (options.fields !== undefined) config.fields = options.fields;
-  if (options.modelName !== undefined) config.modelName = options.modelName;
-  if (options.validateUserInfo !== undefined) {
-    config.validateUserInfo = options.validateUserInfo;
-  }
+
+  if (!config.changeEmail && !config.deleteUser) return undefined;
 
   if (!config.changeEmail?.enabled) return config;
   if (config.changeEmail.sendChangeEmailConfirmation) return config;

@@ -26,8 +26,6 @@ export interface UpdateUserOptions {
   image?: string | null;
   /** New display name. */
   name?: string;
-  /** Application-defined fields declared by `user.additionalFields`. */
-  [field: string]: unknown;
 }
 
 /** Search, filter, ordering, and pagination accepted by the user list. */
