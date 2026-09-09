@@ -120,26 +120,22 @@ export class RowLevelSecurityExecutor {
     callback: () => Promise<T>,
   ) {
     const previous = transactionState[ROW_LEVEL_SECURITY_TRANSACTION_QUEUE];
-    let release: () => void = () => {
-      return;
-    };
+    let release!: () => void;
     const current = new Promise<void>((resolve) => {
       release = resolve;
     });
-    const queued = (previous ?? Promise.resolve()).then(
-      () => current,
-      () => current,
-    );
 
-    transactionState[ROW_LEVEL_SECURITY_TRANSACTION_QUEUE] = queued;
-    await previous?.catch(() => undefined);
+    // Queue entries are completion barriers, not query results. They always
+    // resolve in finally, including when setup or query execution fails.
+    transactionState[ROW_LEVEL_SECURITY_TRANSACTION_QUEUE] = current;
+    await previous;
 
     try {
       return await callback();
     } finally {
       release();
 
-      if (transactionState[ROW_LEVEL_SECURITY_TRANSACTION_QUEUE] === queued) {
+      if (transactionState[ROW_LEVEL_SECURITY_TRANSACTION_QUEUE] === current) {
         transactionState[ROW_LEVEL_SECURITY_TRANSACTION_QUEUE] = undefined;
       }
     }
