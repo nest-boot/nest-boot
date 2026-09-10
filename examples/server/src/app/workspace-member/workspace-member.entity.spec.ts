@@ -21,7 +21,7 @@ describe('WorkspaceMember', () => {
     expect(member.permissions).toEqual([]);
   });
 
-  it('uses simple workspace and user row-level security policies', () => {
+  it('combines own-membership reads with workspace isolation', () => {
     const policies = Object.values(MetadataStorage.getMetadata()).find(
       (meta) => meta.class === WorkspaceMember,
     )?.policies;
@@ -30,10 +30,9 @@ describe('WorkspaceMember', () => {
     expect(policies).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          command: 'all',
+          command: 'select',
           roles: ['authenticated'],
           using: expect.any(Function),
-          check: expect.any(Function),
         }),
         expect.objectContaining({
           command: 'all',

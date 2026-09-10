@@ -17,12 +17,7 @@ describe('Workspace', () => {
       expect.arrayContaining([
         expect.objectContaining({
           type: 'restrictive',
-          command: 'select',
-          using: expect.any(Function),
-        }),
-        expect.objectContaining({
-          type: 'restrictive',
-          command: 'update',
+          command: 'all',
           using: expect.any(Function),
           check: expect.any(Function),
         }),

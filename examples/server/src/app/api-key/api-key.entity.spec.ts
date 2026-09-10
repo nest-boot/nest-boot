@@ -20,11 +20,19 @@ describe('ApiKey', () => {
     expect(apiKey.permissions).toEqual([]);
   });
 
-  it('uses service authorization for its polymorphic owner', () => {
+  it('uses the same owner-scope predicate for reads and writes', () => {
     const policies = Object.values(MetadataStorage.getMetadata()).find(
       (meta) => meta.class === ApiKey,
     )?.policies;
 
-    expect(policies ?? []).toEqual([]);
+    expect(policies).toEqual([
+      {
+        command: 'all',
+        roles: ['authenticated'],
+        using: expect.any(Function),
+        check: expect.any(Function),
+      },
+    ]);
+    expect(policies?.[0].using).toBe(policies?.[0].check);
   });
 });

@@ -167,6 +167,53 @@ await this.fileService.remove(fileId);
 await this.fileService.remove(fileId, false);
 ```
 
+#### Soft-delete RLS policies
+
+For PostgreSQL and PGlite, `softDeletePolicies()` adds database-level restrictions
+to an entity with a nullable `deletedAt` property. Apply it explicitly alongside
+your application's permissive policies:
+
+```typescript
+import { t } from "@mikro-orm/core";
+import { Entity, PrimaryKey, Property } from "@mikro-orm/decorators/legacy";
+import { softDeletePolicies } from "@nest-boot/mikro-orm";
+
+@Entity({
+  policies: [
+    {
+      command: "select",
+      roles: ["app_reader"],
+      using: () => "true",
+    },
+    ...softDeletePolicies(),
+  ],
+})
+export class Article {
+  @PrimaryKey({ type: t.integer })
+  id!: number;
+
+  @Property({ type: t.datetime, nullable: true })
+  deletedAt?: Date | null;
+}
+```
+
+Create `app_reader` and grant its table privileges separately in a migration.
+The helper contains only restrictive policies: it grants no access on its own,
+and does not initialize database roles or sessions. Policy callbacks use the
+mapped database column name, so custom `fieldName` values are supported.
+
+All options are optional: `softDeletePolicies()` uses `property: "deletedAt"`.
+Use `softDeletePolicies({ property: "removedAt" })` for a different entity property.
+Each call returns fresh policy definitions. No custom discovery hook or filter is
+required; MikroORM resolves the column mappings and generates the migration.
+
+For roles subject to RLS, deleted rows are hidden, inserts and updates must keep
+`deletedAt` null, and physical deletion is denied. Direct soft deletion and
+restoration are therefore blocked too, including through `EntityService.remove()`.
+Perform these operations only through a separately authorized service path using
+a database role permitted to bypass the restrictions. Keep metadata caching
+disabled when using these policy callbacks.
+
 ### Chunk Processing
 
 Process large datasets in batches:

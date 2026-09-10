@@ -9,7 +9,11 @@ import {
   Unique,
 } from '@mikro-orm/decorators/legacy';
 import { FullTextType } from '@mikro-orm/postgresql';
-import { BaseWorkspaceMember } from '@nest-boot/auth';
+import {
+  BaseWorkspaceMember,
+  userScopePolicy,
+  workspaceScopePolicy,
+} from '@nest-boot/auth';
 import { Field, HideField, ID, ObjectType } from '@nest-boot/graphql';
 import { Sonyflake } from 'sonyflake-js';
 
@@ -25,22 +29,9 @@ import { WorkspaceMemberType } from './enums/workspace-member-type.enum.js';
 @ObjectType()
 @Entity({
   policies: [
-    {
-      command: 'all',
-      using: (columns) =>
-        `${columns.user} = nullif(current_setting('app.user', true), '')::bigint`,
-      check: (columns) =>
-        `${columns.user} = nullif(current_setting('app.user', true), '')::bigint`,
-      roles: ['authenticated'],
-    },
-    {
-      command: 'all',
-      using: (columns) =>
-        `${columns.workspace} = nullif(current_setting('app.workspace', true), '')::bigint`,
-      check: (columns) =>
-        `${columns.workspace} = nullif(current_setting('app.workspace', true), '')::bigint`,
-      roles: ['authenticated'],
-    },
+    // 允许跨工作区查询本人的成员关系，但不放开写入。
+    userScopePolicy({ command: 'select' }),
+    workspaceScopePolicy(),
   ],
 })
 @Unique({ properties: ['user', 'workspace'] })

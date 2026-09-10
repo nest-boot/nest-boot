@@ -162,6 +162,48 @@ await this.fileService.remove(fileId);
 await this.fileService.remove(fileId, false);
 ```
 
+#### 软删除 RLS 策略
+
+对于 PostgreSQL 和 PGlite，`softDeletePolicies()` 为包含可空 `deletedAt` 属性的实体
+添加数据库层限制。需要显式加入实体，并与应用自己的允许型策略组合：
+
+```typescript
+import { t } from "@mikro-orm/core";
+import { Entity, PrimaryKey, Property } from "@mikro-orm/decorators/legacy";
+import { softDeletePolicies } from "@nest-boot/mikro-orm";
+
+@Entity({
+  policies: [
+    {
+      command: "select",
+      roles: ["app_reader"],
+      using: () => "true",
+    },
+    ...softDeletePolicies(),
+  ],
+})
+export class Article {
+  @PrimaryKey({ type: t.integer })
+  id!: number;
+
+  @Property({ type: t.datetime, nullable: true })
+  deletedAt?: Date | null;
+}
+```
+
+在迁移中单独创建 `app_reader` 并授予表权限。此工具只包含限制型策略，本身不授予
+任何访问权限，也不初始化数据库角色或 session。策略回调使用映射后的数据库列名，
+因此支持自定义 `fieldName`。
+
+所有参数均可省略：`softDeletePolicies()` 默认使用 `property: "deletedAt"`。
+属性名不同时可传入 `softDeletePolicies({ property: "removedAt" })`。每次调用返回
+独立的策略定义，不需要额外 discovery 钩子或 Filter；由 MikroORM 解析列名并生成迁移。
+
+对于受 RLS 约束的角色，已删除记录不可见，插入和更新都必须保持 `deletedAt` 为空，
+并禁止物理删除。因此，直接软删除和恢复也会被阻止，包括通过 `EntityService.remove()`
+执行的删除。此类操作应由独立授权的 Service 路径负责，使用允许绕过这些限制的
+数据库角色执行。使用这些策略回调时，请保持元数据缓存关闭。
+
 ### 分块处理
 
 批量处理大数据集：

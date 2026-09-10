@@ -563,7 +563,18 @@
       "checks": [],
       "triggers": [],
       "foreignKeys": {},
-      "comment": null
+      "comment": null,
+      "policies": [
+        {
+          "name": "api_key_all_policy",
+          "command": "all",
+          "type": "permissive",
+          "roles": ["authenticated"],
+          "using": "(owner_type = 'user' and owner_id = nullif(current_setting('app.user', true), '')::bigint) or (owner_type = 'workspace' and owner_id = nullif(current_setting('app.workspace', true), '')::bigint)",
+          "check": "(owner_type = 'user' and owner_id = nullif(current_setting('app.user', true), '')::bigint) or (owner_type = 'workspace' and owner_id = nullif(current_setting('app.workspace', true), '')::bigint)"
+        }
+      ],
+      "rlsEnabled": true
     },
     {
       "name": "session",
@@ -1304,26 +1315,20 @@
       "comment": null,
       "policies": [
         {
+          "name": "workspace_all_policy",
+          "command": "all",
+          "type": "restrictive",
+          "using": "deleted_at is null",
+          "check": "deleted_at is null"
+        },
+        {
           "name": "workspace_delete_policy",
           "command": "delete",
           "type": "restrictive",
           "using": "false"
         },
         {
-          "name": "workspace_insert_policy",
-          "command": "insert",
-          "type": "permissive",
-          "roles": ["authenticated"],
-          "check": "true"
-        },
-        {
           "name": "workspace_select_policy",
-          "command": "select",
-          "type": "restrictive",
-          "using": "deleted_at is null"
-        },
-        {
-          "name": "workspace_select_policy_2",
           "command": "select",
           "type": "permissive",
           "roles": ["anonymous", "authenticated"],
@@ -1331,13 +1336,6 @@
         },
         {
           "name": "workspace_update_policy",
-          "command": "update",
-          "type": "restrictive",
-          "using": "deleted_at is null",
-          "check": "true"
-        },
-        {
-          "name": "workspace_update_policy_2",
           "command": "update",
           "type": "permissive",
           "roles": ["authenticated"],
@@ -1568,7 +1566,18 @@
           "deleteRule": "cascade"
         }
       },
-      "comment": null
+      "comment": null,
+      "policies": [
+        {
+          "name": "workspace_invitation_all_policy",
+          "command": "all",
+          "type": "permissive",
+          "roles": ["authenticated"],
+          "using": "workspace_id = nullif(current_setting('app.workspace', true), '')::bigint",
+          "check": "workspace_id = nullif(current_setting('app.workspace', true), '')::bigint"
+        }
+      ],
+      "rlsEnabled": true
     },
     {
       "name": "workspace_member",
@@ -1883,15 +1892,14 @@
       "comment": null,
       "policies": [
         {
-          "name": "workspace_member_all_policy",
-          "command": "all",
+          "name": "workspace_member_select_policy",
+          "command": "select",
           "type": "permissive",
           "roles": ["authenticated"],
-          "using": "user_id = nullif(current_setting('app.user', true), '')::bigint",
-          "check": "user_id = nullif(current_setting('app.user', true), '')::bigint"
+          "using": "user_id = nullif(current_setting('app.user', true), '')::bigint"
         },
         {
-          "name": "workspace_member_all_policy_2",
+          "name": "workspace_member_all_policy",
           "command": "all",
           "type": "permissive",
           "roles": ["authenticated"],

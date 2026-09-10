@@ -103,20 +103,28 @@ export class WorkspaceService<
   ): Promise<Workspace> {
     this.accessControlService.assertCurrentUser(user);
     this.accessControlService.assertUserCan("create", this.workspaceEntity);
-    const workspace = this.em.create(this.workspaceEntity, {
-      name: input.name,
-    } as unknown as RequiredEntityData<Workspace>);
-    const workspaceMember = this.em.create(this.workspaceMemberEntity, {
-      email: user.email,
-      name: user.name,
-      roles: [this.creatorRole],
-      status: "ACTIVE",
-      user,
-      workspace,
-    } as unknown as RequiredEntityData<WorkspaceMember>);
+    // The new workspace has no request session yet. Only this authorized
+    // operation may bootstrap its owner outside the application's RLS scope.
+    return await this.runUnrestricted(
+      async (em) =>
+        await em.transactional(async (em) => {
+          const workspace = em.create(this.workspaceEntity, {
+            name: input.name,
+          } as unknown as RequiredEntityData<Workspace>);
+          const workspaceMember = em.create(this.workspaceMemberEntity, {
+            email: user.email,
+            name: user.name,
+            roles: [this.creatorRole],
+            status: "ACTIVE",
+            // Do not attach the caller's potentially dirty user to this fork.
+            user: user.id,
+            workspace,
+          } as unknown as RequiredEntityData<WorkspaceMember>);
 
-    await this.em.persist(workspace).persist(workspaceMember).flush();
-    return workspace;
+          await em.persist(workspace).persist(workspaceMember).flush();
+          return workspace;
+        }),
+    );
   }
 
   /** Returns a workspace together with its members and invitation records. */

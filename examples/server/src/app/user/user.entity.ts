@@ -7,7 +7,7 @@ import {
   PrimaryKey,
   Property,
 } from '@mikro-orm/decorators/legacy';
-import { BaseUser } from '@nest-boot/auth';
+import { BaseUser, userScopePolicy } from '@nest-boot/auth';
 import { Field, ID, ObjectType } from '@nest-boot/graphql';
 import { Sonyflake } from 'sonyflake-js';
 
@@ -24,14 +24,7 @@ import { WorkspaceMember } from '../workspace-member/workspace-member.entity.js'
       using: () => 'true',
       roles: ['authenticated'],
     },
-    {
-      command: 'update',
-      using: (columns) =>
-        `${columns.id} = nullif(current_setting('app.user', true), '')::bigint`,
-      check: (columns) =>
-        `${columns.id} = nullif(current_setting('app.user', true), '')::bigint`,
-      roles: ['authenticated'],
-    },
+    userScopePolicy({ property: 'id', command: 'update' }),
   ],
 })
 @Index({ properties: ['createdAt'] })

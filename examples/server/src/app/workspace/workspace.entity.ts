@@ -8,11 +8,11 @@ import {
   PrimaryKey,
   Property,
 } from '@mikro-orm/decorators/legacy';
-import { BaseWorkspace } from '@nest-boot/auth';
+import { BaseWorkspace, workspaceScopePolicy } from '@nest-boot/auth';
 import { Field, ID, ObjectType } from '@nest-boot/graphql';
+import { softDeletePolicies } from '@nest-boot/mikro-orm';
 import { Sonyflake } from 'sonyflake-js';
 
-import { softDeletePolicies } from '../../common/policies/soft-delete.policies.js';
 import { WorkspaceMember } from '../workspace-member/workspace-member.entity.js';
 import { WorkspaceFeature } from './enums/features.enum.js';
 
@@ -22,25 +22,14 @@ import { WorkspaceFeature } from './enums/features.enum.js';
 @ObjectType()
 @Entity({
   policies: [
-    ...softDeletePolicies,
     {
       command: 'select',
       using: () => 'true',
       roles: ['authenticated', 'anonymous'],
     },
-    {
-      command: 'insert',
-      check: () => 'true',
-      roles: ['authenticated'],
-    },
-    {
-      command: 'update',
-      using: (columns) =>
-        `${columns.id} = nullif(current_setting('app.workspace', true), '')::bigint`,
-      check: (columns) =>
-        `${columns.id} = nullif(current_setting('app.workspace', true), '')::bigint`,
-      roles: ['authenticated'],
-    },
+    workspaceScopePolicy({ property: 'id', command: 'update' }),
+    // 创建和软删除由 WorkspaceService 授权后的隔离事务负责。
+    ...softDeletePolicies(),
   ],
 })
 @Index({ properties: ['createdAt'] })

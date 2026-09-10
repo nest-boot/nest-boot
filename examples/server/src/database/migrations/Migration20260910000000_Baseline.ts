@@ -124,6 +124,10 @@ export class Migration20260910000000_Baseline extends Migration {
     this.addSql(
       `alter table "session" add constraint "session_impersonated_by_id_foreign" foreign key ("impersonated_by_id") references "user" ("id") on delete set null;`,
     );
+    this.addSql(`alter table "api_key" enable row level security;`);
+    this.addSql(
+      `create policy "api_key_all_policy" on "api_key" to "authenticated" using ((owner_type = 'user' and owner_id = nullif(current_setting('app.user', true), '')::bigint) or (owner_type = 'workspace' and owner_id = nullif(current_setting('app.workspace', true), '')::bigint)) with check ((owner_type = 'user' and owner_id = nullif(current_setting('app.user', true), '')::bigint) or (owner_type = 'workspace' and owner_id = nullif(current_setting('app.workspace', true), '')::bigint));`,
+    );
     this.addSql(
       `alter table "account" add constraint "account_user_id_foreign" foreign key ("user_id") references "user" ("id");`,
     );
@@ -132,22 +136,16 @@ export class Migration20260910000000_Baseline extends Migration {
     );
     this.addSql(`alter table "workspace" enable row level security;`);
     this.addSql(
-      `create policy "workspace_select_policy" on "workspace" as restrictive for select using (deleted_at is null);`,
+      `create policy "workspace_select_policy" on "workspace" for select to "authenticated", "anonymous" using (true);`,
     );
     this.addSql(
-      `create policy "workspace_update_policy" on "workspace" as restrictive for update using (deleted_at is null) with check (true);`,
+      `create policy "workspace_update_policy" on "workspace" for update to "authenticated" using (id = nullif(current_setting('app.workspace', true), '')::bigint) with check (id = nullif(current_setting('app.workspace', true), '')::bigint);`,
+    );
+    this.addSql(
+      `create policy "workspace_all_policy" on "workspace" as restrictive using (deleted_at is null) with check (deleted_at is null);`,
     );
     this.addSql(
       `create policy "workspace_delete_policy" on "workspace" as restrictive for delete using (false);`,
-    );
-    this.addSql(
-      `create policy "workspace_select_policy_2" on "workspace" for select to "authenticated", "anonymous" using (true);`,
-    );
-    this.addSql(
-      `create policy "workspace_insert_policy" on "workspace" for insert to "authenticated" with check (true);`,
-    );
-    this.addSql(
-      `create policy "workspace_update_policy_2" on "workspace" for update to "authenticated" using (id = nullif(current_setting('app.workspace', true), '')::bigint) with check (id = nullif(current_setting('app.workspace', true), '')::bigint);`,
     );
     this.addSql(
       `alter table "workspace_invitation" add constraint "workspace_invitation_inviter_id_foreign" foreign key ("inviter_id") references "user" ("id") on update cascade on delete cascade;`,
@@ -157,6 +155,12 @@ export class Migration20260910000000_Baseline extends Migration {
     );
     this.addSql(
       `alter table "workspace_invitation" add constraint "workspace_invitation_status_check" check ("status" in ('accepted', 'canceled', 'pending', 'rejected'));`,
+    );
+    this.addSql(
+      `alter table "workspace_invitation" enable row level security;`,
+    );
+    this.addSql(
+      `create policy "workspace_invitation_all_policy" on "workspace_invitation" to "authenticated" using (workspace_id = nullif(current_setting('app.workspace', true), '')::bigint) with check (workspace_id = nullif(current_setting('app.workspace', true), '')::bigint);`,
     );
     this.addSql(
       `alter table "workspace_member" add constraint "workspace_member_user_id_foreign" foreign key ("user_id") references "user" ("id") on update cascade on delete cascade;`,
@@ -172,21 +176,19 @@ export class Migration20260910000000_Baseline extends Migration {
     );
     this.addSql(`alter table "workspace_member" enable row level security;`);
     this.addSql(
-      `create policy "workspace_member_all_policy" on "workspace_member" to "authenticated" using (user_id = nullif(current_setting('app.user', true), '')::bigint) with check (user_id = nullif(current_setting('app.user', true), '')::bigint);`,
+      `create policy "workspace_member_select_policy" on "workspace_member" for select to "authenticated" using (user_id = nullif(current_setting('app.user', true), '')::bigint);`,
     );
     this.addSql(
-      `create policy "workspace_member_all_policy_2" on "workspace_member" to "authenticated" using (workspace_id = nullif(current_setting('app.workspace', true), '')::bigint) with check (workspace_id = nullif(current_setting('app.workspace', true), '')::bigint);`,
+      `create policy "workspace_member_all_policy" on "workspace_member" to "authenticated" using (workspace_id = nullif(current_setting('app.workspace', true), '')::bigint) with check (workspace_id = nullif(current_setting('app.workspace', true), '')::bigint);`,
     );
     this.addSql(`grant select, update on table "user" to authenticated;`);
     this.addSql(`grant select on table "workspace" to anonymous;`);
-    this.addSql(
-      `grant select, insert, update on table "workspace" to authenticated;`,
-    );
+    this.addSql(`grant select, update on table "workspace" to authenticated;`);
     this.addSql(
       `grant select, insert, update, delete on table "workspace_member", "workspace_invitation" to authenticated;`,
     );
     this.addSql(
-      `grant usage, select on sequence "workspace_id_seq", "workspace_member_id_seq" to authenticated;`,
+      `grant usage, select on sequence "workspace_member_id_seq" to authenticated;`,
     );
   }
 

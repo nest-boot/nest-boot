@@ -162,9 +162,28 @@ describe("WorkspaceService", () => {
     expect(em.flush).not.toHaveBeenCalled();
   });
 
+  it.each(["assertCurrentUser", "assertUserCan"] as const)(
+    "checks %s before starting unrestricted workspace creation",
+    async (check) => {
+      const { accessControlService, em, service } = createService();
+      vi.mocked(accessControlService[check]).mockImplementation(() => {
+        throw new ForbiddenException();
+      });
+
+      await expect(
+        service.createWorkspace(new TestUser(), { name: "Denied" }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(em.fork).not.toHaveBeenCalled();
+      expect(em.transactional).not.toHaveBeenCalled();
+      expect(em.create).not.toHaveBeenCalled();
+      expect(em.persist).not.toHaveBeenCalled();
+    },
+  );
+
   it("creates a workspace and its owner membership atomically", async () => {
     const { em, service } = createService();
     const user = Object.assign(new TestUser(), {
+      id: "user-1",
       email: "alice@example.com",
       name: "Alice",
     });
@@ -182,12 +201,13 @@ describe("WorkspaceService", () => {
         name: "Alice",
         roles: ["owner"],
         status: "ACTIVE",
-        user,
+        user: user.id,
         workspace,
       }),
     );
     expect(em.persist).toHaveBeenCalledTimes(2);
     expect(em.flush).toHaveBeenCalledTimes(1);
+    expect(em.transactional).toHaveBeenCalledTimes(1);
   });
 
   it("uses configured creator and default member roles", async () => {
