@@ -1,258 +1,151 @@
 ---
 title: "Row-Level Security"
-description: "面向 MikroORM 实体、请求上下文和迁移生成的 PostgreSQL 行级安全辅助工具。"
+description: "使用 MikroORM 原生策略与请求级数据库 session，在 PostgreSQL 和 PGlite 中实现行级安全。"
 ---
 
-`@nest-boot/row-level-security` 包帮助 Nest Boot 应用在 MikroORM 中使用 PostgreSQL Row-Level Security（RLS）。它提供实体策略元数据、根据元数据生成 SQL 的迁移辅助工具，以及在事务级查询执行中应用请求作用域角色和上下文值的 PostgreSQL 和 PGlite 驱动。
+Nest Boot 使用 [MikroORM 7.2 原生行级安全](https://mikro-orm.io/docs/row-level-security)，不再提供独立的 RLS 包或自定义数据库驱动。
 
 ## 安装
 
+所有 MikroORM 包保持相同版本，要求 **7.2 或以上**。使用数据库对应的官方驱动：
+
 ```bash
-pnpm add @nest-boot/row-level-security @nest-boot/request-context @mikro-orm/postgresql @mikro-orm/pglite @mikro-orm/migrations
+pnpm add @nest-boot/mikro-orm @nest-boot/request-context @mikro-orm/core @mikro-orm/decorators @mikro-orm/nestjs @mikro-orm/reflection @mikro-orm/postgresql
 ```
 
-所有 MikroORM 包应保持版本一致。PGlite 集成要求 MikroORM 7.1.14 或更高的 7.x 版本。由于根入口同时导出两种实现，两个数据库驱动均为对等依赖。
+使用 PGlite 时，将 `@mikro-orm/postgresql` 替换为 `@mikro-orm/pglite`，驱动改为 `PgliteDriver`。两种驱动均支持原生的事务级 session 策略。
 
-## 配置 MikroORM
+## 在实体上声明策略
 
-将 `RowLevelSecurityDriver` 配置为 MikroORM 的 PostgreSQL 驱动，将 `RowLevelSecurityMigrator` 配置为迁移扩展，并将 `RowLevelSecurityMigrationGenerator` 配置为迁移生成器：
+通过 `@Entity({ policies })` 声明策略。有策略时默认启用 RLS。SQL 表达式使用数据库列名；本例使用字符串表达式，确保策略可随元数据缓存完成序列化和还原。
 
-```typescript
-import {
-  RowLevelSecurityDriver,
-  RowLevelSecurityMigrationGenerator,
-  RowLevelSecurityMigrator,
-} from "@nest-boot/row-level-security";
+```ts
+import { Entity, PrimaryKey, Property } from "@mikro-orm/decorators/legacy";
 
-export default {
-  driver: RowLevelSecurityDriver,
-  extensions: [RowLevelSecurityMigrator],
-  migrations: {
-    generator: RowLevelSecurityMigrationGenerator,
-    snapshot: false,
-  },
-};
-```
-
-策略差异检测目前要求 `migrations.snapshot: false`。开启 MikroORM snapshot 模式时，生成的 policy migration 不会写入 schema snapshot；如果在应用该迁移之前再次运行 `migration:create`，可能会再次生成同一个 policy diff。在支持基于 snapshot 的 RLS policy tracking 前，请保持关闭 snapshot。
-
-驱动只会在 `RequestContext` 处于活动状态，并且当前上下文中通过 `RowLevelSecurity` 设置了行级安全值时应用 RLS。如果没有设置 RLS role 或 context 值，它会按 MikroORM 原始逻辑执行；但如果同一个事务之前已经应用过 RLS 状态，驱动会先清理这些状态。
-
-## 驱动入口
-
-根入口同时导出两种驱动，也可以通过各自的子路径导入：
-
-```typescript
-import {
-  RowLevelSecurityConnection,
-  RowLevelSecurityDriver,
-} from "@nest-boot/row-level-security/postgresql";
-import {
-  PgliteRowLevelSecurityConnection,
-  PgliteRowLevelSecurityDriver,
-} from "@nest-boot/row-level-security/pglite";
-```
-
-子路径仅导出对应的驱动和连接类。`RowLevelSecurity`、`Policy` 和迁移辅助工具等公共 API 仍从 `@nest-boot/row-level-security` 导入。
-
-## PGlite
-
-PGlite 可以用于不依赖外部 PostgreSQL 服务的独立集成测试：
-
-```typescript
-import { MikroORM } from "@mikro-orm/pglite";
-import {
-  RowLevelSecurityMigrationGenerator,
-  RowLevelSecurityMigrator,
-} from "@nest-boot/row-level-security";
-import { PgliteRowLevelSecurityDriver } from "@nest-boot/row-level-security/pglite";
-
-import { Document } from "./document.entity.js";
-
-const orm = await MikroORM.init({
-  driver: PgliteRowLevelSecurityDriver,
-  dbName: "memory://",
-  entities: [Document],
-  extensions: [RowLevelSecurityMigrator],
-  migrations: {
-    generator: RowLevelSecurityMigrationGenerator,
-    snapshot: false,
-  },
-});
-
-// 内存测试数据库同样需要由管理员预置角色。
-await orm.em.getConnection().execute("create role anonymous nologin");
-await orm.em.getConnection().execute("create role authenticated nologin");
-await orm.migrator.up();
-
-// 测试结束后关闭 ORM，释放 PGlite 实例。
-await orm.close();
-```
-
-同样的驱动配置可以传入 `MikroOrmModule.forRoot()`。需要持久化时，将 `dbName` 设置为目录，具体参考 [MikroORM 的 PGlite 配置](https://mikro-orm.io/docs/usage-with-pglite)。持久化数据库应在初始化时预置角色，而不是每次启动时重复创建。
-
-两种驱动共享角色选择、事务级上下文同步、旧值清理和同一事务内查询串行化逻辑。PGlite 会在事务内逐条执行 RLS 初始化语句。策略迁移和数据库策略读取也使用同一套辅助工具；请保持 `migrations.snapshot: false`。
-
-选择 RLS 驱动不等于所有查询默认受到隔离保护。默认模式仍为 `AUTO`，策略需要通过迁移安装。直接配置 MikroORM 上游的 `PgliteDriver` 不会自动应用 Nest Boot 的 RLS 上下文。
-
-PGlite 使用单连接，可以验证 PostgreSQL 策略语义，但不能替代连接池、网络行为和多个数据库连接间竞争的真实 PostgreSQL 测试。应同时保留这些 PostgreSQL 测试。
-
-## 定义实体策略
-
-在 MikroORM 实体上添加 `@Policy()`。同时提供 `property` 和 `context` 时，包会生成 `USING` 和 `WITH CHECK` 谓词，将映射后的数据库列与事务级 `app.<key>` 设置比较。
-
-```typescript
-import { Entity, PrimaryKey, Property, t } from "@mikro-orm/postgresql";
-import {
-  Policy,
-  PolicyCommand,
-  RowLevelSecurityRole,
-} from "@nest-boot/row-level-security";
-
-@Policy({
-  command: PolicyCommand.ALL,
-  property: "workspaceId",
-  context: "workspace_id",
-  roles: [RowLevelSecurityRole.AUTHENTICATED],
-})
-@Entity({ tableName: "files" })
-export class File {
-  @PrimaryKey({ type: t.integer })
-  id!: number;
-
-  @Property({ fieldName: "workspace_id", type: t.integer })
-  workspaceId!: number;
-
-  @Property({ type: t.string })
-  name!: string;
-}
-```
-
-这个策略只允许已认证请求读取、插入、更新和删除 `workspace_id` 与事务级 `app.workspace_id` 上下文一致的行。
-
-需要自定义策略逻辑时，可以直接提供 SQL 谓词：
-
-```typescript
-@Policy({
-  name: "published_files_read_policy",
-  command: PolicyCommand.SELECT,
-  using: `"is_public" = true or (select current_setting('app.workspace_id', true)::integer) = "workspace_id"`,
-  roles: [
-    RowLevelSecurityRole.ANONYMOUS,
-    RowLevelSecurityRole.AUTHENTICATED,
+@Entity({
+  policies: [
+    {
+      name: "document_workspace",
+      roles: ["authenticated"],
+      using: "workspace_id = nullif(current_setting('app.workspace', true), '')::uuid",
+      check: "workspace_id = nullif(current_setting('app.workspace', true), '')::uuid",
+    },
   ],
 })
-```
+export class Document {
+  @PrimaryKey({ type: "uuid" })
+  id!: string;
 
-显式的 `using` 和 `withCheck` 可以写成 `true` 或 `"is_public" = true` 这样的裸 SQL 片段；生成迁移时会把它们包装成 PostgreSQL policy 谓词。
+  @Property({ type: "uuid", fieldName: "workspace_id" })
+  workspaceId!: string;
 
-## 预置数据库角色
-
-RLS 运行时会执行 `SET LOCAL ROLE ...`，因此数据库中的 RLS roles 必须由数据库管理员提前创建，并授予给应用运行时使用的登录角色。生成的迁移不会创建这些 roles，也不会执行 role membership 授权。
-
-例如，使用内置的 `anonymous` 和 `authenticated` roles 时，数据库管理员可以先执行：
-
-```sql
-do $$ begin if not exists (select 1 from pg_roles where rolname = 'anonymous') then create role anonymous nologin; end if; end $$;
-do $$ begin if not exists (select 1 from pg_roles where rolname = 'authenticated') then create role authenticated nologin; end if; end $$;
-grant anonymous, authenticated to app_user;
-```
-
-将 `app_user` 替换为应用连接 PostgreSQL 时使用的登录角色。如果 `@Policy({ roles })` 中声明了自定义 role，也需要用同样方式预先创建，并授予给应用登录角色。
-
-## 生成迁移
-
-配置 `RowLevelSecurityMigrationGenerator` 后，MikroORM 生成迁移时会根据实体元数据中的策略写入 RLS SQL。生成的迁移会继承 `RowLevelSecurityMigration`，用于添加策略 DDL，以及显式 policy role 需要的 table 或 sequence 授权。
-`RowLevelSecurityMigrator` 会让 `migration:create` 检测只有策略变化、表结构不变的场景，例如只修改 policy 的 `context`。
-
-```bash
-pnpm mikro-orm migration:create
-```
-
-生成的策略迁移会：
-
-1. 在目标表上启用 row-level security。
-2. 假定 `anonymous` 和 policy metadata 声明的 roles 已经由数据库管理员预先创建。
-3. 在元数据变化时删除并重建策略。
-4. 在 `up` 中授予需要的 table 和 sequence 权限。
-5. 在 `down` 中只撤销不再被旧策略需要的 table、sequence 授权，但不删除数据库 role，也不撤销 role membership。
-6. 在 down 迁移中恢复之前的策略状态。
-
-## 设置请求上下文
-
-`RowLevelSecurityDriver` 会在活动事务内执行 `SET LOCAL ROLE ...` 和 `set_config('app.<key>', value, true)` 来应用 RLS。它会读取通过 `RowLevelSecurity` 写入的请求作用域值。
-
-```typescript
-import {
-  RowLevelSecurity,
-  RowLevelSecurityRole,
-} from "@nest-boot/row-level-security";
-import { RequestContext } from "@nest-boot/request-context";
-
-import { WorkspaceMember } from "./workspace-member.entity";
-
-const workspaceMember = RequestContext.get(WorkspaceMember);
-
-if (workspaceMember) {
-  RowLevelSecurity.setRole(RowLevelSecurityRole.AUTHENTICATED);
-  RowLevelSecurity.setContext("workspace_id", workspaceMember.workspace.id);
-  RowLevelSecurity.setContext("workspace_member_id", workspaceMember.id);
+  @Property({ type: "string" })
+  title!: string;
 }
 ```
 
-上下文 key 必须是 `snake_case`，因为它们会以 `app.` 前缀暴露为 PostgreSQL 设置。
+变量名和 SQL 类型转换必须与 session 配置、字段类型一致。上述表达式在工作区变量缺失或为空时不匹配任何记录。
 
-RLS mode 是请求作用域行为。它只影响 `RequestContext` 活动期间执行的查询；在 `RequestContext` 外部，驱动会按 MikroORM 原始逻辑执行，除非该查询复用了已经被驱动应用过 RLS 状态的事务。
+策略使用 `command: "select" | "insert" | "update" | "delete" | "all"` 和 `type: "permissive" | "restrictive"`。写入检查使用 `check`，不再使用旧的 `withCheck`。限制型策略只收紧已有的允许型策略，不会单独授予访问权。
 
-| Mode                            | 行为                                                                                                                                                                                                    |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `RowLevelSecurityMode.AUTO`     | 默认模式。设置了 role 或至少一个 context 值时应用 RLS。如果应用 RLS 但没有显式设置 role，驱动会使用 `anonymous`。如果没有 role 也没有 context 值，则按原始逻辑执行。                                    |
-| `RowLevelSecurityMode.ENABLED`  | 对当前 `RequestContext` 强制应用 RLS，即使没有任何 context 值。如果没有显式设置 role，驱动会使用 `anonymous`。                                                                                          |
-| `RowLevelSecurityMode.DISABLED` | 对当前 `RequestContext` 绕过 RLS，即使已经设置了 role 或 context 值。如果当前事务已经应用过 RLS 状态，驱动会先清理这些事务级状态，再执行 disabled 查询。只应在可信的基础设施、管理或跨租户 job 中使用。 |
+## 创建数据库角色并授权
 
-`anonymous` 是一个特殊数据库角色，并以 `RowLevelSecurityRole.ANONYMOUS` 导出。当 RLS 被启用但没有显式设置 role 时，它就是默认 fallback role。其他 role 会从 `@Policy({ roles })` 读取，包括用户自定义 role 名称。需要允许公开或未登录访问的策略可以添加 `roles: [RowLevelSecurityRole.ANONYMOUS]`；已认证的租户作用域工作则调用 `RowLevelSecurity.setRole(RowLevelSecurityRole.AUTHENTICATED)`。
+原生策略生成**不会**创建角色或执行 GRANT。应用策略迁移前，使用具有数据库管理权限的凭证显式配置：
 
-```typescript
-import {
-  RowLevelSecurity,
-  RowLevelSecurityMode,
-} from "@nest-boot/row-level-security";
+```sql
+create role anonymous nologin;
+create role authenticated nologin;
+grant anonymous, authenticated to app_connection;
 
-RowLevelSecurity.setMode(RowLevelSecurityMode.DISABLED);
+grant usage on schema public to anonymous, authenticated;
+grant select, insert, update, delete on document to authenticated;
 ```
 
-如果 queue job 需要 MikroORM 的请求上下文，但任务本身要跨租户运行，可以照常创建 `RequestContext`，但不要设置 `RowLevelSecurity`。如果 job 内部要按租户执行，则在该租户的执行边界内设置 role 和租户上下文：
+将 `app_connection` 替换为实际连接角色。使用序列生成主键时，还需要授予对应序列的使用权限。匿名角色只能获得业务允许公开的表权限，并配置相应的匿名策略。
 
-```typescript
-import {
-  RowLevelSecurity,
-  RowLevelSecurityRole,
-} from "@nest-boot/row-level-security";
+表所有者通常绕过 RLS；超级用户和具有 `BYPASSRLS` 的角色即使在 `rowLevelSecurity: "force"` 下也会绕过。请求必须实际切换到受限制的角色，策略才会生效。不要从不可信请求中读取数据库角色名。
 
-await RequestContext.run(new RequestContext({ type: "job" }), async () => {
-  RowLevelSecurity.setRole(RowLevelSecurityRole.AUTHENTICATED);
-  RowLevelSecurity.setContext("workspace_id", workspaceId);
+## 初始化请求 session
 
-  await processWorkspace(workspaceId);
+`MikroOrmModuleOptions.session` 是同步工厂函数，返回类型复用原生 `ForkOptions["session"]`。每次创建请求上下文的 EntityManager 分支时，在 Nest Boot 的 `RequestContext` 内执行一次。
+
+```ts
+import { PostgreSqlDriver } from "@mikro-orm/postgresql";
+import { MikroOrmModule } from "@nest-boot/mikro-orm";
+import { headers, RequestContext } from "@nest-boot/request-context";
+
+MikroOrmModule.forRoot({
+  driver: PostgreSqlDriver,
+  session: () => {
+    if (RequestContext.current().type !== "http") return undefined;
+
+    return {
+      role: "anonymous",
+      variables: {
+        "app.workspace": headers().get("x-workspace-id") ?? "",
+      },
+    };
+  },
 });
 ```
 
-## 运行时行为
+`forRootAsync()` 支持相同配置。不配置工厂时保持原生 session 行为；返回 `undefined` 不覆盖父级继承的 session，返回空对象则显式替换。
 
-查询在事务外运行时，`RowLevelSecurityDriver` 会自动开启一个短事务，应用 RLS 角色和上下文，执行 SQL，并通过提交或回滚清理事务级设置。如果 MikroORM 已经有事务上下文，驱动会在该事务上应用同样的设置后再执行查询。如果复用该事务时禁用了 RLS、清空了请求作用域的 RLS 值，或下一条查询在没有 `RequestContext` 的情况下复用该事务，驱动会在执行查询前清理之前应用的 role 和 context 设置。共享同一事务的查询会由驱动串行化，确保每条查询都使用为它准备的 role 和 context 执行。
+初始 `app.workspace` 表示选中的工作区，数据库角色保持 `anonymous`。此工厂在**认证中间件之前**运行，不能查询尚未创建的请求 EntityManager。后台任务可以返回自己的 session，而不是读取 HTTP headers。
 
-因为设置发生在 SQL 连接层，之后 lazy-load relation 仍会使用正常的请求实体管理器，并在实际发起查询时获得新的 RLS 事务。当多个操作必须共享同一个 RLS 上下文时，也可以直接调用 `em.transactional()`。
+### 认证完成后
 
-## 最佳实践
+验证身份与工作区访问权后，在请求 EntityManager 上设置认证角色与变量：
 
-1. **优先使用生成策略** — 对租户或工作区隔离使用 `property` + `context`，让迁移 SQL 与实体元数据保持一致。
+```ts
+em.setSessionContext({
+  role: "authenticated",
+  variables: {
+    "app.workspace": authorizedWorkspace.id,
+    "app.user_id": user.id,
+  },
+});
+```
 
-2. **保持上下文小而稳定** — 存储 `workspace_id`、`tenant_id`、`user_id` 等标识符，不要存储整个对象。
+选择工作区不等于成为成员。示例服务端会在启用工作区范围访问前验证成员关系或工作区 Key 归属；匿名选择仍使用同一个 `app.workspace` 变量。
 
-3. **显式指定角色** — 在策略上包含 `roles`，让授权和 PostgreSQL 角色行为更可预测。
+`setSessionContext()` 会合并变量。过期值需显式覆盖，或先调用 `clearSessionContext()` 再设置完整的新状态。清空会恢复基础连接角色，**不等同于**切换为 `anonymous`。
 
-4. **有意绕过** — 可信跨租户后台任务可以继续使用 MikroORM 需要的 `RequestContext`，但不要设置 `RowLevelSecurity`。
+设置与清空均必须发生在**事务开始之前**，原生 MikroORM 会拒绝在活动事务中修改上下文。
 
-## API 参考
+## 查询与事务
 
-详细的 API 文档请参阅 [Row-Level Security API 参考](/docs/api/row-level-security)。
+默认的 `sessionContext: "transaction"` 使用事务级角色与变量。存在 session 时，显式事务外受支持的 EntityManager 操作会自动包装事务；没有 session 时，不会额外添加这层 RLS 事务包装。
+
+上下文相关 SQL 使用 EntityManager API，包括 `em.execute()`。**`em.getConnection().execute()` 会绕过 EntityManager session**，仅用于经过明确授权的基础设施操作。
+
+带 session 的流式查询需要显式事务。依赖事务级 RLS 时，不要禁用事务。
+
+可选的 `sessionContext: "connection"` 仅支持 PostgreSQL，对连接分配和请求上下文有不同要求。优先使用默认策略，尤其是在 PGlite 或事务级连接池代理下。
+
+## Schema 与迁移
+
+使用官方 `@mikro-orm/migrations`、`Migrator` 和 `Migration`。原生工具管理策略的创建、修改、删除、RLS 开关和迁移快照，不再需要自定义生成器或迁移器。
+
+已有数据库必须在执行 schema diff **之前**，将原有策略名和表达式声明到实体元数据中，否则未声明的策略可能被删除。如果策略仍由外部维护，可显式选择 `schemaGenerator.ignorePolicies: true`，具体限制见官方迁移说明。
+
+示例保留基线迁移中的角色与授权 SQL，并通过普通迁移将策略变量 `app.workspace_id` 切换为 `app.workspace`。
+
+## 从已移除的包迁移
+
+| 原 API                                        | 原生替代                                      |
+| --------------------------------------------- | --------------------------------------------- |
+| `RowLevelSecurityDriver`                      | `@mikro-orm/postgresql` 的 `PostgreSqlDriver` |
+| `PgliteRowLevelSecurityDriver`                | `@mikro-orm/pglite` 的 `PgliteDriver`         |
+| `@Policy()`                                   | `@Entity({ policies: [...] })`                |
+| `property` / `context` 简写                   | 显式的 `using` / `check` 列名回调             |
+| `PolicyMode`、`PolicyCommand`                 | 原生字符串字面量选项                          |
+| `RowLevelSecurity.setContext()` / `setRole()` | `em.setSessionContext()`                      |
+| 自定义迁移类                                  | 官方 `Migration` / `Migrator`                 |
+| `AUTO` / `ENABLED` / `DISABLED`               | 显式原生 session 配置                         |
+
+Auth Service 经服务层授权的持久化操作会在需要时使用独立、无 session 的 EntityManager，不清空调用方的 session，也不连带提交业务层待写入的记录。如果调用方已开启带 RLS 上下文的事务，这类操作会拒绝执行，不会静默脱离事务提交；应先执行 Auth 操作，再开启该业务事务。
+
+## 测试
+
+PGlite 内存数据库适合隔离的策略与请求 session 测试；真实 PostgreSQL 测试用于验证网络驱动与连接行为。集成测试覆盖匿名 session、工作区隔离、读写限制、回滚、结果缓存隔离与原生策略差异。

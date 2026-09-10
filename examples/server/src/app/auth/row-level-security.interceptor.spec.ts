@@ -1,80 +1,62 @@
-import type { Mocked } from 'vitest';
-vi.mock('@nest-boot/auth', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@nest-boot/auth')>()),
-  BaseUser: class BaseUser {},
-}));
-
+import { EntityManager } from '@mikro-orm/core';
 import { RequestContext } from '@nest-boot/request-context';
-import { RowLevelSecurity } from '@nest-boot/row-level-security';
 import { CallHandler, ExecutionContext } from '@nestjs/common';
 import { lastValueFrom, of } from 'rxjs';
 
 import { ApiKey } from '../api-key/api-key.entity.js';
 import { User } from '../user/user.entity.js';
 import { Workspace } from '../workspace/workspace.entity.js';
+import { WorkspaceMember } from '../workspace-member/workspace-member.entity.js';
 import { RowLevelSecurityInterceptor } from './row-level-security.interceptor.js';
 
 describe('RowLevelSecurityInterceptor', () => {
-  it('sets request row level security context from request context', async () => {
-    const { interceptor } = createInterceptor();
-    const next = createNext();
-    const user = { id: 'user_1' } as User;
-    const workspace = { id: 'workspace_1' } as Workspace;
+  it.each(['member', 'workspace-key', 'anonymous', 'non-member'] as const)(
+    'stages the native database session for a %s',
+    async (kind) => {
+      const em = { setSessionContext: vi.fn() };
+      const interceptor = new RowLevelSecurityInterceptor(
+        em as unknown as EntityManager,
+      );
+      const next: CallHandler = { handle: vi.fn(() => of('ok')) };
 
-    await RequestContext.run(new RequestContext({ type: 'http' }), async () => {
-      RequestContext.set(User, user);
-      RequestContext.set(Workspace, workspace);
+      await RequestContext.run(
+        new RequestContext({ type: 'http' }),
+        async () => {
+          RequestContext.set(Workspace, { id: '42' } as Workspace);
+          if (kind === 'member' || kind === 'non-member') {
+            RequestContext.set(User, { id: '7' } as User);
+          }
+          if (kind === 'member') {
+            RequestContext.set(WorkspaceMember, { id: '9' } as WorkspaceMember);
+          }
+          if (kind === 'workspace-key') {
+            RequestContext.set(ApiKey, { id: '11' } as ApiKey);
+          }
 
-      await lastValueFrom(interceptor.intercept(createContext(), next));
+          await expect(
+            lastValueFrom(interceptor.intercept({} as ExecutionContext, next)),
+          ).resolves.toBe('ok');
+          expect(em.setSessionContext).toHaveBeenCalledWith({
+            role: kind === 'anonymous' ? 'anonymous' : 'authenticated',
+            variables: {
+              'app.user_id':
+                kind === 'member' || kind === 'non-member' ? '7' : '',
+              'app.workspace': kind === 'non-member' ? '' : '42',
+            },
+          });
+        },
+      );
+    },
+  );
 
-      expect(RowLevelSecurity.getContext('user_id')).toBe(user.id);
-      expect(RowLevelSecurity.getContext('workspace_id')).toBe(workspace.id);
-      expect(RowLevelSecurity.getRole()).toBe('authenticated');
-      expect(next.handle).toHaveBeenCalledWith();
-    });
-  });
-
-  it('sets authenticated role for API key requests', async () => {
-    const { interceptor } = createInterceptor();
-    const next = createNext();
-    const apiKey = { id: 'api_key_1' } as ApiKey;
-
-    await RequestContext.run(new RequestContext({ type: 'http' }), async () => {
-      RequestContext.set(ApiKey, apiKey);
-
-      await lastValueFrom(interceptor.intercept(createContext(), next));
-
-      expect(RowLevelSecurity.getContext('user_id')).toBeUndefined();
-      expect(RowLevelSecurity.getRole()).toBe('authenticated');
-      expect(next.handle).toHaveBeenCalledWith();
-    });
-  });
-
-  it('leaves anonymous requests without authenticated role', async () => {
-    const { interceptor } = createInterceptor();
-    const next = createNext();
-
-    await RequestContext.run(new RequestContext({ type: 'http' }), async () => {
-      await lastValueFrom(interceptor.intercept(createContext(), next));
-
-      expect(RowLevelSecurity.getRole()).toBeUndefined();
-      expect(next.handle).toHaveBeenCalledWith();
-    });
+  it('does not stage a session outside a request context', async () => {
+    const em = { setSessionContext: vi.fn() };
+    const interceptor = new RowLevelSecurityInterceptor(
+      em as unknown as EntityManager,
+    );
+    await lastValueFrom(
+      interceptor.intercept({} as ExecutionContext, { handle: () => of('ok') }),
+    );
+    expect(em.setSessionContext).not.toHaveBeenCalled();
   });
 });
-
-function createInterceptor() {
-  return {
-    interceptor: new RowLevelSecurityInterceptor(),
-  };
-}
-
-function createContext() {
-  return {} as ExecutionContext;
-}
-
-function createNext() {
-  return {
-    handle: vi.fn(() => of('ok')),
-  } as unknown as Mocked<CallHandler>;
-}

@@ -3,7 +3,7 @@ title: "MikroORM"
 description: "MikroORM integration with request-scoped entity manager, EntityService base class, and encrypted/hashed properties."
 ---
 
-The `@nest-boot/mikro-orm` module wraps [`@mikro-orm/nestjs`](https://mikro-orm.io/docs/usage-with-nestjs) with automatic environment-based configuration and request context integration for per-request entity manager forking. Companion modules provide [encrypted properties](#encrypted-properties), [hashed properties](#hashed-properties), and [PostgreSQL row-level security](/docs/tutorial/row-level-security).
+The `@nest-boot/mikro-orm` module wraps [`@mikro-orm/nestjs`](https://mikro-orm.io/docs/usage-with-nestjs) with automatic environment-based configuration and request context integration for per-request entity manager forking. It supports [native row-level security](/docs/tutorial/row-level-security); companion modules provide [encrypted properties](#encrypted-properties) and [hashed properties](#hashed-properties).
 
 ## Installation
 
@@ -102,6 +102,15 @@ export class UserService {
   }
 }
 ```
+
+### Database session factory
+
+Set `session: () => ({ role: "anonymous", variables: { "app.workspace": "..." } })`
+to initialize the native session on each request EntityManager. The synchronous
+callback returns `ForkOptions["session"]`, runs inside `RequestContext` before
+authentication, and is supported by both `forRoot()` and `forRootAsync()`.
+The default is no factory. See [Row-Level Security](/docs/tutorial/row-level-security)
+for request-derived values, role provisioning, and authenticated session updates.
 
 ## EntityService
 
@@ -240,7 +249,7 @@ Values are automatically hashed before create and update operations. The decorat
 
 2. **EntityService as Base** — Extend `EntityService` for all domain services to get CRUD + DataLoader batching out of the box.
 
-3. **RLS Driver** — Use `@nest-boot/row-level-security` when PostgreSQL policies should enforce tenant or workspace isolation.
+3. **Native RLS** — Use MikroORM 7.2 policies and request sessions for database-enforced workspace isolation with PostgreSQL or PGlite. See [Row-Level Security](/docs/tutorial/row-level-security).
 
 4. **Soft Delete** — Configure `softDeleteKey` in `EntityService` for entities that support soft delete.
 

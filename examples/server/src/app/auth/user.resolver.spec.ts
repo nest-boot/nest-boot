@@ -9,6 +9,7 @@ vi.mock('@nest-boot/auth', async (importOriginal) => ({
 }));
 
 import { User } from '../user/user.entity.js';
+import { Session } from './entities/session.entity.js';
 import { UserResolver } from './user.resolver.js';
 
 describe('UserResolver', () => {
@@ -72,13 +73,13 @@ describe('UserResolver', () => {
 
   it('manages user sessions without exposing missing users', async () => {
     const user = { id: 'user-1' } as User;
-    const session = {
+    const session = Object.assign(new Session(), {
       id: 'session-1',
       token: 'token-1',
       expiresAt: new Date(),
       createdAt: new Date(),
       updatedAt: new Date(),
-    };
+    });
     const { resolver, service } = createResolver({
       getUser: vi.fn(async () => user),
       listUserSessions: vi.fn(async () => [session]),
@@ -99,8 +100,12 @@ describe('UserResolver', () => {
   it('starts and stops impersonation while selecting each created session', async () => {
     const administrator = { id: 'admin-1' } as User;
     const target = { id: 'user-1' } as User;
-    const session = { token: 'impersonation-token' };
-    const restoredSession = { token: 'restored-token' };
+    const session = Object.assign(new Session(), {
+      token: 'impersonation-token',
+    });
+    const restoredSession = Object.assign(new Session(), {
+      token: 'restored-token',
+    });
     const { resolver, service, sessionService } = createResolver(
       {
         getUser: vi.fn(async () => target),

@@ -677,6 +677,11 @@ function createService(
   emailAndPassword: NonNullable<AuthModuleOptions["emailAndPassword"]> = {},
 ) {
   const em = {
+    getContext: vi.fn().mockReturnThis(),
+    getSessionContext:
+      vi.fn<() => import("@mikro-orm/core").SessionContext | undefined>(),
+    isInTransaction: vi.fn(() => false),
+    fork: vi.fn(),
     assign: vi.fn((entity, input) => Object.assign(entity, input)),
     create: vi.fn((Entity, input) => Object.assign(new Entity(), input)),
     find: vi.fn(),

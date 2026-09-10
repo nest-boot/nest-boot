@@ -68,7 +68,6 @@ describe("loadConfigFromEnv", () => {
       migrations: {
         path: "dist/database/migrations",
         pathTs: "src/database/migrations",
-        snapshot: false,
       },
       seeder: {
         defaultSeeder: "DatabaseSeeder",

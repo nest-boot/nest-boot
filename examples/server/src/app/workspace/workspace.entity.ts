@@ -10,10 +10,9 @@ import {
 } from '@mikro-orm/decorators/legacy';
 import { BaseWorkspace } from '@nest-boot/auth';
 import { Field, ID, ObjectType } from '@nest-boot/graphql';
-import { Policy, PolicyCommand } from '@nest-boot/row-level-security';
 import { Sonyflake } from 'sonyflake-js';
 
-import { SoftDeletePolicy } from '../../common/decorators/soft-delete-policy.decorator.js';
+import { softDeletePolicies } from '../../common/policies/soft-delete.policies.js';
 import { WorkspaceMember } from '../workspace-member/workspace-member.entity.js';
 import { WorkspaceFeature } from './enums/features.enum.js';
 
@@ -21,27 +20,30 @@ import { WorkspaceFeature } from './enums/features.enum.js';
  * 工作区实体。
  */
 @ObjectType()
-@SoftDeletePolicy()
-@Policy({
-  name: 'workspace_select_policy',
-  command: PolicyCommand.SELECT,
-  using: '(true)',
-  roles: ['authenticated', 'anonymous'],
+@Entity({
+  policies: [
+    ...softDeletePolicies,
+    {
+      name: 'workspace_select_policy',
+      command: 'select',
+      using: '(true)',
+      roles: ['authenticated', 'anonymous'],
+    },
+    {
+      name: 'workspace_insert_policy',
+      command: 'insert',
+      check: '(true)',
+      roles: ['authenticated'],
+    },
+    {
+      name: 'workspace_update_policy',
+      command: 'update',
+      using: "id = nullif(current_setting('app.workspace', true), '')::bigint",
+      check: "id = nullif(current_setting('app.workspace', true), '')::bigint",
+      roles: ['authenticated'],
+    },
+  ],
 })
-@Policy({
-  name: 'workspace_insert_policy',
-  command: PolicyCommand.INSERT,
-  withCheck: '(true)',
-  roles: ['authenticated'],
-})
-@Policy({
-  name: 'workspace_update_policy',
-  command: PolicyCommand.UPDATE,
-  property: 'id',
-  context: 'workspace_id',
-  roles: ['authenticated'],
-})
-@Entity()
 @Index({ properties: ['createdAt'] })
 @Index({ properties: ['deletedAt'] })
 export class Workspace extends BaseWorkspace {

@@ -50,6 +50,8 @@ async function createMiddleware(
     getSession,
   } as unknown as SessionService;
   const em = {
+    getContext: vi.fn().mockReturnThis(),
+    getSessionContext: vi.fn(),
     findOne,
   } as unknown as EntityManager;
   const moduleRef = await Test.createTestingModule({

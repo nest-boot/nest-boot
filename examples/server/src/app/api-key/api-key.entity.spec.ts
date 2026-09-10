@@ -3,8 +3,8 @@ vi.mock('@nest-boot/auth', async (importOriginal) => ({
   BaseUser: class BaseUser {},
 }));
 
+import { MetadataStorage } from '@mikro-orm/core';
 import { BaseApiKey } from '@nest-boot/auth';
-import { getPolicyDefinitions } from '@nest-boot/row-level-security';
 
 import { ApiKey } from './api-key.entity.js';
 
@@ -21,13 +21,10 @@ describe('ApiKey', () => {
   });
 
   it('uses service authorization for its polymorphic owner', () => {
-    const policies = getPolicyDefinitions(ApiKey, {
-      entityName: 'ApiKey',
-      schemaName: 'public',
-      tableName: 'api_key',
-      properties: {},
-    });
+    const policies = Object.values(MetadataStorage.getMetadata()).find(
+      (meta) => meta.class === ApiKey,
+    )?.policies;
 
-    expect(policies).toEqual([]);
+    expect(policies ?? []).toEqual([]);
   });
 });

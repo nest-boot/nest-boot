@@ -5,11 +5,6 @@ import {
   LockMode,
   Reference,
 } from "@mikro-orm/core";
-import { RequestContext } from "@nest-boot/request-context";
-import {
-  RowLevelSecurity,
-  RowLevelSecurityMode,
-} from "@nest-boot/row-level-security";
 import { Inject, Injectable } from "@nestjs/common";
 
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
@@ -23,6 +18,7 @@ import type {
   BaseWorkspaceInvitation,
   BaseWorkspaceMember,
 } from "./entities/index.js";
+import { runAuthQuery } from "./utils/run-auth-query.js";
 import { DEFAULT_WORKSPACE_CREATOR_ROLE } from "./workspace.constants.js";
 
 /** Raised when deleting a user would leave an active workspace without an owner. */
@@ -50,8 +46,8 @@ export class UserDeletionService {
     beforeDelete?: () => Promise<void>,
   ): Promise<BaseUser | null> {
     return await this.runUnrestricted(
-      async () =>
-        await this.em.transactional(async (em) => {
+      async (em) =>
+        await em.transactional(async (em) => {
           const user = await em.findOne(
             this.options.entities.user,
             { id: userId } as FilterQuery<BaseUser>,
@@ -108,17 +104,10 @@ export class UserDeletionService {
     });
   }
 
-  private async runUnrestricted<T>(callback: () => Promise<T>): Promise<T> {
-    const run = () => {
-      RowLevelSecurity.setMode(RowLevelSecurityMode.DISABLED);
-      return callback();
-    };
-
-    if (RequestContext.isActive()) return await RequestContext.child(run);
-    return await RequestContext.run(
-      new RequestContext({ type: "auth-user-deletion" }),
-      run,
-    );
+  private async runUnrestricted<T>(
+    callback: (em: EntityManager) => Promise<T>,
+  ): Promise<T> {
+    return await runAuthQuery(this.em, callback);
   }
 
   private get accountEntity(): EntityClass<BaseAccount> {

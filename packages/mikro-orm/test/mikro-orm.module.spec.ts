@@ -191,6 +191,7 @@ describe("MikroOrmModule", () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         MikroOrmModule,
+        { provide: MODULE_OPTIONS_TOKEN, useValue: {} },
         {
           provide: MikroORM,
           useValue: orm,
@@ -236,5 +237,70 @@ describe("MikroOrmModule", () => {
     ).toEqual({
       autoLoadEntities: true,
     });
+  });
+
+  it("keeps the session factory out of upstream ORM options", async () => {
+    const session = vi.fn(() => ({ role: "anonymous" }));
+    const config = await getRootOptionsFactory()({
+      dbName: "memory://",
+      session,
+    });
+    expect(config).not.toHaveProperty("session");
+    expect(session).not.toHaveBeenCalled();
+  });
+
+  it("evaluates the session factory separately inside each request context", async () => {
+    const fork = vi.fn(() => ({}) as EntityManager);
+    const orm = { em: { fork } } as unknown as MikroORM;
+    const session = vi.fn(() => ({
+      role: "anonymous",
+      variables: {
+        "app.workspace": RequestContext.get<string>("workspace") ?? "",
+      },
+    }));
+    new MikroOrmModule(orm, { session }).onModuleInit();
+    expect(session).not.toHaveBeenCalled();
+
+    for (const workspace of ["1", "2"]) {
+      const ctx = new RequestContext({ type: "test" });
+      ctx.set("workspace", workspace);
+      await RequestContext.run(ctx, () => {
+        expect(fork).toHaveBeenLastCalledWith({
+          useContext: true,
+          session: {
+            role: "anonymous",
+            variables: { "app.workspace": workspace },
+          },
+        });
+      });
+    }
+    expect(session).toHaveBeenCalledTimes(2);
+  });
+
+  it("supports an undefined session result", async () => {
+    const fork = vi.fn(() => ({}) as EntityManager);
+    new MikroOrmModule({ em: { fork } } as unknown as MikroORM, {
+      session: () => undefined,
+    }).onModuleInit();
+    await RequestContext.run(
+      new RequestContext({ type: "test" }),
+      () => undefined,
+    );
+    expect(fork).toHaveBeenCalledWith({ useContext: true, session: undefined });
+  });
+
+  it("stops the request when the session factory fails", async () => {
+    const fork = vi.fn();
+    const next = vi.fn();
+    new MikroOrmModule({ em: { fork } } as unknown as MikroORM, {
+      session: () => {
+        throw new Error("invalid database session");
+      },
+    }).onModuleInit();
+    await expect(
+      RequestContext.run(new RequestContext({ type: "test" }), next),
+    ).rejects.toThrow("invalid database session");
+    expect(fork).not.toHaveBeenCalled();
+    expect(next).not.toHaveBeenCalled();
   });
 });

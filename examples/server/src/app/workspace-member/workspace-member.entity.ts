@@ -11,7 +11,6 @@ import {
 import { FullTextType } from '@mikro-orm/postgresql';
 import { BaseWorkspaceMember } from '@nest-boot/auth';
 import { Field, HideField, ID, ObjectType } from '@nest-boot/graphql';
-import { Policy } from '@nest-boot/row-level-security';
 import { Sonyflake } from 'sonyflake-js';
 
 import { SearchableProperty } from '../../common/decorators/searchable-property.decorator.js';
@@ -24,17 +23,28 @@ import { WorkspaceMemberType } from './enums/workspace-member-type.enum.js';
  * 工作区成员实体。
  */
 @ObjectType()
-@Policy({
-  property: 'user',
-  context: 'user_id',
-  roles: ['authenticated'],
+@Entity({
+  policies: [
+    {
+      name: 'workspace_member_user_all_authenticated_policy',
+      command: 'all',
+      using:
+        "user_id = nullif(current_setting('app.user_id', true), '')::bigint",
+      check:
+        "user_id = nullif(current_setting('app.user_id', true), '')::bigint",
+      roles: ['authenticated'],
+    },
+    {
+      name: 'workspace_member_workspace_all_authenticated_policy',
+      command: 'all',
+      using:
+        "workspace_id = nullif(current_setting('app.workspace', true), '')::bigint",
+      check:
+        "workspace_id = nullif(current_setting('app.workspace', true), '')::bigint",
+      roles: ['authenticated'],
+    },
+  ],
 })
-@Policy({
-  property: 'workspace',
-  context: 'workspace_id',
-  roles: ['authenticated'],
-})
-@Entity()
 @Unique({ properties: ['user', 'workspace'] })
 @Unique({ properties: ['email', 'workspace'] })
 @Index({ properties: ['createdAt'] })

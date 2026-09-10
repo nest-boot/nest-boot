@@ -15,6 +15,8 @@ describe("mikroOrmAdapter field mapping", () => {
       name: "User",
     };
     const em = {
+      getContext: vi.fn().mockReturnThis(),
+      getSessionContext: vi.fn(),
       create: vi.fn((_entity, data) => ({ ...data })),
       findOne: vi.fn().mockResolvedValue(persistedUser),
       flush,

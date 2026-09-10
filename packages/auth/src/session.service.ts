@@ -3,12 +3,7 @@ import {
   type CookieOptions,
   cookies,
   headers,
-  RequestContext,
 } from "@nest-boot/request-context";
-import {
-  RowLevelSecurity,
-  RowLevelSecurityMode,
-} from "@nest-boot/row-level-security";
 import { Inject, Injectable } from "@nestjs/common";
 import { makeSignature } from "better-auth/crypto";
 import type { BetterAuthCookies } from "better-auth/types";
@@ -18,6 +13,7 @@ import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
 import type { BaseSession, BaseUser } from "./entities/index.js";
 import type { AuthenticatedSession } from "./interfaces/session-service.interface.js";
+import { runAuthQuery } from "./utils/run-auth-query.js";
 
 interface StatusResult {
   status: boolean;
@@ -103,10 +99,10 @@ export class SessionService {
     if (!data) return null;
 
     const [user, session] = await this.runUnrestricted(
-      async () =>
+      async (em) =>
         await Promise.all([
-          this.em.findOne(this.options.entities.user, { id: data.user.id }),
-          this.em.findOne(this.options.entities.session, {
+          em.findOne(this.options.entities.user, { id: data.user.id }),
+          em.findOne(this.options.entities.session, {
             token: data.session.token,
           }),
         ]),
@@ -138,8 +134,8 @@ export class SessionService {
     if (data.length === 0) return [];
 
     const sessions = await this.runUnrestricted(
-      async () =>
-        await this.em.find(this.options.entities.session, {
+      async (em) =>
+        await em.find(this.options.entities.session, {
           token: { $in: data.map(({ token }) => token) },
         }),
     );
@@ -206,17 +202,10 @@ export class SessionService {
     expireCookieAndChunks(cookieStore, authCookies.accountData);
   }
 
-  private async runUnrestricted<T>(callback: () => Promise<T>): Promise<T> {
-    const run = () => {
-      RowLevelSecurity.setMode(RowLevelSecurityMode.DISABLED);
-      return callback();
-    };
-
-    if (RequestContext.isActive()) return await RequestContext.child(run);
-    return await RequestContext.run(
-      new RequestContext({ type: "auth-session" }),
-      run,
-    );
+  private async runUnrestricted<T>(
+    callback: (em: EntityManager) => Promise<T>,
+  ): Promise<T> {
+    return await runAuthQuery(this.em, callback);
   }
 }
 

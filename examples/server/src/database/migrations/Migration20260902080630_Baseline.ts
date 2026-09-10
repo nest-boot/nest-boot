@@ -1,8 +1,6 @@
-import { RowLevelSecurityMigration } from '@nest-boot/row-level-security';
+import { Migration } from '@mikro-orm/migrations';
 
-export class Migration20260902080630_Baseline extends RowLevelSecurityMigration {
-  override name = 'Migration20260902080630_Baseline';
-
+export class Migration20260902080630_Baseline extends Migration {
   override up(): void | Promise<void> {
     this.addSql(
       `do \$\$ begin if not exists (select 1 from pg_roles where rolname = 'anonymous') then create role anonymous nologin; end if; end \$\$;`,

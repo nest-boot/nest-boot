@@ -28,7 +28,7 @@ describe('SearchableProperty', () => {
       nullable: true,
     })(Entity.prototype, 'searchableName');
 
-    const propertyOptions = vi.mocked(Property).mock.calls[0][0] as
+    const propertyOptions = vi.mocked(Property).mock.calls[0][0] as unknown as
       | SearchablePropertyHooks
       | undefined;
 
@@ -52,7 +52,7 @@ describe('SearchableProperty', () => {
       properties: ['name', 'description'],
     })(Entity.prototype, 'searchableText');
 
-    const propertyOptions = vi.mocked(Property).mock.calls[0][0] as
+    const propertyOptions = vi.mocked(Property).mock.calls[0][0] as unknown as
       | SearchablePropertyHooks
       | undefined;
 
@@ -74,7 +74,7 @@ describe('SearchableProperty', () => {
       properties: ['name'],
     })(Entity.prototype, 'searchableName');
 
-    const propertyOptions = vi.mocked(Property).mock.calls[0][0] as
+    const propertyOptions = vi.mocked(Property).mock.calls[0][0] as unknown as
       | (SearchablePropertyHooks & {
           onUpdate: (
             entity: Record<string, unknown>,

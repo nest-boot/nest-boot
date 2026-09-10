@@ -7,11 +7,6 @@ import {
   type RequiredEntityData,
   UniqueConstraintViolationException,
 } from "@mikro-orm/core";
-import { RequestContext } from "@nest-boot/request-context";
-import {
-  RowLevelSecurity,
-  RowLevelSecurityMode,
-} from "@nest-boot/row-level-security";
 import {
   BadRequestException,
   ConflictException,
@@ -53,6 +48,7 @@ import {
   normalizeAuthRoles,
   resolveAuthPermissions,
 } from "./utils/auth-role.util.js";
+import { runAuthQuery } from "./utils/run-auth-query.js";
 import {
   DEFAULT_WORKSPACE_CREATOR_ROLE,
   DEFAULT_WORKSPACE_PERMISSIONS,
@@ -87,8 +83,8 @@ export class WorkspaceService<
   async listWorkspaces(user: User): Promise<Workspace[]> {
     this.accessControlService.assertCurrentUser(user);
     this.accessControlService.assertUserCan("read", this.workspaceEntity);
-    return await this.withRlsDisabled(async () => {
-      const memberships = await this.em.find(
+    return await this.runUnrestricted(async (em) => {
+      const memberships = await em.find(
         this.workspaceMemberEntity,
         { status: "ACTIVE", user } as FilterQuery<WorkspaceMember>,
         { filters: false, populate: ["workspace"] as never },
@@ -129,15 +125,15 @@ export class WorkspaceService<
   ): Promise<FullWorkspace<Workspace, WorkspaceMember, WorkspaceInvitation>> {
     this.accessControlService.assertCurrentWorkspace(workspace);
     this.accessControlService.assertWorkspaceCan("read", workspace);
-    const [members, invitations] = await this.withRlsDisabled(
-      async () =>
+    const [members, invitations] = await this.runUnrestricted(
+      async (em) =>
         await Promise.all([
-          this.em.find(
+          em.find(
             this.workspaceMemberEntity,
             { workspace } as FilterQuery<WorkspaceMember>,
             { filters: false },
           ),
-          this.em.find(
+          em.find(
             this.workspaceInvitationEntity,
             { workspace } as FilterQuery<WorkspaceInvitation>,
             {
@@ -184,9 +180,9 @@ export class WorkspaceService<
       throw new ForbiddenException("Only workspace owners can delete it");
     }
 
-    return await this.withRlsDisabled(
-      async () =>
-        await this.em.transactional(async (em) => {
+    return await this.runUnrestricted(
+      async (em) =>
+        await em.transactional(async (em) => {
           await this.lockActiveWorkspace(em, workspace);
           await em.nativeUpdate(
             this.workspaceInvitationEntity,
@@ -197,7 +193,7 @@ export class WorkspaceService<
             { status: "canceled" } as never,
           );
           em.assign(workspace, { deletedAt: new Date() } as never);
-          await em.flush();
+          await em.persist(workspace).flush();
           return workspace;
         }),
     );
@@ -210,9 +206,9 @@ export class WorkspaceService<
   ): Promise<WorkspaceMember | null> {
     this.accessControlService.assertCurrentUser(user);
     this.accessControlService.assertUserCan("read", this.workspaceEntity);
-    return await this.withRlsDisabled(
-      async () =>
-        await this.em.findOne(
+    return await this.runUnrestricted(
+      async (em) =>
+        await em.findOne(
           this.workspaceMemberEntity,
           { status: "ACTIVE", user, workspace } as FilterQuery<WorkspaceMember>,
           { filters: false },
@@ -230,9 +226,9 @@ export class WorkspaceService<
       "read",
       this.workspaceMemberEntity,
     );
-    return await this.withRlsDisabled(
-      async () =>
-        await this.em.findOne(
+    return await this.runUnrestricted(
+      async (em) =>
+        await em.findOne(
           this.workspaceMemberEntity,
           { id: memberId, workspace } as FilterQuery<WorkspaceMember>,
           { filters: false },
@@ -247,9 +243,9 @@ export class WorkspaceService<
       "read",
       this.workspaceMemberEntity,
     );
-    return await this.withRlsDisabled(
-      async () =>
-        await this.em.find(
+    return await this.runUnrestricted(
+      async (em) =>
+        await em.find(
           this.workspaceMemberEntity,
           {
             status: { $in: ["ACTIVE", "DISABLED"] },
@@ -274,9 +270,9 @@ export class WorkspaceService<
     const permissions = this.normalizePermissions(input.permissions ?? []);
     this.accessControlService.assertCanGrantWorkspacePermissions(permissions);
     const roles = this.normalizeGrantedRoles(input.roles ?? [this.defaultRole]);
-    return await this.withRlsDisabled(
-      async () =>
-        await this.em.transactional(async (em) => {
+    return await this.runUnrestricted(
+      async (em) =>
+        await em.transactional(async (em) => {
           await this.lockActiveWorkspace(em, workspace);
           const existing = await em.findOne(
             this.workspaceMemberEntity,
@@ -319,9 +315,9 @@ export class WorkspaceService<
       "create",
       this.workspaceMemberEntity,
     );
-    const user = await this.withRlsDisabled(
-      async () =>
-        await this.em.findOne(
+    const user = await this.runUnrestricted(
+      async (em) =>
+        await em.findOne(
           this.userEntity,
           { email: email.trim().toLowerCase() } as FilterQuery<User>,
           { filters: false },
@@ -345,9 +341,9 @@ export class WorkspaceService<
     const permissions = this.normalizePermissions(input.permissions ?? []);
     this.accessControlService.assertCanGrantWorkspacePermissions(permissions);
     const roles = this.normalizeGrantedRoles(input.roles ?? [this.defaultRole]);
-    return await this.withRlsDisabled(
-      async () =>
-        await this.em.transactional(async (em) => {
+    return await this.runUnrestricted(
+      async (em) =>
+        await em.transactional(async (em) => {
           await this.lockActiveWorkspace(em, workspace);
           const member = em.create(this.workspaceMemberEntity, {
             ...(input.data ?? {}),
@@ -388,9 +384,9 @@ export class WorkspaceService<
       typeof input.email === "string"
         ? input.email.trim().toLowerCase()
         : input.email;
-    return await this.withRlsDisabled(
-      async () =>
-        await this.em.transactional(async (em) => {
+    return await this.runUnrestricted(
+      async (em) =>
+        await em.transactional(async (em) => {
           const lockedMember = await em.findOne(
             this.workspaceMemberEntity,
             { id: member.id, workspace } as FilterQuery<WorkspaceMember>,
@@ -453,9 +449,9 @@ export class WorkspaceService<
 
     const roles = this.normalizeGrantedRoles(role);
 
-    return await this.withRlsDisabled(
-      async () =>
-        await this.em.transactional(async (em) => {
+    return await this.runUnrestricted(
+      async (em) =>
+        await em.transactional(async (em) => {
           const lockedMember = await em.findOne(
             this.workspaceMemberEntity,
             { id: member.id, workspace } as FilterQuery<WorkspaceMember>,
@@ -553,9 +549,9 @@ export class WorkspaceService<
       );
     }
 
-    return await this.withRlsDisabled(
-      async () =>
-        await this.em.transactional(async (em) => {
+    return await this.runUnrestricted(
+      async (em) =>
+        await em.transactional(async (em) => {
           const lockedCurrentOwner = await em.findOne(
             this.workspaceMemberEntity,
             { id: currentOwner.id, workspace } as FilterQuery<WorkspaceMember>,
@@ -625,9 +621,9 @@ export class WorkspaceService<
     };
 
     try {
-      transactionResult = await this.withRlsDisabled(
-        async () =>
-          await this.em.transactional(async (em) => {
+      transactionResult = await this.runUnrestricted(
+        async (em) =>
+          await em.transactional(async (em) => {
             await this.lockActiveWorkspace(em, workspace);
             const [member, invitation, inviterMember] = await Promise.all([
               em.findOne(
@@ -721,9 +717,9 @@ export class WorkspaceService<
           request,
         );
       } catch (error) {
-        await this.withRlsDisabled(
-          async () =>
-            await this.em.nativeUpdate(
+        await this.runUnrestricted(
+          async (em) =>
+            await em.nativeUpdate(
               this.workspaceInvitationEntity,
               {
                 id: created.id,
@@ -745,9 +741,9 @@ export class WorkspaceService<
     user: User,
   ): Promise<WorkspaceInvitation | null> {
     this.accessControlService.assertCurrentUser(user);
-    return await this.withRlsDisabled(
-      async () =>
-        await this.em.findOne(
+    return await this.runUnrestricted(
+      async (em) =>
+        await em.findOne(
           this.workspaceInvitationEntity,
           {
             id,
@@ -768,9 +764,9 @@ export class WorkspaceService<
       "read",
       this.workspaceInvitationEntity,
     );
-    return await this.withRlsDisabled(
-      async () =>
-        await this.em.findOne(
+    return await this.runUnrestricted(
+      async (em) =>
+        await em.findOne(
           this.workspaceInvitationEntity,
           { id, workspace } as FilterQuery<WorkspaceInvitation>,
           { filters: false },
@@ -785,9 +781,9 @@ export class WorkspaceService<
       "read",
       this.workspaceInvitationEntity,
     );
-    return await this.withRlsDisabled(
-      async () =>
-        await this.em.find(
+    return await this.runUnrestricted(
+      async (em) =>
+        await em.find(
           this.workspaceInvitationEntity,
           { workspace } as FilterQuery<WorkspaceInvitation>,
           { filters: false, orderBy: { createdAt: "desc" } as never },
@@ -799,9 +795,9 @@ export class WorkspaceService<
   async listUserInvitations(user: User): Promise<WorkspaceInvitation[]> {
     this.accessControlService.assertCurrentUser(user);
     const now = new Date();
-    return await this.withRlsDisabled(
-      async () =>
-        await this.em.find(
+    return await this.runUnrestricted(
+      async (em) =>
+        await em.find(
           this.workspaceInvitationEntity,
           {
             email: user.email.toLowerCase(),
@@ -823,9 +819,9 @@ export class WorkspaceService<
     WorkspaceMember
   > | null> {
     this.accessControlService.assertCurrentUser(user);
-    return await this.withRlsDisabled(
-      async () =>
-        await this.em.transactional(async (em) => {
+    return await this.runUnrestricted(
+      async (em) =>
+        await em.transactional(async (em) => {
           const invitation = await em.findOne(
             this.workspaceInvitationEntity,
             { id: invitationId } as FilterQuery<WorkspaceInvitation>,
@@ -897,9 +893,9 @@ export class WorkspaceService<
     if (invitation.status !== "pending") {
       throw new BadRequestException("Workspace invitation is not pending");
     }
-    const updated = await this.withRlsDisabled(
-      async () =>
-        await this.em.nativeUpdate(
+    const updated = await this.runUnrestricted(
+      async (em) =>
+        await em.nativeUpdate(
           this.workspaceInvitationEntity,
           {
             id: invitation.id,
@@ -930,9 +926,9 @@ export class WorkspaceService<
         "Workspace invitation belongs to another email address",
       );
     }
-    const updated = await this.withRlsDisabled(
-      async () =>
-        await this.em.nativeUpdate(
+    const updated = await this.runUnrestricted(
+      async (em) =>
+        await em.nativeUpdate(
           this.workspaceInvitationEntity,
           {
             email: user.email.trim().toLowerCase(),
@@ -1037,9 +1033,9 @@ export class WorkspaceService<
     member: WorkspaceMember,
     ownerMessage: string,
   ): Promise<WorkspaceMember> {
-    return await this.withRlsDisabled(
-      async () =>
-        await this.em.transactional(async (em) => {
+    return await this.runUnrestricted(
+      async (em) =>
+        await em.transactional(async (em) => {
           const lockedMember = await em.findOne(
             this.workspaceMemberEntity,
             { id: member.id, workspace } as FilterQuery<WorkspaceMember>,
@@ -1090,17 +1086,10 @@ export class WorkspaceService<
     ) as unknown as Workspace;
   }
 
-  private async withRlsDisabled<T>(callback: () => Promise<T>): Promise<T> {
-    const run = () => {
-      RowLevelSecurity.setMode(RowLevelSecurityMode.DISABLED);
-      return callback();
-    };
-
-    if (RequestContext.isActive()) return await RequestContext.child(run);
-    return await RequestContext.run(
-      new RequestContext({ type: "auth-workspace" }),
-      run,
-    );
+  private async runUnrestricted<T>(
+    callback: (em: EntityManager) => Promise<T>,
+  ): Promise<T> {
+    return await runAuthQuery(this.em, callback);
   }
 
   private get workspaceEntity(): EntityClass<Workspace> {

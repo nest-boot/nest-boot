@@ -27,6 +27,7 @@ import {
 } from "./entities/index.js";
 import { SessionService } from "./session.service.js";
 import { extractApiKey } from "./utils/extract-api-key.util.js";
+import { runAuthQuery } from "./utils/run-auth-query.js";
 
 /** Builds the complete authentication context for an incoming request. */
 @Injectable()
@@ -105,13 +106,14 @@ export class AuthMiddleware implements NestMiddleware {
     const workspace = RequestContext.get(BaseWorkspace);
     if (!user || !workspace) return;
 
-    const member = await this.em.findOne(
-      this.options.entities.workspaceMember,
-      {
-        status: "ACTIVE",
-        user,
-        workspace,
-      },
+    const member = await runAuthQuery(
+      this.em,
+      async (em) =>
+        await em.findOne(this.options.entities.workspaceMember, {
+          status: "ACTIVE",
+          user,
+          workspace,
+        }),
     );
     if (!member) return;
 

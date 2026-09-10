@@ -6,6 +6,7 @@ import {
 } from "better-auth/adapters";
 
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
+import { runAuthQuery } from "../utils/run-auth-query.js";
 import { createMikroOrmAdapterConfig } from "./mikro-orm/adapter-config.js";
 import { createMikroOrmCustomAdapter } from "./mikro-orm/create-custom-adapter.js";
 
@@ -34,22 +35,26 @@ export const mikroOrmAdapter = ({
       config: {
         ...adapterConfig,
         transaction: async (callback) =>
-          await orm.em.transactional(async (em) => {
-            const transactionAdapter = createAdapterFactory({
-              config: {
-                ...adapterConfig,
-                transaction: false,
-              },
-              adapter: createMikroOrmCustomAdapter({
-                defaultUserRole,
-                em,
-                entities,
-                inTransaction: true,
-              }),
-            })(options);
+          await runAuthQuery(
+            orm.em,
+            async (authEm) =>
+              await authEm.transactional(async (em) => {
+                const transactionAdapter = createAdapterFactory({
+                  config: {
+                    ...adapterConfig,
+                    transaction: false,
+                  },
+                  adapter: createMikroOrmCustomAdapter({
+                    defaultUserRole,
+                    em,
+                    entities,
+                    inTransaction: true,
+                  }),
+                })(options);
 
-            return await callback(transactionAdapter);
-          }),
+                return await callback(transactionAdapter);
+              }),
+          ),
       },
       adapter: createMikroOrmCustomAdapter({
         defaultUserRole,

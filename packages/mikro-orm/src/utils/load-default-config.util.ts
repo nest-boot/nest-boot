@@ -14,7 +14,6 @@ export function loadDefaultConfig() {
     entities: ["dist/**/*.entity.js"],
     entitiesTs: ["src/**/*.entity.ts"],
     migrations: {
-      snapshot: false,
       path: "dist/database/migrations",
       pathTs: "src/database/migrations",
     },

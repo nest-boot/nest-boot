@@ -5,13 +5,10 @@ import {
   UniqueConstraintViolationException,
 } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
-import {
-  RowLevelSecurity,
-  RowLevelSecurityMode,
-} from "@nest-boot/row-level-security";
 import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import type { Mocked } from "vitest";
 
+import { mockRlsContext } from "../test/mock-rls-context.js";
 import type { AccessControlService } from "./access-control.service.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
 import {
@@ -364,21 +361,25 @@ describe("WorkspaceService", () => {
       roles: ["owner"],
     });
     em.assign.mockImplementation((entity, data) => {
-      expect(RowLevelSecurity.getMode()).toBe(RowLevelSecurityMode.DISABLED);
+      expect(
+        RequestContext.get(EntityManager)?.getSessionContext(),
+      ).toBeUndefined();
       Object.assign(entity, data);
       return entity;
     });
     em.flush.mockImplementation(() => {
-      expect(RowLevelSecurity.getMode()).toBe(RowLevelSecurityMode.DISABLED);
+      expect(
+        RequestContext.get(EntityManager)?.getSessionContext(),
+      ).toBeUndefined();
       return Promise.resolve();
     });
 
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      RowLevelSecurity.setMode(RowLevelSecurityMode.ENABLED);
+      const sessionContext = mockRlsContext(em);
       await expect(service.deleteWorkspace(workspace, owner)).resolves.toBe(
         workspace,
       );
-      expect(RowLevelSecurity.getMode()).toBe(RowLevelSecurityMode.ENABLED);
+      expect(em.getSessionContext()).toEqual(sessionContext);
     });
 
     expect(workspace.deletedAt).toBeInstanceOf(Date);
@@ -1540,6 +1541,11 @@ function createService(
   workspace: NonNullable<AuthModuleOptions["workspace"]> = {},
 ) {
   const em = {
+    getContext: vi.fn().mockReturnThis(),
+    getSessionContext:
+      vi.fn<() => import("@mikro-orm/core").SessionContext | undefined>(),
+    isInTransaction: vi.fn(() => false),
+    fork: vi.fn(),
     assign: vi.fn((entity, data) => Object.assign(entity, data)),
     create: vi.fn((Entity, data) => Object.assign(new Entity(), data)),
     find: vi.fn(),

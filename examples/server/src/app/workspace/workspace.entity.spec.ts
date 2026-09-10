@@ -1,9 +1,5 @@
+import { MetadataStorage } from '@mikro-orm/core';
 import { BaseWorkspace } from '@nest-boot/auth';
-import {
-  getPolicyMetadata,
-  PolicyCommand,
-  PolicyMode,
-} from '@nest-boot/row-level-security';
 
 import { Workspace } from './workspace.entity.js';
 
@@ -13,25 +9,29 @@ describe('Workspace', () => {
   });
 
   it('uses restrictive row-level security policies for soft deletion', () => {
-    expect(getPolicyMetadata(Workspace)).toEqual(
+    expect(
+      Object.values(MetadataStorage.getMetadata()).find(
+        (meta) => meta.class === Workspace,
+      )?.policies,
+    ).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           name: 'soft_delete_select_policy',
-          mode: PolicyMode.RESTRICTIVE,
-          command: PolicyCommand.SELECT,
+          type: 'restrictive',
+          command: 'select',
           using: '"deleted_at" is null',
         }),
         expect.objectContaining({
           name: 'soft_delete_update_policy',
-          mode: PolicyMode.RESTRICTIVE,
-          command: PolicyCommand.UPDATE,
+          type: 'restrictive',
+          command: 'update',
           using: '"deleted_at" is null',
-          withCheck: '(true)',
+          check: '(true)',
         }),
         expect.objectContaining({
           name: 'soft_delete_delete_policy',
-          mode: PolicyMode.RESTRICTIVE,
-          command: PolicyCommand.DELETE,
+          type: 'restrictive',
+          command: 'delete',
           using: '(false)',
         }),
       ]),
@@ -39,11 +39,15 @@ describe('Workspace', () => {
   });
 
   it('allows public workspace reads through row-level security', () => {
-    expect(getPolicyMetadata(Workspace)).toEqual(
+    expect(
+      Object.values(MetadataStorage.getMetadata()).find(
+        (meta) => meta.class === Workspace,
+      )?.policies,
+    ).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           name: 'workspace_select_policy',
-          command: PolicyCommand.SELECT,
+          command: 'select',
           using: '(true)',
           roles: ['authenticated', 'anonymous'],
         }),
