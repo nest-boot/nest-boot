@@ -92,6 +92,33 @@ describe("RequestContextModule", () => {
     );
   });
 
+  it("resolves detached methods against the context active at invocation", async () => {
+    const dynamicModule = RequestContextModule.forFeature(ContextValue);
+    const proxy = getFeatureProvider(dynamicModule, ContextValue).useValue;
+    const getDescribe = (): ContextValue["describe"] =>
+      Reflect.get(proxy, "describe");
+    let describe!: ContextValue["describe"];
+
+    await RequestContext.run(
+      new RequestContext({ type: "test" }),
+      (context) => {
+        context.set(ContextValue, new ContextValue("first"));
+        describe = getDescribe();
+
+        expect(getDescribe()).toBe(getDescribe());
+      },
+    );
+
+    await RequestContext.run(
+      new RequestContext({ type: "test" }),
+      (context) => {
+        context.set(ContextValue, new ContextValue("second"));
+
+        expect(describe("!")).toBe("second!");
+      },
+    );
+  });
+
   it("supports symbol tokens with an explicit value type", async () => {
     const token = Symbol("CONTEXT_VALUE");
     const dynamicModule = RequestContextModule.forFeature<ContextValue>(token);

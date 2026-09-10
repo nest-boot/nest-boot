@@ -119,6 +119,11 @@ export class RequestContextModule {
 function createRequestContextProxy<T extends object>(
   token: RequestContextToken<T>,
 ): T {
+  const methodDispatchers = new Map<
+    PropertyKey,
+    (...args: unknown[]) => unknown
+  >();
+
   function getContextValue(): T | undefined {
     if (!RequestContext.isActive()) {
       return undefined;
@@ -133,6 +138,34 @@ function createRequestContextProxy<T extends object>(
       : value;
   }
 
+  function getMethodDispatcher(
+    property: PropertyKey,
+  ): (...args: unknown[]) => unknown {
+    const existingDispatcher = methodDispatchers.get(property);
+
+    if (existingDispatcher) {
+      return existingDispatcher;
+    }
+
+    const dispatcher = (...args: unknown[]): unknown => {
+      const contextValue = getContextValue();
+
+      if (typeof contextValue === "undefined") {
+        return undefined;
+      }
+
+      const method = Reflect.get(contextValue, property, contextValue);
+
+      return typeof method === "function"
+        ? Reflect.apply(method, contextValue, args)
+        : undefined;
+    };
+
+    methodDispatchers.set(property, dispatcher);
+
+    return dispatcher;
+  }
+
   const proxy = new Proxy(Object.create(null) as object, {
     get(_target, property) {
       const contextValue = getContextValue();
@@ -143,7 +176,9 @@ function createRequestContextProxy<T extends object>(
 
       const value = Reflect.get(contextValue, property, contextValue);
 
-      return typeof value === "function" ? value.bind(contextValue) : value;
+      return typeof value === "function"
+        ? getMethodDispatcher(property)
+        : value;
     },
     set(_target, property, value) {
       const contextValue = getContextValue();
