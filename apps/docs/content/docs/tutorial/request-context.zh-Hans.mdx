@@ -27,6 +27,57 @@ import { Module } from "@nestjs/common";
 export class AppModule {}
 ```
 
+## 注入上下文数据
+
+需要通过常规 NestJS 依赖注入使用上下文数据时，可以在消费该 Token 的模块中注册
+`RequestContextModule.forFeature(token)`。根模块仍需导入一次
+`RequestContextModule`，用于初始化请求上下文。
+
+```typescript
+import {
+  RequestContext,
+  RequestContextModule,
+} from "@nest-boot/request-context";
+import { Injectable, Module } from "@nestjs/common";
+
+export class CurrentUser {
+  constructor(
+    readonly id: string,
+    readonly email: string,
+  ) {}
+}
+
+@Injectable()
+export class ProfileService {
+  constructor(private readonly currentUser: CurrentUser) {}
+
+  getEmail(): string {
+    return this.currentUser.email;
+  }
+}
+
+@Module({
+  imports: [RequestContextModule.forFeature(CurrentUser)],
+  providers: [ProfileService],
+})
+export class ProfileModule {}
+
+// 在同一个请求生命周期的更早阶段写入数据。
+RequestContext.set(CurrentUser, new CurrentUser("user-1", "user@example.com"));
+```
+
+`forFeature()` 只接收一个 Token，并以同一个 Token 提供和导出单例 Proxy。每次读取
+属性、调用方法或写入属性时，Proxy 都会从当前上下文调用
+`RequestContext.get(token)`，因此注入 Proxy 不会让消费它的 Provider 变为请求作用域。
+不存在活动上下文或上下文中没有该 Token 时，读取属性会返回 `undefined`。
+
+上下文中的代理值必须是对象。使用类 Token 时会自动推断类型；字符串或 Symbol
+Token 可以显式指定类型：
+
+```typescript
+RequestContextModule.forFeature<Tenant>(CURRENT_TENANT);
+```
+
 ## 存取上下文数据
 
 可以使用类、Symbol 或字符串作为 Token。推荐使用类或导出的 Symbol，以避免命名冲突。
