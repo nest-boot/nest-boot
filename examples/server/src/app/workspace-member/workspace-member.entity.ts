@@ -26,21 +26,19 @@ import { WorkspaceMemberType } from './enums/workspace-member-type.enum.js';
 @Entity({
   policies: [
     {
-      name: 'workspace_member_user_all_authenticated_policy',
       command: 'all',
-      using:
-        "user_id = nullif(current_setting('app.user_id', true), '')::bigint",
-      check:
-        "user_id = nullif(current_setting('app.user_id', true), '')::bigint",
+      using: (columns) =>
+        `${columns.user} = nullif(current_setting('app.user', true), '')::bigint`,
+      check: (columns) =>
+        `${columns.user} = nullif(current_setting('app.user', true), '')::bigint`,
       roles: ['authenticated'],
     },
     {
-      name: 'workspace_member_workspace_all_authenticated_policy',
       command: 'all',
-      using:
-        "workspace_id = nullif(current_setting('app.workspace', true), '')::bigint",
-      check:
-        "workspace_id = nullif(current_setting('app.workspace', true), '')::bigint",
+      using: (columns) =>
+        `${columns.workspace} = nullif(current_setting('app.workspace', true), '')::bigint`,
+      check: (columns) =>
+        `${columns.workspace} = nullif(current_setting('app.workspace', true), '')::bigint`,
       roles: ['authenticated'],
     },
   ],

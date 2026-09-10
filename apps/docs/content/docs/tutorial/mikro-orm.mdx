@@ -3,7 +3,7 @@ title: "MikroORM"
 description: "MikroORM integration with request-scoped entity manager, EntityService base class, and encrypted/hashed properties."
 ---
 
-The `@nest-boot/mikro-orm` module wraps [`@mikro-orm/nestjs`](https://mikro-orm.io/docs/usage-with-nestjs) with automatic environment-based configuration and request context integration for per-request entity manager forking. It supports [native row-level security](/docs/tutorial/row-level-security); companion modules provide [encrypted properties](#encrypted-properties) and [hashed properties](#hashed-properties).
+The `@nest-boot/mikro-orm` module wraps [`@mikro-orm/nestjs`](https://mikro-orm.io/docs/usage-with-nestjs) with automatic environment-based configuration and request context integration for per-request entity manager forking. Companion modules provide [encrypted properties](#encrypted-properties) and [hashed properties](#hashed-properties).
 
 ## Installation
 
@@ -47,6 +47,10 @@ PostgreSQL TLS file parameters use `sslrootcert`, `sslcert`, and `sslkey`; the s
 An explicit `clientUrl` or host-style connection target such as `host` or `dbName` takes full precedence and prevents ambient `DATABASE_URL` values from being merged into that connection. Supplemental options such as `driver`, `schema`, `pool`, or `debug` continue to augment automatic environment configuration.
 
 The default config discovers runtime entities from `dist/**/*.entity.js`, TypeScript entities from `src/**/*.entity.ts`, uses `TsMorphMetadataProvider`, enables MikroORM DataLoaders, and stores migrations and seeders under `src/database` (or `dist/database` after build).
+
+Metadata caching is disabled by default (`metadataCache: { enabled: false }`) for both module registration and CLI configuration loaded through `loadConfigFromEnv()`. Entity metadata is rediscovered on each ORM initialization, which may increase startup time, but not on each request. Query result caching is unaffected. Set `metadataCache: { enabled: true }` to opt in; setting only a cache directory or formatting options does not enable it.
+
+MikroORM 7.2.0's JSON metadata cache does not fully preserve policy callbacks. Keep caching disabled when entities use functions for `policies.using` or `policies.check`.
 
 ### Async Registration
 
@@ -109,8 +113,8 @@ Set `session: () => ({ role: "anonymous", variables: { "app.workspace": "..." } 
 to initialize the native session on each request EntityManager. The synchronous
 callback returns `ForkOptions["session"]`, runs inside `RequestContext` before
 authentication, and is supported by both `forRoot()` and `forRootAsync()`.
-The default is no factory. See [Row-Level Security](/docs/tutorial/row-level-security)
-for request-derived values, role provisioning, and authenticated session updates.
+The default is no factory. Applications are responsible for provisioning database
+roles and updating the session after authentication, before starting transactions.
 
 ## EntityService
 
@@ -249,9 +253,7 @@ Values are automatically hashed before create and update operations. The decorat
 
 2. **EntityService as Base** — Extend `EntityService` for all domain services to get CRUD + DataLoader batching out of the box.
 
-3. **Native RLS** — Use MikroORM 7.2 policies and request sessions for database-enforced workspace isolation with PostgreSQL or PGlite. See [Row-Level Security](/docs/tutorial/row-level-security).
-
-4. **Soft Delete** — Configure `softDeleteKey` in `EntityService` for entities that support soft delete.
+3. **Soft Delete** — Configure `softDeleteKey` in `EntityService` for entities that support soft delete.
 
 ## API Reference
 

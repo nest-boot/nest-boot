@@ -144,6 +144,14 @@ export class MikroOrmModule
           },
           ...envOptions,
           ...ormOptions,
+          metadataCache: {
+            ...envOptions.metadataCache,
+            ...ormOptions.metadataCache,
+            enabled:
+              ormOptions.metadataCache?.enabled ??
+              envOptions.metadataCache?.enabled ??
+              false,
+          },
         };
 
         if (

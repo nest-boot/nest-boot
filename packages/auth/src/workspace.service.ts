@@ -478,17 +478,34 @@ export class WorkspaceService<
     member: WorkspaceMember,
     permissions: readonly string[],
   ): Promise<WorkspaceMember> {
-    this.accessControlService.assertCurrentWorkspace(
-      this.unwrapWorkspace(member),
-    );
+    const workspace = this.unwrapWorkspace(member);
+    this.accessControlService.assertCurrentWorkspace(workspace);
     this.accessControlService.assertWorkspaceCan("update", member);
     const normalizedPermissions = this.normalizePermissions(permissions);
     this.accessControlService.assertCanGrantWorkspacePermissions(
       normalizedPermissions,
     );
-    member.permissions = normalizedPermissions;
-    await this.em.flush();
-    return member;
+    return await this.runUnrestricted(
+      async (em) =>
+        await em.transactional(async (em) => {
+          const lockedMember = await em.findOne(
+            this.workspaceMemberEntity,
+            { id: member.id, workspace } as FilterQuery<WorkspaceMember>,
+            {
+              filters: false,
+              lockMode: LockMode.PESSIMISTIC_WRITE,
+              refresh: true,
+            },
+          );
+          if (!lockedMember) {
+            throw new NotFoundException("Workspace member not found");
+          }
+          this.accessControlService.assertWorkspaceCan("update", lockedMember);
+          lockedMember.permissions = normalizedPermissions;
+          await em.flush();
+          return lockedMember;
+        }),
+    );
   }
 
   /** Removes a non-owner member from its workspace. */

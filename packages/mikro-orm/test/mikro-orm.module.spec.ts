@@ -101,6 +101,7 @@ describe("MikroOrmModule", () => {
       expect(config).not.toHaveProperty("dbName");
       expect(config).toMatchObject({
         dataloader: DataloaderType.ALL,
+        metadataCache: { enabled: false },
         entities: ["dist/**/*.entity.js"],
         entitiesTs: ["src/**/*.entity.ts"],
       });
@@ -125,6 +126,45 @@ describe("MikroOrmModule", () => {
     });
   });
 
+  it.each([
+    { input: undefined, expected: { enabled: false } },
+    { input: {}, expected: { enabled: false } },
+    {
+      input: { pretty: true },
+      expected: { enabled: false, pretty: true },
+    },
+    {
+      input: { enabled: undefined, pretty: true },
+      expected: { enabled: false, pretty: true },
+    },
+    {
+      input: { enabled: false, pretty: true },
+      expected: { enabled: false, pretty: true },
+    },
+    {
+      input: {
+        enabled: true,
+        pretty: true,
+        options: { cacheDir: "custom-cache" },
+      },
+      expected: {
+        enabled: true,
+        pretty: true,
+        options: { cacheDir: "custom-cache" },
+      },
+    },
+  ])(
+    "should apply metadata cache defaults to $input",
+    async ({ input, expected }) => {
+      const config = await getRootOptionsFactory()({
+        dbName: "memory://",
+        metadataCache: input,
+      });
+
+      expect(config.metadataCache).toEqual(expected);
+    },
+  );
+
   it("should merge ambient database config with non-connection options", async () => {
     const databaseUrl = process.env.DATABASE_URL;
     process.env.DATABASE_URL =
@@ -138,6 +178,7 @@ describe("MikroOrmModule", () => {
         }),
       ).resolves.toMatchObject({
         dbName: "ambient",
+        metadataCache: { enabled: false },
         debug: true,
         driver: PostgreSqlDriver,
         host: "ambient.example",

@@ -4,6 +4,7 @@ import { Test } from "@nestjs/testing";
 import { NextFunction, Request } from "express";
 import type { Mock } from "vitest";
 
+import { mockRlsContext } from "../test/mock-rls-context.js";
 import { ApiKeyService } from "./api-key.service.js";
 import { AuthMiddleware } from "./auth.middleware.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
@@ -52,8 +53,11 @@ async function createMiddleware(
   const em = {
     getContext: vi.fn().mockReturnThis(),
     getSessionContext: vi.fn(),
+    setSessionContext: vi.fn(),
+    isInTransaction: vi.fn(),
+    fork: vi.fn(),
     findOne,
-  } as unknown as EntityManager;
+  };
   const moduleRef = await Test.createTestingModule({
     providers: [
       AuthMiddleware,
@@ -79,6 +83,7 @@ async function createMiddleware(
   }).compile();
 
   return {
+    em,
     middleware: moduleRef.get(AuthMiddleware),
     validate,
   };
@@ -96,6 +101,127 @@ async function runInRequestContext<T>(
 describe("AuthMiddleware", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it.each([
+    ["anonymous", false, false, "workspace-1"],
+    ["session", true, true, "workspace-1"],
+    ["session", true, false, ""],
+    ["user-key", true, true, "workspace-1"],
+    ["user-key", true, false, ""],
+    ["workspace-key", false, false, "workspace-1"],
+  ] as const)(
+    "updates a staged session after %s authentication (user=%s, member=%s)",
+    async (kind, hasUser, hasMember, expectedWorkspace) => {
+      const user = Object.assign(new TestUser(), { id: "user-1" });
+      const workspace = Object.assign(new TestWorkspace(), {
+        id: "workspace-1",
+      });
+      const member = Object.assign(new TestWorkspaceMember(), {
+        id: "member-1",
+      });
+      const findOne = vi
+        .fn()
+        .mockResolvedValueOnce(workspace)
+        .mockResolvedValueOnce(hasMember ? member : null);
+      const getSession = vi
+        .fn()
+        .mockResolvedValue(
+          kind === "session" ? { user, session: new TestSession() } : null,
+        );
+      const validate = vi.fn().mockResolvedValue({
+        apiKey: new TestApiKey(),
+        ownerType: kind === "user-key" ? "user" : "workspace",
+        user,
+        workspace,
+      });
+      const { middleware, em } = await createMiddleware(
+        getSession,
+        findOne,
+        validate,
+      );
+      mockRlsContext(em);
+      const request = {
+        headers: {
+          "x-workspace-id": "workspace-1",
+          ...(kind.endsWith("key") ? { authorization: "Bearer sk-key" } : {}),
+        },
+      } as unknown as Request;
+      const next = vi.fn(() => {
+        expect(em.setSessionContext).toHaveBeenCalledExactlyOnceWith({
+          role: kind === "anonymous" ? "anonymous" : "authenticated",
+          variables: {
+            "app.user": hasUser ? "user-1" : "",
+            "app.workspace": expectedWorkspace,
+          },
+        });
+      });
+      await runInRequestContext(request, () =>
+        middleware.use(request, {} as never, next),
+      );
+      expect(next).toHaveBeenCalledExactlyOnceWith();
+      if (hasUser) {
+        expect(
+          vi.mocked(em.setSessionContext).mock.invocationCallOrder[0],
+        ).toBeGreaterThan(findOne.mock.invocationCallOrder[1]);
+      }
+    },
+  );
+
+  it("stages a database session even when the application did not configure one", async () => {
+    const { middleware, em } = await createMiddleware(
+      vi.fn().mockResolvedValue({
+        user: new TestUser(),
+        session: new TestSession(),
+      }),
+      vi.fn(),
+    );
+    const request = { headers: {} } as Request;
+    const next = vi.fn();
+    await runInRequestContext(request, () =>
+      middleware.use(request, {} as never, next),
+    );
+    expect(em.setSessionContext).toHaveBeenCalledWith({
+      role: "authenticated",
+      variables: { "app.user": expect.any(String), "app.workspace": "" },
+    });
+    expect(next).toHaveBeenCalledExactlyOnceWith();
+  });
+
+  it("clears the selected workspace variable when no workspace resolves", async () => {
+    const { middleware, em } = await createMiddleware(
+      vi.fn().mockResolvedValue(null),
+      vi.fn().mockResolvedValue(null),
+    );
+    mockRlsContext(em);
+    const request = {
+      headers: { "x-workspace-id": "missing" },
+    } as unknown as Request;
+    await runInRequestContext(request, () =>
+      middleware.use(request, {} as never, vi.fn()),
+    );
+    expect(em.setSessionContext).toHaveBeenCalledWith({
+      role: "anonymous",
+      variables: { "app.user": "", "app.workspace": "" },
+    });
+  });
+
+  it("forwards session staging errors without running the handler", async () => {
+    const { middleware, em } = await createMiddleware(
+      vi.fn().mockResolvedValue(null),
+      vi.fn(),
+    );
+    mockRlsContext(em);
+    const error = new Error("session cannot change during a transaction");
+    vi.mocked(em.setSessionContext).mockImplementation(() => {
+      throw error;
+    });
+    const request = { headers: {} } as Request;
+    const next = vi.fn();
+    await runInRequestContext(request, () =>
+      middleware.use(request, {} as never, next),
+    );
+    expect(next).toHaveBeenCalledExactlyOnceWith(error);
   });
 
   it("should continue without context when no session is returned", async () => {

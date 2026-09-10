@@ -24,22 +24,21 @@ import { WorkspaceFeature } from './enums/features.enum.js';
   policies: [
     ...softDeletePolicies,
     {
-      name: 'workspace_select_policy',
       command: 'select',
-      using: '(true)',
+      using: () => 'true',
       roles: ['authenticated', 'anonymous'],
     },
     {
-      name: 'workspace_insert_policy',
       command: 'insert',
-      check: '(true)',
+      check: () => 'true',
       roles: ['authenticated'],
     },
     {
-      name: 'workspace_update_policy',
       command: 'update',
-      using: "id = nullif(current_setting('app.workspace', true), '')::bigint",
-      check: "id = nullif(current_setting('app.workspace', true), '')::bigint",
+      using: (columns) =>
+        `${columns.id} = nullif(current_setting('app.workspace', true), '')::bigint`,
+      check: (columns) =>
+        `${columns.id} = nullif(current_setting('app.workspace', true), '')::bigint`,
       roles: ['authenticated'],
     },
   ],

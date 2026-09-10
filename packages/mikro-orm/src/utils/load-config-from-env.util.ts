@@ -177,10 +177,13 @@ export interface HostConfig {
  * PostgreSQL supports `sslmode=disable`, `require`, `verify-ca`, and
  * `verify-full`. Modes that require a plaintext fallback are rejected because
  * one structured driver configuration cannot preserve that behavior.
+ * Framework defaults are included, with metadata caching disabled.
  *
  * @returns MikroORM options derived from environment variables
  */
-export async function loadConfigFromEnv(): Promise<DriverConfig & HostConfig> {
+export async function loadConfigFromEnv(): Promise<
+  DriverConfig & HostConfig & Partial<Options>
+> {
   const baseConfig = loadDefaultConfig();
 
   const databaseUrl = process.env.DATABASE_URL;

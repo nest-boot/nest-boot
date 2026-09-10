@@ -20,16 +20,16 @@ import { WorkspaceMember } from '../workspace-member/workspace-member.entity.js'
 @Entity({
   policies: [
     {
-      name: 'user_select_policy',
       command: 'select',
-      using: '(true)',
+      using: () => 'true',
       roles: ['authenticated'],
     },
     {
-      name: 'user_update_policy',
       command: 'update',
-      using: "id = nullif(current_setting('app.user_id', true), '')::bigint",
-      check: "id = nullif(current_setting('app.user_id', true), '')::bigint",
+      using: (columns) =>
+        `${columns.id} = nullif(current_setting('app.user', true), '')::bigint`,
+      check: (columns) =>
+        `${columns.id} = nullif(current_setting('app.user', true), '')::bigint`,
       roles: ['authenticated'],
     },
   ],

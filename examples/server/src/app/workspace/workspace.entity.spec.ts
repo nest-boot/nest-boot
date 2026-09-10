@@ -16,23 +16,20 @@ describe('Workspace', () => {
     ).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          name: 'soft_delete_select_policy',
           type: 'restrictive',
           command: 'select',
-          using: '"deleted_at" is null',
+          using: expect.any(Function),
         }),
         expect.objectContaining({
-          name: 'soft_delete_update_policy',
           type: 'restrictive',
           command: 'update',
-          using: '"deleted_at" is null',
-          check: '(true)',
+          using: expect.any(Function),
+          check: expect.any(Function),
         }),
         expect.objectContaining({
-          name: 'soft_delete_delete_policy',
           type: 'restrictive',
           command: 'delete',
-          using: '(false)',
+          using: expect.any(Function),
         }),
       ]),
     );
@@ -46,9 +43,8 @@ describe('Workspace', () => {
     ).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          name: 'workspace_select_policy',
           command: 'select',
-          using: '(true)',
+          using: expect.any(Function),
           roles: ['authenticated', 'anonymous'],
         }),
       ]),

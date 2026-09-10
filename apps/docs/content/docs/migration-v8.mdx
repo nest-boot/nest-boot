@@ -60,7 +60,7 @@ provide a CommonJS `require` entry.
   Adopt existing policies into entity metadata before generating schema diffs;
   roles and privileges must be provisioned explicitly. Configure the initial
   request session with `MikroOrmModuleOptions.session` and update it before
-  starting business transactions. See [native RLS migration](/docs/tutorial/row-level-security).
+  starting business transactions. See the [MikroORM RLS documentation](https://mikro-orm.io/docs/row-level-security).
 - Update auth permission resource names to their exact CASL subject types. The
   built-in catalogs now use `User:*`, `Session:*`, `Workspace:*`,
   `WorkspaceMember:*`, and `WorkspaceInvitation:*`. Update configured role
@@ -72,6 +72,11 @@ provide a CommonJS `require` entry.
   `apiKey.allowedPermissions`.
 - Rebuild generated files and migrations after switching TypeScript module
   resolution so generated imports include valid ESM extensions.
+
+The server example's historical migrations have been replaced with one baseline
+generated from the current entities. Use a fresh database for this example; the
+new baseline is not an upgrade path for databases that ran the removed migrations.
+Back up any data you need before rebuilding an existing development database.
 
 ## Repository tests
 

@@ -3,7 +3,7 @@ title: "MikroORM"
 description: "MikroORM 集成，支持请求作用域实体管理器、EntityService 基类和加密/哈希属性。"
 ---
 
-`@nest-boot/mikro-orm` 模块封装 [`@mikro-orm/nestjs`](https://mikro-orm.io/docs/usage-with-nestjs)，提供基于环境变量的自动配置和请求上下文集成，支持每个请求独立的实体管理器分支和[原生行级安全](/docs/tutorial/row-level-security)。配套模块提供[加密属性](#加密属性)和[哈希属性](#哈希属性)。
+`@nest-boot/mikro-orm` 模块封装 [`@mikro-orm/nestjs`](https://mikro-orm.io/docs/usage-with-nestjs)，提供基于环境变量的自动配置和请求上下文集成，支持每个请求独立的实体管理器分支。配套模块提供[加密属性](#加密属性)和[哈希属性](#哈希属性)。
 
 ## 安装
 
@@ -44,6 +44,10 @@ PostgreSQL 的 TLS 文件参数使用 `sslrootcert`、`sslcert` 和 `sslkey`，�
 显式 `clientUrl` 或 `host`、`dbName` 等 host-style 连接目标会完整优先，并阻止环境中的 `DATABASE_URL` 混入该连接。`driver`、`schema`、`pool` 或 `debug` 等补充选项仍可叠加在自动环境配置上。
 
 默认配置从 `dist/**/*.entity.js` 发现运行时实体，从 `src/**/*.entity.ts` 发现 TypeScript 实体，使用 `TsMorphMetadataProvider`，启用 MikroORM DataLoader，并把 migration 与 seeder 放在 `src/database`（构建后为 `dist/database`）下。
+
+元数据缓存默认关闭（`metadataCache: { enabled: false }`），模块注册与 `loadConfigFromEnv()` 的 CLI 配置保持一致。每次 ORM 初始化都会重新发现实体元数据，启动可能稍慢，但不会在每次请求时重新发现，也不影响查询结果缓存。需要时可显式设置 `metadataCache: { enabled: true }`；仅设置缓存目录或格式不会开启缓存。
+
+MikroORM 7.2.0 的 JSON 元数据缓存不能完整保留策略回调；实体使用 `policies.using` 或 `policies.check` 函数时，请保持缓存关闭。
 
 ### 异步注册
 
@@ -105,7 +109,7 @@ export class UserService {
 通过 `session: () => ({ role: "anonymous", variables: { "app.workspace": "..." } })`
 为每个请求 EntityManager 初始化原生 session。同步回调返回 `ForkOptions["session"]`，
 在 `RequestContext` 内、认证之前执行，`forRoot()` 和 `forRootAsync()` 均支持。
-默认不配置工厂。请求值读取、角色授权和认证后的 session 更新详见[行级安全](/docs/tutorial/row-level-security)。
+默认不配置工厂。应用负责创建和授权数据库角色，并在认证后、业务事务开始前更新 session。
 
 ## EntityService
 
@@ -244,9 +248,7 @@ export class User {
 
 2. **EntityService 作为基类** — 所有领域服务都继承 `EntityService`，开箱即获得 CRUD + DataLoader 批处理。
 
-3. **原生 RLS** — 使用 MikroORM 7.2 的策略和请求 session，在 PostgreSQL 或 PGlite 中实现数据库强制的工作区隔离。参阅[行级安全](/docs/tutorial/row-level-security)。
-
-4. **软删除** — 对支持软删除的实体在 `EntityService` 中配置 `softDeleteKey`。
+3. **软删除** — 对支持软删除的实体在 `EntityService` 中配置 `softDeleteKey`。
 
 ## API 参考
 

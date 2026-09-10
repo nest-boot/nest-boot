@@ -49,6 +49,7 @@ export class AuthMiddleware implements NestMiddleware {
       const hasSession = await this.resolveSession();
       if (!hasSession) await this.resolveApiKey(req);
       await this.resolveWorkspaceMember();
+      this.updateSessionContext();
       next();
     } catch (error) {
       next(error);
@@ -122,6 +123,24 @@ export class AuthMiddleware implements NestMiddleware {
 
   private setApiKey(apiKey: BaseApiKey): void {
     RequestContext.set(BaseApiKey, apiKey);
+  }
+
+  private updateSessionContext(): void {
+    const user = RequestContext.get(BaseUser);
+    const apiKey = RequestContext.get(BaseApiKey);
+    const workspace = RequestContext.get(BaseWorkspace);
+    const member = RequestContext.get(BaseWorkspaceMember);
+    const authenticated = Boolean(user ?? apiKey);
+    const canUseWorkspace = Boolean(member ?? (apiKey && !user));
+
+    this.em.setSessionContext({
+      role: authenticated ? "authenticated" : "anonymous",
+      variables: {
+        "app.user": user?.id ?? "",
+        "app.workspace":
+          !authenticated || canUseWorkspace ? (workspace?.id ?? "") : "",
+      },
+    });
   }
 
   private setUser(user: BaseUser): void {

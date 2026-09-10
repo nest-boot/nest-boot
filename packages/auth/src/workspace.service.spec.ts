@@ -725,6 +725,7 @@ describe("WorkspaceService", () => {
     ).rejects.toThrow(
       "Workspace member contains duplicate permissions: Workspace:update",
     );
+    em.findOne.mockResolvedValue(member);
     await expect(
       service.setMemberPermissions(member, ["Workspace:update"]),
     ).resolves.toBe(member);
@@ -732,6 +733,69 @@ describe("WorkspaceService", () => {
     expect(
       accessControlService.assertCanGrantWorkspacePermissions,
     ).toHaveBeenCalledWith(["Workspace:update"]);
+  });
+
+  it("reloads detached members in the auth transaction before persisting permissions", async () => {
+    const { accessControlService, em, service } = createService();
+    mockRlsContext(em);
+    const detached = Object.assign(new TestWorkspaceMember(), {
+      name: "Unsaved caller change",
+      roles: ["owner"],
+    });
+    const managed = new TestWorkspaceMember();
+    em.findOne.mockResolvedValue(managed);
+
+    await expect(
+      service.setMemberPermissions(detached, ["Workspace:update"]),
+    ).resolves.toBe(managed);
+
+    expect(em.fork).toHaveBeenCalledOnce();
+    expect(em.transactional).toHaveBeenCalledOnce();
+    expect(em.findOne).toHaveBeenCalledWith(
+      TestWorkspaceMember,
+      { id: detached.id, workspace: detached.workspace },
+      { filters: false, lockMode: LockMode.PESSIMISTIC_WRITE, refresh: true },
+    );
+    expect(accessControlService.assertWorkspaceCan).toHaveBeenLastCalledWith(
+      "update",
+      managed,
+    );
+    expect(managed.permissions).toEqual(["Workspace:update"]);
+    expect(managed.name).toBe("Alice");
+    expect(managed.roles).toEqual(["member"]);
+    expect(detached.permissions).toEqual([]);
+    expect(em.persist).not.toHaveBeenCalled();
+    expect(em.flush).toHaveBeenCalledOnce();
+  });
+
+  it("does not recreate a deleted member while setting permissions", async () => {
+    const { em, service } = createService();
+    em.findOne.mockResolvedValue(null);
+
+    await expect(
+      service.setMemberPermissions(new TestWorkspaceMember(), [
+        "Workspace:update",
+      ]),
+    ).rejects.toThrow("Workspace member not found");
+    expect(em.flush).not.toHaveBeenCalled();
+  });
+
+  it("rechecks permission access against the locked member", async () => {
+    const { accessControlService, em, service } = createService();
+    const detached = new TestWorkspaceMember();
+    const managed = new TestWorkspaceMember();
+    em.findOne.mockResolvedValue(managed);
+    vi.mocked(accessControlService.assertWorkspaceCan).mockImplementation(
+      (_action, subject) => {
+        if (subject === managed) throw new ForbiddenException();
+      },
+    );
+
+    await expect(
+      service.setMemberPermissions(detached, ["Workspace:update"]),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(managed.permissions).toEqual([]);
+    expect(em.flush).not.toHaveBeenCalled();
   });
 
   it("checks role grants against the issuer permission ceiling", async () => {

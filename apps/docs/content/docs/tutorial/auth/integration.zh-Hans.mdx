@@ -1,6 +1,6 @@
 ---
 title: "NestJS 集成"
-description: "将 Auth 服务接入传输适配器、RequestContext 与 RLS。"
+description: "将 Auth 服务接入传输适配器与 RequestContext。"
 ---
 
 底层 Better Auth 实例及其注入 token 属于内部实现。应用应注入负责对应领域的服务：
@@ -48,12 +48,6 @@ RequestContext.get(User); // 配置的应用实体类别名
 ```
 
 同一约定适用于所有配置的 Auth 实体。传输层代码通常应优先使用当前身份装饰器。
-
-## PostgreSQL RLS
-
-需要时，认证表查询会在隔离的子上下文中运行。业务查询应从 auth 已写入
-`RequestContext` 的工作区和成员派生 RLS 上下文。参见
-[Row-Level Security 教程](/docs/tutorial/row-level-security)。
 
 ## 应用启动
 

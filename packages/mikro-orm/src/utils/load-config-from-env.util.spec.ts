@@ -64,6 +64,7 @@ describe("loadConfigFromEnv", () => {
       entities: ["dist/**/*.entity.js"],
       entitiesTs: ["src/**/*.entity.ts"],
       host: "localhost",
+      metadataCache: { enabled: false },
       metadataProvider: TsMorphMetadataProvider,
       migrations: {
         path: "dist/database/migrations",

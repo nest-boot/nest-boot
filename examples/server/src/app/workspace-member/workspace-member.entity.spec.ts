@@ -30,22 +30,16 @@ describe('WorkspaceMember', () => {
     expect(policies).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          name: 'workspace_member_user_all_authenticated_policy',
           command: 'all',
           roles: ['authenticated'],
-          using:
-            "user_id = nullif(current_setting('app.user_id', true), '')::bigint",
-          check:
-            "user_id = nullif(current_setting('app.user_id', true), '')::bigint",
+          using: expect.any(Function),
+          check: expect.any(Function),
         }),
         expect.objectContaining({
-          name: 'workspace_member_workspace_all_authenticated_policy',
           command: 'all',
           roles: ['authenticated'],
-          using:
-            "workspace_id = nullif(current_setting('app.workspace', true), '')::bigint",
-          check:
-            "workspace_id = nullif(current_setting('app.workspace', true), '')::bigint",
+          using: expect.any(Function),
+          check: expect.any(Function),
         }),
       ]),
     );

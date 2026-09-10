@@ -1,6 +1,10 @@
-import type { FilterQuery, FindOptions } from "@mikro-orm/core";
-import { SqlEntityManager } from "@mikro-orm/sql";
-import { Injectable } from "@nestjs/common";
+import {
+  EntityManager,
+  type FilterQuery,
+  type FindOptions,
+} from "@mikro-orm/core";
+import type { SqlEntityManager } from "@mikro-orm/sql";
+import { Inject, Injectable } from "@nestjs/common";
 import type { GraphQLResolveInfo } from "graphql";
 
 import { ConnectionQueryBuilder } from "./connection-query-builder.js";
@@ -99,9 +103,10 @@ export interface ConnectionSelectionFindOptions<
 @Injectable()
 export class ConnectionManager {
   /** Creates a new ConnectionManager instance.
+   * Uses the core DI token because SQL drivers register their concrete manager, not its SQL base class.
    * @param em - MikroORM SQL entity manager for querying entities
    */
-  constructor(private readonly em: SqlEntityManager) {}
+  constructor(@Inject(EntityManager) private readonly em: SqlEntityManager) {}
 
   /**
    * Finds entities and returns them as a paginated connection.
