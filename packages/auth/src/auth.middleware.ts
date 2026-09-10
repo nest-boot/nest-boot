@@ -27,6 +27,7 @@ import {
 } from "./entities/index.js";
 import { SessionService } from "./session.service.js";
 import { extractApiKey } from "./utils/extract-api-key.util.js";
+import { runAuthQuery } from "./utils/run-auth-query.js";
 
 /** Builds the complete authentication context for an incoming request. */
 @Injectable()
@@ -48,6 +49,7 @@ export class AuthMiddleware implements NestMiddleware {
       const hasSession = await this.resolveSession();
       if (!hasSession) await this.resolveApiKey(req);
       await this.resolveWorkspaceMember();
+      this.updateSessionContext();
       next();
     } catch (error) {
       next(error);
@@ -105,13 +107,14 @@ export class AuthMiddleware implements NestMiddleware {
     const workspace = RequestContext.get(BaseWorkspace);
     if (!user || !workspace) return;
 
-    const member = await this.em.findOne(
-      this.options.entities.workspaceMember,
-      {
-        status: "ACTIVE",
-        user,
-        workspace,
-      },
+    const member = await runAuthQuery(
+      this.em,
+      async (em) =>
+        await em.findOne(this.options.entities.workspaceMember, {
+          status: "ACTIVE",
+          user,
+          workspace,
+        }),
     );
     if (!member) return;
 
@@ -120,6 +123,24 @@ export class AuthMiddleware implements NestMiddleware {
 
   private setApiKey(apiKey: BaseApiKey): void {
     RequestContext.set(BaseApiKey, apiKey);
+  }
+
+  private updateSessionContext(): void {
+    const user = RequestContext.get(BaseUser);
+    const apiKey = RequestContext.get(BaseApiKey);
+    const workspace = RequestContext.get(BaseWorkspace);
+    const member = RequestContext.get(BaseWorkspaceMember);
+    const authenticated = Boolean(user ?? apiKey);
+    const canUseWorkspace = Boolean(member ?? (apiKey && !user));
+
+    this.em.setSessionContext({
+      role: authenticated ? "authenticated" : "anonymous",
+      variables: {
+        "app.user": user?.id ?? "",
+        "app.workspace":
+          !authenticated || canUseWorkspace ? (workspace?.id ?? "") : "",
+      },
+    });
   }
 
   private setUser(user: BaseUser): void {

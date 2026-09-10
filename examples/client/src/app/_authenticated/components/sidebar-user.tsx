@@ -141,6 +141,7 @@ export function SidebarUser() {
               ) : null}
               <DropdownMenuSeparator />
               <DropdownMenuItem
+                data-testid="sidebar-user-sign-out"
                 onClick={async () => {
                   await signOut();
                   await apolloClient.clearStore();

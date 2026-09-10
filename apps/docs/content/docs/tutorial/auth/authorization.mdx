@@ -273,6 +273,62 @@ when the requested ability is unavailable. The lower-level
 `getUserAbility()` and `getWorkspaceAbility()` accessors throw
 `ForbiddenException` instead.
 
+## Database Scope Policies
+
+`userScopePolicy()` and `workspaceScopePolicy()` return native MikroORM policy
+definitions. Every option is optional:
+
+| Factory                  | `type`   | `property`  | `command` | `roles`             |
+| ------------------------ | -------- | ----------- | --------- | ------------------- |
+| `userScopePolicy()`      | `bigint` | `user`      | `all`     | `["authenticated"]` |
+| `workspaceScopePolicy()` | `bigint` | `workspace` | `all`     | `["authenticated"]` |
+
+```typescript
+import { Entity } from "@mikro-orm/decorators/legacy";
+import {
+  BaseWorkspaceMember,
+  userScopePolicy,
+  workspaceScopePolicy,
+} from "@nest-boot/auth";
+
+@Entity({
+  policies: [
+    // Read your memberships across workspaces; do not grant cross-workspace writes.
+    userScopePolicy({ command: "select" }),
+    workspaceScopePolicy(),
+  ],
+})
+export class WorkspaceMember extends BaseWorkspaceMember {}
+```
+
+`property` names an entity property, not its SQL column. Native callbacks resolve
+custom column mappings; use a scalar ID or a single-column owning relation.
+`type` is an explicit database cast: `bigint`, `integer`, `uuid` or `text`.
+For example, `userScopePolicy({ property: "owner", type: "uuid" })` matches an
+owner UUID. On the User entity itself, use `property: "id"`.
+`command`, `roles` and the optional policy `name` can also be overridden.
+
+The policies compare against `app.user` or `app.workspace` and preserve
+`nullif(current_setting(..., true), '')`, so missing/empty identifiers match no
+rows. They are permissive policies: policies for the same operation combine with
+OR. They do not check workspace lifecycle or replace Service authorization.
+Continue to configure database roles, table privileges and trusted session
+variables separately.
+
+The example `ApiKey` uses a custom native policy for its polymorphic `owner`:
+user-owned rows match `owner_type = 'user'` and `app.user`; workspace-owned rows
+match `owner_type = 'workspace'` and `app.workspace`. Both branches also compare
+`owner_id`, for reads and writes. A matching ID alone is insufficient because
+users and workspaces can share IDs. The migration does not grant request roles
+direct access to this table; API-key operations still go through the authorized
+`ApiKeyService`.
+
+These are plain factories, not filters or decorators. Neither runtime nor CLI
+needs a custom discovery hook. Generate and apply migrations after changing
+policies; keep metadata caching disabled when using policy callbacks.
+For database-level soft-delete restrictions, compose
+[`softDeletePolicies()`](/docs/tutorial/mikro-orm#soft-delete-rls-policies).
+
 ## Client Ability Rules
 
 Use `serializeAbilityRules()` when a transport needs to send an already-built

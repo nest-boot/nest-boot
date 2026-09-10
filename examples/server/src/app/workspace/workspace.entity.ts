@@ -8,12 +8,11 @@ import {
   PrimaryKey,
   Property,
 } from '@mikro-orm/decorators/legacy';
-import { BaseWorkspace } from '@nest-boot/auth';
+import { BaseWorkspace, workspaceScopePolicy } from '@nest-boot/auth';
 import { Field, ID, ObjectType } from '@nest-boot/graphql';
-import { Policy, PolicyCommand } from '@nest-boot/row-level-security';
+import { softDeletePolicies } from '@nest-boot/mikro-orm';
 import { Sonyflake } from 'sonyflake-js';
 
-import { SoftDeletePolicy } from '../../common/decorators/soft-delete-policy.decorator.js';
 import { WorkspaceMember } from '../workspace-member/workspace-member.entity.js';
 import { WorkspaceFeature } from './enums/features.enum.js';
 
@@ -21,27 +20,18 @@ import { WorkspaceFeature } from './enums/features.enum.js';
  * 工作区实体。
  */
 @ObjectType()
-@SoftDeletePolicy()
-@Policy({
-  name: 'workspace_select_policy',
-  command: PolicyCommand.SELECT,
-  using: '(true)',
-  roles: ['authenticated', 'anonymous'],
+@Entity({
+  policies: [
+    {
+      command: 'select',
+      using: () => 'true',
+      roles: ['authenticated', 'anonymous'],
+    },
+    workspaceScopePolicy({ property: 'id', command: 'update' }),
+    // 创建和软删除由 WorkspaceService 授权后的隔离事务负责。
+    ...softDeletePolicies(),
+  ],
 })
-@Policy({
-  name: 'workspace_insert_policy',
-  command: PolicyCommand.INSERT,
-  withCheck: '(true)',
-  roles: ['authenticated'],
-})
-@Policy({
-  name: 'workspace_update_policy',
-  command: PolicyCommand.UPDATE,
-  property: 'id',
-  context: 'workspace_id',
-  roles: ['authenticated'],
-})
-@Entity()
 @Index({ properties: ['createdAt'] })
 @Index({ properties: ['deletedAt'] })
 export class Workspace extends BaseWorkspace {

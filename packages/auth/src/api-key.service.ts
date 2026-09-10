@@ -9,10 +9,6 @@ import {
 } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import {
-  RowLevelSecurity,
-  RowLevelSecurityMode,
-} from "@nest-boot/row-level-security";
-import {
   BadRequestException,
   ForbiddenException,
   Inject,
@@ -40,6 +36,7 @@ import {
   normalizeAuthPermissions,
   resolveAuthPermissions,
 } from "./utils/auth-role.util.js";
+import { runAuthQuery } from "./utils/run-auth-query.js";
 import { DEFAULT_WORKSPACE_PERMISSIONS } from "./workspace.constants.js";
 
 /** Input accepted when creating an API key. */
@@ -266,27 +263,21 @@ export class ApiKeyService<
     const now = new Date();
     apiKey.lastUsedAt = now;
     apiKey.updatedAt = now;
-    await this.runUnrestricted(() => this.em.flush());
+    await this.runUnrestricted((em) => em.persist(apiKey).flush());
     return apiKey;
   }
 
   /** Runs a service-authorized API-key persistence operation without RLS. */
-  async runUnrestricted<T>(callback: () => Promise<T>): Promise<T> {
-    const run = () => {
-      RowLevelSecurity.setMode(RowLevelSecurityMode.DISABLED);
-      return callback();
-    };
-    if (RequestContext.isActive()) return await RequestContext.child(run);
-    return await RequestContext.run(
-      new RequestContext({ type: "api-key-persistence" }),
-      run,
-    );
+  async runUnrestricted<T>(
+    callback: (em: EntityManager) => Promise<T>,
+  ): Promise<T> {
+    return await runAuthQuery(this.em, callback);
   }
 
   private async findOne(where: FilterQuery<ApiKey>): Promise<ApiKey | null> {
     return await this.runUnrestricted(
-      async () =>
-        await this.em.findOne(this.apiKeyEntity, where, {
+      async (em) =>
+        await em.findOne(this.apiKeyEntity, where, {
           populate: ["owner"] as never,
         }),
     );
@@ -303,18 +294,21 @@ export class ApiKeyService<
     const prefix = options.prefix ?? process.env.API_KEY_PREFIX ?? "sk";
     this.assertValidPrefix(prefix);
     const plaintextApiKey = `${prefix}${randomBytes(48).toString("base64url")}`;
-    const entity = this.em.create(this.apiKeyEntity, {
-      enabled: true,
-      expiresAt: options.expiresAt ?? null,
-      key: this.hashApiKey(plaintextApiKey),
-      name: options.name,
-      owner,
-      permissions,
-      prefix,
-      start: plaintextApiKey.slice(0, 8),
-    } as RequiredEntityData<ApiKey>);
+    const entity = await this.runUnrestricted(async (em) => {
+      const entity = em.create(this.apiKeyEntity, {
+        enabled: true,
+        expiresAt: options.expiresAt ?? null,
+        key: this.hashApiKey(plaintextApiKey),
+        name: options.name,
+        owner,
+        permissions,
+        prefix,
+        start: plaintextApiKey.slice(0, 8),
+      } as RequiredEntityData<ApiKey>);
 
-    await this.runUnrestricted(() => this.em.persist(entity).flush());
+      await em.persist(entity).flush();
+      return entity;
+    });
     this.logger.log("API key created", {
       apiKeyId: entity.id,
       ownerId: owner.id,
@@ -337,13 +331,12 @@ export class ApiKeyService<
     if (permissions !== undefined) {
       apiKey.permissions = permissions;
     }
-    await this.runUnrestricted(() => this.em.flush());
+    await this.runUnrestricted((em) => em.persist(apiKey).flush());
     return apiKey;
   }
 
   private async deleteKey(apiKey: ApiKey): Promise<ApiKey> {
-    this.em.remove(apiKey);
-    await this.runUnrestricted(() => this.em.flush());
+    await this.runUnrestricted((em) => em.remove(apiKey).flush());
     return apiKey;
   }
 

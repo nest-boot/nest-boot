@@ -41,8 +41,8 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@mikro-orm/core": "7.1.14",
-    "@mikro-orm/sql": "7.1.14",
+    "@mikro-orm/core": "7.2.0",
+    "@mikro-orm/sql": "7.2.0",
     "@nest-boot/eslint-config": "workspace:^",
     "@nest-boot/eslint-plugin": "workspace:^",
     "@nest-boot/graphql": "workspace:^",

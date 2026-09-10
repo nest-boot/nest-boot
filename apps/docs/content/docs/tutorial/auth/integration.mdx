@@ -1,6 +1,6 @@
 ---
 title: "NestJS Integration"
-description: "Connect Auth services to transport adapters, RequestContext, and RLS."
+description: "Connect Auth services to transport adapters and RequestContext."
 ---
 
 The underlying Better Auth instance and injection token are internal. Inject the
@@ -54,13 +54,6 @@ RequestContext.get(User); // configured application entity alias
 
 This convention applies to every configured Auth entity. Transport code should
 normally prefer the current identity decorators.
-
-## PostgreSQL RLS
-
-Authentication-table lookups run in isolated child contexts where necessary.
-For business queries, derive the RLS context from the workspace and member that
-auth already stored in `RequestContext`. See the
-[Row-Level Security tutorial](/docs/tutorial/row-level-security).
 
 ## Bootstrap
 

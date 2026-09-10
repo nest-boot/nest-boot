@@ -1,4 +1,4 @@
-import type { Opt, Ref } from '@mikro-orm/core';
+import type { Opt, PolicyCallback, Ref } from '@mikro-orm/core';
 import { t } from '@mikro-orm/core';
 import {
   Entity,
@@ -13,11 +13,29 @@ import { Sonyflake } from 'sonyflake-js';
 import type { User } from '../user/user.entity.js';
 import type { Workspace } from '../workspace/workspace.entity.js';
 
+/** 按归属类型和 ID 隔离个人与工作区 API Key。 */
+const matchesApiKeyOwner: PolicyCallback<ApiKey> = (columns) => {
+  // 多态 owner 的列映射只暴露第一列 owner_type；第二列固定为 owner_id。
+  // MikroORM 默认使用目标表名 user/workspace 作为 discriminator。
+  const ownerType = `"${columns.owner.replaceAll('"', '""')}"`;
+  return `(${ownerType} = 'user' and "owner_id" = nullif(current_setting('app.user', true), '')::bigint)
+    or (${ownerType} = 'workspace' and "owner_id" = nullif(current_setting('app.workspace', true), '')::bigint)`;
+};
+
 /**
  * 用户或工作区用于访问接口的 API Key。
  */
 @ObjectType()
-@Entity()
+@Entity({
+  policies: [
+    {
+      command: 'all',
+      roles: ['authenticated'],
+      using: matchesApiKeyOwner,
+      check: matchesApiKeyOwner,
+    },
+  ],
+})
 @Index({ properties: ['key'] })
 @Index({ properties: ['prefix'] })
 @Index({ properties: ['owner'] })

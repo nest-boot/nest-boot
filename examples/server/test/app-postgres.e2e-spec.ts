@@ -2776,6 +2776,219 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     expect(personal.body.data.currentUser.id).toBe(owner.user.id);
   });
 
+  it('isolates concurrent cookie, user-key, and workspace-key requests', async () => {
+    const fixtures = await Promise.all(
+      ['First Isolated', 'Second Isolated'].map(async (name) => {
+        const owner = await createAuthenticatedUser(name);
+        const workspace = await createWorkspace(owner, name);
+        const userKey = await createUserApiKey(owner, {
+          name: `${name} personal key`,
+          permissions: ['Workspace:update'],
+        });
+        const workspaceKey = await createApiKey(owner, workspace.id, {
+          name: `${name} workspace key`,
+          permissions: ['Workspace:update'],
+        });
+        return { owner, workspace, userKey, workspaceKey };
+      }),
+    );
+    const query = /* GraphQL */ `
+      query {
+        currentWorkspace {
+          id
+          name
+        }
+        currentWorkspaceMember {
+          user {
+            id
+          }
+        }
+        workspaceMembers(first: 10) {
+          totalCount
+          edges {
+            node {
+              email
+            }
+          }
+        }
+      }
+    `;
+
+    for (let round = 0; round < 3; round++) {
+      await Promise.all(
+        fixtures.flatMap((fixture, index) => {
+          const other = fixtures[1 - index];
+          const identities: {
+            options: GraphQLRequestOptions;
+            hasUser: boolean;
+          }[] = [
+            {
+              options: {
+                cookies: fixture.owner.cookies,
+                workspaceId: fixture.workspace.id,
+              },
+              hasUser: true,
+            },
+            {
+              options: {
+                bearerToken: fixture.userKey.apiKey,
+                workspaceId: fixture.workspace.id,
+              },
+              hasUser: true,
+            },
+            {
+              options: { bearerToken: fixture.workspaceKey.apiKey },
+              hasUser: false,
+            },
+            {
+              // A cookie session takes precedence over a key belonging to another workspace;
+              // the explicit workspace header also takes precedence over a stale workspace cookie.
+              options: {
+                cookies: [
+                  ...fixture.owner.cookies,
+                  `workspace_id=${other.workspace.id}`,
+                ],
+                bearerToken: other.workspaceKey.apiKey,
+                workspaceId: fixture.workspace.id,
+              },
+              hasUser: true,
+            },
+          ];
+          return identities.map(async ({ options, hasUser }) => {
+            const result = await gql(query, options);
+            expectNoGraphQLErrors(result);
+            expect(result.body.data.currentWorkspace).toEqual(
+              fixture.workspace,
+            );
+            expect(result.body.data.currentWorkspaceMember).toEqual(
+              hasUser ? { user: { id: fixture.owner.user.id } } : null,
+            );
+            expect(result.body.data.workspaceMembers).toEqual({
+              totalCount: 1,
+              edges: [{ node: { email: fixture.owner.email } }],
+            });
+          });
+        }),
+      );
+
+      const anonymous = await gql(
+        'query { workspaceMembers(first: 10) { totalCount } }',
+      );
+      expectGraphQLError(anonymous);
+      expect(anonymous.body.data).toBeNull();
+    }
+  }, 20_000);
+
+  it.each(['session', 'user-api-key'] as const)(
+    'rechecks revoked permissions and disabled membership for an existing %s',
+    async (authentication) => {
+      const owner = await createAuthenticatedUser('Revocation Owner');
+      const user = await createAuthenticatedUser('Revocation Member');
+      const workspace = await createWorkspace(owner, 'Revocation Workspace');
+      const member = await addWorkspaceMember(owner, workspace.id, user.email);
+      await setWorkspaceMemberPermissions(owner, workspace.id, member.id, [
+        'Workspace:update',
+      ]);
+      const identity: GraphQLRequestOptions =
+        authentication === 'session'
+          ? { cookies: user.cookies }
+          : {
+              bearerToken: (
+                await createUserApiKey(user, {
+                  name: 'Revocable personal key',
+                  permissions: ['Workspace:update'],
+                })
+              ).apiKey,
+            };
+      const rename = (name: string) =>
+        gql(
+          'mutation ($input: UpdateWorkspaceInput!) { updateWorkspace(input: $input) { id name } }',
+          {
+            ...identity,
+            workspaceId: workspace.id,
+            variables: { input: { name } },
+          },
+        );
+      const allowed = await rename('Allowed before revocation');
+      expectNoGraphQLErrors(allowed);
+      expect(allowed.body.data.updateWorkspace.name).toBe(
+        'Allowed before revocation',
+      );
+
+      await setWorkspaceMemberPermissions(owner, workspace.id, member.id, []);
+      const revoked = await rename('Denied after revocation');
+      expectGraphQLError(revoked);
+      expect(revoked.body.data).toBeNull();
+      expect(revoked.body.errors).toEqual([
+        expect.objectContaining({
+          extensions: expect.objectContaining({ code: 'FORBIDDEN' }),
+        }),
+      ]);
+
+      await setWorkspaceMemberPermissions(owner, workspace.id, member.id, [
+        'Workspace:update',
+      ]);
+      expectNoGraphQLErrors(await rename('Allowed after regrant'));
+      const disabled = await gql(
+        'mutation ($id: ID!, $input: UpdateWorkspaceMemberInput!) { updateWorkspaceMember(id: $id, input: $input) { status } }',
+        {
+          cookies: owner.cookies,
+          workspaceId: workspace.id,
+          variables: { id: member.id, input: { status: 'DISABLED' } },
+        },
+      );
+      expectNoGraphQLErrors(disabled);
+      const rejected = await rename('Denied after membership disabled');
+      expectGraphQLError(rejected);
+      expect(rejected.body.data).toBeNull();
+      expect(rejected.body.errors).toEqual([
+        expect.objectContaining({
+          extensions: expect.objectContaining({ code: 'FORBIDDEN' }),
+        }),
+      ]);
+      const profile = await gql('query { currentUser { id } }', identity);
+      expectNoGraphQLErrors(profile);
+      expect(profile.body.data.currentUser.id).toBe(user.user.id);
+      expect(
+        await migrationOrm.em
+          .getConnection()
+          .execute('select name from workspace where id = ?', [workspace.id]),
+      ).toEqual([{ name: 'Allowed after regrant' }]);
+    },
+    20_000,
+  );
+
+  it.each(['header', 'cookie'] as const)(
+    'rejects a workspace key selecting a different workspace through a %s',
+    async (selection) => {
+      const owner = await createAuthenticatedUser('Scoped Key Owner');
+      const workspace = await createWorkspace(owner, 'Key Workspace');
+      const otherWorkspace = await createWorkspace(
+        owner,
+        'Other Key Workspace',
+      );
+      const key = await createApiKey(owner, workspace.id, {
+        name: 'Workspace-bound key',
+        permissions: ['Workspace:update'],
+      });
+      const query = 'query { currentWorkspace { id name } }';
+      const rejected = await gql(query, {
+        bearerToken: key.apiKey,
+        ...(selection === 'header'
+          ? { workspaceId: otherWorkspace.id }
+          : { cookies: [`workspace_id=${otherWorkspace.id}`] }),
+      });
+      expect(rejected.status).toBe(401);
+      expect(rejected.body).toMatchObject({
+        message: 'Workspace API key does not belong to the selected workspace',
+      });
+      expect(rejected.body.data).toBeUndefined();
+      const allowed = await gql(query, { bearerToken: key.apiKey });
+      expectNoGraphQLErrors(allowed);
+      expect(allowed.body.data.currentWorkspace).toEqual(workspace);
+    },
+  );
+
   async function raceWithWorkspaceLock(
     workspaceId: string,
     operations: (() => PromiseLike<request.Response>)[],

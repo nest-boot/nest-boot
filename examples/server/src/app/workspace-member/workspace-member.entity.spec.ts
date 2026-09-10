@@ -3,11 +3,8 @@ vi.mock('@nest-boot/auth', async (importOriginal) => ({
   BaseUser: class BaseUser {},
 }));
 
+import { MetadataStorage } from '@mikro-orm/core';
 import { BaseWorkspaceMember } from '@nest-boot/auth';
-import {
-  getPolicyDefinitions,
-  PolicyCommand,
-} from '@nest-boot/row-level-security';
 
 import { WorkspaceMemberType } from './enums/workspace-member-type.enum.js';
 import { WorkspaceMember } from './workspace-member.entity.js';
@@ -24,39 +21,24 @@ describe('WorkspaceMember', () => {
     expect(member.permissions).toEqual([]);
   });
 
-  it('uses simple workspace and user row-level security policies', () => {
-    const policies = getPolicyDefinitions(WorkspaceMember, {
-      entityName: 'WorkspaceMember',
-      schemaName: 'public',
-      tableName: 'workspace_member',
-      properties: {
-        user: {
-          fieldNames: ['user_id'],
-          columnTypes: ['bigint'],
-        },
-        workspace: {
-          fieldNames: ['workspace_id'],
-          columnTypes: ['bigint'],
-        },
-      },
-    });
+  it('combines own-membership reads with workspace isolation', () => {
+    const policies = Object.values(MetadataStorage.getMetadata()).find(
+      (meta) => meta.class === WorkspaceMember,
+    )?.policies;
 
     expect(policies).toHaveLength(2);
     expect(policies).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          name: 'workspace_member_user_all_authenticated_policy',
-          command: PolicyCommand.ALL,
+          command: 'select',
           roles: ['authenticated'],
-          using: expect.not.stringContaining('invite_token'),
-          withCheck: expect.not.stringContaining('invite_token'),
+          using: expect.any(Function),
         }),
         expect.objectContaining({
-          name: 'workspace_member_workspace_all_authenticated_policy',
-          command: PolicyCommand.ALL,
+          command: 'all',
           roles: ['authenticated'],
-          using: expect.stringContaining('workspace_id'),
-          withCheck: expect.stringContaining('workspace_id'),
+          using: expect.any(Function),
+          check: expect.any(Function),
         }),
       ]),
     );

@@ -390,7 +390,7 @@ test.describe("workspace invitations", () => {
       ).toBeVisible();
       await page.getByTestId("workspace-member-role-admin").click();
       await page.getByTestId("workspace-member-role-member").click();
-      await page.getByTestId("permission-workspace:update").click();
+      await page.getByTestId("permission-Workspace:update").click();
       await page.getByTestId("workspace-member-save").click();
       await expect(page.getByText("成员更新成功")).toBeVisible();
 
@@ -399,7 +399,7 @@ test.describe("workspace invitations", () => {
         page.getByTestId("workspace-member-role-admin"),
       ).toBeChecked();
       await expect(
-        page.getByTestId("permission-workspace:update"),
+        page.getByTestId("permission-Workspace:update"),
       ).toBeChecked();
 
       await page.getByTestId("workspace-member-role-member").click();

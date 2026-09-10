@@ -37,8 +37,7 @@ class TenantInvitation extends BaseWorkspaceInvitation {}
 
 describe('auth entity relations', () => {
   it('discovers configured auth subclasses without conventional class names', async () => {
-    const orm = await MikroORM.init({
-      connect: false,
+    const orm = new MikroORM({
       dbName: 'auth_entity_relations',
       driver: PostgreSqlDriver,
       entities: [

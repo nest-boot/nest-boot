@@ -245,6 +245,54 @@ const workspaceAbility = RequestContext.get(WorkspaceAbility);
 返回 `false`；更底层的 `getUserAbility()` 与 `getWorkspaceAbility()` 则会抛出
 `ForbiddenException`。
 
+## 数据库归属策略
+
+`userScopePolicy()` 和 `workspaceScopePolicy()` 返回 MikroORM 原生策略定义，所有参数都可省略：
+
+| 工厂                     | `type`   | `property`  | `command` | `roles`             |
+| ------------------------ | -------- | ----------- | --------- | ------------------- |
+| `userScopePolicy()`      | `bigint` | `user`      | `all`     | `["authenticated"]` |
+| `workspaceScopePolicy()` | `bigint` | `workspace` | `all`     | `["authenticated"]` |
+
+```typescript
+import { Entity } from "@mikro-orm/decorators/legacy";
+import {
+  BaseWorkspaceMember,
+  userScopePolicy,
+  workspaceScopePolicy,
+} from "@nest-boot/auth";
+
+@Entity({
+  policies: [
+    // 跨工作区读取本人的成员关系，但不授予跨工作区写权限。
+    userScopePolicy({ command: "select" }),
+    workspaceScopePolicy(),
+  ],
+})
+export class WorkspaceMember extends BaseWorkspaceMember {}
+```
+
+`property` 是实体属性名，不是数据库列名；原生回调会读取映射后的列名。适用于标量 ID
+或持有关联一方的单列外键。`type` 是显式的数据库转换类型，支持 `bigint`、`integer`、
+`uuid`、`text`。例如 `userScopePolicy({ property: "owner", type: "uuid" })`；
+用于 User 实体自身时指定 `property: "id"`。还可以覆盖 `command`、`roles` 和可选的 `name`。
+
+策略分别比较 `app.user` 和 `app.workspace`，保留
+`nullif(current_setting(..., true), '')`，变量缺失或为空时不会匹配记录。
+这些是允许型策略，同一操作的多条策略按 OR 合并；不查询工作区生命周期，也不替代
+Service 授权。数据库角色、表权限及可信 session 变量仍需单独配置。
+
+示例 `ApiKey` 的 `owner` 是多态关联，使用自定义原生策略：个人 Key 同时检查
+`owner_type = 'user'` 和 `owner_id` 对应 `app.user`；工作区 Key 同时检查
+`owner_type = 'workspace'` 和 `owner_id` 对应 `app.workspace`。读写均校验两列，
+避免用户与工作区 ID 相同时串权。迁移不会为请求角色开放此表的直接访问权限，
+API Key 操作仍通过完成授权校验的 `ApiKeyService`。
+
+这几个函数不是 Filter 或装饰器，运行时与 CLI 都不需要额外 discovery 钩子。
+修改策略后需要生成并执行迁移；使用策略回调时保持元数据缓存关闭。
+数据库层的软删除限制可组合使用
+[`softDeletePolicies()`](/docs/tutorial/mikro-orm#软删除-rls-策略)。
+
 ## 客户端 Ability Rules
 
 传输层需要把已经构建的 Ability 发送给浏览器或其他进程时，可以使用

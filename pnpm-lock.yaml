@@ -399,29 +399,29 @@ importers:
         specifier: ^7.0.1
         version: 7.0.1
       '@mikro-orm/core':
-        specifier: 7.1.14
-        version: 7.1.14
+        specifier: 7.2.0
+        version: 7.2.0
       '@mikro-orm/decorators':
-        specifier: 7.1.14
-        version: 7.1.14
+        specifier: 7.2.0
+        version: 7.2.0
       '@mikro-orm/migrations':
-        specifier: 7.1.14
-        version: 7.1.14
+        specifier: 7.2.0
+        version: 7.2.0
       '@mikro-orm/nestjs':
         specifier: ^7.0.2
         version: 7.0.2
       '@mikro-orm/postgresql':
-        specifier: 7.1.14
-        version: 7.1.14
+        specifier: 7.2.0
+        version: 7.2.0
       '@mikro-orm/reflection':
-        specifier: 7.1.14
-        version: 7.1.14
+        specifier: 7.2.0
+        version: 7.2.0
       '@mikro-orm/seeder':
-        specifier: 7.1.14
-        version: 7.1.14
+        specifier: 7.2.0
+        version: 7.2.0
       '@mikro-orm/sql':
-        specifier: 7.1.14
-        version: 7.1.14
+        specifier: 7.2.0
+        version: 7.2.0
       '@nest-boot/auth':
         specifier: workspace:^
         version: link:../../packages/auth
@@ -446,9 +446,6 @@ importers:
       '@nest-boot/request-context':
         specifier: workspace:^
         version: link:../../packages/request-context
-      '@nest-boot/row-level-security':
-        specifier: workspace:^
-        version: link:../../packages/row-level-security
       '@nestjs/apollo':
         specifier: ^14.0.0
         version: 14.0.0
@@ -517,8 +514,11 @@ importers:
         specifier: ^9.39.2
         version: 9.39.3
       '@mikro-orm/cli':
-        specifier: 7.1.14
-        version: 7.1.14
+        specifier: 7.2.0
+        version: 7.2.0
+      '@mikro-orm/pglite':
+        specifier: 7.2.0
+        version: 7.2.0
       '@nest-boot/eslint-config':
         specifier: workspace:^
         version: link:../../packages/eslint-config
@@ -599,11 +599,14 @@ importers:
         specifier: ^7.0.1
         version: 7.0.1
       '@mikro-orm/core':
-        specifier: 7.1.14
-        version: 7.1.14
+        specifier: 7.2.0
+        version: 7.2.0
       '@mikro-orm/decorators':
-        specifier: 7.1.14
-        version: 7.1.14
+        specifier: 7.2.0
+        version: 7.2.0
+      '@mikro-orm/pglite':
+        specifier: 7.2.0
+        version: 7.2.0
       '@nest-boot/eslint-config':
         specifier: workspace:^
         version: link:../eslint-config
@@ -622,9 +625,6 @@ importers:
       '@nest-boot/request-context':
         specifier: workspace:^
         version: link:../request-context
-      '@nest-boot/row-level-security':
-        specifier: workspace:^
-        version: link:../row-level-security
       '@nest-boot/tsconfig':
         specifier: workspace:^
         version: link:../tsconfig
@@ -731,11 +731,11 @@ importers:
   packages/bullmq-mikro-orm:
     devDependencies:
       '@mikro-orm/core':
-        specifier: 7.1.14
-        version: 7.1.14
+        specifier: 7.2.0
+        version: 7.2.0
       '@mikro-orm/decorators':
-        specifier: 7.1.14
-        version: 7.1.14
+        specifier: 7.2.0
+        version: 7.2.0
       '@nest-boot/bullmq':
         specifier: workspace:^
         version: link:../bullmq
@@ -1031,11 +1031,11 @@ importers:
         version: 4.3.6
     devDependencies:
       '@mikro-orm/core':
-        specifier: 7.1.14
-        version: 7.1.14
+        specifier: 7.2.0
+        version: 7.2.0
       '@mikro-orm/sql':
-        specifier: 7.1.14
-        version: 7.1.14
+        specifier: 7.2.0
+        version: 7.2.0
       '@nest-boot/eslint-config':
         specifier: workspace:^
         version: link:../eslint-config
@@ -1719,23 +1719,23 @@ importers:
         version: 15.6.12
     devDependencies:
       '@mikro-orm/core':
-        specifier: 7.1.14
-        version: 7.1.14
+        specifier: 7.2.0
+        version: 7.2.0
       '@mikro-orm/decorators':
-        specifier: 7.1.14
-        version: 7.1.14
+        specifier: 7.2.0
+        version: 7.2.0
       '@mikro-orm/nestjs':
         specifier: ^7.0.2
         version: 7.0.2
       '@mikro-orm/pglite':
-        specifier: 7.1.14
-        version: 7.1.14
+        specifier: 7.2.0
+        version: 7.2.0
       '@mikro-orm/postgresql':
-        specifier: 7.1.14
-        version: 7.1.14
+        specifier: 7.2.0
+        version: 7.2.0
       '@mikro-orm/reflection':
-        specifier: 7.1.14
-        version: 7.1.14
+        specifier: 7.2.0
+        version: 7.2.0
       '@nest-boot/eslint-config':
         specifier: workspace:^
         version: link:../eslint-config
@@ -1791,14 +1791,14 @@ importers:
   packages/mikro-orm-crypt:
     devDependencies:
       '@mikro-orm/core':
-        specifier: 7.1.14
-        version: 7.1.14
+        specifier: 7.2.0
+        version: 7.2.0
       '@mikro-orm/decorators':
-        specifier: 7.1.14
-        version: 7.1.14
+        specifier: 7.2.0
+        version: 7.2.0
       '@mikro-orm/pglite':
-        specifier: 7.1.14
-        version: 7.1.14
+        specifier: 7.2.0
+        version: 7.2.0
       '@nest-boot/crypt':
         specifier: workspace:^
         version: link:../crypt
@@ -1833,14 +1833,14 @@ importers:
   packages/mikro-orm-hash:
     devDependencies:
       '@mikro-orm/core':
-        specifier: 7.1.14
-        version: 7.1.14
+        specifier: 7.2.0
+        version: 7.2.0
       '@mikro-orm/decorators':
-        specifier: 7.1.14
-        version: 7.1.14
+        specifier: 7.2.0
+        version: 7.2.0
       '@mikro-orm/pglite':
-        specifier: 7.1.14
-        version: 7.1.14
+        specifier: 7.2.0
+        version: 7.2.0
       '@nest-boot/eslint-config':
         specifier: workspace:^
         version: link:../eslint-config
@@ -1962,85 +1962,6 @@ importers:
       express:
         specifier: ^5.1.0
         version: 5.2.1
-      reflect-metadata:
-        specifier: ^0.2.2
-        version: 0.2.2
-      rxjs:
-        specifier: ^7.8.2
-        version: 7.8.2
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vite-tsconfig-paths:
-        specifier: ^5.1.4
-        version: 5.1.4
-      vitest:
-        specifier: ^4.1.11
-        version: 4.1.11
-
-  packages/row-level-security:
-    dependencies:
-      pgsql-ast-parser:
-        specifier: ^12.0.2
-        version: 12.0.2
-    devDependencies:
-      '@mikro-orm/core':
-        specifier: 7.1.14
-        version: 7.1.14
-      '@mikro-orm/decorators':
-        specifier: 7.1.14
-        version: 7.1.14
-      '@mikro-orm/migrations':
-        specifier: 7.1.14
-        version: 7.1.14
-      '@mikro-orm/nestjs':
-        specifier: ^7.0.2
-        version: 7.0.2
-      '@mikro-orm/postgresql':
-        specifier: 7.1.14
-        version: 7.1.14
-      '@mikro-orm/reflection':
-        specifier: 7.1.14
-        version: 7.1.14
-      '@mikro-orm/sql':
-        specifier: 7.1.14
-        version: 7.1.14
-      '@nest-boot/eslint-config':
-        specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
-      '@nest-boot/mikro-orm':
-        specifier: workspace:^
-        version: link:../mikro-orm
-      '@nest-boot/request-context':
-        specifier: workspace:^
-        version: link:../request-context
-      '@nest-boot/tsconfig':
-        specifier: workspace:^
-        version: link:../tsconfig
-      '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
-      '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
-      '@nestjs/testing':
-        specifier: ^12.0.1
-        version: 12.0.1
-      '@types/node':
-        specifier: ^24.0.0
-        version: 24.13.3
-      '@vitest/coverage-v8':
-        specifier: ^4.1.11
-        version: 4.1.11
-      dotenv:
-        specifier: ^17.2.3
-        version: 17.2.3
-      eslint:
-        specifier: ^9.39.3
-        version: 9.39.3
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
@@ -3337,8 +3258,8 @@ packages:
   '@dotenvx/primitives@0.8.0':
     resolution: {integrity: sha512-VYJy0uhFm9zTJ1TxBaW/pA8bjbOM/OttaNMwZ1RHG4JKyRG7DhSdiqD1ipQoAyoD22olUtxbP78W9xY3Wd11bg==}
 
-  '@electric-sql/pglite@0.5.7':
-    resolution: {integrity: sha512-6WBks0NFO6YUhGP03mCNkbJuVFWwrZPrzZ/vsnAPnsCD28pybdZ+yoTrlLlWFoZst3kdaju5pxIslV/jrr36nQ==}
+  '@electric-sql/pglite@0.5.8':
+    resolution: {integrity: sha512-n9tsbUOhwx2epK1V0ZG9Ar4SHWUju04dhmzZXiSBXwBoleOvIfals33NAaWgagQVAL4Rbvx/Ptsu3P+pA09f6Q==}
 
   '@emnapi/core@1.4.5':
     resolution: {integrity: sha512-XsLw1dEOpkSX/WucdqUhPWP7hDxSvZiY+fsUC14h+FtQ2Ifni4znbBt8punRX+Uj2JG/uDb8nEHVKvrVlvdZ5Q==}
@@ -4124,45 +4045,45 @@ packages:
   '@microsoft/tsdoc@0.16.0':
     resolution: {integrity: sha512-xgAyonlVVS+q7Vc7qLW0UrJU7rSFcETRWsqdXZtjzRU8dF+6CkozTK4V4y1LwOX7j8r/vHphjDeMeGI4tNGeGA==}
 
-  '@mikro-orm/cli@7.1.14':
-    resolution: {integrity: sha512-JnkkmMie0KwzuIPjlnpRdWZZUV3DzQvcKY0fjJJOZSSmJK7rM+QDhMrcSTNIxhNWxDaXdOuhZDK7Vpwqcck69w==}
+  '@mikro-orm/cli@7.2.0':
+    resolution: {integrity: sha512-hqhBkwbWf1mbu9VI1qJfzyHuB+RORIPfIjS+LrvsrE4dEvMPU31smnU1x7Vclz7CbJVBGCwJxJS9cdh+tvuPug==}
     engines: {node: '>= 22.17.0'}
     hasBin: true
 
-  '@mikro-orm/core@7.1.14':
-    resolution: {integrity: sha512-q/2UWNX7Z9ZLgwkG6yHtKki3RnQ/ETygrSLXfvBXnaXPQvOY/G9PK/RJLoclo7UtHiHIOmbh/iiwiXiErfpBaQ==}
+  '@mikro-orm/core@7.2.0':
+    resolution: {integrity: sha512-a4RoZXfzVJqiaOwsw2k7EH1Vv+BOdOokB+F4TofUz0mLz4XPewwaKUQIUeqRNmf0fKpOFJxlgTxsZYXhZoFxCQ==}
     engines: {node: '>= 22.17.0'}
 
-  '@mikro-orm/decorators@7.1.14':
-    resolution: {integrity: sha512-Bj6VbgIpn5iISeCPqphpPXlud7iUD5+JhwZCoWgsZPAKxU1e6CKflnlHTdr0ASFLBPu3FXQB6sjXFd9a1NtqMA==}
+  '@mikro-orm/decorators@7.2.0':
+    resolution: {integrity: sha512-iFhSIoQmt4jFA1+4hLkSEC+cvWOuUdvUv6ljN3h7qgzeSxO3pLc0vHxkUw2QZOSezo0DjOSSzjP+j9ic+l/YFg==}
     engines: {node: '>= 22.17.0'}
 
-  '@mikro-orm/migrations@7.1.14':
-    resolution: {integrity: sha512-9+N1t11hOwalyCb/bSkAkCNKCXrT9MXmmoftu+oqLFLBEGkWsjH4/mvm53I0UGX1uBemYmtY1pWMnyP5iBW/xA==}
+  '@mikro-orm/migrations@7.2.0':
+    resolution: {integrity: sha512-C0lhvyreASOf8GelzdqCuXHo3pjg6cPDUJAFggT8kKkCNgA4x34bXQVUWOWw/Vqwpu0BuWTsMEveX/Ln3cQCmw==}
     engines: {node: '>= 22.17.0'}
 
   '@mikro-orm/nestjs@7.0.2':
     resolution: {integrity: sha512-0iEr+YzhXQ8cZaAKzfJNijHHAL1Fg/PrauaMiwlZpaxOy0aMAPCQEwaSuxsz43X6XShrCv/TlE6kRn/QPIMzZA==}
     engines: {node: '>= 22.17.0'}
 
-  '@mikro-orm/pglite@7.1.14':
-    resolution: {integrity: sha512-vX8RgaKL0Br/Fafp69IZgydPCOL6oa5DKYQ2Qcu96jVwX32Jw99StXq82fnsRJWaEY7BhfSlKlgwqRnJ6eFqrQ==}
+  '@mikro-orm/pglite@7.2.0':
+    resolution: {integrity: sha512-4yxoHwsCRGTrV8SAztXRCRLXGddglgUjlp5On2o2Dd47u1Vitl0RyqsAGZL7JfFFfHbGQvAUbPLUirhJZfZEZA==}
     engines: {node: '>= 22.17.0'}
 
-  '@mikro-orm/postgresql@7.1.14':
-    resolution: {integrity: sha512-O5vZLezOQD881z/qmyFv4F93lWy8kvbS8XsugNF/BWM6Ar4Amgs/YHwVhhibDNIla8rqqU50UeTaDHv2WhzBsw==}
+  '@mikro-orm/postgresql@7.2.0':
+    resolution: {integrity: sha512-15M7ntKtiND22YAGYOzvKXtHJ8lm0ukRW+TaHjk9m/HFop4fXyHzqWC91cTb+kdcE+RzeLqOqbkmcIzFOC5BkA==}
     engines: {node: '>= 22.17.0'}
 
-  '@mikro-orm/reflection@7.1.14':
-    resolution: {integrity: sha512-kky4RnfPG1FaRhszDJErW0aSlRDi58s+3GcCraNdokJccpUNcN3BaNwOzuzz8GYaT9hbBAvLBBDrXGxSw++LOg==}
+  '@mikro-orm/reflection@7.2.0':
+    resolution: {integrity: sha512-g/uTW8DO5qPXqBSLBATtYEMBD0yAdxhXmI9et6nikKDkq7f1bSkl0mem0g1BWoX9oNs2i9bXjIr4LnxkXmP+9g==}
     engines: {node: '>= 22.17.0'}
 
-  '@mikro-orm/seeder@7.1.14':
-    resolution: {integrity: sha512-xy54kvCPSbl5fswMbNUbiXIm52PAy5dV4NcfbGiwvdWmiZSAGcUqrRyRBKtHdsa0GkDh1fHhpdC6fkI6LA4IUw==}
+  '@mikro-orm/seeder@7.2.0':
+    resolution: {integrity: sha512-un1FaXAcnN2VRN3Hs87KxAgssSdxbLl1VG+vrRMo4gaPPUJOVk4w1CvqViggKgIkuGnrOoyMbmTKkVe2Ndz/aQ==}
     engines: {node: '>= 22.17.0'}
 
-  '@mikro-orm/sql@7.1.14':
-    resolution: {integrity: sha512-4deS9ep+CVPx48z6AdE6KUPdUbMRNvCsaA4XQPU8YRf3D501z6SIxwk/9JyIWtR3r1DwHYGdwfYUjckPSC9BmQ==}
+  '@mikro-orm/sql@7.2.0':
+    resolution: {integrity: sha512-ZpuCfBL6XAYrJsUglvXrah+erB9gVgkoSuIKR/x+o1o/OVOE8ljgRxYIIIMGE+LetR9s1wrDQjrwfm0gghqsiA==}
     engines: {node: '>= 22.17.0'}
 
   '@modelcontextprotocol/sdk@1.30.0':
@@ -9282,8 +9203,8 @@ packages:
   mikro-orm-filter-query-schema@1.4.0:
     resolution: {integrity: sha512-1TnsQwEqB9qfifb7yChkIscAMoGbcH2DCdruYtGKJU9QxTrZRdYz+jDl4mgkvYkokFf+iQCjK5lipjqFaSdIyw==}
 
-  mikro-orm@7.1.14:
-    resolution: {integrity: sha512-2HEwjJqldBN2dSlpr+mc/gDUbsDlZTd6nZ4Y0Bv2TIkj/AlsL/UTZryjAr2B4rL0rqUIb13fc3IAFXYlFhPOlQ==}
+  mikro-orm@7.2.0:
+    resolution: {integrity: sha512-1YChTUHF4aGlJQKtM6eD4ehPnJcAK3IF5QKObDryhKyFuF0dLclUurwIIyDae8a7cR55AzEqEMYAJ/JAZEmOwg==}
     engines: {node: '>= 22.17.0'}
 
   mime-db@1.52.0:
@@ -9761,9 +9682,6 @@ packages:
 
   pgpass@1.0.5:
     resolution: {integrity: sha512-FdW9r/jQZhSeohs1Z3sI1yxFQNFvMcnmfuj4WBMUTxOrAyLMaTcE1aAMBiTlbMNaXvBCQuVi0R7hd8udDSP7ug==}
-
-  pgsql-ast-parser@12.0.2:
-    resolution: {integrity: sha512-1WWa96Sw6h4uv9GLw98EzH/+xoBTC8j2TwV/AMW3E+Ir/fHOu/jLLbj6kPiz3y2bGISTKNYvKWwHoqvQ5FLuAw==}
 
   pgvector@0.2.1:
     resolution: {integrity: sha512-nKaQY9wtuiidwLMdVIce1O3kL0d+FxrigCVzsShnoqzOSaWWWOvuctb/sYwlai5cTwwzRSNa+a/NtN2kVZGNJw==}
@@ -12679,7 +12597,7 @@ snapshots:
 
   '@dotenvx/primitives@0.8.0': {}
 
-  '@electric-sql/pglite@0.5.7': {}
+  '@electric-sql/pglite@0.5.8': {}
 
   '@emnapi/core@1.4.5':
     dependencies:
@@ -13626,34 +13544,34 @@ snapshots:
 
   '@microsoft/tsdoc@0.16.0': {}
 
-  '@mikro-orm/cli@7.1.14':
+  '@mikro-orm/cli@7.2.0':
     dependencies:
-      '@mikro-orm/core': 7.1.14
-      mikro-orm: 7.1.14
+      '@mikro-orm/core': 7.2.0
+      mikro-orm: 7.2.0
       yargs: 17.7.2
 
-  '@mikro-orm/core@7.1.14': {}
+  '@mikro-orm/core@7.2.0': {}
 
-  '@mikro-orm/decorators@7.1.14': {}
+  '@mikro-orm/decorators@7.2.0': {}
 
-  '@mikro-orm/migrations@7.1.14':
+  '@mikro-orm/migrations@7.2.0':
     dependencies:
-      '@mikro-orm/sql': 7.1.14
+      '@mikro-orm/sql': 7.2.0
 
   '@mikro-orm/nestjs@7.0.2': {}
 
-  '@mikro-orm/pglite@7.1.14':
+  '@mikro-orm/pglite@7.2.0':
     dependencies:
-      '@electric-sql/pglite': 0.5.7
-      '@mikro-orm/sql': 7.1.14
+      '@electric-sql/pglite': 0.5.8
+      '@mikro-orm/sql': 7.2.0
       kysely: 0.29.5
       postgres-array: 3.0.4
       postgres-date: 2.1.0
       postgres-interval: 4.1.0
 
-  '@mikro-orm/postgresql@7.1.14':
+  '@mikro-orm/postgresql@7.2.0':
     dependencies:
-      '@mikro-orm/sql': 7.1.14
+      '@mikro-orm/sql': 7.2.0
       kysely: 0.29.5
       pg: 8.23.0
       pg-cursor: 2.22.0
@@ -13661,13 +13579,13 @@ snapshots:
       postgres-date: 2.1.0
       postgres-interval: 4.1.0
 
-  '@mikro-orm/reflection@7.1.14':
+  '@mikro-orm/reflection@7.2.0':
     dependencies:
       ts-morph: 28.0.0
 
-  '@mikro-orm/seeder@7.1.14': {}
+  '@mikro-orm/seeder@7.2.0': {}
 
-  '@mikro-orm/sql@7.1.14':
+  '@mikro-orm/sql@7.2.0':
     dependencies:
       kysely: 0.29.5
 
@@ -19739,7 +19657,7 @@ snapshots:
     dependencies:
       zod: 4.3.6
 
-  mikro-orm@7.1.14: {}
+  mikro-orm@7.2.0: {}
 
   mime-db@1.52.0: {}
 
@@ -20387,11 +20305,6 @@ snapshots:
   pgpass@1.0.5:
     dependencies:
       split2: 4.2.0
-
-  pgsql-ast-parser@12.0.2:
-    dependencies:
-      moo: 0.5.2
-      nearley: 2.20.1
 
   pgvector@0.2.1: {}
 

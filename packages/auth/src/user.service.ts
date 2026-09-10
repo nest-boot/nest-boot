@@ -8,11 +8,6 @@ import {
   type RequiredEntityData,
 } from "@mikro-orm/core";
 import { HashService } from "@nest-boot/hash";
-import { RequestContext } from "@nest-boot/request-context";
-import {
-  RowLevelSecurity,
-  RowLevelSecurityMode,
-} from "@nest-boot/row-level-security";
 import {
   BadRequestException,
   ConflictException,
@@ -54,6 +49,7 @@ import {
   normalizeAuthRoles,
   resolveAuthPermissions,
 } from "./utils/auth-role.util.js";
+import { runAuthQuery } from "./utils/run-auth-query.js";
 
 const CREDENTIAL_ISSUER = "local:credential";
 const CREDENTIAL_PROVIDER_ID = "credential";
@@ -102,8 +98,8 @@ export class UserService<
     const password = await this.hashPassword(input.password);
 
     return await this.runUnrestricted(
-      async () =>
-        await this.em.transactional(async (em) => {
+      async (em) =>
+        await em.transactional(async (em) => {
           const user = em.create(this.userEntity, {
             ...(input.data ?? {}),
             email,
@@ -134,12 +130,10 @@ export class UserService<
   async getUser(userId: string): Promise<User | null> {
     this.accessControlService.assertUserCan("get", this.userEntity);
     return await this.runUnrestricted(
-      async () =>
-        await this.em.findOne(
-          this.userEntity,
-          { id: userId } as FilterQuery<User>,
-          { filters: false },
-        ),
+      async (em) =>
+        await em.findOne(this.userEntity, { id: userId } as FilterQuery<User>, {
+          filters: false,
+        }),
     );
   }
 
@@ -147,8 +141,8 @@ export class UserService<
   async getUserByEmail(email: string): Promise<User | null> {
     this.accessControlService.assertUserCan("get", this.userEntity);
     return await this.runUnrestricted(
-      async () =>
-        await this.em.findOne(
+      async (em) =>
+        await em.findOne(
           this.userEntity,
           { email: email.trim().toLowerCase() } as FilterQuery<User>,
           { filters: false },
@@ -164,7 +158,7 @@ export class UserService<
       this.accessControlService.assertUserCan("set-email", user);
     }
     this.em.assign(user, data as never);
-    await this.runUnrestricted(() => this.em.flush());
+    await this.runUnrestricted((em) => em.persist(user).flush());
     return user;
   }
 
@@ -174,7 +168,7 @@ export class UserService<
     const normalized = this.normalizePermissions(permissions);
     this.accessControlService.assertCanGrantUserPermissions(normalized);
     user.permissions = normalized;
-    await this.runUnrestricted(() => this.em.flush());
+    await this.runUnrestricted((em) => em.persist(user).flush());
     return user;
   }
 
@@ -186,7 +180,7 @@ export class UserService<
       resolveAuthPermissions(roles, [], this.roles),
     );
     user.roles = roles;
-    await this.runUnrestricted(() => this.em.flush());
+    await this.runUnrestricted((em) => em.persist(user).flush());
     return user;
   }
 
@@ -216,20 +210,16 @@ export class UserService<
     input: ListUsersOptions = {},
   ): Promise<ListUsersResult<User>> {
     this.accessControlService.assertUserCan("list", this.userEntity);
-    return await this.runUnrestricted(async () => {
+    return await this.runUnrestricted(async (em) => {
       const where = this.createUserFilter(input);
-      const [users, total] = await this.em.findAndCount(
-        this.userEntity,
-        where,
-        {
-          filters: false,
-          limit: input.limit,
-          offset: input.offset,
-          orderBy: {
-            [input.sortBy ?? "createdAt"]: input.sortDirection ?? "asc",
-          } as never,
-        },
-      );
+      const [users, total] = await em.findAndCount(this.userEntity, where, {
+        filters: false,
+        limit: input.limit,
+        offset: input.offset,
+        orderBy: {
+          [input.sortBy ?? "createdAt"]: input.sortDirection ?? "asc",
+        } as never,
+      });
 
       return {
         users,
@@ -244,8 +234,8 @@ export class UserService<
   async listUserSessions(user: User): Promise<Session[]> {
     this.accessControlService.assertUserCan("list", this.sessionEntity);
     return await this.runUnrestricted(
-      async () =>
-        await this.em.find(
+      async (em) =>
+        await em.find(
           this.sessionEntity,
           {
             expiresAt: { $gt: new Date() },
@@ -277,11 +267,11 @@ export class UserService<
     user.banReason = input.banReason ?? null;
     user.banExpiresAt = banExpiresAt;
 
-    await this.runUnrestricted(async () => {
-      await this.em.nativeDelete(this.sessionEntity, {
+    await this.runUnrestricted(async (em) => {
+      await em.nativeDelete(this.sessionEntity, {
         $or: [{ userId: String(user.id) }, { impersonatedBy: user }],
       } as FilterQuery<Session>);
-      await this.em.flush();
+      await em.persist(user).flush();
     });
     return user;
   }
@@ -292,7 +282,7 @@ export class UserService<
     user.banned = false;
     user.banReason = null;
     user.banExpiresAt = null;
-    await this.runUnrestricted(() => this.em.flush());
+    await this.runUnrestricted((em) => em.persist(user).flush());
     return user;
   }
 
@@ -310,11 +300,14 @@ export class UserService<
     if (this.isActivelyBanned(user)) {
       throw new ForbiddenException("Banned users cannot be impersonated");
     }
-    const session = this.createSession(user, {
-      ...input,
-      impersonatedBy: administrator,
+    const session = await this.runUnrestricted(async (em) => {
+      const session = this.createSession(em, user, {
+        ...input,
+        impersonatedBy: administrator,
+      });
+      await em.persist(session).flush();
+      return session;
     });
-    await this.runUnrestricted(() => this.em.persist(session).flush());
     return { session, user };
   }
 
@@ -327,26 +320,26 @@ export class UserService<
     const impersonatedByReference = currentSession.impersonatedBy;
     if (!impersonatedByReference) return null;
 
-    return await this.runUnrestricted(async () => {
+    return await this.runUnrestricted(async (em) => {
       const impersonatedBy = Reference.unwrapReference(
         impersonatedByReference,
       ) as BaseUser;
-      const administrator = await this.em.findOne(
+      const administrator = await em.findOne(
         this.userEntity,
         { id: String(impersonatedBy.id) } as FilterQuery<User>,
         { filters: false },
       );
       if (!administrator) return null;
       if (this.isActivelyBanned(administrator)) {
-        await this.em.remove(currentSession).flush();
+        await em.remove(currentSession).flush();
         throw new ForbiddenException(
           "Banned administrators cannot restore their session",
         );
       }
 
-      const session = this.createSession(administrator, input);
-      this.em.remove(currentSession).persist(session);
-      await this.em.flush();
+      const session = this.createSession(em, administrator, input);
+      em.remove(currentSession).persist(session);
+      await em.flush();
       return { session, user: administrator };
     });
   }
@@ -354,15 +347,15 @@ export class UserService<
   /** Revokes one session by ID when it belongs to the supplied user. */
   async revokeUserSession(user: User, sessionId: string): Promise<boolean> {
     this.accessControlService.assertUserCan("revoke", this.sessionEntity);
-    return await this.runUnrestricted(async () => {
-      const session = await this.em.findOne(
+    return await this.runUnrestricted(async (em) => {
+      const session = await em.findOne(
         this.sessionEntity,
         { id: sessionId, userId: String(user.id) } as FilterQuery<Session>,
         { filters: false },
       );
       if (!session) return false;
 
-      await this.em.remove(session).flush();
+      await em.remove(session).flush();
       return true;
     });
   }
@@ -371,8 +364,8 @@ export class UserService<
   async revokeUserSessions(user: User): Promise<number> {
     this.accessControlService.assertUserCan("revoke", this.sessionEntity);
     return await this.runUnrestricted(
-      async () =>
-        await this.em.nativeDelete(this.sessionEntity, {
+      async (em) =>
+        await em.nativeDelete(this.sessionEntity, {
           $or: [{ userId: String(user.id) }, { impersonatedBy: user }],
         } as FilterQuery<Session>),
     );
@@ -396,9 +389,9 @@ export class UserService<
   async setUserPassword(user: User, newPassword: string): Promise<void> {
     this.accessControlService.assertUserCan("set-password", user);
     this.assertPasswordLength(newPassword);
-    await this.runUnrestricted(async () => {
+    await this.runUnrestricted(async (em) => {
       const password = await this.hashPassword(newPassword);
-      const account = await this.em.findOne(
+      const account = await em.findOne(
         this.accountEntity,
         {
           issuer: CREDENTIAL_ISSUER,
@@ -412,8 +405,8 @@ export class UserService<
       if (account) {
         account.password = password;
       } else {
-        this.em.persist(
-          this.em.create(this.accountEntity, {
+        em.persist(
+          em.create(this.accountEntity, {
             accountId: String(user.id),
             issuer: CREDENTIAL_ISSUER,
             password,
@@ -422,7 +415,7 @@ export class UserService<
           } as unknown as RequiredEntityData<Account>),
         );
       }
-      await this.em.flush();
+      await em.flush();
     });
   }
 
@@ -485,11 +478,12 @@ export class UserService<
   }
 
   private createSession(
+    em: EntityManager,
     user: User,
     input: ImpersonationOptions & { impersonatedBy?: User },
   ): Session {
     const expiresIn = this.options.session?.expiresIn ?? 60 * 60 * 24 * 7;
-    return this.em.create(this.sessionEntity, {
+    return em.create(this.sessionEntity, {
       expiresAt: new Date(Date.now() + expiresIn * 1000),
       impersonatedBy: input.impersonatedBy ?? null,
       ipAddress: input.ipAddress ?? null,
@@ -556,17 +550,10 @@ export class UserService<
     );
   }
 
-  private async runUnrestricted<T>(callback: () => Promise<T>): Promise<T> {
-    const run = () => {
-      RowLevelSecurity.setMode(RowLevelSecurityMode.DISABLED);
-      return callback();
-    };
-
-    if (RequestContext.isActive()) return await RequestContext.child(run);
-    return await RequestContext.run(
-      new RequestContext({ type: "auth-user" }),
-      run,
-    );
+  private async runUnrestricted<T>(
+    callback: (em: EntityManager) => Promise<T>,
+  ): Promise<T> {
+    return await runAuthQuery(this.em, callback);
   }
 
   private get accountEntity(): EntityClass<Account> {

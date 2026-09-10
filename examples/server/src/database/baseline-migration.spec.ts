@@ -1,8 +1,8 @@
-import { Migration20260902080630_Baseline } from './migrations/Migration20260902080630_Baseline.js';
+import { Migration20260910000000_Baseline } from './migrations/Migration20260910000000_Baseline.js';
 
-describe('Migration20260902080630_Baseline', () => {
+describe('Migration20260910000000_Baseline', () => {
   it('bootstraps the roles required by its RLS policies', async () => {
-    const migration = new Migration20260902080630_Baseline(
+    const migration = new Migration20260910000000_Baseline(
       {} as never,
       {} as never,
     );

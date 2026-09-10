@@ -25,7 +25,39 @@ describe("MikroOrmModule driver integration", () => {
     const orm = moduleRef.get(MikroORM);
 
     expect(moduleRef.get(PgliteEntityManager)).toBe(orm.em);
+    expect(orm.config.get("metadataCache").enabled).toBe(false);
 
     await moduleRef.close();
+  });
+
+  it("keeps metadata caching disabled with partial async options", async () => {
+    const moduleRef = await Test.createTestingModule({
+      imports: [
+        MikroOrmModule.forRootAsync({
+          driverHint: PgliteDriver,
+          useFactory: async () => {
+            await Promise.resolve();
+            return {
+              driver: PgliteDriver,
+              dbName: "memory://",
+              entities: [TestEntity],
+              metadataCache: { pretty: true },
+            };
+          },
+        }),
+      ],
+    }).compile();
+
+    try {
+      await moduleRef.init();
+      expect(moduleRef.get(MikroORM).config.get("metadataCache")).toMatchObject(
+        {
+          enabled: false,
+          pretty: true,
+        },
+      );
+    } finally {
+      await moduleRef.close();
+    }
   });
 });

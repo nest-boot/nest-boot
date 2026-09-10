@@ -1,11 +1,8 @@
 import { EntityManager } from "@mikro-orm/core";
 import { REQUEST, RequestContext, RESPONSE } from "@nest-boot/request-context";
-import {
-  RowLevelSecurity,
-  RowLevelSecurityMode,
-} from "@nest-boot/row-level-security";
 import { Test } from "@nestjs/testing";
 
+import { mockRlsContext } from "../test/mock-rls-context.js";
 import { AUTH_TOKEN } from "./auth.constants.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
@@ -83,7 +80,11 @@ async function createService(
       },
       {
         provide: EntityManager,
-        useValue: em,
+        useValue: {
+          getContext: vi.fn().mockReturnThis(),
+          getSessionContext: vi.fn(),
+          ...em,
+        },
       },
       {
         provide: MODULE_OPTIONS_TOKEN,
@@ -116,6 +117,11 @@ describe("SessionService", () => {
       user: { id: user.id },
     });
     const em = {
+      getContext: vi.fn().mockReturnThis(),
+      getSessionContext:
+        vi.fn<() => import("@mikro-orm/core").SessionContext | undefined>(),
+      isInTransaction: vi.fn(() => false),
+      fork: vi.fn(),
       find: vi.fn(),
       findOne: vi
         .fn()
@@ -226,6 +232,11 @@ describe("SessionService", () => {
       user: { id: user.id },
     });
     const em = {
+      getContext: vi.fn().mockReturnThis(),
+      getSessionContext:
+        vi.fn<() => import("@mikro-orm/core").SessionContext | undefined>(),
+      isInTransaction: vi.fn(() => false),
+      fork: vi.fn(),
       find: vi.fn(),
       findOne: vi
         .fn()
@@ -252,6 +263,11 @@ describe("SessionService", () => {
       user: { id: "user-1" },
     });
     const em = {
+      getContext: vi.fn().mockReturnThis(),
+      getSessionContext:
+        vi.fn<() => import("@mikro-orm/core").SessionContext | undefined>(),
+      isInTransaction: vi.fn(() => false),
+      fork: vi.fn(),
       find: vi.fn(),
       findOne: vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce({
         token: "session-token",
@@ -277,6 +293,11 @@ describe("SessionService", () => {
       token: "session-token",
     });
     const em = {
+      getContext: vi.fn().mockReturnThis(),
+      getSessionContext:
+        vi.fn<() => import("@mikro-orm/core").SessionContext | undefined>(),
+      isInTransaction: vi.fn(() => false),
+      fork: vi.fn(),
       find: vi.fn(),
       findOne: vi
         .fn()
@@ -298,6 +319,11 @@ describe("SessionService", () => {
     const session1 = Object.assign(new TestSession(), { token: "session-1" });
     const session2 = Object.assign(new TestSession(), { token: "session-2" });
     const em = {
+      getContext: vi.fn().mockReturnThis(),
+      getSessionContext:
+        vi.fn<() => import("@mikro-orm/core").SessionContext | undefined>(),
+      isInTransaction: vi.fn(() => false),
+      fork: vi.fn(),
       find: vi.fn().mockResolvedValue([session1, session2]),
       findOne: vi.fn(),
     };
@@ -314,8 +340,15 @@ describe("SessionService", () => {
     api.listSessions.mockResolvedValue([{ token: "session-1" }]);
     const session = Object.assign(new TestSession(), { token: "session-1" });
     const em = {
+      getContext: vi.fn().mockReturnThis(),
+      getSessionContext:
+        vi.fn<() => import("@mikro-orm/core").SessionContext | undefined>(),
+      isInTransaction: vi.fn(() => false),
+      fork: vi.fn(),
       find: vi.fn(() => {
-        expect(RowLevelSecurity.getMode()).toBe(RowLevelSecurityMode.DISABLED);
+        expect(
+          RequestContext.get(EntityManager)?.getSessionContext(),
+        ).toBeUndefined();
         return Promise.resolve([session]);
       }),
       findOne: vi.fn(),
@@ -325,10 +358,9 @@ describe("SessionService", () => {
     await RequestContext.run(
       new RequestContext({ type: "request" }),
       async () => {
-        RowLevelSecurity.setRole("authenticated");
+        const sessionContext = mockRlsContext(em);
         await expect(service.listSessions()).resolves.toEqual([session]);
-        expect(RowLevelSecurity.getMode()).toBe(RowLevelSecurityMode.AUTO);
-        expect(RowLevelSecurity.getRole()).toBe("authenticated");
+        expect(em.getSessionContext()).toEqual(sessionContext);
       },
     );
   });

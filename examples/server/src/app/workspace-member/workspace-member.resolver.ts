@@ -106,7 +106,6 @@ export class WorkspaceMemberResolver {
    *
    * @param args - 分页、筛选和排序参数。
    * @param workspace - 当前请求中的工作区。
-   * @param workspaceMember - 当前请求中的工作区成员。
    * @returns 工作区成员分页结果。
    */
   @WorkspaceCan('read', WorkspaceMember)
