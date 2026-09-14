@@ -1,6 +1,5 @@
 import { expect, test } from "@playwright/test";
 
-import { graphqlRequest } from "./utils/graphql";
 import { completeEmailVerification, testPassword } from "./utils/auth";
 import { waitForEmailUrl } from "./utils/mailpit";
 import { uniqueSeed } from "./utils/unique";
@@ -55,15 +54,9 @@ test.describe("email authentication", () => {
     await completeEmailVerification(page, email);
     await expect(page).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
 
-    await graphqlRequest(
-      page.request,
-      /* GraphQL */ `
-        mutation {
-          authSignOut
-        }
-      `,
-    );
-    await page.goto("/auth/login");
+    await page.getByTestId("sidebar-user-menu").click();
+    await page.getByTestId("sidebar-user-sign-out").click();
+    await expect(page).toHaveURL(/\/auth\/login$/);
     await page.getByTestId("auth-forgot-password-link").click();
     await expect(page).toHaveURL(/\/auth\/forgot-password$/);
     await page.getByTestId("forgot-password-email").fill(email);
@@ -100,15 +93,9 @@ test.describe("email authentication", () => {
     await page.getByTestId("user-change-password-submit").click();
     await expect(page.getByText("密码已修改")).toBeVisible();
 
-    await graphqlRequest(
-      page.request,
-      /* GraphQL */ `
-        mutation {
-          authSignOut
-        }
-      `,
-    );
-    await page.goto("/auth/login");
+    await page.getByTestId("sidebar-user-menu").click();
+    await page.getByTestId("sidebar-user-sign-out").click();
+    await expect(page).toHaveURL(/\/auth\/login$/);
     await page.getByTestId("auth-email-input").fill(email);
     await page.getByTestId("auth-password-input").fill(resetPassword);
     await page.getByTestId("auth-submit").click();

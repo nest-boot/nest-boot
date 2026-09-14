@@ -1,4 +1,3 @@
-import type { ApiKeyService } from '@nest-boot/auth';
 import type { Mocked } from 'vitest';
 
 vi.mock('@nest-boot/auth', async (importOriginal) => ({
@@ -126,7 +125,9 @@ describe('ApiKeyResolver', () => {
   });
 });
 
-function createResolver(overrides: Partial<ApiKeyService> = {}) {
+type ExampleApiKeyService = ConstructorParameters<typeof ApiKeyResolver>[0];
+
+function createResolver(overrides: Partial<ExampleApiKeyService> = {}) {
   const apiKeyService = {
     createWorkspaceKey: vi.fn(),
     deleteWorkspaceKey: vi.fn(),
@@ -135,7 +136,7 @@ function createResolver(overrides: Partial<ApiKeyService> = {}) {
     runUnrestricted: vi.fn((callback) => callback()),
     updateWorkspaceKey: vi.fn(),
     ...overrides,
-  } as unknown as Mocked<ApiKeyService>;
+  } as unknown as Mocked<ExampleApiKeyService>;
   const cm = { find: vi.fn() };
 
   return {

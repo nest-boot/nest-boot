@@ -1,5 +1,6 @@
 import "reflect-metadata";
 
+import { EntityManager } from "@mikro-orm/core";
 import { SqlEntityManager } from "@mikro-orm/sql";
 import { type GraphQLResolveInfo, Kind, parse } from "graphql";
 
@@ -48,10 +49,10 @@ function createResolveInfo(source: string): GraphQLResolveInfo {
 }
 
 describe("ConnectionManager", () => {
-  it("declares a SQL entity manager dependency", () => {
-    expect(Reflect.getMetadata("design:paramtypes", ConnectionManager)).toEqual(
-      [SqlEntityManager],
-    );
+  it("injects the core entity manager token shared by SQL drivers", () => {
+    expect(Reflect.getMetadata("self:paramtypes", ConnectionManager)).toEqual([
+      { index: 0, param: EntityManager },
+    ]);
   });
 
   it("executes a connection query with additional find options", async () => {

@@ -49,8 +49,12 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
   `@nest-boot/graphql-staged-upload`，才能继续使用 `createStagedUploads` Mutation。
   `StagedUploadInput`、`StagedUpload` 与 `StagedUploadField` 改从 GraphQL 包导入；
   与传输层无关的服务类型使用 `StagedUploadRequest` 与 `StagedUploadResult`。
-- 使用 `@nest-boot/row-level-security` 的 `RowLevelSecurity.setContext()` 替换已移除的
-  `AuthTransactionContext`。RLS 事务设置不再属于认证包。
+- 移除 `@nest-boot/row-level-security`，使用 MikroORM 7.2 的官方 PostgreSQL 或
+  PGlite 驱动、`@Entity({ policies })` 和 `em.setSessionContext()`，替代自定义
+  驱动、装饰器、运行时状态和 `AuthTransactionContext`。迁移类改用官方
+  `Migration` / `Migrator`。执行 schema diff 前，先将已有策略声明到实体元数据；
+  数据库角色与权限仍需显式创建和授权。通过 `MikroOrmModuleOptions.session`
+  初始化请求 session，并在业务事务开始前更新。详见 [MikroORM RLS 文档](https://mikro-orm.io/docs/row-level-security)。
 - 将认证权限的资源名更新为 CASL subject type 的原始值。内置目录现在使用
   `User:*`、`Session:*`、`Workspace:*`、`WorkspaceMember:*` 与
   `WorkspaceInvitation:*`。需要更新角色配置中的权限，并改写此前持久化的直接权限与
@@ -60,6 +64,9 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
   `apiKey.allowedPermissions` 配置。
 - 切换 TypeScript 模块解析后，重新生成文件和迁移，确保生成的导入带有有效的
   ESM 扩展名。
+
+服务端示例的历史迁移已替换为按当前实体生成的一份基线迁移。示例应使用全新数据库；
+这份基线不用于升级执行过旧迁移的数据库。重建已有开发数据库前，请先备份需要保留的数据。
 
 ## 仓库测试
 

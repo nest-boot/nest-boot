@@ -7,12 +7,13 @@ import {
 import {
   type DynamicModule,
   Global,
+  Inject,
   Logger,
   Module,
   OnModuleInit,
 } from "@nestjs/common";
 
-import { MikroOrmModuleOptions } from "./interfaces/mikro-orm-module-options.interface.js";
+import type { MikroOrmModuleOptions } from "./interfaces/mikro-orm-module-options.interface.js";
 import {
   ASYNC_OPTIONS_TYPE,
   BASE_MODULE_OPTIONS_TOKEN,
@@ -124,6 +125,8 @@ export class MikroOrmModule
       imports: [optionsModule],
       inject: [BASE_MODULE_OPTIONS_TOKEN],
       useFactory: async (options: MikroOrmModuleOptions) => {
+        const ormOptions = { ...options };
+        delete ormOptions.session;
         const logger = new Logger("MikroORM");
         const envOptions = hasExplicitConnectionTarget(options)
           ? loadDefaultConfig()
@@ -140,7 +143,15 @@ export class MikroOrmModule
             logger.log(msg);
           },
           ...envOptions,
-          ...options,
+          ...ormOptions,
+          metadataCache: {
+            ...envOptions.metadataCache,
+            ...ormOptions.metadataCache,
+            enabled:
+              ormOptions.metadataCache?.enabled ??
+              envOptions.metadataCache?.enabled ??
+              false,
+          },
         };
 
         if (
@@ -157,8 +168,13 @@ export class MikroOrmModule
 
   /** Creates a new MikroOrmModule instance.
    * @param orm - The MikroORM instance
+   * @param options - Nest Boot configuration, including the session factory
    */
-  constructor(private readonly orm: MikroORM) {
+  constructor(
+    private readonly orm: MikroORM,
+    @Inject(MODULE_OPTIONS_TOKEN)
+    private readonly options: MikroOrmModuleOptions = {},
+  ) {
     super();
   }
 
@@ -196,7 +212,13 @@ export class MikroOrmModule
   /** Registers the MikroORM entity manager fork middleware in the request context. */
   onModuleInit(): void {
     RequestContext.registerMiddleware("mikro-orm", (ctx, next) => {
-      ctx.set(EntityManager, this.orm.em.fork({ useContext: true }));
+      ctx.set(
+        EntityManager,
+        this.orm.em.fork({
+          useContext: true,
+          ...(this.options.session ? { session: this.options.session() } : {}),
+        }),
+      );
       return next();
     });
   }

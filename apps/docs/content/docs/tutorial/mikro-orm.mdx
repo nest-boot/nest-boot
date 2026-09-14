@@ -3,7 +3,7 @@ title: "MikroORM"
 description: "MikroORM integration with request-scoped entity manager, EntityService base class, and encrypted/hashed properties."
 ---
 
-The `@nest-boot/mikro-orm` module wraps [`@mikro-orm/nestjs`](https://mikro-orm.io/docs/usage-with-nestjs) with automatic environment-based configuration and request context integration for per-request entity manager forking. Companion modules provide [encrypted properties](#encrypted-properties), [hashed properties](#hashed-properties), and [PostgreSQL row-level security](/docs/tutorial/row-level-security).
+The `@nest-boot/mikro-orm` module wraps [`@mikro-orm/nestjs`](https://mikro-orm.io/docs/usage-with-nestjs) with automatic environment-based configuration and request context integration for per-request entity manager forking. Companion modules provide [encrypted properties](#encrypted-properties) and [hashed properties](#hashed-properties).
 
 ## Installation
 
@@ -47,6 +47,10 @@ PostgreSQL TLS file parameters use `sslrootcert`, `sslcert`, and `sslkey`; the s
 An explicit `clientUrl` or host-style connection target such as `host` or `dbName` takes full precedence and prevents ambient `DATABASE_URL` values from being merged into that connection. Supplemental options such as `driver`, `schema`, `pool`, or `debug` continue to augment automatic environment configuration.
 
 The default config discovers runtime entities from `dist/**/*.entity.js`, TypeScript entities from `src/**/*.entity.ts`, uses `TsMorphMetadataProvider`, enables MikroORM DataLoaders, and stores migrations and seeders under `src/database` (or `dist/database` after build).
+
+Metadata caching is disabled by default (`metadataCache: { enabled: false }`) for both module registration and CLI configuration loaded through `loadConfigFromEnv()`. Entity metadata is rediscovered on each ORM initialization, which may increase startup time, but not on each request. Query result caching is unaffected. Set `metadataCache: { enabled: true }` to opt in; setting only a cache directory or formatting options does not enable it.
+
+MikroORM 7.2.0's JSON metadata cache does not fully preserve policy callbacks. Keep caching disabled when entities use functions for `policies.using` or `policies.check`.
 
 ### Async Registration
 
@@ -103,6 +107,15 @@ export class UserService {
 }
 ```
 
+### Database session factory
+
+Set `session: () => ({ role: "anonymous", variables: { "app.workspace": "..." } })`
+to initialize the native session on each request EntityManager. The synchronous
+callback returns `ForkOptions["session"]`, runs inside `RequestContext` before
+authentication, and is supported by both `forRoot()` and `forRootAsync()`.
+The default is no factory. Applications are responsible for provisioning database
+roles and updating the session after authentication, before starting transactions.
+
 ## EntityService
 
 `EntityService` is a generic CRUD base class with DataLoader batching for automatic N+1 prevention:
@@ -153,6 +166,53 @@ await this.fileService.remove(fileId);
 // Hard delete
 await this.fileService.remove(fileId, false);
 ```
+
+#### Soft-delete RLS policies
+
+For PostgreSQL and PGlite, `softDeletePolicies()` adds database-level restrictions
+to an entity with a nullable `deletedAt` property. Apply it explicitly alongside
+your application's permissive policies:
+
+```typescript
+import { t } from "@mikro-orm/core";
+import { Entity, PrimaryKey, Property } from "@mikro-orm/decorators/legacy";
+import { softDeletePolicies } from "@nest-boot/mikro-orm";
+
+@Entity({
+  policies: [
+    {
+      command: "select",
+      roles: ["app_reader"],
+      using: () => "true",
+    },
+    ...softDeletePolicies(),
+  ],
+})
+export class Article {
+  @PrimaryKey({ type: t.integer })
+  id!: number;
+
+  @Property({ type: t.datetime, nullable: true })
+  deletedAt?: Date | null;
+}
+```
+
+Create `app_reader` and grant its table privileges separately in a migration.
+The helper contains only restrictive policies: it grants no access on its own,
+and does not initialize database roles or sessions. Policy callbacks use the
+mapped database column name, so custom `fieldName` values are supported.
+
+All options are optional: `softDeletePolicies()` uses `property: "deletedAt"`.
+Use `softDeletePolicies({ property: "removedAt" })` for a different entity property.
+Each call returns fresh policy definitions. No custom discovery hook or filter is
+required; MikroORM resolves the column mappings and generates the migration.
+
+For roles subject to RLS, deleted rows are hidden, inserts and updates must keep
+`deletedAt` null, and physical deletion is denied. Direct soft deletion and
+restoration are therefore blocked too, including through `EntityService.remove()`.
+Perform these operations only through a separately authorized service path using
+a database role permitted to bypass the restrictions. Keep metadata caching
+disabled when using these policy callbacks.
 
 ### Chunk Processing
 
@@ -240,9 +300,7 @@ Values are automatically hashed before create and update operations. The decorat
 
 2. **EntityService as Base** — Extend `EntityService` for all domain services to get CRUD + DataLoader batching out of the box.
 
-3. **RLS Driver** — Use `@nest-boot/row-level-security` when PostgreSQL policies should enforce tenant or workspace isolation.
-
-4. **Soft Delete** — Configure `softDeleteKey` in `EntityService` for entities that support soft delete.
+3. **Soft Delete** — Configure `softDeleteKey` in `EntityService` for entities that support soft delete.
 
 ## API Reference
 

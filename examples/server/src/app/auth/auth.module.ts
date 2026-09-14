@@ -8,7 +8,6 @@ import {
 import { Mailer } from '@nest-boot/mailer';
 import { RequestContext } from '@nest-boot/request-context';
 import { Module } from '@nestjs/common';
-import { APP_INTERCEPTOR } from '@nestjs/core';
 
 import {
   buildUserPermissionAbility,
@@ -23,7 +22,6 @@ import { AuthResolver } from './auth.resolver.js';
 import { Account } from './entities/account.entity.js';
 import { Session } from './entities/session.entity.js';
 import { Verification } from './entities/verification.entity.js';
-import { RowLevelSecurityInterceptor } from './row-level-security.interceptor.js';
 import { UserResolver } from './user.resolver.js';
 
 /**
@@ -118,14 +116,6 @@ import { UserResolver } from './user.resolver.js';
       },
     }),
   ],
-  providers: [
-    AuthResolver,
-    UserResolver,
-    RowLevelSecurityInterceptor,
-    {
-      provide: APP_INTERCEPTOR,
-      useExisting: RowLevelSecurityInterceptor,
-    },
-  ],
+  providers: [AuthResolver, UserResolver],
 })
 export class AuthModule {}

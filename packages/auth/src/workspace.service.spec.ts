@@ -5,13 +5,10 @@ import {
   UniqueConstraintViolationException,
 } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
-import {
-  RowLevelSecurity,
-  RowLevelSecurityMode,
-} from "@nest-boot/row-level-security";
 import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import type { Mocked } from "vitest";
 
+import { mockRlsContext } from "../test/mock-rls-context.js";
 import type { AccessControlService } from "./access-control.service.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
 import {
@@ -165,9 +162,28 @@ describe("WorkspaceService", () => {
     expect(em.flush).not.toHaveBeenCalled();
   });
 
+  it.each(["assertCurrentUser", "assertUserCan"] as const)(
+    "checks %s before starting unrestricted workspace creation",
+    async (check) => {
+      const { accessControlService, em, service } = createService();
+      vi.mocked(accessControlService[check]).mockImplementation(() => {
+        throw new ForbiddenException();
+      });
+
+      await expect(
+        service.createWorkspace(new TestUser(), { name: "Denied" }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(em.fork).not.toHaveBeenCalled();
+      expect(em.transactional).not.toHaveBeenCalled();
+      expect(em.create).not.toHaveBeenCalled();
+      expect(em.persist).not.toHaveBeenCalled();
+    },
+  );
+
   it("creates a workspace and its owner membership atomically", async () => {
     const { em, service } = createService();
     const user = Object.assign(new TestUser(), {
+      id: "user-1",
       email: "alice@example.com",
       name: "Alice",
     });
@@ -185,12 +201,13 @@ describe("WorkspaceService", () => {
         name: "Alice",
         roles: ["owner"],
         status: "ACTIVE",
-        user,
+        user: user.id,
         workspace,
       }),
     );
     expect(em.persist).toHaveBeenCalledTimes(2);
     expect(em.flush).toHaveBeenCalledTimes(1);
+    expect(em.transactional).toHaveBeenCalledTimes(1);
   });
 
   it("uses configured creator and default member roles", async () => {
@@ -364,21 +381,25 @@ describe("WorkspaceService", () => {
       roles: ["owner"],
     });
     em.assign.mockImplementation((entity, data) => {
-      expect(RowLevelSecurity.getMode()).toBe(RowLevelSecurityMode.DISABLED);
+      expect(
+        RequestContext.get(EntityManager)?.getSessionContext(),
+      ).toBeUndefined();
       Object.assign(entity, data);
       return entity;
     });
     em.flush.mockImplementation(() => {
-      expect(RowLevelSecurity.getMode()).toBe(RowLevelSecurityMode.DISABLED);
+      expect(
+        RequestContext.get(EntityManager)?.getSessionContext(),
+      ).toBeUndefined();
       return Promise.resolve();
     });
 
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      RowLevelSecurity.setMode(RowLevelSecurityMode.ENABLED);
+      const sessionContext = mockRlsContext(em);
       await expect(service.deleteWorkspace(workspace, owner)).resolves.toBe(
         workspace,
       );
-      expect(RowLevelSecurity.getMode()).toBe(RowLevelSecurityMode.ENABLED);
+      expect(em.getSessionContext()).toEqual(sessionContext);
     });
 
     expect(workspace.deletedAt).toBeInstanceOf(Date);
@@ -724,6 +745,7 @@ describe("WorkspaceService", () => {
     ).rejects.toThrow(
       "Workspace member contains duplicate permissions: Workspace:update",
     );
+    em.findOne.mockResolvedValue(member);
     await expect(
       service.setMemberPermissions(member, ["Workspace:update"]),
     ).resolves.toBe(member);
@@ -731,6 +753,69 @@ describe("WorkspaceService", () => {
     expect(
       accessControlService.assertCanGrantWorkspacePermissions,
     ).toHaveBeenCalledWith(["Workspace:update"]);
+  });
+
+  it("reloads detached members in the auth transaction before persisting permissions", async () => {
+    const { accessControlService, em, service } = createService();
+    mockRlsContext(em);
+    const detached = Object.assign(new TestWorkspaceMember(), {
+      name: "Unsaved caller change",
+      roles: ["owner"],
+    });
+    const managed = new TestWorkspaceMember();
+    em.findOne.mockResolvedValue(managed);
+
+    await expect(
+      service.setMemberPermissions(detached, ["Workspace:update"]),
+    ).resolves.toBe(managed);
+
+    expect(em.fork).toHaveBeenCalledOnce();
+    expect(em.transactional).toHaveBeenCalledOnce();
+    expect(em.findOne).toHaveBeenCalledWith(
+      TestWorkspaceMember,
+      { id: detached.id, workspace: detached.workspace },
+      { filters: false, lockMode: LockMode.PESSIMISTIC_WRITE, refresh: true },
+    );
+    expect(accessControlService.assertWorkspaceCan).toHaveBeenLastCalledWith(
+      "update",
+      managed,
+    );
+    expect(managed.permissions).toEqual(["Workspace:update"]);
+    expect(managed.name).toBe("Alice");
+    expect(managed.roles).toEqual(["member"]);
+    expect(detached.permissions).toEqual([]);
+    expect(em.persist).not.toHaveBeenCalled();
+    expect(em.flush).toHaveBeenCalledOnce();
+  });
+
+  it("does not recreate a deleted member while setting permissions", async () => {
+    const { em, service } = createService();
+    em.findOne.mockResolvedValue(null);
+
+    await expect(
+      service.setMemberPermissions(new TestWorkspaceMember(), [
+        "Workspace:update",
+      ]),
+    ).rejects.toThrow("Workspace member not found");
+    expect(em.flush).not.toHaveBeenCalled();
+  });
+
+  it("rechecks permission access against the locked member", async () => {
+    const { accessControlService, em, service } = createService();
+    const detached = new TestWorkspaceMember();
+    const managed = new TestWorkspaceMember();
+    em.findOne.mockResolvedValue(managed);
+    vi.mocked(accessControlService.assertWorkspaceCan).mockImplementation(
+      (_action, subject) => {
+        if (subject === managed) throw new ForbiddenException();
+      },
+    );
+
+    await expect(
+      service.setMemberPermissions(detached, ["Workspace:update"]),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(managed.permissions).toEqual([]);
+    expect(em.flush).not.toHaveBeenCalled();
   });
 
   it("checks role grants against the issuer permission ceiling", async () => {
@@ -1540,6 +1625,11 @@ function createService(
   workspace: NonNullable<AuthModuleOptions["workspace"]> = {},
 ) {
   const em = {
+    getContext: vi.fn().mockReturnThis(),
+    getSessionContext:
+      vi.fn<() => import("@mikro-orm/core").SessionContext | undefined>(),
+    isInTransaction: vi.fn(() => false),
+    fork: vi.fn(),
     assign: vi.fn((entity, data) => Object.assign(entity, data)),
     create: vi.fn((Entity, data) => Object.assign(new Entity(), data)),
     find: vi.fn(),

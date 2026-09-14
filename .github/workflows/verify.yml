@@ -132,6 +132,12 @@ jobs:
           STORAGE_ACCESS_KEY_ID: minio
           STORAGE_SECRET_ACCESS_KEY: password
 
+      - name: Verify example SQL driver and native RLS integration
+        run: |
+          pnpm --filter @nest-boot/example-server exec tsc --noEmit -p tsconfig.json
+          pnpm --filter @nest-boot/example-server test
+          pnpm --filter @nest-boot/example-server exec vitest run --config vitest.config.e2e.ts test/connection-manager.e2e-spec.ts test/native-rls-migrations.e2e-spec.ts
+
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v7
         env:

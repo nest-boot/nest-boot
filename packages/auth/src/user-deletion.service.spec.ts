@@ -136,6 +136,11 @@ describe("UserDeletionService", () => {
 function createService() {
   const flush = vi.fn();
   const em = {
+    getContext: vi.fn().mockReturnThis(),
+    getSessionContext:
+      vi.fn<() => import("@mikro-orm/core").SessionContext | undefined>(),
+    isInTransaction: vi.fn(() => false),
+    fork: vi.fn(),
     find: vi.fn(),
     findOne: vi.fn(),
     flush,

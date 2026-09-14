@@ -1,15 +1,11 @@
 import { type EntityManager, LockMode } from "@mikro-orm/core";
-import { RequestContext } from "@nest-boot/request-context";
-import {
-  RowLevelSecurity,
-  RowLevelSecurityMode,
-} from "@nest-boot/row-level-security";
 import type {
   AdapterFactoryCustomizeAdapterCreator,
   Where,
 } from "better-auth/adapters";
 
 import type { AuthModuleOptions } from "../../auth-module-options.interface.js";
+import { runAuthQuery } from "../../utils/run-auth-query.js";
 import { createEntityMetadataResolver } from "./entity-metadata-resolver.js";
 import { convertWhereToMikroOrm } from "./where-compiler.js";
 
@@ -48,6 +44,7 @@ export function createMikroOrmCustomAdapter({
       );
 
     const runInTransaction = async <T>(
+      em: EntityManager,
       callback: (transactionalEntityManager: EntityManager) => Promise<T>,
     ): Promise<T> => {
       if (inTransaction) return await callback(em);
@@ -55,23 +52,12 @@ export function createMikroOrmCustomAdapter({
     };
 
     const runUnrestricted = async <T>(
-      callback: () => Promise<T>,
-    ): Promise<T> => {
-      const run = () => {
-        RowLevelSecurity.setMode(RowLevelSecurityMode.DISABLED);
-        return callback();
-      };
-
-      if (RequestContext.isActive()) return await RequestContext.child(run);
-      return await RequestContext.run(
-        new RequestContext({ type: "better-auth-adapter" }),
-        run,
-      );
-    };
+      callback: (em: EntityManager) => Promise<T>,
+    ): Promise<T> => await runAuthQuery(em, callback);
 
     return {
       create: async ({ data, model }) =>
-        await runUnrestricted(async () => {
+        await runUnrestricted(async (em) => {
           const entityClass = resolver.getEntityClass(model);
           const entityData = resolver.toEntityData(model, data);
           if (
@@ -86,7 +72,7 @@ export function createMikroOrmCustomAdapter({
           return resolver.toAdapterRecord(model, entity) as any;
         }),
       update: async ({ model, where, update }) =>
-        await runUnrestricted(async () => {
+        await runUnrestricted(async (em) => {
           const entity = await em.findOne(
             resolver.getEntityClass(model),
             convertWhere(model, where),
@@ -103,7 +89,7 @@ export function createMikroOrmCustomAdapter({
         }),
       updateMany: async ({ model, where, update }) =>
         await runUnrestricted(
-          async () =>
+          async (em) =>
             await em.nativeUpdate(
               resolver.getEntityClass(model),
               convertWhere(model, where),
@@ -111,7 +97,7 @@ export function createMikroOrmCustomAdapter({
             ),
         ),
       delete: async ({ model, where }) => {
-        await runUnrestricted(async () => {
+        await runUnrestricted(async (em) => {
           await em.nativeDelete(
             resolver.getEntityClass(model),
             convertWhere(model, where),
@@ -120,7 +106,7 @@ export function createMikroOrmCustomAdapter({
       },
       deleteMany: async ({ model, where }) =>
         await runUnrestricted(
-          async () =>
+          async (em) =>
             await em.nativeDelete(
               resolver.getEntityClass(model),
               convertWhere(model, where),
@@ -128,8 +114,8 @@ export function createMikroOrmCustomAdapter({
         ),
       consumeOne: async ({ model, where }) =>
         await runUnrestricted(
-          async () =>
-            await runInTransaction(async (transactionalEntityManager) => {
+          async (em) =>
+            await runInTransaction(em, async (transactionalEntityManager) => {
               const entity = await findOneForUpdate(
                 transactionalEntityManager,
                 model,
@@ -144,8 +130,8 @@ export function createMikroOrmCustomAdapter({
         ),
       incrementOne: async ({ model, where, increment, set }) =>
         await runUnrestricted(
-          async () =>
-            await runInTransaction(async (transactionalEntityManager) => {
+          async (em) =>
+            await runInTransaction(em, async (transactionalEntityManager) => {
               const entity = await findOneForUpdate(
                 transactionalEntityManager,
                 model,
@@ -176,7 +162,7 @@ export function createMikroOrmCustomAdapter({
             }),
         ),
       findOne: async ({ model, where }) =>
-        await runUnrestricted(async () => {
+        await runUnrestricted(async (em) => {
           const entity = await em.findOne(
             resolver.getEntityClass(model),
             convertWhere(model, where),
@@ -187,7 +173,7 @@ export function createMikroOrmCustomAdapter({
             : null;
         }),
       findMany: async ({ model, where, limit, offset, sortBy }) =>
-        await runUnrestricted(async () => {
+        await runUnrestricted(async (em) => {
           const result = await em.findAll(resolver.getEntityClass(model), {
             ...(where ? { where: convertWhere(model, where) } : {}),
             limit,
@@ -214,7 +200,7 @@ export function createMikroOrmCustomAdapter({
         }),
       count: async ({ model, where }) =>
         await runUnrestricted(
-          async () =>
+          async (em) =>
             await em.count(
               resolver.getEntityClass(model),
               where ? convertWhere(model, where) : undefined,

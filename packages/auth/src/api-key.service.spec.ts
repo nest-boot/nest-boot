@@ -4,16 +4,13 @@ import { createHash } from "node:crypto";
 import { EntityManager, ref } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import {
-  RowLevelSecurity,
-  RowLevelSecurityMode,
-} from "@nest-boot/row-level-security";
-import {
   BadRequestException,
   ForbiddenException,
   UnauthorizedException,
 } from "@nestjs/common";
 import { it as baseIt, type Mocked } from "vitest";
 
+import { mockRlsContext } from "../test/mock-rls-context.js";
 import { AccessControlService } from "./access-control.service.js";
 import { ApiKeyService } from "./api-key.service.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
@@ -974,7 +971,9 @@ describe("ApiKeyService", () => {
     const workspace = new TestWorkspace();
     const plaintextApiKey = "sk-valid-key";
     em.findOne.mockImplementation((entity, where) => {
-      expect(RowLevelSecurity.getMode()).toBe(RowLevelSecurityMode.DISABLED);
+      expect(
+        RequestContext.get(EntityManager)?.getSessionContext(),
+      ).toBeUndefined();
       if (entity === TestApiKey) {
         expect(where).toEqual({
           key: createHash("sha256").update(plaintextApiKey).digest("base64url"),
@@ -984,13 +983,13 @@ describe("ApiKeyService", () => {
     });
 
     await RequestContext.child(async () => {
-      RowLevelSecurity.setMode(RowLevelSecurityMode.ENABLED);
+      const sessionContext = mockRlsContext(em);
       await expect(service.validate(plaintextApiKey)).resolves.toEqual({
         apiKey,
         ownerType: "workspace",
         workspace,
       });
-      expect(RowLevelSecurity.getMode()).toBe(RowLevelSecurityMode.ENABLED);
+      expect(em.getSessionContext()).toEqual(sessionContext);
     });
   });
 
@@ -1019,11 +1018,16 @@ function createService(
   authorization: Pick<AuthModuleOptions, "apiKey" | "user" | "workspace"> = {},
 ) {
   const em = {
+    getContext: vi.fn().mockReturnThis(),
+    getSessionContext:
+      vi.fn<() => import("@mikro-orm/core").SessionContext | undefined>(),
+    isInTransaction: vi.fn(() => false),
+    fork: vi.fn(),
     create: vi.fn((_entity, data) => Object.assign(new TestApiKey(), data)),
     findOne: vi.fn(),
     flush: vi.fn(),
     persist: vi.fn(),
-    remove: vi.fn(),
+    remove: vi.fn().mockReturnThis(),
   } as unknown as Mocked<EntityManager>;
   em.persist.mockReturnValue(em);
   const options = {

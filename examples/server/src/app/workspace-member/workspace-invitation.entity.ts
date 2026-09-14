@@ -10,7 +10,7 @@ import {
   PrimaryKey,
   Property,
 } from '@mikro-orm/decorators/legacy';
-import { BaseWorkspaceInvitation } from '@nest-boot/auth';
+import { BaseWorkspaceInvitation, workspaceScopePolicy } from '@nest-boot/auth';
 import { Field, ID, ObjectType } from '@nest-boot/graphql';
 
 import { User } from '../user/user.entity.js';
@@ -19,7 +19,10 @@ import { WorkspaceInvitationStatus } from './enums/workspace-invitation-status.e
 
 /** 独立于成员记录的工作区邀请。 */
 @ObjectType()
-@Entity()
+@Entity({
+  // 收件人在加入工作区前，通过 WorkspaceService 完成授权后访问邀请。
+  policies: [workspaceScopePolicy()],
+})
 @Index({ properties: ['createdAt'] })
 @Index({ properties: ['email'] })
 @Index({ properties: ['status'] })

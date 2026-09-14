@@ -108,7 +108,6 @@
     "@nest-boot/mikro-orm-hash",
     "@nest-boot/redis",
     "@nest-boot/request-context",
-    "@nest-boot/row-level-security",
     "@nest-boot/schedule",
     "@nest-boot/storage",
     "@nest-boot/temporary-directory",

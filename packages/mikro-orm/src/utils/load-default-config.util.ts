@@ -11,10 +11,10 @@ export function loadDefaultConfig() {
     dataloader: DataloaderType.ALL,
     timezone: "UTC",
     metadataProvider: TsMorphMetadataProvider,
+    metadataCache: { enabled: false },
     entities: ["dist/**/*.entity.js"],
     entitiesTs: ["src/**/*.entity.ts"],
     migrations: {
-      snapshot: false,
       path: "dist/database/migrations",
       pathTs: "src/database/migrations",
     },

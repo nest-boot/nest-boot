@@ -1,4 +1,3 @@
-import type { WorkspaceService } from '@nest-boot/auth';
 import { ForbiddenException } from '@nestjs/common';
 import type { Mocked } from 'vitest';
 
@@ -153,7 +152,11 @@ describe('WorkspaceResolver', () => {
   });
 });
 
-function createResolver(overrides: Partial<WorkspaceService> = {}) {
+type ExampleWorkspaceService = ConstructorParameters<
+  typeof WorkspaceResolver
+>[0];
+
+function createResolver(overrides: Partial<ExampleWorkspaceService> = {}) {
   const workspaceService = {
     createWorkspace: vi.fn(),
     deleteWorkspace: vi.fn(),
@@ -164,7 +167,7 @@ function createResolver(overrides: Partial<WorkspaceService> = {}) {
     transferOwnership: vi.fn(),
     updateWorkspace: vi.fn(),
     ...overrides,
-  } as unknown as Mocked<WorkspaceService>;
+  } as unknown as Mocked<ExampleWorkspaceService>;
   const cm = { find: vi.fn() };
 
   return {

@@ -16,7 +16,7 @@ test("beta explicitly increments prereleases instead of interpreting breaking co
     getReleaseSpecifier("beta", [
       { name: "@nest-boot/auth", version: "8.0.2" },
       { name: "@nest-boot/storage", version: "8.0.0-beta.4" },
-      { name: "@nest-boot/row-level-security", version: "8.0.4-beta.0" },
+      { name: "@nest-boot/mikro-orm", version: "8.0.4-beta.0" },
     ]),
     "prerelease",
   );

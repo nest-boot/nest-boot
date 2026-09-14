@@ -1,3 +1,4 @@
+import { EntityManager } from "@mikro-orm/core";
 /**
  * Unit tests for convertWhereToMikroOrm
  *
@@ -22,11 +23,8 @@ vi.mock("better-auth/adapters", () => ({
 // Import the function under test
 import { LockMode, MikroORM, Raw } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
-import {
-  RowLevelSecurity,
-  RowLevelSecurityMode,
-} from "@nest-boot/row-level-security";
 
+import { mockRlsContext } from "../../test/mock-rls-context.js";
 import {
   BaseAccount,
   BaseApiKey,
@@ -336,6 +334,11 @@ const entities = {
 function createOrm() {
   const flush = vi.fn();
   const em = {
+    getContext: vi.fn().mockReturnThis(),
+    getSessionContext:
+      vi.fn<() => import("@mikro-orm/core").SessionContext | undefined>(),
+    isInTransaction: vi.fn(() => false),
+    fork: vi.fn(),
     assign: vi.fn(),
     count: vi.fn(),
     create: vi.fn((_entity, data) => ({ ...data })),
@@ -725,17 +728,21 @@ describe("mikroOrmAdapter", () => {
     const { em, orm } = createOrm();
     const entity = { id: "user-1", name: "Old" };
     em.findOne.mockImplementation(() => {
-      expect(RowLevelSecurity.getMode()).toBe(RowLevelSecurityMode.DISABLED);
+      expect(
+        RequestContext.get(EntityManager)?.getSessionContext(),
+      ).toBeUndefined();
       return Promise.resolve(entity);
     });
     em.flush.mockImplementation(() => {
-      expect(RowLevelSecurity.getMode()).toBe(RowLevelSecurityMode.DISABLED);
+      expect(
+        RequestContext.get(EntityManager)?.getSessionContext(),
+      ).toBeUndefined();
       return Promise.resolve();
     });
     const adapter = createAdapter(orm);
 
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      RowLevelSecurity.setMode(RowLevelSecurityMode.ENABLED);
+      const sessionContext = mockRlsContext(em);
 
       await adapter.update({
         model: "user",
@@ -743,7 +750,7 @@ describe("mikroOrmAdapter", () => {
         where: [makeWhere("id", "eq", "user-1")],
       });
 
-      expect(RowLevelSecurity.getMode()).toBe(RowLevelSecurityMode.ENABLED);
+      expect(em.getSessionContext()).toEqual(sessionContext);
     });
   });
 

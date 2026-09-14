@@ -9,9 +9,12 @@ import {
   Unique,
 } from '@mikro-orm/decorators/legacy';
 import { FullTextType } from '@mikro-orm/postgresql';
-import { BaseWorkspaceMember } from '@nest-boot/auth';
+import {
+  BaseWorkspaceMember,
+  userScopePolicy,
+  workspaceScopePolicy,
+} from '@nest-boot/auth';
 import { Field, HideField, ID, ObjectType } from '@nest-boot/graphql';
-import { Policy } from '@nest-boot/row-level-security';
 import { Sonyflake } from 'sonyflake-js';
 
 import { SearchableProperty } from '../../common/decorators/searchable-property.decorator.js';
@@ -24,17 +27,13 @@ import { WorkspaceMemberType } from './enums/workspace-member-type.enum.js';
  * 工作区成员实体。
  */
 @ObjectType()
-@Policy({
-  property: 'user',
-  context: 'user_id',
-  roles: ['authenticated'],
+@Entity({
+  policies: [
+    // 允许跨工作区查询本人的成员关系，但不放开写入。
+    userScopePolicy({ command: 'select' }),
+    workspaceScopePolicy(),
+  ],
 })
-@Policy({
-  property: 'workspace',
-  context: 'workspace_id',
-  roles: ['authenticated'],
-})
-@Entity()
 @Unique({ properties: ['user', 'workspace'] })
 @Unique({ properties: ['email', 'workspace'] })
 @Index({ properties: ['createdAt'] })
