@@ -40,8 +40,8 @@ export class AppModule {}
 A typical service-level endpoint configuration looks like this:
 
 ```dotenv
-STORAGE_ACCESS_KEY_ID=minio
-STORAGE_SECRET_ACCESS_KEY=password
+STORAGE_ACCESS_KEY_ID=rustfs
+STORAGE_SECRET_ACCESS_KEY=secretsecret
 STORAGE_REGION=us-east-1
 STORAGE_ENDPOINT_URL=http://localhost:9000
 STORAGE_BUCKET=uploads
@@ -80,8 +80,8 @@ import { Module } from "@nestjs/common";
       endpointUrl: "http://localhost:9000",
       forcePathStyle: true,
       region: "us-east-1",
-      accessKeyId: "minio",
-      secretAccessKey: "password",
+      accessKeyId: "rustfs",
+      secretAccessKey: "secretsecret",
       rootPath: "tenants/acme",
     }),
   ],
@@ -124,7 +124,7 @@ For example, a local S3-compatible service can use:
 ```typescript
 StorageModule.register({
   bucket: "uploads",
-  endpointUrl: "http://minio:9000",
+  endpointUrl: "http://rustfs:9000",
   forcePathStyle: true,
 });
 ```
@@ -143,7 +143,7 @@ private network address while generated URLs must remain externally reachable.
 StorageModule.register({
   bucket: "uploads",
   endpointUrl: "https://storage.example.com",
-  internalEndpointUrl: "http://minio:9000",
+  internalEndpointUrl: "http://rustfs:9000",
   forcePathStyle: true,
 });
 ```
@@ -173,7 +173,7 @@ StorageModule.register({
   bucket: "uploads",
   endpointUrl: "https://uploads.storage.example.com",
   bucketEndpoint: true,
-  internalEndpointUrl: "http://minio:9000",
+  internalEndpointUrl: "http://rustfs:9000",
   internalBucketEndpoint: false,
   forcePathStyle: true,
 });

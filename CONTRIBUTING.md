@@ -67,7 +67,7 @@ pnpm typedoc:check
 pnpm test:cov
 ```
 
-Coverage tests in CI use PostgreSQL, Redis, and MinIO. If equivalent services are unavailable locally, run the reliable subset and state exactly what was not run. Never claim a check passed without its output.
+Coverage tests in CI use PostgreSQL, Redis, and RustFS. If equivalent services are unavailable locally, run the reliable subset and state exactly what was not run. Never claim a check passed without its output.
 
 For package contents or release infrastructure, also consider:
 

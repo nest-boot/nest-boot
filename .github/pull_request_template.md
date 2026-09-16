@@ -15,7 +15,7 @@ Describe the sanitized reproduction, broken contract, and evidence supporting th
 - [ ] Ran `pnpm typedoc:check` when public APIs or docs changed
 - [ ] Ran `git diff --check`
 
-List every command and result. Explain any full-CI check that was not run, including unavailable PostgreSQL, Redis, or MinIO services.
+List every command and result. Explain any full-CI check that was not run, including unavailable PostgreSQL, Redis, or RustFS services.
 
 ## Compatibility and release impact
 

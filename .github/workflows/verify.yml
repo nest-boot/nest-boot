@@ -41,16 +41,22 @@ jobs:
         ports:
           - 6379:6379
 
-      minio:
-        image: bitnamilegacy/minio
+      rustfs:
+        image: rustfs/rustfs:1.0.0-rc.4
         ports:
           - 9000:9000
         env:
-          MINIO_ROOT_USER: minio
-          MINIO_ROOT_PASSWORD: password
+          RUSTFS_ACCESS_KEY: rustfs
+          RUSTFS_SECRET_KEY: secretsecret
+          RUSTFS_VOLUMES: /data
+          RUSTFS_ADDRESS: 0.0.0.0:9000
+          RUSTFS_CONSOLE_ENABLE: "false"
         options: >-
-          --name=minio
-          --health-cmd "curl http://localhost:9000/minio/health/live"
+          --health-cmd "curl --fail http://localhost:9000/health"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+          --health-start-period 10s
 
     steps:
       - name: Checkout
@@ -100,13 +106,7 @@ jobs:
       - name: TypeDoc
         run: pnpm typedoc:check
 
-      - name: Prepare MinIO bucket
-        run: |
-          wget -O "$RUNNER_TEMP/mc" https://dl.min.io/client/mc/release/linux-amd64/mc
-          chmod +x "$RUNNER_TEMP/mc"
-          "$RUNNER_TEMP/mc" alias set minio http://localhost:9000 minio password
-          "$RUNNER_TEMP/mc" mb minio/test-bucket
-
+      # Storage e2e suites create their buckets through the AWS SDK.
       - name: Test
         run: pnpm test:cov
         env:
@@ -116,8 +116,8 @@ jobs:
           STORAGE_REGION: us-east-1
           STORAGE_BUCKET: test-bucket
           STORAGE_FORCE_PATH_STYLE: true
-          STORAGE_ACCESS_KEY_ID: minio
-          STORAGE_SECRET_ACCESS_KEY: password
+          STORAGE_ACCESS_KEY_ID: rustfs
+          STORAGE_SECRET_ACCESS_KEY: secretsecret
 
       - name: End-to-end test
         run: pnpm test:e2e
@@ -129,8 +129,8 @@ jobs:
           STORAGE_BUCKET: test-bucket
           STORAGE_FORCE_PATH_STYLE: true
           STORAGE_ROOT_PATH: tmp/tenant
-          STORAGE_ACCESS_KEY_ID: minio
-          STORAGE_SECRET_ACCESS_KEY: password
+          STORAGE_ACCESS_KEY_ID: rustfs
+          STORAGE_SECRET_ACCESS_KEY: secretsecret
 
       - name: Verify example SQL driver and native RLS integration
         run: |

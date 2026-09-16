@@ -159,12 +159,12 @@ describe("Storage", () => {
   it("uses the configured bucket endpoint as the presigned POST target", async () => {
     createPresignedPostMock.mockResolvedValueOnce({
       fields: { bucket: "uploads", key: "tmp/photo.png" },
-      url: "https://uploads.uploads.minio.example.com/",
+      url: "https://uploads.uploads.rustfs.example.com/",
     });
     const storage = new Storage({
       bucket: "uploads",
       bucketEndpoint: true,
-      endpointUrl: "https://uploads.minio.example.com",
+      endpointUrl: "https://uploads.rustfs.example.com",
     });
     const { client } = storageClients(storage);
 
@@ -172,7 +172,7 @@ describe("Storage", () => {
       storage.createTemporaryUploadUrl("tmp/photo.png"),
     ).resolves.toEqual({
       fields: { bucket: "uploads", key: "tmp/photo.png" },
-      url: "https://uploads.minio.example.com/",
+      url: "https://uploads.rustfs.example.com/",
     });
     expect(createPresignedPostMock).toHaveBeenCalledWith(client, {
       Bucket: "uploads",
