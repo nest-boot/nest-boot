@@ -15,6 +15,18 @@ const TestVerification = BaseVerification;
 type TestVerification = BaseVerification;
 
 describe("auth entities", () => {
+  it.each([
+    [undefined, []],
+    ["", []],
+    ["openid", ["openid"]],
+    ["openid,profile,email", ["openid", "profile", "email"]],
+    ["openid profile\temail", ["openid", "profile", "email"]],
+    [" , openid, profile\nemail ,, ", ["openid", "profile", "email"]],
+  ] as const)("parses persisted OAuth scopes %j", (scope, expected) => {
+    const account = Object.assign(new BaseAccount(), { scope });
+    expect(account.scopes).toEqual(expected);
+  });
+
   it("declares relations directly against built-in classes", () => {
     for (const [entity, field, target] of [
       [BaseUser, "members", "Member"],

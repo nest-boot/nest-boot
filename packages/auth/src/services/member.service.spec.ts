@@ -10,6 +10,7 @@ import {
   createTestWorkspace,
   createWorkspaceServices,
 } from "../../test/workspace-service.fixture.js";
+import { WorkspaceAbility } from "../abilities/workspace.ability.js";
 import { ApiKey as BaseApiKey } from "../entities/api-key.entity.js";
 import { Invitation as InvitationEntity } from "../entities/invitation.entity.js";
 import {
@@ -21,8 +22,91 @@ import {
   User as UserEntity,
 } from "../entities/user.entity.js";
 import { Workspace as BaseWorkspace } from "../entities/workspace.entity.js";
+import { AccessControlService } from "./access-control.service.js";
+import { MemberService } from "./member.service.js";
 
 describe("MemberService", () => {
+  it("allows the current member to leave without any workspace ability rules", async () => {
+    const { em } = createWorkspaceServices();
+    const session = mockRlsContext(em);
+    const workspace = createTestWorkspace();
+    const member = Object.assign(createTestMember(), { workspace });
+    const lockedMember = Object.assign(createTestMember(), { workspace });
+    const access = new AccessControlService({});
+    const service = new MemberService(em, {}, access);
+    em.findOne.mockResolvedValue(lockedMember);
+
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      RequestContext.set(BaseWorkspace, workspace);
+      RequestContext.set(BaseMember, member);
+      RequestContext.set(WorkspaceAbility, new WorkspaceAbility());
+      expect(access.workspaceCan("read", workspace)).toBe(false);
+      await expect(service.leaveWorkspace(member)).resolves.toBe(lockedMember);
+    });
+    expect(em.findOne).toHaveBeenCalledWith(
+      MemberEntity,
+      { id: member.id, workspace },
+      { lockMode: LockMode.PESSIMISTIC_WRITE },
+    );
+    expect(em.remove).toHaveBeenCalledWith(lockedMember);
+    expect(em.flush).toHaveBeenCalledOnce();
+    expect(em.fork).not.toHaveBeenCalled();
+    expect(em.getSessionContext()).toEqual(session);
+  });
+
+  it.each(["workspace", "member", "missing-member"] as const)(
+    "rejects leaving with a mismatched %s identity before querying",
+    async (mismatch) => {
+      const { em } = createWorkspaceServices();
+      const workspace = createTestWorkspace();
+      const member = Object.assign(createTestMember(), { workspace });
+      const service = new MemberService(em, {}, new AccessControlService({}));
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          RequestContext.set(
+            BaseWorkspace,
+            mismatch === "workspace"
+              ? Object.assign(createTestWorkspace(), { id: "other-workspace" })
+              : workspace,
+          );
+          if (mismatch !== "missing-member") {
+            RequestContext.set(
+              BaseMember,
+              mismatch === "member"
+                ? Object.assign(createTestMember(), { id: "other-member" })
+                : member,
+            );
+          }
+          await expect(service.leaveWorkspace(member)).rejects.toThrow(
+            ForbiddenException,
+          );
+        },
+      );
+      expect(em.findOne).not.toHaveBeenCalled();
+      expect(em.remove).not.toHaveBeenCalled();
+    },
+  );
+
+  it("does not bypass RLS when the departing member cannot be loaded", async () => {
+    const { em } = createWorkspaceServices();
+    const session = mockRlsContext(em);
+    const workspace = createTestWorkspace();
+    const member = Object.assign(createTestMember(), { workspace });
+    const service = new MemberService(em, {}, new AccessControlService({}));
+    em.findOne.mockResolvedValue(null);
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      RequestContext.set(BaseWorkspace, workspace);
+      RequestContext.set(BaseMember, member);
+      await expect(service.leaveWorkspace(member)).rejects.toThrow(
+        "Workspace member not found",
+      );
+    });
+    expect(em.remove).not.toHaveBeenCalled();
+    expect(em.fork).not.toHaveBeenCalled();
+    expect(em.getSessionContext()).toEqual(session);
+  });
+
   it.each(["disable", "remove", "leave"] as const)(
     "allows an authorized owner to %s without a role exception",
     async (operation) => {

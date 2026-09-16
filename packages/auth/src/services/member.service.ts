@@ -384,7 +384,6 @@ export class MemberService {
     const workspace = this.unwrapWorkspace(member);
     this.accessControlService.assertCurrentWorkspace(workspace);
     this.accessControlService.assertCurrentMember(member);
-    this.accessControlService.assertWorkspaceCan("read", workspace);
     return await this.removeMemberRecord(workspace, member, (lockedMember) => {
       this.accessControlService.assertCurrentMember(lockedMember);
     });

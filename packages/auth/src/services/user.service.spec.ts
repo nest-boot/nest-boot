@@ -6,7 +6,7 @@ import {
   ForbiddenException,
   NotFoundException,
 } from "@nestjs/common";
-import type { Mocked } from "vitest";
+import { expectTypeOf, type Mocked } from "vitest";
 
 import { mockRlsContext } from "../../test/mock-rls-context.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
@@ -22,6 +22,7 @@ import {
   User as BaseUser,
   User as UserEntity,
 } from "../entities/user.entity.js";
+import type { CreateUserOptions } from "../interfaces/user-service.interface.js";
 import type { AccessControlService } from "./access-control.service.js";
 import { UserService } from "./user.service.js";
 import { UserDeletionService } from "./user-deletion.service.js";
@@ -33,6 +34,12 @@ type TestSession = BaseSession;
 const TestUser = BaseUser;
 type TestUser = BaseUser;
 describe("UserService", () => {
+  it("does not expose unmapped data in create-user options", () => {
+    expectTypeOf<
+      Extract<keyof CreateUserOptions, "data">
+    >().toEqualTypeOf<never>();
+  });
+
   it("loads mutation targets by ID without requiring user:get and preserves RLS", async () => {
     const { service, em, accessControlService } = createService();
     const user = Object.assign(new TestUser(), { id: "target" });
@@ -118,7 +125,6 @@ describe("UserService", () => {
     hash.mockResolvedValue("hashed-password");
 
     const user = await service.createUser({
-      data: { locale: "en" },
       email: " Alice@Example.com ",
       name: "Alice",
       password: "password",
@@ -132,7 +138,6 @@ describe("UserService", () => {
       expect.objectContaining({
         email: "alice@example.com",
         emailVerified: false,
-        locale: "en",
         name: "Alice",
         permissions: ["user:list"],
       }),

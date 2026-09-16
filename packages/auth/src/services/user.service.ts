@@ -103,7 +103,6 @@ export class UserService {
     return await this.em.transactional(
       async (em) => {
         const user = em.create(this.userEntity, {
-          ...(input.data ?? {}),
           email,
           emailVerified: false,
           name: input.name,

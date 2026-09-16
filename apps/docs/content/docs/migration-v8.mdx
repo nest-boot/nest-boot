@@ -148,3 +148,7 @@ Use separate related business entities and additional field resolvers to extend
 these models. Import the built-in classes directly for relation targets; do not
 redeclare or register replacement auth entities. Role/permission catalogs, ability
 builders, delivery callbacks, and provider settings remain configurable.
+
+`CreateUserOptions.data` is removed: `UserService.createUser()` only persists
+the built-in user fields. Store application-specific fields in a separate entity
+related to `User` instead.

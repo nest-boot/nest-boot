@@ -12,8 +12,6 @@ export interface CreateUserOptions {
   roles?: string[];
   /** Initial permissions from the configured user permission catalog. */
   permissions?: string[];
-  /** Application-defined user fields. */
-  data?: Record<string, unknown>;
 }
 
 /** Fields accepted when updating a user through `UserService`. */

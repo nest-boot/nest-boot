@@ -125,3 +125,6 @@ export default defineConfig({
 
 自定义字段请使用独立的业务关联实体和额外的字段 Resolver。关联目标直接导入内置实体类，
 不要重新声明或注册同名认证实体。角色、权限目录、Ability 构造器、邮件回调和 Provider 配置仍可自定义。
+
+`CreateUserOptions.data` 已移除：`UserService.createUser()` 仅持久化内置用户字段。
+应用自定义字段请存放在与 `User` 关联的独立业务实体中。

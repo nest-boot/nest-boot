@@ -99,6 +99,6 @@ export class Account extends BaseEntity {
   /** Granted OAuth scopes; credentials are intentionally not GraphQL fields. */
   @Field(() => [String])
   get scopes(): string[] {
-    return this.scope?.split(/\s+/).filter(Boolean) ?? [];
+    return this.scope?.split(/[,\s]+/).filter(Boolean) ?? [];
   }
 }
