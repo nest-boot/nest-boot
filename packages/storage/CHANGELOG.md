@@ -1,3 +1,7 @@
+## 8.0.0-beta.5 (2026-09-16)
+
+This was a version bump only for @nest-boot/storage to align it with other projects, there were no code changes.
+
 ## 8.0.0-beta.4 (2026-09-08)
 
 ### 🚀 Features

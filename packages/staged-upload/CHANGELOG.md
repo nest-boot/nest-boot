@@ -1,3 +1,9 @@
+## 8.0.1-beta.0 (2026-09-16)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/storage to 8.0.0-beta.5
+
 ## 8.0.0-beta.5 (2026-09-08)
 
 ### 🚀 Features

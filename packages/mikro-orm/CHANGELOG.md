@@ -1,3 +1,17 @@
+## 8.0.3-beta.1 (2026-09-16)
+
+### 🚀 Features
+
+- ⚠️  **mikro-orm:** adopt native RLS and remove the custom RLS package ([#329](https://github.com/nest-boot/nest-boot/pull/329))
+
+### ⚠️  Breaking Changes
+
+- **mikro-orm:** adopt native RLS and remove the custom RLS package  ([#329](https://github.com/nest-boot/nest-boot/pull/329))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.3-beta.0 (2026-09-08)
 
 ### 🚀 Features
