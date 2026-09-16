@@ -5,7 +5,7 @@ import type {
 } from "@mikro-orm/core";
 import type { AdapterFactoryCustomizeAdapterCreator } from "better-auth/adapters";
 
-import type { AuthModuleOptions } from "../../auth-module-options.interface.js";
+import { authEntityMap } from "../../entities/auth-entity-map.js";
 
 type AdapterContext = Parameters<AdapterFactoryCustomizeAdapterCreator>[0];
 type EntityRecord = Record<string, unknown>;
@@ -20,7 +20,7 @@ export interface EntityMetadataResolver {
 
 export function createEntityMetadataResolver(
   em: EntityManager,
-  entities: AuthModuleOptions["entities"],
+  entities: typeof authEntityMap,
   context: AdapterContext,
 ): EntityMetadataResolver {
   const metadataCache = new Map<string, Record<string, EntityProperty>>();
@@ -53,10 +53,21 @@ export function createEntityMetadataResolver(
     return properties;
   };
 
+  const isUserRelation = (model: string, field: string) => {
+    const defaultModelName = getDefaultModelName(model);
+    return (
+      (defaultModelName === "account" || defaultModelName === "session") &&
+      field === "userId" &&
+      !!getProperties(model).user
+    );
+  };
+
   const getPropertyName = (model: string, field: string) => {
     const defaultFieldName = context.getDefaultFieldName({ field, model });
     const properties = getProperties(model);
 
+    // Better Auth uses scalar userId fields; application entities use relations.
+    if (isUserRelation(model, defaultFieldName)) return "user";
     if (properties[defaultFieldName]) return defaultFieldName;
     if (properties[field]) return field;
 
@@ -96,6 +107,20 @@ export function createEntityMetadataResolver(
         model: defaultModelName,
       });
       const propertyName = getPropertyName(model, adapterFieldName);
+
+      if (isUserRelation(model, defaultFieldName)) {
+        const user = entityRecord[propertyName];
+        // Both loaded entities and uninitialized Ref objects expose the ID.
+        adapterRecord[adapterFieldName] =
+          user !== null && typeof user === "object" && "id" in user
+            ? user.id
+            : user;
+        if (adapterFieldName !== propertyName) {
+          delete adapterRecord.user;
+        }
+        hasAliases = true;
+        continue;
+      }
 
       if (adapterFieldName === propertyName) continue;
 

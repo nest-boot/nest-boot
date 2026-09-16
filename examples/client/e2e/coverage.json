@@ -59,10 +59,10 @@
     },
     {
       "domain": "Workspace",
-      "scenario": "Ownership transfer and member exit",
+      "scenario": "Multiple owner role assignment and member exit",
       "status": "covered",
       "specs": ["workspace.spec.ts"],
-      "notes": "Transfers ownership to an active user member, verifies the new owner, and removes the previous owner through the leave flow."
+      "notes": "Assigns owner through member roles, verifies two concurrent owners, and allows an owner to leave without changing roles first."
     },
     {
       "domain": "Invitations",
@@ -83,7 +83,7 @@
       "scenario": "Member status actions, removal, role changes, and direct permissions",
       "status": "covered",
       "specs": ["invitation.spec.ts"],
-      "notes": "Covers status and removal actions, role editing, direct permission editing, persistence after reload, and resulting UI authorization."
+      "notes": "Covers status and removal actions, role editing, direct permission editing, persistence after reload, and resulting UI authorization. Direct permission editing denies members without update ability and allows administrators to update even an owner's direct permissions without enabling protected role edits."
     },
     {
       "domain": "Authorization",

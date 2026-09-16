@@ -1,5 +1,4 @@
 import { AbilityBuilder, type Subject } from "@casl/ability";
-import { Reference } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import type { CanActivate, ExecutionContext, Type } from "@nestjs/common";
 import {
@@ -16,13 +15,11 @@ import { WorkspaceAbility } from "./abilities/workspace.ability.js";
 import { IS_PUBLIC_KEY } from "./auth.constants.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
-import {
-  BaseApiKey,
-  BaseWorkspace,
-  BaseWorkspaceMember,
-} from "./entities/index.js";
-import { BaseSession } from "./entities/session.entity.js";
-import { BaseUser } from "./entities/user.entity.js";
+import { ApiKey } from "./entities/api-key.entity.js";
+import { Member } from "./entities/member.entity.js";
+import { Session } from "./entities/session.entity.js";
+import { User } from "./entities/user.entity.js";
+import { Workspace } from "./entities/workspace.entity.js";
 import type { RouteArgumentMetadataValue } from "./interfaces/route-argument-metadata-value.interface.js";
 import type { UserCanMetadata } from "./interfaces/user-can-metadata.interface.js";
 import type { WorkspaceCanMetadata } from "./interfaces/workspace-can-metadata.interface.js";
@@ -34,19 +31,18 @@ import {
   USER_CAN_METADATA,
   WORKSPACE_CAN_METADATA,
 } from "./permission.constants.js";
-import type { AuthModuleRoles } from "./types/auth-module-roles.type.js";
 import type { CanSubjectFactory } from "./types/can-subject-factory.type.js";
 import type { RouteArgumentMetadata } from "./types/route-argument-metadata.type.js";
-import { DEFAULT_USER_ROLE, DEFAULT_USER_ROLES } from "./user.constants.js";
-import { resolveAuthPermissions } from "./utils/auth-role.util.js";
-import {
-  DEFAULT_WORKSPACE_ROLE,
-  DEFAULT_WORKSPACE_ROLES,
-} from "./workspace.constants.js";
+import { resolveRequestPermissions } from "./utils/resolve-request-permissions.util.js";
 
 /** Guard that enforces authentication and evaluates route permissions. */
 @Injectable()
 export class AuthGuard implements CanActivate {
+  /** Rebuilds abilities after an explicit sign-in changes the request identity. */
+  refreshAbilities(): void {
+    RequestContext.set(UserAbility, this.buildAndCacheUserAbility());
+    RequestContext.set(WorkspaceAbility, this.buildAndCacheWorkspaceAbility());
+  }
   /**
    * Creates the authentication and permission guard.
    *
@@ -81,9 +77,7 @@ export class AuthGuard implements CanActivate {
    */
   protected isAuthenticated(): boolean {
     try {
-      return (
-        !!RequestContext.get(BaseSession) || !!RequestContext.get(BaseApiKey)
-      );
+      return !!RequestContext.get(Session) || !!RequestContext.get(ApiKey);
     } catch {
       return false;
     }
@@ -150,7 +144,7 @@ export class AuthGuard implements CanActivate {
     canOptions: UserCanMetadata,
     context: ExecutionContext,
   ): Promise<boolean> {
-    const apiKey = RequestContext.get(BaseApiKey);
+    const apiKey = RequestContext.get(ApiKey);
 
     if (apiKey && this.isWorkspaceApiKey(apiKey)) {
       return false;
@@ -169,14 +163,10 @@ export class AuthGuard implements CanActivate {
     canOptions: WorkspaceCanMetadata,
     context: ExecutionContext,
   ): Promise<boolean> {
-    const apiKey = RequestContext.get(BaseApiKey);
+    const apiKey = RequestContext.get(ApiKey);
     const workspaceApiKey = apiKey && this.isWorkspaceApiKey(apiKey);
 
-    if (
-      apiKey &&
-      !workspaceApiKey &&
-      !RequestContext.get(BaseWorkspaceMember)
-    ) {
+    if (apiKey && !workspaceApiKey && !RequestContext.get(Member)) {
       return false;
     }
 
@@ -191,9 +181,8 @@ export class AuthGuard implements CanActivate {
     return ability.can(canOptions.action, subject);
   }
 
-  private isWorkspaceApiKey(apiKey: BaseApiKey): boolean {
-    const owner = Reference.unwrapReference(apiKey.owner as never) as unknown;
-    return owner instanceof this.options.entities.workspace;
+  private isWorkspaceApiKey(apiKey: ApiKey): boolean {
+    return !!apiKey.workspace && !apiKey.user;
   }
 
   private getOrBuildUserAbility(): UserAbility | null {
@@ -218,14 +207,11 @@ export class AuthGuard implements CanActivate {
 
   private buildAndCacheUserAbility(): UserAbility | null {
     const buildAbility = this.options.user?.buildAbility;
-    const user = RequestContext.get(BaseUser);
+    const user = RequestContext.get(User);
     if (!buildAbility || !user) return null;
 
     const builder = new AbilityBuilder(UserAbility);
-    const roles = this.options.user?.roles ?? DEFAULT_USER_ROLES;
-    const permissions = this.intersectApiKeyPermissions(
-      this.resolveUserPermissions(roles),
-    );
+    const permissions = resolveRequestPermissions(this.options).user;
     const ability = buildAbility(builder, permissions, user);
 
     RequestContext.set(UserAbility, ability);
@@ -234,65 +220,20 @@ export class AuthGuard implements CanActivate {
 
   private buildAndCacheWorkspaceAbility(): WorkspaceAbility | null {
     const buildAbility = this.options.workspace?.buildAbility;
-    const workspace = RequestContext.get(BaseWorkspace);
-    const member = RequestContext.get(BaseWorkspaceMember);
-    const apiKey = RequestContext.get(BaseApiKey);
+    const workspace = RequestContext.get(Workspace);
+    const member = RequestContext.get(Member);
+    const apiKey = RequestContext.get(ApiKey);
     const workspaceApiKey = apiKey && this.isWorkspaceApiKey(apiKey);
     if (!buildAbility || !workspace || (!member && !workspaceApiKey)) {
       return null;
     }
 
     const builder = new AbilityBuilder(WorkspaceAbility);
-    const roles = this.options.workspace?.roles ?? DEFAULT_WORKSPACE_ROLES;
-    const permissions = workspaceApiKey
-      ? apiKey.permissions
-      : this.intersectApiKeyPermissions(
-          this.resolveWorkspacePermissions(roles),
-        );
+    const permissions = resolveRequestPermissions(this.options).workspace;
     const ability = buildAbility(builder, permissions, workspace);
 
     RequestContext.set(WorkspaceAbility, ability);
     return ability;
-  }
-
-  private intersectApiKeyPermissions(
-    permissions: readonly string[],
-  ): readonly string[] {
-    const apiKey = RequestContext.get(BaseApiKey);
-    if (!apiKey) return permissions;
-
-    const apiKeyPermissions = new Set(
-      Array.isArray(apiKey.permissions) ? apiKey.permissions : [],
-    );
-    return permissions.filter((permission) =>
-      apiKeyPermissions.has(permission),
-    );
-  }
-
-  private resolveUserPermissions(roles: AuthModuleRoles): readonly string[] {
-    const user = RequestContext.get(BaseUser);
-    if (!user) return [];
-
-    return resolveAuthPermissions(
-      user.roles ?? [this.options.user?.defaultRole ?? DEFAULT_USER_ROLE],
-      user.permissions ?? [],
-      roles,
-    );
-  }
-
-  private resolveWorkspacePermissions(
-    roles: AuthModuleRoles,
-  ): readonly string[] {
-    const member = RequestContext.get(BaseWorkspaceMember);
-    if (!member) return [];
-
-    return resolveAuthPermissions(
-      member.roles ?? [
-        this.options.workspace?.defaultRole ?? DEFAULT_WORKSPACE_ROLE,
-      ],
-      member.permissions ?? [],
-      roles,
-    );
   }
 
   private async resolveSubject(

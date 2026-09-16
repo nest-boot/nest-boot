@@ -8,7 +8,7 @@ import z from "zod";
 import { t } from "i18next";
 
 import { graphql } from "@/gql";
-import { WorkspaceInvitationStatus } from "@/gql/graphql";
+import { InvitationStatus } from "@/gql/graphql";
 import { Button } from "@/components/thread-ui/button";
 import {
   Card,
@@ -18,7 +18,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-const INVITATION_ID_KEY = "workspace_invitation_id";
+const INVITATION_ID_KEY = "invitation_id";
 
 const GET_CURRENT_USER_FROM_INVITE_ROUTE = graphql(`
   query getCurrentUserFromInviteRoute {
@@ -30,9 +30,9 @@ const GET_CURRENT_USER_FROM_INVITE_ROUTE = graphql(`
   }
 `);
 
-const GET_WORKSPACE_INVITATION_FROM_INVITE_ROUTE = graphql(`
-  query getWorkspaceInvitationFromInviteRoute($id: ID!) {
-    workspaceInvitation(id: $id) {
+const GET_INVITATION_FROM_INVITE_ROUTE = graphql(`
+  query getInvitationFromInviteRoute($id: ID!) {
+    invitation(id: $id) {
       id
       email
       roles
@@ -46,9 +46,9 @@ const GET_WORKSPACE_INVITATION_FROM_INVITE_ROUTE = graphql(`
   }
 `);
 
-const ACCEPT_WORKSPACE_INVITATION_FROM_INVITE_ROUTE = graphql(`
-  mutation acceptWorkspaceInvitationFromInviteRoute($invitationId: ID!) {
-    acceptWorkspaceInvitation(invitationId: $invitationId) {
+const ACCEPT_INVITATION_FROM_INVITE_ROUTE = graphql(`
+  mutation acceptInvitationFromInviteRoute($id: ID!) {
+    acceptInvitation(id: $id) {
       invitation {
         id
         status
@@ -58,7 +58,6 @@ const ACCEPT_WORKSPACE_INVITATION_FROM_INVITE_ROUTE = graphql(`
       }
       member {
         id
-        name
         roles
       }
     }
@@ -94,21 +93,21 @@ function InviteComponent() {
     data: inviteData,
     loading: inviteLoading,
     error: inviteError,
-  } = useQuery(GET_WORKSPACE_INVITATION_FROM_INVITE_ROUTE, {
+  } = useQuery(GET_INVITATION_FROM_INVITE_ROUTE, {
     variables: { id: invitationId! },
     skip: !invitationId,
     errorPolicy: "all",
   });
 
   const [acceptInvitation, { loading: acceptLoading }] = useMutation(
-    ACCEPT_WORKSPACE_INVITATION_FROM_INVITE_ROUTE,
+    ACCEPT_INVITATION_FROM_INVITE_ROUTE,
   );
-  const invitation = inviteData?.workspaceInvitation;
+  const invitation = inviteData?.invitation;
   const invitationUnavailableMessage = useMemo(() => {
     if (!invitationId) return t("workspace:invite.error.invalid_token");
     if (inviteError) return inviteError.message;
     if (!invitation) return t("workspace:invite.error.invalid_token");
-    if (invitation.status !== WorkspaceInvitationStatus.PENDING) {
+    if (invitation.status !== InvitationStatus.PENDING) {
       return t(`workspace:invite.error.status.${invitation.status}`);
     }
     if (new Date(invitation.expiresAt).getTime() <= Date.now()) {
@@ -145,7 +144,7 @@ function InviteComponent() {
   // 检查邮箱是否匹配
   const emailMismatch = useMemo(() => {
     const userEmail = meData?.currentUser?.email || "";
-    const inviteEmail = inviteData?.workspaceInvitation?.email || null;
+    const inviteEmail = inviteData?.invitation?.email || null;
     return inviteEmail && inviteEmail.toLowerCase() !== userEmail.toLowerCase();
   }, [meData, inviteData]);
 
@@ -157,10 +156,10 @@ function InviteComponent() {
 
     try {
       const result = await acceptInvitation({
-        variables: { invitationId },
+        variables: { id: invitationId },
       });
       const workspaceId =
-        result.data?.acceptWorkspaceInvitation?.invitation.workspace.id;
+        result.data?.acceptInvitation?.invitation.workspace.id;
       if (workspaceId) {
         localStorage.removeItem(INVITATION_ID_KEY);
         toast.success(t("workspace:invite.success"));
@@ -234,7 +233,7 @@ function InviteComponent() {
     meLoading ||
     inviteLoading ||
     !meData?.currentUser ||
-    !inviteData?.workspaceInvitation
+    !inviteData?.invitation
   ) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -261,8 +260,8 @@ function InviteComponent() {
         <CardContent>
           <div className="space-y-4">
             <p className="text-muted-foreground text-sm">
-              {inviteData.workspaceInvitation.workspace.name} ·{" "}
-              {inviteData.workspaceInvitation.email}
+              {inviteData.invitation.workspace.name} ·{" "}
+              {inviteData.invitation.email}
             </p>
             {emailMismatch ? (
               <p className="text-destructive text-sm">

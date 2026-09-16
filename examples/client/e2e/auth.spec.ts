@@ -141,7 +141,7 @@ test.describe("email authentication", () => {
         };
       };
 
-      if (body.operationName !== "authSignInSocialFromLoginForm") {
+      if (body.operationName !== "signInSocialFromLoginForm") {
         await route.continue();
         return;
       }
@@ -156,7 +156,7 @@ test.describe("email authentication", () => {
         contentType: "application/json",
         body: JSON.stringify({
           data: {
-            authSignInSocial: {
+            signInSocial: {
               redirect: true,
               url: "http://127.0.0.1:3100/auth/forgot-password",
             },

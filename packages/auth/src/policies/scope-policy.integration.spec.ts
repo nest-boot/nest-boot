@@ -1,6 +1,7 @@
 import { EntitySchema, MikroORM } from "@mikro-orm/pglite";
 
-import { userScopePolicy, workspaceScopePolicy } from "../index.js";
+import { userScopePolicy } from "./user-scope.policy.js";
+import { workspaceScopePolicy } from "./workspace-scope.policy.js";
 
 const types = [
   { type: "bigint", own: "11", other: "12" },
@@ -99,7 +100,10 @@ describe("scope policy factories with native PGlite RLS", () => {
   });
   const scoped = (scope: string, id: string) =>
     orm.em.fork({
-      session: { role: "authenticated", variables: { [`app.${scope}`]: id } },
+      session: {
+        role: "authenticated",
+        variables: { [`app.${scope}.id`]: id },
+      },
     });
 
   it.each(fixtures)(
@@ -147,6 +151,19 @@ describe("scope policy factories with native PGlite RLS", () => {
         await scoped(scope, "").execute(`select id from ${table}`),
       ).toEqual([]);
       const em = orm.em.fork({ session: { role: "authenticated" } });
+      expect(await em.execute(`select id from ${table}`)).toEqual([]);
+    },
+  );
+
+  it.each(fixtures)(
+    "ignores legacy identity keys for $scope / $type / relation=$relation",
+    async ({ scope, table, own }) => {
+      const em = orm.em.fork({
+        session: {
+          role: "authenticated",
+          variables: { [`app.${scope}`]: own },
+        },
+      });
       expect(await em.execute(`select id from ${table}`)).toEqual([]);
     },
   );

@@ -1,5 +1,6 @@
 {
   "action": {
+    "load_more": "加载更多",
     "cancel": "取消",
     "close": "关闭",
     "confirm": "确认",

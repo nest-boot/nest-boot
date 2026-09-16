@@ -35,8 +35,8 @@ import {
 import { graphql } from "@/gql";
 
 const AUTH_SIGN_OUT_FROM_SIDEBAR_USER = graphql(`
-  mutation authSignOutFromSidebarUser {
-    authSignOut
+  mutation signOutFromSidebarUser {
+    signOut
   }
 `);
 
@@ -123,13 +123,15 @@ export function SidebarUser() {
                 <Boxes />
                 {t("sidebar:user.workspaces")}
               </DropdownMenuItem>
-              <DropdownMenuItem
-                data-testid="sidebar-user-api-keys-link"
-                onClick={() => navigate({ to: "/user/api-keys" })}
-              >
-                <KeyRound />
-                {t("sidebar:user.api_keys")}
-              </DropdownMenuItem>
+              {currentUserAbility.can("read", "ApiKey") ? (
+                <DropdownMenuItem
+                  data-testid="sidebar-user-api-keys-link"
+                  onClick={() => navigate({ to: "/user/api-keys" })}
+                >
+                  <KeyRound />
+                  {t("sidebar:user.api_keys")}
+                </DropdownMenuItem>
+              ) : null}
               {currentUserAbility.can("list", "User") ? (
                 <DropdownMenuItem
                   data-testid="sidebar-admin-link"

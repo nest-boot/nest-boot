@@ -11,8 +11,10 @@ permission checks.
 ## Installation
 
 ```bash
-pnpm add @nest-boot/auth @nest-boot/hash @nest-boot/mailer better-auth @casl/ability nodemailer
+pnpm add @nest-boot/auth @nest-boot/hash @nest-boot/mailer better-auth @casl/ability nodemailer @nest-boot/graphql @nest-boot/graphql-connection @nestjs/graphql graphql class-validator
 ```
+
+GraphQL resolvers and connections are built into `AuthModule`; no separate adapter package is needed.
 
 ## Quick Start
 
@@ -23,16 +25,6 @@ import { MailerModule } from "@nest-boot/mailer";
 import { Global, Module } from "@nestjs/common";
 
 export const AuthDynamicModule = AuthModule.forRoot({
-  entities: {
-    user: User,
-    account: Account,
-    session: Session,
-    verification: Verification,
-    workspace: Workspace,
-    workspaceInvitation: WorkspaceInvitation,
-    workspaceMember: WorkspaceMember,
-    apiKey: ApiKey,
-  },
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,

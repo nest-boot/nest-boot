@@ -5,18 +5,27 @@ import { t } from "i18next";
 import { CurrentUserProvider } from "./contexts/current-user-context";
 import { Button } from "@/components/thread-ui/button";
 import { graphql } from "@/gql";
+import { createAbility } from "@/lib/ability";
 
 const GET_CURRENT_USER_FROM_AUTHENTICATED_ROUTE = graphql(`
   query getCurrentUserFromAuthenticatedRoute {
     currentUser {
       id
     }
+    currentUserAbilityRules {
+      actions
+      subjects
+      fields
+      conditions
+      inverted
+      reason
+    }
   }
 `);
 
 const GET_IMPERSONATION_FROM_AUTHENTICATED_ROUTE = graphql(`
   query getImpersonationFromAuthenticatedRoute {
-    currentAuthSession {
+    currentSession {
       impersonatedById
     }
   }
@@ -36,6 +45,7 @@ export const Route = createFileRoute("/_authenticated")({
     try {
       const { data } = await apolloClient.query({
         query: GET_CURRENT_USER_FROM_AUTHENTICATED_ROUTE,
+        fetchPolicy: "network-only",
       });
 
       if (!data?.currentUser) {
@@ -44,6 +54,10 @@ export const Route = createFileRoute("/_authenticated")({
           search: { redirect: location.href },
         });
       }
+      return {
+        currentUser: data.currentUser,
+        currentUserAbility: createAbility(data.currentUserAbilityRules),
+      };
     } catch (error) {
       throw redirect({
         to: "/auth/login",
@@ -69,7 +83,7 @@ function AuthenticatedContent() {
 
   return (
     <>
-      {data?.currentAuthSession?.impersonatedById ? (
+      {data?.currentSession?.impersonatedById ? (
         <div
           className="fixed inset-x-0 top-0 z-50 flex min-h-12 items-center justify-center gap-4 bg-amber-300 px-4 py-2 text-sm text-amber-950 shadow"
           data-testid="impersonation-banner"

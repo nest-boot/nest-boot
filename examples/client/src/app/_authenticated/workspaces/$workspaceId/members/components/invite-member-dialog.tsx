@@ -21,11 +21,11 @@ import {
   workspaceAssignableRoles,
 } from "@/lib/workspace-roles";
 
-const CREATE_WORKSPACE_INVITATION_FROM_INVITE_MEMBER_DIALOG = graphql(`
-  mutation createWorkspaceInvitationFromInviteMemberDialog(
-    $input: CreateWorkspaceInvitationInput!
+const CREATE_INVITATION_FROM_INVITE_MEMBER_DIALOG = graphql(`
+  mutation createInvitationFromInviteMemberDialog(
+    $input: CreateInvitationInput!
   ) {
-    createWorkspaceInvitation(input: $input) {
+    createInvitation(input: $input) {
       id
     }
   }
@@ -43,8 +43,9 @@ export function InviteMemberDialog({
   const [inviteLinkOpen, setInviteLinkOpen] = useState(false);
   const [inviteLink, setInviteLink] = useState("");
 
-  const [createWorkspaceInvitation, { loading: createInviteLoading }] =
-    useMutation(CREATE_WORKSPACE_INVITATION_FROM_INVITE_MEMBER_DIALOG);
+  const [createInvitation, { loading: createInviteLoading }] = useMutation(
+    CREATE_INVITATION_FROM_INVITE_MEMBER_DIALOG,
+  );
 
   const inviteForm = useForm({
     defaultValues: {
@@ -54,16 +55,16 @@ export function InviteMemberDialog({
     onSubmit: async ({ value }) => {
       const email = value.email.trim();
       if (!email) {
-        toast.error(t("workspace-member:invite.email_required"));
+        toast.error(t("member:invite.email_required"));
         return;
       }
       if (value.roles.length === 0) {
-        toast.error(t("workspace-member:invite.role_label"));
+        toast.error(t("member:invite.role_label"));
         return;
       }
 
       try {
-        const result = await createWorkspaceInvitation({
+        const result = await createInvitation({
           variables: {
             input: {
               email,
@@ -72,8 +73,8 @@ export function InviteMemberDialog({
           },
         });
 
-        if (result.data?.createWorkspaceInvitation?.id) {
-          const invitationId = result.data.createWorkspaceInvitation.id;
+        if (result.data?.createInvitation?.id) {
+          const invitationId = result.data.createInvitation.id;
           const link = `${window.location.origin}/invite?invitationId=${invitationId}`;
           setInviteLink(link);
           onInviteOpenChange(false);
@@ -83,9 +84,9 @@ export function InviteMemberDialog({
 
           try {
             await navigator.clipboard.writeText(link);
-            toast.success(t("workspace-member:invite.link_copied"));
+            toast.success(t("member:invite.link_copied"));
           } catch {
-            toast.error(t("workspace-member:invite.copy_failed"));
+            toast.error(t("member:invite.copy_failed"));
           }
         }
       } catch (err) {
@@ -106,7 +107,7 @@ export function InviteMemberDialog({
   const handleCopyInviteLink = useCallback(async (link: string) => {
     try {
       await navigator.clipboard.writeText(link);
-      toast.success(t("workspace-member:invite.link_copied"));
+      toast.success(t("member:invite.link_copied"));
     } catch (err) {
       if (err instanceof Error) {
         toast.error(err.message);
@@ -122,7 +123,7 @@ export function InviteMemberDialog({
           data-testid="workspace-invite-dialog"
         >
           <DialogHeader>
-            <DialogTitle>{t("workspace-member:invite.title")}</DialogTitle>
+            <DialogTitle>{t("member:invite.title")}</DialogTitle>
           </DialogHeader>
           <form
             onSubmit={(e) => {
@@ -134,10 +135,10 @@ export function InviteMemberDialog({
             <div className="space-y-4">
               <div className="bg-muted text-muted-foreground rounded-lg p-4 text-sm">
                 <ul className="list-disc space-y-1 pl-5">
-                  <li>{t("workspace-member:invite.description")}</li>
-                  <li>{t("workspace-member:invite.link_copied")}</li>
-                  <li>{t("workspace-member:invite.link_user_join")}</li>
-                  <li>{t("workspace-member:invite.link_expires")}</li>
+                  <li>{t("member:invite.description")}</li>
+                  <li>{t("member:invite.link_copied")}</li>
+                  <li>{t("member:invite.link_user_join")}</li>
+                  <li>{t("member:invite.link_expires")}</li>
                 </ul>
               </div>
 
@@ -147,8 +148,8 @@ export function InviteMemberDialog({
                     id="invite-email"
                     data-testid="workspace-invite-email-input"
                     type="email"
-                    label={t("workspace-member:invite.email_label")}
-                    placeholder={t("workspace-member:invite.email_placeholder")}
+                    label={t("member:invite.email_label")}
+                    placeholder={t("member:invite.email_placeholder")}
                     value={field.state.value}
                     onChange={(e) => field.handleChange(e.target.value)}
                     onBlur={field.handleBlur}
@@ -170,7 +171,7 @@ export function InviteMemberDialog({
               <inviteForm.Field name="roles">
                 {(field) => (
                   <CheckboxGroup
-                    label={t("workspace-member:invite.role_label")}
+                    label={t("member:invite.role_label")}
                     items={workspaceAssignableRoles.map((role) => ({
                       label: getRoleLabel(role),
                       value: role,
@@ -195,7 +196,7 @@ export function InviteMemberDialog({
                 data-testid="workspace-invite-confirm"
                 loading={createInviteLoading}
               >
-                {t("workspace-member:invite.confirm_and_copy")}
+                {t("member:invite.confirm_and_copy")}
               </Button>
             </DialogFooter>
           </form>
@@ -208,14 +209,12 @@ export function InviteMemberDialog({
           data-testid="workspace-invite-link-dialog"
         >
           <DialogHeader>
-            <DialogTitle>
-              {t("workspace-member:invite.link_generated")}
-            </DialogTitle>
+            <DialogTitle>{t("member:invite.link_generated")}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">
             <p className="text-muted-foreground text-sm">
-              {t("workspace-member:invite.link_generated_description")}
+              {t("member:invite.link_generated_description")}
             </p>
 
             <div className="bg-muted flex items-center gap-2 rounded-lg border p-3">

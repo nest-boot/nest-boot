@@ -12,12 +12,12 @@ description: "解析工作区上下文并管理工作区成员。"
 ```typescript
 import {
   CurrentWorkspace,
-  CurrentWorkspaceMember,
+  CurrentMember,
 } from "@nest-boot/auth";
 
 currentWorkspace(
   @CurrentWorkspace() workspace: Workspace,
-  @CurrentWorkspaceMember() member: WorkspaceMember,
+  @CurrentMember() member: Member,
 ) {
   return { workspace, member };
 }
@@ -31,35 +31,95 @@ currentWorkspace(
 `WorkspaceService` 提供与传输协议无关的工作区操作：
 
 - `findOne(where)`；
-- `listWorkspaces(user)`；
+- `getWorkspaceConnectionByUser(user, args)`；
 - `createWorkspace(user, input)`；
 - `getFullWorkspace(workspace)`；
-- `updateWorkspace(workspace, input)`；
-- `deleteWorkspace(workspace, currentMember)`。
+- `updateWorkspace(id, input)`；
+- `deleteWorkspace(id)`。
 
-创建工作区会同时创建已激活的所有者成员。删除采用软删除，并且只能由该工作区的
-所有者执行。
+创建工作区会同时创建已激活的所有者成员。删除采用软删除，需要具备所选工作区的
+删除能力。
 
-删除工作区、添加成员或服务账号、创建或接受邀请时，会在事务内锁定工作区记录并重新
+删除工作区、添加成员、创建或接受邀请时，会在事务内锁定工作区记录并重新
 检查其有效状态。即使请求在删除前已选中该工作区，也不能在删除提交后继续创建下级记录。
 
 ## 成员生命周期
 
-- `getMember(workspace, user)`；
-- `getMemberById(workspace, memberId)`；
-- `listMembers(workspace)`；
+以下方法由 `MemberService` 提供：
+
+- `getMemberByUser(workspace, user)`；
+- `getMember(id)` — 从请求上下文获取当前工作区，并检查读取能力；
+- `getMemberConnectionByWorkspace(workspace, args)`；
 - `addMember(workspace, user, input)`；
 - `addMemberByEmail(workspace, email, input)`；
-- `createServiceAccount(workspace, input)`；
-- `updateMember(member, input)`；
-- `updateMemberRole(member, roles)`；
-- `setMemberPermissions(member, permissions)`；
-- `removeMember(member)`；
-- `leaveWorkspace(member)`；
-- `transferOwnership(workspace, currentOwner, nextOwner)`。
+- `updateMember(id, input)`；
+- `setMemberRoles(id, roles)`；
+- `setMemberPermissions(id, permissions)`；
+- `removeMember(id)`；
+- `leaveWorkspace(member)`。
 
-所有者不能通过普通成员操作被禁用、移除或离开。成员状态更新与所有权转移会锁定相关
+禁用和移除成员按更新、删除能力授权，不再针对所有者角色做特殊限制。当前成员可主动
+退出，包括所有者；工作区允许没有所有者。管理删除接口仍禁止删除本人，应使用退出接口。
+成员状态与角色更新会锁定相关
 成员记录，并在同一事务内重新检查状态。GraphQL Resolver 与 HTTP Controller 应只
-负责输入输出映射，把这些约束留在 `WorkspaceService` 中。
+负责输入输出映射，把这些约束留在对应的 Service 中。
+同一工作区可以有多名成员持有配置的创建者角色。通过 `setMemberRoles` 授予或移除该角色，
+仍需满足更新能力和操作者的授权范围。不再提供专门的所有权转移操作；两次角色更新是
+独立操作，不保证原子转移。
 
 邀请投递和状态流转单独记录在[邀请](/docs/tutorial/auth/invitations)章节中。
+
+## 写入授权与 RLS
+
+普通工作区与成员写入同时保留 Service 权限、当前工作区、所有者约束以及数据库 RLS。
+Service 可从请求上下文读取当前身份；Resolver 只传 ID 和输入。
+以上方法仍兼容实体参数，但 GraphQL 的 `updateWorkspace`、`deleteWorkspace`
+现在必须显式传 `id: ID!`，且与选中的工作区一致。
+废弃别名 `removeWorkspace` 已移除，请使用 `deleteWorkspace`。
+
+部署前执行示例迁移 `Initial → generated schema migrations`。
+auth 基础设施层为软删除事务建立局部 ORM fork，设置 `app.operation = auth.workspace.delete`，
+保留原有用户与工作区 RLS 上下文；配套策略仅在该操作内允许读取当前工作区的删除结果。
+普通请求仍看不到已删除工作区，也不能恢复它。自定义应用需要对应的策略。
+用户删除则由 Service 和 RLS 授权根记录，再由限定为该用户 ID 的数据库触发器原子清理
+关联数据。删除用户后，工作区与其他用户的成员关系继续保留，允许工作区没有所有者。
+
+所有 Service 都只使用注入的 `this.em`。创建工作区、接受或拒绝邀请所需的跨身份
+数据库上下文由 `AuthModule` 基础设施统一建立，业务权限与生命周期检查仍由 Service 执行。
+普通查询和写入不会关闭 RLS。
+
+旧数组方法 `listWorkspaces`、`listMembers` 已移除，请使用上述连接分页方法。
+`getFullWorkspace` 保留请求 RLS，并在查询子记录前分别校验
+`workspace:read`、`member:read` 和 `invitation:read`。
+
+## 用户成员与工作区可见资料
+
+`Member` 内置姓名和邮箱，`Workspace.members` 和 `User.members` 内置反向集合。
+应用无需重复声明这些字段或关联。
+原始 ORM 集合不直接暴露为 GraphQL 字段，分页仍由带权限检查的连接字段解决器提供。
+示例的 `Workspace.features` 字段及枚举已移除。
+
+成员必须关联用户，同时独立保存 `name` 和可空的 `email`，作为工作区内可见的
+姓名与联系邮箱。创建成员时从用户资料初始化，之后不自动同步：修改成员不会修改
+User 的姓名或登录邮箱，修改 User 也不会改变成员资料。具有成员更新权限的主体
+可以修改姓名、邮箱和状态；角色、权限继续使用专用设置接口。传入 `email: null`
+仅清空成员联系邮箱，不影响登录。示例页面与过滤器直接读取成员字段，支持精确过滤
+和 `name:Alice*` 形式的前缀搜索，不通过关联 User 搜索私人资料。
+
+`Member.user` 是私有 User 关联，不是工作区共享联系方式的来源。
+只有本人或具有全局用户读取权限且通过 User SELECT RLS 的主体可读；
+工作区角色不会授予此权限。`Invitation.inviter` 同样遵循此边界，
+持有邀请并不意味着可以读取邀请人的个人资料。
+
+服务账号创建方法、Options、Input 导出及成员类型枚举仍然移除，不保留别名。
+示例现仅保留新库基线 `Initial → generated schema migrations`，直接创建必填用户关联和
+独立的成员姓名、邮箱，不再包含历史成员类型或搜索向量列。
+
+该基线通过可信请求上下文 `app.user.permissions` JSON 数组，将 User SELECT 限制为
+本人或具有全局用户管理权限的主体。Auth 合并角色与直接权限，并按 API Key 权限上限限制后写入。
+策略不再查询 User 来判断权限，因此不需要递归策略或自定义 SQL 函数。
+Service 仍独立检查关联读取权限，不会因应用遗漏 RLS 就开放个人资料。
+
+新基线替代旧迁移历史，仅用于空数据库。已有数据库不能直接重复执行该基线，
+也不能只清空迁移记录表；应先备份数据并制定单独的数据保留与基线衔接方案。
+自定义实体、过滤器、GraphQL 文档和生成类型需同步更新。

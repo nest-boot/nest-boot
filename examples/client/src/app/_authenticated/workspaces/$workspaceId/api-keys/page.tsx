@@ -14,9 +14,11 @@ import { isEmpty, pick } from "lodash";
 import { AlertTriangle, Check, Copy, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import z from "zod";
+import { useCurrentWorkspaceAbility } from "../contexts/current-member-context";
 
 import type { DataFilterItemProps } from "@/components/thread-ui/data-filter";
 import type { WorkspacePermission } from "@/lib/permissions";
+import { createAbilitySubject } from "@/lib/ability";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import { Badge } from "@/components/thread-ui/badge";
 import { Button } from "@/components/thread-ui/button";
@@ -78,41 +80,43 @@ const GET_API_KEYS_FROM_API_KEYS_ROUTE = graphql(`
     $orderBy: ApiKeyOrder
     $query: String
   ) {
-    apiKeys(
-      after: $after
-      before: $before
-      first: $first
-      last: $last
-      orderBy: $orderBy
-      filter: $filter
-      query: $query
-    ) {
-      edges {
-        node {
-          id
-          name
-          start
-          prefix
-          enabled
-          permissions
-          createdAt
-          lastUsedAt
-          expiresAt
+    currentWorkspace {
+      apiKeys(
+        after: $after
+        before: $before
+        first: $first
+        last: $last
+        orderBy: $orderBy
+        filter: $filter
+        query: $query
+      ) {
+        edges {
+          node {
+            id
+            name
+            start
+            prefix
+            enabled
+            permissions
+            createdAt
+            lastUsedAt
+            expiresAt
+          }
         }
-      }
-      pageInfo {
-        endCursor
-        hasNextPage
-        hasPreviousPage
-        startCursor
+        pageInfo {
+          endCursor
+          hasNextPage
+          hasPreviousPage
+          startCursor
+        }
       }
     }
   }
 `);
 
 const CREATE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
-  mutation createApiKeyFromApiKeysRoute($input: CreateApiKeyInput!) {
-    createApiKey(input: $input) {
+  mutation createWorkspaceApiKeyFromApiKeysRoute($input: CreateApiKeyInput!) {
+    createWorkspaceApiKey(input: $input) {
       apiKey
       entity {
         id
@@ -130,8 +134,11 @@ const CREATE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
 `);
 
 const UPDATE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
-  mutation updateApiKeyFromApiKeysRoute($id: ID!, $input: UpdateApiKeyInput!) {
-    updateApiKey(id: $id, input: $input) {
+  mutation updateWorkspaceApiKeyFromApiKeysRoute(
+    $id: ID!
+    $input: UpdateApiKeyInput!
+  ) {
+    updateWorkspaceApiKey(id: $id, input: $input) {
       id
       name
       start
@@ -146,8 +153,8 @@ const UPDATE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
 `);
 
 const DELETE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
-  mutation deleteApiKeyFromApiKeysRoute($id: ID!) {
-    deleteApiKey(id: $id) {
+  mutation deleteWorkspaceApiKeyFromApiKeysRoute($id: ID!) {
+    deleteWorkspaceApiKey(id: $id) {
       id
       name
       start
@@ -202,6 +209,12 @@ function ScopedApiKeysComponent() {
 }
 
 function ApiKeysComponent() {
+  const ability = useCurrentWorkspaceAbility();
+  const canCreate = ability.can("create", "ApiKey");
+  const canUpdate = (apiKey: ApiKeyRow) =>
+    ability.can("update", createAbilitySubject("ApiKey", apiKey));
+  const canDelete = (apiKey: ApiKeyRow) =>
+    ability.can("delete", createAbilitySubject("ApiKey", apiKey));
   const search = Route.useSearch();
   const navigate = useNavigate();
   const location = useLocation();
@@ -229,14 +242,15 @@ function ApiKeysComponent() {
     },
   });
 
-  const apiKeys = data?.apiKeys.edges.map((edge) => edge.node) ?? [];
-  const pageInfo = data?.apiKeys.pageInfo;
+  const apiKeys =
+    data?.currentWorkspace?.apiKeys.edges.map((edge) => edge.node) ?? [];
+  const pageInfo = data?.currentWorkspace?.apiKeys.pageInfo;
 
   const createForm = useForm({
     defaultValues: {
       name: "",
       permissions: workspaceApiKeyPermissionValues.filter(
-        (permission) => !permission.startsWith("ApiKey:"),
+        (permission) => !permission.startsWith("api-key:"),
       ),
     },
     validators: {
@@ -250,8 +264,9 @@ function ApiKeysComponent() {
       }),
     },
     onSubmit: async ({ value }) => {
+      if (!canCreate) return;
       try {
-        const result = await createApiKey({
+        const result = await createWorkspaceApiKey({
           variables: {
             input: {
               name: value.name.trim(),
@@ -260,7 +275,7 @@ function ApiKeysComponent() {
           },
         });
 
-        const apiKey = result.data?.createApiKey.apiKey;
+        const apiKey = result.data?.createWorkspaceApiKey.apiKey;
 
         if (apiKey) {
           setCreatedApiKey(apiKey);
@@ -294,10 +309,10 @@ function ApiKeysComponent() {
       }),
     },
     onSubmit: async ({ value }) => {
-      if (!renamingApiKey) return;
+      if (!renamingApiKey || !canUpdate(renamingApiKey)) return;
 
       try {
-        await updateApiKey({
+        await updateWorkspaceApiKey({
           variables: {
             id: renamingApiKey.id,
             input: {
@@ -348,13 +363,13 @@ function ApiKeysComponent() {
     ];
   }, []);
 
-  const [createApiKey, { loading: createLoading }] = useMutation(
+  const [createWorkspaceApiKey, { loading: createLoading }] = useMutation(
     CREATE_API_KEY_FROM_API_KEYS_ROUTE,
   );
-  const [updateApiKey, { loading: updateLoading }] = useMutation(
+  const [updateWorkspaceApiKey, { loading: updateLoading }] = useMutation(
     UPDATE_API_KEY_FROM_API_KEYS_ROUTE,
   );
-  const [deleteApiKey, { loading: deleteLoading }] = useMutation(
+  const [deleteWorkspaceApiKey, { loading: deleteLoading }] = useMutation(
     DELETE_API_KEY_FROM_API_KEYS_ROUTE,
   );
 
@@ -374,6 +389,7 @@ function ApiKeysComponent() {
   };
 
   const handleOpenRename = (apiKey: ApiKeyRow) => {
+    if (!canUpdate(apiKey)) return;
     setRenamingApiKey(apiKey);
     renameForm.setFieldValue("name", apiKey.name);
     renameForm.setFieldValue(
@@ -384,6 +400,7 @@ function ApiKeysComponent() {
   };
 
   const handleDeleteApiKey = async (apiKey: ApiKeyRow) => {
+    if (!canDelete(apiKey)) return;
     const confirmed = await alertDialog({
       title: t("api-key:delete.title"),
       description: t("api-key:delete.description", {
@@ -397,7 +414,7 @@ function ApiKeysComponent() {
     if (!confirmed) return;
 
     try {
-      await deleteApiKey({
+      await deleteWorkspaceApiKey({
         variables: { id: apiKey.id },
       });
 
@@ -411,8 +428,9 @@ function ApiKeysComponent() {
   };
 
   const handleToggleApiKey = async (apiKey: ApiKeyRow) => {
+    if (!canUpdate(apiKey)) return;
     try {
-      await updateApiKey({
+      await updateWorkspaceApiKey({
         variables: {
           id: apiKey.id,
           input: { enabled: !apiKey.enabled },
@@ -446,6 +464,7 @@ function ApiKeysComponent() {
         <PageActions>
           <PagePrimaryAction
             data-testid="api-key-create-action"
+            disabled={!canCreate}
             onClick={() => setCreateDialogOpen(true)}
           >
             <KeyRound data-icon="inline-start" />
@@ -560,19 +579,19 @@ function ApiKeysComponent() {
           }}
           rowActions={(row) => [
             {
-              disabled: updateLoading,
+              disabled: updateLoading || !canUpdate(row.original),
               label: row.original.enabled
                 ? t("action.disable")
                 : t("action.enable"),
               onClick: () => handleToggleApiKey(row.original),
             },
             {
-              disabled: updateLoading,
+              disabled: updateLoading || !canUpdate(row.original),
               label: t("action.edit"),
               onClick: () => handleOpenRename(row.original),
             },
             {
-              disabled: deleteLoading,
+              disabled: deleteLoading || !canDelete(row.original),
               label: t("action.delete"),
               onClick: () => handleDeleteApiKey(row.original),
             },
@@ -644,6 +663,7 @@ function ApiKeysComponent() {
                 <Button
                   type="submit"
                   data-testid="api-key-create-submit"
+                  disabled={!canCreate}
                   loading={createLoading}
                 >
                   {t("action.create")}
@@ -718,6 +738,7 @@ function ApiKeysComponent() {
                 <Button
                   type="submit"
                   data-testid="api-key-rename-submit"
+                  disabled={!renamingApiKey || !canUpdate(renamingApiKey)}
                   loading={updateLoading}
                 >
                   {t("action.save")}
@@ -795,5 +816,6 @@ function ApiKeysComponent() {
   );
 }
 
-type ApiKeyRow =
-  GetApiKeysFromApiKeysRouteQuery["apiKeys"]["edges"][number]["node"];
+type ApiKeyRow = NonNullable<
+  GetApiKeysFromApiKeysRouteQuery["currentWorkspace"]
+>["apiKeys"]["edges"][number]["node"];

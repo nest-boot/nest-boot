@@ -40,13 +40,13 @@ const GET_CURRENT_USER_FROM_USER_ROUTE = graphql(`
 
 const UPDATE_USER_FROM_USER_ROUTE = graphql(`
   mutation updateUserFromUserRoute($input: AuthUpdateUserInput!) {
-    authUpdateUser(input: $input)
+    updateCurrentUser(input: $input)
   }
 `);
 
 const CHANGE_EMAIL_FROM_USER_ROUTE = graphql(`
   mutation changeEmailFromUserRoute($input: AuthChangeEmailInput!) {
-    authChangeEmail(input: $input)
+    changeCurrentUserEmail(input: $input)
   }
 `);
 
@@ -124,7 +124,7 @@ function UserComponent() {
           },
         });
 
-        if (!result.data?.authChangeEmail) {
+        if (!result.data?.changeCurrentUserEmail) {
           throw new Error(t("user:email.toast.request_failed"));
         }
 

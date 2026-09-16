@@ -14,30 +14,28 @@ describe("DEFAULT_WORKSPACE_ROLES", () => {
   });
 
   it("declares the complete default workspace permission catalog", () => {
-    expect(DEFAULT_WORKSPACE_PERMISSIONS).toContain("Workspace:delete");
-    expect(DEFAULT_WORKSPACE_PERMISSIONS).toContain(
-      "WorkspaceInvitation:create",
-    );
+    expect(DEFAULT_WORKSPACE_PERMISSIONS).toContain("workspace:delete");
+    expect(DEFAULT_WORKSPACE_PERMISSIONS).toContain("invitation:create");
   });
 
   it("grants full access to owners, restricted access to admins, and none to members", () => {
     expect(DEFAULT_WORKSPACE_ROLES).toEqual({
       owner: [
-        "Workspace:update",
-        "Workspace:delete",
-        "WorkspaceMember:create",
-        "WorkspaceMember:update",
-        "WorkspaceMember:delete",
-        "WorkspaceInvitation:create",
-        "WorkspaceInvitation:cancel",
+        "workspace:update",
+        "workspace:delete",
+        "member:create",
+        "member:update",
+        "member:delete",
+        "invitation:create",
+        "invitation:cancel",
       ],
       admin: [
-        "Workspace:update",
-        "WorkspaceMember:create",
-        "WorkspaceMember:update",
-        "WorkspaceMember:delete",
-        "WorkspaceInvitation:create",
-        "WorkspaceInvitation:cancel",
+        "workspace:update",
+        "member:create",
+        "member:update",
+        "member:delete",
+        "invitation:create",
+        "invitation:cancel",
       ],
       member: [],
     });

@@ -1,4 +1,4 @@
-import type { BaseUser } from "../entities/index.js";
+import { type User } from "../entities/user.entity.js";
 
 /** Options for creating a user through `UserService`. */
 export interface CreateUserOptions {
@@ -53,7 +53,7 @@ export interface ListUsersOptions {
 }
 
 /** One page returned by the user list. */
-export interface ListUsersResult<User extends BaseUser = BaseUser> {
+export interface ListUsersResult {
   /** User entities in result order. */
   users: User[];
   /** Total number of users matching the query. */
@@ -81,7 +81,7 @@ export interface ImpersonationOptions {
 }
 
 /** Permission statements checked against a user's flattened permissions. */
-export interface UserHasPermissionOptions {
+export interface UserHasPermissionsOptions {
   /** Permission actions grouped by subject name. */
   permissions: Record<string, string[]>;
 }

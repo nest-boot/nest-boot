@@ -43,19 +43,19 @@ health(): string {
 import { AuthModule } from "@nest-boot/auth";
 
 const userRoles = {
-  admin: ["Post:create"],
+  admin: ["post:create"],
   user: [],
 } as const;
-const userPermissions = ["Post:create", "Post:archive"] as const;
+const userPermissions = ["post:create", "post:archive"] as const;
 
 const workspaceRoles = {
-  owner: ["Post:create", "Post:delete"],
-  member: ["Post:create"],
+  owner: ["post:create", "post:delete"],
+  member: ["post:create"],
 } as const;
 const workspacePermissions = [
-  "Post:create",
-  "Post:delete",
-  "Post:archive",
+  "post:create",
+  "post:delete",
+  "post:archive",
 ] as const;
 
 AuthModule.forRoot({
@@ -66,7 +66,7 @@ AuthModule.forRoot({
     buildAbility: ({ can, build }, permissions, workspace) => {
       for (const permission of permissions) {
         const [subject, action] = permission.split(":");
-        if (subject === "Post" && action) {
+        if (subject === "post" && action) {
           can(action, Post, { workspaceId: workspace.id });
         }
       }
@@ -88,7 +88,7 @@ AuthModule.forRoot({
 每个作用域分别维护权限目录、角色注册表和 Ability 构建器。角色授予的每项权限都
 必须存在于对应作用域的 `permissions` 数组中，否则应用会启动失败。AuthModule 会先
 解析角色权限与实体直接权限。用户构建器依次接收去重后的权限列表和当前用户；工作区
-构建器依次接收去重后的成员权限列表和当前工作区。WorkspaceMember 会参与权限解析，
+构建器依次接收去重后的成员权限列表和当前工作区。Member 会参与权限解析，
 但不会传入构建器。AuthModule 会将已经绑定对应 Ability 类的 `AbilityBuilder` 作为
 回调的第一个参数传入。
 
@@ -96,43 +96,43 @@ AuthModule.forRoot({
 
 权限目录和角色定义来自 `user.permissions`、`user.roles`、
 `workspace.permissions` 与 `workspace.roles`，不使用独立的角色服务保存或管理。
-`UserService` 与 `WorkspaceService` 负责向传输层提供配置目录并校验角色赋值。
+`UserService` 与 `MemberService` 负责向传输层提供配置目录并校验角色赋值。
 
 ```typescript
 const userRoles = userService.listRoles();
 const userPermissions = userService.listPermissions();
-await userService.setRole(user, ["admin", "auditor"]);
+await userService.setUserRoles(user, ["admin", "auditor"]);
 
-const workspaceRoles = workspaceService.listRoles();
-const workspacePermissions = workspaceService.listPermissions();
-await workspaceService.updateMemberRole(member, ["admin"]);
+const workspaceRoles = memberService.listRoles();
+const workspacePermissions = memberService.listPermissions();
+await memberService.setMemberRoles(member, ["admin"]);
 ```
 
-`setRole()` 与 `updateMemberRole()` 会拒绝空角色列表和不存在的角色。
-`updateMemberRole()` 不能修改当前创建者或赋予配置的创建者角色；此类变更应使用
-`transferOwnership()`。所有权转移会把 `workspace.creatorRole` 赋给下一位所有者，并将
-原所有者降级为 `workspace.defaultRole`。
+`setUserRoles()` 与 `setMemberRoles()` 会拒绝空角色列表和不存在的角色。
+`setMemberRoles()` 在通过更新能力和授权范围检查后，可以授予或替换包括
+`workspace.creatorRole` 在内的任意已配置角色。同一工作区可有多名成员持有创建者角色，
+授予该角色不会改变其他成员的角色。添加成员和创建邀请也遵循相同的授权检查。
 
 `user.defaultRole` 与 `workspace.defaultRole` 分别为新用户和新成员提供默认角色；
 `workspace.creatorRole` 标识所有权角色；`user.adminRoles` 可以包含多个角色，并由
 `UserService.isAdmin()` 用于识别管理员用户。所有配置的生命周期角色都会在启动时依据
 对应角色映射进行校验。
 
-`getUserPermissions()` 与 `getMemberPermissions()` 返回所有角色继承权限和实体直接权限
-去重后的合集；`hasPermission()` 使用同一份结果进行判断。
+`getEffectiveUserPermissions()` 与 `getEffectiveMemberPermissions()` 返回所有角色继承权限和实体直接权限
+去重后的合集；`hasPermissions()` 使用同一份结果进行判断。
 `createUser()`、`addMember()`、`setUserPermissions()` 与
 `setMemberPermissions()` 会拒绝格式错误、重复或不在配置目录中的直接权限，避免将未知
 权限写入实体。
 
-用户管理还会检查授予上限：`createUser()`、`setRole()` 与 `setUserPermissions()`
+用户管理还会检查授予上限：`createUser()`、`setUserRoles()` 与 `setUserPermissions()`
 不能授予调用者自身不具备的权限。角色赋值会检查其继承的权限，创建用户时的默认角色
 也不例外。使用个人 API Key 调用时，上限是用户角色和直接权限的合集与 Key 权限的交集。
-仅拥有 `User:set-role` 不意味着可以将自己或他人提升为权限更高的角色。
+仅拥有 `user:set-role` 不意味着可以将自己或他人提升为权限更高的角色。
 
 示例 GraphQL 应用提供 `userRoles`、`userPermissions`、`workspaceRoles` 与
 `workspacePermissions` 查询。角色修改分别使用 `setUserRoles` 和
-`updateWorkspaceMemberRole` mutation；工作区成员的直接权限使用
-`setWorkspaceMemberPermissions`，普通成员资料更新不再接受授权字段。
+`setMemberRoles` mutation；工作区成员的直接权限使用
+`setMemberPermissions`，普通成员资料更新不再接受授权字段。
 
 ## 保护路由
 
@@ -168,7 +168,7 @@ me(@CurrentUser() user: User) {
 @WorkspaceCan("update", Post)
 @Mutation(() => Post)
 updatePost() {
-  // 必须同时拥有 Post:read 与 Post:update。
+  // 必须同时拥有 post:read 与 post:update。
 }
 ```
 
@@ -190,23 +190,24 @@ Workspace API Key 只能通过工作区权限检查。User API Key 可以通过�
 有效权限或当前成员有效权限取交集；Workspace Key 权限则直接传给工作区构建器。守卫只
 检查最终得到的 `UserAbility` 或 `WorkspaceAbility`。
 
-应用的构建器必须把需要校验的每项传入权限转换为 CASL rule。权限资源名会保留 CASL
-subject type 的原始大小写，并且区分大小写：`Post` 类与
-`subject("Post", object)` 都会解析为 `Post`，对应权限是 `Post:read`。构建器无条件添加
-的规则也会对 API Key 生效。
+应用的构建器必须把需要校验的每项传入权限转换为 CASL rule。权限标识区分大小写，
+不会自动转换：`Post:read` 与 `post:read` 是不同的授权。构建器根据配置显式映射到
+CASL subject：`post:read` 可以授予 `Post` 类或
+`subject("Post", object)` 的 `read` 能力。构建器无条件添加的规则也会对 API Key 生效。
 
 ## Service 授权边界
 
-`UserService`、`WorkspaceService` 与 `ApiKeyService` 会在读取或修改认证数据前强制校验
+`UserService`、`SessionService`、`WorkspaceService`、`MemberService`、
+`InvitationService` 与 `ApiKeyService` 会在读取或修改认证数据前强制校验
 权限。Resolver 和 Controller 上的装饰器用于提前拒绝并声明接口意图，但不是安全边界；
 即使遗漏装饰器，受保护的 Service 操作也不会变成公开操作。
 
 Service 权限划分与 Better Auth 的 admin、organization 访问控制保持一致：
 
-- 用户管理使用 `User:*` 与 `Session:*` 权限；
-- 工作区变更使用 `Workspace:*`、`WorkspaceMember:*` 与
-  `WorkspaceInvitation:*` 权限；
-- 工作区 API Key 管理使用 `ApiKey:create/read/update/delete`；
+- 用户管理使用 `user:*` 与 `session:*` 权限；
+- 工作区变更使用 `workspace:*`、`member:*` 与
+  `invitation:*` 权限；
+- 工作区 API Key 管理使用 `api-key:create/read/update/delete`；
 - 当前用户认证、会话管理、接受邀请和退出工作区使用已认证身份与资源归属校验。
 
 应用 Service 可以注入 `AccessControlService`，使用 `assertUserCan()` 与
@@ -256,11 +257,7 @@ const workspaceAbility = RequestContext.get(WorkspaceAbility);
 
 ```typescript
 import { Entity } from "@mikro-orm/decorators/legacy";
-import {
-  BaseWorkspaceMember,
-  userScopePolicy,
-  workspaceScopePolicy,
-} from "@nest-boot/auth";
+import { Member, userScopePolicy, workspaceScopePolicy } from "@nest-boot/auth";
 
 @Entity({
   policies: [
@@ -269,7 +266,7 @@ import {
     workspaceScopePolicy(),
   ],
 })
-export class WorkspaceMember extends BaseWorkspaceMember {}
+export class Member extends Member {}
 ```
 
 `property` 是实体属性名，不是数据库列名；原生回调会读取映射后的列名。适用于标量 ID
@@ -277,15 +274,20 @@ export class WorkspaceMember extends BaseWorkspaceMember {}
 `uuid`、`text`。例如 `userScopePolicy({ property: "owner", type: "uuid" })`；
 用于 User 实体自身时指定 `property: "id"`。还可以覆盖 `command`、`roles` 和可选的 `name`。
 
-策略分别比较 `app.user` 和 `app.workspace`，保留
+策略分别比较 `app.user.id` 和 `app.workspace.id`，保留
 `nullif(current_setting(..., true), '')`，变量缺失或为空时不会匹配记录。
 这些是允许型策略，同一操作的多条策略按 OR 合并；不查询工作区生命周期，也不替代
 Service 授权。数据库角色、表权限及可信 session 变量仍需单独配置。
 
-示例 `ApiKey` 的 `owner` 是多态关联，使用自定义原生策略：个人 Key 同时检查
-`owner_type = 'user'` 和 `owner_id` 对应 `app.user`；工作区 Key 同时检查
-`owner_type = 'workspace'` 和 `owner_id` 对应 `app.workspace`。读写均校验两列，
-避免用户与工作区 ID 相同时串权。迁移不会为请求角色开放此表的直接访问权限，
+Auth 将角色授权与直接权限合并，再按当前 API Key 限制，作为 JSON 数组写入
+`app.user.permissions` 和 `app.workspace.permissions`。这些值由服务端按请求计算，
+匿名请求使用空数组；它们不是登录 Session 字段，也不包含 CASL 条件规则。
+身份变量改为 `app.user.id` 和 `app.workspace.id`，不再支持旧键；Service 仍保留权限检查。
+
+示例 `ApiKey` 使用 `user` / `workspace` 两个真实外键，数据库 CHECK 约束要求
+必须且只能填写一个。原生策略分别将 `user_id` 与 `app.user.id`、`workspace_id`
+与 `app.workspace.id` 比较，即使用户与工作区 ID 相同也不会串权。
+物理删除归属对象时级联删除 Key，软删除不会触发。数据库使用默认表权限，不再提供列级保护；Service 排除密钥哈希并禁止修改归属，
 API Key 操作仍通过完成授权校验的 `ApiKeyService`。
 
 这几个函数不是 Filter 或装饰器，运行时与 CLI 都不需要额外 discovery 钩子。

@@ -28,7 +28,7 @@ i18n
       "api-key",
       "permission",
       "workspace",
-      "workspace-member",
+      "member",
       "user",
       "thread-ui",
     ],

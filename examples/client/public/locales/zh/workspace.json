@@ -58,17 +58,6 @@
       "failed": "退出工作空间失败",
       "success": "已退出工作空间",
       "title": "退出工作空间"
-    },
-    "ownership": {
-      "action": "转移所有权",
-      "confirm_description": "{{name}} 将成为所有者，你将变为管理员。",
-      "confirm_title": "转移工作空间所有权？",
-      "description": "选择另一位活跃用户成员作为新所有者，你将保留管理员身份。",
-      "failed": "转移所有权失败",
-      "member": "新所有者",
-      "placeholder": "选择成员",
-      "success": "工作空间所有权已转移",
-      "title": "转移所有权"
     }
   },
   "title": "设置"

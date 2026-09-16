@@ -29,9 +29,9 @@ describe("native RLS with PGlite", () => {
         name: "workspace_policy",
         roles: [reader],
         using: (columns) =>
-          `${columns.workspace} = current_setting('app.workspace', true)`,
+          `${columns.workspace} = current_setting('app.workspace.id', true)`,
         check: (columns) =>
-          `${columns.workspace} = current_setting('app.workspace', true)`,
+          `${columns.workspace} = current_setting('app.workspace.id', true)`,
       },
     ],
   })
@@ -49,7 +49,7 @@ describe("native RLS with PGlite", () => {
   const session = (): ForkOptions["session"] => ({
     role: anonymous,
     variables: {
-      "app.workspace": RequestContext.get<string>("workspace") ?? "",
+      "app.workspace.id": RequestContext.get<string>("workspace") ?? "",
     },
   });
 
@@ -107,12 +107,12 @@ describe("native RLS with PGlite", () => {
     );
   }
 
-  it("initializes app.workspace with an anonymous role before authentication", async () => {
+  it("initializes app.workspace.id with an anonymous role before authentication", async () => {
     await request("one", async (em) => {
       expect(RequestContext.get(EntityManager)).toBe(em);
       expect(em.getSessionContext()).toEqual({
         role: anonymous,
-        variables: { "app.workspace": "one" },
+        variables: { "app.workspace.id": "one" },
       });
       expect(await em.find(Record, {})).toEqual([]);
       em.setSessionContext({ role: reader });

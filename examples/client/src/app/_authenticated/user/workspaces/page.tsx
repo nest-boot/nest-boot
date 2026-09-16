@@ -41,46 +41,68 @@ const GET_WORKSPACES_FROM_USER_WORKSPACES_ROUTE = graphql(`
     $first: Int
     $last: Int
     $orderBy: WorkspaceOrder
+    $invitationFirst: Int
+    $invitationLast: Int
+    $invitationAfter: String
+    $invitationBefore: String
   ) {
-    workspaces(
-      after: $after
-      before: $before
-      first: $first
-      last: $last
-      orderBy: $orderBy
-    ) {
-      edges {
-        node {
-          id
-          name
-          createdAt
-          updatedAt
+    currentUser {
+      workspaces(
+        after: $after
+        before: $before
+        first: $first
+        last: $last
+        orderBy: $orderBy
+      ) {
+        edges {
+          node {
+            id
+            name
+            createdAt
+            updatedAt
+          }
+        }
+        pageInfo {
+          endCursor
+          hasNextPage
+          hasPreviousPage
+          startCursor
         }
       }
-      pageInfo {
-        endCursor
-        hasNextPage
-        hasPreviousPage
-        startCursor
-      }
     }
-    currentUserWorkspaceInvitations {
-      id
-      roles
-      expiresAt
-      workspace {
-        id
-        name
+    currentUser {
+      invitations(
+        first: $invitationFirst
+        last: $invitationLast
+        after: $invitationAfter
+        before: $invitationBefore
+        orderBy: { field: CREATED_AT, direction: DESC }
+      ) {
+        edges {
+          node {
+            id
+            roles
+            expiresAt
+            workspace {
+              id
+              name
+            }
+          }
+        }
+        pageInfo {
+          endCursor
+          startCursor
+          hasNextPage
+          hasPreviousPage
+        }
       }
     }
   }
 `);
 
-const ACCEPT_WORKSPACE_INVITATION_FROM_USER_WORKSPACES_ROUTE = graphql(`
-  mutation acceptWorkspaceInvitationFromUserWorkspacesRoute(
-    $invitationId: ID!
-  ) {
-    acceptWorkspaceInvitation(invitationId: $invitationId) {
+const ACCEPT_INVITATION_FROM_USER_WORKSPACES_ROUTE = graphql(`
+  mutation acceptInvitationFromUserWorkspacesRoute($id: ID!) {
+    acceptInvitation(id: $id) {
       invitation {
         id
         status
@@ -92,11 +114,9 @@ const ACCEPT_WORKSPACE_INVITATION_FROM_USER_WORKSPACES_ROUTE = graphql(`
   }
 `);
 
-const REJECT_WORKSPACE_INVITATION_FROM_USER_WORKSPACES_ROUTE = graphql(`
-  mutation rejectWorkspaceInvitationFromUserWorkspacesRoute(
-    $invitationId: ID!
-  ) {
-    rejectWorkspaceInvitation(invitationId: $invitationId) {
+const REJECT_INVITATION_FROM_USER_WORKSPACES_ROUTE = graphql(`
+  mutation rejectInvitationFromUserWorkspacesRoute($id: ID!) {
+    rejectInvitation(id: $id) {
       id
       status
     }
@@ -120,6 +140,12 @@ function UserWorkspacesComponent() {
   const search = Route.useSearch();
   const navigate = useNavigate();
   const location = useLocation();
+  const [invitationPage, setInvitationPage] = useState<{
+    first?: number;
+    last?: number;
+    after?: string;
+    before?: string;
+  }>({ first: 20 });
   const [acceptingInvitationId, setAcceptingInvitationId] = useState<
     string | null
   >(null);
@@ -131,6 +157,10 @@ function UserWorkspacesComponent() {
     GET_WORKSPACES_FROM_USER_WORKSPACES_ROUTE,
     {
       variables: {
+        invitationFirst: invitationPage.first,
+        invitationLast: invitationPage.last,
+        invitationAfter: invitationPage.after,
+        invitationBefore: invitationPage.before,
         ...pick(search, ["after", "before", "first", "last"]),
         orderBy: {
           field: search.orderBy?.field ?? WorkspaceOrderField.CREATED_AT,
@@ -140,18 +170,18 @@ function UserWorkspacesComponent() {
     },
   );
 
-  const [acceptWorkspaceInvitation] = useMutation(
-    ACCEPT_WORKSPACE_INVITATION_FROM_USER_WORKSPACES_ROUTE,
+  const [acceptInvitation] = useMutation(
+    ACCEPT_INVITATION_FROM_USER_WORKSPACES_ROUTE,
   );
-  const [rejectWorkspaceInvitation] = useMutation(
-    REJECT_WORKSPACE_INVITATION_FROM_USER_WORKSPACES_ROUTE,
+  const [rejectInvitation] = useMutation(
+    REJECT_INVITATION_FROM_USER_WORKSPACES_ROUTE,
   );
 
   const handleAcceptInvitation = async (invitationId: string) => {
     setAcceptingInvitationId(invitationId);
 
     try {
-      await acceptWorkspaceInvitation({ variables: { invitationId } });
+      await acceptInvitation({ variables: { id: invitationId } });
       await refetch();
       toast.success(t("user:workspaces.invitations.toast.accepted"));
     } catch (error) {
@@ -169,7 +199,7 @@ function UserWorkspacesComponent() {
     setRejectingInvitationId(invitationId);
 
     try {
-      await rejectWorkspaceInvitation({ variables: { invitationId } });
+      await rejectInvitation({ variables: { id: invitationId } });
       await refetch();
       toast.success(t("user:workspaces.invitations.toast.rejected"));
     } catch (error) {
@@ -183,9 +213,12 @@ function UserWorkspacesComponent() {
     }
   };
 
-  const workspaces = data?.workspaces.edges.map(({ node }) => node) ?? [];
-  const invitations = data?.currentUserWorkspaceInvitations ?? [];
-  const pageInfo = data?.workspaces.pageInfo;
+  const workspaces =
+    data?.currentUser.workspaces.edges.map(({ node }) => node) ?? [];
+  const invitations =
+    data?.currentUser.invitations.edges.map(({ node }) => node) ?? [];
+  const invitationPageInfo = data?.currentUser.invitations.pageInfo;
+  const pageInfo = data?.currentUser.workspaces.pageInfo;
   const invitationActionPending =
     acceptingInvitationId !== null || rejectingInvitationId !== null;
 
@@ -206,11 +239,10 @@ function UserWorkspacesComponent() {
       </PageHeader>
 
       <PageContent className="space-y-8">
-        {invitations.length > 0 ? (
-          <section
-            className="space-y-3"
-            data-testid="user-workspace-invitations"
-          >
+        {invitations.length > 0 ||
+        invitationPage.after ||
+        invitationPage.before ? (
+          <section className="space-y-3" data-testid="user-invitations">
             <div>
               <h3 className="font-semibold">
                 {t("user:workspaces.invitations.title")}
@@ -228,7 +260,7 @@ function UserWorkspacesComponent() {
                   cell: ({ row }) => (
                     <span
                       className="font-medium"
-                      data-testid={`user-workspace-invitation-${row.original.id}`}
+                      data-testid={`user-invitation-${row.original.id}`}
                     >
                       {row.original.workspace.name}
                     </span>
@@ -258,7 +290,7 @@ function UserWorkspacesComponent() {
                         type="button"
                         variant="outline"
                         size="sm"
-                        data-testid={`user-workspace-invitation-reject-${row.original.id}`}
+                        data-testid={`user-invitation-reject-${row.original.id}`}
                         disabled={invitationActionPending}
                         loading={rejectingInvitationId === row.original.id}
                         onClick={() => handleRejectInvitation(row.original.id)}
@@ -269,7 +301,7 @@ function UserWorkspacesComponent() {
                       <Button
                         type="button"
                         size="sm"
-                        data-testid={`user-workspace-invitation-accept-${row.original.id}`}
+                        data-testid={`user-invitation-accept-${row.original.id}`}
                         disabled={invitationActionPending}
                         loading={acceptingInvitationId === row.original.id}
                         onClick={() => handleAcceptInvitation(row.original.id)}
@@ -282,6 +314,20 @@ function UserWorkspacesComponent() {
                 },
               ]}
               data={invitations}
+              pagination={{
+                hasPreviousPage: invitationPageInfo?.hasPreviousPage,
+                hasNextPage: invitationPageInfo?.hasNextPage,
+                onPreviousPage: () =>
+                  setInvitationPage({
+                    last: 20,
+                    before: invitationPageInfo?.startCursor ?? undefined,
+                  }),
+                onNextPage: () =>
+                  setInvitationPage({
+                    first: 20,
+                    after: invitationPageInfo?.endCursor ?? undefined,
+                  }),
+              }}
             />
           </section>
         ) : null}

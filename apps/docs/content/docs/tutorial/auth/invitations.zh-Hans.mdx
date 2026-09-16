@@ -32,7 +32,7 @@ AuthModule.forRoot({
       await mailer.sendMail({
         to: email,
         subject: `Invitation to join ${workspace.name}`,
-        text: `${inviter.user.name} invited you: ${url}`,
+        text: `${inviter.name} invited you: ${url}`,
       });
     },
   },
@@ -42,24 +42,31 @@ AuthModule.forRoot({
 应用负责 URL，因为接受邀请可以通过 GraphQL、REST 或其他传输方式暴露。当
 `createInvitation()` 的调用方传入 Fetch `Request` 时，发送函数也会收到该可选请求。
 
-## WorkspaceService API
+## InvitationService API
 
 - `createInvitation(workspace, inviter, input, request?)`；
-- `getUserInvitation(id, user)`；
-- `getWorkspaceInvitation(id, workspace)`；
-- `listInvitations(workspace)`；
-- `listUserInvitations(user)`；
+- `getInvitation(id)`：使用当前请求原生 RLS 的单条记录查询；
+- `getInvitationByUser(id, user)`；
+- `getInvitationByWorkspace(id, workspace)`；
+- `getInvitationConnectionByWorkspace(workspace, args)`：已授权工作区的邀请连接分页；
+- `getInvitationConnectionByUser(user, args)`：当前收件人的待处理邀请连接分页；
 - `acceptInvitation(user, invitationId)`；
 - `rejectInvitation(user, invitation)`；
 - `cancelInvitation(invitation)`。
+
+`invitation(id)` 调用 `getInvitation(id)`，不再传入当前用户。
+该方法校验读取权限后直接使用请求 ORM 管理器，不绕过 RLS，也不关闭过滤器。
+应用需同时配置工作区范围与收件人的 SELECT 策略，保证收件人加入工作区前也能读取
+自己的邀请。示例新增增量迁移，收件人策略只授予 SELECT；写操作和其他服务授权的邀请
+操作保留已有检查。升级现有示例数据库时需要执行该迁移。
 
 邀请默认在 48 小时后过期，也可以通过 `input.expiresIn` 指定正整数秒数。创建邀请时
 会拒绝已有成员与重复的待处理邀请；接受和拒绝时，收件邮箱必须与已认证用户一致；只有
 仍在有效期内的 `pending` 邀请可以被接受。
 
-通过 `addMember()` 或 `addMemberByEmail()` 直接添加已有用户时，会在创建成员的同一
+通过 `MemberService.addMember()` 或 `MemberService.addMemberByEmail()` 直接添加已有用户时，会在创建成员的同一
 事务内取消该工作区发给此邮箱的待处理邀请。邀请保留为 `canceled` 审计记录，并从用户
 的待处理列表中移除。直接添加与接受邀请并发执行时，只会创建一条成员记录。
 
-`WorkspaceService` 会在每个操作中校验对应的工作区或当前用户权限。工作区管理员负责
+`InvitationService` 会在每个操作中校验对应的工作区或当前用户权限。工作区管理员负责
 创建和取消邀请，被邀请用户负责查询、接受或拒绝自己的邀请。

@@ -15,7 +15,12 @@ describe('createSessionContext', () => {
       await RequestContext.run(context, () => {
         expect(createSessionContext()).toEqual({
           role: 'anonymous',
-          variables: { 'app.workspace': workspace },
+          variables: {
+            'app.user.id': '',
+            'app.user.permissions': '[]',
+            'app.workspace.id': workspace,
+            'app.workspace.permissions': '[]',
+          },
         });
       });
     },

@@ -4,7 +4,7 @@ import type {
   Where,
 } from "better-auth/adapters";
 
-import type { AuthModuleOptions } from "../../auth-module-options.interface.js";
+import { authEntityMap } from "../../entities/auth-entity-map.js";
 import { runAuthQuery } from "../../utils/run-auth-query.js";
 import { createEntityMetadataResolver } from "./entity-metadata-resolver.js";
 import { convertWhereToMikroOrm } from "./where-compiler.js";
@@ -13,7 +13,7 @@ export interface CreateCustomAdapterOptions {
   /** Role applied to user entities when Better Auth omits one. */
   defaultUserRole?: string;
   em: EntityManager;
-  entities: AuthModuleOptions["entities"];
+  entities: typeof authEntityMap;
   inTransaction?: boolean;
 }
 

@@ -14,26 +14,24 @@ import {
 describe("permission options", () => {
   it("exposes the workspace permission catalog", () => {
     expect(workspacePermissionValues).toEqual([
-      "Workspace:update",
-      "Workspace:delete",
-      "WorkspaceMember:create",
-      "WorkspaceMember:update",
-      "WorkspaceMember:delete",
-      "WorkspaceInvitation:create",
-      "WorkspaceInvitation:cancel",
-      "ApiKey:read",
-      "ApiKey:create",
-      "ApiKey:update",
-      "ApiKey:delete",
+      "workspace:update",
+      "workspace:delete",
+      "member:create",
+      "member:update",
+      "member:delete",
+      "invitation:create",
+      "invitation:cancel",
+      "api-key:read",
+      "api-key:create",
+      "api-key:update",
+      "api-key:delete",
     ]);
   });
 
   it("keeps workspace API-key permissions inside the mixed catalog", () => {
-    expect(workspaceApiKeyPermissionValues).toContain("Workspace:update");
-    expect(workspaceApiKeyPermissionValues).toContain(
-      "WorkspaceInvitation:cancel",
-    );
-    expect(workspaceApiKeyPermissionValues).not.toContain("User:delete");
+    expect(workspaceApiKeyPermissionValues).toContain("workspace:update");
+    expect(workspaceApiKeyPermissionValues).toContain("invitation:cancel");
+    expect(workspaceApiKeyPermissionValues).not.toContain("user:delete");
   });
 
   it("exposes user and workspace permissions for personal API keys", () => {
@@ -44,10 +42,10 @@ describe("permission options", () => {
       authPermissionValues,
     );
     for (const permission of [
-      "ApiKey:read",
-      "ApiKey:create",
-      "ApiKey:update",
-      "ApiKey:delete",
+      "api-key:read",
+      "api-key:create",
+      "api-key:update",
+      "api-key:delete",
     ]) {
       expect(userPermissionValues).toContain(permission);
       expect(workspaceApiKeyPermissionValues).toContain(permission);
@@ -58,8 +56,8 @@ describe("permission options", () => {
   });
 
   it("narrows server strings against the local permission catalog", () => {
-    expect(isUserPermission("User:get")).toBe(true);
-    expect(isWorkspacePermission("Workspace:update")).toBe(true);
+    expect(isUserPermission("user:get")).toBe(true);
+    expect(isWorkspacePermission("workspace:update")).toBe(true);
     expect(isAuthPermission("custom:unknown")).toBe(false);
   });
 });

@@ -68,7 +68,7 @@ test.describe("administrator impersonation", () => {
 
     const restored = await graphqlRequest<{
       currentUser: { email: string };
-      currentAuthSession: { impersonatedById: string | null };
+      currentSession: { impersonatedById: string | null };
     }>(
       page.request,
       /* GraphQL */ `
@@ -76,7 +76,7 @@ test.describe("administrator impersonation", () => {
           currentUser {
             email
           }
-          currentAuthSession {
+          currentSession {
             impersonatedById
           }
         }
@@ -84,7 +84,7 @@ test.describe("administrator impersonation", () => {
     );
     expect(restored).toEqual({
       currentUser: { email: e2eAdministratorEmail },
-      currentAuthSession: { impersonatedById: null },
+      currentSession: { impersonatedById: null },
     });
   });
 });

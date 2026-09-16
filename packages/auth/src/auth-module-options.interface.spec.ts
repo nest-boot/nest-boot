@@ -45,6 +45,9 @@ describe("AuthModuleOptions", () => {
     );
     expect(false satisfies HasStringIndex<AuthModuleOAuthProvider>).toBe(false);
 
+    expect(false satisfies HasOption<AuthModuleOptions, "entities">).toBe(
+      false,
+    );
     expect(false satisfies HasOption<AuthModuleOptions, "plugins">).toBe(false);
     expect(
       false satisfies HasOption<AuthModuleOptions, "secondaryStorage">,

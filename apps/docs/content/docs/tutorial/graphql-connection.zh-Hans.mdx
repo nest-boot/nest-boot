@@ -72,6 +72,32 @@ export class UserResolver {
 
 传入 `@Info()` 后，只有查询选择了 `totalCount` 或 `totalCountRelation`，`ConnectionManager` 才会执行计数查询。
 
+### 使用连接类
+
+`ConnectionManager.find` 只接收 `ConnectionBuilder` 生成的连接类或其子类，
+不再接收 GraphQL 类型名称字符串。参数和 Resolver 也使用具体类：
+
+```typescript
+import { Args, Query, Resolver } from "@nest-boot/graphql";
+import { ConnectionManager } from "@nest-boot/graphql-connection";
+import { User } from "./user.entity";
+import { UserConnection, UserConnectionArgs } from "./user.connection";
+
+@Resolver(() => User)
+export class UserResolver {
+  constructor(private readonly connectionManager: ConnectionManager) {}
+
+  @Query(() => UserConnection)
+  async users(
+    @Args({ type: () => UserConnectionArgs }) args: UserConnectionArgs,
+  ) {
+    return this.connectionManager.find(UserConnection, args);
+  }
+}
+```
+
+`Args` 和 `Resolver` 直接导出 Nest 原生装饰器，不再提供字符串回调增强或具名类型查找。
+
 ## 分页
 
 同时支持正向的 `first`/`after` 和反向的 `last`/`before` 游标分页。

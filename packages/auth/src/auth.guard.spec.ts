@@ -13,7 +13,8 @@ import { IS_PUBLIC_KEY } from "./auth.constants.js";
 import { AuthGuard } from "./auth.guard.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
-import { BaseSession, BaseUser } from "./entities/index.js";
+import { Session as BaseSession } from "./entities/session.entity.js";
+import { User as BaseUser } from "./entities/user.entity.js";
 import { USER_CAN_METADATA } from "./permission.constants.js";
 
 class PromiseAuthGuard extends AuthGuard {

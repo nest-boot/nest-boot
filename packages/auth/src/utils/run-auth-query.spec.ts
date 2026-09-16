@@ -7,6 +7,7 @@ import { Entity, PrimaryKey, Property } from "@mikro-orm/decorators/legacy";
 import { MikroORM } from "@mikro-orm/pglite";
 import { RequestContext } from "@nest-boot/request-context";
 
+import { createContextualAuthService } from "../infrastructure/create-contextual-auth-service.js";
 import { runAuthQuery } from "./run-auth-query.js";
 
 @Entity({
@@ -15,9 +16,9 @@ import { runAuthQuery } from "./run-auth-query.js";
       name: "auth_record_workspace",
       roles: ["auth_query_reader"],
       using: (columns) =>
-        `${columns.workspace} = current_setting('app.workspace', true)`,
+        `${columns.workspace} = current_setting('app.workspace.id', true)`,
       check: (columns) =>
-        `${columns.workspace} = current_setting('app.workspace', true)`,
+        `${columns.workspace} = current_setting('app.workspace.id', true)`,
     },
   ],
 })
@@ -36,7 +37,7 @@ describe("runAuthQuery with native RLS", () => {
   let orm: MikroORM;
   const session: SessionContext = {
     role: "auth_query_reader",
-    variables: { "app.workspace": "one" },
+    variables: { "app.workspace.id": "one" },
   };
 
   beforeAll(async () => {
@@ -108,6 +109,59 @@ describe("runAuthQuery with native RLS", () => {
           .getConnection()
           .execute("select id from auth_record order by id"),
       ).toEqual([{ id: 1 }, { id: 2 }]);
+    });
+  });
+
+  it("supplies isolated managers only to explicitly listed service operations", async () => {
+    class DomainService {
+      constructor(private readonly em: CoreEntityManager) {}
+      async read() {
+        return await this.em.count(AuthRecord);
+      }
+      async bootstrap() {
+        return await this.em.count(AuthRecord);
+      }
+      deletionContext() {
+        return Promise.resolve(this.em.getSessionContext());
+      }
+    }
+    await inRequest(async (em) => {
+      const service = createContextualAuthService(
+        em,
+        (manager) => new DomainService(manager),
+        {
+          bootstrap: "authentication",
+          deletionContext: "workspace-delete",
+        },
+      );
+      expect(await service.read()).toBe(1);
+      expect(await service.bootstrap()).toBe(2);
+      expect(await service.deletionContext()).toEqual({
+        ...session,
+        variables: {
+          ...session.variables,
+          "app.operation": "auth.workspace.delete",
+        },
+      });
+      expect(await service.read()).toBe(1);
+      expect(RequestContext.get(CoreEntityManager)).toBe(em);
+      expect(em.getSessionContext()).toEqual(session);
+      await em.transactional(async (tx) => {
+        const transactional = createContextualAuthService(
+          tx,
+          (manager) => new DomainService(manager),
+          {
+            bootstrap: "authentication",
+            deletionContext: "workspace-delete",
+          },
+        );
+        await expect(transactional.bootstrap()).rejects.toThrow(
+          "active RLS transaction",
+        );
+        await expect(transactional.deletionContext()).rejects.toThrow(
+          "before starting a scoped transaction",
+        );
+      });
     });
   });
 

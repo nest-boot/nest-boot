@@ -1,0 +1,210 @@
+import { Args, ID, Mutation, Query, Resolver } from "@nest-boot/graphql";
+
+import { Public } from "../decorators/public.decorator.js";
+import { User } from "../entities/user.entity.js";
+import {
+  AuthChangeEmailInput,
+  AuthChangePasswordInput,
+  AuthDeleteUserInput,
+  AuthLinkSocialAccountInput,
+  AuthRequestPasswordResetInput,
+  AuthResetPasswordInput,
+  AuthSendVerificationEmailInput,
+  AuthSignInInput,
+  AuthSignInSocialInput,
+  AuthSignUpInput,
+  AuthUpdateUserInput,
+} from "../inputs/auth.input.js";
+import { AuthService } from "../services/auth.service.js";
+import {
+  AuthAbilityRuleType,
+  AuthChangePasswordResultType,
+  AuthDeleteUserResultType,
+  AuthLinkSocialAccountResultType,
+  AuthRequestPasswordResetResultType,
+  AuthSignInResultType,
+  AuthSignInSocialResultType,
+  AuthSignUpResultType,
+  AuthSocialProviderType,
+} from "../types/auth.type.js";
+import { getUserAbility } from "../utils/get-user-ability.util.js";
+import { getWorkspaceAbility } from "../utils/get-workspace-ability.util.js";
+import { serializeAbilityRules } from "../utils/serialize-ability-rules.util.js";
+
+/** GraphQL transport for application authentication operations. */
+@Resolver(() => User)
+export class AuthResolver {
+  /**
+   * Creates the authentication resolver.
+   * @param authService - Application authentication service.
+   */
+  constructor(private readonly authService: AuthService) {}
+
+  /** Returns the currently authenticated user. */
+  @Query(() => User)
+  currentUser(): User {
+    return this.authService.getCurrentUser();
+  }
+
+  /** Returns the social and generic OAuth providers enabled by the server. */
+  @Public()
+  @Query(() => [AuthSocialProviderType])
+  async socialProviders(): Promise<AuthSocialProviderType[]> {
+    return await this.authService.listSocialProviders();
+  }
+
+  /** Returns the current user's effective CASL rules in a transport-safe form. */
+  @Query(() => [AuthAbilityRuleType])
+  currentUserAbilityRules(): AuthAbilityRuleType[] {
+    return toAbilityRuleTypes(serializeAbilityRules(getUserAbility()));
+  }
+
+  /** Returns the selected workspace's effective CASL rules. */
+  @Query(() => [AuthAbilityRuleType])
+  currentWorkspaceAbilityRules(): AuthAbilityRuleType[] {
+    return toAbilityRuleTypes(serializeAbilityRules(getWorkspaceAbility()));
+  }
+
+  /** Registers a user with an email address and password. */
+  @Public()
+  @Mutation(() => AuthSignUpResultType)
+  async signUp(
+    @Args("input") input: AuthSignUpInput,
+  ): Promise<AuthSignUpResultType> {
+    return await this.authService.signUpEntity({ ...input });
+  }
+
+  /** Signs in with an email address and password. */
+  @Public()
+  @Mutation(() => AuthSignInResultType)
+  async signIn(
+    @Args("input") input: AuthSignInInput,
+  ): Promise<AuthSignInResultType> {
+    return await this.authService.signInEntity(input);
+  }
+
+  /** Starts a social or generic OAuth sign-in flow. */
+  @Public()
+  @Mutation(() => AuthSignInSocialResultType)
+  async signInSocial(
+    @Args("input") input: AuthSignInSocialInput,
+  ): Promise<AuthSignInSocialResultType> {
+    return await this.authService.signInSocialEntity({
+      ...input,
+      disableRedirect: true,
+    });
+  }
+
+  /** Signs out and forwards the session-cookie removal header. */
+  @Public()
+  @Mutation(() => Boolean)
+  async signOut(): Promise<boolean> {
+    return await this.authService.signOut();
+  }
+
+  /** Sends an email-verification message. */
+  @Public()
+  @Mutation(() => Boolean)
+  async sendVerificationEmail(
+    @Args("input") input: AuthSendVerificationEmailInput,
+  ): Promise<boolean> {
+    return await this.authService.sendVerificationEmail(input);
+  }
+
+  /** Requests an enumeration-safe password-reset message. */
+  @Public()
+  @Mutation(() => AuthRequestPasswordResetResultType)
+  async requestPasswordReset(
+    @Args("input") input: AuthRequestPasswordResetInput,
+  ): Promise<AuthRequestPasswordResetResultType> {
+    return await this.authService.requestPasswordReset(input);
+  }
+
+  /** Resets a password with a password-reset token. */
+  @Public()
+  @Mutation(() => Boolean)
+  async resetPassword(
+    @Args("input") input: AuthResetPasswordInput,
+  ): Promise<boolean> {
+    return await this.authService.resetPassword(input);
+  }
+
+  /** Updates the authenticated user's profile. */
+  @Mutation(() => Boolean)
+  async updateCurrentUser(
+    @Args("input") input: AuthUpdateUserInput,
+  ): Promise<boolean> {
+    return await this.authService.updateCurrentUser({ ...input });
+  }
+
+  /** Starts or completes an authenticated email change. */
+  @Mutation(() => Boolean)
+  async changeCurrentUserEmail(
+    @Args("input") input: AuthChangeEmailInput,
+  ): Promise<boolean> {
+    return await this.authService.changeCurrentUserEmail(input);
+  }
+
+  /** Changes the authenticated user's password. */
+  @Mutation(() => AuthChangePasswordResultType)
+  async changeCurrentUserPassword(
+    @Args("input") input: AuthChangePasswordInput,
+  ): Promise<AuthChangePasswordResultType> {
+    return await this.authService.changeCurrentUserPassword(input);
+  }
+
+  /** Adds a credential password to the authenticated account. */
+  @Mutation(() => Boolean)
+  async setCurrentUserPassword(
+    @Args("newPassword") newPassword: string,
+  ): Promise<boolean> {
+    return await this.authService.setCurrentUserPassword(newPassword);
+  }
+
+  /** Requests deletion of the authenticated user. */
+  @Mutation(() => AuthDeleteUserResultType)
+  async deleteCurrentUser(
+    @Args("input", { nullable: true }) input?: AuthDeleteUserInput,
+  ): Promise<AuthDeleteUserResultType> {
+    return await this.authService.deleteCurrentUser(input ?? {});
+  }
+
+  /** Starts a social or OpenID Connect account-linking flow. */
+  @Mutation(() => AuthLinkSocialAccountResultType)
+  async linkCurrentUserAccount(
+    @Args("input") input: AuthLinkSocialAccountInput,
+  ): Promise<AuthLinkSocialAccountResultType> {
+    return await this.authService.linkCurrentUserAccount({
+      ...input,
+      disableRedirect: true,
+    });
+  }
+
+  /** Unlinks an authentication account from the current user. */
+  @Mutation(() => Boolean)
+  async unlinkCurrentUserAccount(
+    @Args("id", { type: () => ID }) id: string,
+  ): Promise<boolean> {
+    return await this.authService.unlinkCurrentUserAccount({
+      accountId: id,
+    });
+  }
+}
+
+function toAbilityRuleTypes(
+  rules: ReturnType<typeof serializeAbilityRules>,
+): AuthAbilityRuleType[] {
+  return rules.map((rule) => ({
+    actions: Array.isArray(rule.action) ? rule.action : [rule.action],
+    subjects: Array.isArray(rule.subject) ? rule.subject : [rule.subject],
+    fields:
+      rule.fields === undefined
+        ? null
+        : Array.isArray(rule.fields)
+          ? rule.fields
+          : [rule.fields],
+    conditions: rule.conditions ?? null,
+    inverted: rule.inverted ?? false,
+    reason: rule.reason ?? null,
+  }));
+}

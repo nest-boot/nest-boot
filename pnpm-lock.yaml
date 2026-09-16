@@ -482,9 +482,6 @@ importers:
       graphql:
         specifier: ^16.11.0
         version: 16.12.0
-      graphql-type-json:
-        specifier: ^0.3.2
-        version: 0.3.2
       ioredis:
         specifier: ^5.8.0
         version: 5.8.2
@@ -507,6 +504,9 @@ importers:
         specifier: ^1.0.1
         version: 1.0.1
     devDependencies:
+      '@electric-sql/pglite':
+        specifier: 0.5.8
+        version: 0.5.8
       '@eslint/eslintrc':
         specifier: ^3.3.3
         version: 3.3.3
@@ -594,6 +594,12 @@ importers:
       cookie:
         specifier: ^2.0.1
         version: 2.0.1
+      graphql-type-json:
+        specifier: ^0.3.2
+        version: 0.3.2
+      sonyflake-js:
+        specifier: ^1.0.1
+        version: 1.0.1
     devDependencies:
       '@casl/ability':
         specifier: ^7.0.1
@@ -607,12 +613,21 @@ importers:
       '@mikro-orm/pglite':
         specifier: 7.2.0
         version: 7.2.0
+      '@mikro-orm/sql':
+        specifier: 7.2.0
+        version: 7.2.0
       '@nest-boot/eslint-config':
         specifier: workspace:^
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
         specifier: workspace:^
         version: link:../eslint-plugin
+      '@nest-boot/graphql':
+        specifier: workspace:^
+        version: link:../graphql
+      '@nest-boot/graphql-connection':
+        specifier: workspace:^
+        version: link:../graphql-connection
       '@nest-boot/hash':
         specifier: workspace:^
         version: link:../hash
@@ -628,6 +643,9 @@ importers:
       '@nest-boot/tsconfig':
         specifier: workspace:^
         version: link:../tsconfig
+      '@nestjs/apollo':
+        specifier: ^14.0.0
+        version: 14.0.0
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1
@@ -637,6 +655,9 @@ importers:
       '@nestjs/core':
         specifier: ^12.0.1
         version: 12.0.1
+      '@nestjs/graphql':
+        specifier: ^14.0.0
+        version: 14.0.0
       '@nestjs/testing':
         specifier: ^12.0.1
         version: 12.0.1
@@ -652,9 +673,15 @@ importers:
       better-auth:
         specifier: ^1.7.2
         version: 1.7.2
+      class-validator:
+        specifier: ^0.14.2
+        version: 0.14.3
       express:
         specifier: ^5.1.0
         version: 5.2.1
+      graphql:
+        specifier: ^16.11.0
+        version: 16.12.0
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2

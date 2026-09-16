@@ -25,16 +25,14 @@ import { LockMode, MikroORM, Raw } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 
 import { mockRlsContext } from "../../test/mock-rls-context.js";
-import {
-  BaseAccount,
-  BaseApiKey,
-  BaseSession,
-  BaseUser,
-  BaseVerification,
-  BaseWorkspace,
-  BaseWorkspaceInvitation,
-  BaseWorkspaceMember,
-} from "../entities/index.js";
+import { Account as BaseAccount } from "../entities/account.entity.js";
+import { ApiKey as BaseApiKey } from "../entities/api-key.entity.js";
+import { Invitation as BaseInvitation } from "../entities/invitation.entity.js";
+import { Member as BaseMember } from "../entities/member.entity.js";
+import { Session as BaseSession } from "../entities/session.entity.js";
+import { User as BaseUser } from "../entities/user.entity.js";
+import { Verification as BaseVerification } from "../entities/verification.entity.js";
+import { Workspace as BaseWorkspace } from "../entities/workspace.entity.js";
 import {
   convertWhereToMikroOrm,
   mikroOrmAdapter,
@@ -311,14 +309,22 @@ describe("convertWhereToMikroOrm", () => {
   });
 });
 
-class TestAccount extends BaseAccount {}
-class TestApiKey extends BaseApiKey {}
-class TestSession extends BaseSession {}
-class TestUser extends BaseUser {}
-class TestVerification extends BaseVerification {}
-class TestWorkspace extends BaseWorkspace {}
-class TestWorkspaceMember extends BaseWorkspaceMember {}
-class TestWorkspaceInvitation extends BaseWorkspaceInvitation {}
+const TestAccount = BaseAccount;
+type TestAccount = BaseAccount;
+const TestApiKey = BaseApiKey;
+type TestApiKey = BaseApiKey;
+const TestSession = BaseSession;
+type TestSession = BaseSession;
+const TestUser = BaseUser;
+type TestUser = BaseUser;
+const TestVerification = BaseVerification;
+type TestVerification = BaseVerification;
+const TestWorkspace = BaseWorkspace;
+type TestWorkspace = BaseWorkspace;
+const TestMember = BaseMember;
+type TestMember = BaseMember;
+const TestInvitation = BaseInvitation;
+type TestInvitation = BaseInvitation;
 
 const entities = {
   account: TestAccount,
@@ -327,8 +333,8 @@ const entities = {
   user: TestUser,
   verification: TestVerification,
   workspace: TestWorkspace,
-  workspaceInvitation: TestWorkspaceInvitation,
-  workspaceMember: TestWorkspaceMember,
+  invitation: TestInvitation,
+  member: TestMember,
 };
 
 function createOrm() {

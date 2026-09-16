@@ -27,29 +27,48 @@ profile(
 
 ## SessionService
 
+`AuthModule` 内置 `Session` 实体和对应 GraphQL 类型。
+`currentSession` 返回 `Session`；`User.sessions` 返回 `SessionConnection`。
+原 `AuthSessionType`、`userSessions(userId)` 和 `authSessions` 已移除。
+查询本人会话使用 `currentUser { sessions(first: 20) { edges { node { id current expiresAt } } pageInfo { endCursor hasNextPage } } }`；管理员可在 `user(id: $id)` 下查询同一字段。
+本人浏览器会话不需要管理员权限；读取他人会话及 API Key 调用需要 `session:list`。
+`SessionResolver` 解析 `current`、`impersonatedById` 和 `impersonatedBy: User` 关联。
+执行新增 Session SELECT 策略迁移；普通查询排除 token 列并保留 RLS，不要把 token 暴露为 GraphQL 字段。
+
 `SessionService` 提供：
 
-- `getSession()` — 解析当前应用实体；
-- `listSessions()` — 列出当前用户的活动会话；
-- `revokeSession(id)` — 通过公开 ID 撤销指定会话；
-- `revokeOtherSessions()` — 只保留当前会话；
-- `revokeSessions()` — 撤销当前用户的全部会话；
-- `setSession(token)` — 把应用自行创建的会话设置到当前浏览器 Response，例如模拟登录流程。
+- `getCurrentAuthenticatedSession()` — 解析当前内置实体；
+- `listCurrentUserSessions()` — 列出当前用户的活动会话；
+- `getSessionConnectionByUser(user, args)` — 按父级用户分页读取不含凭证的会话；
+- `listUserSessions(user)` — 以数组返回不含凭证的会话；
+- `getSessionImpersonator(session)` — 在请求级 RLS 下解析模拟登录者；
+- `revokeSession(userOrId, id)` / `revokeUserSessions(userOrId)` — 管理员撤销会话；
+- `revokeCurrentUserSession(id)` — 通过公开 ID 撤销当前用户的指定会话；
+- `revokeCurrentUserOtherSessions()` — 只保留当前会话；
+- `revokeCurrentUserSessions()` — 撤销当前用户的全部会话；
+- `setSessionCookie(token)` — 将应用自行创建的会话写入浏览器 Response 的签名 Cookie，不切换当前请求身份。
 
-这些方法都从 `RequestContext` 读取当前请求 Header，传输层无需转换或继续传递
-Express Header。
+认证后端方法从 `RequestContext` 读取请求 Header；按父级查询的方法接收查询对象，
+并校验当前调用者权限。传输层无需转换或继续传递 Express Header。
+
+按父级查询及管理员撤销方法已从 `UserService` 迁入 `SessionService`，不保留旧入口。
+普通读取保留请求级 RLS，不进入基础设施的特权方法白名单；管理员撤销保留既有特殊
+上下文和 `session:revoke` 检查。`listCurrentUserSessions()` 仍是含凭证的内部流程辅助方法，
+GraphQL 应使用 `getSessionConnectionByUser()`。
 
 会话列表保持认证后端的返回顺序，并公开撤销指定会话所需的非敏感会话 ID。认证
 token 仅在服务端内部和 HttpOnly Cookie 中使用。UI 应识别当前会话，不要把它当作
 普通远程设备提供撤销操作。
 
-`setSession()` 会通过请求级 `cookies()` 存储写入已签名的浏览器 Cookie，同时清除缓存
-的会话与账号 Cookie。示例在 `UserService.impersonateUser()` 与
-`stopImpersonating()` 切换浏览器身份时使用该方法。
+`setSessionCookie()` 会通过请求级 `cookies()` 存储写入已签名的浏览器 Cookie，同时清除缓存
+的会话与账号 Cookie。`AuthService.impersonateUser(id)` 与 `stopImpersonating()` 统一协调
+会话创建或恢复，并在返回前刷新当前请求的用户、会话、工作区成员、Ability 和 RLS。
+因此 mutation 的嵌套字段使用新身份，而不是原 Cookie 对应的身份。
 
-管理员通过 `UserService.revokeUserSessions(user)` 撤销会话时，会同时删除该用户自身的
+管理员通过 `SessionService.revokeUserSessions(user)` 撤销会话时，会同时删除该用户自身的
 会话和由其发起的模拟会话。已撤销的模拟会话无法恢复管理员身份；被模拟用户独立登录
 的会话不受影响。
 
-启用 PostgreSQL RLS 时，应用实体查询会在关闭 RLS 的隔离认证上下文中执行。因此业务
-数据库角色无需直接访问认证表，父级请求上下文也不会被修改。
+启用 PostgreSQL RLS 时，AuthModule 基础设施为 Better Auth 验证后的凭据实体加载建立隔离
+认证上下文；SessionService 自身只使用注入的 `this.em`。业务数据库角色因此不需要读取
+凭据列，父级请求的数据库上下文也不会被修改。GraphQL 的 `User.sessions` 始终保留请求 RLS。

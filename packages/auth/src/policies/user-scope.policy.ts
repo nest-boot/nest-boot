@@ -4,7 +4,7 @@ import type { ScopePolicyOptions } from "../interfaces/scope-policy-options.inte
 import { createScopePolicy } from "./create-scope-policy.js";
 
 /**
- * Creates a native permissive RLS policy matching app.user.
+ * Creates a native permissive RLS policy matching app.user.id.
  * Defaults to `type: "bigint"`, `property: "user"`, `command: "all"` for the
  * authenticated database role. Set command: "select" for read-only ownership.
  * Missing/empty session identifiers match no rows. The property must map to a

@@ -16,7 +16,7 @@ export function listAuthPermissions(permissions: readonly string[]): string[] {
   return [...new Set(permissions)];
 }
 
-/** Validates permission values against one configured permission catalog. */
+/** Validates permission values by exact, case-sensitive catalog membership. */
 export function normalizeAuthPermissions(
   value: readonly string[],
   availablePermissions: readonly string[],

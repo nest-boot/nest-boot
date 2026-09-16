@@ -7,8 +7,8 @@ import {
 } from "@nestjs/common";
 import { mergeMap, type Observable } from "rxjs";
 
-import { ApiKeyService } from "./api-key.service.js";
-import { BaseApiKey } from "./entities/index.js";
+import { ApiKey } from "./entities/api-key.entity.js";
+import { ApiKeyService } from "./services/api-key.service.js";
 
 /** Records successful requests authenticated with an API key. */
 @Injectable()
@@ -23,7 +23,7 @@ export class ApiKeyUsageInterceptor implements NestInterceptor {
   ): Observable<unknown> {
     return next.handle().pipe(
       mergeMap(async (value: unknown) => {
-        const apiKey = RequestContext.get(BaseApiKey);
+        const apiKey = RequestContext.get(ApiKey);
 
         if (apiKey) {
           await this.apiKeyService.recordUsage(apiKey);

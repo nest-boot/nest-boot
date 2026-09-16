@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 import { useCurrentUserAbility } from "../../contexts/current-user-context";
+import { createAbilitySubject } from "@/lib/ability";
 import { Badge } from "@/components/thread-ui/badge";
 import { Button } from "@/components/thread-ui/button";
 import { DataTable } from "@/components/thread-ui/data-table";
@@ -35,19 +36,38 @@ import { graphql } from "@/gql";
 const PAGE_SIZE = 20;
 
 const GET_USERS_FROM_USERS_ROUTE = graphql(`
-  query getUsersFromUsersRoute($input: ListUsersInput) {
-    users(input: $input) {
-      users {
-        id
-        name
-        email
-        emailVerified
-        banned
-        createdAt
+  query getUsersFromUsersRoute(
+    $first: Int
+    $last: Int
+    $after: String
+    $before: String
+    $filter: UserFilter
+  ) {
+    users(
+      first: $first
+      last: $last
+      after: $after
+      before: $before
+      filter: $filter
+      orderBy: { field: CREATED_AT, direction: DESC }
+    ) {
+      edges {
+        node {
+          id
+          name
+          email
+          emailVerified
+          banned
+          createdAt
+        }
       }
-      total
-      limit
-      offset
+      totalCount
+      pageInfo {
+        hasNextPage
+        hasPreviousPage
+        startCursor
+        endCursor
+      }
     }
   }
 `);
@@ -70,7 +90,8 @@ export const Route = createFileRoute("/_authenticated/admin/users/")({
   beforeLoad: () => ({ title: t("admin:users.title") }),
   validateSearch: zodValidator(
     z.object({
-      page: z.coerce.number().int().min(1).catch(1).default(1),
+      after: z.string().optional(),
+      before: z.string().optional(),
       search: z.string().optional().catch(undefined),
     }),
   ),
@@ -85,22 +106,27 @@ function AdminUsersPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const offset = (search.page - 1) * PAGE_SIZE;
   const { data, loading, refetch } = useQuery(GET_USERS_FROM_USERS_ROUTE, {
     fetchPolicy: "network-only",
     variables: {
-      input: {
-        limit: PAGE_SIZE,
-        offset,
-        search: search.search,
-      },
+      first: search.before ? undefined : PAGE_SIZE,
+      last: search.before ? PAGE_SIZE : undefined,
+      after: search.after,
+      before: search.before,
+      filter: search.search
+        ? {
+            $or: [
+              { name: { $prefix: search.search } },
+              { email: { $prefix: search.search } },
+            ],
+          }
+        : undefined,
     },
   });
   const [createUser, { loading: creating }] = useMutation(
     CREATE_USER_FROM_USERS_ROUTE,
   );
-  const users = data?.users.users ?? [];
-  const total = data?.users.total ?? 0;
+  const users = data?.users.edges.map(({ node }) => node) ?? [];
   const canCreate = currentUserAbility.can("create", "User");
 
   const handleCreate = async () => {
@@ -141,7 +167,6 @@ function AdminUsersPage() {
             navigate({
               to: "/admin/users",
               search: {
-                page: 1,
                 search: searchInput.trim() || undefined,
               },
             });
@@ -204,24 +229,37 @@ function AdminUsersPage() {
                 dayjs(row.original.createdAt).format("YYYY-MM-DD"),
             },
           ]}
-          onRowClick={(row) =>
+          onRowClick={(row) => {
+            if (
+              !currentUserAbility.can(
+                "get",
+                createAbilitySubject("User", row.original),
+              )
+            )
+              return;
             navigate({
               to: "/admin/users/$userId",
               params: { userId: row.original.id },
-            })
-          }
+            });
+          }}
           pagination={{
-            hasPreviousPage: search.page > 1,
-            hasNextPage: offset + PAGE_SIZE < total,
+            hasPreviousPage: data?.users.pageInfo.hasPreviousPage ?? false,
+            hasNextPage: data?.users.pageInfo.hasNextPage ?? false,
             onPreviousPage: () =>
               navigate({
                 to: "/admin/users",
-                search: { ...search, page: search.page - 1 },
+                search: {
+                  search: search.search,
+                  before: data?.users.pageInfo.startCursor ?? undefined,
+                },
               }),
             onNextPage: () =>
               navigate({
                 to: "/admin/users",
-                search: { ...search, page: search.page + 1 },
+                search: {
+                  search: search.search,
+                  after: data?.users.pageInfo.endCursor ?? undefined,
+                },
               }),
           }}
         />

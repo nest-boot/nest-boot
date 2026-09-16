@@ -1,12 +1,13 @@
 import type { AbilityBuilder } from '@casl/ability';
 import { UserAbility, WorkspaceAbility } from '@nest-boot/auth';
-
-import { ApiKey } from '../../../app/api-key/api-key.entity.js';
-import { Session } from '../../../app/auth/entities/session.entity.js';
-import { User } from '../../../app/user/user.entity.js';
-import { Workspace } from '../../../app/workspace/workspace.entity.js';
-import { WorkspaceInvitation } from '../../../app/workspace-member/workspace-invitation.entity.js';
-import { WorkspaceMember } from '../../../app/workspace-member/workspace-member.entity.js';
+import {
+  ApiKey,
+  Invitation,
+  Member,
+  Session,
+  User,
+  Workspace,
+} from '@nest-boot/auth';
 
 /** Builds permissions that belong to an authenticated user. */
 export function buildUserPermissionAbility(
@@ -15,22 +16,24 @@ export function buildUserPermissionAbility(
 ) {
   const { can, build } = builder;
 
-  can('read', User);
   can('read', Workspace);
   can('create', Workspace);
-  can(['read', 'update'], WorkspaceInvitation);
-  can(['read', 'update'], WorkspaceMember);
+  can(['read', 'update'], Invitation);
+  can(['read', 'update'], Member);
 
   const subjects = {
-    ApiKey,
-    Session,
-    User,
+    'api-key': ApiKey,
+    session: Session,
+    user: User,
   } as const;
 
   for (const permission of new Set(permissions)) {
     const [resource, action] = permission.split(':');
     const subject = subjects[resource as keyof typeof subjects];
     if (subject && action) can(action, subject);
+    if (resource === 'user' && (action === 'get' || action === 'list')) {
+      can('read', User);
+    }
   }
 
   return build();
@@ -43,16 +46,15 @@ export function buildWorkspacePermissionAbility(
 ) {
   const { can, build } = builder;
 
-  can('read', User);
   can('read', Workspace);
-  can('read', WorkspaceInvitation);
-  can('read', WorkspaceMember);
+  can('read', Invitation);
+  can('read', Member);
 
   const subjects = {
-    ApiKey,
-    Workspace,
-    WorkspaceInvitation,
-    WorkspaceMember,
+    'api-key': ApiKey,
+    workspace: Workspace,
+    invitation: Invitation,
+    member: Member,
   } as const;
 
   for (const permission of new Set(permissions)) {

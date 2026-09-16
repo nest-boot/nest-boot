@@ -1,7 +1,7 @@
 import { RequestContext } from "@nest-boot/request-context";
 
 import { WorkspaceAbility } from "../abilities/workspace.ability.js";
-import { AccessControlService } from "../access-control.service.js";
+import { AccessControlService } from "../services/access-control.service.js";
 import { workspaceCan } from "./workspace-can.util.js";
 
 class TestSubject {}

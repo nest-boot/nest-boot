@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import { registerUser } from "./utils/auth";
 import { graphqlRequest } from "./utils/graphql";
 import {
-  addWorkspaceMemberByApi,
+  addMemberByApi,
   createFirstWorkspace,
   createWorkspaceByApi,
 } from "./utils/workspace";
@@ -11,7 +11,7 @@ import { uniqueSeed } from "./utils/unique";
 import type { Page } from "@playwright/test";
 
 test.describe("workspace management", () => {
-  test("transfers ownership and lets the previous owner leave", async ({
+  test("supports multiple owners through member roles and lets an owner leave", async ({
     browser,
     page,
   }) => {
@@ -36,23 +36,57 @@ test.describe("workspace management", () => {
         name: `Previous Owner ${seed}`,
       });
       const workspaceId = await createFirstWorkspace(page, workspaceName);
-      await addWorkspaceMemberByApi(page, workspaceId, memberEmail);
+      const memberId = await addMemberByApi(page, workspaceId, memberEmail);
+      await page.goto(`/workspaces/${workspaceId}/members/${memberId}`);
+      await page.getByTestId("member-role-owner").click();
+      await page.getByTestId("member-role-member").click();
+      await page.getByTestId("member-save").click();
+      await expect(page.getByText("成员更新成功")).toBeVisible();
 
-      await page.goto(`/workspaces/${workspaceId}/settings`);
-      await page.getByText("选择成员", { exact: true }).click();
-      await page.getByRole("option", { name: memberName }).click();
-      await page.getByTestId("workspace-transfer-ownership").click();
-      await page.getByTestId("alert-dialog-confirm").click();
-      await expect(page.getByText("工作空间所有权已转移")).toBeVisible();
-      await expect(page.getByTestId("workspace-leave")).toBeVisible();
+      const { currentWorkspace } = await graphqlRequest<{
+        currentWorkspace: {
+          members: { edges: Array<{ node: { roles: Array<string> } }> };
+        };
+      }>(
+        page.request,
+        "query { currentWorkspace { members(first: 10) { edges { node { roles } } } } }",
+        {},
+        { "x-workspace-id": workspaceId },
+      );
+      expect(
+        currentWorkspace.members.edges.filter(({ node }) =>
+          node.roles.includes("owner"),
+        ),
+      ).toHaveLength(2);
 
       await memberPage.goto(`/workspaces/${workspaceId}/settings`);
       await expect(
         memberPage.getByTestId("workspace-transfer-ownership"),
-      ).toBeVisible();
+      ).toHaveCount(0);
+      await expect(memberPage.getByTestId("workspace-leave")).toBeVisible();
+
+      await page.goto(`/workspaces/${workspaceId}/settings`);
+      await expect(
+        page.getByTestId("workspace-transfer-ownership"),
+      ).toHaveCount(0);
+      await expect(page.getByTestId("workspace-leave")).toBeVisible();
 
       await page.getByTestId("workspace-leave").click();
+      const leaveResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes("/graphql") &&
+          response
+            .request()
+            .postData()
+            ?.includes("leaveWorkspaceFromSettingsRoute") === true,
+      );
       await page.getByTestId("alert-dialog-confirm").click();
+      const leaveResult = await (await leaveResponse).json();
+      expect(leaveResult.errors).toBeUndefined();
+      expect(leaveResult.data.leaveWorkspace).toEqual({
+        __typename: "LeaveWorkspacePayload",
+        memberId: expect.any(String),
+      });
       await expect(page).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
       await expect(page.getByText("已退出工作空间")).toBeVisible();
       await expect(
@@ -151,24 +185,28 @@ async function listWorkspaces(
   variables: { after?: string; first: number },
 ) {
   const data = await graphqlRequest<{
-    workspaces: {
-      edges: Array<{ node: { id: string; name: string } }>;
-      pageInfo: { endCursor?: string | null; hasNextPage: boolean };
+    currentUser: {
+      workspaces: {
+        edges: Array<{ node: { id: string; name: string } }>;
+        pageInfo: { endCursor?: string | null; hasNextPage: boolean };
+      };
     };
   }>(
     page.request,
     /* GraphQL */ `
       query ListWorkspaces($after: String, $first: Int) {
-        workspaces(after: $after, first: $first) {
-          edges {
-            node {
-              id
-              name
+        currentUser {
+          workspaces(after: $after, first: $first) {
+            edges {
+              node {
+                id
+                name
+              }
             }
-          }
-          pageInfo {
-            endCursor
-            hasNextPage
+            pageInfo {
+              endCursor
+              hasNextPage
+            }
           }
         }
       }
@@ -176,5 +214,5 @@ async function listWorkspaces(
     variables,
   );
 
-  return data.workspaces;
+  return data.currentUser.workspaces;
 }

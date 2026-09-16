@@ -1,12 +1,11 @@
-vi.mock('@nest-boot/auth', () => ({
+vi.mock('@nest-boot/auth', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@nest-boot/auth')>()),
   BaseAccount: class BaseAccount {},
   BaseSession: class BaseSession {},
   BaseVerification: class BaseVerification {},
 }));
 
-import { Account } from './account.entity.js';
-import { Session } from './session.entity.js';
-import { Verification } from './verification.entity.js';
+import { Account, Session, Verification } from '@nest-boot/auth';
 
 describe('Auth entities', () => {
   it('constructs Better Auth entity extensions', () => {

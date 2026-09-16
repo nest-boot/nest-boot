@@ -32,26 +32,28 @@ const GET_WORKSPACES_FROM_WORKSPACE_SWITCHER = graphql(`
     $query: String
     $orderBy: WorkspaceOrder
   ) {
-    workspaces(
-      first: $first
-      after: $after
-      before: $before
-      query: $query
-      orderBy: $orderBy
-    ) {
-      edges {
-        node {
-          id
-          name
+    currentUser {
+      workspaces(
+        first: $first
+        after: $after
+        before: $before
+        query: $query
+        orderBy: $orderBy
+      ) {
+        edges {
+          node {
+            id
+            name
+          }
         }
+        pageInfo {
+          hasNextPage
+          hasPreviousPage
+          startCursor
+          endCursor
+        }
+        totalCount
       }
-      pageInfo {
-        hasNextPage
-        hasPreviousPage
-        startCursor
-        endCursor
-      }
-      totalCount
     }
   }
 `);
@@ -76,7 +78,7 @@ export function WorkspaceSwitcher() {
   const workspaces = useMemo(() => {
     const byId = new Map(
       [
-        ...(data?.workspaces.edges.map(({ node }) => node) ?? []),
+        ...(data?.currentUser.workspaces.edges.map(({ node }) => node) ?? []),
         ...additionalWorkspaces,
       ].map((workspace) => [workspace.id, workspace]),
     );
@@ -84,7 +86,8 @@ export function WorkspaceSwitcher() {
   }, [additionalWorkspaces, data]);
   const handleLoadMore = async () => {
     const endCursor =
-      additionalPageInfo?.endCursor ?? data?.workspaces.pageInfo.endCursor;
+      additionalPageInfo?.endCursor ??
+      data?.currentUser.workspaces.pageInfo.endCursor;
     if (!endCursor) return;
 
     setLoadingMore(true);
@@ -94,9 +97,9 @@ export function WorkspaceSwitcher() {
       });
       setAdditionalWorkspaces((current) => [
         ...current,
-        ...result.data.workspaces.edges.map(({ node }) => node),
+        ...result.data.currentUser.workspaces.edges.map(({ node }) => node),
       ]);
-      setAdditionalPageInfo(result.data.workspaces.pageInfo);
+      setAdditionalPageInfo(result.data.currentUser.workspaces.pageInfo);
     } finally {
       setLoadingMore(false);
     }
@@ -160,7 +163,7 @@ export function WorkspaceSwitcher() {
               ))}
 
               {(additionalPageInfo?.hasNextPage ??
-              data?.workspaces.pageInfo.hasNextPage) ? (
+              data?.currentUser.workspaces.pageInfo.hasNextPage) ? (
                 <DropdownMenuItem
                   className="gap-2 p-2"
                   disabled={loadingMore}

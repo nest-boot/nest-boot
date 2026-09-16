@@ -36,7 +36,7 @@ export function createScopePolicy(
       );
     }
     const column = columns[property].replaceAll('"', '""');
-    return `"${column}" = nullif(current_setting('app.${scope}', true), '')::${type}`;
+    return `"${column}" = nullif(current_setting('app.${scope}.id', true), '')::${type}`;
   };
 
   return {

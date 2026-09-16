@@ -60,7 +60,7 @@ async function exerciseApiKeyLifecycle(
   await page.getByTestId("api-key-create-action").click();
   await page.getByTestId("api-key-name-input").fill(names.name);
   for (const action of ["read", "create", "update", "delete"]) {
-    const permission = page.getByTestId(`permission-ApiKey:${action}`);
+    const permission = page.getByTestId(`permission-api-key:${action}`);
     await expect(permission).toBeVisible();
     await expect(permission).not.toBeChecked();
     await permission.click();
@@ -83,7 +83,9 @@ async function exerciseApiKeyLifecycle(
   await row.getByRole("button").click();
   await page.getByRole("menuitem", { name: "编辑" }).click();
   for (const action of ["read", "create", "update", "delete"]) {
-    await expect(page.getByTestId(`permission-ApiKey:${action}`)).toBeChecked();
+    await expect(
+      page.getByTestId(`permission-api-key:${action}`),
+    ).toBeChecked();
   }
   await page.getByTestId("api-key-rename-input").fill(names.renamedName);
   await page.getByTestId("api-key-rename-submit").click();

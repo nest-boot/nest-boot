@@ -34,8 +34,8 @@ import {
 import { graphql } from "@/gql";
 
 const AUTH_SIGN_IN_FROM_LOGIN_FORM = graphql(`
-  mutation authSignInFromLoginForm($input: AuthSignInInput!) {
-    authSignIn(input: $input) {
+  mutation signInFromLoginForm($input: AuthSignInInput!) {
+    signIn(input: $input) {
       user {
         id
       }
@@ -44,8 +44,8 @@ const AUTH_SIGN_IN_FROM_LOGIN_FORM = graphql(`
 `);
 
 const AUTH_SIGN_UP_FROM_LOGIN_FORM = graphql(`
-  mutation authSignUpFromLoginForm($input: AuthSignUpInput!) {
-    authSignUp(input: $input) {
+  mutation signUpFromLoginForm($input: AuthSignUpInput!) {
+    signUp(input: $input) {
       user {
         id
       }
@@ -55,7 +55,7 @@ const AUTH_SIGN_UP_FROM_LOGIN_FORM = graphql(`
 
 const GET_SOCIAL_PROVIDERS_FROM_LOGIN_FORM = graphql(`
   query getSocialProvidersFromLoginForm {
-    authSocialProviders {
+    socialProviders {
       id
       name
     }
@@ -63,15 +63,15 @@ const GET_SOCIAL_PROVIDERS_FROM_LOGIN_FORM = graphql(`
 `);
 
 const AUTH_SIGN_IN_SOCIAL_FROM_LOGIN_FORM = graphql(`
-  mutation authSignInSocialFromLoginForm($input: AuthSignInSocialInput!) {
-    authSignInSocial(input: $input) {
+  mutation signInSocialFromLoginForm($input: AuthSignInSocialInput!) {
+    signInSocial(input: $input) {
       redirect
       url
     }
   }
 `);
 
-const INVITATION_ID_KEY = "workspace_invitation_id";
+const INVITATION_ID_KEY = "invitation_id";
 
 type AuthMode = "login" | "register";
 
@@ -110,7 +110,7 @@ export function LoginForm({
   const [errors, setErrors] = useState<AuthFormErrors>({});
   const [loading, setLoading] = useState(false);
   const [socialProviderId, setSocialProviderId] = useState<string>();
-  const socialProviders = socialProviderData?.authSocialProviders ?? [];
+  const socialProviders = socialProviderData?.socialProviders ?? [];
   const submitLabel = useMemo(
     () =>
       mode === "login"
@@ -145,7 +145,7 @@ export function LoginForm({
           },
         },
       });
-      const url = result.data?.authSignInSocial.url;
+      const url = result.data?.signInSocial.url;
       if (!url) throw new Error(t("auth:form.authFailed"));
 
       window.location.assign(url);
@@ -199,7 +199,7 @@ export function LoginForm({
           },
         });
 
-        if (!result.data?.authSignIn.user.id) {
+        if (!result.data?.signIn.user.id) {
           throw new Error(t("auth:form.authFailed"));
         }
       } else {
@@ -219,7 +219,7 @@ export function LoginForm({
           },
         });
 
-        if (!result.data?.authSignUp.user.id) {
+        if (!result.data?.signUp.user.id) {
           throw new Error(t("auth:form.authFailed"));
         }
 

@@ -28,36 +28,102 @@ export type Scalars = {
   Int: { input: number; output: number };
   Float: { input: number; output: number };
   /**
+   * A filter for Account that accepts MongoDB query syntax.
+   * Supported fields: created_at, provider_id
+   */
+  AccountFilter: { input: any; output: any };
+  /**
    * A filter for ApiKey that accepts MongoDB query syntax.
    * Supported fields: name, prefix, enabled, last_used_at, created_at
    */
   ApiKeyFilter: { input: any; output: any };
   /** A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format. */
   DateTime: { input: any; output: any };
+  /**
+   * A filter for Invitation that accepts MongoDB query syntax.
+   * Supported fields: email, status, created_at
+   */
+  InvitationFilter: { input: any; output: any };
   /** The `JSONObject` scalar type represents JSON objects as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf). */
   JSONObject: {
     input: Record<string, unknown>;
     output: Record<string, unknown>;
   };
   /**
+   * A filter for Member that accepts MongoDB query syntax.
+   * Supported fields: name, email, status, created_at
+   */
+  MemberFilter: { input: any; output: any };
+  /**
+   * A filter for Session that accepts MongoDB query syntax.
+   * Supported fields: created_at
+   */
+  SessionFilter: { input: any; output: any };
+  /**
+   * A filter for User that accepts MongoDB query syntax.
+   * Supported fields: name, email, created_at
+   */
+  UserFilter: { input: any; output: any };
+  /**
    * A filter for Workspace that accepts MongoDB query syntax.
    * Supported fields: name, created_at
    */
   WorkspaceFilter: { input: any; output: any };
-  /**
-   * A filter for WorkspaceMember that accepts MongoDB query syntax.
-   * Supported fields: name, type, email, status, created_at
-   */
-  WorkspaceMemberFilter: { input: any; output: any };
 };
 
-export type AcceptWorkspaceInvitationResult = {
-  __typename?: "AcceptWorkspaceInvitationResult";
-  invitation: WorkspaceInvitation;
-  member: WorkspaceMember;
+export type AcceptInvitationResult = {
+  __typename?: "AcceptInvitationResult";
+  invitation: Invitation;
+  member: Member;
 };
 
-export type AddWorkspaceMemberInput = {
+export type Account = {
+  __typename?: "Account";
+  accountId: Scalars["ID"]["output"];
+  createdAt: Scalars["DateTime"]["output"];
+  id: Scalars["ID"]["output"];
+  issuer: Scalars["String"]["output"];
+  providerId: Scalars["ID"]["output"];
+  scopes: Array<Scalars["String"]["output"]>;
+  updatedAt: Scalars["DateTime"]["output"];
+};
+
+export type AccountConnection = {
+  __typename?: "AccountConnection";
+  /** A list of edges. */
+  edges: Array<AccountEdge>;
+  /** Information to aid in pagination. */
+  pageInfo: PageInfo;
+  /** Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact. */
+  totalCount: Scalars["Int"]["output"];
+  /** Indicates whether totalCount is exact or a lower bound. */
+  totalCountRelation: TotalCountRelation;
+};
+
+/** An auto-generated type which holds one Account and a cursor during pagination. */
+export type AccountEdge = {
+  __typename?: "AccountEdge";
+  /** A cursor for use in pagination. */
+  cursor: Scalars["String"]["output"];
+  /** The item at the end of AccountEdge. */
+  node: Account;
+};
+
+/** Ordering options for account connections */
+export type AccountOrder = {
+  /** The ordering direction. */
+  direction: OrderDirection;
+  /** The field to order accounts by. */
+  field: AccountOrderField;
+};
+
+/** Properties by which account connections can be ordered. */
+export enum AccountOrderField {
+  CREATED_AT = "CREATED_AT",
+  ID = "ID",
+}
+
+export type AddMemberInput = {
   email: Scalars["String"]["input"];
 };
 
@@ -121,46 +187,6 @@ export type AuthAbilityRuleType = {
   subjects: Array<Scalars["String"]["output"]>;
 };
 
-export type AuthAccessTokenType = {
-  __typename?: "AuthAccessTokenType";
-  accessToken: Scalars["String"]["output"];
-  accessTokenExpiresAt?: Maybe<Scalars["DateTime"]["output"]>;
-  idToken?: Maybe<Scalars["String"]["output"]>;
-  scopes: Array<Scalars["String"]["output"]>;
-};
-
-export type AuthAccountIdentityType = {
-  __typename?: "AuthAccountIdentityType";
-  accountId: Scalars["ID"]["output"];
-  id: Scalars["ID"]["output"];
-  issuer: Scalars["String"]["output"];
-  providerId: Scalars["ID"]["output"];
-};
-
-export type AuthAccountInfoType = {
-  __typename?: "AuthAccountInfoType";
-  account: AuthAccountIdentityType;
-  data: Scalars["JSONObject"]["output"];
-  user: Scalars["JSONObject"]["output"];
-};
-
-export type AuthAccountSelectorInput = {
-  accountId?: InputMaybe<Scalars["ID"]["input"]>;
-  useAccountCookie?: InputMaybe<Scalars["Boolean"]["input"]>;
-};
-
-export type AuthAccountType = {
-  __typename?: "AuthAccountType";
-  accountId: Scalars["ID"]["output"];
-  createdAt: Scalars["DateTime"]["output"];
-  id: Scalars["ID"]["output"];
-  issuer: Scalars["String"]["output"];
-  providerId: Scalars["ID"]["output"];
-  scopes: Array<Scalars["String"]["output"]>;
-  updatedAt: Scalars["DateTime"]["output"];
-  userId: Scalars["ID"]["output"];
-};
-
 export type AuthChangeEmailInput = {
   callbackURL?: InputMaybe<Scalars["String"]["input"]>;
   newEmail: Scalars["String"]["input"];
@@ -203,18 +229,6 @@ export type AuthLinkSocialAccountResultType = {
   url: Scalars["String"]["output"];
 };
 
-export type AuthRefreshedTokenType = {
-  __typename?: "AuthRefreshedTokenType";
-  accessToken?: Maybe<Scalars["String"]["output"]>;
-  accessTokenExpiresAt?: Maybe<Scalars["DateTime"]["output"]>;
-  accountId: Scalars["ID"]["output"];
-  idToken?: Maybe<Scalars["String"]["output"]>;
-  providerId: Scalars["ID"]["output"];
-  refreshToken: Scalars["String"]["output"];
-  refreshTokenExpiresAt?: Maybe<Scalars["DateTime"]["output"]>;
-  scope?: Maybe<Scalars["String"]["output"]>;
-};
-
 export type AuthRequestPasswordResetInput = {
   email: Scalars["String"]["input"];
   redirectTo?: InputMaybe<Scalars["String"]["input"]>;
@@ -231,27 +245,9 @@ export type AuthResetPasswordInput = {
   token: Scalars["String"]["input"];
 };
 
-export type AuthRoleType = {
-  __typename?: "AuthRoleType";
-  name: Scalars["String"]["output"];
-  permissions: Array<Scalars["String"]["output"]>;
-};
-
 export type AuthSendVerificationEmailInput = {
   callbackURL?: InputMaybe<Scalars["String"]["input"]>;
   email: Scalars["String"]["input"];
-};
-
-export type AuthSessionType = {
-  __typename?: "AuthSessionType";
-  createdAt: Scalars["DateTime"]["output"];
-  current: Scalars["Boolean"]["output"];
-  expiresAt: Scalars["DateTime"]["output"];
-  id: Scalars["ID"]["output"];
-  impersonatedById?: Maybe<Scalars["ID"]["output"]>;
-  ipAddress?: Maybe<Scalars["String"]["output"]>;
-  updatedAt: Scalars["DateTime"]["output"];
-  userAgent?: Maybe<Scalars["String"]["output"]>;
 };
 
 export type AuthSignInInput = {
@@ -266,7 +262,7 @@ export type AuthSignInResultType = {
   redirect: Scalars["Boolean"]["output"];
   token: Scalars["String"]["output"];
   url?: Maybe<Scalars["String"]["output"]>;
-  user: AuthUserType;
+  user: User;
 };
 
 export type AuthSignInSocialInput = {
@@ -284,7 +280,7 @@ export type AuthSignInSocialResultType = {
   redirect: Scalars["Boolean"]["output"];
   token?: Maybe<Scalars["String"]["output"]>;
   url?: Maybe<Scalars["String"]["output"]>;
-  user?: Maybe<AuthUserType>;
+  user?: Maybe<User>;
 };
 
 export type AuthSignUpInput = {
@@ -299,7 +295,7 @@ export type AuthSignUpInput = {
 export type AuthSignUpResultType = {
   __typename?: "AuthSignUpResultType";
   token?: Maybe<Scalars["String"]["output"]>;
-  user: AuthUserType;
+  user: User;
 };
 
 export type AuthSocialProviderType = {
@@ -311,17 +307,6 @@ export type AuthSocialProviderType = {
 export type AuthUpdateUserInput = {
   image?: InputMaybe<Scalars["String"]["input"]>;
   name?: InputMaybe<Scalars["String"]["input"]>;
-};
-
-export type AuthUserType = {
-  __typename?: "AuthUserType";
-  createdAt: Scalars["DateTime"]["output"];
-  email: Scalars["String"]["output"];
-  emailVerified: Scalars["Boolean"]["output"];
-  id: Scalars["ID"]["output"];
-  image?: Maybe<Scalars["String"]["output"]>;
-  name: Scalars["String"]["output"];
-  updatedAt: Scalars["DateTime"]["output"];
 };
 
 export type BanUserInput = {
@@ -342,10 +327,10 @@ export type CreateApiKeyResult = {
   entity: ApiKey;
 };
 
-export type CreateServiceAccountWorkspaceMemberInput = {
-  name: Scalars["String"]["input"];
-  permissions?: InputMaybe<Array<Scalars["String"]["input"]>>;
-  roles?: InputMaybe<Array<Scalars["String"]["input"]>>;
+export type CreateInvitationInput = {
+  email: Scalars["String"]["input"];
+  expiresIn?: InputMaybe<Scalars["Int"]["input"]>;
+  roles: Array<Scalars["String"]["input"]>;
 };
 
 export type CreateUserInput = {
@@ -360,141 +345,191 @@ export type CreateWorkspaceInput = {
   name: Scalars["String"]["input"];
 };
 
-export type CreateWorkspaceInvitationInput = {
-  email: Scalars["String"]["input"];
-  expiresIn?: InputMaybe<Scalars["Int"]["input"]>;
-  roles: Array<Scalars["String"]["input"]>;
+export type CreateWorkspacePayload = {
+  __typename?: "CreateWorkspacePayload";
+  id: Scalars["ID"]["output"];
 };
 
-export type ListUsersInput = {
-  limit?: InputMaybe<Scalars["Int"]["input"]>;
-  offset?: InputMaybe<Scalars["Int"]["input"]>;
-  search?: InputMaybe<Scalars["String"]["input"]>;
+export type DeleteUserPayload = {
+  __typename?: "DeleteUserPayload";
+  id: Scalars["ID"]["output"];
 };
+
+export type DeleteWorkspacePayload = {
+  __typename?: "DeleteWorkspacePayload";
+  id: Scalars["ID"]["output"];
+};
+
+export type Invitation = {
+  __typename?: "Invitation";
+  createdAt: Scalars["DateTime"]["output"];
+  email: Scalars["String"]["output"];
+  expiresAt: Scalars["DateTime"]["output"];
+  id: Scalars["ID"]["output"];
+  inviter: User;
+  roles: Array<Scalars["String"]["output"]>;
+  status: InvitationStatus;
+  workspace: Workspace;
+};
+
+export type InvitationConnection = {
+  __typename?: "InvitationConnection";
+  /** A list of edges. */
+  edges: Array<InvitationEdge>;
+  /** Information to aid in pagination. */
+  pageInfo: PageInfo;
+  /** Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact. */
+  totalCount: Scalars["Int"]["output"];
+  /** Indicates whether totalCount is exact or a lower bound. */
+  totalCountRelation: TotalCountRelation;
+};
+
+/** An auto-generated type which holds one Invitation and a cursor during pagination. */
+export type InvitationEdge = {
+  __typename?: "InvitationEdge";
+  /** A cursor for use in pagination. */
+  cursor: Scalars["String"]["output"];
+  /** The item at the end of InvitationEdge. */
+  node: Invitation;
+};
+
+/** Ordering options for invitation connections */
+export type InvitationOrder = {
+  /** The ordering direction. */
+  direction: OrderDirection;
+  /** The field to order invitations by. */
+  field: InvitationOrderField;
+};
+
+/** Properties by which invitation connections can be ordered. */
+export enum InvitationOrderField {
+  CREATED_AT = "CREATED_AT",
+  ID = "ID",
+}
+
+export enum InvitationStatus {
+  ACCEPTED = "ACCEPTED",
+  CANCELED = "CANCELED",
+  PENDING = "PENDING",
+  REJECTED = "REJECTED",
+}
+
+export type LeaveWorkspacePayload = {
+  __typename?: "LeaveWorkspacePayload";
+  memberId: Scalars["ID"]["output"];
+};
+
+export type Member = {
+  __typename?: "Member";
+  createdAt: Scalars["DateTime"]["output"];
+  email?: Maybe<Scalars["String"]["output"]>;
+  id: Scalars["ID"]["output"];
+  name: Scalars["String"]["output"];
+  permissions: Array<Scalars["String"]["output"]>;
+  roles: Array<Scalars["String"]["output"]>;
+  status: MemberStatus;
+  updatedAt: Scalars["DateTime"]["output"];
+  user?: Maybe<User>;
+};
+
+export type MemberConnection = {
+  __typename?: "MemberConnection";
+  /** A list of edges. */
+  edges: Array<MemberEdge>;
+  /** Information to aid in pagination. */
+  pageInfo: PageInfo;
+  /** Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact. */
+  totalCount: Scalars["Int"]["output"];
+  /** Indicates whether totalCount is exact or a lower bound. */
+  totalCountRelation: TotalCountRelation;
+};
+
+/** An auto-generated type which holds one Member and a cursor during pagination. */
+export type MemberEdge = {
+  __typename?: "MemberEdge";
+  /** A cursor for use in pagination. */
+  cursor: Scalars["String"]["output"];
+  /** The item at the end of MemberEdge. */
+  node: Member;
+};
+
+/** Ordering options for member connections */
+export type MemberOrder = {
+  /** The ordering direction. */
+  direction: OrderDirection;
+  /** The field to order members by. */
+  field: MemberOrderField;
+};
+
+/** Properties by which member connections can be ordered. */
+export enum MemberOrderField {
+  CREATED_AT = "CREATED_AT",
+  ID = "ID",
+}
+
+export enum MemberStatus {
+  ACTIVE = "ACTIVE",
+  DISABLED = "DISABLED",
+}
 
 export type Mutation = {
   __typename?: "Mutation";
-  acceptWorkspaceInvitation: AcceptWorkspaceInvitationResult;
-  addWorkspaceMember: WorkspaceMember;
-  authChangeEmail: Scalars["Boolean"]["output"];
-  authChangePassword: AuthChangePasswordResultType;
-  authDeleteUser: AuthDeleteUserResultType;
-  authLinkSocialAccount: AuthLinkSocialAccountResultType;
-  authRefreshToken: AuthRefreshedTokenType;
-  authRequestPasswordReset: AuthRequestPasswordResetResultType;
-  authResetPassword: Scalars["Boolean"]["output"];
-  authRevokeOtherSessions: Scalars["Boolean"]["output"];
-  authRevokeSession: Scalars["Boolean"]["output"];
-  authRevokeSessions: Scalars["Boolean"]["output"];
-  authSendVerificationEmail: Scalars["Boolean"]["output"];
-  authSetPassword: Scalars["Boolean"]["output"];
-  authSignIn: AuthSignInResultType;
-  authSignInSocial: AuthSignInSocialResultType;
-  authSignOut: Scalars["Boolean"]["output"];
-  authSignUp: AuthSignUpResultType;
-  authUnlinkAccount: Scalars["Boolean"]["output"];
-  authUpdateUser: Scalars["Boolean"]["output"];
+  acceptInvitation: AcceptInvitationResult;
+  addMember: Member;
   banUser: User;
-  cancelWorkspaceInvitation: WorkspaceInvitation;
-  createApiKey: CreateApiKeyResult;
-  createServiceAccountWorkspaceMember: WorkspaceMember;
+  cancelInvitation: Invitation;
+  changeCurrentUserEmail: Scalars["Boolean"]["output"];
+  changeCurrentUserPassword: AuthChangePasswordResultType;
+  createInvitation: Invitation;
   createUser: User;
   createUserApiKey: CreateApiKeyResult;
-  createWorkspace: Workspace;
-  createWorkspaceInvitation: WorkspaceInvitation;
-  deleteApiKey: ApiKey;
-  deleteUser: User;
+  createWorkspace: CreateWorkspacePayload;
+  createWorkspaceApiKey: CreateApiKeyResult;
+  deleteCurrentUser: AuthDeleteUserResultType;
+  deleteUser: DeleteUserPayload;
   deleteUserApiKey: ApiKey;
-  deleteWorkspace: Workspace;
+  deleteWorkspace: DeleteWorkspacePayload;
+  deleteWorkspaceApiKey: ApiKey;
   impersonateUser: User;
-  leaveWorkspace: WorkspaceMember;
-  rejectWorkspaceInvitation: WorkspaceInvitation;
-  /** @deprecated Use deleteWorkspace instead */
-  removeWorkspace: Workspace;
-  removeWorkspaceMember: WorkspaceMember;
-  revokeUserSession: Scalars["Boolean"]["output"];
+  leaveWorkspace: LeaveWorkspacePayload;
+  linkCurrentUserAccount: AuthLinkSocialAccountResultType;
+  rejectInvitation: Invitation;
+  removeMember: RemoveMemberPayload;
+  requestPasswordReset: AuthRequestPasswordResetResultType;
+  resetPassword: Scalars["Boolean"]["output"];
+  revokeCurrentUserOtherSessions: Scalars["Boolean"]["output"];
+  revokeCurrentUserSession: Scalars["Boolean"]["output"];
+  revokeCurrentUserSessions: Scalars["Boolean"]["output"];
+  revokeSession: Scalars["Boolean"]["output"];
   revokeUserSessions: Scalars["Boolean"]["output"];
+  sendVerificationEmail: Scalars["Boolean"]["output"];
+  setCurrentUserPassword: Scalars["Boolean"]["output"];
+  setMemberPermissions: Member;
+  setMemberRoles: Member;
   setUserPassword: Scalars["Boolean"]["output"];
   setUserPermissions: User;
   setUserRoles: User;
-  setWorkspaceMemberPermissions: WorkspaceMember;
+  signIn: AuthSignInResultType;
+  signInSocial: AuthSignInSocialResultType;
+  signOut: Scalars["Boolean"]["output"];
+  signUp: AuthSignUpResultType;
   stopImpersonating?: Maybe<User>;
-  transferWorkspaceOwnership: WorkspaceMember;
   unbanUser: User;
-  updateApiKey: ApiKey;
+  unlinkCurrentUserAccount: Scalars["Boolean"]["output"];
+  updateCurrentUser: Scalars["Boolean"]["output"];
+  updateMember?: Maybe<Member>;
   updateUser: User;
   updateUserApiKey: ApiKey;
   updateWorkspace: Workspace;
-  updateWorkspaceMember?: Maybe<WorkspaceMember>;
-  updateWorkspaceMemberRole: WorkspaceMember;
+  updateWorkspaceApiKey: ApiKey;
 };
 
-export type MutationAcceptWorkspaceInvitationArgs = {
-  invitationId: Scalars["ID"]["input"];
+export type MutationAcceptInvitationArgs = {
+  id: Scalars["ID"]["input"];
 };
 
-export type MutationAddWorkspaceMemberArgs = {
-  input: AddWorkspaceMemberInput;
-};
-
-export type MutationAuthChangeEmailArgs = {
-  input: AuthChangeEmailInput;
-};
-
-export type MutationAuthChangePasswordArgs = {
-  input: AuthChangePasswordInput;
-};
-
-export type MutationAuthDeleteUserArgs = {
-  input?: InputMaybe<AuthDeleteUserInput>;
-};
-
-export type MutationAuthLinkSocialAccountArgs = {
-  input: AuthLinkSocialAccountInput;
-};
-
-export type MutationAuthRefreshTokenArgs = {
-  input: AuthAccountSelectorInput;
-};
-
-export type MutationAuthRequestPasswordResetArgs = {
-  input: AuthRequestPasswordResetInput;
-};
-
-export type MutationAuthResetPasswordArgs = {
-  input: AuthResetPasswordInput;
-};
-
-export type MutationAuthRevokeSessionArgs = {
-  sessionId: Scalars["ID"]["input"];
-};
-
-export type MutationAuthSendVerificationEmailArgs = {
-  input: AuthSendVerificationEmailInput;
-};
-
-export type MutationAuthSetPasswordArgs = {
-  newPassword: Scalars["String"]["input"];
-};
-
-export type MutationAuthSignInArgs = {
-  input: AuthSignInInput;
-};
-
-export type MutationAuthSignInSocialArgs = {
-  input: AuthSignInSocialInput;
-};
-
-export type MutationAuthSignUpArgs = {
-  input: AuthSignUpInput;
-};
-
-export type MutationAuthUnlinkAccountArgs = {
-  accountId: Scalars["ID"]["input"];
-};
-
-export type MutationAuthUpdateUserArgs = {
-  input: AuthUpdateUserInput;
+export type MutationAddMemberArgs = {
+  input: AddMemberInput;
 };
 
 export type MutationBanUserArgs = {
@@ -502,16 +537,20 @@ export type MutationBanUserArgs = {
   input?: InputMaybe<BanUserInput>;
 };
 
-export type MutationCancelWorkspaceInvitationArgs = {
-  invitationId: Scalars["ID"]["input"];
+export type MutationCancelInvitationArgs = {
+  id: Scalars["ID"]["input"];
 };
 
-export type MutationCreateApiKeyArgs = {
-  input: CreateApiKeyInput;
+export type MutationChangeCurrentUserEmailArgs = {
+  input: AuthChangeEmailInput;
 };
 
-export type MutationCreateServiceAccountWorkspaceMemberArgs = {
-  input: CreateServiceAccountWorkspaceMemberInput;
+export type MutationChangeCurrentUserPasswordArgs = {
+  input: AuthChangePasswordInput;
+};
+
+export type MutationCreateInvitationArgs = {
+  input: CreateInvitationInput;
 };
 
 export type MutationCreateUserArgs = {
@@ -526,12 +565,12 @@ export type MutationCreateWorkspaceArgs = {
   input: CreateWorkspaceInput;
 };
 
-export type MutationCreateWorkspaceInvitationArgs = {
-  input: CreateWorkspaceInvitationInput;
+export type MutationCreateWorkspaceApiKeyArgs = {
+  input: CreateApiKeyInput;
 };
 
-export type MutationDeleteApiKeyArgs = {
-  id: Scalars["ID"]["input"];
+export type MutationDeleteCurrentUserArgs = {
+  input?: InputMaybe<AuthDeleteUserInput>;
 };
 
 export type MutationDeleteUserArgs = {
@@ -542,25 +581,67 @@ export type MutationDeleteUserApiKeyArgs = {
   id: Scalars["ID"]["input"];
 };
 
+export type MutationDeleteWorkspaceArgs = {
+  id: Scalars["ID"]["input"];
+};
+
+export type MutationDeleteWorkspaceApiKeyArgs = {
+  id: Scalars["ID"]["input"];
+};
+
 export type MutationImpersonateUserArgs = {
   id: Scalars["ID"]["input"];
 };
 
-export type MutationRejectWorkspaceInvitationArgs = {
-  invitationId: Scalars["ID"]["input"];
+export type MutationLinkCurrentUserAccountArgs = {
+  input: AuthLinkSocialAccountInput;
 };
 
-export type MutationRemoveWorkspaceMemberArgs = {
+export type MutationRejectInvitationArgs = {
   id: Scalars["ID"]["input"];
 };
 
-export type MutationRevokeUserSessionArgs = {
-  sessionId: Scalars["ID"]["input"];
+export type MutationRemoveMemberArgs = {
+  id: Scalars["ID"]["input"];
+};
+
+export type MutationRequestPasswordResetArgs = {
+  input: AuthRequestPasswordResetInput;
+};
+
+export type MutationResetPasswordArgs = {
+  input: AuthResetPasswordInput;
+};
+
+export type MutationRevokeCurrentUserSessionArgs = {
+  id: Scalars["ID"]["input"];
+};
+
+export type MutationRevokeSessionArgs = {
+  id: Scalars["ID"]["input"];
   userId: Scalars["ID"]["input"];
 };
 
 export type MutationRevokeUserSessionsArgs = {
   userId: Scalars["ID"]["input"];
+};
+
+export type MutationSendVerificationEmailArgs = {
+  input: AuthSendVerificationEmailInput;
+};
+
+export type MutationSetCurrentUserPasswordArgs = {
+  newPassword: Scalars["String"]["input"];
+};
+
+export type MutationSetMemberPermissionsArgs = {
+  id: Scalars["ID"]["input"];
+  input: SetMemberPermissionsInput;
+};
+
+export type MutationSetMemberRolesArgs = {
+  id: Scalars["ID"]["input"];
+  input: SetMemberRolesInput;
 };
 
 export type MutationSetUserPasswordArgs = {
@@ -578,22 +659,33 @@ export type MutationSetUserRolesArgs = {
   input: SetUserRolesInput;
 };
 
-export type MutationSetWorkspaceMemberPermissionsArgs = {
-  id: Scalars["ID"]["input"];
-  input: SetWorkspaceMemberPermissionsInput;
+export type MutationSignInArgs = {
+  input: AuthSignInInput;
 };
 
-export type MutationTransferWorkspaceOwnershipArgs = {
-  memberId: Scalars["ID"]["input"];
+export type MutationSignInSocialArgs = {
+  input: AuthSignInSocialInput;
+};
+
+export type MutationSignUpArgs = {
+  input: AuthSignUpInput;
 };
 
 export type MutationUnbanUserArgs = {
   id: Scalars["ID"]["input"];
 };
 
-export type MutationUpdateApiKeyArgs = {
+export type MutationUnlinkCurrentUserAccountArgs = {
   id: Scalars["ID"]["input"];
-  input: UpdateApiKeyInput;
+};
+
+export type MutationUpdateCurrentUserArgs = {
+  input: AuthUpdateUserInput;
+};
+
+export type MutationUpdateMemberArgs = {
+  id: Scalars["ID"]["input"];
+  input: UpdateMemberInput;
 };
 
 export type MutationUpdateUserArgs = {
@@ -607,17 +699,13 @@ export type MutationUpdateUserApiKeyArgs = {
 };
 
 export type MutationUpdateWorkspaceArgs = {
+  id: Scalars["ID"]["input"];
   input: UpdateWorkspaceInput;
 };
 
-export type MutationUpdateWorkspaceMemberArgs = {
+export type MutationUpdateWorkspaceApiKeyArgs = {
   id: Scalars["ID"]["input"];
-  input: UpdateWorkspaceMemberInput;
-};
-
-export type MutationUpdateWorkspaceMemberRoleArgs = {
-  id: Scalars["ID"]["input"];
-  input: UpdateWorkspaceMemberRoleInput;
+  input: UpdateApiKeyInput;
 };
 
 export enum OrderDirection {
@@ -638,115 +726,109 @@ export type PageInfo = {
 
 export type Query = {
   __typename?: "Query";
-  apiKey?: Maybe<ApiKey>;
-  apiKeys: ApiKeyConnection;
-  authAccessToken: AuthAccessTokenType;
-  authAccountInfo: AuthAccountInfoType;
-  authAccounts: Array<AuthAccountType>;
-  authSessions: Array<AuthSessionType>;
-  authSocialProviders: Array<AuthSocialProviderType>;
-  currentAuthSession?: Maybe<AuthSessionType>;
+  currentMember?: Maybe<Member>;
+  currentSession?: Maybe<Session>;
   currentUser: User;
   currentUserAbilityRules: Array<AuthAbilityRuleType>;
-  currentUserWorkspaceInvitations: Array<WorkspaceInvitation>;
   currentWorkspace?: Maybe<Workspace>;
   currentWorkspaceAbilityRules: Array<AuthAbilityRuleType>;
-  currentWorkspaceMember?: Maybe<WorkspaceMember>;
+  invitation?: Maybe<Invitation>;
+  member?: Maybe<Member>;
+  socialProviders: Array<AuthSocialProviderType>;
   user?: Maybe<User>;
-  userApiKey?: Maybe<ApiKey>;
-  userApiKeys: ApiKeyConnection;
   userPermissions: Array<Scalars["String"]["output"]>;
-  userRoles: Array<AuthRoleType>;
-  userSessions: Array<AuthSessionType>;
-  users: UserListType;
+  userRoles: Array<Scalars["String"]["output"]>;
+  users: UserConnection;
   workspace?: Maybe<Workspace>;
-  workspaceInvitation?: Maybe<WorkspaceInvitation>;
-  workspaceInvitations: Array<WorkspaceInvitation>;
-  workspaceMember?: Maybe<WorkspaceMember>;
-  workspaceMembers: WorkspaceMemberConnection;
   workspacePermissions: Array<Scalars["String"]["output"]>;
-  workspaceRoles: Array<AuthRoleType>;
-  workspaces: WorkspaceConnection;
+  workspaceRoles: Array<Scalars["String"]["output"]>;
 };
 
-export type QueryApiKeyArgs = {
+export type QueryInvitationArgs = {
   id: Scalars["ID"]["input"];
 };
 
-export type QueryApiKeysArgs = {
-  after?: InputMaybe<Scalars["String"]["input"]>;
-  before?: InputMaybe<Scalars["String"]["input"]>;
-  filter?: InputMaybe<Scalars["ApiKeyFilter"]["input"]>;
-  first?: InputMaybe<Scalars["Int"]["input"]>;
-  last?: InputMaybe<Scalars["Int"]["input"]>;
-  orderBy?: InputMaybe<ApiKeyOrder>;
-  query?: InputMaybe<Scalars["String"]["input"]>;
-};
-
-export type QueryAuthAccessTokenArgs = {
-  input: AuthAccountSelectorInput;
-};
-
-export type QueryAuthAccountInfoArgs = {
-  input: AuthAccountSelectorInput;
+export type QueryMemberArgs = {
+  id: Scalars["ID"]["input"];
 };
 
 export type QueryUserArgs = {
   id: Scalars["ID"]["input"];
 };
 
-export type QueryUserApiKeyArgs = {
-  id: Scalars["ID"]["input"];
-};
-
-export type QueryUserApiKeysArgs = {
+export type QueryUsersArgs = {
   after?: InputMaybe<Scalars["String"]["input"]>;
   before?: InputMaybe<Scalars["String"]["input"]>;
-  filter?: InputMaybe<Scalars["ApiKeyFilter"]["input"]>;
+  filter?: InputMaybe<Scalars["UserFilter"]["input"]>;
   first?: InputMaybe<Scalars["Int"]["input"]>;
   last?: InputMaybe<Scalars["Int"]["input"]>;
-  orderBy?: InputMaybe<ApiKeyOrder>;
+  orderBy?: InputMaybe<UserOrder>;
   query?: InputMaybe<Scalars["String"]["input"]>;
-};
-
-export type QueryUserSessionsArgs = {
-  userId: Scalars["ID"]["input"];
-};
-
-export type QueryUsersArgs = {
-  input?: InputMaybe<ListUsersInput>;
 };
 
 export type QueryWorkspaceArgs = {
   id: Scalars["ID"]["input"];
 };
 
-export type QueryWorkspaceInvitationArgs = {
-  id: Scalars["ID"]["input"];
+export type RemoveMemberPayload = {
+  __typename?: "RemoveMemberPayload";
+  id: Scalars["ID"]["output"];
 };
 
-export type QueryWorkspaceMemberArgs = {
-  id: Scalars["ID"]["input"];
+export type Session = {
+  __typename?: "Session";
+  createdAt: Scalars["DateTime"]["output"];
+  current: Scalars["Boolean"]["output"];
+  expiresAt: Scalars["DateTime"]["output"];
+  id: Scalars["ID"]["output"];
+  impersonatedBy?: Maybe<User>;
+  impersonatedById?: Maybe<Scalars["ID"]["output"]>;
+  ipAddress?: Maybe<Scalars["String"]["output"]>;
+  updatedAt: Scalars["DateTime"]["output"];
+  userAgent?: Maybe<Scalars["String"]["output"]>;
 };
 
-export type QueryWorkspaceMembersArgs = {
-  after?: InputMaybe<Scalars["String"]["input"]>;
-  before?: InputMaybe<Scalars["String"]["input"]>;
-  filter?: InputMaybe<Scalars["WorkspaceMemberFilter"]["input"]>;
-  first?: InputMaybe<Scalars["Int"]["input"]>;
-  last?: InputMaybe<Scalars["Int"]["input"]>;
-  orderBy?: InputMaybe<WorkspaceMemberOrder>;
-  query?: InputMaybe<Scalars["String"]["input"]>;
+export type SessionConnection = {
+  __typename?: "SessionConnection";
+  /** A list of edges. */
+  edges: Array<SessionEdge>;
+  /** Information to aid in pagination. */
+  pageInfo: PageInfo;
+  /** Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact. */
+  totalCount: Scalars["Int"]["output"];
+  /** Indicates whether totalCount is exact or a lower bound. */
+  totalCountRelation: TotalCountRelation;
 };
 
-export type QueryWorkspacesArgs = {
-  after?: InputMaybe<Scalars["String"]["input"]>;
-  before?: InputMaybe<Scalars["String"]["input"]>;
-  filter?: InputMaybe<Scalars["WorkspaceFilter"]["input"]>;
-  first?: InputMaybe<Scalars["Int"]["input"]>;
-  last?: InputMaybe<Scalars["Int"]["input"]>;
-  orderBy?: InputMaybe<WorkspaceOrder>;
-  query?: InputMaybe<Scalars["String"]["input"]>;
+/** An auto-generated type which holds one Session and a cursor during pagination. */
+export type SessionEdge = {
+  __typename?: "SessionEdge";
+  /** A cursor for use in pagination. */
+  cursor: Scalars["String"]["output"];
+  /** The item at the end of SessionEdge. */
+  node: Session;
+};
+
+/** Ordering options for session connections */
+export type SessionOrder = {
+  /** The ordering direction. */
+  direction: OrderDirection;
+  /** The field to order sessions by. */
+  field: SessionOrderField;
+};
+
+/** Properties by which session connections can be ordered. */
+export enum SessionOrderField {
+  CREATED_AT = "CREATED_AT",
+  ID = "ID",
+}
+
+export type SetMemberPermissionsInput = {
+  permissions: Array<Scalars["String"]["input"]>;
+};
+
+export type SetMemberRolesInput = {
+  roles: Array<Scalars["String"]["input"]>;
 };
 
 export type SetUserPasswordInput = {
@@ -761,10 +843,6 @@ export type SetUserRolesInput = {
   roles: Array<Scalars["String"]["input"]>;
 };
 
-export type SetWorkspaceMemberPermissionsInput = {
-  permissions: Array<Scalars["String"]["input"]>;
-};
-
 export enum TotalCountRelation {
   EQ = "EQ",
   GTE = "GTE",
@@ -775,6 +853,12 @@ export type UpdateApiKeyInput = {
   expiresAt?: InputMaybe<Scalars["DateTime"]["input"]>;
   name?: InputMaybe<Scalars["String"]["input"]>;
   permissions?: InputMaybe<Array<Scalars["String"]["input"]>>;
+};
+
+export type UpdateMemberInput = {
+  email?: InputMaybe<Scalars["String"]["input"]>;
+  name?: InputMaybe<Scalars["String"]["input"]>;
+  status?: InputMaybe<MemberStatus>;
 };
 
 export type UpdateUserInput = {
@@ -788,18 +872,11 @@ export type UpdateWorkspaceInput = {
   name?: InputMaybe<Scalars["String"]["input"]>;
 };
 
-export type UpdateWorkspaceMemberInput = {
-  email?: InputMaybe<Scalars["String"]["input"]>;
-  name?: InputMaybe<Scalars["String"]["input"]>;
-  status?: InputMaybe<WorkspaceMemberStatus>;
-};
-
-export type UpdateWorkspaceMemberRoleInput = {
-  roles: Array<Scalars["String"]["input"]>;
-};
-
 export type User = {
   __typename?: "User";
+  accounts: AccountConnection;
+  apiKey?: Maybe<ApiKey>;
+  apiKeys: ApiKeyConnection;
   banExpiresAt?: Maybe<Scalars["DateTime"]["output"]>;
   banReason?: Maybe<Scalars["String"]["output"]>;
   banned: Scalars["Boolean"]["output"];
@@ -808,28 +885,149 @@ export type User = {
   emailVerified: Scalars["Boolean"]["output"];
   id: Scalars["ID"]["output"];
   image?: Maybe<Scalars["String"]["output"]>;
+  invitations: InvitationConnection;
   name: Scalars["String"]["output"];
   permissions: Array<Scalars["String"]["output"]>;
   roles: Array<Scalars["String"]["output"]>;
+  sessions: SessionConnection;
   updatedAt: Scalars["DateTime"]["output"];
+  workspaces: WorkspaceConnection;
 };
 
-export type UserListType = {
-  __typename?: "UserListType";
-  limit: Scalars["Int"]["output"];
-  offset: Scalars["Int"]["output"];
-  total: Scalars["Int"]["output"];
-  users: Array<User>;
+export type UserAccountsArgs = {
+  after?: InputMaybe<Scalars["String"]["input"]>;
+  before?: InputMaybe<Scalars["String"]["input"]>;
+  filter?: InputMaybe<Scalars["AccountFilter"]["input"]>;
+  first?: InputMaybe<Scalars["Int"]["input"]>;
+  last?: InputMaybe<Scalars["Int"]["input"]>;
+  orderBy?: InputMaybe<AccountOrder>;
+  query?: InputMaybe<Scalars["String"]["input"]>;
 };
+
+export type UserApiKeyArgs = {
+  id: Scalars["ID"]["input"];
+};
+
+export type UserApiKeysArgs = {
+  after?: InputMaybe<Scalars["String"]["input"]>;
+  before?: InputMaybe<Scalars["String"]["input"]>;
+  filter?: InputMaybe<Scalars["ApiKeyFilter"]["input"]>;
+  first?: InputMaybe<Scalars["Int"]["input"]>;
+  last?: InputMaybe<Scalars["Int"]["input"]>;
+  orderBy?: InputMaybe<ApiKeyOrder>;
+  query?: InputMaybe<Scalars["String"]["input"]>;
+};
+
+export type UserInvitationsArgs = {
+  after?: InputMaybe<Scalars["String"]["input"]>;
+  before?: InputMaybe<Scalars["String"]["input"]>;
+  filter?: InputMaybe<Scalars["InvitationFilter"]["input"]>;
+  first?: InputMaybe<Scalars["Int"]["input"]>;
+  last?: InputMaybe<Scalars["Int"]["input"]>;
+  orderBy?: InputMaybe<InvitationOrder>;
+  query?: InputMaybe<Scalars["String"]["input"]>;
+};
+
+export type UserSessionsArgs = {
+  after?: InputMaybe<Scalars["String"]["input"]>;
+  before?: InputMaybe<Scalars["String"]["input"]>;
+  filter?: InputMaybe<Scalars["SessionFilter"]["input"]>;
+  first?: InputMaybe<Scalars["Int"]["input"]>;
+  last?: InputMaybe<Scalars["Int"]["input"]>;
+  orderBy?: InputMaybe<SessionOrder>;
+  query?: InputMaybe<Scalars["String"]["input"]>;
+};
+
+export type UserWorkspacesArgs = {
+  after?: InputMaybe<Scalars["String"]["input"]>;
+  before?: InputMaybe<Scalars["String"]["input"]>;
+  filter?: InputMaybe<Scalars["WorkspaceFilter"]["input"]>;
+  first?: InputMaybe<Scalars["Int"]["input"]>;
+  last?: InputMaybe<Scalars["Int"]["input"]>;
+  orderBy?: InputMaybe<WorkspaceOrder>;
+  query?: InputMaybe<Scalars["String"]["input"]>;
+};
+
+export type UserConnection = {
+  __typename?: "UserConnection";
+  /** A list of edges. */
+  edges: Array<UserEdge>;
+  /** Information to aid in pagination. */
+  pageInfo: PageInfo;
+  /** Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact. */
+  totalCount: Scalars["Int"]["output"];
+  /** Indicates whether totalCount is exact or a lower bound. */
+  totalCountRelation: TotalCountRelation;
+};
+
+/** An auto-generated type which holds one User and a cursor during pagination. */
+export type UserEdge = {
+  __typename?: "UserEdge";
+  /** A cursor for use in pagination. */
+  cursor: Scalars["String"]["output"];
+  /** The item at the end of UserEdge. */
+  node: User;
+};
+
+/** Ordering options for user connections */
+export type UserOrder = {
+  /** The ordering direction. */
+  direction: OrderDirection;
+  /** The field to order users by. */
+  field: UserOrderField;
+};
+
+/** Properties by which user connections can be ordered. */
+export enum UserOrderField {
+  CREATED_AT = "CREATED_AT",
+  ID = "ID",
+}
 
 export type Workspace = {
   __typename?: "Workspace";
+  apiKey?: Maybe<ApiKey>;
+  apiKeys: ApiKeyConnection;
   createdAt: Scalars["DateTime"]["output"];
   deletedAt?: Maybe<Scalars["DateTime"]["output"]>;
-  features: Array<WorkspaceFeature>;
   id: Scalars["ID"]["output"];
+  invitations: InvitationConnection;
+  members: MemberConnection;
   name: Scalars["String"]["output"];
   updatedAt: Scalars["DateTime"]["output"];
+};
+
+export type WorkspaceApiKeyArgs = {
+  id: Scalars["ID"]["input"];
+};
+
+export type WorkspaceApiKeysArgs = {
+  after?: InputMaybe<Scalars["String"]["input"]>;
+  before?: InputMaybe<Scalars["String"]["input"]>;
+  filter?: InputMaybe<Scalars["ApiKeyFilter"]["input"]>;
+  first?: InputMaybe<Scalars["Int"]["input"]>;
+  last?: InputMaybe<Scalars["Int"]["input"]>;
+  orderBy?: InputMaybe<ApiKeyOrder>;
+  query?: InputMaybe<Scalars["String"]["input"]>;
+};
+
+export type WorkspaceInvitationsArgs = {
+  after?: InputMaybe<Scalars["String"]["input"]>;
+  before?: InputMaybe<Scalars["String"]["input"]>;
+  filter?: InputMaybe<Scalars["InvitationFilter"]["input"]>;
+  first?: InputMaybe<Scalars["Int"]["input"]>;
+  last?: InputMaybe<Scalars["Int"]["input"]>;
+  orderBy?: InputMaybe<InvitationOrder>;
+  query?: InputMaybe<Scalars["String"]["input"]>;
+};
+
+export type WorkspaceMembersArgs = {
+  after?: InputMaybe<Scalars["String"]["input"]>;
+  before?: InputMaybe<Scalars["String"]["input"]>;
+  filter?: InputMaybe<Scalars["MemberFilter"]["input"]>;
+  first?: InputMaybe<Scalars["Int"]["input"]>;
+  last?: InputMaybe<Scalars["Int"]["input"]>;
+  orderBy?: InputMaybe<MemberOrder>;
+  query?: InputMaybe<Scalars["String"]["input"]>;
 };
 
 export type WorkspaceConnection = {
@@ -852,88 +1050,6 @@ export type WorkspaceEdge = {
   /** The item at the end of WorkspaceEdge. */
   node: Workspace;
 };
-
-export enum WorkspaceFeature {
-  AI = "AI",
-}
-
-export type WorkspaceInvitation = {
-  __typename?: "WorkspaceInvitation";
-  createdAt: Scalars["DateTime"]["output"];
-  email: Scalars["String"]["output"];
-  expiresAt: Scalars["DateTime"]["output"];
-  id: Scalars["ID"]["output"];
-  inviter: User;
-  roles: Array<Scalars["String"]["output"]>;
-  status: WorkspaceInvitationStatus;
-  workspace: Workspace;
-};
-
-export enum WorkspaceInvitationStatus {
-  ACCEPTED = "ACCEPTED",
-  CANCELED = "CANCELED",
-  PENDING = "PENDING",
-  REJECTED = "REJECTED",
-}
-
-export type WorkspaceMember = {
-  __typename?: "WorkspaceMember";
-  createdAt: Scalars["DateTime"]["output"];
-  email?: Maybe<Scalars["String"]["output"]>;
-  id: Scalars["ID"]["output"];
-  name: Scalars["String"]["output"];
-  permissions: Array<Scalars["String"]["output"]>;
-  roles: Array<Scalars["String"]["output"]>;
-  status: WorkspaceMemberStatus;
-  type: WorkspaceMemberType;
-  updatedAt: Scalars["DateTime"]["output"];
-  user?: Maybe<User>;
-};
-
-export type WorkspaceMemberConnection = {
-  __typename?: "WorkspaceMemberConnection";
-  /** A list of edges. */
-  edges: Array<WorkspaceMemberEdge>;
-  /** Information to aid in pagination. */
-  pageInfo: PageInfo;
-  /** Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact. */
-  totalCount: Scalars["Int"]["output"];
-  /** Indicates whether totalCount is exact or a lower bound. */
-  totalCountRelation: TotalCountRelation;
-};
-
-/** An auto-generated type which holds one WorkspaceMember and a cursor during pagination. */
-export type WorkspaceMemberEdge = {
-  __typename?: "WorkspaceMemberEdge";
-  /** A cursor for use in pagination. */
-  cursor: Scalars["String"]["output"];
-  /** The item at the end of WorkspaceMemberEdge. */
-  node: WorkspaceMember;
-};
-
-/** Ordering options for workspacemember connections */
-export type WorkspaceMemberOrder = {
-  /** The ordering direction. */
-  direction: OrderDirection;
-  /** The field to order workspacemembers by. */
-  field: WorkspaceMemberOrderField;
-};
-
-/** Properties by which workspacemember connections can be ordered. */
-export enum WorkspaceMemberOrderField {
-  CREATED_AT = "CREATED_AT",
-  ID = "ID",
-}
-
-export enum WorkspaceMemberStatus {
-  ACTIVE = "ACTIVE",
-  DISABLED = "DISABLED",
-}
-
-export enum WorkspaceMemberType {
-  SERVICE_ACCOUNT = "SERVICE_ACCOUNT",
-  USER = "USER",
-}
 
 /** Ordering options for workspace connections */
 export type WorkspaceOrder = {
@@ -968,11 +1084,15 @@ export type GetAdminAccessFromAdminLayoutQuery = {
 
 export type GetUserFromUserRouteQueryVariables = Exact<{
   id: Scalars["ID"]["input"];
+  sessionsAfter?: InputMaybe<Scalars["String"]["input"]>;
+  includeSessions?: Scalars["Boolean"]["input"];
+  includeCatalogs?: Scalars["Boolean"]["input"];
 }>;
 
 export type GetUserFromUserRouteQuery = {
   __typename?: "Query";
-  userPermissions: Array<string>;
+  userRoles?: Array<string>;
+  userPermissions?: Array<string>;
   user?: {
     __typename?: "User";
     id: string;
@@ -987,20 +1107,26 @@ export type GetUserFromUserRouteQuery = {
     banExpiresAt?: any | null;
     createdAt: any;
     updatedAt: any;
+    sessions?: {
+      __typename?: "SessionConnection";
+      pageInfo: {
+        __typename?: "PageInfo";
+        hasNextPage: boolean;
+        endCursor?: string | null;
+      };
+      edges: Array<{
+        __typename?: "SessionEdge";
+        node: {
+          __typename?: "Session";
+          id: string;
+          expiresAt: any;
+          ipAddress?: string | null;
+          userAgent?: string | null;
+          createdAt: any;
+        };
+      }>;
+    };
   } | null;
-  userRoles: Array<{
-    __typename?: "AuthRoleType";
-    name: string;
-    permissions: Array<string>;
-  }>;
-  userSessions: Array<{
-    __typename?: "AuthSessionType";
-    id: string;
-    expiresAt: any;
-    ipAddress?: string | null;
-    userAgent?: string | null;
-    createdAt: any;
-  }>;
 };
 
 export type UpdateManagedUserFromUserRouteMutationVariables = Exact<{
@@ -1087,12 +1213,12 @@ export type SetUserPasswordFromUserRouteMutation = {
 
 export type RevokeUserSessionFromUserRouteMutationVariables = Exact<{
   userId: Scalars["ID"]["input"];
-  sessionId: Scalars["ID"]["input"];
+  id: Scalars["ID"]["input"];
 }>;
 
 export type RevokeUserSessionFromUserRouteMutation = {
   __typename?: "Mutation";
-  revokeUserSession: boolean;
+  revokeSession: boolean;
 };
 
 export type RevokeUserSessionsFromUserRouteMutationVariables = Exact<{
@@ -1110,7 +1236,7 @@ export type DeleteUserFromUserRouteMutationVariables = Exact<{
 
 export type DeleteUserFromUserRouteMutation = {
   __typename?: "Mutation";
-  deleteUser: { __typename?: "User"; id: string };
+  deleteUser: { __typename?: "DeleteUserPayload"; id: string };
 };
 
 export type ImpersonateUserFromUserRouteMutationVariables = Exact<{
@@ -1123,25 +1249,37 @@ export type ImpersonateUserFromUserRouteMutation = {
 };
 
 export type GetUsersFromUsersRouteQueryVariables = Exact<{
-  input?: InputMaybe<ListUsersInput>;
+  first?: InputMaybe<Scalars["Int"]["input"]>;
+  last?: InputMaybe<Scalars["Int"]["input"]>;
+  after?: InputMaybe<Scalars["String"]["input"]>;
+  before?: InputMaybe<Scalars["String"]["input"]>;
+  filter?: InputMaybe<Scalars["UserFilter"]["input"]>;
 }>;
 
 export type GetUsersFromUsersRouteQuery = {
   __typename?: "Query";
   users: {
-    __typename?: "UserListType";
-    total: number;
-    limit: number;
-    offset: number;
-    users: Array<{
-      __typename?: "User";
-      id: string;
-      name: string;
-      email: string;
-      emailVerified: boolean;
-      banned: boolean;
-      createdAt: any;
+    __typename?: "UserConnection";
+    totalCount: number;
+    edges: Array<{
+      __typename?: "UserEdge";
+      node: {
+        __typename?: "User";
+        id: string;
+        name: string;
+        email: string;
+        emailVerified: boolean;
+        banned: boolean;
+        createdAt: any;
+      };
     }>;
+    pageInfo: {
+      __typename?: "PageInfo";
+      hasNextPage: boolean;
+      hasPreviousPage: boolean;
+      startCursor?: string | null;
+      endCursor?: string | null;
+    };
   };
 };
 
@@ -1162,13 +1300,13 @@ export type CreateUserFromUsersRouteMutation = {
   };
 };
 
-export type AuthSignOutFromSidebarUserMutationVariables = Exact<{
+export type SignOutFromSidebarUserMutationVariables = Exact<{
   [key: string]: never;
 }>;
 
-export type AuthSignOutFromSidebarUserMutation = {
+export type SignOutFromSidebarUserMutation = {
   __typename?: "Mutation";
-  authSignOut: boolean;
+  signOut: boolean;
 };
 
 export type GetCurrentUserFromCurrentUserContextQueryVariables = Exact<{
@@ -1202,6 +1340,15 @@ export type GetCurrentUserFromAuthenticatedRouteQueryVariables = Exact<{
 export type GetCurrentUserFromAuthenticatedRouteQuery = {
   __typename?: "Query";
   currentUser: { __typename?: "User"; id: string };
+  currentUserAbilityRules: Array<{
+    __typename?: "AuthAbilityRuleType";
+    actions: Array<string>;
+    subjects: Array<string>;
+    fields?: Array<string> | null;
+    conditions?: Record<string, unknown> | null;
+    inverted: boolean;
+    reason?: string | null;
+  }>;
 };
 
 export type GetImpersonationFromAuthenticatedRouteQueryVariables = Exact<{
@@ -1210,8 +1357,8 @@ export type GetImpersonationFromAuthenticatedRouteQueryVariables = Exact<{
 
 export type GetImpersonationFromAuthenticatedRouteQuery = {
   __typename?: "Query";
-  currentAuthSession?: {
-    __typename?: "AuthSessionType";
+  currentSession?: {
+    __typename?: "Session";
     impersonatedById?: string | null;
   } | null;
 };
@@ -1237,29 +1384,32 @@ export type GetUserApiKeysFromUserApiKeysRouteQueryVariables = Exact<{
 
 export type GetUserApiKeysFromUserApiKeysRouteQuery = {
   __typename?: "Query";
-  userApiKeys: {
-    __typename?: "ApiKeyConnection";
-    edges: Array<{
-      __typename?: "ApiKeyEdge";
-      node: {
-        __typename?: "ApiKey";
-        id: string;
-        name: string;
-        start?: string | null;
-        prefix?: string | null;
-        enabled: boolean;
-        permissions: Array<string>;
-        createdAt: any;
-        lastUsedAt?: any | null;
-        expiresAt?: any | null;
+  currentUser: {
+    __typename?: "User";
+    apiKeys: {
+      __typename?: "ApiKeyConnection";
+      edges: Array<{
+        __typename?: "ApiKeyEdge";
+        node: {
+          __typename?: "ApiKey";
+          id: string;
+          name: string;
+          start?: string | null;
+          prefix?: string | null;
+          enabled: boolean;
+          permissions: Array<string>;
+          createdAt: any;
+          lastUsedAt?: any | null;
+          expiresAt?: any | null;
+        };
+      }>;
+      pageInfo: {
+        __typename?: "PageInfo";
+        endCursor?: string | null;
+        hasNextPage: boolean;
+        hasPreviousPage: boolean;
+        startCursor?: string | null;
       };
-    }>;
-    pageInfo: {
-      __typename?: "PageInfo";
-      endCursor?: string | null;
-      hasNextPage: boolean;
-      hasPreviousPage: boolean;
-      startCursor?: string | null;
     };
   };
 };
@@ -1350,7 +1500,7 @@ export type UpdateUserFromUserRouteMutationVariables = Exact<{
 
 export type UpdateUserFromUserRouteMutation = {
   __typename?: "Mutation";
-  authUpdateUser: boolean;
+  updateCurrentUser: boolean;
 };
 
 export type ChangeEmailFromUserRouteMutationVariables = Exact<{
@@ -1359,7 +1509,7 @@ export type ChangeEmailFromUserRouteMutationVariables = Exact<{
 
 export type ChangeEmailFromUserRouteMutation = {
   __typename?: "Mutation";
-  authChangeEmail: boolean;
+  changeCurrentUserEmail: boolean;
 };
 
 export type ChangePasswordFromUserSecurityMutationVariables = Exact<{
@@ -1368,36 +1518,51 @@ export type ChangePasswordFromUserSecurityMutationVariables = Exact<{
 
 export type ChangePasswordFromUserSecurityMutation = {
   __typename?: "Mutation";
-  authChangePassword: {
+  changeCurrentUserPassword: {
     __typename?: "AuthChangePasswordResultType";
     token?: string | null;
   };
 };
 
 export type GetSessionsFromUserSecurityQueryVariables = Exact<{
-  [key: string]: never;
+  after?: InputMaybe<Scalars["String"]["input"]>;
 }>;
 
 export type GetSessionsFromUserSecurityQuery = {
   __typename?: "Query";
-  authSessions: Array<{
-    __typename?: "AuthSessionType";
+  currentUser: {
+    __typename?: "User";
     id: string;
-    current: boolean;
-    expiresAt: any;
-    ipAddress?: string | null;
-    userAgent?: string | null;
-    createdAt: any;
-  }>;
+    sessions: {
+      __typename?: "SessionConnection";
+      pageInfo: {
+        __typename?: "PageInfo";
+        hasNextPage: boolean;
+        endCursor?: string | null;
+      };
+      edges: Array<{
+        __typename?: "SessionEdge";
+        node: {
+          __typename?: "Session";
+          id: string;
+          current: boolean;
+          expiresAt: any;
+          ipAddress?: string | null;
+          userAgent?: string | null;
+          createdAt: any;
+        };
+      }>;
+    };
+  };
 };
 
 export type RevokeSessionFromUserSecurityMutationVariables = Exact<{
-  sessionId: Scalars["ID"]["input"];
+  id: Scalars["ID"]["input"];
 }>;
 
 export type RevokeSessionFromUserSecurityMutation = {
   __typename?: "Mutation";
-  authRevokeSession: boolean;
+  revokeCurrentUserSession: boolean;
 };
 
 export type RevokeOtherSessionsFromUserSecurityMutationVariables = Exact<{
@@ -1406,24 +1571,40 @@ export type RevokeOtherSessionsFromUserSecurityMutationVariables = Exact<{
 
 export type RevokeOtherSessionsFromUserSecurityMutation = {
   __typename?: "Mutation";
-  authRevokeOtherSessions: boolean;
+  revokeCurrentUserOtherSessions: boolean;
 };
 
 export type GetAccountsFromUserSecurityQueryVariables = Exact<{
-  [key: string]: never;
+  after?: InputMaybe<Scalars["String"]["input"]>;
 }>;
 
 export type GetAccountsFromUserSecurityQuery = {
   __typename?: "Query";
-  authAccounts: Array<{
-    __typename?: "AuthAccountType";
+  currentUser: {
+    __typename?: "User";
     id: string;
-    accountId: string;
-    issuer: string;
-    providerId: string;
-    scopes: Array<string>;
-    createdAt: any;
-  }>;
+    accounts: {
+      __typename?: "AccountConnection";
+      totalCount: number;
+      pageInfo: {
+        __typename?: "PageInfo";
+        hasNextPage: boolean;
+        endCursor?: string | null;
+      };
+      edges: Array<{
+        __typename?: "AccountEdge";
+        node: {
+          __typename?: "Account";
+          id: string;
+          accountId: string;
+          issuer: string;
+          providerId: string;
+          scopes: Array<string>;
+          createdAt: any;
+        };
+      }>;
+    };
+  };
 };
 
 export type GetSocialProvidersFromUserSecurityQueryVariables = Exact<{
@@ -1432,7 +1613,7 @@ export type GetSocialProvidersFromUserSecurityQueryVariables = Exact<{
 
 export type GetSocialProvidersFromUserSecurityQuery = {
   __typename?: "Query";
-  authSocialProviders: Array<{
+  socialProviders: Array<{
     __typename?: "AuthSocialProviderType";
     id: string;
     name: string;
@@ -1440,12 +1621,12 @@ export type GetSocialProvidersFromUserSecurityQuery = {
 };
 
 export type UnlinkAccountFromUserSecurityMutationVariables = Exact<{
-  accountId: Scalars["ID"]["input"];
+  id: Scalars["ID"]["input"];
 }>;
 
 export type UnlinkAccountFromUserSecurityMutation = {
   __typename?: "Mutation";
-  authUnlinkAccount: boolean;
+  unlinkCurrentUserAccount: boolean;
 };
 
 export type LinkAccountFromUserSecurityMutationVariables = Exact<{
@@ -1454,23 +1635,10 @@ export type LinkAccountFromUserSecurityMutationVariables = Exact<{
 
 export type LinkAccountFromUserSecurityMutation = {
   __typename?: "Mutation";
-  authLinkSocialAccount: {
+  linkCurrentUserAccount: {
     __typename?: "AuthLinkSocialAccountResultType";
     url: string;
     redirect: boolean;
-  };
-};
-
-export type RefreshAccountFromUserSecurityMutationVariables = Exact<{
-  input: AuthAccountSelectorInput;
-}>;
-
-export type RefreshAccountFromUserSecurityMutation = {
-  __typename?: "Mutation";
-  authRefreshToken: {
-    __typename?: "AuthRefreshedTokenType";
-    accountId: string;
-    providerId: string;
   };
 };
 
@@ -1480,7 +1648,7 @@ export type DeleteUserFromUserSecurityMutationVariables = Exact<{
 
 export type DeleteUserFromUserSecurityMutation = {
   __typename?: "Mutation";
-  authDeleteUser: {
+  deleteCurrentUser: {
     __typename?: "AuthDeleteUserResultType";
     success: boolean;
     message: string;
@@ -1493,68 +1661,86 @@ export type GetWorkspacesFromUserWorkspacesRouteQueryVariables = Exact<{
   first?: InputMaybe<Scalars["Int"]["input"]>;
   last?: InputMaybe<Scalars["Int"]["input"]>;
   orderBy?: InputMaybe<WorkspaceOrder>;
+  invitationFirst?: InputMaybe<Scalars["Int"]["input"]>;
+  invitationLast?: InputMaybe<Scalars["Int"]["input"]>;
+  invitationAfter?: InputMaybe<Scalars["String"]["input"]>;
+  invitationBefore?: InputMaybe<Scalars["String"]["input"]>;
 }>;
 
 export type GetWorkspacesFromUserWorkspacesRouteQuery = {
   __typename?: "Query";
-  workspaces: {
-    __typename?: "WorkspaceConnection";
-    edges: Array<{
-      __typename?: "WorkspaceEdge";
-      node: {
-        __typename?: "Workspace";
-        id: string;
-        name: string;
-        createdAt: any;
-        updatedAt: any;
+  currentUser: {
+    __typename?: "User";
+    workspaces: {
+      __typename?: "WorkspaceConnection";
+      edges: Array<{
+        __typename?: "WorkspaceEdge";
+        node: {
+          __typename?: "Workspace";
+          id: string;
+          name: string;
+          createdAt: any;
+          updatedAt: any;
+        };
+      }>;
+      pageInfo: {
+        __typename?: "PageInfo";
+        endCursor?: string | null;
+        hasNextPage: boolean;
+        hasPreviousPage: boolean;
+        startCursor?: string | null;
       };
-    }>;
-    pageInfo: {
-      __typename?: "PageInfo";
-      endCursor?: string | null;
-      hasNextPage: boolean;
-      hasPreviousPage: boolean;
-      startCursor?: string | null;
+    };
+    invitations: {
+      __typename?: "InvitationConnection";
+      edges: Array<{
+        __typename?: "InvitationEdge";
+        node: {
+          __typename?: "Invitation";
+          id: string;
+          roles: Array<string>;
+          expiresAt: any;
+          workspace: { __typename?: "Workspace"; id: string; name: string };
+        };
+      }>;
+      pageInfo: {
+        __typename?: "PageInfo";
+        endCursor?: string | null;
+        startCursor?: string | null;
+        hasNextPage: boolean;
+        hasPreviousPage: boolean;
+      };
     };
   };
-  currentUserWorkspaceInvitations: Array<{
-    __typename?: "WorkspaceInvitation";
-    id: string;
-    roles: Array<string>;
-    expiresAt: any;
-    workspace: { __typename?: "Workspace"; id: string; name: string };
-  }>;
 };
 
-export type AcceptWorkspaceInvitationFromUserWorkspacesRouteMutationVariables =
-  Exact<{
-    invitationId: Scalars["ID"]["input"];
-  }>;
+export type AcceptInvitationFromUserWorkspacesRouteMutationVariables = Exact<{
+  id: Scalars["ID"]["input"];
+}>;
 
-export type AcceptWorkspaceInvitationFromUserWorkspacesRouteMutation = {
+export type AcceptInvitationFromUserWorkspacesRouteMutation = {
   __typename?: "Mutation";
-  acceptWorkspaceInvitation: {
-    __typename?: "AcceptWorkspaceInvitationResult";
+  acceptInvitation: {
+    __typename?: "AcceptInvitationResult";
     invitation: {
-      __typename?: "WorkspaceInvitation";
+      __typename?: "Invitation";
       id: string;
-      status: WorkspaceInvitationStatus;
+      status: InvitationStatus;
     };
-    member: { __typename?: "WorkspaceMember"; id: string };
+    member: { __typename?: "Member"; id: string };
   };
 };
 
-export type RejectWorkspaceInvitationFromUserWorkspacesRouteMutationVariables =
-  Exact<{
-    invitationId: Scalars["ID"]["input"];
-  }>;
+export type RejectInvitationFromUserWorkspacesRouteMutationVariables = Exact<{
+  id: Scalars["ID"]["input"];
+}>;
 
-export type RejectWorkspaceInvitationFromUserWorkspacesRouteMutation = {
+export type RejectInvitationFromUserWorkspacesRouteMutation = {
   __typename?: "Mutation";
-  rejectWorkspaceInvitation: {
-    __typename?: "WorkspaceInvitation";
+  rejectInvitation: {
+    __typename?: "Invitation";
     id: string;
-    status: WorkspaceInvitationStatus;
+    status: InvitationStatus;
   };
 };
 
@@ -1570,40 +1756,43 @@ export type GetApiKeysFromApiKeysRouteQueryVariables = Exact<{
 
 export type GetApiKeysFromApiKeysRouteQuery = {
   __typename?: "Query";
-  apiKeys: {
-    __typename?: "ApiKeyConnection";
-    edges: Array<{
-      __typename?: "ApiKeyEdge";
-      node: {
-        __typename?: "ApiKey";
-        id: string;
-        name: string;
-        start?: string | null;
-        prefix?: string | null;
-        enabled: boolean;
-        permissions: Array<string>;
-        createdAt: any;
-        lastUsedAt?: any | null;
-        expiresAt?: any | null;
+  currentWorkspace?: {
+    __typename?: "Workspace";
+    apiKeys: {
+      __typename?: "ApiKeyConnection";
+      edges: Array<{
+        __typename?: "ApiKeyEdge";
+        node: {
+          __typename?: "ApiKey";
+          id: string;
+          name: string;
+          start?: string | null;
+          prefix?: string | null;
+          enabled: boolean;
+          permissions: Array<string>;
+          createdAt: any;
+          lastUsedAt?: any | null;
+          expiresAt?: any | null;
+        };
+      }>;
+      pageInfo: {
+        __typename?: "PageInfo";
+        endCursor?: string | null;
+        hasNextPage: boolean;
+        hasPreviousPage: boolean;
+        startCursor?: string | null;
       };
-    }>;
-    pageInfo: {
-      __typename?: "PageInfo";
-      endCursor?: string | null;
-      hasNextPage: boolean;
-      hasPreviousPage: boolean;
-      startCursor?: string | null;
     };
-  };
+  } | null;
 };
 
-export type CreateApiKeyFromApiKeysRouteMutationVariables = Exact<{
+export type CreateWorkspaceApiKeyFromApiKeysRouteMutationVariables = Exact<{
   input: CreateApiKeyInput;
 }>;
 
-export type CreateApiKeyFromApiKeysRouteMutation = {
+export type CreateWorkspaceApiKeyFromApiKeysRouteMutation = {
   __typename?: "Mutation";
-  createApiKey: {
+  createWorkspaceApiKey: {
     __typename?: "CreateApiKeyResult";
     apiKey: string;
     entity: {
@@ -1621,14 +1810,14 @@ export type CreateApiKeyFromApiKeysRouteMutation = {
   };
 };
 
-export type UpdateApiKeyFromApiKeysRouteMutationVariables = Exact<{
+export type UpdateWorkspaceApiKeyFromApiKeysRouteMutationVariables = Exact<{
   id: Scalars["ID"]["input"];
   input: UpdateApiKeyInput;
 }>;
 
-export type UpdateApiKeyFromApiKeysRouteMutation = {
+export type UpdateWorkspaceApiKeyFromApiKeysRouteMutation = {
   __typename?: "Mutation";
-  updateApiKey: {
+  updateWorkspaceApiKey: {
     __typename?: "ApiKey";
     id: string;
     name: string;
@@ -1642,13 +1831,13 @@ export type UpdateApiKeyFromApiKeysRouteMutation = {
   };
 };
 
-export type DeleteApiKeyFromApiKeysRouteMutationVariables = Exact<{
+export type DeleteWorkspaceApiKeyFromApiKeysRouteMutationVariables = Exact<{
   id: Scalars["ID"]["input"];
 }>;
 
-export type DeleteApiKeyFromApiKeysRouteMutation = {
+export type DeleteWorkspaceApiKeyFromApiKeysRouteMutation = {
   __typename?: "Mutation";
-  deleteApiKey: {
+  deleteWorkspaceApiKey: {
     __typename?: "ApiKey";
     id: string;
     name: string;
@@ -1672,21 +1861,50 @@ export type GetWorkspacesFromWorkspaceSwitcherQueryVariables = Exact<{
 
 export type GetWorkspacesFromWorkspaceSwitcherQuery = {
   __typename?: "Query";
-  workspaces: {
-    __typename?: "WorkspaceConnection";
-    totalCount: number;
-    edges: Array<{
-      __typename?: "WorkspaceEdge";
-      node: { __typename?: "Workspace"; id: string; name: string };
-    }>;
-    pageInfo: {
-      __typename?: "PageInfo";
-      hasNextPage: boolean;
-      hasPreviousPage: boolean;
-      startCursor?: string | null;
-      endCursor?: string | null;
+  currentUser: {
+    __typename?: "User";
+    workspaces: {
+      __typename?: "WorkspaceConnection";
+      totalCount: number;
+      edges: Array<{
+        __typename?: "WorkspaceEdge";
+        node: { __typename?: "Workspace"; id: string; name: string };
+      }>;
+      pageInfo: {
+        __typename?: "PageInfo";
+        hasNextPage: boolean;
+        hasPreviousPage: boolean;
+        startCursor?: string | null;
+        endCursor?: string | null;
+      };
     };
   };
+};
+
+export type GetCurrentMemberFromMemberContextQueryVariables = Exact<{
+  [key: string]: never;
+}>;
+
+export type GetCurrentMemberFromMemberContextQuery = {
+  __typename?: "Query";
+  currentMember?: {
+    __typename?: "Member";
+    id: string;
+    roles: Array<string>;
+    permissions: Array<string>;
+    status: MemberStatus;
+    name: string;
+    email?: string | null;
+  } | null;
+  currentWorkspaceAbilityRules: Array<{
+    __typename?: "AuthAbilityRuleType";
+    actions: Array<string>;
+    subjects: Array<string>;
+    fields?: Array<string> | null;
+    conditions?: Record<string, unknown> | null;
+    inverted: boolean;
+    reason?: string | null;
+  }>;
 };
 
 export type GetCurrentWorkspaceFromWorkspaceContextQueryVariables = Exact<{
@@ -1699,36 +1917,9 @@ export type GetCurrentWorkspaceFromWorkspaceContextQuery = {
     __typename?: "Workspace";
     id: string;
     name: string;
-    features: Array<WorkspaceFeature>;
     createdAt: any;
     updatedAt: any;
   } | null;
-};
-
-export type GetCurrentWorkspaceMemberFromWorkspaceMemberContextQueryVariables =
-  Exact<{ [key: string]: never }>;
-
-export type GetCurrentWorkspaceMemberFromWorkspaceMemberContextQuery = {
-  __typename?: "Query";
-  currentWorkspaceMember?: {
-    __typename?: "WorkspaceMember";
-    id: string;
-    roles: Array<string>;
-    name: string;
-    email?: string | null;
-    permissions: Array<string>;
-    status: WorkspaceMemberStatus;
-    user?: { __typename?: "User"; email: string } | null;
-  } | null;
-  currentWorkspaceAbilityRules: Array<{
-    __typename?: "AuthAbilityRuleType";
-    actions: Array<string>;
-    subjects: Array<string>;
-    fields?: Array<string> | null;
-    conditions?: Record<string, unknown> | null;
-    inverted: boolean;
-    reason?: string | null;
-  }>;
 };
 
 export type GetCurrentWorkspaceFromWorkspaceLayoutQueryVariables = Exact<{
@@ -1738,8 +1929,8 @@ export type GetCurrentWorkspaceFromWorkspaceLayoutQueryVariables = Exact<{
 export type GetCurrentWorkspaceFromWorkspaceLayoutQuery = {
   __typename?: "Query";
   workspace?: { __typename?: "Workspace"; id: string } | null;
-  currentWorkspaceMember?: {
-    __typename?: "WorkspaceMember";
+  currentMember?: {
+    __typename?: "Member";
     id: string;
     roles: Array<string>;
   } | null;
@@ -1754,199 +1945,199 @@ export type GetCurrentWorkspaceFromWorkspaceLayoutQuery = {
   }>;
 };
 
-export type GetCurrentWorkspaceMemberFromMemberRouteQueryVariables = Exact<{
+export type GetCurrentMemberFromMemberRouteQueryVariables = Exact<{
   [key: string]: never;
 }>;
 
-export type GetCurrentWorkspaceMemberFromMemberRouteQuery = {
+export type GetCurrentMemberFromMemberRouteQuery = {
   __typename?: "Query";
-  currentWorkspaceMember?: {
-    __typename?: "WorkspaceMember";
+  currentMember?: {
+    __typename?: "Member";
     id: string;
     roles: Array<string>;
     permissions: Array<string>;
   } | null;
 };
 
-export type GetWorkspaceMemberFromMemberRouteQueryVariables = Exact<{
+export type GetMemberFromMemberRouteQueryVariables = Exact<{
   id: Scalars["ID"]["input"];
 }>;
 
-export type GetWorkspaceMemberFromMemberRouteQuery = {
+export type GetMemberFromMemberRouteQuery = {
   __typename?: "Query";
+  workspaceRoles: Array<string>;
   workspacePermissions: Array<string>;
-  workspaceMember?: {
-    __typename?: "WorkspaceMember";
+  member?: {
+    __typename?: "Member";
     id: string;
-    name: string;
-    email?: string | null;
     roles: Array<string>;
     permissions: Array<string>;
-    status: WorkspaceMemberStatus;
-    user?: { __typename?: "User"; email: string } | null;
-  } | null;
-  workspaceRoles: Array<{
-    __typename?: "AuthRoleType";
-    name: string;
-    permissions: Array<string>;
-  }>;
-};
-
-export type UpdateWorkspaceMemberFromMemberRouteMutationVariables = Exact<{
-  id: Scalars["ID"]["input"];
-  input: UpdateWorkspaceMemberInput;
-}>;
-
-export type UpdateWorkspaceMemberFromMemberRouteMutation = {
-  __typename?: "Mutation";
-  updateWorkspaceMember?: {
-    __typename?: "WorkspaceMember";
-    id: string;
+    status: MemberStatus;
     name: string;
     email?: string | null;
-    roles: Array<string>;
-    permissions: Array<string>;
-    status: WorkspaceMemberStatus;
-    user?: { __typename?: "User"; email: string } | null;
   } | null;
 };
 
-export type UpdateWorkspaceMemberRoleFromMemberRouteMutationVariables = Exact<{
+export type UpdateMemberFromMemberRouteMutationVariables = Exact<{
   id: Scalars["ID"]["input"];
-  input: UpdateWorkspaceMemberRoleInput;
+  input: UpdateMemberInput;
 }>;
 
-export type UpdateWorkspaceMemberRoleFromMemberRouteMutation = {
+export type UpdateMemberFromMemberRouteMutation = {
   __typename?: "Mutation";
-  updateWorkspaceMemberRole: {
-    __typename?: "WorkspaceMember";
+  updateMember?: {
+    __typename?: "Member";
     id: string;
-    roles: Array<string>;
-  };
+    name: string;
+    email?: string | null;
+  } | null;
 };
 
-export type SetWorkspaceMemberPermissionsFromMemberRouteMutationVariables =
-  Exact<{
-    id: Scalars["ID"]["input"];
-    input: SetWorkspaceMemberPermissionsInput;
-  }>;
+export type SetMemberRolesFromMemberRouteMutationVariables = Exact<{
+  id: Scalars["ID"]["input"];
+  input: SetMemberRolesInput;
+}>;
 
-export type SetWorkspaceMemberPermissionsFromMemberRouteMutation = {
+export type SetMemberRolesFromMemberRouteMutation = {
   __typename?: "Mutation";
-  setWorkspaceMemberPermissions: {
-    __typename?: "WorkspaceMember";
+  setMemberRoles: { __typename?: "Member"; id: string; roles: Array<string> };
+};
+
+export type SetMemberPermissionsFromMemberRouteMutationVariables = Exact<{
+  id: Scalars["ID"]["input"];
+  input: SetMemberPermissionsInput;
+}>;
+
+export type SetMemberPermissionsFromMemberRouteMutation = {
+  __typename?: "Mutation";
+  setMemberPermissions: {
+    __typename?: "Member";
     id: string;
     permissions: Array<string>;
   };
 };
 
-export type RemoveWorkspaceMemberFromMemberRouteMutationVariables = Exact<{
+export type RemoveMemberFromMemberRouteMutationVariables = Exact<{
   id: Scalars["ID"]["input"];
 }>;
 
-export type RemoveWorkspaceMemberFromMemberRouteMutation = {
+export type RemoveMemberFromMemberRouteMutation = {
   __typename?: "Mutation";
-  removeWorkspaceMember: { __typename?: "WorkspaceMember"; id: string };
+  removeMember: { __typename?: "RemoveMemberPayload"; id: string };
 };
 
-export type CreateWorkspaceInvitationFromInviteMemberDialogMutationVariables =
-  Exact<{
-    input: CreateWorkspaceInvitationInput;
-  }>;
+export type CreateInvitationFromInviteMemberDialogMutationVariables = Exact<{
+  input: CreateInvitationInput;
+}>;
 
-export type CreateWorkspaceInvitationFromInviteMemberDialogMutation = {
+export type CreateInvitationFromInviteMemberDialogMutation = {
   __typename?: "Mutation";
-  createWorkspaceInvitation: { __typename?: "WorkspaceInvitation"; id: string };
+  createInvitation: { __typename?: "Invitation"; id: string };
 };
 
-export type GetWorkspaceMembersFromMembersRouteQueryVariables = Exact<{
+export type GetMembersFromMembersRouteQueryVariables = Exact<{
   after?: InputMaybe<Scalars["String"]["input"]>;
   before?: InputMaybe<Scalars["String"]["input"]>;
   first?: InputMaybe<Scalars["Int"]["input"]>;
   last?: InputMaybe<Scalars["Int"]["input"]>;
-  filter?: InputMaybe<Scalars["WorkspaceMemberFilter"]["input"]>;
-  orderBy?: InputMaybe<WorkspaceMemberOrder>;
+  filter?: InputMaybe<Scalars["MemberFilter"]["input"]>;
+  orderBy?: InputMaybe<MemberOrder>;
   query?: InputMaybe<Scalars["String"]["input"]>;
+  invitationFirst?: InputMaybe<Scalars["Int"]["input"]>;
+  invitationLast?: InputMaybe<Scalars["Int"]["input"]>;
+  invitationAfter?: InputMaybe<Scalars["String"]["input"]>;
+  invitationBefore?: InputMaybe<Scalars["String"]["input"]>;
+  invitationFilter?: InputMaybe<Scalars["InvitationFilter"]["input"]>;
 }>;
 
-export type GetWorkspaceMembersFromMembersRouteQuery = {
+export type GetMembersFromMembersRouteQuery = {
   __typename?: "Query";
-  workspaceMembers: {
-    __typename?: "WorkspaceMemberConnection";
-    edges: Array<{
-      __typename?: "WorkspaceMemberEdge";
-      node: {
-        __typename?: "WorkspaceMember";
-        id: string;
-        name: string;
-        email?: string | null;
-        roles: Array<string>;
-        status: WorkspaceMemberStatus;
-        createdAt: any;
-        user?: {
-          __typename?: "User";
+  currentWorkspace?: {
+    __typename?: "Workspace";
+    members: {
+      __typename?: "MemberConnection";
+      edges: Array<{
+        __typename?: "MemberEdge";
+        node: {
+          __typename?: "Member";
           id: string;
+          roles: Array<string>;
+          status: MemberStatus;
+          createdAt: any;
           name: string;
-          email: string;
-        } | null;
+          email?: string | null;
+        };
+      }>;
+      pageInfo: {
+        __typename?: "PageInfo";
+        endCursor?: string | null;
+        hasNextPage: boolean;
+        hasPreviousPage: boolean;
+        startCursor?: string | null;
       };
-    }>;
-    pageInfo: {
-      __typename?: "PageInfo";
-      endCursor?: string | null;
-      hasNextPage: boolean;
-      hasPreviousPage: boolean;
-      startCursor?: string | null;
     };
-  };
-  workspaceInvitations: Array<{
-    __typename?: "WorkspaceInvitation";
-    id: string;
-    email: string;
-    roles: Array<string>;
-    status: WorkspaceInvitationStatus;
-    expiresAt: any;
-  }>;
+    invitations: {
+      __typename?: "InvitationConnection";
+      edges: Array<{
+        __typename?: "InvitationEdge";
+        node: {
+          __typename?: "Invitation";
+          id: string;
+          email: string;
+          roles: Array<string>;
+          status: InvitationStatus;
+          expiresAt: any;
+        };
+      }>;
+      pageInfo: {
+        __typename?: "PageInfo";
+        endCursor?: string | null;
+        startCursor?: string | null;
+        hasNextPage: boolean;
+        hasPreviousPage: boolean;
+      };
+    };
+  } | null;
 };
 
-export type CancelWorkspaceInvitationFromMembersRouteMutationVariables = Exact<{
-  invitationId: Scalars["ID"]["input"];
-}>;
-
-export type CancelWorkspaceInvitationFromMembersRouteMutation = {
-  __typename?: "Mutation";
-  cancelWorkspaceInvitation: {
-    __typename?: "WorkspaceInvitation";
-    id: string;
-    status: WorkspaceInvitationStatus;
-  };
-};
-
-export type RemoveWorkspaceMemberFromMembersRouteMutationVariables = Exact<{
+export type CancelInvitationFromMembersRouteMutationVariables = Exact<{
   id: Scalars["ID"]["input"];
 }>;
 
-export type RemoveWorkspaceMemberFromMembersRouteMutation = {
+export type CancelInvitationFromMembersRouteMutation = {
   __typename?: "Mutation";
-  removeWorkspaceMember: { __typename?: "WorkspaceMember"; id: string };
+  cancelInvitation: {
+    __typename?: "Invitation";
+    id: string;
+    status: InvitationStatus;
+  };
 };
 
-export type UpdateWorkspaceMemberStatusFromMembersRouteMutationVariables =
-  Exact<{
-    id: Scalars["ID"]["input"];
-    input: UpdateWorkspaceMemberInput;
-  }>;
+export type RemoveMemberFromMembersRouteMutationVariables = Exact<{
+  id: Scalars["ID"]["input"];
+}>;
 
-export type UpdateWorkspaceMemberStatusFromMembersRouteMutation = {
+export type RemoveMemberFromMembersRouteMutation = {
   __typename?: "Mutation";
-  updateWorkspaceMember?: {
-    __typename?: "WorkspaceMember";
+  removeMember: { __typename?: "RemoveMemberPayload"; id: string };
+};
+
+export type UpdateMemberStatusFromMembersRouteMutationVariables = Exact<{
+  id: Scalars["ID"]["input"];
+  input: UpdateMemberInput;
+}>;
+
+export type UpdateMemberStatusFromMembersRouteMutation = {
+  __typename?: "Mutation";
+  updateMember?: {
+    __typename?: "Member";
     id: string;
-    status: WorkspaceMemberStatus;
+    status: MemberStatus;
   } | null;
 };
 
 export type UpdateWorkspaceFromSettingsRouteMutationVariables = Exact<{
+  id: Scalars["ID"]["input"];
   input: UpdateWorkspaceInput;
 }>;
 
@@ -1956,49 +2147,12 @@ export type UpdateWorkspaceFromSettingsRouteMutation = {
 };
 
 export type DeleteWorkspaceFromSettingsRouteMutationVariables = Exact<{
-  [key: string]: never;
+  id: Scalars["ID"]["input"];
 }>;
 
 export type DeleteWorkspaceFromSettingsRouteMutation = {
   __typename?: "Mutation";
-  deleteWorkspace: { __typename?: "Workspace"; id: string };
-};
-
-export type GetTransferCandidatesFromSettingsRouteQueryVariables = Exact<{
-  [key: string]: never;
-}>;
-
-export type GetTransferCandidatesFromSettingsRouteQuery = {
-  __typename?: "Query";
-  workspaceMembers: {
-    __typename?: "WorkspaceMemberConnection";
-    edges: Array<{
-      __typename?: "WorkspaceMemberEdge";
-      node: {
-        __typename?: "WorkspaceMember";
-        id: string;
-        name: string;
-        email?: string | null;
-        roles: Array<string>;
-        status: WorkspaceMemberStatus;
-        type: WorkspaceMemberType;
-      };
-    }>;
-  };
-};
-
-export type TransferWorkspaceOwnershipFromSettingsRouteMutationVariables =
-  Exact<{
-    memberId: Scalars["ID"]["input"];
-  }>;
-
-export type TransferWorkspaceOwnershipFromSettingsRouteMutation = {
-  __typename?: "Mutation";
-  transferWorkspaceOwnership: {
-    __typename?: "WorkspaceMember";
-    id: string;
-    roles: Array<string>;
-  };
+  deleteWorkspace: { __typename?: "DeleteWorkspacePayload"; id: string };
 };
 
 export type LeaveWorkspaceFromSettingsRouteMutationVariables = Exact<{
@@ -2007,7 +2161,7 @@ export type LeaveWorkspaceFromSettingsRouteMutationVariables = Exact<{
 
 export type LeaveWorkspaceFromSettingsRouteMutation = {
   __typename?: "Mutation";
-  leaveWorkspace: { __typename?: "WorkspaceMember"; id: string };
+  leaveWorkspace: { __typename?: "LeaveWorkspacePayload"; memberId: string };
 };
 
 export type CreateWorkspaceFromCreateWorkspaceFormMutationVariables = Exact<{
@@ -2016,7 +2170,7 @@ export type CreateWorkspaceFromCreateWorkspaceFormMutationVariables = Exact<{
 
 export type CreateWorkspaceFromCreateWorkspaceFormMutation = {
   __typename?: "Mutation";
-  createWorkspace: { __typename?: "Workspace"; id: string };
+  createWorkspace: { __typename?: "CreateWorkspacePayload"; id: string };
 };
 
 export type CreateWorkspaceFromCreateWorkspaceRouteMutationVariables = Exact<{
@@ -2025,7 +2179,7 @@ export type CreateWorkspaceFromCreateWorkspaceRouteMutationVariables = Exact<{
 
 export type CreateWorkspaceFromCreateWorkspaceRouteMutation = {
   __typename?: "Mutation";
-  createWorkspace: { __typename?: "Workspace"; id: string };
+  createWorkspace: { __typename?: "CreateWorkspacePayload"; id: string };
 };
 
 export type GetFirstWorkspaceFromWorkspacesRouteQueryVariables = Exact<{
@@ -2034,36 +2188,39 @@ export type GetFirstWorkspaceFromWorkspacesRouteQueryVariables = Exact<{
 
 export type GetFirstWorkspaceFromWorkspacesRouteQuery = {
   __typename?: "Query";
-  workspaces: {
-    __typename?: "WorkspaceConnection";
-    edges: Array<{
-      __typename?: "WorkspaceEdge";
-      node: { __typename?: "Workspace"; id: string };
-    }>;
+  currentUser: {
+    __typename?: "User";
+    workspaces: {
+      __typename?: "WorkspaceConnection";
+      edges: Array<{
+        __typename?: "WorkspaceEdge";
+        node: { __typename?: "Workspace"; id: string };
+      }>;
+    };
   };
 };
 
-export type AuthSignInFromLoginFormMutationVariables = Exact<{
+export type SignInFromLoginFormMutationVariables = Exact<{
   input: AuthSignInInput;
 }>;
 
-export type AuthSignInFromLoginFormMutation = {
+export type SignInFromLoginFormMutation = {
   __typename?: "Mutation";
-  authSignIn: {
+  signIn: {
     __typename?: "AuthSignInResultType";
-    user: { __typename?: "AuthUserType"; id: string };
+    user: { __typename?: "User"; id: string };
   };
 };
 
-export type AuthSignUpFromLoginFormMutationVariables = Exact<{
+export type SignUpFromLoginFormMutationVariables = Exact<{
   input: AuthSignUpInput;
 }>;
 
-export type AuthSignUpFromLoginFormMutation = {
+export type SignUpFromLoginFormMutation = {
   __typename?: "Mutation";
-  authSignUp: {
+  signUp: {
     __typename?: "AuthSignUpResultType";
-    user: { __typename?: "AuthUserType"; id: string };
+    user: { __typename?: "User"; id: string };
   };
 };
 
@@ -2073,20 +2230,20 @@ export type GetSocialProvidersFromLoginFormQueryVariables = Exact<{
 
 export type GetSocialProvidersFromLoginFormQuery = {
   __typename?: "Query";
-  authSocialProviders: Array<{
+  socialProviders: Array<{
     __typename?: "AuthSocialProviderType";
     id: string;
     name: string;
   }>;
 };
 
-export type AuthSignInSocialFromLoginFormMutationVariables = Exact<{
+export type SignInSocialFromLoginFormMutationVariables = Exact<{
   input: AuthSignInSocialInput;
 }>;
 
-export type AuthSignInSocialFromLoginFormMutation = {
+export type SignInSocialFromLoginFormMutation = {
   __typename?: "Mutation";
-  authSignInSocial: {
+  signInSocial: {
     __typename?: "AuthSignInSocialResultType";
     redirect: boolean;
     url?: string | null;
@@ -2099,7 +2256,7 @@ export type RequestPasswordResetFromForgotPasswordMutationVariables = Exact<{
 
 export type RequestPasswordResetFromForgotPasswordMutation = {
   __typename?: "Mutation";
-  authRequestPasswordReset: {
+  requestPasswordReset: {
     __typename?: "AuthRequestPasswordResetResultType";
     status: boolean;
   };
@@ -2120,7 +2277,7 @@ export type ResetPasswordFromResetPasswordMutationVariables = Exact<{
 
 export type ResetPasswordFromResetPasswordMutation = {
   __typename?: "Mutation";
-  authResetPassword: boolean;
+  resetPassword: boolean;
 };
 
 export type SendVerificationEmailFromVerifyEmailMutationVariables = Exact<{
@@ -2129,7 +2286,7 @@ export type SendVerificationEmailFromVerifyEmailMutationVariables = Exact<{
 
 export type SendVerificationEmailFromVerifyEmailMutation = {
   __typename?: "Mutation";
-  authSendVerificationEmail: boolean;
+  sendVerificationEmail: boolean;
 };
 
 export type GetCurrentUserFromInviteRouteQueryVariables = Exact<{
@@ -2141,43 +2298,38 @@ export type GetCurrentUserFromInviteRouteQuery = {
   currentUser: { __typename?: "User"; id: string; name: string; email: string };
 };
 
-export type GetWorkspaceInvitationFromInviteRouteQueryVariables = Exact<{
+export type GetInvitationFromInviteRouteQueryVariables = Exact<{
   id: Scalars["ID"]["input"];
 }>;
 
-export type GetWorkspaceInvitationFromInviteRouteQuery = {
+export type GetInvitationFromInviteRouteQuery = {
   __typename?: "Query";
-  workspaceInvitation?: {
-    __typename?: "WorkspaceInvitation";
+  invitation?: {
+    __typename?: "Invitation";
     id: string;
     email: string;
     roles: Array<string>;
-    status: WorkspaceInvitationStatus;
+    status: InvitationStatus;
     expiresAt: any;
     workspace: { __typename?: "Workspace"; id: string; name: string };
   } | null;
 };
 
-export type AcceptWorkspaceInvitationFromInviteRouteMutationVariables = Exact<{
-  invitationId: Scalars["ID"]["input"];
+export type AcceptInvitationFromInviteRouteMutationVariables = Exact<{
+  id: Scalars["ID"]["input"];
 }>;
 
-export type AcceptWorkspaceInvitationFromInviteRouteMutation = {
+export type AcceptInvitationFromInviteRouteMutation = {
   __typename?: "Mutation";
-  acceptWorkspaceInvitation: {
-    __typename?: "AcceptWorkspaceInvitationResult";
+  acceptInvitation: {
+    __typename?: "AcceptInvitationResult";
     invitation: {
-      __typename?: "WorkspaceInvitation";
+      __typename?: "Invitation";
       id: string;
-      status: WorkspaceInvitationStatus;
+      status: InvitationStatus;
       workspace: { __typename?: "Workspace"; id: string };
     };
-    member: {
-      __typename?: "WorkspaceMember";
-      id: string;
-      name: string;
-      roles: Array<string>;
-    };
+    member: { __typename?: "Member"; id: string; roles: Array<string> };
   };
 };
 
@@ -2230,6 +2382,44 @@ export const GetUserFromUserRouteDocument = {
             type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
           },
         },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "sessionsAfter" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "includeSessions" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: {
+              kind: "NamedType",
+              name: { kind: "Name", value: "Boolean" },
+            },
+          },
+          defaultValue: { kind: "BooleanValue", value: false },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "includeCatalogs" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: {
+              kind: "NamedType",
+              name: { kind: "Name", value: "Boolean" },
+            },
+          },
+          defaultValue: { kind: "BooleanValue", value: false },
+        },
       ],
       selectionSet: {
         kind: "SelectionSet",
@@ -2268,44 +2458,162 @@ export const GetUserFromUserRouteDocument = {
                 },
                 { kind: "Field", name: { kind: "Name", value: "createdAt" } },
                 { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "sessions" },
+                  arguments: [
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "first" },
+                      value: { kind: "IntValue", value: "20" },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "after" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "sessionsAfter" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "orderBy" },
+                      value: {
+                        kind: "ObjectValue",
+                        fields: [
+                          {
+                            kind: "ObjectField",
+                            name: { kind: "Name", value: "field" },
+                            value: { kind: "EnumValue", value: "CREATED_AT" },
+                          },
+                          {
+                            kind: "ObjectField",
+                            name: { kind: "Name", value: "direction" },
+                            value: { kind: "EnumValue", value: "DESC" },
+                          },
+                        ],
+                      },
+                    },
+                  ],
+                  directives: [
+                    {
+                      kind: "Directive",
+                      name: { kind: "Name", value: "include" },
+                      arguments: [
+                        {
+                          kind: "Argument",
+                          name: { kind: "Name", value: "if" },
+                          value: {
+                            kind: "Variable",
+                            name: { kind: "Name", value: "includeSessions" },
+                          },
+                        },
+                      ],
+                    },
+                  ],
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "pageInfo" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "hasNextPage" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "endCursor" },
+                            },
+                          ],
+                        },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "edges" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "node" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "id" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "expiresAt" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "ipAddress" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "userAgent" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "createdAt" },
+                                  },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
               ],
             },
           },
           {
             kind: "Field",
             name: { kind: "Name", value: "userRoles" },
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
-                { kind: "Field", name: { kind: "Name", value: "name" } },
-                { kind: "Field", name: { kind: "Name", value: "permissions" } },
-              ],
-            },
-          },
-          { kind: "Field", name: { kind: "Name", value: "userPermissions" } },
-          {
-            kind: "Field",
-            name: { kind: "Name", value: "userSessions" },
-            arguments: [
+            directives: [
               {
-                kind: "Argument",
-                name: { kind: "Name", value: "userId" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "id" },
-                },
+                kind: "Directive",
+                name: { kind: "Name", value: "include" },
+                arguments: [
+                  {
+                    kind: "Argument",
+                    name: { kind: "Name", value: "if" },
+                    value: {
+                      kind: "Variable",
+                      name: { kind: "Name", value: "includeCatalogs" },
+                    },
+                  },
+                ],
               },
             ],
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
-                { kind: "Field", name: { kind: "Name", value: "id" } },
-                { kind: "Field", name: { kind: "Name", value: "expiresAt" } },
-                { kind: "Field", name: { kind: "Name", value: "ipAddress" } },
-                { kind: "Field", name: { kind: "Name", value: "userAgent" } },
-                { kind: "Field", name: { kind: "Name", value: "createdAt" } },
-              ],
-            },
+          },
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "userPermissions" },
+            directives: [
+              {
+                kind: "Directive",
+                name: { kind: "Name", value: "include" },
+                arguments: [
+                  {
+                    kind: "Argument",
+                    name: { kind: "Name", value: "if" },
+                    value: {
+                      kind: "Variable",
+                      name: { kind: "Name", value: "includeCatalogs" },
+                    },
+                  },
+                ],
+              },
+            ],
           },
         ],
       },
@@ -2746,10 +3054,7 @@ export const RevokeUserSessionFromUserRouteDocument = {
         },
         {
           kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "sessionId" },
-          },
+          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
           type: {
             kind: "NonNullType",
             type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
@@ -2761,7 +3066,7 @@ export const RevokeUserSessionFromUserRouteDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "revokeUserSession" },
+            name: { kind: "Name", value: "revokeSession" },
             arguments: [
               {
                 kind: "Argument",
@@ -2773,10 +3078,10 @@ export const RevokeUserSessionFromUserRouteDocument = {
               },
               {
                 kind: "Argument",
-                name: { kind: "Name", value: "sessionId" },
+                name: { kind: "Name", value: "id" },
                 value: {
                   kind: "Variable",
-                  name: { kind: "Name", value: "sessionId" },
+                  name: { kind: "Name", value: "id" },
                 },
               },
             ],
@@ -2942,11 +3247,40 @@ export const GetUsersFromUsersRouteDocument = {
           kind: "VariableDefinition",
           variable: {
             kind: "Variable",
-            name: { kind: "Name", value: "input" },
+            name: { kind: "Name", value: "first" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "last" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "after" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "before" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "filter" },
           },
           type: {
             kind: "NamedType",
-            name: { kind: "Name", value: "ListUsersInput" },
+            name: { kind: "Name", value: "UserFilter" },
           },
         },
       ],
@@ -2959,10 +3293,61 @@ export const GetUsersFromUsersRouteDocument = {
             arguments: [
               {
                 kind: "Argument",
-                name: { kind: "Name", value: "input" },
+                name: { kind: "Name", value: "first" },
                 value: {
                   kind: "Variable",
-                  name: { kind: "Name", value: "input" },
+                  name: { kind: "Name", value: "first" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "last" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "last" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "after" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "after" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "before" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "before" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "filter" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "filter" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "orderBy" },
+                value: {
+                  kind: "ObjectValue",
+                  fields: [
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "field" },
+                      value: { kind: "EnumValue", value: "CREATED_AT" },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "direction" },
+                      value: { kind: "EnumValue", value: "DESC" },
+                    },
+                  ],
                 },
               },
             ],
@@ -2971,31 +3356,72 @@ export const GetUsersFromUsersRouteDocument = {
               selections: [
                 {
                   kind: "Field",
-                  name: { kind: "Name", value: "users" },
+                  name: { kind: "Name", value: "edges" },
                   selectionSet: {
                     kind: "SelectionSet",
                     selections: [
-                      { kind: "Field", name: { kind: "Name", value: "id" } },
-                      { kind: "Field", name: { kind: "Name", value: "name" } },
-                      { kind: "Field", name: { kind: "Name", value: "email" } },
                       {
                         kind: "Field",
-                        name: { kind: "Name", value: "emailVerified" },
-                      },
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "banned" },
-                      },
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "createdAt" },
+                        name: { kind: "Name", value: "node" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "id" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "name" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "email" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "emailVerified" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "banned" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "createdAt" },
+                            },
+                          ],
+                        },
                       },
                     ],
                   },
                 },
-                { kind: "Field", name: { kind: "Name", value: "total" } },
-                { kind: "Field", name: { kind: "Name", value: "limit" } },
-                { kind: "Field", name: { kind: "Name", value: "offset" } },
+                { kind: "Field", name: { kind: "Name", value: "totalCount" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "pageInfo" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "hasNextPage" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "hasPreviousPage" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "startCursor" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "endCursor" },
+                      },
+                    ],
+                  },
+                },
               ],
             },
           },
@@ -3069,24 +3495,24 @@ export const CreateUserFromUsersRouteDocument = {
   CreateUserFromUsersRouteMutation,
   CreateUserFromUsersRouteMutationVariables
 >;
-export const AuthSignOutFromSidebarUserDocument = {
+export const SignOutFromSidebarUserDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "mutation",
-      name: { kind: "Name", value: "authSignOutFromSidebarUser" },
+      name: { kind: "Name", value: "signOutFromSidebarUser" },
       selectionSet: {
         kind: "SelectionSet",
         selections: [
-          { kind: "Field", name: { kind: "Name", value: "authSignOut" } },
+          { kind: "Field", name: { kind: "Name", value: "signOut" } },
         ],
       },
     },
   ],
 } as unknown as DocumentNode<
-  AuthSignOutFromSidebarUserMutation,
-  AuthSignOutFromSidebarUserMutationVariables
+  SignOutFromSidebarUserMutation,
+  SignOutFromSidebarUserMutationVariables
 >;
 export const GetCurrentUserFromCurrentUserContextDocument = {
   kind: "Document",
@@ -3154,6 +3580,21 @@ export const GetCurrentUserFromAuthenticatedRouteDocument = {
               ],
             },
           },
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "currentUserAbilityRules" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "actions" } },
+                { kind: "Field", name: { kind: "Name", value: "subjects" } },
+                { kind: "Field", name: { kind: "Name", value: "fields" } },
+                { kind: "Field", name: { kind: "Name", value: "conditions" } },
+                { kind: "Field", name: { kind: "Name", value: "inverted" } },
+                { kind: "Field", name: { kind: "Name", value: "reason" } },
+              ],
+            },
+          },
         ],
       },
     },
@@ -3174,7 +3615,7 @@ export const GetImpersonationFromAuthenticatedRouteDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "currentAuthSession" },
+            name: { kind: "Name", value: "currentSession" },
             selectionSet: {
               kind: "SelectionSet",
               selections: [
@@ -3294,143 +3735,155 @@ export const GetUserApiKeysFromUserApiKeysRouteDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "userApiKeys" },
-            arguments: [
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "after" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "after" },
-                },
-              },
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "before" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "before" },
-                },
-              },
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "first" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "first" },
-                },
-              },
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "last" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "last" },
-                },
-              },
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "orderBy" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "orderBy" },
-                },
-              },
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "filter" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "filter" },
-                },
-              },
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "query" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "query" },
-                },
-              },
-            ],
+            name: { kind: "Name", value: "currentUser" },
             selectionSet: {
               kind: "SelectionSet",
               selections: [
                 {
                   kind: "Field",
-                  name: { kind: "Name", value: "edges" },
+                  name: { kind: "Name", value: "apiKeys" },
+                  arguments: [
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "after" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "after" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "before" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "before" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "first" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "first" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "last" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "last" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "orderBy" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "orderBy" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "filter" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "filter" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "query" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "query" },
+                      },
+                    },
+                  ],
                   selectionSet: {
                     kind: "SelectionSet",
                     selections: [
                       {
                         kind: "Field",
-                        name: { kind: "Name", value: "node" },
+                        name: { kind: "Name", value: "edges" },
                         selectionSet: {
                           kind: "SelectionSet",
                           selections: [
                             {
                               kind: "Field",
-                              name: { kind: "Name", value: "id" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "name" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "start" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "prefix" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "enabled" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "permissions" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "createdAt" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "lastUsedAt" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "expiresAt" },
+                              name: { kind: "Name", value: "node" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "id" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "name" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "start" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "prefix" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "enabled" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: {
+                                      kind: "Name",
+                                      value: "permissions",
+                                    },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "createdAt" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "lastUsedAt" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "expiresAt" },
+                                  },
+                                ],
+                              },
                             },
                           ],
                         },
                       },
-                    ],
-                  },
-                },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "pageInfo" },
-                  selectionSet: {
-                    kind: "SelectionSet",
-                    selections: [
                       {
                         kind: "Field",
-                        name: { kind: "Name", value: "endCursor" },
-                      },
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "hasNextPage" },
-                      },
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "hasPreviousPage" },
-                      },
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "startCursor" },
+                        name: { kind: "Name", value: "pageInfo" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "endCursor" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "hasNextPage" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "hasPreviousPage" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "startCursor" },
+                            },
+                          ],
+                        },
                       },
                     ],
                   },
@@ -3729,7 +4182,7 @@ export const UpdateUserFromUserRouteDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "authUpdateUser" },
+            name: { kind: "Name", value: "updateCurrentUser" },
             arguments: [
               {
                 kind: "Argument",
@@ -3777,7 +4230,7 @@ export const ChangeEmailFromUserRouteDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "authChangeEmail" },
+            name: { kind: "Name", value: "changeCurrentUserEmail" },
             arguments: [
               {
                 kind: "Argument",
@@ -3825,7 +4278,7 @@ export const ChangePasswordFromUserSecurityDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "authChangePassword" },
+            name: { kind: "Name", value: "changeCurrentUserPassword" },
             arguments: [
               {
                 kind: "Argument",
@@ -3858,21 +4311,128 @@ export const GetSessionsFromUserSecurityDocument = {
       kind: "OperationDefinition",
       operation: "query",
       name: { kind: "Name", value: "getSessionsFromUserSecurity" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "after" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+      ],
       selectionSet: {
         kind: "SelectionSet",
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "authSessions" },
+            name: { kind: "Name", value: "currentUser" },
             selectionSet: {
               kind: "SelectionSet",
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "id" } },
-                { kind: "Field", name: { kind: "Name", value: "current" } },
-                { kind: "Field", name: { kind: "Name", value: "expiresAt" } },
-                { kind: "Field", name: { kind: "Name", value: "ipAddress" } },
-                { kind: "Field", name: { kind: "Name", value: "userAgent" } },
-                { kind: "Field", name: { kind: "Name", value: "createdAt" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "sessions" },
+                  arguments: [
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "first" },
+                      value: { kind: "IntValue", value: "20" },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "after" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "after" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "orderBy" },
+                      value: {
+                        kind: "ObjectValue",
+                        fields: [
+                          {
+                            kind: "ObjectField",
+                            name: { kind: "Name", value: "field" },
+                            value: { kind: "EnumValue", value: "CREATED_AT" },
+                          },
+                          {
+                            kind: "ObjectField",
+                            name: { kind: "Name", value: "direction" },
+                            value: { kind: "EnumValue", value: "DESC" },
+                          },
+                        ],
+                      },
+                    },
+                  ],
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "pageInfo" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "hasNextPage" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "endCursor" },
+                            },
+                          ],
+                        },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "edges" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "node" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "id" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "current" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "expiresAt" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "ipAddress" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "userAgent" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "createdAt" },
+                                  },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
               ],
             },
           },
@@ -3894,10 +4454,7 @@ export const RevokeSessionFromUserSecurityDocument = {
       variableDefinitions: [
         {
           kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "sessionId" },
-          },
+          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
           type: {
             kind: "NonNullType",
             type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
@@ -3909,14 +4466,14 @@ export const RevokeSessionFromUserSecurityDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "authRevokeSession" },
+            name: { kind: "Name", value: "revokeCurrentUserSession" },
             arguments: [
               {
                 kind: "Argument",
-                name: { kind: "Name", value: "sessionId" },
+                name: { kind: "Name", value: "id" },
                 value: {
                   kind: "Variable",
-                  name: { kind: "Name", value: "sessionId" },
+                  name: { kind: "Name", value: "id" },
                 },
               },
             ],
@@ -3941,7 +4498,7 @@ export const RevokeOtherSessionsFromUserSecurityDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "authRevokeOtherSessions" },
+            name: { kind: "Name", value: "revokeCurrentUserOtherSessions" },
           },
         ],
       },
@@ -3958,21 +4515,132 @@ export const GetAccountsFromUserSecurityDocument = {
       kind: "OperationDefinition",
       operation: "query",
       name: { kind: "Name", value: "getAccountsFromUserSecurity" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "after" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+      ],
       selectionSet: {
         kind: "SelectionSet",
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "authAccounts" },
+            name: { kind: "Name", value: "currentUser" },
             selectionSet: {
               kind: "SelectionSet",
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "id" } },
-                { kind: "Field", name: { kind: "Name", value: "accountId" } },
-                { kind: "Field", name: { kind: "Name", value: "issuer" } },
-                { kind: "Field", name: { kind: "Name", value: "providerId" } },
-                { kind: "Field", name: { kind: "Name", value: "scopes" } },
-                { kind: "Field", name: { kind: "Name", value: "createdAt" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "accounts" },
+                  arguments: [
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "first" },
+                      value: { kind: "IntValue", value: "20" },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "after" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "after" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "orderBy" },
+                      value: {
+                        kind: "ObjectValue",
+                        fields: [
+                          {
+                            kind: "ObjectField",
+                            name: { kind: "Name", value: "field" },
+                            value: { kind: "EnumValue", value: "CREATED_AT" },
+                          },
+                          {
+                            kind: "ObjectField",
+                            name: { kind: "Name", value: "direction" },
+                            value: { kind: "EnumValue", value: "DESC" },
+                          },
+                        ],
+                      },
+                    },
+                  ],
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "totalCount" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "pageInfo" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "hasNextPage" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "endCursor" },
+                            },
+                          ],
+                        },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "edges" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "node" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "id" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "accountId" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "issuer" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "providerId" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "scopes" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "createdAt" },
+                                  },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
               ],
             },
           },
@@ -3996,7 +4664,7 @@ export const GetSocialProvidersFromUserSecurityDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "authSocialProviders" },
+            name: { kind: "Name", value: "socialProviders" },
             selectionSet: {
               kind: "SelectionSet",
               selections: [
@@ -4023,10 +4691,7 @@ export const UnlinkAccountFromUserSecurityDocument = {
       variableDefinitions: [
         {
           kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "accountId" },
-          },
+          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
           type: {
             kind: "NonNullType",
             type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
@@ -4038,14 +4703,14 @@ export const UnlinkAccountFromUserSecurityDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "authUnlinkAccount" },
+            name: { kind: "Name", value: "unlinkCurrentUserAccount" },
             arguments: [
               {
                 kind: "Argument",
-                name: { kind: "Name", value: "accountId" },
+                name: { kind: "Name", value: "id" },
                 value: {
                   kind: "Variable",
-                  name: { kind: "Name", value: "accountId" },
+                  name: { kind: "Name", value: "id" },
                 },
               },
             ],
@@ -4086,7 +4751,7 @@ export const LinkAccountFromUserSecurityDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "authLinkSocialAccount" },
+            name: { kind: "Name", value: "linkCurrentUserAccount" },
             arguments: [
               {
                 kind: "Argument",
@@ -4113,61 +4778,6 @@ export const LinkAccountFromUserSecurityDocument = {
   LinkAccountFromUserSecurityMutation,
   LinkAccountFromUserSecurityMutationVariables
 >;
-export const RefreshAccountFromUserSecurityDocument = {
-  kind: "Document",
-  definitions: [
-    {
-      kind: "OperationDefinition",
-      operation: "mutation",
-      name: { kind: "Name", value: "refreshAccountFromUserSecurity" },
-      variableDefinitions: [
-        {
-          kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "input" },
-          },
-          type: {
-            kind: "NonNullType",
-            type: {
-              kind: "NamedType",
-              name: { kind: "Name", value: "AuthAccountSelectorInput" },
-            },
-          },
-        },
-      ],
-      selectionSet: {
-        kind: "SelectionSet",
-        selections: [
-          {
-            kind: "Field",
-            name: { kind: "Name", value: "authRefreshToken" },
-            arguments: [
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "input" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "input" },
-                },
-              },
-            ],
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
-                { kind: "Field", name: { kind: "Name", value: "accountId" } },
-                { kind: "Field", name: { kind: "Name", value: "providerId" } },
-              ],
-            },
-          },
-        ],
-      },
-    },
-  ],
-} as unknown as DocumentNode<
-  RefreshAccountFromUserSecurityMutation,
-  RefreshAccountFromUserSecurityMutationVariables
->;
 export const DeleteUserFromUserSecurityDocument = {
   kind: "Document",
   definitions: [
@@ -4193,7 +4803,7 @@ export const DeleteUserFromUserSecurityDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "authDeleteUser" },
+            name: { kind: "Name", value: "deleteCurrentUser" },
             arguments: [
               {
                 kind: "Argument",
@@ -4268,113 +4878,154 @@ export const GetWorkspacesFromUserWorkspacesRouteDocument = {
             name: { kind: "Name", value: "WorkspaceOrder" },
           },
         },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "invitationFirst" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "invitationLast" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "invitationAfter" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "invitationBefore" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
       ],
       selectionSet: {
         kind: "SelectionSet",
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "workspaces" },
-            arguments: [
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "after" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "after" },
-                },
-              },
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "before" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "before" },
-                },
-              },
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "first" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "first" },
-                },
-              },
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "last" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "last" },
-                },
-              },
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "orderBy" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "orderBy" },
-                },
-              },
-            ],
+            name: { kind: "Name", value: "currentUser" },
             selectionSet: {
               kind: "SelectionSet",
               selections: [
                 {
                   kind: "Field",
-                  name: { kind: "Name", value: "edges" },
+                  name: { kind: "Name", value: "workspaces" },
+                  arguments: [
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "after" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "after" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "before" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "before" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "first" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "first" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "last" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "last" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "orderBy" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "orderBy" },
+                      },
+                    },
+                  ],
                   selectionSet: {
                     kind: "SelectionSet",
                     selections: [
                       {
                         kind: "Field",
-                        name: { kind: "Name", value: "node" },
+                        name: { kind: "Name", value: "edges" },
                         selectionSet: {
                           kind: "SelectionSet",
                           selections: [
                             {
                               kind: "Field",
-                              name: { kind: "Name", value: "id" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "name" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "createdAt" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "updatedAt" },
+                              name: { kind: "Name", value: "node" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "id" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "name" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "createdAt" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "updatedAt" },
+                                  },
+                                ],
+                              },
                             },
                           ],
                         },
                       },
-                    ],
-                  },
-                },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "pageInfo" },
-                  selectionSet: {
-                    kind: "SelectionSet",
-                    selections: [
                       {
                         kind: "Field",
-                        name: { kind: "Name", value: "endCursor" },
-                      },
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "hasNextPage" },
-                      },
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "hasPreviousPage" },
-                      },
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "startCursor" },
+                        name: { kind: "Name", value: "pageInfo" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "endCursor" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "hasNextPage" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "hasPreviousPage" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "startCursor" },
+                            },
+                          ],
+                        },
                       },
                     ],
                   },
@@ -4384,21 +5035,141 @@ export const GetWorkspacesFromUserWorkspacesRouteDocument = {
           },
           {
             kind: "Field",
-            name: { kind: "Name", value: "currentUserWorkspaceInvitations" },
+            name: { kind: "Name", value: "currentUser" },
             selectionSet: {
               kind: "SelectionSet",
               selections: [
-                { kind: "Field", name: { kind: "Name", value: "id" } },
-                { kind: "Field", name: { kind: "Name", value: "roles" } },
-                { kind: "Field", name: { kind: "Name", value: "expiresAt" } },
                 {
                   kind: "Field",
-                  name: { kind: "Name", value: "workspace" },
+                  name: { kind: "Name", value: "invitations" },
+                  arguments: [
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "first" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "invitationFirst" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "last" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "invitationLast" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "after" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "invitationAfter" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "before" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "invitationBefore" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "orderBy" },
+                      value: {
+                        kind: "ObjectValue",
+                        fields: [
+                          {
+                            kind: "ObjectField",
+                            name: { kind: "Name", value: "field" },
+                            value: { kind: "EnumValue", value: "CREATED_AT" },
+                          },
+                          {
+                            kind: "ObjectField",
+                            name: { kind: "Name", value: "direction" },
+                            value: { kind: "EnumValue", value: "DESC" },
+                          },
+                        ],
+                      },
+                    },
+                  ],
                   selectionSet: {
                     kind: "SelectionSet",
                     selections: [
-                      { kind: "Field", name: { kind: "Name", value: "id" } },
-                      { kind: "Field", name: { kind: "Name", value: "name" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "edges" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "node" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "id" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "roles" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "expiresAt" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "workspace" },
+                                    selectionSet: {
+                                      kind: "SelectionSet",
+                                      selections: [
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "id" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "name" },
+                                        },
+                                      ],
+                                    },
+                                  },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "pageInfo" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "endCursor" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "startCursor" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "hasNextPage" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "hasPreviousPage" },
+                            },
+                          ],
+                        },
+                      },
                     ],
                   },
                 },
@@ -4413,23 +5184,17 @@ export const GetWorkspacesFromUserWorkspacesRouteDocument = {
   GetWorkspacesFromUserWorkspacesRouteQuery,
   GetWorkspacesFromUserWorkspacesRouteQueryVariables
 >;
-export const AcceptWorkspaceInvitationFromUserWorkspacesRouteDocument = {
+export const AcceptInvitationFromUserWorkspacesRouteDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "mutation",
-      name: {
-        kind: "Name",
-        value: "acceptWorkspaceInvitationFromUserWorkspacesRoute",
-      },
+      name: { kind: "Name", value: "acceptInvitationFromUserWorkspacesRoute" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "invitationId" },
-          },
+          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
           type: {
             kind: "NonNullType",
             type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
@@ -4441,14 +5206,14 @@ export const AcceptWorkspaceInvitationFromUserWorkspacesRouteDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "acceptWorkspaceInvitation" },
+            name: { kind: "Name", value: "acceptInvitation" },
             arguments: [
               {
                 kind: "Argument",
-                name: { kind: "Name", value: "invitationId" },
+                name: { kind: "Name", value: "id" },
                 value: {
                   kind: "Variable",
-                  name: { kind: "Name", value: "invitationId" },
+                  name: { kind: "Name", value: "id" },
                 },
               },
             ],
@@ -4487,26 +5252,20 @@ export const AcceptWorkspaceInvitationFromUserWorkspacesRouteDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  AcceptWorkspaceInvitationFromUserWorkspacesRouteMutation,
-  AcceptWorkspaceInvitationFromUserWorkspacesRouteMutationVariables
+  AcceptInvitationFromUserWorkspacesRouteMutation,
+  AcceptInvitationFromUserWorkspacesRouteMutationVariables
 >;
-export const RejectWorkspaceInvitationFromUserWorkspacesRouteDocument = {
+export const RejectInvitationFromUserWorkspacesRouteDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "mutation",
-      name: {
-        kind: "Name",
-        value: "rejectWorkspaceInvitationFromUserWorkspacesRoute",
-      },
+      name: { kind: "Name", value: "rejectInvitationFromUserWorkspacesRoute" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "invitationId" },
-          },
+          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
           type: {
             kind: "NonNullType",
             type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
@@ -4518,14 +5277,14 @@ export const RejectWorkspaceInvitationFromUserWorkspacesRouteDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "rejectWorkspaceInvitation" },
+            name: { kind: "Name", value: "rejectInvitation" },
             arguments: [
               {
                 kind: "Argument",
-                name: { kind: "Name", value: "invitationId" },
+                name: { kind: "Name", value: "id" },
                 value: {
                   kind: "Variable",
-                  name: { kind: "Name", value: "invitationId" },
+                  name: { kind: "Name", value: "id" },
                 },
               },
             ],
@@ -4542,8 +5301,8 @@ export const RejectWorkspaceInvitationFromUserWorkspacesRouteDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  RejectWorkspaceInvitationFromUserWorkspacesRouteMutation,
-  RejectWorkspaceInvitationFromUserWorkspacesRouteMutationVariables
+  RejectInvitationFromUserWorkspacesRouteMutation,
+  RejectInvitationFromUserWorkspacesRouteMutationVariables
 >;
 export const GetApiKeysFromApiKeysRouteDocument = {
   kind: "Document",
@@ -4618,143 +5377,155 @@ export const GetApiKeysFromApiKeysRouteDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "apiKeys" },
-            arguments: [
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "after" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "after" },
-                },
-              },
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "before" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "before" },
-                },
-              },
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "first" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "first" },
-                },
-              },
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "last" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "last" },
-                },
-              },
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "orderBy" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "orderBy" },
-                },
-              },
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "filter" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "filter" },
-                },
-              },
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "query" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "query" },
-                },
-              },
-            ],
+            name: { kind: "Name", value: "currentWorkspace" },
             selectionSet: {
               kind: "SelectionSet",
               selections: [
                 {
                   kind: "Field",
-                  name: { kind: "Name", value: "edges" },
+                  name: { kind: "Name", value: "apiKeys" },
+                  arguments: [
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "after" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "after" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "before" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "before" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "first" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "first" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "last" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "last" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "orderBy" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "orderBy" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "filter" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "filter" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "query" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "query" },
+                      },
+                    },
+                  ],
                   selectionSet: {
                     kind: "SelectionSet",
                     selections: [
                       {
                         kind: "Field",
-                        name: { kind: "Name", value: "node" },
+                        name: { kind: "Name", value: "edges" },
                         selectionSet: {
                           kind: "SelectionSet",
                           selections: [
                             {
                               kind: "Field",
-                              name: { kind: "Name", value: "id" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "name" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "start" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "prefix" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "enabled" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "permissions" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "createdAt" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "lastUsedAt" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "expiresAt" },
+                              name: { kind: "Name", value: "node" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "id" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "name" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "start" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "prefix" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "enabled" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: {
+                                      kind: "Name",
+                                      value: "permissions",
+                                    },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "createdAt" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "lastUsedAt" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "expiresAt" },
+                                  },
+                                ],
+                              },
                             },
                           ],
                         },
                       },
-                    ],
-                  },
-                },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "pageInfo" },
-                  selectionSet: {
-                    kind: "SelectionSet",
-                    selections: [
                       {
                         kind: "Field",
-                        name: { kind: "Name", value: "endCursor" },
-                      },
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "hasNextPage" },
-                      },
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "hasPreviousPage" },
-                      },
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "startCursor" },
+                        name: { kind: "Name", value: "pageInfo" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "endCursor" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "hasNextPage" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "hasPreviousPage" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "startCursor" },
+                            },
+                          ],
+                        },
                       },
                     ],
                   },
@@ -4770,13 +5541,13 @@ export const GetApiKeysFromApiKeysRouteDocument = {
   GetApiKeysFromApiKeysRouteQuery,
   GetApiKeysFromApiKeysRouteQueryVariables
 >;
-export const CreateApiKeyFromApiKeysRouteDocument = {
+export const CreateWorkspaceApiKeyFromApiKeysRouteDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "mutation",
-      name: { kind: "Name", value: "createApiKeyFromApiKeysRoute" },
+      name: { kind: "Name", value: "createWorkspaceApiKeyFromApiKeysRoute" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
@@ -4798,7 +5569,7 @@ export const CreateApiKeyFromApiKeysRouteDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "createApiKey" },
+            name: { kind: "Name", value: "createWorkspaceApiKey" },
             arguments: [
               {
                 kind: "Argument",
@@ -4857,16 +5628,16 @@ export const CreateApiKeyFromApiKeysRouteDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  CreateApiKeyFromApiKeysRouteMutation,
-  CreateApiKeyFromApiKeysRouteMutationVariables
+  CreateWorkspaceApiKeyFromApiKeysRouteMutation,
+  CreateWorkspaceApiKeyFromApiKeysRouteMutationVariables
 >;
-export const UpdateApiKeyFromApiKeysRouteDocument = {
+export const UpdateWorkspaceApiKeyFromApiKeysRouteDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "mutation",
-      name: { kind: "Name", value: "updateApiKeyFromApiKeysRoute" },
+      name: { kind: "Name", value: "updateWorkspaceApiKeyFromApiKeysRoute" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
@@ -4896,7 +5667,7 @@ export const UpdateApiKeyFromApiKeysRouteDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "updateApiKey" },
+            name: { kind: "Name", value: "updateWorkspaceApiKey" },
             arguments: [
               {
                 kind: "Argument",
@@ -4935,16 +5706,16 @@ export const UpdateApiKeyFromApiKeysRouteDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  UpdateApiKeyFromApiKeysRouteMutation,
-  UpdateApiKeyFromApiKeysRouteMutationVariables
+  UpdateWorkspaceApiKeyFromApiKeysRouteMutation,
+  UpdateWorkspaceApiKeyFromApiKeysRouteMutationVariables
 >;
-export const DeleteApiKeyFromApiKeysRouteDocument = {
+export const DeleteWorkspaceApiKeyFromApiKeysRouteDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "mutation",
-      name: { kind: "Name", value: "deleteApiKeyFromApiKeysRoute" },
+      name: { kind: "Name", value: "deleteWorkspaceApiKeyFromApiKeysRoute" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
@@ -4960,7 +5731,7 @@ export const DeleteApiKeyFromApiKeysRouteDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "deleteApiKey" },
+            name: { kind: "Name", value: "deleteWorkspaceApiKey" },
             arguments: [
               {
                 kind: "Argument",
@@ -4991,8 +5762,8 @@ export const DeleteApiKeyFromApiKeysRouteDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  DeleteApiKeyFromApiKeysRouteMutation,
-  DeleteApiKeyFromApiKeysRouteMutationVariables
+  DeleteWorkspaceApiKeyFromApiKeysRouteMutation,
+  DeleteWorkspaceApiKeyFromApiKeysRouteMutationVariables
 >;
 export const GetWorkspacesFromWorkspaceSwitcherDocument = {
   kind: "Document",
@@ -5051,104 +5822,116 @@ export const GetWorkspacesFromWorkspaceSwitcherDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "workspaces" },
-            arguments: [
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "first" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "first" },
-                },
-              },
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "after" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "after" },
-                },
-              },
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "before" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "before" },
-                },
-              },
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "query" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "query" },
-                },
-              },
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "orderBy" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "orderBy" },
-                },
-              },
-            ],
+            name: { kind: "Name", value: "currentUser" },
             selectionSet: {
               kind: "SelectionSet",
               selections: [
                 {
                   kind: "Field",
-                  name: { kind: "Name", value: "edges" },
+                  name: { kind: "Name", value: "workspaces" },
+                  arguments: [
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "first" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "first" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "after" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "after" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "before" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "before" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "query" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "query" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "orderBy" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "orderBy" },
+                      },
+                    },
+                  ],
                   selectionSet: {
                     kind: "SelectionSet",
                     selections: [
                       {
                         kind: "Field",
-                        name: { kind: "Name", value: "node" },
+                        name: { kind: "Name", value: "edges" },
                         selectionSet: {
                           kind: "SelectionSet",
                           selections: [
                             {
                               kind: "Field",
-                              name: { kind: "Name", value: "id" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "name" },
+                              name: { kind: "Name", value: "node" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "id" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "name" },
+                                  },
+                                ],
+                              },
                             },
                           ],
                         },
                       },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "pageInfo" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "hasNextPage" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "hasPreviousPage" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "startCursor" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "endCursor" },
+                            },
+                          ],
+                        },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "totalCount" },
+                      },
                     ],
                   },
                 },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "pageInfo" },
-                  selectionSet: {
-                    kind: "SelectionSet",
-                    selections: [
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "hasNextPage" },
-                      },
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "hasPreviousPage" },
-                      },
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "startCursor" },
-                      },
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "endCursor" },
-                      },
-                    ],
-                  },
-                },
-                { kind: "Field", name: { kind: "Name", value: "totalCount" } },
               ],
             },
           },
@@ -5160,73 +5943,28 @@ export const GetWorkspacesFromWorkspaceSwitcherDocument = {
   GetWorkspacesFromWorkspaceSwitcherQuery,
   GetWorkspacesFromWorkspaceSwitcherQueryVariables
 >;
-export const GetCurrentWorkspaceFromWorkspaceContextDocument = {
+export const GetCurrentMemberFromMemberContextDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "query",
-      name: { kind: "Name", value: "getCurrentWorkspaceFromWorkspaceContext" },
+      name: { kind: "Name", value: "getCurrentMemberFromMemberContext" },
       selectionSet: {
         kind: "SelectionSet",
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "currentWorkspace" },
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
-                { kind: "Field", name: { kind: "Name", value: "id" } },
-                { kind: "Field", name: { kind: "Name", value: "name" } },
-                { kind: "Field", name: { kind: "Name", value: "features" } },
-                { kind: "Field", name: { kind: "Name", value: "createdAt" } },
-                { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
-              ],
-            },
-          },
-        ],
-      },
-    },
-  ],
-} as unknown as DocumentNode<
-  GetCurrentWorkspaceFromWorkspaceContextQuery,
-  GetCurrentWorkspaceFromWorkspaceContextQueryVariables
->;
-export const GetCurrentWorkspaceMemberFromWorkspaceMemberContextDocument = {
-  kind: "Document",
-  definitions: [
-    {
-      kind: "OperationDefinition",
-      operation: "query",
-      name: {
-        kind: "Name",
-        value: "getCurrentWorkspaceMemberFromWorkspaceMemberContext",
-      },
-      selectionSet: {
-        kind: "SelectionSet",
-        selections: [
-          {
-            kind: "Field",
-            name: { kind: "Name", value: "currentWorkspaceMember" },
+            name: { kind: "Name", value: "currentMember" },
             selectionSet: {
               kind: "SelectionSet",
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "id" } },
                 { kind: "Field", name: { kind: "Name", value: "roles" } },
-                { kind: "Field", name: { kind: "Name", value: "name" } },
-                { kind: "Field", name: { kind: "Name", value: "email" } },
                 { kind: "Field", name: { kind: "Name", value: "permissions" } },
                 { kind: "Field", name: { kind: "Name", value: "status" } },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "user" },
-                  selectionSet: {
-                    kind: "SelectionSet",
-                    selections: [
-                      { kind: "Field", name: { kind: "Name", value: "email" } },
-                    ],
-                  },
-                },
+                { kind: "Field", name: { kind: "Name", value: "name" } },
+                { kind: "Field", name: { kind: "Name", value: "email" } },
               ],
             },
           },
@@ -5250,8 +5988,39 @@ export const GetCurrentWorkspaceMemberFromWorkspaceMemberContextDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  GetCurrentWorkspaceMemberFromWorkspaceMemberContextQuery,
-  GetCurrentWorkspaceMemberFromWorkspaceMemberContextQueryVariables
+  GetCurrentMemberFromMemberContextQuery,
+  GetCurrentMemberFromMemberContextQueryVariables
+>;
+export const GetCurrentWorkspaceFromWorkspaceContextDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "getCurrentWorkspaceFromWorkspaceContext" },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "currentWorkspace" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "name" } },
+                { kind: "Field", name: { kind: "Name", value: "createdAt" } },
+                { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  GetCurrentWorkspaceFromWorkspaceContextQuery,
+  GetCurrentWorkspaceFromWorkspaceContextQueryVariables
 >;
 export const GetCurrentWorkspaceFromWorkspaceLayoutDocument = {
   kind: "Document",
@@ -5298,7 +6067,7 @@ export const GetCurrentWorkspaceFromWorkspaceLayoutDocument = {
           },
           {
             kind: "Field",
-            name: { kind: "Name", value: "currentWorkspaceMember" },
+            name: { kind: "Name", value: "currentMember" },
             selectionSet: {
               kind: "SelectionSet",
               selections: [
@@ -5330,19 +6099,19 @@ export const GetCurrentWorkspaceFromWorkspaceLayoutDocument = {
   GetCurrentWorkspaceFromWorkspaceLayoutQuery,
   GetCurrentWorkspaceFromWorkspaceLayoutQueryVariables
 >;
-export const GetCurrentWorkspaceMemberFromMemberRouteDocument = {
+export const GetCurrentMemberFromMemberRouteDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "query",
-      name: { kind: "Name", value: "getCurrentWorkspaceMemberFromMemberRoute" },
+      name: { kind: "Name", value: "getCurrentMemberFromMemberRoute" },
       selectionSet: {
         kind: "SelectionSet",
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "currentWorkspaceMember" },
+            name: { kind: "Name", value: "currentMember" },
             selectionSet: {
               kind: "SelectionSet",
               selections: [
@@ -5357,16 +6126,16 @@ export const GetCurrentWorkspaceMemberFromMemberRouteDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  GetCurrentWorkspaceMemberFromMemberRouteQuery,
-  GetCurrentWorkspaceMemberFromMemberRouteQueryVariables
+  GetCurrentMemberFromMemberRouteQuery,
+  GetCurrentMemberFromMemberRouteQueryVariables
 >;
-export const GetWorkspaceMemberFromMemberRouteDocument = {
+export const GetMemberFromMemberRouteDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "query",
-      name: { kind: "Name", value: "getWorkspaceMemberFromMemberRoute" },
+      name: { kind: "Name", value: "getMemberFromMemberRoute" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
@@ -5382,7 +6151,7 @@ export const GetWorkspaceMemberFromMemberRouteDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "workspaceMember" },
+            name: { kind: "Name", value: "member" },
             arguments: [
               {
                 kind: "Argument",
@@ -5397,35 +6166,15 @@ export const GetWorkspaceMemberFromMemberRouteDocument = {
               kind: "SelectionSet",
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "id" } },
-                { kind: "Field", name: { kind: "Name", value: "name" } },
-                { kind: "Field", name: { kind: "Name", value: "email" } },
                 { kind: "Field", name: { kind: "Name", value: "roles" } },
                 { kind: "Field", name: { kind: "Name", value: "permissions" } },
                 { kind: "Field", name: { kind: "Name", value: "status" } },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "user" },
-                  selectionSet: {
-                    kind: "SelectionSet",
-                    selections: [
-                      { kind: "Field", name: { kind: "Name", value: "email" } },
-                    ],
-                  },
-                },
-              ],
-            },
-          },
-          {
-            kind: "Field",
-            name: { kind: "Name", value: "workspaceRoles" },
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
                 { kind: "Field", name: { kind: "Name", value: "name" } },
-                { kind: "Field", name: { kind: "Name", value: "permissions" } },
+                { kind: "Field", name: { kind: "Name", value: "email" } },
               ],
             },
           },
+          { kind: "Field", name: { kind: "Name", value: "workspaceRoles" } },
           {
             kind: "Field",
             name: { kind: "Name", value: "workspacePermissions" },
@@ -5435,16 +6184,16 @@ export const GetWorkspaceMemberFromMemberRouteDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  GetWorkspaceMemberFromMemberRouteQuery,
-  GetWorkspaceMemberFromMemberRouteQueryVariables
+  GetMemberFromMemberRouteQuery,
+  GetMemberFromMemberRouteQueryVariables
 >;
-export const UpdateWorkspaceMemberFromMemberRouteDocument = {
+export const UpdateMemberFromMemberRouteDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "mutation",
-      name: { kind: "Name", value: "updateWorkspaceMemberFromMemberRoute" },
+      name: { kind: "Name", value: "updateMemberFromMemberRoute" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
@@ -5464,7 +6213,7 @@ export const UpdateWorkspaceMemberFromMemberRouteDocument = {
             kind: "NonNullType",
             type: {
               kind: "NamedType",
-              name: { kind: "Name", value: "UpdateWorkspaceMemberInput" },
+              name: { kind: "Name", value: "UpdateMemberInput" },
             },
           },
         },
@@ -5474,7 +6223,7 @@ export const UpdateWorkspaceMemberFromMemberRouteDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "updateWorkspaceMember" },
+            name: { kind: "Name", value: "updateMember" },
             arguments: [
               {
                 kind: "Argument",
@@ -5499,19 +6248,6 @@ export const UpdateWorkspaceMemberFromMemberRouteDocument = {
                 { kind: "Field", name: { kind: "Name", value: "id" } },
                 { kind: "Field", name: { kind: "Name", value: "name" } },
                 { kind: "Field", name: { kind: "Name", value: "email" } },
-                { kind: "Field", name: { kind: "Name", value: "roles" } },
-                { kind: "Field", name: { kind: "Name", value: "permissions" } },
-                { kind: "Field", name: { kind: "Name", value: "status" } },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "user" },
-                  selectionSet: {
-                    kind: "SelectionSet",
-                    selections: [
-                      { kind: "Field", name: { kind: "Name", value: "email" } },
-                    ],
-                  },
-                },
               ],
             },
           },
@@ -5520,16 +6256,16 @@ export const UpdateWorkspaceMemberFromMemberRouteDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  UpdateWorkspaceMemberFromMemberRouteMutation,
-  UpdateWorkspaceMemberFromMemberRouteMutationVariables
+  UpdateMemberFromMemberRouteMutation,
+  UpdateMemberFromMemberRouteMutationVariables
 >;
-export const UpdateWorkspaceMemberRoleFromMemberRouteDocument = {
+export const SetMemberRolesFromMemberRouteDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "mutation",
-      name: { kind: "Name", value: "updateWorkspaceMemberRoleFromMemberRoute" },
+      name: { kind: "Name", value: "setMemberRolesFromMemberRoute" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
@@ -5549,7 +6285,7 @@ export const UpdateWorkspaceMemberRoleFromMemberRouteDocument = {
             kind: "NonNullType",
             type: {
               kind: "NamedType",
-              name: { kind: "Name", value: "UpdateWorkspaceMemberRoleInput" },
+              name: { kind: "Name", value: "SetMemberRolesInput" },
             },
           },
         },
@@ -5559,7 +6295,7 @@ export const UpdateWorkspaceMemberRoleFromMemberRouteDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "updateWorkspaceMemberRole" },
+            name: { kind: "Name", value: "setMemberRoles" },
             arguments: [
               {
                 kind: "Argument",
@@ -5591,19 +6327,16 @@ export const UpdateWorkspaceMemberRoleFromMemberRouteDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  UpdateWorkspaceMemberRoleFromMemberRouteMutation,
-  UpdateWorkspaceMemberRoleFromMemberRouteMutationVariables
+  SetMemberRolesFromMemberRouteMutation,
+  SetMemberRolesFromMemberRouteMutationVariables
 >;
-export const SetWorkspaceMemberPermissionsFromMemberRouteDocument = {
+export const SetMemberPermissionsFromMemberRouteDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "mutation",
-      name: {
-        kind: "Name",
-        value: "setWorkspaceMemberPermissionsFromMemberRoute",
-      },
+      name: { kind: "Name", value: "setMemberPermissionsFromMemberRoute" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
@@ -5623,10 +6356,7 @@ export const SetWorkspaceMemberPermissionsFromMemberRouteDocument = {
             kind: "NonNullType",
             type: {
               kind: "NamedType",
-              name: {
-                kind: "Name",
-                value: "SetWorkspaceMemberPermissionsInput",
-              },
+              name: { kind: "Name", value: "SetMemberPermissionsInput" },
             },
           },
         },
@@ -5636,7 +6366,7 @@ export const SetWorkspaceMemberPermissionsFromMemberRouteDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "setWorkspaceMemberPermissions" },
+            name: { kind: "Name", value: "setMemberPermissions" },
             arguments: [
               {
                 kind: "Argument",
@@ -5668,16 +6398,16 @@ export const SetWorkspaceMemberPermissionsFromMemberRouteDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  SetWorkspaceMemberPermissionsFromMemberRouteMutation,
-  SetWorkspaceMemberPermissionsFromMemberRouteMutationVariables
+  SetMemberPermissionsFromMemberRouteMutation,
+  SetMemberPermissionsFromMemberRouteMutationVariables
 >;
-export const RemoveWorkspaceMemberFromMemberRouteDocument = {
+export const RemoveMemberFromMemberRouteDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "mutation",
-      name: { kind: "Name", value: "removeWorkspaceMemberFromMemberRoute" },
+      name: { kind: "Name", value: "removeMemberFromMemberRoute" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
@@ -5693,7 +6423,7 @@ export const RemoveWorkspaceMemberFromMemberRouteDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "removeWorkspaceMember" },
+            name: { kind: "Name", value: "removeMember" },
             arguments: [
               {
                 kind: "Argument",
@@ -5716,19 +6446,16 @@ export const RemoveWorkspaceMemberFromMemberRouteDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  RemoveWorkspaceMemberFromMemberRouteMutation,
-  RemoveWorkspaceMemberFromMemberRouteMutationVariables
+  RemoveMemberFromMemberRouteMutation,
+  RemoveMemberFromMemberRouteMutationVariables
 >;
-export const CreateWorkspaceInvitationFromInviteMemberDialogDocument = {
+export const CreateInvitationFromInviteMemberDialogDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "mutation",
-      name: {
-        kind: "Name",
-        value: "createWorkspaceInvitationFromInviteMemberDialog",
-      },
+      name: { kind: "Name", value: "createInvitationFromInviteMemberDialog" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
@@ -5740,7 +6467,7 @@ export const CreateWorkspaceInvitationFromInviteMemberDialogDocument = {
             kind: "NonNullType",
             type: {
               kind: "NamedType",
-              name: { kind: "Name", value: "CreateWorkspaceInvitationInput" },
+              name: { kind: "Name", value: "CreateInvitationInput" },
             },
           },
         },
@@ -5750,7 +6477,7 @@ export const CreateWorkspaceInvitationFromInviteMemberDialogDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "createWorkspaceInvitation" },
+            name: { kind: "Name", value: "createInvitation" },
             arguments: [
               {
                 kind: "Argument",
@@ -5773,16 +6500,16 @@ export const CreateWorkspaceInvitationFromInviteMemberDialogDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  CreateWorkspaceInvitationFromInviteMemberDialogMutation,
-  CreateWorkspaceInvitationFromInviteMemberDialogMutationVariables
+  CreateInvitationFromInviteMemberDialogMutation,
+  CreateInvitationFromInviteMemberDialogMutationVariables
 >;
-export const GetWorkspaceMembersFromMembersRouteDocument = {
+export const GetMembersFromMembersRouteDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "query",
-      name: { kind: "Name", value: "getWorkspaceMembersFromMembersRoute" },
+      name: { kind: "Name", value: "getMembersFromMembersRoute" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
@@ -5821,7 +6548,7 @@ export const GetWorkspaceMembersFromMembersRouteDocument = {
           },
           type: {
             kind: "NamedType",
-            name: { kind: "Name", value: "WorkspaceMemberFilter" },
+            name: { kind: "Name", value: "MemberFilter" },
           },
         },
         {
@@ -5832,7 +6559,7 @@ export const GetWorkspaceMembersFromMembersRouteDocument = {
           },
           type: {
             kind: "NamedType",
-            name: { kind: "Name", value: "WorkspaceMemberOrder" },
+            name: { kind: "Name", value: "MemberOrder" },
           },
         },
         {
@@ -5843,119 +6570,150 @@ export const GetWorkspaceMembersFromMembersRouteDocument = {
           },
           type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
         },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "invitationFirst" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "invitationLast" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "invitationAfter" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "invitationBefore" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "invitationFilter" },
+          },
+          type: {
+            kind: "NamedType",
+            name: { kind: "Name", value: "InvitationFilter" },
+          },
+        },
       ],
       selectionSet: {
         kind: "SelectionSet",
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "workspaceMembers" },
-            arguments: [
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "after" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "after" },
-                },
-              },
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "before" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "before" },
-                },
-              },
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "first" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "first" },
-                },
-              },
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "last" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "last" },
-                },
-              },
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "orderBy" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "orderBy" },
-                },
-              },
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "filter" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "filter" },
-                },
-              },
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "query" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "query" },
-                },
-              },
-            ],
+            name: { kind: "Name", value: "currentWorkspace" },
             selectionSet: {
               kind: "SelectionSet",
               selections: [
                 {
                   kind: "Field",
-                  name: { kind: "Name", value: "edges" },
+                  name: { kind: "Name", value: "members" },
+                  arguments: [
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "after" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "after" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "before" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "before" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "first" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "first" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "last" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "last" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "orderBy" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "orderBy" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "filter" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "filter" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "query" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "query" },
+                      },
+                    },
+                  ],
                   selectionSet: {
                     kind: "SelectionSet",
                     selections: [
                       {
                         kind: "Field",
-                        name: { kind: "Name", value: "node" },
+                        name: { kind: "Name", value: "edges" },
                         selectionSet: {
                           kind: "SelectionSet",
                           selections: [
                             {
                               kind: "Field",
-                              name: { kind: "Name", value: "id" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "name" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "email" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "roles" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "status" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "createdAt" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "user" },
+                              name: { kind: "Name", value: "node" },
                               selectionSet: {
                                 kind: "SelectionSet",
                                 selections: [
                                   {
                                     kind: "Field",
                                     name: { kind: "Name", value: "id" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "roles" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "status" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "createdAt" },
                                   },
                                   {
                                     kind: "Field",
@@ -5971,30 +6729,30 @@ export const GetWorkspaceMembersFromMembersRouteDocument = {
                           ],
                         },
                       },
-                    ],
-                  },
-                },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "pageInfo" },
-                  selectionSet: {
-                    kind: "SelectionSet",
-                    selections: [
                       {
                         kind: "Field",
-                        name: { kind: "Name", value: "endCursor" },
-                      },
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "hasNextPage" },
-                      },
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "hasPreviousPage" },
-                      },
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "startCursor" },
+                        name: { kind: "Name", value: "pageInfo" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "endCursor" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "hasNextPage" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "hasPreviousPage" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "startCursor" },
+                            },
+                          ],
+                        },
                       },
                     ],
                   },
@@ -6004,15 +6762,143 @@ export const GetWorkspaceMembersFromMembersRouteDocument = {
           },
           {
             kind: "Field",
-            name: { kind: "Name", value: "workspaceInvitations" },
+            name: { kind: "Name", value: "currentWorkspace" },
             selectionSet: {
               kind: "SelectionSet",
               selections: [
-                { kind: "Field", name: { kind: "Name", value: "id" } },
-                { kind: "Field", name: { kind: "Name", value: "email" } },
-                { kind: "Field", name: { kind: "Name", value: "roles" } },
-                { kind: "Field", name: { kind: "Name", value: "status" } },
-                { kind: "Field", name: { kind: "Name", value: "expiresAt" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "invitations" },
+                  arguments: [
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "first" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "invitationFirst" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "last" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "invitationLast" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "after" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "invitationAfter" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "before" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "invitationBefore" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "filter" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "invitationFilter" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "orderBy" },
+                      value: {
+                        kind: "ObjectValue",
+                        fields: [
+                          {
+                            kind: "ObjectField",
+                            name: { kind: "Name", value: "field" },
+                            value: { kind: "EnumValue", value: "CREATED_AT" },
+                          },
+                          {
+                            kind: "ObjectField",
+                            name: { kind: "Name", value: "direction" },
+                            value: { kind: "EnumValue", value: "DESC" },
+                          },
+                        ],
+                      },
+                    },
+                  ],
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "edges" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "node" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "id" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "email" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "roles" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "status" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "expiresAt" },
+                                  },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "pageInfo" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "endCursor" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "startCursor" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "hasNextPage" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "hasPreviousPage" },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
               ],
             },
           },
@@ -6021,26 +6907,20 @@ export const GetWorkspaceMembersFromMembersRouteDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  GetWorkspaceMembersFromMembersRouteQuery,
-  GetWorkspaceMembersFromMembersRouteQueryVariables
+  GetMembersFromMembersRouteQuery,
+  GetMembersFromMembersRouteQueryVariables
 >;
-export const CancelWorkspaceInvitationFromMembersRouteDocument = {
+export const CancelInvitationFromMembersRouteDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "mutation",
-      name: {
-        kind: "Name",
-        value: "cancelWorkspaceInvitationFromMembersRoute",
-      },
+      name: { kind: "Name", value: "cancelInvitationFromMembersRoute" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "invitationId" },
-          },
+          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
           type: {
             kind: "NonNullType",
             type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
@@ -6052,14 +6932,14 @@ export const CancelWorkspaceInvitationFromMembersRouteDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "cancelWorkspaceInvitation" },
+            name: { kind: "Name", value: "cancelInvitation" },
             arguments: [
               {
                 kind: "Argument",
-                name: { kind: "Name", value: "invitationId" },
+                name: { kind: "Name", value: "id" },
                 value: {
                   kind: "Variable",
-                  name: { kind: "Name", value: "invitationId" },
+                  name: { kind: "Name", value: "id" },
                 },
               },
             ],
@@ -6076,16 +6956,16 @@ export const CancelWorkspaceInvitationFromMembersRouteDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  CancelWorkspaceInvitationFromMembersRouteMutation,
-  CancelWorkspaceInvitationFromMembersRouteMutationVariables
+  CancelInvitationFromMembersRouteMutation,
+  CancelInvitationFromMembersRouteMutationVariables
 >;
-export const RemoveWorkspaceMemberFromMembersRouteDocument = {
+export const RemoveMemberFromMembersRouteDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "mutation",
-      name: { kind: "Name", value: "removeWorkspaceMemberFromMembersRoute" },
+      name: { kind: "Name", value: "removeMemberFromMembersRoute" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
@@ -6101,7 +6981,7 @@ export const RemoveWorkspaceMemberFromMembersRouteDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "removeWorkspaceMember" },
+            name: { kind: "Name", value: "removeMember" },
             arguments: [
               {
                 kind: "Argument",
@@ -6124,19 +7004,16 @@ export const RemoveWorkspaceMemberFromMembersRouteDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  RemoveWorkspaceMemberFromMembersRouteMutation,
-  RemoveWorkspaceMemberFromMembersRouteMutationVariables
+  RemoveMemberFromMembersRouteMutation,
+  RemoveMemberFromMembersRouteMutationVariables
 >;
-export const UpdateWorkspaceMemberStatusFromMembersRouteDocument = {
+export const UpdateMemberStatusFromMembersRouteDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "mutation",
-      name: {
-        kind: "Name",
-        value: "updateWorkspaceMemberStatusFromMembersRoute",
-      },
+      name: { kind: "Name", value: "updateMemberStatusFromMembersRoute" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
@@ -6156,7 +7033,7 @@ export const UpdateWorkspaceMemberStatusFromMembersRouteDocument = {
             kind: "NonNullType",
             type: {
               kind: "NamedType",
-              name: { kind: "Name", value: "UpdateWorkspaceMemberInput" },
+              name: { kind: "Name", value: "UpdateMemberInput" },
             },
           },
         },
@@ -6166,7 +7043,7 @@ export const UpdateWorkspaceMemberStatusFromMembersRouteDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "updateWorkspaceMember" },
+            name: { kind: "Name", value: "updateMember" },
             arguments: [
               {
                 kind: "Argument",
@@ -6198,8 +7075,8 @@ export const UpdateWorkspaceMemberStatusFromMembersRouteDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  UpdateWorkspaceMemberStatusFromMembersRouteMutation,
-  UpdateWorkspaceMemberStatusFromMembersRouteMutationVariables
+  UpdateMemberStatusFromMembersRouteMutation,
+  UpdateMemberStatusFromMembersRouteMutationVariables
 >;
 export const UpdateWorkspaceFromSettingsRouteDocument = {
   kind: "Document",
@@ -6209,6 +7086,14 @@ export const UpdateWorkspaceFromSettingsRouteDocument = {
       operation: "mutation",
       name: { kind: "Name", value: "updateWorkspaceFromSettingsRoute" },
       variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
         {
           kind: "VariableDefinition",
           variable: {
@@ -6231,6 +7116,14 @@ export const UpdateWorkspaceFromSettingsRouteDocument = {
             kind: "Field",
             name: { kind: "Name", value: "updateWorkspace" },
             arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "id" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "id" },
+                },
+              },
               {
                 kind: "Argument",
                 name: { kind: "Name", value: "input" },
@@ -6263,12 +7156,32 @@ export const DeleteWorkspaceFromSettingsRouteDocument = {
       kind: "OperationDefinition",
       operation: "mutation",
       name: { kind: "Name", value: "deleteWorkspaceFromSettingsRoute" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
+      ],
       selectionSet: {
         kind: "SelectionSet",
         selections: [
           {
             kind: "Field",
             name: { kind: "Name", value: "deleteWorkspace" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "id" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "id" },
+                },
+              },
+            ],
             selectionSet: {
               kind: "SelectionSet",
               selections: [
@@ -6283,137 +7196,6 @@ export const DeleteWorkspaceFromSettingsRouteDocument = {
 } as unknown as DocumentNode<
   DeleteWorkspaceFromSettingsRouteMutation,
   DeleteWorkspaceFromSettingsRouteMutationVariables
->;
-export const GetTransferCandidatesFromSettingsRouteDocument = {
-  kind: "Document",
-  definitions: [
-    {
-      kind: "OperationDefinition",
-      operation: "query",
-      name: { kind: "Name", value: "getTransferCandidatesFromSettingsRoute" },
-      selectionSet: {
-        kind: "SelectionSet",
-        selections: [
-          {
-            kind: "Field",
-            name: { kind: "Name", value: "workspaceMembers" },
-            arguments: [
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "first" },
-                value: { kind: "IntValue", value: "100" },
-              },
-            ],
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "edges" },
-                  selectionSet: {
-                    kind: "SelectionSet",
-                    selections: [
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "node" },
-                        selectionSet: {
-                          kind: "SelectionSet",
-                          selections: [
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "id" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "name" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "email" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "roles" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "status" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "type" },
-                            },
-                          ],
-                        },
-                      },
-                    ],
-                  },
-                },
-              ],
-            },
-          },
-        ],
-      },
-    },
-  ],
-} as unknown as DocumentNode<
-  GetTransferCandidatesFromSettingsRouteQuery,
-  GetTransferCandidatesFromSettingsRouteQueryVariables
->;
-export const TransferWorkspaceOwnershipFromSettingsRouteDocument = {
-  kind: "Document",
-  definitions: [
-    {
-      kind: "OperationDefinition",
-      operation: "mutation",
-      name: {
-        kind: "Name",
-        value: "transferWorkspaceOwnershipFromSettingsRoute",
-      },
-      variableDefinitions: [
-        {
-          kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "memberId" },
-          },
-          type: {
-            kind: "NonNullType",
-            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
-          },
-        },
-      ],
-      selectionSet: {
-        kind: "SelectionSet",
-        selections: [
-          {
-            kind: "Field",
-            name: { kind: "Name", value: "transferWorkspaceOwnership" },
-            arguments: [
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "memberId" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "memberId" },
-                },
-              },
-            ],
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
-                { kind: "Field", name: { kind: "Name", value: "id" } },
-                { kind: "Field", name: { kind: "Name", value: "roles" } },
-              ],
-            },
-          },
-        ],
-      },
-    },
-  ],
-} as unknown as DocumentNode<
-  TransferWorkspaceOwnershipFromSettingsRouteMutation,
-  TransferWorkspaceOwnershipFromSettingsRouteMutationVariables
 >;
 export const LeaveWorkspaceFromSettingsRouteDocument = {
   kind: "Document",
@@ -6431,7 +7213,7 @@ export const LeaveWorkspaceFromSettingsRouteDocument = {
             selectionSet: {
               kind: "SelectionSet",
               selections: [
-                { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "memberId" } },
               ],
             },
           },
@@ -6563,32 +7345,41 @@ export const GetFirstWorkspaceFromWorkspacesRouteDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "workspaces" },
-            arguments: [
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "first" },
-                value: { kind: "IntValue", value: "1" },
-              },
-            ],
+            name: { kind: "Name", value: "currentUser" },
             selectionSet: {
               kind: "SelectionSet",
               selections: [
                 {
                   kind: "Field",
-                  name: { kind: "Name", value: "edges" },
+                  name: { kind: "Name", value: "workspaces" },
+                  arguments: [
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "first" },
+                      value: { kind: "IntValue", value: "1" },
+                    },
+                  ],
                   selectionSet: {
                     kind: "SelectionSet",
                     selections: [
                       {
                         kind: "Field",
-                        name: { kind: "Name", value: "node" },
+                        name: { kind: "Name", value: "edges" },
                         selectionSet: {
                           kind: "SelectionSet",
                           selections: [
                             {
                               kind: "Field",
-                              name: { kind: "Name", value: "id" },
+                              name: { kind: "Name", value: "node" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "id" },
+                                  },
+                                ],
+                              },
                             },
                           ],
                         },
@@ -6607,13 +7398,13 @@ export const GetFirstWorkspaceFromWorkspacesRouteDocument = {
   GetFirstWorkspaceFromWorkspacesRouteQuery,
   GetFirstWorkspaceFromWorkspacesRouteQueryVariables
 >;
-export const AuthSignInFromLoginFormDocument = {
+export const SignInFromLoginFormDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "mutation",
-      name: { kind: "Name", value: "authSignInFromLoginForm" },
+      name: { kind: "Name", value: "signInFromLoginForm" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
@@ -6635,7 +7426,7 @@ export const AuthSignInFromLoginFormDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "authSignIn" },
+            name: { kind: "Name", value: "signIn" },
             arguments: [
               {
                 kind: "Argument",
@@ -6667,16 +7458,16 @@ export const AuthSignInFromLoginFormDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  AuthSignInFromLoginFormMutation,
-  AuthSignInFromLoginFormMutationVariables
+  SignInFromLoginFormMutation,
+  SignInFromLoginFormMutationVariables
 >;
-export const AuthSignUpFromLoginFormDocument = {
+export const SignUpFromLoginFormDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "mutation",
-      name: { kind: "Name", value: "authSignUpFromLoginForm" },
+      name: { kind: "Name", value: "signUpFromLoginForm" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
@@ -6698,7 +7489,7 @@ export const AuthSignUpFromLoginFormDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "authSignUp" },
+            name: { kind: "Name", value: "signUp" },
             arguments: [
               {
                 kind: "Argument",
@@ -6730,8 +7521,8 @@ export const AuthSignUpFromLoginFormDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  AuthSignUpFromLoginFormMutation,
-  AuthSignUpFromLoginFormMutationVariables
+  SignUpFromLoginFormMutation,
+  SignUpFromLoginFormMutationVariables
 >;
 export const GetSocialProvidersFromLoginFormDocument = {
   kind: "Document",
@@ -6745,7 +7536,7 @@ export const GetSocialProvidersFromLoginFormDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "authSocialProviders" },
+            name: { kind: "Name", value: "socialProviders" },
             selectionSet: {
               kind: "SelectionSet",
               selections: [
@@ -6762,13 +7553,13 @@ export const GetSocialProvidersFromLoginFormDocument = {
   GetSocialProvidersFromLoginFormQuery,
   GetSocialProvidersFromLoginFormQueryVariables
 >;
-export const AuthSignInSocialFromLoginFormDocument = {
+export const SignInSocialFromLoginFormDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "mutation",
-      name: { kind: "Name", value: "authSignInSocialFromLoginForm" },
+      name: { kind: "Name", value: "signInSocialFromLoginForm" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
@@ -6790,7 +7581,7 @@ export const AuthSignInSocialFromLoginFormDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "authSignInSocial" },
+            name: { kind: "Name", value: "signInSocial" },
             arguments: [
               {
                 kind: "Argument",
@@ -6814,8 +7605,8 @@ export const AuthSignInSocialFromLoginFormDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  AuthSignInSocialFromLoginFormMutation,
-  AuthSignInSocialFromLoginFormMutationVariables
+  SignInSocialFromLoginFormMutation,
+  SignInSocialFromLoginFormMutationVariables
 >;
 export const RequestPasswordResetFromForgotPasswordDocument = {
   kind: "Document",
@@ -6845,7 +7636,7 @@ export const RequestPasswordResetFromForgotPasswordDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "authRequestPasswordReset" },
+            name: { kind: "Name", value: "requestPasswordReset" },
             arguments: [
               {
                 kind: "Argument",
@@ -6927,7 +7718,7 @@ export const ResetPasswordFromResetPasswordDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "authResetPassword" },
+            name: { kind: "Name", value: "resetPassword" },
             arguments: [
               {
                 kind: "Argument",
@@ -6975,7 +7766,7 @@ export const SendVerificationEmailFromVerifyEmailDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "authSendVerificationEmail" },
+            name: { kind: "Name", value: "sendVerificationEmail" },
             arguments: [
               {
                 kind: "Argument",
@@ -7025,13 +7816,13 @@ export const GetCurrentUserFromInviteRouteDocument = {
   GetCurrentUserFromInviteRouteQuery,
   GetCurrentUserFromInviteRouteQueryVariables
 >;
-export const GetWorkspaceInvitationFromInviteRouteDocument = {
+export const GetInvitationFromInviteRouteDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "query",
-      name: { kind: "Name", value: "getWorkspaceInvitationFromInviteRoute" },
+      name: { kind: "Name", value: "getInvitationFromInviteRoute" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
@@ -7047,7 +7838,7 @@ export const GetWorkspaceInvitationFromInviteRouteDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "workspaceInvitation" },
+            name: { kind: "Name", value: "invitation" },
             arguments: [
               {
                 kind: "Argument",
@@ -7085,23 +7876,20 @@ export const GetWorkspaceInvitationFromInviteRouteDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  GetWorkspaceInvitationFromInviteRouteQuery,
-  GetWorkspaceInvitationFromInviteRouteQueryVariables
+  GetInvitationFromInviteRouteQuery,
+  GetInvitationFromInviteRouteQueryVariables
 >;
-export const AcceptWorkspaceInvitationFromInviteRouteDocument = {
+export const AcceptInvitationFromInviteRouteDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "mutation",
-      name: { kind: "Name", value: "acceptWorkspaceInvitationFromInviteRoute" },
+      name: { kind: "Name", value: "acceptInvitationFromInviteRoute" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "invitationId" },
-          },
+          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
           type: {
             kind: "NonNullType",
             type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
@@ -7113,14 +7901,14 @@ export const AcceptWorkspaceInvitationFromInviteRouteDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "acceptWorkspaceInvitation" },
+            name: { kind: "Name", value: "acceptInvitation" },
             arguments: [
               {
                 kind: "Argument",
-                name: { kind: "Name", value: "invitationId" },
+                name: { kind: "Name", value: "id" },
                 value: {
                   kind: "Variable",
-                  name: { kind: "Name", value: "invitationId" },
+                  name: { kind: "Name", value: "id" },
                 },
               },
             ],
@@ -7161,7 +7949,6 @@ export const AcceptWorkspaceInvitationFromInviteRouteDocument = {
                     kind: "SelectionSet",
                     selections: [
                       { kind: "Field", name: { kind: "Name", value: "id" } },
-                      { kind: "Field", name: { kind: "Name", value: "name" } },
                       { kind: "Field", name: { kind: "Name", value: "roles" } },
                     ],
                   },
@@ -7174,6 +7961,6 @@ export const AcceptWorkspaceInvitationFromInviteRouteDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  AcceptWorkspaceInvitationFromInviteRouteMutation,
-  AcceptWorkspaceInvitationFromInviteRouteMutationVariables
+  AcceptInvitationFromInviteRouteMutation,
+  AcceptInvitationFromInviteRouteMutationVariables
 >;

@@ -2,12 +2,88 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
-type AcceptWorkspaceInvitationResult {
-  invitation: WorkspaceInvitation!
-  member: WorkspaceMember!
+type AcceptInvitationResult {
+  invitation: Invitation!
+  member: Member!
 }
 
-input AddWorkspaceMemberInput {
+type Account {
+  accountId: ID!
+  createdAt: DateTime!
+  id: ID!
+  issuer: String!
+  providerId: ID!
+  scopes: [String!]!
+  updatedAt: DateTime!
+}
+
+type AccountConnection {
+  """
+  A list of edges.
+  """
+  edges: [AccountEdge!]!
+
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+
+  """
+  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
+  """
+  totalCount: Int!
+
+  """
+  Indicates whether totalCount is exact or a lower bound.
+  """
+  totalCountRelation: TotalCountRelation!
+}
+
+"""
+An auto-generated type which holds one Account and a cursor during pagination.
+"""
+type AccountEdge {
+  """
+  A cursor for use in pagination.
+  """
+  cursor: String!
+
+  """
+  The item at the end of AccountEdge.
+  """
+  node: Account!
+}
+
+"""
+A filter for Account that accepts MongoDB query syntax.
+Supported fields: created_at, provider_id
+"""
+scalar AccountFilter
+
+"""
+Ordering options for account connections
+"""
+input AccountOrder {
+  """
+  The ordering direction.
+  """
+  direction: OrderDirection!
+
+  """
+  The field to order accounts by.
+  """
+  field: AccountOrderField!
+}
+
+"""
+Properties by which account connections can be ordered.
+"""
+enum AccountOrderField {
+  CREATED_AT
+  ID
+}
+
+input AddMemberInput {
   email: String!
 }
 
@@ -25,10 +101,14 @@ type ApiKey {
 }
 
 type ApiKeyConnection {
-  """A list of edges."""
+  """
+  A list of edges.
+  """
   edges: [ApiKeyEdge!]!
 
-  """Information to aid in pagination."""
+  """
+  Information to aid in pagination.
+  """
   pageInfo: PageInfo!
 
   """
@@ -36,7 +116,9 @@ type ApiKeyConnection {
   """
   totalCount: Int!
 
-  """Indicates whether totalCount is exact or a lower bound."""
+  """
+  Indicates whether totalCount is exact or a lower bound.
+  """
   totalCountRelation: TotalCountRelation!
 }
 
@@ -44,10 +126,14 @@ type ApiKeyConnection {
 An auto-generated type which holds one ApiKey and a cursor during pagination.
 """
 type ApiKeyEdge {
-  """A cursor for use in pagination."""
+  """
+  A cursor for use in pagination.
+  """
   cursor: String!
 
-  """The item at the end of ApiKeyEdge."""
+  """
+  The item at the end of ApiKeyEdge.
+  """
   node: ApiKey!
 }
 
@@ -57,16 +143,24 @@ Supported fields: name, prefix, enabled, last_used_at, created_at
 """
 scalar ApiKeyFilter
 
-"""Ordering options for apikey connections"""
+"""
+Ordering options for apikey connections
+"""
 input ApiKeyOrder {
-  """The ordering direction."""
+  """
+  The ordering direction.
+  """
   direction: OrderDirection!
 
-  """The field to order apikeys by."""
+  """
+  The field to order apikeys by.
+  """
   field: ApiKeyOrderField!
 }
 
-"""Properties by which apikey connections can be ordered."""
+"""
+Properties by which apikey connections can be ordered.
+"""
 enum ApiKeyOrderField {
   CREATED_AT
   ID
@@ -80,42 +174,6 @@ type AuthAbilityRuleType {
   inverted: Boolean!
   reason: String
   subjects: [String!]!
-}
-
-type AuthAccessTokenType {
-  accessToken: String!
-  accessTokenExpiresAt: DateTime
-  idToken: String
-  scopes: [String!]!
-}
-
-type AuthAccountIdentityType {
-  accountId: ID!
-  id: ID!
-  issuer: String!
-  providerId: ID!
-}
-
-type AuthAccountInfoType {
-  account: AuthAccountIdentityType!
-  data: JSONObject!
-  user: JSONObject!
-}
-
-input AuthAccountSelectorInput {
-  accountId: ID
-  useAccountCookie: Boolean
-}
-
-type AuthAccountType {
-  accountId: ID!
-  createdAt: DateTime!
-  id: ID!
-  issuer: String!
-  providerId: ID!
-  scopes: [String!]!
-  updatedAt: DateTime!
-  userId: ID!
 }
 
 input AuthChangeEmailInput {
@@ -157,17 +215,6 @@ type AuthLinkSocialAccountResultType {
   url: String!
 }
 
-type AuthRefreshedTokenType {
-  accessToken: String
-  accessTokenExpiresAt: DateTime
-  accountId: ID!
-  idToken: String
-  providerId: ID!
-  refreshToken: String!
-  refreshTokenExpiresAt: DateTime
-  scope: String
-}
-
 input AuthRequestPasswordResetInput {
   email: String!
   redirectTo: String
@@ -183,25 +230,9 @@ input AuthResetPasswordInput {
   token: String!
 }
 
-type AuthRoleType {
-  name: String!
-  permissions: [String!]!
-}
-
 input AuthSendVerificationEmailInput {
   callbackURL: String
   email: String!
-}
-
-type AuthSessionType {
-  createdAt: DateTime!
-  current: Boolean!
-  expiresAt: DateTime!
-  id: ID!
-  impersonatedById: ID
-  ipAddress: String
-  updatedAt: DateTime!
-  userAgent: String
 }
 
 input AuthSignInInput {
@@ -215,7 +246,7 @@ type AuthSignInResultType {
   redirect: Boolean!
   token: String!
   url: String
-  user: AuthUserType!
+  user: User!
 }
 
 input AuthSignInSocialInput {
@@ -232,7 +263,7 @@ type AuthSignInSocialResultType {
   redirect: Boolean!
   token: String
   url: String
-  user: AuthUserType
+  user: User
 }
 
 input AuthSignUpInput {
@@ -246,7 +277,7 @@ input AuthSignUpInput {
 
 type AuthSignUpResultType {
   token: String
-  user: AuthUserType!
+  user: User!
 }
 
 type AuthSocialProviderType {
@@ -257,16 +288,6 @@ type AuthSocialProviderType {
 input AuthUpdateUserInput {
   image: String
   name: String
-}
-
-type AuthUserType {
-  createdAt: DateTime!
-  email: String!
-  emailVerified: Boolean!
-  id: ID!
-  image: String
-  name: String!
-  updatedAt: DateTime!
 }
 
 input BanUserInput {
@@ -286,10 +307,10 @@ type CreateApiKeyResult {
   entity: ApiKey!
 }
 
-input CreateServiceAccountWorkspaceMemberInput {
-  name: String!
-  permissions: [String!]
-  roles: [String!]
+input CreateInvitationInput {
+  email: String!
+  expiresIn: Int
+  roles: [String!]!
 }
 
 input CreateUserInput {
@@ -304,10 +325,8 @@ input CreateWorkspaceInput {
   name: String!
 }
 
-input CreateWorkspaceInvitationInput {
-  email: String!
-  expiresIn: Int
-  roles: [String!]!
+type CreateWorkspacePayload {
+  id: ID!
 }
 
 """
@@ -315,70 +334,245 @@ A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date
 """
 scalar DateTime
 
+type DeleteUserPayload {
+  id: ID!
+}
+
+type DeleteWorkspacePayload {
+  id: ID!
+}
+
+type Invitation {
+  createdAt: DateTime!
+  email: String!
+  expiresAt: DateTime!
+  id: ID!
+  inviter: User!
+  roles: [String!]!
+  status: InvitationStatus!
+  workspace: Workspace!
+}
+
+type InvitationConnection {
+  """
+  A list of edges.
+  """
+  edges: [InvitationEdge!]!
+
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+
+  """
+  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
+  """
+  totalCount: Int!
+
+  """
+  Indicates whether totalCount is exact or a lower bound.
+  """
+  totalCountRelation: TotalCountRelation!
+}
+
+"""
+An auto-generated type which holds one Invitation and a cursor during pagination.
+"""
+type InvitationEdge {
+  """
+  A cursor for use in pagination.
+  """
+  cursor: String!
+
+  """
+  The item at the end of InvitationEdge.
+  """
+  node: Invitation!
+}
+
+"""
+A filter for Invitation that accepts MongoDB query syntax.
+Supported fields: email, status, created_at
+"""
+scalar InvitationFilter
+
+"""
+Ordering options for invitation connections
+"""
+input InvitationOrder {
+  """
+  The ordering direction.
+  """
+  direction: OrderDirection!
+
+  """
+  The field to order invitations by.
+  """
+  field: InvitationOrderField!
+}
+
+"""
+Properties by which invitation connections can be ordered.
+"""
+enum InvitationOrderField {
+  CREATED_AT
+  ID
+}
+
+enum InvitationStatus {
+  ACCEPTED
+  CANCELED
+  PENDING
+  REJECTED
+}
+
 """
 The `JSONObject` scalar type represents JSON objects as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
 """
 scalar JSONObject
 
-input ListUsersInput {
-  limit: Int
-  offset: Int
-  search: String
+type LeaveWorkspacePayload {
+  memberId: ID!
+}
+
+type Member {
+  createdAt: DateTime!
+  email: String
+  id: ID!
+  name: String!
+  permissions: [String!]!
+  roles: [String!]!
+  status: MemberStatus!
+  updatedAt: DateTime!
+  user: User
+}
+
+type MemberConnection {
+  """
+  A list of edges.
+  """
+  edges: [MemberEdge!]!
+
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+
+  """
+  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
+  """
+  totalCount: Int!
+
+  """
+  Indicates whether totalCount is exact or a lower bound.
+  """
+  totalCountRelation: TotalCountRelation!
+}
+
+"""
+An auto-generated type which holds one Member and a cursor during pagination.
+"""
+type MemberEdge {
+  """
+  A cursor for use in pagination.
+  """
+  cursor: String!
+
+  """
+  The item at the end of MemberEdge.
+  """
+  node: Member!
+}
+
+"""
+A filter for Member that accepts MongoDB query syntax.
+Supported fields: name, email, status, created_at
+"""
+scalar MemberFilter
+
+"""
+Ordering options for member connections
+"""
+input MemberOrder {
+  """
+  The ordering direction.
+  """
+  direction: OrderDirection!
+
+  """
+  The field to order members by.
+  """
+  field: MemberOrderField!
+}
+
+"""
+Properties by which member connections can be ordered.
+"""
+enum MemberOrderField {
+  CREATED_AT
+  ID
+}
+
+enum MemberStatus {
+  ACTIVE
+  DISABLED
 }
 
 type Mutation {
-  acceptWorkspaceInvitation(invitationId: ID!): AcceptWorkspaceInvitationResult!
-  addWorkspaceMember(input: AddWorkspaceMemberInput!): WorkspaceMember!
-  authChangeEmail(input: AuthChangeEmailInput!): Boolean!
-  authChangePassword(input: AuthChangePasswordInput!): AuthChangePasswordResultType!
-  authDeleteUser(input: AuthDeleteUserInput): AuthDeleteUserResultType!
-  authLinkSocialAccount(input: AuthLinkSocialAccountInput!): AuthLinkSocialAccountResultType!
-  authRefreshToken(input: AuthAccountSelectorInput!): AuthRefreshedTokenType!
-  authRequestPasswordReset(input: AuthRequestPasswordResetInput!): AuthRequestPasswordResetResultType!
-  authResetPassword(input: AuthResetPasswordInput!): Boolean!
-  authRevokeOtherSessions: Boolean!
-  authRevokeSession(sessionId: ID!): Boolean!
-  authRevokeSessions: Boolean!
-  authSendVerificationEmail(input: AuthSendVerificationEmailInput!): Boolean!
-  authSetPassword(newPassword: String!): Boolean!
-  authSignIn(input: AuthSignInInput!): AuthSignInResultType!
-  authSignInSocial(input: AuthSignInSocialInput!): AuthSignInSocialResultType!
-  authSignOut: Boolean!
-  authSignUp(input: AuthSignUpInput!): AuthSignUpResultType!
-  authUnlinkAccount(accountId: ID!): Boolean!
-  authUpdateUser(input: AuthUpdateUserInput!): Boolean!
+  acceptInvitation(id: ID!): AcceptInvitationResult!
+  addMember(input: AddMemberInput!): Member!
   banUser(id: ID!, input: BanUserInput): User!
-  cancelWorkspaceInvitation(invitationId: ID!): WorkspaceInvitation!
-  createApiKey(input: CreateApiKeyInput!): CreateApiKeyResult!
-  createServiceAccountWorkspaceMember(input: CreateServiceAccountWorkspaceMemberInput!): WorkspaceMember!
+  cancelInvitation(id: ID!): Invitation!
+  changeCurrentUserEmail(input: AuthChangeEmailInput!): Boolean!
+  changeCurrentUserPassword(
+    input: AuthChangePasswordInput!
+  ): AuthChangePasswordResultType!
+  createInvitation(input: CreateInvitationInput!): Invitation!
   createUser(input: CreateUserInput!): User!
   createUserApiKey(input: CreateApiKeyInput!): CreateApiKeyResult!
-  createWorkspace(input: CreateWorkspaceInput!): Workspace!
-  createWorkspaceInvitation(input: CreateWorkspaceInvitationInput!): WorkspaceInvitation!
-  deleteApiKey(id: ID!): ApiKey!
-  deleteUser(id: ID!): User!
+  createWorkspace(input: CreateWorkspaceInput!): CreateWorkspacePayload!
+  createWorkspaceApiKey(input: CreateApiKeyInput!): CreateApiKeyResult!
+  deleteCurrentUser(input: AuthDeleteUserInput): AuthDeleteUserResultType!
+  deleteUser(id: ID!): DeleteUserPayload!
   deleteUserApiKey(id: ID!): ApiKey!
-  deleteWorkspace: Workspace!
+  deleteWorkspace(id: ID!): DeleteWorkspacePayload!
+  deleteWorkspaceApiKey(id: ID!): ApiKey!
   impersonateUser(id: ID!): User!
-  leaveWorkspace: WorkspaceMember!
-  rejectWorkspaceInvitation(invitationId: ID!): WorkspaceInvitation!
-  removeWorkspace: Workspace! @deprecated(reason: "Use deleteWorkspace instead")
-  removeWorkspaceMember(id: ID!): WorkspaceMember!
-  revokeUserSession(sessionId: ID!, userId: ID!): Boolean!
+  leaveWorkspace: LeaveWorkspacePayload!
+  linkCurrentUserAccount(
+    input: AuthLinkSocialAccountInput!
+  ): AuthLinkSocialAccountResultType!
+  rejectInvitation(id: ID!): Invitation!
+  removeMember(id: ID!): RemoveMemberPayload!
+  requestPasswordReset(
+    input: AuthRequestPasswordResetInput!
+  ): AuthRequestPasswordResetResultType!
+  resetPassword(input: AuthResetPasswordInput!): Boolean!
+  revokeCurrentUserOtherSessions: Boolean!
+  revokeCurrentUserSession(id: ID!): Boolean!
+  revokeCurrentUserSessions: Boolean!
+  revokeSession(id: ID!, userId: ID!): Boolean!
   revokeUserSessions(userId: ID!): Boolean!
+  sendVerificationEmail(input: AuthSendVerificationEmailInput!): Boolean!
+  setCurrentUserPassword(newPassword: String!): Boolean!
+  setMemberPermissions(id: ID!, input: SetMemberPermissionsInput!): Member!
+  setMemberRoles(id: ID!, input: SetMemberRolesInput!): Member!
   setUserPassword(id: ID!, input: SetUserPasswordInput!): Boolean!
   setUserPermissions(id: ID!, input: SetUserPermissionsInput!): User!
   setUserRoles(id: ID!, input: SetUserRolesInput!): User!
-  setWorkspaceMemberPermissions(id: ID!, input: SetWorkspaceMemberPermissionsInput!): WorkspaceMember!
+  signIn(input: AuthSignInInput!): AuthSignInResultType!
+  signInSocial(input: AuthSignInSocialInput!): AuthSignInSocialResultType!
+  signOut: Boolean!
+  signUp(input: AuthSignUpInput!): AuthSignUpResultType!
   stopImpersonating: User
-  transferWorkspaceOwnership(memberId: ID!): WorkspaceMember!
   unbanUser(id: ID!): User!
-  updateApiKey(id: ID!, input: UpdateApiKeyInput!): ApiKey!
+  unlinkCurrentUserAccount(id: ID!): Boolean!
+  updateCurrentUser(input: AuthUpdateUserInput!): Boolean!
+  updateMember(id: ID!, input: UpdateMemberInput!): Member
   updateUser(id: ID!, input: UpdateUserInput!): User!
   updateUserApiKey(id: ID!, input: UpdateApiKeyInput!): ApiKey!
-  updateWorkspace(input: UpdateWorkspaceInput!): Workspace!
-  updateWorkspaceMember(id: ID!, input: UpdateWorkspaceMemberInput!): WorkspaceMember
-  updateWorkspaceMemberRole(id: ID!, input: UpdateWorkspaceMemberRoleInput!): WorkspaceMember!
+  updateWorkspace(id: ID!, input: UpdateWorkspaceInput!): Workspace!
+  updateWorkspaceApiKey(id: ID!, input: UpdateApiKeyInput!): ApiKey!
 }
 
 enum OrderDirection {
@@ -392,144 +586,162 @@ Returns information about pagination in a connection, in accordance with the [Re
 type PageInfo {
   endCursor: String
 
-  """Whether there are more pages to fetch following the current page."""
+  """
+  Whether there are more pages to fetch following the current page.
+  """
   hasNextPage: Boolean!
 
-  """Whether there are any pages prior to the current page."""
+  """
+  Whether there are any pages prior to the current page.
+  """
   hasPreviousPage: Boolean!
   startCursor: String
 }
 
 type Query {
-  apiKey(id: ID!): ApiKey
-  apiKeys(
-    """Returns the elements that come after the specified cursor."""
-    after: String
-
-    """Returns the elements that come before the specified cursor."""
-    before: String
-
-    """Filter apikeys using MongoDB query syntax."""
-    filter: ApiKeyFilter
-
-    """Returns up to the first `n` elements from the list."""
-    first: Int
-
-    """Returns up to the last `n` elements from the list."""
-    last: Int
-
-    """Ordering options for the returned apikeys."""
-    orderBy: ApiKeyOrder
-
-    """
-    Apply one or multiple filters to the query.
-    Supported filter parameters:
-    `name`, `prefix`, `enabled`, `last_used_at`, `created_at`
-    """
-    query: String
-  ): ApiKeyConnection!
-  authAccessToken(input: AuthAccountSelectorInput!): AuthAccessTokenType!
-  authAccountInfo(input: AuthAccountSelectorInput!): AuthAccountInfoType!
-  authAccounts: [AuthAccountType!]!
-  authSessions: [AuthSessionType!]!
-  authSocialProviders: [AuthSocialProviderType!]!
-  currentAuthSession: AuthSessionType
+  currentMember: Member
+  currentSession: Session
   currentUser: User!
   currentUserAbilityRules: [AuthAbilityRuleType!]!
-  currentUserWorkspaceInvitations: [WorkspaceInvitation!]!
   currentWorkspace: Workspace
   currentWorkspaceAbilityRules: [AuthAbilityRuleType!]!
-  currentWorkspaceMember: WorkspaceMember
+  invitation(id: ID!): Invitation
+  member(id: ID!): Member
+  socialProviders: [AuthSocialProviderType!]!
   user(id: ID!): User
-  userApiKey(id: ID!): ApiKey
-  userApiKeys(
-    """Returns the elements that come after the specified cursor."""
-    after: String
-
-    """Returns the elements that come before the specified cursor."""
-    before: String
-
-    """Filter apikeys using MongoDB query syntax."""
-    filter: ApiKeyFilter
-
-    """Returns up to the first `n` elements from the list."""
-    first: Int
-
-    """Returns up to the last `n` elements from the list."""
-    last: Int
-
-    """Ordering options for the returned apikeys."""
-    orderBy: ApiKeyOrder
-
-    """
-    Apply one or multiple filters to the query.
-    Supported filter parameters:
-    `name`, `prefix`, `enabled`, `last_used_at`, `created_at`
-    """
-    query: String
-  ): ApiKeyConnection!
   userPermissions: [String!]!
-  userRoles: [AuthRoleType!]!
-  userSessions(userId: ID!): [AuthSessionType!]!
-  users(input: ListUsersInput): UserListType!
+  userRoles: [String!]!
+  users(
+    """
+    Returns the elements that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the elements that come before the specified cursor.
+    """
+    before: String
+
+    """
+    Filter users using MongoDB query syntax.
+    """
+    filter: UserFilter
+
+    """
+    Returns up to the first `n` elements from the list.
+    """
+    first: Int
+
+    """
+    Returns up to the last `n` elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for the returned users.
+    """
+    orderBy: UserOrder
+
+    """
+    Apply one or multiple filters to the query.
+    Supported filter parameters:
+    `name`, `email`
+    """
+    query: String
+  ): UserConnection!
   workspace(id: ID!): Workspace
-  workspaceInvitation(id: ID!): WorkspaceInvitation
-  workspaceInvitations: [WorkspaceInvitation!]!
-  workspaceMember(id: ID!): WorkspaceMember
-  workspaceMembers(
-    """Returns the elements that come after the specified cursor."""
-    after: String
-
-    """Returns the elements that come before the specified cursor."""
-    before: String
-
-    """Filter workspacemembers using MongoDB query syntax."""
-    filter: WorkspaceMemberFilter
-
-    """Returns up to the first `n` elements from the list."""
-    first: Int
-
-    """Returns up to the last `n` elements from the list."""
-    last: Int
-
-    """Ordering options for the returned workspacemembers."""
-    orderBy: WorkspaceMemberOrder
-
-    """
-    Apply one or multiple filters to the query.
-    Supported filter parameters:
-    `name`, `type`, `email`, `status`, `created_at`
-    """
-    query: String
-  ): WorkspaceMemberConnection!
   workspacePermissions: [String!]!
-  workspaceRoles: [AuthRoleType!]!
-  workspaces(
-    """Returns the elements that come after the specified cursor."""
-    after: String
+  workspaceRoles: [String!]!
+}
 
-    """Returns the elements that come before the specified cursor."""
-    before: String
+type RemoveMemberPayload {
+  id: ID!
+}
 
-    """Filter workspaces using MongoDB query syntax."""
-    filter: WorkspaceFilter
+type Session {
+  createdAt: DateTime!
+  current: Boolean!
+  expiresAt: DateTime!
+  id: ID!
+  impersonatedBy: User
+  impersonatedById: ID
+  ipAddress: String
+  updatedAt: DateTime!
+  userAgent: String
+}
 
-    """Returns up to the first `n` elements from the list."""
-    first: Int
+type SessionConnection {
+  """
+  A list of edges.
+  """
+  edges: [SessionEdge!]!
 
-    """Returns up to the last `n` elements from the list."""
-    last: Int
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
 
-    """Ordering options for the returned workspaces."""
-    orderBy: WorkspaceOrder
+  """
+  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
+  """
+  totalCount: Int!
 
-    """
-    Apply one or multiple filters to the query.
-    Supported filter parameters:
-    `name`, `created_at`
-    """
-    query: String
-  ): WorkspaceConnection!
+  """
+  Indicates whether totalCount is exact or a lower bound.
+  """
+  totalCountRelation: TotalCountRelation!
+}
+
+"""
+An auto-generated type which holds one Session and a cursor during pagination.
+"""
+type SessionEdge {
+  """
+  A cursor for use in pagination.
+  """
+  cursor: String!
+
+  """
+  The item at the end of SessionEdge.
+  """
+  node: Session!
+}
+
+"""
+A filter for Session that accepts MongoDB query syntax.
+Supported fields: created_at
+"""
+scalar SessionFilter
+
+"""
+Ordering options for session connections
+"""
+input SessionOrder {
+  """
+  The ordering direction.
+  """
+  direction: OrderDirection!
+
+  """
+  The field to order sessions by.
+  """
+  field: SessionOrderField!
+}
+
+"""
+Properties by which session connections can be ordered.
+"""
+enum SessionOrderField {
+  CREATED_AT
+  ID
+}
+
+input SetMemberPermissionsInput {
+  permissions: [String!]!
+}
+
+input SetMemberRolesInput {
+  roles: [String!]!
 }
 
 input SetUserPasswordInput {
@@ -544,10 +756,6 @@ input SetUserRolesInput {
   roles: [String!]!
 }
 
-input SetWorkspaceMemberPermissionsInput {
-  permissions: [String!]!
-}
-
 enum TotalCountRelation {
   EQ
   GTE
@@ -558,6 +766,12 @@ input UpdateApiKeyInput {
   expiresAt: DateTime
   name: String
   permissions: [String!]
+}
+
+input UpdateMemberInput {
+  email: String
+  name: String
+  status: MemberStatus
 }
 
 input UpdateUserInput {
@@ -571,17 +785,84 @@ input UpdateWorkspaceInput {
   name: String
 }
 
-input UpdateWorkspaceMemberInput {
-  email: String
-  name: String
-  status: WorkspaceMemberStatus
-}
-
-input UpdateWorkspaceMemberRoleInput {
-  roles: [String!]!
-}
-
 type User {
+  accounts(
+    """
+    Returns the elements that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the elements that come before the specified cursor.
+    """
+    before: String
+
+    """
+    Filter accounts using MongoDB query syntax.
+    """
+    filter: AccountFilter
+
+    """
+    Returns up to the first `n` elements from the list.
+    """
+    first: Int
+
+    """
+    Returns up to the last `n` elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for the returned accounts.
+    """
+    orderBy: AccountOrder
+
+    """
+    Apply one or multiple filters to the query.
+    Supported filter parameters:
+    `provider_id`
+    """
+    query: String
+  ): AccountConnection!
+  apiKey(id: ID!): ApiKey
+  apiKeys(
+    """
+    Returns the elements that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the elements that come before the specified cursor.
+    """
+    before: String
+
+    """
+    Filter apikeys using MongoDB query syntax.
+    """
+    filter: ApiKeyFilter
+
+    """
+    Returns up to the first `n` elements from the list.
+    """
+    first: Int
+
+    """
+    Returns up to the last `n` elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for the returned apikeys.
+    """
+    orderBy: ApiKeyOrder
+
+    """
+    Apply one or multiple filters to the query.
+    Supported filter parameters:
+    `name`, `prefix`, `enabled`, `last_used_at`, `created_at`
+    """
+    query: String
+  ): ApiKeyConnection!
   banExpiresAt: DateTime
   banReason: String
   banned: Boolean!
@@ -590,33 +871,129 @@ type User {
   emailVerified: Boolean!
   id: ID!
   image: String
+  invitations(
+    """
+    Returns the elements that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the elements that come before the specified cursor.
+    """
+    before: String
+
+    """
+    Filter invitations using MongoDB query syntax.
+    """
+    filter: InvitationFilter
+
+    """
+    Returns up to the first `n` elements from the list.
+    """
+    first: Int
+
+    """
+    Returns up to the last `n` elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for the returned invitations.
+    """
+    orderBy: InvitationOrder
+
+    """
+    Apply one or multiple filters to the query.
+    Supported filter parameters:
+    `email`, `status`, `created_at`
+    """
+    query: String
+  ): InvitationConnection!
   name: String!
   permissions: [String!]!
   roles: [String!]!
+  sessions(
+    """
+    Returns the elements that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the elements that come before the specified cursor.
+    """
+    before: String
+
+    """
+    Filter sessions using MongoDB query syntax.
+    """
+    filter: SessionFilter
+
+    """
+    Returns up to the first `n` elements from the list.
+    """
+    first: Int
+
+    """
+    Returns up to the last `n` elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for the returned sessions.
+    """
+    orderBy: SessionOrder
+    query: String
+  ): SessionConnection!
   updatedAt: DateTime!
+  workspaces(
+    """
+    Returns the elements that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the elements that come before the specified cursor.
+    """
+    before: String
+
+    """
+    Filter workspaces using MongoDB query syntax.
+    """
+    filter: WorkspaceFilter
+
+    """
+    Returns up to the first `n` elements from the list.
+    """
+    first: Int
+
+    """
+    Returns up to the last `n` elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for the returned workspaces.
+    """
+    orderBy: WorkspaceOrder
+
+    """
+    Apply one or multiple filters to the query.
+    Supported filter parameters:
+    `name`, `created_at`
+    """
+    query: String
+  ): WorkspaceConnection!
 }
 
-type UserListType {
-  limit: Int!
-  offset: Int!
-  total: Int!
-  users: [User!]!
-}
+type UserConnection {
+  """
+  A list of edges.
+  """
+  edges: [UserEdge!]!
 
-type Workspace {
-  createdAt: DateTime!
-  deletedAt: DateTime
-  features: [WorkspaceFeature!]!
-  id: ID!
-  name: String!
-  updatedAt: DateTime!
-}
-
-type WorkspaceConnection {
-  """A list of edges."""
-  edges: [WorkspaceEdge!]!
-
-  """Information to aid in pagination."""
+  """
+  Information to aid in pagination.
+  """
   pageInfo: PageInfo!
 
   """
@@ -624,7 +1001,198 @@ type WorkspaceConnection {
   """
   totalCount: Int!
 
-  """Indicates whether totalCount is exact or a lower bound."""
+  """
+  Indicates whether totalCount is exact or a lower bound.
+  """
+  totalCountRelation: TotalCountRelation!
+}
+
+"""
+An auto-generated type which holds one User and a cursor during pagination.
+"""
+type UserEdge {
+  """
+  A cursor for use in pagination.
+  """
+  cursor: String!
+
+  """
+  The item at the end of UserEdge.
+  """
+  node: User!
+}
+
+"""
+A filter for User that accepts MongoDB query syntax.
+Supported fields: name, email, created_at
+"""
+scalar UserFilter
+
+"""
+Ordering options for user connections
+"""
+input UserOrder {
+  """
+  The ordering direction.
+  """
+  direction: OrderDirection!
+
+  """
+  The field to order users by.
+  """
+  field: UserOrderField!
+}
+
+"""
+Properties by which user connections can be ordered.
+"""
+enum UserOrderField {
+  CREATED_AT
+  ID
+}
+
+type Workspace {
+  apiKey(id: ID!): ApiKey
+  apiKeys(
+    """
+    Returns the elements that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the elements that come before the specified cursor.
+    """
+    before: String
+
+    """
+    Filter apikeys using MongoDB query syntax.
+    """
+    filter: ApiKeyFilter
+
+    """
+    Returns up to the first `n` elements from the list.
+    """
+    first: Int
+
+    """
+    Returns up to the last `n` elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for the returned apikeys.
+    """
+    orderBy: ApiKeyOrder
+
+    """
+    Apply one or multiple filters to the query.
+    Supported filter parameters:
+    `name`, `prefix`, `enabled`, `last_used_at`, `created_at`
+    """
+    query: String
+  ): ApiKeyConnection!
+  createdAt: DateTime!
+  deletedAt: DateTime
+  id: ID!
+  invitations(
+    """
+    Returns the elements that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the elements that come before the specified cursor.
+    """
+    before: String
+
+    """
+    Filter invitations using MongoDB query syntax.
+    """
+    filter: InvitationFilter
+
+    """
+    Returns up to the first `n` elements from the list.
+    """
+    first: Int
+
+    """
+    Returns up to the last `n` elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for the returned invitations.
+    """
+    orderBy: InvitationOrder
+
+    """
+    Apply one or multiple filters to the query.
+    Supported filter parameters:
+    `email`, `status`, `created_at`
+    """
+    query: String
+  ): InvitationConnection!
+  members(
+    """
+    Returns the elements that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the elements that come before the specified cursor.
+    """
+    before: String
+
+    """
+    Filter members using MongoDB query syntax.
+    """
+    filter: MemberFilter
+
+    """
+    Returns up to the first `n` elements from the list.
+    """
+    first: Int
+
+    """
+    Returns up to the last `n` elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for the returned members.
+    """
+    orderBy: MemberOrder
+
+    """
+    Apply one or multiple filters to the query.
+    Supported filter parameters:
+    `name`, `email`, `status`, `created_at`
+    """
+    query: String
+  ): MemberConnection!
+  name: String!
+  updatedAt: DateTime!
+}
+
+type WorkspaceConnection {
+  """
+  A list of edges.
+  """
+  edges: [WorkspaceEdge!]!
+
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+
+  """
+  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
+  """
+  totalCount: Int!
+
+  """
+  Indicates whether totalCount is exact or a lower bound.
+  """
   totalCountRelation: TotalCountRelation!
 }
 
@@ -632,15 +1200,15 @@ type WorkspaceConnection {
 An auto-generated type which holds one Workspace and a cursor during pagination.
 """
 type WorkspaceEdge {
-  """A cursor for use in pagination."""
+  """
+  A cursor for use in pagination.
+  """
   cursor: String!
 
-  """The item at the end of WorkspaceEdge."""
+  """
+  The item at the end of WorkspaceEdge.
+  """
   node: Workspace!
-}
-
-enum WorkspaceFeature {
-  AI
 }
 
 """
@@ -649,105 +1217,24 @@ Supported fields: name, created_at
 """
 scalar WorkspaceFilter
 
-type WorkspaceInvitation {
-  createdAt: DateTime!
-  email: String!
-  expiresAt: DateTime!
-  id: ID!
-  inviter: User!
-  roles: [String!]!
-  status: WorkspaceInvitationStatus!
-  workspace: Workspace!
-}
-
-enum WorkspaceInvitationStatus {
-  ACCEPTED
-  CANCELED
-  PENDING
-  REJECTED
-}
-
-type WorkspaceMember {
-  createdAt: DateTime!
-  email: String
-  id: ID!
-  name: String!
-  permissions: [String!]!
-  roles: [String!]!
-  status: WorkspaceMemberStatus!
-  type: WorkspaceMemberType!
-  updatedAt: DateTime!
-  user: User
-}
-
-type WorkspaceMemberConnection {
-  """A list of edges."""
-  edges: [WorkspaceMemberEdge!]!
-
-  """Information to aid in pagination."""
-  pageInfo: PageInfo!
-
-  """
-  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
-  """
-  totalCount: Int!
-
-  """Indicates whether totalCount is exact or a lower bound."""
-  totalCountRelation: TotalCountRelation!
-}
-
 """
-An auto-generated type which holds one WorkspaceMember and a cursor during pagination.
+Ordering options for workspace connections
 """
-type WorkspaceMemberEdge {
-  """A cursor for use in pagination."""
-  cursor: String!
-
-  """The item at the end of WorkspaceMemberEdge."""
-  node: WorkspaceMember!
-}
-
-"""
-A filter for WorkspaceMember that accepts MongoDB query syntax.
-Supported fields: name, type, email, status, created_at
-"""
-scalar WorkspaceMemberFilter
-
-"""Ordering options for workspacemember connections"""
-input WorkspaceMemberOrder {
-  """The ordering direction."""
-  direction: OrderDirection!
-
-  """The field to order workspacemembers by."""
-  field: WorkspaceMemberOrderField!
-}
-
-"""Properties by which workspacemember connections can be ordered."""
-enum WorkspaceMemberOrderField {
-  CREATED_AT
-  ID
-}
-
-enum WorkspaceMemberStatus {
-  ACTIVE
-  DISABLED
-}
-
-enum WorkspaceMemberType {
-  SERVICE_ACCOUNT
-  USER
-}
-
-"""Ordering options for workspace connections"""
 input WorkspaceOrder {
-  """The ordering direction."""
+  """
+  The ordering direction.
+  """
   direction: OrderDirection!
 
-  """The field to order workspaces by."""
+  """
+  The field to order workspaces by.
+  """
   field: WorkspaceOrderField!
 }
 
-"""Properties by which workspace connections can be ordered."""
+"""
+Properties by which workspace connections can be ordered.
+"""
 enum WorkspaceOrderField {
   CREATED_AT
   ID

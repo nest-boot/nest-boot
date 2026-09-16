@@ -1,7 +1,7 @@
 import { RequestContext } from "@nest-boot/request-context";
 
 import { UserAbility } from "../abilities/user.ability.js";
-import { AccessControlService } from "../access-control.service.js";
+import { AccessControlService } from "../services/access-control.service.js";
 import { userCan } from "./user-can.util.js";
 
 class TestSubject {}

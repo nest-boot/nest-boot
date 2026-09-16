@@ -4,9 +4,9 @@ import type { CallHandler, ExecutionContext } from "@nestjs/common";
 import { lastValueFrom, of, throwError } from "rxjs";
 import type { Mocked } from "vitest";
 
-import type { ApiKeyService } from "./api-key.service.js";
 import { ApiKeyUsageInterceptor } from "./api-key-usage.interceptor.js";
-import { BaseApiKey } from "./entities/index.js";
+import { ApiKey as BaseApiKey } from "./entities/api-key.entity.js";
+import type { ApiKeyService } from "./services/api-key.service.js";
 
 describe("ApiKeyUsageInterceptor", () => {
   afterEach(() => vi.restoreAllMocks());

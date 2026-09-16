@@ -28,23 +28,23 @@
     "name": "Delete Workspace",
     "description": "Permanently delete the workspace"
   },
-  "workspace_member_create": {
+  "member_create": {
     "name": "Create Members",
-    "description": "Add members and service accounts to the workspace"
+    "description": "Add members to the workspace"
   },
-  "workspace_member_update": {
+  "member_update": {
     "name": "Update Members",
     "description": "Change workspace member details and access"
   },
-  "workspace_member_delete": {
+  "member_delete": {
     "name": "Delete Members",
-    "description": "Remove members and service accounts from the workspace"
+    "description": "Remove members from the workspace"
   },
-  "workspace_invitation_create": {
+  "invitation_create": {
     "name": "Create Invitations",
     "description": "Invite people to join the workspace"
   },
-  "workspace_invitation_cancel": {
+  "invitation_cancel": {
     "name": "Cancel Invitations",
     "description": "Cancel pending workspace invitations"
   },

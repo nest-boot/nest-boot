@@ -23,7 +23,7 @@ const REQUEST_PASSWORD_RESET_FROM_FORGOT_PASSWORD = graphql(`
   mutation requestPasswordResetFromForgotPassword(
     $input: AuthRequestPasswordResetInput!
   ) {
-    authRequestPasswordReset(input: $input) {
+    requestPasswordReset(input: $input) {
       status
     }
   }
@@ -66,7 +66,7 @@ function ForgotPasswordComponent() {
         },
       });
 
-      if (!result.data?.authRequestPasswordReset.status) {
+      if (!result.data?.requestPasswordReset.status) {
         throw new Error(t("auth:passwordReset.requestFailed"));
       }
 

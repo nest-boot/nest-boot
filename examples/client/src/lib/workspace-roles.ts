@@ -10,11 +10,8 @@ export const workspaceRoles = [
   WORKSPACE_MEMBER_ROLE,
 ] as const;
 
-/** Roles that can be assigned without transferring workspace ownership. */
-export const workspaceAssignableRoles = [
-  WORKSPACE_ADMIN_ROLE,
-  WORKSPACE_MEMBER_ROLE,
-] as const;
+/** Configured roles available for assignment, subject to Service authorization. */
+export const workspaceAssignableRoles = workspaceRoles;
 
 export function hasWorkspaceRole(
   roles: ReadonlyArray<string>,

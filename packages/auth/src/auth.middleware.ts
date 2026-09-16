@@ -1,9 +1,5 @@
 import { EntityManager } from "@mikro-orm/core";
-import {
-  cookies,
-  RequestContext,
-  type RequestContextToken,
-} from "@nest-boot/request-context";
+import { cookies, RequestContext } from "@nest-boot/request-context";
 import {
   Inject,
   Injectable,
@@ -12,26 +8,59 @@ import {
 } from "@nestjs/common";
 import { type NextFunction, type Request, type Response } from "express";
 
-import { ApiKeyService } from "./api-key.service.js";
+import { UserAbility } from "./abilities/user.ability.js";
+import { WorkspaceAbility } from "./abilities/workspace.ability.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
-import {
-  BaseAccount,
-  BaseApiKey,
-  BaseSession,
-  BaseUser,
-  BaseVerification,
-  BaseWorkspace,
-  BaseWorkspaceInvitation,
-  BaseWorkspaceMember,
-} from "./entities/index.js";
-import { SessionService } from "./session.service.js";
+import { ApiKey } from "./entities/api-key.entity.js";
+import { Member } from "./entities/member.entity.js";
+import { Session } from "./entities/session.entity.js";
+import { User } from "./entities/user.entity.js";
+import { Workspace } from "./entities/workspace.entity.js";
+import { ApiKeyService } from "./services/api-key.service.js";
+import { SessionService } from "./services/session.service.js";
 import { extractApiKey } from "./utils/extract-api-key.util.js";
+import { resolveRequestPermissions } from "./utils/resolve-request-permissions.util.js";
 import { runAuthQuery } from "./utils/run-auth-query.js";
 
 /** Builds the complete authentication context for an incoming request. */
 @Injectable()
 export class AuthMiddleware implements NestMiddleware {
+  /** Adopts a newly issued session, rebuilding workspace membership and RLS scope. */
+  async authenticateSession(token: string): Promise<User> {
+    const data = await runAuthQuery(this.em, async (em) => {
+      const session = await em.findOne(Session, {
+        token,
+        expiresAt: { $gt: new Date() },
+      });
+      const user = session
+        ? await em.findOne(User, { id: session.user.id })
+        : null;
+      return { session, user };
+    });
+    if (
+      !data.session ||
+      !data.user ||
+      (data.user.banned &&
+        (!data.user.banExpiresAt || data.user.banExpiresAt > new Date()))
+    ) {
+      throw new UnauthorizedException("The new session is not valid");
+    }
+    RequestContext.set(ApiKey, null);
+    RequestContext.set(Member, null);
+    RequestContext.set(UserAbility, null);
+    RequestContext.set(WorkspaceAbility, null);
+    this.setUser(data.user);
+    RequestContext.set(Session, data.session);
+    await this.resolveMember();
+    this.updateSessionContext();
+    return data.user;
+  }
+  /** Hydrates only the user returned by a successful registration without issuing an identity. @internal */
+  async resolveRegisteredUser(id: string): Promise<User> {
+    return await runAuthQuery(this.em, (em) => em.findOneOrFail(User, { id }));
+  }
+
   /** Creates the authentication-context middleware. */
   constructor(
     @Inject(MODULE_OPTIONS_TOKEN)
@@ -44,11 +73,10 @@ export class AuthMiddleware implements NestMiddleware {
   /** Resolves workspace, credentials, and membership in their required order. */
   async use(req: Request, _res: Response, next: NextFunction) {
     try {
-      this.registerEntityAliases();
       await this.resolveSelectedWorkspace(req);
       const hasSession = await this.resolveSession();
       if (!hasSession) await this.resolveApiKey(req);
-      await this.resolveWorkspaceMember();
+      await this.resolveMember();
       this.updateSessionContext();
       next();
     } catch (error) {
@@ -66,7 +94,7 @@ export class AuthMiddleware implements NestMiddleware {
     )?.trim();
     if (!workspaceId) return;
 
-    const workspace = await this.em.findOne(this.options.entities.workspace, {
+    const workspace = await this.em.findOne(Workspace, {
       deletedAt: null,
       id: workspaceId,
     });
@@ -74,11 +102,11 @@ export class AuthMiddleware implements NestMiddleware {
   }
 
   private async resolveSession(): Promise<boolean> {
-    const data = await this.sessionService.getSession();
+    const data = await this.sessionService.getCurrentAuthenticatedSession();
     if (!data) return false;
 
     this.setUser(data.user);
-    RequestContext.set(BaseSession, data.session);
+    RequestContext.set(Session, data.session);
     return true;
   }
 
@@ -93,7 +121,7 @@ export class AuthMiddleware implements NestMiddleware {
       return;
     }
 
-    const selectedWorkspace = RequestContext.get(BaseWorkspace);
+    const selectedWorkspace = RequestContext.get(Workspace);
     if (selectedWorkspace && selectedWorkspace.id !== validation.workspace.id) {
       throw new UnauthorizedException(
         "Workspace API key does not belong to the selected workspace",
@@ -102,15 +130,15 @@ export class AuthMiddleware implements NestMiddleware {
     this.setWorkspace(validation.workspace);
   }
 
-  private async resolveWorkspaceMember(): Promise<void> {
-    const user = RequestContext.get(BaseUser);
-    const workspace = RequestContext.get(BaseWorkspace);
+  private async resolveMember(): Promise<void> {
+    const user = RequestContext.get(User);
+    const workspace = RequestContext.get(Workspace);
     if (!user || !workspace) return;
 
     const member = await runAuthQuery(
       this.em,
       async (em) =>
-        await em.findOne(this.options.entities.workspaceMember, {
+        await em.findOne(Member, {
           status: "ACTIVE",
           user,
           workspace,
@@ -118,63 +146,39 @@ export class AuthMiddleware implements NestMiddleware {
     );
     if (!member) return;
 
-    RequestContext.set(BaseWorkspaceMember, member);
+    RequestContext.set(Member, member);
   }
 
-  private setApiKey(apiKey: BaseApiKey): void {
-    RequestContext.set(BaseApiKey, apiKey);
+  private setApiKey(apiKey: ApiKey): void {
+    RequestContext.set(ApiKey, apiKey);
   }
 
   private updateSessionContext(): void {
-    const user = RequestContext.get(BaseUser);
-    const apiKey = RequestContext.get(BaseApiKey);
-    const workspace = RequestContext.get(BaseWorkspace);
-    const member = RequestContext.get(BaseWorkspaceMember);
+    const user = RequestContext.get(User);
+    const apiKey = RequestContext.get(ApiKey);
+    const workspace = RequestContext.get(Workspace);
+    const member = RequestContext.get(Member);
     const authenticated = Boolean(user ?? apiKey);
     const canUseWorkspace = Boolean(member ?? (apiKey && !user));
+    const permissions = resolveRequestPermissions(this.options);
 
     this.em.setSessionContext({
       role: authenticated ? "authenticated" : "anonymous",
       variables: {
-        "app.user": user?.id ?? "",
-        "app.workspace":
+        "app.user.id": user?.id ?? "",
+        "app.user.permissions": JSON.stringify(permissions.user),
+        "app.workspace.id":
           !authenticated || canUseWorkspace ? (workspace?.id ?? "") : "",
+        "app.workspace.permissions": JSON.stringify(permissions.workspace),
       },
     });
   }
 
-  private setUser(user: BaseUser): void {
-    RequestContext.set(BaseUser, user);
+  private setUser(user: User): void {
+    RequestContext.set(User, user);
   }
 
-  private setWorkspace(workspace: BaseWorkspace): void {
-    RequestContext.set(BaseWorkspace, workspace);
-  }
-
-  private registerEntityAliases(): void {
-    this.registerEntityAlias(this.options.entities.account, BaseAccount);
-    this.registerEntityAlias(this.options.entities.user, BaseUser);
-    this.registerEntityAlias(this.options.entities.session, BaseSession);
-    this.registerEntityAlias(this.options.entities.apiKey, BaseApiKey);
-    this.registerEntityAlias(
-      this.options.entities.verification,
-      BaseVerification,
-    );
-    this.registerEntityAlias(this.options.entities.workspace, BaseWorkspace);
-    this.registerEntityAlias(
-      this.options.entities.workspaceInvitation,
-      BaseWorkspaceInvitation,
-    );
-    this.registerEntityAlias(
-      this.options.entities.workspaceMember,
-      BaseWorkspaceMember,
-    );
-  }
-
-  private registerEntityAlias(
-    entity: RequestContextToken,
-    baseEntity: RequestContextToken,
-  ): void {
-    if (entity !== baseEntity) RequestContext.alias(entity, baseEntity);
+  private setWorkspace(workspace: Workspace): void {
+    RequestContext.set(Workspace, workspace);
   }
 }

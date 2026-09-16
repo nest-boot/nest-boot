@@ -13,16 +13,6 @@ import {
   buildUserPermissionAbility,
   buildWorkspacePermissionAbility,
 } from '../../common/modules/utils/build-permission-ability.util.js';
-import { ApiKey } from '../api-key/api-key.entity.js';
-import { User } from '../user/user.entity.js';
-import { Workspace } from '../workspace/workspace.entity.js';
-import { WorkspaceInvitation } from '../workspace-member/workspace-invitation.entity.js';
-import { WorkspaceMember } from '../workspace-member/workspace-member.entity.js';
-import { AuthResolver } from './auth.resolver.js';
-import { Account } from './entities/account.entity.js';
-import { Session } from './entities/session.entity.js';
-import { Verification } from './entities/verification.entity.js';
-import { UserResolver } from './user.resolver.js';
 
 /**
  * 应用认证模块。
@@ -31,16 +21,6 @@ import { UserResolver } from './user.resolver.js';
   imports: [
     BaseAuthModule.forRoot({
       trustedOrigins: [process.env.APP_URL ?? 'http://localhost:3000'],
-      entities: {
-        user: User,
-        account: Account,
-        session: Session,
-        verification: Verification,
-        workspace: Workspace,
-        workspaceInvitation: WorkspaceInvitation,
-        workspaceMember: WorkspaceMember,
-        apiKey: ApiKey,
-      },
       emailAndPassword: {
         enabled: true,
         requireEmailVerification: true,
@@ -48,24 +28,24 @@ import { UserResolver } from './user.resolver.js';
       user: {
         permissions: [
           ...DEFAULT_USER_PERMISSIONS,
-          'ApiKey:read',
-          'ApiKey:create',
-          'ApiKey:update',
-          'ApiKey:delete',
+          'api-key:read',
+          'api-key:create',
+          'api-key:update',
+          'api-key:delete',
         ],
         roles: {
           user: [
-            'ApiKey:read',
-            'ApiKey:create',
-            'ApiKey:update',
-            'ApiKey:delete',
+            'api-key:read',
+            'api-key:create',
+            'api-key:update',
+            'api-key:delete',
           ],
           admin: [
             ...DEFAULT_USER_ROLES.admin,
-            'ApiKey:read',
-            'ApiKey:create',
-            'ApiKey:update',
-            'ApiKey:delete',
+            'api-key:read',
+            'api-key:create',
+            'api-key:update',
+            'api-key:delete',
           ],
         },
         buildAbility: (builder, permissions, _user) =>
@@ -80,19 +60,19 @@ import { UserResolver } from './user.resolver.js';
       workspace: {
         permissions: [
           ...DEFAULT_WORKSPACE_PERMISSIONS,
-          'ApiKey:read',
-          'ApiKey:create',
-          'ApiKey:update',
-          'ApiKey:delete',
+          'api-key:read',
+          'api-key:create',
+          'api-key:update',
+          'api-key:delete',
         ],
         roles: {
           ...DEFAULT_WORKSPACE_ROLES,
           owner: [
             ...DEFAULT_WORKSPACE_ROLES.owner,
-            'ApiKey:read',
-            'ApiKey:create',
-            'ApiKey:update',
-            'ApiKey:delete',
+            'api-key:read',
+            'api-key:create',
+            'api-key:update',
+            'api-key:delete',
           ] as const,
         },
         buildAbility: (builder, permissions, _workspace) =>
@@ -110,12 +90,11 @@ import { UserResolver } from './user.resolver.js';
           await mailer.sendMail({
             to: email,
             subject: `Invitation to join ${workspace.name}`,
-            text: `${inviter.user.name} invited you to join ${workspace.name}: ${url.toString()}`,
+            text: `${inviter.name} invited you to join ${workspace.name}: ${url.toString()}`,
           });
         },
       },
     }),
   ],
-  providers: [AuthResolver, UserResolver],
 })
 export class AuthModule {}

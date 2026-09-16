@@ -1,7 +1,7 @@
 import type { Subject } from "@casl/ability";
 import { RequestContext } from "@nest-boot/request-context";
 
-import { AccessControlService } from "../access-control.service.js";
+import { AccessControlService } from "../services/access-control.service.js";
 import { getWorkspaceAbility } from "./get-workspace-ability.util.js";
 
 /** Checks a permission with the workspace ability prepared for the request. */

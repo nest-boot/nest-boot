@@ -10,8 +10,10 @@ API Key 与 CASL 权限授权。模块会把当前身份解析到 `RequestContex
 ## 安装
 
 ```bash
-pnpm add @nest-boot/auth @nest-boot/hash @nest-boot/mailer better-auth @casl/ability nodemailer
+pnpm add @nest-boot/auth @nest-boot/hash @nest-boot/mailer better-auth @casl/ability nodemailer @nest-boot/graphql @nest-boot/graphql-connection @nestjs/graphql graphql class-validator
 ```
+
+GraphQL Resolver 和连接已内置于 `AuthModule`，无需单独的适配包。
 
 ## 快速开始
 
@@ -22,16 +24,6 @@ import { MailerModule } from "@nest-boot/mailer";
 import { Global, Module } from "@nestjs/common";
 
 export const AuthDynamicModule = AuthModule.forRoot({
-  entities: {
-    user: User,
-    account: Account,
-    session: Session,
-    verification: Verification,
-    workspace: Workspace,
-    workspaceInvitation: WorkspaceInvitation,
-    workspaceMember: WorkspaceMember,
-    apiKey: ApiKey,
-  },
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,

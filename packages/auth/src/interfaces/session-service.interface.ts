@@ -1,10 +1,8 @@
-import type { BaseSession, BaseUser } from "../entities/index.js";
+import { type Session } from "../entities/session.entity.js";
+import { type User } from "../entities/user.entity.js";
 
 /** Authenticated application entities resolved from a session. */
-export interface AuthenticatedSession<
-  User extends BaseUser = BaseUser,
-  Session extends BaseSession = BaseSession,
-> {
+export interface AuthenticatedSession {
   /** Persisted session entity. */
   session: Session;
   /** Persisted user entity. */

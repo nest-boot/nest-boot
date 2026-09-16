@@ -1,5 +1,6 @@
 import { IS_PUBLIC_KEY } from "../auth.constants.js";
-import { BaseSession, BaseUser } from "../entities/index.js";
+import { Session as BaseSession } from "../entities/session.entity.js";
+import { User as BaseUser } from "../entities/user.entity.js";
 import * as decorators from "./index.js";
 import { Public } from "./public.decorator.js";
 
@@ -10,7 +11,7 @@ describe("auth decorators", () => {
     expect(decorators.CurrentUser).toBeDefined();
     expect(decorators.CurrentApiKey).toBeDefined();
     expect(decorators.CurrentWorkspace).toBeDefined();
-    expect(decorators.CurrentWorkspaceMember).toBeDefined();
+    expect(decorators.CurrentMember).toBeDefined();
   });
 
   it("should create metadata decorators for public routes", () => {
@@ -32,8 +33,8 @@ describe("auth decorators", () => {
     const user = new BaseUser();
     const session = new BaseSession();
     const get = vi.fn((token: { name?: string }) => {
-      if (token.name === "BaseUser") return user;
-      if (token.name === "BaseSession") return session;
+      if (token.name === "User") return user;
+      if (token.name === "Session") return session;
       return undefined;
     });
 
@@ -67,15 +68,15 @@ describe("auth decorators", () => {
   it("should resolve workspace authentication values from request context", async () => {
     const apiKey = { id: "api-key-1" };
     const workspace = { id: "workspace-1" };
-    const workspaceMember = { id: "member-1" };
+    const member = { id: "member-1" };
     const get = vi.fn((token: { name?: string }) => {
       switch (token.name) {
-        case "BaseApiKey":
+        case "ApiKey":
           return apiKey;
-        case "BaseWorkspace":
+        case "Workspace":
           return workspace;
-        case "BaseWorkspaceMember":
-          return workspaceMember;
+        case "Member":
+          return member;
         default:
           return undefined;
       }
@@ -100,16 +101,15 @@ describe("auth decorators", () => {
     const { CurrentApiKey } = await import("./current-api-key.decorator.js");
     const { CurrentWorkspace } =
       await import("./current-workspace.decorator.js");
-    const { CurrentWorkspaceMember } =
-      await import("./current-workspace-member.decorator.js");
+    const { CurrentMember } = await import("./current-member.decorator.js");
 
     expect(CurrentApiKey()).toBe(apiKey);
     expect(CurrentWorkspace()).toBe(workspace);
-    expect(CurrentWorkspaceMember()).toBe(workspaceMember);
+    expect(CurrentMember()).toBe(member);
     expect(get.mock.calls.map(([token]) => token.name)).toEqual([
-      "BaseApiKey",
-      "BaseWorkspace",
-      "BaseWorkspaceMember",
+      "ApiKey",
+      "Workspace",
+      "Member",
     ]);
     vi.doUnmock("@nest-boot/request-context");
     vi.doUnmock("@nestjs/common");

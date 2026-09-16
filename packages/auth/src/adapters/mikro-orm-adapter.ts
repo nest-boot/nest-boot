@@ -5,7 +5,7 @@ import {
   type DBAdapterDebugLogOption,
 } from "better-auth/adapters";
 
-import type { AuthModuleOptions } from "../auth-module-options.interface.js";
+import { authEntityMap } from "../entities/auth-entity-map.js";
 import { runAuthQuery } from "../utils/run-auth-query.js";
 import { createMikroOrmAdapterConfig } from "./mikro-orm/adapter-config.js";
 import { createMikroOrmCustomAdapter } from "./mikro-orm/create-custom-adapter.js";
@@ -16,7 +16,7 @@ export interface MikroOrmAdapterConfig {
   /** The MikroORM instance. */
   orm: MikroORM;
   /** The entities to use for the adapter. */
-  entities: AuthModuleOptions["entities"];
+  entities?: typeof authEntityMap;
   /** Role applied when Better Auth creates a user without an explicit role. */
   defaultUserRole?: string;
   /** Helps you debug issues with the adapter. */
@@ -25,7 +25,7 @@ export interface MikroOrmAdapterConfig {
 
 export const mikroOrmAdapter = ({
   orm,
-  entities,
+  entities = authEntityMap,
   defaultUserRole,
   debugLogs,
 }: MikroOrmAdapterConfig) => {

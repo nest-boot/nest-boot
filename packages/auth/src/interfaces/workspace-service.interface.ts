@@ -1,9 +1,9 @@
-import type {
-  AuthWorkspaceMemberStatus,
-  BaseWorkspace,
-  BaseWorkspaceInvitation,
-  BaseWorkspaceMember,
-} from "../entities/index.js";
+import { type Invitation } from "../entities/invitation.entity.js";
+import {
+  type AuthMemberStatus,
+  type Member,
+} from "../entities/member.entity.js";
+import { type Workspace } from "../entities/workspace.entity.js";
 
 /** Input accepted when creating a workspace. */
 export interface CreateWorkspaceOptions {
@@ -18,33 +18,25 @@ export interface UpdateWorkspaceOptions {
 }
 
 /** Input accepted when adding a workspace member. */
-export interface AddWorkspaceMemberOptions {
+export interface AddMemberOptions {
   /** Member roles. Defaults to `workspace.defaultRole`. */
   roles?: string[];
   /** Additional permissions from the configured workspace permission catalog. */
   permissions?: string[];
 }
 
-/** Input accepted when creating a workspace-owned service account. */
-export interface CreateWorkspaceServiceAccountOptions extends AddWorkspaceMemberOptions {
-  /** Service-account display name. */
-  name: string;
-  /** Application entity fields added without overriding auth-owned fields. */
-  data?: Record<string, unknown>;
-}
-
-/** Mutable workspace-member fields. */
-export interface UpdateWorkspaceMemberOptions {
-  /** Member display name. */
+/** Mutable member fields. */
+export interface UpdateMemberOptions {
+  /** Workspace-visible member name; does not update the user's profile. */
   name?: string;
-  /** Member email address. */
+  /** Workspace-visible contact email; does not change the login email. */
   email?: string | null;
   /** Member lifecycle status. */
-  status?: Extract<AuthWorkspaceMemberStatus, "ACTIVE" | "DISABLED">;
+  status?: Extract<AuthMemberStatus, "ACTIVE" | "DISABLED">;
 }
 
 /** Input accepted when creating a workspace invitation. */
-export interface CreateWorkspaceInvitationOptions {
+export interface CreateInvitationOptions {
   /** Email address allowed to accept the invitation. */
   email: string;
   /** Roles granted after acceptance. Defaults to `workspace.defaultRole`. */
@@ -53,33 +45,20 @@ export interface CreateWorkspaceInvitationOptions {
   expiresIn?: number;
 }
 
-/** Result returned after accepting a workspace invitation. */
-export interface AcceptWorkspaceInvitationResult<
-  WorkspaceInvitation extends BaseWorkspaceInvitation = BaseWorkspaceInvitation,
-  WorkspaceMember extends BaseWorkspaceMember = BaseWorkspaceMember,
-> {
-  /** Invitation after it has been marked as accepted. */
-  invitation: WorkspaceInvitation;
-  /** Workspace member created for the recipient. */
-  member: WorkspaceMember;
-}
+export { AcceptInvitationResult } from "../types/accept-invitation-result.type.js";
 
 /** Workspace details with members and invitation lifecycle records. */
-export interface FullWorkspace<
-  Workspace extends BaseWorkspace = BaseWorkspace,
-  WorkspaceMember extends BaseWorkspaceMember = BaseWorkspaceMember,
-  WorkspaceInvitation extends BaseWorkspaceInvitation = BaseWorkspaceInvitation,
-> {
+export interface FullWorkspace {
   /** Workspace entity. */
   workspace: Workspace;
   /** Active and disabled members. */
-  members: WorkspaceMember[];
+  members: Member[];
   /** Invitation lifecycle records. */
-  invitations: WorkspaceInvitation[];
+  invitations: Invitation[];
 }
 
 /** Permission statements checked against a workspace member. */
-export interface WorkspaceHasPermissionOptions {
+export interface WorkspaceHasPermissionsOptions {
   /** Permission actions grouped by subject name. */
   permissions: Record<string, string[]>;
 }

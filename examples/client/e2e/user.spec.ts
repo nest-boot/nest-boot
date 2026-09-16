@@ -8,6 +8,74 @@ import { createFirstWorkspace } from "./utils/workspace";
 import type { Page } from "@playwright/test";
 
 test.describe("user pages", () => {
+  test("loads subsequent pages of linked accounts", async ({ page }) => {
+    await registerUser(page, {
+      email: `${uniqueSeed("account-pages")}@example.com`,
+      name: "Account pages",
+    });
+    const cursors: Array<string | null> = [];
+    const { currentUser } = await graphqlRequest<{
+      currentUser: { id: string };
+    }>(page.request, `query { currentUser { id } }`);
+    await page.route("**/api/graphql", async (route) => {
+      const request = route.request().postDataJSON();
+      if (request.operationName !== "getAccountsFromUserSecurity") {
+        await route.continue();
+        return;
+      }
+      const after = request.variables?.after ?? null;
+      cursors.push(after);
+      const start = after ? 20 : 0;
+      const edges = Array.from({ length: after ? 1 : 20 }, (_, offset) => {
+        const id = String(start + offset);
+        return {
+          __typename: "AccountEdge",
+          node: {
+            __typename: "Account",
+            id,
+            accountId: id,
+            issuer: "test",
+            providerId: `test-${id}`,
+            scopes: [],
+            createdAt: "2026-01-01T00:00:00.000Z",
+          },
+        };
+      });
+      await route.fulfill({
+        json: {
+          data: {
+            currentUser: {
+              __typename: "User",
+              id: currentUser.id,
+              accounts: {
+                __typename: "AccountConnection",
+                totalCount: 21,
+                edges,
+                pageInfo: {
+                  __typename: "PageInfo",
+                  hasNextPage: !after,
+                  endCursor: after ? "last" : "next",
+                },
+              },
+            },
+          },
+        },
+      });
+    });
+    try {
+      await page.goto("/user/security");
+      await expect(page.getByTestId("user-account-test-0")).toBeVisible();
+      await expect(page.getByTestId("user-account-test-20")).toHaveCount(0);
+      await page.getByTestId("user-accounts-load-more").click();
+      await expect.poll(() => cursors).toContain("next");
+      await expect(page.getByTestId("user-account-test-20")).toBeVisible();
+      await expect(page.getByTestId("user-account-test-0")).toBeVisible();
+      await expect(page.getByTestId("user-accounts-load-more")).toHaveCount(0);
+      expect(cursors).toContain("next");
+    } finally {
+      await page.unrouteAll({ behavior: "wait" });
+    }
+  });
   test("manages the profile and navigates personal resources", async ({
     page,
   }) => {
@@ -114,7 +182,7 @@ test.describe("user pages", () => {
     browser,
     page,
   }) => {
-    const seed = uniqueSeed("user-workspace-invitations");
+    const seed = uniqueSeed("user-invitations");
     const inviteeEmail = `${seed}-invitee@example.com`;
     const ownerEmail = `${seed}-owner@example.com`;
     const acceptedWorkspaceName = `接受邀请工作空间 ${seed}`;
@@ -157,37 +225,31 @@ test.describe("user pages", () => {
       );
 
       await page.reload();
+      await expect(page.getByTestId("user-invitations")).toBeVisible();
       await expect(
-        page.getByTestId("user-workspace-invitations"),
-      ).toBeVisible();
-      await expect(
-        page.getByTestId(`user-workspace-invitation-${acceptedInvitation.id}`),
+        page.getByTestId(`user-invitation-${acceptedInvitation.id}`),
       ).toHaveText(acceptedWorkspaceName);
       await expect(
-        page.getByTestId(`user-workspace-invitation-${rejectedInvitation.id}`),
+        page.getByTestId(`user-invitation-${rejectedInvitation.id}`),
       ).toHaveText(rejectedWorkspaceName);
 
       await page
-        .getByTestId(
-          `user-workspace-invitation-accept-${acceptedInvitation.id}`,
-        )
+        .getByTestId(`user-invitation-accept-${acceptedInvitation.id}`)
         .click();
       await expect(page.getByText("已接受邀请", { exact: true })).toBeVisible();
       await expect(
-        page.getByTestId(`user-workspace-invitation-${acceptedInvitation.id}`),
+        page.getByTestId(`user-invitation-${acceptedInvitation.id}`),
       ).toHaveCount(0);
       await expect(
         page.getByTestId(`user-workspace-row-${acceptedWorkspace.id}`),
       ).toHaveText(acceptedWorkspaceName);
 
       await page
-        .getByTestId(
-          `user-workspace-invitation-reject-${rejectedInvitation.id}`,
-        )
+        .getByTestId(`user-invitation-reject-${rejectedInvitation.id}`)
         .click();
       await expect(page.getByText("已拒绝邀请", { exact: true })).toBeVisible();
       await expect(
-        page.getByTestId(`user-workspace-invitation-${rejectedInvitation.id}`),
+        page.getByTestId(`user-invitation-${rejectedInvitation.id}`),
       ).toHaveCount(0);
       await expect(
         page.getByTestId(`user-workspace-row-${rejectedWorkspace.id}`),
@@ -225,14 +287,14 @@ async function createInvitationByApi(
 ) {
   return (
     await graphqlRequest<{
-      createWorkspaceInvitation: { id: string };
+      createInvitation: { id: string };
     }>(
       page.request,
       /* GraphQL */ `
-        mutation CreateWorkspaceInvitationForUserInvitationTest(
-          $input: CreateWorkspaceInvitationInput!
+        mutation CreateInvitationForUserInvitationTest(
+          $input: CreateInvitationInput!
         ) {
-          createWorkspaceInvitation(input: $input) {
+          createInvitation(input: $input) {
             id
           }
         }
@@ -245,5 +307,5 @@ async function createInvitationByApi(
       },
       { "x-workspace-id": workspaceId },
     )
-  ).createWorkspaceInvitation;
+  ).createInvitation;
 }

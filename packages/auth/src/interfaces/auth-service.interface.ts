@@ -1,3 +1,26 @@
+import type { User } from "../entities/user.entity.js";
+
+/** Registration result containing the persisted application entity. */
+export interface SignUpEntityResult extends Omit<SignUpResult, "user"> {
+  /** The created application user; no session is implied when token is null. */
+  user: User;
+}
+
+/** Sign-in result containing the persisted application entity. */
+export interface SignInEntityResult extends Omit<SignInResult, "user"> {
+  /** The user represented by the newly issued request session. */
+  user: User;
+}
+
+/** Redirect or direct social sign-in result containing an application entity. */
+export interface SignInSocialEntityResult extends Omit<
+  SignInSocialResult,
+  "user"
+> {
+  /** Authenticated application user, or null for a redirect-only result. */
+  user: User | null;
+}
+
 /** Public user data returned by authentication operations. */
 export interface AuthUser {
   /** Unique user identifier. */

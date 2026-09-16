@@ -4,7 +4,7 @@ import type { ScopePolicyOptions } from "../interfaces/scope-policy-options.inte
 import { createScopePolicy } from "./create-scope-policy.js";
 
 /**
- * Creates a native permissive RLS policy matching app.workspace.
+ * Creates a native permissive RLS policy matching app.workspace.id.
  * Defaults to `type: "bigint"`, `property: "workspace"`, `command: "all"` for the
  * authenticated database role. Does not query the parent workspace or replace
  * service authorization. Missing/empty session identifiers match no rows.

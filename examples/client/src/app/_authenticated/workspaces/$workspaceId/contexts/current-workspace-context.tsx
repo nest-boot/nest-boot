@@ -9,7 +9,6 @@ const GET_CURRENT_WORKSPACE_FROM_WORKSPACE_CONTEXT = graphql(`
     currentWorkspace {
       id
       name
-      features
       createdAt
       updatedAt
     }

@@ -55,10 +55,15 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
   `Migration` / `Migrator`。执行 schema diff 前，先将已有策略声明到实体元数据；
   数据库角色与权限仍需显式创建和授权。通过 `MikroOrmModuleOptions.session`
   初始化请求 session，并在业务事务开始前更新。详见 [MikroORM RLS 文档](https://mikro-orm.io/docs/row-level-security)。
-- 将认证权限的资源名更新为 CASL subject type 的原始值。内置目录现在使用
-  `User:*`、`Session:*`、`Workspace:*`、`WorkspaceMember:*` 与
-  `WorkspaceInvitation:*`。需要更新角色配置中的权限，并改写此前持久化的直接权限与
-  API Key 权限。
+- 认证权限标识由应用定义，是区分大小写的字符串，与 CASL subject type 分离。
+  权限目录、授权上限和 API Key 权限交集只做精确字符串匹配，不转换大小写。
+  内置目录使用 `user:*`、`session:*`、`workspace:*`、`member:*` 与
+  `invitation:*`；示例还提供 `api-key:*`。自定义目录可以使用其他大小写，但
+  角色授权、直接权限、API Key 权限、Ability 构建器与 RLS 策略中的拼写必须一致，
+  不会自动迁移大小写。
+- 数据库请求身份变量改为 `app.user.id` 和 `app.workspace.id`。Auth 还提供
+  `app.user.permissions` 与 `app.workspace.permissions`，值为有效权限标识的
+  JSON 数组，不是序列化的 CASL 规则，也不是持久化的登录 Session 字段。
 - 认证 Session 现在只使用主数据库；请移除 `AuthModuleOptions.secondaryStorage` 配置。
   API Key 默认权限与授予上限可分别通过 `apiKey.defaultPermissions` 和
   `apiKey.allowedPermissions` 配置。
@@ -72,3 +77,51 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
 
 Nest Boot 版本 8 使用基于 SWC 的 Vitest 替代 Jest。贡献者可以通过
 `pnpm test` 和 `pnpm test:e2e` 运行单元测试与端到端测试。
+
+### API Key 归属与数据库级联
+
+先执行 `Migration00000000000000_Initial`，再执行 MikroORM 生成的
+`Migration20260915035801`。初始化迁移向 `anonymous` 和 `authenticated`
+授予 schema `USAGE`，并为 `public` 中的表、函数和序列统一配置默认 `ALL` 权限。
+这些默认权限只适用于同一迁移角色以后创建的对象，不会修改现有对象或其他角色创建的对象的权限。
+
+两个请求角色都不是只读角色，也不限于 CRUD。表权限还包括 `TRUNCATE`、`REFERENCES`
+和 `TRIGGER`；两个角色都可以执行函数，以及使用、读取和更新序列。
+RLS 不保护 `TRUNCATE` 或 `REFERENCES`，表策略也不限制序列操作。
+不要向任一角色开放不受限制的 SQL 执行入口。`SECURITY DEFINER` 函数以其所有者的权限执行，
+需要单独审查。详见 PostgreSQL 的
+[行级安全文档](https://www.postgresql.org/docs/current/ddl-rowsecurity.html)。
+
+所有业务表必须启用 RLS 并声明策略；`Verification` 明确拒绝普通请求访问。
+凭证字段与可更新属性由 Service 和 GraphQL 控制，数据库不再提供列级保护。
+
+`BaseApiKey.owner` 已移除，改为可空的 `user` / `workspace` 真实外键，
+数据库 CHECK 要求必须且只能填写一个。自定义实体、查询过滤器和测试需同步修改。
+用户删除由外键级联清理关联记录，不再使用自定义删除函数或触发器；工作区和工作区密钥保留。
+User / Session RLS 读取可信请求上下文权限，不再依赖 SQL 权限函数。
+示例基线仅适用于空库；已有数据库需单独编写数据保留迁移，将旧归属数据转换到新外键后再启用约束。
+
+## Auth 模块合并
+
+`@nest-boot/auth-graphql` 已合并到 `@nest-boot/auth`。移除旧包和 `AuthGraphQLModule` 导入；
+输入、Payload、Resolver 和连接全部改从 `@nest-boot/auth` 导入。
+
+Auth 内置 `User`、`Account`、`Session`、`Verification`、`Workspace`、
+`Member`、`Invitation` 和 `ApiKey` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
+不再提供认证 `Base*` 类或 `AuthModuleOptions.entities` 替换配置。
+
+在运行时和迁移 CLI 的 MikroORM 配置中注册导出的 `entities` 数组；CLI 不会启动 Nest 模块：
+
+```typescript
+import { entities as authEntities } from "@nest-boot/auth";
+import { defineConfig } from "@mikro-orm/postgresql";
+
+export default defineConfig({
+  entities: [...authEntities, "dist/**/*.entity.js"],
+  entitiesTs: [...authEntities, "src/**/*.entity.ts"],
+  // Connection and migration options...
+});
+```
+
+自定义字段请使用独立的业务关联实体和额外的字段 Resolver。关联目标直接导入内置实体类，
+不要重新声明或注册同名认证实体。角色、权限目录、Ability 构造器、邮件回调和 Provider 配置仍可自定义。

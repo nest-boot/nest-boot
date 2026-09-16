@@ -46,19 +46,19 @@ and must return its scoped ability directly.
 import { AuthModule } from "@nest-boot/auth";
 
 const userRoles = {
-  admin: ["Post:create"],
+  admin: ["post:create"],
   user: [],
 } as const;
-const userPermissions = ["Post:create", "Post:archive"] as const;
+const userPermissions = ["post:create", "post:archive"] as const;
 
 const workspaceRoles = {
-  owner: ["Post:create", "Post:delete"],
-  member: ["Post:create"],
+  owner: ["post:create", "post:delete"],
+  member: ["post:create"],
 } as const;
 const workspacePermissions = [
-  "Post:create",
-  "Post:delete",
-  "Post:archive",
+  "post:create",
+  "post:delete",
+  "post:archive",
 ] as const;
 
 AuthModule.forRoot({
@@ -69,7 +69,7 @@ AuthModule.forRoot({
     buildAbility: ({ can, build }, permissions, workspace) => {
       for (const permission of permissions) {
         const [subject, action] = permission.split(":");
-        if (subject === "Post" && action) {
+        if (subject === "post" && action) {
           can(action, Post, { workspaceId: workspace.id });
         }
       }
@@ -103,24 +103,24 @@ callback argument.
 Permission catalogs and role definitions come from `user.permissions`,
 `user.roles`, `workspace.permissions`, and `workspace.roles`; they are not
 stored or managed by a separate role service. `UserService` and
-`WorkspaceService` expose the configured catalogs to transports and validate
+`MemberService` expose the configured catalogs to transports and validate
 role assignments.
 
 ```typescript
 const userRoles = userService.listRoles();
 const userPermissions = userService.listPermissions();
-await userService.setRole(user, ["admin", "auditor"]);
+await userService.setUserRoles(user, ["admin", "auditor"]);
 
-const workspaceRoles = workspaceService.listRoles();
-const workspacePermissions = workspaceService.listPermissions();
-await workspaceService.updateMemberRole(member, ["admin"]);
+const workspaceRoles = memberService.listRoles();
+const workspacePermissions = memberService.listPermissions();
+await memberService.setMemberRoles(member, ["admin"]);
 ```
 
-`setRole()` and `updateMemberRole()` reject empty or unknown role names.
-`updateMemberRole()` cannot modify a current creator or assign the configured
-creator role; use `transferOwnership()` for that transition. An ownership
-transfer assigns `workspace.creatorRole` to the next owner and demotes the
-previous owner to `workspace.defaultRole`.
+`setUserRoles()` and `setMemberRoles()` reject empty or unknown role names.
+`setMemberRoles()` can assign or replace any configured role, including
+`workspace.creatorRole`, when update ability and permission-grant checks pass.
+Multiple members may hold the creator role; assigning it does not change other
+members' roles. Member creation and invitations use the same grant checks.
 
 `user.defaultRole` and `workspace.defaultRole` provide fallback roles for new
 users and members. `workspace.creatorRole` identifies the ownership role.
@@ -128,24 +128,24 @@ users and members. `workspace.creatorRole` identifies the ownership role.
 `UserService.isAdmin()` to classify administrative users. Every configured
 lifecycle role is validated against its role map at startup.
 
-`getUserPermissions()` and `getMemberPermissions()` return the deduplicated
+`getEffectiveUserPermissions()` and `getEffectiveMemberPermissions()` return the deduplicated
 union of permissions inherited from every assigned role and permissions stored
-directly on the entity. `hasPermission()` evaluates against the same result.
+directly on the entity. `hasPermissions()` evaluates against the same result.
 `createUser()`, `addMember()`, `setUserPermissions()`, and
 `setMemberPermissions()` reject malformed, duplicate, or unknown direct
 permissions instead of persisting values outside the configured catalog.
 
-User administration also enforces a grant ceiling: `createUser()`, `setRole()`,
+User administration also enforces a grant ceiling: `createUser()`, `setUserRoles()`,
 and `setUserPermissions()` cannot grant permissions the caller does not hold.
 Role assignments include their inherited permissions, including the default role
 on user creation. For a personal API key, the ceiling is the intersection of the
-user's role/direct permissions and the key's permissions. Holding `User:set-role`
+user's role/direct permissions and the key's permissions. Holding `user:set-role`
 alone does not allow promotion to a more privileged role.
 
 The example GraphQL application exposes `userRoles`, `userPermissions`,
 `workspaceRoles`, and `workspacePermissions` queries. Role changes use the
-dedicated `setUserRoles` and `updateWorkspaceMemberRole` mutations. Direct
-workspace-member grants use `setWorkspaceMemberPermissions`; ordinary member
+dedicated `setUserRoles` and `setMemberRoles` mutations. Direct
+member grants use `setMemberPermissions`; ordinary member
 profile updates do not accept authorization fields.
 
 ## Protect Routes
@@ -185,7 +185,7 @@ omitted `scope` delegates to `@WorkspaceCan`.
 @WorkspaceCan("update", Post)
 @Mutation(() => Post)
 updatePost() {
-  // Requires both Post:read and Post:update.
+  // Requires both post:read and post:update.
 }
 ```
 
@@ -211,14 +211,16 @@ Key permissions are passed directly to the workspace builder. The resulting
 `UserAbility` or `WorkspaceAbility` is the only ability checked by the guard.
 
 The application builder must translate every supplied permission it wants to
-enforce into a CASL rule. Permission resource names preserve the exact,
-case-sensitive CASL subject type: both the `Post` class and
-`subject("Post", object)` resolve to `Post`, so the matching permission is
-`Post:read`. Rules added unconditionally by the builder apply to API keys too.
+enforce into a CASL rule. Permission identifiers are case-sensitive strings with
+no case conversion: `Post:read` and `post:read` are different grants. The builder
+maps the configured identifiers explicitly to CASL subjects: `post:read` can
+grant `read` on the `Post` class or `subject("Post", object)`. Rules added unconditionally by the
+builder apply to API keys too.
 
 ## Service Authorization Boundary
 
-`UserService`, `WorkspaceService`, and `ApiKeyService` enforce their permissions
+`UserService`, `SessionService`, `WorkspaceService`, `MemberService`,
+`InvitationService`, and `ApiKeyService` enforce their permissions
 before reading or mutating authentication data. Resolver and controller
 decorators provide early rejection and declare intent, but they are not the
 security boundary: omitting one does not make a protected service operation
@@ -227,10 +229,10 @@ public.
 The services follow the same split as Better Auth's admin and organization
 access control:
 
-- user administration uses `User:*` and `Session:*` permissions;
-- workspace mutations use `Workspace:*`, `WorkspaceMember:*`, and
-  `WorkspaceInvitation:*` permissions;
-- workspace API-key management uses `ApiKey:create/read/update/delete`;
+- user administration uses `user:*` and `session:*` permissions;
+- workspace mutations use `workspace:*`, `member:*`, and
+  `invitation:*` permissions;
+- workspace API-key management uses `api-key:create/read/update/delete`;
 - current-user authentication, session management, invitation acceptance, and
   leaving a workspace use authenticated identity and ownership checks.
 
@@ -285,11 +287,7 @@ definitions. Every option is optional:
 
 ```typescript
 import { Entity } from "@mikro-orm/decorators/legacy";
-import {
-  BaseWorkspaceMember,
-  userScopePolicy,
-  workspaceScopePolicy,
-} from "@nest-boot/auth";
+import { Member, userScopePolicy, workspaceScopePolicy } from "@nest-boot/auth";
 
 @Entity({
   policies: [
@@ -298,7 +296,7 @@ import {
     workspaceScopePolicy(),
   ],
 })
-export class WorkspaceMember extends BaseWorkspaceMember {}
+export class Member extends Member {}
 ```
 
 `property` names an entity property, not its SQL column. Native callbacks resolve
@@ -308,20 +306,26 @@ For example, `userScopePolicy({ property: "owner", type: "uuid" })` matches an
 owner UUID. On the User entity itself, use `property: "id"`.
 `command`, `roles` and the optional policy `name` can also be overridden.
 
-The policies compare against `app.user` or `app.workspace` and preserve
+The policies compare against `app.user.id` or `app.workspace.id` and preserve
 `nullif(current_setting(..., true), '')`, so missing/empty identifiers match no
 rows. They are permissive policies: policies for the same operation combine with
 OR. They do not check workspace lifecycle or replace Service authorization.
 Continue to configure database roles, table privileges and trusted session
 variables separately.
 
-The example `ApiKey` uses a custom native policy for its polymorphic `owner`:
-user-owned rows match `owner_type = 'user'` and `app.user`; workspace-owned rows
-match `owner_type = 'workspace'` and `app.workspace`. Both branches also compare
-`owner_id`, for reads and writes. A matching ID alone is insufficient because
-users and workspaces can share IDs. The migration does not grant request roles
-direct access to this table; API-key operations still go through the authorized
-`ApiKeyService`.
+Auth stages `app.user.permissions` and `app.workspace.permissions` as JSON arrays
+of role grants plus direct permissions, limited by the current API key. The
+server computes these values per request; anonymous requests receive empty
+arrays. They are not login-session fields or serialized CASL conditions.
+Identity variables are `app.user.id` and `app.workspace.id`; old identity keys
+are no longer supported. Services retain their authorization checks.
+
+The example `ApiKey` uses separate `user` and `workspace` foreign keys.
+A database CHECK requires exactly one owner. Its native policy compares `user_id`
+with `app.user.id`, or `workspace_id` with `app.workspace.id`, preventing
+cross-scope access even when IDs collide. Physical owner deletion cascades to keys;
+soft deletion does not. Default privileges authorize table operations; Services hide the key hash and prevent ownership
+updates. Database column-level protection is intentionally removed. API-key operations retain authorization checks in `ApiKeyService`.
 
 These are plain factories, not filters or decorators. Neither runtime nor CLI
 needs a custom discovery hook. Generate and apply migrations after changing

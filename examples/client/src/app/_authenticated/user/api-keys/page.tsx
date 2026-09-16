@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@apollo/client/react";
 import {
   createFileRoute,
+  redirect,
   useLocation,
   useNavigate,
 } from "@tanstack/react-router";
@@ -13,9 +14,11 @@ import { isEmpty, pick } from "lodash";
 import { AlertTriangle, Check, Copy, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import z from "zod";
+import { useCurrentUserAbility } from "../../contexts/current-user-context";
 
 import type { DataFilterItemProps } from "@/components/thread-ui/data-filter";
 import type { AuthPermission } from "@/lib/permissions";
+import { createAbilitySubject } from "@/lib/ability";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import { Badge } from "@/components/thread-ui/badge";
 import { Button } from "@/components/thread-ui/button";
@@ -79,33 +82,35 @@ const GET_USER_API_KEYS_FROM_USER_API_KEYS_ROUTE = graphql(`
     $orderBy: ApiKeyOrder
     $query: String
   ) {
-    userApiKeys(
-      after: $after
-      before: $before
-      first: $first
-      last: $last
-      orderBy: $orderBy
-      filter: $filter
-      query: $query
-    ) {
-      edges {
-        node {
-          id
-          name
-          start
-          prefix
-          enabled
-          permissions
-          createdAt
-          lastUsedAt
-          expiresAt
+    currentUser {
+      apiKeys(
+        after: $after
+        before: $before
+        first: $first
+        last: $last
+        orderBy: $orderBy
+        filter: $filter
+        query: $query
+      ) {
+        edges {
+          node {
+            id
+            name
+            start
+            prefix
+            enabled
+            permissions
+            createdAt
+            lastUsedAt
+            expiresAt
+          }
         }
-      }
-      pageInfo {
-        endCursor
-        hasNextPage
-        hasPreviousPage
-        startCursor
+        pageInfo {
+          endCursor
+          hasNextPage
+          hasPreviousPage
+          startCursor
+        }
       }
     }
   }
@@ -167,6 +172,11 @@ const DELETE_USER_API_KEY_FROM_USER_API_KEYS_ROUTE = graphql(`
 
 export const Route = createFileRoute("/_authenticated/user/api-keys/")({
   component: ApiKeysComponent,
+  beforeLoad: ({ context }) => {
+    if (!context.currentUserAbility.can("read", "ApiKey")) {
+      throw redirect({ to: "/user" });
+    }
+  },
   validateSearch: zodValidator(
     createConnectionSearchSchema({
       filterSchema: z
@@ -191,6 +201,12 @@ export const Route = createFileRoute("/_authenticated/user/api-keys/")({
 });
 
 function ApiKeysComponent() {
+  const ability = useCurrentUserAbility();
+  const canCreate = ability.can("create", "ApiKey");
+  const canUpdate = (apiKey: ApiKeyRow) =>
+    ability.can("update", createAbilitySubject("ApiKey", apiKey));
+  const canDelete = (apiKey: ApiKeyRow) =>
+    ability.can("delete", createAbilitySubject("ApiKey", apiKey));
   const search = Route.useSearch();
   const navigate = useNavigate();
   const location = useLocation();
@@ -220,14 +236,15 @@ function ApiKeysComponent() {
     },
   );
 
-  const userApiKeys = data?.userApiKeys.edges.map((edge) => edge.node) ?? [];
-  const pageInfo = data?.userApiKeys.pageInfo;
+  const userApiKeys =
+    data?.currentUser.apiKeys.edges.map((edge) => edge.node) ?? [];
+  const pageInfo = data?.currentUser.apiKeys.pageInfo;
 
   const createForm = useForm({
     defaultValues: {
       name: "",
       permissions: workspacePermissionValues.filter(
-        (permission) => !permission.startsWith("ApiKey:"),
+        (permission) => !permission.startsWith("api-key:"),
       ) as Array<AuthPermission>,
     },
     validators: {
@@ -241,6 +258,7 @@ function ApiKeysComponent() {
       }),
     },
     onSubmit: async ({ value }) => {
+      if (!canCreate) return;
       try {
         const result = await createUserApiKey({
           variables: {
@@ -285,7 +303,7 @@ function ApiKeysComponent() {
       }),
     },
     onSubmit: async ({ value }) => {
-      if (!renamingApiKey) return;
+      if (!renamingApiKey || !canUpdate(renamingApiKey)) return;
 
       try {
         await updateUserApiKey({
@@ -365,6 +383,7 @@ function ApiKeysComponent() {
   };
 
   const handleOpenRename = (apiKey: ApiKeyRow) => {
+    if (!canUpdate(apiKey)) return;
     setRenamingApiKey(apiKey);
     renameForm.setFieldValue("name", apiKey.name);
     renameForm.setFieldValue(
@@ -375,6 +394,7 @@ function ApiKeysComponent() {
   };
 
   const handleDeleteApiKey = async (apiKey: ApiKeyRow) => {
+    if (!canDelete(apiKey)) return;
     const confirmed = await alertDialog({
       title: t("api-key:delete.title"),
       description: t("api-key:delete.description", {
@@ -402,6 +422,7 @@ function ApiKeysComponent() {
   };
 
   const handleToggleApiKey = async (apiKey: ApiKeyRow) => {
+    if (!canUpdate(apiKey)) return;
     try {
       await updateUserApiKey({
         variables: {
@@ -437,6 +458,7 @@ function ApiKeysComponent() {
         <PageActions>
           <PagePrimaryAction
             data-testid="api-key-create-action"
+            disabled={!canCreate}
             onClick={() => setCreateDialogOpen(true)}
           >
             <KeyRound data-icon="inline-start" />
@@ -551,19 +573,19 @@ function ApiKeysComponent() {
           }}
           rowActions={(row) => [
             {
-              disabled: updateLoading,
+              disabled: updateLoading || !canUpdate(row.original),
               label: row.original.enabled
                 ? t("action.disable")
                 : t("action.enable"),
               onClick: () => handleToggleApiKey(row.original),
             },
             {
-              disabled: updateLoading,
+              disabled: updateLoading || !canUpdate(row.original),
               label: t("action.edit"),
               onClick: () => handleOpenRename(row.original),
             },
             {
-              disabled: deleteLoading,
+              disabled: deleteLoading || !canDelete(row.original),
               label: t("action.delete"),
               onClick: () => handleDeleteApiKey(row.original),
             },
@@ -635,6 +657,7 @@ function ApiKeysComponent() {
                 <Button
                   type="submit"
                   data-testid="api-key-create-submit"
+                  disabled={!canCreate}
                   loading={createLoading}
                 >
                   {t("action.create")}
@@ -709,6 +732,7 @@ function ApiKeysComponent() {
                 <Button
                   type="submit"
                   data-testid="api-key-rename-submit"
+                  disabled={!renamingApiKey || !canUpdate(renamingApiKey)}
                   loading={updateLoading}
                 >
                   {t("action.save")}
@@ -787,4 +811,4 @@ function ApiKeysComponent() {
 }
 
 type ApiKeyRow =
-  GetUserApiKeysFromUserApiKeysRouteQuery["userApiKeys"]["edges"][number]["node"];
+  GetUserApiKeysFromUserApiKeysRouteQuery["currentUser"]["apiKeys"]["edges"][number]["node"];
