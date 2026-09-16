@@ -8,7 +8,7 @@
 - 根 `package.json` 当前要求 Node 24.4+、pnpm 10.30.3；以 checkout 中声明为准。
 - `@nest-boot/<name>` 通常对应 `packages/<name>`，先用 package 的 `name` 字段确认，不只依赖目录猜测。
 - PR 标题由 commitlint 校验，使用 `fix(scope): ...`、`feat(scope): ...`、`docs(scope): ...` 等 Conventional Commit 形式。
-- PR CI 构建 packages、检查 Prettier、运行 lint、TypeDoc 和 coverage tests；完整测试需要 PostgreSQL、Redis 与 MinIO 服务。
+- PR CI 构建 packages、检查 Prettier、运行 lint、TypeDoc 和 coverage tests；完整测试需要 PostgreSQL、Redis 与 RustFS 服务。
 - `CONTRIBUTING.md`、`SECURITY.md`、Issue forms 和 PR template 是当前贡献入口；开始任务时重新读取，若它们与本 reference 不一致则以上游文件和 CI 为准。
 
 ## 准备 checkout 与分支
@@ -54,7 +54,7 @@ pnpm typedoc:check
 pnpm test:cov
 ```
 
-`pnpm test:cov` 的 CI 环境会提供 PostgreSQL、Redis 和 MinIO。没有同等服务时只运行可证明的子集，并在 PR 中明确未运行项。公开包内容变化时酌情运行 `pnpm --filter @nest-boot/<package> pack --dry-run`；发布流程变化才运行 `pnpm release:dry-run`。
+`pnpm test:cov` 的 CI 环境会提供 PostgreSQL、Redis 和 RustFS。没有同等服务时只运行可证明的子集，并在 PR 中明确未运行项。公开包内容变化时酌情运行 `pnpm --filter @nest-boot/<package> pack --dry-run`；发布流程变化才运行 `pnpm release:dry-run`。
 
 提交前检查：
 

@@ -27,7 +27,7 @@ description: 诊断使用 `@nest-boot/*` 时发现的可复现框架缺陷或通
    - 根因明确、改动可控且能够增加回归测试时，直接提交 PR；已有 Issue 时关联它，不为自解释 PR 强制创建重复 Issue。
    - 改进建议先说明用户问题、适用场景、兼容影响和备选方案；不要把个人偏好伪装成框架缺陷。
 6. **实现最小修复**：从更新后的默认分支创建专用分支，在最接近根因的 package 添加先失败后通过的测试，只修改必要源码、公开导出和相关文档。不要顺手升级无关依赖、重排全仓格式或生成发布版本。
-7. **按风险验证**：阅读 [仓库贡献工作流](references/repository-workflow.md)，先运行目标 package 的测试、build 和 lint，再运行受影响的跨包与 TypeDoc 检查。能运行完整 CI 时按仓库 workflow 执行；缺少 PostgreSQL、Redis 或 MinIO 等服务时如实列出未运行项，不伪造通过结果。
+7. **按风险验证**：阅读 [仓库贡献工作流](references/repository-workflow.md)，先运行目标 package 的测试、build 和 lint，再运行受影响的跨包与 TypeDoc 检查。能运行完整 CI 时按仓库 workflow 执行；缺少 PostgreSQL、Redis 或 RustFS 等服务时如实列出未运行项，不伪造通过结果。
 8. **审查发布影响**：确认公开 API、类型、依赖、文档和向后兼容性。PR 标题使用仓库 commitlint 接受的 Conventional Commit 形式；除非当前仓库流程或任务明确要求，不手工修改版本或发布产物。
 9. **提交上游**：再次检查 diff、测试证据、敏感信息和分支目标。按用户授权创建 Issue，或推送分支并创建以 `main` 为 base 的 PR。没有目标仓库写权限时使用 fork，不尝试绕过保护规则。
 10. **交付结果**：返回 Issue/PR 链接、提交 SHA、根因、修改范围和逐项验证结果；明确尚未验证、被有意排除或需要维护者决定的事项。
