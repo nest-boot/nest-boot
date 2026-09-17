@@ -39,27 +39,25 @@ import { type Invitation } from "../entities/invitation.entity.js";
 import { type Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
 import { type Workspace } from "../entities/workspace.entity.js";
-import {
-  BanUserInput,
-  CreateUserInput,
-  SetUserPasswordInput,
-  SetUserPermissionsInput,
-  SetUserRolesInput,
-  UpdateUserInput,
-} from "../inputs/user.input.js";
+import { BanUserInput } from "../inputs/ban-user.input.js";
+import { CreateUserInput } from "../inputs/create-user.input.js";
+import { SetUserPasswordInput } from "../inputs/set-user-password.input.js";
+import { SetUserPermissionsInput } from "../inputs/set-user-permissions.input.js";
+import { SetUserRolesInput } from "../inputs/set-user-roles.input.js";
+import { UpdateUserInput } from "../inputs/update-user.input.js";
+import { BanUserPayload } from "../objects/ban-user-payload.object.js";
+import { CreateUserPayload } from "../objects/create-user-payload.object.js";
+import { DeleteUserPayload } from "../objects/delete-user-payload.object.js";
+import { SetUserPermissionsPayload } from "../objects/set-user-permissions-payload.object.js";
+import { SetUserRolesPayload } from "../objects/set-user-roles-payload.object.js";
+import { UnbanUserPayload } from "../objects/unban-user-payload.object.js";
+import { UpdateUserPayload } from "../objects/update-user-payload.object.js";
 import { AccountService } from "../services/account.service.js";
 import { ApiKeyService } from "../services/api-key.service.js";
 import { InvitationService } from "../services/invitation.service.js";
 import { SessionService } from "../services/session.service.js";
 import { UserService } from "../services/user.service.js";
 import { WorkspaceService } from "../services/workspace.service.js";
-import { BanUserPayload } from "../types/ban-user-payload.type.js";
-import { CreateUserPayload } from "../types/create-user-payload.type.js";
-import { DeleteUserPayload } from "../types/delete-user-payload.type.js";
-import { SetUserPermissionsPayload } from "../types/set-user-permissions-payload.type.js";
-import { SetUserRolesPayload } from "../types/set-user-roles-payload.type.js";
-import { UnbanUserPayload } from "../types/unban-user-payload.type.js";
-import { UpdateUserPayload } from "../types/update-user-payload.type.js";
 
 /** GraphQL transport for user administration. */
 @Resolver(() => User)

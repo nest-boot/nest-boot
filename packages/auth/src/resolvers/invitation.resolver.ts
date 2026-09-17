@@ -15,8 +15,8 @@ import { Invitation } from "../entities/invitation.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { CreateInvitationInput } from "../inputs/create-invitation.input.js";
+import { AcceptInvitationPayload } from "../objects/accept-invitation-payload.object.js";
 import { InvitationService } from "../services/invitation.service.js";
-import { AcceptInvitationPayload } from "../types/accept-invitation-payload.type.js";
 
 /** 工作区邀请 GraphQL 解析器。 */
 @Resolver(() => Invitation)

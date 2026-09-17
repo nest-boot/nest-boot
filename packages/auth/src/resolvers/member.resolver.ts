@@ -16,8 +16,8 @@ import { AddMemberInput } from "../inputs/add-member.input.js";
 import { SetMemberPermissionsInput } from "../inputs/set-member-permissions.input.js";
 import { SetMemberRolesInput } from "../inputs/set-member-roles.input.js";
 import { UpdateMemberInput } from "../inputs/update-member.input.js";
+import { RemoveMemberPayload } from "../objects/remove-member-payload.object.js";
 import { MemberService } from "../services/member.service.js";
-import { RemoveMemberPayload } from "../types/remove-member-payload.type.js";
 
 /** 工作区成员 GraphQL 解析器。 */
 @Resolver(() => Member)

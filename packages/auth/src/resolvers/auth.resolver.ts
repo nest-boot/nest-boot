@@ -13,18 +13,16 @@ import { AuthSignInInput } from "../inputs/auth-sign-in.input.js";
 import { AuthSignInSocialInput } from "../inputs/auth-sign-in-social.input.js";
 import { AuthSignUpInput } from "../inputs/auth-sign-up.input.js";
 import { AuthUpdateUserInput } from "../inputs/auth-update-user.input.js";
+import { AuthAbilityRuleType } from "../objects/auth-ability-rule.object.js";
+import { AuthChangePasswordResultType } from "../objects/auth-change-password-result.object.js";
+import { AuthDeleteUserResultType } from "../objects/auth-delete-user-result.object.js";
+import { AuthLinkSocialAccountResultType } from "../objects/auth-link-social-account-result.object.js";
+import { AuthRequestPasswordResetResultType } from "../objects/auth-request-password-reset-result.object.js";
+import { AuthSignInResultType } from "../objects/auth-sign-in-result.object.js";
+import { AuthSignInSocialResultType } from "../objects/auth-sign-in-social-result.object.js";
+import { AuthSocialProviderType } from "../objects/auth-social-provider.object.js";
+import { SignUpPayload } from "../objects/sign-up-payload.object.js";
 import { AuthService } from "../services/auth.service.js";
-import {
-  AuthAbilityRuleType,
-  AuthChangePasswordResultType,
-  AuthDeleteUserResultType,
-  AuthLinkSocialAccountResultType,
-  AuthRequestPasswordResetResultType,
-  AuthSignInResultType,
-  AuthSignInSocialResultType,
-  AuthSocialProviderType,
-} from "../types/auth.type.js";
-import { SignUpPayload } from "../types/sign-up-payload.type.js";
 import { getUserAbility } from "../utils/get-user-ability.util.js";
 import { getWorkspaceAbility } from "../utils/get-workspace-ability.util.js";
 import { serializeAbilityRules } from "../utils/serialize-ability-rules.util.js";

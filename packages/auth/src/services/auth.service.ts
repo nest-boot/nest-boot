@@ -37,7 +37,7 @@ import type {
   UnlinkAuthAccountOptions,
   UpdateAuthUserOptions,
 } from "../interfaces/auth-service.interface.js";
-import type { SignUpPayload } from "../types/sign-up-payload.type.js";
+import type { SignUpPayload } from "../objects/sign-up-payload.object.js";
 import { applyAuthResponseCookies } from "../utils/apply-auth-response-cookies.util.js";
 import { SessionService } from "./session.service.js";
 import { UserService } from "./user.service.js";

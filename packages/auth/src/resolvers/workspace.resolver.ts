@@ -30,13 +30,13 @@ import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { CreateWorkspaceInput } from "../inputs/create-workspace.input.js";
 import { UpdateWorkspaceInput } from "../inputs/update-workspace.input.js";
+import { CreateWorkspacePayload } from "../objects/create-workspace-payload.object.js";
+import { DeleteWorkspacePayload } from "../objects/delete-workspace-payload.object.js";
+import { LeaveWorkspacePayload } from "../objects/leave-workspace-payload.object.js";
 import { ApiKeyService } from "../services/api-key.service.js";
 import { InvitationService } from "../services/invitation.service.js";
 import { MemberService } from "../services/member.service.js";
 import { WorkspaceService } from "../services/workspace.service.js";
-import { CreateWorkspacePayload } from "../types/create-workspace-payload.type.js";
-import { DeleteWorkspacePayload } from "../types/delete-workspace-payload.type.js";
-import { LeaveWorkspacePayload } from "../types/leave-workspace-payload.type.js";
 
 /**
  * 提供工作区查询、创建、更新和删除的 GraphQL 接口。

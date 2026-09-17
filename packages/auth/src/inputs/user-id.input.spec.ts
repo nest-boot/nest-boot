@@ -1,6 +1,6 @@
 import { validateSync } from "class-validator";
 
-import { UserIdInput } from "./user.input.js";
+import { UserIdInput } from "./user-id.input.js";
 
 describe("UserIdInput", () => {
   it("accepts id as the target identifier", () => {

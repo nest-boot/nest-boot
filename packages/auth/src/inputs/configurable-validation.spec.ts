@@ -5,8 +5,9 @@ import { validateSync } from "class-validator";
 import { AuthChangePasswordInput } from "./auth-change-password.input.js";
 import { AuthResetPasswordInput } from "./auth-reset-password.input.js";
 import { AuthSignUpInput } from "./auth-sign-up.input.js";
+import { CreateUserInput } from "./create-user.input.js";
 import { SetMemberRolesInput } from "./set-member-roles.input.js";
-import { CreateUserInput, SetUserPasswordInput } from "./user.input.js";
+import { SetUserPasswordInput } from "./set-user-password.input.js";
 
 describe("configurable input validation", () => {
   const passwordInputs = [

@@ -7,8 +7,8 @@ import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { CreateApiKeyInput } from "../inputs/create-api-key.input.js";
 import { UpdateApiKeyInput } from "../inputs/update-api-key.input.js";
+import { CreateApiKeyResult } from "../objects/create-api-key-result.object.js";
 import { ApiKeyService } from "../services/api-key.service.js";
-import { CreateApiKeyResult } from "../types/create-api-key-result.type.js";
 
 /**
  * 提供 API Key 的创建、更新和删除 GraphQL 接口。
