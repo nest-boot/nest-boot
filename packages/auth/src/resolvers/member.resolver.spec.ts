@@ -116,11 +116,13 @@ describe("MemberResolver", () => {
       memberService: {
         listPermissions: vi.fn(() => ["workspace:update"]),
         listRoles: vi.fn(() => roles),
+        listAssignableRoles: vi.fn(() => roles),
         setMemberRoles: vi.fn(async () => member),
       },
     });
 
     expect(resolver.workspaceRoles()).toEqual(roles.map(({ name }) => name));
+    expect(resolver.workspaceAssignableRoles()).toEqual(["admin"]);
     expect(resolver.workspacePermissions()).toEqual(["workspace:update"]);
     await expect(
       resolver.setMemberRoles(member.id, {

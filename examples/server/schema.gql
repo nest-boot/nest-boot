@@ -657,6 +657,7 @@ type Query {
     query: String
   ): UserConnection!
   workspace(id: ID!): Workspace
+  workspaceAssignableRoles: [String!]!
   workspacePermissions: [String!]!
   workspaceRoles: [String!]!
 }

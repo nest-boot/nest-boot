@@ -745,6 +745,7 @@ export type Query = {
   userRoles: Array<Scalars["String"]["output"]>;
   users: UserConnection;
   workspace?: Maybe<Workspace>;
+  workspaceAssignableRoles: Array<Scalars["String"]["output"]>;
   workspacePermissions: Array<Scalars["String"]["output"]>;
   workspaceRoles: Array<Scalars["String"]["output"]>;
 };
@@ -1958,6 +1959,7 @@ export type GetMemberFromMemberRouteQueryVariables = Exact<{
 export type GetMemberFromMemberRouteQuery = {
   __typename?: "Query";
   workspaceRoles: Array<string>;
+  workspaceAssignableRoles: Array<string>;
   workspacePermissions: Array<string>;
   member?: {
     __typename?: "Member";
@@ -2016,6 +2018,15 @@ export type RemoveMemberFromMemberRouteMutationVariables = Exact<{
 export type RemoveMemberFromMemberRouteMutation = {
   __typename?: "Mutation";
   removeMember: { __typename?: "RemoveMemberPayload"; id: string };
+};
+
+export type GetAssignableRolesFromInviteMemberDialogQueryVariables = Exact<{
+  [key: string]: never;
+}>;
+
+export type GetAssignableRolesFromInviteMemberDialogQuery = {
+  __typename?: "Query";
+  workspaceAssignableRoles: Array<string>;
 };
 
 export type CreateInvitationFromInviteMemberDialogMutationVariables = Exact<{
@@ -6110,6 +6121,10 @@ export const GetMemberFromMemberRouteDocument = {
           { kind: "Field", name: { kind: "Name", value: "workspaceRoles" } },
           {
             kind: "Field",
+            name: { kind: "Name", value: "workspaceAssignableRoles" },
+          },
+          {
+            kind: "Field",
             name: { kind: "Name", value: "workspacePermissions" },
           },
         ],
@@ -6381,6 +6396,28 @@ export const RemoveMemberFromMemberRouteDocument = {
 } as unknown as DocumentNode<
   RemoveMemberFromMemberRouteMutation,
   RemoveMemberFromMemberRouteMutationVariables
+>;
+export const GetAssignableRolesFromInviteMemberDialogDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "getAssignableRolesFromInviteMemberDialog" },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "workspaceAssignableRoles" },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  GetAssignableRolesFromInviteMemberDialogQuery,
+  GetAssignableRolesFromInviteMemberDialogQueryVariables
 >;
 export const CreateInvitationFromInviteMemberDialogDocument = {
   kind: "Document",

@@ -378,9 +378,9 @@ export class MemberService {
 
   /** Lets the current member leave its workspace regardless of role. */
   async leaveWorkspace(member: Member): Promise<Member> {
+    this.accessControlService.assertCurrentMember(member);
     const workspace = this.unwrapWorkspace(member);
     this.accessControlService.assertCurrentWorkspace(workspace);
-    this.accessControlService.assertCurrentMember(member);
     return await this.removeMemberRecord(workspace, member, (lockedMember) => {
       this.accessControlService.assertCurrentMember(lockedMember);
     });
@@ -401,6 +401,18 @@ export class MemberService {
   listRoles(): AuthRole[] {
     this.accessControlService.assertWorkspaceCan("read", Member);
     return listAuthRoles(this.roles);
+  }
+
+  /** Lists roles within the current principal's grant ceiling, not target-member authorization. */
+  listAssignableRoles(): AuthRole[] {
+    if (
+      !this.accessControlService.workspaceCan("create", Invitation) &&
+      !this.accessControlService.workspaceCan("update", Member)
+    )
+      return [];
+    return listAuthRoles(this.roles).filter(({ permissions }) =>
+      this.accessControlService.canGrantWorkspacePermissions(permissions),
+    );
   }
 
   /** Lists configured workspace permissions. */

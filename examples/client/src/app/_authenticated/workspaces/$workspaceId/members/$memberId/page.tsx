@@ -59,6 +59,7 @@ const GET_MEMBER_FROM_MEMBER_ROUTE = graphql(`
       email
     }
     workspaceRoles
+    workspaceAssignableRoles
     workspacePermissions
   }
 `);
@@ -216,7 +217,16 @@ function MemberComponent() {
           value.roles.length !== member.roles.length ||
           value.roles.some((role) => !member.roles.includes(role));
 
-        // 比较权限数组是否变化
+        if (
+          hasRolesChanged &&
+          value.roles.some(
+            (role) => !data.workspaceAssignableRoles.includes(role),
+          )
+        ) {
+          throw new Error("Selected roles exceed your grant permissions");
+        }
+
+        // Compare the complete direct-permission list before submitting.
         const currentPermissions = member.permissions.filter(
           isWorkspacePermission,
         );
@@ -404,11 +414,17 @@ function MemberComponent() {
                 {(field) => (
                   <CheckboxGroup
                     label={t("member:details.form.role.label")}
-                    items={data.workspaceRoles.map((role) => ({
+                    items={[
+                      ...new Set([...data.workspaceRoles, ...member.roles]),
+                    ].map((role) => ({
                       label: getRoleLabel(role),
                       value: role,
                       testId: `member-role-${role}`,
-                      disabled: !canManageRoles,
+                      // Existing roles stay visible and may be removed, but cannot be re-granted.
+                      disabled:
+                        !canManageRoles ||
+                        (!data.workspaceAssignableRoles.includes(role) &&
+                          !field.state.value.includes(role)),
                     }))}
                     value={field.state.value}
                     onValueChange={(value) => field.handleChange(value)}

@@ -3,7 +3,10 @@ import { RequestContext } from "@nest-boot/request-context";
 
 import { runAuthQuery } from "../utils/run-auth-query.js";
 
-type ExecutionContext = "authentication" | "workspace-delete";
+type ExecutionContext =
+  | "authentication"
+  | "invitation-identity"
+  | "workspace-delete";
 
 /**
  * Installs the explicit infrastructure-owned execution boundaries for auth services.
@@ -31,6 +34,29 @@ export function createContextualAuthService<T extends object>(
         if (context === "authentication") return await runAuthQuery(em, invoke);
 
         const current = em.getContext(false);
+        if (context === "invitation-identity") {
+          // A fresh read-only connection sees committed identities after acquiring
+          // the workspace lock without changing or detaching the caller's RLS transaction.
+          const reader = current.fork({
+            useContext: false,
+            keepTransactionContext: false,
+          });
+          reader.clearSessionContext();
+          const run = () =>
+            reader.transactional(
+              async (manager) => {
+                RequestContext.set(EntityManager, manager);
+                return await invoke(manager);
+              },
+              { readOnly: true },
+            );
+          return RequestContext.isActive()
+            ? await RequestContext.child(run)
+            : await RequestContext.run(
+                new RequestContext({ type: "invitation-identity" }),
+                run,
+              );
+        }
         const session = current.getSessionContext();
         if (!session) return await invoke(current);
         if (current.isInTransaction()) {

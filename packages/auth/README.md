@@ -330,6 +330,11 @@ writes retain request RLS; workspace deletion only adds its operation tag while
 preserving the actor and workspace. Contexts cannot detach an active scoped
 transaction, and never mutate the caller's manager.
 
+The ID-only invitation identity lookup has a separate read-only context. It runs
+after acquiring the workspace lock so registration or membership changes made
+while waiting are observed. It reads committed identities without changing the
+outer transaction's manager, locks, or RLS scope; invitation writes stay scoped.
+
 Inject Services through `AuthModule` for these special flows. Directly constructing
 a Service uses exactly the supplied manager; it does not install those boundaries.
 

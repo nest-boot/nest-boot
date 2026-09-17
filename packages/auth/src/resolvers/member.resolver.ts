@@ -43,6 +43,12 @@ export class MemberResolver {
     return this.memberService.listRoles().map(({ name }) => name);
   }
 
+  /** Lists roles the current principal may grant; mutations still authorize their targets. */
+  @Query(() => [String])
+  workspaceAssignableRoles(): string[] {
+    return this.memberService.listAssignableRoles().map(({ name }) => name);
+  }
+
   /** Lists permissions available to workspace roles. */
   @Query(() => [String])
   workspacePermissions(): string[] {

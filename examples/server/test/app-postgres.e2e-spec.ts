@@ -1847,6 +1847,65 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     20_000,
   );
 
+  it('rechecks invitee identity after waiting for the workspace lock', async () => {
+    const owner = await createAuthenticatedUser('Invite Race Owner');
+    const workspace = await createWorkspace(owner, 'Invite Identity Race');
+    const email = uniqueEmail('late-registration');
+    const connection = migrationOrm.em.getConnection();
+    let pending: Promise<request.Response> | undefined;
+    try {
+      await connection.transactional(async (transaction) => {
+        await connection.execute(
+          'select id from workspace where id = ? for update',
+          [workspace.id],
+          'all',
+          transaction,
+        );
+        pending = Promise.resolve(
+          gql(
+            'mutation ($input: CreateInvitationInput!) { createInvitation(input: $input) { id } }',
+            {
+              cookies: owner.cookies,
+              workspaceId: workspace.id,
+              variables: { input: { email, roles: ['member'] } },
+            },
+          ),
+        );
+        await vi.waitFor(
+          async () => {
+            const [waiting] = await connection.execute<{ count: number }[]>(
+              `select count(*)::int as count from pg_stat_activity where datname = current_database() and wait_event_type = 'Lock' and query like '%"workspace"%'`,
+            );
+            expect(waiting.count).toBe(1);
+          },
+          { timeout: 5000, interval: 20 },
+        );
+        const user = await createAuthenticatedUser(
+          'Late Registered Member',
+          email,
+        );
+        await connection.execute(
+          'insert into member (user_id, workspace_id, name) values (?, ?, ?)',
+          [user.user.id, workspace.id, 'Late Member'],
+          'run',
+          transaction,
+        );
+      });
+      const response = await pending;
+      expect(response.body.errors).toEqual([
+        expect.objectContaining({ message: 'User is already a member' }),
+      ]);
+      expect(
+        await connection.execute(
+          'select id from invitation where workspace_id = ?',
+          [workspace.id],
+        ),
+      ).toEqual([]);
+    } finally {
+      await pending;
+    }
+  }, 20_000);
+
   it.each(['add', 'accept'] as const)(
     'keeps invitations terminal when %s wins a concurrent membership creation',
     async (first) => {
@@ -1912,6 +1971,23 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     },
     20_000,
   );
+
+  it('returns forbidden when leaving without a current member', async () => {
+    const user = await createAuthenticatedUser('Non Member');
+    const owner = await createAuthenticatedUser('Other Owner');
+    const workspace = await createWorkspace(owner, 'Other Workspace');
+    for (const workspaceId of [undefined, workspace.id]) {
+      const response = await gql('mutation { leaveWorkspace { memberId } }', {
+        cookies: user.cookies,
+        workspaceId,
+      });
+      expect(response.body.errors).toEqual([
+        expect.objectContaining({
+          extensions: expect.objectContaining({ code: 'FORBIDDEN' }),
+        }),
+      ]);
+    }
+  });
 
   it('resolves workspace context from header and cookie while returning null for missing member context', async () => {
     const alice = await createAuthenticatedUser('Alice');

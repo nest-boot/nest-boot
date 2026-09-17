@@ -11,6 +11,7 @@ import {
 } from "../../test/workspace-service.fixture.js";
 import { WorkspaceAbility } from "../abilities/workspace.ability.js";
 import { ApiKey } from "../entities/api-key.entity.js";
+import { Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
@@ -30,6 +31,72 @@ describe("MemberService direct permission authorization", () => {
       },
     },
   };
+
+  it.each([
+    {
+      role: "admin",
+      direct: [],
+      key: undefined,
+      expected: ["admin", "custom"],
+    },
+    {
+      role: "custom",
+      direct: permissions,
+      key: undefined,
+      expected: ["founder", "admin", "custom"],
+    },
+    { role: "founder", direct: [], key: "user", expected: ["custom"] },
+    {
+      role: "founder",
+      direct: [],
+      key: "workspace",
+      expected: ["admin", "custom"],
+    },
+  ])(
+    "lists assignable roles for $role with key=$key",
+    async ({ role, direct, key, expected }) => {
+      const { em } = createWorkspaceServices();
+      const access = new AccessControlService(options);
+      const service = new MemberService(em, options, access);
+      const workspace = createTestWorkspace();
+      await RequestContext.run(new RequestContext({ type: "test" }), () => {
+        if (key !== "workspace")
+          RequestContext.set(
+            Member,
+            Object.assign(createTestMember(), {
+              roles: [role],
+              permissions: direct,
+            }),
+          );
+        if (key)
+          RequestContext.set(
+            ApiKey,
+            Object.assign(new ApiKey(), {
+              user: key === "user" ? ref(User, createTestUser()) : null,
+              workspace: key === "workspace" ? ref(Workspace, workspace) : null,
+              permissions:
+                key === "user"
+                  ? ["member:update"]
+                  : ["member:update", "workspace:update"],
+            }),
+          );
+        RequestContext.set(
+          WorkspaceAbility,
+          new WorkspaceAbility([{ action: "create", subject: Invitation }]),
+        );
+        expect(service.listAssignableRoles().map(({ name }) => name)).toEqual(
+          expected,
+        );
+        for (const { permissions: grants } of service.listAssignableRoles()) {
+          expect(() => {
+            access.assertCanGrantWorkspacePermissions(grants);
+          }).not.toThrow();
+        }
+        RequestContext.set(WorkspaceAbility, new WorkspaceAbility());
+        expect(service.listAssignableRoles()).toEqual([]);
+      });
+    },
+  );
 
   it.each([
     {

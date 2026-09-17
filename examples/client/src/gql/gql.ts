@@ -61,11 +61,12 @@ type Documents = {
   "\n  query getCurrentWorkspaceFromWorkspaceContext {\n    currentWorkspace {\n      id\n      name\n      createdAt\n      updatedAt\n    }\n  }\n": typeof types.GetCurrentWorkspaceFromWorkspaceContextDocument;
   "\n  query getCurrentWorkspaceFromWorkspaceLayout($workspaceId: ID!) {\n    workspace(id: $workspaceId) {\n      id\n    }\n    currentMember {\n      id\n      roles\n    }\n    currentWorkspaceAbilityRules {\n      actions\n      subjects\n      fields\n      conditions\n      inverted\n      reason\n    }\n  }\n": typeof types.GetCurrentWorkspaceFromWorkspaceLayoutDocument;
   "\n  query getCurrentMemberFromMemberRoute {\n    currentMember {\n      id\n      roles\n      permissions\n    }\n  }\n": typeof types.GetCurrentMemberFromMemberRouteDocument;
-  "\n  query getMemberFromMemberRoute($id: ID!) {\n    member(id: $id) {\n      id\n      roles\n      permissions\n      status\n      name\n      email\n    }\n    workspaceRoles\n    workspacePermissions\n  }\n": typeof types.GetMemberFromMemberRouteDocument;
+  "\n  query getMemberFromMemberRoute($id: ID!) {\n    member(id: $id) {\n      id\n      roles\n      permissions\n      status\n      name\n      email\n    }\n    workspaceRoles\n    workspaceAssignableRoles\n    workspacePermissions\n  }\n": typeof types.GetMemberFromMemberRouteDocument;
   "\n  mutation updateMemberFromMemberRoute($id: ID!, $input: UpdateMemberInput!) {\n    updateMember(id: $id, input: $input) {\n      id\n      name\n      email\n    }\n  }\n": typeof types.UpdateMemberFromMemberRouteDocument;
   "\n  mutation setMemberRolesFromMemberRoute(\n    $id: ID!\n    $input: SetMemberRolesInput!\n  ) {\n    setMemberRoles(id: $id, input: $input) {\n      id\n      roles\n    }\n  }\n": typeof types.SetMemberRolesFromMemberRouteDocument;
   "\n  mutation setMemberPermissionsFromMemberRoute(\n    $id: ID!\n    $input: SetMemberPermissionsInput!\n  ) {\n    setMemberPermissions(id: $id, input: $input) {\n      id\n      permissions\n    }\n  }\n": typeof types.SetMemberPermissionsFromMemberRouteDocument;
   "\n  mutation removeMemberFromMemberRoute($id: ID!) {\n    removeMember(id: $id) {\n      id\n    }\n  }\n": typeof types.RemoveMemberFromMemberRouteDocument;
+  "\n  query getAssignableRolesFromInviteMemberDialog {\n    workspaceAssignableRoles\n  }\n": typeof types.GetAssignableRolesFromInviteMemberDialogDocument;
   "\n  mutation createInvitationFromInviteMemberDialog(\n    $input: CreateInvitationInput!\n  ) {\n    createInvitation(input: $input) {\n      id\n    }\n  }\n": typeof types.CreateInvitationFromInviteMemberDialogDocument;
   "\n  query getMembersFromMembersRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $filter: MemberFilter\n    $orderBy: MemberOrder\n    $query: String\n    $invitationFirst: Int\n    $invitationLast: Int\n    $invitationAfter: String\n    $invitationBefore: String\n    $invitationFilter: InvitationFilter\n  ) {\n    currentWorkspace {\n      members(\n        after: $after\n        before: $before\n        first: $first\n        last: $last\n        orderBy: $orderBy\n        filter: $filter\n        query: $query\n      ) {\n        edges {\n          node {\n            id\n            roles\n            status\n            createdAt\n            name\n            email\n          }\n        }\n        pageInfo {\n          endCursor\n          hasNextPage\n          hasPreviousPage\n          startCursor\n        }\n      }\n    }\n    currentWorkspace {\n      invitations(\n        first: $invitationFirst\n        last: $invitationLast\n        after: $invitationAfter\n        before: $invitationBefore\n        filter: $invitationFilter\n        orderBy: { field: CREATED_AT, direction: DESC }\n      ) {\n        edges {\n          node {\n            id\n            email\n            roles\n            status\n            expiresAt\n          }\n        }\n        pageInfo {\n          endCursor\n          startCursor\n          hasNextPage\n          hasPreviousPage\n        }\n      }\n    }\n  }\n": typeof types.GetMembersFromMembersRouteDocument;
   "\n  mutation cancelInvitationFromMembersRoute($id: ID!) {\n    cancelInvitation(id: $id) {\n      id\n      status\n    }\n  }\n": typeof types.CancelInvitationFromMembersRouteDocument;
@@ -184,7 +185,7 @@ const documents: Documents = {
     types.GetCurrentWorkspaceFromWorkspaceLayoutDocument,
   "\n  query getCurrentMemberFromMemberRoute {\n    currentMember {\n      id\n      roles\n      permissions\n    }\n  }\n":
     types.GetCurrentMemberFromMemberRouteDocument,
-  "\n  query getMemberFromMemberRoute($id: ID!) {\n    member(id: $id) {\n      id\n      roles\n      permissions\n      status\n      name\n      email\n    }\n    workspaceRoles\n    workspacePermissions\n  }\n":
+  "\n  query getMemberFromMemberRoute($id: ID!) {\n    member(id: $id) {\n      id\n      roles\n      permissions\n      status\n      name\n      email\n    }\n    workspaceRoles\n    workspaceAssignableRoles\n    workspacePermissions\n  }\n":
     types.GetMemberFromMemberRouteDocument,
   "\n  mutation updateMemberFromMemberRoute($id: ID!, $input: UpdateMemberInput!) {\n    updateMember(id: $id, input: $input) {\n      id\n      name\n      email\n    }\n  }\n":
     types.UpdateMemberFromMemberRouteDocument,
@@ -194,6 +195,8 @@ const documents: Documents = {
     types.SetMemberPermissionsFromMemberRouteDocument,
   "\n  mutation removeMemberFromMemberRoute($id: ID!) {\n    removeMember(id: $id) {\n      id\n    }\n  }\n":
     types.RemoveMemberFromMemberRouteDocument,
+  "\n  query getAssignableRolesFromInviteMemberDialog {\n    workspaceAssignableRoles\n  }\n":
+    types.GetAssignableRolesFromInviteMemberDialogDocument,
   "\n  mutation createInvitationFromInviteMemberDialog(\n    $input: CreateInvitationInput!\n  ) {\n    createInvitation(input: $input) {\n      id\n    }\n  }\n":
     types.CreateInvitationFromInviteMemberDialogDocument,
   "\n  query getMembersFromMembersRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $filter: MemberFilter\n    $orderBy: MemberOrder\n    $query: String\n    $invitationFirst: Int\n    $invitationLast: Int\n    $invitationAfter: String\n    $invitationBefore: String\n    $invitationFilter: InvitationFilter\n  ) {\n    currentWorkspace {\n      members(\n        after: $after\n        before: $before\n        first: $first\n        last: $last\n        orderBy: $orderBy\n        filter: $filter\n        query: $query\n      ) {\n        edges {\n          node {\n            id\n            roles\n            status\n            createdAt\n            name\n            email\n          }\n        }\n        pageInfo {\n          endCursor\n          hasNextPage\n          hasPreviousPage\n          startCursor\n        }\n      }\n    }\n    currentWorkspace {\n      invitations(\n        first: $invitationFirst\n        last: $invitationLast\n        after: $invitationAfter\n        before: $invitationBefore\n        filter: $invitationFilter\n        orderBy: { field: CREATED_AT, direction: DESC }\n      ) {\n        edges {\n          node {\n            id\n            email\n            roles\n            status\n            expiresAt\n          }\n        }\n        pageInfo {\n          endCursor\n          startCursor\n          hasNextPage\n          hasPreviousPage\n        }\n      }\n    }\n  }\n":
@@ -540,8 +543,8 @@ export function graphql(
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
-  source: "\n  query getMemberFromMemberRoute($id: ID!) {\n    member(id: $id) {\n      id\n      roles\n      permissions\n      status\n      name\n      email\n    }\n    workspaceRoles\n    workspacePermissions\n  }\n",
-): (typeof documents)["\n  query getMemberFromMemberRoute($id: ID!) {\n    member(id: $id) {\n      id\n      roles\n      permissions\n      status\n      name\n      email\n    }\n    workspaceRoles\n    workspacePermissions\n  }\n"];
+  source: "\n  query getMemberFromMemberRoute($id: ID!) {\n    member(id: $id) {\n      id\n      roles\n      permissions\n      status\n      name\n      email\n    }\n    workspaceRoles\n    workspaceAssignableRoles\n    workspacePermissions\n  }\n",
+): (typeof documents)["\n  query getMemberFromMemberRoute($id: ID!) {\n    member(id: $id) {\n      id\n      roles\n      permissions\n      status\n      name\n      email\n    }\n    workspaceRoles\n    workspaceAssignableRoles\n    workspacePermissions\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -566,6 +569,12 @@ export function graphql(
 export function graphql(
   source: "\n  mutation removeMemberFromMemberRoute($id: ID!) {\n    removeMember(id: $id) {\n      id\n    }\n  }\n",
 ): (typeof documents)["\n  mutation removeMemberFromMemberRoute($id: ID!) {\n    removeMember(id: $id) {\n      id\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
+  source: "\n  query getAssignableRolesFromInviteMemberDialog {\n    workspaceAssignableRoles\n  }\n",
+): (typeof documents)["\n  query getAssignableRolesFromInviteMemberDialog {\n    workspaceAssignableRoles\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

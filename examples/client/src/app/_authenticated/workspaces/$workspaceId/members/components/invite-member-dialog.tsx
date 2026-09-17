@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { useMutation } from "@apollo/client/react";
+import { useMutation, useQuery } from "@apollo/client/react";
 import { Copy } from "lucide-react";
 import { useForm } from "@tanstack/react-form";
 import { toast } from "sonner";
@@ -16,10 +16,12 @@ import {
 } from "@/components/ui/dialog";
 import { getRoleLabel } from "@/utils/get-role-label";
 import { graphql } from "@/gql";
-import {
-  WORKSPACE_MEMBER_ROLE,
-  workspaceAssignableRoles,
-} from "@/lib/workspace-roles";
+
+const GET_ASSIGNABLE_ROLES_FROM_INVITE_MEMBER_DIALOG = graphql(`
+  query getAssignableRolesFromInviteMemberDialog {
+    workspaceAssignableRoles
+  }
+`);
 
 const CREATE_INVITATION_FROM_INVITE_MEMBER_DIALOG = graphql(`
   mutation createInvitationFromInviteMemberDialog(
@@ -42,6 +44,15 @@ export function InviteMemberDialog({
 }) {
   const [inviteLinkOpen, setInviteLinkOpen] = useState(false);
   const [inviteLink, setInviteLink] = useState("");
+  const {
+    data,
+    loading: loadingRoles,
+    error: rolesError,
+  } = useQuery(GET_ASSIGNABLE_ROLES_FROM_INVITE_MEMBER_DIALOG, {
+    skip: !inviteOpen,
+    fetchPolicy: "network-only",
+  });
+  const assignableRoles = data?.workspaceAssignableRoles ?? [];
 
   const [createInvitation, { loading: createInviteLoading }] = useMutation(
     CREATE_INVITATION_FROM_INVITE_MEMBER_DIALOG,
@@ -49,7 +60,7 @@ export function InviteMemberDialog({
 
   const inviteForm = useForm({
     defaultValues: {
-      roles: [WORKSPACE_MEMBER_ROLE],
+      roles: [] as Array<string>,
       email: "",
     },
     onSubmit: async ({ value }) => {
@@ -58,7 +69,12 @@ export function InviteMemberDialog({
         toast.error(t("member:invite.email_required"));
         return;
       }
-      if (value.roles.length === 0) {
+      if (
+        loadingRoles ||
+        rolesError ||
+        value.roles.length === 0 ||
+        value.roles.some((role) => !assignableRoles.includes(role))
+      ) {
         toast.error(t("member:invite.role_label"));
         return;
       }
@@ -172,12 +188,14 @@ export function InviteMemberDialog({
                 {(field) => (
                   <CheckboxGroup
                     label={t("member:invite.role_label")}
-                    items={workspaceAssignableRoles.map((role) => ({
+                    items={assignableRoles.map((role) => ({
                       label: getRoleLabel(role),
                       value: role,
+                      testId: `invite-role-${role}`,
                     }))}
                     value={field.state.value}
                     onValueChange={(value) => field.handleChange(value)}
+                    disabled={loadingRoles || !!rolesError}
                   />
                 )}
               </inviteForm.Field>
@@ -195,6 +213,9 @@ export function InviteMemberDialog({
                 type="submit"
                 data-testid="workspace-invite-confirm"
                 loading={createInviteLoading}
+                disabled={
+                  loadingRoles || !!rolesError || assignableRoles.length === 0
+                }
               >
                 {t("member:invite.confirm_and_copy")}
               </Button>

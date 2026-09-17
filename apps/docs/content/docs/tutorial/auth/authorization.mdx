@@ -142,6 +142,13 @@ on user creation. For a personal API key, the ceiling is the intersection of the
 user's role/direct permissions and the key's permissions. Holding `user:set-role`
 alone does not allow promotion to a more privileged role.
 
+`workspaceAssignableRoles` returns configured role names within the current
+principal's grant ceiling, including API-key restrictions. It returns an empty
+list without member-update or invitation-create ability. Use it for assignment
+controls, while keeping existing roles visible and checking the complete replacement
+list before submission. `workspaceRoles` remains the full catalog; mutation Services
+still enforce target-specific abilities and grant ceilings.
+
 The example GraphQL application exposes `userRoles`, `userPermissions`,
 `workspaceRoles`, and `workspacePermissions` queries. Role changes use the
 dedicated `setUserRoles` and `setMemberRoles` mutations. Direct

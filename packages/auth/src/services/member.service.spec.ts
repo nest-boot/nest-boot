@@ -20,6 +20,24 @@ import { AccessControlService } from "./access-control.service.js";
 import { MemberService } from "./member.service.js";
 
 describe("MemberService", () => {
+  it.each([false, true])(
+    "rejects a missing member with context present=%s",
+    async (present) => {
+      const { em } = createWorkspaceServices();
+      const service = new MemberService(em, {}, new AccessControlService({}));
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          if (present) RequestContext.set(Member, createTestMember());
+          await expect(
+            service.leaveWorkspace(undefined as unknown as Member),
+          ).rejects.toThrow(ForbiddenException);
+        },
+      );
+      expect(em.transactional).not.toHaveBeenCalled();
+      expect(em.remove).not.toHaveBeenCalled();
+    },
+  );
   it("allows the current member to leave without any workspace ability rules", async () => {
     const { em } = createWorkspaceServices();
     const session = mockRlsContext(em);

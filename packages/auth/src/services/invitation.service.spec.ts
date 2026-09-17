@@ -19,6 +19,33 @@ import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 
 describe("InvitationService", () => {
+  it("resolves the latest invitee identity only after locking the workspace", async () => {
+    const { invitationService, em } = createWorkspaceServices();
+    let locked = false;
+    em.refreshOrFail.mockImplementation((entity) => {
+      locked = true;
+      return Promise.resolve(entity);
+    });
+    em.findOne.mockImplementation((entity) => {
+      if (entity === User)
+        return Promise.resolve(
+          locked ? Object.assign(new User(), { id: "new-member" }) : null,
+        );
+      if (entity === Member) return Promise.resolve(createTestMember());
+      return Promise.resolve(null);
+    });
+    await expect(
+      invitationService.createInvitation(
+        createTestWorkspace(),
+        createTestUser(),
+        {
+          email: "new@example.com",
+          roles: ["member"],
+        },
+      ),
+    ).rejects.toThrow("User is already a member");
+    expect(em.persist).not.toHaveBeenCalled();
+  });
   it.each([
     "assertCurrentWorkspace",
     "assertCurrentUser",

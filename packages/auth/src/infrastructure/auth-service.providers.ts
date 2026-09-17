@@ -60,7 +60,7 @@ export const authServiceProviders: Provider[] = [
         em,
         (manager) => new InvitationService(manager, options, access),
         {
-          getUserIdForInvitation: "authentication",
+          getUserIdForInvitation: "invitation-identity",
           acceptInvitation: "authentication",
           rejectInvitation: "authentication",
         },

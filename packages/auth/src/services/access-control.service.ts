@@ -112,12 +112,16 @@ export class AccessControlService {
   }
 
   /** Throws unless the supplied member is the current workspace member. */
-  assertCurrentMember(member: Member): void {
+  assertCurrentMember(member: Member | null | undefined): void {
     const currentMember = RequestContext.isActive()
       ? RequestContext.get(Member)
       : undefined;
 
-    if (!currentMember || String(currentMember.id) !== String(member.id)) {
+    if (
+      !member ||
+      !currentMember ||
+      String(currentMember.id) !== String(member.id)
+    ) {
       throw new ForbiddenException(
         "The operation belongs to another workspace member",
       );
@@ -157,6 +161,26 @@ export class AccessControlService {
   assertCanGrantWorkspacePermissions(
     requestedPermissions: readonly string[],
   ): void {
+    const allowed = new Set(this.getWorkspaceGrantPermissions());
+    const excessive = requestedPermissions.filter(
+      (permission) => !allowed.has(permission),
+    );
+    if (excessive.length > 0) {
+      throw new ForbiddenException(
+        `Workspace permissions exceed issuer permissions: ${excessive.join(", ")}`,
+      );
+    }
+  }
+
+  /** Checks the same grant ceiling used when assigning workspace permissions. */
+  canGrantWorkspacePermissions(
+    requestedPermissions: readonly string[],
+  ): boolean {
+    const allowed = new Set(this.getWorkspaceGrantPermissions());
+    return requestedPermissions.every((permission) => allowed.has(permission));
+  }
+
+  private getWorkspaceGrantPermissions(): readonly string[] {
     const apiKey = RequestContext.isActive()
       ? RequestContext.get(ApiKey)
       : undefined;
@@ -187,15 +211,7 @@ export class AccessControlService {
       effectivePermissions = [];
     }
 
-    const effectivePermissionSet = new Set(effectivePermissions);
-    const excessivePermissions = requestedPermissions.filter(
-      (permission) => !effectivePermissionSet.has(permission),
-    );
-    if (excessivePermissions.length > 0) {
-      throw new ForbiddenException(
-        `Workspace permissions exceed issuer permissions: ${excessivePermissions.join(", ")}`,
-      );
-    }
+    return effectivePermissions;
   }
 
   /** Rejects access to or delegation of credentials broader than the authenticating API key. */

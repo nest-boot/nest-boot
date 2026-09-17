@@ -73,8 +73,6 @@ export class InvitationService {
         "Workspace invitation lifetime must be a positive integer",
       );
     }
-    const now = new Date();
-    const userId = await this.getUserIdForInvitation(workspace, inviter, email);
     const sendInvitationEmail = this.authOptions.workspace?.sendInvitationEmail;
     let transactionResult: {
       created: Invitation;
@@ -85,6 +83,12 @@ export class InvitationService {
       transactionResult = await this.em.transactional(
         async (em) => {
           await this.lockActiveWorkspace(em, workspace);
+          const now = new Date();
+          const userId = await this.getUserIdForInvitation(
+            workspace,
+            inviter,
+            email,
+          );
           const [member, invitation, inviterMember] = await Promise.all([
             userId
               ? em.findOne(
