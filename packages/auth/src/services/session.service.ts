@@ -110,19 +110,6 @@ export class SessionService {
     }
   }
 
-  /** Lists a user's active sessions. */
-  async listUserSessions(user: User): Promise<Session[]> {
-    this.assertCanListSessions(user);
-    return await this.em.find(
-      Session,
-      {
-        expiresAt: { $gt: new Date() },
-        user: String(user.id),
-      } as FilterQuery<Session>,
-      { exclude: ["token"] as never, orderBy: { createdAt: "desc" } as never },
-    );
-  }
-
   /** Revokes one session by ID when it belongs to the supplied user. */
   async revokeSession(user: User | string, id: string): Promise<boolean> {
     user = await this.resolveUserForRevocation(user);

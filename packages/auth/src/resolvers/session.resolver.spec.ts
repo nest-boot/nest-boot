@@ -3,8 +3,8 @@ import { MODULE_METADATA } from "@nestjs/common/constants";
 import type { Mocked } from "vitest";
 
 import { AuthModule } from "../auth.module.js";
-import { type Session as BaseSession } from "../entities/session.entity.js";
-import { type User as BaseUser } from "../entities/user.entity.js";
+import { type Session } from "../entities/session.entity.js";
+import { type User } from "../entities/user.entity.js";
 import { type AuthService } from "../services/auth.service.js";
 import { type SessionService } from "../services/session.service.js";
 import { AuthResolver } from "./auth.resolver.js";
@@ -13,8 +13,8 @@ import { UserResolver } from "./user.resolver.js";
 
 describe("SessionResolver", () => {
   it("delegates impersonator reads to SessionService and preserves access failures", async () => {
-    const user = { id: "admin" } as BaseUser;
-    const session = { id: "session" } as BaseSession;
+    const user = { id: "admin" } as User;
+    const session = { id: "session" } as Session;
     const getSessionImpersonator = vi.fn().mockResolvedValue(user);
     const { resolver } = createResolver({ getSessionImpersonator });
     await expect(resolver.impersonatedBy(session)).resolves.toBe(user);
@@ -43,22 +43,21 @@ describe("SessionResolver", () => {
       id: "session-1",
       token: "secret",
       impersonatedBy: { id: "admin-1" },
-    } as BaseSession;
+    } as Session;
     expect(resolver.currentSession(session)).toBe(session);
     expect(resolver.current(session, session)).toBe(true);
     expect(resolver.current(session, null)).toBe(false);
-    expect(
-      resolver.current(session, { id: "other-session" } as BaseSession),
-    ).toBe(false);
+    expect(resolver.current(session, { id: "other-session" } as Session)).toBe(
+      false,
+    );
     expect(resolver.impersonatedById(session)).toBe("admin-1");
     expect(
-      resolver.impersonatedById({ id: "normal-session" } as BaseSession),
+      resolver.impersonatedById({ id: "normal-session" } as Session),
     ).toBeNull();
   });
 
   it("rejects missing users before revoking their sessions", async () => {
     const { resolver, sessionService } = createResolver({
-      listUserSessions: vi.fn(),
       revokeSession: vi.fn().mockRejectedValue(new NotFoundException()),
       revokeUserSessions: vi.fn().mockRejectedValue(new NotFoundException()),
     });
@@ -68,7 +67,6 @@ describe("SessionResolver", () => {
     await expect(resolver.revokeUserSessions("missing")).rejects.toBeInstanceOf(
       NotFoundException,
     );
-    expect(sessionService.listUserSessions).not.toHaveBeenCalled();
     expect(sessionService.revokeSession).toHaveBeenCalledWith(
       "missing",
       "session-1",
@@ -77,7 +75,7 @@ describe("SessionResolver", () => {
   });
 
   it("delegates administrator-wide session revocation and propagates permission failures", async () => {
-    const user = { id: "user-1" } as BaseUser;
+    const user = { id: "user-1" } as User;
     const { resolver, sessionService } = createResolver({
       revokeUserSessions: vi.fn(async () => 0),
     });
@@ -105,31 +103,6 @@ describe("SessionResolver", () => {
     expect(resolver.currentSession(null)).toBeNull();
   });
 
-  it("lists sessions and marks the current session", async () => {
-    const sessions = [
-      {
-        id: "session-1",
-        token: "token-1",
-      },
-      {
-        id: "session-2",
-        token: "token-2",
-      },
-    ];
-    const { resolver, sessionService } = createResolver({
-      listCurrentUserSessions: vi.fn(),
-    });
-
-    expect(SessionResolver.prototype).not.toHaveProperty("authSessions");
-    expect(
-      resolver.current(sessions[0] as BaseSession, sessions[0] as BaseSession),
-    ).toBe(true);
-    expect(
-      resolver.current(sessions[1] as BaseSession, sessions[0] as BaseSession),
-    ).toBe(false);
-    expect(sessionService.listCurrentUserSessions).not.toHaveBeenCalled();
-  });
-
   it("delegates session revocation operations", async () => {
     const { resolver, sessionService } = createResolver({
       revokeCurrentUserOtherSessions: vi.fn(async () => true),
@@ -151,16 +124,15 @@ describe("SessionResolver", () => {
   });
 
   it("manages user sessions without exposing missing users", async () => {
-    const user = { id: "user-1" } as BaseUser;
+    const user = { id: "user-1" } as User;
     const session = {
       id: "session-1",
       token: "token-1",
       expiresAt: new Date(),
       createdAt: new Date(),
       updatedAt: new Date(),
-    } as BaseSession;
+    } as Session;
     const { resolver, sessionService } = createResolver({
-      listUserSessions: vi.fn(async () => [session]),
       revokeSession: vi.fn(async () => true),
     });
 
@@ -174,8 +146,8 @@ describe("SessionResolver", () => {
   });
 
   it("starts and stops impersonation while selecting each created session", async () => {
-    const administrator = { id: "admin-1" } as BaseUser;
-    const target = { id: "user-1" } as BaseUser;
+    const administrator = { id: "admin-1" } as User;
+    const target = { id: "user-1" } as User;
     const { resolver, authService, sessionService } = createResolver(
       {
         setSessionCookie: vi.fn(async () => undefined),

@@ -11,14 +11,11 @@ import {
 } from "../../test/workspace-service.fixture.js";
 import { UserAbility } from "../abilities/user.ability.js";
 import { WorkspaceAbility } from "../abilities/workspace.ability.js";
-import { ApiKey as BaseApiKey } from "../entities/api-key.entity.js";
-import { Invitation as InvitationEntity } from "../entities/invitation.entity.js";
-import { Member as BaseMember } from "../entities/member.entity.js";
-import { User as BaseUser } from "../entities/user.entity.js";
-import {
-  Workspace as BaseWorkspace,
-  Workspace as WorkspaceEntity,
-} from "../entities/workspace.entity.js";
+import { ApiKey } from "../entities/api-key.entity.js";
+import { Invitation } from "../entities/invitation.entity.js";
+import { Member } from "../entities/member.entity.js";
+import { User } from "../entities/user.entity.js";
+import { Workspace } from "../entities/workspace.entity.js";
 import { AccessControlService } from "./access-control.service.js";
 import { InvitationService } from "./invitation.service.js";
 
@@ -94,7 +91,7 @@ describe("InvitationService read authorization", () => {
       const workspace = createTestWorkspace();
       const invitation = Object.assign(createTestInvitation(), {
         email: "recipient@example.com",
-        workspace: ref(WorkspaceEntity, workspace),
+        workspace: ref(Workspace, workspace),
       });
       em.findOne.mockResolvedValue(invitation);
 
@@ -102,7 +99,7 @@ describe("InvitationService read authorization", () => {
         new RequestContext({ type: "test" }),
         async () => {
           RequestContext.set(
-            BaseUser,
+            User,
             Object.assign(createTestUser(), {
               email: scenario.recipient
                 ? "Recipient@example.com"
@@ -111,27 +108,25 @@ describe("InvitationService read authorization", () => {
           );
           RequestContext.set(
             UserAbility,
-            new UserAbility([{ action: "read", subject: InvitationEntity }]),
+            new UserAbility([{ action: "read", subject: Invitation }]),
           );
           if (scenario.selected) {
             const selected = Object.assign(createTestWorkspace(), {
               id: scenario.selected,
             });
-            RequestContext.set(BaseWorkspace, selected);
+            RequestContext.set(Workspace, selected);
             if (scenario.member)
               RequestContext.set(
-                BaseMember,
+                Member,
                 Object.assign(createTestMember(), {
-                  workspace: ref(WorkspaceEntity, selected),
+                  workspace: ref(Workspace, selected),
                 }),
               );
           }
           RequestContext.set(
             WorkspaceAbility,
             new WorkspaceAbility(
-              scenario.canRead
-                ? [{ action: "read", subject: InvitationEntity }]
-                : [],
+              scenario.canRead ? [{ action: "read", subject: Invitation }] : [],
             ),
           );
 
@@ -231,7 +226,7 @@ describe("InvitationService read authorization", () => {
     );
     const invitation = Object.assign(createTestInvitation(), {
       email: "recipient@example.com",
-      workspace: ref(WorkspaceEntity, createTestWorkspace()),
+      workspace: ref(Workspace, createTestWorkspace()),
     });
     em.findOne.mockResolvedValue(invitation);
 
@@ -239,26 +234,26 @@ describe("InvitationService read authorization", () => {
       const workspace = Object.assign(createTestWorkspace(), {
         id: scenario.selected,
       });
-      RequestContext.set(BaseWorkspace, workspace);
+      RequestContext.set(Workspace, workspace);
       if (scenario.key) {
         RequestContext.set(
-          BaseApiKey,
-          Object.assign(new BaseApiKey(), {
+          ApiKey,
+          Object.assign(new ApiKey(), {
             user: null,
-            workspace: ref(WorkspaceEntity, workspace),
+            workspace: ref(Workspace, workspace),
           }),
         );
       } else {
         RequestContext.set(
-          BaseUser,
+          User,
           Object.assign(createTestUser(), {
             email: scenario.recipient ? invitation.email : "other@example.com",
           }),
         );
         RequestContext.set(
-          BaseMember,
+          Member,
           Object.assign(createTestMember(), {
-            workspace: ref(WorkspaceEntity, workspace),
+            workspace: ref(Workspace, workspace),
           }),
         );
       }
@@ -269,7 +264,7 @@ describe("InvitationService read authorization", () => {
             ? [
                 {
                   action: "read",
-                  subject: InvitationEntity,
+                  subject: Invitation,
                   conditions: { email: "different@example.com" },
                 },
               ]
@@ -284,7 +279,7 @@ describe("InvitationService read authorization", () => {
             : [
                 {
                   action: "read",
-                  subject: InvitationEntity,
+                  subject: Invitation,
                   ...(scenario.workspaceRead === "conditional"
                     ? { conditions: { email: "different@example.com" } }
                     : {}),
@@ -329,7 +324,7 @@ describe("InvitationService read authorization", () => {
 
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       RequestContext.set(
-        BaseUser,
+        User,
         Object.assign(createTestUser(), { email: invitation.email }),
       );
       RequestContext.set(
@@ -337,7 +332,7 @@ describe("InvitationService read authorization", () => {
         new UserAbility([
           {
             action: "read",
-            subject: InvitationEntity,
+            subject: Invitation,
             conditions: { email: "different@example.com" },
           },
         ]),

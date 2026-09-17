@@ -11,16 +11,12 @@ import {
   createTestUser,
   createTestWorkspace,
   createWorkspaceServices,
-  TestInvitation,
 } from "../../test/workspace-service.fixture.js";
 import { InvitationConnection } from "../connections/invitation.connection-definition.js";
-import { Invitation as InvitationEntity } from "../entities/invitation.entity.js";
-import { Member as MemberEntity } from "../entities/member.entity.js";
-import {
-  User as BaseUser,
-  User as UserEntity,
-} from "../entities/user.entity.js";
-import { Workspace as WorkspaceEntity } from "../entities/workspace.entity.js";
+import { Invitation } from "../entities/invitation.entity.js";
+import { Member } from "../entities/member.entity.js";
+import { User } from "../entities/user.entity.js";
+import { Workspace } from "../entities/workspace.entity.js";
 
 describe("InvitationService", () => {
   it.each([
@@ -63,7 +59,7 @@ describe("InvitationService", () => {
       },
     );
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      RequestContext.set(BaseUser, user);
+      RequestContext.set(User, user);
       await expect(
         invitationService.getInvitationWorkspace(invitation),
       ).rejects.toThrow(ForbiddenException);
@@ -106,7 +102,7 @@ describe("InvitationService", () => {
       .mockResolvedValueOnce(invitation)
       .mockResolvedValueOnce(workspace);
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      RequestContext.set(BaseUser, recipient);
+      RequestContext.set(User, recipient);
       await expect(
         invitationService.getInvitationInviter(invitation),
       ).resolves.toBe(inviter);
@@ -121,7 +117,7 @@ describe("InvitationService", () => {
     expect(accessControlService.assertCurrentWorkspace).not.toHaveBeenCalled();
     expect(accessControlService.assertWorkspaceCan).not.toHaveBeenCalled();
     expect(em.findOne).toHaveBeenCalledWith(
-      WorkspaceEntity,
+      Workspace,
       { id: workspace.id, deletedAt: null },
       { refresh: true },
     );
@@ -144,18 +140,18 @@ describe("InvitationService", () => {
     em.findOne.mockResolvedValue(invitation);
     vi.mocked(accessControlService.assertUserCan).mockImplementation(
       (_action, subject) => {
-        if (subject === UserEntity) throw new ForbiddenException();
+        if (subject === User) throw new ForbiddenException();
       },
     );
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      RequestContext.set(BaseUser, recipient);
+      RequestContext.set(User, recipient);
       await expect(
         invitationService.getInvitationInviter(invitation),
       ).rejects.toThrow(ForbiddenException);
     });
     expect(em.findOne).toHaveBeenCalledTimes(1);
     expect(em.findOne).toHaveBeenCalledWith(
-      InvitationEntity,
+      Invitation,
       { id: invitation.id },
       { refresh: true },
     );
@@ -204,7 +200,7 @@ describe("InvitationService", () => {
     ).rejects.toThrow("Workspace invitation not found");
     expect(em.findOne).toHaveBeenCalledTimes(1);
     expect(em.findOne).toHaveBeenCalledWith(
-      InvitationEntity,
+      Invitation,
       { id: invitation.id },
       { refresh: true },
     );
@@ -223,13 +219,13 @@ describe("InvitationService", () => {
     );
     await expect(invitationService.getInvitation("hidden")).resolves.toBeNull();
     expect(em.findOne).toHaveBeenCalledWith(
-      InvitationEntity,
+      Invitation,
       { id: invitation.id },
       { refresh: true },
     );
     expect(accessControlService.userCan).toHaveBeenCalledWith(
       "read",
-      InvitationEntity,
+      Invitation,
     );
     expect(em.fork).not.toHaveBeenCalled();
     expect(em.getSessionContext()).toEqual(session);
@@ -259,11 +255,11 @@ describe("InvitationService", () => {
       await expect(operation()).rejects.toBeInstanceOf(ForbiddenException);
     expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
       "read",
-      InvitationEntity,
+      Invitation,
     );
     expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
       "update",
-      InvitationEntity,
+      Invitation,
     );
     expect(em.find).not.toHaveBeenCalled();
     expect(em.findOne).not.toHaveBeenCalled();
@@ -331,7 +327,7 @@ describe("InvitationService", () => {
 
     expect(invitation.roles).toEqual(["viewer"]);
     expect(em.create).toHaveBeenCalledWith(
-      InvitationEntity,
+      Invitation,
       expect.objectContaining({ roles: ["viewer"] }),
     );
   });
@@ -392,12 +388,8 @@ describe("InvitationService", () => {
         email: contactEmail,
       });
       em.findOne.mockImplementation((entity, where) => {
-        if (entity === UserEntity) return Promise.resolve(user);
-        if (
-          entity === MemberEntity &&
-          "user" in where &&
-          where.user === user.id
-        ) {
+        if (entity === User) return Promise.resolve(user);
+        if (entity === Member && "user" in where && where.user === user.id) {
           return Promise.resolve(member);
         }
         return Promise.resolve(null);
@@ -410,12 +402,12 @@ describe("InvitationService", () => {
       ).rejects.toThrow("User is already a member");
       expect(em.findOne).toHaveBeenNthCalledWith(
         1,
-        UserEntity,
+        User,
         { email: user.email },
         { fields: ["id"], filters: false },
       );
       expect(em.findOne).toHaveBeenCalledWith(
-        MemberEntity,
+        Member,
         {
           workspace,
           user: user.id,
@@ -440,13 +432,8 @@ describe("InvitationService", () => {
         user: createTestUser(),
       });
       em.findOne.mockImplementation((entity, where) => {
-        if (entity === UserEntity)
-          return Promise.resolve(registered ? user : null);
-        if (
-          entity === MemberEntity &&
-          "email" in where &&
-          where.email === email
-        ) {
+        if (entity === User) return Promise.resolve(registered ? user : null);
+        if (entity === Member && "email" in where && where.email === email) {
           return Promise.resolve(unrelatedMember);
         }
         return Promise.resolve(null);
@@ -456,24 +443,24 @@ describe("InvitationService", () => {
         invitationService.createInvitation(workspace, inviter, { email }),
       ).resolves.toMatchObject({ email, status: "pending" });
       expect(em.findOne).toHaveBeenCalledWith(
-        UserEntity,
+        User,
         { email },
         { fields: ["id"], filters: false },
       );
       expect(em.create).toHaveBeenCalledTimes(1);
       expect(em.create).toHaveBeenCalledWith(
-        InvitationEntity,
+        Invitation,
         expect.objectContaining({ email }),
       );
       if (registered) {
         expect(em.findOne).toHaveBeenCalledWith(
-          MemberEntity,
+          Member,
           { workspace, user: user.id },
           { filters: false },
         );
       } else {
         expect(
-          em.findOne.mock.calls.some(([entity]) => entity === MemberEntity),
+          em.findOne.mock.calls.some(([entity]) => entity === Member),
         ).toBe(false);
       }
     },
@@ -629,9 +616,9 @@ describe("InvitationService", () => {
       }),
     ).rejects.toBe(deliveryError);
 
-    const invitation = em.create.mock.results.at(-1)?.value as TestInvitation;
+    const invitation = em.create.mock.results.at(-1)?.value as Invitation;
     expect(em.nativeUpdate).toHaveBeenCalledWith(
-      InvitationEntity,
+      Invitation,
       { id: invitation.id, status: "pending" },
       { status: "canceled" },
     );
@@ -666,11 +653,11 @@ describe("InvitationService", () => {
       invitationService.getInvitationConnectionByUser(user, args),
     ).resolves.toBe(connection);
 
-    expect(em.findOne).toHaveBeenCalledWith(InvitationEntity, {
+    expect(em.findOne).toHaveBeenCalledWith(Invitation, {
       email: "alice@example.com",
       id: invitation.id,
     });
-    expect(em.findOne).toHaveBeenCalledWith(InvitationEntity, {
+    expect(em.findOne).toHaveBeenCalledWith(Invitation, {
       id: invitation.id,
       workspace,
     });
@@ -707,10 +694,10 @@ describe("InvitationService", () => {
       invitationService.createInvitation(workspace, inviter, {
         email: "alice@example.com",
       }),
-    ).resolves.toBeInstanceOf(InvitationEntity);
+    ).resolves.toBeInstanceOf(Invitation);
     expect(em.findOne).toHaveBeenNthCalledWith(
       2,
-      InvitationEntity,
+      Invitation,
       {
         email: "alice@example.com",
         status: "pending",
@@ -735,7 +722,7 @@ describe("InvitationService", () => {
     expect(invitation.status).toBe("canceled");
     expect(em.remove).not.toHaveBeenCalled();
     expect(em.nativeUpdate).toHaveBeenCalledWith(
-      InvitationEntity,
+      Invitation,
       expect.objectContaining({
         id: invitation.id,
         status: "pending",
@@ -773,7 +760,7 @@ describe("InvitationService", () => {
     expect(invitation.status).toBe("rejected");
     expect(em.remove).not.toHaveBeenCalled();
     expect(em.nativeUpdate).toHaveBeenCalledWith(
-      InvitationEntity,
+      Invitation,
       {
         email: "alice@example.com",
         id: invitation.id,

@@ -6,8 +6,8 @@ import { AUTH_TOKEN } from "../auth.constants.js";
 import { AuthGuard } from "../auth.guard.js";
 import { AuthMiddleware } from "../auth.middleware.js";
 import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
-import { Session as BaseSession } from "../entities/session.entity.js";
-import { User as BaseUser } from "../entities/user.entity.js";
+import { Session } from "../entities/session.entity.js";
+import { User } from "../entities/user.entity.js";
 import { AuthService } from "./auth.service.js";
 import { SessionService } from "./session.service.js";
 import { UserService } from "./user.service.js";
@@ -57,7 +57,7 @@ async function createService(
   const authMiddleware = {
     authenticateSession: vi.fn(),
     resolveRegisteredUser: vi.fn((id: string) =>
-      em.findOneOrFail(BaseUser, { id }),
+      em.findOneOrFail(User, { id }),
     ),
   };
   const userService = { impersonateUser: vi.fn(), stopImpersonating: vi.fn() };
@@ -102,10 +102,10 @@ describe("current user identity", () => {
   it("adopts impersonation and restored identities before writing cookies", async () => {
     const { service, userService, sessionService, authMiddleware, authGuard } =
       await createService();
-    const administrator = Object.assign(new BaseUser(), { id: "admin" });
-    const target = Object.assign(new BaseUser(), { id: "target" });
-    const session = Object.assign(new BaseSession(), { token: "impersonated" });
-    const restored = Object.assign(new BaseSession(), { token: "restored" });
+    const administrator = Object.assign(new User(), { id: "admin" });
+    const target = Object.assign(new User(), { id: "target" });
+    const session = Object.assign(new Session(), { token: "impersonated" });
+    const restored = Object.assign(new Session(), { token: "restored" });
     userService.impersonateUser.mockResolvedValue({ user: target, session });
     userService.stopImpersonating.mockResolvedValue({
       user: administrator,
@@ -113,22 +113,19 @@ describe("current user identity", () => {
     });
     authMiddleware.authenticateSession.mockImplementation((token) => {
       const user = token === session.token ? target : administrator;
-      RequestContext.set(BaseUser, user);
-      RequestContext.set(
-        BaseSession,
-        token === session.token ? session : restored,
-      );
+      RequestContext.set(User, user);
+      RequestContext.set(Session, token === session.token ? session : restored);
       return Promise.resolve(user);
     });
     sessionService.setSessionCookie.mockImplementation((token) => {
-      expect(RequestContext.get(BaseSession)?.token).toBe(token);
+      expect(RequestContext.get(Session)?.token).toBe(token);
       expect(authGuard.refreshAbilities).toHaveBeenCalledTimes(
         token === session.token ? 1 : 2,
       );
       return Promise.resolve();
     });
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      RequestContext.set(BaseUser, administrator);
+      RequestContext.set(User, administrator);
       await expect(service.impersonateUser(target.id)).resolves.toBe(target);
       expect(userService.impersonateUser).toHaveBeenCalledWith(
         administrator,
@@ -136,7 +133,7 @@ describe("current user identity", () => {
       );
       await expect(service.stopImpersonating()).resolves.toBe(administrator);
       expect(userService.stopImpersonating).toHaveBeenCalledWith(session);
-      expect(RequestContext.get(BaseUser)).toBe(administrator);
+      expect(RequestContext.get(User)).toBe(administrator);
       expect(sessionService.setSessionCookie).toHaveBeenNthCalledWith(
         1,
         session.token,
@@ -157,7 +154,7 @@ describe("current user identity", () => {
     expect(userService.stopImpersonating).not.toHaveBeenCalled();
     userService.stopImpersonating.mockResolvedValue(null);
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      RequestContext.set(BaseSession, new BaseSession());
+      RequestContext.set(Session, new Session());
       await expect(service.stopImpersonating()).resolves.toBeNull();
     });
     expect(authMiddleware.authenticateSession).not.toHaveBeenCalled();
@@ -167,7 +164,7 @@ describe("current user identity", () => {
 
   it("returns a minimal registration payload without loading or authenticating the user", async () => {
     const { service, em, authMiddleware, authGuard } = await createService();
-    const user = Object.assign(new BaseUser(), {
+    const user = Object.assign(new User(), {
       id: "created-user",
       roles: ["user"],
     });
@@ -216,7 +213,7 @@ describe("current user identity", () => {
 
   it("returns application users and adopts only issued sign-in sessions", async () => {
     const { service, authMiddleware, authGuard } = await createService();
-    const user = Object.assign(new BaseUser(), { id: "signed-in-user" });
+    const user = Object.assign(new User(), { id: "signed-in-user" });
     vi.spyOn(service, "signIn").mockResolvedValue({
       token: "issued-token",
       user: { id: user.id },
@@ -256,8 +253,8 @@ describe("current user identity", () => {
       expect(() => service.getCurrentUser()).toThrow(
         "A user identity is required",
       );
-      const user = Object.assign(new BaseUser(), { id: "user-1" });
-      RequestContext.set(BaseUser, user);
+      const user = Object.assign(new User(), { id: "user-1" });
+      RequestContext.set(User, user);
       expect(service.getCurrentUser()).toBe(user);
     });
   });

@@ -11,14 +11,14 @@ import { CurrentWorkspace } from "./decorators/current-workspace.decorator.js";
 import { Public } from "./decorators/public.decorator.js";
 import { UserCan } from "./decorators/user-can.decorator.js";
 import { WorkspaceCan } from "./decorators/workspace-can.decorator.js";
-import { Account as BaseAccount } from "./entities/account.entity.js";
-import { ApiKey as BaseApiKey } from "./entities/api-key.entity.js";
-import { Invitation as BaseInvitation } from "./entities/invitation.entity.js";
-import { Member as BaseMember } from "./entities/member.entity.js";
-import { Session as BaseSession } from "./entities/session.entity.js";
-import { User as BaseUser } from "./entities/user.entity.js";
-import { Verification as BaseVerification } from "./entities/verification.entity.js";
-import { Workspace as BaseWorkspace } from "./entities/workspace.entity.js";
+import { Account } from "./entities/account.entity.js";
+import { ApiKey } from "./entities/api-key.entity.js";
+import { Invitation } from "./entities/invitation.entity.js";
+import { Member } from "./entities/member.entity.js";
+import { Session } from "./entities/session.entity.js";
+import { User } from "./entities/user.entity.js";
+import { Verification } from "./entities/verification.entity.js";
+import { Workspace } from "./entities/workspace.entity.js";
 import * as publicApi from "./index.js";
 import { AccessControlService } from "./services/access-control.service.js";
 import { AccountService } from "./services/account.service.js";
@@ -48,6 +48,17 @@ vi.mock("./adapters/mikro-orm-adapter.js", () => ({
 }));
 
 describe("public API", () => {
+  it.each([
+    [UserService, "listUsers"],
+    [SessionService, "listUserSessions"],
+    [WorkspaceService, "getFullWorkspace"],
+  ] as const)(
+    "does not expose the removed %s.%s collection API",
+    (service, method) => {
+      expect(service.prototype).not.toHaveProperty(method);
+    },
+  );
+
   it("exports account pagination from its own non-privileged service", () => {
     expect(publicApi.AccountService).toBe(AccountService);
     expect(Reflect.getMetadata("providers", AuthModule)).toContain(
@@ -157,7 +168,6 @@ describe("public API", () => {
     const sessionMethods = Object.getOwnPropertyNames(SessionService.prototype);
     for (const name of [
       "getSessionConnectionByUser",
-      "listUserSessions",
       "getSessionImpersonator",
       "revokeSession",
       "revokeUserSessions",
@@ -308,14 +318,14 @@ describe("public API", () => {
     expect(publicApi.CurrentWorkspace).toBe(CurrentWorkspace);
     expect(publicApi.CurrentMember).toBe(CurrentMember);
     expect(publicApi.Public).toBe(Public);
-    expect(publicApi.Account).toBe(BaseAccount);
-    expect(publicApi.ApiKey).toBe(BaseApiKey);
-    expect(publicApi.Session).toBe(BaseSession);
-    expect(publicApi.User).toBe(BaseUser);
-    expect(publicApi.Verification).toBe(BaseVerification);
-    expect(publicApi.Workspace).toBe(BaseWorkspace);
-    expect(publicApi.Invitation).toBe(BaseInvitation);
-    expect(publicApi.Member).toBe(BaseMember);
+    expect(publicApi.Account).toBe(Account);
+    expect(publicApi.ApiKey).toBe(ApiKey);
+    expect(publicApi.Session).toBe(Session);
+    expect(publicApi.User).toBe(User);
+    expect(publicApi.Verification).toBe(Verification);
+    expect(publicApi.Workspace).toBe(Workspace);
+    expect(publicApi.Invitation).toBe(Invitation);
+    expect(publicApi.Member).toBe(Member);
     expect(publicApi.UserAbility).toBe(UserAbility);
     expect(publicApi.WorkspaceAbility).toBe(WorkspaceAbility);
     expect(publicApi.can).toBe(can);

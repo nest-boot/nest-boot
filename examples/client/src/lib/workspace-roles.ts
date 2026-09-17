@@ -12,10 +12,3 @@ export const workspaceRoles = [
 
 /** Configured roles available for assignment, subject to Service authorization. */
 export const workspaceAssignableRoles = workspaceRoles;
-
-export function hasWorkspaceRole(
-  roles: ReadonlyArray<string>,
-  role: string,
-): boolean {
-  return roles.includes(role);
-}

@@ -1,19 +1,13 @@
 import { EntityManager, type FilterQuery, LockMode } from "@mikro-orm/core";
-import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 
-import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
-import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { User } from "../entities/user.entity.js";
 
 /** Coordinates transactional deletion of users and auth-owned dependants. */
 @Injectable()
 export class UserDeletionService {
   /** Creates the internal user-deletion coordinator. */
-  constructor(
-    private readonly em: EntityManager,
-    @Inject(MODULE_OPTIONS_TOKEN)
-    private readonly options: AuthModuleOptions,
-  ) {}
+  constructor(private readonly em: EntityManager) {}
 
   /**
    * Deletes one user and all auth-owned dependent records atomically.

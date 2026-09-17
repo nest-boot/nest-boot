@@ -43,7 +43,6 @@ Apply the session SELECT policy migration; ordinary reads exclude the token colu
 - `getCurrentAuthenticatedSession()` — resolves the current built-in entities;
 - `listCurrentUserSessions()` — lists the current user's active sessions;
 - `getSessionConnectionByUser(user, args)` — paginates safe session entities for the parent user;
-- `listUserSessions(user)` — returns safe session entities as an array;
 - `getSessionImpersonator(session)` — resolves the impersonator under request RLS;
 - `revokeSession(userOrId, id)` / `revokeUserSessions(userOrId)` — administrative revocation;
 - `revokeCurrentUserSession(id)` — revokes one of the current user's sessions by its public ID;

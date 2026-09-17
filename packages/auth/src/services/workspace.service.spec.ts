@@ -14,17 +14,11 @@ import {
 } from "../../test/workspace-service.fixture.js";
 import { MemberConnection } from "../connections/member.connection-definition.js";
 import { WorkspaceConnection } from "../connections/workspace.connection-definition.js";
-import { ApiKey as BaseApiKey } from "../entities/api-key.entity.js";
-import { Invitation as InvitationEntity } from "../entities/invitation.entity.js";
-import {
-  Member as BaseMember,
-  Member as MemberEntity,
-} from "../entities/member.entity.js";
-import { User as BaseUser } from "../entities/user.entity.js";
-import {
-  Workspace as BaseWorkspace,
-  Workspace as WorkspaceEntity,
-} from "../entities/workspace.entity.js";
+import { ApiKey } from "../entities/api-key.entity.js";
+import { Invitation } from "../entities/invitation.entity.js";
+import { Member } from "../entities/member.entity.js";
+import { User } from "../entities/user.entity.js";
+import { Workspace } from "../entities/workspace.entity.js";
 
 describe("WorkspaceService and cross-domain coordination", () => {
   it("paginates authorized workspace memberships and members inside the service", async () => {
@@ -66,7 +60,7 @@ describe("WorkspaceService and cross-domain coordination", () => {
       );
       expect(accessControlService.assertWorkspaceCan).toHaveBeenCalledWith(
         "read",
-        MemberEntity,
+        Member,
       );
       find.mockClear();
       vi.mocked(accessControlService.assertCurrentUser).mockImplementation(
@@ -120,17 +114,17 @@ describe("WorkspaceService and cross-domain coordination", () => {
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
       const workspace = createTestWorkspace();
       const user = createTestUser();
-      RequestContext.set(BaseWorkspace, workspace);
-      RequestContext.set(BaseUser, user);
+      RequestContext.set(Workspace, workspace);
+      RequestContext.set(User, user);
       expect(() => workspaceService.getCurrentWorkspace()).toThrow(
         ForbiddenException,
       );
-      RequestContext.set(BaseApiKey, new BaseApiKey());
+      RequestContext.set(ApiKey, new ApiKey());
       expect(() => memberService.getCurrentMember()).toThrow(
         ForbiddenException,
       );
       const member = createTestMember();
-      RequestContext.set(BaseMember, member);
+      RequestContext.set(Member, member);
       expect(memberService.getCurrentMember()).toBe(member);
       expect(workspaceService.getCurrentWorkspace()).toBe(workspace);
     });
@@ -227,12 +221,12 @@ describe("WorkspaceService and cross-domain coordination", () => {
       name: "Acme",
     });
 
-    expect(em.create).toHaveBeenNthCalledWith(1, WorkspaceEntity, {
+    expect(em.create).toHaveBeenNthCalledWith(1, Workspace, {
       name: "Acme",
     });
     expect(em.create).toHaveBeenNthCalledWith(
       2,
-      MemberEntity,
+      Member,
       expect.objectContaining({
         roles: ["owner"],
         status: "ACTIVE",
@@ -263,12 +257,12 @@ describe("WorkspaceService and cross-domain coordination", () => {
 
     expect(em.create).toHaveBeenNthCalledWith(
       2,
-      MemberEntity,
+      Member,
       expect.objectContaining({ roles: ["founder"] }),
     );
     expect(em.create).toHaveBeenNthCalledWith(
       3,
-      MemberEntity,
+      Member,
       expect.objectContaining({ roles: ["viewer"] }),
     );
     expect(
@@ -369,7 +363,7 @@ describe("WorkspaceService and cross-domain coordination", () => {
       expect(em.getSessionContext()).toEqual(sessionContext);
       expect(em.fork).not.toHaveBeenCalled();
       expect(em.nativeUpdate).toHaveBeenCalledWith(
-        WorkspaceEntity,
+        Workspace,
         { id: workspace.id, deletedAt: null },
         { deletedAt: expect.any(Date) },
       );
@@ -377,7 +371,7 @@ describe("WorkspaceService and cross-domain coordination", () => {
 
     expect(workspace.deletedAt).toBeInstanceOf(Date);
     expect(em.nativeUpdate).toHaveBeenCalledWith(
-      InvitationEntity,
+      Invitation,
       { status: "pending", workspace },
       { status: "canceled" },
     );
@@ -398,65 +392,15 @@ describe("WorkspaceService and cross-domain coordination", () => {
       member,
     );
 
-    expect(em.findOne).toHaveBeenNthCalledWith(1, WorkspaceEntity, {
+    expect(em.findOne).toHaveBeenNthCalledWith(1, Workspace, {
       id: workspace.id,
     });
-    expect(em.findOne).toHaveBeenNthCalledWith(2, MemberEntity, {
+    expect(em.findOne).toHaveBeenNthCalledWith(2, Member, {
       status: "ACTIVE",
       user,
       workspace,
     });
   });
-
-  it("returns full workspace details split into members and invitations", async () => {
-    const { em, workspaceService, accessControlService } =
-      createWorkspaceServices();
-    const session = mockRlsContext(em);
-    const workspace = createTestWorkspace();
-    const active = createTestMember();
-    const disabled = Object.assign(createTestMember(), {
-      status: "DISABLED" as const,
-    });
-    const invitation = createTestInvitation();
-    em.find
-      .mockResolvedValueOnce([active, disabled])
-      .mockResolvedValueOnce([invitation]);
-
-    await expect(workspaceService.getFullWorkspace(workspace)).resolves.toEqual(
-      {
-        invitations: [invitation],
-        members: [active, disabled],
-        workspace,
-      },
-    );
-    expect(accessControlService.assertWorkspaceCan).toHaveBeenCalledWith(
-      "read",
-      MemberEntity,
-    );
-    expect(accessControlService.assertWorkspaceCan).toHaveBeenCalledWith(
-      "read",
-      InvitationEntity,
-    );
-    expect(em.fork).not.toHaveBeenCalled();
-    expect(em.getSessionContext()).toEqual(session);
-  });
-
-  it.each([MemberEntity, InvitationEntity])(
-    "authorizes every child resource before reading workspace details: %s",
-    async (denied) => {
-      const { em, workspaceService, accessControlService } =
-        createWorkspaceServices();
-      vi.mocked(accessControlService.assertWorkspaceCan).mockImplementation(
-        (_action, subject) => {
-          if (subject === denied) throw new ForbiddenException();
-        },
-      );
-      await expect(
-        workspaceService.getFullWorkspace(createTestWorkspace()),
-      ).rejects.toBeInstanceOf(ForbiddenException);
-      expect(em.find).not.toHaveBeenCalled();
-    },
-  );
 
   it("allows creator roles when adding members and inviting users", async () => {
     const { em, memberService, invitationService } = createWorkspaceServices();

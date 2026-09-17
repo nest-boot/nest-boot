@@ -34,7 +34,6 @@ different workspaces.
 - `findOne(where)`;
 - `getWorkspaceConnectionByUser(user, args)`;
 - `createWorkspace(user, input)`;
-- `getFullWorkspace(workspace)`;
 - `updateWorkspace(id, input)`;
 - `deleteWorkspace(id)`.
 
@@ -91,8 +90,8 @@ Auth infrastructure establishes a local ORM fork for soft deletion with
 context. Its matching policy allows the deletion result only inside that
 operation. Normal requests still cannot read deleted workspaces or restore them.
 Custom applications need equivalent policies. User deletion authorizes the root
-row with Service checks and RLS, then uses a database trigger fixed to that user's
-ID for atomic dependent cleanup. Deleting a user preserves workspaces and other
+row with Service checks and RLS, then uses foreign-key cascades for atomic
+dependent cleanup. Deleting a user preserves workspaces and other
 users' memberships; a workspace is allowed to remain without an owner.
 
 Services use only injected `this.em`. `AuthModule` infrastructure establishes
@@ -100,10 +99,8 @@ cross-identity database contexts for workspace creation and invitation
 acceptance/rejection; Services still enforce authorization and lifecycle checks.
 Ordinary queries and writes do not disable RLS.
 
-The old array methods `listWorkspaces` and `listMembers` are removed; use the
-connection pagination methods above. `getFullWorkspace` retains request RLS and
-checks `workspace:read`, `member:read` and
-`invitation:read` separately before reading children.
+Use the connection pagination methods above for workspaces, members, and
+invitations. Each service checks its own authorization and retains request RLS.
 
 ## Workspace-visible member profiles
 

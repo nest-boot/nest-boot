@@ -4,14 +4,8 @@ import { Test } from "@nestjs/testing";
 
 import { mockRlsContext } from "../../test/mock-rls-context.js";
 import { AUTH_TOKEN } from "../auth.constants.js";
-import {
-  Session as BaseSession,
-  Session as SessionEntity,
-} from "../entities/session.entity.js";
-import {
-  User as BaseUser,
-  User as UserEntity,
-} from "../entities/user.entity.js";
+import { Session } from "../entities/session.entity.js";
+import { User } from "../entities/user.entity.js";
 import { AccessControlService } from "./access-control.service.js";
 import { SessionService } from "./session.service.js";
 
@@ -23,11 +17,6 @@ vi.mock("@nest-boot/request-context", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@nest-boot/request-context")>()),
   headers: () => requestHeaders,
 }));
-
-const TestSession = BaseSession;
-type TestSession = BaseSession;
-const TestUser = BaseUser;
-type TestUser = BaseUser;
 
 function createApi() {
   return {
@@ -107,8 +96,8 @@ describe("SessionService", () => {
 
   it("resolves configured application user and session entities", async () => {
     const api = createApi();
-    const user = Object.assign(new TestUser(), { id: "user-1" });
-    const session = Object.assign(new TestSession(), {
+    const user = Object.assign(new User(), { id: "user-1" });
+    const session = Object.assign(new Session(), {
       token: "session-token",
     });
     api.getSession.mockResolvedValue({
@@ -134,8 +123,8 @@ describe("SessionService", () => {
       user,
     });
     expect(api.getSession).toHaveBeenCalledWith({ headers: requestHeaders });
-    expect(em.findOne).toHaveBeenNthCalledWith(1, UserEntity, { id: "user-1" });
-    expect(em.findOne).toHaveBeenNthCalledWith(2, SessionEntity, {
+    expect(em.findOne).toHaveBeenNthCalledWith(1, User, { id: "user-1" });
+    expect(em.findOne).toHaveBeenNthCalledWith(2, Session, {
       token: "session-token",
     });
     expect("api" in service).toBe(false);
@@ -222,8 +211,8 @@ describe("SessionService", () => {
   it("tries the cookie session before an Authorization credential", async () => {
     requestHeaders.set("authorization", "Bearer api-key");
     const api = createApi();
-    const user = Object.assign(new TestUser(), { id: "user-1" });
-    const session = Object.assign(new TestSession(), {
+    const user = Object.assign(new User(), { id: "user-1" });
+    const session = Object.assign(new Session(), {
       token: "session-token",
     });
     api.getSession.mockResolvedValueOnce(null).mockResolvedValueOnce({
@@ -286,12 +275,12 @@ describe("SessionService", () => {
       session: { token: "session-token" },
       user: { id: "user-1" },
     });
-    const user = Object.assign(new TestUser(), {
+    const user = Object.assign(new User(), {
       banned: true,
       banExpiresAt: null,
       id: "user-1",
     });
-    const session = Object.assign(new TestSession(), {
+    const session = Object.assign(new Session(), {
       token: "session-token",
     });
     const em = {
@@ -318,8 +307,8 @@ describe("SessionService", () => {
       { token: "missing" },
       { token: "session-1" },
     ]);
-    const session1 = Object.assign(new TestSession(), { token: "session-1" });
-    const session2 = Object.assign(new TestSession(), { token: "session-2" });
+    const session1 = Object.assign(new Session(), { token: "session-1" });
+    const session2 = Object.assign(new Session(), { token: "session-2" });
     const em = {
       getContext: vi.fn().mockReturnThis(),
       getSessionContext:
@@ -335,7 +324,7 @@ describe("SessionService", () => {
       session2,
       session1,
     ]);
-    expect(em.find).toHaveBeenCalledWith(SessionEntity, {
+    expect(em.find).toHaveBeenCalledWith(Session, {
       token: { $in: ["session-2", "missing", "session-1"] },
     });
   });
@@ -343,7 +332,7 @@ describe("SessionService", () => {
   it("uses its injected manager without changing the infrastructure's RLS context", async () => {
     const api = createApi();
     api.listSessions.mockResolvedValue([{ token: "session-1" }]);
-    const session = Object.assign(new TestSession(), { token: "session-1" });
+    const session = Object.assign(new Session(), { token: "session-1" });
     const em = {
       getContext: vi.fn().mockReturnThis(),
       getSessionContext:
@@ -386,7 +375,7 @@ describe("SessionService", () => {
     const api = createApi();
     api.revokeSession.mockResolvedValue({ status: true });
     const { service } = await createService(api);
-    const session = Object.assign(new TestSession(), {
+    const session = Object.assign(new Session(), {
       id: "session-1",
       token: "secret-session-token",
     });

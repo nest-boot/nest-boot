@@ -14,31 +14,22 @@ import { it as baseIt, type Mocked } from "vitest";
 import { mockRlsContext } from "../../test/mock-rls-context.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { ApiKeyConnection } from "../connections/api-key.connection-definition.js";
-import {
-  ApiKey as ApiKeyEntity,
-  ApiKey as BaseApiKey,
-} from "../entities/api-key.entity.js";
-import { Member as BaseMember } from "../entities/member.entity.js";
-import {
-  User as BaseUser,
-  User as UserEntity,
-} from "../entities/user.entity.js";
-import {
-  Workspace as BaseWorkspace,
-  Workspace as WorkspaceEntity,
-} from "../entities/workspace.entity.js";
+import { ApiKey } from "../entities/api-key.entity.js";
+import { Member } from "../entities/member.entity.js";
+import { User } from "../entities/user.entity.js";
+import { Workspace } from "../entities/workspace.entity.js";
 import { AccessControlService } from "./access-control.service.js";
 import { ApiKeyService } from "./api-key.service.js";
 
-function createTestWorkspace(): BaseWorkspace {
-  return Object.assign(new BaseWorkspace(), {
+function createTestWorkspace(): Workspace {
+  return Object.assign(new Workspace(), {
     id: "workspace-1",
     name: "Acme",
   });
 }
 
-function createTestUser(): BaseUser {
-  return Object.assign(new BaseUser(), {
+function createTestUser(): User {
+  return Object.assign(new User(), {
     id: "user-1",
     name: "Alice",
     email: "alice@example.com",
@@ -46,20 +37,20 @@ function createTestUser(): BaseUser {
   });
 }
 
-function createTestMember(): BaseMember {
-  return Object.assign(new BaseMember(), {
+function createTestMember(): Member {
+  return Object.assign(new Member(), {
     id: "member-1",
     roles: ["owner"],
     status: "ACTIVE",
     permissions: [],
     workspace: {
       id: "workspace-1",
-    } as BaseMember["workspace"],
+    } as Member["workspace"],
   });
 }
 
-function createTestApiKey(): BaseApiKey {
-  return Object.assign(new BaseApiKey(), {
+function createTestApiKey(): ApiKey {
+  return Object.assign(new ApiKey(), {
     id: "api-key-1",
     name: "Deploy key",
     start: "sk012345",
@@ -70,7 +61,7 @@ function createTestApiKey(): BaseApiKey {
     updatedAt: new Date(),
     lastUsedAt: null,
     expiresAt: null,
-    workspace: ref(WorkspaceEntity, createTestWorkspace()),
+    workspace: ref(Workspace, createTestWorkspace()),
   });
 }
 
@@ -80,10 +71,10 @@ describe("ApiKeyService", () => {
       it(`checks ${scope} ${action} ability against the loaded API key`, async () => {
         const { service, em, accessControlService } = createService();
         const key = Object.assign(createTestApiKey(), {
-          user: scope === "user" ? ref(UserEntity, createTestUser()) : null,
+          user: scope === "user" ? ref(User, createTestUser()) : null,
           workspace:
             scope === "workspace"
-              ? ref(WorkspaceEntity, createTestWorkspace())
+              ? ref(Workspace, createTestWorkspace())
               : null,
         });
         em.findOne.mockResolvedValue(key);
@@ -105,7 +96,7 @@ describe("ApiKeyService", () => {
               : () => service.deleteWorkspaceApiKey(key.id);
 
         await expect(operation()).rejects.toBeInstanceOf(ForbiddenException);
-        expect(assertion).toHaveBeenCalledWith(action, ApiKeyEntity);
+        expect(assertion).toHaveBeenCalledWith(action, ApiKey);
         expect(assertion).toHaveBeenLastCalledWith(action, key);
         expect(key.name).toBe("Deploy key");
         expect(em.flush).not.toHaveBeenCalled();
@@ -122,7 +113,7 @@ describe("ApiKeyService", () => {
     await service.updateWorkspaceApiKey(key.id, { name: "Scoped update" });
     await service.deleteWorkspaceApiKey(key.id);
     expect(em.findOne).toHaveBeenCalledWith(
-      ApiKeyEntity,
+      ApiKey,
       { id: key.id },
       {
         populate: ["user", "workspace"],
@@ -137,24 +128,23 @@ describe("ApiKeyService", () => {
   it("rejects foreign owners even when a misconfigured database returns their keys", async () => {
     const { service, em, accessControlService } = createService();
     vi.mocked(accessControlService.assertCurrentUser).mockRestore();
-    RequestContext.set(BaseUser, createTestUser());
+    RequestContext.set(User, createTestUser());
     const foreignUser = Object.assign(createTestUser(), { id: "foreign-user" });
     const foreignWorkspace = Object.assign(createTestWorkspace(), {
       id: "foreign-workspace",
     });
     for (const owner of [foreignUser, foreignWorkspace]) {
       const key = Object.assign(createTestApiKey(), {
-        user: owner instanceof UserEntity ? ref(UserEntity, owner) : null,
-        workspace:
-          owner instanceof WorkspaceEntity ? ref(WorkspaceEntity, owner) : null,
+        user: owner instanceof User ? ref(User, owner) : null,
+        workspace: owner instanceof Workspace ? ref(Workspace, owner) : null,
       });
       em.findOne.mockResolvedValue(key);
       const update =
-        owner instanceof UserEntity
+        owner instanceof User
           ? () => service.updateUserApiKey(key.id, { name: "Denied" })
           : () => service.updateWorkspaceApiKey(key.id, { name: "Denied" });
       const remove =
-        owner instanceof UserEntity
+        owner instanceof User
           ? () => service.deleteUserApiKey(key.id)
           : () => service.deleteWorkspaceApiKey(key.id);
       await expect(update()).rejects.toBeInstanceOf(ForbiddenException);
@@ -193,14 +183,14 @@ describe("ApiKeyService", () => {
     expect(accessControlService.assertCurrentUser).toHaveBeenCalledWith(user);
     expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
       "read",
-      ApiKeyEntity,
+      ApiKey,
     );
     expect(accessControlService.assertCurrentWorkspace).toHaveBeenCalledWith(
       workspace,
     );
     expect(accessControlService.assertWorkspaceCan).toHaveBeenCalledWith(
       "read",
-      ApiKeyEntity,
+      ApiKey,
     );
     expect(em.fork).not.toHaveBeenCalled();
     expect(em.getSessionContext()).toEqual(session);
@@ -231,7 +221,7 @@ describe("ApiKeyService", () => {
   it("rejects personal key connections for another user before querying", async () => {
     const { service, accessControlService } = createService();
     vi.mocked(accessControlService.assertCurrentUser).mockRestore();
-    RequestContext.set(BaseUser, createTestUser());
+    RequestContext.set(User, createTestUser());
     const otherUser = Object.assign(createTestUser(), { id: "user-2" });
     const find = vi.spyOn(ConnectionManager.prototype, "find");
 
@@ -249,7 +239,7 @@ describe("ApiKeyService", () => {
     vi.stubEnv("API_KEY_PREFIX", "nb");
     const { em, service } = createService();
     const workspace = createTestWorkspace();
-    const member = RequestContext.get(BaseMember);
+    const member = RequestContext.get(Member);
     if (!member) throw new Error("Missing test member");
     member.workspace = workspace as never;
 
@@ -259,7 +249,7 @@ describe("ApiKeyService", () => {
 
     expect(result.apiKey).toMatch(/^nb[A-Za-z0-9_-]{64}$/);
     expect(em.create).toHaveBeenCalledWith(
-      ApiKeyEntity,
+      ApiKey,
       expect.objectContaining({
         enabled: true,
         key: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
@@ -285,7 +275,7 @@ describe("ApiKeyService", () => {
     });
 
     expect(em.create).toHaveBeenCalledWith(
-      ApiKeyEntity,
+      ApiKey,
       expect.objectContaining({ permissions }),
     );
   });
@@ -311,17 +301,17 @@ describe("ApiKeyService", () => {
 
     expect(em.create).toHaveBeenNthCalledWith(
       1,
-      ApiKeyEntity,
+      ApiKey,
       expect.objectContaining({ permissions: ["workspace:update"] }),
     );
     expect(em.create).toHaveBeenNthCalledWith(
       2,
-      ApiKeyEntity,
+      ApiKey,
       expect.objectContaining({ permissions: [] }),
     );
     expect(em.create).toHaveBeenNthCalledWith(
       3,
-      ApiKeyEntity,
+      ApiKey,
       expect.objectContaining({ permissions: ["workspace:update"] }),
     );
   });
@@ -425,7 +415,7 @@ describe("ApiKeyService", () => {
     });
 
     expect(em.create).toHaveBeenCalledWith(
-      ApiKeyEntity,
+      ApiKey,
       expect.objectContaining({ user: user }),
     );
 
@@ -453,7 +443,7 @@ describe("ApiKeyService", () => {
     });
 
     expect(em.create).toHaveBeenCalledWith(
-      ApiKeyEntity,
+      ApiKey,
       expect.objectContaining({ permissions }),
     );
   });
@@ -548,7 +538,7 @@ describe("ApiKeyService", () => {
   it("prevents workspace keys from exceeding the issuing member's permissions", async () => {
     const { em, service } = createService();
     const workspace = createTestWorkspace();
-    const member = RequestContext.get(BaseMember);
+    const member = RequestContext.get(Member);
     if (!member) throw new Error("Missing test member");
     member.roles = ["admin"];
 
@@ -587,7 +577,7 @@ describe("ApiKeyService", () => {
     const user = createTestUser();
     const userKey = Object.assign(createTestApiKey(), {
       workspace: null,
-      user: ref(UserEntity, user),
+      user: ref(User, user),
     });
     em.findOne.mockResolvedValue(userKey);
     await expect(
@@ -600,7 +590,7 @@ describe("ApiKeyService", () => {
 
   it("enforces owner permission ceilings when API-key permissions are updated", async () => {
     const { em, service } = createService();
-    const member = RequestContext.get(BaseMember);
+    const member = RequestContext.get(Member);
     if (!member) throw new Error("Missing test member");
     member.roles = ["admin"];
     const workspaceKey = createTestApiKey();
@@ -618,7 +608,7 @@ describe("ApiKeyService", () => {
     const user = createTestUser();
     const userKey = Object.assign(createTestApiKey(), {
       workspace: null,
-      user: ref(UserEntity, user),
+      user: ref(User, user),
     });
     em.findOne.mockResolvedValue(userKey);
     await expect(
@@ -655,17 +645,17 @@ describe("ApiKeyService", () => {
     const user = Object.assign(createTestUser(), { roles: ["admin"] });
     const targetKey = Object.assign(createTestApiKey(), {
       workspace: null,
-      user: ref(UserEntity, user),
+      user: ref(User, user),
     });
     em.findOne.mockResolvedValue(targetKey);
     const authenticatingKey = Object.assign(createTestApiKey(), {
       workspace: null,
-      user: ref(UserEntity, user),
+      user: ref(User, user),
       permissions: ["user:get"],
     });
 
     await RequestContext.child(async () => {
-      RequestContext.set(BaseApiKey, authenticatingKey);
+      RequestContext.set(ApiKey, authenticatingKey);
 
       await expect(
         service.createUserApiKey(user, {
@@ -707,12 +697,12 @@ describe("ApiKeyService", () => {
     em.findOne.mockResolvedValue(targetKey);
     const authenticatingKey = Object.assign(createTestApiKey(), {
       workspace: null,
-      user: ref(UserEntity, createTestUser()),
+      user: ref(User, createTestUser()),
       permissions: ["workspace:update"],
     });
 
     await RequestContext.child(async () => {
-      RequestContext.set(BaseApiKey, authenticatingKey);
+      RequestContext.set(ApiKey, authenticatingKey);
 
       await expect(
         service.createWorkspaceApiKey(workspace, {
@@ -766,9 +756,9 @@ describe("ApiKeyService", () => {
     const workspace = createTestWorkspace();
     const target = createTestApiKey();
     em.findOne.mockResolvedValue(target);
-    RequestContext.set(BaseMember, null);
+    RequestContext.set(Member, null);
     RequestContext.set(
-      BaseApiKey,
+      ApiKey,
       Object.assign(createTestApiKey(), {
         permissions: ["workspace:update"],
       }),
@@ -819,8 +809,8 @@ describe("ApiKeyService", () => {
     const { em, service } = createService();
     const workspace = createTestWorkspace();
     const currentKey = createTestApiKey();
-    RequestContext.set(BaseMember, null);
-    RequestContext.set(BaseApiKey, currentKey);
+    RequestContext.set(Member, null);
+    RequestContext.set(ApiKey, currentKey);
     const target = Object.assign(createTestApiKey(), {
       permissions: ["workspace:delete"],
     });
@@ -858,7 +848,7 @@ describe("ApiKeyService", () => {
       service.getApiKeyConnectionByWorkspace(otherWorkspace, { first: 10 }),
     ).rejects.toThrow(ForbiddenException);
     expect(find).not.toHaveBeenCalled();
-    RequestContext.set(BaseWorkspace, otherWorkspace);
+    RequestContext.set(Workspace, otherWorkspace);
     await expect(
       service.createWorkspaceApiKey(otherWorkspace, { name: "Wrong owner" }),
     ).rejects.toThrow(ForbiddenException);
@@ -870,7 +860,7 @@ describe("ApiKeyService", () => {
     const { service } = createService();
     const user = createTestUser();
     RequestContext.set(
-      BaseApiKey,
+      ApiKey,
       Object.assign(createTestApiKey(), {
         workspace: null,
         user: user,
@@ -906,7 +896,7 @@ describe("ApiKeyService", () => {
 
     await RequestContext.child(async () => {
       RequestContext.set(
-        BaseApiKey,
+        ApiKey,
         Object.assign(createTestApiKey(), {
           workspace: null,
           user: user,
@@ -1030,7 +1020,7 @@ describe("ApiKeyService", () => {
     const workspace = createTestWorkspace();
     const member = createTestMember();
     member.status = "DISABLED";
-    RequestContext.set(BaseMember, member);
+    RequestContext.set(Member, member);
 
     await expect(
       service.createWorkspaceApiKey(workspace, { name: "Deploy key" }),
@@ -1052,7 +1042,7 @@ describe("ApiKeyService", () => {
       roles: ["custom-api-key-manager"],
       workspace,
     });
-    RequestContext.set(BaseMember, member);
+    RequestContext.set(Member, member);
 
     await service.createWorkspaceApiKey(workspace, {
       name: "Workspace key",
@@ -1063,7 +1053,7 @@ describe("ApiKeyService", () => {
     );
     expect(accessControlService.assertWorkspaceCan).toHaveBeenCalledWith(
       "create",
-      ApiKeyEntity,
+      ApiKey,
     );
   });
 
@@ -1073,9 +1063,9 @@ describe("ApiKeyService", () => {
       roles: ["owner"],
       workspace: {
         id: "workspace-2",
-      } as BaseMember["workspace"],
+      } as Member["workspace"],
     });
-    RequestContext.set(BaseMember, member);
+    RequestContext.set(Member, member);
 
     await expect(
       service.createWorkspaceApiKey(createTestWorkspace(), {
@@ -1091,9 +1081,9 @@ describe("ApiKeyService", () => {
     const member = Object.assign(createTestMember(), {
       workspace: {
         id: "workspace-2",
-      } as BaseMember["workspace"],
+      } as Member["workspace"],
     });
-    RequestContext.set(BaseMember, member);
+    RequestContext.set(Member, member);
 
     await expect(
       service.getApiKeyConnectionByWorkspace(createTestWorkspace(), {
@@ -1132,13 +1122,13 @@ describe("ApiKeyService", () => {
     const { em, service } = createService();
     const apiKey = createTestApiKey();
     apiKey.workspace = ref(
-      WorkspaceEntity,
+      Workspace,
       Object.assign(createTestWorkspace(), {
         id: "workspace-2",
       }),
     );
     em.findOne.mockResolvedValue(apiKey);
-    RequestContext.set(BaseMember, createTestMember());
+    RequestContext.set(Member, createTestMember());
 
     await expect(
       service.getWorkspaceApiKey(apiKey.id, createTestWorkspace()),
@@ -1210,7 +1200,7 @@ describe("ApiKeyService", () => {
     const { em, service } = createService();
     const apiKey = createTestApiKey();
     apiKey.workspace = ref(
-      WorkspaceEntity,
+      Workspace,
       Object.assign(createTestWorkspace(), {
         deletedAt: new Date(),
       }),
@@ -1229,7 +1219,7 @@ describe("ApiKeyService", () => {
     });
     const apiKey = Object.assign(createTestApiKey(), {
       workspace: null,
-      user: ref(UserEntity, user),
+      user: ref(User, user),
     });
     em.findOne.mockResolvedValueOnce(apiKey);
 
@@ -1246,12 +1236,12 @@ describe("ApiKeyService", () => {
     em.findOne.mockImplementation((entity, where) => {
       expect(RequestContext.get(EntityManager)).toBe(em);
       expect(em.getSessionContext()?.role).toBe("authenticated");
-      if (entity === ApiKeyEntity) {
+      if (entity === ApiKey) {
         expect(where).toEqual({
           key: createHash("sha256").update(plaintextApiKey).digest("base64url"),
         });
       }
-      return Promise.resolve(entity === ApiKeyEntity ? apiKey : null);
+      return Promise.resolve(entity === ApiKey ? apiKey : null);
     });
 
     await RequestContext.child(async () => {
@@ -1275,7 +1265,7 @@ describe("ApiKeyService", () => {
     expect(apiKey.lastUsedAt).toBeInstanceOf(Date);
     expect(apiKey.updatedAt).toBe(apiKey.lastUsedAt);
     expect(em.nativeUpdate).toHaveBeenCalledWith(
-      ApiKeyEntity,
+      ApiKey,
       { id: apiKey.id },
       { lastUsedAt: apiKey.lastUsedAt, updatedAt: apiKey.updatedAt },
     );
@@ -1286,8 +1276,8 @@ describe("ApiKeyService", () => {
 function it(name: string, callback: () => void | Promise<void>): void {
   baseIt(name, async () => {
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      RequestContext.set(BaseWorkspace, createTestWorkspace());
-      RequestContext.set(BaseMember, createTestMember());
+      RequestContext.set(Workspace, createTestWorkspace());
+      RequestContext.set(Member, createTestMember());
       await callback();
     });
   });

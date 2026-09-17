@@ -40,7 +40,6 @@ profile(
 - `getCurrentAuthenticatedSession()` — 解析当前内置实体；
 - `listCurrentUserSessions()` — 列出当前用户的活动会话；
 - `getSessionConnectionByUser(user, args)` — 按父级用户分页读取不含凭证的会话；
-- `listUserSessions(user)` — 以数组返回不含凭证的会话；
 - `getSessionImpersonator(session)` — 在请求级 RLS 下解析模拟登录者；
 - `revokeSession(userOrId, id)` / `revokeUserSessions(userOrId)` — 管理员撤销会话；
 - `revokeCurrentUserSession(id)` — 通过公开 ID 撤销当前用户的指定会话；

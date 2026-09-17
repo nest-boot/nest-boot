@@ -28,7 +28,6 @@ import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import type { CreateWorkspaceOptions } from "../interfaces/create-workspace-options.interface.js";
-import type { FullWorkspace } from "../interfaces/full-workspace.interface.js";
 import type { UpdateWorkspaceOptions } from "../interfaces/update-workspace-options.interface.js";
 import { DEFAULT_WORKSPACE_CREATOR_ROLE } from "../workspace.constants.js";
 import { AccessControlService } from "./access-control.service.js";
@@ -137,28 +136,6 @@ export class WorkspaceService {
       },
       { clear: true },
     );
-  }
-
-  /** Returns a workspace together with its members and invitation records. */
-  async getFullWorkspace(workspace: Workspace): Promise<FullWorkspace> {
-    this.accessControlService.assertCurrentWorkspace(workspace);
-    this.accessControlService.assertWorkspaceCan("read", workspace);
-    this.accessControlService.assertWorkspaceCan("read", Member);
-    this.accessControlService.assertWorkspaceCan("read", Invitation);
-    const [members, invitations] = await Promise.all([
-      this.em.find(Member, {
-        workspace,
-      } as FilterQuery<Member>),
-      this.em.find(Invitation, { workspace } as FilterQuery<Invitation>, {
-        orderBy: { createdAt: "desc" } as never,
-      }),
-    ]);
-
-    return {
-      workspace,
-      members,
-      invitations,
-    };
   }
 
   private async resolveWorkspaceForAction(

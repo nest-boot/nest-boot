@@ -32,8 +32,6 @@ import type { AuthenticatedSession } from "../interfaces/authenticated-session.i
 import type { BanUserOptions } from "../interfaces/ban-user-options.interface.js";
 import type { CreateUserOptions } from "../interfaces/create-user-options.interface.js";
 import type { ImpersonationOptions } from "../interfaces/impersonation-options.interface.js";
-import type { ListUsersOptions } from "../interfaces/list-users-options.interface.js";
-import type { ListUsersResult } from "../interfaces/list-users-result.interface.js";
 import type { UpdateUserOptions } from "../interfaces/update-user-options.interface.js";
 import type { UserHasPermissionsOptions } from "../interfaces/user-has-permissions-options.interface.js";
 import type { AuthModuleRoles } from "../types/auth-module-roles.type.js";
@@ -221,26 +219,6 @@ export class UserService {
       user.permissions ?? [],
       this.roles,
     );
-  }
-
-  /** Lists users with Better Auth-compatible search and pagination concepts. */
-  async listUsers(input: ListUsersOptions = {}): Promise<ListUsersResult> {
-    this.accessControlService.assertUserCan("list", User);
-    const where = this.createUserFilter(input);
-    const [users, total] = await this.em.findAndCount(User, where, {
-      limit: input.limit,
-      offset: input.offset,
-      orderBy: {
-        [input.sortBy ?? "createdAt"]: input.sortDirection ?? "asc",
-      } as never,
-    });
-
-    return {
-      users,
-      total,
-      limit: input.limit ?? null,
-      offset: input.offset ?? null,
-    };
   }
 
   /** Paginates users without bypassing application RLS. */
@@ -496,33 +474,6 @@ export class UserService {
       userAgent: input.userAgent ?? null,
       user,
     } as unknown as RequiredEntityData<Session>);
-  }
-
-  private createUserFilter(input: ListUsersOptions): FilterQuery<User> {
-    const where: Record<string, unknown> = {};
-
-    if (input.searchValue) {
-      const operator = input.searchOperator ?? "contains";
-      const pattern =
-        operator === "starts_with"
-          ? `${input.searchValue}%`
-          : operator === "ends_with"
-            ? `%${input.searchValue}`
-            : `%${input.searchValue}%`;
-      where[input.searchField ?? "email"] = { $like: pattern };
-    }
-
-    if (input.filterField && input.filterValue !== undefined) {
-      const operator = input.filterOperator ?? "eq";
-      where[input.filterField] =
-        operator === "eq"
-          ? input.filterValue
-          : operator === "contains"
-            ? { $like: `%${String(input.filterValue)}%` }
-            : { [`$${operator}`]: input.filterValue };
-    }
-
-    return where as FilterQuery<User>;
   }
 
   private async hashPassword(password: string): Promise<string> {

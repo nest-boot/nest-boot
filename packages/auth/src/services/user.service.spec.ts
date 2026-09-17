@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { EntityManager, ref } from "@mikro-orm/core";
+import { ConnectionManager } from "@nest-boot/graphql-connection";
 import { HashService } from "@nest-boot/hash";
 import {
   BadRequestException,
@@ -10,29 +11,15 @@ import { expectTypeOf, type Mocked } from "vitest";
 
 import { mockRlsContext } from "../../test/mock-rls-context.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
-import {
-  Account as AccountEntity,
-  Account as BaseAccount,
-} from "../entities/account.entity.js";
-import {
-  Session as BaseSession,
-  Session as SessionEntity,
-} from "../entities/session.entity.js";
-import {
-  User as BaseUser,
-  User as UserEntity,
-} from "../entities/user.entity.js";
+import { UserConnection } from "../connections/user.connection-definition.js";
+import { Account } from "../entities/account.entity.js";
+import { Session } from "../entities/session.entity.js";
+import { User } from "../entities/user.entity.js";
 import type { CreateUserOptions } from "../interfaces/create-user-options.interface.js";
 import type { AccessControlService } from "./access-control.service.js";
 import { UserService } from "./user.service.js";
 import { UserDeletionService } from "./user-deletion.service.js";
 
-const TestAccount = BaseAccount;
-type TestAccount = BaseAccount;
-const TestSession = BaseSession;
-type TestSession = BaseSession;
-const TestUser = BaseUser;
-type TestUser = BaseUser;
 describe("UserService", () => {
   it("does not expose unmapped data in create-user options", () => {
     expectTypeOf<
@@ -42,20 +29,20 @@ describe("UserService", () => {
 
   it("loads mutation targets by ID without requiring user:get and preserves RLS", async () => {
     const { service, em, accessControlService } = createService();
-    const user = Object.assign(new TestUser(), { id: "target" });
+    const user = Object.assign(new User(), { id: "target" });
     em.findOne.mockResolvedValue(user);
     const session = mockRlsContext(em);
     await service.updateUser(user.id, { name: "Updated" });
     await service.setUserRoles(user.id, ["user"]);
     await service.setUserPermissions(user.id, []);
     expect(em.findOne).toHaveBeenCalledWith(
-      UserEntity,
+      User,
       { id: user.id },
       { refresh: true },
     );
     expect(accessControlService.assertUserCan).not.toHaveBeenCalledWith(
       "get",
-      UserEntity,
+      User,
     );
     expect(em.fork).not.toHaveBeenCalled();
     expect(em.getSessionContext()).toEqual(session);
@@ -74,7 +61,7 @@ describe("UserService", () => {
       permissions: ["user:get", "user:delete"],
       roles: { reader: ["user:get"], administrator: ["user:delete"] },
     });
-    const user = Object.assign(new TestUser(), {
+    const user = Object.assign(new User(), {
       roles: ["reader"],
       permissions: [],
     });
@@ -108,16 +95,34 @@ describe("UserService", () => {
     expect(hash).not.toHaveBeenCalled();
   });
 
-  it("fails before persistence when a service-level permission is denied", async () => {
-    const { accessControlService, em, service } = createService();
-    vi.mocked(accessControlService.assertUserCan).mockImplementation(() => {
-      throw new ForbiddenException();
-    });
-
-    await expect(service.listUsers()).rejects.toBeInstanceOf(
-      ForbiddenException,
-    );
-    expect(em.findAndCount).not.toHaveBeenCalled();
+  it("paginates users with list authorization and the request RLS context", async () => {
+    const { service, em, accessControlService } = createService();
+    const context = mockRlsContext(em);
+    const connection = { edges: [], pageInfo: {} };
+    const find = vi
+      .spyOn(ConnectionManager.prototype, "find")
+      .mockResolvedValue(connection as never);
+    try {
+      const args = { first: 10 };
+      await expect(service.getUserConnection(args)).resolves.toBe(connection);
+      expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
+        "list",
+        User,
+      );
+      expect(find).toHaveBeenCalledExactlyOnceWith(UserConnection, args);
+      expect(em.fork).not.toHaveBeenCalled();
+      expect(em.getSessionContext()).toEqual(context);
+      find.mockClear();
+      vi.mocked(accessControlService.assertUserCan).mockImplementation(() => {
+        throw new ForbiddenException();
+      });
+      await expect(service.getUserConnection(args)).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(find).not.toHaveBeenCalled();
+    } finally {
+      find.mockRestore();
+    }
   });
 
   it("creates a user and credential account with the configured hasher", async () => {
@@ -134,7 +139,7 @@ describe("UserService", () => {
     expect(hash).toHaveBeenCalledWith("password");
     expect(em.create).toHaveBeenNthCalledWith(
       1,
-      UserEntity,
+      User,
       expect.objectContaining({
         email: "alice@example.com",
         emailVerified: false,
@@ -144,7 +149,7 @@ describe("UserService", () => {
     );
     expect(em.create).toHaveBeenNthCalledWith(
       2,
-      AccountEntity,
+      Account,
       expect.objectContaining({
         issuer: "local:credential",
         password: "hashed-password",
@@ -160,18 +165,18 @@ describe("UserService", () => {
     const { em, hash, service } = createService();
     hash.mockResolvedValue("hashed-password");
     em.create.mockImplementation((Entity, input) => {
-      if (Entity !== UserEntity && Entity !== AccountEntity) {
+      if (Entity !== User && Entity !== Account) {
         throw new Error("Unexpected entity in credential user creation");
       }
       const entity = Object.assign(
-        Entity === UserEntity ? new TestUser() : new TestAccount(),
+        Entity === User ? new User() : new Account(),
         input,
       );
-      if (Entity === UserEntity) Reflect.deleteProperty(entity, "id");
+      if (Entity === User) Reflect.deleteProperty(entity, "id");
       return entity;
     });
     em.flush.mockImplementationOnce(() => {
-      const user = em.create.mock.results[0]?.value as TestUser;
+      const user = em.create.mock.results[0]?.value as User;
       user.id = "generated-user-id";
       return Promise.resolve();
     });
@@ -184,7 +189,7 @@ describe("UserService", () => {
 
     expect(em.create).toHaveBeenNthCalledWith(
       2,
-      AccountEntity,
+      Account,
       expect.objectContaining({
         accountId: "generated-user-id",
         user: expect.objectContaining({ id: "generated-user-id" }),
@@ -208,19 +213,19 @@ describe("UserService", () => {
 
     expect(em.create).toHaveBeenNthCalledWith(
       1,
-      UserEntity,
+      User,
       expect.objectContaining({ roles: ["customer"] }),
     );
     expect(
       service.getEffectiveUserPermissions(
-        Object.assign(new TestUser(), { roles: undefined }),
+        Object.assign(new User(), { roles: undefined }),
       ),
     ).toEqual([]);
   });
 
   it("gets and updates configured user entities", async () => {
     const { accessControlService, em, service } = createService();
-    const user = Object.assign(new TestUser(), { id: "user-1" });
+    const user = Object.assign(new User(), { id: "user-1" });
     em.findOne.mockResolvedValue(user);
 
     await expect(service.getUser("user-1")).resolves.toBe(user);
@@ -231,12 +236,12 @@ describe("UserService", () => {
       user,
     );
 
-    expect(em.findOne).toHaveBeenCalledWith(UserEntity, { id: "user-1" });
+    expect(em.findOne).toHaveBeenCalledWith(User, { id: "user-1" });
     expect(em.assign).toHaveBeenCalledWith(user, { name: "Renamed" });
     expect(user.permissions).toEqual(["user:get"]);
     expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
       "get",
-      UserEntity,
+      User,
     );
     expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
       "update",
@@ -249,7 +254,7 @@ describe("UserService", () => {
 
   it("normalizes email addresses when updating a user", async () => {
     const { accessControlService, em, service } = createService();
-    const user = Object.assign(new TestUser(), { email: "old@example.com" });
+    const user = Object.assign(new User(), { email: "old@example.com" });
 
     await service.updateUser(user, { email: " New@Example.com " });
 
@@ -265,7 +270,7 @@ describe("UserService", () => {
 
   it("ignores omitted DTO fields without requiring email permission or clearing profile values", async () => {
     const { accessControlService, em, service } = createService();
-    const user = Object.assign(new TestUser(), {
+    const user = Object.assign(new User(), {
       name: "Original",
       email: "original@example.com",
       emailVerified: true,
@@ -294,7 +299,7 @@ describe("UserService", () => {
 
   it("only updates documented user fields", async () => {
     const { em, service } = createService();
-    const user = Object.assign(new TestUser(), { id: "user-1" });
+    const user = Object.assign(new User(), { id: "user-1" });
 
     for (const field of ["id", "createdAt", "banned", "locale"]) {
       await expect(
@@ -307,7 +312,7 @@ describe("UserService", () => {
 
   it("requires set-email permission when changing email verification", async () => {
     const { accessControlService, service } = createService();
-    const user = Object.assign(new TestUser(), { emailVerified: false });
+    const user = Object.assign(new User(), { emailVerified: false });
 
     await service.updateUser(user, { emailVerified: true });
 
@@ -322,7 +327,7 @@ describe("UserService", () => {
       permissions: ["User:READ", "user:read"],
       roles: { user: [] },
     });
-    const user = new TestUser();
+    const user = new User();
     await service.setUserPermissions(user, ["User:READ"]);
     expect(user.permissions).toEqual(["User:READ"]);
     expect(
@@ -350,7 +355,7 @@ describe("UserService", () => {
     ).rejects.toThrow("User contains unknown permissions: workspace:update");
     expect(em.create).not.toHaveBeenCalled();
 
-    const user = new TestUser();
+    const user = new User();
     await expect(
       service.setUserPermissions(user, ["user:get", "user:get"]),
     ).rejects.toThrow("User contains duplicate permissions: user:get");
@@ -362,7 +367,7 @@ describe("UserService", () => {
 
   it("gets a configured user by normalized email", async () => {
     const { em, service } = createService();
-    const user = Object.assign(new TestUser(), {
+    const user = Object.assign(new User(), {
       email: "alice@example.com",
       id: "user-1",
     });
@@ -371,7 +376,7 @@ describe("UserService", () => {
     await expect(service.getUserByEmail(" Alice@Example.com ")).resolves.toBe(
       user,
     );
-    expect(em.findOne).toHaveBeenCalledWith(UserEntity, {
+    expect(em.findOne).toHaveBeenCalledWith(User, {
       email: "alice@example.com",
     });
   });
@@ -385,7 +390,7 @@ describe("UserService", () => {
         user: [],
       },
     });
-    const user = Object.assign(new TestUser(), {
+    const user = Object.assign(new User(), {
       permissions: ["session:list"],
       roles: ["user"],
     });
@@ -426,60 +431,31 @@ describe("UserService", () => {
     });
 
     expect(
-      service.isAdmin(Object.assign(new TestUser(), { roles: ["auditor"] })),
+      service.isAdmin(Object.assign(new User(), { roles: ["auditor"] })),
     ).toBe(false);
     expect(
       service.isAdmin(
-        Object.assign(new TestUser(), { roles: ["auditor", "superadmin"] }),
+        Object.assign(new User(), { roles: ["auditor", "superadmin"] }),
       ),
     ).toBe(true);
   });
 
-  it("lists users with search, filter, order, and pagination", async () => {
-    const { em, service } = createService();
-    const users = [new TestUser()];
-    em.findAndCount.mockResolvedValue([users, 7]);
-
-    await expect(
-      service.listUsers({
-        filterField: "emailVerified",
-        filterValue: true,
-        limit: 10,
-        offset: 20,
-        searchField: "name",
-        searchOperator: "starts_with",
-        searchValue: "Ali",
-        sortBy: "name",
-        sortDirection: "desc",
-      }),
-    ).resolves.toEqual({ limit: 10, offset: 20, total: 7, users });
-    expect(em.findAndCount).toHaveBeenCalledWith(
-      UserEntity,
-      { emailVerified: true, name: { $like: "Ali%" } },
-      expect.objectContaining({
-        limit: 10,
-        offset: 20,
-        orderBy: { name: "desc" },
-      }),
-    );
-  });
-
   it("resolves administration targets by ID with action permissions, not user:get", async () => {
     const { em, service, accessControlService } = createService();
-    const user = Object.assign(new TestUser(), { id: "user-1" });
+    const user = Object.assign(new User(), { id: "user-1" });
     em.findOne.mockResolvedValue(user);
     await service.banUser(user.id);
     await service.unbanUser(user.id);
     expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
       "ban",
-      UserEntity,
+      User,
     );
     expect(accessControlService.assertUserCan).not.toHaveBeenCalledWith(
       "get",
-      UserEntity,
+      User,
     );
     expect(em.findOne).toHaveBeenCalledWith(
-      UserEntity,
+      User,
       { id: user.id },
       { refresh: true },
     );
@@ -494,7 +470,7 @@ describe("UserService", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-02T00:00:00Z"));
     const { em, service } = createService();
-    const user = new TestUser();
+    const user = new User();
     em.nativeDelete.mockResolvedValue(1);
 
     await service.banUser(user, {
@@ -505,7 +481,7 @@ describe("UserService", () => {
     expect(user.banReason).toBe("abuse");
     expect(user.banExpiresAt).toEqual(new Date("2026-09-02T01:00:00Z"));
     expect(em.nativeDelete).toHaveBeenCalledTimes(1);
-    expect(em.nativeDelete).toHaveBeenCalledWith(SessionEntity, {
+    expect(em.nativeDelete).toHaveBeenCalledWith(Session, {
       $or: [{ user: user.id }, { impersonatedBy: user }],
     });
 
@@ -520,7 +496,7 @@ describe("UserService", () => {
     "rejects an invalid ban lifetime of %s seconds",
     async (banExpiresIn) => {
       const { em, service } = createService();
-      const user = new TestUser();
+      const user = new User();
 
       await expect(service.banUser(user, { banExpiresIn })).rejects.toThrow(
         "Ban duration must be a positive integer",
@@ -533,11 +509,11 @@ describe("UserService", () => {
 
   it("creates and restores impersonation sessions", async () => {
     const { em, service } = createService();
-    const administrator = Object.assign(new TestUser(), {
+    const administrator = Object.assign(new User(), {
       id: "admin-1",
       roles: ["admin"],
     });
-    const user = Object.assign(new TestUser(), { id: "user-1" });
+    const user = Object.assign(new User(), { id: "user-1" });
 
     const impersonation = await service.impersonateUser(administrator, user, {
       ipAddress: "127.0.0.1",
@@ -555,8 +531,8 @@ describe("UserService", () => {
 
   it("checks the scoped ability when impersonating an administrator", async () => {
     const { accessControlService, service } = createService();
-    const target = Object.assign(new TestUser(), { roles: ["admin"] });
-    const administrator = Object.assign(new TestUser(), {
+    const target = Object.assign(new User(), { roles: ["admin"] });
+    const administrator = Object.assign(new User(), {
       roles: ["admin"],
     });
     vi.mocked(accessControlService.assertUserCan).mockImplementation(
@@ -584,17 +560,17 @@ describe("UserService", () => {
 
   it("revokes an impersonation session instead of restoring a banned administrator", async () => {
     const { em, service } = createService();
-    const administrator = Object.assign(new TestUser(), {
+    const administrator = Object.assign(new User(), {
       banned: true,
       banExpiresAt: null,
       id: "admin-1",
     });
-    const user = Object.assign(new TestUser(), { id: "user-1" });
+    const user = Object.assign(new User(), { id: "user-1" });
     const impersonation = await service.impersonateUser(
-      Object.assign(new TestUser(), { id: "issuer-1", roles: ["admin"] }),
+      Object.assign(new User(), { id: "issuer-1", roles: ["admin"] }),
       user,
     );
-    impersonation.session.impersonatedBy = ref(UserEntity, administrator);
+    impersonation.session.impersonatedBy = ref(User, administrator);
     em.findOne.mockResolvedValue(administrator);
     let committed = false;
     em.transactional.mockImplementation(async (callback) => {
@@ -613,11 +589,11 @@ describe("UserService", () => {
 
   it("rejects banned targets and handles incomplete impersonation state", async () => {
     const { em, service } = createService();
-    const administrator = Object.assign(new TestUser(), {
+    const administrator = Object.assign(new User(), {
       id: "admin-1",
       roles: ["admin"],
     });
-    const bannedUser = Object.assign(new TestUser(), {
+    const bannedUser = Object.assign(new User(), {
       banned: true,
       id: "user-1",
     });
@@ -626,11 +602,11 @@ describe("UserService", () => {
       service.impersonateUser(administrator, bannedUser),
     ).rejects.toThrow("Banned users cannot be impersonated");
 
-    const session = new TestSession();
+    const session = new Session();
     session.impersonatedBy = null;
     await expect(service.stopImpersonating(session)).resolves.toBeNull();
 
-    session.impersonatedBy = ref(UserEntity, administrator);
+    session.impersonatedBy = ref(User, administrator);
     em.findOne.mockResolvedValue(null);
     await expect(service.stopImpersonating(session)).resolves.toBeNull();
   });
@@ -640,12 +616,12 @@ describe("UserService", () => {
     const error = new Error("database unavailable");
     userDeletionService.deleteUser.mockRejectedValue(error);
 
-    await expect(service.deleteUser(new TestUser())).rejects.toBe(error);
+    await expect(service.deleteUser(new User())).rejects.toBe(error);
   });
 
   it("delegates user deletion to the transactional deletion coordinator", async () => {
     const { service, userDeletionService } = createService();
-    const user = Object.assign(new TestUser(), { id: "user-1" });
+    const user = Object.assign(new User(), { id: "user-1" });
 
     await expect(service.deleteUser(user)).resolves.toBe(user);
 
@@ -656,15 +632,15 @@ describe("UserService", () => {
     const { service, userDeletionService } = createService();
     userDeletionService.deleteUser.mockResolvedValue(null);
 
-    await expect(service.deleteUser(new TestUser())).rejects.toBeInstanceOf(
+    await expect(service.deleteUser(new User())).rejects.toBeInstanceOf(
       NotFoundException,
     );
   });
 
   it("sets an existing credential password or creates the account", async () => {
     const { em, hash, service } = createService();
-    const user = Object.assign(new TestUser(), { id: "user-1" });
-    const account = Object.assign(new TestAccount(), {
+    const user = Object.assign(new User(), { id: "user-1" });
+    const account = Object.assign(new Account(), {
       password: "old-hash",
     });
     hash.mockResolvedValueOnce("new-hash").mockResolvedValueOnce("first-hash");
@@ -675,7 +651,7 @@ describe("UserService", () => {
 
     await service.setUserPassword(user, "first-password");
     expect(em.create).toHaveBeenLastCalledWith(
-      AccountEntity,
+      Account,
       expect.objectContaining({
         issuer: "local:credential",
         password: "first-hash",
@@ -687,7 +663,7 @@ describe("UserService", () => {
 
   it("accepts shorter passwords only when the configured minimum permits them", async () => {
     const { hash, service } = createService(true, {}, { minPasswordLength: 6 });
-    const user = new TestUser();
+    const user = new User();
     hash.mockResolvedValue("password-hash");
 
     await service.createUser({
@@ -717,7 +693,7 @@ describe("UserService", () => {
       {},
       { maxPasswordLength: 16, minPasswordLength: 12 },
     );
-    const user = new TestUser();
+    const user = new User();
 
     await expect(
       service.createUser({
@@ -747,7 +723,7 @@ describe("UserService", () => {
 
   it("checks flattened permissions without an admin plugin", () => {
     const { service } = createService();
-    const user = Object.assign(new TestUser(), {
+    const user = Object.assign(new User(), {
       permissions: ["user:list", "session:revoke"],
     });
 
@@ -778,7 +754,6 @@ function createService(
     assign: vi.fn((entity, input) => Object.assign(entity, input)),
     create: vi.fn((Entity, input) => Object.assign(new Entity(), input)),
     find: vi.fn(),
-    findAndCount: vi.fn(),
     findOne: vi.fn(),
     flush: vi.fn(),
     nativeDelete: vi.fn(),

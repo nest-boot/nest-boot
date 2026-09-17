@@ -33,7 +33,6 @@ describe("auth service execution boundaries", () => {
     }
     for (const name of [
       "getSessionConnectionByUser",
-      "listUserSessions",
       "getSessionImpersonator",
       "revokeCurrentUserSession",
       "revokeCurrentUserSessions",
@@ -50,12 +49,7 @@ describe("auth service execution boundaries", () => {
     {
       type: WorkspaceService,
       special: ["createWorkspace", "deleteWorkspace"],
-      ordinary: [
-        "findOne",
-        "getWorkspaceConnectionByUser",
-        "getFullWorkspace",
-        "updateWorkspace",
-      ],
+      ordinary: ["findOne", "getWorkspaceConnectionByUser", "updateWorkspace"],
     },
     {
       type: MemberService,

@@ -6,8 +6,8 @@ import { ForbiddenException } from "@nestjs/common";
 import { mockRlsContext } from "../../test/mock-rls-context.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { AccountConnection } from "../connections/account.connection-definition.js";
-import { ApiKey as BaseApiKey } from "../entities/api-key.entity.js";
-import { User as BaseUser } from "../entities/user.entity.js";
+import { ApiKey } from "../entities/api-key.entity.js";
+import { User } from "../entities/user.entity.js";
 import { AccessControlService } from "./access-control.service.js";
 import { AccountService } from "./account.service.js";
 
@@ -23,7 +23,7 @@ describe("AccountService", () => {
       .mockResolvedValue(result as never);
     const args = { first: 10, after: "cursor" };
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      RequestContext.set(BaseUser, user);
+      RequestContext.set(User, user);
       await expect(
         service.getAccountConnectionByUser(user, args),
       ).resolves.toBe(result);
@@ -55,13 +55,13 @@ describe("AccountService", () => {
           async () => {
             if (identity !== "anonymous")
               RequestContext.set(
-                BaseUser,
+                User,
                 identity === "foreign-user"
-                  ? Object.assign(new BaseUser(), { id: "other" })
+                  ? Object.assign(new User(), { id: "other" })
                   : user,
               );
             if (identity === "api-key")
-              RequestContext.set(BaseApiKey, new BaseApiKey());
+              RequestContext.set(ApiKey, new ApiKey());
             await check();
           },
         );
@@ -81,7 +81,7 @@ function createService() {
   return {
     fork,
     em,
-    user: Object.assign(new BaseUser(), { id: "self" }),
+    user: Object.assign(new User(), { id: "self" }),
     service: new AccountService(em, access),
   };
 }

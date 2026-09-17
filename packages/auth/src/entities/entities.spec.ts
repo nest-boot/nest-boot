@@ -1,18 +1,14 @@
 import { Collection, MetadataStorage } from "@mikro-orm/core";
 
-import { Account as BaseAccount } from "./account.entity.js";
-import { ApiKey as BaseApiKey } from "./api-key.entity.js";
-import { Invitation as BaseInvitation } from "./invitation.entity.js";
-import { Member as BaseMember } from "./member.entity.js";
-import { Session as BaseSession } from "./session.entity.js";
-import { User as BaseUser } from "./user.entity.js";
-import { Verification as BaseVerification } from "./verification.entity.js";
-import { Workspace as BaseWorkspace } from "./workspace.entity.js";
-
-const TestAccount = BaseAccount;
-type TestAccount = BaseAccount;
-const TestVerification = BaseVerification;
-type TestVerification = BaseVerification;
+import { Account } from "./account.entity.js";
+import { ApiKey } from "./api-key.entity.js";
+import { entities } from "./index.js";
+import { Invitation } from "./invitation.entity.js";
+import { Member } from "./member.entity.js";
+import { Session } from "./session.entity.js";
+import { User } from "./user.entity.js";
+import { Verification } from "./verification.entity.js";
+import { Workspace } from "./workspace.entity.js";
 
 describe("auth entities", () => {
   it.each([
@@ -23,44 +19,19 @@ describe("auth entities", () => {
     ["openid profile\temail", ["openid", "profile", "email"]],
     [" , openid, profile\nemail ,, ", ["openid", "profile", "email"]],
   ] as const)("parses persisted OAuth scopes %j", (scope, expected) => {
-    const account = Object.assign(new BaseAccount(), { scope });
+    const account = Object.assign(new Account(), { scope });
     expect(account.scopes).toEqual(expected);
   });
 
-  it("declares relations directly against built-in classes", () => {
-    for (const [entity, field, target] of [
-      [BaseUser, "members", "Member"],
-      [BaseWorkspace, "members", "Member"],
-      [BaseMember, "user", "User"],
-      [BaseMember, "workspace", "Workspace"],
-      [BaseInvitation, "inviter", "User"],
-      [BaseInvitation, "workspace", "Workspace"],
-      [BaseApiKey, "user", "User"],
-      [BaseApiKey, "workspace", "Workspace"],
-      [BaseAccount, "user", "User"],
-      [BaseSession, "user", "User"],
-      [BaseSession, "impersonatedBy", "User"],
-    ] as const) {
-      const metadata = Object.values(MetadataStorage.getMetadata()).find(
-        (meta) => meta.class === entity,
-      );
-      const relation = metadata?.properties[field].entity;
-      expect(typeof relation).toBe("function");
-      expect(typeof relation === "function" ? relation().name : undefined).toBe(
-        target,
-      );
-    }
-  });
-
   it("should initialize generated ids and timestamps", () => {
-    const account = new TestAccount();
-    const apiKey = new BaseApiKey();
-    const session = new BaseSession();
-    const user = new BaseUser();
-    const verification = new TestVerification();
-    const workspace = new BaseWorkspace();
-    const invitation = new BaseInvitation();
-    const member = new BaseMember();
+    const account = new Account();
+    const apiKey = new ApiKey();
+    const session = new Session();
+    const user = new User();
+    const verification = new Verification();
+    const workspace = new Workspace();
+    const invitation = new Invitation();
+    const member = new Member();
 
     for (const entity of [
       account,
@@ -100,27 +71,21 @@ describe("auth entities", () => {
     expect(workspace).not.toHaveProperty("features");
   });
 
-  it("declares shared profiles and membership relations on the base entities", () => {
+  it("persists workspace-visible member profile fields", () => {
     const properties = (entity: object) =>
       Object.values(MetadataStorage.getMetadata()).find(
         (meta) => meta.class === entity,
       )?.properties;
-    expect(properties(BaseMember)?.name).toMatchObject({
+    expect(properties(Member)?.name).toMatchObject({
       name: "name",
     });
-    expect(properties(BaseMember)?.email).toMatchObject({
+    expect(properties(Member)?.email).toMatchObject({
       name: "email",
       nullable: true,
     });
-    expect(properties(BaseUser)?.members).toMatchObject({
-      mappedBy: "user",
-    });
-    expect(properties(BaseWorkspace)?.members).toMatchObject({
-      mappedBy: "workspace",
-    });
   });
 
-  it("declares database cascades and exactly one API-key owner", () => {
+  it("requires exactly one API-key owner", () => {
     const metadata = (entity: object) => {
       const meta = Object.values(MetadataStorage.getMetadata()).find(
         (meta) => meta.class === entity,
@@ -128,23 +93,7 @@ describe("auth entities", () => {
       if (!meta) throw new Error("Missing entity metadata");
       return meta;
     };
-    for (const [entity, fields] of [
-      [BaseAccount, ["user"]],
-      [BaseSession, ["user", "impersonatedBy"]],
-      [BaseApiKey, ["user", "workspace"]],
-      [BaseMember, ["user", "workspace"]],
-      [BaseInvitation, ["inviter", "workspace"]],
-    ] as const) {
-      for (const field of fields) {
-        expect(metadata(entity).properties[field].deleteRule).toBe("cascade");
-        expect(metadata(entity).properties[field].cascade ?? []).not.toContain(
-          "remove",
-        );
-      }
-    }
-    const key = metadata(BaseApiKey);
-    expect(key.properties.user.nullable).toBe(true);
-    expect(key.properties.workspace.nullable).toBe(true);
+    const key = metadata(ApiKey);
     const expression = key.checks[0].expression;
     expect(typeof expression).toBe("function");
     if (typeof expression === "function") {
@@ -157,79 +106,68 @@ describe("auth entities", () => {
     }
   });
 
-  it("should load entities in an isolated module", async () => {
-    vi.resetModules();
+  it.each([Account, ApiKey, Member, Session, User, Verification, Workspace])(
+    "%s refreshes its update timestamp through real ORM metadata",
+    (entity) => {
+      const property = Object.values(MetadataStorage.getMetadata()).find(
+        (meta) => meta.class === entity,
+      )?.properties.updatedAt;
+      expect(property?.onUpdate).toEqual(expect.any(Function));
+      expect(property?.onUpdate?.(new entity(), {} as never)).toBeInstanceOf(
+        Date,
+      );
+    },
+  );
+});
 
-    expect((await import("./account.entity.js")).Account).toBeDefined();
-    expect((await import("./api-key.entity.js")).ApiKey).toBeDefined();
-    expect((await import("./session.entity.js")).Session).toBeDefined();
-    expect((await import("./user.entity.js")).User).toBeDefined();
-    expect(
-      (await import("./verification.entity.js")).Verification,
-    ).toBeDefined();
-    expect((await import("./member.entity.js")).Member).toBeDefined();
-    expect((await import("./invitation.entity.js")).Invitation).toBeDefined();
-    expect((await import("./workspace.entity.js")).Workspace).toBeDefined();
-  });
+describe("built-in auth entity field ownership", () => {
+  it.each([
+    [User, "members", Member, { mappedBy: "user" }],
+    [Workspace, "members", Member, { mappedBy: "workspace" }],
+    [Member, "user", User, { deleteRule: "cascade" }],
+    [Member, "workspace", Workspace, { deleteRule: "cascade" }],
+    [Invitation, "inviter", User, { deleteRule: "cascade" }],
+    [Invitation, "workspace", Workspace, { deleteRule: "cascade" }],
+    [ApiKey, "user", User, { nullable: true, deleteRule: "cascade" }],
+    [ApiKey, "workspace", Workspace, { nullable: true, deleteRule: "cascade" }],
+    [Account, "user", User, { ref: true, deleteRule: "cascade" }],
+    [Session, "user", User, { ref: true, deleteRule: "cascade" }],
+    [
+      Session,
+      "impersonatedBy",
+      User,
+      { nullable: true, deleteRule: "cascade" },
+    ],
+  ] as const)(
+    "%s.%s targets the built-in class",
+    (entity, field, target, options) => {
+      const metadata = Object.values(MetadataStorage.getMetadata());
+      const property = metadata.find((meta) => meta.class === entity)
+        ?.properties[field];
+      expect(property).toMatchObject(options);
+      expect(property?.cascade ?? []).not.toContain("remove");
+      if (typeof property?.entity !== "function")
+        throw new Error("Missing class relation");
+      expect(property.entity()).toBe(target);
+    },
+  );
 
-  it("should pass relation names and update callbacks to MikroORM decorators", async () => {
-    const relationTargets: unknown[] = [];
-    const updateValues: unknown[] = [];
-    const decorator = () => () => undefined;
-
-    vi.resetModules();
-    vi.doMock("@mikro-orm/decorators/legacy", async () => {
-      const actual = await vi.importActual<
-        typeof import("@mikro-orm/decorators/legacy")
-      >("@mikro-orm/decorators/legacy");
-
-      return {
-        ...actual,
-        Entity: decorator,
-        Index: decorator,
-        ManyToOne: (target: () => { name: string }) => {
-          relationTargets.push(target);
-          return () => undefined;
-        },
-        PrimaryKey: decorator,
-        Property: (options: { onUpdate?: () => unknown } = {}) => {
-          if (options.onUpdate) {
-            updateValues.push(options.onUpdate());
-          }
-          return () => undefined;
-        },
-        Unique: decorator,
-      };
-    });
-
-    await import("./account.entity.js");
-    await import("./api-key.entity.js");
-    await import("./session.entity.js");
-    await import("./user.entity.js");
-    await import("./verification.entity.js");
-    await import("./member.entity.js");
-    await import("./invitation.entity.js");
-    await import("./workspace.entity.js");
-    vi.doUnmock("@mikro-orm/decorators/legacy");
-
-    expect(
-      relationTargets
-        .map((target) => (target as () => { name: string })().name)
-        .sort(),
-    ).toEqual(
-      [
-        "User",
-        "User",
-        "Workspace",
-        "User",
-        "User",
-        "User",
-        "Workspace",
-        "User",
-        "Workspace",
-      ].sort(),
+  it.each([
+    [Account, ["issuer", "accountId", "user"]],
+    [ApiKey, ["user", "workspace", "permissions"]],
+    [Session, ["user", "token", "expiresAt"]],
+    [User, ["name", "email", "members"]],
+    [Verification, ["identifier", "value"]],
+    [Workspace, ["name", "members"]],
+    [Invitation, ["email", "workspace", "inviter"]],
+    [Member, ["name", "email", "user", "workspace"]],
+  ] as const)("%s owns its persistence fields", (entity, fields) => {
+    expect(entities).toContain(entity);
+    const metadata = Object.values(MetadataStorage.getMetadata()).find(
+      (meta) => meta.class === entity,
     );
-    expect(updateValues).toHaveLength(7);
-    expect(updateValues.every((value) => value instanceof Date)).toBe(true);
+    expect(metadata?.abstract).not.toBe(true);
+    for (const field of fields)
+      expect(metadata?.properties).toHaveProperty(field);
   });
 });

@@ -8,8 +8,6 @@ import { InvitationService } from "../src/services/invitation.service.js";
 import { MemberService } from "../src/services/member.service.js";
 import { WorkspaceService } from "../src/services/workspace.service.js";
 
-export const TestWorkspace = Workspace;
-export type TestWorkspace = Workspace;
 export function createTestWorkspace(): Workspace {
   return Object.assign(new Workspace(), {
     id: "workspace-1",
@@ -18,8 +16,6 @@ export function createTestWorkspace(): Workspace {
   });
 }
 
-export const TestMember = Member;
-export type TestMember = Member;
 export function createTestMember(): Member {
   return Object.assign(new Member(), {
     id: "member-1",
@@ -31,14 +27,10 @@ export function createTestMember(): Member {
   });
 }
 
-export const TestUser = User;
-export type TestUser = User;
 export function createTestUser(): User {
   return new User();
 }
 
-export const TestInvitation = Invitation;
-export type TestInvitation = Invitation;
 export function createTestInvitation(): Invitation {
   return Object.assign(new Invitation(), {
     id: "invitation-1",

@@ -10,16 +10,10 @@ import {
   createWorkspaceServices,
 } from "../../test/workspace-service.fixture.js";
 import { WorkspaceAbility } from "../abilities/workspace.ability.js";
-import { ApiKey as BaseApiKey } from "../entities/api-key.entity.js";
-import {
-  Member as BaseMember,
-  Member as MemberEntity,
-} from "../entities/member.entity.js";
-import { User as UserEntity } from "../entities/user.entity.js";
-import {
-  Workspace as BaseWorkspace,
-  Workspace as WorkspaceEntity,
-} from "../entities/workspace.entity.js";
+import { ApiKey } from "../entities/api-key.entity.js";
+import { Member } from "../entities/member.entity.js";
+import { User } from "../entities/user.entity.js";
+import { Workspace } from "../entities/workspace.entity.js";
 import { AccessControlService } from "./access-control.service.js";
 import { MemberService } from "./member.service.js";
 
@@ -101,12 +95,12 @@ describe("MemberService direct permission authorization", () => {
       );
       const workspace = createTestWorkspace();
       const target = Object.assign(createTestMember(), {
-        workspace: ref(WorkspaceEntity, workspace),
+        workspace: ref(Workspace, workspace),
       });
       em.findOne.mockResolvedValue(target);
       const actor = Object.assign(createTestMember(), {
         id: "actor",
-        workspace: ref(WorkspaceEntity, workspace),
+        workspace: ref(Workspace, workspace),
         roles: [scenario.role],
         permissions:
           scenario.role === "custom"
@@ -117,20 +111,17 @@ describe("MemberService direct permission authorization", () => {
       await RequestContext.run(
         new RequestContext({ type: "test" }),
         async () => {
-          RequestContext.set(BaseWorkspace, workspace);
-          if (scenario.key !== "workspace")
-            RequestContext.set(BaseMember, actor);
+          RequestContext.set(Workspace, workspace);
+          if (scenario.key !== "workspace") RequestContext.set(Member, actor);
           if (scenario.key) {
             RequestContext.set(
-              BaseApiKey,
-              Object.assign(new BaseApiKey(), {
+              ApiKey,
+              Object.assign(new ApiKey(), {
                 user:
-                  scenario.key === "user"
-                    ? ref(UserEntity, createTestUser())
-                    : null,
+                  scenario.key === "user" ? ref(User, createTestUser()) : null,
                 workspace:
                   scenario.key === "workspace"
-                    ? ref(WorkspaceEntity, workspace)
+                    ? ref(Workspace, workspace)
                     : null,
                 permissions:
                   scenario.key === "workspace"
@@ -142,9 +133,7 @@ describe("MemberService direct permission authorization", () => {
           RequestContext.set(
             WorkspaceAbility,
             new WorkspaceAbility(
-              scenario.canUpdate
-                ? [{ action: "update", subject: MemberEntity }]
-                : [],
+              scenario.canUpdate ? [{ action: "update", subject: Member }] : [],
             ),
           );
           const operation = service.setMemberPermissions(target, [

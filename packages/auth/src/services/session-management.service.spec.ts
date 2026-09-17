@@ -7,41 +7,29 @@ import type { Mocked } from "vitest";
 
 import { mockRlsContext } from "../../test/mock-rls-context.js";
 import { SessionConnection } from "../connections/session.connection-definition.js";
-import { ApiKey as BaseApiKey } from "../entities/api-key.entity.js";
-import {
-  Session as BaseSession,
-  Session as SessionEntity,
-} from "../entities/session.entity.js";
-import {
-  User as BaseUser,
-  User as UserEntity,
-} from "../entities/user.entity.js";
+import { ApiKey } from "../entities/api-key.entity.js";
+import { Session } from "../entities/session.entity.js";
+import { User } from "../entities/user.entity.js";
 import type { AccessControlService } from "./access-control.service.js";
 import { SessionService } from "./session.service.js";
 
-const TestApiKey = BaseApiKey;
-type TestApiKey = BaseApiKey;
-const TestSession = BaseSession;
-type TestSession = BaseSession;
-const TestUser = BaseUser;
-type TestUser = BaseUser;
 describe("SessionService management", () => {
   it("authorizes administrative revocation before looking up the user", async () => {
     const { em, service, accessControlService } = createService();
-    const user = Object.assign(new TestUser(), { id: "target" });
+    const user = Object.assign(new User(), { id: "target" });
     em.findOne.mockResolvedValue(user);
     em.nativeDelete.mockResolvedValue(2);
     await expect(service.revokeUserSessions(user.id)).resolves.toBe(2);
     expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
       "revoke",
-      SessionEntity,
+      Session,
     );
     expect(accessControlService.assertUserCan).not.toHaveBeenCalledWith(
       "get",
-      UserEntity,
+      User,
     );
     expect(em.findOne).toHaveBeenCalledWith(
-      UserEntity,
+      User,
       { id: user.id },
       { refresh: true },
     );
@@ -76,31 +64,31 @@ describe("SessionService management", () => {
 
   it("preserves session authorization and request RLS for impersonator reads", async () => {
     const { em, service, accessControlService } = createService();
-    const user = Object.assign(new TestUser(), { id: "self" });
-    const impersonator = Object.assign(new TestUser(), { id: "admin" });
-    const session = Object.assign(new TestSession(), {
+    const user = Object.assign(new User(), { id: "self" });
+    const impersonator = Object.assign(new User(), { id: "admin" });
+    const session = Object.assign(new Session(), {
       user: { id: user.id },
       impersonatedBy: impersonator,
     });
     const scope = mockRlsContext(em);
     em.findOne.mockResolvedValue(impersonator);
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      RequestContext.set(BaseUser, user);
+      RequestContext.set(User, user);
       await expect(service.getSessionImpersonator(session)).resolves.toBe(
         impersonator,
       );
-      expect(em.findOne).toHaveBeenCalledWith(UserEntity, { id: "admin" });
+      expect(em.findOne).toHaveBeenCalledWith(User, { id: "admin" });
       expect(accessControlService.assertUserCan).not.toHaveBeenCalled();
       em.findOne.mockResolvedValue(null);
       await expect(service.getSessionImpersonator(session)).resolves.toBeNull();
       em.findOne.mockClear();
       await expect(
         service.getSessionImpersonator(
-          Object.assign(new TestSession(), { user: { id: user.id } }),
+          Object.assign(new Session(), { user: { id: user.id } }),
         ),
       ).resolves.toBeNull();
       expect(em.findOne).not.toHaveBeenCalled();
-      RequestContext.set(BaseApiKey, new TestApiKey());
+      RequestContext.set(ApiKey, new ApiKey());
       accessControlService.assertUserCan.mockImplementation(() => {
         throw new ForbiddenException();
       });
@@ -115,7 +103,7 @@ describe("SessionService management", () => {
 
   it("paginates own sessions without admin permission, but checks delegated and foreign access", async () => {
     const { service, em, accessControlService } = createService();
-    const user = Object.assign(new TestUser(), { id: "self" });
+    const user = Object.assign(new User(), { id: "self" });
     const context = mockRlsContext(em);
     const result = { edges: [], pageInfo: {} };
     const find = vi
@@ -125,7 +113,7 @@ describe("SessionService management", () => {
       await RequestContext.run(
         new RequestContext({ type: "test" }),
         async () => {
-          RequestContext.set(BaseUser, user);
+          RequestContext.set(User, user);
           await expect(
             service.getSessionConnectionByUser(user, { first: 2 }),
           ).resolves.toBe(result);
@@ -147,11 +135,11 @@ describe("SessionService management", () => {
           );
           await expect(
             service.getSessionConnectionByUser(
-              Object.assign(new TestUser(), { id: "other" }),
+              Object.assign(new User(), { id: "other" }),
               { first: 2 },
             ),
           ).rejects.toThrow(ForbiddenException);
-          RequestContext.set(BaseApiKey, new TestApiKey());
+          RequestContext.set(ApiKey, new ApiKey());
           await expect(
             service.getSessionConnectionByUser(user, { first: 2 }),
           ).rejects.toThrow(ForbiddenException);
@@ -162,36 +150,29 @@ describe("SessionService management", () => {
     }
   });
 
-  it("lists and revokes user sessions", async () => {
+  it("revokes user sessions", async () => {
     const { em, service } = createService();
-    const user = Object.assign(new TestUser(), { id: "user-1" });
-    const session = Object.assign(new TestSession(), {
+    const user = Object.assign(new User(), { id: "user-1" });
+    const session = Object.assign(new Session(), {
       id: "session-1",
       token: "session-token",
       user,
     });
-    em.find.mockResolvedValue([session]);
     em.findOne.mockResolvedValue(session);
     em.nativeDelete.mockResolvedValue(2);
 
-    await expect(service.listUserSessions(user)).resolves.toEqual([session]);
     await expect(service.revokeSession(user, session.id)).resolves.toBe(true);
     em.findOne.mockResolvedValueOnce(null);
     await expect(service.revokeSession(user, "missing")).resolves.toBe(false);
     await expect(service.revokeUserSessions(user)).resolves.toBe(2);
 
-    expect(em.find).toHaveBeenCalledWith(
-      SessionEntity,
-      expect.objectContaining({ user: "user-1" }),
-      { exclude: ["token"], orderBy: { createdAt: "desc" } },
-    );
     expect(em.findOne).toHaveBeenCalledWith(
-      SessionEntity,
+      Session,
       { id: session.id, user: "user-1" },
       { filters: false },
     );
     expect(em.remove).toHaveBeenCalledWith(session);
-    expect(em.nativeDelete).toHaveBeenCalledWith(SessionEntity, {
+    expect(em.nativeDelete).toHaveBeenCalledWith(Session, {
       $or: [{ user: "user-1" }, { impersonatedBy: user }],
     });
   });

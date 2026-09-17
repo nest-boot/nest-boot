@@ -90,10 +90,9 @@ Connection-returning methods use `get<Entity>Connection` for an unscoped entity 
 and `get<Entity>ConnectionBy<Parent>` when a parent supplies the query scope.
 For example, `getApiKeyConnectionByUser(user, args)` and
 `getApiKeyConnectionByWorkspace(workspace, args)` take the parent first and
-pagination arguments second. Array-returning `list*`
-methods and the offset-based `listUsers` API keep their existing names. This is a
-breaking service API rename without compatibility aliases; GraphQL field names,
-arguments, authorization, and pagination behavior are unchanged.
+pagination arguments second. Collection queries use connections rather than separate
+array or offset-based APIs. GraphQL field names, arguments, authorization, and
+pagination behavior are unchanged.
 
 Use `WorkspaceService.getWorkspaceConnectionByUser(user, args)` and
 `MemberService.getMemberConnectionByWorkspace(workspace, args)` for workspace/member connections, and
@@ -102,11 +101,9 @@ for API-key connections. Services own authorization, query scopes and
 `ConnectionManager` execution. User, session, workspace, member, API-key and
 invitation connection reads retain the request's native RLS scope. API-key ownership and credential permission ceilings still apply.
 
-The array-returning `listWorkspaces(user)` and `listMembers(workspace)` methods
-are removed; use the pagination methods above. `getFullWorkspace(workspace)`
-retains request RLS and checks `workspace:read`, `member:read` and
-`invitation:read` separately before querying children. API-key persistence
-callbacks are private; transports call the service's connection methods directly.
+Use the member and invitation connection services to query workspace children;
+each service authorizes its own scope. API-key persistence callbacks are private;
+transports call the service's connection methods directly.
 
 ## Invitation pagination
 
@@ -198,9 +195,9 @@ GraphQL transport in `AuthModule` exposes them as
 
 ## User and session connections
 
-`UserService.getUserConnection(args)`, `SessionService.getSessionConnectionByUser(user, args)` and `AccountService.getAccountConnectionByUser(user, args)` use the application's named connection definitions. Own browser-session reads do not require administrative permissions; foreign-user and delegated API-key session reads require `session:list`. Application RLS must grant the corresponding SELECT access. Account connections require the owning user session, reject API keys and exclude credential columns. `UserService.listUserAccounts` is removed without an alias. Existing offset `UserService.listUsers` and array `SessionService.listUserSessions` service APIs also retain RLS.
+`UserService.getUserConnection(args)`, `SessionService.getSessionConnectionByUser(user, args)` and `AccountService.getAccountConnectionByUser(user, args)` use the application's named connection definitions. Own browser-session reads do not require administrative permissions; foreign-user and delegated API-key session reads require `session:list`. Application RLS must grant the corresponding SELECT access. Account connections require the owning user session, reject API keys and exclude credential columns. `UserService.listUserAccounts` is removed without an alias.
 
-`SessionService` owns `getSessionConnectionByUser`, `listUserSessions`,
+`SessionService` owns `getSessionConnectionByUser`,
 `getSessionImpersonator`, `revokeSession`, and `revokeUserSessions`;
 these are no longer exposed by `UserService`. The GraphQL `User.sessions` field
 delegates to `SessionService` even though its parent is a user. Safe reads use
@@ -527,3 +524,12 @@ Shared
 unchanged because they also serve user-owned keys. Update operation documents,
 response-field access and generated client types together.
 No database migration is required for these naming changes.
+
+## Removed collection APIs
+
+`UserService.listUsers`, `SessionService.listUserSessions`, and
+`WorkspaceService.getFullWorkspace` have been removed without aliases, along with
+`ListUsersOptions`, `ListUsersResult`, and `FullWorkspace`. Use
+`getUserConnection`, `getSessionConnectionByUser`, and the member/invitation
+connection methods instead. `listCurrentUserSessions` remains an internal
+credential-hydration helper for session revocation, not a GraphQL listing API.

@@ -33,7 +33,6 @@ currentWorkspace(
 - `findOne(where)`；
 - `getWorkspaceConnectionByUser(user, args)`；
 - `createWorkspace(user, input)`；
-- `getFullWorkspace(workspace)`；
 - `updateWorkspace(id, input)`；
 - `deleteWorkspace(id)`。
 
@@ -81,16 +80,15 @@ Service 可从请求上下文读取当前身份；Resolver 只传 ID 和输入�
 auth 基础设施层为软删除事务建立局部 ORM fork，设置 `app.operation = auth.workspace.delete`，
 保留原有用户与工作区 RLS 上下文；配套策略仅在该操作内允许读取当前工作区的删除结果。
 普通请求仍看不到已删除工作区，也不能恢复它。自定义应用需要对应的策略。
-用户删除则由 Service 和 RLS 授权根记录，再由限定为该用户 ID 的数据库触发器原子清理
+用户删除则由 Service 和 RLS 授权根记录，再由数据库外键级联原子清理
 关联数据。删除用户后，工作区与其他用户的成员关系继续保留，允许工作区没有所有者。
 
 所有 Service 都只使用注入的 `this.em`。创建工作区、接受或拒绝邀请所需的跨身份
 数据库上下文由 `AuthModule` 基础设施统一建立，业务权限与生命周期检查仍由 Service 执行。
 普通查询和写入不会关闭 RLS。
 
-旧数组方法 `listWorkspaces`、`listMembers` 已移除，请使用上述连接分页方法。
-`getFullWorkspace` 保留请求 RLS，并在查询子记录前分别校验
-`workspace:read`、`member:read` 和 `invitation:read`。
+工作区、成员和邀请查询统一使用上述连接分页方法。各 Service 分别校验权限，
+并保留请求级 RLS。
 
 ## 用户成员与工作区可见资料
 
