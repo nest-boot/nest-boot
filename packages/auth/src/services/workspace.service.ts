@@ -1,5 +1,4 @@
 import {
-  type EntityClass,
   EntityManager,
   type FilterQuery,
   LockMode,
@@ -88,9 +87,9 @@ export class WorkspaceService {
     args: ConnectionArgsInterface<Workspace>,
   ): Promise<ConnectionInterface<Workspace>> {
     this.accessControlService.assertCurrentUser(user);
-    this.accessControlService.assertUserCan("read", this.workspaceEntity);
+    this.accessControlService.assertUserCan("read", Workspace);
     const memberships = (this.em as SqlEntityManager)
-      .createQueryBuilder<Member>(this.memberEntity)
+      .createQueryBuilder<Member>(Member)
       .select("workspace")
       .where({ status: "ACTIVE", user: user.id });
     return await new ConnectionManager(
@@ -105,8 +104,8 @@ export class WorkspaceService {
 
   /** Finds a workspace matching the supplied filter. */
   async findOne(where: FilterQuery<Workspace>): Promise<Workspace | null> {
-    this.accessControlService.assertUserCan("read", this.workspaceEntity);
-    return await this.em.findOne(this.workspaceEntity, where);
+    this.accessControlService.assertUserCan("read", Workspace);
+    return await this.em.findOne(Workspace, where);
   }
 
   /** Creates a workspace and its owner membership atomically. */
@@ -115,15 +114,15 @@ export class WorkspaceService {
     input: CreateWorkspaceOptions,
   ): Promise<Workspace> {
     this.accessControlService.assertCurrentUser(user);
-    this.accessControlService.assertUserCan("create", this.workspaceEntity);
+    this.accessControlService.assertUserCan("create", Workspace);
     // The new workspace has no request session yet. Only this authorized
     // operation may bootstrap its owner outside the application's RLS scope.
     return await this.em.transactional(
       async (em) => {
-        const workspace = em.create(this.workspaceEntity, {
+        const workspace = em.create(Workspace, {
           name: input.name,
         } as unknown as RequiredEntityData<Workspace>);
-        const member = em.create(this.memberEntity, {
+        const member = em.create(Member, {
           name: user.name,
           email: user.email.trim().toLowerCase(),
           roles: [this.creatorRole],
@@ -144,19 +143,15 @@ export class WorkspaceService {
   async getFullWorkspace(workspace: Workspace): Promise<FullWorkspace> {
     this.accessControlService.assertCurrentWorkspace(workspace);
     this.accessControlService.assertWorkspaceCan("read", workspace);
-    this.accessControlService.assertWorkspaceCan("read", this.memberEntity);
-    this.accessControlService.assertWorkspaceCan("read", this.invitationEntity);
+    this.accessControlService.assertWorkspaceCan("read", Member);
+    this.accessControlService.assertWorkspaceCan("read", Invitation);
     const [members, invitations] = await Promise.all([
-      this.em.find(this.memberEntity, {
+      this.em.find(Member, {
         workspace,
       } as FilterQuery<Member>),
-      this.em.find(
-        this.invitationEntity,
-        { workspace } as FilterQuery<Invitation>,
-        {
-          orderBy: { createdAt: "desc" } as never,
-        },
-      ),
+      this.em.find(Invitation, { workspace } as FilterQuery<Invitation>, {
+        orderBy: { createdAt: "desc" } as never,
+      }),
     ]);
 
     return {
@@ -171,9 +166,9 @@ export class WorkspaceService {
     action: string,
   ): Promise<Workspace> {
     if (typeof workspace !== "string") return workspace;
-    this.accessControlService.assertWorkspaceCan(action, this.workspaceEntity);
+    this.accessControlService.assertWorkspaceCan(action, Workspace);
     const entity = await this.em.findOne(
-      this.workspaceEntity,
+      Workspace,
       { id: workspace, deletedAt: null } as FilterQuery<Workspace>,
       { refresh: true },
     );
@@ -205,7 +200,7 @@ export class WorkspaceService {
         await this.lockActiveWorkspace(em, workspace);
         this.accessControlService.assertWorkspaceCan("delete", workspace);
         await em.nativeUpdate(
-          this.invitationEntity,
+          Invitation,
           {
             status: "pending",
             workspace,
@@ -214,7 +209,7 @@ export class WorkspaceService {
         );
         const deletedAt = new Date();
         const count = await em.nativeUpdate(
-          this.workspaceEntity,
+          Workspace,
           { id: workspace.id, deletedAt: null } as FilterQuery<Workspace>,
           { deletedAt } as never,
         );
@@ -232,8 +227,8 @@ export class WorkspaceService {
     user: User,
   ): Promise<Member | null> {
     this.accessControlService.assertCurrentUser(user);
-    this.accessControlService.assertUserCan("read", this.workspaceEntity);
-    return await this.em.findOne(this.memberEntity, {
+    this.accessControlService.assertUserCan("read", Workspace);
+    return await this.em.findOne(Member, {
       status: "ACTIVE",
       user,
       workspace,
@@ -259,17 +254,5 @@ export class WorkspaceService {
     return (
       this.authOptions.workspace?.creatorRole ?? DEFAULT_WORKSPACE_CREATOR_ROLE
     );
-  }
-
-  private get workspaceEntity(): EntityClass<Workspace> {
-    return Workspace as EntityClass<Workspace>;
-  }
-
-  private get memberEntity(): EntityClass<Member> {
-    return Member as EntityClass<Member>;
-  }
-
-  private get invitationEntity(): EntityClass<Invitation> {
-    return Invitation as EntityClass<Invitation>;
   }
 }

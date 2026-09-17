@@ -1,12 +1,12 @@
 import { registerEnumType } from "@nest-boot/graphql";
 
 /**
- * 工作区成员状态。
+ * Workspace member status.
  */
 export enum MemberStatus {
-  /** 正常可用。 */
+  /** Active. */
   ACTIVE = "ACTIVE",
-  /** 已禁用。 */
+  /** Disabled. */
   DISABLED = "DISABLED",
 }
 

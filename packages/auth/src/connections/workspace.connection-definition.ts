@@ -20,13 +20,13 @@ const { Connection, ConnectionArgs } = new ConnectionBuilder(Workspace)
   .build();
 
 /**
- * 工作区分页查询参数。
+ * Workspace pagination arguments.
  */
 @ArgsType()
 export class WorkspaceConnectionArgs extends ConnectionArgs {}
 
 /**
- * 工作区分页查询结果。
+ * A page of visible workspaces.
  */
 @ObjectType()
 export class WorkspaceConnection extends Connection {}

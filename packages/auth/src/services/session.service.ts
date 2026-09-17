@@ -1,8 +1,4 @@
-import {
-  type EntityClass,
-  EntityManager,
-  type FilterQuery,
-} from "@mikro-orm/core";
+import { EntityManager, type FilterQuery } from "@mikro-orm/core";
 import type { EntityManager as SqlEntityManager } from "@mikro-orm/sql";
 import {
   type ConnectionArgsInterface,
@@ -20,8 +16,6 @@ import { makeSignature } from "better-auth/crypto";
 import type { BetterAuthCookies } from "better-auth/types";
 
 import { AUTH_TOKEN } from "../auth.constants.js";
-import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
-import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { SessionConnection } from "../connections/session.connection-definition.js";
 import { ApiKey } from "../entities/api-key.entity.js";
 import { Session } from "../entities/session.entity.js";
@@ -64,15 +58,12 @@ export class SessionService {
    * Creates a new SessionService instance.
    * @param auth - Internal Better Auth instance.
    * @param em - Entity manager used to resolve application entities.
-   * @param options - Auth module configuration.
    * @param accessControlService - Authorization for parent-scoped reads and administrative revocation.
    */
   constructor(
     @Inject(AUTH_TOKEN)
     auth: unknown,
     private readonly em: EntityManager,
-    @Inject(MODULE_OPTIONS_TOKEN)
-    private readonly options: AuthModuleOptions,
     private readonly accessControlService: AccessControlService,
   ) {
     this.auth = auth as InternalAuth;
@@ -101,7 +92,7 @@ export class SessionService {
   async getSessionImpersonator(session: Session): Promise<User | null> {
     this.assertCanListSessions({ id: session.user.id } as User);
     return session.impersonatedBy
-      ? await this.em.findOne(this.userEntity, {
+      ? await this.em.findOne(User, {
           id: String(session.impersonatedBy.id),
         } as FilterQuery<User>)
       : null;
@@ -115,7 +106,7 @@ export class SessionService {
       ? RequestContext.get(ApiKey)
       : undefined;
     if (!current || String(current.id) !== String(user.id) || apiKey) {
-      this.accessControlService.assertUserCan("list", this.sessionEntity);
+      this.accessControlService.assertUserCan("list", Session);
     }
   }
 
@@ -123,7 +114,7 @@ export class SessionService {
   async listUserSessions(user: User): Promise<Session[]> {
     this.assertCanListSessions(user);
     return await this.em.find(
-      this.sessionEntity,
+      Session,
       {
         expiresAt: { $gt: new Date() },
         user: String(user.id),
@@ -135,11 +126,11 @@ export class SessionService {
   /** Revokes one session by ID when it belongs to the supplied user. */
   async revokeSession(user: User | string, id: string): Promise<boolean> {
     user = await this.resolveUserForRevocation(user);
-    this.accessControlService.assertUserCan("revoke", this.sessionEntity);
+    this.accessControlService.assertUserCan("revoke", Session);
     return await this.em.transactional(
       async (em) => {
         const session = await em.findOne(
-          this.sessionEntity,
+          Session,
           {
             id,
             user: String(user.id),
@@ -158,30 +149,22 @@ export class SessionService {
   /** Revokes the user's sessions, including impersonation sessions they started. */
   async revokeUserSessions(user: User | string): Promise<number> {
     user = await this.resolveUserForRevocation(user);
-    this.accessControlService.assertUserCan("revoke", this.sessionEntity);
-    return await this.em.nativeDelete(this.sessionEntity, {
+    this.accessControlService.assertUserCan("revoke", Session);
+    return await this.em.nativeDelete(Session, {
       $or: [{ user: String(user.id) }, { impersonatedBy: user }],
     } as FilterQuery<Session>);
   }
 
   private async resolveUserForRevocation(user: User | string): Promise<User> {
     if (typeof user !== "string") return user;
-    this.accessControlService.assertUserCan("revoke", this.sessionEntity);
+    this.accessControlService.assertUserCan("revoke", Session);
     const entity = await this.em.findOne(
-      this.userEntity,
+      User,
       { id: user } as FilterQuery<User>,
       { refresh: true },
     );
     if (!entity) throw new NotFoundException("User not found");
     return entity;
-  }
-
-  private get sessionEntity(): EntityClass<Session> {
-    return Session as EntityClass<Session>;
-  }
-
-  private get userEntity(): EntityClass<User> {
-    return User as EntityClass<User>;
   }
 
   /**

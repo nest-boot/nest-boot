@@ -20,10 +20,10 @@ const { Connection, ConnectionArgs } = new ConnectionBuilder(Invitation)
   })
   .build();
 
-/** 工作区邀请分页查询参数。 */
+/** Workspace invitation pagination arguments. */
 @ArgsType()
 export class InvitationConnectionArgs extends ConnectionArgs {}
 
-/** 工作区邀请分页查询结果。 */
+/** A page of visible workspace invitations. */
 @ObjectType()
 export class InvitationConnection extends Connection {}

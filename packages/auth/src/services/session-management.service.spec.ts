@@ -6,7 +6,6 @@ import { ForbiddenException, NotFoundException } from "@nestjs/common";
 import type { Mocked } from "vitest";
 
 import { mockRlsContext } from "../../test/mock-rls-context.js";
-import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { SessionConnection } from "../connections/session.connection-definition.js";
 import { ApiKey as BaseApiKey } from "../entities/api-key.entity.js";
 import {
@@ -216,10 +215,9 @@ function createService() {
   const accessControlService = {
     assertUserCan: vi.fn(),
   } as unknown as Mocked<AccessControlService>;
-  const options = {} as unknown as AuthModuleOptions;
   return {
     em,
     accessControlService,
-    service: new SessionService({}, em, options, accessControlService),
+    service: new SessionService({}, em, accessControlService),
   };
 }

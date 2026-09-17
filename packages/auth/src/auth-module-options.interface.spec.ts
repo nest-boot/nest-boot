@@ -1,17 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import type {
-  AuthModuleAccountOptions,
-  AuthModuleApiKeyOptions,
-  AuthModuleEmailAndPasswordOptions,
-  AuthModuleEmailVerificationOptions,
-  AuthModuleOAuthProvider,
-  AuthModuleOptions,
-  AuthModuleSessionOptions,
-  AuthModuleSocialProvider,
-  AuthModuleUserOptions,
-  AuthModuleWorkspaceOptions,
-} from "./auth-module-options.interface.js";
+import type { AuthModuleOptions } from "./auth-module-options.interface.js";
+import type { AuthModuleAccountOptions } from "./interfaces/auth-module-account-options.interface.js";
+import type { AuthModuleApiKeyOptions } from "./interfaces/auth-module-api-key-options.interface.js";
+import type { AuthModuleEmailAndPasswordOptions } from "./interfaces/auth-module-email-and-password-options.interface.js";
+import type { AuthModuleEmailVerificationOptions } from "./interfaces/auth-module-email-verification-options.interface.js";
+import type { AuthModuleOAuthProvider } from "./interfaces/auth-module-oauth-provider.interface.js";
+import type { AuthModuleSessionOptions } from "./interfaces/auth-module-session-options.interface.js";
+import type { AuthModuleSocialProvider } from "./interfaces/auth-module-social-provider.interface.js";
+import type { AuthModuleUserOptions } from "./interfaces/auth-module-user-options.interface.js";
+import type { AuthModuleWorkspaceOptions } from "./interfaces/auth-module-workspace-options.interface.js";
 
 type HasOption<
   Options,

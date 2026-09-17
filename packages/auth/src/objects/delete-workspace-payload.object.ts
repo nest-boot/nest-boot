@@ -1,9 +1,9 @@
 import { Field, ID, ObjectType } from "@nest-boot/graphql";
 
-/** 删除工作区后的返回结果，不再解析已删除实体的关联字段。 */
+/** Deleted workspace identifier without relations to the deleted entity. */
 @ObjectType()
 export class DeleteWorkspacePayload {
-  /** 已删除工作区的唯一标识。 */
+  /** Identifier of the deleted workspace. */
   @Field(() => ID)
   id!: string;
 }

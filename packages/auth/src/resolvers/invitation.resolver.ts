@@ -18,12 +18,12 @@ import { CreateInvitationInput } from "../inputs/create-invitation.input.js";
 import { AcceptInvitationPayload } from "../objects/accept-invitation-payload.object.js";
 import { InvitationService } from "../services/invitation.service.js";
 
-/** 工作区邀请 GraphQL 解析器。 */
+/** GraphQL resolver for workspace invitations. */
 @Resolver(() => Invitation)
 export class InvitationResolver {
-  /** 创建工作区邀请解析器。 */
+  /** Creates the workspace invitation resolver. */
   constructor(
-    /** 认证模块提供的工作区领域服务。 */
+    /** Invitation domain service provided by the auth module. */
     readonly invitationService: InvitationService,
   ) {}
 
@@ -39,7 +39,7 @@ export class InvitationResolver {
     return await this.invitationService.getInvitationWorkspace(invitation);
   }
 
-  /** 根据邀请 ID 查询邀请。 */
+  /** Returns an invitation by ID. */
   @Query(() => Invitation, { nullable: true })
   async invitation(
     @Args("id", { type: () => ID }) id: string,
@@ -47,7 +47,7 @@ export class InvitationResolver {
     return await this.invitationService.getInvitation(id);
   }
 
-  /** 创建当前工作区的邀请。 */
+  /** Creates an invitation for the current workspace. */
   @Mutation(() => Invitation)
   async createInvitation(
     @CurrentWorkspace() workspace: Workspace,
@@ -61,7 +61,7 @@ export class InvitationResolver {
     );
   }
 
-  /** 接受发送给当前用户的邀请。 */
+  /** Accepts an invitation addressed to the current user. */
   @Mutation(() => AcceptInvitationPayload)
   async acceptInvitation(
     @Args("id", { type: () => ID }) id: string,
@@ -76,7 +76,7 @@ export class InvitationResolver {
     };
   }
 
-  /** 拒绝发送给当前用户的邀请。 */
+  /** Rejects an invitation addressed to the current user. */
   @Mutation(() => Invitation)
   async rejectInvitation(
     @Args("id", { type: () => ID }) id: string,
@@ -85,7 +85,7 @@ export class InvitationResolver {
     return await this.invitationService.rejectInvitation(user, id);
   }
 
-  /** 取消当前工作区的邀请。 */
+  /** Cancels an invitation in the current workspace. */
   @Mutation(() => Invitation)
   async cancelInvitation(
     @Args("id", { type: () => ID }) id: string,

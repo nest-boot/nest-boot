@@ -1,7 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 
 import {
-  type EntityClass,
   EntityManager,
   type FilterQuery,
   Reference,
@@ -31,6 +30,10 @@ import { ApiKey } from "../entities/api-key.entity.js";
 import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
+import type { CreateApiKeyOptions } from "../interfaces/create-api-key-options.interface.js";
+import type { CreatedApiKey } from "../interfaces/created-api-key.interface.js";
+import type { UpdateApiKeyOptions } from "../interfaces/update-api-key-options.interface.js";
+import type { ApiKeyValidation } from "../types/api-key-validation.type.js";
 import {
   DEFAULT_USER_PERMISSIONS,
   DEFAULT_USER_ROLE,
@@ -42,67 +45,6 @@ import {
 } from "../utils/auth-role.util.js";
 import { DEFAULT_WORKSPACE_PERMISSIONS } from "../workspace.constants.js";
 import { AccessControlService } from "./access-control.service.js";
-
-/** Input accepted when creating an API key. */
-export interface CreateApiKeyOptions {
-  /** API-key display name. */
-  name: string;
-  /** Optional expiration timestamp. */
-  expiresAt?: Date | null;
-  /**
-   * Operations granted to the key. Omission uses the configured defaults;
-   * `null` or an empty list creates a key without permissions.
-   */
-  permissions?: string[] | null;
-  /** 1–32 lowercase letters or digits, starting with a letter. Defaults to `sk`. */
-  prefix?: string;
-}
-
-/** Input accepted when updating an API key. */
-export interface UpdateApiKeyOptions {
-  /** Whether the key can authenticate requests. */
-  enabled?: boolean;
-  /** Optional expiration timestamp; `null` removes expiration. */
-  expiresAt?: Date | null;
-  /** API-key display name. */
-  name?: string;
-  /**
-   * Replacement permission list. Omission preserves the stored permissions;
-   * `null` clears them.
-   */
-  permissions?: string[] | null;
-}
-
-/** API-key creation result. The plaintext key is returned only once. */
-export interface CreatedApiKey {
-  /** Persisted API-key entity. */
-  entity: ApiKey;
-  /** Plaintext API key. */
-  apiKey: string;
-}
-
-/** Successful authentication for a user-owned API key. */
-export interface UserApiKeyValidation {
-  /** Validated API-key entity. */
-  apiKey: ApiKey;
-  /** Identifies the owner branch. */
-  ownerType: "user";
-  /** User represented by the key. */
-  user: User;
-}
-
-/** Successful authentication for a workspace-owned API key. */
-export interface WorkspaceApiKeyValidation {
-  /** Validated API-key entity. */
-  apiKey: ApiKey;
-  /** Identifies the owner branch. */
-  ownerType: "workspace";
-  /** Workspace represented by the key. */
-  workspace: Workspace;
-}
-
-/** Successful API-key authentication result. */
-export type ApiKeyValidation = UserApiKeyValidation | WorkspaceApiKeyValidation;
 
 /** Domain service for user and workspace API-key lifecycle and authentication. */
 @Injectable()
@@ -121,7 +63,7 @@ export class ApiKeyService {
   /** Returns a user-owned API key when it belongs to the current user. */
   async getUserApiKey(id: string, user: User): Promise<ApiKey | null> {
     this.accessControlService.assertCurrentUser(user);
-    this.accessControlService.assertUserCan("read", this.apiKeyEntity);
+    this.accessControlService.assertUserCan("read", ApiKey);
     return await this.getVisibleApiKey(id, user);
   }
 
@@ -131,7 +73,7 @@ export class ApiKeyService {
     workspace: Workspace,
   ): Promise<ApiKey | null> {
     this.assertWorkspacePrincipal(workspace);
-    this.accessControlService.assertWorkspaceCan("read", this.apiKeyEntity);
+    this.accessControlService.assertWorkspaceCan("read", ApiKey);
     return await this.getVisibleApiKey(id, workspace);
   }
 
@@ -141,7 +83,7 @@ export class ApiKeyService {
     args: ConnectionArgsInterface<ApiKey>,
   ): Promise<ConnectionInterface<ApiKey>> {
     this.accessControlService.assertCurrentUser(user);
-    this.accessControlService.assertUserCan("read", this.apiKeyEntity);
+    this.accessControlService.assertUserCan("read", ApiKey);
     const where = this.getOwnedListFilter(user);
     return await new ConnectionManager(
       this.em as SqlEntityManager,
@@ -157,7 +99,7 @@ export class ApiKeyService {
     args: ConnectionArgsInterface<ApiKey>,
   ): Promise<ConnectionInterface<ApiKey>> {
     this.assertWorkspacePrincipal(workspace);
-    this.accessControlService.assertWorkspaceCan("read", this.apiKeyEntity);
+    this.accessControlService.assertWorkspaceCan("read", ApiKey);
     const where = this.getOwnedListFilter(workspace);
     return await new ConnectionManager(
       this.em as SqlEntityManager,
@@ -173,7 +115,7 @@ export class ApiKeyService {
     options: CreateApiKeyOptions,
   ): Promise<CreatedApiKey> {
     this.accessControlService.assertCurrentUser(user);
-    this.accessControlService.assertUserCan("create", this.apiKeyEntity);
+    this.accessControlService.assertUserCan("create", ApiKey);
     const permissions = this.normalizeCreatePermissions(user, options);
     this.assertUserPermissionCeiling(user, permissions);
     return await this.createKey(user, options, permissions);
@@ -185,7 +127,7 @@ export class ApiKeyService {
     options: CreateApiKeyOptions,
   ): Promise<CreatedApiKey> {
     this.assertWorkspacePrincipal(workspace);
-    this.accessControlService.assertWorkspaceCan("create", this.apiKeyEntity);
+    this.accessControlService.assertWorkspaceCan("create", ApiKey);
     const permissions = this.normalizeCreatePermissions(workspace, options);
     this.accessControlService.assertCanGrantWorkspacePermissions(permissions);
     return await this.createKey(workspace, options, permissions);
@@ -196,7 +138,7 @@ export class ApiKeyService {
     id: string,
     input: UpdateApiKeyOptions,
   ): Promise<ApiKey> {
-    this.accessControlService.assertUserCan("update", this.apiKeyEntity);
+    this.accessControlService.assertUserCan("update", ApiKey);
     const apiKey = await this.findWritableApiKey(id, "user");
     this.accessControlService.assertUserCan("update", apiKey);
     const user = this.unwrapOwner(apiKey) as User;
@@ -212,7 +154,7 @@ export class ApiKeyService {
     id: string,
     input: UpdateApiKeyOptions,
   ): Promise<ApiKey> {
-    this.accessControlService.assertWorkspaceCan("update", this.apiKeyEntity);
+    this.accessControlService.assertWorkspaceCan("update", ApiKey);
     const apiKey = await this.findWritableApiKey(id, "workspace");
     this.accessControlService.assertWorkspaceCan("update", apiKey);
     const permissions = this.normalizeUpdatedPermissions(apiKey, input);
@@ -230,7 +172,7 @@ export class ApiKeyService {
 
   /** Deletes an API key owned by the current user. */
   async deleteUserApiKey(id: string): Promise<ApiKey> {
-    this.accessControlService.assertUserCan("delete", this.apiKeyEntity);
+    this.accessControlService.assertUserCan("delete", ApiKey);
     const apiKey = await this.findWritableApiKey(id, "user");
     this.accessControlService.assertUserCan("delete", apiKey);
     return await this.deleteKey(apiKey);
@@ -238,7 +180,7 @@ export class ApiKeyService {
 
   /** Deletes a key owned by the authenticated workspace. */
   async deleteWorkspaceApiKey(id: string): Promise<ApiKey> {
-    this.accessControlService.assertWorkspaceCan("delete", this.apiKeyEntity);
+    this.accessControlService.assertWorkspaceCan("delete", ApiKey);
     const apiKey = await this.findWritableApiKey(id, "workspace");
     this.accessControlService.assertWorkspaceCan("delete", apiKey);
     return await this.deleteKey(apiKey);
@@ -269,7 +211,7 @@ export class ApiKeyService {
     apiKey.lastUsedAt = now;
     apiKey.updatedAt = now;
     await this.em.nativeUpdate(
-      this.apiKeyEntity,
+      ApiKey,
       { id: apiKey.id } as FilterQuery<ApiKey>,
       { lastUsedAt: now, updatedAt: now } as never,
     );
@@ -277,7 +219,7 @@ export class ApiKeyService {
   }
 
   private async findOne(where: FilterQuery<ApiKey>): Promise<ApiKey | null> {
-    return await this.em.findOne(this.apiKeyEntity, where, {
+    return await this.em.findOne(ApiKey, where, {
       populate: ["user", "workspace"] as never,
     });
   }
@@ -295,7 +237,7 @@ export class ApiKeyService {
     const plaintextApiKey = `${prefix}${randomBytes(48).toString("base64url")}`;
     const entity = await this.em.transactional(
       async (em) => {
-        const entity = em.create(this.apiKeyEntity, {
+        const entity = em.create(ApiKey, {
           enabled: true,
           expiresAt: options.expiresAt ?? null,
           key: this.hashApiKey(plaintextApiKey),
@@ -348,7 +290,7 @@ export class ApiKeyService {
     owner: User | Workspace,
   ): Promise<ApiKey | null> {
     const apiKey = await this.em.findOne(
-      this.apiKeyEntity,
+      ApiKey,
       {
         $and: [{ id }, this.getOwnedListFilter(owner)],
       } as FilterQuery<ApiKey>,
@@ -366,7 +308,7 @@ export class ApiKeyService {
     ownerType: "user" | "workspace",
   ): Promise<ApiKey> {
     const apiKey = await this.em.findOne(
-      this.apiKeyEntity,
+      ApiKey,
       { id } as FilterQuery<ApiKey>,
       {
         populate: ["user", "workspace"] as never,
@@ -450,8 +392,8 @@ export class ApiKeyService {
   }
 
   private getOwnerType(owner: User | Workspace): "user" | "workspace" {
-    if (owner instanceof this.userEntity) return "user";
-    if (owner instanceof this.workspaceEntity) return "workspace";
+    if (owner instanceof User) return "user";
+    if (owner instanceof Workspace) return "workspace";
     throw new TypeError("Unsupported API key owner type");
   }
 
@@ -585,17 +527,5 @@ export class ApiKeyService {
         `${message}: ${excessivePermissions.join(", ")}`,
       );
     }
-  }
-
-  private get apiKeyEntity(): EntityClass<ApiKey> {
-    return ApiKey as EntityClass<ApiKey>;
-  }
-
-  private get userEntity(): EntityClass<User> {
-    return User as EntityClass<User>;
-  }
-
-  private get workspaceEntity(): EntityClass<Workspace> {
-    return Workspace as EntityClass<Workspace>;
   }
 }

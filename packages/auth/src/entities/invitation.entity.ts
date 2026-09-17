@@ -34,7 +34,7 @@ export type AuthInvitationStatus =
       name: "invitation_recipient_select_policy",
       command: "select",
       roles: ["authenticated"],
-      // 收件人无需工作区成员身份，但此策略仅允许读取，不授予写权限。
+      // Recipients need not be workspace members; this policy grants reads only, not writes.
       using: ({ email }) =>
         `"${email}" = (select lower("recipient"."email") from "user" as "recipient" where "recipient"."id" = nullif(current_setting('app.user.id', true), '')::bigint)`,
     },

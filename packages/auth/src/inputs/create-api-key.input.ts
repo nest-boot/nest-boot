@@ -9,23 +9,23 @@ import {
 } from "class-validator";
 
 /**
- * 创建 API Key 的输入参数。
+ * Input for creating an API key.
  */
 @InputType()
 export class CreateApiKeyInput {
-  /** API Key 显示名称。 */
+  /** API key display name. */
   @IsString()
   @MaxLength(255)
   @Field(() => String)
   name!: string;
 
-  /** API Key 过期时间；为空时表示不过期。 */
+  /** API key expiration time; omitted or null means no expiration. */
   @IsOptional()
   @IsDate()
   @Field(() => Date, { nullable: true })
   expiresAt?: Date;
 
-  /** 明文前缀：1–32 位小写英文字母或数字，首位必须是字母，默认为 sk。 */
+  /** Plaintext prefix: 1–32 lowercase letters or digits, starting with a letter. Defaults to sk. */
   @IsOptional()
   @IsString()
   @MinLength(1)
@@ -33,7 +33,7 @@ export class CreateApiKeyInput {
   @Field(() => String, { nullable: true })
   prefix?: string;
 
-  /** API Key 权限。 */
+  /** API key permissions. */
   @IsOptional()
   @IsArray()
   @IsString({ each: true })

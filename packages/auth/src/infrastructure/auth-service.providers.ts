@@ -113,21 +113,15 @@ export const authServiceProviders: Provider[] = [
   },
   {
     provide: SessionService,
-    inject: [
-      AUTH_TOKEN,
-      EntityManager,
-      MODULE_OPTIONS_TOKEN,
-      AccessControlService,
-    ],
+    inject: [AUTH_TOKEN, EntityManager, AccessControlService],
     useFactory: (
       auth: unknown,
       em: EntityManager,
-      options: AuthModuleOptions,
       access: AccessControlService,
     ) =>
       createContextualAuthService(
         em,
-        (manager) => new SessionService(auth, manager, options, access),
+        (manager) => new SessionService(auth, manager, access),
         {
           getCurrentAuthenticatedSession: "authentication",
           listCurrentUserSessions: "authentication",

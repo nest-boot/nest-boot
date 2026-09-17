@@ -1,14 +1,14 @@
 import { registerEnumType } from "@nest-boot/graphql";
 
-/** 工作区邀请状态。 */
+/** Workspace invitation status. */
 export enum InvitationStatus {
-  /** 已接受。 */
+  /** Accepted. */
   ACCEPTED = "accepted",
-  /** 已取消。 */
+  /** Canceled. */
   CANCELED = "canceled",
-  /** 等待处理。 */
+  /** Pending. */
   PENDING = "pending",
-  /** 已拒绝。 */
+  /** Rejected. */
   REJECTED = "rejected",
 }
 

@@ -1,10 +1,10 @@
 import { Field, InputType } from "@nest-boot/graphql";
 import { IsEmail } from "class-validator";
 
-/** 直接添加工作区成员的输入参数。 */
+/** Input for directly adding a workspace member. */
 @InputType()
 export class AddMemberInput {
-  /** 待添加用户的邮箱。 */
+  /** Email address of the user to add. */
   @IsEmail()
   @Field(() => String)
   email!: string;

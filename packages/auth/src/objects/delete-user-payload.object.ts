@@ -1,9 +1,9 @@
 import { Field, ID, ObjectType } from "@nest-boot/graphql";
 
-/** 删除用户后的返回结果，不再解析已删除实体的关联字段。 */
+/** Deleted user identifier without relations to the deleted entity. */
 @ObjectType()
 export class DeleteUserPayload {
-  /** 已删除用户的唯一标识。 */
+  /** Identifier of the deleted user. */
   @Field(() => ID)
   id!: string;
 }

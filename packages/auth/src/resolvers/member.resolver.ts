@@ -19,11 +19,11 @@ import { UpdateMemberInput } from "../inputs/update-member.input.js";
 import { RemoveMemberPayload } from "../objects/remove-member-payload.object.js";
 import { MemberService } from "../services/member.service.js";
 
-/** 工作区成员 GraphQL 解析器。 */
+/** GraphQL resolver for workspace members. */
 @Resolver(() => Member)
 export class MemberResolver {
   /**
-   * 创建工作区成员解析器。
+   * Creates the workspace member resolver.
    *
    */
   constructor(
@@ -50,9 +50,9 @@ export class MemberResolver {
   }
 
   /**
-   * 获取当前请求中的工作区成员。
+   * Returns the workspace member selected for the current request.
    *
-   * @returns 当前工作区成员；请求未解析出成员时返回 null。
+   * @returns Current workspace member, or null when no member was resolved.
    */
   @Query(() => Member, { nullable: true })
   currentMember(): Member | null {
@@ -60,10 +60,10 @@ export class MemberResolver {
   }
 
   /**
-   * 根据 ID 查询工作区成员。
+   * Returns a workspace member by ID.
    *
-   * @param id - 工作区成员 ID。
-   * @returns 匹配的工作区成员，不存在时返回 null。
+   * @param id - Workspace member ID.
+   * @returns Matching workspace member, or null when not found.
    */
   @Query(() => Member, { nullable: true })
   async member(
@@ -73,11 +73,11 @@ export class MemberResolver {
   }
 
   /**
-   * 通过邮箱直接添加已有用户为工作区成员。
+   * Adds an existing user to the workspace by email.
    *
-   * @param workspace - 当前工作区。
-   * @param input - 添加成员输入参数。
-   * @returns 新创建的工作区成员。
+   * @param workspace - Current workspace.
+   * @param input - Input for adding a member.
+   * @returns Newly created workspace member.
    */
   @Mutation(() => Member)
   async addMember(
@@ -88,11 +88,11 @@ export class MemberResolver {
   }
 
   /**
-   * 更新工作区成员信息。
+   * Updates workspace member details.
    *
-   * @param id - 待更新的工作区成员 ID。
-   * @param input - 成员更新参数。
-   * @returns 更新后的工作区成员。
+   * @param id - ID of the workspace member to update.
+   * @param input - Member update input.
+   * @returns Updated workspace member.
    */
   @Mutation(() => Member, { nullable: true })
   async updateMember(
@@ -121,10 +121,10 @@ export class MemberResolver {
   }
 
   /**
-   * 移除工作区成员。
+   * Removes a workspace member.
    *
-   * @param id - 待移除的工作区成员 ID。
-   * @returns 被移除的工作区成员标识。
+   * @param id - ID of the workspace member to remove.
+   * @returns Identifier of the removed workspace member.
    */
   @Mutation(() => RemoveMemberPayload)
   async removeMember(

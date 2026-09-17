@@ -39,17 +39,17 @@ import { MemberService } from "../services/member.service.js";
 import { WorkspaceService } from "../services/workspace.service.js";
 
 /**
- * 提供工作区查询、创建、更新和删除的 GraphQL 接口。
+ * GraphQL operations for querying, creating, updating, and deleting workspaces.
  */
 @Resolver(() => Workspace)
 export class WorkspaceResolver {
   /**
-   * 创建工作区 Resolver。
+   * Creates the workspace resolver.
    *
-   * @param workspaceService - 工作区业务服务。
-   * @param apiKeyService - API Key 业务服务。
-   * @param memberService - 工作区成员业务服务。
-   * @param invitationService - 工作区邀请业务服务。
+   * @param workspaceService - Workspace domain service.
+   * @param apiKeyService - API key domain service.
+   * @param memberService - Workspace member domain service.
+   * @param invitationService - Workspace invitation domain service.
    */
   constructor(
     readonly workspaceService: WorkspaceService,
@@ -58,7 +58,7 @@ export class WorkspaceResolver {
     readonly invitationService: InvitationService,
   ) {}
 
-  /** 分页查询父级工作区的成员。 */
+  /** Paginates members of the parent workspace. */
   @ResolveField(() => MemberConnection)
   async members(
     @Parent() workspace: Workspace,
@@ -71,7 +71,7 @@ export class WorkspaceResolver {
     );
   }
 
-  /** 查询父级工作区拥有且当前身份可访问的单个 API Key。 */
+  /** Returns an accessible API key owned by the parent workspace. */
   @ResolveField(() => ApiKey, { nullable: true })
   async apiKey(
     @Parent() workspace: Workspace,
@@ -80,7 +80,7 @@ export class WorkspaceResolver {
     return await this.apiKeyService.getWorkspaceApiKey(id, workspace);
   }
 
-  /** 分页查询父级工作区的 API Key。 */
+  /** Paginates API keys owned by the parent workspace. */
   @ResolveField(() => ApiKeyConnection)
   async apiKeys(
     @Parent() workspace: Workspace,
@@ -93,7 +93,7 @@ export class WorkspaceResolver {
     );
   }
 
-  /** 分页查询父级工作区的邀请，权限与查询均由服务处理。 */
+  /** Paginates workspace invitations with authorization and querying handled by the service. */
   @ResolveField(() => InvitationConnection)
   async invitations(
     @Parent() workspace: Workspace,
@@ -107,9 +107,9 @@ export class WorkspaceResolver {
   }
 
   /**
-   * 返回当前请求选择的工作区。
+   * Returns the workspace selected for the current request.
    *
-   * @returns 当前工作区；请求未选择工作区时返回 null。
+   * @returns Current workspace, or null when none is selected.
    */
   @Query(() => Workspace, { nullable: true })
   currentWorkspace(): Workspace | null {
@@ -117,10 +117,10 @@ export class WorkspaceResolver {
   }
 
   /**
-   * 按标识查询单个工作区。
+   * Returns a workspace by ID.
    *
-   * @param id - 工作区标识。
-   * @returns 匹配的工作区；不存在时返回空值。
+   * @param id - Workspace identifier.
+   * @returns Matching workspace, or null when not found.
    */
   @Query(() => Workspace, { nullable: true })
   async workspace(
@@ -131,11 +131,11 @@ export class WorkspaceResolver {
   }
 
   /**
-   * 为当前用户创建新工作区。
+   * Creates a workspace for the current user.
    *
-   * @param user - 当前认证用户。
-   * @param input - 创建工作区输入参数。
-   * @returns 新建工作区的标识；后续请求需显式选择该工作区。
+   * @param user - Currently authenticated user.
+   * @param input - Workspace creation input.
+   * @returns Created workspace identifier; subsequent requests must explicitly select it.
    */
   @Mutation(() => CreateWorkspacePayload)
   async createWorkspace(
@@ -147,11 +147,11 @@ export class WorkspaceResolver {
   }
 
   /**
-   * 更新当前工作区信息。
+   * Updates the current workspace.
    *
-   * @param id - 当前工作区的标识。
-   * @param input - 更新工作区输入参数。
-   * @returns 更新后的工作区。
+   * @param id - Current workspace identifier.
+   * @param input - Workspace update input.
+   * @returns Updated workspace.
    */
   @Mutation(() => Workspace)
   async updateWorkspace(
@@ -162,10 +162,10 @@ export class WorkspaceResolver {
   }
 
   /**
-   * 软删除当前工作区。
+   * Soft-deletes the current workspace.
    *
-   * @param id - 当前工作区的标识。
-   * @returns 已软删除工作区的标识。
+   * @param id - Current workspace identifier.
+   * @returns Identifier of the soft-deleted workspace.
    */
   @Mutation(() => DeleteWorkspacePayload)
   async deleteWorkspace(

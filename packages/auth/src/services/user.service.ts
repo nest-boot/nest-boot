@@ -1,7 +1,6 @@
 import { randomBytes } from "node:crypto";
 
 import {
-  type EntityClass,
   EntityManager,
   type FilterQuery,
   Reference,
@@ -84,9 +83,9 @@ export class UserService {
 
   /** Creates a user and its credential account atomically. */
   async createUser(input: CreateUserOptions): Promise<User> {
-    this.accessControlService.assertUserCan("create", this.userEntity);
+    this.accessControlService.assertUserCan("create", User);
     if (input.roles !== undefined || input.permissions !== undefined) {
-      this.accessControlService.assertUserCan("set-role", this.userEntity);
+      this.accessControlService.assertUserCan("set-role", User);
     }
     this.assertPasswordLength(input.password);
     const permissions = this.normalizePermissions(input.permissions ?? []);
@@ -100,7 +99,7 @@ export class UserService {
 
     return await this.em.transactional(
       async (em) => {
-        const user = em.create(this.userEntity, {
+        const user = em.create(User, {
           email,
           emailVerified: false,
           name: input.name,
@@ -111,7 +110,7 @@ export class UserService {
         await em.flush();
 
         const userId = String(user.id);
-        const account = em.create(this.accountEntity, {
+        const account = em.create(Account, {
           accountId: userId,
           issuer: CREDENTIAL_ISSUER,
           password,
@@ -128,16 +127,16 @@ export class UserService {
 
   /** Gets a user by identifier within the request's RLS scope. */
   async getUser(userId: string): Promise<User | null> {
-    this.accessControlService.assertUserCan("get", this.userEntity);
-    return await this.em.findOne(this.userEntity, {
+    this.accessControlService.assertUserCan("get", User);
+    return await this.em.findOne(User, {
       id: userId,
     } as FilterQuery<User>);
   }
 
   /** Gets a user by normalized email within the request's RLS scope. */
   async getUserByEmail(email: string): Promise<User | null> {
-    this.accessControlService.assertUserCan("get", this.userEntity);
-    return await this.em.findOne(this.userEntity, {
+    this.accessControlService.assertUserCan("get", User);
+    return await this.em.findOne(User, {
       email: email.trim().toLowerCase(),
     } as FilterQuery<User>);
   }
@@ -193,9 +192,9 @@ export class UserService {
     action: string,
   ): Promise<User> {
     if (typeof user !== "string") return user;
-    this.accessControlService.assertUserCan(action, this.userEntity);
+    this.accessControlService.assertUserCan(action, User);
     const entity = await this.em.findOne(
-      this.userEntity,
+      User,
       { id: user } as FilterQuery<User>,
       { refresh: true },
     );
@@ -205,13 +204,13 @@ export class UserService {
 
   /** Lists configured user-administration roles. */
   listRoles(): AuthRole[] {
-    this.accessControlService.assertUserCan("set-role", this.userEntity);
+    this.accessControlService.assertUserCan("set-role", User);
     return listAuthRoles(this.roles);
   }
 
   /** Lists configured user-administration permissions. */
   listPermissions(): string[] {
-    this.accessControlService.assertUserCan("set-role", this.userEntity);
+    this.accessControlService.assertUserCan("set-role", User);
     return listAuthPermissions(this.permissions);
   }
 
@@ -226,9 +225,9 @@ export class UserService {
 
   /** Lists users with Better Auth-compatible search and pagination concepts. */
   async listUsers(input: ListUsersOptions = {}): Promise<ListUsersResult> {
-    this.accessControlService.assertUserCan("list", this.userEntity);
+    this.accessControlService.assertUserCan("list", User);
     const where = this.createUserFilter(input);
-    const [users, total] = await this.em.findAndCount(this.userEntity, where, {
+    const [users, total] = await this.em.findAndCount(User, where, {
       limit: input.limit,
       offset: input.offset,
       orderBy: {
@@ -248,7 +247,7 @@ export class UserService {
   async getUserConnection(
     args: ConnectionArgsInterface<User>,
   ): Promise<ConnectionInterface<User>> {
-    this.accessControlService.assertUserCan("list", this.userEntity);
+    this.accessControlService.assertUserCan("list", User);
     return await new ConnectionManager(this.em as SqlEntityManager).find<User>(
       UserConnection,
       args,
@@ -282,7 +281,7 @@ export class UserService {
 
     await this.em.transactional(
       async (em) => {
-        await em.nativeDelete(this.sessionEntity, {
+        await em.nativeDelete(Session, {
           $or: [{ user: String(user.id) }, { impersonatedBy: user }],
         } as FilterQuery<Session>);
         await em.persist(user).flush();
@@ -347,7 +346,7 @@ export class UserService {
           impersonatedByReference,
         ) as User;
         const administrator = await em.findOne(
-          this.userEntity,
+          User,
           { id: String(impersonatedBy.id) } as FilterQuery<User>,
           { filters: false },
         );
@@ -394,7 +393,7 @@ export class UserService {
       async (em) => {
         const password = await this.hashPassword(newPassword);
         const account = await em.findOne(
-          this.accountEntity,
+          Account,
           {
             issuer: CREDENTIAL_ISSUER,
             accountId: String(user.id),
@@ -408,7 +407,7 @@ export class UserService {
           account.password = password;
         } else {
           em.persist(
-            em.create(this.accountEntity, {
+            em.create(Account, {
               accountId: String(user.id),
               issuer: CREDENTIAL_ISSUER,
               password,
@@ -489,7 +488,7 @@ export class UserService {
     input: ImpersonationOptions & { impersonatedBy?: User },
   ): Session {
     const expiresIn = this.options.session?.expiresIn ?? 60 * 60 * 24 * 7;
-    return em.create(this.sessionEntity, {
+    return em.create(Session, {
       expiresAt: new Date(Date.now() + expiresIn * 1000),
       impersonatedBy: input.impersonatedBy ?? null,
       ipAddress: input.ipAddress ?? null,
@@ -554,17 +553,5 @@ export class UserService {
       user.banned &&
       (!user.banExpiresAt || user.banExpiresAt.getTime() > Date.now())
     );
-  }
-
-  private get accountEntity(): EntityClass<Account> {
-    return Account as EntityClass<Account>;
-  }
-
-  private get sessionEntity(): EntityClass<Session> {
-    return Session as EntityClass<Session>;
-  }
-
-  private get userEntity(): EntityClass<User> {
-    return User as EntityClass<User>;
   }
 }

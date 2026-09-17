@@ -37,13 +37,13 @@ const { Connection, ConnectionArgs } = new ConnectionBuilder(ApiKey)
   .build();
 
 /**
- * API Key 分页查询参数。
+ * API key pagination arguments.
  */
 @ArgsType()
 export class ApiKeyConnectionArgs extends ConnectionArgs {}
 
 /**
- * API Key 分页查询结果。
+ * A page of visible API keys.
  */
 @ObjectType()
 export class ApiKeyConnection extends Connection {}

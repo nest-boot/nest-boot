@@ -21,12 +21,7 @@ describe("auth service execution boundaries", () => {
     const access = {
       assertUserCan: vi.fn(),
     } as unknown as AccessControlService;
-    const service = provider.useFactory(
-      {},
-      {} as EntityManager,
-      {} as AuthModuleOptions,
-      access,
-    );
+    const service = provider.useFactory({}, {} as EntityManager, access);
 
     for (const name of [
       "getCurrentAuthenticatedSession",

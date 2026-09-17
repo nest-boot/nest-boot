@@ -32,10 +32,10 @@ const { Connection, ConnectionArgs } = new ConnectionBuilder(Member)
   })
   .build();
 
-/** 工作区成员分页查询参数。 */
+/** Workspace member pagination arguments. */
 @ArgsType()
 export class MemberConnectionArgs extends ConnectionArgs {}
 
-/** 工作区成员分页查询结果。 */
+/** A page of visible workspace members. */
 @ObjectType()
 export class MemberConnection extends Connection {}

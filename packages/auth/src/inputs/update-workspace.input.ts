@@ -2,11 +2,11 @@ import { Field, InputType } from "@nest-boot/graphql";
 import { IsOptional, IsString } from "class-validator";
 
 /**
- * 更新工作区的输入参数。
+ * Input for updating a workspace.
  */
 @InputType()
 export class UpdateWorkspaceInput {
-  /** 新工作区名称。 */
+  /** New workspace name. */
   @IsString()
   @IsOptional()
   @Field(() => String, { nullable: true })

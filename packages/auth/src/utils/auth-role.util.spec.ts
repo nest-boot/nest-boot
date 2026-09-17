@@ -93,7 +93,7 @@ describe("normalizeAuthPermissions", () => {
       "user:read",
       "user:READ",
       "EXPORT",
-      "项目/读取",
+      "\u9879\u76ee/\u8bfb\u53d6",
     ];
     expect(normalizeAuthPermissions(permissions, permissions, "User")).toEqual(
       permissions,

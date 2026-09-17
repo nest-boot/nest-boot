@@ -3,16 +3,16 @@ import { Field, ObjectType } from "@nest-boot/graphql";
 import { ApiKey } from "../entities/api-key.entity.js";
 
 /**
- * 创建 API Key 后返回给客户端的结果。
+ * Result returned to the client after creating an API key.
  */
 @ObjectType()
 export class CreateApiKeyResult {
-  /** 创建成功后的 API Key 实体。 */
+  /** Created API key entity. */
 
   @Field(() => ApiKey)
   entity!: ApiKey;
 
-  /** 仅在创建时返回一次的 API Key 明文。 */
+  /** Plaintext API key, returned only once at creation. */
   @Field(() => String)
   apiKey!: string;
 }

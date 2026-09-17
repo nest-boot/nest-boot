@@ -9,22 +9,22 @@ import {
   Min,
 } from "class-validator";
 
-/** 创建工作区邀请的输入参数。 */
+/** Input for creating a workspace invitation. */
 @InputType()
 export class CreateInvitationInput {
-  /** 被邀请成员加入后的角色。 */
+  /** Roles granted to the invited member upon joining. */
   @IsArray()
   @ArrayNotEmpty()
   @IsString({ each: true })
   @Field(() => [String])
   roles!: string[];
 
-  /** 唯一允许接受邀请的邮箱。 */
+  /** Email address authorized to accept the invitation. */
   @IsEmail()
   @Field(() => String)
   email!: string;
 
-  /** 邀请有效期，单位为秒；默认 48 小时。 */
+  /** Invitation lifetime in seconds. Defaults to 48 hours. */
   @IsOptional()
   @IsInt()
   @Min(1)

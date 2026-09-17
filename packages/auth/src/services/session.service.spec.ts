@@ -4,8 +4,6 @@ import { Test } from "@nestjs/testing";
 
 import { mockRlsContext } from "../../test/mock-rls-context.js";
 import { AUTH_TOKEN } from "../auth.constants.js";
-import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
-import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import {
   Session as BaseSession,
   Session as SessionEntity,
@@ -75,7 +73,6 @@ async function createService(
     findOne: vi.fn(),
   },
 ) {
-  const options = {} as unknown as AuthModuleOptions;
   const moduleRef = await Test.createTestingModule({
     providers: [
       SessionService,
@@ -91,10 +88,6 @@ async function createService(
           getSessionContext: vi.fn(),
           ...em,
         },
-      },
-      {
-        provide: MODULE_OPTIONS_TOKEN,
-        useValue: options,
       },
     ],
   }).compile();

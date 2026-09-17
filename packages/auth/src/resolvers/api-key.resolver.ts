@@ -11,23 +11,23 @@ import { CreateApiKeyResult } from "../objects/create-api-key-result.object.js";
 import { ApiKeyService } from "../services/api-key.service.js";
 
 /**
- * 提供 API Key 的创建、更新和删除 GraphQL 接口。
+ * GraphQL operations for creating, updating, and deleting API keys.
  */
 @Resolver(() => ApiKey)
 export class ApiKeyResolver {
   /**
-   * 创建 API Key Resolver。
+   * Creates the API key resolver.
    *
-   * @param apiKeyService - API Key 业务服务。
+   * @param apiKeyService - API key domain service.
    */
   constructor(readonly apiKeyService: ApiKeyService) {}
 
   /**
-   * 为当前工作区创建 API Key。
+   * Creates an API key for the current workspace.
    *
-   * @param input - 创建 API Key 的输入参数。
-   * @param workspace - 当前工作区。
-   * @returns 创建结果，包含实体和仅返回一次的明文 API Key。
+   * @param input - Input for creating an API key.
+   * @param workspace - Current workspace.
+   * @returns Created entity and the plaintext API key, returned only once.
    */
   @Mutation(() => CreateApiKeyResult)
   async createWorkspaceApiKey(
@@ -41,11 +41,11 @@ export class ApiKeyResolver {
   }
 
   /**
-   * 更新当前身份可访问 API Key 的显示名称。
+   * Updates an API key accessible to the current identity.
    *
-   * @param id - API Key 标识。
-   * @param input - 更新 API Key 的输入参数。
-   * @returns 更新后的 API Key。
+   * @param id - API key identifier.
+   * @param input - Input for updating an API key.
+   * @returns Updated API key.
    */
   @Mutation(() => ApiKey)
   async updateWorkspaceApiKey(
@@ -56,10 +56,10 @@ export class ApiKeyResolver {
   }
 
   /**
-   * 删除当前身份可访问的 API Key。
+   * Deletes an API key accessible to the current identity.
    *
-   * @param id - API Key 标识。
-   * @returns 已删除的 API Key。
+   * @param id - API key identifier.
+   * @returns Deleted API key.
    */
   @Mutation(() => ApiKey)
   async deleteWorkspaceApiKey(

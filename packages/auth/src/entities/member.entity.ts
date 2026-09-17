@@ -25,7 +25,7 @@ export type AuthMemberStatus = "ACTIVE" | "DISABLED";
 @ObjectType()
 @Entity({
   policies: [
-    // 允许跨工作区查询本人的成员关系，但不放开写入。
+    // Allow users to read their own memberships across workspaces without granting writes.
     userScopePolicy({ command: "select" }),
     workspaceScopePolicy(),
   ],

@@ -1,7 +1,7 @@
 import type { Mailer } from "@nest-boot/mailer";
 import type { BetterAuthOptions } from "better-auth";
 
-import type { AuthModuleUserOptions } from "../auth-module-options.interface.js";
+import type { AuthModuleUserOptions } from "../interfaces/auth-module-user-options.interface.js";
 
 type UserConfig = NonNullable<BetterAuthOptions["user"]>;
 type DeleteUser = (
