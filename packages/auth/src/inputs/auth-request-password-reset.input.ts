@@ -5,7 +5,7 @@ import { ZodField } from "@nest-boot/validator";
 @InputType()
 export class AuthRequestPasswordResetInput {
   /** Email address that owns the credential password. */
-  @ZodField((z) => z.email())
+  @ZodField((z) => z.email().max(255))
   @Field(() => String)
   email!: string;
 

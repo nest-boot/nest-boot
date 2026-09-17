@@ -112,6 +112,11 @@ GraphQL 验证错误使用 `BAD_USER_INPUT`，字段详情位于
 `input: null`。属性的 `.optional()` 允许省略，`.nullish()` 额外允许 `null`，
 参见 [Validator 教程](/docs/tutorial/validator)。直接调用 Service 不会自动执行管道。
 
+显示名称会去除首尾空白，长度须为 1–255 个字符。邮箱、头像字符串和封禁原因均受数据库
+255 字符列长度约束。这些约束直接声明在 Input 字段上；API Key 前缀也由 Service 校验，
+以覆盖直接调用。密码长度、角色和权限授权仍由 Service 根据配置判断。
+输入验证不会去除密码或权限字符串的空白，也不会将它们转为小写；回调地址仍允许相对路径。
+
 - 将 `AuthGuard` 作为 `APP_GUARD` 注册一次，并使用 `@Public()` 标记例外；
 - 传输层使用当前身份装饰器，不直接依赖上下文 token；
 - 把高熵 `AUTH_SECRET` 与 `HASH_SECRET` 保存在源码仓库之外；

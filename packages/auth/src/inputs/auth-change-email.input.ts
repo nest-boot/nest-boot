@@ -5,7 +5,7 @@ import { ZodField } from "@nest-boot/validator";
 @InputType()
 export class AuthChangeEmailInput {
   /** New email address. */
-  @ZodField((z) => z.email())
+  @ZodField((z) => z.email().max(255))
   @Field(() => String)
   newEmail!: string;
 

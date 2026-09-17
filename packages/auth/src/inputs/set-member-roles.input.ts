@@ -4,7 +4,7 @@ import { ZodField } from "@nest-boot/validator";
 /** Replaces the roles assigned to a workspace member. */
 @InputType()
 export class SetMemberRolesInput {
-  /** Complete replacement role list; ownership uses the transfer flow. */
+  /** Complete replacement role list; at least one role is required. */
   @ZodField((z) => z.array(z.string()).min(1))
   @Field(() => [String])
   roles!: string[];

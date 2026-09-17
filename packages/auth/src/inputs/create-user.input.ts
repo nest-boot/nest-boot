@@ -5,12 +5,12 @@ import { ZodField } from "@nest-boot/validator";
 @InputType()
 export class CreateUserInput {
   /** Email address for the new user. */
-  @ZodField((z) => z.email())
+  @ZodField((z) => z.email().max(255))
   @Field(() => String)
   email!: string;
 
   /** Display name for the new user. */
-  @ZodField((z) => z.string())
+  @ZodField((z) => z.string().trim().min(1).max(255))
   @Field(() => String)
   name!: string;
 

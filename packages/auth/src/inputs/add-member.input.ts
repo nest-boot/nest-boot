@@ -5,7 +5,7 @@ import { ZodField } from "@nest-boot/validator";
 @InputType()
 export class AddMemberInput {
   /** Email address of the user to add. */
-  @ZodField((z) => z.email())
+  @ZodField((z) => z.email().max(255))
   @Field(() => String)
   email!: string;
 }

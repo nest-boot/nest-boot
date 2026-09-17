@@ -7,7 +7,7 @@ import { MemberStatus } from "../enums/member-status.enum.js";
 @InputType()
 export class UpdateMemberInput {
   /** Workspace-visible member name; does not update the user's profile. */
-  @ZodField((z) => z.string().min(1).max(255).optional())
+  @ZodField((z) => z.string().trim().min(1).max(255).optional())
   @Field(() => String, { nullable: true })
   name?: string;
 

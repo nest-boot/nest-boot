@@ -10,7 +10,7 @@ export class CreateInvitationInput {
   roles!: string[];
 
   /** Email address authorized to accept the invitation. */
-  @ZodField((z) => z.email())
+  @ZodField((z) => z.email().max(255))
   @Field(() => String)
   email!: string;
 

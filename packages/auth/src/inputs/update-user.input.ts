@@ -5,7 +5,7 @@ import { ZodField } from "@nest-boot/validator";
 @InputType()
 export class UpdateUserInput {
   /** Replacement email address. */
-  @ZodField((z) => z.email().optional())
+  @ZodField((z) => z.email().max(255).optional())
   @Field(() => String, { nullable: true })
   email?: string;
 
@@ -15,12 +15,12 @@ export class UpdateUserInput {
   emailVerified?: boolean;
 
   /** Replacement display name. */
-  @ZodField((z) => z.string().optional())
+  @ZodField((z) => z.string().trim().min(1).max(255).optional())
   @Field(() => String, { nullable: true })
   name?: string;
 
   /** Replacement avatar URL, or null to clear it. */
-  @ZodField((z) => z.string().nullish())
+  @ZodField((z) => z.string().max(255).nullish())
   @Field(() => String, { nullable: true })
   image?: string | null;
 }

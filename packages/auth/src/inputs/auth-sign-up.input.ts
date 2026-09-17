@@ -5,12 +5,12 @@ import { ZodField } from "@nest-boot/validator";
 @InputType()
 export class AuthSignUpInput {
   /** User display name. */
-  @ZodField((z) => z.string())
+  @ZodField((z) => z.string().trim().min(1).max(255))
   @Field(() => String)
   name!: string;
 
   /** User email address. */
-  @ZodField((z) => z.email())
+  @ZodField((z) => z.email().max(255))
   @Field(() => String)
   email!: string;
 
@@ -20,7 +20,7 @@ export class AuthSignUpInput {
   password!: string;
 
   /** Optional user avatar URL. */
-  @ZodField((z) => z.string().optional())
+  @ZodField((z) => z.string().max(255).optional())
   @Field(() => String, { nullable: true })
   image?: string;
 

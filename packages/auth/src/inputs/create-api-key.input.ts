@@ -7,7 +7,7 @@ import { ZodField } from "@nest-boot/validator";
 @InputType()
 export class CreateApiKeyInput {
   /** API key display name. */
-  @ZodField((z) => z.string().max(255))
+  @ZodField((z) => z.string().trim().min(1).max(255))
   @Field(() => String)
   name!: string;
 
@@ -17,7 +17,14 @@ export class CreateApiKeyInput {
   expiresAt?: Date | null;
 
   /** Plaintext prefix: 1–32 lowercase letters or digits, starting with a letter. Defaults to sk. */
-  @ZodField((z) => z.string().min(1).max(32).optional())
+  @ZodField((z) =>
+    z
+      .string()
+      .min(1)
+      .max(32)
+      .regex(/^[a-z][a-z0-9]*$/u)
+      .optional(),
+  )
   @Field(() => String, { nullable: true })
   prefix?: string;
 

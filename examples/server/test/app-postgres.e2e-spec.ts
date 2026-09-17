@@ -4057,7 +4057,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     });
   });
 
-  it('rejects null for non-nullable update fields before persistence while allowing omission', async () => {
+  it('rejects invalid update fields before persistence while allowing omission', async () => {
     const owner = await createAuthenticatedUser('Nullable Input Owner');
     const user = await createAuthenticatedUser('Nullable Input Member');
     const workspace = await createWorkspace(owner, 'Nullable Inputs');
@@ -4090,6 +4090,20 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         'status',
         'select status from member where id = ?',
       ],
+      [
+        'updateUser',
+        'UpdateUserInput',
+        user.user.id,
+        'name',
+        'select name from "user" where id = ?',
+      ],
+      [
+        'updateMember',
+        'UpdateMemberInput',
+        member.id,
+        'name',
+        'select name from member where id = ?',
+      ],
     ] as const) {
       const mutate = (input: Record<string, unknown>) =>
         gql(
@@ -4101,21 +4115,31 @@ describe('Server application PostgreSQL integration (e2e)', () => {
           },
         );
       const before = await connection.execute(sql, [id]);
-      const rejected = await mutate({ [field]: null });
-      expect(rejected.body.errors).toEqual([
-        expect.objectContaining({
-          extensions: expect.objectContaining({
-            code: 'BAD_USER_INPUT',
-            validationErrors: expect.arrayContaining([
-              expect.objectContaining({ field: [field] }),
-            ]),
+      const invalidValues =
+        field === 'name' ? [null, '', ' \n\t ', 'x'.repeat(256)] : [null];
+      for (const invalid of invalidValues) {
+        const rejected = await mutate({ [field]: invalid });
+        expect(rejected.body.errors).toEqual([
+          expect.objectContaining({
+            extensions: expect.objectContaining({
+              code: 'BAD_USER_INPUT',
+              validationErrors: expect.arrayContaining([
+                expect.objectContaining({ field: [field] }),
+              ]),
+            }),
           }),
-        }),
-      ]);
-      expect(await connection.execute(sql, [id])).toEqual(before);
+        ]);
+        expect(await connection.execute(sql, [id])).toEqual(before);
+      }
 
       expectNoGraphQLErrors(await mutate({}));
       expect(await connection.execute(sql, [id])).toEqual(before);
+      if (field === 'name') {
+        expectNoGraphQLErrors(await mutate({ name: '  Trimmed name  ' }));
+        expect(await connection.execute(sql, [id])).toEqual([
+          { name: 'Trimmed name' },
+        ]);
+      }
     }
 
     for (const query of [

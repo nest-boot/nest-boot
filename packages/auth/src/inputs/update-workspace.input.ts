@@ -7,7 +7,7 @@ import { ZodField } from "@nest-boot/validator";
 @InputType()
 export class UpdateWorkspaceInput {
   /** New workspace name. */
-  @ZodField((z) => z.string().optional())
+  @ZodField((z) => z.string().trim().min(1).max(255).optional())
   @Field(() => String, { nullable: true })
   name?: string;
 }

@@ -5,7 +5,7 @@ import { ZodField } from "@nest-boot/validator";
 @InputType()
 export class BanUserInput {
   /** Optional reason recorded for the ban. */
-  @ZodField((z) => z.string().optional())
+  @ZodField((z) => z.string().max(255).optional())
   @Field(() => String, { nullable: true })
   reason?: string;
 

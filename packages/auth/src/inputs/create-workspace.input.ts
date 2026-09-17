@@ -7,7 +7,7 @@ import { ZodField } from "@nest-boot/validator";
 @InputType()
 export class CreateWorkspaceInput {
   /** Workspace name. */
-  @ZodField((z) => z.string())
+  @ZodField((z) => z.string().trim().min(1).max(255))
   @Field(() => String)
   name!: string;
 }

@@ -126,6 +126,14 @@ Explicit `input: null` is rejected. For a property, `.optional()` accepts omissi
 and `.nullish()` also accepts `null`; see the [Validator tutorial](/docs/tutorial/validator).
 Direct Service calls do not run the pipe automatically.
 
+Display names are trimmed and must contain 1–255 characters. Email addresses,
+avatar strings, and ban reasons are limited to their 255-character database
+columns. These constraints are declared directly on input fields. API-key
+prefixes are also validated in the Service for direct callers. Password
+lengths and allowed roles/permissions remain configuration-driven Service rules.
+Passwords and permission strings are not trimmed or lowercased by input validation,
+and callback URLs may remain relative paths.
+
 - Register `AuthGuard` once as `APP_GUARD` and mark exceptions with `@Public()`.
 - Use current-identity decorators in transport code instead of raw context tokens.
 - Store high-entropy `AUTH_SECRET` and `HASH_SECRET` values outside source control.
