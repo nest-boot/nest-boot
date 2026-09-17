@@ -1,69 +1,132 @@
 ---
 title: "验证器"
-description: "NestJS 验证工具，集成 class-validator。"
+description: "使用属性装饰器为 NestJS DTO 构建 Zod 验证。"
 ---
 
-`@nest-boot/validator` 提供基于 [class-validator](https://github.com/typestack/class-validator) 的国际化验证装饰器。它本身不会注册 Nest 模块，也不会自动启用全局验证管道。
+`@nest-boot/validator` 使用类属性装饰器构建 Zod object schema，并通过异步 Pipe 验证 NestJS DTO。它不依赖 `class-validator`、`class-transformer` 或 `@nest-boot/i18n`。
 
 ## 安装
 
 ```bash
-pnpm add @nest-boot/validator @nest-boot/i18n class-validator class-transformer
+pnpm add @nest-boot/validator zod
 ```
 
-## 用法
+## 定义 DTO
 
-在 `main.ts` 中全局应用 `ValidationPipe`：
+`ZodField` 既可以直接接收 Zod schema，也可以接收一个以 Zod 命名空间为参数的工厂函数：
 
 ```typescript
-import { ValidationPipe } from "@nestjs/common";
+import { toZodSchema, ZodField } from "@nest-boot/validator";
+import { z } from "zod";
+
+export class UserDto {
+  @ZodField(z.string().email())
+  email!: string;
+
+  @ZodField((z) => z.string().min(8))
+  password!: string;
+}
+
+export const UserSchema = toZodSchema(UserDto);
+export type User = z.infer<typeof UserSchema>;
+```
+
+工厂函数会在 `toZodSchema` 首次组装 schema 时执行，既适合延迟引用，也可以减少装饰器中的重复导入。
+
+`toZodSchema` 使用类实例类型作为 schema 的推导输出。属性声明必须和 Zod 输出保持一致，特别是使用 coercion 或 transform 时：
+
+```typescript
+class QueryDto {
+  @ZodField((z) => z.coerce.number().int().positive())
+  page!: number;
+}
+```
+
+字段装饰器支持继承。子类为同名属性声明 `ZodField` 时，会覆盖继承的 schema。
+
+## 启用 NestJS 验证
+
+全局注册 `ZodValidationPipe`：
+
+```typescript
+import { ZodValidationPipe } from "@nest-boot/validator";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app/app.module";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-
-  app.useGlobalPipes(
-    new ValidationPipe({
-      transform: true,
-      forbidUnknownValues: false,
-    }),
-  );
-
+  app.useGlobalPipes(new ZodValidationPipe());
   await app.listen(process.env.PORT ?? 4000);
 }
 
 void bootstrap();
 ```
 
-### 验证输入类型
+Pipe 只验证包含 `ZodField` 或 `ZodObject` 元数据的类，其他参数保持原样通过。它使用 `safeParseAsync`，因此支持异步 refinement；同时会把 Zod 解析后的结果交给控制器，使 coercion 和 transform 生效。
 
-Nest Boot 装饰器可以和标准 `class-validator` 装饰器一起使用。默认错误消息通过 `@nest-boot/i18n` 的 `validation` 和 `property` 命名空间解析。
+输入无效时会抛出 `ZodValidationException`。HTTP 响应仅包含经过清理的 `code`、`path` 和 `message`，不会返回被拒绝的输入值。如需在异常过滤器中记录原始 Zod 错误，可以调用 `getZodError()`。
+
+也可以自定义异常：
 
 ```typescript
-import { Field, InputType } from "@nest-boot/graphql";
-import { IsEmail, IsTimezone, Length } from "@nest-boot/validator";
-import { IsString } from "class-validator";
+import { BadRequestException } from "@nestjs/common";
+import { ZodValidationPipe } from "@nest-boot/validator";
 
-@InputType()
-export class CreateUserInput {
-  @IsString()
-  @Length(2, 80)
-  @Field(() => String)
-  name!: string;
+new ZodValidationPipe({
+  createValidationException: (error) =>
+    new BadRequestException({
+      message: "Invalid request",
+      issues: error.issues,
+    }),
+});
+```
 
-  @IsEmail()
-  @Field(() => String)
-  email!: string;
+## 对象级配置
 
-  @IsTimezone()
-  @Field(() => String)
-  timezone!: string;
+对于已经包含字段装饰器的类，`ZodObject` 是可选的。空 DTO、未知字段策略或跨字段验证可以使用它：
+
+```typescript
+import { ZodField, ZodObject } from "@nest-boot/validator";
+import { z } from "zod";
+
+@ZodObject({
+  unknownKeys: "strict",
+  configure: (schema) =>
+    schema.refine((value) => value.password === value.confirmPassword, {
+      path: ["confirmPassword"],
+      message: "Passwords do not match",
+    }),
+})
+class PasswordDto {
+  @ZodField(z.string().min(8))
+  password!: string;
+
+  @ZodField(z.string())
+  confirmPassword!: string;
 }
 ```
 
-该包还导出了 `ArrayLength`、`IsDate`、`IsDomain`、`IsNumberString`、`IsUrl`、`Min`、`Max`，以及 `IsGreaterThan` 等数值比较装饰器。为方便使用，它还从 `class-validator` 重新导出了 `IsOptional` 和 `ValidateNested`。
+`unknownKeys` 支持 `strip`（默认）、`strict` 和 `passthrough`。
+
+## 嵌套 DTO
+
+嵌套装饰类可以在工厂函数中配合 `toZodSchema` 使用：
+
+```typescript
+class AddressDto {
+  @ZodField((z) => z.string().min(1))
+  city!: string;
+}
+
+class UserDto {
+  @ZodField(() => toZodSchema(AddressDto))
+  address!: AddressDto;
+
+  @ZodField((z) => z.array(toZodSchema(AddressDto)))
+  previousAddresses!: AddressDto[];
+}
+```
 
 ## API 参考
 
-详细的 API 文档请参阅[验证器 API 参考](/docs/api/validator)。
+详细 API 文档请参阅[验证器 API 参考](/docs/api/validator)。
