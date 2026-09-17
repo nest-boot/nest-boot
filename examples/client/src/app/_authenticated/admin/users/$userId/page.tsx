@@ -88,10 +88,6 @@ const UPDATE_USER_FROM_USER_ROUTE = graphql(`
   mutation updateManagedUserFromUserRoute($id: ID!, $input: UpdateUserInput!) {
     updateUser(id: $id, input: $input) {
       id
-      name
-      email
-      emailVerified
-      image
     }
   }
 `);
@@ -103,7 +99,6 @@ const SET_USER_PERMISSIONS_FROM_USER_ROUTE = graphql(`
   ) {
     setUserPermissions(id: $id, input: $input) {
       id
-      permissions
     }
   }
 `);
@@ -112,7 +107,6 @@ const SET_USER_ROLES_FROM_USER_ROUTE = graphql(`
   mutation setUserRolesFromUserRoute($id: ID!, $input: SetUserRolesInput!) {
     setUserRoles(id: $id, input: $input) {
       id
-      roles
     }
   }
 `);
@@ -121,9 +115,6 @@ const BAN_USER_FROM_USER_ROUTE = graphql(`
   mutation banUserFromUserRoute($id: ID!, $input: BanUserInput) {
     banUser(id: $id, input: $input) {
       id
-      banned
-      banReason
-      banExpiresAt
     }
   }
 `);
@@ -132,9 +123,6 @@ const UNBAN_USER_FROM_USER_ROUTE = graphql(`
   mutation unbanUserFromUserRoute($id: ID!) {
     unbanUser(id: $id) {
       id
-      banned
-      banReason
-      banExpiresAt
     }
   }
 `);

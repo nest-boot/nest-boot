@@ -596,12 +596,19 @@ describe("UserService", () => {
     );
     impersonation.session.impersonatedBy = ref(UserEntity, administrator);
     em.findOne.mockResolvedValue(administrator);
+    let committed = false;
+    em.transactional.mockImplementation(async (callback) => {
+      const result = await callback(em);
+      committed = true;
+      return result;
+    });
 
     await expect(
       service.stopImpersonating(impersonation.session),
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(em.remove).toHaveBeenCalledWith(impersonation.session);
     expect(em.flush).toHaveBeenCalled();
+    expect(committed).toBe(true);
   });
 
   it("rejects banned targets and handles incomplete impersonation state", async () => {

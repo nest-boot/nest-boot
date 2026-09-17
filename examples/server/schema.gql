@@ -2,9 +2,10 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
-type AcceptInvitationResult {
-  invitation: Invitation!
-  member: Member!
+type AcceptInvitationPayload {
+  id: ID!
+  memberId: ID!
+  workspaceId: ID!
 }
 
 type Account {
@@ -290,6 +291,10 @@ input BanUserInput {
   reason: String
 }
 
+type BanUserPayload {
+  id: ID!
+}
+
 input CreateApiKeyInput {
   expiresAt: DateTime
   name: String!
@@ -314,6 +319,10 @@ input CreateUserInput {
   password: String!
   permissions: [String!]
   roles: [String!]
+}
+
+type CreateUserPayload {
+  id: ID!
 }
 
 input CreateWorkspaceInput {
@@ -514,16 +523,16 @@ enum MemberStatus {
 }
 
 type Mutation {
-  acceptInvitation(id: ID!): AcceptInvitationResult!
+  acceptInvitation(id: ID!): AcceptInvitationPayload!
   addMember(input: AddMemberInput!): Member!
-  banUser(id: ID!, input: BanUserInput): User!
+  banUser(id: ID!, input: BanUserInput): BanUserPayload!
   cancelInvitation(id: ID!): Invitation!
   changeCurrentUserEmail(input: AuthChangeEmailInput!): Boolean!
   changeCurrentUserPassword(
     input: AuthChangePasswordInput!
   ): AuthChangePasswordResultType!
   createInvitation(input: CreateInvitationInput!): Invitation!
-  createUser(input: CreateUserInput!): User!
+  createUser(input: CreateUserInput!): CreateUserPayload!
   createUserApiKey(input: CreateApiKeyInput!): CreateApiKeyResult!
   createWorkspace(input: CreateWorkspaceInput!): CreateWorkspacePayload!
   createWorkspaceApiKey(input: CreateApiKeyInput!): CreateApiKeyResult!
@@ -553,18 +562,21 @@ type Mutation {
   setMemberPermissions(id: ID!, input: SetMemberPermissionsInput!): Member!
   setMemberRoles(id: ID!, input: SetMemberRolesInput!): Member!
   setUserPassword(id: ID!, input: SetUserPasswordInput!): Boolean!
-  setUserPermissions(id: ID!, input: SetUserPermissionsInput!): User!
-  setUserRoles(id: ID!, input: SetUserRolesInput!): User!
+  setUserPermissions(
+    id: ID!
+    input: SetUserPermissionsInput!
+  ): SetUserPermissionsPayload!
+  setUserRoles(id: ID!, input: SetUserRolesInput!): SetUserRolesPayload!
   signIn(input: AuthSignInInput!): AuthSignInResultType!
   signInSocial(input: AuthSignInSocialInput!): AuthSignInSocialResultType!
   signOut: Boolean!
   signUp(input: AuthSignUpInput!): SignUpPayload!
   stopImpersonating: User
-  unbanUser(id: ID!): User!
+  unbanUser(id: ID!): UnbanUserPayload!
   unlinkCurrentUserAccount(id: ID!): Boolean!
   updateCurrentUser(input: AuthUpdateUserInput!): Boolean!
   updateMember(id: ID!, input: UpdateMemberInput!): Member
-  updateUser(id: ID!, input: UpdateUserInput!): User!
+  updateUser(id: ID!, input: UpdateUserInput!): UpdateUserPayload!
   updateUserApiKey(id: ID!, input: UpdateApiKeyInput!): ApiKey!
   updateWorkspace(id: ID!, input: UpdateWorkspaceInput!): Workspace!
   updateWorkspaceApiKey(id: ID!, input: UpdateApiKeyInput!): ApiKey!
@@ -747,8 +759,16 @@ input SetUserPermissionsInput {
   permissions: [String!]!
 }
 
+type SetUserPermissionsPayload {
+  id: ID!
+}
+
 input SetUserRolesInput {
   roles: [String!]!
+}
+
+type SetUserRolesPayload {
+  id: ID!
 }
 
 type SignUpPayload {
@@ -759,6 +779,10 @@ type SignUpPayload {
 enum TotalCountRelation {
   EQ
   GTE
+}
+
+type UnbanUserPayload {
+  id: ID!
 }
 
 input UpdateApiKeyInput {
@@ -779,6 +803,10 @@ input UpdateUserInput {
   emailVerified: Boolean
   image: String
   name: String
+}
+
+type UpdateUserPayload {
+  id: ID!
 }
 
 input UpdateWorkspaceInput {

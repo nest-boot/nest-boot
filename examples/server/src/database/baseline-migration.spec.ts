@@ -24,6 +24,11 @@ async function sqlFor(
 }
 
 describe('ordered auth migrations', () => {
+  it('explicitly refuses to roll back shared contact emails without changing data', () => {
+    const migration = new Migration20260915073637({} as never, {} as never);
+    expect(() => migration.down()).toThrow(/irreversible/i);
+    expect(migration.getQueries()).toEqual([]);
+  });
   it('removes only the member contact-email unique constraint', async () => {
     expect(await sqlFor(Migration20260915073637)).toBe(
       'alter table "member" drop constraint "member_email_workspace_id_unique";',

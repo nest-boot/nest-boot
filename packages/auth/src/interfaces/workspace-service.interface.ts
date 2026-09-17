@@ -45,7 +45,13 @@ export interface CreateInvitationOptions {
   expiresIn?: number;
 }
 
-export { AcceptInvitationResult } from "../types/accept-invitation-result.type.js";
+/** Domain result of accepting an invitation; GraphQL exposes only its identifiers. */
+export interface AcceptInvitationResult {
+  /** Accepted invitation. */
+  invitation: Invitation;
+  /** Resulting workspace membership. */
+  member: Member;
+}
 
 /** Workspace details with members and invitation lifecycle records. */
 export interface FullWorkspace {

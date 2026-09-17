@@ -1751,15 +1751,39 @@ describe('example native RLS migrations with PGlite', () => {
     expect(await orm.schema.getUpdateSchemaSQL({ wrap: false })).toBe('');
   });
 
-  it('reverts and reapplies the baseline while preserving roles and default privileges', async () => {
+  it('refuses irreversible rollback without modifying shared contact emails or migration history', async () => {
+    const admin = orm.em.fork();
+    const workspace = admin.create(Workspace, { name: 'Rollback contacts' });
+    const members = ['first', 'second'].map((name) =>
+      admin.create(Member, {
+        name,
+        workspace,
+        email: 'shared-rollback@example.test',
+        user: admin.create(User, {
+          name,
+          email: `${name}-rollback@example.test`,
+          emailVerified: false,
+        }),
+      }),
+    );
+    await admin.persist(members).flush();
+    const readMembers = () =>
+      admin.execute(
+        'select id, email from member where workspace_id = ? order by id',
+        [workspace.id],
+      );
+    const contacts = await readMembers();
+    expect(contacts).toHaveLength(2);
+    const executed = await orm.migrator.getExecuted();
     const readDefaultPrivileges = () =>
       orm.em.execute(
         "select d.defaclobjtype, r.rolname, a.privilege_type, a.is_grantable from pg_default_acl d join pg_namespace n on n.oid = d.defaclnamespace cross join lateral aclexplode(d.defaclacl) a join pg_roles r on r.oid = a.grantee where n.nspname = 'public' and r.rolname in ('anonymous', 'authenticated') order by 1, 2, 3",
       );
     const defaultPrivileges = await readDefaultPrivileges();
     expect(defaultPrivileges.length).toBeGreaterThan(0);
-    await orm.migrator.down({ to: 0 });
-    expect(await orm.migrator.getExecuted()).toEqual([]);
+    await expect(orm.migrator.down({ to: 0 })).rejects.toThrow(/irreversible/i);
+    expect(await orm.migrator.getExecuted()).toEqual(executed);
+    expect(await readMembers()).toEqual(contacts);
     expect(await readDefaultPrivileges()).toEqual(defaultPrivileges);
     expect(
       await orm.em.execute(
@@ -1768,15 +1792,9 @@ describe('example native RLS migrations with PGlite', () => {
     ).toEqual([{ user_read: null, user_delete: null }]);
     expect(
       await orm.em.execute(
-        "select tablename from pg_tables where schemaname = 'public' and tablename <> 'mikro_orm_migrations'",
-      ),
-    ).toEqual([]);
-    expect(
-      await orm.em.execute(
         "select rolname from pg_roles where rolname in ('anonymous', 'authenticated')",
       ),
     ).toHaveLength(2);
-    await orm.migrator.up();
     expect(await orm.migrator.getPending()).toEqual([]);
     expect(await readDefaultPrivileges()).toEqual(defaultPrivileges);
     expect(await orm.schema.getUpdateSchemaSQL({ wrap: false })).toBe('');

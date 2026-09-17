@@ -10,6 +10,42 @@ import { type WorkspaceService } from "../services/workspace.service.js";
 import { UserResolver } from "./user.resolver.js";
 
 describe("UserResolver", () => {
+  it("returns only identifiers after administrative writes", async () => {
+    const user = { id: "created-user", name: "Private profile" } as BaseUser;
+    const service = {
+      createUser: vi.fn().mockResolvedValue(user),
+      updateUser: vi.fn().mockResolvedValue(user),
+      setUserRoles: vi.fn().mockResolvedValue(user),
+      setUserPermissions: vi.fn().mockResolvedValue(user),
+      banUser: vi.fn().mockResolvedValue(user),
+      unbanUser: vi.fn().mockResolvedValue(user),
+    };
+    const { resolver } = createResolver(service);
+    const input = {
+      email: "new@example.com",
+      name: "New",
+      password: "password",
+    };
+    for (const result of [
+      resolver.createUser(input),
+      resolver.updateUser(user.id, { name: "Updated" }),
+      resolver.setUserRoles(user.id, { roles: ["user"] }),
+      resolver.setUserPermissions(user.id, { permissions: [] }),
+      resolver.banUser(user.id, { reason: "Test", expiresIn: 60 }),
+      resolver.unbanUser(user.id),
+    ]) {
+      await expect(result).resolves.toEqual({ id: user.id });
+    }
+    expect(service.createUser).toHaveBeenCalledWith(input);
+    expect(service.updateUser).toHaveBeenCalledWith(user.id, {
+      name: "Updated",
+    });
+    expect(service.banUser).toHaveBeenCalledWith(user.id, {
+      banReason: "Test",
+      banExpiresIn: 60,
+    });
+    expect(service.unbanUser).toHaveBeenCalledWith(user.id);
+  });
   it("delegates account pagination and authorization to AccountService", async () => {
     const user = { id: "self" } as BaseUser;
     const args = { first: 10, after: "cursor" };
@@ -109,7 +145,7 @@ describe("UserResolver", () => {
       resolver.setUserPermissions(user.id, {
         permissions: ["user:list"],
       }),
-    ).resolves.toBe(user);
+    ).resolves.toEqual({ id: user.id });
     expect(service.setUserPermissions).toHaveBeenCalledWith(user.id, [
       "user:list",
     ]);
@@ -129,7 +165,7 @@ describe("UserResolver", () => {
     expect(resolver.userPermissions()).toEqual(["user:list"]);
     await expect(
       resolver.setUserRoles(user.id, { roles: ["admin"] }),
-    ).resolves.toBe(user);
+    ).resolves.toEqual({ id: user.id });
     expect(service.setUserRoles).toHaveBeenCalledWith(user.id, ["admin"]);
   });
 });

@@ -110,9 +110,6 @@ describe("auth GraphQL schema", () => {
     expect(schema.getQueryType()?.getFields().user.type.toString()).toBe(
       "User",
     );
-    expect(
-      schema.getMutationType()?.getFields().createUser.type.toString(),
-    ).toBe("User!");
 
     expect(schema.getMutationType()?.getFields().signUp.type.toString()).toBe(
       "SignUpPayload!",
@@ -126,6 +123,12 @@ describe("auth GraphQL schema", () => {
     expect(schema.getType("AuthSignUpResultType")).toBeUndefined();
 
     for (const [operation, payload, field] of [
+      ["createUser", "CreateUserPayload", "id"],
+      ["updateUser", "UpdateUserPayload", "id"],
+      ["setUserPermissions", "SetUserPermissionsPayload", "id"],
+      ["setUserRoles", "SetUserRolesPayload", "id"],
+      ["banUser", "BanUserPayload", "id"],
+      ["unbanUser", "UnbanUserPayload", "id"],
       ["createWorkspace", "CreateWorkspacePayload", "id"],
       ["deleteWorkspace", "DeleteWorkspacePayload", "id"],
       ["deleteUser", "DeleteUserPayload", "id"],
@@ -394,10 +397,20 @@ describe("auth GraphQL schema", () => {
       "CreateApiKeyResult!",
     );
     const accepted = schema.getType(
-      "AcceptInvitationResult",
+      "AcceptInvitationPayload",
     ) as GraphQLObjectType;
-    expect(accepted.getFields().invitation.type.toString()).toBe("Invitation!");
-    expect(accepted.getFields().member.type.toString()).toBe("Member!");
+    expect(mutations.acceptInvitation.type.toString()).toBe(
+      "AcceptInvitationPayload!",
+    );
+    expect(Object.keys(accepted.getFields()).sort()).toEqual([
+      "id",
+      "memberId",
+      "workspaceId",
+    ]);
+    for (const field of Object.values(accepted.getFields())) {
+      expect(field.type.toString()).toBe("ID!");
+    }
+    expect(schema.getType("AcceptInvitationResult")).toBeUndefined();
 
     await moduleRef.close();
   });

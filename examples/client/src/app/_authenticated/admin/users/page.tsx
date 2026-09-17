@@ -76,11 +76,6 @@ const CREATE_USER_FROM_USERS_ROUTE = graphql(`
   mutation createUserFromUsersRoute($input: CreateUserInput!) {
     createUser(input: $input) {
       id
-      name
-      email
-      emailVerified
-      banned
-      createdAt
     }
   }
 `);

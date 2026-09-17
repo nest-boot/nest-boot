@@ -16,7 +16,7 @@ import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { CreateInvitationInput } from "../inputs/create-invitation.input.js";
 import { InvitationService } from "../services/invitation.service.js";
-import { AcceptInvitationResult } from "../types/accept-invitation-result.type.js";
+import { AcceptInvitationPayload } from "../types/accept-invitation-payload.type.js";
 
 /** 工作区邀请 GraphQL 解析器。 */
 @Resolver(() => Invitation)
@@ -62,14 +62,18 @@ export class InvitationResolver {
   }
 
   /** 接受发送给当前用户的邀请。 */
-  @Mutation(() => AcceptInvitationResult)
+  @Mutation(() => AcceptInvitationPayload)
   async acceptInvitation(
     @Args("id", { type: () => ID }) id: string,
     @CurrentUser() user: User,
-  ): Promise<AcceptInvitationResult> {
+  ): Promise<AcceptInvitationPayload> {
     const result = await this.invitationService.acceptInvitation(user, id);
     if (!result) throw new NotFoundException("Workspace invitation not found");
-    return result;
+    return {
+      id: result.invitation.id,
+      memberId: result.member.id,
+      workspaceId: result.invitation.workspace.id,
+    };
   }
 
   /** 拒绝发送给当前用户的邀请。 */

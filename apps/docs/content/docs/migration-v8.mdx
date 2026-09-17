@@ -159,3 +159,16 @@ GraphQL `signUp` now returns `SignUpPayload { id, token }` instead of
 `AuthService.signUpPayload()` replaces `signUpEntity()`. The lower-level
 `AuthService.signUp()` result is unchanged, and a null token never establishes
 an authenticated identity.
+
+Administrative `createUser`, `updateUser`, `setUserRoles`, `setUserPermissions`,
+`banUser`, and `unbanUser` mutations now return operation-specific payloads
+containing only `id`. Remove profile/relation selections from these mutations
+and refetch the user separately after a successful write.
+`acceptInvitation` returns `AcceptInvitationPayload { id, memberId, workspaceId }`;
+select the returned workspace in a subsequent request to query its membership.
+Domain Service return values and authorization checks are unchanged.
+
+`Migration20260915073637` intentionally refuses rollback: shared member contact
+emails are now valid data. Restoring uniqueness requires a separate migration
+and an explicit data-preserving reconciliation plan; `down()` never deletes,
+clears, or rewrites contact emails automatically.

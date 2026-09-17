@@ -408,6 +408,15 @@ The example migration sequence `Initial → generated schema migrations` enables
 
 ### Management mutations
 
+`createUser`, `updateUser`, `setUserRoles`, `setUserPermissions`, `banUser`, and
+`unbanUser` return operation-specific payloads containing only `id`. Refetch
+authorized user fields separately after success instead of selecting self-only
+relations on an administrative mutation result.
+`acceptInvitation` returns `AcceptInvitationPayload { id, memberId, workspaceId }`,
+without inviter/profile relations. Select that workspace in the next request
+before querying membership details. Domain Services still return entities and
+retain their authorization checks.
+
 Resolvers pass resource IDs and inputs to Services, which enforce abilities,
 resource ownership, current-workspace restrictions and lifecycle invariants
 using request context as needed. Ordinary writes also retain database RLS;

@@ -53,7 +53,13 @@ import { InvitationService } from "../services/invitation.service.js";
 import { SessionService } from "../services/session.service.js";
 import { UserService } from "../services/user.service.js";
 import { WorkspaceService } from "../services/workspace.service.js";
+import { BanUserPayload } from "../types/ban-user-payload.type.js";
+import { CreateUserPayload } from "../types/create-user-payload.type.js";
 import { DeleteUserPayload } from "../types/delete-user-payload.type.js";
+import { SetUserPermissionsPayload } from "../types/set-user-permissions-payload.type.js";
+import { SetUserRolesPayload } from "../types/set-user-roles-payload.type.js";
+import { UnbanUserPayload } from "../types/unban-user-payload.type.js";
+import { UpdateUserPayload } from "../types/update-user-payload.type.js";
 
 /** GraphQL transport for user administration. */
 @Resolver(() => User)
@@ -158,54 +164,67 @@ export class UserResolver {
   }
 
   /** Creates a credential user. */
-  @Mutation(() => User)
-  async createUser(@Args("input") input: CreateUserInput) {
-    return await this.userService.createUser(input);
+  @Mutation(() => CreateUserPayload)
+  async createUser(
+    @Args("input") input: CreateUserInput,
+  ): Promise<CreateUserPayload> {
+    const user = await this.userService.createUser(input);
+    return { id: user.id };
   }
 
   /** Updates mutable user profile fields. */
-  @Mutation(() => User)
+  @Mutation(() => UpdateUserPayload)
   async updateUser(
     @Args("id", { type: () => ID }) id: string,
     @Args("input") input: UpdateUserInput,
-  ) {
-    return await this.userService.updateUser(id, { ...input });
+  ): Promise<UpdateUserPayload> {
+    const user = await this.userService.updateUser(id, { ...input });
+    return { id: user.id };
   }
 
   /** Replaces the direct permissions assigned to a user. */
-  @Mutation(() => User)
+  @Mutation(() => SetUserPermissionsPayload)
   async setUserPermissions(
     @Args("id", { type: () => ID }) id: string,
     @Args("input") input: SetUserPermissionsInput,
-  ) {
-    return await this.userService.setUserPermissions(id, input.permissions);
+  ): Promise<SetUserPermissionsPayload> {
+    const user = await this.userService.setUserPermissions(
+      id,
+      input.permissions,
+    );
+    return { id: user.id };
   }
 
   /** Replaces the application roles assigned to a user. */
-  @Mutation(() => User)
+  @Mutation(() => SetUserRolesPayload)
   async setUserRoles(
     @Args("id", { type: () => ID }) id: string,
     @Args("input") input: SetUserRolesInput,
-  ) {
-    return await this.userService.setUserRoles(id, input.roles);
+  ): Promise<SetUserRolesPayload> {
+    const user = await this.userService.setUserRoles(id, input.roles);
+    return { id: user.id };
   }
 
   /** Bans a user and revokes their sessions. */
-  @Mutation(() => User)
+  @Mutation(() => BanUserPayload)
   async banUser(
     @Args("id", { type: () => ID }) id: string,
     @Args("input", { nullable: true }) input?: BanUserInput,
-  ) {
-    return await this.userService.banUser(id, {
+  ): Promise<BanUserPayload> {
+    const user = await this.userService.banUser(id, {
       banExpiresIn: input?.expiresIn,
       banReason: input?.reason,
     });
+    return { id: user.id };
   }
 
   /** Removes an active user ban. */
-  @Mutation(() => User)
-  async unbanUser(@Args("id", { type: () => ID }) id: string) {
-    return await this.userService.unbanUser(id);
+  @Mutation(() => UnbanUserPayload)
+  async unbanUser(
+    @Args("id", { type: () => ID }) id: string,
+  ): Promise<UnbanUserPayload> {
+    const user = await this.userService.unbanUser(id);
+    return { id: user.id };
   }
 
   /** Replaces a user's credential password. */

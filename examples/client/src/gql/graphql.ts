@@ -71,10 +71,11 @@ export type Scalars = {
   WorkspaceFilter: { input: any; output: any };
 };
 
-export type AcceptInvitationResult = {
-  __typename?: "AcceptInvitationResult";
-  invitation: Invitation;
-  member: Member;
+export type AcceptInvitationPayload = {
+  __typename?: "AcceptInvitationPayload";
+  id: Scalars["ID"]["output"];
+  memberId: Scalars["ID"]["output"];
+  workspaceId: Scalars["ID"]["output"];
 };
 
 export type Account = {
@@ -308,6 +309,11 @@ export type BanUserInput = {
   reason?: InputMaybe<Scalars["String"]["input"]>;
 };
 
+export type BanUserPayload = {
+  __typename?: "BanUserPayload";
+  id: Scalars["ID"]["output"];
+};
+
 export type CreateApiKeyInput = {
   expiresAt?: InputMaybe<Scalars["DateTime"]["input"]>;
   name: Scalars["String"]["input"];
@@ -333,6 +339,11 @@ export type CreateUserInput = {
   password: Scalars["String"]["input"];
   permissions?: InputMaybe<Array<Scalars["String"]["input"]>>;
   roles?: InputMaybe<Array<Scalars["String"]["input"]>>;
+};
+
+export type CreateUserPayload = {
+  __typename?: "CreateUserPayload";
+  id: Scalars["ID"]["output"];
 };
 
 export type CreateWorkspaceInput = {
@@ -468,14 +479,14 @@ export enum MemberStatus {
 
 export type Mutation = {
   __typename?: "Mutation";
-  acceptInvitation: AcceptInvitationResult;
+  acceptInvitation: AcceptInvitationPayload;
   addMember: Member;
-  banUser: User;
+  banUser: BanUserPayload;
   cancelInvitation: Invitation;
   changeCurrentUserEmail: Scalars["Boolean"]["output"];
   changeCurrentUserPassword: AuthChangePasswordResultType;
   createInvitation: Invitation;
-  createUser: User;
+  createUser: CreateUserPayload;
   createUserApiKey: CreateApiKeyResult;
   createWorkspace: CreateWorkspacePayload;
   createWorkspaceApiKey: CreateApiKeyResult;
@@ -501,18 +512,18 @@ export type Mutation = {
   setMemberPermissions: Member;
   setMemberRoles: Member;
   setUserPassword: Scalars["Boolean"]["output"];
-  setUserPermissions: User;
-  setUserRoles: User;
+  setUserPermissions: SetUserPermissionsPayload;
+  setUserRoles: SetUserRolesPayload;
   signIn: AuthSignInResultType;
   signInSocial: AuthSignInSocialResultType;
   signOut: Scalars["Boolean"]["output"];
   signUp: SignUpPayload;
   stopImpersonating?: Maybe<User>;
-  unbanUser: User;
+  unbanUser: UnbanUserPayload;
   unlinkCurrentUserAccount: Scalars["Boolean"]["output"];
   updateCurrentUser: Scalars["Boolean"]["output"];
   updateMember?: Maybe<Member>;
-  updateUser: User;
+  updateUser: UpdateUserPayload;
   updateUserApiKey: ApiKey;
   updateWorkspace: Workspace;
   updateWorkspaceApiKey: ApiKey;
@@ -833,8 +844,18 @@ export type SetUserPermissionsInput = {
   permissions: Array<Scalars["String"]["input"]>;
 };
 
+export type SetUserPermissionsPayload = {
+  __typename?: "SetUserPermissionsPayload";
+  id: Scalars["ID"]["output"];
+};
+
 export type SetUserRolesInput = {
   roles: Array<Scalars["String"]["input"]>;
+};
+
+export type SetUserRolesPayload = {
+  __typename?: "SetUserRolesPayload";
+  id: Scalars["ID"]["output"];
 };
 
 export type SignUpPayload = {
@@ -847,6 +868,11 @@ export enum TotalCountRelation {
   EQ = "EQ",
   GTE = "GTE",
 }
+
+export type UnbanUserPayload = {
+  __typename?: "UnbanUserPayload";
+  id: Scalars["ID"]["output"];
+};
 
 export type UpdateApiKeyInput = {
   enabled?: InputMaybe<Scalars["Boolean"]["input"]>;
@@ -866,6 +892,11 @@ export type UpdateUserInput = {
   emailVerified?: InputMaybe<Scalars["Boolean"]["input"]>;
   image?: InputMaybe<Scalars["String"]["input"]>;
   name?: InputMaybe<Scalars["String"]["input"]>;
+};
+
+export type UpdateUserPayload = {
+  __typename?: "UpdateUserPayload";
+  id: Scalars["ID"]["output"];
 };
 
 export type UpdateWorkspaceInput = {
@@ -1136,14 +1167,7 @@ export type UpdateManagedUserFromUserRouteMutationVariables = Exact<{
 
 export type UpdateManagedUserFromUserRouteMutation = {
   __typename?: "Mutation";
-  updateUser: {
-    __typename?: "User";
-    id: string;
-    name: string;
-    email: string;
-    emailVerified: boolean;
-    image?: string | null;
-  };
+  updateUser: { __typename?: "UpdateUserPayload"; id: string };
 };
 
 export type SetUserPermissionsFromUserRouteMutationVariables = Exact<{
@@ -1153,11 +1177,7 @@ export type SetUserPermissionsFromUserRouteMutationVariables = Exact<{
 
 export type SetUserPermissionsFromUserRouteMutation = {
   __typename?: "Mutation";
-  setUserPermissions: {
-    __typename?: "User";
-    id: string;
-    permissions: Array<string>;
-  };
+  setUserPermissions: { __typename?: "SetUserPermissionsPayload"; id: string };
 };
 
 export type SetUserRolesFromUserRouteMutationVariables = Exact<{
@@ -1167,7 +1187,7 @@ export type SetUserRolesFromUserRouteMutationVariables = Exact<{
 
 export type SetUserRolesFromUserRouteMutation = {
   __typename?: "Mutation";
-  setUserRoles: { __typename?: "User"; id: string; roles: Array<string> };
+  setUserRoles: { __typename?: "SetUserRolesPayload"; id: string };
 };
 
 export type BanUserFromUserRouteMutationVariables = Exact<{
@@ -1177,13 +1197,7 @@ export type BanUserFromUserRouteMutationVariables = Exact<{
 
 export type BanUserFromUserRouteMutation = {
   __typename?: "Mutation";
-  banUser: {
-    __typename?: "User";
-    id: string;
-    banned: boolean;
-    banReason?: string | null;
-    banExpiresAt?: any | null;
-  };
+  banUser: { __typename?: "BanUserPayload"; id: string };
 };
 
 export type UnbanUserFromUserRouteMutationVariables = Exact<{
@@ -1192,13 +1206,7 @@ export type UnbanUserFromUserRouteMutationVariables = Exact<{
 
 export type UnbanUserFromUserRouteMutation = {
   __typename?: "Mutation";
-  unbanUser: {
-    __typename?: "User";
-    id: string;
-    banned: boolean;
-    banReason?: string | null;
-    banExpiresAt?: any | null;
-  };
+  unbanUser: { __typename?: "UnbanUserPayload"; id: string };
 };
 
 export type SetUserPasswordFromUserRouteMutationVariables = Exact<{
@@ -1289,15 +1297,7 @@ export type CreateUserFromUsersRouteMutationVariables = Exact<{
 
 export type CreateUserFromUsersRouteMutation = {
   __typename?: "Mutation";
-  createUser: {
-    __typename?: "User";
-    id: string;
-    name: string;
-    email: string;
-    emailVerified: boolean;
-    banned: boolean;
-    createdAt: any;
-  };
+  createUser: { __typename?: "CreateUserPayload"; id: string };
 };
 
 export type SignOutFromSidebarUserMutationVariables = Exact<{
@@ -1720,15 +1720,7 @@ export type AcceptInvitationFromUserWorkspacesRouteMutationVariables = Exact<{
 
 export type AcceptInvitationFromUserWorkspacesRouteMutation = {
   __typename?: "Mutation";
-  acceptInvitation: {
-    __typename?: "AcceptInvitationResult";
-    invitation: {
-      __typename?: "Invitation";
-      id: string;
-      status: InvitationStatus;
-    };
-    member: { __typename?: "Member"; id: string };
-  };
+  acceptInvitation: { __typename?: "AcceptInvitationPayload"; id: string };
 };
 
 export type RejectInvitationFromUserWorkspacesRouteMutationVariables = Exact<{
@@ -2319,14 +2311,10 @@ export type AcceptInvitationFromInviteRouteMutationVariables = Exact<{
 export type AcceptInvitationFromInviteRouteMutation = {
   __typename?: "Mutation";
   acceptInvitation: {
-    __typename?: "AcceptInvitationResult";
-    invitation: {
-      __typename?: "Invitation";
-      id: string;
-      status: InvitationStatus;
-      workspace: { __typename?: "Workspace"; id: string };
-    };
-    member: { __typename?: "Member"; id: string; roles: Array<string> };
+    __typename?: "AcceptInvitationPayload";
+    id: string;
+    memberId: string;
+    workspaceId: string;
   };
 };
 
@@ -2679,13 +2667,6 @@ export const UpdateManagedUserFromUserRouteDocument = {
               kind: "SelectionSet",
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "id" } },
-                { kind: "Field", name: { kind: "Name", value: "name" } },
-                { kind: "Field", name: { kind: "Name", value: "email" } },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "emailVerified" },
-                },
-                { kind: "Field", name: { kind: "Name", value: "image" } },
               ],
             },
           },
@@ -2756,7 +2737,6 @@ export const SetUserPermissionsFromUserRouteDocument = {
               kind: "SelectionSet",
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "id" } },
-                { kind: "Field", name: { kind: "Name", value: "permissions" } },
               ],
             },
           },
@@ -2827,7 +2807,6 @@ export const SetUserRolesFromUserRouteDocument = {
               kind: "SelectionSet",
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "id" } },
-                { kind: "Field", name: { kind: "Name", value: "roles" } },
               ],
             },
           },
@@ -2895,12 +2874,6 @@ export const BanUserFromUserRouteDocument = {
               kind: "SelectionSet",
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "id" } },
-                { kind: "Field", name: { kind: "Name", value: "banned" } },
-                { kind: "Field", name: { kind: "Name", value: "banReason" } },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "banExpiresAt" },
-                },
               ],
             },
           },
@@ -2949,12 +2922,6 @@ export const UnbanUserFromUserRouteDocument = {
               kind: "SelectionSet",
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "id" } },
-                { kind: "Field", name: { kind: "Name", value: "banned" } },
-                { kind: "Field", name: { kind: "Name", value: "banReason" } },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "banExpiresAt" },
-                },
               ],
             },
           },
@@ -3473,14 +3440,6 @@ export const CreateUserFromUsersRouteDocument = {
               kind: "SelectionSet",
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "id" } },
-                { kind: "Field", name: { kind: "Name", value: "name" } },
-                { kind: "Field", name: { kind: "Name", value: "email" } },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "emailVerified" },
-                },
-                { kind: "Field", name: { kind: "Name", value: "banned" } },
-                { kind: "Field", name: { kind: "Name", value: "createdAt" } },
               ],
             },
           },
@@ -5217,30 +5176,7 @@ export const AcceptInvitationFromUserWorkspacesRouteDocument = {
             selectionSet: {
               kind: "SelectionSet",
               selections: [
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "invitation" },
-                  selectionSet: {
-                    kind: "SelectionSet",
-                    selections: [
-                      { kind: "Field", name: { kind: "Name", value: "id" } },
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "status" },
-                      },
-                    ],
-                  },
-                },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "member" },
-                  selectionSet: {
-                    kind: "SelectionSet",
-                    selections: [
-                      { kind: "Field", name: { kind: "Name", value: "id" } },
-                    ],
-                  },
-                },
+                { kind: "Field", name: { kind: "Name", value: "id" } },
               ],
             },
           },
@@ -7903,44 +7839,9 @@ export const AcceptInvitationFromInviteRouteDocument = {
             selectionSet: {
               kind: "SelectionSet",
               selections: [
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "invitation" },
-                  selectionSet: {
-                    kind: "SelectionSet",
-                    selections: [
-                      { kind: "Field", name: { kind: "Name", value: "id" } },
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "status" },
-                      },
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "workspace" },
-                        selectionSet: {
-                          kind: "SelectionSet",
-                          selections: [
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "id" },
-                            },
-                          ],
-                        },
-                      },
-                    ],
-                  },
-                },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "member" },
-                  selectionSet: {
-                    kind: "SelectionSet",
-                    selections: [
-                      { kind: "Field", name: { kind: "Name", value: "id" } },
-                      { kind: "Field", name: { kind: "Name", value: "roles" } },
-                    ],
-                  },
-                },
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "memberId" } },
+                { kind: "Field", name: { kind: "Name", value: "workspaceId" } },
               ],
             },
           },

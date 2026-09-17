@@ -731,7 +731,6 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         mutation SetUserRoles($id: ID!, $input: SetUserRolesInput!) {
           setUserRoles(id: $id, input: $input) {
             id
-            roles
           }
         }
       `,
@@ -747,8 +746,97 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     expectNoGraphQLErrors(assigned);
     expect(assigned.body.data.setUserRoles).toEqual({
       id: target.user.id,
-      roles: ['admin'],
     });
+    expect(
+      await migrationOrm.em
+        .getConnection()
+        .execute('select roles from "user" where id = ?', [target.user.id]),
+    ).toEqual([{ roles: ['admin'] }]);
+  });
+
+  it('returns ID-only payloads for administrative user writes and rejects relation selections before persistence', async () => {
+    const administrator = await createAuthenticatedUser(
+      'Payload Administrator',
+    );
+    const connection = migrationOrm.em.getConnection();
+    await connection.execute(
+      `update "user" set roles = array['admin'] where id = ?`,
+      [administrator.user.id],
+    );
+    const email = uniqueEmail('admin-payload');
+    const create = (selection: string) =>
+      gql(
+        `mutation($input: CreateUserInput!) { createUser(input: $input) { ${selection} } }`,
+        {
+          cookies: administrator.cookies,
+          variables: {
+            input: {
+              email,
+              name: 'Created',
+              password: 'correct-horse-battery-staple',
+            },
+          },
+        },
+      );
+    const rejected = await create('accounts { totalCount }');
+    expect(rejected.body.errors[0].message).toContain(
+      'Cannot query field "accounts"',
+    );
+    expect(
+      await connection.execute('select id from "user" where email = ?', [
+        email,
+      ]),
+    ).toEqual([]);
+    const created = await create('id');
+    expectNoGraphQLErrors(created);
+    const id = created.body.data.createUser.id as string;
+    expect(created.body.data.createUser).toEqual({ id: expect.any(String) });
+    const readUser = () =>
+      connection.execute(
+        'select name, roles, permissions, banned from "user" where id = ?',
+        [id],
+      );
+    for (const [operation, inputType, input, expected] of [
+      [
+        'updateUser',
+        'UpdateUserInput!',
+        { name: 'Updated' },
+        { name: 'Updated' },
+      ],
+      [
+        'setUserRoles',
+        'SetUserRolesInput!',
+        { roles: ['user'] },
+        { roles: ['user'] },
+      ],
+      [
+        'setUserPermissions',
+        'SetUserPermissionsInput!',
+        { permissions: ['user:get'] },
+        { permissions: ['user:get'] },
+      ],
+      ['banUser', 'BanUserInput', { reason: 'Test ban' }, { banned: true }],
+      ['unbanUser', null, null, { banned: false }],
+    ] as const) {
+      const mutate = (selection: string) =>
+        gql(
+          `mutation($id: ID!${inputType ? `, $input: ${inputType}` : ''}) { ${operation}(id: $id${inputType ? ', input: $input' : ''}) { ${selection} } }`,
+          {
+            cookies: administrator.cookies,
+            variables: { id, ...(inputType ? { input } : {}) },
+          },
+        );
+      const before = await readUser();
+      const invalid = await mutate('accounts { totalCount }');
+      expect(invalid.body.errors[0].message).toContain(
+        'Cannot query field "accounts"',
+      );
+      expect(await readUser()).toEqual(before);
+      const updated = await mutate('id');
+      expectNoGraphQLErrors(updated);
+      expect(updated.body.data[operation]).toEqual({ id });
+      expect((await readUser())[0]).toMatchObject(expected);
+    }
   });
 
   it.each(['session', 'apiKey'] as const)(
@@ -779,7 +867,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       const grant = (grantedPermissions: string[]) =>
         gql(
           `mutation ($id: ID!, $input: SetUserPermissionsInput!) {
-      setUserPermissions(id: $id, input: $input) { id permissions }
+      setUserPermissions(id: $id, input: $input) { id }
     }`,
           {
             ...credentials,
@@ -1449,6 +1537,48 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     );
   });
 
+  it('commits impersonation revocation before rejecting restoration of a banned administrator', async () => {
+    const administrator = await createAuthenticatedUser('Banned Impersonator');
+    const target = await createAuthenticatedUser('Restoration Target');
+    const connection = migrationOrm.em.getConnection();
+    await connection.execute(
+      `update "user" set roles = array['admin'] where id = ?`,
+      [administrator.user.id],
+    );
+    const started = await gql(
+      'mutation($id: ID!) { impersonateUser(id: $id) { id } }',
+      {
+        cookies: administrator.cookies,
+        variables: { id: target.user.id },
+      },
+    );
+    expectNoGraphQLErrors(started);
+    const cookies = collectSetCookies(started);
+    const readSessions = () =>
+      connection.execute(
+        'select id from session where impersonated_by_id = ?',
+        [administrator.user.id],
+      );
+    expect(await readSessions()).toHaveLength(1);
+    await connection.execute(
+      'update "user" set banned = true, ban_expires_at = null where id = ?',
+      [administrator.user.id],
+    );
+    const stopped = await gql('mutation { stopImpersonating { id } }', {
+      cookies,
+    });
+    expect(stopped.body.errors).toEqual([
+      expect.objectContaining({
+        message: 'Banned administrators cannot restore their session',
+      }),
+    ]);
+    expect(await readSessions()).toEqual([]);
+    expectGraphQLError(await gql('query { currentUser { id } }', { cookies }));
+    expectNoGraphQLErrors(
+      await gql('query { currentUser { id } }', { cookies: target.cookies }),
+    );
+  });
+
   it('revokes administrator impersonation sessions without revoking the target user sessions', async () => {
     const administrator = await createAuthenticatedUser(
       'Revoked Administrator',
@@ -1673,7 +1803,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
           ),
         acceptance: () =>
           gql(
-            `mutation ($invitationId: ID!) { acceptInvitation(id: $invitationId) { invitation { id } } }`,
+            `mutation ($invitationId: ID!) { acceptInvitation(id: $invitationId) { id } }`,
             {
               cookies: invitee.cookies,
               variables: { invitationId: invitation?.id },
@@ -1741,7 +1871,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
           ),
         accept: () =>
           gql(
-            `mutation ($invitationId: ID!) { acceptInvitation(id: $invitationId) { invitation { id } } }`,
+            `mutation ($invitationId: ID!) { acceptInvitation(id: $invitationId) { id } }`,
             {
               cookies: invitee.cookies,
               variables: { invitationId: invitation.id },
@@ -2407,9 +2537,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       /* GraphQL */ `
         mutation AcceptInvitation($invitationId: ID!) {
           acceptInvitation(id: $invitationId) {
-            invitation {
-              id
-            }
+            id
           }
         }
       `,
@@ -2423,25 +2551,40 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     expectGraphQLError(rejectedWrongEmail);
 
+    const invalidAcceptance = await gql(
+      'mutation($id: ID!) { acceptInvitation(id: $id) { invitation { inviter { id } } } }',
+      { cookies: invitee.cookies, variables: { id: invite.id } },
+    );
+    expect(invalidAcceptance.body.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          message: expect.stringContaining(
+            'Cannot query field "invitation" on type "AcceptInvitationPayload"',
+          ),
+        }),
+      ]),
+    );
+    expect(
+      await migrationOrm.em
+        .getConnection()
+        .execute('select status from invitation where id = ?', [invite.id]),
+    ).toEqual([{ status: 'pending' }]);
+    expect(
+      await migrationOrm.em
+        .getConnection()
+        .execute(
+          'select id from member where workspace_id = ? and user_id = ?',
+          [workspace.id, invitee.user.id],
+        ),
+    ).toEqual([]);
+
     const accepted = await gql(
       /* GraphQL */ `
         mutation AcceptInvitation($invitationId: ID!) {
           acceptInvitation(id: $invitationId) {
-            invitation {
-              id
-              status
-              workspace {
-                id
-              }
-            }
-            member {
-              id
-              roles
-              status
-              user {
-                email
-              }
-            }
+            id
+            memberId
+            workspaceId
           }
         }
       `,
@@ -2454,23 +2597,26 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     );
 
     expectNoGraphQLErrors(accepted);
-    expect(accepted.body.data.acceptInvitation).toMatchObject({
-      invitation: {
-        id: invite.id,
-        status: 'ACCEPTED',
-        workspace: {
-          id: workspace.id,
-        },
-      },
-      member: {
-        roles: ['member'],
-        status: 'ACTIVE',
-        user: {
-          email: invitee.email,
-        },
-      },
+    expect(accepted.body.data.acceptInvitation).toEqual({
+      id: invite.id,
+      memberId: expect.any(String),
+      workspaceId: workspace.id,
     });
-    const acceptedMemberId = accepted.body.data.acceptInvitation.member.id;
+    const acceptedMemberId = accepted.body.data.acceptInvitation.memberId;
+    expect(
+      await migrationOrm.em
+        .getConnection()
+        .execute('select status from invitation where id = ?', [invite.id]),
+    ).toEqual([{ status: 'accepted' }]);
+    expect(
+      await migrationOrm.em
+        .getConnection()
+        .execute('select roles, status, user_id from member where id = ?', [
+          acceptedMemberId,
+        ]),
+    ).toEqual([
+      { roles: ['member'], status: 'ACTIVE', user_id: invitee.user.id },
+    ]);
 
     const removed = await gql(
       /* GraphQL */ `
@@ -3751,17 +3897,28 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         invitee = await createAuthenticatedUser('New invitee', email);
       }
       const accepted = await gql(
-        'mutation ($invitationId: ID!) { acceptInvitation(id: $invitationId) { member { id email } invitation { status } } }',
+        'mutation ($invitationId: ID!) { acceptInvitation(id: $invitationId) { id memberId workspaceId } }',
         {
           cookies: invitee.cookies,
           variables: { invitationId: invitation.id },
         },
       );
       expectNoGraphQLErrors(accepted);
-      expect(accepted.body.data.acceptInvitation).toMatchObject({
-        member: { email },
-        invitation: { status: 'ACCEPTED' },
+      expect(accepted.body.data.acceptInvitation).toEqual({
+        id: invitation.id,
+        memberId: expect.any(String),
+        workspaceId: workspace.id,
       });
+      expect(
+        await connection.execute('select email from member where id = ?', [
+          accepted.body.data.acceptInvitation.memberId,
+        ]),
+      ).toEqual([{ email }]);
+      expect(
+        await connection.execute('select status from invitation where id = ?', [
+          invitation.id,
+        ]),
+      ).toEqual([{ status: 'accepted' }]);
       // Editing a contact address must allow sharing another member's email too.
       for (const contactEmail of [null, email.toUpperCase()]) {
         const updated = await gql(
@@ -3770,7 +3927,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
             cookies: owner.cookies,
             workspaceId: workspace.id,
             variables: {
-              id: accepted.body.data.acceptInvitation.member.id,
+              id: accepted.body.data.acceptInvitation.memberId,
               input: { email: contactEmail },
             },
           },

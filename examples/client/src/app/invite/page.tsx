@@ -49,17 +49,9 @@ const GET_INVITATION_FROM_INVITE_ROUTE = graphql(`
 const ACCEPT_INVITATION_FROM_INVITE_ROUTE = graphql(`
   mutation acceptInvitationFromInviteRoute($id: ID!) {
     acceptInvitation(id: $id) {
-      invitation {
-        id
-        status
-        workspace {
-          id
-        }
-      }
-      member {
-        id
-        roles
-      }
+      id
+      memberId
+      workspaceId
     }
   }
 `);
@@ -158,8 +150,7 @@ function InviteComponent() {
       const result = await acceptInvitation({
         variables: { id: invitationId },
       });
-      const workspaceId =
-        result.data?.acceptInvitation?.invitation.workspace.id;
+      const workspaceId = result.data?.acceptInvitation?.workspaceId;
       if (workspaceId) {
         localStorage.removeItem(INVITATION_ID_KEY);
         toast.success(t("workspace:invite.success"));

@@ -134,3 +134,12 @@ GraphQL `signUp` 现在返回 `SignUpPayload { id, token }`，不再返回
 `signUp { id }`；需要登录的用户关联字段应在登录后查询。
 `AuthService.signUpPayload()` 替代 `signUpEntity()`，底层 `AuthService.signUp()`
 返回值保持不变。`token` 为 null 时不会建立登录身份。
+
+管理接口 `createUser`、`updateUser`、`setUserRoles`、`setUserPermissions`、
+`banUser`、`unbanUser` 现在返回各自的 Payload，仅包含 `id`。请移除这些操作的
+资料及关联字段选择，并在写入成功后单独查询用户。
+`acceptInvitation` 返回 `AcceptInvitationPayload { id, memberId, workspaceId }`；
+后续请求选择返回的工作区后再查询成员信息。领域 Service 的返回值与授权检查不变。
+
+`Migration20260915073637` 明确不支持回滚，因为多个成员共用联系邮箱已是合法数据。
+恢复唯一约束需要单独迁移及明确的数据保留方案；`down()` 不会自动删除、清空或改写联系邮箱。

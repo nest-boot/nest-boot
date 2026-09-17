@@ -16,18 +16,18 @@ import { TypedDocumentNode as DocumentNode } from "@graphql-typed-document-node/
 type Documents = {
   "\n  query getAdminAccessFromAdminLayout {\n    currentUserAbilityRules {\n      actions\n      subjects\n      fields\n      conditions\n      inverted\n      reason\n    }\n  }\n": typeof types.GetAdminAccessFromAdminLayoutDocument;
   "\n  query getUserFromUserRoute(\n    $id: ID!\n    $sessionsAfter: String\n    $includeSessions: Boolean! = false\n    $includeCatalogs: Boolean! = false\n  ) {\n    user(id: $id) {\n      id\n      name\n      email\n      emailVerified\n      image\n      roles\n      permissions\n      banned\n      banReason\n      banExpiresAt\n      createdAt\n      updatedAt\n      sessions(\n        first: 20\n        after: $sessionsAfter\n        orderBy: { field: CREATED_AT, direction: DESC }\n      ) @include(if: $includeSessions) {\n        pageInfo {\n          hasNextPage\n          endCursor\n        }\n        edges {\n          node {\n            id\n            expiresAt\n            ipAddress\n            userAgent\n            createdAt\n          }\n        }\n      }\n    }\n    userRoles @include(if: $includeCatalogs)\n    userPermissions @include(if: $includeCatalogs)\n  }\n": typeof types.GetUserFromUserRouteDocument;
-  "\n  mutation updateManagedUserFromUserRoute($id: ID!, $input: UpdateUserInput!) {\n    updateUser(id: $id, input: $input) {\n      id\n      name\n      email\n      emailVerified\n      image\n    }\n  }\n": typeof types.UpdateManagedUserFromUserRouteDocument;
-  "\n  mutation setUserPermissionsFromUserRoute(\n    $id: ID!\n    $input: SetUserPermissionsInput!\n  ) {\n    setUserPermissions(id: $id, input: $input) {\n      id\n      permissions\n    }\n  }\n": typeof types.SetUserPermissionsFromUserRouteDocument;
-  "\n  mutation setUserRolesFromUserRoute($id: ID!, $input: SetUserRolesInput!) {\n    setUserRoles(id: $id, input: $input) {\n      id\n      roles\n    }\n  }\n": typeof types.SetUserRolesFromUserRouteDocument;
-  "\n  mutation banUserFromUserRoute($id: ID!, $input: BanUserInput) {\n    banUser(id: $id, input: $input) {\n      id\n      banned\n      banReason\n      banExpiresAt\n    }\n  }\n": typeof types.BanUserFromUserRouteDocument;
-  "\n  mutation unbanUserFromUserRoute($id: ID!) {\n    unbanUser(id: $id) {\n      id\n      banned\n      banReason\n      banExpiresAt\n    }\n  }\n": typeof types.UnbanUserFromUserRouteDocument;
+  "\n  mutation updateManagedUserFromUserRoute($id: ID!, $input: UpdateUserInput!) {\n    updateUser(id: $id, input: $input) {\n      id\n    }\n  }\n": typeof types.UpdateManagedUserFromUserRouteDocument;
+  "\n  mutation setUserPermissionsFromUserRoute(\n    $id: ID!\n    $input: SetUserPermissionsInput!\n  ) {\n    setUserPermissions(id: $id, input: $input) {\n      id\n    }\n  }\n": typeof types.SetUserPermissionsFromUserRouteDocument;
+  "\n  mutation setUserRolesFromUserRoute($id: ID!, $input: SetUserRolesInput!) {\n    setUserRoles(id: $id, input: $input) {\n      id\n    }\n  }\n": typeof types.SetUserRolesFromUserRouteDocument;
+  "\n  mutation banUserFromUserRoute($id: ID!, $input: BanUserInput) {\n    banUser(id: $id, input: $input) {\n      id\n    }\n  }\n": typeof types.BanUserFromUserRouteDocument;
+  "\n  mutation unbanUserFromUserRoute($id: ID!) {\n    unbanUser(id: $id) {\n      id\n    }\n  }\n": typeof types.UnbanUserFromUserRouteDocument;
   "\n  mutation setUserPasswordFromUserRoute(\n    $id: ID!\n    $input: SetUserPasswordInput!\n  ) {\n    setUserPassword(id: $id, input: $input)\n  }\n": typeof types.SetUserPasswordFromUserRouteDocument;
   "\n  mutation revokeUserSessionFromUserRoute($userId: ID!, $id: ID!) {\n    revokeSession(userId: $userId, id: $id)\n  }\n": typeof types.RevokeUserSessionFromUserRouteDocument;
   "\n  mutation revokeUserSessionsFromUserRoute($userId: ID!) {\n    revokeUserSessions(userId: $userId)\n  }\n": typeof types.RevokeUserSessionsFromUserRouteDocument;
   "\n  mutation deleteUserFromUserRoute($id: ID!) {\n    deleteUser(id: $id) {\n      id\n    }\n  }\n": typeof types.DeleteUserFromUserRouteDocument;
   "\n  mutation impersonateUserFromUserRoute($id: ID!) {\n    impersonateUser(id: $id) {\n      id\n    }\n  }\n": typeof types.ImpersonateUserFromUserRouteDocument;
   "\n  query getUsersFromUsersRoute(\n    $first: Int\n    $last: Int\n    $after: String\n    $before: String\n    $filter: UserFilter\n  ) {\n    users(\n      first: $first\n      last: $last\n      after: $after\n      before: $before\n      filter: $filter\n      orderBy: { field: CREATED_AT, direction: DESC }\n    ) {\n      edges {\n        node {\n          id\n          name\n          email\n          emailVerified\n          banned\n          createdAt\n        }\n      }\n      totalCount\n      pageInfo {\n        hasNextPage\n        hasPreviousPage\n        startCursor\n        endCursor\n      }\n    }\n  }\n": typeof types.GetUsersFromUsersRouteDocument;
-  "\n  mutation createUserFromUsersRoute($input: CreateUserInput!) {\n    createUser(input: $input) {\n      id\n      name\n      email\n      emailVerified\n      banned\n      createdAt\n    }\n  }\n": typeof types.CreateUserFromUsersRouteDocument;
+  "\n  mutation createUserFromUsersRoute($input: CreateUserInput!) {\n    createUser(input: $input) {\n      id\n    }\n  }\n": typeof types.CreateUserFromUsersRouteDocument;
   "\n  mutation signOutFromSidebarUser {\n    signOut\n  }\n": typeof types.SignOutFromSidebarUserDocument;
   "\n  query getCurrentUserFromCurrentUserContext {\n    currentUser {\n      id\n      name\n      email\n      permissions\n    }\n    currentUserAbilityRules {\n      actions\n      subjects\n      fields\n      conditions\n      inverted\n      reason\n    }\n  }\n": typeof types.GetCurrentUserFromCurrentUserContextDocument;
   "\n  query getCurrentUserFromAuthenticatedRoute {\n    currentUser {\n      id\n    }\n    currentUserAbilityRules {\n      actions\n      subjects\n      fields\n      conditions\n      inverted\n      reason\n    }\n  }\n": typeof types.GetCurrentUserFromAuthenticatedRouteDocument;
@@ -50,7 +50,7 @@ type Documents = {
   "\n  mutation linkAccountFromUserSecurity($input: AuthLinkSocialAccountInput!) {\n    linkCurrentUserAccount(input: $input) {\n      url\n      redirect\n    }\n  }\n": typeof types.LinkAccountFromUserSecurityDocument;
   "\n  mutation deleteUserFromUserSecurity($input: AuthDeleteUserInput) {\n    deleteCurrentUser(input: $input) {\n      success\n      message\n    }\n  }\n": typeof types.DeleteUserFromUserSecurityDocument;
   "\n  query getWorkspacesFromUserWorkspacesRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $orderBy: WorkspaceOrder\n    $invitationFirst: Int\n    $invitationLast: Int\n    $invitationAfter: String\n    $invitationBefore: String\n  ) {\n    currentUser {\n      workspaces(\n        after: $after\n        before: $before\n        first: $first\n        last: $last\n        orderBy: $orderBy\n      ) {\n        edges {\n          node {\n            id\n            name\n            createdAt\n            updatedAt\n          }\n        }\n        pageInfo {\n          endCursor\n          hasNextPage\n          hasPreviousPage\n          startCursor\n        }\n      }\n    }\n    currentUser {\n      invitations(\n        first: $invitationFirst\n        last: $invitationLast\n        after: $invitationAfter\n        before: $invitationBefore\n        orderBy: { field: CREATED_AT, direction: DESC }\n      ) {\n        edges {\n          node {\n            id\n            roles\n            expiresAt\n            workspace {\n              id\n              name\n            }\n          }\n        }\n        pageInfo {\n          endCursor\n          startCursor\n          hasNextPage\n          hasPreviousPage\n        }\n      }\n    }\n  }\n": typeof types.GetWorkspacesFromUserWorkspacesRouteDocument;
-  "\n  mutation acceptInvitationFromUserWorkspacesRoute($id: ID!) {\n    acceptInvitation(id: $id) {\n      invitation {\n        id\n        status\n      }\n      member {\n        id\n      }\n    }\n  }\n": typeof types.AcceptInvitationFromUserWorkspacesRouteDocument;
+  "\n  mutation acceptInvitationFromUserWorkspacesRoute($id: ID!) {\n    acceptInvitation(id: $id) {\n      id\n    }\n  }\n": typeof types.AcceptInvitationFromUserWorkspacesRouteDocument;
   "\n  mutation rejectInvitationFromUserWorkspacesRoute($id: ID!) {\n    rejectInvitation(id: $id) {\n      id\n      status\n    }\n  }\n": typeof types.RejectInvitationFromUserWorkspacesRouteDocument;
   "\n  query getApiKeysFromApiKeysRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $filter: ApiKeyFilter\n    $orderBy: ApiKeyOrder\n    $query: String\n  ) {\n    currentWorkspace {\n      apiKeys(\n        after: $after\n        before: $before\n        first: $first\n        last: $last\n        orderBy: $orderBy\n        filter: $filter\n        query: $query\n      ) {\n        edges {\n          node {\n            id\n            name\n            start\n            prefix\n            enabled\n            permissions\n            createdAt\n            lastUsedAt\n            expiresAt\n          }\n        }\n        pageInfo {\n          endCursor\n          hasNextPage\n          hasPreviousPage\n          startCursor\n        }\n      }\n    }\n  }\n": typeof types.GetApiKeysFromApiKeysRouteDocument;
   "\n  mutation createWorkspaceApiKeyFromApiKeysRoute($input: CreateApiKeyInput!) {\n    createWorkspaceApiKey(input: $input) {\n      apiKey\n      entity {\n        id\n        name\n        start\n        prefix\n        enabled\n        permissions\n        createdAt\n        lastUsedAt\n        expiresAt\n      }\n    }\n  }\n": typeof types.CreateWorkspaceApiKeyFromApiKeysRouteDocument;
@@ -87,22 +87,22 @@ type Documents = {
   "\n  mutation sendVerificationEmailFromVerifyEmail(\n    $input: AuthSendVerificationEmailInput!\n  ) {\n    sendVerificationEmail(input: $input)\n  }\n": typeof types.SendVerificationEmailFromVerifyEmailDocument;
   "\n  query getCurrentUserFromInviteRoute {\n    currentUser {\n      id\n      name\n      email\n    }\n  }\n": typeof types.GetCurrentUserFromInviteRouteDocument;
   "\n  query getInvitationFromInviteRoute($id: ID!) {\n    invitation(id: $id) {\n      id\n      email\n      roles\n      status\n      expiresAt\n      workspace {\n        id\n        name\n      }\n    }\n  }\n": typeof types.GetInvitationFromInviteRouteDocument;
-  "\n  mutation acceptInvitationFromInviteRoute($id: ID!) {\n    acceptInvitation(id: $id) {\n      invitation {\n        id\n        status\n        workspace {\n          id\n        }\n      }\n      member {\n        id\n        roles\n      }\n    }\n  }\n": typeof types.AcceptInvitationFromInviteRouteDocument;
+  "\n  mutation acceptInvitationFromInviteRoute($id: ID!) {\n    acceptInvitation(id: $id) {\n      id\n      memberId\n      workspaceId\n    }\n  }\n": typeof types.AcceptInvitationFromInviteRouteDocument;
 };
 const documents: Documents = {
   "\n  query getAdminAccessFromAdminLayout {\n    currentUserAbilityRules {\n      actions\n      subjects\n      fields\n      conditions\n      inverted\n      reason\n    }\n  }\n":
     types.GetAdminAccessFromAdminLayoutDocument,
   "\n  query getUserFromUserRoute(\n    $id: ID!\n    $sessionsAfter: String\n    $includeSessions: Boolean! = false\n    $includeCatalogs: Boolean! = false\n  ) {\n    user(id: $id) {\n      id\n      name\n      email\n      emailVerified\n      image\n      roles\n      permissions\n      banned\n      banReason\n      banExpiresAt\n      createdAt\n      updatedAt\n      sessions(\n        first: 20\n        after: $sessionsAfter\n        orderBy: { field: CREATED_AT, direction: DESC }\n      ) @include(if: $includeSessions) {\n        pageInfo {\n          hasNextPage\n          endCursor\n        }\n        edges {\n          node {\n            id\n            expiresAt\n            ipAddress\n            userAgent\n            createdAt\n          }\n        }\n      }\n    }\n    userRoles @include(if: $includeCatalogs)\n    userPermissions @include(if: $includeCatalogs)\n  }\n":
     types.GetUserFromUserRouteDocument,
-  "\n  mutation updateManagedUserFromUserRoute($id: ID!, $input: UpdateUserInput!) {\n    updateUser(id: $id, input: $input) {\n      id\n      name\n      email\n      emailVerified\n      image\n    }\n  }\n":
+  "\n  mutation updateManagedUserFromUserRoute($id: ID!, $input: UpdateUserInput!) {\n    updateUser(id: $id, input: $input) {\n      id\n    }\n  }\n":
     types.UpdateManagedUserFromUserRouteDocument,
-  "\n  mutation setUserPermissionsFromUserRoute(\n    $id: ID!\n    $input: SetUserPermissionsInput!\n  ) {\n    setUserPermissions(id: $id, input: $input) {\n      id\n      permissions\n    }\n  }\n":
+  "\n  mutation setUserPermissionsFromUserRoute(\n    $id: ID!\n    $input: SetUserPermissionsInput!\n  ) {\n    setUserPermissions(id: $id, input: $input) {\n      id\n    }\n  }\n":
     types.SetUserPermissionsFromUserRouteDocument,
-  "\n  mutation setUserRolesFromUserRoute($id: ID!, $input: SetUserRolesInput!) {\n    setUserRoles(id: $id, input: $input) {\n      id\n      roles\n    }\n  }\n":
+  "\n  mutation setUserRolesFromUserRoute($id: ID!, $input: SetUserRolesInput!) {\n    setUserRoles(id: $id, input: $input) {\n      id\n    }\n  }\n":
     types.SetUserRolesFromUserRouteDocument,
-  "\n  mutation banUserFromUserRoute($id: ID!, $input: BanUserInput) {\n    banUser(id: $id, input: $input) {\n      id\n      banned\n      banReason\n      banExpiresAt\n    }\n  }\n":
+  "\n  mutation banUserFromUserRoute($id: ID!, $input: BanUserInput) {\n    banUser(id: $id, input: $input) {\n      id\n    }\n  }\n":
     types.BanUserFromUserRouteDocument,
-  "\n  mutation unbanUserFromUserRoute($id: ID!) {\n    unbanUser(id: $id) {\n      id\n      banned\n      banReason\n      banExpiresAt\n    }\n  }\n":
+  "\n  mutation unbanUserFromUserRoute($id: ID!) {\n    unbanUser(id: $id) {\n      id\n    }\n  }\n":
     types.UnbanUserFromUserRouteDocument,
   "\n  mutation setUserPasswordFromUserRoute(\n    $id: ID!\n    $input: SetUserPasswordInput!\n  ) {\n    setUserPassword(id: $id, input: $input)\n  }\n":
     types.SetUserPasswordFromUserRouteDocument,
@@ -116,7 +116,7 @@ const documents: Documents = {
     types.ImpersonateUserFromUserRouteDocument,
   "\n  query getUsersFromUsersRoute(\n    $first: Int\n    $last: Int\n    $after: String\n    $before: String\n    $filter: UserFilter\n  ) {\n    users(\n      first: $first\n      last: $last\n      after: $after\n      before: $before\n      filter: $filter\n      orderBy: { field: CREATED_AT, direction: DESC }\n    ) {\n      edges {\n        node {\n          id\n          name\n          email\n          emailVerified\n          banned\n          createdAt\n        }\n      }\n      totalCount\n      pageInfo {\n        hasNextPage\n        hasPreviousPage\n        startCursor\n        endCursor\n      }\n    }\n  }\n":
     types.GetUsersFromUsersRouteDocument,
-  "\n  mutation createUserFromUsersRoute($input: CreateUserInput!) {\n    createUser(input: $input) {\n      id\n      name\n      email\n      emailVerified\n      banned\n      createdAt\n    }\n  }\n":
+  "\n  mutation createUserFromUsersRoute($input: CreateUserInput!) {\n    createUser(input: $input) {\n      id\n    }\n  }\n":
     types.CreateUserFromUsersRouteDocument,
   "\n  mutation signOutFromSidebarUser {\n    signOut\n  }\n":
     types.SignOutFromSidebarUserDocument,
@@ -162,7 +162,7 @@ const documents: Documents = {
     types.DeleteUserFromUserSecurityDocument,
   "\n  query getWorkspacesFromUserWorkspacesRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $orderBy: WorkspaceOrder\n    $invitationFirst: Int\n    $invitationLast: Int\n    $invitationAfter: String\n    $invitationBefore: String\n  ) {\n    currentUser {\n      workspaces(\n        after: $after\n        before: $before\n        first: $first\n        last: $last\n        orderBy: $orderBy\n      ) {\n        edges {\n          node {\n            id\n            name\n            createdAt\n            updatedAt\n          }\n        }\n        pageInfo {\n          endCursor\n          hasNextPage\n          hasPreviousPage\n          startCursor\n        }\n      }\n    }\n    currentUser {\n      invitations(\n        first: $invitationFirst\n        last: $invitationLast\n        after: $invitationAfter\n        before: $invitationBefore\n        orderBy: { field: CREATED_AT, direction: DESC }\n      ) {\n        edges {\n          node {\n            id\n            roles\n            expiresAt\n            workspace {\n              id\n              name\n            }\n          }\n        }\n        pageInfo {\n          endCursor\n          startCursor\n          hasNextPage\n          hasPreviousPage\n        }\n      }\n    }\n  }\n":
     types.GetWorkspacesFromUserWorkspacesRouteDocument,
-  "\n  mutation acceptInvitationFromUserWorkspacesRoute($id: ID!) {\n    acceptInvitation(id: $id) {\n      invitation {\n        id\n        status\n      }\n      member {\n        id\n      }\n    }\n  }\n":
+  "\n  mutation acceptInvitationFromUserWorkspacesRoute($id: ID!) {\n    acceptInvitation(id: $id) {\n      id\n    }\n  }\n":
     types.AcceptInvitationFromUserWorkspacesRouteDocument,
   "\n  mutation rejectInvitationFromUserWorkspacesRoute($id: ID!) {\n    rejectInvitation(id: $id) {\n      id\n      status\n    }\n  }\n":
     types.RejectInvitationFromUserWorkspacesRouteDocument,
@@ -236,7 +236,7 @@ const documents: Documents = {
     types.GetCurrentUserFromInviteRouteDocument,
   "\n  query getInvitationFromInviteRoute($id: ID!) {\n    invitation(id: $id) {\n      id\n      email\n      roles\n      status\n      expiresAt\n      workspace {\n        id\n        name\n      }\n    }\n  }\n":
     types.GetInvitationFromInviteRouteDocument,
-  "\n  mutation acceptInvitationFromInviteRoute($id: ID!) {\n    acceptInvitation(id: $id) {\n      invitation {\n        id\n        status\n        workspace {\n          id\n        }\n      }\n      member {\n        id\n        roles\n      }\n    }\n  }\n":
+  "\n  mutation acceptInvitationFromInviteRoute($id: ID!) {\n    acceptInvitation(id: $id) {\n      id\n      memberId\n      workspaceId\n    }\n  }\n":
     types.AcceptInvitationFromInviteRouteDocument,
 };
 
@@ -270,32 +270,32 @@ export function graphql(
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
-  source: "\n  mutation updateManagedUserFromUserRoute($id: ID!, $input: UpdateUserInput!) {\n    updateUser(id: $id, input: $input) {\n      id\n      name\n      email\n      emailVerified\n      image\n    }\n  }\n",
-): (typeof documents)["\n  mutation updateManagedUserFromUserRoute($id: ID!, $input: UpdateUserInput!) {\n    updateUser(id: $id, input: $input) {\n      id\n      name\n      email\n      emailVerified\n      image\n    }\n  }\n"];
+  source: "\n  mutation updateManagedUserFromUserRoute($id: ID!, $input: UpdateUserInput!) {\n    updateUser(id: $id, input: $input) {\n      id\n    }\n  }\n",
+): (typeof documents)["\n  mutation updateManagedUserFromUserRoute($id: ID!, $input: UpdateUserInput!) {\n    updateUser(id: $id, input: $input) {\n      id\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
-  source: "\n  mutation setUserPermissionsFromUserRoute(\n    $id: ID!\n    $input: SetUserPermissionsInput!\n  ) {\n    setUserPermissions(id: $id, input: $input) {\n      id\n      permissions\n    }\n  }\n",
-): (typeof documents)["\n  mutation setUserPermissionsFromUserRoute(\n    $id: ID!\n    $input: SetUserPermissionsInput!\n  ) {\n    setUserPermissions(id: $id, input: $input) {\n      id\n      permissions\n    }\n  }\n"];
+  source: "\n  mutation setUserPermissionsFromUserRoute(\n    $id: ID!\n    $input: SetUserPermissionsInput!\n  ) {\n    setUserPermissions(id: $id, input: $input) {\n      id\n    }\n  }\n",
+): (typeof documents)["\n  mutation setUserPermissionsFromUserRoute(\n    $id: ID!\n    $input: SetUserPermissionsInput!\n  ) {\n    setUserPermissions(id: $id, input: $input) {\n      id\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
-  source: "\n  mutation setUserRolesFromUserRoute($id: ID!, $input: SetUserRolesInput!) {\n    setUserRoles(id: $id, input: $input) {\n      id\n      roles\n    }\n  }\n",
-): (typeof documents)["\n  mutation setUserRolesFromUserRoute($id: ID!, $input: SetUserRolesInput!) {\n    setUserRoles(id: $id, input: $input) {\n      id\n      roles\n    }\n  }\n"];
+  source: "\n  mutation setUserRolesFromUserRoute($id: ID!, $input: SetUserRolesInput!) {\n    setUserRoles(id: $id, input: $input) {\n      id\n    }\n  }\n",
+): (typeof documents)["\n  mutation setUserRolesFromUserRoute($id: ID!, $input: SetUserRolesInput!) {\n    setUserRoles(id: $id, input: $input) {\n      id\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
-  source: "\n  mutation banUserFromUserRoute($id: ID!, $input: BanUserInput) {\n    banUser(id: $id, input: $input) {\n      id\n      banned\n      banReason\n      banExpiresAt\n    }\n  }\n",
-): (typeof documents)["\n  mutation banUserFromUserRoute($id: ID!, $input: BanUserInput) {\n    banUser(id: $id, input: $input) {\n      id\n      banned\n      banReason\n      banExpiresAt\n    }\n  }\n"];
+  source: "\n  mutation banUserFromUserRoute($id: ID!, $input: BanUserInput) {\n    banUser(id: $id, input: $input) {\n      id\n    }\n  }\n",
+): (typeof documents)["\n  mutation banUserFromUserRoute($id: ID!, $input: BanUserInput) {\n    banUser(id: $id, input: $input) {\n      id\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
-  source: "\n  mutation unbanUserFromUserRoute($id: ID!) {\n    unbanUser(id: $id) {\n      id\n      banned\n      banReason\n      banExpiresAt\n    }\n  }\n",
-): (typeof documents)["\n  mutation unbanUserFromUserRoute($id: ID!) {\n    unbanUser(id: $id) {\n      id\n      banned\n      banReason\n      banExpiresAt\n    }\n  }\n"];
+  source: "\n  mutation unbanUserFromUserRoute($id: ID!) {\n    unbanUser(id: $id) {\n      id\n    }\n  }\n",
+): (typeof documents)["\n  mutation unbanUserFromUserRoute($id: ID!) {\n    unbanUser(id: $id) {\n      id\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -336,8 +336,8 @@ export function graphql(
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
-  source: "\n  mutation createUserFromUsersRoute($input: CreateUserInput!) {\n    createUser(input: $input) {\n      id\n      name\n      email\n      emailVerified\n      banned\n      createdAt\n    }\n  }\n",
-): (typeof documents)["\n  mutation createUserFromUsersRoute($input: CreateUserInput!) {\n    createUser(input: $input) {\n      id\n      name\n      email\n      emailVerified\n      banned\n      createdAt\n    }\n  }\n"];
+  source: "\n  mutation createUserFromUsersRoute($input: CreateUserInput!) {\n    createUser(input: $input) {\n      id\n    }\n  }\n",
+): (typeof documents)["\n  mutation createUserFromUsersRoute($input: CreateUserInput!) {\n    createUser(input: $input) {\n      id\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -474,8 +474,8 @@ export function graphql(
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
-  source: "\n  mutation acceptInvitationFromUserWorkspacesRoute($id: ID!) {\n    acceptInvitation(id: $id) {\n      invitation {\n        id\n        status\n      }\n      member {\n        id\n      }\n    }\n  }\n",
-): (typeof documents)["\n  mutation acceptInvitationFromUserWorkspacesRoute($id: ID!) {\n    acceptInvitation(id: $id) {\n      invitation {\n        id\n        status\n      }\n      member {\n        id\n      }\n    }\n  }\n"];
+  source: "\n  mutation acceptInvitationFromUserWorkspacesRoute($id: ID!) {\n    acceptInvitation(id: $id) {\n      id\n    }\n  }\n",
+): (typeof documents)["\n  mutation acceptInvitationFromUserWorkspacesRoute($id: ID!) {\n    acceptInvitation(id: $id) {\n      id\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -696,8 +696,8 @@ export function graphql(
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
-  source: "\n  mutation acceptInvitationFromInviteRoute($id: ID!) {\n    acceptInvitation(id: $id) {\n      invitation {\n        id\n        status\n        workspace {\n          id\n        }\n      }\n      member {\n        id\n        roles\n      }\n    }\n  }\n",
-): (typeof documents)["\n  mutation acceptInvitationFromInviteRoute($id: ID!) {\n    acceptInvitation(id: $id) {\n      invitation {\n        id\n        status\n        workspace {\n          id\n        }\n      }\n      member {\n        id\n        roles\n      }\n    }\n  }\n"];
+  source: "\n  mutation acceptInvitationFromInviteRoute($id: ID!) {\n    acceptInvitation(id: $id) {\n      id\n      memberId\n      workspaceId\n    }\n  }\n",
+): (typeof documents)["\n  mutation acceptInvitationFromInviteRoute($id: ID!) {\n    acceptInvitation(id: $id) {\n      id\n      memberId\n      workspaceId\n    }\n  }\n"];
 
 export function graphql(source: string) {
   return (documents as any)[source] ?? {};

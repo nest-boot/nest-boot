@@ -343,7 +343,7 @@ export class UserService {
     const impersonatedByReference = currentSession.impersonatedBy;
     if (!impersonatedByReference) return null;
 
-    return await this.em.transactional(
+    const result = await this.em.transactional(
       async (em) => {
         const impersonatedBy = Reference.unwrapReference(
           impersonatedByReference,
@@ -356,9 +356,7 @@ export class UserService {
         if (!administrator) return null;
         if (this.isActivelyBanned(administrator)) {
           await em.remove(currentSession).flush();
-          throw new ForbiddenException(
-            "Banned administrators cannot restore their session",
-          );
+          return "banned-administrator" as const;
         }
 
         const session = this.createSession(em, administrator, input);
@@ -368,6 +366,13 @@ export class UserService {
       },
       { clear: true },
     );
+    // Throw only after the transaction commits the session revocation.
+    if (result === "banned-administrator") {
+      throw new ForbiddenException(
+        "Banned administrators cannot restore their session",
+      );
+    }
+    return result;
   }
 
   /** Permanently deletes a user and all dependent authentication records. */

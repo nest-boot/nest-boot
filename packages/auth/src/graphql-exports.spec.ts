@@ -57,6 +57,18 @@ describe("public API", () => {
   });
 
   it("exports input and result types", () => {
+    for (const name of [
+      "CreateUserPayload",
+      "UpdateUserPayload",
+      "SetUserPermissionsPayload",
+      "SetUserRolesPayload",
+      "BanUserPayload",
+      "UnbanUserPayload",
+      "AcceptInvitationPayload",
+    ]) {
+      expect(publicApi).toHaveProperty(name);
+    }
+    expect(publicApi).not.toHaveProperty("AcceptInvitationResult");
     expect(publicApi.SignUpPayload).toBeDefined();
     expect(publicApi).not.toHaveProperty("AuthSignUpResultType");
     expect(publicApi.AuthSignInInput).toBeDefined();

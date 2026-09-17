@@ -103,13 +103,7 @@ const GET_WORKSPACES_FROM_USER_WORKSPACES_ROUTE = graphql(`
 const ACCEPT_INVITATION_FROM_USER_WORKSPACES_ROUTE = graphql(`
   mutation acceptInvitationFromUserWorkspacesRoute($id: ID!) {
     acceptInvitation(id: $id) {
-      invitation {
-        id
-        status
-      }
-      member {
-        id
-      }
+      id
     }
   }
 `);

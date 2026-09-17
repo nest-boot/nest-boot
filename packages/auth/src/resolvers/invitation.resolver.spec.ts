@@ -71,8 +71,11 @@ describe("InvitationResolver", () => {
     );
   });
 
-  it("returns the accepted invitation and newly created member", async () => {
-    const invitation = { id: "invitation_1" } as Invitation;
+  it("returns only accepted invitation identifiers", async () => {
+    const invitation = {
+      id: "invitation_1",
+      workspace: { id: "workspace_1" },
+    } as Invitation;
     const member = { id: "member_1" } as Member;
     const user = { id: "user_1" } as User;
     const { resolver, invitationService } = createResolver({
@@ -81,7 +84,11 @@ describe("InvitationResolver", () => {
 
     await expect(
       resolver.acceptInvitation(invitation.id, user),
-    ).resolves.toEqual({ invitation, member });
+    ).resolves.toEqual({
+      id: invitation.id,
+      memberId: member.id,
+      workspaceId: "workspace_1",
+    });
     expect(invitationService.acceptInvitation).toHaveBeenCalledWith(
       user,
       invitation.id,

@@ -37,7 +37,8 @@ describe('built-in auth entity discovery', () => {
         [ApiKey, 'workspace', Workspace],
       ] as const) {
         expect(
-          orm.getMetadata<object>(entity).properties[property].targetMeta?.class,
+          orm.getMetadata<object>(entity).properties[property].targetMeta
+            ?.class,
         ).toBe(target);
       }
     } finally {
