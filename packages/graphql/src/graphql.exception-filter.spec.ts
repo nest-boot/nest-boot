@@ -74,6 +74,69 @@ describe("GraphQLExceptionFilter", () => {
     });
   });
 
+  it("should transform validation issues into Apollo user input errors", async () => {
+    const { filter } = await createFilter();
+
+    const error = filter.transform(
+      new BadRequestException({
+        statusCode: 400,
+        message: "Validation failed",
+        error: "Bad Request",
+        issues: [
+          {
+            code: "invalid_format",
+            path: ["email"],
+            message: "Invalid email address",
+          },
+          {
+            code: "too_small",
+            path: ["users", 0, "password"],
+            message: "Too small",
+          },
+        ],
+      }),
+    );
+
+    expect(error).toMatchObject({
+      message: "Validation failed",
+      extensions: {
+        code: "BAD_USER_INPUT",
+        validationErrors: [
+          {
+            code: "invalid_format",
+            field: ["email"],
+            message: "Invalid email address",
+          },
+          {
+            code: "too_small",
+            field: ["users", 0, "password"],
+            message: "Too small",
+          },
+        ],
+      },
+    });
+  });
+
+  it("should not expose malformed validation issues", async () => {
+    const { filter } = await createFilter();
+
+    const error = filter.transform(
+      new BadRequestException({
+        message: "Validation failed",
+        issues: [
+          {
+            code: "invalid_format",
+            path: ["email"],
+            message: { rejectedValue: "private" },
+          },
+        ],
+      }),
+    );
+
+    expect(error.extensions).toMatchObject({ code: "BAD_REQUEST" });
+    expect(error.extensions).not.toHaveProperty("validationErrors");
+  });
+
   it("should hide internal errors in production", async () => {
     process.env.NODE_ENV = "production";
     const { filter } = await createFilter();

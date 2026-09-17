@@ -14,6 +14,12 @@ description: "使用 Apollo Server 构建 GraphQL API，支持游标分页、操
 pnpm add @nest-boot/graphql @nestjs/graphql @nestjs/apollo @apollo/server graphql
 ```
 
+如需使用下文的 Zod 输入验证，还需要安装：
+
+```bash
+pnpm add @nest-boot/validator zod
+```
+
 ## 模块注册
 
 ### 基本注册
@@ -81,28 +87,57 @@ export class User {
 
 ### 输入类型
 
-使用 `@InputType()` 定义 Mutation 输入，配合 `class-validator` 进行验证：
+使用 `@InputType()` 定义 Mutation 输入，并配合 `@nest-boot/validator` 进行
+Zod 验证：
 
 ```typescript
 import { Field, InputType, ID } from "@nest-boot/graphql";
-import { IsOptional, IsString } from "class-validator";
+import { ZodField } from "@nest-boot/validator";
+import { z } from "zod";
 
 @InputType()
 export class CreateUserInput {
-  @IsString()
+  @ZodField(z.string().min(1))
   @Field(() => String)
   name!: string;
 
-  @IsString()
+  @ZodField(z.email())
   @Field(() => String)
   email!: string;
 
-  @IsOptional()
-  @IsString()
+  @ZodField(z.string().optional())
   @Field(() => ID, { nullable: true })
   workspaceId?: string;
 }
 ```
+
+按照[验证指南](/docs/tutorial/validator#启用-nestjs-验证)全局注册
+`ZodValidationPipe`。验证失败时，`GraphQLExceptionFilter` 会返回 Apollo 风格的
+用户输入错误，并在 `extensions` 中保留字段级详情：
+
+```json
+{
+  "errors": [
+    {
+      "message": "Validation failed",
+      "path": ["createUser"],
+      "extensions": {
+        "code": "BAD_USER_INPUT",
+        "validationErrors": [
+          {
+            "code": "invalid_format",
+            "field": ["email"],
+            "message": "Invalid email address"
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
+顶层 `path` 是 GraphQL 的解析器响应路径；每个 `field` 是无效输入值的路径，
+其中可以包含数字形式的数组索引。
 
 ## 解析器
 

@@ -14,6 +14,12 @@ To expose staged upload creation as a GraphQL mutation, see
 pnpm add @nest-boot/graphql @nestjs/graphql @nestjs/apollo @apollo/server graphql
 ```
 
+For the Zod input validation shown below, also install:
+
+```bash
+pnpm add @nest-boot/validator zod
+```
+
 ## Module Registration
 
 ### Basic Registration
@@ -81,28 +87,58 @@ export class User {
 
 ### Input Types
 
-Use `@InputType()` to define mutation inputs, and combine with `class-validator` for validation:
+Use `@InputType()` to define mutation inputs, and combine it with
+`@nest-boot/validator` for Zod validation:
 
 ```typescript
 import { Field, InputType, ID } from "@nest-boot/graphql";
-import { IsOptional, IsString } from "class-validator";
+import { ZodField } from "@nest-boot/validator";
+import { z } from "zod";
 
 @InputType()
 export class CreateUserInput {
-  @IsString()
+  @ZodField(z.string().min(1))
   @Field(() => String)
   name!: string;
 
-  @IsString()
+  @ZodField(z.email())
   @Field(() => String)
   email!: string;
 
-  @IsOptional()
-  @IsString()
+  @ZodField(z.string().optional())
   @Field(() => ID, { nullable: true })
   workspaceId?: string;
 }
 ```
+
+Register `ZodValidationPipe` globally as described in the
+[Validator guide](/docs/tutorial/validator#enable-nestjs-validation). When
+validation fails, `GraphQLExceptionFilter` returns an Apollo-style user input
+error while keeping field-level details in `extensions`:
+
+```json
+{
+  "errors": [
+    {
+      "message": "Validation failed",
+      "path": ["createUser"],
+      "extensions": {
+        "code": "BAD_USER_INPUT",
+        "validationErrors": [
+          {
+            "code": "invalid_format",
+            "field": ["email"],
+            "message": "Invalid email address"
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
+The top-level `path` is GraphQL's resolver response path. Each `field` is the
+path to the invalid input value and can include numeric array indexes.
 
 ## Resolvers
 
