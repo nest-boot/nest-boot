@@ -32,12 +32,12 @@ import type {
   SignInSocialEntityResult,
   SignInSocialOptions,
   SignInSocialResult,
-  SignUpEntityResult,
   SignUpOptions,
   SignUpResult,
   UnlinkAuthAccountOptions,
   UpdateAuthUserOptions,
 } from "../interfaces/auth-service.interface.js";
+import type { SignUpPayload } from "../types/sign-up-payload.type.js";
 import { applyAuthResponseCookies } from "../utils/apply-auth-response-cookies.util.js";
 import { SessionService } from "./session.service.js";
 import { UserService } from "./user.service.js";
@@ -205,13 +205,14 @@ export class AuthService {
     return user;
   }
 
-  /** Registers a user and returns the application entity for GraphQL selections. */
-  async signUpEntity(options: SignUpOptions): Promise<SignUpEntityResult> {
+  /** Registers a user without exposing relations that require a session. */
+  async signUpPayload(options: SignUpOptions): Promise<SignUpPayload> {
     const result = await this.signUp(options);
-    return {
-      ...result,
-      user: await this.resolveResultUser(result.user, result.token),
-    };
+    if (result.token) {
+      await this.authMiddleware.authenticateSession(result.token);
+      this.authGuard.refreshAbilities();
+    }
+    return { id: result.user.id, token: result.token };
   }
 
   /** Signs in and establishes the new identity for nested GraphQL selections. */

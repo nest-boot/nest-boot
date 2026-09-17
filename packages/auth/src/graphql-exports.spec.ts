@@ -57,6 +57,8 @@ describe("public API", () => {
   });
 
   it("exports input and result types", () => {
+    expect(publicApi.SignUpPayload).toBeDefined();
+    expect(publicApi).not.toHaveProperty("AuthSignUpResultType");
     expect(publicApi.AuthSignInInput).toBeDefined();
     expect(publicApi.AuthSignInResultType).toBeDefined();
     expect(publicApi.CreateUserInput).toBeDefined();

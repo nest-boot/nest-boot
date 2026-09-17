@@ -247,7 +247,13 @@ member/invitation reads and writes keep request RLS.
 This reorganization preserves existing authorization and RLS behavior, including
 the impersonator relation's reliance on User RLS for private profile visibility.
 
-`AuthService.signInEntity`, `signUpEntity` and `signInSocialEntity` return persisted application users. When a session is issued, its identity, workspace membership, RLS context and abilities replace the previous request identity before nested selection. Without a session, registration returns its created user but does not grant authentication. The original DTO-returning AuthService methods remain available.
+`AuthService.signInEntity` and `signInSocialEntity` return persisted application
+users. When a session is issued, its identity, workspace membership, RLS context
+and abilities replace the previous request identity before nested selection.
+GraphQL registration uses `AuthService.signUpPayload` and returns only
+`SignUpPayload { id, token }`, without user relations. A null token does not load
+the registered entity or grant authentication. The original DTO-returning
+AuthService methods remain available.
 
 ## Scoped management writes
 

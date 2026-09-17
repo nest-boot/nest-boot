@@ -46,9 +46,7 @@ const AUTH_SIGN_IN_FROM_LOGIN_FORM = graphql(`
 const AUTH_SIGN_UP_FROM_LOGIN_FORM = graphql(`
   mutation signUpFromLoginForm($input: AuthSignUpInput!) {
     signUp(input: $input) {
-      user {
-        id
-      }
+      id
     }
   }
 `);
@@ -219,7 +217,7 @@ export function LoginForm({
           },
         });
 
-        if (!result.data?.signUp.user.id) {
+        if (!result.data?.signUp.id) {
           throw new Error(t("auth:form.authFailed"));
         }
 

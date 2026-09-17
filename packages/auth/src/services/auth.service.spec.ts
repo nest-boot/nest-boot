@@ -165,7 +165,7 @@ describe("current user identity", () => {
     expect(sessionService.setSessionCookie).not.toHaveBeenCalled();
   });
 
-  it("returns application users and adopts only issued sessions", async () => {
+  it("returns a minimal registration payload without loading or authenticating the user", async () => {
     const { service, em, authMiddleware, authGuard } = await createService();
     const user = Object.assign(new BaseUser(), {
       id: "created-user",
@@ -175,19 +175,48 @@ describe("current user identity", () => {
       token: null,
       user: { id: user.id },
     } as never);
-    em.findOneOrFail.mockResolvedValue(user);
-    expect(
-      (
-        await service.signUpEntity({
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      await expect(
+        service.signUpPayload({
           email: "new@example.com",
           name: "New",
           password: "password",
-        })
-      ).user,
-    ).toBe(user);
-    expect(em.findOneOrFail).toHaveBeenCalledWith(BaseUser, { id: user.id });
+        }),
+      ).resolves.toEqual({ id: user.id, token: null });
+      expect(() => service.getCurrentUser()).toThrow(
+        "A user identity is required",
+      );
+    });
+    expect(em.findOneOrFail).not.toHaveBeenCalled();
+    expect(authMiddleware.resolveRegisteredUser).not.toHaveBeenCalled();
     expect(authMiddleware.authenticateSession).not.toHaveBeenCalled();
     expect(authGuard.refreshAbilities).not.toHaveBeenCalled();
+  });
+
+  it("adopts a registration session only when a token was issued", async () => {
+    const { service, authMiddleware, authGuard, em } = await createService();
+    vi.spyOn(service, "signUp").mockResolvedValue({
+      token: "issued-token",
+      user: { id: "created-user" },
+    } as never);
+    await expect(
+      service.signUpPayload({
+        email: "new@example.com",
+        name: "New",
+        password: "password",
+      }),
+    ).resolves.toEqual({ id: "created-user", token: "issued-token" });
+    expect(authMiddleware.authenticateSession).toHaveBeenCalledWith(
+      "issued-token",
+    );
+    expect(authGuard.refreshAbilities).toHaveBeenCalledOnce();
+    expect(em.findOneOrFail).not.toHaveBeenCalled();
+    expect(authMiddleware.resolveRegisteredUser).not.toHaveBeenCalled();
+  });
+
+  it("returns application users and adopts only issued sign-in sessions", async () => {
+    const { service, authMiddleware, authGuard } = await createService();
+    const user = Object.assign(new BaseUser(), { id: "signed-in-user" });
     vi.spyOn(service, "signIn").mockResolvedValue({
       token: "issued-token",
       user: { id: user.id },

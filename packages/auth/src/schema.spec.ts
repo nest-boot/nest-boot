@@ -114,6 +114,17 @@ describe("auth GraphQL schema", () => {
       schema.getMutationType()?.getFields().createUser.type.toString(),
     ).toBe("User!");
 
+    expect(schema.getMutationType()?.getFields().signUp.type.toString()).toBe(
+      "SignUpPayload!",
+    );
+    const signUpFields = (
+      schema.getType("SignUpPayload") as GraphQLObjectType
+    ).getFields();
+    expect(Object.keys(signUpFields).sort()).toEqual(["id", "token"]);
+    expect(signUpFields.id.type.toString()).toBe("ID!");
+    expect(signUpFields.token.type.toString()).toBe("String");
+    expect(schema.getType("AuthSignUpResultType")).toBeUndefined();
+
     for (const [operation, payload, field] of [
       ["createWorkspace", "CreateWorkspacePayload", "id"],
       ["deleteWorkspace", "DeleteWorkspacePayload", "id"],

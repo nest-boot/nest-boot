@@ -62,6 +62,7 @@ export * from "./types/delete-workspace-payload.type.js";
 export * from "./types/leave-workspace-payload.type.js";
 export * from "./types/remove-member-payload.type.js";
 export * from "./types/route-argument-metadata.type.js";
+export * from "./types/sign-up-payload.type.js";
 export * from "./user.constants.js";
 export * from "./utils/can.util.js";
 export * from "./utils/extract-api-key.util.js";

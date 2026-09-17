@@ -292,12 +292,6 @@ export type AuthSignUpInput = {
   rememberMe?: InputMaybe<Scalars["Boolean"]["input"]>;
 };
 
-export type AuthSignUpResultType = {
-  __typename?: "AuthSignUpResultType";
-  token?: Maybe<Scalars["String"]["output"]>;
-  user: User;
-};
-
 export type AuthSocialProviderType = {
   __typename?: "AuthSocialProviderType";
   id: Scalars["ID"]["output"];
@@ -512,7 +506,7 @@ export type Mutation = {
   signIn: AuthSignInResultType;
   signInSocial: AuthSignInSocialResultType;
   signOut: Scalars["Boolean"]["output"];
-  signUp: AuthSignUpResultType;
+  signUp: SignUpPayload;
   stopImpersonating?: Maybe<User>;
   unbanUser: User;
   unlinkCurrentUserAccount: Scalars["Boolean"]["output"];
@@ -841,6 +835,12 @@ export type SetUserPermissionsInput = {
 
 export type SetUserRolesInput = {
   roles: Array<Scalars["String"]["input"]>;
+};
+
+export type SignUpPayload = {
+  __typename?: "SignUpPayload";
+  id: Scalars["ID"]["output"];
+  token?: Maybe<Scalars["String"]["output"]>;
 };
 
 export enum TotalCountRelation {
@@ -2218,10 +2218,7 @@ export type SignUpFromLoginFormMutationVariables = Exact<{
 
 export type SignUpFromLoginFormMutation = {
   __typename?: "Mutation";
-  signUp: {
-    __typename?: "AuthSignUpResultType";
-    user: { __typename?: "User"; id: string };
-  };
+  signUp: { __typename?: "SignUpPayload"; id: string };
 };
 
 export type GetSocialProvidersFromLoginFormQueryVariables = Exact<{
@@ -7503,16 +7500,7 @@ export const SignUpFromLoginFormDocument = {
             selectionSet: {
               kind: "SelectionSet",
               selections: [
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "user" },
-                  selectionSet: {
-                    kind: "SelectionSet",
-                    selections: [
-                      { kind: "Field", name: { kind: "Name", value: "id" } },
-                    ],
-                  },
-                },
+                { kind: "Field", name: { kind: "Name", value: "id" } },
               ],
             },
           },

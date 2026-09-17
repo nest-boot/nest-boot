@@ -78,7 +78,7 @@ type Documents = {
   "\n  mutation createWorkspaceFromCreateWorkspaceRoute(\n    $input: CreateWorkspaceInput!\n  ) {\n    createWorkspace(input: $input) {\n      id\n    }\n  }\n": typeof types.CreateWorkspaceFromCreateWorkspaceRouteDocument;
   "\n  query getFirstWorkspaceFromWorkspacesRoute {\n    currentUser {\n      workspaces(first: 1) {\n        edges {\n          node {\n            id\n          }\n        }\n      }\n    }\n  }\n": typeof types.GetFirstWorkspaceFromWorkspacesRouteDocument;
   "\n  mutation signInFromLoginForm($input: AuthSignInInput!) {\n    signIn(input: $input) {\n      user {\n        id\n      }\n    }\n  }\n": typeof types.SignInFromLoginFormDocument;
-  "\n  mutation signUpFromLoginForm($input: AuthSignUpInput!) {\n    signUp(input: $input) {\n      user {\n        id\n      }\n    }\n  }\n": typeof types.SignUpFromLoginFormDocument;
+  "\n  mutation signUpFromLoginForm($input: AuthSignUpInput!) {\n    signUp(input: $input) {\n      id\n    }\n  }\n": typeof types.SignUpFromLoginFormDocument;
   "\n  query getSocialProvidersFromLoginForm {\n    socialProviders {\n      id\n      name\n    }\n  }\n": typeof types.GetSocialProvidersFromLoginFormDocument;
   "\n  mutation signInSocialFromLoginForm($input: AuthSignInSocialInput!) {\n    signInSocial(input: $input) {\n      redirect\n      url\n    }\n  }\n": typeof types.SignInSocialFromLoginFormDocument;
   "\n  mutation requestPasswordResetFromForgotPassword(\n    $input: AuthRequestPasswordResetInput!\n  ) {\n    requestPasswordReset(input: $input) {\n      status\n    }\n  }\n": typeof types.RequestPasswordResetFromForgotPasswordDocument;
@@ -218,7 +218,7 @@ const documents: Documents = {
     types.GetFirstWorkspaceFromWorkspacesRouteDocument,
   "\n  mutation signInFromLoginForm($input: AuthSignInInput!) {\n    signIn(input: $input) {\n      user {\n        id\n      }\n    }\n  }\n":
     types.SignInFromLoginFormDocument,
-  "\n  mutation signUpFromLoginForm($input: AuthSignUpInput!) {\n    signUp(input: $input) {\n      user {\n        id\n      }\n    }\n  }\n":
+  "\n  mutation signUpFromLoginForm($input: AuthSignUpInput!) {\n    signUp(input: $input) {\n      id\n    }\n  }\n":
     types.SignUpFromLoginFormDocument,
   "\n  query getSocialProvidersFromLoginForm {\n    socialProviders {\n      id\n      name\n    }\n  }\n":
     types.GetSocialProvidersFromLoginFormDocument,
@@ -642,8 +642,8 @@ export function graphql(
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
-  source: "\n  mutation signUpFromLoginForm($input: AuthSignUpInput!) {\n    signUp(input: $input) {\n      user {\n        id\n      }\n    }\n  }\n",
-): (typeof documents)["\n  mutation signUpFromLoginForm($input: AuthSignUpInput!) {\n    signUp(input: $input) {\n      user {\n        id\n      }\n    }\n  }\n"];
+  source: "\n  mutation signUpFromLoginForm($input: AuthSignUpInput!) {\n    signUp(input: $input) {\n      id\n    }\n  }\n",
+): (typeof documents)["\n  mutation signUpFromLoginForm($input: AuthSignUpInput!) {\n    signUp(input: $input) {\n      id\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

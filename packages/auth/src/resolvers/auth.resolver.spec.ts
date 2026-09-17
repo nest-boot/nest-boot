@@ -6,6 +6,23 @@ import { type AuthService } from "../services/auth.service.js";
 import { AuthResolver } from "./auth.resolver.js";
 
 describe("AuthResolver", () => {
+  it.each([null, "session-token"])(
+    "returns the registration payload with token %j",
+    async (token) => {
+      const payload = { id: "user-1", token };
+      const { resolver, authService } = createResolver({
+        signUpPayload: vi.fn().mockResolvedValue(payload),
+      });
+      const input = {
+        name: "Alice",
+        email: "alice@example.com",
+        password: "password",
+      };
+      await expect(resolver.signUp(input)).resolves.toEqual(payload);
+      expect(authService.signUpPayload).toHaveBeenCalledWith(input);
+    },
+  );
+
   it("maps the account target id to the auth service's accountId option", async () => {
     const { resolver, authService } = createResolver({
       unlinkCurrentUserAccount: vi.fn().mockResolvedValue(true),

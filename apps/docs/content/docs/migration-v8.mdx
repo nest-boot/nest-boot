@@ -152,3 +152,10 @@ builders, delivery callbacks, and provider settings remain configurable.
 `CreateUserOptions.data` is removed: `UserService.createUser()` only persists
 the built-in user fields. Store application-specific fields in a separate entity
 related to `User` instead.
+
+GraphQL `signUp` now returns `SignUpPayload { id, token }` instead of
+`AuthSignUpResultType { user, token }`. Replace `signUp { user { id } }` with
+`signUp { id }`; authenticated user relations must be queried after sign-in.
+`AuthService.signUpPayload()` replaces `signUpEntity()`. The lower-level
+`AuthService.signUp()` result is unchanged, and a null token never establishes
+an authenticated identity.

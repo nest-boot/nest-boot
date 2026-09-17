@@ -128,3 +128,9 @@ export default defineConfig({
 
 `CreateUserOptions.data` 已移除：`UserService.createUser()` 仅持久化内置用户字段。
 应用自定义字段请存放在与 `User` 关联的独立业务实体中。
+
+GraphQL `signUp` 现在返回 `SignUpPayload { id, token }`，不再返回
+`AuthSignUpResultType { user, token }`。将 `signUp { user { id } }` 改为
+`signUp { id }`；需要登录的用户关联字段应在登录后查询。
+`AuthService.signUpPayload()` 替代 `signUpEntity()`，底层 `AuthService.signUp()`
+返回值保持不变。`token` 为 null 时不会建立登录身份。

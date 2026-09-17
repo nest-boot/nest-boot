@@ -24,9 +24,9 @@ import {
   AuthRequestPasswordResetResultType,
   AuthSignInResultType,
   AuthSignInSocialResultType,
-  AuthSignUpResultType,
   AuthSocialProviderType,
 } from "../types/auth.type.js";
+import { SignUpPayload } from "../types/sign-up-payload.type.js";
 import { getUserAbility } from "../utils/get-user-ability.util.js";
 import { getWorkspaceAbility } from "../utils/get-workspace-ability.util.js";
 import { serializeAbilityRules } from "../utils/serialize-ability-rules.util.js";
@@ -67,11 +67,9 @@ export class AuthResolver {
 
   /** Registers a user with an email address and password. */
   @Public()
-  @Mutation(() => AuthSignUpResultType)
-  async signUp(
-    @Args("input") input: AuthSignUpInput,
-  ): Promise<AuthSignUpResultType> {
-    return await this.authService.signUpEntity({ ...input });
+  @Mutation(() => SignUpPayload)
+  async signUp(@Args("input") input: AuthSignUpInput): Promise<SignUpPayload> {
+    return await this.authService.signUpPayload({ ...input });
   }
 
   /** Signs in with an email address and password. */

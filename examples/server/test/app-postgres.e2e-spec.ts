@@ -313,6 +313,36 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     ).toBe(200);
   });
 
+  it('rejects registration user relations before creating an account', async () => {
+    const email = uniqueEmail('graphql-signup-relations');
+    const response = await gql(
+      'mutation($input: AuthSignUpInput!) { signUp(input: $input) { user { accounts { totalCount } } } }',
+      {
+        variables: {
+          input: {
+            email,
+            name: 'Rejected Selection',
+            password: 'correct-horse-battery-staple',
+          },
+        },
+      },
+    );
+    expect(response.body.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          message: expect.stringContaining(
+            'Cannot query field "user" on type "SignUpPayload"',
+          ),
+        }),
+      ]),
+    );
+    expect(
+      await migrationOrm.em
+        .getConnection()
+        .execute('select id from "user" where email = ?', [email]),
+    ).toEqual([]);
+  });
+
   it('supports email authentication through GraphQL with cookie sessions', async () => {
     const email = uniqueEmail('graphql-auth');
     const password = 'correct-horse-battery-staple';
@@ -320,12 +350,8 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       /* GraphQL */ `
         mutation SignUp($input: AuthSignUpInput!) {
           signUp(input: $input) {
+            id
             token
-            user {
-              id
-              name
-              email
-            }
           }
         }
       `,
@@ -337,10 +363,20 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     );
 
     expectNoGraphQLErrors(registered);
-    expect(registered.body.data.signUp).toMatchObject({
+    expect(registered.body.data.signUp).toEqual({
+      id: expect.any(String),
       token: null,
-      user: { email, name: 'GraphQL User' },
     });
+    const registeredUsers = await migrationOrm.em
+      .getConnection()
+      .execute('select id, name, email from "user" where email = ?', [email]);
+    expect(registeredUsers).toEqual([
+      { id: registered.body.data.signUp.id, name: 'GraphQL User', email },
+    ]);
+    const unauthenticated = await gql('query { currentUser { id } }', {
+      cookies: collectSetCookies(registered),
+    });
+    expect(unauthenticated.body.errors).toBeDefined();
     await verifyEmail(email);
 
     const loggedIn = await gql(

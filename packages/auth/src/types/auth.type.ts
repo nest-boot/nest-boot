@@ -3,19 +3,6 @@ import { GraphQLJSONObject } from "graphql-type-json";
 
 import { User } from "../entities/user.entity.js";
 
-/** Email registration result. */
-@ObjectType()
-export class AuthSignUpResultType {
-  /** Session token when registration creates a session. */
-  @Field(() => String, { nullable: true })
-  token!: string | null;
-
-  /** Newly registered user. */
-
-  @Field(() => User)
-  user!: User;
-}
-
 /** Email sign-in result. */
 @ObjectType()
 export class AuthSignInResultType {

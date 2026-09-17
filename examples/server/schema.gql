@@ -275,11 +275,6 @@ input AuthSignUpInput {
   rememberMe: Boolean
 }
 
-type AuthSignUpResultType {
-  token: String
-  user: User!
-}
-
 type AuthSocialProviderType {
   id: ID!
   name: String!
@@ -563,7 +558,7 @@ type Mutation {
   signIn(input: AuthSignInInput!): AuthSignInResultType!
   signInSocial(input: AuthSignInSocialInput!): AuthSignInSocialResultType!
   signOut: Boolean!
-  signUp(input: AuthSignUpInput!): AuthSignUpResultType!
+  signUp(input: AuthSignUpInput!): SignUpPayload!
   stopImpersonating: User
   unbanUser(id: ID!): User!
   unlinkCurrentUserAccount(id: ID!): Boolean!
@@ -754,6 +749,11 @@ input SetUserPermissionsInput {
 
 input SetUserRolesInput {
   roles: [String!]!
+}
+
+type SignUpPayload {
+  id: ID!
+  token: String
 }
 
 enum TotalCountRelation {
