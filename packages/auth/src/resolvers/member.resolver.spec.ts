@@ -56,68 +56,32 @@ describe("MemberResolver", () => {
       "alice@example.com",
     );
   });
-  it("rejects direct permission changes by non owners", async () => {
-    const target = {
-      id: "member_2",
-      roles: ["member"],
-    } as Member;
+  it("forwards permission changes and propagates service errors", async () => {
+    const denied = new ForbiddenException();
     const { resolver, memberService } = createResolver({
       memberService: {
-        getMember: vi.fn(async () => target),
-        setMemberPermissions: vi.fn(async () => {
-          throw new ForbiddenException();
-        }),
+        setMemberPermissions: vi.fn().mockRejectedValue(denied),
       },
     });
 
     await expect(
-      resolver.setMemberPermissions(target.id, {
+      resolver.setMemberPermissions("member_2", {
         permissions: [],
       }),
-    ).rejects.toBeInstanceOf(ForbiddenException);
+    ).rejects.toBe(denied);
     expect(memberService.setMemberPermissions).toHaveBeenCalledWith(
-      target.id,
+      "member_2",
       [],
     );
   });
 
-  it("rejects updating other owners", async () => {
-    const { resolver, memberService } = createResolver({
-      memberService: {
-        updateMember: vi.fn(async () => {
-          throw new ForbiddenException();
-        }),
-        getMember: vi.fn(
-          async () =>
-            ({
-              id: "member_2",
-              roles: ["owner"],
-            }) as Member,
-        ),
-      },
-    });
-
-    await expect(
-      resolver.updateMember("member_2", {
-        status: MemberStatus.DISABLED,
-      }),
-    ).rejects.toBeInstanceOf(ForbiddenException);
-
-    expect(memberService.updateMember).toHaveBeenCalled();
-  });
-
-  it("allows authorized members to update member status", async () => {
-    const member = {
-      id: "member_2",
-      roles: ["member"],
-    } as Member;
+  it("forwards member updates without a preliminary lookup", async () => {
     const updated = {
-      ...member,
+      id: "member_2",
       status: MemberStatus.DISABLED,
     } as Member;
     const { resolver, memberService } = createResolver({
       memberService: {
-        getMember: vi.fn(async () => member),
         updateMember: vi.fn(async () => updated),
       },
     });
@@ -128,10 +92,21 @@ describe("MemberResolver", () => {
       }),
     ).resolves.toBe(updated);
 
-    expect(memberService.updateMember).toHaveBeenCalledWith(member.id, {
+    expect(memberService.updateMember).toHaveBeenCalledWith(updated.id, {
       status: MemberStatus.DISABLED,
     });
     expect(memberService.getMember).not.toHaveBeenCalled();
+  });
+
+  it("propagates update errors from MemberService", async () => {
+    const denied = new ForbiddenException();
+    const input = { status: MemberStatus.DISABLED };
+    const { resolver, memberService } = createResolver({
+      memberService: { updateMember: vi.fn().mockRejectedValue(denied) },
+    });
+
+    await expect(resolver.updateMember("member_2", input)).rejects.toBe(denied);
+    expect(memberService.updateMember).toHaveBeenCalledWith("member_2", input);
   });
 
   it("lists roles and updates member roles through MemberService", async () => {
@@ -139,7 +114,6 @@ describe("MemberResolver", () => {
     const roles = [{ name: "admin", permissions: ["workspace:update"] }];
     const { resolver, memberService } = createResolver({
       memberService: {
-        getMember: vi.fn(async () => member),
         listPermissions: vi.fn(() => ["workspace:update"]),
         listRoles: vi.fn(() => roles),
         setMemberRoles: vi.fn(async () => member),
@@ -159,55 +133,23 @@ describe("MemberResolver", () => {
     ]);
   });
 
-  it("allows owners to update their own owner member record", async () => {
-    const member = {
-      id: "member_1",
-      roles: ["owner"],
-    } as Member;
+  it("propagates removal errors from MemberService", async () => {
+    const denied = new ForbiddenException();
     const { resolver, memberService } = createResolver({
       memberService: {
-        getMember: vi.fn(async () => member),
-        updateMember: vi.fn(async () => member),
+        removeMember: vi.fn().mockRejectedValue(denied),
       },
     });
 
-    await expect(
-      resolver.updateMember("member_1", {
-        status: MemberStatus.ACTIVE,
-      }),
-    ).resolves.toBe(member);
-    expect(memberService.updateMember).toHaveBeenCalledWith(member.id, {
-      status: MemberStatus.ACTIVE,
-    });
+    await expect(resolver.removeMember("member_1")).rejects.toBe(denied);
+
+    expect(memberService.removeMember).toHaveBeenCalledWith("member_1");
   });
 
-  it("rejects self removal", async () => {
-    const { resolver, memberService } = createResolver({
-      memberService: {
-        removeMember: vi.fn(async () => {
-          throw new ForbiddenException();
-        }),
-        getMember: vi.fn(
-          async () =>
-            ({
-              id: "member_1",
-            }) as Member,
-        ),
-      },
-    });
-
-    await expect(resolver.removeMember("member_1")).rejects.toBeInstanceOf(
-      ForbiddenException,
-    );
-
-    expect(memberService.removeMember).toHaveBeenCalled();
-  });
-
-  it("allows owners to remove other members", async () => {
+  it("returns only the removed member identifier", async () => {
     const member = { id: "member_2", name: "Removed member" } as Member;
     const { resolver, memberService } = createResolver({
       memberService: {
-        getMember: vi.fn(async () => member),
         removeMember: vi.fn(async () => member),
       },
     });

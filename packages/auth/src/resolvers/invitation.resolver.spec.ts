@@ -39,36 +39,34 @@ describe("InvitationResolver", () => {
     );
   });
 
-  it("rejects owner invitations created by non owners", async () => {
+  it("propagates invitation creation errors from InvitationService", async () => {
+    const denied = new ForbiddenException();
+    const workspace = { id: "workspace_1" } as Workspace;
+    const user = { id: "user_1" } as User;
+    const input = { email: "invited@example.com", roles: ["member"] };
     const { resolver, invitationService } = createResolver({
-      createInvitation: vi.fn(async () => {
-        throw new ForbiddenException();
-      }),
+      createInvitation: vi.fn().mockRejectedValue(denied),
     });
 
     await expect(
-      resolver.createInvitation(
-        { id: "workspace_1" } as Workspace,
-        { id: "user_1" } as User,
-        {
-          email: "invited@example.com",
-          roles: ["owner"],
-        },
-      ),
-    ).rejects.toBeInstanceOf(ForbiddenException);
-    expect(invitationService.createInvitation).toHaveBeenCalled();
+      resolver.createInvitation(workspace, user, input),
+    ).rejects.toBe(denied);
+    expect(invitationService.createInvitation).toHaveBeenCalledWith(
+      workspace,
+      user,
+      input,
+    );
   });
 
-  it("returns null for an invitation hidden by RLS and propagates service denial", async () => {
+  it("forwards nullable invitation results and service errors", async () => {
+    const denied = new ForbiddenException();
     const getInvitation = vi
       .fn()
       .mockResolvedValueOnce(null)
-      .mockRejectedValueOnce(new ForbiddenException());
+      .mockRejectedValueOnce(denied);
     const { resolver } = createResolver({ getInvitation });
     await expect(resolver.invitation("hidden")).resolves.toBeNull();
-    await expect(resolver.invitation("denied")).rejects.toBeInstanceOf(
-      ForbiddenException,
-    );
+    await expect(resolver.invitation("denied")).rejects.toBe(denied);
   });
 
   it("returns only accepted invitation identifiers", async () => {
@@ -105,7 +103,7 @@ describe("InvitationResolver", () => {
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  it("rejects an invitation addressed to the current user", async () => {
+  it("forwards the current user and invitation ID when rejecting", async () => {
     const user = { id: "user_1" } as User;
     const invitation = { id: "invitation_1" } as Invitation;
     const rejectedInvitation = {
@@ -113,7 +111,6 @@ describe("InvitationResolver", () => {
       status: "rejected",
     } as Invitation;
     const { resolver, invitationService } = createResolver({
-      getInvitationByUser: vi.fn(async () => invitation),
       rejectInvitation: vi.fn(async () => rejectedInvitation),
     });
 
@@ -140,20 +137,17 @@ describe("InvitationResolver", () => {
     );
   });
 
-  it("does not reveal or cancel an invitation from another workspace", async () => {
-    const invitation = {
-      id: "invitation_1",
-      workspace: { id: "workspace_2" },
-    } as Invitation;
+  it("propagates cancellation errors from InvitationService", async () => {
+    const missing = new NotFoundException();
     const { resolver, invitationService } = createResolver({
-      cancelInvitation: vi.fn().mockRejectedValue(new NotFoundException()),
+      cancelInvitation: vi.fn().mockRejectedValue(missing),
     });
 
-    await expect(
-      resolver.cancelInvitation(invitation.id),
-    ).rejects.toBeInstanceOf(NotFoundException);
+    await expect(resolver.cancelInvitation("invitation_1")).rejects.toBe(
+      missing,
+    );
     expect(invitationService.cancelInvitation).toHaveBeenCalledWith(
-      invitation.id,
+      "invitation_1",
     );
   });
 });
@@ -164,10 +158,6 @@ function createResolver(overrides: Record<string, unknown> = {}) {
     cancelInvitation: vi.fn(),
     createInvitation: vi.fn(),
     getInvitation: vi.fn(),
-    getInvitationByUser: vi.fn(),
-    getInvitationByWorkspace: vi.fn(),
-    getInvitationConnectionByWorkspace: vi.fn(),
-    getInvitationConnectionByUser: vi.fn(),
     rejectInvitation: vi.fn(),
     ...overrides,
   } as unknown as Mocked<InvitationService>;

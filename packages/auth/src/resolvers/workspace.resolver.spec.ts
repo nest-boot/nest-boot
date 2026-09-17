@@ -49,7 +49,7 @@ describe("WorkspaceResolver", () => {
     expect(() => resolver.currentWorkspace()).toThrow(ForbiddenException);
   });
 
-  it("returns a workspace only when the current user is an active member", async () => {
+  it("forwards workspace lookup arguments and nullable service results", async () => {
     const workspace = { id: "workspace_1" } as Workspace;
     const user = { id: "user_1" } as User;
     const { resolver, workspaceService } = createResolver({
@@ -68,7 +68,7 @@ describe("WorkspaceResolver", () => {
     await expect(resolver.workspace(workspace.id, user)).resolves.toBeNull();
   });
 
-  it("delegates workspace lifecycle operations to the auth service", async () => {
+  it("delegates workspace lifecycle operations to WorkspaceService", async () => {
     const workspace = { id: "workspace_1", name: "Acme" } as Workspace;
     const user = { id: "user_1" } as User;
     const { resolver, workspaceService } = createResolver({
@@ -99,7 +99,7 @@ describe("WorkspaceResolver", () => {
     expect(workspaceService.deleteWorkspace).toHaveBeenCalledWith(workspace.id);
   });
 
-  it("delegates leaving a workspace to the auth service", async () => {
+  it("delegates leaving a workspace to MemberService", async () => {
     const member = { id: "member_1", name: "Leaving member" } as Member;
     const { resolver, memberService } = createResolver(
       {},

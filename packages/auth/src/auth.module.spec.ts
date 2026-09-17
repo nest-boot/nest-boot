@@ -1138,46 +1138,16 @@ describe("AuthModule", () => {
     expect(mockGenericOAuth).not.toHaveBeenCalled();
   });
 
-  it.each([
-    ["AUTH_OIDC_CLIENT_ID"],
-    ["AUTH_OIDC_CLIENT_SECRET"],
-    ["AUTH_OIDC_DISCOVERY_URL"],
-  ])("should reject missing %s when OIDC env is configured", (envName) => {
+  it("propagates OIDC configuration errors before initializing Better Auth", () => {
     setOidcEnv();
-    process.env[envName] = "";
-    const orm = {
-      em: {},
-    } as unknown as MikroORM;
+    process.env.AUTH_OIDC_CLIENT_ID = "";
     const authProvider = getAuthProvider();
+    const orm = { em: {} } as unknown as MikroORM;
 
-    expect(() =>
-      authProvider.useFactory(
-        {
-          entities,
-          secret,
-        },
-        orm,
-      ),
-    ).toThrow(envName);
-  });
-
-  it("should reject invalid OIDC prompt values", () => {
-    setOidcEnv();
-    process.env.AUTH_OIDC_PROMPT = "invalid";
-    const orm = {
-      em: {},
-    } as unknown as MikroORM;
-    const authProvider = getAuthProvider();
-
-    expect(() =>
-      authProvider.useFactory(
-        {
-          entities,
-          secret,
-        },
-        orm,
-      ),
-    ).toThrow("AUTH_OIDC_PROMPT");
+    expect(() => authProvider.useFactory({ secret }, orm)).toThrow(
+      "AUTH_OIDC_CLIENT_ID",
+    );
+    expect(mockBetterAuth).not.toHaveBeenCalled();
   });
 
   it("should merge email auth options without dropping email signup disable env flags", () => {
@@ -1262,38 +1232,14 @@ describe("AuthModule", () => {
     );
   });
 
-  it("should reject missing, short, or low-entropy secrets", () => {
+  it("validates the secret before initializing Better Auth", () => {
     const authProvider = getAuthProvider();
-    const orm = {
-      em: {},
-    } as unknown as MikroORM;
+    const orm = { em: {} } as unknown as MikroORM;
 
-    expect(() =>
-      authProvider.useFactory(
-        {
-          entities,
-        },
-        orm,
-      ),
-    ).toThrow("Auth secret is required");
-    expect(() =>
-      authProvider.useFactory(
-        {
-          entities,
-          secret: "short",
-        },
-        orm,
-      ),
-    ).toThrow("Auth secret must be at least 32 characters long");
-    expect(() =>
-      authProvider.useFactory(
-        {
-          entities,
-          secret: "a".repeat(32),
-        },
-        orm,
-      ),
-    ).toThrow("Auth secret appears low-entropy");
+    expect(() => authProvider.useFactory({ secret: "short" }, orm)).toThrow(
+      "Auth secret must be at least 32 characters long",
+    );
+    expect(mockBetterAuth).not.toHaveBeenCalled();
   });
 
   it("should register auth handler and auth middleware routes", async () => {

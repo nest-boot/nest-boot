@@ -49,17 +49,191 @@ vi.mock("./adapters/mikro-orm-adapter.js", () => ({
 
 describe("public API", () => {
   it.each([
-    [UserService, "listUsers"],
-    [SessionService, "listUserSessions"],
-    [WorkspaceService, "getFullWorkspace"],
-  ] as const)(
-    "does not expose the removed %s.%s collection API",
-    (service, method) => {
-      expect(service.prototype).not.toHaveProperty(method);
+    {
+      name: "UserService",
+      service: UserService,
+      methods: [
+        "getUserConnection",
+        "deleteUser",
+        "setUserRoles",
+        "hasPermissions",
+        "getEffectiveUserPermissions",
+      ],
+      removed: [
+        "listUsers",
+        "listUserAccounts",
+        "getConnection",
+        "getSessionConnection",
+        "removeUser",
+        "setRole",
+        "setRoles",
+        "hasPermission",
+        "getUserPermissions",
+      ],
+    },
+    {
+      name: "AccountService",
+      service: AccountService,
+      methods: ["getAccountConnectionByUser"],
+      removed: [],
+    },
+    {
+      name: "MemberService",
+      service: MemberService,
+      methods: [
+        "getCurrentMember",
+        "getMemberListFilter",
+        "getMemberConnectionByWorkspace",
+        "getMemberByUser",
+        "getMember",
+        "getMemberUser",
+        "addMember",
+        "addMemberByEmail",
+        "getUserForMembership",
+        "updateMember",
+        "setMemberRoles",
+        "setMemberPermissions",
+        "removeMember",
+        "leaveWorkspace",
+        "hasPermissions",
+        "listRoles",
+        "listPermissions",
+        "getEffectiveMemberPermissions",
+      ],
+      removed: [
+        "getWorkspaceMemberConnectionByWorkspace",
+        "getMemberById",
+        "getMemberPermissions",
+        "updateMemberRoles",
+        "updateMemberRole",
+        "hasPermission",
+      ],
+      previousService: WorkspaceService,
+    },
+    {
+      name: "InvitationService",
+      service: InvitationService,
+      methods: [
+        "createInvitation",
+        "getInvitation",
+        "getInvitationInviter",
+        "getInvitationWorkspace",
+        "getInvitationByUser",
+        "getInvitationByWorkspace",
+        "getInvitationConnectionByWorkspace",
+        "getInvitationConnectionByUser",
+        "acceptInvitation",
+        "cancelInvitation",
+        "rejectInvitation",
+      ],
+      removed: [
+        "getWorkspaceInvitationConnectionByWorkspace",
+        "getWorkspaceInvitationConnectionByUser",
+      ],
+      previousService: WorkspaceService,
+    },
+    {
+      name: "SessionService",
+      service: SessionService,
+      methods: [
+        "getSessionConnectionByUser",
+        "getSessionImpersonator",
+        "revokeSession",
+        "revokeUserSessions",
+        "revokeCurrentUserSession",
+        "revokeCurrentUserSessions",
+        "revokeCurrentUserOtherSessions",
+        "getCurrentAuthenticatedSession",
+        "listCurrentUserSessions",
+        "setSessionCookie",
+      ],
+      removed: [
+        "listUserSessions",
+        "getSessionConnection",
+        "revokeUserSession",
+        "revokeSessions",
+        "revokeOtherSessions",
+        "getSession",
+        "listSessions",
+        "setSession",
+      ],
+      previousService: UserService,
+    },
+    {
+      name: "ApiKeyService",
+      service: ApiKeyService,
+      methods: [
+        "getApiKeyConnectionByUser",
+        "getApiKeyConnectionByWorkspace",
+        "createUserApiKey",
+        "createWorkspaceApiKey",
+        "updateUserApiKey",
+        "updateWorkspaceApiKey",
+        "deleteUserApiKey",
+        "deleteWorkspaceApiKey",
+      ],
+      removed: [
+        "getUserConnection",
+        "getWorkspaceConnection",
+        "getUserListFilter",
+        "getWorkspaceListFilter",
+        "createUserKey",
+        "createWorkspaceKey",
+        "updateUserKey",
+        "updateWorkspaceKey",
+        "deleteUserKey",
+        "deleteWorkspaceKey",
+      ],
+    },
+    {
+      name: "AuthService",
+      service: AuthService,
+      methods: [
+        "verifyCurrentUserPassword",
+        "changeCurrentUserEmail",
+        "changeCurrentUserPassword",
+        "setCurrentUserPassword",
+        "listCurrentUserAccounts",
+        "linkCurrentUserAccount",
+        "unlinkCurrentUserAccount",
+        "updateCurrentUser",
+        "deleteCurrentUser",
+        "getAccountInfo",
+      ],
+      removed: [
+        "verifyPassword",
+        "changeEmail",
+        "changePassword",
+        "setPassword",
+        "listAccounts",
+        "linkSocialAccount",
+        "unlinkAccount",
+        "linkCurrentUserSocialAccount",
+        "updateUser",
+        "deleteUser",
+        "accountInfo",
+      ],
+    },
+    {
+      name: "WorkspaceService",
+      service: WorkspaceService,
+      methods: [],
+      removed: ["getFullWorkspace", "transferOwnership"],
+    },
+  ])(
+    "keeps the $name method contract without compatibility aliases",
+    ({ service, methods, removed, previousService }) => {
+      for (const method of methods) {
+        expect(service.prototype).toHaveProperty(method);
+        if (previousService)
+          expect(previousService.prototype).not.toHaveProperty(method);
+      }
+      for (const method of removed)
+        expect(service.prototype).not.toHaveProperty(method);
     },
   );
 
-  it("exports account pagination from its own non-privileged service", () => {
+  it("registers and exports AccountService through AuthModule", () => {
     expect(publicApi.AccountService).toBe(AccountService);
     expect(Reflect.getMetadata("providers", AuthModule)).toContain(
       AccountService,
@@ -67,22 +241,9 @@ describe("public API", () => {
     expect(Reflect.getMetadata("exports", AuthModule)).toContain(
       AccountService,
     );
-    expect(Object.getOwnPropertyNames(UserService.prototype)).not.toContain(
-      "listUserAccounts",
-    );
-    expect(Object.getOwnPropertyNames(AccountService.prototype)).toContain(
-      "getAccountConnectionByUser",
-    );
   });
-  it("exports concise member and invitation names without compatibility aliases", () => {
-    for (const name of [
-      "Member",
-      "Invitation",
-      "MemberService",
-      "InvitationService",
-      "CurrentMember",
-    ])
-      expect(publicApi).toHaveProperty(name);
+
+  it("does not export legacy workspace member and invitation aliases", () => {
     for (const name of [
       "BaseWorkspaceMember",
       "BaseWorkspaceInvitation",
@@ -91,6 +252,9 @@ describe("public API", () => {
       "CurrentWorkspaceMember",
     ])
       expect(publicApi).not.toHaveProperty(name);
+  });
+
+  it("exports the member and invitation permission catalog", () => {
     expect(publicApi.DEFAULT_WORKSPACE_PERMISSIONS).toEqual(
       expect.arrayContaining([
         "member:create",
@@ -108,194 +272,92 @@ describe("public API", () => {
       ),
     ).toBe(false);
   });
-  it("keeps member and invitation operations on their own services without workspace aliases", () => {
-    const workspaceMethods = Object.getOwnPropertyNames(
-      WorkspaceService.prototype,
-    );
+
+  it("owns all concrete auth entities and connection types", () => {
+    const names = [
+      "User",
+      "Account",
+      "Session",
+      "Verification",
+      "Workspace",
+      "Member",
+      "Invitation",
+      "ApiKey",
+    ] as const;
+    expect(publicApi.entities).toHaveLength(names.length);
+    for (const name of names) {
+      expect(publicApi.entities).toContain(publicApi[name]);
+      expect(publicApi).not.toHaveProperty(`Base${name}`);
+      if (name !== "Verification")
+        expect(publicApi).toHaveProperty(`${name}Connection`);
+    }
+    expect(publicApi).not.toHaveProperty("AuthGraphQLModule");
+  });
+  it("does not export provider credential transport types", () => {
     for (const name of [
-      "getCurrentMember",
-      "getMemberListFilter",
-      "getMemberConnectionByWorkspace",
-      "getMemberByUser",
-      "getMember",
-      "getMemberUser",
-      "addMember",
-      "addMemberByEmail",
-      "getUserForMembership",
-      "updateMember",
-      "setMemberRoles",
-      "setMemberPermissions",
-      "removeMember",
-      "leaveWorkspace",
-      "hasPermissions",
-      "listRoles",
-      "listPermissions",
-      "getEffectiveMemberPermissions",
-    ]) {
-      expect(MemberService.prototype).toHaveProperty(name);
-      expect(workspaceMethods).not.toContain(name);
-    }
+      "AuthAccountSelectorInput",
+      "AuthAccountIdentityType",
+      "AuthAccessTokenType",
+      "AuthRefreshedTokenType",
+      "AuthAccountInfoType",
+    ])
+      expect(publicApi).not.toHaveProperty(name);
+  });
+  it("exports the GraphQL module and resolvers", () => {
+    expect(publicApi.AuthResolver).toBeDefined();
+    expect(publicApi.UserResolver).toBeDefined();
+    expect(publicApi.SessionResolver).toBeDefined();
     for (const name of [
-      "createInvitation",
-      "getInvitation",
-      "getInvitationInviter",
-      "getInvitationWorkspace",
-      "getInvitationByUser",
-      "getInvitationByWorkspace",
-      "getInvitationConnectionByWorkspace",
-      "getInvitationConnectionByUser",
-      "acceptInvitation",
-      "cancelInvitation",
-      "rejectInvitation",
+      "ApiKeyResolver",
+      "WorkspaceResolver",
+      "MemberResolver",
+      "InvitationResolver",
     ]) {
-      expect(InvitationService.prototype).toHaveProperty(name);
-      expect(workspaceMethods).not.toContain(name);
+      expect(publicApi).toHaveProperty(name);
+      expect(publicApi).not.toHaveProperty(`create${name}`);
     }
-    expect(UserService.prototype).toHaveProperty("getUserConnection");
-    expect(UserService.prototype).not.toHaveProperty("getConnection");
-    expect(MemberService.prototype).not.toHaveProperty(
-      "getWorkspaceMemberConnectionByWorkspace",
-    );
-    expect(InvitationService.prototype).not.toHaveProperty(
-      "getWorkspaceInvitationConnectionByWorkspace",
-    );
-    expect(InvitationService.prototype).not.toHaveProperty(
-      "getWorkspaceInvitationConnectionByUser",
-    );
+    expect(publicApi).not.toHaveProperty("AuthRoleType");
+    for (const token of [
+      "API_KEY_RESOLVER_OPTIONS",
+      "WORKSPACE_RESOLVER_OPTIONS",
+      "WORKSPACE_MEMBER_RESOLVER_OPTIONS",
+      "WORKSPACE_INVITATION_RESOLVER_OPTIONS",
+    ])
+      expect(publicApi).not.toHaveProperty(token);
+    expect(publicApi).toHaveProperty("SetMemberRolesInput");
+    expect(publicApi).not.toHaveProperty("UpdateMemberRolesInput");
   });
-  it("owns safe session queries and administrative revocation in SessionService", () => {
-    const userMethods = Object.getOwnPropertyNames(UserService.prototype);
-    const sessionMethods = Object.getOwnPropertyNames(SessionService.prototype);
+
+  it("exports input and result types", () => {
     for (const name of [
-      "getSessionConnectionByUser",
-      "getSessionImpersonator",
-      "revokeSession",
-      "revokeUserSessions",
-      "revokeCurrentUserSession",
-      "revokeCurrentUserSessions",
-      "revokeCurrentUserOtherSessions",
+      "CreateUserPayload",
+      "UpdateUserPayload",
+      "SetUserPermissionsPayload",
+      "SetUserRolesPayload",
+      "BanUserPayload",
+      "UnbanUserPayload",
+      "AcceptInvitationPayload",
     ]) {
-      expect(sessionMethods).toContain(name);
-      expect(userMethods).not.toContain(name);
+      expect(publicApi).toHaveProperty(name);
     }
-    expect(userMethods).not.toContain("getSessionConnection");
-    expect(sessionMethods).not.toContain("getSessionConnection");
-    for (const name of [
-      "revokeUserSession",
-      "revokeSessions",
-      "revokeOtherSessions",
-    ]) {
-      expect(sessionMethods).not.toContain(name);
-    }
-    const apiKeyMethods = Object.getOwnPropertyNames(ApiKeyService.prototype);
-    expect(apiKeyMethods).toContain("getApiKeyConnectionByUser");
-    expect(apiKeyMethods).toContain("getApiKeyConnectionByWorkspace");
-    expect(apiKeyMethods).not.toContain("getUserConnection");
-    expect(apiKeyMethods).not.toContain("getWorkspaceConnection");
-    expect(apiKeyMethods).not.toContain("getUserListFilter");
-    expect(apiKeyMethods).not.toContain("getWorkspaceListFilter");
+    expect(publicApi).not.toHaveProperty("AcceptInvitationResult");
+    expect(publicApi.SignUpPayload).toBeDefined();
+    expect(publicApi).not.toHaveProperty("AuthSignUpResultType");
+    expect(publicApi.AuthSignInInput).toBeDefined();
+    expect(publicApi.AuthSignInResultType).toBeDefined();
+    expect(publicApi.CreateUserInput).toBeDefined();
+    expect(publicApi.CreateWorkspacePayload).toBeDefined();
+    expect(publicApi.DeleteWorkspacePayload).toBeDefined();
+    expect(publicApi.DeleteUserPayload).toBeDefined();
+    expect(publicApi.RemoveMemberPayload).toBeDefined();
+    expect(publicApi.LeaveWorkspacePayload).toBeDefined();
+    expect(publicApi).not.toHaveProperty("CreateWorkspaceServiceAccountInput");
+    expect(publicApi).not.toHaveProperty("CreateServiceAccountMemberInput");
+    expect(publicApi).not.toHaveProperty("UserListType");
+    expect(publicApi).not.toHaveProperty("ListUsersInput");
+    expect(publicApi).not.toHaveProperty("AuthUserType");
+    expect(publicApi).not.toHaveProperty("AuthAccountType");
   });
-
-  it("uses deleteUser for permanent user deletion", () => {
-    const methods = Object.getOwnPropertyNames(UserService.prototype);
-    expect(methods).toContain("deleteUser");
-    expect(methods).not.toContain("removeUser");
-  });
-
-  it("does not expose workspace ownership transfer", () => {
-    expect(
-      Object.getOwnPropertyNames(WorkspaceService.prototype),
-    ).not.toContain("transferOwnership");
-  });
-
-  it("exposes request-scoped member lookup without the workspace argument alias", () => {
-    expect(MemberService.prototype).toHaveProperty("getMember");
-    expect(MemberService.prototype).not.toHaveProperty("getMemberById");
-  });
-
-  it("names request-bound authentication operations explicitly without aliases", () => {
-    for (const [previous, current] of [
-      ["verifyPassword", "verifyCurrentUserPassword"],
-      ["changeEmail", "changeCurrentUserEmail"],
-      ["changePassword", "changeCurrentUserPassword"],
-      ["setPassword", "setCurrentUserPassword"],
-      ["listAccounts", "listCurrentUserAccounts"],
-      ["linkSocialAccount", "linkCurrentUserAccount"],
-      ["unlinkAccount", "unlinkCurrentUserAccount"],
-    ]) {
-      expect(AuthService.prototype).toHaveProperty(current);
-      expect(AuthService.prototype).not.toHaveProperty(previous);
-    }
-    expect(SessionService.prototype).toHaveProperty(
-      "getCurrentAuthenticatedSession",
-    );
-    expect(SessionService.prototype).toHaveProperty("listCurrentUserSessions");
-    expect(SessionService.prototype).not.toHaveProperty("getSession");
-    expect(SessionService.prototype).not.toHaveProperty("listSessions");
-    expect(AuthService.prototype).not.toHaveProperty(
-      "linkCurrentUserSocialAccount",
-    );
-  });
-
-  it("uses plural names for role collections and permission sets", () => {
-    expect(UserService.prototype).toHaveProperty("setUserRoles");
-    expect(UserService.prototype).not.toHaveProperty("setRole");
-    expect(UserService.prototype).toHaveProperty("hasPermissions");
-    expect(UserService.prototype).not.toHaveProperty("hasPermission");
-    const workspaceMethods = Object.getOwnPropertyNames(
-      MemberService.prototype,
-    );
-    expect(workspaceMethods).toContain("setMemberRoles");
-    expect(workspaceMethods).not.toContain("updateMemberRoles");
-    expect(MemberService.prototype).not.toHaveProperty("updateMemberRole");
-    expect(MemberService.prototype).toHaveProperty("hasPermissions");
-    expect(MemberService.prototype).not.toHaveProperty("hasPermission");
-  });
-
-  it.each([
-    [
-      UserService,
-      ["setUserRoles", "getEffectiveUserPermissions"],
-      ["setRoles", "getUserPermissions"],
-    ],
-    [
-      MemberService,
-      ["getMember", "getMemberByUser", "getEffectiveMemberPermissions"],
-      ["getMemberById", "getMemberPermissions"],
-    ],
-    [SessionService, ["setSessionCookie"], ["setSession"]],
-    [
-      AuthService,
-      ["updateCurrentUser", "deleteCurrentUser", "getAccountInfo"],
-      ["updateUser", "deleteUser", "accountInfo"],
-    ],
-    [
-      ApiKeyService,
-      [
-        "createUserApiKey",
-        "createWorkspaceApiKey",
-        "updateUserApiKey",
-        "updateWorkspaceApiKey",
-        "deleteUserApiKey",
-        "deleteWorkspaceApiKey",
-      ],
-      [
-        "createUserKey",
-        "createWorkspaceKey",
-        "updateUserKey",
-        "updateWorkspaceKey",
-        "deleteUserKey",
-        "deleteWorkspaceKey",
-      ],
-    ],
-  ] as const)(
-    "exposes explicit method names without aliases on %p",
-    (service, currentNames, oldNames) => {
-      const methods = Object.getOwnPropertyNames(service.prototype);
-      for (const name of currentNames) expect(methods).toContain(name);
-      for (const name of oldNames) expect(methods).not.toContain(name);
-    },
-  );
 
   it("should export auth modules, services, decorators, and entities", () => {
     expect("AUTH_TOKEN" in publicApi).toBe(false);

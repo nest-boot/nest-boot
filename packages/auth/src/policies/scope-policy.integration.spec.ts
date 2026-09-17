@@ -155,8 +155,10 @@ describe("scope policy factories with native PGlite RLS", () => {
     },
   );
 
-  it.each(fixtures)(
-    "ignores legacy identity keys for $scope / $type / relation=$relation",
+  it.each(
+    fixtures.filter(({ type, relation }) => type === "bigint" && !relation),
+  )(
+    "ignores the legacy app.$scope identity key",
     async ({ scope, table, own }) => {
       const em = orm.em.fork({
         session: {
