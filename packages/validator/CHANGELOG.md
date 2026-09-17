@@ -1,3 +1,17 @@
+## 8.0.3-beta.1 (2026-09-17)
+
+### 🚀 Features
+
+- ⚠️  **validator:** rebuild validation with Zod ([#333](https://github.com/nest-boot/nest-boot/pull/333))
+
+### ⚠️  Breaking Changes
+
+- **validator:** rebuild validation with Zod  ([#333](https://github.com/nest-boot/nest-boot/pull/333))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.3-beta.0 (2026-09-08)
 
 ### 🚀 Features

@@ -1,3 +1,23 @@
+## 8.0.0-beta.4 (2026-09-17)
+
+### 🚀 Features
+
+- ⚠️  **validator:** rebuild validation with Zod ([#333](https://github.com/nest-boot/nest-boot/pull/333))
+- ⚠️  **mikro-orm:** adopt native RLS and remove the custom RLS package ([#329](https://github.com/nest-boot/nest-boot/pull/329))
+
+### ⚠️  Breaking Changes
+
+- **validator:** rebuild validation with Zod  ([#333](https://github.com/nest-boot/nest-boot/pull/333))
+- **mikro-orm:** adopt native RLS and remove the custom RLS package  ([#329](https://github.com/nest-boot/nest-boot/pull/329))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/validator to 8.0.3-beta.1
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.0-beta.3 (2026-09-08)
 
 ### 🚀 Features

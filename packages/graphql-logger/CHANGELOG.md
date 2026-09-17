@@ -1,3 +1,9 @@
+## 8.0.4-beta.0 (2026-09-17)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/graphql to 8.0.0-beta.4
+
 ## 8.0.3-beta.0 (2026-09-08)
 
 ### 🚀 Features
