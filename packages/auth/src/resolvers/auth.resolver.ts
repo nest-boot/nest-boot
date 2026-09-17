@@ -2,19 +2,17 @@ import { Args, ID, Mutation, Query, Resolver } from "@nest-boot/graphql";
 
 import { Public } from "../decorators/public.decorator.js";
 import { User } from "../entities/user.entity.js";
-import {
-  AuthChangeEmailInput,
-  AuthChangePasswordInput,
-  AuthDeleteUserInput,
-  AuthLinkSocialAccountInput,
-  AuthRequestPasswordResetInput,
-  AuthResetPasswordInput,
-  AuthSendVerificationEmailInput,
-  AuthSignInInput,
-  AuthSignInSocialInput,
-  AuthSignUpInput,
-  AuthUpdateUserInput,
-} from "../inputs/auth.input.js";
+import { AuthChangeEmailInput } from "../inputs/auth-change-email.input.js";
+import { AuthChangePasswordInput } from "../inputs/auth-change-password.input.js";
+import { AuthDeleteUserInput } from "../inputs/auth-delete-user.input.js";
+import { AuthLinkSocialAccountInput } from "../inputs/auth-link-social-account.input.js";
+import { AuthRequestPasswordResetInput } from "../inputs/auth-request-password-reset.input.js";
+import { AuthResetPasswordInput } from "../inputs/auth-reset-password.input.js";
+import { AuthSendVerificationEmailInput } from "../inputs/auth-send-verification-email.input.js";
+import { AuthSignInInput } from "../inputs/auth-sign-in.input.js";
+import { AuthSignInSocialInput } from "../inputs/auth-sign-in-social.input.js";
+import { AuthSignUpInput } from "../inputs/auth-sign-up.input.js";
+import { AuthUpdateUserInput } from "../inputs/auth-update-user.input.js";
 import { AuthService } from "../services/auth.service.js";
 import {
   AuthAbilityRuleType,
