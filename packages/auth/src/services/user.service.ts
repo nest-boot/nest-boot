@@ -29,16 +29,14 @@ import { Account } from "../entities/account.entity.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
 import type { AuthRole } from "../interfaces/auth-role.interface.js";
-import type { AuthenticatedSession } from "../interfaces/session-service.interface.js";
-import type {
-  BanUserOptions,
-  CreateUserOptions,
-  ImpersonationOptions,
-  ListUsersOptions,
-  ListUsersResult,
-  UpdateUserOptions,
-  UserHasPermissionsOptions,
-} from "../interfaces/user-service.interface.js";
+import type { AuthenticatedSession } from "../interfaces/authenticated-session.interface.js";
+import type { BanUserOptions } from "../interfaces/ban-user-options.interface.js";
+import type { CreateUserOptions } from "../interfaces/create-user-options.interface.js";
+import type { ImpersonationOptions } from "../interfaces/impersonation-options.interface.js";
+import type { ListUsersOptions } from "../interfaces/list-users-options.interface.js";
+import type { ListUsersResult } from "../interfaces/list-users-result.interface.js";
+import type { UpdateUserOptions } from "../interfaces/update-user-options.interface.js";
+import type { UserHasPermissionsOptions } from "../interfaces/user-has-permissions-options.interface.js";
 import type { AuthModuleRoles } from "../types/auth-module-roles.type.js";
 import {
   DEFAULT_USER_ADMIN_ROLES,

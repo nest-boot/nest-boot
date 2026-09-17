@@ -26,7 +26,7 @@ import { SessionConnection } from "../connections/session.connection-definition.
 import { ApiKey } from "../entities/api-key.entity.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
-import type { AuthenticatedSession } from "../interfaces/session-service.interface.js";
+import type { AuthenticatedSession } from "../interfaces/authenticated-session.interface.js";
 import { AccessControlService } from "./access-control.service.js";
 
 interface StatusResult {

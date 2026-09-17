@@ -22,7 +22,7 @@ import {
   User as BaseUser,
   User as UserEntity,
 } from "../entities/user.entity.js";
-import type { CreateUserOptions } from "../interfaces/user-service.interface.js";
+import type { CreateUserOptions } from "../interfaces/create-user-options.interface.js";
 import type { AccessControlService } from "./access-control.service.js";
 import { UserService } from "./user.service.js";
 import { UserDeletionService } from "./user-deletion.service.js";

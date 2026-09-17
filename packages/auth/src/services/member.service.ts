@@ -30,12 +30,10 @@ import { Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
+import type { AddMemberOptions } from "../interfaces/add-member-options.interface.js";
 import type { AuthRole } from "../interfaces/auth-role.interface.js";
-import type {
-  AddMemberOptions,
-  UpdateMemberOptions,
-  WorkspaceHasPermissionsOptions,
-} from "../interfaces/workspace-service.interface.js";
+import type { UpdateMemberOptions } from "../interfaces/update-member-options.interface.js";
+import type { WorkspaceHasPermissionsOptions } from "../interfaces/workspace-has-permissions-options.interface.js";
 import type { AuthModuleRoles } from "../types/auth-module-roles.type.js";
 import {
   listAuthPermissions,

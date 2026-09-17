@@ -6,38 +6,36 @@ import { AuthGuard } from "../auth.guard.js";
 import { AuthMiddleware } from "../auth.middleware.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
-import type {
-  AuthAccessToken,
-  AuthAccount,
-  AuthAccountInfo,
-  AuthAccountSelector,
-  AuthProviderUserInfo,
-  AuthRefreshedToken,
-  AuthSocialProvider,
-  AuthUser,
-  ChangeAuthEmailOptions,
-  ChangeAuthPasswordOptions,
-  ChangeAuthPasswordResult,
-  DeleteAuthUserOptions,
-  DeleteAuthUserResult,
-  LinkAuthSocialAccountOptions,
-  LinkAuthSocialAccountResult,
-  RequestPasswordResetOptions,
-  RequestPasswordResetResult,
-  ResetPasswordOptions,
-  SendVerificationEmailOptions,
-  SignInEntityResult,
-  SignInOptions,
-  SignInResult,
-  SignInSocialEntityResult,
-  SignInSocialOptions,
-  SignInSocialResult,
-  SignUpOptions,
-  SignUpResult,
-  UnlinkAuthAccountOptions,
-  UpdateAuthUserOptions,
-} from "../interfaces/auth-service.interface.js";
+import type { AuthAccessToken } from "../interfaces/auth-access-token.interface.js";
+import type { AuthAccount } from "../interfaces/auth-account.interface.js";
+import type { AuthAccountInfo } from "../interfaces/auth-account-info.interface.js";
+import type { AuthProviderUserInfo } from "../interfaces/auth-provider-user-info.interface.js";
+import type { AuthRefreshedToken } from "../interfaces/auth-refreshed-token.interface.js";
+import type { AuthSocialProvider } from "../interfaces/auth-social-provider.interface.js";
+import type { AuthUser } from "../interfaces/auth-user.interface.js";
+import type { ChangeAuthEmailOptions } from "../interfaces/change-auth-email-options.interface.js";
+import type { ChangeAuthPasswordOptions } from "../interfaces/change-auth-password-options.interface.js";
+import type { ChangeAuthPasswordResult } from "../interfaces/change-auth-password-result.interface.js";
+import type { DeleteAuthUserOptions } from "../interfaces/delete-auth-user-options.interface.js";
+import type { DeleteAuthUserResult } from "../interfaces/delete-auth-user-result.interface.js";
+import type { LinkAuthSocialAccountOptions } from "../interfaces/link-auth-social-account-options.interface.js";
+import type { LinkAuthSocialAccountResult } from "../interfaces/link-auth-social-account-result.interface.js";
+import type { RequestPasswordResetOptions } from "../interfaces/request-password-reset-options.interface.js";
+import type { RequestPasswordResetResult } from "../interfaces/request-password-reset-result.interface.js";
+import type { ResetPasswordOptions } from "../interfaces/reset-password-options.interface.js";
+import type { SendVerificationEmailOptions } from "../interfaces/send-verification-email-options.interface.js";
+import type { SignInEntityResult } from "../interfaces/sign-in-entity-result.interface.js";
+import type { SignInOptions } from "../interfaces/sign-in-options.interface.js";
+import type { SignInResult } from "../interfaces/sign-in-result.interface.js";
+import type { SignInSocialEntityResult } from "../interfaces/sign-in-social-entity-result.interface.js";
+import type { SignInSocialOptions } from "../interfaces/sign-in-social-options.interface.js";
+import type { SignInSocialResult } from "../interfaces/sign-in-social-result.interface.js";
+import type { SignUpOptions } from "../interfaces/sign-up-options.interface.js";
+import type { SignUpResult } from "../interfaces/sign-up-result.interface.js";
+import type { UnlinkAuthAccountOptions } from "../interfaces/unlink-auth-account-options.interface.js";
+import type { UpdateAuthUserOptions } from "../interfaces/update-auth-user-options.interface.js";
 import type { SignUpPayload } from "../objects/sign-up-payload.object.js";
+import type { AuthAccountSelector } from "../types/auth-account-selector.type.js";
 import { applyAuthResponseCookies } from "../utils/apply-auth-response-cookies.util.js";
 import { SessionService } from "./session.service.js";
 import { UserService } from "./user.service.js";

@@ -5,7 +5,7 @@ import { type Invitation } from "./entities/invitation.entity.js";
 import { type Member } from "./entities/member.entity.js";
 import { type User } from "./entities/user.entity.js";
 import { type Workspace } from "./entities/workspace.entity.js";
-import type { AuthUser } from "./interfaces/auth-service.interface.js";
+import type { AuthUser } from "./interfaces/auth-user.interface.js";
 import type { AuthModuleRoles } from "./types/auth-module-roles.type.js";
 import type { BuildUserAbilityCallback } from "./types/build-user-ability-callback.type.js";
 import type { BuildWorkspaceAbilityCallback } from "./types/build-workspace-ability-callback.type.js";

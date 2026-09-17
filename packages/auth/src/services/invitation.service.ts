@@ -33,10 +33,8 @@ import { Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
-import type {
-  AcceptInvitationResult,
-  CreateInvitationOptions,
-} from "../interfaces/workspace-service.interface.js";
+import type { AcceptInvitationResult } from "../interfaces/accept-invitation-result.interface.js";
+import type { CreateInvitationOptions } from "../interfaces/create-invitation-options.interface.js";
 import type { AuthModuleRoles } from "../types/auth-module-roles.type.js";
 import {
   normalizeAuthRoles,

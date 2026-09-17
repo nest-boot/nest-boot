@@ -28,11 +28,9 @@ import { Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
-import type {
-  CreateWorkspaceOptions,
-  FullWorkspace,
-  UpdateWorkspaceOptions,
-} from "../interfaces/workspace-service.interface.js";
+import type { CreateWorkspaceOptions } from "../interfaces/create-workspace-options.interface.js";
+import type { FullWorkspace } from "../interfaces/full-workspace.interface.js";
+import type { UpdateWorkspaceOptions } from "../interfaces/update-workspace-options.interface.js";
 import { DEFAULT_WORKSPACE_CREATOR_ROLE } from "../workspace.constants.js";
 import { AccessControlService } from "./access-control.service.js";
 
