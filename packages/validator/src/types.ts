@@ -12,10 +12,19 @@ export interface ZodClass<T extends object = object> extends Type<T> {
 /** Extracts data properties from a DTO, excluding instance methods. */
 export type ZodDtoData<T extends object> = {
   [Key in keyof T as Key extends string
-    ? NonNullable<T[Key]> extends (...args: never[]) => unknown
-      ? never
-      : Key
+    ? [NonNullable<T[Key]>] extends [never]
+      ? Key
+      : NonNullable<T[Key]> extends (...args: never[]) => unknown
+        ? never
+        : Key
     : never]: T[Key];
+};
+
+/** Merges DTO data properties, with properties from the second DTO winning. */
+export type ZodDtoMerge<First extends object, Second extends object> = {
+  [Key in keyof (Omit<ZodDtoData<First>, keyof ZodDtoData<Second>> &
+    ZodDtoData<Second>)]: (Omit<ZodDtoData<First>, keyof ZodDtoData<Second>> &
+    ZodDtoData<Second>)[Key];
 };
 
 /** Maps DTO data properties to their statically inferred Zod field types. */
@@ -63,7 +72,8 @@ export interface ZodObjectOptions {
 
   /**
    * Applies object-level refinements after inherited and local fields have
-   * been assembled.
+   * been assembled. Mapped-type helpers do not inherit this callback because
+   * their transformed shape may no longer satisfy its assumptions.
    */
   configure?: (schema: DecoratedZodObject) => DecoratedZodObject;
 }

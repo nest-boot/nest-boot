@@ -185,6 +185,24 @@ describe("decorated Zod schemas", () => {
     });
   });
 
+  it("preserves null and undefined-only DTO properties in the inferred output", () => {
+    class NullableDto {
+      @ZodField(z.null())
+      value!: null;
+
+      @ZodField(z.undefined().optional())
+      optional?: undefined;
+    }
+
+    const schema = toZodSchema(NullableDto);
+    type Output = z.infer<typeof schema>;
+    expectTypeOf<Output>().toEqualTypeOf<{
+      value: null;
+      optional?: undefined;
+    }>();
+    expect(schema.parse({ value: null })).toEqual({ value: null });
+  });
+
   it("returns undefined for classes without Zod metadata", () => {
     class PlainDto {}
 
@@ -333,14 +351,44 @@ describe("Zod mapped types", () => {
     ).toEqual({ name: "User", age: 42, enabled: true });
   });
 
-  it("preserves object options through mapped types", () => {
+  it("creates schemas for mapped DTOs whose resulting shape is empty", async () => {
+    const EmptyPickedDto = ZodPickType(UserDto, []);
+    const EmptyOmittedDto = ZodOmitType(UserDto, ["name", "age"]);
+    const pipe = new ZodValidationPipe();
+
+    expect(toZodSchema(EmptyPickedDto).parse({ extra: true })).toEqual({});
+    expect(toZodSchema(EmptyOmittedDto).parse({ extra: true })).toEqual({});
+    await expect(
+      pipe.transform(
+        { extra: true },
+        { type: "body", metatype: EmptyPickedDto },
+      ),
+    ).resolves.toEqual({});
+  });
+
+  it("uses the second DTO's type and schema for intersection collisions", () => {
+    class TextDto {
+      @ZodField(z.string())
+      value!: string;
+    }
+
+    class NumericDto {
+      @ZodField(z.number())
+      value!: number;
+    }
+
+    const CombinedDto = ZodIntersectionType(TextDto, NumericDto);
+    const schema = toZodSchema(CombinedDto);
+    type Output = z.infer<typeof schema>;
+    expectTypeOf<Output>().toEqualTypeOf<{ value: number }>();
+    expect(schema.parse({ value: 42 })).toEqual({ value: 42 });
+    expect(schema.safeParse({ value: "42" }).success).toBe(false);
+  });
+
+  it("preserves unknown-key policy without copying object refinements", () => {
     @ZodObject({
       unknownKeys: "strict",
-      configure: (schema) =>
-        schema.refine((value) => value.name !== "blocked", {
-          message: "Blocked name",
-          path: ["name"],
-        }),
+      configure: (schema) => schema.refine((value) => value.name.length > 0),
     })
     class StrictUserDto extends UserDto {}
 
@@ -349,9 +397,7 @@ describe("Zod mapped types", () => {
     expect(toZodSchema(PartialDto).safeParse({ extra: true }).success).toBe(
       false,
     );
-    expect(toZodSchema(PartialDto).safeParse({ name: "blocked" }).success).toBe(
-      false,
-    );
+    expect(toZodSchema(PartialDto).parse({})).toEqual({});
   });
 });
 

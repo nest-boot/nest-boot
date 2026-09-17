@@ -81,7 +81,10 @@ class UserEmailDto extends ZodPickType(UserDto, ["email"], PickType) {}
 
 `ZodPartialType`、`ZodPickType`、`ZodOmitType` 和 `ZodIntersectionType` 也可以
 不传 Nest factory，直接用于普通 DTO。派生 GraphQL 类型时，请传入
-`@nestjs/graphql` 中对应的 helper，从而同时复制其字段元数据。
+`@nestjs/graphql` 中对应的 helper，从而同时复制其字段元数据。映射 DTO 会保留
+源 DTO 的未知字段策略，但不会继承 `ZodObject.configure` 回调，因为其中的
+refinement 可能依赖已被移除或改为可选的字段。如派生 DTO 仍需对象级
+refinement，请在派生 DTO 上添加新的 `@ZodObject` 装饰器。
 
 ## 启用 NestJS 验证
 

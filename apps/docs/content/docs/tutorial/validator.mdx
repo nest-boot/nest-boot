@@ -85,7 +85,10 @@ class UserEmailDto extends ZodPickType(UserDto, ["email"], PickType) {}
 `ZodPartialType`, `ZodPickType`, `ZodOmitType`, and `ZodIntersectionType` also
 work without a Nest factory for plain DTOs. Pass the matching helper from
 `@nestjs/graphql` when deriving a GraphQL type so its field metadata is copied
-at the same time.
+at the same time. Mapped DTOs preserve the source unknown-key policy, but do
+not inherit `ZodObject.configure` callbacks because their refinements may rely
+on fields removed or made optional by the mapping. Add a new `@ZodObject`
+decorator to the derived DTO when it needs an object-level refinement.
 
 ## Enable NestJS validation
 

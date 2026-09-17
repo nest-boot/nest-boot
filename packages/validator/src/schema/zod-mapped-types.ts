@@ -1,7 +1,7 @@
 import type {
-  DecoratedZodObject,
   ZodClass,
   ZodDtoData,
+  ZodDtoMerge,
   ZodFieldDefinition,
   ZodMappedTypeFactory,
   ZodObjectOptions,
@@ -43,27 +43,16 @@ function optionalDefinition(
     : definition.optional();
 }
 
-function copyObjectOptions(sources: ZodClass[], target: ZodClass): void {
+function copyUnknownKeysPolicy(sources: ZodClass[], target: ZodClass): void {
   const options = sources.flatMap(getZodObjectOptions);
-
-  if (options.length === 0) {
-    return;
-  }
-
   const unknownKeys = options.reduce<ZodObjectOptions["unknownKeys"]>(
     (mode, current) => current.unknownKeys ?? mode,
     undefined,
   );
-  const configurations = options.flatMap((current) =>
-    current.configure ? [current.configure] : [],
-  );
-  const configure =
-    configurations.length === 0
-      ? undefined
-      : (schema: DecoratedZodObject): DecoratedZodObject =>
-          configurations.reduce((current, apply) => apply(current), schema);
 
-  registerZodObject(target, { unknownKeys, configure });
+  // Register even an empty policy so mapped DTOs without fields still produce
+  // an empty object schema instead of being treated as undecorated classes.
+  registerZodObject(target, { unknownKeys });
 }
 
 /**
@@ -81,12 +70,12 @@ export function ZodPartialType<T extends object>(
 ): ZodClass<Partial<ZodDtoData<T>>> {
   const target = factory(source);
   copyFields(source, target, undefined, optionalDefinition);
-  copyObjectOptions([source], target);
+  copyUnknownKeysPolicy([source], target);
   return target;
 }
 
 /**
- * Creates a DTO containing selected fields while preserving Zod metadata.
+ * Creates a DTO containing selected fields while preserving Zod field metadata.
  *
  * @param source - DTO to select fields from
  * @param keys - Data-property names to include
@@ -109,12 +98,12 @@ export function ZodPickType<
   const target = factory(source, keys);
   const selected = new Set<string>(keys);
   copyFields(source, target, (propertyName) => selected.has(propertyName));
-  copyObjectOptions([source], target);
+  copyUnknownKeysPolicy([source], target);
   return target;
 }
 
 /**
- * Creates a DTO without selected fields while preserving Zod metadata.
+ * Creates a DTO without selected fields while preserving Zod field metadata.
  *
  * @param source - DTO to remove fields from
  * @param keys - Data-property names to exclude
@@ -137,13 +126,14 @@ export function ZodOmitType<
   const target = factory(source, keys);
   const omitted = new Set<string>(keys);
   copyFields(source, target, (propertyName) => !omitted.has(propertyName));
-  copyObjectOptions([source], target);
+  copyUnknownKeysPolicy([source], target);
   return target;
 }
 
 /**
- * Creates an intersection DTO while preserving Zod metadata from both inputs.
- * Fields from the second DTO override fields with the same name from the first.
+ * Creates an intersection DTO while preserving Zod field metadata from both
+ * inputs. Fields from the second DTO override fields with the same name from
+ * the first at runtime and in the inferred output type.
  *
  * @param first - First DTO in the intersection
  * @param second - Second DTO in the intersection
@@ -159,13 +149,13 @@ export function ZodIntersectionType<
   second: ZodClass<Second>,
   factory: ZodMappedTypeFactory<
     First,
-    ZodDtoData<First> & ZodDtoData<Second>,
+    ZodDtoMerge<First, Second>,
     [ZodClass<Second>]
   > = () => createMappedClass(`Intersection${first.name}${second.name}`),
-): ZodClass<ZodDtoData<First> & ZodDtoData<Second>> {
+): ZodClass<ZodDtoMerge<First, Second>> {
   const target = factory(first, second);
   copyFields(first, target);
   copyFields(second, target);
-  copyObjectOptions([first, second], target);
+  copyUnknownKeysPolicy([first, second], target);
   return target;
 }
