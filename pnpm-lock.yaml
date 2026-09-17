@@ -963,6 +963,9 @@ importers:
       '@nest-boot/tsconfig':
         specifier: workspace:^
         version: link:../tsconfig
+      '@nest-boot/validator':
+        specifier: workspace:^
+        version: link:../validator
       '@nestjs/apollo':
         specifier: ^14.0.0
         version: 14.0.0
@@ -1011,6 +1014,9 @@ importers:
       vitest:
         specifier: ^4.1.11
         version: 4.1.11
+      zod:
+        specifier: 4.3.6
+        version: 4.3.6
 
   packages/graphql-connection:
     dependencies:

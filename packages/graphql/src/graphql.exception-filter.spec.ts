@@ -1,3 +1,4 @@
+import { ZodValidationException } from "@nest-boot/validator";
 import {
   ArgumentsHost,
   BadRequestException,
@@ -9,6 +10,7 @@ import {
 import { BaseExceptionFilter } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
 import { GraphQLError } from "graphql";
+import { z } from "zod";
 
 import { GraphQLExceptionFilter } from "./graphql.exception-filter.js";
 
@@ -111,6 +113,35 @@ describe("GraphQLExceptionFilter", () => {
             code: "too_small",
             field: ["users", 0, "password"],
             message: "Too small",
+          },
+        ],
+      },
+    });
+  });
+
+  it("should integrate with ZodValidationException", async () => {
+    const { filter } = await createFilter();
+    const result = z
+      .object({ email: z.email() })
+      .safeParse({ email: "invalid" });
+
+    expect(result.success).toBe(false);
+
+    if (result.success) {
+      throw new Error("Expected Zod validation to fail");
+    }
+
+    expect(
+      filter.transform(new ZodValidationException(result.error)),
+    ).toMatchObject({
+      message: "Validation failed",
+      extensions: {
+        code: "BAD_USER_INPUT",
+        validationErrors: [
+          {
+            code: "invalid_format",
+            field: ["email"],
+            message: "Invalid email address",
           },
         ],
       },

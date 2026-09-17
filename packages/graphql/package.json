@@ -39,6 +39,7 @@
     "@nest-boot/eslint-config": "workspace:^",
     "@nest-boot/eslint-plugin": "workspace:^",
     "@nest-boot/tsconfig": "workspace:^",
+    "@nest-boot/validator": "workspace:^",
     "@nestjs/apollo": "^14.0.0",
     "@nestjs/common": "^12.0.1",
     "@nestjs/core": "^12.0.1",
@@ -54,7 +55,8 @@
     "rxjs": "^7.8.2",
     "typescript": "^6.0.3",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.11",
+    "zod": "^4.3.6"
   },
   "peerDependencies": {
     "@apollo/server": "^5.0.0",
