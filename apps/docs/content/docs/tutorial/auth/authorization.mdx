@@ -143,6 +143,10 @@ stored or managed by a separate role service. `UserService` and
 `MemberService` expose the configured catalogs to transports and validate
 role assignments.
 
+`listRoles()` returns `{ role, grantable }` objects and `listPermissions()` returns
+`{ permission, grantable }` objects for the current request. Services retain the
+original configured values; GraphQL serializes them as enum names.
+
 ```typescript
 const userRoles = userService.listRoles();
 const userPermissions = userService.listPermissions();
@@ -179,12 +183,17 @@ on user creation. For a personal API key, the ceiling is the intersection of the
 user's role/direct permissions and the key's permissions. Holding `user:set-role`
 alone does not allow promotion to a more privileged role.
 
-`workspaceAssignableRoles` returns configured role names within the current
-principal's grant ceiling, including API-key restrictions. It returns an empty
-list without member-update or invitation-create ability. Use it for assignment
-controls, while keeping existing roles visible and checking the complete replacement
-list before submission. `workspaceRoles` remains the full catalog; mutation Services
-still enforce target-specific abilities and grant ceilings.
+`userRoles` and `workspaceRoles` return the full role catalog as `{ role, grantable }`
+objects. `userPermissions` and `workspacePermissions` similarly return
+`{ permission, grantable }` objects. The enum-valued fields preserve type-safe inputs;
+`grantable` reflects the current principal's grant ceiling, including API-key
+restrictions. Workspace role grants require member-update or invitation-create
+ability; direct permission grants require member-update ability. Read-only callers
+receive workspace options with `grantable: false`. User catalogs require `user:set-role`.
+Use these flags to disable new grants while keeping existing values removable,
+and validate the complete replacement list before submission. Mutation Services
+still enforce target-specific abilities and grant ceilings. The separate
+`workspaceAssignableRoles` query has been removed.
 
 The example GraphQL application exposes `userRoles`, `userPermissions`,
 `workspaceRoles`, and `workspacePermissions` queries. Role changes use the

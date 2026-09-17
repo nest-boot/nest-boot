@@ -396,19 +396,15 @@ describe("UserService", () => {
     });
 
     expect(service.listRoles()).toEqual([
-      {
-        name: "admin",
-        permissions: ["user:create", "user:set-role"],
-      },
-      { name: "auditor", permissions: ["user:list"] },
-      { name: "user", permissions: [] },
+      { role: "admin", grantable: true },
+      { role: "auditor", grantable: true },
+      { role: "user", grantable: true },
     ]);
-    expect(service.listPermissions()).toEqual([
-      "user:create",
-      "user:set-role",
-      "user:list",
-      "user:delete",
-    ]);
+    expect(service.listPermissions()).toEqual(
+      ["user:create", "user:set-role", "user:list", "user:delete"].map(
+        (permission) => ({ permission, grantable: true }),
+      ),
+    );
 
     await expect(service.setUserRoles(user, ["auditor", "user"])).resolves.toBe(
       user,
@@ -421,6 +417,35 @@ describe("UserService", () => {
     await expect(
       service.setUserRoles(user, ["unknown"]),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("keeps all role and permission options while marking grant availability", () => {
+    const { service, accessControlService } = createService(true, {
+      permissions: ["user:get", "user:delete"],
+      roles: {
+        reader: ["user:get"],
+        admin: ["user:get", "user:delete"],
+        user: [],
+      },
+    });
+    vi.mocked(accessControlService.canGrantUserPermissions).mockImplementation(
+      (permissions) =>
+        permissions.every((permission) => permission === "user:get"),
+    );
+    expect(service.listRoles()).toEqual([
+      { role: "reader", grantable: true },
+      { role: "admin", grantable: false },
+      { role: "user", grantable: true },
+    ]);
+    expect(service.listPermissions()).toEqual([
+      { permission: "user:get", grantable: true },
+      { permission: "user:delete", grantable: false },
+    ]);
+    vi.mocked(accessControlService.assertUserCan).mockImplementation(() => {
+      throw new ForbiddenException();
+    });
+    expect(() => service.listRoles()).toThrow(ForbiddenException);
+    expect(() => service.listPermissions()).toThrow(ForbiddenException);
   });
 
   it("classifies users with any configured admin role as administrators", () => {
@@ -781,6 +806,7 @@ function createService(
     session: { expiresIn: 3600 },
   } as unknown as AuthModuleOptions;
   const accessControlService = {
+    canGrantUserPermissions: vi.fn().mockReturnValue(true),
     assertCanGrantUserPermissions: vi.fn(),
     assertCurrentSession: vi.fn(),
     assertCurrentUser: vi.fn(),

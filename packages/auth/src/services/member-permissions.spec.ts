@@ -55,7 +55,7 @@ describe("MemberService direct permission authorization", () => {
       expected: ["admin", "custom"],
     },
   ])(
-    "lists assignable roles for $role with key=$key",
+    "lists grantable roles for $role with key=$key",
     async ({ role, direct, key, expected }) => {
       const { em } = createWorkspaceServices();
       const access = new AccessControlService(options);
@@ -90,16 +90,45 @@ describe("MemberService direct permission authorization", () => {
           WorkspaceAbility,
           new WorkspaceAbility([{ action: "create", subject: Invitation }]),
         );
-        expect(service.listAssignableRoles().map(({ name }) => name)).toEqual(
-          expected,
+        expect(service.listRoles()).toEqual(
+          Object.keys(options.workspace.roles).map((role) => ({
+            role,
+            grantable: expected.includes(role),
+          })),
         );
-        for (const { permissions: grants } of service.listAssignableRoles()) {
+        for (const { role } of service
+          .listRoles()
+          .filter(({ grantable }) => grantable)) {
+          const grants =
+            options.workspace.roles[
+              role as keyof typeof options.workspace.roles
+            ];
           expect(() => {
             access.assertCanGrantWorkspacePermissions(grants);
           }).not.toThrow();
         }
         RequestContext.set(WorkspaceAbility, new WorkspaceAbility());
-        expect(service.listAssignableRoles()).toEqual([]);
+        expect(() => service.listRoles()).toThrow(ForbiddenException);
+        RequestContext.set(
+          WorkspaceAbility,
+          new WorkspaceAbility([{ action: "read", subject: Member }]),
+        );
+        expect(service.listRoles().every(({ grantable }) => !grantable)).toBe(
+          true,
+        );
+        expect(service.listPermissions()).toEqual(
+          permissions.map((permission) => ({ permission, grantable: false })),
+        );
+        RequestContext.set(
+          WorkspaceAbility,
+          new WorkspaceAbility([{ action: "update", subject: Member }]),
+        );
+        expect(service.listPermissions()).toEqual(
+          permissions.map((permission) => ({
+            permission,
+            grantable: access.canGrantWorkspacePermissions([permission]),
+          })),
+        );
       });
     },
   );

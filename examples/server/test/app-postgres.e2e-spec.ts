@@ -713,8 +713,14 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     const catalog = await gql(
       /* GraphQL */ `
         query UserRoleCatalog {
-          userRoles
-          userPermissions
+          userRoles {
+            role
+            grantable
+          }
+          userPermissions {
+            permission
+            grantable
+          }
         }
       `,
       { cookies: administrator.cookies },
@@ -722,9 +728,43 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     expectNoGraphQLErrors(catalog);
     expect(catalog.body.data.userRoles).toEqual(
-      expect.arrayContaining(['ADMIN', 'USER']),
+      expect.arrayContaining([
+        { role: 'ADMIN', grantable: true },
+        { role: 'USER', grantable: true },
+      ]),
     );
-    expect(catalog.body.data.userPermissions).toContain('USER__SET_ROLE');
+    expect(catalog.body.data.userPermissions).toContainEqual({
+      permission: 'USER__SET_ROLE',
+      grantable: true,
+    });
+
+    await migrationOrm.em
+      .getConnection()
+      .execute(
+        `update "user" set roles = array['user'], permissions = array['user:set-role'] where id = ?`,
+        [administrator.user.id],
+      );
+    const limitedCatalog = await gql(
+      `query { userRoles { role grantable } userPermissions { permission grantable } }`,
+      { cookies: administrator.cookies },
+    );
+    expectNoGraphQLErrors(limitedCatalog);
+    expect(limitedCatalog.body.data.userRoles).toEqual(
+      expect.arrayContaining([
+        { role: 'ADMIN', grantable: false },
+        { role: 'USER', grantable: true },
+      ]),
+    );
+    expect(limitedCatalog.body.data.userPermissions).toContainEqual({
+      permission: 'USER__DELETE',
+      grantable: false,
+    });
+    await migrationOrm.em
+      .getConnection()
+      .execute(
+        `update "user" set roles = array['admin'], permissions = '{}' where id = ?`,
+        [administrator.user.id],
+      );
 
     const assigned = await gql(
       /* GraphQL */ `
@@ -2418,8 +2458,14 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     const roleCatalog = await gql(
       /* GraphQL */ `
         query WorkspaceRoleCatalog {
-          workspaceRoles
-          workspacePermissions
+          workspaceRoles {
+            role
+            grantable
+          }
+          workspacePermissions {
+            permission
+            grantable
+          }
         }
       `,
       { cookies: owner.cookies, workspaceId: workspace.id },
@@ -2427,11 +2473,14 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     expectNoGraphQLErrors(roleCatalog);
     expect(roleCatalog.body.data.workspaceRoles).toEqual(
-      expect.arrayContaining(['OWNER', 'ADMIN', 'MEMBER']),
+      expect.arrayContaining(
+        ['OWNER', 'ADMIN', 'MEMBER'].map((role) => ({ role, grantable: true })),
+      ),
     );
-    expect(roleCatalog.body.data.workspacePermissions).toContain(
-      'MEMBER__UPDATE',
-    );
+    expect(roleCatalog.body.data.workspacePermissions).toContainEqual({
+      permission: 'MEMBER__UPDATE',
+      grantable: true,
+    });
 
     const currentMember = await gql(
       /* GraphQL */ `

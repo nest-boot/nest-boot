@@ -27,13 +27,14 @@ import { UserConnection } from "../connections/user.connection-definition.js";
 import { Account } from "../entities/account.entity.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
-import type { AuthRole } from "../interfaces/auth-role.interface.js";
 import type { AuthenticatedSession } from "../interfaces/authenticated-session.interface.js";
 import type { BanUserOptions } from "../interfaces/ban-user-options.interface.js";
 import type { CreateUserOptions } from "../interfaces/create-user-options.interface.js";
 import type { ImpersonationOptions } from "../interfaces/impersonation-options.interface.js";
 import type { UpdateUserOptions } from "../interfaces/update-user-options.interface.js";
 import type { UserHasPermissionsOptions } from "../interfaces/user-has-permissions-options.interface.js";
+import type { UserPermissionOption } from "../objects/user-permission-option.object.js";
+import type { UserRoleOption } from "../objects/user-role-option.object.js";
 import type { AuthModuleRoles } from "../types/auth-module-roles.type.js";
 import {
   DEFAULT_USER_ADMIN_ROLES,
@@ -43,7 +44,6 @@ import {
 } from "../user.constants.js";
 import {
   listAuthPermissions,
-  listAuthRoles,
   normalizeAuthPermissions,
   normalizeAuthRoles,
   resolveAuthPermissions,
@@ -200,16 +200,24 @@ export class UserService {
     return entity;
   }
 
-  /** Lists configured user-administration roles. */
-  listRoles(): AuthRole[] {
+  /** Lists all configured roles with the current principal's grant availability. */
+  listRoles(): UserRoleOption[] {
     this.accessControlService.assertUserCan("set-role", User);
-    return listAuthRoles(this.roles);
+    return Object.entries(this.roles).map(([role, permissions]) => ({
+      role,
+      grantable: this.accessControlService.canGrantUserPermissions(permissions),
+    }));
   }
 
-  /** Lists configured user-administration permissions. */
-  listPermissions(): string[] {
+  /** Lists all configured permissions with the current principal's grant availability. */
+  listPermissions(): UserPermissionOption[] {
     this.accessControlService.assertUserCan("set-role", User);
-    return listAuthPermissions(this.permissions);
+    return listAuthPermissions(this.permissions).map((permission) => ({
+      permission,
+      grantable: this.accessControlService.canGrantUserPermissions([
+        permission,
+      ]),
+    }));
   }
 
   /** Resolves permissions inherited from roles plus direct user permissions. */

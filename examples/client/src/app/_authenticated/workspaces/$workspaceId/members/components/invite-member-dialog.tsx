@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { t } from "i18next";
 import type { WorkspaceRole } from "@/gql/graphql";
 import { Button } from "@/components/thread-ui/button";
-import { CheckboxGroup } from "@/components/thread-ui/checkbox-group";
+import { RoleCheckboxGroup } from "@/components/role-checkbox-group";
 import { Input } from "@/components/thread-ui/input";
 import {
   Dialog,
@@ -15,12 +15,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { getRoleLabel } from "@/utils/get-role-label";
 import { graphql } from "@/gql";
 
-const GET_ASSIGNABLE_ROLES_FROM_INVITE_MEMBER_DIALOG = graphql(`
-  query getAssignableRolesFromInviteMemberDialog {
-    workspaceAssignableRoles
+const GET_ROLES_FROM_INVITE_MEMBER_DIALOG = graphql(`
+  query getRolesFromInviteMemberDialog {
+    workspaceRoles {
+      role
+      grantable
+    }
   }
 `);
 
@@ -49,11 +51,13 @@ export function InviteMemberDialog({
     data,
     loading: loadingRoles,
     error: rolesError,
-  } = useQuery(GET_ASSIGNABLE_ROLES_FROM_INVITE_MEMBER_DIALOG, {
+  } = useQuery(GET_ROLES_FROM_INVITE_MEMBER_DIALOG, {
     skip: !inviteOpen,
     fetchPolicy: "network-only",
   });
-  const assignableRoles = data?.workspaceAssignableRoles ?? [];
+  const grantableRoles = (data?.workspaceRoles ?? [])
+    .filter(({ grantable }) => grantable)
+    .map(({ role }) => role);
 
   const [createInvitation, { loading: createInviteLoading }] = useMutation(
     CREATE_INVITATION_FROM_INVITE_MEMBER_DIALOG,
@@ -74,7 +78,7 @@ export function InviteMemberDialog({
         loadingRoles ||
         rolesError ||
         value.roles.length === 0 ||
-        value.roles.some((role) => !assignableRoles.includes(role))
+        value.roles.some((role) => !grantableRoles.includes(role))
       ) {
         toast.error(t("member:invite.role_label"));
         return;
@@ -187,13 +191,12 @@ export function InviteMemberDialog({
 
               <inviteForm.Field name="roles">
                 {(field) => (
-                  <CheckboxGroup
+                  <RoleCheckboxGroup
                     label={t("member:invite.role_label")}
-                    items={assignableRoles.map((role) => ({
-                      label: getRoleLabel(role),
-                      value: role,
-                      testId: `invite-role-${role}`,
-                    }))}
+                    options={(data?.workspaceRoles ?? []).filter(
+                      ({ grantable }) => grantable,
+                    )}
+                    testIdPrefix="invite-role"
                     value={field.state.value}
                     onValueChange={(value) => field.handleChange(value)}
                     disabled={loadingRoles || !!rolesError}
@@ -215,7 +218,7 @@ export function InviteMemberDialog({
                 data-testid="workspace-invite-confirm"
                 loading={createInviteLoading}
                 disabled={
-                  loadingRoles || !!rolesError || assignableRoles.length === 0
+                  loadingRoles || !!rolesError || grantableRoles.length === 0
                 }
               >
                 {t("member:invite.confirm_and_copy")}

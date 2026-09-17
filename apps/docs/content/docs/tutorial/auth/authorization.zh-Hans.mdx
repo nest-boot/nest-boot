@@ -129,6 +129,10 @@ Nest 的枚举元数据属于进程级注册。同一进程内并行运行的 Au
 `workspace.permissions` 与 `workspace.roles`，不使用独立的角色服务保存或管理。
 `UserService` 与 `MemberService` 负责向传输层提供配置目录并校验角色赋值。
 
+`listRoles()` 返回 `{ role, grantable }`，`listPermissions()` 返回
+`{ permission, grantable }`，标记基于当前请求计算。Service 保留配置中的原值，
+GraphQL 将这些值序列化为枚举名称。
+
 ```typescript
 const userRoles = userService.listRoles();
 const userPermissions = userService.listPermissions();
@@ -160,10 +164,13 @@ await memberService.setMemberRoles(member, ["admin"]);
 也不例外。使用个人 API Key 调用时，上限是用户角色和直接权限的合集与 Key 权限的交集。
 仅拥有 `user:set-role` 不意味着可以将自己或他人提升为权限更高的角色。
 
-`workspaceAssignableRoles` 返回当前主体授予上限内的配置角色名，并考虑 API Key 限制。
-没有成员更新或邀请创建能力时返回空列表。赋值控件使用此列表，但应保留已有角色的显示，
-提交前校验完整的替换列表。`workspaceRoles` 仍是完整目录；mutation 的 Service
-仍会检查目标对象的能力和授予上限。
+`userRoles` 和 `workspaceRoles` 返回完整角色目录，元素为 `{ role, grantable }`；
+`userPermissions` 和 `workspacePermissions` 返回 `{ permission, grantable }`。
+角色和权限字段仍为枚举；`grantable` 表示当前主体的授予范围，并考虑 API Key 限制。
+工作区角色授予需要成员更新或邀请创建能力，直接权限授予需要成员更新能力。
+只读调用者获得的工作区选项均为 `grantable: false`；用户目录要求 `user:set-role` 能力。
+前端据此禁止新增不可授予项，同时保留已有值的移除操作，并在提交前检查完整替换列表。
+mutation 的 Service 仍检查目标对象能力和授予上限；独立的 `workspaceAssignableRoles` 查询已移除。
 
 示例 GraphQL 应用提供 `userRoles`、`userPermissions`、`workspaceRoles` 与
 `workspacePermissions` 查询。角色修改分别使用 `setUserRoles` 和

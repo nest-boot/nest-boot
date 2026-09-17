@@ -70,6 +70,7 @@ export function createWorkspaceServices(
     workspace,
   } as unknown as AuthModuleOptions;
   const accessControlService = {
+    canGrantWorkspacePermissions: vi.fn().mockReturnValue(true),
     userCan: vi.fn().mockReturnValue(true),
     workspaceCan: vi.fn().mockReturnValue(true),
     assertCurrentUser: vi.fn(),

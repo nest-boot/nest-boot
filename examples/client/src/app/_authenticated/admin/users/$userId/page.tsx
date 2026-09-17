@@ -15,7 +15,7 @@ import { PermissionCheckboxGroup } from "@/components/permission-checkbox-group"
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import { Badge } from "@/components/thread-ui/badge";
 import { Button } from "@/components/thread-ui/button";
-import { CheckboxGroup } from "@/components/thread-ui/checkbox-group";
+import { RoleCheckboxGroup } from "@/components/role-checkbox-group";
 import { Input } from "@/components/thread-ui/input";
 import {
   Page,
@@ -32,12 +32,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { graphql } from "@/gql";
-import {
-  isUserPermission,
-  userPermissionOptions,
-  userPermissionValues,
-} from "@/lib/permissions";
-import { getRoleLabel } from "@/utils/get-role-label";
+import { getPermissionOptions } from "@/lib/permissions";
 import { createAbilitySubject } from "@/lib/ability";
 
 const GET_USER_FROM_USER_ROUTE = graphql(`
@@ -80,8 +75,14 @@ const GET_USER_FROM_USER_ROUTE = graphql(`
         }
       }
     }
-    userRoles @include(if: $includeCatalogs)
-    userPermissions @include(if: $includeCatalogs)
+    userRoles @include(if: $includeCatalogs) {
+      role
+      grantable
+    }
+    userPermissions @include(if: $includeCatalogs) {
+      permission
+      grantable
+    }
   }
 `);
 
@@ -220,7 +221,7 @@ function AdminUserPage() {
     setName(user.name);
     setEmail(user.email);
     setEmailVerified(user.emailVerified);
-    setPermissions(user.permissions.filter(isUserPermission));
+    setPermissions(user.permissions);
     setRoles(user.roles);
     setBanReason(user.banReason ?? "");
   }, [user]);
@@ -319,18 +320,26 @@ function AdminUserPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <CheckboxGroup
+            <RoleCheckboxGroup
               label={t("admin:user.roles.label")}
-              items={(data?.userRoles ?? []).map((role) => ({
-                label: getRoleLabel(role),
-                value: role,
-              }))}
+              options={data?.userRoles ?? []}
+              testIdPrefix="user-role"
               value={roles}
               disabled={!canSetRoles}
               onValueChange={setRoles}
             />
             <Button
-              disabled={!canSetRoles || roles.length === 0}
+              data-testid="admin-user-roles-save"
+              disabled={
+                !canSetRoles ||
+                roles.length === 0 ||
+                roles.some(
+                  (role) =>
+                    !data?.userRoles?.some(
+                      (option) => option.role === role && option.grantable,
+                    ),
+                )
+              }
               loading={savingRole}
               onClick={() =>
                 run(
@@ -416,27 +425,31 @@ function AdminUserPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <PermissionCheckboxGroup
-              options={userPermissionOptions.filter((option) =>
-                data?.userPermissions?.includes(option.value),
-              )}
+              options={getPermissionOptions(data?.userPermissions ?? [])}
               value={permissions}
               disabled={!canSetRoles}
               onChange={setPermissions}
             />
             <Button
               loading={savingPermissions}
-              disabled={!canSetRoles}
+              data-testid="admin-user-permissions-save"
+              disabled={
+                !canSetRoles ||
+                permissions.some(
+                  (permission) =>
+                    !data?.userPermissions?.some(
+                      (option) =>
+                        option.permission === permission && option.grantable,
+                    ),
+                )
+              }
               onClick={() =>
                 run(
                   () =>
                     setUserPermissions({
                       variables: {
                         id: userId,
-                        input: {
-                          permissions: permissions.filter((permission) =>
-                            userPermissionValues.includes(permission),
-                          ),
-                        },
+                        input: { permissions },
                       },
                     }),
                   t("admin:user.permissions.success"),

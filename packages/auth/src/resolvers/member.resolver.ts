@@ -12,13 +12,13 @@ import { CurrentWorkspace } from "../decorators/current-workspace.decorator.js";
 import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
-import { WorkspacePermission } from "../enums/workspace-permission.enum.js";
-import { WorkspaceRole } from "../enums/workspace-role.enum.js";
 import { AddMemberInput } from "../inputs/add-member.input.js";
 import { SetMemberPermissionsInput } from "../inputs/set-member-permissions.input.js";
 import { SetMemberRolesInput } from "../inputs/set-member-roles.input.js";
 import { UpdateMemberInput } from "../inputs/update-member.input.js";
 import { RemoveMemberPayload } from "../objects/remove-member-payload.object.js";
+import { WorkspacePermissionOption } from "../objects/workspace-permission-option.object.js";
+import { WorkspaceRoleOption } from "../objects/workspace-role-option.object.js";
 import { MemberService } from "../services/member.service.js";
 
 /** GraphQL resolver for workspace members. */
@@ -39,21 +39,15 @@ export class MemberResolver {
     return await this.memberService.getMemberUser(member);
   }
 
-  /** Lists configured workspace roles. */
-  @Query(() => [WorkspaceRole])
-  workspaceRoles(): string[] {
-    return this.memberService.listRoles().map(({ name }) => name);
+  /** Lists configured workspace roles with the current principal's grant availability. */
+  @Query(() => [WorkspaceRoleOption])
+  workspaceRoles(): WorkspaceRoleOption[] {
+    return this.memberService.listRoles();
   }
 
-  /** Lists roles the current principal may grant; mutations still authorize their targets. */
-  @Query(() => [WorkspaceRole])
-  workspaceAssignableRoles(): string[] {
-    return this.memberService.listAssignableRoles().map(({ name }) => name);
-  }
-
-  /** Lists permissions available to workspace roles. */
-  @Query(() => [WorkspacePermission])
-  workspacePermissions(): string[] {
+  /** Lists configured workspace permissions with the current principal's grant availability. */
+  @Query(() => [WorkspacePermissionOption])
+  workspacePermissions(): WorkspacePermissionOption[] {
     return this.memberService.listPermissions();
   }
 

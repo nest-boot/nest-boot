@@ -16,16 +16,6 @@ export const workspaceApiKeyPermissionValues = Object.values(
   WorkspaceApiKeyPermission,
 );
 
-export function isWorkspacePermission(
-  value: string,
-): value is WorkspacePermission {
-  return (workspacePermissionValues as ReadonlyArray<string>).includes(value);
-}
-
-export function isUserPermission(value: string): value is UserPermission {
-  return (userPermissionValues as ReadonlyArray<string>).includes(value);
-}
-
 export function isAuthPermission(value: string): value is AuthPermission {
   return (authPermissionValues as ReadonlyArray<string>).includes(value);
 }
@@ -34,6 +24,7 @@ export interface PermissionOption<Permission extends string> {
   value: Permission;
   name: string;
   description: string;
+  grantable?: boolean;
 }
 
 function option<Permission extends string>(
@@ -48,8 +39,15 @@ function option<Permission extends string>(
   };
 }
 
-export const userPermissionOptions = userPermissionValues.map(option);
-export const workspacePermissionOptions = workspacePermissionValues.map(option);
+/** Uses the server catalog as the source of available grants and adds UI labels. */
+export function getPermissionOptions<Permission extends string>(
+  catalog: ReadonlyArray<{ permission: Permission; grantable: boolean }>,
+): Array<PermissionOption<Permission>> {
+  return catalog.map(({ permission, grantable }) => ({
+    ...option(permission),
+    grantable,
+  }));
+}
 export const authPermissionOptions = authPermissionValues.map(option);
 export const workspaceApiKeyPermissionOptions =
   workspaceApiKeyPermissionValues.map(option);

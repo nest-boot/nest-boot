@@ -39,8 +39,6 @@ import { type Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
 import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { type Workspace } from "../entities/workspace.entity.js";
-import { UserPermission } from "../enums/user-permission.enum.js";
-import { UserRole } from "../enums/user-role.enum.js";
 import { BanUserInput } from "../inputs/ban-user.input.js";
 import { CreateUserInput } from "../inputs/create-user.input.js";
 import { SetUserPasswordInput } from "../inputs/set-user-password.input.js";
@@ -54,6 +52,8 @@ import { SetUserPermissionsPayload } from "../objects/set-user-permissions-paylo
 import { SetUserRolesPayload } from "../objects/set-user-roles-payload.object.js";
 import { UnbanUserPayload } from "../objects/unban-user-payload.object.js";
 import { UpdateUserPayload } from "../objects/update-user-payload.object.js";
+import { UserPermissionOption } from "../objects/user-permission-option.object.js";
+import { UserRoleOption } from "../objects/user-role-option.object.js";
 import { AccountService } from "../services/account.service.js";
 import { InvitationService } from "../services/invitation.service.js";
 import { SessionService } from "../services/session.service.js";
@@ -136,15 +136,15 @@ export class UserResolver {
     );
   }
 
-  /** Lists configured user-administration roles. */
-  @Query(() => [UserRole])
-  userRoles(): string[] {
-    return this.userService.listRoles().map(({ name }) => name);
+  /** Lists configured user roles with the current principal's grant availability. */
+  @Query(() => [UserRoleOption])
+  userRoles(): UserRoleOption[] {
+    return this.userService.listRoles();
   }
 
-  /** Lists permissions available to user-administration roles. */
-  @Query(() => [UserPermission])
-  userPermissions(): string[] {
+  /** Lists configured user permissions with the current principal's grant availability. */
+  @Query(() => [UserPermissionOption])
+  userPermissions(): UserPermissionOption[] {
     return this.userService.listPermissions();
   }
 

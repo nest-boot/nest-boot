@@ -231,8 +231,15 @@ describe("AccessControlService", () => {
     expect(() => {
       ceilingService.assertCanGrantUserPermissions(["user:get"]);
     }).toThrow(ForbiddenException);
+    expect(ceilingService.canGrantUserPermissions(["user:get"])).toBe(false);
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
       RequestContext.set(User, user);
+      expect(
+        ceilingService.canGrantUserPermissions(["user:get", "user:set-role"]),
+      ).toBe(true);
+      expect(ceilingService.canGrantUserPermissions(["user:delete"])).toBe(
+        false,
+      );
       expect(() => {
         ceilingService.assertCanGrantUserPermissions([
           "user:get",
@@ -256,6 +263,13 @@ describe("AccessControlService", () => {
       expect(() => {
         ceilingService.assertCanGrantUserPermissions(["user:set-role"]);
       }).toThrow(ForbiddenException);
+      expect(ceilingService.canGrantUserPermissions(["user:get"])).toBe(true);
+      expect(ceilingService.canGrantUserPermissions(["user:set-role"])).toBe(
+        false,
+      );
+      expect(ceilingService.canGrantUserPermissions(["user:delete"])).toBe(
+        false,
+      );
       expect(() => {
         ceilingService.assertCanGrantUserPermissions(["user:delete"]);
       }).toThrow(ForbiddenException);
@@ -269,6 +283,7 @@ describe("AccessControlService", () => {
       expect(() => {
         ceilingService.assertCanGrantUserPermissions(["user:get"]);
       }).toThrow(ForbiddenException);
+      expect(ceilingService.canGrantUserPermissions(["user:get"])).toBe(false);
     });
   });
 

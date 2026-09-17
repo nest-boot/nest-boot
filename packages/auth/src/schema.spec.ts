@@ -202,15 +202,28 @@ describe("auth GraphQL schema", () => {
       expect(fields[field]?.type.toString()).toBe("InvitationConnection!");
       expect(fields[field]?.args.map(({ name }) => name)).toContain("first");
     }
-    expect(queries.userRoles.type.toString()).toBe("[UserRole!]!");
-    expect(queries.workspaceRoles.type.toString()).toBe("[WorkspaceRole!]!");
-    expect(queries.workspaceAssignableRoles.type.toString()).toBe(
-      "[WorkspaceRole!]!",
-    );
-    expect(queries.userPermissions.type.toString()).toBe("[UserPermission!]!");
-    expect(queries.workspacePermissions.type.toString()).toBe(
-      "[WorkspacePermission!]!",
-    );
+    expect(queries.workspaceAssignableRoles).toBeUndefined();
+    for (const [query, type, field, enumName] of [
+      ["userRoles", "UserRoleOption", "role", "UserRole"],
+      ["workspaceRoles", "WorkspaceRoleOption", "role", "WorkspaceRole"],
+      [
+        "userPermissions",
+        "UserPermissionOption",
+        "permission",
+        "UserPermission",
+      ],
+      [
+        "workspacePermissions",
+        "WorkspacePermissionOption",
+        "permission",
+        "WorkspacePermission",
+      ],
+    ]) {
+      expect(queries[query].type.toString()).toBe(`[${type}!]!`);
+      const fields = (schema.getType(type) as GraphQLObjectType).getFields();
+      expect(fields[field].type.toString()).toBe(`${enumName}!`);
+      expect(fields.grantable.type.toString()).toBe("Boolean!");
+    }
     for (const [type, field, enumName] of [
       ["User", "roles", "UserRole"],
       ["User", "permissions", "UserPermission"],

@@ -1,15 +1,6 @@
 import { BadRequestException } from "@nestjs/common";
 
-import type { AuthRole } from "../interfaces/auth-role.interface.js";
 import type { AuthModuleRoles } from "../types/auth-module-roles.type.js";
-
-/** Converts configured roles into transport-friendly role records. */
-export function listAuthRoles(roles: AuthModuleRoles): AuthRole[] {
-  return Object.entries(roles).map(([name, permissions]) => ({
-    name,
-    permissions: [...permissions],
-  }));
-}
 
 /** Returns a deduplicated configured permission catalog. */
 export function listAuthPermissions(permissions: readonly string[]): string[] {

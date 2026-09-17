@@ -481,8 +481,8 @@ type Query {
   member(id: ID!): Member
   socialProviders: [AuthSocialProviderType!]!
   user(id: ID!): User
-  userPermissions: [UserPermission!]!
-  userRoles: [UserRole!]!
+  userPermissions: [UserPermissionOption!]!
+  userRoles: [UserRoleOption!]!
   users(
     """Returns the elements that come after the specified cursor."""
     after: String
@@ -510,9 +510,8 @@ type Query {
     query: String
   ): UserConnection!
   workspace(id: ID!): Workspace
-  workspaceAssignableRoles: [WorkspaceRole!]!
-  workspacePermissions: [WorkspacePermission!]!
-  workspaceRoles: [WorkspaceRole!]!
+  workspacePermissions: [WorkspacePermissionOption!]!
+  workspaceRoles: [WorkspaceRoleOption!]!
 }
 
 type RemoveMemberPayload {
@@ -955,9 +954,19 @@ enum UserPermission {
   USER__UPDATE
 }
 
+type UserPermissionOption {
+  grantable: Boolean!
+  permission: UserPermission!
+}
+
 enum UserRole {
   ADMIN
   USER
+}
+
+type UserRoleOption {
+  grantable: Boolean!
+  role: UserRole!
 }
 
 type Workspace {
@@ -1185,8 +1194,18 @@ enum WorkspacePermission {
   WORKSPACE__UPDATE
 }
 
+type WorkspacePermissionOption {
+  grantable: Boolean!
+  permission: WorkspacePermission!
+}
+
 enum WorkspaceRole {
   ADMIN
   MEMBER
   OWNER
+}
+
+type WorkspaceRoleOption {
+  grantable: Boolean!
+  role: WorkspaceRole!
 }

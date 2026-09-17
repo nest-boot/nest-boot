@@ -3,9 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   authPermissionOptions,
   authPermissionValues,
+  getPermissionOptions,
   isAuthPermission,
-  isUserPermission,
-  isWorkspacePermission,
   userPermissionValues,
   workspaceApiKeyPermissionValues,
   workspacePermissionValues,
@@ -60,8 +59,28 @@ describe("permission options", () => {
   });
 
   it("narrows server strings against the local permission catalog", () => {
-    expect(isUserPermission("USER__GET")).toBe(true);
-    expect(isWorkspacePermission("WORKSPACE__UPDATE")).toBe(true);
     expect(isAuthPermission("CUSTOM__UNKNOWN")).toBe(false);
+  });
+
+  it("uses the server catalog and preserves unavailable grants", () => {
+    expect(
+      getPermissionOptions([
+        { permission: "CUSTOM__READ", grantable: true },
+        { permission: "CUSTOM__DELETE", grantable: false },
+      ]),
+    ).toEqual([
+      {
+        value: "CUSTOM__READ",
+        name: "permission:custom_read.name",
+        description: "permission:custom_read.description",
+        grantable: true,
+      },
+      {
+        value: "CUSTOM__DELETE",
+        name: "permission:custom_delete.name",
+        description: "permission:custom_delete.description",
+        grantable: false,
+      },
+    ]);
   });
 });

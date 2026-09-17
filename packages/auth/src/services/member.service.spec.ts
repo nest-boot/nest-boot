@@ -852,19 +852,18 @@ describe("MemberService", () => {
     em.findOne.mockResolvedValue(member);
 
     expect(memberService.listRoles()).toEqual([
-      {
-        name: "admin",
-        permissions: ["workspace:update", "member:update"],
-      },
-      { name: "member", permissions: [] },
-      { name: "owner", permissions: ["workspace:delete"] },
+      { role: "admin", grantable: true },
+      { role: "member", grantable: true },
+      { role: "owner", grantable: true },
     ]);
-    expect(memberService.listPermissions()).toEqual([
-      "workspace:update",
-      "member:update",
-      "workspace:delete",
-      "invitation:cancel",
-    ]);
+    expect(memberService.listPermissions()).toEqual(
+      [
+        "workspace:update",
+        "member:update",
+        "workspace:delete",
+        "invitation:cancel",
+      ].map((permission) => ({ permission, grantable: true })),
+    );
 
     await expect(memberService.setMemberRoles(member, ["admin"])).resolves.toBe(
       member,

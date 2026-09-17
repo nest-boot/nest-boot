@@ -25,17 +25,12 @@ import {
   PageTitle,
 } from "@/components/thread-ui/page";
 import { Button } from "@/components/thread-ui/button";
-import { CheckboxGroup } from "@/components/thread-ui/checkbox-group";
+import { RoleCheckboxGroup } from "@/components/role-checkbox-group";
 import { Field, FieldGroup, FieldSet } from "@/components/ui/field";
 import { Input } from "@/components/thread-ui/input";
 import { graphql } from "@/gql";
-import { WorkspaceRole } from "@/gql/graphql";
-import { getRoleLabel } from "@/utils/get-role-label";
-import {
-  isWorkspacePermission,
-  workspacePermissionOptions,
-  workspacePermissionValues,
-} from "@/lib/permissions";
+import { WorkspacePermission, WorkspaceRole } from "@/gql/graphql";
+import { getPermissionOptions } from "@/lib/permissions";
 import { PermissionCheckboxGroup } from "@/components/permission-checkbox-group";
 import { createAbilitySubject } from "@/lib/ability";
 
@@ -59,9 +54,14 @@ const GET_MEMBER_FROM_MEMBER_ROUTE = graphql(`
       name
       email
     }
-    workspaceRoles
-    workspaceAssignableRoles
-    workspacePermissions
+    workspaceRoles {
+      role
+      grantable
+    }
+    workspacePermissions {
+      permission
+      grantable
+    }
   }
 `);
 
@@ -111,7 +111,7 @@ const formSchema = z.object({
   name: z.string().trim().min(1).max(255),
   email: z.string().email().or(z.literal("")),
   roles: z.array(z.enum(WorkspaceRole)).min(1),
-  permissions: z.array(z.enum(workspacePermissionValues)),
+  permissions: z.array(z.enum(WorkspacePermission)),
 });
 
 export const Route = createFileRoute(
@@ -207,7 +207,7 @@ function MemberComponent() {
       name: member.name,
       email: member.email ?? "",
       roles: member.roles,
-      permissions: member.permissions.filter(isWorkspacePermission),
+      permissions: member.permissions,
     },
     validators: {
       onSubmit: formSchema,
@@ -221,16 +221,17 @@ function MemberComponent() {
         if (
           hasRolesChanged &&
           value.roles.some(
-            (role) => !data.workspaceAssignableRoles.includes(role),
+            (role) =>
+              !data.workspaceRoles.some(
+                (option) => option.role === role && option.grantable,
+              ),
           )
         ) {
           throw new Error("Selected roles exceed your grant permissions");
         }
 
         // Compare the complete direct-permission list before submitting.
-        const currentPermissions = member.permissions.filter(
-          isWorkspacePermission,
-        );
+        const currentPermissions = member.permissions;
         const hasPermissionChanged =
           value.permissions.length !== currentPermissions.length ||
           value.permissions.some(
@@ -239,6 +240,19 @@ function MemberComponent() {
           currentPermissions.some(
             (permission) => !value.permissions.includes(permission),
           );
+
+        if (
+          hasPermissionChanged &&
+          value.permissions.some(
+            (permission) =>
+              !data.workspacePermissions.some(
+                (option) =>
+                  option.permission === permission && option.grantable,
+              ),
+          )
+        ) {
+          throw new Error("Selected permissions exceed your grant permissions");
+        }
 
         const operations: Array<Promise<unknown>> = [];
 
@@ -413,20 +427,10 @@ function MemberComponent() {
               </form.Field>
               <form.Field name="roles">
                 {(field) => (
-                  <CheckboxGroup
+                  <RoleCheckboxGroup
                     label={t("member:details.form.role.label")}
-                    items={[
-                      ...new Set([...data.workspaceRoles, ...member.roles]),
-                    ].map((role) => ({
-                      label: getRoleLabel(role),
-                      value: role,
-                      testId: `member-role-${role}`,
-                      // Existing roles stay visible and may be removed, but cannot be re-granted.
-                      disabled:
-                        !canManageRoles ||
-                        (!data.workspaceAssignableRoles.includes(role) &&
-                          !field.state.value.includes(role)),
-                    }))}
+                    options={data.workspaceRoles}
+                    testIdPrefix="member-role"
                     value={field.state.value}
                     onValueChange={(value) => field.handleChange(value)}
                     disabled={!canManageRoles}
@@ -437,7 +441,7 @@ function MemberComponent() {
               <form.Field name="permissions">
                 {(field) => (
                   <PermissionCheckboxGroup
-                    options={workspacePermissionOptions}
+                    options={getPermissionOptions(data.workspacePermissions)}
                     value={field.state.value}
                     onChange={field.handleChange}
                     disabled={updatingPermissions || !canManagePermissions}

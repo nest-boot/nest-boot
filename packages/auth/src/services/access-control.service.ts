@@ -133,6 +133,24 @@ export class AccessControlService {
 
   /** Throws when a user grant exceeds the current principal's permissions. */
   assertCanGrantUserPermissions(requestedPermissions: readonly string[]): void {
+    const allowed = new Set(this.getUserGrantPermissions());
+    const excessive = requestedPermissions.filter(
+      (permission) => !allowed.has(permission),
+    );
+    if (excessive.length > 0) {
+      throw new ForbiddenException(
+        `User permissions exceed issuer permissions: ${excessive.join(", ")}`,
+      );
+    }
+  }
+
+  /** Checks the same grant ceiling used when assigning user permissions. */
+  canGrantUserPermissions(requestedPermissions: readonly string[]): boolean {
+    const allowed = new Set(this.getUserGrantPermissions());
+    return requestedPermissions.every((permission) => allowed.has(permission));
+  }
+
+  private getUserGrantPermissions(): readonly string[] {
     const user = RequestContext.isActive() ? RequestContext.get(User) : null;
     const apiKey = RequestContext.isActive() ? getCurrentApiKey() : null;
     let permissions =
@@ -147,15 +165,7 @@ export class AccessControlService {
       const allowed = new Set(apiKey.permissions ?? []);
       permissions = permissions.filter((permission) => allowed.has(permission));
     }
-    const allowed = new Set(permissions);
-    const excessive = requestedPermissions.filter(
-      (permission) => !allowed.has(permission),
-    );
-    if (excessive.length > 0) {
-      throw new ForbiddenException(
-        `User permissions exceed issuer permissions: ${excessive.join(", ")}`,
-      );
-    }
+    return permissions;
   }
 
   /** Throws when a workspace grant exceeds the current principal's permissions. */

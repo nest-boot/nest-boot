@@ -82,6 +82,33 @@ test("limits user detail queries and actions to the administrator's abilities", 
       "Updated through ability",
     );
 
+    await setPermissions(["USER__LIST", "USER__GET", "USER__SET_ROLE"]);
+    await page.reload();
+    await expect(page.getByTestId("user-role-ADMIN")).toBeDisabled();
+    await expect(page.getByTestId("user-role-USER")).toBeEnabled();
+    await expect(page.getByTestId("permission-USER__DELETE")).toBeDisabled();
+    await expect(page.getByTestId("permission-USER__GET")).toBeEnabled();
+    await page.getByTestId("permission-USER__GET").check();
+    await page.getByTestId("admin-user-permissions-save").click();
+    await expect(page.getByTestId("admin-user-permissions-save")).toBeEnabled();
+    await page.reload();
+    await expect(page.getByTestId("permission-USER__GET")).toBeChecked();
+
+    // Existing grants stay removable but cannot be granted again by this caller.
+    await graphqlRequest(
+      adminPage.request,
+      "mutation ($id: ID!, $input: SetUserPermissionsInput!) { setUserPermissions(id: $id, input: $input) { id } }",
+      { id: target.id, input: { permissions: ["USER__DELETE"] } },
+    );
+    await page.reload();
+    await expect(page.getByTestId("permission-USER__DELETE")).toBeChecked();
+    await expect(
+      page.getByTestId("admin-user-permissions-save"),
+    ).toBeDisabled();
+    await page.getByTestId("permission-USER__DELETE").uncheck();
+    await expect(page.getByTestId("permission-USER__DELETE")).toBeDisabled();
+    await expect(page.getByTestId("admin-user-permissions-save")).toBeEnabled();
+
     await setPermissions(["USER__LIST"]);
     await page.goto(`/admin/users/${target.id}`);
     await expect(page).toHaveURL(/\/admin\/users(?:\?.*)?$/);

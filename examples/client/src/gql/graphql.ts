@@ -720,13 +720,12 @@ export type Query = {
   member?: Maybe<Member>;
   socialProviders: Array<AuthSocialProviderType>;
   user?: Maybe<User>;
-  userPermissions: Array<UserPermission>;
-  userRoles: Array<UserRole>;
+  userPermissions: Array<UserPermissionOption>;
+  userRoles: Array<UserRoleOption>;
   users: UserConnection;
   workspace?: Maybe<Workspace>;
-  workspaceAssignableRoles: Array<WorkspaceRole>;
-  workspacePermissions: Array<WorkspacePermission>;
-  workspaceRoles: Array<WorkspaceRole>;
+  workspacePermissions: Array<WorkspacePermissionOption>;
+  workspaceRoles: Array<WorkspaceRoleOption>;
 };
 
 export type QueryInvitationArgs = {
@@ -1112,12 +1111,24 @@ export const UserPermission = {
 
 export type UserPermission =
   (typeof UserPermission)[keyof typeof UserPermission];
+export type UserPermissionOption = {
+  __typename?: "UserPermissionOption";
+  grantable: Scalars["Boolean"]["output"];
+  permission: UserPermission;
+};
+
 export const UserRole = {
   ADMIN: "ADMIN",
   USER: "USER",
 } as const;
 
 export type UserRole = (typeof UserRole)[keyof typeof UserRole];
+export type UserRoleOption = {
+  __typename?: "UserRoleOption";
+  grantable: Scalars["Boolean"]["output"];
+  role: UserRole;
+};
+
 export type Workspace = {
   __typename?: "Workspace";
   apiKey?: Maybe<WorkspaceApiKey>;
@@ -1286,6 +1297,12 @@ export const WorkspacePermission = {
 
 export type WorkspacePermission =
   (typeof WorkspacePermission)[keyof typeof WorkspacePermission];
+export type WorkspacePermissionOption = {
+  __typename?: "WorkspacePermissionOption";
+  grantable: Scalars["Boolean"]["output"];
+  permission: WorkspacePermission;
+};
+
 export const WorkspaceRole = {
   ADMIN: "ADMIN",
   MEMBER: "MEMBER",
@@ -1293,6 +1310,12 @@ export const WorkspaceRole = {
 } as const;
 
 export type WorkspaceRole = (typeof WorkspaceRole)[keyof typeof WorkspaceRole];
+export type WorkspaceRoleOption = {
+  __typename?: "WorkspaceRoleOption";
+  grantable: Scalars["Boolean"]["output"];
+  role: WorkspaceRole;
+};
+
 export type GetAdminAccessFromAdminLayoutQueryVariables = Exact<{
   [key: string]: never;
 }>;
@@ -1319,8 +1342,6 @@ export type GetUserFromUserRouteQueryVariables = Exact<{
 
 export type GetUserFromUserRouteQuery = {
   __typename?: "Query";
-  userRoles?: Array<UserRole>;
-  userPermissions?: Array<UserPermission>;
   user?: {
     __typename?: "User";
     id: string;
@@ -1355,6 +1376,16 @@ export type GetUserFromUserRouteQuery = {
       }>;
     };
   } | null;
+  userRoles?: Array<{
+    __typename?: "UserRoleOption";
+    role: UserRole;
+    grantable: boolean;
+  }>;
+  userPermissions?: Array<{
+    __typename?: "UserPermissionOption";
+    permission: UserPermission;
+    grantable: boolean;
+  }>;
 };
 
 export type UpdateManagedUserFromUserRouteMutationVariables = Exact<{
@@ -2154,9 +2185,6 @@ export type GetMemberFromMemberRouteQueryVariables = Exact<{
 
 export type GetMemberFromMemberRouteQuery = {
   __typename?: "Query";
-  workspaceRoles: Array<WorkspaceRole>;
-  workspaceAssignableRoles: Array<WorkspaceRole>;
-  workspacePermissions: Array<WorkspacePermission>;
   member?: {
     __typename?: "Member";
     id: string;
@@ -2166,6 +2194,16 @@ export type GetMemberFromMemberRouteQuery = {
     name: string;
     email?: string | null;
   } | null;
+  workspaceRoles: Array<{
+    __typename?: "WorkspaceRoleOption";
+    role: WorkspaceRole;
+    grantable: boolean;
+  }>;
+  workspacePermissions: Array<{
+    __typename?: "WorkspacePermissionOption";
+    permission: WorkspacePermission;
+    grantable: boolean;
+  }>;
 };
 
 export type UpdateMemberFromMemberRouteMutationVariables = Exact<{
@@ -2220,13 +2258,17 @@ export type RemoveMemberFromMemberRouteMutation = {
   removeMember: { __typename?: "RemoveMemberPayload"; id: string };
 };
 
-export type GetAssignableRolesFromInviteMemberDialogQueryVariables = Exact<{
+export type GetRolesFromInviteMemberDialogQueryVariables = Exact<{
   [key: string]: never;
 }>;
 
-export type GetAssignableRolesFromInviteMemberDialogQuery = {
+export type GetRolesFromInviteMemberDialogQuery = {
   __typename?: "Query";
-  workspaceAssignableRoles: Array<WorkspaceRole>;
+  workspaceRoles: Array<{
+    __typename?: "WorkspaceRoleOption";
+    role: WorkspaceRole;
+    grantable: boolean;
+  }>;
 };
 
 export type CreateInvitationFromInviteMemberDialogMutationVariables = Exact<{
@@ -2790,6 +2832,13 @@ export const GetUserFromUserRouteDocument = {
                 ],
               },
             ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "role" } },
+                { kind: "Field", name: { kind: "Name", value: "grantable" } },
+              ],
+            },
           },
           {
             kind: "Field",
@@ -2810,6 +2859,13 @@ export const GetUserFromUserRouteDocument = {
                 ],
               },
             ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "permission" } },
+                { kind: "Field", name: { kind: "Name", value: "grantable" } },
+              ],
+            },
           },
         ],
       },
@@ -6318,14 +6374,27 @@ export const GetMemberFromMemberRouteDocument = {
               ],
             },
           },
-          { kind: "Field", name: { kind: "Name", value: "workspaceRoles" } },
           {
             kind: "Field",
-            name: { kind: "Name", value: "workspaceAssignableRoles" },
+            name: { kind: "Name", value: "workspaceRoles" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "role" } },
+                { kind: "Field", name: { kind: "Name", value: "grantable" } },
+              ],
+            },
           },
           {
             kind: "Field",
             name: { kind: "Name", value: "workspacePermissions" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "permission" } },
+                { kind: "Field", name: { kind: "Name", value: "grantable" } },
+              ],
+            },
           },
         ],
       },
@@ -6597,27 +6666,34 @@ export const RemoveMemberFromMemberRouteDocument = {
   RemoveMemberFromMemberRouteMutation,
   RemoveMemberFromMemberRouteMutationVariables
 >;
-export const GetAssignableRolesFromInviteMemberDialogDocument = {
+export const GetRolesFromInviteMemberDialogDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "query",
-      name: { kind: "Name", value: "getAssignableRolesFromInviteMemberDialog" },
+      name: { kind: "Name", value: "getRolesFromInviteMemberDialog" },
       selectionSet: {
         kind: "SelectionSet",
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "workspaceAssignableRoles" },
+            name: { kind: "Name", value: "workspaceRoles" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "role" } },
+                { kind: "Field", name: { kind: "Name", value: "grantable" } },
+              ],
+            },
           },
         ],
       },
     },
   ],
 } as unknown as DocumentNode<
-  GetAssignableRolesFromInviteMemberDialogQuery,
-  GetAssignableRolesFromInviteMemberDialogQueryVariables
+  GetRolesFromInviteMemberDialogQuery,
+  GetRolesFromInviteMemberDialogQueryVariables
 >;
 export const CreateInvitationFromInviteMemberDialogDocument = {
   kind: "Document",

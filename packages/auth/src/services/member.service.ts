@@ -29,13 +29,13 @@ import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import type { AddMemberOptions } from "../interfaces/add-member-options.interface.js";
-import type { AuthRole } from "../interfaces/auth-role.interface.js";
 import type { UpdateMemberOptions } from "../interfaces/update-member-options.interface.js";
 import type { WorkspaceHasPermissionsOptions } from "../interfaces/workspace-has-permissions-options.interface.js";
+import type { WorkspacePermissionOption } from "../objects/workspace-permission-option.object.js";
+import type { WorkspaceRoleOption } from "../objects/workspace-role-option.object.js";
 import type { AuthModuleRoles } from "../types/auth-module-roles.type.js";
 import {
   listAuthPermissions,
-  listAuthRoles,
   normalizeAuthPermissions,
   normalizeAuthRoles,
   resolveAuthPermissions,
@@ -397,28 +397,32 @@ export class MemberService {
     );
   }
 
-  /** Lists configured workspace roles. */
-  listRoles(): AuthRole[] {
-    this.accessControlService.assertWorkspaceCan("read", Member);
-    return listAuthRoles(this.roles);
+  /** Lists all roles with grant availability; mutations still authorize their targets. */
+  listRoles(): WorkspaceRoleOption[] {
+    const canAssign =
+      this.accessControlService.workspaceCan("create", Invitation) ||
+      this.accessControlService.workspaceCan("update", Member);
+    if (!canAssign)
+      this.accessControlService.assertWorkspaceCan("read", Member);
+    return Object.entries(this.roles).map(([role, permissions]) => ({
+      role,
+      grantable:
+        canAssign &&
+        this.accessControlService.canGrantWorkspacePermissions(permissions),
+    }));
   }
 
-  /** Lists roles within the current principal's grant ceiling, not target-member authorization. */
-  listAssignableRoles(): AuthRole[] {
-    if (
-      !this.accessControlService.workspaceCan("create", Invitation) &&
-      !this.accessControlService.workspaceCan("update", Member)
-    )
-      return [];
-    return listAuthRoles(this.roles).filter(({ permissions }) =>
-      this.accessControlService.canGrantWorkspacePermissions(permissions),
-    );
-  }
-
-  /** Lists configured workspace permissions. */
-  listPermissions(): string[] {
-    this.accessControlService.assertWorkspaceCan("read", Member);
-    return listAuthPermissions(this.permissions);
+  /** Lists all direct-permission options without authorizing a particular member. */
+  listPermissions(): WorkspacePermissionOption[] {
+    const canAssign = this.accessControlService.workspaceCan("update", Member);
+    if (!canAssign)
+      this.accessControlService.assertWorkspaceCan("read", Member);
+    return listAuthPermissions(this.permissions).map((permission) => ({
+      permission,
+      grantable:
+        canAssign &&
+        this.accessControlService.canGrantWorkspacePermissions([permission]),
+    }));
   }
 
   /** Resolves permissions inherited from roles plus direct member permissions. */

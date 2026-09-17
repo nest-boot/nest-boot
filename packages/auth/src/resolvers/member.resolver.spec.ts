@@ -111,19 +111,18 @@ describe("MemberResolver", () => {
 
   it("lists roles and updates member roles through MemberService", async () => {
     const member = { id: "member_2", roles: ["member"] } as Member;
-    const roles = [{ name: "admin", permissions: ["workspace:update"] }];
+    const roles = [{ role: "admin", grantable: false }];
+    const permissions = [{ permission: "workspace:update", grantable: true }];
     const { resolver, memberService } = createResolver({
       memberService: {
-        listPermissions: vi.fn(() => ["workspace:update"]),
+        listPermissions: vi.fn(() => permissions),
         listRoles: vi.fn(() => roles),
-        listAssignableRoles: vi.fn(() => roles),
         setMemberRoles: vi.fn(async () => member),
       },
     });
 
-    expect(resolver.workspaceRoles()).toEqual(roles.map(({ name }) => name));
-    expect(resolver.workspaceAssignableRoles()).toEqual(["admin"]);
-    expect(resolver.workspacePermissions()).toEqual(["workspace:update"]);
+    expect(resolver.workspaceRoles()).toEqual(roles);
+    expect(resolver.workspacePermissions()).toEqual(permissions);
     await expect(
       resolver.setMemberRoles(member.id, {
         roles: ["admin"],

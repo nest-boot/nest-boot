@@ -409,6 +409,17 @@ The example migration sequence `Initial → generated schema migrations` enables
 
 ### Management mutations
 
+The `userRoles` and `workspaceRoles` queries return `{ role, grantable }` objects;
+`userPermissions` and `workspacePermissions` return `{ permission, grantable }`.
+Role and permission values remain GraphQL enums. These catalogs retain all configured
+options and mark the current principal's grant ceiling, including API-key restrictions.
+They do not authorize changes to a particular target. Disable unavailable new grants
+in the UI and validate complete replacement lists; mutation Services still enforce
+target-specific abilities. `workspaceAssignableRoles` has been removed.
+`UserService` and `MemberService` expose these same option shapes through
+`listRoles()` and `listPermissions()`, using configured string values internally.
+The previous `AuthRole { name, permissions }` catalog shape is no longer exposed.
+
 `createUser`, `updateUser`, `setUserRoles`, `setUserPermissions`, `banUser`, and
 `unbanUser` return operation-specific payloads containing only `id`. Refetch
 authorized user fields separately after success instead of selecting self-only
