@@ -35,14 +35,20 @@ The factory form is evaluated lazily when Zod first needs that field schema. It
 supports recursive references and keeps the decorator expression concise.
 
 `toZodSchema` uses the DTO's data properties as the inferred schema output and
-excludes instance methods. Every data property in a DTO schema contract must
-have a `ZodField` decorator. Keep each declaration aligned with its Zod output,
-especially when using coercion or transforms:
+excludes instance methods. At runtime, however, its object shape contains only
+properties declared with `ZodField`. An undecorated property remains visible in
+`z.infer` but is not validated or preserved by the default object schema.
+Decorate every property that must be present in parsed output, and keep each
+declaration aligned with its Zod output, especially when using coercion or
+transforms:
 
 ```typescript
 class QueryDto {
   @ZodField((z) => z.coerce.number().int().positive())
   page!: number;
+
+  // Static DTO metadata only; not present in parsed output.
+  label!: string;
 }
 ```
 

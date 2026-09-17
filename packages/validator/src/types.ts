@@ -17,7 +17,12 @@ export type ZodDtoData<T extends object> = {
     : never]: T[Key];
 };
 
-/** The object schema assembled from a decorated DTO's data properties. */
+/**
+ * A decorated DTO schema, statically modeled by its data properties.
+ *
+ * @remarks Its runtime shape contains only properties registered with
+ * {@link ZodField}.
+ */
 export type DecoratedZodObject<T extends object = Record<string, unknown>> =
   ZodObject<{
     [Key in Extract<keyof ZodDtoData<T>, string>]-?: ZodType<

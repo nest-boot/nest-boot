@@ -90,9 +90,12 @@ export function getZodSchema<T extends object>(
  * Converts a decorated class to a typed Zod object schema.
  *
  * @remarks
- * The inferred output uses the class's non-function data properties. Every
- * data property in the DTO schema contract must have a {@link ZodField}, and
- * declarations must align with any schema coercions or transforms.
+ * The inferred output uses all of the class's non-function data properties,
+ * while the runtime shape contains only properties registered with
+ * {@link ZodField}. An undecorated property therefore remains visible to
+ * TypeScript but is not validated or preserved by the default object schema.
+ * Decorate every property that must be present in parsed output, and keep its
+ * declaration aligned with any schema coercions or transforms.
  *
  * @param target - The decorated class constructor
  * @returns The assembled object schema

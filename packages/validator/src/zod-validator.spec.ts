@@ -132,6 +132,26 @@ describe("decorated Zod schemas", () => {
     expect(schema.parse({ value: "test" })).toEqual({ value: "test" });
   });
 
+  it("keeps undecorated data properties in the static type only", () => {
+    class UserDto {
+      @ZodField(z.email())
+      email!: string;
+
+      nickname!: string;
+    }
+
+    const schema = toZodSchema(UserDto);
+    type Output = z.infer<typeof schema>;
+    expectTypeOf<Output>().toEqualTypeOf<{
+      email: string;
+      nickname: string;
+    }>();
+
+    expect(
+      schema.parse({ email: "user@example.com", nickname: "User" }),
+    ).toEqual({ email: "user@example.com" });
+  });
+
   it("returns undefined for classes without Zod metadata", () => {
     class PlainDto {}
 

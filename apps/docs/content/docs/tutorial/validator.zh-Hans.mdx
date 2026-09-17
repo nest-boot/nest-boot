@@ -35,13 +35,18 @@ export type User = z.infer<typeof UserSchema>;
 也可以减少装饰器中的重复导入。
 
 `toZodSchema` 使用 DTO 的数据属性作为 schema 的推导输出，并排除实例方法。
-DTO schema 契约中的每个数据属性都必须添加 `ZodField`。属性声明必须和 Zod
-输出保持一致，特别是使用 coercion 或 transform 时：
+但运行时 object shape 只包含使用 `ZodField` 声明的属性。未装饰属性仍会出现
+在 `z.infer` 中，但默认不会被验证或保留在解析结果中。所有需要出现在解析结果
+中的属性都必须添加 `ZodField`；属性声明也必须和 Zod 输出保持一致，特别是使用
+coercion 或 transform 时：
 
 ```typescript
 class QueryDto {
   @ZodField((z) => z.coerce.number().int().positive())
   page!: number;
+
+  // 仅作为 DTO 静态类型，不会出现在解析结果中。
+  label!: string;
 }
 ```
 
