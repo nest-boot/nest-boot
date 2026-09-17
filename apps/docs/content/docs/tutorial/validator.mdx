@@ -177,6 +177,8 @@ class PasswordDto {
 ```
 
 `unknownKeys` accepts `strip` (the default), `strict`, or `passthrough`.
+For safe object output, `passthrough` discards the special `__proto__` key, and
+`ZodField` does not allow that property name.
 
 ## Nested DTOs
 

@@ -18,6 +18,24 @@ interface CachedSchema {
 
 const schemaCache = new WeakMap<ZodClass, CachedSchema>();
 
+function normalizePassthroughOutput(
+  value: Record<string, unknown>,
+): Record<string, unknown> {
+  const output: Record<string, unknown> = {};
+
+  // Data descriptors avoid invoking inherited setters for special key names.
+  for (const [key, propertyValue] of Object.entries(value)) {
+    Object.defineProperty(output, key, {
+      configurable: true,
+      enumerable: true,
+      value: propertyValue,
+      writable: true,
+    });
+  }
+
+  return output;
+}
+
 function createObjectSchema(
   shape: Record<string, z.ZodType>,
   unknownKeys: ZodUnknownKeysMode,
@@ -26,7 +44,7 @@ function createObjectSchema(
     case "strict":
       return z.strictObject(shape);
     case "passthrough":
-      return z.looseObject(shape);
+      return z.looseObject(shape).overwrite(normalizePassthroughOutput);
     default:
       return z.object(shape);
   }

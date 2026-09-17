@@ -114,18 +114,12 @@ describe("decorated Zod schemas", () => {
     });
   });
 
-  it("validates fields named __proto__ without invoking its legacy setter", () => {
+  it("rejects fields named __proto__", () => {
     class PrototypeDto {}
 
-    ZodField(z.string())(PrototypeDto.prototype, "__proto__");
-    const schema = toZodSchema(PrototypeDto);
-
-    expect(schema.safeParse(JSON.parse('{"__proto__":"valid"}')).success).toBe(
-      true,
-    );
-    expect(schema.safeParse(JSON.parse('{"__proto__":123}')).success).toBe(
-      false,
-    );
+    expect(() => {
+      ZodField(z.string())(PrototypeDto.prototype, "__proto__");
+    }).toThrow("ZodField does not support the __proto__ property");
   });
 
   it("excludes instance methods from the inferred DTO output", () => {
@@ -255,6 +249,14 @@ describe("decorated Zod schemas", () => {
     expect(
       toZodSchema(PassthroughDto).parse({ value: "known", extra: true }),
     ).toEqual({ value: "known", extra: true });
+
+    const safeOutput = toZodSchema(PassthroughDto).parse(
+      JSON.parse('{"value":"known","__proto__":{},"extra":true}'),
+    );
+
+    expect(safeOutput).toEqual({ value: "known", extra: true });
+    expect(Object.getPrototypeOf(safeOutput)).toBe(Object.prototype);
+    expect(Object.hasOwn(safeOutput, "__proto__")).toBe(false);
   });
 
   it("rejects symbol properties", () => {

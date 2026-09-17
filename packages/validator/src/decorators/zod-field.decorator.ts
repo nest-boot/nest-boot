@@ -24,6 +24,10 @@ export function ZodField(definition: ZodFieldDefinition): PropertyDecorator {
       throw new TypeError("ZodField does not support symbol properties");
     }
 
+    if (propertyKey === "__proto__") {
+      throw new TypeError("ZodField does not support the __proto__ property");
+    }
+
     registerZodField(target, propertyKey, definition);
   };
 }

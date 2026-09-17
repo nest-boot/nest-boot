@@ -172,7 +172,8 @@ class PasswordDto {
 }
 ```
 
-`unknownKeys` 支持 `strip`（默认）、`strict` 和 `passthrough`。
+`unknownKeys` 支持 `strip`（默认）、`strict` 和 `passthrough`。为保证输出对象安全，
+`passthrough` 会丢弃特殊的 `__proto__` 键，`ZodField` 也不允许使用该属性名。
 
 ## 嵌套 DTO
 
