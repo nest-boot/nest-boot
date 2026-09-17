@@ -1,68 +1,203 @@
 ---
 title: "Validator"
-description: "Validation utilities for NestJS with class-validator integration."
+description: "Decorator-driven Zod validation for NestJS DTOs."
 ---
 
-The `@nest-boot/validator` package provides i18n-aware decorators built on [class-validator](https://github.com/typestack/class-validator). It does not register a Nest module or a global validation pipe for you.
+The `@nest-boot/validator` package builds Zod object schemas from class property decorators and validates decorated NestJS DTOs with an asynchronous pipe. It does not depend on `class-validator`, `class-transformer`, or `@nest-boot/i18n`.
 
 ## Installation
 
 ```bash
-pnpm add @nest-boot/validator @nest-boot/i18n class-validator class-transformer
+pnpm add @nest-boot/validator zod
 ```
 
-## Usage
+## Define a DTO
 
-Apply the `ValidationPipe` globally in `main.ts`:
+`ZodField` accepts either a Zod schema or a factory that receives the Zod namespace:
 
 ```typescript
-import { ValidationPipe } from "@nestjs/common";
+import { toZodSchema, ZodField } from "@nest-boot/validator";
+import { z } from "zod";
+
+export class UserDto {
+  @ZodField(z.string().email())
+  email!: string;
+
+  @ZodField((z) => z.string().min(8))
+  password!: string;
+}
+
+export const UserSchema = toZodSchema(UserDto);
+export type User = z.infer<typeof UserSchema>;
+```
+
+The factory form is evaluated lazily when Zod first needs that field schema. It
+supports recursive references and keeps the decorator expression concise.
+
+`toZodSchema` uses the DTO's data properties as the inferred schema output and
+excludes instance methods. At runtime, however, its object shape contains only
+properties declared with `ZodField`. An undecorated property remains visible in
+`z.infer` but is not validated or preserved by the default object schema.
+Decorate every property that must be present in parsed output, and keep each
+declaration aligned with its Zod output, especially when using coercion or
+transforms:
+
+```typescript
+class QueryDto {
+  @ZodField((z) => z.coerce.number().int().positive())
+  page!: number;
+
+  // Static DTO metadata only; not present in parsed output.
+  label!: string;
+}
+```
+
+Decorated fields are inherited. A decorator on a child class with the same property name overrides the inherited schema.
+
+Schema factories are evaluated lazily, so recursive DTOs can reference their
+own assembled schema without an additional `z.lazy` wrapper:
+
+```typescript
+class TreeDto {
+  @ZodField(z.string())
+  name!: string;
+
+  @ZodField(() => toZodSchema(TreeDto).array())
+  children!: TreeDto[];
+}
+```
+
+## Mapped DTOs
+
+Nest's standard mapped-type helpers do not copy metadata owned by third-party
+validation libraries. Wrap them with the corresponding Zod-aware helper so the
+derived class receives the transformed field schemas:
+
+```typescript
+import { PartialType, PickType } from "@nestjs/mapped-types";
+import { ZodPartialType, ZodPickType } from "@nest-boot/validator";
+
+class UpdateUserDto extends ZodPartialType(UserDto, PartialType) {}
+
+class UserEmailDto extends ZodPickType(UserDto, ["email"], PickType) {}
+```
+
+`ZodPartialType`, `ZodPickType`, `ZodOmitType`, and `ZodIntersectionType` also
+work without a Nest factory for plain DTOs. Pass the matching helper from
+`@nestjs/graphql` when deriving a GraphQL type so its field metadata is copied
+at the same time. Mapped DTOs preserve the source unknown-key policy, but do
+not inherit `ZodObject.configure` callbacks because their refinements may rely
+on fields removed or made optional by the mapping. Add a new `@ZodObject`
+decorator to the derived DTO when it needs an object-level refinement.
+
+## Enable NestJS validation
+
+Register `ZodValidationPipe` globally:
+
+```typescript
+import { ZodValidationPipe } from "@nest-boot/validator";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app/app.module";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-
-  app.useGlobalPipes(
-    new ValidationPipe({
-      transform: true,
-      forbidUnknownValues: false,
-    }),
-  );
-
+  app.useGlobalPipes(new ZodValidationPipe());
   await app.listen(process.env.PORT ?? 4000);
 }
 
 void bootstrap();
 ```
 
-### Validating Input Types
+The pipe validates only classes containing `ZodField` or `ZodObject` metadata. Other handler arguments pass through unchanged. It uses `safeParseAsync`, so asynchronous refinements are supported, and returns Zod's parsed output so coercions and transforms reach the controller.
 
-Use Nest Boot's decorators alongside the standard `class-validator` decorators. Nest Boot's default messages are resolved through `@nest-boot/i18n` using the `validation` and `property` namespaces.
+Invalid input throws `ZodValidationException`. Its HTTP response contains a
+sanitized `validationErrors` array with `code`, `field`, and `message` fields,
+without rejected input values. Use `getZodError()` in an exception filter when
+the original Zod error is needed.
 
-```typescript
-import { Field, InputType } from "@nest-boot/graphql";
-import { IsEmail, IsTimezone, Length } from "@nest-boot/validator";
-import { IsString } from "class-validator";
-
-@InputType()
-export class CreateUserInput {
-  @IsString()
-  @Length(2, 80)
-  @Field(() => String)
-  name!: string;
-
-  @IsEmail()
-  @Field(() => String)
-  email!: string;
-
-  @IsTimezone()
-  @Field(() => String)
-  timezone!: string;
+```json
+{
+  "statusCode": 400,
+  "message": "Validation failed",
+  "error": "Bad Request",
+  "validationErrors": [
+    {
+      "code": "invalid_format",
+      "field": ["email"],
+      "message": "Invalid email address"
+    }
+  ]
 }
 ```
 
-The package also exports `ArrayLength`, `IsDate`, `IsDomain`, `IsNumberString`, `IsUrl`, `Min`, `Max`, and comparison decorators such as `IsGreaterThan`. `IsOptional` and `ValidateNested` are re-exported from `class-validator` for convenience.
+The exception can be customized:
+
+```typescript
+import { BadRequestException } from "@nestjs/common";
+import { ZodValidationPipe } from "@nest-boot/validator";
+
+new ZodValidationPipe({
+  createValidationException: (error) =>
+    new BadRequestException({
+      message: "Invalid request",
+      validationErrors: error.issues.map((issue) => ({
+        code: issue.code,
+        field: issue.path.map((segment) =>
+          typeof segment === "symbol" ? segment.toString() : segment,
+        ),
+        message: issue.message,
+      })),
+    }),
+});
+```
+
+## Object-level options
+
+`ZodObject` is optional for classes with decorated fields. Use it for an empty DTO, unknown-key behavior, or a cross-field refinement:
+
+```typescript
+import { ZodField, ZodObject } from "@nest-boot/validator";
+import { z } from "zod";
+
+@ZodObject({
+  unknownKeys: "strict",
+  configure: (schema) =>
+    schema.refine((value) => value.password === value.confirmPassword, {
+      path: ["confirmPassword"],
+      message: "Passwords do not match",
+    }),
+})
+class PasswordDto {
+  @ZodField(z.string().min(8))
+  password!: string;
+
+  @ZodField(z.string())
+  confirmPassword!: string;
+}
+```
+
+`unknownKeys` accepts `strip` (the default), `strict`, or `passthrough`.
+For safe object output, `passthrough` discards the special `__proto__` key, and
+`ZodField` does not allow that property name.
+
+## Nested DTOs
+
+Use the factory form with `toZodSchema` for nested decorated classes:
+
+```typescript
+class AddressDto {
+  @ZodField((z) => z.string().min(1))
+  city!: string;
+}
+
+class UserDto {
+  @ZodField(() => toZodSchema(AddressDto))
+  address!: AddressDto;
+
+  @ZodField((z) => z.array(toZodSchema(AddressDto)))
+  previousAddresses!: AddressDto[];
+}
+```
 
 ## API Reference
 
