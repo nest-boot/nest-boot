@@ -1,5 +1,5 @@
 import z from "zod";
-import { ApiKeyOrderField } from "@/gql/graphql";
+import { UserApiKeyOrderField } from "@/gql/graphql";
 import {
   OrderDirection,
   createConnectionSearchSchema,
@@ -26,8 +26,8 @@ export const apiKeySearchSchema = createConnectionSearchSchema({
     })
     .optional(),
   pageSize: 20,
-  orderField: ApiKeyOrderField,
-  defaultOrderField: ApiKeyOrderField.CREATED_AT,
+  orderField: UserApiKeyOrderField,
+  defaultOrderField: UserApiKeyOrderField.CREATED_AT,
   defaultOrderDirection: OrderDirection.DESC,
 });
 export type ApiKeySearch = z.infer<typeof apiKeySearchSchema>;
@@ -43,7 +43,7 @@ export function createApiKeyQueryVariables(search: ApiKeySearch) {
       formatConnectionFilterValue,
     ),
     orderBy: {
-      field: orderBy?.field ?? ApiKeyOrderField.CREATED_AT,
+      field: orderBy?.field ?? UserApiKeyOrderField.CREATED_AT,
       direction: orderBy?.direction ?? OrderDirection.DESC,
     },
   };

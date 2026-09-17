@@ -1,11 +1,12 @@
 import { RequestContext } from "@nest-boot/request-context";
 
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
-import { ApiKey } from "../entities/api-key.entity.js";
 import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
+import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 import { DEFAULT_USER_ROLE, DEFAULT_USER_ROLES } from "../user.constants.js";
+import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
 import {
   DEFAULT_WORKSPACE_ROLE,
   DEFAULT_WORKSPACE_ROLES,
@@ -20,11 +21,11 @@ export function resolveRequestPermissions(options: AuthModuleOptions): {
   const user = RequestContext.get(User);
   const member = RequestContext.get(Member);
   const workspace = RequestContext.get(Workspace);
-  const apiKey = RequestContext.get(ApiKey);
+  const apiKey = getCurrentApiKey();
   const keyPermissions = Array.isArray(apiKey?.permissions)
     ? apiKey.permissions
     : [];
-  const workspaceKey = !!apiKey?.workspace && !apiKey.user;
+  const workspaceKey = apiKey instanceof WorkspaceApiKey;
   const limit = (permissions: readonly string[]) =>
     apiKey
       ? permissions.filter((permission) => keyPermissions.includes(permission))

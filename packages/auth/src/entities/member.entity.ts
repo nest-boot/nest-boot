@@ -13,6 +13,8 @@ import { Field, ID, ObjectType } from "@nest-boot/graphql";
 import { Sonyflake } from "sonyflake-js";
 
 import { MemberStatus } from "../enums/member-status.enum.js";
+import { WorkspacePermission } from "../enums/workspace-permission.enum.js";
+import { WorkspaceRole } from "../enums/workspace-role.enum.js";
 import { userScopePolicy } from "../policies/user-scope.policy.js";
 import { workspaceScopePolicy } from "../policies/workspace-scope.policy.js";
 import { User } from "./user.entity.js";
@@ -53,11 +55,8 @@ export class Member extends BaseEntity {
   email?: Opt<string> | null = null;
 
   /** Member roles used to resolve workspace permissions. */
-  @Property({
-    type: t.array,
-    defaultRaw: "'{member}'",
-  })
-  @Field(() => [String])
+  @Property({ type: t.array, defaultRaw: "'{member}'" })
+  @Field(() => [WorkspaceRole])
   roles: Opt<string[]> = ["member"];
 
   /** Member lifecycle status. */
@@ -69,11 +68,8 @@ export class Member extends BaseEntity {
   status: Opt<AuthMemberStatus> = MemberStatus.ACTIVE;
 
   /** Additional permissions granted inside the workspace. */
-  @Property({
-    type: t.array,
-    defaultRaw: "'{}'",
-  })
-  @Field(() => [String])
+  @Property({ type: t.array, defaultRaw: "'{}'" })
+  @Field(() => [WorkspacePermission])
   permissions: Opt<string[]> = [];
 
   /** Timestamp when the membership was created. */

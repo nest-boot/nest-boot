@@ -9,7 +9,6 @@ import { MikroORM } from '@mikro-orm/pglite';
 import { TsMorphMetadataProvider } from '@mikro-orm/reflection';
 import {
   type AccessControlService,
-  ApiKeyService,
   AuthMiddleware,
   type AuthModuleOptions,
   InvitationService,
@@ -22,30 +21,33 @@ import {
 } from '@nest-boot/auth';
 import {
   Account,
-  ApiKey,
+  type ApiKey,
   Invitation,
   Member,
   Session,
   User,
+  UserApiKey,
   Verification,
   Workspace,
+  WorkspaceApiKey,
 } from '@nest-boot/auth';
 import { loadConfigFromEnv } from '@nest-boot/mikro-orm';
 import { REQUEST, RequestContext } from '@nest-boot/request-context';
 import type { Request } from 'express';
 
 import { mikroOrmAdapter } from '../../../packages/auth/dist/adapters/mikro-orm-adapter.js';
+import { ApiKeyAuthenticationService } from '../../../packages/auth/dist/infrastructure/api-key-authentication.service.js';
 import { createContextualAuthService } from '../../../packages/auth/dist/infrastructure/create-contextual-auth-service.js';
 import { Migration00000000000000_Initial } from '../src/database/migrations/Migration00000000000000_Initial.js';
-import { Migration20260915035801 } from '../src/database/migrations/Migration20260915035801.js';
-import { Migration20260915073637 } from '../src/database/migrations/Migration20260915073637.js';
+import { Migration20260917173928 } from '../src/database/migrations/Migration20260917173928.js';
 
 describe('example native RLS migrations with PGlite', () => {
   let orm: MikroORM;
   const readPolicies = (instance: MikroORM) =>
     [
       instance.getMetadata(User),
-      instance.getMetadata(ApiKey),
+      instance.getMetadata(UserApiKey),
+      instance.getMetadata(WorkspaceApiKey),
       instance.getMetadata(Workspace),
       instance.getMetadata(Member),
       instance.getMetadata(Invitation),
@@ -69,14 +71,14 @@ describe('example native RLS migrations with PGlite', () => {
           Workspace,
           Member,
           Invitation,
-          ApiKey,
+          UserApiKey,
+          WorkspaceApiKey,
         ],
         extensions: [Migrator],
         migrations: {
           migrationsList: [
             Migration00000000000000_Initial,
-            Migration20260915035801,
-            Migration20260915073637,
+            Migration20260917173928,
           ],
           path: './src/database/migrations',
           pathTs: './src/database/migrations',
@@ -463,17 +465,17 @@ describe('example native RLS migrations with PGlite', () => {
       token: randomUUID(),
       expiresAt: new Date(Date.now() + 60_000),
     });
-    const workspaceKey = admin.create(ApiKey, {
+    const workspaceKey = admin.create(WorkspaceApiKey, {
       workspace,
       name: 'Workspace key',
       key: randomUUID(),
     });
-    const key = admin.create(ApiKey, {
+    const key = admin.create(UserApiKey, {
       user: target,
       name: 'Personal',
       key: randomUUID(),
     });
-    const otherKey = admin.create(ApiKey, {
+    const otherKey = admin.create(UserApiKey, {
       user: other,
       name: 'Unrelated',
       key: randomUUID(),
@@ -518,24 +520,26 @@ describe('example native RLS migrations with PGlite', () => {
         }),
       ).toBe(1);
       expect(
-        await scoped(target.id).nativeUpdate(ApiKey, key.id, {
+        await scoped(target.id).nativeUpdate(UserApiKey, key.id, {
           name: 'Scoped key',
         }),
       ).toBe(1);
       expect(
-        await scoped(target.id).nativeUpdate(ApiKey, otherKey.id, {
+        await scoped(target.id).nativeUpdate(UserApiKey, otherKey.id, {
           name: 'Denied',
         }),
       ).toBe(0);
-      expect(await scoped(target.id).nativeDelete(ApiKey, otherKey.id)).toBe(0);
+      expect(
+        await scoped(target.id).nativeDelete(UserApiKey, otherKey.id),
+      ).toBe(0);
       await expect(
         scoped(target.id).execute(
-          'update api_key set user_id = null, workspace_id = ? where id = ?',
-          [workspace.id, key.id],
+          'update user_api_key set user_id = ? where id = ?',
+          [other.id, key.id],
         ),
       ).rejects.toThrow(/row.level security/i);
       expect(
-        await scoped(target.id).nativeUpdate(ApiKey, key.id, {
+        await scoped(target.id).nativeUpdate(UserApiKey, key.id, {
           key: 'replacement',
         }),
       ).toBe(1);
@@ -551,7 +555,7 @@ describe('example native RLS migrations with PGlite', () => {
         }),
       ).rejects.toThrow('Rollback cascade');
       expect(await admin.count(User, target.id)).toBe(1);
-      expect(await admin.count(ApiKey, key.id)).toBe(1);
+      expect(await admin.count(UserApiKey, key.id)).toBe(1);
       expect(await admin.count(Session, impersonation.id)).toBe(1);
       expect(await scoped(administrator.id).nativeDelete(User, target.id)).toBe(
         1,
@@ -561,14 +565,14 @@ describe('example native RLS migrations with PGlite', () => {
         [Account, account.id],
         [Session, session.id],
         [Session, impersonation.id],
-        [ApiKey, key.id],
+        [UserApiKey, key.id],
         [Member, member.id],
         [Invitation, invitation.id],
       ] as const) {
         expect(await admin.count<{ id: string }>(entity, { id })).toBe(0);
       }
-      expect(await admin.count(ApiKey, otherKey.id)).toBe(1);
-      expect(await admin.count(ApiKey, workspaceKey.id)).toBe(1);
+      expect(await admin.count(UserApiKey, otherKey.id)).toBe(1);
+      expect(await admin.count(WorkspaceApiKey, workspaceKey.id)).toBe(1);
       expect(await admin.count(Session, unrelatedSession.id)).toBe(1);
       const retainedWorkspace = await admin.findOneOrFail(
         Workspace,
@@ -617,7 +621,7 @@ describe('example native RLS migrations with PGlite', () => {
               authenticated ? { user, session: new Session() } : null,
             ),
         } as unknown as SessionService,
-        { validate: vi.fn() } as unknown as ApiKeyService,
+        { validate: vi.fn() } as unknown as ApiKeyAuthenticationService,
         em,
       );
       const request = {
@@ -665,7 +669,7 @@ describe('example native RLS migrations with PGlite', () => {
 
   it('creates the complete baseline through the official Migrator', async () => {
     expect(await orm.migrator.getPending()).toEqual([]);
-    expect(await orm.migrator.getExecuted()).toHaveLength(3);
+    expect(await orm.migrator.getExecuted()).toHaveLength(2);
     const policies = await orm.em.execute<
       { policyname: string; qual: string; with_check: string }[]
     >(
@@ -826,12 +830,12 @@ describe('example native RLS migrations with PGlite', () => {
         } as unknown as SessionService,
         {
           validate: vi.fn().mockResolvedValue({
-            apiKey: new ApiKey(),
+            apiKey: new WorkspaceApiKey(),
             ownerType: kind === 'user-key' ? 'user' : 'workspace',
             user,
             workspace,
           }),
-        } as unknown as ApiKeyService,
+        } as unknown as ApiKeyAuthenticationService,
         em,
       );
       const request = {
@@ -951,14 +955,8 @@ describe('example native RLS migrations with PGlite', () => {
       ownerId: string,
     ) =>
       em.execute(
-        'insert into api_key (id, user_id, workspace_id, name, key) values (?, ?, ?, ?, ?)',
-        [
-          id,
-          ownerType === 'user' ? ownerId : null,
-          ownerType === 'workspace' ? ownerId : null,
-          'Policy probe',
-          randomUUID(),
-        ],
+        `insert into ${ownerType}_api_key (id, ${ownerType}_id, name, key) values (?, ?, ?, ?)`,
+        [id, ownerId, 'Policy probe', randomUUID()],
       );
 
     beforeAll(async () => {
@@ -989,12 +987,17 @@ describe('example native RLS migrations with PGlite', () => {
         name: 'Other key owner',
       });
       keys = [user, workspace, foreignUser, foreignWorkspace].map((owner) =>
-        admin.create(ApiKey, {
-          user: owner instanceof User ? owner : null,
-          workspace: owner instanceof Workspace ? owner : null,
-          name: 'Owner boundary fixture',
-          key: randomUUID(),
-        }),
+        owner instanceof User
+          ? admin.create(UserApiKey, {
+              user: owner,
+              name: 'Owner boundary fixture',
+              key: randomUUID(),
+            })
+          : admin.create(WorkspaceApiKey, {
+              workspace: owner,
+              name: 'Owner boundary fixture',
+              key: randomUUID(),
+            }),
       );
       await admin.persist(keys).flush();
 
@@ -1008,91 +1011,77 @@ describe('example native RLS migrations with PGlite', () => {
         `grant ${probeRole}, ${anonymousProbeRole} to current_user`,
       );
       await admin.execute(
-        `grant select, insert, update, delete on api_key to ${probeRole}, ${anonymousProbeRole}`,
+        `grant select, insert, update, delete on user_api_key, workspace_api_key to ${probeRole}, ${anonymousProbeRole}`,
       );
     });
 
     afterAll(async () => {
       const admin = orm.em.fork();
       await admin.execute(
-        `revoke all on api_key from ${probeRole}, ${anonymousProbeRole}`,
+        `revoke all on user_api_key, workspace_api_key from ${probeRole}, ${anonymousProbeRole}`,
       );
       await admin.execute(`drop role ${probeRole}, ${anonymousProbeRole}`);
-      await admin.nativeDelete(ApiKey, { id: keys.map((key) => key.id) });
+      await admin.nativeDelete(UserApiKey, { id: keys.map((key) => key.id) });
+      await admin.nativeDelete(WorkspaceApiKey, {
+        id: keys.map((key) => key.id),
+      });
       await admin.nativeDelete(User, { id: [userId, foreignId] });
       await admin.nativeDelete(Workspace, { id: [userId, foreignId] });
     });
 
-    it('combines default table privileges with owner RLS', async () => {
-      expect(
-        await orm.em.execute(
-          "select relrowsecurity from pg_class where oid = 'api_key'::regclass",
-        ),
-      ).toEqual([{ relrowsecurity: true }]);
-      for (const role of ['anonymous', 'authenticated']) {
-        for (const privilege of ['select', 'insert', 'update', 'delete']) {
-          expect(
-            await orm.em.execute(
-              "select has_table_privilege(?, 'api_key', ?) as allowed",
-              [role, privilege],
-            ),
-          ).toEqual([
-            {
-              allowed: true,
-            },
-          ]);
-        }
-      }
-      expect(
-        await orm.em.execute(
-          'select user_id::text, workspace_id::text from api_key where id in (?, ?) order by user_id nulls last',
-          [keys[0].id, keys[1].id],
-        ),
-      ).toEqual([
-        { user_id: userId, workspace_id: null },
-        { user_id: null, workspace_id: userId },
-      ]);
-    });
-
-    it('requires exactly one existing owner even without RLS', async () => {
-      const em = orm.em.fork();
-      for (const [user, workspace] of [
-        [null, null],
-        [userId, userId],
-      ]) {
-        await expect(
-          em.execute(
-            'insert into api_key (user_id, workspace_id, name, key) values (?, ?, ?, ?)',
-            [user, workspace, 'Invalid ownership', randomUUID()],
+    it.each(['user', 'workspace'])(
+      'combines default grants with %s-key RLS and a required foreign key',
+      async (ownerType) => {
+        const table = ownerType + '_api_key';
+        const em = orm.em.fork();
+        expect(
+          await em.execute(
+            'select relrowsecurity from pg_class where oid = ?::regclass',
+            [table],
           ),
-        ).rejects.toThrow(/check constraint/i);
-      }
-      for (const ownerType of ['user', 'workspace']) {
+        ).toEqual([{ relrowsecurity: true }]);
+        for (const role of ['anonymous', 'authenticated']) {
+          for (const privilege of ['select', 'insert', 'update', 'delete']) {
+            expect(
+              await em.execute(
+                'select has_table_privilege(?, ?, ?) as allowed',
+                [role, table, privilege],
+              ),
+            ).toEqual([{ allowed: true }]);
+          }
+        }
+        await expect(
+          em.execute(`insert into ${table} (name, key) values (?, ?)`, [
+            'No owner',
+            randomUUID(),
+          ]),
+        ).rejects.toThrow(/not-null constraint/i);
         await expect(
           insertKey(em, '900199', ownerType, '999999999'),
         ).rejects.toThrow(/foreign key constraint/i);
-      }
-      await expect(
-        em.execute(
-          'update api_key set user_id = ?, workspace_id = ? where id = ?',
-          [userId, userId, keys[0].id],
-        ),
-      ).rejects.toThrow(/check constraint/i);
-    });
+        const otherType = ownerType === 'user' ? 'workspace' : 'user';
+        expect(
+          await em.execute(
+            'select column_name from information_schema.columns where table_name = ? and column_name = ?',
+            [table, otherType + '_id'],
+          ),
+        ).toEqual([]);
+      },
+    );
 
     it('cascades workspace keys on physical deletion but not soft deletion', async () => {
       const em = orm.em.fork();
       const workspace = em.create(Workspace, { name: 'Cascade workspace' });
-      const key = em.create(ApiKey, {
+      const key = em.create(WorkspaceApiKey, {
         workspace,
         name: 'Cascade key',
         key: randomUUID(),
       });
       await em.persist(key).flush();
       await em.nativeUpdate(Workspace, workspace.id, { deletedAt: new Date() });
-      expect(await em.count(ApiKey, key.id)).toBe(1);
+      expect(await em.count(WorkspaceApiKey, key.id)).toBe(1);
       await em.nativeDelete(Workspace, workspace.id, { filters: false });
-      expect(await em.count(ApiKey, key.id)).toBe(0);
+      expect(await em.count(WorkspaceApiKey, key.id)).toBe(0);
     });
 
     it.each([
@@ -1115,38 +1104,56 @@ describe('example native RLS migrations with PGlite', () => {
         const visibleIds = identity.visible
           .map((index) => keys[index].id)
           .sort();
-        expect((await em.find(ApiKey, {})).map((key) => key.id).sort()).toEqual(
-          visibleIds,
-        );
+        expect(
+          [
+            ...(await em.find(UserApiKey, {})),
+            ...(await em.find(WorkspaceApiKey, {})),
+          ]
+            .map((key) => key.id)
+            .sort(),
+        ).toEqual(visibleIds);
         for (const key of keys) {
           expect(
-            await em.nativeUpdate(ApiKey, key.id, { name: identity.name }),
+            await em.nativeUpdate<ApiKey>(
+              key instanceof UserApiKey ? UserApiKey : WorkspaceApiKey,
+              key.id,
+              { name: identity.name },
+            ),
           ).toBe(visibleIds.includes(key.id) ? 1 : 0);
           if (!visibleIds.includes(key.id)) {
-            expect(await em.nativeDelete(ApiKey, key.id)).toBe(0);
+            expect(
+              await em.nativeDelete<ApiKey>(
+                key instanceof UserApiKey ? UserApiKey : WorkspaceApiKey,
+                key.id,
+              ),
+            ).toBe(0);
           }
         }
       },
     );
 
     it('denies missing identity and anonymous access even with table privileges', async () => {
-      expect(await scoped().find(ApiKey, {})).toEqual([]);
+      expect(await scoped().find(UserApiKey, {})).toEqual([]);
+      expect(await scoped().find(WorkspaceApiKey, {})).toEqual([]);
       const anonymous = scoped(
         { 'app.user.id': userId, 'app.workspace.id': userId },
         anonymousProbeRole,
       );
-      expect(await anonymous.find(ApiKey, {})).toEqual([]);
+      expect(await anonymous.find(UserApiKey, {})).toEqual([]);
+      expect(await anonymous.find(WorkspaceApiKey, {})).toEqual([]);
       expect(
-        await anonymous.nativeUpdate(ApiKey, keys[0].id, { name: 'Denied' }),
+        await anonymous.nativeUpdate(UserApiKey, keys[0].id, {
+          name: 'Denied',
+        }),
       ).toBe(0);
-      expect(await anonymous.nativeDelete(ApiKey, keys[0].id)).toBe(0);
+      expect(await anonymous.nativeDelete(UserApiKey, keys[0].id)).toBe(0);
       await expect(
         insertKey(anonymous, '900100', 'user', userId),
       ).rejects.toThrow(/row.level security/i);
     });
 
     it.each(['user', 'workspace'] as const)(
-      'checks both owner columns on insert and update for %s keys',
+      'checks the required owner on insert and update for %s keys',
       async (ownerType) => {
         const em = scoped({
           'app.user.id': ownerType === 'user' ? userId : '',
@@ -1164,24 +1171,36 @@ describe('example native RLS migrations with PGlite', () => {
           await insertKey(em, id, ownerType, userId);
           await expect(
             em.execute(
-              `update api_key set ${ownerType}_id = null, ${otherType}_id = ? where id = ?`,
-              [userId, id],
+              `update ${ownerType}_api_key set ${ownerType}_id = ? where id = ?`,
+              [foreignId, id],
             ),
           ).rejects.toThrow(/row.level security/i);
-          await expect(
-            em.execute(`update api_key set ${ownerType}_id = ? where id = ?`, [
-              foreignId,
-              id,
-            ]),
-          ).rejects.toThrow(/row.level security/i);
-          const stored = await em.findOneOrFail(ApiKey, id);
-          expect(stored[ownerType]?.id).toBe(userId);
-          expect(stored[ownerType]?.unwrap()).toBeInstanceOf(
-            ownerType === 'user' ? User : Workspace,
+          const stored = await em.findOneOrFail<ApiKey>(
+            ownerType === 'user' ? UserApiKey : WorkspaceApiKey,
+            id,
           );
-          expect(await em.nativeDelete(ApiKey, id)).toBe(1);
+          expect(
+            (stored instanceof UserApiKey ? stored.user : stored.workspace)?.id,
+          ).toBe(userId);
+          expect(
+            (stored instanceof UserApiKey
+              ? stored.user
+              : stored.workspace
+            )?.unwrap(),
+          ).toBeInstanceOf(ownerType === 'user' ? User : Workspace);
+          expect(
+            await em.nativeDelete<ApiKey>(
+              ownerType === 'user' ? UserApiKey : WorkspaceApiKey,
+              id,
+            ),
+          ).toBe(1);
         } finally {
-          await orm.em.fork().nativeDelete(ApiKey, id);
+          await orm.em
+            .fork()
+            .nativeDelete<ApiKey>(
+              ownerType === 'user' ? UserApiKey : WorkspaceApiKey,
+              id,
+            );
         }
       },
     );
@@ -1583,7 +1602,7 @@ describe('example native RLS migrations with PGlite', () => {
             .fn()
             .mockResolvedValue({ user, session: new Session() }),
         } as unknown as SessionService,
-        { validate: vi.fn() } as unknown as ApiKeyService,
+        { validate: vi.fn() } as unknown as ApiKeyAuthenticationService,
         em,
       );
       const request = {
@@ -1751,52 +1770,29 @@ describe('example native RLS migrations with PGlite', () => {
     expect(await orm.schema.getUpdateSchemaSQL({ wrap: false })).toBe('');
   });
 
-  it('refuses irreversible rollback without modifying shared contact emails or migration history', async () => {
-    const admin = orm.em.fork();
-    const workspace = admin.create(Workspace, { name: 'Rollback contacts' });
-    const members = ['first', 'second'].map((name) =>
-      admin.create(Member, {
-        name,
-        workspace,
-        email: 'shared-rollback@example.test',
-        user: admin.create(User, {
-          name,
-          email: `${name}-rollback@example.test`,
-          emailVerified: false,
-        }),
-      }),
-    );
-    await admin.persist(members).flush();
-    const readMembers = () =>
-      admin.execute(
-        'select id, email from member where workspace_id = ? order by id',
-        [workspace.id],
-      );
-    const contacts = await readMembers();
-    expect(contacts).toHaveLength(2);
-    const executed = await orm.migrator.getExecuted();
+  it('rolls back generated tables while preserving initialization and can rebuild the baseline', async () => {
     const readDefaultPrivileges = () =>
       orm.em.execute(
         "select d.defaclobjtype, r.rolname, a.privilege_type, a.is_grantable from pg_default_acl d join pg_namespace n on n.oid = d.defaclnamespace cross join lateral aclexplode(d.defaclacl) a join pg_roles r on r.oid = a.grantee where n.nspname = 'public' and r.rolname in ('anonymous', 'authenticated') order by 1, 2, 3",
       );
-    const defaultPrivileges = await readDefaultPrivileges();
-    expect(defaultPrivileges.length).toBeGreaterThan(0);
-    await expect(orm.migrator.down({ to: 0 })).rejects.toThrow(/irreversible/i);
-    expect(await orm.migrator.getExecuted()).toEqual(executed);
-    expect(await readMembers()).toEqual(contacts);
-    expect(await readDefaultPrivileges()).toEqual(defaultPrivileges);
+    const defaults = await readDefaultPrivileges();
+    expect(defaults.length).toBeGreaterThan(0);
+    await orm.migrator.down({ to: 0 });
+    expect(await orm.migrator.getExecuted()).toEqual([]);
     expect(
       await orm.em.execute(
-        "select to_regprocedure('auth.can_read_users()') as user_read, to_regprocedure('public.delete_auth_user_dependants()') as user_delete",
+        "select to_regclass('public.user_api_key') as user_key, to_regclass('public.workspace_api_key') as workspace_key",
       ),
-    ).toEqual([{ user_read: null, user_delete: null }]);
+    ).toEqual([{ user_key: null, workspace_key: null }]);
+    expect(await readDefaultPrivileges()).toEqual(defaults);
     expect(
       await orm.em.execute(
         "select rolname from pg_roles where rolname in ('anonymous', 'authenticated')",
       ),
     ).toHaveLength(2);
+    await orm.migrator.up();
     expect(await orm.migrator.getPending()).toEqual([]);
-    expect(await readDefaultPrivileges()).toEqual(defaultPrivileges);
+    expect(await readDefaultPrivileges()).toEqual(defaults);
     expect(await orm.schema.getUpdateSchemaSQL({ wrap: false })).toBe('');
   });
 });

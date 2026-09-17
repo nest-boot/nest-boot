@@ -20,8 +20,8 @@ const GET_API_KEYS_FROM_API_KEYS_ROUTE = graphql(`
     $before: String
     $first: Int
     $last: Int
-    $filter: ApiKeyFilter
-    $orderBy: ApiKeyOrder
+    $filter: WorkspaceApiKeyFilter
+    $orderBy: WorkspaceApiKeyOrder
     $query: String
   ) {
     currentWorkspace {
@@ -59,7 +59,9 @@ const GET_API_KEYS_FROM_API_KEYS_ROUTE = graphql(`
 `);
 
 const CREATE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
-  mutation createWorkspaceApiKeyFromApiKeysRoute($input: CreateApiKeyInput!) {
+  mutation createWorkspaceApiKeyFromApiKeysRoute(
+    $input: CreateWorkspaceApiKeyInput!
+  ) {
     createWorkspaceApiKey(input: $input) {
       apiKey
       entity {
@@ -80,7 +82,7 @@ const CREATE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
 const UPDATE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
   mutation updateWorkspaceApiKeyFromApiKeysRoute(
     $id: ID!
-    $input: UpdateApiKeyInput!
+    $input: UpdateWorkspaceApiKeyInput!
   ) {
     updateWorkspaceApiKey(id: $id, input: $input) {
       id
@@ -117,7 +119,7 @@ export const Route = createFileRoute(
 )({
   component: ScopedApiKeysComponent,
   beforeLoad: ({ context, params }) => {
-    if (!context.currentWorkspaceAbility.can("read", "ApiKey")) {
+    if (!context.currentWorkspaceAbility.can("read", "WorkspaceApiKey")) {
       throw redirect({
         to: "/workspaces/$workspaceId",
         params: { workspaceId: params.workspaceId },
@@ -152,6 +154,7 @@ function ApiKeysComponent() {
 
   return (
     <ApiKeysPage
+      subject="WorkspaceApiKey"
       ability={ability}
       title={t("api-key:title")}
       description={t("api-key:description")}
@@ -161,7 +164,7 @@ function ApiKeysComponent() {
       permissionValues={workspaceApiKeyPermissionValues}
       permissionOptions={workspaceApiKeyPermissionOptions}
       defaultPermissions={workspaceApiKeyPermissionValues.filter(
-        (permission) => !permission.startsWith("api-key:"),
+        (permission) => !permission.startsWith("API_KEY__"),
       )}
       createLoading={createLoading}
       updateLoading={updateLoading}

@@ -7,6 +7,7 @@ import type { Mock } from "vitest";
 import { mockRlsContext } from "../test/mock-rls-context.js";
 import { UserAbility } from "./abilities/user.ability.js";
 import { WorkspaceAbility } from "./abilities/workspace.ability.js";
+import { API_KEY } from "./auth.constants.js";
 import { AuthMiddleware } from "./auth.middleware.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
@@ -14,10 +15,6 @@ import {
   Account as AccountEntity,
   Account as BaseAccount,
 } from "./entities/account.entity.js";
-import {
-  ApiKey as ApiKeyEntity,
-  ApiKey as BaseApiKey,
-} from "./entities/api-key.entity.js";
 import { authEntityMap } from "./entities/auth-entity-map.js";
 import {
   Invitation as BaseInvitation,
@@ -35,6 +32,7 @@ import {
   User as BaseUser,
   User as UserEntity,
 } from "./entities/user.entity.js";
+import { UserApiKey } from "./entities/user-api-key.entity.js";
 import {
   Verification as BaseVerification,
   Verification as VerificationEntity,
@@ -43,7 +41,12 @@ import {
   Workspace as BaseWorkspace,
   Workspace as WorkspaceEntity,
 } from "./entities/workspace.entity.js";
-import { ApiKeyService } from "./services/api-key.service.js";
+import { WorkspaceApiKey } from "./entities/workspace-api-key.entity.js";
+import {
+  WorkspaceApiKey as ApiKeyEntity,
+  WorkspaceApiKey as BaseApiKey,
+} from "./entities/workspace-api-key.entity.js";
+import { ApiKeyAuthenticationService } from "./infrastructure/api-key-authentication.service.js";
 import { SessionService } from "./services/session.service.js";
 const TestApiKey = BaseApiKey;
 type TestApiKey = BaseApiKey;
@@ -58,7 +61,8 @@ type TestMember = BaseMember;
 
 const testEntities = {
   account: AccountEntity,
-  apiKey: ApiKeyEntity,
+  userApiKey: UserApiKey,
+  workspaceApiKey: ApiKeyEntity,
   session: SessionEntity,
   user: UserEntity,
   verification: VerificationEntity,
@@ -100,7 +104,7 @@ async function createMiddleware(
         useValue: sessionService,
       },
       {
-        provide: ApiKeyService,
+        provide: ApiKeyAuthenticationService,
         useValue: { validate },
       },
       {
@@ -144,7 +148,7 @@ describe("AuthMiddleware", () => {
         roles: ["manager"],
         permissions: ["Workspace:update", "workspace:update"],
       });
-      const apiKey = Object.assign(new TestApiKey(), {
+      const apiKey = Object.assign(new UserApiKey(), {
         user,
         workspace: null,
         permissions: ["user:read", "Workspace:UPDATE"],
@@ -221,14 +225,17 @@ describe("AuthMiddleware", () => {
         user,
         workspace,
       });
-      const apiKey = Object.assign(new TestApiKey(), {
-        user: kind === "workspace-key" ? null : user,
-        workspace: kind === "workspace-key" ? workspace : null,
-        permissions:
-          kind === "workspace-key"
-            ? ["workspace:update"]
-            : ["user:read", "workspace:update", "session:list"],
-      });
+      const apiKey = Object.assign(
+        kind === "workspace-key" ? new WorkspaceApiKey() : new UserApiKey(),
+        {
+          user: kind === "workspace-key" ? null : user,
+          workspace: kind === "workspace-key" ? workspace : null,
+          permissions:
+            kind === "workspace-key"
+              ? ["workspace:update"]
+              : ["user:read", "workspace:update", "session:list"],
+        },
+      );
       const { middleware, em } = await createMiddleware(
         vi
           .fn()
@@ -299,7 +306,7 @@ describe("AuthMiddleware", () => {
     const { middleware, em } = await createMiddleware(vi.fn(), findOne);
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       RequestContext.set(BaseUser, new TestUser());
-      RequestContext.set(BaseApiKey, new TestApiKey());
+      RequestContext.set(API_KEY, new TestApiKey());
       RequestContext.set(
         BaseWorkspace,
         Object.assign(new TestWorkspace(), { id: "old-workspace" }),
@@ -312,7 +319,7 @@ describe("AuthMiddleware", () => {
       );
       expect(RequestContext.get(BaseSession)).toBe(session);
       expect(RequestContext.get(BaseUser)).toBe(user);
-      expect(RequestContext.get(BaseApiKey)).toBeNull();
+      expect(RequestContext.get<BaseApiKey>(API_KEY)).toBeNull();
       expect(RequestContext.get(BaseMember)).toBeNull();
       expect(RequestContext.get(UserAbility)).toBeNull();
       expect(RequestContext.get(WorkspaceAbility)).toBeNull();
@@ -516,7 +523,8 @@ describe("AuthMiddleware", () => {
       vi.fn(),
       {
         account: BaseAccount,
-        apiKey: BaseApiKey,
+        userApiKey: UserApiKey,
+        workspaceApiKey: BaseApiKey,
         session: BaseSession,
         user: BaseUser,
         verification: BaseVerification,
@@ -638,14 +646,14 @@ describe("AuthMiddleware", () => {
       await middleware.use(request, {} as never, vi.fn());
 
       expect(RequestContext.get(WorkspaceEntity)).toBe(workspace);
-      expect(RequestContext.get(ApiKeyEntity)).toBe(apiKey);
+      expect(RequestContext.get(API_KEY)).toBe(apiKey);
       expect(RequestContext.get(UserEntity)).toBe(user);
       expect(RequestContext.get(MemberEntity)).toBe(member);
     });
 
     expect(validate).toHaveBeenCalledWith("sk-key");
     expect(set).toHaveBeenCalledWith(BaseWorkspace, workspace);
-    expect(set).toHaveBeenCalledWith(BaseApiKey, apiKey);
+    expect(set).toHaveBeenCalledWith(API_KEY, apiKey);
     expect(set).toHaveBeenCalledWith(BaseUser, user);
     expect(findOne).toHaveBeenLastCalledWith(expect.any(Function), {
       status: "ACTIVE",

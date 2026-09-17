@@ -21,8 +21,8 @@ const GET_USER_API_KEYS_FROM_USER_API_KEYS_ROUTE = graphql(`
     $before: String
     $first: Int
     $last: Int
-    $filter: ApiKeyFilter
-    $orderBy: ApiKeyOrder
+    $filter: UserApiKeyFilter
+    $orderBy: UserApiKeyOrder
     $query: String
   ) {
     currentUser {
@@ -60,7 +60,9 @@ const GET_USER_API_KEYS_FROM_USER_API_KEYS_ROUTE = graphql(`
 `);
 
 const CREATE_USER_API_KEY_FROM_USER_API_KEYS_ROUTE = graphql(`
-  mutation createUserApiKeyFromUserApiKeysRoute($input: CreateApiKeyInput!) {
+  mutation createUserApiKeyFromUserApiKeysRoute(
+    $input: CreateUserApiKeyInput!
+  ) {
     createUserApiKey(input: $input) {
       apiKey
       entity {
@@ -81,7 +83,7 @@ const CREATE_USER_API_KEY_FROM_USER_API_KEYS_ROUTE = graphql(`
 const UPDATE_USER_API_KEY_FROM_USER_API_KEYS_ROUTE = graphql(`
   mutation updateUserApiKeyFromUserApiKeysRoute(
     $id: ID!
-    $input: UpdateApiKeyInput!
+    $input: UpdateUserApiKeyInput!
   ) {
     updateUserApiKey(id: $id, input: $input) {
       id
@@ -116,7 +118,7 @@ const DELETE_USER_API_KEY_FROM_USER_API_KEYS_ROUTE = graphql(`
 export const Route = createFileRoute("/_authenticated/user/api-keys/")({
   component: ApiKeysComponent,
   beforeLoad: ({ context }) => {
-    if (!context.currentUserAbility.can("read", "ApiKey")) {
+    if (!context.currentUserAbility.can("read", "UserApiKey")) {
       throw redirect({ to: "/user" });
     }
   },
@@ -145,6 +147,7 @@ function ApiKeysComponent() {
 
   return (
     <ApiKeysPage
+      subject="UserApiKey"
       ability={ability}
       title={t("api-key:user.title")}
       description={t("api-key:user.description")}
@@ -154,7 +157,7 @@ function ApiKeysComponent() {
       permissionValues={authPermissionValues}
       permissionOptions={authPermissionOptions}
       defaultPermissions={workspacePermissionValues.filter(
-        (permission) => !permission.startsWith("api-key:"),
+        (permission) => !permission.startsWith("API_KEY__"),
       )}
       createLoading={createLoading}
       updateLoading={updateLoading}

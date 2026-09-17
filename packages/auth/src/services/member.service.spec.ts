@@ -11,11 +11,12 @@ import {
   createWorkspaceServices,
 } from "../../test/workspace-service.fixture.js";
 import { WorkspaceAbility } from "../abilities/workspace.ability.js";
-import { ApiKey } from "../entities/api-key.entity.js";
+import { API_KEY } from "../auth.constants.js";
 import { Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
+import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 import { AccessControlService } from "./access-control.service.js";
 import { MemberService } from "./member.service.js";
 
@@ -190,7 +191,7 @@ describe("MemberService", () => {
         accessControlService.assertCurrentWorkspace,
       ).not.toHaveBeenCalled();
       expect(accessControlService.assertWorkspaceCan).not.toHaveBeenCalled();
-      RequestContext.set(ApiKey, new ApiKey());
+      RequestContext.set(API_KEY, new WorkspaceApiKey());
       RequestContext.set(
         User,
         Object.assign(createTestUser(), { id: "other" }),

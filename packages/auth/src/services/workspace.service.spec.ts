@@ -12,13 +12,14 @@ import {
   createTestWorkspace,
   createWorkspaceServices,
 } from "../../test/workspace-service.fixture.js";
+import { API_KEY } from "../auth.constants.js";
 import { MemberConnection } from "../connections/member.connection-definition.js";
 import { WorkspaceConnection } from "../connections/workspace.connection-definition.js";
-import { ApiKey } from "../entities/api-key.entity.js";
 import { Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
+import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 
 describe("WorkspaceService and cross-domain coordination", () => {
   it("paginates authorized workspace memberships and members inside the service", async () => {
@@ -119,7 +120,7 @@ describe("WorkspaceService and cross-domain coordination", () => {
       expect(() => workspaceService.getCurrentWorkspace()).toThrow(
         ForbiddenException,
       );
-      RequestContext.set(ApiKey, new ApiKey());
+      RequestContext.set(API_KEY, new WorkspaceApiKey());
       expect(() => memberService.getCurrentMember()).toThrow(
         ForbiddenException,
       );

@@ -5,12 +5,14 @@ import { ForbiddenException } from "@nestjs/common";
 
 import { UserAbility } from "../abilities/user.ability.js";
 import { WorkspaceAbility } from "../abilities/workspace.ability.js";
+import { API_KEY } from "../auth.constants.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
-import { ApiKey } from "../entities/api-key.entity.js";
 import { Member } from "../entities/member.entity.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
+import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
+import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 import { AccessControlService } from "./access-control.service.js";
 
 class Subject {}
@@ -61,20 +63,18 @@ describe("AccessControlService", () => {
     });
   });
 
-  it.each(["missing", "both"])("rejects %s API-key ownership", (kind) => {
-    const apiKey = new ApiKey();
-    if (kind === "both") {
-      apiKey.user = ref(User, new User());
-      apiKey.workspace = ref(Workspace, new Workspace());
-    }
-    expect(() => {
-      service.assertApiKeyOwner(apiKey);
-    }).toThrow(ForbiddenException);
-  });
+  it.each([UserApiKey, WorkspaceApiKey])(
+    "rejects a missing owner on %s before checking request identity",
+    (Entity) => {
+      expect(() => {
+        service.assertApiKeyOwner(new Entity());
+      }).toThrow("API key owner is missing");
+    },
+  );
 
   it("intersects user API-key permissions with the user ability", async () => {
     const user = new User();
-    const apiKey = Object.assign(new ApiKey(), {
+    const apiKey = Object.assign(new UserApiKey(), {
       workspace: null,
       user: ref(User, user),
       permissions: ["subject:read"],
@@ -82,7 +82,7 @@ describe("AccessControlService", () => {
 
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
       RequestContext.set(User, user);
-      RequestContext.set(ApiKey, apiKey);
+      RequestContext.set(API_KEY, apiKey);
       const ability = new UserAbility();
       vi.spyOn(ability, "can").mockImplementation(
         (action) => action === "read",
@@ -96,13 +96,13 @@ describe("AccessControlService", () => {
 
   it("allows workspace keys only through their explicit permissions", async () => {
     const workspace = new Workspace();
-    const apiKey = Object.assign(new ApiKey(), {
+    const apiKey = Object.assign(new WorkspaceApiKey(), {
       workspace: ref(Workspace, workspace),
       permissions: ["subject:read"],
     });
 
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
-      RequestContext.set(ApiKey, apiKey);
+      RequestContext.set(API_KEY, apiKey);
       const ability = new WorkspaceAbility();
       vi.spyOn(ability, "can").mockImplementation(
         (action) => action === "read",
@@ -117,14 +117,14 @@ describe("AccessControlService", () => {
 
   it("uses the forced CASL subject type for service-level API-key checks", async () => {
     const workspace = new Workspace();
-    const apiKey = Object.assign(new ApiKey(), {
+    const apiKey = Object.assign(new WorkspaceApiKey(), {
       workspace: ref(Workspace, workspace),
       permissions: ["post:read"],
     });
     const post = caslSubject("Post", { id: "post-1" });
 
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
-      RequestContext.set(ApiKey, apiKey);
+      RequestContext.set(API_KEY, apiKey);
       const ability = new WorkspaceAbility();
       vi.spyOn(ability, "can").mockImplementation(
         (action) => action === "read",
@@ -138,13 +138,13 @@ describe("AccessControlService", () => {
 
   it("uses the workspace ability built from API-key permissions", async () => {
     const workspace = new Workspace();
-    const apiKey = Object.assign(new ApiKey(), {
+    const apiKey = Object.assign(new WorkspaceApiKey(), {
       workspace: ref(Workspace, workspace),
       permissions: ["subject:read"],
     });
 
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
-      RequestContext.set(ApiKey, apiKey);
+      RequestContext.set(API_KEY, apiKey);
       RequestContext.set(WorkspaceAbility, new WorkspaceAbility());
 
       expect(service.workspaceCan("read", Subject)).toBe(false);
@@ -243,8 +243,8 @@ describe("AccessControlService", () => {
         ceilingService.assertCanGrantUserPermissions(["user:delete"]);
       }).toThrow("User permissions exceed issuer permissions: user:delete");
       RequestContext.set(
-        ApiKey,
-        Object.assign(new ApiKey(), {
+        API_KEY,
+        Object.assign(new UserApiKey(), {
           workspace: null,
           user: user,
           permissions: ["user:get", "user:delete"],
@@ -260,8 +260,8 @@ describe("AccessControlService", () => {
         ceilingService.assertCanGrantUserPermissions(["user:delete"]);
       }).toThrow(ForbiddenException);
       RequestContext.set(
-        ApiKey,
-        Object.assign(new ApiKey(), {
+        API_KEY,
+        Object.assign(new WorkspaceApiKey(), {
           workspace: new Workspace(),
           permissions: ["user:get"],
         }),
@@ -288,7 +288,7 @@ describe("AccessControlService", () => {
       permissions: [],
       roles: ["member"],
     });
-    const userApiKey = Object.assign(new ApiKey(), {
+    const userApiKey = Object.assign(new UserApiKey(), {
       workspace: null,
       user: ref(User, user),
       permissions: ["post:read"],
@@ -301,7 +301,7 @@ describe("AccessControlService", () => {
         ceilingService.assertCanGrantWorkspacePermissions(["post:update"]);
       }).not.toThrow();
 
-      RequestContext.set(ApiKey, userApiKey);
+      RequestContext.set(API_KEY, userApiKey);
       expect(() => {
         ceilingService.assertCanGrantWorkspacePermissions(["post:read"]);
       }).not.toThrow();
@@ -315,13 +315,13 @@ describe("AccessControlService", () => {
 
   it("uses a workspace API key's permissions as its grant ceiling", async () => {
     const workspace = new Workspace();
-    const apiKey = Object.assign(new ApiKey(), {
+    const apiKey = Object.assign(new WorkspaceApiKey(), {
       workspace: ref(Workspace, workspace),
       permissions: ["post:read"],
     });
 
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
-      RequestContext.set(ApiKey, apiKey);
+      RequestContext.set(API_KEY, apiKey);
 
       expect(() => {
         service.assertCanGrantWorkspacePermissions(["post:read"]);

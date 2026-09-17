@@ -9,12 +9,14 @@ import type { Mock, MockedFunction } from "vitest";
 
 import { UserAbility } from "./abilities/user.ability.js";
 import { WorkspaceAbility } from "./abilities/workspace.ability.js";
+import { API_KEY } from "./auth.constants.js";
 import { AuthGuard } from "./auth.guard.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
-import { ApiKey as BaseApiKey } from "./entities/api-key.entity.js";
 import { Member as BaseMember } from "./entities/member.entity.js";
 import { User as BaseUser } from "./entities/user.entity.js";
+import { UserApiKey } from "./entities/user-api-key.entity.js";
 import { Workspace as BaseWorkspace } from "./entities/workspace.entity.js";
+import { WorkspaceApiKey } from "./entities/workspace-api-key.entity.js";
 import {
   CUSTOM_ROUTE_ARGS_METADATA,
   ROUTE_ARGS_METADATA,
@@ -1079,8 +1081,8 @@ describe("AuthGuard permissions", () => {
 
     await RequestContext.run(createAuthRequestContext("http"), async () => {
       RequestContext.set(
-        BaseApiKey,
-        Object.assign(new BaseApiKey(), {
+        API_KEY,
+        Object.assign(new UserApiKey(), {
           workspace: null,
           user: ref(UserOwner, new UserOwner()),
           permissions: ["user:get"],
@@ -1114,11 +1116,11 @@ describe("AuthGuard permissions", () => {
     });
 
     await RequestContext.run(createAuthRequestContext("http"), async () => {
-      const malformedKey = new BaseApiKey();
+      const malformedKey = new UserApiKey();
       malformedKey.user = ref(UserOwner, new UserOwner());
       // Simulate persisted data that violates the non-null permissions contract.
       Reflect.set(malformedKey, "permissions", null);
-      RequestContext.set(BaseApiKey, malformedKey);
+      RequestContext.set(API_KEY, malformedKey);
       RequestContext.set(
         BaseUser,
         Object.assign(new BaseUser(), {
@@ -1128,8 +1130,8 @@ describe("AuthGuard permissions", () => {
       await expect(guard.canActivate(createContext())).resolves.toBe(false);
 
       RequestContext.set(
-        BaseApiKey,
-        Object.assign(new BaseApiKey(), {
+        API_KEY,
+        Object.assign(new UserApiKey(), {
           workspace: null,
           user: ref(UserOwner, new UserOwner()),
           permissions: [],
@@ -1150,8 +1152,8 @@ describe("AuthGuard permissions", () => {
 
     await RequestContext.run(createWorkspaceRequestContext(), async () => {
       RequestContext.set(
-        BaseApiKey,
-        Object.assign(new BaseApiKey(), {
+        API_KEY,
+        Object.assign(new WorkspaceApiKey(), {
           workspace: ref(WorkspaceOwner, new WorkspaceOwner()),
           permissions: ["workspace:update"],
         }),
@@ -1184,8 +1186,8 @@ describe("AuthGuard permissions", () => {
 
     await RequestContext.run(createWorkspaceRequestContext(), async () => {
       RequestContext.set(
-        BaseApiKey,
-        Object.assign(new BaseApiKey(), {
+        API_KEY,
+        Object.assign(new WorkspaceApiKey(), {
           workspace: ref(WorkspaceOwner, new WorkspaceOwner()),
           permissions: ["post:read"],
         }),
@@ -1206,8 +1208,8 @@ describe("AuthGuard permissions", () => {
 
     await RequestContext.run(createUserWorkspaceRequestContext(), async () => {
       RequestContext.set(
-        BaseApiKey,
-        Object.assign(new BaseApiKey(), {
+        API_KEY,
+        Object.assign(new UserApiKey(), {
           workspace: null,
           user: ref(UserOwner, new UserOwner()),
           permissions: ["workspace:update"],
@@ -1225,8 +1227,8 @@ describe("AuthGuard permissions", () => {
         }),
       );
       RequestContext.set(
-        BaseApiKey,
-        Object.assign(new BaseApiKey(), {
+        API_KEY,
+        Object.assign(new UserApiKey(), {
           workspace: null,
           user: ref(UserOwner, new UserOwner()),
           permissions: ["workspace:update"],
@@ -1244,8 +1246,8 @@ describe("AuthGuard permissions", () => {
         }),
       );
       RequestContext.set(
-        BaseApiKey,
-        Object.assign(new BaseApiKey(), {
+        API_KEY,
+        Object.assign(new UserApiKey(), {
           workspace: null,
           user: ref(UserOwner, new UserOwner()),
           permissions: ["workspace:delete"],
@@ -1279,8 +1281,8 @@ describe("AuthGuard permissions", () => {
 
     await RequestContext.run(createAuthRequestContext("http"), async () => {
       RequestContext.set(
-        BaseApiKey,
-        Object.assign(new BaseApiKey(), {
+        API_KEY,
+        Object.assign(new UserApiKey(), {
           workspace: null,
           user: ref(UserOwner, new UserOwner()),
           permissions: ["user:get"],
@@ -1295,8 +1297,8 @@ describe("AuthGuard permissions", () => {
 
     await RequestContext.run(createAuthRequestContext("http"), async () => {
       RequestContext.set(
-        BaseApiKey,
-        Object.assign(new BaseApiKey(), {
+        API_KEY,
+        Object.assign(new UserApiKey(), {
           workspace: null,
           user: ref(UserOwner, new UserOwner()),
           permissions: ["user:get"],

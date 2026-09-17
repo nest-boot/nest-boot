@@ -5,7 +5,14 @@ vi.mock('@nest-boot/auth', async (importOriginal) => ({
 
 import { AbilityBuilder } from '@casl/ability';
 import { UserAbility, WorkspaceAbility } from '@nest-boot/auth';
-import { ApiKey, Invitation, Member, User, Workspace } from '@nest-boot/auth';
+import {
+  Invitation,
+  Member,
+  User,
+  UserApiKey,
+  Workspace,
+  WorkspaceApiKey,
+} from '@nest-boot/auth';
 
 import {
   buildUserPermissionAbility,
@@ -16,16 +23,16 @@ describe('permission ability builders', () => {
   it('matches configured resource prefixes exactly without case aliases', () => {
     const userAbility = buildUserPermissionAbility(
       new AbilityBuilder(UserAbility),
-      ['User:delete', 'ApiKey:create'],
+      ['User:delete', 'UserApiKey:create'],
     );
     const workspaceAbility = buildWorkspacePermissionAbility(
       new AbilityBuilder(WorkspaceAbility),
-      ['Workspace:delete', 'ApiKey:create'],
+      ['Workspace:delete', 'UserApiKey:create'],
     );
     expect(userAbility.can('delete', User)).toBe(false);
-    expect(userAbility.can('create', ApiKey)).toBe(false);
+    expect(userAbility.can('create', UserApiKey)).toBe(false);
     expect(workspaceAbility.can('delete', Workspace)).toBe(false);
-    expect(workspaceAbility.can('create', ApiKey)).toBe(false);
+    expect(workspaceAbility.can('create', WorkspaceApiKey)).toBe(false);
   });
   it('does not grant private user reads from ordinary membership or workspace permissions', () => {
     expect(
@@ -65,7 +72,14 @@ describe('permission ability builders', () => {
                 [`api-key:${action}`],
               );
         for (const candidate of ['read', 'create', 'update', 'delete']) {
-          expect(ability.can(candidate, ApiKey)).toBe(candidate === action);
+          expect(
+            ability.can(
+              candidate,
+              build === buildUserPermissionAbility
+                ? UserApiKey
+                : WorkspaceApiKey,
+            ),
+          ).toBe(candidate === action);
         }
       }
     },
@@ -76,7 +90,7 @@ describe('permission ability builders', () => {
       [],
     );
     for (const action of ['read', 'create', 'update', 'delete']) {
-      expect(ability.can(action, ApiKey)).toBe(false);
+      expect(ability.can(action, UserApiKey)).toBe(false);
     }
   });
   it('builds user permissions independently of workspace membership', () => {
@@ -87,7 +101,7 @@ describe('permission ability builders', () => {
 
     expect(ability.can('read', User)).toBe(false);
     expect(ability.can('create', Workspace)).toBe(true);
-    expect(ability.can('manage', ApiKey)).toBe(false);
+    expect(ability.can('manage', UserApiKey)).toBe(false);
     expect(ability.can('delete', Workspace)).toBe(false);
     expect(ability.can('delete', User)).toBe(true);
   });
@@ -115,9 +129,9 @@ describe('permission ability builders', () => {
       ],
     );
 
-    expect(ability.can('create', ApiKey)).toBe(true);
-    expect(ability.can('update', ApiKey)).toBe(true);
-    expect(ability.can('delete', ApiKey)).toBe(true);
+    expect(ability.can('create', WorkspaceApiKey)).toBe(true);
+    expect(ability.can('update', WorkspaceApiKey)).toBe(true);
+    expect(ability.can('delete', WorkspaceApiKey)).toBe(true);
     expect(ability.can('delete', Workspace)).toBe(true);
     expect(ability.can('read', Invitation)).toBe(true);
     expect(ability.can('update', Workspace)).toBe(true);
@@ -129,7 +143,7 @@ describe('permission ability builders', () => {
       ['workspace:update', 'member:update'],
     );
 
-    expect(ability.can('create', ApiKey)).toBe(false);
+    expect(ability.can('create', UserApiKey)).toBe(false);
     expect(ability.can('delete', Workspace)).toBe(false);
     expect(ability.can('update', Workspace)).toBe(true);
     expect(ability.can('update', Member)).toBe(true);

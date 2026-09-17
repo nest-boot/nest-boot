@@ -11,9 +11,10 @@ import z from "zod";
 import type { DataFilterItemProps } from "@/components/thread-ui/data-filter";
 import type { PermissionOption } from "@/lib/permissions";
 import type {
-  ApiKey,
-  CreateApiKeyInput,
-  UpdateApiKeyInput,
+  CreateUserApiKeyInput,
+  UpdateUserApiKeyInput,
+  UserApiKey,
+  UserApiKeyPermission,
 } from "@/gql/graphql";
 import type { ApiKeySearch } from "@/lib/api-key-search";
 import type { PageInfo } from "@/lib/connection-search";
@@ -50,42 +51,54 @@ import {
   getPreviousPageSearch,
 } from "@/lib/connection-search";
 
-type ApiKeyRow = Pick<
-  ApiKey,
-  | "id"
-  | "name"
-  | "start"
-  | "prefix"
-  | "enabled"
-  | "permissions"
-  | "createdAt"
-  | "lastUsedAt"
-  | "expiresAt"
->;
+type ApiKeyRow<Permission extends UserApiKeyPermission> = Omit<
+  Pick<
+    UserApiKey,
+    | "id"
+    | "name"
+    | "start"
+    | "prefix"
+    | "enabled"
+    | "permissions"
+    | "createdAt"
+    | "lastUsedAt"
+    | "expiresAt"
+  >,
+  "permissions"
+> & { permissions: Array<Permission> };
 
-interface ApiKeysPageProps {
+interface ApiKeysPageProps<Permission extends UserApiKeyPermission> {
+  subject: "UserApiKey" | "WorkspaceApiKey";
   ability: ReturnType<typeof createAbility>;
   title: string;
   description: string;
   search: ApiKeySearch;
-  apiKeys: Array<ApiKeyRow>;
+  apiKeys: Array<ApiKeyRow<Permission>>;
   pageInfo?: PageInfo;
-  permissionValues: ReadonlyArray<string>;
-  permissionOptions: ReadonlyArray<PermissionOption<string>>;
-  defaultPermissions: ReadonlyArray<string>;
+  permissionValues: ReadonlyArray<Permission>;
+  permissionOptions: ReadonlyArray<PermissionOption<Permission>>;
+  defaultPermissions: ReadonlyArray<Permission>;
   createLoading: boolean;
   updateLoading: boolean;
   deleteLoading: boolean;
   createApiKey: (
-    input: CreateApiKeyInput,
+    input: Omit<CreateUserApiKeyInput, "permissions"> & {
+      permissions?: Array<Permission> | null;
+    },
   ) => Promise<string | null | undefined>;
-  updateApiKey: (id: string, input: UpdateApiKeyInput) => Promise<unknown>;
+  updateApiKey: (
+    id: string,
+    input: Omit<UpdateUserApiKeyInput, "permissions"> & {
+      permissions?: Array<Permission> | null;
+    },
+  ) => Promise<unknown>;
   deleteApiKey: (id: string) => Promise<unknown>;
   refetch: () => Promise<unknown>;
 }
 
 /** Shared API-key management UI; routes supply authorization, data, and mutations. */
-export function ApiKeysPage({
+export function ApiKeysPage<Permission extends UserApiKeyPermission>({
+  subject,
   ability,
   title,
   description,
@@ -102,12 +115,14 @@ export function ApiKeysPage({
   updateApiKey,
   deleteApiKey,
   refetch,
-}: ApiKeysPageProps) {
-  const canCreate = ability.can("create", "ApiKey");
-  const canUpdate = (apiKey: ApiKeyRow) =>
-    ability.can("update", createAbilitySubject("ApiKey", apiKey));
-  const canDelete = (apiKey: ApiKeyRow) =>
-    ability.can("delete", createAbilitySubject("ApiKey", apiKey));
+}: ApiKeysPageProps<Permission>) {
+  const isPermission = (value: UserApiKeyPermission): value is Permission =>
+    permissionValues.some((permission) => permission === value);
+  const canCreate = ability.can("create", subject);
+  const canUpdate = (apiKey: ApiKeyRow<Permission>) =>
+    ability.can("update", createAbilitySubject(subject, apiKey));
+  const canDelete = (apiKey: ApiKeyRow<Permission>) =>
+    ability.can("delete", createAbilitySubject(subject, apiKey));
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -116,7 +131,8 @@ export function ApiKeysPage({
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
-  const [renamingApiKey, setRenamingApiKey] = useState<ApiKeyRow | null>(null);
+  const [renamingApiKey, setRenamingApiKey] =
+    useState<ApiKeyRow<Permission> | null>(null);
   const [createdApiKey, setCreatedApiKey] = useState<string | null>(null);
   const [createdDialogOpen, setCreatedDialogOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -124,7 +140,7 @@ export function ApiKeysPage({
   const createForm = useForm({
     defaultValues: {
       name: "",
-      permissions: [...defaultPermissions],
+      permissions: [...defaultPermissions] as Array<UserApiKeyPermission>,
     },
     validators: {
       onSubmit: z.object({
@@ -141,7 +157,7 @@ export function ApiKeysPage({
       try {
         const apiKey = await createApiKey({
           name: value.name.trim(),
-          permissions: value.permissions,
+          permissions: value.permissions.filter(isPermission),
         });
 
         if (apiKey) {
@@ -163,7 +179,7 @@ export function ApiKeysPage({
   const renameForm = useForm({
     defaultValues: {
       name: "",
-      permissions: [] as Array<string>,
+      permissions: [] as Array<UserApiKeyPermission>,
     },
     validators: {
       onSubmit: z.object({
@@ -181,7 +197,7 @@ export function ApiKeysPage({
       try {
         await updateApiKey(renamingApiKey.id, {
           name: value.name.trim(),
-          permissions: value.permissions,
+          permissions: value.permissions.filter(isPermission),
         });
 
         setRenameDialogOpen(false);
@@ -240,7 +256,7 @@ export function ApiKeysPage({
     setRenameDialogOpen(open);
   };
 
-  const handleOpenRename = (apiKey: ApiKeyRow) => {
+  const handleOpenRename = (apiKey: ApiKeyRow<Permission>) => {
     if (!canUpdate(apiKey)) return;
     setRenamingApiKey(apiKey);
     renameForm.setFieldValue("name", apiKey.name);
@@ -253,7 +269,7 @@ export function ApiKeysPage({
     setRenameDialogOpen(true);
   };
 
-  const handleDeleteApiKey = async (apiKey: ApiKeyRow) => {
+  const handleDeleteApiKey = async (apiKey: ApiKeyRow<Permission>) => {
     if (!canDelete(apiKey)) return;
     const confirmed = await alertDialog({
       title: t("api-key:delete.title"),
@@ -279,7 +295,7 @@ export function ApiKeysPage({
     }
   };
 
-  const handleToggleApiKey = async (apiKey: ApiKeyRow) => {
+  const handleToggleApiKey = async (apiKey: ApiKeyRow<Permission>) => {
     if (!canUpdate(apiKey)) return;
     try {
       await updateApiKey(apiKey.id, { enabled: !apiKey.enabled });

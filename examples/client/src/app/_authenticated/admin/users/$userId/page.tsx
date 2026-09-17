@@ -10,6 +10,7 @@ import {
   useCurrentUserContext,
 } from "../../../contexts/current-user-context";
 import type { UserPermission } from "@/lib/permissions";
+import type { UserRole } from "@/gql/graphql";
 import { PermissionCheckboxGroup } from "@/components/permission-checkbox-group";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import { Badge } from "@/components/thread-ui/badge";
@@ -209,7 +210,7 @@ function AdminUserPage() {
   const [email, setEmail] = useState("");
   const [emailVerified, setEmailVerified] = useState(false);
   const [permissions, setPermissions] = useState<Array<UserPermission>>([]);
-  const [roles, setRoles] = useState<Array<string>>([]);
+  const [roles, setRoles] = useState<Array<UserRole>>([]);
   const [banReason, setBanReason] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [revokingSessionId, setRevokingSessionId] = useState<string>();

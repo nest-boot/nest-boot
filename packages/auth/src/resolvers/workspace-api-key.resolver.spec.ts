@@ -1,15 +1,15 @@
 import type { Mocked } from "vitest";
 
-import { ApiKey } from "../entities/api-key.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
-import { type ApiKeyService } from "../services/api-key.service.js";
-import { ApiKeyResolver } from "./api-key.resolver.js";
+import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
+import { type WorkspaceApiKeyService } from "../services/workspace-api-key.service.js";
+import { WorkspaceApiKeyResolver } from "./workspace-api-key.resolver.js";
 
-describe("ApiKeyResolver", () => {
+describe("WorkspaceApiKeyResolver", () => {
   it("delegates API-key creation to the auth service", async () => {
     const workspace = { id: "workspace_1" } as Workspace;
     const result = {
-      entity: { id: "api_key_1" } as ApiKey,
+      entity: { id: "api_key_1" } as WorkspaceApiKey,
       apiKey: "sk-0123456789abcdefabcdef0123456789",
     };
     const { resolver, apiKeyService } = createResolver({
@@ -29,14 +29,13 @@ describe("ApiKeyResolver", () => {
       workspace,
       {
         name: "Deploy key",
-        expiresAt: null,
         permissions: ["workspace:update"],
       },
     );
   });
 
   it("delegates API-key updates and deletion to the auth service", async () => {
-    const apiKey = { id: "api_key_1" } as ApiKey;
+    const apiKey = { id: "api_key_1" } as WorkspaceApiKey;
     const { resolver, apiKeyService } = createResolver({
       updateWorkspaceApiKey: vi.fn(async () => apiKey),
       deleteWorkspaceApiKey: vi.fn(async () => apiKey),
@@ -66,16 +65,16 @@ describe("ApiKeyResolver", () => {
   });
 });
 
-function createResolver(overrides: Partial<ApiKeyService> = {}) {
+function createResolver(overrides: Partial<WorkspaceApiKeyService> = {}) {
   const apiKeyService = {
     createWorkspaceApiKey: vi.fn(),
     deleteWorkspaceApiKey: vi.fn(),
     updateWorkspaceApiKey: vi.fn(),
     ...overrides,
-  } as unknown as Mocked<ApiKeyService>;
+  } as unknown as Mocked<WorkspaceApiKeyService>;
 
   return {
-    resolver: new ApiKeyResolver(apiKeyService),
+    resolver: new WorkspaceApiKeyResolver(apiKeyService),
     apiKeyService,
   };
 }

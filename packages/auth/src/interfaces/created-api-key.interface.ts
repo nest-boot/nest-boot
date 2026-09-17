@@ -1,9 +1,9 @@
-import type { ApiKey } from "../entities/api-key.entity.js";
+import type { ApiKey } from "../types/api-key.type.js";
 
 /** API-key creation result. The plaintext key is returned only once. */
-export interface CreatedApiKey {
+export interface CreatedApiKey<T extends ApiKey = ApiKey> {
   /** Persisted API-key entity. */
-  entity: ApiKey;
+  entity: T;
   /** Plaintext API key. */
   apiKey: string;
 }

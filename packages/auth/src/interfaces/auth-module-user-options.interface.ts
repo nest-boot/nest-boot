@@ -1,18 +1,23 @@
 import type { AuthModuleRoles } from "../types/auth-module-roles.type.js";
 import type { BuildUserAbilityCallback } from "../types/build-user-ability-callback.type.js";
+import type { PermissionName } from "../types/permission-name.type.js";
 import type { AuthModuleChangeEmailOptions } from "./auth-module-change-email-options.interface.js";
 import type { AuthModuleDeleteUserOptions } from "./auth-module-delete-user-options.interface.js";
 
 /** User lifecycle and authorization options owned by AuthModule. */
-export interface AuthModuleUserOptions<Permission extends string = string> {
+export interface AuthModuleUserOptions<
+  Permission extends string = string,
+  Role extends string = string,
+> {
   /** Role assigned to users when none is supplied. Defaults to `user`. */
-  defaultRole?: string;
+  defaultRole?: NoInfer<Role>;
   /** Roles classified as administrators. Defaults to `admin`. */
-  adminRoles?: readonly string[];
+  adminRoles?: readonly NoInfer<Role>[];
   /** User permission catalog. Defaults to `DEFAULT_USER_PERMISSIONS`. */
-  permissions?: readonly Permission[];
+  permissions?: readonly (Permission &
+    (string extends Permission ? unknown : PermissionName<Permission>))[];
   /** Named user roles and their permissions. Defaults to `DEFAULT_USER_ROLES`. */
-  roles?: AuthModuleRoles<NoInfer<Permission>>;
+  roles?: AuthModuleRoles<NoInfer<Permission>, Role>;
   /** Builds the user-scoped CASL ability from resolved permissions and the authenticated user. */
   buildAbility?: BuildUserAbilityCallback<Permission>;
   /** Email-change lifecycle configuration. */

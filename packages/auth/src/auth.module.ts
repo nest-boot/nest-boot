@@ -34,24 +34,27 @@ import {
 import { AuthHandlerMiddleware } from "./auth-handler.middleware.js";
 import { type AuthModuleOptions } from "./auth-module-options.interface.js";
 import { authEntityMap } from "./entities/auth-entity-map.js";
+import { AuthEnumRegistry } from "./infrastructure/auth-enum-registry.js";
 import { authServiceProviders } from "./infrastructure/auth-service.providers.js";
-import { ApiKeyResolver } from "./resolvers/api-key.resolver.js";
 import { AuthResolver } from "./resolvers/auth.resolver.js";
 import { InvitationResolver } from "./resolvers/invitation.resolver.js";
 import { MemberResolver } from "./resolvers/member.resolver.js";
 import { SessionResolver } from "./resolvers/session.resolver.js";
 import { UserResolver } from "./resolvers/user.resolver.js";
+import { UserApiKeyResolver } from "./resolvers/user-api-key.resolver.js";
 import { WorkspaceResolver } from "./resolvers/workspace.resolver.js";
+import { WorkspaceApiKeyResolver } from "./resolvers/workspace-api-key.resolver.js";
 import { AccessControlService } from "./services/access-control.service.js";
 import { AccountService } from "./services/account.service.js";
-import { ApiKeyService } from "./services/api-key.service.js";
 import { AuthService } from "./services/auth.service.js";
 import { InvitationService } from "./services/invitation.service.js";
 import { MemberService } from "./services/member.service.js";
 import { SessionService } from "./services/session.service.js";
 import { UserService } from "./services/user.service.js";
+import { UserApiKeyService } from "./services/user-api-key.service.js";
 import { UserDeletionService } from "./services/user-deletion.service.js";
 import { WorkspaceService } from "./services/workspace.service.js";
+import { WorkspaceApiKeyService } from "./services/workspace-api-key.service.js";
 import {
   DEFAULT_USER_ADMIN_ROLES,
   DEFAULT_USER_PERMISSIONS,
@@ -92,14 +95,22 @@ import {
 @Module({
   imports: [RequestContextModule, MiddlewareModule],
   providers: [
+    {
+      provide: AuthEnumRegistry,
+      inject: [MODULE_OPTIONS_TOKEN, AUTH_TOKEN],
+      useFactory: (options: AuthModuleOptions) => new AuthEnumRegistry(options),
+    },
     AuthResolver,
     UserResolver,
     SessionResolver,
-    ApiKeyResolver,
+    UserApiKeyResolver,
+    WorkspaceApiKeyResolver,
     WorkspaceResolver,
     MemberResolver,
     InvitationResolver,
     ...authServiceProviders,
+    UserApiKeyService,
+    WorkspaceApiKeyService,
     AccountService,
     ApiKeyUsageInterceptor,
     AuthService,
@@ -255,7 +266,8 @@ import {
     AccountService,
     MODULE_OPTIONS_TOKEN,
     UserService,
-    ApiKeyService,
+    UserApiKeyService,
+    WorkspaceApiKeyService,
     AuthGuard,
     AuthService,
     AccessControlService,
@@ -276,8 +288,15 @@ export class AuthModule extends ConfigurableModuleClass {
       (typeof DEFAULT_USER_PERMISSIONS)[number],
     const WorkspacePermission extends string =
       (typeof DEFAULT_WORKSPACE_PERMISSIONS)[number],
+    const UserRole extends string = keyof typeof DEFAULT_USER_ROLES,
+    const WorkspaceRole extends string = keyof typeof DEFAULT_WORKSPACE_ROLES,
   >(
-    options: AuthModuleOptions<UserPermission, WorkspacePermission>,
+    options: AuthModuleOptions<
+      UserPermission,
+      WorkspacePermission,
+      UserRole,
+      WorkspaceRole
+    >,
   ): DynamicModule {
     return super.forRoot(options as unknown as AuthModuleOptions);
   }
@@ -292,9 +311,16 @@ export class AuthModule extends ConfigurableModuleClass {
       (typeof DEFAULT_USER_PERMISSIONS)[number],
     const WorkspacePermission extends string =
       (typeof DEFAULT_WORKSPACE_PERMISSIONS)[number],
+    const UserRole extends string = keyof typeof DEFAULT_USER_ROLES,
+    const WorkspaceRole extends string = keyof typeof DEFAULT_WORKSPACE_ROLES,
   >(
     options: ConfigurableModuleAsyncOptions<
-      AuthModuleOptions<UserPermission, WorkspacePermission>
+      AuthModuleOptions<
+        UserPermission,
+        WorkspacePermission,
+        UserRole,
+        WorkspaceRole
+      >
     >,
   ): DynamicModule {
     return super.forRootAsync(

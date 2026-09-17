@@ -1,11 +1,13 @@
 import { Field, InputType } from "@nest-boot/graphql";
 import { ZodField } from "@nest-boot/validator";
 
+import { WorkspaceApiKeyPermission } from "../enums/workspace-api-key-permission.enum.js";
+
 /**
  * Input for updating an API key.
  */
 @InputType()
-export class UpdateApiKeyInput {
+export class UpdateWorkspaceApiKeyInput {
   /** New API key display name. */
   @ZodField((z) => z.string().trim().min(1).max(255).optional())
   @Field(() => String, { nullable: true })
@@ -23,6 +25,6 @@ export class UpdateApiKeyInput {
 
   /** API key permissions. */
   @ZodField((z) => z.array(z.string()).nullish())
-  @Field(() => [String], { nullable: true })
-  permissions?: string[] | null;
+  @Field(() => [WorkspaceApiKeyPermission], { nullable: true })
+  permissions?: WorkspaceApiKeyPermission[] | null;
 }

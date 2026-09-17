@@ -11,11 +11,12 @@ import {
 } from "../../test/workspace-service.fixture.js";
 import { UserAbility } from "../abilities/user.ability.js";
 import { WorkspaceAbility } from "../abilities/workspace.ability.js";
-import { ApiKey } from "../entities/api-key.entity.js";
+import { API_KEY } from "../auth.constants.js";
 import { Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
+import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 import { AccessControlService } from "./access-control.service.js";
 import { InvitationService } from "./invitation.service.js";
 
@@ -237,8 +238,8 @@ describe("InvitationService read authorization", () => {
       RequestContext.set(Workspace, workspace);
       if (scenario.key) {
         RequestContext.set(
-          ApiKey,
-          Object.assign(new ApiKey(), {
+          API_KEY,
+          Object.assign(new WorkspaceApiKey(), {
             user: null,
             workspace: ref(Workspace, workspace),
           }),

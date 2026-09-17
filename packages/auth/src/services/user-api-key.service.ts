@@ -1,0 +1,339 @@
+import {
+  EntityManager,
+  type FilterQuery,
+  Reference,
+  type RequiredEntityData,
+} from "@mikro-orm/core";
+import type { SqlEntityManager } from "@mikro-orm/sql";
+import {
+  type ConnectionArgsInterface,
+  type ConnectionInterface,
+  ConnectionManager,
+} from "@nest-boot/graphql-connection";
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
+
+import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
+import type { AuthModuleOptions } from "../auth-module-options.interface.js";
+import { UserApiKeyConnection } from "../connections/user-api-key.connection-definition.js";
+import { User } from "../entities/user.entity.js";
+import { UserApiKey } from "../entities/user-api-key.entity.js";
+import type { CreateApiKeyOptions } from "../interfaces/create-api-key-options.interface.js";
+import type { CreatedApiKey } from "../interfaces/created-api-key.interface.js";
+import type { UpdateApiKeyOptions } from "../interfaces/update-api-key-options.interface.js";
+import type { ApiKey } from "../types/api-key.type.js";
+import {
+  DEFAULT_USER_PERMISSIONS,
+  DEFAULT_USER_ROLE,
+  DEFAULT_USER_ROLES,
+} from "../user.constants.js";
+import {
+  generateApiKey,
+  hashApiKey,
+} from "../utils/api-key-credential.util.js";
+import {
+  normalizeAuthPermissions,
+  resolveAuthPermissions,
+} from "../utils/auth-role.util.js";
+import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
+import { DEFAULT_WORKSPACE_PERMISSIONS } from "../workspace.constants.js";
+import { AccessControlService } from "./access-control.service.js";
+
+/** Manages user-owned API keys within the current request's authorization scope. */
+@Injectable()
+export class UserApiKeyService {
+  private readonly logger = new Logger(UserApiKeyService.name);
+
+  /** Creates an API-key domain service. */
+  constructor(
+    /** MikroORM entity manager used for API-key persistence. */
+    protected readonly em: EntityManager,
+    @Inject(MODULE_OPTIONS_TOKEN)
+    private readonly authOptions: AuthModuleOptions,
+    private readonly accessControlService: AccessControlService,
+  ) {}
+
+  /** Returns a user-owned API key when it belongs to the current user. */
+  async getUserApiKey(id: string, user: User): Promise<UserApiKey | null> {
+    this.accessControlService.assertCurrentUser(user);
+    this.accessControlService.assertUserCan("read", UserApiKey);
+    return await this.getVisibleApiKey(id, user);
+  }
+
+  /** Paginates current-user keys after applying ownership and permission ceilings. */
+  async getUserApiKeyConnection(
+    user: User,
+    args: ConnectionArgsInterface<UserApiKey>,
+  ): Promise<ConnectionInterface<UserApiKey>> {
+    this.accessControlService.assertCurrentUser(user);
+    this.accessControlService.assertUserCan("read", UserApiKey);
+    const where = this.getOwnedListFilter(user);
+    return await new ConnectionManager(
+      this.em as SqlEntityManager,
+    ).find<UserApiKey>(UserApiKeyConnection, args, {
+      where,
+      exclude: ["key"] as never,
+    });
+  }
+
+  /** Creates an API key owned by a user. */
+  async createUserApiKey(
+    user: User,
+    options: CreateApiKeyOptions,
+  ): Promise<CreatedApiKey<UserApiKey>> {
+    this.accessControlService.assertCurrentUser(user);
+    this.accessControlService.assertUserCan("create", UserApiKey);
+    const permissions = this.normalizeCreatePermissions(user, options);
+    this.assertUserPermissionCeiling(user, permissions);
+    return await this.createKey(user, options, permissions);
+  }
+
+  /** Updates an API key owned by the current user. */
+  async updateUserApiKey(
+    id: string,
+    input: UpdateApiKeyOptions,
+  ): Promise<UserApiKey> {
+    this.accessControlService.assertUserCan("update", UserApiKey);
+    const apiKey = await this.findWritableApiKey(id);
+    this.accessControlService.assertUserCan("update", apiKey);
+    const user = this.unwrapOwner(apiKey);
+    const permissions = this.normalizeUpdatedPermissions(apiKey, input);
+    const finalPermissions =
+      permissions ?? this.normalizePermissions(user, apiKey.permissions ?? []);
+    this.assertUserPermissionCeiling(user, finalPermissions);
+    return await this.updateKey(apiKey, input, permissions);
+  }
+
+  /** Deletes an API key owned by the current user. */
+  async deleteUserApiKey(id: string): Promise<UserApiKey> {
+    this.accessControlService.assertUserCan("delete", UserApiKey);
+    const apiKey = await this.findWritableApiKey(id);
+    this.accessControlService.assertUserCan("delete", apiKey);
+    return await this.deleteKey(apiKey);
+  }
+
+  private async createKey(
+    owner: User,
+    options: CreateApiKeyOptions,
+    permissions: string[],
+  ): Promise<CreatedApiKey<UserApiKey>> {
+    if (options.expiresAt && options.expiresAt <= new Date()) {
+      throw new BadRequestException("API key expiration must be in the future");
+    }
+    const prefix = options.prefix ?? process.env.API_KEY_PREFIX ?? "sk";
+    const plaintextApiKey = generateApiKey(prefix);
+    const entity = await this.em.transactional(
+      async (em) => {
+        const entity = em.create(UserApiKey, {
+          enabled: true,
+          expiresAt: options.expiresAt ?? null,
+          key: hashApiKey(plaintextApiKey),
+          name: options.name,
+          user: owner,
+          permissions,
+          prefix,
+          start: plaintextApiKey.slice(0, 8),
+        } as RequiredEntityData<UserApiKey>);
+
+        await em.persist(entity).flush();
+        return entity;
+      },
+      { clear: true },
+    );
+    this.logger.log("API key created", {
+      apiKeyId: entity.id,
+      ownerId: owner.id,
+      ownerType: "user",
+    });
+    return { apiKey: plaintextApiKey, entity };
+  }
+
+  private async updateKey(
+    apiKey: UserApiKey,
+    input: UpdateApiKeyOptions,
+    permissions: string[] | undefined,
+  ): Promise<UserApiKey> {
+    if (input.expiresAt && input.expiresAt <= new Date()) {
+      throw new BadRequestException("API key expiration must be in the future");
+    }
+    if (input.name !== undefined) apiKey.name = input.name;
+    if (input.enabled !== undefined) apiKey.enabled = input.enabled;
+    if (input.expiresAt !== undefined) apiKey.expiresAt = input.expiresAt;
+    if (permissions !== undefined) {
+      apiKey.permissions = permissions;
+    }
+    await this.em.persist(apiKey).flush();
+    return apiKey;
+  }
+
+  private async deleteKey(apiKey: UserApiKey): Promise<UserApiKey> {
+    await this.em.remove(apiKey).flush();
+    return apiKey;
+  }
+
+  private async getVisibleApiKey(
+    id: string,
+    owner: User,
+  ): Promise<UserApiKey | null> {
+    const apiKey = await this.em.findOne(
+      UserApiKey,
+      {
+        $and: [{ id }, this.getOwnedListFilter(owner)],
+      } as FilterQuery<UserApiKey>,
+      { populate: ["user"] as never, exclude: ["key"] as never },
+    );
+    if (apiKey) {
+      this.assertOwner(apiKey, owner);
+      this.assertDelegatedApiKeyPermissionCeiling(apiKey.permissions ?? []);
+    }
+    return apiKey;
+  }
+
+  private async findWritableApiKey(id: string): Promise<UserApiKey> {
+    const apiKey = await this.em.findOne(
+      UserApiKey,
+      { id } as FilterQuery<UserApiKey>,
+      {
+        populate: ["user"] as never,
+        exclude: ["key"] as never,
+        refresh: true,
+      },
+    );
+    if (!apiKey) {
+      throw new NotFoundException("API key not found");
+    }
+    this.accessControlService.assertApiKeyOwner(apiKey);
+    this.accessControlService.assertApiKeyPermissionCeiling(
+      apiKey.permissions ?? [],
+    );
+    return apiKey;
+  }
+
+  private getOwnedListFilter(owner: User): FilterQuery<UserApiKey> {
+    const apiKey = this.getAuthenticatingApiKey();
+    return {
+      ["user"]: owner,
+      ...(apiKey
+        ? { permissions: { $contained: apiKey.permissions ?? [] } }
+        : {}),
+    } as unknown as FilterQuery<UserApiKey>;
+  }
+
+  private assertOwner(apiKey: UserApiKey, expectedOwner: User): void {
+    const owner = this.unwrapOwner(apiKey);
+    if (owner.id !== expectedOwner.id) {
+      throw new ForbiddenException(
+        "You are not allowed to access this API key",
+      );
+    }
+  }
+  private unwrapOwner(apiKey: UserApiKey): User {
+    return Reference.unwrapReference(apiKey.user);
+  }
+
+  private normalizePermissions(
+    owner: User,
+    permissions: readonly string[],
+  ): string[] {
+    const userPermissions =
+      this.authOptions.user?.permissions ?? DEFAULT_USER_PERMISSIONS;
+    const workspacePermissions =
+      this.authOptions.workspace?.permissions ?? DEFAULT_WORKSPACE_PERMISSIONS;
+    const availablePermissions = [...userPermissions, ...workspacePermissions];
+
+    const normalizedPermissions = normalizeAuthPermissions(
+      permissions,
+      availablePermissions,
+      "User API key",
+    );
+    this.assertPermissionCeiling(
+      normalizedPermissions,
+      this.authOptions.apiKey?.allowedPermissions ?? [
+        ...userPermissions,
+        ...workspacePermissions,
+      ],
+      "API key permissions exceed configured allowedPermissions",
+    );
+    return normalizedPermissions;
+  }
+
+  private normalizeCreatePermissions(
+    owner: User,
+    options: CreateApiKeyOptions,
+  ): string[] {
+    return this.normalizePermissions(
+      owner,
+      options.permissions === undefined
+        ? (this.authOptions.apiKey?.defaultPermissions ?? [])
+        : (options.permissions ?? []),
+    );
+  }
+
+  private normalizeUpdatedPermissions(
+    apiKey: UserApiKey,
+    input: UpdateApiKeyOptions,
+  ): string[] | undefined {
+    return input.permissions === undefined
+      ? undefined
+      : this.normalizePermissions(
+          this.unwrapOwner(apiKey),
+          input.permissions ?? [],
+        );
+  }
+
+  private assertUserPermissionCeiling(
+    user: User,
+    permissions: readonly string[],
+  ): void {
+    const userPermissionCatalog = new Set(
+      this.authOptions.user?.permissions ?? DEFAULT_USER_PERMISSIONS,
+    );
+    const requestedUserPermissions = permissions.filter((permission) =>
+      userPermissionCatalog.has(permission),
+    );
+    const effectivePermissions = resolveAuthPermissions(
+      user.roles ?? [this.authOptions.user?.defaultRole ?? DEFAULT_USER_ROLE],
+      user.permissions ?? [],
+      this.authOptions.user?.roles ?? DEFAULT_USER_ROLES,
+    );
+
+    this.assertPermissionCeiling(
+      requestedUserPermissions,
+      effectivePermissions,
+      "User API key permissions exceed owner permissions",
+    );
+    this.assertDelegatedApiKeyPermissionCeiling(permissions);
+  }
+
+  private getAuthenticatingApiKey(): ApiKey | null {
+    return getCurrentApiKey();
+  }
+
+  private assertDelegatedApiKeyPermissionCeiling(
+    permissions: readonly string[],
+  ): void {
+    this.accessControlService.assertApiKeyPermissionCeiling(permissions);
+  }
+
+  private assertPermissionCeiling(
+    requestedPermissions: readonly string[],
+    effectivePermissions: readonly string[],
+    message: string,
+  ): void {
+    const effectivePermissionSet = new Set(effectivePermissions);
+    const excessivePermissions = requestedPermissions.filter(
+      (permission) => !effectivePermissionSet.has(permission),
+    );
+    if (excessivePermissions.length > 0) {
+      throw new ForbiddenException(
+        `${message}: ${excessivePermissions.join(", ")}`,
+      );
+    }
+  }
+}

@@ -47,7 +47,7 @@ export const WorkspaceSidebar: FC<ComponentProps<typeof Sidebar>> = ({
     {
       title: t("sidebar:navigation.settings"),
       items: [
-        ...(currentWorkspaceAbility.can("read", "ApiKey")
+        ...(currentWorkspaceAbility.can("read", "WorkspaceApiKey")
           ? [
               {
                 title: t("sidebar:navigation.api_keys"),

@@ -14,6 +14,7 @@ import {
 import { Field, ID, ObjectType } from "@nest-boot/graphql";
 
 import { InvitationStatus } from "../enums/invitation-status.enum.js";
+import { WorkspaceRole } from "../enums/workspace-role.enum.js";
 import { workspaceScopePolicy } from "../policies/workspace-scope.policy.js";
 import { User } from "./user.entity.js";
 import { Workspace } from "./workspace.entity.js";
@@ -62,11 +63,8 @@ export class Invitation extends BaseEntity {
   email!: string;
 
   /** Roles granted to the member after acceptance. */
-  @Property({
-    type: t.array,
-    defaultRaw: "'{member}'",
-  })
-  @Field(() => [String])
+  @Property({ type: t.array, defaultRaw: "'{member}'" })
+  @Field(() => [WorkspaceRole])
   roles: Opt<string[]> = ["member"];
 
   /** Invitation lifecycle status. */

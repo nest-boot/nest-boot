@@ -5,8 +5,9 @@ import { lastValueFrom, of, throwError } from "rxjs";
 import type { Mocked } from "vitest";
 
 import { ApiKeyUsageInterceptor } from "./api-key-usage.interceptor.js";
-import { ApiKey as BaseApiKey } from "./entities/api-key.entity.js";
-import type { ApiKeyService } from "./services/api-key.service.js";
+import { API_KEY } from "./auth.constants.js";
+import { WorkspaceApiKey as BaseApiKey } from "./entities/workspace-api-key.entity.js";
+import type { ApiKeyAuthenticationService } from "./infrastructure/api-key-authentication.service.js";
 
 describe("ApiKeyUsageInterceptor", () => {
   afterEach(() => vi.restoreAllMocks());
@@ -15,10 +16,11 @@ describe("ApiKeyUsageInterceptor", () => {
     const apiKey = { id: "api-key-1" } as BaseApiKey;
     const service = {
       recordUsage: vi.fn(() => Promise.resolve(apiKey)),
-    } as unknown as Mocked<ApiKeyService>;
+    } as unknown as Mocked<ApiKeyAuthenticationService>;
     const interceptor = new ApiKeyUsageInterceptor(service);
+    vi.spyOn(RequestContext, "isActive").mockReturnValue(true);
     vi.spyOn(RequestContext, "get").mockImplementation((token) =>
-      token === BaseApiKey ? apiKey : undefined,
+      token === API_KEY ? apiKey : undefined,
     );
 
     await expect(
@@ -37,7 +39,7 @@ describe("ApiKeyUsageInterceptor", () => {
   it("does not record requests without an API key or failed handlers", async () => {
     const service = {
       recordUsage: vi.fn(),
-    } as unknown as Mocked<ApiKeyService>;
+    } as unknown as Mocked<ApiKeyAuthenticationService>;
     const interceptor = new ApiKeyUsageInterceptor(service);
     vi.spyOn(RequestContext, "get").mockReturnValue(undefined);
 

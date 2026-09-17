@@ -12,23 +12,24 @@ import { Public } from "./decorators/public.decorator.js";
 import { UserCan } from "./decorators/user-can.decorator.js";
 import { WorkspaceCan } from "./decorators/workspace-can.decorator.js";
 import { Account } from "./entities/account.entity.js";
-import { ApiKey } from "./entities/api-key.entity.js";
 import { Invitation } from "./entities/invitation.entity.js";
 import { Member } from "./entities/member.entity.js";
 import { Session } from "./entities/session.entity.js";
 import { User } from "./entities/user.entity.js";
 import { Verification } from "./entities/verification.entity.js";
 import { Workspace } from "./entities/workspace.entity.js";
+import { WorkspaceApiKey } from "./entities/workspace-api-key.entity.js";
 import * as publicApi from "./index.js";
 import { AccessControlService } from "./services/access-control.service.js";
 import { AccountService } from "./services/account.service.js";
-import { ApiKeyService } from "./services/api-key.service.js";
 import { AuthService } from "./services/auth.service.js";
 import { InvitationService } from "./services/invitation.service.js";
 import { MemberService } from "./services/member.service.js";
 import { SessionService } from "./services/session.service.js";
 import { UserService } from "./services/user.service.js";
+import { UserApiKeyService } from "./services/user-api-key.service.js";
 import { WorkspaceService } from "./services/workspace.service.js";
+import { WorkspaceApiKeyService } from "./services/workspace-api-key.service.js";
 import { can } from "./utils/can.util.js";
 import { getUserAbility } from "./utils/get-user-ability.util.js";
 import { getWorkspaceAbility } from "./utils/get-workspace-ability.util.js";
@@ -48,6 +49,25 @@ vi.mock("./adapters/mikro-orm-adapter.js", () => ({
 }));
 
 describe("public API", () => {
+  it("exports separate API-key domain services without the old mixed service", () => {
+    expect(publicApi.UserApiKeyService).toBe(UserApiKeyService);
+    expect(publicApi.WorkspaceApiKeyService).toBe(WorkspaceApiKeyService);
+    expect(publicApi).not.toHaveProperty("ApiKeyService");
+    expect(publicApi).not.toHaveProperty("ApiKey");
+    for (const method of [
+      "getUserApiKey",
+      "getUserApiKeyConnection",
+      "createUserApiKey",
+      "updateUserApiKey",
+      "deleteUserApiKey",
+    ]) {
+      expect(UserApiKeyService.prototype).toHaveProperty(method);
+      expect(WorkspaceApiKeyService.prototype).not.toHaveProperty(method);
+    }
+    expect(UserApiKeyService.prototype).not.toHaveProperty(
+      "getWorkspaceApiKey",
+    );
+  });
   it.each([
     {
       name: "UserService",
@@ -160,16 +180,12 @@ describe("public API", () => {
       previousService: UserService,
     },
     {
-      name: "ApiKeyService",
-      service: ApiKeyService,
+      name: "WorkspaceApiKeyService",
+      service: WorkspaceApiKeyService,
       methods: [
-        "getApiKeyConnectionByUser",
-        "getApiKeyConnectionByWorkspace",
-        "createUserApiKey",
+        "getWorkspaceApiKeyConnection",
         "createWorkspaceApiKey",
-        "updateUserApiKey",
         "updateWorkspaceApiKey",
-        "deleteUserApiKey",
         "deleteWorkspaceApiKey",
       ],
       removed: [
@@ -282,7 +298,8 @@ describe("public API", () => {
       "Workspace",
       "Member",
       "Invitation",
-      "ApiKey",
+      "UserApiKey",
+      "WorkspaceApiKey",
     ] as const;
     expect(publicApi.entities).toHaveLength(names.length);
     for (const name of names) {
@@ -308,7 +325,7 @@ describe("public API", () => {
     expect(publicApi.UserResolver).toBeDefined();
     expect(publicApi.SessionResolver).toBeDefined();
     for (const name of [
-      "ApiKeyResolver",
+      "WorkspaceApiKeyResolver",
       "WorkspaceResolver",
       "MemberResolver",
       "InvitationResolver",
@@ -366,7 +383,7 @@ describe("public API", () => {
     expect("CURRENT_API_KEY" in publicApi).toBe(false);
     expect("CURRENT_WORKSPACE" in publicApi).toBe(false);
     expect("CURRENT_WORKSPACE_MEMBER" in publicApi).toBe(false);
-    expect(publicApi.ApiKeyService).toBe(ApiKeyService);
+    expect(publicApi.WorkspaceApiKeyService).toBe(WorkspaceApiKeyService);
     expect(publicApi.AuthGuard).toBe(AuthGuard);
     expect(publicApi.AuthMiddleware).toBe(AuthMiddleware);
     expect(publicApi.AuthModule).toBe(AuthModule);
@@ -381,7 +398,7 @@ describe("public API", () => {
     expect(publicApi.CurrentMember).toBe(CurrentMember);
     expect(publicApi.Public).toBe(Public);
     expect(publicApi.Account).toBe(Account);
-    expect(publicApi.ApiKey).toBe(ApiKey);
+    expect(publicApi.WorkspaceApiKey).toBe(WorkspaceApiKey);
     expect(publicApi.Session).toBe(Session);
     expect(publicApi.User).toBe(User);
     expect(publicApi.Verification).toBe(Verification);

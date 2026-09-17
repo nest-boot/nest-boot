@@ -1,16 +1,32 @@
-import { Collection, MetadataStorage } from "@mikro-orm/core";
+import { Collection, MetadataStorage, t } from "@mikro-orm/core";
 
 import { Account } from "./account.entity.js";
-import { ApiKey } from "./api-key.entity.js";
 import { entities } from "./index.js";
 import { Invitation } from "./invitation.entity.js";
 import { Member } from "./member.entity.js";
 import { Session } from "./session.entity.js";
 import { User } from "./user.entity.js";
+import { UserApiKey } from "./user-api-key.entity.js";
 import { Verification } from "./verification.entity.js";
 import { Workspace } from "./workspace.entity.js";
+import { WorkspaceApiKey } from "./workspace-api-key.entity.js";
 
 describe("auth entities", () => {
+  it("keeps role and permission columns as arrays, independent of GraphQL enums", () => {
+    for (const [entity, fields] of [
+      [User, ["roles", "permissions"]],
+      [Member, ["roles", "permissions"]],
+      [Invitation, ["roles"]],
+      [UserApiKey, ["permissions"]],
+      [WorkspaceApiKey, ["permissions"]],
+    ] as const) {
+      const metadata = Object.values(MetadataStorage.getMetadata()).find(
+        (meta) => meta.class === entity,
+      );
+      for (const field of fields)
+        expect(metadata?.properties[field].type).toBe(t.array);
+    }
+  });
   it.each([
     [undefined, []],
     ["", []],
@@ -25,7 +41,7 @@ describe("auth entities", () => {
 
   it("should initialize generated ids and timestamps", () => {
     const account = new Account();
-    const apiKey = new ApiKey();
+    const apiKey = new WorkspaceApiKey();
     const session = new Session();
     const user = new User();
     const verification = new Verification();
@@ -49,8 +65,8 @@ describe("auth entities", () => {
         expect(entity.updatedAt).toBeInstanceOf(Date);
       }
     }
-    expect(apiKey.user).toBeNull();
-    expect(apiKey.workspace).toBeNull();
+    expect(apiKey).not.toHaveProperty("user");
+    expect(apiKey.workspace).toBeUndefined();
     expect(apiKey).not.toHaveProperty("owner");
     expect(apiKey.enabled).toBe(true);
     expect(apiKey.permissions).toEqual([]);
@@ -85,28 +101,31 @@ describe("auth entities", () => {
     });
   });
 
-  it("requires exactly one API-key owner", () => {
-    const metadata = (entity: object) => {
-      const meta = Object.values(MetadataStorage.getMetadata()).find(
+  it.each([
+    [UserApiKey, "user", "workspace"],
+    [WorkspaceApiKey, "workspace", "user"],
+  ] as const)(
+    "gives %s only its required owner relation",
+    (entity, owner, other) => {
+      const metadata = Object.values(MetadataStorage.getMetadata()).find(
         (meta) => meta.class === entity,
       );
-      if (!meta) throw new Error("Missing entity metadata");
-      return meta;
-    };
-    const key = metadata(ApiKey);
-    const expression = key.checks[0].expression;
-    expect(typeof expression).toBe("function");
-    if (typeof expression === "function") {
-      expect(
-        expression(
-          { user: "custom_user", workspace: "custom_workspace" } as never,
-          {} as never,
-        ),
-      ).toBe('("custom_user" is not null) <> ("custom_workspace" is not null)');
-    }
-  });
+      expect(metadata?.properties[owner].nullable ?? false).toBe(false);
+      expect(metadata?.properties[other]).toBeUndefined();
+      expect(metadata?.checks ?? []).toEqual([]);
+    },
+  );
 
-  it.each([Account, ApiKey, Member, Session, User, Verification, Workspace])(
+  it.each([
+    Account,
+    UserApiKey,
+    WorkspaceApiKey,
+    Member,
+    Session,
+    User,
+    Verification,
+    Workspace,
+  ])(
     "%s refreshes its update timestamp through real ORM metadata",
     (entity) => {
       const property = Object.values(MetadataStorage.getMetadata()).find(
@@ -128,8 +147,13 @@ describe("built-in auth entity field ownership", () => {
     [Member, "workspace", Workspace, { deleteRule: "cascade" }],
     [Invitation, "inviter", User, { deleteRule: "cascade" }],
     [Invitation, "workspace", Workspace, { deleteRule: "cascade" }],
-    [ApiKey, "user", User, { nullable: true, deleteRule: "cascade" }],
-    [ApiKey, "workspace", Workspace, { nullable: true, deleteRule: "cascade" }],
+    [UserApiKey, "user", User, { ref: true, deleteRule: "cascade" }],
+    [
+      WorkspaceApiKey,
+      "workspace",
+      Workspace,
+      { ref: true, deleteRule: "cascade" },
+    ],
     [Account, "user", User, { ref: true, deleteRule: "cascade" }],
     [Session, "user", User, { ref: true, deleteRule: "cascade" }],
     [
@@ -154,7 +178,8 @@ describe("built-in auth entity field ownership", () => {
 
   it.each([
     [Account, ["issuer", "accountId", "user"]],
-    [ApiKey, ["user", "workspace", "permissions"]],
+    [UserApiKey, ["user", "permissions"]],
+    [WorkspaceApiKey, ["workspace", "permissions"]],
     [Session, ["user", "token", "expiresAt"]],
     [User, ["name", "email", "members"]],
     [Verification, ["identifier", "value"]],

@@ -13,6 +13,8 @@ import type { AuthModuleProvider } from "./types/auth-module-provider.type.js";
 export interface AuthModuleOptions<
   UserPermission extends string = string,
   WorkspacePermission extends string = string,
+  UserRole extends string = string,
+  WorkspaceRole extends string = string,
 > {
   /** Application name used by authentication flows. */
   appName?: string;
@@ -37,13 +39,13 @@ export interface AuthModuleOptions<
   emailAndPassword?: AuthModuleEmailAndPasswordOptions;
 
   /** User lifecycle, roles, permissions, and authorization ability. */
-  user?: AuthModuleUserOptions<UserPermission>;
+  user?: AuthModuleUserOptions<UserPermission, UserRole>;
 
   /** Email verification delivery and lifecycle options. */
   emailVerification?: AuthModuleEmailVerificationOptions;
 
   /** Workspace lifecycle and invitation-delivery options. */
-  workspace?: AuthModuleWorkspaceOptions<WorkspacePermission>;
+  workspace?: AuthModuleWorkspaceOptions<WorkspacePermission, WorkspaceRole>;
 
   /** API-key permission defaults and grant limits. */
   apiKey?: AuthModuleApiKeyOptions<

@@ -51,7 +51,7 @@ test.describe("workspace invitations", () => {
           input: {
             email: inviteeEmail,
             expiresIn: 1,
-            roles: ["member"],
+            roles: ["MEMBER"],
           },
         },
         { "x-workspace-id": workspaceId },
@@ -115,7 +115,7 @@ test.describe("workspace invitations", () => {
 
       await page.getByTestId("members-invite-action").click();
       await page.getByTestId("workspace-invite-email-input").fill(inviteeEmail);
-      await page.getByTestId("invite-role-member").click();
+      await page.getByTestId("invite-role-MEMBER").click();
       await page.getByTestId("workspace-invite-confirm").click();
       const inviteLink = (
         await page.getByTestId("workspace-invite-link").textContent()
@@ -177,8 +177,8 @@ test.describe("workspace invitations", () => {
 
     await page.getByTestId("members-invite-action").click();
     await page.getByTestId("workspace-invite-email-input").fill(inviteeEmail);
-    await expect(page.getByTestId("invite-role-owner")).toBeEnabled();
-    await page.getByTestId("invite-role-member").click();
+    await expect(page.getByTestId("invite-role-OWNER")).toBeEnabled();
+    await page.getByTestId("invite-role-MEMBER").click();
     await page.getByTestId("workspace-invite-confirm").click();
 
     const inviteDialog = page.getByTestId("workspace-invite-link-dialog");
@@ -266,7 +266,7 @@ test.describe("workspace invitations", () => {
 
     await page.getByTestId("members-invite-action").click();
     await page.getByTestId("workspace-invite-email-input").fill(inviteeEmail);
-    await page.getByTestId("invite-role-member").click();
+    await page.getByTestId("invite-role-MEMBER").click();
     await page.getByTestId("workspace-invite-confirm").click();
 
     const inviteDialog = page.getByTestId("workspace-invite-link-dialog");
@@ -366,7 +366,7 @@ test.describe("workspace invitations", () => {
       await memberPage.goto(
         `/workspaces/${workspaceId}/members/${currentMember.id}`,
       );
-      const permission = memberPage.getByTestId("permission-workspace:update");
+      const permission = memberPage.getByTestId("permission-WORKSPACE__UPDATE");
       await expect(memberPage).toHaveURL(
         new RegExp(`/workspaces/${workspaceId}/members(?:\\?.*)?$`),
       );
@@ -375,19 +375,19 @@ test.describe("workspace invitations", () => {
       await graphqlRequest(
         page.request,
         "mutation ($id: ID!, $input: SetMemberRolesInput!) { setMemberRoles(id: $id, input: $input) { id } }",
-        { id: memberId, input: { roles: ["admin"] } },
+        { id: memberId, input: { roles: ["ADMIN"] } },
         { "x-workspace-id": workspaceId },
       );
       await memberPage.goto(`/workspaces/${workspaceId}/members/${memberId}`);
-      await expect(memberPage.getByTestId("member-role-owner")).toBeDisabled();
+      await expect(memberPage.getByTestId("member-role-OWNER")).toBeDisabled();
       await memberPage.goto(`/workspaces/${workspaceId}/members`);
       await memberPage.getByTestId("members-invite-action").click();
-      await expect(memberPage.getByTestId("invite-role-admin")).toBeEnabled();
-      await expect(memberPage.getByTestId("invite-role-owner")).toHaveCount(0);
+      await expect(memberPage.getByTestId("invite-role-ADMIN")).toBeEnabled();
+      await expect(memberPage.getByTestId("invite-role-OWNER")).toHaveCount(0);
       await memberPage
         .getByTestId("workspace-invite-email-input")
         .fill(`${seed}-invited@example.com`);
-      await memberPage.getByTestId("invite-role-member").click();
+      await memberPage.getByTestId("invite-role-MEMBER").click();
       await memberPage.getByTestId("workspace-invite-confirm").click();
       await expect(
         memberPage.getByTestId("workspace-invite-link"),
@@ -396,7 +396,7 @@ test.describe("workspace invitations", () => {
         `/workspaces/${workspaceId}/members/${currentMember.id}`,
       );
       // An existing owner role stays selected and may be removed, not silently discarded.
-      await expect(memberPage.getByTestId("member-role-owner")).toBeEnabled();
+      await expect(memberPage.getByTestId("member-role-OWNER")).toBeEnabled();
       await expect(memberPage.locator("#member-name")).toBeEnabled();
       await memberPage.locator("#member-name").fill("Shared owner name");
       await memberPage
@@ -423,8 +423,8 @@ test.describe("workspace invitations", () => {
         { id: currentMember.id },
         { "x-workspace-id": workspaceId },
       );
-      expect(member.permissions).toEqual(["workspace:update"]);
-      expect(member.roles).toEqual(["owner"]);
+      expect(member.permissions).toEqual(["WORKSPACE__UPDATE"]);
+      expect(member.roles).toEqual(["OWNER"]);
       expect(member.name).toBe("Shared owner name");
       expect(member.email).toBe("owner-contact@example.com");
     } finally {
@@ -469,7 +469,7 @@ test.describe("workspace invitations", () => {
 
       await page.goto(`/workspaces/${workspaceId}/members/${memberId}`);
       await expect(page.getByTestId("member-detail-page")).toBeVisible();
-      await page.getByTestId("member-role-admin").click();
+      await page.getByTestId("member-role-ADMIN").click();
       await expect(page.getByLabel("姓名", { exact: true })).toHaveValue(
         "Authorized Member",
       );
@@ -482,12 +482,12 @@ test.describe("workspace invitations", () => {
       await expect(
         page.getByLabel("邮箱", { exact: true }),
       ).not.toHaveAttribute("readonly", "");
-      await page.getByTestId("member-role-member").click();
+      await page.getByTestId("member-role-MEMBER").click();
       await page.getByLabel("姓名", { exact: true }).fill("Workspace Member");
       await page
         .getByLabel("邮箱", { exact: true })
         .fill(`public-${memberEmail}`);
-      await page.getByTestId("permission-workspace:update").click();
+      await page.getByTestId("permission-WORKSPACE__UPDATE").click();
       await page.getByTestId("member-save").click();
       await expect(page.getByText("成员更新成功")).toBeVisible();
 
@@ -498,13 +498,13 @@ test.describe("workspace invitations", () => {
       await expect(page.getByLabel("邮箱", { exact: true })).toHaveValue(
         `public-${memberEmail}`,
       );
-      await expect(page.getByTestId("member-role-admin")).toBeChecked();
+      await expect(page.getByTestId("member-role-ADMIN")).toBeChecked();
       await expect(
-        page.getByTestId("permission-workspace:update"),
+        page.getByTestId("permission-WORKSPACE__UPDATE"),
       ).toBeChecked();
 
-      await page.getByTestId("member-role-member").click();
-      await page.getByTestId("member-role-admin").click();
+      await page.getByTestId("member-role-MEMBER").click();
+      await page.getByTestId("member-role-ADMIN").click();
       await page.getByTestId("member-save").click();
       await expect(page.getByText("成员更新成功")).toBeVisible();
 

@@ -10,11 +10,13 @@ import {
   createWorkspaceServices,
 } from "../../test/workspace-service.fixture.js";
 import { WorkspaceAbility } from "../abilities/workspace.ability.js";
-import { ApiKey } from "../entities/api-key.entity.js";
+import { API_KEY } from "../auth.constants.js";
 import { Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
+import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
+import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 import { AccessControlService } from "./access-control.service.js";
 import { MemberService } from "./member.service.js";
 
@@ -70,15 +72,19 @@ describe("MemberService direct permission authorization", () => {
           );
         if (key)
           RequestContext.set(
-            ApiKey,
-            Object.assign(new ApiKey(), {
-              user: key === "user" ? ref(User, createTestUser()) : null,
-              workspace: key === "workspace" ? ref(Workspace, workspace) : null,
-              permissions:
-                key === "user"
-                  ? ["member:update"]
-                  : ["member:update", "workspace:update"],
-            }),
+            API_KEY,
+            Object.assign(
+              key === "user" ? new UserApiKey() : new WorkspaceApiKey(),
+              {
+                user: key === "user" ? ref(User, createTestUser()) : null,
+                workspace:
+                  key === "workspace" ? ref(Workspace, workspace) : null,
+                permissions:
+                  key === "user"
+                    ? ["member:update"]
+                    : ["member:update", "workspace:update"],
+              },
+            ),
           );
         RequestContext.set(
           WorkspaceAbility,
@@ -182,19 +188,26 @@ describe("MemberService direct permission authorization", () => {
           if (scenario.key !== "workspace") RequestContext.set(Member, actor);
           if (scenario.key) {
             RequestContext.set(
-              ApiKey,
-              Object.assign(new ApiKey(), {
-                user:
-                  scenario.key === "user" ? ref(User, createTestUser()) : null,
-                workspace:
-                  scenario.key === "workspace"
-                    ? ref(Workspace, workspace)
-                    : null,
-                permissions:
-                  scenario.key === "workspace"
-                    ? ["member:update", "workspace:update"]
-                    : ["member:update"],
-              }),
+              API_KEY,
+              Object.assign(
+                scenario.key === "user"
+                  ? new UserApiKey()
+                  : new WorkspaceApiKey(),
+                {
+                  user:
+                    scenario.key === "user"
+                      ? ref(User, createTestUser())
+                      : null,
+                  workspace:
+                    scenario.key === "workspace"
+                      ? ref(Workspace, workspace)
+                      : null,
+                  permissions:
+                    scenario.key === "workspace"
+                      ? ["member:update", "workspace:update"]
+                      : ["member:update"],
+                },
+              ),
             );
           }
           RequestContext.set(

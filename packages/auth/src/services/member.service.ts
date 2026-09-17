@@ -24,7 +24,6 @@ import {
 import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { MemberConnection } from "../connections/member.connection-definition.js";
-import { ApiKey } from "../entities/api-key.entity.js";
 import { Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
@@ -41,6 +40,7 @@ import {
   normalizeAuthRoles,
   resolveAuthPermissions,
 } from "../utils/auth-role.util.js";
+import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
 import {
   DEFAULT_WORKSPACE_PERMISSIONS,
   DEFAULT_WORKSPACE_ROLE,
@@ -64,7 +64,7 @@ export class MemberService {
   getCurrentMember(): Member | null {
     if (!RequestContext.isActive()) return null;
     const member = RequestContext.get(Member);
-    if (RequestContext.get(ApiKey) && RequestContext.get(User) && !member) {
+    if (getCurrentApiKey() && RequestContext.get(User) && !member) {
       throw new ForbiddenException(
         "The API key owner is not a member of this workspace",
       );

@@ -1,13 +1,14 @@
 import { MikroORM, PostgreSqlDriver } from '@mikro-orm/postgresql';
 import {
   Account,
-  ApiKey,
   entities,
   Invitation,
   Member,
   Session,
   User,
+  UserApiKey,
   Workspace,
+  WorkspaceApiKey,
 } from '@nest-boot/auth';
 
 describe('built-in auth entity discovery', () => {
@@ -33,8 +34,8 @@ describe('built-in auth entity discovery', () => {
         [Account, 'user', User],
         [Session, 'user', User],
         [Session, 'impersonatedBy', User],
-        [ApiKey, 'user', User],
-        [ApiKey, 'workspace', Workspace],
+        [UserApiKey, 'user', User],
+        [WorkspaceApiKey, 'workspace', Workspace],
       ] as const) {
         expect(
           orm.getMetadata<object>(entity).properties[property].targetMeta

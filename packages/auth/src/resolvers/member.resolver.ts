@@ -12,6 +12,8 @@ import { CurrentWorkspace } from "../decorators/current-workspace.decorator.js";
 import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
+import { WorkspacePermission } from "../enums/workspace-permission.enum.js";
+import { WorkspaceRole } from "../enums/workspace-role.enum.js";
 import { AddMemberInput } from "../inputs/add-member.input.js";
 import { SetMemberPermissionsInput } from "../inputs/set-member-permissions.input.js";
 import { SetMemberRolesInput } from "../inputs/set-member-roles.input.js";
@@ -38,19 +40,19 @@ export class MemberResolver {
   }
 
   /** Lists configured workspace roles. */
-  @Query(() => [String])
+  @Query(() => [WorkspaceRole])
   workspaceRoles(): string[] {
     return this.memberService.listRoles().map(({ name }) => name);
   }
 
   /** Lists roles the current principal may grant; mutations still authorize their targets. */
-  @Query(() => [String])
+  @Query(() => [WorkspaceRole])
   workspaceAssignableRoles(): string[] {
     return this.memberService.listAssignableRoles().map(({ name }) => name);
   }
 
   /** Lists permissions available to workspace roles. */
-  @Query(() => [String])
+  @Query(() => [WorkspacePermission])
   workspacePermissions(): string[] {
     return this.memberService.listPermissions();
   }

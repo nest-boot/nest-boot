@@ -5,16 +5,16 @@ description: "将 Auth 服务接入传输适配器与 RequestContext。"
 
 底层 Better Auth 实例及其注入 token 属于内部实现。应用应注入负责对应领域的服务：
 
-| 服务                | 职责                                                   |
-| ------------------- | ------------------------------------------------------ |
-| `AuthService`       | 身份认证、邮箱验证、密码找回、用户资料与 provider 账号 |
-| `SessionService`    | 会话解析、按用户分页、模拟登录者关联、自助与管理员撤销 |
-| `UserService`       | 用户管理、权限、封禁、模拟登录和密码                   |
-| `AccountService`    | 当前用户会话的安全账号连接查询                         |
-| `WorkspaceService`  | 工作区查询与生命周期管理                               |
-| `MemberService`     | 成员查询、分页、资料、角色、权限及加入/退出            |
-| `InvitationService` | 邀请查询、分页、创建、接受、拒绝及取消                 |
-| `ApiKeyService`     | 个人与工作区 API Key 生命周期和校验                    |
+| 服务                                            | 职责                                                   |
+| ----------------------------------------------- | ------------------------------------------------------ |
+| `AuthService`                                   | 身份认证、邮箱验证、密码找回、用户资料与 provider 账号 |
+| `SessionService`                                | 会话解析、按用户分页、模拟登录者关联、自助与管理员撤销 |
+| `UserService`                                   | 用户管理、权限、封禁、模拟登录和密码                   |
+| `AccountService`                                | 当前用户会话的安全账号连接查询                         |
+| `WorkspaceService`                              | 工作区查询与生命周期管理                               |
+| `MemberService`                                 | 成员查询、分页、资料、角色、权限及加入/退出            |
+| `InvitationService`                             | 邀请查询、分页、创建、接受、拒绝及取消                 |
+| `UserApiKeyService` 和 `WorkspaceApiKeyService` | 各自作用域的 API Key 生命周期和连接查询                |
 
 `UserService`、`AccountService`、`WorkspaceService`、`MemberService` 和 `InvitationService` 直接操作 `AuthModule` 内置的 MikroORM 实体，
 不依赖 Better Auth 的 admin 或 organization 插件。
@@ -30,7 +30,8 @@ export class AccountApplicationService {
     private readonly workspaceService: WorkspaceService,
     private readonly memberService: MemberService,
     private readonly invitationService: InvitationService,
-    private readonly apiKeyService: ApiKeyService,
+    private readonly userApiKeyService: UserApiKeyService,
+    private readonly workspaceApiKeyService: WorkspaceApiKeyService,
   ) {}
 }
 ```
@@ -42,7 +43,7 @@ export class AccountApplicationService {
 应用只需配置 GraphQL 模块和 `AuthModule.forRoot()`，无需重新定义认证实体或注册命名连接。
 
 Auth 内置 `User`、`Account`、`Session`、`Verification`、`Workspace`、
-`Member`、`Invitation` 和 `ApiKey` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
+`Member`、`Invitation`、`UserApiKey` 和 `WorkspaceApiKey` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
 不再提供认证 `Base*` 类或 `AuthModuleOptions.entities` 替换配置。
 
 在运行时和迁移 CLI 的 MikroORM 配置中注册导出的 `entities` 数组；CLI 不会启动 Nest 模块：

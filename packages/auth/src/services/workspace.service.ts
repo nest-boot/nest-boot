@@ -22,13 +22,13 @@ import {
 import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { WorkspaceConnection } from "../connections/workspace.connection-definition.js";
-import { ApiKey } from "../entities/api-key.entity.js";
 import { Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import type { CreateWorkspaceOptions } from "../interfaces/create-workspace-options.interface.js";
 import type { UpdateWorkspaceOptions } from "../interfaces/update-workspace-options.interface.js";
+import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
 import { DEFAULT_WORKSPACE_CREATOR_ROLE } from "../workspace.constants.js";
 import { AccessControlService } from "./access-control.service.js";
 
@@ -62,7 +62,7 @@ export class WorkspaceService {
   private resolveCurrentMember(): Member | null {
     if (!RequestContext.isActive()) return null;
     const member = RequestContext.get(Member);
-    if (RequestContext.get(ApiKey) && RequestContext.get(User) && !member) {
+    if (getCurrentApiKey() && RequestContext.get(User) && !member) {
       throw new ForbiddenException(
         "The API key owner is not a member of this workspace",
       );

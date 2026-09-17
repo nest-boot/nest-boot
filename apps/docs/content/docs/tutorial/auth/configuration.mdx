@@ -172,7 +172,7 @@ until `AUTH_OIDC_ENABLED=true`; when enabled, its ID is `oidc`.
 ## Entity Setup
 
 Auth owns the concrete `User`, `Account`, `Session`, `Verification`,
-`Workspace`, `Member`, `Invitation`, and `ApiKey` entities, their GraphQL
+`Workspace`, `Member`, `Invitation`, `UserApiKey`, and `WorkspaceApiKey` entities, their GraphQL
 metadata, relations, RLS policies, and connections. There are no public auth
 `Base*` classes or `AuthModuleOptions.entities` overrides.
 

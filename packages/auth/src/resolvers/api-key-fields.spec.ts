@@ -1,11 +1,12 @@
 import { ForbiddenException } from "@nestjs/common";
 
-import { ApiKey as BaseApiKey } from "../entities/api-key.entity.js";
 import { User as BaseUser } from "../entities/user.entity.js";
 import { Workspace as BaseWorkspace } from "../entities/workspace.entity.js";
-import { type ApiKeyService } from "../services/api-key.service.js";
+import { WorkspaceApiKey as BaseApiKey } from "../entities/workspace-api-key.entity.js";
 import { type UserService } from "../services/user.service.js";
+import type { UserApiKeyService } from "../services/user-api-key.service.js";
 import { type WorkspaceService } from "../services/workspace.service.js";
+import { type WorkspaceApiKeyService } from "../services/workspace-api-key.service.js";
 import { UserResolver } from "./user.resolver.js";
 import { WorkspaceResolver } from "./workspace.resolver.js";
 
@@ -18,7 +19,7 @@ describe("API-key field delegation", () => {
       const service = {
         getUserApiKey: getKey,
         getWorkspaceApiKey: getKey,
-      } as unknown as ApiKeyService;
+      } as unknown as WorkspaceApiKeyService;
       const user = new BaseUser();
       const workspace = new BaseWorkspace();
       const resolve =
@@ -27,7 +28,7 @@ describe("API-key field delegation", () => {
               new UserResolver(
                 {} as UserService,
                 {} as WorkspaceService,
-                service,
+                service as unknown as UserApiKeyService,
                 {} as never,
                 {} as never,
                 {} as never,

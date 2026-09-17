@@ -5,13 +5,12 @@ import {
   type ConnectionInterface,
   ConnectionManager,
 } from "@nest-boot/graphql-connection";
-import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException, Injectable } from "@nestjs/common";
 
 import { AccountConnection } from "../connections/account.connection-definition.js";
 import { type Account } from "../entities/account.entity.js";
-import { ApiKey } from "../entities/api-key.entity.js";
 import { type User } from "../entities/user.entity.js";
+import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
 import { AccessControlService } from "./access-control.service.js";
 
 /** Safe account queries scoped to the current user session and application RLS. */
@@ -29,7 +28,7 @@ export class AccountService {
     args: ConnectionArgsInterface<Account>,
   ): Promise<ConnectionInterface<Account>> {
     this.accessControlService.assertCurrentUser(user);
-    if (RequestContext.get(ApiKey)) {
+    if (getCurrentApiKey()) {
       throw new ForbiddenException(
         "Account inspection requires a user session",
       );

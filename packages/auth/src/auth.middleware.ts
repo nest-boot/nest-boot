@@ -10,16 +10,18 @@ import { type NextFunction, type Request, type Response } from "express";
 
 import { UserAbility } from "./abilities/user.ability.js";
 import { WorkspaceAbility } from "./abilities/workspace.ability.js";
+import { API_KEY } from "./auth.constants.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
-import { ApiKey } from "./entities/api-key.entity.js";
 import { Member } from "./entities/member.entity.js";
 import { Session } from "./entities/session.entity.js";
 import { User } from "./entities/user.entity.js";
 import { Workspace } from "./entities/workspace.entity.js";
-import { ApiKeyService } from "./services/api-key.service.js";
+import { ApiKeyAuthenticationService } from "./infrastructure/api-key-authentication.service.js";
 import { SessionService } from "./services/session.service.js";
+import type { ApiKey } from "./types/api-key.type.js";
 import { extractApiKey } from "./utils/extract-api-key.util.js";
+import { getCurrentApiKey } from "./utils/get-current-api-key.util.js";
 import { resolveRequestPermissions } from "./utils/resolve-request-permissions.util.js";
 import { runAuthQuery } from "./utils/run-auth-query.js";
 
@@ -46,7 +48,7 @@ export class AuthMiddleware implements NestMiddleware {
     ) {
       throw new UnauthorizedException("The new session is not valid");
     }
-    RequestContext.set(ApiKey, null);
+    RequestContext.set<ApiKey | null>(API_KEY, null);
     RequestContext.set(Member, null);
     RequestContext.set(UserAbility, null);
     RequestContext.set(WorkspaceAbility, null);
@@ -66,7 +68,7 @@ export class AuthMiddleware implements NestMiddleware {
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly options: AuthModuleOptions,
     private readonly sessionService: SessionService,
-    private readonly apiKeyService: ApiKeyService,
+    private readonly apiKeyService: ApiKeyAuthenticationService,
     private readonly em: EntityManager,
   ) {}
 
@@ -150,12 +152,12 @@ export class AuthMiddleware implements NestMiddleware {
   }
 
   private setApiKey(apiKey: ApiKey): void {
-    RequestContext.set(ApiKey, apiKey);
+    RequestContext.set<ApiKey | null>(API_KEY, apiKey);
   }
 
   private updateSessionContext(): void {
     const user = RequestContext.get(User);
-    const apiKey = RequestContext.get(ApiKey);
+    const apiKey = getCurrentApiKey();
     const workspace = RequestContext.get(Workspace);
     const member = RequestContext.get(Member);
     const authenticated = Boolean(user ?? apiKey);

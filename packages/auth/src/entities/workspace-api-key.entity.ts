@@ -6,7 +6,6 @@ import {
   t,
 } from "@mikro-orm/core";
 import {
-  Check,
   Entity,
   Index,
   ManyToOne,
@@ -17,17 +16,15 @@ import {
 import { Field, HideField, ID, ObjectType } from "@nest-boot/graphql";
 import { Sonyflake } from "sonyflake-js";
 
-import { User } from "./user.entity.js";
+import { WorkspaceApiKeyPermission } from "../enums/workspace-api-key-permission.enum.js";
 import { Workspace } from "./workspace.entity.js";
 
-const matchesApiKeyOwner: PolicyCallback<ApiKey> = (columns) => {
-  return `("${columns.user}" = nullif(current_setting('app.user.id', true), '')::bigint)
-    or ("${columns.workspace}" = nullif(current_setting('app.workspace.id', true), '')::bigint)`;
-};
+const matchesApiKeyOwner: PolicyCallback<WorkspaceApiKey> = (columns) =>
+  `("${columns.workspace}" = nullif(current_setting('app.workspace.id', true), '')::bigint)`;
 
-/** Built-in ApiKey entity with authentication persistence and access policies. */
+/** Built-in WorkspaceApiKey entity with authentication persistence and access policies. */
 @ObjectType()
-@Entity<typeof ApiKey>({
+@Entity<typeof WorkspaceApiKey>({
   policies: [
     {
       command: "all",
@@ -40,11 +37,7 @@ const matchesApiKeyOwner: PolicyCallback<ApiKey> = (columns) => {
 @Index({ properties: ["key"] })
 @Index({ properties: ["prefix"] })
 @Index({ properties: ["createdAt"] })
-@Check<typeof ApiKey>({
-  expression: ({ user, workspace }) =>
-    `("${user}" is not null) <> ("${workspace}" is not null)`,
-})
-export class ApiKey extends BaseEntity {
+export class WorkspaceApiKey extends BaseEntity {
   /** Primary key (Sonyflake ID, auto-generated). */
   @PrimaryKey({
     type: t.bigint,
@@ -87,11 +80,9 @@ export class ApiKey extends BaseEntity {
   enabled: Opt<boolean> = true;
 
   /** Operations that this API key may perform. */
-  @Property({
-    type: t.array,
-    defaultRaw: "'{}'",
-  })
-  @Field(() => [String])
+  // eslint-disable-next-line @nest-boot/graphql-field-config-from-types -- Dynamic enums preserve the stored string array type.
+  @Property({ type: t.array, defaultRaw: "'{}'" })
+  @Field(() => [WorkspaceApiKeyPermission])
   permissions: Opt<string[]> = [];
 
   /** Timestamp when the key was created. */
@@ -127,15 +118,9 @@ export class ApiKey extends BaseEntity {
   @Field(() => Date, { nullable: true })
   expiresAt?: Opt<Date> | null = null;
 
-  /** Owning user; exactly one of user and workspace must be set. */
+  /** Owning workspace; physical deletion cascades to its keys. */
   @Index()
-  @ManyToOne(() => User, { nullable: true, deleteRule: "cascade" })
+  @ManyToOne(() => Workspace, { ref: true, deleteRule: "cascade" })
   @HideField()
-  user: Opt<Ref<User>> | null = null;
-
-  /** Owning workspace; deleting a workspace physically also deletes its keys. */
-  @Index()
-  @ManyToOne(() => Workspace, { nullable: true, deleteRule: "cascade" })
-  @HideField()
-  workspace: Opt<Ref<Workspace>> | null = null;
+  workspace!: Ref<Workspace>;
 }

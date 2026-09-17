@@ -69,9 +69,9 @@ describe("auth decorators", () => {
     const apiKey = { id: "api-key-1" };
     const workspace = { id: "workspace-1" };
     const member = { id: "member-1" };
-    const get = vi.fn((token: { name?: string }) => {
-      switch (token.name) {
-        case "ApiKey":
+    const get = vi.fn((token: { name?: string } | symbol) => {
+      switch (typeof token === "symbol" ? token.description : token.name) {
+        case "API_KEY":
           return apiKey;
         case "Workspace":
           return workspace;
@@ -84,7 +84,7 @@ describe("auth decorators", () => {
 
     vi.resetModules();
     vi.doMock("@nest-boot/request-context", () => ({
-      RequestContext: { get },
+      RequestContext: { get, isActive: () => true },
     }));
     vi.doMock("@nestjs/common", async () => {
       const actual =
@@ -106,11 +106,11 @@ describe("auth decorators", () => {
     expect(CurrentApiKey()).toBe(apiKey);
     expect(CurrentWorkspace()).toBe(workspace);
     expect(CurrentMember()).toBe(member);
-    expect(get.mock.calls.map(([token]) => token.name)).toEqual([
-      "ApiKey",
-      "Workspace",
-      "Member",
-    ]);
+    expect(
+      get.mock.calls.map(([token]) =>
+        typeof token === "symbol" ? token.description : token.name,
+      ),
+    ).toEqual(["API_KEY", "Workspace", "Member"]);
     vi.doUnmock("@nest-boot/request-context");
     vi.doUnmock("@nestjs/common");
   });

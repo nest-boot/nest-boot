@@ -4,6 +4,7 @@ import { Copy } from "lucide-react";
 import { useForm } from "@tanstack/react-form";
 import { toast } from "sonner";
 import { t } from "i18next";
+import type { WorkspaceRole } from "@/gql/graphql";
 import { Button } from "@/components/thread-ui/button";
 import { CheckboxGroup } from "@/components/thread-ui/checkbox-group";
 import { Input } from "@/components/thread-ui/input";
@@ -60,7 +61,7 @@ export function InviteMemberDialog({
 
   const inviteForm = useForm({
     defaultValues: {
-      roles: [] as Array<string>,
+      roles: [] as Array<WorkspaceRole>,
       email: "",
     },
     onSubmit: async ({ value }) => {

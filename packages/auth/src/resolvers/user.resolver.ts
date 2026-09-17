@@ -14,10 +14,6 @@ import {
   AccountConnectionArgs,
 } from "../connections/account.connection-definition.js";
 import {
-  ApiKeyConnection,
-  ApiKeyConnectionArgs,
-} from "../connections/api-key.connection-definition.js";
-import {
   InvitationConnection,
   InvitationConnectionArgs,
 } from "../connections/invitation.connection-definition.js";
@@ -30,15 +26,21 @@ import {
   UserConnectionArgs,
 } from "../connections/user.connection-definition.js";
 import {
+  UserApiKeyConnection,
+  UserApiKeyConnectionArgs,
+} from "../connections/user-api-key.connection-definition.js";
+import {
   WorkspaceConnection,
   WorkspaceConnectionArgs,
 } from "../connections/workspace.connection-definition.js";
 import { type Account } from "../entities/account.entity.js";
-import { ApiKey } from "../entities/api-key.entity.js";
 import { type Invitation } from "../entities/invitation.entity.js";
 import { type Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
+import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { type Workspace } from "../entities/workspace.entity.js";
+import { UserPermission } from "../enums/user-permission.enum.js";
+import { UserRole } from "../enums/user-role.enum.js";
 import { BanUserInput } from "../inputs/ban-user.input.js";
 import { CreateUserInput } from "../inputs/create-user.input.js";
 import { SetUserPasswordInput } from "../inputs/set-user-password.input.js";
@@ -53,10 +55,10 @@ import { SetUserRolesPayload } from "../objects/set-user-roles-payload.object.js
 import { UnbanUserPayload } from "../objects/unban-user-payload.object.js";
 import { UpdateUserPayload } from "../objects/update-user-payload.object.js";
 import { AccountService } from "../services/account.service.js";
-import { ApiKeyService } from "../services/api-key.service.js";
 import { InvitationService } from "../services/invitation.service.js";
 import { SessionService } from "../services/session.service.js";
 import { UserService } from "../services/user.service.js";
+import { UserApiKeyService } from "../services/user-api-key.service.js";
 import { WorkspaceService } from "../services/workspace.service.js";
 
 /** GraphQL transport for user administration. */
@@ -66,7 +68,7 @@ export class UserResolver {
   constructor(
     private readonly userService: UserService,
     private readonly workspaceService: WorkspaceService,
-    private readonly apiKeyService: ApiKeyService,
+    private readonly apiKeyService: UserApiKeyService,
     private readonly sessionService: SessionService,
     private readonly invitationService: InvitationService,
     private readonly accountService: AccountService,
@@ -103,22 +105,22 @@ export class UserResolver {
   }
 
   /** Returns an accessible API key owned by the parent user. */
-  @ResolveField(() => ApiKey, { nullable: true })
+  @ResolveField(() => UserApiKey, { nullable: true })
   async apiKey(
     @Parent() user: User,
     @Args("id", { type: () => ID }) id: string,
-  ): Promise<ApiKey | null> {
+  ): Promise<UserApiKey | null> {
     return await this.apiKeyService.getUserApiKey(id, user);
   }
 
   /** Paginates API keys owned by the parent user. */
-  @ResolveField(() => ApiKeyConnection)
+  @ResolveField(() => UserApiKeyConnection)
   async apiKeys(
     @Parent() user: User,
-    @Args({ type: () => ApiKeyConnectionArgs })
-    args: ConnectionArgsInterface<ApiKey>,
+    @Args({ type: () => UserApiKeyConnectionArgs })
+    args: ConnectionArgsInterface<UserApiKey>,
   ) {
-    return await this.apiKeyService.getApiKeyConnectionByUser(user, args);
+    return await this.apiKeyService.getUserApiKeyConnection(user, args);
   }
 
   /** Paginates pending invitations addressed to the parent user. */
@@ -135,13 +137,13 @@ export class UserResolver {
   }
 
   /** Lists configured user-administration roles. */
-  @Query(() => [String])
+  @Query(() => [UserRole])
   userRoles(): string[] {
     return this.userService.listRoles().map(({ name }) => name);
   }
 
   /** Lists permissions available to user-administration roles. */
-  @Query(() => [String])
+  @Query(() => [UserPermission])
   userPermissions(): string[] {
     return this.userService.listPermissions();
   }

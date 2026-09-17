@@ -10,6 +10,8 @@ import {
 import { Field, HideField, ID, ObjectType } from "@nest-boot/graphql";
 import { Sonyflake } from "sonyflake-js";
 
+import { UserPermission } from "../enums/user-permission.enum.js";
+import { UserRole } from "../enums/user-role.enum.js";
 import {
   userDeletePredicate,
   userReadPredicate,
@@ -75,13 +77,15 @@ export class User extends BaseEntity {
   image?: Opt<string>;
 
   /** Application roles used to resolve user-administration permissions. */
+  // eslint-disable-next-line @nest-boot/graphql-field-config-from-types -- Dynamic enums preserve the stored string array type.
   @Property({ type: t.array })
-  @Field(() => [String])
+  @Field(() => [UserRole])
   roles: Opt<string[]> = ["user"];
 
   /** User-administration and session permissions granted to this identity. */
+  // eslint-disable-next-line @nest-boot/graphql-field-config-from-types -- Dynamic enums preserve the stored string array type.
   @Property({ type: t.array })
-  @Field(() => [String])
+  @Field(() => [UserPermission])
   permissions: Opt<string[]> = [];
 
   /** Whether the user is currently banned from authenticating. */

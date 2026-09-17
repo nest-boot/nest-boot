@@ -302,7 +302,7 @@ async function createInvitationByApi(
       {
         input: {
           email,
-          roles: ["member"],
+          roles: ["MEMBER"],
         },
       },
       { "x-workspace-id": workspaceId },

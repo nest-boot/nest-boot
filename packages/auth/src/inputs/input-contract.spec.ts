@@ -107,7 +107,18 @@ const contracts: InputContract[] = [
     required: [],
   },
   {
-    name: "CreateApiKeyInput",
+    name: "CreateUserApiKeyInput",
+    values: {
+      name: "Key",
+      expiresAt: new Date("2030-01-01T00:00:00Z"),
+      prefix: "sk",
+      permissions: ["Custom:Read"],
+    },
+    required: ["name"],
+    nullable: ["expiresAt", "permissions"],
+  },
+  {
+    name: "CreateWorkspaceApiKeyInput",
     values: {
       name: "Key",
       expiresAt: new Date("2030-01-01T00:00:00Z"),
@@ -160,7 +171,18 @@ const contracts: InputContract[] = [
   },
   { name: "SetUserRolesInput", values: { roles: [] }, required: ["roles"] },
   {
-    name: "UpdateApiKeyInput",
+    name: "UpdateUserApiKeyInput",
+    values: {
+      name: "Key",
+      enabled: false,
+      expiresAt: new Date("2030-01-01T00:00:00Z"),
+      permissions: [],
+    },
+    required: [],
+    nullable: ["expiresAt", "permissions"],
+  },
+  {
+    name: "UpdateWorkspaceApiKeyInput",
     values: {
       name: "Key",
       enabled: false,
@@ -264,7 +286,7 @@ describe("auth input contracts", () => {
   });
 
   it("validates API-key prefixes before the Service", () => {
-    const schema = toZodSchema(auth.CreateApiKeyInput);
+    const schema = toZodSchema(auth.CreateUserApiKeyInput);
     for (const prefix of [
       "1key",
       "UPPER",

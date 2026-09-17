@@ -32,11 +32,6 @@ export type Scalars = {
    * Supported fields: created_at, provider_id
    */
   AccountFilter: { input: any; output: any };
-  /**
-   * A filter for ApiKey that accepts MongoDB query syntax.
-   * Supported fields: name, prefix, enabled, last_used_at, created_at
-   */
-  ApiKeyFilter: { input: any; output: any };
   /** A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format. */
   DateTime: { input: any; output: any };
   /**
@@ -60,10 +55,20 @@ export type Scalars = {
    */
   SessionFilter: { input: any; output: any };
   /**
+   * A filter for UserApiKey that accepts MongoDB query syntax.
+   * Supported fields: name, prefix, enabled, last_used_at, created_at
+   */
+  UserApiKeyFilter: { input: any; output: any };
+  /**
    * A filter for User that accepts MongoDB query syntax.
    * Supported fields: name, email, created_at
    */
   UserFilter: { input: any; output: any };
+  /**
+   * A filter for WorkspaceApiKey that accepts MongoDB query syntax.
+   * Supported fields: name, prefix, enabled, last_used_at, created_at
+   */
+  WorkspaceApiKeyFilter: { input: any; output: any };
   /**
    * A filter for Workspace that accepts MongoDB query syntax.
    * Supported fields: name, created_at
@@ -119,64 +124,16 @@ export type AccountOrder = {
 };
 
 /** Properties by which account connections can be ordered. */
-export enum AccountOrderField {
-  CREATED_AT = "CREATED_AT",
-  ID = "ID",
-}
+export const AccountOrderField = {
+  CREATED_AT: "CREATED_AT",
+  ID: "ID",
+} as const;
 
+export type AccountOrderField =
+  (typeof AccountOrderField)[keyof typeof AccountOrderField];
 export type AddMemberInput = {
   email: Scalars["String"]["input"];
 };
-
-export type ApiKey = {
-  __typename?: "ApiKey";
-  createdAt: Scalars["DateTime"]["output"];
-  enabled: Scalars["Boolean"]["output"];
-  expiresAt?: Maybe<Scalars["DateTime"]["output"]>;
-  id: Scalars["ID"]["output"];
-  lastUsedAt?: Maybe<Scalars["DateTime"]["output"]>;
-  name: Scalars["String"]["output"];
-  permissions: Array<Scalars["String"]["output"]>;
-  prefix?: Maybe<Scalars["String"]["output"]>;
-  start?: Maybe<Scalars["String"]["output"]>;
-  updatedAt: Scalars["DateTime"]["output"];
-};
-
-export type ApiKeyConnection = {
-  __typename?: "ApiKeyConnection";
-  /** A list of edges. */
-  edges: Array<ApiKeyEdge>;
-  /** Information to aid in pagination. */
-  pageInfo: PageInfo;
-  /** Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact. */
-  totalCount: Scalars["Int"]["output"];
-  /** Indicates whether totalCount is exact or a lower bound. */
-  totalCountRelation: TotalCountRelation;
-};
-
-/** An auto-generated type which holds one ApiKey and a cursor during pagination. */
-export type ApiKeyEdge = {
-  __typename?: "ApiKeyEdge";
-  /** A cursor for use in pagination. */
-  cursor: Scalars["String"]["output"];
-  /** The item at the end of ApiKeyEdge. */
-  node: ApiKey;
-};
-
-/** Ordering options for apikey connections */
-export type ApiKeyOrder = {
-  /** The ordering direction. */
-  direction: OrderDirection;
-  /** The field to order apikeys by. */
-  field: ApiKeyOrderField;
-};
-
-/** Properties by which apikey connections can be ordered. */
-export enum ApiKeyOrderField {
-  CREATED_AT = "CREATED_AT",
-  ID = "ID",
-  LAST_USED_AT = "LAST_USED_AT",
-}
 
 export type AuthAbilityRuleType = {
   __typename?: "AuthAbilityRuleType";
@@ -314,36 +271,49 @@ export type BanUserPayload = {
   id: Scalars["ID"]["output"];
 };
 
-export type CreateApiKeyInput = {
-  expiresAt?: InputMaybe<Scalars["DateTime"]["input"]>;
-  name: Scalars["String"]["input"];
-  permissions?: InputMaybe<Array<Scalars["String"]["input"]>>;
-  prefix?: InputMaybe<Scalars["String"]["input"]>;
-};
-
-export type CreateApiKeyResult = {
-  __typename?: "CreateApiKeyResult";
-  apiKey: Scalars["String"]["output"];
-  entity: ApiKey;
-};
-
 export type CreateInvitationInput = {
   email: Scalars["String"]["input"];
   expiresIn?: InputMaybe<Scalars["Int"]["input"]>;
-  roles: Array<Scalars["String"]["input"]>;
+  roles: Array<WorkspaceRole>;
+};
+
+export type CreateUserApiKeyInput = {
+  expiresAt?: InputMaybe<Scalars["DateTime"]["input"]>;
+  name: Scalars["String"]["input"];
+  permissions?: InputMaybe<Array<UserApiKeyPermission>>;
+  prefix?: InputMaybe<Scalars["String"]["input"]>;
+};
+
+export type CreateUserApiKeyResult = {
+  __typename?: "CreateUserApiKeyResult";
+  apiKey: Scalars["String"]["output"];
+  entity: UserApiKey;
 };
 
 export type CreateUserInput = {
   email: Scalars["String"]["input"];
   name: Scalars["String"]["input"];
   password: Scalars["String"]["input"];
-  permissions?: InputMaybe<Array<Scalars["String"]["input"]>>;
-  roles?: InputMaybe<Array<Scalars["String"]["input"]>>;
+  permissions?: InputMaybe<Array<UserPermission>>;
+  roles?: InputMaybe<Array<UserRole>>;
 };
 
 export type CreateUserPayload = {
   __typename?: "CreateUserPayload";
   id: Scalars["ID"]["output"];
+};
+
+export type CreateWorkspaceApiKeyInput = {
+  expiresAt?: InputMaybe<Scalars["DateTime"]["input"]>;
+  name: Scalars["String"]["input"];
+  permissions?: InputMaybe<Array<WorkspaceApiKeyPermission>>;
+  prefix?: InputMaybe<Scalars["String"]["input"]>;
+};
+
+export type CreateWorkspaceApiKeyResult = {
+  __typename?: "CreateWorkspaceApiKeyResult";
+  apiKey: Scalars["String"]["output"];
+  entity: WorkspaceApiKey;
 };
 
 export type CreateWorkspaceInput = {
@@ -372,7 +342,7 @@ export type Invitation = {
   expiresAt: Scalars["DateTime"]["output"];
   id: Scalars["ID"]["output"];
   inviter: User;
-  roles: Array<Scalars["String"]["output"]>;
+  roles: Array<WorkspaceRole>;
   status: InvitationStatus;
   workspace: Workspace;
 };
@@ -407,18 +377,22 @@ export type InvitationOrder = {
 };
 
 /** Properties by which invitation connections can be ordered. */
-export enum InvitationOrderField {
-  CREATED_AT = "CREATED_AT",
-  ID = "ID",
-}
+export const InvitationOrderField = {
+  CREATED_AT: "CREATED_AT",
+  ID: "ID",
+} as const;
 
-export enum InvitationStatus {
-  ACCEPTED = "ACCEPTED",
-  CANCELED = "CANCELED",
-  PENDING = "PENDING",
-  REJECTED = "REJECTED",
-}
+export type InvitationOrderField =
+  (typeof InvitationOrderField)[keyof typeof InvitationOrderField];
+export const InvitationStatus = {
+  ACCEPTED: "ACCEPTED",
+  CANCELED: "CANCELED",
+  PENDING: "PENDING",
+  REJECTED: "REJECTED",
+} as const;
 
+export type InvitationStatus =
+  (typeof InvitationStatus)[keyof typeof InvitationStatus];
 export type LeaveWorkspacePayload = {
   __typename?: "LeaveWorkspacePayload";
   memberId: Scalars["ID"]["output"];
@@ -430,8 +404,8 @@ export type Member = {
   email?: Maybe<Scalars["String"]["output"]>;
   id: Scalars["ID"]["output"];
   name: Scalars["String"]["output"];
-  permissions: Array<Scalars["String"]["output"]>;
-  roles: Array<Scalars["String"]["output"]>;
+  permissions: Array<WorkspacePermission>;
+  roles: Array<WorkspaceRole>;
   status: MemberStatus;
   updatedAt: Scalars["DateTime"]["output"];
   user?: Maybe<User>;
@@ -467,16 +441,19 @@ export type MemberOrder = {
 };
 
 /** Properties by which member connections can be ordered. */
-export enum MemberOrderField {
-  CREATED_AT = "CREATED_AT",
-  ID = "ID",
-}
+export const MemberOrderField = {
+  CREATED_AT: "CREATED_AT",
+  ID: "ID",
+} as const;
 
-export enum MemberStatus {
-  ACTIVE = "ACTIVE",
-  DISABLED = "DISABLED",
-}
+export type MemberOrderField =
+  (typeof MemberOrderField)[keyof typeof MemberOrderField];
+export const MemberStatus = {
+  ACTIVE: "ACTIVE",
+  DISABLED: "DISABLED",
+} as const;
 
+export type MemberStatus = (typeof MemberStatus)[keyof typeof MemberStatus];
 export type Mutation = {
   __typename?: "Mutation";
   acceptInvitation: AcceptInvitationPayload;
@@ -487,14 +464,14 @@ export type Mutation = {
   changeCurrentUserPassword: AuthChangePasswordResultType;
   createInvitation: Invitation;
   createUser: CreateUserPayload;
-  createUserApiKey: CreateApiKeyResult;
+  createUserApiKey: CreateUserApiKeyResult;
   createWorkspace: CreateWorkspacePayload;
-  createWorkspaceApiKey: CreateApiKeyResult;
+  createWorkspaceApiKey: CreateWorkspaceApiKeyResult;
   deleteCurrentUser: AuthDeleteUserResultType;
   deleteUser: DeleteUserPayload;
-  deleteUserApiKey: ApiKey;
+  deleteUserApiKey: UserApiKey;
   deleteWorkspace: DeleteWorkspacePayload;
-  deleteWorkspaceApiKey: ApiKey;
+  deleteWorkspaceApiKey: WorkspaceApiKey;
   impersonateUser: User;
   leaveWorkspace: LeaveWorkspacePayload;
   linkCurrentUserAccount: AuthLinkSocialAccountResultType;
@@ -524,9 +501,9 @@ export type Mutation = {
   updateCurrentUser: Scalars["Boolean"]["output"];
   updateMember?: Maybe<Member>;
   updateUser: UpdateUserPayload;
-  updateUserApiKey: ApiKey;
+  updateUserApiKey: UserApiKey;
   updateWorkspace: Workspace;
-  updateWorkspaceApiKey: ApiKey;
+  updateWorkspaceApiKey: WorkspaceApiKey;
 };
 
 export type MutationAcceptInvitationArgs = {
@@ -563,7 +540,7 @@ export type MutationCreateUserArgs = {
 };
 
 export type MutationCreateUserApiKeyArgs = {
-  input: CreateApiKeyInput;
+  input: CreateUserApiKeyInput;
 };
 
 export type MutationCreateWorkspaceArgs = {
@@ -571,7 +548,7 @@ export type MutationCreateWorkspaceArgs = {
 };
 
 export type MutationCreateWorkspaceApiKeyArgs = {
-  input: CreateApiKeyInput;
+  input: CreateWorkspaceApiKeyInput;
 };
 
 export type MutationDeleteCurrentUserArgs = {
@@ -700,7 +677,7 @@ export type MutationUpdateUserArgs = {
 
 export type MutationUpdateUserApiKeyArgs = {
   id: Scalars["ID"]["input"];
-  input: UpdateApiKeyInput;
+  input: UpdateUserApiKeyInput;
 };
 
 export type MutationUpdateWorkspaceArgs = {
@@ -710,14 +687,16 @@ export type MutationUpdateWorkspaceArgs = {
 
 export type MutationUpdateWorkspaceApiKeyArgs = {
   id: Scalars["ID"]["input"];
-  input: UpdateApiKeyInput;
+  input: UpdateWorkspaceApiKeyInput;
 };
 
-export enum OrderDirection {
-  ASC = "ASC",
-  DESC = "DESC",
-}
+export const OrderDirection = {
+  ASC: "ASC",
+  DESC: "DESC",
+} as const;
 
+export type OrderDirection =
+  (typeof OrderDirection)[keyof typeof OrderDirection];
 /** Returns information about pagination in a connection, in accordance with the [Relay specification](https://relay.dev/graphql/connections.htm#sec-undefined.PageInfo). */
 export type PageInfo = {
   __typename?: "PageInfo";
@@ -741,13 +720,13 @@ export type Query = {
   member?: Maybe<Member>;
   socialProviders: Array<AuthSocialProviderType>;
   user?: Maybe<User>;
-  userPermissions: Array<Scalars["String"]["output"]>;
-  userRoles: Array<Scalars["String"]["output"]>;
+  userPermissions: Array<UserPermission>;
+  userRoles: Array<UserRole>;
   users: UserConnection;
   workspace?: Maybe<Workspace>;
-  workspaceAssignableRoles: Array<Scalars["String"]["output"]>;
-  workspacePermissions: Array<Scalars["String"]["output"]>;
-  workspaceRoles: Array<Scalars["String"]["output"]>;
+  workspaceAssignableRoles: Array<WorkspaceRole>;
+  workspacePermissions: Array<WorkspacePermission>;
+  workspaceRoles: Array<WorkspaceRole>;
 };
 
 export type QueryInvitationArgs = {
@@ -824,17 +803,19 @@ export type SessionOrder = {
 };
 
 /** Properties by which session connections can be ordered. */
-export enum SessionOrderField {
-  CREATED_AT = "CREATED_AT",
-  ID = "ID",
-}
+export const SessionOrderField = {
+  CREATED_AT: "CREATED_AT",
+  ID: "ID",
+} as const;
 
+export type SessionOrderField =
+  (typeof SessionOrderField)[keyof typeof SessionOrderField];
 export type SetMemberPermissionsInput = {
-  permissions: Array<Scalars["String"]["input"]>;
+  permissions: Array<WorkspacePermission>;
 };
 
 export type SetMemberRolesInput = {
-  roles: Array<Scalars["String"]["input"]>;
+  roles: Array<WorkspaceRole>;
 };
 
 export type SetUserPasswordInput = {
@@ -842,7 +823,7 @@ export type SetUserPasswordInput = {
 };
 
 export type SetUserPermissionsInput = {
-  permissions: Array<Scalars["String"]["input"]>;
+  permissions: Array<UserPermission>;
 };
 
 export type SetUserPermissionsPayload = {
@@ -851,7 +832,7 @@ export type SetUserPermissionsPayload = {
 };
 
 export type SetUserRolesInput = {
-  roles: Array<Scalars["String"]["input"]>;
+  roles: Array<UserRole>;
 };
 
 export type SetUserRolesPayload = {
@@ -865,27 +846,29 @@ export type SignUpPayload = {
   token?: Maybe<Scalars["String"]["output"]>;
 };
 
-export enum TotalCountRelation {
-  EQ = "EQ",
-  GTE = "GTE",
-}
+export const TotalCountRelation = {
+  EQ: "EQ",
+  GTE: "GTE",
+} as const;
 
+export type TotalCountRelation =
+  (typeof TotalCountRelation)[keyof typeof TotalCountRelation];
 export type UnbanUserPayload = {
   __typename?: "UnbanUserPayload";
   id: Scalars["ID"]["output"];
-};
-
-export type UpdateApiKeyInput = {
-  enabled?: InputMaybe<Scalars["Boolean"]["input"]>;
-  expiresAt?: InputMaybe<Scalars["DateTime"]["input"]>;
-  name?: InputMaybe<Scalars["String"]["input"]>;
-  permissions?: InputMaybe<Array<Scalars["String"]["input"]>>;
 };
 
 export type UpdateMemberInput = {
   email?: InputMaybe<Scalars["String"]["input"]>;
   name?: InputMaybe<Scalars["String"]["input"]>;
   status?: InputMaybe<MemberStatus>;
+};
+
+export type UpdateUserApiKeyInput = {
+  enabled?: InputMaybe<Scalars["Boolean"]["input"]>;
+  expiresAt?: InputMaybe<Scalars["DateTime"]["input"]>;
+  name?: InputMaybe<Scalars["String"]["input"]>;
+  permissions?: InputMaybe<Array<UserApiKeyPermission>>;
 };
 
 export type UpdateUserInput = {
@@ -900,6 +883,13 @@ export type UpdateUserPayload = {
   id: Scalars["ID"]["output"];
 };
 
+export type UpdateWorkspaceApiKeyInput = {
+  enabled?: InputMaybe<Scalars["Boolean"]["input"]>;
+  expiresAt?: InputMaybe<Scalars["DateTime"]["input"]>;
+  name?: InputMaybe<Scalars["String"]["input"]>;
+  permissions?: InputMaybe<Array<WorkspaceApiKeyPermission>>;
+};
+
 export type UpdateWorkspaceInput = {
   name?: InputMaybe<Scalars["String"]["input"]>;
 };
@@ -907,8 +897,8 @@ export type UpdateWorkspaceInput = {
 export type User = {
   __typename?: "User";
   accounts: AccountConnection;
-  apiKey?: Maybe<ApiKey>;
-  apiKeys: ApiKeyConnection;
+  apiKey?: Maybe<UserApiKey>;
+  apiKeys: UserApiKeyConnection;
   banExpiresAt?: Maybe<Scalars["DateTime"]["output"]>;
   banReason?: Maybe<Scalars["String"]["output"]>;
   banned: Scalars["Boolean"]["output"];
@@ -919,8 +909,8 @@ export type User = {
   image?: Maybe<Scalars["String"]["output"]>;
   invitations: InvitationConnection;
   name: Scalars["String"]["output"];
-  permissions: Array<Scalars["String"]["output"]>;
-  roles: Array<Scalars["String"]["output"]>;
+  permissions: Array<UserPermission>;
+  roles: Array<UserRole>;
   sessions: SessionConnection;
   updatedAt: Scalars["DateTime"]["output"];
   workspaces: WorkspaceConnection;
@@ -943,10 +933,10 @@ export type UserApiKeyArgs = {
 export type UserApiKeysArgs = {
   after?: InputMaybe<Scalars["String"]["input"]>;
   before?: InputMaybe<Scalars["String"]["input"]>;
-  filter?: InputMaybe<Scalars["ApiKeyFilter"]["input"]>;
+  filter?: InputMaybe<Scalars["UserApiKeyFilter"]["input"]>;
   first?: InputMaybe<Scalars["Int"]["input"]>;
   last?: InputMaybe<Scalars["Int"]["input"]>;
-  orderBy?: InputMaybe<ApiKeyOrder>;
+  orderBy?: InputMaybe<UserApiKeyOrder>;
   query?: InputMaybe<Scalars["String"]["input"]>;
 };
 
@@ -980,6 +970,88 @@ export type UserWorkspacesArgs = {
   query?: InputMaybe<Scalars["String"]["input"]>;
 };
 
+export type UserApiKey = {
+  __typename?: "UserApiKey";
+  createdAt: Scalars["DateTime"]["output"];
+  enabled: Scalars["Boolean"]["output"];
+  expiresAt?: Maybe<Scalars["DateTime"]["output"]>;
+  id: Scalars["ID"]["output"];
+  lastUsedAt?: Maybe<Scalars["DateTime"]["output"]>;
+  name: Scalars["String"]["output"];
+  permissions: Array<UserApiKeyPermission>;
+  prefix?: Maybe<Scalars["String"]["output"]>;
+  start?: Maybe<Scalars["String"]["output"]>;
+  updatedAt: Scalars["DateTime"]["output"];
+};
+
+export type UserApiKeyConnection = {
+  __typename?: "UserApiKeyConnection";
+  /** A list of edges. */
+  edges: Array<UserApiKeyEdge>;
+  /** Information to aid in pagination. */
+  pageInfo: PageInfo;
+  /** Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact. */
+  totalCount: Scalars["Int"]["output"];
+  /** Indicates whether totalCount is exact or a lower bound. */
+  totalCountRelation: TotalCountRelation;
+};
+
+/** An auto-generated type which holds one UserApiKey and a cursor during pagination. */
+export type UserApiKeyEdge = {
+  __typename?: "UserApiKeyEdge";
+  /** A cursor for use in pagination. */
+  cursor: Scalars["String"]["output"];
+  /** The item at the end of UserApiKeyEdge. */
+  node: UserApiKey;
+};
+
+/** Ordering options for userapikey connections */
+export type UserApiKeyOrder = {
+  /** The ordering direction. */
+  direction: OrderDirection;
+  /** The field to order userapikeys by. */
+  field: UserApiKeyOrderField;
+};
+
+/** Properties by which userapikey connections can be ordered. */
+export const UserApiKeyOrderField = {
+  CREATED_AT: "CREATED_AT",
+  ID: "ID",
+  LAST_USED_AT: "LAST_USED_AT",
+} as const;
+
+export type UserApiKeyOrderField =
+  (typeof UserApiKeyOrderField)[keyof typeof UserApiKeyOrderField];
+export const UserApiKeyPermission = {
+  API_KEY__CREATE: "API_KEY__CREATE",
+  API_KEY__DELETE: "API_KEY__DELETE",
+  API_KEY__READ: "API_KEY__READ",
+  API_KEY__UPDATE: "API_KEY__UPDATE",
+  INVITATION__CANCEL: "INVITATION__CANCEL",
+  INVITATION__CREATE: "INVITATION__CREATE",
+  MEMBER__CREATE: "MEMBER__CREATE",
+  MEMBER__DELETE: "MEMBER__DELETE",
+  MEMBER__UPDATE: "MEMBER__UPDATE",
+  SESSION__DELETE: "SESSION__DELETE",
+  SESSION__LIST: "SESSION__LIST",
+  SESSION__REVOKE: "SESSION__REVOKE",
+  USER__BAN: "USER__BAN",
+  USER__CREATE: "USER__CREATE",
+  USER__DELETE: "USER__DELETE",
+  USER__GET: "USER__GET",
+  USER__IMPERSONATE: "USER__IMPERSONATE",
+  USER__IMPERSONATE_ADMINS: "USER__IMPERSONATE_ADMINS",
+  USER__LIST: "USER__LIST",
+  USER__SET_EMAIL: "USER__SET_EMAIL",
+  USER__SET_PASSWORD: "USER__SET_PASSWORD",
+  USER__SET_ROLE: "USER__SET_ROLE",
+  USER__UPDATE: "USER__UPDATE",
+  WORKSPACE__DELETE: "WORKSPACE__DELETE",
+  WORKSPACE__UPDATE: "WORKSPACE__UPDATE",
+} as const;
+
+export type UserApiKeyPermission =
+  (typeof UserApiKeyPermission)[keyof typeof UserApiKeyPermission];
 export type UserConnection = {
   __typename?: "UserConnection";
   /** A list of edges. */
@@ -1010,15 +1082,46 @@ export type UserOrder = {
 };
 
 /** Properties by which user connections can be ordered. */
-export enum UserOrderField {
-  CREATED_AT = "CREATED_AT",
-  ID = "ID",
-}
+export const UserOrderField = {
+  CREATED_AT: "CREATED_AT",
+  ID: "ID",
+} as const;
 
+export type UserOrderField =
+  (typeof UserOrderField)[keyof typeof UserOrderField];
+export const UserPermission = {
+  API_KEY__CREATE: "API_KEY__CREATE",
+  API_KEY__DELETE: "API_KEY__DELETE",
+  API_KEY__READ: "API_KEY__READ",
+  API_KEY__UPDATE: "API_KEY__UPDATE",
+  SESSION__DELETE: "SESSION__DELETE",
+  SESSION__LIST: "SESSION__LIST",
+  SESSION__REVOKE: "SESSION__REVOKE",
+  USER__BAN: "USER__BAN",
+  USER__CREATE: "USER__CREATE",
+  USER__DELETE: "USER__DELETE",
+  USER__GET: "USER__GET",
+  USER__IMPERSONATE: "USER__IMPERSONATE",
+  USER__IMPERSONATE_ADMINS: "USER__IMPERSONATE_ADMINS",
+  USER__LIST: "USER__LIST",
+  USER__SET_EMAIL: "USER__SET_EMAIL",
+  USER__SET_PASSWORD: "USER__SET_PASSWORD",
+  USER__SET_ROLE: "USER__SET_ROLE",
+  USER__UPDATE: "USER__UPDATE",
+} as const;
+
+export type UserPermission =
+  (typeof UserPermission)[keyof typeof UserPermission];
+export const UserRole = {
+  ADMIN: "ADMIN",
+  USER: "USER",
+} as const;
+
+export type UserRole = (typeof UserRole)[keyof typeof UserRole];
 export type Workspace = {
   __typename?: "Workspace";
-  apiKey?: Maybe<ApiKey>;
-  apiKeys: ApiKeyConnection;
+  apiKey?: Maybe<WorkspaceApiKey>;
+  apiKeys: WorkspaceApiKeyConnection;
   createdAt: Scalars["DateTime"]["output"];
   deletedAt?: Maybe<Scalars["DateTime"]["output"]>;
   id: Scalars["ID"]["output"];
@@ -1035,10 +1138,10 @@ export type WorkspaceApiKeyArgs = {
 export type WorkspaceApiKeysArgs = {
   after?: InputMaybe<Scalars["String"]["input"]>;
   before?: InputMaybe<Scalars["String"]["input"]>;
-  filter?: InputMaybe<Scalars["ApiKeyFilter"]["input"]>;
+  filter?: InputMaybe<Scalars["WorkspaceApiKeyFilter"]["input"]>;
   first?: InputMaybe<Scalars["Int"]["input"]>;
   last?: InputMaybe<Scalars["Int"]["input"]>;
-  orderBy?: InputMaybe<ApiKeyOrder>;
+  orderBy?: InputMaybe<WorkspaceApiKeyOrder>;
   query?: InputMaybe<Scalars["String"]["input"]>;
 };
 
@@ -1062,6 +1165,74 @@ export type WorkspaceMembersArgs = {
   query?: InputMaybe<Scalars["String"]["input"]>;
 };
 
+export type WorkspaceApiKey = {
+  __typename?: "WorkspaceApiKey";
+  createdAt: Scalars["DateTime"]["output"];
+  enabled: Scalars["Boolean"]["output"];
+  expiresAt?: Maybe<Scalars["DateTime"]["output"]>;
+  id: Scalars["ID"]["output"];
+  lastUsedAt?: Maybe<Scalars["DateTime"]["output"]>;
+  name: Scalars["String"]["output"];
+  permissions: Array<WorkspaceApiKeyPermission>;
+  prefix?: Maybe<Scalars["String"]["output"]>;
+  start?: Maybe<Scalars["String"]["output"]>;
+  updatedAt: Scalars["DateTime"]["output"];
+};
+
+export type WorkspaceApiKeyConnection = {
+  __typename?: "WorkspaceApiKeyConnection";
+  /** A list of edges. */
+  edges: Array<WorkspaceApiKeyEdge>;
+  /** Information to aid in pagination. */
+  pageInfo: PageInfo;
+  /** Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact. */
+  totalCount: Scalars["Int"]["output"];
+  /** Indicates whether totalCount is exact or a lower bound. */
+  totalCountRelation: TotalCountRelation;
+};
+
+/** An auto-generated type which holds one WorkspaceApiKey and a cursor during pagination. */
+export type WorkspaceApiKeyEdge = {
+  __typename?: "WorkspaceApiKeyEdge";
+  /** A cursor for use in pagination. */
+  cursor: Scalars["String"]["output"];
+  /** The item at the end of WorkspaceApiKeyEdge. */
+  node: WorkspaceApiKey;
+};
+
+/** Ordering options for workspaceapikey connections */
+export type WorkspaceApiKeyOrder = {
+  /** The ordering direction. */
+  direction: OrderDirection;
+  /** The field to order workspaceapikeys by. */
+  field: WorkspaceApiKeyOrderField;
+};
+
+/** Properties by which workspaceapikey connections can be ordered. */
+export const WorkspaceApiKeyOrderField = {
+  CREATED_AT: "CREATED_AT",
+  ID: "ID",
+  LAST_USED_AT: "LAST_USED_AT",
+} as const;
+
+export type WorkspaceApiKeyOrderField =
+  (typeof WorkspaceApiKeyOrderField)[keyof typeof WorkspaceApiKeyOrderField];
+export const WorkspaceApiKeyPermission = {
+  API_KEY__CREATE: "API_KEY__CREATE",
+  API_KEY__DELETE: "API_KEY__DELETE",
+  API_KEY__READ: "API_KEY__READ",
+  API_KEY__UPDATE: "API_KEY__UPDATE",
+  INVITATION__CANCEL: "INVITATION__CANCEL",
+  INVITATION__CREATE: "INVITATION__CREATE",
+  MEMBER__CREATE: "MEMBER__CREATE",
+  MEMBER__DELETE: "MEMBER__DELETE",
+  MEMBER__UPDATE: "MEMBER__UPDATE",
+  WORKSPACE__DELETE: "WORKSPACE__DELETE",
+  WORKSPACE__UPDATE: "WORKSPACE__UPDATE",
+} as const;
+
+export type WorkspaceApiKeyPermission =
+  (typeof WorkspaceApiKeyPermission)[keyof typeof WorkspaceApiKeyPermission];
 export type WorkspaceConnection = {
   __typename?: "WorkspaceConnection";
   /** A list of edges. */
@@ -1092,11 +1263,36 @@ export type WorkspaceOrder = {
 };
 
 /** Properties by which workspace connections can be ordered. */
-export enum WorkspaceOrderField {
-  CREATED_AT = "CREATED_AT",
-  ID = "ID",
-}
+export const WorkspaceOrderField = {
+  CREATED_AT: "CREATED_AT",
+  ID: "ID",
+} as const;
 
+export type WorkspaceOrderField =
+  (typeof WorkspaceOrderField)[keyof typeof WorkspaceOrderField];
+export const WorkspacePermission = {
+  API_KEY__CREATE: "API_KEY__CREATE",
+  API_KEY__DELETE: "API_KEY__DELETE",
+  API_KEY__READ: "API_KEY__READ",
+  API_KEY__UPDATE: "API_KEY__UPDATE",
+  INVITATION__CANCEL: "INVITATION__CANCEL",
+  INVITATION__CREATE: "INVITATION__CREATE",
+  MEMBER__CREATE: "MEMBER__CREATE",
+  MEMBER__DELETE: "MEMBER__DELETE",
+  MEMBER__UPDATE: "MEMBER__UPDATE",
+  WORKSPACE__DELETE: "WORKSPACE__DELETE",
+  WORKSPACE__UPDATE: "WORKSPACE__UPDATE",
+} as const;
+
+export type WorkspacePermission =
+  (typeof WorkspacePermission)[keyof typeof WorkspacePermission];
+export const WorkspaceRole = {
+  ADMIN: "ADMIN",
+  MEMBER: "MEMBER",
+  OWNER: "OWNER",
+} as const;
+
+export type WorkspaceRole = (typeof WorkspaceRole)[keyof typeof WorkspaceRole];
 export type GetAdminAccessFromAdminLayoutQueryVariables = Exact<{
   [key: string]: never;
 }>;
@@ -1123,8 +1319,8 @@ export type GetUserFromUserRouteQueryVariables = Exact<{
 
 export type GetUserFromUserRouteQuery = {
   __typename?: "Query";
-  userRoles?: Array<string>;
-  userPermissions?: Array<string>;
+  userRoles?: Array<UserRole>;
+  userPermissions?: Array<UserPermission>;
   user?: {
     __typename?: "User";
     id: string;
@@ -1132,8 +1328,8 @@ export type GetUserFromUserRouteQuery = {
     email: string;
     emailVerified: boolean;
     image?: string | null;
-    roles: Array<string>;
-    permissions: Array<string>;
+    roles: Array<UserRole>;
+    permissions: Array<UserPermission>;
     banned: boolean;
     banReason?: string | null;
     banExpiresAt?: any | null;
@@ -1321,7 +1517,7 @@ export type GetCurrentUserFromCurrentUserContextQuery = {
     id: string;
     name: string;
     email: string;
-    permissions: Array<string>;
+    permissions: Array<UserPermission>;
   };
   currentUserAbilityRules: Array<{
     __typename?: "AuthAbilityRuleType";
@@ -1378,8 +1574,8 @@ export type GetUserApiKeysFromUserApiKeysRouteQueryVariables = Exact<{
   before?: InputMaybe<Scalars["String"]["input"]>;
   first?: InputMaybe<Scalars["Int"]["input"]>;
   last?: InputMaybe<Scalars["Int"]["input"]>;
-  filter?: InputMaybe<Scalars["ApiKeyFilter"]["input"]>;
-  orderBy?: InputMaybe<ApiKeyOrder>;
+  filter?: InputMaybe<Scalars["UserApiKeyFilter"]["input"]>;
+  orderBy?: InputMaybe<UserApiKeyOrder>;
   query?: InputMaybe<Scalars["String"]["input"]>;
 }>;
 
@@ -1388,17 +1584,17 @@ export type GetUserApiKeysFromUserApiKeysRouteQuery = {
   currentUser: {
     __typename?: "User";
     apiKeys: {
-      __typename?: "ApiKeyConnection";
+      __typename?: "UserApiKeyConnection";
       edges: Array<{
-        __typename?: "ApiKeyEdge";
+        __typename?: "UserApiKeyEdge";
         node: {
-          __typename?: "ApiKey";
+          __typename?: "UserApiKey";
           id: string;
           name: string;
           start?: string | null;
           prefix?: string | null;
           enabled: boolean;
-          permissions: Array<string>;
+          permissions: Array<UserApiKeyPermission>;
           createdAt: any;
           lastUsedAt?: any | null;
           expiresAt?: any | null;
@@ -1416,22 +1612,22 @@ export type GetUserApiKeysFromUserApiKeysRouteQuery = {
 };
 
 export type CreateUserApiKeyFromUserApiKeysRouteMutationVariables = Exact<{
-  input: CreateApiKeyInput;
+  input: CreateUserApiKeyInput;
 }>;
 
 export type CreateUserApiKeyFromUserApiKeysRouteMutation = {
   __typename?: "Mutation";
   createUserApiKey: {
-    __typename?: "CreateApiKeyResult";
+    __typename?: "CreateUserApiKeyResult";
     apiKey: string;
     entity: {
-      __typename?: "ApiKey";
+      __typename?: "UserApiKey";
       id: string;
       name: string;
       start?: string | null;
       prefix?: string | null;
       enabled: boolean;
-      permissions: Array<string>;
+      permissions: Array<UserApiKeyPermission>;
       createdAt: any;
       lastUsedAt?: any | null;
       expiresAt?: any | null;
@@ -1441,19 +1637,19 @@ export type CreateUserApiKeyFromUserApiKeysRouteMutation = {
 
 export type UpdateUserApiKeyFromUserApiKeysRouteMutationVariables = Exact<{
   id: Scalars["ID"]["input"];
-  input: UpdateApiKeyInput;
+  input: UpdateUserApiKeyInput;
 }>;
 
 export type UpdateUserApiKeyFromUserApiKeysRouteMutation = {
   __typename?: "Mutation";
   updateUserApiKey: {
-    __typename?: "ApiKey";
+    __typename?: "UserApiKey";
     id: string;
     name: string;
     start?: string | null;
     prefix?: string | null;
     enabled: boolean;
-    permissions: Array<string>;
+    permissions: Array<UserApiKeyPermission>;
     createdAt: any;
     lastUsedAt?: any | null;
     expiresAt?: any | null;
@@ -1467,13 +1663,13 @@ export type DeleteUserApiKeyFromUserApiKeysRouteMutationVariables = Exact<{
 export type DeleteUserApiKeyFromUserApiKeysRouteMutation = {
   __typename?: "Mutation";
   deleteUserApiKey: {
-    __typename?: "ApiKey";
+    __typename?: "UserApiKey";
     id: string;
     name: string;
     start?: string | null;
     prefix?: string | null;
     enabled: boolean;
-    permissions: Array<string>;
+    permissions: Array<UserApiKeyPermission>;
     createdAt: any;
     lastUsedAt?: any | null;
     expiresAt?: any | null;
@@ -1699,7 +1895,7 @@ export type GetWorkspacesFromUserWorkspacesRouteQuery = {
         node: {
           __typename?: "Invitation";
           id: string;
-          roles: Array<string>;
+          roles: Array<WorkspaceRole>;
           expiresAt: any;
           workspace: { __typename?: "Workspace"; id: string; name: string };
         };
@@ -1742,8 +1938,8 @@ export type GetApiKeysFromApiKeysRouteQueryVariables = Exact<{
   before?: InputMaybe<Scalars["String"]["input"]>;
   first?: InputMaybe<Scalars["Int"]["input"]>;
   last?: InputMaybe<Scalars["Int"]["input"]>;
-  filter?: InputMaybe<Scalars["ApiKeyFilter"]["input"]>;
-  orderBy?: InputMaybe<ApiKeyOrder>;
+  filter?: InputMaybe<Scalars["WorkspaceApiKeyFilter"]["input"]>;
+  orderBy?: InputMaybe<WorkspaceApiKeyOrder>;
   query?: InputMaybe<Scalars["String"]["input"]>;
 }>;
 
@@ -1752,17 +1948,17 @@ export type GetApiKeysFromApiKeysRouteQuery = {
   currentWorkspace?: {
     __typename?: "Workspace";
     apiKeys: {
-      __typename?: "ApiKeyConnection";
+      __typename?: "WorkspaceApiKeyConnection";
       edges: Array<{
-        __typename?: "ApiKeyEdge";
+        __typename?: "WorkspaceApiKeyEdge";
         node: {
-          __typename?: "ApiKey";
+          __typename?: "WorkspaceApiKey";
           id: string;
           name: string;
           start?: string | null;
           prefix?: string | null;
           enabled: boolean;
-          permissions: Array<string>;
+          permissions: Array<WorkspaceApiKeyPermission>;
           createdAt: any;
           lastUsedAt?: any | null;
           expiresAt?: any | null;
@@ -1780,22 +1976,22 @@ export type GetApiKeysFromApiKeysRouteQuery = {
 };
 
 export type CreateWorkspaceApiKeyFromApiKeysRouteMutationVariables = Exact<{
-  input: CreateApiKeyInput;
+  input: CreateWorkspaceApiKeyInput;
 }>;
 
 export type CreateWorkspaceApiKeyFromApiKeysRouteMutation = {
   __typename?: "Mutation";
   createWorkspaceApiKey: {
-    __typename?: "CreateApiKeyResult";
+    __typename?: "CreateWorkspaceApiKeyResult";
     apiKey: string;
     entity: {
-      __typename?: "ApiKey";
+      __typename?: "WorkspaceApiKey";
       id: string;
       name: string;
       start?: string | null;
       prefix?: string | null;
       enabled: boolean;
-      permissions: Array<string>;
+      permissions: Array<WorkspaceApiKeyPermission>;
       createdAt: any;
       lastUsedAt?: any | null;
       expiresAt?: any | null;
@@ -1805,19 +2001,19 @@ export type CreateWorkspaceApiKeyFromApiKeysRouteMutation = {
 
 export type UpdateWorkspaceApiKeyFromApiKeysRouteMutationVariables = Exact<{
   id: Scalars["ID"]["input"];
-  input: UpdateApiKeyInput;
+  input: UpdateWorkspaceApiKeyInput;
 }>;
 
 export type UpdateWorkspaceApiKeyFromApiKeysRouteMutation = {
   __typename?: "Mutation";
   updateWorkspaceApiKey: {
-    __typename?: "ApiKey";
+    __typename?: "WorkspaceApiKey";
     id: string;
     name: string;
     start?: string | null;
     prefix?: string | null;
     enabled: boolean;
-    permissions: Array<string>;
+    permissions: Array<WorkspaceApiKeyPermission>;
     createdAt: any;
     lastUsedAt?: any | null;
     expiresAt?: any | null;
@@ -1831,13 +2027,13 @@ export type DeleteWorkspaceApiKeyFromApiKeysRouteMutationVariables = Exact<{
 export type DeleteWorkspaceApiKeyFromApiKeysRouteMutation = {
   __typename?: "Mutation";
   deleteWorkspaceApiKey: {
-    __typename?: "ApiKey";
+    __typename?: "WorkspaceApiKey";
     id: string;
     name: string;
     start?: string | null;
     prefix?: string | null;
     enabled: boolean;
-    permissions: Array<string>;
+    permissions: Array<WorkspaceApiKeyPermission>;
     createdAt: any;
     lastUsedAt?: any | null;
     expiresAt?: any | null;
@@ -1883,8 +2079,8 @@ export type GetCurrentMemberFromMemberContextQuery = {
   currentMember?: {
     __typename?: "Member";
     id: string;
-    roles: Array<string>;
-    permissions: Array<string>;
+    roles: Array<WorkspaceRole>;
+    permissions: Array<WorkspacePermission>;
     status: MemberStatus;
     name: string;
     email?: string | null;
@@ -1925,7 +2121,7 @@ export type GetCurrentWorkspaceFromWorkspaceLayoutQuery = {
   currentMember?: {
     __typename?: "Member";
     id: string;
-    roles: Array<string>;
+    roles: Array<WorkspaceRole>;
   } | null;
   currentWorkspaceAbilityRules: Array<{
     __typename?: "AuthAbilityRuleType";
@@ -1947,8 +2143,8 @@ export type GetCurrentMemberFromMemberRouteQuery = {
   currentMember?: {
     __typename?: "Member";
     id: string;
-    roles: Array<string>;
-    permissions: Array<string>;
+    roles: Array<WorkspaceRole>;
+    permissions: Array<WorkspacePermission>;
   } | null;
 };
 
@@ -1958,14 +2154,14 @@ export type GetMemberFromMemberRouteQueryVariables = Exact<{
 
 export type GetMemberFromMemberRouteQuery = {
   __typename?: "Query";
-  workspaceRoles: Array<string>;
-  workspaceAssignableRoles: Array<string>;
-  workspacePermissions: Array<string>;
+  workspaceRoles: Array<WorkspaceRole>;
+  workspaceAssignableRoles: Array<WorkspaceRole>;
+  workspacePermissions: Array<WorkspacePermission>;
   member?: {
     __typename?: "Member";
     id: string;
-    roles: Array<string>;
-    permissions: Array<string>;
+    roles: Array<WorkspaceRole>;
+    permissions: Array<WorkspacePermission>;
     status: MemberStatus;
     name: string;
     email?: string | null;
@@ -1994,7 +2190,11 @@ export type SetMemberRolesFromMemberRouteMutationVariables = Exact<{
 
 export type SetMemberRolesFromMemberRouteMutation = {
   __typename?: "Mutation";
-  setMemberRoles: { __typename?: "Member"; id: string; roles: Array<string> };
+  setMemberRoles: {
+    __typename?: "Member";
+    id: string;
+    roles: Array<WorkspaceRole>;
+  };
 };
 
 export type SetMemberPermissionsFromMemberRouteMutationVariables = Exact<{
@@ -2007,7 +2207,7 @@ export type SetMemberPermissionsFromMemberRouteMutation = {
   setMemberPermissions: {
     __typename?: "Member";
     id: string;
-    permissions: Array<string>;
+    permissions: Array<WorkspacePermission>;
   };
 };
 
@@ -2026,7 +2226,7 @@ export type GetAssignableRolesFromInviteMemberDialogQueryVariables = Exact<{
 
 export type GetAssignableRolesFromInviteMemberDialogQuery = {
   __typename?: "Query";
-  workspaceAssignableRoles: Array<string>;
+  workspaceAssignableRoles: Array<WorkspaceRole>;
 };
 
 export type CreateInvitationFromInviteMemberDialogMutationVariables = Exact<{
@@ -2064,7 +2264,7 @@ export type GetMembersFromMembersRouteQuery = {
         node: {
           __typename?: "Member";
           id: string;
-          roles: Array<string>;
+          roles: Array<WorkspaceRole>;
           status: MemberStatus;
           createdAt: any;
           name: string;
@@ -2087,7 +2287,7 @@ export type GetMembersFromMembersRouteQuery = {
           __typename?: "Invitation";
           id: string;
           email: string;
-          roles: Array<string>;
+          roles: Array<WorkspaceRole>;
           status: InvitationStatus;
           expiresAt: any;
         };
@@ -2308,7 +2508,7 @@ export type GetInvitationFromInviteRouteQuery = {
     __typename?: "Invitation";
     id: string;
     email: string;
-    roles: Array<string>;
+    roles: Array<WorkspaceRole>;
     status: InvitationStatus;
     expiresAt: any;
     workspace: { __typename?: "Workspace"; id: string; name: string };
@@ -3674,7 +3874,7 @@ export const GetUserApiKeysFromUserApiKeysRouteDocument = {
           },
           type: {
             kind: "NamedType",
-            name: { kind: "Name", value: "ApiKeyFilter" },
+            name: { kind: "Name", value: "UserApiKeyFilter" },
           },
         },
         {
@@ -3685,7 +3885,7 @@ export const GetUserApiKeysFromUserApiKeysRouteDocument = {
           },
           type: {
             kind: "NamedType",
-            name: { kind: "Name", value: "ApiKeyOrder" },
+            name: { kind: "Name", value: "UserApiKeyOrder" },
           },
         },
         {
@@ -3884,7 +4084,7 @@ export const CreateUserApiKeyFromUserApiKeysRouteDocument = {
             kind: "NonNullType",
             type: {
               kind: "NamedType",
-              name: { kind: "Name", value: "CreateApiKeyInput" },
+              name: { kind: "Name", value: "CreateUserApiKeyInput" },
             },
           },
         },
@@ -3982,7 +4182,7 @@ export const UpdateUserApiKeyFromUserApiKeysRouteDocument = {
             kind: "NonNullType",
             type: {
               kind: "NamedType",
-              name: { kind: "Name", value: "UpdateApiKeyInput" },
+              name: { kind: "Name", value: "UpdateUserApiKeyInput" },
             },
           },
         },
@@ -5293,7 +5493,7 @@ export const GetApiKeysFromApiKeysRouteDocument = {
           },
           type: {
             kind: "NamedType",
-            name: { kind: "Name", value: "ApiKeyFilter" },
+            name: { kind: "Name", value: "WorkspaceApiKeyFilter" },
           },
         },
         {
@@ -5304,7 +5504,7 @@ export const GetApiKeysFromApiKeysRouteDocument = {
           },
           type: {
             kind: "NamedType",
-            name: { kind: "Name", value: "ApiKeyOrder" },
+            name: { kind: "Name", value: "WorkspaceApiKeyOrder" },
           },
         },
         {
@@ -5503,7 +5703,7 @@ export const CreateWorkspaceApiKeyFromApiKeysRouteDocument = {
             kind: "NonNullType",
             type: {
               kind: "NamedType",
-              name: { kind: "Name", value: "CreateApiKeyInput" },
+              name: { kind: "Name", value: "CreateWorkspaceApiKeyInput" },
             },
           },
         },
@@ -5601,7 +5801,7 @@ export const UpdateWorkspaceApiKeyFromApiKeysRouteDocument = {
             kind: "NonNullType",
             type: {
               kind: "NamedType",
-              name: { kind: "Name", value: "UpdateApiKeyInput" },
+              name: { kind: "Name", value: "UpdateWorkspaceApiKeyInput" },
             },
           },
         },

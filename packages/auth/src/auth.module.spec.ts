@@ -54,7 +54,6 @@ import { AuthHandlerMiddleware } from "./auth-handler.middleware.js";
 import { User as BaseUser } from "./entities/user.entity.js";
 import { Workspace as BaseWorkspace } from "./entities/workspace.entity.js";
 import { AccessControlService } from "./services/access-control.service.js";
-import { ApiKeyService } from "./services/api-key.service.js";
 import { AuthService } from "./services/auth.service.js";
 import { InvitationService } from "./services/invitation.service.js";
 import { MemberService } from "./services/member.service.js";
@@ -62,9 +61,11 @@ import { SessionService } from "./services/session.service.js";
 import { UserService } from "./services/user.service.js";
 import { UserDeletionService } from "./services/user-deletion.service.js";
 import { WorkspaceService } from "./services/workspace.service.js";
+import { WorkspaceApiKeyService } from "./services/workspace-api-key.service.js";
 
 class Account {}
-class ApiKey {}
+class UserApiKey {}
+class WorkspaceApiKey {}
 class Session {}
 class User {}
 class Verification {}
@@ -74,7 +75,8 @@ class Member {}
 
 const entities = {
   account: Account,
-  apiKey: ApiKey,
+  userApiKey: UserApiKey,
+  workspaceApiKey: WorkspaceApiKey,
   session: Session,
   user: User,
   verification: Verification,
@@ -231,9 +233,7 @@ describe("AuthModule", () => {
       expect.objectContaining({ provide: UserService }),
     );
     expect(providers).toContain(UserDeletionService);
-    expect(providers).toContainEqual(
-      expect.objectContaining({ provide: ApiKeyService }),
-    );
+    expect(providers).toContain(WorkspaceApiKeyService);
     expect(providers).toContain(AuthService);
     expect(providers).toContain(AccessControlService);
     expect(providers).toContainEqual(
@@ -250,7 +250,7 @@ describe("AuthModule", () => {
     );
     expect(exports).toContain(MODULE_OPTIONS_TOKEN);
     expect(exports).toContain(UserService);
-    expect(exports).toContain(ApiKeyService);
+    expect(exports).toContain(WorkspaceApiKeyService);
     expect(exports).toContain(AuthGuard);
     expect(exports).toContain(AuthService);
     expect(exports).toContain(AccessControlService);
@@ -376,17 +376,39 @@ describe("AuthModule", () => {
     ]);
   });
 
+  it("preserves hyphenated lifecycle roles in the auth adapter configuration", () => {
+    const authProvider = getAuthProvider();
+    authProvider.useFactory(
+      {
+        secret,
+        user: {
+          roles: { "super-admin": ["user:get"] },
+          defaultRole: "super-admin",
+          adminRoles: ["super-admin"],
+        },
+      },
+      { em: {} } as unknown as MikroORM,
+    );
+    expect(mockBetterAuth).toHaveBeenCalledWith(
+      expect.objectContaining({
+        database: expect.objectContaining({
+          options: expect.objectContaining({ defaultUserRole: "super-admin" }),
+        }),
+      }),
+    );
+  });
+
   it.each([
     { apiKey: {} },
     {
       apiKey: {
-        allowedPermissions: ["User:READ", "Workspace:UPDATE"],
-        defaultPermissions: ["Workspace:UPDATE"],
+        allowedPermissions: ["user:read", "workspace:update"],
+        defaultPermissions: ["workspace:update"],
       },
     },
     { apiKey: { allowedPermissions: ["user:read"] } },
   ])(
-    "accepts case-sensitive permission catalogs with API-key options $apiKey",
+    "accepts lowercase permission catalogs with API-key options $apiKey",
     ({ apiKey }) => {
       const authProvider = getAuthProvider();
       expect(() =>
@@ -395,12 +417,12 @@ describe("AuthModule", () => {
             entities,
             secret,
             user: {
-              permissions: ["User:READ", "user:read", "EXPORT"],
-              roles: { user: [], admin: ["User:READ"] },
+              permissions: ["user:read", "report:export"],
+              roles: { user: [], admin: ["user:read"] },
             },
             workspace: {
-              permissions: ["Workspace:UPDATE", "workspace:update"],
-              roles: { owner: ["Workspace:UPDATE"], member: [] },
+              permissions: ["workspace:update"],
+              roles: { owner: ["workspace:update"], member: [] },
             },
             apiKey,
           },

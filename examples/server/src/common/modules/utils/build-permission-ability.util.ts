@@ -1,12 +1,13 @@
 import type { AbilityBuilder } from '@casl/ability';
 import { UserAbility, WorkspaceAbility } from '@nest-boot/auth';
 import {
-  ApiKey,
   Invitation,
   Member,
   Session,
   User,
+  UserApiKey,
   Workspace,
+  WorkspaceApiKey,
 } from '@nest-boot/auth';
 
 /** Builds permissions that belong to an authenticated user. */
@@ -22,7 +23,7 @@ export function buildUserPermissionAbility(
   can(['read', 'update'], Member);
 
   const subjects = {
-    'api-key': ApiKey,
+    'api-key': UserApiKey,
     session: Session,
     user: User,
   } as const;
@@ -51,7 +52,7 @@ export function buildWorkspacePermissionAbility(
   can('read', Member);
 
   const subjects = {
-    'api-key': ApiKey,
+    'api-key': WorkspaceApiKey,
     workspace: Workspace,
     invitation: Invitation,
     member: Member,

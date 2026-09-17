@@ -7,13 +7,16 @@ import { UserAbility } from "../abilities/user.ability.js";
 import { WorkspaceAbility } from "../abilities/workspace.ability.js";
 import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
-import { ApiKey } from "../entities/api-key.entity.js";
 import { Member } from "../entities/member.entity.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
+import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
+import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
+import type { ApiKey } from "../types/api-key.type.js";
 import { DEFAULT_USER_ROLE, DEFAULT_USER_ROLES } from "../user.constants.js";
 import { resolveAuthPermissions } from "../utils/auth-role.util.js";
+import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
 import {
   DEFAULT_WORKSPACE_ROLE,
   DEFAULT_WORKSPACE_ROLES,
@@ -33,7 +36,7 @@ export class AccessControlService {
     if (!RequestContext.isActive()) return false;
 
     const user = RequestContext.get(User);
-    const apiKey = RequestContext.get(ApiKey);
+    const apiKey = getCurrentApiKey();
     if (!user || (apiKey && this.isWorkspaceApiKey(apiKey))) return false;
 
     const ability = RequestContext.get(UserAbility);
@@ -54,7 +57,7 @@ export class AccessControlService {
   workspaceCan(action: string, subject: Subject): boolean {
     if (!RequestContext.isActive()) return false;
 
-    const apiKey = RequestContext.get(ApiKey);
+    const apiKey = getCurrentApiKey();
     const workspaceApiKey = apiKey && this.isWorkspaceApiKey(apiKey);
     const member = RequestContext.get(Member);
     if (!workspaceApiKey && !member) return false;
@@ -131,9 +134,7 @@ export class AccessControlService {
   /** Throws when a user grant exceeds the current principal's permissions. */
   assertCanGrantUserPermissions(requestedPermissions: readonly string[]): void {
     const user = RequestContext.isActive() ? RequestContext.get(User) : null;
-    const apiKey = RequestContext.isActive()
-      ? RequestContext.get(ApiKey)
-      : null;
+    const apiKey = RequestContext.isActive() ? getCurrentApiKey() : null;
     let permissions =
       user && !(apiKey && this.isWorkspaceApiKey(apiKey))
         ? resolveAuthPermissions(
@@ -181,9 +182,7 @@ export class AccessControlService {
   }
 
   private getWorkspaceGrantPermissions(): readonly string[] {
-    const apiKey = RequestContext.isActive()
-      ? RequestContext.get(ApiKey)
-      : undefined;
+    const apiKey = RequestContext.isActive() ? getCurrentApiKey() : undefined;
     const member = RequestContext.isActive()
       ? RequestContext.get(Member)
       : undefined;
@@ -216,9 +215,7 @@ export class AccessControlService {
 
   /** Rejects access to or delegation of credentials broader than the authenticating API key. */
   assertApiKeyPermissionCeiling(permissions: readonly string[]): void {
-    const apiKey = RequestContext.isActive()
-      ? RequestContext.get(ApiKey)
-      : null;
+    const apiKey = RequestContext.isActive() ? getCurrentApiKey() : null;
     if (!apiKey) return;
     const allowed = new Set(apiKey.permissions ?? []);
     const excessive = permissions.filter(
@@ -233,9 +230,10 @@ export class AccessControlService {
 
   /** Checks API-key ownership independently of the application's database policies. */
   assertApiKeyOwner(apiKey: ApiKey): void {
-    const ownerReference = apiKey.user ?? apiKey.workspace;
-    if (!ownerReference || (apiKey.user && apiKey.workspace)) {
-      throw new ForbiddenException("Exactly one API key owner is required");
+    const ownerReference =
+      apiKey instanceof UserApiKey ? apiKey.user : apiKey.workspace;
+    if (!ownerReference) {
+      throw new ForbiddenException("API key owner is missing");
     }
     const owner = Reference.unwrapReference<User | Workspace>(ownerReference);
     if (owner instanceof User) {
@@ -246,10 +244,8 @@ export class AccessControlService {
       throw new ForbiddenException("Unknown API key owner");
     }
     this.assertCurrentWorkspace(owner);
-    const currentKey = RequestContext.isActive()
-      ? RequestContext.get(ApiKey)
-      : null;
-    if (currentKey && this.isWorkspaceApiKey(currentKey)) {
+    const currentKey = RequestContext.isActive() ? getCurrentApiKey() : null;
+    if (currentKey instanceof WorkspaceApiKey) {
       if (String(currentKey.workspace?.id) !== String(owner.id)) {
         throw new ForbiddenException("API key belongs to another workspace");
       }
@@ -267,6 +263,6 @@ export class AccessControlService {
   }
 
   private isWorkspaceApiKey(apiKey: ApiKey): boolean {
-    return !!apiKey.workspace && !apiKey.user;
+    return apiKey instanceof WorkspaceApiKey;
   }
 }

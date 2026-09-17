@@ -32,7 +32,7 @@ contexts are preserved.
 ## Built-in entities
 
 Auth owns the concrete `User`, `Account`, `Session`, `Verification`,
-`Workspace`, `Member`, `Invitation`, and `ApiKey` entities, their GraphQL
+`Workspace`, `Member`, `Invitation`, `UserApiKey` and `WorkspaceApiKey` entities, their GraphQL
 metadata, relations, RLS policies, and connections. There are no public auth
 `Base*` classes or `AuthModuleOptions.entities` overrides.
 
@@ -66,7 +66,7 @@ Service methods use explicit domain names without deprecated aliases:
 - `UserService.setUserRoles` replaces roles, while `setUserPermissions` replaces
   direct grants. `getEffectiveUserPermissions` and
   `MemberService.getEffectiveMemberPermissions` include role-derived grants.
-- `ApiKeyService` uses `createUserApiKey`, `updateUserApiKey`, `deleteUserApiKey`
+- `UserApiKeyService` and `WorkspaceApiKeyService` uses `createUserApiKey`, `updateUserApiKey`, `deleteUserApiKey`
   and their workspace counterparts, matching its existing lookup names.
 - `MemberService.getMemberByUser(workspace, user)` finds only active
   memberships; `getMember(id)` reads a member in the request's selected workspace.
@@ -96,7 +96,7 @@ pagination behavior are unchanged.
 
 Use `WorkspaceService.getWorkspaceConnectionByUser(user, args)` and
 `MemberService.getMemberConnectionByWorkspace(workspace, args)` for workspace/member connections, and
-`ApiKeyService.getApiKeyConnectionByUser(user, args)` / `getApiKeyConnectionByWorkspace(workspace, args)`
+`UserApiKeyService.getUserApiKeyConnection(user, args)` / `WorkspaceApiKeyService.getWorkspaceApiKeyConnection(workspace, args)`
 for API-key connections. Services own authorization, query scopes and
 `ConnectionManager` execution. User, session, workspace, member, API-key and
 invitation connection reads retain the request's native RLS scope. API-key ownership and credential permission ceilings still apply.
@@ -171,7 +171,7 @@ GraphQL transport in `AuthModule` exposes them as
       authenticating API key from delegating permissions it does not have.
 - [x] Enforce user and workspace abilities inside authorization-sensitive
       `UserService`, `WorkspaceService`, `MemberService`,
-      `InvitationService`, and `ApiKeyService` operations, so
+      `InvitationService`, and `UserApiKeyService` and `WorkspaceApiKeyService` operations, so
       direct service injection cannot bypass Resolver or Controller metadata.
       Authentication middleware primitives remain internal identity-resolution
       paths rather than privileged business operations.
@@ -305,12 +305,11 @@ are distinct permissions and may both be configured. The built-in catalogs and
 example still use `user:update`, `workspace:delete` and `api-key:read`.
 Custom ability builders and RLS policies must match the configured spelling
 explicitly; permission names do not automatically resolve to CASL subjects or
-GraphQL entity names such as `User`, `Workspace` and `ApiKey`.
+GraphQL entity names such as `User`, `Workspace`, `UserApiKey` and `WorkspaceApiKey`.
 
 Scoped user deletion authorizes the root DELETE with Service checks and RLS;
 auth dependants are cleaned up atomically by database foreign-key cascades.
-API keys have nullable `user` and `workspace` foreign keys with a database CHECK
-requiring exactly one owner. Accounts, sessions (including impersonation sessions),
+`UserApiKey` and `WorkspaceApiKey` have separate tables and required `user` or `workspace` foreign keys, respectively. Accounts, sessions (including impersonation sessions),
 personal keys, memberships and sent invitations cascade from the deleted user.
 Workspaces and workspace-owned keys survive, even if no owner remains.
 Generate and apply these constraints; child deletes can be silently filtered by RLS.
@@ -399,7 +398,7 @@ field resolvers may target these classes without replacing built-in fields.
 
 ## Native query migration
 
-- Single-key queries move from root `userApiKey(id)` to `User.apiKey(id)` and from root `apiKey(id)` to `Workspace.apiKey(id)`. Both use `@ResolveField(() => ApiKey, { nullable: true })` and pass their parent to `ApiKeyService`; mutation authorization is unchanged (see the operation naming migration below). Query through `currentUser { apiKey(id: ...) { id } }` or `currentWorkspace { apiKey(id: ...) { id } }`. Service authorization, ownership filters, permission ceilings and request RLS remain in effect.
+- Single-key queries move from root `userApiKey(id)` to `User.apiKey(id)` and from root `apiKey(id)` to `Workspace.apiKey(id)`. They resolve `UserApiKey` and `WorkspaceApiKey`, respectively, with nullable field results and pass their parent to `UserApiKeyService` and `WorkspaceApiKeyService`; mutation authorization is unchanged (see the operation naming migration below). Query through `currentUser { apiKey(id: ...) { id } }` or `currentWorkspace { apiKey(id: ...) { id } }`. Service authorization, ownership filters, permission ceilings and request RLS remain in effect.
 - `users` uses `UserConnectionArgs` / `UserConnection` (first/after or last/before, query/filter/orderBy). `ListUsersInput` and `UserListType` are removed.
 - `User.accounts` now returns `AccountConnection!` through `AccountService.getAccountConnectionByUser(user, args)`: use `currentUser { accounts(first: 20) { edges { node { id providerId scopes } } pageInfo { hasNextPage endCursor } } }`. The array shape and `UserService.listUserAccounts` are removed. Account inspection requires the owning browser session; API keys are rejected and credentials are excluded.
 - Registration/sign-in payloads reference the built-in `User`, not `AuthUserType`. The entity-oriented AuthService methods establish the newly issued session and refresh RLS and abilities before resolving nested fields. Registration without a session does not authenticate the request; protected nested fields still require authentication.
@@ -524,11 +523,11 @@ This is a breaking schema change; no deprecated aliases are retained:
 | `currentAuthSession` | `currentSession`        |
 | `removeWorkspace`    | `deleteWorkspace`       |
 
-Shared
-`CreateApiKeyInput`, `UpdateApiKeyInput` and `CreateApiKeyResult` names remain
-unchanged because they also serve user-owned keys. Update operation documents,
-response-field access and generated client types together.
-No database migration is required for these naming changes.
+API-key entities, services, resolvers, connections, inputs, and creation results are split into `UserApiKey` and `WorkspaceApiKey` variants. Use `CreateUserApiKeyInput`, `UpdateUserApiKeyInput`, `CreateUserApiKeyResult`, and their `Workspace` counterparts. Permissions use separate `UserApiKeyPermission` and `WorkspaceApiKeyPermission` GraphQL enums; stored values stay unchanged.
+
+Update operation documents, ability subject mappings, and generated client types together. The example preserves `Migration00000000000000_Initial` and regenerates the entity baseline with two tables. Recreate development databases before applying this baseline; existing databases require a separate data-preserving upgrade migration.
+
+Authentication and successful-use tracking are internal infrastructure responsibilities. Credential lookup checks both tables and rejects ambiguous matches. `@CurrentApiKey()` returns the `ApiKey` union type, not an ORM entity class.
 
 ## Removed collection APIs
 

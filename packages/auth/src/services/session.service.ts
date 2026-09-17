@@ -17,10 +17,10 @@ import type { BetterAuthCookies } from "better-auth/types";
 
 import { AUTH_TOKEN } from "../auth.constants.js";
 import { SessionConnection } from "../connections/session.connection-definition.js";
-import { ApiKey } from "../entities/api-key.entity.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
 import type { AuthenticatedSession } from "../interfaces/authenticated-session.interface.js";
+import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
 import { AccessControlService } from "./access-control.service.js";
 
 interface StatusResult {
@@ -102,9 +102,7 @@ export class SessionService {
     const current = RequestContext.isActive()
       ? RequestContext.get(User)
       : undefined;
-    const apiKey = RequestContext.isActive()
-      ? RequestContext.get(ApiKey)
-      : undefined;
+    const apiKey = RequestContext.isActive() ? getCurrentApiKey() : undefined;
     if (!current || String(current.id) !== String(user.id) || apiKey) {
       this.accessControlService.assertUserCan("list", Session);
     }

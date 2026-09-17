@@ -94,6 +94,37 @@ AuthModule.forRoot({
 
 ## 管理角色
 
+角色名遵循 `^[a-z][a-z0-9-]*$`；权限名使用 `resource:action`，两段分别遵循同一规则。
+启动时拒绝下划线、大写字母、空白和连续中划线（`--` 及以上），不做自动转换。
+Resource 与 Action 都允许单个中划线，例如 `api-key:set-role`。
+角色名 `true`、`false`、`null` 为保留值。
+`RoleName<T>` 与 `PermissionName<T>` 在编译期校验字符串字面量；
+`AuthModule.forRoot()` 与 `forRootAsync()` 会推导权限目录、角色键和生命周期角色引用。
+动态字符串仍由启动校验保护。
+
+```typescript
+import type { PermissionName, RoleName } from "@nest-boot/auth";
+
+const role: RoleName<"super-admin"> = "super-admin";
+const permission: PermissionName<"api-key:read"> = "api-key:read";
+```
+
+GraphQL 根据配置生成 `UserRole`、`WorkspaceRole`、`UserPermission`、
+`WorkspacePermission` 、`UserApiKeyPermission` 和 `WorkspaceApiKeyPermission`。枚举名称转大写，中划线转 `_`，
+权限分隔符 `:` 转 `__`。例如 `super-admin` 对应 `SUPER_ADMIN`，
+`api-key:read` 对应 `API_KEY__READ`。GraphQL 变量和响应使用枚举名称；
+Service、Ability 构建器和数据库继续使用原始值。修改目录后需要重新生成客户端类型，
+已有数据中的角色和权限也必须保留在配置目录中，才能由 GraphQL 正常序列化。
+
+`UserApiKeyPermission` 使用 `apiKey.allowedPermissions`，默认取用户与工作区权限目录的并集；`WorkspaceApiKeyPermission` 再与工作区目录取交集。交集为空时，为避免生成空 GraphQL 枚举，Schema 回退到工作区目录；Service 仍拒绝白名单以外的授权。
+空列表使用完整目录生成枚举；用户或工作区目录为空时，仅在生成 Schema 时回退到该作用域
+的内置目录。这不会改变授权语义：显式配置的空权限目录或允许列表仍不授予任何权限。
+Service 继续校验 Key 作用域和操作者可授予的权限上限。
+
+Nest 的枚举元数据属于进程级注册。同一进程内并行运行的 AuthModule 应用必须使用相同
+枚举目录；冲突配置会在启动时被拒绝，避免覆盖其他应用的 Schema。应用关闭后会释放注册，
+后续应用可以使用不同配置。
+
 权限目录和角色定义来自 `user.permissions`、`user.roles`、
 `workspace.permissions` 与 `workspace.roles`，不使用独立的角色服务保存或管理。
 `UserService` 与 `MemberService` 负责向传输层提供配置目录并校验角色赋值。
@@ -195,15 +226,15 @@ Workspace API Key 只能通过工作区权限检查。User API Key 可以通过�
 有效权限或当前成员有效权限取交集；Workspace Key 权限则直接传给工作区构建器。守卫只
 检查最终得到的 `UserAbility` 或 `WorkspaceAbility`。
 
-应用的构建器必须把需要校验的每项传入权限转换为 CASL rule。权限标识区分大小写，
-不会自动转换：`Post:read` 与 `post:read` 是不同的授权。构建器根据配置显式映射到
+应用的构建器必须把需要校验的每项传入权限转换为 CASL rule。权限标识遵循上述小写命名规则，
+按原值精确比较，不自动转换大小写。构建器根据配置显式映射到
 CASL subject：`post:read` 可以授予 `Post` 类或
 `subject("Post", object)` 的 `read` 能力。构建器无条件添加的规则也会对 API Key 生效。
 
 ## Service 授权边界
 
 `UserService`、`SessionService`、`WorkspaceService`、`MemberService`、
-`InvitationService` 与 `ApiKeyService` 会在读取或修改认证数据前强制校验
+`InvitationService` 与 `UserApiKeyService` 和 `WorkspaceApiKeyService` 会在读取或修改认证数据前强制校验
 权限。Resolver 和 Controller 上的装饰器用于提前拒绝并声明接口意图，但不是安全边界；
 即使遗漏装饰器，受保护的 Service 操作也不会变成公开操作。
 
@@ -289,11 +320,7 @@ Auth 将角色授权与直接权限合并，再按当前 API Key 限制，作为
 匿名请求使用空数组；它们不是登录 Session 字段，也不包含 CASL 条件规则。
 身份变量改为 `app.user.id` 和 `app.workspace.id`，不再支持旧键；Service 仍保留权限检查。
 
-示例 `ApiKey` 使用 `user` / `workspace` 两个真实外键，数据库 CHECK 约束要求
-必须且只能填写一个。原生策略分别将 `user_id` 与 `app.user.id`、`workspace_id`
-与 `app.workspace.id` 比较，即使用户与工作区 ID 相同也不会串权。
-物理删除归属对象时级联删除 Key，软删除不会触发。数据库使用默认表权限，不再提供列级保护；Service 排除密钥哈希并禁止修改归属，
-API Key 操作仍通过完成授权校验的 `ApiKeyService`。
+示例 `UserApiKey` 和 `WorkspaceApiKey` 使用两张表，各自只有一个必填归属外键，无需二选一 CHECK 约束。RLS 分别将 `user_id` 与 `app.user.id`、`workspace_id` 与 `app.workspace.id` 比较，即使两类 ID 相同也不会串权。物理删除归属对象时级联删除 Key，软删除不会触发。数据库使用默认表权限；两个管理 Service 排除密钥哈希、禁止修改归属，并保留授权检查。
 
 这几个函数不是 Filter 或装饰器，运行时与 CLI 都不需要额外 discovery 钩子。
 修改策略后需要生成并执行迁移；使用策略回调时保持元数据缓存关闭。

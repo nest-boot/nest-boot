@@ -41,7 +41,7 @@ test("limits user detail queries and actions to the administrator's abilities", 
         { id: currentUser.id, input: { permissions } },
       );
     };
-    await setPermissions(["user:list", "user:get"]);
+    await setPermissions(["USER__LIST", "USER__GET"]);
     await page.goto(`/admin/users/${target.id}`);
     await expect(page.getByTestId("admin-user-page")).toBeVisible();
     await expect(page.getByTestId("admin-user-name")).toHaveValue(
@@ -55,7 +55,7 @@ test("limits user detail queries and actions to the administrator's abilities", 
     for (const button of await buttons.all())
       await expect(button).toBeDisabled();
 
-    await setPermissions(["user:list", "user:get", "user:update"]);
+    await setPermissions(["USER__LIST", "USER__GET", "USER__UPDATE"]);
     await page.reload();
     await expect(page.getByTestId("admin-user-name")).toBeEnabled();
     await expect(page.getByTestId("admin-user-email")).toBeDisabled();
@@ -82,7 +82,7 @@ test("limits user detail queries and actions to the administrator's abilities", 
       "Updated through ability",
     );
 
-    await setPermissions(["user:list"]);
+    await setPermissions(["USER__LIST"]);
     await page.goto(`/admin/users/${target.id}`);
     await expect(page).toHaveURL(/\/admin\/users(?:\?.*)?$/);
   } finally {
@@ -112,7 +112,7 @@ test("authorizes workspace API-key controls and deletion without an owner role",
     const headers = { "x-workspace-id": workspace.id };
     await graphqlRequest(
       ownerPage.request,
-      "mutation ($input: CreateApiKeyInput!) { createWorkspaceApiKey(input: $input) { entity { id } } }",
+      "mutation ($input: CreateWorkspaceApiKeyInput!) { createWorkspaceApiKey(input: $input) { entity { id } } }",
       { input: { name: "Read-only workspace key", permissions: [] } },
       headers,
     );
@@ -137,7 +137,7 @@ test("authorizes workspace API-key controls and deletion without an owner role",
       "mutation ($id: ID!, $input: SetMemberPermissionsInput!) { setMemberPermissions(id: $id, input: $input) { id } }",
       {
         id: memberId,
-        input: { permissions: ["api-key:read", "workspace:delete"] },
+        input: { permissions: ["API_KEY__READ", "WORKSPACE__DELETE"] },
       },
       headers,
     );
@@ -182,7 +182,7 @@ test("uses personal API-key abilities for navigation and instance actions", asyn
     createUserApiKey: { entity: { id: string } };
   }>(
     page.request,
-    "mutation ($input: CreateApiKeyInput!) { createUserApiKey(input: $input) { entity { id } } }",
+    "mutation ($input: CreateUserApiKeyInput!) { createUserApiKey(input: $input) { entity { id } } }",
     { input: { name: "Conditionally writable key", permissions: [] } },
   );
   // Exercise custom serialized rules; Service authorization is tested separately.
@@ -194,11 +194,11 @@ test("uses personal API-key abilities for navigation and instance actions", asyn
     if (body.data?.currentUserAbilityRules) {
       body.data.currentUserAbilityRules = [
         ...(allowRead
-          ? [{ actions: ["read"], subjects: ["ApiKey"], inverted: false }]
+          ? [{ actions: ["read"], subjects: ["UserApiKey"], inverted: false }]
           : []),
         {
           actions: ["update", "delete"],
-          subjects: ["ApiKey"],
+          subjects: ["UserApiKey"],
           conditions: { id: allowedId },
           inverted: false,
         },

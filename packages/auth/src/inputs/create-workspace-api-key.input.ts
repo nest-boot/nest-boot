@@ -1,11 +1,13 @@
 import { Field, InputType } from "@nest-boot/graphql";
 import { ZodField } from "@nest-boot/validator";
 
+import { WorkspaceApiKeyPermission } from "../enums/workspace-api-key-permission.enum.js";
+
 /**
  * Input for creating an API key.
  */
 @InputType()
-export class CreateApiKeyInput {
+export class CreateWorkspaceApiKeyInput {
   /** API key display name. */
   @ZodField((z) => z.string().trim().min(1).max(255))
   @Field(() => String)
@@ -30,6 +32,6 @@ export class CreateApiKeyInput {
 
   /** API key permissions; null creates a key without permissions. */
   @ZodField((z) => z.array(z.string()).nullish())
-  @Field(() => [String], { nullable: true })
-  permissions?: string[] | null;
+  @Field(() => [WorkspaceApiKeyPermission], { nullable: true })
+  permissions?: WorkspaceApiKeyPermission[] | null;
 }

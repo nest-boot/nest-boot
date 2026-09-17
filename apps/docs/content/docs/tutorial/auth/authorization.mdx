@@ -100,6 +100,43 @@ callback argument.
 
 ## Manage Roles
 
+Role names match `^[a-z][a-z0-9-]*$`; permission names use
+`resource:action`, with each segment matching the same pattern. Underscores,
+uppercase letters, whitespace, and consecutive hyphens (`--` or longer) are
+rejected at startup, not normalized. Both resource and action segments may
+contain single hyphens, for example `api-key:set-role`.
+The role names `true`, `false`, and `null` are reserved.
+`RoleName<T>` and `PermissionName<T>` validate string literals at compile time;
+`AuthModule.forRoot()` and `forRootAsync()` infer catalogs, role keys, and lifecycle
+role references. Dynamic strings are checked at startup.
+
+```typescript
+import type { PermissionName, RoleName } from "@nest-boot/auth";
+
+const role: RoleName<"super-admin"> = "super-admin";
+const permission: PermissionName<"api-key:read"> = "api-key:read";
+```
+
+GraphQL generates `UserRole`, `WorkspaceRole`, `UserPermission`,
+`WorkspacePermission`, `UserApiKeyPermission`, and `WorkspaceApiKeyPermission` from the configuration.
+Enum names are uppercase: hyphens become `_` and the permission separator `:`
+becomes `__`. For example, `super-admin` is exposed as `SUPER_ADMIN` and
+`api-key:read` as `API_KEY__READ`. GraphQL variables and responses use these enum
+names; services, ability builders, and the database retain the original values.
+Regenerate client types after changing a catalog. Existing stored assignments
+must remain in the configured catalog to be serialized by GraphQL.
+
+`UserApiKeyPermission` uses `apiKey.allowedPermissions`, defaulting to the combined user and workspace catalogs. `WorkspaceApiKeyPermission` intersects that list with the workspace catalog. If the intersection is empty, its schema uses the workspace catalog to avoid an empty GraphQL enum; Service checks still reject disallowed grants. An empty list uses the complete catalog for schema
+generation; an empty user or workspace catalog uses that scope's built-in catalog
+for schema generation only. This never changes authorization: an explicitly empty
+permission catalog or allowed list still grants nothing. Services continue to
+check key scope and the issuer's permission ceiling.
+
+Nest enum metadata is process-wide. Concurrent AuthModule applications in one
+process must use identical enum catalogs; conflicting registrations fail at
+startup instead of overwriting another application's schema. Shutdown releases
+the registration so a later application can use a different configuration.
+
 Permission catalogs and role definitions come from `user.permissions`,
 `user.roles`, `workspace.permissions`, and `workspace.roles`; they are not
 stored or managed by a separate role service. `UserService` and
@@ -218,8 +255,8 @@ Key permissions are passed directly to the workspace builder. The resulting
 `UserAbility` or `WorkspaceAbility` is the only ability checked by the guard.
 
 The application builder must translate every supplied permission it wants to
-enforce into a CASL rule. Permission identifiers are case-sensitive strings with
-no case conversion: `Post:read` and `post:read` are different grants. The builder
+enforce into a CASL rule. Permission identifiers use the lowercase naming contract
+above and are compared exactly, without case conversion. The builder
 maps the configured identifiers explicitly to CASL subjects: `post:read` can
 grant `read` on the `Post` class or `subject("Post", object)`. Rules added unconditionally by the
 builder apply to API keys too.
@@ -227,7 +264,7 @@ builder apply to API keys too.
 ## Service Authorization Boundary
 
 `UserService`, `SessionService`, `WorkspaceService`, `MemberService`,
-`InvitationService`, and `ApiKeyService` enforce their permissions
+`InvitationService`, and `UserApiKeyService` and `WorkspaceApiKeyService` enforce their permissions
 before reading or mutating authentication data. Resolver and controller
 decorators provide early rejection and declare intent, but they are not the
 security boundary: omitting one does not make a protected service operation
@@ -327,12 +364,7 @@ arrays. They are not login-session fields or serialized CASL conditions.
 Identity variables are `app.user.id` and `app.workspace.id`; old identity keys
 are no longer supported. Services retain their authorization checks.
 
-The example `ApiKey` uses separate `user` and `workspace` foreign keys.
-A database CHECK requires exactly one owner. Its native policy compares `user_id`
-with `app.user.id`, or `workspace_id` with `app.workspace.id`, preventing
-cross-scope access even when IDs collide. Physical owner deletion cascades to keys;
-soft deletion does not. Default privileges authorize table operations; Services hide the key hash and prevent ownership
-updates. Database column-level protection is intentionally removed. API-key operations retain authorization checks in `ApiKeyService`.
+The example `UserApiKey` and `WorkspaceApiKey` use separate tables, each with one required owner foreign key, so no exclusive-owner CHECK is needed. RLS compares `user_id` with `app.user.id` and `workspace_id` with `app.workspace.id` independently, including when IDs coincide. Physical owner deletion cascades to keys; soft deletion does not. Default privileges authorize table operations; both management services hide credential hashes, prevent ownership changes, and enforce authorization.
 
 These are plain factories, not filters or decorators. Neither runtime nor CLI
 needs a custom discovery hook. Generate and apply migrations after changing

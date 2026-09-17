@@ -14,6 +14,7 @@ const config: CodegenConfig = {
         fragmentMasking: false,
       },
       config: {
+        enumsAsConst: true,
         customDirectives: {
           apolloUnmask: true,
         },

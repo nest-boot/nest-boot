@@ -4,8 +4,8 @@ import { AddMemberInput } from "./add-member.input.js";
 import { AuthLinkSocialAccountInput } from "./auth-link-social-account.input.js";
 import { AuthSignInSocialInput } from "./auth-sign-in-social.input.js";
 import { BanUserInput } from "./ban-user.input.js";
-import { CreateApiKeyInput } from "./create-api-key.input.js";
 import { CreateInvitationInput } from "./create-invitation.input.js";
+import { CreateUserApiKeyInput } from "./create-user-api-key.input.js";
 import { SetUserPermissionsInput } from "./set-user-permissions.input.js";
 import { UpdateMemberInput } from "./update-member.input.js";
 
@@ -19,22 +19,22 @@ describe("auth Zod input constraints", () => {
     { Input: BanUserInput, values: { expiresIn: 0 }, field: "expiresIn" },
     { Input: BanUserInput, values: { expiresIn: 1.5 }, field: "expiresIn" },
     {
-      Input: CreateApiKeyInput,
+      Input: CreateUserApiKeyInput,
       values: { name: "x".repeat(256) },
       field: "name",
     },
     {
-      Input: CreateApiKeyInput,
+      Input: CreateUserApiKeyInput,
       values: { name: "Key", prefix: "" },
       field: "prefix",
     },
     {
-      Input: CreateApiKeyInput,
+      Input: CreateUserApiKeyInput,
       values: { name: "Key", expiresAt: "2030-01-01" },
       field: "expiresAt",
     },
     {
-      Input: CreateApiKeyInput,
+      Input: CreateUserApiKeyInput,
       values: { name: "Key", permissions: [null] },
       field: "permissions",
     },
@@ -84,9 +84,9 @@ describe("auth Zod input constraints", () => {
     };
     const result = await pipe.transform(
       { ...values, ownerId: "unexpected-owner" },
-      { type: "body", metatype: CreateApiKeyInput },
+      { type: "body", metatype: CreateUserApiKeyInput },
     );
     expect(result).toEqual(values);
-    expect(result).not.toBeInstanceOf(CreateApiKeyInput);
+    expect(result).not.toBeInstanceOf(CreateUserApiKeyInput);
   });
 });

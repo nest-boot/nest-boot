@@ -15,11 +15,11 @@ import { WorkspaceAbility } from "./abilities/workspace.ability.js";
 import { IS_PUBLIC_KEY } from "./auth.constants.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
-import { ApiKey } from "./entities/api-key.entity.js";
 import { Member } from "./entities/member.entity.js";
 import { Session } from "./entities/session.entity.js";
 import { User } from "./entities/user.entity.js";
 import { Workspace } from "./entities/workspace.entity.js";
+import { WorkspaceApiKey } from "./entities/workspace-api-key.entity.js";
 import type { RouteArgumentMetadataValue } from "./interfaces/route-argument-metadata-value.interface.js";
 import type { UserCanMetadata } from "./interfaces/user-can-metadata.interface.js";
 import type { WorkspaceCanMetadata } from "./interfaces/workspace-can-metadata.interface.js";
@@ -31,8 +31,10 @@ import {
   USER_CAN_METADATA,
   WORKSPACE_CAN_METADATA,
 } from "./permission.constants.js";
+import type { ApiKey } from "./types/api-key.type.js";
 import type { CanSubjectFactory } from "./types/can-subject-factory.type.js";
 import type { RouteArgumentMetadata } from "./types/route-argument-metadata.type.js";
+import { getCurrentApiKey } from "./utils/get-current-api-key.util.js";
 import { resolveRequestPermissions } from "./utils/resolve-request-permissions.util.js";
 
 /** Guard that enforces authentication and evaluates route permissions. */
@@ -77,7 +79,7 @@ export class AuthGuard implements CanActivate {
    */
   protected isAuthenticated(): boolean {
     try {
-      return !!RequestContext.get(Session) || !!RequestContext.get(ApiKey);
+      return !!RequestContext.get(Session) || !!getCurrentApiKey();
     } catch {
       return false;
     }
@@ -144,7 +146,7 @@ export class AuthGuard implements CanActivate {
     canOptions: UserCanMetadata,
     context: ExecutionContext,
   ): Promise<boolean> {
-    const apiKey = RequestContext.get(ApiKey);
+    const apiKey = getCurrentApiKey();
 
     if (apiKey && this.isWorkspaceApiKey(apiKey)) {
       return false;
@@ -163,7 +165,7 @@ export class AuthGuard implements CanActivate {
     canOptions: WorkspaceCanMetadata,
     context: ExecutionContext,
   ): Promise<boolean> {
-    const apiKey = RequestContext.get(ApiKey);
+    const apiKey = getCurrentApiKey();
     const workspaceApiKey = apiKey && this.isWorkspaceApiKey(apiKey);
 
     if (apiKey && !workspaceApiKey && !RequestContext.get(Member)) {
@@ -182,7 +184,7 @@ export class AuthGuard implements CanActivate {
   }
 
   private isWorkspaceApiKey(apiKey: ApiKey): boolean {
-    return !!apiKey.workspace && !apiKey.user;
+    return apiKey instanceof WorkspaceApiKey;
   }
 
   private getOrBuildUserAbility(): UserAbility | null {
@@ -222,7 +224,7 @@ export class AuthGuard implements CanActivate {
     const buildAbility = this.options.workspace?.buildAbility;
     const workspace = RequestContext.get(Workspace);
     const member = RequestContext.get(Member);
-    const apiKey = RequestContext.get(ApiKey);
+    const apiKey = getCurrentApiKey();
     const workspaceApiKey = apiKey && this.isWorkspaceApiKey(apiKey);
     if (!buildAbility || !workspace || (!member && !workspaceApiKey)) {
       return null;

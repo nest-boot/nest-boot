@@ -38,8 +38,8 @@ test.describe("workspace management", () => {
       const workspaceId = await createFirstWorkspace(page, workspaceName);
       const memberId = await addMemberByApi(page, workspaceId, memberEmail);
       await page.goto(`/workspaces/${workspaceId}/members/${memberId}`);
-      await page.getByTestId("member-role-owner").click();
-      await page.getByTestId("member-role-member").click();
+      await page.getByTestId("member-role-OWNER").click();
+      await page.getByTestId("member-role-MEMBER").click();
       await page.getByTestId("member-save").click();
       await expect(page.getByText("成员更新成功")).toBeVisible();
 
@@ -55,7 +55,7 @@ test.describe("workspace management", () => {
       );
       expect(
         currentWorkspace.members.edges.filter(({ node }) =>
-          node.roles.includes("owner"),
+          node.roles.includes("OWNER"),
         ),
       ).toHaveLength(2);
 

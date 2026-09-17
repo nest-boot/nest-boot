@@ -6,10 +6,11 @@ import { ForbiddenException, NotFoundException } from "@nestjs/common";
 import type { Mocked } from "vitest";
 
 import { mockRlsContext } from "../../test/mock-rls-context.js";
+import { API_KEY } from "../auth.constants.js";
 import { SessionConnection } from "../connections/session.connection-definition.js";
-import { ApiKey } from "../entities/api-key.entity.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
+import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 import type { AccessControlService } from "./access-control.service.js";
 import { SessionService } from "./session.service.js";
 
@@ -88,7 +89,7 @@ describe("SessionService management", () => {
         ),
       ).resolves.toBeNull();
       expect(em.findOne).not.toHaveBeenCalled();
-      RequestContext.set(ApiKey, new ApiKey());
+      RequestContext.set(API_KEY, new WorkspaceApiKey());
       accessControlService.assertUserCan.mockImplementation(() => {
         throw new ForbiddenException();
       });
@@ -139,7 +140,7 @@ describe("SessionService management", () => {
               { first: 2 },
             ),
           ).rejects.toThrow(ForbiddenException);
-          RequestContext.set(ApiKey, new ApiKey());
+          RequestContext.set(API_KEY, new WorkspaceApiKey());
           await expect(
             service.getSessionConnectionByUser(user, { first: 2 }),
           ).rejects.toThrow(ForbiddenException);

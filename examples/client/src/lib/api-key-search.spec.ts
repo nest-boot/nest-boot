@@ -5,7 +5,7 @@ import {
   createApiKeyQueryVariables,
 } from "./api-key-search";
 import { OrderDirection } from "./connection-search";
-import { ApiKeyOrderField } from "@/gql/graphql";
+import { UserApiKeyOrderField } from "@/gql/graphql";
 
 describe("shared API-key search", () => {
   it("uses the same default pagination and ordering in both owner scopes", () => {
@@ -14,7 +14,7 @@ describe("shared API-key search", () => {
       query: "",
       filter: {},
       orderBy: {
-        field: ApiKeyOrderField.CREATED_AT,
+        field: UserApiKeyOrderField.CREATED_AT,
         direction: OrderDirection.DESC,
       },
     });
@@ -27,7 +27,7 @@ describe("shared API-key search", () => {
       query: "automation",
       filter: { prefix: { $eq: "sk" } },
       orderBy: {
-        field: ApiKeyOrderField.CREATED_AT,
+        field: UserApiKeyOrderField.CREATED_AT,
         direction: OrderDirection.ASC,
       },
     });
@@ -37,7 +37,7 @@ describe("shared API-key search", () => {
       query: "automation",
       filter: { prefix: { $eq: "sk" } },
       orderBy: {
-        field: ApiKeyOrderField.CREATED_AT,
+        field: UserApiKeyOrderField.CREATED_AT,
         direction: OrderDirection.ASC,
       },
     });

@@ -43,7 +43,7 @@ export const UserSidebar: FC<ComponentProps<typeof Sidebar>> = (props) => {
       icon: KeyRound,
       link: linkOptions({ to: "/user/api-keys" }),
       testId: "user-sidebar-api-keys-link",
-      visible: ability.can("read", "ApiKey"),
+      visible: ability.can("read", "UserApiKey"),
     },
     {
       title: t("sidebar:user.security"),

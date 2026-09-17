@@ -123,7 +123,7 @@ export function SidebarUser() {
                 <Boxes />
                 {t("sidebar:user.workspaces")}
               </DropdownMenuItem>
-              {currentUserAbility.can("read", "ApiKey") ? (
+              {currentUserAbility.can("read", "UserApiKey") ? (
                 <DropdownMenuItem
                   data-testid="sidebar-user-api-keys-link"
                   onClick={() => navigate({ to: "/user/api-keys" })}

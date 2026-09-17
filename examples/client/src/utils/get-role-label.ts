@@ -2,11 +2,11 @@ import { t } from "i18next";
 
 export function getRoleLabel(role: string) {
   switch (role) {
-    case "owner":
+    case "OWNER":
       return t("member:role.owner");
-    case "admin":
+    case "ADMIN":
       return t("member:role.admin");
-    case "member":
+    case "MEMBER":
       return t("member:role.member");
     default:
       return role;

@@ -3,7 +3,9 @@ it("should load entities in an isolated module", async () => {
   vi.resetModules();
 
   expect((await import("./account.entity.js")).Account).toBeDefined();
-  expect((await import("./api-key.entity.js")).ApiKey).toBeDefined();
+  expect(
+    (await import("./workspace-api-key.entity.js")).WorkspaceApiKey,
+  ).toBeDefined();
   expect((await import("./session.entity.js")).Session).toBeDefined();
   expect((await import("./user.entity.js")).User).toBeDefined();
   expect((await import("./verification.entity.js")).Verification).toBeDefined();

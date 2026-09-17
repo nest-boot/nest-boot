@@ -6,13 +6,13 @@ import { AUTH_TOKEN } from "../auth.constants.js";
 import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { AccessControlService } from "../services/access-control.service.js";
-import { ApiKeyService } from "../services/api-key.service.js";
 import { InvitationService } from "../services/invitation.service.js";
 import { MemberService } from "../services/member.service.js";
 import { SessionService } from "../services/session.service.js";
 import { UserService } from "../services/user.service.js";
 import { UserDeletionService } from "../services/user-deletion.service.js";
 import { WorkspaceService } from "../services/workspace.service.js";
+import { ApiKeyAuthenticationService } from "./api-key-authentication.service.js";
 import { createContextualAuthService } from "./create-contextual-auth-service.js";
 
 /** Explicit internal execution boundaries; ordinary management is deliberately absent. @internal */
@@ -96,16 +96,12 @@ export const authServiceProviders: Provider[] = [
       ),
   },
   {
-    provide: ApiKeyService,
-    inject: [EntityManager, MODULE_OPTIONS_TOKEN, AccessControlService],
-    useFactory: (
-      em: EntityManager,
-      options: AuthModuleOptions,
-      access: AccessControlService,
-    ) =>
+    provide: ApiKeyAuthenticationService,
+    inject: [EntityManager],
+    useFactory: (em: EntityManager) =>
       createContextualAuthService(
         em,
-        (manager) => new ApiKeyService(manager, options, access),
+        (manager) => new ApiKeyAuthenticationService(manager),
         {
           validate: "authentication",
         },

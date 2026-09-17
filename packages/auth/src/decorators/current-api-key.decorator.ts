@@ -1,9 +1,6 @@
-import { RequestContext } from "@nest-boot/request-context";
 import { createParamDecorator } from "@nestjs/common";
 
-import { ApiKey } from "../entities/api-key.entity.js";
+import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
 
 /** Parameter decorator that injects the API key used for the current request. */
-export const CurrentApiKey = createParamDecorator(() =>
-  RequestContext.get(ApiKey),
-);
+export const CurrentApiKey = createParamDecorator(() => getCurrentApiKey());

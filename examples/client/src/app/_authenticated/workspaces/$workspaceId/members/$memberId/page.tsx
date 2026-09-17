@@ -29,6 +29,7 @@ import { CheckboxGroup } from "@/components/thread-ui/checkbox-group";
 import { Field, FieldGroup, FieldSet } from "@/components/ui/field";
 import { Input } from "@/components/thread-ui/input";
 import { graphql } from "@/gql";
+import { WorkspaceRole } from "@/gql/graphql";
 import { getRoleLabel } from "@/utils/get-role-label";
 import {
   isWorkspacePermission,
@@ -109,7 +110,7 @@ const REMOVE_MEMBER_FROM_MEMBER_ROUTE = graphql(`
 const formSchema = z.object({
   name: z.string().trim().min(1).max(255),
   email: z.string().email().or(z.literal("")),
-  roles: z.array(z.string()).min(1),
+  roles: z.array(z.enum(WorkspaceRole)).min(1),
   permissions: z.array(z.enum(workspacePermissionValues)),
 });
 
