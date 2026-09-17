@@ -64,7 +64,25 @@ void bootstrap();
 
 Pipe 只验证包含 `ZodField` 或 `ZodObject` 元数据的类，其他参数保持原样通过。它使用 `safeParseAsync`，因此支持异步 refinement；同时会把 Zod 解析后的结果交给控制器，使 coercion 和 transform 生效。
 
-输入无效时会抛出 `ZodValidationException`。HTTP 响应仅包含经过清理的 `code`、`path` 和 `message`，不会返回被拒绝的输入值。如需在异常过滤器中记录原始 Zod 错误，可以调用 `getZodError()`。
+输入无效时会抛出 `ZodValidationException`。HTTP 响应包含经过清理的
+`validationErrors` 数组，每一项只有 `code`、`field` 和 `message`，不会返回
+被拒绝的输入值。如需在异常过滤器中记录原始 Zod 错误，可以调用
+`getZodError()`。
+
+```json
+{
+  "statusCode": 400,
+  "message": "Validation failed",
+  "error": "Bad Request",
+  "validationErrors": [
+    {
+      "code": "invalid_format",
+      "field": ["email"],
+      "message": "Invalid email address"
+    }
+  ]
+}
+```
 
 也可以自定义异常：
 
@@ -76,7 +94,13 @@ new ZodValidationPipe({
   createValidationException: (error) =>
     new BadRequestException({
       message: "Invalid request",
-      issues: error.issues,
+      validationErrors: error.issues.map((issue) => ({
+        code: issue.code,
+        field: issue.path.map((segment) =>
+          typeof segment === "symbol" ? segment.toString() : segment,
+        ),
+        message: issue.message,
+      })),
     }),
 });
 ```

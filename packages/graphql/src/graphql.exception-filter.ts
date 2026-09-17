@@ -23,19 +23,19 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function getValidationErrors(
   response: unknown,
 ): GraphQLValidationError[] | undefined {
-  if (!isRecord(response) || !Array.isArray(response.issues)) {
+  if (!isRecord(response) || !Array.isArray(response.validationErrors)) {
     return undefined;
   }
 
   const validationErrors: GraphQLValidationError[] = [];
 
-  for (const issue of response.issues) {
+  for (const validationError of response.validationErrors) {
     if (
-      !isRecord(issue) ||
-      typeof issue.code !== "string" ||
-      typeof issue.message !== "string" ||
-      !Array.isArray(issue.path) ||
-      !issue.path.every(
+      !isRecord(validationError) ||
+      typeof validationError.code !== "string" ||
+      typeof validationError.message !== "string" ||
+      !Array.isArray(validationError.field) ||
+      !validationError.field.every(
         (segment) => typeof segment === "string" || typeof segment === "number",
       )
     ) {
@@ -43,9 +43,9 @@ function getValidationErrors(
     }
 
     validationErrors.push({
-      code: issue.code,
-      field: [...issue.path],
-      message: issue.message,
+      code: validationError.code,
+      field: [...validationError.field],
+      message: validationError.message,
     });
   }
 

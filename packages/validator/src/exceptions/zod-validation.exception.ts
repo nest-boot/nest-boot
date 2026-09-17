@@ -1,12 +1,12 @@
 import { BadRequestException } from "@nestjs/common";
 import type { ZodError } from "zod";
 
-/** A serializable, input-free representation of a Zod validation issue. */
-export interface ZodValidationIssue {
+/** A serializable, input-free Zod validation error. */
+export interface ZodValidationError {
   /** Zod's stable issue code. */
   code: string;
   /** Location of the invalid value within the input. */
-  path: (string | number)[];
+  field: (string | number)[];
   /** Human-readable validation message. */
   message: string;
 }
@@ -19,8 +19,8 @@ export interface ZodValidationErrorResponse {
   message: "Validation failed";
   /** NestJS error label. */
   error: "Bad Request";
-  /** Sanitized Zod issues without rejected input values. */
-  issues: ZodValidationIssue[];
+  /** Sanitized field errors without rejected input values. */
+  validationErrors: ZodValidationError[];
 }
 
 /** A NestJS bad-request exception that retains the original Zod error. */
@@ -35,9 +35,9 @@ export class ZodValidationException extends BadRequestException {
       statusCode: 400,
       message: "Validation failed",
       error: "Bad Request",
-      issues: zodError.issues.map((issue) => ({
+      validationErrors: zodError.issues.map((issue) => ({
         code: issue.code,
-        path: issue.path.map((segment) =>
+        field: issue.path.map((segment) =>
           typeof segment === "symbol" ? segment.toString() : segment,
         ),
         message: issue.message,

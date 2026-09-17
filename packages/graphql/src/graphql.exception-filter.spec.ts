@@ -74,7 +74,7 @@ describe("GraphQLExceptionFilter", () => {
     });
   });
 
-  it("should transform validation issues into Apollo user input errors", async () => {
+  it("should transform validation errors into Apollo user input errors", async () => {
     const { filter } = await createFilter();
 
     const error = filter.transform(
@@ -82,15 +82,15 @@ describe("GraphQLExceptionFilter", () => {
         statusCode: 400,
         message: "Validation failed",
         error: "Bad Request",
-        issues: [
+        validationErrors: [
           {
             code: "invalid_format",
-            path: ["email"],
+            field: ["email"],
             message: "Invalid email address",
           },
           {
             code: "too_small",
-            path: ["users", 0, "password"],
+            field: ["users", 0, "password"],
             message: "Too small",
           },
         ],
@@ -117,16 +117,16 @@ describe("GraphQLExceptionFilter", () => {
     });
   });
 
-  it("should not expose malformed validation issues", async () => {
+  it("should not expose malformed validation errors", async () => {
     const { filter } = await createFilter();
 
     const error = filter.transform(
       new BadRequestException({
         message: "Validation failed",
-        issues: [
+        validationErrors: [
           {
             code: "invalid_format",
-            path: ["email"],
+            field: ["email"],
             message: { rejectedValue: "private" },
           },
         ],

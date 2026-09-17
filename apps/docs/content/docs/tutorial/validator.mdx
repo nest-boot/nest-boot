@@ -64,7 +64,25 @@ void bootstrap();
 
 The pipe validates only classes containing `ZodField` or `ZodObject` metadata. Other handler arguments pass through unchanged. It uses `safeParseAsync`, so asynchronous refinements are supported, and returns Zod's parsed output so coercions and transforms reach the controller.
 
-Invalid input throws `ZodValidationException`. Its HTTP response contains sanitized `code`, `path`, and `message` fields without rejected input values. Use `getZodError()` in an exception filter when the original Zod error is needed.
+Invalid input throws `ZodValidationException`. Its HTTP response contains a
+sanitized `validationErrors` array with `code`, `field`, and `message` fields,
+without rejected input values. Use `getZodError()` in an exception filter when
+the original Zod error is needed.
+
+```json
+{
+  "statusCode": 400,
+  "message": "Validation failed",
+  "error": "Bad Request",
+  "validationErrors": [
+    {
+      "code": "invalid_format",
+      "field": ["email"],
+      "message": "Invalid email address"
+    }
+  ]
+}
+```
 
 The exception can be customized:
 
@@ -76,7 +94,13 @@ new ZodValidationPipe({
   createValidationException: (error) =>
     new BadRequestException({
       message: "Invalid request",
-      issues: error.issues,
+      validationErrors: error.issues.map((issue) => ({
+        code: issue.code,
+        field: issue.path.map((segment) =>
+          typeof segment === "symbol" ? segment.toString() : segment,
+        ),
+        message: issue.message,
+      })),
     }),
 });
 ```

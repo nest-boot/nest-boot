@@ -174,6 +174,18 @@ describe("ZodValidationPipe", () => {
       expect(error).toBeInstanceOf(ZodValidationException);
       const exception = error as ZodValidationException;
       expect(exception.getZodError()).toBeInstanceOf(z.ZodError);
+      expect(exception.getResponse()).toEqual({
+        statusCode: 400,
+        message: "Validation failed",
+        error: "Bad Request",
+        validationErrors: [
+          {
+            code: "invalid_format",
+            field: ["email"],
+            message: "Invalid email address",
+          },
+        ],
+      });
       expect(JSON.stringify(exception.getResponse())).not.toContain(
         "private invalid value",
       );
