@@ -8,10 +8,21 @@ export interface ZodClass<T extends object = object> {
   readonly prototype: T;
 }
 
-/** The object schema assembled from a decorated class. */
+/** Extracts data properties from a DTO, excluding instance methods. */
+export type ZodDtoData<T extends object> = {
+  [Key in keyof T as Key extends string
+    ? T[Key] extends (...args: never[]) => unknown
+      ? never
+      : Key
+    : never]: T[Key];
+};
+
+/** The object schema assembled from a decorated DTO's data properties. */
 export type DecoratedZodObject<T extends object = Record<string, unknown>> =
   ZodObject<{
-    [Key in Extract<keyof T, string>]-?: ZodType<T[Key]>;
+    [Key in Extract<keyof ZodDtoData<T>, string>]-?: ZodType<
+      ZodDtoData<T>[Key]
+    >;
   }>;
 
 /** A Zod schema that validates a decorated property. */

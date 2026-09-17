@@ -61,10 +61,13 @@ export function getZodSchema<T extends object>(
     return undefined;
   }
 
-  const shape: Record<string, z.ZodType> = {};
+  const shape = Object.create(null) as Record<string, z.ZodType>;
 
-  for (const [propertyName, factory] of fields) {
-    shape[propertyName] = factory(z);
+  for (const [propertyName, definition] of fields) {
+    shape[propertyName] =
+      typeof definition === "function"
+        ? z.lazy(() => definition(z))
+        : definition;
   }
 
   const unknownKeys =
@@ -87,8 +90,9 @@ export function getZodSchema<T extends object>(
  * Converts a decorated class to a typed Zod object schema.
  *
  * @remarks
- * The inferred output uses the class instance type. Keep property declarations
- * aligned with the output of transforms used in {@link ZodField} schemas.
+ * The inferred output uses the class's non-function data properties. Every
+ * data property in the DTO schema contract must have a {@link ZodField}, and
+ * declarations must align with any schema coercions or transforms.
  *
  * @param target - The decorated class constructor
  * @returns The assembled object schema

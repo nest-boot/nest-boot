@@ -20,6 +20,32 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
+function getExceptionMessage(response: unknown): string {
+  if (typeof response === "string") {
+    return response;
+  }
+
+  if (!isRecord(response)) {
+    return "INTERNAL_SERVER_ERROR";
+  }
+
+  if (typeof response.message === "string") {
+    return response.message;
+  }
+
+  if (
+    Array.isArray(response.message) &&
+    response.message.length > 0 &&
+    response.message.every((message) => typeof message === "string")
+  ) {
+    return response.message.join(", ");
+  }
+
+  return typeof response.reason === "string"
+    ? response.reason
+    : "INTERNAL_SERVER_ERROR";
+}
+
 function getValidationErrors(
   response: unknown,
 ): GraphQLValidationError[] | undefined {
@@ -105,16 +131,7 @@ export class GraphQLExceptionFilter
     if (error instanceof HttpException) {
       const status = error.getStatus();
       const response: unknown = error.getResponse();
-      const message: string =
-        typeof response === "string"
-          ? response
-          : isRecord(response)
-            ? typeof response.message === "string"
-              ? response.message
-              : typeof response.reason === "string"
-                ? response.reason
-                : "INTERNAL_SERVER_ERROR"
-            : "INTERNAL_SERVER_ERROR";
+      const message = getExceptionMessage(response);
       const validationErrors =
         status === 400 ? getValidationErrors(response) : undefined;
 

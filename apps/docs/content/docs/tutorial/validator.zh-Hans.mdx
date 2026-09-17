@@ -31,9 +31,12 @@ export const UserSchema = toZodSchema(UserDto);
 export type User = z.infer<typeof UserSchema>;
 ```
 
-工厂函数会在 `toZodSchema` 首次组装 schema 时执行，既适合延迟引用，也可以减少装饰器中的重复导入。
+工厂函数会在 Zod 首次需要对应字段 schema 时延迟执行，因此既支持递归引用，
+也可以减少装饰器中的重复导入。
 
-`toZodSchema` 使用类实例类型作为 schema 的推导输出。属性声明必须和 Zod 输出保持一致，特别是使用 coercion 或 transform 时：
+`toZodSchema` 使用 DTO 的数据属性作为 schema 的推导输出，并排除实例方法。
+DTO schema 契约中的每个数据属性都必须添加 `ZodField`。属性声明必须和 Zod
+输出保持一致，特别是使用 coercion 或 transform 时：
 
 ```typescript
 class QueryDto {
@@ -43,6 +46,19 @@ class QueryDto {
 ```
 
 字段装饰器支持继承。子类为同名属性声明 `ZodField` 时，会覆盖继承的 schema。
+
+Schema 工厂会延迟求值，因此递归 DTO 可以直接引用自身组装后的 schema，无需
+额外添加 `z.lazy`：
+
+```typescript
+class TreeDto {
+  @ZodField(z.string())
+  name!: string;
+
+  @ZodField(() => toZodSchema(TreeDto).array())
+  children!: TreeDto[];
+}
+```
 
 ## 启用 NestJS 验证
 

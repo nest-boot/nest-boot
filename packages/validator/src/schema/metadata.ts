@@ -1,12 +1,12 @@
 import type {
   ZodClass,
-  ZodFieldSchemaFactory,
+  ZodFieldDefinition,
   ZodObjectOptions,
 } from "../types.js";
 
 const fieldsByPrototype = new WeakMap<
   object,
-  Map<string, ZodFieldSchemaFactory>
+  Map<string, ZodFieldDefinition>
 >();
 const optionsByClass = new WeakMap<ZodClass, Readonly<ZodObjectOptions>>();
 
@@ -15,7 +15,7 @@ let metadataVersion = 0;
 export function registerZodField(
   target: object,
   propertyName: string,
-  factory: ZodFieldSchemaFactory,
+  definition: ZodFieldDefinition,
 ): void {
   let fields = fieldsByPrototype.get(target);
 
@@ -24,7 +24,7 @@ export function registerZodField(
     fieldsByPrototype.set(target, fields);
   }
 
-  fields.set(propertyName, factory);
+  fields.set(propertyName, definition);
   metadataVersion += 1;
 }
 
@@ -38,7 +38,7 @@ export function registerZodObject(
 
 export function getZodFields(
   target: ZodClass,
-): Map<string, ZodFieldSchemaFactory> {
+): Map<string, ZodFieldDefinition> {
   const prototypes: object[] = [];
   let prototype: object | null = target.prototype;
 
@@ -47,12 +47,12 @@ export function getZodFields(
     prototype = Object.getPrototypeOf(prototype) as object | null;
   }
 
-  const fields = new Map<string, ZodFieldSchemaFactory>();
+  const fields = new Map<string, ZodFieldDefinition>();
 
   for (const current of prototypes) {
-    for (const [propertyName, factory] of fieldsByPrototype.get(current) ??
+    for (const [propertyName, definition] of fieldsByPrototype.get(current) ??
       []) {
-      fields.set(propertyName, factory);
+      fields.set(propertyName, definition);
     }
   }
 

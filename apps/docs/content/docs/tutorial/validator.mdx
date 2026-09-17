@@ -31,9 +31,13 @@ export const UserSchema = toZodSchema(UserDto);
 export type User = z.infer<typeof UserSchema>;
 ```
 
-The factory form is evaluated when `toZodSchema` first assembles the schema. It is useful for lazy references and keeps the decorator expression concise.
+The factory form is evaluated lazily when Zod first needs that field schema. It
+supports recursive references and keeps the decorator expression concise.
 
-`toZodSchema` uses the class instance type as the inferred schema output. Keep each property declaration aligned with its Zod output, especially when using coercion or transforms:
+`toZodSchema` uses the DTO's data properties as the inferred schema output and
+excludes instance methods. Every data property in a DTO schema contract must
+have a `ZodField` decorator. Keep each declaration aligned with its Zod output,
+especially when using coercion or transforms:
 
 ```typescript
 class QueryDto {
@@ -43,6 +47,19 @@ class QueryDto {
 ```
 
 Decorated fields are inherited. A decorator on a child class with the same property name overrides the inherited schema.
+
+Schema factories are evaluated lazily, so recursive DTOs can reference their
+own assembled schema without an additional `z.lazy` wrapper:
+
+```typescript
+class TreeDto {
+  @ZodField(z.string())
+  name!: string;
+
+  @ZodField(() => toZodSchema(TreeDto).array())
+  children!: TreeDto[];
+}
+```
 
 ## Enable NestJS validation
 

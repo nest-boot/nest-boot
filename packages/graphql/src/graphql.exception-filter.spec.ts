@@ -74,6 +74,28 @@ describe("GraphQLExceptionFilter", () => {
         code: "BAD_REQUEST",
       },
     });
+    expect(
+      filter.transform(
+        new BadRequestException({
+          message: ["email must be an email", "name should not be empty"],
+        }),
+      ),
+    ).toMatchObject({
+      message: "email must be an email, name should not be empty",
+      extensions: {
+        code: "BAD_REQUEST",
+      },
+    });
+    expect(
+      filter.transform(
+        new HttpException(null as unknown as string, HttpStatus.BAD_REQUEST),
+      ),
+    ).toMatchObject({
+      message: "INTERNAL_SERVER_ERROR",
+      extensions: {
+        code: "BAD_REQUEST",
+      },
+    });
   });
 
   it("should transform validation errors into Apollo user input errors", async () => {

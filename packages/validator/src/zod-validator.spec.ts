@@ -69,6 +69,69 @@ describe("decorated Zod schemas", () => {
     });
   });
 
+  it("defers schema factories to support recursive DTOs", () => {
+    const factory = vi.fn(() => z.string());
+
+    class LazyDto {
+      @ZodField(factory)
+      value!: string;
+    }
+
+    const lazySchema = toZodSchema(LazyDto);
+    expect(factory).not.toHaveBeenCalled();
+    expect(lazySchema.parse({ value: "first" })).toEqual({ value: "first" });
+    expect(lazySchema.parse({ value: "second" })).toEqual({ value: "second" });
+    expect(factory).toHaveBeenCalledTimes(1);
+
+    class TreeDto {
+      @ZodField(z.string())
+      name!: string;
+
+      @ZodField(() => toZodSchema(TreeDto).array())
+      children!: TreeDto[];
+    }
+
+    expect(
+      toZodSchema(TreeDto).parse({
+        name: "root",
+        children: [{ name: "child", children: [] }],
+      }),
+    ).toEqual({
+      name: "root",
+      children: [{ name: "child", children: [] }],
+    });
+  });
+
+  it("validates fields named __proto__ without invoking its legacy setter", () => {
+    class PrototypeDto {}
+
+    ZodField(z.string())(PrototypeDto.prototype, "__proto__");
+    const schema = toZodSchema(PrototypeDto);
+
+    expect(schema.safeParse(JSON.parse('{"__proto__":"valid"}')).success).toBe(
+      true,
+    );
+    expect(schema.safeParse(JSON.parse('{"__proto__":123}')).success).toBe(
+      false,
+    );
+  });
+
+  it("excludes instance methods from the inferred DTO output", () => {
+    class MethodDto {
+      @ZodField(z.string())
+      value!: string;
+
+      format(): string {
+        return this.value.toUpperCase();
+      }
+    }
+
+    const schema = toZodSchema(MethodDto);
+    type Output = z.infer<typeof schema>;
+    expectTypeOf<Output>().toEqualTypeOf<{ value: string }>();
+    expect(schema.parse({ value: "test" })).toEqual({ value: "test" });
+  });
+
   it("returns undefined for classes without Zod metadata", () => {
     class PlainDto {}
 
@@ -111,6 +174,16 @@ describe("decorated Zod schemas", () => {
     if (!result.success) {
       expect(result.error.issues[0]?.path).toEqual(["confirmPassword"]);
     }
+
+    @ZodObject({ unknownKeys: "passthrough" })
+    class PassthroughDto {
+      @ZodField(z.string())
+      value!: string;
+    }
+
+    expect(
+      toZodSchema(PassthroughDto).parse({ value: "known", extra: true }),
+    ).toEqual({ value: "known", extra: true });
   });
 
   it("rejects symbol properties", () => {
@@ -136,6 +209,9 @@ describe("ZodValidationPipe", () => {
     ).resolves.toEqual({ page: 2 });
     await expect(
       pipe.transform({ untouched: true }, { type: "body", metatype: PlainDto }),
+    ).resolves.toEqual({ untouched: true });
+    await expect(
+      pipe.transform({ untouched: true }, { type: "custom" }),
     ).resolves.toEqual({ untouched: true });
   });
 
@@ -190,6 +266,28 @@ describe("ZodValidationPipe", () => {
         "private invalid value",
       );
     }
+  });
+
+  it("serializes symbol segments without exposing input values", () => {
+    const exception = new ZodValidationException(
+      new z.ZodError([
+        {
+          code: "custom",
+          path: [Symbol("field")],
+          message: "Invalid field",
+        },
+      ]),
+    );
+
+    expect(exception.getResponse()).toMatchObject({
+      validationErrors: [
+        {
+          code: "custom",
+          field: ["Symbol(field)"],
+          message: "Invalid field",
+        },
+      ],
+    });
   });
 
   it("supports custom exception factories", async () => {

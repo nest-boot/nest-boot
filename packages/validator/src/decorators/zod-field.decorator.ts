@@ -15,18 +15,15 @@ import type { ZodFieldDefinition } from "../types.js";
  * }
  * ```
  *
- * @param definition - A schema or a factory that receives the Zod namespace
+ * @param definition - A schema or lazy factory that receives the Zod namespace
  * @returns A property decorator
  */
 export function ZodField(definition: ZodFieldDefinition): PropertyDecorator {
-  const factory =
-    typeof definition === "function" ? definition : () => definition;
-
   return (target, propertyKey) => {
     if (typeof propertyKey !== "string") {
       throw new TypeError("ZodField does not support symbol properties");
     }
 
-    registerZodField(target, propertyKey, factory);
+    registerZodField(target, propertyKey, definition);
   };
 }
