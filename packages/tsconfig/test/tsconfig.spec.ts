@@ -75,7 +75,7 @@ afterEach(() => {
 });
 
 describe("Nest CLI 12 ESM presets", () => {
-  it("matches the generated application compiler options", () => {
+  it("declares shared compiler options and library overrides", () => {
     expect(readConfig("base.json")).toEqual({
       $schema: "https://json.schemastore.org/tsconfig",
       display: "Default",
@@ -112,6 +112,7 @@ describe("Nest CLI 12 ESM presets", () => {
       compilerOptions: {
         composite: true,
         declaration: true,
+        removeComments: false,
         rootDir: "${configDir}/src",
         outDir: "${configDir}/dist",
       },
@@ -136,6 +137,7 @@ describe("Nest CLI 12 ESM presets", () => {
     );
     expect(parsed.options.strict).toBe(true);
     expect(parsed.options.strictPropertyInitialization).toBe(false);
+    expect(parsed.options.removeComments).toBe(true);
   });
 
   it("matches the generated library boundaries in the consuming project", () => {
@@ -143,6 +145,7 @@ describe("Nest CLI 12 ESM presets", () => {
     const projectRoot = currentProjectRoot();
 
     expect(parsed.options.composite).toBe(true);
+    expect(parsed.options.removeComments).toBe(false);
     expect(parsed.options.rootDir).toBe(join(projectRoot, "src"));
     expect(parsed.options.outDir).toBe(join(projectRoot, "dist"));
     expect(parsed.fileNames).toEqual([join(projectRoot, "src", "index.ts")]);

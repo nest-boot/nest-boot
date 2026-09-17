@@ -5,6 +5,7 @@
   "compilerOptions": {
     "composite": true,
     "declaration": true,
+    "removeComments": false,
     "rootDir": "${configDir}/src",
     "outDir": "${configDir}/dist"
   },
