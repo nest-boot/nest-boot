@@ -111,6 +111,20 @@ export class CreateUserInput {
 }
 ```
 
+使用对应的 validator helper 包装 GraphQL mapped type，让 GraphQL 字段元数据
+和 Zod schema 一起传递到派生类：
+
+```typescript
+import { PartialType } from "@nestjs/graphql";
+import { ZodPartialType } from "@nest-boot/validator";
+
+@InputType()
+export class UpdateUserInput extends ZodPartialType(
+  CreateUserInput,
+  PartialType,
+) {}
+```
+
 按照[验证指南](/docs/tutorial/validator#启用-nestjs-验证)全局注册
 `ZodValidationPipe`。验证失败时，`GraphQLExceptionFilter` 会返回 Apollo 风格的
 用户输入错误，并在 `extensions` 中保留字段级详情：

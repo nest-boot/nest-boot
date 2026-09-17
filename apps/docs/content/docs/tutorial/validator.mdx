@@ -67,6 +67,26 @@ class TreeDto {
 }
 ```
 
+## Mapped DTOs
+
+Nest's standard mapped-type helpers do not copy metadata owned by third-party
+validation libraries. Wrap them with the corresponding Zod-aware helper so the
+derived class receives the transformed field schemas:
+
+```typescript
+import { PartialType, PickType } from "@nestjs/mapped-types";
+import { ZodPartialType, ZodPickType } from "@nest-boot/validator";
+
+class UpdateUserDto extends ZodPartialType(UserDto, PartialType) {}
+
+class UserEmailDto extends ZodPickType(UserDto, ["email"], PickType) {}
+```
+
+`ZodPartialType`, `ZodPickType`, `ZodOmitType`, and `ZodIntersectionType` also
+work without a Nest factory for plain DTOs. Pass the matching helper from
+`@nestjs/graphql` when deriving a GraphQL type so its field metadata is copied
+at the same time.
+
 ## Enable NestJS validation
 
 Register `ZodValidationPipe` globally:

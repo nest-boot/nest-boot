@@ -1,6 +1,8 @@
 import {
   type ArgumentMetadata,
+  Inject,
   Injectable,
+  Optional,
   type PipeTransform,
 } from "@nestjs/common";
 import type { ZodError } from "zod";
@@ -20,6 +22,11 @@ export interface ZodValidationPipeOptions {
   createValidationException?: ZodValidationExceptionFactory;
 }
 
+/** Injection token for optional {@link ZodValidationPipeOptions}. */
+export const ZOD_VALIDATION_PIPE_OPTIONS = Symbol(
+  "ZOD_VALIDATION_PIPE_OPTIONS",
+);
+
 /** Validates decorated NestJS handler arguments with their assembled schema. */
 @Injectable()
 export class ZodValidationPipe implements PipeTransform {
@@ -28,7 +35,11 @@ export class ZodValidationPipe implements PipeTransform {
    *
    * @param options - Exception customization options
    */
-  constructor(private readonly options: ZodValidationPipeOptions = {}) {}
+  constructor(
+    @Optional()
+    @Inject(ZOD_VALIDATION_PIPE_OPTIONS)
+    private readonly options: ZodValidationPipeOptions = {},
+  ) {}
 
   /**
    * Validates a handler argument and returns Zod's parsed output.

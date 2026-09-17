@@ -1,7 +1,8 @@
-import type { z, ZodObject, ZodType } from "zod";
+import type { Type } from "@nestjs/common";
+import type { z, ZodObject, ZodOptional, ZodType } from "zod";
 
 /** A class-like value whose instance shape is used as schema output. */
-export interface ZodClass<T extends object = object> {
+export interface ZodClass<T extends object = object> extends Type<T> {
   /** Runtime class name used in declaration errors. */
   readonly name: string;
   /** The class prototype. */
@@ -11,10 +12,20 @@ export interface ZodClass<T extends object = object> {
 /** Extracts data properties from a DTO, excluding instance methods. */
 export type ZodDtoData<T extends object> = {
   [Key in keyof T as Key extends string
-    ? T[Key] extends (...args: never[]) => unknown
+    ? NonNullable<T[Key]> extends (...args: never[]) => unknown
       ? never
       : Key
     : never]: T[Key];
+};
+
+/** Maps DTO data properties to their statically inferred Zod field types. */
+export type ZodDtoShape<T extends object> = {
+  [Key in Extract<keyof ZodDtoData<T>, string>]-?: Pick<
+    ZodDtoData<T>,
+    Key
+  > extends Required<Pick<ZodDtoData<T>, Key>>
+    ? ZodType<ZodDtoData<T>[Key]>
+    : ZodOptional<ZodType<Exclude<ZodDtoData<T>[Key], undefined>>>;
 };
 
 /**
@@ -24,11 +35,14 @@ export type ZodDtoData<T extends object> = {
  * {@link ZodField}.
  */
 export type DecoratedZodObject<T extends object = Record<string, unknown>> =
-  ZodObject<{
-    [Key in Extract<keyof ZodDtoData<T>, string>]-?: ZodType<
-      ZodDtoData<T>[Key]
-    >;
-  }>;
+  ZodObject<ZodDtoShape<T>>;
+
+/** Creates the Nest mapped class wrapped by a Zod-aware mapped-type helper. */
+export type ZodMappedTypeFactory<
+  Source extends object,
+  Result extends object,
+  Arguments extends unknown[] = [],
+> = (source: ZodClass<Source>, ...arguments_: Arguments) => ZodClass<Result>;
 
 /** A Zod schema that validates a decorated property. */
 export type ZodFieldSchema = ZodType;

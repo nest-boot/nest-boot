@@ -14,6 +14,6 @@ import type { ZodClass, ZodObjectOptions } from "../types.js";
  */
 export function ZodObject(options: ZodObjectOptions = {}): ClassDecorator {
   return (target) => {
-    registerZodObject(target as ZodClass, options);
+    registerZodObject(target as unknown as ZodClass, options);
   };
 }

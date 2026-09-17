@@ -111,6 +111,20 @@ export class CreateUserInput {
 }
 ```
 
+Wrap GraphQL mapped types with the matching validator helper so both GraphQL
+field metadata and Zod schemas reach the derived class:
+
+```typescript
+import { PartialType } from "@nestjs/graphql";
+import { ZodPartialType } from "@nest-boot/validator";
+
+@InputType()
+export class UpdateUserInput extends ZodPartialType(
+  CreateUserInput,
+  PartialType,
+) {}
+```
+
 Register `ZodValidationPipe` globally as described in the
 [Validator guide](/docs/tutorial/validator#enable-nestjs-validation). When
 validation fails, `GraphQLExceptionFilter` returns an Apollo-style user input

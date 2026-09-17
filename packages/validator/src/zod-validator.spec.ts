@@ -1,11 +1,23 @@
 import { BadRequestException } from "@nestjs/common";
+import {
+  IntersectionType,
+  OmitType,
+  PartialType,
+  PickType,
+} from "@nestjs/mapped-types";
+import { Test } from "@nestjs/testing";
 import { z } from "zod";
 
 import {
   getZodSchema,
   toZodSchema,
+  ZOD_VALIDATION_PIPE_OPTIONS,
   ZodField,
+  ZodIntersectionType,
   ZodObject,
+  ZodOmitType,
+  ZodPartialType,
+  ZodPickType,
   ZodValidationException,
   ZodValidationPipe,
 } from "./index.js";
@@ -152,6 +164,27 @@ describe("decorated Zod schemas", () => {
     ).toEqual({ email: "user@example.com" });
   });
 
+  it("preserves optional DTO properties in the inferred output", () => {
+    class WorkspaceDto {
+      @ZodField(z.string().optional())
+      workspaceId?: string;
+
+      @ZodField(z.union([z.string(), z.undefined()]))
+      requiredValue!: string | undefined;
+    }
+
+    const schema = toZodSchema(WorkspaceDto);
+    type Output = z.infer<typeof schema>;
+    expectTypeOf<Output>().toEqualTypeOf<{
+      workspaceId?: string;
+      requiredValue: string | undefined;
+    }>();
+
+    expect(schema.parse({ requiredValue: undefined })).toEqual({
+      requiredValue: undefined,
+    });
+  });
+
   it("returns undefined for classes without Zod metadata", () => {
     class PlainDto {}
 
@@ -213,7 +246,152 @@ describe("decorated Zod schemas", () => {
   });
 });
 
+describe("Zod mapped types", () => {
+  class UserDto {
+    @ZodField(z.string().min(1))
+    name!: string;
+
+    @ZodField(z.number().int())
+    age!: number;
+  }
+
+  it("makes fields optional through Nest PartialType", () => {
+    class UpdateUserDto extends ZodPartialType(UserDto, PartialType) {}
+
+    const schema = toZodSchema(UpdateUserDto);
+    type Output = z.infer<typeof schema>;
+    expectTypeOf<Output>().toEqualTypeOf<{
+      name?: string;
+      age?: number;
+    }>();
+    expect(schema.parse({})).toEqual({});
+    expect(schema.parse({ name: "User" })).toEqual({ name: "User" });
+  });
+
+  it("selects fields through Nest PickType and OmitType", () => {
+    class NamedUserDto extends ZodPickType(UserDto, ["name"], PickType) {}
+    class AgelessUserDto extends ZodOmitType(UserDto, ["age"], OmitType) {}
+
+    expect(toZodSchema(NamedUserDto).parse({ name: "User", age: 42 })).toEqual({
+      name: "User",
+    });
+    expect(
+      toZodSchema(AgelessUserDto).parse({ name: "User", age: 42 }),
+    ).toEqual({ name: "User" });
+  });
+
+  it("combines fields through Nest IntersectionType", () => {
+    class EnabledDto {
+      @ZodField(z.boolean())
+      enabled!: boolean;
+    }
+
+    class CombinedDto extends ZodIntersectionType(
+      UserDto,
+      EnabledDto,
+      IntersectionType,
+    ) {}
+
+    expect(
+      toZodSchema(CombinedDto).parse({
+        name: "User",
+        age: 42,
+        enabled: true,
+      }),
+    ).toEqual({ name: "User", age: 42, enabled: true });
+  });
+
+  it("supports standalone mapped classes without a Nest factory", () => {
+    class LazyDto {
+      @ZodField((z) => z.string().min(1))
+      value!: string;
+    }
+
+    class EnabledDto {
+      @ZodField(z.boolean())
+      enabled!: boolean;
+    }
+
+    const PartialDto = ZodPartialType(LazyDto);
+    const PickedDto = ZodPickType(UserDto, ["name"]);
+    const OmittedDto = ZodOmitType(UserDto, ["age"]);
+    const CombinedDto = ZodIntersectionType(UserDto, EnabledDto);
+
+    expect(toZodSchema(PartialDto).parse({})).toEqual({});
+    expect(toZodSchema(PickedDto).parse({ name: "User" })).toEqual({
+      name: "User",
+    });
+    expect(toZodSchema(OmittedDto).parse({ name: "User" })).toEqual({
+      name: "User",
+    });
+    expect(
+      toZodSchema(CombinedDto).parse({
+        name: "User",
+        age: 42,
+        enabled: true,
+      }),
+    ).toEqual({ name: "User", age: 42, enabled: true });
+  });
+
+  it("preserves object options through mapped types", () => {
+    @ZodObject({
+      unknownKeys: "strict",
+      configure: (schema) =>
+        schema.refine((value) => value.name !== "blocked", {
+          message: "Blocked name",
+          path: ["name"],
+        }),
+    })
+    class StrictUserDto extends UserDto {}
+
+    const PartialDto = ZodPartialType(StrictUserDto);
+
+    expect(toZodSchema(PartialDto).safeParse({ extra: true }).success).toBe(
+      false,
+    );
+    expect(toZodSchema(PartialDto).safeParse({ name: "blocked" }).success).toBe(
+      false,
+    );
+  });
+});
+
 describe("ZodValidationPipe", () => {
+  it("can be constructed through Nest dependency injection", async () => {
+    const moduleRef = await Test.createTestingModule({
+      providers: [ZodValidationPipe],
+    }).compile();
+
+    expect(moduleRef.get(ZodValidationPipe)).toBeInstanceOf(ZodValidationPipe);
+    await moduleRef.close();
+  });
+
+  it("accepts options through its explicit injection token", async () => {
+    const customError = new BadRequestException("Injected error");
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        ZodValidationPipe,
+        {
+          provide: ZOD_VALIDATION_PIPE_OPTIONS,
+          useValue: {
+            createValidationException: () => customError,
+          },
+        },
+      ],
+    }).compile();
+
+    class UserDto {
+      @ZodField(z.email())
+      email!: string;
+    }
+
+    await expect(
+      moduleRef
+        .get(ZodValidationPipe)
+        .transform({ email: "invalid" }, { type: "body", metatype: UserDto }),
+    ).rejects.toBe(customError);
+    await moduleRef.close();
+  });
+
   it("parses decorated DTOs and passes unregistered values through", async () => {
     class QueryDto {
       @ZodField((z) => z.coerce.number().int().positive())

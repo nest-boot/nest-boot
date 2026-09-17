@@ -65,6 +65,24 @@ class TreeDto {
 }
 ```
 
+## 映射 DTO
+
+Nest 标准 mapped-type helper 不会复制第三方验证库持有的元数据。使用对应的
+Zod-aware helper 包装它，派生类才能获得转换后的字段 schema：
+
+```typescript
+import { PartialType, PickType } from "@nestjs/mapped-types";
+import { ZodPartialType, ZodPickType } from "@nest-boot/validator";
+
+class UpdateUserDto extends ZodPartialType(UserDto, PartialType) {}
+
+class UserEmailDto extends ZodPickType(UserDto, ["email"], PickType) {}
+```
+
+`ZodPartialType`、`ZodPickType`、`ZodOmitType` 和 `ZodIntersectionType` 也可以
+不传 Nest factory，直接用于普通 DTO。派生 GraphQL 类型时，请传入
+`@nestjs/graphql` 中对应的 helper，从而同时复制其字段元数据。
+
 ## 启用 NestJS 验证
 
 全局注册 `ZodValidationPipe`：
