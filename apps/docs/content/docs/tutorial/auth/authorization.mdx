@@ -126,8 +126,11 @@ names; services, ability builders, and the database retain the original values.
 Regenerate client types after changing a catalog. Existing stored assignments
 must remain in the configured catalog to be serialized by GraphQL.
 
-`UserApiKeyPermission` uses `apiKey.allowedPermissions`, defaulting to the combined user and workspace catalogs. `WorkspaceApiKeyPermission` intersects that list with the workspace catalog. If the intersection is empty, its schema uses the workspace catalog to avoid an empty GraphQL enum; Service checks still reject disallowed grants. An empty list uses the complete catalog for schema
-generation; an empty user or workspace catalog uses that scope's built-in catalog
+`UserApiKeyPermission` uses the combined user and workspace catalogs;
+`WorkspaceApiKeyPermission` uses the workspace catalog. Neither enum narrows with
+`apiKey.allowedPermissions`, so previously stored grants remain readable after
+the allowlist changes. Services enforce the allowlist on writes.
+An empty user or workspace catalog uses that scope's built-in catalog
 for schema generation only. This never changes authorization: an explicitly empty
 permission catalog or allowed list still grants nothing. Services continue to
 check key scope and the issuer's permission ceiling.

@@ -329,10 +329,15 @@ writes retain request RLS; workspace deletion only adds its operation tag while
 preserving the actor and workspace. Contexts cannot detach an active scoped
 transaction, and never mutate the caller's manager.
 
-The ID-only invitation identity lookup has a separate read-only context. It runs
-after acquiring the workspace lock so registration or membership changes made
-while waiting are observed. It reads committed identities without changing the
-outer transaction's manager, locks, or RLS scope; invitation writes stay scoped.
+The ID-only invitation identity lookup runs after acquiring the workspace lock,
+using a fresh identity map and a savepoint on the same connection. It temporarily
+uses the connection role to read committed identities, then restores the request
+role; rollback restores it on failure. This works with a single-connection pool
+and preserves the outer transaction's locks and RLS-protected writes.
+
+Leaving a workspace clears the request's member, workspace, ability and workspace
+RLS variables after removal commits. Call it outside externally owned transactions
+so later operations cannot reuse the departed membership.
 
 Inject Services through `AuthModule` for these special flows. Directly constructing
 a Service uses exactly the supplied manager; it does not install those boundaries.
@@ -445,10 +450,12 @@ API-key update/delete Service methods no longer take user/workspace arguments.
 These payloads expose no entity or relation fields. Creation does not change the
 current request's workspace, abilities, or RLS context; select the returned ID
 in a subsequent request to query the new workspace. Deletion returns only its ID
-without querying relations of a now-hidden workspace. `updateWorkspace` continues
-to return `Workspace`, with normal read authorization for selected relation fields.
+without querying relations of a now-hidden workspace. `updateWorkspace`, member
+create/update/role/permission mutations, and invitation create/reject/cancel
+mutations also return dedicated ID-only payloads. Query the affected resource
+separately with the caller's read permissions.
 Clients must remove selections such as `name`, `deletedAt`, or `members` from
-create/delete mutation results and regenerate their GraphQL types.
+these mutation results and regenerate their GraphQL types.
 
 `deleteUser` and `removeMember` likewise return `DeleteUserPayload` and
 `RemoveMemberPayload`, each containing only `id: ID!`. `leaveWorkspace` returns
@@ -535,6 +542,11 @@ This is a breaking schema change; no deprecated aliases are retained:
 | `removeWorkspace`    | `deleteWorkspace`       |
 
 API-key entities, services, resolvers, connections, inputs, and creation results are split into `UserApiKey` and `WorkspaceApiKey` variants. Use `CreateUserApiKeyInput`, `UpdateUserApiKeyInput`, `CreateUserApiKeyResult`, and their `Workspace` counterparts. Permissions use separate `UserApiKeyPermission` and `WorkspaceApiKeyPermission` GraphQL enums; stored values stay unchanged.
+
+API-key enums cover the full scope catalogs, independently of the current grant
+allowlist, so existing keys remain readable after the allowlist is tightened.
+Workspace keys cannot be granted `invitation:create`: invitations require a user
+as sender. Use a personal API key for invitation creation.
 
 Update operation documents, ability subject mappings, and generated client types together. The example preserves `Migration00000000000000_Initial` and regenerates the entity baseline with two tables. Recreate development databases before applying this baseline; existing databases require a separate data-preserving upgrade migration.
 

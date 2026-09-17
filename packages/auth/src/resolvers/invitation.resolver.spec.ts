@@ -31,7 +31,7 @@ describe("InvitationResolver", () => {
 
     await expect(
       resolver.createInvitation(workspace, user, input),
-    ).resolves.toBe(invitation);
+    ).resolves.toEqual({ id: invitation.id });
     expect(invitationService.createInvitation).toHaveBeenCalledWith(
       workspace,
       user,
@@ -114,9 +114,9 @@ describe("InvitationResolver", () => {
       rejectInvitation: vi.fn(async () => rejectedInvitation),
     });
 
-    await expect(resolver.rejectInvitation(invitation.id, user)).resolves.toBe(
-      rejectedInvitation,
-    );
+    await expect(
+      resolver.rejectInvitation(invitation.id, user),
+    ).resolves.toEqual({ id: invitation.id });
     expect(invitationService.rejectInvitation).toHaveBeenCalledWith(
       user,
       invitation.id,

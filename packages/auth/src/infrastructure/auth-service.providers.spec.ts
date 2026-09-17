@@ -24,7 +24,11 @@ describe("auth service execution boundaries", () => {
           "provide" in candidate &&
           candidate.provide === InvitationService,
       ) as FactoryProvider<InvitationService>;
+      const execute = vi.fn().mockResolvedValue([{ role: "authenticated" }]);
+      const transaction = {};
       const reader = {
+        getConnection: () => ({ execute }),
+        getTransactionContext: () => transaction,
         clearSessionContext: vi.fn(),
         transactional: vi.fn(
           async (callback: (em: unknown) => Promise<unknown>) =>
@@ -62,12 +66,23 @@ describe("auth service execution boundaries", () => {
       );
       expect(current.fork).toHaveBeenCalledWith({
         useContext: false,
-        keepTransactionContext: false,
+        keepTransactionContext: true,
       });
       expect(current.clearSessionContext).not.toHaveBeenCalled();
-      expect(reader.transactional).toHaveBeenCalledWith(expect.any(Function), {
-        readOnly: true,
-      });
+      expect(reader.transactional).toHaveBeenCalledWith(expect.any(Function));
+      expect(execute).toHaveBeenCalledWith(
+        "set local role none",
+        [],
+        "run",
+        transaction,
+      );
+      if (!failure)
+        expect(execute).toHaveBeenLastCalledWith(
+          'set local role "authenticated"',
+          [],
+          "run",
+          transaction,
+        );
       expect(reader.findOne).toHaveBeenCalledWith(
         User,
         { email: "user@example.com" },

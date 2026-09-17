@@ -140,7 +140,11 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
   const createForm = useForm({
     defaultValues: {
       name: "",
-      permissions: [...defaultPermissions] as Array<UserApiKeyPermission>,
+      permissions: defaultPermissions.filter((permission) =>
+        permissionOptions.some(
+          (option) => option.value === permission && option.grantable !== false,
+        ),
+      ) as Array<UserApiKeyPermission>,
     },
     validators: {
       onSubmit: z.object({

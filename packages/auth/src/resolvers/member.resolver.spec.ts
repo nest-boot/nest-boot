@@ -49,7 +49,7 @@ describe("MemberResolver", () => {
 
     await expect(
       resolver.addMember(workspace, { email: "alice@example.com" }),
-    ).resolves.toBe(createdMember);
+    ).resolves.toEqual({ id: createdMember.id });
 
     expect(memberService.addMemberByEmail).toHaveBeenCalledWith(
       workspace,
@@ -90,7 +90,7 @@ describe("MemberResolver", () => {
       resolver.updateMember("member_2", {
         status: MemberStatus.DISABLED,
       }),
-    ).resolves.toBe(updated);
+    ).resolves.toEqual({ id: updated.id });
 
     expect(memberService.updateMember).toHaveBeenCalledWith(updated.id, {
       status: MemberStatus.DISABLED,
@@ -127,7 +127,7 @@ describe("MemberResolver", () => {
       resolver.setMemberRoles(member.id, {
         roles: ["admin"],
       }),
-    ).resolves.toBe(member);
+    ).resolves.toEqual({ id: member.id });
     expect(memberService.getMember).not.toHaveBeenCalled();
     expect(memberService.setMemberRoles).toHaveBeenCalledWith(member.id, [
       "admin",

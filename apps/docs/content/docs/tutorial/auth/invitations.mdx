@@ -47,6 +47,11 @@ GraphQL, REST, or another transport. The sender receives an optional Fetch
 
 ## InvitationService API
 
+GraphQL `createInvitation`, `rejectInvitation` and `cancelInvitation` return
+dedicated ID-only payloads. Read invitation details separately; these writes do
+not grant access to the inviter's private user profile. Creating invitations
+requires a user identity: use a user API key, not a workspace API key.
+
 - `createInvitation(workspace, inviter, input, request?)`;
 - `getInvitation(id)` — single-record lookup using the current request's native RLS;
 - `getInvitationByUser(id, user)`;

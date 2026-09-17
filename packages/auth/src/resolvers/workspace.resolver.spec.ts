@@ -82,7 +82,7 @@ describe("WorkspaceResolver", () => {
     ).resolves.toEqual({ id: workspace.id });
     await expect(
       resolver.updateWorkspace(workspace.id, { name: "New" }),
-    ).resolves.toBe(workspace);
+    ).resolves.toEqual({ id: workspace.id });
     await expect(resolver.deleteWorkspace(workspace.id)).resolves.toEqual({
       id: workspace.id,
     });

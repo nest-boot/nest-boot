@@ -70,6 +70,10 @@ input AddMemberInput {
   email: String!
 }
 
+type AddMemberPayload {
+  id: ID!
+}
+
 type AuthAbilityRuleType {
   actions: [String!]!
   conditions: JSONObject
@@ -197,10 +201,18 @@ type BanUserPayload {
   id: ID!
 }
 
+type CancelInvitationPayload {
+  id: ID!
+}
+
 input CreateInvitationInput {
   email: String!
   expiresIn: Int
   roles: [WorkspaceRole!]!
+}
+
+type CreateInvitationPayload {
+  id: ID!
 }
 
 input CreateUserApiKeyInput {
@@ -402,12 +414,12 @@ enum MemberStatus {
 
 type Mutation {
   acceptInvitation(id: ID!): AcceptInvitationPayload!
-  addMember(input: AddMemberInput!): Member!
+  addMember(input: AddMemberInput!): AddMemberPayload!
   banUser(id: ID!, input: BanUserInput = {}): BanUserPayload!
-  cancelInvitation(id: ID!): Invitation!
+  cancelInvitation(id: ID!): CancelInvitationPayload!
   changeCurrentUserEmail(input: AuthChangeEmailInput!): Boolean!
   changeCurrentUserPassword(input: AuthChangePasswordInput!): AuthChangePasswordResultType!
-  createInvitation(input: CreateInvitationInput!): Invitation!
+  createInvitation(input: CreateInvitationInput!): CreateInvitationPayload!
   createUser(input: CreateUserInput!): CreateUserPayload!
   createUserApiKey(input: CreateUserApiKeyInput!): CreateUserApiKeyResult!
   createWorkspace(input: CreateWorkspaceInput!): CreateWorkspacePayload!
@@ -420,7 +432,7 @@ type Mutation {
   impersonateUser(id: ID!): User!
   leaveWorkspace: LeaveWorkspacePayload!
   linkCurrentUserAccount(input: AuthLinkSocialAccountInput!): AuthLinkSocialAccountResultType!
-  rejectInvitation(id: ID!): Invitation!
+  rejectInvitation(id: ID!): RejectInvitationPayload!
   removeMember(id: ID!): RemoveMemberPayload!
   requestPasswordReset(input: AuthRequestPasswordResetInput!): AuthRequestPasswordResetResultType!
   resetPassword(input: AuthResetPasswordInput!): Boolean!
@@ -431,8 +443,8 @@ type Mutation {
   revokeUserSessions(userId: ID!): Boolean!
   sendVerificationEmail(input: AuthSendVerificationEmailInput!): Boolean!
   setCurrentUserPassword(newPassword: String!): Boolean!
-  setMemberPermissions(id: ID!, input: SetMemberPermissionsInput!): Member!
-  setMemberRoles(id: ID!, input: SetMemberRolesInput!): Member!
+  setMemberPermissions(id: ID!, input: SetMemberPermissionsInput!): SetMemberPermissionsPayload!
+  setMemberRoles(id: ID!, input: SetMemberRolesInput!): SetMemberRolesPayload!
   setUserPassword(id: ID!, input: SetUserPasswordInput!): Boolean!
   setUserPermissions(id: ID!, input: SetUserPermissionsInput!): SetUserPermissionsPayload!
   setUserRoles(id: ID!, input: SetUserRolesInput!): SetUserRolesPayload!
@@ -444,10 +456,10 @@ type Mutation {
   unbanUser(id: ID!): UnbanUserPayload!
   unlinkCurrentUserAccount(id: ID!): Boolean!
   updateCurrentUser(input: AuthUpdateUserInput!): Boolean!
-  updateMember(id: ID!, input: UpdateMemberInput!): Member
+  updateMember(id: ID!, input: UpdateMemberInput!): UpdateMemberPayload
   updateUser(id: ID!, input: UpdateUserInput!): UpdateUserPayload!
   updateUserApiKey(id: ID!, input: UpdateUserApiKeyInput!): UserApiKey!
-  updateWorkspace(id: ID!, input: UpdateWorkspaceInput!): Workspace!
+  updateWorkspace(id: ID!, input: UpdateWorkspaceInput!): UpdateWorkspacePayload!
   updateWorkspaceApiKey(id: ID!, input: UpdateWorkspaceApiKeyInput!): WorkspaceApiKey!
 }
 
@@ -512,6 +524,10 @@ type Query {
   workspace(id: ID!): Workspace
   workspacePermissions: [WorkspacePermissionOption!]!
   workspaceRoles: [WorkspaceRoleOption!]!
+}
+
+type RejectInvitationPayload {
+  id: ID!
 }
 
 type RemoveMemberPayload {
@@ -582,8 +598,16 @@ input SetMemberPermissionsInput {
   permissions: [WorkspacePermission!]!
 }
 
+type SetMemberPermissionsPayload {
+  id: ID!
+}
+
 input SetMemberRolesInput {
   roles: [WorkspaceRole!]!
+}
+
+type SetMemberRolesPayload {
+  id: ID!
 }
 
 input SetUserPasswordInput {
@@ -626,6 +650,10 @@ input UpdateMemberInput {
   status: MemberStatus
 }
 
+type UpdateMemberPayload {
+  id: ID!
+}
+
 input UpdateUserApiKeyInput {
   enabled: Boolean
   expiresAt: DateTime
@@ -653,6 +681,10 @@ input UpdateWorkspaceApiKeyInput {
 
 input UpdateWorkspaceInput {
   name: String
+}
+
+type UpdateWorkspacePayload {
+  id: ID!
 }
 
 type User {

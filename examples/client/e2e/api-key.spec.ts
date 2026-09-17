@@ -58,6 +58,16 @@ async function exerciseApiKeyLifecycle(
   await expect(page.getByTestId("api-keys-page")).toBeVisible();
 
   await page.getByTestId("api-key-create-action").click();
+  const invitationPermission = page.getByTestId(
+    "permission-INVITATION__CREATE",
+  );
+  if (page.url().includes("/workspaces/")) {
+    await expect(invitationPermission).not.toBeChecked();
+    await expect(invitationPermission).toBeDisabled();
+  } else {
+    await expect(invitationPermission).toBeChecked();
+    await expect(invitationPermission).toBeEnabled();
+  }
   await page.getByTestId("api-key-name-input").fill(names.name);
   for (const action of ["read", "create", "update", "delete"]) {
     const permission = page.getByTestId(

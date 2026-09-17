@@ -44,6 +44,10 @@ AuthModule.forRoot({
 
 ## InvitationService API
 
+GraphQL `createInvitation`、`rejectInvitation`、`cancelInvitation` 返回仅含 ID 的专用 Payload。
+详情需另行查询，写操作不会授予读取邀请者私人资料的权限。
+创建邀请需要用户身份，可使用个人 API Key；工作区 API Key 不支持 `invitation:create`。
+
 - `createInvitation(workspace, inviter, input, request?)`；
 - `getInvitation(id)`：使用当前请求原生 RLS 的单条记录查询；
 - `getInvitationByUser(id, user)`；

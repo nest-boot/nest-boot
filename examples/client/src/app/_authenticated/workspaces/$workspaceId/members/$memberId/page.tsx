@@ -69,8 +69,6 @@ const UPDATE_MEMBER_FROM_MEMBER_ROUTE = graphql(`
   mutation updateMemberFromMemberRoute($id: ID!, $input: UpdateMemberInput!) {
     updateMember(id: $id, input: $input) {
       id
-      name
-      email
     }
   }
 `);
@@ -82,7 +80,6 @@ const SET_WORKSPACE_MEMBER_ROLES_FROM_MEMBER_ROUTE = graphql(`
   ) {
     setMemberRoles(id: $id, input: $input) {
       id
-      roles
     }
   }
 `);
@@ -94,7 +91,6 @@ const SET_MEMBER_PERMISSIONS_FROM_MEMBER_ROUTE = graphql(`
   ) {
     setMemberPermissions(id: $id, input: $input) {
       id
-      permissions
     }
   }
 `);

@@ -112,7 +112,6 @@ const REJECT_INVITATION_FROM_USER_WORKSPACES_ROUTE = graphql(`
   mutation rejectInvitationFromUserWorkspacesRoute($id: ID!) {
     rejectInvitation(id: $id) {
       id
-      status
     }
   }
 `);

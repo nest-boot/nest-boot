@@ -33,9 +33,6 @@ export class AuthEnumRegistry implements OnModuleDestroy {
     const workspaces = options.workspace?.permissions?.length
       ? options.workspace.permissions
       : DEFAULT_WORKSPACE_PERMISSIONS;
-    const apiKeys = options.apiKey?.allowedPermissions?.length
-      ? options.apiKey.allowedPermissions
-      : [...users, ...workspaces];
     const roleValues = (roles: object) =>
       Object.fromEntries(
         Object.keys(roles).map((role) => [
@@ -51,15 +48,10 @@ export class AuthEnumRegistry implements OnModuleDestroy {
       ],
       [UserPermission, createPermissionEnum(users)],
       [WorkspacePermission, createPermissionEnum(workspaces)],
-      [UserApiKeyPermission, createPermissionEnum(apiKeys)],
-      [
-        WorkspaceApiKeyPermission,
-        createPermissionEnum(
-          apiKeys.some((permission) => workspaces.includes(permission))
-            ? apiKeys.filter((permission) => workspaces.includes(permission))
-            : workspaces,
-        ),
-      ],
+      // Output enums must also serialize stored grants removed from the allowlist.
+      // Services enforce the current allowlist when creating or updating a key.
+      [UserApiKeyPermission, createPermissionEnum([...users, ...workspaces])],
+      [WorkspaceApiKeyPermission, createPermissionEnum(workspaces)],
     ] as const;
     const signature = JSON.stringify(
       enums.map(([, values]) =>

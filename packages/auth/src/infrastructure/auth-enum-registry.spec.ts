@@ -83,7 +83,7 @@ describe("auth enum registration", () => {
   const enumType = (schema: GraphQLSchema, name: string) =>
     schema.getType(name) as GraphQLEnumType;
 
-  it("restricts workspace API-key enums to their catalog and the shared allowlist", async () => {
+  it("keeps stored API-key grants serializable after tightening the allowlist", async () => {
     register({
       user: { permissions: ["user:read"] },
       workspace: { permissions: ["project:read", "project:write"] },
@@ -94,13 +94,17 @@ describe("auth enum registration", () => {
       enumType(schema, "UserApiKeyPermission")
         .getValues()
         .map(({ value }) => value),
-    ).toEqual(["user:read", "project:read"]);
+    ).toEqual(["user:read", "project:read", "project:write"]);
     const workspace = enumType(schema, "WorkspaceApiKeyPermission");
     expect(workspace.getValues().map(({ value }) => value)).toEqual([
       "project:read",
+      "project:write",
     ]);
     expect(() => workspace.parseValue("USER__READ")).toThrow();
-    expect(() => workspace.parseValue("PROJECT__WRITE")).toThrow();
+    expect(workspace.serialize("project:write")).toBe("PROJECT__WRITE");
+    expect(
+      enumType(schema, "UserApiKeyPermission").serialize("project:write"),
+    ).toBe("PROJECT__WRITE");
   });
 
   it("uses the full scope catalog for empty API-key enum configuration", async () => {
@@ -122,7 +126,7 @@ describe("auth enum registration", () => {
     ).toEqual(["project:read"]);
   });
 
-  it("builds configured roles and separately restricted API-key permissions", async () => {
+  it("builds configured roles and scope-specific API-key permissions", async () => {
     register({
       user: {
         roles: { "super-admin": [] },
@@ -147,10 +151,12 @@ describe("auth enum registration", () => {
     );
     const apiKey = enumType(schema, "UserApiKeyPermission");
     expect(apiKey.getValues().map(({ name, value }) => [name, value])).toEqual([
+      ["USER__READ", "user:read"],
       ["API_KEY__READ", "api-key:read"],
+      ["PROJECT__WRITE", "project:write"],
     ]);
     expect(apiKey.serialize("api-key:read")).toBe("API_KEY__READ");
-    expect(() => apiKey.parseValue("USER__READ")).toThrow();
+    expect(apiKey.parseValue("USER__READ")).toBe("user:read");
     expect(() => apiKey.parseValue("api-key:read")).toThrow();
     const document = parse(
       "query($role: UserRole!, $permissions: [UserApiKeyPermission!]!) { userRole(role: $role) apiKeyPermissions(permissions: $permissions) }",

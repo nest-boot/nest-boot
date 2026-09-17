@@ -272,6 +272,33 @@ describe("API-key management services", () => {
     expect(em.flush).toHaveBeenCalledTimes(1);
   });
 
+  it("reserves invitation creation for keys with a user identity", async () => {
+    const { em, service } = createService();
+    await expect(
+      service.createWorkspaceApiKey(createTestWorkspace(), {
+        name: "No inviter",
+        permissions: ["invitation:create"],
+      }),
+    ).rejects.toThrow("Workspace API keys cannot grant invitation:create");
+    expect(em.create).not.toHaveBeenCalled();
+    const existing = createTestApiKey();
+    em.findOne.mockResolvedValue(existing);
+    await expect(
+      service.updateWorkspaceApiKey(existing.id, {
+        permissions: ["invitation:create"],
+      }),
+    ).rejects.toThrow("Workspace API keys cannot grant invitation:create");
+    expect(em.flush).not.toHaveBeenCalled();
+    await service.createUserApiKey(createTestUser(), {
+      name: "Human inviter",
+      permissions: ["invitation:create"],
+    });
+    expect(em.create).toHaveBeenCalledWith(
+      UserApiKey,
+      expect.objectContaining({ permissions: ["invitation:create"] }),
+    );
+  });
+
   it("stores workspace permissions as string values", async () => {
     const { em, service } = createService();
     const workspace = createTestWorkspace();

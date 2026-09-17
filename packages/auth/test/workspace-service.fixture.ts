@@ -44,6 +44,7 @@ export function createWorkspaceServices(
   workspace: NonNullable<AuthModuleOptions["workspace"]> = {},
 ) {
   const em = {
+    setSessionContext: vi.fn(),
     getContext: vi.fn().mockReturnThis(),
     getSessionContext:
       vi.fn<() => import("@mikro-orm/core").SessionContext | undefined>(),

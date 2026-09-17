@@ -16,7 +16,11 @@ import { AddMemberInput } from "../inputs/add-member.input.js";
 import { SetMemberPermissionsInput } from "../inputs/set-member-permissions.input.js";
 import { SetMemberRolesInput } from "../inputs/set-member-roles.input.js";
 import { UpdateMemberInput } from "../inputs/update-member.input.js";
+import { AddMemberPayload } from "../objects/add-member-payload.object.js";
 import { RemoveMemberPayload } from "../objects/remove-member-payload.object.js";
+import { SetMemberPermissionsPayload } from "../objects/set-member-permissions-payload.object.js";
+import { SetMemberRolesPayload } from "../objects/set-member-roles-payload.object.js";
+import { UpdateMemberPayload } from "../objects/update-member-payload.object.js";
 import { WorkspacePermissionOption } from "../objects/workspace-permission-option.object.js";
 import { WorkspaceRoleOption } from "../objects/workspace-role-option.object.js";
 import { MemberService } from "../services/member.service.js";
@@ -79,14 +83,18 @@ export class MemberResolver {
    *
    * @param workspace - Current workspace.
    * @param input - Input for adding a member.
-   * @returns Newly created workspace member.
+   * @returns Newly created member identifier.
    */
-  @Mutation(() => Member)
+  @Mutation(() => AddMemberPayload)
   async addMember(
     @CurrentWorkspace() workspace: Workspace,
     @Args("input") input: AddMemberInput,
-  ): Promise<Member> {
-    return await this.memberService.addMemberByEmail(workspace, input.email);
+  ): Promise<AddMemberPayload> {
+    const member = await this.memberService.addMemberByEmail(
+      workspace,
+      input.email,
+    );
+    return { id: member.id };
   }
 
   /**
@@ -94,32 +102,38 @@ export class MemberResolver {
    *
    * @param id - ID of the workspace member to update.
    * @param input - Member update input.
-   * @returns Updated workspace member.
+   * @returns Updated member identifier.
    */
-  @Mutation(() => Member, { nullable: true })
+  @Mutation(() => UpdateMemberPayload, { nullable: true })
   async updateMember(
     @Args("id", { type: () => ID }) id: string,
     @Args("input") input: UpdateMemberInput,
-  ): Promise<Member | null> {
-    return await this.memberService.updateMember(id, input);
+  ): Promise<UpdateMemberPayload | null> {
+    const member = await this.memberService.updateMember(id, input);
+    return member ? { id: member.id } : null;
   }
 
-  /** Replaces roles assigned to a non-owner workspace member. */
-  @Mutation(() => Member)
+  /** Replaces roles assigned to a workspace member. */
+  @Mutation(() => SetMemberRolesPayload)
   async setMemberRoles(
     @Args("id", { type: () => ID }) id: string,
     @Args("input") input: SetMemberRolesInput,
-  ): Promise<Member> {
-    return await this.memberService.setMemberRoles(id, input.roles);
+  ): Promise<SetMemberRolesPayload> {
+    const member = await this.memberService.setMemberRoles(id, input.roles);
+    return { id: member.id };
   }
 
   /** Replaces direct permissions assigned to a workspace member. */
-  @Mutation(() => Member)
+  @Mutation(() => SetMemberPermissionsPayload)
   async setMemberPermissions(
     @Args("id", { type: () => ID }) id: string,
     @Args("input") input: SetMemberPermissionsInput,
-  ): Promise<Member> {
-    return await this.memberService.setMemberPermissions(id, input.permissions);
+  ): Promise<SetMemberPermissionsPayload> {
+    const member = await this.memberService.setMemberPermissions(
+      id,
+      input.permissions,
+    );
+    return { id: member.id };
   }
 
   /**

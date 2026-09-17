@@ -55,6 +55,15 @@ describe("MemberService", () => {
       RequestContext.set(WorkspaceAbility, new WorkspaceAbility());
       expect(access.workspaceCan("read", workspace)).toBe(false);
       await expect(service.leaveWorkspace(member)).resolves.toBe(lockedMember);
+      expect(RequestContext.get(Member)).toBeNull();
+      expect(RequestContext.get(Workspace)).toBeNull();
+      expect(access.workspaceCan("delete", workspace)).toBe(false);
+      expect(em.setSessionContext).toHaveBeenCalledWith({
+        variables: {
+          "app.workspace.id": "",
+          "app.workspace.permissions": "[]",
+        },
+      });
     });
     expect(em.findOne).toHaveBeenCalledWith(
       Member,
@@ -65,6 +74,24 @@ describe("MemberService", () => {
     expect(em.flush).toHaveBeenCalledOnce();
     expect(em.fork).not.toHaveBeenCalled();
     expect(em.getSessionContext()).toEqual(session);
+  });
+
+  it("rejects an externally owned transaction before deleting the membership", async () => {
+    const { em } = createWorkspaceServices();
+    em.isInTransaction.mockReturnValue(true);
+    const workspace = createTestWorkspace();
+    const member = Object.assign(createTestMember(), { workspace });
+    const service = new MemberService(em, {}, new AccessControlService({}));
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      RequestContext.set(Workspace, workspace);
+      RequestContext.set(Member, member);
+      await expect(service.leaveWorkspace(member)).rejects.toThrow(
+        "outside an active transaction",
+      );
+      expect(RequestContext.get(Member)).toBe(member);
+    });
+    expect(em.transactional).not.toHaveBeenCalled();
+    expect(em.remove).not.toHaveBeenCalled();
   });
 
   it.each(["workspace", "member", "missing-member"] as const)(

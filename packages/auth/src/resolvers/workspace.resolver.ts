@@ -33,6 +33,7 @@ import { UpdateWorkspaceInput } from "../inputs/update-workspace.input.js";
 import { CreateWorkspacePayload } from "../objects/create-workspace-payload.object.js";
 import { DeleteWorkspacePayload } from "../objects/delete-workspace-payload.object.js";
 import { LeaveWorkspacePayload } from "../objects/leave-workspace-payload.object.js";
+import { UpdateWorkspacePayload } from "../objects/update-workspace-payload.object.js";
 import { InvitationService } from "../services/invitation.service.js";
 import { MemberService } from "../services/member.service.js";
 import { WorkspaceService } from "../services/workspace.service.js";
@@ -151,14 +152,15 @@ export class WorkspaceResolver {
    *
    * @param id - Current workspace identifier.
    * @param input - Workspace update input.
-   * @returns Updated workspace.
+   * @returns Updated workspace identifier.
    */
-  @Mutation(() => Workspace)
+  @Mutation(() => UpdateWorkspacePayload)
   async updateWorkspace(
     @Args("id", { type: () => ID }) id: string,
     @Args("input") input: UpdateWorkspaceInput,
-  ): Promise<Workspace> {
-    return await this.workspaceService.updateWorkspace(id, input);
+  ): Promise<UpdateWorkspacePayload> {
+    const workspace = await this.workspaceService.updateWorkspace(id, input);
+    return { id: workspace.id };
   }
 
   /**

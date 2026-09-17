@@ -21,6 +21,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 
+import { WorkspaceAbility } from "../abilities/workspace.ability.js";
 import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { MemberConnection } from "../connections/member.connection-definition.js";
@@ -381,9 +382,33 @@ export class MemberService {
     this.accessControlService.assertCurrentMember(member);
     const workspace = this.unwrapWorkspace(member);
     this.accessControlService.assertCurrentWorkspace(workspace);
-    return await this.removeMemberRecord(workspace, member, (lockedMember) => {
-      this.accessControlService.assertCurrentMember(lockedMember);
-    });
+    // Session context can only be restaged after the removal's top-level commit.
+    if (this.em.isInTransaction()) {
+      throw new BadRequestException(
+        "Leave the workspace outside an active transaction",
+      );
+    }
+    const removed = await this.removeMemberRecord(
+      workspace,
+      member,
+      (lockedMember) => {
+        this.accessControlService.assertCurrentMember(lockedMember);
+      },
+    );
+    if (this.em.getSessionContext()) {
+      this.em.setSessionContext({
+        variables: {
+          "app.workspace.id": "",
+          "app.workspace.permissions": "[]",
+        },
+      });
+    }
+    if (RequestContext.isActive()) {
+      RequestContext.set<Member | null>(Member, null);
+      RequestContext.set<Workspace | null>(Workspace, null);
+      RequestContext.set(WorkspaceAbility, new WorkspaceAbility());
+    }
+    return removed;
   }
 
   /** Checks flattened `subject:action` values against member permissions. */

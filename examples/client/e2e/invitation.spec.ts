@@ -36,14 +36,13 @@ test.describe("workspace invitations", () => {
       });
       const workspaceId = await createFirstWorkspace(page, workspaceName);
       const { createInvitation } = await graphqlRequest<{
-        createInvitation: { expiresAt: string; id: string };
+        createInvitation: { id: string };
       }>(
         page.request,
         /* GraphQL */ `
           mutation CreateExpiringInvitation($input: CreateInvitationInput!) {
             createInvitation(input: $input) {
               id
-              expiresAt
             }
           }
         `,
@@ -57,12 +56,20 @@ test.describe("workspace invitations", () => {
         { "x-workspace-id": workspaceId },
       );
 
+      const { invitation } = await graphqlRequest<{
+        invitation: { expiresAt: string };
+      }>(
+        page.request,
+        "query ($id: ID!) { invitation(id: $id) { expiresAt } }",
+        { id: createInvitation.id },
+        { "x-workspace-id": workspaceId },
+      );
       await inviteePage.evaluate((invitationId) => {
         localStorage.setItem("invitation_id", invitationId);
       }, createInvitation.id);
       await expect
         .poll(() => Date.now())
-        .toBeGreaterThan(new Date(createInvitation.expiresAt).getTime());
+        .toBeGreaterThan(new Date(invitation.expiresAt).getTime());
 
       await inviteePage.goto(`/invite?invitationId=${createInvitation.id}`);
       await expect(inviteePage.getByTestId("invite-error-page")).toBeVisible();

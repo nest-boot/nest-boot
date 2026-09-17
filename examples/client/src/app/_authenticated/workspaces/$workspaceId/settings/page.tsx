@@ -34,7 +34,6 @@ const UPDATE_WORKSPACE_FROM_SETTINGS_ROUTE = graphql(`
   ) {
     updateWorkspace(id: $id, input: $input) {
       id
-      name
     }
   }
 `);

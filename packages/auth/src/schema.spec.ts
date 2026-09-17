@@ -135,6 +135,13 @@ describe("auth GraphQL schema", () => {
       ["banUser", "BanUserPayload", "id"],
       ["unbanUser", "UnbanUserPayload", "id"],
       ["createWorkspace", "CreateWorkspacePayload", "id"],
+      ["updateWorkspace", "UpdateWorkspacePayload", "id"],
+      ["addMember", "AddMemberPayload", "id"],
+      ["setMemberRoles", "SetMemberRolesPayload", "id"],
+      ["setMemberPermissions", "SetMemberPermissionsPayload", "id"],
+      ["createInvitation", "CreateInvitationPayload", "id"],
+      ["rejectInvitation", "RejectInvitationPayload", "id"],
+      ["cancelInvitation", "CancelInvitationPayload", "id"],
       ["deleteWorkspace", "DeleteWorkspacePayload", "id"],
       ["deleteUser", "DeleteUserPayload", "id"],
       ["removeMember", "RemoveMemberPayload", "id"],
@@ -148,8 +155,15 @@ describe("auth GraphQL schema", () => {
       expect(fields[field].type.toString()).toBe("ID!");
     }
     expect(
-      schema.getMutationType()?.getFields().updateWorkspace.type.toString(),
-    ).toBe("Workspace!");
+      schema.getMutationType()?.getFields().updateMember.type.toString(),
+    ).toBe("UpdateMemberPayload");
+    expect(
+      Object.keys(
+        (
+          schema.getType("UpdateMemberPayload") as GraphQLObjectType
+        ).getFields(),
+      ),
+    ).toEqual(["id"]);
 
     expect(
       (schema.getType("Member") as GraphQLObjectType)
@@ -389,7 +403,6 @@ describe("auth GraphQL schema", () => {
         .getFields()
         .user.type.toString(),
     ).toBe("User!");
-    expect(mutations.setMemberRoles?.type.toString()).toBe("Member!");
     expect(
       Object.keys(queries).filter((name) => name.startsWith("auth")),
     ).toEqual([]);

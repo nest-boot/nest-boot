@@ -76,6 +76,11 @@ Service 可从请求上下文读取当前身份；Resolver 只传 ID 和输入�
 现在必须显式传 `id: ID!`，且与选中的工作区一致。
 废弃别名 `removeWorkspace` 已移除，请使用 `deleteWorkspace`。
 
+GraphQL 工作区更新、成员创建/更新/角色/权限设置返回仅含 `id` 的专用 Payload。
+需要资料时另行查询，写权限不代表可以读取关联字段。
+`leaveWorkspace` 提交后会清理当前请求的成员、工作区能力和工作区 RLS 上下文，
+因此不能在外部已开启的事务中调用。
+
 部署前执行示例迁移 `Initial → generated schema migrations`。
 auth 基础设施层为软删除事务建立局部 ORM fork，设置 `app.operation = auth.workspace.delete`，
 保留原有用户与工作区 RLS 上下文；配套策略仅在该操作内允许读取当前工作区的删除结果。

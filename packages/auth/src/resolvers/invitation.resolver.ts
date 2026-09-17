@@ -16,6 +16,9 @@ import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { CreateInvitationInput } from "../inputs/create-invitation.input.js";
 import { AcceptInvitationPayload } from "../objects/accept-invitation-payload.object.js";
+import { CancelInvitationPayload } from "../objects/cancel-invitation-payload.object.js";
+import { CreateInvitationPayload } from "../objects/create-invitation-payload.object.js";
+import { RejectInvitationPayload } from "../objects/reject-invitation-payload.object.js";
 import { InvitationService } from "../services/invitation.service.js";
 
 /** GraphQL resolver for workspace invitations. */
@@ -48,17 +51,18 @@ export class InvitationResolver {
   }
 
   /** Creates an invitation for the current workspace. */
-  @Mutation(() => Invitation)
+  @Mutation(() => CreateInvitationPayload)
   async createInvitation(
     @CurrentWorkspace() workspace: Workspace,
     @CurrentUser() user: User,
     @Args("input") input: CreateInvitationInput,
-  ): Promise<Invitation> {
-    return await this.invitationService.createInvitation(
+  ): Promise<CreateInvitationPayload> {
+    const invitation = await this.invitationService.createInvitation(
       workspace,
       user,
       input,
     );
+    return { id: invitation.id };
   }
 
   /** Accepts an invitation addressed to the current user. */
@@ -77,19 +81,21 @@ export class InvitationResolver {
   }
 
   /** Rejects an invitation addressed to the current user. */
-  @Mutation(() => Invitation)
+  @Mutation(() => RejectInvitationPayload)
   async rejectInvitation(
     @Args("id", { type: () => ID }) id: string,
     @CurrentUser() user: User,
-  ): Promise<Invitation> {
-    return await this.invitationService.rejectInvitation(user, id);
+  ): Promise<RejectInvitationPayload> {
+    const invitation = await this.invitationService.rejectInvitation(user, id);
+    return { id: invitation.id };
   }
 
   /** Cancels an invitation in the current workspace. */
-  @Mutation(() => Invitation)
+  @Mutation(() => CancelInvitationPayload)
   async cancelInvitation(
     @Args("id", { type: () => ID }) id: string,
-  ): Promise<Invitation> {
-    return await this.invitationService.cancelInvitation(id);
+  ): Promise<CancelInvitationPayload> {
+    const invitation = await this.invitationService.cancelInvitation(id);
+    return { id: invitation.id };
   }
 }

@@ -84,6 +84,12 @@ above still accept entity arguments, but GraphQL `updateWorkspace` and
 `id: ID!` matching the selected workspace.
 The deprecated `removeWorkspace` alias has been removed; use `deleteWorkspace`.
 
+GraphQL workspace update and member create/update/role/permission mutations return
+dedicated payloads containing only `id`. Query the resource separately to read its
+fields; a successful write does not imply permission to read its relations.
+After `leaveWorkspace` commits, the request's membership, workspace ability and
+workspace RLS scope are cleared. Call it outside externally owned transactions.
+
 Apply `Initial → generated schema migrations` before deployment.
 Auth infrastructure establishes a local ORM fork for soft deletion with
 `app.operation = auth.workspace.delete`, preserving the actor/workspace RLS

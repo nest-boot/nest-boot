@@ -35,21 +35,39 @@ export function createContextualAuthService<T extends object>(
 
         const current = em.getContext(false);
         if (context === "invitation-identity") {
-          // A fresh read-only connection sees committed identities after acquiring
-          // the workspace lock without changing or detaching the caller's RLS transaction.
+          if (!current.isInTransaction()) return await runAuthQuery(em, invoke);
+          // Reuse the locked transaction's connection. The isolated identity lookup
+          // runs in a savepoint so errors restore the caller's role on rollback.
           const reader = current.fork({
             useContext: false,
-            keepTransactionContext: false,
+            keepTransactionContext: true,
           });
-          reader.clearSessionContext();
           const run = () =>
-            reader.transactional(
-              async (manager) => {
-                RequestContext.set(EntityManager, manager);
-                return await invoke(manager);
-              },
-              { readOnly: true },
-            );
+            reader.transactional(async (manager) => {
+              const connection = manager.getConnection();
+              const transaction = manager.getTransactionContext();
+              const [{ role }]: { role: string }[] = await connection.execute(
+                "select current_user as role",
+                [],
+                "all",
+                transaction,
+              );
+              await connection.execute(
+                "set local role none",
+                [],
+                "run",
+                transaction,
+              );
+              RequestContext.set(EntityManager, manager);
+              const result = await invoke(manager);
+              await connection.execute(
+                `set local role "${role.replaceAll('"', '""')}"`,
+                [],
+                "run",
+                transaction,
+              );
+              return result;
+            });
           return RequestContext.isActive()
             ? await RequestContext.child(run)
             : await RequestContext.run(

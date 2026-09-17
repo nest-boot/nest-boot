@@ -135,6 +135,11 @@ export type AddMemberInput = {
   email: Scalars["String"]["input"];
 };
 
+export type AddMemberPayload = {
+  __typename?: "AddMemberPayload";
+  id: Scalars["ID"]["output"];
+};
+
 export type AuthAbilityRuleType = {
   __typename?: "AuthAbilityRuleType";
   actions: Array<Scalars["String"]["output"]>;
@@ -271,10 +276,20 @@ export type BanUserPayload = {
   id: Scalars["ID"]["output"];
 };
 
+export type CancelInvitationPayload = {
+  __typename?: "CancelInvitationPayload";
+  id: Scalars["ID"]["output"];
+};
+
 export type CreateInvitationInput = {
   email: Scalars["String"]["input"];
   expiresIn?: InputMaybe<Scalars["Int"]["input"]>;
   roles: Array<WorkspaceRole>;
+};
+
+export type CreateInvitationPayload = {
+  __typename?: "CreateInvitationPayload";
+  id: Scalars["ID"]["output"];
 };
 
 export type CreateUserApiKeyInput = {
@@ -457,12 +472,12 @@ export type MemberStatus = (typeof MemberStatus)[keyof typeof MemberStatus];
 export type Mutation = {
   __typename?: "Mutation";
   acceptInvitation: AcceptInvitationPayload;
-  addMember: Member;
+  addMember: AddMemberPayload;
   banUser: BanUserPayload;
-  cancelInvitation: Invitation;
+  cancelInvitation: CancelInvitationPayload;
   changeCurrentUserEmail: Scalars["Boolean"]["output"];
   changeCurrentUserPassword: AuthChangePasswordResultType;
-  createInvitation: Invitation;
+  createInvitation: CreateInvitationPayload;
   createUser: CreateUserPayload;
   createUserApiKey: CreateUserApiKeyResult;
   createWorkspace: CreateWorkspacePayload;
@@ -475,7 +490,7 @@ export type Mutation = {
   impersonateUser: User;
   leaveWorkspace: LeaveWorkspacePayload;
   linkCurrentUserAccount: AuthLinkSocialAccountResultType;
-  rejectInvitation: Invitation;
+  rejectInvitation: RejectInvitationPayload;
   removeMember: RemoveMemberPayload;
   requestPasswordReset: AuthRequestPasswordResetResultType;
   resetPassword: Scalars["Boolean"]["output"];
@@ -486,8 +501,8 @@ export type Mutation = {
   revokeUserSessions: Scalars["Boolean"]["output"];
   sendVerificationEmail: Scalars["Boolean"]["output"];
   setCurrentUserPassword: Scalars["Boolean"]["output"];
-  setMemberPermissions: Member;
-  setMemberRoles: Member;
+  setMemberPermissions: SetMemberPermissionsPayload;
+  setMemberRoles: SetMemberRolesPayload;
   setUserPassword: Scalars["Boolean"]["output"];
   setUserPermissions: SetUserPermissionsPayload;
   setUserRoles: SetUserRolesPayload;
@@ -499,10 +514,10 @@ export type Mutation = {
   unbanUser: UnbanUserPayload;
   unlinkCurrentUserAccount: Scalars["Boolean"]["output"];
   updateCurrentUser: Scalars["Boolean"]["output"];
-  updateMember?: Maybe<Member>;
+  updateMember?: Maybe<UpdateMemberPayload>;
   updateUser: UpdateUserPayload;
   updateUserApiKey: UserApiKey;
-  updateWorkspace: Workspace;
+  updateWorkspace: UpdateWorkspacePayload;
   updateWorkspaceApiKey: WorkspaceApiKey;
 };
 
@@ -754,6 +769,11 @@ export type QueryWorkspaceArgs = {
   id: Scalars["ID"]["input"];
 };
 
+export type RejectInvitationPayload = {
+  __typename?: "RejectInvitationPayload";
+  id: Scalars["ID"]["output"];
+};
+
 export type RemoveMemberPayload = {
   __typename?: "RemoveMemberPayload";
   id: Scalars["ID"]["output"];
@@ -813,8 +833,18 @@ export type SetMemberPermissionsInput = {
   permissions: Array<WorkspacePermission>;
 };
 
+export type SetMemberPermissionsPayload = {
+  __typename?: "SetMemberPermissionsPayload";
+  id: Scalars["ID"]["output"];
+};
+
 export type SetMemberRolesInput = {
   roles: Array<WorkspaceRole>;
+};
+
+export type SetMemberRolesPayload = {
+  __typename?: "SetMemberRolesPayload";
+  id: Scalars["ID"]["output"];
 };
 
 export type SetUserPasswordInput = {
@@ -863,6 +893,11 @@ export type UpdateMemberInput = {
   status?: InputMaybe<MemberStatus>;
 };
 
+export type UpdateMemberPayload = {
+  __typename?: "UpdateMemberPayload";
+  id: Scalars["ID"]["output"];
+};
+
 export type UpdateUserApiKeyInput = {
   enabled?: InputMaybe<Scalars["Boolean"]["input"]>;
   expiresAt?: InputMaybe<Scalars["DateTime"]["input"]>;
@@ -891,6 +926,11 @@ export type UpdateWorkspaceApiKeyInput = {
 
 export type UpdateWorkspaceInput = {
   name?: InputMaybe<Scalars["String"]["input"]>;
+};
+
+export type UpdateWorkspacePayload = {
+  __typename?: "UpdateWorkspacePayload";
+  id: Scalars["ID"]["output"];
 };
 
 export type User = {
@@ -1957,11 +1997,7 @@ export type RejectInvitationFromUserWorkspacesRouteMutationVariables = Exact<{
 
 export type RejectInvitationFromUserWorkspacesRouteMutation = {
   __typename?: "Mutation";
-  rejectInvitation: {
-    __typename?: "Invitation";
-    id: string;
-    status: InvitationStatus;
-  };
+  rejectInvitation: { __typename?: "RejectInvitationPayload"; id: string };
 };
 
 export type GetApiKeysFromApiKeysRouteQueryVariables = Exact<{
@@ -2213,12 +2249,7 @@ export type UpdateMemberFromMemberRouteMutationVariables = Exact<{
 
 export type UpdateMemberFromMemberRouteMutation = {
   __typename?: "Mutation";
-  updateMember?: {
-    __typename?: "Member";
-    id: string;
-    name: string;
-    email?: string | null;
-  } | null;
+  updateMember?: { __typename?: "UpdateMemberPayload"; id: string } | null;
 };
 
 export type SetMemberRolesFromMemberRouteMutationVariables = Exact<{
@@ -2228,11 +2259,7 @@ export type SetMemberRolesFromMemberRouteMutationVariables = Exact<{
 
 export type SetMemberRolesFromMemberRouteMutation = {
   __typename?: "Mutation";
-  setMemberRoles: {
-    __typename?: "Member";
-    id: string;
-    roles: Array<WorkspaceRole>;
-  };
+  setMemberRoles: { __typename?: "SetMemberRolesPayload"; id: string };
 };
 
 export type SetMemberPermissionsFromMemberRouteMutationVariables = Exact<{
@@ -2243,9 +2270,8 @@ export type SetMemberPermissionsFromMemberRouteMutationVariables = Exact<{
 export type SetMemberPermissionsFromMemberRouteMutation = {
   __typename?: "Mutation";
   setMemberPermissions: {
-    __typename?: "Member";
+    __typename?: "SetMemberPermissionsPayload";
     id: string;
-    permissions: Array<WorkspacePermission>;
   };
 };
 
@@ -2277,7 +2303,7 @@ export type CreateInvitationFromInviteMemberDialogMutationVariables = Exact<{
 
 export type CreateInvitationFromInviteMemberDialogMutation = {
   __typename?: "Mutation";
-  createInvitation: { __typename?: "Invitation"; id: string };
+  createInvitation: { __typename?: "CreateInvitationPayload"; id: string };
 };
 
 export type GetMembersFromMembersRouteQueryVariables = Exact<{
@@ -2351,11 +2377,7 @@ export type CancelInvitationFromMembersRouteMutationVariables = Exact<{
 
 export type CancelInvitationFromMembersRouteMutation = {
   __typename?: "Mutation";
-  cancelInvitation: {
-    __typename?: "Invitation";
-    id: string;
-    status: InvitationStatus;
-  };
+  cancelInvitation: { __typename?: "CancelInvitationPayload"; id: string };
 };
 
 export type RemoveMemberFromMembersRouteMutationVariables = Exact<{
@@ -2374,11 +2396,7 @@ export type UpdateMemberStatusFromMembersRouteMutationVariables = Exact<{
 
 export type UpdateMemberStatusFromMembersRouteMutation = {
   __typename?: "Mutation";
-  updateMember?: {
-    __typename?: "Member";
-    id: string;
-    status: MemberStatus;
-  } | null;
+  updateMember?: { __typename?: "UpdateMemberPayload"; id: string } | null;
 };
 
 export type UpdateWorkspaceFromSettingsRouteMutationVariables = Exact<{
@@ -2388,7 +2406,7 @@ export type UpdateWorkspaceFromSettingsRouteMutationVariables = Exact<{
 
 export type UpdateWorkspaceFromSettingsRouteMutation = {
   __typename?: "Mutation";
-  updateWorkspace: { __typename?: "Workspace"; id: string; name: string };
+  updateWorkspace: { __typename?: "UpdateWorkspacePayload"; id: string };
 };
 
 export type DeleteWorkspaceFromSettingsRouteMutationVariables = Exact<{
@@ -5492,7 +5510,6 @@ export const RejectInvitationFromUserWorkspacesRouteDocument = {
               kind: "SelectionSet",
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "id" } },
-                { kind: "Field", name: { kind: "Name", value: "status" } },
               ],
             },
           },
@@ -6463,8 +6480,6 @@ export const UpdateMemberFromMemberRouteDocument = {
               kind: "SelectionSet",
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "id" } },
-                { kind: "Field", name: { kind: "Name", value: "name" } },
-                { kind: "Field", name: { kind: "Name", value: "email" } },
               ],
             },
           },
@@ -6535,7 +6550,6 @@ export const SetMemberRolesFromMemberRouteDocument = {
               kind: "SelectionSet",
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "id" } },
-                { kind: "Field", name: { kind: "Name", value: "roles" } },
               ],
             },
           },
@@ -6606,7 +6620,6 @@ export const SetMemberPermissionsFromMemberRouteDocument = {
               kind: "SelectionSet",
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "id" } },
-                { kind: "Field", name: { kind: "Name", value: "permissions" } },
               ],
             },
           },
@@ -7193,7 +7206,6 @@ export const CancelInvitationFromMembersRouteDocument = {
               kind: "SelectionSet",
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "id" } },
-                { kind: "Field", name: { kind: "Name", value: "status" } },
               ],
             },
           },
@@ -7312,7 +7324,6 @@ export const UpdateMemberStatusFromMembersRouteDocument = {
               kind: "SelectionSet",
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "id" } },
-                { kind: "Field", name: { kind: "Name", value: "status" } },
               ],
             },
           },
@@ -7383,7 +7394,6 @@ export const UpdateWorkspaceFromSettingsRouteDocument = {
               kind: "SelectionSet",
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "id" } },
-                { kind: "Field", name: { kind: "Name", value: "name" } },
               ],
             },
           },

@@ -263,6 +263,12 @@ export class WorkspaceApiKeyService {
     owner: Workspace,
     permissions: readonly string[],
   ): string[] {
+    // Invitations require a human sender; workspace keys have no user identity.
+    if (permissions.includes("invitation:create")) {
+      throw new BadRequestException(
+        "Workspace API keys cannot grant invitation:create; use a user API key",
+      );
+    }
     const userPermissions =
       this.authOptions.user?.permissions ?? DEFAULT_USER_PERMISSIONS;
     const workspacePermissions =

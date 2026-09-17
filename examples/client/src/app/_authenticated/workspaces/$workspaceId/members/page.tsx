@@ -129,7 +129,6 @@ const CANCEL_INVITATION_FROM_MEMBERS_ROUTE = graphql(`
   mutation cancelInvitationFromMembersRoute($id: ID!) {
     cancelInvitation(id: $id) {
       id
-      status
     }
   }
 `);
@@ -149,7 +148,6 @@ const UPDATE_MEMBER_STATUS_FROM_MEMBERS_ROUTE = graphql(`
   ) {
     updateMember(id: $id, input: $input) {
       id
-      status
     }
   }
 `);
