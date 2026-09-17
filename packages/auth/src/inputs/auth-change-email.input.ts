@@ -1,17 +1,16 @@
 import { Field, InputType } from "@nest-boot/graphql";
-import { IsEmail, IsOptional, IsString } from "class-validator";
+import { ZodField } from "@nest-boot/validator";
 
 /** Current-user email change input. */
 @InputType()
 export class AuthChangeEmailInput {
   /** New email address. */
-  @IsEmail()
+  @ZodField((z) => z.email())
   @Field(() => String)
   newEmail!: string;
 
   /** URL used after email verification completes. */
-  @IsOptional()
-  @IsString()
+  @ZodField((z) => z.string().optional())
   @Field(() => String, { nullable: true })
   callbackURL?: string;
 }

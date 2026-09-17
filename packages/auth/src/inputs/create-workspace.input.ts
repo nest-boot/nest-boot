@@ -1,5 +1,5 @@
 import { Field, InputType } from "@nest-boot/graphql";
-import { IsString } from "class-validator";
+import { ZodField } from "@nest-boot/validator";
 
 /**
  * Input for creating a workspace.
@@ -7,7 +7,7 @@ import { IsString } from "class-validator";
 @InputType()
 export class CreateWorkspaceInput {
   /** Workspace name. */
-  @IsString()
+  @ZodField((z) => z.string())
   @Field(() => String)
   name!: string;
 }

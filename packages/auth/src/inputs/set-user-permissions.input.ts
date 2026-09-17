@@ -1,12 +1,11 @@
 import { Field, InputType } from "@nest-boot/graphql";
-import { IsArray, IsString } from "class-validator";
+import { ZodField } from "@nest-boot/validator";
 
 /** Replaces application permissions on a user. */
 @InputType()
 export class SetUserPermissionsInput {
   /** Complete replacement permission list. */
-  @IsArray()
-  @IsString({ each: true })
+  @ZodField((z) => z.array(z.string()))
   @Field(() => [String])
   permissions!: string[];
 }

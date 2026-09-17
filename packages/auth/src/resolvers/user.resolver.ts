@@ -207,7 +207,7 @@ export class UserResolver {
   @Mutation(() => BanUserPayload)
   async banUser(
     @Args("id", { type: () => ID }) id: string,
-    @Args("input", { nullable: true }) input?: BanUserInput,
+    @Args("input", { nullable: true, defaultValue: {} }) input?: BanUserInput,
   ): Promise<BanUserPayload> {
     const user = await this.userService.banUser(id, {
       banExpiresIn: input?.expiresIn,

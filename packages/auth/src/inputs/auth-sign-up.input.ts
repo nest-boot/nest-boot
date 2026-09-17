@@ -1,39 +1,36 @@
 import { Field, InputType } from "@nest-boot/graphql";
-import { IsBoolean, IsEmail, IsOptional, IsString } from "class-validator";
+import { ZodField } from "@nest-boot/validator";
 
 /** Email and password registration input. */
 @InputType()
 export class AuthSignUpInput {
   /** User display name. */
-  @IsString()
+  @ZodField((z) => z.string())
   @Field(() => String)
   name!: string;
 
   /** User email address. */
-  @IsEmail()
+  @ZodField((z) => z.email())
   @Field(() => String)
   email!: string;
 
   /** Initial account password. */
-  @IsString()
+  @ZodField((z) => z.string())
   @Field(() => String)
   password!: string;
 
   /** Optional user avatar URL. */
-  @IsOptional()
-  @IsString()
+  @ZodField((z) => z.string().optional())
   @Field(() => String, { nullable: true })
   image?: string;
 
   /** URL used after email verification completes. */
-  @IsOptional()
-  @IsString()
+  @ZodField((z) => z.string().optional())
   @Field(() => String, { nullable: true })
   callbackURL?: string;
 
   /** Whether the created session should persist across browser restarts. */
-  @IsOptional()
-  @IsBoolean()
+  @ZodField((z) => z.boolean().optional())
   @Field(() => Boolean, { nullable: true })
   rememberMe?: boolean;
 }

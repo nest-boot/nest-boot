@@ -1,6 +1,6 @@
 import "reflect-metadata";
 
-import { validateSync } from "class-validator";
+import { toZodSchema } from "@nest-boot/validator";
 
 import { AuthChangePasswordInput } from "./auth-change-password.input.js";
 import { AuthResetPasswordInput } from "./auth-reset-password.input.js";
@@ -39,7 +39,7 @@ describe("configurable input validation", () => {
     ({ Input, field, values }) => {
       const input = Object.assign(new Input(), values, { [field]: "123456" });
 
-      expect(validateSync(input)).toEqual([]);
+      expect(toZodSchema<object>(Input).safeParse(input).success).toBe(true);
     },
   );
 
@@ -48,10 +48,12 @@ describe("configurable input validation", () => {
     ({ Input, field, values }) => {
       const input = Object.assign(new Input(), values, { [field]: 123456 });
 
-      expect(validateSync(input)).toEqual([
+      const result = toZodSchema<object>(Input).safeParse(input);
+      expect(result.error?.issues).toEqual([
         expect.objectContaining({
-          property: field,
-          constraints: { isString: expect.any(String) },
+          path: [field],
+          code: "invalid_type",
+          expected: "string",
         }),
       ]);
     },
@@ -62,7 +64,9 @@ describe("configurable input validation", () => {
       roles: ["owner"],
     });
 
-    expect(validateSync(input)).toEqual([]);
+    expect(toZodSchema(SetMemberRolesInput).safeParse(input).success).toBe(
+      true,
+    );
   });
 
   it.each([[], "owner", [123], undefined])(
@@ -70,7 +74,9 @@ describe("configurable input validation", () => {
     (roles) => {
       const input = Object.assign(new SetMemberRolesInput(), { roles });
 
-      expect(validateSync(input)).not.toEqual([]);
+      expect(toZodSchema(SetMemberRolesInput).safeParse(input).success).toBe(
+        false,
+      );
     },
   );
 });

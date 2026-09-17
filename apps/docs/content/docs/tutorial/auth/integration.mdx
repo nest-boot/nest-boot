@@ -94,7 +94,7 @@ isolated, unscoped forks where necessary. The example configures `session` throu
 
 ```typescript
 import { Logger } from "@nest-boot/logger";
-import { ValidationPipe } from "@nestjs/common";
+import { ZodValidationPipe } from "@nest-boot/validator";
 import { NestFactory } from "@nestjs/core";
 
 async function bootstrap() {
@@ -104,9 +104,7 @@ async function bootstrap() {
   });
 
   app.useLogger(await app.resolve(Logger));
-  app.useGlobalPipes(
-    new ValidationPipe({ transform: true, forbidUnknownValues: false }),
-  );
+  app.useGlobalPipes(new ZodValidationPipe());
   app.enableShutdownHooks();
 
   await app.listen(process.env.PORT ?? 4000);
@@ -116,6 +114,17 @@ void bootstrap();
 ```
 
 ## Operational Guidance
+
+Auth inputs now use Zod instead of class-validator. Remove the old global
+`ValidationPipe` after migrating your application's DTOs. Zod returns plain parsed
+objects and strips undeclared properties; it does not construct DTO instances.
+GraphQL validation errors use `BAD_USER_INPUT` with field details in
+`extensions.validationErrors`.
+
+`banUser` and `deleteCurrentUser` still allow omitting `input` (default `{}`).
+Explicit `input: null` is rejected. For a property, `.optional()` accepts omission
+and `.nullish()` also accepts `null`; see the [Validator tutorial](/docs/tutorial/validator).
+Direct Service calls do not run the pipe automatically.
 
 - Register `AuthGuard` once as `APP_GUARD` and mark exceptions with `@Public()`.
 - Use current-identity decorators in transport code instead of raw context tokens.

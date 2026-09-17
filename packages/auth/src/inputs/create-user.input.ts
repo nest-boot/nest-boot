@@ -1,35 +1,31 @@
 import { Field, InputType } from "@nest-boot/graphql";
-import { IsArray, IsEmail, IsOptional, IsString } from "class-validator";
+import { ZodField } from "@nest-boot/validator";
 
 /** User created through the user-management API. */
 @InputType()
 export class CreateUserInput {
   /** Email address for the new user. */
-  @IsEmail()
+  @ZodField((z) => z.email())
   @Field(() => String)
   email!: string;
 
   /** Display name for the new user. */
-  @IsString()
+  @ZodField((z) => z.string())
   @Field(() => String)
   name!: string;
 
   /** Initial credential password. */
-  @IsString()
+  @ZodField((z) => z.string())
   @Field(() => String)
   password!: string;
 
   /** Initial application roles. */
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
+  @ZodField((z) => z.array(z.string()).optional())
   @Field(() => [String], { nullable: true })
   roles?: string[];
 
   /** Direct user-administration permissions. */
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
+  @ZodField((z) => z.array(z.string()).optional())
   @Field(() => [String], { nullable: true })
   permissions?: string[];
 }

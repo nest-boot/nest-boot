@@ -1,5 +1,5 @@
 import { Field, InputType } from "@nest-boot/graphql";
-import { IsOptional, IsString } from "class-validator";
+import { ZodField } from "@nest-boot/validator";
 
 /**
  * Input for updating a workspace.
@@ -7,8 +7,7 @@ import { IsOptional, IsString } from "class-validator";
 @InputType()
 export class UpdateWorkspaceInput {
   /** New workspace name. */
-  @IsString()
-  @IsOptional()
+  @ZodField((z) => z.string().optional())
   @Field(() => String, { nullable: true })
   name?: string;
 }

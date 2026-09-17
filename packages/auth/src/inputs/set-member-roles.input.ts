@@ -1,13 +1,11 @@
 import { Field, InputType } from "@nest-boot/graphql";
-import { ArrayNotEmpty, IsArray, IsString } from "class-validator";
+import { ZodField } from "@nest-boot/validator";
 
 /** Replaces the roles assigned to a workspace member. */
 @InputType()
 export class SetMemberRolesInput {
   /** Complete replacement role list; ownership uses the transfer flow. */
-  @IsArray()
-  @ArrayNotEmpty()
-  @IsString({ each: true })
+  @ZodField((z) => z.array(z.string()).min(1))
   @Field(() => [String])
   roles!: string[];
 }

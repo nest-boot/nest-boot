@@ -525,7 +525,7 @@ enum MemberStatus {
 type Mutation {
   acceptInvitation(id: ID!): AcceptInvitationPayload!
   addMember(input: AddMemberInput!): Member!
-  banUser(id: ID!, input: BanUserInput): BanUserPayload!
+  banUser(id: ID!, input: BanUserInput = {}): BanUserPayload!
   cancelInvitation(id: ID!): Invitation!
   changeCurrentUserEmail(input: AuthChangeEmailInput!): Boolean!
   changeCurrentUserPassword(
@@ -536,7 +536,7 @@ type Mutation {
   createUserApiKey(input: CreateApiKeyInput!): CreateApiKeyResult!
   createWorkspace(input: CreateWorkspaceInput!): CreateWorkspacePayload!
   createWorkspaceApiKey(input: CreateApiKeyInput!): CreateApiKeyResult!
-  deleteCurrentUser(input: AuthDeleteUserInput): AuthDeleteUserResultType!
+  deleteCurrentUser(input: AuthDeleteUserInput = {}): AuthDeleteUserResultType!
   deleteUser(id: ID!): DeleteUserPayload!
   deleteUserApiKey(id: ID!): ApiKey!
   deleteWorkspace(id: ID!): DeleteWorkspacePayload!

@@ -1,12 +1,5 @@
 import { Field, InputType } from "@nest-boot/graphql";
-import {
-  IsArray,
-  IsDate,
-  IsOptional,
-  IsString,
-  MaxLength,
-  MinLength,
-} from "class-validator";
+import { ZodField } from "@nest-boot/validator";
 
 /**
  * Input for creating an API key.
@@ -14,29 +7,22 @@ import {
 @InputType()
 export class CreateApiKeyInput {
   /** API key display name. */
-  @IsString()
-  @MaxLength(255)
+  @ZodField((z) => z.string().max(255))
   @Field(() => String)
   name!: string;
 
   /** API key expiration time; omitted or null means no expiration. */
-  @IsOptional()
-  @IsDate()
+  @ZodField((z) => z.date().nullish())
   @Field(() => Date, { nullable: true })
-  expiresAt?: Date;
+  expiresAt?: Date | null;
 
   /** Plaintext prefix: 1–32 lowercase letters or digits, starting with a letter. Defaults to sk. */
-  @IsOptional()
-  @IsString()
-  @MinLength(1)
-  @MaxLength(32)
+  @ZodField((z) => z.string().min(1).max(32).optional())
   @Field(() => String, { nullable: true })
   prefix?: string;
 
-  /** API key permissions. */
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
+  /** API key permissions; null creates a key without permissions. */
+  @ZodField((z) => z.array(z.string()).nullish())
   @Field(() => [String], { nullable: true })
-  permissions?: string[];
+  permissions?: string[] | null;
 }

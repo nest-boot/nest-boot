@@ -54,6 +54,7 @@
     "@nest-boot/mailer": "workspace:^",
     "@nest-boot/mikro-orm": "workspace:^",
     "@nest-boot/request-context": "workspace:^",
+    "@nest-boot/validator": "workspace:^",
     "@nestjs/apollo": "^14.0.0",
     "@nestjs/common": "^12.0.1",
     "@nestjs/config": "^12.0.0",
@@ -61,8 +62,6 @@
     "@nestjs/graphql": "^14.0.0",
     "@nestjs/platform-express": "^12.0.1",
     "@node-rs/jieba": "^2.0.1",
-    "class-transformer": "^0.5.1",
-    "class-validator": "^0.14.2",
     "dayjs": "^1.11.18",
     "express": "^5.1.0",
     "graphql": "^16.11.0",
@@ -72,7 +71,8 @@
     "nodemailer": "^9.1.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
-    "sonyflake-js": "^1.0.1"
+    "sonyflake-js": "^1.0.1",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",

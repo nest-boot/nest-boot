@@ -1,47 +1,41 @@
 import { Field, InputType } from "@nest-boot/graphql";
-import { IsBoolean, IsOptional, IsString } from "class-validator";
+import { ZodField } from "@nest-boot/validator";
 
 /** Social or generic OAuth sign-in input. */
 @InputType()
 export class AuthSignInSocialInput {
   /** Configured provider identifier. */
-  @IsString()
+  @ZodField((z) => z.string())
   @Field(() => String)
   provider!: string;
 
   /** URL returned after a successful provider callback. */
-  @IsOptional()
-  @IsString()
+  @ZodField((z) => z.string().optional())
   @Field(() => String, { nullable: true })
   callbackURL?: string;
 
   /** URL returned after a newly created user's provider callback. */
-  @IsOptional()
-  @IsString()
+  @ZodField((z) => z.string().optional())
   @Field(() => String, { nullable: true })
   newUserCallbackURL?: string;
 
   /** URL returned after a failed provider callback. */
-  @IsOptional()
-  @IsString()
+  @ZodField((z) => z.string().optional())
   @Field(() => String, { nullable: true })
   errorCallbackURL?: string;
 
   /** Additional OAuth scopes requested from the provider. */
-  @IsOptional()
-  @IsString({ each: true })
+  @ZodField((z) => z.array(z.string()).optional())
   @Field(() => [String], { nullable: true })
   scopes?: string[];
 
   /** Whether this flow may create a new user. */
-  @IsOptional()
-  @IsBoolean()
+  @ZodField((z) => z.boolean().optional())
   @Field(() => Boolean, { nullable: true })
   requestSignUp?: boolean;
 
   /** Optional provider login hint. */
-  @IsOptional()
-  @IsString()
+  @ZodField((z) => z.string().optional())
   @Field(() => String, { nullable: true })
   loginHint?: string;
 }

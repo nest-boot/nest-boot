@@ -10,10 +10,15 @@ API Key 与 CASL 权限授权。模块会把当前身份解析到 `RequestContex
 ## 安装
 
 ```bash
-pnpm add @nest-boot/auth @nest-boot/hash @nest-boot/mailer better-auth @casl/ability nodemailer @nest-boot/graphql @nest-boot/graphql-connection @nestjs/graphql graphql class-validator
+pnpm add @nest-boot/auth @nest-boot/hash @nest-boot/mailer better-auth @casl/ability nodemailer @nest-boot/graphql @nest-boot/graphql-connection @nestjs/graphql graphql @nest-boot/validator zod
 ```
 
 GraphQL Resolver 和连接已内置于 `AuthModule`，无需单独的适配包。
+
+Auth 输入使用 `ZodField`。请按[集成说明](/docs/tutorial/auth/integration)全局注册
+`ZodValidationPipe`，Nest 的 class-validator 管道不会验证这些输入。
+可选字段允许省略，只有明确支持空值的字段才接受 `null`。
+密码策略和权限检查仍由 Service 负责。
 
 ## 快速开始
 

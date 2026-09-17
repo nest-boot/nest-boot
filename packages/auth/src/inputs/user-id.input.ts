@@ -1,11 +1,11 @@
 import { Field, ID, InputType } from "@nest-boot/graphql";
-import { IsString } from "class-validator";
+import { ZodField } from "@nest-boot/validator";
 
 /** Identifier input shared by user-management operations. */
 @InputType()
 export class UserIdInput {
   /** User identifier. */
-  @IsString()
+  @ZodField((z) => z.string())
   @Field(() => ID)
   id!: string;
 }

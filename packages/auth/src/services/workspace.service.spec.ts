@@ -298,7 +298,11 @@ describe("WorkspaceService and cross-domain coordination", () => {
       workspaceService.updateWorkspace(workspace, { name: "Renamed" }),
     ).resolves.toBe(workspace);
 
-    expect(em.assign).toHaveBeenCalledWith(workspace, { name: "Renamed" });
+    expect(em.assign).toHaveBeenCalledWith(
+      workspace,
+      { name: "Renamed" },
+      { ignoreUndefined: true },
+    );
     expect(em.flush).toHaveBeenCalledTimes(1);
     expect(accessControlService.assertCurrentWorkspace).toHaveBeenCalledWith(
       workspace,

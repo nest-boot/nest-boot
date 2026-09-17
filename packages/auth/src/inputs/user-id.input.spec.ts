@@ -1,21 +1,22 @@
-import { validateSync } from "class-validator";
+import { toZodSchema } from "@nest-boot/validator";
 
 import { UserIdInput } from "./user-id.input.js";
 
 describe("UserIdInput", () => {
   it("accepts id as the target identifier", () => {
-    expect(
-      validateSync(Object.assign(new UserIdInput(), { id: "user-1" })),
-    ).toEqual([]);
+    expect(toZodSchema(UserIdInput).parse({ id: "user-1" })).toEqual({
+      id: "user-1",
+    });
   });
 
   it("does not accept userId in place of id", () => {
     expect(
-      validateSync(Object.assign(new UserIdInput(), { userId: "user-1" })),
+      toZodSchema(UserIdInput).safeParse({ userId: "user-1" }).error?.issues,
     ).toEqual([
       expect.objectContaining({
-        property: "id",
-        constraints: { isString: expect.any(String) },
+        path: ["id"],
+        code: "invalid_type",
+        expected: "string",
       }),
     ]);
   });

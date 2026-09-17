@@ -82,7 +82,7 @@ MikroORM 7.2 原生 RLS 使用请求 EntityManager 的 session 上下文。Auth 
 
 ```typescript
 import { Logger } from "@nest-boot/logger";
-import { ValidationPipe } from "@nestjs/common";
+import { ZodValidationPipe } from "@nest-boot/validator";
 import { NestFactory } from "@nestjs/core";
 
 async function bootstrap() {
@@ -92,9 +92,7 @@ async function bootstrap() {
   });
 
   app.useLogger(await app.resolve(Logger));
-  app.useGlobalPipes(
-    new ValidationPipe({ transform: true, forbidUnknownValues: false }),
-  );
+  app.useGlobalPipes(new ZodValidationPipe());
   app.enableShutdownHooks();
 
   await app.listen(process.env.PORT ?? 4000);
@@ -104,6 +102,15 @@ void bootstrap();
 ```
 
 ## 运行建议
+
+Auth 输入已从 class-validator 切换为 Zod。业务 DTO 迁移完成后，请移除旧的全局
+`ValidationPipe`。Zod 返回普通解析对象并移除未声明的属性，不创建 DTO 类实例。
+GraphQL 验证错误使用 `BAD_USER_INPUT`，字段详情位于
+`extensions.validationErrors`。
+
+`banUser` 和 `deleteCurrentUser` 仍允许省略 `input`（默认 `{}`），但拒绝显式
+`input: null`。属性的 `.optional()` 允许省略，`.nullish()` 额外允许 `null`，
+参见 [Validator 教程](/docs/tutorial/validator)。直接调用 Service 不会自动执行管道。
 
 - 将 `AuthGuard` 作为 `APP_GUARD` 注册一次，并使用 `@Public()` 标记例外；
 - 传输层使用当前身份装饰器，不直接依赖上下文 token；

@@ -11,10 +11,16 @@ permission checks.
 ## Installation
 
 ```bash
-pnpm add @nest-boot/auth @nest-boot/hash @nest-boot/mailer better-auth @casl/ability nodemailer @nest-boot/graphql @nest-boot/graphql-connection @nestjs/graphql graphql class-validator
+pnpm add @nest-boot/auth @nest-boot/hash @nest-boot/mailer better-auth @casl/ability nodemailer @nest-boot/graphql @nest-boot/graphql-connection @nestjs/graphql graphql @nest-boot/validator zod
 ```
 
 GraphQL resolvers and connections are built into `AuthModule`; no separate adapter package is needed.
+
+Auth inputs use `ZodField`. Register `ZodValidationPipe` globally as shown in
+[Integration](/docs/tutorial/auth/integration); Nest's class-validator pipe does
+not validate these inputs. Optional fields accept omission, while only explicitly
+nullable fields accept `null`. Password policies and permission checks remain in
+the Services.
 
 ## Quick Start
 

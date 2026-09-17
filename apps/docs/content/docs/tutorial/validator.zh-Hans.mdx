@@ -65,6 +65,24 @@ class TreeDto {
 }
 ```
 
+## 可选字段与空值
+
+`.optional()` 允许省略字段，`.nullable()` 允许必填字段取 `null`，`.nullish()`
+同时允许省略和 `null`。这些声明替代旧的条件验证装饰器，不改变 GraphQL 或数据库的空值约束。
+
+```typescript
+class UpdateProfileDto {
+  @ZodField((z) => z.string().optional())
+  name?: string;
+
+  @ZodField((z) => z.string().nullish())
+  image?: string | null;
+}
+```
+
+这里 `name: null` 无效，`image: null` 有效。Service 仍需实现更新语义：省略时保持原值，
+显式 `null` 可用于清空。直接调用 Service 不会自动执行 Nest 管道。
+
 ## 映射 DTO
 
 Nest 标准 mapped-type helper 不会复制第三方验证库持有的元数据。使用对应的

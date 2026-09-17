@@ -4057,6 +4057,104 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     });
   });
 
+  it('rejects null for non-nullable update fields before persistence while allowing omission', async () => {
+    const owner = await createAuthenticatedUser('Nullable Input Owner');
+    const user = await createAuthenticatedUser('Nullable Input Member');
+    const workspace = await createWorkspace(owner, 'Nullable Inputs');
+    const member = await addMember(owner, workspace.id, user.email);
+    const connection = migrationOrm.em.getConnection();
+    await connection.execute(
+      `update "user" set roles = array['admin'] where id = ?`,
+      [owner.user.id],
+    );
+
+    for (const [operation, inputType, id, field, sql] of [
+      [
+        'updateUser',
+        'UpdateUserInput',
+        user.user.id,
+        'email',
+        'select email from "user" where id = ?',
+      ],
+      [
+        'updateWorkspace',
+        'UpdateWorkspaceInput',
+        workspace.id,
+        'name',
+        'select name from workspace where id = ?',
+      ],
+      [
+        'updateMember',
+        'UpdateMemberInput',
+        member.id,
+        'status',
+        'select status from member where id = ?',
+      ],
+    ] as const) {
+      const mutate = (input: Record<string, unknown>) =>
+        gql(
+          `mutation($id: ID!, $input: ${inputType}!) { ${operation}(id: $id, input: $input) { id } }`,
+          {
+            cookies: owner.cookies,
+            workspaceId: workspace.id,
+            variables: { id, input },
+          },
+        );
+      const before = await connection.execute(sql, [id]);
+      const rejected = await mutate({ [field]: null });
+      expect(rejected.body.errors).toEqual([
+        expect.objectContaining({
+          extensions: expect.objectContaining({
+            code: 'BAD_USER_INPUT',
+            validationErrors: expect.arrayContaining([
+              expect.objectContaining({ field: [field] }),
+            ]),
+          }),
+        }),
+      ]);
+      expect(await connection.execute(sql, [id])).toEqual(before);
+
+      expectNoGraphQLErrors(await mutate({}));
+      expect(await connection.execute(sql, [id])).toEqual(before);
+    }
+
+    for (const query of [
+      'mutation($id: ID!) { banUser(id: $id, input: null) { id } }',
+      'mutation { deleteCurrentUser(input: null) { success } }',
+    ]) {
+      const rejected = await gql(query, {
+        cookies: owner.cookies,
+        variables: { id: user.user.id },
+      });
+      expect(rejected.body.errors).toEqual([
+        expect.objectContaining({
+          extensions: expect.objectContaining({ code: 'BAD_USER_INPUT' }),
+        }),
+      ]);
+    }
+    expect(
+      await connection.execute('select banned from "user" where id = ?', [
+        user.user.id,
+      ]),
+    ).toEqual([{ banned: false }]);
+    expect(
+      await connection.execute('select id from "user" where id = ?', [
+        owner.user.id,
+      ]),
+    ).toEqual([{ id: owner.user.id }]);
+    const banned = await gql('mutation($id: ID!) { banUser(id: $id) { id } }', {
+      cookies: owner.cookies,
+      variables: { id: user.user.id },
+    });
+    expectNoGraphQLErrors(banned);
+    expect(banned.body.data.banUser).toEqual({ id: user.user.id });
+    expect(
+      await connection.execute('select banned from "user" where id = ?', [
+        user.user.id,
+      ]),
+    ).toEqual([{ banned: true }]);
+  });
+
   async function addMember(
     user: AuthenticatedUser,
     workspaceId: string,

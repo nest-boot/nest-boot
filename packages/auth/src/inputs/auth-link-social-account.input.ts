@@ -1,35 +1,31 @@
 import { Field, InputType } from "@nest-boot/graphql";
-import { IsOptional, IsString } from "class-validator";
+import { ZodField } from "@nest-boot/validator";
 
 /** Starts a social or OpenID Connect account-linking flow. */
 @InputType()
 export class AuthLinkSocialAccountInput {
   /** Configured provider identifier. */
-  @IsString()
+  @ZodField((z) => z.string())
   @Field(() => String)
   provider!: string;
 
   /** URL returned to after a successful provider callback. */
-  @IsOptional()
-  @IsString()
+  @ZodField((z) => z.string().optional())
   @Field(() => String, { nullable: true })
   callbackURL?: string;
 
   /** URL returned to after a failed provider callback. */
-  @IsOptional()
-  @IsString()
+  @ZodField((z) => z.string().optional())
   @Field(() => String, { nullable: true })
   errorCallbackURL?: string;
 
   /** Additional OAuth scopes requested from the provider. */
-  @IsOptional()
-  @IsString({ each: true })
+  @ZodField((z) => z.array(z.string()).optional())
   @Field(() => [String], { nullable: true })
   scopes?: string[];
 
   /** Optional provider login hint. */
-  @IsOptional()
-  @IsString()
+  @ZodField((z) => z.string().optional())
   @Field(() => String, { nullable: true })
   loginHint?: string;
 }

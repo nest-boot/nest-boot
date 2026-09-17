@@ -161,7 +161,7 @@ export class WorkspaceService {
     workspace = await this.resolveWorkspaceForAction(workspace, "update");
     this.accessControlService.assertCurrentWorkspace(workspace);
     this.accessControlService.assertWorkspaceCan("update", workspace);
-    this.em.assign(workspace, input as never);
+    this.em.assign(workspace, input as never, { ignoreUndefined: true });
     await this.em.flush();
     return workspace;
   }

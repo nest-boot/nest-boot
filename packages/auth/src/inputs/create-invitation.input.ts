@@ -1,33 +1,21 @@
 import { Field, InputType, Int } from "@nest-boot/graphql";
-import {
-  ArrayNotEmpty,
-  IsArray,
-  IsEmail,
-  IsInt,
-  IsOptional,
-  IsString,
-  Min,
-} from "class-validator";
+import { ZodField } from "@nest-boot/validator";
 
 /** Input for creating a workspace invitation. */
 @InputType()
 export class CreateInvitationInput {
   /** Roles granted to the invited member upon joining. */
-  @IsArray()
-  @ArrayNotEmpty()
-  @IsString({ each: true })
+  @ZodField((z) => z.array(z.string()).min(1))
   @Field(() => [String])
   roles!: string[];
 
   /** Email address authorized to accept the invitation. */
-  @IsEmail()
+  @ZodField((z) => z.email())
   @Field(() => String)
   email!: string;
 
   /** Invitation lifetime in seconds. Defaults to 48 hours. */
-  @IsOptional()
-  @IsInt()
-  @Min(1)
+  @ZodField((z) => z.number().int().min(1).optional())
   @Field(() => Int, { nullable: true })
   expiresIn?: number;
 }

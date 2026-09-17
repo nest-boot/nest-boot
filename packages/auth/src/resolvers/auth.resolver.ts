@@ -158,7 +158,8 @@ export class AuthResolver {
   /** Requests deletion of the authenticated user. */
   @Mutation(() => AuthDeleteUserResultType)
   async deleteCurrentUser(
-    @Args("input", { nullable: true }) input?: AuthDeleteUserInput,
+    @Args("input", { nullable: true, defaultValue: {} })
+    input?: AuthDeleteUserInput,
   ): Promise<AuthDeleteUserResultType> {
     return await this.authService.deleteCurrentUser(input ?? {});
   }
