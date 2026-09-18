@@ -59,7 +59,7 @@ export class MemberService {
     private readonly accessControlService: AccessControlService,
   ) {}
 
-  /** Returns the current member, rejecting user API keys outside their membership. */
+  /** Returns the current member after membership and instance read checks. */
   getCurrentMember(): Member | null {
     if (!RequestContext.isActive()) return null;
     const member = RequestContext.get(Member);
@@ -68,6 +68,7 @@ export class MemberService {
         "The API key owner is not a member of this workspace",
       );
     }
+    if (member) this.accessControlService.assertWorkspaceCan("read", member);
     return member ?? null;
   }
 
@@ -401,7 +402,7 @@ export class MemberService {
     const workspace = this.unwrapWorkspace(member);
     this.accessControlService.assertCurrentWorkspace(workspace);
     this.accessControlService.assertWorkspaceCan("delete", member);
-    if (this.getCurrentMember()?.id === member.id) {
+    if (this.isCurrentMember(member)) {
       throw new ForbiddenException("You are not allowed to remove yourself");
     }
     return await this.removeMemberRecord(workspace, member, (lockedMember) => {

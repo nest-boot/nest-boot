@@ -44,7 +44,9 @@ cached in `RequestContext` and rebuilt after an identity or authorization change
 Optional callbacks run synchronously and return nothing; auth builds the final ability.
 
 Class-level checks only gate an operation; conditional rules are also evaluated
-against loaded entities and proposed entities before creation. CASL-authorized
+against loaded entities and proposed entities before creation. `currentMember`
+and `currentWorkspace` also check the selected instance's workspace read rules;
+being present in the request context does not bypass authorization. CASL-authorized
 connections validate each returned node and reject the entire page if one is
 denied, rather than silently filtering a page and changing its pagination.
 Administrative bulk session revocation locks and authorizes every target before

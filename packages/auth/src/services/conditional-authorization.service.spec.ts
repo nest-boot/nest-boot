@@ -18,6 +18,62 @@ import { UserApiKeyService } from "./user-api-key.service.js";
 import { WorkspaceApiKeyService } from "./workspace-api-key.service.js";
 
 describe("conditional service authorization", () => {
+  it.each(["member", "workspace"] as const)(
+    "checks current %s reads against the context instance",
+    async (kind) => {
+      await withIdentity(({ memberService, workspaceService }) => {
+        const entity =
+          kind === "member"
+            ? RequestContext.get(Member)
+            : RequestContext.get(Workspace);
+        if (!entity) throw new Error("Missing test identity");
+        const read = () =>
+          kind === "member"
+            ? memberService.getCurrentMember()
+            : workspaceService.getCurrentWorkspace();
+        expect(read()).toBe(entity);
+        entity.id = "blocked";
+        expect(() => read()).toThrow(ForbiddenException);
+        entity.id = "allowed";
+        RequestContext.set(
+          WorkspaceAbility,
+          new WorkspaceAbility([
+            {
+              action: "read",
+              subject: kind === "member" ? "Member" : "Workspace",
+              inverted: true,
+            },
+          ]),
+        );
+        expect(() => read()).toThrow(ForbiddenException);
+        RequestContext.set(WorkspaceAbility, null);
+        expect(() => read()).toThrow(ForbiddenException);
+        RequestContext.set(Member, null);
+        RequestContext.set(Workspace, null);
+        expect(read()).toBeNull();
+      });
+    },
+  );
+
+  it("does not require current-member read ability to remove another member", async () => {
+    await withIdentity(async ({ memberService, workspace, em }) => {
+      const actor = RequestContext.get(Member);
+      if (!actor) throw new Error("Missing test member");
+      actor.id = "blocked";
+      const target = Object.assign(new Member(), {
+        id: "target",
+        workspace,
+        roles: ["member"],
+        status: "ACTIVE",
+      });
+      em.findOne.mockResolvedValue(target);
+      await expect(memberService.removeMember(target)).resolves.toBe(target);
+      expect(() => memberService.getCurrentMember()).toThrow(
+        ForbiddenException,
+      );
+    });
+  });
+
   it.each(["accept", "reject"] as const)(
     "checks the loaded invitation before %s",
     async (operation) => {
@@ -239,7 +295,7 @@ describe("conditional service authorization", () => {
 });
 
 async function withIdentity(
-  callback: (context: ReturnType<typeof fixture>) => Promise<void>,
+  callback: (context: ReturnType<typeof fixture>) => void | Promise<void>,
 ) {
   const data = fixture();
   await RequestContext.run(new RequestContext({ type: "test" }), async () => {

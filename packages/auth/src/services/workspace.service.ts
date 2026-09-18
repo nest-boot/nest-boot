@@ -44,7 +44,7 @@ export class WorkspaceService {
     private readonly accessControlService: AccessControlService,
   ) {}
 
-  /** Returns the selected workspace after validating its user membership. */
+  /** Returns the selected workspace after membership and instance read checks. */
   getCurrentWorkspace(): Workspace | null {
     if (!RequestContext.isActive()) return null;
     const workspace = RequestContext.get(Workspace);
@@ -55,6 +55,8 @@ export class WorkspaceService {
         "The authenticated user is not a member of this workspace",
       );
     }
+    if (workspace)
+      this.accessControlService.assertWorkspaceCan("read", workspace);
     return workspace ?? null;
   }
 
