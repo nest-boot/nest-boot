@@ -324,7 +324,9 @@ export class AuthService {
 
   /** Resets a credential password using a password-reset token. */
   async resetPassword(options: ResetPasswordOptions): Promise<boolean> {
+    this.authMiddleware.assertAuthenticationCanChange();
     const result = await this.auth.api.resetPassword({ body: options });
+    if (result.status) await this.authMiddleware.revalidateCurrentSession();
     return result.status;
   }
 

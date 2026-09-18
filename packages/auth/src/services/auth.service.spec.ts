@@ -57,6 +57,7 @@ async function createService(
     assertAuthenticationCanChange: vi.fn(),
     clearAuthentication: vi.fn(),
     refreshCurrentUser: vi.fn(),
+    revalidateCurrentSession: vi.fn(),
     authenticateSession: vi.fn(),
     resolveRegisteredUser: vi.fn((id: string) =>
       em.findOneOrFail(User, { id }),
@@ -619,7 +620,7 @@ describe("AuthService", () => {
   });
 
   it("resets a password with a reset token", async () => {
-    const { api, service } = await createService();
+    const { api, service, authMiddleware } = await createService();
     const options = {
       newPassword: "new-password",
       token: "reset-token",
@@ -628,6 +629,24 @@ describe("AuthService", () => {
 
     await expect(service.resetPassword(options)).resolves.toBe(true);
     expect(api.resetPassword).toHaveBeenCalledWith({ body: options });
+    expect(authMiddleware.revalidateCurrentSession).toHaveBeenCalledOnce();
+    authMiddleware.revalidateCurrentSession.mockClear();
+    api.resetPassword.mockResolvedValueOnce({ status: false });
+    await expect(service.resetPassword(options)).resolves.toBe(false);
+    expect(authMiddleware.revalidateCurrentSession).not.toHaveBeenCalled();
+    api.resetPassword.mockRejectedValueOnce(new Error("Invalid reset token"));
+    await expect(service.resetPassword(options)).rejects.toThrow(
+      "Invalid reset token",
+    );
+    expect(authMiddleware.revalidateCurrentSession).not.toHaveBeenCalled();
+    api.resetPassword.mockClear();
+    authMiddleware.assertAuthenticationCanChange.mockImplementationOnce(() => {
+      throw new Error("Active transaction");
+    });
+    await expect(service.resetPassword(options)).rejects.toThrow(
+      "Active transaction",
+    );
+    expect(api.resetPassword).not.toHaveBeenCalled();
   });
 
   it("verifies the authenticated user's credential password", async () => {

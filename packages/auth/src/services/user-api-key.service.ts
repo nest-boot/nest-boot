@@ -169,7 +169,7 @@ export class UserApiKeyService {
           prefix,
           start: plaintextApiKey.slice(0, 8),
         } as RequiredEntityData<UserApiKey>);
-
+        this.accessControlService.assertUserCan("create", entity);
         await em.persist(entity).flush();
         return entity;
       },

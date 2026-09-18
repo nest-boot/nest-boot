@@ -39,6 +39,14 @@ health(): string {
 工作区 Ability。内置权限映射由 auth 维护，无需配置回调。Ability 缓存在 `RequestContext`
 中，身份或授权变更后重新构建。可选回调同步执行且不返回值，最终 Ability 由框架构建。
 
+类型级检查只用于操作准入；条件规则还会对加载出的实体及创建前的待写入实体进行判断。
+由 CASL 授权的连接会检查每个返回节点，任一节点被拒绝就拒绝整页，不在分页后静默
+过滤节点以免改变分页结果。管理接口批量撤销会话时，会先锁定并授权所有目标，再执行
+删除。基于归属的个人会话操作仍独立于管理权限 `session:list` 和 `session:revoke`。
+
+密码重置成功后，auth 会重新查询数据库中的当前会话。如果重置已撤销该会话，则在后续
+mutation 执行前清除请求身份、Ability 和数据库身份上下文；无关会话及 API Key 身份保留。
+
 ```typescript
 import { AuthModule } from "@nest-boot/auth";
 

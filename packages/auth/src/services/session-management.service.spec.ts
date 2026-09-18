@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-import { EntityManager } from "@mikro-orm/core";
+import { EntityManager, LockMode } from "@mikro-orm/core";
 import { ConnectionManager } from "@nest-boot/graphql-connection";
 import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException, NotFoundException } from "@nestjs/common";
@@ -30,6 +30,7 @@ describe("SessionService management", () => {
         impersonatedBy: scope === "impersonator" ? target : null,
       });
       em.findOne.mockResolvedValue(session);
+      em.find.mockResolvedValue([session]);
       const context = mockRlsContext(em);
       const revoke = () =>
         scope === "one"
@@ -71,6 +72,10 @@ describe("SessionService management", () => {
     const { em, service, accessControlService } = createService();
     const user = Object.assign(new User(), { id: "target" });
     em.findOne.mockResolvedValue(user);
+    em.find.mockResolvedValue([
+      Object.assign(new Session(), { id: "one", user }),
+      Object.assign(new Session(), { id: "two", user }),
+    ]);
     em.nativeDelete.mockResolvedValue(2);
     await expect(service.revokeUserSessions(user.id)).resolves.toBe(2);
     expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
@@ -227,6 +232,10 @@ describe("SessionService management", () => {
       user,
     });
     em.findOne.mockResolvedValue(session);
+    em.find.mockResolvedValue([
+      session,
+      Object.assign(new Session(), { id: "session-2", user }),
+    ]);
     em.nativeDelete.mockResolvedValue(2);
 
     await expect(service.revokeSession(user, session.id)).resolves.toBe(true);
@@ -237,12 +246,23 @@ describe("SessionService management", () => {
     expect(em.findOne).toHaveBeenCalledWith(
       Session,
       { id: session.id, user: "user-1" },
-      { filters: false },
+      { filters: false, lockMode: LockMode.PESSIMISTIC_WRITE },
     );
     expect(em.remove).toHaveBeenCalledWith(session);
+    expect(em.find).toHaveBeenCalledWith(
+      Session,
+      {
+        $or: [{ user: "user-1" }, { impersonatedBy: user }],
+      },
+      { filters: false, lockMode: LockMode.PESSIMISTIC_WRITE },
+    );
     expect(em.nativeDelete).toHaveBeenCalledWith(Session, {
-      $or: [{ user: "user-1" }, { impersonatedBy: user }],
+      id: { $in: [session.id, "session-2"] },
     });
+    em.find.mockResolvedValueOnce([]);
+    em.nativeDelete.mockClear();
+    await expect(service.revokeUserSessions(user)).resolves.toBe(0);
+    expect(em.nativeDelete).not.toHaveBeenCalled();
   });
 });
 function createService() {

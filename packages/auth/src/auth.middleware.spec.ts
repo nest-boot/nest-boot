@@ -131,6 +131,79 @@ async function runInRequestContext<T>(
 }
 
 describe("AuthMiddleware", () => {
+  it.each(["valid", "deleted", "failure"] as const)(
+    "revalidates a %s session after password reset and fails closed",
+    async (state) => {
+      const user = Object.assign(new TestUser(), { id: "user" });
+      const session = Object.assign(new TestSession(), {
+        id: "session",
+        token: "token",
+        user,
+      });
+      const findOne = vi.fn();
+      const { middleware, em } = await createMiddleware(vi.fn(), findOne);
+      mockRlsContext(em);
+      if (state === "failure")
+        findOne.mockRejectedValue(new Error("Database unavailable"));
+      else findOne.mockResolvedValue(state === "valid" ? session : null);
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          const ability = new UserAbility([
+            { action: "manage", subject: "all" },
+          ]);
+          RequestContext.set(UserEntity, user);
+          RequestContext.set(SessionEntity, session);
+          RequestContext.set(WorkspaceEntity, new TestWorkspace());
+          RequestContext.set(UserAbility, ability);
+          if (state === "failure")
+            await expect(middleware.revalidateCurrentSession()).rejects.toThrow(
+              "Database unavailable",
+            );
+          else await middleware.revalidateCurrentSession();
+          expect(findOne).toHaveBeenCalledWith(
+            SessionEntity,
+            {
+              id: session.id,
+              token: session.token,
+              expiresAt: { $gt: expect.any(Date) },
+            },
+            { refresh: true },
+          );
+          if (state === "valid") {
+            expect(RequestContext.get(SessionEntity)).toBe(session);
+            expect(RequestContext.get(UserAbility)).toBe(ability);
+            expect(em.setSessionContext).not.toHaveBeenCalled();
+          } else {
+            expect(RequestContext.get(SessionEntity)).toBeNull();
+            expect(RequestContext.get(UserEntity)).toBeNull();
+            expect(RequestContext.get(WorkspaceEntity)).toBeNull();
+            expect(RequestContext.get(UserAbility)?.can("manage", "all")).toBe(
+              false,
+            );
+            expect(em.setSessionContext).toHaveBeenCalledWith({
+              role: "anonymous",
+              variables: { "app.user.id": "", "app.workspace.id": "" },
+            });
+          }
+        },
+      );
+    },
+  );
+
+  it("does not replace API-key or anonymous identity while revalidating a session", async () => {
+    const { middleware, em } = await createMiddleware(vi.fn(), vi.fn());
+    await middleware.revalidateCurrentSession();
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      const apiKey = new UserApiKey();
+      RequestContext.set(API_KEY, apiKey);
+      await middleware.revalidateCurrentSession();
+      expect(RequestContext.get(API_KEY)).toBe(apiKey);
+    });
+    expect(em.findOne).not.toHaveBeenCalled();
+    expect(em.setSessionContext).not.toHaveBeenCalled();
+  });
+
   it("revokes the replacement identity when its ability cannot be built", async () => {
     const user = Object.assign(new TestUser(), { id: "replacement" });
     const session = Object.assign(new TestSession(), {

@@ -84,9 +84,13 @@ export class MemberService {
     args: ConnectionArgsInterface<Member>,
   ): Promise<ConnectionInterface<Member>> {
     const where = this.getMemberListFilter(workspace);
-    return await new ConnectionManager(
+    const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
     ).find<Member>(MemberConnection, args, { where });
+    for (const { node } of connection.edges) {
+      this.accessControlService.assertWorkspaceCan("read", node);
+    }
+    return connection;
   }
 
   /** Finds the active membership linking a user and workspace. */
@@ -96,11 +100,14 @@ export class MemberService {
   ): Promise<Member | null> {
     this.accessControlService.assertCurrentUser(user);
     this.accessControlService.assertUserCan("read", Workspace);
-    return await this.em.findOne(Member, {
+    this.accessControlService.assertUserCan("read", workspace);
+    const member = await this.em.findOne(Member, {
       status: "ACTIVE",
       user,
       workspace,
     } as FilterQuery<Member>);
+    if (member) this.accessControlService.assertUserCan("read", member);
+    return member;
   }
 
   /** Finds a member by identifier within the request's selected workspace. */
@@ -113,10 +120,12 @@ export class MemberService {
     }
     this.accessControlService.assertCurrentWorkspace(workspace);
     this.accessControlService.assertWorkspaceCan("read", Member);
-    return await this.em.findOne(Member, {
+    const member = await this.em.findOne(Member, {
       id,
       workspace,
     } as FilterQuery<Member>);
+    if (member) this.accessControlService.assertWorkspaceCan("read", member);
+    return member;
   }
 
   /** Resolves a member's user with workspace authorization and request RLS. */
@@ -178,6 +187,7 @@ export class MemberService {
           user,
           workspace,
         } as unknown as RequiredEntityData<Member>);
+        this.accessControlService.assertWorkspaceCan("create", member);
         await em.persist(member).flush();
         await em.nativeUpdate(
           Invitation,

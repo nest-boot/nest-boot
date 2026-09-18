@@ -10,7 +10,9 @@ import { TsMorphMetadataProvider } from '@mikro-orm/reflection';
 import {
   AccessControlService,
   AuthMiddleware,
+  AuthModule,
   type AuthModuleOptions,
+  AuthService,
   InvitationService,
   Member as BaseMember,
   MemberService,
@@ -34,9 +36,11 @@ import {
 } from '@nest-boot/auth';
 import { loadConfigFromEnv } from '@nest-boot/mikro-orm';
 import { REQUEST, RequestContext } from '@nest-boot/request-context';
+import type { FactoryProvider } from '@nestjs/common';
 import type { Request } from 'express';
 
 import { mikroOrmAdapter } from '../../../packages/auth/dist/adapters/mikro-orm-adapter.js';
+import { AUTH_TOKEN } from '../../../packages/auth/dist/auth.constants.js';
 import { ApiKeyAuthenticationService } from '../../../packages/auth/dist/infrastructure/api-key-authentication.service.js';
 import { createContextualAuthService } from '../../../packages/auth/dist/infrastructure/create-contextual-auth-service.js';
 import { RequestIdentity } from '../../../packages/auth/dist/infrastructure/request-identity.js';
@@ -112,6 +116,121 @@ describe('example native RLS migrations with PGlite', () => {
     expect(orm.config.get('metadataCache').enabled).toBe(false);
     expect(readPolicies(orm)).toEqual(originalPolicies);
   });
+
+  it.each([false, true])(
+    'revalidates request identity after a real password reset (revoke=%s)',
+    async (revoke) => {
+      interface ResetBackend {
+        api: {
+          signUpEmail(options: {
+            body: { name: string; email: string; password: string };
+          }): Promise<{ user: { id: string }; token: string | null }>;
+          requestPasswordReset(options: {
+            body: { email: string };
+          }): Promise<unknown>;
+          resetPassword(options: {
+            body: { token: string; newPassword: string };
+          }): Promise<{ status: boolean }>;
+        };
+      }
+      let resetToken = '';
+      const options: AuthModuleOptions = {
+        baseURL: 'http://localhost:4100',
+        secret: 'password-reset-integration-secret-long-enough',
+        emailAndPassword: {
+          enabled: true,
+          requireEmailVerification: false,
+          revokeSessionsOnPasswordReset: revoke,
+          sendResetPassword: ({ token }) => {
+            resetToken = token;
+            return Promise.resolve();
+          },
+          password: {
+            hash: (value) => Promise.resolve(`test:${value}`),
+            verify: ({ hash, password }) =>
+              Promise.resolve(hash === `test:${password}`),
+          },
+        },
+      };
+      const providers = Reflect.getMetadata(
+        'providers',
+        AuthModule,
+      ) as FactoryProvider<ResetBackend>[];
+      const factory = providers.find(
+        (provider) => provider.provide === AUTH_TOKEN,
+      );
+      const admin = orm.em.fork();
+      const backend = factory.useFactory(
+        options,
+        orm,
+        { sendMail: vi.fn() },
+        {},
+        new UserDeletionService(admin),
+      ) as ResetBackend;
+      const email = `${randomUUID()}@example.test`;
+      const signedUp = await backend.api.signUpEmail({
+        body: { name: 'Reset actor', email, password: 'old-password' },
+      });
+      try {
+        const user = await admin.findOneOrFail(User, signedUp.user.id);
+        const session = await admin.findOneOrFail(Session, {
+          token: signedUp.token,
+        });
+        await backend.api.requestPasswordReset({ body: { email } });
+        expect(resetToken).not.toBe('');
+        const em = orm.em.fork({
+          session: {
+            role: 'authenticated',
+            variables: { 'app.user.id': user.id },
+          },
+        });
+        const access = new AccessControlService(options);
+        const sessions = new SessionService(backend, em, access);
+        const middleware = new AuthMiddleware(
+          options,
+          sessions,
+          {} as never,
+          em,
+        );
+        const service = new AuthService(
+          backend,
+          middleware,
+          {} as never,
+          sessions,
+        );
+        await RequestContext.run(
+          new RequestContext({ type: 'test' }),
+          async () => {
+            RequestIdentity.stage({ user, session });
+            RequestIdentity.prepare(options);
+            await expect(
+              service.resetPassword({
+                token: resetToken,
+                newPassword: 'new-password',
+              }),
+            ).resolves.toBe(true);
+            expect(await admin.count(Session, { user })).toBe(revoke ? 0 : 1);
+            expect(RequestContext.get(Session)).toBe(revoke ? null : session);
+            expect(RequestContext.get(User)).toBe(revoke ? null : user);
+            expect(access.userCan('create', Workspace)).toBe(!revoke);
+            expect(em.getSessionContext()?.role).toBe(
+              revoke ? 'anonymous' : 'authenticated',
+            );
+            if (revoke) {
+              await expect(
+                new WorkspaceService(em, options, access).createWorkspace(
+                  user,
+                  { name: 'Denied after reset' },
+                ),
+              ).rejects.toThrow('another user');
+            }
+          },
+        );
+      } finally {
+        await admin.nativeDelete(User, signedUp.user.id);
+      }
+    },
+  );
 
   it('creates request roles with NOLOGIN and NOINHERIT', async () => {
     expect(

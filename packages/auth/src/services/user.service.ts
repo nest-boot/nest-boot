@@ -109,6 +109,10 @@ export class UserService {
           permissions,
           roles,
         } as unknown as RequiredEntityData<User>);
+        this.accessControlService.assertUserCan("create", user);
+        if (input.roles !== undefined || input.permissions !== undefined) {
+          this.accessControlService.assertUserCan("set-role", user);
+        }
         em.persist(user);
         await em.flush();
 
@@ -296,10 +300,13 @@ export class UserService {
     args: ConnectionArgsInterface<User>,
   ): Promise<ConnectionInterface<User>> {
     this.accessControlService.assertUserCan("list", User);
-    return await new ConnectionManager(this.em as SqlEntityManager).find<User>(
-      UserConnection,
-      args,
-    );
+    const connection = await new ConnectionManager(
+      this.em as SqlEntityManager,
+    ).find<User>(UserConnection, args);
+    for (const { node } of connection.edges) {
+      this.accessControlService.assertUserCan("list", node);
+    }
+    return connection;
   }
 
   /** Bans a user and immediately revokes all of their sessions. */

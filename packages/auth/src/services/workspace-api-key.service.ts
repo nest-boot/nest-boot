@@ -175,7 +175,7 @@ export class WorkspaceApiKeyService {
           prefix,
           start: plaintextApiKey.slice(0, 8),
         } as RequiredEntityData<WorkspaceApiKey>);
-
+        this.accessControlService.assertWorkspaceCan("create", entity);
         await em.persist(entity).flush();
         return entity;
       },

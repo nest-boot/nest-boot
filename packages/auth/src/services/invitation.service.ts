@@ -148,6 +148,7 @@ export class InvitationService {
             status: "pending",
             workspace,
           } as unknown as RequiredEntityData<Invitation>);
+          this.accessControlService.assertWorkspaceCan("create", created);
           await em.persist(created).flush();
           return { created, inviterMember };
         },
@@ -304,10 +305,12 @@ export class InvitationService {
   ): Promise<Invitation | null> {
     this.accessControlService.assertCurrentUser(user);
     this.accessControlService.assertUserCan("read", Invitation);
-    return await this.em.findOne(Invitation, {
+    const invitation = await this.em.findOne(Invitation, {
       id,
       email: user.email.toLowerCase(),
     } as FilterQuery<Invitation>);
+    if (invitation) this.accessControlService.assertUserCan("read", invitation);
+    return invitation;
   }
 
   /** Finds an invitation owned by the supplied workspace. */
@@ -317,10 +320,13 @@ export class InvitationService {
   ): Promise<Invitation | null> {
     this.accessControlService.assertCurrentWorkspace(workspace);
     this.accessControlService.assertWorkspaceCan("read", Invitation);
-    return await this.em.findOne(Invitation, {
+    const invitation = await this.em.findOne(Invitation, {
       id,
       workspace,
     } as FilterQuery<Invitation>);
+    if (invitation)
+      this.accessControlService.assertWorkspaceCan("read", invitation);
+    return invitation;
   }
 
   /** Paginates invitations for the selected workspace after authorization. */
@@ -330,11 +336,15 @@ export class InvitationService {
   ): Promise<ConnectionInterface<Invitation>> {
     this.accessControlService.assertCurrentWorkspace(workspace);
     this.accessControlService.assertWorkspaceCan("read", Invitation);
-    return await new ConnectionManager(
+    const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
     ).find<Invitation>(InvitationConnection, args, {
       where: { workspace } as FilterQuery<Invitation>,
     });
+    for (const { node } of connection.edges) {
+      this.accessControlService.assertWorkspaceCan("read", node);
+    }
+    return connection;
   }
 
   /** Paginates unexpired pending invitations addressed to the current user. */
@@ -345,7 +355,7 @@ export class InvitationService {
     this.accessControlService.assertCurrentUser(user);
     this.accessControlService.assertUserCan("read", Invitation);
     const now = new Date();
-    return await new ConnectionManager(
+    const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
     ).find<Invitation>(InvitationConnection, args, {
       where: {
@@ -354,6 +364,10 @@ export class InvitationService {
         status: "pending",
       } as FilterQuery<Invitation>,
     });
+    for (const { node } of connection.edges) {
+      this.accessControlService.assertUserCan("read", node);
+    }
+    return connection;
   }
 
   /** Accepts a pending invitation and creates an active membership. */
@@ -389,6 +403,7 @@ export class InvitationService {
           lockMode: LockMode.PESSIMISTIC_WRITE,
           populate: [],
         });
+        this.accessControlService.assertUserCan("update", invitation);
         if (invitation.status !== "pending") {
           throw new BadRequestException("Workspace invitation is not pending");
         }
@@ -459,6 +474,7 @@ export class InvitationService {
     this.accessControlService.assertCurrentUser(user);
     this.accessControlService.assertUserCan("update", Invitation);
     invitation = await this.resolveInvitationForAction(invitation);
+    this.accessControlService.assertUserCan("update", invitation);
     if (invitation.status !== "pending") {
       throw new BadRequestException("Workspace invitation is not pending");
     }

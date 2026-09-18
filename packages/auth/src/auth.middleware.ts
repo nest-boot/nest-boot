@@ -39,6 +39,29 @@ export class AuthMiddleware implements NestMiddleware {
     RequestIdentity.clear(this.em);
   }
 
+  /** Clears a session revoked by an authentication write, without falling back to another credential. */
+  async revalidateCurrentSession(): Promise<void> {
+    const current = RequestContext.isActive()
+      ? RequestContext.get(Session)
+      : null;
+    if (!current) return;
+    try {
+      const session = await this.em.findOne(
+        Session,
+        {
+          id: current.id,
+          token: current.token,
+          expiresAt: { $gt: new Date() },
+        },
+        { refresh: true },
+      );
+      if (!session) RequestIdentity.clear(this.em);
+    } catch (error) {
+      RequestIdentity.clear(this.em);
+      throw error;
+    }
+  }
+
   /** Reloads a profile written by Better Auth without changing its authentication method. */
   async refreshCurrentUser(): Promise<void> {
     const current = RequestContext.isActive() ? RequestContext.get(User) : null;

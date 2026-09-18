@@ -91,19 +91,25 @@ export class WorkspaceService {
       .createQueryBuilder<Member>(Member)
       .select("workspace")
       .where({ status: "ACTIVE", user: user.id });
-    return await new ConnectionManager(
+    const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
     ).find<Workspace>(WorkspaceConnection, args, {
       where: {
         id: { $in: memberships.toRaw() },
       } as unknown as FilterQuery<Workspace>,
     });
+    for (const { node } of connection.edges) {
+      this.accessControlService.assertUserCan("read", node);
+    }
+    return connection;
   }
 
   /** Finds a workspace matching the supplied filter. */
   async findOne(where: FilterQuery<Workspace>): Promise<Workspace | null> {
     this.accessControlService.assertUserCan("read", Workspace);
-    return await this.em.findOne(Workspace, where);
+    const workspace = await this.em.findOne(Workspace, where);
+    if (workspace) this.accessControlService.assertUserCan("read", workspace);
+    return workspace;
   }
 
   /** Creates a workspace and its owner membership atomically. */
@@ -120,6 +126,7 @@ export class WorkspaceService {
         const workspace = em.create(Workspace, {
           name: input.name,
         } as unknown as RequiredEntityData<Workspace>);
+        this.accessControlService.assertUserCan("create", workspace);
         const member = em.create(Member, {
           name: user.name,
           email: user.email.trim().toLowerCase(),

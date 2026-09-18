@@ -43,6 +43,19 @@ mappings, so no callback is required for built-in operations. Abilities are
 cached in `RequestContext` and rebuilt after an identity or authorization change.
 Optional callbacks run synchronously and return nothing; auth builds the final ability.
 
+Class-level checks only gate an operation; conditional rules are also evaluated
+against loaded entities and proposed entities before creation. CASL-authorized
+connections validate each returned node and reject the entire page if one is
+denied, rather than silently filtering a page and changing its pagination.
+Administrative bulk session revocation locks and authorizes every target before
+deleting any of them. Ownership-based self-service session operations remain
+separate from administrative `session:list` and `session:revoke` permissions.
+
+After a successful password reset, auth rechecks the current session in the
+database. If the reset revoked it, the request loses its identity, abilities, and
+database scope before another mutation can run. Unrelated sessions and API-key
+identities are retained.
+
 ```typescript
 import { AuthModule } from "@nest-boot/auth";
 
