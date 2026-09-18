@@ -15,6 +15,58 @@ import type { AccessControlService } from "./access-control.service.js";
 import { SessionService } from "./session.service.js";
 
 describe("SessionService management", () => {
+  it.each(["one", "all", "impersonator"] as const)(
+    "publishes administrative %s revocation only after a successful commit",
+    async (scope) => {
+      const { em, service } = createService();
+      const user = Object.assign(new User(), { id: "self" });
+      const target =
+        scope === "impersonator"
+          ? Object.assign(new User(), { id: "administrator" })
+          : user;
+      const session = Object.assign(new Session(), {
+        id: "current",
+        user,
+        impersonatedBy: scope === "impersonator" ? target : null,
+      });
+      em.findOne.mockResolvedValue(session);
+      const context = mockRlsContext(em);
+      const revoke = () =>
+        scope === "one"
+          ? service.revokeSession(user, session.id)
+          : service.revokeUserSessions(target);
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          RequestContext.set(User, user);
+          RequestContext.set(Session, session);
+          em.isInTransaction.mockReturnValue(true);
+          await expect(revoke()).rejects.toThrow(
+            "outside an active transaction",
+          );
+          expect(em.remove).not.toHaveBeenCalled();
+          expect(em.nativeDelete).not.toHaveBeenCalled();
+          em.isInTransaction.mockReturnValue(false);
+          const persistence = scope === "one" ? em.flush : em.nativeDelete;
+          persistence.mockRejectedValueOnce(new Error("Persistence failed"));
+          await expect(revoke()).rejects.toThrow("Persistence failed");
+          expect(RequestContext.get(User)).toBe(user);
+          expect(RequestContext.get(Session)).toBe(session);
+          expect(em.getSessionContext()).toEqual(context);
+          expect(em.setSessionContext).not.toHaveBeenCalled();
+          em.nativeDelete.mockResolvedValue(1);
+          await revoke();
+          expect(RequestContext.get(User)).toBeNull();
+          expect(RequestContext.get(Session)).toBeNull();
+          expect(em.setSessionContext).toHaveBeenCalledWith({
+            role: "anonymous",
+            variables: { "app.user.id": "", "app.workspace.id": "" },
+          });
+        },
+      );
+    },
+  );
+
   it("authorizes administrative revocation before looking up the user", async () => {
     const { em, service, accessControlService } = createService();
     const user = Object.assign(new User(), { id: "target" });
@@ -196,6 +248,7 @@ describe("SessionService management", () => {
 function createService() {
   const em = {
     getContext: vi.fn().mockReturnThis(),
+    setSessionContext: vi.fn(),
     getSessionContext:
       vi.fn<() => import("@mikro-orm/core").SessionContext | undefined>(),
     isInTransaction: vi.fn(() => false),

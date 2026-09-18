@@ -93,6 +93,57 @@ describe("API-key management services", () => {
   });
 
   for (const scope of ["user", "workspace"] as const) {
+    it(`rejects missing ${scope} keys and invalid expiration changes without persistence`, async () => {
+      const { em, service } = createService();
+      const user = createTestUser();
+      RequestContext.set(User, user);
+      const key =
+        scope === "user"
+          ? Object.assign(new UserApiKey(), {
+              id: "key",
+              user: ref(User, user),
+              name: "Original",
+              permissions: [],
+              expiresAt: new Date(Date.now() + 60_000),
+            })
+          : createTestApiKey();
+      const update = (input: { expiresAt?: Date | null; name?: string }) =>
+        scope === "user"
+          ? service.updateUserApiKey(key.id, input)
+          : service.updateWorkspaceApiKey(key.id, input);
+      const remove = () =>
+        scope === "user"
+          ? service.deleteUserApiKey(key.id)
+          : service.deleteWorkspaceApiKey(key.id);
+      em.findOne.mockResolvedValue(null);
+      await expect(update({ name: "Missing" })).rejects.toThrow(
+        "API key not found",
+      );
+      await expect(remove()).rejects.toThrow("API key not found");
+      em.findOne.mockResolvedValue(key);
+      const original = { name: key.name, expiresAt: key.expiresAt };
+      await expect(
+        update({ name: "Must not change", expiresAt: new Date(0) }),
+      ).rejects.toThrow("expiration must be in the future");
+      await expect(
+        scope === "user"
+          ? service.createUserApiKey(user, {
+              name: "Expired",
+              expiresAt: new Date(0),
+            })
+          : service.createWorkspaceApiKey(createTestWorkspace(), {
+              name: "Expired",
+              expiresAt: new Date(0),
+            }),
+      ).rejects.toThrow("expiration must be in the future");
+      expect(key).toMatchObject(original);
+      expect(em.flush).not.toHaveBeenCalled();
+      expect(em.create).not.toHaveBeenCalled();
+      await update({ expiresAt: null });
+      expect(key.expiresAt).toBeNull();
+      expect(em.flush).toHaveBeenCalledOnce();
+    });
+
     for (const operation of ["permissions", "disable", "delete"] as const) {
       it(`publishes ${scope} credential ${operation} changes only after commit`, async () => {
         const { service, em } = createService({
@@ -1157,7 +1208,7 @@ describe("API-key management services", () => {
     ).resolves.toBeDefined();
   });
 
-  it("rejects inactive members and past expiration timestamps", async () => {
+  it("rejects inactive members before creating a workspace key", async () => {
     const { em, service } = createService();
     const workspace = createTestWorkspace();
     const member = createTestMember();
@@ -1167,13 +1218,6 @@ describe("API-key management services", () => {
     await expect(
       service.createWorkspaceApiKey(workspace, { name: "Deploy key" }),
     ).rejects.toBeInstanceOf(ForbiddenException);
-    member.status = "ACTIVE";
-    await expect(
-      service.createWorkspaceApiKey(workspace, {
-        expiresAt: new Date(Date.now() - 1_000),
-        name: "Deploy key",
-      }),
-    ).rejects.toBeInstanceOf(BadRequestException);
     expect(em.create).not.toHaveBeenCalled();
   });
 
