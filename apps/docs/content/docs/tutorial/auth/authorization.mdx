@@ -130,10 +130,12 @@ must remain in the configured catalog to be serialized by GraphQL.
 `WorkspaceApiKeyPermission` uses the workspace catalog. Neither enum narrows with
 `apiKey.allowedPermissions`, so previously stored grants remain readable after
 the allowlist changes. Services enforce the allowlist on writes.
-An empty user or workspace catalog uses that scope's built-in catalog
-for schema generation only. This never changes authorization: an explicitly empty
-permission catalog or allowed list still grants nothing. Services continue to
-check key scope and the issuer's permission ceiling.
+Omit a user or workspace permission catalog to use that scope's defaults.
+Explicit `user.permissions: []` or `workspace.permissions: []` is rejected at
+startup because GraphQL enums cannot be empty. Use empty role grants to give a
+role no permissions. An empty `apiKey.allowedPermissions` still generates enums
+from the full catalogs, but does not allow granting permissions to a key.
+Services continue to check key scope and the issuer's permission ceiling.
 
 Nest enum metadata is process-wide. Concurrent AuthModule applications in one
 process must use identical enum catalogs; conflicting registrations fail at

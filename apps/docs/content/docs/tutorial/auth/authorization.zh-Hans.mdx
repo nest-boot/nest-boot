@@ -118,8 +118,10 @@ Service、Ability 构建器和数据库继续使用原始值。修改目录后�
 
 `UserApiKeyPermission` 取用户与工作区权限目录的并集；`WorkspaceApiKeyPermission` 使用工作区目录。
 这两个枚举不会随 `apiKey.allowedPermissions` 缩小，确保收紧允许列表后仍能读取已有授权。
-Service 在写入时校验允许列表。用户或工作区目录为空时，仅在生成 Schema 时回退到该作用域
-的内置目录。这不会改变授权语义：显式配置的空权限目录或允许列表仍不授予任何权限。
+Service 在写入时校验允许列表。省略用户或工作区权限目录时使用该作用域的默认目录。
+显式配置 `user.permissions: []` 或 `workspace.permissions: []` 会在启动时报错，
+因为 GraphQL 不支持空枚举。可以给角色配置空授权列表，使该角色没有权限。
+`apiKey.allowedPermissions: []` 仍使用完整目录生成枚举，但不允许向 Key 授予权限。
 Service 继续校验 Key 作用域和操作者可授予的权限上限。
 
 Nest 的枚举元数据属于进程级注册。同一进程内并行运行的 AuthModule 应用必须使用相同
