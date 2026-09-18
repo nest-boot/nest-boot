@@ -1634,14 +1634,27 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       'update "user" set banned = true, ban_expires_at = null where id = ?',
       [administrator.user.id],
     );
-    const stopped = await gql('mutation { stopImpersonating { id } }', {
-      cookies,
-    });
+    const stopped = await gql(
+      'mutation($name: String!) { stopImpersonating { id } createWorkspace(input: { name: $name }) { id } }',
+      {
+        cookies,
+        variables: { name: `Revoked restoration ${target.user.id}` },
+      },
+    );
     expect(stopped.body.errors).toEqual([
       expect.objectContaining({
         message: 'Banned administrators cannot restore their session',
       }),
+      expect.objectContaining({
+        path: ['createWorkspace'],
+        extensions: expect.objectContaining({ code: 'UNAUTHORIZED' }),
+      }),
     ]);
+    expect(
+      await connection.execute('select id from workspace where name = ?', [
+        `Revoked restoration ${target.user.id}`,
+      ]),
+    ).toEqual([]);
     expect(await readSessions()).toEqual([]);
     expectGraphQLError(await gql('query { currentUser { id } }', { cookies }));
     expectNoGraphQLErrors(
@@ -2057,6 +2070,39 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       expect(updated[field]).toEqual(field === 'roles' ? ['user'] : []);
     },
   );
+
+  it('records workspace-key usage after workspace deletion revokes its request scope', async () => {
+    const owner = await createAuthenticatedUser('Deleting key owner');
+    const workspace = await createWorkspace(owner, 'Key deletion audit');
+    const key = await createWorkspaceApiKey(owner, workspace.id, {
+      name: 'Deletion key',
+      permissions: ['WORKSPACE__DELETE'],
+    });
+    const connection = migrationOrm.em.getConnection();
+    const readUsage = () =>
+      connection.execute<{ last_used_at: Date | null }[]>(
+        'select last_used_at from workspace_api_key where id = ?',
+        [key.entity.id],
+      );
+    expect(await readUsage()).toEqual([{ last_used_at: null }]);
+    expectNoGraphQLErrors(
+      await gql('mutation($id: ID!) { deleteWorkspace(id: $id) { id } }', {
+        bearerToken: key.apiKey,
+        workspaceId: workspace.id,
+        variables: { id: workspace.id },
+      }),
+    );
+    const [usage] = await readUsage();
+    expect(usage.last_used_at).not.toBeNull();
+    const timestamp = usage.last_used_at;
+    const rejected = await gql('query { currentWorkspace { id } }', {
+      bearerToken: key.apiKey,
+      workspaceId: workspace.id,
+    });
+    expect(rejected.status).toBe(401);
+    expect(rejected.body.message).toBe('Invalid API key');
+    expect(await readUsage()).toEqual([{ last_used_at: timestamp }]);
+  });
 
   it('clears the parent workspace scope after deletion before the next mutation', async () => {
     const owner = await createAuthenticatedUser('Deleting owner');

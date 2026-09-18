@@ -104,6 +104,7 @@ export const authServiceProviders: Provider[] = [
         (manager) => new ApiKeyAuthenticationService(manager),
         {
           validate: "authentication",
+          recordUsage: "authentication",
         },
       ),
   },

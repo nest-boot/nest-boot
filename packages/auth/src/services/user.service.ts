@@ -28,6 +28,7 @@ import { UserConnection } from "../connections/user.connection-definition.js";
 import { Account } from "../entities/account.entity.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
+import { RevokedAuthenticationException } from "../infrastructure/revoked-authentication.exception.js";
 import type { AuthenticatedSession } from "../interfaces/authenticated-session.interface.js";
 import type { BanUserOptions } from "../interfaces/ban-user-options.interface.js";
 import type { CreateUserOptions } from "../interfaces/create-user-options.interface.js";
@@ -395,6 +396,9 @@ export class UserService {
     this.accessControlService.assertCurrentSession(currentSession);
     const impersonatedByReference = currentSession.impersonatedBy;
     if (!impersonatedByReference) return null;
+    this.assertIdentityRevocationCanCommit(
+      Reference.unwrapReference(impersonatedByReference),
+    );
 
     const result = await this.em.transactional(
       async (em) => {
@@ -419,9 +423,12 @@ export class UserService {
       },
       { clear: true },
     );
-    // Throw only after the transaction commits the session revocation.
+    // A missing administrator has already cascaded deletion to this session.
+    if (result === null) clearRequestAuthentication(this.em);
+    // Publish the committed revocation even when restoration returns an error.
     if (result === "banned-administrator") {
-      throw new ForbiddenException(
+      clearRequestAuthentication(this.em);
+      throw new RevokedAuthenticationException(
         "Banned administrators cannot restore their session",
       );
     }

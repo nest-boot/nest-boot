@@ -140,9 +140,8 @@ current recipient regardless of caller filters; recipient lists include only
 unexpired pending invitations in undeleted workspaces.
 
 `@nest-boot/graphql-connection` and `@mikro-orm/sql` are now peer dependencies.
-Load an application connection definition named `InvitationConnection`
-built from the configured invitation entity before using these methods. The
-GraphQL transport in `AuthModule` exposes them as
+`AuthModule` registers the built-in `InvitationConnection`; no application-owned
+connection definition is required. Its GraphQL transport exposes these connections as
 `Workspace.invitations` and `User.invitations` field resolvers.
 
 ## Authorization TODO
@@ -195,7 +194,7 @@ GraphQL transport in `AuthModule` exposes them as
 
 ## User and session connections
 
-`UserService.getUserConnection(args)`, `SessionService.getSessionConnectionByUser(user, args)` and `AccountService.getAccountConnectionByUser(user, args)` use the application's named connection definitions. Own browser-session reads do not require administrative permissions; foreign-user and delegated API-key session reads require `session:list`. Application RLS must grant the corresponding SELECT access. Account connections require the owning user session, reject API keys and exclude credential columns. `UserService.listUserAccounts` is removed without an alias.
+`UserService.getUserConnection(args)`, `SessionService.getSessionConnectionByUser(user, args)` and `AccountService.getAccountConnectionByUser(user, args)` use the built-in connection definitions registered by `AuthModule`. Own browser-session reads do not require administrative permissions; foreign-user and delegated API-key session reads require `session:list`. Application RLS must grant the corresponding SELECT access. Account connections require the owning user session, reject API keys and exclude credential columns. `UserService.listUserAccounts` is removed without an alias.
 
 `SessionService` owns `getSessionConnectionByUser`,
 `getSessionImpersonator`, `revokeSession`, and `revokeUserSessions`;

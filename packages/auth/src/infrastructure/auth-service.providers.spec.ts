@@ -8,9 +8,11 @@ import {
   createTestWorkspace,
   createWorkspaceServices,
 } from "../../test/workspace-service.fixture.js";
+import { UserAbility } from "../abilities/user.ability.js";
 import { WorkspaceAbility } from "../abilities/workspace.ability.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { Member } from "../entities/member.entity.js";
+import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import type { AccessControlService } from "../services/access-control.service.js";
@@ -22,6 +24,89 @@ import { WorkspaceService } from "../services/workspace.service.js";
 import { authServiceProviders } from "./auth-service.providers.js";
 
 describe("auth service execution boundaries", () => {
+  it.each(["missing", "banned", "failure"] as const)(
+    "publishes terminal impersonation revocation to the parent request (%s)",
+    async (state) => {
+      const { em } = createWorkspaceServices();
+      const { em: isolated } = createWorkspaceServices();
+      Object.assign(isolated, { clearSessionContext: vi.fn() });
+      em.fork.mockReturnValue(isolated);
+      em.getSessionContext.mockReturnValue({
+        role: "authenticated",
+        variables: {
+          "app.user.id": "target",
+          "app.workspace.id": "workspace-1",
+        },
+      });
+      const user = Object.assign(new User(), { id: "target" });
+      const administrator = Object.assign(new User(), {
+        id: "admin",
+        banned: true,
+      });
+      const session = Object.assign(new Session(), {
+        user,
+        impersonatedBy: administrator,
+      });
+      isolated.findOne.mockResolvedValue(
+        state === "missing" ? null : administrator,
+      );
+      if (state === "failure")
+        isolated.flush.mockRejectedValueOnce(new Error("Commit failed"));
+      const provider = authServiceProviders.find(
+        (candidate) =>
+          typeof candidate === "object" &&
+          "provide" in candidate &&
+          candidate.provide === UserService,
+      ) as FactoryProvider<UserService>;
+      const service = await provider.useFactory(
+        em,
+        {},
+        {},
+        { assertCurrentSession: vi.fn() },
+        {},
+      );
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          RequestContext.set(EntityManager, em);
+          RequestContext.set(User, user);
+          RequestContext.set(Session, session);
+          RequestContext.set(Workspace, createTestWorkspace());
+          RequestContext.set(Member, createTestMember());
+          const ability = new UserAbility([
+            { action: "update", subject: User },
+          ]);
+          RequestContext.set(UserAbility, ability);
+          const result = service.stopImpersonating(session);
+          if (state === "missing") await expect(result).resolves.toBeNull();
+          else
+            await expect(result).rejects.toThrow(
+              state === "banned"
+                ? "Banned administrators cannot restore their session"
+                : "Commit failed",
+            );
+          expect(RequestContext.get(EntityManager)).toBe(em);
+          if (state === "failure") {
+            expect(RequestContext.get(User)).toBe(user);
+            expect(RequestContext.get(Session)).toBe(session);
+            expect(RequestContext.get(UserAbility)).toBe(ability);
+            expect(em.setSessionContext).not.toHaveBeenCalled();
+          } else {
+            for (const token of [User, Session, Workspace, Member])
+              expect(RequestContext.get(token)).toBeNull();
+            expect(RequestContext.get(UserAbility)?.can("update", User)).toBe(
+              false,
+            );
+            expect(em.setSessionContext).toHaveBeenCalledWith({
+              role: "anonymous",
+              variables: { "app.user.id": "", "app.workspace.id": "" },
+            });
+          }
+        },
+      );
+    },
+  );
+
   it.each([false, true])(
     "clears workspace authorization in the parent request only after deletion commits (failure=%s)",
     async (failure) => {

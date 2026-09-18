@@ -118,8 +118,8 @@ the two key types.
 User deletion cascades through foreign keys without custom cleanup functions or triggers;
 workspaces and workspace keys survive. User SELECT permits authenticated roles;
 Services enforce profile access through Ability, including custom permission names.
-User write and Session policies still use trusted request permissions and built-in
-permission names, without a SQL permission function. Do not expose direct User queries
+User writes and Session reads likewise rely on Service authorization; database
+request variables no longer carry application permissions. Do not expose direct User queries
 without Service authorization. The example baseline is for empty databases only;
 existing databases need a separate data-preserving migration to split legacy
 keys by owner type and populate the required foreign keys.
