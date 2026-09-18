@@ -79,7 +79,11 @@ export class UserApiKeyService {
   async getUserApiKey(id: string, user: User): Promise<UserApiKey | null> {
     this.accessControlService.assertCurrentUser(user);
     this.accessControlService.assertUserCan("read", UserApiKey);
-    return await this.getVisibleApiKey(id, user);
+    const apiKey = await this.getVisibleApiKey(id, user);
+    if (apiKey) {
+      this.accessControlService.assertUserCan("read", apiKey);
+    }
+    return apiKey;
   }
 
   /** Paginates current-user keys after applying ownership and permission ceilings. */
@@ -120,9 +124,13 @@ export class UserApiKeyService {
     this.accessControlService.assertUserCan("update", apiKey);
     const user = this.unwrapOwner(apiKey);
     const permissions = this.normalizeUpdatedPermissions(apiKey, input);
-    const finalPermissions =
-      permissions ?? this.normalizePermissions(user, apiKey.permissions ?? []);
-    this.assertUserPermissionCeiling(user, finalPermissions);
+    // Allow disabling stale grants without replacing them.
+    if (input.enabled !== false || permissions !== undefined) {
+      const finalPermissions =
+        permissions ??
+        this.normalizePermissions(user, apiKey.permissions ?? []);
+      this.assertUserPermissionCeiling(user, finalPermissions);
+    }
     return await this.updateKey(apiKey, input, permissions);
   }
 

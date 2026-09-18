@@ -36,8 +36,9 @@ with single-key lookups rather than exposed as public filter-building methods.
 
 Single-key lookups use `User.apiKey(id)` and `Workspace.apiKey(id)`, replacing
 the root `userApiKey(id)` and `apiKey(id)` queries. The service checks the parent
-owner, permissions and request RLS; an inaccessible row returns null, while
-missing operation permission still raises an authorization error. Mutation authorization is unchanged.
+owner, permissions and request RLS. Rows excluded by ownership, credential scope,
+or RLS return null; the service also checks the loaded entity against conditional
+read rules and raises an authorization error if those rules deny access.
 
 ```graphql
 query Keys($userKeyId: ID!, $workspaceKeyId: ID!) {
@@ -154,6 +155,12 @@ apply the same restriction in the database, including pagination counts.
 Browser sessions can still manage all keys they own, subject to the normal
 ability checks. Updates that omit `permissions` preserve the stored value;
 passing `null` clears it.
+
+An authorized caller can disable a key with `{ enabled: false }`, without replacing
+its permissions, even if those stored permissions no longer satisfy the configured
+allowlist or the issuer's current grants. Ownership, update ability, and the
+authenticating key's stored-permission ceiling still apply. Re-enabling the key,
+other updates, and explicit permission replacements validate permissions normally.
 
 ## Transport
 

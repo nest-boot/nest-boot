@@ -159,6 +159,100 @@ describe("API-key management services", () => {
   });
 
   for (const scope of ["user", "workspace"] as const) {
+    it(`checks conditional read restrictions on the loaded ${scope} key`, async () => {
+      const options: AuthModuleOptions = {
+        user: {
+          buildAbility: (rules) => {
+            rules.cannot("read", UserApiKey, { enabled: false });
+          },
+        },
+        workspace: {
+          buildAbility: (rules) => {
+            rules.cannot("read", WorkspaceApiKey, { enabled: false });
+          },
+        },
+      };
+      const { service, em, accessControlService } = createService(options);
+      vi.mocked(accessControlService.assertUserCan).mockRestore();
+      vi.mocked(accessControlService.assertWorkspaceCan).mockRestore();
+      const user = Object.assign(createTestUser(), { roles: ["admin"] });
+      RequestIdentity.stage({ user });
+      RequestIdentity.prepare(options);
+      const key = Object.assign(
+        scope === "user" ? new UserApiKey() : new WorkspaceApiKey(),
+        {
+          id: "conditional-key",
+          enabled: true,
+          permissions: [],
+          user: ref(User, user),
+          workspace: ref(Workspace, createTestWorkspace()),
+        },
+      );
+      const read = () =>
+        scope === "user"
+          ? service.getUserApiKey(key.id, user)
+          : service.getWorkspaceApiKey(key.id, createTestWorkspace());
+      em.findOne.mockResolvedValue(key);
+      await expect(read()).resolves.toBe(key);
+      key.enabled = false;
+      await expect(read()).rejects.toThrow(ForbiddenException);
+      em.findOne.mockResolvedValue(null);
+      await expect(read()).resolves.toBeNull();
+    });
+
+    for (const reason of ["catalog", "owner"] as const) {
+      it(`allows disabling a ${scope} key with stale ${reason} grants but still rejects re-enabling it`, async () => {
+        const options: AuthModuleOptions =
+          reason === "catalog"
+            ? { apiKey: { allowedPermissions: ["api-key:update"] } }
+            : {};
+        const { service, em, accessControlService } = createService(options);
+        vi.mocked(accessControlService.assertUserCan).mockRestore();
+        vi.mocked(accessControlService.assertWorkspaceCan).mockRestore();
+        const user = Object.assign(createTestUser(), {
+          roles: [reason === "owner" ? "user" : "admin"],
+          permissions: ["api-key:update"],
+        });
+        const member = Object.assign(createTestMember(), {
+          roles: [reason === "owner" ? "member" : "owner"],
+          permissions: ["api-key:update"],
+        });
+        RequestIdentity.stage({ user, member });
+        RequestIdentity.prepare(options);
+        const permissions = [
+          scope === "user" ? "user:get" : "workspace:delete",
+        ];
+        const key = Object.assign(
+          scope === "user" ? new UserApiKey() : new WorkspaceApiKey(),
+          {
+            id: "stale-key",
+            enabled: true,
+            permissions,
+            user: ref(User, user),
+            workspace: ref(Workspace, createTestWorkspace()),
+          },
+        );
+        em.findOne.mockResolvedValue(key);
+        const update =
+          scope === "user"
+            ? service.updateUserApiKey
+            : service.updateWorkspaceApiKey;
+        await expect(update(key.id, { enabled: false })).resolves.toBe(key);
+        expect(key.enabled).toBe(false);
+        expect(key.permissions).toEqual(permissions);
+        expect(em.flush).toHaveBeenCalledOnce();
+        await expect(update(key.id, { enabled: true })).rejects.toThrow();
+        await expect(
+          update(key.id, { name: "Still invalid" }),
+        ).rejects.toThrow();
+        await expect(
+          update(key.id, { enabled: false, permissions }),
+        ).rejects.toThrow();
+        expect(key.enabled).toBe(false);
+        expect(em.flush).toHaveBeenCalledOnce();
+      });
+    }
+
     it(`rejects missing ${scope} keys and invalid expiration changes without persistence`, async () => {
       const { em, service } = createService();
       const user = createTestUser();
@@ -935,6 +1029,11 @@ describe("API-key management services", () => {
       );
       targetKey.permissions = ["user:list"];
       await expect(
+        service.updateUserApiKey(targetKey.id, { enabled: false }),
+      ).rejects.toThrow(
+        "API key permissions exceed authenticating API key permissions: user:list",
+      );
+      await expect(
         service.updateUserApiKey(targetKey.id, {
           name: "Still escalated",
         }),
@@ -981,6 +1080,11 @@ describe("API-key management services", () => {
         "Workspace permissions exceed issuer permissions: workspace:delete",
       );
       targetKey.permissions = ["workspace:delete"];
+      await expect(
+        service.updateWorkspaceApiKey(targetKey.id, { enabled: false }),
+      ).rejects.toThrow(
+        "API key permissions exceed authenticating API key permissions: workspace:delete",
+      );
       await expect(
         service.updateWorkspaceApiKey(targetKey.id, {
           enabled: true,

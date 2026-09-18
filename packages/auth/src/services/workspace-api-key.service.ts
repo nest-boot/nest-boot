@@ -81,7 +81,11 @@ export class WorkspaceApiKeyService {
   ): Promise<WorkspaceApiKey | null> {
     this.assertWorkspacePrincipal(workspace);
     this.accessControlService.assertWorkspaceCan("read", WorkspaceApiKey);
-    return await this.getVisibleApiKey(id, workspace);
+    const apiKey = await this.getVisibleApiKey(id, workspace);
+    if (apiKey) {
+      this.accessControlService.assertWorkspaceCan("read", apiKey);
+    }
+    return apiKey;
   }
 
   /** Paginates selected-workspace keys after applying ownership and permission ceilings. */
@@ -121,15 +125,18 @@ export class WorkspaceApiKeyService {
     const apiKey = await this.findWritableApiKey(id);
     this.accessControlService.assertWorkspaceCan("update", apiKey);
     const permissions = this.normalizeUpdatedPermissions(apiKey, input);
-    const finalPermissions =
-      permissions ??
-      this.normalizePermissions(
-        this.unwrapOwner(apiKey),
-        apiKey.permissions ?? [],
+    // Allow disabling stale grants without replacing them.
+    if (input.enabled !== false || permissions !== undefined) {
+      const finalPermissions =
+        permissions ??
+        this.normalizePermissions(
+          this.unwrapOwner(apiKey),
+          apiKey.permissions ?? [],
+        );
+      this.accessControlService.assertCanGrantWorkspacePermissions(
+        finalPermissions,
       );
-    this.accessControlService.assertCanGrantWorkspacePermissions(
-      finalPermissions,
-    );
+    }
     return await this.updateKey(apiKey, input, permissions);
   }
 

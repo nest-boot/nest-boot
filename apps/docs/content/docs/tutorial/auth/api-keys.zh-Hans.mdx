@@ -30,7 +30,8 @@ GraphQL 连接字段为 `User.apiKeys` 和 `Workspace.apiKeys`，通常通过 `c
 
 单条查询使用 `User.apiKey(id)` 与 `Workspace.apiKey(id)`，替代根查询
 `userApiKey(id)` 与 `apiKey(id)`。Service 校验父对象归属、权限并保留请求 RLS；
-不可访问的记录返回 null，缺少操作权限仍返回授权错误。Mutation 的授权语义保持不变。
+被归属、凭证权限范围或 RLS 过滤的记录返回 null；加载后还会对具体实体检查读取条件规则，
+被规则拒绝时返回授权错误。
 
 ```graphql
 query Keys($userKeyId: ID!, $workspaceKeyId: ID!) {
@@ -129,6 +130,10 @@ Service 仍会校验每次写入，这份列表不能替代授权检查。
 应用相同限制，分页总数也只计算范围内的 Key。浏览器 Session 在常规 Ability 检查
 通过后，仍可管理所属范围内的全部 Key。
 更新时省略 `permissions` 会保留原值，传入 `null` 则会清空。
+
+具有权限的调用者可以使用 `{ enabled: false }` 停用 Key，不替换其权限；即使旧权限已不再
+符合配置白名单或签发者当前授权，也允许停用。归属、更新能力及当前认证 Key 对目标已存储
+权限的上限检查仍然生效。重新启用、其他更新和显式替换权限仍按正常规则校验。
 
 ## 传输方式
 
