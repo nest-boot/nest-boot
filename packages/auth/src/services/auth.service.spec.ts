@@ -740,8 +740,8 @@ describe("AuthService", () => {
     });
   });
 
-  it("changes the password and only exposes the replacement token", async () => {
-    const { api, service } = await createService();
+  it("adopts the replacement password-change session before returning its token", async () => {
+    const { api, service, authMiddleware, authGuard } = await createService();
     api.changePassword.mockResolvedValue({
       headers: new Headers(),
       response: {
@@ -763,6 +763,89 @@ describe("AuthService", () => {
       headers: requestHeaders,
       returnHeaders: true,
     });
+    expect(authMiddleware.assertAuthenticationCanChange).toHaveBeenCalledBefore(
+      api.changePassword,
+    );
+    expect(authMiddleware.authenticateSession).toHaveBeenCalledWith(
+      "replacement-token",
+    );
+    expect(authMiddleware.authenticateSession).toHaveBeenCalledBefore(
+      authGuard.refreshAbilities,
+    );
+    expect(authGuard.refreshAbilities).toHaveBeenCalledOnce();
+    expect(authMiddleware.clearAuthentication).not.toHaveBeenCalled();
+  });
+
+  it.each([false, undefined])(
+    "keeps the current identity when password changes do not rotate sessions (%s)",
+    async (revokeOtherSessions) => {
+      const { api, service, authMiddleware, authGuard } = await createService();
+      api.changePassword.mockResolvedValue({
+        headers: new Headers(),
+        response: { token: null },
+      });
+      await expect(
+        service.changeCurrentUserPassword({
+          currentPassword: "old-password",
+          newPassword: "new-password",
+          revokeOtherSessions,
+        }),
+      ).resolves.toEqual({ token: null });
+      expect(authMiddleware.authenticateSession).not.toHaveBeenCalled();
+      expect(authGuard.refreshAbilities).not.toHaveBeenCalled();
+      expect(authMiddleware.clearAuthentication).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["session", "abilities"])(
+    "clears authentication if replacement %s synchronization fails",
+    async (stage) => {
+      const { api, service, authMiddleware, authGuard } = await createService();
+      api.changePassword.mockResolvedValue({
+        headers: new Headers(),
+        response: { token: "replacement-token" },
+      });
+      const failure = new Error("Synchronization failed");
+      if (stage === "session")
+        authMiddleware.authenticateSession.mockRejectedValue(failure);
+      else
+        authGuard.refreshAbilities.mockImplementation(() => {
+          throw failure;
+        });
+      await expect(
+        service.changeCurrentUserPassword({
+          currentPassword: "old-password",
+          newPassword: "new-password",
+          revokeOtherSessions: true,
+        }),
+      ).rejects.toBe(failure);
+      expect(authMiddleware.clearAuthentication).toHaveBeenCalledOnce();
+      if (stage === "session")
+        expect(authGuard.refreshAbilities).not.toHaveBeenCalled();
+    },
+  );
+
+  it("rejects transactional rotation and preserves identity when the password change fails", async () => {
+    const { api, service, authMiddleware, authGuard } = await createService();
+    const options = {
+      currentPassword: "old-password",
+      newPassword: "new-password",
+      revokeOtherSessions: true,
+    };
+    authMiddleware.assertAuthenticationCanChange.mockImplementationOnce(() => {
+      throw new Error("Active transaction");
+    });
+    await expect(service.changeCurrentUserPassword(options)).rejects.toThrow(
+      "Active transaction",
+    );
+    expect(api.changePassword).not.toHaveBeenCalled();
+    api.changePassword.mockRejectedValueOnce(new Error("Invalid password"));
+    await expect(service.changeCurrentUserPassword(options)).rejects.toThrow(
+      "Invalid password",
+    );
+    expect(authMiddleware.authenticateSession).not.toHaveBeenCalled();
+    expect(authGuard.refreshAbilities).not.toHaveBeenCalled();
+    expect(authMiddleware.clearAuthentication).not.toHaveBeenCalled();
   });
 
   it("applies the replacement session cookie after a password change", async () => {

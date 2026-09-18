@@ -375,11 +375,23 @@ export class AuthService {
   async changeCurrentUserPassword(
     options: ChangeAuthPasswordOptions,
   ): Promise<ChangeAuthPasswordResult> {
+    if (options.revokeOtherSessions)
+      this.authMiddleware.assertAuthenticationCanChange();
     const result = await this.auth.api.changePassword({
       body: options,
       headers: headers(),
       returnHeaders: true,
     });
+    if (result.response.token) {
+      try {
+        await this.authMiddleware.authenticateSession(result.response.token);
+        this.authGuard.refreshAbilities();
+      } catch (error) {
+        // Rotation already revoked the old session; never retain its identity.
+        this.authMiddleware.clearAuthentication();
+        throw error;
+      }
+    }
     applyAuthResponseCookies(result.headers);
     return { token: result.response.token };
   }

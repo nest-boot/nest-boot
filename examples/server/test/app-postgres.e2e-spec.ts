@@ -1889,6 +1889,78 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     },
   );
 
+  it('uses the replacement password-change session in subsequent mutation fields', async () => {
+    const administrator = await createAuthenticatedUser(
+      'Rotation administrator',
+    );
+    const user = await createAuthenticatedUser('Password rotation user');
+    const connection = migrationOrm.em.getConnection();
+    await connection.execute(
+      `update "user" set roles = array['admin'] where id = ?`,
+      [administrator.user.id],
+    );
+    const impersonated = await gql(
+      'mutation($id: ID!) { impersonateUser(id: $id) { id } }',
+      { cookies: administrator.cookies, variables: { id: user.user.id } },
+    );
+    expectNoGraphQLErrors(impersonated);
+    const impersonatedCookies = collectSetCookies(impersonated);
+    const oldSessions = await connection.execute<{ id: string }[]>(
+      'select id from session where user_id = ?',
+      [user.user.id],
+    );
+    expect(oldSessions).toHaveLength(2);
+    const response = await gql(
+      `mutation($input: AuthChangePasswordInput!) {
+        changeCurrentUserPassword(input: $input) { token }
+        stopImpersonating { id }
+        createWorkspace(input: { name: "Rotated identity workspace" }) { id }
+      }`,
+      {
+        cookies: impersonatedCookies,
+        variables: {
+          input: {
+            currentPassword: user.password,
+            newPassword: 'replacement-session-password',
+            revokeOtherSessions: true,
+          },
+        },
+      },
+    );
+    expectNoGraphQLErrors(response);
+    const sessions = await connection.execute<{ id: string; token: string }[]>(
+      'select id, token from session where user_id = ?',
+      [user.user.id],
+    );
+    expect(sessions).toHaveLength(1);
+    const [replacement] = sessions;
+    expect(oldSessions.map(({ id }) => id)).not.toContain(replacement.id);
+    expect(response.body.data.changeCurrentUserPassword.token).toBe(
+      replacement.token,
+    );
+    // The replacement is a normal session, not the revoked impersonation session.
+    expect(response.body.data.stopImpersonating).toBeNull();
+    expect(
+      await connection.execute(
+        'select user_id from member where workspace_id = ?',
+        [response.body.data.createWorkspace.id],
+      ),
+    ).toEqual([{ user_id: user.user.id }]);
+    const current = await gql('query { currentSession { id current } }', {
+      cookies: collectSetCookies(response),
+    });
+    expectNoGraphQLErrors(current);
+    expect(current.body.data.currentSession).toEqual({
+      id: replacement.id,
+      current: true,
+    });
+    for (const cookies of [user.cookies, impersonatedCookies]) {
+      expectGraphQLError(
+        await gql('query { currentSession { id } }', { cookies }),
+      );
+    }
+  });
+
   it.each([
     'delete',
     'ban',
