@@ -791,31 +791,54 @@ describe("InvitationService", () => {
     expect(invitation.status).toBe("pending");
   });
 
-  it("keeps rejected invitations as separate audit records", async () => {
-    const { em, invitationService } = createWorkspaceServices();
-    const user = Object.assign(createTestUser(), {
-      email: "ALICE@example.com",
-    });
-    const invitation = Object.assign(createTestInvitation(), {
-      email: "alice@example.com",
-      status: "pending" as const,
-    });
-
-    await expect(
-      invitationService.rejectInvitation(user, invitation),
-    ).resolves.toBe(invitation);
-    expect(invitation.status).toBe("rejected");
-    expect(em.remove).not.toHaveBeenCalled();
-    expect(em.nativeUpdate).toHaveBeenCalledWith(
-      Invitation,
-      {
+  it.each(["entity", "id", "missing"] as const)(
+    "rejects an invitation supplied as %s without deleting its audit record",
+    async (input) => {
+      const { em, invitationService } = createWorkspaceServices();
+      const user = Object.assign(createTestUser(), {
+        email: "ALICE@example.com",
+      });
+      const invitation = Object.assign(createTestInvitation(), {
         email: "alice@example.com",
-        id: invitation.id,
-        status: "pending",
-      },
-      { status: "rejected" },
-    );
-  });
+        status: "pending" as const,
+      });
+
+      em.findOne.mockResolvedValue(input === "missing" ? null : invitation);
+      const result = invitationService.rejectInvitation(
+        user,
+        input === "entity" ? invitation : invitation.id,
+      );
+      if (input === "missing") {
+        await expect(result).rejects.toThrow("Workspace invitation not found");
+      } else {
+        await expect(result).resolves.toBe(invitation);
+      }
+      if (input !== "entity") {
+        expect(em.findOne).toHaveBeenCalledExactlyOnceWith(
+          Invitation,
+          { id: invitation.id },
+          { populate: ["workspace"], refresh: true },
+        );
+      }
+      if (input === "missing") {
+        expect(em.nativeUpdate).not.toHaveBeenCalled();
+        expect(em.remove).not.toHaveBeenCalled();
+        return;
+      }
+
+      expect(invitation.status).toBe("rejected");
+      expect(em.remove).not.toHaveBeenCalled();
+      expect(em.nativeUpdate).toHaveBeenCalledWith(
+        Invitation,
+        {
+          email: "alice@example.com",
+          id: invitation.id,
+          status: "pending",
+        },
+        { status: "rejected" },
+      );
+    },
+  );
 
   it("rejects a concurrent invitation rejection", async () => {
     const { em, invitationService } = createWorkspaceServices();

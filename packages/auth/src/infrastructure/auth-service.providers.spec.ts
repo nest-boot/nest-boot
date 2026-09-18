@@ -14,6 +14,7 @@ import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { Member } from "../entities/member.entity.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
+import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import type { AccessControlService } from "../services/access-control.service.js";
 import { InvitationService } from "../services/invitation.service.js";
@@ -21,9 +22,57 @@ import { MemberService } from "../services/member.service.js";
 import { SessionService } from "../services/session.service.js";
 import { UserService } from "../services/user.service.js";
 import { WorkspaceService } from "../services/workspace.service.js";
+import { ApiKeyAuthenticationService } from "./api-key-authentication.service.js";
 import { authServiceProviders } from "./auth-service.providers.js";
 
 describe("auth service execution boundaries", () => {
+  it("isolates credential lookup but records usage through the caller's scoped manager", async () => {
+    const { em } = createWorkspaceServices();
+    const { em: isolated } = createWorkspaceServices();
+    Object.assign(isolated, { clearSessionContext: vi.fn() });
+    em.fork.mockReturnValue(isolated);
+    const session = {
+      role: "authenticated",
+      variables: { "app.user.id": "user-1" },
+    };
+    em.getSessionContext.mockReturnValue(session);
+    const user = Object.assign(new User(), { id: "user-1" });
+    const apiKey = Object.assign(new UserApiKey(), {
+      id: "key-1",
+      user,
+      enabled: true,
+    });
+    isolated.findOne.mockResolvedValueOnce(apiKey).mockResolvedValueOnce(null);
+    const provider = authServiceProviders.find(
+      (candidate) =>
+        typeof candidate === "object" &&
+        "provide" in candidate &&
+        candidate.provide === ApiKeyAuthenticationService,
+    ) as FactoryProvider<ApiKeyAuthenticationService>;
+    const service = await provider.useFactory(em);
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      RequestContext.set(EntityManager, em);
+      await expect(service.validate("credential")).resolves.toMatchObject({
+        apiKey,
+        ownerType: "user",
+        user,
+      });
+      await service.recordUsage(apiKey);
+      expect(isolated.clearSessionContext).toHaveBeenCalledOnce();
+      expect(isolated.findOne).toHaveBeenCalledTimes(2);
+      expect(em.findOne).not.toHaveBeenCalled();
+      expect(isolated.nativeUpdate).not.toHaveBeenCalled();
+      expect(em.nativeUpdate).toHaveBeenCalledExactlyOnceWith(
+        UserApiKey,
+        { id: apiKey.id },
+        { lastUsedAt: expect.any(Date), updatedAt: expect.any(Date) },
+      );
+      expect(RequestContext.get(EntityManager)).toBe(em);
+      expect(em.getSessionContext()).toBe(session);
+      expect(em.setSessionContext).not.toHaveBeenCalled();
+    });
+  });
+
   it.each(["missing", "banned", "failure"] as const)(
     "publishes terminal impersonation revocation to the parent request (%s)",
     async (state) => {

@@ -183,6 +183,9 @@ describe("WorkspaceService and cross-domain coordination", () => {
         ForbiddenException,
       );
       RequestContext.set(API_KEY, new WorkspaceApiKey());
+      expect(() => workspaceService.getCurrentWorkspace()).toThrow(
+        "The API key owner is not a member of this workspace",
+      );
       expect(() => memberService.getCurrentMember()).toThrow(
         ForbiddenException,
       );
@@ -468,6 +471,26 @@ describe("WorkspaceService and cross-domain coordination", () => {
         "Commit failed",
       );
       expect(RequestContext.get(Workspace)).toBe(workspace);
+      expect(em.setSessionContext).not.toHaveBeenCalled();
+    });
+  });
+
+  it("does not clear workspace authorization when the scoped delete affects no row", async () => {
+    const { em, workspaceService } = createWorkspaceServices();
+    const workspace = createTestWorkspace();
+    const member = createTestMember();
+    em.nativeDelete.mockResolvedValueOnce(0);
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      const session = mockRlsContext(em);
+      RequestContext.set(Workspace, workspace);
+      RequestContext.set(Member, member);
+
+      await expect(workspaceService.deleteWorkspace(workspace)).rejects.toThrow(
+        "Workspace not found",
+      );
+      expect(RequestContext.get(Workspace)).toBe(workspace);
+      expect(RequestContext.get(Member)).toBe(member);
+      expect(em.getSessionContext()).toBe(session);
       expect(em.setSessionContext).not.toHaveBeenCalled();
     });
   });

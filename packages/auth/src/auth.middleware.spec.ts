@@ -131,6 +131,73 @@ async function runInRequestContext<T>(
 }
 
 describe("AuthMiddleware", () => {
+  it("hydrates registration results without authenticating the request or widening its database scope", async () => {
+    const { middleware, em } = await createMiddleware(vi.fn(), vi.fn());
+    const session = mockRlsContext(em);
+    const user = Object.assign(new TestUser(), { id: "registered-user" });
+    const fork = em.fork() as EntityManager;
+    em.fork.mockClear();
+    const findOneOrFail = vi.fn().mockResolvedValue(user);
+    Object.assign(fork, { findOneOrFail });
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      RequestContext.set(EntityManager, em as unknown as EntityManager);
+      await expect(middleware.resolveRegisteredUser(user.id)).resolves.toBe(
+        user,
+      );
+      await middleware.refreshCurrentUser();
+      expect(findOneOrFail).toHaveBeenCalledExactlyOnceWith(UserEntity, {
+        id: user.id,
+      });
+      expect(RequestContext.get(UserEntity)).toBeUndefined();
+      expect(RequestContext.get(SessionEntity)).toBeUndefined();
+      expect(RequestContext.get(EntityManager)).toBe(em);
+      expect(em.getSessionContext()).toBe(session);
+      expect(em.setSessionContext).not.toHaveBeenCalled();
+      expect(em.findOne).not.toHaveBeenCalled();
+    });
+  });
+
+  it("clears identity, abilities and database scope through the sign-out middleware boundary", async () => {
+    const { middleware, em } = await createMiddleware(vi.fn(), vi.fn());
+    mockRlsContext(em);
+    await RequestContext.run(new RequestContext({ type: "test" }), () => {
+      RequestContext.set(UserEntity, new TestUser());
+      RequestContext.set(SessionEntity, new TestSession());
+      RequestContext.set(WorkspaceEntity, new TestWorkspace());
+      RequestContext.set(MemberEntity, new TestMember());
+      RequestContext.set(API_KEY, new WorkspaceApiKey());
+      RequestContext.set(
+        UserAbility,
+        new UserAbility([{ action: "read", subject: UserEntity }]),
+      );
+      RequestContext.set(
+        WorkspaceAbility,
+        new WorkspaceAbility([{ action: "delete", subject: WorkspaceEntity }]),
+      );
+
+      middleware.clearAuthentication();
+
+      for (const token of [
+        UserEntity,
+        SessionEntity,
+        WorkspaceEntity,
+        MemberEntity,
+      ])
+        expect(RequestContext.get(token)).toBeNull();
+      expect(RequestContext.get(API_KEY)).toBeNull();
+      expect(RequestContext.get(UserAbility)?.can("read", UserEntity)).toBe(
+        false,
+      );
+      expect(
+        RequestContext.get(WorkspaceAbility)?.can("delete", WorkspaceEntity),
+      ).toBe(false);
+      expect(em.setSessionContext).toHaveBeenCalledExactlyOnceWith({
+        role: "anonymous",
+        variables: { "app.user.id": "", "app.workspace.id": "" },
+      });
+    });
+  });
+
   it.each([false, true])(
     "preserves case in RLS grants and API-key intersections (key: %s)",
     async (useKey) => {
