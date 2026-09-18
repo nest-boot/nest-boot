@@ -293,38 +293,59 @@ describe("InvitationService", () => {
     expect(em.nativeUpdate).not.toHaveBeenCalled();
   });
 
-  it("locks workspace before invitation and rechecks a concurrent cancellation", async () => {
-    const { invitationService, em } = createWorkspaceServices();
-    const workspace = createTestWorkspace();
-    const user = Object.assign(createTestUser(), {
-      email: "alice@example.com",
-    });
-    const invitation = Object.assign(createTestInvitation(), {
-      email: user.email,
-      workspace,
-      status: "pending",
-      expiresAt: new Date(Date.now() + 60_000),
-    });
-    em.findOne.mockResolvedValueOnce(invitation);
-    em.refreshOrFail.mockImplementation((entity) => {
-      if (entity === invitation) invitation.status = "canceled";
-      return Promise.resolve(entity);
-    });
-    await expect(
-      invitationService.acceptInvitation(user, invitation.id),
-    ).rejects.toThrow("Workspace invitation is not pending");
-    expect(em.refreshOrFail).toHaveBeenNthCalledWith(
-      1,
-      workspace,
-      expect.objectContaining({ lockMode: LockMode.PESSIMISTIC_WRITE }),
-    );
-    expect(em.refreshOrFail).toHaveBeenNthCalledWith(
-      2,
-      invitation,
-      expect.objectContaining({ lockMode: LockMode.PESSIMISTIC_WRITE }),
-    );
-    expect(em.create).not.toHaveBeenCalled();
-  });
+  it.each([
+    [
+      "cancellation",
+      { status: "canceled" },
+      "Workspace invitation is not pending",
+    ],
+    [
+      "expiration",
+      { expiresAt: new Date(0) },
+      "Workspace invitation has expired",
+    ],
+    [
+      "recipient change",
+      { email: "other@example.com" },
+      "Workspace invitation belongs to another email address",
+    ],
+  ])(
+    "locks workspace before invitation and rechecks a concurrent %s",
+    async (_change, changes, message) => {
+      const { invitationService, em } = createWorkspaceServices();
+      const workspace = createTestWorkspace();
+      const user = Object.assign(createTestUser(), {
+        email: "alice@example.com",
+      });
+      const invitation = Object.assign(createTestInvitation(), {
+        email: user.email,
+        workspace,
+        status: "pending",
+        expiresAt: new Date(Date.now() + 60_000),
+      });
+      em.findOne.mockResolvedValueOnce(invitation);
+      em.refreshOrFail.mockImplementation((entity) => {
+        if (entity === invitation) Object.assign(invitation, changes);
+        return Promise.resolve(entity);
+      });
+      await expect(
+        invitationService.acceptInvitation(user, invitation.id),
+      ).rejects.toThrow(message);
+      expect(em.refreshOrFail).toHaveBeenNthCalledWith(
+        1,
+        workspace,
+        expect.objectContaining({ lockMode: LockMode.PESSIMISTIC_WRITE }),
+      );
+      expect(em.refreshOrFail).toHaveBeenNthCalledWith(
+        2,
+        invitation,
+        expect.objectContaining({ lockMode: LockMode.PESSIMISTIC_WRITE }),
+      );
+      expect(em.create).not.toHaveBeenCalled();
+      expect(em.persist).not.toHaveBeenCalled();
+      expect(em.flush).not.toHaveBeenCalled();
+    },
+  );
 
   afterEach(() => {
     vi.restoreAllMocks();

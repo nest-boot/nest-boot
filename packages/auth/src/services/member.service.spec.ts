@@ -21,6 +21,64 @@ import { AccessControlService } from "./access-control.service.js";
 import { MemberService } from "./member.service.js";
 
 describe("MemberService", () => {
+  it("resolves a member ID with write permission and updates only the locked row", async () => {
+    const { memberService, em, accessControlService } =
+      createWorkspaceServices();
+    const member = Object.assign(createTestMember(), { name: "Original" });
+    const locked = Object.assign(createTestMember(), {
+      name: "Concurrent edit",
+    });
+    em.findOne.mockResolvedValueOnce(member).mockResolvedValueOnce(locked);
+    vi.mocked(accessControlService.assertWorkspaceCan).mockImplementation(
+      (action) => {
+        if (action === "read") throw new ForbiddenException();
+      },
+    );
+    await expect(
+      memberService.updateMember(member.id, { name: " Updated " }),
+    ).resolves.toBe(locked);
+    expect(em.findOne).toHaveBeenNthCalledWith(
+      1,
+      Member,
+      { id: member.id },
+      { populate: ["workspace"], refresh: true },
+    );
+    expect(accessControlService.assertWorkspaceCan).toHaveBeenNthCalledWith(
+      1,
+      "update",
+      Member,
+    );
+    expect(accessControlService.assertWorkspaceCan).toHaveBeenNthCalledWith(
+      2,
+      "update",
+      member,
+    );
+    expect(accessControlService.assertWorkspaceCan).toHaveBeenNthCalledWith(
+      3,
+      "update",
+      locked,
+    );
+    expect(member.name).toBe("Original");
+    expect(locked.name).toBe("Updated");
+    expect(em.flush).toHaveBeenCalledOnce();
+  });
+
+  it.each(["lookup", "lock"] as const)(
+    "does not change roles when a member disappears at %s",
+    async (stage) => {
+      const { memberService, em } = createWorkspaceServices();
+      const member = createTestMember();
+      if (stage === "lock") em.findOne.mockResolvedValueOnce(member);
+      em.findOne.mockResolvedValue(null);
+      await expect(
+        memberService.setMemberRoles(member.id, ["admin"]),
+      ).rejects.toThrow("Workspace member not found");
+      expect(member.roles).toEqual(["member"]);
+      expect(em.findOne).toHaveBeenCalledTimes(stage === "lock" ? 2 : 1);
+      expect(em.flush).not.toHaveBeenCalled();
+    },
+  );
+
   it.each([false, true])(
     "rejects a missing member with context present=%s",
     async (present) => {

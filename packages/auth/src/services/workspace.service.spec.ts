@@ -22,6 +22,69 @@ import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 
 describe("WorkspaceService and cross-domain coordination", () => {
+  it("updates by ID using write authorization without requiring read permission", async () => {
+    const { workspaceService, em, accessControlService } =
+      createWorkspaceServices();
+    const workspace = createTestWorkspace();
+    em.findOne.mockResolvedValue(workspace);
+    vi.mocked(accessControlService.assertUserCan).mockImplementation(() => {
+      throw new ForbiddenException();
+    });
+
+    await expect(
+      workspaceService.updateWorkspace(workspace.id, { name: "Renamed" }),
+    ).resolves.toBe(workspace);
+    expect(em.findOne).toHaveBeenCalledWith(
+      Workspace,
+      { id: workspace.id, deletedAt: null },
+      { refresh: true },
+    );
+    expect(accessControlService.assertWorkspaceCan).toHaveBeenNthCalledWith(
+      1,
+      "update",
+      Workspace,
+    );
+    expect(accessControlService.assertWorkspaceCan).toHaveBeenNthCalledWith(
+      2,
+      "update",
+      workspace,
+    );
+    expect(accessControlService.assertCurrentWorkspace).toHaveBeenCalledWith(
+      workspace,
+    );
+    expect(accessControlService.assertUserCan).not.toHaveBeenCalled();
+    expect(workspace.name).toBe("Renamed");
+    expect(em.flush).toHaveBeenCalledOnce();
+  });
+
+  it.each(["type", "instance", "missing"] as const)(
+    "does not write when ID-based workspace authorization fails at %s",
+    async (failure) => {
+      const { workspaceService, em, accessControlService } =
+        createWorkspaceServices();
+      const workspace = createTestWorkspace();
+      em.findOne.mockResolvedValue(failure === "missing" ? null : workspace);
+      vi.mocked(accessControlService.assertWorkspaceCan).mockImplementation(
+        (_action, subject) => {
+          if (
+            (failure === "type" && subject === Workspace) ||
+            (failure === "instance" && subject === workspace)
+          )
+            throw new ForbiddenException();
+        },
+      );
+      await expect(
+        workspaceService.updateWorkspace(workspace.id, { name: "Denied" }),
+      ).rejects.toThrow(
+        failure === "missing" ? "Workspace not found" : "Forbidden",
+      );
+      expect(em.findOne).toHaveBeenCalledTimes(failure === "type" ? 0 : 1);
+      expect(workspace.name).toBe("Acme");
+      expect(em.assign).not.toHaveBeenCalled();
+      expect(em.flush).not.toHaveBeenCalled();
+    },
+  );
+
   it("paginates authorized workspace memberships and members inside the service", async () => {
     const { workspaceService, memberService, em, accessControlService } =
       createWorkspaceServices();

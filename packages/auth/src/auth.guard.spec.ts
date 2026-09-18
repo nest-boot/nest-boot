@@ -9,12 +9,16 @@ import { Test } from "@nestjs/testing";
 import { firstValueFrom, of } from "rxjs";
 import type { Mock } from "vitest";
 
+import { UserAbility } from "./abilities/user.ability.js";
+import { WorkspaceAbility } from "./abilities/workspace.ability.js";
 import { IS_PUBLIC_KEY } from "./auth.constants.js";
 import { AuthGuard } from "./auth.guard.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
+import { Member } from "./entities/member.entity.js";
 import { Session as BaseSession } from "./entities/session.entity.js";
 import { User as BaseUser } from "./entities/user.entity.js";
+import { Workspace } from "./entities/workspace.entity.js";
 import { USER_CAN_METADATA } from "./permission.constants.js";
 
 class PromiseAuthGuard extends AuthGuard {
@@ -36,6 +40,58 @@ class PublicAwareAuthGuard extends AuthGuard {
 }
 
 describe("AuthGuard", () => {
+  it("replaces cached grants after an identity switch and clears departed workspace grants", async () => {
+    const { guard } = await createGuard(
+      AuthGuard,
+      vi.fn(() => false),
+      {
+        user: {
+          buildAbility: (builder, _permissions, user) => {
+            builder.can("read", BaseUser, { id: user.id });
+            return builder.build();
+          },
+        },
+        workspace: {
+          buildAbility: (builder, _permissions, workspace) => {
+            builder.can("update", Workspace, { id: workspace.id });
+            return builder.build();
+          },
+        },
+      },
+    );
+    const original = Object.assign(new BaseUser(), { id: "original" });
+    const replacement = Object.assign(new BaseUser(), { id: "replacement" });
+    const workspace = Object.assign(new Workspace(), { id: "workspace" });
+    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+      RequestContext.set(BaseSession, new BaseSession());
+      RequestContext.set(BaseUser, original);
+      RequestContext.set(Workspace, workspace);
+      RequestContext.set(Member, Object.assign(new Member(), { workspace }));
+      await expect(guard.canActivate(createContext())).resolves.toBe(true);
+      const originalAbility = RequestContext.get(UserAbility);
+      expect(originalAbility?.can("read", original)).toBe(true);
+      expect(
+        RequestContext.get(WorkspaceAbility)?.can("update", workspace),
+      ).toBe(true);
+
+      RequestContext.set(BaseUser, replacement);
+      RequestContext.set<Member | null>(Member, null);
+      RequestContext.set<Workspace | null>(Workspace, null);
+      guard.refreshAbilities();
+      const refreshed = RequestContext.get(UserAbility);
+      expect(refreshed).not.toBe(originalAbility);
+      expect(refreshed?.can("read", replacement)).toBe(true);
+      expect(refreshed?.can("read", original)).toBe(false);
+      expect(RequestContext.get(WorkspaceAbility)).toBeNull();
+      await expect(guard.canActivate(createContext())).resolves.toBe(true);
+      expect(RequestContext.get(WorkspaceAbility)).toBeNull();
+
+      RequestContext.set<BaseUser | null>(BaseUser, null);
+      guard.refreshAbilities();
+      expect(RequestContext.get(UserAbility)).toBeNull();
+    });
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
   });

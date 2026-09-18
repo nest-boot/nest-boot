@@ -1,11 +1,82 @@
+import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException } from "@nestjs/common";
 import type { Mocked } from "vitest";
 
+import { UserAbility } from "../abilities/user.ability.js";
+import { WorkspaceAbility } from "../abilities/workspace.ability.js";
+import { User } from "../entities/user.entity.js";
 import { type User as BaseUser } from "../entities/user.entity.js";
+import { Workspace } from "../entities/workspace.entity.js";
 import { type AuthService } from "../services/auth.service.js";
 import { AuthResolver } from "./auth.resolver.js";
 
 describe("AuthResolver", () => {
+  it("preserves conditional and deny rules when serializing abilities for the client", async () => {
+    const { resolver } = createResolver();
+    const conditions = { id: "user-1" };
+    await RequestContext.run(new RequestContext({ type: "test" }), () => {
+      expect(() => resolver.currentUserAbilityRules()).toThrow(
+        ForbiddenException,
+      );
+      expect(() => resolver.currentWorkspaceAbilityRules()).toThrow(
+        ForbiddenException,
+      );
+      RequestContext.set(
+        UserAbility,
+        new UserAbility([
+          {
+            action: "read",
+            subject: User,
+            fields: ["name", "email"],
+            conditions,
+          },
+          {
+            action: "delete",
+            subject: User,
+            inverted: true,
+            reason: "Protected account",
+          },
+        ]),
+      );
+      RequestContext.set(
+        WorkspaceAbility,
+        new WorkspaceAbility([
+          { action: ["read", "update"], subject: [Workspace, "Member"] },
+        ]),
+      );
+      const rules = resolver.currentUserAbilityRules();
+      expect(rules).toEqual([
+        {
+          actions: ["read"],
+          subjects: ["User"],
+          fields: ["name", "email"],
+          conditions,
+          inverted: false,
+          reason: null,
+        },
+        {
+          actions: ["delete"],
+          subjects: ["User"],
+          fields: null,
+          conditions: null,
+          inverted: true,
+          reason: "Protected account",
+        },
+      ]);
+      expect(JSON.parse(JSON.stringify(rules))).toEqual(rules);
+      expect(resolver.currentWorkspaceAbilityRules()).toEqual([
+        {
+          actions: ["read", "update"],
+          subjects: ["Workspace", "Member"],
+          fields: null,
+          conditions: null,
+          inverted: false,
+          reason: null,
+        },
+      ]);
+    });
+  });
+
   it.each([null, "session-token"])(
     "returns the registration payload with token %j",
     async (token) => {
