@@ -28,6 +28,7 @@ import { UserConnection } from "../connections/user.connection-definition.js";
 import { Account } from "../entities/account.entity.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
+import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { RequestIdentity } from "../infrastructure/request-identity.js";
 import { RevokedAuthenticationException } from "../infrastructure/revoked-authentication.exception.js";
 import type { AuthenticatedSession } from "../interfaces/authenticated-session.interface.js";
@@ -49,6 +50,7 @@ import {
   normalizeAuthRoles,
   resolveAuthPermissions,
 } from "../utils/auth-role.util.js";
+import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
 import { resolveAuthCatalog } from "../utils/resolve-auth-catalog.util.js";
 import { resolveUserPermissions } from "../utils/resolve-effective-permissions.util.js";
 import { AccessControlService } from "./access-control.service.js";
@@ -330,10 +332,23 @@ export class UserService {
     user.banned = true;
     user.banReason = input.banReason ?? null;
     user.banExpiresAt = banExpiresAt;
+    const apiKey = getCurrentApiKey();
 
     try {
       await this.em.transactional(
         async (em) => {
+          // Persist the final use in the same transaction before revoking identity.
+          if (apiKey instanceof UserApiKey && apiKey.user.id === user.id) {
+            const now = new Date();
+            await em.nativeUpdate(
+              UserApiKey,
+              { id: apiKey.id },
+              {
+                lastUsedAt: now,
+                updatedAt: now,
+              },
+            );
+          }
           await em.nativeDelete(Session, {
             $or: [{ user: String(user.id) }, { impersonatedBy: user }],
           } as FilterQuery<Session>);
@@ -467,9 +482,9 @@ export class UserService {
     user = await this.resolveUserForAction(user, "set-password");
     this.accessControlService.assertUserCan("set-password", user);
     this.assertPasswordLength(newPassword);
+    const password = await this.hashPassword(newPassword);
     await this.em.transactional(
       async (em) => {
-        const password = await this.hashPassword(newPassword);
         const account = await em.findOne(
           Account,
           {

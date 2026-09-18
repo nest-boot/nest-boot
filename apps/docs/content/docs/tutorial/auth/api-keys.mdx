@@ -33,6 +33,9 @@ resolver passes its parent and connection arguments without running queries itse
 Connection methods check the current identity and read ability directly. Ownership
 and API-key permission-ceiling filters are internal implementation details, shared
 with single-key lookups rather than exposed as public filter-building methods.
+Connections also check each returned node against the read ability. If a conditional
+rule denies any node, the entire page fails authorization; nodes are not silently
+removed after pagination, so successful pages retain their original cursors and counts.
 
 Single-key lookups use `User.apiKey(id)` and `Workspace.apiKey(id)`, replacing
 the root `userApiKey(id)` and `apiKey(id)` queries. The service checks the parent

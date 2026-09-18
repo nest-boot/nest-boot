@@ -495,10 +495,20 @@ test.describe("workspace invitations", () => {
         .getByLabel("邮箱", { exact: true })
         .fill(`public-${memberEmail}`);
       await page.getByTestId("permission-WORKSPACE__UPDATE").click();
+      let roleWrites = 0;
+      let permissionWrites = 0;
+      page.on("request", (request) => {
+        const body = request.postData() ?? "";
+        if (body.includes("setMemberRolesFromMemberRoute")) roleWrites++;
+        if (body.includes("setMemberPermissionsFromMemberRoute"))
+          permissionWrites++;
+      });
       await page.getByTestId("member-save").click();
       await expect(page.getByText("成员更新成功")).toBeVisible();
 
-      await page.reload();
+      await expect(
+        page.getByRole("heading", { name: "Workspace Member", exact: true }),
+      ).toBeVisible();
       await expect(page.getByLabel("姓名", { exact: true })).toHaveValue(
         "Workspace Member",
       );
@@ -510,10 +520,33 @@ test.describe("workspace invitations", () => {
         page.getByTestId("permission-WORKSPACE__UPDATE"),
       ).toBeChecked();
 
+      // A profile-only second save must not replay the previous authorization writes.
+      await page
+        .getByLabel("姓名", { exact: true })
+        .fill("Updated Workspace Member");
+      await page.getByTestId("member-save").click();
+      await expect(
+        page.getByRole("heading", {
+          name: "Updated Workspace Member",
+          exact: true,
+        }),
+      ).toBeVisible();
+      expect(roleWrites).toBe(1);
+      expect(permissionWrites).toBe(1);
+
       await page.getByTestId("member-role-MEMBER").click();
       await page.getByTestId("member-role-ADMIN").click();
+      const rolesSaved = page.waitForResponse(
+        (response) =>
+          response
+            .request()
+            .postData()
+            ?.includes("setMemberRolesFromMemberRoute") === true,
+      );
       await page.getByTestId("member-save").click();
-      await expect(page.getByText("成员更新成功")).toBeVisible();
+      expect((await (await rolesSaved).json()).errors).toBeUndefined();
+
+      await expect.poll(() => roleWrites).toBe(2);
 
       await memberPage.reload();
       await memberPage
@@ -524,6 +557,21 @@ test.describe("workspace invitations", () => {
       ).toBeEnabled();
       await memberPage.getByTestId("workspace-settings-save").click();
       await expect(memberPage.getByText("保存成功")).toBeVisible();
+
+      const { currentMember } = await graphqlRequest<{
+        currentMember: { id: string };
+      }>(
+        page.request,
+        "query { currentMember { id } }",
+        {},
+        { "x-workspace-id": workspaceId },
+      );
+      await page.goto(`/workspaces/${workspaceId}/members/${currentMember.id}`);
+      await page.getByTestId("member-role-MEMBER").click();
+      await page.getByTestId("member-role-OWNER").click();
+      await page.getByTestId("member-save").click();
+      await expect(page).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
+      await expect(page.getByTestId("user-workspaces-page")).toBeVisible();
     } finally {
       await memberContext.close();
     }

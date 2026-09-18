@@ -96,12 +96,17 @@ export class WorkspaceApiKeyService {
     this.assertWorkspacePrincipal(workspace);
     this.accessControlService.assertWorkspaceCan("read", WorkspaceApiKey);
     const where = this.getOwnedListFilter(workspace);
-    return await new ConnectionManager(
+    const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
     ).find<WorkspaceApiKey>(WorkspaceApiKeyConnection, args, {
       where,
       exclude: ["key"] as never,
     });
+    // Reject the whole page rather than silently changing cursor pagination.
+    for (const { node } of connection.edges) {
+      this.accessControlService.assertWorkspaceCan("read", node);
+    }
+    return connection;
   }
 
   /** Creates an API key owned by a workspace. */

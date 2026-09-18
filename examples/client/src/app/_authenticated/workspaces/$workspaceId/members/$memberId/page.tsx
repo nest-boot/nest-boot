@@ -170,7 +170,7 @@ function MemberComponent() {
   const currentMember = useCurrentMemberContext();
   const currentWorkspaceAbility = useCurrentWorkspaceAbility();
 
-  const { data } = useSuspenseQuery(GET_MEMBER_FROM_MEMBER_ROUTE, {
+  const { data, refetch } = useSuspenseQuery(GET_MEMBER_FROM_MEMBER_ROUTE, {
     variables: { id: memberId },
   });
 
@@ -288,7 +288,17 @@ function MemberComponent() {
 
         await Promise.all(operations);
 
-        router.invalidate();
+        if (
+          memberId === currentMember.id &&
+          (hasRolesChanged || hasPermissionChanged)
+        ) {
+          // Rebuild identity and abilities without refetching a route access may have revoked.
+          window.location.assign("/user/workspaces");
+          return;
+        }
+
+        await refetch();
+        await router.invalidate();
 
         form.reset(value);
 

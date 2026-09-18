@@ -27,6 +27,8 @@ GraphQL 连接字段为 `User.apiKeys` 和 `Workspace.apiKeys`，通常通过 `c
 `ConnectionManager`；Resolver 仅传递父对象与连接参数，不执行数据库查询。
 连接方法直接检查当前身份与读取能力；所有权和 API Key 权限上限过滤由内部逻辑与
 单条查询共用，不再公开构造过滤条件的方法。
+连接还会对返回的每个节点检查读取能力。如果条件规则拒绝任一节点，整页返回授权错误；
+不会在分页后静默移除节点，因此成功页面的游标与总数保持一致。
 
 单条查询使用 `User.apiKey(id)` 与 `Workspace.apiKey(id)`，替代根查询
 `userApiKey(id)` 与 `apiKey(id)`。Service 校验父对象归属、权限并保留请求 RLS；

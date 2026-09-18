@@ -13,11 +13,13 @@ import { expectTypeOf, type Mocked } from "vitest";
 
 import { mockRlsContext } from "../../test/mock-rls-context.js";
 import { UserAbility } from "../abilities/user.ability.js";
+import { API_KEY } from "../auth.constants.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { UserConnection } from "../connections/user.connection-definition.js";
 import { Account } from "../entities/account.entity.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
+import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { authServiceProviders } from "../infrastructure/auth-service.providers.js";
 import type { CreateUserOptions } from "../interfaces/create-user-options.interface.js";
 import { DEFAULT_USER_PERMISSIONS } from "../user.constants.js";
@@ -26,6 +28,66 @@ import { UserService } from "./user.service.js";
 import { UserDeletionService } from "./user-deletion.service.js";
 
 describe("UserService", () => {
+  it("records the final API-key use atomically before self-ban clears authentication", async () => {
+    const { service, em } = createService();
+    const user = Object.assign(new User(), { id: "self", banned: false });
+    const key = Object.assign(new UserApiKey(), {
+      id: "key",
+      user: ref(User, user),
+      lastUsedAt: null,
+    });
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      RequestContext.set(User, user);
+      RequestContext.set(API_KEY, key);
+      em.nativeUpdate.mockRejectedValueOnce(new Error("Usage write failed"));
+      await expect(service.banUser(user)).rejects.toThrow("Usage write failed");
+      expect(user.banned).toBe(false);
+      expect(key.lastUsedAt).toBeNull();
+      expect(RequestContext.get(API_KEY)).toBe(key);
+      em.nativeUpdate.mockImplementationOnce(() => {
+        expect(RequestContext.get(API_KEY)).toBe(key);
+        return Promise.resolve(1);
+      });
+      await service.banUser(user);
+      expect(em.nativeUpdate).toHaveBeenLastCalledWith(
+        UserApiKey,
+        { id: key.id },
+        {
+          lastUsedAt: expect.any(Date),
+          updatedAt: expect.any(Date),
+        },
+      );
+      expect(user.banned).toBe(true);
+      expect(RequestContext.get(API_KEY)).toBeNull();
+      expect(RequestContext.get(User)).toBeNull();
+    });
+  });
+
+  it("finishes password hashing before acquiring a transaction", async () => {
+    const { service, em, hash } = createService();
+    const user = Object.assign(new User(), { id: "user" });
+    let resolveHash!: (value: string) => void;
+    hash.mockReturnValueOnce(
+      new Promise<string>((resolve) => {
+        resolveHash = resolve;
+      }),
+    );
+    const pending = service.setUserPassword(user, "new-password");
+    await vi.waitFor(() => {
+      expect(hash).toHaveBeenCalledOnce();
+    });
+    expect(em.transactional).not.toHaveBeenCalled();
+    resolveHash("new-hash");
+    await pending;
+    expect(em.transactional).toHaveBeenCalledOnce();
+    em.transactional.mockClear();
+    hash.mockRejectedValueOnce(new Error("Hash failed"));
+    await expect(service.setUserPassword(user, "new-password")).rejects.toThrow(
+      "Hash failed",
+    );
+    expect(em.transactional).not.toHaveBeenCalled();
+  });
+
   it.each(["self", "impersonator"] as const)(
     "revokes %s identity only after a ban commits",
     async (target) => {
@@ -1048,6 +1110,7 @@ function createService(
     findOne: vi.fn(),
     flush: vi.fn(),
     nativeDelete: vi.fn(),
+    nativeUpdate: vi.fn(),
     persist: vi.fn(),
     remove: vi.fn(),
     transactional: vi.fn(),

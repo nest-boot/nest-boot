@@ -200,6 +200,54 @@ describe("API-key management services", () => {
       await expect(read()).resolves.toBeNull();
     });
 
+    it(`rejects a ${scope} connection page containing a conditionally denied key without changing pagination`, async () => {
+      const options: AuthModuleOptions = {
+        user: {
+          buildAbility: (rules) => {
+            rules.cannot("read", UserApiKey, { enabled: false });
+          },
+        },
+        workspace: {
+          buildAbility: (rules) => {
+            rules.cannot("read", WorkspaceApiKey, { enabled: false });
+          },
+        },
+      };
+      const { service, accessControlService } = createService(options);
+      vi.mocked(accessControlService.assertUserCan).mockRestore();
+      vi.mocked(accessControlService.assertWorkspaceCan).mockRestore();
+      const user = Object.assign(createTestUser(), { roles: ["admin"] });
+      RequestIdentity.stage({ user });
+      RequestIdentity.prepare(options);
+      const key = Object.assign(
+        scope === "user" ? new UserApiKey() : new WorkspaceApiKey(),
+        { enabled: true },
+      );
+      const result = {
+        edges: [{ cursor: "cursor", node: key }],
+        totalCount: 2,
+        pageInfo: { hasNextPage: true, endCursor: "cursor" },
+      };
+      vi.spyOn(ConnectionManager.prototype, "find").mockResolvedValue(
+        result as never,
+      );
+      const read = () =>
+        scope === "user"
+          ? service.getUserApiKeyConnection(user, { first: 1 })
+          : service.getWorkspaceApiKeyConnection(createTestWorkspace(), {
+              first: 1,
+            });
+      await expect(read()).resolves.toBe(result);
+      key.enabled = false;
+      await expect(read()).rejects.toThrow(ForbiddenException);
+      expect(result.edges).toHaveLength(1);
+      expect(result.totalCount).toBe(2);
+      expect(result.pageInfo).toEqual({
+        hasNextPage: true,
+        endCursor: "cursor",
+      });
+    });
+
     for (const reason of ["catalog", "owner"] as const) {
       it(`allows disabling a ${scope} key with stale ${reason} grants but still rejects re-enabling it`, async () => {
         const options: AuthModuleOptions =

@@ -94,12 +94,17 @@ export class UserApiKeyService {
     this.accessControlService.assertCurrentUser(user);
     this.accessControlService.assertUserCan("read", UserApiKey);
     const where = this.getOwnedListFilter(user);
-    return await new ConnectionManager(
+    const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
     ).find<UserApiKey>(UserApiKeyConnection, args, {
       where,
       exclude: ["key"] as never,
     });
+    // Reject the whole page rather than silently changing cursor pagination.
+    for (const { node } of connection.edges) {
+      this.accessControlService.assertUserCan("read", node);
+    }
+    return connection;
   }
 
   /** Creates an API key owned by a user. */

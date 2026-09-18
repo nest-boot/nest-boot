@@ -276,6 +276,7 @@ function UserSecurityComponent() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
+      await refetch({ after: undefined });
       toast.success(t("user:security.toast.updated"));
     } catch (cause) {
       const message =

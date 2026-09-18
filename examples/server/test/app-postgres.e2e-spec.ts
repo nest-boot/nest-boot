@@ -2080,6 +2080,48 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     },
   );
 
+  it('records the last API-key use when its owner bans itself', async () => {
+    const user = await createAuthenticatedUser('Self-banning key owner');
+    const connection = migrationOrm.em.getConnection();
+    await connection.execute(
+      `update "user" set roles = array['admin'] where id = ?`,
+      [user.user.id],
+    );
+    const key = await createUserApiKey(user, {
+      name: 'Ban key',
+      permissions: ['USER__BAN'],
+    });
+    expect(
+      await connection.execute(
+        'select last_used_at from user_api_key where id = ?',
+        [key.entity.id],
+      ),
+    ).toEqual([{ last_used_at: null }]);
+    const response = await gql(
+      'mutation($id: ID!) { banUser(id: $id) { id } }',
+      {
+        bearerToken: key.apiKey,
+        variables: { id: user.user.id },
+      },
+    );
+    expectNoGraphQLErrors(response);
+    const [stored] = await connection.execute<{ last_used_at: Date | null }[]>(
+      'select last_used_at from user_api_key where id = ?',
+      [key.entity.id],
+    );
+    expect(stored.last_used_at).not.toBeNull();
+    expect(
+      await connection.execute('select id from session where user_id = ?', [
+        user.user.id,
+      ]),
+    ).toEqual([]);
+    const rejected = await gql('query { currentUser { id } }', {
+      bearerToken: key.apiKey,
+    });
+    expect(rejected.status).toBe(401);
+    expect(rejected.body.message).toBe('Invalid API key');
+  });
+
   it('clears authentication after signing out before the next mutation', async () => {
     const owner = await createAuthenticatedUser('Signing out owner');
     const response = await gql(
