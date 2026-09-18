@@ -5,17 +5,32 @@ import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
-import { DEFAULT_USER_ROLE } from "../user.constants.js";
-import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
-import { DEFAULT_WORKSPACE_ROLE } from "../workspace.constants.js";
-import { resolveAuthPermissions } from "./auth-role.util.js";
-import { resolveAuthCatalog } from "./resolve-auth-catalog.util.js";
+import type { RequestPermissions } from "../interfaces/request-permissions.interface.js";
+import { getCurrentApiKey } from "./get-current-api-key.util.js";
+import {
+  intersectPermissions,
+  resolveMemberPermissions,
+  resolveUserPermissions,
+} from "./resolve-effective-permissions.util.js";
 
-/** Resolves credential-limited grants for request abilities. @internal */
-export function resolveRequestPermissions(options: AuthModuleOptions): {
-  user: readonly string[];
-  workspace: readonly string[];
-} {
+const REQUEST_PERMISSIONS = Symbol("auth.requestPermissions");
+
+/** Invalidates the shared permission snapshot when the request identity changes. @internal */
+export function invalidateRequestPermissions(): void {
+  if (RequestContext.isActive()) RequestContext.set(REQUEST_PERMISSIONS, null);
+}
+
+/** Resolves one credential-limited permission snapshot per request identity. @internal */
+export function resolveRequestPermissions(
+  options: AuthModuleOptions,
+): RequestPermissions {
+  if (!RequestContext.isActive())
+    return { user: [], workspace: [], apiKey: null };
+  const cached = RequestContext.get<{
+    options: AuthModuleOptions;
+    permissions: RequestPermissions;
+  }>(REQUEST_PERMISSIONS);
+  if (cached?.options === options) return cached.permissions;
   const user = RequestContext.get(User);
   const member = RequestContext.get(Member);
   const workspace = RequestContext.get(Workspace);
@@ -25,34 +40,22 @@ export function resolveRequestPermissions(options: AuthModuleOptions): {
     : [];
   const workspaceKey = apiKey instanceof WorkspaceApiKey;
   const limit = (permissions: readonly string[]) =>
-    apiKey
-      ? permissions.filter((permission) => keyPermissions.includes(permission))
-      : permissions;
-
-  return {
-    user: user
-      ? limit(
-          resolveAuthPermissions(
-            user.roles ?? [options.user?.defaultRole ?? DEFAULT_USER_ROLE],
-            user.permissions ?? [],
-            resolveAuthCatalog(options, "user").roles,
-          ),
-        )
-      : [],
-    workspace: !workspace
-      ? []
-      : workspaceKey
-        ? [...new Set(keyPermissions)]
-        : member
-          ? limit(
-              resolveAuthPermissions(
-                member.roles ?? [
-                  options.workspace?.defaultRole ?? DEFAULT_WORKSPACE_ROLE,
-                ],
-                member.permissions ?? [],
-                resolveAuthCatalog(options, "workspace").roles,
-              ),
-            )
-          : [],
-  };
+    apiKey ? intersectPermissions(permissions, keyPermissions) : permissions;
+  const permissions = Object.freeze({
+    apiKey: apiKey ? Object.freeze([...new Set(keyPermissions)]) : null,
+    user: Object.freeze(
+      user && !workspaceKey ? limit(resolveUserPermissions(options, user)) : [],
+    ),
+    workspace: Object.freeze(
+      !workspace
+        ? []
+        : workspaceKey
+          ? [...new Set(keyPermissions)]
+          : member
+            ? limit(resolveMemberPermissions(options, member))
+            : [],
+    ),
+  });
+  RequestContext.set(REQUEST_PERMISSIONS, { options, permissions });
+  return permissions;
 }

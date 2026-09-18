@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-
 import { EntityManager, ref } from "@mikro-orm/core";
 import { ConnectionManager } from "@nest-boot/graphql-connection";
 import { RequestContext } from "@nest-boot/request-context";
@@ -17,6 +16,7 @@ import { User } from "../entities/user.entity.js";
 import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
+import { RequestIdentity } from "../infrastructure/request-identity.js";
 import { AccessControlService } from "./access-control.service.js";
 import { UserApiKeyService } from "./user-api-key.service.js";
 import { WorkspaceApiKeyService } from "./workspace-api-key.service.js";
@@ -118,13 +118,12 @@ describe("API-key management services", () => {
       permission: "invitation:create",
       grantable: true,
     });
-    RequestContext.set(
-      API_KEY,
-      Object.assign(new UserApiKey(), {
+    RequestIdentity.stage({
+      apiKey: Object.assign(new UserApiKey(), {
         user: ref(User, user),
         permissions: ["user:get"],
       }),
-    );
+    });
     expect(
       service
         .getUserApiKeyPermissions(user)
@@ -813,6 +812,7 @@ describe("API-key management services", () => {
     );
 
     member.permissions = ["workspace:delete"];
+    RequestIdentity.stage({ member });
     await expect(
       service.createWorkspaceApiKey(workspace, {
         name: "Direct permission key",

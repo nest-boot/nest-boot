@@ -25,13 +25,10 @@ import { WorkspaceConnection } from "../connections/workspace.connection-definit
 import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
-import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
+import { RequestIdentity } from "../infrastructure/request-identity.js";
 import type { CreateWorkspaceOptions } from "../interfaces/create-workspace-options.interface.js";
 import type { UpdateWorkspaceOptions } from "../interfaces/update-workspace-options.interface.js";
-import { clearRequestAuthentication } from "../utils/clear-request-authentication.util.js";
-import { clearWorkspaceAuthorization } from "../utils/clear-workspace-authorization.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
-import { refreshRequestAuthorization } from "../utils/refresh-request-authorization.util.js";
 import { DEFAULT_WORKSPACE_CREATOR_ROLE } from "../workspace.constants.js";
 import { AccessControlService } from "./access-control.service.js";
 
@@ -177,8 +174,7 @@ export class WorkspaceService {
       throw error;
     }
     if (RequestContext.isActive()) {
-      RequestContext.set(Workspace, workspace);
-      refreshRequestAuthorization(this.authOptions);
+      RequestIdentity.update(this.em, this.authOptions, { workspace });
     }
     return workspace;
   }
@@ -205,9 +201,7 @@ export class WorkspaceService {
       },
       { clear: true },
     );
-    if (getCurrentApiKey() instanceof WorkspaceApiKey)
-      clearRequestAuthentication(this.em);
-    else clearWorkspaceAuthorization(this.em);
+    RequestIdentity.clearWorkspace(this.em);
     return workspace;
   }
 

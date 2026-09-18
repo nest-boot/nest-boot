@@ -9,9 +9,6 @@ import {
 } from "@nestjs/common";
 import { type NextFunction, type Request, type Response } from "express";
 
-import { UserAbility } from "./abilities/user.ability.js";
-import { WorkspaceAbility } from "./abilities/workspace.ability.js";
-import { API_KEY } from "./auth.constants.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
 import { Member } from "./entities/member.entity.js";
@@ -19,12 +16,10 @@ import { Session } from "./entities/session.entity.js";
 import { User } from "./entities/user.entity.js";
 import { Workspace } from "./entities/workspace.entity.js";
 import { ApiKeyAuthenticationService } from "./infrastructure/api-key-authentication.service.js";
+import { RequestIdentity } from "./infrastructure/request-identity.js";
 import { SessionService } from "./services/session.service.js";
 import type { ApiKey } from "./types/api-key.type.js";
-import { clearRequestAuthentication } from "./utils/clear-request-authentication.util.js";
 import { extractApiKey } from "./utils/extract-api-key.util.js";
-import { getCurrentApiKey } from "./utils/get-current-api-key.util.js";
-import { refreshRequestAuthorization } from "./utils/refresh-request-authorization.util.js";
 import { runAuthQuery } from "./utils/run-auth-query.js";
 
 /** Builds the complete authentication context for an incoming request. */
@@ -41,7 +36,7 @@ export class AuthMiddleware implements NestMiddleware {
 
   /** Clears the current credential after a successful sign-out. */
   clearAuthentication(): void {
-    clearRequestAuthentication(this.em);
+    RequestIdentity.clear(this.em);
   }
 
   /** Reloads a profile written by Better Auth without changing its authentication method. */
@@ -58,10 +53,9 @@ export class AuthMiddleware implements NestMiddleware {
         throw new UnauthorizedException(
           "The current user is no longer available",
         );
-      RequestContext.set(User, user);
-      refreshRequestAuthorization(this.options);
+      RequestIdentity.update(this.em, this.options, { user });
     } catch (error) {
-      clearRequestAuthentication(this.em);
+      RequestIdentity.clear(this.em);
       throw error;
     }
   }
@@ -86,14 +80,20 @@ export class AuthMiddleware implements NestMiddleware {
     ) {
       throw new UnauthorizedException("The new session is not valid");
     }
-    RequestContext.set<ApiKey | null>(API_KEY, null);
-    RequestContext.set(Member, null);
-    RequestContext.set(UserAbility, null);
-    RequestContext.set(WorkspaceAbility, null);
-    this.setUser(data.user);
-    RequestContext.set(Session, data.session);
-    await this.resolveMember();
-    this.updateSessionContext();
+    try {
+      RequestIdentity.stage({
+        apiKey: null,
+        member: null,
+        user: data.user,
+        session: data.session,
+      });
+      await this.resolveMember();
+      this.updateSessionContext();
+      RequestIdentity.refresh(this.options);
+    } catch (error) {
+      RequestIdentity.clear(this.em);
+      throw error;
+    }
     return data.user;
   }
   /** Hydrates only the user returned by a successful registration without issuing an identity. @internal */
@@ -120,6 +120,11 @@ export class AuthMiddleware implements NestMiddleware {
       this.updateSessionContext();
       next();
     } catch (error) {
+      try {
+        RequestIdentity.clear(this.em);
+      } catch {
+        // Identity is already cleared; report the original staging failure.
+      }
       next(error);
     }
   }
@@ -145,7 +150,7 @@ export class AuthMiddleware implements NestMiddleware {
     if (!data) return false;
 
     this.setUser(data.user);
-    RequestContext.set(Session, data.session);
+    RequestIdentity.stage({ session: data.session });
     return true;
   }
 
@@ -185,36 +190,22 @@ export class AuthMiddleware implements NestMiddleware {
     );
     if (!member) return;
 
-    RequestContext.set(Member, member);
+    RequestIdentity.stage({ member });
   }
 
   private setApiKey(apiKey: ApiKey): void {
-    RequestContext.set<ApiKey | null>(API_KEY, apiKey);
+    RequestIdentity.stage({ apiKey });
   }
 
   private updateSessionContext(): void {
-    const user = RequestContext.get(User);
-    const apiKey = getCurrentApiKey();
-    const workspace = RequestContext.get(Workspace);
-    const member = RequestContext.get(Member);
-    const authenticated = Boolean(user ?? apiKey);
-    const canUseWorkspace = Boolean(member ?? (apiKey && !user));
-
-    this.em.setSessionContext({
-      role: authenticated ? "authenticated" : "anonymous",
-      variables: {
-        "app.user.id": user?.id ?? "",
-        "app.workspace.id":
-          !authenticated || canUseWorkspace ? (workspace?.id ?? "") : "",
-      },
-    });
+    RequestIdentity.syncDatabase(this.em);
   }
 
   private setUser(user: User): void {
-    RequestContext.set(User, user);
+    RequestIdentity.stage({ user });
   }
 
   private setWorkspace(workspace: Workspace): void {
-    RequestContext.set(Workspace, workspace);
+    RequestIdentity.stage({ workspace });
   }
 }

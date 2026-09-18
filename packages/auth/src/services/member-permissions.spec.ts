@@ -71,6 +71,7 @@ describe("MemberService direct permission authorization", () => {
       const service = new MemberService(em, options, access);
       const workspace = createTestWorkspace();
       await RequestContext.run(new RequestContext({ type: "test" }), () => {
+        RequestContext.set(Workspace, workspace);
         if (key !== "workspace")
           RequestContext.set(
             Member,

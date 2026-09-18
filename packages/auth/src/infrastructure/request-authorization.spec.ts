@@ -8,7 +8,7 @@ import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
-import { refreshRequestAuthorization } from "./refresh-request-authorization.util.js";
+import { RequestIdentity } from "./request-identity.js";
 
 describe("post-commit request authorization", () => {
   it.each([false, true])(
@@ -50,7 +50,7 @@ describe("post-commit request authorization", () => {
           new WorkspaceAbility([{ action: "delete", subject: Workspace }]),
         );
         const refresh = () => {
-          refreshRequestAuthorization(options);
+          RequestIdentity.refresh(options);
         };
         if (failure) expect(refresh).toThrow("Invalid ability configuration");
         else refresh();

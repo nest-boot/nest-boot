@@ -309,6 +309,16 @@ application services that need the same fail-closed boundary. An ability must
 have been prepared by the global `AuthGuard`; calls outside that request
 lifecycle are denied rather than implicitly trusted.
 
+The Guard, route decorators, Services, and scoped helpers all evaluate operations
+through this service's `ability.can()` checks. Helpers do not fall back to a cached
+Ability when the authorization service is unavailable.
+
+Ability construction and grantability checks share one immutable effective-permission
+snapshot for the current request identity. Owner permissions remain distinct from
+credential-limited permissions: managing an API key checks both its owner's grants
+and the issuing credential's ceiling. Permission delegation is not inferred from
+an operation's `ability.can()` result.
+
 ## Lower-Level Checks
 
 After `AuthGuard` prepares the request abilities, lower-level code can use the
@@ -410,6 +420,10 @@ For custom application entities that need soft deletion, compose
 After a Service commits changes to the current user's profile, roles, permissions
 or ban state, the current member's profile, roles, permissions or status, or the
 current workspace's profile, Auth refreshes the request identity and abilities.
+An internal identity coordinator invalidates the permission snapshot, rebuilds
+abilities, and synchronizes changed database identity values. Session adoption
+also completes this process before returning; callers do not separately refresh
+the Guard. If post-commit identity publication fails, the request is revoked.
 Disabling the current
 member, leaving a workspace or deleting it clears the workspace scope, including
 the parent request when deletion uses an isolated execution context.

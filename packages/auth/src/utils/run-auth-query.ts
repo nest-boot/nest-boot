@@ -3,8 +3,8 @@ import { RequestContext } from "@nest-boot/request-context";
 
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
+import { RequestIdentity } from "../infrastructure/request-identity.js";
 import { RevokedAuthenticationException } from "../infrastructure/revoked-authentication.exception.js";
-import { clearRequestAuthentication } from "./clear-request-authentication.util.js";
 import { getCurrentApiKey } from "./get-current-api-key.util.js";
 
 /**
@@ -48,13 +48,13 @@ export async function runAuthQuery<T>(
     })).catch((error: unknown) => {
       // Only an explicit post-commit rejection can revoke identity on failure.
       if (error instanceof RevokedAuthenticationException) {
-        clearRequestAuthentication(current);
+        RequestIdentity.clear(current);
       }
       throw error;
     });
     // Publish an explicit, successful credential revocation back to the caller.
     // Other failed operations leave its identity and scoped manager unchanged.
-    if (revoked) clearRequestAuthentication(current);
+    if (revoked) RequestIdentity.clear(current);
     return result;
   }
   return await RequestContext.run(

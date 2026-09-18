@@ -20,6 +20,7 @@ import { Session as BaseSession } from "./entities/session.entity.js";
 import { User as BaseUser } from "./entities/user.entity.js";
 import { Workspace } from "./entities/workspace.entity.js";
 import { USER_CAN_METADATA } from "./permission.constants.js";
+import { AccessControlService } from "./services/access-control.service.js";
 
 class PromiseAuthGuard extends AuthGuard {
   override canActivate(_context: ExecutionContext): Promise<boolean> {
@@ -40,6 +41,46 @@ class PublicAwareAuthGuard extends AuthGuard {
 }
 
 describe("AuthGuard", () => {
+  it("does not resolve protected subjects when the required identity is missing", async () => {
+    const subjectFactory = vi.fn(() => new BaseUser());
+    const { guard } = await createGuard(
+      AuthGuard,
+      vi.fn(() => true),
+      {},
+      vi.fn((key) =>
+        key === USER_CAN_METADATA
+          ? [{ action: "read", subject: subjectFactory }]
+          : [],
+      ),
+    );
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      await expect(guard.canActivate(createContext())).resolves.toBe(false);
+      expect(subjectFactory).not.toHaveBeenCalled();
+    });
+  });
+
+  it("delegates decorator decisions to AccessControlService without a direct-ability fallback", async () => {
+    const { guard, access } = await createGuard(
+      AuthGuard,
+      vi.fn(() => false),
+      {},
+      vi.fn((key) =>
+        key === USER_CAN_METADATA ? [{ action: "get", subject: BaseUser }] : [],
+      ),
+    );
+    const check = vi.spyOn(access, "userCan").mockReturnValue(false);
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      RequestContext.set(
+        BaseUser,
+        Object.assign(new BaseUser(), { roles: ["admin"] }),
+      );
+      RequestContext.set(BaseSession, new BaseSession());
+      await expect(guard.canActivate(createContext())).resolves.toBe(false);
+      expect(RequestContext.get(UserAbility)?.can("get", BaseUser)).toBe(true);
+      expect(check).toHaveBeenCalledWith("get", BaseUser);
+    });
+  });
+
   it("replaces cached grants after an identity switch and clears departed workspace grants", async () => {
     const { guard } = await createGuard(
       AuthGuard,
@@ -293,6 +334,7 @@ async function createGuard<T extends AuthGuard>(
 ) {
   const moduleRef = await Test.createTestingModule({
     providers: [
+      AccessControlService,
       guardType,
       {
         provide: Reflector,
@@ -310,6 +352,7 @@ async function createGuard<T extends AuthGuard>(
 
   return {
     guard: moduleRef.get(guardType),
+    access: moduleRef.get(AccessControlService),
   };
 }
 

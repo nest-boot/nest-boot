@@ -10,7 +10,7 @@ import { RequestContext } from "@nest-boot/request-context";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
 import { createContextualAuthService } from "../infrastructure/create-contextual-auth-service.js";
-import { clearRequestAuthentication } from "./clear-request-authentication.util.js";
+import { RequestIdentity } from "../infrastructure/request-identity.js";
 import { runAuthQuery } from "./run-auth-query.js";
 
 @Entity({
@@ -125,7 +125,7 @@ describe("runAuthQuery with native RLS", () => {
         RequestContext.set(Session, currentSession);
         const operation = runAuthQuery(em, async (authEm) => {
           await authEm.getConnection().execute("select 1");
-          clearRequestAuthentication(authEm);
+          RequestIdentity.clear(authEm);
           if (failure) throw new Error("Persistence failed");
           return "committed";
         });

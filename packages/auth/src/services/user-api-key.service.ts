@@ -24,28 +24,19 @@ import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { UserApiKeyConnection } from "../connections/user-api-key.connection-definition.js";
 import { User } from "../entities/user.entity.js";
 import { UserApiKey } from "../entities/user-api-key.entity.js";
+import { RequestIdentity } from "../infrastructure/request-identity.js";
 import type { CreateApiKeyOptions } from "../interfaces/create-api-key-options.interface.js";
 import type { CreatedApiKey } from "../interfaces/created-api-key.interface.js";
 import type { UpdateApiKeyOptions } from "../interfaces/update-api-key-options.interface.js";
 import type { UserApiKeyPermissionOption } from "../objects/user-api-key-permission-option.object.js";
-import type { ApiKey } from "../types/api-key.type.js";
-import { DEFAULT_USER_ROLE } from "../user.constants.js";
 import {
   generateApiKey,
   hashApiKey,
 } from "../utils/api-key-credential.util.js";
 import { resolveApiKeyPermissionCatalog } from "../utils/api-key-permissions.util.js";
-import {
-  normalizeAuthPermissions,
-  resolveAuthPermissions,
-} from "../utils/auth-role.util.js";
-import {
-  assertCurrentApiKeyCanCommit,
-  isCurrentApiKey,
-  refreshCurrentApiKeyAuthorization,
-} from "../utils/current-api-key-authorization.util.js";
-import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
+import { normalizeAuthPermissions } from "../utils/auth-role.util.js";
 import { resolveAuthCatalog } from "../utils/resolve-auth-catalog.util.js";
+import { resolveUserPermissions } from "../utils/resolve-effective-permissions.util.js";
 import { AccessControlService } from "./access-control.service.js";
 
 /** Manages user-owned API keys within the current request's authorization scope. */
@@ -73,14 +64,14 @@ export class UserApiKeyService {
     const userPermissions = new Set(
       resolveAuthCatalog(this.authOptions, "user").permissions,
     );
-    const key = this.getAuthenticatingApiKey();
+    const ceiling = this.accessControlService.getApiKeyPermissionCeiling();
     return permissions.map((permission) => ({
       permission,
       grantable:
         allowedSet.has(permission) &&
         (!userPermissions.has(permission) ||
           this.accessControlService.canGrantUserPermissions([permission])) &&
-        (!key || (key.permissions ?? []).includes(permission)),
+        (ceiling === null || ceiling.includes(permission)),
     }));
   }
 
@@ -187,7 +178,7 @@ export class UserApiKeyService {
     if (input.expiresAt && input.expiresAt <= new Date()) {
       throw new BadRequestException("API key expiration must be in the future");
     }
-    assertCurrentApiKeyCanCommit(this.em, apiKey);
+    RequestIdentity.assertApiKeyCanCommit(this.em, apiKey);
     const previous = {
       name: apiKey.name,
       enabled: apiKey.enabled,
@@ -202,7 +193,7 @@ export class UserApiKeyService {
       apiKey.permissions = permissions;
     }
     // Commit the final use before revocation removes the interceptor's identity.
-    if (input.enabled === false && isCurrentApiKey(apiKey))
+    if (input.enabled === false && RequestIdentity.isCurrentApiKey(apiKey))
       apiKey.lastUsedAt = new Date();
     try {
       await this.em.persist(apiKey).flush();
@@ -210,14 +201,14 @@ export class UserApiKeyService {
       Object.assign(apiKey, previous);
       throw error;
     }
-    refreshCurrentApiKeyAuthorization(this.em, this.authOptions, apiKey);
+    RequestIdentity.updateApiKey(this.em, this.authOptions, apiKey);
     return apiKey;
   }
 
   private async deleteKey(apiKey: UserApiKey): Promise<UserApiKey> {
-    assertCurrentApiKeyCanCommit(this.em, apiKey);
+    RequestIdentity.assertApiKeyCanCommit(this.em, apiKey);
     await this.em.remove(apiKey).flush();
-    refreshCurrentApiKeyAuthorization(this.em, this.authOptions, apiKey, true);
+    RequestIdentity.updateApiKey(this.em, this.authOptions, apiKey, true);
     return apiKey;
   }
 
@@ -260,12 +251,10 @@ export class UserApiKeyService {
   }
 
   private getOwnedListFilter(owner: User): FilterQuery<UserApiKey> {
-    const apiKey = this.getAuthenticatingApiKey();
+    const ceiling = this.accessControlService.getApiKeyPermissionCeiling();
     return {
       ["user"]: owner,
-      ...(apiKey
-        ? { permissions: { $contained: apiKey.permissions ?? [] } }
-        : {}),
+      ...(ceiling !== null ? { permissions: { $contained: ceiling } } : {}),
     } as unknown as FilterQuery<UserApiKey>;
   }
 
@@ -342,11 +331,7 @@ export class UserApiKeyService {
     const requestedUserPermissions = permissions.filter((permission) =>
       userPermissionCatalog.has(permission),
     );
-    const effectivePermissions = resolveAuthPermissions(
-      user.roles ?? [this.authOptions.user?.defaultRole ?? DEFAULT_USER_ROLE],
-      user.permissions ?? [],
-      resolveAuthCatalog(this.authOptions, "user").roles,
-    );
+    const effectivePermissions = resolveUserPermissions(this.authOptions, user);
 
     this.assertPermissionCeiling(
       requestedUserPermissions,
@@ -354,10 +339,6 @@ export class UserApiKeyService {
       "User API key permissions exceed owner permissions",
     );
     this.assertDelegatedApiKeyPermissionCeiling(permissions);
-  }
-
-  private getAuthenticatingApiKey(): ApiKey | null {
-    return getCurrentApiKey();
   }
 
   private assertDelegatedApiKeyPermissionCeiling(

@@ -14,11 +14,8 @@ import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 import type { ApiKey } from "../types/api-key.type.js";
-import { DEFAULT_USER_ROLE } from "../user.constants.js";
-import { resolveAuthPermissions } from "../utils/auth-role.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
-import { resolveAuthCatalog } from "../utils/resolve-auth-catalog.util.js";
-import { DEFAULT_WORKSPACE_ROLE } from "../workspace.constants.js";
+import { resolveRequestPermissions } from "../utils/resolve-request-permissions.util.js";
 
 /** Enforces user and workspace permissions prepared for the current request. */
 @Injectable()
@@ -31,15 +28,17 @@ export class AccessControlService {
 
   /** Returns whether the current principal may perform a user-scoped action. */
   userCan(action: string, subject: Subject): boolean {
-    if (!RequestContext.isActive()) return false;
+    return this.getUserAbility()?.can(action, subject) ?? false;
+  }
+
+  /** Returns the prepared ability only while its user identity is available. */
+  getUserAbility(): UserAbility | null {
+    if (!RequestContext.isActive()) return null;
 
     const user = RequestContext.get(User);
     const apiKey = getCurrentApiKey();
-    if (!user || (apiKey && this.isWorkspaceApiKey(apiKey))) return false;
-
-    const ability = RequestContext.get(UserAbility);
-
-    return !!ability && ability.can(action, subject);
+    if (!user || (apiKey && this.isWorkspaceApiKey(apiKey))) return null;
+    return RequestContext.get(UserAbility) ?? null;
   }
 
   /** Throws unless the current principal may perform a user-scoped action. */
@@ -53,16 +52,19 @@ export class AccessControlService {
 
   /** Returns whether the current principal may perform a workspace action. */
   workspaceCan(action: string, subject: Subject): boolean {
-    if (!RequestContext.isActive()) return false;
+    return this.getWorkspaceAbility()?.can(action, subject) ?? false;
+  }
+
+  /** Returns the prepared ability only while its workspace identity is available. */
+  getWorkspaceAbility(): WorkspaceAbility | null {
+    if (!RequestContext.isActive() || !RequestContext.get(Workspace))
+      return null;
 
     const apiKey = getCurrentApiKey();
     const workspaceApiKey = apiKey && this.isWorkspaceApiKey(apiKey);
     const member = RequestContext.get(Member);
-    if (!workspaceApiKey && !member) return false;
-
-    const ability = RequestContext.get(WorkspaceAbility);
-
-    return !!ability && ability.can(action, subject);
+    if (!workspaceApiKey && !member) return null;
+    return RequestContext.get(WorkspaceAbility) ?? null;
   }
 
   /** Throws unless the current principal may perform a workspace action. */
@@ -149,21 +151,7 @@ export class AccessControlService {
   }
 
   private getUserGrantPermissions(): readonly string[] {
-    const user = RequestContext.isActive() ? RequestContext.get(User) : null;
-    const apiKey = RequestContext.isActive() ? getCurrentApiKey() : null;
-    let permissions =
-      user && !(apiKey && this.isWorkspaceApiKey(apiKey))
-        ? resolveAuthPermissions(
-            user.roles ?? [this.options.user?.defaultRole ?? DEFAULT_USER_ROLE],
-            user.permissions ?? [],
-            resolveAuthCatalog(this.options, "user").roles,
-          )
-        : [];
-    if (apiKey) {
-      const allowed = new Set(apiKey.permissions ?? []);
-      permissions = permissions.filter((permission) => allowed.has(permission));
-    }
-    return permissions;
+    return resolveRequestPermissions(this.options).user;
   }
 
   /** Throws when a workspace grant exceeds the current principal's permissions. */
@@ -190,42 +178,14 @@ export class AccessControlService {
   }
 
   private getWorkspaceGrantPermissions(): readonly string[] {
-    const apiKey = RequestContext.isActive() ? getCurrentApiKey() : undefined;
-    const member = RequestContext.isActive()
-      ? RequestContext.get(Member)
-      : undefined;
-    const workspaceApiKey = apiKey && this.isWorkspaceApiKey(apiKey);
-
-    let effectivePermissions: readonly string[];
-    if (workspaceApiKey) {
-      effectivePermissions = apiKey.permissions ?? [];
-    } else if (member) {
-      effectivePermissions = resolveAuthPermissions(
-        member.roles ?? [
-          this.options.workspace?.defaultRole ?? DEFAULT_WORKSPACE_ROLE,
-        ],
-        member.permissions ?? [],
-        resolveAuthCatalog(this.options, "workspace").roles,
-      );
-
-      if (apiKey) {
-        const apiKeyPermissions = new Set(apiKey.permissions ?? []);
-        effectivePermissions = effectivePermissions.filter((permission) =>
-          apiKeyPermissions.has(permission),
-        );
-      }
-    } else {
-      effectivePermissions = [];
-    }
-
-    return effectivePermissions;
+    return resolveRequestPermissions(this.options).workspace;
   }
 
   /** Rejects access to or delegation of credentials broader than the authenticating API key. */
   assertApiKeyPermissionCeiling(permissions: readonly string[]): void {
-    const apiKey = RequestContext.isActive() ? getCurrentApiKey() : null;
-    if (!apiKey) return;
-    const allowed = new Set(apiKey.permissions ?? []);
+    const ceiling = this.getApiKeyPermissionCeiling();
+    if (ceiling === null) return;
+    const allowed = new Set(ceiling);
     const excessive = permissions.filter(
       (permission) => !allowed.has(permission),
     );
@@ -234,6 +194,11 @@ export class AccessControlService {
         `API key permissions exceed authenticating API key permissions: ${excessive.join(", ")}`,
       );
     }
+  }
+
+  /** Returns the credential ceiling shared by API-key queries, options, and writes. */
+  getApiKeyPermissionCeiling(): readonly string[] | null {
+    return resolveRequestPermissions(this.options).apiKey;
   }
 
   /** Checks API-key ownership independently of the application's database policies. */

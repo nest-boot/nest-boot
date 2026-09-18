@@ -28,6 +28,7 @@ import { UserConnection } from "../connections/user.connection-definition.js";
 import { Account } from "../entities/account.entity.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
+import { RequestIdentity } from "../infrastructure/request-identity.js";
 import { RevokedAuthenticationException } from "../infrastructure/revoked-authentication.exception.js";
 import type { AuthenticatedSession } from "../interfaces/authenticated-session.interface.js";
 import type { BanUserOptions } from "../interfaces/ban-user-options.interface.js";
@@ -48,9 +49,8 @@ import {
   normalizeAuthRoles,
   resolveAuthPermissions,
 } from "../utils/auth-role.util.js";
-import { clearRequestAuthentication } from "../utils/clear-request-authentication.util.js";
-import { refreshRequestAuthorization } from "../utils/refresh-request-authorization.util.js";
 import { resolveAuthCatalog } from "../utils/resolve-auth-catalog.util.js";
+import { resolveUserPermissions } from "../utils/resolve-effective-permissions.util.js";
 import { AccessControlService } from "./access-control.service.js";
 import { UserDeletionService } from "./user-deletion.service.js";
 const CREDENTIAL_ISSUER = "local:credential";
@@ -171,7 +171,7 @@ export class UserService {
       Object.assign(user, previous);
       throw error;
     }
-    this.refreshCurrentUser(user);
+    RequestIdentity.updateUser(this.em, this.options, user);
     return user;
   }
 
@@ -193,7 +193,7 @@ export class UserService {
       user.permissions = previous;
       throw error;
     }
-    this.refreshCurrentUser(user);
+    RequestIdentity.updateUser(this.em, this.options, user);
     return user;
   }
 
@@ -217,7 +217,7 @@ export class UserService {
       user.roles = previous;
       throw error;
     }
-    this.refreshCurrentUser(user);
+    RequestIdentity.updateUser(this.em, this.options, user);
     return user;
   }
 
@@ -247,12 +247,6 @@ export class UserService {
         "Change your own authorization outside an active transaction",
       );
     }
-  }
-
-  private refreshCurrentUser(user: User): void {
-    if (!this.isCurrentUser(user)) return;
-    RequestContext.set(User, user);
-    refreshRequestAuthorization(this.options);
   }
 
   private async resolveUserForAction(
@@ -292,11 +286,7 @@ export class UserService {
 
   /** Resolves permissions inherited from roles plus direct user permissions. */
   getEffectiveUserPermissions(user: User): string[] {
-    return resolveAuthPermissions(
-      user.roles ?? [this.defaultRole],
-      user.permissions ?? [],
-      this.roles,
-    );
+    return resolveUserPermissions(this.options, user);
   }
 
   /** Paginates users without bypassing application RLS. */
@@ -355,8 +345,7 @@ export class UserService {
       Object.assign(user, previous);
       throw error;
     }
-    if (this.affectsCurrentAuthentication(user))
-      clearRequestAuthentication(this.em);
+    if (this.affectsCurrentAuthentication(user)) RequestIdentity.clear(this.em);
     return user;
   }
 
@@ -379,7 +368,7 @@ export class UserService {
       Object.assign(user, previous);
       throw error;
     }
-    this.refreshCurrentUser(user);
+    RequestIdentity.updateUser(this.em, this.options, user);
     return user;
   }
 
@@ -448,10 +437,10 @@ export class UserService {
       { clear: true },
     );
     // A missing administrator has already cascaded deletion to this session.
-    if (result === null) clearRequestAuthentication(this.em);
+    if (result === null) RequestIdentity.clear(this.em);
     // Publish the committed revocation even when restoration returns an error.
     if (result === "banned-administrator") {
-      clearRequestAuthentication(this.em);
+      RequestIdentity.clear(this.em);
       throw new RevokedAuthenticationException(
         "Banned administrators cannot restore their session",
       );
@@ -466,8 +455,7 @@ export class UserService {
     this.assertIdentityRevocationCanCommit(user);
     const deleted = await this.userDeletionService.deleteUser(String(user.id));
     if (deleted === null) throw new NotFoundException("User not found");
-    if (this.affectsCurrentAuthentication(user))
-      clearRequestAuthentication(this.em);
+    if (this.affectsCurrentAuthentication(user)) RequestIdentity.clear(this.em);
     return user;
   }
 

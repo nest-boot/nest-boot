@@ -24,8 +24,8 @@ import { AUTH_TOKEN } from "../auth.constants.js";
 import { SessionConnection } from "../connections/session.connection-definition.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
+import { RequestIdentity } from "../infrastructure/request-identity.js";
 import type { AuthenticatedSession } from "../interfaces/authenticated-session.interface.js";
-import { clearRequestAuthentication } from "../utils/clear-request-authentication.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
 import { AccessControlService } from "./access-control.service.js";
 
@@ -144,7 +144,7 @@ export class SessionService {
       },
       { clear: true },
     );
-    if (revoked && revokesCurrent) clearRequestAuthentication(this.em);
+    if (revoked && revokesCurrent) RequestIdentity.clear(this.em);
     return revoked;
   }
 
@@ -161,7 +161,7 @@ export class SessionService {
     const count = await this.em.nativeDelete(Session, {
       $or: [{ user: String(user.id) }, { impersonatedBy: user }],
     } as FilterQuery<Session>);
-    if (revokesCurrent) clearRequestAuthentication(this.em);
+    if (revokesCurrent) RequestIdentity.clear(this.em);
     return count;
   }
 
@@ -267,7 +267,7 @@ export class SessionService {
       body: { token: session.token },
       headers: headers(),
     });
-    if (result.status && revokesCurrent) clearRequestAuthentication(this.em);
+    if (result.status && revokesCurrent) RequestIdentity.clear(this.em);
     return result.status;
   }
 
@@ -283,7 +283,7 @@ export class SessionService {
   async revokeCurrentUserSessions(): Promise<boolean> {
     this.assertRevocationCanCommit();
     const result = await this.auth.api.revokeSessions({ headers: headers() });
-    if (result.status) clearRequestAuthentication(this.em);
+    if (result.status) RequestIdentity.clear(this.em);
     return result.status;
   }
 

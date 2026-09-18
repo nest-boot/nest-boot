@@ -1,23 +1,15 @@
 import type { Subject } from "@casl/ability";
 import { RequestContext } from "@nest-boot/request-context";
 import type { CanActivate, ExecutionContext, Type } from "@nestjs/common";
-import {
-  ForbiddenException,
-  Inject,
-  Injectable,
-  UnauthorizedException,
-} from "@nestjs/common";
+import { Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import { ContextIdFactory, ModuleRef, Reflector } from "@nestjs/core";
 import type { Request } from "express";
 
-import { UserAbility } from "./abilities/user.ability.js";
-import { WorkspaceAbility } from "./abilities/workspace.ability.js";
 import { IS_PUBLIC_KEY } from "./auth.constants.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
-import { Member } from "./entities/member.entity.js";
 import { Session } from "./entities/session.entity.js";
-import { WorkspaceApiKey } from "./entities/workspace-api-key.entity.js";
+import { RequestIdentity } from "./infrastructure/request-identity.js";
 import type { RouteArgumentMetadataValue } from "./interfaces/route-argument-metadata-value.interface.js";
 import type { UserCanMetadata } from "./interfaces/user-can-metadata.interface.js";
 import type { WorkspaceCanMetadata } from "./interfaces/workspace-can-metadata.interface.js";
@@ -29,13 +21,9 @@ import {
   USER_CAN_METADATA,
   WORKSPACE_CAN_METADATA,
 } from "./permission.constants.js";
-import type { ApiKey } from "./types/api-key.type.js";
+import { AccessControlService } from "./services/access-control.service.js";
 import type { CanSubjectFactory } from "./types/can-subject-factory.type.js";
 import type { RouteArgumentMetadata } from "./types/route-argument-metadata.type.js";
-import {
-  buildRequestUserAbility,
-  buildRequestWorkspaceAbility,
-} from "./utils/build-request-ability.util.js";
 import { getCurrentApiKey } from "./utils/get-current-api-key.util.js";
 
 /** Guard that enforces authentication and evaluates route permissions. */
@@ -43,8 +31,7 @@ import { getCurrentApiKey } from "./utils/get-current-api-key.util.js";
 export class AuthGuard implements CanActivate {
   /** Rebuilds abilities after an explicit sign-in changes the request identity. */
   refreshAbilities(): void {
-    RequestContext.set(UserAbility, this.buildAndCacheUserAbility());
-    RequestContext.set(WorkspaceAbility, this.buildAndCacheWorkspaceAbility());
+    RequestIdentity.refresh(this.options);
   }
   /**
    * Creates the authentication and permission guard.
@@ -52,12 +39,14 @@ export class AuthGuard implements CanActivate {
    * @param reflector - Nest metadata reflector.
    * @param options - Auth module options.
    * @param moduleRef - Nest module reference used to resolve handler instances.
+   * @param accessControlService - Shared fail-closed operation authorization.
    */
   constructor(
     protected readonly reflector: Reflector,
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly options: AuthModuleOptions,
     private readonly moduleRef: ModuleRef,
+    private readonly accessControlService: AccessControlService,
   ) {}
 
   /**
@@ -98,9 +87,9 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException("Authentication is required");
     }
 
-    if (authenticated && RequestContext.isActive()) {
-      this.getOrBuildUserAbility();
-      this.getOrBuildWorkspaceAbility();
+    if (RequestContext.isActive()) {
+      RequestContext.set(AccessControlService, this.accessControlService);
+      RequestIdentity.prepare(this.options);
     }
 
     const targets = [context.getHandler(), context.getClass()];
@@ -147,77 +136,20 @@ export class AuthGuard implements CanActivate {
     canOptions: UserCanMetadata,
     context: ExecutionContext,
   ): Promise<boolean> {
-    const apiKey = getCurrentApiKey();
-
-    if (apiKey && this.isWorkspaceApiKey(apiKey)) {
-      return false;
-    }
-
-    const ability = this.getOrBuildUserAbility();
+    if (!this.accessControlService.getUserAbility()) return false;
     const subject = await this.resolveSubject(canOptions, context);
-    if (!ability) {
-      throw new ForbiddenException("User permission ability is not available");
-    }
 
-    return ability.can(canOptions.action, subject);
+    return this.accessControlService.userCan(canOptions.action, subject);
   }
 
   private async checkWorkspacePermission(
     canOptions: WorkspaceCanMetadata,
     context: ExecutionContext,
   ): Promise<boolean> {
-    const apiKey = getCurrentApiKey();
-    const workspaceApiKey = apiKey && this.isWorkspaceApiKey(apiKey);
-
-    if (apiKey && !workspaceApiKey && !RequestContext.get(Member)) {
-      return false;
-    }
-
-    const ability = this.getOrBuildWorkspaceAbility();
+    if (!this.accessControlService.getWorkspaceAbility()) return false;
     const subject = await this.resolveSubject(canOptions, context);
-    if (!ability) {
-      throw new ForbiddenException(
-        "Workspace permission ability is not available",
-      );
-    }
 
-    return ability.can(canOptions.action, subject);
-  }
-
-  private isWorkspaceApiKey(apiKey: ApiKey): boolean {
-    return apiKey instanceof WorkspaceApiKey;
-  }
-
-  private getOrBuildUserAbility(): UserAbility | null {
-    const cachedAbility = RequestContext.get(UserAbility) ?? null;
-
-    if (cachedAbility) {
-      return cachedAbility;
-    }
-
-    return this.buildAndCacheUserAbility();
-  }
-
-  private getOrBuildWorkspaceAbility(): WorkspaceAbility | null {
-    const cachedAbility = RequestContext.get(WorkspaceAbility) ?? null;
-
-    if (cachedAbility) {
-      return cachedAbility;
-    }
-
-    return this.buildAndCacheWorkspaceAbility();
-  }
-
-  private buildAndCacheUserAbility(): UserAbility | null {
-    const ability = buildRequestUserAbility(this.options);
-    RequestContext.set(UserAbility, ability);
-    return ability;
-  }
-
-  private buildAndCacheWorkspaceAbility(): WorkspaceAbility | null {
-    const ability = buildRequestWorkspaceAbility(this.options);
-    RequestContext.set(WorkspaceAbility, ability);
-    return ability;
+    return this.accessControlService.workspaceCan(canOptions.action, subject);
   }
 
   private async resolveSubject(

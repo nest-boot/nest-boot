@@ -4,9 +4,11 @@ import type { Mocked } from "vitest";
 
 import { UserAbility } from "../abilities/user.ability.js";
 import { WorkspaceAbility } from "../abilities/workspace.ability.js";
+import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { type User as BaseUser } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
+import { AccessControlService } from "../services/access-control.service.js";
 import { type AuthService } from "../services/auth.service.js";
 import { AuthResolver } from "./auth.resolver.js";
 
@@ -21,6 +23,10 @@ describe("AuthResolver", () => {
       expect(() => resolver.currentWorkspaceAbilityRules()).toThrow(
         ForbiddenException,
       );
+      RequestContext.set(AccessControlService, new AccessControlService({}));
+      RequestContext.set(User, new User());
+      RequestContext.set(Member, new Member());
+      RequestContext.set(Workspace, new Workspace());
       RequestContext.set(
         UserAbility,
         new UserAbility([

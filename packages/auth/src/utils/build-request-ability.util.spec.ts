@@ -1,12 +1,12 @@
 import { createMongoAbility, subject } from "@casl/ability";
 import { RequestContext } from "@nest-boot/request-context";
 
-import { API_KEY } from "../auth.constants.js";
 import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
+import { RequestIdentity } from "../infrastructure/request-identity.js";
 import type { AbilityRules } from "../interfaces/ability-rules.interface.js";
 import {
   buildRequestUserAbility,
@@ -82,12 +82,11 @@ describe("framework-owned request abilities", () => {
       Object.assign(new Member(), { roles: ["owner"] }),
     );
     RequestContext.set(Workspace, new Workspace());
-    RequestContext.set(
-      API_KEY,
-      Object.assign(new UserApiKey(), {
+    RequestIdentity.stage({
+      apiKey: Object.assign(new UserApiKey(), {
         permissions: ["user:get", "workspace:update"],
       }),
-    );
+    });
     expect(buildRequestUserAbility({})?.can("read", User)).toBe(true);
     expect(buildRequestUserAbility({})?.can("delete", User)).toBe(false);
     expect(buildRequestWorkspaceAbility({})?.can("update", Workspace)).toBe(
@@ -123,10 +122,9 @@ describe("framework-owned request abilities", () => {
     expect(
       ability.can("read", subject("Article", { authorId: "me", hidden: true })),
     ).toBe(false);
-    RequestContext.set(
-      API_KEY,
-      Object.assign(new UserApiKey(), { permissions: [] }),
-    );
+    RequestIdentity.stage({
+      apiKey: Object.assign(new UserApiKey(), { permissions: [] }),
+    });
     expect(buildRequestUserAbility(options)?.can("read", "Article")).toBe(
       false,
     );

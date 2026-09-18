@@ -26,6 +26,7 @@ import { WorkspaceApiKeyConnection } from "../connections/workspace-api-key.conn
 import { Member } from "../entities/member.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
+import { RequestIdentity } from "../infrastructure/request-identity.js";
 import type { CreateApiKeyOptions } from "../interfaces/create-api-key-options.interface.js";
 import type { CreatedApiKey } from "../interfaces/created-api-key.interface.js";
 import type { UpdateApiKeyOptions } from "../interfaces/update-api-key-options.interface.js";
@@ -37,11 +38,6 @@ import {
 } from "../utils/api-key-credential.util.js";
 import { resolveApiKeyPermissionCatalog } from "../utils/api-key-permissions.util.js";
 import { normalizeAuthPermissions } from "../utils/auth-role.util.js";
-import {
-  assertCurrentApiKeyCanCommit,
-  isCurrentApiKey,
-  refreshCurrentApiKeyAuthorization,
-} from "../utils/current-api-key-authorization.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
 import { resolveAuthCatalog } from "../utils/resolve-auth-catalog.util.js";
 import { AccessControlService } from "./access-control.service.js";
@@ -189,7 +185,7 @@ export class WorkspaceApiKeyService {
     if (input.expiresAt && input.expiresAt <= new Date()) {
       throw new BadRequestException("API key expiration must be in the future");
     }
-    assertCurrentApiKeyCanCommit(this.em, apiKey);
+    RequestIdentity.assertApiKeyCanCommit(this.em, apiKey);
     const previous = {
       name: apiKey.name,
       enabled: apiKey.enabled,
@@ -204,7 +200,7 @@ export class WorkspaceApiKeyService {
       apiKey.permissions = permissions;
     }
     // Commit the final use before revocation removes the interceptor's identity.
-    if (input.enabled === false && isCurrentApiKey(apiKey))
+    if (input.enabled === false && RequestIdentity.isCurrentApiKey(apiKey))
       apiKey.lastUsedAt = new Date();
     try {
       await this.em.persist(apiKey).flush();
@@ -212,14 +208,14 @@ export class WorkspaceApiKeyService {
       Object.assign(apiKey, previous);
       throw error;
     }
-    refreshCurrentApiKeyAuthorization(this.em, this.authOptions, apiKey);
+    RequestIdentity.updateApiKey(this.em, this.authOptions, apiKey);
     return apiKey;
   }
 
   private async deleteKey(apiKey: WorkspaceApiKey): Promise<WorkspaceApiKey> {
-    assertCurrentApiKeyCanCommit(this.em, apiKey);
+    RequestIdentity.assertApiKeyCanCommit(this.em, apiKey);
     await this.em.remove(apiKey).flush();
-    refreshCurrentApiKeyAuthorization(this.em, this.authOptions, apiKey, true);
+    RequestIdentity.updateApiKey(this.em, this.authOptions, apiKey, true);
     return apiKey;
   }
 
@@ -262,12 +258,10 @@ export class WorkspaceApiKeyService {
   }
 
   private getOwnedListFilter(owner: Workspace): FilterQuery<WorkspaceApiKey> {
-    const apiKey = this.getAuthenticatingApiKey();
+    const ceiling = this.accessControlService.getApiKeyPermissionCeiling();
     return {
       ["workspace"]: owner,
-      ...(apiKey
-        ? { permissions: { $contained: apiKey.permissions ?? [] } }
-        : {}),
+      ...(ceiling !== null ? { permissions: { $contained: ceiling } } : {}),
     } as unknown as FilterQuery<WorkspaceApiKey>;
   }
 

@@ -5,7 +5,6 @@ import { ForbiddenException } from "@nestjs/common";
 
 import { UserAbility } from "../abilities/user.ability.js";
 import { WorkspaceAbility } from "../abilities/workspace.ability.js";
-import { API_KEY } from "../auth.constants.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { Member } from "../entities/member.entity.js";
 import { Session } from "../entities/session.entity.js";
@@ -13,6 +12,7 @@ import { User } from "../entities/user.entity.js";
 import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
+import { RequestIdentity } from "../infrastructure/request-identity.js";
 import { AccessControlService } from "./access-control.service.js";
 
 class Subject {}
@@ -82,7 +82,7 @@ describe("AccessControlService", () => {
 
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
       RequestContext.set(User, user);
-      RequestContext.set(API_KEY, apiKey);
+      RequestIdentity.stage({ apiKey });
       const ability = new UserAbility();
       vi.spyOn(ability, "can").mockImplementation(
         (action) => action === "read",
@@ -102,7 +102,7 @@ describe("AccessControlService", () => {
     });
 
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
-      RequestContext.set(API_KEY, apiKey);
+      RequestIdentity.stage({ apiKey, workspace });
       const ability = new WorkspaceAbility();
       vi.spyOn(ability, "can").mockImplementation(
         (action) => action === "read",
@@ -124,7 +124,7 @@ describe("AccessControlService", () => {
     const post = caslSubject("Post", { id: "post-1" });
 
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
-      RequestContext.set(API_KEY, apiKey);
+      RequestIdentity.stage({ apiKey, workspace });
       const ability = new WorkspaceAbility();
       vi.spyOn(ability, "can").mockImplementation(
         (action) => action === "read",
@@ -144,7 +144,7 @@ describe("AccessControlService", () => {
     });
 
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
-      RequestContext.set(API_KEY, apiKey);
+      RequestIdentity.stage({ apiKey, workspace });
       RequestContext.set(WorkspaceAbility, new WorkspaceAbility());
 
       expect(service.workspaceCan("read", Subject)).toBe(false);
@@ -154,6 +154,7 @@ describe("AccessControlService", () => {
   it("requires a membership and ability for workspace session access", async () => {
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
       RequestContext.set(Member, new Member());
+      RequestContext.set(Workspace, new Workspace());
       const ability = new WorkspaceAbility();
       vi.spyOn(ability, "can").mockImplementation(
         (action) => action === "read",
@@ -162,6 +163,8 @@ describe("AccessControlService", () => {
 
       expect(service.workspaceCan("read", Subject)).toBe(true);
       expect(service.workspaceCan("update", Subject)).toBe(false);
+      RequestContext.set(Workspace, null);
+      expect(service.workspaceCan("read", Subject)).toBe(false);
     });
   });
 
@@ -249,14 +252,13 @@ describe("AccessControlService", () => {
       expect(() => {
         ceilingService.assertCanGrantUserPermissions(["user:delete"]);
       }).toThrow("User permissions exceed issuer permissions: user:delete");
-      RequestContext.set(
-        API_KEY,
-        Object.assign(new UserApiKey(), {
+      RequestIdentity.stage({
+        apiKey: Object.assign(new UserApiKey(), {
           workspace: null,
           user: user,
           permissions: ["user:get", "user:delete"],
         }),
-      );
+      });
       expect(() => {
         ceilingService.assertCanGrantUserPermissions(["user:get"]);
       }).not.toThrow();
@@ -273,13 +275,12 @@ describe("AccessControlService", () => {
       expect(() => {
         ceilingService.assertCanGrantUserPermissions(["user:delete"]);
       }).toThrow(ForbiddenException);
-      RequestContext.set(
-        API_KEY,
-        Object.assign(new WorkspaceApiKey(), {
+      RequestIdentity.stage({
+        apiKey: Object.assign(new WorkspaceApiKey(), {
           workspace: new Workspace(),
           permissions: ["user:get"],
         }),
-      );
+      });
       expect(() => {
         ceilingService.assertCanGrantUserPermissions(["user:get"]);
       }).toThrow(ForbiddenException);
@@ -310,13 +311,13 @@ describe("AccessControlService", () => {
     });
 
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
-      RequestContext.set(Member, member);
+      RequestIdentity.stage({ member, workspace: new Workspace() });
 
       expect(() => {
         ceilingService.assertCanGrantWorkspacePermissions(["post:update"]);
       }).not.toThrow();
 
-      RequestContext.set(API_KEY, userApiKey);
+      RequestIdentity.stage({ apiKey: userApiKey });
       expect(() => {
         ceilingService.assertCanGrantWorkspacePermissions(["post:read"]);
       }).not.toThrow();
@@ -336,7 +337,7 @@ describe("AccessControlService", () => {
     });
 
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
-      RequestContext.set(API_KEY, apiKey);
+      RequestIdentity.stage({ apiKey, workspace });
 
       expect(() => {
         service.assertCanGrantWorkspacePermissions(["post:read"]);

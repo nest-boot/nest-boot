@@ -24,6 +24,7 @@ import {
   USER_CAN_METADATA,
   WORKSPACE_CAN_METADATA,
 } from "./permission.constants.js";
+import { AccessControlService } from "./services/access-control.service.js";
 import type { AuthModuleRoles } from "./types/auth-module-roles.type.js";
 import type { BuildUserAbilityCallback } from "./types/build-user-ability-callback.type.js";
 import type { BuildWorkspaceAbilityCallback } from "./types/build-workspace-ability-callback.type.js";
@@ -1427,6 +1428,7 @@ async function createGuard(
   const res = {} as Response;
   const testingModule = await Test.createTestingModule({
     providers: [
+      AccessControlService,
       PermissionAuthGuard,
       {
         provide: Reflector,

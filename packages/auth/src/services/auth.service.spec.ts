@@ -3,7 +3,6 @@ import { REQUEST, RequestContext, RESPONSE } from "@nest-boot/request-context";
 import { Test } from "@nestjs/testing";
 
 import { AUTH_TOKEN } from "../auth.constants.js";
-import { AuthGuard } from "../auth.guard.js";
 import { AuthMiddleware } from "../auth.middleware.js";
 import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
 import { Session } from "../entities/session.entity.js";
@@ -65,7 +64,6 @@ async function createService(
   };
   const userService = { impersonateUser: vi.fn(), stopImpersonating: vi.fn() };
   const sessionService = { setSessionCookie: vi.fn() };
-  const authGuard = { refreshAbilities: vi.fn() };
   const moduleRef = await Test.createTestingModule({
     providers: [
       AuthService,
@@ -77,7 +75,6 @@ async function createService(
         useValue: {},
       },
       { provide: AuthMiddleware, useValue: authMiddleware },
-      { provide: AuthGuard, useValue: authGuard },
       {
         provide: AUTH_TOKEN,
         useValue: {
@@ -93,7 +90,6 @@ async function createService(
   return {
     em,
     authMiddleware,
-    authGuard,
     userService,
     sessionService,
     api,
@@ -178,7 +174,7 @@ describe("current user identity", () => {
   });
 
   it("adopts impersonation and restored identities before writing cookies", async () => {
-    const { service, userService, sessionService, authMiddleware, authGuard } =
+    const { service, userService, sessionService, authMiddleware } =
       await createService();
     const administrator = Object.assign(new User(), { id: "admin" });
     const target = Object.assign(new User(), { id: "target" });
@@ -197,7 +193,7 @@ describe("current user identity", () => {
     });
     sessionService.setSessionCookie.mockImplementation((token) => {
       expect(RequestContext.get(Session)?.token).toBe(token);
-      expect(authGuard.refreshAbilities).toHaveBeenCalledTimes(
+      expect(authMiddleware.authenticateSession).toHaveBeenCalledTimes(
         token === session.token ? 1 : 2,
       );
       return Promise.resolve();
@@ -224,7 +220,7 @@ describe("current user identity", () => {
   });
 
   it("does not adopt a session when stopping impersonation yields none", async () => {
-    const { service, userService, sessionService, authMiddleware, authGuard } =
+    const { service, userService, sessionService, authMiddleware } =
       await createService();
     await expect(service.stopImpersonating()).rejects.toThrow(
       "A user session is required",
@@ -236,12 +232,11 @@ describe("current user identity", () => {
       await expect(service.stopImpersonating()).resolves.toBeNull();
     });
     expect(authMiddleware.authenticateSession).not.toHaveBeenCalled();
-    expect(authGuard.refreshAbilities).not.toHaveBeenCalled();
     expect(sessionService.setSessionCookie).not.toHaveBeenCalled();
   });
 
   it("returns a minimal registration payload without loading or authenticating the user", async () => {
-    const { service, em, authMiddleware, authGuard } = await createService();
+    const { service, em, authMiddleware } = await createService();
     const user = Object.assign(new User(), {
       id: "created-user",
       roles: ["user"],
@@ -265,11 +260,10 @@ describe("current user identity", () => {
     expect(em.findOneOrFail).not.toHaveBeenCalled();
     expect(authMiddleware.resolveRegisteredUser).not.toHaveBeenCalled();
     expect(authMiddleware.authenticateSession).not.toHaveBeenCalled();
-    expect(authGuard.refreshAbilities).not.toHaveBeenCalled();
   });
 
   it("adopts a registration session only when a token was issued", async () => {
-    const { service, authMiddleware, authGuard, em } = await createService();
+    const { service, authMiddleware, em } = await createService();
     vi.spyOn(service, "signUp").mockResolvedValue({
       token: "issued-token",
       user: { id: "created-user" },
@@ -284,13 +278,13 @@ describe("current user identity", () => {
     expect(authMiddleware.authenticateSession).toHaveBeenCalledWith(
       "issued-token",
     );
-    expect(authGuard.refreshAbilities).toHaveBeenCalledOnce();
+
     expect(em.findOneOrFail).not.toHaveBeenCalled();
     expect(authMiddleware.resolveRegisteredUser).not.toHaveBeenCalled();
   });
 
   it("returns application users and adopts only issued sign-in sessions", async () => {
-    const { service, authMiddleware, authGuard } = await createService();
+    const { service, authMiddleware } = await createService();
     const user = Object.assign(new User(), { id: "signed-in-user" });
     vi.spyOn(service, "signIn").mockResolvedValue({
       token: "issued-token",
@@ -310,7 +304,7 @@ describe("current user identity", () => {
     expect(authMiddleware.authenticateSession).toHaveBeenCalledWith(
       "issued-token",
     );
-    expect(authGuard.refreshAbilities).toHaveBeenCalledOnce();
+
     vi.spyOn(service, "signInSocial").mockResolvedValue({
       token: null,
       user: null,
@@ -741,7 +735,7 @@ describe("AuthService", () => {
   });
 
   it("adopts the replacement password-change session before returning its token", async () => {
-    const { api, service, authMiddleware, authGuard } = await createService();
+    const { api, service, authMiddleware } = await createService();
     api.changePassword.mockResolvedValue({
       headers: new Headers(),
       response: {
@@ -769,17 +763,14 @@ describe("AuthService", () => {
     expect(authMiddleware.authenticateSession).toHaveBeenCalledWith(
       "replacement-token",
     );
-    expect(authMiddleware.authenticateSession).toHaveBeenCalledBefore(
-      authGuard.refreshAbilities,
-    );
-    expect(authGuard.refreshAbilities).toHaveBeenCalledOnce();
+
     expect(authMiddleware.clearAuthentication).not.toHaveBeenCalled();
   });
 
   it.each([false, undefined])(
     "keeps the current identity when password changes do not rotate sessions (%s)",
     async (revokeOtherSessions) => {
-      const { api, service, authMiddleware, authGuard } = await createService();
+      const { api, service, authMiddleware } = await createService();
       api.changePassword.mockResolvedValue({
         headers: new Headers(),
         response: { token: null },
@@ -792,41 +783,30 @@ describe("AuthService", () => {
         }),
       ).resolves.toEqual({ token: null });
       expect(authMiddleware.authenticateSession).not.toHaveBeenCalled();
-      expect(authGuard.refreshAbilities).not.toHaveBeenCalled();
       expect(authMiddleware.clearAuthentication).not.toHaveBeenCalled();
     },
   );
 
-  it.each(["session", "abilities"])(
-    "clears authentication if replacement %s synchronization fails",
-    async (stage) => {
-      const { api, service, authMiddleware, authGuard } = await createService();
-      api.changePassword.mockResolvedValue({
-        headers: new Headers(),
-        response: { token: "replacement-token" },
-      });
-      const failure = new Error("Synchronization failed");
-      if (stage === "session")
-        authMiddleware.authenticateSession.mockRejectedValue(failure);
-      else
-        authGuard.refreshAbilities.mockImplementation(() => {
-          throw failure;
-        });
-      await expect(
-        service.changeCurrentUserPassword({
-          currentPassword: "old-password",
-          newPassword: "new-password",
-          revokeOtherSessions: true,
-        }),
-      ).rejects.toBe(failure);
-      expect(authMiddleware.clearAuthentication).toHaveBeenCalledOnce();
-      if (stage === "session")
-        expect(authGuard.refreshAbilities).not.toHaveBeenCalled();
-    },
-  );
+  it("clears authentication if replacement identity synchronization fails", async () => {
+    const { api, service, authMiddleware } = await createService();
+    api.changePassword.mockResolvedValue({
+      headers: new Headers(),
+      response: { token: "replacement-token" },
+    });
+    const failure = new Error("Synchronization failed");
+    authMiddleware.authenticateSession.mockRejectedValue(failure);
+    await expect(
+      service.changeCurrentUserPassword({
+        currentPassword: "old-password",
+        newPassword: "new-password",
+        revokeOtherSessions: true,
+      }),
+    ).rejects.toBe(failure);
+    expect(authMiddleware.clearAuthentication).toHaveBeenCalledOnce();
+  });
 
   it("rejects transactional rotation and preserves identity when the password change fails", async () => {
-    const { api, service, authMiddleware, authGuard } = await createService();
+    const { api, service, authMiddleware } = await createService();
     const options = {
       currentPassword: "old-password",
       newPassword: "new-password",
@@ -844,7 +824,6 @@ describe("AuthService", () => {
       "Invalid password",
     );
     expect(authMiddleware.authenticateSession).not.toHaveBeenCalled();
-    expect(authGuard.refreshAbilities).not.toHaveBeenCalled();
     expect(authMiddleware.clearAuthentication).not.toHaveBeenCalled();
   });
 

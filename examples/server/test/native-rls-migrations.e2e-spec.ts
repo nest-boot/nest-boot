@@ -16,7 +16,6 @@ import {
   MemberService,
   MemberStatus,
   SessionService,
-  UserAbility,
   UserService,
   Workspace as BaseWorkspace,
   WorkspaceService,
@@ -40,8 +39,8 @@ import type { Request } from 'express';
 import { mikroOrmAdapter } from '../../../packages/auth/dist/adapters/mikro-orm-adapter.js';
 import { ApiKeyAuthenticationService } from '../../../packages/auth/dist/infrastructure/api-key-authentication.service.js';
 import { createContextualAuthService } from '../../../packages/auth/dist/infrastructure/create-contextual-auth-service.js';
+import { RequestIdentity } from '../../../packages/auth/dist/infrastructure/request-identity.js';
 import { UserDeletionService } from '../../../packages/auth/dist/services/user-deletion.service.js';
-import { buildRequestUserAbility } from '../../../packages/auth/dist/utils/build-request-ability.util.js';
 import { Migration00000000000000_Initial } from '../src/database/migrations/Migration00000000000000_Initial.js';
 import { Migration20260918091003 } from '../src/database/migrations/Migration20260918091003.js';
 
@@ -1738,7 +1737,7 @@ describe('example native RLS migrations with PGlite', () => {
       viewer.roles = ['user'];
       viewer.permissions = ['account-admin:view', 'user:get', 'user:list'];
       RequestContext.set(User, viewer);
-      RequestContext.set(UserAbility, buildRequestUserAbility(options));
+      RequestIdentity.refresh(options);
       expect(await service.getUser(target.id)).toMatchObject({
         email: target.email,
       });
@@ -1759,7 +1758,7 @@ describe('example native RLS migrations with PGlite', () => {
         'not allowed',
       );
       viewer.permissions = [];
-      RequestContext.set(UserAbility, buildRequestUserAbility(options));
+      RequestIdentity.refresh(options);
       await expect(service.getUser(target.id)).rejects.toThrow('not allowed');
       await expect(service.getUserConnection({ first: 10 })).rejects.toThrow(
         'not allowed',
@@ -1814,7 +1813,7 @@ describe('example native RLS migrations with PGlite', () => {
         async () => {
           RequestContext.set(User, actor);
           const authorize = () => {
-            RequestContext.set(UserAbility, buildRequestUserAbility(options));
+            RequestIdentity.refresh(options);
           };
           actor.permissions = ['account-admin:manage'];
           authorize();

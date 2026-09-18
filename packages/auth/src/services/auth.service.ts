@@ -2,7 +2,6 @@ import { headers, RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException, Inject, Injectable } from "@nestjs/common";
 
 import { AUTH_TOKEN } from "../auth.constants.js";
-import { AuthGuard } from "../auth.guard.js";
 import { AuthMiddleware } from "../auth.middleware.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
@@ -168,7 +167,6 @@ export class AuthService {
   constructor(
     @Inject(AUTH_TOKEN) auth: unknown,
     private readonly authMiddleware: AuthMiddleware,
-    private readonly authGuard: AuthGuard,
     private readonly userService: UserService,
     private readonly sessionService: SessionService,
   ) {
@@ -198,7 +196,6 @@ export class AuthService {
 
   private async adoptSession(token: string): Promise<User> {
     const user = await this.authMiddleware.authenticateSession(token);
-    this.authGuard.refreshAbilities();
     await this.sessionService.setSessionCookie(token);
     return user;
   }
@@ -208,7 +205,6 @@ export class AuthService {
     const result = await this.signUp(options);
     if (result.token) {
       await this.authMiddleware.authenticateSession(result.token);
-      this.authGuard.refreshAbilities();
     }
     return { id: result.user.id, token: result.token };
   }
@@ -241,7 +237,6 @@ export class AuthService {
   ): Promise<User> {
     if (token) {
       const entity = await this.authMiddleware.authenticateSession(token);
-      this.authGuard.refreshAbilities();
       return entity;
     }
     // Registration without a session must not authenticate the request. Only
@@ -385,7 +380,6 @@ export class AuthService {
     if (result.response.token) {
       try {
         await this.authMiddleware.authenticateSession(result.response.token);
-        this.authGuard.refreshAbilities();
       } catch (error) {
         // Rotation already revoked the old session; never retain its identity.
         this.authMiddleware.clearAuthentication();

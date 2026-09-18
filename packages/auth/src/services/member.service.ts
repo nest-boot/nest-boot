@@ -28,6 +28,7 @@ import { Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
+import { RequestIdentity } from "../infrastructure/request-identity.js";
 import type { AddMemberOptions } from "../interfaces/add-member-options.interface.js";
 import type { UpdateMemberOptions } from "../interfaces/update-member-options.interface.js";
 import type { WorkspaceHasPermissionsOptions } from "../interfaces/workspace-has-permissions-options.interface.js";
@@ -40,10 +41,9 @@ import {
   normalizeAuthRoles,
   resolveAuthPermissions,
 } from "../utils/auth-role.util.js";
-import { clearWorkspaceAuthorization } from "../utils/clear-workspace-authorization.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
-import { refreshRequestAuthorization } from "../utils/refresh-request-authorization.util.js";
 import { resolveAuthCatalog } from "../utils/resolve-auth-catalog.util.js";
+import { resolveMemberPermissions } from "../utils/resolve-effective-permissions.util.js";
 import { DEFAULT_WORKSPACE_ROLE } from "../workspace.constants.js";
 import { AccessControlService } from "./access-control.service.js";
 
@@ -294,7 +294,7 @@ export class MemberService {
       },
       { clear: true },
     );
-    this.refreshCurrentMember(updated);
+    RequestIdentity.updateMember(this.em, this.authOptions, updated);
     return updated;
   }
 
@@ -328,7 +328,7 @@ export class MemberService {
       },
       { clear: true },
     );
-    this.refreshCurrentMember(updated);
+    RequestIdentity.updateMember(this.em, this.authOptions, updated);
     return updated;
   }
 
@@ -366,7 +366,7 @@ export class MemberService {
       },
       { clear: true },
     );
-    this.refreshCurrentMember(updated);
+    RequestIdentity.updateMember(this.em, this.authOptions, updated);
     return updated;
   }
 
@@ -376,16 +376,6 @@ export class MemberService {
         "Change your own membership outside an active transaction",
       );
     }
-  }
-
-  private refreshCurrentMember(member: Member): void {
-    if (!this.isCurrentMember(member)) return;
-    if (member.status !== "ACTIVE") {
-      clearWorkspaceAuthorization(this.em);
-      return;
-    }
-    RequestContext.set(Member, member);
-    refreshRequestAuthorization(this.authOptions);
   }
 
   private isCurrentMember(member: Member): boolean {
@@ -427,7 +417,7 @@ export class MemberService {
         this.accessControlService.assertCurrentMember(lockedMember);
       },
     );
-    clearWorkspaceAuthorization(this.em);
+    RequestIdentity.clearWorkspace(this.em);
     return removed;
   }
 
@@ -472,11 +462,7 @@ export class MemberService {
 
   /** Resolves permissions inherited from roles plus direct member permissions. */
   getEffectiveMemberPermissions(member: Member): string[] {
-    return resolveAuthPermissions(
-      member.roles ?? [this.defaultRole],
-      member.permissions ?? [],
-      this.roles,
-    );
+    return resolveMemberPermissions(this.authOptions, member);
   }
 
   private async lockWorkspace(

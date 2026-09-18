@@ -131,6 +131,44 @@ async function runInRequestContext<T>(
 }
 
 describe("AuthMiddleware", () => {
+  it("revokes the replacement identity when its ability cannot be built", async () => {
+    const user = Object.assign(new TestUser(), { id: "replacement" });
+    const session = Object.assign(new TestSession(), {
+      user,
+      token: "replacement",
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    const { middleware, em } = await createMiddleware(
+      vi.fn(),
+      vi.fn().mockResolvedValueOnce(session).mockResolvedValueOnce(user),
+      vi.fn(),
+      testEntities,
+      {
+        user: {
+          buildAbility: () => {
+            throw new Error("Invalid rules");
+          },
+        },
+      },
+    );
+    mockRlsContext(em);
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      RequestContext.set(BaseUser, new TestUser());
+      RequestContext.set(BaseSession, new TestSession());
+      await expect(
+        middleware.authenticateSession("replacement"),
+      ).rejects.toThrow("Invalid rules");
+      expect(RequestContext.get(BaseUser)).toBeNull();
+      expect(RequestContext.get(BaseSession)).toBeNull();
+      expect(RequestContext.get(UserAbility)?.rules).toEqual([]);
+      expect(RequestContext.get(WorkspaceAbility)?.rules).toEqual([]);
+      expect(em.setSessionContext).toHaveBeenLastCalledWith({
+        role: "anonymous",
+        variables: { "app.user.id": "", "app.workspace.id": "" },
+      });
+    });
+  });
+
   it("hydrates registration results without authenticating the request or widening its database scope", async () => {
     const { middleware, em } = await createMiddleware(vi.fn(), vi.fn());
     const session = mockRlsContext(em);
@@ -431,7 +469,7 @@ describe("AuthMiddleware", () => {
       expect(RequestContext.get(BaseUser)).toBe(user);
       expect(RequestContext.get<BaseApiKey>(API_KEY)).toBeNull();
       expect(RequestContext.get(BaseMember)).toBeNull();
-      expect(RequestContext.get(UserAbility)).toBeNull();
+      expect(RequestContext.get(UserAbility)).toBeInstanceOf(UserAbility);
       expect(RequestContext.get(WorkspaceAbility)).toBeNull();
       expect(em.setSessionContext).toHaveBeenCalledWith({
         role: "authenticated",
