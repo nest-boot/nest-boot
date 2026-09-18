@@ -292,6 +292,11 @@ const workspaceAbility = RequestContext.get(WorkspaceAbility);
 
 ## 数据库归属策略
 
+内置 User SELECT 策略允许 `authenticated` 数据库角色读取全部 User 行，匿名仍不可读。
+个人资料可见性由 Service 的 Ability 检查限制，而不是此 SELECT 策略；自定义权限因此可以
+授予 User 读取能力，无需数据库权限名映射。对外读取不可绕过 Service 授权直接查询 ORM/SQL。
+User 写入和 Session 策略仍要求对应的内置权限名。
+
 `userScopePolicy()` 和 `workspaceScopePolicy()` 返回 MikroORM 原生策略定义，所有参数都可省略：
 
 | 工厂                     | `type`   | `property`  | `command` | `roles`             |

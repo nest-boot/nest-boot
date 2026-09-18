@@ -241,8 +241,8 @@ acceptance/rejection contexts move to `InvitationService`. Ordinary
 member/invitation reads and writes keep request RLS.
 `AccessControlService` owns request authorization, while the internal
 `UserDeletionService` coordinates atomic deletion across auth-owned entities.
-This reorganization preserves existing authorization and RLS behavior, including
-the impersonator relation's reliance on User RLS for private profile visibility.
+The impersonator relation checks User profile authorization in SessionService;
+permission to read a session alone does not reveal its impersonator's profile.
 
 `AuthService.signInEntity` and `signInSocialEntity` return persisted application
 users. When a session is issued, its identity, workspace membership, RLS context
@@ -371,7 +371,7 @@ prefix searches such as `name:Alice*`, without joining private user profiles.
 
 `Member.user` remains a private User relation, not a source of shared
 contact details. Reading another user's profile requires global user-read
-authorization and User SELECT RLS access; workspace roles alone do not grant it.
+authorization in the Service; workspace roles alone do not grant it.
 The same boundary applies to `Invitation.inviter`: access to an invitation
 does not grant access to the inviter's private profile.
 
@@ -380,12 +380,12 @@ aliases; there is no member type enum. The example now has a two-step fresh-data
 baseline, `Initial → generated schema migrations`, which creates required member user
 relations and independent name/email fields directly, without historical columns.
 
-The baseline restricts User SELECT to self or global user-management access using
-the trusted request-local `app.user.permissions` JSON array. Auth merges role and
-direct grants and applies the API-key permission ceiling before staging it.
-Policies no longer query User to resolve permissions, so no recursive policy or
-custom SQL function is needed. Services independently protect relations, including
-when an application omits RLS.
+The generated baseline User SELECT policy allows authenticated database roles to
+read User rows. Services enforce profile visibility through Ability, including
+custom permission names and API-key ceilings. Anonymous reads remain denied.
+Direct ORM/SQL reads do not enforce profile privacy; expose User data only through
+authorized Services. User write and Session RLS policies still check built-in
+permission names in the trusted request-local `app.user.permissions` JSON array.
 
 This baseline replaces the previous migration history and is intended for empty
 databases. Do not apply it on top of an existing schema or merely clear the migration

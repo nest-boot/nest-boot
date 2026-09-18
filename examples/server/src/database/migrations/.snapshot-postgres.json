@@ -1270,7 +1270,7 @@
           "command": "select",
           "type": "permissive",
           "roles": ["authenticated"],
-          "using": "id = nullif(current_setting('app.user.id', true), '')::bigint or jsonb_exists_any(coalesce(nullif(current_setting('app.user.permissions', true), ''), '[]')::jsonb, array['user:read', 'user:get', 'user:list', 'user:update', 'user:delete', 'user:set-role', 'user:set-email']::text[])"
+          "using": "true"
         },
         {
           "name": "user_update_policy",

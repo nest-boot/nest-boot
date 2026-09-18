@@ -1,7 +1,7 @@
 import { Migration } from '@mikro-orm/migrations';
 
-export class Migration20260917173928 extends Migration {
-  override name = 'Migration20260917173928';
+export class Migration20260918073453 extends Migration {
+  override name = 'Migration20260918073453';
 
   override up(): void | Promise<void> {
     this.addSql(
@@ -124,7 +124,7 @@ export class Migration20260917173928 extends Migration {
 
     this.addSql(`alter table "user" enable row level security;`);
     this.addSql(
-      `create policy "user_select_policy" on "user" for select to "authenticated" using (id = nullif(current_setting('app.user.id', true), '')::bigint or jsonb_exists_any(coalesce(nullif(current_setting('app.user.permissions', true), ''), '[]')::jsonb, array['user:read', 'user:get', 'user:list', 'user:update', 'user:delete', 'user:set-role', 'user:set-email']::text[]));`,
+      `create policy "user_select_policy" on "user" for select to "authenticated" using (true);`,
     );
     this.addSql(
       `create policy "user_update_policy" on "user" for update to "authenticated" using (id = nullif(current_setting('app.user.id', true), '')::bigint or jsonb_exists_any(coalesce(nullif(current_setting('app.user.permissions', true), ''), '[]')::jsonb, array['user:update', 'user:set-role', 'user:set-email']::text[])) with check (id = nullif(current_setting('app.user.id', true), '')::bigint or jsonb_exists_any(coalesce(nullif(current_setting('app.user.permissions', true), ''), '[]')::jsonb, array['user:update', 'user:set-role', 'user:set-email']::text[]));`,

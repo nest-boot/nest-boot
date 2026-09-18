@@ -333,6 +333,13 @@ when the requested ability is unavailable. The lower-level
 
 ## Database Scope Policies
 
+The built-in User SELECT policy permits the `authenticated` database role to
+read all User rows; anonymous reads remain denied. User profile visibility is
+enforced by Service Ability checks, not by this SELECT policy. Custom permissions
+can therefore grant User read actions without a database permission-name mapping.
+Do not expose direct User ORM/SQL queries without Service authorization. User
+write and Session policies still require their built-in permission names.
+
 `userScopePolicy()` and `workspaceScopePolicy()` return native MikroORM policy
 definitions. Every option is optional:
 

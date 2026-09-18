@@ -46,7 +46,7 @@ export class SessionResolver {
     return session.impersonatedBy ? String(session.impersonatedBy.id) : null;
   }
 
-  /** Resolves the administrator through the application's RLS-protected user lookup. */
+  /** Resolves the administrator after Service-level profile authorization. */
   @ResolveField(() => User, { nullable: true })
   async impersonatedBy(@Parent() session: Session): Promise<User | null> {
     return await this.sessionService.getSessionImpersonator(session);

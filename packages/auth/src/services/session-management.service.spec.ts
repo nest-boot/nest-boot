@@ -63,7 +63,7 @@ describe("SessionService management", () => {
     expect(em.remove).not.toHaveBeenCalled();
   });
 
-  it("preserves session authorization and request RLS for impersonator reads", async () => {
+  it("authorizes the impersonator profile separately from the parent session", async () => {
     const { em, service, accessControlService } = createService();
     const user = Object.assign(new User(), { id: "self" });
     const impersonator = Object.assign(new User(), { id: "admin" });
@@ -79,7 +79,22 @@ describe("SessionService management", () => {
         impersonator,
       );
       expect(em.findOne).toHaveBeenCalledWith(User, { id: "admin" });
-      expect(accessControlService.assertUserCan).not.toHaveBeenCalled();
+      expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
+        "read",
+        User,
+      );
+      expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
+        "read",
+        impersonator,
+      );
+      accessControlService.assertUserCan.mockImplementationOnce(() => {
+        throw new ForbiddenException();
+      });
+      em.findOne.mockClear();
+      await expect(service.getSessionImpersonator(session)).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(em.findOne).not.toHaveBeenCalled();
       em.findOne.mockResolvedValue(null);
       await expect(service.getSessionImpersonator(session)).resolves.toBeNull();
       em.findOne.mockClear();

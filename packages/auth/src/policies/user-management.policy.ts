@@ -9,6 +9,3 @@ export const userUpdatePredicate = `id = nullif(current_setting('app.user.id', t
 
 /** Only an authorized user administrator may physically delete a user. */
 export const userDeletePredicate = userManagementPredicate(["user:delete"]);
-
-/** Mutations also need visibility of their target; Services enforce each operation. */
-export const userReadPredicate = `id = nullif(current_setting('app.user.id', true), '')::bigint or ${userManagementPredicate(["user:read", "user:get", "user:list", "user:update", "user:delete", "user:set-role", "user:set-email"])}`;

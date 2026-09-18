@@ -8,7 +8,7 @@ import { Migrator } from '@mikro-orm/migrations';
 import { MikroORM } from '@mikro-orm/pglite';
 import { TsMorphMetadataProvider } from '@mikro-orm/reflection';
 import {
-  type AccessControlService,
+  AccessControlService,
   AuthMiddleware,
   type AuthModuleOptions,
   InvitationService,
@@ -16,6 +16,8 @@ import {
   MemberService,
   MemberStatus,
   SessionService,
+  UserAbility,
+  UserService,
   Workspace as BaseWorkspace,
   WorkspaceService,
 } from '@nest-boot/auth';
@@ -38,8 +40,9 @@ import type { Request } from 'express';
 import { mikroOrmAdapter } from '../../../packages/auth/dist/adapters/mikro-orm-adapter.js';
 import { ApiKeyAuthenticationService } from '../../../packages/auth/dist/infrastructure/api-key-authentication.service.js';
 import { createContextualAuthService } from '../../../packages/auth/dist/infrastructure/create-contextual-auth-service.js';
+import { buildRequestUserAbility } from '../../../packages/auth/dist/utils/build-request-ability.util.js';
 import { Migration00000000000000_Initial } from '../src/database/migrations/Migration00000000000000_Initial.js';
-import { Migration20260917173928 } from '../src/database/migrations/Migration20260917173928.js';
+import { Migration20260918073453 } from '../src/database/migrations/Migration20260918073453.js';
 
 describe('example native RLS migrations with PGlite', () => {
   let orm: MikroORM;
@@ -78,7 +81,7 @@ describe('example native RLS migrations with PGlite', () => {
         migrations: {
           migrationsList: [
             Migration00000000000000_Initial,
-            Migration20260917173928,
+            Migration20260918073453,
           ],
           path: './src/database/migrations',
           pathTs: './src/database/migrations',
@@ -1658,7 +1661,7 @@ describe('example native RLS migrations with PGlite', () => {
     });
   });
 
-  it('allows member-directory reads but hides other users even from workspace owners and keys', async () => {
+  it('allows authenticated User reads independently of permission names but denies anonymous reads', async () => {
     const admin = orm.em.fork();
     const viewer = admin.create(User, {
       name: 'Viewer private',
@@ -1700,15 +1703,15 @@ describe('example native RLS migrations with PGlite', () => {
       });
     for (const id of [viewer.id, '']) {
       const em = scoped(id);
-      expect(await em.findOne(User, target.id)).toBeNull();
-      expect(await em.findOne(User, { email: target.email })).toBeNull();
+      expect(await em.findOne(User, target.id)).not.toBeNull();
+      expect(await em.findOne(User, { email: target.email })).not.toBeNull();
       expect(await em.findOne(Member, member.id)).toMatchObject({
         name: 'Visible member',
         email: 'member-contact@example.test',
       });
     }
     expect(await scoped(viewer.id).findOne(User, viewer.id)).not.toBeNull();
-    for (const permission of ['user:get', 'user:list']) {
+    for (const permission of ['user:get', 'user:list', 'account-admin:view']) {
       await admin.nativeUpdate(User, viewer.id, { permissions: [permission] });
       expect(
         await scoped(viewer.id, [permission]).findOne(User, target.id),
@@ -1718,13 +1721,67 @@ describe('example native RLS migrations with PGlite', () => {
       permissions: [],
       roles: ['admin'],
     });
-    // Stored roles cannot bypass a credential-limited request context.
-    expect(await scoped(viewer.id).findOne(User, target.id)).toBeNull();
+    // User profile authorization belongs to Services, not the SELECT policy.
+    expect(await scoped(viewer.id).findOne(User, target.id)).not.toBeNull();
     expect(
       await scoped(viewer.id, ['user:read']).findOne(User, target.id),
     ).not.toBeNull();
     await admin.nativeUpdate(User, viewer.id, { roles: ['user'] });
-    expect(await scoped(viewer.id).findOne(User, target.id)).toBeNull();
+    expect(await scoped(viewer.id).findOne(User, target.id)).not.toBeNull();
+    const anonymous = orm.em.fork({ session: { role: 'anonymous' } });
+    expect(await anonymous.findOne(User, target.id)).toBeNull();
+
+    const options: AuthModuleOptions = {
+      user: {
+        permissions: ['account-admin:view'],
+        roles: { user: [] },
+        buildAbility: (builder, permissions) => {
+          if (permissions.includes('account-admin:view')) {
+            builder.can('get', User, { id: target.id });
+            builder.can('list', User);
+          }
+          return builder.build();
+        },
+      },
+    };
+    const service = new UserService(
+      scoped(viewer.id, ['account-admin:view']),
+      options,
+      {} as never,
+      new AccessControlService(options),
+      {} as never,
+    );
+    await RequestContext.run(new RequestContext({ type: 'test' }), async () => {
+      viewer.roles = ['user'];
+      viewer.permissions = ['account-admin:view'];
+      RequestContext.set(User, viewer);
+      RequestContext.set(UserAbility, buildRequestUserAbility(options));
+      expect(await service.getUser(target.id)).toMatchObject({
+        email: target.email,
+      });
+      expect(await service.getUserByEmail(target.email)).toMatchObject({
+        id: target.id,
+      });
+      expect(
+        (
+          await service.getUserConnection({
+            first: 10,
+            filter: { id: target.id },
+          })
+        ).edges.map(({ node }) => node.id),
+      ).toContain(target.id);
+      // Class-level grants must not bypass conditional profile authorization.
+      await expect(service.getUser(viewer.id)).rejects.toThrow('not allowed');
+      await expect(service.getUserByEmail(viewer.email)).rejects.toThrow(
+        'not allowed',
+      );
+      viewer.permissions = [];
+      RequestContext.set(UserAbility, buildRequestUserAbility(options));
+      await expect(service.getUser(target.id)).rejects.toThrow('not allowed');
+      await expect(service.getUserConnection({ first: 10 })).rejects.toThrow(
+        'not allowed',
+      );
+    });
   });
 
   it('requires user-backed members with independent workspace-visible profiles', async () => {

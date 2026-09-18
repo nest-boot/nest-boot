@@ -81,7 +81,7 @@ Nest Boot 版本 8 使用基于 SWC 的 Vitest 替代 Jest。贡献者可以通�
 ### API Key 归属与数据库级联
 
 先执行 `Migration00000000000000_Initial`，再执行 MikroORM 生成的
-`Migration20260917173928`。初始化迁移向 `anonymous` 和 `authenticated`
+`Migration20260918073453`。初始化迁移向 `anonymous` 和 `authenticated`
 授予 schema `USAGE`，并为 `public` 中的表、函数和序列统一配置默认 `ALL` 权限。
 这些默认权限只适用于同一迁移角色以后创建的对象，不会修改现有对象或其他角色创建的对象的权限。
 
@@ -99,7 +99,9 @@ RLS 不保护 `TRUNCATE` 或 `REFERENCES`，表策略也不限制序列操作。
 各自只有一个必填归属外键（`user` 或 `workspace`），无需二选一 CHECK 约束。
 实体导入、查询过滤器和测试需同步适配两类密钥。
 用户删除由外键级联清理关联记录，不再使用自定义删除函数或触发器；工作区和工作区密钥保留。
-User / Session RLS 读取可信请求上下文权限，不再依赖 SQL 权限函数。
+User SELECT 允许 authenticated 角色读取，个人资料访问由 Service 的 Ability 检查限制，支持自定义读取权限名。
+User 写入和 Session 策略仍使用可信请求上下文中的内置权限名，不依赖 SQL 权限函数。
+不要绕过 Service 授权暴露直接 User 查询。
 示例基线仅适用于空库；已有数据库需单独编写数据保留迁移，按归属类型拆分旧密钥并填充必填外键。
 
 ## Auth 模块合并

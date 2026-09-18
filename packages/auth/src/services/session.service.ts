@@ -88,14 +88,18 @@ export class SessionService {
     });
   }
 
-  /** Loads a visible impersonator after authorizing access to the parent session. */
+  /** Authorizes both the parent session and the impersonator's private profile. */
   async getSessionImpersonator(session: Session): Promise<User | null> {
     this.assertCanListSessions({ id: session.user.id } as User);
-    return session.impersonatedBy
-      ? await this.em.findOne(User, {
-          id: String(session.impersonatedBy.id),
-        } as FilterQuery<User>)
-      : null;
+    if (!session.impersonatedBy) return null;
+    const current = RequestContext.isActive() ? RequestContext.get(User) : null;
+    const self = current?.id === session.impersonatedBy.id;
+    if (!self) this.accessControlService.assertUserCan("read", User);
+    const user = await this.em.findOne(User, {
+      id: String(session.impersonatedBy.id),
+    } as FilterQuery<User>);
+    if (user && !self) this.accessControlService.assertUserCan("read", user);
+    return user;
   }
 
   private assertCanListSessions(user: User): void {

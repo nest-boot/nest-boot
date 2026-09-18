@@ -93,7 +93,7 @@ unit and end-to-end suites with `pnpm test` and `pnpm test:e2e`.
 ### API-key ownership and database cascades
 
 Run `Migration00000000000000_Initial` before the MikroORM-generated
-`Migration20260917173928`. Initialization grants schema `USAGE` and sets default
+`Migration20260918073453`. Initialization grants schema `USAGE` and sets default
 `ALL` privileges on tables, functions, and sequences in `public` for both
 `anonymous` and `authenticated`. These defaults apply only to future objects
 created by the same migration role, not existing objects or objects created by
@@ -116,8 +116,11 @@ tables, each with one required owner foreign key (`user` or `workspace`). There
 is no exclusive-owner CHECK. Update entity imports, filters and fixtures for
 the two key types.
 User deletion cascades through foreign keys without custom cleanup functions or triggers;
-workspaces and workspace keys survive. User / Session RLS reads trusted request permissions
-instead of a SQL permission function. The example baseline is for empty databases only;
+workspaces and workspace keys survive. User SELECT permits authenticated roles;
+Services enforce profile access through Ability, including custom permission names.
+User write and Session policies still use trusted request permissions and built-in
+permission names, without a SQL permission function. Do not expose direct User queries
+without Service authorization. The example baseline is for empty databases only;
 existing databases need a separate data-preserving migration to split legacy
 keys by owner type and populate the required foreign keys.
 

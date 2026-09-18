@@ -1514,6 +1514,31 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       currentSession: { impersonatedById: administrator.user.id },
     });
 
+    const visibleImpersonator = await gql(
+      'query { currentSession { impersonatedBy { id name email } } }',
+      { cookies: impersonationCookies },
+    );
+    expectNoGraphQLErrors(visibleImpersonator);
+    expect(visibleImpersonator.body.data.currentSession.impersonatedBy.id).toBe(
+      administrator.user.id,
+    );
+    await migrationOrm.em
+      .getConnection()
+      .execute(`update "user" set roles = array['user'] where id = ?`, [
+        target.user.id,
+      ]);
+    const privateImpersonator = await gql(
+      'query { currentSession { impersonatedBy { id name email } } }',
+      { cookies: impersonationCookies },
+    );
+    expectGraphQLError(privateImpersonator);
+    expect(
+      privateImpersonator.body.data.currentSession.impersonatedBy,
+    ).toBeNull();
+    expect(privateImpersonator.body.errors[0].extensions.code).toBe(
+      'FORBIDDEN',
+    );
+
     const stopped = await gql(
       /* GraphQL */ `
         mutation {
@@ -1746,9 +1771,10 @@ describe('Server application PostgreSQL integration (e2e)', () => {
           );
           expect(before.role).toBe('authenticated');
           expect(
-            await transaction.execute('select id from "user" where id = ?', [
-              user.user.id,
-            ]),
+            await transaction.execute(
+              'select id from session where user_id = ?',
+              [user.user.id],
+            ),
           ).toEqual([]);
           const service = createContextualAuthService(
             transaction,
@@ -1779,9 +1805,10 @@ describe('Server application PostgreSQL integration (e2e)', () => {
             ),
           ).toEqual([before]);
           expect(
-            await transaction.execute('select id from "user" where id = ?', [
-              user.user.id,
-            ]),
+            await transaction.execute(
+              'select id from session where user_id = ?',
+              [user.user.id],
+            ),
           ).toEqual([]);
         });
       } finally {

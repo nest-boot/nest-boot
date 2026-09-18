@@ -110,7 +110,7 @@ User 的姓名或登录邮箱，修改 User 也不会改变成员资料。具有
 和 `name:Alice*` 形式的前缀搜索，不通过关联 User 搜索私人资料。
 
 `Member.user` 是私有 User 关联，不是工作区共享联系方式的来源。
-只有本人或具有全局用户读取权限且通过 User SELECT RLS 的主体可读；
+只有本人或通过 Service 全局用户读取权限检查的主体可读；
 工作区角色不会授予此权限。`Invitation.inviter` 同样遵循此边界，
 持有邀请并不意味着可以读取邀请人的个人资料。
 
@@ -118,10 +118,10 @@ User 的姓名或登录邮箱，修改 User 也不会改变成员资料。具有
 示例现仅保留新库基线 `Initial → generated schema migrations`，直接创建必填用户关联和
 独立的成员姓名、邮箱，不再包含历史成员类型或搜索向量列。
 
-该基线通过可信请求上下文 `app.user.permissions` JSON 数组，将 User SELECT 限制为
-本人或具有全局用户管理权限的主体。Auth 合并角色与直接权限，并按 API Key 权限上限限制后写入。
-策略不再查询 User 来判断权限，因此不需要递归策略或自定义 SQL 函数。
-Service 仍独立检查关联读取权限，不会因应用遗漏 RLS 就开放个人资料。
+生成基线中的 User SELECT 策略允许 authenticated 数据库角色读取 User 行，匿名仍不可读。
+个人资料可见性由 Service 的 Ability 检查限制，支持自定义权限名并保留 API Key 权限上限。
+直接 ORM/SQL 查询不再限制个人资料可见性，因此对外读取必须经过 Service 授权。
+User 写入及 Session RLS 策略仍检查可信请求上下文 `app.user.permissions` 中的内置权限名。
 
 新基线替代旧迁移历史，仅用于空数据库。已有数据库不能直接重复执行该基线，
 也不能只清空迁移记录表；应先备份数据并制定单独的数据保留与基线衔接方案。

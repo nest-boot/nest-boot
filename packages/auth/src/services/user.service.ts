@@ -128,17 +128,21 @@ export class UserService {
   /** Gets a user by identifier within the request's RLS scope. */
   async getUser(userId: string): Promise<User | null> {
     this.accessControlService.assertUserCan("get", User);
-    return await this.em.findOne(User, {
+    const user = await this.em.findOne(User, {
       id: userId,
     } as FilterQuery<User>);
+    if (user) this.accessControlService.assertUserCan("get", user);
+    return user;
   }
 
   /** Gets a user by normalized email within the request's RLS scope. */
   async getUserByEmail(email: string): Promise<User | null> {
     this.accessControlService.assertUserCan("get", User);
-    return await this.em.findOne(User, {
+    const user = await this.em.findOne(User, {
       email: email.trim().toLowerCase(),
     } as FilterQuery<User>);
+    if (user) this.accessControlService.assertUserCan("get", user);
+    return user;
   }
 
   /** Updates mutable user fields. */

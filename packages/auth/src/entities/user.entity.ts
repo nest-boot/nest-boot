@@ -14,7 +14,6 @@ import { UserPermission } from "../enums/user-permission.enum.js";
 import { UserRole } from "../enums/user-role.enum.js";
 import {
   userDeletePredicate,
-  userReadPredicate,
   userUpdatePredicate,
 } from "../policies/user-management.policy.js";
 import { Member } from "./member.entity.js";
@@ -25,7 +24,8 @@ import { Member } from "./member.entity.js";
   policies: [
     {
       command: "select",
-      using: () => userReadPredicate,
+      // Services enforce profile visibility, including custom Ability rules.
+      using: "true",
       roles: ["authenticated"],
     },
     {
