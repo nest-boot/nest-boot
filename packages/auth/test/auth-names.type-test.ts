@@ -93,17 +93,27 @@ void invalidPermission;
 AuthModule.forRoot({
   user: {
     permissions: ["report:read"],
-    roles: { "super-admin": ["report:read"] },
+    buildAbility: (rules) => {
+      rules.can("report:read", "read", "Report");
+      // @ts-expect-error A rule must bind to a declared permission.
+      rules.can("report:delete", "delete", "Report");
+      // @ts-expect-error The raw builder is not an extension point.
+      rules.build();
+    },
+    roles: {
+      "super-admin": ["report:read", "user:get"],
+      admin: ["report:read"],
+    },
     defaultRole: "super-admin",
     adminRoles: ["super-admin"],
   },
   workspace: {
     permissions: ["api-key:create"],
-    roles: { "team-owner": ["api-key:create"] },
+    roles: { "team-owner": ["api-key:create", "workspace:update"] },
     creatorRole: "team-owner",
     defaultRole: "team-owner",
   },
-  apiKey: { allowedPermissions: ["report:read", "api-key:create"] },
+  apiKey: { allowedPermissions: ["report:read", "api-key:create", "user:get"] },
 });
 
 AuthModule.forRoot({
@@ -122,7 +132,7 @@ AuthModule.forRoot({
   workspace: {
     roles: { leader: [], guest: [] },
     // @ts-expect-error The creator role must reference a configured key.
-    creatorRole: "owner",
+    creatorRole: "missing-role",
   },
 });
 AuthModule.forRoot({

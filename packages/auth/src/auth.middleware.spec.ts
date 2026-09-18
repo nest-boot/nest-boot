@@ -343,26 +343,16 @@ describe("AuthMiddleware", () => {
     const user = Object.assign(new TestUser(), {
       id: "user",
       name: "New name",
-      permissions: ["user:read", "user:delete"],
+      permissions: ["user:get", "user:delete"],
     });
-    const key = Object.assign(new UserApiKey(), { permissions: ["user:read"] });
+    const key = Object.assign(new UserApiKey(), { permissions: ["user:get"] });
     const findOne = vi.fn().mockResolvedValue(user);
     const { middleware, em } = await createMiddleware(
       vi.fn(),
       findOne,
       vi.fn(),
       testEntities,
-      {
-        user: {
-          buildAbility: (builder, permissions) => {
-            if (permissions.includes("user:read"))
-              builder.can("read", BaseUser);
-            if (permissions.includes("user:delete"))
-              builder.can("delete", BaseUser);
-            return builder.build();
-          },
-        },
-      },
+      {},
     );
     mockRlsContext(em);
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {

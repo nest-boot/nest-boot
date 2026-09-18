@@ -66,6 +66,72 @@ function createTestApiKey(): WorkspaceApiKey {
 }
 
 describe("API-key management services", () => {
+  it("reports key grantability using both caller ceilings and configuration", () => {
+    const { service } = createService({
+      apiKey: {
+        allowedPermissions: [
+          "member:update",
+          "user:get",
+          "user:delete",
+          "invitation:create",
+        ],
+      },
+    });
+    const user = Object.assign(createTestUser(), {
+      roles: ["user"],
+      permissions: ["user:get"],
+    });
+    RequestContext.set(User, user);
+    RequestContext.set(
+      Member,
+      Object.assign(createTestMember(), {
+        roles: ["member"],
+        permissions: ["workspace:update", "member:update"],
+      }),
+    );
+    const workspaceOptions = service.getWorkspaceApiKeyPermissions(
+      createTestWorkspace(),
+    );
+    expect(
+      workspaceOptions
+        .filter((option) => option.grantable)
+        .map((option) => option.permission),
+    ).toEqual(["member:update"]);
+    expect(workspaceOptions).toContainEqual({
+      permission: "invitation:create",
+      grantable: false,
+    });
+    const userOptions = service.getUserApiKeyPermissions(user);
+    expect(userOptions).toContainEqual({
+      permission: "user:get",
+      grantable: true,
+    });
+    expect(userOptions).toContainEqual({
+      permission: "user:delete",
+      grantable: false,
+    });
+    expect(userOptions).toContainEqual({
+      permission: "workspace:update",
+      grantable: false,
+    });
+    expect(userOptions).toContainEqual({
+      permission: "invitation:create",
+      grantable: true,
+    });
+    RequestContext.set(
+      API_KEY,
+      Object.assign(new UserApiKey(), {
+        user: ref(User, user),
+        permissions: ["user:get"],
+      }),
+    );
+    expect(
+      service
+        .getUserApiKeyPermissions(user)
+        .filter((option) => option.grantable)
+        .map((option) => option.permission),
+    ).toEqual(["user:get"]);
+  });
   it("does not revoke a user credential when a workspace key has the same ID", async () => {
     const { service, em } = createService();
     const user = createTestUser();
@@ -146,15 +212,7 @@ describe("API-key management services", () => {
 
     for (const operation of ["permissions", "disable", "delete"] as const) {
       it(`publishes ${scope} credential ${operation} changes only after commit`, async () => {
-        const { service, em } = createService({
-          workspace: {
-            buildAbility: (builder, permissions) => {
-              if (permissions.includes("workspace:update"))
-                builder.can("update", Workspace);
-              return builder.build();
-            },
-          },
-        });
+        const { service, em } = createService();
         const user = createTestUser();
         const key = Object.assign(
           scope === "user" ? new UserApiKey() : new WorkspaceApiKey(),
@@ -664,7 +722,7 @@ describe("API-key management services", () => {
     expect(em.create).not.toHaveBeenCalled();
   });
 
-  it("uses configured permission catalogs instead of the defaults", async () => {
+  it("extends configured permission catalogs without removing the defaults", async () => {
     const { em, service } = createService({
       user: {
         permissions: ["project:read"],
@@ -689,14 +747,12 @@ describe("API-key management services", () => {
     });
     await expect(
       service.createWorkspaceApiKey(workspace, {
-        name: "Replaced default key",
+        name: "Built-in permission key",
         permissions: ["workspace:update"],
       }),
-    ).rejects.toThrow(
-      "Workspace API key contains unknown permissions: workspace:update",
-    );
+    ).resolves.toBeDefined();
 
-    expect(em.create).toHaveBeenCalledTimes(2);
+    expect(em.create).toHaveBeenCalledTimes(3);
   });
 
   it("prevents user keys from exceeding the owner's user permissions", async () => {
@@ -1402,6 +1458,10 @@ function createService(
     accessControlService,
     em,
     service: {
+      getUserApiKeyPermissions:
+        userService.getUserApiKeyPermissions.bind(userService),
+      getWorkspaceApiKeyPermissions:
+        workspaceService.getWorkspaceApiKeyPermissions.bind(workspaceService),
       getUserApiKey: userService.getUserApiKey.bind(userService),
       getWorkspaceApiKey:
         workspaceService.getWorkspaceApiKey.bind(workspaceService),

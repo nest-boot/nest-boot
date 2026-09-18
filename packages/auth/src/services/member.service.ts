@@ -43,11 +43,8 @@ import {
 import { clearWorkspaceAuthorization } from "../utils/clear-workspace-authorization.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
 import { refreshRequestAuthorization } from "../utils/refresh-request-authorization.util.js";
-import {
-  DEFAULT_WORKSPACE_PERMISSIONS,
-  DEFAULT_WORKSPACE_ROLE,
-  DEFAULT_WORKSPACE_ROLES,
-} from "../workspace.constants.js";
+import { resolveAuthCatalog } from "../utils/resolve-auth-catalog.util.js";
+import { DEFAULT_WORKSPACE_ROLE } from "../workspace.constants.js";
 import { AccessControlService } from "./access-control.service.js";
 
 /** Workspace membership queries, profile management, and authorization. */
@@ -539,7 +536,7 @@ export class MemberService {
   }
 
   private get roles(): AuthModuleRoles {
-    return this.authOptions.workspace?.roles ?? DEFAULT_WORKSPACE_ROLES;
+    return resolveAuthCatalog(this.authOptions, "workspace").roles;
   }
 
   private get defaultRole(): string {
@@ -547,9 +544,7 @@ export class MemberService {
   }
 
   private get permissions(): readonly string[] {
-    return (
-      this.authOptions.workspace?.permissions ?? DEFAULT_WORKSPACE_PERMISSIONS
-    );
+    return resolveAuthCatalog(this.authOptions, "workspace").permissions;
   }
 
   private unwrapWorkspace(member: Member): Workspace {

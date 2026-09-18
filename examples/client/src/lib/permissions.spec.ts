@@ -1,12 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  authPermissionOptions,
   authPermissionValues,
   getPermissionOptions,
   isAuthPermission,
   userPermissionValues,
-  workspaceApiKeyPermissionOptions,
   workspaceApiKeyPermissionValues,
   workspacePermissionValues,
 } from "./permissions";
@@ -34,15 +32,6 @@ describe("permission options", () => {
     expect(workspaceApiKeyPermissionValues).toContain("WORKSPACE__UPDATE");
     expect(workspaceApiKeyPermissionValues).toContain("INVITATION__CANCEL");
     expect(workspaceApiKeyPermissionValues).not.toContain("USER__DELETE");
-    expect(
-      workspaceApiKeyPermissionOptions.find(
-        ({ value }) => value === "INVITATION__CREATE",
-      )?.grantable,
-    ).toBe(false);
-    expect(
-      authPermissionOptions.find(({ value }) => value === "INVITATION__CREATE")
-        ?.grantable,
-    ).not.toBe(false);
   });
 
   it("exposes user and workspace permissions for personal API keys", () => {
@@ -50,9 +39,6 @@ describe("permission options", () => {
       [
         ...new Set([...userPermissionValues, ...workspacePermissionValues]),
       ].sort(),
-    );
-    expect(authPermissionOptions.map((entry) => entry.value)).toEqual(
-      authPermissionValues,
     );
     for (const permission of [
       "API_KEY__READ",

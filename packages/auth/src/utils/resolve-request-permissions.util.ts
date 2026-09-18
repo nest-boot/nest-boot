@@ -5,13 +5,11 @@ import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
-import { DEFAULT_USER_ROLE, DEFAULT_USER_ROLES } from "../user.constants.js";
+import { DEFAULT_USER_ROLE } from "../user.constants.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
-import {
-  DEFAULT_WORKSPACE_ROLE,
-  DEFAULT_WORKSPACE_ROLES,
-} from "../workspace.constants.js";
+import { DEFAULT_WORKSPACE_ROLE } from "../workspace.constants.js";
 import { resolveAuthPermissions } from "./auth-role.util.js";
+import { resolveAuthCatalog } from "./resolve-auth-catalog.util.js";
 
 /** Resolves credential-limited grants for request abilities. @internal */
 export function resolveRequestPermissions(options: AuthModuleOptions): {
@@ -37,7 +35,7 @@ export function resolveRequestPermissions(options: AuthModuleOptions): {
           resolveAuthPermissions(
             user.roles ?? [options.user?.defaultRole ?? DEFAULT_USER_ROLE],
             user.permissions ?? [],
-            options.user?.roles ?? DEFAULT_USER_ROLES,
+            resolveAuthCatalog(options, "user").roles,
           ),
         )
       : [],
@@ -52,7 +50,7 @@ export function resolveRequestPermissions(options: AuthModuleOptions): {
                   options.workspace?.defaultRole ?? DEFAULT_WORKSPACE_ROLE,
                 ],
                 member.permissions ?? [],
-                options.workspace?.roles ?? DEFAULT_WORKSPACE_ROLES,
+                resolveAuthCatalog(options, "workspace").roles,
               ),
             )
           : [],

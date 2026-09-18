@@ -18,6 +18,7 @@ import { Account } from "../entities/account.entity.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
 import type { CreateUserOptions } from "../interfaces/create-user-options.interface.js";
+import { DEFAULT_USER_PERMISSIONS } from "../user.constants.js";
 import type { AccessControlService } from "./access-control.service.js";
 import { UserService } from "./user.service.js";
 import { UserDeletionService } from "./user-deletion.service.js";
@@ -74,10 +75,6 @@ describe("UserService", () => {
       const { service, em } = createService(true, {
         permissions: ["user:delete"],
         roles: { admin: ["user:delete"], user: [] },
-        buildAbility: (builder, permissions) => {
-          if (permissions.includes("user:delete")) builder.can("delete", User);
-          return builder.build();
-        },
       });
       const current = Object.assign(new User(), {
         id: "self",
@@ -522,13 +519,14 @@ describe("UserService", () => {
 
     expect(service.listRoles()).toEqual([
       { role: "admin", grantable: true },
-      { role: "auditor", grantable: true },
       { role: "user", grantable: true },
+      { role: "auditor", grantable: true },
     ]);
     expect(service.listPermissions()).toEqual(
-      ["user:create", "user:set-role", "user:list", "user:delete"].map(
-        (permission) => ({ permission, grantable: true }),
-      ),
+      DEFAULT_USER_PERMISSIONS.map((permission) => ({
+        permission,
+        grantable: true,
+      })),
     );
 
     await expect(service.setUserRoles(user, ["auditor", "user"])).resolves.toBe(
@@ -558,14 +556,16 @@ describe("UserService", () => {
         permissions.every((permission) => permission === "user:get"),
     );
     expect(service.listRoles()).toEqual([
-      { role: "reader", grantable: true },
       { role: "admin", grantable: false },
       { role: "user", grantable: true },
+      { role: "reader", grantable: true },
     ]);
-    expect(service.listPermissions()).toEqual([
-      { permission: "user:get", grantable: true },
-      { permission: "user:delete", grantable: false },
-    ]);
+    expect(service.listPermissions()).toEqual(
+      DEFAULT_USER_PERMISSIONS.map((permission) => ({
+        permission,
+        grantable: permission === "user:get",
+      })),
+    );
     vi.mocked(accessControlService.assertUserCan).mockImplementation(() => {
       throw new ForbiddenException();
     });

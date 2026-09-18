@@ -1,15 +1,13 @@
-import type { AbilityBuilder } from "@casl/ability";
-
-import type { WorkspaceAbility } from "../abilities/workspace.ability.js";
 import type { Workspace } from "../entities/workspace.entity.js";
+import type { AbilityRules } from "../interfaces/ability-rules.interface.js";
 
-/** Builds the current workspace's CASL ability from resolved member permissions. */
+/** Synchronously extends business abilities and restricts built-in abilities. */
 export type BuildWorkspaceAbilityCallback<Permission extends string = string> =
   (
-    /** Ability builder configured to create a WorkspaceAbility. */
-    builder: AbilityBuilder<WorkspaceAbility>,
+    /** Permission-bound business grants and additional restrictions. */
+    rules: AbilityRules<Permission>,
     /** Deduplicated permissions resolved from the membership's roles and direct grants. */
     permissions: readonly Permission[],
     /** Workspace selected for the current request. */
     workspace: Workspace,
-  ) => WorkspaceAbility;
+  ) => void;

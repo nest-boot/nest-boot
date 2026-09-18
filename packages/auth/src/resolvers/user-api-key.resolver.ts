@@ -1,4 +1,4 @@
-import { Args, ID, Mutation, Resolver } from "@nest-boot/graphql";
+import { Args, ID, Mutation, Query, Resolver } from "@nest-boot/graphql";
 
 import { CurrentUser } from "../decorators/current-user.decorator.js";
 import { User } from "../entities/user.entity.js";
@@ -6,6 +6,7 @@ import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { CreateUserApiKeyInput } from "../inputs/create-user-api-key.input.js";
 import { UpdateUserApiKeyInput } from "../inputs/update-user-api-key.input.js";
 import { CreateUserApiKeyResult } from "../objects/create-user-api-key-result.object.js";
+import { UserApiKeyPermissionOption } from "../objects/user-api-key-permission-option.object.js";
 import { UserApiKeyService } from "../services/user-api-key.service.js";
 
 /** GraphQL mutations for user-owned API keys. */
@@ -16,6 +17,14 @@ export class UserApiKeyResolver {
     /** User API-key domain service. */
     readonly apiKeyService: UserApiKeyService,
   ) {}
+
+  /** Lists permission choices for keys owned by the current user. */
+  @Query(() => [UserApiKeyPermissionOption])
+  userApiKeyPermissions(
+    @CurrentUser() user: User,
+  ): UserApiKeyPermissionOption[] {
+    return this.apiKeyService.getUserApiKeyPermissions(user);
+  }
 
   /** Creates a credential and returns its plaintext once. */
   @Mutation(() => CreateUserApiKeyResult)

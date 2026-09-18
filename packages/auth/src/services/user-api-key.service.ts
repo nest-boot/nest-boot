@@ -27,16 +27,14 @@ import { UserApiKey } from "../entities/user-api-key.entity.js";
 import type { CreateApiKeyOptions } from "../interfaces/create-api-key-options.interface.js";
 import type { CreatedApiKey } from "../interfaces/created-api-key.interface.js";
 import type { UpdateApiKeyOptions } from "../interfaces/update-api-key-options.interface.js";
+import type { UserApiKeyPermissionOption } from "../objects/user-api-key-permission-option.object.js";
 import type { ApiKey } from "../types/api-key.type.js";
-import {
-  DEFAULT_USER_PERMISSIONS,
-  DEFAULT_USER_ROLE,
-  DEFAULT_USER_ROLES,
-} from "../user.constants.js";
+import { DEFAULT_USER_ROLE } from "../user.constants.js";
 import {
   generateApiKey,
   hashApiKey,
 } from "../utils/api-key-credential.util.js";
+import { resolveApiKeyPermissionCatalog } from "../utils/api-key-permissions.util.js";
 import {
   normalizeAuthPermissions,
   resolveAuthPermissions,
@@ -46,7 +44,7 @@ import {
   refreshCurrentApiKeyAuthorization,
 } from "../utils/current-api-key-authorization.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
-import { DEFAULT_WORKSPACE_PERMISSIONS } from "../workspace.constants.js";
+import { resolveAuthCatalog } from "../utils/resolve-auth-catalog.util.js";
 import { AccessControlService } from "./access-control.service.js";
 
 /** Manages user-owned API keys within the current request's authorization scope. */
@@ -62,6 +60,28 @@ export class UserApiKeyService {
     private readonly authOptions: AuthModuleOptions,
     private readonly accessControlService: AccessControlService,
   ) {}
+
+  /** Lists user-key grants subject to configuration and the current credential's ceiling. */
+  getUserApiKeyPermissions(user: User): UserApiKeyPermissionOption[] {
+    this.accessControlService.assertCurrentUser(user);
+    const { permissions, allowed } = resolveApiKeyPermissionCatalog(
+      this.authOptions,
+      "user",
+    );
+    const allowedSet = new Set(allowed);
+    const userPermissions = new Set(
+      resolveAuthCatalog(this.authOptions, "user").permissions,
+    );
+    const key = this.getAuthenticatingApiKey();
+    return permissions.map((permission) => ({
+      permission,
+      grantable:
+        allowedSet.has(permission) &&
+        (!userPermissions.has(permission) ||
+          this.accessControlService.canGrantUserPermissions([permission])) &&
+        (!key || (key.permissions ?? []).includes(permission)),
+    }));
+  }
 
   /** Returns a user-owned API key when it belongs to the current user. */
   async getUserApiKey(id: string, user: User): Promise<UserApiKey | null> {
@@ -260,10 +280,14 @@ export class UserApiKeyService {
     owner: User,
     permissions: readonly string[],
   ): string[] {
-    const userPermissions =
-      this.authOptions.user?.permissions ?? DEFAULT_USER_PERMISSIONS;
-    const workspacePermissions =
-      this.authOptions.workspace?.permissions ?? DEFAULT_WORKSPACE_PERMISSIONS;
+    const userPermissions = resolveAuthCatalog(
+      this.authOptions,
+      "user",
+    ).permissions;
+    const workspacePermissions = resolveAuthCatalog(
+      this.authOptions,
+      "workspace",
+    ).permissions;
     const availablePermissions = [...userPermissions, ...workspacePermissions];
 
     const normalizedPermissions = normalizeAuthPermissions(
@@ -273,10 +297,7 @@ export class UserApiKeyService {
     );
     this.assertPermissionCeiling(
       normalizedPermissions,
-      this.authOptions.apiKey?.allowedPermissions ?? [
-        ...userPermissions,
-        ...workspacePermissions,
-      ],
+      resolveApiKeyPermissionCatalog(this.authOptions, "user").allowed,
       "API key permissions exceed configured allowedPermissions",
     );
     return normalizedPermissions;
@@ -311,7 +332,7 @@ export class UserApiKeyService {
     permissions: readonly string[],
   ): void {
     const userPermissionCatalog = new Set(
-      this.authOptions.user?.permissions ?? DEFAULT_USER_PERMISSIONS,
+      resolveAuthCatalog(this.authOptions, "user").permissions,
     );
     const requestedUserPermissions = permissions.filter((permission) =>
       userPermissionCatalog.has(permission),
@@ -319,7 +340,7 @@ export class UserApiKeyService {
     const effectivePermissions = resolveAuthPermissions(
       user.roles ?? [this.authOptions.user?.defaultRole ?? DEFAULT_USER_ROLE],
       user.permissions ?? [],
-      this.authOptions.user?.roles ?? DEFAULT_USER_ROLES,
+      resolveAuthCatalog(this.authOptions, "user").roles,
     );
 
     this.assertPermissionCeiling(

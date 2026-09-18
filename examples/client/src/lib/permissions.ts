@@ -48,9 +48,3 @@ export function getPermissionOptions<Permission extends string>(
     grantable,
   }));
 }
-export const authPermissionOptions = authPermissionValues.map(option);
-export const workspaceApiKeyPermissionOptions =
-  workspaceApiKeyPermissionValues.map((permission) => ({
-    ...option(permission),
-    grantable: permission !== WorkspaceApiKeyPermission.INVITATION__CREATE,
-  }));

@@ -1722,12 +1722,8 @@ describe('example native RLS migrations with PGlite', () => {
       user: {
         permissions: ['account-admin:view'],
         roles: { user: [] },
-        buildAbility: (builder, permissions) => {
-          if (permissions.includes('account-admin:view')) {
-            builder.can('get', User, { id: target.id });
-            builder.can('list', User);
-          }
-          return builder.build();
+        buildAbility: (rules) => {
+          rules.cannot(['get', 'read'], User, { id: { $ne: target.id } });
         },
       },
     };
@@ -1740,7 +1736,7 @@ describe('example native RLS migrations with PGlite', () => {
     );
     await RequestContext.run(new RequestContext({ type: 'test' }), async () => {
       viewer.roles = ['user'];
-      viewer.permissions = ['account-admin:view'];
+      viewer.permissions = ['account-admin:view', 'user:get', 'user:list'];
       RequestContext.set(User, viewer);
       RequestContext.set(UserAbility, buildRequestUserAbility(options));
       expect(await service.getUser(target.id)).toMatchObject({
@@ -1771,7 +1767,7 @@ describe('example native RLS migrations with PGlite', () => {
     });
   });
 
-  it('authorizes custom User writes and cross-user Session reads entirely in Services', async () => {
+  it('authorizes User writes and cross-user Session reads through built-in grants in Services', async () => {
     const admin = orm.em.fork();
     const actor = admin.create(User, {
       name: 'Custom administrator',
@@ -1795,13 +1791,6 @@ describe('example native RLS migrations with PGlite', () => {
       user: {
         permissions: ['account-admin:manage'],
         roles: { user: [] },
-        buildAbility: (builder, permissions) => {
-          if (permissions.includes('account-admin:manage')) {
-            builder.can(['update', 'delete'], User);
-            builder.can('list', Session);
-          }
-          return builder.build();
-        },
       },
     };
     const em = orm.em.fork({
@@ -1827,7 +1816,7 @@ describe('example native RLS migrations with PGlite', () => {
           const authorize = () => {
             RequestContext.set(UserAbility, buildRequestUserAbility(options));
           };
-          actor.permissions = [];
+          actor.permissions = ['account-admin:manage'];
           authorize();
           await expect(
             users.updateUser(target.id, { name: 'Denied' }),
@@ -1838,7 +1827,7 @@ describe('example native RLS migrations with PGlite', () => {
           await expect(
             sessions.getSessionConnectionByUser(target, { first: 10 }),
           ).rejects.toThrow('not allowed');
-          actor.permissions = ['account-admin:manage'];
+          actor.permissions = ['user:update', 'user:delete', 'session:list'];
           authorize();
           expect(
             await users.updateUser(target.id, { name: 'Allowed' }),

@@ -14,13 +14,11 @@ import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 import type { ApiKey } from "../types/api-key.type.js";
-import { DEFAULT_USER_ROLE, DEFAULT_USER_ROLES } from "../user.constants.js";
+import { DEFAULT_USER_ROLE } from "../user.constants.js";
 import { resolveAuthPermissions } from "../utils/auth-role.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
-import {
-  DEFAULT_WORKSPACE_ROLE,
-  DEFAULT_WORKSPACE_ROLES,
-} from "../workspace.constants.js";
+import { resolveAuthCatalog } from "../utils/resolve-auth-catalog.util.js";
+import { DEFAULT_WORKSPACE_ROLE } from "../workspace.constants.js";
 
 /** Enforces user and workspace permissions prepared for the current request. */
 @Injectable()
@@ -158,7 +156,7 @@ export class AccessControlService {
         ? resolveAuthPermissions(
             user.roles ?? [this.options.user?.defaultRole ?? DEFAULT_USER_ROLE],
             user.permissions ?? [],
-            this.options.user?.roles ?? DEFAULT_USER_ROLES,
+            resolveAuthCatalog(this.options, "user").roles,
           )
         : [];
     if (apiKey) {
@@ -207,7 +205,7 @@ export class AccessControlService {
           this.options.workspace?.defaultRole ?? DEFAULT_WORKSPACE_ROLE,
         ],
         member.permissions ?? [],
-        this.options.workspace?.roles ?? DEFAULT_WORKSPACE_ROLES,
+        resolveAuthCatalog(this.options, "workspace").roles,
       );
 
       if (apiKey) {

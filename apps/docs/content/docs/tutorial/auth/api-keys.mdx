@@ -88,8 +88,9 @@ Catalog membership, grant ceilings,
 and key intersections use exact string equality without normalization.
 GraphQL uses separate `UserApiKeyPermission` and `WorkspaceApiKeyPermission` enums, mapping `api-key:read` to
 `API_KEY__READ` on the wire while retaining the original value internally.
-Ability builders explicitly map the application's identifiers to CASL subjects;
-the example maps `api-key` to `UserApiKey` in user abilities and `WorkspaceApiKey` in workspace abilities.
+Auth automatically maps built-in `api-key:*` permissions to `UserApiKey` in user
+abilities and `WorkspaceApiKey` in workspace abilities. Business extensions bind
+custom permissions through the restricted `AbilityRules.can` API.
 
 ```typescript
 const workspacePermissions = ["workspace:update", "member:create"] as const;
@@ -130,7 +131,17 @@ AuthModule.forRoot({
 permission catalogs. Both options are validated at startup, and defaults must
 be a subset of the allowlist. Defaults are shared by both owner types, so they
 must also belong to the workspace catalog. User-only defaults such as `user:get`
-are rejected at startup; pass them explicitly when creating a personal key.
+and `invitation:create` are rejected at startup; pass them explicitly when
+creating a personal key. Workspace keys cannot send invitations because they
+have no user identity.
+
+Use `userApiKeyPermissions` and `workspaceApiKeyPermissions` to populate key
+editors. Both return `{ permission, grantable }` entries using the corresponding
+API-key permission enum. Grantability includes the configured allowlist, the
+issuer's grant ceiling, and the current key's permissions. Workspace-key options
+always mark `invitation:create` as not grantable. Retain non-grantable entries for
+display, but exclude them from new selections and default selections. Services
+still validate every write; this list is not an authorization substitute.
 
 The allowlist is an additional ceiling, not an automatic grant. Requested
 permissions must also belong to the key owner's supported scope and remain

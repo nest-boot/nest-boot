@@ -1,11 +1,77 @@
 import { expect, test } from "@playwright/test";
 
 import { registerUser } from "./utils/auth";
+import { graphqlRequest } from "./utils/graphql";
 import { uniqueSeed } from "./utils/unique";
-import { createFirstWorkspace } from "./utils/workspace";
+import { addMemberByApi, createFirstWorkspace } from "./utils/workspace";
 import type { Page } from "@playwright/test";
 
 test.describe("API keys", () => {
+  test("limits workspace-key selections and defaults to the issuer's grants", async ({
+    page,
+    browser,
+  }) => {
+    const seed = uniqueSeed("limited-workspace-key");
+    await registerUser(page, {
+      email: `${seed}-owner@example.com`,
+      name: "Key Owner",
+    });
+    const workspaceId = await createFirstWorkspace(
+      page,
+      `Limited keys ${seed}`,
+    );
+    const issuerContext = await browser.newContext();
+    try {
+      const issuerPage = await issuerContext.newPage();
+      const email = `${seed}-issuer@example.com`;
+      await registerUser(issuerPage, { email, name: "Limited Key Issuer" });
+      const id = await addMemberByApi(page, workspaceId, email);
+      await graphqlRequest(
+        page.request,
+        `mutation ($id: ID!, $input: SetMemberPermissionsInput!) {
+        setMemberPermissions(id: $id, input: $input) { id }
+      }`,
+        {
+          id,
+          input: {
+            permissions: [
+              "API_KEY__READ",
+              "API_KEY__CREATE",
+              "WORKSPACE__UPDATE",
+            ],
+          },
+        },
+        { "x-workspace-id": workspaceId },
+      );
+      await issuerPage.goto(`/workspaces/${workspaceId}/api-keys`);
+      await issuerPage.getByTestId("api-key-create-action").click();
+      await expect(
+        issuerPage.getByTestId("permission-WORKSPACE__UPDATE"),
+      ).toBeChecked();
+      for (const permission of [
+        "WORKSPACE__DELETE",
+        "MEMBER__UPDATE",
+        "INVITATION__CREATE",
+      ]) {
+        await expect(
+          issuerPage.getByTestId(`permission-${permission}`),
+        ).toBeDisabled();
+        await expect(
+          issuerPage.getByTestId(`permission-${permission}`),
+        ).not.toBeChecked();
+      }
+      await issuerPage
+        .getByTestId("api-key-name-input")
+        .fill(`Limited key ${seed}`);
+      await issuerPage.getByTestId("api-key-create-submit").click();
+      await expect(
+        issuerPage.getByTestId("api-key-created-value"),
+      ).toContainText(/^sk[A-Za-z0-9_-]{64}$/);
+    } finally {
+      await issuerContext.close();
+    }
+  });
+
   test("manages a workspace-owned API key", async ({ page }) => {
     const seed = uniqueSeed("workspace-api-key");
 

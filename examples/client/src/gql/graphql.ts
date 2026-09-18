@@ -735,10 +735,12 @@ export type Query = {
   member?: Maybe<Member>;
   socialProviders: Array<AuthSocialProviderType>;
   user?: Maybe<User>;
+  userApiKeyPermissions: Array<UserApiKeyPermissionOption>;
   userPermissions: Array<UserPermissionOption>;
   userRoles: Array<UserRoleOption>;
   users: UserConnection;
   workspace?: Maybe<Workspace>;
+  workspaceApiKeyPermissions: Array<WorkspaceApiKeyPermissionOption>;
   workspacePermissions: Array<WorkspacePermissionOption>;
   workspaceRoles: Array<WorkspaceRoleOption>;
 };
@@ -1091,6 +1093,12 @@ export const UserApiKeyPermission = {
 
 export type UserApiKeyPermission =
   (typeof UserApiKeyPermission)[keyof typeof UserApiKeyPermission];
+export type UserApiKeyPermissionOption = {
+  __typename?: "UserApiKeyPermissionOption";
+  grantable: Scalars["Boolean"]["output"];
+  permission: UserApiKeyPermission;
+};
+
 export type UserConnection = {
   __typename?: "UserConnection";
   /** A list of edges. */
@@ -1283,6 +1291,12 @@ export const WorkspaceApiKeyPermission = {
 
 export type WorkspaceApiKeyPermission =
   (typeof WorkspaceApiKeyPermission)[keyof typeof WorkspaceApiKeyPermission];
+export type WorkspaceApiKeyPermissionOption = {
+  __typename?: "WorkspaceApiKeyPermissionOption";
+  grantable: Scalars["Boolean"]["output"];
+  permission: WorkspaceApiKeyPermission;
+};
+
 export type WorkspaceConnection = {
   __typename?: "WorkspaceConnection";
   /** A list of edges. */
@@ -1651,6 +1665,11 @@ export type GetUserApiKeysFromUserApiKeysRouteQueryVariables = Exact<{
 
 export type GetUserApiKeysFromUserApiKeysRouteQuery = {
   __typename?: "Query";
+  userApiKeyPermissions: Array<{
+    __typename?: "UserApiKeyPermissionOption";
+    permission: UserApiKeyPermission;
+    grantable: boolean;
+  }>;
   currentUser: {
     __typename?: "User";
     apiKeys: {
@@ -2011,6 +2030,11 @@ export type GetApiKeysFromApiKeysRouteQueryVariables = Exact<{
 
 export type GetApiKeysFromApiKeysRouteQuery = {
   __typename?: "Query";
+  workspaceApiKeyPermissions: Array<{
+    __typename?: "WorkspaceApiKeyPermissionOption";
+    permission: WorkspaceApiKeyPermission;
+    grantable: boolean;
+  }>;
   currentWorkspace?: {
     __typename?: "Workspace";
     apiKeys: {
@@ -3975,6 +3999,17 @@ export const GetUserApiKeysFromUserApiKeysRouteDocument = {
         selections: [
           {
             kind: "Field",
+            name: { kind: "Name", value: "userApiKeyPermissions" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "permission" } },
+                { kind: "Field", name: { kind: "Name", value: "grantable" } },
+              ],
+            },
+          },
+          {
+            kind: "Field",
             name: { kind: "Name", value: "currentUser" },
             selectionSet: {
               kind: "SelectionSet",
@@ -5591,6 +5626,17 @@ export const GetApiKeysFromApiKeysRouteDocument = {
       selectionSet: {
         kind: "SelectionSet",
         selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "workspaceApiKeyPermissions" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "permission" } },
+                { kind: "Field", name: { kind: "Name", value: "grantable" } },
+              ],
+            },
+          },
           {
             kind: "Field",
             name: { kind: "Name", value: "currentWorkspace" },

@@ -28,6 +28,10 @@ describe("DEFAULT_WORKSPACE_ROLES", () => {
         "member:delete",
         "invitation:create",
         "invitation:cancel",
+        "api-key:read",
+        "api-key:create",
+        "api-key:update",
+        "api-key:delete",
       ],
       admin: [
         "workspace:update",

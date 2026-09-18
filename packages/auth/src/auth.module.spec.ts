@@ -439,20 +439,20 @@ describe("AuthModule", () => {
       {
         user: {
           permissions: ["user:list"],
-          roles: { admin: ["user:delete"] },
+          roles: { admin: ["unknown:delete"] },
         },
       },
-      'Role "admin" contains unknown user permissions: user:delete',
+      'Role "admin" contains unknown user permissions: unknown:delete',
     ],
     [
       "workspace",
       {
         workspace: {
           permissions: ["workspace:update"],
-          roles: { owner: ["workspace:delete"] },
+          roles: { owner: ["unknown:delete"] },
         },
       },
-      'Role "owner" contains unknown workspace permissions: workspace:delete',
+      'Role "owner" contains unknown workspace permissions: unknown:delete',
     ],
   ])(
     "rejects %s roles outside their permission catalog",
@@ -529,6 +529,11 @@ describe("AuthModule", () => {
       "user-only defaults that cannot be applied to workspace keys",
       { apiKey: { defaultPermissions: ["user:get"] } },
       "apiKey.defaultPermissions contains unknown permissions: user:get",
+    ],
+    [
+      "invitation defaults requiring a user identity",
+      { apiKey: { defaultPermissions: ["invitation:create"] } },
+      "apiKey.defaultPermissions cannot include invitation:create",
     ],
     [
       "allowed permissions outside the configured catalogs",

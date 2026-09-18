@@ -58,9 +58,15 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
 - 认证权限标识由应用定义，是区分大小写的字符串，与 CASL subject type 分离。
   权限目录、授权上限和 API Key 权限交集只做精确字符串匹配，不转换大小写。
   内置目录使用 `user:*`、`session:*`、`workspace:*`、`member:*` 与
-  `invitation:*`；示例还提供 `api-key:*`。自定义目录可以使用其他大小写，但
-  角色授权、直接权限、API Key 权限与 Ability 构建器中的拼写必须一致，
-  不会自动迁移大小写。
+  `invitation:*` 与 `api-key:*`。自定义角色和权限遵循小写命名约束，无效名称会被
+  拒绝而非自动转换。角色授权、直接权限、API Key 权限与业务规则的拼写必须一致。
+- Auth 统一维护内置能力映射，请移除应用中重复构建 auth 规则的回调。
+  业务回调接收 `AbilityRules`，不返回值，通过 `can(permission, action, subject, conditions?)`
+  绑定权限。内置实体和 `all` 不能被额外授权；`cannot` 可追加限制。两种权限目录都内置
+  API Key CRUD 权限，前端继续消费最终序列化规则。详见[授权](./tutorial/auth/authorization)。
+- 用户与工作区的权限目录、角色映射现在追加到内置默认值。同名角色的权限合并去重，
+  空配置不会移除默认值，自定义权限仍需显式授予角色。需要受限授权时请定义新角色。
+  实体 `set*` 方法仍替换存储值；API Key 的 `allowedPermissions` 仍是上限而非追加列表。
 - 数据库请求身份变量改为 `app.user.id` 和 `app.workspace.id`。不再向数据库传递
   应用权限列表；Service 负责 Ability 检查与 API Key 权限上限。RLS 保留归属、
   工作区隔离，不再检查应用权限名。

@@ -9,15 +9,8 @@ import {
   WorkspacePermission,
   WorkspaceRole,
 } from "../enums/index.js";
-import {
-  DEFAULT_USER_PERMISSIONS,
-  DEFAULT_USER_ROLES,
-} from "../user.constants.js";
 import { createPermissionEnum } from "../utils/create-permission-enum.util.js";
-import {
-  DEFAULT_WORKSPACE_PERMISSIONS,
-  DEFAULT_WORKSPACE_ROLES,
-} from "../workspace.constants.js";
+import { resolveAuthCatalog } from "../utils/resolve-auth-catalog.util.js";
 
 let activeSignature: string | undefined;
 let activeApplications = 0;
@@ -27,16 +20,8 @@ export class AuthEnumRegistry implements OnModuleDestroy {
   private released = false;
 
   constructor(options: AuthModuleOptions) {
-    for (const scope of ["user", "workspace"] as const) {
-      if (options[scope]?.permissions?.length === 0) {
-        throw new Error(
-          `${scope}.permissions must not be empty: GraphQL permission enums require at least one value`,
-        );
-      }
-    }
-    const users = options.user?.permissions ?? DEFAULT_USER_PERMISSIONS;
-    const workspaces =
-      options.workspace?.permissions ?? DEFAULT_WORKSPACE_PERMISSIONS;
+    const users = resolveAuthCatalog(options, "user").permissions;
+    const workspaces = resolveAuthCatalog(options, "workspace").permissions;
     const roleValues = (roles: object) =>
       Object.fromEntries(
         Object.keys(roles).map((role) => [
@@ -45,10 +30,10 @@ export class AuthEnumRegistry implements OnModuleDestroy {
         ]),
       );
     const enums = [
-      [UserRole, roleValues(options.user?.roles ?? DEFAULT_USER_ROLES)],
+      [UserRole, roleValues(resolveAuthCatalog(options, "user").roles)],
       [
         WorkspaceRole,
-        roleValues(options.workspace?.roles ?? DEFAULT_WORKSPACE_ROLES),
+        roleValues(resolveAuthCatalog(options, "workspace").roles),
       ],
       [UserPermission, createPermissionEnum(users)],
       [WorkspacePermission, createPermissionEnum(workspaces)],

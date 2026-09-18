@@ -1,21 +1,10 @@
-import {
-  AuthModule as BaseAuthModule,
-  DEFAULT_USER_PERMISSIONS,
-  DEFAULT_USER_ROLES,
-  DEFAULT_WORKSPACE_PERMISSIONS,
-  DEFAULT_WORKSPACE_ROLES,
-} from '@nest-boot/auth';
+import { AuthModule as BaseAuthModule } from '@nest-boot/auth';
 import { Mailer } from '@nest-boot/mailer';
 import { RequestContext } from '@nest-boot/request-context';
 import { Module } from '@nestjs/common';
 
-import {
-  buildUserPermissionAbility,
-  buildWorkspacePermissionAbility,
-} from '../../common/modules/utils/build-permission-ability.util.js';
-
 /**
- * 应用认证模块。
+ * Application authentication module.
  */
 @Module({
   imports: [
@@ -26,13 +15,6 @@ import {
         requireEmailVerification: true,
       },
       user: {
-        permissions: [
-          ...DEFAULT_USER_PERMISSIONS,
-          'api-key:read',
-          'api-key:create',
-          'api-key:update',
-          'api-key:delete',
-        ],
         roles: {
           user: [
             'api-key:read',
@@ -40,16 +22,7 @@ import {
             'api-key:update',
             'api-key:delete',
           ],
-          admin: [
-            ...DEFAULT_USER_ROLES.admin,
-            'api-key:read',
-            'api-key:create',
-            'api-key:update',
-            'api-key:delete',
-          ],
         },
-        buildAbility: (builder, permissions, _user) =>
-          buildUserPermissionAbility(builder, permissions),
         changeEmail: {
           enabled: true,
         },
@@ -58,25 +31,6 @@ import {
         },
       },
       workspace: {
-        permissions: [
-          ...DEFAULT_WORKSPACE_PERMISSIONS,
-          'api-key:read',
-          'api-key:create',
-          'api-key:update',
-          'api-key:delete',
-        ],
-        roles: {
-          ...DEFAULT_WORKSPACE_ROLES,
-          owner: [
-            ...DEFAULT_WORKSPACE_ROLES.owner,
-            'api-key:read',
-            'api-key:create',
-            'api-key:update',
-            'api-key:delete',
-          ] as const,
-        },
-        buildAbility: (builder, permissions, _workspace) =>
-          buildWorkspacePermissionAbility(builder, permissions),
         sendInvitationEmail: async ({ email, id, inviter, workspace }) => {
           const url = new URL(
             '/invite',

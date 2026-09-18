@@ -74,6 +74,7 @@ import { createOidcConfig } from "./utils/create-oidc-config.js";
 import { createSocialProvidersConfig } from "./utils/create-social-providers-config.js";
 import { createUserConfig } from "./utils/create-user-config.js";
 import { isEnvTrue } from "./utils/is-env-true.js";
+import { resolveAuthCatalog } from "./utils/resolve-auth-catalog.util.js";
 import { resolveSecret } from "./utils/resolve-secret.js";
 import { runAuthQuery } from "./utils/run-auth-query.js";
 import { splitAuthProviders } from "./utils/split-auth-providers.js";
@@ -139,13 +140,10 @@ import {
         hashService: HashService,
         userDeletionService: UserDeletionService,
       ) => {
-        const userRoles = options.user?.roles ?? DEFAULT_USER_ROLES;
-        const workspaceRoles =
-          options.workspace?.roles ?? DEFAULT_WORKSPACE_ROLES;
-        const userPermissions =
-          options.user?.permissions ?? DEFAULT_USER_PERMISSIONS;
-        const workspacePermissions =
-          options.workspace?.permissions ?? DEFAULT_WORKSPACE_PERMISSIONS;
+        const { roles: userRoles, permissions: userPermissions } =
+          resolveAuthCatalog(options, "user");
+        const { roles: workspaceRoles, permissions: workspacePermissions } =
+          resolveAuthCatalog(options, "workspace");
         const apiKeyPermissionCatalog = [
           ...new Set([...userPermissions, ...workspacePermissions]),
         ];
@@ -175,6 +173,11 @@ import {
           allowedApiKeyPermissions,
           "apiKey.defaultPermissions",
         );
+        if (defaultApiKeyPermissions.includes("invitation:create")) {
+          throw new Error(
+            "apiKey.defaultPermissions cannot include invitation:create: workspace API keys require a user identity to send invitations",
+          );
+        }
         assertAuthRolesExist(
           userRoles,
           [options.user?.defaultRole ?? DEFAULT_USER_ROLE],

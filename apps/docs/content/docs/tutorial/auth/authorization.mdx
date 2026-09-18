@@ -38,18 +38,24 @@ health(): string {
 Configure separate user and workspace abilities. For an authenticated request,
 `AuthGuard` prepares the user ability when a current user exists and the
 workspace ability when a workspace and active membership are selected, even
-when the handler has no permission decorator. Each callback runs at most once
-and its result is cached in `RequestContext`. The callback runs synchronously
-and must return its scoped ability directly.
+when the handler has no permission decorator. Auth owns the built-in permission
+mappings, so no callback is required for built-in operations. Abilities are
+cached in `RequestContext` and rebuilt after an identity or authorization change.
+Optional callbacks run synchronously and return nothing; auth builds the final ability.
 
 ```typescript
 import { AuthModule } from "@nest-boot/auth";
 
 const userRoles = {
   admin: ["post:create"],
-  user: [],
+  user: ["post:read", "post:update"],
 } as const;
-const userPermissions = ["post:create", "post:archive"] as const;
+const userPermissions = [
+  "post:create",
+  "post:archive",
+  "post:read",
+  "post:update",
+] as const;
 
 const workspaceRoles = {
   owner: ["post:create", "post:delete"],
@@ -66,23 +72,18 @@ AuthModule.forRoot({
   workspace: {
     permissions: workspacePermissions,
     roles: workspaceRoles,
-    buildAbility: ({ can, build }, permissions, workspace) => {
-      for (const permission of permissions) {
-        const [subject, action] = permission.split(":");
-        if (subject === "post" && action) {
-          can(action, Post, { workspaceId: workspace.id });
-        }
-      }
-      return build();
+    buildAbility: ({ can }, _permissions, workspace) => {
+      can("post:create", "create", Post, { workspaceId: workspace.id });
+      can("post:delete", "delete", Post, { workspaceId: workspace.id });
+      can("post:archive", "archive", Post, { workspaceId: workspace.id });
     },
   },
   user: {
     permissions: userPermissions,
     roles: userRoles,
-    buildAbility: ({ can, build }, _permissions, user) => {
-      can("read", Post);
-      can("update", Post, { authorId: user.id });
-      return build();
+    buildAbility: ({ can }, _permissions, user) => {
+      can("post:read", "read", Post);
+      can("post:update", "update", Post, { authorId: user.id });
     },
   },
 });
@@ -94,9 +95,18 @@ array, otherwise application startup fails. AuthModule resolves role permissions
 and direct entity permissions first. A user builder receives the deduplicated
 permission list and current user. A workspace builder receives the deduplicated
 member permission list and selected workspace. Workspace membership participates
-in permission resolution but is not passed to the builder. AuthModule supplies
-an `AbilityBuilder` configured for the corresponding ability class as the first
-callback argument.
+in permission resolution but is not passed to the callback. The first argument
+is a restricted `AbilityRules` interface, not a CASL `AbilityBuilder`.
+`can(permission, action, subject, conditions?)` adds a business rule only when
+the named permission belongs to the catalog and is present in the effective
+permissions. Field restrictions use `can(permission, action, subject, fields, conditions?)`.
+Unknown permission names, grants targeting built-in auth entities (by class or
+name), and grants targeting `all` are rejected. Use built-in permissions to grant
+auth operations; custom permission names cannot redefine their mappings.
+`cannot(action, subject, conditions?)` can restrict both business and built-in
+operations; it also supports fields and always takes precedence over extension
+grants, regardless of declaration order. The callback exposes neither mutable
+rules nor `build()`. It is a trusted application extension, not a JavaScript sandbox.
 
 ## Manage Roles
 
@@ -268,12 +278,11 @@ permissions or the current member's effective workspace permissions. Workspace
 Key permissions are passed directly to the workspace builder. The resulting
 `UserAbility` or `WorkspaceAbility` is the only ability checked by the guard.
 
-The application builder must translate every supplied permission it wants to
-enforce into a CASL rule. Permission identifiers use the lowercase naming contract
-above and are compared exactly, without case conversion. The builder
-maps the configured identifiers explicitly to CASL subjects: `post:read` can
-grant `read` on the `Post` class or `subject("Post", object)`. Rules added unconditionally by the
-builder apply to API keys too.
+Auth maps built-in permissions automatically. Business extensions bind their
+rules explicitly, for example `can("post:read", "read", Post)`. The factory
+checks effective permissions even if the callback does not inspect them, so an
+API key without `post:read` cannot acquire that rule. The frontend rehydrates the
+final serialized rules instead of maintaining a separate permission mapping.
 
 ## Service Authorization Boundary
 

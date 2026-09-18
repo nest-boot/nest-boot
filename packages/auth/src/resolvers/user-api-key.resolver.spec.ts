@@ -6,6 +6,16 @@ import { type UserApiKeyService } from "../services/user-api-key.service.js";
 import { UserApiKeyResolver } from "./user-api-key.resolver.js";
 
 describe("UserApiKeyResolver", () => {
+  it("returns the service's permission choices for the current user", () => {
+    const owner = { id: "user_1" } as User;
+    const result = [{ permission: "workspace:update", grantable: false }];
+    const { resolver, apiKeyService } = createResolver({
+      getUserApiKeyPermissions: vi.fn(() => result),
+    });
+    expect(resolver.userApiKeyPermissions(owner)).toBe(result);
+    expect(apiKeyService.getUserApiKeyPermissions).toHaveBeenCalledWith(owner);
+  });
+
   it("delegates API-key creation to the auth service", async () => {
     const user = { id: "user_1" } as User;
     const result = {

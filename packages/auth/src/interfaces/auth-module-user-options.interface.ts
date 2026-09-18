@@ -13,12 +13,12 @@ export interface AuthModuleUserOptions<
   defaultRole?: NoInfer<Role>;
   /** Roles classified as administrators. Defaults to `admin`. */
   adminRoles?: readonly NoInfer<Role>[];
-  /** Nonempty user permission catalog. Defaults to `DEFAULT_USER_PERMISSIONS`. */
+  /** Additional user permission names, merged with `DEFAULT_USER_PERMISSIONS`. */
   permissions?: readonly (Permission &
     (string extends Permission ? unknown : PermissionName<Permission>))[];
-  /** Named user roles and their permissions. Defaults to `DEFAULT_USER_ROLES`. */
-  roles?: AuthModuleRoles<NoInfer<Permission>, Role>;
-  /** Builds the user-scoped CASL ability from resolved permissions and the authenticated user. */
+  /** Additional roles and grants; same-name roles extend `DEFAULT_USER_ROLES`. */
+  roles?: Partial<AuthModuleRoles<NoInfer<Permission>, Role>>;
+  /** Synchronously adds permission-bound business grants or restrictions; auth builds the final ability. */
   buildAbility?: BuildUserAbilityCallback<Permission>;
   /** Email-change lifecycle configuration. */
   changeEmail?: AuthModuleChangeEmailOptions;

@@ -22,6 +22,10 @@ export const DEFAULT_USER_PERMISSIONS = [
   "session:list",
   "session:revoke",
   "session:delete",
+  "api-key:read",
+  "api-key:create",
+  "api-key:update",
+  "api-key:delete",
 ] as const;
 
 /** Default user roles modelled after Better Auth's admin access control. */

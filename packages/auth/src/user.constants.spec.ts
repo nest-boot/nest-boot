@@ -35,6 +35,10 @@ describe("DEFAULT_USER_ROLES", () => {
         "session:list",
         "session:revoke",
         "session:delete",
+        "api-key:read",
+        "api-key:create",
+        "api-key:update",
+        "api-key:delete",
       ],
       user: [],
     });

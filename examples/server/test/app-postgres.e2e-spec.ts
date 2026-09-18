@@ -703,6 +703,60 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     );
   });
 
+  it('lists API-key grants using the current issuer and credential ceilings', async () => {
+    const owner = await createAuthenticatedUser('Key Catalog Owner');
+    const issuer = await createAuthenticatedUser('Key Catalog Issuer');
+    const workspace = await createWorkspace(owner, 'Key Catalog Workspace');
+    const member = await addMember(owner, workspace.id, issuer.email);
+    await setMemberPermissions(owner, workspace.id, member.id, [
+      'WORKSPACE__UPDATE',
+    ]);
+
+    const query = `query {
+      userApiKeyPermissions { permission grantable }
+      workspaceApiKeyPermissions { permission grantable }
+    }`;
+    const result = await gql(query, {
+      cookies: issuer.cookies,
+      workspaceId: workspace.id,
+    });
+    expectNoGraphQLErrors(result);
+    expect(
+      result.body.data.workspaceApiKeyPermissions.filter(
+        (option: { grantable: boolean }) => option.grantable,
+      ),
+    ).toEqual([{ permission: 'WORKSPACE__UPDATE', grantable: true }]);
+    expect(result.body.data.workspaceApiKeyPermissions).toContainEqual({
+      permission: 'INVITATION__CREATE',
+      grantable: false,
+    });
+    expect(result.body.data.userApiKeyPermissions).toContainEqual({
+      permission: 'API_KEY__CREATE',
+      grantable: true,
+    });
+    expect(result.body.data.userApiKeyPermissions).toContainEqual({
+      permission: 'USER__DELETE',
+      grantable: false,
+    });
+
+    const key = await createUserApiKey(issuer, {
+      name: 'Catalog-only key',
+      permissions: ['WORKSPACE__UPDATE'],
+    });
+    const keyResult = await gql(query, {
+      bearerToken: key.apiKey,
+      workspaceId: workspace.id,
+    });
+    expectNoGraphQLErrors(keyResult);
+    for (const options of Object.values<
+      { permission: string; grantable: boolean }[]
+    >(keyResult.body.data)) {
+      expect(options.filter((option) => option.grantable)).toEqual([
+        { permission: 'WORKSPACE__UPDATE', grantable: true },
+      ]);
+    }
+  });
+
   it('lists configured user roles and assigns them through GraphQL', async () => {
     const administrator = await createAuthenticatedUser('Role Administrator');
     const target = await createAuthenticatedUser('Role Target');

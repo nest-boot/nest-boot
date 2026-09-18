@@ -10,8 +10,8 @@ import {
   createApiKeyQueryVariables,
 } from "@/lib/api-key-search";
 import {
-  authPermissionOptions,
   authPermissionValues,
+  getPermissionOptions,
   workspacePermissionValues,
 } from "@/lib/permissions";
 
@@ -25,6 +25,10 @@ const GET_USER_API_KEYS_FROM_USER_API_KEYS_ROUTE = graphql(`
     $orderBy: UserApiKeyOrder
     $query: String
   ) {
+    userApiKeyPermissions {
+      permission
+      grantable
+    }
     currentUser {
       apiKeys(
         after: $after
@@ -155,7 +159,9 @@ function ApiKeysComponent() {
       apiKeys={connection?.edges.map((edge) => edge.node) ?? []}
       pageInfo={connection?.pageInfo}
       permissionValues={authPermissionValues}
-      permissionOptions={authPermissionOptions}
+      permissionOptions={getPermissionOptions(
+        data?.userApiKeyPermissions ?? [],
+      )}
       defaultPermissions={workspacePermissionValues.filter(
         (permission) => !permission.startsWith("API_KEY__"),
       )}

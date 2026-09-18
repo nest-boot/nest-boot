@@ -12,12 +12,12 @@ export interface AuthModuleWorkspaceOptions<
   defaultRole?: NoInfer<Role>;
   /** Role assigned to a workspace creator. Defaults to `owner`. */
   creatorRole?: NoInfer<Role>;
-  /** Nonempty workspace permission catalog. Defaults to `DEFAULT_WORKSPACE_PERMISSIONS`. */
+  /** Additional workspace permission names, merged with `DEFAULT_WORKSPACE_PERMISSIONS`. */
   permissions?: readonly (Permission &
     (string extends Permission ? unknown : PermissionName<Permission>))[];
-  /** Named workspace roles and their permissions. Defaults to `DEFAULT_WORKSPACE_ROLES`. */
-  roles?: AuthModuleRoles<NoInfer<Permission>, Role>;
-  /** Builds the workspace-scoped CASL ability from resolved member permissions and the selected workspace. */
+  /** Additional roles and grants; same-name roles extend `DEFAULT_WORKSPACE_ROLES`. */
+  roles?: Partial<AuthModuleRoles<NoInfer<Permission>, Role>>;
+  /** Synchronously adds permission-bound business grants or restrictions; auth builds the final ability. */
   buildAbility?: BuildWorkspaceAbilityCallback<Permission>;
   /** Sends the invitation link through an application-defined delivery flow. */
   sendInvitationEmail?: AuthSendInvitationEmail;

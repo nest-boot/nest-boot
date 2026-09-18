@@ -29,19 +29,20 @@ import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 import type { CreateApiKeyOptions } from "../interfaces/create-api-key-options.interface.js";
 import type { CreatedApiKey } from "../interfaces/created-api-key.interface.js";
 import type { UpdateApiKeyOptions } from "../interfaces/update-api-key-options.interface.js";
+import type { WorkspaceApiKeyPermissionOption } from "../objects/workspace-api-key-permission-option.object.js";
 import type { ApiKey } from "../types/api-key.type.js";
-import { DEFAULT_USER_PERMISSIONS } from "../user.constants.js";
 import {
   generateApiKey,
   hashApiKey,
 } from "../utils/api-key-credential.util.js";
+import { resolveApiKeyPermissionCatalog } from "../utils/api-key-permissions.util.js";
 import { normalizeAuthPermissions } from "../utils/auth-role.util.js";
 import {
   assertCurrentApiKeyCanCommit,
   refreshCurrentApiKeyAuthorization,
 } from "../utils/current-api-key-authorization.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
-import { DEFAULT_WORKSPACE_PERMISSIONS } from "../workspace.constants.js";
+import { resolveAuthCatalog } from "../utils/resolve-auth-catalog.util.js";
 import { AccessControlService } from "./access-control.service.js";
 
 /** Manages workspace-owned API keys within the current request's authorization scope. */
@@ -57,6 +58,24 @@ export class WorkspaceApiKeyService {
     private readonly authOptions: AuthModuleOptions,
     private readonly accessControlService: AccessControlService,
   ) {}
+
+  /** Lists API-key grants available to the caller in the selected workspace. */
+  getWorkspaceApiKeyPermissions(
+    workspace: Workspace,
+  ): WorkspaceApiKeyPermissionOption[] {
+    this.accessControlService.assertCurrentWorkspace(workspace);
+    const { permissions, allowed } = resolveApiKeyPermissionCatalog(
+      this.authOptions,
+      "workspace",
+    );
+    const allowedSet = new Set(allowed);
+    return permissions.map((permission) => ({
+      permission,
+      grantable:
+        allowedSet.has(permission) &&
+        this.accessControlService.canGrantWorkspacePermissions([permission]),
+    }));
+  }
 
   /** Returns a key owned by the authenticated workspace and within the caller's scope. */
   async getWorkspaceApiKey(
@@ -288,10 +307,10 @@ export class WorkspaceApiKeyService {
         "Workspace API keys cannot grant invitation:create; use a user API key",
       );
     }
-    const userPermissions =
-      this.authOptions.user?.permissions ?? DEFAULT_USER_PERMISSIONS;
-    const workspacePermissions =
-      this.authOptions.workspace?.permissions ?? DEFAULT_WORKSPACE_PERMISSIONS;
+    const workspacePermissions = resolveAuthCatalog(
+      this.authOptions,
+      "workspace",
+    ).permissions;
     const availablePermissions = workspacePermissions;
 
     const normalizedPermissions = normalizeAuthPermissions(
@@ -301,10 +320,7 @@ export class WorkspaceApiKeyService {
     );
     this.assertPermissionCeiling(
       normalizedPermissions,
-      this.authOptions.apiKey?.allowedPermissions ?? [
-        ...userPermissions,
-        ...workspacePermissions,
-      ],
+      resolveApiKeyPermissionCatalog(this.authOptions, "workspace").allowed,
       "API key permissions exceed configured allowedPermissions",
     );
     return normalizedPermissions;

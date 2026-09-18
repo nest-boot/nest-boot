@@ -23,6 +23,8 @@ import {
   WorkspacePermission,
   WorkspaceRole,
 } from "../enums/index.js";
+import { DEFAULT_USER_PERMISSIONS } from "../user.constants.js";
+import { DEFAULT_WORKSPACE_PERMISSIONS } from "../workspace.constants.js";
 import { AuthEnumRegistry } from "./auth-enum-registry.js";
 
 @Resolver()
@@ -94,9 +96,18 @@ describe("auth enum registration", () => {
       enumType(schema, "UserApiKeyPermission")
         .getValues()
         .map(({ value }) => value),
-    ).toEqual(["user:read", "project:read", "project:write"]);
+    ).toEqual([
+      ...DEFAULT_USER_PERMISSIONS,
+      "user:read",
+      ...DEFAULT_WORKSPACE_PERMISSIONS.filter(
+        (value) => !value.startsWith("api-key:"),
+      ),
+      "project:read",
+      "project:write",
+    ]);
     const workspace = enumType(schema, "WorkspaceApiKeyPermission");
     expect(workspace.getValues().map(({ value }) => value)).toEqual([
+      ...DEFAULT_WORKSPACE_PERMISSIONS,
       "project:read",
       "project:write",
     ]);
@@ -118,12 +129,19 @@ describe("auth enum registration", () => {
       enumType(schema, "UserApiKeyPermission")
         .getValues()
         .map(({ value }) => value),
-    ).toEqual(["user:read", "project:read"]);
+    ).toEqual([
+      ...DEFAULT_USER_PERMISSIONS,
+      "user:read",
+      ...DEFAULT_WORKSPACE_PERMISSIONS.filter(
+        (value) => !value.startsWith("api-key:"),
+      ),
+      "project:read",
+    ]);
     expect(
       enumType(schema, "WorkspaceApiKeyPermission")
         .getValues()
         .map(({ value }) => value),
-    ).toEqual(["project:read"]);
+    ).toEqual([...DEFAULT_WORKSPACE_PERMISSIONS, "project:read"]);
   });
 
   it("builds configured roles and scope-specific API-key permissions", async () => {
@@ -142,7 +160,11 @@ describe("auth enum registration", () => {
     const userRole = enumType(schema, "UserRole");
     expect(
       userRole.getValues().map(({ name, value }) => [name, value]),
-    ).toEqual([["SUPER_ADMIN", "super-admin"]]);
+    ).toEqual([
+      ["ADMIN", "admin"],
+      ["USER", "user"],
+      ["SUPER_ADMIN", "super-admin"],
+    ]);
     expect(userRole.parseValue("SUPER_ADMIN")).toBe("super-admin");
     expect(userRole.serialize("super-admin")).toBe("SUPER_ADMIN");
     expect(() => userRole.parseValue("super-admin")).toThrow();
@@ -151,8 +173,17 @@ describe("auth enum registration", () => {
     );
     const apiKey = enumType(schema, "UserApiKeyPermission");
     expect(apiKey.getValues().map(({ name, value }) => [name, value])).toEqual([
+      ...DEFAULT_USER_PERMISSIONS.map((value) => [
+        value.toUpperCase().replaceAll(":", "__").replaceAll("-", "_"),
+        value,
+      ]),
       ["USER__READ", "user:read"],
-      ["API_KEY__READ", "api-key:read"],
+      ...DEFAULT_WORKSPACE_PERMISSIONS.filter(
+        (value) => !value.startsWith("api-key:"),
+      ).map((value) => [
+        value.toUpperCase().replaceAll(":", "__").replaceAll("-", "_"),
+        value,
+      ]),
       ["PROJECT__WRITE", "project:write"],
     ]);
     expect(apiKey.serialize("api-key:read")).toBe("API_KEY__READ");
@@ -175,13 +206,9 @@ describe("auth enum registration", () => {
   });
 
   it.each(["user", "workspace"] as const)(
-    "rejects an empty %s permission catalog before changing enum metadata",
+    "keeps built-in enums when %s permission additions are empty",
     async (scope) => {
-      const before = { ...UserPermission };
-      expect(() => register({ [scope]: { permissions: [] } })).toThrow(
-        `${scope}.permissions must not be empty`,
-      );
-      expect(UserPermission).toEqual(before);
+      register({ [scope]: { permissions: [] } });
       register({});
       const schema = await buildSchema();
       expect(enumType(schema, "UserPermission").parseValue("USER__GET")).toBe(

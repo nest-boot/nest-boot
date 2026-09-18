@@ -493,6 +493,7 @@ type Query {
   member(id: ID!): Member
   socialProviders: [AuthSocialProviderType!]!
   user(id: ID!): User
+  userApiKeyPermissions: [UserApiKeyPermissionOption!]!
   userPermissions: [UserPermissionOption!]!
   userRoles: [UserRoleOption!]!
   users(
@@ -522,6 +523,7 @@ type Query {
     query: String
   ): UserConnection!
   workspace(id: ID!): Workspace
+  workspaceApiKeyPermissions: [WorkspaceApiKeyPermissionOption!]!
   workspacePermissions: [WorkspacePermissionOption!]!
   workspaceRoles: [WorkspaceRoleOption!]!
 }
@@ -917,6 +919,11 @@ enum UserApiKeyPermission {
   WORKSPACE__UPDATE
 }
 
+type UserApiKeyPermissionOption {
+  grantable: Boolean!
+  permission: UserApiKeyPermission!
+}
+
 type UserConnection {
   """A list of edges."""
   edges: [UserEdge!]!
@@ -1161,6 +1168,11 @@ enum WorkspaceApiKeyPermission {
   MEMBER__UPDATE
   WORKSPACE__DELETE
   WORKSPACE__UPDATE
+}
+
+type WorkspaceApiKeyPermissionOption {
+  grantable: Boolean!
+  permission: WorkspaceApiKeyPermission!
 }
 
 type WorkspaceConnection {

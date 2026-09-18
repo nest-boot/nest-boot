@@ -297,14 +297,12 @@ ownership and workspace isolation, not permission-name
 checks. Authenticated User reads/writes and Session reads must go through Services;
 direct ORM/SQL access does not enforce those application authorization rules.
 
-Permission identifiers are application-defined, case-sensitive strings. Catalog
-membership, grant ceilings and API-key intersections use exact string equality;
-values are never case-converted. For example, `User:update` and `user:update`
-are distinct permissions and may both be configured. The built-in catalogs and
-example still use `user:update`, `workspace:delete` and `api-key:read`.
-Custom ability builders must match the configured spelling
-explicitly; permission names do not automatically resolve to CASL subjects or
-GraphQL entity names such as `User`, `Workspace`, `UserApiKey` and `WorkspaceApiKey`.
+Permission identifiers use lowercase `resource:action` names. Catalog membership,
+grant ceilings and API-key intersections use exact string equality; invalid
+names are rejected rather than case-converted. Auth owns the mappings for
+`user:*`, `session:*`, `workspace:*`, `member:*`, `invitation:*`, and API-key CRUD
+permissions. Custom permission names only grant business abilities through
+explicit permission-bound rules; they cannot redefine built-in auth operations.
 
 Scoped user deletion authorizes the root DELETE with Service checks and RLS;
 auth dependants are cleaned up atomically by database foreign-key cascades.
@@ -413,8 +411,33 @@ The example migration sequence `Initial → generated schema migrations` enables
 
 ### Management mutations
 
+Auth builds its own permission-to-ability mappings in `AuthAbilityFactory`;
+`UserAbility` and `WorkspaceAbility` remain plain CASL containers. Optional
+`buildAbility` callbacks receive restricted `AbilityRules`: use
+`can(permission, action, subject, conditions?)` for permission-bound business
+grants and `cannot(action, subject, conditions?)` for additional restrictions.
+Both support field restrictions. Callbacks are synchronous and return nothing.
+They cannot grant operations on built-in auth entities or `all`, access the raw
+builder, or replace the resulting ability. Restrictions take precedence over
+business grants. The frontend consumes the final serialized rules.
+
+`api-key:read/create/update/delete` are now built-in permissions in both scopes.
+User administrators and workspace owners inherit them; ordinary users and
+workspace administrators require explicit role or direct grants. Existing
+ownership checks and self-service operations remain enforced by Services.
+
 The `userRoles` and `workspaceRoles` queries return `{ role, grantable }` objects;
 `userPermissions` and `workspacePermissions` return `{ permission, grantable }`.
+`userApiKeyPermissions` and `workspaceApiKeyPermissions` also return
+`{ permission, grantable }` entries, constrained by the API-key allowlist and the
+issuer's grant ceiling. Workspace keys cannot grant `invitation:create`.
+
+Module permission catalogs and role maps extend built-in defaults. Same-name
+role grants are merged; custom permissions are not automatically granted to
+built-in roles. Empty additions preserve defaults. Entity `set*` mutations still
+replace stored roles or direct permissions; API-key `allowedPermissions` remains
+an explicit ceiling.
+
 Role and permission values remain GraphQL enums. These catalogs retain all configured
 options and mark the current principal's grant ceiling, including API-key restrictions.
 They do not authorize changes to a particular target. Disable unavailable new grants

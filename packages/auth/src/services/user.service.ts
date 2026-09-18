@@ -40,9 +40,7 @@ import type { UserRoleOption } from "../objects/user-role-option.object.js";
 import type { AuthModuleRoles } from "../types/auth-module-roles.type.js";
 import {
   DEFAULT_USER_ADMIN_ROLES,
-  DEFAULT_USER_PERMISSIONS,
   DEFAULT_USER_ROLE,
-  DEFAULT_USER_ROLES,
 } from "../user.constants.js";
 import {
   listAuthPermissions,
@@ -52,6 +50,7 @@ import {
 } from "../utils/auth-role.util.js";
 import { clearRequestAuthentication } from "../utils/clear-request-authentication.util.js";
 import { refreshRequestAuthorization } from "../utils/refresh-request-authorization.util.js";
+import { resolveAuthCatalog } from "../utils/resolve-auth-catalog.util.js";
 import { AccessControlService } from "./access-control.service.js";
 import { UserDeletionService } from "./user-deletion.service.js";
 const CREDENTIAL_ISSUER = "local:credential";
@@ -537,7 +536,7 @@ export class UserService {
   }
 
   private get roles(): AuthModuleRoles {
-    return this.options.user?.roles ?? DEFAULT_USER_ROLES;
+    return resolveAuthCatalog(this.options, "user").roles;
   }
 
   private get defaultRole(): string {
@@ -545,7 +544,7 @@ export class UserService {
   }
 
   private get permissions(): readonly string[] {
-    return this.options.user?.permissions ?? DEFAULT_USER_PERMISSIONS;
+    return resolveAuthCatalog(this.options, "user").permissions;
   }
 
   private createSession(

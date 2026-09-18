@@ -8,6 +8,14 @@ import type { AuthModuleUserOptions } from "./interfaces/auth-module-user-option
 import type { AuthModuleWorkspaceOptions } from "./interfaces/auth-module-workspace-options.interface.js";
 import type { AuthMaybePromise } from "./types/auth-maybe-promise.type.js";
 import type { AuthModuleProvider } from "./types/auth-module-provider.type.js";
+import type {
+  DEFAULT_USER_PERMISSIONS,
+  DEFAULT_USER_ROLES,
+} from "./user.constants.js";
+import type {
+  DEFAULT_WORKSPACE_PERMISSIONS,
+  DEFAULT_WORKSPACE_ROLES,
+} from "./workspace.constants.js";
 
 /** Configuration options for the AuthModule. */
 export interface AuthModuleOptions<
@@ -39,17 +47,28 @@ export interface AuthModuleOptions<
   emailAndPassword?: AuthModuleEmailAndPasswordOptions;
 
   /** User lifecycle, roles, permissions, and authorization ability. */
-  user?: AuthModuleUserOptions<UserPermission, UserRole>;
+  user?: AuthModuleUserOptions<
+    UserPermission | (typeof DEFAULT_USER_PERMISSIONS)[number],
+    UserRole | keyof typeof DEFAULT_USER_ROLES
+  >;
 
   /** Email verification delivery and lifecycle options. */
   emailVerification?: AuthModuleEmailVerificationOptions;
 
   /** Workspace lifecycle and invitation-delivery options. */
-  workspace?: AuthModuleWorkspaceOptions<WorkspacePermission, WorkspaceRole>;
+  workspace?: AuthModuleWorkspaceOptions<
+    WorkspacePermission | (typeof DEFAULT_WORKSPACE_PERMISSIONS)[number],
+    WorkspaceRole | keyof typeof DEFAULT_WORKSPACE_ROLES
+  >;
 
   /** API-key permission defaults and grant limits. */
   apiKey?: AuthModuleApiKeyOptions<
-    NoInfer<UserPermission | WorkspacePermission>
+    NoInfer<
+      | UserPermission
+      | WorkspacePermission
+      | (typeof DEFAULT_USER_PERMISSIONS)[number]
+      | (typeof DEFAULT_WORKSPACE_PERMISSIONS)[number]
+    >
   >;
 
   /** Built-in social and custom OAuth providers, identified by `id`. */

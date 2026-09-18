@@ -6,6 +6,18 @@ import { type WorkspaceApiKeyService } from "../services/workspace-api-key.servi
 import { WorkspaceApiKeyResolver } from "./workspace-api-key.resolver.js";
 
 describe("WorkspaceApiKeyResolver", () => {
+  it("returns the service's permission choices for the current workspace", () => {
+    const owner = { id: "workspace_1" } as Workspace;
+    const result = [{ permission: "workspace:update", grantable: false }];
+    const { resolver, apiKeyService } = createResolver({
+      getWorkspaceApiKeyPermissions: vi.fn(() => result),
+    });
+    expect(resolver.workspaceApiKeyPermissions(owner)).toBe(result);
+    expect(apiKeyService.getWorkspaceApiKeyPermissions).toHaveBeenCalledWith(
+      owner,
+    );
+  });
+
   it("delegates API-key creation to the auth service", async () => {
     const workspace = { id: "workspace_1" } as Workspace;
     const result = {

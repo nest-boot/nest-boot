@@ -37,10 +37,8 @@ import {
   normalizeAuthRoles,
   resolveAuthPermissions,
 } from "../utils/auth-role.util.js";
-import {
-  DEFAULT_WORKSPACE_ROLE,
-  DEFAULT_WORKSPACE_ROLES,
-} from "../workspace.constants.js";
+import { resolveAuthCatalog } from "../utils/resolve-auth-catalog.util.js";
+import { DEFAULT_WORKSPACE_ROLE } from "../workspace.constants.js";
 import { AccessControlService } from "./access-control.service.js";
 
 /** Workspace invitation queries and lifecycle operations. */
@@ -518,7 +516,7 @@ export class InvitationService {
   }
 
   private get roles(): AuthModuleRoles {
-    return this.authOptions.workspace?.roles ?? DEFAULT_WORKSPACE_ROLES;
+    return resolveAuthCatalog(this.authOptions, "workspace").roles;
   }
 
   private get defaultRole(): string {

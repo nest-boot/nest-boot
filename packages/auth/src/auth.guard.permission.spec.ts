@@ -1,7 +1,7 @@
 import { subject as caslSubject } from "@casl/ability";
 import { ref } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
-import { ExecutionContext, ForbiddenException } from "@nestjs/common";
+import { ExecutionContext } from "@nestjs/common";
 import { ModuleRef, Reflector } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
 import type { Request, Response } from "express";
@@ -17,6 +17,7 @@ import { User as BaseUser } from "./entities/user.entity.js";
 import { UserApiKey } from "./entities/user-api-key.entity.js";
 import { Workspace as BaseWorkspace } from "./entities/workspace.entity.js";
 import { WorkspaceApiKey } from "./entities/workspace-api-key.entity.js";
+import { AuthAbilityFactory } from "./infrastructure/auth-ability.factory.js";
 import {
   CUSTOM_ROUTE_ARGS_METADATA,
   ROUTE_ARGS_METADATA,
@@ -30,8 +31,8 @@ import type { RouteArgumentMetadata } from "./types/route-argument-metadata.type
 import { getUserAbility } from "./utils/get-user-ability.util.js";
 
 class Subject {}
-class User {}
-class Workspace {}
+const User = BaseUser;
+const Workspace = BaseWorkspace;
 class Controller {}
 class UserOwner extends BaseUser {}
 class WorkspaceOwner extends BaseWorkspace {}
@@ -53,6 +54,7 @@ interface PermissionTestRequest extends Request {
 
 describe("AuthGuard permissions", () => {
   afterEach(() => {
+    vi.restoreAllMocks();
     Reflect.deleteMetadata(ROUTE_ARGS_METADATA, Controller, "handler");
   });
 
@@ -88,15 +90,13 @@ describe("AuthGuard permissions", () => {
       [],
       workspace,
     );
-    expect(buildUserAbility.mock.calls[0]?.[0].build()).toBeInstanceOf(
-      UserAbility,
-    );
-    expect(buildWorkspaceAbility.mock.calls[0]?.[0].build()).toBeInstanceOf(
-      WorkspaceAbility,
+    expect(buildUserAbility.mock.calls[0]?.[0]).not.toHaveProperty("build");
+    expect(buildWorkspaceAbility.mock.calls[0]?.[0]).not.toHaveProperty(
+      "build",
     );
   });
 
-  it("throws when permission metadata exists but no ability is available", async () => {
+  it("denies ungranted business operations without a custom callback", async () => {
     const { guard, reflector, buildAbility } = await createGuard();
     setCanMetadata(reflector, {
       scope: "user",
@@ -105,12 +105,8 @@ describe("AuthGuard permissions", () => {
     });
 
     await RequestContext.run(createAuthRequestContext("http"), async () => {
-      await expect(guard.canActivate(createContext())).rejects.toBeInstanceOf(
-        ForbiddenException,
-      );
-      await expect(guard.canActivate(createContext())).rejects.toBeInstanceOf(
-        ForbiddenException,
-      );
+      await expect(guard.canActivate(createContext())).resolves.toBe(false);
+      await expect(guard.canActivate(createContext())).resolves.toBe(false);
     });
 
     expect(buildAbility).not.toHaveBeenCalled();
@@ -224,7 +220,22 @@ describe("AuthGuard permissions", () => {
 
     expect(buildWorkspaceAbility).toHaveBeenCalledWith(
       expect.anything(),
-      ["project:create", "project:read", "project:share"],
+      [
+        "workspace:update",
+        "workspace:delete",
+        "member:create",
+        "member:update",
+        "member:delete",
+        "invitation:create",
+        "invitation:cancel",
+        "api-key:read",
+        "api-key:create",
+        "api-key:update",
+        "api-key:delete",
+        "project:create",
+        "project:read",
+        "project:share",
+      ],
       workspace,
     );
   });
@@ -1353,15 +1364,16 @@ async function createGuard(
       if (buildFromPermissions) {
         for (const permission of permissions) {
           const [resource, action] = permission.split(":");
-          if (resource && action) {
-            builder.can(action, resolveTestPermissionSubject(resource));
+          if ((resource === "post" || resource === "subject") && action) {
+            builder.can(
+              permission,
+              action,
+              resolveTestPermissionSubject(resource),
+            );
           }
         }
-        return builder.build();
+        return;
       }
-
-      if (!ability) throw new Error("Test user ability is not configured");
-      return ability;
     },
   );
   const buildWorkspaceAbility: MockedFunction<BuildWorkspaceAbilityCallback> =
@@ -1369,18 +1381,43 @@ async function createGuard(
       if (buildFromPermissions) {
         for (const permission of permissions) {
           const [resource, action] = permission.split(":");
-          if (resource && action) {
-            builder.can(action, resolveTestPermissionSubject(resource));
+          if ((resource === "post" || resource === "subject") && action) {
+            builder.can(
+              permission,
+              action,
+              resolveTestPermissionSubject(resource),
+            );
           }
         }
-        return builder.build();
+        return;
       }
-
-      if (!ability) {
-        throw new Error("Test workspace ability is not configured");
-      }
-      return ability;
     });
+  if (ability) {
+    vi.spyOn(AuthAbilityFactory, "createUserAbility").mockImplementation(
+      (permissions, user) => {
+        buildUserAbility({ can: vi.fn(), cannot: vi.fn() }, permissions, user);
+        return ability;
+      },
+    );
+    vi.spyOn(AuthAbilityFactory, "createWorkspaceAbility").mockImplementation(
+      (permissions, workspace) => {
+        buildWorkspaceAbility(
+          { can: vi.fn(), cannot: vi.fn() },
+          permissions,
+          workspace,
+        );
+        return ability;
+      },
+    );
+  }
+  const businessPermissions = [
+    "subject:read",
+    "subject:update",
+    "subject:delete",
+    "post:read",
+    "post:update",
+    "post:delete",
+  ];
   const moduleRefMock = {
     resolve: vi.fn(() => Promise.resolve(handlerThis)),
   } as unknown as ModuleRef & { resolve: Mock };
@@ -1403,12 +1440,14 @@ async function createGuard(
               ? { buildAbility: buildUserAbility }
               : {}),
             roles: roles.user,
+            permissions: businessPermissions,
           },
           workspace: {
             ...(ability || buildFromPermissions
               ? { buildAbility: buildWorkspaceAbility }
               : {}),
             roles: roles.workspace,
+            permissions: businessPermissions,
           },
         },
       },

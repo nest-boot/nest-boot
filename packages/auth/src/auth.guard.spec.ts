@@ -47,26 +47,36 @@ describe("AuthGuard", () => {
       {
         user: {
           buildAbility: (builder, _permissions, user) => {
-            builder.can("read", BaseUser, { id: user.id });
-            return builder.build();
+            builder.cannot("read", BaseUser, { id: { $ne: user.id } });
           },
         },
         workspace: {
           buildAbility: (builder, _permissions, workspace) => {
-            builder.can("update", Workspace, { id: workspace.id });
-            return builder.build();
+            builder.cannot("update", Workspace, { id: { $ne: workspace.id } });
           },
         },
       },
     );
-    const original = Object.assign(new BaseUser(), { id: "original" });
-    const replacement = Object.assign(new BaseUser(), { id: "replacement" });
+    const original = Object.assign(new BaseUser(), {
+      id: "original",
+      permissions: ["user:get"],
+    });
+    const replacement = Object.assign(new BaseUser(), {
+      id: "replacement",
+      permissions: ["user:get"],
+    });
     const workspace = Object.assign(new Workspace(), { id: "workspace" });
     await RequestContext.run(new RequestContext({ type: "http" }), async () => {
       RequestContext.set(BaseSession, new BaseSession());
       RequestContext.set(BaseUser, original);
       RequestContext.set(Workspace, workspace);
-      RequestContext.set(Member, Object.assign(new Member(), { workspace }));
+      RequestContext.set(
+        Member,
+        Object.assign(new Member(), {
+          workspace,
+          permissions: ["workspace:update"],
+        }),
+      );
       await expect(guard.canActivate(createContext())).resolves.toBe(true);
       const originalAbility = RequestContext.get(UserAbility);
       expect(originalAbility?.can("read", original)).toBe(true);
@@ -192,8 +202,9 @@ describe("AuthGuard", () => {
 
   it("checks Can metadata on public routes without requiring a session", async () => {
     class Subject {}
-    const can = vi.fn(() => true);
-    const buildAbility = vi.fn(() => ({ can }));
+    const buildAbility = vi.fn((rules) => {
+      rules.can("subject:read", "read", Subject);
+    });
     const { guard } = await createGuard(
       AuthGuard,
       vi.fn((key) => {
@@ -212,21 +223,22 @@ describe("AuthGuard", () => {
 
         return undefined;
       }),
-      { user: { buildAbility: buildAbility as never } },
+      { user: { permissions: ["subject:read"], buildAbility } },
     );
 
     await RequestContext.run(new RequestContext({ type: "http" }), async () => {
-      RequestContext.set(BaseUser, new BaseUser());
+      RequestContext.set(
+        BaseUser,
+        Object.assign(new BaseUser(), { permissions: ["subject:read"] }),
+      );
       await expect(guard.canActivate(createContext())).resolves.toBe(true);
     });
 
     expect(buildAbility).toHaveBeenCalledOnce();
-    expect(can).toHaveBeenCalledWith("read", Subject);
   });
 
   it("requires class-level and handler-level permissions together", async () => {
     class Subject {}
-    const can = vi.fn((action: string) => action === "read");
     const getAllAndOverride = vi.fn((key) => {
       if (key === IS_PUBLIC_KEY) return false;
       return key === USER_CAN_METADATA
@@ -244,14 +256,24 @@ describe("AuthGuard", () => {
     const { guard } = await createGuard(
       AuthGuard,
       getAllAndOverride,
-      { user: { buildAbility: vi.fn(() => ({ can })) as never } },
+      {
+        user: {
+          permissions: ["subject:read"],
+          buildAbility: (rules) => {
+            rules.can("subject:read", "read", Subject);
+          },
+        },
+      },
       getAllAndMerge,
     );
     const context = createContext();
 
     await RequestContext.run(new RequestContext({ type: "http" }), async () => {
       RequestContext.set(BaseSession, new BaseSession());
-      RequestContext.set(BaseUser, new BaseUser());
+      RequestContext.set(
+        BaseUser,
+        Object.assign(new BaseUser(), { permissions: ["subject:read"] }),
+      );
 
       await expect(guard.canActivate(context)).resolves.toBe(false);
     });
@@ -260,8 +282,6 @@ describe("AuthGuard", () => {
       context.getHandler(),
       context.getClass(),
     ]);
-    expect(can).toHaveBeenNthCalledWith(1, "read", Subject);
-    expect(can).toHaveBeenNthCalledWith(2, "update", Subject);
   });
 });
 

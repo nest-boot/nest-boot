@@ -17,6 +17,10 @@ import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
+import {
+  DEFAULT_WORKSPACE_PERMISSIONS,
+  DEFAULT_WORKSPACE_ROLES,
+} from "../workspace.constants.js";
 import { AccessControlService } from "./access-control.service.js";
 import { MemberService } from "./member.service.js";
 
@@ -27,11 +31,6 @@ describe("MemberService", () => {
       const { memberService, em } = createWorkspaceServices({
         permissions: ["workspace:delete"],
         roles: { owner: ["workspace:delete"], member: [] },
-        buildAbility: (builder, permissions) => {
-          if (permissions.includes("workspace:delete"))
-            builder.can("delete", Workspace);
-          return builder.build();
-        },
       });
       const workspace = createTestWorkspace();
       const current = Object.assign(createTestMember(), { roles: ["owner"] });
@@ -1006,28 +1005,24 @@ describe("MemberService", () => {
     em.findOne.mockResolvedValue(member);
 
     expect(memberService.listRoles()).toEqual([
+      { role: "owner", grantable: true },
       { role: "admin", grantable: true },
       { role: "member", grantable: true },
-      { role: "owner", grantable: true },
     ]);
     expect(memberService.listPermissions()).toEqual(
-      [
-        "workspace:update",
-        "member:update",
-        "workspace:delete",
-        "invitation:cancel",
-      ].map((permission) => ({ permission, grantable: true })),
+      DEFAULT_WORKSPACE_PERMISSIONS.map((permission) => ({
+        permission,
+        grantable: true,
+      })),
     );
 
     await expect(memberService.setMemberRoles(member, ["admin"])).resolves.toBe(
       member,
     );
     expect(member.roles).toEqual(["admin"]);
-    expect(memberService.getEffectiveMemberPermissions(member)).toEqual([
-      "workspace:update",
-      "member:update",
-      "invitation:create",
-    ]);
+    expect(memberService.getEffectiveMemberPermissions(member)).toEqual(
+      DEFAULT_WORKSPACE_ROLES.admin,
+    );
     await expect(
       memberService.setMemberRoles(member, ["missing"]),
     ).rejects.toBeInstanceOf(BadRequestException);

@@ -36,17 +36,22 @@ health(): string {
 
 分别配置用户与工作区 Ability。对于已认证请求，即使处理器没有权限装饰器，存在当前
 用户时 `AuthGuard` 也会准备用户 Ability，选中工作区且存在有效成员关系时则会准备
-工作区 Ability。每个回调在一次请求中最多执行一次，结果会缓存在 `RequestContext`
-中。回调会同步执行，并且必须直接返回对应作用域的 Ability。
+工作区 Ability。内置权限映射由 auth 维护，无需配置回调。Ability 缓存在 `RequestContext`
+中，身份或授权变更后重新构建。可选回调同步执行且不返回值，最终 Ability 由框架构建。
 
 ```typescript
 import { AuthModule } from "@nest-boot/auth";
 
 const userRoles = {
   admin: ["post:create"],
-  user: [],
+  user: ["post:read", "post:update"],
 } as const;
-const userPermissions = ["post:create", "post:archive"] as const;
+const userPermissions = [
+  "post:create",
+  "post:archive",
+  "post:read",
+  "post:update",
+] as const;
 
 const workspaceRoles = {
   owner: ["post:create", "post:delete"],
@@ -63,23 +68,18 @@ AuthModule.forRoot({
   workspace: {
     permissions: workspacePermissions,
     roles: workspaceRoles,
-    buildAbility: ({ can, build }, permissions, workspace) => {
-      for (const permission of permissions) {
-        const [subject, action] = permission.split(":");
-        if (subject === "post" && action) {
-          can(action, Post, { workspaceId: workspace.id });
-        }
-      }
-      return build();
+    buildAbility: ({ can }, _permissions, workspace) => {
+      can("post:create", "create", Post, { workspaceId: workspace.id });
+      can("post:delete", "delete", Post, { workspaceId: workspace.id });
+      can("post:archive", "archive", Post, { workspaceId: workspace.id });
     },
   },
   user: {
     permissions: userPermissions,
     roles: userRoles,
-    buildAbility: ({ can, build }, _permissions, user) => {
-      can("read", Post);
-      can("update", Post, { authorId: user.id });
-      return build();
+    buildAbility: ({ can }, _permissions, user) => {
+      can("post:read", "read", Post);
+      can("post:update", "update", Post, { authorId: user.id });
     },
   },
 });
@@ -89,8 +89,14 @@ AuthModule.forRoot({
 必须存在于对应作用域的 `permissions` 数组中，否则应用会启动失败。AuthModule 会先
 解析角色权限与实体直接权限。用户构建器依次接收去重后的权限列表和当前用户；工作区
 构建器依次接收去重后的成员权限列表和当前工作区。Member 会参与权限解析，
-但不会传入构建器。AuthModule 会将已经绑定对应 Ability 类的 `AbilityBuilder` 作为
-回调的第一个参数传入。
+但不会传入回调。首个参数是受约束的 `AbilityRules`，不再是 CASL `AbilityBuilder`。
+`can(permission, action, subject, conditions?)` 仅在权限名属于目录且存在于当前有效权限
+中时添加业务规则；字段限制使用 `can(permission, action, subject, fields, conditions?)`。
+未知权限、针对内置 auth 实体（类或字符串名称）的额外授权，以及针对 `all` 的授权均被拒绝。
+内置操作必须使用内置权限，自定义权限名不能重新定义其映射。
+`cannot(action, subject, conditions?)` 可以限制业务和内置操作，也支持字段限制；
+拒绝规则始终优先于扩展授权，不受回调中的声明顺序影响。回调不提供可变规则数组或
+`build()`。它仍属于受信任的应用代码，不是 JavaScript 沙箱。
 
 ## 管理角色
 
@@ -236,10 +242,9 @@ Workspace API Key 只能通过工作区权限检查。User API Key 可以通过�
 有效权限或当前成员有效权限取交集；Workspace Key 权限则直接传给工作区构建器。守卫只
 检查最终得到的 `UserAbility` 或 `WorkspaceAbility`。
 
-应用的构建器必须把需要校验的每项传入权限转换为 CASL rule。权限标识遵循上述小写命名规则，
-按原值精确比较，不自动转换大小写。构建器根据配置显式映射到
-CASL subject：`post:read` 可以授予 `Post` 类或
-`subject("Post", object)` 的 `read` 能力。构建器无条件添加的规则也会对 API Key 生效。
+Auth 自动映射内置权限。业务扩展显式绑定权限，例如 `can("post:read", "read", Post)`。
+即使回调没有检查权限数组，工厂仍会检查有效权限，因此不具备 `post:read` 的 API Key
+不会获得这条规则。前端直接还原后端最终规则，不再单独维护权限映射。
 
 ## Service 授权边界
 

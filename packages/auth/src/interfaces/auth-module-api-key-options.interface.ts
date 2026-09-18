@@ -4,7 +4,7 @@ export interface AuthModuleApiKeyOptions<Permission extends string = string> {
    * Permissions assigned when key creation omits `permissions`.
    * Shared by user and workspace keys, so values must belong to the workspace
    * catalog and allowedPermissions. Defaults to an empty list. User-only grants
-   * must be supplied explicitly when creating a user key.
+   * and invitation:create must be supplied explicitly when creating a user key.
    */
   defaultPermissions?: readonly Permission[];
   /**

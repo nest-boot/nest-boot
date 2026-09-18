@@ -65,9 +65,20 @@ provide a CommonJS `require` entry.
   independent of CASL subject types. Catalogs, grant ceilings and API-key
   intersections compare exact strings without changing case. The built-in
   catalogs use `user:*`, `session:*`, `workspace:*`, `member:*` and
-  `invitation:*`; the example adds `api-key:*`. Custom catalogs may use other
-  casing, but role grants, direct/API-key permissions and ability builders
-  must use the same spelling. No automatic case migration is performed.
+  `invitation:*` and `api-key:*`. Custom role and permission names follow the
+  lowercase naming contract; invalid names are rejected, not normalized.
+  Role grants, direct/API-key permissions and business rules must use the same spelling.
+- Auth owns built-in ability mappings. Remove application callbacks that rebuild
+  auth rules. Business callbacks now receive `AbilityRules`, return nothing, and
+  grant through `can(permission, action, subject, conditions?)`. Built-in subjects
+  and `all` cannot receive custom grants; `cannot` can add restrictions. API-key
+  CRUD permissions are built into both scope catalogs. Frontends still consume
+  serialized final rules. See [authorization](./tutorial/auth/authorization).
+- User/workspace permission catalogs and role maps now extend built-in defaults.
+  Same-name role grants are merged and deduplicated; empty additions do not
+  remove defaults. Custom permissions require explicit role grants. Use a new
+  role for a restricted grant set. Entity `set*` mutations still replace stored
+  values. API-key `allowedPermissions` remains a ceiling, not an additive list.
 - Rename database request identity variables to `app.user.id` and
   `app.workspace.id`. Application permissions are no longer sent to the database;
   Services enforce Ability checks and API-key ceilings. RLS retains ownership

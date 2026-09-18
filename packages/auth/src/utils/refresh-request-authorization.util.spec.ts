@@ -16,20 +16,12 @@ describe("post-commit request authorization", () => {
     async (failure) => {
       const options: AuthModuleOptions = {
         user: {
-          roles: { admin: ["user:read", "user:delete"] },
-          buildAbility: (builder, permissions) => {
-            for (const permission of permissions)
-              builder.can(permission.split(":")[1], User);
-            return builder.build();
-          },
+          roles: { admin: ["user:get", "user:delete"] },
         },
         workspace: {
           roles: { owner: ["workspace:read", "workspace:delete"] },
-          buildAbility: (builder, permissions) => {
+          buildAbility: () => {
             if (failure) throw new Error("Invalid ability configuration");
-            for (const permission of permissions)
-              builder.can(permission.split(":")[1], Workspace);
-            return builder.build();
           },
         },
       };
@@ -46,7 +38,7 @@ describe("post-commit request authorization", () => {
         RequestContext.set(
           API_KEY,
           Object.assign(new UserApiKey(), {
-            permissions: ["user:read", "workspace:read"],
+            permissions: ["user:get", "workspace:read"],
           }),
         );
         RequestContext.set(

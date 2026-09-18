@@ -17,6 +17,10 @@ import { User } from "../entities/user.entity.js";
 import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
+import {
+  DEFAULT_WORKSPACE_PERMISSIONS,
+  DEFAULT_WORKSPACE_ROLES,
+} from "../workspace.constants.js";
 import { AccessControlService } from "./access-control.service.js";
 import { MemberService } from "./member.service.js";
 
@@ -39,20 +43,25 @@ describe("MemberService direct permission authorization", () => {
       role: "admin",
       direct: [],
       key: undefined,
-      expected: ["admin", "custom"],
+      expected: ["admin", "member", "custom"],
     },
     {
       role: "custom",
       direct: permissions,
       key: undefined,
-      expected: ["founder", "admin", "custom"],
+      expected: ["member", "founder", "custom"],
     },
-    { role: "founder", direct: [], key: "user", expected: ["custom"] },
+    {
+      role: "founder",
+      direct: [],
+      key: "user",
+      expected: ["member", "custom"],
+    },
     {
       role: "founder",
       direct: [],
       key: "workspace",
-      expected: ["admin", "custom"],
+      expected: ["member", "custom"],
     },
   ])(
     "lists grantable roles for $role with key=$key",
@@ -91,7 +100,7 @@ describe("MemberService direct permission authorization", () => {
           new WorkspaceAbility([{ action: "create", subject: Invitation }]),
         );
         expect(service.listRoles()).toEqual(
-          Object.keys(options.workspace.roles).map((role) => ({
+          ["owner", "admin", "member", "founder", "custom"].map((role) => ({
             role,
             grantable: expected.includes(role),
           })),
@@ -100,9 +109,13 @@ describe("MemberService direct permission authorization", () => {
           .listRoles()
           .filter(({ grantable }) => grantable)) {
           const grants =
-            options.workspace.roles[
-              role as keyof typeof options.workspace.roles
-            ];
+            role in DEFAULT_WORKSPACE_ROLES
+              ? DEFAULT_WORKSPACE_ROLES[
+                  role as keyof typeof DEFAULT_WORKSPACE_ROLES
+                ]
+              : options.workspace.roles[
+                  role as keyof typeof options.workspace.roles
+                ];
           expect(() => {
             access.assertCanGrantWorkspacePermissions(grants);
           }).not.toThrow();
@@ -117,14 +130,17 @@ describe("MemberService direct permission authorization", () => {
           true,
         );
         expect(service.listPermissions()).toEqual(
-          permissions.map((permission) => ({ permission, grantable: false })),
+          DEFAULT_WORKSPACE_PERMISSIONS.map((permission) => ({
+            permission,
+            grantable: false,
+          })),
         );
         RequestContext.set(
           WorkspaceAbility,
           new WorkspaceAbility([{ action: "update", subject: Member }]),
         );
         expect(service.listPermissions()).toEqual(
-          permissions.map((permission) => ({
+          DEFAULT_WORKSPACE_PERMISSIONS.map((permission) => ({
             permission,
             grantable: access.canGrantWorkspacePermissions([permission]),
           })),
