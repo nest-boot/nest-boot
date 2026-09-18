@@ -72,6 +72,11 @@ export class InvitationService {
       );
     }
     const sendInvitationEmail = this.authOptions.workspace?.sendInvitationEmail;
+    if (sendInvitationEmail && this.em.isInTransaction()) {
+      throw new BadRequestException(
+        "Create invitations with email delivery outside an active transaction",
+      );
+    }
     let transactionResult: {
       created: Invitation;
       inviterMember: Member | null;

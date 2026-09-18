@@ -24,6 +24,7 @@ i18n
     ns: [
       "common",
       "auth",
+      "admin",
       "sidebar",
       "api-key",
       "permission",

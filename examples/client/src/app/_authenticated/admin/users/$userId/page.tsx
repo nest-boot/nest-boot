@@ -273,6 +273,11 @@ function AdminUserPage() {
   const run = async (operation: () => Promise<unknown>, message: string) => {
     try {
       await operation();
+      if (userId === currentUser.id) {
+        // Rebuild auth providers; self-updates may revoke abilities or the session.
+        window.location.assign("/user/workspaces");
+        return;
+      }
       await refetch();
       toast.success(message);
     } catch (error) {
@@ -486,6 +491,7 @@ function AdminUserPage() {
                 <Button
                   size="sm"
                   variant="outline"
+                  data-testid={`admin-user-session-revoke-${session.id}`}
                   loading={revokingSessionId === session.id}
                   disabled={!canRevokeSessions}
                   onClick={async () => {
@@ -538,6 +544,7 @@ function AdminUserPage() {
             )}
             <Button
               variant="outline"
+              data-testid="admin-user-sessions-revoke"
               disabled={!canRevokeSessions || sessions.length === 0}
               loading={revokingSessions}
               onClick={() =>

@@ -19,6 +19,38 @@ import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 
 describe("InvitationService", () => {
+  it.each([false, true])(
+    "only allows externally transactional invitation creation without email delivery (configured=%s)",
+    async (configured) => {
+      const sendInvitationEmail = vi.fn().mockResolvedValue(undefined);
+      const { invitationService, em } = createWorkspaceServices(
+        configured ? { sendInvitationEmail } : {},
+      );
+      em.isInTransaction.mockReturnValue(true);
+      em.findOne.mockImplementation((entity) =>
+        Promise.resolve(entity === Member ? createTestMember() : null),
+      );
+      const create = invitationService.createInvitation(
+        createTestWorkspace(),
+        createTestUser(),
+        { email: "invited@example.com" },
+      );
+      if (configured) {
+        await expect(create).rejects.toThrow("outside an active transaction");
+        expect(em.transactional).not.toHaveBeenCalled();
+        expect(em.findOne).not.toHaveBeenCalled();
+        expect(em.persist).not.toHaveBeenCalled();
+      } else {
+        await expect(create).resolves.toMatchObject({
+          email: "invited@example.com",
+          status: "pending",
+        });
+        expect(em.transactional).toHaveBeenCalledOnce();
+      }
+      expect(sendInvitationEmail).not.toHaveBeenCalled();
+    },
+  );
+
   it("resolves the latest invitee identity only after locking the workspace", async () => {
     const { invitationService, em } = createWorkspaceServices();
     let locked = false;

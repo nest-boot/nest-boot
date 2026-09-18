@@ -14,6 +14,11 @@ acceptance link. Nest Boot persists the invitation before calling the sender and
 supplies its normalized email, ID, role, workspace, record, and the inviting
 member with its authenticated user.
 
+When this callback is configured, call `createInvitation()` outside an existing
+transaction. The service rejects nested calls before writing, so a later outer
+rollback cannot invalidate an already emailed link. Without the callback,
+transactional creation remains supported; arrange delivery after your own commit.
+
 ```typescript
 import { Mailer } from "@nest-boot/mailer";
 import { RequestContext } from "@nest-boot/request-context";
@@ -66,9 +71,10 @@ requires a user identity: use a user API key, not a workspace API key.
 This method checks read permission and queries the request's ORM manager without
 bypassing RLS or disabling filters. Configure both workspace-scoped and recipient
 SELECT policies: a recipient must be able to read their invitation before joining
-the workspace. The example's incremental recipient-policy migration grants only
-SELECT; writes and other service-authorized invitation operations retain their
-existing checks. Apply this migration when upgrading an existing example database.
+the workspace. The example's generated baseline migration includes the recipient
+SELECT policy; writes and other service-authorized invitation operations retain
+their existing checks. Existing databases need a schema-diff migration for any
+policy changes rather than reapplying the baseline.
 
 Invitations expire after 48 hours unless `input.expiresIn` supplies another
 positive integer lifetime in seconds. Creation rejects existing members and

@@ -12,6 +12,10 @@ description: "创建、发送、接受、拒绝与取消工作区邀请。"
 邀请，再调用发送函数，并提供规范化邮箱、邀请 ID、角色、工作区、邀请记录，以及带有
 认证用户的邀请者成员。
 
+配置此回调后，必须在已有事务之外调用 `createInvitation()`。Service 会在写入前拒绝
+嵌套调用，避免外层事务回滚后，收件人已收到无效链接。未配置回调时仍支持事务内创建；
+由应用在自己的事务提交成功后安排发送。
+
 ```typescript
 import { Mailer } from "@nest-boot/mailer";
 import { RequestContext } from "@nest-boot/request-context";
@@ -61,8 +65,8 @@ GraphQL `createInvitation`、`rejectInvitation`、`cancelInvitation` 返回仅�
 `invitation(id)` 调用 `getInvitation(id)`，不再传入当前用户。
 该方法校验读取权限后直接使用请求 ORM 管理器，不绕过 RLS，也不关闭过滤器。
 应用需同时配置工作区范围与收件人的 SELECT 策略，保证收件人加入工作区前也能读取
-自己的邀请。示例新增增量迁移，收件人策略只授予 SELECT；写操作和其他服务授权的邀请
-操作保留已有检查。升级现有示例数据库时需要执行该迁移。
+自己的邀请。示例自动生成的基线迁移已包含收件人 SELECT 策略；写操作和其他服务授权的邀请
+操作保留已有检查。现有数据库应为策略变更生成并执行差异迁移，不要重新执行基线迁移。
 
 邀请默认在 48 小时后过期，也可以通过 `input.expiresIn` 指定正整数秒数。创建邀请时
 会拒绝已有成员与重复的待处理邀请；接受和拒绝时，收件邮箱必须与已认证用户一致；只有

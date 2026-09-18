@@ -26,8 +26,8 @@
       "domain": "Auth",
       "scenario": "Current-user session list and remote-session revocation",
       "status": "covered",
-      "specs": ["user.spec.ts"],
-      "notes": "Creates two browser sessions, revokes the other session, and verifies it can no longer access the application."
+      "specs": ["user.spec.ts", "admin.spec.ts"],
+      "notes": "Creates two browser sessions, revokes the other session, and verifies it can no longer access the application. Administrator self-session and all-session revocation reload authentication and leave the protected page."
     },
     {
       "domain": "Auth",
@@ -89,8 +89,13 @@
       "domain": "Authorization",
       "scenario": "Transported CASL rules control user and workspace UI",
       "status": "covered",
-      "specs": ["api-key.spec.ts", "invitation.spec.ts", "workspace.spec.ts"],
-      "notes": "Serialized conditional rules have unit coverage; browser tests cover role denial and direct-permission authorization paths."
+      "specs": [
+        "api-key.spec.ts",
+        "invitation.spec.ts",
+        "workspace.spec.ts",
+        "admin.spec.ts"
+      ],
+      "notes": "Serialized conditional rules have unit coverage; browser tests cover role denial and direct-permission authorization paths, including global ability refresh after removing one's own administrator role or permissions."
     },
     {
       "domain": "API keys",
