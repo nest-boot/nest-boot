@@ -10,7 +10,7 @@ import { getCurrentApiKey } from "./get-current-api-key.util.js";
 import { refreshRequestAuthorization } from "./refresh-request-authorization.util.js";
 
 /** Matches both the table and ID; user and workspace key identifiers may coincide. */
-function isCurrentApiKey(apiKey: ApiKey): boolean {
+export function isCurrentApiKey(apiKey: ApiKey): boolean {
   const current = getCurrentApiKey();
   return (
     !!current &&

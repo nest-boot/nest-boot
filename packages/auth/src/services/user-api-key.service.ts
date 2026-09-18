@@ -41,6 +41,7 @@ import {
 } from "../utils/auth-role.util.js";
 import {
   assertCurrentApiKeyCanCommit,
+  isCurrentApiKey,
   refreshCurrentApiKeyAuthorization,
 } from "../utils/current-api-key-authorization.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
@@ -192,6 +193,7 @@ export class UserApiKeyService {
       enabled: apiKey.enabled,
       expiresAt: apiKey.expiresAt,
       permissions: apiKey.permissions,
+      lastUsedAt: apiKey.lastUsedAt,
     };
     if (input.name !== undefined) apiKey.name = input.name;
     if (input.enabled !== undefined) apiKey.enabled = input.enabled;
@@ -199,6 +201,9 @@ export class UserApiKeyService {
     if (permissions !== undefined) {
       apiKey.permissions = permissions;
     }
+    // Commit the final use before revocation removes the interceptor's identity.
+    if (input.enabled === false && isCurrentApiKey(apiKey))
+      apiKey.lastUsedAt = new Date();
     try {
       await this.em.persist(apiKey).flush();
     } catch (error) {

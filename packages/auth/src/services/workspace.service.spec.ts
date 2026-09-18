@@ -12,11 +12,15 @@ import {
   createTestWorkspace,
   createWorkspaceServices,
 } from "../../test/workspace-service.fixture.js";
+import { UserAbility } from "../abilities/user.ability.js";
+import { WorkspaceAbility } from "../abilities/workspace.ability.js";
 import { API_KEY } from "../auth.constants.js";
 import { MemberConnection } from "../connections/member.connection-definition.js";
 import { WorkspaceConnection } from "../connections/workspace.connection-definition.js";
 import { Member } from "../entities/member.entity.js";
+import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
+import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 
@@ -422,42 +426,75 @@ describe("WorkspaceService and cross-domain coordination", () => {
     expect(em.nativeDelete).not.toHaveBeenCalled();
   });
 
-  it("preserves request RLS throughout workspace deletion", async () => {
-    const { em, workspaceService } = createWorkspaceServices();
-    const workspace = createTestWorkspace();
-    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      const sessionContext = mockRlsContext(em);
-      RequestContext.set(Workspace, workspace);
-      RequestContext.set(Member, createTestMember());
-      em.nativeDelete.mockImplementation(() => {
-        expect(em.setSessionContext).not.toHaveBeenCalled();
-        expect(em.getSessionContext()).toEqual(sessionContext);
-        return Promise.resolve(1);
-      });
-      await expect(workspaceService.deleteWorkspace(workspace)).resolves.toBe(
-        workspace,
-      );
-      expect(RequestContext.get(Workspace)).toBeNull();
-      expect(RequestContext.get(Member)).toBeNull();
-      expect(em.setSessionContext).toHaveBeenCalledWith({
-        variables: {
-          "app.workspace.id": "",
+  it.each(["session", "user-key", "workspace-key"])(
+    "clears only the revoked scope after workspace deletion with %s",
+    async (kind) => {
+      const { em, workspaceService } = createWorkspaceServices();
+      const workspace = createTestWorkspace();
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          const sessionContext = mockRlsContext(em);
+          const user = createTestUser();
+          const session = new Session();
+          const key =
+            kind === "workspace-key"
+              ? new WorkspaceApiKey()
+              : kind === "user-key"
+                ? new UserApiKey()
+                : null;
+          RequestContext.set(API_KEY, key);
+          if (kind !== "workspace-key") RequestContext.set(User, user);
+          if (kind === "session") RequestContext.set(Session, session);
+          RequestContext.set(Workspace, workspace);
+          RequestContext.set(Member, createTestMember());
+          em.nativeDelete.mockImplementation(() => {
+            expect(em.setSessionContext).not.toHaveBeenCalled();
+            expect(em.getSessionContext()).toEqual(sessionContext);
+            return Promise.resolve(1);
+          });
+          await expect(
+            workspaceService.deleteWorkspace(workspace),
+          ).resolves.toBe(workspace);
+          expect(RequestContext.get(Workspace)).toBeNull();
+          expect(RequestContext.get(Member)).toBeNull();
+          if (kind === "workspace-key") {
+            expect(RequestContext.get(API_KEY)).toBeNull();
+            expect(RequestContext.get(User)).toBeNull();
+            expect(RequestContext.get(Session)).toBeNull();
+            expect(RequestContext.get(UserAbility)?.rules).toEqual([]);
+            expect(RequestContext.get(WorkspaceAbility)?.rules).toEqual([]);
+            expect(em.setSessionContext).toHaveBeenCalledWith({
+              role: "anonymous",
+              variables: { "app.user.id": "", "app.workspace.id": "" },
+            });
+          } else {
+            expect(RequestContext.get(API_KEY)).toBe(key);
+            expect(RequestContext.get(User)).toBe(user);
+            if (kind === "session")
+              expect(RequestContext.get(Session)).toBe(session);
+            expect(em.setSessionContext).toHaveBeenCalledWith({
+              variables: { "app.workspace.id": "" },
+            });
+          }
+          expect(em.fork).not.toHaveBeenCalled();
+          expect(em.nativeDelete).toHaveBeenCalledExactlyOnceWith(Workspace, {
+            id: workspace.id,
+          });
         },
-      });
-      expect(em.fork).not.toHaveBeenCalled();
-      expect(em.nativeDelete).toHaveBeenCalledExactlyOnceWith(Workspace, {
-        id: workspace.id,
-      });
-    });
+      );
 
-    expect(em.nativeUpdate).not.toHaveBeenCalled();
-  });
+      expect(em.nativeUpdate).not.toHaveBeenCalled();
+    },
+  );
 
   it("rejects deletion in an outer transaction and leaves the scope unchanged after a failed commit", async () => {
     const { em, workspaceService } = createWorkspaceServices();
     const workspace = createTestWorkspace();
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       RequestContext.set(Workspace, workspace);
+      const key = new WorkspaceApiKey();
+      RequestContext.set(API_KEY, key);
       em.isInTransaction.mockReturnValueOnce(true);
       await expect(workspaceService.deleteWorkspace(workspace)).rejects.toThrow(
         "outside an active transaction",
@@ -471,6 +508,7 @@ describe("WorkspaceService and cross-domain coordination", () => {
         "Commit failed",
       );
       expect(RequestContext.get(Workspace)).toBe(workspace);
+      expect(RequestContext.get(API_KEY)).toBe(key);
       expect(em.setSessionContext).not.toHaveBeenCalled();
     });
   });

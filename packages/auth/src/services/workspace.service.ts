@@ -25,8 +25,10 @@ import { WorkspaceConnection } from "../connections/workspace.connection-definit
 import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
+import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 import type { CreateWorkspaceOptions } from "../interfaces/create-workspace-options.interface.js";
 import type { UpdateWorkspaceOptions } from "../interfaces/update-workspace-options.interface.js";
+import { clearRequestAuthentication } from "../utils/clear-request-authentication.util.js";
 import { clearWorkspaceAuthorization } from "../utils/clear-workspace-authorization.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
 import { DEFAULT_WORKSPACE_CREATOR_ROLE } from "../workspace.constants.js";
@@ -187,7 +189,9 @@ export class WorkspaceService {
       },
       { clear: true },
     );
-    clearWorkspaceAuthorization(this.em);
+    if (getCurrentApiKey() instanceof WorkspaceApiKey)
+      clearRequestAuthentication(this.em);
+    else clearWorkspaceAuthorization(this.em);
     return workspace;
   }
 

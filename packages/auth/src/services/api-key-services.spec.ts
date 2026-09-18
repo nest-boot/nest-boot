@@ -152,6 +152,7 @@ describe("API-key management services", () => {
     em.isInTransaction.mockReturnValue(true);
     mockRlsContext(em);
     await service.updateWorkspaceApiKey(target.id, { enabled: false });
+    expect(target.lastUsedAt).toBeNull();
     expect(RequestContext.get(API_KEY)).toBe(active);
     expect(RequestContext.get(User)).toBe(user);
     expect(RequestContext.get(WorkspaceAbility)).toBe(ability);
@@ -220,6 +221,7 @@ describe("API-key management services", () => {
             id: "active-key",
             enabled: true,
             permissions: ["workspace:update"],
+            lastUsedAt: new Date(0),
             user: ref(User, user),
             workspace: ref(Workspace, createTestWorkspace()),
           },
@@ -256,10 +258,20 @@ describe("API-key management services", () => {
         await expect(invoke()).rejects.toThrow("Commit failed");
         expect(RequestContext.get(API_KEY)).toBe(key);
         expect(key.enabled).toBe(true);
+        expect(key.lastUsedAt).toEqual(new Date(0));
         expect(key.permissions).toEqual(["workspace:update"]);
         expect(RequestContext.get(WorkspaceAbility)).toBe(ability);
         expect(em.setSessionContext).not.toHaveBeenCalled();
+        em.flush.mockImplementationOnce(() => {
+          expect(RequestContext.get(API_KEY)).toBe(key);
+          expect(em.setSessionContext).not.toHaveBeenCalled();
+          if (operation === "disable")
+            expect(key.lastUsedAt?.getTime()).toBeGreaterThan(0);
+          return Promise.resolve();
+        });
         await invoke();
+        if (operation === "disable")
+          expect(key.lastUsedAt?.getTime()).toBeGreaterThan(0);
         expect(
           RequestContext.get(WorkspaceAbility)?.can("update", Workspace),
         ).toBe(false);

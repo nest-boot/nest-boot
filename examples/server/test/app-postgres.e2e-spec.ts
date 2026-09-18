@@ -2068,12 +2068,14 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         ).toEqual([{ id: workspace.id }]);
         const table = scope === 'user' ? 'user_api_key' : 'workspace_api_key';
         const rows = await migrationOrm.em.execute(
-          `select enabled, permissions from ${table} where id = ?`,
+          `select enabled, permissions, last_used_at from ${table} where id = ?`,
           [key.entity.id],
         );
         if (action === 'delete') expect(rows).toEqual([]);
-        else if (action === 'disable') expect(rows[0].enabled).toBe(false);
-        else expect(rows[0].permissions).toEqual([]);
+        else if (action === 'disable') {
+          expect(rows[0].enabled).toBe(false);
+          expect(rows[0].last_used_at).not.toBeNull();
+        } else expect(rows[0].permissions).toEqual([]);
       }
     },
   );
@@ -2195,36 +2197,45 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     },
   );
 
-  it('allows a workspace key to delete its workspace and cascades the credential', async () => {
-    const owner = await createAuthenticatedUser('Deleting key owner');
-    const workspace = await createWorkspace(owner, 'Key deletion audit');
-    const key = await createWorkspaceApiKey(owner, workspace.id, {
-      name: 'Deletion key',
-      permissions: ['WORKSPACE__DELETE'],
-    });
-    const connection = migrationOrm.em.getConnection();
-    const readKey = () =>
-      connection.execute<{ id: string }[]>(
-        'select id from workspace_api_key where id = ?',
-        [key.entity.id],
+  it.each([false, true])(
+    'revokes a workspace key after workspace deletion (following mutation: %s)',
+    async (followingMutation) => {
+      const owner = await createAuthenticatedUser('Deleting key owner');
+      const workspace = await createWorkspace(owner, 'Key deletion audit');
+      const key = await createWorkspaceApiKey(owner, workspace.id, {
+        name: 'Deletion key',
+        permissions: ['WORKSPACE__DELETE'],
+      });
+      const connection = migrationOrm.em.getConnection();
+      const readKey = () =>
+        connection.execute<{ id: string }[]>(
+          'select id from workspace_api_key where id = ?',
+          [key.entity.id],
+        );
+      expect(await readKey()).toEqual([{ id: key.entity.id }]);
+      const response = await gql(
+        `mutation($id: ID!) { deleteWorkspace(id: $id) { id } ${followingMutation ? 'stopImpersonating { id }' : ''} }`,
+        {
+          bearerToken: key.apiKey,
+          workspaceId: workspace.id,
+          variables: { id: workspace.id },
+        },
       );
-    expect(await readKey()).toEqual([{ id: key.entity.id }]);
-    expectNoGraphQLErrors(
-      await gql('mutation($id: ID!) { deleteWorkspace(id: $id) { id } }', {
+      if (followingMutation) {
+        expectGraphQLError(response);
+        expect(response.body.errors[0].path).toEqual(['stopImpersonating']);
+        expect(response.body.errors[0].extensions.code).toBe('UNAUTHORIZED');
+      } else expectNoGraphQLErrors(response);
+      expect(await readKey()).toEqual([]);
+      const rejected = await gql('query { currentWorkspace { id } }', {
         bearerToken: key.apiKey,
         workspaceId: workspace.id,
-        variables: { id: workspace.id },
-      }),
-    );
-    expect(await readKey()).toEqual([]);
-    const rejected = await gql('query { currentWorkspace { id } }', {
-      bearerToken: key.apiKey,
-      workspaceId: workspace.id,
-    });
-    expect(rejected.status).toBe(401);
-    expect(rejected.body.message).toBe('Invalid API key');
-    expect(await readKey()).toEqual([]);
-  });
+      });
+      expect(rejected.status).toBe(401);
+      expect(rejected.body.message).toBe('Invalid API key');
+      expect(await readKey()).toEqual([]);
+    },
+  );
 
   it('clears the parent workspace scope after deletion before the next mutation', async () => {
     const owner = await createAuthenticatedUser('Deleting owner');
