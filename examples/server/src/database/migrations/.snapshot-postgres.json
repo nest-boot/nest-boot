@@ -1013,7 +1013,7 @@
           "command": "select",
           "type": "permissive",
           "roles": ["authenticated"],
-          "using": "\"user_id\" = nullif(current_setting('app.user.id', true), '')::bigint or jsonb_exists_any(coalesce(nullif(current_setting('app.user.permissions', true), ''), '[]')::jsonb, array['session:list']::text[])"
+          "using": "true"
         }
       ],
       "rlsEnabled": true
@@ -1263,7 +1263,7 @@
           "command": "delete",
           "type": "permissive",
           "roles": ["authenticated"],
-          "using": "jsonb_exists_any(coalesce(nullif(current_setting('app.user.permissions', true), ''), '[]')::jsonb, array['user:delete']::text[])"
+          "using": "true"
         },
         {
           "name": "user_select_policy",
@@ -1277,8 +1277,8 @@
           "command": "update",
           "type": "permissive",
           "roles": ["authenticated"],
-          "using": "id = nullif(current_setting('app.user.id', true), '')::bigint or jsonb_exists_any(coalesce(nullif(current_setting('app.user.permissions', true), ''), '[]')::jsonb, array['user:update', 'user:set-role', 'user:set-email']::text[])",
-          "check": "id = nullif(current_setting('app.user.id', true), '')::bigint or jsonb_exists_any(coalesce(nullif(current_setting('app.user.permissions', true), ''), '[]')::jsonb, array['user:update', 'user:set-role', 'user:set-email']::text[])"
+          "using": "true",
+          "check": "true"
         }
       ],
       "rlsEnabled": true

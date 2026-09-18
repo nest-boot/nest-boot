@@ -59,11 +59,11 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
   权限目录、授权上限和 API Key 权限交集只做精确字符串匹配，不转换大小写。
   内置目录使用 `user:*`、`session:*`、`workspace:*`、`member:*` 与
   `invitation:*`；示例还提供 `api-key:*`。自定义目录可以使用其他大小写，但
-  角色授权、直接权限、API Key 权限、Ability 构建器与 RLS 策略中的拼写必须一致，
+  角色授权、直接权限、API Key 权限与 Ability 构建器中的拼写必须一致，
   不会自动迁移大小写。
-- 数据库请求身份变量改为 `app.user.id` 和 `app.workspace.id`。Auth 还提供
-  `app.user.permissions` 与 `app.workspace.permissions`，值为有效权限标识的
-  JSON 数组，不是序列化的 CASL 规则，也不是持久化的登录 Session 字段。
+- 数据库请求身份变量改为 `app.user.id` 和 `app.workspace.id`。不再向数据库传递
+  应用权限列表；Service 负责 Ability 检查与 API Key 权限上限。RLS 保留归属、
+  工作区及软删除隔离，不再检查应用权限名。
 - 认证 Session 现在只使用主数据库；请移除 `AuthModuleOptions.secondaryStorage` 配置。
   API Key 默认权限与授予上限可分别通过 `apiKey.defaultPermissions` 和
   `apiKey.allowedPermissions` 配置。
@@ -81,7 +81,7 @@ Nest Boot 版本 8 使用基于 SWC 的 Vitest 替代 Jest。贡献者可以通�
 ### API Key 归属与数据库级联
 
 先执行 `Migration00000000000000_Initial`，再执行 MikroORM 生成的
-`Migration20260918073453`。初始化迁移向 `anonymous` 和 `authenticated`
+`Migration20260918082118`。初始化迁移向 `anonymous` 和 `authenticated`
 授予 schema `USAGE`，并为 `public` 中的表、函数和序列统一配置默认 `ALL` 权限。
 这些默认权限只适用于同一迁移角色以后创建的对象，不会修改现有对象或其他角色创建的对象的权限。
 

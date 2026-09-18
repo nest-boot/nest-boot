@@ -26,9 +26,7 @@ export function clearRequestAuthentication(em: EntityManager): void {
       role: "anonymous",
       variables: {
         "app.user.id": "",
-        "app.user.permissions": "[]",
         "app.workspace.id": "",
-        "app.workspace.permissions": "[]",
       },
     });
   }

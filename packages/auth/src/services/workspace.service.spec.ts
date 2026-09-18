@@ -440,7 +440,6 @@ describe("WorkspaceService and cross-domain coordination", () => {
       expect(em.setSessionContext).toHaveBeenCalledWith({
         variables: {
           "app.workspace.id": "",
-          "app.workspace.permissions": "[]",
         },
       });
       expect(em.fork).not.toHaveBeenCalled();

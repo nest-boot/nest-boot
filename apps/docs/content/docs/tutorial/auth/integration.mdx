@@ -149,7 +149,7 @@ For symbol-level documentation, see the [Auth API Reference](/docs/api/auth)
 
 Authentication payloads now reference `User` instead of `AuthUserType`, loading the built-in entity and adopting newly issued sessions before nested resolution. Registration without a session does not grant authentication.
 
-Apply the example's `Initial → generated schema migrations` before deployment. It enables account/session RLS and uniform default privileges. Services and GraphQL exclude credential fields; database column-level restrictions are removed. Session administrative reads use the server-computed request permission array.
+Apply the example's `Initial → generated schema migrations` before deployment. It enables account/session RLS and uniform default privileges. Services and GraphQL exclude credential fields; database column-level restrictions are removed. Session administrative reads are authorized by Services through Ability, not database permission variables.
 
 ### Operation naming changes
 

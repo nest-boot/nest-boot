@@ -48,5 +48,5 @@ export function refreshCurrentApiKeyAuthorization(
     return;
   }
   RequestContext.set(API_KEY, apiKey);
-  refreshRequestAuthorization(em, options);
+  refreshRequestAuthorization(options);
 }

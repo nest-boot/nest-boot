@@ -25,7 +25,6 @@ import { clearRequestAuthentication } from "./utils/clear-request-authentication
 import { extractApiKey } from "./utils/extract-api-key.util.js";
 import { getCurrentApiKey } from "./utils/get-current-api-key.util.js";
 import { refreshRequestAuthorization } from "./utils/refresh-request-authorization.util.js";
-import { resolveRequestPermissions } from "./utils/resolve-request-permissions.util.js";
 import { runAuthQuery } from "./utils/run-auth-query.js";
 
 /** Builds the complete authentication context for an incoming request. */
@@ -60,7 +59,7 @@ export class AuthMiddleware implements NestMiddleware {
           "The current user is no longer available",
         );
       RequestContext.set(User, user);
-      refreshRequestAuthorization(this.em, this.options);
+      refreshRequestAuthorization(this.options);
     } catch (error) {
       clearRequestAuthentication(this.em);
       throw error;
@@ -201,16 +200,13 @@ export class AuthMiddleware implements NestMiddleware {
     const member = RequestContext.get(Member);
     const authenticated = Boolean(user ?? apiKey);
     const canUseWorkspace = Boolean(member ?? (apiKey && !user));
-    const permissions = resolveRequestPermissions(this.options);
 
     this.em.setSessionContext({
       role: authenticated ? "authenticated" : "anonymous",
       variables: {
         "app.user.id": user?.id ?? "",
-        "app.user.permissions": JSON.stringify(permissions.user),
         "app.workspace.id":
           !authenticated || canUseWorkspace ? (workspace?.id ?? "") : "",
-        "app.workspace.permissions": JSON.stringify(permissions.workspace),
       },
     });
   }

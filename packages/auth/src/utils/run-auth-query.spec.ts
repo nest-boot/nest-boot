@@ -140,7 +140,7 @@ describe("runAuthQuery with native RLS", () => {
           expect(RequestContext.get(Session)).toBeNull();
           expect(em.getSessionContext()).toMatchObject({
             role: "anonymous",
-            variables: { "app.user.id": "", "app.user.permissions": "[]" },
+            variables: { "app.user.id": "" },
           });
         }
         expect(RequestContext.get(CoreEntityManager)).toBe(em);
@@ -185,7 +185,6 @@ describe("runAuthQuery with native RLS", () => {
         ...session,
         variables: {
           "app.workspace.id": "",
-          "app.workspace.permissions": "[]",
         },
       });
       await em.transactional(async (tx) => {

@@ -133,7 +133,7 @@ GraphQL 验证错误使用 `BAD_USER_INPUT`，字段详情位于
 
 登录与注册结果引用内置 `User`，不再使用 `AuthUserType`。签发会话后会更新请求身份、工作区成员、RLS 和能力上下文，再解析关联字段；未签发会话的注册不会授予认证身份。
 
-部署前执行示例基线 `Initial → generated schema migrations`：启用 Session／Account RLS 和统一默认表权限，不再保留数据库列级限制。Service 与 GraphQL 排除密码、token 和 API Key 哈希；会话管理员读取策略使用服务端计算的请求权限。
+部署前执行示例基线 `Initial → generated schema migrations`：启用 Session／Account RLS 和统一默认表权限，不再保留数据库列级限制。Service 与 GraphQL 排除密码、token 和 API Key 哈希；会话管理员读取由 Service 的 Ability 授权，不再向数据库传递权限列表。
 
 ### 操作命名调整
 

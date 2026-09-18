@@ -66,12 +66,12 @@ provide a CommonJS `require` entry.
   intersections compare exact strings without changing case. The built-in
   catalogs use `user:*`, `session:*`, `workspace:*`, `member:*` and
   `invitation:*`; the example adds `api-key:*`. Custom catalogs may use other
-  casing, but role grants, direct/API-key permissions, ability builders and RLS
-  policies must use the same spelling. No automatic case migration is performed.
+  casing, but role grants, direct/API-key permissions and ability builders
+  must use the same spelling. No automatic case migration is performed.
 - Rename database request identity variables to `app.user.id` and
-  `app.workspace.id`. Auth also supplies `app.user.permissions` and
-  `app.workspace.permissions` as JSON arrays of effective permission grants;
-  these are not serialized CASL rules or persisted login-session fields.
+  `app.workspace.id`. Application permissions are no longer sent to the database;
+  Services enforce Ability checks and API-key ceilings. RLS retains ownership,
+  workspace and soft-delete boundaries, not application permission-name checks.
 - Auth sessions now use the primary database exclusively; remove any
   `AuthModuleOptions.secondaryStorage` configuration. API-key defaults and
   grant ceilings can be configured with `apiKey.defaultPermissions` and
@@ -93,7 +93,7 @@ unit and end-to-end suites with `pnpm test` and `pnpm test:e2e`.
 ### API-key ownership and database cascades
 
 Run `Migration00000000000000_Initial` before the MikroORM-generated
-`Migration20260918073453`. Initialization grants schema `USAGE` and sets default
+`Migration20260918082118`. Initialization grants schema `USAGE` and sets default
 `ALL` privileges on tables, functions, and sequences in `public` for both
 `anonymous` and `authenticated`. These defaults apply only to future objects
 created by the same migration role, not existing objects or objects created by

@@ -183,34 +183,21 @@ describe("AuthMiddleware", () => {
         variables: {
           "app.user.id": user.id,
           "app.workspace.id": workspace.id,
-          "app.user.permissions": JSON.stringify(
-            useKey ? ["user:read"] : ["User:READ", "User:read", "user:read"],
-          ),
-          "app.workspace.permissions": JSON.stringify(
-            useKey
-              ? ["Workspace:UPDATE"]
-              : ["Workspace:UPDATE", "Workspace:update", "workspace:update"],
-          ),
         },
       });
     },
   );
 
   it.each([
-    ["anonymous", false, [], []],
-    [
-      "session",
-      true,
-      ["user:read", "user:update", "user:delete"],
-      ["member:read", "workspace:update", "invitation:create"],
-    ],
-    ["session", false, ["user:read", "user:update", "user:delete"], []],
-    ["user-key", true, ["user:read"], ["workspace:update"]],
-    ["user-key", false, ["user:read"], []],
-    ["workspace-key", false, [], ["workspace:update"]],
+    ["anonymous", false],
+    ["session", true],
+    ["session", false],
+    ["user-key", true],
+    ["user-key", false],
+    ["workspace-key", false],
   ] as const)(
-    "stages effective grants for %s (membership: %s)",
-    async (kind, hasMember, userPermissions, workspacePermissions) => {
+    "stages only identities for %s (membership: %s)",
+    async (kind, hasMember) => {
       const user = Object.assign(new TestUser(), {
         id: "user-1",
         roles: ["editor"],
@@ -263,8 +250,6 @@ describe("AuthMiddleware", () => {
       const request = {
         headers: {
           "x-workspace-id": workspace.id,
-          "app.user.permissions": '["user:delete"]',
-          "app.workspace.permissions": '["workspace:delete"]',
           ...(kind.endsWith("key") ? { authorization: "Bearer sk-key" } : {}),
         },
       } as unknown as Request;
@@ -282,8 +267,6 @@ describe("AuthMiddleware", () => {
             kind === "anonymous" || kind === "workspace-key" || hasMember
               ? workspace.id
               : "",
-          "app.user.permissions": JSON.stringify(userPermissions),
-          "app.workspace.permissions": JSON.stringify(workspacePermissions),
         },
       });
     },
@@ -333,12 +316,7 @@ describe("AuthMiddleware", () => {
       expect(RequestContext.get(UserAbility)?.can("delete", BaseUser)).toBe(
         false,
       );
-      expect(em.setSessionContext).toHaveBeenCalledWith({
-        variables: {
-          "app.user.permissions": '["user:read"]',
-          "app.workspace.permissions": "[]",
-        },
-      });
+      expect(em.setSessionContext).not.toHaveBeenCalled();
       findOne.mockResolvedValueOnce(null);
       await expect(middleware.refreshCurrentUser()).rejects.toThrow(
         "no longer available",
@@ -349,9 +327,7 @@ describe("AuthMiddleware", () => {
         role: "anonymous",
         variables: {
           "app.user.id": "",
-          "app.user.permissions": "[]",
           "app.workspace.id": "",
-          "app.workspace.permissions": "[]",
         },
       });
     });
@@ -405,8 +381,6 @@ describe("AuthMiddleware", () => {
         variables: {
           "app.user.id": "new-user",
           "app.workspace.id": "",
-          "app.user.permissions": '["user:read"]',
-          "app.workspace.permissions": "[]",
         },
       });
     });
@@ -484,8 +458,6 @@ describe("AuthMiddleware", () => {
           variables: {
             "app.user.id": hasUser ? "user-1" : "",
             "app.workspace.id": expectedWorkspace,
-            "app.user.permissions": "[]",
-            "app.workspace.permissions": "[]",
           },
         });
       });
@@ -519,8 +491,6 @@ describe("AuthMiddleware", () => {
       variables: {
         "app.user.id": expect.any(String),
         "app.workspace.id": "",
-        "app.user.permissions": "[]",
-        "app.workspace.permissions": "[]",
       },
     });
     expect(next).toHaveBeenCalledExactlyOnceWith();
@@ -543,8 +513,6 @@ describe("AuthMiddleware", () => {
       variables: {
         "app.user.id": "",
         "app.workspace.id": "",
-        "app.user.permissions": "[]",
-        "app.workspace.permissions": "[]",
       },
     });
   });

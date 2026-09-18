@@ -69,7 +69,7 @@ describe("UserService", () => {
   );
 
   it.each(["roles", "permissions"] as const)(
-    "refreshes own %s, abilities and RLS only after persistence succeeds",
+    "refreshes own %s and abilities only after persistence succeeds",
     async (field) => {
       const { service, em } = createService(true, {
         permissions: ["user:delete"],
@@ -113,12 +113,7 @@ describe("UserService", () => {
           expect(RequestContext.get(UserAbility)?.can("delete", User)).toBe(
             false,
           );
-          expect(em.setSessionContext).toHaveBeenCalledWith({
-            variables: {
-              "app.user.permissions": "[]",
-              "app.workspace.permissions": "[]",
-            },
-          });
+          expect(em.setSessionContext).not.toHaveBeenCalled();
         },
       );
     },

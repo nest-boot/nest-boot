@@ -13,7 +13,7 @@ import {
 } from "../workspace.constants.js";
 import { resolveAuthPermissions } from "./auth-role.util.js";
 
-/** Resolves the same credential-limited grants for CASL and database request contexts. @internal */
+/** Resolves credential-limited grants for request abilities. @internal */
 export function resolveRequestPermissions(options: AuthModuleOptions): {
   user: readonly string[];
   workspace: readonly string[];

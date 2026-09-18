@@ -156,12 +156,7 @@ describe("API-key management services", () => {
         ).toBe(false);
         if (operation === "permissions") {
           expect(RequestContext.get(API_KEY)).toBe(key);
-          expect(em.setSessionContext).toHaveBeenCalledWith({
-            variables: {
-              "app.user.permissions": "[]",
-              "app.workspace.permissions": "[]",
-            },
-          });
+          expect(em.setSessionContext).not.toHaveBeenCalled();
         } else {
           expect(RequestContext.get(API_KEY)).toBeNull();
           expect(RequestContext.get(User)).toBeNull();
@@ -171,9 +166,7 @@ describe("API-key management services", () => {
             role: "anonymous",
             variables: {
               "app.user.id": "",
-              "app.user.permissions": "[]",
               "app.workspace.id": "",
-              "app.workspace.permissions": "[]",
             },
           });
         }

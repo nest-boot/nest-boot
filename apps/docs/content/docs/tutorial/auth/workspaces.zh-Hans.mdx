@@ -121,7 +121,7 @@ User 的姓名或登录邮箱，修改 User 也不会改变成员资料。具有
 生成基线中的 User SELECT 策略允许 authenticated 数据库角色读取 User 行，匿名仍不可读。
 个人资料可见性由 Service 的 Ability 检查限制，支持自定义权限名并保留 API Key 权限上限。
 直接 ORM/SQL 查询不再限制个人资料可见性，因此对外读取必须经过 Service 授权。
-User 写入及 Session RLS 策略仍检查可信请求上下文 `app.user.permissions` 中的内置权限名。
+User 写入及 Session 读取同样由 Service 授权；数据库上下文不再接收或检查应用权限列表。
 
 新基线替代旧迁移历史，仅用于空数据库。已有数据库不能直接重复执行该基线，
 也不能只清空迁移记录表；应先备份数据并制定单独的数据保留与基线衔接方案。

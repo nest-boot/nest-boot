@@ -282,28 +282,25 @@ additional read-operation permission, but database SELECT policies still apply.
 
 Apply the example's `Initial → generated schema migrations` before using
 these write paths. Custom applications must supply equivalent grants and RLS
-policies for their own role/permission mappings. Default table privileges do not protect individual columns; Services exclude credential hashes and reject API-key ownership changes. Auth infrastructure establishes a scoped fork for workspace soft deletion
+policies for their own data-isolation requirements. Default table privileges do not protect individual columns; Services exclude credential hashes and reject API-key ownership changes. Auth infrastructure establishes a scoped fork for workspace soft deletion
 with `app.operation = auth.workspace.delete`, preserving the actor and workspace;
 the matching SELECT policy permits the deletion result inside that transaction.
 Normal requests still cannot read deleted workspaces or restore them.
 
 Database request contexts use `app.user.id` and `app.workspace.id`; the previous
 `app.user` and `app.workspace` keys are no longer consumed by scope policies.
-`app.user.permissions` and `app.workspace.permissions` contain JSON arrays of
-effective grants, resolved from configured roles and direct permissions and
-restricted by the authenticated API key. Workspace keys only receive workspace
-grants. Missing identities/memberships receive empty permission arrays.
-These are server-computed, transaction-local values, not persisted login-session
-fields or client-supplied permissions. Session adoption recomputes them. They
-represent permission grants, not serialized CASL conditions; Service checks still
-apply. Scope-only policies do not enforce permission arrays; the example User and Session policies explicitly check them.
+Application permissions are not passed to the database. Services enforce Ability
+checks, custom permission names and API-key ceilings. RLS retains identity-based
+ownership, workspace isolation and soft-delete restrictions, not permission-name
+checks. Authenticated User reads/writes and Session reads must go through Services;
+direct ORM/SQL access does not enforce those application authorization rules.
 
 Permission identifiers are application-defined, case-sensitive strings. Catalog
 membership, grant ceilings and API-key intersections use exact string equality;
 values are never case-converted. For example, `User:update` and `user:update`
 are distinct permissions and may both be configured. The built-in catalogs and
 example still use `user:update`, `workspace:delete` and `api-key:read`.
-Custom ability builders and RLS policies must match the configured spelling
+Custom ability builders must match the configured spelling
 explicitly; permission names do not automatically resolve to CASL subjects or
 GraphQL entity names such as `User`, `Workspace`, `UserApiKey` and `WorkspaceApiKey`.
 
@@ -384,8 +381,8 @@ The generated baseline User SELECT policy allows authenticated database roles to
 read User rows. Services enforce profile visibility through Ability, including
 custom permission names and API-key ceilings. Anonymous reads remain denied.
 Direct ORM/SQL reads do not enforce profile privacy; expose User data only through
-authorized Services. User write and Session RLS policies still check built-in
-permission names in the trusted request-local `app.user.permissions` JSON array.
+authorized Services. User writes and Session reads likewise rely on Service
+authorization, not permission names in database request variables.
 
 This baseline replaces the previous migration history and is intended for empty
 databases. Do not apply it on top of an existing schema or merely clear the migration
@@ -410,7 +407,7 @@ field resolvers may target these classes without replacing built-in fields.
 - `authFetchAccessToken`, `authFetchAccountInfo` and `authRefreshToken` are removed, along with their account-selector input and provider credential result types. No deprecated aliases are retained. Read local account bindings through `User.accounts`; provider integrations can use `AuthService.getAccessToken()`, `refreshToken()` and `getAccountInfo()` server-side. These methods are not exposed by the default GraphQL module.
 - Single API-key lookups return null for rows outside the owner/permission scope; mutation authorization is unchanged.
 
-The example migration sequence `Initial → generated schema migrations` enables session/account SELECT policies and uses uniform default table privileges. Column-level database protection is intentionally removed. Apply migrations before deploying the new API. Session administrative reads check the server-computed `session:list` request permission. Passwords, API-key hashes and OAuth/session tokens are excluded by Services from ordinary reads and never exposed as entity fields. Authentication bootstrap and special lifecycle operations retain dedicated privileged paths; ordinary management writes retain request RLS and Service authorization.
+The example migration sequence `Initial → generated schema migrations` enables session/account SELECT policies and uses uniform default table privileges. Column-level database protection is intentionally removed. Apply migrations before deploying the new API. Session administrative reads are authorized by Services through Ability; no application permissions are passed to the database. Passwords, API-key hashes and OAuth/session tokens are excluded by Services from ordinary reads and never exposed as entity fields. Authentication bootstrap and special lifecycle operations retain dedicated privileged paths; ordinary management writes retain request RLS and Service authorization.
 
 ### Management mutations
 

@@ -40,9 +40,10 @@ import type { Request } from 'express';
 import { mikroOrmAdapter } from '../../../packages/auth/dist/adapters/mikro-orm-adapter.js';
 import { ApiKeyAuthenticationService } from '../../../packages/auth/dist/infrastructure/api-key-authentication.service.js';
 import { createContextualAuthService } from '../../../packages/auth/dist/infrastructure/create-contextual-auth-service.js';
+import { UserDeletionService } from '../../../packages/auth/dist/services/user-deletion.service.js';
 import { buildRequestUserAbility } from '../../../packages/auth/dist/utils/build-request-ability.util.js';
 import { Migration00000000000000_Initial } from '../src/database/migrations/Migration00000000000000_Initial.js';
-import { Migration20260918073453 } from '../src/database/migrations/Migration20260918073453.js';
+import { Migration20260918082118 } from '../src/database/migrations/Migration20260918082118.js';
 
 describe('example native RLS migrations with PGlite', () => {
   let orm: MikroORM;
@@ -81,7 +82,7 @@ describe('example native RLS migrations with PGlite', () => {
         migrations: {
           migrationsList: [
             Migration00000000000000_Initial,
-            Migration20260918073453,
+            Migration20260918082118,
           ],
           path: './src/database/migrations',
           pathTs: './src/database/migrations',
@@ -320,7 +321,7 @@ describe('example native RLS migrations with PGlite', () => {
     }
   });
 
-  it('limits session and account rows with RLS while Services control credential fields', async () => {
+  it('delegates Session reads to Services while retaining Account ownership RLS', async () => {
     const admin = orm.em.fork();
     const users = ['RLS self', 'RLS foreign', 'RLS administrator'].map(
       (name, index) =>
@@ -357,9 +358,6 @@ describe('example native RLS migrations with PGlite', () => {
         variables: {
           'app.user.id': id,
           'app.workspace.id': '',
-          'app.user.permissions': JSON.stringify(
-            id === users[2].id ? ['session:list'] : [],
-          ),
         },
       });
       return em;
@@ -375,9 +373,9 @@ describe('example native RLS migrations with PGlite', () => {
             { exclude: ['token'] },
           )
         ).map((s) => s.id),
-      ).toEqual([sessions[0].id]);
+      ).toEqual(expect.arrayContaining(sessionIds));
       expect(
-        await scoped('').find(
+        await scoped('', 'anonymous').find(
           Session,
           { id: sessionIds },
           { exclude: ['token'] },
@@ -504,19 +502,16 @@ describe('example native RLS migrations with PGlite', () => {
           variables: {
             'app.user.id': id,
             'app.workspace.id': '',
-            'app.user.permissions': JSON.stringify(
-              id === administrator.id ? ['user:update', 'user:delete'] : [],
-            ),
           },
         },
       });
     try {
+      // Database policy does not interpret application permission names.
       expect(
         await scoped(target.id).nativeUpdate(User, other.id, {
-          name: 'Denied',
+          name: 'Service-authorized write',
         }),
-      ).toBe(0);
-      expect(await scoped(target.id).nativeDelete(User, other.id)).toBe(0);
+      ).toBe(1);
       expect(
         await scoped(administrator.id).nativeUpdate(User, target.id, {
           name: 'Managed',
@@ -594,7 +589,7 @@ describe('example native RLS migrations with PGlite', () => {
     }
   });
 
-  it('applies renamed identities and JSON permission grants without leaking between database requests', async () => {
+  it('stages identities without passing application permissions to the database', async () => {
     const admin = orm.em.fork();
     const user = admin.create(User, {
       name: 'Context fixture',
@@ -639,8 +634,8 @@ describe('example native RLS migrations with PGlite', () => {
         const [values] = await em.execute(`select
           current_setting('app.user.id', true) as user_id,
           current_setting('app.workspace.id', true) as workspace_id,
-          current_setting('app.user.permissions', true)::jsonb as user_permissions,
-          current_setting('app.workspace.permissions', true)::jsonb as workspace_permissions`);
+          nullif(current_setting('app.user.permissions', true), '') as user_permissions,
+          nullif(current_setting('app.workspace.permissions', true), '') as workspace_permissions`);
         return values;
       });
     };
@@ -648,14 +643,14 @@ describe('example native RLS migrations with PGlite', () => {
       expect(await readContext(true)).toEqual({
         user_id: user.id,
         workspace_id: workspace.id,
-        user_permissions: ['user:read'],
-        workspace_permissions: ['workspace:update'],
+        user_permissions: null,
+        workspace_permissions: null,
       });
       expect(await readContext(false)).toEqual({
         user_id: '',
         workspace_id: workspace.id,
-        user_permissions: [],
-        workspace_permissions: [],
+        user_permissions: null,
+        workspace_permissions: null,
       });
       const [outside] = await admin.execute(`select
         nullif(current_setting('app.user.permissions', true), '') as user_permissions,
@@ -1690,14 +1685,13 @@ describe('example native RLS migrations with PGlite', () => {
       workspace,
     });
     await admin.persist([viewer, target, workspace, owner, member]).flush();
-    const scoped = (id: string, permissions: string[] = []) =>
+    const scoped = (id: string) =>
       orm.em.fork({
         session: {
           role: 'authenticated',
           variables: {
             'app.user.id': id,
             'app.workspace.id': workspace.id,
-            'app.user.permissions': JSON.stringify(permissions),
           },
         },
       });
@@ -1713,9 +1707,7 @@ describe('example native RLS migrations with PGlite', () => {
     expect(await scoped(viewer.id).findOne(User, viewer.id)).not.toBeNull();
     for (const permission of ['user:get', 'user:list', 'account-admin:view']) {
       await admin.nativeUpdate(User, viewer.id, { permissions: [permission] });
-      expect(
-        await scoped(viewer.id, [permission]).findOne(User, target.id),
-      ).not.toBeNull();
+      expect(await scoped(viewer.id).findOne(User, target.id)).not.toBeNull();
     }
     await admin.nativeUpdate(User, viewer.id, {
       permissions: [],
@@ -1723,9 +1715,7 @@ describe('example native RLS migrations with PGlite', () => {
     });
     // User profile authorization belongs to Services, not the SELECT policy.
     expect(await scoped(viewer.id).findOne(User, target.id)).not.toBeNull();
-    expect(
-      await scoped(viewer.id, ['user:read']).findOne(User, target.id),
-    ).not.toBeNull();
+    expect(await scoped(viewer.id).findOne(User, target.id)).not.toBeNull();
     await admin.nativeUpdate(User, viewer.id, { roles: ['user'] });
     expect(await scoped(viewer.id).findOne(User, target.id)).not.toBeNull();
     const anonymous = orm.em.fork({ session: { role: 'anonymous' } });
@@ -1745,7 +1735,7 @@ describe('example native RLS migrations with PGlite', () => {
       },
     };
     const service = new UserService(
-      scoped(viewer.id, ['account-admin:view']),
+      scoped(viewer.id),
       options,
       {} as never,
       new AccessControlService(options),
@@ -1782,6 +1772,98 @@ describe('example native RLS migrations with PGlite', () => {
         'not allowed',
       );
     });
+  });
+
+  it('authorizes custom User writes and cross-user Session reads entirely in Services', async () => {
+    const admin = orm.em.fork();
+    const actor = admin.create(User, {
+      name: 'Custom administrator',
+      emailVerified: true,
+      email: `${randomUUID()}@example.test`,
+      roles: ['user'],
+      permissions: ['account-admin:manage'],
+    });
+    const target = admin.create(User, {
+      name: 'Target',
+      emailVerified: true,
+      email: `${randomUUID()}@example.test`,
+    });
+    const session = admin.create(Session, {
+      user: target,
+      token: randomUUID(),
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    await admin.persist([actor, target, session]).flush();
+    const options: AuthModuleOptions = {
+      user: {
+        permissions: ['account-admin:manage'],
+        roles: { user: [] },
+        buildAbility: (builder, permissions) => {
+          if (permissions.includes('account-admin:manage')) {
+            builder.can(['update', 'delete'], User);
+            builder.can('list', Session);
+          }
+          return builder.build();
+        },
+      },
+    };
+    const em = orm.em.fork({
+      session: {
+        role: 'authenticated',
+        variables: { 'app.user.id': actor.id },
+      },
+    });
+    const access = new AccessControlService(options);
+    const users = new UserService(
+      em,
+      options,
+      {} as never,
+      access,
+      new UserDeletionService(em),
+    );
+    const sessions = new SessionService({}, em, access);
+    try {
+      await RequestContext.run(
+        new RequestContext({ type: 'test' }),
+        async () => {
+          RequestContext.set(User, actor);
+          const authorize = () => {
+            RequestContext.set(UserAbility, buildRequestUserAbility(options));
+          };
+          actor.permissions = [];
+          authorize();
+          await expect(
+            users.updateUser(target.id, { name: 'Denied' }),
+          ).rejects.toThrow('not allowed');
+          await expect(users.deleteUser(target.id)).rejects.toThrow(
+            'not allowed',
+          );
+          await expect(
+            sessions.getSessionConnectionByUser(target, { first: 10 }),
+          ).rejects.toThrow('not allowed');
+          actor.permissions = ['account-admin:manage'];
+          authorize();
+          expect(
+            await users.updateUser(target.id, { name: 'Allowed' }),
+          ).toMatchObject({ name: 'Allowed' });
+          expect(
+            (
+              await sessions.getSessionConnectionByUser(target, { first: 10 })
+            ).edges.map(({ node }) => node.id),
+          ).toEqual([session.id]);
+          expect(await users.deleteUser(target.id)).toMatchObject({
+            id: target.id,
+          });
+          expect(await admin.count(User, target.id)).toBe(0);
+          expect(await admin.count(Session, session.id)).toBe(0);
+          expect(em.getSessionContext()?.variables).toEqual({
+            'app.user.id': actor.id,
+          });
+        },
+      );
+    } finally {
+      await admin.nativeDelete(User, { id: [actor.id, target.id] });
+    }
   });
 
   it('requires user-backed members with independent workspace-visible profiles', async () => {

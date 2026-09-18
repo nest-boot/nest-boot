@@ -1,7 +1,7 @@
 import { Migration } from '@mikro-orm/migrations';
 
-export class Migration20260918073453 extends Migration {
-  override name = 'Migration20260918073453';
+export class Migration20260918082118 extends Migration {
+  override name = 'Migration20260918082118';
 
   override up(): void | Promise<void> {
     this.addSql(
@@ -127,10 +127,10 @@ export class Migration20260918073453 extends Migration {
       `create policy "user_select_policy" on "user" for select to "authenticated" using (true);`,
     );
     this.addSql(
-      `create policy "user_update_policy" on "user" for update to "authenticated" using (id = nullif(current_setting('app.user.id', true), '')::bigint or jsonb_exists_any(coalesce(nullif(current_setting('app.user.permissions', true), ''), '[]')::jsonb, array['user:update', 'user:set-role', 'user:set-email']::text[])) with check (id = nullif(current_setting('app.user.id', true), '')::bigint or jsonb_exists_any(coalesce(nullif(current_setting('app.user.permissions', true), ''), '[]')::jsonb, array['user:update', 'user:set-role', 'user:set-email']::text[]));`,
+      `create policy "user_update_policy" on "user" for update to "authenticated" using (true) with check (true);`,
     );
     this.addSql(
-      `create policy "user_delete_policy" on "user" for delete to "authenticated" using (jsonb_exists_any(coalesce(nullif(current_setting('app.user.permissions', true), ''), '[]')::jsonb, array['user:delete']::text[]));`,
+      `create policy "user_delete_policy" on "user" for delete to "authenticated" using (true);`,
     );
 
     this.addSql(
@@ -141,7 +141,7 @@ export class Migration20260918073453 extends Migration {
     );
     this.addSql(`alter table "session" enable row level security;`);
     this.addSql(
-      `create policy "session_select_policy" on "session" for select to "authenticated" using ("user_id" = nullif(current_setting('app.user.id', true), '')::bigint or jsonb_exists_any(coalesce(nullif(current_setting('app.user.permissions', true), ''), '[]')::jsonb, array['session:list']::text[]));`,
+      `create policy "session_select_policy" on "session" for select to "authenticated" using (true);`,
     );
 
     this.addSql(

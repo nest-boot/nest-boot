@@ -12,10 +12,6 @@ import { Sonyflake } from "sonyflake-js";
 
 import { UserPermission } from "../enums/user-permission.enum.js";
 import { UserRole } from "../enums/user-role.enum.js";
-import {
-  userDeletePredicate,
-  userUpdatePredicate,
-} from "../policies/user-management.policy.js";
 import { Member } from "./member.entity.js";
 
 /** Built-in User entity with authentication persistence and access policies. */
@@ -31,13 +27,13 @@ import { Member } from "./member.entity.js";
     {
       command: "update",
       roles: ["authenticated"],
-      using: () => userUpdatePredicate,
-      check: () => userUpdatePredicate,
+      using: "true",
+      check: "true",
     },
     {
       command: "delete",
       roles: ["authenticated"],
-      using: () => userDeletePredicate,
+      using: "true",
     },
   ],
 })

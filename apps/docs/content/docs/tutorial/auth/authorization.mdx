@@ -376,12 +376,12 @@ OR. They do not check workspace lifecycle or replace Service authorization.
 Continue to configure database roles, table privileges and trusted session
 variables separately.
 
-Auth stages `app.user.permissions` and `app.workspace.permissions` as JSON arrays
-of role grants plus direct permissions, limited by the current API key. The
-server computes these values per request; anonymous requests receive empty
-arrays. They are not login-session fields or serialized CASL conditions.
-Identity variables are `app.user.id` and `app.workspace.id`; old identity keys
-are no longer supported. Services retain their authorization checks.
+Auth stages identity variables `app.user.id` and `app.workspace.id`, but does not
+pass application permissions to the database. Services enforce Ability rules,
+custom permissions and API-key ceilings; RLS handles ownership, workspace
+isolation and soft deletion. Authenticated User reads/writes and Session reads
+rely on Service authorization. Do not expose direct ORM/SQL access to these
+records as an alternative to Services. Old identity keys are no longer supported.
 
 The example `UserApiKey` and `WorkspaceApiKey` use separate tables, each with one required owner foreign key, so no exclusive-owner CHECK is needed. RLS compares `user_id` with `app.user.id` and `workspace_id` with `app.workspace.id` independently, including when IDs coincide. Physical owner deletion cascades to keys; soft deletion does not. Default privileges authorize table operations; both management services hide credential hashes, prevent ownership changes, and enforce authorization.
 
@@ -395,7 +395,7 @@ For database-level soft-delete restrictions, compose
 
 After a Service commits changes to the current user's roles or permissions, or
 the current member's profile, roles, permissions or status, Auth refreshes the
-request identity, abilities and RLS permission variables. Disabling the current
+request identity and abilities. Disabling the current
 member, leaving a workspace or deleting it clears the workspace scope, including
 the parent request when deletion uses an isolated execution context.
 
@@ -406,7 +406,7 @@ Failed writes leave request authorization unchanged. Updates to other users or
 members do not replace the caller's identity.
 
 The same commit boundary applies when editing the authenticating API key:
-permission changes refresh its abilities and RLS permissions; disabling or deleting
+permission changes refresh its abilities; disabling or deleting
 it clears the entire request identity, without falling back to unrestricted user
 permissions. Successful `signOut()` also clears authentication immediately, while
 `updateCurrentUser()` reloads the persisted profile before subsequent operations.

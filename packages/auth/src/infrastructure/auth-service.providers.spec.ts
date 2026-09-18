@@ -76,7 +76,6 @@ describe("auth service execution boundaries", () => {
             expect(em.setSessionContext).toHaveBeenCalledWith({
               variables: {
                 "app.workspace.id": "",
-                "app.workspace.permissions": "[]",
               },
             });
         },

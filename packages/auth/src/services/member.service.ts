@@ -388,7 +388,7 @@ export class MemberService {
       return;
     }
     RequestContext.set(Member, member);
-    refreshRequestAuthorization(this.em, this.authOptions);
+    refreshRequestAuthorization(this.authOptions);
   }
 
   private isCurrentMember(member: Member): boolean {

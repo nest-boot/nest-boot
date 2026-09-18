@@ -16,7 +16,6 @@ export function clearWorkspaceAuthorization(em: EntityManager): void {
     em.setSessionContext({
       variables: {
         "app.workspace.id": "",
-        "app.workspace.permissions": "[]",
       },
     });
   }

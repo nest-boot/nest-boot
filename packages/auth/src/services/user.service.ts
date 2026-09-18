@@ -239,7 +239,7 @@ export class UserService {
   private refreshCurrentUser(user: User): void {
     if (!this.isCurrentUser(user)) return;
     RequestContext.set(User, user);
-    refreshRequestAuthorization(this.em, this.options);
+    refreshRequestAuthorization(this.options);
   }
 
   private async resolveUserForAction(

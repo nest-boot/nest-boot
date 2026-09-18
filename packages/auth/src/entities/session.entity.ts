@@ -11,7 +11,6 @@ import {
 import { Field, HideField, ID, ObjectType } from "@nest-boot/graphql";
 import { randomUUID } from "crypto";
 
-import { userManagementPredicate } from "../policies/user-management.policy.js";
 import { User } from "./user.entity.js";
 
 /** Built-in Session entity with authentication persistence and access policies. */
@@ -21,8 +20,8 @@ import { User } from "./user.entity.js";
       name: "session_select_policy",
       command: "select",
       roles: ["authenticated"],
-      using: ({ user }) =>
-        `"${user}" = nullif(current_setting('app.user.id', true), '')::bigint or ${userManagementPredicate(["session:list"])}`,
+      // Services authorize own-session and administrative reads.
+      using: "true",
     },
   ],
 })

@@ -1,4 +1,3 @@
-import type { EntityManager } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 
 import { UserAbility } from "../abilities/user.ability.js";
@@ -34,11 +33,6 @@ describe("post-commit request authorization", () => {
           },
         },
       };
-      const setSessionContext = vi.fn();
-      const em = {
-        getSessionContext: () => ({ role: "authenticated" }),
-        setSessionContext,
-      } as unknown as EntityManager;
       await RequestContext.run(new RequestContext({ type: "test" }), () => {
         RequestContext.set(
           User,
@@ -64,7 +58,7 @@ describe("post-commit request authorization", () => {
           new WorkspaceAbility([{ action: "delete", subject: Workspace }]),
         );
         const refresh = () => {
-          refreshRequestAuthorization(em, options);
+          refreshRequestAuthorization(options);
         };
         if (failure) expect(refresh).toThrow("Invalid ability configuration");
         else refresh();
@@ -80,12 +74,6 @@ describe("post-commit request authorization", () => {
         expect(
           RequestContext.get(WorkspaceAbility)?.can("read", Workspace),
         ).toBe(!failure);
-        expect(setSessionContext).toHaveBeenCalledWith({
-          variables: {
-            "app.user.permissions": JSON.stringify(["user:read"]),
-            "app.workspace.permissions": JSON.stringify(["workspace:read"]),
-          },
-        });
       });
     },
   );

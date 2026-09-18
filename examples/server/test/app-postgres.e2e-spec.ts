@@ -1751,6 +1751,12 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     'restores the caller role after a single-connection invitation lookup (failure=%s)',
     async (failure) => {
       const user = await createAuthenticatedUser('Identity lookup target');
+      expect(
+        await migrationOrm.em.execute(
+          'select id from account where user_id = ?',
+          [user.user.id],
+        ),
+      ).toHaveLength(1);
       const orm = await MikroORM.init({
         clientUrl: databaseUrl,
         driver: PostgreSqlDriver,
@@ -1762,7 +1768,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         const em = orm.em.fork({
           session: {
             role: 'authenticated',
-            variables: { 'app.user.id': '', 'app.user.permissions': '[]' },
+            variables: { 'app.user.id': '' },
           },
         });
         await em.transactional(async (transaction) => {
@@ -1772,7 +1778,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
           expect(before.role).toBe('authenticated');
           expect(
             await transaction.execute(
-              'select id from session where user_id = ?',
+              'select id from account where user_id = ?',
               [user.user.id],
             ),
           ).toEqual([]);
@@ -1806,7 +1812,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
           ).toEqual([before]);
           expect(
             await transaction.execute(
-              'select id from session where user_id = ?',
+              'select id from account where user_id = ?',
               [user.user.id],
             ),
           ).toEqual([]);

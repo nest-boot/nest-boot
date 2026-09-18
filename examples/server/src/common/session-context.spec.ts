@@ -17,9 +17,7 @@ describe('createSessionContext', () => {
           role: 'anonymous',
           variables: {
             'app.user.id': '',
-            'app.user.permissions': '[]',
             'app.workspace.id': workspace,
-            'app.workspace.permissions': '[]',
           },
         });
       });

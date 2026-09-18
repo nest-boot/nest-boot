@@ -79,18 +79,13 @@ describe("MemberService", () => {
           expect(
             RequestContext.get(WorkspaceAbility)?.can("delete", Workspace),
           ).toBe(false);
-          expect(em.setSessionContext).toHaveBeenCalledWith({
-            variables:
-              field === "status"
-                ? {
-                    "app.workspace.id": "",
-                    "app.workspace.permissions": "[]",
-                  }
-                : {
-                    "app.user.permissions": "[]",
-                    "app.workspace.permissions": "[]",
-                  },
-          });
+          if (field === "status") {
+            expect(em.setSessionContext).toHaveBeenCalledWith({
+              variables: { "app.workspace.id": "" },
+            });
+          } else {
+            expect(em.setSessionContext).not.toHaveBeenCalled();
+          }
         },
       );
     },
@@ -194,7 +189,6 @@ describe("MemberService", () => {
       expect(em.setSessionContext).toHaveBeenCalledWith({
         variables: {
           "app.workspace.id": "",
-          "app.workspace.permissions": "[]",
         },
       });
     });
