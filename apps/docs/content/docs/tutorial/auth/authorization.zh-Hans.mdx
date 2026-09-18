@@ -298,7 +298,7 @@ const workspaceAbility = RequestContext.get(WorkspaceAbility);
 个人资料可见性由 Service 的 Ability 检查限制，而不是此 SELECT 策略；自定义权限因此可以
 授予 User 读取能力，无需数据库权限名映射。对外读取不可绕过 Service 授权直接查询 ORM/SQL。
 User 写入及 Session 读取同样由 Service 授权。数据库请求变量不传递应用权限，
-其他 RLS 策略仍保留归属、工作区范围和软删除约束。
+其他 RLS 策略仍保留归属和工作区范围约束。
 
 `userScopePolicy()` 和 `workspaceScopePolicy()` 返回 MikroORM 原生策略定义，所有参数都可省略：
 
@@ -332,15 +332,15 @@ export class Member extends Member {}
 Service 授权。数据库角色、表权限及可信 session 变量仍需单独配置。
 
 Auth 只传递身份变量 `app.user.id` 和 `app.workspace.id`，不向数据库传递应用权限列表。
-Service 负责 Ability、自定义权限与 API Key 权限上限检查；RLS 保留归属、工作区和软删除隔离。
+Service 负责 Ability、自定义权限与 API Key 权限上限检查；RLS 保留归属和工作区隔离。
 authenticated 角色的 User 读写及 Session 读取由 Service 授权，不能通过直接 ORM/SQL
 访问替代 Service 的权限检查。旧身份变量不再支持。
 
-示例 `UserApiKey` 和 `WorkspaceApiKey` 使用两张表，各自只有一个必填归属外键，无需二选一 CHECK 约束。RLS 分别将 `user_id` 与 `app.user.id`、`workspace_id` 与 `app.workspace.id` 比较，即使两类 ID 相同也不会串权。物理删除归属对象时级联删除 Key，软删除不会触发。数据库使用默认表权限；两个管理 Service 排除密钥哈希、禁止修改归属，并保留授权检查。
+示例 `UserApiKey` 和 `WorkspaceApiKey` 使用两张表，各自只有一个必填归属外键，无需二选一 CHECK 约束。RLS 分别将 `user_id` 与 `app.user.id`、`workspace_id` 与 `app.workspace.id` 比较，即使两类 ID 相同也不会串权。删除归属对象时级联删除 Key，工作区采用永久删除。数据库使用默认表权限；两个管理 Service 排除密钥哈希、禁止修改归属，并保留授权检查。
 
 这几个函数不是 Filter 或装饰器，运行时与 CLI 都不需要额外 discovery 钩子。
 修改策略后需要生成并执行迁移；使用策略回调时保持元数据缓存关闭。
-数据库层的软删除限制可组合使用
+自定义业务实体如果需要数据库层的软删除限制，可组合使用
 [`softDeletePolicies()`](/docs/tutorial/mikro-orm#软删除-rls-策略)。
 
 ## 同一请求内的授权变更

@@ -22,37 +22,10 @@ import { Member } from "./member.entity.js";
       roles: ["authenticated", "anonymous"],
     },
     workspaceScopePolicy({ property: "id", command: "update" }),
-    // Allow a scoped soft delete without exposing deleted rows or permitting restoration.
-    {
-      name: "workspace_active_select_policy",
-      type: "restrictive",
-      command: "select",
-      using: () =>
-        "deleted_at is null or (current_setting('app.operation', true) = 'auth.workspace.delete' and id = nullif(current_setting('app.workspace.id', true), '')::bigint)",
-    },
-    {
-      name: "workspace_active_insert_policy",
-      type: "restrictive",
-      command: "insert",
-      check: () => "deleted_at is null",
-    },
-    {
-      name: "workspace_active_update_policy",
-      type: "restrictive",
-      command: "update",
-      using: () => "deleted_at is null",
-      check: () => "true",
-    },
-    {
-      name: "workspace_delete_policy",
-      type: "restrictive",
-      command: "delete",
-      using: () => "false",
-    },
+    workspaceScopePolicy({ property: "id", command: "delete" }),
   ],
 })
 @Index({ properties: ["createdAt"] })
-@Index({ properties: ["deletedAt"] })
 export class Workspace extends BaseEntity {
   /** Primary key (Sonyflake ID, auto-generated). */
   @PrimaryKey({
@@ -82,11 +55,6 @@ export class Workspace extends BaseEntity {
   })
   @Field(() => Date)
   updatedAt: Opt<Date> = new Date();
-
-  /** Soft-deletion timestamp; `null` means the workspace is active. */
-  @Property({ type: t.datetime, nullable: true })
-  @Field(() => Date, { nullable: true })
-  deletedAt?: Date | null = null;
 
   /** Members of this workspace; reads retain the caller's RLS scope. */
   @OneToMany(() => Member, "workspace")

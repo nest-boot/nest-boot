@@ -30,7 +30,6 @@ export const authServiceProviders: Provider[] = [
         (manager) => new WorkspaceService(manager, options, access),
         {
           createWorkspace: "authentication",
-          deleteWorkspace: "workspace-delete",
         },
       ),
   },
@@ -104,7 +103,6 @@ export const authServiceProviders: Provider[] = [
         (manager) => new ApiKeyAuthenticationService(manager),
         {
           validate: "authentication",
-          recordUsage: "authentication",
         },
       ),
   },

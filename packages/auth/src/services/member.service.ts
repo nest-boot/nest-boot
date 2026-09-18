@@ -165,7 +165,7 @@ export class MemberService {
     const roles = this.normalizeGrantedRoles(input.roles ?? [this.defaultRole]);
     return await this.em.transactional(
       async (em) => {
-        await this.lockActiveWorkspace(em, workspace);
+        await this.lockWorkspace(em, workspace);
         const existing = await em.findOne(
           Member,
           { user, workspace } as FilterQuery<Member>,
@@ -482,7 +482,7 @@ export class MemberService {
     );
   }
 
-  private async lockActiveWorkspace(
+  private async lockWorkspace(
     em: EntityManager,
     workspace: Workspace,
   ): Promise<void> {
@@ -492,9 +492,6 @@ export class MemberService {
       populate: [],
       failHandler: () => new NotFoundException("Workspace not found"),
     });
-    if (workspace.deletedAt) {
-      throw new BadRequestException("Workspace has been deleted");
-    }
   }
 
   private normalizeRoles(role: string | readonly string[]): string[] {

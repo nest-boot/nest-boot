@@ -135,7 +135,6 @@ export class AuthMiddleware implements NestMiddleware {
     if (!workspaceId) return;
 
     const workspace = await this.em.findOne(Workspace, {
-      deletedAt: null,
       id: workspaceId,
     });
     if (workspace) this.setWorkspace(workspace);

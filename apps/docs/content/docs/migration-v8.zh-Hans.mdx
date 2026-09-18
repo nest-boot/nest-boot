@@ -63,7 +63,7 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
   不会自动迁移大小写。
 - 数据库请求身份变量改为 `app.user.id` 和 `app.workspace.id`。不再向数据库传递
   应用权限列表；Service 负责 Ability 检查与 API Key 权限上限。RLS 保留归属、
-  工作区及软删除隔离，不再检查应用权限名。
+  工作区隔离，不再检查应用权限名。
 - 认证 Session 现在只使用主数据库；请移除 `AuthModuleOptions.secondaryStorage` 配置。
   API Key 默认权限与授予上限可分别通过 `apiKey.defaultPermissions` 和
   `apiKey.allowedPermissions` 配置。
@@ -81,7 +81,7 @@ Nest Boot 版本 8 使用基于 SWC 的 Vitest 替代 Jest。贡献者可以通�
 ### API Key 归属与数据库级联
 
 先执行 `Migration00000000000000_Initial`，再执行 MikroORM 生成的
-`Migration20260918082118`。初始化迁移向 `anonymous` 和 `authenticated`
+`Migration20260918091003`。初始化迁移向 `anonymous` 和 `authenticated`
 授予 schema `USAGE`，并为 `public` 中的表、函数和序列统一配置默认 `ALL` 权限。
 这些默认权限只适用于同一迁移角色以后创建的对象，不会修改现有对象或其他角色创建的对象的权限。
 
@@ -103,6 +103,11 @@ User SELECT 允许 authenticated 角色读取，个人资料访问由 Service �
 User 写入及 Session 读取同样由 Service 授权；数据库请求上下文不再传递应用权限。
 不要绕过 Service 授权暴露直接 User 查询。
 示例基线仅适用于空库；已有数据库需单独编写数据保留迁移，按归属类型拆分旧密钥并填充必填外键。
+
+工作区改为永久删除。移除 `Workspace.deletedAt` 的字段选择、过滤条件和索引；成员、邀请和
+工作区密钥由外键级联删除。DELETE 策略继续限制工作区范围，旧软删除策略和 `app.operation`
+删除上下文已移除。已有数据库迁移前应备份数据，并明确历史软删除工作区的处理方式；
+示例基线只适用于空库，不会转换已有数据。
 
 ## Auth 模块合并
 

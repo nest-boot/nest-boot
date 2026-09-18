@@ -342,7 +342,7 @@ can therefore grant User read actions without a database permission-name mapping
 Do not expose direct User ORM/SQL queries without Service authorization. User
 writes and Session reads likewise rely on Service authorization. Database request
 variables do not carry application permissions; other RLS policies retain their
-ownership, workspace-scope and soft-deletion constraints.
+ownership and workspace-scope constraints.
 
 `userScopePolicy()` and `workspaceScopePolicy()` return native MikroORM policy
 definitions. Every option is optional:
@@ -383,16 +383,16 @@ variables separately.
 Auth stages identity variables `app.user.id` and `app.workspace.id`, but does not
 pass application permissions to the database. Services enforce Ability rules,
 custom permissions and API-key ceilings; RLS handles ownership, workspace
-isolation and soft deletion. Authenticated User reads/writes and Session reads
+isolation. Authenticated User reads/writes and Session reads
 rely on Service authorization. Do not expose direct ORM/SQL access to these
 records as an alternative to Services. Old identity keys are no longer supported.
 
-The example `UserApiKey` and `WorkspaceApiKey` use separate tables, each with one required owner foreign key, so no exclusive-owner CHECK is needed. RLS compares `user_id` with `app.user.id` and `workspace_id` with `app.workspace.id` independently, including when IDs coincide. Physical owner deletion cascades to keys; soft deletion does not. Default privileges authorize table operations; both management services hide credential hashes, prevent ownership changes, and enforce authorization.
+The example `UserApiKey` and `WorkspaceApiKey` use separate tables, each with one required owner foreign key, so no exclusive-owner CHECK is needed. RLS compares `user_id` with `app.user.id` and `workspace_id` with `app.workspace.id` independently, including when IDs coincide. Deleting an owner cascades to its keys; workspace deletion is permanent. Default privileges authorize table operations; both management services hide credential hashes, prevent ownership changes, and enforce authorization.
 
 These are plain factories, not filters or decorators. Neither runtime nor CLI
 needs a custom discovery hook. Generate and apply migrations after changing
 policies; keep metadata caching disabled when using policy callbacks.
-For database-level soft-delete restrictions, compose
+For custom application entities that need soft deletion, compose
 [`softDeletePolicies()`](/docs/tutorial/mikro-orm#soft-delete-rls-policies).
 
 ## Authorization Changes Within a Request

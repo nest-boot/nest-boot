@@ -70,8 +70,8 @@ provide a CommonJS `require` entry.
   must use the same spelling. No automatic case migration is performed.
 - Rename database request identity variables to `app.user.id` and
   `app.workspace.id`. Application permissions are no longer sent to the database;
-  Services enforce Ability checks and API-key ceilings. RLS retains ownership,
-  workspace and soft-delete boundaries, not application permission-name checks.
+  Services enforce Ability checks and API-key ceilings. RLS retains ownership
+  and workspace boundaries, not application permission-name checks.
 - Auth sessions now use the primary database exclusively; remove any
   `AuthModuleOptions.secondaryStorage` configuration. API-key defaults and
   grant ceilings can be configured with `apiKey.defaultPermissions` and
@@ -93,7 +93,7 @@ unit and end-to-end suites with `pnpm test` and `pnpm test:e2e`.
 ### API-key ownership and database cascades
 
 Run `Migration00000000000000_Initial` before the MikroORM-generated
-`Migration20260918082118`. Initialization grants schema `USAGE` and sets default
+`Migration20260918091003`. Initialization grants schema `USAGE` and sets default
 `ALL` privileges on tables, functions, and sequences in `public` for both
 `anonymous` and `authenticated`. These defaults apply only to future objects
 created by the same migration role, not existing objects or objects created by
@@ -123,6 +123,14 @@ request variables no longer carry application permissions. Do not expose direct 
 without Service authorization. The example baseline is for empty databases only;
 existing databases need a separate data-preserving migration to split legacy
 keys by owner type and populate the required foreign keys.
+
+Workspace deletion is now permanent. Remove `Workspace.deletedAt` selections,
+filters and indexes; members, invitations and workspace keys are deleted by
+foreign-key cascades. The workspace DELETE policy retains workspace isolation;
+the old soft-delete policies and `app.operation` deletion context are removed.
+Back up data and decide how to handle legacy soft-deleted workspaces before
+writing a migration for an existing database. The example baseline only targets
+empty databases and does not convert existing data.
 
 ## Unified Auth module
 

@@ -2,7 +2,7 @@
 import { LockMode, UniqueConstraintViolationException } from "@mikro-orm/core";
 import { ConnectionManager } from "@nest-boot/graphql-connection";
 import { RequestContext } from "@nest-boot/request-context";
-import { ForbiddenException } from "@nestjs/common";
+import { ForbiddenException, NotFoundException } from "@nestjs/common";
 
 import { mockRlsContext } from "../../test/mock-rls-context.js";
 import {
@@ -145,7 +145,7 @@ describe("InvitationService", () => {
     expect(accessControlService.assertWorkspaceCan).not.toHaveBeenCalled();
     expect(em.findOne).toHaveBeenCalledWith(
       Workspace,
-      { id: workspace.id, deletedAt: null },
+      { id: workspace.id },
       { refresh: true },
     );
     expect(invitation.inviter.loadOrFail).not.toHaveBeenCalled();
@@ -717,7 +717,6 @@ describe("InvitationService", () => {
         email: "alice@example.com",
         expiresAt: { $gt: expect.any(Date) },
         status: "pending",
-        workspace: { deletedAt: null },
       },
     });
     find.mockRestore();
@@ -871,9 +870,10 @@ describe("InvitationService", () => {
     const user = Object.assign(createTestUser(), {
       email: "alice@example.com",
     });
-    const workspace = Object.assign(createTestWorkspace(), {
-      deletedAt: new Date(),
-    });
+    const workspace = createTestWorkspace();
+    em.refreshOrFail.mockRejectedValue(
+      new NotFoundException("Workspace not found"),
+    );
     const invitation = Object.assign(createTestInvitation(), {
       email: user.email,
       expiresAt: new Date(Date.now() + 60_000),
@@ -884,7 +884,7 @@ describe("InvitationService", () => {
 
     await expect(
       invitationService.acceptInvitation(user, invitation.id),
-    ).rejects.toThrow("Workspace has been deleted");
+    ).rejects.toThrow("Workspace not found");
     expect(em.persist).not.toHaveBeenCalled();
   });
 

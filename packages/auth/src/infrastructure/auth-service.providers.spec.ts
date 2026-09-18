@@ -108,29 +108,20 @@ describe("auth service execution boundaries", () => {
   );
 
   it.each([false, true])(
-    "clears workspace authorization in the parent request only after deletion commits (failure=%s)",
+    "keeps deletion on the request manager and clears authorization only after commit (failure=%s)",
     async (failure) => {
       const { em, accessControlService: access } = createWorkspaceServices();
-      const { em: scoped } = createWorkspaceServices();
       em.getSessionContext.mockReturnValue({
         role: "authenticated",
         variables: { "app.workspace.id": "workspace-1" },
       });
-      scoped.getSessionContext.mockReturnValue({
-        role: "authenticated",
-        variables: {
-          "app.workspace.id": "workspace-1",
-          "app.operation": "auth.workspace.delete",
-        },
-      });
-      em.fork.mockReturnValue(scoped);
       const workspace = createTestWorkspace();
       const member = createTestMember();
       const ability = new WorkspaceAbility([
         { action: "delete", subject: Workspace },
       ]);
       if (failure)
-        scoped.transactional.mockRejectedValueOnce(new Error("Commit failed"));
+        em.transactional.mockRejectedValueOnce(new Error("Commit failed"));
       const provider = authServiceProviders.find(
         (candidate) =>
           typeof candidate === "object" &&
@@ -149,6 +140,7 @@ describe("auth service execution boundaries", () => {
           if (failure) await expect(result).rejects.toThrow("Commit failed");
           else await expect(result).resolves.toBe(workspace);
           expect(RequestContext.get(EntityManager)).toBe(em);
+          expect(em.fork).not.toHaveBeenCalled();
           expect(RequestContext.get(Member)).toBe(failure ? member : null);
           expect(RequestContext.get(Workspace)).toBe(
             failure ? workspace : null,
@@ -280,8 +272,13 @@ describe("auth service execution boundaries", () => {
   it.each([
     {
       type: WorkspaceService,
-      special: ["createWorkspace", "deleteWorkspace"],
-      ordinary: ["findOne", "getWorkspaceConnectionByUser", "updateWorkspace"],
+      special: ["createWorkspace"],
+      ordinary: [
+        "findOne",
+        "getWorkspaceConnectionByUser",
+        "updateWorkspace",
+        "deleteWorkspace",
+      ],
     },
     {
       type: MemberService,

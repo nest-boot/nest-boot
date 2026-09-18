@@ -37,10 +37,12 @@ different workspaces.
 - `updateWorkspace(id, input)`;
 - `deleteWorkspace(id)`.
 
-Creating a workspace also creates its active owner membership. Deletion is a
-soft delete and requires delete ability for the selected workspace.
+Creating a workspace also creates its active owner membership. Deletion is
+permanent and requires delete ability for the selected workspace. Foreign keys
+cascade to its members, invitations and workspace API keys; users and their
+personal credentials remain. Workspaces have no `deletedAt` field or restore operation.
 Deletion, member creation, and invitation creation/acceptance
-lock the workspace row and recheck its active state inside their transaction.
+lock the workspace row and verify that it still exists inside their transaction.
 Requests that selected a workspace before deletion cannot create new children
 after the deletion commits.
 
@@ -87,15 +89,14 @@ The deprecated `removeWorkspace` alias has been removed; use `deleteWorkspace`.
 GraphQL workspace update and member create/update/role/permission mutations return
 dedicated payloads containing only `id`. Query the resource separately to read its
 fields; a successful write does not imply permission to read its relations.
-After `leaveWorkspace` commits, the request's membership, workspace ability and
-workspace RLS scope are cleared. Call it outside externally owned transactions.
+After `leaveWorkspace` or `deleteWorkspace` commits, the request's membership,
+workspace identity, workspace ability and workspace RLS scope are cleared.
+Call these operations outside externally owned transactions.
 
 Apply `Initial → generated schema migrations` before deployment.
-Auth infrastructure establishes a local ORM fork for soft deletion with
-`app.operation = auth.workspace.delete`, preserving the actor/workspace RLS
-context. Its matching policy allows the deletion result only inside that
-operation. Normal requests still cannot read deleted workspaces or restore them.
-Custom applications need equivalent policies. User deletion authorizes the root
+Workspace deletion uses the request manager and a workspace-scoped DELETE policy;
+it needs no special execution context. Deletion cascades are atomic, and the
+request's workspace scope is cleared only after commit. User deletion authorizes the root
 row with Service checks and RLS, then uses foreign-key cascades for atomic
 dependent cleanup. Deleting a user preserves workspaces and other
 users' memberships; a workspace is allowed to remain without an owner.

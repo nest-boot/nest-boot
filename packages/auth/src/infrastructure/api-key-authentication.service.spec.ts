@@ -98,13 +98,8 @@ describe("API-key authentication", () => {
     });
   }
 
-  it("rejects deleted workspaces and active user bans but permits expired bans", async () => {
-    const { service, rows, workspace, user, userKey } = fixture();
-    rows.user = null;
-    workspace.deletedAt = new Date();
-    await expect(service.validate("workspace")).rejects.toThrow(
-      "Invalid API key",
-    );
+  it("rejects active user bans but permits expired bans", async () => {
+    const { service, rows, user, userKey } = fixture();
     rows.workspace = null;
     rows.user = userKey;
     user.banned = true;

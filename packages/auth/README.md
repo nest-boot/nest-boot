@@ -137,7 +137,7 @@ Pass connection arguments such as `{ first: 20, after: cursor }` and read
 The service calls `ConnectionManager` after authorization, using the request
 ORM manager without disabling filters or native RLS. It enforces the selected workspace or
 current recipient regardless of caller filters; recipient lists include only
-unexpired pending invitations in undeleted workspaces.
+unexpired pending invitations. Deleting a workspace cascades to its invitations.
 
 `@nest-boot/graphql-connection` and `@mikro-orm/sql` are now peer dependencies.
 `AuthModule` registers the built-in `InvitationConnection`; no application-owned
@@ -281,16 +281,19 @@ additional read-operation permission, but database SELECT policies still apply.
 
 Apply the example's `Initial → generated schema migrations` before using
 these write paths. Custom applications must supply equivalent grants and RLS
-policies for their own data-isolation requirements. Default table privileges do not protect individual columns; Services exclude credential hashes and reject API-key ownership changes. Auth infrastructure establishes a scoped fork for workspace soft deletion
-with `app.operation = auth.workspace.delete`, preserving the actor and workspace;
-the matching SELECT policy permits the deletion result inside that transaction.
-Normal requests still cannot read deleted workspaces or restore them.
+policies for their own data-isolation requirements. Default table privileges do not protect individual columns; Services exclude credential hashes and reject API-key ownership changes.
+Workspace deletion permanently removes the selected workspace through the request's
+RLS-scoped manager. Foreign keys cascade to members, invitations and workspace API
+keys; users and personal credentials remain. There is no deletion-specific database
+context or restore operation. Successful deletion clears the request's workspace
+identity and ability. Deleted keys no longer retain usage timestamps; durable
+deletion auditing belongs in a separate application audit log.
 
 Database request contexts use `app.user.id` and `app.workspace.id`; the previous
 `app.user` and `app.workspace` keys are no longer consumed by scope policies.
 Application permissions are not passed to the database. Services enforce Ability
 checks, custom permission names and API-key ceilings. RLS retains identity-based
-ownership, workspace isolation and soft-delete restrictions, not permission-name
+ownership and workspace isolation, not permission-name
 checks. Authenticated User reads/writes and Session reads must go through Services;
 direct ORM/SQL access does not enforce those application authorization rules.
 
@@ -450,7 +453,7 @@ without querying relations of a now-hidden workspace. `updateWorkspace`, member
 create/update/role/permission mutations, and invitation create/reject/cancel
 mutations also return dedicated ID-only payloads. Query the affected resource
 separately with the caller's read permissions.
-Clients must remove selections such as `name`, `deletedAt`, or `members` from
+Clients must remove selections such as `name` or `members` from
 these mutation results and regenerate their GraphQL types.
 
 `deleteUser` and `removeMember` likewise return `DeleteUserPayload` and

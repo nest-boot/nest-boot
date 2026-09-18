@@ -167,7 +167,7 @@ export class WorkspaceResolver {
    * Soft-deletes the current workspace.
    *
    * @param id - Current workspace identifier.
-   * @returns Identifier of the soft-deleted workspace.
+   * @returns Identifier of the permanently deleted workspace.
    */
   @Mutation(() => DeleteWorkspacePayload)
   async deleteWorkspace(

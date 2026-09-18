@@ -46,7 +46,6 @@ export class ApiKeyAuthenticationService {
     }
     if (!workspaceKey) throw new UnauthorizedException("Invalid API key");
     const workspace = Reference.unwrapReference(workspaceKey.workspace);
-    if (workspace.deletedAt) throw new UnauthorizedException("Invalid API key");
     return { apiKey: workspaceKey, ownerType: "workspace", workspace };
   }
 

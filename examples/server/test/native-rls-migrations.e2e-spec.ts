@@ -43,7 +43,7 @@ import { createContextualAuthService } from '../../../packages/auth/dist/infrast
 import { UserDeletionService } from '../../../packages/auth/dist/services/user-deletion.service.js';
 import { buildRequestUserAbility } from '../../../packages/auth/dist/utils/build-request-ability.util.js';
 import { Migration00000000000000_Initial } from '../src/database/migrations/Migration00000000000000_Initial.js';
-import { Migration20260918082118 } from '../src/database/migrations/Migration20260918082118.js';
+import { Migration20260918091003 } from '../src/database/migrations/Migration20260918091003.js';
 
 describe('example native RLS migrations with PGlite', () => {
   let orm: MikroORM;
@@ -82,7 +82,7 @@ describe('example native RLS migrations with PGlite', () => {
         migrations: {
           migrationsList: [
             Migration00000000000000_Initial,
-            Migration20260918082118,
+            Migration20260918091003,
           ],
           path: './src/database/migrations',
           pathTs: './src/database/migrations',
@@ -577,7 +577,6 @@ describe('example native RLS migrations with PGlite', () => {
         workspace.id,
         { refresh: true },
       );
-      expect(retainedWorkspace.deletedAt).toBeNull();
       expect(retainedWorkspace.name).toBe('Deletion fixture');
       expect(await admin.count(Member, { workspace })).toBe(0);
     } finally {
@@ -716,9 +715,6 @@ describe('example native RLS migrations with PGlite', () => {
         "select policyname from pg_policies where tablename = 'workspace' order by policyname",
       ),
     ).toEqual([
-      { policyname: 'workspace_active_insert_policy' },
-      { policyname: 'workspace_active_select_policy' },
-      { policyname: 'workspace_active_update_policy' },
       { policyname: 'workspace_delete_policy' },
       { policyname: 'workspace_select_policy' },
       { policyname: 'workspace_update_policy' },
@@ -1067,7 +1063,7 @@ describe('example native RLS migrations with PGlite', () => {
       },
     );
 
-    it('cascades workspace keys on physical deletion but not soft deletion', async () => {
+    it('cascades workspace keys on workspace deletion', async () => {
       const em = orm.em.fork();
       const workspace = em.create(Workspace, { name: 'Cascade workspace' });
       const key = em.create(WorkspaceApiKey, {
@@ -1076,7 +1072,6 @@ describe('example native RLS migrations with PGlite', () => {
         key: randomUUID(),
       });
       await em.persist(key).flush();
-      await em.nativeUpdate(Workspace, workspace.id, { deletedAt: new Date() });
       expect(await em.count(WorkspaceApiKey, key.id)).toBe(1);
       await em.nativeDelete(Workspace, workspace.id, { filters: false });
       expect(await em.count(WorkspaceApiKey, key.id)).toBe(0);
@@ -1236,7 +1231,6 @@ describe('example native RLS migrations with PGlite', () => {
         (manager) => new WorkspaceService(manager, options, access),
         {
           createWorkspace: 'authentication',
-          deleteWorkspace: 'workspace-delete',
         },
       );
     const invitationServiceFor = (em: EntityManager) =>
@@ -1460,13 +1454,11 @@ describe('example native RLS migrations with PGlite', () => {
       await expect(
         em.insert(Workspace, { name: 'Direct insert is denied' }),
       ).rejects.toThrow(/row.level security/i);
-      // Check the SQL path without RETURNING too: SELECT policies do not
-      // necessarily apply to INSERT; the restrictive-only INSERT policy must deny it.
+      // Check SQL without RETURNING too: no request-role INSERT policy exists.
       await expect(
-        em.execute(
-          'insert into workspace (name, deleted_at) values (?, now())',
-          ['Direct deleted insert is denied'],
-        ),
+        em.execute('insert into workspace (name) values (?)', [
+          'Direct insert without returning is denied',
+        ]),
       ).rejects.toThrow(/row.level security/i);
     });
 
@@ -1520,11 +1512,8 @@ describe('example native RLS migrations with PGlite', () => {
         if (identity === 'anonymous')
           em.setSessionContext({ role: 'anonymous' });
         if (scope === 'deleted') {
-          // Simulate deletion after authentication. Child RLS only checks the
-          // staged identity/workspace, not the parent's soft-delete timestamp.
-          await admin.nativeUpdate(Workspace, targetWorkspace.id, {
-            deletedAt: new Date(),
-          });
+          // Simulate deletion after authentication; foreign keys remove all children.
+          await admin.nativeDelete(Workspace, targetWorkspace.id);
         }
         const targetId =
           table === 'member' ? targetMember.id : targetInvitation.id;
@@ -1567,6 +1556,13 @@ describe('example native RLS migrations with PGlite', () => {
           return;
         }
 
+        if (scope === 'deleted') {
+          expect(await read()).toEqual([]);
+          expect(await update()).toEqual([]);
+          expect(await remove()).toEqual([]);
+          await expect(insert()).rejects.toThrow(/foreign key/i);
+          return;
+        }
         const canWrite = scope !== 'foreign';
         const canRead =
           canWrite ||
@@ -1583,7 +1579,6 @@ describe('example native RLS migrations with PGlite', () => {
       const admin = orm.em.fork();
       const workspace = admin.create(Workspace, {
         name: 'Deleted before authentication',
-        deletedAt: new Date(),
       });
       const member = admin.create(Member, {
         workspace,
@@ -1591,6 +1586,7 @@ describe('example native RLS migrations with PGlite', () => {
         name: 'Member profile',
       });
       await admin.persist([workspace, member]).flush();
+      await admin.nativeDelete(Workspace, workspace.id);
       const em = scoped(workspace.id);
       em.setSessionContext({ role: 'anonymous' });
       const middleware = new AuthMiddleware(
@@ -1625,9 +1621,9 @@ describe('example native RLS migrations with PGlite', () => {
       });
     });
 
-    it('soft-deletes through the authorized service while preserving workspace-table restrictions', async () => {
+    it('permanently deletes through the authorized service with scoped RLS and foreign-key cascades', async () => {
       const admin = orm.em.fork();
-      const workspace = admin.create(Workspace, { name: 'Soft deletion' });
+      const workspace = admin.create(Workspace, { name: 'Permanent deletion' });
       const owner = admin.create(Member, {
         workspace,
         user,
@@ -1637,22 +1633,23 @@ describe('example native RLS migrations with PGlite', () => {
       const invitation = admin.create(Invitation, {
         workspace,
         inviter: user,
-        email: 'soft-delete@example.test',
+        email: 'permanent-delete@example.test',
         expiresAt: new Date(Date.now() + 60_000),
       });
       await admin.persist([workspace, owner, invitation]).flush();
       const em = scoped(workspace.id);
       const result = await workspaceServiceFor(em).deleteWorkspace(workspace);
-      expect(result.deletedAt).toBeInstanceOf(Date);
+      expect(result.id).toBe(workspace.id);
+      expect(await admin.count(Workspace, workspace.id)).toBe(0);
+      expect(await admin.count(Member, owner.id)).toBe(0);
+      expect(await admin.count(User, user.id)).toBe(1);
       expect(
         await scoped(workspace.id).findOne(Workspace, workspace.id),
       ).toBeNull();
       expect(
         await em.nativeUpdate(Workspace, workspace.id, { name: 'Denied' }),
       ).toBe(0);
-      expect(
-        (await orm.em.fork().findOneOrFail(Invitation, invitation.id)).status,
-      ).toBe('canceled');
+      expect(await admin.count(Invitation, invitation.id)).toBe(0);
     });
   });
 

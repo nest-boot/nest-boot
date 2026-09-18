@@ -2,7 +2,7 @@
 import { LockMode } from "@mikro-orm/core";
 import { ConnectionManager } from "@nest-boot/graphql-connection";
 import { RequestContext } from "@nest-boot/request-context";
-import { ForbiddenException } from "@nestjs/common";
+import { ForbiddenException, NotFoundException } from "@nestjs/common";
 
 import { mockRlsContext } from "../../test/mock-rls-context.js";
 import {
@@ -15,7 +15,6 @@ import {
 import { API_KEY } from "../auth.constants.js";
 import { MemberConnection } from "../connections/member.connection-definition.js";
 import { WorkspaceConnection } from "../connections/workspace.connection-definition.js";
-import { Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
@@ -36,7 +35,7 @@ describe("WorkspaceService and cross-domain coordination", () => {
     ).resolves.toBe(workspace);
     expect(em.findOne).toHaveBeenCalledWith(
       Workspace,
-      { id: workspace.id, deletedAt: null },
+      { id: workspace.id },
       { refresh: true },
     );
     expect(accessControlService.assertWorkspaceCan).toHaveBeenNthCalledWith(
@@ -110,7 +109,7 @@ describe("WorkspaceService and cross-domain coordination", () => {
         user: user.id,
       });
       expect(find).toHaveBeenLastCalledWith(WorkspaceConnection, args, {
-        where: { id: { $in: subquery }, deletedAt: null },
+        where: { id: { $in: subquery } },
       });
       await expect(
         memberService.getMemberConnectionByWorkspace(workspace, args),
@@ -204,8 +203,8 @@ describe("WorkspaceService and cross-domain coordination", () => {
       const user = Object.assign(createTestUser(), {
         email: "alice@example.com",
       });
-      em.refreshOrFail.mockImplementation((entity) =>
-        Promise.resolve(Object.assign(entity, { deletedAt: new Date() })),
+      em.refreshOrFail.mockRejectedValue(
+        new NotFoundException("Workspace not found"),
       );
       const operations = {
         member: () => memberService.addMember(workspace, user),
@@ -216,7 +215,7 @@ describe("WorkspaceService and cross-domain coordination", () => {
         delete: () => workspaceService.deleteWorkspace(workspace),
       };
       await expect(operations[operation]()).rejects.toThrow(
-        "Workspace has been deleted",
+        "Workspace not found",
       );
       expect(em.refreshOrFail).toHaveBeenCalledWith(
         workspace,
@@ -417,7 +416,7 @@ describe("WorkspaceService and cross-domain coordination", () => {
       workspaceService.deleteWorkspace(createTestWorkspace()),
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(em.refreshOrFail).toHaveBeenCalledOnce();
-    expect(em.nativeUpdate).not.toHaveBeenCalled();
+    expect(em.nativeDelete).not.toHaveBeenCalled();
   });
 
   it("preserves request RLS throughout workspace deletion", async () => {
@@ -427,7 +426,7 @@ describe("WorkspaceService and cross-domain coordination", () => {
       const sessionContext = mockRlsContext(em);
       RequestContext.set(Workspace, workspace);
       RequestContext.set(Member, createTestMember());
-      em.nativeUpdate.mockImplementation(() => {
+      em.nativeDelete.mockImplementation(() => {
         expect(em.setSessionContext).not.toHaveBeenCalled();
         expect(em.getSessionContext()).toEqual(sessionContext);
         return Promise.resolve(1);
@@ -443,19 +442,12 @@ describe("WorkspaceService and cross-domain coordination", () => {
         },
       });
       expect(em.fork).not.toHaveBeenCalled();
-      expect(em.nativeUpdate).toHaveBeenCalledWith(
-        Workspace,
-        { id: workspace.id, deletedAt: null },
-        { deletedAt: expect.any(Date) },
-      );
+      expect(em.nativeDelete).toHaveBeenCalledExactlyOnceWith(Workspace, {
+        id: workspace.id,
+      });
     });
 
-    expect(workspace.deletedAt).toBeInstanceOf(Date);
-    expect(em.nativeUpdate).toHaveBeenCalledWith(
-      Invitation,
-      { status: "pending", workspace },
-      { status: "canceled" },
-    );
+    expect(em.nativeUpdate).not.toHaveBeenCalled();
   });
 
   it("rejects deletion in an outer transaction and leaves the scope unchanged after a failed commit", async () => {
@@ -476,7 +468,6 @@ describe("WorkspaceService and cross-domain coordination", () => {
         "Commit failed",
       );
       expect(RequestContext.get(Workspace)).toBe(workspace);
-      expect(workspace.deletedAt).toBeNull();
       expect(em.setSessionContext).not.toHaveBeenCalled();
     });
   });

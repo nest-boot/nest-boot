@@ -2,7 +2,7 @@
   "deleteWorkspace": {
     "confirmHint": "请输入 {{name}} 以确认。",
     "confirmLabel": "工作空间名称",
-    "description": "您确定要删除工作空间 {{name}} 吗？此操作无法撤销，将永久删除工作空间及其所有相关数据。",
+    "description": "确定永久删除工作空间 {{name}} 吗？成员关系、邀请和工作区 API Key 将一并删除，无法恢复。用户账号会保留。",
     "title": "删除工作空间"
   },
   "invite": {
@@ -39,7 +39,7 @@
   "settings": {
     "dangerZone": {
       "deleteButton": "删除工作空间",
-      "description": "一旦删除工作空间，将无法恢复，这将永久删除工作空间及其所有相关数据。",
+      "description": "永久删除工作空间及其成员关系、邀请和工作区 API Key，无法恢复。用户账号会保留。",
       "title": "危险区域"
     },
     "description": "更新您的工作空间名称和其他设置。",

@@ -803,7 +803,6 @@ describe("AuthMiddleware", () => {
     });
 
     expect(findOne).toHaveBeenCalledWith(WorkspaceEntity, {
-      deletedAt: null,
       id: "workspace-1",
     });
   });

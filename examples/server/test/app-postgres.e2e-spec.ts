@@ -1037,12 +1037,11 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         });
       }
       const [retained] = await connection.execute(
-        'select name, deleted_at from workspace where id = ?',
+        'select name from workspace where id = ?',
         [workspace.id],
       );
       expect(retained).toEqual({
         name: 'Deletion Workspace',
-        deleted_at: null,
       });
       expect(
         await connection.execute(
@@ -1937,10 +1936,10 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         );
         expect(
           await migrationOrm.em.execute(
-            'select deleted_at from workspace where id = ?',
+            'select id from workspace where id = ?',
             [workspace.id],
           ),
-        ).toEqual([{ deleted_at: null }]);
+        ).toEqual([{ id: workspace.id }]);
         const table = scope === 'user' ? 'user_api_key' : 'workspace_api_key';
         const rows = await migrationOrm.em.execute(
           `select enabled, permissions from ${table} where id = ?`,
@@ -2023,11 +2022,10 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       expect(response.body.errors[0].path).toEqual(['deleteWorkspace']);
       expect(response.body.errors[0].extensions.code).toBe('FORBIDDEN');
       expect(
-        await migrationOrm.em.execute(
-          'select deleted_at from workspace where id = ?',
-          [workspace.id],
-        ),
-      ).toEqual([{ deleted_at: null }]);
+        await migrationOrm.em.execute('select id from workspace where id = ?', [
+          workspace.id,
+        ]),
+      ).toEqual([{ id: workspace.id }]);
       const [updated] = await migrationOrm.em.execute(
         'select roles, permissions, status from member where id = ?',
         [member.id],
@@ -2071,7 +2069,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     },
   );
 
-  it('records workspace-key usage after workspace deletion revokes its request scope', async () => {
+  it('allows a workspace key to delete its workspace and cascades the credential', async () => {
     const owner = await createAuthenticatedUser('Deleting key owner');
     const workspace = await createWorkspace(owner, 'Key deletion audit');
     const key = await createWorkspaceApiKey(owner, workspace.id, {
@@ -2079,12 +2077,12 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       permissions: ['WORKSPACE__DELETE'],
     });
     const connection = migrationOrm.em.getConnection();
-    const readUsage = () =>
-      connection.execute<{ last_used_at: Date | null }[]>(
-        'select last_used_at from workspace_api_key where id = ?',
+    const readKey = () =>
+      connection.execute<{ id: string }[]>(
+        'select id from workspace_api_key where id = ?',
         [key.entity.id],
       );
-    expect(await readUsage()).toEqual([{ last_used_at: null }]);
+    expect(await readKey()).toEqual([{ id: key.entity.id }]);
     expectNoGraphQLErrors(
       await gql('mutation($id: ID!) { deleteWorkspace(id: $id) { id } }', {
         bearerToken: key.apiKey,
@@ -2092,16 +2090,14 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         variables: { id: workspace.id },
       }),
     );
-    const [usage] = await readUsage();
-    expect(usage.last_used_at).not.toBeNull();
-    const timestamp = usage.last_used_at;
+    expect(await readKey()).toEqual([]);
     const rejected = await gql('query { currentWorkspace { id } }', {
       bearerToken: key.apiKey,
       workspaceId: workspace.id,
     });
     expect(rejected.status).toBe(401);
     expect(rejected.body.message).toBe('Invalid API key');
-    expect(await readUsage()).toEqual([{ last_used_at: timestamp }]);
+    expect(await readKey()).toEqual([]);
   });
 
   it('clears the parent workspace scope after deletion before the next mutation', async () => {
@@ -2124,12 +2120,12 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       await migrationOrm.em.execute('select id from member where id = ?', [
         member.id,
       ]),
-    ).toEqual([{ id: member.id }]);
-    const [deleted] = await migrationOrm.em.execute(
-      'select deleted_at from workspace where id = ?',
-      [workspace.id],
-    );
-    expect(deleted.deleted_at).not.toBeNull();
+    ).toEqual([]);
+    expect(
+      await migrationOrm.em.execute('select id from workspace where id = ?', [
+        workspace.id,
+      ]),
+    ).toEqual([]);
   });
 
   it('invalidates workspace authorization between serial mutation fields after leaving', async () => {
@@ -2152,11 +2148,10 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       ),
     ).toEqual([]);
     expect(
-      await migrationOrm.em.execute(
-        'select deleted_at from workspace where id = ?',
-        [workspace.id],
-      ),
-    ).toEqual([{ deleted_at: null }]);
+      await migrationOrm.em.execute('select id from workspace where id = ?', [
+        workspace.id,
+      ]),
+    ).toEqual([{ id: workspace.id }]);
     const current = await gql(
       'query { currentUser { id } currentMember { id } currentWorkspace { id } }',
       { cookies: owner.cookies },
@@ -2293,9 +2288,9 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       const [retained] = await migrationOrm.em
         .getConnection()
         .execute<
-          { deleted_at: Date | null }[]
-        >('select deleted_at from workspace where id = ?', [workspace.id]);
-      expect(retained.deleted_at).toBeNull();
+          { id: string }[]
+        >('select id from workspace where id = ?', [workspace.id]);
+      expect(retained.id).toBe(workspace.id);
     },
   );
 
@@ -2354,10 +2349,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       expectNoGraphQLErrors(responses[0]);
       expect(responses[1].body.errors).toEqual([
         expect.objectContaining({
-          message:
-            kind === 'acceptance'
-              ? 'Workspace has been deleted'
-              : 'Workspace not found',
+          message: 'Workspace not found',
         }),
       ]);
       const connection = migrationOrm.em.getConnection();
@@ -2366,13 +2358,13 @@ describe('Server application PostgreSQL integration (e2e)', () => {
           'select user_id from member where workspace_id = ?',
           [workspace.id],
         ),
-      ).toEqual([{ user_id: owner.user.id }]);
+      ).toEqual([]);
       expect(
         await connection.execute(
           'select status from invitation where workspace_id = ?',
           [workspace.id],
         ),
-      ).toEqual(invitation ? [{ status: 'canceled' }] : []);
+      ).toEqual([]);
     },
     20_000,
   );
@@ -2689,7 +2681,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     );
   });
 
-  it('updates and soft-deletes workspaces while enforcing member role rules', async () => {
+  it('updates and permanently deletes workspaces while enforcing member role rules', async () => {
     const owner = await createAuthenticatedUser('Workspace Owner');
     const memberUser = await createAuthenticatedUser('Workspace Member');
     const workspace = await createWorkspace(owner, 'Lifecycle Workspace');

@@ -75,7 +75,7 @@ describe("auth entities", () => {
     expect(user.banned).toBe(false);
     expect(user.banReason).toBeNull();
     expect(user.banExpiresAt).toBeNull();
-    expect(workspace.deletedAt).toBeNull();
+    expect(workspace).not.toHaveProperty("deletedAt");
     expect(invitation.status).toBe("pending");
     expect(member.permissions).toEqual([]);
     expect(member.roles).toEqual(["member"]);

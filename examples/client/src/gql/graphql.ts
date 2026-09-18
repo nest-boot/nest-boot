@@ -1174,7 +1174,6 @@ export type Workspace = {
   apiKey?: Maybe<WorkspaceApiKey>;
   apiKeys: WorkspaceApiKeyConnection;
   createdAt: Scalars["DateTime"]["output"];
-  deletedAt?: Maybe<Scalars["DateTime"]["output"]>;
   id: Scalars["ID"]["output"];
   invitations: InvitationConnection;
   members: MemberConnection;

@@ -82,7 +82,7 @@ export class InvitationService {
     try {
       transactionResult = await this.em.transactional(
         async (em) => {
-          await this.lockActiveWorkspace(em, workspace);
+          await this.lockWorkspace(em, workspace);
           const now = new Date();
           const userId = await this.getUserIdForInvitation(
             workspace,
@@ -256,7 +256,7 @@ export class InvitationService {
     const current = await this.getInvitationForRelation(invitation);
     const workspace = await this.em.findOne(
       Workspace,
-      { id: current.workspace.id, deletedAt: null } as FilterQuery<Workspace>,
+      { id: current.workspace.id } as FilterQuery<Workspace>,
       { refresh: true },
     );
     if (!workspace)
@@ -349,7 +349,6 @@ export class InvitationService {
         email: user.email.toLowerCase(),
         expiresAt: { $gt: now },
         status: "pending",
-        workspace: { deletedAt: null },
       } as FilterQuery<Invitation>,
     });
   }
@@ -381,7 +380,7 @@ export class InvitationService {
         // Refresh the invitation only afterwards so direct addition and deletion
         // cannot race acceptance or acquire these locks in the opposite order.
         const workspace = this.unwrapInvitationWorkspace(invitation);
-        await this.lockActiveWorkspace(em, workspace);
+        await this.lockWorkspace(em, workspace);
         await em.refreshOrFail(invitation, {
           filters: false,
           lockMode: LockMode.PESSIMISTIC_WRITE,
@@ -494,7 +493,7 @@ export class InvitationService {
     return entity;
   }
 
-  private async lockActiveWorkspace(
+  private async lockWorkspace(
     em: EntityManager,
     workspace: Workspace,
   ): Promise<void> {
@@ -504,9 +503,6 @@ export class InvitationService {
       populate: [],
       failHandler: () => new NotFoundException("Workspace not found"),
     });
-    if (workspace.deletedAt) {
-      throw new BadRequestException("Workspace has been deleted");
-    }
   }
 
   private normalizeRoles(role: string | readonly string[]): string[] {

@@ -1,7 +1,7 @@
 import { Migration } from '@mikro-orm/migrations';
 
-export class Migration20260918082118 extends Migration {
-  override name = 'Migration20260918082118';
+export class Migration20260918091003 extends Migration {
+  override name = 'Migration20260918091003';
 
   override up(): void | Promise<void> {
     this.addSql(
@@ -61,10 +61,7 @@ export class Migration20260918082118 extends Migration {
     );
 
     this.addSql(
-      `create table "workspace" ("id" bigserial primary key, "name" varchar(255) not null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now(), "deleted_at" timestamptz null);`,
-    );
-    this.addSql(
-      `create index "workspace_deleted_at_index" on "workspace" ("deleted_at");`,
+      `create table "workspace" ("id" bigserial primary key, "name" varchar(255) not null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now());`,
     );
     this.addSql(
       `create index "workspace_created_at_index" on "workspace" ("created_at");`,
@@ -173,16 +170,7 @@ export class Migration20260918082118 extends Migration {
       `create policy "workspace_update_policy" on "workspace" for update to "authenticated" using ("id" = nullif(current_setting('app.workspace.id', true), '')::bigint) with check ("id" = nullif(current_setting('app.workspace.id', true), '')::bigint);`,
     );
     this.addSql(
-      `create policy "workspace_active_select_policy" on "workspace" as restrictive for select using (deleted_at is null or (current_setting('app.operation', true) = 'auth.workspace.delete' and id = nullif(current_setting('app.workspace.id', true), '')::bigint));`,
-    );
-    this.addSql(
-      `create policy "workspace_active_insert_policy" on "workspace" as restrictive for insert with check (deleted_at is null);`,
-    );
-    this.addSql(
-      `create policy "workspace_active_update_policy" on "workspace" as restrictive for update using (deleted_at is null) with check (true);`,
-    );
-    this.addSql(
-      `create policy "workspace_delete_policy" on "workspace" as restrictive for delete using (false);`,
+      `create policy "workspace_delete_policy" on "workspace" for delete to "authenticated" using ("id" = nullif(current_setting('app.workspace.id', true), '')::bigint);`,
     );
 
     this.addSql(

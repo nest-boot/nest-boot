@@ -12,7 +12,6 @@ export function createTestWorkspace(): Workspace {
   return Object.assign(new Workspace(), {
     id: "workspace-1",
     name: "Acme",
-    deletedAt: null,
   });
 }
 
@@ -57,6 +56,7 @@ export function createWorkspaceServices(
     flush: vi.fn(),
     lock: vi.fn(),
     nativeUpdate: vi.fn(),
+    nativeDelete: vi.fn(),
     persist: vi.fn(),
     refreshOrFail: vi.fn((entity) => Promise.resolve(entity)),
     remove: vi.fn(),
@@ -65,6 +65,7 @@ export function createWorkspaceServices(
   em.persist.mockReturnValue(em);
   em.remove.mockReturnValue(em);
   em.nativeUpdate.mockResolvedValue(1);
+  em.nativeDelete.mockResolvedValue(1);
   em.transactional.mockImplementation(async (callback) => await callback(em));
 
   const options = {

@@ -54,7 +54,7 @@ describe("auth entity policies and uniqueness", () => {
     ]);
   });
 
-  it("uses restrictive row-level security policies for soft deletion", () => {
+  it("scopes workspace updates and permanent deletion to the selected workspace", () => {
     expect(
       Object.values(MetadataStorage.getMetadata()).find(
         (meta) => meta.class === Workspace,
@@ -62,24 +62,14 @@ describe("auth entity policies and uniqueness", () => {
     ).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          type: "restrictive",
-          command: "select",
-          using: expect.any(Function),
-        }),
-        expect.objectContaining({
-          type: "restrictive",
-          command: "insert",
-          check: expect.any(Function),
-        }),
-        expect.objectContaining({
-          type: "restrictive",
           command: "update",
+          roles: ["authenticated"],
           using: expect.any(Function),
           check: expect.any(Function),
         }),
         expect.objectContaining({
-          type: "restrictive",
           command: "delete",
+          roles: ["authenticated"],
           using: expect.any(Function),
         }),
       ]),

@@ -1729,23 +1729,6 @@
           "enumItems": [],
           "mappedType": "datetime"
         },
-        "deleted_at": {
-          "name": "deleted_at",
-          "type": "timestamptz(6)",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": true,
-          "unique": false,
-          "length": 6,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "datetime"
-        },
         "id": {
           "name": "id",
           "type": "bigint",
@@ -1808,14 +1791,6 @@
           "unique": false
         },
         {
-          "columnNames": ["deleted_at"],
-          "composite": false,
-          "constraint": false,
-          "keyName": "workspace_deleted_at_index",
-          "primary": false,
-          "unique": false
-        },
-        {
           "columnNames": ["id"],
           "composite": false,
           "constraint": true,
@@ -1830,29 +1805,11 @@
       "comment": null,
       "policies": [
         {
-          "name": "workspace_active_insert_policy",
-          "command": "insert",
-          "type": "restrictive",
-          "check": "deleted_at is null"
-        },
-        {
-          "name": "workspace_active_select_policy",
-          "command": "select",
-          "type": "restrictive",
-          "using": "deleted_at is null or (current_setting('app.operation', true) = 'auth.workspace.delete' and id = nullif(current_setting('app.workspace.id', true), '')::bigint)"
-        },
-        {
-          "name": "workspace_active_update_policy",
-          "command": "update",
-          "type": "restrictive",
-          "using": "deleted_at is null",
-          "check": "true"
-        },
-        {
           "name": "workspace_delete_policy",
           "command": "delete",
-          "type": "restrictive",
-          "using": "false"
+          "type": "permissive",
+          "roles": ["authenticated"],
+          "using": "\"id\" = nullif(current_setting('app.workspace.id', true), '')::bigint"
         },
         {
           "name": "workspace_select_policy",

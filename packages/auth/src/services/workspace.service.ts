@@ -22,7 +22,6 @@ import {
 import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { WorkspaceConnection } from "../connections/workspace.connection-definition.js";
-import { Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
@@ -97,7 +96,6 @@ export class WorkspaceService {
     ).find<Workspace>(WorkspaceConnection, args, {
       where: {
         id: { $in: memberships.toRaw() },
-        deletedAt: null,
       } as unknown as FilterQuery<Workspace>,
     });
   }
@@ -147,7 +145,7 @@ export class WorkspaceService {
     this.accessControlService.assertWorkspaceCan(action, Workspace);
     const entity = await this.em.findOne(
       Workspace,
-      { id: workspace, deletedAt: null } as FilterQuery<Workspace>,
+      { id: workspace } as FilterQuery<Workspace>,
       { refresh: true },
     );
     if (!entity) throw new NotFoundException("Workspace not found");
@@ -167,7 +165,7 @@ export class WorkspaceService {
     return workspace;
   }
 
-  /** Soft-deletes a workspace after checking its delete ability. */
+  /** Permanently deletes a workspace and cascades its dependent authentication records. */
   async deleteWorkspace(workspace: Workspace | string): Promise<Workspace> {
     workspace = await this.resolveWorkspaceForAction(workspace, "delete");
     this.accessControlService.assertCurrentWorkspace(workspace);
@@ -178,30 +176,17 @@ export class WorkspaceService {
       );
     }
 
-    const deletedAt = await this.em.transactional(
+    await this.em.transactional(
       async (em) => {
-        await this.lockActiveWorkspace(em, workspace);
+        await this.lockWorkspace(em, workspace);
         this.accessControlService.assertWorkspaceCan("delete", workspace);
-        await em.nativeUpdate(
-          Invitation,
-          {
-            status: "pending",
-            workspace,
-          } as FilterQuery<Invitation>,
-          { status: "canceled" } as never,
-        );
-        const deletedAt = new Date();
-        const count = await em.nativeUpdate(
-          Workspace,
-          { id: workspace.id, deletedAt: null } as FilterQuery<Workspace>,
-          { deletedAt } as never,
-        );
+        const count = await em.nativeDelete(Workspace, {
+          id: workspace.id,
+        } as FilterQuery<Workspace>);
         if (count !== 1) throw new NotFoundException("Workspace not found");
-        return deletedAt;
       },
       { clear: true },
     );
-    workspace.deletedAt = deletedAt;
     clearWorkspaceAuthorization(this.em);
     return workspace;
   }
@@ -220,7 +205,7 @@ export class WorkspaceService {
     } as FilterQuery<Member>);
   }
 
-  private async lockActiveWorkspace(
+  private async lockWorkspace(
     em: EntityManager,
     workspace: Workspace,
   ): Promise<void> {
@@ -230,9 +215,6 @@ export class WorkspaceService {
       populate: [],
       failHandler: () => new NotFoundException("Workspace not found"),
     });
-    if (workspace.deletedAt) {
-      throw new BadRequestException("Workspace has been deleted");
-    }
   }
 
   private get creatorRole(): string {

@@ -157,9 +157,6 @@ describe("runAuthQuery with native RLS", () => {
       async bootstrap() {
         return await this.em.count(AuthRecord);
       }
-      deletionContext() {
-        return Promise.resolve(this.em.getSessionContext());
-      }
     }
     await inRequest(async (em) => {
       const service = createContextualAuthService(
@@ -167,40 +164,23 @@ describe("runAuthQuery with native RLS", () => {
         (manager) => new DomainService(manager),
         {
           bootstrap: "authentication",
-          deletionContext: "workspace-delete",
         },
       );
       expect(await service.read()).toBe(1);
       expect(await service.bootstrap()).toBe(2);
-      expect(await service.deletionContext()).toEqual({
-        ...session,
-        variables: {
-          ...session.variables,
-          "app.operation": "auth.workspace.delete",
-        },
-      });
-      expect(await service.read()).toBe(0);
+      expect(await service.read()).toBe(1);
       expect(RequestContext.get(CoreEntityManager)).toBe(em);
-      expect(em.getSessionContext()).toEqual({
-        ...session,
-        variables: {
-          "app.workspace.id": "",
-        },
-      });
+      expect(em.getSessionContext()).toEqual(session);
       await em.transactional(async (tx) => {
         const transactional = createContextualAuthService(
           tx,
           (manager) => new DomainService(manager),
           {
             bootstrap: "authentication",
-            deletionContext: "workspace-delete",
           },
         );
         await expect(transactional.bootstrap()).rejects.toThrow(
           "active RLS transaction",
-        );
-        await expect(transactional.deletionContext()).rejects.toThrow(
-          "before starting a scoped transaction",
         );
       });
     });
