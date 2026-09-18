@@ -289,6 +289,83 @@ describe("AuthMiddleware", () => {
     },
   );
 
+  it("refreshes the current profile without dropping its API-key permission ceiling", async () => {
+    const user = Object.assign(new TestUser(), {
+      id: "user",
+      name: "New name",
+      permissions: ["user:read", "user:delete"],
+    });
+    const key = Object.assign(new UserApiKey(), { permissions: ["user:read"] });
+    const findOne = vi.fn().mockResolvedValue(user);
+    const { middleware, em } = await createMiddleware(
+      vi.fn(),
+      findOne,
+      vi.fn(),
+      testEntities,
+      {
+        user: {
+          buildAbility: (builder, permissions) => {
+            if (permissions.includes("user:read"))
+              builder.can("read", BaseUser);
+            if (permissions.includes("user:delete"))
+              builder.can("delete", BaseUser);
+            return builder.build();
+          },
+        },
+      },
+    );
+    mockRlsContext(em);
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      RequestContext.set(
+        BaseUser,
+        Object.assign(new TestUser(), { id: user.id, name: "Old name" }),
+      );
+      RequestContext.set(API_KEY, key);
+      await middleware.refreshCurrentUser();
+      expect(findOne).toHaveBeenCalledWith(
+        BaseUser,
+        { id: user.id },
+        { refresh: true },
+      );
+      expect(RequestContext.get(BaseUser)).toBe(user);
+      expect(RequestContext.get(API_KEY)).toBe(key);
+      expect(RequestContext.get(UserAbility)?.can("read", BaseUser)).toBe(true);
+      expect(RequestContext.get(UserAbility)?.can("delete", BaseUser)).toBe(
+        false,
+      );
+      expect(em.setSessionContext).toHaveBeenCalledWith({
+        variables: {
+          "app.user.permissions": '["user:read"]',
+          "app.workspace.permissions": "[]",
+        },
+      });
+      findOne.mockResolvedValueOnce(null);
+      await expect(middleware.refreshCurrentUser()).rejects.toThrow(
+        "no longer available",
+      );
+      expect(RequestContext.get(BaseUser)).toBeNull();
+      expect(RequestContext.get(API_KEY)).toBeNull();
+      expect(em.setSessionContext).toHaveBeenLastCalledWith({
+        role: "anonymous",
+        variables: {
+          "app.user.id": "",
+          "app.user.permissions": "[]",
+          "app.workspace.id": "",
+          "app.workspace.permissions": "[]",
+        },
+      });
+    });
+  });
+
+  it("rejects identity changes inside an existing transaction", async () => {
+    const { middleware, em } = await createMiddleware(vi.fn(), vi.fn());
+    em.isInTransaction.mockReturnValue(true);
+    expect(() => {
+      middleware.assertAuthenticationCanChange();
+    }).toThrow("outside an active transaction");
+    expect(em.setSessionContext).not.toHaveBeenCalled();
+  });
+
   it("replaces stale identity and abilities when adopting a newly issued session", async () => {
     const user = Object.assign(new TestUser(), {
       id: "new-user",

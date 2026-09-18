@@ -302,10 +302,12 @@ export class AuthService {
 
   /** Signs out the session represented by the current request context. */
   async signOut(): Promise<boolean> {
+    this.authMiddleware.assertAuthenticationCanChange();
     const result = await this.auth.api.signOut({
       headers: headers(),
       returnHeaders: true,
     });
+    if (result.response.success) this.authMiddleware.clearAuthentication();
     applyAuthResponseCookies(result.headers);
     return result.response.success;
   }
@@ -340,13 +342,15 @@ export class AuthService {
     return result.status;
   }
 
-  /** Updates the authenticated user's profile and configured custom fields. */
+  /** Updates the authenticated user's profile and refreshes its request identity. */
   async updateCurrentUser(options: UpdateAuthUserOptions): Promise<boolean> {
+    this.authMiddleware.assertAuthenticationCanChange();
     const result = await this.auth.api.updateUser({
       body: options,
       headers: headers(),
       returnHeaders: true,
     });
+    if (result.response.status) await this.authMiddleware.refreshCurrentUser();
     applyAuthResponseCookies(result.headers);
     return result.response.status;
   }

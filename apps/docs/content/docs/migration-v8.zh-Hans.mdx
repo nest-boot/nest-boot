@@ -70,7 +70,7 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
 - 切换 TypeScript 模块解析后，重新生成文件和迁移，确保生成的导入带有有效的
   ESM 扩展名。
 
-服务端示例的历史迁移已替换为按当前实体生成的一份基线迁移。示例应使用全新数据库；
+服务端示例的历史迁移已替换为两步基线：手写基础设施初始化，再执行按当前实体生成的结构迁移。示例应使用全新数据库；
 这份基线不用于升级执行过旧迁移的数据库。重建已有开发数据库前，请先备份需要保留的数据。
 
 ## 仓库测试
@@ -81,7 +81,7 @@ Nest Boot 版本 8 使用基于 SWC 的 Vitest 替代 Jest。贡献者可以通�
 ### API Key 归属与数据库级联
 
 先执行 `Migration00000000000000_Initial`，再执行 MikroORM 生成的
-`Migration20260915035801`。初始化迁移向 `anonymous` 和 `authenticated`
+`Migration20260917173928`。初始化迁移向 `anonymous` 和 `authenticated`
 授予 schema `USAGE`，并为 `public` 中的表、函数和序列统一配置默认 `ALL` 权限。
 这些默认权限只适用于同一迁移角色以后创建的对象，不会修改现有对象或其他角色创建的对象的权限。
 
@@ -95,11 +95,12 @@ RLS 不保护 `TRUNCATE` 或 `REFERENCES`，表策略也不限制序列操作。
 所有业务表必须启用 RLS 并声明策略；`Verification` 明确拒绝普通请求访问。
 凭证字段与可更新属性由 Service 和 GraphQL 控制，数据库不再提供列级保护。
 
-`BaseApiKey.owner` 已移除，改为可空的 `user` / `workspace` 真实外键，
-数据库 CHECK 要求必须且只能填写一个。自定义实体、查询过滤器和测试需同步修改。
+`BaseApiKey.owner` 已移除。`UserApiKey` 与 `WorkspaceApiKey` 使用独立的表，
+各自只有一个必填归属外键（`user` 或 `workspace`），无需二选一 CHECK 约束。
+实体导入、查询过滤器和测试需同步适配两类密钥。
 用户删除由外键级联清理关联记录，不再使用自定义删除函数或触发器；工作区和工作区密钥保留。
 User / Session RLS 读取可信请求上下文权限，不再依赖 SQL 权限函数。
-示例基线仅适用于空库；已有数据库需单独编写数据保留迁移，将旧归属数据转换到新外键后再启用约束。
+示例基线仅适用于空库；已有数据库需单独编写数据保留迁移，按归属类型拆分旧密钥并填充必填外键。
 
 ## Auth 模块合并
 
@@ -107,7 +108,7 @@ User / Session RLS 读取可信请求上下文权限，不再依赖 SQL 权限�
 输入、Payload、Resolver 和连接全部改从 `@nest-boot/auth` 导入。
 
 Auth 内置 `User`、`Account`、`Session`、`Verification`、`Workspace`、
-`Member`、`Invitation` 和 `ApiKey` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
+`Member`、`Invitation`、`UserApiKey` 和 `WorkspaceApiKey` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
 不再提供认证 `Base*` 类或 `AuthModuleOptions.entities` 替换配置。
 
 在运行时和迁移 CLI 的 MikroORM 配置中注册导出的 `entities` 数组；CLI 不会启动 Nest 模块：
@@ -141,5 +142,7 @@ GraphQL `signUp` 现在返回 `SignUpPayload { id, token }`，不再返回
 `acceptInvitation` 返回 `AcceptInvitationPayload { id, memberId, workspaceId }`；
 后续请求选择返回的工作区后再查询成员信息。领域 Service 的返回值与授权检查不变。
 
-`Migration20260915073637` 明确不支持回滚，因为多个成员共用联系邮箱已是合法数据。
-恢复唯一约束需要单独迁移及明确的数据保留方案；`down()` 不会自动删除、清空或改写联系邮箱。
+生成的基线已允许成员共用联系邮箱，成员关系仍按 `(user, workspace)` 唯一；
+不存在单独移除邮箱唯一约束的迁移。回滚结构基线会删除其中的表和数据，
+基础设施初始化迁移的 `down()` 为空。已有数据库若要恢复联系邮箱唯一约束，
+需要单独迁移及明确的数据保留方案。

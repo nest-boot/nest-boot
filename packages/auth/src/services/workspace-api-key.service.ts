@@ -36,6 +36,10 @@ import {
   hashApiKey,
 } from "../utils/api-key-credential.util.js";
 import { normalizeAuthPermissions } from "../utils/auth-role.util.js";
+import {
+  assertCurrentApiKeyCanCommit,
+  refreshCurrentApiKeyAuthorization,
+} from "../utils/current-api-key-authorization.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
 import { DEFAULT_WORKSPACE_PERMISSIONS } from "../workspace.constants.js";
 import { AccessControlService } from "./access-control.service.js";
@@ -165,18 +169,33 @@ export class WorkspaceApiKeyService {
     if (input.expiresAt && input.expiresAt <= new Date()) {
       throw new BadRequestException("API key expiration must be in the future");
     }
+    assertCurrentApiKeyCanCommit(this.em, apiKey);
+    const previous = {
+      name: apiKey.name,
+      enabled: apiKey.enabled,
+      expiresAt: apiKey.expiresAt,
+      permissions: apiKey.permissions,
+    };
     if (input.name !== undefined) apiKey.name = input.name;
     if (input.enabled !== undefined) apiKey.enabled = input.enabled;
     if (input.expiresAt !== undefined) apiKey.expiresAt = input.expiresAt;
     if (permissions !== undefined) {
       apiKey.permissions = permissions;
     }
-    await this.em.persist(apiKey).flush();
+    try {
+      await this.em.persist(apiKey).flush();
+    } catch (error) {
+      Object.assign(apiKey, previous);
+      throw error;
+    }
+    refreshCurrentApiKeyAuthorization(this.em, this.authOptions, apiKey);
     return apiKey;
   }
 
   private async deleteKey(apiKey: WorkspaceApiKey): Promise<WorkspaceApiKey> {
+    assertCurrentApiKeyCanCommit(this.em, apiKey);
     await this.em.remove(apiKey).flush();
+    refreshCurrentApiKeyAuthorization(this.em, this.authOptions, apiKey, true);
     return apiKey;
   }
 

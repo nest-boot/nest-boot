@@ -1,6 +1,7 @@
 import { EntityManager } from "@mikro-orm/core";
 import { cookies, RequestContext } from "@nest-boot/request-context";
 import {
+  BadRequestException,
   Inject,
   Injectable,
   type NestMiddleware,
@@ -20,14 +21,52 @@ import { Workspace } from "./entities/workspace.entity.js";
 import { ApiKeyAuthenticationService } from "./infrastructure/api-key-authentication.service.js";
 import { SessionService } from "./services/session.service.js";
 import type { ApiKey } from "./types/api-key.type.js";
+import { clearRequestAuthentication } from "./utils/clear-request-authentication.util.js";
 import { extractApiKey } from "./utils/extract-api-key.util.js";
 import { getCurrentApiKey } from "./utils/get-current-api-key.util.js";
+import { refreshRequestAuthorization } from "./utils/refresh-request-authorization.util.js";
 import { resolveRequestPermissions } from "./utils/resolve-request-permissions.util.js";
 import { runAuthQuery } from "./utils/run-auth-query.js";
 
 /** Builds the complete authentication context for an incoming request. */
 @Injectable()
 export class AuthMiddleware implements NestMiddleware {
+  /** Requires identity-changing writes to commit before restaging request authorization. */
+  assertAuthenticationCanChange(): void {
+    if (this.em.isInTransaction()) {
+      throw new BadRequestException(
+        "Change request authentication outside an active transaction",
+      );
+    }
+  }
+
+  /** Clears the current credential after a successful sign-out. */
+  clearAuthentication(): void {
+    clearRequestAuthentication(this.em);
+  }
+
+  /** Reloads a profile written by Better Auth without changing its authentication method. */
+  async refreshCurrentUser(): Promise<void> {
+    const current = RequestContext.isActive() ? RequestContext.get(User) : null;
+    if (!current) return;
+    try {
+      const user = await this.em.findOne(
+        User,
+        { id: current.id },
+        { refresh: true },
+      );
+      if (!user)
+        throw new UnauthorizedException(
+          "The current user is no longer available",
+        );
+      RequestContext.set(User, user);
+      refreshRequestAuthorization(this.em, this.options);
+    } catch (error) {
+      clearRequestAuthentication(this.em);
+      throw error;
+    }
+  }
+
   /** Adopts a newly issued session, rebuilding workspace membership and RLS scope. */
   async authenticateSession(token: string): Promise<User> {
     const data = await runAuthQuery(this.em, async (em) => {

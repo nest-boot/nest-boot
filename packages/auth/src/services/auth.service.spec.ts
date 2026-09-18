@@ -55,6 +55,9 @@ async function createService(
     findOneOrFail: vi.fn(),
   };
   const authMiddleware = {
+    assertAuthenticationCanChange: vi.fn(),
+    clearAuthentication: vi.fn(),
+    refreshCurrentUser: vi.fn(),
     authenticateSession: vi.fn(),
     resolveRegisteredUser: vi.fn((id: string) =>
       em.findOneOrFail(User, { id }),
@@ -99,6 +102,44 @@ async function createService(
 }
 
 describe("current user identity", () => {
+  it.each(["signOut", "updateCurrentUser"] as const)(
+    "publishes %s identity changes only after a successful response",
+    async (method) => {
+      const { api, service, authMiddleware } = await createService();
+      const apiMethod = method === "signOut" ? api.signOut : api.updateUser;
+      const publish =
+        method === "signOut"
+          ? authMiddleware.clearAuthentication
+          : authMiddleware.refreshCurrentUser;
+      const invoke = () =>
+        method === "signOut"
+          ? service.signOut()
+          : service.updateCurrentUser({ name: "Updated" });
+      authMiddleware.assertAuthenticationCanChange.mockImplementationOnce(
+        () => {
+          throw new Error("Active transaction");
+        },
+      );
+      await expect(invoke()).rejects.toThrow("Active transaction");
+      expect(apiMethod).not.toHaveBeenCalled();
+      apiMethod.mockRejectedValueOnce(new Error("Write failed"));
+      await expect(invoke()).rejects.toThrow("Write failed");
+      expect(publish).not.toHaveBeenCalled();
+      apiMethod.mockResolvedValueOnce({
+        headers: new Headers(),
+        response: { status: false, success: false },
+      });
+      await expect(invoke()).resolves.toBe(false);
+      expect(publish).not.toHaveBeenCalled();
+      apiMethod.mockResolvedValueOnce({
+        headers: new Headers(),
+        response: { status: true, success: true },
+      });
+      await expect(invoke()).resolves.toBe(true);
+      expect(publish).toHaveBeenCalledOnce();
+    },
+  );
+
   it("adopts impersonation and restored identities before writing cookies", async () => {
     const { service, userService, sessionService, authMiddleware, authGuard } =
       await createService();

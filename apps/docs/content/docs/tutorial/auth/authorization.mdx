@@ -398,6 +398,13 @@ authorization; MikroORM cannot restage session context inside an active transact
 Failed writes leave request authorization unchanged. Updates to other users or
 members do not replace the caller's identity.
 
+The same commit boundary applies when editing the authenticating API key:
+permission changes refresh its abilities and RLS permissions; disabling or deleting
+it clears the entire request identity, without falling back to unrestricted user
+permissions. Successful `signOut()` also clears authentication immediately, while
+`updateCurrentUser()` reloads the persisted profile before subsequent operations.
+Call these methods outside an existing transaction as well.
+
 ## Client Ability Rules
 
 Use `serializeAbilityRules()` when a transport needs to send an already-built

@@ -7,6 +7,7 @@ import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import { it as baseIt, type Mocked } from "vitest";
 
 import { mockRlsContext } from "../../test/mock-rls-context.js";
+import { WorkspaceAbility } from "../abilities/workspace.ability.js";
 import { API_KEY } from "../auth.constants.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { UserApiKeyConnection } from "../connections/user-api-key.connection-definition.js";
@@ -65,7 +66,120 @@ function createTestApiKey(): WorkspaceApiKey {
 }
 
 describe("API-key management services", () => {
+  it("does not revoke a user credential when a workspace key has the same ID", async () => {
+    const { service, em } = createService();
+    const user = createTestUser();
+    const active = Object.assign(new UserApiKey(), {
+      id: "same-id",
+      user: ref(User, user),
+      permissions: ["workspace:update"],
+    });
+    const target = Object.assign(createTestApiKey(), {
+      id: active.id,
+      permissions: ["workspace:update"],
+    });
+    const ability = new WorkspaceAbility();
+    RequestContext.set(User, user);
+    RequestContext.set(API_KEY, active);
+    RequestContext.set(WorkspaceAbility, ability);
+    em.findOne.mockResolvedValue(target);
+    em.isInTransaction.mockReturnValue(true);
+    mockRlsContext(em);
+    await service.updateWorkspaceApiKey(target.id, { enabled: false });
+    expect(RequestContext.get(API_KEY)).toBe(active);
+    expect(RequestContext.get(User)).toBe(user);
+    expect(RequestContext.get(WorkspaceAbility)).toBe(ability);
+    expect(em.setSessionContext).not.toHaveBeenCalled();
+  });
+
   for (const scope of ["user", "workspace"] as const) {
+    for (const operation of ["permissions", "disable", "delete"] as const) {
+      it(`publishes ${scope} credential ${operation} changes only after commit`, async () => {
+        const { service, em } = createService({
+          workspace: {
+            buildAbility: (builder, permissions) => {
+              if (permissions.includes("workspace:update"))
+                builder.can("update", Workspace);
+              return builder.build();
+            },
+          },
+        });
+        const user = createTestUser();
+        const key = Object.assign(
+          scope === "user" ? new UserApiKey() : new WorkspaceApiKey(),
+          {
+            id: "active-key",
+            enabled: true,
+            permissions: ["workspace:update"],
+            user: ref(User, user),
+            workspace: ref(Workspace, createTestWorkspace()),
+          },
+        );
+        if (scope === "user") RequestContext.set(User, user);
+        RequestContext.set(API_KEY, key);
+        const ability = new WorkspaceAbility([
+          { action: "update", subject: Workspace },
+        ]);
+        RequestContext.set(WorkspaceAbility, ability);
+        em.findOne.mockResolvedValue(key);
+        mockRlsContext(em);
+        const update =
+          scope === "user"
+            ? service.updateUserApiKey
+            : service.updateWorkspaceApiKey;
+        const remove =
+          scope === "user"
+            ? service.deleteUserApiKey
+            : service.deleteWorkspaceApiKey;
+        const invoke = () =>
+          operation === "delete"
+            ? remove(key.id)
+            : update(
+                key.id,
+                operation === "disable"
+                  ? { enabled: false }
+                  : { permissions: [] },
+              );
+        em.isInTransaction.mockReturnValueOnce(true);
+        await expect(invoke()).rejects.toThrow("outside an active transaction");
+        expect(em.flush).not.toHaveBeenCalled();
+        em.flush.mockRejectedValueOnce(new Error("Commit failed"));
+        await expect(invoke()).rejects.toThrow("Commit failed");
+        expect(RequestContext.get(API_KEY)).toBe(key);
+        expect(key.enabled).toBe(true);
+        expect(key.permissions).toEqual(["workspace:update"]);
+        expect(RequestContext.get(WorkspaceAbility)).toBe(ability);
+        expect(em.setSessionContext).not.toHaveBeenCalled();
+        await invoke();
+        expect(
+          RequestContext.get(WorkspaceAbility)?.can("update", Workspace),
+        ).toBe(false);
+        if (operation === "permissions") {
+          expect(RequestContext.get(API_KEY)).toBe(key);
+          expect(em.setSessionContext).toHaveBeenCalledWith({
+            variables: {
+              "app.user.permissions": "[]",
+              "app.workspace.permissions": "[]",
+            },
+          });
+        } else {
+          expect(RequestContext.get(API_KEY)).toBeNull();
+          expect(RequestContext.get(User)).toBeNull();
+          expect(RequestContext.get(Member)).toBeNull();
+          expect(RequestContext.get(Workspace)).toBeNull();
+          expect(em.setSessionContext).toHaveBeenCalledWith({
+            role: "anonymous",
+            variables: {
+              "app.user.id": "",
+              "app.user.permissions": "[]",
+              "app.workspace.id": "",
+              "app.workspace.permissions": "[]",
+            },
+          });
+        }
+      });
+    }
+
     for (const action of ["update", "delete"] as const) {
       it(`checks ${scope} ${action} ability against the loaded API key`, async () => {
         const { service, em, accessControlService } = createService();
@@ -1212,6 +1326,7 @@ function createService(
   authorization: Pick<AuthModuleOptions, "apiKey" | "user" | "workspace"> = {},
 ) {
   const em = {
+    setSessionContext: vi.fn(),
     getContext: vi.fn().mockReturnThis(),
     getSessionContext:
       vi.fn<() => import("@mikro-orm/core").SessionContext | undefined>(),

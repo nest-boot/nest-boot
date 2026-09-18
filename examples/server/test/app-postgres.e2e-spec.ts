@@ -1790,6 +1790,100 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     },
   );
 
+  it.each(['user', 'workspace'] as const)(
+    'revokes stale authorization after changing the authenticating %s key',
+    async (scope) => {
+      for (const action of ['permissions', 'disable', 'delete'] as const) {
+        const owner = await createAuthenticatedUser('Key authorization owner');
+        const workspace = await createWorkspace(
+          owner,
+          'Retained key workspace',
+        );
+        const input = {
+          name: 'Active key',
+          permissions: [
+            'API_KEY__UPDATE',
+            'API_KEY__DELETE',
+            'WORKSPACE__DELETE',
+          ],
+        };
+        const key =
+          scope === 'user'
+            ? await createUserApiKey(owner, input)
+            : await createWorkspaceApiKey(owner, workspace.id, input);
+        const suffix = scope === 'user' ? 'UserApiKey' : 'WorkspaceApiKey';
+        const first =
+          action === 'delete'
+            ? `delete${suffix}(id: $keyId)`
+            : `update${suffix}(id: $keyId, input: ${action === 'disable' ? '{ enabled: false }' : '{ permissions: [] }'})`;
+        const response = await gql(
+          `mutation ($keyId: ID!, $id: ID!) { first: ${first} { id } deleteWorkspace(id: $id) { id } }`,
+          {
+            bearerToken: key.apiKey,
+            workspaceId: workspace.id,
+            variables: { keyId: key.entity.id, id: workspace.id },
+          },
+        );
+        expectGraphQLError(response);
+        expect(response.body.errors[0].path).toEqual(['deleteWorkspace']);
+        expect(response.body.errors[0].extensions.code).toBe(
+          action === 'permissions' ? 'FORBIDDEN' : 'UNAUTHORIZED',
+        );
+        expect(
+          await migrationOrm.em.execute(
+            'select deleted_at from workspace where id = ?',
+            [workspace.id],
+          ),
+        ).toEqual([{ deleted_at: null }]);
+        const table = scope === 'user' ? 'user_api_key' : 'workspace_api_key';
+        const rows = await migrationOrm.em.execute(
+          `select enabled, permissions from ${table} where id = ?`,
+          [key.entity.id],
+        );
+        if (action === 'delete') expect(rows).toEqual([]);
+        else if (action === 'disable') expect(rows[0].enabled).toBe(false);
+        else expect(rows[0].permissions).toEqual([]);
+      }
+    },
+  );
+
+  it('clears authentication after signing out before the next mutation', async () => {
+    const owner = await createAuthenticatedUser('Signing out owner');
+    const response = await gql(
+      'mutation { signOut createWorkspace(input: { name: "Must not exist" }) { id } }',
+      { cookies: owner.cookies },
+    );
+    expectGraphQLError(response);
+    expect(response.body.errors[0].path).toEqual(['createWorkspace']);
+    expect(response.body.errors[0].extensions.code).toBe('UNAUTHORIZED');
+    expect(
+      await migrationOrm.em.execute(
+        'select id from session where user_id = ?',
+        [owner.user.id],
+      ),
+    ).toEqual([]);
+    expect(
+      await migrationOrm.em.execute('select id from workspace where name = ?', [
+        'Must not exist',
+      ]),
+    ).toEqual([]);
+  });
+
+  it('uses the refreshed profile in a subsequent workspace creation', async () => {
+    const owner = await createAuthenticatedUser('Original profile');
+    const response = await gql(
+      'mutation { updateCurrentUser(input: { name: "Updated profile" }) createWorkspace(input: { name: "Updated member profile" }) { id } }',
+      { cookies: owner.cookies },
+    );
+    expectNoGraphQLErrors(response);
+    expect(
+      await migrationOrm.em.execute(
+        'select name from member where user_id = ? and workspace_id = ?',
+        [owner.user.id, response.body.data.createWorkspace.id],
+      ),
+    ).toEqual([{ name: 'Updated profile' }]);
+  });
+
   it.each(['roles', 'permissions', 'status'] as const)(
     'refreshes workspace authorization after changing own %s between serial mutations',
     async (field) => {
