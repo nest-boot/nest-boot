@@ -58,6 +58,11 @@ database. If the reset revoked it, the request loses its identity, abilities, an
 database scope before another mutation can run. Unrelated sessions and API-key
 identities are retained.
 
+Sign-in, registration, and impersonation flows reject an active outer transaction
+before issuing a replacement session or cookie. Self-deletion revokes the request
+identity immediately after its database commit, before `afterDelete` runs; a
+failing post-delete callback cannot leave the deleted identity authorized.
+
 ```typescript
 import { AuthModule } from "@nest-boot/auth";
 

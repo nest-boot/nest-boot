@@ -144,6 +144,52 @@ describe("current user identity", () => {
     },
   );
 
+  it.each([
+    "sign-in",
+    "social-sign-in",
+    "sign-up",
+    "impersonate",
+    "stop-impersonating",
+  ] as const)(
+    "rejects an active transaction before %s can issue a session or cookie",
+    async (operation) => {
+      const { service, api, authMiddleware, userService, sessionService } =
+        await createService();
+      authMiddleware.assertAuthenticationCanChange.mockImplementation(() => {
+        throw new Error("Active transaction");
+      });
+      const invoke = () =>
+        operation === "sign-in"
+          ? service.signInEntity({
+              email: "user@example.com",
+              password: "password",
+            })
+          : operation === "social-sign-in"
+            ? service.signInSocialEntity({ provider: "github" })
+            : operation === "sign-up"
+              ? service.signUpPayload({
+                  email: "user@example.com",
+                  name: "User",
+                  password: "password",
+                })
+              : operation === "impersonate"
+                ? service.impersonateUser("other")
+                : service.stopImpersonating();
+      await expect(invoke()).rejects.toThrow("Active transaction");
+      for (const call of [
+        api.signInEmail,
+        api.signInSocial,
+        api.signUpEmail,
+        userService.impersonateUser,
+        userService.stopImpersonating,
+        authMiddleware.authenticateSession,
+        sessionService.setSessionCookie,
+      ]) {
+        expect(call).not.toHaveBeenCalled();
+      }
+    },
+  );
+
   it("clears identity only when deletion completes, not when verification is requested", async () => {
     const { api, service, authMiddleware } = await createService();
     authMiddleware.assertAuthenticationCanChange.mockImplementationOnce(() => {

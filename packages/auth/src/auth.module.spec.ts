@@ -2,7 +2,10 @@ import { MikroORM } from "@mikro-orm/core";
 import { HashService } from "@nest-boot/hash";
 import { Mailer } from "@nest-boot/mailer";
 import { MiddlewareManager } from "@nest-boot/middleware";
-import { RequestContextMiddleware } from "@nest-boot/request-context";
+import {
+  RequestContext,
+  RequestContextMiddleware,
+} from "@nest-boot/request-context";
 import { MODULE_METADATA } from "@nestjs/common/constants";
 import { Test } from "@nestjs/testing";
 
@@ -662,6 +665,46 @@ describe("AuthModule", () => {
     await lifecycle();
     expect(beforeDelete).toHaveBeenCalledWith(user, request);
   });
+
+  it.each(["current", "other", "failure"] as const)(
+    "publishes a committed deletion to the request identity (%s)",
+    async (state) => {
+      const actor = Object.assign(new BaseUser(), { id: "actor" });
+      const deleteUser = vi.fn().mockResolvedValue(actor);
+      if (state === "failure")
+        deleteUser.mockRejectedValue(new Error("Commit failed"));
+      getAuthProvider().useFactory(
+        { entities, secret, user: { deleteUser: { enabled: true } } },
+        {
+          em: {
+            getContext: vi.fn().mockReturnThis(),
+            getSessionContext: vi.fn(),
+          },
+        } as unknown as MikroORM,
+        {} as Mailer,
+        {} as HashService,
+        { deleteUser } as unknown as UserDeletionService,
+      );
+      const hook =
+        mockBetterAuth.mock.calls[0]?.[0].user.deleteUser.beforeDelete;
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          RequestContext.set(BaseUser, actor);
+          const operation = hook(
+            { id: state === "other" ? "other" : actor.id },
+            new Request("https://example.com/delete"),
+          );
+          if (state === "failure")
+            await expect(operation).rejects.toThrow("Commit failed");
+          else await operation;
+          expect(RequestContext.get(BaseUser)).toBe(
+            state === "current" ? null : actor,
+          );
+        },
+      );
+    },
+  );
 
   it("should propagate transactional user deletion failures to Better Auth", async () => {
     const authProvider = getAuthProvider();

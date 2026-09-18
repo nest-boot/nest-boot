@@ -7,6 +7,7 @@ import {
   MiddlewareModule,
 } from "@nest-boot/middleware";
 import {
+  RequestContext,
   RequestContextMiddleware,
   RequestContextModule,
 } from "@nest-boot/request-context";
@@ -34,8 +35,10 @@ import {
 import { AuthHandlerMiddleware } from "./auth-handler.middleware.js";
 import { type AuthModuleOptions } from "./auth-module-options.interface.js";
 import { authEntityMap } from "./entities/auth-entity-map.js";
+import { User } from "./entities/user.entity.js";
 import { AuthEnumRegistry } from "./infrastructure/auth-enum-registry.js";
 import { authServiceProviders } from "./infrastructure/auth-service.providers.js";
+import { RequestIdentity } from "./infrastructure/request-identity.js";
 import { AuthResolver } from "./resolvers/auth.resolver.js";
 import { InvitationResolver } from "./resolvers/invitation.resolver.js";
 import { MemberResolver } from "./resolvers/member.resolver.js";
@@ -229,6 +232,12 @@ import {
             await runAuthQuery(orm.em, () =>
               userDeletionService.deleteUser(userId, beforeDelete),
             );
+            // Publish the committed deletion before Better Auth runs afterDelete.
+            if (
+              RequestContext.isActive() &&
+              RequestContext.get(User)?.id === userId
+            )
+              RequestIdentity.clear(orm.em);
           },
         );
 

@@ -1,6 +1,10 @@
 import { useMutation } from "@apollo/client/react";
 import { useForm } from "@tanstack/react-form";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  useNavigate,
+  useRouter,
+} from "@tanstack/react-router";
 import { t } from "i18next";
 import { toast } from "sonner";
 
@@ -74,6 +78,7 @@ function ScopedSettingsComponent() {
 }
 
 function SettingsComponent() {
+  const router = useRouter();
   const navigate = useNavigate();
 
   const workspace = useCurrentWorkspaceContext();
@@ -112,6 +117,7 @@ function SettingsComponent() {
             },
           },
         });
+        await router.invalidate();
         form.reset({ name: value.name.trim() });
         toast.success("保存成功");
       } catch (error) {

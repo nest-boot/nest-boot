@@ -232,6 +232,167 @@ describe('example native RLS migrations with PGlite', () => {
     },
   );
 
+  it.each(['before', 'after'] as const)(
+    'publishes deletion revocation only after commit when the %s hook fails',
+    async (phase) => {
+      const hookError = new Error(`${phase} deletion hook failed`);
+      const options: AuthModuleOptions = {
+        baseURL: 'http://localhost:4100',
+        secret: 'delete-hook-integration-secret-long-enough',
+        emailAndPassword: {
+          enabled: true,
+          requireEmailVerification: false,
+          password: {
+            hash: (value) => Promise.resolve(`test:${value}`),
+            verify: ({ hash, password }) =>
+              Promise.resolve(hash === `test:${password}`),
+          },
+        },
+        user: {
+          deleteUser: {
+            enabled: true,
+            [phase === 'before' ? 'beforeDelete' : 'afterDelete']: () => {
+              throw hookError;
+            },
+          },
+        },
+      };
+      const admin = orm.em.fork();
+      const em = orm.em.fork({ session: { role: 'anonymous' } });
+      const factory = (
+        Reflect.getMetadata('providers', AuthModule) as FactoryProvider[]
+      ).find((provider) => provider.provide === AUTH_TOKEN);
+      const backend = factory.useFactory(
+        options,
+        { em },
+        { sendMail: vi.fn() },
+        {},
+        new UserDeletionService(admin),
+      ) as {
+        api: {
+          signUpEmail(input: {
+            body: { email: string; name: string; password: string };
+            returnHeaders: true;
+          }): Promise<{
+            headers: Headers;
+            response: { user: { id: string }; token: string };
+          }>;
+        };
+      };
+      const registered = await backend.api.signUpEmail({
+        body: {
+          email: `${randomUUID()}@example.test`,
+          name: 'Deletion actor',
+          password: 'old-password',
+        },
+        returnHeaders: true,
+      });
+      const signup = registered.response;
+      const cookie = registered.headers
+        .getSetCookie()
+        .map((value) => value.split(';')[0])
+        .join('; ');
+      try {
+        const user = await admin.findOneOrFail(User, signup.user.id);
+        const session = await admin.findOneOrFail(Session, {
+          token: signup.token,
+        });
+        em.setSessionContext({
+          role: 'authenticated',
+          variables: { 'app.user.id': user.id },
+        });
+        const access = new AccessControlService(options);
+        const sessions = new SessionService(backend, em, access);
+        const middleware = new AuthMiddleware(
+          options,
+          sessions,
+          {} as never,
+          em,
+        );
+        const service = new AuthService(
+          backend,
+          middleware,
+          {} as never,
+          sessions,
+        );
+        await RequestContext.run(
+          new RequestContext({ type: 'http' }),
+          async () => {
+            RequestContext.set(REQUEST, { headers: { cookie } });
+            RequestIdentity.stage({ user, session });
+            RequestIdentity.prepare(options);
+            await expect(
+              service.deleteCurrentUser({ password: 'old-password' }),
+            ).rejects.toThrow(hookError.message);
+            const deleted = phase === 'after';
+            expect(await admin.count(User, user.id)).toBe(deleted ? 0 : 1);
+            expect(await admin.count(Session, { user: user.id })).toBe(
+              deleted ? 0 : 1,
+            );
+            expect(RequestContext.get(User)).toBe(deleted ? null : user);
+            expect(RequestContext.get(Session)).toBe(deleted ? null : session);
+            expect(access.userCan('create', Workspace)).toBe(!deleted);
+            expect(em.getSessionContext()?.role).toBe(
+              deleted ? 'anonymous' : 'authenticated',
+            );
+            if (deleted) {
+              await expect(
+                new WorkspaceService(em, options, access).createWorkspace(
+                  user,
+                  { name: 'Denied after deletion' },
+                ),
+              ).rejects.toThrow('another user');
+            }
+          },
+        );
+      } finally {
+        await admin.nativeDelete(User, signup.user.id);
+      }
+    },
+  );
+
+  it.each([
+    'sign-in',
+    'social-sign-in',
+    'sign-up',
+    'impersonate',
+    'stop-impersonating',
+  ] as const)(
+    'rejects %s inside a real transaction without an RLS session',
+    async (operation) => {
+      await orm.em.fork().transactional(async (em) => {
+        expect(em.getSessionContext()).toBeUndefined();
+        const middleware = new AuthMiddleware({}, {} as never, {} as never, em);
+        const service = new AuthService(
+          {},
+          middleware,
+          {} as never,
+          {} as never,
+        );
+        const invoke = () =>
+          operation === 'sign-in'
+            ? service.signInEntity({
+                email: 'user@example.test',
+                password: 'password',
+              })
+            : operation === 'social-sign-in'
+              ? service.signInSocialEntity({ provider: 'github' })
+              : operation === 'sign-up'
+                ? service.signUpPayload({
+                    email: 'user@example.test',
+                    name: 'User',
+                    password: 'password',
+                  })
+                : operation === 'impersonate'
+                  ? service.impersonateUser('123')
+                  : service.stopImpersonating();
+        await expect(invoke()).rejects.toThrow(
+          'Change request authentication outside an active transaction',
+        );
+      });
+    },
+  );
+
   it('creates request roles with NOLOGIN and NOINHERIT', async () => {
     expect(
       await orm.em.execute(

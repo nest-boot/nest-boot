@@ -49,6 +49,10 @@ health(): string {
 密码重置成功后，auth 会重新查询数据库中的当前会话。如果重置已撤销该会话，则在后续
 mutation 执行前清除请求身份、Ability 和数据库身份上下文；无关会话及 API Key 身份保留。
 
+登录、注册和身份模拟流程会在签发替代会话或 Cookie 之前拒绝活动中的外层事务。
+删除当前用户在数据库提交后、执行 `afterDelete` 之前立即撤销请求身份，
+后置回调失败不会让已删除的身份继续获得授权。
+
 ```typescript
 import { AuthModule } from "@nest-boot/auth";
 

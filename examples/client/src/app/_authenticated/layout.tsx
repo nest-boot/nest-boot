@@ -95,8 +95,13 @@ function AuthenticatedContent() {
             loading={loading}
             data-testid="stop-impersonating"
             onClick={async () => {
-              await stopImpersonating();
-              window.location.assign("/admin/users");
+              try {
+                await stopImpersonating();
+                window.location.assign("/admin/users");
+              } catch {
+                // A rejected restore may already have revoked the session.
+                window.location.reload();
+              }
             }}
           >
             {t("admin:impersonation.stop")}

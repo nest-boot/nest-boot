@@ -1,6 +1,6 @@
 import { useMutation, useSuspenseQuery } from "@apollo/client/react";
 import { useForm } from "@tanstack/react-form";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { t } from "i18next";
 import { CircleX, MailCheck } from "lucide-react";
@@ -65,6 +65,7 @@ export const Route = createFileRoute("/_authenticated/user/")({
 });
 
 function UserComponent() {
+  const router = useRouter();
   const { data, refetch } = useSuspenseQuery(GET_CURRENT_USER_FROM_USER_ROUTE);
   const [updateUser] = useMutation(UPDATE_USER_FROM_USER_ROUTE);
   const [changeEmail] = useMutation(CHANGE_EMAIL_FROM_USER_ROUTE);
@@ -91,6 +92,7 @@ function UserComponent() {
       try {
         await updateUser({ variables: { input: { name } } });
         await refetch();
+        await router.invalidate();
         form.reset({ name });
         toast.success(t("user:profile.toast.updated"));
       } catch (error) {

@@ -177,6 +177,7 @@ export class AuthService {
 
   /** Starts impersonation and adopts its identity before returning application fields. */
   async impersonateUser(id: string): Promise<User> {
+    this.authMiddleware.assertAuthenticationCanChange();
     const result = await this.userService.impersonateUser(
       this.getCurrentUser(),
       id,
@@ -186,6 +187,7 @@ export class AuthService {
 
   /** Restores the administrator and its abilities/RLS scope in the same request. */
   async stopImpersonating(): Promise<User | null> {
+    this.authMiddleware.assertAuthenticationCanChange();
     const session = RequestContext.isActive()
       ? RequestContext.get(Session)
       : null;
@@ -262,6 +264,7 @@ export class AuthService {
 
   /** Signs up a user with an email address and password. */
   async signUp(options: SignUpOptions): Promise<SignUpResult> {
+    this.authMiddleware.assertAuthenticationCanChange();
     const result = await this.auth.api.signUpEmail({
       body: options,
       headers: headers(),
@@ -273,6 +276,7 @@ export class AuthService {
 
   /** Signs in a user with an email address and password. */
   async signIn(options: SignInOptions): Promise<SignInResult> {
+    this.authMiddleware.assertAuthenticationCanChange();
     const result = await this.auth.api.signInEmail({
       body: options,
       headers: headers(),
@@ -286,6 +290,7 @@ export class AuthService {
   async signInSocial(
     options: SignInSocialOptions,
   ): Promise<SignInSocialResult> {
+    this.authMiddleware.assertAuthenticationCanChange();
     const result = await this.auth.api.signInSocial({
       body: options,
       headers: headers(),
