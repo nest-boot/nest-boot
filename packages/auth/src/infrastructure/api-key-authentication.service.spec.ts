@@ -107,4 +107,24 @@ describe("API-key authentication", () => {
     user.banExpiresAt = new Date(0);
     await expect(service.validate("user")).resolves.toMatchObject({ user });
   });
+
+  it("captures a scoped recorder without updating or flushing the caller's manager", async () => {
+    const { service, em, userKey } = fixture();
+    const scoped = { nativeUpdate: vi.fn().mockResolvedValue(1) };
+    const fork = vi.fn(() => scoped);
+    Object.assign(em, { fork });
+    const record = service.captureUsage(userKey);
+    expect(fork).toHaveBeenCalledExactlyOnceWith({
+      useContext: false,
+      keepTransactionContext: true,
+    });
+    expect(scoped.nativeUpdate).not.toHaveBeenCalled();
+    await expect(record()).resolves.toBe(userKey);
+    expect(scoped.nativeUpdate).toHaveBeenCalledExactlyOnceWith(
+      UserApiKey,
+      { id: userKey.id },
+      { lastUsedAt: expect.any(Date), updatedAt: expect.any(Date) },
+    );
+    expect(em.nativeUpdate).not.toHaveBeenCalled();
+  });
 });

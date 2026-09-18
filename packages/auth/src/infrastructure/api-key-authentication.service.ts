@@ -49,7 +49,17 @@ export class ApiKeyAuthenticationService {
     return { apiKey: workspaceKey, ownerType: "workspace", workspace };
   }
 
-  /** Records successful use in the credential's own table. */
+  /** Captures the authenticating key's RLS scope before a handler can replace it. */
+  captureUsage(apiKey: ApiKey): () => Promise<ApiKey> {
+    // Forking copies the session context without changing the request identity.
+    // An existing transaction remains attached; unrelated pending writes do not.
+    const recorder = new ApiKeyAuthenticationService(
+      this.em.fork({ useContext: false, keepTransactionContext: true }),
+    );
+    return () => recorder.recordUsage(apiKey);
+  }
+
+  /** Records successful use in the credential's own table. Deleted keys remain deleted. */
   async recordUsage(apiKey: ApiKey): Promise<ApiKey> {
     const now = new Date();
     apiKey.lastUsedAt = now;

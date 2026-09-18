@@ -20,14 +20,11 @@ export class ApiKeyUsageInterceptor implements NestInterceptor {
     _context: ExecutionContext,
     next: CallHandler,
   ): Observable<unknown> {
+    const apiKey = getCurrentApiKey();
+    const recordUsage = apiKey ? this.apiKeyService.captureUsage(apiKey) : null;
     return next.handle().pipe(
       mergeMap(async (value: unknown) => {
-        const apiKey = getCurrentApiKey();
-
-        if (apiKey) {
-          await this.apiKeyService.recordUsage(apiKey);
-        }
-
+        if (recordUsage) await recordUsage();
         return value;
       }),
     );

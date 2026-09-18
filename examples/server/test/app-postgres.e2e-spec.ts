@@ -2080,6 +2080,69 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     },
   );
 
+  it.each(['impersonate', 'user-sign-in', 'workspace-sign-in'] as const)(
+    'records the original API key after %s replaces its identity',
+    async (operation) => {
+      const owner = await createAuthenticatedUser('Original key owner');
+      const target = await createAuthenticatedUser('Replacement identity');
+      const connection = migrationOrm.em.getConnection();
+      await connection.execute(
+        `update "user" set roles = array['admin'] where id = ?`,
+        [owner.user.id],
+      );
+      const workspace = await createWorkspace(owner, 'Usage scope');
+      const workspaceKey = operation === 'workspace-sign-in';
+      const key = workspaceKey
+        ? await createWorkspaceApiKey(owner, workspace.id, {
+            name: 'Switch key',
+            permissions: [],
+          })
+        : await createUserApiKey(owner, {
+            name: 'Switch key',
+            permissions: ['USER__IMPERSONATE'],
+          });
+      const table = workspaceKey ? 'workspace_api_key' : 'user_api_key';
+      expect(
+        await connection.execute(
+          `select last_used_at from ${table} where id = ?`,
+          [key.entity.id],
+        ),
+      ).toEqual([{ last_used_at: null }]);
+      const response = await gql(
+        operation === 'impersonate'
+          ? 'mutation($id: ID!) { impersonateUser(id: $id) { id } }'
+          : 'mutation($input: AuthSignInInput!) { signIn(input: $input) { user { id } } }',
+        {
+          bearerToken: key.apiKey,
+          workspaceId: workspaceKey ? workspace.id : undefined,
+          variables:
+            operation === 'impersonate'
+              ? { id: target.user.id }
+              : { input: { email: target.email, password: target.password } },
+        },
+      );
+      expectNoGraphQLErrors(response);
+      expect(
+        operation === 'impersonate'
+          ? response.body.data.impersonateUser.id
+          : response.body.data.signIn.user.id,
+      ).toBe(target.user.id);
+      const [stored] = await connection.execute<
+        { last_used_at: Date | null }[]
+      >(`select last_used_at from ${table} where id = ?`, [key.entity.id]);
+      expect(stored.last_used_at).not.toBeNull();
+      const current = await gql(
+        'query { currentUser { id } currentWorkspace { id } }',
+        { cookies: collectSetCookies(response) },
+      );
+      expectNoGraphQLErrors(current);
+      expect(current.body.data).toEqual({
+        currentUser: { id: target.user.id },
+        currentWorkspace: null,
+      });
+    },
+  );
+
   it('records the last API-key use when its owner bans itself', async () => {
     const user = await createAuthenticatedUser('Self-banning key owner');
     const connection = migrationOrm.em.getConnection();
