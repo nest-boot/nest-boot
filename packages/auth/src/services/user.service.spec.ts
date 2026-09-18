@@ -2,6 +2,7 @@
 import { EntityManager, ref } from "@mikro-orm/core";
 import { ConnectionManager } from "@nest-boot/graphql-connection";
 import { HashService } from "@nest-boot/hash";
+import { RequestContext } from "@nest-boot/request-context";
 import {
   BadRequestException,
   ForbiddenException,
@@ -10,6 +11,7 @@ import {
 import { expectTypeOf, type Mocked } from "vitest";
 
 import { mockRlsContext } from "../../test/mock-rls-context.js";
+import { UserAbility } from "../abilities/user.ability.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { UserConnection } from "../connections/user.connection-definition.js";
 import { Account } from "../entities/account.entity.js";
@@ -21,6 +23,89 @@ import { UserService } from "./user.service.js";
 import { UserDeletionService } from "./user-deletion.service.js";
 
 describe("UserService", () => {
+  it.each(["roles", "permissions"] as const)(
+    "refreshes own %s, abilities and RLS only after persistence succeeds",
+    async (field) => {
+      const { service, em } = createService(true, {
+        permissions: ["user:delete"],
+        roles: { admin: ["user:delete"], user: [] },
+        buildAbility: (builder, permissions) => {
+          if (permissions.includes("user:delete")) builder.can("delete", User);
+          return builder.build();
+        },
+      });
+      const current = Object.assign(new User(), {
+        id: "self",
+        roles: field === "roles" ? ["admin"] : ["user"],
+        permissions: field === "permissions" ? ["user:delete"] : [],
+      });
+      const stored =
+        field === "permissions" ? current : Object.assign(new User(), current);
+      em.findOne.mockResolvedValue(stored);
+      mockRlsContext(em);
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          const ability = new UserAbility([
+            { action: "delete", subject: User },
+          ]);
+          RequestContext.set(User, current);
+          RequestContext.set(UserAbility, ability);
+          const update = () =>
+            field === "roles"
+              ? service.setUserRoles(stored.id, ["user"])
+              : service.setUserPermissions(stored.id, []);
+          em.flush.mockRejectedValueOnce(new Error("Commit failed"));
+          await expect(update()).rejects.toThrow("Commit failed");
+          expect(RequestContext.get(User)).toBe(current);
+          expect(RequestContext.get(UserAbility)).toBe(ability);
+          expect(em.setSessionContext).not.toHaveBeenCalled();
+          expect(stored[field]).toEqual(
+            field === "roles" ? ["admin"] : ["user:delete"],
+          );
+          await update();
+          expect(RequestContext.get(User)).toBe(stored);
+          expect(RequestContext.get(UserAbility)?.can("delete", User)).toBe(
+            false,
+          );
+          expect(em.setSessionContext).toHaveBeenCalledWith({
+            variables: {
+              "app.user.permissions": "[]",
+              "app.workspace.permissions": "[]",
+            },
+          });
+        },
+      );
+    },
+  );
+
+  it.each(["roles", "permissions"] as const)(
+    "rejects own %s changes inside an outer transaction before modifying the identity",
+    async (field) => {
+      const { service, em } = createService();
+      const user = Object.assign(new User(), {
+        id: "self",
+        roles: ["admin"],
+        permissions: ["user:delete"],
+      });
+      em.isInTransaction.mockReturnValue(true);
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          RequestContext.set(User, user);
+          const result =
+            field === "roles"
+              ? service.setUserRoles(user, ["user"])
+              : service.setUserPermissions(user, []);
+          await expect(result).rejects.toThrow("outside an active transaction");
+          expect(user.roles).toEqual(["admin"]);
+          expect(user.permissions).toEqual(["user:delete"]);
+          expect(em.flush).not.toHaveBeenCalled();
+        },
+      );
+    },
+  );
+
   it("does not expose unmapped data in create-user options", () => {
     expectTypeOf<
       Extract<keyof CreateUserOptions, "data">
@@ -771,6 +856,7 @@ function createService(
   emailAndPassword: NonNullable<AuthModuleOptions["emailAndPassword"]> = {},
 ) {
   const em = {
+    setSessionContext: vi.fn(),
     getContext: vi.fn().mockReturnThis(),
     getSessionContext:
       vi.fn<() => import("@mikro-orm/core").SessionContext | undefined>(),

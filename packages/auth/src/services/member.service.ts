@@ -21,7 +21,6 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 
-import { WorkspaceAbility } from "../abilities/workspace.ability.js";
 import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { MemberConnection } from "../connections/member.connection-definition.js";
@@ -41,7 +40,9 @@ import {
   normalizeAuthRoles,
   resolveAuthPermissions,
 } from "../utils/auth-role.util.js";
+import { clearWorkspaceAuthorization } from "../utils/clear-workspace-authorization.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
+import { refreshRequestAuthorization } from "../utils/refresh-request-authorization.util.js";
 import {
   DEFAULT_WORKSPACE_PERMISSIONS,
   DEFAULT_WORKSPACE_ROLE,
@@ -264,6 +265,7 @@ export class MemberService {
     ) {
       throw new BadRequestException("Member name must not be empty");
     }
+    this.assertAuthorizationCanCommit(member);
     const normalizedEmail = input.email?.trim().toLowerCase() ?? null;
     const email =
       input.email === undefined
@@ -271,7 +273,7 @@ export class MemberService {
         : normalizedEmail === ""
           ? null
           : normalizedEmail;
-    return await this.em.transactional(
+    const updated = await this.em.transactional(
       async (em) => {
         const lockedMember = await em.findOne(
           Member,
@@ -295,6 +297,8 @@ export class MemberService {
       },
       { clear: true },
     );
+    this.refreshCurrentMember(updated);
+    return updated;
   }
 
   /** Replaces a workspace member's roles within the caller's permission scope. */
@@ -307,8 +311,9 @@ export class MemberService {
     this.accessControlService.assertCurrentWorkspace(workspace);
     this.accessControlService.assertWorkspaceCan("update", member);
     const roles = this.normalizeGrantedRoles(roleNames);
+    this.assertAuthorizationCanCommit(member);
 
-    return await this.em.transactional(
+    const updated = await this.em.transactional(
       async (em) => {
         const lockedMember = await em.findOne(
           Member,
@@ -326,6 +331,8 @@ export class MemberService {
       },
       { clear: true },
     );
+    this.refreshCurrentMember(updated);
+    return updated;
   }
 
   /** Replaces direct permissions assigned to a workspace member. */
@@ -341,7 +348,8 @@ export class MemberService {
     this.accessControlService.assertCanGrantWorkspacePermissions(
       normalizedPermissions,
     );
-    return await this.em.transactional(
+    this.assertAuthorizationCanCommit(member);
+    const updated = await this.em.transactional(
       async (em) => {
         const lockedMember = await em.findOne(
           Member,
@@ -361,6 +369,33 @@ export class MemberService {
       },
       { clear: true },
     );
+    this.refreshCurrentMember(updated);
+    return updated;
+  }
+
+  private assertAuthorizationCanCommit(member: Member): void {
+    if (this.isCurrentMember(member) && this.em.isInTransaction()) {
+      throw new BadRequestException(
+        "Change your own membership outside an active transaction",
+      );
+    }
+  }
+
+  private refreshCurrentMember(member: Member): void {
+    if (!this.isCurrentMember(member)) return;
+    if (member.status !== "ACTIVE") {
+      clearWorkspaceAuthorization(this.em);
+      return;
+    }
+    RequestContext.set(Member, member);
+    refreshRequestAuthorization(this.em, this.authOptions);
+  }
+
+  private isCurrentMember(member: Member): boolean {
+    const current = RequestContext.isActive()
+      ? RequestContext.get(Member)
+      : null;
+    return !!current && current.id === member.id;
   }
 
   /** Removes a member after checking delete ability; self-removal uses leaveWorkspace. */
@@ -395,19 +430,7 @@ export class MemberService {
         this.accessControlService.assertCurrentMember(lockedMember);
       },
     );
-    if (this.em.getSessionContext()) {
-      this.em.setSessionContext({
-        variables: {
-          "app.workspace.id": "",
-          "app.workspace.permissions": "[]",
-        },
-      });
-    }
-    if (RequestContext.isActive()) {
-      RequestContext.set<Member | null>(Member, null);
-      RequestContext.set<Workspace | null>(Workspace, null);
-      RequestContext.set(WorkspaceAbility, new WorkspaceAbility());
-    }
+    clearWorkspaceAuthorization(this.em);
     return removed;
   }
 

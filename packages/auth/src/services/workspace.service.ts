@@ -28,6 +28,7 @@ import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import type { CreateWorkspaceOptions } from "../interfaces/create-workspace-options.interface.js";
 import type { UpdateWorkspaceOptions } from "../interfaces/update-workspace-options.interface.js";
+import { clearWorkspaceAuthorization } from "../utils/clear-workspace-authorization.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
 import { DEFAULT_WORKSPACE_CREATOR_ROLE } from "../workspace.constants.js";
 import { AccessControlService } from "./access-control.service.js";
@@ -171,8 +172,13 @@ export class WorkspaceService {
     workspace = await this.resolveWorkspaceForAction(workspace, "delete");
     this.accessControlService.assertCurrentWorkspace(workspace);
     this.accessControlService.assertWorkspaceCan("delete", workspace);
+    if (this.em.isInTransaction()) {
+      throw new BadRequestException(
+        "Delete the workspace outside an active transaction",
+      );
+    }
 
-    return await this.em.transactional(
+    const deletedAt = await this.em.transactional(
       async (em) => {
         await this.lockActiveWorkspace(em, workspace);
         this.accessControlService.assertWorkspaceCan("delete", workspace);
@@ -191,11 +197,13 @@ export class WorkspaceService {
           { deletedAt } as never,
         );
         if (count !== 1) throw new NotFoundException("Workspace not found");
-        workspace.deletedAt = deletedAt;
-        return workspace;
+        return deletedAt;
       },
       { clear: true },
     );
+    workspace.deletedAt = deletedAt;
+    clearWorkspaceAuthorization(this.em);
+    return workspace;
   }
 
   /** Finds the active membership linking a user and workspace. */

@@ -3,7 +3,14 @@ import { EntityManager } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import type { FactoryProvider } from "@nestjs/common";
 
+import {
+  createTestMember,
+  createTestWorkspace,
+  createWorkspaceServices,
+} from "../../test/workspace-service.fixture.js";
+import { WorkspaceAbility } from "../abilities/workspace.ability.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
+import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import type { AccessControlService } from "../services/access-control.service.js";
@@ -15,6 +22,68 @@ import { WorkspaceService } from "../services/workspace.service.js";
 import { authServiceProviders } from "./auth-service.providers.js";
 
 describe("auth service execution boundaries", () => {
+  it.each([false, true])(
+    "clears workspace authorization in the parent request only after deletion commits (failure=%s)",
+    async (failure) => {
+      const { em, accessControlService: access } = createWorkspaceServices();
+      const { em: scoped } = createWorkspaceServices();
+      em.getSessionContext.mockReturnValue({
+        role: "authenticated",
+        variables: { "app.workspace.id": "workspace-1" },
+      });
+      scoped.getSessionContext.mockReturnValue({
+        role: "authenticated",
+        variables: {
+          "app.workspace.id": "workspace-1",
+          "app.operation": "auth.workspace.delete",
+        },
+      });
+      em.fork.mockReturnValue(scoped);
+      const workspace = createTestWorkspace();
+      const member = createTestMember();
+      const ability = new WorkspaceAbility([
+        { action: "delete", subject: Workspace },
+      ]);
+      if (failure)
+        scoped.transactional.mockRejectedValueOnce(new Error("Commit failed"));
+      const provider = authServiceProviders.find(
+        (candidate) =>
+          typeof candidate === "object" &&
+          "provide" in candidate &&
+          candidate.provide === WorkspaceService,
+      ) as FactoryProvider<WorkspaceService>;
+      const service = await provider.useFactory(em, {}, access);
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          RequestContext.set(EntityManager, em);
+          RequestContext.set(Member, member);
+          RequestContext.set(Workspace, workspace);
+          RequestContext.set(WorkspaceAbility, ability);
+          const result = service.deleteWorkspace(workspace);
+          if (failure) await expect(result).rejects.toThrow("Commit failed");
+          else await expect(result).resolves.toBe(workspace);
+          expect(RequestContext.get(EntityManager)).toBe(em);
+          expect(RequestContext.get(Member)).toBe(failure ? member : null);
+          expect(RequestContext.get(Workspace)).toBe(
+            failure ? workspace : null,
+          );
+          expect(
+            RequestContext.get(WorkspaceAbility)?.can("delete", Workspace),
+          ).toBe(failure);
+          if (failure) expect(em.setSessionContext).not.toHaveBeenCalled();
+          else
+            expect(em.setSessionContext).toHaveBeenCalledWith({
+              variables: {
+                "app.workspace.id": "",
+                "app.workspace.permissions": "[]",
+              },
+            });
+        },
+      );
+    },
+  );
+
   it.each([false, true])(
     "isolates the read-only invitation identity lookup inside an RLS transaction (failure=%s)",
     async (failure) => {

@@ -335,6 +335,16 @@ Auth 将角色授权与直接权限合并，再按当前 API Key 限制，作为
 数据库层的软删除限制可组合使用
 [`softDeletePolicies()`](/docs/tutorial/mikro-orm#软删除-rls-策略)。
 
+## 同一请求内的授权变更
+
+Service 提交当前用户的角色或权限变更，或当前成员的资料、角色、权限及状态变更后，
+Auth 会刷新请求身份、Ability 和 RLS 权限变量。停用当前成员、退出或删除工作区时，
+会清空工作区作用域；删除操作使用隔离上下文时，也会清理父请求的作用域。
+
+这些自身更新操作、`leaveWorkspace()` 和 `deleteWorkspace()` 必须在已有事务之外调用。
+它们需要先完成自身提交，再更新请求授权；MikroORM 不允许在活动事务中重新设置
+session context。写入失败时不更新请求授权。修改其他用户或成员不会替换调用者身份。
+
 ## 客户端 Ability Rules
 
 传输层需要把已经构建的 Ability 发送给浏览器或其他进程时，可以使用

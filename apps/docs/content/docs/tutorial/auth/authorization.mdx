@@ -384,6 +384,20 @@ policies; keep metadata caching disabled when using policy callbacks.
 For database-level soft-delete restrictions, compose
 [`softDeletePolicies()`](/docs/tutorial/mikro-orm#soft-delete-rls-policies).
 
+## Authorization Changes Within a Request
+
+After a Service commits changes to the current user's roles or permissions, or
+the current member's profile, roles, permissions or status, Auth refreshes the
+request identity, abilities and RLS permission variables. Disabling the current
+member, leaving a workspace or deleting it clears the workspace scope, including
+the parent request when deletion uses an isolated execution context.
+
+Call these self-updates, `leaveWorkspace()` and `deleteWorkspace()` outside an
+existing transaction. They must complete their own commit before updating request
+authorization; MikroORM cannot restage session context inside an active transaction.
+Failed writes leave request authorization unchanged. Updates to other users or
+members do not replace the caller's identity.
+
 ## Client Ability Rules
 
 Use `serializeAbilityRules()` when a transport needs to send an already-built

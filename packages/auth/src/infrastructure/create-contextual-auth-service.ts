@@ -1,6 +1,7 @@
 import { EntityManager } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 
+import { clearWorkspaceAuthorization } from "../utils/clear-workspace-authorization.util.js";
 import { runAuthQuery } from "../utils/run-auth-query.js";
 
 type ExecutionContext =
@@ -95,12 +96,15 @@ export function createContextualAuthService<T extends object>(
           RequestContext.set(EntityManager, scoped);
           return await invoke(scoped);
         };
-        return RequestContext.isActive()
+        const result = RequestContext.isActive()
           ? await RequestContext.child(run)
           : await RequestContext.run(
               new RequestContext({ type: "auth-operation" }),
               run,
             );
+        // The deletion service clears its child scope; also revoke the caller's scope.
+        clearWorkspaceAuthorization(current);
+        return result;
       },
     });
   }

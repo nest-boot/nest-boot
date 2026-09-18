@@ -1790,6 +1790,115 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     },
   );
 
+  it.each(['roles', 'permissions', 'status'] as const)(
+    'refreshes workspace authorization after changing own %s between serial mutations',
+    async (field) => {
+      const owner = await createAuthenticatedUser('Demoting member');
+      const workspace = await createWorkspace(owner, 'Demotion workspace');
+      const [member] = await migrationOrm.em.execute<{ id: string }[]>(
+        'select id from member where user_id = ? and workspace_id = ?',
+        [owner.user.id, workspace.id],
+      );
+      if (field === 'permissions') {
+        await migrationOrm.em.execute(
+          `update member set roles = array['member'], permissions = array['member:update', 'workspace:delete'] where id = ?`,
+          [member.id],
+        );
+      }
+      const first =
+        field === 'roles'
+          ? 'setMemberRoles(id: $memberId, input: { roles: [MEMBER] })'
+          : field === 'permissions'
+            ? 'setMemberPermissions(id: $memberId, input: { permissions: [] })'
+            : 'updateMember(id: $memberId, input: { status: DISABLED })';
+      const response = await gql(
+        `mutation ($memberId: ID!, $id: ID!) { first: ${first} { id } deleteWorkspace(id: $id) { id } }`,
+        {
+          cookies: owner.cookies,
+          workspaceId: workspace.id,
+          variables: { memberId: member.id, id: workspace.id },
+        },
+      );
+      expectGraphQLError(response);
+      expect(response.body.errors[0].path).toEqual(['deleteWorkspace']);
+      expect(response.body.errors[0].extensions.code).toBe('FORBIDDEN');
+      expect(
+        await migrationOrm.em.execute(
+          'select deleted_at from workspace where id = ?',
+          [workspace.id],
+        ),
+      ).toEqual([{ deleted_at: null }]);
+      const [updated] = await migrationOrm.em.execute(
+        'select roles, permissions, status from member where id = ?',
+        [member.id],
+      );
+      expect(updated[field]).toEqual(
+        field === 'roles'
+          ? ['member']
+          : field === 'permissions'
+            ? []
+            : 'DISABLED',
+      );
+    },
+  );
+
+  it.each(['roles', 'permissions'] as const)(
+    'refreshes user authorization after changing own %s between serial mutations',
+    async (field) => {
+      const user = await createAuthenticatedUser('Demoting administrator');
+      await migrationOrm.em.execute(
+        field === 'roles'
+          ? `update "user" set roles = array['admin'] where id = ?`
+          : `update "user" set permissions = array['user:set-role'] where id = ?`,
+        [user.user.id],
+      );
+      const first =
+        field === 'roles'
+          ? 'setUserRoles(id: $id, input: { roles: [USER] })'
+          : 'setUserPermissions(id: $id, input: { permissions: [] })';
+      const response = await gql(
+        `mutation ($id: ID!) { first: ${first} { id } second: setUserPermissions(id: $id, input: { permissions: [] }) { id } }`,
+        { cookies: user.cookies, variables: { id: user.user.id } },
+      );
+      expectGraphQLError(response);
+      expect(response.body.errors[0].path).toEqual(['second']);
+      expect(response.body.errors[0].extensions.code).toBe('FORBIDDEN');
+      const [updated] = await migrationOrm.em.execute(
+        'select roles, permissions from "user" where id = ?',
+        [user.user.id],
+      );
+      expect(updated[field]).toEqual(field === 'roles' ? ['user'] : []);
+    },
+  );
+
+  it('clears the parent workspace scope after deletion before the next mutation', async () => {
+    const owner = await createAuthenticatedUser('Deleting owner');
+    const user = await createAuthenticatedUser('Retained member');
+    const workspace = await createWorkspace(owner, 'Deleted workspace');
+    const member = await addMember(owner, workspace.id, user.email);
+    const response = await gql(
+      'mutation ($id: ID!, $memberId: ID!) { deleteWorkspace(id: $id) { id } removeMember(id: $memberId) { id } }',
+      {
+        cookies: owner.cookies,
+        workspaceId: workspace.id,
+        variables: { id: workspace.id, memberId: member.id },
+      },
+    );
+    expectGraphQLError(response);
+    expect(response.body.errors[0].path).toEqual(['removeMember']);
+    expect(response.body.errors[0].extensions.code).toBe('FORBIDDEN');
+    expect(
+      await migrationOrm.em.execute('select id from member where id = ?', [
+        member.id,
+      ]),
+    ).toEqual([{ id: member.id }]);
+    const [deleted] = await migrationOrm.em.execute(
+      'select deleted_at from workspace where id = ?',
+      [workspace.id],
+    );
+    expect(deleted.deleted_at).not.toBeNull();
+  });
+
   it('invalidates workspace authorization between serial mutation fields after leaving', async () => {
     const owner = await createAuthenticatedUser('Departing owner');
     const workspace = await createWorkspace(owner, 'Retained workspace');

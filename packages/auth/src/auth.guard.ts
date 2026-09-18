@@ -1,4 +1,4 @@
-import { AbilityBuilder, type Subject } from "@casl/ability";
+import type { Subject } from "@casl/ability";
 import { RequestContext } from "@nest-boot/request-context";
 import type { CanActivate, ExecutionContext, Type } from "@nestjs/common";
 import {
@@ -17,8 +17,6 @@ import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
 import { Member } from "./entities/member.entity.js";
 import { Session } from "./entities/session.entity.js";
-import { User } from "./entities/user.entity.js";
-import { Workspace } from "./entities/workspace.entity.js";
 import { WorkspaceApiKey } from "./entities/workspace-api-key.entity.js";
 import type { RouteArgumentMetadataValue } from "./interfaces/route-argument-metadata-value.interface.js";
 import type { UserCanMetadata } from "./interfaces/user-can-metadata.interface.js";
@@ -34,8 +32,11 @@ import {
 import type { ApiKey } from "./types/api-key.type.js";
 import type { CanSubjectFactory } from "./types/can-subject-factory.type.js";
 import type { RouteArgumentMetadata } from "./types/route-argument-metadata.type.js";
+import {
+  buildRequestUserAbility,
+  buildRequestWorkspaceAbility,
+} from "./utils/build-request-ability.util.js";
 import { getCurrentApiKey } from "./utils/get-current-api-key.util.js";
-import { resolveRequestPermissions } from "./utils/resolve-request-permissions.util.js";
 
 /** Guard that enforces authentication and evaluates route permissions. */
 @Injectable()
@@ -208,32 +209,13 @@ export class AuthGuard implements CanActivate {
   }
 
   private buildAndCacheUserAbility(): UserAbility | null {
-    const buildAbility = this.options.user?.buildAbility;
-    const user = RequestContext.get(User);
-    if (!buildAbility || !user) return null;
-
-    const builder = new AbilityBuilder(UserAbility);
-    const permissions = resolveRequestPermissions(this.options).user;
-    const ability = buildAbility(builder, permissions, user);
-
+    const ability = buildRequestUserAbility(this.options);
     RequestContext.set(UserAbility, ability);
     return ability;
   }
 
   private buildAndCacheWorkspaceAbility(): WorkspaceAbility | null {
-    const buildAbility = this.options.workspace?.buildAbility;
-    const workspace = RequestContext.get(Workspace);
-    const member = RequestContext.get(Member);
-    const apiKey = getCurrentApiKey();
-    const workspaceApiKey = apiKey && this.isWorkspaceApiKey(apiKey);
-    if (!buildAbility || !workspace || (!member && !workspaceApiKey)) {
-      return null;
-    }
-
-    const builder = new AbilityBuilder(WorkspaceAbility);
-    const permissions = resolveRequestPermissions(this.options).workspace;
-    const ability = buildAbility(builder, permissions, workspace);
-
+    const ability = buildRequestWorkspaceAbility(this.options);
     RequestContext.set(WorkspaceAbility, ability);
     return ability;
   }

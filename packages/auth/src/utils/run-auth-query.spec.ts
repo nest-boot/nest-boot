@@ -143,9 +143,15 @@ describe("runAuthQuery with native RLS", () => {
           "app.operation": "auth.workspace.delete",
         },
       });
-      expect(await service.read()).toBe(1);
+      expect(await service.read()).toBe(0);
       expect(RequestContext.get(CoreEntityManager)).toBe(em);
-      expect(em.getSessionContext()).toEqual(session);
+      expect(em.getSessionContext()).toEqual({
+        ...session,
+        variables: {
+          "app.workspace.id": "",
+          "app.workspace.permissions": "[]",
+        },
+      });
       await em.transactional(async (tx) => {
         const transactional = createContextualAuthService(
           tx,

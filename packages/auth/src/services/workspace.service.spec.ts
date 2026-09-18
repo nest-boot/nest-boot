@@ -425,10 +425,24 @@ describe("WorkspaceService and cross-domain coordination", () => {
     const workspace = createTestWorkspace();
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       const sessionContext = mockRlsContext(em);
+      RequestContext.set(Workspace, workspace);
+      RequestContext.set(Member, createTestMember());
+      em.nativeUpdate.mockImplementation(() => {
+        expect(em.setSessionContext).not.toHaveBeenCalled();
+        expect(em.getSessionContext()).toEqual(sessionContext);
+        return Promise.resolve(1);
+      });
       await expect(workspaceService.deleteWorkspace(workspace)).resolves.toBe(
         workspace,
       );
-      expect(em.getSessionContext()).toEqual(sessionContext);
+      expect(RequestContext.get(Workspace)).toBeNull();
+      expect(RequestContext.get(Member)).toBeNull();
+      expect(em.setSessionContext).toHaveBeenCalledWith({
+        variables: {
+          "app.workspace.id": "",
+          "app.workspace.permissions": "[]",
+        },
+      });
       expect(em.fork).not.toHaveBeenCalled();
       expect(em.nativeUpdate).toHaveBeenCalledWith(
         Workspace,
@@ -443,6 +457,29 @@ describe("WorkspaceService and cross-domain coordination", () => {
       { status: "pending", workspace },
       { status: "canceled" },
     );
+  });
+
+  it("rejects deletion in an outer transaction and leaves the scope unchanged after a failed commit", async () => {
+    const { em, workspaceService } = createWorkspaceServices();
+    const workspace = createTestWorkspace();
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      RequestContext.set(Workspace, workspace);
+      em.isInTransaction.mockReturnValueOnce(true);
+      await expect(workspaceService.deleteWorkspace(workspace)).rejects.toThrow(
+        "outside an active transaction",
+      );
+      expect(em.transactional).not.toHaveBeenCalled();
+      em.transactional.mockImplementationOnce(async (callback) => {
+        await callback(em);
+        throw new Error("Commit failed");
+      });
+      await expect(workspaceService.deleteWorkspace(workspace)).rejects.toThrow(
+        "Commit failed",
+      );
+      expect(RequestContext.get(Workspace)).toBe(workspace);
+      expect(workspace.deletedAt).toBeNull();
+      expect(em.setSessionContext).not.toHaveBeenCalled();
+    });
   });
 
   it("finds workspaces and memberships through the public lookup APIs", async () => {

@@ -13,6 +13,7 @@ import {
   ConnectionManager,
 } from "@nest-boot/graphql-connection";
 import { HashService } from "@nest-boot/hash";
+import { RequestContext } from "@nest-boot/request-context";
 import {
   BadRequestException,
   ForbiddenException,
@@ -48,6 +49,7 @@ import {
   normalizeAuthRoles,
   resolveAuthPermissions,
 } from "../utils/auth-role.util.js";
+import { refreshRequestAuthorization } from "../utils/refresh-request-authorization.util.js";
 import { AccessControlService } from "./access-control.service.js";
 import { UserDeletionService } from "./user-deletion.service.js";
 const CREDENTIAL_ISSUER = "local:credential";
@@ -164,8 +166,16 @@ export class UserService {
     this.accessControlService.assertUserCan("set-role", user);
     const normalized = this.normalizePermissions(permissions);
     this.accessControlService.assertCanGrantUserPermissions(normalized);
+    this.assertAuthorizationCanCommit(user);
+    const previous = user.permissions;
     user.permissions = normalized;
-    await this.em.persist(user).flush();
+    try {
+      await this.em.persist(user).flush();
+    } catch (error) {
+      user.permissions = previous;
+      throw error;
+    }
+    this.refreshCurrentUser(user);
     return user;
   }
 
@@ -180,9 +190,36 @@ export class UserService {
     this.accessControlService.assertCanGrantUserPermissions(
       resolveAuthPermissions(roles, [], this.roles),
     );
+    this.assertAuthorizationCanCommit(user);
+    const previous = user.roles;
     user.roles = roles;
-    await this.em.persist(user).flush();
+    try {
+      await this.em.persist(user).flush();
+    } catch (error) {
+      user.roles = previous;
+      throw error;
+    }
+    this.refreshCurrentUser(user);
     return user;
+  }
+
+  private isCurrentUser(user: User): boolean {
+    const current = RequestContext.isActive() ? RequestContext.get(User) : null;
+    return !!current && current.id === user.id;
+  }
+
+  private assertAuthorizationCanCommit(user: User): void {
+    if (this.isCurrentUser(user) && this.em.isInTransaction()) {
+      throw new BadRequestException(
+        "Change your own authorization outside an active transaction",
+      );
+    }
+  }
+
+  private refreshCurrentUser(user: User): void {
+    if (!this.isCurrentUser(user)) return;
+    RequestContext.set(User, user);
+    refreshRequestAuthorization(this.em, this.options);
   }
 
   private async resolveUserForAction(

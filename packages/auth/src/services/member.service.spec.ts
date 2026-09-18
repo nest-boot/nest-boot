@@ -21,6 +21,81 @@ import { AccessControlService } from "./access-control.service.js";
 import { MemberService } from "./member.service.js";
 
 describe("MemberService", () => {
+  it.each(["roles", "permissions", "status"] as const)(
+    "publishes own %s only after commit and revokes stale workspace authorization",
+    async (field) => {
+      const { memberService, em } = createWorkspaceServices({
+        permissions: ["workspace:delete"],
+        roles: { owner: ["workspace:delete"], member: [] },
+        buildAbility: (builder, permissions) => {
+          if (permissions.includes("workspace:delete"))
+            builder.can("delete", Workspace);
+          return builder.build();
+        },
+      });
+      const workspace = createTestWorkspace();
+      const current = Object.assign(createTestMember(), { roles: ["owner"] });
+      const locked = Object.assign(createTestMember(), {
+        roles: field === "permissions" ? ["member"] : ["owner"],
+        permissions: field === "permissions" ? ["workspace:delete"] : [],
+      });
+      mockRlsContext(em);
+      em.findOne.mockResolvedValue(locked);
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          const ability = new WorkspaceAbility([
+            { action: "delete", subject: Workspace },
+          ]);
+          RequestContext.set(Member, current);
+          RequestContext.set(Workspace, workspace);
+          RequestContext.set(WorkspaceAbility, ability);
+          const update = () =>
+            field === "roles"
+              ? memberService.setMemberRoles(current, ["member"])
+              : field === "permissions"
+                ? memberService.setMemberPermissions(current, [])
+                : memberService.updateMember(current, { status: "DISABLED" });
+          em.isInTransaction.mockReturnValueOnce(true);
+          await expect(update()).rejects.toThrow(
+            "outside an active transaction",
+          );
+          expect(em.transactional).not.toHaveBeenCalled();
+          em.transactional.mockImplementationOnce(async (callback) => {
+            await callback(em);
+            throw new Error("Commit failed");
+          });
+          await expect(update()).rejects.toThrow("Commit failed");
+          expect(RequestContext.get(Member)).toBe(current);
+          expect(RequestContext.get(WorkspaceAbility)).toBe(ability);
+          expect(em.setSessionContext).not.toHaveBeenCalled();
+          await update();
+          expect(RequestContext.get(Member)).toBe(
+            field === "status" ? null : locked,
+          );
+          expect(RequestContext.get(Workspace)).toBe(
+            field === "status" ? null : workspace,
+          );
+          expect(
+            RequestContext.get(WorkspaceAbility)?.can("delete", Workspace),
+          ).toBe(false);
+          expect(em.setSessionContext).toHaveBeenCalledWith({
+            variables:
+              field === "status"
+                ? {
+                    "app.workspace.id": "",
+                    "app.workspace.permissions": "[]",
+                  }
+                : {
+                    "app.user.permissions": "[]",
+                    "app.workspace.permissions": "[]",
+                  },
+          });
+        },
+      );
+    },
+  );
+
   it("resolves a member ID with write permission and updates only the locked row", async () => {
     const { memberService, em, accessControlService } =
       createWorkspaceServices();
