@@ -1817,6 +1817,66 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     },
   );
 
+  it.each([
+    'delete',
+    'ban',
+    'revoke-one',
+    'revoke-all',
+    'admin-delete',
+    'admin-revoke-one',
+    'admin-revoke-all',
+  ] as const)(
+    'clears the original request identity after self %s',
+    async (action) => {
+      const user = await createAuthenticatedUser('Revoked administrator');
+      const connection = migrationOrm.em.getConnection();
+      await connection.execute(
+        `update "user" set roles = array['admin'] where id = ?`,
+        [user.user.id],
+      );
+      const [session] = await connection.execute<{ id: string }[]>(
+        'select id from session where user_id = ?',
+        [user.user.id],
+      );
+      const operation = {
+        delete: 'deleteCurrentUser { success }',
+        ban: `banUser(id: "${user.user.id}") { id }`,
+        'revoke-one': `revokeCurrentUserSession(id: "${session.id}")`,
+        'revoke-all': 'revokeCurrentUserSessions',
+        'admin-delete': `deleteUser(id: "${user.user.id}") { id }`,
+        'admin-revoke-one': `revokeSession(userId: "${user.user.id}", id: "${session.id}")`,
+        'admin-revoke-all': `revokeUserSessions(userId: "${user.user.id}")`,
+      }[action];
+      const email = uniqueEmail('Must not be created');
+      const response = await gql(
+        `mutation($email: String!) {
+        first: ${operation}
+        second: createUser(input: { name: "Denied", email: $email, password: "long-enough-password" }) { id }
+      }`,
+        { cookies: user.cookies, variables: { email } },
+      );
+      expectGraphQLError(response);
+      expect(
+        await connection.execute('select id from session where id = ?', [
+          session.id,
+        ]),
+      ).toEqual([]);
+      expect(response.body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            path: ['second'],
+            extensions: expect.objectContaining({ code: 'UNAUTHORIZED' }),
+          }),
+        ]),
+      );
+      expect(
+        await connection.execute('select id from "user" where email = ?', [
+          email,
+        ]),
+      ).toEqual([]);
+    },
+  );
+
   it.each(['user', 'workspace'] as const)(
     'revokes stale authorization after changing the authenticating %s key',
     async (scope) => {

@@ -174,26 +174,21 @@ describe("auth enum registration", () => {
     });
   });
 
-  it("uses the complete schema catalog for empty lists without mutating grant configuration", async () => {
-    const options: AuthModuleOptions = {
-      user: { permissions: [] },
-      workspace: { permissions: ["project:read"] },
-      apiKey: { allowedPermissions: [] },
-    };
-    register(options);
-    const schema = await buildSchema();
-    expect(enumType(schema, "UserPermission").parseValue("USER__GET")).toBe(
-      "user:get",
-    );
-    expect(
-      enumType(schema, "UserApiKeyPermission").parseValue("PROJECT__READ"),
-    ).toBe("project:read");
-    expect(
-      enumType(schema, "UserApiKeyPermission").parseValue("USER__GET"),
-    ).toBe("user:get");
-    expect(options.user?.permissions).toEqual([]);
-    expect(options.apiKey?.allowedPermissions).toEqual([]);
-  });
+  it.each(["user", "workspace"] as const)(
+    "rejects an empty %s permission catalog before changing enum metadata",
+    async (scope) => {
+      const before = { ...UserPermission };
+      expect(() => register({ [scope]: { permissions: [] } })).toThrow(
+        `${scope}.permissions must not be empty`,
+      );
+      expect(UserPermission).toEqual(before);
+      register({});
+      const schema = await buildSchema();
+      expect(enumType(schema, "UserPermission").parseValue("USER__GET")).toBe(
+        "user:get",
+      );
+    },
+  );
 
   it("rejects conflicting live registrations and releases them on shutdown", async () => {
     const first = register({});

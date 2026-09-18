@@ -11,7 +11,12 @@ import {
   headers,
   RequestContext,
 } from "@nest-boot/request-context";
-import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { makeSignature } from "better-auth/crypto";
 import type { BetterAuthCookies } from "better-auth/types";
 
@@ -20,6 +25,7 @@ import { SessionConnection } from "../connections/session.connection-definition.
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
 import type { AuthenticatedSession } from "../interfaces/authenticated-session.interface.js";
+import { clearRequestAuthentication } from "../utils/clear-request-authentication.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
 import { AccessControlService } from "./access-control.service.js";
 
@@ -116,7 +122,12 @@ export class SessionService {
   async revokeSession(user: User | string, id: string): Promise<boolean> {
     user = await this.resolveUserForRevocation(user);
     this.accessControlService.assertUserCan("revoke", Session);
-    return await this.em.transactional(
+    const current = RequestContext.isActive()
+      ? RequestContext.get(Session)
+      : null;
+    const revokesCurrent = current?.id === id;
+    if (revokesCurrent) this.assertRevocationCanCommit();
+    const revoked = await this.em.transactional(
       async (em) => {
         const session = await em.findOne(
           Session,
@@ -133,15 +144,25 @@ export class SessionService {
       },
       { clear: true },
     );
+    if (revoked && revokesCurrent) clearRequestAuthentication(this.em);
+    return revoked;
   }
 
   /** Revokes the user's sessions, including impersonation sessions they started. */
   async revokeUserSessions(user: User | string): Promise<number> {
     user = await this.resolveUserForRevocation(user);
     this.accessControlService.assertUserCan("revoke", Session);
-    return await this.em.nativeDelete(Session, {
+    const current = RequestContext.isActive()
+      ? RequestContext.get(Session)
+      : null;
+    const revokesCurrent =
+      current?.user.id === user.id || current?.impersonatedBy?.id === user.id;
+    if (revokesCurrent) this.assertRevocationCanCommit();
+    const count = await this.em.nativeDelete(Session, {
       $or: [{ user: String(user.id) }, { impersonatedBy: user }],
     } as FilterQuery<Session>);
+    if (revokesCurrent) clearRequestAuthentication(this.em);
+    return count;
   }
 
   private async resolveUserForRevocation(user: User | string): Promise<User> {
@@ -236,10 +257,17 @@ export class SessionService {
     );
     if (!session) return false;
 
+    const current = RequestContext.isActive()
+      ? RequestContext.get(Session)
+      : null;
+    const revokesCurrent = current?.id === session.id;
+    if (revokesCurrent) this.assertRevocationCanCommit();
+
     const result = await this.auth.api.revokeSession({
       body: { token: session.token },
       headers: headers(),
     });
+    if (result.status && revokesCurrent) clearRequestAuthentication(this.em);
     return result.status;
   }
 
@@ -253,8 +281,18 @@ export class SessionService {
 
   /** Revokes every session belonging to the authenticated user. */
   async revokeCurrentUserSessions(): Promise<boolean> {
+    this.assertRevocationCanCommit();
     const result = await this.auth.api.revokeSessions({ headers: headers() });
+    if (result.status) clearRequestAuthentication(this.em);
     return result.status;
+  }
+
+  private assertRevocationCanCommit(): void {
+    if (this.em.isInTransaction()) {
+      throw new BadRequestException(
+        "Revoke the current session outside an active transaction",
+      );
+    }
   }
 
   /**

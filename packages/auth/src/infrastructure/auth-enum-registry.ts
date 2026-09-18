@@ -27,12 +27,16 @@ export class AuthEnumRegistry implements OnModuleDestroy {
   private released = false;
 
   constructor(options: AuthModuleOptions) {
-    const users = options.user?.permissions?.length
-      ? options.user.permissions
-      : DEFAULT_USER_PERMISSIONS;
-    const workspaces = options.workspace?.permissions?.length
-      ? options.workspace.permissions
-      : DEFAULT_WORKSPACE_PERMISSIONS;
+    for (const scope of ["user", "workspace"] as const) {
+      if (options[scope]?.permissions?.length === 0) {
+        throw new Error(
+          `${scope}.permissions must not be empty: GraphQL permission enums require at least one value`,
+        );
+      }
+    }
+    const users = options.user?.permissions ?? DEFAULT_USER_PERMISSIONS;
+    const workspaces =
+      options.workspace?.permissions ?? DEFAULT_WORKSPACE_PERMISSIONS;
     const roleValues = (roles: object) =>
       Object.fromEntries(
         Object.keys(roles).map((role) => [

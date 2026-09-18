@@ -49,6 +49,7 @@ import {
   normalizeAuthRoles,
   resolveAuthPermissions,
 } from "../utils/auth-role.util.js";
+import { clearRequestAuthentication } from "../utils/clear-request-authentication.util.js";
 import { refreshRequestAuthorization } from "../utils/refresh-request-authorization.util.js";
 import { AccessControlService } from "./access-control.service.js";
 import { UserDeletionService } from "./user-deletion.service.js";
@@ -212,6 +213,21 @@ export class UserService {
     return !!current && current.id === user.id;
   }
 
+  private affectsCurrentAuthentication(user: User): boolean {
+    const session = RequestContext.isActive()
+      ? RequestContext.get(Session)
+      : null;
+    return this.isCurrentUser(user) || session?.impersonatedBy?.id === user.id;
+  }
+
+  private assertIdentityRevocationCanCommit(user: User): void {
+    if (this.affectsCurrentAuthentication(user) && this.em.isInTransaction()) {
+      throw new BadRequestException(
+        "Revoke your own identity outside an active transaction",
+      );
+    }
+  }
+
   private assertAuthorizationCanCommit(user: User): void {
     if (this.isCurrentUser(user) && this.em.isInTransaction()) {
       throw new BadRequestException(
@@ -288,6 +304,7 @@ export class UserService {
   ): Promise<User> {
     user = await this.resolveUserForAction(user, "ban");
     this.accessControlService.assertUserCan("ban", user);
+    this.assertIdentityRevocationCanCommit(user);
     const banExpiresAt =
       input.banExpiresIn === undefined
         ? null
@@ -302,19 +319,31 @@ export class UserService {
         "Ban duration must be a positive integer number of seconds",
       );
     }
+    const previous = {
+      banned: user.banned,
+      banReason: user.banReason,
+      banExpiresAt: user.banExpiresAt,
+    };
     user.banned = true;
     user.banReason = input.banReason ?? null;
     user.banExpiresAt = banExpiresAt;
 
-    await this.em.transactional(
-      async (em) => {
-        await em.nativeDelete(Session, {
-          $or: [{ user: String(user.id) }, { impersonatedBy: user }],
-        } as FilterQuery<Session>);
-        await em.persist(user).flush();
-      },
-      { clear: true },
-    );
+    try {
+      await this.em.transactional(
+        async (em) => {
+          await em.nativeDelete(Session, {
+            $or: [{ user: String(user.id) }, { impersonatedBy: user }],
+          } as FilterQuery<Session>);
+          await em.persist(user).flush();
+        },
+        { clear: true },
+      );
+    } catch (error) {
+      Object.assign(user, previous);
+      throw error;
+    }
+    if (this.affectsCurrentAuthentication(user))
+      clearRequestAuthentication(this.em);
     return user;
   }
 
@@ -403,8 +432,11 @@ export class UserService {
   async deleteUser(user: User | string): Promise<User> {
     user = await this.resolveUserForAction(user, "delete");
     this.accessControlService.assertUserCan("delete", user);
+    this.assertIdentityRevocationCanCommit(user);
     const deleted = await this.userDeletionService.deleteUser(String(user.id));
     if (deleted === null) throw new NotFoundException("User not found");
+    if (this.affectsCurrentAuthentication(user))
+      clearRequestAuthentication(this.em);
     return user;
   }
 

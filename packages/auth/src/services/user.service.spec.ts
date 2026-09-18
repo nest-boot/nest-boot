@@ -23,6 +23,51 @@ import { UserService } from "./user.service.js";
 import { UserDeletionService } from "./user-deletion.service.js";
 
 describe("UserService", () => {
+  it.each(["self", "impersonator"] as const)(
+    "revokes %s identity only after a ban commits",
+    async (target) => {
+      const { service, em } = createService();
+      const user = Object.assign(new User(), {
+        id: "target",
+        banned: false,
+        banReason: null,
+        banExpiresAt: null,
+      });
+      const current =
+        target === "self"
+          ? user
+          : Object.assign(new User(), { id: "impersonated" });
+      const session = Object.assign(new Session(), {
+        user: current,
+        impersonatedBy: target === "impersonator" ? user : null,
+      });
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          RequestContext.set(User, current);
+          RequestContext.set(Session, session);
+          em.isInTransaction.mockReturnValue(true);
+          await expect(service.banUser(user)).rejects.toThrow(
+            "outside an active transaction",
+          );
+          expect(em.transactional).not.toHaveBeenCalled();
+          em.isInTransaction.mockReturnValue(false);
+          em.flush.mockRejectedValueOnce(new Error("Commit failed"));
+          await expect(service.banUser(user)).rejects.toThrow("Commit failed");
+          expect(user.banned).toBe(false);
+          expect(user.banReason).toBeNull();
+          expect(user.banExpiresAt).toBeNull();
+          expect(RequestContext.get(User)).toBe(current);
+          expect(RequestContext.get(Session)).toBe(session);
+          await service.banUser(user);
+          expect(user.banned).toBe(true);
+          expect(RequestContext.get(User)).toBeNull();
+          expect(RequestContext.get(Session)).toBeNull();
+        },
+      );
+    },
+  );
+
   it.each(["roles", "permissions"] as const)(
     "refreshes own %s, abilities and RLS only after persistence succeeds",
     async (field) => {

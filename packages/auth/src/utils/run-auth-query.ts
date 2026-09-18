@@ -1,6 +1,11 @@
 import { EntityManager } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 
+import { Session } from "../entities/session.entity.js";
+import { User } from "../entities/user.entity.js";
+import { clearRequestAuthentication } from "./clear-request-authentication.util.js";
+import { getCurrentApiKey } from "./get-current-api-key.util.js";
+
 /**
  * Runs service-authorized persistence without the application's database session.
  * Never changes the caller's EntityManager or detaches an active transaction.
@@ -28,7 +33,23 @@ export async function runAuthQuery<T>(
     return callback(fork);
   };
 
-  if (RequestContext.isActive()) return await RequestContext.child(run);
+  if (RequestContext.isActive()) {
+    const hasIdentity = () =>
+      Boolean(
+        RequestContext.get(User) ??
+        RequestContext.get(Session) ??
+        getCurrentApiKey(),
+      );
+    const authenticated = hasIdentity();
+    const { result, revoked } = await RequestContext.child(async () => ({
+      result: await run(),
+      revoked: authenticated && !hasIdentity(),
+    }));
+    // Publish an explicit, successful credential revocation back to the caller.
+    // Failed operations leave its identity and scoped manager unchanged.
+    if (revoked) clearRequestAuthentication(current);
+    return result;
+  }
   return await RequestContext.run(
     new RequestContext({ type: "auth-persistence" }),
     run,

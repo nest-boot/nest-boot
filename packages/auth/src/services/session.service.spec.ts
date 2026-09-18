@@ -75,6 +75,7 @@ async function createService(
         useValue: {
           getContext: vi.fn().mockReturnThis(),
           getSessionContext: vi.fn(),
+          isInTransaction: vi.fn(() => false),
           ...em,
         },
       },
@@ -399,6 +400,71 @@ describe("SessionService", () => {
       false,
     );
     expect(api.revokeSession).not.toHaveBeenCalled();
+  });
+
+  it.each(["one", "all"] as const)(
+    "clears identity only after successful %s-session revocation",
+    async (scope) => {
+      const api = createApi();
+      const em = {
+        find: vi.fn(),
+        findOne: vi.fn(),
+        isInTransaction: vi.fn(() => false),
+      };
+      const { service } = await createService(api, em);
+      const user = Object.assign(new User(), { id: "user-1" });
+      const session = Object.assign(new Session(), {
+        id: "session-1",
+        user,
+        token: "token",
+      });
+      vi.spyOn(service, "listCurrentUserSessions").mockResolvedValue([session]);
+      const backend = scope === "one" ? api.revokeSession : api.revokeSessions;
+      const revoke = () =>
+        scope === "one"
+          ? service.revokeCurrentUserSession(session.id)
+          : service.revokeCurrentUserSessions();
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          RequestContext.set(User, user);
+          RequestContext.set(Session, session);
+          em.isInTransaction.mockReturnValue(true);
+          await expect(revoke()).rejects.toThrow(
+            "outside an active transaction",
+          );
+          expect(backend).not.toHaveBeenCalled();
+          em.isInTransaction.mockReturnValue(false);
+          backend.mockRejectedValueOnce(new Error("backend failed"));
+          await expect(revoke()).rejects.toThrow("backend failed");
+          expect(RequestContext.get(User)).toBe(user);
+          backend.mockResolvedValueOnce({ status: false });
+          await expect(revoke()).resolves.toBe(false);
+          expect(RequestContext.get(Session)).toBe(session);
+          backend.mockResolvedValueOnce({ status: true });
+          await expect(revoke()).resolves.toBe(true);
+          expect(RequestContext.get(User)).toBeNull();
+          expect(RequestContext.get(Session)).toBeNull();
+        },
+      );
+    },
+  );
+
+  it("preserves identity when revoking a different session", async () => {
+    const api = createApi();
+    api.revokeSession.mockResolvedValue({ status: true });
+    const { service } = await createService(api);
+    const session = Object.assign(new Session(), { id: "current" });
+    vi.spyOn(service, "listCurrentUserSessions").mockResolvedValue([
+      Object.assign(new Session(), { id: "other", token: "other-token" }),
+    ]);
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      RequestContext.set(Session, session);
+      await expect(service.revokeCurrentUserSession("other")).resolves.toBe(
+        true,
+      );
+      expect(RequestContext.get(Session)).toBe(session);
+    });
   });
 
   it("revokes every other session", async () => {

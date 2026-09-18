@@ -4,7 +4,10 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { t } from "i18next";
 import { toast } from "sonner";
 
-import { useCurrentWorkspaceContext } from "../contexts/current-workspace-context";
+import {
+  GET_CURRENT_WORKSPACE_FROM_WORKSPACE_CONTEXT,
+  useCurrentWorkspaceContext,
+} from "../contexts/current-workspace-context";
 import { useCurrentWorkspaceAbility } from "../contexts/current-member-context";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import {
@@ -85,7 +88,10 @@ function SettingsComponent() {
     workspaceSubject,
   );
 
-  const [updateWorkspace] = useMutation(UPDATE_WORKSPACE_FROM_SETTINGS_ROUTE);
+  const [updateWorkspace] = useMutation(UPDATE_WORKSPACE_FROM_SETTINGS_ROUTE, {
+    refetchQueries: [GET_CURRENT_WORKSPACE_FROM_WORKSPACE_CONTEXT],
+    awaitRefetchQueries: true,
+  });
   const [deleteWorkspace, { loading: deleting, client }] = useMutation(
     DELETE_WORKSPACE_FROM_SETTINGS_ROUTE,
   );

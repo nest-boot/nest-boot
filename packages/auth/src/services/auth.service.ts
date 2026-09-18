@@ -359,11 +359,14 @@ export class AuthService {
   async changeCurrentUserEmail(
     options: ChangeAuthEmailOptions,
   ): Promise<boolean> {
+    this.authMiddleware.assertAuthenticationCanChange();
     const result = await this.auth.api.changeEmail({
       body: options,
       headers: headers(),
       returnHeaders: true,
     });
+    // A successful response may only queue verification; reload persisted state.
+    if (result.response.status) await this.authMiddleware.refreshCurrentUser();
     applyAuthResponseCookies(result.headers);
     return result.response.status;
   }
@@ -394,11 +397,15 @@ export class AuthService {
   async deleteCurrentUser(
     options?: DeleteAuthUserOptions,
   ): Promise<DeleteAuthUserResult> {
+    this.authMiddleware.assertAuthenticationCanChange();
     const result = await this.auth.api.deleteUser({
       body: options ?? {},
       headers: headers(),
       returnHeaders: true,
     });
+    if (result.response.success && result.response.message === "User deleted") {
+      this.authMiddleware.clearAuthentication();
+    }
     applyAuthResponseCookies(result.headers);
     return result.response;
   }

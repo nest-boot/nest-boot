@@ -13,7 +13,7 @@ export interface AuthModuleUserOptions<
   defaultRole?: NoInfer<Role>;
   /** Roles classified as administrators. Defaults to `admin`. */
   adminRoles?: readonly NoInfer<Role>[];
-  /** User permission catalog. Defaults to `DEFAULT_USER_PERMISSIONS`. */
+  /** Nonempty user permission catalog. Defaults to `DEFAULT_USER_PERMISSIONS`. */
   permissions?: readonly (Permission &
     (string extends Permission ? unknown : PermissionName<Permission>))[];
   /** Named user roles and their permissions. Defaults to `DEFAULT_USER_ROLES`. */

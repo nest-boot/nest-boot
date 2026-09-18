@@ -102,11 +102,16 @@ async function createService(
 }
 
 describe("current user identity", () => {
-  it.each(["signOut", "updateCurrentUser"] as const)(
+  it.each(["signOut", "updateCurrentUser", "changeCurrentUserEmail"] as const)(
     "publishes %s identity changes only after a successful response",
     async (method) => {
       const { api, service, authMiddleware } = await createService();
-      const apiMethod = method === "signOut" ? api.signOut : api.updateUser;
+      const apiMethod =
+        method === "signOut"
+          ? api.signOut
+          : method === "updateCurrentUser"
+            ? api.updateUser
+            : api.changeEmail;
       const publish =
         method === "signOut"
           ? authMiddleware.clearAuthentication
@@ -114,7 +119,9 @@ describe("current user identity", () => {
       const invoke = () =>
         method === "signOut"
           ? service.signOut()
-          : service.updateCurrentUser({ name: "Updated" });
+          : method === "updateCurrentUser"
+            ? service.updateCurrentUser({ name: "Updated" })
+            : service.changeCurrentUserEmail({ newEmail: "new@example.test" });
       authMiddleware.assertAuthenticationCanChange.mockImplementationOnce(
         () => {
           throw new Error("Active transaction");
@@ -139,6 +146,36 @@ describe("current user identity", () => {
       expect(publish).toHaveBeenCalledOnce();
     },
   );
+
+  it("clears identity only when deletion completes, not when verification is requested", async () => {
+    const { api, service, authMiddleware } = await createService();
+    authMiddleware.assertAuthenticationCanChange.mockImplementationOnce(() => {
+      throw new Error("Active transaction");
+    });
+    await expect(service.deleteCurrentUser()).rejects.toThrow(
+      "Active transaction",
+    );
+    expect(api.deleteUser).not.toHaveBeenCalled();
+    api.deleteUser.mockRejectedValueOnce(new Error("Delete failed"));
+    await expect(service.deleteCurrentUser()).rejects.toThrow("Delete failed");
+    for (const response of [
+      { success: false, message: "User deleted" },
+      { success: true, message: "Verification email sent" },
+    ]) {
+      api.deleteUser.mockResolvedValueOnce({
+        headers: new Headers(),
+        response,
+      });
+      await expect(service.deleteCurrentUser()).resolves.toEqual(response);
+      expect(authMiddleware.clearAuthentication).not.toHaveBeenCalled();
+    }
+    api.deleteUser.mockResolvedValueOnce({
+      headers: new Headers(),
+      response: { success: true, message: "User deleted" },
+    });
+    await service.deleteCurrentUser({ token: "valid-deletion-token" });
+    expect(authMiddleware.clearAuthentication).toHaveBeenCalledOnce();
+  });
 
   it("adopts impersonation and restored identities before writing cookies", async () => {
     const { service, userService, sessionService, authMiddleware, authGuard } =

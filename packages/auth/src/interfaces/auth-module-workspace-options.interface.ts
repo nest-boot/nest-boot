@@ -12,7 +12,7 @@ export interface AuthModuleWorkspaceOptions<
   defaultRole?: NoInfer<Role>;
   /** Role assigned to a workspace creator. Defaults to `owner`. */
   creatorRole?: NoInfer<Role>;
-  /** Workspace permission catalog. Defaults to `DEFAULT_WORKSPACE_PERMISSIONS`. */
+  /** Nonempty workspace permission catalog. Defaults to `DEFAULT_WORKSPACE_PERMISSIONS`. */
   permissions?: readonly (Permission &
     (string extends Permission ? unknown : PermissionName<Permission>))[];
   /** Named workspace roles and their permissions. Defaults to `DEFAULT_WORKSPACE_ROLES`. */

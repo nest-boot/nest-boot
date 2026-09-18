@@ -118,6 +118,11 @@ test.describe("workspace management", () => {
     await page.getByTestId("workspace-settings-save").click();
     await expect(nameInput).toHaveValue(renamedWorkspaceName);
 
+    // The normalized Workspace cache must refresh without a page reload.
+    await expect(page.getByTestId("workspace-switcher-trigger")).toContainText(
+      renamedWorkspaceName,
+    );
+
     await page.reload();
     await expect(nameInput).toHaveValue(renamedWorkspaceName);
 

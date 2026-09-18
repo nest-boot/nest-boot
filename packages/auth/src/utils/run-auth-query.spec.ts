@@ -7,7 +7,10 @@ import { Entity, PrimaryKey, Property } from "@mikro-orm/decorators/legacy";
 import { MikroORM } from "@mikro-orm/pglite";
 import { RequestContext } from "@nest-boot/request-context";
 
+import { Session } from "../entities/session.entity.js";
+import { User } from "../entities/user.entity.js";
 import { createContextualAuthService } from "../infrastructure/create-contextual-auth-service.js";
+import { clearRequestAuthentication } from "./clear-request-authentication.util.js";
 import { runAuthQuery } from "./run-auth-query.js";
 
 @Entity({
@@ -111,6 +114,39 @@ describe("runAuthQuery with native RLS", () => {
       ).toEqual([{ id: 1 }, { id: 2 }]);
     });
   });
+
+  it.each([false, true])(
+    "publishes child identity revocation only after success (failure=%s)",
+    async (failure) => {
+      await inRequest(async (em) => {
+        const user = Object.assign(new User(), { id: "current" });
+        const currentSession = new Session();
+        RequestContext.set(User, user);
+        RequestContext.set(Session, currentSession);
+        const operation = runAuthQuery(em, async (authEm) => {
+          await authEm.getConnection().execute("select 1");
+          clearRequestAuthentication(authEm);
+          if (failure) throw new Error("Persistence failed");
+          return "committed";
+        });
+        if (failure) {
+          await expect(operation).rejects.toThrow("Persistence failed");
+          expect(RequestContext.get(User)).toBe(user);
+          expect(RequestContext.get(Session)).toBe(currentSession);
+          expect(em.getSessionContext()).toEqual(session);
+        } else {
+          await expect(operation).resolves.toBe("committed");
+          expect(RequestContext.get(User)).toBeNull();
+          expect(RequestContext.get(Session)).toBeNull();
+          expect(em.getSessionContext()).toMatchObject({
+            role: "anonymous",
+            variables: { "app.user.id": "", "app.user.permissions": "[]" },
+          });
+        }
+        expect(RequestContext.get(CoreEntityManager)).toBe(em);
+      });
+    },
+  );
 
   it("supplies isolated managers only to explicitly listed service operations", async () => {
     class DomainService {

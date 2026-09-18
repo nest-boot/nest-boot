@@ -45,6 +45,11 @@ role map replaces its corresponding default. `workspace.defaultRole` defaults
 to `member` for additions and invitations. `workspace.creatorRole` defaults to
 `owner` and assigns the initial role to the workspace creator.
 
+Explicit `user.permissions: []` or `workspace.permissions: []`
+is rejected at startup because GraphQL enums cannot be empty. Omit a catalog to
+use its defaults; use empty role grants to give a role no permissions. This does
+not change API-key enum generation for `apiKey.allowedPermissions: []`.
+
 Every permission granted by a configured role must be present in the matching
 permission catalog. `forRoot()` infers literal permission unions and rejects
 unknown role grants in TypeScript; runtime validation also protects dynamic and

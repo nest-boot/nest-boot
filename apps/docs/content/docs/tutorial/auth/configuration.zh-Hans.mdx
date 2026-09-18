@@ -40,6 +40,10 @@ description: "配置 AuthModule、环境变量与 MikroORM 实体。"
 或角色映射时，会分别替换对应默认值。`workspace.defaultRole` 默认为 `member`，用于
 新增成员和邀请；`workspace.creatorRole` 默认为 `owner`，指定工作区创建者的初始角色。
 
+显式设置 `user.permissions: []` 或 `workspace.permissions: []` 会在启动时报错，因为 GraphQL
+枚举不能为空。省略目录可使用默认值；若角色无需任何权限，将该角色的授权列表设为空即可。
+`apiKey.allowedPermissions: []` 仍使用完整权限目录生成 API Key 枚举，不受此检查影响。
+
 配置角色授予的每项权限都必须存在于对应权限目录中。`forRoot()` 会推导权限字面量
 联合，并在 TypeScript 中拒绝未知角色权限；运行时校验同时覆盖动态配置与异步配置。
 默认角色、管理员角色与创建者角色也必须存在于对应角色映射中。无效角色配置会阻止
