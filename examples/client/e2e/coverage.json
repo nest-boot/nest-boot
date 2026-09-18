@@ -82,8 +82,8 @@
       "domain": "Members",
       "scenario": "Member status actions, removal, role changes, and direct permissions",
       "status": "covered",
-      "specs": ["invitation.spec.ts"],
-      "notes": "Covers status and removal actions, role editing, direct permission editing, persistence after reload, and resulting UI authorization. Direct permission editing denies members without update ability and allows administrators to update even an owner's direct permissions without enabling protected role edits."
+      "specs": ["invitation.spec.ts", "workspace.spec.ts"],
+      "notes": "Covers status and removal actions, role editing, direct permission editing, persistence after reload, and resulting UI authorization. Self-disabling navigates away without refetching protected fields. Direct permission editing denies members without update ability and allows administrators to update even an owner's direct permissions without enabling protected role edits."
     },
     {
       "domain": "Authorization",

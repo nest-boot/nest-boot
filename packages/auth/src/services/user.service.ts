@@ -157,8 +157,21 @@ export class UserService {
     if (input.email !== undefined || input.emailVerified !== undefined) {
       this.accessControlService.assertUserCan("set-email", user);
     }
-    this.em.assign(user, data as never);
-    await this.em.persist(user).flush();
+    this.assertAuthorizationCanCommit(user);
+    const previous = {
+      email: user.email,
+      emailVerified: user.emailVerified,
+      image: user.image,
+      name: user.name,
+    };
+    try {
+      this.em.assign(user, data as never);
+      await this.em.persist(user).flush();
+    } catch (error) {
+      Object.assign(user, previous);
+      throw error;
+    }
+    this.refreshCurrentUser(user);
     return user;
   }
 
@@ -351,10 +364,22 @@ export class UserService {
   async unbanUser(user: User | string): Promise<User> {
     user = await this.resolveUserForAction(user, "ban");
     this.accessControlService.assertUserCan("ban", user);
+    this.assertAuthorizationCanCommit(user);
+    const previous = {
+      banned: user.banned,
+      banReason: user.banReason,
+      banExpiresAt: user.banExpiresAt,
+    };
     user.banned = false;
     user.banReason = null;
     user.banExpiresAt = null;
-    await this.em.persist(user).flush();
+    try {
+      await this.em.persist(user).flush();
+    } catch (error) {
+      Object.assign(user, previous);
+      throw error;
+    }
+    this.refreshCurrentUser(user);
     return user;
   }
 

@@ -374,7 +374,7 @@ function MembersComponent() {
     currentStatus: MemberStatus | null | undefined,
   ) => {
     try {
-      // 只处理 ACTIVE 和 DISABLED 状态的切换
+      // Only toggle between active and disabled memberships.
       if (
         currentStatus !== MemberStatus.ACTIVE &&
         currentStatus !== MemberStatus.DISABLED
@@ -401,7 +401,14 @@ function MembersComponent() {
           ? t("member:toast.disabled_success")
           : t("member:toast.enabled_success"),
       );
-      refetch();
+      if (
+        memberId === currentMember.id &&
+        newStatus === MemberStatus.DISABLED
+      ) {
+        await navigate({ to: "/user/workspaces" });
+        return;
+      }
+      await refetch();
     } catch (err) {
       if (err instanceof Error) {
         toast.error(err.message);

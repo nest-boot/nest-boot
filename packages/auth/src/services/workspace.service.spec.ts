@@ -25,6 +25,74 @@ import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 
 describe("WorkspaceService and cross-domain coordination", () => {
+  it.each(["member", "workspace-key"] as const)(
+    "refreshes workspace-profile-dependent abilities after commit for a %s",
+    async (principal) => {
+      const { workspaceService, em } = createWorkspaceServices({
+        buildAbility: ({ cannot }, _permissions, workspace) => {
+          if (workspace.name === "Locked") cannot("delete", Workspace);
+        },
+      });
+      const workspace = createTestWorkspace();
+      em.findOne.mockResolvedValue(workspace);
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          const ability = new WorkspaceAbility([
+            { action: "delete", subject: Workspace },
+          ]);
+          RequestContext.set(Workspace, workspace);
+          RequestContext.set(WorkspaceAbility, ability);
+          if (principal === "member") {
+            RequestContext.set(
+              Member,
+              Object.assign(createTestMember(), { roles: ["owner"] }),
+            );
+          } else {
+            RequestContext.set(
+              API_KEY,
+              Object.assign(new WorkspaceApiKey(), {
+                permissions: ["workspace:update", "workspace:delete"],
+              }),
+            );
+          }
+          em.flush.mockRejectedValueOnce(new Error("Commit failed"));
+          await expect(
+            workspaceService.updateWorkspace(workspace.id, { name: "Locked" }),
+          ).rejects.toThrow("Commit failed");
+          expect.soft(workspace.name).toBe("Acme");
+          expect(RequestContext.get(WorkspaceAbility)).toBe(ability);
+          em.flush.mockImplementationOnce(() => {
+            expect(RequestContext.get(WorkspaceAbility)).toBe(ability);
+            return Promise.resolve();
+          });
+          await workspaceService.updateWorkspace(workspace.id, {
+            name: "Locked",
+          });
+          expect(RequestContext.get(Workspace)?.name).toBe("Locked");
+          expect(
+            RequestContext.get(WorkspaceAbility)?.can("delete", Workspace),
+          ).toBe(false);
+        },
+      );
+    },
+  );
+
+  it("rejects current workspace profile updates inside an outer transaction", async () => {
+    const { workspaceService, em } = createWorkspaceServices();
+    const workspace = createTestWorkspace();
+    em.isInTransaction.mockReturnValue(true);
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      RequestContext.set(Workspace, workspace);
+      await expect(
+        workspaceService.updateWorkspace(workspace, { name: "Locked" }),
+      ).rejects.toThrow("outside an active transaction");
+      expect(workspace.name).toBe("Acme");
+      expect(em.assign).not.toHaveBeenCalled();
+      expect(em.flush).not.toHaveBeenCalled();
+    });
+  });
+
   it("updates by ID using write authorization without requiring read permission", async () => {
     const { workspaceService, em, accessControlService } =
       createWorkspaceServices();

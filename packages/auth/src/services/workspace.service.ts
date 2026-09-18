@@ -31,6 +31,7 @@ import type { UpdateWorkspaceOptions } from "../interfaces/update-workspace-opti
 import { clearRequestAuthentication } from "../utils/clear-request-authentication.util.js";
 import { clearWorkspaceAuthorization } from "../utils/clear-workspace-authorization.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
+import { refreshRequestAuthorization } from "../utils/refresh-request-authorization.util.js";
 import { DEFAULT_WORKSPACE_CREATOR_ROLE } from "../workspace.constants.js";
 import { AccessControlService } from "./access-control.service.js";
 
@@ -162,8 +163,23 @@ export class WorkspaceService {
     workspace = await this.resolveWorkspaceForAction(workspace, "update");
     this.accessControlService.assertCurrentWorkspace(workspace);
     this.accessControlService.assertWorkspaceCan("update", workspace);
-    this.em.assign(workspace, input as never, { ignoreUndefined: true });
-    await this.em.flush();
+    if (this.em.isInTransaction()) {
+      throw new BadRequestException(
+        "Change the current workspace outside an active transaction",
+      );
+    }
+    const previousName = workspace.name;
+    try {
+      this.em.assign(workspace, input as never, { ignoreUndefined: true });
+      await this.em.flush();
+    } catch (error) {
+      workspace.name = previousName;
+      throw error;
+    }
+    if (RequestContext.isActive()) {
+      RequestContext.set(Workspace, workspace);
+      refreshRequestAuthorization(this.authOptions);
+    }
     return workspace;
   }
 

@@ -26,14 +26,19 @@ describe("additive auth configuration", () => {
     expect(options.user.permissions).toEqual(["article:read", "user:get"]);
   });
 
-  it("treats empty additions as unchanged defaults and never automatically grants custom permissions", () => {
-    expect(
-      resolveAuthCatalog({ user: { permissions: [], roles: {} } }, "user"),
-    ).toEqual(resolveAuthCatalog({}, "user"));
-    const result = resolveAuthCatalog(
-      { user: { permissions: ["article:read"] } },
-      "user",
-    );
-    expect(result.roles.admin).not.toContain("article:read");
-  });
+  it.each(["user", "workspace"] as const)(
+    "treats empty %s additions as unchanged defaults and never automatically grants custom permissions",
+    (scope) => {
+      expect(
+        resolveAuthCatalog({ [scope]: { permissions: [], roles: {} } }, scope),
+      ).toEqual(resolveAuthCatalog({}, scope));
+      const result = resolveAuthCatalog(
+        { [scope]: { permissions: ["article:read"] } },
+        scope,
+      );
+      for (const permissions of Object.values(result.roles)) {
+        expect(permissions).not.toContain("article:read");
+      }
+    },
+  );
 });

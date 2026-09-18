@@ -87,7 +87,6 @@ export const authServiceProviders: Provider[] = [
         {
           createUser: "authentication",
           banUser: "authentication",
-          unbanUser: "authentication",
           setUserPassword: "authentication",
           impersonateUser: "authentication",
           stopImpersonating: "authentication",

@@ -140,10 +140,11 @@ must remain in the configured catalog to be serialized by GraphQL.
 `WorkspaceApiKeyPermission` uses the workspace catalog. Neither enum narrows with
 `apiKey.allowedPermissions`, so previously stored grants remain readable after
 the allowlist changes. Services enforce the allowlist on writes.
-Omit a user or workspace permission catalog to use that scope's defaults.
-Explicit `user.permissions: []` or `workspace.permissions: []` is rejected at
-startup because GraphQL enums cannot be empty. Use empty role grants to give a
-role no permissions. An empty `apiKey.allowedPermissions` still generates enums
+User and workspace permission catalogs extend the built-in defaults. Omitting
+them or passing `user.permissions: []` or `workspace.permissions: []` preserves
+those defaults. To define a role without permission grants, add a new role with
+`[]`; empty additions do not remove an existing role's built-in grants.
+An empty `apiKey.allowedPermissions` still generates enums
 from the full catalogs, but does not allow granting permissions to a key.
 Services continue to check key scope and the issuer's permission ceiling.
 
@@ -406,9 +407,10 @@ For custom application entities that need soft deletion, compose
 
 ## Authorization Changes Within a Request
 
-After a Service commits changes to the current user's roles or permissions, or
-the current member's profile, roles, permissions or status, Auth refreshes the
-request identity and abilities. Disabling the current
+After a Service commits changes to the current user's profile, roles, permissions
+or ban state, the current member's profile, roles, permissions or status, or the
+current workspace's profile, Auth refreshes the request identity and abilities.
+Disabling the current
 member, leaving a workspace or deleting it clears the workspace scope, including
 the parent request when deletion uses an isolated execution context.
 

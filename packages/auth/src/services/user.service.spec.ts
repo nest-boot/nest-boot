@@ -5,6 +5,7 @@ import { HashService } from "@nest-boot/hash";
 import { RequestContext } from "@nest-boot/request-context";
 import {
   BadRequestException,
+  type FactoryProvider,
   ForbiddenException,
   NotFoundException,
 } from "@nestjs/common";
@@ -17,6 +18,7 @@ import { UserConnection } from "../connections/user.connection-definition.js";
 import { Account } from "../entities/account.entity.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
+import { authServiceProviders } from "../infrastructure/auth-service.providers.js";
 import type { CreateUserOptions } from "../interfaces/create-user-options.interface.js";
 import { DEFAULT_USER_PERMISSIONS } from "../user.constants.js";
 import type { AccessControlService } from "./access-control.service.js";
@@ -116,7 +118,7 @@ describe("UserService", () => {
     },
   );
 
-  it.each(["roles", "permissions"] as const)(
+  it.each(["roles", "permissions", "profile", "ban"] as const)(
     "rejects own %s changes inside an outer transaction before modifying the identity",
     async (field) => {
       const { service, em } = createService();
@@ -124,6 +126,8 @@ describe("UserService", () => {
         id: "self",
         roles: ["admin"],
         permissions: ["user:delete"],
+        emailVerified: true,
+        banned: true,
       });
       em.isInTransaction.mockReturnValue(true);
       await RequestContext.run(
@@ -133,15 +137,151 @@ describe("UserService", () => {
           const result =
             field === "roles"
               ? service.setUserRoles(user, ["user"])
-              : service.setUserPermissions(user, []);
+              : field === "permissions"
+                ? service.setUserPermissions(user, [])
+                : field === "profile"
+                  ? service.updateUser(user, { emailVerified: false })
+                  : service.unbanUser(user);
           await expect(result).rejects.toThrow("outside an active transaction");
           expect(user.roles).toEqual(["admin"]);
           expect(user.permissions).toEqual(["user:delete"]);
+          expect(user.emailVerified).toBe(true);
+          expect(user.banned).toBe(true);
           expect(em.flush).not.toHaveBeenCalled();
         },
       );
     },
   );
+
+  it.each(["entity", "id"] as const)(
+    "refreshes profile-dependent abilities after an own %s update commits, restoring fields on failure",
+    async (target) => {
+      const { service, em } = createService(true, {
+        buildAbility: ({ cannot }, _permissions, user) => {
+          if (!user.emailVerified) cannot("delete", User);
+        },
+      });
+      const previous = {
+        email: "original@example.com",
+        emailVerified: true,
+        image: "avatar.png",
+        name: "Original",
+      };
+      const current = Object.assign(new User(), {
+        id: "self",
+        roles: ["admin"],
+        permissions: [],
+        ...previous,
+      });
+      const stored =
+        target === "entity" ? current : Object.assign(new User(), current);
+      em.findOne.mockResolvedValue(stored);
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          const ability = new UserAbility([
+            { action: "delete", subject: User },
+          ]);
+          RequestContext.set(User, current);
+          RequestContext.set(UserAbility, ability);
+          const input = {
+            email: "updated@example.com",
+            emailVerified: false,
+            image: null,
+            name: "Updated",
+          };
+          const update = () =>
+            service.updateUser(target === "entity" ? stored : stored.id, input);
+          em.flush.mockRejectedValueOnce(new Error("Commit failed"));
+          await expect(update()).rejects.toThrow("Commit failed");
+          expect.soft(stored).toMatchObject(previous);
+          expect(RequestContext.get(User)).toBe(current);
+          expect(RequestContext.get(UserAbility)).toBe(ability);
+          em.flush.mockImplementationOnce(() => {
+            expect(RequestContext.get(UserAbility)).toBe(ability);
+            return Promise.resolve();
+          });
+          await update();
+          expect(RequestContext.get(User)).toBe(stored);
+          expect(stored).toMatchObject(input);
+          expect(RequestContext.get(UserAbility)?.can("delete", User)).toBe(
+            false,
+          );
+        },
+      );
+    },
+  );
+
+  it("keeps the caller's identity when updating another user inside a transaction", async () => {
+    const { service, em } = createService();
+    const current = Object.assign(new User(), { id: "self" });
+    const other = Object.assign(new User(), {
+      id: "other",
+      emailVerified: true,
+    });
+    em.isInTransaction.mockReturnValue(true);
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      const ability = new UserAbility([{ action: "update", subject: User }]);
+      RequestContext.set(User, current);
+      RequestContext.set(UserAbility, ability);
+      await service.updateUser(other, { emailVerified: false });
+      expect(other.emailVerified).toBe(false);
+      expect(RequestContext.get(User)).toBe(current);
+      expect(RequestContext.get(UserAbility)).toBe(ability);
+    });
+  });
+
+  it("refreshes ban-dependent abilities only after an own unban commits", async () => {
+    const { em, options, accessControlService, userDeletionService } =
+      createService(true, {
+        buildAbility: ({ cannot }, _permissions, user) => {
+          if (!user.banned) cannot("delete", User);
+        },
+      });
+    const provider = authServiceProviders.find(
+      (candidate) =>
+        typeof candidate === "object" &&
+        "provide" in candidate &&
+        candidate.provide === UserService,
+    ) as FactoryProvider<UserService>;
+    const service = await provider.useFactory(
+      em,
+      options,
+      {},
+      accessControlService,
+      userDeletionService,
+    );
+    const session = mockRlsContext(em);
+    const previous = {
+      banned: true,
+      banReason: "Expired",
+      banExpiresAt: new Date(0),
+    };
+    const user = Object.assign(new User(), {
+      id: "self",
+      roles: ["admin"],
+      permissions: [],
+      ...previous,
+    });
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      const ability = new UserAbility([{ action: "delete", subject: User }]);
+      RequestContext.set(User, user);
+      RequestContext.set(UserAbility, ability);
+      em.flush.mockRejectedValueOnce(new Error("Commit failed"));
+      await expect(service.unbanUser(user)).rejects.toThrow("Commit failed");
+      expect.soft(user).toMatchObject(previous);
+      expect(RequestContext.get(UserAbility)).toBe(ability);
+      await service.unbanUser(user);
+      expect(user).toMatchObject({
+        banned: false,
+        banReason: null,
+        banExpiresAt: null,
+      });
+      expect(RequestContext.get(UserAbility)?.can("delete", User)).toBe(false);
+      expect(em.fork).not.toHaveBeenCalled();
+      expect(em.getSessionContext()).toEqual(session);
+    });
+  });
 
   it("does not expose unmapped data in create-user options", () => {
     expectTypeOf<
@@ -944,6 +1084,7 @@ function createService(
   return {
     accessControlService,
     em,
+    options,
     hash,
     hashServiceHash,
     userDeletionService,

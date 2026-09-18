@@ -11,6 +11,43 @@ import { uniqueSeed } from "./utils/unique";
 import type { Page } from "@playwright/test";
 
 test.describe("workspace management", () => {
+  test("leaves the workspace page after disabling the current member without refetching protected fields", async ({
+    page,
+  }) => {
+    const seed = uniqueSeed("self-disabled-member");
+    const email = `${seed}@example.com`;
+    await registerUser(page, { email, name: "Self-disabling owner" });
+    const workspace = await createWorkspaceByApi(page, seed);
+    await page.goto(`/workspaces/${workspace.id}/members`);
+    const row = page.getByRole("row").filter({
+      has: page.getByTestId(`member-row-${email}`),
+    });
+    await row.getByRole("button").click();
+    const pageErrors: Array<string> = [];
+    const refetches: Array<string> = [];
+    page.on("pageerror", (error) => pageErrors.push(error.message));
+    page.on("request", (request) => {
+      const body = request.postData() ?? "";
+      if (body.includes("getMembersFromMembersRoute")) refetches.push(body);
+    });
+    const updated = page.waitForResponse(
+      (response) =>
+        response.url().endsWith("/api/graphql") &&
+        response
+          .request()
+          .postData()
+          ?.includes("updateMemberStatusFromMembersRoute") === true,
+    );
+    await page.getByRole("menuitem", { name: "禁用", exact: true }).click();
+    expect((await (await updated).json()).errors).toBeUndefined();
+    await expect(page).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
+    await expect(page.getByTestId("user-workspaces-page")).toBeVisible();
+    const workspaces = await listWorkspaces(page, { first: 10 });
+    expect(workspaces.edges).toEqual([]);
+    expect(refetches).toEqual([]);
+    expect(pageErrors).toEqual([]);
+  });
+
   test("supports multiple owners through member roles and lets an owner leave", async ({
     browser,
     page,
