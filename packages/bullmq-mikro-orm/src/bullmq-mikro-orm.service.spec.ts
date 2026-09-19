@@ -1,5 +1,6 @@
 import { EntityData, EntityManager } from "@mikro-orm/core";
 import { WorkerHost } from "@nest-boot/bullmq";
+import { Logger } from "@nestjs/common";
 import { DiscoveryService } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
 import { Job, JobState, Queue } from "bullmq";
@@ -125,6 +126,49 @@ function createWorkerHost(name: string): WorkerHostWithMock {
 describe("BullMQMikroORMService", () => {
   afterEach(() => {
     vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it.each(["waiting", "active", "progress", "completed", "failed"])(
+    "logs %s event persistence failures and allows later events to recover",
+    async (event) => {
+      const queue = createQueue("email");
+      const worker = createWorkerHost("email");
+      const { service, fork } = await createService({}, [queue, worker]);
+      const error = new Error("Database unavailable");
+      fork.upsert.mockRejectedValueOnce(error).mockResolvedValue(undefined);
+      const log = vi
+        .spyOn(Logger.prototype, "error")
+        .mockImplementation(() => undefined);
+      service.onApplicationBootstrap();
+      const calls = (
+        event === "waiting" ? queue.on.mock.calls : worker.worker.on.mock.calls
+      ) as WorkerEventCall[];
+      const handler = calls.find(([name]) => name === event)?.[1];
+      if (!handler) throw new Error(`Missing ${event} handler`);
+      const job = createJob("waiting");
+      handler(job);
+      await vi.waitFor(() => {
+        expect(log).toHaveBeenCalledWith(
+          expect.stringContaining("email:42"),
+          error.stack,
+        );
+      });
+      handler(job);
+      await vi.waitFor(() => {
+        expect(fork.upsert).toHaveBeenCalledTimes(2);
+      });
+      expect(log).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("keeps awaited upsert failures observable to direct callers", async () => {
+    const { service, fork } = await createService();
+    const error = new Error("Database unavailable");
+    fork.upsert.mockRejectedValue(error);
+    await expect(
+      service.upsertJob(createJob("waiting"), "waiting"),
+    ).rejects.toBe(error);
   });
 
   describe("convertJobToEntityData", () => {
