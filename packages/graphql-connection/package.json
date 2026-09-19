@@ -66,8 +66,8 @@
     "vitest": "^4.1.11"
   },
   "peerDependencies": {
-    "@mikro-orm/core": "^7.0.0",
-    "@mikro-orm/sql": "^7.0.0",
+    "@mikro-orm/core": "^7.2.0",
+    "@mikro-orm/sql": "^7.2.0",
     "@nest-boot/graphql": "workspace:^",
     "@nestjs/apollo": "^14.0.0",
     "@nestjs/common": "^12.0.0",
