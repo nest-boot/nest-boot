@@ -109,7 +109,7 @@ export class UserService {
 
 ### Database session factory
 
-Set `session: () => ({ role: "anonymous", variables: { "app.workspace": "..." } })`
+Set `session: () => ({ role: "anonymous", variables: { "app.workspace.id": "..." } })`
 to initialize the native session on each request EntityManager. The synchronous
 callback returns `ForkOptions["session"]`, runs inside `RequestContext` before
 authentication, and is supported by both `forRoot()` and `forRootAsync()`.

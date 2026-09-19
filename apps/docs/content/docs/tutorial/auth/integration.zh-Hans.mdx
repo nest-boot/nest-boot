@@ -5,15 +5,18 @@ description: "将 Auth 服务接入传输适配器与 RequestContext。"
 
 底层 Better Auth 实例及其注入 token 属于内部实现。应用应注入负责对应领域的服务：
 
-| 服务               | 职责                                                   |
-| ------------------ | ------------------------------------------------------ |
-| `AuthService`      | 身份认证、邮箱验证、密码找回、用户资料与 provider 账号 |
-| `SessionService`   | 当前会话解析、活动会话列表与撤销                       |
-| `UserService`      | 用户管理、权限、封禁、模拟登录、密码和用户会话         |
-| `WorkspaceService` | 工作区、成员、邀请与工作区权限生命周期                 |
-| `ApiKeyService`    | 个人与工作区 API Key 生命周期和校验                    |
+| 服务                                            | 职责                                                   |
+| ----------------------------------------------- | ------------------------------------------------------ |
+| `AuthService`                                   | 身份认证、邮箱验证、密码找回、用户资料与 provider 账号 |
+| `SessionService`                                | 会话解析、按用户分页、模拟登录者关联、自助与管理员撤销 |
+| `UserService`                                   | 用户管理、权限、封禁、模拟登录和密码                   |
+| `AccountService`                                | 当前用户会话的安全账号连接查询                         |
+| `WorkspaceService`                              | 工作区查询与生命周期管理                               |
+| `MemberService`                                 | 成员查询、分页、资料、角色、权限及加入/退出            |
+| `InvitationService`                             | 邀请查询、分页、创建、接受、拒绝及取消                 |
+| `UserApiKeyService` 和 `WorkspaceApiKeyService` | 各自作用域的 API Key 生命周期和连接查询                |
 
-`UserService` 与 `WorkspaceService` 直接操作 `AuthModule` 中配置的 MikroORM 实体，
+`UserService`、`AccountService`、`WorkspaceService`、`MemberService` 和 `InvitationService` 直接操作 `AuthModule` 内置的 MikroORM 实体，
 不依赖 Better Auth 的 admin 或 organization 插件。
 
 ```typescript
@@ -23,37 +26,64 @@ export class AccountApplicationService {
     private readonly authService: AuthService,
     private readonly sessionService: SessionService,
     private readonly userService: UserService,
+    private readonly accountService: AccountService,
     private readonly workspaceService: WorkspaceService,
-    private readonly apiKeyService: ApiKeyService,
+    private readonly memberService: MemberService,
+    private readonly invitationService: InvitationService,
+    private readonly userApiKeyService: UserApiKeyService,
+    private readonly workspaceApiKeyService: WorkspaceApiKeyService,
   ) {}
 }
 ```
 
-## 传输适配器
+## 内置实体与 GraphQL
 
-Resolver 与 Controller 应负责转换协议类型，并把领域规则委托给这些服务。认证方法会
-通过请求级 `cookies()` 存储自动转发全部 `Set-Cookie`，包括密码修改后替换当前 Session
-Cookie 的场景。
+`AuthModule` 统一注册认证 Service 和全部标准 Resolver，不再导入 `AuthGraphQLModule`。
+实体、输入、Payload 和连接都从 `@nest-boot/auth` 导入，Resolver 使用具体类回调。
+应用只需配置 GraphQL 模块和 `AuthModule.forRoot()`，无需重新定义认证实体或注册命名连接。
 
-内置认证端点处理器挂载在 `basePath`。`AuthMiddleware` 在
-`RequestContextMiddleware` 之后运行，负责解析身份，并让装饰器与守卫可以读取应用实体。
+Auth 内置 `User`、`Account`、`Session`、`Verification`、`Workspace`、
+`Member`、`Invitation`、`UserApiKey` 和 `WorkspaceApiKey` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
+不再提供认证 `Base*` 类或 `AuthModuleOptions.entities` 替换配置。
 
-Auth 会把通过 `options.entities` 配置的每个应用实体类注册为对应 Base 实体类的请求
-上下文别名。当前身份始终使用稳定的 Base 实体类作为主 token，因此两种方式会返回
-同一个应用实体实例：
+在运行时和迁移 CLI 的 MikroORM 配置中注册导出的 `entities` 数组；CLI 不会启动 Nest 模块：
 
 ```typescript
-RequestContext.get(BaseUser); // 框架内部使用的稳定 token
-RequestContext.get(User); // 配置的应用实体类别名
+import { entities as authEntities } from "@nest-boot/auth";
+import { defineConfig } from "@mikro-orm/postgresql";
+
+export default defineConfig({
+  entities: [...authEntities, "dist/**/*.entity.js"],
+  entitiesTs: [...authEntities, "src/**/*.entity.ts"],
+  // Connection and migration options...
+});
 ```
 
-同一约定适用于所有配置的 Auth 实体。传输层代码通常应优先使用当前身份装饰器。
+自定义字段请使用独立的业务关联实体和额外的字段 Resolver。关联目标直接导入内置实体类，
+不要重新声明或注册同名认证实体。角色、权限目录、Ability 构造器、邮件回调和 Provider 配置仍可自定义。
+
+## 传输适配器
+
+Resolver 与 Controller 将参数交给领域 Service，授权、作用域和 RLS 检查仍由 Service 和数据库执行。
+认证操作通过请求级 cookies 存储转发全部 Set-Cookie 响应。
+`AuthMiddleware` 在 `RequestContextMiddleware` 之后执行，使用内置实体类保存身份，
+例如 `RequestContext.get(User)`。不再注册认证 Base 类别名；传输层优先使用当前身份装饰器。
+
+`Member` / `Invitation` 对应的 Service 是 `MemberService` / `InvitationService`，
+权限主体仍为 `member:*` / `invitation:*`。所有已有字段、参数和授权行为保持不变。
+
+## PostgreSQL RLS
+
+MikroORM 7.2 原生 RLS 使用请求 EntityManager 的 session 上下文。Auth 在解析身份后
+更新该上下文；经过服务授权的持久化操作在必要时使用隔离且不带 session 的 fork。
+示例通过 `createSessionContext` 配置 `session`，无需自定义 RLS 驱动或拦截器。
+参见 [MikroORM 教程](/docs/tutorial/mikro-orm)。
 
 ## 应用启动
 
 ```typescript
 import { Logger } from "@nest-boot/logger";
-import { ValidationPipe } from "@nestjs/common";
+import { ZodValidationPipe } from "@nest-boot/validator";
 import { NestFactory } from "@nestjs/core";
 
 async function bootstrap() {
@@ -63,9 +93,7 @@ async function bootstrap() {
   });
 
   app.useLogger(await app.resolve(Logger));
-  app.useGlobalPipes(
-    new ValidationPipe({ transform: true, forbidUnknownValues: false }),
-  );
+  app.useGlobalPipes(new ZodValidationPipe());
   app.enableShutdownHooks();
 
   await app.listen(process.env.PORT ?? 4000);
@@ -76,10 +104,45 @@ void bootstrap();
 
 ## 运行建议
 
+Auth 输入已从 class-validator 切换为 Zod。业务 DTO 迁移完成后，请移除旧的全局
+`ValidationPipe`。Zod 返回普通解析对象并移除未声明的属性，不创建 DTO 类实例。
+GraphQL 验证错误使用 `BAD_USER_INPUT`，字段详情位于
+`extensions.validationErrors`。
+
+`banUser` 和 `deleteCurrentUser` 仍允许省略 `input`（默认 `{}`），但拒绝显式
+`input: null`。属性的 `.optional()` 允许省略，`.nullish()` 额外允许 `null`，
+参见 [Validator 教程](/docs/tutorial/validator)。直接调用 Service 不会自动执行管道。
+
+显示名称会去除首尾空白，长度须为 1–255 个字符。邮箱、头像字符串和封禁原因均受数据库
+255 字符列长度约束。这些约束直接声明在 Input 字段上；API Key 前缀也由 Service 校验，
+以覆盖直接调用。密码长度、角色和权限授权仍由 Service 根据配置判断。
+输入验证不会去除密码或权限字符串的空白，也不会将它们转为小写；回调地址仍允许相对路径。
+
 - 将 `AuthGuard` 作为 `APP_GUARD` 注册一次，并使用 `@Public()` 标记例外；
 - 传输层使用当前身份装饰器，不直接依赖上下文 token；
 - 把高熵 `AUTH_SECRET` 与 `HASH_SECRET` 保存在源码仓库之外；
 - 通过路由、请求头或 Cookie 显式选择工作区；
-- 在应用中映射 GraphQL 输入输出类型，把生命周期规则保留在 Auth 服务中。
+- `AuthModule` 提供标准 GraphQL schema；应用可添加自己的字段 Resolver。
 
-具体符号文档请参阅 [Auth API 参考](/docs/api/auth)。
+具体符号文档请参阅 [Auth API 参考](/docs/api/auth)与
+
+## 其他 GraphQL 原生接口
+
+`AuthModule` 内置 `Account`、`AccountConnection`、`UserConnection`、`SessionConnection` 及对应连接参数，全部直接引用类。
+`users(first: 20)` 返回连接；使用 `currentUser { sessions(first: 20) { edges { node { id } } } accounts(first: 20) { edges { node { id providerId } } } }` 查询本人会话和账号。读取别人的会话需管理员权限，API Key 调用还需对应授权。
+
+登录与注册结果引用内置 `User`，不再使用 `AuthUserType`。签发会话后会更新请求身份、工作区成员、RLS 和能力上下文，再解析关联字段；未签发会话的注册不会授予认证身份。
+
+部署前执行示例基线 `Initial → generated schema migrations`：启用 Session／Account RLS 和统一默认表权限，不再保留数据库列级限制。Service 与 GraphQL 排除密码、token 和 API Key 哈希；会话管理员读取由 Service 的 Ability 授权，不再向数据库传递权限列表。
+
+### 操作命名调整
+
+使用 `currentSession`、
+`createWorkspaceApiKey`、`updateWorkspaceApiKey`、`deleteWorkspaceApiKey`。
+旧名称不保留别名；删除工作区只使用 `deleteWorkspace`，`removeWorkspace` 已移除。
+客户端需同步更新 GraphQL 文档、返回字段访问与生成类型。
+
+默认 GraphQL 模块已移除 `authFetchAccessToken`、`authFetchAccountInfo`、
+`authRefreshToken` 及其专用输入、返回类型，不保留别名。账号绑定信息通过
+`currentUser { accounts(first: 20) { edges { node { id providerId scopes } } } }` 查询；服务端第三方集成仍可使用
+`AuthService.getAccessToken()`、`refreshToken()` 和 `getAccountInfo()`。

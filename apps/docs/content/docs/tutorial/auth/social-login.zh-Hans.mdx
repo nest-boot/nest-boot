@@ -11,9 +11,9 @@ ID 使用 Better Auth 的专用 Provider 实现，其他 ID 使用 Generic OAuth
 
 - `listSocialProviders()` 返回每个已启用 Provider 的 `id` 与显示名称 `name`；
 - `signInSocial()` 使用任意已返回的 Provider 发起登录或注册；
-- `linkSocialAccount()` 为当前用户关联另一个 Provider 身份；
-- `listAccounts()` 与 `unlinkAccount()` 管理已关联身份；
-- `getAccessToken()`、`refreshToken()` 与 `accountInfo()` 访问 Provider 数据。
+- `linkCurrentUserAccount()` 为当前用户关联另一个 Provider 身份；
+- `listCurrentUserAccounts()` 与 `unlinkCurrentUserAccount()` 管理已关联身份；
+- `getAccessToken()`、`refreshToken()` 与 `getAccountInfo()` 访问 Provider 数据。
 
 ## 发起登录
 
@@ -35,8 +35,8 @@ return await authService.signInSocial({
 
 ## 关联账号
 
-账号关联要求已有认证会话。把相同的 Provider ID 传给 `linkSocialAccount()` 并跳转到
-返回的 URL；state Cookie 会自动写入。回调完成后，`listAccounts()` 会包含新身份。
+账号关联要求已有认证会话。把相同的 Provider ID 传给 `linkCurrentUserAccount()` 并跳转到
+返回的 URL；state Cookie 会自动写入。回调完成后，`listCurrentUserAccounts()` 会包含新身份。
 除非产品明确允许同一 Provider 关联多个账号，否则不要展示已经关联的 Provider。
 
 Generic Provider 由 Better Auth 的

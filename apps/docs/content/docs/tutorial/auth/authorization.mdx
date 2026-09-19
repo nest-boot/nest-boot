@@ -38,27 +38,53 @@ health(): string {
 Configure separate user and workspace abilities. For an authenticated request,
 `AuthGuard` prepares the user ability when a current user exists and the
 workspace ability when a workspace and active membership are selected, even
-when the handler has no permission decorator. Each callback runs at most once
-and its result is cached in `RequestContext`. The callback runs synchronously
-and must return its scoped ability directly.
+when the handler has no permission decorator. Auth owns the built-in permission
+mappings, so no callback is required for built-in operations. Abilities are
+cached in `RequestContext` and rebuilt after an identity or authorization change.
+Optional callbacks run synchronously and return nothing; auth builds the final ability.
+
+Class-level checks only gate an operation; conditional rules are also evaluated
+against loaded entities and proposed entities before creation. `currentMember`
+and `currentWorkspace` also check the selected instance's workspace read rules;
+being present in the request context does not bypass authorization. CASL-authorized
+connections validate each returned node and reject the entire page if one is
+denied, rather than silently filtering a page and changing its pagination.
+Administrative bulk session revocation locks and authorizes every target before
+deleting any of them. Ownership-based self-service session operations remain
+separate from administrative `session:list` and `session:revoke` permissions.
+
+After a successful password reset, auth rechecks the current session in the
+database. If the reset revoked it, the request loses its identity, abilities, and
+database scope before another mutation can run. Unrelated sessions and API-key
+identities are retained.
+
+Sign-in, registration, and impersonation flows reject an active outer transaction
+before issuing a replacement session or cookie. Self-deletion revokes the request
+identity immediately after its database commit, before `afterDelete` runs; a
+failing post-delete callback cannot leave the deleted identity authorized.
 
 ```typescript
 import { AuthModule } from "@nest-boot/auth";
 
 const userRoles = {
-  admin: ["Post:create"],
-  user: [],
+  admin: ["post:create"],
+  user: ["post:read", "post:update"],
 } as const;
-const userPermissions = ["Post:create", "Post:archive"] as const;
+const userPermissions = [
+  "post:create",
+  "post:archive",
+  "post:read",
+  "post:update",
+] as const;
 
 const workspaceRoles = {
-  owner: ["Post:create", "Post:delete"],
-  member: ["Post:create"],
+  owner: ["post:create", "post:delete"],
+  member: ["post:create"],
 } as const;
 const workspacePermissions = [
-  "Post:create",
-  "Post:delete",
-  "Post:archive",
+  "post:create",
+  "post:delete",
+  "post:archive",
 ] as const;
 
 AuthModule.forRoot({
@@ -66,23 +92,18 @@ AuthModule.forRoot({
   workspace: {
     permissions: workspacePermissions,
     roles: workspaceRoles,
-    buildAbility: ({ can, build }, permissions, workspace) => {
-      for (const permission of permissions) {
-        const [subject, action] = permission.split(":");
-        if (subject === "Post" && action) {
-          can(action, Post, { workspaceId: workspace.id });
-        }
-      }
-      return build();
+    buildAbility: ({ can }, _permissions, workspace) => {
+      can("post:create", "create", Post, { workspaceId: workspace.id });
+      can("post:delete", "delete", Post, { workspaceId: workspace.id });
+      can("post:archive", "archive", Post, { workspaceId: workspace.id });
     },
   },
   user: {
     permissions: userPermissions,
     roles: userRoles,
-    buildAbility: ({ can, build }, _permissions, user) => {
-      can("read", Post);
-      can("update", Post, { authorId: user.id });
-      return build();
+    buildAbility: ({ can }, _permissions, user) => {
+      can("post:read", "read", Post);
+      can("post:update", "update", Post, { authorId: user.id });
     },
   },
 });
@@ -94,33 +115,89 @@ array, otherwise application startup fails. AuthModule resolves role permissions
 and direct entity permissions first. A user builder receives the deduplicated
 permission list and current user. A workspace builder receives the deduplicated
 member permission list and selected workspace. Workspace membership participates
-in permission resolution but is not passed to the builder. AuthModule supplies
-an `AbilityBuilder` configured for the corresponding ability class as the first
-callback argument.
+in permission resolution but is not passed to the callback. The first argument
+is a restricted `AbilityRules` interface, not a CASL `AbilityBuilder`.
+`can(permission, action, subject, conditions?)` adds a business rule only when
+the named permission belongs to the catalog and is present in the effective
+permissions. Field restrictions use `can(permission, action, subject, fields, conditions?)`.
+Unknown permission names, grants targeting built-in auth entities (by class or
+name), and grants targeting `all` are rejected. Use built-in permissions to grant
+auth operations; custom permission names cannot redefine their mappings.
+`cannot(action, subject, conditions?)` can restrict both business and built-in
+operations; it also supports fields and always takes precedence over extension
+grants, regardless of declaration order. The callback exposes neither mutable
+rules nor `build()`. It is a trusted application extension, not a JavaScript sandbox.
 
 ## Manage Roles
+
+Role names match `^[a-z][a-z0-9-]*$`; permission names use
+`resource:action`, with each segment matching the same pattern. Underscores,
+uppercase letters, whitespace, and consecutive hyphens (`--` or longer) are
+rejected at startup, not normalized. Both resource and action segments may
+contain single hyphens, for example `api-key:set-role`.
+The role names `true`, `false`, and `null` are reserved.
+`RoleName<T>` and `PermissionName<T>` validate string literals at compile time;
+`AuthModule.forRoot()` and `forRootAsync()` infer catalogs, role keys, and lifecycle
+role references. Dynamic strings are checked at startup.
+
+```typescript
+import type { PermissionName, RoleName } from "@nest-boot/auth";
+
+const role: RoleName<"super-admin"> = "super-admin";
+const permission: PermissionName<"api-key:read"> = "api-key:read";
+```
+
+GraphQL generates `UserRole`, `WorkspaceRole`, `UserPermission`,
+`WorkspacePermission`, `UserApiKeyPermission`, and `WorkspaceApiKeyPermission` from the configuration.
+Enum names are uppercase: hyphens become `_` and the permission separator `:`
+becomes `__`. For example, `super-admin` is exposed as `SUPER_ADMIN` and
+`api-key:read` as `API_KEY__READ`. GraphQL variables and responses use these enum
+names; services, ability builders, and the database retain the original values.
+Regenerate client types after changing a catalog. Existing stored assignments
+must remain in the configured catalog to be serialized by GraphQL.
+
+`UserApiKeyPermission` uses the combined user and workspace catalogs;
+`WorkspaceApiKeyPermission` uses the workspace catalog. Neither enum narrows with
+`apiKey.allowedPermissions`, so previously stored grants remain readable after
+the allowlist changes. Services enforce the allowlist on writes.
+User and workspace permission catalogs extend the built-in defaults. Omitting
+them or passing `user.permissions: []` or `workspace.permissions: []` preserves
+those defaults. To define a role without permission grants, add a new role with
+`[]`; empty additions do not remove an existing role's built-in grants.
+An empty `apiKey.allowedPermissions` still generates enums
+from the full catalogs, but does not allow granting permissions to a key.
+Services continue to check key scope and the issuer's permission ceiling.
+
+Nest enum metadata is process-wide. Concurrent AuthModule applications in one
+process must use identical enum catalogs; conflicting registrations fail at
+startup instead of overwriting another application's schema. Shutdown releases
+the registration so a later application can use a different configuration.
 
 Permission catalogs and role definitions come from `user.permissions`,
 `user.roles`, `workspace.permissions`, and `workspace.roles`; they are not
 stored or managed by a separate role service. `UserService` and
-`WorkspaceService` expose the configured catalogs to transports and validate
+`MemberService` expose the configured catalogs to transports and validate
 role assignments.
+
+`listRoles()` returns `{ role, grantable }` objects and `listPermissions()` returns
+`{ permission, grantable }` objects for the current request. Services retain the
+original configured values; GraphQL serializes them as enum names.
 
 ```typescript
 const userRoles = userService.listRoles();
 const userPermissions = userService.listPermissions();
-await userService.setRole(user, ["admin", "auditor"]);
+await userService.setUserRoles(user, ["admin", "auditor"]);
 
-const workspaceRoles = workspaceService.listRoles();
-const workspacePermissions = workspaceService.listPermissions();
-await workspaceService.updateMemberRole(member, ["admin"]);
+const workspaceRoles = memberService.listRoles();
+const workspacePermissions = memberService.listPermissions();
+await memberService.setMemberRoles(member, ["admin"]);
 ```
 
-`setRole()` and `updateMemberRole()` reject empty or unknown role names.
-`updateMemberRole()` cannot modify a current creator or assign the configured
-creator role; use `transferOwnership()` for that transition. An ownership
-transfer assigns `workspace.creatorRole` to the next owner and demotes the
-previous owner to `workspace.defaultRole`.
+`setUserRoles()` and `setMemberRoles()` reject empty or unknown role names.
+`setMemberRoles()` can assign or replace any configured role, including
+`workspace.creatorRole`, when update ability and permission-grant checks pass.
+Multiple members may hold the creator role; assigning it does not change other
+members' roles. Member creation and invitations use the same grant checks.
 
 `user.defaultRole` and `workspace.defaultRole` provide fallback roles for new
 users and members. `workspace.creatorRole` identifies the ownership role.
@@ -128,24 +205,36 @@ users and members. `workspace.creatorRole` identifies the ownership role.
 `UserService.isAdmin()` to classify administrative users. Every configured
 lifecycle role is validated against its role map at startup.
 
-`getUserPermissions()` and `getMemberPermissions()` return the deduplicated
+`getEffectiveUserPermissions()` and `getEffectiveMemberPermissions()` return the deduplicated
 union of permissions inherited from every assigned role and permissions stored
-directly on the entity. `hasPermission()` evaluates against the same result.
+directly on the entity. `hasPermissions()` evaluates against the same result.
 `createUser()`, `addMember()`, `setUserPermissions()`, and
 `setMemberPermissions()` reject malformed, duplicate, or unknown direct
 permissions instead of persisting values outside the configured catalog.
 
-User administration also enforces a grant ceiling: `createUser()`, `setRole()`,
+User administration also enforces a grant ceiling: `createUser()`, `setUserRoles()`,
 and `setUserPermissions()` cannot grant permissions the caller does not hold.
 Role assignments include their inherited permissions, including the default role
 on user creation. For a personal API key, the ceiling is the intersection of the
-user's role/direct permissions and the key's permissions. Holding `User:set-role`
+user's role/direct permissions and the key's permissions. Holding `user:set-role`
 alone does not allow promotion to a more privileged role.
+
+`userRoles` and `workspaceRoles` return the full role catalog as `{ role, grantable }`
+objects. `userPermissions` and `workspacePermissions` similarly return
+`{ permission, grantable }` objects. The enum-valued fields preserve type-safe inputs;
+`grantable` reflects the current principal's grant ceiling, including API-key
+restrictions. Workspace role grants require member-update or invitation-create
+ability; direct permission grants require member-update ability. Read-only callers
+receive workspace options with `grantable: false`. User catalogs require `user:set-role`.
+Use these flags to disable new grants while keeping existing values removable,
+and validate the complete replacement list before submission. Mutation Services
+still enforce target-specific abilities and grant ceilings. The separate
+`workspaceAssignableRoles` query has been removed.
 
 The example GraphQL application exposes `userRoles`, `userPermissions`,
 `workspaceRoles`, and `workspacePermissions` queries. Role changes use the
-dedicated `setUserRoles` and `updateWorkspaceMemberRole` mutations. Direct
-workspace-member grants use `setWorkspaceMemberPermissions`; ordinary member
+dedicated `setUserRoles` and `setMemberRoles` mutations. Direct
+member grants use `setMemberPermissions`; ordinary member
 profile updates do not accept authorization fields.
 
 ## Protect Routes
@@ -185,7 +274,7 @@ omitted `scope` delegates to `@WorkspaceCan`.
 @WorkspaceCan("update", Post)
 @Mutation(() => Post)
 updatePost() {
-  // Requires both Post:read and Post:update.
+  // Requires both post:read and post:update.
 }
 ```
 
@@ -210,15 +299,16 @@ permissions or the current member's effective workspace permissions. Workspace
 Key permissions are passed directly to the workspace builder. The resulting
 `UserAbility` or `WorkspaceAbility` is the only ability checked by the guard.
 
-The application builder must translate every supplied permission it wants to
-enforce into a CASL rule. Permission resource names preserve the exact,
-case-sensitive CASL subject type: both the `Post` class and
-`subject("Post", object)` resolve to `Post`, so the matching permission is
-`Post:read`. Rules added unconditionally by the builder apply to API keys too.
+Auth maps built-in permissions automatically. Business extensions bind their
+rules explicitly, for example `can("post:read", "read", Post)`. The factory
+checks effective permissions even if the callback does not inspect them, so an
+API key without `post:read` cannot acquire that rule. The frontend rehydrates the
+final serialized rules instead of maintaining a separate permission mapping.
 
 ## Service Authorization Boundary
 
-`UserService`, `WorkspaceService`, and `ApiKeyService` enforce their permissions
+`UserService`, `SessionService`, `WorkspaceService`, `MemberService`,
+`InvitationService`, and `UserApiKeyService` and `WorkspaceApiKeyService` enforce their permissions
 before reading or mutating authentication data. Resolver and controller
 decorators provide early rejection and declare intent, but they are not the
 security boundary: omitting one does not make a protected service operation
@@ -227,10 +317,10 @@ public.
 The services follow the same split as Better Auth's admin and organization
 access control:
 
-- user administration uses `User:*` and `Session:*` permissions;
-- workspace mutations use `Workspace:*`, `WorkspaceMember:*`, and
-  `WorkspaceInvitation:*` permissions;
-- workspace API-key management uses `ApiKey:create/read/update/delete`;
+- user administration uses `user:*` and `session:*` permissions;
+- workspace mutations use `workspace:*`, `member:*`, and
+  `invitation:*` permissions;
+- workspace API-key management uses `api-key:create/read/update/delete`;
 - current-user authentication, session management, invitation acceptance, and
   leaving a workspace use authenticated identity and ownership checks.
 
@@ -238,6 +328,16 @@ access control:
 application services that need the same fail-closed boundary. An ability must
 have been prepared by the global `AuthGuard`; calls outside that request
 lifecycle are denied rather than implicitly trusted.
+
+The Guard, route decorators, Services, and scoped helpers all evaluate operations
+through this service's `ability.can()` checks. Helpers do not fall back to a cached
+Ability when the authorization service is unavailable.
+
+Ability construction and grantability checks share one immutable effective-permission
+snapshot for the current request identity. Owner permissions remain distinct from
+credential-limited permissions: managing an API key checks both its owner's grants
+and the issuing credential's ceiling. Permission delegation is not inferred from
+an operation's `ability.can()` result.
 
 ## Lower-Level Checks
 
@@ -275,6 +375,15 @@ when the requested ability is unavailable. The lower-level
 
 ## Database Scope Policies
 
+The built-in User SELECT policy permits the `authenticated` database role to
+read all User rows; anonymous reads remain denied. User profile visibility is
+enforced by Service Ability checks, not by this SELECT policy. Custom permissions
+can therefore grant User read actions without a database permission-name mapping.
+Do not expose direct User ORM/SQL queries without Service authorization. User
+writes and Session reads likewise rely on Service authorization. Database request
+variables do not carry application permissions; other RLS policies retain their
+ownership and workspace-scope constraints.
+
 `userScopePolicy()` and `workspaceScopePolicy()` return native MikroORM policy
 definitions. Every option is optional:
 
@@ -285,11 +394,7 @@ definitions. Every option is optional:
 
 ```typescript
 import { Entity } from "@mikro-orm/decorators/legacy";
-import {
-  BaseWorkspaceMember,
-  userScopePolicy,
-  workspaceScopePolicy,
-} from "@nest-boot/auth";
+import { Member, userScopePolicy, workspaceScopePolicy } from "@nest-boot/auth";
 
 @Entity({
   policies: [
@@ -298,7 +403,7 @@ import {
     workspaceScopePolicy(),
   ],
 })
-export class WorkspaceMember extends BaseWorkspaceMember {}
+export class Member extends Member {}
 ```
 
 `property` names an entity property, not its SQL column. Native callbacks resolve
@@ -308,26 +413,53 @@ For example, `userScopePolicy({ property: "owner", type: "uuid" })` matches an
 owner UUID. On the User entity itself, use `property: "id"`.
 `command`, `roles` and the optional policy `name` can also be overridden.
 
-The policies compare against `app.user` or `app.workspace` and preserve
+The policies compare against `app.user.id` or `app.workspace.id` and preserve
 `nullif(current_setting(..., true), '')`, so missing/empty identifiers match no
 rows. They are permissive policies: policies for the same operation combine with
 OR. They do not check workspace lifecycle or replace Service authorization.
 Continue to configure database roles, table privileges and trusted session
 variables separately.
 
-The example `ApiKey` uses a custom native policy for its polymorphic `owner`:
-user-owned rows match `owner_type = 'user'` and `app.user`; workspace-owned rows
-match `owner_type = 'workspace'` and `app.workspace`. Both branches also compare
-`owner_id`, for reads and writes. A matching ID alone is insufficient because
-users and workspaces can share IDs. The migration does not grant request roles
-direct access to this table; API-key operations still go through the authorized
-`ApiKeyService`.
+Auth stages identity variables `app.user.id` and `app.workspace.id`, but does not
+pass application permissions to the database. Services enforce Ability rules,
+custom permissions and API-key ceilings; RLS handles ownership, workspace
+isolation. Authenticated User reads/writes and Session reads
+rely on Service authorization. Do not expose direct ORM/SQL access to these
+records as an alternative to Services. Old identity keys are no longer supported.
+
+The example `UserApiKey` and `WorkspaceApiKey` use separate tables, each with one required owner foreign key, so no exclusive-owner CHECK is needed. RLS compares `user_id` with `app.user.id` and `workspace_id` with `app.workspace.id` independently, including when IDs coincide. Deleting an owner cascades to its keys; workspace deletion is permanent. Default privileges authorize table operations; both management services hide credential hashes, prevent ownership changes, and enforce authorization.
 
 These are plain factories, not filters or decorators. Neither runtime nor CLI
 needs a custom discovery hook. Generate and apply migrations after changing
 policies; keep metadata caching disabled when using policy callbacks.
-For database-level soft-delete restrictions, compose
+For custom application entities that need soft deletion, compose
 [`softDeletePolicies()`](/docs/tutorial/mikro-orm#soft-delete-rls-policies).
+
+## Authorization Changes Within a Request
+
+After a Service commits changes to the current user's profile, roles, permissions
+or ban state, the current member's profile, roles, permissions or status, or the
+current workspace's profile, Auth refreshes the request identity and abilities.
+An internal identity coordinator invalidates the permission snapshot, rebuilds
+abilities, and synchronizes changed database identity values. Session adoption
+also completes this process before returning; callers do not separately refresh
+the Guard. If post-commit identity publication fails, the request is revoked.
+Disabling the current
+member, leaving a workspace or deleting it clears the workspace scope, including
+the parent request when deletion uses an isolated execution context.
+
+Call these self-updates, `leaveWorkspace()` and `deleteWorkspace()` outside an
+existing transaction. They must complete their own commit before updating request
+authorization; MikroORM cannot restage session context inside an active transaction.
+Failed writes leave request authorization unchanged. Updates to other users or
+members do not replace the caller's identity.
+
+The same commit boundary applies when editing the authenticating API key:
+permission changes refresh its abilities; disabling or deleting
+it clears the entire request identity, without falling back to unrestricted user
+permissions. Successful `signOut()` also clears authentication immediately, while
+`updateCurrentUser()` reloads the persisted profile before subsequent operations.
+Call these methods outside an existing transaction as well.
 
 ## Client Ability Rules
 

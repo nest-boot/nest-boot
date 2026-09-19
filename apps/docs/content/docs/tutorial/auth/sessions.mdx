@@ -30,35 +30,55 @@ allowing public handlers to declare nullable parameters explicitly.
 
 ## SessionService
 
+`AuthModule` provides the built-in `Session` entity and GraphQL type.
+`currentSession` returns `Session`; `User.sessions` returns `SessionConnection`.
+The former `AuthSessionType`, `userSessions(userId)` and `authSessions` APIs are removed.
+Use `currentUser { sessions(first: 20) { edges { node { id current expiresAt } } pageInfo { endCursor hasNextPage } } }`.
+The same field works under `user(id: $id)` for administrators. Browser users may read their own sessions; foreign-user and API-key access require `session:list`.
+`SessionResolver` computes `current`, `impersonatedById` and the `impersonatedBy: User` relation.
+Apply the session SELECT policy migration; ordinary reads exclude the token column and retain RLS. Never expose `token` as a GraphQL field.
+
 `SessionService` provides:
 
-- `getSession()` — resolves the current application entities;
-- `listSessions()` — lists the current user's active sessions;
-- `revokeSession(id)` — revokes one session by its public ID;
-- `revokeOtherSessions()` — keeps only the current session;
-- `revokeSessions()` — revokes every session for the current user;
-- `setSession(token)` — selects an application-created session for the current
-  browser response, such as during impersonation.
+- `getCurrentAuthenticatedSession()` — resolves the current built-in entities;
+- `listCurrentUserSessions()` — lists the current user's active sessions;
+- `getSessionConnectionByUser(user, args)` — paginates safe session entities for the parent user;
+- `getSessionImpersonator(session)` — resolves the impersonator under request RLS;
+- `revokeSession(userOrId, id)` / `revokeUserSessions(userOrId)` — administrative revocation;
+- `revokeCurrentUserSession(id)` — revokes one of the current user's sessions by its public ID;
+- `revokeCurrentUserOtherSessions()` — keeps only the current session;
+- `revokeCurrentUserSessions()` — revokes every session for the current user;
+- `setSessionCookie(token)` — writes an application-created session's signed
+  cookie to the browser response without changing the current request's identity.
 
-Each method reads the current request headers from `RequestContext`. Transport
-code does not need to convert or forward Express headers.
+Authentication-backed methods read request headers from `RequestContext`;
+parent-scoped methods receive the query target and authorize the current caller.
+Transport code does not need to convert or forward Express headers.
+
+The parent-scoped methods now belong to `SessionService`, not `UserService`.
+Safe reads retain request RLS and are not in the infrastructure's privileged
+allowlist. Administrative revocation keeps its existing special context and
+`session:revoke` permission checks. `listCurrentUserSessions()` remains a credential-bearing
+internal workflow helper; GraphQL uses `getSessionConnectionByUser()` instead.
 
 Session lists preserve backend order and expose the non-secret session ID used
 to revoke a specific session. Authentication tokens remain internal and in the
 HttpOnly browser cookie. A UI should identify the current session and avoid
 presenting it as an ordinary remote-device revoke action.
 
-`setSession()` writes the signed browser cookies through the request-scoped
-`cookies()` store and expires cached session and account cookies. The example
-uses it when `UserService.impersonateUser()` and `stopImpersonating()` switch
-browser identity.
+`setSessionCookie()` writes the signed browser cookies through the request-scoped
+`cookies()` store and expires cached session and account cookies. `AuthService.impersonateUser(id)` and `stopImpersonating()` coordinate this with
+session creation/restoration and refresh the current request's user, session,
+workspace membership, abilities and RLS before returning. Nested mutation fields
+therefore use the new identity, not the identity from the original cookie.
 
-For administrative revocation, `UserService.revokeUserSessions(user)` removes
+For administrative revocation, `SessionService.revokeUserSessions(user)` removes
 both the user's own sessions and impersonation sessions started by that user.
 Revoked impersonation sessions cannot restore the administrator's identity;
 the impersonated user's independent sessions remain valid.
 
-When PostgreSQL RLS is enabled, application entity lookup runs in an isolated
-auth context with RLS disabled. Business database roles therefore do not need
-direct access to authentication tables, and the parent request context remains
-unchanged.
+When PostgreSQL RLS is enabled, AuthModule infrastructure establishes an isolated
+auth context for SessionService credential hydration after Better Auth validates
+the request. SessionService itself only uses its injected `this.em`. Business
+roles do not need to read credential columns; the parent database context remains
+unchanged. GraphQL `User.sessions` always retains request RLS.

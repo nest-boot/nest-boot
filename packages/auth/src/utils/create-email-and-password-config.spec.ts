@@ -104,11 +104,13 @@ describe("createEmailAndPasswordConfig", () => {
       createEmailAndPasswordConfig(false, {
         enabled: true,
         maxPasswordLength: 128,
+        minPasswordLength: 6,
       }),
     ).toMatchObject({
       disableSignUp: true,
       enabled: true,
       maxPasswordLength: 128,
+      minPasswordLength: 6,
       requireEmailVerification: true,
       sendResetPassword: expect.any(Function),
     });

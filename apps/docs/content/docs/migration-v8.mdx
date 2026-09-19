@@ -61,11 +61,28 @@ provide a CommonJS `require` entry.
   roles and privileges must be provisioned explicitly. Configure the initial
   request session with `MikroOrmModuleOptions.session` and update it before
   starting business transactions. See the [MikroORM RLS documentation](https://mikro-orm.io/docs/row-level-security).
-- Update auth permission resource names to their exact CASL subject types. The
-  built-in catalogs now use `User:*`, `Session:*`, `Workspace:*`,
-  `WorkspaceMember:*`, and `WorkspaceInvitation:*`. Update configured role
-  permissions and rewrite persisted direct and API-key permissions that used
-  the previous lowercase names.
+- Auth permission identifiers are application-defined, case-sensitive strings,
+  independent of CASL subject types. Catalogs, grant ceilings and API-key
+  intersections compare exact strings without changing case. The built-in
+  catalogs use `user:*`, `session:*`, `workspace:*`, `member:*` and
+  `invitation:*` and `api-key:*`. Custom role and permission names follow the
+  lowercase naming contract; invalid names are rejected, not normalized.
+  Role grants, direct/API-key permissions and business rules must use the same spelling.
+- Auth owns built-in ability mappings. Remove application callbacks that rebuild
+  auth rules. Business callbacks now receive `AbilityRules`, return nothing, and
+  grant through `can(permission, action, subject, conditions?)`. Built-in subjects
+  and `all` cannot receive custom grants; `cannot` can add restrictions. API-key
+  CRUD permissions are built into both scope catalogs. Frontends still consume
+  serialized final rules. See [authorization](./tutorial/auth/authorization).
+- User/workspace permission catalogs and role maps now extend built-in defaults.
+  Same-name role grants are merged and deduplicated; empty additions do not
+  remove defaults. Custom permissions require explicit role grants. Use a new
+  role for a restricted grant set. Entity `set*` mutations still replace stored
+  values. API-key `allowedPermissions` remains a ceiling, not an additive list.
+- Rename database request identity variables to `app.user.id` and
+  `app.workspace.id`. Application permissions are no longer sent to the database;
+  Services enforce Ability checks and API-key ceilings. RLS retains ownership
+  and workspace boundaries, not application permission-name checks.
 - Auth sessions now use the primary database exclusively; remove any
   `AuthModuleOptions.secondaryStorage` configuration. API-key defaults and
   grant ceilings can be configured with `apiKey.defaultPermissions` and
@@ -73,8 +90,9 @@ provide a CommonJS `require` entry.
 - Rebuild generated files and migrations after switching TypeScript module
   resolution so generated imports include valid ESM extensions.
 
-The server example's historical migrations have been replaced with one baseline
-generated from the current entities. Use a fresh database for this example; the
+The server example's historical migrations have been replaced with a two-step baseline:
+handwritten infrastructure initialization followed by a schema generated from the
+current entities. Use a fresh database for this example; the
 new baseline is not an upgrade path for databases that ran the removed migrations.
 Back up any data you need before rebuilding an existing development database.
 
@@ -82,3 +100,101 @@ Back up any data you need before rebuilding an existing development database.
 
 Nest Boot version 8 uses Vitest with SWC instead of Jest. Contributors can run
 unit and end-to-end suites with `pnpm test` and `pnpm test:e2e`.
+
+### API-key ownership and database cascades
+
+Run `Migration00000000000000_Initial` before the MikroORM-generated
+`Migration20260918091003`. Initialization grants schema `USAGE` and sets default
+`ALL` privileges on tables, functions, and sequences in `public` for both
+`anonymous` and `authenticated`. These defaults apply only to future objects
+created by the same migration role, not existing objects or objects created by
+another role.
+
+Neither request role is read-only or CRUD-limited. Table privileges include
+`TRUNCATE`, `REFERENCES`, and `TRIGGER`; both roles can execute functions and use,
+read, and update sequences. RLS does not protect `TRUNCATE` or `REFERENCES`, and
+table policies do not restrict sequence operations. Do not expose unrestricted
+SQL execution under either role. Review `SECURITY DEFINER` functions separately:
+they execute with their owner's privileges. See PostgreSQL's
+[row security documentation](https://www.postgresql.org/docs/current/ddl-rowsecurity.html).
+
+All application tables must enable RLS and declare policies; `Verification`
+explicitly denies request roles. Services and GraphQL control credential fields
+and writable properties; database column-level protection is no longer configured.
+
+`BaseApiKey.owner` is removed. `UserApiKey` and `WorkspaceApiKey` use separate
+tables, each with one required owner foreign key (`user` or `workspace`). There
+is no exclusive-owner CHECK. Update entity imports, filters and fixtures for
+the two key types.
+User deletion cascades through foreign keys without custom cleanup functions or triggers;
+workspaces and workspace keys survive. User SELECT permits authenticated roles;
+Services enforce profile access through Ability, including custom permission names.
+User writes and Session reads likewise rely on Service authorization; database
+request variables no longer carry application permissions. Do not expose direct User queries
+without Service authorization. The example baseline is for empty databases only;
+existing databases need a separate data-preserving migration to split legacy
+keys by owner type and populate the required foreign keys.
+
+Workspace deletion is now permanent. Remove `Workspace.deletedAt` selections,
+filters and indexes; members, invitations and workspace keys are deleted by
+foreign-key cascades. The workspace DELETE policy retains workspace isolation;
+the old soft-delete policies and `app.operation` deletion context are removed.
+Back up data and decide how to handle legacy soft-deleted workspaces before
+writing a migration for an existing database. The example baseline only targets
+empty databases and does not convert existing data.
+
+## Unified Auth module
+
+`@nest-boot/auth-graphql` is merged into `@nest-boot/auth`. Remove the old package
+and `AuthGraphQLModule` import; import inputs, payloads, resolvers and connections
+from `@nest-boot/auth` instead.
+
+Auth owns the concrete `User`, `Account`, `Session`, `Verification`,
+`Workspace`, `Member`, `Invitation`, `UserApiKey`, and `WorkspaceApiKey` entities, their GraphQL
+metadata, relations, RLS policies, and connections. There are no public auth
+`Base*` classes or `AuthModuleOptions.entities` overrides.
+
+Register the exported `entities` array in both your runtime MikroORM configuration
+and the configuration loaded by the migration CLI. The CLI does not initialize Nest:
+
+```typescript
+import { entities as authEntities } from "@nest-boot/auth";
+import { defineConfig } from "@mikro-orm/postgresql";
+
+export default defineConfig({
+  entities: [...authEntities, "dist/**/*.entity.js"],
+  entitiesTs: [...authEntities, "src/**/*.entity.ts"],
+  // Connection and migration options...
+});
+```
+
+Use separate related business entities and additional field resolvers to extend
+these models. Import the built-in classes directly for relation targets; do not
+redeclare or register replacement auth entities. Role/permission catalogs, ability
+builders, delivery callbacks, and provider settings remain configurable.
+
+`CreateUserOptions.data` is removed: `UserService.createUser()` only persists
+the built-in user fields. Store application-specific fields in a separate entity
+related to `User` instead.
+
+GraphQL `signUp` now returns `SignUpPayload { id, token }` instead of
+`AuthSignUpResultType { user, token }`. Replace `signUp { user { id } }` with
+`signUp { id }`; authenticated user relations must be queried after sign-in.
+`AuthService.signUpPayload()` replaces `signUpEntity()`. The lower-level
+`AuthService.signUp()` result is unchanged, and a null token never establishes
+an authenticated identity.
+
+Administrative `createUser`, `updateUser`, `setUserRoles`, `setUserPermissions`,
+`banUser`, and `unbanUser` mutations now return operation-specific payloads
+containing only `id`. Remove profile/relation selections from these mutations
+and refetch the user separately after a successful write.
+`acceptInvitation` returns `AcceptInvitationPayload { id, memberId, workspaceId }`;
+select the returned workspace in a subsequent request to query its membership.
+Domain Service return values and authorization checks are unchanged.
+
+The generated baseline already permits shared member contact emails and keeps
+membership unique by `(user, workspace)`; there is no separate migration removing
+email uniqueness. Rolling back the schema baseline drops its tables and data.
+The initial infrastructure migration has an empty `down()`. Restoring contact-email
+uniqueness in an existing database requires a separate migration and an explicit
+data-preserving reconciliation plan.

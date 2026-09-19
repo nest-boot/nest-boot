@@ -3,6 +3,7 @@ import { t } from "i18next";
 
 import { linkOptions } from "@tanstack/react-router";
 import { SidebarUser } from "../../components/sidebar-user";
+import { useCurrentUserAbility } from "../../contexts/current-user-context";
 import type { ComponentProps, ComponentType, FC } from "react";
 import type { LinkProps } from "@tanstack/react-router";
 import { Link } from "@/components/link";
@@ -25,9 +26,11 @@ type SidebarItem = {
   icon: ComponentType<{ className?: string }>;
   link: LinkProps;
   testId: string;
+  visible?: boolean;
 };
 
 export const UserSidebar: FC<ComponentProps<typeof Sidebar>> = (props) => {
+  const ability = useCurrentUserAbility();
   const items: Array<SidebarItem> = [
     {
       title: t("sidebar:user.account"),
@@ -40,6 +43,7 @@ export const UserSidebar: FC<ComponentProps<typeof Sidebar>> = (props) => {
       icon: KeyRound,
       link: linkOptions({ to: "/user/api-keys" }),
       testId: "user-sidebar-api-keys-link",
+      visible: ability.can("read", "UserApiKey"),
     },
     {
       title: t("sidebar:user.security"),
@@ -86,18 +90,20 @@ export const UserSidebar: FC<ComponentProps<typeof Sidebar>> = (props) => {
           <SidebarGroupLabel>{t("sidebar:user.title")}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    render={
-                      <Link {...item.link} data-testid={item.testId}>
-                        <item.icon />
-                        <span>{item.title}</span>
-                      </Link>
-                    }
-                  />
-                </SidebarMenuItem>
-              ))}
+              {items
+                .filter((item) => item.visible !== false)
+                .map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      render={
+                        <Link {...item.link} data-testid={item.testId}>
+                          <item.icon />
+                          <span>{item.title}</span>
+                        </Link>
+                      }
+                    />
+                  </SidebarMenuItem>
+                ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

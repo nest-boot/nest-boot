@@ -1,13 +1,13 @@
 import { RequestContext } from "@nest-boot/request-context";
 
 import { WorkspaceAbility } from "../abilities/workspace.ability.js";
-import { AccessControlService } from "../access-control.service.js";
+import { AccessControlService } from "../services/access-control.service.js";
 import { workspaceCan } from "./workspace-can.util.js";
 
 class TestSubject {}
 
 describe("workspaceCan", () => {
-  it("checks a permission with the cached workspace ability", async () => {
+  it("rejects a cached ability without the authorization service", async () => {
     const canMock = vi.fn(() => true);
     const ability = new WorkspaceAbility();
     vi.spyOn(ability, "can").mockImplementation(canMock);
@@ -15,10 +15,10 @@ describe("workspaceCan", () => {
     await RequestContext.run(new RequestContext({ type: "http" }), () => {
       RequestContext.set(WorkspaceAbility, ability);
 
-      expect(workspaceCan("update", TestSubject)).toBe(true);
+      expect(workspaceCan("update", TestSubject)).toBe(false);
     });
 
-    expect(canMock).toHaveBeenCalledWith("update", TestSubject);
+    expect(canMock).not.toHaveBeenCalled();
   });
 
   it("returns false when the workspace ability is not cached", async () => {

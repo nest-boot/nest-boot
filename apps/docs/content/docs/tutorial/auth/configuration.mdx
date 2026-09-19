@@ -12,7 +12,6 @@ custom OAuth providers share one flat `providers` option.
 
 Important Nest Boot options include:
 
-- **`entities`** — application entity classes for every authentication model;
 - **`emailAndPassword.enabled`** — enables email/password authentication, defaulting to `true`;
 - **`emailAndPassword.requireEmailVerification`** — requires verified email before sign-in, defaulting to `true`;
 - **`emailAndPassword.password`** — overrides password hashing; the default uses `HashService`;
@@ -30,21 +29,32 @@ Important Nest Boot options include:
 - **`account`** — configures OAuth account linking, storage, and state validation;
 - **`providers`** — configures built-in social, custom OAuth 2.0, and OpenID Connect providers.
 
-`user.permissions` defaults to the standard `User:*` and `Session:*` catalog.
+`user.permissions` defaults to the standard `user:*`, `session:*`, and `api-key:*` catalog.
 `user.roles` defaults to `admin` and `user`. The `admin` role grants the full
-default catalog, while `user` grants none. A configured permission array or role
-map replaces its corresponding default. `user.defaultRole` defaults to `user`.
+default catalog, while `user` grants none. Configured permissions extend the
+catalog; configured roles add new roles or append grants to existing roles.
+`user.defaultRole` defaults to `user`.
 `user.adminRoles` defaults to `['admin']` and classifies administrative
-identities, including targets that require `User:impersonate-admins` to
+identities, including targets that require `user:impersonate-admins` to
 impersonate.
 
 `workspace.permissions` defaults to the standard workspace permission catalog.
 `workspace.roles` defaults to `owner`, `admin`, and `member`. Owners receive the
-full default catalog. Administrators receive the same permissions except
-`Workspace:delete`, and members receive none. A configured permission array or
-role map replaces its corresponding default. `workspace.defaultRole` defaults
+full default catalog, including workspace API-key management. Administrators
+receive workspace, member, and invitation management permissions except
+`workspace:delete`; API-key management is owner-only by default. Members receive none. Configured permissions and roles
+extend these defaults in the same way. `workspace.defaultRole` defaults
 to `member` for additions and invitations. `workspace.creatorRole` defaults to
-`owner` and identifies the protected workspace creator lifecycle.
+`owner` and assigns the initial role to the workspace creator.
+
+Empty permission arrays or role maps add nothing; built-in catalogs and role
+grants remain available. Same-name role grants are merged and deduplicated.
+Custom permissions are not automatically granted to built-in administrators or
+owners: append them to the appropriate role explicitly. Use a new role for a
+restricted grant set; setting `admin: []` does not remove its built-in grants.
+Entity mutations such as `setUserRoles` and `setMemberPermissions` still replace
+the stored values. API-key `allowedPermissions` remains a ceiling, not an
+additive catalog; `[]` permits no grants but retains the full output enum.
 
 Every permission granted by a configured role must be present in the matching
 permission catalog. `forRoot()` infers literal permission unions and rejects
@@ -58,14 +68,16 @@ subject may receive permissions from multiple configured roles. Permission
 properties are also `string[]`. Role assignment methods validate names against
 the configured role map, while the module options keep the configured catalogs
 typed without coupling the GraphQL or database schema to literal unions.
-Direct user, workspace-member, and API-key permission writes are also validated
+Direct user, member, and API-key permission writes are also validated
 against these catalogs at runtime.
 
 `apiKey.defaultPermissions` defaults to an empty list.
 `apiKey.allowedPermissions` defaults to the combined user and workspace
 permission catalogs. Both lists are validated at startup, and defaults must be
 a subset of the allowlist. A User Key may use entries from either catalog; a
-Workspace Key may use only workspace permissions. These settings are additional
+Workspace Key may use only workspace permissions and cannot send invitations.
+Shared defaults therefore cannot include `invitation:create`; invalid defaults
+are rejected at startup. These settings are additional
 limits: issuer permissions and the authenticating API Key's own permissions are
 still enforced during creation and update.
 
@@ -145,7 +157,7 @@ Providers with discovery metadata can use OpenID Connect. Plain OAuth providers
 can configure `authorizationUrl`, `tokenUrl`, and `userInfoUrl` explicitly.
 Advanced provider callbacks such as `getToken`, `getUserInfo`, and
 `mapProfileToUser` are also supported. Generic providers use the same
-`AuthService.signInSocial()`, `AuthService.linkSocialAccount()`, and callback
+`AuthService.signInSocial()`, `AuthService.linkCurrentUserAccount()`, and callback
 routes as built-in social providers. `AUTH_DISABLE_SIGN_UP=true` overrides every
 provider's signup setting.
 
@@ -172,34 +184,26 @@ until `AUTH_OIDC_ENABLED=true`; when enabled, its ID is `oidc`.
 
 ## Entity Setup
 
-Every class in `entities` must extend the matching base entity. Subclasses may
-redeclare columns to add GraphQL metadata, indexes, database-specific types, or
-application fields.
+Auth owns the concrete `User`, `Account`, `Session`, `Verification`,
+`Workspace`, `Member`, `Invitation`, `UserApiKey`, and `WorkspaceApiKey` entities, their GraphQL
+metadata, relations, RLS policies, and connections. There are no public auth
+`Base*` classes or `AuthModuleOptions.entities` overrides.
+
+Register the exported `entities` array in both your runtime MikroORM configuration
+and the configuration loaded by the migration CLI. The CLI does not initialize Nest:
 
 ```typescript
-import { BaseUser } from "@nest-boot/auth";
-import { Field, ID, ObjectType } from "@nest-boot/graphql";
-import { Entity, PrimaryKey, Property, t } from "@mikro-orm/postgresql";
+import { entities as authEntities } from "@nest-boot/auth";
+import { defineConfig } from "@mikro-orm/postgresql";
 
-@ObjectType()
-@Entity()
-export class User extends BaseUser {
-  @Field(() => ID)
-  @PrimaryKey({ type: t.bigint })
-  override id!: string;
-
-  @Field(() => String)
-  @Property({ type: t.string })
-  declare name: string;
-}
+export default defineConfig({
+  entities: [...authEntities, "dist/**/*.entity.js"],
+  entitiesTs: [...authEntities, "src/**/*.entity.ts"],
+  // Connection and migration options...
+});
 ```
 
-The package provides `BaseUser`, `BaseAccount`, `BaseSession`,
-`BaseVerification`, `BaseWorkspace`, `BaseWorkspaceInvitation`,
-`BaseWorkspaceMember`, and `BaseApiKey`.
-
-Better Auth 1.7 identifies accounts by the required `(issuer, accountId)` pair.
-Before making `issuer` non-null in an existing database, backfill a stable value
-and resolve duplicate pairs. `BaseSession` indexes `userId`, and
-`BaseVerification` indexes `identifier`. Generate a fresh application migration
-after changing any configured entity.
+Use separate related business entities and additional field resolvers to extend
+these models. Import the built-in classes directly for relation targets; do not
+redeclare or register replacement auth entities. Role/permission catalogs, ability
+builders, delivery callbacks, and provider settings remain configurable.

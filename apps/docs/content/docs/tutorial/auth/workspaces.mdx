@@ -12,12 +12,12 @@ user's active membership, and stores both entities in `RequestContext`.
 ```typescript
 import {
   CurrentWorkspace,
-  CurrentWorkspaceMember,
+  CurrentMember,
 } from "@nest-boot/auth";
 
 currentWorkspace(
   @CurrentWorkspace() workspace: Workspace,
-  @CurrentWorkspaceMember() member: WorkspaceMember,
+  @CurrentMember() member: Member,
 ) {
   return { workspace, member };
 }
@@ -32,39 +32,118 @@ different workspaces.
 `WorkspaceService` owns transport-independent workspace operations:
 
 - `findOne(where)`;
-- `listWorkspaces(user)`;
+- `getWorkspaceConnectionByUser(user, args)`;
 - `createWorkspace(user, input)`;
-- `getFullWorkspace(workspace)`;
-- `updateWorkspace(workspace, input)`;
-- `deleteWorkspace(workspace, currentMember)`.
+- `updateWorkspace(id, input)`;
+- `deleteWorkspace(id)`.
 
-Creating a workspace also creates its active owner membership. Deletion is a
-soft delete and only the owner of that workspace may perform it.
-Deletion, member/service-account creation, and invitation creation/acceptance
-lock the workspace row and recheck its active state inside their transaction.
+Creating a workspace also creates its active owner membership. Deletion is
+permanent and requires delete ability for the selected workspace. Foreign keys
+cascade to its members, invitations and workspace API keys; users and their
+personal credentials remain. Workspaces have no `deletedAt` field or restore operation.
+Deletion, member creation, and invitation creation/acceptance
+lock the workspace row and verify that it still exists inside their transaction.
 Requests that selected a workspace before deletion cannot create new children
 after the deletion commits.
 
 ## Member Lifecycle
 
-- `getMember(workspace, user)`;
-- `getMemberById(workspace, memberId)`;
-- `listMembers(workspace)`;
+`MemberService` owns these operations:
+
+- `getMemberByUser(workspace, user)`;
+- `getMember(id)` — requires the current workspace and checks read ability;
+- `getMemberConnectionByWorkspace(workspace, args)`;
 - `addMember(workspace, user, input)`;
 - `addMemberByEmail(workspace, email, input)`;
-- `createServiceAccount(workspace, input)`;
-- `updateMember(member, input)`;
-- `updateMemberRole(member, roles)`;
-- `setMemberPermissions(member, permissions)`;
-- `removeMember(member)`;
-- `leaveWorkspace(member)`;
-- `transferOwnership(workspace, currentOwner, nextOwner)`.
+- `updateMember(id, input)`;
+- `setMemberRoles(id, roles)`;
+- `setMemberPermissions(id, permissions)`;
+- `removeMember(id)`;
+- `leaveWorkspace(member)`.
 
-Owners cannot be disabled, removed, or leave through ordinary member operations.
-Member status changes and ownership transfers lock the affected memberships
+Member disable/remove operations check update/delete ability regardless of role.
+Any current member may leave, including an owner; the workspace may remain without owners.
+Administrative removal still rejects self-removal; use `leaveWorkspace` instead.
+Member status and role changes lock the affected memberships
 and recheck their state in the same transaction.
 GraphQL resolvers and HTTP controllers should map input/output types and leave
-these invariants in `WorkspaceService`.
+these invariants in the corresponding Service.
+Multiple members may hold the configured creator role. Use `setMemberRoles` to
+assign or remove that role, subject to update ability and the caller's permission
+scope. There is no dedicated ownership-transfer operation; these are separate
+role updates, not an atomic transfer.
 
 Workspace invitation delivery and state transitions are documented separately
 under [Invitations](/docs/tutorial/auth/invitations).
+
+## Write Authorization and RLS
+
+Ordinary workspace/member writes retain both Service authorization (including
+selected-workspace and owner invariants) and database RLS. Services may read the
+actor from request context; resolvers only pass IDs and inputs. The methods
+above still accept entity arguments, but GraphQL `updateWorkspace` and
+`deleteWorkspace` now require an explicit
+`id: ID!` matching the selected workspace.
+The deprecated `removeWorkspace` alias has been removed; use `deleteWorkspace`.
+
+GraphQL workspace update and member create/update/role/permission mutations return
+dedicated payloads containing only `id`. Query the resource separately to read its
+fields; a successful write does not imply permission to read its relations.
+After `leaveWorkspace` or `deleteWorkspace` commits, the request's membership,
+workspace identity, workspace ability and workspace RLS scope are cleared.
+Call these operations outside externally owned transactions.
+
+Apply `Initial → generated schema migrations` before deployment.
+Workspace deletion uses the request manager and a workspace-scoped DELETE policy;
+it needs no special execution context. Deletion cascades are atomic, and the
+request's workspace scope is cleared only after commit. User deletion authorizes the root
+row with Service checks and RLS, then uses foreign-key cascades for atomic
+dependent cleanup. Deleting a user preserves workspaces and other
+users' memberships; a workspace is allowed to remain without an owner.
+
+Services use only injected `this.em`. `AuthModule` infrastructure establishes
+cross-identity database contexts for workspace creation and invitation
+acceptance/rejection; Services still enforce authorization and lifecycle checks.
+Ordinary queries and writes do not disable RLS.
+
+Use the connection pagination methods above for workspaces, members, and
+invitations. Each service checks its own authorization and retains request RLS.
+
+## Workspace-visible member profiles
+
+Built-in `Member` owns name/email, and `Workspace.members` / `User.members` own the inverse collections. Applications do not redeclare these fields. Raw ORM collections stay hidden from GraphQL; connection
+field resolvers remain responsible for authorized pagination. The example's
+`Workspace.features` field and enum have been removed.
+
+Every member requires a user and retains its own `name` and nullable `email`.
+These are workspace-visible contact details, initialized from the user's profile
+when membership is created. They are independent thereafter: member edits do not
+change the user's name or login email, and user edits do not synchronize to members.
+Authorized callers may update member name, email and status; roles and permissions
+use dedicated setters. Clearing the member email with `null` does not affect login.
+The example displays and filters member fields directly, with exact filters and
+prefix searches such as `name:Alice*`, without joining private user profiles.
+
+`Member.user` remains a private User relation, not a source of shared
+contact details. Reading another user's profile requires global user-read
+authorization in the Service; workspace roles alone do not grant it.
+The same boundary applies to `Invitation.inviter`: access to an invitation
+does not grant access to the inviter's private profile.
+
+Service-account creation and its options/input exports remain removed without
+aliases; there is no member type enum. The example now has a two-step fresh-database
+baseline, `Initial → generated schema migrations`, which creates required member user
+relations and independent name/email fields directly, without historical columns.
+
+The generated baseline User SELECT policy allows authenticated database roles to
+read User rows. Services enforce profile visibility through Ability, including
+custom permission names and API-key ceilings. Anonymous reads remain denied.
+Direct ORM/SQL reads do not enforce profile privacy; expose User data only through
+authorized Services. User writes and Session reads likewise rely on Service
+authorization, not permission names in database request variables.
+
+This baseline replaces the previous migration history and is intended for empty
+databases. Do not apply it on top of an existing schema or merely clear the migration
+history table. Back up existing data and plan a separate data-preserving transition
+before upgrading an existing database. Update custom entities, filters and GraphQL
+documents together.

@@ -1,5 +1,6 @@
 {
   "action": {
+    "load_more": "Load more",
     "cancel": "Cancel",
     "close": "Close",
     "confirm": "Confirm",

@@ -296,7 +296,7 @@ describe("MikroOrmModule", () => {
     const session = vi.fn(() => ({
       role: "anonymous",
       variables: {
-        "app.workspace": RequestContext.get<string>("workspace") ?? "",
+        "app.workspace.id": RequestContext.get<string>("workspace") ?? "",
       },
     }));
     new MikroOrmModule(orm, { session }).onModuleInit();
@@ -310,7 +310,7 @@ describe("MikroOrmModule", () => {
           useContext: true,
           session: {
             role: "anonymous",
-            variables: { "app.workspace": workspace },
+            variables: { "app.workspace.id": workspace },
           },
         });
       });

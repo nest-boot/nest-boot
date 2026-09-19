@@ -1,22 +1,13 @@
 import { BadRequestException } from "@nestjs/common";
 
-import type { AuthRole } from "../interfaces/auth-role.interface.js";
 import type { AuthModuleRoles } from "../types/auth-module-roles.type.js";
-
-/** Converts configured roles into transport-friendly role records. */
-export function listAuthRoles(roles: AuthModuleRoles): AuthRole[] {
-  return Object.entries(roles).map(([name, permissions]) => ({
-    name,
-    permissions: [...permissions],
-  }));
-}
 
 /** Returns a deduplicated configured permission catalog. */
 export function listAuthPermissions(permissions: readonly string[]): string[] {
   return [...new Set(permissions)];
 }
 
-/** Validates permission values against one configured permission catalog. */
+/** Validates permission values by exact, case-sensitive catalog membership. */
 export function normalizeAuthPermissions(
   value: readonly string[],
   availablePermissions: readonly string[],
@@ -66,9 +57,29 @@ export function assertAuthRolePermissions(
   permissions: readonly string[],
   scope: "user" | "workspace",
 ): void {
+  for (const permission of permissions) {
+    if (
+      typeof permission !== "string" ||
+      permission.trim() !== permission ||
+      permission.includes("--") ||
+      !/^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$/u.test(permission)
+    ) {
+      throw new Error(
+        `Invalid ${scope} permission name: ${JSON.stringify(permission)}`,
+      );
+    }
+  }
   const availablePermissions = new Set(permissions);
 
   for (const [role, rolePermissions] of Object.entries(roles)) {
+    if (
+      role.trim() !== role ||
+      role.includes("--") ||
+      !/^[a-z][a-z0-9-]*$/u.test(role) ||
+      ["true", "false", "null"].includes(role)
+    ) {
+      throw new Error(`Invalid ${scope} role name: ${JSON.stringify(role)}`);
+    }
     const unknownPermissions = rolePermissions.filter(
       (permission) => !availablePermissions.has(permission),
     );

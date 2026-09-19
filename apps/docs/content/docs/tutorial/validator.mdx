@@ -67,6 +67,26 @@ class TreeDto {
 }
 ```
 
+## Optional and nullable fields
+
+Use `.optional()` for fields that may be omitted, `.nullable()` for required fields
+that accept `null`, and `.nullish()` for both. These declarations replace the old
+conditional validation decorators without changing GraphQL or database nullability.
+
+```typescript
+class UpdateProfileDto {
+  @ZodField((z) => z.string().optional())
+  name?: string;
+
+  @ZodField((z) => z.string().nullish())
+  image?: string | null;
+}
+```
+
+Here, `name: null` is invalid and `image: null` is valid. Services must implement
+the update semantics: omission preserves the value, while an explicit `null` may
+clear it. Direct Service calls do not run Nest pipes automatically.
+
 ## Mapped DTOs
 
 Nest's standard mapped-type helpers do not copy metadata owned by third-party

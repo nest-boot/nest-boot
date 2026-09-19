@@ -55,20 +55,107 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
   `Migration` / `Migrator`。执行 schema diff 前，先将已有策略声明到实体元数据；
   数据库角色与权限仍需显式创建和授权。通过 `MikroOrmModuleOptions.session`
   初始化请求 session，并在业务事务开始前更新。详见 [MikroORM RLS 文档](https://mikro-orm.io/docs/row-level-security)。
-- 将认证权限的资源名更新为 CASL subject type 的原始值。内置目录现在使用
-  `User:*`、`Session:*`、`Workspace:*`、`WorkspaceMember:*` 与
-  `WorkspaceInvitation:*`。需要更新角色配置中的权限，并改写此前持久化的直接权限与
-  API Key 权限。
+- 认证权限标识由应用定义，是区分大小写的字符串，与 CASL subject type 分离。
+  权限目录、授权上限和 API Key 权限交集只做精确字符串匹配，不转换大小写。
+  内置目录使用 `user:*`、`session:*`、`workspace:*`、`member:*` 与
+  `invitation:*` 与 `api-key:*`。自定义角色和权限遵循小写命名约束，无效名称会被
+  拒绝而非自动转换。角色授权、直接权限、API Key 权限与业务规则的拼写必须一致。
+- Auth 统一维护内置能力映射，请移除应用中重复构建 auth 规则的回调。
+  业务回调接收 `AbilityRules`，不返回值，通过 `can(permission, action, subject, conditions?)`
+  绑定权限。内置实体和 `all` 不能被额外授权；`cannot` 可追加限制。两种权限目录都内置
+  API Key CRUD 权限，前端继续消费最终序列化规则。详见[授权](./tutorial/auth/authorization)。
+- 用户与工作区的权限目录、角色映射现在追加到内置默认值。同名角色的权限合并去重，
+  空配置不会移除默认值，自定义权限仍需显式授予角色。需要受限授权时请定义新角色。
+  实体 `set*` 方法仍替换存储值；API Key 的 `allowedPermissions` 仍是上限而非追加列表。
+- 数据库请求身份变量改为 `app.user.id` 和 `app.workspace.id`。不再向数据库传递
+  应用权限列表；Service 负责 Ability 检查与 API Key 权限上限。RLS 保留归属、
+  工作区隔离，不再检查应用权限名。
 - 认证 Session 现在只使用主数据库；请移除 `AuthModuleOptions.secondaryStorage` 配置。
   API Key 默认权限与授予上限可分别通过 `apiKey.defaultPermissions` 和
   `apiKey.allowedPermissions` 配置。
 - 切换 TypeScript 模块解析后，重新生成文件和迁移，确保生成的导入带有有效的
   ESM 扩展名。
 
-服务端示例的历史迁移已替换为按当前实体生成的一份基线迁移。示例应使用全新数据库；
+服务端示例的历史迁移已替换为两步基线：手写基础设施初始化，再执行按当前实体生成的结构迁移。示例应使用全新数据库；
 这份基线不用于升级执行过旧迁移的数据库。重建已有开发数据库前，请先备份需要保留的数据。
 
 ## 仓库测试
 
 Nest Boot 版本 8 使用基于 SWC 的 Vitest 替代 Jest。贡献者可以通过
 `pnpm test` 和 `pnpm test:e2e` 运行单元测试与端到端测试。
+
+### API Key 归属与数据库级联
+
+先执行 `Migration00000000000000_Initial`，再执行 MikroORM 生成的
+`Migration20260918091003`。初始化迁移向 `anonymous` 和 `authenticated`
+授予 schema `USAGE`，并为 `public` 中的表、函数和序列统一配置默认 `ALL` 权限。
+这些默认权限只适用于同一迁移角色以后创建的对象，不会修改现有对象或其他角色创建的对象的权限。
+
+两个请求角色都不是只读角色，也不限于 CRUD。表权限还包括 `TRUNCATE`、`REFERENCES`
+和 `TRIGGER`；两个角色都可以执行函数，以及使用、读取和更新序列。
+RLS 不保护 `TRUNCATE` 或 `REFERENCES`，表策略也不限制序列操作。
+不要向任一角色开放不受限制的 SQL 执行入口。`SECURITY DEFINER` 函数以其所有者的权限执行，
+需要单独审查。详见 PostgreSQL 的
+[行级安全文档](https://www.postgresql.org/docs/current/ddl-rowsecurity.html)。
+
+所有业务表必须启用 RLS 并声明策略；`Verification` 明确拒绝普通请求访问。
+凭证字段与可更新属性由 Service 和 GraphQL 控制，数据库不再提供列级保护。
+
+`BaseApiKey.owner` 已移除。`UserApiKey` 与 `WorkspaceApiKey` 使用独立的表，
+各自只有一个必填归属外键（`user` 或 `workspace`），无需二选一 CHECK 约束。
+实体导入、查询过滤器和测试需同步适配两类密钥。
+用户删除由外键级联清理关联记录，不再使用自定义删除函数或触发器；工作区和工作区密钥保留。
+User SELECT 允许 authenticated 角色读取，个人资料访问由 Service 的 Ability 检查限制，支持自定义读取权限名。
+User 写入及 Session 读取同样由 Service 授权；数据库请求上下文不再传递应用权限。
+不要绕过 Service 授权暴露直接 User 查询。
+示例基线仅适用于空库；已有数据库需单独编写数据保留迁移，按归属类型拆分旧密钥并填充必填外键。
+
+工作区改为永久删除。移除 `Workspace.deletedAt` 的字段选择、过滤条件和索引；成员、邀请和
+工作区密钥由外键级联删除。DELETE 策略继续限制工作区范围，旧软删除策略和 `app.operation`
+删除上下文已移除。已有数据库迁移前应备份数据，并明确历史软删除工作区的处理方式；
+示例基线只适用于空库，不会转换已有数据。
+
+## Auth 模块合并
+
+`@nest-boot/auth-graphql` 已合并到 `@nest-boot/auth`。移除旧包和 `AuthGraphQLModule` 导入；
+输入、Payload、Resolver 和连接全部改从 `@nest-boot/auth` 导入。
+
+Auth 内置 `User`、`Account`、`Session`、`Verification`、`Workspace`、
+`Member`、`Invitation`、`UserApiKey` 和 `WorkspaceApiKey` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
+不再提供认证 `Base*` 类或 `AuthModuleOptions.entities` 替换配置。
+
+在运行时和迁移 CLI 的 MikroORM 配置中注册导出的 `entities` 数组；CLI 不会启动 Nest 模块：
+
+```typescript
+import { entities as authEntities } from "@nest-boot/auth";
+import { defineConfig } from "@mikro-orm/postgresql";
+
+export default defineConfig({
+  entities: [...authEntities, "dist/**/*.entity.js"],
+  entitiesTs: [...authEntities, "src/**/*.entity.ts"],
+  // Connection and migration options...
+});
+```
+
+自定义字段请使用独立的业务关联实体和额外的字段 Resolver。关联目标直接导入内置实体类，
+不要重新声明或注册同名认证实体。角色、权限目录、Ability 构造器、邮件回调和 Provider 配置仍可自定义。
+
+`CreateUserOptions.data` 已移除：`UserService.createUser()` 仅持久化内置用户字段。
+应用自定义字段请存放在与 `User` 关联的独立业务实体中。
+
+GraphQL `signUp` 现在返回 `SignUpPayload { id, token }`，不再返回
+`AuthSignUpResultType { user, token }`。将 `signUp { user { id } }` 改为
+`signUp { id }`；需要登录的用户关联字段应在登录后查询。
+`AuthService.signUpPayload()` 替代 `signUpEntity()`，底层 `AuthService.signUp()`
+返回值保持不变。`token` 为 null 时不会建立登录身份。
+
+管理接口 `createUser`、`updateUser`、`setUserRoles`、`setUserPermissions`、
+`banUser`、`unbanUser` 现在返回各自的 Payload，仅包含 `id`。请移除这些操作的
+资料及关联字段选择，并在写入成功后单独查询用户。
+`acceptInvitation` 返回 `AcceptInvitationPayload { id, memberId, workspaceId }`；
+后续请求选择返回的工作区后再查询成员信息。领域 Service 的返回值与授权检查不变。
+
+生成的基线已允许成员共用联系邮箱，成员关系仍按 `(user, workspace)` 唯一；
+不存在单独移除邮箱唯一约束的迁移。回滚结构基线会删除其中的表和数据，
+基础设施初始化迁移的 `down()` 为空。已有数据库若要恢复联系邮箱唯一约束，
+需要单独迁移及明确的数据保留方案。

@@ -1,5 +1,5 @@
 import { Logger } from '@nest-boot/logger';
-import { ValidationPipe } from '@nestjs/common';
+import { ZodValidationPipe } from '@nest-boot/validator';
 import { NestFactory } from '@nestjs/core';
 
 import { AppModule } from './app/app.module.js';
@@ -22,9 +22,7 @@ async function bootstrap() {
 
   app.useLogger(logger);
 
-  app.useGlobalPipes(
-    new ValidationPipe({ transform: true, forbidUnknownValues: false }),
-  );
+  app.useGlobalPipes(new ZodValidationPipe());
 
   app.enableShutdownHooks();
 

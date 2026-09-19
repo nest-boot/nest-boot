@@ -1,6 +1,6 @@
 import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
 import { CurrentWorkspaceProvider } from "./contexts/current-workspace-context";
-import { CurrentWorkspaceMemberProvider } from "./contexts/current-workspace-member-context";
+import { CurrentMemberProvider } from "./contexts/current-member-context";
 import { WorkspaceSidebar } from "./components/workspace-sidebar";
 import { graphql } from "@/gql";
 import {
@@ -16,7 +16,7 @@ const GET_CURRENT_WORKSPACE_FROM_WORKSPACE_LAYOUT = graphql(`
     workspace(id: $workspaceId) {
       id
     }
-    currentWorkspaceMember {
+    currentMember {
       id
       roles
     }
@@ -44,12 +44,12 @@ export const Route = createFileRoute("/_authenticated/workspaces/$workspaceId")(
         fetchPolicy: "network-only",
       });
 
-      if (!data?.workspace || !data.currentWorkspaceMember) {
+      if (!data?.workspace || !data.currentMember) {
         throw redirect({ to: "/workspaces" });
       }
 
       return {
-        currentWorkspaceMember: data.currentWorkspaceMember,
+        currentMember: data.currentMember,
         currentWorkspaceAbility: createAbility(
           data.currentWorkspaceAbilityRules,
         ),
@@ -61,7 +61,7 @@ export const Route = createFileRoute("/_authenticated/workspaces/$workspaceId")(
 function WorkspaceLayout() {
   return (
     <CurrentWorkspaceProvider>
-      <CurrentWorkspaceMemberProvider>
+      <CurrentMemberProvider>
         <SidebarProvider>
           <WorkspaceSidebar />
 
@@ -77,7 +77,7 @@ function WorkspaceLayout() {
             <Outlet />
           </SidebarInset>
         </SidebarProvider>
-      </CurrentWorkspaceMemberProvider>
+      </CurrentMemberProvider>
     </CurrentWorkspaceProvider>
   );
 }

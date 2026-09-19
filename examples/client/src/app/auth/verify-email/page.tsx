@@ -23,7 +23,7 @@ const SEND_VERIFICATION_EMAIL_FROM_VERIFY_EMAIL = graphql(`
   mutation sendVerificationEmailFromVerifyEmail(
     $input: AuthSendVerificationEmailInput!
   ) {
-    authSendVerificationEmail(input: $input)
+    sendVerificationEmail(input: $input)
   }
 `);
 
@@ -70,7 +70,7 @@ function VerifyEmailComponent() {
         },
       });
 
-      if (!result.data?.authSendVerificationEmail) {
+      if (!result.data?.sendVerificationEmail) {
         throw new Error(t("auth:emailVerification.resendFailed"));
       }
       setResent(true);

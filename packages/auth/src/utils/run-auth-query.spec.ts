@@ -7,6 +7,10 @@ import { Entity, PrimaryKey, Property } from "@mikro-orm/decorators/legacy";
 import { MikroORM } from "@mikro-orm/pglite";
 import { RequestContext } from "@nest-boot/request-context";
 
+import { Session } from "../entities/session.entity.js";
+import { User } from "../entities/user.entity.js";
+import { createContextualAuthService } from "../infrastructure/create-contextual-auth-service.js";
+import { RequestIdentity } from "../infrastructure/request-identity.js";
 import { runAuthQuery } from "./run-auth-query.js";
 
 @Entity({
@@ -15,9 +19,9 @@ import { runAuthQuery } from "./run-auth-query.js";
       name: "auth_record_workspace",
       roles: ["auth_query_reader"],
       using: (columns) =>
-        `${columns.workspace} = current_setting('app.workspace', true)`,
+        `${columns.workspace} = current_setting('app.workspace.id', true)`,
       check: (columns) =>
-        `${columns.workspace} = current_setting('app.workspace', true)`,
+        `${columns.workspace} = current_setting('app.workspace.id', true)`,
     },
   ],
 })
@@ -36,7 +40,7 @@ describe("runAuthQuery with native RLS", () => {
   let orm: MikroORM;
   const session: SessionContext = {
     role: "auth_query_reader",
-    variables: { "app.workspace": "one" },
+    variables: { "app.workspace.id": "one" },
   };
 
   beforeAll(async () => {
@@ -108,6 +112,77 @@ describe("runAuthQuery with native RLS", () => {
           .getConnection()
           .execute("select id from auth_record order by id"),
       ).toEqual([{ id: 1 }, { id: 2 }]);
+    });
+  });
+
+  it.each([false, true])(
+    "publishes child identity revocation only after success (failure=%s)",
+    async (failure) => {
+      await inRequest(async (em) => {
+        const user = Object.assign(new User(), { id: "current" });
+        const currentSession = new Session();
+        RequestContext.set(User, user);
+        RequestContext.set(Session, currentSession);
+        const operation = runAuthQuery(em, async (authEm) => {
+          await authEm.getConnection().execute("select 1");
+          RequestIdentity.clear(authEm);
+          if (failure) throw new Error("Persistence failed");
+          return "committed";
+        });
+        if (failure) {
+          await expect(operation).rejects.toThrow("Persistence failed");
+          expect(RequestContext.get(User)).toBe(user);
+          expect(RequestContext.get(Session)).toBe(currentSession);
+          expect(em.getSessionContext()).toEqual(session);
+        } else {
+          await expect(operation).resolves.toBe("committed");
+          expect(RequestContext.get(User)).toBeNull();
+          expect(RequestContext.get(Session)).toBeNull();
+          expect(em.getSessionContext()).toMatchObject({
+            role: "anonymous",
+            variables: { "app.user.id": "" },
+          });
+        }
+        expect(RequestContext.get(CoreEntityManager)).toBe(em);
+      });
+    },
+  );
+
+  it("supplies isolated managers only to explicitly listed service operations", async () => {
+    class DomainService {
+      constructor(private readonly em: CoreEntityManager) {}
+      async read() {
+        return await this.em.count(AuthRecord);
+      }
+      async bootstrap() {
+        return await this.em.count(AuthRecord);
+      }
+    }
+    await inRequest(async (em) => {
+      const service = createContextualAuthService(
+        em,
+        (manager) => new DomainService(manager),
+        {
+          bootstrap: "authentication",
+        },
+      );
+      expect(await service.read()).toBe(1);
+      expect(await service.bootstrap()).toBe(2);
+      expect(await service.read()).toBe(1);
+      expect(RequestContext.get(CoreEntityManager)).toBe(em);
+      expect(em.getSessionContext()).toEqual(session);
+      await em.transactional(async (tx) => {
+        const transactional = createContextualAuthService(
+          tx,
+          (manager) => new DomainService(manager),
+          {
+            bootstrap: "authentication",
+          },
+        );
+        await expect(transactional.bootstrap()).rejects.toThrow(
+          "active RLS transaction",
+        );
+      });
     });
   });
 

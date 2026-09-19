@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { completeEmailVerification, testPassword } from "./utils/auth";
+import { graphqlRequest } from "./utils/graphql";
 import { waitForEmailUrl } from "./utils/mailpit";
 import { uniqueSeed } from "./utils/unique";
 
@@ -41,7 +42,10 @@ test.describe("email authentication", () => {
     await expect(page.getByTestId("user-workspaces-page")).toBeVisible();
   });
 
-  test("resets and changes a password through GraphQL", async ({ page }) => {
+  test("resets and changes a password through GraphQL", async ({
+    page,
+    browser,
+  }) => {
     const email = `${uniqueSeed("password-flow")}@example.com`;
     const resetPassword = "reset-correct-horse-battery-staple";
     const changedPassword = "changed-correct-horse-battery-staple";
@@ -81,8 +85,22 @@ test.describe("email authentication", () => {
     await page.getByTestId("auth-submit").click();
     await expect(page).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
 
+    const otherContext = await browser.newContext();
+    try {
+      await graphqlRequest(
+        otherContext.request,
+        `mutation($input: AuthSignInInput!) {
+        signIn(input: $input) { token }
+      }`,
+        { input: { email, password: resetPassword } },
+      );
+    } finally {
+      await otherContext.close();
+    }
+
     await page.goto("/user/security");
     await expect(page.getByTestId("user-security-page")).toBeVisible();
+    await expect(page.getByTestId("user-session-row")).toHaveCount(2);
     await expect(
       page.getByTestId("user-link-social-account-github"),
     ).toBeVisible();
@@ -92,6 +110,11 @@ test.describe("email authentication", () => {
     await expect(page.getByTestId("user-revoke-other-sessions")).toBeChecked();
     await page.getByTestId("user-change-password-submit").click();
     await expect(page.getByText("密码已修改")).toBeVisible();
+    await expect(page.getByTestId("user-session-row")).toHaveCount(1);
+    await expect(page.getByText("当前会话", { exact: true })).toHaveCount(1);
+    await expect(
+      page.getByTestId("user-revoke-other-session-list"),
+    ).toBeDisabled();
 
     await page.getByTestId("sidebar-user-menu").click();
     await page.getByTestId("sidebar-user-sign-out").click();
@@ -141,7 +164,7 @@ test.describe("email authentication", () => {
         };
       };
 
-      if (body.operationName !== "authSignInSocialFromLoginForm") {
+      if (body.operationName !== "signInSocialFromLoginForm") {
         await route.continue();
         return;
       }
@@ -156,7 +179,7 @@ test.describe("email authentication", () => {
         contentType: "application/json",
         body: JSON.stringify({
           data: {
-            authSignInSocial: {
+            signInSocial: {
               redirect: true,
               url: "http://127.0.0.1:3100/auth/forgot-password",
             },

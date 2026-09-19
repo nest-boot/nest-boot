@@ -8,13 +8,17 @@ export const DEFAULT_WORKSPACE_CREATOR_ROLE = "owner";
 
 /** Permissions available to the default workspace roles. */
 export const DEFAULT_WORKSPACE_PERMISSIONS = [
-  "Workspace:update",
-  "Workspace:delete",
-  "WorkspaceMember:create",
-  "WorkspaceMember:update",
-  "WorkspaceMember:delete",
-  "WorkspaceInvitation:create",
-  "WorkspaceInvitation:cancel",
+  "workspace:update",
+  "workspace:delete",
+  "member:create",
+  "member:update",
+  "member:delete",
+  "invitation:create",
+  "invitation:cancel",
+  "api-key:read",
+  "api-key:create",
+  "api-key:update",
+  "api-key:delete",
 ] as const;
 
 /** Default workspace roles modelled after Better Auth's organization access control. */
@@ -23,12 +27,12 @@ export const DEFAULT_WORKSPACE_ROLES = {
   owner: DEFAULT_WORKSPACE_PERMISSIONS,
   /** Grants workspace administration except workspace deletion. */
   admin: [
-    "Workspace:update",
-    "WorkspaceMember:create",
-    "WorkspaceMember:update",
-    "WorkspaceMember:delete",
-    "WorkspaceInvitation:create",
-    "WorkspaceInvitation:cancel",
+    "workspace:update",
+    "member:create",
+    "member:update",
+    "member:delete",
+    "invitation:create",
+    "invitation:cancel",
   ],
   /** Grants no workspace-administration permissions. */
   member: [],

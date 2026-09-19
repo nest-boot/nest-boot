@@ -4,12 +4,11 @@ import type { ReactNode } from "react";
 import type { GetCurrentWorkspaceFromWorkspaceContextQuery } from "@/gql/graphql";
 import { graphql } from "@/gql";
 
-const GET_CURRENT_WORKSPACE_FROM_WORKSPACE_CONTEXT = graphql(`
+export const GET_CURRENT_WORKSPACE_FROM_WORKSPACE_CONTEXT = graphql(`
   query getCurrentWorkspaceFromWorkspaceContext {
     currentWorkspace {
       id
       name
-      features
       createdAt
       updatedAt
     }

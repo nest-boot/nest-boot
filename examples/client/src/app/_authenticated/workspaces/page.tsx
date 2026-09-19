@@ -3,10 +3,12 @@ import { graphql } from "@/gql";
 
 const GET_FIRST_WORKSPACE_FROM_WORKSPACES_ROUTE = graphql(`
   query getFirstWorkspaceFromWorkspacesRoute {
-    workspaces(first: 1) {
-      edges {
-        node {
-          id
+    currentUser {
+      workspaces(first: 1) {
+        edges {
+          node {
+            id
+          }
         }
       }
     }
@@ -19,7 +21,7 @@ export const Route = createFileRoute("/_authenticated/workspaces/")({
       query: GET_FIRST_WORKSPACE_FROM_WORKSPACES_ROUTE,
     });
 
-    const workspace = data?.workspaces?.edges?.[0]?.node;
+    const workspace = data?.currentUser.workspaces?.edges?.[0]?.node;
 
     if (!workspace) {
       throw redirect({ to: "/user/workspaces" });

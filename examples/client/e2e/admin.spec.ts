@@ -8,6 +8,93 @@ import {
 import { graphqlRequest } from "./utils/graphql";
 import { uniqueSeed } from "./utils/unique";
 
+for (const change of [
+  "roles",
+  "permissions",
+  "current-session",
+  "all-sessions",
+] as const) {
+  test(`refreshes authentication after changing own ${change} from the administrator page`, async ({
+    browser,
+    page,
+  }) => {
+    const seed = uniqueSeed(`self-${change}`);
+    const adminContext = await browser.newContext();
+    const adminPage = await adminContext.newPage();
+    try {
+      await registerUser(page, {
+        email: `${seed}@example.com`,
+        name: "Self-editing administrator",
+      });
+      const { currentUser, currentSession } = await graphqlRequest<{
+        currentUser: { id: string };
+        currentSession: { id: string };
+      }>(page.request, "query { currentUser { id } currentSession { id } }");
+      await signInAsE2eAdministrator(adminPage);
+      if (change === "permissions") {
+        await graphqlRequest(
+          adminPage.request,
+          "mutation($id: ID!, $input: SetUserPermissionsInput!) { setUserPermissions(id: $id, input: $input) { id } }",
+          {
+            id: currentUser.id,
+            input: {
+              permissions: ["USER__LIST", "USER__GET", "USER__SET_ROLE"],
+            },
+          },
+        );
+      } else {
+        await graphqlRequest(
+          adminPage.request,
+          "mutation($id: ID!, $input: SetUserRolesInput!) { setUserRoles(id: $id, input: $input) { id } }",
+          { id: currentUser.id, input: { roles: ["ADMIN"] } },
+        );
+      }
+      await page.goto(`/admin/users/${currentUser.id}`);
+      await expect(page.getByTestId("admin-user-page")).toBeVisible();
+      await expect(page.getByTestId("admin-user-sessions-revoke")).toHaveText(
+        "撤销全部会话",
+      );
+      const refetches: Array<string> = [];
+      const pageErrors: Array<string> = [];
+      page.on("request", (request) => {
+        const body = request.postData() ?? "";
+        if (body.includes("getUserFromUserRoute")) refetches.push(body);
+      });
+      page.on("pageerror", (error) => pageErrors.push(error.message));
+      if (change === "roles") {
+        await page.getByTestId("user-role-USER").check();
+        await page.getByTestId("user-role-ADMIN").uncheck();
+        await page.getByTestId("admin-user-roles-save").click();
+      } else if (change === "permissions") {
+        for (const permission of ["USER__LIST", "USER__GET", "USER__SET_ROLE"])
+          await page.getByTestId(`permission-${permission}`).uncheck();
+        await page.getByTestId("admin-user-permissions-save").click();
+      } else {
+        await page
+          .getByTestId(
+            change === "current-session"
+              ? `admin-user-session-revoke-${currentSession.id}`
+              : "admin-user-sessions-revoke",
+          )
+          .click();
+      }
+      if (change === "roles" || change === "permissions") {
+        await expect(page).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
+        await expect(page.getByTestId("user-workspaces-page")).toBeVisible();
+        await page.getByTestId("sidebar-user-menu").click();
+        await expect(page.getByTestId("sidebar-admin-link")).toHaveCount(0);
+      } else {
+        await expect(page).toHaveURL(/\/auth\/login(?:\?.*)?$/);
+        await expect(page.getByTestId("auth-submit")).toBeVisible();
+      }
+      expect(refetches).toEqual([]);
+      expect(pageErrors).toEqual([]);
+    } finally {
+      await adminContext.close();
+    }
+  });
+}
+
 test.describe("administrator impersonation", () => {
   test("shows the global banner and restores the administrator session", async ({
     browser,
@@ -68,7 +155,7 @@ test.describe("administrator impersonation", () => {
 
     const restored = await graphqlRequest<{
       currentUser: { email: string };
-      currentAuthSession: { impersonatedById: string | null };
+      currentSession: { impersonatedById: string | null };
     }>(
       page.request,
       /* GraphQL */ `
@@ -76,7 +163,7 @@ test.describe("administrator impersonation", () => {
           currentUser {
             email
           }
-          currentAuthSession {
+          currentSession {
             impersonatedById
           }
         }
@@ -84,7 +171,7 @@ test.describe("administrator impersonation", () => {
     );
     expect(restored).toEqual({
       currentUser: { email: e2eAdministratorEmail },
-      currentAuthSession: { impersonatedById: null },
+      currentSession: { impersonatedById: null },
     });
   });
 });

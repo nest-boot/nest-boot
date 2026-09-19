@@ -1,4 +1,5 @@
 import { PostgreSqlDriver } from '@mikro-orm/postgresql';
+import { entities as authEntities } from '@nest-boot/auth';
 import { GraphQLModule } from '@nest-boot/graphql';
 import { GraphQLConnectionModule } from '@nest-boot/graphql-connection';
 import { HashModule } from '@nest-boot/hash';
@@ -18,6 +19,8 @@ const GraphQLDynamicModule = GraphQLModule.forRoot({
 
 const MikroORMDynamicModule = MikroOrmModule.forRoot({
   driver: PostgreSqlDriver,
+  entities: [...authEntities, 'dist/**/*.entity.js'],
+  entitiesTs: [...authEntities, 'src/**/*.entity.ts'],
   session: createSessionContext,
 });
 

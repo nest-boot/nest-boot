@@ -14,6 +14,11 @@ acceptance link. Nest Boot persists the invitation before calling the sender and
 supplies its normalized email, ID, role, workspace, record, and the inviting
 member with its authenticated user.
 
+When this callback is configured, call `createInvitation()` outside an existing
+transaction. The service rejects nested calls before writing, so a later outer
+rollback cannot invalidate an already emailed link. Without the callback,
+transactional creation remains supported; arrange delivery after your own commit.
+
 ```typescript
 import { Mailer } from "@nest-boot/mailer";
 import { RequestContext } from "@nest-boot/request-context";
@@ -34,7 +39,7 @@ AuthModule.forRoot({
       await mailer.sendMail({
         to: email,
         subject: `Invitation to join ${workspace.name}`,
-        text: `${inviter.user.name} invited you: ${url}`,
+        text: `${inviter.name} invited you: ${url}`,
       });
     },
   },
@@ -45,16 +50,31 @@ The application owns the URL because acceptance may be exposed through
 GraphQL, REST, or another transport. The sender receives an optional Fetch
 `Request` when the `createInvitation()` caller supplies one.
 
-## WorkspaceService API
+## InvitationService API
+
+GraphQL `createInvitation`, `rejectInvitation` and `cancelInvitation` return
+dedicated ID-only payloads. Read invitation details separately; these writes do
+not grant access to the inviter's private user profile. Creating invitations
+requires a user identity: use a user API key, not a workspace API key.
 
 - `createInvitation(workspace, inviter, input, request?)`;
-- `getUserInvitation(id, user)`;
-- `getWorkspaceInvitation(id, workspace)`;
-- `listInvitations(workspace)`;
-- `listUserInvitations(user)`;
+- `getInvitation(id)` — single-record lookup using the current request's native RLS;
+- `getInvitationByUser(id, user)`;
+- `getInvitationByWorkspace(id, workspace)`;
+- `getInvitationConnectionByWorkspace(workspace, args)` — authorized workspace invitation connection;
+- `getInvitationConnectionByUser(user, args)` — current recipient's pending invitation connection;
 - `acceptInvitation(user, invitationId)`;
 - `rejectInvitation(user, invitation)`;
 - `cancelInvitation(invitation)`.
+
+`invitation(id)` calls `getInvitation(id)` without passing a user.
+This method checks read permission and queries the request's ORM manager without
+bypassing RLS or disabling filters. Configure both workspace-scoped and recipient
+SELECT policies: a recipient must be able to read their invitation before joining
+the workspace. The example's generated baseline migration includes the recipient
+SELECT policy; writes and other service-authorized invitation operations retain
+their existing checks. Existing databases need a schema-diff migration for any
+policy changes rather than reapplying the baseline.
 
 Invitations expire after 48 hours unless `input.expiresIn` supplies another
 positive integer lifetime in seconds. Creation rejects existing members and
@@ -62,12 +82,12 @@ duplicate pending invitations. Acceptance and rejection require the invitation
 email to match the authenticated user. Only pending, unexpired invitations can
 be accepted.
 
-Directly adding an existing user with `addMember()` or `addMemberByEmail()`
+Directly adding an existing user with `MemberService.addMember()` or `MemberService.addMemberByEmail()`
 cancels pending invitations for the same workspace and email in the membership
 transaction. The invitation remains as a `canceled` audit record and disappears
 from the user's pending list. Concurrent direct addition and acceptance can
 create only one membership.
 
-`WorkspaceService` enforces the relevant workspace or current-user permission
+`InvitationService` enforces the relevant workspace or current-user permission
 for every operation. Workspace administrators create and cancel invitations,
 while the addressed user gets, accepts, or rejects an invitation.

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@apollo/client/react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import dayjs from "dayjs";
 import { t } from "i18next";
 import { toast } from "sonner";
@@ -10,11 +10,12 @@ import {
   useCurrentUserContext,
 } from "../../../contexts/current-user-context";
 import type { UserPermission } from "@/lib/permissions";
+import type { UserRole } from "@/gql/graphql";
 import { PermissionCheckboxGroup } from "@/components/permission-checkbox-group";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import { Badge } from "@/components/thread-ui/badge";
 import { Button } from "@/components/thread-ui/button";
-import { CheckboxGroup } from "@/components/thread-ui/checkbox-group";
+import { RoleCheckboxGroup } from "@/components/role-checkbox-group";
 import { Input } from "@/components/thread-ui/input";
 import {
   Page,
@@ -31,16 +32,16 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { graphql } from "@/gql";
-import {
-  isUserPermission,
-  userPermissionOptions,
-  userPermissionValues,
-} from "@/lib/permissions";
-import { getRoleLabel } from "@/utils/get-role-label";
+import { getPermissionOptions } from "@/lib/permissions";
 import { createAbilitySubject } from "@/lib/ability";
 
 const GET_USER_FROM_USER_ROUTE = graphql(`
-  query getUserFromUserRoute($id: ID!) {
+  query getUserFromUserRoute(
+    $id: ID!
+    $sessionsAfter: String
+    $includeSessions: Boolean! = false
+    $includeCatalogs: Boolean! = false
+  ) {
     user(id: $id) {
       id
       name
@@ -54,18 +55,33 @@ const GET_USER_FROM_USER_ROUTE = graphql(`
       banExpiresAt
       createdAt
       updatedAt
+      sessions(
+        first: 20
+        after: $sessionsAfter
+        orderBy: { field: CREATED_AT, direction: DESC }
+      ) @include(if: $includeSessions) {
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+        edges {
+          node {
+            id
+            expiresAt
+            ipAddress
+            userAgent
+            createdAt
+          }
+        }
+      }
     }
-    userRoles {
-      name
-      permissions
+    userRoles @include(if: $includeCatalogs) {
+      role
+      grantable
     }
-    userPermissions
-    userSessions(userId: $id) {
-      id
-      expiresAt
-      ipAddress
-      userAgent
-      createdAt
+    userPermissions @include(if: $includeCatalogs) {
+      permission
+      grantable
     }
   }
 `);
@@ -74,10 +90,6 @@ const UPDATE_USER_FROM_USER_ROUTE = graphql(`
   mutation updateManagedUserFromUserRoute($id: ID!, $input: UpdateUserInput!) {
     updateUser(id: $id, input: $input) {
       id
-      name
-      email
-      emailVerified
-      image
     }
   }
 `);
@@ -89,7 +101,6 @@ const SET_USER_PERMISSIONS_FROM_USER_ROUTE = graphql(`
   ) {
     setUserPermissions(id: $id, input: $input) {
       id
-      permissions
     }
   }
 `);
@@ -98,7 +109,6 @@ const SET_USER_ROLES_FROM_USER_ROUTE = graphql(`
   mutation setUserRolesFromUserRoute($id: ID!, $input: SetUserRolesInput!) {
     setUserRoles(id: $id, input: $input) {
       id
-      roles
     }
   }
 `);
@@ -107,9 +117,6 @@ const BAN_USER_FROM_USER_ROUTE = graphql(`
   mutation banUserFromUserRoute($id: ID!, $input: BanUserInput) {
     banUser(id: $id, input: $input) {
       id
-      banned
-      banReason
-      banExpiresAt
     }
   }
 `);
@@ -118,9 +125,6 @@ const UNBAN_USER_FROM_USER_ROUTE = graphql(`
   mutation unbanUserFromUserRoute($id: ID!) {
     unbanUser(id: $id) {
       id
-      banned
-      banReason
-      banExpiresAt
     }
   }
 `);
@@ -135,8 +139,8 @@ const SET_USER_PASSWORD_FROM_USER_ROUTE = graphql(`
 `);
 
 const REVOKE_USER_SESSION_FROM_USER_ROUTE = graphql(`
-  mutation revokeUserSessionFromUserRoute($userId: ID!, $sessionId: ID!) {
-    revokeUserSession(userId: $userId, sessionId: $sessionId)
+  mutation revokeUserSessionFromUserRoute($userId: ID!, $id: ID!) {
+    revokeSession(userId: $userId, id: $id)
   }
 `);
 
@@ -164,7 +168,23 @@ const IMPERSONATE_USER_FROM_USER_ROUTE = graphql(`
 
 export const Route = createFileRoute("/_authenticated/admin/users/$userId/")({
   component: AdminUserPage,
-  beforeLoad: () => ({ title: t("admin:user.title") }),
+  beforeLoad: async ({
+    context: { currentUserAbility, apolloClient },
+    params: { userId },
+  }) => {
+    if (!currentUserAbility.can("get", "User"))
+      throw redirect({ to: "/admin/users" });
+    const { data } = await apolloClient.query({
+      query: GET_USER_FROM_USER_ROUTE,
+      variables: { id: userId },
+    });
+    if (
+      !data?.user ||
+      !currentUserAbility.can("get", createAbilitySubject("User", data.user))
+    )
+      throw redirect({ to: "/admin/users" });
+    return { title: t("admin:user.title") };
+  },
 });
 
 function AdminUserPage() {
@@ -172,17 +192,26 @@ function AdminUserPage() {
   const navigate = useNavigate();
   const currentUser = useCurrentUserContext();
   const currentUserAbility = useCurrentUserAbility();
-  const { data, loading, refetch } = useQuery(GET_USER_FROM_USER_ROUTE, {
-    fetchPolicy: "network-only",
-    variables: { id: userId },
-  });
+  const { data, loading, refetch, fetchMore } = useQuery(
+    GET_USER_FROM_USER_ROUTE,
+    {
+      fetchPolicy: "network-only",
+      variables: {
+        id: userId,
+        includeSessions:
+          currentUser.id === userId ||
+          currentUserAbility.can("list", "Session"),
+        includeCatalogs: currentUserAbility.can("set-role", "User"),
+      },
+    },
+  );
   const user = data?.user;
-  const sessions = data?.userSessions ?? [];
+  const sessions = data?.user?.sessions?.edges.map(({ node }) => node) ?? [];
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [emailVerified, setEmailVerified] = useState(false);
   const [permissions, setPermissions] = useState<Array<UserPermission>>([]);
-  const [roles, setRoles] = useState<Array<string>>([]);
+  const [roles, setRoles] = useState<Array<UserRole>>([]);
   const [banReason, setBanReason] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [revokingSessionId, setRevokingSessionId] = useState<string>();
@@ -192,7 +221,7 @@ function AdminUserPage() {
     setName(user.name);
     setEmail(user.email);
     setEmailVerified(user.emailVerified);
-    setPermissions(user.permissions.filter(isUserPermission));
+    setPermissions(user.permissions);
     setRoles(user.roles);
     setBanReason(user.banReason ?? "");
   }, [user]);
@@ -203,7 +232,7 @@ function AdminUserPage() {
   const [setUserPermissions, { loading: savingPermissions }] = useMutation(
     SET_USER_PERMISSIONS_FROM_USER_ROUTE,
   );
-  const [setUserRole, { loading: savingRole }] = useMutation(
+  const [setUserRoles, { loading: savingRole }] = useMutation(
     SET_USER_ROLES_FROM_USER_ROUTE,
   );
   const [banUser, { loading: banning }] = useMutation(BAN_USER_FROM_USER_ROUTE);
@@ -213,7 +242,7 @@ function AdminUserPage() {
   const [setUserPassword, { loading: settingPassword }] = useMutation(
     SET_USER_PASSWORD_FROM_USER_ROUTE,
   );
-  const [revokeUserSession] = useMutation(REVOKE_USER_SESSION_FROM_USER_ROUTE);
+  const [revokeSession] = useMutation(REVOKE_USER_SESSION_FROM_USER_ROUTE);
   const [revokeUserSessions, { loading: revokingSessions }] = useMutation(
     REVOKE_USER_SESSIONS_FROM_USER_ROUTE,
   );
@@ -231,9 +260,24 @@ function AdminUserPage() {
     return <Page>{t("admin:user.not_found")}</Page>;
   }
 
+  const userSubject = createAbilitySubject("User", user);
+  const canSetRoles = currentUserAbility.can("set-role", userSubject);
+  const canUpdate = currentUserAbility.can("update", userSubject);
+  const canSetEmail =
+    canUpdate && currentUserAbility.can("set-email", userSubject);
+  const canBan = currentUserAbility.can("ban", userSubject);
+  const canDelete = currentUserAbility.can("delete", userSubject);
+  const canSetPassword = currentUserAbility.can("set-password", userSubject);
+  const canRevokeSessions = currentUserAbility.can("revoke", "Session");
+
   const run = async (operation: () => Promise<unknown>, message: string) => {
     try {
       await operation();
+      if (userId === currentUser.id) {
+        // Rebuild auth providers; self-updates may revoke abilities or the session.
+        window.location.assign("/user/workspaces");
+        return;
+      }
       await refetch();
       toast.success(message);
     } catch (error) {
@@ -281,22 +325,31 @@ function AdminUserPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <CheckboxGroup
+            <RoleCheckboxGroup
               label={t("admin:user.roles.label")}
-              items={(data?.userRoles ?? []).map((role) => ({
-                label: getRoleLabel(role.name),
-                value: role.name,
-              }))}
+              options={data?.userRoles ?? []}
+              testIdPrefix="user-role"
               value={roles}
+              disabled={!canSetRoles}
               onValueChange={setRoles}
             />
             <Button
-              disabled={roles.length === 0}
+              data-testid="admin-user-roles-save"
+              disabled={
+                !canSetRoles ||
+                roles.length === 0 ||
+                roles.some(
+                  (role) =>
+                    !data?.userRoles?.some(
+                      (option) => option.role === role && option.grantable,
+                    ),
+                )
+              }
               loading={savingRole}
               onClick={() =>
                 run(
                   () =>
-                    setUserRole({
+                    setUserRoles({
                       variables: {
                         id: userId,
                         input: { roles },
@@ -321,12 +374,16 @@ function AdminUserPage() {
           <CardContent className="space-y-4">
             <Input
               label={t("admin:users.table.name")}
+              data-testid="admin-user-name"
+              disabled={!canUpdate}
               value={name}
               onChange={(event) => setName(event.target.value)}
             />
             <Input
               type="email"
               label={t("admin:users.table.email")}
+              data-testid="admin-user-email"
+              disabled={!canSetEmail}
               value={email}
               onChange={(event) => setEmail(event.target.value)}
             />
@@ -334,19 +391,25 @@ function AdminUserPage() {
               <input
                 type="checkbox"
                 checked={emailVerified}
+                disabled={!canSetEmail}
                 onChange={(event) => setEmailVerified(event.target.checked)}
               />
               {t("admin:user.profile.email_verified")}
             </label>
             <Button
               loading={updating}
+              data-testid="admin-user-profile-save"
+              disabled={!canUpdate}
               onClick={() =>
                 run(
                   () =>
                     updateUser({
                       variables: {
                         id: userId,
-                        input: { email, emailVerified, name },
+                        input: {
+                          name,
+                          ...(canSetEmail ? { email, emailVerified } : {}),
+                        },
                       },
                     }),
                   t("admin:user.profile.success"),
@@ -367,25 +430,31 @@ function AdminUserPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <PermissionCheckboxGroup
-              options={userPermissionOptions.filter((option) =>
-                data?.userPermissions.includes(option.value),
-              )}
+              options={getPermissionOptions(data?.userPermissions ?? [])}
               value={permissions}
+              disabled={!canSetRoles}
               onChange={setPermissions}
             />
             <Button
               loading={savingPermissions}
+              data-testid="admin-user-permissions-save"
+              disabled={
+                !canSetRoles ||
+                permissions.some(
+                  (permission) =>
+                    !data?.userPermissions?.some(
+                      (option) =>
+                        option.permission === permission && option.grantable,
+                    ),
+                )
+              }
               onClick={() =>
                 run(
                   () =>
                     setUserPermissions({
                       variables: {
                         id: userId,
-                        input: {
-                          permissions: permissions.filter((permission) =>
-                            userPermissionValues.includes(permission),
-                          ),
-                        },
+                        input: { permissions },
                       },
                     }),
                   t("admin:user.permissions.success"),
@@ -422,13 +491,15 @@ function AdminUserPage() {
                 <Button
                   size="sm"
                   variant="outline"
+                  data-testid={`admin-user-session-revoke-${session.id}`}
                   loading={revokingSessionId === session.id}
+                  disabled={!canRevokeSessions}
                   onClick={async () => {
                     setRevokingSessionId(session.id);
                     await run(
                       () =>
-                        revokeUserSession({
-                          variables: { userId, sessionId: session.id },
+                        revokeSession({
+                          variables: { userId, id: session.id },
                         }),
                       t("admin:user.sessions.revoked"),
                     );
@@ -439,9 +510,42 @@ function AdminUserPage() {
                 </Button>
               </div>
             ))}
+            {user?.sessions?.pageInfo.hasNextPage && (
+              <Button
+                variant="outline"
+                loading={loading}
+                onClick={() =>
+                  fetchMore({
+                    variables: {
+                      sessionsAfter: user.sessions?.pageInfo.endCursor,
+                    },
+                    updateQuery: (previous, { fetchMoreResult }) => ({
+                      ...fetchMoreResult,
+                      user:
+                        fetchMoreResult.user?.sessions &&
+                        previous.user?.sessions
+                          ? {
+                              ...fetchMoreResult.user,
+                              sessions: {
+                                ...fetchMoreResult.user.sessions,
+                                edges: [
+                                  ...previous.user.sessions.edges,
+                                  ...fetchMoreResult.user.sessions.edges,
+                                ],
+                              },
+                            }
+                          : fetchMoreResult.user,
+                    }),
+                  })
+                }
+              >
+                {t("action.load_more")}
+              </Button>
+            )}
             <Button
               variant="outline"
-              disabled={sessions.length === 0}
+              data-testid="admin-user-sessions-revoke"
+              disabled={!canRevokeSessions || sessions.length === 0}
               loading={revokingSessions}
               onClick={() =>
                 run(
@@ -466,11 +570,12 @@ function AdminUserPage() {
             <Input
               type="password"
               label={t("admin:user.password.new")}
+              disabled={!canSetPassword}
               value={newPassword}
               onChange={(event) => setNewPassword(event.target.value)}
             />
             <Button
-              disabled={newPassword.length < 8}
+              disabled={!canSetPassword || newPassword.length < 8}
               loading={settingPassword}
               onClick={() =>
                 run(async () => {
@@ -506,6 +611,7 @@ function AdminUserPage() {
                 </Badge>
                 <Button
                   loading={unbanning}
+                  disabled={!canBan}
                   onClick={() =>
                     run(
                       () => unbanUser({ variables: { id: userId } }),
@@ -520,12 +626,13 @@ function AdminUserPage() {
               <>
                 <Input
                   label={t("admin:user.ban.reason")}
+                  disabled={!canBan}
                   value={banReason}
                   onChange={(event) => setBanReason(event.target.value)}
                 />
                 <Button
                   variant="destructive"
-                  disabled={currentUser.id === userId}
+                  disabled={!canBan || currentUser.id === userId}
                   loading={banning}
                   onClick={() =>
                     run(
@@ -546,7 +653,7 @@ function AdminUserPage() {
             )}
             <Button
               variant="destructive"
-              disabled={currentUser.id === userId}
+              disabled={!canDelete || currentUser.id === userId}
               loading={deleting}
               onClick={async () => {
                 const confirmed = await alertDialog({

@@ -6,16 +6,19 @@ description: "Connect Auth services to transport adapters and RequestContext."
 The underlying Better Auth instance and injection token are internal. Inject the
 service that owns the required domain:
 
-| Service            | Responsibility                                                                         |
-| ------------------ | -------------------------------------------------------------------------------------- |
-| `AuthService`      | Authentication, email verification, password recovery, profiles, and provider accounts |
-| `SessionService`   | Current session resolution, active-session lists, and revocation                       |
-| `UserService`      | User administration, permissions, bans, impersonation, passwords, and user sessions    |
-| `WorkspaceService` | Workspace, membership, invitation, and workspace-permission lifecycle                  |
-| `ApiKeyService`    | Personal and workspace API-key lifecycle and validation                                |
+| Service                                          | Responsibility                                                                              |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| `AuthService`                                    | Authentication, email verification, password recovery, profiles, and provider accounts      |
+| `SessionService`                                 | Session resolution, parent-user connections, impersonator lookup, and self/admin revocation |
+| `UserService`                                    | User administration, permissions, bans, impersonation, and passwords                        |
+| `AccountService`                                 | Safe account connections for the owning user session                                        |
+| `WorkspaceService`                               | Workspace queries and lifecycle operations                                                  |
+| `MemberService`                                  | Member queries, connections, profiles, roles, permissions, adding/removing, and leaving     |
+| `InvitationService`                              | Invitation queries, connections, creation, acceptance, rejection, and cancellation          |
+| `UserApiKeyService` and `WorkspaceApiKeyService` | Scoped API-key lifecycle and connections                                                    |
 
-`UserService` and `WorkspaceService` operate directly on the MikroORM entities
-configured in `AuthModule`; they do not require Better Auth's admin or
+`UserService`, `AccountService`, `WorkspaceService`, `MemberService` and `InvitationService` operate directly on the MikroORM entities
+provided by `AuthModule`; they do not require Better Auth's admin or
 organization plugins.
 
 ```typescript
@@ -25,41 +28,74 @@ export class AccountApplicationService {
     private readonly authService: AuthService,
     private readonly sessionService: SessionService,
     private readonly userService: UserService,
+    private readonly accountService: AccountService,
     private readonly workspaceService: WorkspaceService,
-    private readonly apiKeyService: ApiKeyService,
+    private readonly memberService: MemberService,
+    private readonly invitationService: InvitationService,
+    private readonly userApiKeyService: UserApiKeyService,
+    private readonly workspaceApiKeyService: WorkspaceApiKeyService,
   ) {}
 }
 ```
 
-## Transport Adapters
+## Built-in entities and GraphQL
 
-Resolvers and controllers should translate their protocol types and delegate
-domain rules to these services. Authentication methods automatically forward
-every `Set-Cookie` value through the request-scoped `cookies()` store, including
-password changes that replace the current session Cookie.
+`AuthModule` registers domain services and all standard resolvers. Remove
+`AuthGraphQLModule` and import entities, inputs, payloads and connections from
+`@nest-boot/auth`. Configure your GraphQL module and `AuthModule.forRoot()`;
+no application auth entities or named connection registration are required.
+Resolvers use concrete class callbacks.
 
-The built-in auth endpoint handler is mounted at `basePath`. `AuthMiddleware`
-runs after `RequestContextMiddleware`, resolves identity, and makes application
-entities available to decorators and guards.
+Auth owns the concrete `User`, `Account`, `Session`, `Verification`,
+`Workspace`, `Member`, `Invitation`, `UserApiKey`, and `WorkspaceApiKey` entities, their GraphQL
+metadata, relations, RLS policies, and connections. There are no public auth
+`Base*` classes or `AuthModuleOptions.entities` overrides.
 
-Auth registers every application entity class configured through
-`options.entities` as a request-context alias of its stable base entity class.
-Current identity values are stored under the base tokens, so both lookups
-return the same application entity instance:
+Register the exported `entities` array in both your runtime MikroORM configuration
+and the configuration loaded by the migration CLI. The CLI does not initialize Nest:
 
 ```typescript
-RequestContext.get(BaseUser); // internal stable token
-RequestContext.get(User); // configured application entity alias
+import { entities as authEntities } from "@nest-boot/auth";
+import { defineConfig } from "@mikro-orm/postgresql";
+
+export default defineConfig({
+  entities: [...authEntities, "dist/**/*.entity.js"],
+  entitiesTs: [...authEntities, "src/**/*.entity.ts"],
+  // Connection and migration options...
+});
 ```
 
-This convention applies to every configured Auth entity. Transport code should
-normally prefer the current identity decorators.
+Use separate related business entities and additional field resolvers to extend
+these models. Import the built-in classes directly for relation targets; do not
+redeclare or register replacement auth entities. Role/permission catalogs, ability
+builders, delivery callbacks, and provider settings remain configurable.
+
+## Transport Adapters
+
+Resolvers and controllers translate protocol parameters and delegate domain rules
+to services. Service authorization and database RLS remain in effect.
+Authentication methods forward every Set-Cookie value through the request-scoped
+cookies store. `AuthMiddleware` runs after `RequestContextMiddleware` and stores
+identity under built-in entity classes, for example `RequestContext.get(User)`.
+No auth base-token aliases are registered; prefer the current identity decorators.
+
+`Member` / `Invitation` use `MemberService` / `InvitationService` and the
+`member:*` / `invitation:*` permission subjects. Existing GraphQL field names,
+arguments and authorization behavior are unchanged by the package merge.
+
+## PostgreSQL RLS
+
+MikroORM 7.2 native RLS uses the request EntityManager session context. Auth updates
+that context after resolving the identity; service-authorized persistence uses
+isolated, unscoped forks where necessary. The example configures `session` through
+`createSessionContext`, so no custom RLS driver or interceptor is needed. See the
+[MikroORM tutorial](/docs/tutorial/mikro-orm).
 
 ## Bootstrap
 
 ```typescript
 import { Logger } from "@nest-boot/logger";
-import { ValidationPipe } from "@nestjs/common";
+import { ZodValidationPipe } from "@nest-boot/validator";
 import { NestFactory } from "@nestjs/core";
 
 async function bootstrap() {
@@ -69,9 +105,7 @@ async function bootstrap() {
   });
 
   app.useLogger(await app.resolve(Logger));
-  app.useGlobalPipes(
-    new ValidationPipe({ transform: true, forbidUnknownValues: false }),
-  );
+  app.useGlobalPipes(new ZodValidationPipe());
   app.enableShutdownHooks();
 
   await app.listen(process.env.PORT ?? 4000);
@@ -82,10 +116,51 @@ void bootstrap();
 
 ## Operational Guidance
 
+Auth inputs now use Zod instead of class-validator. Remove the old global
+`ValidationPipe` after migrating your application's DTOs. Zod returns plain parsed
+objects and strips undeclared properties; it does not construct DTO instances.
+GraphQL validation errors use `BAD_USER_INPUT` with field details in
+`extensions.validationErrors`.
+
+`banUser` and `deleteCurrentUser` still allow omitting `input` (default `{}`).
+Explicit `input: null` is rejected. For a property, `.optional()` accepts omission
+and `.nullish()` also accepts `null`; see the [Validator tutorial](/docs/tutorial/validator).
+Direct Service calls do not run the pipe automatically.
+
+Display names are trimmed and must contain 1–255 characters. Email addresses,
+avatar strings, and ban reasons are limited to their 255-character database
+columns. These constraints are declared directly on input fields. API-key
+prefixes are also validated in the Service for direct callers. Password
+lengths and allowed roles/permissions remain configuration-driven Service rules.
+Passwords and permission strings are not trimmed or lowercased by input validation,
+and callback URLs may remain relative paths.
+
 - Register `AuthGuard` once as `APP_GUARD` and mark exceptions with `@Public()`.
 - Use current-identity decorators in transport code instead of raw context tokens.
 - Store high-entropy `AUTH_SECRET` and `HASH_SECRET` values outside source control.
 - Keep workspace selection explicit in the route, header, or Cookie.
-- Map GraphQL input and output types in the application; keep lifecycle rules in Auth services.
+- `AuthModule` provides the standard GraphQL schema; applications can add their own field resolvers.
 
-For symbol-level documentation, see the [Auth API Reference](/docs/api/auth).
+For symbol-level documentation, see the [Auth API Reference](/docs/api/auth)
+
+## Additional GraphQL-native APIs
+
+`AuthModule` provides `Account`, `AccountConnection`, `UserConnection`, `SessionConnection` and their argument classes; all references use concrete classes. `users(first: 20)` returns a connection. `currentUser { sessions(first: 20) { edges { node { id } } } accounts(first: 20) { edges { node { id providerId } } } }` replaces the old session/account root lists. Self session reads are allowed; other users require administrative permission.
+
+Authentication payloads now reference `User` instead of `AuthUserType`, loading the built-in entity and adopting newly issued sessions before nested resolution. Registration without a session does not grant authentication.
+
+Apply the example's `Initial → generated schema migrations` before deployment. It enables account/session RLS and uniform default privileges. Services and GraphQL exclude credential fields; database column-level restrictions are removed. Session administrative reads are authorized by Services through Ability, not database permission variables.
+
+### Operation naming changes
+
+Use `currentSession`,
+`createWorkspaceApiKey`, `updateWorkspaceApiKey` and `deleteWorkspaceApiKey`.
+Their old names are removed without aliases. Workspace deletion is only
+`deleteWorkspace`; `removeWorkspace` is no longer exposed. Update GraphQL documents,
+response-field access and generated types together.
+
+The default GraphQL module no longer exposes `authFetchAccessToken`,
+`authFetchAccountInfo` or `authRefreshToken`, nor their dedicated input/result
+types. There are no aliases. Use `currentUser { accounts(first: 20) { edges { node { id providerId scopes } } } }`
+for account bindings. Server-side provider integrations can still call
+`AuthService.getAccessToken()`, `refreshToken()` and `getAccountInfo()`.

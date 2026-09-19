@@ -12,7 +12,7 @@ export function createMikroOrmAdapterConfig(
     supportsBooleans: true,
     supportsDates: true,
     supportsJSON: true,
-    // The built-in auth entities use UUID string primary keys.
+    // Auth IDs are strings, including UUIDs and bigint-backed Sonyflake IDs.
     supportsNumericIds: false,
     usePlural: false,
   } as const;

@@ -1,10 +1,7 @@
 import { EntityManager } from "@mikro-orm/core";
+import { cookies, RequestContext } from "@nest-boot/request-context";
 import {
-  cookies,
-  RequestContext,
-  type RequestContextToken,
-} from "@nest-boot/request-context";
-import {
+  BadRequestException,
   Inject,
   Injectable,
   type NestMiddleware,
@@ -12,46 +9,145 @@ import {
 } from "@nestjs/common";
 import { type NextFunction, type Request, type Response } from "express";
 
-import { ApiKeyService } from "./api-key.service.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
-import {
-  BaseAccount,
-  BaseApiKey,
-  BaseSession,
-  BaseUser,
-  BaseVerification,
-  BaseWorkspace,
-  BaseWorkspaceInvitation,
-  BaseWorkspaceMember,
-} from "./entities/index.js";
-import { SessionService } from "./session.service.js";
+import { Member } from "./entities/member.entity.js";
+import { Session } from "./entities/session.entity.js";
+import { User } from "./entities/user.entity.js";
+import { Workspace } from "./entities/workspace.entity.js";
+import { ApiKeyAuthenticationService } from "./infrastructure/api-key-authentication.service.js";
+import { RequestIdentity } from "./infrastructure/request-identity.js";
+import { SessionService } from "./services/session.service.js";
+import type { ApiKey } from "./types/api-key.type.js";
 import { extractApiKey } from "./utils/extract-api-key.util.js";
 import { runAuthQuery } from "./utils/run-auth-query.js";
 
 /** Builds the complete authentication context for an incoming request. */
 @Injectable()
 export class AuthMiddleware implements NestMiddleware {
+  /** Requires identity-changing writes to commit before restaging request authorization. */
+  assertAuthenticationCanChange(): void {
+    if (this.em.isInTransaction()) {
+      throw new BadRequestException(
+        "Change request authentication outside an active transaction",
+      );
+    }
+  }
+
+  /** Clears the current credential after a successful sign-out. */
+  clearAuthentication(): void {
+    RequestIdentity.clear(this.em);
+  }
+
+  /** Clears a session revoked by an authentication write, without falling back to another credential. */
+  async revalidateCurrentSession(): Promise<void> {
+    const current = RequestContext.isActive()
+      ? RequestContext.get(Session)
+      : null;
+    if (!current) return;
+    try {
+      const session = await this.em.findOne(
+        Session,
+        {
+          id: current.id,
+          token: current.token,
+          expiresAt: { $gt: new Date() },
+        },
+        { refresh: true },
+      );
+      if (!session) RequestIdentity.clear(this.em);
+    } catch (error) {
+      RequestIdentity.clear(this.em);
+      throw error;
+    }
+  }
+
+  /** Reloads a profile written by Better Auth without changing its authentication method. */
+  async refreshCurrentUser(): Promise<void> {
+    const current = RequestContext.isActive() ? RequestContext.get(User) : null;
+    if (!current) return;
+    try {
+      const user = await this.em.findOne(
+        User,
+        { id: current.id },
+        { refresh: true },
+      );
+      if (!user)
+        throw new UnauthorizedException(
+          "The current user is no longer available",
+        );
+      RequestIdentity.update(this.em, this.options, { user });
+    } catch (error) {
+      RequestIdentity.clear(this.em);
+      throw error;
+    }
+  }
+
+  /** Adopts a newly issued session, rebuilding workspace membership and RLS scope. */
+  async authenticateSession(token: string): Promise<User> {
+    const data = await runAuthQuery(this.em, async (em) => {
+      const session = await em.findOne(Session, {
+        token,
+        expiresAt: { $gt: new Date() },
+      });
+      const user = session
+        ? await em.findOne(User, { id: session.user.id })
+        : null;
+      return { session, user };
+    });
+    if (
+      !data.session ||
+      !data.user ||
+      (data.user.banned &&
+        (!data.user.banExpiresAt || data.user.banExpiresAt > new Date()))
+    ) {
+      throw new UnauthorizedException("The new session is not valid");
+    }
+    try {
+      RequestIdentity.stage({
+        apiKey: null,
+        member: null,
+        user: data.user,
+        session: data.session,
+      });
+      await this.resolveMember();
+      this.updateSessionContext();
+      RequestIdentity.refresh(this.options);
+    } catch (error) {
+      RequestIdentity.clear(this.em);
+      throw error;
+    }
+    return data.user;
+  }
+  /** Hydrates only the user returned by a successful registration without issuing an identity. @internal */
+  async resolveRegisteredUser(id: string): Promise<User> {
+    return await runAuthQuery(this.em, (em) => em.findOneOrFail(User, { id }));
+  }
+
   /** Creates the authentication-context middleware. */
   constructor(
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly options: AuthModuleOptions,
     private readonly sessionService: SessionService,
-    private readonly apiKeyService: ApiKeyService,
+    private readonly apiKeyService: ApiKeyAuthenticationService,
     private readonly em: EntityManager,
   ) {}
 
   /** Resolves workspace, credentials, and membership in their required order. */
   async use(req: Request, _res: Response, next: NextFunction) {
     try {
-      this.registerEntityAliases();
       await this.resolveSelectedWorkspace(req);
       const hasSession = await this.resolveSession();
       if (!hasSession) await this.resolveApiKey(req);
-      await this.resolveWorkspaceMember();
+      await this.resolveMember();
       this.updateSessionContext();
       next();
     } catch (error) {
+      try {
+        RequestIdentity.clear(this.em);
+      } catch {
+        // Identity is already cleared; report the original staging failure.
+      }
       next(error);
     }
   }
@@ -66,19 +162,18 @@ export class AuthMiddleware implements NestMiddleware {
     )?.trim();
     if (!workspaceId) return;
 
-    const workspace = await this.em.findOne(this.options.entities.workspace, {
-      deletedAt: null,
+    const workspace = await this.em.findOne(Workspace, {
       id: workspaceId,
     });
     if (workspace) this.setWorkspace(workspace);
   }
 
   private async resolveSession(): Promise<boolean> {
-    const data = await this.sessionService.getSession();
+    const data = await this.sessionService.getCurrentAuthenticatedSession();
     if (!data) return false;
 
     this.setUser(data.user);
-    RequestContext.set(BaseSession, data.session);
+    RequestIdentity.stage({ session: data.session });
     return true;
   }
 
@@ -93,7 +188,7 @@ export class AuthMiddleware implements NestMiddleware {
       return;
     }
 
-    const selectedWorkspace = RequestContext.get(BaseWorkspace);
+    const selectedWorkspace = RequestContext.get(Workspace);
     if (selectedWorkspace && selectedWorkspace.id !== validation.workspace.id) {
       throw new UnauthorizedException(
         "Workspace API key does not belong to the selected workspace",
@@ -102,15 +197,15 @@ export class AuthMiddleware implements NestMiddleware {
     this.setWorkspace(validation.workspace);
   }
 
-  private async resolveWorkspaceMember(): Promise<void> {
-    const user = RequestContext.get(BaseUser);
-    const workspace = RequestContext.get(BaseWorkspace);
+  private async resolveMember(): Promise<void> {
+    const user = RequestContext.get(User);
+    const workspace = RequestContext.get(Workspace);
     if (!user || !workspace) return;
 
     const member = await runAuthQuery(
       this.em,
       async (em) =>
-        await em.findOne(this.options.entities.workspaceMember, {
+        await em.findOne(Member, {
           status: "ACTIVE",
           user,
           workspace,
@@ -118,63 +213,22 @@ export class AuthMiddleware implements NestMiddleware {
     );
     if (!member) return;
 
-    RequestContext.set(BaseWorkspaceMember, member);
+    RequestIdentity.stage({ member });
   }
 
-  private setApiKey(apiKey: BaseApiKey): void {
-    RequestContext.set(BaseApiKey, apiKey);
+  private setApiKey(apiKey: ApiKey): void {
+    RequestIdentity.stage({ apiKey });
   }
 
   private updateSessionContext(): void {
-    const user = RequestContext.get(BaseUser);
-    const apiKey = RequestContext.get(BaseApiKey);
-    const workspace = RequestContext.get(BaseWorkspace);
-    const member = RequestContext.get(BaseWorkspaceMember);
-    const authenticated = Boolean(user ?? apiKey);
-    const canUseWorkspace = Boolean(member ?? (apiKey && !user));
-
-    this.em.setSessionContext({
-      role: authenticated ? "authenticated" : "anonymous",
-      variables: {
-        "app.user": user?.id ?? "",
-        "app.workspace":
-          !authenticated || canUseWorkspace ? (workspace?.id ?? "") : "",
-      },
-    });
+    RequestIdentity.syncDatabase(this.em);
   }
 
-  private setUser(user: BaseUser): void {
-    RequestContext.set(BaseUser, user);
+  private setUser(user: User): void {
+    RequestIdentity.stage({ user });
   }
 
-  private setWorkspace(workspace: BaseWorkspace): void {
-    RequestContext.set(BaseWorkspace, workspace);
-  }
-
-  private registerEntityAliases(): void {
-    this.registerEntityAlias(this.options.entities.account, BaseAccount);
-    this.registerEntityAlias(this.options.entities.user, BaseUser);
-    this.registerEntityAlias(this.options.entities.session, BaseSession);
-    this.registerEntityAlias(this.options.entities.apiKey, BaseApiKey);
-    this.registerEntityAlias(
-      this.options.entities.verification,
-      BaseVerification,
-    );
-    this.registerEntityAlias(this.options.entities.workspace, BaseWorkspace);
-    this.registerEntityAlias(
-      this.options.entities.workspaceInvitation,
-      BaseWorkspaceInvitation,
-    );
-    this.registerEntityAlias(
-      this.options.entities.workspaceMember,
-      BaseWorkspaceMember,
-    );
-  }
-
-  private registerEntityAlias(
-    entity: RequestContextToken,
-    baseEntity: RequestContextToken,
-  ): void {
-    if (entity !== baseEntity) RequestContext.alias(entity, baseEntity);
+  private setWorkspace(workspace: Workspace): void {
+    RequestIdentity.stage({ workspace });
   }
 }

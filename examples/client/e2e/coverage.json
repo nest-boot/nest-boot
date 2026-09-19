@@ -26,8 +26,8 @@
       "domain": "Auth",
       "scenario": "Current-user session list and remote-session revocation",
       "status": "covered",
-      "specs": ["user.spec.ts"],
-      "notes": "Creates two browser sessions, revokes the other session, and verifies it can no longer access the application."
+      "specs": ["user.spec.ts", "admin.spec.ts"],
+      "notes": "Creates two browser sessions, revokes the other session, and verifies it can no longer access the application. Administrator self-session and all-session revocation reload authentication and leave the protected page."
     },
     {
       "domain": "Auth",
@@ -59,10 +59,10 @@
     },
     {
       "domain": "Workspace",
-      "scenario": "Ownership transfer and member exit",
+      "scenario": "Multiple owner role assignment and member exit",
       "status": "covered",
       "specs": ["workspace.spec.ts"],
-      "notes": "Transfers ownership to an active user member, verifies the new owner, and removes the previous owner through the leave flow."
+      "notes": "Assigns owner through member roles, verifies two concurrent owners, and allows an owner to leave without changing roles first."
     },
     {
       "domain": "Invitations",
@@ -82,15 +82,20 @@
       "domain": "Members",
       "scenario": "Member status actions, removal, role changes, and direct permissions",
       "status": "covered",
-      "specs": ["invitation.spec.ts"],
-      "notes": "Covers status and removal actions, role editing, direct permission editing, persistence after reload, and resulting UI authorization."
+      "specs": ["invitation.spec.ts", "workspace.spec.ts"],
+      "notes": "Covers status and removal actions, role editing, direct permission editing, persistence after reload, and resulting UI authorization. Self-disabling navigates away without refetching protected fields. Direct permission editing denies members without update ability and allows administrators to update even an owner's direct permissions without enabling protected role edits."
     },
     {
       "domain": "Authorization",
       "scenario": "Transported CASL rules control user and workspace UI",
       "status": "covered",
-      "specs": ["api-key.spec.ts", "invitation.spec.ts", "workspace.spec.ts"],
-      "notes": "Serialized conditional rules have unit coverage; browser tests cover role denial and direct-permission authorization paths."
+      "specs": [
+        "api-key.spec.ts",
+        "invitation.spec.ts",
+        "workspace.spec.ts",
+        "admin.spec.ts"
+      ],
+      "notes": "Serialized conditional rules have unit coverage; browser tests cover role denial and direct-permission authorization paths, including global ability refresh after removing one's own administrator role or permissions."
     },
     {
       "domain": "API keys",

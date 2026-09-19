@@ -1,77 +1,49 @@
-import { Entity } from '@mikro-orm/decorators/legacy';
 import { MikroORM, PostgreSqlDriver } from '@mikro-orm/postgresql';
 import {
-  BaseAccount,
-  BaseApiKey,
-  BaseSession,
-  BaseUser,
-  BaseVerification,
-  BaseWorkspace,
-  BaseWorkspaceInvitation,
-  BaseWorkspaceMember,
+  Account,
+  entities,
+  Invitation,
+  Member,
+  Session,
+  User,
+  UserApiKey,
+  Workspace,
+  WorkspaceApiKey,
 } from '@nest-boot/auth';
 
-@Entity()
-class PersonIdentity extends BaseUser {}
-
-@Entity()
-class TenantSpace extends BaseWorkspace {}
-
-@Entity()
-class IdentityAccount extends BaseAccount {}
-
-@Entity()
-class LoginSession extends BaseSession {}
-
-@Entity()
-class LoginVerification extends BaseVerification {}
-
-@Entity()
-class AccessTokenKey extends BaseApiKey {}
-
-@Entity()
-class TenantMember extends BaseWorkspaceMember {}
-
-@Entity()
-class TenantInvitation extends BaseWorkspaceInvitation {}
-
-describe('auth entity relations', () => {
-  it('discovers configured auth subclasses without conventional class names', async () => {
+describe('built-in auth entity discovery', () => {
+  it('discovers concrete relations without AuthModule initialization or application entity declarations', async () => {
     const orm = new MikroORM({
       dbName: 'auth_entity_relations',
       driver: PostgreSqlDriver,
-      entities: [
-        PersonIdentity,
-        TenantSpace,
-        IdentityAccount,
-        LoginSession,
-        LoginVerification,
-        AccessTokenKey,
-        TenantMember,
-        TenantInvitation,
-      ],
+      entities,
     });
-
     try {
-      const metadata = orm.getMetadata();
-
-      expect(
-        metadata.get(IdentityAccount).properties.userId.targetMeta?.class,
-      ).toBe(PersonIdentity);
-      expect(metadata.get(TenantMember).properties.user.targetMeta?.class).toBe(
-        PersonIdentity,
-      );
-      expect(
-        metadata.get(TenantMember).properties.workspace.targetMeta?.class,
-      ).toBe(TenantSpace);
-      expect(
-        metadata.get(TenantInvitation).properties.inviter.targetMeta?.class,
-      ).toBe(PersonIdentity);
-      expect(
-        metadata.get(TenantInvitation).properties.workspace.targetMeta?.class,
-      ).toBe(TenantSpace);
+      for (const entity of entities) {
+        const metadata = orm.getMetadata<object>(entity);
+        expect(metadata.abstract).not.toBe(true);
+        expect(metadata.policies?.length).toBeGreaterThan(0);
+      }
+      for (const [entity, property, target] of [
+        [User, 'members', Member],
+        [Workspace, 'members', Member],
+        [Member, 'user', User],
+        [Member, 'workspace', Workspace],
+        [Invitation, 'inviter', User],
+        [Invitation, 'workspace', Workspace],
+        [Account, 'user', User],
+        [Session, 'user', User],
+        [Session, 'impersonatedBy', User],
+        [UserApiKey, 'user', User],
+        [WorkspaceApiKey, 'workspace', Workspace],
+      ] as const) {
+        expect(
+          orm.getMetadata<object>(entity).properties[property].targetMeta
+            ?.class,
+        ).toBe(target);
+      }
     } finally {
-      await orm.close(true);
+      await orm.close();
     }
   });
 });

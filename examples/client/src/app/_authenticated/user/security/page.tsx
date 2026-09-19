@@ -37,53 +37,84 @@ import { graphql } from "@/gql";
 
 const CHANGE_PASSWORD_FROM_USER_SECURITY = graphql(`
   mutation changePasswordFromUserSecurity($input: AuthChangePasswordInput!) {
-    authChangePassword(input: $input) {
+    changeCurrentUserPassword(input: $input) {
       token
     }
   }
 `);
 
 const GET_SESSIONS_FROM_USER_SECURITY = graphql(`
-  query getSessionsFromUserSecurity {
-    authSessions {
+  query getSessionsFromUserSecurity($after: String) {
+    currentUser {
       id
-      current
-      expiresAt
-      ipAddress
-      userAgent
-      createdAt
+      sessions(
+        first: 20
+        after: $after
+        orderBy: { field: CREATED_AT, direction: DESC }
+      ) {
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+        edges {
+          node {
+            id
+            current
+            expiresAt
+            ipAddress
+            userAgent
+            createdAt
+          }
+        }
+      }
     }
   }
 `);
 
 const REVOKE_SESSION_FROM_USER_SECURITY = graphql(`
-  mutation revokeSessionFromUserSecurity($sessionId: ID!) {
-    authRevokeSession(sessionId: $sessionId)
+  mutation revokeSessionFromUserSecurity($id: ID!) {
+    revokeCurrentUserSession(id: $id)
   }
 `);
 
 const REVOKE_OTHER_SESSIONS_FROM_USER_SECURITY = graphql(`
   mutation revokeOtherSessionsFromUserSecurity {
-    authRevokeOtherSessions
+    revokeCurrentUserOtherSessions
   }
 `);
 
 const GET_ACCOUNTS_FROM_USER_SECURITY = graphql(`
-  query getAccountsFromUserSecurity {
-    authAccounts {
+  query getAccountsFromUserSecurity($after: String) {
+    currentUser {
       id
-      accountId
-      issuer
-      providerId
-      scopes
-      createdAt
+      accounts(
+        first: 20
+        after: $after
+        orderBy: { field: CREATED_AT, direction: DESC }
+      ) {
+        totalCount
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+        edges {
+          node {
+            id
+            accountId
+            issuer
+            providerId
+            scopes
+            createdAt
+          }
+        }
+      }
     }
   }
 `);
 
 const GET_SOCIAL_PROVIDERS_FROM_USER_SECURITY = graphql(`
   query getSocialProvidersFromUserSecurity {
-    authSocialProviders {
+    socialProviders {
       id
       name
     }
@@ -91,32 +122,23 @@ const GET_SOCIAL_PROVIDERS_FROM_USER_SECURITY = graphql(`
 `);
 
 const UNLINK_ACCOUNT_FROM_USER_SECURITY = graphql(`
-  mutation unlinkAccountFromUserSecurity($accountId: ID!) {
-    authUnlinkAccount(accountId: $accountId)
+  mutation unlinkAccountFromUserSecurity($id: ID!) {
+    unlinkCurrentUserAccount(id: $id)
   }
 `);
 
 const LINK_ACCOUNT_FROM_USER_SECURITY = graphql(`
   mutation linkAccountFromUserSecurity($input: AuthLinkSocialAccountInput!) {
-    authLinkSocialAccount(input: $input) {
+    linkCurrentUserAccount(input: $input) {
       url
       redirect
     }
   }
 `);
 
-const REFRESH_ACCOUNT_FROM_USER_SECURITY = graphql(`
-  mutation refreshAccountFromUserSecurity($input: AuthAccountSelectorInput!) {
-    authRefreshToken(input: $input) {
-      accountId
-      providerId
-    }
-  }
-`);
-
 const DELETE_USER_FROM_USER_SECURITY = graphql(`
   mutation deleteUserFromUserSecurity($input: AuthDeleteUserInput) {
-    authDeleteUser(input: $input) {
+    deleteCurrentUser(input: $input) {
       success
       message
     }
@@ -133,11 +155,13 @@ function UserSecurityComponent() {
   const {
     data: sessionData,
     loading: sessionsLoading,
+    fetchMore: fetchMoreSessions,
     refetch,
   } = useQuery(GET_SESSIONS_FROM_USER_SECURITY);
   const {
     data: accountData,
     loading: accountsLoading,
+    fetchMore: fetchMoreAccounts,
     refetch: refetchAccounts,
   } = useQuery(GET_ACCOUNTS_FROM_USER_SECURITY);
   const { data: socialProviderData } = useQuery(
@@ -150,7 +174,6 @@ function UserSecurityComponent() {
   );
   const [unlinkAccount] = useMutation(UNLINK_ACCOUNT_FROM_USER_SECURITY);
   const [linkAccount] = useMutation(LINK_ACCOUNT_FROM_USER_SECURITY);
-  const [refreshAccount] = useMutation(REFRESH_ACCOUNT_FROM_USER_SECURITY);
   const [deleteUser, { client }] = useMutation(DELETE_USER_FROM_USER_SECURITY);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -162,16 +185,20 @@ function UserSecurityComponent() {
   const [revokingOthers, setRevokingOthers] = useState(false);
   const [unlinkingAccountId, setUnlinkingAccountId] = useState<string>();
   const [linkingProviderId, setLinkingProviderId] = useState<string>();
-  const [refreshingAccountId, setRefreshingAccountId] = useState<string>();
   const [deletePassword, setDeletePassword] = useState("");
   const [deletingUser, setDeletingUser] = useState(false);
-  const sessions = sessionData?.authSessions ?? [];
-  const accounts = accountData?.authAccounts ?? [];
-  const socialProviders = socialProviderData?.authSocialProviders ?? [];
-  const linkableProviders = socialProviders.filter(
-    (provider) =>
-      !accounts.some((account) => account.providerId === provider.id),
-  );
+  const sessions =
+    sessionData?.currentUser.sessions.edges.map(({ node }) => node) ?? [];
+  const accounts =
+    accountData?.currentUser.accounts.edges.map(({ node }) => node) ?? [];
+  const socialProviders = socialProviderData?.socialProviders ?? [];
+  const linkableProviders =
+    accountData && !accountData.currentUser.accounts.pageInfo.hasNextPage
+      ? socialProviders.filter(
+          (provider) =>
+            !accounts.some((account) => account.providerId === provider.id),
+        )
+      : [];
   const otherSessionCount = sessions.filter(
     (session) => !session.current,
   ).length;
@@ -179,8 +206,8 @@ function UserSecurityComponent() {
   const handleRevokeSession = async (sessionId: string) => {
     setRevokingSessionId(sessionId);
     try {
-      const result = await revokeSession({ variables: { sessionId } });
-      if (!result.data?.authRevokeSession) {
+      const result = await revokeSession({ variables: { id: sessionId } });
+      if (!result.data?.revokeCurrentUserSession) {
         throw new Error(t("user:security.sessions.toast.revoke_failed"));
       }
       await refetch();
@@ -200,7 +227,7 @@ function UserSecurityComponent() {
     setRevokingOthers(true);
     try {
       const result = await revokeOtherSessionList();
-      if (!result.data?.authRevokeOtherSessions) {
+      if (!result.data?.revokeCurrentUserOtherSessions) {
         throw new Error(t("user:security.sessions.toast.revoke_failed"));
       }
       await refetch();
@@ -242,13 +269,14 @@ function UserSecurityComponent() {
         },
       });
 
-      if (!result.data?.authChangePassword) {
+      if (!result.data?.changeCurrentUserPassword) {
         throw new Error(t("user:security.toast.update_failed"));
       }
 
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
+      await refetch({ after: undefined });
       toast.success(t("user:security.toast.updated"));
     } catch (cause) {
       const message =
@@ -274,8 +302,8 @@ function UserSecurityComponent() {
 
     setUnlinkingAccountId(accountId);
     try {
-      const result = await unlinkAccount({ variables: { accountId } });
-      if (!result.data?.authUnlinkAccount) {
+      const result = await unlinkAccount({ variables: { id: accountId } });
+      if (!result.data?.unlinkCurrentUserAccount) {
         throw new Error(t("user:security.accounts.unlink_failed"));
       }
       await refetchAccounts();
@@ -304,7 +332,7 @@ function UserSecurityComponent() {
           },
         },
       });
-      const url = result.data?.authLinkSocialAccount.url;
+      const url = result.data?.linkCurrentUserAccount.url;
       if (!url) throw new Error(t("user:security.accounts.link_failed"));
       window.location.assign(url);
     } catch (cause) {
@@ -314,22 +342,6 @@ function UserSecurityComponent() {
           : t("user:security.accounts.link_failed"),
       );
       setLinkingProviderId(undefined);
-    }
-  };
-
-  const handleRefreshAccount = async (accountId: string) => {
-    setRefreshingAccountId(accountId);
-    try {
-      await refreshAccount({ variables: { input: { accountId } } });
-      toast.success(t("user:security.accounts.refreshed"));
-    } catch (cause) {
-      toast.error(
-        cause instanceof Error
-          ? cause.message
-          : t("user:security.accounts.refresh_failed"),
-      );
-    } finally {
-      setRefreshingAccountId(undefined);
     }
   };
 
@@ -348,9 +360,9 @@ function UserSecurityComponent() {
       const result = await deleteUser({
         variables: { input: { password: deletePassword } },
       });
-      if (!result.data?.authDeleteUser.success) {
+      if (!result.data?.deleteCurrentUser.success) {
         throw new Error(
-          result.data?.authDeleteUser.message ||
+          result.data?.deleteCurrentUser.message ||
             t("user:security.delete.failed"),
         );
       }
@@ -542,6 +554,35 @@ function UserSecurityComponent() {
           </CardContent>
         </Card>
 
+        {sessionData?.currentUser.sessions.pageInfo.hasNextPage && (
+          <Button
+            variant="outline"
+            loading={sessionsLoading}
+            onClick={() =>
+              fetchMoreSessions({
+                variables: {
+                  after: sessionData.currentUser.sessions.pageInfo.endCursor,
+                },
+                updateQuery: (previous, { fetchMoreResult }) => ({
+                  ...fetchMoreResult,
+                  currentUser: {
+                    ...fetchMoreResult.currentUser,
+                    sessions: {
+                      ...fetchMoreResult.currentUser.sessions,
+                      edges: [
+                        ...previous.currentUser.sessions.edges,
+                        ...fetchMoreResult.currentUser.sessions.edges,
+                      ],
+                    },
+                  },
+                }),
+              })
+            }
+          >
+            {t("action.load_more")}
+          </Button>
+        )}
+
         <Card data-testid="user-accounts-card">
           <CardHeader>
             <div className="flex flex-wrap items-start justify-between gap-4">
@@ -598,18 +639,9 @@ function UserSecurityComponent() {
                         </p>
                       </div>
                       <div className="flex gap-2">
-                        {!credential ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            loading={refreshingAccountId === account.id}
-                            onClick={() => handleRefreshAccount(account.id)}
-                          >
-                            {t("user:security.accounts.refresh")}
-                          </Button>
-                        ) : null}
-                        {!credential && accounts.length > 1 ? (
+                        {!credential &&
+                        (accountData?.currentUser.accounts.totalCount ?? 0) >
+                          1 ? (
                           <Button
                             type="button"
                             size="sm"
@@ -628,6 +660,36 @@ function UserSecurityComponent() {
             )}
           </CardContent>
         </Card>
+
+        {accountData?.currentUser.accounts.pageInfo.hasNextPage && (
+          <Button
+            variant="outline"
+            loading={accountsLoading}
+            data-testid="user-accounts-load-more"
+            onClick={() =>
+              fetchMoreAccounts({
+                variables: {
+                  after: accountData.currentUser.accounts.pageInfo.endCursor,
+                },
+                updateQuery: (previous, { fetchMoreResult }) => ({
+                  ...fetchMoreResult,
+                  currentUser: {
+                    ...fetchMoreResult.currentUser,
+                    accounts: {
+                      ...fetchMoreResult.currentUser.accounts,
+                      edges: [
+                        ...previous.currentUser.accounts.edges,
+                        ...fetchMoreResult.currentUser.accounts.edges,
+                      ],
+                    },
+                  },
+                }),
+              })
+            }
+          >
+            {t("action.load_more")}
+          </Button>
+        )}
 
         <Card className="border-destructive" data-testid="user-delete-card">
           <CardHeader>

@@ -2,7 +2,7 @@ import { KeyRound, Settings, User } from "lucide-react";
 
 import { linkOptions, useParams } from "@tanstack/react-router";
 import { t } from "i18next";
-import { useCurrentWorkspaceAbility } from "../contexts/current-workspace-member-context";
+import { useCurrentWorkspaceAbility } from "../contexts/current-member-context";
 import { SidebarUser } from "../../../components/sidebar-user";
 import { SidebarLogo } from "./sidebar-logo";
 import { WorkspaceSwitcher } from "./workspace-switcher";
@@ -47,7 +47,7 @@ export const WorkspaceSidebar: FC<ComponentProps<typeof Sidebar>> = ({
     {
       title: t("sidebar:navigation.settings"),
       items: [
-        ...(currentWorkspaceAbility.can("read", "ApiKey")
+        ...(currentWorkspaceAbility.can("read", "WorkspaceApiKey")
           ? [
               {
                 title: t("sidebar:navigation.api_keys"),

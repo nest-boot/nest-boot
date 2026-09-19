@@ -8,7 +8,8 @@ export function createSessionContext(): ForkOptions['session'] {
   return {
     role: 'anonymous',
     variables: {
-      'app.workspace': (
+      'app.user.id': '',
+      'app.workspace.id': (
         headers().get('x-workspace-id') ??
         cookies().get('workspace_id')?.value ??
         ''

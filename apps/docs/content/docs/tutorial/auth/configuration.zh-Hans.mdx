@@ -11,7 +11,6 @@ description: "配置 AuthModule、环境变量与 MikroORM 实体。"
 
 主要选项包括：
 
-- **`entities`** — 每个认证模型对应的应用实体类；
 - **`emailAndPassword.enabled`** — 启用邮箱密码认证，默认为 `true`；
 - **`emailAndPassword.requireEmailVerification`** — 登录前要求验证邮箱，默认为 `true`；
 - **`emailAndPassword.password`** — 覆盖密码哈希，默认使用 `HashService`；
@@ -29,18 +28,25 @@ description: "配置 AuthModule、环境变量与 MikroORM 实体。"
 - **`account`** — 配置 OAuth 账号关联、存储与 state 校验；
 - **`providers`** — 配置内置社交、自定义 OAuth 2.0 与 OpenID Connect Provider。
 
-`user.permissions` 默认为标准 `User:*` 与 `Session:*` 权限目录。
+`user.permissions` 默认为标准 `user:*`、`session:*` 与 `api-key:*` 权限目录。
 `user.roles` 默认包含 `admin` 与 `user` 两个角色。`admin` 拥有完整默认权限目录，
-`user` 不拥有任何管理权限。显式配置权限数组或角色映射时，会分别替换对应默认值。
+`user` 不拥有任何管理权限。配置的权限追加到内置目录，配置的角色新增角色或向同名角色追加授权。
 `user.defaultRole` 默认为 `user`；`user.adminRoles` 默认为 `['admin']`，用于识别
-管理员身份，包括模拟时需要额外 `User:impersonate-admins` 权限的目标用户。
+管理员身份，包括模拟时需要额外 `user:impersonate-admins` 权限的目标用户。
 
 `workspace.permissions` 默认为标准工作区权限目录。`workspace.roles` 默认包含
-`owner`、`admin` 与 `member`。`owner` 拥有完整默认权限目录；`admin` 除
-`Workspace:delete` 外拥有其他标准权限；`member` 不拥有管理权限。显式配置权限数组
-或角色映射时，会分别替换对应默认值。`workspace.defaultRole` 默认为 `member`，用于
-新增成员和邀请；`workspace.creatorRole` 默认为 `owner`，标识受保护的工作区创建者
-生命周期。
+`owner`、`admin` 与 `member`。`owner` 拥有完整默认权限目录，包括工作区 API Key 管理；
+`admin` 拥有除 `workspace:delete` 外的工作区、成员和邀请管理权限，默认不授予 API Key 管理；
+`member` 不拥有管理权限。显式配置权限数组
+或角色映射时，同样追加到内置配置。`workspace.defaultRole` 默认为 `member`，用于
+新增成员和邀请；`workspace.creatorRole` 默认为 `owner`，指定工作区创建者的初始角色。
+
+空权限数组或空角色映射表示不追加内容，内置权限目录和角色授权仍然保留。同名角色的
+授权合并去重。自定义权限不会自动授予内置管理员或所有者，需要显式追加到对应角色。
+若需要受限权限集合，应定义新角色；设置 `admin: []` 不会清除内置授权。
+`setUserRoles`、`setMemberPermissions` 等实体修改方法仍然替换存储值。
+API Key 的 `allowedPermissions` 仍是上限而非追加目录；`[]` 不允许授予任何权限，
+但输出枚举仍保留完整目录。
 
 配置角色授予的每项权限都必须存在于对应权限目录中。`forRoot()` 会推导权限字面量
 联合，并在 TypeScript 中拒绝未知角色权限；运行时校验同时覆盖动态配置与异步配置。
@@ -55,7 +61,8 @@ description: "配置 AuthModule、环境变量与 MikroORM 实体。"
 
 `apiKey.defaultPermissions` 默认为空数组；`apiKey.allowedPermissions` 默认使用用户与
 工作区权限目录的并集。模块会在启动时校验两个列表，并要求默认权限是白名单的子集。
-User Key 可以使用两个目录中的权限，Workspace Key 只能使用工作区权限。这两个配置
+User Key 可以使用两个目录中的权限，Workspace Key 只能使用工作区权限且不能发送邀请。
+因此共享默认权限不能包含 `invitation:create`，无效默认值会在启动时被拒绝。这两个配置
 只是额外上限；创建和更新时仍会同时检查签发者权限与当前认证 API Key 自身的权限。
 
 ## 环境变量
@@ -131,7 +138,7 @@ AuthModule.forRoot({
 带 discovery 元数据的 Provider 可以使用 OpenID Connect。普通 OAuth Provider 可显式
 配置 `authorizationUrl`、`tokenUrl` 与 `userInfoUrl`。同时支持 `getToken`、
 `getUserInfo`、`mapProfileToUser` 等高级回调。Generic Provider 与内置社交 Provider
-共用 `AuthService.signInSocial()`、`AuthService.linkSocialAccount()` 和回调路由。
+共用 `AuthService.signInSocial()`、`AuthService.linkCurrentUserAccount()` 和回调路由。
 `AUTH_DISABLE_SIGN_UP=true` 会覆盖所有 Provider 的注册设置。
 
 所有 Provider 默认都会校验 OAuth state Cookie。只有特殊部署环境确实无法在授权跳转
@@ -155,30 +162,22 @@ AuthModule.forRoot({
 
 ## 实体设置
 
-`entities` 中的每个类都必须继承对应的基础实体。子类可以重新声明列，以添加 GraphQL
-元数据、索引、数据库类型或应用字段。
+Auth 内置 `User`、`Account`、`Session`、`Verification`、`Workspace`、
+`Member`、`Invitation`、`UserApiKey` 和 `WorkspaceApiKey` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
+不再提供认证 `Base*` 类或 `AuthModuleOptions.entities` 替换配置。
+
+在运行时和迁移 CLI 的 MikroORM 配置中注册导出的 `entities` 数组；CLI 不会启动 Nest 模块：
 
 ```typescript
-import { BaseUser } from "@nest-boot/auth";
-import { Field, ID, ObjectType } from "@nest-boot/graphql";
-import { Entity, PrimaryKey, Property, t } from "@mikro-orm/postgresql";
+import { entities as authEntities } from "@nest-boot/auth";
+import { defineConfig } from "@mikro-orm/postgresql";
 
-@ObjectType()
-@Entity()
-export class User extends BaseUser {
-  @Field(() => ID)
-  @PrimaryKey({ type: t.bigint })
-  override id!: string;
-
-  @Field(() => String)
-  @Property({ type: t.string })
-  declare name: string;
-}
+export default defineConfig({
+  entities: [...authEntities, "dist/**/*.entity.js"],
+  entitiesTs: [...authEntities, "src/**/*.entity.ts"],
+  // Connection and migration options...
+});
 ```
 
-包内提供 `BaseUser`、`BaseAccount`、`BaseSession`、`BaseVerification`、
-`BaseWorkspace`、`BaseWorkspaceInvitation`、`BaseWorkspaceMember` 与 `BaseApiKey`。
-
-Better Auth 1.7 使用必填的 `(issuer, accountId)` 组合标识账号。现有数据库在把
-`issuer` 改为非空之前，应先回填稳定值并处理重复组合。`BaseSession` 会索引
-`userId`，`BaseVerification` 会索引 `identifier`。修改配置实体后应重新生成应用迁移。
+自定义字段请使用独立的业务关联实体和额外的字段 Resolver。关联目标直接导入内置实体类，
+不要重新声明或注册同名认证实体。角色、权限目录、Ability 构造器、邮件回调和 Provider 配置仍可自定义。

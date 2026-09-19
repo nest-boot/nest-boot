@@ -17,7 +17,8 @@ export function serializeAbilityRules(
 }
 
 function serializeSubject(subject: unknown): SerializedAbilityRule["subject"] {
-  if (Array.isArray(subject)) return subject.map(serializeSingleSubject);
+  if (Array.isArray(subject))
+    return [...new Set(subject.map(serializeSingleSubject))];
   return serializeSingleSubject(subject);
 }
 

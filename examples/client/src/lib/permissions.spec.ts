@@ -1,11 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  authPermissionOptions,
   authPermissionValues,
+  getPermissionOptions,
   isAuthPermission,
-  isUserPermission,
-  isWorkspacePermission,
   userPermissionValues,
   workspaceApiKeyPermissionValues,
   workspacePermissionValues,
@@ -13,41 +11,40 @@ import {
 
 describe("permission options", () => {
   it("exposes the workspace permission catalog", () => {
-    expect(workspacePermissionValues).toEqual([
-      "Workspace:update",
-      "Workspace:delete",
-      "WorkspaceMember:create",
-      "WorkspaceMember:update",
-      "WorkspaceMember:delete",
-      "WorkspaceInvitation:create",
-      "WorkspaceInvitation:cancel",
-      "ApiKey:read",
-      "ApiKey:create",
-      "ApiKey:update",
-      "ApiKey:delete",
-    ]);
+    expect(workspacePermissionValues).toEqual(
+      [
+        "WORKSPACE__UPDATE",
+        "WORKSPACE__DELETE",
+        "MEMBER__CREATE",
+        "MEMBER__UPDATE",
+        "MEMBER__DELETE",
+        "INVITATION__CREATE",
+        "INVITATION__CANCEL",
+        "API_KEY__READ",
+        "API_KEY__CREATE",
+        "API_KEY__UPDATE",
+        "API_KEY__DELETE",
+      ].sort(),
+    );
   });
 
   it("keeps workspace API-key permissions inside the mixed catalog", () => {
-    expect(workspaceApiKeyPermissionValues).toContain("Workspace:update");
-    expect(workspaceApiKeyPermissionValues).toContain(
-      "WorkspaceInvitation:cancel",
-    );
-    expect(workspaceApiKeyPermissionValues).not.toContain("User:delete");
+    expect(workspaceApiKeyPermissionValues).toContain("WORKSPACE__UPDATE");
+    expect(workspaceApiKeyPermissionValues).toContain("INVITATION__CANCEL");
+    expect(workspaceApiKeyPermissionValues).not.toContain("USER__DELETE");
   });
 
   it("exposes user and workspace permissions for personal API keys", () => {
-    expect(authPermissionValues).toEqual([
-      ...new Set([...userPermissionValues, ...workspacePermissionValues]),
-    ]);
-    expect(authPermissionOptions.map((entry) => entry.value)).toEqual(
-      authPermissionValues,
+    expect(authPermissionValues).toEqual(
+      [
+        ...new Set([...userPermissionValues, ...workspacePermissionValues]),
+      ].sort(),
     );
     for (const permission of [
-      "ApiKey:read",
-      "ApiKey:create",
-      "ApiKey:update",
-      "ApiKey:delete",
+      "API_KEY__READ",
+      "API_KEY__CREATE",
+      "API_KEY__UPDATE",
+      "API_KEY__DELETE",
     ]) {
       expect(userPermissionValues).toContain(permission);
       expect(workspaceApiKeyPermissionValues).toContain(permission);
@@ -58,8 +55,28 @@ describe("permission options", () => {
   });
 
   it("narrows server strings against the local permission catalog", () => {
-    expect(isUserPermission("User:get")).toBe(true);
-    expect(isWorkspacePermission("Workspace:update")).toBe(true);
-    expect(isAuthPermission("custom:unknown")).toBe(false);
+    expect(isAuthPermission("CUSTOM__UNKNOWN")).toBe(false);
+  });
+
+  it("uses the server catalog and preserves unavailable grants", () => {
+    expect(
+      getPermissionOptions([
+        { permission: "CUSTOM__READ", grantable: true },
+        { permission: "CUSTOM__DELETE", grantable: false },
+      ]),
+    ).toEqual([
+      {
+        value: "CUSTOM__READ",
+        name: "permission:custom_read.name",
+        description: "permission:custom_read.description",
+        grantable: true,
+      },
+      {
+        value: "CUSTOM__DELETE",
+        name: "permission:custom_delete.name",
+        description: "permission:custom_delete.description",
+        grantable: false,
+      },
+    ]);
   });
 });

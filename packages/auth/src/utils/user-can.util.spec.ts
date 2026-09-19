@@ -1,13 +1,13 @@
 import { RequestContext } from "@nest-boot/request-context";
 
 import { UserAbility } from "../abilities/user.ability.js";
-import { AccessControlService } from "../access-control.service.js";
+import { AccessControlService } from "../services/access-control.service.js";
 import { userCan } from "./user-can.util.js";
 
 class TestSubject {}
 
 describe("userCan", () => {
-  it("checks a permission with the cached user ability", async () => {
+  it("rejects a cached ability without the authorization service", async () => {
     const canMock = vi.fn(() => true);
     const ability = new UserAbility();
     vi.spyOn(ability, "can").mockImplementation(canMock);
@@ -15,10 +15,10 @@ describe("userCan", () => {
     await RequestContext.run(new RequestContext({ type: "http" }), () => {
       RequestContext.set(UserAbility, ability);
 
-      expect(userCan("update", TestSubject)).toBe(true);
+      expect(userCan("update", TestSubject)).toBe(false);
     });
 
-    expect(canMock).toHaveBeenCalledWith("update", TestSubject);
+    expect(canMock).not.toHaveBeenCalled();
   });
 
   it("returns false when the user ability is not cached", async () => {

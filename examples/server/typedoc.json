@@ -9,10 +9,10 @@
   "excludePrivate": true,
   "intentionallyNotDocumented": [
     "app/auth/entities/session.entity.Session.impersonatedBy.__type.id",
-    "app/workspace-member/workspace-invitation.entity.WorkspaceInvitation.inviter.__type.id",
-    "app/workspace-member/workspace-invitation.entity.WorkspaceInvitation.workspace.__type.id",
-    "app/workspace-member/workspace-member.entity.WorkspaceMember.user.__type.id",
-    "app/workspace-member/workspace-member.entity.WorkspaceMember.workspace.__type.id"
+    "app/auth/entities/invitation.entity.Invitation.inviter.__type.id",
+    "app/auth/entities/invitation.entity.Invitation.workspace.__type.id",
+    "app/auth/entities/member.entity.Member.user.__type.id",
+    "app/auth/entities/member.entity.Member.workspace.__type.id"
   ],
   "requiredToBeDocumented": [
     "Accessor",

@@ -16,22 +16,30 @@ export function PermissionCheckboxGroup<Permission extends string>({
   onChange,
   disabled = false,
 }: PermissionCheckboxGroupProps<Permission>) {
+  const items = options.map((option) => ({
+    value: option.value,
+    label: t(option.name),
+    description: t(option.description),
+    testId: `permission-${option.value}`,
+    disabled: option.grantable === false && !value.includes(option.value),
+  }));
   return (
     <CheckboxGroup
       label={t("permission:label")}
       value={value}
-      onValueChange={(newValue) => onChange(newValue)}
+      onValueChange={(newValue) =>
+        onChange(
+          newValue.filter((permission) =>
+            items.some((item) => item.value === permission && !item.disabled),
+          ),
+        )
+      }
       disabled={disabled}
       parent={{
         label: t("permission:all.name"),
         description: t("permission:all.description"),
       }}
-      items={options.map((option) => ({
-        value: option.value,
-        label: t(option.name),
-        description: t(option.description),
-        testId: `permission-${option.value}`,
-      }))}
+      items={items}
     />
   );
 }

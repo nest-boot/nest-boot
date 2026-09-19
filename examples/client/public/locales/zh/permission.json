@@ -28,23 +28,23 @@
     "name": "删除工作区",
     "description": "永久删除工作区"
   },
-  "workspace_member_create": {
+  "member_create": {
     "name": "创建成员",
-    "description": "向工作区添加成员和服务账号"
+    "description": "向工作区添加成员"
   },
-  "workspace_member_update": {
+  "member_update": {
     "name": "更新成员",
     "description": "修改工作区成员资料和访问权限"
   },
-  "workspace_member_delete": {
+  "member_delete": {
     "name": "删除成员",
-    "description": "从工作区移除成员和服务账号"
+    "description": "从工作区移除成员"
   },
-  "workspace_invitation_create": {
+  "invitation_create": {
     "name": "创建邀请",
     "description": "邀请用户加入工作区"
   },
-  "workspace_invitation_cancel": {
+  "invitation_cancel": {
     "name": "取消邀请",
     "description": "取消待接受的工作区邀请"
   },

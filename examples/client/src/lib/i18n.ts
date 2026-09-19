@@ -24,11 +24,12 @@ i18n
     ns: [
       "common",
       "auth",
+      "admin",
       "sidebar",
       "api-key",
       "permission",
       "workspace",
-      "workspace-member",
+      "member",
       "user",
       "thread-ui",
     ],

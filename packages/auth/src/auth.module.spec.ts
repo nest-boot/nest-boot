@@ -2,9 +2,14 @@ import { MikroORM } from "@mikro-orm/core";
 import { HashService } from "@nest-boot/hash";
 import { Mailer } from "@nest-boot/mailer";
 import { MiddlewareManager } from "@nest-boot/middleware";
-import { RequestContextMiddleware } from "@nest-boot/request-context";
+import {
+  RequestContext,
+  RequestContextMiddleware,
+} from "@nest-boot/request-context";
 import { MODULE_METADATA } from "@nestjs/common/constants";
 import { Test } from "@nestjs/testing";
+
+import { authEntityMap } from "./entities/auth-entity-map.js";
 
 const {
   mockBetterAuth,
@@ -43,43 +48,44 @@ vi.mock("./adapters/mikro-orm-adapter.js", () => ({
   mikroOrmAdapter: mockMikroOrmAdapter,
 }));
 
-import { AccessControlService } from "./access-control.service.js";
-import { ApiKeyService } from "./api-key.service.js";
 import { AUTH_TOKEN } from "./auth.constants.js";
 import { AuthGuard } from "./auth.guard.js";
 import { AuthMiddleware } from "./auth.middleware.js";
 import { AuthModule } from "./auth.module.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
-import { AuthService } from "./auth.service.js";
 import { AuthHandlerMiddleware } from "./auth-handler.middleware.js";
-import { BaseUser, BaseWorkspace } from "./entities/index.js";
-import { resolveAuthRelationTarget } from "./entities/resolve-auth-relation-target.js";
-import { SessionService } from "./session.service.js";
-import { UserService } from "./user.service.js";
-import {
-  UserDeletionService,
-  WorkspaceOwnershipConflictError,
-} from "./user-deletion.service.js";
-import { WorkspaceService } from "./workspace.service.js";
+import { User as BaseUser } from "./entities/user.entity.js";
+import { Workspace as BaseWorkspace } from "./entities/workspace.entity.js";
+import { AccessControlService } from "./services/access-control.service.js";
+import { AuthService } from "./services/auth.service.js";
+import { InvitationService } from "./services/invitation.service.js";
+import { MemberService } from "./services/member.service.js";
+import { SessionService } from "./services/session.service.js";
+import { UserService } from "./services/user.service.js";
+import { UserDeletionService } from "./services/user-deletion.service.js";
+import { WorkspaceService } from "./services/workspace.service.js";
+import { WorkspaceApiKeyService } from "./services/workspace-api-key.service.js";
 
 class Account {}
-class ApiKey {}
+class UserApiKey {}
+class WorkspaceApiKey {}
 class Session {}
 class User {}
 class Verification {}
 class Workspace {}
-class WorkspaceInvitation {}
-class WorkspaceMember {}
+class Invitation {}
+class Member {}
 
 const entities = {
   account: Account,
-  apiKey: ApiKey,
+  userApiKey: UserApiKey,
+  workspaceApiKey: WorkspaceApiKey,
   session: Session,
   user: User,
   verification: Verification,
   workspace: Workspace,
-  workspaceInvitation: WorkspaceInvitation,
-  workspaceMember: WorkspaceMember,
+  invitation: Invitation,
+  member: Member,
 };
 
 function setOidcEnv() {
@@ -226,21 +232,35 @@ describe("AuthModule", () => {
 
     expect(providers).toContain(AuthGuard);
     expect(providers).toContain(AuthHandlerMiddleware);
-    expect(providers).toContain(UserService);
+    expect(providers).toContainEqual(
+      expect.objectContaining({ provide: UserService }),
+    );
     expect(providers).toContain(UserDeletionService);
-    expect(providers).toContain(ApiKeyService);
+    expect(providers).toContain(WorkspaceApiKeyService);
     expect(providers).toContain(AuthService);
     expect(providers).toContain(AccessControlService);
-    expect(providers).toContain(SessionService);
-    expect(providers).toContain(WorkspaceService);
+    expect(providers).toContainEqual(
+      expect.objectContaining({ provide: SessionService }),
+    );
+    expect(providers).toContainEqual(
+      expect.objectContaining({ provide: WorkspaceService }),
+    );
+    expect(providers).toContainEqual(
+      expect.objectContaining({ provide: MemberService }),
+    );
+    expect(providers).toContainEqual(
+      expect.objectContaining({ provide: InvitationService }),
+    );
     expect(exports).toContain(MODULE_OPTIONS_TOKEN);
     expect(exports).toContain(UserService);
-    expect(exports).toContain(ApiKeyService);
+    expect(exports).toContain(WorkspaceApiKeyService);
     expect(exports).toContain(AuthGuard);
     expect(exports).toContain(AuthService);
     expect(exports).toContain(AccessControlService);
     expect(exports).toContain(SessionService);
     expect(exports).toContain(WorkspaceService);
+    expect(exports).toContain(MemberService);
+    expect(exports).toContain(InvitationService);
   });
 
   it("should register synchronous options", () => {
@@ -261,7 +281,7 @@ describe("AuthModule", () => {
     );
   });
 
-  it("should register asynchronous options and configure relation targets", async () => {
+  it("should register asynchronous options without wrapping the factory", async () => {
     class AsyncUser extends BaseUser {}
     class AsyncWorkspace extends BaseWorkspace {}
     const asyncEntities = {
@@ -303,10 +323,7 @@ describe("AuthModule", () => {
       secret,
     });
     expect(useFactory).toHaveBeenCalledTimes(1);
-    expect(resolveAuthRelationTarget(BaseUser, "User")).toBe(AsyncUser);
-    expect(resolveAuthRelationTarget(BaseWorkspace, "Workspace")).toBe(
-      AsyncWorkspace,
-    );
+    expect(optionsProvider.useFactory).toBe(useFactory);
   });
 
   it("should create better-auth with validated options and MikroORM adapter", () => {
@@ -334,7 +351,7 @@ describe("AuthModule", () => {
     });
     expect(mockMikroOrmAdapter).toHaveBeenCalledWith({
       defaultUserRole: "user",
-      entities,
+      entities: authEntityMap,
       orm,
     });
     expect(mockBetterAuth).toHaveBeenCalledWith(
@@ -343,7 +360,7 @@ describe("AuthModule", () => {
         database: {
           options: {
             defaultUserRole: "user",
-            entities,
+            entities: authEntityMap,
             orm,
           },
           type: "mikro-orm-adapter",
@@ -362,26 +379,83 @@ describe("AuthModule", () => {
     ]);
   });
 
+  it("preserves hyphenated lifecycle roles in the auth adapter configuration", () => {
+    const authProvider = getAuthProvider();
+    authProvider.useFactory(
+      {
+        secret,
+        user: {
+          roles: { "super-admin": ["user:get"] },
+          defaultRole: "super-admin",
+          adminRoles: ["super-admin"],
+        },
+      },
+      { em: {} } as unknown as MikroORM,
+    );
+    expect(mockBetterAuth).toHaveBeenCalledWith(
+      expect.objectContaining({
+        database: expect.objectContaining({
+          options: expect.objectContaining({ defaultUserRole: "super-admin" }),
+        }),
+      }),
+    );
+  });
+
+  it.each([
+    { apiKey: {} },
+    {
+      apiKey: {
+        allowedPermissions: ["user:read", "workspace:update"],
+        defaultPermissions: ["workspace:update"],
+      },
+    },
+    { apiKey: { allowedPermissions: ["user:read"] } },
+  ])(
+    "accepts lowercase permission catalogs with API-key options $apiKey",
+    ({ apiKey }) => {
+      const authProvider = getAuthProvider();
+      expect(() =>
+        authProvider.useFactory(
+          {
+            entities,
+            secret,
+            user: {
+              permissions: ["user:read", "report:export"],
+              roles: { user: [], admin: ["user:read"] },
+            },
+            workspace: {
+              permissions: ["workspace:update"],
+              roles: { owner: ["workspace:update"], member: [] },
+            },
+            apiKey,
+          },
+          { em: {} } as unknown as MikroORM,
+        ),
+      ).not.toThrow();
+      expect(mockBetterAuth).toHaveBeenCalledOnce();
+    },
+  );
+
   it.each([
     [
       "user",
       {
         user: {
-          permissions: ["User:list"],
-          roles: { admin: ["User:delete"] },
+          permissions: ["user:list"],
+          roles: { admin: ["unknown:delete"] },
         },
       },
-      'Role "admin" contains unknown user permissions: User:delete',
+      'Role "admin" contains unknown user permissions: unknown:delete',
     ],
     [
       "workspace",
       {
         workspace: {
-          permissions: ["Workspace:update"],
-          roles: { owner: ["Workspace:delete"] },
+          permissions: ["workspace:update"],
+          roles: { owner: ["unknown:delete"] },
         },
       },
-      'Role "owner" contains unknown workspace permissions: Workspace:delete',
+      'Role "owner" contains unknown workspace permissions: unknown:delete',
     ],
   ])(
     "rejects %s roles outside their permission catalog",
@@ -456,32 +530,37 @@ describe("AuthModule", () => {
   it.each([
     [
       "user-only defaults that cannot be applied to workspace keys",
-      { apiKey: { defaultPermissions: ["User:get"] } },
-      "apiKey.defaultPermissions contains unknown permissions: User:get",
+      { apiKey: { defaultPermissions: ["user:get"] } },
+      "apiKey.defaultPermissions contains unknown permissions: user:get",
+    ],
+    [
+      "invitation defaults requiring a user identity",
+      { apiKey: { defaultPermissions: ["invitation:create"] } },
+      "apiKey.defaultPermissions cannot include invitation:create",
     ],
     [
       "allowed permissions outside the configured catalogs",
       {
-        apiKey: { allowedPermissions: ["Unknown:read"] },
+        apiKey: { allowedPermissions: ["unknown:read"] },
       },
-      "apiKey.allowedPermissions contains unknown permissions: Unknown:read",
+      "apiKey.allowedPermissions contains unknown permissions: unknown:read",
     ],
     [
       "default permissions outside the configured catalogs",
       {
-        apiKey: { defaultPermissions: ["Unknown:read"] },
+        apiKey: { defaultPermissions: ["unknown:read"] },
       },
-      "apiKey.defaultPermissions contains unknown permissions: Unknown:read",
+      "apiKey.defaultPermissions contains unknown permissions: unknown:read",
     ],
     [
       "default permissions outside allowedPermissions",
       {
         apiKey: {
-          allowedPermissions: ["Workspace:update"],
-          defaultPermissions: ["Workspace:delete"],
+          allowedPermissions: ["workspace:update"],
+          defaultPermissions: ["workspace:delete"],
         },
       },
-      "apiKey.defaultPermissions contains permissions outside apiKey.allowedPermissions: Workspace:delete",
+      "apiKey.defaultPermissions contains permissions outside apiKey.allowedPermissions: workspace:delete",
     ],
   ])("rejects API-key %s", (_, config, error) => {
     const authProvider = getAuthProvider();
@@ -505,7 +584,12 @@ describe("AuthModule", () => {
         entities,
         secret,
       },
-      { em: {} } as unknown as MikroORM,
+      {
+        em: {
+          getContext: vi.fn().mockReturnThis(),
+          getSessionContext: vi.fn(),
+        },
+      } as unknown as MikroORM,
     );
 
     expect(mockBetterAuth).toHaveBeenCalledWith(
@@ -528,7 +612,12 @@ describe("AuthModule", () => {
         entities,
         secret,
       },
-      { em: {} } as unknown as MikroORM,
+      {
+        em: {
+          getContext: vi.fn().mockReturnThis(),
+          getSessionContext: vi.fn(),
+        },
+      } as unknown as MikroORM,
     );
 
     expect(mockBetterAuth).toHaveBeenCalledWith(
@@ -555,7 +644,12 @@ describe("AuthModule", () => {
           deleteUser: { beforeDelete, enabled: true },
         },
       },
-      { em: {} } as unknown as MikroORM,
+      {
+        em: {
+          getContext: vi.fn().mockReturnThis(),
+          getSessionContext: vi.fn(),
+        },
+      } as unknown as MikroORM,
       {} as Mailer,
       {} as HashService,
       { deleteUser } as unknown as UserDeletionService,
@@ -572,11 +666,50 @@ describe("AuthModule", () => {
     expect(beforeDelete).toHaveBeenCalledWith(user, request);
   });
 
-  it("should reject Better Auth user deletion when an active workspace is owned", async () => {
+  it.each(["current", "other", "failure"] as const)(
+    "publishes a committed deletion to the request identity (%s)",
+    async (state) => {
+      const actor = Object.assign(new BaseUser(), { id: "actor" });
+      const deleteUser = vi.fn().mockResolvedValue(actor);
+      if (state === "failure")
+        deleteUser.mockRejectedValue(new Error("Commit failed"));
+      getAuthProvider().useFactory(
+        { entities, secret, user: { deleteUser: { enabled: true } } },
+        {
+          em: {
+            getContext: vi.fn().mockReturnThis(),
+            getSessionContext: vi.fn(),
+          },
+        } as unknown as MikroORM,
+        {} as Mailer,
+        {} as HashService,
+        { deleteUser } as unknown as UserDeletionService,
+      );
+      const hook =
+        mockBetterAuth.mock.calls[0]?.[0].user.deleteUser.beforeDelete;
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          RequestContext.set(BaseUser, actor);
+          const operation = hook(
+            { id: state === "other" ? "other" : actor.id },
+            new Request("https://example.com/delete"),
+          );
+          if (state === "failure")
+            await expect(operation).rejects.toThrow("Commit failed");
+          else await operation;
+          expect(RequestContext.get(BaseUser)).toBe(
+            state === "current" ? null : actor,
+          );
+        },
+      );
+    },
+  );
+
+  it("should propagate transactional user deletion failures to Better Auth", async () => {
     const authProvider = getAuthProvider();
-    const deleteUser = vi
-      .fn()
-      .mockRejectedValue(new WorkspaceOwnershipConflictError());
+    const error = new Error("database unavailable");
+    const deleteUser = vi.fn().mockRejectedValue(error);
 
     authProvider.useFactory(
       {
@@ -584,7 +717,12 @@ describe("AuthModule", () => {
         secret,
         user: { deleteUser: { enabled: true } },
       },
-      { em: {} } as unknown as MikroORM,
+      {
+        em: {
+          getContext: vi.fn().mockReturnThis(),
+          getSessionContext: vi.fn(),
+        },
+      } as unknown as MikroORM,
       {} as Mailer,
       {} as HashService,
       { deleteUser } as unknown as UserDeletionService,
@@ -595,13 +733,7 @@ describe("AuthModule", () => {
         { id: "owner-1" },
         new Request("https://app.example.com/api/auth/delete-user"),
       ),
-    ).rejects.toMatchObject({
-      body: {
-        message: "Transfer or delete owned workspaces before deleting the user",
-      },
-      status: "CONFLICT",
-      statusCode: 409,
-    });
+    ).rejects.toBe(error);
   });
 
   it("should send verification emails through the injected mailer", async () => {
@@ -613,7 +745,12 @@ describe("AuthModule", () => {
         entities,
         secret,
       },
-      { em: {} } as unknown as MikroORM,
+      {
+        em: {
+          getContext: vi.fn().mockReturnThis(),
+          getSessionContext: vi.fn(),
+        },
+      } as unknown as MikroORM,
       { sendMail } as unknown as Mailer,
     );
 
@@ -641,7 +778,7 @@ describe("AuthModule", () => {
     authProvider.useFactory(
       {
         apiKey: {
-          allowedPermissions: ["User:get"],
+          allowedPermissions: ["user:get"],
           defaultPermissions: [],
         },
         entities,
@@ -655,7 +792,12 @@ describe("AuthModule", () => {
           sendInvitationEmail: vi.fn(),
         },
       },
-      { em: {} } as unknown as MikroORM,
+      {
+        em: {
+          getContext: vi.fn().mockReturnThis(),
+          getSessionContext: vi.fn(),
+        },
+      } as unknown as MikroORM,
     );
 
     expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty("user");
@@ -1066,46 +1208,16 @@ describe("AuthModule", () => {
     expect(mockGenericOAuth).not.toHaveBeenCalled();
   });
 
-  it.each([
-    ["AUTH_OIDC_CLIENT_ID"],
-    ["AUTH_OIDC_CLIENT_SECRET"],
-    ["AUTH_OIDC_DISCOVERY_URL"],
-  ])("should reject missing %s when OIDC env is configured", (envName) => {
+  it("propagates OIDC configuration errors before initializing Better Auth", () => {
     setOidcEnv();
-    process.env[envName] = "";
-    const orm = {
-      em: {},
-    } as unknown as MikroORM;
+    process.env.AUTH_OIDC_CLIENT_ID = "";
     const authProvider = getAuthProvider();
+    const orm = { em: {} } as unknown as MikroORM;
 
-    expect(() =>
-      authProvider.useFactory(
-        {
-          entities,
-          secret,
-        },
-        orm,
-      ),
-    ).toThrow(envName);
-  });
-
-  it("should reject invalid OIDC prompt values", () => {
-    setOidcEnv();
-    process.env.AUTH_OIDC_PROMPT = "invalid";
-    const orm = {
-      em: {},
-    } as unknown as MikroORM;
-    const authProvider = getAuthProvider();
-
-    expect(() =>
-      authProvider.useFactory(
-        {
-          entities,
-          secret,
-        },
-        orm,
-      ),
-    ).toThrow("AUTH_OIDC_PROMPT");
+    expect(() => authProvider.useFactory({ secret }, orm)).toThrow(
+      "AUTH_OIDC_CLIENT_ID",
+    );
+    expect(mockBetterAuth).not.toHaveBeenCalled();
   });
 
   it("should merge email auth options without dropping email signup disable env flags", () => {
@@ -1190,38 +1302,14 @@ describe("AuthModule", () => {
     );
   });
 
-  it("should reject missing, short, or low-entropy secrets", () => {
+  it("validates the secret before initializing Better Auth", () => {
     const authProvider = getAuthProvider();
-    const orm = {
-      em: {},
-    } as unknown as MikroORM;
+    const orm = { em: {} } as unknown as MikroORM;
 
-    expect(() =>
-      authProvider.useFactory(
-        {
-          entities,
-        },
-        orm,
-      ),
-    ).toThrow("Auth secret is required");
-    expect(() =>
-      authProvider.useFactory(
-        {
-          entities,
-          secret: "short",
-        },
-        orm,
-      ),
-    ).toThrow("Auth secret must be at least 32 characters long");
-    expect(() =>
-      authProvider.useFactory(
-        {
-          entities,
-          secret: "a".repeat(32),
-        },
-        orm,
-      ),
-    ).toThrow("Auth secret appears low-entropy");
+    expect(() => authProvider.useFactory({ secret: "short" }, orm)).toThrow(
+      "Auth secret must be at least 32 characters long",
+    );
+    expect(mockBetterAuth).not.toHaveBeenCalled();
   });
 
   it("should register auth handler and auth middleware routes", async () => {

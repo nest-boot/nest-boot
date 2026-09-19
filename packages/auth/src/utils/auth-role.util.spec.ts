@@ -1,6 +1,7 @@
 import { BadRequestException } from "@nestjs/common";
 
 import {
+  assertAuthPermissionSubset,
   assertAuthRolesExist,
   normalizeAuthPermissions,
   normalizeAuthRoles,
@@ -74,6 +75,8 @@ describe("normalizeAuthPermissions", () => {
       "contains duplicate permissions: project:read",
     ],
     [["project:delete"], "contains unknown permissions: project:delete"],
+    [["Project:read"], "contains unknown permissions: Project:read"],
+    [["project:READ"], "contains unknown permissions: project:READ"],
   ] as const)("rejects invalid permission input %#", (permissions, message) => {
     expect(() =>
       normalizeAuthPermissions(
@@ -82,5 +85,34 @@ describe("normalizeAuthPermissions", () => {
         "Workspace member",
       ),
     ).toThrow(new BadRequestException(`Workspace member ${message}`));
+  });
+
+  it("preserves arbitrary configured identifiers and distinguishes case variants", () => {
+    const permissions = [
+      "User:read",
+      "user:read",
+      "user:READ",
+      "EXPORT",
+      "\u9879\u76ee/\u8bfb\u53d6",
+    ];
+    expect(normalizeAuthPermissions(permissions, permissions, "User")).toEqual(
+      permissions,
+    );
+    expect(
+      resolveAuthPermissions(["Admin"], ["user:READ", "User:read"], {
+        Admin: ["User:read", "user:read"],
+      }),
+    ).toEqual(["User:read", "user:read", "user:READ"]);
+  });
+
+  it("compares permission ceilings by exact strings", () => {
+    expect(() => {
+      assertAuthPermissionSubset(["User:read"], ["User:read"], "API key");
+    }).not.toThrow();
+    expect(() => {
+      assertAuthPermissionSubset(["User:read"], ["user:read"], "API key");
+    }).toThrow(
+      "contains permissions outside apiKey.allowedPermissions: User:read",
+    );
   });
 });

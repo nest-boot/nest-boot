@@ -1,7 +1,7 @@
 import type { BetterAuthOptions } from "better-auth";
 import { socialProviderList } from "better-auth/social-providers";
 
-import type { AuthModuleProvider } from "../auth-module-options.interface.js";
+import type { AuthModuleProvider } from "../types/auth-module-provider.type.js";
 import type { GenericOAuthProviderConfig } from "./generic-oauth-provider-config.type.js";
 
 const BUILT_IN_PROVIDER_IDS = new Set<string>(socialProviderList);

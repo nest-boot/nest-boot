@@ -1,4 +1,5 @@
-import { BaseEntity, Cascade, type Opt, type Ref, t } from "@mikro-orm/core";
+/* eslint-disable @nest-boot/graphql-field-config-from-types -- MikroORM Opt/Ref markers require explicit GraphQL metadata. */
+import { BaseEntity, type Opt, type Ref, t } from "@mikro-orm/core";
 import {
   Entity,
   Index,
@@ -7,22 +8,28 @@ import {
   Property,
   Unique,
 } from "@mikro-orm/decorators/legacy";
+import { Field, HideField, ID, ObjectType } from "@nest-boot/graphql";
 import { randomUUID } from "crypto";
 
-import { resolveAuthRelationTarget } from "./resolve-auth-relation-target.js";
-import { BaseUser } from "./user.entity.js";
+import { User } from "./user.entity.js";
 
-/**
- * Abstract base entity for user session records.
- *
- * @remarks
- * Maps to the better-auth `session` model. Each session is tied to a
- * `BaseUser` and identified by a unique token.
- */
-@Entity({ abstract: true })
-export class BaseSession extends BaseEntity {
+/** Built-in Session entity with authentication persistence and access policies. */
+@Entity({
+  policies: [
+    {
+      name: "session_select_policy",
+      command: "select",
+      roles: ["authenticated"],
+      // Services authorize own-session and administrative reads.
+      using: "true",
+    },
+  ],
+})
+@ObjectType()
+export class Session extends BaseEntity {
   /** Primary key (UUID v4, auto-generated). */
   @PrimaryKey({ type: t.uuid })
+  @Field(() => ID)
   id: Opt<string> = randomUUID();
 
   /** Unique session token used for authentication. */
@@ -30,39 +37,45 @@ export class BaseSession extends BaseEntity {
   @Unique()
   token!: string;
 
-  /** Foreign key referencing the owning `BaseUser`. */
+  /** User that owns this record. */
   @Index()
-  @ManyToOne({
-    entity: () => resolveAuthRelationTarget(BaseUser, "User") as any,
+  @ManyToOne(() => User, {
     fieldName: "user_id",
-    mapToPk: true,
-    cascade: [Cascade.REMOVE],
+    ref: true,
+    deleteRule: "cascade",
   })
-  userId!: string;
+  @HideField()
+  user!: Ref<User>;
 
   /** Timestamp when the session expires. */
   @Property({ type: t.datetime })
+  @Field(() => Date)
   expiresAt!: Date;
 
   /** IP address of the client that created or last used this session. */
   @Property({ type: t.text, nullable: true })
-  ipAddress?: Opt<string>;
+  @Field(() => String, { nullable: true })
+  ipAddress?: string | null;
 
   /** User-Agent header from the client that created or last used this session. */
   @Property({ type: t.text, nullable: true })
-  userAgent?: Opt<string>;
+  @Field(() => String, { nullable: true })
+  userAgent?: string | null;
 
   /** Administrator that created this impersonation session. */
-  @ManyToOne({
-    entity: () => resolveAuthRelationTarget(BaseUser, "User") as any,
+  @ManyToOne(() => User, {
     fieldName: "impersonated_by_id",
     nullable: true,
-    deleteRule: "set null",
+    deleteRule: "cascade",
   })
-  impersonatedBy?: Ref<BaseUser> | null;
+  impersonatedBy?: Ref<User> | null;
 
   /** Timestamp when the session was created. */
-  @Property({ type: t.datetime, defaultRaw: "now()" })
+  @Property({
+    type: t.datetime,
+    defaultRaw: "now()",
+  })
+  @Field(() => Date)
   createdAt: Opt<Date> = new Date();
 
   /** Timestamp of the last update. */
@@ -71,5 +84,6 @@ export class BaseSession extends BaseEntity {
     defaultRaw: "now()",
     onUpdate: () => new Date(),
   })
+  @Field(() => Date)
   updatedAt: Opt<Date> = new Date();
 }

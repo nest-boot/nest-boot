@@ -6,7 +6,6 @@ import {
   Node,
   type ObjectLiteralExpression,
   Project,
-  PropertyAssignment,
   SyntaxKind,
 } from 'ts-morph';
 
@@ -23,6 +22,12 @@ describe('AppModule', () => {
     const metadata = moduleDecorator
       .getArguments()[0]
       .asKindOrThrow(SyntaxKind.ObjectLiteralExpression);
+    expect(
+      getPropertyAssignment(metadata, 'imports')
+        .getInitializerIfKindOrThrow(SyntaxKind.ArrayLiteralExpression)
+        .getElements()
+        .map((element) => element.getText()),
+    ).toEqual(['CommonModule', 'AuthModule']);
     const providers = getPropertyAssignment(metadata, 'providers')
       .getInitializerIfKindOrThrow(SyntaxKind.ArrayLiteralExpression)
       .getElements();

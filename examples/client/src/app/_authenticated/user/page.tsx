@@ -1,6 +1,6 @@
 import { useMutation, useSuspenseQuery } from "@apollo/client/react";
 import { useForm } from "@tanstack/react-form";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { t } from "i18next";
 import { CircleX, MailCheck } from "lucide-react";
@@ -40,13 +40,13 @@ const GET_CURRENT_USER_FROM_USER_ROUTE = graphql(`
 
 const UPDATE_USER_FROM_USER_ROUTE = graphql(`
   mutation updateUserFromUserRoute($input: AuthUpdateUserInput!) {
-    authUpdateUser(input: $input)
+    updateCurrentUser(input: $input)
   }
 `);
 
 const CHANGE_EMAIL_FROM_USER_ROUTE = graphql(`
   mutation changeEmailFromUserRoute($input: AuthChangeEmailInput!) {
-    authChangeEmail(input: $input)
+    changeCurrentUserEmail(input: $input)
   }
 `);
 
@@ -65,6 +65,7 @@ export const Route = createFileRoute("/_authenticated/user/")({
 });
 
 function UserComponent() {
+  const router = useRouter();
   const { data, refetch } = useSuspenseQuery(GET_CURRENT_USER_FROM_USER_ROUTE);
   const [updateUser] = useMutation(UPDATE_USER_FROM_USER_ROUTE);
   const [changeEmail] = useMutation(CHANGE_EMAIL_FROM_USER_ROUTE);
@@ -91,6 +92,7 @@ function UserComponent() {
       try {
         await updateUser({ variables: { input: { name } } });
         await refetch();
+        await router.invalidate();
         form.reset({ name });
         toast.success(t("user:profile.toast.updated"));
       } catch (error) {
@@ -124,7 +126,7 @@ function UserComponent() {
           },
         });
 
-        if (!result.data?.authChangeEmail) {
+        if (!result.data?.changeCurrentUserEmail) {
           throw new Error(t("user:email.toast.request_failed"));
         }
 

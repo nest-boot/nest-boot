@@ -88,17 +88,17 @@ request-scoped object. The alias used by consumers is the first argument and the
 canonical token that stores or provides the value is the second:
 
 ```typescript
-context.alias(BaseUser, User);
-context.set(BaseUser, authenticatedUser); // stored under User
+context.alias(UserToken, User);
+context.set(UserToken, authenticatedUser); // stored under User
 
-context.get(BaseUser) === authenticatedUser; // true
+context.get(UserToken) === authenticatedUser; // true
 context.get(User) === authenticatedUser; // true
 ```
 
 The static form registers an alias on the active context:
 
 ```typescript
-RequestContext.alias(BaseUser, User);
+RequestContext.alias(UserToken, User);
 ```
 
 Aliases belong to a context rather than global state. A child snapshots its
@@ -114,8 +114,8 @@ parent and child snapshots remain unchanged; children created afterward inherit
 the updated alias set. Calling `alias()` again for the same token re-enables it.
 
 ```typescript
-context.unalias(BaseUser);
-RequestContext.unalias(BaseUser); // active context
+context.unalias(UserToken);
+RequestContext.unalias(UserToken); // active context
 ```
 
 ## Accessing Application Providers

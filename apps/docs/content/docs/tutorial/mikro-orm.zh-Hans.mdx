@@ -106,7 +106,7 @@ export class UserService {
 
 ### 数据库 session 工厂
 
-通过 `session: () => ({ role: "anonymous", variables: { "app.workspace": "..." } })`
+通过 `session: () => ({ role: "anonymous", variables: { "app.workspace.id": "..." } })`
 为每个请求 EntityManager 初始化原生 session。同步回调返回 `ForkOptions["session"]`，
 在 `RequestContext` 内、认证之前执行，`forRoot()` 和 `forRootAsync()` 均支持。
 默认不配置工厂。应用负责创建和授权数据库角色，并在认证后、业务事务开始前更新 session。

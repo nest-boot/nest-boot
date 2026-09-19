@@ -1,4 +1,6 @@
 import { EntityManager } from "@mikro-orm/core";
+
+import { UserApiKey } from "../entities/user-api-key.entity.js";
 /**
  * Unit tests for convertWhereToMikroOrm
  *
@@ -25,16 +27,14 @@ import { LockMode, MikroORM, Raw } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 
 import { mockRlsContext } from "../../test/mock-rls-context.js";
-import {
-  BaseAccount,
-  BaseApiKey,
-  BaseSession,
-  BaseUser,
-  BaseVerification,
-  BaseWorkspace,
-  BaseWorkspaceInvitation,
-  BaseWorkspaceMember,
-} from "../entities/index.js";
+import { Account as BaseAccount } from "../entities/account.entity.js";
+import { Invitation as BaseInvitation } from "../entities/invitation.entity.js";
+import { Member as BaseMember } from "../entities/member.entity.js";
+import { Session as BaseSession } from "../entities/session.entity.js";
+import { User as BaseUser } from "../entities/user.entity.js";
+import { Verification as BaseVerification } from "../entities/verification.entity.js";
+import { Workspace as BaseWorkspace } from "../entities/workspace.entity.js";
+import { WorkspaceApiKey as BaseApiKey } from "../entities/workspace-api-key.entity.js";
 import {
   convertWhereToMikroOrm,
   mikroOrmAdapter,
@@ -311,24 +311,33 @@ describe("convertWhereToMikroOrm", () => {
   });
 });
 
-class TestAccount extends BaseAccount {}
-class TestApiKey extends BaseApiKey {}
-class TestSession extends BaseSession {}
-class TestUser extends BaseUser {}
-class TestVerification extends BaseVerification {}
-class TestWorkspace extends BaseWorkspace {}
-class TestWorkspaceMember extends BaseWorkspaceMember {}
-class TestWorkspaceInvitation extends BaseWorkspaceInvitation {}
+const TestAccount = BaseAccount;
+type TestAccount = BaseAccount;
+const TestApiKey = BaseApiKey;
+type TestApiKey = BaseApiKey;
+const TestSession = BaseSession;
+type TestSession = BaseSession;
+const TestUser = BaseUser;
+type TestUser = BaseUser;
+const TestVerification = BaseVerification;
+type TestVerification = BaseVerification;
+const TestWorkspace = BaseWorkspace;
+type TestWorkspace = BaseWorkspace;
+const TestMember = BaseMember;
+type TestMember = BaseMember;
+const TestInvitation = BaseInvitation;
+type TestInvitation = BaseInvitation;
 
 const entities = {
   account: TestAccount,
-  apiKey: TestApiKey,
+  userApiKey: UserApiKey,
+  workspaceApiKey: TestApiKey,
   session: TestSession,
   user: TestUser,
   verification: TestVerification,
   workspace: TestWorkspace,
-  workspaceInvitation: TestWorkspaceInvitation,
-  workspaceMember: TestWorkspaceMember,
+  invitation: TestInvitation,
+  member: TestMember,
 };
 
 function createOrm() {
@@ -548,7 +557,7 @@ describe("mikroOrmAdapter", () => {
     const adapter = createAdapter(orm);
 
     await adapter.create({ data: { name: "Workspace" }, model: "workspace" });
-    await adapter.create({ data: { name: "Key" }, model: "apiKey" });
+    await adapter.create({ data: { name: "Key" }, model: "workspaceApiKey" });
 
     expect(em.create).toHaveBeenNthCalledWith(1, TestWorkspace, {
       name: "Workspace",

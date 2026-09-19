@@ -22,7 +22,7 @@ import { graphql } from "@/gql";
 
 const RESET_PASSWORD_FROM_RESET_PASSWORD = graphql(`
   mutation resetPasswordFromResetPassword($input: AuthResetPasswordInput!) {
-    authResetPassword(input: $input)
+    resetPassword(input: $input)
   }
 `);
 
@@ -71,7 +71,7 @@ function ResetPasswordComponent() {
         },
       });
 
-      if (!result.data?.authResetPassword) {
+      if (!result.data?.resetPassword) {
         throw new Error(t("auth:passwordReset.resetFailed"));
       }
 
