@@ -111,6 +111,9 @@ describe("EntityService", () => {
   it("should find one entity by id from unit of work", async () => {
     const { em, getById, mocks } = createEntityManager();
     const entity = createEntity(1);
+    Object.defineProperty(entity, "__helper", {
+      value: { isInitialized: () => true },
+    });
     getById.mockReturnValue(entity);
     const service = new EntityService(TestEntity, em);
 

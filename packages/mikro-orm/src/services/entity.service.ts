@@ -15,6 +15,7 @@ import {
   QueryOrder,
   type QueryOrderMap,
   type RequiredEntityData,
+  wrap,
 } from "@mikro-orm/core";
 import { NotFoundException, Type } from "@nestjs/common";
 import DataLoader from "dataloader";
@@ -122,7 +123,7 @@ export class EntityService<Entity extends IdEntity> {
             id as Primary<Entity>,
           );
 
-          if (entity) {
+          if (entity && wrap(entity).isInitialized()) {
             entitiesFromUow.push(entity as Loaded<Entity>);
           } else {
             idsToFetch.push(id);
