@@ -1,3 +1,24 @@
+## 8.0.1-beta.1 (2026-09-19)
+
+### 🚀 Features
+
+- ⚠️  **auth:** unify auth entities, services and GraphQL APIs ([#331](https://github.com/nest-boot/nest-boot/pull/331))
+
+### ⚠️  Breaking Changes
+
+- **auth:** unify auth entities, services and GraphQL APIs  ([#331](https://github.com/nest-boot/nest-boot/pull/331))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.1-beta.0
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.0
+- Updated @nest-boot/tsconfig to 8.0.0-beta.4
+- Updated @nest-boot/graphql to 8.0.1-beta.0
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.1-beta.0 (2026-09-17)
 
 ### 🧱 Updated Dependencies

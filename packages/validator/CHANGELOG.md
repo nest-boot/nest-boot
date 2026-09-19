@@ -1,3 +1,11 @@
+## 8.0.4-beta.0 (2026-09-19)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.1-beta.0
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.0
+- Updated @nest-boot/tsconfig to 8.0.0-beta.4
+
 ## 8.0.3-beta.1 (2026-09-17)
 
 ### 🚀 Features

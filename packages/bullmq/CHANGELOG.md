@@ -1,3 +1,24 @@
+## 8.0.4-beta.0 (2026-09-19)
+
+### 🚀 Features
+
+- ⚠️  **mikro-orm:** adopt native RLS and remove the custom RLS package ([#329](https://github.com/nest-boot/nest-boot/pull/329))
+
+### ⚠️  Breaking Changes
+
+- **mikro-orm:** adopt native RLS and remove the custom RLS package  ([#329](https://github.com/nest-boot/nest-boot/pull/329))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 8.0.1-beta.0
+- Updated @nest-boot/eslint-config to 8.0.1-beta.0
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.0
+- Updated @nest-boot/tsconfig to 8.0.0-beta.4
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.3-beta.0 (2026-09-08)
 
 ### 🚀 Features

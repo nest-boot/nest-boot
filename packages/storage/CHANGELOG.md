@@ -1,3 +1,11 @@
+## 8.0.1-beta.0 (2026-09-19)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.1-beta.0
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.0
+- Updated @nest-boot/tsconfig to 8.0.0-beta.4
+
 ## 8.0.0-beta.5 (2026-09-16)
 
 This was a version bump only for @nest-boot/storage to align it with other projects, there were no code changes.

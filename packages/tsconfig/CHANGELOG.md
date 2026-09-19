@@ -1,3 +1,17 @@
+## 8.0.0-beta.4 (2026-09-19)
+
+### 🚀 Features
+
+- ⚠️  **auth:** unify auth entities, services and GraphQL APIs ([#331](https://github.com/nest-boot/nest-boot/pull/331))
+
+### ⚠️  Breaking Changes
+
+- **auth:** unify auth entities, services and GraphQL APIs  ([#331](https://github.com/nest-boot/nest-boot/pull/331))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.0-beta.3 (2026-09-08)
 
 ### 🚀 Features
