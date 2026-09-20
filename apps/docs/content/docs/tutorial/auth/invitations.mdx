@@ -57,6 +57,11 @@ dedicated ID-only payloads. Read invitation details separately; these writes do
 not grant access to the inviter's private user profile. Creating invitations
 requires a user identity: use a user API key, not a workspace API key.
 
+`member:invite` authorizes invitation queries, creation, and cancellation,
+independently of `member:write`. Workspace keys may use it to read and cancel
+invitations. Accepting or rejecting one's own invitation checks the recipient's
+user session and does not require `member:invite`.
+
 - `createInvitation(workspace, inviter, input, request?)`;
 - `getInvitation(id)` — single-record lookup using the current request's native RLS;
 - `getInvitationByUser(id, user)`;

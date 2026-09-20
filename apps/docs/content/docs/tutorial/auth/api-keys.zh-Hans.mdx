@@ -8,12 +8,13 @@ description: "使用带权限范围的 API Key 认证个人和工作区自动化
 - **User Key** 会恢复所属用户；只有该用户仍是所选工作区的活动成员时，才能访问工作区资源。
 - **Workspace Key** 是独立服务身份；它会恢复所属工作区，但不会创建当前用户或工作区成员。
 
-用户管理自己的 Key。活动工作区成员和 Workspace Key 只有在最终 Workspace Ability 包含对应的
-`api-key:create`、`api-key:read`、`api-key:update` 或 `api-key:delete` 权限时，才能管理
-Workspace Key。
+个人 Key 管理使用 `user-api-key:read` 和 `user-api-key:write`；
+工作区 Key 管理使用 `workspace-api-key:read` 和 `workspace-api-key:write`。
+`read` 允许查询，`write` 允许创建、更新、启停和删除，二者不互相隐含。
+资源归属与可授予权限上限检查仍然生效。
 示例的两个用户角色均包含个人 Key 管理权限。API Key 请求只会获得权限取交集后明确
 授予的操作，不再无条件继承 `manage` 规则。
-前端提供四项 Key 管理权限，但创建时默认不勾选，需用户主动授权。
+前端消费服务端权限选项，只预选同时满足 `default` 与 `grantable` 的项。
 
 ## 服务 API
 
@@ -77,17 +78,17 @@ auth 包以 `string[]` 存储和判断权限。应用负责定义封闭的用户
 权限标识使用小写 `resource:action`，每段以字母开头，可包含小写字母、数字和中划线。
 启动时拒绝下划线、连续中划线和混合大小写。权限目录、授权上限与
 Key 权限交集只做精确字符串匹配，不做规范化转换。
-GraphQL 使用独立的 `UserApiKeyPermission`、`WorkspaceApiKeyPermission` 枚举，将 `api-key:read` 映射为
-`API_KEY__READ`，内部仍使用原值。
-Auth 自动将内置 `api-key:*` 权限在用户能力中映射到 `UserApiKey`，在工作区能力中映射到
-`WorkspaceApiKey`。业务扩展通过受约束的 `AbilityRules.can` 显式绑定自定义权限。
+GraphQL 使用独立的 `UserApiKeyPermission`、`WorkspaceApiKeyPermission` 枚举，将 `user-api-key:read` 映射为
+`USER_API_KEY__READ`，内部仍使用原值。
+Auth 将 `user-api-key:*` 在用户能力中映射到 `UserApiKey`，将 `workspace-api-key:*`
+在工作区能力中映射到 `WorkspaceApiKey`。业务扩展通过受约束的 `AbilityRules.can` 显式绑定自定义权限。
 
 ```typescript
-const workspacePermissions = ["workspace:update", "member:create"] as const;
+const workspacePermissions = ["workspace:update", "member:write"] as const;
 
 type WorkspacePermission = (typeof workspacePermissions)[number];
 
-const userKeyPermissions = ["user:get", ...workspacePermissions] as const;
+const userKeyPermissions = ["user:read", ...workspacePermissions] as const;
 ```
 
 实体属性和数据库列保留原始字符串；GraphQL 输入与输出使用作用域枚举，前端从生成的枚举派生表单选项和 TypeScript 类型。Workspace Key 只接受配置的工作区权限；
@@ -107,8 +108,8 @@ AuthModule.forRoot({
   // ...other auth options
   apiKey: {
     user: {
-      defaultPermissions: ["user:get"],
-      allowedPermissions: ["user:get", "workspace:update"],
+      defaultPermissions: ["user:read"],
+      allowedPermissions: ["user:read", "workspace:update"],
     },
     workspace: {
       defaultPermissions: ["workspace:update"],
@@ -122,7 +123,7 @@ AuthModule.forRoot({
 显式传入 `null` 或 `[]` 会创建无权限 Key。用户 Key 省略 `allowedPermissions` 时使用
 用户与工作区目录的并集；工作区 Key 仅使用工作区目录。显式 `[]` 表示不允许授予任何权限。
 模块在启动时分别验证两个作用域，并要求默认权限属于相应白名单。用户 Key 可以默认授予
-`user:get` 或 `invitation:create`；工作区 Key 没有用户身份，因此不能发送邀请。
+`user:read` 或 `member:invite`；工作区 Key 没有用户身份，因此不能发送邀请。
 
 旧的 `apiKey.defaultPermissions`、`apiKey.allowedPermissions` 已移除。请将列表迁移到
 `apiKey.user` 和／或 `apiKey.workspace`，并从工作区列表中删除用户专属权限。
@@ -130,8 +131,8 @@ AuthModule.forRoot({
 
 Key 编辑界面使用 `userApiKeyPermissions` 与 `workspaceApiKeyPermissions` 获取
 `{ permission, grantable, default }` 列表，权限字段使用对应的 API Key 权限枚举。
-可授予状态综合配置白名单、签发者授权上限与当前 Key 的权限；工作区 Key 的
-`invitation:create` 始终不可授予。不可授予项仍可展示，但不能用于新选项或默认勾选。
+可授予状态综合配置白名单、签发者授权上限与当前 Key 的权限。工作区 Key 可以获得
+`member:invite` 来查看和取消邀请；创建邀请仍要求用户身份。不可授予项仍可展示，但不能用于新选项或默认勾选。
 Service 仍会校验每次写入，这份列表不能替代授权检查。
 `default` 独立表示配置中的默认权限；前端仅预选 `default && grantable` 的项，
 不要根据枚举值自行推断默认权限。

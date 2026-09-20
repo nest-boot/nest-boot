@@ -1064,30 +1064,31 @@ export const UserApiKeyOrderField = {
 export type UserApiKeyOrderField =
   (typeof UserApiKeyOrderField)[keyof typeof UserApiKeyOrderField];
 export const UserApiKeyPermission = {
-  API_KEY__CREATE: "API_KEY__CREATE",
-  API_KEY__DELETE: "API_KEY__DELETE",
-  API_KEY__READ: "API_KEY__READ",
-  API_KEY__UPDATE: "API_KEY__UPDATE",
-  INVITATION__CANCEL: "INVITATION__CANCEL",
-  INVITATION__CREATE: "INVITATION__CREATE",
-  MEMBER__CREATE: "MEMBER__CREATE",
-  MEMBER__DELETE: "MEMBER__DELETE",
-  MEMBER__UPDATE: "MEMBER__UPDATE",
-  SESSION__DELETE: "SESSION__DELETE",
-  SESSION__LIST: "SESSION__LIST",
+  MEMBER__INVITE: "MEMBER__INVITE",
+  MEMBER__READ: "MEMBER__READ",
+  MEMBER__SET_PERMISSIONS: "MEMBER__SET_PERMISSIONS",
+  MEMBER__SET_ROLES: "MEMBER__SET_ROLES",
+  MEMBER__WRITE: "MEMBER__WRITE",
+  SESSION__READ: "SESSION__READ",
   SESSION__REVOKE: "SESSION__REVOKE",
+  USER_API_KEY__READ: "USER_API_KEY__READ",
+  USER_API_KEY__WRITE: "USER_API_KEY__WRITE",
   USER__BAN: "USER__BAN",
   USER__CREATE: "USER__CREATE",
   USER__DELETE: "USER__DELETE",
-  USER__GET: "USER__GET",
   USER__IMPERSONATE: "USER__IMPERSONATE",
-  USER__IMPERSONATE_ADMINS: "USER__IMPERSONATE_ADMINS",
-  USER__LIST: "USER__LIST",
+  USER__IMPERSONATE_ADMIN: "USER__IMPERSONATE_ADMIN",
+  USER__READ: "USER__READ",
   USER__SET_EMAIL: "USER__SET_EMAIL",
   USER__SET_PASSWORD: "USER__SET_PASSWORD",
-  USER__SET_ROLE: "USER__SET_ROLE",
+  USER__SET_PERMISSIONS: "USER__SET_PERMISSIONS",
+  USER__SET_ROLES: "USER__SET_ROLES",
   USER__UPDATE: "USER__UPDATE",
+  WORKSPACE_API_KEY__READ: "WORKSPACE_API_KEY__READ",
+  WORKSPACE_API_KEY__WRITE: "WORKSPACE_API_KEY__WRITE",
+  WORKSPACE__CREATE: "WORKSPACE__CREATE",
   WORKSPACE__DELETE: "WORKSPACE__DELETE",
+  WORKSPACE__READ: "WORKSPACE__READ",
   WORKSPACE__UPDATE: "WORKSPACE__UPDATE",
 } as const;
 
@@ -1138,24 +1139,22 @@ export const UserOrderField = {
 export type UserOrderField =
   (typeof UserOrderField)[keyof typeof UserOrderField];
 export const UserPermission = {
-  API_KEY__CREATE: "API_KEY__CREATE",
-  API_KEY__DELETE: "API_KEY__DELETE",
-  API_KEY__READ: "API_KEY__READ",
-  API_KEY__UPDATE: "API_KEY__UPDATE",
-  SESSION__DELETE: "SESSION__DELETE",
-  SESSION__LIST: "SESSION__LIST",
+  SESSION__READ: "SESSION__READ",
   SESSION__REVOKE: "SESSION__REVOKE",
+  USER_API_KEY__READ: "USER_API_KEY__READ",
+  USER_API_KEY__WRITE: "USER_API_KEY__WRITE",
   USER__BAN: "USER__BAN",
   USER__CREATE: "USER__CREATE",
   USER__DELETE: "USER__DELETE",
-  USER__GET: "USER__GET",
   USER__IMPERSONATE: "USER__IMPERSONATE",
-  USER__IMPERSONATE_ADMINS: "USER__IMPERSONATE_ADMINS",
-  USER__LIST: "USER__LIST",
+  USER__IMPERSONATE_ADMIN: "USER__IMPERSONATE_ADMIN",
+  USER__READ: "USER__READ",
   USER__SET_EMAIL: "USER__SET_EMAIL",
   USER__SET_PASSWORD: "USER__SET_PASSWORD",
-  USER__SET_ROLE: "USER__SET_ROLE",
+  USER__SET_PERMISSIONS: "USER__SET_PERMISSIONS",
+  USER__SET_ROLES: "USER__SET_ROLES",
   USER__UPDATE: "USER__UPDATE",
+  WORKSPACE__CREATE: "WORKSPACE__CREATE",
 } as const;
 
 export type UserPermission =
@@ -1277,16 +1276,15 @@ export const WorkspaceApiKeyOrderField = {
 export type WorkspaceApiKeyOrderField =
   (typeof WorkspaceApiKeyOrderField)[keyof typeof WorkspaceApiKeyOrderField];
 export const WorkspaceApiKeyPermission = {
-  API_KEY__CREATE: "API_KEY__CREATE",
-  API_KEY__DELETE: "API_KEY__DELETE",
-  API_KEY__READ: "API_KEY__READ",
-  API_KEY__UPDATE: "API_KEY__UPDATE",
-  INVITATION__CANCEL: "INVITATION__CANCEL",
-  INVITATION__CREATE: "INVITATION__CREATE",
-  MEMBER__CREATE: "MEMBER__CREATE",
-  MEMBER__DELETE: "MEMBER__DELETE",
-  MEMBER__UPDATE: "MEMBER__UPDATE",
+  MEMBER__INVITE: "MEMBER__INVITE",
+  MEMBER__READ: "MEMBER__READ",
+  MEMBER__SET_PERMISSIONS: "MEMBER__SET_PERMISSIONS",
+  MEMBER__SET_ROLES: "MEMBER__SET_ROLES",
+  MEMBER__WRITE: "MEMBER__WRITE",
+  WORKSPACE_API_KEY__READ: "WORKSPACE_API_KEY__READ",
+  WORKSPACE_API_KEY__WRITE: "WORKSPACE_API_KEY__WRITE",
   WORKSPACE__DELETE: "WORKSPACE__DELETE",
+  WORKSPACE__READ: "WORKSPACE__READ",
   WORKSPACE__UPDATE: "WORKSPACE__UPDATE",
 } as const;
 
@@ -1337,16 +1335,15 @@ export const WorkspaceOrderField = {
 export type WorkspaceOrderField =
   (typeof WorkspaceOrderField)[keyof typeof WorkspaceOrderField];
 export const WorkspacePermission = {
-  API_KEY__CREATE: "API_KEY__CREATE",
-  API_KEY__DELETE: "API_KEY__DELETE",
-  API_KEY__READ: "API_KEY__READ",
-  API_KEY__UPDATE: "API_KEY__UPDATE",
-  INVITATION__CANCEL: "INVITATION__CANCEL",
-  INVITATION__CREATE: "INVITATION__CREATE",
-  MEMBER__CREATE: "MEMBER__CREATE",
-  MEMBER__DELETE: "MEMBER__DELETE",
-  MEMBER__UPDATE: "MEMBER__UPDATE",
+  MEMBER__INVITE: "MEMBER__INVITE",
+  MEMBER__READ: "MEMBER__READ",
+  MEMBER__SET_PERMISSIONS: "MEMBER__SET_PERMISSIONS",
+  MEMBER__SET_ROLES: "MEMBER__SET_ROLES",
+  MEMBER__WRITE: "MEMBER__WRITE",
+  WORKSPACE_API_KEY__READ: "WORKSPACE_API_KEY__READ",
+  WORKSPACE_API_KEY__WRITE: "WORKSPACE_API_KEY__WRITE",
   WORKSPACE__DELETE: "WORKSPACE__DELETE",
+  WORKSPACE__READ: "WORKSPACE__READ",
   WORKSPACE__UPDATE: "WORKSPACE__UPDATE",
 } as const;
 
@@ -1392,7 +1389,8 @@ export type GetUserFromUserRouteQueryVariables = Exact<{
   id: Scalars["ID"]["input"];
   sessionsAfter?: InputMaybe<Scalars["String"]["input"]>;
   includeSessions?: Scalars["Boolean"]["input"];
-  includeCatalogs?: Scalars["Boolean"]["input"];
+  includeRoles?: Scalars["Boolean"]["input"];
+  includePermissions?: Scalars["Boolean"]["input"];
 }>;
 
 export type GetUserFromUserRouteQuery = {
@@ -2346,6 +2344,7 @@ export type GetMembersFromMembersRouteQueryVariables = Exact<{
   invitationAfter?: InputMaybe<Scalars["String"]["input"]>;
   invitationBefore?: InputMaybe<Scalars["String"]["input"]>;
   invitationFilter?: InputMaybe<Scalars["InvitationFilter"]["input"]>;
+  includeInvitations?: Scalars["Boolean"]["input"];
 }>;
 
 export type GetMembersFromMembersRouteQuery = {
@@ -2374,7 +2373,7 @@ export type GetMembersFromMembersRouteQuery = {
         startCursor?: string | null;
       };
     };
-    invitations: {
+    invitations?: {
       __typename?: "InvitationConnection";
       edges: Array<{
         __typename?: "InvitationEdge";
@@ -2692,7 +2691,22 @@ export const GetUserFromUserRouteDocument = {
           kind: "VariableDefinition",
           variable: {
             kind: "Variable",
-            name: { kind: "Name", value: "includeCatalogs" },
+            name: { kind: "Name", value: "includeRoles" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: {
+              kind: "NamedType",
+              name: { kind: "Name", value: "Boolean" },
+            },
+          },
+          defaultValue: { kind: "BooleanValue", value: false },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "includePermissions" },
           },
           type: {
             kind: "NonNullType",
@@ -2871,7 +2885,7 @@ export const GetUserFromUserRouteDocument = {
                     name: { kind: "Name", value: "if" },
                     value: {
                       kind: "Variable",
-                      name: { kind: "Name", value: "includeCatalogs" },
+                      name: { kind: "Name", value: "includeRoles" },
                     },
                   },
                 ],
@@ -2898,7 +2912,7 @@ export const GetUserFromUserRouteDocument = {
                     name: { kind: "Name", value: "if" },
                     value: {
                       kind: "Variable",
-                      name: { kind: "Name", value: "includeCatalogs" },
+                      name: { kind: "Name", value: "includePermissions" },
                     },
                   },
                 ],
@@ -6923,6 +6937,21 @@ export const GetMembersFromMembersRouteDocument = {
             name: { kind: "Name", value: "InvitationFilter" },
           },
         },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "includeInvitations" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: {
+              kind: "NamedType",
+              name: { kind: "Name", value: "Boolean" },
+            },
+          },
+          defaultValue: { kind: "BooleanValue", value: false },
+        },
       ],
       selectionSet: {
         kind: "SelectionSet",
@@ -7138,6 +7167,22 @@ export const GetMembersFromMembersRouteDocument = {
                           },
                         ],
                       },
+                    },
+                  ],
+                  directives: [
+                    {
+                      kind: "Directive",
+                      name: { kind: "Name", value: "include" },
+                      arguments: [
+                        {
+                          kind: "Argument",
+                          name: { kind: "Name", value: "if" },
+                          value: {
+                            kind: "Variable",
+                            name: { kind: "Name", value: "includeInvitations" },
+                          },
+                        },
+                      ],
                     },
                   ],
                   selectionSet: {

@@ -38,7 +38,7 @@ describe("RequestIdentity", () => {
     const apiKey = Object.assign(new UserApiKey(), {
       id: "key",
       enabled: true,
-      permissions: ["user:get", "workspace:delete"],
+      permissions: ["user:read", "workspace:delete"],
     });
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
       RequestIdentity.stage({
@@ -52,9 +52,9 @@ describe("RequestIdentity", () => {
       expect(access.getApiKeyPermissionCeiling()).toBe(first.apiKey);
       expect(Object.isFrozen(first.apiKey)).toBe(true);
       expect(Object.isFrozen(first.user)).toBe(true);
-      expect(access.userCan("get", User)).toBe(true);
+      expect(access.userCan("read", User)).toBe(true);
       expect(access.userCan("delete", User)).toBe(false);
-      expect(access.canGrantUserPermissions(["user:get"])).toBe(true);
+      expect(access.canGrantUserPermissions(["user:read"])).toBe(true);
       expect(access.canGrantUserPermissions(["user:delete"])).toBe(false);
       expect(access.canGrantWorkspacePermissions(["workspace:delete"])).toBe(
         true,
@@ -65,15 +65,15 @@ describe("RequestIdentity", () => {
 
       roles.mockReturnValue(["user"]);
       // Pending writes do not publish a new authorization state.
-      expect(access.canGrantUserPermissions(["user:get"])).toBe(true);
+      expect(access.canGrantUserPermissions(["user:read"])).toBe(true);
       RequestIdentity.updateUser(manager(), options, user);
       expect(roles).toHaveBeenCalledTimes(2);
       expect(resolveRequestPermissions(options)).not.toBe(first);
-      expect(access.userCan("get", User)).toBe(false);
-      expect(access.canGrantUserPermissions(["user:get"])).toBe(false);
+      expect(access.userCan("read", User)).toBe(false);
+      expect(access.canGrantUserPermissions(["user:read"])).toBe(false);
       apiKey.permissions = [];
       expect(access.getApiKeyPermissionCeiling()).toEqual([
-        "user:get",
+        "user:read",
         "workspace:delete",
       ]);
       RequestIdentity.updateApiKey(manager(), options, apiKey);
@@ -181,7 +181,7 @@ describe("RequestIdentity", () => {
       const options = {};
       await RequestContext.run(new RequestContext({ type: "test" }), () => {
         const key = Object.assign(new Key(), {
-          permissions: ["user:get", "workspace:delete"],
+          permissions: ["user:read", "workspace:delete"],
         });
         RequestIdentity.stage({
           apiKey: key,
@@ -204,7 +204,7 @@ describe("RequestIdentity", () => {
         expect(RequestContext.get(API_KEY)).toBe(
           Key === UserApiKey ? key : null,
         );
-        expect(new AccessControlService(options).userCan("get", User)).toBe(
+        expect(new AccessControlService(options).userCan("read", User)).toBe(
           Key === UserApiKey,
         );
       });

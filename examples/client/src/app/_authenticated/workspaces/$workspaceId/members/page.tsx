@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@apollo/client/react";
 import {
   createFileRoute,
+  redirect,
   useLocation,
   useNavigate,
 } from "@tanstack/react-router";
@@ -67,6 +68,7 @@ const GET_MEMBERS_FROM_MEMBERS_ROUTE = graphql(`
     $invitationAfter: String
     $invitationBefore: String
     $invitationFilter: InvitationFilter
+    $includeInvitations: Boolean! = false
   ) {
     currentWorkspace {
       members(
@@ -104,7 +106,7 @@ const GET_MEMBERS_FROM_MEMBERS_ROUTE = graphql(`
         before: $invitationBefore
         filter: $invitationFilter
         orderBy: { field: CREATED_AT, direction: DESC }
-      ) {
+      ) @include(if: $includeInvitations) {
         edges {
           node {
             id
@@ -169,6 +171,11 @@ export const Route = createFileRoute(
   "/_authenticated/workspaces/$workspaceId/members/",
 )({
   component: ScopedMembersComponent,
+  beforeLoad: ({ context, params }) => {
+    if (!context.currentWorkspaceAbility.can("read", "Member")) {
+      throw redirect({ to: "/workspaces/$workspaceId", params });
+    }
+  },
   validateSearch: zodValidator(
     createConnectionSearchSchema({
       filterSchema: z
@@ -209,23 +216,31 @@ function MembersComponent() {
 
   const currentMember = useCurrentMemberContext();
   const currentWorkspaceAbility = useCurrentWorkspaceAbility();
+  const canReadInvitations = currentWorkspaceAbility.can("read", "Invitation");
   const canCreateInvitation = currentWorkspaceAbility.can(
-    "create",
+    "write",
     "Invitation",
   );
   const canCancelInvitation = currentWorkspaceAbility.can(
-    "cancel",
+    "write",
     "Invitation",
   );
   const canUpdateMember = (member: object) =>
     currentWorkspaceAbility.can(
-      "update",
+      "write",
       createAbilitySubject("Member", member),
     );
   const canDeleteMember = (member: object) =>
     currentWorkspaceAbility.can(
-      "delete",
+      "write",
       createAbilitySubject("Member", member),
+    );
+  const canEditMember = (member: object) =>
+    ["write", "set-roles", "set-permissions"].some((action) =>
+      currentWorkspaceAbility.can(
+        action,
+        createAbilitySubject("Member", member),
+      ),
     );
 
   const query = search?.query ?? "";
@@ -242,6 +257,7 @@ function MembersComponent() {
   const { data, refetch } = useQuery(GET_MEMBERS_FROM_MEMBERS_ROUTE, {
     fetchPolicy: "network-only",
     variables: {
+      includeInvitations: canReadInvitations,
       invitationFirst: invitationPage.first,
       invitationLast: invitationPage.last,
       invitationAfter: invitationPage.after,
@@ -260,8 +276,8 @@ function MembersComponent() {
   const members =
     data?.currentWorkspace?.members.edges.map((edge) => edge.node) ?? [];
   const pendingInvitations =
-    data?.currentWorkspace?.invitations.edges.map(({ node }) => node) ?? [];
-  const invitationPageInfo = data?.currentWorkspace?.invitations.pageInfo;
+    data?.currentWorkspace?.invitations?.edges.map(({ node }) => node) ?? [];
+  const invitationPageInfo = data?.currentWorkspace?.invitations?.pageInfo;
   const pageInfo = data?.currentWorkspace?.members.pageInfo;
 
   const filters: Array<DataFilterItemProps> = useMemo(() => {
@@ -464,7 +480,7 @@ function MembersComponent() {
                     data-testid={`member-row-${member.email ?? member.id}`}
                     className={cn(
                       "flex flex-col",
-                      !canUpdateMember(member) &&
+                      !canEditMember(member) &&
                         "pointer-events-none opacity-50",
                     )}
                   >
@@ -528,7 +544,7 @@ function MembersComponent() {
             },
           ]}
           onRowClick={(row) => {
-            if (!canUpdateMember(row.original)) return;
+            if (!canEditMember(row.original)) return;
             navigate({
               to: "/workspaces/$workspaceId/members/$memberId",
               params: {

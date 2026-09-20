@@ -386,7 +386,7 @@ describe("AuthMiddleware", () => {
       });
       const member = Object.assign(new TestMember(), {
         roles: ["manager"],
-        permissions: ["invitation:create", "workspace:update"],
+        permissions: ["member:invite", "workspace:update"],
         user,
         workspace,
       });
@@ -398,7 +398,7 @@ describe("AuthMiddleware", () => {
           permissions:
             kind === "workspace-key"
               ? ["workspace:update"]
-              : ["user:read", "workspace:update", "session:list"],
+              : ["user:read", "workspace:update", "session:read"],
         },
       );
       const { middleware, em } = await createMiddleware(
@@ -454,9 +454,9 @@ describe("AuthMiddleware", () => {
     const user = Object.assign(new TestUser(), {
       id: "user",
       name: "New name",
-      permissions: ["user:get", "user:delete"],
+      permissions: ["user:read", "user:delete"],
     });
-    const key = Object.assign(new UserApiKey(), { permissions: ["user:get"] });
+    const key = Object.assign(new UserApiKey(), { permissions: ["user:read"] });
     const findOne = vi.fn().mockResolvedValue(user);
     const { middleware, em } = await createMiddleware(
       vi.fn(),

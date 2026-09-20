@@ -32,17 +32,17 @@ export class AuthAbilityFactory {
   ): UserAbility {
     const grants = Object.freeze([...permissions]);
     const builder = new AbilityBuilder(UserAbility);
-    // Services additionally enforce ownership for these self-service operations.
-    builder.can(["read", "create"], Workspace);
-    builder.can(["read", "update"], Invitation);
-    builder.can(["read", "update"], Member);
-    const subjects = { user: User, session: Session, "api-key": UserApiKey };
+    // Self-service operations are authorized explicitly by their Services.
+    const subjects = {
+      user: User,
+      session: Session,
+      "user-api-key": UserApiKey,
+      workspace: Workspace,
+    };
     for (const permission of DEFAULT_USER_PERMISSIONS) {
       if (!grants.includes(permission)) continue;
       const [resource, action] = permission.split(":");
       builder.can(action, subjects[resource as keyof typeof subjects]);
-      if (permission === "user:get" || permission === "user:list")
-        builder.can("read", User);
     }
     const configure:
       | ((
@@ -68,17 +68,18 @@ export class AuthAbilityFactory {
   ): WorkspaceAbility {
     const grants = Object.freeze([...permissions]);
     const builder = new AbilityBuilder(WorkspaceAbility);
-    builder.can("read", Workspace);
-    builder.can("read", Invitation);
-    builder.can("read", Member);
     const subjects = {
       workspace: Workspace,
       member: Member,
-      invitation: Invitation,
-      "api-key": WorkspaceApiKey,
+      "workspace-api-key": WorkspaceApiKey,
     };
     for (const permission of DEFAULT_WORKSPACE_PERMISSIONS) {
       if (!grants.includes(permission)) continue;
+      // Invitation management is one member permission; keep entity checks for CASL conditions.
+      if (permission === "member:invite") {
+        builder.can(["read", "write"], Invitation);
+        continue;
+      }
       const [resource, action] = permission.split(":");
       builder.can(action, subjects[resource as keyof typeof subjects]);
     }

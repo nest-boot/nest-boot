@@ -60,14 +60,18 @@ export const WorkspaceSidebar: FC<ComponentProps<typeof Sidebar>> = ({
               },
             ]
           : []),
-        {
-          title: t("sidebar:navigation.members"),
-          icon: User,
-          link: linkOptions({
-            to: "/workspaces/$workspaceId/members",
-            params: { workspaceId },
-          }),
-        },
+        ...(currentWorkspaceAbility.can("read", "Member")
+          ? [
+              {
+                title: t("sidebar:navigation.members"),
+                icon: User,
+                link: linkOptions({
+                  to: "/workspaces/$workspaceId/members",
+                  params: { workspaceId },
+                }),
+              },
+            ]
+          : []),
         {
           title: t("sidebar:navigation.settings"),
           icon: Settings,

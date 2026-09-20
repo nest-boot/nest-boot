@@ -80,7 +80,7 @@ identity under built-in entity classes, for example `RequestContext.get(User)`.
 No auth base-token aliases are registered; prefer the current identity decorators.
 
 `Member` / `Invitation` use `MemberService` / `InvitationService` and the
-`member:*` / `invitation:*` permission subjects. Existing GraphQL field names,
+`member:*` permission subject, including `member:invite` for invitation management. Existing GraphQL field names,
 arguments and authorization behavior are unchanged by the package merge.
 
 ## PostgreSQL RLS

@@ -273,11 +273,11 @@ describe("public API", () => {
   it("exports the member and invitation permission catalog", () => {
     expect(publicApi.DEFAULT_WORKSPACE_PERMISSIONS).toEqual(
       expect.arrayContaining([
-        "member:create",
-        "member:update",
-        "member:delete",
-        "invitation:create",
-        "invitation:cancel",
+        "member:read",
+        "member:write",
+        "member:set-roles",
+        "member:set-permissions",
+        "member:invite",
       ]),
     );
     expect(

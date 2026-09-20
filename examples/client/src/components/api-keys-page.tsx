@@ -118,11 +118,11 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
 }: ApiKeysPageProps<Permission>) {
   const isPermission = (value: UserApiKeyPermission): value is Permission =>
     permissionValues.some((permission) => permission === value);
-  const canCreate = ability.can("create", subject);
+  const canCreate = ability.can("write", subject);
   const canUpdate = (apiKey: ApiKeyRow<Permission>) =>
-    ability.can("update", createAbilitySubject(subject, apiKey));
+    ability.can("write", createAbilitySubject(subject, apiKey));
   const canDelete = (apiKey: ApiKeyRow<Permission>) =>
-    ability.can("delete", createAbilitySubject(subject, apiKey));
+    ability.can("write", createAbilitySubject(subject, apiKey));
   const navigate = useNavigate();
   const location = useLocation();
 

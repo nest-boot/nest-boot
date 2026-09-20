@@ -16,7 +16,7 @@ describe("post-commit request authorization", () => {
     async (failure) => {
       const options: AuthModuleOptions = {
         user: {
-          roles: { admin: ["user:get", "user:delete"] },
+          roles: { admin: ["user:read", "user:delete"] },
         },
         workspace: {
           roles: { owner: ["workspace:read", "workspace:delete"] },
@@ -38,7 +38,7 @@ describe("post-commit request authorization", () => {
         RequestContext.set(
           API_KEY,
           Object.assign(new UserApiKey(), {
-            permissions: ["user:get", "workspace:read"],
+            permissions: ["user:read", "workspace:read"],
           }),
         );
         RequestContext.set(

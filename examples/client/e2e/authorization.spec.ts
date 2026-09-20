@@ -41,7 +41,7 @@ test("limits user detail queries and actions to the administrator's abilities", 
         { id: currentUser.id, input: { permissions } },
       );
     };
-    await setPermissions(["USER__LIST", "USER__GET"]);
+    await setPermissions(["USER__READ"]);
     await page.goto(`/admin/users/${target.id}`);
     await expect(page.getByTestId("admin-user-page")).toBeVisible();
     await expect(page.getByTestId("admin-user-name")).toHaveValue(
@@ -55,7 +55,7 @@ test("limits user detail queries and actions to the administrator's abilities", 
     for (const button of await buttons.all())
       await expect(button).toBeDisabled();
 
-    await setPermissions(["USER__LIST", "USER__GET", "USER__UPDATE"]);
+    await setPermissions(["USER__READ", "USER__UPDATE"]);
     await page.reload();
     await expect(page.getByTestId("admin-user-name")).toBeEnabled();
     await expect(page.getByTestId("admin-user-email")).toBeDisabled();
@@ -82,17 +82,21 @@ test("limits user detail queries and actions to the administrator's abilities", 
       "Updated through ability",
     );
 
-    await setPermissions(["USER__LIST", "USER__GET", "USER__SET_ROLE"]);
+    await setPermissions([
+      "USER__READ",
+      "USER__SET_ROLES",
+      "USER__SET_PERMISSIONS",
+    ]);
     await page.reload();
     await expect(page.getByTestId("user-role-ADMIN")).toBeDisabled();
     await expect(page.getByTestId("user-role-USER")).toBeEnabled();
     await expect(page.getByTestId("permission-USER__DELETE")).toBeDisabled();
-    await expect(page.getByTestId("permission-USER__GET")).toBeEnabled();
-    await page.getByTestId("permission-USER__GET").check();
+    await expect(page.getByTestId("permission-USER__READ")).toBeEnabled();
+    await page.getByTestId("permission-USER__READ").check();
     await page.getByTestId("admin-user-permissions-save").click();
     await expect(page.getByTestId("admin-user-permissions-save")).toBeEnabled();
     await page.reload();
-    await expect(page.getByTestId("permission-USER__GET")).toBeChecked();
+    await expect(page.getByTestId("permission-USER__READ")).toBeChecked();
 
     // Existing grants stay removable but cannot be granted again by this caller.
     await graphqlRequest(
@@ -109,9 +113,9 @@ test("limits user detail queries and actions to the administrator's abilities", 
     await expect(page.getByTestId("permission-USER__DELETE")).toBeDisabled();
     await expect(page.getByTestId("admin-user-permissions-save")).toBeEnabled();
 
-    await setPermissions(["USER__LIST"]);
+    await setPermissions([]);
     await page.goto(`/admin/users/${target.id}`);
-    await expect(page).toHaveURL(/\/admin\/users(?:\?.*)?$/);
+    await expect(page).toHaveURL(/\/user(?:\?.*)?$/);
   } finally {
     await adminContext.close();
   }
@@ -164,7 +168,9 @@ test("authorizes workspace API-key controls and deletion without an owner role",
       "mutation ($id: ID!, $input: SetMemberPermissionsInput!) { setMemberPermissions(id: $id, input: $input) { id } }",
       {
         id: memberId,
-        input: { permissions: ["API_KEY__READ", "WORKSPACE__DELETE"] },
+        input: {
+          permissions: ["WORKSPACE_API_KEY__READ", "WORKSPACE__DELETE"],
+        },
       },
       headers,
     );
@@ -224,7 +230,7 @@ test("uses personal API-key abilities for navigation and instance actions", asyn
           ? [{ actions: ["read"], subjects: ["UserApiKey"], inverted: false }]
           : []),
         {
-          actions: ["update", "delete"],
+          actions: ["write"],
           subjects: ["UserApiKey"],
           conditions: { id: allowedId },
           inverted: false,
@@ -236,7 +242,8 @@ test("uses personal API-key abilities for navigation and instance actions", asyn
   try {
     await page.goto("/user/api-keys");
     await expect(page.getByTestId("api-keys-page")).toBeVisible();
-    await expect(page.getByTestId("api-key-create-action")).toBeDisabled();
+    // A class-level write check opens the form; the Service checks the proposed key.
+    await expect(page.getByTestId("api-key-create-action")).toBeEnabled();
     const row = page
       .getByRole("row")
       .filter({ hasText: "Conditionally writable key" });

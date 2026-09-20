@@ -33,7 +33,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
     });
     if (
       !data ||
-      !createAbility(data.currentUserAbilityRules).can("list", "User")
+      !createAbility(data.currentUserAbilityRules).can("read", "User")
     ) {
       throw redirect({ to: "/user" });
     }

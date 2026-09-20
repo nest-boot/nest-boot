@@ -3,14 +3,18 @@ import { createPermissionEnum } from "./create-permission-enum.util.js";
 describe("createPermissionEnum", () => {
   it("preserves permission values and maps GraphQL names", () => {
     expect(
-      createPermissionEnum(["api-key:read", "user:set-role", "user:set-role"]),
+      createPermissionEnum([
+        "user-api-key:read",
+        "user:set-roles",
+        "user:set-roles",
+      ]),
     ).toEqual({
-      API_KEY__READ: "api-key:read",
-      USER__SET_ROLE: "user:set-role",
+      USER_API_KEY__READ: "user-api-key:read",
+      USER__SET_ROLES: "user:set-roles",
     });
   });
   it.each([
-    ["api-key:read", "api_key:read"],
+    ["user-api-key:read", "user_api_key:read"],
     ["a_:b", "a:_b"],
   ])("rejects colliding permissions %s and %s", (first, second) => {
     expect(() => createPermissionEnum([first, second])).toThrow(

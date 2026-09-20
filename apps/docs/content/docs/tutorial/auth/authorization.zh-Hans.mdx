@@ -18,6 +18,30 @@ description: "使用 AuthGuard 与用户、工作区两类权限保护路由。"
 静态选项在启动前配置，运行时通过 Service 修改角色或直接权限。
 构建业务规则前，系统已应用 API Key 权限上限。
 
+## 内置权限目录
+
+目录共 26 项，以 `资源:动作` 组成完整权限名：
+
+| 作用域 | 资源                | 动作                                                                                                                                         |
+| ------ | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| 用户   | `user`              | `create`、`read`、`update`、`delete`、`set-roles`、`set-permissions`、`set-email`、`set-password`、`ban`、`impersonate`、`impersonate-admin` |
+| 用户   | `session`           | `read`、`revoke`                                                                                                                             |
+| 用户   | `user-api-key`      | `read`、`write`                                                                                                                              |
+| 用户   | `workspace`         | `create`                                                                                                                                     |
+| 工作区 | `workspace`         | `read`、`update`、`delete`                                                                                                                   |
+| 工作区 | `member`            | `read`、`write`、`set-roles`、`set-permissions`、`invite`                                                                                    |
+| 工作区 | `workspace-api-key` | `read`、`write`                                                                                                                              |
+
+`read` 包含单条和连接查询。`write` 包含普通创建、更新和删除，但不隐含读取或角色、权限设置。
+`member:invite` 映射为 `Invitation` 的 `read` 与 `write`，独立于成员写入权限。
+角色和直接权限设置还要检查调用者的可授予上限。`user:ban` 包含封禁和解禁；
+模拟管理员需要同时拥有 `user:impersonate` 与 `user:impersonate-admin`。
+
+不再无条件附加基础能力。默认 `user` 角色显式授予 `workspace:create`，
+默认 `member` 角色授予 `workspace:read` 和 `member:read`。
+会话专属自助操作（例如查询自己的工作区成员关系、接受或拒绝自己的邀请）单独校验身份和归属，
+API Key 不继承这些会话专属入口。
+
 ## 完整业务示例
 
 [可运行测试的 Report 示例](https://github.com/nest-boot/nest-boot/tree/beta/examples/server/src/app/auth/examples)
@@ -118,7 +142,7 @@ health(): string {
 不会因为实体已在请求上下文中就绕过授权。
 由 CASL 授权的连接会检查每个返回节点，任一节点被拒绝就拒绝整页，不在分页后静默
 过滤节点以免改变分页结果。管理接口批量撤销会话时，会先锁定并授权所有目标，再执行
-删除。基于归属的个人会话操作仍独立于管理权限 `session:list` 和 `session:revoke`。
+删除。基于归属的个人会话操作仍独立于管理权限 `session:read` 和 `session:revoke`。
 
 密码重置成功后，auth 会重新查询数据库中的当前会话。如果重置已撤销该会话，则在后续
 mutation 执行前清除请求身份、Ability 和数据库身份上下文；无关会话及 API Key 身份保留。
@@ -190,7 +214,7 @@ AuthModule.forRoot({
 
 角色名遵循 `^[a-z][a-z0-9-]*$`；权限名使用 `resource:action`，两段分别遵循同一规则。
 启动时拒绝下划线、大写字母、空白和连续中划线（`--` 及以上），不做自动转换。
-Resource 与 Action 都允许单个中划线，例如 `api-key:set-role`。
+Resource 与 Action 都允许单个中划线，例如 `member:set-roles`。
 角色名 `true`、`false`、`null` 为保留值。
 `RoleName<T>` 与 `PermissionName<T>` 在编译期校验字符串字面量；
 `AuthModule.forRoot()` 与 `forRootAsync()` 会推导权限目录、角色键和生命周期角色引用。
@@ -200,13 +224,13 @@ Resource 与 Action 都允许单个中划线，例如 `api-key:set-role`。
 import type { PermissionName, RoleName } from "@nest-boot/auth";
 
 const role: RoleName<"super-admin"> = "super-admin";
-const permission: PermissionName<"api-key:read"> = "api-key:read";
+const permission: PermissionName<"user-api-key:read"> = "user-api-key:read";
 ```
 
 GraphQL 根据配置生成 `UserRole`、`WorkspaceRole`、`UserPermission`、
 `WorkspacePermission` 、`UserApiKeyPermission` 和 `WorkspaceApiKeyPermission`。枚举名称转大写，中划线转 `_`，
 权限分隔符 `:` 转 `__`。例如 `super-admin` 对应 `SUPER_ADMIN`，
-`api-key:read` 对应 `API_KEY__READ`。GraphQL 变量和响应使用枚举名称；
+`user-api-key:read` 对应 `USER_API_KEY__READ`。GraphQL 变量和响应使用枚举名称；
 Service、Ability 构建器和数据库继续使用原始值。修改目录后需要重新生成客户端类型，
 已有数据中的角色和权限也必须保留在配置目录中，才能由 GraphQL 正常序列化。
 
@@ -261,13 +285,14 @@ await memberService.setMemberRoles(member, ["admin"]);
 用户管理还会检查授予上限：`createUser()`、`setUserRoles()` 与 `setUserPermissions()`
 不能授予调用者自身不具备的权限。角色赋值会检查其继承的权限，创建用户时的默认角色
 也不例外。使用个人 API Key 调用时，上限是用户角色和直接权限的合集与 Key 权限的交集。
-仅拥有 `user:set-role` 不意味着可以将自己或他人提升为权限更高的角色。
+仅拥有 `user:set-roles` 不意味着可以将自己或他人提升为权限更高的角色。
 
 `userRoles` 和 `workspaceRoles` 返回完整角色目录，元素为 `{ role, grantable }`；
 `userPermissions` 和 `workspacePermissions` 返回 `{ permission, grantable }`。
 角色和权限字段仍为枚举；`grantable` 表示当前主体的授予范围，并考虑 API Key 限制。
-工作区角色授予需要成员更新或邀请创建能力，直接权限授予需要成员更新能力。
-只读调用者获得的工作区选项均为 `grantable: false`；用户目录要求 `user:set-role` 能力。
+工作区角色选项的可授予状态要求 `member:set-roles` 或 `member:invite`，直接权限选项要求 `member:set-permissions`。
+仅有 `member:read` 的调用者获得的工作区选项均为 `grantable: false`；
+用户角色和权限目录分别要求 `user:set-roles`、`user:set-permissions`。
 前端据此禁止新增不可授予项，同时保留已有值的移除操作，并在提交前检查完整替换列表。
 mutation 的 Service 仍检查目标对象能力和授予上限；独立的 `workspaceAssignableRoles` 查询已移除。
 
@@ -346,9 +371,10 @@ Auth 自动映射内置权限。业务扩展显式绑定权限，例如 `can("po
 Service 权限划分与 Better Auth 的 admin、organization 访问控制保持一致：
 
 - 用户管理使用 `user:*` 与 `session:*` 权限；
-- 工作区变更使用 `workspace:*`、`member:*` 与
-  `invitation:*` 权限；
-- 工作区 API Key 管理使用 `api-key:create/read/update/delete`；
+- 工作区操作使用 `workspace:*` 与 `member:*` 权限；
+- `member:invite` 统一管理邀请查询、创建和取消，与 `member:write` 独立；
+  接受或拒绝自己的邀请使用收件人身份校验；
+- 工作区 API Key 管理使用 `workspace-api-key:read/write`；
 - 当前用户认证、会话管理、接受邀请和退出工作区使用已认证身份与资源归属校验。
 
 应用 Service 可以注入 `AccessControlService`，使用 `assertUserCan()` 与

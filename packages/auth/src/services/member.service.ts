@@ -99,15 +99,12 @@ export class MemberService {
     workspace: Workspace,
     user: User,
   ): Promise<Member | null> {
-    this.accessControlService.assertCurrentUser(user);
-    this.accessControlService.assertUserCan("read", Workspace);
-    this.accessControlService.assertUserCan("read", workspace);
+    this.accessControlService.assertUserSession(user);
     const member = await this.em.findOne(Member, {
       status: "ACTIVE",
       user,
       workspace,
     } as FilterQuery<Member>);
-    if (member) this.accessControlService.assertUserCan("read", member);
     return member;
   }
 
@@ -134,7 +131,10 @@ export class MemberService {
     const workspace = this.unwrapWorkspace(member);
     const actor = RequestContext.isActive() ? RequestContext.get(User) : null;
     const actorId = actor?.id;
-    const ownMember = actorId !== undefined && member.user?.id === actorId;
+    const ownMember =
+      !getCurrentApiKey() &&
+      actorId !== undefined &&
+      member.user?.id === actorId;
     if (!ownMember) {
       this.accessControlService.assertCurrentWorkspace(workspace);
       this.accessControlService.assertUserCan("read", User);
@@ -166,7 +166,7 @@ export class MemberService {
     input: AddMemberOptions = {},
   ): Promise<Member> {
     this.accessControlService.assertCurrentWorkspace(workspace);
-    this.accessControlService.assertWorkspaceCan("create", Member);
+    this.accessControlService.assertWorkspaceCan("write", Member);
     const permissions = this.normalizePermissions(input.permissions ?? []);
     this.accessControlService.assertCanGrantWorkspacePermissions(permissions);
     const roles = this.normalizeGrantedRoles(input.roles ?? [this.defaultRole]);
@@ -188,7 +188,7 @@ export class MemberService {
           user,
           workspace,
         } as unknown as RequiredEntityData<Member>);
-        this.accessControlService.assertWorkspaceCan("create", member);
+        this.accessControlService.assertWorkspaceCan("write", member);
         await em.persist(member).flush();
         await em.nativeUpdate(
           Invitation,
@@ -212,7 +212,7 @@ export class MemberService {
     input: AddMemberOptions = {},
   ): Promise<Member> {
     this.accessControlService.assertCurrentWorkspace(workspace);
-    this.accessControlService.assertWorkspaceCan("create", Member);
+    this.accessControlService.assertWorkspaceCan("write", Member);
     const user = await this.getUserForMembership(workspace, email);
 
     return await this.addMember(workspace, user, input);
@@ -228,7 +228,7 @@ export class MemberService {
     email: string,
   ): Promise<User> {
     this.accessControlService.assertCurrentWorkspace(workspace);
-    this.accessControlService.assertWorkspaceCan("create", Member);
+    this.accessControlService.assertWorkspaceCan("write", Member);
     const user = await this.em.findOne(
       User,
       { email: email.trim().toLowerCase() } as FilterQuery<User>,
@@ -258,10 +258,10 @@ export class MemberService {
     member: Member | string,
     input: UpdateMemberOptions,
   ): Promise<Member> {
-    member = await this.resolveMemberForAction(member, "update");
+    member = await this.resolveMemberForAction(member, "write");
     const workspace = this.unwrapWorkspace(member);
     this.accessControlService.assertCurrentWorkspace(workspace);
-    this.accessControlService.assertWorkspaceCan("update", member);
+    this.accessControlService.assertWorkspaceCan("write", member);
     if ("roles" in input || "permissions" in input) {
       throw new BadRequestException(
         "Use setMemberRoles or setMemberPermissions to update authorization fields",
@@ -294,7 +294,7 @@ export class MemberService {
         if (!lockedMember) {
           throw new NotFoundException("Workspace member not found");
         }
-        this.accessControlService.assertWorkspaceCan("update", lockedMember);
+        this.accessControlService.assertWorkspaceCan("write", lockedMember);
         em.assign(lockedMember, {
           ...(input.name !== undefined ? { name: input.name.trim() } : {}),
           ...(email !== undefined ? { email } : {}),
@@ -314,10 +314,10 @@ export class MemberService {
     member: Member | string,
     roleNames: string | readonly string[],
   ): Promise<Member> {
-    member = await this.resolveMemberForAction(member, "update");
+    member = await this.resolveMemberForAction(member, "set-roles");
     const workspace = this.unwrapWorkspace(member);
     this.accessControlService.assertCurrentWorkspace(workspace);
-    this.accessControlService.assertWorkspaceCan("update", member);
+    this.accessControlService.assertWorkspaceCan("set-roles", member);
     const roles = this.normalizeGrantedRoles(roleNames);
     this.assertAuthorizationCanCommit(member);
 
@@ -331,7 +331,7 @@ export class MemberService {
         if (!lockedMember) {
           throw new NotFoundException("Workspace member not found");
         }
-        this.accessControlService.assertWorkspaceCan("update", lockedMember);
+        this.accessControlService.assertWorkspaceCan("set-roles", lockedMember);
 
         lockedMember.roles = roles;
         await em.flush();
@@ -348,10 +348,10 @@ export class MemberService {
     member: Member | string,
     permissions: readonly string[],
   ): Promise<Member> {
-    member = await this.resolveMemberForAction(member, "update");
+    member = await this.resolveMemberForAction(member, "set-permissions");
     const workspace = this.unwrapWorkspace(member);
     this.accessControlService.assertCurrentWorkspace(workspace);
-    this.accessControlService.assertWorkspaceCan("update", member);
+    this.accessControlService.assertWorkspaceCan("set-permissions", member);
     const normalizedPermissions = this.normalizePermissions(permissions);
     this.accessControlService.assertCanGrantWorkspacePermissions(
       normalizedPermissions,
@@ -370,7 +370,10 @@ export class MemberService {
         if (!lockedMember) {
           throw new NotFoundException("Workspace member not found");
         }
-        this.accessControlService.assertWorkspaceCan("update", lockedMember);
+        this.accessControlService.assertWorkspaceCan(
+          "set-permissions",
+          lockedMember,
+        );
         lockedMember.permissions = normalizedPermissions;
         await em.flush();
         return lockedMember;
@@ -396,23 +399,28 @@ export class MemberService {
     return !!current && current.id === member.id;
   }
 
-  /** Removes a member after checking delete ability; self-removal uses leaveWorkspace. */
+  /** Removes a member after checking write ability; self-removal uses leaveWorkspace. */
   async removeMember(member: Member | string): Promise<Member> {
-    member = await this.resolveMemberForAction(member, "delete");
+    member = await this.resolveMemberForAction(member, "write");
     const workspace = this.unwrapWorkspace(member);
     this.accessControlService.assertCurrentWorkspace(workspace);
-    this.accessControlService.assertWorkspaceCan("delete", member);
+    this.accessControlService.assertWorkspaceCan("write", member);
     if (this.isCurrentMember(member)) {
       throw new ForbiddenException("You are not allowed to remove yourself");
     }
     return await this.removeMemberRecord(workspace, member, (lockedMember) => {
-      this.accessControlService.assertWorkspaceCan("delete", lockedMember);
+      this.accessControlService.assertWorkspaceCan("write", lockedMember);
     });
   }
 
   /** Lets the current member leave its workspace regardless of role. */
   async leaveWorkspace(member: Member): Promise<Member> {
     this.accessControlService.assertCurrentMember(member);
+    const user = RequestContext.get(User);
+    if (!user) throw new ForbiddenException("A user identity is required");
+    this.accessControlService.assertUserSession(user);
+    if (member.user?.id !== user.id)
+      throw new ForbiddenException("The membership belongs to another user");
     const workspace = this.unwrapWorkspace(member);
     this.accessControlService.assertCurrentWorkspace(workspace);
     // Session context can only be restaged after the removal's top-level commit.
@@ -446,8 +454,8 @@ export class MemberService {
   /** Lists all roles with grant availability; mutations still authorize their targets. */
   listRoles(): WorkspaceRoleOption[] {
     const canAssign =
-      this.accessControlService.workspaceCan("create", Invitation) ||
-      this.accessControlService.workspaceCan("update", Member);
+      this.accessControlService.workspaceCan("write", Invitation) ||
+      this.accessControlService.workspaceCan("set-roles", Member);
     if (!canAssign)
       this.accessControlService.assertWorkspaceCan("read", Member);
     return Object.entries(this.roles).map(([role, permissions]) => ({
@@ -460,7 +468,10 @@ export class MemberService {
 
   /** Lists all direct-permission options without authorizing a particular member. */
   listPermissions(): WorkspacePermissionOption[] {
-    const canAssign = this.accessControlService.workspaceCan("update", Member);
+    const canAssign = this.accessControlService.workspaceCan(
+      "set-permissions",
+      Member,
+    );
     if (!canAssign)
       this.accessControlService.assertWorkspaceCan("read", Member);
     return listAuthPermissions(this.permissions).map((permission) => ({

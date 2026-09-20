@@ -1192,7 +1192,7 @@ describe('example native RLS migrations with PGlite', () => {
         workspace.id,
       );
       pendingWorkspace.name = 'Unrelated pending change';
-      for (const permissions of [['workspace:update'], ['member:update'], []]) {
+      for (const permissions of [['workspace:update'], ['member:write'], []]) {
         const detached = await service.getMember(member.id);
         expect(detached).not.toBeNull();
         const updated = await service.setMemberPermissions(
@@ -1499,6 +1499,7 @@ describe('example native RLS migrations with PGlite', () => {
       userCan: vi.fn().mockReturnValue(true),
       workspaceCan: vi.fn().mockReturnValue(true),
       assertCurrentUser: vi.fn(),
+      assertUserSession: vi.fn(),
       assertUserCan: vi.fn(),
       assertCurrentWorkspace: vi.fn(),
       assertCurrentMember: vi.fn(),
@@ -1981,7 +1982,7 @@ describe('example native RLS migrations with PGlite', () => {
       });
     }
     expect(await scoped(viewer.id).findOne(User, viewer.id)).not.toBeNull();
-    for (const permission of ['user:get', 'user:list', 'account-admin:view']) {
+    for (const permission of ['user:read', 'account-admin:view']) {
       await admin.nativeUpdate(User, viewer.id, { permissions: [permission] });
       expect(await scoped(viewer.id).findOne(User, target.id)).not.toBeNull();
     }
@@ -2002,7 +2003,7 @@ describe('example native RLS migrations with PGlite', () => {
         permissions: ['account-admin:view'],
         roles: { user: [] },
         buildAbility: (rules) => {
-          rules.cannot(['get', 'read'], User, { id: { $ne: target.id } });
+          rules.cannot(['read'], User, { id: { $ne: target.id } });
         },
       },
     };
@@ -2015,7 +2016,7 @@ describe('example native RLS migrations with PGlite', () => {
     );
     await RequestContext.run(new RequestContext({ type: 'test' }), async () => {
       viewer.roles = ['user'];
-      viewer.permissions = ['account-admin:view', 'user:get', 'user:list'];
+      viewer.permissions = ['account-admin:view', 'user:read'];
       RequestContext.set(User, viewer);
       RequestIdentity.refresh(options);
       expect(await service.getUser(target.id)).toMatchObject({
@@ -2106,7 +2107,7 @@ describe('example native RLS migrations with PGlite', () => {
           await expect(
             sessions.getSessionConnectionByUser(target, { first: 10 }),
           ).rejects.toThrow('not allowed');
-          actor.permissions = ['user:update', 'user:delete', 'session:list'];
+          actor.permissions = ['user:update', 'user:delete', 'session:read'];
           authorize();
           expect(
             await users.updateUser(target.id, { name: 'Allowed' }),

@@ -61,7 +61,7 @@ after the deletion commits.
 - `removeMember(id)`;
 - `leaveWorkspace(member)`.
 
-Member disable/remove operations check update/delete ability regardless of role.
+Member disable/remove operations check `member:write` regardless of role.
 Any current member may leave, including an owner; the workspace may remain without owners.
 Administrative removal still rejects self-removal; use `leaveWorkspace` instead.
 Member status and role changes lock the affected memberships
@@ -69,7 +69,7 @@ and recheck their state in the same transaction.
 GraphQL resolvers and HTTP controllers should map input/output types and leave
 these invariants in the corresponding Service.
 Multiple members may hold the configured creator role. Use `setMemberRoles` to
-assign or remove that role, subject to update ability and the caller's permission
+assign or remove that role, subject to `member:set-roles` and the caller's permission
 scope. There is no dedicated ownership-transfer operation; these are separate
 role updates, not an atomic transfer.
 

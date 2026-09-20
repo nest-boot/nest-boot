@@ -109,7 +109,7 @@ describe("InvitationService", () => {
       email: "recipient@example.com",
     });
     const invitation = Object.assign(createTestInvitation(), {
-      email: user.email,
+      email: "another-recipient@example.com",
     });
     vi.mocked(accessControlService.userCan).mockReturnValue(false);
     vi.mocked(accessControlService.assertCurrentWorkspace).mockImplementation(
@@ -169,10 +169,7 @@ describe("InvitationService", () => {
         invitationService.getInvitationWorkspace(invitation),
       ).resolves.toBe(workspace);
     });
-    expect(accessControlService.userCan).toHaveBeenCalledWith(
-      "read",
-      invitation,
-    );
+    expect(accessControlService.userCan).not.toHaveBeenCalled();
     expect(accessControlService.assertCurrentWorkspace).not.toHaveBeenCalled();
     expect(accessControlService.assertWorkspaceCan).not.toHaveBeenCalled();
     expect(em.findOne).toHaveBeenCalledWith(
@@ -282,7 +279,7 @@ describe("InvitationService", () => {
       { id: invitation.id },
       { refresh: true },
     );
-    expect(accessControlService.userCan).toHaveBeenCalledWith(
+    expect(accessControlService.workspaceCan).toHaveBeenCalledWith(
       "read",
       Invitation,
     );
@@ -296,12 +293,12 @@ describe("InvitationService", () => {
     expect(em.findOne).toHaveBeenCalledTimes(2);
   });
 
-  it("checks user invitation permissions in the service before querying", async () => {
+  it("requires a user session for recipient operations before querying", async () => {
     const { invitationService, accessControlService, em } =
       createWorkspaceServices();
     const user = createTestUser();
     const invitation = createTestInvitation();
-    vi.mocked(accessControlService.assertUserCan).mockImplementation(() => {
+    vi.mocked(accessControlService.assertUserSession).mockImplementation(() => {
       throw new ForbiddenException();
     });
     for (const operation of [
@@ -312,14 +309,8 @@ describe("InvitationService", () => {
       () => invitationService.rejectInvitation(user, invitation),
     ])
       await expect(operation()).rejects.toBeInstanceOf(ForbiddenException);
-    expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
-      "read",
-      Invitation,
-    );
-    expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
-      "update",
-      Invitation,
-    );
+    expect(accessControlService.assertUserSession).toHaveBeenCalledWith(user);
+    expect(accessControlService.assertUserSession).toHaveBeenCalledTimes(4);
     expect(em.find).not.toHaveBeenCalled();
     expect(em.findOne).not.toHaveBeenCalled();
     expect(em.nativeUpdate).not.toHaveBeenCalled();

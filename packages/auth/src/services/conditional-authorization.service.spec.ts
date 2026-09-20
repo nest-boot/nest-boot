@@ -75,14 +75,14 @@ describe("conditional service authorization", () => {
   });
 
   it.each(["accept", "reject"] as const)(
-    "checks the loaded invitation before %s",
+    "checks the loaded invitation recipient before %s",
     async (operation) => {
       await withIdentity(async (fixture) => {
         const { invitationService, em, user, workspace } = fixture;
         const invitation = Object.assign(new Invitation(), {
           id: "blocked",
           workspace,
-          email: user.email,
+          email: "another-recipient@example.com",
           status: "pending",
           expiresAt: new Date(Date.now() + 60_000),
           roles: ["member"],
@@ -107,42 +107,53 @@ describe("conditional service authorization", () => {
     "user-invitation",
     "workspace-invitation",
     "workspace",
-  ] as const)("checks a single %s read against its instance", async (kind) => {
-    await withIdentity(
-      async ({
-        memberService,
-        invitationService,
-        workspaceService,
-        em,
-        user,
-        workspace,
-      }) => {
-        const entity = Object.assign(
-          kind === "member"
-            ? new Member()
-            : kind === "workspace"
-              ? new Workspace()
-              : new Invitation(),
-          { id: "blocked", workspace, email: user.email },
-        );
-        em.findOne.mockResolvedValue(entity);
-        const read = () =>
-          kind === "member"
-            ? memberService.getMember(entity.id)
-            : kind === "workspace"
-              ? workspaceService.findOne({ id: entity.id })
-              : kind === "user-invitation"
-                ? invitationService.getInvitationByUser(entity.id, user)
-                : invitationService.getInvitationByWorkspace(
-                    entity.id,
-                    workspace,
-                  );
-        await expect(read()).rejects.toThrow(ForbiddenException);
-        em.findOne.mockResolvedValue(null);
-        await expect(read()).resolves.toBeNull();
-      },
-    );
-  });
+  ] as const)(
+    "enforces the ownership or ability boundary for a single %s read",
+    async (kind) => {
+      await withIdentity(
+        async ({
+          memberService,
+          invitationService,
+          workspaceService,
+          em,
+          user,
+          workspace,
+        }) => {
+          const entity = Object.assign(
+            kind === "member"
+              ? new Member()
+              : kind === "workspace"
+                ? new Workspace()
+                : new Invitation(),
+            { id: "blocked", workspace, email: user.email },
+          );
+          em.findOne.mockResolvedValue(entity);
+          const read = () =>
+            kind === "member"
+              ? memberService.getMember(entity.id)
+              : kind === "workspace"
+                ? workspaceService.findOne({ id: entity.id })
+                : kind === "user-invitation"
+                  ? invitationService.getInvitationByUser(entity.id, user)
+                  : invitationService.getInvitationByWorkspace(
+                      entity.id,
+                      workspace,
+                    );
+          if (kind === "user-invitation") {
+            await expect(read()).resolves.toBe(entity);
+            expect(em.findOne).toHaveBeenLastCalledWith(Invitation, {
+              id: entity.id,
+              email: user.email.toLowerCase(),
+            });
+          } else {
+            await expect(read()).rejects.toThrow(ForbiddenException);
+          }
+          em.findOne.mockResolvedValue(null);
+          await expect(read()).resolves.toBeNull();
+        },
+      );
+    },
+  );
 
   it.each([
     "member",
@@ -152,7 +163,7 @@ describe("conditional service authorization", () => {
     "workspace",
     "session",
   ] as const)(
-    "rejects a %s connection page containing a denied instance",
+    "uses the ownership or instance-ability boundary for %s connections",
     async (kind) => {
       await withIdentity(
         async ({
@@ -209,7 +220,30 @@ describe("conditional service authorization", () => {
                         );
           await expect(read()).resolves.toBe(result);
           node.id = "blocked";
-          await expect(read()).rejects.toThrow(ForbiddenException);
+          if (kind === "workspace") {
+            await expect(read()).resolves.toBe(result);
+            expect(ConnectionManager.prototype.find).toHaveBeenLastCalledWith(
+              expect.anything(),
+              { first: 1 },
+              expect.objectContaining({
+                where: expect.objectContaining({ id: expect.anything() }),
+              }),
+            );
+          } else if (kind === "user-invitation") {
+            await expect(read()).resolves.toBe(result);
+            expect(ConnectionManager.prototype.find).toHaveBeenLastCalledWith(
+              expect.anything(),
+              { first: 1 },
+              expect.objectContaining({
+                where: expect.objectContaining({
+                  email: user.email.toLowerCase(),
+                  status: "pending",
+                }),
+              }),
+            );
+          } else {
+            await expect(read()).rejects.toThrow(ForbiddenException);
+          }
           expect(result.edges).toHaveLength(1);
           expect(result.totalCount).toBe(2);
         },
@@ -312,13 +346,13 @@ async function withIdentity(
     const rules = [
       { action: "manage", subject: "all" },
       {
-        action: ["read", "list", "update", "revoke"],
+        action: ["read", "write", "update", "revoke"],
         subject: ["User", "Workspace", "Member", "Invitation", "Session"],
         inverted: true,
         conditions: { id: "blocked" },
       },
       {
-        action: "create",
+        action: ["create", "write"],
         subject: [
           "User",
           "Workspace",
@@ -330,7 +364,7 @@ async function withIdentity(
         conditions: { name: "blocked" },
       },
       {
-        action: "create",
+        action: "write",
         subject: "Invitation",
         inverted: true,
         conditions: { email: "blocked@example.com" },

@@ -385,7 +385,7 @@ describe("AuthModule", () => {
       {
         secret,
         user: {
-          roles: { "super-admin": ["user:get"] },
+          roles: { "super-admin": ["user:read"] },
           defaultRole: "super-admin",
           adminRoles: ["super-admin"],
         },
@@ -423,7 +423,7 @@ describe("AuthModule", () => {
     },
     {
       apiKey: {
-        user: { defaultPermissions: ["user:get", "invitation:create"] },
+        user: { defaultPermissions: ["user:read", "member:invite"] },
         workspace: { defaultPermissions: ["workspace:update"] },
       },
     },
@@ -458,7 +458,7 @@ describe("AuthModule", () => {
       "user",
       {
         user: {
-          permissions: ["user:list"],
+          permissions: ["user:read"],
           roles: { admin: ["unknown:delete"] },
         },
       },
@@ -549,21 +549,11 @@ describe("AuthModule", () => {
       "user-only defaults that cannot be applied to workspace keys",
       {
         apiKey: {
-          user: { defaultPermissions: ["user:get"] },
-          workspace: { defaultPermissions: ["user:get"] },
+          user: { defaultPermissions: ["user:read"] },
+          workspace: { defaultPermissions: ["user:read"] },
         },
       },
-      "apiKey.workspace.defaultPermissions contains unknown permissions: user:get",
-    ],
-    [
-      "invitation defaults requiring a user identity",
-      {
-        apiKey: {
-          user: { defaultPermissions: ["invitation:create"] },
-          workspace: { defaultPermissions: ["invitation:create"] },
-        },
-      },
-      "apiKey.workspace.defaultPermissions cannot include invitation:create",
+      "apiKey.workspace.defaultPermissions contains unknown permissions: user:read",
     ],
     [
       "allowed permissions outside the configured catalogs",
@@ -829,7 +819,7 @@ describe("AuthModule", () => {
       {
         apiKey: {
           user: {
-            allowedPermissions: ["user:get"],
+            allowedPermissions: ["user:read"],
             defaultPermissions: [],
           },
           workspace: {

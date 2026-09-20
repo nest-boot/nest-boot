@@ -12,7 +12,6 @@ import {
 } from "@nest-boot/graphql-connection";
 import { RequestContext } from "@nest-boot/request-context";
 import {
-  BadRequestException,
   ForbiddenException,
   Inject,
   Injectable,
@@ -114,7 +113,7 @@ export class WorkspaceApiKeyService {
     options: CreateApiKeyOptions,
   ): Promise<CreatedApiKey<WorkspaceApiKey>> {
     this.assertWorkspacePrincipal(workspace);
-    this.accessControlService.assertWorkspaceCan("create", WorkspaceApiKey);
+    this.accessControlService.assertWorkspaceCan("write", WorkspaceApiKey);
     const permissions = this.normalizePermissions(
       options.permissions === undefined
         ? resolveApiKeyPermissionCatalog(this.authOptions, "workspace").defaults
@@ -129,9 +128,9 @@ export class WorkspaceApiKeyService {
     id: string,
     input: UpdateApiKeyOptions,
   ): Promise<WorkspaceApiKey> {
-    this.accessControlService.assertWorkspaceCan("update", WorkspaceApiKey);
+    this.accessControlService.assertWorkspaceCan("write", WorkspaceApiKey);
     const apiKey = await this.findWritableApiKey(id);
-    this.accessControlService.assertWorkspaceCan("update", apiKey);
+    this.accessControlService.assertWorkspaceCan("write", apiKey);
     const permissions =
       input.permissions === undefined
         ? undefined
@@ -155,9 +154,9 @@ export class WorkspaceApiKeyService {
 
   /** Deletes a key owned by the authenticated workspace. */
   async deleteWorkspaceApiKey(id: string): Promise<WorkspaceApiKey> {
-    this.accessControlService.assertWorkspaceCan("delete", WorkspaceApiKey);
+    this.accessControlService.assertWorkspaceCan("write", WorkspaceApiKey);
     const apiKey = await this.findWritableApiKey(id);
-    this.accessControlService.assertWorkspaceCan("delete", apiKey);
+    this.accessControlService.assertWorkspaceCan("write", apiKey);
     return await ApiKeyLifecycle.delete(this.em, this.authOptions, apiKey);
   }
 
@@ -181,7 +180,7 @@ export class WorkspaceApiKeyService {
           prefix,
           start: plaintextApiKey.slice(0, 8),
         } as RequiredEntityData<WorkspaceApiKey>);
-        this.accessControlService.assertWorkspaceCan("create", entity);
+        this.accessControlService.assertWorkspaceCan("write", entity);
         await em.persist(entity).flush();
         return entity;
       },
@@ -275,12 +274,6 @@ export class WorkspaceApiKeyService {
   }
 
   private normalizePermissions(permissions: readonly string[]): string[] {
-    // Invitations require a human sender; workspace keys have no user identity.
-    if (permissions.includes("invitation:create")) {
-      throw new BadRequestException(
-        "Workspace API keys cannot grant invitation:create; use a user API key",
-      );
-    }
     const { permissions: availablePermissions, allowed } =
       resolveApiKeyPermissionCatalog(this.authOptions, "workspace");
 

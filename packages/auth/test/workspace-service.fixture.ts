@@ -76,6 +76,7 @@ export function createWorkspaceServices(
     userCan: vi.fn().mockReturnValue(true),
     workspaceCan: vi.fn().mockReturnValue(true),
     assertCurrentUser: vi.fn(),
+    assertUserSession: vi.fn(),
     assertCurrentWorkspace: vi.fn(),
     assertCurrentMember: vi.fn(),
     assertUserCan: vi.fn(),

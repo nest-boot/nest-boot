@@ -34,7 +34,7 @@ allowing public handlers to declare nullable parameters explicitly.
 `currentSession` returns `Session`; `User.sessions` returns `SessionConnection`.
 The former `AuthSessionType`, `userSessions(userId)` and `authSessions` APIs are removed.
 Use `currentUser { sessions(first: 20) { edges { node { id current expiresAt } } pageInfo { endCursor hasNextPage } } }`.
-The same field works under `user(id: $id)` for administrators. Browser users may read their own sessions; foreign-user and API-key access require `session:list`.
+The same field works under `user(id: $id)` for administrators. Browser users may read their own sessions; foreign-user and API-key access require `session:read`.
 `SessionResolver` computes `current`, `impersonatedById` and the `impersonatedBy: User` relation.
 Apply the session SELECT policy migration; ordinary reads exclude the token column and retain RLS. Never expose `token` as a GraphQL field.
 

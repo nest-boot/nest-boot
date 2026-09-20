@@ -3,21 +3,22 @@ title: "API Keys"
 description: "Authenticate personal and workspace automation with scoped API keys."
 ---
 
-`UserApiKeyService` and `WorkspaceApiKeyService` manages keys owned by either a user or a workspace.
+`UserApiKeyService` and `WorkspaceApiKeyService` manage keys owned by either a user or a workspace.
 
 - A **user key** restores its user and may access a selected workspace only
   while that user remains an active member.
 - A **workspace key** is an independent service identity. It restores its
   workspace without creating a current user or workspace member.
 
-Users manage their own keys. Active workspace members and workspace keys manage workspace keys
-when their resolved workspace ability grants the corresponding
-`api-key:create`, `api-key:read`, `api-key:update`, or `api-key:delete` permission.
+Personal key management uses `user-api-key:read` and `user-api-key:write`.
+Workspace key management uses `workspace-api-key:read` and `workspace-api-key:write`.
+`read` allows queries; `write` allows creation, updates, enabling/disabling, and
+deletion. Neither permission implies the other. Ownership and grant ceilings still apply.
 In the example, both user roles include personal key-management permissions.
 API-key requests receive only the explicitly granted actions after permission
 intersection; they do not inherit an unconditional `manage` rule.
-The example UI exposes all four key-management permissions, but leaves them
-unchecked when creating a key so delegation must be enabled explicitly.
+The example UI uses the server's permission options and preselects only entries
+with both `default` and `grantable` set to true.
 
 ## Service API
 
@@ -90,18 +91,18 @@ with a letter and may contain lowercase letters, digits, and single hyphens.
 Underscores, consecutive hyphens, and mixed-case values are rejected at startup.
 Catalog membership, grant ceilings,
 and key intersections use exact string equality without normalization.
-GraphQL uses separate `UserApiKeyPermission` and `WorkspaceApiKeyPermission` enums, mapping `api-key:read` to
-`API_KEY__READ` on the wire while retaining the original value internally.
-Auth automatically maps built-in `api-key:*` permissions to `UserApiKey` in user
-abilities and `WorkspaceApiKey` in workspace abilities. Business extensions bind
+GraphQL uses separate `UserApiKeyPermission` and `WorkspaceApiKeyPermission` enums, mapping `user-api-key:read` to
+`USER_API_KEY__READ` on the wire while retaining the original value internally.
+Auth maps `user-api-key:*` to `UserApiKey` in user abilities and
+`workspace-api-key:*` to `WorkspaceApiKey` in workspace abilities. Business extensions bind
 custom permissions through the restricted `AbilityRules.can` API.
 
 ```typescript
-const workspacePermissions = ["workspace:update", "member:create"] as const;
+const workspacePermissions = ["workspace:update", "member:write"] as const;
 
 type WorkspacePermission = (typeof workspacePermissions)[number];
 
-const userKeyPermissions = ["user:get", ...workspacePermissions] as const;
+const userKeyPermissions = ["user:read", ...workspacePermissions] as const;
 ```
 
 Entity properties and database columns retain original strings. GraphQL inputs and outputs use scoped enums; the client derives form options and TypeScript types from generated enums. A workspace key accepts only configured workspace
@@ -124,8 +125,8 @@ AuthModule.forRoot({
   // ...other auth options
   apiKey: {
     user: {
-      defaultPermissions: ["user:get"],
-      allowedPermissions: ["user:get", "workspace:update"],
+      defaultPermissions: ["user:read"],
+      allowedPermissions: ["user:read", "workspace:update"],
     },
     workspace: {
       defaultPermissions: ["workspace:update"],
@@ -140,8 +141,8 @@ AuthModule.forRoot({
 For user keys, an omitted `allowedPermissions` uses the combined user/workspace
 catalog; for workspace keys, it uses only the workspace catalog. An explicit `[]`
 allows no grants. Both scopes are validated at startup and defaults must be a
-subset of that scope's allowlist. User keys may default to `user:get` or
-`invitation:create`; workspace keys cannot send invitations because they have no
+subset of that scope's allowlist. User keys may default to `user:read` or
+`member:invite`; workspace keys cannot send invitations because they have no
 user identity.
 
 The previous flat `apiKey.defaultPermissions` and `apiKey.allowedPermissions`
@@ -152,8 +153,9 @@ scope configuration retains its normal defaults; it does not inherit the other s
 Use `userApiKeyPermissions` and `workspaceApiKeyPermissions` to populate key
 editors. Both return `{ permission, grantable, default }` entries using the corresponding
 API-key permission enum. Grantability includes the configured allowlist, the
-issuer's grant ceiling, and the current key's permissions. Workspace-key options
-always mark `invitation:create` as not grantable. Retain non-grantable entries for
+issuer's grant ceiling, and the current key's permissions. Workspace keys may
+receive `member:invite` to read and cancel invitations; creation still requires a
+user identity. Retain non-grantable entries for
 display, but exclude them from new selections and default selections. Services
 still validate every write; this list is not an authorization substitute.
 `default` reflects the configured default permissions independently of grantability.

@@ -198,7 +198,7 @@ describe("WorkspaceService and cross-domain coordination", () => {
         Member,
       );
       find.mockClear();
-      vi.mocked(accessControlService.assertCurrentUser).mockImplementation(
+      vi.mocked(accessControlService.assertUserSession).mockImplementation(
         () => {
           throw new ForbiddenException();
         },
@@ -609,15 +609,18 @@ describe("WorkspaceService and cross-domain coordination", () => {
     em.findOne.mockResolvedValueOnce(workspace).mockResolvedValueOnce(member);
     em.find.mockResolvedValue([member]);
 
-    await expect(workspaceService.findOne({ id: workspace.id })).resolves.toBe(
-      workspace,
-    );
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      RequestContext.set(Workspace, workspace);
+      await expect(
+        workspaceService.findOne({ id: workspace.id }),
+      ).resolves.toBe(workspace);
+    });
     await expect(memberService.getMemberByUser(workspace, user)).resolves.toBe(
       member,
     );
 
     expect(em.findOne).toHaveBeenNthCalledWith(1, Workspace, {
-      id: workspace.id,
+      $and: [{ id: workspace.id }, { id: workspace.id }],
     });
     expect(em.findOne).toHaveBeenNthCalledWith(2, Member, {
       status: "ACTIVE",

@@ -30,7 +30,7 @@ describe("API key catalog snapshots", () => {
     options.apiKey.workspace.defaultPermissions.push("workspace:delete");
     expect(workspace.defaults).toEqual(["workspace:update"]);
     expect(resolveApiKeyPermissionCatalog({}, "user").allowed).toContain(
-      "user:get",
+      "user:read",
     );
   });
 });

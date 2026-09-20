@@ -19,10 +19,14 @@ type Account {
 }
 
 type AccountConnection {
-  """A list of edges."""
+  """
+  A list of edges.
+  """
   edges: [AccountEdge!]!
 
-  """Information to aid in pagination."""
+  """
+  Information to aid in pagination.
+  """
   pageInfo: PageInfo!
 
   """
@@ -30,7 +34,9 @@ type AccountConnection {
   """
   totalCount: Int!
 
-  """Indicates whether totalCount is exact or a lower bound."""
+  """
+  Indicates whether totalCount is exact or a lower bound.
+  """
   totalCountRelation: TotalCountRelation!
 }
 
@@ -38,10 +44,14 @@ type AccountConnection {
 An auto-generated type which holds one Account and a cursor during pagination.
 """
 type AccountEdge {
-  """A cursor for use in pagination."""
+  """
+  A cursor for use in pagination.
+  """
   cursor: String!
 
-  """The item at the end of AccountEdge."""
+  """
+  The item at the end of AccountEdge.
+  """
   node: Account!
 }
 
@@ -51,16 +61,24 @@ Supported fields: created_at, provider_id
 """
 scalar AccountFilter
 
-"""Ordering options for account connections"""
+"""
+Ordering options for account connections
+"""
 input AccountOrder {
-  """The ordering direction."""
+  """
+  The ordering direction.
+  """
   direction: OrderDirection!
 
-  """The field to order accounts by."""
+  """
+  The field to order accounts by.
+  """
   field: AccountOrderField!
 }
 
-"""Properties by which account connections can be ordered."""
+"""
+Properties by which account connections can be ordered.
+"""
 enum AccountOrderField {
   CREATED_AT
   ID
@@ -284,10 +302,14 @@ type Invitation {
 }
 
 type InvitationConnection {
-  """A list of edges."""
+  """
+  A list of edges.
+  """
   edges: [InvitationEdge!]!
 
-  """Information to aid in pagination."""
+  """
+  Information to aid in pagination.
+  """
   pageInfo: PageInfo!
 
   """
@@ -295,7 +317,9 @@ type InvitationConnection {
   """
   totalCount: Int!
 
-  """Indicates whether totalCount is exact or a lower bound."""
+  """
+  Indicates whether totalCount is exact or a lower bound.
+  """
   totalCountRelation: TotalCountRelation!
 }
 
@@ -303,10 +327,14 @@ type InvitationConnection {
 An auto-generated type which holds one Invitation and a cursor during pagination.
 """
 type InvitationEdge {
-  """A cursor for use in pagination."""
+  """
+  A cursor for use in pagination.
+  """
   cursor: String!
 
-  """The item at the end of InvitationEdge."""
+  """
+  The item at the end of InvitationEdge.
+  """
   node: Invitation!
 }
 
@@ -316,16 +344,24 @@ Supported fields: email, status, created_at
 """
 scalar InvitationFilter
 
-"""Ordering options for invitation connections"""
+"""
+Ordering options for invitation connections
+"""
 input InvitationOrder {
-  """The ordering direction."""
+  """
+  The ordering direction.
+  """
   direction: OrderDirection!
 
-  """The field to order invitations by."""
+  """
+  The field to order invitations by.
+  """
   field: InvitationOrderField!
 }
 
-"""Properties by which invitation connections can be ordered."""
+"""
+Properties by which invitation connections can be ordered.
+"""
 enum InvitationOrderField {
   CREATED_AT
   ID
@@ -360,10 +396,14 @@ type Member {
 }
 
 type MemberConnection {
-  """A list of edges."""
+  """
+  A list of edges.
+  """
   edges: [MemberEdge!]!
 
-  """Information to aid in pagination."""
+  """
+  Information to aid in pagination.
+  """
   pageInfo: PageInfo!
 
   """
@@ -371,7 +411,9 @@ type MemberConnection {
   """
   totalCount: Int!
 
-  """Indicates whether totalCount is exact or a lower bound."""
+  """
+  Indicates whether totalCount is exact or a lower bound.
+  """
   totalCountRelation: TotalCountRelation!
 }
 
@@ -379,10 +421,14 @@ type MemberConnection {
 An auto-generated type which holds one Member and a cursor during pagination.
 """
 type MemberEdge {
-  """A cursor for use in pagination."""
+  """
+  A cursor for use in pagination.
+  """
   cursor: String!
 
-  """The item at the end of MemberEdge."""
+  """
+  The item at the end of MemberEdge.
+  """
   node: Member!
 }
 
@@ -392,16 +438,24 @@ Supported fields: name, email, status, created_at
 """
 scalar MemberFilter
 
-"""Ordering options for member connections"""
+"""
+Ordering options for member connections
+"""
 input MemberOrder {
-  """The ordering direction."""
+  """
+  The ordering direction.
+  """
   direction: OrderDirection!
 
-  """The field to order members by."""
+  """
+  The field to order members by.
+  """
   field: MemberOrderField!
 }
 
-"""Properties by which member connections can be ordered."""
+"""
+Properties by which member connections can be ordered.
+"""
 enum MemberOrderField {
   CREATED_AT
   ID
@@ -418,12 +472,16 @@ type Mutation {
   banUser(id: ID!, input: BanUserInput = {}): BanUserPayload!
   cancelInvitation(id: ID!): CancelInvitationPayload!
   changeCurrentUserEmail(input: AuthChangeEmailInput!): Boolean!
-  changeCurrentUserPassword(input: AuthChangePasswordInput!): AuthChangePasswordResultType!
+  changeCurrentUserPassword(
+    input: AuthChangePasswordInput!
+  ): AuthChangePasswordResultType!
   createInvitation(input: CreateInvitationInput!): CreateInvitationPayload!
   createUser(input: CreateUserInput!): CreateUserPayload!
   createUserApiKey(input: CreateUserApiKeyInput!): CreateUserApiKeyResult!
   createWorkspace(input: CreateWorkspaceInput!): CreateWorkspacePayload!
-  createWorkspaceApiKey(input: CreateWorkspaceApiKeyInput!): CreateWorkspaceApiKeyResult!
+  createWorkspaceApiKey(
+    input: CreateWorkspaceApiKeyInput!
+  ): CreateWorkspaceApiKeyResult!
   deleteCurrentUser(input: AuthDeleteUserInput = {}): AuthDeleteUserResultType!
   deleteUser(id: ID!): DeleteUserPayload!
   deleteUserApiKey(id: ID!): UserApiKey!
@@ -431,10 +489,14 @@ type Mutation {
   deleteWorkspaceApiKey(id: ID!): WorkspaceApiKey!
   impersonateUser(id: ID!): User!
   leaveWorkspace: LeaveWorkspacePayload!
-  linkCurrentUserAccount(input: AuthLinkSocialAccountInput!): AuthLinkSocialAccountResultType!
+  linkCurrentUserAccount(
+    input: AuthLinkSocialAccountInput!
+  ): AuthLinkSocialAccountResultType!
   rejectInvitation(id: ID!): RejectInvitationPayload!
   removeMember(id: ID!): RemoveMemberPayload!
-  requestPasswordReset(input: AuthRequestPasswordResetInput!): AuthRequestPasswordResetResultType!
+  requestPasswordReset(
+    input: AuthRequestPasswordResetInput!
+  ): AuthRequestPasswordResetResultType!
   resetPassword(input: AuthResetPasswordInput!): Boolean!
   revokeCurrentUserOtherSessions: Boolean!
   revokeCurrentUserSession(id: ID!): Boolean!
@@ -443,10 +505,16 @@ type Mutation {
   revokeUserSessions(userId: ID!): Boolean!
   sendVerificationEmail(input: AuthSendVerificationEmailInput!): Boolean!
   setCurrentUserPassword(newPassword: String!): Boolean!
-  setMemberPermissions(id: ID!, input: SetMemberPermissionsInput!): SetMemberPermissionsPayload!
+  setMemberPermissions(
+    id: ID!
+    input: SetMemberPermissionsInput!
+  ): SetMemberPermissionsPayload!
   setMemberRoles(id: ID!, input: SetMemberRolesInput!): SetMemberRolesPayload!
   setUserPassword(id: ID!, input: SetUserPasswordInput!): Boolean!
-  setUserPermissions(id: ID!, input: SetUserPermissionsInput!): SetUserPermissionsPayload!
+  setUserPermissions(
+    id: ID!
+    input: SetUserPermissionsInput!
+  ): SetUserPermissionsPayload!
   setUserRoles(id: ID!, input: SetUserRolesInput!): SetUserRolesPayload!
   signIn(input: AuthSignInInput!): AuthSignInResultType!
   signInSocial(input: AuthSignInSocialInput!): AuthSignInSocialResultType!
@@ -459,8 +527,14 @@ type Mutation {
   updateMember(id: ID!, input: UpdateMemberInput!): UpdateMemberPayload
   updateUser(id: ID!, input: UpdateUserInput!): UpdateUserPayload!
   updateUserApiKey(id: ID!, input: UpdateUserApiKeyInput!): UserApiKey!
-  updateWorkspace(id: ID!, input: UpdateWorkspaceInput!): UpdateWorkspacePayload!
-  updateWorkspaceApiKey(id: ID!, input: UpdateWorkspaceApiKeyInput!): WorkspaceApiKey!
+  updateWorkspace(
+    id: ID!
+    input: UpdateWorkspaceInput!
+  ): UpdateWorkspacePayload!
+  updateWorkspaceApiKey(
+    id: ID!
+    input: UpdateWorkspaceApiKeyInput!
+  ): WorkspaceApiKey!
 }
 
 enum OrderDirection {
@@ -474,10 +548,14 @@ Returns information about pagination in a connection, in accordance with the [Re
 type PageInfo {
   endCursor: String
 
-  """Whether there are more pages to fetch following the current page."""
+  """
+  Whether there are more pages to fetch following the current page.
+  """
   hasNextPage: Boolean!
 
-  """Whether there are any pages prior to the current page."""
+  """
+  Whether there are any pages prior to the current page.
+  """
   hasPreviousPage: Boolean!
   startCursor: String
 }
@@ -497,22 +575,34 @@ type Query {
   userPermissions: [UserPermissionOption!]!
   userRoles: [UserRoleOption!]!
   users(
-    """Returns the elements that come after the specified cursor."""
+    """
+    Returns the elements that come after the specified cursor.
+    """
     after: String
 
-    """Returns the elements that come before the specified cursor."""
+    """
+    Returns the elements that come before the specified cursor.
+    """
     before: String
 
-    """Filter users using MongoDB query syntax."""
+    """
+    Filter users using MongoDB query syntax.
+    """
     filter: UserFilter
 
-    """Returns up to the first `n` elements from the list."""
+    """
+    Returns up to the first `n` elements from the list.
+    """
     first: Int
 
-    """Returns up to the last `n` elements from the list."""
+    """
+    Returns up to the last `n` elements from the list.
+    """
     last: Int
 
-    """Ordering options for the returned users."""
+    """
+    Ordering options for the returned users.
+    """
     orderBy: UserOrder
 
     """
@@ -549,10 +639,14 @@ type Session {
 }
 
 type SessionConnection {
-  """A list of edges."""
+  """
+  A list of edges.
+  """
   edges: [SessionEdge!]!
 
-  """Information to aid in pagination."""
+  """
+  Information to aid in pagination.
+  """
   pageInfo: PageInfo!
 
   """
@@ -560,7 +654,9 @@ type SessionConnection {
   """
   totalCount: Int!
 
-  """Indicates whether totalCount is exact or a lower bound."""
+  """
+  Indicates whether totalCount is exact or a lower bound.
+  """
   totalCountRelation: TotalCountRelation!
 }
 
@@ -568,10 +664,14 @@ type SessionConnection {
 An auto-generated type which holds one Session and a cursor during pagination.
 """
 type SessionEdge {
-  """A cursor for use in pagination."""
+  """
+  A cursor for use in pagination.
+  """
   cursor: String!
 
-  """The item at the end of SessionEdge."""
+  """
+  The item at the end of SessionEdge.
+  """
   node: Session!
 }
 
@@ -581,16 +681,24 @@ Supported fields: created_at
 """
 scalar SessionFilter
 
-"""Ordering options for session connections"""
+"""
+Ordering options for session connections
+"""
 input SessionOrder {
-  """The ordering direction."""
+  """
+  The ordering direction.
+  """
   direction: OrderDirection!
 
-  """The field to order sessions by."""
+  """
+  The field to order sessions by.
+  """
   field: SessionOrderField!
 }
 
-"""Properties by which session connections can be ordered."""
+"""
+Properties by which session connections can be ordered.
+"""
 enum SessionOrderField {
   CREATED_AT
   ID
@@ -691,22 +799,34 @@ type UpdateWorkspacePayload {
 
 type User {
   accounts(
-    """Returns the elements that come after the specified cursor."""
+    """
+    Returns the elements that come after the specified cursor.
+    """
     after: String
 
-    """Returns the elements that come before the specified cursor."""
+    """
+    Returns the elements that come before the specified cursor.
+    """
     before: String
 
-    """Filter accounts using MongoDB query syntax."""
+    """
+    Filter accounts using MongoDB query syntax.
+    """
     filter: AccountFilter
 
-    """Returns up to the first `n` elements from the list."""
+    """
+    Returns up to the first `n` elements from the list.
+    """
     first: Int
 
-    """Returns up to the last `n` elements from the list."""
+    """
+    Returns up to the last `n` elements from the list.
+    """
     last: Int
 
-    """Ordering options for the returned accounts."""
+    """
+    Ordering options for the returned accounts.
+    """
     orderBy: AccountOrder
 
     """
@@ -718,22 +838,34 @@ type User {
   ): AccountConnection!
   apiKey(id: ID!): UserApiKey
   apiKeys(
-    """Returns the elements that come after the specified cursor."""
+    """
+    Returns the elements that come after the specified cursor.
+    """
     after: String
 
-    """Returns the elements that come before the specified cursor."""
+    """
+    Returns the elements that come before the specified cursor.
+    """
     before: String
 
-    """Filter userapikeys using MongoDB query syntax."""
+    """
+    Filter userapikeys using MongoDB query syntax.
+    """
     filter: UserApiKeyFilter
 
-    """Returns up to the first `n` elements from the list."""
+    """
+    Returns up to the first `n` elements from the list.
+    """
     first: Int
 
-    """Returns up to the last `n` elements from the list."""
+    """
+    Returns up to the last `n` elements from the list.
+    """
     last: Int
 
-    """Ordering options for the returned userapikeys."""
+    """
+    Ordering options for the returned userapikeys.
+    """
     orderBy: UserApiKeyOrder
 
     """
@@ -752,22 +884,34 @@ type User {
   id: ID!
   image: String
   invitations(
-    """Returns the elements that come after the specified cursor."""
+    """
+    Returns the elements that come after the specified cursor.
+    """
     after: String
 
-    """Returns the elements that come before the specified cursor."""
+    """
+    Returns the elements that come before the specified cursor.
+    """
     before: String
 
-    """Filter invitations using MongoDB query syntax."""
+    """
+    Filter invitations using MongoDB query syntax.
+    """
     filter: InvitationFilter
 
-    """Returns up to the first `n` elements from the list."""
+    """
+    Returns up to the first `n` elements from the list.
+    """
     first: Int
 
-    """Returns up to the last `n` elements from the list."""
+    """
+    Returns up to the last `n` elements from the list.
+    """
     last: Int
 
-    """Ordering options for the returned invitations."""
+    """
+    Ordering options for the returned invitations.
+    """
     orderBy: InvitationOrder
 
     """
@@ -781,43 +925,67 @@ type User {
   permissions: [UserPermission!]!
   roles: [UserRole!]!
   sessions(
-    """Returns the elements that come after the specified cursor."""
+    """
+    Returns the elements that come after the specified cursor.
+    """
     after: String
 
-    """Returns the elements that come before the specified cursor."""
+    """
+    Returns the elements that come before the specified cursor.
+    """
     before: String
 
-    """Filter sessions using MongoDB query syntax."""
+    """
+    Filter sessions using MongoDB query syntax.
+    """
     filter: SessionFilter
 
-    """Returns up to the first `n` elements from the list."""
+    """
+    Returns up to the first `n` elements from the list.
+    """
     first: Int
 
-    """Returns up to the last `n` elements from the list."""
+    """
+    Returns up to the last `n` elements from the list.
+    """
     last: Int
 
-    """Ordering options for the returned sessions."""
+    """
+    Ordering options for the returned sessions.
+    """
     orderBy: SessionOrder
     query: String
   ): SessionConnection!
   updatedAt: DateTime!
   workspaces(
-    """Returns the elements that come after the specified cursor."""
+    """
+    Returns the elements that come after the specified cursor.
+    """
     after: String
 
-    """Returns the elements that come before the specified cursor."""
+    """
+    Returns the elements that come before the specified cursor.
+    """
     before: String
 
-    """Filter workspaces using MongoDB query syntax."""
+    """
+    Filter workspaces using MongoDB query syntax.
+    """
     filter: WorkspaceFilter
 
-    """Returns up to the first `n` elements from the list."""
+    """
+    Returns up to the first `n` elements from the list.
+    """
     first: Int
 
-    """Returns up to the last `n` elements from the list."""
+    """
+    Returns up to the last `n` elements from the list.
+    """
     last: Int
 
-    """Ordering options for the returned workspaces."""
+    """
+    Ordering options for the returned workspaces.
+    """
     orderBy: WorkspaceOrder
 
     """
@@ -843,10 +1011,14 @@ type UserApiKey {
 }
 
 type UserApiKeyConnection {
-  """A list of edges."""
+  """
+  A list of edges.
+  """
   edges: [UserApiKeyEdge!]!
 
-  """Information to aid in pagination."""
+  """
+  Information to aid in pagination.
+  """
   pageInfo: PageInfo!
 
   """
@@ -854,7 +1026,9 @@ type UserApiKeyConnection {
   """
   totalCount: Int!
 
-  """Indicates whether totalCount is exact or a lower bound."""
+  """
+  Indicates whether totalCount is exact or a lower bound.
+  """
   totalCountRelation: TotalCountRelation!
 }
 
@@ -862,10 +1036,14 @@ type UserApiKeyConnection {
 An auto-generated type which holds one UserApiKey and a cursor during pagination.
 """
 type UserApiKeyEdge {
-  """A cursor for use in pagination."""
+  """
+  A cursor for use in pagination.
+  """
   cursor: String!
 
-  """The item at the end of UserApiKeyEdge."""
+  """
+  The item at the end of UserApiKeyEdge.
+  """
   node: UserApiKey!
 }
 
@@ -875,16 +1053,24 @@ Supported fields: name, prefix, enabled, last_used_at, created_at
 """
 scalar UserApiKeyFilter
 
-"""Ordering options for userapikey connections"""
+"""
+Ordering options for userapikey connections
+"""
 input UserApiKeyOrder {
-  """The ordering direction."""
+  """
+  The ordering direction.
+  """
   direction: OrderDirection!
 
-  """The field to order userapikeys by."""
+  """
+  The field to order userapikeys by.
+  """
   field: UserApiKeyOrderField!
 }
 
-"""Properties by which userapikey connections can be ordered."""
+"""
+Properties by which userapikey connections can be ordered.
+"""
 enum UserApiKeyOrderField {
   CREATED_AT
   ID
@@ -892,30 +1078,31 @@ enum UserApiKeyOrderField {
 }
 
 enum UserApiKeyPermission {
-  API_KEY__CREATE
-  API_KEY__DELETE
-  API_KEY__READ
-  API_KEY__UPDATE
-  INVITATION__CANCEL
-  INVITATION__CREATE
-  MEMBER__CREATE
-  MEMBER__DELETE
-  MEMBER__UPDATE
-  SESSION__DELETE
-  SESSION__LIST
+  MEMBER__INVITE
+  MEMBER__READ
+  MEMBER__SET_PERMISSIONS
+  MEMBER__SET_ROLES
+  MEMBER__WRITE
+  SESSION__READ
   SESSION__REVOKE
+  USER_API_KEY__READ
+  USER_API_KEY__WRITE
   USER__BAN
   USER__CREATE
   USER__DELETE
-  USER__GET
   USER__IMPERSONATE
-  USER__IMPERSONATE_ADMINS
-  USER__LIST
+  USER__IMPERSONATE_ADMIN
+  USER__READ
   USER__SET_EMAIL
   USER__SET_PASSWORD
-  USER__SET_ROLE
+  USER__SET_PERMISSIONS
+  USER__SET_ROLES
   USER__UPDATE
+  WORKSPACE_API_KEY__READ
+  WORKSPACE_API_KEY__WRITE
+  WORKSPACE__CREATE
   WORKSPACE__DELETE
+  WORKSPACE__READ
   WORKSPACE__UPDATE
 }
 
@@ -926,10 +1113,14 @@ type UserApiKeyPermissionOption {
 }
 
 type UserConnection {
-  """A list of edges."""
+  """
+  A list of edges.
+  """
   edges: [UserEdge!]!
 
-  """Information to aid in pagination."""
+  """
+  Information to aid in pagination.
+  """
   pageInfo: PageInfo!
 
   """
@@ -937,7 +1128,9 @@ type UserConnection {
   """
   totalCount: Int!
 
-  """Indicates whether totalCount is exact or a lower bound."""
+  """
+  Indicates whether totalCount is exact or a lower bound.
+  """
   totalCountRelation: TotalCountRelation!
 }
 
@@ -945,10 +1138,14 @@ type UserConnection {
 An auto-generated type which holds one User and a cursor during pagination.
 """
 type UserEdge {
-  """A cursor for use in pagination."""
+  """
+  A cursor for use in pagination.
+  """
   cursor: String!
 
-  """The item at the end of UserEdge."""
+  """
+  The item at the end of UserEdge.
+  """
   node: User!
 }
 
@@ -958,40 +1155,46 @@ Supported fields: name, email, created_at
 """
 scalar UserFilter
 
-"""Ordering options for user connections"""
+"""
+Ordering options for user connections
+"""
 input UserOrder {
-  """The ordering direction."""
+  """
+  The ordering direction.
+  """
   direction: OrderDirection!
 
-  """The field to order users by."""
+  """
+  The field to order users by.
+  """
   field: UserOrderField!
 }
 
-"""Properties by which user connections can be ordered."""
+"""
+Properties by which user connections can be ordered.
+"""
 enum UserOrderField {
   CREATED_AT
   ID
 }
 
 enum UserPermission {
-  API_KEY__CREATE
-  API_KEY__DELETE
-  API_KEY__READ
-  API_KEY__UPDATE
-  SESSION__DELETE
-  SESSION__LIST
+  SESSION__READ
   SESSION__REVOKE
+  USER_API_KEY__READ
+  USER_API_KEY__WRITE
   USER__BAN
   USER__CREATE
   USER__DELETE
-  USER__GET
   USER__IMPERSONATE
-  USER__IMPERSONATE_ADMINS
-  USER__LIST
+  USER__IMPERSONATE_ADMIN
+  USER__READ
   USER__SET_EMAIL
   USER__SET_PASSWORD
-  USER__SET_ROLE
+  USER__SET_PERMISSIONS
+  USER__SET_ROLES
   USER__UPDATE
+  WORKSPACE__CREATE
 }
 
 type UserPermissionOption {
@@ -1012,22 +1215,34 @@ type UserRoleOption {
 type Workspace {
   apiKey(id: ID!): WorkspaceApiKey
   apiKeys(
-    """Returns the elements that come after the specified cursor."""
+    """
+    Returns the elements that come after the specified cursor.
+    """
     after: String
 
-    """Returns the elements that come before the specified cursor."""
+    """
+    Returns the elements that come before the specified cursor.
+    """
     before: String
 
-    """Filter workspaceapikeys using MongoDB query syntax."""
+    """
+    Filter workspaceapikeys using MongoDB query syntax.
+    """
     filter: WorkspaceApiKeyFilter
 
-    """Returns up to the first `n` elements from the list."""
+    """
+    Returns up to the first `n` elements from the list.
+    """
     first: Int
 
-    """Returns up to the last `n` elements from the list."""
+    """
+    Returns up to the last `n` elements from the list.
+    """
     last: Int
 
-    """Ordering options for the returned workspaceapikeys."""
+    """
+    Ordering options for the returned workspaceapikeys.
+    """
     orderBy: WorkspaceApiKeyOrder
 
     """
@@ -1040,22 +1255,34 @@ type Workspace {
   createdAt: DateTime!
   id: ID!
   invitations(
-    """Returns the elements that come after the specified cursor."""
+    """
+    Returns the elements that come after the specified cursor.
+    """
     after: String
 
-    """Returns the elements that come before the specified cursor."""
+    """
+    Returns the elements that come before the specified cursor.
+    """
     before: String
 
-    """Filter invitations using MongoDB query syntax."""
+    """
+    Filter invitations using MongoDB query syntax.
+    """
     filter: InvitationFilter
 
-    """Returns up to the first `n` elements from the list."""
+    """
+    Returns up to the first `n` elements from the list.
+    """
     first: Int
 
-    """Returns up to the last `n` elements from the list."""
+    """
+    Returns up to the last `n` elements from the list.
+    """
     last: Int
 
-    """Ordering options for the returned invitations."""
+    """
+    Ordering options for the returned invitations.
+    """
     orderBy: InvitationOrder
 
     """
@@ -1066,22 +1293,34 @@ type Workspace {
     query: String
   ): InvitationConnection!
   members(
-    """Returns the elements that come after the specified cursor."""
+    """
+    Returns the elements that come after the specified cursor.
+    """
     after: String
 
-    """Returns the elements that come before the specified cursor."""
+    """
+    Returns the elements that come before the specified cursor.
+    """
     before: String
 
-    """Filter members using MongoDB query syntax."""
+    """
+    Filter members using MongoDB query syntax.
+    """
     filter: MemberFilter
 
-    """Returns up to the first `n` elements from the list."""
+    """
+    Returns up to the first `n` elements from the list.
+    """
     first: Int
 
-    """Returns up to the last `n` elements from the list."""
+    """
+    Returns up to the last `n` elements from the list.
+    """
     last: Int
 
-    """Ordering options for the returned members."""
+    """
+    Ordering options for the returned members.
+    """
     orderBy: MemberOrder
 
     """
@@ -1109,10 +1348,14 @@ type WorkspaceApiKey {
 }
 
 type WorkspaceApiKeyConnection {
-  """A list of edges."""
+  """
+  A list of edges.
+  """
   edges: [WorkspaceApiKeyEdge!]!
 
-  """Information to aid in pagination."""
+  """
+  Information to aid in pagination.
+  """
   pageInfo: PageInfo!
 
   """
@@ -1120,7 +1363,9 @@ type WorkspaceApiKeyConnection {
   """
   totalCount: Int!
 
-  """Indicates whether totalCount is exact or a lower bound."""
+  """
+  Indicates whether totalCount is exact or a lower bound.
+  """
   totalCountRelation: TotalCountRelation!
 }
 
@@ -1128,10 +1373,14 @@ type WorkspaceApiKeyConnection {
 An auto-generated type which holds one WorkspaceApiKey and a cursor during pagination.
 """
 type WorkspaceApiKeyEdge {
-  """A cursor for use in pagination."""
+  """
+  A cursor for use in pagination.
+  """
   cursor: String!
 
-  """The item at the end of WorkspaceApiKeyEdge."""
+  """
+  The item at the end of WorkspaceApiKeyEdge.
+  """
   node: WorkspaceApiKey!
 }
 
@@ -1141,16 +1390,24 @@ Supported fields: name, prefix, enabled, last_used_at, created_at
 """
 scalar WorkspaceApiKeyFilter
 
-"""Ordering options for workspaceapikey connections"""
+"""
+Ordering options for workspaceapikey connections
+"""
 input WorkspaceApiKeyOrder {
-  """The ordering direction."""
+  """
+  The ordering direction.
+  """
   direction: OrderDirection!
 
-  """The field to order workspaceapikeys by."""
+  """
+  The field to order workspaceapikeys by.
+  """
   field: WorkspaceApiKeyOrderField!
 }
 
-"""Properties by which workspaceapikey connections can be ordered."""
+"""
+Properties by which workspaceapikey connections can be ordered.
+"""
 enum WorkspaceApiKeyOrderField {
   CREATED_AT
   ID
@@ -1158,16 +1415,15 @@ enum WorkspaceApiKeyOrderField {
 }
 
 enum WorkspaceApiKeyPermission {
-  API_KEY__CREATE
-  API_KEY__DELETE
-  API_KEY__READ
-  API_KEY__UPDATE
-  INVITATION__CANCEL
-  INVITATION__CREATE
-  MEMBER__CREATE
-  MEMBER__DELETE
-  MEMBER__UPDATE
+  MEMBER__INVITE
+  MEMBER__READ
+  MEMBER__SET_PERMISSIONS
+  MEMBER__SET_ROLES
+  MEMBER__WRITE
+  WORKSPACE_API_KEY__READ
+  WORKSPACE_API_KEY__WRITE
   WORKSPACE__DELETE
+  WORKSPACE__READ
   WORKSPACE__UPDATE
 }
 
@@ -1178,10 +1434,14 @@ type WorkspaceApiKeyPermissionOption {
 }
 
 type WorkspaceConnection {
-  """A list of edges."""
+  """
+  A list of edges.
+  """
   edges: [WorkspaceEdge!]!
 
-  """Information to aid in pagination."""
+  """
+  Information to aid in pagination.
+  """
   pageInfo: PageInfo!
 
   """
@@ -1189,7 +1449,9 @@ type WorkspaceConnection {
   """
   totalCount: Int!
 
-  """Indicates whether totalCount is exact or a lower bound."""
+  """
+  Indicates whether totalCount is exact or a lower bound.
+  """
   totalCountRelation: TotalCountRelation!
 }
 
@@ -1197,10 +1459,14 @@ type WorkspaceConnection {
 An auto-generated type which holds one Workspace and a cursor during pagination.
 """
 type WorkspaceEdge {
-  """A cursor for use in pagination."""
+  """
+  A cursor for use in pagination.
+  """
   cursor: String!
 
-  """The item at the end of WorkspaceEdge."""
+  """
+  The item at the end of WorkspaceEdge.
+  """
   node: Workspace!
 }
 
@@ -1210,32 +1476,39 @@ Supported fields: name, created_at
 """
 scalar WorkspaceFilter
 
-"""Ordering options for workspace connections"""
+"""
+Ordering options for workspace connections
+"""
 input WorkspaceOrder {
-  """The ordering direction."""
+  """
+  The ordering direction.
+  """
   direction: OrderDirection!
 
-  """The field to order workspaces by."""
+  """
+  The field to order workspaces by.
+  """
   field: WorkspaceOrderField!
 }
 
-"""Properties by which workspace connections can be ordered."""
+"""
+Properties by which workspace connections can be ordered.
+"""
 enum WorkspaceOrderField {
   CREATED_AT
   ID
 }
 
 enum WorkspacePermission {
-  API_KEY__CREATE
-  API_KEY__DELETE
-  API_KEY__READ
-  API_KEY__UPDATE
-  INVITATION__CANCEL
-  INVITATION__CREATE
-  MEMBER__CREATE
-  MEMBER__DELETE
-  MEMBER__UPDATE
+  MEMBER__INVITE
+  MEMBER__READ
+  MEMBER__SET_PERMISSIONS
+  MEMBER__SET_ROLES
+  MEMBER__WRITE
+  WORKSPACE_API_KEY__READ
+  WORKSPACE_API_KEY__WRITE
   WORKSPACE__DELETE
+  WORKSPACE__READ
   WORKSPACE__UPDATE
 }
 

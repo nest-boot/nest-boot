@@ -101,9 +101,9 @@ describe("API-key management services", () => {
   it("reports configured defaults independently of grantability for both key scopes", () => {
     const { service } = createService({
       apiKey: {
-        user: { defaultPermissions: ["workspace:update", "member:delete"] },
+        user: { defaultPermissions: ["workspace:update", "member:write"] },
         workspace: {
-          defaultPermissions: ["workspace:update", "member:delete"],
+          defaultPermissions: ["workspace:update", "member:write"],
         },
       },
     });
@@ -131,7 +131,7 @@ describe("API-key management services", () => {
         default: true,
       });
       expect(options).toContainEqual({
-        permission: "member:delete",
+        permission: "member:write",
         grantable: false,
         default: true,
       });
@@ -140,7 +140,7 @@ describe("API-key management services", () => {
           .filter((option) => option.default)
           .map((option) => option.permission)
           .sort(),
-      ).toEqual(["member:delete", "workspace:update"]);
+      ).toEqual(["member:write", "workspace:update"]);
     }
   });
 
@@ -161,32 +161,32 @@ describe("API-key management services", () => {
       apiKey: {
         user: {
           allowedPermissions: [
-            "member:update",
-            "user:get",
+            "member:write",
+            "user:read",
             "user:delete",
-            "invitation:create",
+            "member:invite",
           ],
         },
         workspace: {
           allowedPermissions: [
-            "member:update",
-            "user:get",
+            "member:write",
+            "user:read",
             "user:delete",
-            "invitation:create",
+            "member:invite",
           ],
         },
       },
     });
     const user = Object.assign(createTestUser(), {
       roles: ["user"],
-      permissions: ["user:get"],
+      permissions: ["user:read"],
     });
     RequestContext.set(User, user);
     RequestContext.set(
       Member,
       Object.assign(createTestMember(), {
         roles: ["member"],
-        permissions: ["workspace:update", "member:update"],
+        permissions: ["workspace:update", "member:write"],
       }),
     );
     const workspaceOptions = service.getWorkspaceApiKeyPermissions(
@@ -196,15 +196,15 @@ describe("API-key management services", () => {
       workspaceOptions
         .filter((option) => option.grantable)
         .map((option) => option.permission),
-    ).toEqual(["member:update"]);
+    ).toEqual(["member:write"]);
     expect(workspaceOptions).toContainEqual({
-      permission: "invitation:create",
+      permission: "member:invite",
       grantable: false,
       default: false,
     });
     const userOptions = service.getUserApiKeyPermissions(user);
     expect(userOptions).toContainEqual({
-      permission: "user:get",
+      permission: "user:read",
       grantable: true,
       default: false,
     });
@@ -219,14 +219,14 @@ describe("API-key management services", () => {
       default: false,
     });
     expect(userOptions).toContainEqual({
-      permission: "invitation:create",
+      permission: "member:invite",
       grantable: true,
       default: false,
     });
     RequestIdentity.stage({
       apiKey: Object.assign(new UserApiKey(), {
         user: ref(User, user),
-        permissions: ["user:get"],
+        permissions: ["user:read"],
       }),
     });
     expect(
@@ -234,7 +234,7 @@ describe("API-key management services", () => {
         .getUserApiKeyPermissions(user)
         .filter((option) => option.grantable)
         .map((option) => option.permission),
-    ).toEqual(["user:get"]);
+    ).toEqual(["user:read"]);
   });
   it("does not revoke a user credential when a workspace key has the same ID", async () => {
     const { service, em } = createService();
@@ -359,8 +359,10 @@ describe("API-key management services", () => {
           reason === "catalog"
             ? {
                 apiKey: {
-                  user: { allowedPermissions: ["api-key:update"] },
-                  workspace: { allowedPermissions: ["api-key:update"] },
+                  user: { allowedPermissions: ["user-api-key:write"] },
+                  workspace: {
+                    allowedPermissions: ["workspace-api-key:write"],
+                  },
                 },
               }
             : {};
@@ -369,16 +371,16 @@ describe("API-key management services", () => {
         vi.mocked(accessControlService.assertWorkspaceCan).mockRestore();
         const user = Object.assign(createTestUser(), {
           roles: [reason === "owner" ? "user" : "admin"],
-          permissions: ["api-key:update"],
+          permissions: ["user-api-key:write"],
         });
         const member = Object.assign(createTestMember(), {
           roles: [reason === "owner" ? "member" : "owner"],
-          permissions: ["api-key:update"],
+          permissions: ["workspace-api-key:write"],
         });
         RequestIdentity.stage({ user, member });
         RequestIdentity.prepare(options);
         const permissions = [
-          scope === "user" ? "user:get" : "workspace:delete",
+          scope === "user" ? "user:read" : "workspace:delete",
         ];
         const key = Object.assign(
           scope === "user" ? new UserApiKey() : new WorkspaceApiKey(),
@@ -578,10 +580,10 @@ describe("API-key management services", () => {
 
         await expect(operation()).rejects.toBeInstanceOf(ForbiddenException);
         expect(assertion).toHaveBeenCalledWith(
-          action,
+          "write",
           scope === "user" ? UserApiKey : WorkspaceApiKey,
         );
-        expect(assertion).toHaveBeenLastCalledWith(action, key);
+        expect(assertion).toHaveBeenLastCalledWith("write", key);
         expect(key.name).not.toBe("Denied");
         expect(em.flush).not.toHaveBeenCalled();
         expect(em.remove).not.toHaveBeenCalled();
@@ -751,30 +753,29 @@ describe("API-key management services", () => {
     expect(em.flush).toHaveBeenCalledTimes(1);
   });
 
-  it("reserves invitation creation for keys with a user identity", async () => {
+  it("allows both key scopes to carry member invitation management", async () => {
     const { em, service } = createService();
-    await expect(
-      service.createWorkspaceApiKey(createTestWorkspace(), {
-        name: "No inviter",
-        permissions: ["invitation:create"],
-      }),
-    ).rejects.toThrow("Workspace API keys cannot grant invitation:create");
-    expect(em.create).not.toHaveBeenCalled();
+    await service.createWorkspaceApiKey(createTestWorkspace(), {
+      name: "Invitation manager",
+      permissions: ["member:invite"],
+    });
+    expect(em.create).toHaveBeenCalledWith(
+      WorkspaceApiKey,
+      expect.objectContaining({ permissions: ["member:invite"] }),
+    );
     const existing = createTestApiKey();
     em.findOne.mockResolvedValue(existing);
-    await expect(
-      service.updateWorkspaceApiKey(existing.id, {
-        permissions: ["invitation:create"],
-      }),
-    ).rejects.toThrow("Workspace API keys cannot grant invitation:create");
-    expect(em.flush).not.toHaveBeenCalled();
+    await service.updateWorkspaceApiKey(existing.id, {
+      permissions: ["member:invite"],
+    });
+    expect(existing.permissions).toEqual(["member:invite"]);
     await service.createUserApiKey(createTestUser(), {
       name: "Human inviter",
-      permissions: ["invitation:create"],
+      permissions: ["member:invite"],
     });
     expect(em.create).toHaveBeenCalledWith(
       UserApiKey,
-      expect.objectContaining({ permissions: ["invitation:create"] }),
+      expect.objectContaining({ permissions: ["member:invite"] }),
     );
   });
 
@@ -798,7 +799,7 @@ describe("API-key management services", () => {
     const { em, service } = createService({
       apiKey: {
         user: {
-          defaultPermissions: ["user:get"],
+          defaultPermissions: ["user:read"],
         },
         workspace: {
           defaultPermissions: ["workspace:update"],
@@ -815,7 +816,7 @@ describe("API-key management services", () => {
       permissions: null,
     });
     await service.createUserApiKey(
-      Object.assign(createTestUser(), { permissions: ["user:get"] }),
+      Object.assign(createTestUser(), { permissions: ["user:read"] }),
       {
         name: "Independent defaults for user keys",
       },
@@ -834,7 +835,7 @@ describe("API-key management services", () => {
     expect(em.create).toHaveBeenNthCalledWith(
       3,
       UserApiKey,
-      expect.objectContaining({ permissions: ["user:get"] }),
+      expect.objectContaining({ permissions: ["user:read"] }),
     );
   });
 
@@ -934,10 +935,10 @@ describe("API-key management services", () => {
     await expect(
       service.createUserApiKey(user, {
         name: "Disallowed user key",
-        permissions: ["user:get"],
+        permissions: ["user:read"],
       }),
     ).rejects.toThrow(
-      "API key permissions exceed configured allowedPermissions: user:get",
+      "API key permissions exceed configured allowedPermissions: user:read",
     );
     expect(em.create).toHaveBeenCalledOnce();
   });
@@ -945,10 +946,10 @@ describe("API-key management services", () => {
   it("creates, reads, updates, and deletes keys owned by the current user", async () => {
     const { em, service } = createService();
     const user = createTestUser();
-    user.permissions = ["user:get"];
+    user.permissions = ["user:read"];
     const created = await service.createUserApiKey(user, {
       name: "Personal automation",
-      permissions: ["user:get", "workspace:update"],
+      permissions: ["user:read", "workspace:update"],
     });
 
     expect(em.create).toHaveBeenCalledWith(
@@ -970,9 +971,9 @@ describe("API-key management services", () => {
 
   it("allows user keys to combine configured user and workspace permissions", async () => {
     const { em, service } = createService();
-    const permissions = ["user:get", "workspace:update"];
+    const permissions = ["user:read", "workspace:update"];
     const user = createTestUser();
-    user.permissions = ["user:get"];
+    user.permissions = ["user:read"];
 
     await service.createUserApiKey(user, {
       name: "Cross-scope automation",
@@ -992,10 +993,10 @@ describe("API-key management services", () => {
     await expect(
       service.createWorkspaceApiKey(workspace, {
         name: "Invalid workspace key",
-        permissions: ["user:get"],
+        permissions: ["user:read"],
       }),
     ).rejects.toThrow(
-      "Workspace API key contains unknown permissions: user:get",
+      "Workspace API key contains unknown permissions: user:read",
     );
     await expect(
       service.createUserApiKey(createTestUser(), {
@@ -1054,17 +1055,17 @@ describe("API-key management services", () => {
     await expect(
       service.createUserApiKey(user, {
         name: "Escalated user key",
-        permissions: ["user:get"],
+        permissions: ["user:read"],
       }),
     ).rejects.toThrow(
-      "User API key permissions exceed owner permissions: user:get",
+      "User API key permissions exceed owner permissions: user:read",
     );
 
     user.roles = ["admin"];
     await expect(
       service.createUserApiKey(user, {
         name: "Administrator key",
-        permissions: ["user:get"],
+        permissions: ["user:read"],
       }),
     ).resolves.toBeDefined();
     expect(em.create).toHaveBeenCalledTimes(2);
@@ -1104,10 +1105,10 @@ describe("API-key management services", () => {
 
     await expect(
       service.updateWorkspaceApiKey(workspaceKey.id, {
-        permissions: ["user:get"],
+        permissions: ["user:read"],
       }),
     ).rejects.toThrow(
-      "Workspace API key contains unknown permissions: user:get",
+      "Workspace API key contains unknown permissions: user:read",
     );
 
     const user = createTestUser();
@@ -1149,10 +1150,10 @@ describe("API-key management services", () => {
     em.findOne.mockResolvedValue(userKey);
     await expect(
       service.updateUserApiKey(userKey.id, {
-        permissions: ["user:get"],
+        permissions: ["user:read"],
       }),
     ).rejects.toThrow(
-      "User API key permissions exceed owner permissions: user:get",
+      "User API key permissions exceed owner permissions: user:read",
     );
     expect(userKey.permissions).toEqual([]);
     expect(em.flush).not.toHaveBeenCalled();
@@ -1187,7 +1188,7 @@ describe("API-key management services", () => {
     const authenticatingKey = Object.assign(new UserApiKey(), {
       workspace: null,
       user: ref(User, user),
-      permissions: ["user:get"],
+      permissions: ["user:read"],
     });
 
     await RequestContext.child(async () => {
@@ -1196,36 +1197,36 @@ describe("API-key management services", () => {
       await expect(
         service.createUserApiKey(user, {
           name: "Escalated delegated key",
-          permissions: ["user:list"],
+          permissions: ["user:delete"],
         }),
       ).rejects.toThrow(
-        "API key permissions exceed authenticating API key permissions: user:list",
+        "API key permissions exceed authenticating API key permissions: user:delete",
       );
       await expect(
         service.updateUserApiKey(targetKey.id, {
-          permissions: ["user:list"],
+          permissions: ["user:delete"],
         }),
       ).rejects.toThrow(
-        "API key permissions exceed authenticating API key permissions: user:list",
+        "API key permissions exceed authenticating API key permissions: user:delete",
       );
-      targetKey.permissions = ["user:list"];
+      targetKey.permissions = ["user:delete"];
       await expect(
         service.updateUserApiKey(targetKey.id, { enabled: false }),
       ).rejects.toThrow(
-        "API key permissions exceed authenticating API key permissions: user:list",
+        "API key permissions exceed authenticating API key permissions: user:delete",
       );
       await expect(
         service.updateUserApiKey(targetKey.id, {
           name: "Still escalated",
         }),
       ).rejects.toThrow(
-        "API key permissions exceed authenticating API key permissions: user:list",
+        "API key permissions exceed authenticating API key permissions: user:delete",
       );
       targetKey.permissions = [];
       await expect(
         service.createUserApiKey(user, {
           name: "Allowed delegated key",
-          permissions: ["user:get"],
+          permissions: ["user:read"],
         }),
       ).resolves.toBeDefined();
     });
@@ -1410,7 +1411,7 @@ describe("API-key management services", () => {
       Object.assign(new UserApiKey(), {
         workspace: null,
         user: user,
-        permissions: ["user:get"],
+        permissions: ["user:read"],
       }),
     );
     const find = vi
@@ -1423,7 +1424,7 @@ describe("API-key management services", () => {
       {
         where: {
           user: user,
-          permissions: { $contained: ["user:get"] },
+          permissions: { $contained: ["user:read"] },
         },
         exclude: ["key"],
       },
@@ -1436,7 +1437,7 @@ describe("API-key management services", () => {
     const target = Object.assign(new UserApiKey(), {
       workspace: null,
       user: user,
-      permissions: ["user:list"],
+      permissions: ["user:delete"],
     });
     em.findOne.mockResolvedValue(target);
 
@@ -1446,7 +1447,7 @@ describe("API-key management services", () => {
         Object.assign(new UserApiKey(), {
           workspace: null,
           user: user,
-          permissions: ["user:get"],
+          permissions: ["user:read"],
         }),
       );
       await expect(service.getUserApiKey(target.id, user)).rejects.toThrow(
@@ -1460,7 +1461,7 @@ describe("API-key management services", () => {
       );
       expect(em.remove).not.toHaveBeenCalled();
       expect(em.flush).not.toHaveBeenCalled();
-      expect(target.permissions).toEqual(["user:list"]);
+      expect(target.permissions).toEqual(["user:delete"]);
     });
   });
 
@@ -1591,7 +1592,7 @@ describe("API-key management services", () => {
       member,
     );
     expect(accessControlService.assertWorkspaceCan).toHaveBeenCalledWith(
-      "create",
+      "write",
       WorkspaceApiKey,
     );
   });

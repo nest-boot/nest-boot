@@ -87,6 +87,16 @@ export class AccessControlService {
     }
   }
 
+  /** Authorizes an explicit self-service path without granting a general resource ability. */
+  assertUserSession(user: User): void {
+    this.assertCurrentUser(user);
+    if (getCurrentApiKey()) {
+      throw new ForbiddenException(
+        "This self-service operation requires a user session",
+      );
+    }
+  }
+
   /** Throws unless the supplied session is the authenticated session. */
   assertCurrentSession(session: Session): void {
     const currentSession = RequestContext.isActive()

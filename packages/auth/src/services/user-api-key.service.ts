@@ -113,7 +113,7 @@ export class UserApiKeyService {
     options: CreateApiKeyOptions,
   ): Promise<CreatedApiKey<UserApiKey>> {
     this.accessControlService.assertCurrentUser(user);
-    this.accessControlService.assertUserCan("create", UserApiKey);
+    this.accessControlService.assertUserCan("write", UserApiKey);
     const permissions = this.normalizePermissions(
       options.permissions === undefined
         ? resolveApiKeyPermissionCatalog(this.authOptions, "user").defaults
@@ -128,9 +128,9 @@ export class UserApiKeyService {
     id: string,
     input: UpdateApiKeyOptions,
   ): Promise<UserApiKey> {
-    this.accessControlService.assertUserCan("update", UserApiKey);
+    this.accessControlService.assertUserCan("write", UserApiKey);
     const apiKey = await this.findWritableApiKey(id);
-    this.accessControlService.assertUserCan("update", apiKey);
+    this.accessControlService.assertUserCan("write", apiKey);
     const user = this.unwrapOwner(apiKey);
     const permissions =
       input.permissions === undefined
@@ -153,9 +153,9 @@ export class UserApiKeyService {
 
   /** Deletes an API key owned by the current user. */
   async deleteUserApiKey(id: string): Promise<UserApiKey> {
-    this.accessControlService.assertUserCan("delete", UserApiKey);
+    this.accessControlService.assertUserCan("write", UserApiKey);
     const apiKey = await this.findWritableApiKey(id);
-    this.accessControlService.assertUserCan("delete", apiKey);
+    this.accessControlService.assertUserCan("write", apiKey);
     return await ApiKeyLifecycle.delete(this.em, this.authOptions, apiKey);
   }
 
@@ -179,7 +179,7 @@ export class UserApiKeyService {
           prefix,
           start: plaintextApiKey.slice(0, 8),
         } as RequiredEntityData<UserApiKey>);
-        this.accessControlService.assertUserCan("create", entity);
+        this.accessControlService.assertUserCan("write", entity);
         await em.persist(entity).flush();
         return entity;
       },

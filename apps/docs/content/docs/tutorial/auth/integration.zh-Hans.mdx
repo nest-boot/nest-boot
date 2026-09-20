@@ -70,7 +70,7 @@ Resolver 与 Controller 将参数交给领域 Service，授权、作用域和 RL
 例如 `RequestContext.get(User)`。不再注册认证 Base 类别名；传输层优先使用当前身份装饰器。
 
 `Member` / `Invitation` 对应的 Service 是 `MemberService` / `InvitationService`，
-权限主体仍为 `member:*` / `invitation:*`。所有已有字段、参数和授权行为保持不变。
+权限主体为 `member:*`，其中 `member:invite` 管理邀请。实体合并不改变已有字段和参数。
 
 ## PostgreSQL RLS
 
