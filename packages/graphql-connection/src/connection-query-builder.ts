@@ -227,26 +227,38 @@ export class ConnectionQueryBuilder<
           } as unknown as FilterQuery<Entity>)
         : null;
 
-    return this.args.orderBy != null &&
-      typeof this.cursor?.value !== "undefined"
-      ? ({
-          $or: [
-            set({}, this.args.orderBy.field, {
-              [cursorOperator]: this.cursor.value,
-            }),
-            idFilterQuery !== null
-              ? {
-                  $and: [
-                    set({}, this.args.orderBy.field, {
-                      $eq: this.cursor.value,
-                    }),
-                    idFilterQuery,
-                  ],
-                }
-              : set({}, this.args.orderBy.field, { $eq: this.cursor.value }),
-          ],
-        } as FilterQuery<Entity>)
-      : idFilterQuery;
+    if (
+      this.args.orderBy == null ||
+      typeof this.cursor?.value === "undefined"
+    ) {
+      return idFilterQuery;
+    }
+
+    const { field } = this.args.orderBy;
+    const value = this.cursor.value;
+    const sameValue = set({}, field, { $eq: value });
+    const tieBreak =
+      idFilterQuery === null ? sameValue : { $and: [sameValue, idFilterQuery] };
+    // Follow the platform's native placement, which reverses for backward paging.
+    const nullsFirst =
+      this.entityManager.getPlatform().sortsNullsLowest() ===
+      (this.queryOrder === QueryOrder.ASC);
+
+    if (value === null) {
+      return (
+        nullsFirst
+          ? { $or: [set({}, field, { $ne: null }), tieBreak] }
+          : tieBreak
+      ) as FilterQuery<Entity>;
+    }
+
+    return {
+      $or: [
+        set({}, field, { [cursorOperator]: value }),
+        tieBreak,
+        ...(nullsFirst ? [] : [set({}, field, { $eq: null })]),
+      ],
+    } as FilterQuery<Entity>;
   }
 
   private getQueryStringToFilterQuery(): FilterQuery<Entity> | null {

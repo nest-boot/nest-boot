@@ -69,6 +69,7 @@ function setConnectionMetadata(
 function createEntityManager(
   entities: Book[] = [],
   totalCount: number = entities.length,
+  nullsLowest = false,
 ) {
   const find = vi.fn().mockResolvedValue(entities);
   const findAll = vi.fn().mockResolvedValue(entities);
@@ -91,6 +92,7 @@ function createEntityManager(
   return {
     entityManager: {
       createQueryBuilder,
+      getPlatform: () => ({ sortsNullsLowest: () => nullsLowest }),
       find,
       findAll,
     } as unknown as SqlEntityManager,
@@ -106,6 +108,64 @@ describe("ConnectionQueryBuilder", () => {
   beforeEach(() => {
     setConnectionMetadata();
   });
+
+  it.each([
+    {
+      direction: OrderDirection.ASC,
+      value: null,
+      expected: {
+        $or: [
+          { title: { $ne: null } },
+          { $and: [{ title: { $eq: null } }, { id: { $gt: 1 } }] },
+        ],
+      },
+    },
+    {
+      direction: OrderDirection.DESC,
+      value: null,
+      expected: { $and: [{ title: { $eq: null } }, { id: { $lt: 1 } }] },
+    },
+    {
+      direction: OrderDirection.ASC,
+      value: "A",
+      expected: {
+        $or: [
+          { title: { $gt: "A" } },
+          { $and: [{ title: { $eq: "A" } }, { id: { $gt: 1 } }] },
+        ],
+      },
+    },
+    {
+      direction: OrderDirection.DESC,
+      value: "A",
+      expected: {
+        $or: [
+          { title: { $lt: "A" } },
+          { $and: [{ title: { $eq: "A" } }, { id: { $lt: 1 } }] },
+          { title: { $eq: null } },
+        ],
+      },
+    },
+  ])(
+    "respects nulls-lowest platforms for $direction at $value",
+    async ({ direction, value, expected }) => {
+      const { entityManager, find } = createEntityManager([], 0, true);
+      await new ConnectionQueryBuilder(
+        entityManager,
+        BookConnection as unknown as ConnectionClass<Book>,
+        {
+          first: 2,
+          after: new Cursor({ id: 1, value }).toString(),
+          orderBy: { field: "title", direction },
+        },
+      ).query();
+      expect(find).toHaveBeenCalledWith(
+        BookEntity,
+        expected,
+        expect.any(Object),
+      );
+    },
+  );
 
   it.each([
     { first: 2, query: null },
@@ -329,6 +389,7 @@ describe("ConnectionQueryBuilder", () => {
           {
             $and: [{ title: { $eq: "A" } }, { id: { $gt: 1 } }],
           },
+          { title: { $eq: null } },
         ],
       },
       expect.objectContaining({
@@ -446,6 +507,7 @@ describe("ConnectionQueryBuilder", () => {
           {
             $and: [{ title: { $eq: "A" } }, { id: { $gt: 10 } }],
           },
+          { title: { $eq: null } },
         ],
       },
       expect.objectContaining({

@@ -7,10 +7,12 @@ The `@nest-boot/graphql-connection` module provides cursor-based pagination for 
 
 ## Installation
 
+Requires MikroORM 7.2 or later. Cursor pagination follows the database platform's native null ordering, including when traversing nullable sort fields in either direction.
+
 ```bash
-npm install @nest-boot/graphql-connection @nest-boot/graphql @mikro-orm/core @mikro-orm/knex
+npm install @nest-boot/graphql-connection @nest-boot/graphql @mikro-orm/core@^7.2.0 @mikro-orm/sql@^7.2.0
 # or
-pnpm add @nest-boot/graphql-connection @nest-boot/graphql @mikro-orm/core @mikro-orm/knex
+pnpm add @nest-boot/graphql-connection @nest-boot/graphql @mikro-orm/core@^7.2.0 @mikro-orm/sql@^7.2.0
 ```
 
 ## Basic Usage
