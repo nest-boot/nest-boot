@@ -9,13 +9,18 @@ import {
   DEFAULT_WORKSPACE_ROLES,
 } from "../workspace.constants.js";
 
-/** Extends built-in catalogs and role grants without mutating caller configuration. */
+const catalogs = {
+  user: new WeakMap<object, ReturnType<typeof resolveAuthCatalog>>(),
+  workspace: new WeakMap<object, ReturnType<typeof resolveAuthCatalog>>(),
+};
+
+/** Resolves one immutable catalog per scope configuration, shared by startup, services and abilities. */
 export function resolveAuthCatalog(
   options: AuthModuleOptions,
   scope: "user" | "workspace",
 ): {
-  permissions: string[];
-  roles: AuthModuleRoles;
+  readonly permissions: readonly string[];
+  readonly roles: AuthModuleRoles;
 } {
   const defaults =
     scope === "user"
@@ -25,27 +30,34 @@ export function resolveAuthCatalog(
           roles: DEFAULT_WORKSPACE_ROLES,
         };
   const configured = options[scope];
+  const key = configured ?? defaults.roles;
+  const cached = catalogs[scope].get(key);
+  if (cached) return cached;
   const builtInRoles: AuthModuleRoles = defaults.roles;
   const roleNames = new Set([
     ...Object.keys(builtInRoles),
     ...Object.keys(configured?.roles ?? {}),
   ]);
-  return {
-    permissions: [
+  const catalog = Object.freeze({
+    permissions: Object.freeze([
       ...new Set([...defaults.permissions, ...(configured?.permissions ?? [])]),
-    ],
-    roles: Object.fromEntries(
-      [...roleNames].map((role) => [
-        role,
-        [
-          ...new Set([
-            ...(Object.hasOwn(builtInRoles, role) ? builtInRoles[role] : []),
-            ...(configured?.roles && Object.hasOwn(configured.roles, role)
-              ? (configured.roles[role] ?? [])
-              : []),
+    ]),
+    roles: Object.freeze(
+      Object.fromEntries(
+        [...roleNames].map((role) => [
+          role,
+          Object.freeze([
+            ...new Set([
+              ...(Object.hasOwn(builtInRoles, role) ? builtInRoles[role] : []),
+              ...(configured?.roles && Object.hasOwn(configured.roles, role)
+                ? (configured.roles[role] ?? [])
+                : []),
+            ]),
           ]),
-        ],
-      ]),
+        ]),
+      ),
     ),
-  };
+  });
+  catalogs[scope].set(key, catalog);
+  return catalog;
 }

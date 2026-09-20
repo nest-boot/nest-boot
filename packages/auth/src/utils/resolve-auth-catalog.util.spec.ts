@@ -5,6 +5,27 @@ import {
 import { resolveAuthCatalog } from "./resolve-auth-catalog.util.js";
 
 describe("additive auth configuration", () => {
+  it("reuses deeply immutable catalogs without leaking between configurations or scopes", () => {
+    const configured = {
+      permissions: ["article:read"],
+      roles: { editor: ["article:read"] },
+    };
+    const first = resolveAuthCatalog({ user: configured }, "user");
+    expect(resolveAuthCatalog({ user: configured }, "user")).toBe(first);
+    expect(Object.isFrozen(first)).toBe(true);
+    expect(Object.isFrozen(first.permissions)).toBe(true);
+    expect(Object.isFrozen(first.roles)).toBe(true);
+    expect(Object.isFrozen(first.roles.editor)).toBe(true);
+    expect(resolveAuthCatalog({ workspace: configured }, "workspace")).not.toBe(
+      first,
+    );
+    expect(
+      resolveAuthCatalog({ user: { permissions: ["other:read"] } }, "user")
+        .permissions,
+    ).not.toContain("article:read");
+    configured.roles.editor.push("article:write");
+    expect(first.roles.editor).toEqual(["article:read"]);
+  });
   it("extends permission catalogs and same-name roles while preserving built-in roles", () => {
     const options = {
       user: {

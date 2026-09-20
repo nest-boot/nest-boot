@@ -446,6 +446,12 @@ built-in roles. Empty additions preserve defaults. Entity `set*` mutations still
 replace stored roles or direct permissions; API-key `allowedPermissions` remains
 an explicit ceiling.
 
+Configuration catalogs are immutable snapshots reused by startup validation,
+GraphQL enums, and Services. Configure them before module initialization; change
+stored user/member roles or direct grants through Services at runtime instead
+of mutating module options. Request identity changes still invalidate effective
+permission snapshots and rebuild abilities.
+
 Role and permission values remain GraphQL enums. These catalogs retain all configured
 options and mark the current principal's grant ceiling, including API-key restrictions.
 They do not authorize changes to a particular target. Disable unavailable new grants

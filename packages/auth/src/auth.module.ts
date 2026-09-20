@@ -64,6 +64,7 @@ import {
   DEFAULT_USER_ROLE,
   DEFAULT_USER_ROLES,
 } from "./user.constants.js";
+import { resolveApiKeyPermissionCatalog } from "./utils/api-key-permissions.util.js";
 import {
   assertAuthPermissionList,
   assertAuthPermissionSubset,
@@ -147,9 +148,6 @@ import {
           resolveAuthCatalog(options, "user");
         const { roles: workspaceRoles, permissions: workspacePermissions } =
           resolveAuthCatalog(options, "workspace");
-        const apiKeyPermissionCatalog = [
-          ...new Set([...userPermissions, ...workspacePermissions]),
-        ];
 
         assertAuthRolePermissions(userRoles, userPermissions, "user");
         assertAuthRolePermissions(
@@ -167,11 +165,10 @@ import {
           );
         }
         for (const scope of ["user", "workspace"] as const) {
-          const catalog =
-            scope === "user" ? apiKeyPermissionCatalog : workspacePermissions;
+          const { permissions: catalog, defaults } =
+            resolveApiKeyPermissionCatalog(options, scope);
           const configured = options.apiKey?.[scope];
           const allowed = configured?.allowedPermissions ?? catalog;
-          const defaults = configured?.defaultPermissions ?? [];
           assertAuthPermissionList(
             allowed,
             catalog,
