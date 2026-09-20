@@ -1,3 +1,14 @@
+## 8.0.1-beta.2 (2026-09-20)
+
+### 🩹 Fixes
+
+- **graphql-connection:** accept null optional arguments ([#335](https://github.com/nest-boot/nest-boot/pull/335))
+- **graphql-rate-limit:** validate connection page sizes ([#338](https://github.com/nest-boot/nest-boot/pull/338))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.1-beta.1 (2026-09-19)
 
 ### 🚀 Features

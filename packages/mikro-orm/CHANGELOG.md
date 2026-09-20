@@ -1,3 +1,13 @@
+## 8.0.3-beta.3 (2026-09-20)
+
+### 🩹 Fixes
+
+- **mikro-orm:** hydrate entity service references ([#342](https://github.com/nest-boot/nest-boot/pull/342))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.3-beta.2 (2026-09-19)
 
 ### 🚀 Features

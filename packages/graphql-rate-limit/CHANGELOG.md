@@ -1,3 +1,13 @@
+## 8.0.2-beta.1 (2026-09-20)
+
+### 🩹 Fixes
+
+- **graphql-rate-limit:** validate connection page sizes ([#338](https://github.com/nest-boot/nest-boot/pull/338))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.2-beta.0 (2026-09-19)
 
 ### 🧱 Updated Dependencies

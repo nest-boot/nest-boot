@@ -1,3 +1,13 @@
+## 8.0.4-beta.1 (2026-09-20)
+
+### 🩹 Fixes
+
+- **bullmq-mikro-orm:** handle history event failures ([#343](https://github.com/nest-boot/nest-boot/pull/343))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.4-beta.0 (2026-09-19)
 
 ### 🧱 Updated Dependencies
