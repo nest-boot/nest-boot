@@ -53,45 +53,45 @@ export function createConnectionArgs<Entity extends object>(
           }
         : {}),
     })
-    query?: string;
+    query?: string | null;
 
     // eslint-disable-next-line @nest-boot/graphql-field-config-from-types
     @Field(() => FilterScalar, {
       nullable: true,
       description: `Filter ${humanizeAndPluralizeEntityName} using MongoDB query syntax.`,
     })
-    filter?: FilterQuery<Entity>;
+    filter?: FilterQuery<Entity> | null;
 
     @Field(() => Int, {
       nullable: true,
       description: "Returns up to the first `n` elements from the list.",
     })
-    first?: number;
+    first?: number | null;
 
     @Field(() => Int, {
       nullable: true,
       description: "Returns up to the last `n` elements from the list.",
     })
-    last?: number;
+    last?: number | null;
 
     @Field(() => String, {
       description: `Returns the elements that come after the specified cursor.`,
       nullable: true,
     })
-    after?: string;
+    after?: string | null;
 
     @Field(() => String, {
       description: `Returns the elements that come before the specified cursor.`,
       nullable: true,
     })
-    before?: string;
+    before?: string | null;
 
     // eslint-disable-next-line @nest-boot/graphql-field-config-from-types
     @Field(() => OrderClass, {
       nullable: true,
       description: `Ordering options for the returned ${humanizeAndPluralizeEntityName}.`,
     })
-    orderBy?: OrderInterface<Entity>;
+    orderBy?: OrderInterface<Entity> | null;
   }
 
   return ConnectionArgs;

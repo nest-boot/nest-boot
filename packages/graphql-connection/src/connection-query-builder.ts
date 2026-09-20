@@ -183,7 +183,7 @@ export class ConnectionQueryBuilder<
   }
 
   private getQueryOrderMap(): QueryOrderMap<Entity>[] {
-    if (typeof this.args.orderBy === "undefined") {
+    if (this.args.orderBy == null) {
       return [
         {
           id: this.queryOrder,
@@ -227,7 +227,7 @@ export class ConnectionQueryBuilder<
           } as unknown as FilterQuery<Entity>)
         : null;
 
-    return typeof this.args.orderBy !== "undefined" &&
+    return this.args.orderBy != null &&
       typeof this.cursor?.value !== "undefined"
       ? ({
           $or: [
@@ -250,10 +250,7 @@ export class ConnectionQueryBuilder<
   }
 
   private getQueryStringToFilterQuery(): FilterQuery<Entity> | null {
-    if (
-      typeof this.args.query !== "undefined" &&
-      this.args.query.trim() !== ""
-    ) {
+    if (this.args.query != null && this.args.query.trim() !== "") {
       const { fieldOptionsMap, filterQuerySchema } = this.metadata;
 
       // Build ParseOptions, only include filterable fields
@@ -369,7 +366,7 @@ export class ConnectionQueryBuilder<
       node: node as Entity,
       cursor: new Cursor({
         id: (node as any)?.id,
-        ...(typeof this.args.orderBy !== "undefined"
+        ...(this.args.orderBy != null
           ? { value: get(node, this.args.orderBy.field) }
           : {}),
       }).toString(),
