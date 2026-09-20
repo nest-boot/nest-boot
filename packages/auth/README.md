@@ -429,8 +429,10 @@ ownership checks and self-service operations remain enforced by Services.
 The `userRoles` and `workspaceRoles` queries return `{ role, grantable }` objects;
 `userPermissions` and `workspacePermissions` return `{ permission, grantable }`.
 `userApiKeyPermissions` and `workspaceApiKeyPermissions` also return
-`{ permission, grantable }` entries, constrained by the API-key allowlist and the
-issuer's grant ceiling. Workspace keys cannot grant `invitation:create`.
+`{ permission, grantable, default }` entries. `grantable` includes the API-key
+allowlist and issuer's grant ceiling; `default` reflects configured defaults.
+Editors preselect only `default && grantable`. Workspace keys cannot grant
+`invitation:create`.
 
 Module permission catalogs and role maps extend built-in defaults. Same-name
 role grants are merged; custom permissions are not automatically granted to

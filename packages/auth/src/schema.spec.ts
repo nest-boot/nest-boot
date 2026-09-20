@@ -217,6 +217,13 @@ describe("auth GraphQL schema", () => {
       expect(fields[field]?.args.map(({ name }) => name)).toContain("first");
     }
     expect(queries.workspaceAssignableRoles).toBeUndefined();
+    for (const type of [
+      "UserApiKeyPermissionOption",
+      "WorkspaceApiKeyPermissionOption",
+    ]) {
+      const fields = (schema.getType(type) as GraphQLObjectType).getFields();
+      expect(fields.default.type.toString()).toBe("Boolean!");
+    }
     for (const [query, type, field, enumName] of [
       ["userRoles", "UserRoleOption", "role", "UserRole"],
       ["workspaceRoles", "WorkspaceRoleOption", "role", "WorkspaceRole"],

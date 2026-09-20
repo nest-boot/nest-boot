@@ -8,7 +8,9 @@ import { UserApiKeyResolver } from "./user-api-key.resolver.js";
 describe("UserApiKeyResolver", () => {
   it("returns the service's permission choices for the current user", () => {
     const owner = { id: "user_1" } as User;
-    const result = [{ permission: "workspace:update", grantable: false }];
+    const result = [
+      { permission: "workspace:update", grantable: false, default: true },
+    ];
     const { resolver, apiKeyService } = createResolver({
       getUserApiKeyPermissions: vi.fn(() => result),
     });

@@ -120,10 +120,12 @@ AuthModule.forRoot({
 时显式传入。Workspace Key 没有用户身份，因此不能发送邀请。
 
 Key 编辑界面使用 `userApiKeyPermissions` 与 `workspaceApiKeyPermissions` 获取
-`{ permission, grantable }` 列表，权限字段使用对应的 API Key 权限枚举。
+`{ permission, grantable, default }` 列表，权限字段使用对应的 API Key 权限枚举。
 可授予状态综合配置白名单、签发者授权上限与当前 Key 的权限；工作区 Key 的
 `invitation:create` 始终不可授予。不可授予项仍可展示，但不能用于新选项或默认勾选。
 Service 仍会校验每次写入，这份列表不能替代授权检查。
+`default` 独立表示配置中的默认权限；前端仅预选 `default && grantable` 的项，
+不要根据枚举值自行推断默认权限。
 
 白名单只是额外上限，不会自动授予权限。请求权限仍必须符合 Key 所有者类型，并且不能
 超过签发者的有效权限。如果当前请求本身使用 API Key 认证，新建或更新的 Key 也不能
