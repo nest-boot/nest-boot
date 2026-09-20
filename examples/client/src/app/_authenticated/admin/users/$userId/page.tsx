@@ -264,16 +264,16 @@ function AdminUserPage() {
       </PageHeader>
       <PageContent className="space-y-6">
         <UserRolesForm
-          key={user.id}
+          key={`${user.id}-roles`}
           user={user}
           run={run}
           options={data?.userRoles ?? []}
         />
 
-        <UserProfileForm key={user.id} user={user} run={run} />
+        <UserProfileForm key={`${user.id}-profile`} user={user} run={run} />
 
         <UserPermissionsForm
-          key={user.id}
+          key={`${user.id}-permissions`}
           user={user}
           run={run}
           options={data?.userPermissions ?? []}

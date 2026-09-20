@@ -8,6 +8,54 @@ import {
 import { graphqlRequest } from "./utils/graphql";
 import { uniqueSeed } from "./utils/unique";
 
+test("resets each admin form when navigating between users without reloading", async ({
+  page,
+}) => {
+  const duplicateKeyErrors: Array<string> = [];
+  page.on("console", (message) => {
+    if (/Encountered two children with the same key/i.test(message.text())) {
+      duplicateKeyErrors.push(message.text());
+    }
+  });
+  await signInAsE2eAdministrator(page);
+  const users = [];
+  for (const name of ["First managed user", "Second managed user"]) {
+    const { createUser } = await graphqlRequest<{ createUser: { id: string } }>(
+      page.request,
+      "mutation($input: CreateUserInput!) { createUser(input: $input) { id } }",
+      {
+        input: {
+          name,
+          email: `${uniqueSeed("form-identity")}@example.com`,
+          password: "test-password",
+        },
+      },
+    );
+    users.push({ ...createUser, name });
+  }
+  await page.goto(`/admin/users/${users[0].id}`);
+  await page.getByTestId("admin-user-name").fill("First user's unsaved draft");
+  await page.getByTestId("user-role-ADMIN").check();
+  await page.getByTestId("permission-USER__READ").check();
+
+  for (const user of [users[1], users[0]]) {
+    await page.evaluate((id) => {
+      // TanStack's browser history subscription handles this without a document reload.
+      window.history.pushState({}, "", `/admin/users/${id}`);
+    }, user.id);
+    await expect(
+      page.getByRole("heading", { name: user.name, exact: true }),
+    ).toBeVisible();
+    await expect(page.getByTestId("admin-user-name")).toHaveCount(1);
+    await expect(page.getByTestId("admin-user-name")).toHaveValue(user.name);
+    await expect(page.getByTestId("user-role-USER")).toBeChecked();
+    await expect(page.getByTestId("user-role-ADMIN")).not.toBeChecked();
+    await expect(page.getByTestId("permission-USER__READ")).not.toBeChecked();
+    await page.getByTestId("admin-user-name").fill("Another unsaved draft");
+  }
+  expect(duplicateKeyErrors).toEqual([]);
+});
+
 test("preserves independent user drafts when another section is saved", async ({
   browser,
   page,
