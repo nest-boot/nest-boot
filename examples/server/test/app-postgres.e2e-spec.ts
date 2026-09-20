@@ -139,6 +139,17 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     restoreEnv();
   }, 30_000);
 
+  it('exposes the password policy without authentication', async () => {
+    const result = await gql(
+      'query { passwordPolicy { minLength maxLength } }',
+    );
+    expectNoGraphQLErrors(result);
+    expect(result.body.data.passwordPolicy).toEqual({
+      minLength: 8,
+      maxLength: 128,
+    });
+  });
+
   it('exposes only social providers enabled by the server', async () => {
     const result = await gql(/* GraphQL */ `
       query {

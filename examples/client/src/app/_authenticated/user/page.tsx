@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 import { useCurrentUserContext } from "../contexts/current-user-context";
+import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
 import { Button } from "@/components/thread-ui/button";
 import {
   Page,
@@ -81,7 +82,7 @@ function UserComponent() {
 
       try {
         await updateUser({ variables: { input: { name } } });
-        await router.invalidate();
+        await refreshAfterMutation(() => router.invalidate());
         form.reset({ name });
         toast.success(t("user:profile.toast.updated"));
       } catch (error) {

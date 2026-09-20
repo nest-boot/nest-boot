@@ -33,6 +33,7 @@ import type { SignUpOptions } from "../interfaces/sign-up-options.interface.js";
 import type { SignUpResult } from "../interfaces/sign-up-result.interface.js";
 import type { UnlinkAuthAccountOptions } from "../interfaces/unlink-auth-account-options.interface.js";
 import type { UpdateAuthUserOptions } from "../interfaces/update-auth-user-options.interface.js";
+import type { PasswordPolicy } from "../objects/password-policy.object.js";
 import type { SignUpPayload } from "../objects/sign-up-payload.object.js";
 import type { AuthAccountSelector } from "../types/auth-account-selector.type.js";
 import { applyAuthResponseCookies } from "../utils/apply-auth-response-cookies.util.js";
@@ -174,6 +175,11 @@ export class AuthService {
   }
 
   private readonly auth: InternalAuth;
+
+  /** Returns the public credential password policy. */
+  getPasswordPolicy(): PasswordPolicy {
+    return this.userService.getPasswordPolicy();
+  }
 
   /** Starts impersonation and adopts its identity before returning application fields. */
   async impersonateUser(id: string): Promise<User> {

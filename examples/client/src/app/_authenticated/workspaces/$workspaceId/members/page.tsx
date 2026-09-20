@@ -15,6 +15,7 @@ import { isEmpty, pick } from "lodash";
 import { useCurrentMemberContext } from "../contexts/current-member-context";
 import { InviteMemberDialog } from "./components/invite-member-dialog";
 import type { DataFilterItemProps } from "@/components/thread-ui/data-filter";
+import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
 import { useAbility } from "@/contexts/ability-context";
 import { Button } from "@/components/thread-ui/button";
 import { DataFilter } from "@/components/thread-ui/data-filter";
@@ -332,8 +333,17 @@ function MembersComponent() {
     });
     if (!confirmed) return;
 
-    await cancelInvitation({ variables: { id: invitationId } });
-    await refetch();
+    try {
+      await cancelInvitation({ variables: { id: invitationId } });
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t("member:details.toast.update_failed"),
+      );
+      return;
+    }
+    await refreshAfterMutation(() => refetch());
   };
 
   const handleRemoveMemberClick = async (memberId: string) => {
@@ -363,7 +373,7 @@ function MembersComponent() {
       });
 
       toast.success(t("member:toast.deleted_success"));
-      refetch();
+      await refreshAfterMutation(() => refetch());
     } catch (err) {
       if (err instanceof Error) {
         toast.error(err.message);
@@ -407,10 +417,10 @@ function MembersComponent() {
         memberId === currentMember.id &&
         newStatus === MemberStatus.DISABLED
       ) {
-        await navigate({ to: "/user/workspaces" });
+        await refreshAfterMutation(() => navigate({ to: "/user/workspaces" }));
         return;
       }
-      await refetch();
+      await refreshAfterMutation(() => refetch());
     } catch (err) {
       if (err instanceof Error) {
         toast.error(err.message);
@@ -663,7 +673,7 @@ function MembersComponent() {
             inviteOpen={inviteOpen}
             onInviteOpenChange={setInviteOpen}
             onSuccess={async () => {
-              await refetch();
+              await refreshAfterMutation(() => refetch());
             }}
           />
         ) : null}

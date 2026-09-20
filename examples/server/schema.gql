@@ -562,6 +562,11 @@ type PageInfo {
   startCursor: String
 }
 
+type PasswordPolicy {
+  maxLength: Int!
+  minLength: Int!
+}
+
 type Query {
   currentAbilityRules: [AuthAbilityRuleType!]!
   currentMember: Member
@@ -570,6 +575,7 @@ type Query {
   currentWorkspace: Workspace
   invitation(id: ID!): Invitation
   member(id: ID!): Member
+  passwordPolicy: PasswordPolicy!
   socialProviders: [AuthSocialProviderType!]!
   user(id: ID!): User
   userApiKeyPermissions: [UserApiKeyPermissionOption!]!

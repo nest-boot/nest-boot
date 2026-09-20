@@ -1,4 +1,5 @@
 import { ForbiddenException } from "@nestjs/common";
+import type { GraphQLResolveInfo } from "graphql";
 
 import { User as BaseUser } from "../entities/user.entity.js";
 import { Workspace as BaseWorkspace } from "../entities/workspace.entity.js";
@@ -44,22 +45,30 @@ describe("connection field delegation", () => {
     const user = new BaseUser();
     const workspace = new BaseWorkspace();
     const args = { first: 10, after: "cursor" };
+    const info = { fieldNodes: [] } as unknown as GraphQLResolveInfo;
 
-    await expect(userResolver.workspaces(user, args)).resolves.toBe(result);
-    await expect(userResolver.apiKeys(user, args)).resolves.toBe(result);
-    await expect(workspaceResolver.members(workspace, args)).resolves.toBe(
+    await expect(userResolver.workspaces(user, args, info)).resolves.toBe(
       result,
     );
-    await expect(workspaceResolver.apiKeys(workspace, args)).resolves.toBe(
-      result,
-    );
-    expect(getWorkspaceConnectionByUser).toHaveBeenCalledWith(user, args);
-    expect(getUserApiKeyConnection).toHaveBeenCalledWith(user, args);
+    await expect(userResolver.apiKeys(user, args, info)).resolves.toBe(result);
+    await expect(
+      workspaceResolver.members(workspace, args, info),
+    ).resolves.toBe(result);
+    await expect(
+      workspaceResolver.apiKeys(workspace, args, info),
+    ).resolves.toBe(result);
+    expect(getWorkspaceConnectionByUser).toHaveBeenCalledWith(user, args, info);
+    expect(getUserApiKeyConnection).toHaveBeenCalledWith(user, args, info);
     expect(getMemberConnectionByWorkspace).toHaveBeenCalledWith(
       workspace,
       args,
+      info,
     );
-    expect(getWorkspaceApiKeyConnection).toHaveBeenCalledWith(workspace, args);
+    expect(getWorkspaceApiKeyConnection).toHaveBeenCalledWith(
+      workspace,
+      args,
+      info,
+    );
 
     for (const mock of [
       getWorkspaceConnectionByUser,
@@ -68,17 +77,17 @@ describe("connection field delegation", () => {
       getWorkspaceApiKeyConnection,
     ])
       mock.mockRejectedValue(new ForbiddenException());
-    await expect(userResolver.workspaces(user, args)).rejects.toBeInstanceOf(
-      ForbiddenException,
-    );
-    await expect(userResolver.apiKeys(user, args)).rejects.toBeInstanceOf(
+    await expect(
+      userResolver.workspaces(user, args, info),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(userResolver.apiKeys(user, args, info)).rejects.toBeInstanceOf(
       ForbiddenException,
     );
     await expect(
-      workspaceResolver.members(workspace, args),
+      workspaceResolver.members(workspace, args, info),
     ).rejects.toBeInstanceOf(ForbiddenException);
     await expect(
-      workspaceResolver.apiKeys(workspace, args),
+      workspaceResolver.apiKeys(workspace, args, info),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

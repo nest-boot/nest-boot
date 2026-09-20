@@ -47,7 +47,8 @@
       "name": {
         "label": "名称",
         "placeholder": "我的工作空间",
-        "required": "工作空间名称是必填的"
+        "required": "工作空间名称是必填的",
+        "too_long": "工作区名称不能超过 255 个字符"
       }
     },
     "leave": {
@@ -60,5 +61,10 @@
       "title": "退出工作空间"
     }
   },
-  "title": "设置"
+  "title": "设置",
+  "create": {
+    "title": "创建工作区",
+    "description": "创建一个新工作区以开始管理项目。",
+    "failed": "创建工作区失败"
+  }
 }

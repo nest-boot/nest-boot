@@ -1,6 +1,7 @@
 import {
   Args,
   ID,
+  Info,
   Mutation,
   Parent,
   Query,
@@ -8,6 +9,7 @@ import {
   Resolver,
 } from "@nest-boot/graphql";
 import type { ConnectionArgsInterface } from "@nest-boot/graphql-connection";
+import type { GraphQLResolveInfo } from "graphql";
 
 import {
   InvitationConnection,
@@ -65,10 +67,12 @@ export class WorkspaceResolver {
     @Parent() workspace: Workspace,
     @Args({ type: () => MemberConnectionArgs })
     args: ConnectionArgsInterface<Member>,
+    @Info() info?: GraphQLResolveInfo,
   ) {
     return await this.memberService.getMemberConnectionByWorkspace(
       workspace,
       args,
+      info,
     );
   }
 
@@ -87,10 +91,12 @@ export class WorkspaceResolver {
     @Parent() workspace: Workspace,
     @Args({ type: () => WorkspaceApiKeyConnectionArgs })
     args: ConnectionArgsInterface<WorkspaceApiKey>,
+    @Info() info?: GraphQLResolveInfo,
   ) {
     return await this.apiKeyService.getWorkspaceApiKeyConnection(
       workspace,
       args,
+      info,
     );
   }
 
@@ -100,10 +106,12 @@ export class WorkspaceResolver {
     @Parent() workspace: Workspace,
     @Args({ type: () => InvitationConnectionArgs })
     args: ConnectionArgsInterface<Invitation>,
+    @Info() info?: GraphQLResolveInfo,
   ) {
     return await this.invitationService.getInvitationConnectionByWorkspace(
       workspace,
       args,
+      info,
     );
   }
 

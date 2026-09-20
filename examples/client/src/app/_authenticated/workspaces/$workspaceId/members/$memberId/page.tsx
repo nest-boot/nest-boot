@@ -15,6 +15,7 @@ import { MemberRolesForm } from "./components/member-roles-form";
 import { MemberPermissionsForm } from "./components/member-permissions-form";
 import type { MemberFormProps } from "./components/member-form-props";
 import type { GetMemberFromMemberRouteQuery } from "@/gql/graphql";
+import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
 import { useAbility } from "@/contexts/ability-context";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import {
@@ -132,7 +133,7 @@ function MemberDetails({
         window.location.assign("/user/workspaces");
         return false;
       }
-      await router.invalidate();
+      await refreshAfterMutation(() => router.invalidate());
       toast.success(t("member:details.toast.updated_success"));
       return true;
     } catch (error) {
@@ -169,10 +170,12 @@ function MemberDetails({
           cache.gc();
         },
       });
-      await navigate({
-        to: "/workspaces/$workspaceId/members",
-        params: { workspaceId },
-      });
+      await refreshAfterMutation(() =>
+        navigate({
+          to: "/workspaces/$workspaceId/members",
+          params: { workspaceId },
+        }),
+      );
       toast.success(t("member:details.toast.deleted_success"));
     } catch (error) {
       toast.error(t("member:details.toast.delete_failed"), {

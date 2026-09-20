@@ -6,6 +6,59 @@ import { waitForEmailUrl } from "./utils/mailpit";
 import { uniqueSeed } from "./utils/unique";
 
 test.describe("email authentication", () => {
+  test("sends short existing passwords to the server instead of enforcing registration limits", async ({
+    page,
+  }) => {
+    let password: string | undefined;
+    await page.route("**/graphql", async (route) => {
+      const request = route.request().postDataJSON();
+      if (request.operationName === "signInFromLoginForm") {
+        password = request.variables.input.password;
+        await route.fulfill({
+          json: { errors: [{ message: "Invalid credentials" }] },
+        });
+      } else await route.continue();
+    });
+    await page.goto("/auth/login");
+    await page.getByTestId("auth-email-input").fill("short@example.com");
+    await page.getByTestId("auth-password-input").fill("short");
+    await page.getByTestId("auth-submit").click();
+    await expect.poll(() => password).toBe("short");
+    await expect(page.getByText("Invalid credentials").first()).toBeVisible();
+  });
+
+  test("validates registration using the server's minimum and maximum", async ({
+    page,
+  }) => {
+    let submissions = 0;
+    await page.route("**/graphql", async (route) => {
+      const request = route.request().postDataJSON();
+      if (request.operationName === "getPasswordPolicy") {
+        await route.fulfill({
+          json: { data: { passwordPolicy: { minLength: 6, maxLength: 10 } } },
+        });
+      } else if (request.operationName === "signUpFromLoginForm") {
+        submissions++;
+        await route.fulfill({
+          json: { errors: [{ message: "Registration intercepted" }] },
+        });
+      } else await route.continue();
+    });
+    await page.goto("/auth/register");
+    await page.getByTestId("auth-name-input").fill("Policy test");
+    await page.getByTestId("auth-email-input").fill("policy@example.com");
+    await page.getByTestId("auth-password-input").fill("12345");
+    await page.getByTestId("auth-submit").click();
+    await expect(page.getByText("密码至少需要 6 个字符。")).toBeVisible();
+    await page.getByTestId("auth-password-input").fill("12345678901");
+    await page.getByTestId("auth-submit").click();
+    await expect(page.getByText("密码最多允许 10 个字符。")).toBeVisible();
+    expect(submissions).toBe(0);
+    await page.getByTestId("auth-password-input").fill("123456");
+    await page.getByTestId("auth-submit").click();
+    await expect.poll(() => submissions).toBe(1);
+  });
+
   test("registers and logs in with email and password", async ({
     context,
     page,

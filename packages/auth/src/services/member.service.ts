@@ -7,8 +7,8 @@ import {
 import type { SqlEntityManager } from "@mikro-orm/sql";
 import {
   type ConnectionArgsInterface,
-  type ConnectionInterface,
   ConnectionManager,
+  type ConnectionResult,
 } from "@nest-boot/graphql-connection";
 import { RequestContext } from "@nest-boot/request-context";
 import {
@@ -19,6 +19,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import type { GraphQLResolveInfo } from "graphql";
 
 import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
@@ -86,11 +87,12 @@ export class MemberService {
   async getMemberConnectionByWorkspace(
     workspace: Workspace,
     args: ConnectionArgsInterface<Member>,
-  ): Promise<ConnectionInterface<Member>> {
+    info?: GraphQLResolveInfo,
+  ): Promise<ConnectionResult<Member>> {
     const where = this.getMemberListFilter(workspace);
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
-    ).find<Member>(MemberConnection, args, { where });
+    ).find<Member>(MemberConnection, args, { where, ...(info && { info }) });
     for (const { node } of connection.edges) {
       assertCan("read", node);
     }

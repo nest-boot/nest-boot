@@ -4,8 +4,8 @@ import { EntityManager, Reference } from "@mikro-orm/core";
 import type { EntityManager as SqlEntityManager } from "@mikro-orm/sql";
 import {
   type ConnectionArgsInterface,
-  type ConnectionInterface,
   ConnectionManager,
+  type ConnectionResult,
 } from "@nest-boot/graphql-connection";
 import { HashService } from "@nest-boot/hash";
 import { RequestContext } from "@nest-boot/request-context";
@@ -16,6 +16,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import type { GraphQLResolveInfo } from "graphql";
 
 import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
@@ -32,6 +33,7 @@ import type { CreateUserOptions } from "../interfaces/create-user-options.interf
 import type { ImpersonationOptions } from "../interfaces/impersonation-options.interface.js";
 import type { UpdateUserOptions } from "../interfaces/update-user-options.interface.js";
 import type { UserHasPermissionsOptions } from "../interfaces/user-has-permissions-options.interface.js";
+import type { PasswordPolicy } from "../objects/password-policy.object.js";
 import type { UserPermissionOption } from "../objects/user-permission-option.object.js";
 import type { UserRoleOption } from "../objects/user-role-option.object.js";
 import type { AuthModuleRoles } from "../types/auth-module-roles.type.js";
@@ -81,6 +83,14 @@ export class UserService {
       ): Promise<User | null>;
     },
   ) {}
+
+  /** Returns the configured credential password length limits. */
+  getPasswordPolicy(): PasswordPolicy {
+    return {
+      minLength: this.options.emailAndPassword?.minPasswordLength ?? 8,
+      maxLength: this.options.emailAndPassword?.maxPasswordLength ?? 128,
+    };
+  }
 
   /** Creates a user and its credential account atomically. */
   async createUser(input: CreateUserOptions): Promise<User> {
@@ -300,11 +310,13 @@ export class UserService {
   /** Paginates users without bypassing application RLS. */
   async getUserConnection(
     args: ConnectionArgsInterface<User>,
-  ): Promise<ConnectionInterface<User>> {
+    info?: GraphQLResolveInfo,
+  ): Promise<ConnectionResult<User>> {
     assertCan("read", User);
-    const connection = await new ConnectionManager(
-      this.em as SqlEntityManager,
-    ).find<User>(UserConnection, args);
+    const manager = new ConnectionManager(this.em as SqlEntityManager);
+    const connection = info
+      ? await manager.find<User>(UserConnection, args, { info })
+      : await manager.find<User>(UserConnection, args);
     for (const { node } of connection.edges) {
       assertCan("read", node);
     }
@@ -608,8 +620,7 @@ export class UserService {
   }
 
   private assertPasswordLength(password: string): void {
-    const minimum = this.options.emailAndPassword?.minPasswordLength ?? 8;
-    const maximum = this.options.emailAndPassword?.maxPasswordLength ?? 128;
+    const { minLength: minimum, maxLength: maximum } = this.getPasswordPolicy();
 
     if (password.length < minimum) {
       throw new BadRequestException(

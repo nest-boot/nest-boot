@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { AuthPageShell } from "../components/auth-page-shell";
 import type { FormEvent } from "react";
+import { usePasswordPolicy } from "@/hooks/use-password-policy";
 import { Button } from "@/components/thread-ui/button";
 import { Input } from "@/components/thread-ui/input";
 import {
@@ -37,6 +38,7 @@ export const Route = createFileRoute("/auth/reset-password/")({
 });
 
 function ResetPasswordComponent() {
+  const { passwordSchema } = usePasswordPolicy();
   const search = useSearch({ from: "/auth/reset-password/" });
   const [resetPassword] = useMutation(RESET_PASSWORD_FROM_RESET_PASSWORD);
   const [newPassword, setNewPassword] = useState("");
@@ -50,7 +52,7 @@ function ResetPasswordComponent() {
     event.preventDefault();
     setError(undefined);
 
-    const parsed = createResetPasswordSchema().safeParse({
+    const parsed = createResetPasswordSchema(passwordSchema).safeParse({
       confirmPassword,
       newPassword,
     });
@@ -173,10 +175,10 @@ function ResetPasswordComponent() {
   );
 }
 
-function createResetPasswordSchema() {
+function createResetPasswordSchema(passwordSchema: z.ZodString) {
   return z
     .object({
-      newPassword: z.string().min(8, t("auth:form.password.min")),
+      newPassword: passwordSchema,
       confirmPassword: z.string(),
     })
     .refine((value) => value.newPassword === value.confirmPassword, {

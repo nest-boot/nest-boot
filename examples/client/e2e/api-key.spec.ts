@@ -7,6 +7,64 @@ import { addMemberByApi, createFirstWorkspace } from "./utils/workspace";
 import type { Page } from "@playwright/test";
 
 test.describe("API keys", () => {
+  test("retries only the list refresh after successful creation and deletion", async ({
+    page,
+  }) => {
+    const seed = uniqueSeed("key-refresh");
+    await registerUser(page, {
+      email: `${seed}@example.com`,
+      name: "Key refresh",
+    });
+    await page.goto("/user/api-keys");
+    await expect(page.getByTestId("api-keys-page")).toBeVisible();
+    let writes = 0;
+    let deletes = 0;
+    let failRefresh = true;
+    await page.route("**/graphql", async (route) => {
+      const request = route.request().postDataJSON();
+      if (request.operationName === "deleteUserApiKeyFromUserApiKeysRoute")
+        deletes++;
+      if (request.operationName === "createUserApiKeyFromUserApiKeysRoute")
+        writes++;
+      if (
+        request.operationName === "getUserApiKeysFromUserApiKeysRoute" &&
+        writes > 0 &&
+        failRefresh
+      ) {
+        await route.fulfill({
+          json: { errors: [{ message: "Read unavailable" }] },
+        });
+      } else await route.continue();
+    });
+    await page.getByTestId("api-key-create-action").click();
+    await page.getByTestId("api-key-name-input").fill(seed);
+    await page.getByTestId("api-key-create-submit").click();
+    await expect(page.getByTestId("api-key-created-value")).toContainText(
+      /^sk/,
+    );
+    await expect(
+      page.getByText("已保存成功，但未能加载最新数据。"),
+    ).toBeVisible();
+    await page.getByTestId("api-key-created-close").click();
+    failRefresh = false;
+    await page.getByRole("button", { name: "重试", exact: true }).click();
+    await expect(page.getByRole("row").filter({ hasText: seed })).toBeVisible();
+    expect(writes).toBe(1);
+    failRefresh = true;
+    const row = page.getByRole("row").filter({ hasText: seed });
+    await row.getByRole("button").click();
+    await page.getByRole("menuitem", { name: "删除" }).click();
+    await page.getByTestId("alert-dialog-confirm").click();
+    await expect(
+      page.getByText("已保存成功，但未能加载最新数据。"),
+    ).toBeVisible();
+    failRefresh = false;
+    await page.getByRole("button", { name: "重试", exact: true }).click();
+    await expect(row).not.toBeVisible();
+    expect(writes).toBe(1);
+    expect(deletes).toBe(1);
+  });
+
   test("limits workspace-key selections and defaults to the issuer's grants", async ({
     page,
     browser,

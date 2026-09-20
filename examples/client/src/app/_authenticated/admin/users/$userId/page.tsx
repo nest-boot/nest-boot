@@ -6,14 +6,15 @@ import { t } from "i18next";
 import { toast } from "sonner";
 
 import { useCurrentUserContext } from "../../../contexts/current-user-context";
-import type { UserPermission } from "@/lib/permissions";
-import type { UserRole } from "@/gql/graphql";
+import { UserRolesForm } from "./components/user-roles-form";
+import { UserProfileForm } from "./components/user-profile-form";
+import { UserPermissionsForm } from "./components/user-permissions-form";
+import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
+import { usePasswordPolicy } from "@/hooks/use-password-policy";
 import { useAbility } from "@/contexts/ability-context";
-import { PermissionCheckboxGroup } from "@/components/permission-checkbox-group";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import { Badge } from "@/components/thread-ui/badge";
 import { Button } from "@/components/thread-ui/button";
-import { RoleCheckboxGroup } from "@/components/role-checkbox-group";
 import { Input } from "@/components/thread-ui/input";
 import {
   Page,
@@ -30,7 +31,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { graphql } from "@/gql";
-import { getPermissionOptions } from "@/lib/permissions";
 import { createAbilitySubject } from "@/lib/ability";
 
 const GET_USER_FROM_USER_ROUTE = graphql(`
@@ -81,33 +81,6 @@ const GET_USER_FROM_USER_ROUTE = graphql(`
     userPermissions @include(if: $includePermissions) {
       permission
       grantable
-    }
-  }
-`);
-
-const UPDATE_USER_FROM_USER_ROUTE = graphql(`
-  mutation updateManagedUserFromUserRoute($id: ID!, $input: UpdateUserInput!) {
-    updateUser(id: $id, input: $input) {
-      id
-    }
-  }
-`);
-
-const SET_USER_PERMISSIONS_FROM_USER_ROUTE = graphql(`
-  mutation setUserPermissionsFromUserRoute(
-    $id: ID!
-    $input: SetUserPermissionsInput!
-  ) {
-    setUserPermissions(id: $id, input: $input) {
-      id
-    }
-  }
-`);
-
-const SET_USER_ROLES_FROM_USER_ROUTE = graphql(`
-  mutation setUserRolesFromUserRoute($id: ID!, $input: SetUserRolesInput!) {
-    setUserRoles(id: $id, input: $input) {
-      id
     }
   }
 `);
@@ -186,6 +159,7 @@ export const Route = createFileRoute("/_authenticated/admin/users/$userId/")({
 });
 
 function AdminUserPage() {
+  const { passwordSchema } = usePasswordPolicy();
   const { userId } = Route.useParams();
   const navigate = useNavigate();
   const currentUser = useCurrentUserContext();
@@ -205,34 +179,15 @@ function AdminUserPage() {
   );
   const user = data?.user;
   const sessions = data?.user?.sessions?.edges.map(({ node }) => node) ?? [];
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [emailVerified, setEmailVerified] = useState(false);
-  const [permissions, setPermissions] = useState<Array<UserPermission>>([]);
-  const [roles, setRoles] = useState<Array<UserRole>>([]);
   const [banReason, setBanReason] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [revokingSessionId, setRevokingSessionId] = useState<string>();
 
   useEffect(() => {
-    if (!user) return;
-    setName(user.name);
-    setEmail(user.email);
-    setEmailVerified(user.emailVerified);
-    setPermissions(user.permissions);
-    setRoles(user.roles);
-    setBanReason(user.banReason ?? "");
-  }, [user]);
+    setBanReason("");
+    setNewPassword("");
+  }, [userId]);
 
-  const [updateUser, { loading: updating }] = useMutation(
-    UPDATE_USER_FROM_USER_ROUTE,
-  );
-  const [setUserPermissions, { loading: savingPermissions }] = useMutation(
-    SET_USER_PERMISSIONS_FROM_USER_ROUTE,
-  );
-  const [setUserRoles, { loading: savingRole }] = useMutation(
-    SET_USER_ROLES_FROM_USER_ROUTE,
-  );
   const [banUser, { loading: banning }] = useMutation(BAN_USER_FROM_USER_ROUTE);
   const [unbanUser, { loading: unbanning }] = useMutation(
     UNBAN_USER_FROM_USER_ROUTE,
@@ -251,7 +206,7 @@ function AdminUserPage() {
     IMPERSONATE_USER_FROM_USER_ROUTE,
   );
 
-  if (loading) {
+  if (loading && !user) {
     return <Page>{t("admin:user.loading")}</Page>;
   }
   if (!user) {
@@ -259,10 +214,6 @@ function AdminUserPage() {
   }
 
   const userSubject = createAbilitySubject("User", user);
-  const canSetRoles = ability.can("set-roles", userSubject);
-  const canSetPermissions = ability.can("set-permissions", userSubject);
-  const canUpdate = ability.can("update", userSubject);
-  const canSetEmail = canUpdate && ability.can("set-email", userSubject);
   const canBan = ability.can("ban", userSubject);
   const canDelete = ability.can("delete", userSubject);
   const canSetPassword = ability.can("set-password", userSubject);
@@ -276,7 +227,7 @@ function AdminUserPage() {
         window.location.assign("/user/workspaces");
         return;
       }
-      await refetch();
+      await refreshAfterMutation(() => refetch());
       toast.success(message);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("admin:failed"));
@@ -312,154 +263,21 @@ function AdminUserPage() {
         ) : null}
       </PageHeader>
       <PageContent className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("admin:user.roles.title")}</CardTitle>
-            <CardDescription>
-              {t("admin:user.roles.description")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <RoleCheckboxGroup
-              label={t("admin:user.roles.label")}
-              options={data?.userRoles ?? []}
-              testIdPrefix="user-role"
-              value={roles}
-              disabled={!canSetRoles}
-              onValueChange={setRoles}
-            />
-            <Button
-              data-testid="admin-user-roles-save"
-              disabled={
-                !canSetRoles ||
-                roles.length === 0 ||
-                roles.some(
-                  (role) =>
-                    !data?.userRoles?.some(
-                      (option) => option.role === role && option.grantable,
-                    ),
-                )
-              }
-              loading={savingRole}
-              onClick={() =>
-                run(
-                  () =>
-                    setUserRoles({
-                      variables: {
-                        id: userId,
-                        input: { roles },
-                      },
-                    }),
-                  t("admin:user.roles.success"),
-                )
-              }
-            >
-              {t("action.save")}
-            </Button>
-          </CardContent>
-        </Card>
+        <UserRolesForm
+          key={user.id}
+          user={user}
+          run={run}
+          options={data?.userRoles ?? []}
+        />
 
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("admin:user.profile.title")}</CardTitle>
-            <CardDescription>
-              {t("admin:user.profile.description")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Input
-              label={t("admin:users.table.name")}
-              data-testid="admin-user-name"
-              disabled={!canUpdate}
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-            />
-            <Input
-              type="email"
-              label={t("admin:users.table.email")}
-              data-testid="admin-user-email"
-              disabled={!canSetEmail}
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-            />
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={emailVerified}
-                disabled={!canSetEmail}
-                onChange={(event) => setEmailVerified(event.target.checked)}
-              />
-              {t("admin:user.profile.email_verified")}
-            </label>
-            <Button
-              loading={updating}
-              data-testid="admin-user-profile-save"
-              disabled={!canUpdate}
-              onClick={() =>
-                run(
-                  () =>
-                    updateUser({
-                      variables: {
-                        id: userId,
-                        input: {
-                          name,
-                          ...(canSetEmail ? { email, emailVerified } : {}),
-                        },
-                      },
-                    }),
-                  t("admin:user.profile.success"),
-                )
-              }
-            >
-              {t("action.save")}
-            </Button>
-          </CardContent>
-        </Card>
+        <UserProfileForm key={user.id} user={user} run={run} />
 
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("admin:user.permissions.title")}</CardTitle>
-            <CardDescription>
-              {t("admin:user.permissions.description")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <PermissionCheckboxGroup
-              options={getPermissionOptions(data?.userPermissions ?? [])}
-              value={permissions}
-              disabled={!canSetPermissions}
-              onChange={setPermissions}
-            />
-            <Button
-              loading={savingPermissions}
-              data-testid="admin-user-permissions-save"
-              disabled={
-                !canSetPermissions ||
-                permissions.some(
-                  (permission) =>
-                    !data?.userPermissions?.some(
-                      (option) =>
-                        option.permission === permission && option.grantable,
-                    ),
-                )
-              }
-              onClick={() =>
-                run(
-                  () =>
-                    setUserPermissions({
-                      variables: {
-                        id: userId,
-                        input: { permissions },
-                      },
-                    }),
-                  t("admin:user.permissions.success"),
-                )
-              }
-            >
-              {t("action.save")}
-            </Button>
-          </CardContent>
-        </Card>
+        <UserPermissionsForm
+          key={user.id}
+          user={user}
+          run={run}
+          options={data?.userPermissions ?? []}
+        />
 
         <Card>
           <CardHeader>
@@ -507,6 +325,7 @@ function AdminUserPage() {
             ))}
             {user?.sessions?.pageInfo.hasNextPage && (
               <Button
+                data-testid="admin-user-sessions-more"
                 variant="outline"
                 loading={loading}
                 onClick={() =>
@@ -570,7 +389,10 @@ function AdminUserPage() {
               onChange={(event) => setNewPassword(event.target.value)}
             />
             <Button
-              disabled={!canSetPassword || newPassword.length < 8}
+              disabled={
+                !canSetPassword ||
+                !passwordSchema.safeParse(newPassword).success
+              }
               loading={settingPassword}
               onClick={() =>
                 run(async () => {
@@ -659,10 +481,18 @@ function AdminUserPage() {
                   variant: "destructive",
                 });
                 if (!confirmed) return;
-                await run(async () => {
+                try {
                   await deleteUser({ variables: { id: userId } });
-                  await navigate({ to: "/admin/users" });
-                }, t("admin:user.delete.success"));
+                } catch (error) {
+                  toast.error(
+                    error instanceof Error ? error.message : t("admin:failed"),
+                  );
+                  return;
+                }
+                toast.success(t("admin:user.delete.success"));
+                await refreshAfterMutation(() =>
+                  navigate({ to: "/admin/users" }),
+                );
               }}
             >
               {t("admin:user.delete.action")}

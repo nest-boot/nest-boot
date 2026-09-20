@@ -8,6 +8,94 @@ import {
 import { graphqlRequest } from "./utils/graphql";
 import { uniqueSeed } from "./utils/unique";
 
+test("preserves independent user drafts when another section is saved", async ({
+  browser,
+  page,
+}) => {
+  const context = await browser.newContext();
+  try {
+    const targetPage = await context.newPage();
+    await registerUser(targetPage, {
+      email: `${uniqueSeed("admin-drafts")}@example.com`,
+      name: "Original profile",
+    });
+    const { currentUser } = await graphqlRequest<{
+      currentUser: { id: string };
+    }>(targetPage.request, "query { currentUser { id } }");
+    await signInAsE2eAdministrator(page);
+    let paginationComplete = false;
+    let failProfileSave = true;
+    await page.route("**/graphql", async (route) => {
+      const operation = route.request().postDataJSON();
+      if (
+        operation.operationName === "updateManagedUserFromUserRoute" &&
+        failProfileSave
+      ) {
+        failProfileSave = false;
+        await route.fulfill({
+          json: { errors: [{ message: "Profile save rejected" }] },
+        });
+        return;
+      }
+      if (
+        operation.operationName === "getUserFromUserRoute" &&
+        operation.variables.includeSessions
+      ) {
+        if (operation.variables.sessionsAfter) paginationComplete = true;
+        const response = await route.fetch();
+        const body = await response.json();
+        if (body.data?.user?.sessions && !paginationComplete) {
+          body.data.user.sessions.pageInfo.hasNextPage = true;
+        }
+        await route.fulfill({ response, json: body });
+        return;
+      }
+      await route.continue();
+    });
+    await page.goto(`/admin/users/${currentUser.id}`);
+    await page.getByTestId("admin-user-name").fill("Unsaved profile");
+    await page.getByTestId("permission-USER__READ").check();
+    await page.getByTestId("user-role-ADMIN").check();
+    await page.getByTestId("admin-user-sessions-more").click();
+    await expect(
+      page.getByTestId("admin-user-sessions-more"),
+    ).not.toBeVisible();
+    await expect(page.getByTestId("admin-user-name")).toHaveValue(
+      "Unsaved profile",
+    );
+    await expect(page.getByTestId("permission-USER__READ")).toBeChecked();
+    await expect(page.getByTestId("user-role-ADMIN")).toBeChecked();
+    await page.getByTestId("admin-user-roles-save").click();
+    await expect(page.getByTestId("admin-user-roles-save")).toBeEnabled();
+    await expect(page.getByTestId("admin-user-name")).toHaveValue(
+      "Unsaved profile",
+    );
+    await expect(page.getByTestId("permission-USER__READ")).toBeChecked();
+    await page.getByTestId("admin-user-permissions-save").click();
+    await expect(page.getByTestId("admin-user-permissions-save")).toBeEnabled();
+    await expect(page.getByTestId("admin-user-name")).toHaveValue(
+      "Unsaved profile",
+    );
+    await page.getByTestId("admin-user-profile-save").click();
+    await expect(page.getByText("Profile save rejected")).toBeVisible();
+    await expect(page.getByTestId("admin-user-name")).toHaveValue(
+      "Unsaved profile",
+    );
+    await page.getByTestId("admin-user-profile-save").click();
+    await expect(
+      page.getByRole("heading", { name: "Unsaved profile", exact: true }),
+    ).toBeVisible();
+    await page.reload();
+    await expect(page.getByTestId("user-role-ADMIN")).toBeChecked();
+    await expect(page.getByTestId("permission-USER__READ")).toBeChecked();
+    await expect(page.getByTestId("admin-user-name")).toHaveValue(
+      "Unsaved profile",
+    );
+  } finally {
+    await context.close();
+  }
+});
+
 for (const change of [
   "roles",
   "permissions",

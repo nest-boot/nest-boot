@@ -725,6 +725,12 @@ export type PageInfo = {
   startCursor?: Maybe<Scalars["String"]["output"]>;
 };
 
+export type PasswordPolicy = {
+  __typename?: "PasswordPolicy";
+  maxLength: Scalars["Int"]["output"];
+  minLength: Scalars["Int"]["output"];
+};
+
 export type Query = {
   __typename?: "Query";
   currentAbilityRules: Array<AuthAbilityRuleType>;
@@ -734,6 +740,7 @@ export type Query = {
   currentWorkspace?: Maybe<Workspace>;
   invitation?: Maybe<Invitation>;
   member?: Maybe<Member>;
+  passwordPolicy: PasswordPolicy;
   socialProviders: Array<AuthSocialProviderType>;
   user?: Maybe<User>;
   userApiKeyPermissions: Array<UserApiKeyPermissionOption>;
@@ -1370,6 +1377,36 @@ export type WorkspaceRoleOption = {
   role: WorkspaceRole;
 };
 
+export type SetUserPermissionsFromUserRouteMutationVariables = Exact<{
+  id: Scalars["ID"]["input"];
+  input: SetUserPermissionsInput;
+}>;
+
+export type SetUserPermissionsFromUserRouteMutation = {
+  __typename?: "Mutation";
+  setUserPermissions: { __typename?: "SetUserPermissionsPayload"; id: string };
+};
+
+export type UpdateManagedUserFromUserRouteMutationVariables = Exact<{
+  id: Scalars["ID"]["input"];
+  input: UpdateUserInput;
+}>;
+
+export type UpdateManagedUserFromUserRouteMutation = {
+  __typename?: "Mutation";
+  updateUser: { __typename?: "UpdateUserPayload"; id: string };
+};
+
+export type SetUserRolesFromUserRouteMutationVariables = Exact<{
+  id: Scalars["ID"]["input"];
+  input: SetUserRolesInput;
+}>;
+
+export type SetUserRolesFromUserRouteMutation = {
+  __typename?: "Mutation";
+  setUserRoles: { __typename?: "SetUserRolesPayload"; id: string };
+};
+
 export type GetUserFromUserRouteQueryVariables = Exact<{
   id: Scalars["ID"]["input"];
   sessionsAfter?: InputMaybe<Scalars["String"]["input"]>;
@@ -1424,36 +1461,6 @@ export type GetUserFromUserRouteQuery = {
     permission: UserPermission;
     grantable: boolean;
   }>;
-};
-
-export type UpdateManagedUserFromUserRouteMutationVariables = Exact<{
-  id: Scalars["ID"]["input"];
-  input: UpdateUserInput;
-}>;
-
-export type UpdateManagedUserFromUserRouteMutation = {
-  __typename?: "Mutation";
-  updateUser: { __typename?: "UpdateUserPayload"; id: string };
-};
-
-export type SetUserPermissionsFromUserRouteMutationVariables = Exact<{
-  id: Scalars["ID"]["input"];
-  input: SetUserPermissionsInput;
-}>;
-
-export type SetUserPermissionsFromUserRouteMutation = {
-  __typename?: "Mutation";
-  setUserPermissions: { __typename?: "SetUserPermissionsPayload"; id: string };
-};
-
-export type SetUserRolesFromUserRouteMutationVariables = Exact<{
-  id: Scalars["ID"]["input"];
-  input: SetUserRolesInput;
-}>;
-
-export type SetUserRolesFromUserRouteMutation = {
-  __typename?: "Mutation";
-  setUserRoles: { __typename?: "SetUserRolesPayload"; id: string };
 };
 
 export type BanUserFromUserRouteMutationVariables = Exact<{
@@ -2361,15 +2368,6 @@ export type LeaveWorkspaceFromSettingsRouteMutation = {
   leaveWorkspace: { __typename?: "LeaveWorkspacePayload"; memberId: string };
 };
 
-export type CreateWorkspaceFromCreateWorkspaceFormMutationVariables = Exact<{
-  input: CreateWorkspaceInput;
-}>;
-
-export type CreateWorkspaceFromCreateWorkspaceFormMutation = {
-  __typename?: "Mutation";
-  createWorkspace: { __typename?: "CreateWorkspacePayload"; id: string };
-};
-
 export type CreateWorkspaceFromCreateWorkspaceRouteMutationVariables = Exact<{
   input: CreateWorkspaceInput;
 }>;
@@ -2524,6 +2522,227 @@ export type AcceptInvitationFromInviteRouteMutation = {
   };
 };
 
+export type GetPasswordPolicyQueryVariables = Exact<{ [key: string]: never }>;
+
+export type GetPasswordPolicyQuery = {
+  __typename?: "Query";
+  passwordPolicy: {
+    __typename?: "PasswordPolicy";
+    minLength: number;
+    maxLength: number;
+  };
+};
+
+export const SetUserPermissionsFromUserRouteDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "setUserPermissionsFromUserRoute" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "input" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: {
+              kind: "NamedType",
+              name: { kind: "Name", value: "SetUserPermissionsInput" },
+            },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "setUserPermissions" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "id" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "id" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "input" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "input" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  SetUserPermissionsFromUserRouteMutation,
+  SetUserPermissionsFromUserRouteMutationVariables
+>;
+export const UpdateManagedUserFromUserRouteDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "updateManagedUserFromUserRoute" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "input" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: {
+              kind: "NamedType",
+              name: { kind: "Name", value: "UpdateUserInput" },
+            },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "updateUser" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "id" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "id" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "input" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "input" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  UpdateManagedUserFromUserRouteMutation,
+  UpdateManagedUserFromUserRouteMutationVariables
+>;
+export const SetUserRolesFromUserRouteDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "setUserRolesFromUserRoute" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "input" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: {
+              kind: "NamedType",
+              name: { kind: "Name", value: "SetUserRolesInput" },
+            },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "setUserRoles" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "id" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "id" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "input" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "input" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  SetUserRolesFromUserRouteMutation,
+  SetUserRolesFromUserRouteMutationVariables
+>;
 export const GetUserFromUserRouteDocument = {
   kind: "Document",
   definitions: [
@@ -2809,216 +3028,6 @@ export const GetUserFromUserRouteDocument = {
 } as unknown as DocumentNode<
   GetUserFromUserRouteQuery,
   GetUserFromUserRouteQueryVariables
->;
-export const UpdateManagedUserFromUserRouteDocument = {
-  kind: "Document",
-  definitions: [
-    {
-      kind: "OperationDefinition",
-      operation: "mutation",
-      name: { kind: "Name", value: "updateManagedUserFromUserRoute" },
-      variableDefinitions: [
-        {
-          kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
-          type: {
-            kind: "NonNullType",
-            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
-          },
-        },
-        {
-          kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "input" },
-          },
-          type: {
-            kind: "NonNullType",
-            type: {
-              kind: "NamedType",
-              name: { kind: "Name", value: "UpdateUserInput" },
-            },
-          },
-        },
-      ],
-      selectionSet: {
-        kind: "SelectionSet",
-        selections: [
-          {
-            kind: "Field",
-            name: { kind: "Name", value: "updateUser" },
-            arguments: [
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "id" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "id" },
-                },
-              },
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "input" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "input" },
-                },
-              },
-            ],
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
-                { kind: "Field", name: { kind: "Name", value: "id" } },
-              ],
-            },
-          },
-        ],
-      },
-    },
-  ],
-} as unknown as DocumentNode<
-  UpdateManagedUserFromUserRouteMutation,
-  UpdateManagedUserFromUserRouteMutationVariables
->;
-export const SetUserPermissionsFromUserRouteDocument = {
-  kind: "Document",
-  definitions: [
-    {
-      kind: "OperationDefinition",
-      operation: "mutation",
-      name: { kind: "Name", value: "setUserPermissionsFromUserRoute" },
-      variableDefinitions: [
-        {
-          kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
-          type: {
-            kind: "NonNullType",
-            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
-          },
-        },
-        {
-          kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "input" },
-          },
-          type: {
-            kind: "NonNullType",
-            type: {
-              kind: "NamedType",
-              name: { kind: "Name", value: "SetUserPermissionsInput" },
-            },
-          },
-        },
-      ],
-      selectionSet: {
-        kind: "SelectionSet",
-        selections: [
-          {
-            kind: "Field",
-            name: { kind: "Name", value: "setUserPermissions" },
-            arguments: [
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "id" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "id" },
-                },
-              },
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "input" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "input" },
-                },
-              },
-            ],
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
-                { kind: "Field", name: { kind: "Name", value: "id" } },
-              ],
-            },
-          },
-        ],
-      },
-    },
-  ],
-} as unknown as DocumentNode<
-  SetUserPermissionsFromUserRouteMutation,
-  SetUserPermissionsFromUserRouteMutationVariables
->;
-export const SetUserRolesFromUserRouteDocument = {
-  kind: "Document",
-  definitions: [
-    {
-      kind: "OperationDefinition",
-      operation: "mutation",
-      name: { kind: "Name", value: "setUserRolesFromUserRoute" },
-      variableDefinitions: [
-        {
-          kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
-          type: {
-            kind: "NonNullType",
-            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
-          },
-        },
-        {
-          kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "input" },
-          },
-          type: {
-            kind: "NonNullType",
-            type: {
-              kind: "NamedType",
-              name: { kind: "Name", value: "SetUserRolesInput" },
-            },
-          },
-        },
-      ],
-      selectionSet: {
-        kind: "SelectionSet",
-        selections: [
-          {
-            kind: "Field",
-            name: { kind: "Name", value: "setUserRoles" },
-            arguments: [
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "id" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "id" },
-                },
-              },
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "input" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "input" },
-                },
-              },
-            ],
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
-                { kind: "Field", name: { kind: "Name", value: "id" } },
-              ],
-            },
-          },
-        ],
-      },
-    },
-  ],
-} as unknown as DocumentNode<
-  SetUserRolesFromUserRouteMutation,
-  SetUserRolesFromUserRouteMutationVariables
 >;
 export const BanUserFromUserRouteDocument = {
   kind: "Document",
@@ -7295,60 +7304,6 @@ export const LeaveWorkspaceFromSettingsRouteDocument = {
   LeaveWorkspaceFromSettingsRouteMutation,
   LeaveWorkspaceFromSettingsRouteMutationVariables
 >;
-export const CreateWorkspaceFromCreateWorkspaceFormDocument = {
-  kind: "Document",
-  definitions: [
-    {
-      kind: "OperationDefinition",
-      operation: "mutation",
-      name: { kind: "Name", value: "createWorkspaceFromCreateWorkspaceForm" },
-      variableDefinitions: [
-        {
-          kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "input" },
-          },
-          type: {
-            kind: "NonNullType",
-            type: {
-              kind: "NamedType",
-              name: { kind: "Name", value: "CreateWorkspaceInput" },
-            },
-          },
-        },
-      ],
-      selectionSet: {
-        kind: "SelectionSet",
-        selections: [
-          {
-            kind: "Field",
-            name: { kind: "Name", value: "createWorkspace" },
-            arguments: [
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "input" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "input" },
-                },
-              },
-            ],
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
-                { kind: "Field", name: { kind: "Name", value: "id" } },
-              ],
-            },
-          },
-        ],
-      },
-    },
-  ],
-} as unknown as DocumentNode<
-  CreateWorkspaceFromCreateWorkspaceFormMutation,
-  CreateWorkspaceFromCreateWorkspaceFormMutationVariables
->;
 export const CreateWorkspaceFromCreateWorkspaceRouteDocument = {
   kind: "Document",
   definitions: [
@@ -7990,4 +7945,33 @@ export const AcceptInvitationFromInviteRouteDocument = {
 } as unknown as DocumentNode<
   AcceptInvitationFromInviteRouteMutation,
   AcceptInvitationFromInviteRouteMutationVariables
+>;
+export const GetPasswordPolicyDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "getPasswordPolicy" },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "passwordPolicy" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "minLength" } },
+                { kind: "Field", name: { kind: "Name", value: "maxLength" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  GetPasswordPolicyQuery,
+  GetPasswordPolicyQueryVariables
 >;
