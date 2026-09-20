@@ -1,13 +1,13 @@
 import { AbilityBuilder } from "@casl/ability";
 
-import { UserAbility } from "../abilities/user.ability.js";
+import { AuthAbility } from "../abilities/auth.ability.js";
 import { serializeAbilityRules } from "./serialize-ability-rules.util.js";
 
 class Project {}
 
 describe("serializeAbilityRules", () => {
   it("serializes class subjects and preserves conditional rule data", () => {
-    const { can, cannot, build } = new AbilityBuilder(UserAbility);
+    const { can, cannot, build } = new AbilityBuilder(AuthAbility);
     can(["read", "update"], Project, ["name"], { ownerId: "user-1" });
     cannot("delete", Project).because("Projects are retained");
 
@@ -28,7 +28,7 @@ describe("serializeAbilityRules", () => {
   });
 
   it("keeps string subjects unchanged", () => {
-    const { can, build } = new AbilityBuilder(UserAbility);
+    const { can, build } = new AbilityBuilder(AuthAbility);
     can("manage", "all");
 
     expect(serializeAbilityRules(build())).toEqual([

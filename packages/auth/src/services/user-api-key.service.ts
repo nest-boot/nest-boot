@@ -1,9 +1,4 @@
-import {
-  EntityManager,
-  type FilterQuery,
-  Reference,
-  type RequiredEntityData,
-} from "@mikro-orm/core";
+import { EntityManager, type FilterQuery, Reference } from "@mikro-orm/core";
 import type { SqlEntityManager } from "@mikro-orm/sql";
 import {
   type ConnectionArgsInterface,
@@ -24,19 +19,24 @@ import { UserApiKeyConnection } from "../connections/user-api-key.connection-def
 import { User } from "../entities/user.entity.js";
 import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { ApiKeyLifecycle } from "../infrastructure/api-key-lifecycle.js";
+import { RequestIdentity } from "../infrastructure/request-identity.js";
 import type { CreateApiKeyOptions } from "../interfaces/create-api-key-options.interface.js";
 import type { CreatedApiKey } from "../interfaces/created-api-key.interface.js";
 import type { UpdateApiKeyOptions } from "../interfaces/update-api-key-options.interface.js";
 import type { UserApiKeyPermissionOption } from "../objects/user-api-key-permission-option.object.js";
 import {
-  generateApiKey,
-  hashApiKey,
-} from "../utils/api-key-credential.util.js";
-import { resolveApiKeyPermissionCatalog } from "../utils/api-key-permissions.util.js";
-import { normalizeAuthPermissions } from "../utils/auth-role.util.js";
+  normalizeApiKeyPermissions,
+  resolveApiKeyPermissionCatalog,
+} from "../utils/api-key-permissions.util.js";
+import { assertCan } from "../utils/assert-can.util.js";
+import {
+  assertApiKeyPermissionCeiling,
+  assertPermissionCeiling,
+  canGrantPermissions,
+} from "../utils/permission-grants.util.js";
 import { resolveAuthCatalog } from "../utils/resolve-auth-catalog.util.js";
 import { resolveUserPermissions } from "../utils/resolve-effective-permissions.util.js";
-import { AccessControlService } from "./access-control.service.js";
+import { resolveRequestPermissions } from "../utils/resolve-request-permissions.util.js";
 
 /** Manages user-owned API keys within the current request's authorization scope. */
 @Injectable()
@@ -49,12 +49,11 @@ export class UserApiKeyService {
     protected readonly em: EntityManager,
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly authOptions: AuthModuleOptions,
-    private readonly accessControlService: AccessControlService,
   ) {}
 
   /** Lists user-key grants subject to configuration and the current credential's ceiling. */
   getUserApiKeyPermissions(user: User): UserApiKeyPermissionOption[] {
-    this.accessControlService.assertCurrentUser(user);
+    RequestIdentity.assertCurrentUser(user);
     const { permissions, allowed, defaults } = resolveApiKeyPermissionCatalog(
       this.authOptions,
       "user",
@@ -63,25 +62,25 @@ export class UserApiKeyService {
     const userPermissions = new Set(
       resolveAuthCatalog(this.authOptions, "user").permissions,
     );
-    const ceiling = this.accessControlService.getApiKeyPermissionCeiling();
+    const ceiling = resolveRequestPermissions(this.authOptions).apiKey;
     return permissions.map((permission) => ({
       permission,
       default: defaults.includes(permission),
       grantable:
         allowedSet.has(permission) &&
         (!userPermissions.has(permission) ||
-          this.accessControlService.canGrantUserPermissions([permission])) &&
+          canGrantPermissions(this.authOptions, "user", [permission])) &&
         (ceiling === null || ceiling.includes(permission)),
     }));
   }
 
   /** Returns a user-owned API key when it belongs to the current user. */
   async getUserApiKey(id: string, user: User): Promise<UserApiKey | null> {
-    this.accessControlService.assertCurrentUser(user);
-    this.accessControlService.assertUserCan("read", UserApiKey);
+    RequestIdentity.assertCurrentUser(user);
+    assertCan("read", UserApiKey);
     const apiKey = await this.getVisibleApiKey(id, user);
     if (apiKey) {
-      this.accessControlService.assertUserCan("read", apiKey);
+      assertCan("read", apiKey);
     }
     return apiKey;
   }
@@ -91,8 +90,8 @@ export class UserApiKeyService {
     user: User,
     args: ConnectionArgsInterface<UserApiKey>,
   ): Promise<ConnectionInterface<UserApiKey>> {
-    this.accessControlService.assertCurrentUser(user);
-    this.accessControlService.assertUserCan("read", UserApiKey);
+    RequestIdentity.assertCurrentUser(user);
+    assertCan("read", UserApiKey);
     const where = this.getOwnedListFilter(user);
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
@@ -102,7 +101,7 @@ export class UserApiKeyService {
     });
     // Reject the whole page rather than silently changing cursor pagination.
     for (const { node } of connection.edges) {
-      this.accessControlService.assertUserCan("read", node);
+      assertCan("read", node);
     }
     return connection;
   }
@@ -112,12 +111,12 @@ export class UserApiKeyService {
     user: User,
     options: CreateApiKeyOptions,
   ): Promise<CreatedApiKey<UserApiKey>> {
-    this.accessControlService.assertCurrentUser(user);
-    this.accessControlService.assertUserCan("write", UserApiKey);
-    const permissions = this.normalizePermissions(
-      options.permissions === undefined
-        ? resolveApiKeyPermissionCatalog(this.authOptions, "user").defaults
-        : (options.permissions ?? []),
+    RequestIdentity.assertCurrentUser(user);
+    assertCan("write", UserApiKey);
+    const permissions = normalizeApiKeyPermissions(
+      this.authOptions,
+      "user",
+      options.permissions,
     );
     this.assertUserPermissionCeiling(user, permissions);
     return await this.createKey(user, options, permissions);
@@ -128,18 +127,27 @@ export class UserApiKeyService {
     id: string,
     input: UpdateApiKeyOptions,
   ): Promise<UserApiKey> {
-    this.accessControlService.assertUserCan("write", UserApiKey);
+    assertCan("write", UserApiKey);
     const apiKey = await this.findWritableApiKey(id);
-    this.accessControlService.assertUserCan("write", apiKey);
-    const user = this.unwrapOwner(apiKey);
+    assertCan("write", apiKey);
+    const user = this.unwrapUser(apiKey);
     const permissions =
       input.permissions === undefined
         ? undefined
-        : this.normalizePermissions(input.permissions ?? []);
+        : normalizeApiKeyPermissions(
+            this.authOptions,
+            "user",
+            input.permissions ?? [],
+          );
     // Allow disabling stale grants without replacing them.
     if (input.enabled !== false || permissions !== undefined) {
       const finalPermissions =
-        permissions ?? this.normalizePermissions(apiKey.permissions ?? []);
+        permissions ??
+        normalizeApiKeyPermissions(
+          this.authOptions,
+          "user",
+          apiKey.permissions ?? [],
+        );
       this.assertUserPermissionCeiling(user, finalPermissions);
     }
     return await ApiKeyLifecycle.update(
@@ -153,33 +161,28 @@ export class UserApiKeyService {
 
   /** Deletes an API key owned by the current user. */
   async deleteUserApiKey(id: string): Promise<UserApiKey> {
-    this.accessControlService.assertUserCan("write", UserApiKey);
+    assertCan("write", UserApiKey);
     const apiKey = await this.findWritableApiKey(id);
-    this.accessControlService.assertUserCan("write", apiKey);
+    assertCan("write", apiKey);
     return await ApiKeyLifecycle.delete(this.em, this.authOptions, apiKey);
   }
 
   private async createKey(
-    owner: User,
+    user: User,
     options: CreateApiKeyOptions,
     permissions: string[],
   ): Promise<CreatedApiKey<UserApiKey>> {
-    ApiKeyLifecycle.assertExpiration(options.expiresAt);
-    const prefix = options.prefix ?? process.env.API_KEY_PREFIX ?? "sk";
-    const plaintextApiKey = generateApiKey(prefix);
+    const { apiKey, data } = ApiKeyLifecycle.prepareCreation(
+      options,
+      permissions,
+    );
     const entity = await this.em.transactional(
       async (em) => {
         const entity = em.create(UserApiKey, {
-          enabled: true,
-          expiresAt: options.expiresAt ?? null,
-          key: hashApiKey(plaintextApiKey),
-          name: options.name,
-          user: owner,
-          permissions,
-          prefix,
-          start: plaintextApiKey.slice(0, 8),
-        } as RequiredEntityData<UserApiKey>);
-        this.accessControlService.assertUserCan("write", entity);
+          ...data,
+          user,
+        });
+        assertCan("write", entity);
         await em.persist(entity).flush();
         return entity;
       },
@@ -187,28 +190,26 @@ export class UserApiKeyService {
     );
     this.logger.log("API key created", {
       apiKeyId: entity.id,
-      ownerId: owner.id,
+      ownerId: user.id,
       ownerType: "user",
     });
-    return { apiKey: plaintextApiKey, entity };
+    return { apiKey, entity };
   }
 
   private async getVisibleApiKey(
     id: string,
-    owner: User,
+    user: User,
   ): Promise<UserApiKey | null> {
     const apiKey = await this.em.findOne(
       UserApiKey,
       {
-        $and: [{ id }, this.getOwnedListFilter(owner)],
-      } as FilterQuery<UserApiKey>,
-      { populate: ["user"] as never, exclude: ["key"] as never },
+        $and: [{ id }, this.getOwnedListFilter(user)],
+      },
+      { populate: ["user"], exclude: ["key"] as never },
     );
     if (apiKey) {
-      this.assertOwner(apiKey, owner);
-      this.accessControlService.assertApiKeyPermissionCeiling(
-        apiKey.permissions ?? [],
-      );
+      this.assertUser(apiKey, user);
+      assertApiKeyPermissionCeiling(this.authOptions, apiKey.permissions ?? []);
     }
     return apiKey;
   }
@@ -216,9 +217,9 @@ export class UserApiKeyService {
   private async findWritableApiKey(id: string): Promise<UserApiKey> {
     const apiKey = await this.em.findOne(
       UserApiKey,
-      { id } as FilterQuery<UserApiKey>,
+      { id },
       {
-        populate: ["user"] as never,
+        populate: ["user"],
         exclude: ["key"] as never,
         refresh: true,
       },
@@ -226,48 +227,31 @@ export class UserApiKeyService {
     if (!apiKey) {
       throw new NotFoundException("API key not found");
     }
-    this.accessControlService.assertApiKeyOwner(apiKey);
-    this.accessControlService.assertApiKeyPermissionCeiling(
-      apiKey.permissions ?? [],
-    );
+    RequestIdentity.assertCurrentUser(this.unwrapUser(apiKey));
+    assertApiKeyPermissionCeiling(this.authOptions, apiKey.permissions ?? []);
     return apiKey;
   }
 
-  private getOwnedListFilter(owner: User): FilterQuery<UserApiKey> {
-    const ceiling = this.accessControlService.getApiKeyPermissionCeiling();
+  private getOwnedListFilter(user: User): FilterQuery<UserApiKey> {
+    const ceiling = resolveRequestPermissions(this.authOptions).apiKey;
     return {
-      user: owner,
+      user,
       ...(ceiling !== null ? { permissions: { $contained: ceiling } } : {}),
-    } as unknown as FilterQuery<UserApiKey>;
+    };
   }
 
-  private assertOwner(apiKey: UserApiKey, expectedOwner: User): void {
-    const owner = this.unwrapOwner(apiKey);
-    if (owner.id !== expectedOwner.id) {
+  private assertUser(apiKey: UserApiKey, expectedUser: User): void {
+    const user = this.unwrapUser(apiKey);
+    if (user.id !== expectedUser.id) {
       throw new ForbiddenException(
         "You are not allowed to access this API key",
       );
     }
   }
-  private unwrapOwner(apiKey: UserApiKey): User {
+
+  private unwrapUser(apiKey: UserApiKey): User {
+    if (!apiKey.user) throw new ForbiddenException("API key owner is missing");
     return Reference.unwrapReference(apiKey.user);
-  }
-
-  private normalizePermissions(permissions: readonly string[]): string[] {
-    const { permissions: availablePermissions, allowed } =
-      resolveApiKeyPermissionCatalog(this.authOptions, "user");
-
-    const normalizedPermissions = normalizeAuthPermissions(
-      permissions,
-      availablePermissions,
-      "User API key",
-    );
-    this.assertPermissionCeiling(
-      normalizedPermissions,
-      allowed,
-      "API key permissions exceed configured allowedPermissions",
-    );
-    return normalizedPermissions;
   }
 
   private assertUserPermissionCeiling(
@@ -282,27 +266,11 @@ export class UserApiKeyService {
     );
     const effectivePermissions = resolveUserPermissions(this.authOptions, user);
 
-    this.assertPermissionCeiling(
+    assertPermissionCeiling(
       requestedUserPermissions,
       effectivePermissions,
       "User API key permissions exceed owner permissions",
     );
-    this.accessControlService.assertApiKeyPermissionCeiling(permissions);
-  }
-
-  private assertPermissionCeiling(
-    requestedPermissions: readonly string[],
-    effectivePermissions: readonly string[],
-    message: string,
-  ): void {
-    const effectivePermissionSet = new Set(effectivePermissions);
-    const excessivePermissions = requestedPermissions.filter(
-      (permission) => !effectivePermissionSet.has(permission),
-    );
-    if (excessivePermissions.length > 0) {
-      throw new ForbiddenException(
-        `${message}: ${excessivePermissions.join(", ")}`,
-      );
-    }
+    assertApiKeyPermissionCeiling(this.authOptions, permissions);
   }
 }

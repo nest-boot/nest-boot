@@ -30,6 +30,11 @@
       "link_copied": "Link copied to clipboard",
       "update_failed": "Failed to update member",
       "updated_success": "Member updated successfully"
+    },
+    "sections": {
+      "profile": "Profile",
+      "roles": "Roles",
+      "permissions": "Direct permissions"
     }
   },
   "filter": {

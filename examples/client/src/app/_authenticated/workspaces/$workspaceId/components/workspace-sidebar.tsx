@@ -2,12 +2,13 @@ import { KeyRound, Settings, User } from "lucide-react";
 
 import { linkOptions, useParams } from "@tanstack/react-router";
 import { t } from "i18next";
-import { useCurrentWorkspaceAbility } from "../contexts/current-member-context";
+
 import { SidebarUser } from "../../../components/sidebar-user";
 import { SidebarLogo } from "./sidebar-logo";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 import type { LinkProps } from "@tanstack/react-router";
 import type { ComponentProps, ComponentType, FC } from "react";
+import { useAbility } from "@/contexts/ability-context";
 import {
   Sidebar,
   SidebarContent,
@@ -38,7 +39,7 @@ export const WorkspaceSidebar: FC<ComponentProps<typeof Sidebar>> = ({
     from: "/_authenticated/workspaces/$workspaceId",
     select: (params) => params.workspaceId,
   });
-  const currentWorkspaceAbility = useCurrentWorkspaceAbility();
+  const ability = useAbility();
 
   const sidebarGroups: Array<{
     title: string;
@@ -47,7 +48,7 @@ export const WorkspaceSidebar: FC<ComponentProps<typeof Sidebar>> = ({
     {
       title: t("sidebar:navigation.settings"),
       items: [
-        ...(currentWorkspaceAbility.can("read", "WorkspaceApiKey")
+        ...(ability.can("read", "WorkspaceApiKey")
           ? [
               {
                 title: t("sidebar:navigation.api_keys"),
@@ -60,7 +61,7 @@ export const WorkspaceSidebar: FC<ComponentProps<typeof Sidebar>> = ({
               },
             ]
           : []),
-        ...(currentWorkspaceAbility.can("read", "Member")
+        ...(ability.can("read", "Member")
           ? [
               {
                 title: t("sidebar:navigation.members"),

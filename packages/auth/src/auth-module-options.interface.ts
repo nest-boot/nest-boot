@@ -8,6 +8,7 @@ import type { AuthModuleUserOptions } from "./interfaces/auth-module-user-option
 import type { AuthModuleWorkspaceOptions } from "./interfaces/auth-module-workspace-options.interface.js";
 import type { AuthMaybePromise } from "./types/auth-maybe-promise.type.js";
 import type { AuthModuleProvider } from "./types/auth-module-provider.type.js";
+import type { BuildAbilityCallback } from "./types/build-ability-callback.type.js";
 import type {
   DEFAULT_USER_PERMISSIONS,
   DEFAULT_USER_ROLES,
@@ -32,6 +33,13 @@ export interface AuthModuleOptions<
   basePath?: string;
   /** Secret used for authentication signing and encryption. */
   secret?: string;
+  /** Synchronously extends the unified request ability; auth owns grants and credential ceilings. */
+  buildAbility?: BuildAbilityCallback<
+    NoInfer<UserPermission | (typeof DEFAULT_USER_PERMISSIONS)[number]>,
+    NoInfer<
+      WorkspacePermission | (typeof DEFAULT_WORKSPACE_PERMISSIONS)[number]
+    >
+  >;
   /** Origins permitted to initiate browser authentication requests. */
   trustedOrigins?:
     | string[]

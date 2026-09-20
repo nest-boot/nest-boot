@@ -2,13 +2,11 @@ import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException } from "@nestjs/common";
 import type { Mocked } from "vitest";
 
-import { UserAbility } from "../abilities/user.ability.js";
-import { WorkspaceAbility } from "../abilities/workspace.ability.js";
+import { AuthAbility } from "../abilities/auth.ability.js";
 import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { type User as BaseUser } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
-import { AccessControlService } from "../services/access-control.service.js";
 import { type AuthService } from "../services/auth.service.js";
 import { AuthResolver } from "./auth.resolver.js";
 
@@ -17,19 +15,13 @@ describe("AuthResolver", () => {
     const { resolver } = createResolver();
     const conditions = { id: "user-1" };
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
-      expect(() => resolver.currentUserAbilityRules()).toThrow(
-        ForbiddenException,
-      );
-      expect(() => resolver.currentWorkspaceAbilityRules()).toThrow(
-        ForbiddenException,
-      );
-      RequestContext.set(AccessControlService, new AccessControlService({}));
+      expect(() => resolver.currentAbilityRules()).toThrow(ForbiddenException);
       RequestContext.set(User, new User());
       RequestContext.set(Member, new Member());
       RequestContext.set(Workspace, new Workspace());
       RequestContext.set(
-        UserAbility,
-        new UserAbility([
+        AuthAbility,
+        new AuthAbility([
           {
             action: "read",
             subject: User,
@@ -42,15 +34,10 @@ describe("AuthResolver", () => {
             inverted: true,
             reason: "Protected account",
           },
-        ]),
-      );
-      RequestContext.set(
-        WorkspaceAbility,
-        new WorkspaceAbility([
           { action: ["read", "update"], subject: [Workspace, "Member"] },
         ]),
       );
-      const rules = resolver.currentUserAbilityRules();
+      const rules = resolver.currentAbilityRules();
       expect(rules).toEqual([
         {
           actions: ["read"],
@@ -68,9 +55,6 @@ describe("AuthResolver", () => {
           inverted: true,
           reason: "Protected account",
         },
-      ]);
-      expect(JSON.parse(JSON.stringify(rules))).toEqual(rules);
-      expect(resolver.currentWorkspaceAbilityRules()).toEqual([
         {
           actions: ["read", "update"],
           subjects: ["Workspace", "Member"],
@@ -80,6 +64,15 @@ describe("AuthResolver", () => {
           reason: null,
         },
       ]);
+      expect(JSON.parse(JSON.stringify(rules))).toEqual(rules);
+      expect(resolver.currentAbilityRules()).toContainEqual({
+        actions: ["read", "update"],
+        subjects: ["Workspace", "Member"],
+        fields: null,
+        conditions: null,
+        inverted: false,
+        reason: null,
+      });
     });
   });
 

@@ -2,7 +2,8 @@ import { useMutation, useQuery } from "@apollo/client/react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { t } from "i18next";
-import { useCurrentUserAbility } from "../../contexts/current-user-context";
+import { useAbility } from "@/contexts/ability-context";
+
 import { ApiKeysPage } from "@/components/api-keys-page";
 import { graphql } from "@/gql";
 import {
@@ -123,7 +124,7 @@ const DELETE_USER_API_KEY_FROM_USER_API_KEYS_ROUTE = graphql(`
 export const Route = createFileRoute("/_authenticated/user/api-keys/")({
   component: ApiKeysComponent,
   beforeLoad: ({ context }) => {
-    if (!context.currentUserAbility.can("read", "UserApiKey")) {
+    if (!context.ability.can("read", "UserApiKey")) {
       throw redirect({ to: "/user" });
     }
   },
@@ -131,7 +132,7 @@ export const Route = createFileRoute("/_authenticated/user/api-keys/")({
 });
 
 function ApiKeysComponent() {
-  const ability = useCurrentUserAbility();
+  const ability = useAbility();
   const search = Route.useSearch();
   const { data, refetch } = useQuery(
     GET_USER_API_KEYS_FROM_USER_API_KEYS_ROUTE,

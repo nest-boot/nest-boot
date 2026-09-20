@@ -394,10 +394,10 @@ test.describe("workspace invitations", () => {
       await expect(memberPage.getByTestId("member-role-OWNER")).toBeDisabled();
       await expect(permission).toBeEnabled();
       await permission.click();
-      await memberPage.getByTestId("member-save").click();
+      await memberPage.getByTestId("member-permissions-save").click();
       await expect(memberPage.getByText("成员更新成功")).toBeVisible();
       await permission.click();
-      await memberPage.getByTestId("member-save").click();
+      await memberPage.getByTestId("member-permissions-save").click();
       await expect(permission).not.toBeChecked();
 
       await graphqlRequest(
@@ -432,8 +432,9 @@ test.describe("workspace invitations", () => {
         .fill("owner-contact@example.com");
       await expect(permission).toBeEnabled();
       await permission.click();
-      await memberPage.getByTestId("member-save").click();
-      await expect(memberPage.getByText("成员更新成功")).toBeVisible();
+      await memberPage.getByTestId("member-profile-save").click();
+      await memberPage.getByTestId("member-permissions-save").click();
+      await expect(memberPage.getByText("成员更新成功").first()).toBeVisible();
       await memberPage.reload();
       await expect(permission).toBeChecked();
       await expect(permission).toBeEnabled();
@@ -524,8 +525,63 @@ test.describe("workspace invitations", () => {
         if (body.includes("setMemberPermissionsFromMemberRoute"))
           permissionWrites++;
       });
-      await page.getByTestId("member-save").click();
-      await expect(page.getByText("成员更新成功")).toBeVisible();
+      await page.getByTestId("member-profile-save").click();
+      await expect(
+        page.getByRole("heading", { name: "Workspace Member", exact: true }),
+      ).toBeVisible();
+      expect(roleWrites).toBe(0);
+      expect(permissionWrites).toBe(0);
+      // Saving one form preserves unsaved changes in the other forms.
+      await expect(page.getByTestId("member-role-ADMIN")).toBeChecked();
+      await expect(
+        page.getByTestId("permission-WORKSPACE__UPDATE"),
+      ).toBeChecked();
+      await page.route("**/api/graphql", async (route) => {
+        if (
+          !route.request().postData()?.includes("setMemberRolesFromMemberRoute")
+        )
+          return route.continue();
+        await route.fulfill({
+          json: {
+            data: null,
+            errors: [
+              {
+                message: "Role change rejected",
+                extensions: { code: "BAD_USER_INPUT" },
+              },
+            ],
+          },
+        });
+      });
+      await page.getByTestId("member-roles-save").click();
+      await expect(page.getByText("Role change rejected")).toBeVisible();
+      await page.unrouteAll({ behavior: "wait" });
+      const unchanged = await graphqlRequest<{
+        member: {
+          name: string;
+          roles: Array<string>;
+          permissions: Array<string>;
+        };
+      }>(
+        page.request,
+        "query ($id: ID!) { member(id: $id) { name roles permissions } }",
+        { id: memberId },
+        { "x-workspace-id": workspaceId },
+      );
+      expect(unchanged.member).toEqual({
+        name: "Workspace Member",
+        roles: ["MEMBER"],
+        permissions: [],
+      });
+      await expect(page.getByTestId("member-role-ADMIN")).toBeChecked();
+      await expect(
+        page.getByTestId("permission-WORKSPACE__UPDATE"),
+      ).toBeChecked();
+      await page.getByTestId("member-roles-save").click();
+      await expect.poll(() => roleWrites).toBe(2);
+      expect(permissionWrites).toBe(0);
+      await page.getByTestId("member-permissions-save").click();
+      await expect.poll(() => permissionWrites).toBe(1);
 
       await expect(
         page.getByRole("heading", { name: "Workspace Member", exact: true }),
@@ -545,14 +601,14 @@ test.describe("workspace invitations", () => {
       await page
         .getByLabel("姓名", { exact: true })
         .fill("Updated Workspace Member");
-      await page.getByTestId("member-save").click();
+      await page.getByTestId("member-profile-save").click();
       await expect(
         page.getByRole("heading", {
           name: "Updated Workspace Member",
           exact: true,
         }),
       ).toBeVisible();
-      expect(roleWrites).toBe(1);
+      expect(roleWrites).toBe(2);
       expect(permissionWrites).toBe(1);
 
       await page.getByTestId("member-role-MEMBER").click();
@@ -564,10 +620,10 @@ test.describe("workspace invitations", () => {
             .postData()
             ?.includes("setMemberRolesFromMemberRoute") === true,
       );
-      await page.getByTestId("member-save").click();
+      await page.getByTestId("member-roles-save").click();
       expect((await (await rolesSaved).json()).errors).toBeUndefined();
 
-      await expect.poll(() => roleWrites).toBe(2);
+      await expect.poll(() => roleWrites).toBe(3);
 
       await memberPage.reload();
       await memberPage
@@ -590,7 +646,7 @@ test.describe("workspace invitations", () => {
       await page.goto(`/workspaces/${workspaceId}/members/${currentMember.id}`);
       await page.getByTestId("member-role-MEMBER").click();
       await page.getByTestId("member-role-OWNER").click();
-      await page.getByTestId("member-save").click();
+      await page.getByTestId("member-roles-save").click();
       await expect(page).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
       await expect(page.getByTestId("user-workspaces-page")).toBeVisible();
     } finally {

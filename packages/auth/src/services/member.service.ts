@@ -3,7 +3,6 @@ import {
   type FilterQuery,
   LockMode,
   Reference,
-  type RequiredEntityData,
 } from "@mikro-orm/core";
 import type { SqlEntityManager } from "@mikro-orm/sql";
 import {
@@ -35,17 +34,22 @@ import type { WorkspaceHasPermissionsOptions } from "../interfaces/workspace-has
 import type { WorkspacePermissionOption } from "../objects/workspace-permission-option.object.js";
 import type { WorkspaceRoleOption } from "../objects/workspace-role-option.object.js";
 import type { AuthModuleRoles } from "../types/auth-module-roles.type.js";
+import { assertCan } from "../utils/assert-can.util.js";
 import {
   listAuthPermissions,
   normalizeAuthPermissions,
   normalizeAuthRoles,
   resolveAuthPermissions,
 } from "../utils/auth-role.util.js";
+import { can } from "../utils/can.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
+import {
+  assertCanGrantPermissions,
+  canGrantPermissions,
+} from "../utils/permission-grants.util.js";
 import { resolveAuthCatalog } from "../utils/resolve-auth-catalog.util.js";
 import { resolveMemberPermissions } from "../utils/resolve-effective-permissions.util.js";
 import { DEFAULT_WORKSPACE_ROLE } from "../workspace.constants.js";
-import { AccessControlService } from "./access-control.service.js";
 
 /** Workspace membership queries, profile management, and authorization. */
 @Injectable()
@@ -56,7 +60,6 @@ export class MemberService {
     protected readonly em: EntityManager,
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly authOptions: AuthModuleOptions,
-    private readonly accessControlService: AccessControlService,
   ) {}
 
   /** Returns the current member after membership and instance read checks. */
@@ -68,15 +71,15 @@ export class MemberService {
         "The API key owner is not a member of this workspace",
       );
     }
-    if (member) this.accessControlService.assertWorkspaceCan("read", member);
+    if (member) assertCan("read", member);
     return member ?? null;
   }
 
   /** Authorizes member pagination and scopes it to the selected workspace. */
   getMemberListFilter(workspace: Workspace): FilterQuery<Member> {
-    this.accessControlService.assertCurrentWorkspace(workspace);
-    this.accessControlService.assertWorkspaceCan("read", Member);
-    return { workspace } as FilterQuery<Member>;
+    RequestIdentity.assertCurrentWorkspace(workspace);
+    assertCan("read", Member);
+    return { workspace };
   }
 
   /** Paginates members within the selected workspace and its RLS scope. */
@@ -89,7 +92,7 @@ export class MemberService {
       this.em as SqlEntityManager,
     ).find<Member>(MemberConnection, args, { where });
     for (const { node } of connection.edges) {
-      this.accessControlService.assertWorkspaceCan("read", node);
+      assertCan("read", node);
     }
     return connection;
   }
@@ -99,12 +102,12 @@ export class MemberService {
     workspace: Workspace,
     user: User,
   ): Promise<Member | null> {
-    this.accessControlService.assertUserSession(user);
+    RequestIdentity.assertUserSession(user);
     const member = await this.em.findOne(Member, {
       status: "ACTIVE",
       user,
       workspace,
-    } as FilterQuery<Member>);
+    });
     return member;
   }
 
@@ -116,13 +119,13 @@ export class MemberService {
     if (!workspace) {
       throw new ForbiddenException("A workspace must be selected");
     }
-    this.accessControlService.assertCurrentWorkspace(workspace);
-    this.accessControlService.assertWorkspaceCan("read", Member);
+    RequestIdentity.assertCurrentWorkspace(workspace);
+    assertCan("read", Member);
     const member = await this.em.findOne(Member, {
       id,
       workspace,
-    } as FilterQuery<Member>);
-    if (member) this.accessControlService.assertWorkspaceCan("read", member);
+    });
+    if (member) assertCan("read", member);
     return member;
   }
 
@@ -136,8 +139,8 @@ export class MemberService {
       actorId !== undefined &&
       member.user?.id === actorId;
     if (!ownMember) {
-      this.accessControlService.assertCurrentWorkspace(workspace);
-      this.accessControlService.assertUserCan("read", User);
+      RequestIdentity.assertCurrentWorkspace(workspace);
+      assertCan("read", User);
     }
     const current = await this.em.findOne(
       Member,
@@ -145,17 +148,16 @@ export class MemberService {
         id: member.id,
         workspace,
         ...(ownMember ? { user: actorId } : {}),
-      } as FilterQuery<Member>,
+      },
       { refresh: true },
     );
     if (!current?.user?.id) return null;
     const user = await this.em.findOne(
       User,
-      { id: current.user.id } as FilterQuery<User>,
+      { id: current.user.id },
       { refresh: true },
     );
-    if (user && !ownMember)
-      this.accessControlService.assertUserCan("read", user);
+    if (user && !ownMember) assertCan("read", user);
     return user;
   }
 
@@ -165,17 +167,17 @@ export class MemberService {
     user: User,
     input: AddMemberOptions = {},
   ): Promise<Member> {
-    this.accessControlService.assertCurrentWorkspace(workspace);
-    this.accessControlService.assertWorkspaceCan("write", Member);
+    RequestIdentity.assertCurrentWorkspace(workspace);
+    assertCan("write", Member);
     const permissions = this.normalizePermissions(input.permissions ?? []);
-    this.accessControlService.assertCanGrantWorkspacePermissions(permissions);
+    assertCanGrantPermissions(this.authOptions, "workspace", permissions);
     const roles = this.normalizeGrantedRoles(input.roles ?? [this.defaultRole]);
     return await this.em.transactional(
       async (em) => {
         await this.lockWorkspace(em, workspace);
         const existing = await em.findOne(
           Member,
-          { user, workspace } as FilterQuery<Member>,
+          { user, workspace },
           { filters: false },
         );
         if (existing) throw new ConflictException("User is already a member");
@@ -187,8 +189,8 @@ export class MemberService {
           status: "ACTIVE",
           user,
           workspace,
-        } as unknown as RequiredEntityData<Member>);
-        this.accessControlService.assertWorkspaceCan("write", member);
+        });
+        assertCan("write", member);
         await em.persist(member).flush();
         await em.nativeUpdate(
           Invitation,
@@ -196,8 +198,8 @@ export class MemberService {
             email: user.email.trim().toLowerCase(),
             status: "pending",
             workspace,
-          } as FilterQuery<Invitation>,
-          { status: "canceled" } as never,
+          },
+          { status: "canceled" },
         );
         return member;
       },
@@ -211,8 +213,8 @@ export class MemberService {
     email: string,
     input: AddMemberOptions = {},
   ): Promise<Member> {
-    this.accessControlService.assertCurrentWorkspace(workspace);
-    this.accessControlService.assertWorkspaceCan("write", Member);
+    RequestIdentity.assertCurrentWorkspace(workspace);
+    assertCan("write", Member);
     const user = await this.getUserForMembership(workspace, email);
 
     return await this.addMember(workspace, user, input);
@@ -227,11 +229,11 @@ export class MemberService {
     workspace: Workspace,
     email: string,
   ): Promise<User> {
-    this.accessControlService.assertCurrentWorkspace(workspace);
-    this.accessControlService.assertWorkspaceCan("write", Member);
+    RequestIdentity.assertCurrentWorkspace(workspace);
+    assertCan("write", Member);
     const user = await this.em.findOne(
       User,
-      { email: email.trim().toLowerCase() } as FilterQuery<User>,
+      { email: email.trim().toLowerCase() },
       { filters: false },
     );
     if (!user) throw new NotFoundException("User not found");
@@ -243,11 +245,11 @@ export class MemberService {
     action: string,
   ): Promise<Member> {
     if (typeof member !== "string") return member;
-    this.accessControlService.assertWorkspaceCan(action, Member);
+    assertCan(action, Member);
     const entity = await this.em.findOne(
       Member,
-      { id: member } as FilterQuery<Member>,
-      { populate: ["workspace"] as never, refresh: true },
+      { id: member },
+      { populate: ["workspace"], refresh: true },
     );
     if (!entity) throw new NotFoundException("Workspace member not found");
     return entity;
@@ -260,8 +262,8 @@ export class MemberService {
   ): Promise<Member> {
     member = await this.resolveMemberForAction(member, "write");
     const workspace = this.unwrapWorkspace(member);
-    this.accessControlService.assertCurrentWorkspace(workspace);
-    this.accessControlService.assertWorkspaceCan("write", member);
+    RequestIdentity.assertCurrentWorkspace(workspace);
+    assertCan("write", member);
     if ("roles" in input || "permissions" in input) {
       throw new BadRequestException(
         "Use setMemberRoles or setMemberPermissions to update authorization fields",
@@ -285,7 +287,7 @@ export class MemberService {
       async (em) => {
         const lockedMember = await em.findOne(
           Member,
-          { id: member.id, workspace } as FilterQuery<Member>,
+          { id: member.id, workspace },
           {
             lockMode: LockMode.PESSIMISTIC_WRITE,
             refresh: true,
@@ -294,12 +296,12 @@ export class MemberService {
         if (!lockedMember) {
           throw new NotFoundException("Workspace member not found");
         }
-        this.accessControlService.assertWorkspaceCan("write", lockedMember);
+        assertCan("write", lockedMember);
         em.assign(lockedMember, {
           ...(input.name !== undefined ? { name: input.name.trim() } : {}),
           ...(email !== undefined ? { email } : {}),
           ...(input.status !== undefined ? { status: input.status } : {}),
-        } as never);
+        });
         await em.flush();
         return lockedMember;
       },
@@ -316,8 +318,8 @@ export class MemberService {
   ): Promise<Member> {
     member = await this.resolveMemberForAction(member, "set-roles");
     const workspace = this.unwrapWorkspace(member);
-    this.accessControlService.assertCurrentWorkspace(workspace);
-    this.accessControlService.assertWorkspaceCan("set-roles", member);
+    RequestIdentity.assertCurrentWorkspace(workspace);
+    assertCan("set-roles", member);
     const roles = this.normalizeGrantedRoles(roleNames);
     this.assertAuthorizationCanCommit(member);
 
@@ -325,13 +327,13 @@ export class MemberService {
       async (em) => {
         const lockedMember = await em.findOne(
           Member,
-          { id: member.id, workspace } as FilterQuery<Member>,
+          { id: member.id, workspace },
           { lockMode: LockMode.PESSIMISTIC_WRITE },
         );
         if (!lockedMember) {
           throw new NotFoundException("Workspace member not found");
         }
-        this.accessControlService.assertWorkspaceCan("set-roles", lockedMember);
+        assertCan("set-roles", lockedMember);
 
         lockedMember.roles = roles;
         await em.flush();
@@ -350,10 +352,12 @@ export class MemberService {
   ): Promise<Member> {
     member = await this.resolveMemberForAction(member, "set-permissions");
     const workspace = this.unwrapWorkspace(member);
-    this.accessControlService.assertCurrentWorkspace(workspace);
-    this.accessControlService.assertWorkspaceCan("set-permissions", member);
+    RequestIdentity.assertCurrentWorkspace(workspace);
+    assertCan("set-permissions", member);
     const normalizedPermissions = this.normalizePermissions(permissions);
-    this.accessControlService.assertCanGrantWorkspacePermissions(
+    assertCanGrantPermissions(
+      this.authOptions,
+      "workspace",
       normalizedPermissions,
     );
     this.assertAuthorizationCanCommit(member);
@@ -361,7 +365,7 @@ export class MemberService {
       async (em) => {
         const lockedMember = await em.findOne(
           Member,
-          { id: member.id, workspace } as FilterQuery<Member>,
+          { id: member.id, workspace },
           {
             lockMode: LockMode.PESSIMISTIC_WRITE,
             refresh: true,
@@ -370,10 +374,7 @@ export class MemberService {
         if (!lockedMember) {
           throw new NotFoundException("Workspace member not found");
         }
-        this.accessControlService.assertWorkspaceCan(
-          "set-permissions",
-          lockedMember,
-        );
+        assertCan("set-permissions", lockedMember);
         lockedMember.permissions = normalizedPermissions;
         await em.flush();
         return lockedMember;
@@ -403,26 +404,26 @@ export class MemberService {
   async removeMember(member: Member | string): Promise<Member> {
     member = await this.resolveMemberForAction(member, "write");
     const workspace = this.unwrapWorkspace(member);
-    this.accessControlService.assertCurrentWorkspace(workspace);
-    this.accessControlService.assertWorkspaceCan("write", member);
+    RequestIdentity.assertCurrentWorkspace(workspace);
+    assertCan("write", member);
     if (this.isCurrentMember(member)) {
       throw new ForbiddenException("You are not allowed to remove yourself");
     }
     return await this.removeMemberRecord(workspace, member, (lockedMember) => {
-      this.accessControlService.assertWorkspaceCan("write", lockedMember);
+      assertCan("write", lockedMember);
     });
   }
 
   /** Lets the current member leave its workspace regardless of role. */
   async leaveWorkspace(member: Member): Promise<Member> {
-    this.accessControlService.assertCurrentMember(member);
+    RequestIdentity.assertCurrentMember(member);
     const user = RequestContext.get(User);
     if (!user) throw new ForbiddenException("A user identity is required");
-    this.accessControlService.assertUserSession(user);
+    RequestIdentity.assertUserSession(user);
     if (member.user?.id !== user.id)
       throw new ForbiddenException("The membership belongs to another user");
     const workspace = this.unwrapWorkspace(member);
-    this.accessControlService.assertCurrentWorkspace(workspace);
+    RequestIdentity.assertCurrentWorkspace(workspace);
     // Session context can only be restaged after the removal's top-level commit.
     if (this.em.isInTransaction()) {
       throw new BadRequestException(
@@ -433,10 +434,10 @@ export class MemberService {
       workspace,
       member,
       (lockedMember) => {
-        this.accessControlService.assertCurrentMember(lockedMember);
+        RequestIdentity.assertCurrentMember(lockedMember);
       },
     );
-    RequestIdentity.clearWorkspace(this.em);
+    RequestIdentity.clearWorkspace(this.em, this.authOptions);
     return removed;
   }
 
@@ -453,32 +454,25 @@ export class MemberService {
 
   /** Lists all roles with grant availability; mutations still authorize their targets. */
   listRoles(): WorkspaceRoleOption[] {
-    const canAssign =
-      this.accessControlService.workspaceCan("write", Invitation) ||
-      this.accessControlService.workspaceCan("set-roles", Member);
-    if (!canAssign)
-      this.accessControlService.assertWorkspaceCan("read", Member);
+    const canAssign = can("write", Invitation) || can("set-roles", Member);
+    if (!canAssign) assertCan("read", Member);
     return Object.entries(this.roles).map(([role, permissions]) => ({
       role,
       grantable:
         canAssign &&
-        this.accessControlService.canGrantWorkspacePermissions(permissions),
+        canGrantPermissions(this.authOptions, "workspace", permissions),
     }));
   }
 
   /** Lists all direct-permission options without authorizing a particular member. */
   listPermissions(): WorkspacePermissionOption[] {
-    const canAssign = this.accessControlService.workspaceCan(
-      "set-permissions",
-      Member,
-    );
-    if (!canAssign)
-      this.accessControlService.assertWorkspaceCan("read", Member);
+    const canAssign = can("set-permissions", Member);
+    if (!canAssign) assertCan("read", Member);
     return listAuthPermissions(this.permissions).map((permission) => ({
       permission,
       grantable:
         canAssign &&
-        this.accessControlService.canGrantWorkspacePermissions([permission]),
+        canGrantPermissions(this.authOptions, "workspace", [permission]),
     }));
   }
 
@@ -505,7 +499,9 @@ export class MemberService {
 
   private normalizeGrantedRoles(role: string | readonly string[]): string[] {
     const roles = this.normalizeRoles(role);
-    this.accessControlService.assertCanGrantWorkspacePermissions(
+    assertCanGrantPermissions(
+      this.authOptions,
+      "workspace",
       resolveAuthPermissions(roles, [], this.roles),
     );
     return roles;
@@ -528,7 +524,7 @@ export class MemberService {
       async (em) => {
         const lockedMember = await em.findOne(
           Member,
-          { id: member.id, workspace } as FilterQuery<Member>,
+          { id: member.id, workspace },
           { lockMode: LockMode.PESSIMISTIC_WRITE },
         );
         if (!lockedMember) {
@@ -556,6 +552,6 @@ export class MemberService {
   }
 
   private unwrapWorkspace(member: Member): Workspace {
-    return Reference.unwrapReference(member.workspace) as unknown as Workspace;
+    return Reference.unwrapReference(member.workspace);
   }
 }

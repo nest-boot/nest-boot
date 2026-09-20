@@ -3,9 +3,10 @@ import { t } from "i18next";
 
 import { linkOptions } from "@tanstack/react-router";
 import { SidebarUser } from "../../components/sidebar-user";
-import { useCurrentUserAbility } from "../../contexts/current-user-context";
+
 import type { ComponentProps, ComponentType, FC } from "react";
 import type { LinkProps } from "@tanstack/react-router";
+import { useAbility } from "@/contexts/ability-context";
 import { Link } from "@/components/link";
 import {
   Sidebar,
@@ -30,7 +31,7 @@ type SidebarItem = {
 };
 
 export const UserSidebar: FC<ComponentProps<typeof Sidebar>> = (props) => {
-  const ability = useCurrentUserAbility();
+  const ability = useAbility();
   const items: Array<SidebarItem> = [
     {
       title: t("sidebar:user.account"),

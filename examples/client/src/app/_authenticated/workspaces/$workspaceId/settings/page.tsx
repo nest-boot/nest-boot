@@ -8,11 +8,9 @@ import {
 import { t } from "i18next";
 import { toast } from "sonner";
 
-import {
-  GET_CURRENT_WORKSPACE_FROM_WORKSPACE_CONTEXT,
-  useCurrentWorkspaceContext,
-} from "../contexts/current-workspace-context";
-import { useCurrentWorkspaceAbility } from "../contexts/current-member-context";
+import { useCurrentWorkspaceContext } from "../contexts/current-workspace-context";
+import { useAbility } from "@/contexts/ability-context";
+
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import {
   Page,
@@ -82,21 +80,12 @@ function SettingsComponent() {
   const navigate = useNavigate();
 
   const workspace = useCurrentWorkspaceContext();
-  const currentWorkspaceAbility = useCurrentWorkspaceAbility();
+  const ability = useAbility();
   const workspaceSubject = createAbilitySubject("Workspace", workspace);
-  const canUpdateWorkspace = currentWorkspaceAbility.can(
-    "update",
-    workspaceSubject,
-  );
-  const canDeleteWorkspace = currentWorkspaceAbility.can(
-    "delete",
-    workspaceSubject,
-  );
+  const canUpdateWorkspace = ability.can("update", workspaceSubject);
+  const canDeleteWorkspace = ability.can("delete", workspaceSubject);
 
-  const [updateWorkspace] = useMutation(UPDATE_WORKSPACE_FROM_SETTINGS_ROUTE, {
-    refetchQueries: [GET_CURRENT_WORKSPACE_FROM_WORKSPACE_CONTEXT],
-    awaitRefetchQueries: true,
-  });
+  const [updateWorkspace] = useMutation(UPDATE_WORKSPACE_FROM_SETTINGS_ROUTE);
   const [deleteWorkspace, { loading: deleting, client }] = useMutation(
     DELETE_WORKSPACE_FROM_SETTINGS_ROUTE,
   );

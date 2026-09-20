@@ -2,6 +2,7 @@ import { ref } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException } from "@nestjs/common";
 
+import { restoreAuthorization } from "../../test/mock-authorization.js";
 import {
   createTestInvitation,
   createTestMember,
@@ -9,15 +10,13 @@ import {
   createTestWorkspace,
   createWorkspaceServices,
 } from "../../test/workspace-service.fixture.js";
-import { UserAbility } from "../abilities/user.ability.js";
-import { WorkspaceAbility } from "../abilities/workspace.ability.js";
+import { AuthAbility } from "../abilities/auth.ability.js";
 import { API_KEY } from "../auth.constants.js";
 import { Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
-import { AccessControlService } from "./access-control.service.js";
 import { InvitationService } from "./invitation.service.js";
 
 describe("InvitationService read authorization", () => {
@@ -84,11 +83,8 @@ describe("InvitationService read authorization", () => {
     "checks $name even when the database returns the row",
     async (scenario) => {
       const { em } = createWorkspaceServices();
-      const service = new InvitationService(
-        em,
-        options,
-        new AccessControlService(options),
-      );
+      restoreAuthorization();
+      const service = new InvitationService(em, options);
       const workspace = createTestWorkspace();
       const invitation = Object.assign(createTestInvitation(), {
         email: "recipient@example.com",
@@ -108,8 +104,8 @@ describe("InvitationService read authorization", () => {
             }),
           );
           RequestContext.set(
-            UserAbility,
-            new UserAbility([{ action: "read", subject: Invitation }]),
+            AuthAbility,
+            new AuthAbility([{ action: "read", subject: Invitation }]),
           );
           if (scenario.selected) {
             const selected = Object.assign(createTestWorkspace(), {
@@ -125,9 +121,11 @@ describe("InvitationService read authorization", () => {
               );
           }
           RequestContext.set(
-            WorkspaceAbility,
-            new WorkspaceAbility(
-              scenario.canRead ? [{ action: "read", subject: Invitation }] : [],
+            AuthAbility,
+            new AuthAbility(
+              scenario.canRead && scenario.member
+                ? [{ action: "read", subject: Invitation }]
+                : [],
             ),
           );
 
@@ -220,11 +218,8 @@ describe("InvitationService read authorization", () => {
     },
   ])("checks $name independently of RLS", async (scenario) => {
     const { em } = createWorkspaceServices();
-    const service = new InvitationService(
-      em,
-      options,
-      new AccessControlService(options),
-    );
+    restoreAuthorization();
+    const service = new InvitationService(em, options);
     const invitation = Object.assign(createTestInvitation(), {
       email: "recipient@example.com",
       workspace: ref(Workspace, createTestWorkspace()),
@@ -259,8 +254,8 @@ describe("InvitationService read authorization", () => {
         );
       }
       RequestContext.set(
-        UserAbility,
-        new UserAbility(
+        AuthAbility,
+        new AuthAbility(
           scenario.userRead === "conditional"
             ? [
                 {
@@ -273,8 +268,8 @@ describe("InvitationService read authorization", () => {
         ),
       );
       RequestContext.set(
-        WorkspaceAbility,
-        new WorkspaceAbility(
+        AuthAbility,
+        new AuthAbility(
           scenario.workspaceRead === "none"
             ? []
             : [
@@ -313,11 +308,8 @@ describe("InvitationService read authorization", () => {
 
   it("allows the recipient's own invitation without a management ability", async () => {
     const { em } = createWorkspaceServices();
-    const service = new InvitationService(
-      em,
-      options,
-      new AccessControlService(options),
-    );
+    restoreAuthorization();
+    const service = new InvitationService(em, options);
     const invitation = Object.assign(createTestInvitation(), {
       email: "recipient@example.com",
     });
@@ -329,8 +321,8 @@ describe("InvitationService read authorization", () => {
         Object.assign(createTestUser(), { email: invitation.email }),
       );
       RequestContext.set(
-        UserAbility,
-        new UserAbility([
+        AuthAbility,
+        new AuthAbility([
           {
             action: "read",
             subject: Invitation,

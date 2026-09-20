@@ -103,4 +103,10 @@ export class Invitation extends BaseEntity {
     deleteRule: "cascade",
   })
   workspace!: Ref<Workspace>;
+
+  /** Workspace identifier available to serialized authorization conditions. */
+  @Field(() => ID)
+  get workspaceId(): Opt<string> {
+    return this.workspace.id;
+  }
 }

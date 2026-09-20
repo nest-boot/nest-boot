@@ -3,18 +3,16 @@ import type { Mocked } from "vitest";
 
 import type { AuthModuleOptions } from "../src/auth-module-options.interface.js";
 import { Invitation, Member, User, Workspace } from "../src/entities/index.js";
-import type { AccessControlService } from "../src/services/access-control.service.js";
 import { InvitationService } from "../src/services/invitation.service.js";
 import { MemberService } from "../src/services/member.service.js";
 import { WorkspaceService } from "../src/services/workspace.service.js";
-
+import { mockAuthorization } from "./mock-authorization.js";
 export function createTestWorkspace(): Workspace {
   return Object.assign(new Workspace(), {
     id: "workspace-1",
     name: "Acme",
   });
 }
-
 export function createTestMember(): Member {
   return Object.assign(new Member(), {
     id: "member-1",
@@ -25,11 +23,9 @@ export function createTestMember(): Member {
     } as Member["workspace"],
   });
 }
-
 export function createTestUser(): User {
   return new User();
 }
-
 export function createTestInvitation(): Invitation {
   return Object.assign(new Invitation(), {
     id: "invitation-1",
@@ -38,9 +34,9 @@ export function createTestInvitation(): Invitation {
     } as Invitation["workspace"],
   });
 }
-
 export function createWorkspaceServices(
-  workspace: NonNullable<AuthModuleOptions["workspace"]> = {},
+  workspace: NonNullable<AuthModuleOptions["workspace"]> &
+    Pick<AuthModuleOptions, "buildAbility"> = {},
 ) {
   const em = {
     setSessionContext: vi.fn(),
@@ -67,27 +63,16 @@ export function createWorkspaceServices(
   em.nativeUpdate.mockResolvedValue(1);
   em.nativeDelete.mockResolvedValue(1);
   em.transactional.mockImplementation(async (callback) => await callback(em));
-
   const options = {
     workspace,
+    buildAbility: workspace.buildAbility,
   } as unknown as AuthModuleOptions;
-  const accessControlService = {
-    canGrantWorkspacePermissions: vi.fn().mockReturnValue(true),
-    userCan: vi.fn().mockReturnValue(true),
-    workspaceCan: vi.fn().mockReturnValue(true),
-    assertCurrentUser: vi.fn(),
-    assertUserSession: vi.fn(),
-    assertCurrentWorkspace: vi.fn(),
-    assertCurrentMember: vi.fn(),
-    assertUserCan: vi.fn(),
-    assertWorkspaceCan: vi.fn(),
-    assertCanGrantWorkspacePermissions: vi.fn(),
-  } as unknown as AccessControlService;
+  const authorization = mockAuthorization();
   return {
-    accessControlService,
+    authorization,
     em,
-    workspaceService: new WorkspaceService(em, options, accessControlService),
-    memberService: new MemberService(em, options, accessControlService),
-    invitationService: new InvitationService(em, options, accessControlService),
+    workspaceService: new WorkspaceService(em, options),
+    memberService: new MemberService(em, options),
+    invitationService: new InvitationService(em, options),
   };
 }

@@ -1,9 +1,7 @@
 import {
   EntityManager,
-  type FilterQuery,
   LockMode,
   Reference,
-  type RequiredEntityData,
   UniqueConstraintViolationException,
 } from "@mikro-orm/core";
 import type { SqlEntityManager } from "@mikro-orm/sql";
@@ -29,18 +27,20 @@ import { Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
+import { RequestIdentity } from "../infrastructure/request-identity.js";
 import type { AcceptInvitationResult } from "../interfaces/accept-invitation-result.interface.js";
 import type { CreateInvitationOptions } from "../interfaces/create-invitation-options.interface.js";
-import type { AuthInvitationEmailInviter } from "../types/auth-invitation-email-inviter.type.js";
 import type { AuthModuleRoles } from "../types/auth-module-roles.type.js";
+import { assertCan } from "../utils/assert-can.util.js";
 import {
   normalizeAuthRoles,
   resolveAuthPermissions,
 } from "../utils/auth-role.util.js";
+import { can } from "../utils/can.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
+import { assertCanGrantPermissions } from "../utils/permission-grants.util.js";
 import { resolveAuthCatalog } from "../utils/resolve-auth-catalog.util.js";
 import { DEFAULT_WORKSPACE_ROLE } from "../workspace.constants.js";
-import { AccessControlService } from "./access-control.service.js";
 
 /** Workspace invitation queries and lifecycle operations. */
 @Injectable()
@@ -51,7 +51,6 @@ export class InvitationService {
     protected readonly em: EntityManager,
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly authOptions: AuthModuleOptions,
-    private readonly accessControlService: AccessControlService,
   ) {}
 
   /** Creates a pending workspace invitation. */
@@ -61,9 +60,9 @@ export class InvitationService {
     input: CreateInvitationOptions,
     request?: Request,
   ): Promise<Invitation> {
-    this.accessControlService.assertCurrentWorkspace(workspace);
-    this.accessControlService.assertCurrentUser(inviter);
-    this.accessControlService.assertWorkspaceCan("write", Invitation);
+    RequestIdentity.assertCurrentWorkspace(workspace);
+    RequestIdentity.assertCurrentUser(inviter);
+    assertCan("write", Invitation);
     const email = input.email.trim().toLowerCase();
     const roles = this.normalizeGrantedRoles(input.roles ?? [this.defaultRole]);
     const expiresIn = input.expiresIn ?? 60 * 60 * 48;
@@ -97,7 +96,7 @@ export class InvitationService {
             userId
               ? em.findOne(
                   Member,
-                  { workspace, user: userId } as FilterQuery<Member>,
+                  { workspace, user: userId },
                   { filters: false },
                 )
               : Promise.resolve(null),
@@ -107,7 +106,7 @@ export class InvitationService {
                 email,
                 status: "pending",
                 workspace,
-              } as FilterQuery<Invitation>,
+              },
               { filters: false },
             ),
             sendInvitationEmail
@@ -117,7 +116,7 @@ export class InvitationService {
                     status: "ACTIVE",
                     user: inviter,
                     workspace,
-                  } as FilterQuery<Member>,
+                  },
                   { filters: false },
                 )
               : Promise.resolve(null),
@@ -148,8 +147,8 @@ export class InvitationService {
             roles,
             status: "pending",
             workspace,
-          } as unknown as RequiredEntityData<Invitation>);
-          this.accessControlService.assertWorkspaceCan("write", created);
+          });
+          assertCan("write", created);
           await em.persist(created).flush();
           return { created, inviterMember };
         },
@@ -171,7 +170,7 @@ export class InvitationService {
         Object.create(Object.getPrototypeOf(inviterMember)) as Member,
         inviterMember,
         { user: inviter },
-      ) as unknown as AuthInvitationEmailInviter;
+      );
 
       try {
         await sendInvitationEmail(
@@ -191,8 +190,8 @@ export class InvitationService {
           {
             id: created.id,
             status: "pending",
-          } as FilterQuery<Invitation>,
-          { status: "canceled" } as never,
+          },
+          { status: "canceled" },
         );
         throw error;
       }
@@ -212,13 +211,13 @@ export class InvitationService {
     inviter: User,
     email: string,
   ): Promise<string | null> {
-    this.accessControlService.assertCurrentWorkspace(workspace);
-    this.accessControlService.assertCurrentUser(inviter);
-    this.accessControlService.assertWorkspaceCan("write", Invitation);
+    RequestIdentity.assertCurrentWorkspace(workspace);
+    RequestIdentity.assertCurrentUser(inviter);
+    assertCan("write", Invitation);
     const user = await this.em.findOne(
       User,
-      { email: email.trim().toLowerCase() } as FilterQuery<User>,
-      { fields: ["id"] as never, filters: false },
+      { email: email.trim().toLowerCase() },
+      { fields: ["id"], filters: false },
     );
     return user ? String(user.id) : null;
   }
@@ -229,15 +228,12 @@ export class InvitationService {
       RequestContext.isActive() &&
       RequestContext.get(User) &&
       !getCurrentApiKey();
-    if (
-      !recipientSession &&
-      !this.accessControlService.workspaceCan("read", Invitation)
-    ) {
+    if (!recipientSession && !can("read", Invitation)) {
       throw new ForbiddenException("Invitation read access denied");
     }
     const invitation = await this.em.findOne(
       Invitation,
-      { id } as FilterQuery<Invitation>,
+      { id },
       { refresh: true },
     );
     if (invitation) this.assertInvitationReadAccess(invitation);
@@ -249,14 +245,14 @@ export class InvitationService {
     const current = await this.getInvitationForRelation(invitation);
     const actor = RequestContext.isActive() ? RequestContext.get(User) : null;
     const self = !getCurrentApiKey() && actor?.id === current.inviter.id;
-    if (!self) this.accessControlService.assertUserCan("read", User);
+    if (!self) assertCan("read", User);
     const user = await this.em.findOne(
       User,
-      { id: current.inviter.id } as FilterQuery<User>,
+      { id: current.inviter.id },
       { refresh: true },
     );
     if (!user) throw new NotFoundException("Invitation inviter not found");
-    if (!self) this.accessControlService.assertUserCan("read", user);
+    if (!self) assertCan("read", user);
     return user;
   }
 
@@ -265,7 +261,7 @@ export class InvitationService {
     const current = await this.getInvitationForRelation(invitation);
     const workspace = await this.em.findOne(
       Workspace,
-      { id: current.workspace.id } as FilterQuery<Workspace>,
+      { id: current.workspace.id },
       { refresh: true },
     );
     if (!workspace)
@@ -281,7 +277,7 @@ export class InvitationService {
     // hydrated by the isolated authentication context, or an older identity.
     const current = await this.em.findOne(
       Invitation,
-      { id: invitation.id } as FilterQuery<Invitation>,
+      { id: invitation.id },
       { refresh: true },
     );
     if (!current) throw new NotFoundException("Workspace invitation not found");
@@ -297,10 +293,10 @@ export class InvitationService {
     ) {
       return;
     }
-    this.accessControlService.assertCurrentWorkspace(
+    RequestIdentity.assertCurrentWorkspace(
       this.unwrapInvitationWorkspace(invitation),
     );
-    this.accessControlService.assertWorkspaceCan("read", invitation);
+    assertCan("read", invitation);
   }
 
   /** Finds an invitation when it is addressed to the supplied user. */
@@ -308,11 +304,11 @@ export class InvitationService {
     id: string,
     user: User,
   ): Promise<Invitation | null> {
-    this.accessControlService.assertUserSession(user);
+    RequestIdentity.assertUserSession(user);
     const invitation = await this.em.findOne(Invitation, {
       id,
       email: user.email.toLowerCase(),
-    } as FilterQuery<Invitation>);
+    });
     return invitation;
   }
 
@@ -321,14 +317,13 @@ export class InvitationService {
     id: string,
     workspace: Workspace,
   ): Promise<Invitation | null> {
-    this.accessControlService.assertCurrentWorkspace(workspace);
-    this.accessControlService.assertWorkspaceCan("read", Invitation);
+    RequestIdentity.assertCurrentWorkspace(workspace);
+    assertCan("read", Invitation);
     const invitation = await this.em.findOne(Invitation, {
       id,
       workspace,
-    } as FilterQuery<Invitation>);
-    if (invitation)
-      this.accessControlService.assertWorkspaceCan("read", invitation);
+    });
+    if (invitation) assertCan("read", invitation);
     return invitation;
   }
 
@@ -337,15 +332,15 @@ export class InvitationService {
     workspace: Workspace,
     args: ConnectionArgsInterface<Invitation>,
   ): Promise<ConnectionInterface<Invitation>> {
-    this.accessControlService.assertCurrentWorkspace(workspace);
-    this.accessControlService.assertWorkspaceCan("read", Invitation);
+    RequestIdentity.assertCurrentWorkspace(workspace);
+    assertCan("read", Invitation);
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
     ).find<Invitation>(InvitationConnection, args, {
-      where: { workspace } as FilterQuery<Invitation>,
+      where: { workspace },
     });
     for (const { node } of connection.edges) {
-      this.accessControlService.assertWorkspaceCan("read", node);
+      assertCan("read", node);
     }
     return connection;
   }
@@ -355,7 +350,7 @@ export class InvitationService {
     user: User,
     args: ConnectionArgsInterface<Invitation>,
   ): Promise<ConnectionInterface<Invitation>> {
-    this.accessControlService.assertUserSession(user);
+    RequestIdentity.assertUserSession(user);
     const now = new Date();
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
@@ -364,7 +359,7 @@ export class InvitationService {
         email: user.email.toLowerCase(),
         expiresAt: { $gt: now },
         status: "pending",
-      } as FilterQuery<Invitation>,
+      },
     });
     return connection;
   }
@@ -374,15 +369,15 @@ export class InvitationService {
     user: User,
     invitationId: string,
   ): Promise<AcceptInvitationResult | null> {
-    this.accessControlService.assertUserSession(user);
+    RequestIdentity.assertUserSession(user);
     return await this.em.transactional(
       async (em) => {
         const invitation = await em.findOne(
           Invitation,
-          { id: invitationId } as FilterQuery<Invitation>,
+          { id: invitationId },
           {
             filters: false,
-            populate: ["workspace"] as never,
+            populate: ["workspace"],
           },
         );
         if (!invitation) return null;
@@ -415,7 +410,7 @@ export class InvitationService {
 
         const existing = await em.findOne(
           Member,
-          { user, workspace } as FilterQuery<Member>,
+          { user, workspace },
           { filters: false },
         );
         if (existing) throw new ConflictException("User is already a member");
@@ -428,7 +423,7 @@ export class InvitationService {
           status: "ACTIVE",
           user,
           workspace,
-        } as unknown as RequiredEntityData<Member>);
+        });
         invitation.status = "accepted";
         await em.persist(member).flush();
         return { invitation, member };
@@ -439,11 +434,11 @@ export class InvitationService {
 
   /** Cancels a pending invitation. */
   async cancelInvitation(invitation: Invitation | string): Promise<Invitation> {
-    this.accessControlService.assertWorkspaceCan("write", Invitation);
+    assertCan("write", Invitation);
     invitation = await this.resolveInvitationForAction(invitation);
     const workspace = this.unwrapInvitationWorkspace(invitation);
-    this.accessControlService.assertCurrentWorkspace(workspace);
-    this.accessControlService.assertWorkspaceCan("write", invitation);
+    RequestIdentity.assertCurrentWorkspace(workspace);
+    assertCan("write", invitation);
     if (invitation.status !== "pending") {
       throw new BadRequestException("Workspace invitation is not pending");
     }
@@ -453,8 +448,8 @@ export class InvitationService {
         id: invitation.id,
         status: "pending",
         workspace,
-      } as FilterQuery<Invitation>,
-      { status: "canceled" } as never,
+      },
+      { status: "canceled" },
     );
     if (updated !== 1) {
       throw new BadRequestException("Workspace invitation is not pending");
@@ -468,7 +463,7 @@ export class InvitationService {
     user: User,
     invitation: Invitation | string,
   ): Promise<Invitation> {
-    this.accessControlService.assertUserSession(user);
+    RequestIdentity.assertUserSession(user);
     invitation = await this.resolveInvitationForAction(invitation);
     if (invitation.status !== "pending") {
       throw new BadRequestException("Workspace invitation is not pending");
@@ -484,8 +479,8 @@ export class InvitationService {
         email: user.email.trim().toLowerCase(),
         id: invitation.id,
         status: "pending",
-      } as FilterQuery<Invitation>,
-      { status: "rejected" } as never,
+      },
+      { status: "rejected" },
     );
     if (updated !== 1) {
       throw new BadRequestException("Workspace invitation is not pending");
@@ -500,8 +495,8 @@ export class InvitationService {
     if (typeof invitation !== "string") return invitation;
     const entity = await this.em.findOne(
       Invitation,
-      { id: invitation } as FilterQuery<Invitation>,
-      { populate: ["workspace"] as never, refresh: true },
+      { id: invitation },
+      { populate: ["workspace"], refresh: true },
     );
     if (!entity) throw new NotFoundException("Workspace invitation not found");
     return entity;
@@ -525,7 +520,9 @@ export class InvitationService {
 
   private normalizeGrantedRoles(role: string | readonly string[]): string[] {
     const roles = this.normalizeRoles(role);
-    this.accessControlService.assertCanGrantWorkspacePermissions(
+    assertCanGrantPermissions(
+      this.authOptions,
+      "workspace",
       resolveAuthPermissions(roles, [], this.roles),
     );
     return roles;
@@ -540,8 +537,6 @@ export class InvitationService {
   }
 
   private unwrapInvitationWorkspace(invitation: Invitation): Workspace {
-    return Reference.unwrapReference(
-      invitation.workspace,
-    ) as unknown as Workspace;
+    return Reference.unwrapReference(invitation.workspace);
   }
 }

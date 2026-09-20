@@ -123,4 +123,10 @@ export class WorkspaceApiKey extends BaseEntity {
   @ManyToOne(() => Workspace, { ref: true, deleteRule: "cascade" })
   @HideField()
   workspace!: Ref<Workspace>;
+
+  /** Workspace identifier available to serialized authorization conditions. */
+  @Field(() => ID)
+  get workspaceId(): Opt<string> {
+    return this.workspace.id;
+  }
 }

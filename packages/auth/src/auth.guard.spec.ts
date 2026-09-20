@@ -9,8 +9,7 @@ import { Test } from "@nestjs/testing";
 import { firstValueFrom, of } from "rxjs";
 import type { Mock } from "vitest";
 
-import { UserAbility } from "./abilities/user.ability.js";
-import { WorkspaceAbility } from "./abilities/workspace.ability.js";
+import { AuthAbility } from "./abilities/auth.ability.js";
 import { IS_PUBLIC_KEY } from "./auth.constants.js";
 import { AuthGuard } from "./auth.guard.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
@@ -19,9 +18,8 @@ import { Member } from "./entities/member.entity.js";
 import { Session as BaseSession } from "./entities/session.entity.js";
 import { User as BaseUser } from "./entities/user.entity.js";
 import { Workspace } from "./entities/workspace.entity.js";
-import { USER_CAN_METADATA } from "./permission.constants.js";
-import { AccessControlService } from "./services/access-control.service.js";
-
+import { CAN_METADATA } from "./permission.constants.js";
+import * as abilityChecks from "./utils/can.util.js";
 class PromiseAuthGuard extends AuthGuard {
   override canActivate(_context: ExecutionContext): Promise<boolean> {
     return Promise.resolve(true);
@@ -48,7 +46,7 @@ describe("AuthGuard", () => {
       vi.fn(() => true),
       {},
       vi.fn((key) =>
-        key === USER_CAN_METADATA
+        key === CAN_METADATA
           ? [{ action: "read", subject: subjectFactory }]
           : [],
       ),
@@ -58,19 +56,16 @@ describe("AuthGuard", () => {
       expect(subjectFactory).not.toHaveBeenCalled();
     });
   });
-
-  it("delegates decorator decisions to AccessControlService without a direct-ability fallback", async () => {
+  it("uses the shared ability check for decorator decisions", async () => {
     const { guard, access } = await createGuard(
       AuthGuard,
       vi.fn(() => false),
       {},
       vi.fn((key) =>
-        key === USER_CAN_METADATA
-          ? [{ action: "read", subject: BaseUser }]
-          : [],
+        key === CAN_METADATA ? [{ action: "read", subject: BaseUser }] : [],
       ),
     );
-    const check = vi.spyOn(access, "userCan").mockReturnValue(false);
+    const check = vi.spyOn(access, "can").mockReturnValue(false);
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       RequestContext.set(
         BaseUser,
@@ -78,7 +73,7 @@ describe("AuthGuard", () => {
       );
       RequestContext.set(BaseSession, new BaseSession());
       await expect(guard.canActivate(createContext())).resolves.toBe(false);
-      expect(RequestContext.get(UserAbility)?.can("read", BaseUser)).toBe(true);
+      expect(RequestContext.get(AuthAbility)?.can("read", BaseUser)).toBe(true);
       expect(check).toHaveBeenCalledWith("read", BaseUser);
     });
   });
@@ -88,15 +83,10 @@ describe("AuthGuard", () => {
       AuthGuard,
       vi.fn(() => false),
       {
-        user: {
-          buildAbility: (builder, _permissions, user) => {
-            builder.cannot("read", BaseUser, { id: { $ne: user.id } });
-          },
-        },
-        workspace: {
-          buildAbility: (builder, _permissions, workspace) => {
-            builder.cannot("update", Workspace, { id: { $ne: workspace.id } });
-          },
+        buildAbility: ({ cannot }, { user, workspace }) => {
+          if (user) cannot("read", BaseUser, { id: { $ne: user.id } });
+          if (workspace)
+            cannot("update", Workspace, { id: { $ne: workspace.id } });
         },
       },
     );
@@ -117,31 +107,38 @@ describe("AuthGuard", () => {
         Member,
         Object.assign(new Member(), {
           workspace,
+          user: original,
           permissions: ["workspace:update"],
         }),
       );
       await expect(guard.canActivate(createContext())).resolves.toBe(true);
-      const originalAbility = RequestContext.get(UserAbility);
+      const originalAbility = RequestContext.get(AuthAbility);
       expect(originalAbility?.can("read", original)).toBe(true);
-      expect(
-        RequestContext.get(WorkspaceAbility)?.can("update", workspace),
-      ).toBe(true);
+      expect(RequestContext.get(AuthAbility)?.can("update", workspace)).toBe(
+        true,
+      );
 
       RequestContext.set(BaseUser, replacement);
       RequestContext.set<Member | null>(Member, null);
       RequestContext.set<Workspace | null>(Workspace, null);
-      guard.refreshAbilities();
-      const refreshed = RequestContext.get(UserAbility);
+      guard.refreshAbility();
+      const refreshed = RequestContext.get(AuthAbility);
       expect(refreshed).not.toBe(originalAbility);
       expect(refreshed?.can("read", replacement)).toBe(true);
       expect(refreshed?.can("read", original)).toBe(false);
-      expect(RequestContext.get(WorkspaceAbility)).toBeNull();
+      expect(RequestContext.get(AuthAbility)?.can("update", Workspace)).toBe(
+        false,
+      );
       await expect(guard.canActivate(createContext())).resolves.toBe(true);
-      expect(RequestContext.get(WorkspaceAbility)).toBeNull();
+      expect(RequestContext.get(AuthAbility)?.can("update", Workspace)).toBe(
+        false,
+      );
 
       RequestContext.set<BaseUser | null>(BaseUser, null);
-      guard.refreshAbilities();
-      expect(RequestContext.get(UserAbility)).toBeNull();
+      guard.refreshAbility();
+      expect(RequestContext.get(AuthAbility)?.can("update", Workspace)).toBe(
+        false,
+      );
     });
   });
 
@@ -222,7 +219,7 @@ describe("AuthGuard", () => {
     const { guard } = await createGuard(
       AuthGuard,
       vi.fn((key) =>
-        key === USER_CAN_METADATA
+        key === CAN_METADATA
           ? [
               {
                 action: "read",
@@ -231,7 +228,7 @@ describe("AuthGuard", () => {
             ]
           : false,
       ),
-      { user: { buildAbility } },
+      { buildAbility },
     );
 
     await RequestContext.run(new RequestContext({ type: "http" }), async () => {
@@ -246,7 +243,7 @@ describe("AuthGuard", () => {
   it("checks Can metadata on public routes without requiring a session", async () => {
     class Subject {}
     const buildAbility = vi.fn((rules) => {
-      rules.can("subject:read", "read", Subject);
+      rules.can({ user: "subject:read" }, "read", Subject);
     });
     const { guard } = await createGuard(
       AuthGuard,
@@ -255,7 +252,7 @@ describe("AuthGuard", () => {
           return true;
         }
 
-        if (key === USER_CAN_METADATA) {
+        if (key === CAN_METADATA) {
           return [
             {
               action: "read",
@@ -266,7 +263,7 @@ describe("AuthGuard", () => {
 
         return undefined;
       }),
-      { user: { permissions: ["subject:read"], buildAbility } },
+      { buildAbility, user: { permissions: ["subject:read"] } },
     );
 
     await RequestContext.run(new RequestContext({ type: "http" }), async () => {
@@ -284,12 +281,12 @@ describe("AuthGuard", () => {
     class Subject {}
     const getAllAndOverride = vi.fn((key) => {
       if (key === IS_PUBLIC_KEY) return false;
-      return key === USER_CAN_METADATA
+      return key === CAN_METADATA
         ? [{ action: "read", subject: Subject }]
         : undefined;
     });
     const getAllAndMerge = vi.fn((key) =>
-      key === USER_CAN_METADATA
+      key === CAN_METADATA
         ? [
             { action: "read", subject: Subject },
             { action: "update", subject: Subject },
@@ -300,11 +297,12 @@ describe("AuthGuard", () => {
       AuthGuard,
       getAllAndOverride,
       {
+        buildAbility: (rules) => {
+          rules.can({ user: "subject:read" }, "read", Subject);
+        },
+
         user: {
           permissions: ["subject:read"],
-          buildAbility: (rules) => {
-            rules.can("subject:read", "read", Subject);
-          },
         },
       },
       getAllAndMerge,
@@ -321,7 +319,7 @@ describe("AuthGuard", () => {
       await expect(guard.canActivate(context)).resolves.toBe(false);
     });
 
-    expect(getAllAndMerge).toHaveBeenCalledWith(USER_CAN_METADATA, [
+    expect(getAllAndMerge).toHaveBeenCalledWith(CAN_METADATA, [
       context.getHandler(),
       context.getClass(),
     ]);
@@ -336,7 +334,6 @@ async function createGuard<T extends AuthGuard>(
 ) {
   const moduleRef = await Test.createTestingModule({
     providers: [
-      AccessControlService,
       guardType,
       {
         provide: Reflector,
@@ -354,7 +351,7 @@ async function createGuard<T extends AuthGuard>(
 
   return {
     guard: moduleRef.get(guardType),
-    access: moduleRef.get(AccessControlService),
+    access: abilityChecks,
   };
 }
 

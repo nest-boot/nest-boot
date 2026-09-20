@@ -1,48 +1,30 @@
 import { createContext, useContext } from "react";
-import { useSuspenseQuery } from "@apollo/client/react";
 import type { ReactNode } from "react";
-import type { GetCurrentWorkspaceFromWorkspaceContextQuery } from "@/gql/graphql";
-import { graphql } from "@/gql";
+import type { GetCurrentWorkspaceFromWorkspaceLayoutQuery } from "@/gql/graphql";
 
-export const GET_CURRENT_WORKSPACE_FROM_WORKSPACE_CONTEXT = graphql(`
-  query getCurrentWorkspaceFromWorkspaceContext {
-    currentWorkspace {
-      id
-      name
-      createdAt
-      updatedAt
-    }
-  }
-`);
+type CurrentWorkspace = NonNullable<
+  GetCurrentWorkspaceFromWorkspaceLayoutQuery["workspace"]
+>;
+const CurrentWorkspaceContext = createContext<CurrentWorkspace | null>(null);
 
-const CurrentWorkspaceContext = createContext<
-  GetCurrentWorkspaceFromWorkspaceContextQuery["currentWorkspace"] | null
->(null);
-
+/** Shares the identity already loaded and authorized by the route. */
 export function CurrentWorkspaceProvider({
+  value,
   children,
 }: {
+  value: CurrentWorkspace;
   children: ReactNode;
 }) {
-  const { data } = useSuspenseQuery(
-    GET_CURRENT_WORKSPACE_FROM_WORKSPACE_CONTEXT,
-    { fetchPolicy: "network-only" },
-  );
-
   return (
-    <CurrentWorkspaceContext value={data.currentWorkspace}>
-      {children}
-    </CurrentWorkspaceContext>
+    <CurrentWorkspaceContext value={value}>{children}</CurrentWorkspaceContext>
   );
 }
 
 export function useCurrentWorkspaceContext() {
   const context = useContext(CurrentWorkspaceContext);
-
-  if (context == null) {
+  if (!context)
     throw new Error(
-      "useCurrentWorkspaceContext must be used within a WorkspaceProvider",
+      "useCurrentWorkspaceContext must be used within a CurrentWorkspaceProvider",
     );
-  }
   return context;
 }

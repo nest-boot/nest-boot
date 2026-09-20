@@ -91,10 +91,8 @@ describe("createUserConfig", () => {
   });
 
   it("does not pass Nest Boot authorization options to Better Auth", () => {
-    const buildAbility = vi.fn();
     const config = createUserConfig({} as Mailer, {
       adminRoles: ["admin"],
-      buildAbility,
       defaultRole: "user",
       permissions: ["user:read"],
       roles: { admin: ["user:read"] },

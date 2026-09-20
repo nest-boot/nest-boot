@@ -81,15 +81,17 @@ describe("InvitationService", () => {
   it.each([
     "assertCurrentWorkspace",
     "assertCurrentUser",
-    "assertWorkspaceCan",
+    "assertCan",
   ] as const)(
     "authorizes the isolated login lookup with %s before reading users",
     async (assertion) => {
-      const { invitationService, em, accessControlService } =
+      const { invitationService, em, authorization } =
         createWorkspaceServices();
-      vi.mocked(accessControlService[assertion]).mockImplementation(() => {
-        throw new ForbiddenException();
-      });
+      (authorization[assertion] as import("vitest").Mock).mockImplementation(
+        () => {
+          throw new ForbiddenException();
+        },
+      );
 
       await expect(
         invitationService.getUserIdForInvitation(
@@ -103,20 +105,17 @@ describe("InvitationService", () => {
   );
 
   it("denies invitation relations when both recipient and workspace access are missing", async () => {
-    const { invitationService, em, accessControlService } =
-      createWorkspaceServices();
+    const { invitationService, em, authorization } = createWorkspaceServices();
     const user = Object.assign(createTestUser(), {
       email: "recipient@example.com",
     });
     const invitation = Object.assign(createTestInvitation(), {
       email: "another-recipient@example.com",
     });
-    vi.mocked(accessControlService.userCan).mockReturnValue(false);
-    vi.mocked(accessControlService.assertCurrentWorkspace).mockImplementation(
-      () => {
-        throw new ForbiddenException();
-      },
-    );
+    vi.mocked(authorization.can).mockReturnValue(false);
+    vi.mocked(authorization.assertCurrentWorkspace).mockImplementation(() => {
+      throw new ForbiddenException();
+    });
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       RequestContext.set(User, user);
       await expect(
@@ -143,8 +142,7 @@ describe("InvitationService", () => {
   );
 
   it("resolves invitation relations for recipients with global user-read permission without requiring workspace membership", async () => {
-    const { invitationService, em, accessControlService } =
-      createWorkspaceServices();
+    const { invitationService, em, authorization } = createWorkspaceServices();
     const session = mockRlsContext(em);
     const recipient = Object.assign(createTestUser(), {
       email: "Invitee@example.com",
@@ -169,9 +167,12 @@ describe("InvitationService", () => {
         invitationService.getInvitationWorkspace(invitation),
       ).resolves.toBe(workspace);
     });
-    expect(accessControlService.userCan).not.toHaveBeenCalled();
-    expect(accessControlService.assertCurrentWorkspace).not.toHaveBeenCalled();
-    expect(accessControlService.assertWorkspaceCan).not.toHaveBeenCalled();
+    expect(authorization.can).not.toHaveBeenCalled();
+    expect(authorization.assertCurrentWorkspace).not.toHaveBeenCalled();
+    expect(authorization.assertCan).not.toHaveBeenCalledWith(
+      "read",
+      Invitation,
+    );
     expect(em.findOne).toHaveBeenCalledWith(
       Workspace,
       { id: workspace.id },
@@ -183,8 +184,7 @@ describe("InvitationService", () => {
   });
 
   it("does not expose a private inviter merely because an invitation is readable", async () => {
-    const { invitationService, em, accessControlService } =
-      createWorkspaceServices();
+    const { invitationService, em, authorization } = createWorkspaceServices();
     const recipient = Object.assign(createTestUser(), {
       id: "recipient",
       email: "invitee@example.com",
@@ -194,7 +194,7 @@ describe("InvitationService", () => {
       inviter: { id: "private-inviter" },
     });
     em.findOne.mockResolvedValue(invitation);
-    vi.mocked(accessControlService.assertUserCan).mockImplementation(
+    vi.mocked(authorization.assertCan).mockImplementation(
       (_action, subject) => {
         if (subject === User) throw new ForbiddenException();
       },
@@ -214,8 +214,7 @@ describe("InvitationService", () => {
   });
 
   it("requires workspace authorization for invitation relations of non-recipients", async () => {
-    const { invitationService, em, accessControlService } =
-      createWorkspaceServices();
+    const { invitationService, em, authorization } = createWorkspaceServices();
     const invitation = Object.assign(createTestInvitation(), {
       email: "other@example.com",
     });
@@ -226,18 +225,13 @@ describe("InvitationService", () => {
     await expect(
       invitationService.getInvitationWorkspace(invitation),
     ).resolves.toBe(workspace);
-    expect(accessControlService.assertCurrentWorkspace).toHaveBeenCalledWith(
+    expect(authorization.assertCurrentWorkspace).toHaveBeenCalledWith(
       invitation.workspace,
     );
-    expect(accessControlService.assertWorkspaceCan).toHaveBeenCalledWith(
-      "read",
-      invitation,
-    );
-    vi.mocked(accessControlService.assertCurrentWorkspace).mockImplementation(
-      () => {
-        throw new ForbiddenException();
-      },
-    );
+    expect(authorization.assertCan).toHaveBeenCalledWith("read", invitation);
+    vi.mocked(authorization.assertCurrentWorkspace).mockImplementation(() => {
+      throw new ForbiddenException();
+    });
     em.findOne.mockClear();
     await expect(
       invitationService.getInvitationInviter(invitation),
@@ -263,8 +257,7 @@ describe("InvitationService", () => {
   });
 
   it("reads one invitation with the request manager without bypassing RLS or filters", async () => {
-    const { invitationService, em, accessControlService } =
-      createWorkspaceServices();
+    const { invitationService, em, authorization } = createWorkspaceServices();
     const session = mockRlsContext(em);
     const invitation = Object.assign(createTestInvitation(), {
       email: "recipient@example.com",
@@ -279,14 +272,11 @@ describe("InvitationService", () => {
       { id: invitation.id },
       { refresh: true },
     );
-    expect(accessControlService.workspaceCan).toHaveBeenCalledWith(
-      "read",
-      Invitation,
-    );
+    expect(authorization.can).toHaveBeenCalledWith("read", Invitation);
     expect(em.fork).not.toHaveBeenCalled();
     expect(em.getSessionContext()).toEqual(session);
-    vi.mocked(accessControlService.userCan).mockReturnValue(false);
-    vi.mocked(accessControlService.workspaceCan).mockReturnValue(false);
+    vi.mocked(authorization.can).mockReturnValue(false);
+    vi.mocked(authorization.can).mockReturnValue(false);
     await expect(
       invitationService.getInvitation(invitation.id),
     ).rejects.toBeInstanceOf(ForbiddenException);
@@ -294,11 +284,10 @@ describe("InvitationService", () => {
   });
 
   it("requires a user session for recipient operations before querying", async () => {
-    const { invitationService, accessControlService, em } =
-      createWorkspaceServices();
+    const { invitationService, authorization, em } = createWorkspaceServices();
     const user = createTestUser();
     const invitation = createTestInvitation();
-    vi.mocked(accessControlService.assertUserSession).mockImplementation(() => {
+    vi.mocked(authorization.assertUserSession).mockImplementation(() => {
       throw new ForbiddenException();
     });
     for (const operation of [
@@ -309,8 +298,8 @@ describe("InvitationService", () => {
       () => invitationService.rejectInvitation(user, invitation),
     ])
       await expect(operation()).rejects.toBeInstanceOf(ForbiddenException);
-    expect(accessControlService.assertUserSession).toHaveBeenCalledWith(user);
-    expect(accessControlService.assertUserSession).toHaveBeenCalledTimes(4);
+    expect(authorization.assertUserSession).toHaveBeenCalledWith(user);
+    expect(authorization.assertUserSession).toHaveBeenCalledTimes(4);
     expect(em.find).not.toHaveBeenCalled();
     expect(em.findOne).not.toHaveBeenCalled();
     expect(em.nativeUpdate).not.toHaveBeenCalled();

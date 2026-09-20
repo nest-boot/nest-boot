@@ -1,2 +1,1 @@
-export * from "./user.ability.js";
-export * from "./workspace.ability.js";
+export * from "./auth.ability.js";

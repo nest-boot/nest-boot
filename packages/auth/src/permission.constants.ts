@@ -1,8 +1,5 @@
-/** Reflection metadata key used by the `UserCan` decorator. */
-export const USER_CAN_METADATA = Symbol("USER_CAN_METADATA");
-
-/** Reflection metadata key used by the `WorkspaceCan` decorator. */
-export const WORKSPACE_CAN_METADATA = Symbol("WORKSPACE_CAN_METADATA");
+/** Reflection metadata key used by the unified Can decorator. */
+export const CAN_METADATA = Symbol("CAN_METADATA");
 
 /** Nest route arguments metadata key. */
 export const ROUTE_ARGS_METADATA = "__routeArguments__";

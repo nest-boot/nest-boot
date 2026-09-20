@@ -7,8 +7,8 @@ import { EntityManager } from '@mikro-orm/core';
 import { Migrator } from '@mikro-orm/migrations';
 import { MikroORM } from '@mikro-orm/pglite';
 import { TsMorphMetadataProvider } from '@mikro-orm/reflection';
+import { can } from '@nest-boot/auth';
 import {
-  AccessControlService,
   AuthMiddleware,
   AuthModule,
   type AuthModuleOptions,
@@ -102,8 +102,7 @@ describe('example native RLS migrations with PGlite', () => {
     }
     orm = await initialize();
     await orm.migrator.up();
-  }, 30_000);
-
+  }, 30000);
   afterAll(async () => {
     try {
       await orm?.close();
@@ -123,14 +122,30 @@ describe('example native RLS migrations with PGlite', () => {
       interface ResetBackend {
         api: {
           signUpEmail(options: {
-            body: { name: string; email: string; password: string };
-          }): Promise<{ user: { id: string }; token: string | null }>;
+            body: {
+              name: string;
+              email: string;
+              password: string;
+            };
+          }): Promise<{
+            user: {
+              id: string;
+            };
+            token: string | null;
+          }>;
           requestPasswordReset(options: {
-            body: { email: string };
+            body: {
+              email: string;
+            };
           }): Promise<unknown>;
           resetPassword(options: {
-            body: { token: string; newPassword: string };
-          }): Promise<{ status: boolean }>;
+            body: {
+              token: string;
+              newPassword: string;
+            };
+          }): Promise<{
+            status: boolean;
+          }>;
         };
       }
       let resetToken = '';
@@ -184,8 +199,7 @@ describe('example native RLS migrations with PGlite', () => {
             variables: { 'app.user.id': user.id },
           },
         });
-        const access = new AccessControlService(options);
-        const sessions = new SessionService(backend, em, access);
+        const sessions = new SessionService(backend, em);
         const middleware = new AuthMiddleware(
           options,
           sessions,
@@ -212,16 +226,15 @@ describe('example native RLS migrations with PGlite', () => {
             expect(await admin.count(Session, { user })).toBe(revoke ? 0 : 1);
             expect(RequestContext.get(Session)).toBe(revoke ? null : session);
             expect(RequestContext.get(User)).toBe(revoke ? null : user);
-            expect(access.userCan('create', Workspace)).toBe(!revoke);
+            expect(can('create', Workspace)).toBe(!revoke);
             expect(em.getSessionContext()?.role).toBe(
               revoke ? 'anonymous' : 'authenticated',
             );
             if (revoke) {
               await expect(
-                new WorkspaceService(em, options, access).createWorkspace(
-                  user,
-                  { name: 'Denied after reset' },
-                ),
+                new WorkspaceService(em, options).createWorkspace(user, {
+                  name: 'Denied after reset',
+                }),
               ).rejects.toThrow('another user');
             }
           },
@@ -271,11 +284,20 @@ describe('example native RLS migrations with PGlite', () => {
       ) as {
         api: {
           signUpEmail(input: {
-            body: { email: string; name: string; password: string };
+            body: {
+              email: string;
+              name: string;
+              password: string;
+            };
             returnHeaders: true;
           }): Promise<{
             headers: Headers;
-            response: { user: { id: string }; token: string };
+            response: {
+              user: {
+                id: string;
+              };
+              token: string;
+            };
           }>;
         };
       };
@@ -301,8 +323,7 @@ describe('example native RLS migrations with PGlite', () => {
           role: 'authenticated',
           variables: { 'app.user.id': user.id },
         });
-        const access = new AccessControlService(options);
-        const sessions = new SessionService(backend, em, access);
+        const sessions = new SessionService(backend, em);
         const middleware = new AuthMiddleware(
           options,
           sessions,
@@ -331,16 +352,15 @@ describe('example native RLS migrations with PGlite', () => {
             );
             expect(RequestContext.get(User)).toBe(deleted ? null : user);
             expect(RequestContext.get(Session)).toBe(deleted ? null : session);
-            expect(access.userCan('create', Workspace)).toBe(!deleted);
+            expect(can('create', Workspace)).toBe(!deleted);
             expect(em.getSessionContext()?.role).toBe(
               deleted ? 'anonymous' : 'authenticated',
             );
             if (deleted) {
               await expect(
-                new WorkspaceService(em, options, access).createWorkspace(
-                  user,
-                  { name: 'Denied after deletion' },
-                ),
+                new WorkspaceService(em, options).createWorkspace(user, {
+                  name: 'Denied after deletion',
+                }),
               ).rejects.toThrow('another user');
             }
           },
@@ -527,7 +547,7 @@ describe('example native RLS migrations with PGlite', () => {
     const verification = admin.create(Verification, {
       identifier: randomUUID(),
       value: randomUUID(),
-      expiresAt: new Date(Date.now() + 60_000),
+      expiresAt: new Date(Date.now() + 60000),
     });
     await admin.persist(verification).flush();
     try {
@@ -572,7 +592,7 @@ describe('example native RLS migrations with PGlite', () => {
     const session = admin.create(Session, {
       user,
       token: randomUUID(),
-      expiresAt: new Date(Date.now() + 60_000),
+      expiresAt: new Date(Date.now() + 60000),
     });
     await admin.persist([account, session]).flush();
     try {
@@ -617,7 +637,7 @@ describe('example native RLS migrations with PGlite', () => {
       admin.create(Session, {
         user,
         token: randomUUID(),
-        expiresAt: new Date(Date.now() + 60_000),
+        expiresAt: new Date(Date.now() + 60000),
       }),
     );
     const accounts = users.slice(0, 2).map((user) =>
@@ -720,7 +740,7 @@ describe('example native RLS migrations with PGlite', () => {
       workspace,
       inviter: target,
       email: 'cascade@example.test',
-      expiresAt: new Date(Date.now() + 60_000),
+      expiresAt: new Date(Date.now() + 60000),
     });
     const account = admin.create(Account, {
       user: target,
@@ -732,18 +752,18 @@ describe('example native RLS migrations with PGlite', () => {
     const session = admin.create(Session, {
       user: target,
       token: randomUUID(),
-      expiresAt: new Date(Date.now() + 60_000),
+      expiresAt: new Date(Date.now() + 60000),
     });
     const impersonation = admin.create(Session, {
       user: other,
       impersonatedBy: target,
       token: randomUUID(),
-      expiresAt: new Date(Date.now() + 60_000),
+      expiresAt: new Date(Date.now() + 60000),
     });
     const unrelatedSession = admin.create(Session, {
       user: other,
       token: randomUUID(),
-      expiresAt: new Date(Date.now() + 60_000),
+      expiresAt: new Date(Date.now() + 60000),
     });
     const workspaceKey = admin.create(WorkspaceApiKey, {
       workspace,
@@ -846,7 +866,11 @@ describe('example native RLS migrations with PGlite', () => {
         [Member, member.id],
         [Invitation, invitation.id],
       ] as const) {
-        expect(await admin.count<{ id: string }>(entity, { id })).toBe(0);
+        expect(
+          await admin.count<{
+            id: string;
+          }>(entity, { id }),
+        ).toBe(0);
       }
       expect(await admin.count(UserApiKey, otherKey.id)).toBe(1);
       expect(await admin.count(WorkspaceApiKey, workspaceKey.id)).toBe(1);
@@ -947,7 +971,11 @@ describe('example native RLS migrations with PGlite', () => {
     expect(await orm.migrator.getPending()).toEqual([]);
     expect(await orm.migrator.getExecuted()).toHaveLength(2);
     const policies = await orm.em.execute<
-      { policyname: string; qual: string; with_check: string }[]
+      {
+        policyname: string;
+        qual: string;
+        with_check: string;
+      }[]
     >(
       "select policyname, qual, with_check from pg_policies where qual like '%app.workspace.id%'",
     );
@@ -1010,7 +1038,10 @@ describe('example native RLS migrations with PGlite', () => {
 
   it('keeps child policies free of parent-workspace subqueries', async () => {
     const policies = await orm.em.execute<
-      { qual: string; with_check: string | null }[]
+      {
+        qual: string;
+        with_check: string | null;
+      }[]
     >(
       "select qual, with_check from pg_policies where tablename in ('member', 'invitation')",
     );
@@ -1172,21 +1203,18 @@ describe('example native RLS migrations with PGlite', () => {
       variables: { 'app.workspace.id': workspace.id, 'app.user.id': '' },
     };
     const scoped = orm.em.fork({ session });
-    const service = new MemberService(scoped, {}, {
-      assertCurrentWorkspace: vi.fn(),
-      assertCurrentMember: vi.fn(),
-      assertWorkspaceCan: vi.fn(),
-      assertCanGrantWorkspacePermissions: vi.fn(),
-    } as unknown as AccessControlService);
+    const service = new MemberService(scoped, {});
     const context = new RequestContext({ type: 'test' });
     context.set(EntityManager, scoped);
     context.set(BaseWorkspace, workspace);
+    context.set(User, user);
     context.set(
       BaseMember,
-      Object.assign(new Member(), { workspace, roles: ['owner'] }),
+      Object.assign(new Member(), { workspace, user, roles: ['owner'] }),
     );
 
     await RequestContext.run(context, async () => {
+      RequestIdentity.prepare({});
       const pendingWorkspace = await scoped.findOneOrFail(
         Workspace,
         workspace.id,
@@ -1495,20 +1523,10 @@ describe('example native RLS migrations with PGlite', () => {
         },
       });
     const options = {};
-    const access = {
-      userCan: vi.fn().mockReturnValue(true),
-      workspaceCan: vi.fn().mockReturnValue(true),
-      assertCurrentUser: vi.fn(),
-      assertUserSession: vi.fn(),
-      assertUserCan: vi.fn(),
-      assertCurrentWorkspace: vi.fn(),
-      assertCurrentMember: vi.fn(),
-      assertWorkspaceCan: vi.fn(),
-    } as unknown as AccessControlService;
     const workspaceServiceFor = (em: EntityManager) =>
       createContextualAuthService(
         em,
-        (manager) => new WorkspaceService(manager, options, access),
+        (manager) => new WorkspaceService(manager, options),
         {
           createWorkspace: 'authentication',
         },
@@ -1516,7 +1534,7 @@ describe('example native RLS migrations with PGlite', () => {
     const invitationServiceFor = (em: EntityManager) =>
       createContextualAuthService(
         em,
-        (manager) => new InvitationService(manager, options, access),
+        (manager) => new InvitationService(manager, options),
         {
           acceptInvitation: 'authentication',
           rejectInvitation: 'authentication',
@@ -1550,7 +1568,7 @@ describe('example native RLS migrations with PGlite', () => {
         email: user.email,
         inviter: user,
         workspace: foreign,
-        expiresAt: new Date(Date.now() + 60_000),
+        expiresAt: new Date(Date.now() + 60000),
       });
       await admin
         .persist([
@@ -1654,34 +1672,42 @@ describe('example native RLS migrations with PGlite', () => {
         foreignInvitation.id,
       ]);
       expect(await em.nativeDelete(Invitation, foreignInvitation.id)).toBe(0);
-      const service = invitationServiceFor(em);
-      expect((await service.getInvitation(foreignInvitation.id))?.id).toBe(
-        foreignInvitation.id,
+      await RequestContext.run(
+        new RequestContext({ type: 'test' }),
+        async () => {
+          RequestIdentity.stage({ user });
+          const service = invitationServiceFor(em);
+          expect((await service.getInvitation(foreignInvitation.id))?.id).toBe(
+            foreignInvitation.id,
+          );
+          expect(
+            await invitationServiceFor(scoped('', '')).getInvitation(
+              foreignInvitation.id,
+            ),
+          ).toBeNull();
+          expect(
+            await invitationServiceFor(scoped('', '999999999')).getInvitation(
+              foreignInvitation.id,
+            ),
+          ).toBeNull();
+          expect(
+            (
+              await service.getInvitationConnectionByUser(user, {
+                first: 20,
+              })
+            ).edges.map(({ node }) => node.id),
+          ).toContain(foreignInvitation.id);
+          // Even an authorized service caller cannot override the database identity.
+          const hidden = await invitationServiceFor(
+            scoped('', '999999999'),
+          ).getInvitationConnectionByUser(user, { first: 20 });
+          expect(hidden.edges).toEqual([]);
+          expect(hidden.totalCount).toBe(0);
+          expect(em.getSessionContext()?.variables?.['app.workspace.id']).toBe(
+            '',
+          );
+        },
       );
-      expect(
-        await invitationServiceFor(scoped('', '')).getInvitation(
-          foreignInvitation.id,
-        ),
-      ).toBeNull();
-      expect(
-        await invitationServiceFor(scoped('', '999999999')).getInvitation(
-          foreignInvitation.id,
-        ),
-      ).toBeNull();
-      expect(
-        (
-          await service.getInvitationConnectionByUser(user, {
-            first: 20,
-          })
-        ).edges.map(({ node }) => node.id),
-      ).toContain(foreignInvitation.id);
-      // Even an authorized service caller cannot override the database identity.
-      const hidden = await invitationServiceFor(
-        scoped('', '999999999'),
-      ).getInvitationConnectionByUser(user, { first: 20 });
-      expect(hidden.edges).toEqual([]);
-      expect(hidden.totalCount).toBe(0);
-      expect(em.getSessionContext()?.variables?.['app.workspace.id']).toBe('');
     });
 
     it('creates a workspace and owner in an isolated transaction before selecting a workspace', async () => {
@@ -1691,6 +1717,8 @@ describe('example native RLS migrations with PGlite', () => {
       const context = new RequestContext({ type: 'test' });
       context.set(EntityManager, em);
       const workspace = await RequestContext.run(context, async () => {
+        RequestIdentity.stage({ user: pendingUser });
+        RequestIdentity.prepare(options);
         const result = await workspaceServiceFor(em).createWorkspace(
           pendingUser,
           {
@@ -1716,16 +1744,21 @@ describe('example native RLS migrations with PGlite', () => {
     it('rolls back workspace creation when owner membership persistence fails', async () => {
       const em = scoped('');
       const name = 'Must roll back';
-      await expect(
-        workspaceServiceFor(em).createWorkspace(
-          Object.assign(new User(), {
-            id: '9223372036854775807',
-            name: 'Missing',
-            email: 'missing@example.test',
-          }),
-          { name },
-        ),
-      ).rejects.toThrow();
+      const missingUser = Object.assign(new User(), {
+        id: '9223372036854775807',
+        name: 'Missing',
+        email: 'missing@example.test',
+      });
+      await RequestContext.run(
+        new RequestContext({ type: 'test' }),
+        async () => {
+          RequestIdentity.stage({ user: missingUser });
+          RequestIdentity.prepare(options);
+          await expect(
+            workspaceServiceFor(em).createWorkspace(missingUser, { name }),
+          ).rejects.toThrow(/foreign key/i);
+        },
+      );
       expect(await orm.em.fork().count(Workspace, { name })).toBe(0);
     });
 
@@ -1777,7 +1810,7 @@ describe('example native RLS migrations with PGlite', () => {
           workspace: targetWorkspace,
           inviter: user,
           email: `${randomUUID()}@example.test`,
-          expiresAt: new Date(Date.now() + 60_000),
+          expiresAt: new Date(Date.now() + 60000),
         });
         await admin
           .persist([targetWorkspace, otherUser, targetMember, targetInvitation])
@@ -1914,11 +1947,18 @@ describe('example native RLS migrations with PGlite', () => {
         workspace,
         inviter: user,
         email: 'permanent-delete@example.test',
-        expiresAt: new Date(Date.now() + 60_000),
+        expiresAt: new Date(Date.now() + 60000),
       });
       await admin.persist([workspace, owner, invitation]).flush();
       const em = scoped(workspace.id);
-      const result = await workspaceServiceFor(em).deleteWorkspace(workspace);
+      const result = await RequestContext.run(
+        new RequestContext({ type: 'test' }),
+        async () => {
+          RequestIdentity.stage({ user, workspace, member: owner });
+          RequestIdentity.prepare(options);
+          return await workspaceServiceFor(em).deleteWorkspace(workspace);
+        },
+      );
       expect(result.id).toBe(workspace.id);
       expect(await admin.count(Workspace, workspace.id)).toBe(0);
       expect(await admin.count(Member, owner.id)).toBe(0);
@@ -1999,19 +2039,19 @@ describe('example native RLS migrations with PGlite', () => {
     expect(await anonymous.findOne(User, target.id)).toBeNull();
 
     const options: AuthModuleOptions = {
+      buildAbility: (rules) => {
+        rules.cannot(['read'], User, { id: { $ne: target.id } });
+      },
+
       user: {
         permissions: ['account-admin:view'],
         roles: { user: [] },
-        buildAbility: (rules) => {
-          rules.cannot(['read'], User, { id: { $ne: target.id } });
-        },
       },
     };
     const service = new UserService(
       scoped(viewer.id),
       options,
       {} as never,
-      new AccessControlService(options),
       {} as never,
     );
     await RequestContext.run(new RequestContext({ type: 'test' }), async () => {
@@ -2064,7 +2104,7 @@ describe('example native RLS migrations with PGlite', () => {
     const session = admin.create(Session, {
       user: target,
       token: randomUUID(),
-      expiresAt: new Date(Date.now() + 60_000),
+      expiresAt: new Date(Date.now() + 60000),
     });
     await admin.persist([actor, target, session]).flush();
     const options: AuthModuleOptions = {
@@ -2079,15 +2119,13 @@ describe('example native RLS migrations with PGlite', () => {
         variables: { 'app.user.id': actor.id },
       },
     });
-    const access = new AccessControlService(options);
     const users = new UserService(
       em,
       options,
       {} as never,
-      access,
       new UserDeletionService(em),
     );
-    const sessions = new SessionService({}, em, access);
+    const sessions = new SessionService({}, em);
     try {
       await RequestContext.run(
         new RequestContext({ type: 'test' }),

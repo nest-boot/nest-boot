@@ -1,5 +1,4 @@
-import { UserAbility } from "./abilities/user.ability.js";
-import { WorkspaceAbility } from "./abilities/workspace.ability.js";
+import { AuthAbility } from "./abilities/auth.ability.js";
 import { IS_PUBLIC_KEY } from "./auth.constants.js";
 import { AuthGuard } from "./auth.guard.js";
 import { AuthMiddleware } from "./auth.middleware.js";
@@ -9,8 +8,6 @@ import { CurrentApiKey } from "./decorators/current-api-key.decorator.js";
 import { CurrentMember } from "./decorators/current-member.decorator.js";
 import { CurrentWorkspace } from "./decorators/current-workspace.decorator.js";
 import { Public } from "./decorators/public.decorator.js";
-import { UserCan } from "./decorators/user-can.decorator.js";
-import { WorkspaceCan } from "./decorators/workspace-can.decorator.js";
 import { Account } from "./entities/account.entity.js";
 import { Invitation } from "./entities/invitation.entity.js";
 import { Member } from "./entities/member.entity.js";
@@ -20,7 +17,6 @@ import { Verification } from "./entities/verification.entity.js";
 import { Workspace } from "./entities/workspace.entity.js";
 import { WorkspaceApiKey } from "./entities/workspace-api-key.entity.js";
 import * as publicApi from "./index.js";
-import { AccessControlService } from "./services/access-control.service.js";
 import { AccountService } from "./services/account.service.js";
 import { AuthService } from "./services/auth.service.js";
 import { InvitationService } from "./services/invitation.service.js";
@@ -30,11 +26,9 @@ import { UserService } from "./services/user.service.js";
 import { UserApiKeyService } from "./services/user-api-key.service.js";
 import { WorkspaceService } from "./services/workspace.service.js";
 import { WorkspaceApiKeyService } from "./services/workspace-api-key.service.js";
+import { assertCan } from "./utils/assert-can.util.js";
 import { can } from "./utils/can.util.js";
-import { getUserAbility } from "./utils/get-user-ability.util.js";
-import { getWorkspaceAbility } from "./utils/get-workspace-ability.util.js";
-import { userCan } from "./utils/user-can.util.js";
-import { workspaceCan } from "./utils/workspace-can.util.js";
+import { getAbility } from "./utils/get-ability.util.js";
 vi.mock("better-auth", () => ({
   betterAuth: vi.fn(),
 }));
@@ -389,10 +383,8 @@ describe("public API", () => {
     expect(publicApi.AuthModule).toBe(AuthModule);
     expect(publicApi.AuthService).toBe(AuthService);
     expect("AuthTransactionContext" in publicApi).toBe(false);
-    expect(publicApi.AccessControlService).toBe(AccessControlService);
+    expect(publicApi).not.toHaveProperty("AccessControlService");
     expect(publicApi.Can).toBe(Can);
-    expect(publicApi.UserCan).toBe(UserCan);
-    expect(publicApi.WorkspaceCan).toBe(WorkspaceCan);
     expect(publicApi.CurrentApiKey).toBe(CurrentApiKey);
     expect(publicApi.CurrentWorkspace).toBe(CurrentWorkspace);
     expect(publicApi.CurrentMember).toBe(CurrentMember);
@@ -405,13 +397,22 @@ describe("public API", () => {
     expect(publicApi.Workspace).toBe(Workspace);
     expect(publicApi.Invitation).toBe(Invitation);
     expect(publicApi.Member).toBe(Member);
-    expect(publicApi.UserAbility).toBe(UserAbility);
-    expect(publicApi.WorkspaceAbility).toBe(WorkspaceAbility);
+    expect(publicApi.AuthAbility).toBe(AuthAbility);
+    for (const name of [
+      "UserAbility",
+      "WorkspaceAbility",
+      "UserCan",
+      "WorkspaceCan",
+      "userCan",
+      "workspaceCan",
+      "getUserAbility",
+      "getWorkspaceAbility",
+    ]) {
+      expect(publicApi).not.toHaveProperty(name);
+    }
     expect(publicApi.can).toBe(can);
-    expect(publicApi.getUserAbility).toBe(getUserAbility);
-    expect(publicApi.getWorkspaceAbility).toBe(getWorkspaceAbility);
-    expect(publicApi.userCan).toBe(userCan);
-    expect(publicApi.workspaceCan).toBe(workspaceCan);
+    expect(publicApi.assertCan).toBe(assertCan);
+    expect(publicApi.getAbility).toBe(getAbility);
     expect(publicApi.SessionService).toBe(SessionService);
     expect(publicApi.WorkspaceService).toBe(WorkspaceService);
     expect(publicApi.MemberService).toBe(MemberService);

@@ -5,6 +5,10 @@ import { graphqlRequest } from "./utils/graphql";
 import { uniqueSeed } from "./utils/unique";
 import { createWorkspaceByApi } from "./utils/workspace";
 
+test.afterEach(async ({ page }) => {
+  await page.unrouteAll({ behavior: "wait" });
+});
+
 for (const scope of ["user", "workspace"] as const) {
   test(`refreshes ${scope} ability providers and route context after a profile change`, async ({
     page,
@@ -15,6 +19,7 @@ for (const scope of ["user", "workspace"] as const) {
       name: "Initial profile",
     });
     const workspace = await createWorkspaceByApi(page, seed);
+    let identityReads = 0;
     let updated = false;
     let refreshedRoute = false;
     await page.route("**/api/graphql", async (route) => {
@@ -30,11 +35,9 @@ for (const scope of ["user", "workspace"] as const) {
         !body.errors
       )
         updated = true;
-      const field =
-        scope === "user"
-          ? "currentUserAbilityRules"
-          : "currentWorkspaceAbilityRules";
+      const field = "currentAbilityRules";
       if (body.data?.[field]) {
+        identityReads++;
         // Model a server extension whose effective rules change with the profile.
         body.data[field].push({
           actions: [scope === "user" ? "read" : "delete"],
@@ -65,6 +68,8 @@ for (const scope of ["user", "workspace"] as const) {
       await page.keyboard.press("Escape");
     } else
       await expect(page.getByTestId("workspace-settings-delete")).toBeVisible();
+    expect(identityReads).toBe(scope === "user" ? 1 : 2);
+    identityReads = 0;
     await page
       .getByTestId(
         scope === "user"
@@ -78,6 +83,7 @@ for (const scope of ["user", "workspace"] as const) {
       )
       .click();
     await expect.poll(() => refreshedRoute).toBe(true);
+    expect(identityReads).toBe(scope === "user" ? 1 : 2);
     if (scope === "user") {
       await page.getByTestId("sidebar-user-menu").click();
       await expect(page.getByTestId("sidebar-admin-link")).toHaveCount(0);

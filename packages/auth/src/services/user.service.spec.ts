@@ -11,8 +11,9 @@ import {
 } from "@nestjs/common";
 import { expectTypeOf, type Mocked } from "vitest";
 
+import { mockAuthorization } from "../../test/mock-authorization.js";
 import { mockRlsContext } from "../../test/mock-rls-context.js";
-import { UserAbility } from "../abilities/user.ability.js";
+import { AuthAbility } from "../abilities/auth.ability.js";
 import { API_KEY } from "../auth.constants.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { UserConnection } from "../connections/user.connection-definition.js";
@@ -23,7 +24,6 @@ import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { authServiceProviders } from "../infrastructure/auth-service.providers.js";
 import type { CreateUserOptions } from "../interfaces/create-user-options.interface.js";
 import { DEFAULT_USER_PERMISSIONS } from "../user.constants.js";
-import type { AccessControlService } from "./access-control.service.js";
 import { UserService } from "./user.service.js";
 import { UserDeletionService } from "./user-deletion.service.js";
 
@@ -152,11 +152,11 @@ describe("UserService", () => {
       await RequestContext.run(
         new RequestContext({ type: "test" }),
         async () => {
-          const ability = new UserAbility([
+          const ability = new AuthAbility([
             { action: "delete", subject: User },
           ]);
           RequestContext.set(User, current);
-          RequestContext.set(UserAbility, ability);
+          RequestContext.set(AuthAbility, ability);
           const update = () =>
             field === "roles"
               ? service.setUserRoles(stored.id, ["user"])
@@ -164,14 +164,14 @@ describe("UserService", () => {
           em.flush.mockRejectedValueOnce(new Error("Commit failed"));
           await expect(update()).rejects.toThrow("Commit failed");
           expect(RequestContext.get(User)).toBe(current);
-          expect(RequestContext.get(UserAbility)).toBe(ability);
+          expect(RequestContext.get(AuthAbility)).toBe(ability);
           expect(em.setSessionContext).not.toHaveBeenCalled();
           expect(stored[field]).toEqual(
             field === "roles" ? ["admin"] : ["user:delete"],
           );
           await update();
           expect(RequestContext.get(User)).toBe(stored);
-          expect(RequestContext.get(UserAbility)?.can("delete", User)).toBe(
+          expect(RequestContext.get(AuthAbility)?.can("delete", User)).toBe(
             false,
           );
           expect(em.setSessionContext).not.toHaveBeenCalled();
@@ -219,7 +219,8 @@ describe("UserService", () => {
     "refreshes profile-dependent abilities after an own %s update commits, restoring fields on failure",
     async (target) => {
       const { service, em } = createService(true, {
-        buildAbility: ({ cannot }, _permissions, user) => {
+        buildAbility: ({ cannot }, { user }) => {
+          if (!user) return;
           if (!user.emailVerified) cannot("delete", User);
         },
       });
@@ -241,11 +242,11 @@ describe("UserService", () => {
       await RequestContext.run(
         new RequestContext({ type: "test" }),
         async () => {
-          const ability = new UserAbility([
+          const ability = new AuthAbility([
             { action: "delete", subject: User },
           ]);
           RequestContext.set(User, current);
-          RequestContext.set(UserAbility, ability);
+          RequestContext.set(AuthAbility, ability);
           const input = {
             email: "updated@example.com",
             emailVerified: false,
@@ -258,15 +259,15 @@ describe("UserService", () => {
           await expect(update()).rejects.toThrow("Commit failed");
           expect.soft(stored).toMatchObject(previous);
           expect(RequestContext.get(User)).toBe(current);
-          expect(RequestContext.get(UserAbility)).toBe(ability);
+          expect(RequestContext.get(AuthAbility)).toBe(ability);
           em.flush.mockImplementationOnce(() => {
-            expect(RequestContext.get(UserAbility)).toBe(ability);
+            expect(RequestContext.get(AuthAbility)).toBe(ability);
             return Promise.resolve();
           });
           await update();
           expect(RequestContext.get(User)).toBe(stored);
           expect(stored).toMatchObject(input);
-          expect(RequestContext.get(UserAbility)?.can("delete", User)).toBe(
+          expect(RequestContext.get(AuthAbility)?.can("delete", User)).toBe(
             false,
           );
         },
@@ -283,23 +284,23 @@ describe("UserService", () => {
     });
     em.isInTransaction.mockReturnValue(true);
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      const ability = new UserAbility([{ action: "update", subject: User }]);
+      const ability = new AuthAbility([{ action: "update", subject: User }]);
       RequestContext.set(User, current);
-      RequestContext.set(UserAbility, ability);
+      RequestContext.set(AuthAbility, ability);
       await service.updateUser(other, { emailVerified: false });
       expect(other.emailVerified).toBe(false);
       expect(RequestContext.get(User)).toBe(current);
-      expect(RequestContext.get(UserAbility)).toBe(ability);
+      expect(RequestContext.get(AuthAbility)).toBe(ability);
     });
   });
 
   it("refreshes ban-dependent abilities only after an own unban commits", async () => {
-    const { em, options, accessControlService, userDeletionService } =
-      createService(true, {
-        buildAbility: ({ cannot }, _permissions, user) => {
-          if (!user.banned) cannot("delete", User);
-        },
-      });
+    const { em, options, userDeletionService } = createService(true, {
+      buildAbility: ({ cannot }, { user }) => {
+        if (!user) return;
+        if (!user.banned) cannot("delete", User);
+      },
+    });
     const provider = authServiceProviders.find(
       (candidate) =>
         typeof candidate === "object" &&
@@ -310,7 +311,6 @@ describe("UserService", () => {
       em,
       options,
       {},
-      accessControlService,
       userDeletionService,
     );
     const session = mockRlsContext(em);
@@ -326,20 +326,20 @@ describe("UserService", () => {
       ...previous,
     });
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      const ability = new UserAbility([{ action: "delete", subject: User }]);
+      const ability = new AuthAbility([{ action: "delete", subject: User }]);
       RequestContext.set(User, user);
-      RequestContext.set(UserAbility, ability);
+      RequestContext.set(AuthAbility, ability);
       em.flush.mockRejectedValueOnce(new Error("Commit failed"));
       await expect(service.unbanUser(user)).rejects.toThrow("Commit failed");
       expect.soft(user).toMatchObject(previous);
-      expect(RequestContext.get(UserAbility)).toBe(ability);
+      expect(RequestContext.get(AuthAbility)).toBe(ability);
       await service.unbanUser(user);
       expect(user).toMatchObject({
         banned: false,
         banReason: null,
         banExpiresAt: null,
       });
-      expect(RequestContext.get(UserAbility)?.can("delete", User)).toBe(false);
+      expect(RequestContext.get(AuthAbility)?.can("delete", User)).toBe(false);
       expect(em.fork).not.toHaveBeenCalled();
       expect(em.getSessionContext()).toEqual(session);
     });
@@ -352,7 +352,7 @@ describe("UserService", () => {
   });
 
   it("loads mutation targets by ID without requiring user:read and preserves RLS", async () => {
-    const { service, em, accessControlService } = createService();
+    const { service, em, authorization } = createService();
     const user = Object.assign(new User(), { id: "target" });
     em.findOne.mockResolvedValue(user);
     const session = mockRlsContext(em);
@@ -364,13 +364,10 @@ describe("UserService", () => {
       { id: user.id },
       { refresh: true },
     );
-    expect(accessControlService.assertUserCan).not.toHaveBeenCalledWith(
-      "read",
-      User,
-    );
+    expect(authorization.assertCan).not.toHaveBeenCalledWith("read", User);
     expect(em.fork).not.toHaveBeenCalled();
     expect(em.getSessionContext()).toEqual(session);
-    vi.mocked(accessControlService.assertUserCan).mockImplementation(() => {
+    vi.mocked(authorization.assertCan).mockImplementation(() => {
       throw new ForbiddenException();
     });
     em.findOne.mockClear();
@@ -380,7 +377,7 @@ describe("UserService", () => {
     expect(em.findOne).not.toHaveBeenCalled();
   });
   it("checks direct and inherited grants before mutation or hashing", async () => {
-    const { service, accessControlService, em, hash } = createService(true, {
+    const { service, authorization, em, hash } = createService(true, {
       defaultRole: "reader",
       permissions: ["user:read", "user:delete"],
       roles: { reader: ["user:read"], administrator: ["user:delete"] },
@@ -389,20 +386,22 @@ describe("UserService", () => {
       roles: ["reader"],
       permissions: [],
     });
-    const assertGrant = vi.mocked(
-      accessControlService.assertCanGrantUserPermissions,
-    );
+    const assertGrant = vi.mocked(authorization.assertCanGrantPermissions);
     assertGrant.mockImplementation(() => {
       throw new ForbiddenException("grant denied");
     });
     await expect(
       service.setUserPermissions(user, ["user:delete"]),
     ).rejects.toThrow("grant denied");
-    expect(assertGrant).toHaveBeenLastCalledWith(["user:delete"]);
+    expect(assertGrant).toHaveBeenLastCalledWith(expect.anything(), "user", [
+      "user:delete",
+    ]);
     await expect(service.setUserRoles(user, "administrator")).rejects.toThrow(
       "grant denied",
     );
-    expect(assertGrant).toHaveBeenLastCalledWith(["user:delete"]);
+    expect(assertGrant).toHaveBeenLastCalledWith(expect.anything(), "user", [
+      "user:delete",
+    ]);
     await expect(
       service.createUser({
         name: "New",
@@ -411,7 +410,10 @@ describe("UserService", () => {
         permissions: ["user:delete"],
       }),
     ).rejects.toThrow("grant denied");
-    expect(assertGrant).toHaveBeenLastCalledWith(["user:read", "user:delete"]);
+    expect(assertGrant).toHaveBeenLastCalledWith(expect.anything(), "user", [
+      "user:read",
+      "user:delete",
+    ]);
     expect(user.roles).toEqual(["reader"]);
     expect(user.permissions).toEqual([]);
     expect(em.flush).not.toHaveBeenCalled();
@@ -420,7 +422,7 @@ describe("UserService", () => {
   });
 
   it("paginates users with list authorization and the request RLS context", async () => {
-    const { service, em, accessControlService } = createService();
+    const { service, em, authorization } = createService();
     const context = mockRlsContext(em);
     const connection = { edges: [], pageInfo: {} };
     const find = vi
@@ -429,15 +431,12 @@ describe("UserService", () => {
     try {
       const args = { first: 10 };
       await expect(service.getUserConnection(args)).resolves.toBe(connection);
-      expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
-        "read",
-        User,
-      );
+      expect(authorization.assertCan).toHaveBeenCalledWith("read", User);
       expect(find).toHaveBeenCalledExactlyOnceWith(UserConnection, args);
       expect(em.fork).not.toHaveBeenCalled();
       expect(em.getSessionContext()).toEqual(context);
       find.mockClear();
-      vi.mocked(accessControlService.assertUserCan).mockImplementation(() => {
+      vi.mocked(authorization.assertCan).mockImplementation(() => {
         throw new ForbiddenException();
       });
       await expect(service.getUserConnection(args)).rejects.toThrow(
@@ -453,9 +452,9 @@ describe("UserService", () => {
     "checks initial %s with its own grant-setting action",
     async (field) => {
       for (const denyInstance of [false, true]) {
-        const { service, accessControlService, em } = createService();
+        const { service, authorization, em } = createService();
         const action = `set-${field}`;
-        vi.mocked(accessControlService.assertUserCan).mockImplementation(
+        vi.mocked(authorization.assertCan).mockImplementation(
           (operation, target) => {
             if (
               operation === action &&
@@ -475,11 +474,8 @@ describe("UserService", () => {
               : { permissions: ["user:read"] }),
           }),
         ).rejects.toThrow(ForbiddenException);
-        expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
-          action,
-          User,
-        );
-        expect(accessControlService.assertUserCan).not.toHaveBeenCalledWith(
+        expect(authorization.assertCan).toHaveBeenCalledWith(action, User);
+        expect(authorization.assertCan).not.toHaveBeenCalledWith(
           field === "roles" ? "set-permissions" : "set-roles",
           User,
         );
@@ -587,7 +583,7 @@ describe("UserService", () => {
   });
 
   it("gets and updates configured user entities", async () => {
-    const { accessControlService, em, service } = createService();
+    const { authorization, em, service } = createService();
     const user = Object.assign(new User(), { id: "user-1" });
     em.findOne.mockResolvedValue(user);
 
@@ -602,21 +598,15 @@ describe("UserService", () => {
     expect(em.findOne).toHaveBeenCalledWith(User, { id: "user-1" });
     expect(em.assign).toHaveBeenCalledWith(user, { name: "Renamed" });
     expect(user.permissions).toEqual(["user:read"]);
-    expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
-      "read",
-      User,
-    );
-    expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
-      "update",
-      user,
-    );
+    expect(authorization.assertCan).toHaveBeenCalledWith("read", User);
+    expect(authorization.assertCan).toHaveBeenCalledWith("update", user);
     await expect(
       service.updateUser(user, { roles: ["admin"] } as never),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it("normalizes email addresses when updating a user", async () => {
-    const { accessControlService, em, service } = createService();
+    const { authorization, em, service } = createService();
     const user = Object.assign(new User(), { email: "old@example.com" });
 
     await service.updateUser(user, { email: " New@Example.com " });
@@ -625,14 +615,11 @@ describe("UserService", () => {
       email: "new@example.com",
     });
     expect(user.email).toBe("new@example.com");
-    expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
-      "set-email",
-      user,
-    );
+    expect(authorization.assertCan).toHaveBeenCalledWith("set-email", user);
   });
 
   it("ignores omitted DTO fields without requiring email permission or clearing profile values", async () => {
-    const { accessControlService, em, service } = createService();
+    const { authorization, em, service } = createService();
     const user = Object.assign(new User(), {
       name: "Original",
       email: "original@example.com",
@@ -649,11 +636,7 @@ describe("UserService", () => {
     expect(user.email).toBe("original@example.com");
     expect(user.emailVerified).toBe(true);
     expect(user.image).toBe("avatar.png");
-    expect(accessControlService.assertUserCan).not.toHaveBeenCalledWith(
-      "set-email",
-      user,
-    );
-
+    expect(authorization.assertCan).not.toHaveBeenCalledWith("set-email", user);
     await service.updateUser(user, { name: undefined, image: null });
     expect(em.assign).toHaveBeenLastCalledWith(user, { image: null });
     expect(user.name).toBe("Renamed");
@@ -674,15 +657,11 @@ describe("UserService", () => {
   });
 
   it("requires set-email permission when changing email verification", async () => {
-    const { accessControlService, service } = createService();
+    const { authorization, service } = createService();
     const user = Object.assign(new User(), { emailVerified: false });
 
     await service.updateUser(user, { emailVerified: true });
-
-    expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
-      "set-email",
-      user,
-    );
+    expect(authorization.assertCan).toHaveBeenCalledWith("set-email", user);
   });
 
   it("stores configured permission casing and compares grants exactly", async () => {
@@ -790,7 +769,7 @@ describe("UserService", () => {
   });
 
   it("keeps all role and permission options while marking grant availability", () => {
-    const { service, accessControlService } = createService(true, {
+    const { service, authorization } = createService(true, {
       permissions: ["user:read", "user:delete"],
       roles: {
         reader: ["user:read"],
@@ -798,8 +777,8 @@ describe("UserService", () => {
         user: [],
       },
     });
-    vi.mocked(accessControlService.canGrantUserPermissions).mockImplementation(
-      (permissions) =>
+    vi.mocked(authorization.canGrantPermissions).mockImplementation(
+      (_options, _scope, permissions) =>
         permissions.every((permission) => permission === "user:read"),
     );
     expect(service.listRoles()).toEqual([
@@ -813,7 +792,7 @@ describe("UserService", () => {
         grantable: permission === "user:read",
       })),
     );
-    vi.mocked(accessControlService.assertUserCan).mockImplementation(() => {
+    vi.mocked(authorization.assertCan).mockImplementation(() => {
       throw new ForbiddenException();
     });
     expect(() => service.listRoles()).toThrow(ForbiddenException);
@@ -838,25 +817,19 @@ describe("UserService", () => {
   });
 
   it("resolves administration targets by ID with action permissions, not user:read", async () => {
-    const { em, service, accessControlService } = createService();
+    const { em, service, authorization } = createService();
     const user = Object.assign(new User(), { id: "user-1" });
     em.findOne.mockResolvedValue(user);
     await service.banUser(user.id);
     await service.unbanUser(user.id);
-    expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
-      "ban",
-      User,
-    );
-    expect(accessControlService.assertUserCan).not.toHaveBeenCalledWith(
-      "read",
-      User,
-    );
+    expect(authorization.assertCan).toHaveBeenCalledWith("ban", User);
+    expect(authorization.assertCan).not.toHaveBeenCalledWith("read", User);
     expect(em.findOne).toHaveBeenCalledWith(
       User,
       { id: user.id },
       { refresh: true },
     );
-    vi.mocked(accessControlService.assertUserCan).mockImplementation(() => {
+    vi.mocked(authorization.assertCan).mockImplementation(() => {
       throw new ForbiddenException();
     });
     em.findOne.mockClear();
@@ -927,28 +900,26 @@ describe("UserService", () => {
   });
 
   it("checks the scoped ability when impersonating an administrator", async () => {
-    const { accessControlService, service } = createService();
+    const { authorization, service } = createService();
     const target = Object.assign(new User(), { roles: ["admin"] });
     const administrator = Object.assign(new User(), {
       roles: ["admin"],
     });
-    vi.mocked(accessControlService.assertUserCan).mockImplementation(
-      (action) => {
-        if (action === "impersonate-admin") {
-          throw new ForbiddenException();
-        }
-      },
-    );
+    vi.mocked(authorization.assertCan).mockImplementation((action) => {
+      if (action === "impersonate-admin") {
+        throw new ForbiddenException();
+      }
+    });
 
     await expect(
       service.impersonateUser(administrator, target),
     ).rejects.toBeInstanceOf(ForbiddenException);
-    expect(accessControlService.assertUserCan).toHaveBeenNthCalledWith(
+    expect(authorization.assertCan).toHaveBeenNthCalledWith(
       1,
       "impersonate",
       target,
     );
-    expect(accessControlService.assertUserCan).toHaveBeenNthCalledWith(
+    expect(authorization.assertCan).toHaveBeenNthCalledWith(
       2,
       "impersonate-admin",
       target,
@@ -1139,7 +1110,8 @@ describe("UserService", () => {
 
 function createService(
   useCustomHash = true,
-  user: NonNullable<AuthModuleOptions["user"]> = {},
+  user: NonNullable<AuthModuleOptions["user"]> &
+    Pick<AuthModuleOptions, "buildAbility"> = {},
   emailAndPassword: NonNullable<AuthModuleOptions["emailAndPassword"]> = {},
 ) {
   const em = {
@@ -1177,31 +1149,20 @@ function createService(
       },
     },
     user,
+    buildAbility: user.buildAbility,
     session: { expiresIn: 3600 },
   } as unknown as AuthModuleOptions;
-  const accessControlService = {
-    canGrantUserPermissions: vi.fn().mockReturnValue(true),
-    assertCanGrantUserPermissions: vi.fn(),
-    assertCurrentSession: vi.fn(),
-    assertCurrentUser: vi.fn(),
-    assertUserCan: vi.fn(),
-  } as unknown as AccessControlService;
+  const authorization = mockAuthorization();
   const userDeletionService = {
     deleteUser: vi.fn(),
   } as unknown as Mocked<UserDeletionService>;
   return {
-    accessControlService,
+    authorization,
     em,
     options,
     hash,
     hashServiceHash,
     userDeletionService,
-    service: new UserService(
-      em,
-      options,
-      hashService,
-      accessControlService,
-      userDeletionService,
-    ),
+    service: new UserService(em, options, hashService, userDeletionService),
   };
 }

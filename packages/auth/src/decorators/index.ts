@@ -5,5 +5,3 @@ export * from "./current-session.decorator.js";
 export * from "./current-user.decorator.js";
 export * from "./current-workspace.decorator.js";
 export * from "./public.decorator.js";
-export * from "./user-can.decorator.js";
-export * from "./workspace-can.decorator.js";

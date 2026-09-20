@@ -1,7 +1,7 @@
 import { RequestContext } from "@nest-boot/request-context";
+import { assert } from "vitest";
 
-import { UserAbility } from "../abilities/user.ability.js";
-import { WorkspaceAbility } from "../abilities/workspace.ability.js";
+import { AuthAbility } from "../abilities/auth.ability.js";
 import { API_KEY } from "../auth.constants.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { Member } from "../entities/member.entity.js";
@@ -15,14 +15,15 @@ describe("post-commit request authorization", () => {
     "retains API-key ceilings and fails closed if the custom builder throws (failure=%s)",
     async (failure) => {
       const options: AuthModuleOptions = {
+        buildAbility: (_rules) => {
+          if (failure) throw new Error("Invalid ability configuration");
+        },
+
         user: {
           roles: { admin: ["user:read", "user:delete"] },
         },
         workspace: {
           roles: { owner: ["workspace:read", "workspace:delete"] },
-          buildAbility: () => {
-            if (failure) throw new Error("Invalid ability configuration");
-          },
         },
       };
       await RequestContext.run(new RequestContext({ type: "test" }), () => {
@@ -35,6 +36,10 @@ describe("post-commit request authorization", () => {
           Object.assign(new Member(), { roles: ["owner"], status: "ACTIVE" }),
         );
         RequestContext.set(Workspace, new Workspace());
+        Object.assign(requireMember(), {
+          user: RequestContext.get(User),
+          workspace: RequestContext.get(Workspace),
+        });
         RequestContext.set(
           API_KEY,
           Object.assign(new UserApiKey(), {
@@ -42,31 +47,35 @@ describe("post-commit request authorization", () => {
           }),
         );
         RequestContext.set(
-          UserAbility,
-          new UserAbility([{ action: "delete", subject: User }]),
-        );
-        RequestContext.set(
-          WorkspaceAbility,
-          new WorkspaceAbility([{ action: "delete", subject: Workspace }]),
+          AuthAbility,
+          new AuthAbility([
+            { action: "delete", subject: User },
+            { action: "delete", subject: Workspace },
+          ]),
         );
         const refresh = () => {
           RequestIdentity.refresh(options);
         };
         if (failure) expect(refresh).toThrow("Invalid ability configuration");
         else refresh();
-        expect(RequestContext.get(UserAbility)?.can("delete", User)).toBe(
+        expect(RequestContext.get(AuthAbility)?.can("delete", User)).toBe(
           false,
         );
-        expect(
-          RequestContext.get(WorkspaceAbility)?.can("delete", Workspace),
-        ).toBe(false);
-        expect(RequestContext.get(UserAbility)?.can("read", User)).toBe(
+        expect(RequestContext.get(AuthAbility)?.can("delete", Workspace)).toBe(
+          false,
+        );
+        expect(RequestContext.get(AuthAbility)?.can("read", User)).toBe(
           !failure,
         );
-        expect(
-          RequestContext.get(WorkspaceAbility)?.can("read", Workspace),
-        ).toBe(!failure);
+        expect(RequestContext.get(AuthAbility)?.can("read", Workspace)).toBe(
+          !failure,
+        );
       });
     },
   );
 });
+function requireMember(): Member {
+  const member = RequestContext.get(Member);
+  assert(member);
+  return member;
+}

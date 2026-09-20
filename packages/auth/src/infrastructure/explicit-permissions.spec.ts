@@ -35,8 +35,26 @@ describe("explicit auth permission catalog", () => {
 
   it("does not add baseline abilities to empty credentials", () => {
     const abilities = [
-      AuthAbilityFactory.createUserAbility([], new User()),
-      AuthAbilityFactory.createWorkspaceAbility([], new Workspace()),
+      AuthAbilityFactory.createAbility(
+        {
+          workspace: null,
+          member: null,
+          workspacePermissions: [],
+          user: new User(),
+          userPermissions: [],
+        },
+        {},
+      ),
+      AuthAbilityFactory.createAbility(
+        {
+          user: null,
+          member: null,
+          userPermissions: [],
+          workspace: new Workspace(),
+          workspacePermissions: [],
+        },
+        {},
+      ),
     ];
     for (const ability of abilities) {
       for (const subject of [
@@ -68,9 +86,15 @@ describe("explicit auth permission catalog", () => {
   ] as const)(
     "keeps %s write independent from read and sensitive grants",
     (resource, subject) => {
-      const ability = AuthAbilityFactory.createWorkspaceAbility(
-        [`${resource}:write`],
-        new Workspace(),
+      const ability = AuthAbilityFactory.createAbility(
+        {
+          user: null,
+          member: null,
+          userPermissions: [],
+          workspace: new Workspace(),
+          workspacePermissions: [`${resource}:write`],
+        },
+        {},
       );
       expect(ability.can("write", subject)).toBe(true);
       expect(ability.can("read", subject)).toBe(false);
@@ -80,31 +104,55 @@ describe("explicit auth permission catalog", () => {
   );
 
   it("uses member:invite for invitation management without granting member writes", () => {
-    const ability = AuthAbilityFactory.createWorkspaceAbility(
-      ["member:invite"],
-      new Workspace(),
+    const ability = AuthAbilityFactory.createAbility(
+      {
+        user: null,
+        member: null,
+        userPermissions: [],
+        workspace: new Workspace(),
+        workspacePermissions: ["member:invite"],
+      },
+      {},
     );
     expect(ability.can("read", Invitation)).toBe(true);
     expect(ability.can("write", Invitation)).toBe(true);
     expect(ability.can("write", Member)).toBe(false);
     expect(ability.can("set-roles", Member)).toBe(false);
     expect(ability.can("set-permissions", Member)).toBe(false);
-    const memberWriter = AuthAbilityFactory.createWorkspaceAbility(
-      ["member:write"],
-      new Workspace(),
+    const memberWriter = AuthAbilityFactory.createAbility(
+      {
+        user: null,
+        member: null,
+        userPermissions: [],
+        workspace: new Workspace(),
+        workspacePermissions: ["member:write"],
+      },
+      {},
     );
     expect(memberWriter.can("read", Invitation)).toBe(false);
     expect(memberWriter.can("write", Invitation)).toBe(false);
   });
 
   it("keeps personal and workspace key permissions separate", () => {
-    const userAbility = AuthAbilityFactory.createUserAbility(
-      ["user-api-key:write", "workspace-api-key:read"],
-      new User(),
+    const userAbility = AuthAbilityFactory.createAbility(
+      {
+        workspace: null,
+        member: null,
+        workspacePermissions: [],
+        user: new User(),
+        userPermissions: ["user-api-key:write", "workspace-api-key:read"],
+      },
+      {},
     );
-    const workspaceAbility = AuthAbilityFactory.createWorkspaceAbility(
-      ["user-api-key:write", "workspace-api-key:read"],
-      new Workspace(),
+    const workspaceAbility = AuthAbilityFactory.createAbility(
+      {
+        user: null,
+        member: null,
+        userPermissions: [],
+        workspace: new Workspace(),
+        workspacePermissions: ["user-api-key:write", "workspace-api-key:read"],
+      },
+      {},
     );
     expect(userAbility.can("write", UserApiKey)).toBe(true);
     expect(userAbility.can("read", UserApiKey)).toBe(false);
@@ -113,9 +161,15 @@ describe("explicit auth permission catalog", () => {
   });
 
   it("retains object restrictions for invitation management", () => {
-    const ability = AuthAbilityFactory.createWorkspaceAbility(
-      ["member:invite"],
-      new Workspace(),
+    const workspace = new Workspace();
+    const ability = AuthAbilityFactory.createAbility(
+      {
+        user: null,
+        member: null,
+        userPermissions: [],
+        workspace,
+        workspacePermissions: ["member:invite"],
+      },
       {
         buildAbility({ cannot }) {
           cannot("write", Invitation, { status: "accepted" });
@@ -125,28 +179,34 @@ describe("explicit auth permission catalog", () => {
     expect(
       ability.can(
         "write",
-        Object.assign(new Invitation(), { status: "pending" }),
+        Object.assign(new Invitation(), { status: "pending", workspace }),
       ),
     ).toBe(true);
     expect(
       ability.can(
         "write",
-        Object.assign(new Invitation(), { status: "accepted" }),
+        Object.assign(new Invitation(), { status: "accepted", workspace }),
       ),
     ).toBe(false);
     expect(
       ability.can(
         "read",
-        Object.assign(new Invitation(), { status: "accepted" }),
+        Object.assign(new Invitation(), { status: "accepted", workspace }),
       ),
     ).toBe(true);
     expect(ability.can("write", "Invitation")).toBe(true);
   });
 
   it("grants workspace creation explicitly through the user catalog", () => {
-    const ability = AuthAbilityFactory.createUserAbility(
-      ["workspace:create"],
-      new User(),
+    const ability = AuthAbilityFactory.createAbility(
+      {
+        workspace: null,
+        member: null,
+        workspacePermissions: [],
+        user: new User(),
+        userPermissions: ["workspace:create"],
+      },
+      {},
     );
     expect(ability.can("create", Workspace)).toBe(true);
     expect(ability.can("read", Workspace)).toBe(false);

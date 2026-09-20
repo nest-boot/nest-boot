@@ -224,8 +224,8 @@ test("uses personal API-key abilities for navigation and instance actions", asyn
   await page.route("**/api/graphql", async (route) => {
     const response = await route.fetch();
     const body = await response.json();
-    if (body.data?.currentUserAbilityRules) {
-      body.data.currentUserAbilityRules = [
+    if (body.data?.currentAbilityRules) {
+      body.data.currentAbilityRules = [
         ...(allowRead
           ? [{ actions: ["read"], subjects: ["UserApiKey"], inverted: false }]
           : []),

@@ -23,8 +23,7 @@ import { AuthSignInSocialResultType } from "../objects/auth-sign-in-social-resul
 import { AuthSocialProviderType } from "../objects/auth-social-provider.object.js";
 import { SignUpPayload } from "../objects/sign-up-payload.object.js";
 import { AuthService } from "../services/auth.service.js";
-import { getUserAbility } from "../utils/get-user-ability.util.js";
-import { getWorkspaceAbility } from "../utils/get-workspace-ability.util.js";
+import { getAbility } from "../utils/get-ability.util.js";
 import { serializeAbilityRules } from "../utils/serialize-ability-rules.util.js";
 
 /** GraphQL transport for application authentication operations. */
@@ -49,16 +48,10 @@ export class AuthResolver {
     return await this.authService.listSocialProviders();
   }
 
-  /** Returns the current user's effective CASL rules in a transport-safe form. */
+  /** Returns the unified effective CASL rules for the current request identity. */
   @Query(() => [AuthAbilityRuleType])
-  currentUserAbilityRules(): AuthAbilityRuleType[] {
-    return toAbilityRuleTypes(serializeAbilityRules(getUserAbility()));
-  }
-
-  /** Returns the selected workspace's effective CASL rules. */
-  @Query(() => [AuthAbilityRuleType])
-  currentWorkspaceAbilityRules(): AuthAbilityRuleType[] {
-    return toAbilityRuleTypes(serializeAbilityRules(getWorkspaceAbility()));
+  currentAbilityRules(): AuthAbilityRuleType[] {
+    return toAbilityRuleTypes(serializeAbilityRules(getAbility()));
   }
 
   /** Registers a user with an email address and password. */

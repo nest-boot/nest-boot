@@ -1,6 +1,6 @@
 ---
 title: "Authorization"
-description: "Protect routes with AuthGuard and scoped user or workspace permissions."
+description: "Protect routes with one Ability built from user and workspace permissions."
 ---
 
 ## Permission and ability responsibilities
@@ -59,13 +59,16 @@ AuthModule.forRoot({
       owner: ["report:read", "report:archive"],
       "report-reader": ["report:read"],
     },
-    buildAbility: ({ can }, _permissions, workspace) => {
-      can("report:read", "read", Report, { workspaceId: workspace.id });
-      can("report:archive", "archive", Report, {
-        workspaceId: workspace.id,
-        archived: false,
-      });
-    },
+  },
+  buildAbility: ({ can }, { workspace }) => {
+    if (!workspace) return;
+    can({ workspace: "report:read" }, "read", Report, {
+      workspaceId: workspace.id,
+    });
+    can({ workspace: "report:archive" }, "archive", Report, {
+      workspaceId: workspace.id,
+      archived: false,
+    });
   },
 });
 ```
@@ -79,18 +82,20 @@ Load the operation target before checking its conditions. Do not trust ownership
 fields supplied by the client or substitute a class-level route check:
 
 ```typescript
+import { assertCan } from "@nest-boot/auth";
+
 async archiveReport(id: string): Promise<Report> {
   const report = await this.loadReport(id);
-  this.access.assertWorkspaceCan("archive", report);
+  assertCan("archive", report);
   return await this.repository.archive(report);
 }
 ```
 
-The frontend queries `currentWorkspaceAbilityRules { actions subjects conditions
+The frontend queries `currentAbilityRules { actions subjects conditions
 fields inverted reason }`. Rehydrate those rules with the existing client helper:
 
 ```typescript
-const ability = createAbility(data.currentWorkspaceAbilityRules);
+const ability = createAbility(data.currentAbilityRules);
 const canArchive = ability.can(
   "archive",
   createAbilitySubject("Report", report),
@@ -140,13 +145,16 @@ health(): string {
 
 ## Build Abilities
 
-Configure separate user and workspace abilities. For an authenticated request,
-`AuthGuard` prepares the user ability when a current user exists and the
-workspace ability when a workspace and active membership are selected, even
-when the handler has no permission decorator. Auth owns the built-in permission
-mappings, so no callback is required for built-in operations. Abilities are
-cached in `RequestContext` and rebuilt after an identity or authorization change.
-Optional callbacks run synchronously and return nothing; auth builds the final ability.
+Configure one top-level `buildAbility` callback. `AuthGuard` prepares a single
+`AuthAbility` for the current identity, even without a permission decorator.
+Its context contains `user`, `workspace`, `member`, `userPermissions`, and
+`workspacePermissions`. Identity fields are nullable: workspace API keys have
+no user or member; workspace context requires an active membership or a matching
+workspace key. Check identity fields before using them in conditions.
+
+Auth owns built-in mappings; no callback is required for built-in operations.
+The callback runs once per identity snapshot, synchronously, and returns nothing.
+The ability is cached in `RequestContext` and rebuilt after identity or authorization changes.
 
 Class-level checks only gate an operation; conditional rules are also evaluated
 against loaded entities and proposed entities before creation. `currentMember`
@@ -193,38 +201,48 @@ const workspacePermissions = [
 ] as const;
 
 AuthModule.forRoot({
-  // ...
   workspace: {
     permissions: workspacePermissions,
     roles: workspaceRoles,
-    buildAbility: ({ can }, _permissions, workspace) => {
-      can("post:create", "create", Post, { workspaceId: workspace.id });
-      can("post:delete", "delete", Post, { workspaceId: workspace.id });
-      can("post:archive", "archive", Post, { workspaceId: workspace.id });
-    },
   },
   user: {
     permissions: userPermissions,
     roles: userRoles,
-    buildAbility: ({ can }, _permissions, user) => {
-      can("post:read", "read", Post);
-      can("post:update", "update", Post, { authorId: user.id });
-    },
+  },
+  buildAbility: ({ can }, { user, workspace, member }) => {
+    if (user) {
+      can({ user: "post:read" }, "read", Post);
+      can({ user: "post:update" }, "update", Post, { authorId: user.id });
+    }
+    if (workspace) {
+      can({ workspace: "post:create" }, "create", Post, {
+        workspaceId: workspace.id,
+      });
+      can({ workspace: "post:delete" }, "delete", Post, {
+        workspaceId: workspace.id,
+      });
+      if (member) {
+        can({ workspace: "post:archive" }, "archive", Post, {
+          workspaceId: workspace.id,
+          assignedMemberId: member.id,
+        });
+      }
+    }
   },
 });
 ```
 
-Each scope owns its permission catalog, role registry, and ability builder.
-Every permission granted by a role must exist in that scope's `permissions`
-array, otherwise application startup fails. AuthModule resolves role permissions
-and direct entity permissions first. A user builder receives the deduplicated
-permission list and current user. A workspace builder receives the deduplicated
-member permission list and selected workspace. Workspace membership participates
-in permission resolution but is not passed to the callback. The first argument
-is a restricted `AbilityRules` interface, not a CASL `AbilityBuilder`.
-`can(permission, action, subject, conditions?)` adds a business rule only when
-the named permission belongs to the catalog and is present in the effective
-permissions. Field restrictions use `can(permission, action, subject, fields, conditions?)`.
+User and workspace scopes retain separate catalogs and role registries. Roles
+must reference permissions from their own scope. The context permission arrays
+are immutable, deduplicated, and already limited by the authenticating API key.
+They remain separate so equal custom permission names do not imply equal scope.
+
+The first argument is a restricted `AbilityRules`, not a CASL builder.
+Bind each grant to exactly one source:
+`can({ user: permission }, action, subject, conditions?)` or
+`can({ workspace: permission }, action, subject, conditions?)`.
+A grant is added only when that scope's effective permissions contain the name.
+Field rules use `can(binding, action, subject, fields, conditions?)`.
 Unknown permission names, grants targeting built-in auth entities (by class or
 name), and grants targeting `all` are rejected. Use built-in permissions to grant
 auth operations; custom permission names cannot redefine their mappings.
@@ -346,39 +364,30 @@ profile updates do not accept authorization fields.
 
 ## Protect Routes
 
-Use `@WorkspaceCan` for workspace permissions and `@UserCan` for personal or
-application-level permissions. They write separate metadata and are evaluated
-by the same `AuthGuard`.
+Use `@Can(action, subject)` for both user and workspace operations. `AuthGuard`
+checks the same unified ability as Services; decorators need no scope option.
 
 ```typescript
-@WorkspaceCan("read", Post)
+@Can("read", Post)
 @Query(() => [Post])
 posts() {
   return this.postService.findAll();
 }
 
-@UserCan("read", User)
+@Can("read", User)
 @Query(() => User)
 me(@CurrentUser() user: User) {
   return user;
 }
 ```
 
-Every permission declared on a route must pass. This includes repeated
-`@UserCan` or `@WorkspaceCan` declarations in the same scope as well as a mix
-of both scopes. Class-level requirements are merged with method-level
-requirements rather than replaced by them. Permission requirements always use
-`all` semantics. `@Can` is a thin alias that delegates to the scoped decorator;
-omitted `scope` delegates to `@WorkspaceCan`.
+Every requirement declared on a route must pass. Repeated `@Can` declarations
+use `all` semantics. Class-level requirements are merged with method-level
+requirements, not replaced by them.
 
 ```typescript
-@Can("read", Post) // @WorkspaceCan("read", Post)
-@Can("read", User, { scope: "user" }) // @UserCan("read", User)
-```
-
-```typescript
-@WorkspaceCan("read", Post)
-@WorkspaceCan("update", Post)
+@Can("read", Post)
+@Can("update", Post)
 @Mutation(() => Post)
 updatePost() {
   // Requires both post:read and post:update.
@@ -390,7 +399,7 @@ factory receives the controller or resolver instance first, followed by its
 decorated method parameters.
 
 ```typescript
-@WorkspaceCan("update", (self: PostResolver, id: string) =>
+@Can("update", (self: PostResolver, id: string) =>
   self.postService.findOneOrFail({ id }),
 )
 @Mutation(() => Post)
@@ -399,15 +408,16 @@ updatePost(@Args("id") id: string) {
 }
 ```
 
-Workspace API keys can pass only workspace checks. User API keys can pass user
-checks and, with a live membership, workspace checks. Before `buildAbility` is
-called, User Key permissions are intersected with the user's effective user
-permissions or the current member's effective workspace permissions. Workspace
-Key permissions are passed directly to the workspace builder. The resulting
-`UserAbility` or `WorkspaceAbility` is the only ability checked by the guard.
+Workspace API keys contribute only workspace grants. User API keys contribute
+user grants and, with a live membership, workspace grants. Each source is
+limited by the credential before `buildAbility` runs. The Guard checks the
+resulting `AuthAbility`. Built-in workspace rules match the selected workspace's
+ID; select `workspaceId` on Member, Invitation, and WorkspaceApiKey when checking
+their instances in the client. Business rules must declare their own object
+conditions using the callback context.
 
 Auth maps built-in permissions automatically. Business extensions bind their
-rules explicitly, for example `can("post:read", "read", Post)`. The factory
+rules explicitly, for example `can({ user: "post:read" }, "read", Post)`. The factory
 checks effective permissions even if the callback does not inspect them, so an
 API key without `post:read` cannot acquire that rule. The frontend rehydrates the
 final serialized rules instead of maintaining a separate permission mapping.
@@ -432,14 +442,16 @@ access control:
 - current-user authentication, session management, invitation acceptance, and
   leaving a workspace use authenticated identity and ownership checks.
 
-`AccessControlService` exposes `assertUserCan()` and `assertWorkspaceCan()` for
-application services that need the same fail-closed boundary. An ability must
-have been prepared by the global `AuthGuard`; calls outside that request
-lifecycle are denied rather than implicitly trusted.
+`can()`, `assertCan()`, and `getAbility()` read the same request-scoped
+`AuthAbility` without injecting an authorization service. The global `AuthGuard`
+prepares it before protected operations. Missing request identity or ability
+denies access: `can()` returns `false`; `assertCan()` and `getAbility()` throw
+`ForbiddenException`.
 
-The Guard, route decorators, Services, and scoped helpers all evaluate operations
-through this service's `ability.can()` checks. Helpers do not fall back to a cached
-Ability when the authorization service is unavailable.
+The Guard, route decorators, Services, and helpers all evaluate operations
+through this ability's `can()` checks. Identity publication and invalidation remain
+centralized in the internal `RequestIdentity`; helpers never construct a fallback
+ability.
 
 Ability construction and grantability checks share one immutable effective-permission
 snapshot for the current request identity. Owner permissions remain distinct from
@@ -449,37 +461,25 @@ an operation's `ability.can()` result.
 
 ## Lower-Level Checks
 
-After `AuthGuard` prepares the request abilities, lower-level code can use the
-matching scoped helpers. `can()` is a thin alias that routes to them by `scope`
-and defaults to `workspaceCan()`.
+After `AuthGuard` prepares the request, use the same helpers in lower-level code:
 
 ```typescript
-if (!workspaceCan("update", post)) {
+import { can, getAbility } from "@nest-boot/auth";
+
+if (!can("update", post)) {
   throw new ForbiddenException();
 }
-
-userCan("read", user);
-getWorkspaceAbility();
-getUserAbility();
-
-can("read", post); // workspaceCan(...)
-can("read", user, { scope: "user" }); // userCan(...)
+const ability = getAbility();
+ability.can("read", post);
 ```
 
-The ability classes are also the request-context tokens:
+`can()` returns `false` when authorization context is unavailable.
+`getAbility()` throws `ForbiddenException` instead. `AuthAbility` is also the
+request-context token, but use the helpers for fail-closed access.
 
-```typescript
-import { UserAbility, WorkspaceAbility } from "@nest-boot/auth";
-import { RequestContext } from "@nest-boot/request-context";
-
-const userAbility = RequestContext.get(UserAbility);
-const workspaceAbility = RequestContext.get(WorkspaceAbility);
-```
-
-The `userCan()` and `workspaceCan()` helpers fail closed by returning `false`
-when the requested ability is unavailable. The lower-level
-`getUserAbility()` and `getWorkspaceAbility()` accessors throw
-`ForbiddenException` instead.
+The example frontend exposes `useAbility()` for both personal and workspace
+pages. Its provider consumes `currentAbilityRules` for the selected identity;
+it does not merge or independently derive permissions.
 
 ## Database Scope Policies
 
@@ -578,7 +578,7 @@ and reasons. The result is JSON-safe and can be rehydrated with CASL's
 `createMongoAbility()`.
 
 ```typescript
-const rules = serializeAbilityRules(getWorkspaceAbility());
+const rules = serializeAbilityRules(getAbility());
 ```
 
 Treat transported rules as a user-interface capability model only. The server

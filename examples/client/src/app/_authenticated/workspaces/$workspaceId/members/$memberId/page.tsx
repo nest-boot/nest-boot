@@ -1,20 +1,21 @@
-import { useCallback } from "react";
-import { useMutation, useSuspenseQuery } from "@apollo/client/react";
+import { useState } from "react";
+import { useMutation } from "@apollo/client/react";
 import {
   createFileRoute,
   redirect,
   useNavigate,
   useRouter,
 } from "@tanstack/react-router";
-import { useForm } from "@tanstack/react-form";
-import * as z from "zod";
 import { toast } from "sonner";
 import { t } from "i18next";
 
-import {
-  useCurrentMemberContext,
-  useCurrentWorkspaceAbility,
-} from "../../contexts/current-member-context";
+import { useCurrentMemberContext } from "../../contexts/current-member-context";
+import { MemberProfileForm } from "./components/member-profile-form";
+import { MemberRolesForm } from "./components/member-roles-form";
+import { MemberPermissionsForm } from "./components/member-permissions-form";
+import type { MemberFormProps } from "./components/member-form-props";
+import type { GetMemberFromMemberRouteQuery } from "@/gql/graphql";
+import { useAbility } from "@/contexts/ability-context";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import {
   Page,
@@ -24,29 +25,14 @@ import {
   PageSecondaryAction,
   PageTitle,
 } from "@/components/thread-ui/page";
-import { Button } from "@/components/thread-ui/button";
-import { RoleCheckboxGroup } from "@/components/role-checkbox-group";
-import { Field, FieldGroup, FieldSet } from "@/components/ui/field";
-import { Input } from "@/components/thread-ui/input";
 import { graphql } from "@/gql";
-import { WorkspacePermission, WorkspaceRole } from "@/gql/graphql";
-import { getPermissionOptions } from "@/lib/permissions";
-import { PermissionCheckboxGroup } from "@/components/permission-checkbox-group";
 import { createAbilitySubject } from "@/lib/ability";
-
-const GET_CURRENT_MEMBER_FROM_MEMBER_ROUTE = graphql(`
-  query getCurrentMemberFromMemberRoute {
-    currentMember {
-      id
-      roles
-      permissions
-    }
-  }
-`);
+import { isAccessDenied } from "@/lib/auth-errors";
 
 const GET_MEMBER_FROM_MEMBER_ROUTE = graphql(`
   query getMemberFromMemberRoute($id: ID!) {
     member(id: $id) {
+      workspaceId
       id
       roles
       permissions
@@ -65,36 +51,6 @@ const GET_MEMBER_FROM_MEMBER_ROUTE = graphql(`
   }
 `);
 
-const UPDATE_MEMBER_FROM_MEMBER_ROUTE = graphql(`
-  mutation updateMemberFromMemberRoute($id: ID!, $input: UpdateMemberInput!) {
-    updateMember(id: $id, input: $input) {
-      id
-    }
-  }
-`);
-
-const SET_WORKSPACE_MEMBER_ROLES_FROM_MEMBER_ROUTE = graphql(`
-  mutation setMemberRolesFromMemberRoute(
-    $id: ID!
-    $input: SetMemberRolesInput!
-  ) {
-    setMemberRoles(id: $id, input: $input) {
-      id
-    }
-  }
-`);
-
-const SET_MEMBER_PERMISSIONS_FROM_MEMBER_ROUTE = graphql(`
-  mutation setMemberPermissionsFromMemberRoute(
-    $id: ID!
-    $input: SetMemberPermissionsInput!
-  ) {
-    setMemberPermissions(id: $id, input: $input) {
-      id
-    }
-  }
-`);
-
 const REMOVE_MEMBER_FROM_MEMBER_ROUTE = graphql(`
   mutation removeMemberFromMemberRoute($id: ID!) {
     removeMember(id: $id) {
@@ -103,269 +59,125 @@ const REMOVE_MEMBER_FROM_MEMBER_ROUTE = graphql(`
   }
 `);
 
-const formSchema = z.object({
-  name: z.string().trim().min(1).max(255),
-  email: z.string().email().or(z.literal("")),
-  roles: z.array(z.enum(WorkspaceRole)).min(1),
-  permissions: z.array(z.enum(WorkspacePermission)),
-});
-
 export const Route = createFileRoute(
   "/_authenticated/workspaces/$workspaceId/members/$memberId/",
 )({
-  component: MemberComponent,
+  component: MemberPage,
   beforeLoad: async ({
-    context: { apolloClient, currentWorkspaceAbility },
+    context: { apolloClient, ability, currentMember },
     params: { memberId, workspaceId },
   }) => {
-    const { data } = await apolloClient.query({
-      query: GET_CURRENT_MEMBER_FROM_MEMBER_ROUTE,
-    });
-
-    if (
-      !data?.currentMember ||
-      !currentWorkspaceAbility.can("read", "Member")
-    ) {
-      throw redirect({
+    const denied = () =>
+      redirect({
         to: "/workspaces/$workspaceId/members",
         params: { workspaceId },
       });
-    }
-
-    try {
-      const { data } = await apolloClient.query({
+    if (!currentMember || !ability.can("read", "Member")) throw denied();
+    const { data } = await apolloClient
+      .query({
         query: GET_MEMBER_FROM_MEMBER_ROUTE,
         variables: { id: memberId },
+        context: { headers: { "x-workspace-id": workspaceId } },
+        fetchPolicy: "network-only",
+      })
+      .catch((error: unknown) => {
+        if (isAccessDenied(error)) throw denied();
+        throw error;
       });
-      if (
-        !data?.member ||
-        !currentWorkspaceAbility.can(
-          "read",
-          createAbilitySubject("Member", data.member),
-        )
-      ) {
-        throw redirect({
-          to: "/workspaces/$workspaceId/members",
-          params: { workspaceId },
-        });
-      }
-      return {
-        member: data?.member,
-        title: data?.member?.name || t("member:details.title"),
-      };
-    } catch {}
-
-    throw redirect({
-      to: "/workspaces/$workspaceId/members",
-      params: { workspaceId },
-    });
+    if (
+      !data?.member ||
+      !ability.can("read", createAbilitySubject("Member", data.member))
+    )
+      throw denied();
+    return {
+      memberData: { ...data, member: data.member },
+      title: data.member.name || t("member:details.title"),
+    };
   },
 });
 
-function MemberComponent() {
+function MemberPage() {
+  const { memberData } = Route.useRouteContext();
+  return <MemberDetails key={memberData.member.id} data={memberData} />;
+}
+
+function MemberDetails({
+  data,
+}: {
+  data: GetMemberFromMemberRouteQuery & {
+    member: NonNullable<GetMemberFromMemberRouteQuery["member"]>;
+  };
+}) {
   const router = useRouter();
   const navigate = useNavigate();
-  const { memberId, workspaceId } = Route.useParams();
-
+  const { workspaceId } = Route.useParams();
   const currentMember = useCurrentMemberContext();
-  const currentWorkspaceAbility = useCurrentWorkspaceAbility();
-
-  const { data, refetch } = useSuspenseQuery(GET_MEMBER_FROM_MEMBER_ROUTE, {
-    variables: { id: memberId },
-  });
-
-  const member = data?.member;
-
-  if (!member) {
-    return navigate({
-      to: "/workspaces/$workspaceId/members",
-      params: { workspaceId },
-    });
-  }
-
-  const canManageRoles = currentWorkspaceAbility.can(
-    "set-roles",
-    createAbilitySubject("Member", member),
+  const ability = useAbility();
+  const [saving, setSaving] = useState(false);
+  const [removeMember, { loading: removing }] = useMutation(
+    REMOVE_MEMBER_FROM_MEMBER_ROUTE,
   );
+  const member = data.member;
+  const memberSubject = createAbilitySubject("Member", member);
 
-  const canManagePermissions = currentWorkspaceAbility.can(
-    "set-permissions",
-    createAbilitySubject("Member", member),
-  );
-  const canManageProfile = currentWorkspaceAbility.can(
-    "write",
-    createAbilitySubject("Member", member),
-  );
-  const [updateMember] = useMutation(UPDATE_MEMBER_FROM_MEMBER_ROUTE);
-
-  const form = useForm({
-    defaultValues: {
-      name: member.name,
-      email: member.email ?? "",
-      roles: member.roles,
-      permissions: member.permissions,
-    },
-    validators: {
-      onSubmit: formSchema,
-    },
-    onSubmit: async ({ value }) => {
-      try {
-        const hasRolesChanged =
-          value.roles.length !== member.roles.length ||
-          value.roles.some((role) => !member.roles.includes(role));
-
-        if (
-          hasRolesChanged &&
-          value.roles.some(
-            (role) =>
-              !data.workspaceRoles.some(
-                (option) => option.role === role && option.grantable,
-              ),
-          )
-        ) {
-          throw new Error("Selected roles exceed your grant permissions");
-        }
-
-        // Compare the complete direct-permission list before submitting.
-        const currentPermissions = member.permissions;
-        const hasPermissionChanged =
-          value.permissions.length !== currentPermissions.length ||
-          value.permissions.some(
-            (permission) => !currentPermissions.includes(permission),
-          ) ||
-          currentPermissions.some(
-            (permission) => !value.permissions.includes(permission),
-          );
-
-        if (
-          hasPermissionChanged &&
-          value.permissions.some(
-            (permission) =>
-              !data.workspacePermissions.some(
-                (option) =>
-                  option.permission === permission && option.grantable,
-              ),
-          )
-        ) {
-          throw new Error("Selected permissions exceed your grant permissions");
-        }
-
-        const operations: Array<Promise<unknown>> = [];
-
-        if (
-          canManageProfile &&
-          (value.name !== member.name || value.email !== (member.email ?? ""))
-        ) {
-          operations.push(
-            updateMember({
-              variables: {
-                id: memberId,
-                input: { name: value.name, email: value.email || null },
-              },
-            }),
-          );
-        }
-        if (canManageRoles && hasRolesChanged) {
-          operations.push(
-            setMemberRoles({
-              variables: {
-                id: memberId,
-                input: { roles: value.roles },
-              },
-            }),
-          );
-        }
-        if (canManagePermissions && hasPermissionChanged) {
-          operations.push(
-            setMemberPermissions({
-              variables: {
-                id: memberId,
-                input: { permissions: value.permissions },
-              },
-            }),
-          );
-        }
-
-        await Promise.all(operations);
-
-        if (
-          memberId === currentMember.id &&
-          (hasRolesChanged || hasPermissionChanged)
-        ) {
-          // Rebuild identity and abilities without refetching a route access may have revoked.
-          window.location.assign("/user/workspaces");
-          return;
-        }
-
-        await refetch();
-        await router.invalidate();
-
-        form.reset(value);
-
-        toast.success(t("member:details.toast.updated_success"));
-      } catch (error) {
-        toast.error(t("member:details.toast.update_failed"), {
-          description: error instanceof Error ? error.message : "Unknown error",
-        });
+  const save: MemberFormProps["onSave"] = async (
+    operation,
+    changesAuthorization = false,
+  ) => {
+    setSaving(true);
+    try {
+      await operation();
+      if (member.id === currentMember.id && changesAuthorization) {
+        // Do not refetch a route that the committed authorization change may have revoked.
+        window.location.assign("/user/workspaces");
+        return false;
       }
-    },
-  });
+      await router.invalidate();
+      toast.success(t("member:details.toast.updated_success"));
+      return true;
+    } catch (error) {
+      toast.error(t("member:details.toast.update_failed"), {
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  };
 
-  const [setMemberRoles, { loading: updatingRole }] = useMutation(
-    SET_WORKSPACE_MEMBER_ROLES_FROM_MEMBER_ROUTE,
-  );
-  const [setMemberPermissions, { loading: updatingPermissions }] = useMutation(
-    SET_MEMBER_PERMISSIONS_FROM_MEMBER_ROUTE,
-  );
-  const [removeMember] = useMutation(REMOVE_MEMBER_FROM_MEMBER_ROUTE);
-
-  const handleRemoveMember = useCallback(async () => {
+  const handleRemove = async () => {
+    if (
+      !(await alertDialog({
+        title: t("member:delete.title"),
+        description: t("member:delete.description"),
+        cancelText: t("action.cancel"),
+        confirmText: t("action.confirm"),
+      }))
+    )
+      return;
     try {
       await removeMember({
-        variables: { id: memberId },
+        variables: { id: member.id },
         update(cache, result) {
-          if (result.data?.removeMember) {
-            cache.evict({
-              id: cache.identify({
-                __typename: "Member",
-                id: result.data.removeMember.id,
-              }),
-            });
-            cache.gc();
-          }
+          if (!result.data?.removeMember) return;
+          cache.evict({
+            id: cache.identify({
+              __typename: "Member",
+              id: result.data.removeMember.id,
+            }),
+          });
+          cache.gc();
         },
       });
-
-      toast.success(t("member:details.toast.deleted_success"));
-
-      navigate({
+      await navigate({
         to: "/workspaces/$workspaceId/members",
         params: { workspaceId },
       });
+      toast.success(t("member:details.toast.deleted_success"));
     } catch (error) {
       toast.error(t("member:details.toast.delete_failed"), {
         description: error instanceof Error ? error.message : "Unknown error",
       });
-    }
-  }, [removeMember, memberId, navigate, workspaceId]);
-
-  const canRemove =
-    memberId !== currentMember.id &&
-    currentWorkspaceAbility.can(
-      "write",
-      createAbilitySubject("Member", member),
-    );
-
-  const handleRemoveClick = async () => {
-    const confirmed = await alertDialog({
-      title: t("member:delete.title"),
-      description: t("member:delete.description"),
-      cancelText: t("action.cancel"),
-      confirmText: t("action.confirm"),
-    });
-
-    if (confirmed) {
-      handleRemoveMember();
     }
   };
 
@@ -373,113 +185,42 @@ function MemberComponent() {
     <Page variant="compact" data-testid="member-detail-page">
       <PageHeader>
         <PageTitle>{member.name ?? member.id}</PageTitle>
-        {canRemove ? (
-          <PageActions>
-            {canRemove ? (
+        {member.id !== currentMember.id &&
+          ability.can("write", memberSubject) && (
+            <PageActions>
               <PageSecondaryAction
                 data-testid="member-delete-action"
                 destructive
-                onAction={handleRemoveClick}
+                disabled={saving || removing}
+                onAction={handleRemove}
               >
                 {t("member:details.actions.delete_member")}
               </PageSecondaryAction>
-            ) : null}
-          </PageActions>
-        ) : null}
+            </PageActions>
+          )}
       </PageHeader>
-      <PageContent>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            form.handleSubmit();
-          }}
-        >
-          <FieldSet>
-            <FieldGroup>
-              <form.Field name="name">
-                {(field) => (
-                  <Input
-                    id="member-name"
-                    label={t("member:details.form.name.label")}
-                    description={t("member:details.form.name.description")}
-                    disabled={!canManageProfile}
-                    error={field.state.meta.errors
-                      .map((error) => error?.message)
-                      .filter(Boolean)
-                      .join(", ")}
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(event) => field.handleChange(event.target.value)}
-                  />
-                )}
-              </form.Field>
-              <form.Field name="email">
-                {(field) => (
-                  <Input
-                    id="member-email"
-                    label={t("member:details.form.email.label")}
-                    description={t("member:details.form.email.description")}
-                    disabled={!canManageProfile}
-                    error={field.state.meta.errors
-                      .map((error) => error?.message)
-                      .filter(Boolean)
-                      .join(", ")}
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(event) => field.handleChange(event.target.value)}
-                  />
-                )}
-              </form.Field>
-              <form.Field name="roles">
-                {(field) => (
-                  <RoleCheckboxGroup
-                    label={t("member:details.form.role.label")}
-                    options={data.workspaceRoles}
-                    testIdPrefix="member-role"
-                    value={field.state.value}
-                    onValueChange={(value) => field.handleChange(value)}
-                    disabled={!canManageRoles}
-                  />
-                )}
-              </form.Field>
-
-              <form.Field name="permissions">
-                {(field) => (
-                  <PermissionCheckboxGroup
-                    options={getPermissionOptions(data.workspacePermissions)}
-                    value={field.state.value}
-                    onChange={field.handleChange}
-                    disabled={updatingPermissions || !canManagePermissions}
-                  />
-                )}
-              </form.Field>
-
-              <form.Subscribe
-                selector={(state) => [
-                  state.isDirty,
-                  state.isSubmitting,
-                  state.canSubmit,
-                ]}
-              >
-                {([isDirty, isSubmitting, canSubmit]) => (
-                  <Field orientation="horizontal">
-                    <Button
-                      type="submit"
-                      data-testid="member-save"
-                      disabled={!isDirty || !canSubmit}
-                      loading={
-                        isSubmitting || updatingRole || updatingPermissions
-                      }
-                    >
-                      {t("action.save")}
-                    </Button>
-                  </Field>
-                )}
-              </form.Subscribe>
-            </FieldGroup>
-          </FieldSet>
-        </form>
+      <PageContent className="space-y-8">
+        <MemberProfileForm
+          member={member}
+          onSave={save}
+          disabled={saving || removing || !ability.can("write", memberSubject)}
+        />
+        <MemberRolesForm
+          member={member}
+          onSave={save}
+          options={data.workspaceRoles}
+          disabled={
+            saving || removing || !ability.can("set-roles", memberSubject)
+          }
+        />
+        <MemberPermissionsForm
+          member={member}
+          onSave={save}
+          options={data.workspacePermissions}
+          disabled={
+            saving || removing || !ability.can("set-permissions", memberSubject)
+          }
+        />
       </PageContent>
     </Page>
   );

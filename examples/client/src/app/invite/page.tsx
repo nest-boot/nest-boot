@@ -33,6 +33,7 @@ const GET_CURRENT_USER_FROM_INVITE_ROUTE = graphql(`
 const GET_INVITATION_FROM_INVITE_ROUTE = graphql(`
   query getInvitationFromInviteRoute($id: ID!) {
     invitation(id: $id) {
+      workspaceId
       id
       email
       roles

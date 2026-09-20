@@ -77,7 +77,7 @@ test.describe("workspace management", () => {
       await page.goto(`/workspaces/${workspaceId}/members/${memberId}`);
       await page.getByTestId("member-role-OWNER").click();
       await page.getByTestId("member-role-MEMBER").click();
-      await page.getByTestId("member-save").click();
+      await page.getByTestId("member-roles-save").click();
       await expect(page.getByText("成员更新成功")).toBeVisible();
 
       const { currentWorkspace } = await graphqlRequest<{

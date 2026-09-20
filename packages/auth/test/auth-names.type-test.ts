@@ -91,15 +91,16 @@ void invalidRole;
 void invalidPermission;
 
 AuthModule.forRoot({
+  buildAbility: (rules) => {
+    rules.can({ user: "report:read" }, "read", "Report");
+    // @ts-expect-error A rule must bind to a declared permission.
+    rules.can({ user: "report:delete" }, "delete", "Report");
+    // @ts-expect-error The raw builder is not an extension point.
+    rules.build();
+  },
+
   user: {
     permissions: ["report:read"],
-    buildAbility: (rules) => {
-      rules.can("report:read", "read", "Report");
-      // @ts-expect-error A rule must bind to a declared permission.
-      rules.can("report:delete", "delete", "Report");
-      // @ts-expect-error The raw builder is not an extension point.
-      rules.build();
-    },
     roles: {
       "super-admin": ["report:read", "user:read"],
       admin: ["report:read"],
@@ -222,5 +223,27 @@ AuthModule.forRoot({
     roles: { [dynamicRole]: [dynamicPermission] },
     defaultRole: dynamicRole,
     adminRoles: [dynamicRole],
+  },
+});
+AuthModule.forRoot({
+  user: { permissions: ["report:read"] },
+  workspace: { permissions: ["project:read"] },
+  buildAbility: (
+    { can },
+    { user, workspace, member, userPermissions, workspacePermissions },
+  ) => {
+    can({ user: "report:read" }, "read", "Report");
+    can({ workspace: "project:read" }, "read", "Project");
+    // @ts-expect-error User grants cannot bind a workspace-only permission.
+    can({ user: "project:read" }, "read", "Project");
+    // @ts-expect-error Exactly one permission source is required.
+    can({ user: "report:read", workspace: "project:read" }, "read", "Report");
+    // @ts-expect-error Source inference must not broaden the configured catalog.
+    can({ workspace: "project:delete" }, "delete", "Project");
+    void [user?.id, workspace?.id, member?.id];
+    // @ts-expect-error Effective permission snapshots are readonly.
+    userPermissions.push("report:read");
+    // @ts-expect-error The workspace array does not contain user-only permissions.
+    workspacePermissions.includes("report:read");
   },
 });

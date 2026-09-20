@@ -12,10 +12,8 @@ import {
 import md5 from "md5";
 import { useMemo } from "react";
 
-import {
-  useCurrentUserAbility,
-  useCurrentUserContext,
-} from "../contexts/current-user-context";
+import { useCurrentUserContext } from "../contexts/current-user-context";
+import { useAbility } from "@/contexts/ability-context";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -46,7 +44,7 @@ export function SidebarUser() {
   const apolloClient = useApolloClient();
   const [signOut] = useMutation(AUTH_SIGN_OUT_FROM_SIDEBAR_USER);
   const currentUser = useCurrentUserContext();
-  const currentUserAbility = useCurrentUserAbility();
+  const ability = useAbility();
 
   const userAvatar = useMemo(
     () =>
@@ -123,7 +121,7 @@ export function SidebarUser() {
                 <Boxes />
                 {t("sidebar:user.workspaces")}
               </DropdownMenuItem>
-              {currentUserAbility.can("read", "UserApiKey") ? (
+              {ability.can("read", "UserApiKey") ? (
                 <DropdownMenuItem
                   data-testid="sidebar-user-api-keys-link"
                   onClick={() => navigate({ to: "/user/api-keys" })}
@@ -132,7 +130,7 @@ export function SidebarUser() {
                   {t("sidebar:user.api_keys")}
                 </DropdownMenuItem>
               ) : null}
-              {currentUserAbility.can("read", "User") ? (
+              {ability.can("read", "User") ? (
                 <DropdownMenuItem
                   data-testid="sidebar-admin-link"
                   onClick={() => navigate({ to: "/admin/users" })}

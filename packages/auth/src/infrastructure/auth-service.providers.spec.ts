@@ -3,20 +3,19 @@ import { EntityManager } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import type { FactoryProvider } from "@nestjs/common";
 
+import { mockAuthorization } from "../../test/mock-authorization.js";
 import {
   createTestMember,
   createTestWorkspace,
   createWorkspaceServices,
 } from "../../test/workspace-service.fixture.js";
-import { UserAbility } from "../abilities/user.ability.js";
-import { WorkspaceAbility } from "../abilities/workspace.ability.js";
+import { AuthAbility } from "../abilities/auth.ability.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { Member } from "../entities/member.entity.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
 import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
-import type { AccessControlService } from "../services/access-control.service.js";
 import { InvitationService } from "../services/invitation.service.js";
 import { MemberService } from "../services/member.service.js";
 import { SessionService } from "../services/session.service.js";
@@ -107,13 +106,7 @@ describe("auth service execution boundaries", () => {
           "provide" in candidate &&
           candidate.provide === UserService,
       ) as FactoryProvider<UserService>;
-      const service = await provider.useFactory(
-        em,
-        {},
-        {},
-        { assertCurrentSession: vi.fn() },
-        {},
-      );
+      const service = await provider.useFactory(em, {}, {}, {});
       await RequestContext.run(
         new RequestContext({ type: "test" }),
         async () => {
@@ -122,10 +115,10 @@ describe("auth service execution boundaries", () => {
           RequestContext.set(Session, session);
           RequestContext.set(Workspace, createTestWorkspace());
           RequestContext.set(Member, createTestMember());
-          const ability = new UserAbility([
+          const ability = new AuthAbility([
             { action: "update", subject: User },
           ]);
-          RequestContext.set(UserAbility, ability);
+          RequestContext.set(AuthAbility, ability);
           const result = service.stopImpersonating(session);
           if (state === "missing") await expect(result).resolves.toBeNull();
           else
@@ -138,12 +131,12 @@ describe("auth service execution boundaries", () => {
           if (state === "failure") {
             expect(RequestContext.get(User)).toBe(user);
             expect(RequestContext.get(Session)).toBe(session);
-            expect(RequestContext.get(UserAbility)).toBe(ability);
+            expect(RequestContext.get(AuthAbility)).toBe(ability);
             expect(em.setSessionContext).not.toHaveBeenCalled();
           } else {
             for (const token of [User, Session, Workspace, Member])
               expect(RequestContext.get(token)).toBeNull();
-            expect(RequestContext.get(UserAbility)?.can("update", User)).toBe(
+            expect(RequestContext.get(AuthAbility)?.can("update", User)).toBe(
               false,
             );
             expect(em.setSessionContext).toHaveBeenCalledWith({
@@ -159,14 +152,14 @@ describe("auth service execution boundaries", () => {
   it.each([false, true])(
     "keeps deletion on the request manager and clears authorization only after commit (failure=%s)",
     async (failure) => {
-      const { em, accessControlService: access } = createWorkspaceServices();
+      const { em } = createWorkspaceServices();
       em.getSessionContext.mockReturnValue({
         role: "authenticated",
         variables: { "app.workspace.id": "workspace-1" },
       });
       const workspace = createTestWorkspace();
       const member = createTestMember();
-      const ability = new WorkspaceAbility([
+      const ability = new AuthAbility([
         { action: "delete", subject: Workspace },
       ]);
       if (failure)
@@ -177,14 +170,14 @@ describe("auth service execution boundaries", () => {
           "provide" in candidate &&
           candidate.provide === WorkspaceService,
       ) as FactoryProvider<WorkspaceService>;
-      const service = await provider.useFactory(em, {}, access);
+      const service = await provider.useFactory(em, {});
       await RequestContext.run(
         new RequestContext({ type: "test" }),
         async () => {
           RequestContext.set(EntityManager, em);
           RequestContext.set(Member, member);
           RequestContext.set(Workspace, workspace);
-          RequestContext.set(WorkspaceAbility, ability);
+          RequestContext.set(AuthAbility, ability);
           const result = service.deleteWorkspace(workspace);
           if (failure) await expect(result).rejects.toThrow("Commit failed");
           else await expect(result).resolves.toBe(workspace);
@@ -195,15 +188,15 @@ describe("auth service execution boundaries", () => {
             failure ? workspace : null,
           );
           expect(
-            RequestContext.get(WorkspaceAbility)?.can("delete", Workspace),
+            RequestContext.get(AuthAbility)?.can("delete", Workspace),
           ).toBe(failure);
           if (failure) expect(em.setSessionContext).not.toHaveBeenCalled();
           else
-            expect(em.setSessionContext).toHaveBeenCalledWith({
-              variables: {
-                "app.workspace.id": "",
-              },
-            });
+            expect(em.setSessionContext).toHaveBeenCalledWith(
+              expect.objectContaining({
+                variables: expect.objectContaining({ "app.workspace.id": "" }),
+              }),
+            );
         },
       );
     },
@@ -238,12 +231,8 @@ describe("auth service execution boundaries", () => {
         fork: vi.fn(() => reader),
         clearSessionContext: vi.fn(),
       } as unknown as EntityManager;
-      const access = {
-        assertCurrentWorkspace: vi.fn(),
-        assertCurrentUser: vi.fn(),
-        assertWorkspaceCan: vi.fn(),
-      };
-      const service = await provider.useFactory(current, {}, access);
+      mockAuthorization();
+      const service = await provider.useFactory(current, {});
       await RequestContext.run(
         new RequestContext({ type: "test" }),
         async () => {
@@ -291,11 +280,8 @@ describe("auth service execution boundaries", () => {
         "provide" in candidate &&
         candidate.provide === SessionService,
     ) as FactoryProvider<SessionService>;
-    const access = {
-      assertUserCan: vi.fn(),
-    } as unknown as AccessControlService;
-    const service = provider.useFactory({}, {} as EntityManager, access);
-
+    mockAuthorization();
+    const service = provider.useFactory({}, {} as EntityManager);
     for (const name of [
       "getCurrentAuthenticatedSession",
       "listCurrentUserSessions",
@@ -377,7 +363,6 @@ describe("auth service execution boundaries", () => {
       const service = provider.useFactory(
         {} as EntityManager,
         {} as AuthModuleOptions,
-        {} as AccessControlService,
       );
       for (const name of special)
         expect(Object.hasOwn(service, name)).toBe(true);

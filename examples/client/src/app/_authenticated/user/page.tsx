@@ -1,4 +1,4 @@
-import { useMutation, useSuspenseQuery } from "@apollo/client/react";
+import { useMutation } from "@apollo/client/react";
 import { useForm } from "@tanstack/react-form";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
@@ -7,6 +7,7 @@ import { CircleX, MailCheck } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
+import { useCurrentUserContext } from "../contexts/current-user-context";
 import { Button } from "@/components/thread-ui/button";
 import {
   Page,
@@ -26,17 +27,6 @@ import {
 } from "@/components/ui/card";
 import { Field, FieldGroup, FieldSet } from "@/components/ui/field";
 import { graphql } from "@/gql";
-
-const GET_CURRENT_USER_FROM_USER_ROUTE = graphql(`
-  query getCurrentUserFromUserRoute {
-    currentUser {
-      id
-      name
-      email
-      createdAt
-    }
-  }
-`);
 
 const UPDATE_USER_FROM_USER_ROUTE = graphql(`
   mutation updateUserFromUserRoute($input: AuthUpdateUserInput!) {
@@ -66,14 +56,14 @@ export const Route = createFileRoute("/_authenticated/user/")({
 
 function UserComponent() {
   const router = useRouter();
-  const { data, refetch } = useSuspenseQuery(GET_CURRENT_USER_FROM_USER_ROUTE);
+  const currentUser = useCurrentUserContext();
   const [updateUser] = useMutation(UPDATE_USER_FROM_USER_ROUTE);
   const [changeEmail] = useMutation(CHANGE_EMAIL_FROM_USER_ROUTE);
   const search = Route.useSearch();
   const emailChangeCompleted = Boolean(
     search.emailChangeCallback &&
     search.newEmail &&
-    data.currentUser.email === search.newEmail,
+    currentUser.email === search.newEmail,
   );
   const emailChangeConfirmed = Boolean(
     search.emailChangeCallback &&
@@ -84,14 +74,13 @@ function UserComponent() {
 
   const form = useForm({
     defaultValues: {
-      name: data.currentUser.name,
+      name: currentUser.name,
     },
     onSubmit: async ({ value }) => {
       const name = value.name.trim();
 
       try {
         await updateUser({ variables: { input: { name } } });
-        await refetch();
         await router.invalidate();
         form.reset({ name });
         toast.success(t("user:profile.toast.updated"));
@@ -226,7 +215,7 @@ function UserComponent() {
                   <Input
                     id="email"
                     label={t("user:profile.form.email.label")}
-                    value={data.currentUser.email}
+                    value={currentUser.email}
                     disabled
                   />
 
@@ -277,7 +266,7 @@ function UserComponent() {
                     id="current-email"
                     data-testid="user-current-email"
                     label={t("user:email.form.current_email")}
-                    value={data.currentUser.email}
+                    value={currentUser.email}
                     disabled
                   />
 

@@ -60,7 +60,7 @@ test.describe("email authentication", () => {
 
     await page.getByTestId("sidebar-user-menu").click();
     await page.getByTestId("sidebar-user-sign-out").click();
-    await expect(page).toHaveURL(/\/auth\/login$/);
+    await expect(page).toHaveURL(/\/auth\/login(?:\?.*)?$/);
     await page.getByTestId("auth-forgot-password-link").click();
     await expect(page).toHaveURL(/\/auth\/forgot-password$/);
     await page.getByTestId("forgot-password-email").fill(email);
@@ -145,9 +145,12 @@ test.describe("email authentication", () => {
     await expect(page).toHaveURL(
       /\/auth\/register\?redirect=%2Fuser%2Fsecurity$/,
     );
+    // The URL can change before the destination form has finished rendering.
+    await expect(page.getByTestId("auth-name-input")).toBeVisible();
 
     await page.getByTestId("auth-tab-login").click();
     await expect(page).toHaveURL(/\/auth\/login\?redirect=%2Fuser%2Fsecurity$/);
+    await expect(page.getByTestId("auth-name-input")).toHaveCount(0);
   });
 
   test("starts configured social login through GraphQL", async ({ page }) => {

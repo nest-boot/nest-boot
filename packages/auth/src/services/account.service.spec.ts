@@ -5,11 +5,9 @@ import { ForbiddenException } from "@nestjs/common";
 
 import { mockRlsContext } from "../../test/mock-rls-context.js";
 import { API_KEY } from "../auth.constants.js";
-import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { AccountConnection } from "../connections/account.connection-definition.js";
 import { User } from "../entities/user.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
-import { AccessControlService } from "./access-control.service.js";
 import { AccountService } from "./account.service.js";
 
 describe("AccountService", () => {
@@ -78,11 +76,10 @@ function createService() {
     fork,
     getSessionContext: vi.fn(),
   } as unknown as EntityManager;
-  const access = new AccessControlService({} as AuthModuleOptions);
   return {
     fork,
     em,
     user: Object.assign(new User(), { id: "self" }),
-    service: new AccountService(em, access),
+    service: new AccountService(em),
   };
 }

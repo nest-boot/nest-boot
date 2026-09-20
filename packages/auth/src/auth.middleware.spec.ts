@@ -5,8 +5,7 @@ import { NextFunction, Request } from "express";
 import type { Mock } from "vitest";
 
 import { mockRlsContext } from "../test/mock-rls-context.js";
-import { UserAbility } from "./abilities/user.ability.js";
-import { WorkspaceAbility } from "./abilities/workspace.ability.js";
+import { AuthAbility } from "./abilities/auth.ability.js";
 import { API_KEY } from "./auth.constants.js";
 import { AuthMiddleware } from "./auth.middleware.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
@@ -149,13 +148,13 @@ describe("AuthMiddleware", () => {
       await RequestContext.run(
         new RequestContext({ type: "test" }),
         async () => {
-          const ability = new UserAbility([
+          const ability = new AuthAbility([
             { action: "manage", subject: "all" },
           ]);
           RequestContext.set(UserEntity, user);
           RequestContext.set(SessionEntity, session);
           RequestContext.set(WorkspaceEntity, new TestWorkspace());
-          RequestContext.set(UserAbility, ability);
+          RequestContext.set(AuthAbility, ability);
           if (state === "failure")
             await expect(middleware.revalidateCurrentSession()).rejects.toThrow(
               "Database unavailable",
@@ -172,13 +171,13 @@ describe("AuthMiddleware", () => {
           );
           if (state === "valid") {
             expect(RequestContext.get(SessionEntity)).toBe(session);
-            expect(RequestContext.get(UserAbility)).toBe(ability);
+            expect(RequestContext.get(AuthAbility)).toBe(ability);
             expect(em.setSessionContext).not.toHaveBeenCalled();
           } else {
             expect(RequestContext.get(SessionEntity)).toBeNull();
             expect(RequestContext.get(UserEntity)).toBeNull();
             expect(RequestContext.get(WorkspaceEntity)).toBeNull();
-            expect(RequestContext.get(UserAbility)?.can("manage", "all")).toBe(
+            expect(RequestContext.get(AuthAbility)?.can("manage", "all")).toBe(
               false,
             );
             expect(em.setSessionContext).toHaveBeenCalledWith({
@@ -217,11 +216,11 @@ describe("AuthMiddleware", () => {
       vi.fn(),
       testEntities,
       {
-        user: {
-          buildAbility: () => {
-            throw new Error("Invalid rules");
-          },
+        buildAbility: (_rules) => {
+          throw new Error("Invalid rules");
         },
+
+        user: {},
       },
     );
     mockRlsContext(em);
@@ -233,8 +232,7 @@ describe("AuthMiddleware", () => {
       ).rejects.toThrow("Invalid rules");
       expect(RequestContext.get(BaseUser)).toBeNull();
       expect(RequestContext.get(BaseSession)).toBeNull();
-      expect(RequestContext.get(UserAbility)?.rules).toEqual([]);
-      expect(RequestContext.get(WorkspaceAbility)?.rules).toEqual([]);
+      expect(RequestContext.get(AuthAbility)?.rules).toEqual([]);
       expect(em.setSessionContext).toHaveBeenLastCalledWith({
         role: "anonymous",
         variables: { "app.user.id": "", "app.workspace.id": "" },
@@ -278,12 +276,11 @@ describe("AuthMiddleware", () => {
       RequestContext.set(MemberEntity, new TestMember());
       RequestContext.set(API_KEY, new WorkspaceApiKey());
       RequestContext.set(
-        UserAbility,
-        new UserAbility([{ action: "read", subject: UserEntity }]),
-      );
-      RequestContext.set(
-        WorkspaceAbility,
-        new WorkspaceAbility([{ action: "delete", subject: WorkspaceEntity }]),
+        AuthAbility,
+        new AuthAbility([
+          { action: "read", subject: UserEntity },
+          { action: "delete", subject: WorkspaceEntity },
+        ]),
       );
 
       middleware.clearAuthentication();
@@ -296,11 +293,11 @@ describe("AuthMiddleware", () => {
       ])
         expect(RequestContext.get(token)).toBeNull();
       expect(RequestContext.get(API_KEY)).toBeNull();
-      expect(RequestContext.get(UserAbility)?.can("read", UserEntity)).toBe(
+      expect(RequestContext.get(AuthAbility)?.can("read", UserEntity)).toBe(
         false,
       );
       expect(
-        RequestContext.get(WorkspaceAbility)?.can("delete", WorkspaceEntity),
+        RequestContext.get(AuthAbility)?.can("delete", WorkspaceEntity),
       ).toBe(false);
       expect(em.setSessionContext).toHaveBeenCalledExactlyOnceWith({
         role: "anonymous",
@@ -480,8 +477,8 @@ describe("AuthMiddleware", () => {
       );
       expect(RequestContext.get(BaseUser)).toBe(user);
       expect(RequestContext.get(API_KEY)).toBe(key);
-      expect(RequestContext.get(UserAbility)?.can("read", BaseUser)).toBe(true);
-      expect(RequestContext.get(UserAbility)?.can("delete", BaseUser)).toBe(
+      expect(RequestContext.get(AuthAbility)?.can("read", BaseUser)).toBe(true);
+      expect(RequestContext.get(AuthAbility)?.can("delete", BaseUser)).toBe(
         false,
       );
       expect(em.setSessionContext).not.toHaveBeenCalled();
@@ -533,8 +530,7 @@ describe("AuthMiddleware", () => {
         Object.assign(new TestWorkspace(), { id: "old-workspace" }),
       );
       RequestContext.set(BaseMember, new TestMember());
-      RequestContext.set(UserAbility, new UserAbility());
-      RequestContext.set(WorkspaceAbility, new WorkspaceAbility());
+      RequestContext.set(AuthAbility, new AuthAbility());
       await expect(middleware.authenticateSession("new-token")).resolves.toBe(
         user,
       );
@@ -542,8 +538,10 @@ describe("AuthMiddleware", () => {
       expect(RequestContext.get(BaseUser)).toBe(user);
       expect(RequestContext.get<BaseApiKey>(API_KEY)).toBeNull();
       expect(RequestContext.get(BaseMember)).toBeNull();
-      expect(RequestContext.get(UserAbility)).toBeInstanceOf(UserAbility);
-      expect(RequestContext.get(WorkspaceAbility)).toBeNull();
+      expect(RequestContext.get(AuthAbility)).toBeInstanceOf(AuthAbility);
+      expect(
+        RequestContext.get(AuthAbility)?.can("update", BaseWorkspace),
+      ).toBe(false);
       expect(em.setSessionContext).toHaveBeenCalledWith({
         role: "authenticated",
         variables: {

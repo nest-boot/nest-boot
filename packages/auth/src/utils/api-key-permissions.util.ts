@@ -1,4 +1,6 @@
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
+import { normalizeAuthPermissions } from "./auth-role.util.js";
+import { assertPermissionCeiling } from "./permission-grants.util.js";
 import { resolveAuthCatalog } from "./resolve-auth-catalog.util.js";
 
 const catalogs = new WeakMap<
@@ -43,4 +45,27 @@ export function resolveApiKeyPermissionCatalog(
   scopes[scope] = catalog;
   catalogs.set(options, scopes);
   return catalog;
+}
+
+/** Applies scope defaults, validates catalog values, and enforces the configured key ceiling. @internal */
+export function normalizeApiKeyPermissions(
+  options: AuthModuleOptions,
+  scope: "user" | "workspace",
+  requested: readonly string[] | null | undefined,
+): string[] {
+  const { permissions, allowed, defaults } = resolveApiKeyPermissionCatalog(
+    options,
+    scope,
+  );
+  const normalized = normalizeAuthPermissions(
+    requested === undefined ? defaults : (requested ?? []),
+    permissions,
+    scope === "user" ? "User API key" : "Workspace API key",
+  );
+  assertPermissionCeiling(
+    normalized,
+    allowed,
+    "API key permissions exceed configured allowedPermissions",
+  );
+  return normalized;
 }
