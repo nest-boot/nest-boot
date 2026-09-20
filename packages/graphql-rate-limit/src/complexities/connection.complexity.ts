@@ -3,6 +3,8 @@ import {
   type ComplexityEstimatorArgs,
 } from "@nest-boot/graphql";
 
+import { connectionPageSize } from "../utils/connection-page-size.util.js";
+
 /**
  * Complexity estimator for connection fields (Relay-style pagination).
  *
@@ -16,8 +18,5 @@ import {
 export const connectionComplexity: Complexity = (
   options: ComplexityEstimatorArgs,
 ) => {
-  return (
-    Number(options.args.first ?? options.args.last ?? 1) *
-    options.childComplexity
-  );
+  return connectionPageSize(options.args, 1) * options.childComplexity;
 };

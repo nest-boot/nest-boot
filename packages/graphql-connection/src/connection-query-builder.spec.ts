@@ -143,6 +143,31 @@ describe("ConnectionQueryBuilder", () => {
     });
   });
 
+  it.each([-1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1])(
+    "rejects invalid page sizes %s before database access",
+    (size) => {
+      const { entityManager, find, findAll, createQueryBuilder } =
+        createEntityManager();
+      for (const args of [
+        { first: size },
+        { last: size },
+        { first: 1, last: size },
+      ]) {
+        expect(
+          () =>
+            new ConnectionQueryBuilder(
+              entityManager,
+              BookConnection as unknown as ConnectionClass<Book>,
+              args,
+            ),
+        ).toThrow("non-negative safe integer");
+      }
+      expect(find).not.toHaveBeenCalled();
+      expect(findAll).not.toHaveBeenCalled();
+      expect(createQueryBuilder).not.toHaveBeenCalled();
+    },
+  );
+
   it("maps query string fulltext searches to a configured fulltext field path", async () => {
     const { entityManager, find, limitedCountQueryBuilder } =
       createEntityManager();

@@ -22,6 +22,9 @@ import {
 const { getComplexity, simpleEstimator } =
   graphqlQueryComplexity as unknown as typeof import("graphql-query-complexity");
 
+// Match Nest and the complexity library's CommonJS GraphQL runtime.
+vi.mock("graphql", async () => await vi.importActual("graphql/index.js"));
+
 vi.mock("graphql-query-complexity/cjs", async () => {
   const actual = await vi.importActual<
     typeof import("graphql-query-complexity/cjs")
@@ -59,7 +62,7 @@ describe("GraphQLRateLimitPlugin", () => {
     type Query {
       hello: String!
       item: Item
-      connection(first: Int): ItemConnection
+      connection(first: Int, last: Int): ItemConnection
     }
   `);
   const document = parse(/* GraphQL */ `
@@ -207,6 +210,28 @@ describe("GraphQLRateLimitPlugin", () => {
     await expect(listener.didResolveOperation(context)).rejects.toThrow(
       "Query is too complex: 1000. Maximum allowed complexity: 1000",
     );
+    expect(subPoint).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "{ connection(first: -1) { nodes { name } } }",
+    "{ connection(last: -1) { nodes { name } } }",
+    "query($size: Int!) { connection(first: $size) { nodes { name } } }",
+    "{ first: connection(first: 1000) { nodes { name } } second: connection(first: -1000) { nodes { name } } }",
+  ])("rejects invalid pagination before charging points: %s", async (query) => {
+    const actual = await vi.importActual<
+      typeof import("graphql-query-complexity/cjs")
+    >("graphql-query-complexity/cjs");
+    mockedGetComplexity.mockImplementationOnce(actual.getComplexity);
+    const listener =
+      (await createPlugin().requestDidStart()) as TestRequestListener;
+    const context = {
+      request: { variables: { size: -1 } },
+      document: parse(query),
+    } as unknown as GraphQLRequestContext<BaseContext>;
+    await expect(listener.didResolveOperation(context)).rejects.toMatchObject({
+      extensions: { code: "BAD_USER_INPUT" },
+    });
     expect(subPoint).not.toHaveBeenCalled();
   });
 

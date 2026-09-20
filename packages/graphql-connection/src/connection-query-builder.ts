@@ -5,6 +5,7 @@ import {
   type QueryOrderMap,
 } from "@mikro-orm/core";
 import { type SqlEntityManager } from "@mikro-orm/sql";
+import { BadRequestException } from "@nestjs/common";
 import { compact, get, set } from "lodash-es";
 import { parse, type ParseOptions } from "search-syntax";
 
@@ -126,6 +127,14 @@ export class ConnectionQueryBuilder<
   }
 
   private getLimit(): number {
+    for (const name of ["first", "last"] as const) {
+      const value = this.args[name];
+      if (value != null && (!Number.isSafeInteger(value) || value < 0)) {
+        throw new BadRequestException(
+          `${name} must be a non-negative safe integer`,
+        );
+      }
+    }
     return this.args.first ?? this.args.last ?? 0;
   }
 
