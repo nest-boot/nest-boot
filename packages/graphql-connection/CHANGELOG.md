@@ -1,3 +1,13 @@
+## 8.0.1-beta.3 (2026-09-20)
+
+### 🩹 Fixes
+
+- **graphql-connection:** paginate nullable sort fields ([#340](https://github.com/nest-boot/nest-boot/pull/340))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.1-beta.2 (2026-09-20)
 
 ### 🩹 Fixes
