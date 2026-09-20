@@ -4,6 +4,7 @@ import { Cron } from "@nest-boot/schedule";
 import {
   Inject,
   Injectable,
+  Logger,
   type OnApplicationBootstrap,
 } from "@nestjs/common";
 import { DiscoveryService } from "@nestjs/core";
@@ -18,6 +19,8 @@ import { shouldIncludeQueue } from "./utils/should-include-queue.util.js";
 
 @Injectable()
 export class BullMQMikroORMService implements OnApplicationBootstrap {
+  private readonly logger = new Logger(BullMQMikroORMService.name);
+
   private readonly jobTTL: number = 1000 * 60 * 60 * 24 * 30;
 
   private readonly includeQueues: string[] = [];
@@ -76,6 +79,17 @@ export class BullMQMikroORMService implements OnApplicationBootstrap {
       );
   }
 
+  /** Records history without turning an observer failure into a worker failure. */
+  private recordJobEvent(job: Job, state: JobState): void {
+    void this.upsertJob(job, state).catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        `Failed to persist job ${job.queueName}:${job.id ?? "unknown"} (${state}): ${message}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+    });
+  }
+
   @Cron("0 * * * *")
   async cleanHistoryJobs() {
     await this.em.fork().nativeDelete(this.options.jobEntity, {
@@ -98,10 +112,9 @@ export class BullMQMikroORMService implements OnApplicationBootstrap {
         ),
       )
       .forEach((provider: InstanceWrapper<Queue>) => {
-        void provider.instance.on(
-          "waiting",
-          (job) => void this.upsertJob(job, "waiting"),
-        );
+        void provider.instance.on("waiting", (job) => {
+          this.recordJobEvent(job, "waiting");
+        });
       });
 
     instanceWrappers
@@ -114,22 +127,18 @@ export class BullMQMikroORMService implements OnApplicationBootstrap {
         ),
       )
       .forEach((provider: InstanceWrapper<WorkerHost>) => {
-        provider.instance.worker.on(
-          "active",
-          (job) => void this.upsertJob(job, "active"),
-        );
-        provider.instance.worker.on(
-          "progress",
-          (job) => void this.upsertJob(job, "active"),
-        );
-        provider.instance.worker.on(
-          "completed",
-          (job) => void this.upsertJob(job, "completed"),
-        );
-        provider.instance.worker.on(
-          "failed",
-          (job) => job && void this.upsertJob(job, "failed"),
-        );
+        provider.instance.worker.on("active", (job) => {
+          this.recordJobEvent(job, "active");
+        });
+        provider.instance.worker.on("progress", (job) => {
+          this.recordJobEvent(job, "active");
+        });
+        provider.instance.worker.on("completed", (job) => {
+          this.recordJobEvent(job, "completed");
+        });
+        provider.instance.worker.on("failed", (job) => {
+          if (job) this.recordJobEvent(job, "failed");
+        });
       });
   }
 }
