@@ -1,3 +1,17 @@
+## 8.0.5-beta.2 (2026-09-20)
+
+### 🚀 Features
+
+- ⚠️  **auth:** separate API key permission configuration by scope ([#349](https://github.com/nest-boot/nest-boot/pull/349))
+
+### ⚠️  Breaking Changes
+
+- **auth:** separate API key permission configuration by scope  ([#349](https://github.com/nest-boot/nest-boot/pull/349))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.5-beta.1 (2026-09-20)
 
 ### 🩹 Fixes
