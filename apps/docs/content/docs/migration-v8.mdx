@@ -84,9 +84,29 @@ provide a CommonJS `require` entry.
   Services enforce Ability checks and API-key ceilings. RLS retains ownership
   and workspace boundaries, not application permission-name checks.
 - Auth sessions now use the primary database exclusively; remove any
-  `AuthModuleOptions.secondaryStorage` configuration. API-key defaults and
-  grant ceilings can be configured with `apiKey.defaultPermissions` and
-  `apiKey.allowedPermissions`.
+  `AuthModuleOptions.secondaryStorage` configuration.
+- Move API-key `defaultPermissions` and `allowedPermissions` under `apiKey.user`
+  and `apiKey.workspace`. The old flat options are rejected at startup; the two
+  scopes do not inherit from each other. User keys may use user and workspace
+  permissions; workspace keys accept only workspace permissions and cannot grant
+  `invitation:create`. For example:
+
+  ```ts
+  apiKey: {
+    user: {
+      defaultPermissions: ["user:get"],
+      allowedPermissions: ["user:get", "workspace:update"],
+    },
+    workspace: {
+      defaultPermissions: ["workspace:update"],
+      allowedPermissions: ["workspace:update", "workspace:delete"],
+    },
+  }
+  ```
+
+  Omitted defaults are empty; an omitted allowlist permits the scope catalog,
+  while `allowedPermissions: []` permits no grants. Defaults must fit the
+  corresponding allowlist. See [API keys](./tutorial/auth/api-keys).
 - Rebuild generated files and migrations after switching TypeScript module
   resolution so generated imports include valid ESM extensions.
 

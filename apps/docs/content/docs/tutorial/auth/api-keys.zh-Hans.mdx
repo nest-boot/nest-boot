@@ -100,24 +100,33 @@ PostgreSQL 使用 `text[]` 列持久化这些值。
 User Key 中的工作区权限会在每次请求时再次与所选工作区的成员权限取交集，因此
 一个 Key 可以跨工作区使用，但不会固化或复制成员权限。
 
-通过 `apiKey` 配置默认权限与模块级授予白名单：
+分别配置用户 Key 和工作区 Key 的默认权限与授予白名单：
 
 ```typescript
 AuthModule.forRoot({
-  // ...entities、user 与 workspace 配置
+  // ...other auth options
   apiKey: {
-    defaultPermissions: ["workspace:update"],
-    allowedPermissions: ["user:get", "workspace:update", "workspace:delete"],
+    user: {
+      defaultPermissions: ["user:get"],
+      allowedPermissions: ["user:get", "workspace:update"],
+    },
+    workspace: {
+      defaultPermissions: ["workspace:update"],
+      allowedPermissions: ["workspace:update", "workspace:delete"],
+    },
   },
 });
 ```
 
 `defaultPermissions` 默认为 `[]`，仅在创建时省略 `permissions` 字段的情况下生效；
-显式传入 `null` 或 `[]` 会创建无权限 Key。`allowedPermissions` 默认使用已配置用户与
-工作区权限目录的并集。模块会在启动时校验两个数组，并要求默认权限是白名单的子集。
-默认数组同时用于两种 Key，因此还必须属于工作区权限目录；例如 `user:get` 这种用户
-专属权限及 `invitation:create` 不能用作共享默认值，启动时就会报错，应在创建个人 Key
-时显式传入。Workspace Key 没有用户身份，因此不能发送邀请。
+显式传入 `null` 或 `[]` 会创建无权限 Key。用户 Key 省略 `allowedPermissions` 时使用
+用户与工作区目录的并集；工作区 Key 仅使用工作区目录。显式 `[]` 表示不允许授予任何权限。
+模块在启动时分别验证两个作用域，并要求默认权限属于相应白名单。用户 Key 可以默认授予
+`user:get` 或 `invitation:create`；工作区 Key 没有用户身份，因此不能发送邀请。
+
+旧的 `apiKey.defaultPermissions`、`apiKey.allowedPermissions` 已移除。请将列表迁移到
+`apiKey.user` 和／或 `apiKey.workspace`，并从工作区列表中删除用户专属权限。
+省略某一作用域时使用该作用域的默认配置，不会继承另一作用域。
 
 Key 编辑界面使用 `userApiKeyPermissions` 与 `workspaceApiKeyPermissions` 获取
 `{ permission, grantable, default }` 列表，权限字段使用对应的 API Key 权限枚举。

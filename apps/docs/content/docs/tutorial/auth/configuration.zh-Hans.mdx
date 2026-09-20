@@ -20,8 +20,8 @@ description: "配置 AuthModule、环境变量与 MikroORM 实体。"
 - **`user.defaultRole`**、**`user.adminRoles`**、**`user.permissions`**、**`user.roles`** 与 **`user.buildAbility`** — 定义用户角色生命周期与授权；
 - **`workspace.defaultRole`**、**`workspace.creatorRole`**、**`workspace.permissions`**、**`workspace.roles`** 与 **`workspace.buildAbility`** — 定义工作区角色生命周期与授权；
 - **`workspace.sendInvitationEmail`** — 发送已持久化的工作区邀请；
-- **`apiKey.defaultPermissions`** — 创建 Key 时省略权限字段所使用的默认权限；
-- **`apiKey.allowedPermissions`** — 限制所有 API Key 可以被授予的权限；
+- **`apiKey.user`** — 用户 Key 的默认权限与授予上限；
+- **`apiKey.workspace`** — 工作区 Key 的默认权限与授予上限；
 - **`middleware`** — 控制认证中间件的注册和路由范围；
 - **`basePath`** — 修改默认的 `/api/auth/` 认证端点路径；
 - **`trustedOrigins`** — 配置允许的浏览器来源；
@@ -59,11 +59,11 @@ API Key 的 `allowedPermissions` 仍是上限而非追加目录；`[]` 不允许
 耦合到字面量联合类型。
 用户、工作区成员与 API Key 的直接权限写入也会在运行时依据相应目录进行校验。
 
-`apiKey.defaultPermissions` 默认为空数组；`apiKey.allowedPermissions` 默认使用用户与
-工作区权限目录的并集。模块会在启动时校验两个列表，并要求默认权限是白名单的子集。
-User Key 可以使用两个目录中的权限，Workspace Key 只能使用工作区权限且不能发送邀请。
-因此共享默认权限不能包含 `invitation:create`，无效默认值会在启动时被拒绝。这两个配置
-只是额外上限；创建和更新时仍会同时检查签发者权限与当前认证 API Key 自身的权限。
+两类 Key 分别配置 `defaultPermissions`（默认 `[]`）和 `allowedPermissions`。
+省略允许列表表示使用相应完整目录，显式 `[]` 表示不能授予任何权限。用户 Key 支持用户与
+工作区目录的并集；工作区 Key 仅支持工作区权限且不能发送邀请。默认权限必须属于相应允许
+列表，启动时分别校验。创建和更新仍会检查签发者与当前认证 Key 的权限上限。
+配置与迁移示例见 [API keys](./api-keys)。
 
 ## 环境变量
 

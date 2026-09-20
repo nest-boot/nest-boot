@@ -150,10 +150,6 @@ import {
         const apiKeyPermissionCatalog = [
           ...new Set([...userPermissions, ...workspacePermissions]),
         ];
-        const allowedApiKeyPermissions =
-          options.apiKey?.allowedPermissions ?? apiKeyPermissionCatalog;
-        const defaultApiKeyPermissions =
-          options.apiKey?.defaultPermissions ?? [];
 
         assertAuthRolePermissions(userRoles, userPermissions, "user");
         assertAuthRolePermissions(
@@ -161,25 +157,42 @@ import {
           workspacePermissions,
           "workspace",
         );
-        assertAuthPermissionList(
-          allowedApiKeyPermissions,
-          apiKeyPermissionCatalog,
-          "apiKey.allowedPermissions",
-        );
-        assertAuthPermissionList(
-          defaultApiKeyPermissions,
-          workspacePermissions,
-          "apiKey.defaultPermissions",
-        );
-        assertAuthPermissionSubset(
-          defaultApiKeyPermissions,
-          allowedApiKeyPermissions,
-          "apiKey.defaultPermissions",
-        );
-        if (defaultApiKeyPermissions.includes("invitation:create")) {
+        if (
+          options.apiKey &&
+          ("defaultPermissions" in options.apiKey ||
+            "allowedPermissions" in options.apiKey)
+        ) {
           throw new Error(
-            "apiKey.defaultPermissions cannot include invitation:create: workspace API keys require a user identity to send invitations",
+            "Configure API key permissions under apiKey.user or apiKey.workspace",
           );
+        }
+        for (const scope of ["user", "workspace"] as const) {
+          const catalog =
+            scope === "user" ? apiKeyPermissionCatalog : workspacePermissions;
+          const configured = options.apiKey?.[scope];
+          const allowed = configured?.allowedPermissions ?? catalog;
+          const defaults = configured?.defaultPermissions ?? [];
+          assertAuthPermissionList(
+            allowed,
+            catalog,
+            `apiKey.${scope}.allowedPermissions`,
+          );
+          assertAuthPermissionList(
+            defaults,
+            catalog,
+            `apiKey.${scope}.defaultPermissions`,
+          );
+          assertAuthPermissionSubset(
+            defaults,
+            allowed,
+            `apiKey.${scope}.defaultPermissions`,
+            `apiKey.${scope}.allowedPermissions`,
+          );
+          if (scope === "workspace" && defaults.includes("invitation:create")) {
+            throw new Error(
+              "apiKey.workspace.defaultPermissions cannot include invitation:create: workspace API keys require a user identity to send invitations",
+            );
+          }
         }
         assertAuthRolesExist(
           userRoles,

@@ -113,7 +113,9 @@ AuthModule.forRoot({
     creatorRole: "team-owner",
     defaultRole: "team-owner",
   },
-  apiKey: { allowedPermissions: ["report:read", "api-key:create", "user:get"] },
+  apiKey: {
+    user: { allowedPermissions: ["report:read", "api-key:create", "user:get"] },
+  },
 });
 
 AuthModule.forRoot({
@@ -184,6 +186,29 @@ AuthModule.forRootAsync({
 });
 
 declare const dynamicPermission: string;
+AuthModule.forRoot({
+  user: { permissions: ["report:read"] },
+  workspace: { permissions: ["project:read"] },
+  apiKey: {
+    user: { defaultPermissions: ["user:get", "report:read", "project:read"] },
+    workspace: { defaultPermissions: ["project:read"] },
+  },
+});
+AuthModule.forRoot({
+  user: { permissions: ["report:read"] },
+  apiKey: {
+    workspace: {
+      // @ts-expect-error Workspace keys cannot carry user-only permissions.
+      defaultPermissions: ["report:read"],
+    },
+  },
+});
+AuthModule.forRoot({
+  apiKey: {
+    // @ts-expect-error Flat API-key permission settings have been removed.
+    defaultPermissions: [],
+  },
+});
 declare const dynamicRole: string;
 AuthModule.forRoot({
   user: {

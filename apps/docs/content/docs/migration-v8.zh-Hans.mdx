@@ -71,8 +71,26 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
   应用权限列表；Service 负责 Ability 检查与 API Key 权限上限。RLS 保留归属、
   工作区隔离，不再检查应用权限名。
 - 认证 Session 现在只使用主数据库；请移除 `AuthModuleOptions.secondaryStorage` 配置。
-  API Key 默认权限与授予上限可分别通过 `apiKey.defaultPermissions` 和
-  `apiKey.allowedPermissions` 配置。
+- 将 API Key 的 `defaultPermissions` 与 `allowedPermissions` 移到 `apiKey.user`
+  和 `apiKey.workspace` 下。旧的扁平配置会在启动时报错，两个作用域互不继承。
+  用户 Key 可使用用户和工作区权限；工作区 Key 仅接受工作区权限，且不能授予
+  `invitation:create`。例如：
+
+  ```ts
+  apiKey: {
+    user: {
+      defaultPermissions: ["user:get"],
+      allowedPermissions: ["user:get", "workspace:update"],
+    },
+    workspace: {
+      defaultPermissions: ["workspace:update"],
+      allowedPermissions: ["workspace:update", "workspace:delete"],
+    },
+  }
+  ```
+
+  默认权限省略时为空；上限省略时允许该作用域目录，`allowedPermissions: []`
+  则不允许授予任何权限。默认权限必须属于对应上限，详见 [API Key](./tutorial/auth/api-keys)。
 - 切换 TypeScript 模块解析后，重新生成文件和迁移，确保生成的导入带有有效的
   ESM 扩展名。
 

@@ -117,27 +117,37 @@ Workspace permissions on a User Key are checked again
 against the selected member at request time, so one key can be used across
 workspaces without freezing or copying membership privileges.
 
-Configure defaults and a module-wide grant allowlist with `apiKey`:
+Configure defaults and grant allowlists independently for each key scope:
 
 ```typescript
 AuthModule.forRoot({
-  // ...entities, user, and workspace options
+  // ...other auth options
   apiKey: {
-    defaultPermissions: ["workspace:update"],
-    allowedPermissions: ["user:get", "workspace:update", "workspace:delete"],
+    user: {
+      defaultPermissions: ["user:get"],
+      allowedPermissions: ["user:get", "workspace:update"],
+    },
+    workspace: {
+      defaultPermissions: ["workspace:update"],
+      allowedPermissions: ["workspace:update", "workspace:delete"],
+    },
   },
 });
 ```
 
 `defaultPermissions` defaults to `[]` and applies only when creation omits the
 `permissions` field. Passing `null` or `[]` creates a key without permissions.
-`allowedPermissions` defaults to the union of the configured user and workspace
-permission catalogs. Both options are validated at startup, and defaults must
-be a subset of the allowlist. Defaults are shared by both owner types, so they
-must also belong to the workspace catalog. User-only defaults such as `user:get`
-and `invitation:create` are rejected at startup; pass them explicitly when
-creating a personal key. Workspace keys cannot send invitations because they
-have no user identity.
+For user keys, an omitted `allowedPermissions` uses the combined user/workspace
+catalog; for workspace keys, it uses only the workspace catalog. An explicit `[]`
+allows no grants. Both scopes are validated at startup and defaults must be a
+subset of that scope's allowlist. User keys may default to `user:get` or
+`invitation:create`; workspace keys cannot send invitations because they have no
+user identity.
+
+The previous flat `apiKey.defaultPermissions` and `apiKey.allowedPermissions`
+options have been removed. Move each list under `apiKey.user` and/or
+`apiKey.workspace`, removing user-only grants from the workspace list. Omitted
+scope configuration retains its normal defaults; it does not inherit the other scope.
 
 Use `userApiKeyPermissions` and `workspaceApiKeyPermissions` to populate key
 editors. Both return `{ permission, grantable, default }` entries using the corresponding

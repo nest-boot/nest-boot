@@ -63,11 +63,9 @@ export interface AuthModuleOptions<
 
   /** API-key permission defaults and grant limits. */
   apiKey?: AuthModuleApiKeyOptions<
+    NoInfer<UserPermission | (typeof DEFAULT_USER_PERMISSIONS)[number]>,
     NoInfer<
-      | UserPermission
-      | WorkspacePermission
-      | (typeof DEFAULT_USER_PERMISSIONS)[number]
-      | (typeof DEFAULT_WORKSPACE_PERMISSIONS)[number]
+      WorkspacePermission | (typeof DEFAULT_WORKSPACE_PERMISSIONS)[number]
     >
   >;
 
