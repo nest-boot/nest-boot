@@ -167,6 +167,67 @@ describe("ConnectionQueryBuilder", () => {
     },
   );
 
+  it.each([
+    { first: 2, query: null },
+    { first: 2, orderBy: null },
+    {
+      first: 2,
+      last: null,
+      after: null,
+      before: null,
+      filter: null,
+      query: null,
+      orderBy: null,
+    },
+    { last: 2, first: null, query: null, orderBy: null },
+  ])("treats nullable arguments as omitted: %j", async (args) => {
+    const book = {
+      id: 1,
+      title: "Book",
+      isbn: "isbn",
+      searchableTitle: "Book",
+    };
+    const { entityManager, findAll } = createEntityManager([book]);
+    const result = await new ConnectionQueryBuilder(
+      entityManager,
+      BookConnection as unknown as ConnectionClass<Book>,
+      args,
+    ).query();
+
+    expect(result.edges).toEqual([
+      { node: book, cursor: new Cursor({ id: 1 }).toString() },
+    ]);
+    expect(findAll).toHaveBeenCalledWith(BookEntity, {
+      limit: 3,
+      orderBy: [{ id: args.last === 2 ? QueryOrder.DESC : QueryOrder.ASC }],
+    });
+  });
+
+  it.each([-1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1])(
+    "rejects invalid page sizes %s before database access",
+    (size) => {
+      const { entityManager, find, findAll, createQueryBuilder } =
+        createEntityManager();
+      for (const args of [
+        { first: size },
+        { last: size },
+        { first: 1, last: size },
+      ]) {
+        expect(
+          () =>
+            new ConnectionQueryBuilder(
+              entityManager,
+              BookConnection as unknown as ConnectionClass<Book>,
+              args,
+            ),
+        ).toThrow("non-negative safe integer");
+      }
+      expect(find).not.toHaveBeenCalled();
+      expect(findAll).not.toHaveBeenCalled();
+      expect(createQueryBuilder).not.toHaveBeenCalled();
+    },
+  );
+
   it("maps query string fulltext searches to a configured fulltext field path", async () => {
     const { entityManager, find, limitedCountQueryBuilder } =
       createEntityManager();

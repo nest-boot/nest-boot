@@ -5,6 +5,7 @@ import {
   type QueryOrderMap,
 } from "@mikro-orm/core";
 import { type SqlEntityManager } from "@mikro-orm/sql";
+import { BadRequestException } from "@nestjs/common";
 import { compact, get, set } from "lodash-es";
 import { parse, type ParseOptions } from "search-syntax";
 
@@ -126,6 +127,14 @@ export class ConnectionQueryBuilder<
   }
 
   private getLimit(): number {
+    for (const name of ["first", "last"] as const) {
+      const value = this.args[name];
+      if (value != null && (!Number.isSafeInteger(value) || value < 0)) {
+        throw new BadRequestException(
+          `${name} must be a non-negative safe integer`,
+        );
+      }
+    }
     return this.args.first ?? this.args.last ?? 0;
   }
 
@@ -174,7 +183,7 @@ export class ConnectionQueryBuilder<
   }
 
   private getQueryOrderMap(): QueryOrderMap<Entity>[] {
-    if (typeof this.args.orderBy === "undefined") {
+    if (this.args.orderBy == null) {
       return [
         {
           id: this.queryOrder,
@@ -219,7 +228,7 @@ export class ConnectionQueryBuilder<
         : null;
 
     if (
-      typeof this.args.orderBy === "undefined" ||
+      this.args.orderBy == null ||
       typeof this.cursor?.value === "undefined"
     ) {
       return idFilterQuery;
@@ -253,10 +262,7 @@ export class ConnectionQueryBuilder<
   }
 
   private getQueryStringToFilterQuery(): FilterQuery<Entity> | null {
-    if (
-      typeof this.args.query !== "undefined" &&
-      this.args.query.trim() !== ""
-    ) {
+    if (this.args.query != null && this.args.query.trim() !== "") {
       const { fieldOptionsMap, filterQuerySchema } = this.metadata;
 
       // Build ParseOptions, only include filterable fields
@@ -372,7 +378,7 @@ export class ConnectionQueryBuilder<
       node: node as Entity,
       cursor: new Cursor({
         id: (node as any)?.id,
-        ...(typeof this.args.orderBy !== "undefined"
+        ...(this.args.orderBy != null
           ? { value: get(node, this.args.orderBy.field) }
           : {}),
       }).toString(),
