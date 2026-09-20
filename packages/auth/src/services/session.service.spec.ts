@@ -65,7 +65,7 @@ async function createService(
   const moduleRef = await Test.createTestingModule({
     providers: [
       SessionService,
-      { provide: AccessControlService, useValue: { assertUserCan: vi.fn() } },
+      { provide: AccessControlService, useValue: { assertCan: vi.fn() } },
       {
         provide: AUTH_TOKEN,
         useValue: { $context: Promise.resolve(authContext), api },

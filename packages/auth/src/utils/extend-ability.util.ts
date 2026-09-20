@@ -6,17 +6,16 @@ import type {
 } from "@casl/ability";
 
 import { entities } from "../entities/index.js";
+import type { AbilityContext } from "../interfaces/ability-context.interface.js";
 import type { AbilityRules } from "../interfaces/ability-rules.interface.js";
 
 /** Runs synchronous extensions without exposing the builder, mutable rules, or a build function. */
 export function extendAbility(
   builder: AbilityBuilder<Ability<AbilityTuple, MongoQuery>>,
-  permissions: readonly string[],
-  catalog: readonly string[],
+  context: AbilityContext,
+  catalog: { user: readonly string[]; workspace: readonly string[] },
   configure: (rules: AbilityRules) => unknown,
 ): void {
-  const granted = new Set(permissions);
-  const known = new Set(catalog);
   const restrictions: Parameters<AbilityRules["cannot"]>[] = [];
   let active = true;
   const assertActive = () => {
@@ -24,10 +23,26 @@ export function extendAbility(
       throw new Error("Ability rules can only be configured synchronously");
   };
   const rules: AbilityRules = Object.freeze({
-    can(permission: string, ...rule: Parameters<AbilityRules["cannot"]>) {
+    can(
+      permission: Parameters<AbilityRules["can"]>[0],
+      ...rule: Parameters<AbilityRules["cannot"]>
+    ) {
       assertActive();
-      if (!known.has(permission))
-        throw new Error(`Unknown ability permission: ${permission}`);
+      if (
+        !permission ||
+        typeof permission !== "object" ||
+        (typeof permission.user === "string") ===
+          (typeof permission.workspace === "string")
+      )
+        throw new Error(
+          "Ability grants require exactly one user or workspace permission",
+        );
+      const scope = typeof permission.user === "string" ? "user" : "workspace";
+      const name = permission.user ?? permission.workspace;
+      if (typeof name !== "string")
+        throw new Error("Ability grants require a permission name");
+      if (!catalog[scope].includes(name))
+        throw new Error(`Unknown ${scope} ability permission: ${name}`);
       const subjects = Array.isArray(rule[1]) ? rule[1] : [rule[1]];
       if (
         subjects.some(
@@ -46,7 +61,12 @@ export function extendAbility(
         throw new Error(
           "Custom grants cannot target built-in auth subjects or all",
         );
-      if (granted.has(permission)) addRule(builder, copyRule(rule), false);
+      if (
+        context[
+          scope === "user" ? "userPermissions" : "workspacePermissions"
+        ].includes(name)
+      )
+        addRule(builder, copyRule(rule), false);
     },
     cannot(...rule: Parameters<AbilityRules["cannot"]>) {
       assertActive();

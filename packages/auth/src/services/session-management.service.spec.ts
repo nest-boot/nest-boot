@@ -78,11 +78,11 @@ describe("SessionService management", () => {
     ]);
     em.nativeDelete.mockResolvedValue(2);
     await expect(service.revokeUserSessions(user.id)).resolves.toBe(2);
-    expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
+    expect(accessControlService.assertCan).toHaveBeenCalledWith(
       "revoke",
       Session,
     );
-    expect(accessControlService.assertUserCan).not.toHaveBeenCalledWith(
+    expect(accessControlService.assertCan).not.toHaveBeenCalledWith(
       "get",
       User,
     );
@@ -92,7 +92,7 @@ describe("SessionService management", () => {
       { refresh: true },
     );
 
-    accessControlService.assertUserCan.mockImplementation(() => {
+    accessControlService.assertCan.mockImplementation(() => {
       throw new ForbiddenException();
     });
     em.findOne.mockClear();
@@ -136,15 +136,12 @@ describe("SessionService management", () => {
         impersonator,
       );
       expect(em.findOne).toHaveBeenCalledWith(User, { id: "admin" });
-      expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
-        "read",
-        User,
-      );
-      expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
+      expect(accessControlService.assertCan).toHaveBeenCalledWith("read", User);
+      expect(accessControlService.assertCan).toHaveBeenCalledWith(
         "read",
         impersonator,
       );
-      accessControlService.assertUserCan.mockImplementationOnce(() => {
+      accessControlService.assertCan.mockImplementationOnce(() => {
         throw new ForbiddenException();
       });
       em.findOne.mockClear();
@@ -162,7 +159,7 @@ describe("SessionService management", () => {
       ).resolves.toBeNull();
       expect(em.findOne).not.toHaveBeenCalled();
       RequestContext.set(API_KEY, new WorkspaceApiKey());
-      accessControlService.assertUserCan.mockImplementation(() => {
+      accessControlService.assertCan.mockImplementation(() => {
         throw new ForbiddenException();
       });
       await expect(service.getSessionImpersonator(session)).rejects.toThrow(
@@ -190,7 +187,7 @@ describe("SessionService management", () => {
           await expect(
             service.getSessionConnectionByUser(user, { first: 2 }),
           ).resolves.toBe(result);
-          expect(accessControlService.assertUserCan).not.toHaveBeenCalled();
+          expect(accessControlService.assertCan).not.toHaveBeenCalled();
           expect(find).toHaveBeenCalledWith(
             SessionConnection,
             { first: 2 },
@@ -201,11 +198,9 @@ describe("SessionService management", () => {
           );
           expect(em.fork).not.toHaveBeenCalled();
           expect(em.getSessionContext()).toEqual(context);
-          vi.mocked(accessControlService.assertUserCan).mockImplementation(
-            () => {
-              throw new ForbiddenException();
-            },
-          );
+          vi.mocked(accessControlService.assertCan).mockImplementation(() => {
+            throw new ForbiddenException();
+          });
           await expect(
             service.getSessionConnectionByUser(
               Object.assign(new User(), { id: "other" }),
@@ -283,7 +278,7 @@ function createService() {
   em.remove.mockReturnValue(em);
   em.transactional.mockImplementation(async (callback) => await callback(em));
   const accessControlService = {
-    assertUserCan: vi.fn(),
+    assertCan: vi.fn(),
   } as unknown as Mocked<AccessControlService>;
   return {
     em,

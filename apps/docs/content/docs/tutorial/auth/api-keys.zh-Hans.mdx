@@ -171,8 +171,9 @@ audit(@CurrentApiKey() apiKey: ApiKey | null) {
 ```
 
 调用配置的构建器前，User Key 权限会与所属用户的有效权限取交集；访问工作区路由时则
-与当前成员的有效权限取交集。Workspace Key 是服务身份，其经过校验的权限会直接传给
-工作区构建器。守卫随后只检查最终得到的 `UserAbility` 或 `WorkspaceAbility`。
+与当前成员的有效权限取交集。Workspace Key 是服务身份，校验后的权限填入
+`workspacePermissions`，没有 user/member。顶层构建器接收两个作用域的权限数组，
+守卫检查最终生成的同一个 `AuthAbility`。
 
 示例基线 `Initial → generated schema migrations` 还包含：
 API Key 创建与使用时间更新均保留请求 RLS，并使用默认 INSERT/UPDATE 表权限；

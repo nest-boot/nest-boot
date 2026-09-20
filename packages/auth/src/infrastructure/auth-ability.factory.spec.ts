@@ -7,9 +7,27 @@ import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 import { AuthAbilityFactory } from "./auth-ability.factory.js";
 
 const buildUserPermissionAbility = (permissions: readonly string[]) =>
-  AuthAbilityFactory.createUserAbility(permissions, new User());
+  AuthAbilityFactory.createAbility(
+    {
+      workspace: null,
+      member: null,
+      workspacePermissions: [],
+      user: new User(),
+      userPermissions: permissions,
+    },
+    {},
+  );
 const buildWorkspacePermissionAbility = (permissions: readonly string[]) =>
-  AuthAbilityFactory.createWorkspaceAbility(permissions, new Workspace());
+  AuthAbilityFactory.createAbility(
+    {
+      user: null,
+      member: null,
+      userPermissions: [],
+      workspace: new Workspace(),
+      workspacePermissions: permissions,
+    },
+    {},
+  );
 
 describe("permission ability builders", () => {
   it("matches configured resource prefixes exactly without case aliases", () => {

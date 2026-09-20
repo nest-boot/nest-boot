@@ -6,7 +6,7 @@ import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import { it as baseIt, type Mocked } from "vitest";
 
 import { mockRlsContext } from "../../test/mock-rls-context.js";
-import { WorkspaceAbility } from "../abilities/workspace.ability.js";
+import { AuthAbility } from "../abilities/auth.ability.js";
 import { API_KEY } from "../auth.constants.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { UserApiKeyConnection } from "../connections/user-api-key.connection-definition.js";
@@ -42,6 +42,7 @@ function createTestMember(): Member {
     id: "member-1",
     roles: ["owner"],
     status: "ACTIVE",
+    user: ref(User, createTestUser()),
     permissions: [],
     workspace: {
       id: "workspace-1",
@@ -248,10 +249,10 @@ describe("API-key management services", () => {
       id: active.id,
       permissions: ["workspace:update"],
     });
-    const ability = new WorkspaceAbility();
+    const ability = new AuthAbility();
     RequestContext.set(User, user);
     RequestContext.set(API_KEY, active);
-    RequestContext.set(WorkspaceAbility, ability);
+    RequestContext.set(AuthAbility, ability);
     em.findOne.mockResolvedValue(target);
     em.isInTransaction.mockReturnValue(true);
     mockRlsContext(em);
@@ -259,27 +260,20 @@ describe("API-key management services", () => {
     expect(target.lastUsedAt).toBeNull();
     expect(RequestContext.get(API_KEY)).toBe(active);
     expect(RequestContext.get(User)).toBe(user);
-    expect(RequestContext.get(WorkspaceAbility)).toBe(ability);
+    expect(RequestContext.get(AuthAbility)).toBe(ability);
     expect(em.setSessionContext).not.toHaveBeenCalled();
   });
 
   for (const scope of ["user", "workspace"] as const) {
     it(`checks conditional read restrictions on the loaded ${scope} key`, async () => {
       const options: AuthModuleOptions = {
-        user: {
-          buildAbility: (rules) => {
-            rules.cannot("read", UserApiKey, { enabled: false });
-          },
-        },
-        workspace: {
-          buildAbility: (rules) => {
-            rules.cannot("read", WorkspaceApiKey, { enabled: false });
-          },
+        buildAbility: ({ cannot }) => {
+          cannot("read", UserApiKey, { enabled: false });
+          cannot("read", WorkspaceApiKey, { enabled: false });
         },
       };
       const { service, em, accessControlService } = createService(options);
-      vi.mocked(accessControlService.assertUserCan).mockRestore();
-      vi.mocked(accessControlService.assertWorkspaceCan).mockRestore();
+      vi.mocked(accessControlService.assertCan).mockRestore();
       const user = Object.assign(createTestUser(), { roles: ["admin"] });
       RequestIdentity.stage({ user });
       RequestIdentity.prepare(options);
@@ -307,26 +301,19 @@ describe("API-key management services", () => {
 
     it(`rejects a ${scope} connection page containing a conditionally denied key without changing pagination`, async () => {
       const options: AuthModuleOptions = {
-        user: {
-          buildAbility: (rules) => {
-            rules.cannot("read", UserApiKey, { enabled: false });
-          },
-        },
-        workspace: {
-          buildAbility: (rules) => {
-            rules.cannot("read", WorkspaceApiKey, { enabled: false });
-          },
+        buildAbility: ({ cannot }) => {
+          cannot("read", UserApiKey, { enabled: false });
+          cannot("read", WorkspaceApiKey, { enabled: false });
         },
       };
       const { service, accessControlService } = createService(options);
-      vi.mocked(accessControlService.assertUserCan).mockRestore();
-      vi.mocked(accessControlService.assertWorkspaceCan).mockRestore();
+      vi.mocked(accessControlService.assertCan).mockRestore();
       const user = Object.assign(createTestUser(), { roles: ["admin"] });
       RequestIdentity.stage({ user });
       RequestIdentity.prepare(options);
       const key = Object.assign(
         scope === "user" ? new UserApiKey() : new WorkspaceApiKey(),
-        { enabled: true },
+        { enabled: true, workspace: ref(Workspace, createTestWorkspace()) },
       );
       const result = {
         edges: [{ cursor: "cursor", node: key }],
@@ -367,8 +354,7 @@ describe("API-key management services", () => {
               }
             : {};
         const { service, em, accessControlService } = createService(options);
-        vi.mocked(accessControlService.assertUserCan).mockRestore();
-        vi.mocked(accessControlService.assertWorkspaceCan).mockRestore();
+        vi.mocked(accessControlService.assertCan).mockRestore();
         const user = Object.assign(createTestUser(), {
           roles: [reason === "owner" ? "user" : "admin"],
           permissions: ["user-api-key:write"],
@@ -481,10 +467,10 @@ describe("API-key management services", () => {
         );
         if (scope === "user") RequestContext.set(User, user);
         RequestContext.set(API_KEY, key);
-        const ability = new WorkspaceAbility([
+        const ability = new AuthAbility([
           { action: "update", subject: Workspace },
         ]);
-        RequestContext.set(WorkspaceAbility, ability);
+        RequestContext.set(AuthAbility, ability);
         em.findOne.mockResolvedValue(key);
         mockRlsContext(em);
         const update =
@@ -513,7 +499,7 @@ describe("API-key management services", () => {
         expect(key.enabled).toBe(true);
         expect(key.lastUsedAt).toEqual(new Date(0));
         expect(key.permissions).toEqual(["workspace:update"]);
-        expect(RequestContext.get(WorkspaceAbility)).toBe(ability);
+        expect(RequestContext.get(AuthAbility)).toBe(ability);
         expect(em.setSessionContext).not.toHaveBeenCalled();
         em.flush.mockImplementationOnce(() => {
           expect(RequestContext.get(API_KEY)).toBe(key);
@@ -525,9 +511,9 @@ describe("API-key management services", () => {
         await invoke();
         if (operation === "disable")
           expect(key.lastUsedAt?.getTime()).toBeGreaterThan(0);
-        expect(
-          RequestContext.get(WorkspaceAbility)?.can("update", Workspace),
-        ).toBe(false);
+        expect(RequestContext.get(AuthAbility)?.can("update", Workspace)).toBe(
+          false,
+        );
         if (operation === "permissions") {
           expect(RequestContext.get(API_KEY)).toBe(key);
           expect(em.setSessionContext).not.toHaveBeenCalled();
@@ -563,8 +549,8 @@ describe("API-key management services", () => {
         em.findOne.mockResolvedValue(key);
         const assertion =
           scope === "user"
-            ? accessControlService.assertUserCan
-            : accessControlService.assertWorkspaceCan;
+            ? accessControlService.assertCan
+            : accessControlService.assertCan;
         vi.mocked(assertion).mockImplementation((_action, subject) => {
           if (subject === key) throw new ForbiddenException();
         });
@@ -670,14 +656,14 @@ describe("API-key management services", () => {
     });
     expect(find.mock.instances[0]).toHaveProperty("em", em);
     expect(accessControlService.assertCurrentUser).toHaveBeenCalledWith(user);
-    expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
+    expect(accessControlService.assertCan).toHaveBeenCalledWith(
       "read",
       UserApiKey,
     );
     expect(accessControlService.assertCurrentWorkspace).toHaveBeenCalledWith(
       workspace,
     );
-    expect(accessControlService.assertWorkspaceCan).toHaveBeenCalledWith(
+    expect(accessControlService.assertCan).toHaveBeenCalledWith(
       "read",
       WorkspaceApiKey,
     );
@@ -688,14 +674,12 @@ describe("API-key management services", () => {
   it("rejects API-key pagination before creating a connection query", async () => {
     const { service, accessControlService } = createService();
     const find = vi.spyOn(ConnectionManager.prototype, "find");
-    vi.mocked(accessControlService.assertUserCan).mockImplementation(() => {
+    vi.mocked(accessControlService.assertCan).mockImplementation(() => {
       throw new ForbiddenException();
     });
-    vi.mocked(accessControlService.assertWorkspaceCan).mockImplementation(
-      () => {
-        throw new ForbiddenException();
-      },
-    );
+    vi.mocked(accessControlService.assertCan).mockImplementation(() => {
+      throw new ForbiddenException();
+    });
     await expect(
       service.getUserApiKeyConnection(createTestUser(), { first: 10 }),
     ).rejects.toBeInstanceOf(ForbiddenException);
@@ -1591,7 +1575,7 @@ describe("API-key management services", () => {
     expect(accessControlService.assertCurrentMember).toHaveBeenCalledWith(
       member,
     );
-    expect(accessControlService.assertWorkspaceCan).toHaveBeenCalledWith(
+    expect(accessControlService.assertCan).toHaveBeenCalledWith(
       "write",
       WorkspaceApiKey,
     );
@@ -1637,11 +1621,9 @@ describe("API-key management services", () => {
     const { accessControlService, em, service } = createService();
     const apiKey = createTestApiKey();
     em.findOne.mockResolvedValue(apiKey);
-    vi.mocked(accessControlService.assertWorkspaceCan).mockImplementation(
-      () => {
-        throw new ForbiddenException();
-      },
-    );
+    vi.mocked(accessControlService.assertCan).mockImplementation(() => {
+      throw new ForbiddenException();
+    });
 
     await expect(
       service.getWorkspaceApiKey(apiKey.id, createTestWorkspace()),
@@ -1714,7 +1696,10 @@ function it(name: string, callback: () => void | Promise<void>): void {
 }
 
 function createService(
-  authorization: Pick<AuthModuleOptions, "apiKey" | "user" | "workspace"> = {},
+  authorization: Pick<
+    AuthModuleOptions,
+    "apiKey" | "user" | "workspace" | "buildAbility"
+  > = {},
 ) {
   const em = {
     setSessionContext: vi.fn(),
@@ -1741,10 +1726,7 @@ function createService(
     vi.fn(),
   );
   vi.spyOn(accessControlService, "assertCurrentMember");
-  vi.spyOn(accessControlService, "assertUserCan").mockImplementation(vi.fn());
-  vi.spyOn(accessControlService, "assertWorkspaceCan").mockImplementation(
-    vi.fn(),
-  );
+  vi.spyOn(accessControlService, "assertCan").mockImplementation(vi.fn());
 
   const userService = new UserApiKeyService(em, options, accessControlService);
   const workspaceService = new WorkspaceApiKeyService(

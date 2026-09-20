@@ -1,10 +1,15 @@
 import type { MongoQuery, SubjectType } from "@casl/ability";
 
 /** Restricted extension API; auth owns the builder and the final ability. */
-export interface AbilityRules<Permission extends string = string> {
+export interface AbilityRules<
+  UserPermission extends string = string,
+  WorkspacePermission extends string = string,
+> {
   /** Grants a business action only when the principal has the named permission. Built-in auth subjects and `all` are forbidden. */
   can: (
-    permission: Permission,
+    permission:
+      | { user: UserPermission; workspace?: never }
+      | { workspace: WorkspacePermission; user?: never },
     action: string | string[],
     subject: SubjectType | SubjectType[],
     fieldsOrConditions?: string | string[] | MongoQuery,

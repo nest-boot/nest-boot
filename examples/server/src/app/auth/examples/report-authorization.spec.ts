@@ -80,7 +80,7 @@ describe('business authorization recipe', () => {
             reportAuthOptions,
             {} as ModuleRef,
             access,
-          ).refreshAbilities();
+          ).refreshAbility();
           const report = new Report('report-1', workspace.id);
           const repository = {
             findOne: vi.fn(async (id: string) =>
@@ -94,7 +94,7 @@ describe('business authorization recipe', () => {
           const service = new ReportService(repository, access);
           const rules = new AuthResolver(
             {} as AuthService,
-          ).currentWorkspaceAbilityRules();
+          ).currentAbilityRules();
           const frontend = createAbility(rules);
           expect(
             frontend.can('archive', createAbilitySubject('Report', report)),

@@ -12,12 +12,10 @@ import { t } from "i18next";
 import { toast } from "sonner";
 import z from "zod";
 import { isEmpty, pick } from "lodash";
-import {
-  useCurrentMemberContext,
-  useCurrentWorkspaceAbility,
-} from "../contexts/current-member-context";
+import { useCurrentMemberContext } from "../contexts/current-member-context";
 import { InviteMemberDialog } from "./components/invite-member-dialog";
 import type { DataFilterItemProps } from "@/components/thread-ui/data-filter";
+import { useAbility } from "@/contexts/ability-context";
 import { Button } from "@/components/thread-ui/button";
 import { DataFilter } from "@/components/thread-ui/data-filter";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
@@ -82,6 +80,7 @@ const GET_MEMBERS_FROM_MEMBERS_ROUTE = graphql(`
       ) {
         edges {
           node {
+            workspaceId
             id
             roles
             status
@@ -109,6 +108,7 @@ const GET_MEMBERS_FROM_MEMBERS_ROUTE = graphql(`
       ) @include(if: $includeInvitations) {
         edges {
           node {
+            workspaceId
             id
             email
             roles
@@ -172,7 +172,7 @@ export const Route = createFileRoute(
 )({
   component: ScopedMembersComponent,
   beforeLoad: ({ context, params }) => {
-    if (!context.currentWorkspaceAbility.can("read", "Member")) {
+    if (!context.ability.can("read", "Member")) {
       throw redirect({ to: "/workspaces/$workspaceId", params });
     }
   },
@@ -215,32 +215,17 @@ function MembersComponent() {
   const location = useLocation();
 
   const currentMember = useCurrentMemberContext();
-  const currentWorkspaceAbility = useCurrentWorkspaceAbility();
-  const canReadInvitations = currentWorkspaceAbility.can("read", "Invitation");
-  const canCreateInvitation = currentWorkspaceAbility.can(
-    "write",
-    "Invitation",
-  );
-  const canCancelInvitation = currentWorkspaceAbility.can(
-    "write",
-    "Invitation",
-  );
+  const ability = useAbility();
+  const canReadInvitations = ability.can("read", "Invitation");
+  const canCreateInvitation = ability.can("write", "Invitation");
+  const canCancelInvitation = ability.can("write", "Invitation");
   const canUpdateMember = (member: object) =>
-    currentWorkspaceAbility.can(
-      "write",
-      createAbilitySubject("Member", member),
-    );
+    ability.can("write", createAbilitySubject("Member", member));
   const canDeleteMember = (member: object) =>
-    currentWorkspaceAbility.can(
-      "write",
-      createAbilitySubject("Member", member),
-    );
+    ability.can("write", createAbilitySubject("Member", member));
   const canEditMember = (member: object) =>
     ["write", "set-roles", "set-permissions"].some((action) =>
-      currentWorkspaceAbility.can(
-        action,
-        createAbilitySubject("Member", member),
-      ),
+      ability.can(action, createAbilitySubject("Member", member)),
     );
 
   const query = search?.query ?? "";
@@ -256,6 +241,7 @@ function MembersComponent() {
 
   const { data, refetch } = useQuery(GET_MEMBERS_FROM_MEMBERS_ROUTE, {
     fetchPolicy: "network-only",
+    skip: !ability.can("read", "Member"),
     variables: {
       includeInvitations: canReadInvitations,
       invitationFirst: invitationPage.first,

@@ -3,8 +3,7 @@ import { ref } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException } from "@nestjs/common";
 
-import { UserAbility } from "../abilities/user.ability.js";
-import { WorkspaceAbility } from "../abilities/workspace.ability.js";
+import { AuthAbility } from "../abilities/auth.ability.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { Member } from "../entities/member.entity.js";
 import { Session } from "../entities/session.entity.js";
@@ -47,14 +46,13 @@ describe("AccessControlService", () => {
   });
 
   it("fails closed when no request identity is available", async () => {
-    expect(service.userCan("read", Subject)).toBe(false);
-    expect(service.workspaceCan("read", Subject)).toBe(false);
+    expect(service.can("read", Subject)).toBe(false);
     expect(() => {
-      service.assertWorkspaceCan("read", Subject);
+      service.assertCan("read", Subject);
     }).toThrow(ForbiddenException);
 
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
-      expect(service.workspaceCan("read", Subject)).toBe(false);
+      expect(service.can("read", Subject)).toBe(false);
       expect(() => {
         service.assertCanGrantWorkspacePermissions(["subject:read"]);
       }).toThrow("Workspace permissions exceed issuer permissions");
@@ -66,13 +64,13 @@ describe("AccessControlService", () => {
 
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
       RequestContext.set(User, user);
-      const ability = new UserAbility();
+      const ability = new AuthAbility();
       vi.spyOn(ability, "can").mockReturnValue(true);
-      RequestContext.set(UserAbility, ability);
+      RequestContext.set(AuthAbility, ability);
 
-      expect(service.userCan("read", Subject)).toBe(true);
+      expect(service.can("read", Subject)).toBe(true);
       expect(() => {
-        service.assertUserCan("read", Subject);
+        service.assertCan("read", Subject);
       }).not.toThrow();
     });
   });
@@ -81,9 +79,9 @@ describe("AccessControlService", () => {
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
       RequestContext.set(User, new User());
 
-      expect(service.userCan("read", Subject)).toBe(false);
+      expect(service.can("read", Subject)).toBe(false);
       expect(() => {
-        service.assertUserCan("read", Subject);
+        service.assertCan("read", Subject);
       }).toThrow(ForbiddenException);
     });
   });
@@ -108,14 +106,14 @@ describe("AccessControlService", () => {
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
       RequestContext.set(User, user);
       RequestIdentity.stage({ apiKey });
-      const ability = new UserAbility();
+      const ability = new AuthAbility();
       vi.spyOn(ability, "can").mockImplementation(
         (action) => action === "read",
       );
-      RequestContext.set(UserAbility, ability);
+      RequestContext.set(AuthAbility, ability);
 
-      expect(service.userCan("read", Subject)).toBe(true);
-      expect(service.userCan("update", Subject)).toBe(false);
+      expect(service.can("read", Subject)).toBe(true);
+      expect(service.can("update", Subject)).toBe(false);
     });
   });
 
@@ -128,15 +126,14 @@ describe("AccessControlService", () => {
 
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
       RequestIdentity.stage({ apiKey, workspace });
-      const ability = new WorkspaceAbility();
+      const ability = new AuthAbility();
       vi.spyOn(ability, "can").mockImplementation(
         (action) => action === "read",
       );
-      RequestContext.set(WorkspaceAbility, ability);
+      RequestContext.set(AuthAbility, ability);
 
-      expect(service.workspaceCan("read", Subject)).toBe(true);
-      expect(service.workspaceCan("update", Subject)).toBe(false);
-      expect(service.userCan("read", Subject)).toBe(false);
+      expect(service.can("read", Subject)).toBe(true);
+      expect(service.can("update", Subject)).toBe(false);
     });
   });
 
@@ -150,14 +147,14 @@ describe("AccessControlService", () => {
 
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
       RequestIdentity.stage({ apiKey, workspace });
-      const ability = new WorkspaceAbility();
+      const ability = new AuthAbility();
       vi.spyOn(ability, "can").mockImplementation(
         (action) => action === "read",
       );
-      RequestContext.set(WorkspaceAbility, ability);
+      RequestContext.set(AuthAbility, ability);
 
-      expect(service.workspaceCan("read", post)).toBe(true);
-      expect(service.workspaceCan("update", post)).toBe(false);
+      expect(service.can("read", post)).toBe(true);
+      expect(service.can("update", post)).toBe(false);
     });
   });
 
@@ -170,26 +167,27 @@ describe("AccessControlService", () => {
 
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
       RequestIdentity.stage({ apiKey, workspace });
-      RequestContext.set(WorkspaceAbility, new WorkspaceAbility());
+      RequestContext.set(AuthAbility, new AuthAbility());
 
-      expect(service.workspaceCan("read", Subject)).toBe(false);
+      expect(service.can("read", Subject)).toBe(false);
     });
   });
 
-  it("requires a membership and ability for workspace session access", async () => {
+  it("rejects a cached ability when the authenticated identity is removed", async () => {
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
+      RequestContext.set(User, new User());
       RequestContext.set(Member, new Member());
       RequestContext.set(Workspace, new Workspace());
-      const ability = new WorkspaceAbility();
+      const ability = new AuthAbility();
       vi.spyOn(ability, "can").mockImplementation(
         (action) => action === "read",
       );
-      RequestContext.set(WorkspaceAbility, ability);
+      RequestContext.set(AuthAbility, ability);
 
-      expect(service.workspaceCan("read", Subject)).toBe(true);
-      expect(service.workspaceCan("update", Subject)).toBe(false);
-      RequestContext.set(Workspace, null);
-      expect(service.workspaceCan("read", Subject)).toBe(false);
+      expect(service.can("read", Subject)).toBe(true);
+      expect(service.can("update", Subject)).toBe(false);
+      RequestIdentity.stage({ user: null, workspace: null, member: null });
+      expect(service.can("read", Subject)).toBe(false);
     });
   });
 

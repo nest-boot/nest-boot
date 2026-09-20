@@ -1,5 +1,4 @@
 import type { AuthModuleRoles } from "../types/auth-module-roles.type.js";
-import type { BuildUserAbilityCallback } from "../types/build-user-ability-callback.type.js";
 import type { PermissionName } from "../types/permission-name.type.js";
 import type { AuthModuleChangeEmailOptions } from "./auth-module-change-email-options.interface.js";
 import type { AuthModuleDeleteUserOptions } from "./auth-module-delete-user-options.interface.js";
@@ -18,8 +17,6 @@ export interface AuthModuleUserOptions<
     (string extends Permission ? unknown : PermissionName<Permission>))[];
   /** Additional roles and grants; same-name roles extend `DEFAULT_USER_ROLES`. */
   roles?: Partial<AuthModuleRoles<NoInfer<Permission>, Role>>;
-  /** Synchronously adds permission-bound business grants or restrictions; auth builds the final ability. */
-  buildAbility?: BuildUserAbilityCallback<Permission>;
   /** Email-change lifecycle configuration. */
   changeEmail?: AuthModuleChangeEmailOptions;
   /** User-deletion lifecycle configuration. */

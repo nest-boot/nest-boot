@@ -11,10 +11,8 @@ import * as z from "zod";
 import { toast } from "sonner";
 import { t } from "i18next";
 
-import {
-  useCurrentMemberContext,
-  useCurrentWorkspaceAbility,
-} from "../../contexts/current-member-context";
+import { useCurrentMemberContext } from "../../contexts/current-member-context";
+import { useAbility } from "@/contexts/ability-context";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import {
   Page,
@@ -37,6 +35,7 @@ import { createAbilitySubject } from "@/lib/ability";
 const GET_CURRENT_MEMBER_FROM_MEMBER_ROUTE = graphql(`
   query getCurrentMemberFromMemberRoute {
     currentMember {
+      workspaceId
       id
       roles
       permissions
@@ -47,6 +46,7 @@ const GET_CURRENT_MEMBER_FROM_MEMBER_ROUTE = graphql(`
 const GET_MEMBER_FROM_MEMBER_ROUTE = graphql(`
   query getMemberFromMemberRoute($id: ID!) {
     member(id: $id) {
+      workspaceId
       id
       roles
       permissions
@@ -115,17 +115,14 @@ export const Route = createFileRoute(
 )({
   component: MemberComponent,
   beforeLoad: async ({
-    context: { apolloClient, currentWorkspaceAbility },
+    context: { apolloClient, ability },
     params: { memberId, workspaceId },
   }) => {
     const { data } = await apolloClient.query({
       query: GET_CURRENT_MEMBER_FROM_MEMBER_ROUTE,
     });
 
-    if (
-      !data?.currentMember ||
-      !currentWorkspaceAbility.can("read", "Member")
-    ) {
+    if (!data?.currentMember || !ability.can("read", "Member")) {
       throw redirect({
         to: "/workspaces/$workspaceId/members",
         params: { workspaceId },
@@ -139,10 +136,7 @@ export const Route = createFileRoute(
       });
       if (
         !data?.member ||
-        !currentWorkspaceAbility.can(
-          "read",
-          createAbilitySubject("Member", data.member),
-        )
+        !ability.can("read", createAbilitySubject("Member", data.member))
       ) {
         throw redirect({
           to: "/workspaces/$workspaceId/members",
@@ -168,7 +162,7 @@ function MemberComponent() {
   const { memberId, workspaceId } = Route.useParams();
 
   const currentMember = useCurrentMemberContext();
-  const currentWorkspaceAbility = useCurrentWorkspaceAbility();
+  const ability = useAbility();
 
   const { data, refetch } = useSuspenseQuery(GET_MEMBER_FROM_MEMBER_ROUTE, {
     variables: { id: memberId },
@@ -183,16 +177,16 @@ function MemberComponent() {
     });
   }
 
-  const canManageRoles = currentWorkspaceAbility.can(
+  const canManageRoles = ability.can(
     "set-roles",
     createAbilitySubject("Member", member),
   );
 
-  const canManagePermissions = currentWorkspaceAbility.can(
+  const canManagePermissions = ability.can(
     "set-permissions",
     createAbilitySubject("Member", member),
   );
-  const canManageProfile = currentWorkspaceAbility.can(
+  const canManageProfile = ability.can(
     "write",
     createAbilitySubject("Member", member),
   );
@@ -351,10 +345,7 @@ function MemberComponent() {
 
   const canRemove =
     memberId !== currentMember.id &&
-    currentWorkspaceAbility.can(
-      "write",
-      createAbilitySubject("Member", member),
-    );
+    ability.can("write", createAbilitySubject("Member", member));
 
   const handleRemoveClick = async () => {
     const confirmed = await alertDialog({

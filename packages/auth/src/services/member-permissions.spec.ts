@@ -9,7 +9,7 @@ import {
   createTestWorkspace,
   createWorkspaceServices,
 } from "../../test/workspace-service.fixture.js";
-import { WorkspaceAbility } from "../abilities/workspace.ability.js";
+import { AuthAbility } from "../abilities/auth.ability.js";
 import { API_KEY } from "../auth.constants.js";
 import { Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";
@@ -71,6 +71,7 @@ describe("MemberService direct permission authorization", () => {
       const service = new MemberService(em, options, access);
       const workspace = createTestWorkspace();
       await RequestContext.run(new RequestContext({ type: "test" }), () => {
+        RequestContext.set(User, createTestUser());
         RequestContext.set(Workspace, workspace);
         if (key !== "workspace")
           RequestContext.set(
@@ -97,8 +98,8 @@ describe("MemberService direct permission authorization", () => {
             ),
           );
         RequestContext.set(
-          WorkspaceAbility,
-          new WorkspaceAbility([{ action: "write", subject: Invitation }]),
+          AuthAbility,
+          new AuthAbility([{ action: "write", subject: Invitation }]),
         );
         expect(service.listRoles()).toEqual(
           ["owner", "admin", "member", "founder", "custom"].map((role) => ({
@@ -121,11 +122,11 @@ describe("MemberService direct permission authorization", () => {
             access.assertCanGrantWorkspacePermissions(grants);
           }).not.toThrow();
         }
-        RequestContext.set(WorkspaceAbility, new WorkspaceAbility());
+        RequestContext.set(AuthAbility, new AuthAbility());
         expect(() => service.listRoles()).toThrow(ForbiddenException);
         RequestContext.set(
-          WorkspaceAbility,
-          new WorkspaceAbility([{ action: "read", subject: Member }]),
+          AuthAbility,
+          new AuthAbility([{ action: "read", subject: Member }]),
         );
         expect(service.listRoles().every(({ grantable }) => !grantable)).toBe(
           true,
@@ -137,10 +138,8 @@ describe("MemberService direct permission authorization", () => {
           })),
         );
         RequestContext.set(
-          WorkspaceAbility,
-          new WorkspaceAbility([
-            { action: "set-permissions", subject: Member },
-          ]),
+          AuthAbility,
+          new AuthAbility([{ action: "set-permissions", subject: Member }]),
         );
         expect(service.listPermissions()).toEqual(
           DEFAULT_WORKSPACE_PERMISSIONS.map((permission) => ({
@@ -232,6 +231,7 @@ describe("MemberService direct permission authorization", () => {
       await RequestContext.run(
         new RequestContext({ type: "test" }),
         async () => {
+          RequestContext.set(User, createTestUser());
           RequestContext.set(Workspace, workspace);
           if (scenario.key !== "workspace") RequestContext.set(Member, actor);
           if (scenario.key) {
@@ -259,8 +259,8 @@ describe("MemberService direct permission authorization", () => {
             );
           }
           RequestContext.set(
-            WorkspaceAbility,
-            new WorkspaceAbility(
+            AuthAbility,
+            new AuthAbility(
               scenario.canUpdate
                 ? [{ action: "set-permissions", subject: Member }]
                 : [],

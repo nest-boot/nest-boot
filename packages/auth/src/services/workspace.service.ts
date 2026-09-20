@@ -55,8 +55,7 @@ export class WorkspaceService {
         "The authenticated user is not a member of this workspace",
       );
     }
-    if (workspace)
-      this.accessControlService.assertWorkspaceCan("read", workspace);
+    if (workspace) this.accessControlService.assertCan("read", workspace);
     return workspace ?? null;
   }
 
@@ -114,12 +113,11 @@ export class WorkspaceService {
       : null;
     if (!current) throw new ForbiddenException("A workspace must be selected");
     this.accessControlService.assertCurrentWorkspace(current);
-    this.accessControlService.assertWorkspaceCan("read", current);
+    this.accessControlService.assertCan("read", current);
     const workspace = await this.em.findOne(Workspace, {
       $and: [where, { id: current.id }],
     } as FilterQuery<Workspace>);
-    if (workspace)
-      this.accessControlService.assertWorkspaceCan("read", workspace);
+    if (workspace) this.accessControlService.assertCan("read", workspace);
     return workspace;
   }
 
@@ -129,7 +127,7 @@ export class WorkspaceService {
     input: CreateWorkspaceOptions,
   ): Promise<Workspace> {
     this.accessControlService.assertCurrentUser(user);
-    this.accessControlService.assertUserCan("create", Workspace);
+    this.accessControlService.assertCan("create", Workspace);
     // The new workspace has no request session yet. Only this authorized
     // operation may bootstrap its owner outside the application's RLS scope.
     return await this.em.transactional(
@@ -137,7 +135,7 @@ export class WorkspaceService {
         const workspace = em.create(Workspace, {
           name: input.name,
         } as unknown as RequiredEntityData<Workspace>);
-        this.accessControlService.assertUserCan("create", workspace);
+        this.accessControlService.assertCan("create", workspace);
         const member = em.create(Member, {
           name: user.name,
           email: user.email.trim().toLowerCase(),
@@ -160,7 +158,7 @@ export class WorkspaceService {
     action: string,
   ): Promise<Workspace> {
     if (typeof workspace !== "string") return workspace;
-    this.accessControlService.assertWorkspaceCan(action, Workspace);
+    this.accessControlService.assertCan(action, Workspace);
     const entity = await this.em.findOne(
       Workspace,
       { id: workspace } as FilterQuery<Workspace>,
@@ -177,7 +175,7 @@ export class WorkspaceService {
   ): Promise<Workspace> {
     workspace = await this.resolveWorkspaceForAction(workspace, "update");
     this.accessControlService.assertCurrentWorkspace(workspace);
-    this.accessControlService.assertWorkspaceCan("update", workspace);
+    this.accessControlService.assertCan("update", workspace);
     if (this.em.isInTransaction()) {
       throw new BadRequestException(
         "Change the current workspace outside an active transaction",
@@ -201,7 +199,7 @@ export class WorkspaceService {
   async deleteWorkspace(workspace: Workspace | string): Promise<Workspace> {
     workspace = await this.resolveWorkspaceForAction(workspace, "delete");
     this.accessControlService.assertCurrentWorkspace(workspace);
-    this.accessControlService.assertWorkspaceCan("delete", workspace);
+    this.accessControlService.assertCan("delete", workspace);
     if (this.em.isInTransaction()) {
       throw new BadRequestException(
         "Delete the workspace outside an active transaction",
@@ -211,7 +209,7 @@ export class WorkspaceService {
     await this.em.transactional(
       async (em) => {
         await this.lockWorkspace(em, workspace);
-        this.accessControlService.assertWorkspaceCan("delete", workspace);
+        this.accessControlService.assertCan("delete", workspace);
         const count = await em.nativeDelete(Workspace, {
           id: workspace.id,
         } as FilterQuery<Workspace>);
@@ -219,7 +217,7 @@ export class WorkspaceService {
       },
       { clear: true },
     );
-    RequestIdentity.clearWorkspace(this.em);
+    RequestIdentity.clearWorkspace(this.em, this.authOptions);
     return workspace;
   }
 

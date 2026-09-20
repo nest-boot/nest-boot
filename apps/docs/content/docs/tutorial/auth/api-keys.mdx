@@ -204,8 +204,9 @@ audit(@CurrentApiKey() apiKey: ApiKey | null) {
 Before the configured builder runs, User Key permissions are intersected with
 the owning user's effective permissions and, for workspace routes, the user's
 current membership permissions. Workspace Keys are service identities; their
-validated permissions are passed directly to the workspace builder. The guard
-then checks only the resulting `UserAbility` or `WorkspaceAbility`.
+validated permissions populate `workspacePermissions`, with no user or member.
+The top-level builder receives both scoped permission arrays and produces one
+`AuthAbility`, which the guard checks.
 
 The example baseline `Initial → generated schema migrations` also includes:
 API-key creation and usage tracking retain request RLS and use default INSERT/UPDATE privileges. Services exclude credential hashes from ordinary reads and prevent ownership changes; direct SQL does not have these column restrictions. Auth infrastructure

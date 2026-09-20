@@ -360,6 +360,7 @@ export type Invitation = {
   roles: Array<WorkspaceRole>;
   status: InvitationStatus;
   workspace: Workspace;
+  workspaceId: Scalars["ID"]["output"];
 };
 
 export type InvitationConnection = {
@@ -424,6 +425,7 @@ export type Member = {
   status: MemberStatus;
   updatedAt: Scalars["DateTime"]["output"];
   user?: Maybe<User>;
+  workspaceId: Scalars["ID"]["output"];
 };
 
 export type MemberConnection = {
@@ -725,12 +727,11 @@ export type PageInfo = {
 
 export type Query = {
   __typename?: "Query";
+  currentAbilityRules: Array<AuthAbilityRuleType>;
   currentMember?: Maybe<Member>;
   currentSession?: Maybe<Session>;
   currentUser: User;
-  currentUserAbilityRules: Array<AuthAbilityRuleType>;
   currentWorkspace?: Maybe<Workspace>;
-  currentWorkspaceAbilityRules: Array<AuthAbilityRuleType>;
   invitation?: Maybe<Invitation>;
   member?: Maybe<Member>;
   socialProviders: Array<AuthSocialProviderType>;
@@ -1235,6 +1236,7 @@ export type WorkspaceApiKey = {
   prefix?: Maybe<Scalars["String"]["output"]>;
   start?: Maybe<Scalars["String"]["output"]>;
   updatedAt: Scalars["DateTime"]["output"];
+  workspaceId: Scalars["ID"]["output"];
 };
 
 export type WorkspaceApiKeyConnection = {
@@ -1374,7 +1376,7 @@ export type GetAdminAccessFromAdminLayoutQueryVariables = Exact<{
 
 export type GetAdminAccessFromAdminLayoutQuery = {
   __typename?: "Query";
-  currentUserAbilityRules: Array<{
+  currentAbilityRules: Array<{
     __typename?: "AuthAbilityRuleType";
     actions: Array<string>;
     subjects: Array<string>;
@@ -1603,7 +1605,7 @@ export type GetCurrentUserFromCurrentUserContextQuery = {
     email: string;
     permissions: Array<UserPermission>;
   };
-  currentUserAbilityRules: Array<{
+  currentAbilityRules: Array<{
     __typename?: "AuthAbilityRuleType";
     actions: Array<string>;
     subjects: Array<string>;
@@ -1621,7 +1623,7 @@ export type GetCurrentUserFromAuthenticatedRouteQueryVariables = Exact<{
 export type GetCurrentUserFromAuthenticatedRouteQuery = {
   __typename?: "Query";
   currentUser: { __typename?: "User"; id: string };
-  currentUserAbilityRules: Array<{
+  currentAbilityRules: Array<{
     __typename?: "AuthAbilityRuleType";
     actions: Array<string>;
     subjects: Array<string>;
@@ -1984,6 +1986,7 @@ export type GetWorkspacesFromUserWorkspacesRouteQuery = {
         __typename?: "InvitationEdge";
         node: {
           __typename?: "Invitation";
+          workspaceId: string;
           id: string;
           roles: Array<WorkspaceRole>;
           expiresAt: any;
@@ -2045,6 +2048,7 @@ export type GetApiKeysFromApiKeysRouteQuery = {
         __typename?: "WorkspaceApiKeyEdge";
         node: {
           __typename?: "WorkspaceApiKey";
+          workspaceId: string;
           id: string;
           name: string;
           start?: string | null;
@@ -2078,6 +2082,7 @@ export type CreateWorkspaceApiKeyFromApiKeysRouteMutation = {
     apiKey: string;
     entity: {
       __typename?: "WorkspaceApiKey";
+      workspaceId: string;
       id: string;
       name: string;
       start?: string | null;
@@ -2100,6 +2105,7 @@ export type UpdateWorkspaceApiKeyFromApiKeysRouteMutation = {
   __typename?: "Mutation";
   updateWorkspaceApiKey: {
     __typename?: "WorkspaceApiKey";
+    workspaceId: string;
     id: string;
     name: string;
     start?: string | null;
@@ -2120,6 +2126,7 @@ export type DeleteWorkspaceApiKeyFromApiKeysRouteMutation = {
   __typename?: "Mutation";
   deleteWorkspaceApiKey: {
     __typename?: "WorkspaceApiKey";
+    workspaceId: string;
     id: string;
     name: string;
     start?: string | null;
@@ -2170,6 +2177,7 @@ export type GetCurrentMemberFromMemberContextQuery = {
   __typename?: "Query";
   currentMember?: {
     __typename?: "Member";
+    workspaceId: string;
     id: string;
     roles: Array<WorkspaceRole>;
     permissions: Array<WorkspacePermission>;
@@ -2177,7 +2185,7 @@ export type GetCurrentMemberFromMemberContextQuery = {
     name: string;
     email?: string | null;
   } | null;
-  currentWorkspaceAbilityRules: Array<{
+  currentAbilityRules: Array<{
     __typename?: "AuthAbilityRuleType";
     actions: Array<string>;
     subjects: Array<string>;
@@ -2212,10 +2220,11 @@ export type GetCurrentWorkspaceFromWorkspaceLayoutQuery = {
   workspace?: { __typename?: "Workspace"; id: string } | null;
   currentMember?: {
     __typename?: "Member";
+    workspaceId: string;
     id: string;
     roles: Array<WorkspaceRole>;
   } | null;
-  currentWorkspaceAbilityRules: Array<{
+  currentAbilityRules: Array<{
     __typename?: "AuthAbilityRuleType";
     actions: Array<string>;
     subjects: Array<string>;
@@ -2234,6 +2243,7 @@ export type GetCurrentMemberFromMemberRouteQuery = {
   __typename?: "Query";
   currentMember?: {
     __typename?: "Member";
+    workspaceId: string;
     id: string;
     roles: Array<WorkspaceRole>;
     permissions: Array<WorkspacePermission>;
@@ -2248,6 +2258,7 @@ export type GetMemberFromMemberRouteQuery = {
   __typename?: "Query";
   member?: {
     __typename?: "Member";
+    workspaceId: string;
     id: string;
     roles: Array<WorkspaceRole>;
     permissions: Array<WorkspacePermission>;
@@ -2357,6 +2368,7 @@ export type GetMembersFromMembersRouteQuery = {
         __typename?: "MemberEdge";
         node: {
           __typename?: "Member";
+          workspaceId: string;
           id: string;
           roles: Array<WorkspaceRole>;
           status: MemberStatus;
@@ -2379,6 +2391,7 @@ export type GetMembersFromMembersRouteQuery = {
         __typename?: "InvitationEdge";
         node: {
           __typename?: "Invitation";
+          workspaceId: string;
           id: string;
           email: string;
           roles: Array<WorkspaceRole>;
@@ -2592,6 +2605,7 @@ export type GetInvitationFromInviteRouteQuery = {
   __typename?: "Query";
   invitation?: {
     __typename?: "Invitation";
+    workspaceId: string;
     id: string;
     email: string;
     roles: Array<WorkspaceRole>;
@@ -2627,7 +2641,7 @@ export const GetAdminAccessFromAdminLayoutDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "currentUserAbilityRules" },
+            name: { kind: "Name", value: "currentAbilityRules" },
             selectionSet: {
               kind: "SelectionSet",
               selections: [
@@ -3821,7 +3835,7 @@ export const GetCurrentUserFromCurrentUserContextDocument = {
           },
           {
             kind: "Field",
-            name: { kind: "Name", value: "currentUserAbilityRules" },
+            name: { kind: "Name", value: "currentAbilityRules" },
             selectionSet: {
               kind: "SelectionSet",
               selections: [
@@ -3864,7 +3878,7 @@ export const GetCurrentUserFromAuthenticatedRouteDocument = {
           },
           {
             kind: "Field",
-            name: { kind: "Name", value: "currentUserAbilityRules" },
+            name: { kind: "Name", value: "currentAbilityRules" },
             selectionSet: {
               kind: "SelectionSet",
               selections: [
@@ -5406,6 +5420,13 @@ export const GetWorkspacesFromUserWorkspacesRouteDocument = {
                                 selections: [
                                   {
                                     kind: "Field",
+                                    name: {
+                                      kind: "Name",
+                                      value: "workspaceId",
+                                    },
+                                  },
+                                  {
+                                    kind: "Field",
                                     name: { kind: "Name", value: "id" },
                                   },
                                   {
@@ -5741,6 +5762,13 @@ export const GetApiKeysFromApiKeysRouteDocument = {
                                 selections: [
                                   {
                                     kind: "Field",
+                                    name: {
+                                      kind: "Name",
+                                      value: "workspaceId",
+                                    },
+                                  },
+                                  {
+                                    kind: "Field",
                                     name: { kind: "Name", value: "id" },
                                   },
                                   {
@@ -5872,6 +5900,10 @@ export const CreateWorkspaceApiKeyFromApiKeysRouteDocument = {
                   selectionSet: {
                     kind: "SelectionSet",
                     selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "workspaceId" },
+                      },
                       { kind: "Field", name: { kind: "Name", value: "id" } },
                       { kind: "Field", name: { kind: "Name", value: "name" } },
                       { kind: "Field", name: { kind: "Name", value: "start" } },
@@ -5971,6 +6003,7 @@ export const UpdateWorkspaceApiKeyFromApiKeysRouteDocument = {
             selectionSet: {
               kind: "SelectionSet",
               selections: [
+                { kind: "Field", name: { kind: "Name", value: "workspaceId" } },
                 { kind: "Field", name: { kind: "Name", value: "id" } },
                 { kind: "Field", name: { kind: "Name", value: "name" } },
                 { kind: "Field", name: { kind: "Name", value: "start" } },
@@ -6027,6 +6060,7 @@ export const DeleteWorkspaceApiKeyFromApiKeysRouteDocument = {
             selectionSet: {
               kind: "SelectionSet",
               selections: [
+                { kind: "Field", name: { kind: "Name", value: "workspaceId" } },
                 { kind: "Field", name: { kind: "Name", value: "id" } },
                 { kind: "Field", name: { kind: "Name", value: "name" } },
                 { kind: "Field", name: { kind: "Name", value: "start" } },
@@ -6241,6 +6275,7 @@ export const GetCurrentMemberFromMemberContextDocument = {
             selectionSet: {
               kind: "SelectionSet",
               selections: [
+                { kind: "Field", name: { kind: "Name", value: "workspaceId" } },
                 { kind: "Field", name: { kind: "Name", value: "id" } },
                 { kind: "Field", name: { kind: "Name", value: "roles" } },
                 { kind: "Field", name: { kind: "Name", value: "permissions" } },
@@ -6252,7 +6287,7 @@ export const GetCurrentMemberFromMemberContextDocument = {
           },
           {
             kind: "Field",
-            name: { kind: "Name", value: "currentWorkspaceAbilityRules" },
+            name: { kind: "Name", value: "currentAbilityRules" },
             selectionSet: {
               kind: "SelectionSet",
               selections: [
@@ -6353,6 +6388,7 @@ export const GetCurrentWorkspaceFromWorkspaceLayoutDocument = {
             selectionSet: {
               kind: "SelectionSet",
               selections: [
+                { kind: "Field", name: { kind: "Name", value: "workspaceId" } },
                 { kind: "Field", name: { kind: "Name", value: "id" } },
                 { kind: "Field", name: { kind: "Name", value: "roles" } },
               ],
@@ -6360,7 +6396,7 @@ export const GetCurrentWorkspaceFromWorkspaceLayoutDocument = {
           },
           {
             kind: "Field",
-            name: { kind: "Name", value: "currentWorkspaceAbilityRules" },
+            name: { kind: "Name", value: "currentAbilityRules" },
             selectionSet: {
               kind: "SelectionSet",
               selections: [
@@ -6397,6 +6433,7 @@ export const GetCurrentMemberFromMemberRouteDocument = {
             selectionSet: {
               kind: "SelectionSet",
               selections: [
+                { kind: "Field", name: { kind: "Name", value: "workspaceId" } },
                 { kind: "Field", name: { kind: "Name", value: "id" } },
                 { kind: "Field", name: { kind: "Name", value: "roles" } },
                 { kind: "Field", name: { kind: "Name", value: "permissions" } },
@@ -6447,6 +6484,7 @@ export const GetMemberFromMemberRouteDocument = {
             selectionSet: {
               kind: "SelectionSet",
               selections: [
+                { kind: "Field", name: { kind: "Name", value: "workspaceId" } },
                 { kind: "Field", name: { kind: "Name", value: "id" } },
                 { kind: "Field", name: { kind: "Name", value: "roles" } },
                 { kind: "Field", name: { kind: "Name", value: "permissions" } },
@@ -7040,6 +7078,13 @@ export const GetMembersFromMembersRouteDocument = {
                                 selections: [
                                   {
                                     kind: "Field",
+                                    name: {
+                                      kind: "Name",
+                                      value: "workspaceId",
+                                    },
+                                  },
+                                  {
+                                    kind: "Field",
                                     name: { kind: "Name", value: "id" },
                                   },
                                   {
@@ -7200,6 +7245,13 @@ export const GetMembersFromMembersRouteDocument = {
                               selectionSet: {
                                 kind: "SelectionSet",
                                 selections: [
+                                  {
+                                    kind: "Field",
+                                    name: {
+                                      kind: "Name",
+                                      value: "workspaceId",
+                                    },
+                                  },
                                   {
                                     kind: "Field",
                                     name: { kind: "Name", value: "id" },
@@ -8195,6 +8247,7 @@ export const GetInvitationFromInviteRouteDocument = {
             selectionSet: {
               kind: "SelectionSet",
               selections: [
+                { kind: "Field", name: { kind: "Name", value: "workspaceId" } },
                 { kind: "Field", name: { kind: "Name", value: "id" } },
                 { kind: "Field", name: { kind: "Name", value: "email" } },
                 { kind: "Field", name: { kind: "Name", value: "roles" } },

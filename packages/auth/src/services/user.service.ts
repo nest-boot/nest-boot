@@ -86,12 +86,12 @@ export class UserService {
 
   /** Creates a user and its credential account atomically. */
   async createUser(input: CreateUserOptions): Promise<User> {
-    this.accessControlService.assertUserCan("create", User);
+    this.accessControlService.assertCan("create", User);
     if (input.roles !== undefined) {
-      this.accessControlService.assertUserCan("set-roles", User);
+      this.accessControlService.assertCan("set-roles", User);
     }
     if (input.permissions !== undefined) {
-      this.accessControlService.assertUserCan("set-permissions", User);
+      this.accessControlService.assertCan("set-permissions", User);
     }
     this.assertPasswordLength(input.password);
     const permissions = this.normalizePermissions(input.permissions ?? []);
@@ -112,12 +112,12 @@ export class UserService {
           permissions,
           roles,
         } as unknown as RequiredEntityData<User>);
-        this.accessControlService.assertUserCan("create", user);
+        this.accessControlService.assertCan("create", user);
         if (input.roles !== undefined) {
-          this.accessControlService.assertUserCan("set-roles", user);
+          this.accessControlService.assertCan("set-roles", user);
         }
         if (input.permissions !== undefined) {
-          this.accessControlService.assertUserCan("set-permissions", user);
+          this.accessControlService.assertCan("set-permissions", user);
         }
         em.persist(user);
         await em.flush();
@@ -140,21 +140,21 @@ export class UserService {
 
   /** Gets a user by identifier within the request's RLS scope. */
   async getUser(userId: string): Promise<User | null> {
-    this.accessControlService.assertUserCan("read", User);
+    this.accessControlService.assertCan("read", User);
     const user = await this.em.findOne(User, {
       id: userId,
     } as FilterQuery<User>);
-    if (user) this.accessControlService.assertUserCan("read", user);
+    if (user) this.accessControlService.assertCan("read", user);
     return user;
   }
 
   /** Gets a user by normalized email within the request's RLS scope. */
   async getUserByEmail(email: string): Promise<User | null> {
-    this.accessControlService.assertUserCan("read", User);
+    this.accessControlService.assertCan("read", User);
     const user = await this.em.findOne(User, {
       email: email.trim().toLowerCase(),
     } as FilterQuery<User>);
-    if (user) this.accessControlService.assertUserCan("read", user);
+    if (user) this.accessControlService.assertCan("read", user);
     return user;
   }
 
@@ -164,10 +164,10 @@ export class UserService {
     input: UpdateUserOptions,
   ): Promise<User> {
     user = await this.resolveUserForAction(user, "update");
-    this.accessControlService.assertUserCan("update", user);
+    this.accessControlService.assertCan("update", user);
     const data = this.createUserUpdateData(input);
     if (input.email !== undefined || input.emailVerified !== undefined) {
-      this.accessControlService.assertUserCan("set-email", user);
+      this.accessControlService.assertCan("set-email", user);
     }
     this.assertAuthorizationCanCommit(user);
     const previous = {
@@ -193,7 +193,7 @@ export class UserService {
     permissions: string[],
   ): Promise<User> {
     user = await this.resolveUserForAction(user, "set-permissions");
-    this.accessControlService.assertUserCan("set-permissions", user);
+    this.accessControlService.assertCan("set-permissions", user);
     const normalized = this.normalizePermissions(permissions);
     this.accessControlService.assertCanGrantUserPermissions(normalized);
     this.assertAuthorizationCanCommit(user);
@@ -215,7 +215,7 @@ export class UserService {
     roleNames: string | readonly string[],
   ): Promise<User> {
     user = await this.resolveUserForAction(user, "set-roles");
-    this.accessControlService.assertUserCan("set-roles", user);
+    this.accessControlService.assertCan("set-roles", user);
     const roles = this.normalizeRoles(roleNames);
     this.accessControlService.assertCanGrantUserPermissions(
       resolveAuthPermissions(roles, [], this.roles),
@@ -266,7 +266,7 @@ export class UserService {
     action: string,
   ): Promise<User> {
     if (typeof user !== "string") return user;
-    this.accessControlService.assertUserCan(action, User);
+    this.accessControlService.assertCan(action, User);
     const entity = await this.em.findOne(
       User,
       { id: user } as FilterQuery<User>,
@@ -278,7 +278,7 @@ export class UserService {
 
   /** Lists all configured roles with the current principal's grant availability. */
   listRoles(): UserRoleOption[] {
-    this.accessControlService.assertUserCan("set-roles", User);
+    this.accessControlService.assertCan("set-roles", User);
     return Object.entries(this.roles).map(([role, permissions]) => ({
       role,
       grantable: this.accessControlService.canGrantUserPermissions(permissions),
@@ -287,7 +287,7 @@ export class UserService {
 
   /** Lists all configured permissions with the current principal's grant availability. */
   listPermissions(): UserPermissionOption[] {
-    this.accessControlService.assertUserCan("set-permissions", User);
+    this.accessControlService.assertCan("set-permissions", User);
     return listAuthPermissions(this.permissions).map((permission) => ({
       permission,
       grantable: this.accessControlService.canGrantUserPermissions([
@@ -305,12 +305,12 @@ export class UserService {
   async getUserConnection(
     args: ConnectionArgsInterface<User>,
   ): Promise<ConnectionInterface<User>> {
-    this.accessControlService.assertUserCan("read", User);
+    this.accessControlService.assertCan("read", User);
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
     ).find<User>(UserConnection, args);
     for (const { node } of connection.edges) {
-      this.accessControlService.assertUserCan("read", node);
+      this.accessControlService.assertCan("read", node);
     }
     return connection;
   }
@@ -321,7 +321,7 @@ export class UserService {
     input: BanUserOptions = {},
   ): Promise<User> {
     user = await this.resolveUserForAction(user, "ban");
-    this.accessControlService.assertUserCan("ban", user);
+    this.accessControlService.assertCan("ban", user);
     this.assertIdentityRevocationCanCommit(user);
     const banExpiresAt =
       input.banExpiresIn === undefined
@@ -380,7 +380,7 @@ export class UserService {
   /** Removes a user's ban. */
   async unbanUser(user: User | string): Promise<User> {
     user = await this.resolveUserForAction(user, "ban");
-    this.accessControlService.assertUserCan("ban", user);
+    this.accessControlService.assertCan("ban", user);
     this.assertAuthorizationCanCommit(user);
     const previous = {
       banned: user.banned,
@@ -408,9 +408,9 @@ export class UserService {
   ): Promise<AuthenticatedSession> {
     this.accessControlService.assertCurrentUser(administrator);
     user = await this.resolveUserForAction(user, "impersonate");
-    this.accessControlService.assertUserCan("impersonate", user);
+    this.accessControlService.assertCan("impersonate", user);
     if (this.isAdmin(user)) {
-      this.accessControlService.assertUserCan("impersonate-admin", user);
+      this.accessControlService.assertCan("impersonate-admin", user);
     }
     if (this.isActivelyBanned(user)) {
       throw new ForbiddenException("Banned users cannot be impersonated");
@@ -479,7 +479,7 @@ export class UserService {
   /** Permanently deletes a user and all dependent authentication records. */
   async deleteUser(user: User | string): Promise<User> {
     user = await this.resolveUserForAction(user, "delete");
-    this.accessControlService.assertUserCan("delete", user);
+    this.accessControlService.assertCan("delete", user);
     this.assertIdentityRevocationCanCommit(user);
     const deleted = await this.userDeletionService.deleteUser(String(user.id));
     if (deleted === null) throw new NotFoundException("User not found");
@@ -493,7 +493,7 @@ export class UserService {
     newPassword: string,
   ): Promise<void> {
     user = await this.resolveUserForAction(user, "set-password");
-    this.accessControlService.assertUserCan("set-password", user);
+    this.accessControlService.assertCan("set-password", user);
     this.assertPasswordLength(newPassword);
     const password = await this.hashPassword(newPassword);
     await this.em.transactional(

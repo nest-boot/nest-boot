@@ -17,10 +17,11 @@ const GET_CURRENT_WORKSPACE_FROM_WORKSPACE_LAYOUT = graphql(`
       id
     }
     currentMember {
+      workspaceId
       id
       roles
     }
-    currentWorkspaceAbilityRules {
+    currentAbilityRules {
       actions
       subjects
       fields
@@ -50,9 +51,7 @@ export const Route = createFileRoute("/_authenticated/workspaces/$workspaceId")(
 
       return {
         currentMember: data.currentMember,
-        currentWorkspaceAbility: createAbility(
-          data.currentWorkspaceAbilityRules,
-        ),
+        ability: createAbility(data.currentAbilityRules),
       };
     },
   },

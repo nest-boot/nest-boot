@@ -817,6 +817,8 @@ describe("AuthModule", () => {
 
     authProvider.useFactory(
       {
+        buildAbility: vi.fn(),
+
         apiKey: {
           user: {
             allowedPermissions: ["user:read"],
@@ -832,9 +834,8 @@ describe("AuthModule", () => {
         secondaryStorage: { get: vi.fn() },
         secret,
         unexpectedOption: "must-not-pass-through",
-        user: { buildAbility: vi.fn() },
+        user: {},
         workspace: {
-          buildAbility: vi.fn(),
           sendInvitationEmail: vi.fn(),
         },
       },

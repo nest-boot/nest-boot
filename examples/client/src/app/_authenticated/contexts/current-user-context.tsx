@@ -1,10 +1,10 @@
 import { useSuspenseQuery } from "@apollo/client/react";
-import { createContext, useContext, useMemo } from "react";
+import { createContext, useContext } from "react";
 
 import type { ReactNode } from "react";
 import type { GetCurrentUserFromCurrentUserContextQuery } from "@/gql/graphql";
 import { graphql } from "@/gql";
-import { createAbility } from "@/lib/ability";
+import { AbilityProvider } from "@/contexts/ability-context";
 
 const GET_CURRENT_USER_FROM_CURRENT_USER_CONTEXT = graphql(`
   query getCurrentUserFromCurrentUserContext {
@@ -14,7 +14,7 @@ const GET_CURRENT_USER_FROM_CURRENT_USER_CONTEXT = graphql(`
       email
       permissions
     }
-    currentUserAbilityRules {
+    currentAbilityRules {
       actions
       subjects
       fields
@@ -28,22 +28,15 @@ const GET_CURRENT_USER_FROM_CURRENT_USER_CONTEXT = graphql(`
 const CurrentUserContext = createContext<
   GetCurrentUserFromCurrentUserContextQuery["currentUser"] | null
 >(null);
-const CurrentUserAbilityContext = createContext<ReturnType<
-  typeof createAbility
-> | null>(null);
 
 export function CurrentUserProvider({ children }: { children: ReactNode }) {
   const { data } = useSuspenseQuery(GET_CURRENT_USER_FROM_CURRENT_USER_CONTEXT);
-  const ability = useMemo(
-    () => createAbility(data.currentUserAbilityRules),
-    [data.currentUserAbilityRules],
-  );
 
   return (
     <CurrentUserContext value={data.currentUser}>
-      <CurrentUserAbilityContext value={ability}>
+      <AbilityProvider rules={data.currentAbilityRules}>
         {children}
-      </CurrentUserAbilityContext>
+      </AbilityProvider>
     </CurrentUserContext>
   );
 }
@@ -58,16 +51,4 @@ export function useCurrentUserContext() {
   }
 
   return context;
-}
-
-export function useCurrentUserAbility() {
-  const ability = useContext(CurrentUserAbilityContext);
-
-  if (ability == null) {
-    throw new Error(
-      "useCurrentUserAbility must be used within a CurrentUserProvider",
-    );
-  }
-
-  return ability;
 }

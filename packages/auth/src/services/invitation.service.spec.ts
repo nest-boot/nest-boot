@@ -81,7 +81,7 @@ describe("InvitationService", () => {
   it.each([
     "assertCurrentWorkspace",
     "assertCurrentUser",
-    "assertWorkspaceCan",
+    "assertCan",
   ] as const)(
     "authorizes the isolated login lookup with %s before reading users",
     async (assertion) => {
@@ -111,7 +111,7 @@ describe("InvitationService", () => {
     const invitation = Object.assign(createTestInvitation(), {
       email: "another-recipient@example.com",
     });
-    vi.mocked(accessControlService.userCan).mockReturnValue(false);
+    vi.mocked(accessControlService.can).mockReturnValue(false);
     vi.mocked(accessControlService.assertCurrentWorkspace).mockImplementation(
       () => {
         throw new ForbiddenException();
@@ -169,9 +169,12 @@ describe("InvitationService", () => {
         invitationService.getInvitationWorkspace(invitation),
       ).resolves.toBe(workspace);
     });
-    expect(accessControlService.userCan).not.toHaveBeenCalled();
+    expect(accessControlService.can).not.toHaveBeenCalled();
     expect(accessControlService.assertCurrentWorkspace).not.toHaveBeenCalled();
-    expect(accessControlService.assertWorkspaceCan).not.toHaveBeenCalled();
+    expect(accessControlService.assertCan).not.toHaveBeenCalledWith(
+      "read",
+      Invitation,
+    );
     expect(em.findOne).toHaveBeenCalledWith(
       Workspace,
       { id: workspace.id },
@@ -194,7 +197,7 @@ describe("InvitationService", () => {
       inviter: { id: "private-inviter" },
     });
     em.findOne.mockResolvedValue(invitation);
-    vi.mocked(accessControlService.assertUserCan).mockImplementation(
+    vi.mocked(accessControlService.assertCan).mockImplementation(
       (_action, subject) => {
         if (subject === User) throw new ForbiddenException();
       },
@@ -229,7 +232,7 @@ describe("InvitationService", () => {
     expect(accessControlService.assertCurrentWorkspace).toHaveBeenCalledWith(
       invitation.workspace,
     );
-    expect(accessControlService.assertWorkspaceCan).toHaveBeenCalledWith(
+    expect(accessControlService.assertCan).toHaveBeenCalledWith(
       "read",
       invitation,
     );
@@ -279,14 +282,11 @@ describe("InvitationService", () => {
       { id: invitation.id },
       { refresh: true },
     );
-    expect(accessControlService.workspaceCan).toHaveBeenCalledWith(
-      "read",
-      Invitation,
-    );
+    expect(accessControlService.can).toHaveBeenCalledWith("read", Invitation);
     expect(em.fork).not.toHaveBeenCalled();
     expect(em.getSessionContext()).toEqual(session);
-    vi.mocked(accessControlService.userCan).mockReturnValue(false);
-    vi.mocked(accessControlService.workspaceCan).mockReturnValue(false);
+    vi.mocked(accessControlService.can).mockReturnValue(false);
+    vi.mocked(accessControlService.can).mockReturnValue(false);
     await expect(
       invitationService.getInvitation(invitation.id),
     ).rejects.toBeInstanceOf(ForbiddenException);

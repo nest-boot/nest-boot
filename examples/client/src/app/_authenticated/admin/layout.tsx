@@ -13,7 +13,7 @@ import {
 
 const GET_ADMIN_ACCESS_FROM_ADMIN_LAYOUT = graphql(`
   query getAdminAccessFromAdminLayout {
-    currentUserAbilityRules {
+    currentAbilityRules {
       actions
       subjects
       fields
@@ -31,10 +31,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
       query: GET_ADMIN_ACCESS_FROM_ADMIN_LAYOUT,
       fetchPolicy: "network-only",
     });
-    if (
-      !data ||
-      !createAbility(data.currentUserAbilityRules).can("read", "User")
-    ) {
+    if (!data || !createAbility(data.currentAbilityRules).can("read", "User")) {
       throw redirect({ to: "/user" });
     }
     return { title: t("admin:title") };

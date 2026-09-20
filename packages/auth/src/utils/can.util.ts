@@ -1,16 +1,15 @@
 import type { Subject } from "@casl/ability";
+import { RequestContext } from "@nest-boot/request-context";
 
-import type { CanOptions } from "../interfaces/can-options.interface.js";
-import { userCan } from "./user-can.util.js";
-import { workspaceCan } from "./workspace-can.util.js";
+import { AccessControlService } from "../services/access-control.service.js";
 
-/** Routes a permission check to its scoped implementation. */
-export function can(
-  action: string,
-  subject: Subject,
-  options: CanOptions = {},
-): boolean {
-  return options.scope === "user"
-    ? userCan(action, subject)
-    : workspaceCan(action, subject);
+/** Checks the unified request ability, denying access when context is unavailable. */
+export function can(action: string, subject: Subject, field?: string): boolean {
+  if (!RequestContext.isActive()) return false;
+  const access = RequestContext.get(AccessControlService);
+  return (
+    (field === undefined
+      ? access?.can(action, subject)
+      : access?.can(action, subject, field)) ?? false
+  );
 }

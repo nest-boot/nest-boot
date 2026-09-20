@@ -10,10 +10,7 @@ import { Test } from "@nestjs/testing";
 import type { GraphQLInputObjectType, GraphQLObjectType } from "graphql";
 
 import { AuthModule } from "./auth.module.js";
-import {
-  USER_CAN_METADATA,
-  WORKSPACE_CAN_METADATA,
-} from "./permission.constants.js";
+import { CAN_METADATA } from "./permission.constants.js";
 import { AuthResolver } from "./resolvers/auth.resolver.js";
 import { InvitationResolver } from "./resolvers/invitation.resolver.js";
 import { MemberResolver } from "./resolvers/member.resolver.js";
@@ -84,10 +81,7 @@ describe("auth GraphQL schema", () => {
           name,
         )?.value;
         if (typeof method !== "function") continue;
-        expect(Reflect.getMetadata(USER_CAN_METADATA, method)).toBeUndefined();
-        expect(
-          Reflect.getMetadata(WORKSPACE_CAN_METADATA, method),
-        ).toBeUndefined();
+        expect(Reflect.getMetadata(CAN_METADATA, method)).toBeUndefined();
       }
     }
   });

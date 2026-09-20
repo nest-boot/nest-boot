@@ -2,7 +2,8 @@ import { useMutation, useQuery } from "@apollo/client/react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { t } from "i18next";
-import { useCurrentWorkspaceAbility } from "../contexts/current-member-context";
+import { useAbility } from "@/contexts/ability-context";
+
 import { ApiKeysPage } from "@/components/api-keys-page";
 import { graphql } from "@/gql";
 import {
@@ -42,6 +43,7 @@ const GET_API_KEYS_FROM_API_KEYS_ROUTE = graphql(`
       ) {
         edges {
           node {
+            workspaceId
             id
             name
             start
@@ -71,6 +73,7 @@ const CREATE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
     createWorkspaceApiKey(input: $input) {
       apiKey
       entity {
+        workspaceId
         id
         name
         start
@@ -91,6 +94,7 @@ const UPDATE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
     $input: UpdateWorkspaceApiKeyInput!
   ) {
     updateWorkspaceApiKey(id: $id, input: $input) {
+      workspaceId
       id
       name
       start
@@ -107,6 +111,7 @@ const UPDATE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
 const DELETE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
   mutation deleteWorkspaceApiKeyFromApiKeysRoute($id: ID!) {
     deleteWorkspaceApiKey(id: $id) {
+      workspaceId
       id
       name
       start
@@ -125,7 +130,7 @@ export const Route = createFileRoute(
 )({
   component: ScopedApiKeysComponent,
   beforeLoad: ({ context, params }) => {
-    if (!context.currentWorkspaceAbility.can("read", "WorkspaceApiKey")) {
+    if (!context.ability.can("read", "WorkspaceApiKey")) {
       throw redirect({
         to: "/workspaces/$workspaceId",
         params: { workspaceId: params.workspaceId },
@@ -141,7 +146,7 @@ function ScopedApiKeysComponent() {
 }
 
 function ApiKeysComponent() {
-  const ability = useCurrentWorkspaceAbility();
+  const ability = useAbility();
   const search = Route.useSearch();
   const { data, refetch } = useQuery(GET_API_KEYS_FROM_API_KEYS_ROUTE, {
     fetchPolicy: "network-only",

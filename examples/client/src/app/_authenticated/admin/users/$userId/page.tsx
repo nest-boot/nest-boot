@@ -5,12 +5,10 @@ import dayjs from "dayjs";
 import { t } from "i18next";
 import { toast } from "sonner";
 
-import {
-  useCurrentUserAbility,
-  useCurrentUserContext,
-} from "../../../contexts/current-user-context";
+import { useCurrentUserContext } from "../../../contexts/current-user-context";
 import type { UserPermission } from "@/lib/permissions";
 import type { UserRole } from "@/gql/graphql";
+import { useAbility } from "@/contexts/ability-context";
 import { PermissionCheckboxGroup } from "@/components/permission-checkbox-group";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import { Badge } from "@/components/thread-ui/badge";
@@ -170,18 +168,17 @@ const IMPERSONATE_USER_FROM_USER_ROUTE = graphql(`
 export const Route = createFileRoute("/_authenticated/admin/users/$userId/")({
   component: AdminUserPage,
   beforeLoad: async ({
-    context: { currentUserAbility, apolloClient },
+    context: { ability, apolloClient },
     params: { userId },
   }) => {
-    if (!currentUserAbility.can("read", "User"))
-      throw redirect({ to: "/admin/users" });
+    if (!ability.can("read", "User")) throw redirect({ to: "/admin/users" });
     const { data } = await apolloClient.query({
       query: GET_USER_FROM_USER_ROUTE,
       variables: { id: userId },
     });
     if (
       !data?.user ||
-      !currentUserAbility.can("read", createAbilitySubject("User", data.user))
+      !ability.can("read", createAbilitySubject("User", data.user))
     )
       throw redirect({ to: "/admin/users" });
     return { title: t("admin:user.title") };
@@ -192,7 +189,7 @@ function AdminUserPage() {
   const { userId } = Route.useParams();
   const navigate = useNavigate();
   const currentUser = useCurrentUserContext();
-  const currentUserAbility = useCurrentUserAbility();
+  const ability = useAbility();
   const { data, loading, refetch, fetchMore } = useQuery(
     GET_USER_FROM_USER_ROUTE,
     {
@@ -200,10 +197,9 @@ function AdminUserPage() {
       variables: {
         id: userId,
         includeSessions:
-          currentUser.id === userId ||
-          currentUserAbility.can("read", "Session"),
-        includeRoles: currentUserAbility.can("set-roles", "User"),
-        includePermissions: currentUserAbility.can("set-permissions", "User"),
+          currentUser.id === userId || ability.can("read", "Session"),
+        includeRoles: ability.can("set-roles", "User"),
+        includePermissions: ability.can("set-permissions", "User"),
       },
     },
   );
@@ -263,18 +259,14 @@ function AdminUserPage() {
   }
 
   const userSubject = createAbilitySubject("User", user);
-  const canSetRoles = currentUserAbility.can("set-roles", userSubject);
-  const canSetPermissions = currentUserAbility.can(
-    "set-permissions",
-    userSubject,
-  );
-  const canUpdate = currentUserAbility.can("update", userSubject);
-  const canSetEmail =
-    canUpdate && currentUserAbility.can("set-email", userSubject);
-  const canBan = currentUserAbility.can("ban", userSubject);
-  const canDelete = currentUserAbility.can("delete", userSubject);
-  const canSetPassword = currentUserAbility.can("set-password", userSubject);
-  const canRevokeSessions = currentUserAbility.can("revoke", "Session");
+  const canSetRoles = ability.can("set-roles", userSubject);
+  const canSetPermissions = ability.can("set-permissions", userSubject);
+  const canUpdate = ability.can("update", userSubject);
+  const canSetEmail = canUpdate && ability.can("set-email", userSubject);
+  const canBan = ability.can("ban", userSubject);
+  const canDelete = ability.can("delete", userSubject);
+  const canSetPassword = ability.can("set-password", userSubject);
+  const canRevokeSessions = ability.can("revoke", "Session");
 
   const run = async (operation: () => Promise<unknown>, message: string) => {
     try {
@@ -297,10 +289,7 @@ function AdminUserPage() {
         <PageTitle>{user.name}</PageTitle>
         <PageDescription>{user.email}</PageDescription>
         {user.id !== currentUser.id &&
-        currentUserAbility.can(
-          "impersonate",
-          createAbilitySubject("User", user),
-        ) ? (
+        ability.can("impersonate", createAbilitySubject("User", user)) ? (
           <Button
             variant="outline"
             loading={impersonating}

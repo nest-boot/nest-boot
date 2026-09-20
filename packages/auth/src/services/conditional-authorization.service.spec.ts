@@ -4,8 +4,7 @@ import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException } from "@nestjs/common";
 
 import { createWorkspaceServices } from "../../test/workspace-service.fixture.js";
-import { UserAbility } from "../abilities/user.ability.js";
-import { WorkspaceAbility } from "../abilities/workspace.ability.js";
+import { AuthAbility } from "../abilities/auth.ability.js";
 import { Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";
 import { Session } from "../entities/session.entity.js";
@@ -36,8 +35,8 @@ describe("conditional service authorization", () => {
         expect(() => read()).toThrow(ForbiddenException);
         entity.id = "allowed";
         RequestContext.set(
-          WorkspaceAbility,
-          new WorkspaceAbility([
+          AuthAbility,
+          new AuthAbility([
             {
               action: "read",
               subject: kind === "member" ? "Member" : "Workspace",
@@ -46,7 +45,7 @@ describe("conditional service authorization", () => {
           ]),
         );
         expect(() => read()).toThrow(ForbiddenException);
-        RequestContext.set(WorkspaceAbility, null);
+        RequestContext.set(AuthAbility, null);
         expect(() => read()).toThrow(ForbiddenException);
         RequestContext.set(Member, null);
         RequestContext.set(Workspace, null);
@@ -370,8 +369,7 @@ async function withIdentity(
         conditions: { email: "blocked@example.com" },
       },
     ];
-    RequestContext.set(UserAbility, new UserAbility(rules));
-    RequestContext.set(WorkspaceAbility, new WorkspaceAbility(rules));
+    RequestContext.set(AuthAbility, new AuthAbility(rules));
     await callback(data);
   });
 }
@@ -383,11 +381,11 @@ function fixture() {
     assertCanGrantUserPermissions:
       access.assertCanGrantUserPermissions.bind(access),
   });
-  vi.mocked(result.accessControlService.assertUserCan).mockImplementation(
-    access.assertUserCan.bind(access),
+  vi.mocked(result.accessControlService.assertCan).mockImplementation(
+    access.assertCan.bind(access),
   );
-  vi.mocked(result.accessControlService.assertWorkspaceCan).mockImplementation(
-    access.assertWorkspaceCan.bind(access),
+  vi.mocked(result.accessControlService.assertCan).mockImplementation(
+    access.assertCan.bind(access),
   );
   const query = {
     select: vi.fn().mockReturnThis(),

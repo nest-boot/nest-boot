@@ -7,8 +7,8 @@ import { t } from "i18next";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
+import { useAbility } from "@/contexts/ability-context";
 
-import { useCurrentUserAbility } from "../../contexts/current-user-context";
 import { createAbilitySubject } from "@/lib/ability";
 import { Badge } from "@/components/thread-ui/badge";
 import { Button } from "@/components/thread-ui/button";
@@ -95,7 +95,7 @@ export const Route = createFileRoute("/_authenticated/admin/users/")({
 function AdminUsersPage() {
   const search = Route.useSearch();
   const navigate = useNavigate();
-  const currentUserAbility = useCurrentUserAbility();
+  const ability = useAbility();
   const [searchInput, setSearchInput] = useState(search.search ?? "");
   const [createOpen, setCreateOpen] = useState(false);
   const [name, setName] = useState("");
@@ -122,7 +122,7 @@ function AdminUsersPage() {
     CREATE_USER_FROM_USERS_ROUTE,
   );
   const users = data?.users.edges.map(({ node }) => node) ?? [];
-  const canCreate = currentUserAbility.can("create", "User");
+  const canCreate = ability.can("create", "User");
 
   const handleCreate = async () => {
     try {
@@ -226,10 +226,7 @@ function AdminUsersPage() {
           ]}
           onRowClick={(row) => {
             if (
-              !currentUserAbility.can(
-                "read",
-                createAbilitySubject("User", row.original),
-              )
+              !ability.can("read", createAbilitySubject("User", row.original))
             )
               return;
             navigate({

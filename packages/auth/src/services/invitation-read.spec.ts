@@ -9,8 +9,7 @@ import {
   createTestWorkspace,
   createWorkspaceServices,
 } from "../../test/workspace-service.fixture.js";
-import { UserAbility } from "../abilities/user.ability.js";
-import { WorkspaceAbility } from "../abilities/workspace.ability.js";
+import { AuthAbility } from "../abilities/auth.ability.js";
 import { API_KEY } from "../auth.constants.js";
 import { Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";
@@ -108,8 +107,8 @@ describe("InvitationService read authorization", () => {
             }),
           );
           RequestContext.set(
-            UserAbility,
-            new UserAbility([{ action: "read", subject: Invitation }]),
+            AuthAbility,
+            new AuthAbility([{ action: "read", subject: Invitation }]),
           );
           if (scenario.selected) {
             const selected = Object.assign(createTestWorkspace(), {
@@ -125,9 +124,11 @@ describe("InvitationService read authorization", () => {
               );
           }
           RequestContext.set(
-            WorkspaceAbility,
-            new WorkspaceAbility(
-              scenario.canRead ? [{ action: "read", subject: Invitation }] : [],
+            AuthAbility,
+            new AuthAbility(
+              scenario.canRead && scenario.member
+                ? [{ action: "read", subject: Invitation }]
+                : [],
             ),
           );
 
@@ -259,8 +260,8 @@ describe("InvitationService read authorization", () => {
         );
       }
       RequestContext.set(
-        UserAbility,
-        new UserAbility(
+        AuthAbility,
+        new AuthAbility(
           scenario.userRead === "conditional"
             ? [
                 {
@@ -273,8 +274,8 @@ describe("InvitationService read authorization", () => {
         ),
       );
       RequestContext.set(
-        WorkspaceAbility,
-        new WorkspaceAbility(
+        AuthAbility,
+        new AuthAbility(
           scenario.workspaceRead === "none"
             ? []
             : [
@@ -329,8 +330,8 @@ describe("InvitationService read authorization", () => {
         Object.assign(createTestUser(), { email: invitation.email }),
       );
       RequestContext.set(
-        UserAbility,
-        new UserAbility([
+        AuthAbility,
+        new AuthAbility([
           {
             action: "read",
             subject: Invitation,

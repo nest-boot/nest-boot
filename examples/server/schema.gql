@@ -299,6 +299,7 @@ type Invitation {
   roles: [WorkspaceRole!]!
   status: InvitationStatus!
   workspace: Workspace!
+  workspaceId: ID!
 }
 
 type InvitationConnection {
@@ -393,6 +394,7 @@ type Member {
   status: MemberStatus!
   updatedAt: DateTime!
   user: User
+  workspaceId: ID!
 }
 
 type MemberConnection {
@@ -561,12 +563,11 @@ type PageInfo {
 }
 
 type Query {
+  currentAbilityRules: [AuthAbilityRuleType!]!
   currentMember: Member
   currentSession: Session
   currentUser: User!
-  currentUserAbilityRules: [AuthAbilityRuleType!]!
   currentWorkspace: Workspace
-  currentWorkspaceAbilityRules: [AuthAbilityRuleType!]!
   invitation(id: ID!): Invitation
   member(id: ID!): Member
   socialProviders: [AuthSocialProviderType!]!
@@ -1345,6 +1346,7 @@ type WorkspaceApiKey {
   prefix: String
   start: String
   updatedAt: DateTime!
+  workspaceId: ID!
 }
 
 type WorkspaceApiKeyConnection {

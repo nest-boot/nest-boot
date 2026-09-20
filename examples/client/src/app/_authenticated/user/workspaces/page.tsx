@@ -80,6 +80,7 @@ const GET_WORKSPACES_FROM_USER_WORKSPACES_ROUTE = graphql(`
       ) {
         edges {
           node {
+            workspaceId
             id
             roles
             expiresAt

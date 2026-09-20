@@ -8,12 +8,9 @@ import {
   type RawRuleFrom,
 } from "@casl/ability";
 
-/** CASL ability containing user-scoped authorization rules. */
-export class UserAbility extends Ability<AbilityTuple, MongoQuery> {
-  /** Keeps user and workspace abilities nominally distinct. */
-  declare private readonly userAbilityBrand: never;
-
-  /** Creates a user ability with CASL's Mongo-style condition matching. */
+/** CASL ability for the authenticated request and its selected workspace. */
+export class AuthAbility extends Ability<AbilityTuple, MongoQuery> {
+  /** Creates an ability with CASL's Mongo-style condition matching. */
   constructor(
     rules: RawRuleFrom<AbilityTuple, MongoQuery>[] = [],
     options: AbilityOptions<AbilityTuple, MongoQuery> = {},

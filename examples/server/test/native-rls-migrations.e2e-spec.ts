@@ -212,7 +212,7 @@ describe('example native RLS migrations with PGlite', () => {
             expect(await admin.count(Session, { user })).toBe(revoke ? 0 : 1);
             expect(RequestContext.get(Session)).toBe(revoke ? null : session);
             expect(RequestContext.get(User)).toBe(revoke ? null : user);
-            expect(access.userCan('create', Workspace)).toBe(!revoke);
+            expect(access.can('create', Workspace)).toBe(!revoke);
             expect(em.getSessionContext()?.role).toBe(
               revoke ? 'anonymous' : 'authenticated',
             );
@@ -331,7 +331,7 @@ describe('example native RLS migrations with PGlite', () => {
             );
             expect(RequestContext.get(User)).toBe(deleted ? null : user);
             expect(RequestContext.get(Session)).toBe(deleted ? null : session);
-            expect(access.userCan('create', Workspace)).toBe(!deleted);
+            expect(access.can('create', Workspace)).toBe(!deleted);
             expect(em.getSessionContext()?.role).toBe(
               deleted ? 'anonymous' : 'authenticated',
             );
@@ -1173,9 +1173,9 @@ describe('example native RLS migrations with PGlite', () => {
     };
     const scoped = orm.em.fork({ session });
     const service = new MemberService(scoped, {}, {
+      assertCan: vi.fn(),
       assertCurrentWorkspace: vi.fn(),
       assertCurrentMember: vi.fn(),
-      assertWorkspaceCan: vi.fn(),
       assertCanGrantWorkspacePermissions: vi.fn(),
     } as unknown as AccessControlService);
     const context = new RequestContext({ type: 'test' });
@@ -1496,14 +1496,12 @@ describe('example native RLS migrations with PGlite', () => {
       });
     const options = {};
     const access = {
-      userCan: vi.fn().mockReturnValue(true),
-      workspaceCan: vi.fn().mockReturnValue(true),
+      can: vi.fn().mockReturnValue(true),
       assertCurrentUser: vi.fn(),
       assertUserSession: vi.fn(),
-      assertUserCan: vi.fn(),
+      assertCan: vi.fn(),
       assertCurrentWorkspace: vi.fn(),
       assertCurrentMember: vi.fn(),
-      assertWorkspaceCan: vi.fn(),
     } as unknown as AccessControlService;
     const workspaceServiceFor = (em: EntityManager) =>
       createContextualAuthService(
@@ -1999,12 +1997,13 @@ describe('example native RLS migrations with PGlite', () => {
     expect(await anonymous.findOne(User, target.id)).toBeNull();
 
     const options: AuthModuleOptions = {
+      buildAbility: (rules) => {
+        rules.cannot(['read'], User, { id: { $ne: target.id } });
+      },
+
       user: {
         permissions: ['account-admin:view'],
         roles: { user: [] },
-        buildAbility: (rules) => {
-          rules.cannot(['read'], User, { id: { $ne: target.id } });
-        },
       },
     };
     const service = new UserService(

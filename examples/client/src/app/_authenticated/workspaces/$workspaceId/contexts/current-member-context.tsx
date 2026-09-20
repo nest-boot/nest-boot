@@ -1,13 +1,14 @@
-import { createContext, useContext, useMemo } from "react";
+import { createContext, useContext } from "react";
 import { useSuspenseQuery } from "@apollo/client/react";
 import type { ReactNode } from "react";
 import type { GetCurrentMemberFromMemberContextQuery } from "@/gql/graphql";
 import { graphql } from "@/gql";
-import { createAbility } from "@/lib/ability";
+import { AbilityProvider } from "@/contexts/ability-context";
 
 const GET_CURRENT_MEMBER_FROM_MEMBER_CONTEXT = graphql(`
   query getCurrentMemberFromMemberContext {
     currentMember {
+      workspaceId
       id
       roles
       permissions
@@ -15,7 +16,7 @@ const GET_CURRENT_MEMBER_FROM_MEMBER_CONTEXT = graphql(`
       name
       email
     }
-    currentWorkspaceAbilityRules {
+    currentAbilityRules {
       actions
       subjects
       fields
@@ -29,38 +30,19 @@ const GET_CURRENT_MEMBER_FROM_MEMBER_CONTEXT = graphql(`
 const CurrentMemberContext = createContext<
   GetCurrentMemberFromMemberContextQuery["currentMember"] | null
 >(null);
-const CurrentWorkspaceAbilityContext = createContext<ReturnType<
-  typeof createAbility
-> | null>(null);
 
 export function CurrentMemberProvider({ children }: { children: ReactNode }) {
   const { data } = useSuspenseQuery(GET_CURRENT_MEMBER_FROM_MEMBER_CONTEXT, {
     fetchPolicy: "network-only",
   });
-  const ability = useMemo(
-    () => createAbility(data.currentWorkspaceAbilityRules),
-    [data.currentWorkspaceAbilityRules],
-  );
 
   return (
     <CurrentMemberContext value={data.currentMember}>
-      <CurrentWorkspaceAbilityContext value={ability}>
+      <AbilityProvider rules={data.currentAbilityRules}>
         {children}
-      </CurrentWorkspaceAbilityContext>
+      </AbilityProvider>
     </CurrentMemberContext>
   );
-}
-
-export function useCurrentWorkspaceAbility() {
-  const ability = useContext(CurrentWorkspaceAbilityContext);
-
-  if (ability == null) {
-    throw new Error(
-      "useCurrentWorkspaceAbility must be used within a CurrentMemberProvider",
-    );
-  }
-
-  return ability;
 }
 
 export function useCurrentMemberContext() {

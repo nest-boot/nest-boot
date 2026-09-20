@@ -104,11 +104,11 @@ export class SessionService {
     const current = RequestContext.isActive() ? RequestContext.get(User) : null;
     const self =
       !getCurrentApiKey() && current?.id === session.impersonatedBy.id;
-    if (!self) this.accessControlService.assertUserCan("read", User);
+    if (!self) this.accessControlService.assertCan("read", User);
     const user = await this.em.findOne(User, {
       id: String(session.impersonatedBy.id),
     } as FilterQuery<User>);
-    if (user && !self) this.accessControlService.assertUserCan("read", user);
+    if (user && !self) this.accessControlService.assertCan("read", user);
     return user;
   }
 
@@ -118,14 +118,14 @@ export class SessionService {
       : undefined;
     const apiKey = RequestContext.isActive() ? getCurrentApiKey() : undefined;
     if (!current || String(current.id) !== String(user.id) || apiKey) {
-      this.accessControlService.assertUserCan("read", session ?? Session);
+      this.accessControlService.assertCan("read", session ?? Session);
     }
   }
 
   /** Revokes one session by ID when it belongs to the supplied user. */
   async revokeSession(user: User | string, id: string): Promise<boolean> {
     user = await this.resolveUserForRevocation(user);
-    this.accessControlService.assertUserCan("revoke", Session);
+    this.accessControlService.assertCan("revoke", Session);
     const current = RequestContext.isActive()
       ? RequestContext.get(Session)
       : null;
@@ -142,7 +142,7 @@ export class SessionService {
           { filters: false, lockMode: LockMode.PESSIMISTIC_WRITE },
         );
         if (!session) return false;
-        this.accessControlService.assertUserCan("revoke", session);
+        this.accessControlService.assertCan("revoke", session);
         await em.remove(session).flush();
         return true;
       },
@@ -155,7 +155,7 @@ export class SessionService {
   /** Revokes the user's sessions, including impersonation sessions they started. */
   async revokeUserSessions(user: User | string): Promise<number> {
     user = await this.resolveUserForRevocation(user);
-    this.accessControlService.assertUserCan("revoke", Session);
+    this.accessControlService.assertCan("revoke", Session);
     const current = RequestContext.isActive()
       ? RequestContext.get(Session)
       : null;
@@ -172,7 +172,7 @@ export class SessionService {
           { filters: false, lockMode: LockMode.PESSIMISTIC_WRITE },
         );
         for (const session of sessions)
-          this.accessControlService.assertUserCan("revoke", session);
+          this.accessControlService.assertCan("revoke", session);
         if (sessions.length === 0) return 0;
         // Delete only the locked, authorized snapshot; never include unchecked new sessions.
         return await em.nativeDelete(Session, {
@@ -187,7 +187,7 @@ export class SessionService {
 
   private async resolveUserForRevocation(user: User | string): Promise<User> {
     if (typeof user !== "string") return user;
-    this.accessControlService.assertUserCan("revoke", Session);
+    this.accessControlService.assertCan("revoke", Session);
     const entity = await this.em.findOne(
       User,
       { id: user } as FilterQuery<User>,

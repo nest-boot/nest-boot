@@ -2,8 +2,7 @@ import type { EntityManager } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import { BadRequestException } from "@nestjs/common";
 
-import { UserAbility } from "../abilities/user.ability.js";
-import { WorkspaceAbility } from "../abilities/workspace.ability.js";
+import { AuthAbility } from "../abilities/auth.ability.js";
 import { API_KEY } from "../auth.constants.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { Member } from "../entities/member.entity.js";
@@ -13,10 +12,7 @@ import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 import type { RequestIdentityPatch } from "../interfaces/request-identity-patch.interface.js";
 import type { ApiKey } from "../types/api-key.type.js";
-import {
-  buildRequestUserAbility,
-  buildRequestWorkspaceAbility,
-} from "../utils/build-request-ability.util.js";
+import { buildRequestAbility } from "../utils/build-request-ability.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
 import { invalidateRequestPermissions } from "../utils/resolve-request-permissions.util.js";
 
@@ -63,7 +59,7 @@ export class RequestIdentity {
       RequestContext.get(Member)?.id !== member.id
     )
       return;
-    if (member.status !== "ACTIVE") this.clearWorkspace(em);
+    if (member.status !== "ACTIVE") this.clearWorkspace(em, options);
     else this.update(em, options, { member });
   }
 
@@ -84,22 +80,10 @@ export class RequestIdentity {
     else this.update(em, options, { apiKey });
   }
 
-  /** Prepares missing abilities for a guard without rebuilding the current identity. */
+  /** Prepares the request ability once, failing closed when configuration rejects. */
   static prepare(options: AuthModuleOptions): void {
-    if (!RequestContext.isActive()) return;
-    try {
-      const user =
-        RequestContext.get(UserAbility) ?? buildRequestUserAbility(options);
-      const workspace =
-        RequestContext.get(WorkspaceAbility) ??
-        buildRequestWorkspaceAbility(options);
-      RequestContext.set(UserAbility, user);
-      RequestContext.set(WorkspaceAbility, workspace);
-    } catch (error) {
-      RequestContext.set(UserAbility, new UserAbility());
-      RequestContext.set(WorkspaceAbility, new WorkspaceAbility());
-      throw error;
-    }
+    if (!RequestContext.isActive() || RequestContext.get(AuthAbility)) return;
+    this.refresh(options);
   }
 
   /** Stages identity while authentication is being resolved, before a guard can run. */
@@ -113,20 +97,15 @@ export class RequestIdentity {
     if ("apiKey" in patch)
       RequestContext.set<ApiKey | null>(API_KEY, patch.apiKey ?? null);
     invalidateRequestPermissions();
-    RequestContext.set(UserAbility, null);
-    RequestContext.set(WorkspaceAbility, null);
+    RequestContext.set(AuthAbility, null);
   }
 
-  /** Builds both abilities against one permission snapshot, never retaining old grants on failure. */
+  /** Rebuilds one ability, never retaining old grants on failure. */
   static refresh(options: AuthModuleOptions): void {
     if (!RequestContext.isActive()) return;
     invalidateRequestPermissions();
-    RequestContext.set(UserAbility, new UserAbility());
-    RequestContext.set(WorkspaceAbility, new WorkspaceAbility());
-    const user = buildRequestUserAbility(options);
-    const workspace = buildRequestWorkspaceAbility(options);
-    RequestContext.set(UserAbility, user);
-    RequestContext.set(WorkspaceAbility, workspace);
+    RequestContext.set(AuthAbility, new AuthAbility());
+    RequestContext.set(AuthAbility, buildRequestAbility(options));
   }
 
   /** Publishes a committed identity change; failures revoke the request instead of retaining stale grants. */
@@ -161,8 +140,7 @@ export class RequestIdentity {
       apiKey: null,
     });
     if (RequestContext.isActive()) {
-      RequestContext.set(UserAbility, new UserAbility());
-      RequestContext.set(WorkspaceAbility, new WorkspaceAbility());
+      RequestContext.set(AuthAbility, new AuthAbility());
     }
     if (em.getSessionContext())
       em.setSessionContext({
@@ -171,20 +149,13 @@ export class RequestIdentity {
       });
   }
 
-  /** Clears workspace scope while retaining the user credential and its prepared ability. */
-  static clearWorkspace(em: EntityManager): void {
+  /** Revokes workspace rules and rebuilds the remaining user ability after a committed change. */
+  static clearWorkspace(em: EntityManager, options: AuthModuleOptions): void {
     if (getCurrentApiKey() instanceof WorkspaceApiKey) {
       this.clear(em);
       return;
     }
-    if (RequestContext.isActive()) {
-      RequestContext.set<Member | null>(Member, null);
-      RequestContext.set<Workspace | null>(Workspace, null);
-      invalidateRequestPermissions();
-      RequestContext.set(WorkspaceAbility, new WorkspaceAbility());
-    }
-    if (em.getSessionContext())
-      em.setSessionContext({ variables: { "app.workspace.id": "" } });
+    this.update(em, options, { member: null, workspace: null });
   }
 
   /** Synchronizes only identity values; database policies never receive application permissions. */

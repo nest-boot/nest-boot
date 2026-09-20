@@ -14,13 +14,13 @@ export class ReportService {
 
   async getReport(id: string): Promise<Report> {
     const report = await this.loadReport(id);
-    this.access.assertWorkspaceCan('read', report);
+    this.access.assertCan('read', report);
     return report;
   }
 
   async archiveReport(id: string): Promise<Report> {
     const report = await this.loadReport(id);
-    this.access.assertWorkspaceCan('archive', report);
+    this.access.assertCan('archive', report);
     return await this.repository.archive(report);
   }
 

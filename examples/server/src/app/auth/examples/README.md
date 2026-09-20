@@ -11,8 +11,8 @@ It does not add an auth entity, database table, GraphQL resolver, or route.
 3. Implement `ReportRepository` using your persistence layer and register it with
    `ReportService` in your business module. Keep the global `AuthGuard` enabled.
 4. Pass only the operation target's ID from a resolver/controller. `ReportService`
-   loads trusted ownership/state before checking the current workspace ability.
-5. Query `currentWorkspaceAbilityRules` and hydrate them with the client example's
+   loads trusted ownership/state before checking the unified request ability.
+5. Query `currentAbilityRules` and hydrate them with the client example's
    `createAbility()`. Include `workspaceId` and `archived` in report selections and
    check `createAbilitySubject('Report', report)` to preserve object conditions.
 6. Build key editors from `workspaceApiKeyPermissions`, preselecting only entries
@@ -20,7 +20,7 @@ It does not add an auth entity, database table, GraphQL resolver, or route.
 
 `permissions` declares vocabulary; it grants nothing on its own. `roles` assigns
 permissions, and same-name roles extend the built-ins. Entity role/permission
-setters replace stored assignments. The `can(permission, action, subject, conditions)`
+setters replace stored assignments. The `can({ workspace: permission }, action, subject, conditions)`
 callback automatically checks effective permissions, including credential ceilings;
 do not duplicate that check in the callback. Action names and subject classes remain
 case-sensitive, while GraphQL permission inputs use generated enum names.

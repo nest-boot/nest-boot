@@ -2,8 +2,7 @@
 import type { EntityManager } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 
-import { UserAbility } from "../abilities/user.ability.js";
-import { WorkspaceAbility } from "../abilities/workspace.ability.js";
+import { AuthAbility } from "../abilities/auth.ability.js";
 import { API_KEY } from "../auth.constants.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { Member } from "../entities/member.entity.js";
@@ -52,8 +51,8 @@ describe("RequestIdentity", () => {
       expect(access.getApiKeyPermissionCeiling()).toBe(first.apiKey);
       expect(Object.isFrozen(first.apiKey)).toBe(true);
       expect(Object.isFrozen(first.user)).toBe(true);
-      expect(access.userCan("read", User)).toBe(true);
-      expect(access.userCan("delete", User)).toBe(false);
+      expect(access.can("read", User)).toBe(true);
+      expect(access.can("delete", User)).toBe(false);
       expect(access.canGrantUserPermissions(["user:read"])).toBe(true);
       expect(access.canGrantUserPermissions(["user:delete"])).toBe(false);
       expect(access.canGrantWorkspacePermissions(["workspace:delete"])).toBe(
@@ -69,7 +68,7 @@ describe("RequestIdentity", () => {
       RequestIdentity.updateUser(manager(), options, user);
       expect(roles).toHaveBeenCalledTimes(2);
       expect(resolveRequestPermissions(options)).not.toBe(first);
-      expect(access.userCan("read", User)).toBe(false);
+      expect(access.can("read", User)).toBe(false);
       expect(access.canGrantUserPermissions(["user:read"])).toBe(false);
       apiKey.permissions = [];
       expect(access.getApiKeyPermissionCeiling()).toEqual([
@@ -109,11 +108,11 @@ describe("RequestIdentity", () => {
     async (failure) => {
       const em = manager();
       const options: AuthModuleOptions = {
-        workspace: {
-          buildAbility: () => {
-            if (failure === "ability") throw new Error("Ability failed");
-          },
+        buildAbility: (_rules) => {
+          if (failure === "ability") throw new Error("Ability failed");
         },
+
+        workspace: {},
       };
       if (failure === "database")
         vi.mocked(em.setSessionContext).mockImplementationOnce(() => {
@@ -136,8 +135,7 @@ describe("RequestIdentity", () => {
         expect(RequestContext.get(Member)).toBeNull();
         expect(RequestContext.get(Workspace)).toBeNull();
         expect(RequestContext.get(API_KEY)).toBeNull();
-        expect(RequestContext.get(UserAbility)?.rules).toEqual([]);
-        expect(RequestContext.get(WorkspaceAbility)?.rules).toEqual([]);
+        expect(RequestContext.get(AuthAbility)?.rules).toEqual([]);
         expect(resolveRequestPermissions(options)).toEqual({
           user: [],
           workspace: [],
@@ -153,11 +151,11 @@ describe("RequestIdentity", () => {
 
   it("does not leave a partially prepared ability after a builder fails", async () => {
     const options: AuthModuleOptions = {
-      workspace: {
-        buildAbility: () => {
-          throw new Error("Failed");
-        },
+      buildAbility: (_rules) => {
+        throw new Error("Failed");
       },
+
+      workspace: {},
     };
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
       RequestIdentity.stage({
@@ -169,8 +167,8 @@ describe("RequestIdentity", () => {
         RequestIdentity.prepare(options);
       }).toThrow("Failed");
       const access = new AccessControlService(options);
-      expect(access.userCan("delete", User)).toBe(false);
-      expect(access.workspaceCan("read", Workspace)).toBe(false);
+      expect(access.can("delete", User)).toBe(false);
+      expect(access.can("read", Workspace)).toBe(false);
     });
   });
 
@@ -196,15 +194,15 @@ describe("RequestIdentity", () => {
           workspace: new Workspace(),
         });
         RequestIdentity.prepare(options);
-        RequestIdentity.clearWorkspace(em);
+        RequestIdentity.clearWorkspace(em, {});
         expect(resolveRequestPermissions(options).workspace).toEqual([]);
-        expect(
-          RequestContext.get(WorkspaceAbility)?.can("delete", Workspace),
-        ).toBe(false);
+        expect(RequestContext.get(AuthAbility)?.can("delete", Workspace)).toBe(
+          false,
+        );
         expect(RequestContext.get(API_KEY)).toBe(
           Key === UserApiKey ? key : null,
         );
-        expect(new AccessControlService(options).userCan("read", User)).toBe(
+        expect(new AccessControlService(options).can("read", User)).toBe(
           Key === UserApiKey,
         );
       });

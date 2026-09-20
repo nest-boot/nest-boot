@@ -1,5 +1,6 @@
 import { createMongoAbility, subject } from "@casl/ability";
 import { RequestContext } from "@nest-boot/request-context";
+import { assert } from "vitest";
 
 import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
@@ -8,10 +9,7 @@ import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 import { RequestIdentity } from "../infrastructure/request-identity.js";
 import type { AbilityRules } from "../interfaces/ability-rules.interface.js";
-import {
-  buildRequestUserAbility,
-  buildRequestWorkspaceAbility,
-} from "./build-request-ability.util.js";
+import { buildRequestAbility } from "./build-request-ability.util.js";
 import { serializeAbilityRules } from "./serialize-ability-rules.util.js";
 
 describe("framework-owned request abilities", () => {
@@ -26,15 +24,22 @@ describe("framework-owned request abilities", () => {
     const conditions = { authorId: "me" };
     const fields = ["title", "secret"];
     let saved: AbilityRules | undefined;
-    const ability = buildRequestUserAbility({
+    const ability = buildRequestAbility({
+      buildAbility: (rules) => {
+        saved = rules;
+        rules.cannot("update", "Article", "secret");
+        rules.can(
+          { user: "article:update" },
+          "update",
+          "Article",
+          fields,
+          conditions,
+        );
+        rules.cannot("delete", "User");
+      },
+
       user: {
         permissions: ["article:update"],
-        buildAbility: (rules) => {
-          saved = rules;
-          rules.cannot("update", "Article", "secret");
-          rules.can("article:update", "update", "Article", fields, conditions);
-          rules.cannot("delete", "User");
-        },
       },
     });
     if (!ability) throw new Error("Expected user ability");
@@ -42,9 +47,9 @@ describe("framework-owned request abilities", () => {
     expect(ability.can("delete", new User())).toBe(false);
     fields.push("private");
     conditions.authorId = "other";
-    expect(() => saved?.can("article:update", "delete", "Article")).toThrow(
-      "synchronously",
-    );
+    expect(() =>
+      saved?.can({ user: "article:update" }, "delete", "Article"),
+    ).toThrow("synchronously");
     const restored = createMongoAbility(serializeAbilityRules(ability));
     for (const candidate of [ability, restored]) {
       const article = subject("Article", { authorId: "me" });
@@ -57,14 +62,14 @@ describe("framework-owned request abilities", () => {
   it("rejects unknown permission bindings even if the principal lacks the grant", () => {
     RequestContext.set(User, new User());
     expect(() =>
-      buildRequestUserAbility({
-        user: {
-          buildAbility: (rules) => {
-            rules.can("unknown:read", "read", "Article");
-          },
+      buildRequestAbility({
+        buildAbility: (rules) => {
+          rules.can({ user: "unknown:read" }, "read", "Article");
         },
+
+        user: {},
       }),
-    ).toThrow("Unknown ability permission: unknown:read");
+    ).toThrow("Unknown user ability permission: unknown:read");
   });
 
   beforeEach(() => {
@@ -82,19 +87,19 @@ describe("framework-owned request abilities", () => {
       Object.assign(new Member(), { roles: ["owner"] }),
     );
     RequestContext.set(Workspace, new Workspace());
+    Object.assign(requireMember(), {
+      user: RequestContext.get(User),
+      workspace: RequestContext.get(Workspace),
+    });
     RequestIdentity.stage({
       apiKey: Object.assign(new UserApiKey(), {
         permissions: ["user:read", "workspace:update"],
       }),
     });
-    expect(buildRequestUserAbility({})?.can("read", User)).toBe(true);
-    expect(buildRequestUserAbility({})?.can("delete", User)).toBe(false);
-    expect(buildRequestWorkspaceAbility({})?.can("update", Workspace)).toBe(
-      true,
-    );
-    expect(buildRequestWorkspaceAbility({})?.can("delete", Workspace)).toBe(
-      false,
-    );
+    expect(buildRequestAbility({})?.can("read", User)).toBe(true);
+    expect(buildRequestAbility({})?.can("delete", User)).toBe(false);
+    expect(buildRequestAbility({})?.can("update", Workspace)).toBe(true);
+    expect(buildRequestAbility({})?.can("delete", Workspace)).toBe(false);
   });
 
   it("binds custom conditional grants to effective permissions and retains restrictions", () => {
@@ -103,15 +108,18 @@ describe("framework-owned request abilities", () => {
       Object.assign(new User(), { roles: [], permissions: ["article:read"] }),
     );
     const options = {
+      buildAbility: (rules: AbilityRules) => {
+        rules.can({ user: "article:read" }, "read", "Article", {
+          authorId: "me",
+        });
+        rules.cannot("read", "Article", { hidden: true });
+      },
+
       user: {
         permissions: ["article:read"],
-        buildAbility: (rules: AbilityRules) => {
-          rules.can("article:read", "read", "Article", { authorId: "me" });
-          rules.cannot("read", "Article", { hidden: true });
-        },
       },
     };
-    const ability = buildRequestUserAbility(options);
+    const ability = buildRequestAbility(options);
     if (!ability) throw new Error("Expected a user ability");
     expect(ability.can("read", subject("Article", { authorId: "me" }))).toBe(
       true,
@@ -125,9 +133,7 @@ describe("framework-owned request abilities", () => {
     RequestIdentity.stage({
       apiKey: Object.assign(new UserApiKey(), { permissions: [] }),
     });
-    expect(buildRequestUserAbility(options)?.can("read", "Article")).toBe(
-      false,
-    );
+    expect(buildRequestAbility(options)?.can("read", "Article")).toBe(false);
   });
 
   it.each([User, "User", WorkspaceApiKey, "all", ["Article", User]])(
@@ -135,12 +141,13 @@ describe("framework-owned request abilities", () => {
     (target) => {
       RequestContext.set(User, new User());
       expect(() =>
-        buildRequestUserAbility({
+        buildRequestAbility({
+          buildAbility: (rules) => {
+            rules.can({ user: "article:read" }, "manage", target);
+          },
+
           user: {
             permissions: ["article:read"],
-            buildAbility: (rules) => {
-              rules.can("article:read", "manage", target);
-            },
           },
         }),
       ).toThrow("built-in auth");
@@ -149,21 +156,28 @@ describe("framework-owned request abilities", () => {
 
   it("allows restrictions but does not expose the builder or accept a replacement ability", () => {
     RequestContext.set(User, Object.assign(new User(), { roles: ["admin"] }));
-    const ability = buildRequestUserAbility({
-      user: {
-        buildAbility: (rules) => {
-          expect(rules).not.toHaveProperty("build");
-          expect(rules).not.toHaveProperty("rules");
-          rules.cannot("delete", User);
-        },
+    const ability = buildRequestAbility({
+      buildAbility: (rules) => {
+        expect(rules).not.toHaveProperty("build");
+        expect(rules).not.toHaveProperty("rules");
+        rules.cannot("delete", User);
       },
+
+      user: {},
     });
     expect(ability?.can("read", User)).toBe(true);
     expect(ability?.can("delete", User)).toBe(false);
     expect(() =>
-      buildRequestUserAbility({
-        user: { buildAbility: (() => ({ can: () => true })) as never },
+      buildRequestAbility({
+        buildAbility: (() => ({ can: () => true })) as never,
+
+        user: {},
       }),
     ).toThrow("must not return");
   });
 });
+function requireMember(): Member {
+  const member = RequestContext.get(Member);
+  assert(member);
+  return member;
+}

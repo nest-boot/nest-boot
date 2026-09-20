@@ -78,10 +78,10 @@ export class WorkspaceApiKeyService {
     workspace: Workspace,
   ): Promise<WorkspaceApiKey | null> {
     this.assertWorkspacePrincipal(workspace);
-    this.accessControlService.assertWorkspaceCan("read", WorkspaceApiKey);
+    this.accessControlService.assertCan("read", WorkspaceApiKey);
     const apiKey = await this.getVisibleApiKey(id, workspace);
     if (apiKey) {
-      this.accessControlService.assertWorkspaceCan("read", apiKey);
+      this.accessControlService.assertCan("read", apiKey);
     }
     return apiKey;
   }
@@ -92,7 +92,7 @@ export class WorkspaceApiKeyService {
     args: ConnectionArgsInterface<WorkspaceApiKey>,
   ): Promise<ConnectionInterface<WorkspaceApiKey>> {
     this.assertWorkspacePrincipal(workspace);
-    this.accessControlService.assertWorkspaceCan("read", WorkspaceApiKey);
+    this.accessControlService.assertCan("read", WorkspaceApiKey);
     const where = this.getOwnedListFilter(workspace);
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
@@ -102,7 +102,7 @@ export class WorkspaceApiKeyService {
     });
     // Reject the whole page rather than silently changing cursor pagination.
     for (const { node } of connection.edges) {
-      this.accessControlService.assertWorkspaceCan("read", node);
+      this.accessControlService.assertCan("read", node);
     }
     return connection;
   }
@@ -113,7 +113,7 @@ export class WorkspaceApiKeyService {
     options: CreateApiKeyOptions,
   ): Promise<CreatedApiKey<WorkspaceApiKey>> {
     this.assertWorkspacePrincipal(workspace);
-    this.accessControlService.assertWorkspaceCan("write", WorkspaceApiKey);
+    this.accessControlService.assertCan("write", WorkspaceApiKey);
     const permissions = this.normalizePermissions(
       options.permissions === undefined
         ? resolveApiKeyPermissionCatalog(this.authOptions, "workspace").defaults
@@ -128,9 +128,9 @@ export class WorkspaceApiKeyService {
     id: string,
     input: UpdateApiKeyOptions,
   ): Promise<WorkspaceApiKey> {
-    this.accessControlService.assertWorkspaceCan("write", WorkspaceApiKey);
+    this.accessControlService.assertCan("write", WorkspaceApiKey);
     const apiKey = await this.findWritableApiKey(id);
-    this.accessControlService.assertWorkspaceCan("write", apiKey);
+    this.accessControlService.assertCan("write", apiKey);
     const permissions =
       input.permissions === undefined
         ? undefined
@@ -154,9 +154,9 @@ export class WorkspaceApiKeyService {
 
   /** Deletes a key owned by the authenticated workspace. */
   async deleteWorkspaceApiKey(id: string): Promise<WorkspaceApiKey> {
-    this.accessControlService.assertWorkspaceCan("write", WorkspaceApiKey);
+    this.accessControlService.assertCan("write", WorkspaceApiKey);
     const apiKey = await this.findWritableApiKey(id);
-    this.accessControlService.assertWorkspaceCan("write", apiKey);
+    this.accessControlService.assertCan("write", apiKey);
     return await ApiKeyLifecycle.delete(this.em, this.authOptions, apiKey);
   }
 
@@ -180,7 +180,7 @@ export class WorkspaceApiKeyService {
           prefix,
           start: plaintextApiKey.slice(0, 8),
         } as RequiredEntityData<WorkspaceApiKey>);
-        this.accessControlService.assertWorkspaceCan("write", entity);
+        this.accessControlService.assertCan("write", entity);
         await em.persist(entity).flush();
         return entity;
       },

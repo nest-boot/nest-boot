@@ -40,7 +40,8 @@ export function createTestInvitation(): Invitation {
 }
 
 export function createWorkspaceServices(
-  workspace: NonNullable<AuthModuleOptions["workspace"]> = {},
+  workspace: NonNullable<AuthModuleOptions["workspace"]> &
+    Pick<AuthModuleOptions, "buildAbility"> = {},
 ) {
   const em = {
     setSessionContext: vi.fn(),
@@ -70,17 +71,16 @@ export function createWorkspaceServices(
 
   const options = {
     workspace,
+    buildAbility: workspace.buildAbility,
   } as unknown as AuthModuleOptions;
   const accessControlService = {
     canGrantWorkspacePermissions: vi.fn().mockReturnValue(true),
-    userCan: vi.fn().mockReturnValue(true),
-    workspaceCan: vi.fn().mockReturnValue(true),
+    can: vi.fn().mockReturnValue(true),
     assertCurrentUser: vi.fn(),
     assertUserSession: vi.fn(),
     assertCurrentWorkspace: vi.fn(),
     assertCurrentMember: vi.fn(),
-    assertUserCan: vi.fn(),
-    assertWorkspaceCan: vi.fn(),
+    assertCan: vi.fn(),
     assertCanGrantWorkspacePermissions: vi.fn(),
   } as unknown as AccessControlService;
   return {

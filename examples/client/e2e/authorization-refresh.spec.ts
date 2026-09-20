@@ -30,10 +30,7 @@ for (const scope of ["user", "workspace"] as const) {
         !body.errors
       )
         updated = true;
-      const field =
-        scope === "user"
-          ? "currentUserAbilityRules"
-          : "currentWorkspaceAbilityRules";
+      const field = "currentAbilityRules";
       if (body.data?.[field]) {
         // Model a server extension whose effective rules change with the profile.
         body.data[field].push({

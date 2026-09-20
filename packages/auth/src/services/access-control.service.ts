@@ -3,8 +3,7 @@ import { Reference } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException, Inject, Injectable } from "@nestjs/common";
 
-import { UserAbility } from "../abilities/user.ability.js";
-import { WorkspaceAbility } from "../abilities/workspace.ability.js";
+import { AuthAbility } from "../abilities/auth.ability.js";
 import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { Member } from "../entities/member.entity.js";
@@ -26,52 +25,30 @@ export class AccessControlService {
     private readonly options: AuthModuleOptions,
   ) {}
 
-  /** Returns whether the current principal may perform a user-scoped action. */
-  userCan(action: string, subject: Subject): boolean {
-    return this.getUserAbility()?.can(action, subject) ?? false;
+  /** Evaluates an action against the unified request ability. */
+  can(action: string, subject: Subject, field?: string): boolean {
+    const ability = this.getAbility();
+    if (!ability) return false;
+    return field === undefined
+      ? ability.can(action, subject)
+      : ability.can(action, subject, field);
   }
 
-  /** Returns the prepared ability only while its user identity is available. */
-  getUserAbility(): UserAbility | null {
-    if (!RequestContext.isActive()) return null;
-
-    const user = RequestContext.get(User);
-    const apiKey = getCurrentApiKey();
-    if (!user || (apiKey && this.isWorkspaceApiKey(apiKey))) return null;
-    return RequestContext.get(UserAbility) ?? null;
-  }
-
-  /** Throws unless the current principal may perform a user-scoped action. */
-  assertUserCan(action: string, subject: Subject): void {
-    if (!this.userCan(action, subject)) {
-      throw new ForbiddenException(
-        `You are not allowed to ${action} this user-scoped resource`,
-      );
-    }
-  }
-
-  /** Returns whether the current principal may perform a workspace action. */
-  workspaceCan(action: string, subject: Subject): boolean {
-    return this.getWorkspaceAbility()?.can(action, subject) ?? false;
-  }
-
-  /** Returns the prepared ability only while its workspace identity is available. */
-  getWorkspaceAbility(): WorkspaceAbility | null {
-    if (!RequestContext.isActive() || !RequestContext.get(Workspace))
+  /** Returns the prepared ability only while an authenticated identity is available. */
+  getAbility(): AuthAbility | null {
+    if (
+      !RequestContext.isActive() ||
+      (!RequestContext.get(User) && !getCurrentApiKey())
+    )
       return null;
-
-    const apiKey = getCurrentApiKey();
-    const workspaceApiKey = apiKey && this.isWorkspaceApiKey(apiKey);
-    const member = RequestContext.get(Member);
-    if (!workspaceApiKey && !member) return null;
-    return RequestContext.get(WorkspaceAbility) ?? null;
+    return RequestContext.get(AuthAbility) ?? null;
   }
 
-  /** Throws unless the current principal may perform a workspace action. */
-  assertWorkspaceCan(action: string, subject: Subject): void {
-    if (!this.workspaceCan(action, subject)) {
+  /** Throws when the unified ability denies the action, object, or field. */
+  assertCan(action: string, subject: Subject, field?: string): void {
+    if (!this.can(action, subject, field)) {
       throw new ForbiddenException(
-        `You are not allowed to ${action} this workspace resource`,
+        `You are not allowed to ${action} this resource`,
       );
     }
   }
@@ -243,9 +220,5 @@ export class AccessControlService {
     ) {
       throw new ForbiddenException("An active workspace member is required");
     }
-  }
-
-  private isWorkspaceApiKey(apiKey: ApiKey): boolean {
-    return apiKey instanceof WorkspaceApiKey;
   }
 }

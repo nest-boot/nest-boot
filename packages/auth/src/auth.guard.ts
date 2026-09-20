@@ -10,16 +10,14 @@ import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
 import { Session } from "./entities/session.entity.js";
 import { RequestIdentity } from "./infrastructure/request-identity.js";
+import type { CanMetadata } from "./interfaces/can-metadata.interface.js";
 import type { RouteArgumentMetadataValue } from "./interfaces/route-argument-metadata-value.interface.js";
-import type { UserCanMetadata } from "./interfaces/user-can-metadata.interface.js";
-import type { WorkspaceCanMetadata } from "./interfaces/workspace-can-metadata.interface.js";
 import {
+  CAN_METADATA,
   CUSTOM_ROUTE_ARGS_METADATA,
   GQL_PARAM_TYPES,
   ROUTE_ARGS_METADATA,
   ROUTE_PARAM_TYPES,
-  USER_CAN_METADATA,
-  WORKSPACE_CAN_METADATA,
 } from "./permission.constants.js";
 import { AccessControlService } from "./services/access-control.service.js";
 import type { CanSubjectFactory } from "./types/can-subject-factory.type.js";
@@ -29,8 +27,8 @@ import { getCurrentApiKey } from "./utils/get-current-api-key.util.js";
 /** Guard that enforces authentication and evaluates route permissions. */
 @Injectable()
 export class AuthGuard implements CanActivate {
-  /** Rebuilds abilities after an explicit sign-in changes the request identity. */
-  refreshAbilities(): void {
+  /** Rebuilds the ability after an explicit sign-in changes the request identity. */
+  refreshAbility(): void {
     RequestIdentity.refresh(this.options);
   }
   /**
@@ -92,68 +90,22 @@ export class AuthGuard implements CanActivate {
       RequestIdentity.prepare(this.options);
     }
 
-    const targets = [context.getHandler(), context.getClass()];
-    const userCanMetadata = this.reflector.getAllAndMerge<UserCanMetadata[]>(
-      USER_CAN_METADATA,
-      targets,
+    const metadata = this.reflector.getAllAndMerge<CanMetadata[]>(
+      CAN_METADATA,
+      [context.getHandler(), context.getClass()],
     );
-    const workspaceCanMetadata = this.reflector.getAllAndMerge<
-      WorkspaceCanMetadata[]
-    >(WORKSPACE_CAN_METADATA, targets);
-
-    if (!userCanMetadata?.length && !workspaceCanMetadata?.length) {
-      return true;
-    }
-
-    return await this.checkPermissions(
-      userCanMetadata ?? [],
-      workspaceCanMetadata ?? [],
-      context,
-    );
-  }
-
-  private async checkPermissions(
-    userCanMetadata: readonly UserCanMetadata[],
-    workspaceCanMetadata: readonly WorkspaceCanMetadata[],
-    context: ExecutionContext,
-  ): Promise<boolean> {
-    for (const metadata of userCanMetadata) {
-      if (!(await this.checkUserPermission(metadata, context))) {
+    if (!metadata?.length) return true;
+    for (const requirement of metadata) {
+      if (!this.accessControlService.getAbility()) return false;
+      const subject = await this.resolveSubject(requirement, context);
+      if (!this.accessControlService.can(requirement.action, subject))
         return false;
-      }
     }
-
-    for (const metadata of workspaceCanMetadata) {
-      if (!(await this.checkWorkspacePermission(metadata, context))) {
-        return false;
-      }
-    }
-
     return true;
   }
 
-  private async checkUserPermission(
-    canOptions: UserCanMetadata,
-    context: ExecutionContext,
-  ): Promise<boolean> {
-    if (!this.accessControlService.getUserAbility()) return false;
-    const subject = await this.resolveSubject(canOptions, context);
-
-    return this.accessControlService.userCan(canOptions.action, subject);
-  }
-
-  private async checkWorkspacePermission(
-    canOptions: WorkspaceCanMetadata,
-    context: ExecutionContext,
-  ): Promise<boolean> {
-    if (!this.accessControlService.getWorkspaceAbility()) return false;
-    const subject = await this.resolveSubject(canOptions, context);
-
-    return this.accessControlService.workspaceCan(canOptions.action, subject);
-  }
-
   private async resolveSubject(
-    canOptions: UserCanMetadata | WorkspaceCanMetadata,
+    canOptions: CanMetadata,
     context: ExecutionContext,
   ): Promise<Subject> {
     const { subject } = canOptions;
@@ -166,7 +118,7 @@ export class AuthGuard implements CanActivate {
   }
 
   private isSubjectType(
-    subject: UserCanMetadata["subject"],
+    subject: CanMetadata["subject"],
   ): subject is Type<Subject> {
     return Function.prototype.toString.call(subject).startsWith("class ");
   }

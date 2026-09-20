@@ -186,7 +186,7 @@ connection definition is required. Its GraphQL transport exposes these connectio
 ### Follow-ups
 
 - [x] Support multiple requirements from the same authorization scope on one
-      handler. Repeated `@UserCan` and `@WorkspaceCan` declarations always use
+      handler. Repeated `@Can` and `@Can` declarations always use
       `all` matching semantics.
 - [x] Document permission catalogs, direct-permission validation, creator-role
       invariants, API-key permission ceilings, and multi-requirement behavior
@@ -412,11 +412,16 @@ The example migration sequence `Initial → generated schema migrations` enables
 ### Management mutations
 
 Auth builds its own permission-to-ability mappings in `AuthAbilityFactory`;
-`UserAbility` and `WorkspaceAbility` remain plain CASL containers. Optional
-`buildAbility` callbacks receive restricted `AbilityRules`: use
-`can(permission, action, subject, conditions?)` for permission-bound business
-grants and `cannot(action, subject, conditions?)` for additional restrictions.
-Both support field restrictions. Callbacks are synchronous and return nothing.
+one `AuthAbility` contains the rules for the current user and optional workspace.
+The top-level `buildAbility(rules, context)` receives
+`{ user, workspace, member, userPermissions, workspacePermissions }`; identity
+fields are nullable and permission sources remain separate.
+Use `can({ user: permission }, action, subject, conditions?)` or
+`can({ workspace: permission }, action, subject, conditions?)` for permission-bound
+business grants and `cannot(action, subject, conditions?)` for restrictions.
+Both support field restrictions. `@Can()`, `can()`, and `AccessControlService`
+evaluate this same ability. The frontend queries `currentAbilityRules` and uses
+`useAbility()` for both personal and workspace pages. Callbacks are synchronous and return nothing.
 They cannot grant operations on built-in auth entities or `all`, access the raw
 builder, or replace the resulting ability. Restrictions take precedence over
 business grants. The frontend consumes the final serialized rules.

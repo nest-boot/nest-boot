@@ -1,63 +1,36 @@
 import { RequestContext } from "@nest-boot/request-context";
 
-import { UserAbility } from "../abilities/user.ability.js";
-import { WorkspaceAbility } from "../abilities/workspace.ability.js";
-import { Member } from "../entities/member.entity.js";
+import { AuthAbility } from "../abilities/auth.ability.js";
 import { User } from "../entities/user.entity.js";
-import { Workspace } from "../entities/workspace.entity.js";
 import { AccessControlService } from "../services/access-control.service.js";
 import { can } from "./can.util.js";
-
 class TestSubject {}
-
 describe("can", () => {
-  it("routes to workspaceCan by default", async () => {
-    const canMock = vi.fn(() => true);
-    const ability = new WorkspaceAbility();
-    vi.spyOn(ability, "can").mockImplementation(canMock);
-
-    await RequestContext.run(new RequestContext({ type: "http" }), () => {
-      RequestContext.set(Member, new Member());
-      RequestContext.set(Workspace, new Workspace());
-      RequestContext.set(AccessControlService, new AccessControlService({}));
-      RequestContext.set(WorkspaceAbility, ability);
-
-      expect(can("update", TestSubject)).toBe(true);
+  it("fails closed without a context or authorization service", async () => {
+    expect(can("read", TestSubject)).toBe(false);
+    await RequestContext.run(new RequestContext({ type: "test" }), () => {
+      RequestContext.set(
+        AuthAbility,
+        new AuthAbility([{ action: "read", subject: TestSubject }]),
+      );
+      expect(can("read", TestSubject)).toBe(false);
     });
-
-    expect(canMock).toHaveBeenCalledWith("update", TestSubject);
   });
-
-  it("routes an explicit user scope to userCan", async () => {
-    const canMock = vi.fn(() => true);
-    const ability = new UserAbility();
-    vi.spyOn(ability, "can").mockImplementation(canMock);
-
-    await RequestContext.run(new RequestContext({ type: "http" }), () => {
+  it("delegates object and field checks to the unified authorization service", async () => {
+    await RequestContext.run(new RequestContext({ type: "test" }), () => {
+      const access = new AccessControlService({});
       RequestContext.set(User, new User());
-      RequestContext.set(AccessControlService, new AccessControlService({}));
-      RequestContext.set(UserAbility, ability);
-
-      expect(can("update", TestSubject, { scope: "user" })).toBe(true);
+      RequestContext.set(AccessControlService, access);
+      RequestContext.set(
+        AuthAbility,
+        new AuthAbility([
+          { action: "update", subject: TestSubject, fields: ["name"] },
+        ]),
+      );
+      expect(can("update", TestSubject)).toBe(true);
+      expect(can("update", new TestSubject(), "name")).toBe(true);
+      expect(can("update", new TestSubject(), "secret")).toBe(false);
+      expect(can("delete", TestSubject)).toBe(false);
     });
-
-    expect(canMock).toHaveBeenCalledWith("update", TestSubject);
-  });
-
-  it("routes an explicit workspace scope to workspaceCan", async () => {
-    const canMock = vi.fn(() => true);
-    const ability = new WorkspaceAbility();
-    vi.spyOn(ability, "can").mockImplementation(canMock);
-
-    await RequestContext.run(new RequestContext({ type: "http" }), () => {
-      RequestContext.set(Member, new Member());
-      RequestContext.set(Workspace, new Workspace());
-      RequestContext.set(AccessControlService, new AccessControlService({}));
-      RequestContext.set(WorkspaceAbility, ability);
-
-      expect(can("update", TestSubject, { scope: "workspace" })).toBe(true);
-    });
-
-    expect(canMock).toHaveBeenCalledWith("update", TestSubject);
   });
 });

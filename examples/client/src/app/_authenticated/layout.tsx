@@ -12,7 +12,7 @@ const GET_CURRENT_USER_FROM_AUTHENTICATED_ROUTE = graphql(`
     currentUser {
       id
     }
-    currentUserAbilityRules {
+    currentAbilityRules {
       actions
       subjects
       fields
@@ -56,7 +56,7 @@ export const Route = createFileRoute("/_authenticated")({
       }
       return {
         currentUser: data.currentUser,
-        currentUserAbility: createAbility(data.currentUserAbilityRules),
+        ability: createAbility(data.currentAbilityRules),
       };
     } catch (error) {
       throw redirect({

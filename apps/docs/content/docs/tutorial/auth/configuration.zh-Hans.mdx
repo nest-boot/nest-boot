@@ -17,8 +17,9 @@ description: "配置 AuthModule、环境变量与 MikroORM 实体。"
 - **`emailAndPassword.sendResetPassword`** — 覆盖密码重置邮件发送逻辑；
 - **`emailVerification.sendVerificationEmail`** — 覆盖验证邮件发送逻辑；
 - **`user.changeEmail.enabled`** — 启用两阶段邮箱修改；
-- **`user.defaultRole`**、**`user.adminRoles`**、**`user.permissions`**、**`user.roles`** 与 **`user.buildAbility`** — 定义用户角色生命周期与授权；
-- **`workspace.defaultRole`**、**`workspace.creatorRole`**、**`workspace.permissions`**、**`workspace.roles`** 与 **`workspace.buildAbility`** — 定义工作区角色生命周期与授权；
+- **`user.defaultRole`**、**`user.adminRoles`**、**`user.permissions`**、**`user.roles`** — 定义用户角色生命周期与授权；
+- **`workspace.defaultRole`**、**`workspace.creatorRole`**、**`workspace.permissions`**、**`workspace.roles`** — 定义工作区角色生命周期与授权；
+- **`buildAbility`** — 统一构建当前请求的 Ability；上下文包含 user、workspace、member 和两个来源的有效权限数组。
 - **`workspace.sendInvitationEmail`** — 发送已持久化的工作区邀请；
 - **`apiKey.user`** — 用户 Key 的默认权限与授予上限；
 - **`apiKey.workspace`** — 工作区 Key 的默认权限与授予上限；

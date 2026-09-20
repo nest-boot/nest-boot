@@ -78,10 +78,10 @@ export class UserApiKeyService {
   /** Returns a user-owned API key when it belongs to the current user. */
   async getUserApiKey(id: string, user: User): Promise<UserApiKey | null> {
     this.accessControlService.assertCurrentUser(user);
-    this.accessControlService.assertUserCan("read", UserApiKey);
+    this.accessControlService.assertCan("read", UserApiKey);
     const apiKey = await this.getVisibleApiKey(id, user);
     if (apiKey) {
-      this.accessControlService.assertUserCan("read", apiKey);
+      this.accessControlService.assertCan("read", apiKey);
     }
     return apiKey;
   }
@@ -92,7 +92,7 @@ export class UserApiKeyService {
     args: ConnectionArgsInterface<UserApiKey>,
   ): Promise<ConnectionInterface<UserApiKey>> {
     this.accessControlService.assertCurrentUser(user);
-    this.accessControlService.assertUserCan("read", UserApiKey);
+    this.accessControlService.assertCan("read", UserApiKey);
     const where = this.getOwnedListFilter(user);
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
@@ -102,7 +102,7 @@ export class UserApiKeyService {
     });
     // Reject the whole page rather than silently changing cursor pagination.
     for (const { node } of connection.edges) {
-      this.accessControlService.assertUserCan("read", node);
+      this.accessControlService.assertCan("read", node);
     }
     return connection;
   }
@@ -113,7 +113,7 @@ export class UserApiKeyService {
     options: CreateApiKeyOptions,
   ): Promise<CreatedApiKey<UserApiKey>> {
     this.accessControlService.assertCurrentUser(user);
-    this.accessControlService.assertUserCan("write", UserApiKey);
+    this.accessControlService.assertCan("write", UserApiKey);
     const permissions = this.normalizePermissions(
       options.permissions === undefined
         ? resolveApiKeyPermissionCatalog(this.authOptions, "user").defaults
@@ -128,9 +128,9 @@ export class UserApiKeyService {
     id: string,
     input: UpdateApiKeyOptions,
   ): Promise<UserApiKey> {
-    this.accessControlService.assertUserCan("write", UserApiKey);
+    this.accessControlService.assertCan("write", UserApiKey);
     const apiKey = await this.findWritableApiKey(id);
-    this.accessControlService.assertUserCan("write", apiKey);
+    this.accessControlService.assertCan("write", apiKey);
     const user = this.unwrapOwner(apiKey);
     const permissions =
       input.permissions === undefined
@@ -153,9 +153,9 @@ export class UserApiKeyService {
 
   /** Deletes an API key owned by the current user. */
   async deleteUserApiKey(id: string): Promise<UserApiKey> {
-    this.accessControlService.assertUserCan("write", UserApiKey);
+    this.accessControlService.assertCan("write", UserApiKey);
     const apiKey = await this.findWritableApiKey(id);
-    this.accessControlService.assertUserCan("write", apiKey);
+    this.accessControlService.assertCan("write", apiKey);
     return await ApiKeyLifecycle.delete(this.em, this.authOptions, apiKey);
   }
 
@@ -179,7 +179,7 @@ export class UserApiKeyService {
           prefix,
           start: plaintextApiKey.slice(0, 8),
         } as RequiredEntityData<UserApiKey>);
-        this.accessControlService.assertUserCan("write", entity);
+        this.accessControlService.assertCan("write", entity);
         await em.persist(entity).flush();
         return entity;
       },

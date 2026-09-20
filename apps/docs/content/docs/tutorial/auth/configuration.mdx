@@ -18,8 +18,9 @@ Important Nest Boot options include:
 - **`emailAndPassword.sendResetPassword`** — overrides password-reset delivery;
 - **`emailVerification.sendVerificationEmail`** — overrides verification delivery;
 - **`user.changeEmail.enabled`** — enables the two-stage email-change flow;
-- **`user.defaultRole`**, **`user.adminRoles`**, **`user.permissions`**, **`user.roles`**, and **`user.buildAbility`** — define user role lifecycles and authorization;
-- **`workspace.defaultRole`**, **`workspace.creatorRole`**, **`workspace.permissions`**, **`workspace.roles`**, and **`workspace.buildAbility`** — define workspace role lifecycles and authorization;
+- **`user.defaultRole`**, **`user.adminRoles`**, **`user.permissions`**, **`user.roles`** — define user role lifecycles and authorization;
+- **`workspace.defaultRole`**, **`workspace.creatorRole`**, **`workspace.permissions`**, **`workspace.roles`** — define workspace role lifecycles and authorization;
+- **`buildAbility`** — builds one request Ability from user, workspace, member, and the two effective-permission sources.
 - **`workspace.sendInvitationEmail`** — delivers persisted workspace invitations;
 - **`apiKey.user`** — user-key defaults and grant limits;
 - **`apiKey.workspace`** — workspace-key defaults and grant limits;
