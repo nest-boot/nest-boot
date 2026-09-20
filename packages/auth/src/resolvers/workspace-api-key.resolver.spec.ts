@@ -8,7 +8,9 @@ import { WorkspaceApiKeyResolver } from "./workspace-api-key.resolver.js";
 describe("WorkspaceApiKeyResolver", () => {
   it("returns the service's permission choices for the current workspace", () => {
     const owner = { id: "workspace_1" } as Workspace;
-    const result = [{ permission: "workspace:update", grantable: false }];
+    const result = [
+      { permission: "workspace:update", grantable: false, default: true },
+    ];
     const { resolver, apiKeyService } = createResolver({
       getWorkspaceApiKeyPermissions: vi.fn(() => result),
     });

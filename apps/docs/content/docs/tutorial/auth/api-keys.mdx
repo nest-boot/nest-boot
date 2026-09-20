@@ -140,12 +140,14 @@ creating a personal key. Workspace keys cannot send invitations because they
 have no user identity.
 
 Use `userApiKeyPermissions` and `workspaceApiKeyPermissions` to populate key
-editors. Both return `{ permission, grantable }` entries using the corresponding
+editors. Both return `{ permission, grantable, default }` entries using the corresponding
 API-key permission enum. Grantability includes the configured allowlist, the
 issuer's grant ceiling, and the current key's permissions. Workspace-key options
 always mark `invitation:create` as not grantable. Retain non-grantable entries for
 display, but exclude them from new selections and default selections. Services
 still validate every write; this list is not an authorization substitute.
+`default` reflects the configured default permissions independently of grantability.
+Preselect only entries where `default && grantable`; do not infer defaults from enum values.
 
 The allowlist is an additional ceiling, not an automatic grant. Requested
 permissions must also belong to the key owner's supported scope and remain

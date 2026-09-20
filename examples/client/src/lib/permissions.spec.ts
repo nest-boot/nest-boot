@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   authPermissionValues,
+  getDefaultApiKeyPermissions,
   getPermissionOptions,
   isAuthPermission,
   userPermissionValues,
@@ -10,6 +11,16 @@ import {
 } from "./permissions";
 
 describe("permission options", () => {
+  it("selects only server defaults that the caller may grant", () => {
+    expect(
+      getDefaultApiKeyPermissions([
+        { permission: "CUSTOM__READ", grantable: true, default: true },
+        { permission: "CUSTOM__UPDATE", grantable: false, default: true },
+        { permission: "CUSTOM__DELETE", grantable: true, default: false },
+      ]),
+    ).toEqual(["CUSTOM__READ"]);
+    expect(getDefaultApiKeyPermissions([])).toEqual([]);
+  });
   it("exposes the workspace permission catalog", () => {
     expect(workspacePermissionValues).toEqual(
       [

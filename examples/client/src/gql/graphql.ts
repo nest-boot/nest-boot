@@ -1095,6 +1095,7 @@ export type UserApiKeyPermission =
   (typeof UserApiKeyPermission)[keyof typeof UserApiKeyPermission];
 export type UserApiKeyPermissionOption = {
   __typename?: "UserApiKeyPermissionOption";
+  default: Scalars["Boolean"]["output"];
   grantable: Scalars["Boolean"]["output"];
   permission: UserApiKeyPermission;
 };
@@ -1293,6 +1294,7 @@ export type WorkspaceApiKeyPermission =
   (typeof WorkspaceApiKeyPermission)[keyof typeof WorkspaceApiKeyPermission];
 export type WorkspaceApiKeyPermissionOption = {
   __typename?: "WorkspaceApiKeyPermissionOption";
+  default: Scalars["Boolean"]["output"];
   grantable: Scalars["Boolean"]["output"];
   permission: WorkspaceApiKeyPermission;
 };
@@ -1669,6 +1671,7 @@ export type GetUserApiKeysFromUserApiKeysRouteQuery = {
     __typename?: "UserApiKeyPermissionOption";
     permission: UserApiKeyPermission;
     grantable: boolean;
+    default: boolean;
   }>;
   currentUser: {
     __typename?: "User";
@@ -2034,6 +2037,7 @@ export type GetApiKeysFromApiKeysRouteQuery = {
     __typename?: "WorkspaceApiKeyPermissionOption";
     permission: WorkspaceApiKeyPermission;
     grantable: boolean;
+    default: boolean;
   }>;
   currentWorkspace?: {
     __typename?: "Workspace";
@@ -4005,6 +4009,7 @@ export const GetUserApiKeysFromUserApiKeysRouteDocument = {
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "permission" } },
                 { kind: "Field", name: { kind: "Name", value: "grantable" } },
+                { kind: "Field", name: { kind: "Name", value: "default" } },
               ],
             },
           },
@@ -5634,6 +5639,7 @@ export const GetApiKeysFromApiKeysRouteDocument = {
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "permission" } },
                 { kind: "Field", name: { kind: "Name", value: "grantable" } },
+                { kind: "Field", name: { kind: "Name", value: "default" } },
               ],
             },
           },

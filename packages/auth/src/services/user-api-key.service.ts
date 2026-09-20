@@ -67,6 +67,9 @@ export class UserApiKeyService {
     const ceiling = this.accessControlService.getApiKeyPermissionCeiling();
     return permissions.map((permission) => ({
       permission,
+      default:
+        this.authOptions.apiKey?.defaultPermissions?.includes(permission) ??
+        false,
       grantable:
         allowedSet.has(permission) &&
         (!userPermissions.has(permission) ||

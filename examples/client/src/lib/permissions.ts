@@ -27,6 +27,19 @@ export interface PermissionOption<Permission extends string> {
   grantable?: boolean;
 }
 
+/** Preselects server defaults without expanding the current caller's grant ceiling. */
+export function getDefaultApiKeyPermissions<Permission extends string>(
+  catalog: ReadonlyArray<{
+    permission: Permission;
+    grantable: boolean;
+    default: boolean;
+  }>,
+): Array<Permission> {
+  return catalog
+    .filter((option) => option.default && option.grantable)
+    .map((option) => option.permission);
+}
+
 function option<Permission extends string>(
   value: Permission,
 ): PermissionOption<Permission> {

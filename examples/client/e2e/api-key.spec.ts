@@ -47,7 +47,8 @@ test.describe("API keys", () => {
       await issuerPage.getByTestId("api-key-create-action").click();
       await expect(
         issuerPage.getByTestId("permission-WORKSPACE__UPDATE"),
-      ).toBeChecked();
+      ).not.toBeChecked();
+      await issuerPage.getByTestId("permission-WORKSPACE__UPDATE").click();
       for (const permission of [
         "WORKSPACE__DELETE",
         "MEMBER__UPDATE",
@@ -131,7 +132,7 @@ async function exerciseApiKeyLifecycle(
     await expect(invitationPermission).not.toBeChecked();
     await expect(invitationPermission).toBeDisabled();
   } else {
-    await expect(invitationPermission).toBeChecked();
+    await expect(invitationPermission).not.toBeChecked();
     await expect(invitationPermission).toBeEnabled();
   }
   await page.getByTestId("api-key-name-input").fill(names.name);

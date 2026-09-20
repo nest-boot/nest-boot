@@ -66,6 +66,59 @@ function createTestApiKey(): WorkspaceApiKey {
 }
 
 describe("API-key management services", () => {
+  it("reports configured defaults independently of grantability for both key scopes", () => {
+    const { service } = createService({
+      apiKey: { defaultPermissions: ["workspace:update", "member:delete"] },
+    });
+    RequestContext.set(
+      Member,
+      Object.assign(createTestMember(), {
+        roles: ["member"],
+        permissions: ["workspace:update"],
+      }),
+    );
+    RequestContext.set(
+      API_KEY,
+      Object.assign(new UserApiKey(), {
+        user: ref(User, createTestUser()),
+        permissions: ["workspace:update"],
+      }),
+    );
+    for (const options of [
+      service.getUserApiKeyPermissions(createTestUser()),
+      service.getWorkspaceApiKeyPermissions(createTestWorkspace()),
+    ]) {
+      expect(options).toContainEqual({
+        permission: "workspace:update",
+        grantable: true,
+        default: true,
+      });
+      expect(options).toContainEqual({
+        permission: "member:delete",
+        grantable: false,
+        default: true,
+      });
+      expect(
+        options
+          .filter((option) => option.default)
+          .map((option) => option.permission)
+          .sort(),
+      ).toEqual(["member:delete", "workspace:update"]);
+    }
+  });
+
+  it("does not invent defaults when none are configured", () => {
+    const { service } = createService();
+    expect(service.getUserApiKeyPermissions(createTestUser())).toEqual(
+      expect.arrayContaining([expect.objectContaining({ default: false })]),
+    );
+    expect(
+      service
+        .getWorkspaceApiKeyPermissions(createTestWorkspace())
+        .every((option) => !option.default),
+    ).toBe(true);
+  });
+
   it("reports key grantability using both caller ceilings and configuration", () => {
     const { service } = createService({
       apiKey: {
@@ -100,23 +153,28 @@ describe("API-key management services", () => {
     expect(workspaceOptions).toContainEqual({
       permission: "invitation:create",
       grantable: false,
+      default: false,
     });
     const userOptions = service.getUserApiKeyPermissions(user);
     expect(userOptions).toContainEqual({
       permission: "user:get",
       grantable: true,
+      default: false,
     });
     expect(userOptions).toContainEqual({
       permission: "user:delete",
       grantable: false,
+      default: false,
     });
     expect(userOptions).toContainEqual({
       permission: "workspace:update",
       grantable: false,
+      default: false,
     });
     expect(userOptions).toContainEqual({
       permission: "invitation:create",
       grantable: true,
+      default: false,
     });
     RequestIdentity.stage({
       apiKey: Object.assign(new UserApiKey(), {

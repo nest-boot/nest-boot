@@ -68,6 +68,9 @@ export class WorkspaceApiKeyService {
     const allowedSet = new Set(allowed);
     return permissions.map((permission) => ({
       permission,
+      default:
+        this.authOptions.apiKey?.defaultPermissions?.includes(permission) ??
+        false,
       grantable:
         allowedSet.has(permission) &&
         this.accessControlService.canGrantWorkspacePermissions([permission]),
