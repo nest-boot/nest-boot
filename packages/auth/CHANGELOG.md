@@ -1,3 +1,13 @@
+## 8.0.5-beta.1 (2026-09-20)
+
+### 🩹 Fixes
+
+- **auth:** expose server-owned API key default selections ([#348](https://github.com/nest-boot/nest-boot/pull/348))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.5-beta.0 (2026-09-20)
 
 ### 🧱 Updated Dependencies
