@@ -14,7 +14,8 @@
     "revoke": "Revoke",
     "enable": "Enable",
     "save": "Save",
-    "saving": "Saving..."
+    "saving": "Saving...",
+    "retry": "Retry"
   },
   "app": {
     "name": "Nest Boot Example"
@@ -22,5 +23,8 @@
   "contextualSaveBar": {
     "discard": "Discard",
     "message": "Unsaved changes"
+  },
+  "mutation": {
+    "refresh_failed": "Saved successfully, but the latest data could not be loaded."
   }
 }

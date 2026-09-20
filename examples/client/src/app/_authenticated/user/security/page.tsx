@@ -6,6 +6,8 @@ import { t } from "i18next";
 import { toast } from "sonner";
 import { z } from "zod";
 import type { FormEvent } from "react";
+import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
+import { usePasswordPolicy } from "@/hooks/use-password-policy";
 
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import { Button } from "@/components/thread-ui/button";
@@ -151,6 +153,7 @@ export const Route = createFileRoute("/_authenticated/user/security/")({
 });
 
 function UserSecurityComponent() {
+  const { passwordSchema } = usePasswordPolicy();
   const navigate = useNavigate();
   const {
     data: sessionData,
@@ -210,7 +213,7 @@ function UserSecurityComponent() {
       if (!result.data?.revokeCurrentUserSession) {
         throw new Error(t("user:security.sessions.toast.revoke_failed"));
       }
-      await refetch();
+      await refreshAfterMutation(() => refetch());
       toast.success(t("user:security.sessions.toast.revoked"));
     } catch (cause) {
       toast.error(
@@ -230,7 +233,7 @@ function UserSecurityComponent() {
       if (!result.data?.revokeCurrentUserOtherSessions) {
         throw new Error(t("user:security.sessions.toast.revoke_failed"));
       }
-      await refetch();
+      await refreshAfterMutation(() => refetch());
       toast.success(t("user:security.sessions.toast.others_revoked"));
     } catch (cause) {
       toast.error(
@@ -247,7 +250,7 @@ function UserSecurityComponent() {
     event.preventDefault();
     setError(undefined);
 
-    const parsed = createChangePasswordSchema().safeParse({
+    const parsed = createChangePasswordSchema(passwordSchema).safeParse({
       confirmPassword,
       currentPassword,
       newPassword,
@@ -276,7 +279,7 @@ function UserSecurityComponent() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      await refetch({ after: undefined });
+      await refreshAfterMutation(() => refetch({ after: undefined }));
       toast.success(t("user:security.toast.updated"));
     } catch (cause) {
       const message =
@@ -306,7 +309,7 @@ function UserSecurityComponent() {
       if (!result.data?.unlinkCurrentUserAccount) {
         throw new Error(t("user:security.accounts.unlink_failed"));
       }
-      await refetchAccounts();
+      await refreshAfterMutation(() => refetchAccounts());
       toast.success(t("user:security.accounts.unlinked"));
     } catch (cause) {
       toast.error(
@@ -733,13 +736,13 @@ function formatSessionDate(value: string | Date): string {
   }).format(new Date(value));
 }
 
-function createChangePasswordSchema() {
+function createChangePasswordSchema(passwordSchema: z.ZodString) {
   return z
     .object({
       currentPassword: z
         .string()
         .min(1, t("user:security.form.current_required")),
-      newPassword: z.string().min(8, t("auth:form.password.min")),
+      newPassword: passwordSchema,
       confirmPassword: z.string(),
     })
     .refine((value) => value.newPassword === value.confirmPassword, {

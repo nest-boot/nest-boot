@@ -7,8 +7,8 @@ import {
 import type { SqlEntityManager } from "@mikro-orm/sql";
 import {
   type ConnectionArgsInterface,
-  type ConnectionInterface,
   ConnectionManager,
+  type ConnectionResult,
 } from "@nest-boot/graphql-connection";
 import { RequestContext } from "@nest-boot/request-context";
 import {
@@ -19,6 +19,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import type { GraphQLResolveInfo } from "graphql";
 
 import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
@@ -331,12 +332,14 @@ export class InvitationService {
   async getInvitationConnectionByWorkspace(
     workspace: Workspace,
     args: ConnectionArgsInterface<Invitation>,
-  ): Promise<ConnectionInterface<Invitation>> {
+    info?: GraphQLResolveInfo,
+  ): Promise<ConnectionResult<Invitation>> {
     RequestIdentity.assertCurrentWorkspace(workspace);
     assertCan("read", Invitation);
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
     ).find<Invitation>(InvitationConnection, args, {
+      ...(info && { info }),
       where: { workspace },
     });
     for (const { node } of connection.edges) {
@@ -349,12 +352,14 @@ export class InvitationService {
   async getInvitationConnectionByUser(
     user: User,
     args: ConnectionArgsInterface<Invitation>,
-  ): Promise<ConnectionInterface<Invitation>> {
+    info?: GraphQLResolveInfo,
+  ): Promise<ConnectionResult<Invitation>> {
     RequestIdentity.assertUserSession(user);
     const now = new Date();
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
     ).find<Invitation>(InvitationConnection, args, {
+      ...(info && { info }),
       where: {
         email: user.email.toLowerCase(),
         expiresAt: { $gt: now },

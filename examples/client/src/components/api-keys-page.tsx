@@ -19,6 +19,7 @@ import type {
 import type { ApiKeySearch } from "@/lib/api-key-search";
 import type { PageInfo } from "@/lib/connection-search";
 import type { createAbility } from "@/lib/ability";
+import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
 import { createAbilitySubject } from "@/lib/ability";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import { Badge } from "@/components/thread-ui/badge";
@@ -169,7 +170,7 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
           setCreatedDialogOpen(true);
           setCreateDialogOpen(false);
           createForm.reset();
-          await refetch();
+          await refreshAfterMutation(() => refetch());
           toast.success(t("api-key:toast.created_success"));
         }
       } catch (err) {
@@ -290,7 +291,7 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
     try {
       await deleteApiKey(apiKey.id);
 
-      await refetch();
+      await refreshAfterMutation(() => refetch());
       toast.success(t("api-key:toast.deleted_success"));
     } catch (err) {
       if (err instanceof Error) {

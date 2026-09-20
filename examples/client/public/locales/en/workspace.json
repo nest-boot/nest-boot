@@ -47,7 +47,8 @@
       "name": {
         "label": "Name",
         "placeholder": "My Workspace",
-        "required": "Workspace name is required"
+        "required": "Workspace name is required",
+        "too_long": "Workspace name must be at most 255 characters"
       }
     },
     "leave": {
@@ -60,5 +61,10 @@
       "title": "Leave workspace"
     }
   },
-  "title": "Settings"
+  "title": "Settings",
+  "create": {
+    "title": "Create Workspace",
+    "description": "Create a new workspace to start managing your projects.",
+    "failed": "Failed to create workspace"
+  }
 }

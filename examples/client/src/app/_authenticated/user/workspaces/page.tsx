@@ -11,6 +11,7 @@ import { t } from "i18next";
 import { ArrowRight, Check, Plus, X } from "lucide-react";
 import { pick } from "lodash";
 import { toast } from "sonner";
+import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
 
 import { Link } from "@/components/link";
 import { DataTable } from "@/components/thread-ui/data-table";
@@ -176,7 +177,7 @@ function UserWorkspacesComponent() {
 
     try {
       await acceptInvitation({ variables: { id: invitationId } });
-      await refetch();
+      await refreshAfterMutation(() => refetch());
       toast.success(t("user:workspaces.invitations.toast.accepted"));
     } catch (error) {
       toast.error(
@@ -194,7 +195,7 @@ function UserWorkspacesComponent() {
 
     try {
       await rejectInvitation({ variables: { id: invitationId } });
-      await refetch();
+      await refreshAfterMutation(() => refetch());
       toast.success(t("user:workspaces.invitations.toast.rejected"));
     } catch (error) {
       toast.error(

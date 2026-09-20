@@ -11,6 +11,13 @@ import { type AuthService } from "../services/auth.service.js";
 import { AuthResolver } from "./auth.resolver.js";
 
 describe("AuthResolver", () => {
+  it("returns the service password policy without requiring request identity", () => {
+    const policy = { minLength: 6, maxLength: 16 };
+    const { resolver } = createResolver({
+      getPasswordPolicy: vi.fn(() => policy),
+    });
+    expect(resolver.passwordPolicy()).toBe(policy);
+  });
   it("preserves conditional and deny rules when serializing abilities for the client", async () => {
     const { resolver } = createResolver();
     const conditions = { id: "user-1" };

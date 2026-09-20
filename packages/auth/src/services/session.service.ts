@@ -2,8 +2,8 @@ import { EntityManager, LockMode } from "@mikro-orm/core";
 import type { EntityManager as SqlEntityManager } from "@mikro-orm/sql";
 import {
   type ConnectionArgsInterface,
-  type ConnectionInterface,
   ConnectionManager,
+  type ConnectionResult,
 } from "@nest-boot/graphql-connection";
 import {
   type CookieOptions,
@@ -19,6 +19,7 @@ import {
 } from "@nestjs/common";
 import { makeSignature } from "better-auth/crypto";
 import type { BetterAuthCookies } from "better-auth/types";
+import type { GraphQLResolveInfo } from "graphql";
 
 import { AUTH_TOKEN } from "../auth.constants.js";
 import { SessionConnection } from "../connections/session.connection-definition.js";
@@ -79,11 +80,13 @@ export class SessionService {
   async getSessionConnectionByUser(
     user: User,
     args: ConnectionArgsInterface<Session>,
-  ): Promise<ConnectionInterface<Session>> {
+    info?: GraphQLResolveInfo,
+  ): Promise<ConnectionResult<Session>> {
     this.assertCanListSessions(user);
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
     ).find<Session>(SessionConnection, args, {
+      ...(info && { info }),
       exclude: ["token"] as never,
       where: {
         user: String(user.id),

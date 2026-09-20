@@ -14,7 +14,8 @@
     "revoke": "撤销",
     "enable": "启用",
     "save": "保存",
-    "saving": "保存中..."
+    "saving": "保存中...",
+    "retry": "重试"
   },
   "app": {
     "name": "Nest Boot 示例"
@@ -22,5 +23,8 @@
   "contextualSaveBar": {
     "discard": "丢弃",
     "message": "有未保存的更改"
+  },
+  "mutation": {
+    "refresh_failed": "已保存成功，但未能加载最新数据。"
   }
 }

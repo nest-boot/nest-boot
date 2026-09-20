@@ -7,6 +7,8 @@ import { t } from "i18next";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
+import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
+import { usePasswordPolicy } from "@/hooks/use-password-policy";
 import { useAbility } from "@/contexts/ability-context";
 
 import { createAbilitySubject } from "@/lib/ability";
@@ -93,6 +95,7 @@ export const Route = createFileRoute("/_authenticated/admin/users/")({
 });
 
 function AdminUsersPage() {
+  const { passwordSchema } = usePasswordPolicy();
   const search = Route.useSearch();
   const navigate = useNavigate();
   const ability = useAbility();
@@ -131,7 +134,7 @@ function AdminUsersPage() {
       setName("");
       setEmail("");
       setPassword("");
-      await refetch();
+      await refreshAfterMutation(() => refetch());
       toast.success(t("admin:users.create.success"));
     } catch (error) {
       toast.error(
@@ -294,7 +297,11 @@ function AdminUsersPage() {
               {t("action.cancel")}
             </Button>
             <Button
-              disabled={!name.trim() || !email.trim() || password.length < 8}
+              disabled={
+                !name.trim() ||
+                !email.trim() ||
+                !passwordSchema.safeParse(password).success
+              }
               loading={creating}
               onClick={handleCreate}
             >

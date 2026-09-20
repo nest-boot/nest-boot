@@ -2,6 +2,7 @@ import { EntityManager } from "@mikro-orm/core";
 import { ConnectionManager } from "@nest-boot/graphql-connection";
 import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException } from "@nestjs/common";
+import type { GraphQLResolveInfo } from "graphql";
 
 import { mockRlsContext } from "../../test/mock-rls-context.js";
 import { API_KEY } from "../auth.constants.js";
@@ -13,28 +14,35 @@ import { AccountService } from "./account.service.js";
 describe("AccountService", () => {
   afterEach(() => vi.restoreAllMocks());
 
-  it("paginates only the current user's accounts, excluding credentials and preserving RLS", async () => {
-    const { service, em, user, fork } = createService();
-    const context = mockRlsContext(em);
-    const result = { edges: [], pageInfo: {} };
-    const find = vi
-      .spyOn(ConnectionManager.prototype, "find")
-      .mockResolvedValue(result as never);
-    const args = { first: 10, after: "cursor" };
-    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      RequestContext.set(User, user);
-      await expect(
-        service.getAccountConnectionByUser(user, args),
-      ).resolves.toBe(result);
-    });
-    expect(find).toHaveBeenCalledWith(AccountConnection, args, {
-      where: { user: "self" },
-      exclude: ["password", "accessToken", "refreshToken", "idToken"],
-    });
-    expect(find.mock.instances[0]).toHaveProperty("em", em);
-    expect(em.getSessionContext()).toEqual(context);
-    expect(fork).not.toHaveBeenCalled();
-  });
+  it.each([undefined, { fieldNodes: [] } as unknown as GraphQLResolveInfo])(
+    "paginates only the current user's accounts, excluding credentials and preserving RLS (selection: %j)",
+    async (info) => {
+      const { service, em, user, fork } = createService();
+      const context = mockRlsContext(em);
+      const result = { edges: [], pageInfo: {} };
+      const find = vi
+        .spyOn(ConnectionManager.prototype, "find")
+        .mockResolvedValue(result as never);
+      const args = { first: 10, after: "cursor" };
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          RequestContext.set(User, user);
+          await expect(
+            service.getAccountConnectionByUser(user, args, info),
+          ).resolves.toBe(result);
+        },
+      );
+      expect(find).toHaveBeenCalledWith(AccountConnection, args, {
+        ...(info && { info }),
+        where: { user: "self" },
+        exclude: ["password", "accessToken", "refreshToken", "idToken"],
+      });
+      expect(find.mock.instances[0]).toHaveProperty("em", em);
+      expect(em.getSessionContext()).toEqual(context);
+      expect(fork).not.toHaveBeenCalled();
+    },
+  );
 
   it.each(["foreign-user", "api-key", "anonymous", "no-context"])(
     "rejects %s before constructing a connection query",

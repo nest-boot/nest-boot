@@ -21,6 +21,7 @@ import { AuthRequestPasswordResetResultType } from "../objects/auth-request-pass
 import { AuthSignInResultType } from "../objects/auth-sign-in-result.object.js";
 import { AuthSignInSocialResultType } from "../objects/auth-sign-in-social-result.object.js";
 import { AuthSocialProviderType } from "../objects/auth-social-provider.object.js";
+import { PasswordPolicy } from "../objects/password-policy.object.js";
 import { SignUpPayload } from "../objects/sign-up-payload.object.js";
 import { AuthService } from "../services/auth.service.js";
 import { getAbility } from "../utils/get-ability.util.js";
@@ -34,6 +35,13 @@ export class AuthResolver {
    * @param authService - Application authentication service.
    */
   constructor(private readonly authService: AuthService) {}
+
+  /** Returns password limits without requiring a session. */
+  @Public()
+  @Query(() => PasswordPolicy)
+  passwordPolicy(): PasswordPolicy {
+    return this.authService.getPasswordPolicy();
+  }
 
   /** Returns the currently authenticated user. */
   @Query(() => User)

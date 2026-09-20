@@ -9,6 +9,7 @@ import { t } from "i18next";
 import { toast } from "sonner";
 
 import { useCurrentWorkspaceContext } from "../contexts/current-workspace-context";
+import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
 import { useAbility } from "@/contexts/ability-context";
 
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
@@ -106,7 +107,7 @@ function SettingsComponent() {
             },
           },
         });
-        await router.invalidate();
+        await refreshAfterMutation(() => router.invalidate());
         form.reset({ name: value.name.trim() });
         toast.success("保存成功");
       } catch (error) {
@@ -152,7 +153,7 @@ function SettingsComponent() {
 
     try {
       await leaveWorkspace();
-      await navigate({ to: "/user/workspaces" });
+      await refreshAfterMutation(() => navigate({ to: "/user/workspaces" }));
       toast.success(t("workspace:settings.leave.success"));
     } catch (error) {
       toast.error(

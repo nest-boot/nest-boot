@@ -2,8 +2,8 @@ import { EntityManager, type FilterQuery, Reference } from "@mikro-orm/core";
 import type { SqlEntityManager } from "@mikro-orm/sql";
 import {
   type ConnectionArgsInterface,
-  type ConnectionInterface,
   ConnectionManager,
+  type ConnectionResult,
 } from "@nest-boot/graphql-connection";
 import {
   ForbiddenException,
@@ -12,6 +12,7 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
+import type { GraphQLResolveInfo } from "graphql";
 
 import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
@@ -89,13 +90,15 @@ export class UserApiKeyService {
   async getUserApiKeyConnection(
     user: User,
     args: ConnectionArgsInterface<UserApiKey>,
-  ): Promise<ConnectionInterface<UserApiKey>> {
+    info?: GraphQLResolveInfo,
+  ): Promise<ConnectionResult<UserApiKey>> {
     RequestIdentity.assertCurrentUser(user);
     assertCan("read", UserApiKey);
     const where = this.getOwnedListFilter(user);
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
     ).find<UserApiKey>(UserApiKeyConnection, args, {
+      ...(info && { info }),
       where,
       exclude: ["key"] as never,
     });

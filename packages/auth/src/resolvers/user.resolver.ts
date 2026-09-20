@@ -1,6 +1,7 @@
 import {
   Args,
   ID,
+  Info,
   Mutation,
   Parent,
   Query,
@@ -8,6 +9,7 @@ import {
   Resolver,
 } from "@nest-boot/graphql";
 import type { ConnectionArgsInterface } from "@nest-boot/graphql-connection";
+import type { GraphQLResolveInfo } from "graphql";
 
 import {
   AccountConnection,
@@ -80,8 +82,13 @@ export class UserResolver {
     @Parent() user: User,
     @Args({ type: () => SessionConnectionArgs })
     args: ConnectionArgsInterface<Session>,
+    @Info() info?: GraphQLResolveInfo,
   ) {
-    return await this.sessionService.getSessionConnectionByUser(user, args);
+    return await this.sessionService.getSessionConnectionByUser(
+      user,
+      args,
+      info,
+    );
   }
 
   /** Paginates the parent's linked accounts after service authorization. */
@@ -90,8 +97,13 @@ export class UserResolver {
     @Parent() user: User,
     @Args({ type: () => AccountConnectionArgs })
     args: ConnectionArgsInterface<Account>,
+    @Info() info?: GraphQLResolveInfo,
   ) {
-    return await this.accountService.getAccountConnectionByUser(user, args);
+    return await this.accountService.getAccountConnectionByUser(
+      user,
+      args,
+      info,
+    );
   }
 
   /** Paginates workspaces joined by the parent user. */
@@ -100,8 +112,13 @@ export class UserResolver {
     @Parent() user: User,
     @Args({ type: () => WorkspaceConnectionArgs })
     args: ConnectionArgsInterface<Workspace>,
+    @Info() info?: GraphQLResolveInfo,
   ) {
-    return await this.workspaceService.getWorkspaceConnectionByUser(user, args);
+    return await this.workspaceService.getWorkspaceConnectionByUser(
+      user,
+      args,
+      info,
+    );
   }
 
   /** Returns an accessible API key owned by the parent user. */
@@ -119,8 +136,9 @@ export class UserResolver {
     @Parent() user: User,
     @Args({ type: () => UserApiKeyConnectionArgs })
     args: ConnectionArgsInterface<UserApiKey>,
+    @Info() info?: GraphQLResolveInfo,
   ) {
-    return await this.apiKeyService.getUserApiKeyConnection(user, args);
+    return await this.apiKeyService.getUserApiKeyConnection(user, args, info);
   }
 
   /** Paginates pending invitations addressed to the parent user. */
@@ -129,10 +147,12 @@ export class UserResolver {
     @Parent() user: User,
     @Args({ type: () => InvitationConnectionArgs })
     args: ConnectionArgsInterface<Invitation>,
+    @Info() info?: GraphQLResolveInfo,
   ) {
     return await this.invitationService.getInvitationConnectionByUser(
       user,
       args,
+      info,
     );
   }
 
@@ -153,8 +173,9 @@ export class UserResolver {
   async users(
     @Args({ type: () => UserConnectionArgs })
     args: ConnectionArgsInterface<User>,
+    @Info() info?: GraphQLResolveInfo,
   ) {
-    return await this.userService.getUserConnection(args);
+    return await this.userService.getUserConnection(args, info);
   }
 
   /** Returns a user by identifier. */

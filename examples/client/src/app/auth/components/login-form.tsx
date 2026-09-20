@@ -6,6 +6,8 @@ import { t } from "i18next";
 import { toast } from "sonner";
 import { z } from "zod";
 import type { ChangeEvent, ComponentProps, FormEvent } from "react";
+import { createExistingPasswordSchema } from "@/lib/password-schema";
+import { usePasswordPolicy } from "@/hooks/use-password-policy";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/thread-ui/button";
@@ -91,6 +93,7 @@ export function LoginForm({
   mode: AuthMode;
   redirect?: string;
 }) {
+  const { passwordSchema } = usePasswordPolicy(mode === "login");
   const apolloClient = useApolloClient();
   const navigate = useNavigate();
   const [signIn] = useMutation(AUTH_SIGN_IN_FROM_LOGIN_FORM);
@@ -161,7 +164,7 @@ export function LoginForm({
     setErrors({});
 
     const loginSchema = createLoginSchema();
-    const registerSchema = createRegisterSchema(loginSchema);
+    const registerSchema = createRegisterSchema(loginSchema, passwordSchema);
     const parsed =
       mode === "login"
         ? loginSchema.safeParse(values)
@@ -421,15 +424,17 @@ export function LoginForm({
 function createLoginSchema() {
   return z.object({
     email: z.string().email(t("auth:form.email.invalid")),
-    password: z.string().min(8, t("auth:form.password.min")),
+    password: createExistingPasswordSchema(),
     rememberMe: z.boolean(),
   });
 }
 
 function createRegisterSchema(
   loginSchema: ReturnType<typeof createLoginSchema>,
+  password: z.ZodString,
 ) {
   return loginSchema.extend({
+    password,
     name: z.string().trim().min(1, t("auth:form.name.required")),
   });
 }
