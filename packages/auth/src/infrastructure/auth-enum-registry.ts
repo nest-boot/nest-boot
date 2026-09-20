@@ -9,6 +9,7 @@ import {
   WorkspacePermission,
   WorkspaceRole,
 } from "../enums/index.js";
+import { resolveApiKeyPermissionCatalog } from "../utils/api-key-permissions.util.js";
 import { createPermissionEnum } from "../utils/create-permission-enum.util.js";
 import { resolveAuthCatalog } from "../utils/resolve-auth-catalog.util.js";
 
@@ -39,8 +40,18 @@ export class AuthEnumRegistry implements OnModuleDestroy {
       [WorkspacePermission, createPermissionEnum(workspaces)],
       // Output enums must also serialize stored grants removed from the allowlist.
       // Services enforce the current allowlist when creating or updating a key.
-      [UserApiKeyPermission, createPermissionEnum([...users, ...workspaces])],
-      [WorkspaceApiKeyPermission, createPermissionEnum(workspaces)],
+      [
+        UserApiKeyPermission,
+        createPermissionEnum(
+          resolveApiKeyPermissionCatalog(options, "user").permissions,
+        ),
+      ],
+      [
+        WorkspaceApiKeyPermission,
+        createPermissionEnum(
+          resolveApiKeyPermissionCatalog(options, "workspace").permissions,
+        ),
+      ],
     ] as const;
     const signature = JSON.stringify(
       enums.map(([, values]) =>

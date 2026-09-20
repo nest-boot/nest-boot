@@ -26,12 +26,11 @@ import { WorkspaceApiKeyConnection } from "../connections/workspace-api-key.conn
 import { Member } from "../entities/member.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
-import { RequestIdentity } from "../infrastructure/request-identity.js";
+import { ApiKeyLifecycle } from "../infrastructure/api-key-lifecycle.js";
 import type { CreateApiKeyOptions } from "../interfaces/create-api-key-options.interface.js";
 import type { CreatedApiKey } from "../interfaces/created-api-key.interface.js";
 import type { UpdateApiKeyOptions } from "../interfaces/update-api-key-options.interface.js";
 import type { WorkspaceApiKeyPermissionOption } from "../objects/workspace-api-key-permission-option.object.js";
-import type { ApiKey } from "../types/api-key.type.js";
 import {
   generateApiKey,
   hashApiKey,
@@ -39,7 +38,6 @@ import {
 import { resolveApiKeyPermissionCatalog } from "../utils/api-key-permissions.util.js";
 import { normalizeAuthPermissions } from "../utils/auth-role.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
-import { resolveAuthCatalog } from "../utils/resolve-auth-catalog.util.js";
 import { AccessControlService } from "./access-control.service.js";
 
 /** Manages workspace-owned API keys within the current request's authorization scope. */
@@ -61,17 +59,14 @@ export class WorkspaceApiKeyService {
     workspace: Workspace,
   ): WorkspaceApiKeyPermissionOption[] {
     this.accessControlService.assertCurrentWorkspace(workspace);
-    const { permissions, allowed } = resolveApiKeyPermissionCatalog(
+    const { permissions, allowed, defaults } = resolveApiKeyPermissionCatalog(
       this.authOptions,
       "workspace",
     );
     const allowedSet = new Set(allowed);
     return permissions.map((permission) => ({
       permission,
-      default:
-        this.authOptions.apiKey?.workspace?.defaultPermissions?.includes(
-          permission,
-        ) ?? false,
+      default: defaults.includes(permission),
       grantable:
         allowedSet.has(permission) &&
         this.accessControlService.canGrantWorkspacePermissions([permission]),
@@ -120,7 +115,11 @@ export class WorkspaceApiKeyService {
   ): Promise<CreatedApiKey<WorkspaceApiKey>> {
     this.assertWorkspacePrincipal(workspace);
     this.accessControlService.assertWorkspaceCan("create", WorkspaceApiKey);
-    const permissions = this.normalizeCreatePermissions(workspace, options);
+    const permissions = this.normalizePermissions(
+      options.permissions === undefined
+        ? resolveApiKeyPermissionCatalog(this.authOptions, "workspace").defaults
+        : (options.permissions ?? []),
+    );
     this.accessControlService.assertCanGrantWorkspacePermissions(permissions);
     return await this.createKey(workspace, options, permissions);
   }
@@ -133,20 +132,25 @@ export class WorkspaceApiKeyService {
     this.accessControlService.assertWorkspaceCan("update", WorkspaceApiKey);
     const apiKey = await this.findWritableApiKey(id);
     this.accessControlService.assertWorkspaceCan("update", apiKey);
-    const permissions = this.normalizeUpdatedPermissions(apiKey, input);
+    const permissions =
+      input.permissions === undefined
+        ? undefined
+        : this.normalizePermissions(input.permissions ?? []);
     // Allow disabling stale grants without replacing them.
     if (input.enabled !== false || permissions !== undefined) {
       const finalPermissions =
-        permissions ??
-        this.normalizePermissions(
-          this.unwrapOwner(apiKey),
-          apiKey.permissions ?? [],
-        );
+        permissions ?? this.normalizePermissions(apiKey.permissions ?? []);
       this.accessControlService.assertCanGrantWorkspacePermissions(
         finalPermissions,
       );
     }
-    return await this.updateKey(apiKey, input, permissions);
+    return await ApiKeyLifecycle.update(
+      this.em,
+      this.authOptions,
+      apiKey,
+      input,
+      permissions,
+    );
   }
 
   /** Deletes a key owned by the authenticated workspace. */
@@ -154,7 +158,7 @@ export class WorkspaceApiKeyService {
     this.accessControlService.assertWorkspaceCan("delete", WorkspaceApiKey);
     const apiKey = await this.findWritableApiKey(id);
     this.accessControlService.assertWorkspaceCan("delete", apiKey);
-    return await this.deleteKey(apiKey);
+    return await ApiKeyLifecycle.delete(this.em, this.authOptions, apiKey);
   }
 
   private async createKey(
@@ -162,9 +166,7 @@ export class WorkspaceApiKeyService {
     options: CreateApiKeyOptions,
     permissions: string[],
   ): Promise<CreatedApiKey<WorkspaceApiKey>> {
-    if (options.expiresAt && options.expiresAt <= new Date()) {
-      throw new BadRequestException("API key expiration must be in the future");
-    }
+    ApiKeyLifecycle.assertExpiration(options.expiresAt);
     const prefix = options.prefix ?? process.env.API_KEY_PREFIX ?? "sk";
     const plaintextApiKey = generateApiKey(prefix);
     const entity = await this.em.transactional(
@@ -193,48 +195,6 @@ export class WorkspaceApiKeyService {
     return { apiKey: plaintextApiKey, entity };
   }
 
-  private async updateKey(
-    apiKey: WorkspaceApiKey,
-    input: UpdateApiKeyOptions,
-    permissions: string[] | undefined,
-  ): Promise<WorkspaceApiKey> {
-    if (input.expiresAt && input.expiresAt <= new Date()) {
-      throw new BadRequestException("API key expiration must be in the future");
-    }
-    RequestIdentity.assertApiKeyCanCommit(this.em, apiKey);
-    const previous = {
-      name: apiKey.name,
-      enabled: apiKey.enabled,
-      expiresAt: apiKey.expiresAt,
-      permissions: apiKey.permissions,
-      lastUsedAt: apiKey.lastUsedAt,
-    };
-    if (input.name !== undefined) apiKey.name = input.name;
-    if (input.enabled !== undefined) apiKey.enabled = input.enabled;
-    if (input.expiresAt !== undefined) apiKey.expiresAt = input.expiresAt;
-    if (permissions !== undefined) {
-      apiKey.permissions = permissions;
-    }
-    // Commit the final use before revocation removes the interceptor's identity.
-    if (input.enabled === false && RequestIdentity.isCurrentApiKey(apiKey))
-      apiKey.lastUsedAt = new Date();
-    try {
-      await this.em.persist(apiKey).flush();
-    } catch (error) {
-      Object.assign(apiKey, previous);
-      throw error;
-    }
-    RequestIdentity.updateApiKey(this.em, this.authOptions, apiKey);
-    return apiKey;
-  }
-
-  private async deleteKey(apiKey: WorkspaceApiKey): Promise<WorkspaceApiKey> {
-    RequestIdentity.assertApiKeyCanCommit(this.em, apiKey);
-    await this.em.remove(apiKey).flush();
-    RequestIdentity.updateApiKey(this.em, this.authOptions, apiKey, true);
-    return apiKey;
-  }
-
   private async getVisibleApiKey(
     id: string,
     owner: Workspace,
@@ -248,7 +208,9 @@ export class WorkspaceApiKeyService {
     );
     if (apiKey) {
       this.assertOwner(apiKey, owner);
-      this.assertDelegatedApiKeyPermissionCeiling(apiKey.permissions ?? []);
+      this.accessControlService.assertApiKeyPermissionCeiling(
+        apiKey.permissions ?? [],
+      );
     }
     return apiKey;
   }
@@ -276,14 +238,14 @@ export class WorkspaceApiKeyService {
   private getOwnedListFilter(owner: Workspace): FilterQuery<WorkspaceApiKey> {
     const ceiling = this.accessControlService.getApiKeyPermissionCeiling();
     return {
-      ["workspace"]: owner,
+      workspace: owner,
       ...(ceiling !== null ? { permissions: { $contained: ceiling } } : {}),
     } as unknown as FilterQuery<WorkspaceApiKey>;
   }
 
   private assertWorkspacePrincipal(workspace: Workspace): void {
     this.accessControlService.assertCurrentWorkspace(workspace);
-    const apiKey = this.getAuthenticatingApiKey();
+    const apiKey = getCurrentApiKey();
     if (apiKey && apiKey instanceof WorkspaceApiKey) {
       this.assertOwner(apiKey, workspace);
       return;
@@ -312,21 +274,15 @@ export class WorkspaceApiKeyService {
     return Reference.unwrapReference(apiKey.workspace);
   }
 
-  private normalizePermissions(
-    owner: Workspace,
-    permissions: readonly string[],
-  ): string[] {
+  private normalizePermissions(permissions: readonly string[]): string[] {
     // Invitations require a human sender; workspace keys have no user identity.
     if (permissions.includes("invitation:create")) {
       throw new BadRequestException(
         "Workspace API keys cannot grant invitation:create; use a user API key",
       );
     }
-    const workspacePermissions = resolveAuthCatalog(
-      this.authOptions,
-      "workspace",
-    ).permissions;
-    const availablePermissions = workspacePermissions;
+    const { permissions: availablePermissions, allowed } =
+      resolveApiKeyPermissionCatalog(this.authOptions, "workspace");
 
     const normalizedPermissions = normalizeAuthPermissions(
       permissions,
@@ -335,44 +291,10 @@ export class WorkspaceApiKeyService {
     );
     this.assertPermissionCeiling(
       normalizedPermissions,
-      resolveApiKeyPermissionCatalog(this.authOptions, "workspace").allowed,
+      allowed,
       "API key permissions exceed configured allowedPermissions",
     );
     return normalizedPermissions;
-  }
-
-  private normalizeCreatePermissions(
-    owner: Workspace,
-    options: CreateApiKeyOptions,
-  ): string[] {
-    return this.normalizePermissions(
-      owner,
-      options.permissions === undefined
-        ? (this.authOptions.apiKey?.workspace?.defaultPermissions ?? [])
-        : (options.permissions ?? []),
-    );
-  }
-
-  private normalizeUpdatedPermissions(
-    apiKey: WorkspaceApiKey,
-    input: UpdateApiKeyOptions,
-  ): string[] | undefined {
-    return input.permissions === undefined
-      ? undefined
-      : this.normalizePermissions(
-          this.unwrapOwner(apiKey),
-          input.permissions ?? [],
-        );
-  }
-
-  private getAuthenticatingApiKey(): ApiKey | null {
-    return getCurrentApiKey();
-  }
-
-  private assertDelegatedApiKeyPermissionCeiling(
-    permissions: readonly string[],
-  ): void {
-    this.accessControlService.assertApiKeyPermissionCeiling(permissions);
   }
 
   private assertPermissionCeiling(
