@@ -29,6 +29,7 @@ import type {
   CostResponse,
   GraphQLRateLimitOptions,
 } from "./interfaces/index.js";
+import { connectionPageSize } from "./utils/connection-page-size.util.js";
 
 // graphql-query-complexity has a native ESM build, but it loads
 // graphql/index.mjs while Nest's CommonJS packages load graphql/index.js.
@@ -55,7 +56,7 @@ function shopifyEstimator(
 
   // A GraphQL Connection represents a one-to-many relationship. The cost is two points plus the number of objects to return.
   if (type instanceof GraphQLObjectType && type.name.endsWith("Connection")) {
-    return 2 + args.childComplexity * (args.args.first ?? args.args.last ?? 0);
+    return 2 + args.childComplexity * connectionPageSize(args.args, 0);
   }
 
   // An Object is the basic unit of a query, generally representing a single server-side operation such as a database query or an internal service call.
