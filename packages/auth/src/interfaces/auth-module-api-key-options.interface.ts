@@ -1,15 +1,12 @@
-/** API-key permission defaults and grant limits owned by AuthModule. */
-export interface AuthModuleApiKeyOptions<Permission extends string = string> {
-  /**
-   * Permissions assigned when key creation omits `permissions`.
-   * Shared by user and workspace keys, so values must belong to the workspace
-   * catalog and allowedPermissions. Defaults to an empty list. User-only grants
-   * and invitation:create must be supplied explicitly when creating a user key.
-   */
-  defaultPermissions?: readonly Permission[];
-  /**
-   * Permissions that may be granted to any API key.
-   * Defaults to the combined user and workspace permission catalogs.
-   */
-  allowedPermissions?: readonly Permission[];
+import type { AuthModuleApiKeyScopeOptions } from "./auth-module-api-key-scope-options.interface.js";
+
+/** Independent permission defaults and ceilings for each API-key owner type. */
+export interface AuthModuleApiKeyOptions<
+  UserPermission extends string = string,
+  WorkspacePermission extends string = string,
+> {
+  /** User keys may carry both user and workspace permissions, limited again by their owner's grants at use time. */
+  user?: AuthModuleApiKeyScopeOptions<UserPermission | WorkspacePermission>;
+  /** Workspace keys only carry workspace permissions; invitation:create requires a user identity. */
+  workspace?: AuthModuleApiKeyScopeOptions<WorkspacePermission>;
 }

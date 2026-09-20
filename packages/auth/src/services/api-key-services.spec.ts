@@ -66,9 +66,46 @@ function createTestApiKey(): WorkspaceApiKey {
 }
 
 describe("API-key management services", () => {
+  it("keeps allowlists and default selections isolated between key scopes", async () => {
+    const { service } = createService({
+      apiKey: {
+        user: { allowedPermissions: [], defaultPermissions: [] },
+        workspace: {
+          allowedPermissions: ["workspace:update"],
+          defaultPermissions: ["workspace:update"],
+        },
+      },
+    });
+    expect(
+      service
+        .getUserApiKeyPermissions(createTestUser())
+        .every((option) => !option.grantable && !option.default),
+    ).toBe(true);
+    expect(
+      service.getWorkspaceApiKeyPermissions(createTestWorkspace()),
+    ).toContainEqual({
+      permission: "workspace:update",
+      default: true,
+      grantable: true,
+    });
+    await expect(
+      service.createUserApiKey(createTestUser(), {
+        name: "Denied",
+        permissions: ["workspace:update"],
+      }),
+    ).rejects.toThrow("configured allowedPermissions");
+    await expect(
+      service.createWorkspaceApiKey(createTestWorkspace(), { name: "Allowed" }),
+    ).resolves.toMatchObject({ entity: { permissions: ["workspace:update"] } });
+  });
   it("reports configured defaults independently of grantability for both key scopes", () => {
     const { service } = createService({
-      apiKey: { defaultPermissions: ["workspace:update", "member:delete"] },
+      apiKey: {
+        user: { defaultPermissions: ["workspace:update", "member:delete"] },
+        workspace: {
+          defaultPermissions: ["workspace:update", "member:delete"],
+        },
+      },
     });
     RequestContext.set(
       Member,
@@ -122,12 +159,22 @@ describe("API-key management services", () => {
   it("reports key grantability using both caller ceilings and configuration", () => {
     const { service } = createService({
       apiKey: {
-        allowedPermissions: [
-          "member:update",
-          "user:get",
-          "user:delete",
-          "invitation:create",
-        ],
+        user: {
+          allowedPermissions: [
+            "member:update",
+            "user:get",
+            "user:delete",
+            "invitation:create",
+          ],
+        },
+        workspace: {
+          allowedPermissions: [
+            "member:update",
+            "user:get",
+            "user:delete",
+            "invitation:create",
+          ],
+        },
       },
     });
     const user = Object.assign(createTestUser(), {
@@ -310,7 +357,12 @@ describe("API-key management services", () => {
       it(`allows disabling a ${scope} key with stale ${reason} grants but still rejects re-enabling it`, async () => {
         const options: AuthModuleOptions =
           reason === "catalog"
-            ? { apiKey: { allowedPermissions: ["api-key:update"] } }
+            ? {
+                apiKey: {
+                  user: { allowedPermissions: ["api-key:update"] },
+                  workspace: { allowedPermissions: ["api-key:update"] },
+                },
+              }
             : {};
         const { service, em, accessControlService } = createService(options);
         vi.mocked(accessControlService.assertUserCan).mockRestore();
@@ -742,10 +794,15 @@ describe("API-key management services", () => {
     );
   });
 
-  it("uses configured defaults only when creation omits permissions", async () => {
+  it("uses independent scope defaults only when creation omits permissions", async () => {
     const { em, service } = createService({
       apiKey: {
-        defaultPermissions: ["workspace:update"],
+        user: {
+          defaultPermissions: ["user:get"],
+        },
+        workspace: {
+          defaultPermissions: ["workspace:update"],
+        },
       },
     });
     const workspace = createTestWorkspace();
@@ -757,9 +814,12 @@ describe("API-key management services", () => {
       name: "Explicitly empty permissions",
       permissions: null,
     });
-    await service.createUserApiKey(createTestUser(), {
-      name: "Shared defaults for user keys",
-    });
+    await service.createUserApiKey(
+      Object.assign(createTestUser(), { permissions: ["user:get"] }),
+      {
+        name: "Independent defaults for user keys",
+      },
+    );
 
     expect(em.create).toHaveBeenNthCalledWith(
       1,
@@ -774,7 +834,7 @@ describe("API-key management services", () => {
     expect(em.create).toHaveBeenNthCalledWith(
       3,
       UserApiKey,
-      expect.objectContaining({ permissions: ["workspace:update"] }),
+      expect.objectContaining({ permissions: ["user:get"] }),
     );
   });
 
@@ -786,12 +846,22 @@ describe("API-key management services", () => {
         roles: { owner: ["Workspace:UPDATE", "workspace:update"] },
       },
       apiKey: {
-        allowedPermissions: [
-          "User:READ",
-          "user:read",
-          "Workspace:UPDATE",
-          "workspace:update",
-        ],
+        user: {
+          allowedPermissions: [
+            "User:READ",
+            "user:read",
+            "Workspace:UPDATE",
+            "workspace:update",
+          ],
+        },
+        workspace: {
+          allowedPermissions: [
+            "User:READ",
+            "user:read",
+            "Workspace:UPDATE",
+            "workspace:update",
+          ],
+        },
       },
     });
     const user = Object.assign(createTestUser(), {
@@ -836,7 +906,12 @@ describe("API-key management services", () => {
   it("enforces the configured API-key permission allowlist", async () => {
     const { em, service } = createService({
       apiKey: {
-        allowedPermissions: ["workspace:update"],
+        user: {
+          allowedPermissions: ["workspace:update"],
+        },
+        workspace: {
+          allowedPermissions: ["workspace:update"],
+        },
       },
     });
     const workspace = createTestWorkspace();

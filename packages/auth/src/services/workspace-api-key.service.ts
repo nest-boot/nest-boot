@@ -69,8 +69,9 @@ export class WorkspaceApiKeyService {
     return permissions.map((permission) => ({
       permission,
       default:
-        this.authOptions.apiKey?.defaultPermissions?.includes(permission) ??
-        false,
+        this.authOptions.apiKey?.workspace?.defaultPermissions?.includes(
+          permission,
+        ) ?? false,
       grantable:
         allowedSet.has(permission) &&
         this.accessControlService.canGrantWorkspacePermissions([permission]),
@@ -347,7 +348,7 @@ export class WorkspaceApiKeyService {
     return this.normalizePermissions(
       owner,
       options.permissions === undefined
-        ? (this.authOptions.apiKey?.defaultPermissions ?? [])
+        ? (this.authOptions.apiKey?.workspace?.defaultPermissions ?? [])
         : (options.permissions ?? []),
     );
   }

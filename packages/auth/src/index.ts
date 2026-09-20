@@ -51,6 +51,7 @@ export * from "./interfaces/auth-invitation-email-data.interface.js";
 export * from "./interfaces/auth-module-account-linking-options.interface.js";
 export * from "./interfaces/auth-module-account-options.interface.js";
 export * from "./interfaces/auth-module-api-key-options.interface.js";
+export * from "./interfaces/auth-module-api-key-scope-options.interface.js";
 export * from "./interfaces/auth-module-change-email-options.interface.js";
 export * from "./interfaces/auth-module-delete-user-options.interface.js";
 export * from "./interfaces/auth-module-email-and-password-options.interface.js";

@@ -158,13 +158,13 @@ must remain in the configured catalog to be serialized by GraphQL.
 
 `UserApiKeyPermission` uses the combined user and workspace catalogs;
 `WorkspaceApiKeyPermission` uses the workspace catalog. Neither enum narrows with
-`apiKey.allowedPermissions`, so previously stored grants remain readable after
+`apiKey.user.allowedPermissions / apiKey.workspace.allowedPermissions`, so previously stored grants remain readable after
 the allowlist changes. Services enforce the allowlist on writes.
 User and workspace permission catalogs extend the built-in defaults. Omitting
 them or passing `user.permissions: []` or `workspace.permissions: []` preserves
 those defaults. To define a role without permission grants, add a new role with
 `[]`; empty additions do not remove an existing role's built-in grants.
-An empty `apiKey.allowedPermissions` still generates enums
+An empty `apiKey.user.allowedPermissions / apiKey.workspace.allowedPermissions` still generates enums
 from the full catalogs, but does not allow granting permissions to a key.
 Services continue to check key scope and the issuer's permission ceiling.
 

@@ -434,6 +434,12 @@ allowlist and issuer's grant ceiling; `default` reflects configured defaults.
 Editors preselect only `default && grantable`. Workspace keys cannot grant
 `invitation:create`.
 
+Configure these independently with `apiKey.user` and `apiKey.workspace`, each
+containing `defaultPermissions` and `allowedPermissions`. Defaults are empty;
+omitted allowlists permit the scope's catalog, while `[]` permits no grants.
+User keys support both catalogs; workspace keys only support workspace grants.
+The former flat API-key settings are rejected with a migration message.
+
 Module permission catalogs and role maps extend built-in defaults. Same-name
 role grants are merged; custom permissions are not automatically granted to
 built-in roles. Empty additions preserve defaults. Entity `set*` mutations still

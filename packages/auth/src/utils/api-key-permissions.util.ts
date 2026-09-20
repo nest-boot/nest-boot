@@ -14,7 +14,9 @@ export function resolveApiKeyPermissionCatalog(
   const permissions = [
     ...new Set(scope === "user" ? [...users, ...workspaces] : workspaces),
   ];
-  const allowlist = new Set(options.apiKey?.allowedPermissions ?? permissions);
+  const allowlist = new Set(
+    options.apiKey?.[scope]?.allowedPermissions ?? permissions,
+  );
   return {
     permissions,
     allowed: permissions.filter(

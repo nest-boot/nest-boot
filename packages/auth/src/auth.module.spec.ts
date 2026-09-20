@@ -405,11 +405,28 @@ describe("AuthModule", () => {
     { apiKey: {} },
     {
       apiKey: {
-        allowedPermissions: ["user:read", "workspace:update"],
-        defaultPermissions: ["workspace:update"],
+        user: {
+          allowedPermissions: ["user:read", "workspace:update"],
+          defaultPermissions: ["workspace:update"],
+        },
+        workspace: {
+          allowedPermissions: ["workspace:update"],
+          defaultPermissions: ["workspace:update"],
+        },
       },
     },
-    { apiKey: { allowedPermissions: ["user:read"] } },
+    {
+      apiKey: {
+        user: { allowedPermissions: ["user:read"] },
+        workspace: { allowedPermissions: [] },
+      },
+    },
+    {
+      apiKey: {
+        user: { defaultPermissions: ["user:get", "invitation:create"] },
+        workspace: { defaultPermissions: ["workspace:update"] },
+      },
+    },
   ])(
     "accepts lowercase permission catalogs with API-key options $apiKey",
     ({ apiKey }) => {
@@ -530,37 +547,59 @@ describe("AuthModule", () => {
   it.each([
     [
       "user-only defaults that cannot be applied to workspace keys",
-      { apiKey: { defaultPermissions: ["user:get"] } },
-      "apiKey.defaultPermissions contains unknown permissions: user:get",
+      {
+        apiKey: {
+          user: { defaultPermissions: ["user:get"] },
+          workspace: { defaultPermissions: ["user:get"] },
+        },
+      },
+      "apiKey.workspace.defaultPermissions contains unknown permissions: user:get",
     ],
     [
       "invitation defaults requiring a user identity",
-      { apiKey: { defaultPermissions: ["invitation:create"] } },
-      "apiKey.defaultPermissions cannot include invitation:create",
+      {
+        apiKey: {
+          user: { defaultPermissions: ["invitation:create"] },
+          workspace: { defaultPermissions: ["invitation:create"] },
+        },
+      },
+      "apiKey.workspace.defaultPermissions cannot include invitation:create",
     ],
     [
       "allowed permissions outside the configured catalogs",
       {
-        apiKey: { allowedPermissions: ["unknown:read"] },
+        apiKey: {
+          user: { allowedPermissions: ["unknown:read"] },
+          workspace: { allowedPermissions: ["unknown:read"] },
+        },
       },
-      "apiKey.allowedPermissions contains unknown permissions: unknown:read",
+      "apiKey.user.allowedPermissions contains unknown permissions: unknown:read",
     ],
     [
       "default permissions outside the configured catalogs",
       {
-        apiKey: { defaultPermissions: ["unknown:read"] },
+        apiKey: {
+          user: { defaultPermissions: ["unknown:read"] },
+          workspace: { defaultPermissions: ["unknown:read"] },
+        },
       },
-      "apiKey.defaultPermissions contains unknown permissions: unknown:read",
+      "apiKey.user.defaultPermissions contains unknown permissions: unknown:read",
     ],
     [
       "default permissions outside allowedPermissions",
       {
         apiKey: {
-          allowedPermissions: ["workspace:update"],
-          defaultPermissions: ["workspace:delete"],
+          user: {
+            allowedPermissions: ["workspace:update"],
+            defaultPermissions: ["workspace:delete"],
+          },
+          workspace: {
+            allowedPermissions: ["workspace:update"],
+            defaultPermissions: ["workspace:delete"],
+          },
         },
       },
-      "apiKey.defaultPermissions contains permissions outside apiKey.allowedPermissions: workspace:delete",
+      "apiKey.user.defaultPermissions contains permissions outside apiKey.user.allowedPermissions: workspace:delete",
     ],
   ])("rejects API-key %s", (_, config, error) => {
     const authProvider = getAuthProvider();
@@ -571,6 +610,17 @@ describe("AuthModule", () => {
       } as unknown as MikroORM),
     ).toThrow(error);
     expect(mockBetterAuth).not.toHaveBeenCalled();
+  });
+
+  it("rejects removed flat API-key options instead of silently ignoring them", () => {
+    expect(() =>
+      getAuthProvider().useFactory(
+        { secret, apiKey: { allowedPermissions: [] } },
+        { em: {} } as unknown as MikroORM,
+      ),
+    ).toThrow(
+      "Configure API key permissions under apiKey.user or apiKey.workspace",
+    );
   });
 
   it("should forward account options without weakening OAuth state checks", () => {
@@ -778,8 +828,14 @@ describe("AuthModule", () => {
     authProvider.useFactory(
       {
         apiKey: {
-          allowedPermissions: ["user:get"],
-          defaultPermissions: [],
+          user: {
+            allowedPermissions: ["user:get"],
+            defaultPermissions: [],
+          },
+          workspace: {
+            allowedPermissions: [],
+            defaultPermissions: [],
+          },
         },
         entities,
         middleware: { register: false },

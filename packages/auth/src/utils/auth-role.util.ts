@@ -112,6 +112,7 @@ export function assertAuthPermissionSubset(
   permissions: readonly string[],
   allowedPermissions: readonly string[],
   option: string,
+  allowedOption = "apiKey.allowedPermissions",
 ): void {
   const allowedPermissionSet = new Set(allowedPermissions);
   const disallowedPermissions = permissions.filter(
@@ -119,7 +120,7 @@ export function assertAuthPermissionSubset(
   );
   if (disallowedPermissions.length > 0) {
     throw new Error(
-      `${option} contains permissions outside apiKey.allowedPermissions: ${disallowedPermissions.join(", ")}`,
+      `${option} contains permissions outside ${allowedOption}: ${disallowedPermissions.join(", ")}`,
     );
   }
 }

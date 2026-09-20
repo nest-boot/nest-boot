@@ -68,8 +68,9 @@ export class UserApiKeyService {
     return permissions.map((permission) => ({
       permission,
       default:
-        this.authOptions.apiKey?.defaultPermissions?.includes(permission) ??
-        false,
+        this.authOptions.apiKey?.user?.defaultPermissions?.includes(
+          permission,
+        ) ?? false,
       grantable:
         allowedSet.has(permission) &&
         (!userPermissions.has(permission) ||
@@ -320,7 +321,7 @@ export class UserApiKeyService {
     return this.normalizePermissions(
       owner,
       options.permissions === undefined
-        ? (this.authOptions.apiKey?.defaultPermissions ?? [])
+        ? (this.authOptions.apiKey?.user?.defaultPermissions ?? [])
         : (options.permissions ?? []),
     );
   }

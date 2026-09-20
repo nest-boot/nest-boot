@@ -89,7 +89,10 @@ describe("auth enum registration", () => {
     register({
       user: { permissions: ["user:read"] },
       workspace: { permissions: ["project:read", "project:write"] },
-      apiKey: { allowedPermissions: ["user:read", "project:read"] },
+      apiKey: {
+        user: { allowedPermissions: ["user:read", "project:read"] },
+        workspace: { allowedPermissions: ["user:read", "project:read"] },
+      },
     });
     const schema = await buildSchema();
     expect(
@@ -122,7 +125,10 @@ describe("auth enum registration", () => {
     register({
       user: { permissions: ["user:read"] },
       workspace: { permissions: ["project:read"] },
-      apiKey: { allowedPermissions: [] },
+      apiKey: {
+        user: { allowedPermissions: [] },
+        workspace: { allowedPermissions: [] },
+      },
     });
     const schema = await buildSchema();
     expect(
@@ -154,7 +160,10 @@ describe("auth enum registration", () => {
         roles: { "team-owner": [] },
         permissions: ["project:write"],
       },
-      apiKey: { allowedPermissions: ["api-key:read"] },
+      apiKey: {
+        user: { allowedPermissions: ["api-key:read"] },
+        workspace: { allowedPermissions: ["api-key:read"] },
+      },
     });
     const schema = await buildSchema();
     const userRole = enumType(schema, "UserRole");
