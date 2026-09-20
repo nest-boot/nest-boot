@@ -3,6 +3,84 @@ title: "Authorization"
 description: "Protect routes with AuthGuard and scoped user or workspace permissions."
 ---
 
+## Permission and ability responsibilities
+
+| Setting or result             | Meaning                                                                                    |
+| ----------------------------- | ------------------------------------------------------------------------------------------ |
+| `permissions`                 | Declares available names; does not grant them.                                             |
+| `roles`                       | Assigns permissions to roles; same-name roles extend built-in grants.                      |
+| `buildAbility`                | Maps effective permissions to actions and object conditions.                               |
+| `ability.can(action, object)` | Checks an operation on a particular object.                                                |
+| `grantable`                   | Whether the current caller can delegate a permission; not target authorization.            |
+| API-key option `default`      | Whether configuration preselects a permission; the editor requires `default && grantable`. |
+
+Configuration extends built-in catalogs. User/member `set*` methods instead replace
+stored assignments. Configure static options before startup; use Services to change
+assignments at runtime. API-key ceilings apply before business rules are built.
+
+## Complete business example
+
+The [tested Report recipe](https://github.com/nest-boot/nest-boot/tree/beta/examples/server/src/app/auth/examples)
+connects configuration, a Service, and the example client's actual ability helper.
+It is optional and is not registered in the demo application or its database.
+
+```typescript
+AuthModule.forRoot({
+  workspace: {
+    permissions: ["report:read", "report:archive"],
+    roles: {
+      owner: ["report:read", "report:archive"],
+      "report-reader": ["report:read"],
+    },
+    buildAbility: ({ can }, _permissions, workspace) => {
+      can("report:read", "read", Report, { workspaceId: workspace.id });
+      can("report:archive", "archive", Report, {
+        workspaceId: workspace.id,
+        archived: false,
+      });
+    },
+  },
+});
+```
+
+The callback's `can` is the permission-bound auth helper, not raw CASL `can`:
+it adds no rule unless the caller has the first argument's permission. Do not
+repeat `permissions.includes(...)`. A reader may read reports but not archive;
+an owner using a read-only API key also cannot archive.
+
+Load the operation target before checking its conditions. Do not trust ownership
+fields supplied by the client or substitute a class-level route check:
+
+```typescript
+async archiveReport(id: string): Promise<Report> {
+  const report = await this.loadReport(id);
+  this.access.assertWorkspaceCan("archive", report);
+  return await this.repository.archive(report);
+}
+```
+
+The frontend queries `currentWorkspaceAbilityRules { actions subjects conditions
+fields inverted reason }`. Rehydrate those rules with the existing client helper:
+
+```typescript
+const ability = createAbility(data.currentWorkspaceAbilityRules);
+const canArchive = ability.can(
+  "archive",
+  createAbilitySubject("Report", report),
+);
+```
+
+Select the condition fields (`workspaceId`, `archived`) with each report. Never
+rebuild role-to-permission mappings in the client. Use permission option queries
+for grant editors and instance abilities for action buttons; the Service makes
+the final decision. API-key editors use the server's scoped defaults, not a
+hardcoded list of enum values. See [API keys](./api-keys).
+
+This recipe uses operation/object checks. Built-in auth Service methods do not
+automatically enforce CASL field-level rules. Business-specific field restrictions
+require explicit Service checks; declaring a field rule alone is insufficient.
+No rule preventing administrators from editing names is introduced here.
+
 ## Global Guard
 
 Register the configured module's `AuthGuard` globally. It accepts a valid Cookie
@@ -158,13 +236,14 @@ must remain in the configured catalog to be serialized by GraphQL.
 
 `UserApiKeyPermission` uses the combined user and workspace catalogs;
 `WorkspaceApiKeyPermission` uses the workspace catalog. Neither enum narrows with
-`apiKey.user.allowedPermissions / apiKey.workspace.allowedPermissions`, so previously stored grants remain readable after
+the corresponding `apiKey.user.allowedPermissions` or `apiKey.workspace.allowedPermissions`,
+so previously stored grants remain readable after
 the allowlist changes. Services enforce the allowlist on writes.
 User and workspace permission catalogs extend the built-in defaults. Omitting
 them or passing `user.permissions: []` or `workspace.permissions: []` preserves
 those defaults. To define a role without permission grants, add a new role with
 `[]`; empty additions do not remove an existing role's built-in grants.
-An empty `apiKey.user.allowedPermissions / apiKey.workspace.allowedPermissions` still generates enums
+An empty allowlist in either API-key scope still generates enums
 from the full catalogs, but does not allow granting permissions to a key.
 Services continue to check key scope and the issuer's permission ceiling.
 

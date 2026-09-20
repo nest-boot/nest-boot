@@ -3,18 +3,18 @@ import type { MongoQuery, SubjectType } from "@casl/ability";
 /** Restricted extension API; auth owns the builder and the final ability. */
 export interface AbilityRules<Permission extends string = string> {
   /** Grants a business action only when the principal has the named permission. Built-in auth subjects and `all` are forbidden. */
-  can(
+  can: (
     permission: Permission,
     action: string | string[],
     subject: SubjectType | SubjectType[],
     fieldsOrConditions?: string | string[] | MongoQuery,
     conditions?: MongoQuery,
-  ): void;
+  ) => void;
   /** Adds a restriction, including conditions or fields, to business or built-in actions. */
-  cannot(
+  cannot: (
     action: string | string[],
     subject: SubjectType | SubjectType[],
     fieldsOrConditions?: string | string[] | MongoQuery,
     conditions?: MongoQuery,
-  ): void;
+  ) => void;
 }
