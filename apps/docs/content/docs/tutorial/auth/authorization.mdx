@@ -18,6 +18,33 @@ Configuration extends built-in catalogs. User/member `set*` methods instead repl
 stored assignments. Configure static options before startup; use Services to change
 assignments at runtime. API-key ceilings apply before business rules are built.
 
+## Built-in permission catalog
+
+The catalog contains 26 permissions. Compose each name as `resource:action`:
+
+| Scope     | Resource            | Actions                                                                                                                                      |
+| --------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| User      | `user`              | `create`, `read`, `update`, `delete`, `set-roles`, `set-permissions`, `set-email`, `set-password`, `ban`, `impersonate`, `impersonate-admin` |
+| User      | `session`           | `read`, `revoke`                                                                                                                             |
+| User      | `user-api-key`      | `read`, `write`                                                                                                                              |
+| User      | `workspace`         | `create`                                                                                                                                     |
+| Workspace | `workspace`         | `read`, `update`, `delete`                                                                                                                   |
+| Workspace | `member`            | `read`, `write`, `set-roles`, `set-permissions`, `invite`                                                                                    |
+| Workspace | `workspace-api-key` | `read`, `write`                                                                                                                              |
+
+`read` covers single and connection queries. `write` covers ordinary creation,
+updates, and deletion, but does not imply `read` or role/permission changes.
+`member:invite` maps to `read` and `write` on `Invitation`, independently of member
+writes. Role and direct-permission setters also enforce the caller's grant ceiling.
+`user:ban` covers banning and unbanning; administrator impersonation requires both
+`user:impersonate` and `user:impersonate-admin`.
+
+There are no unconditional baseline abilities. The default `user` role explicitly
+grants `workspace:create`; `member` grants `workspace:read` and `member:read`.
+Session-only self-service paths (such as discovering one's memberships and
+accepting/rejecting one's invitations) check identity and ownership separately.
+API keys do not inherit these session-only paths.
+
 ## Complete business example
 
 The [tested Report recipe](https://github.com/nest-boot/nest-boot/tree/beta/examples/server/src/app/auth/examples)
@@ -129,7 +156,7 @@ connections validate each returned node and reject the entire page if one is
 denied, rather than silently filtering a page and changing its pagination.
 Administrative bulk session revocation locks and authorizes every target before
 deleting any of them. Ownership-based self-service session operations remain
-separate from administrative `session:list` and `session:revoke` permissions.
+separate from administrative `session:read` and `session:revoke` permissions.
 
 After a successful password reset, auth rechecks the current session in the
 database. If the reset revoked it, the request loses its identity, abilities, and
@@ -212,7 +239,7 @@ Role names match `^[a-z][a-z0-9-]*$`; permission names use
 `resource:action`, with each segment matching the same pattern. Underscores,
 uppercase letters, whitespace, and consecutive hyphens (`--` or longer) are
 rejected at startup, not normalized. Both resource and action segments may
-contain single hyphens, for example `api-key:set-role`.
+contain single hyphens, for example `member:set-roles`.
 The role names `true`, `false`, and `null` are reserved.
 `RoleName<T>` and `PermissionName<T>` validate string literals at compile time;
 `AuthModule.forRoot()` and `forRootAsync()` infer catalogs, role keys, and lifecycle
@@ -222,14 +249,14 @@ role references. Dynamic strings are checked at startup.
 import type { PermissionName, RoleName } from "@nest-boot/auth";
 
 const role: RoleName<"super-admin"> = "super-admin";
-const permission: PermissionName<"api-key:read"> = "api-key:read";
+const permission: PermissionName<"user-api-key:read"> = "user-api-key:read";
 ```
 
 GraphQL generates `UserRole`, `WorkspaceRole`, `UserPermission`,
 `WorkspacePermission`, `UserApiKeyPermission`, and `WorkspaceApiKeyPermission` from the configuration.
 Enum names are uppercase: hyphens become `_` and the permission separator `:`
 becomes `__`. For example, `super-admin` is exposed as `SUPER_ADMIN` and
-`api-key:read` as `API_KEY__READ`. GraphQL variables and responses use these enum
+`user-api-key:read` as `USER_API_KEY__READ`. GraphQL variables and responses use these enum
 names; services, ability builders, and the database retain the original values.
 Regenerate client types after changing a catalog. Existing stored assignments
 must remain in the configured catalog to be serialized by GraphQL.
@@ -295,16 +322,17 @@ User administration also enforces a grant ceiling: `createUser()`, `setUserRoles
 and `setUserPermissions()` cannot grant permissions the caller does not hold.
 Role assignments include their inherited permissions, including the default role
 on user creation. For a personal API key, the ceiling is the intersection of the
-user's role/direct permissions and the key's permissions. Holding `user:set-role`
+user's role/direct permissions and the key's permissions. Holding `user:set-roles`
 alone does not allow promotion to a more privileged role.
 
 `userRoles` and `workspaceRoles` return the full role catalog as `{ role, grantable }`
 objects. `userPermissions` and `workspacePermissions` similarly return
 `{ permission, grantable }` objects. The enum-valued fields preserve type-safe inputs;
 `grantable` reflects the current principal's grant ceiling, including API-key
-restrictions. Workspace role grants require member-update or invitation-create
-ability; direct permission grants require member-update ability. Read-only callers
-receive workspace options with `grantable: false`. User catalogs require `user:set-role`.
+restrictions. Workspace role options require `member:set-roles` or `member:invite`
+to be grantable; direct permission options require `member:set-permissions`.
+Callers with only `member:read` receive workspace options with `grantable: false`.
+User role and permission catalogs require `user:set-roles` and `user:set-permissions`, respectively.
 Use these flags to disable new grants while keeping existing values removable,
 and validate the complete replacement list before submission. Mutation Services
 still enforce target-specific abilities and grant ceilings. The separate
@@ -397,9 +425,10 @@ The services follow the same split as Better Auth's admin and organization
 access control:
 
 - user administration uses `user:*` and `session:*` permissions;
-- workspace mutations use `workspace:*`, `member:*`, and
-  `invitation:*` permissions;
-- workspace API-key management uses `api-key:create/read/update/delete`;
+- workspace operations use `workspace:*` and `member:*` permissions;
+- `member:invite` manages invitation queries, creation, and cancellation, separately
+  from `member:write`; accepting or rejecting one's own invitation checks recipient identity;
+- workspace API-key management uses `workspace-api-key:read/write`;
 - current-user authentication, session management, invitation acceptance, and
   leaving a workspace use authenticated identity and ownership checks.
 

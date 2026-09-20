@@ -40,7 +40,8 @@ const GET_USER_FROM_USER_ROUTE = graphql(`
     $id: ID!
     $sessionsAfter: String
     $includeSessions: Boolean! = false
-    $includeCatalogs: Boolean! = false
+    $includeRoles: Boolean! = false
+    $includePermissions: Boolean! = false
   ) {
     user(id: $id) {
       id
@@ -75,11 +76,11 @@ const GET_USER_FROM_USER_ROUTE = graphql(`
         }
       }
     }
-    userRoles @include(if: $includeCatalogs) {
+    userRoles @include(if: $includeRoles) {
       role
       grantable
     }
-    userPermissions @include(if: $includeCatalogs) {
+    userPermissions @include(if: $includePermissions) {
       permission
       grantable
     }
@@ -172,7 +173,7 @@ export const Route = createFileRoute("/_authenticated/admin/users/$userId/")({
     context: { currentUserAbility, apolloClient },
     params: { userId },
   }) => {
-    if (!currentUserAbility.can("get", "User"))
+    if (!currentUserAbility.can("read", "User"))
       throw redirect({ to: "/admin/users" });
     const { data } = await apolloClient.query({
       query: GET_USER_FROM_USER_ROUTE,
@@ -180,7 +181,7 @@ export const Route = createFileRoute("/_authenticated/admin/users/$userId/")({
     });
     if (
       !data?.user ||
-      !currentUserAbility.can("get", createAbilitySubject("User", data.user))
+      !currentUserAbility.can("read", createAbilitySubject("User", data.user))
     )
       throw redirect({ to: "/admin/users" });
     return { title: t("admin:user.title") };
@@ -200,8 +201,9 @@ function AdminUserPage() {
         id: userId,
         includeSessions:
           currentUser.id === userId ||
-          currentUserAbility.can("list", "Session"),
-        includeCatalogs: currentUserAbility.can("set-role", "User"),
+          currentUserAbility.can("read", "Session"),
+        includeRoles: currentUserAbility.can("set-roles", "User"),
+        includePermissions: currentUserAbility.can("set-permissions", "User"),
       },
     },
   );
@@ -261,7 +263,11 @@ function AdminUserPage() {
   }
 
   const userSubject = createAbilitySubject("User", user);
-  const canSetRoles = currentUserAbility.can("set-role", userSubject);
+  const canSetRoles = currentUserAbility.can("set-roles", userSubject);
+  const canSetPermissions = currentUserAbility.can(
+    "set-permissions",
+    userSubject,
+  );
   const canUpdate = currentUserAbility.can("update", userSubject);
   const canSetEmail =
     canUpdate && currentUserAbility.can("set-email", userSubject);
@@ -432,14 +438,14 @@ function AdminUserPage() {
             <PermissionCheckboxGroup
               options={getPermissionOptions(data?.userPermissions ?? [])}
               value={permissions}
-              disabled={!canSetRoles}
+              disabled={!canSetPermissions}
               onChange={setPermissions}
             />
             <Button
               loading={savingPermissions}
               data-testid="admin-user-permissions-save"
               disabled={
-                !canSetRoles ||
+                !canSetPermissions ||
                 permissions.some(
                   (permission) =>
                     !data?.userPermissions?.some(

@@ -84,7 +84,7 @@ describe("framework-owned request abilities", () => {
     RequestContext.set(Workspace, new Workspace());
     RequestIdentity.stage({
       apiKey: Object.assign(new UserApiKey(), {
-        permissions: ["user:get", "workspace:update"],
+        permissions: ["user:read", "workspace:update"],
       }),
     });
     expect(buildRequestUserAbility({})?.can("read", User)).toBe(true);

@@ -114,17 +114,17 @@ describe("MemberService", () => {
     );
     expect(accessControlService.assertWorkspaceCan).toHaveBeenNthCalledWith(
       1,
-      "update",
+      "write",
       Member,
     );
     expect(accessControlService.assertWorkspaceCan).toHaveBeenNthCalledWith(
       2,
-      "update",
+      "write",
       member,
     );
     expect(accessControlService.assertWorkspaceCan).toHaveBeenNthCalledWith(
       3,
-      "update",
+      "write",
       locked,
     );
     expect(member.name).toBe("Original");
@@ -179,6 +179,9 @@ describe("MemberService", () => {
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       RequestContext.set(Workspace, workspace);
       RequestContext.set(Member, member);
+      const user = createTestUser();
+      member.user = user as never;
+      RequestContext.set(User, user);
       RequestContext.set(WorkspaceAbility, new WorkspaceAbility());
       expect(access.workspaceCan("read", workspace)).toBe(false);
       await expect(service.leaveWorkspace(member)).resolves.toBe(lockedMember);
@@ -211,6 +214,9 @@ describe("MemberService", () => {
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       RequestContext.set(Workspace, workspace);
       RequestContext.set(Member, member);
+      const user = createTestUser();
+      member.user = user as never;
+      RequestContext.set(User, user);
       await expect(service.leaveWorkspace(member)).rejects.toThrow(
         "outside an active transaction",
       );
@@ -264,6 +270,9 @@ describe("MemberService", () => {
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       RequestContext.set(Workspace, workspace);
       RequestContext.set(Member, member);
+      const user = createTestUser();
+      member.user = user as never;
+      RequestContext.set(User, user);
       await expect(service.leaveWorkspace(member)).rejects.toThrow(
         "Workspace member not found",
       );
@@ -279,13 +288,21 @@ describe("MemberService", () => {
       const { memberService, em } = createWorkspaceServices();
       const member = Object.assign(createTestMember(), { roles: ["owner"] });
       em.findOne.mockResolvedValue(member);
-      const result =
-        operation === "disable"
-          ? memberService.updateMember(member, { status: "DISABLED" })
-          : operation === "remove"
-            ? memberService.removeMember(member)
-            : memberService.leaveWorkspace(member);
-      await expect(result).resolves.toBe(member);
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          const user = createTestUser();
+          member.user = user as never;
+          RequestContext.set(User, user);
+          const result =
+            operation === "disable"
+              ? memberService.updateMember(member, { status: "DISABLED" })
+              : operation === "remove"
+                ? memberService.removeMember(member)
+                : memberService.leaveWorkspace(member);
+          await expect(result).resolves.toBe(member);
+        },
+      );
       expect(em.flush).toHaveBeenCalledOnce();
     },
   );
@@ -561,7 +578,7 @@ describe("MemberService", () => {
       { filters: false },
     );
     expect(accessControlService.assertWorkspaceCan).toHaveBeenCalledWith(
-      "create",
+      "write",
       Member,
     );
   });
@@ -656,7 +673,7 @@ describe("MemberService", () => {
     ).resolves.toBe(owner);
 
     expect(accessControlService.assertWorkspaceCan).toHaveBeenLastCalledWith(
-      "update",
+      "write",
       owner,
     );
     expect(accessControlService.assertCurrentMember).not.toHaveBeenCalled();
@@ -877,10 +894,10 @@ describe("MemberService", () => {
 
     await expect(
       memberService.addMember(workspace, user, {
-        permissions: ["user:get"],
+        permissions: ["user:read"],
       }),
     ).rejects.toThrow(
-      "Workspace member contains unknown permissions: user:get",
+      "Workspace member contains unknown permissions: user:read",
     );
 
     const member = createTestMember();
@@ -925,7 +942,7 @@ describe("MemberService", () => {
       { lockMode: LockMode.PESSIMISTIC_WRITE, refresh: true },
     );
     expect(accessControlService.assertWorkspaceCan).toHaveBeenLastCalledWith(
-      "update",
+      "set-permissions",
       managed,
     );
     expect(managed.permissions).toEqual(["workspace:update"]);
@@ -980,7 +997,7 @@ describe("MemberService", () => {
     expect(
       accessControlService.assertCanGrantWorkspacePermissions,
     ).toHaveBeenCalledWith(
-      expect.arrayContaining(["workspace:update", "member:create"]),
+      expect.arrayContaining(["workspace:update", "member:write"]),
     );
   });
 
@@ -988,18 +1005,18 @@ describe("MemberService", () => {
     const { em, memberService } = createWorkspaceServices({
       permissions: [
         "workspace:update",
-        "member:update",
+        "member:write",
         "workspace:delete",
-        "invitation:cancel",
+        "member:invite",
       ],
       roles: {
-        admin: ["workspace:update", "member:update"],
+        admin: ["workspace:update", "member:write"],
         member: [],
         owner: ["workspace:delete"],
       },
     });
     const member = Object.assign(createTestMember(), {
-      permissions: ["invitation:create"],
+      permissions: ["member:invite"],
       roles: ["member"],
     });
     em.findOne.mockResolvedValue(member);
@@ -1137,9 +1154,14 @@ describe("MemberService", () => {
     await expect(memberService.removeMember(staleMember)).rejects.toThrow(
       ForbiddenException,
     );
-    await expect(memberService.leaveWorkspace(staleMember)).rejects.toThrow(
-      ForbiddenException,
-    );
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      const user = createTestUser();
+      staleMember.user = user as never;
+      RequestContext.set(User, user);
+      await expect(memberService.leaveWorkspace(staleMember)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
     expect(em.findOne).toHaveBeenCalledWith(
       Member,
       { id: staleMember.id, workspace },

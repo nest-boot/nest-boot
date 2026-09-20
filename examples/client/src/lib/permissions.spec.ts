@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+import english from "../../public/locales/en/permission.json";
+import chinese from "../../public/locales/zh/permission.json";
+
 import {
   authPermissionValues,
   getDefaultApiKeyPermissions,
@@ -11,6 +14,22 @@ import {
 } from "./permissions";
 
 describe("permission options", () => {
+  it("keeps both locale catalogs aligned with all built-in permissions", () => {
+    const keys = authPermissionValues
+      .map((value) => value.toLowerCase().replaceAll("__", "_"))
+      .sort();
+    for (const locale of [english, chinese]) {
+      expect(
+        Object.keys(locale)
+          .filter((key) => !["label", "all"].includes(key))
+          .sort(),
+      ).toEqual(keys);
+      for (const key of keys) {
+        expect(locale).toHaveProperty(`${key}.name`, expect.any(String));
+        expect(locale).toHaveProperty(`${key}.description`, expect.any(String));
+      }
+    }
+  });
   it("selects only server defaults that the caller may grant", () => {
     expect(
       getDefaultApiKeyPermissions([
@@ -24,24 +43,23 @@ describe("permission options", () => {
   it("exposes the workspace permission catalog", () => {
     expect(workspacePermissionValues).toEqual(
       [
+        "WORKSPACE__READ",
         "WORKSPACE__UPDATE",
         "WORKSPACE__DELETE",
-        "MEMBER__CREATE",
-        "MEMBER__UPDATE",
-        "MEMBER__DELETE",
-        "INVITATION__CREATE",
-        "INVITATION__CANCEL",
-        "API_KEY__READ",
-        "API_KEY__CREATE",
-        "API_KEY__UPDATE",
-        "API_KEY__DELETE",
+        "MEMBER__READ",
+        "MEMBER__WRITE",
+        "MEMBER__SET_ROLES",
+        "MEMBER__SET_PERMISSIONS",
+        "MEMBER__INVITE",
+        "WORKSPACE_API_KEY__READ",
+        "WORKSPACE_API_KEY__WRITE",
       ].sort(),
     );
   });
 
   it("keeps workspace API-key permissions inside the mixed catalog", () => {
     expect(workspaceApiKeyPermissionValues).toContain("WORKSPACE__UPDATE");
-    expect(workspaceApiKeyPermissionValues).toContain("INVITATION__CANCEL");
+    expect(workspaceApiKeyPermissionValues).toContain("MEMBER__INVITE");
     expect(workspaceApiKeyPermissionValues).not.toContain("USER__DELETE");
   });
 
@@ -51,17 +69,15 @@ describe("permission options", () => {
         ...new Set([...userPermissionValues, ...workspacePermissionValues]),
       ].sort(),
     );
-    for (const permission of [
-      "API_KEY__READ",
-      "API_KEY__CREATE",
-      "API_KEY__UPDATE",
-      "API_KEY__DELETE",
-    ]) {
-      expect(userPermissionValues).toContain(permission);
-      expect(workspaceApiKeyPermissionValues).toContain(permission);
-      expect(
-        authPermissionValues.filter((value) => value === permission),
-      ).toHaveLength(1);
+    for (const action of ["READ", "WRITE"]) {
+      const userPermission = `USER_API_KEY__${action}`;
+      const workspacePermission = `WORKSPACE_API_KEY__${action}`;
+      expect(userPermissionValues).toContain(userPermission);
+      expect(userPermissionValues).not.toContain(workspacePermission);
+      expect(workspaceApiKeyPermissionValues).toContain(workspacePermission);
+      expect(workspaceApiKeyPermissionValues).not.toContain(userPermission);
+      expect(authPermissionValues).toContain(userPermission);
+      expect(authPermissionValues).toContain(workspacePermission);
     }
   });
 

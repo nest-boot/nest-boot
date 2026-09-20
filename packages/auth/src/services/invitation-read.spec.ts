@@ -216,7 +216,7 @@ describe("InvitationService read authorization", () => {
       selected: "workspace-1",
       userRead: "none",
       workspaceRead: "none",
-      allowed: false,
+      allowed: true,
     },
   ])("checks $name independently of RLS", async (scenario) => {
     const { em } = createWorkspaceServices();
@@ -311,7 +311,7 @@ describe("InvitationService read authorization", () => {
     });
   });
 
-  it("checks recipient permissions against the invitation instance", async () => {
+  it("allows the recipient's own invitation without a management ability", async () => {
     const { em } = createWorkspaceServices();
     const service = new InvitationService(
       em,
@@ -339,8 +339,8 @@ describe("InvitationService read authorization", () => {
         ]),
       );
 
-      await expect(service.getInvitation(invitation.id)).rejects.toThrow(
-        ForbiddenException,
+      await expect(service.getInvitation(invitation.id)).resolves.toBe(
+        invitation,
       );
       expect(em.findOne.mock.calls).toHaveLength(1);
     });

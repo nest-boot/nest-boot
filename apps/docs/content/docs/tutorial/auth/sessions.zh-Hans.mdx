@@ -31,7 +31,7 @@ profile(
 `currentSession` 返回 `Session`；`User.sessions` 返回 `SessionConnection`。
 原 `AuthSessionType`、`userSessions(userId)` 和 `authSessions` 已移除。
 查询本人会话使用 `currentUser { sessions(first: 20) { edges { node { id current expiresAt } } pageInfo { endCursor hasNextPage } } }`；管理员可在 `user(id: $id)` 下查询同一字段。
-本人浏览器会话不需要管理员权限；读取他人会话及 API Key 调用需要 `session:list`。
+本人浏览器会话不需要管理员权限；读取他人会话及 API Key 调用需要 `session:read`。
 `SessionResolver` 解析 `current`、`impersonatedById` 和 `impersonatedBy: User` 关联。
 执行新增 Session SELECT 策略迁移；普通查询排除 token 列并保留 RLS，不要把 token 暴露为 GraphQL 字段。
 

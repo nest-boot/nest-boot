@@ -8,32 +8,32 @@ export const DEFAULT_WORKSPACE_CREATOR_ROLE = "owner";
 
 /** Permissions available to the default workspace roles. */
 export const DEFAULT_WORKSPACE_PERMISSIONS = [
+  "workspace:read",
   "workspace:update",
   "workspace:delete",
-  "member:create",
-  "member:update",
-  "member:delete",
-  "invitation:create",
-  "invitation:cancel",
-  "api-key:read",
-  "api-key:create",
-  "api-key:update",
-  "api-key:delete",
+  "member:read",
+  "member:write",
+  "member:set-roles",
+  "member:set-permissions",
+  "member:invite",
+  "workspace-api-key:read",
+  "workspace-api-key:write",
 ] as const;
 
-/** Default workspace roles modelled after Better Auth's organization access control. */
+/** Explicit grants for workspace administration and ordinary membership. */
 export const DEFAULT_WORKSPACE_ROLES = {
   /** Grants every default workspace permission. */
   owner: DEFAULT_WORKSPACE_PERMISSIONS,
-  /** Grants workspace administration except workspace deletion. */
+  /** Grants membership/invitation administration without workspace deletion or key management. */
   admin: [
+    "workspace:read",
     "workspace:update",
-    "member:create",
-    "member:update",
-    "member:delete",
-    "invitation:create",
-    "invitation:cancel",
+    "member:read",
+    "member:write",
+    "member:set-roles",
+    "member:set-permissions",
+    "member:invite",
   ],
-  /** Grants no workspace-administration permissions. */
-  member: [],
+  /** Allows members to read workspace and member profiles, but not invitations. */
+  member: ["workspace:read", "member:read"],
 } as const satisfies AuthModuleRoles;

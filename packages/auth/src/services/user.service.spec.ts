@@ -351,7 +351,7 @@ describe("UserService", () => {
     >().toEqualTypeOf<never>();
   });
 
-  it("loads mutation targets by ID without requiring user:get and preserves RLS", async () => {
+  it("loads mutation targets by ID without requiring user:read and preserves RLS", async () => {
     const { service, em, accessControlService } = createService();
     const user = Object.assign(new User(), { id: "target" });
     em.findOne.mockResolvedValue(user);
@@ -365,7 +365,7 @@ describe("UserService", () => {
       { refresh: true },
     );
     expect(accessControlService.assertUserCan).not.toHaveBeenCalledWith(
-      "get",
+      "read",
       User,
     );
     expect(em.fork).not.toHaveBeenCalled();
@@ -382,8 +382,8 @@ describe("UserService", () => {
   it("checks direct and inherited grants before mutation or hashing", async () => {
     const { service, accessControlService, em, hash } = createService(true, {
       defaultRole: "reader",
-      permissions: ["user:get", "user:delete"],
-      roles: { reader: ["user:get"], administrator: ["user:delete"] },
+      permissions: ["user:read", "user:delete"],
+      roles: { reader: ["user:read"], administrator: ["user:delete"] },
     });
     const user = Object.assign(new User(), {
       roles: ["reader"],
@@ -411,7 +411,7 @@ describe("UserService", () => {
         permissions: ["user:delete"],
       }),
     ).rejects.toThrow("grant denied");
-    expect(assertGrant).toHaveBeenLastCalledWith(["user:get", "user:delete"]);
+    expect(assertGrant).toHaveBeenLastCalledWith(["user:read", "user:delete"]);
     expect(user.roles).toEqual(["reader"]);
     expect(user.permissions).toEqual([]);
     expect(em.flush).not.toHaveBeenCalled();
@@ -430,7 +430,7 @@ describe("UserService", () => {
       const args = { first: 10 };
       await expect(service.getUserConnection(args)).resolves.toBe(connection);
       expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
-        "list",
+        "read",
         User,
       );
       expect(find).toHaveBeenCalledExactlyOnceWith(UserConnection, args);
@@ -449,6 +449,45 @@ describe("UserService", () => {
     }
   });
 
+  it.each(["roles", "permissions"] as const)(
+    "checks initial %s with its own grant-setting action",
+    async (field) => {
+      for (const denyInstance of [false, true]) {
+        const { service, accessControlService, em } = createService();
+        const action = `set-${field}`;
+        vi.mocked(accessControlService.assertUserCan).mockImplementation(
+          (operation, target) => {
+            if (
+              operation === action &&
+              (denyInstance ? target !== User : target === User)
+            ) {
+              throw new ForbiddenException();
+            }
+          },
+        );
+        await expect(
+          service.createUser({
+            email: "alice@example.com",
+            name: "Alice",
+            password: "password",
+            ...(field === "roles"
+              ? { roles: ["user"] }
+              : { permissions: ["user:read"] }),
+          }),
+        ).rejects.toThrow(ForbiddenException);
+        expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
+          action,
+          User,
+        );
+        expect(accessControlService.assertUserCan).not.toHaveBeenCalledWith(
+          field === "roles" ? "set-permissions" : "set-roles",
+          User,
+        );
+        expect(em.persist).not.toHaveBeenCalled();
+      }
+    },
+  );
+
   it("creates a user and credential account with the configured hasher", async () => {
     const { em, hash, service } = createService();
     hash.mockResolvedValue("hashed-password");
@@ -457,7 +496,7 @@ describe("UserService", () => {
       email: " Alice@Example.com ",
       name: "Alice",
       password: "password",
-      permissions: ["user:list"],
+      permissions: ["user:read"],
     });
 
     expect(hash).toHaveBeenCalledWith("password");
@@ -468,7 +507,7 @@ describe("UserService", () => {
         email: "alice@example.com",
         emailVerified: false,
         name: "Alice",
-        permissions: ["user:list"],
+        permissions: ["user:read"],
       }),
     );
     expect(em.create).toHaveBeenNthCalledWith(
@@ -556,15 +595,15 @@ describe("UserService", () => {
     await expect(service.updateUser(user, { name: "Renamed" })).resolves.toBe(
       user,
     );
-    await expect(service.setUserPermissions(user, ["user:get"])).resolves.toBe(
+    await expect(service.setUserPermissions(user, ["user:read"])).resolves.toBe(
       user,
     );
 
     expect(em.findOne).toHaveBeenCalledWith(User, { id: "user-1" });
     expect(em.assign).toHaveBeenCalledWith(user, { name: "Renamed" });
-    expect(user.permissions).toEqual(["user:get"]);
+    expect(user.permissions).toEqual(["user:read"]);
     expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
-      "get",
+      "read",
       User,
     );
     expect(accessControlService.assertUserCan).toHaveBeenCalledWith(
@@ -681,12 +720,12 @@ describe("UserService", () => {
 
     const user = new User();
     await expect(
-      service.setUserPermissions(user, ["user:get", "user:get"]),
-    ).rejects.toThrow("User contains duplicate permissions: user:get");
-    await expect(service.setUserPermissions(user, ["user:get"])).resolves.toBe(
+      service.setUserPermissions(user, ["user:read", "user:read"]),
+    ).rejects.toThrow("User contains duplicate permissions: user:read");
+    await expect(service.setUserPermissions(user, ["user:read"])).resolves.toBe(
       user,
     );
-    expect(user.permissions).toEqual(["user:get"]);
+    expect(user.permissions).toEqual(["user:read"]);
   });
 
   it("gets a configured user by normalized email", async () => {
@@ -707,15 +746,20 @@ describe("UserService", () => {
 
   it("lists configured roles and assigns only known roles", async () => {
     const { service } = createService(true, {
-      permissions: ["user:create", "user:set-role", "user:list", "user:delete"],
+      permissions: [
+        "user:create",
+        "user:set-roles",
+        "user:read",
+        "user:delete",
+      ],
       roles: {
-        admin: ["user:create", "user:set-role"],
-        auditor: ["user:list"],
+        admin: ["user:create", "user:set-roles"],
+        auditor: ["user:read"],
         user: [],
       },
     });
     const user = Object.assign(new User(), {
-      permissions: ["session:list"],
+      permissions: ["session:read"],
       roles: ["user"],
     });
 
@@ -736,8 +780,9 @@ describe("UserService", () => {
     );
     expect(user.roles).toEqual(["auditor", "user"]);
     expect(service.getEffectiveUserPermissions(user)).toEqual([
-      "user:list",
-      "session:list",
+      "user:read",
+      "workspace:create",
+      "session:read",
     ]);
     await expect(
       service.setUserRoles(user, ["unknown"]),
@@ -746,26 +791,26 @@ describe("UserService", () => {
 
   it("keeps all role and permission options while marking grant availability", () => {
     const { service, accessControlService } = createService(true, {
-      permissions: ["user:get", "user:delete"],
+      permissions: ["user:read", "user:delete"],
       roles: {
-        reader: ["user:get"],
-        admin: ["user:get", "user:delete"],
+        reader: ["user:read"],
+        admin: ["user:read", "user:delete"],
         user: [],
       },
     });
     vi.mocked(accessControlService.canGrantUserPermissions).mockImplementation(
       (permissions) =>
-        permissions.every((permission) => permission === "user:get"),
+        permissions.every((permission) => permission === "user:read"),
     );
     expect(service.listRoles()).toEqual([
       { role: "admin", grantable: false },
-      { role: "user", grantable: true },
+      { role: "user", grantable: false },
       { role: "reader", grantable: true },
     ]);
     expect(service.listPermissions()).toEqual(
       DEFAULT_USER_PERMISSIONS.map((permission) => ({
         permission,
-        grantable: permission === "user:get",
+        grantable: permission === "user:read",
       })),
     );
     vi.mocked(accessControlService.assertUserCan).mockImplementation(() => {
@@ -792,7 +837,7 @@ describe("UserService", () => {
     ).toBe(true);
   });
 
-  it("resolves administration targets by ID with action permissions, not user:get", async () => {
+  it("resolves administration targets by ID with action permissions, not user:read", async () => {
     const { em, service, accessControlService } = createService();
     const user = Object.assign(new User(), { id: "user-1" });
     em.findOne.mockResolvedValue(user);
@@ -803,7 +848,7 @@ describe("UserService", () => {
       User,
     );
     expect(accessControlService.assertUserCan).not.toHaveBeenCalledWith(
-      "get",
+      "read",
       User,
     );
     expect(em.findOne).toHaveBeenCalledWith(
@@ -889,7 +934,7 @@ describe("UserService", () => {
     });
     vi.mocked(accessControlService.assertUserCan).mockImplementation(
       (action) => {
-        if (action === "impersonate-admins") {
+        if (action === "impersonate-admin") {
           throw new ForbiddenException();
         }
       },
@@ -905,7 +950,7 @@ describe("UserService", () => {
     );
     expect(accessControlService.assertUserCan).toHaveBeenNthCalledWith(
       2,
-      "impersonate-admins",
+      "impersonate-admin",
       target,
     );
   });
@@ -1076,12 +1121,12 @@ describe("UserService", () => {
   it("checks flattened permissions without an admin plugin", () => {
     const { service } = createService();
     const user = Object.assign(new User(), {
-      permissions: ["user:list", "session:revoke"],
+      permissions: ["user:read", "session:revoke"],
     });
 
     expect(
       service.hasPermissions(user, {
-        permissions: { session: ["revoke"], user: ["list"] },
+        permissions: { session: ["revoke"], user: ["read"] },
       }),
     ).toBe(true);
     expect(

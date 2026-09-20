@@ -25,14 +25,14 @@ import { AccessControlService } from "./access-control.service.js";
 import { MemberService } from "./member.service.js";
 
 describe("MemberService direct permission authorization", () => {
-  const permissions = ["member:update", "workspace:update", "workspace:delete"];
+  const permissions = ["member:write", "workspace:update", "workspace:delete"];
   const options = {
     workspace: {
       permissions,
       creatorRole: "founder",
       roles: {
         founder: permissions,
-        admin: ["member:update", "workspace:update"],
+        admin: ["member:write", "workspace:update"],
         custom: [],
       },
     },
@@ -49,19 +49,19 @@ describe("MemberService direct permission authorization", () => {
       role: "custom",
       direct: permissions,
       key: undefined,
-      expected: ["member", "founder", "custom"],
+      expected: ["founder", "custom"],
     },
     {
       role: "founder",
       direct: [],
       key: "user",
-      expected: ["member", "custom"],
+      expected: ["custom"],
     },
     {
       role: "founder",
       direct: [],
       key: "workspace",
-      expected: ["member", "custom"],
+      expected: ["custom"],
     },
   ])(
     "lists grantable roles for $role with key=$key",
@@ -91,14 +91,14 @@ describe("MemberService direct permission authorization", () => {
                   key === "workspace" ? ref(Workspace, workspace) : null,
                 permissions:
                   key === "user"
-                    ? ["member:update"]
-                    : ["member:update", "workspace:update"],
+                    ? ["member:write"]
+                    : ["member:write", "workspace:update"],
               },
             ),
           );
         RequestContext.set(
           WorkspaceAbility,
-          new WorkspaceAbility([{ action: "create", subject: Invitation }]),
+          new WorkspaceAbility([{ action: "write", subject: Invitation }]),
         );
         expect(service.listRoles()).toEqual(
           ["owner", "admin", "member", "founder", "custom"].map((role) => ({
@@ -138,7 +138,9 @@ describe("MemberService direct permission authorization", () => {
         );
         RequestContext.set(
           WorkspaceAbility,
-          new WorkspaceAbility([{ action: "update", subject: Member }]),
+          new WorkspaceAbility([
+            { action: "set-permissions", subject: Member },
+          ]),
         );
         expect(service.listPermissions()).toEqual(
           DEFAULT_WORKSPACE_PERMISSIONS.map((permission) => ({
@@ -223,7 +225,7 @@ describe("MemberService direct permission authorization", () => {
         roles: [scenario.role],
         permissions:
           scenario.role === "custom"
-            ? ["member:update", "workspace:update"]
+            ? ["member:write", "workspace:update"]
             : [],
       });
 
@@ -250,8 +252,8 @@ describe("MemberService direct permission authorization", () => {
                       : null,
                   permissions:
                     scenario.key === "workspace"
-                      ? ["member:update", "workspace:update"]
-                      : ["member:update"],
+                      ? ["member:write", "workspace:update"]
+                      : ["member:write"],
                 },
               ),
             );
@@ -259,7 +261,9 @@ describe("MemberService direct permission authorization", () => {
           RequestContext.set(
             WorkspaceAbility,
             new WorkspaceAbility(
-              scenario.canUpdate ? [{ action: "update", subject: Member }] : [],
+              scenario.canUpdate
+                ? [{ action: "set-permissions", subject: Member }]
+                : [],
             ),
           );
           const operation = service.setMemberPermissions(target, [

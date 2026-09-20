@@ -124,7 +124,7 @@ export const Route = createFileRoute(
 
     if (
       !data?.currentMember ||
-      !currentWorkspaceAbility.can("update", "Member")
+      !currentWorkspaceAbility.can("read", "Member")
     ) {
       throw redirect({
         to: "/workspaces/$workspaceId/members",
@@ -140,7 +140,7 @@ export const Route = createFileRoute(
       if (
         !data?.member ||
         !currentWorkspaceAbility.can(
-          "update",
+          "read",
           createAbilitySubject("Member", data.member),
         )
       ) {
@@ -184,16 +184,16 @@ function MemberComponent() {
   }
 
   const canManageRoles = currentWorkspaceAbility.can(
-    "update",
+    "set-roles",
     createAbilitySubject("Member", member),
   );
 
   const canManagePermissions = currentWorkspaceAbility.can(
-    "update",
+    "set-permissions",
     createAbilitySubject("Member", member),
   );
   const canManageProfile = currentWorkspaceAbility.can(
-    "update",
+    "write",
     createAbilitySubject("Member", member),
   );
   const [updateMember] = useMutation(UPDATE_MEMBER_FROM_MEMBER_ROUTE);
@@ -352,7 +352,7 @@ function MemberComponent() {
   const canRemove =
     memberId !== currentMember.id &&
     currentWorkspaceAbility.can(
-      "delete",
+      "write",
       createAbilitySubject("Member", member),
     );
 

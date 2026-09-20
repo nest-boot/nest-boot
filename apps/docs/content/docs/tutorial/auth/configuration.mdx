@@ -29,20 +29,21 @@ Important Nest Boot options include:
 - **`account`** — configures OAuth account linking, storage, and state validation;
 - **`providers`** — configures built-in social, custom OAuth 2.0, and OpenID Connect providers.
 
-`user.permissions` defaults to the standard `user:*`, `session:*`, and `api-key:*` catalog.
+`user.permissions` defaults to `user:*`, `session:*`, `user-api-key:*`, and `workspace:create`.
 `user.roles` defaults to `admin` and `user`. The `admin` role grants the full
-default catalog, while `user` grants none. Configured permissions extend the
+default catalog, while `user` grants `workspace:create`. Configured permissions extend the
 catalog; configured roles add new roles or append grants to existing roles.
 `user.defaultRole` defaults to `user`.
 `user.adminRoles` defaults to `['admin']` and classifies administrative
-identities, including targets that require `user:impersonate-admins` to
+identities, including targets that require `user:impersonate-admin` to
 impersonate.
 
 `workspace.permissions` defaults to the standard workspace permission catalog.
 `workspace.roles` defaults to `owner`, `admin`, and `member`. Owners receive the
 full default catalog, including workspace API-key management. Administrators
 receive workspace, member, and invitation management permissions except
-`workspace:delete`; API-key management is owner-only by default. Members receive none. Configured permissions and roles
+`workspace:delete`; API-key management is owner-only by default. Members receive
+`workspace:read` and `member:read`. Configured permissions and roles
 extend these defaults in the same way. `workspace.defaultRole` defaults
 to `member` for additions and invitations. `workspace.creatorRole` defaults to
 `owner` and assigns the initial role to the workspace creator.

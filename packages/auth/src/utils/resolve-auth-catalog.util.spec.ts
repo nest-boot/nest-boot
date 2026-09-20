@@ -29,7 +29,7 @@ describe("additive auth configuration", () => {
   it("extends permission catalogs and same-name roles while preserving built-in roles", () => {
     const options = {
       user: {
-        permissions: ["article:read", "user:get"],
+        permissions: ["article:read", "user:read"],
         roles: { admin: ["article:read"], editor: ["article:read"] },
       },
     };
@@ -44,7 +44,7 @@ describe("additive auth configuration", () => {
       editor: ["article:read"],
     });
     expect(options.user.roles.admin).toEqual(["article:read"]);
-    expect(options.user.permissions).toEqual(["article:read", "user:get"]);
+    expect(options.user.permissions).toEqual(["article:read", "user:read"]);
   });
 
   it.each(["user", "workspace"] as const)(

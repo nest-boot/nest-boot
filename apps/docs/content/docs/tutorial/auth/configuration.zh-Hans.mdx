@@ -28,16 +28,16 @@ description: "配置 AuthModule、环境变量与 MikroORM 实体。"
 - **`account`** — 配置 OAuth 账号关联、存储与 state 校验；
 - **`providers`** — 配置内置社交、自定义 OAuth 2.0 与 OpenID Connect Provider。
 
-`user.permissions` 默认为标准 `user:*`、`session:*` 与 `api-key:*` 权限目录。
+`user.permissions` 默认包含 `user:*`、`session:*`、`user-api-key:*` 与 `workspace:create`。
 `user.roles` 默认包含 `admin` 与 `user` 两个角色。`admin` 拥有完整默认权限目录，
-`user` 不拥有任何管理权限。配置的权限追加到内置目录，配置的角色新增角色或向同名角色追加授权。
+`user` 仅授予 `workspace:create`，不包含管理其他用户的权限。配置的权限追加到内置目录，配置的角色新增角色或向同名角色追加授权。
 `user.defaultRole` 默认为 `user`；`user.adminRoles` 默认为 `['admin']`，用于识别
-管理员身份，包括模拟时需要额外 `user:impersonate-admins` 权限的目标用户。
+管理员身份，包括模拟时需要额外 `user:impersonate-admin` 权限的目标用户。
 
 `workspace.permissions` 默认为标准工作区权限目录。`workspace.roles` 默认包含
 `owner`、`admin` 与 `member`。`owner` 拥有完整默认权限目录，包括工作区 API Key 管理；
 `admin` 拥有除 `workspace:delete` 外的工作区、成员和邀请管理权限，默认不授予 API Key 管理；
-`member` 不拥有管理权限。显式配置权限数组
+`member` 授予 `workspace:read` 与 `member:read`，不拥有写入或邀请管理权限。显式配置权限数组
 或角色映射时，同样追加到内置配置。`workspace.defaultRole` 默认为 `member`，用于
 新增成员和邀请；`workspace.creatorRole` 默认为 `owner`，指定工作区创建者的初始角色。
 

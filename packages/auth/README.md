@@ -16,7 +16,7 @@ The inverse user collection is `User.members`. Workspace ownership remains the
 `workspace` relation, and workspace-role configuration still lives under
 `workspace`.
 
-Update workspace permission subjects to `member:*` and `invitation:*`,
+Member permissions use `member:*`, including `member:invite` for invitation management,
 including custom ability builders, stored grants, and application policies.
 The example database tables, foreign keys, indexes, policies, and grants use
 `member` / `invitation` without legacy table names. The regenerated
@@ -112,14 +112,14 @@ transports call the service's connection methods directly.
 `getInvitationWorkspace(invitation)` implement the corresponding GraphQL relation
 fields. Users may read their own member-user association before selecting
 a workspace. Other member-user access, including API keys, requires the selected
-workspace and global user-scoped `user:read`. Invitation parent access allows either the recipient with user-scoped
-invitation read permission or the selected workspace with workspace-scoped
-invitation read permission. Reading another inviter's User additionally requires global user-read permission. They re-read parents and targets with injected
+workspace and global user-scoped `user:read`. Invitation parent access allows either
+the recipient's user session or the selected workspace with `member:invite`.
+Reading another inviter's User additionally requires global user-read permission. They re-read parents and targets with injected
 `this.em` and request RLS, never using a privileged reference's cached entity.
 
 `InvitationService.getInvitation(id)` is the RLS-backed single-invitation lookup.
-It accepts either user-scoped or workspace-scoped read permission before querying,
-then checks recipient or selected-workspace ownership and instance-level ability.
+It allows the recipient's session or the selected workspace's `member:invite`
+permission, then checks recipient ownership or workspace ownership and instance-level ability.
 Workspace API keys can use the workspace path without a user identity; failing
 recipient authorization does not prevent independently authorized workspace access.
 It uses the request manager without clearing its native session or disabling filters.
@@ -194,7 +194,7 @@ connection definition is required. Its GraphQL transport exposes these connectio
 
 ## User and session connections
 
-`UserService.getUserConnection(args)`, `SessionService.getSessionConnectionByUser(user, args)` and `AccountService.getAccountConnectionByUser(user, args)` use the built-in connection definitions registered by `AuthModule`. Own browser-session reads do not require administrative permissions; foreign-user and delegated API-key session reads require `session:list`. Application RLS must grant the corresponding SELECT access. Account connections require the owning user session, reject API keys and exclude credential columns. `UserService.listUserAccounts` is removed without an alias.
+`UserService.getUserConnection(args)`, `SessionService.getSessionConnectionByUser(user, args)` and `AccountService.getAccountConnectionByUser(user, args)` use the built-in connection definitions registered by `AuthModule`. Own browser-session reads do not require administrative permissions; foreign-user and delegated API-key session reads require `session:read`. Application RLS must grant the corresponding SELECT access. Account connections require the owning user session, reject API keys and exclude credential columns. `UserService.listUserAccounts` is removed without an alias.
 
 `SessionService` owns `getSessionConnectionByUser`,
 `getSessionImpersonator`, `revokeSession`, and `revokeUserSessions`;
@@ -264,10 +264,10 @@ in depth, not a substitute for these checks or for correctly configured policies
 Workspace deletion and member profile edits use the target's `delete` and
 `update` abilities, respectively, rather than requiring the caller's creator
 role. Editing the creator's shared contact fields follows the same rule;
-disabling/removing a creator checks the same update/delete abilities as other members.
+disabling/removing a creator checks the same member write ability as other members.
 Any current member may leave, including the last creator; the workspace is retained.
 Creator roles can be assigned or replaced through `setMemberRoles`, subject to
-update ability and permission-grant checks. Multiple owners are allowed; no
+`member:set-roles` ability and permission-grant checks. Multiple owners are allowed; no
 dedicated ownership-transfer operation is provided. API-key update/delete checks both the entity
 type and the loaded instance so conditional abilities remain enforced.
 
@@ -300,7 +300,7 @@ direct ORM/SQL access does not enforce those application authorization rules.
 Permission identifiers use lowercase `resource:action` names. Catalog membership,
 grant ceilings and API-key intersections use exact string equality; invalid
 names are rejected rather than case-converted. Auth owns the mappings for
-`user:*`, `session:*`, `workspace:*`, `member:*`, `invitation:*`, and API-key CRUD
+`user:*`, `session:*`, `workspace:*`, `member:*`, and scoped API-key
 permissions. Custom permission names only grant business abilities through
 explicit permission-bound rules; they cannot redefine built-in auth operations.
 
@@ -421,7 +421,9 @@ They cannot grant operations on built-in auth entities or `all`, access the raw
 builder, or replace the resulting ability. Restrictions take precedence over
 business grants. The frontend consumes the final serialized rules.
 
-`api-key:read/create/update/delete` are now built-in permissions in both scopes.
+Personal keys use `user-api-key:read/write`; workspace keys use
+`workspace-api-key:read/write`. Write covers creation, updates, enabling/disabling,
+and deletion without granting reads.
 User administrators and workspace owners inherit them; ordinary users and
 workspace administrators require explicit role or direct grants. Existing
 ownership checks and self-service operations remain enforced by Services.
@@ -431,8 +433,10 @@ The `userRoles` and `workspaceRoles` queries return `{ role, grantable }` object
 `userApiKeyPermissions` and `workspaceApiKeyPermissions` also return
 `{ permission, grantable, default }` entries. `grantable` includes the API-key
 allowlist and issuer's grant ceiling; `default` reflects configured defaults.
-Editors preselect only `default && grantable`. Workspace keys cannot grant
-`invitation:create`.
+Editors preselect only `default && grantable`. `member:invite` allows querying,
+creating, and canceling workspace invitations; it does not grant member writes.
+Accepting or rejecting one's own invitation requires the recipient's user session,
+not invitation management permission.
 
 Configure these independently with `apiKey.user` and `apiKey.workspace`, each
 containing `defaultPermissions` and `allowedPermissions`. Defaults are empty;
@@ -581,8 +585,9 @@ API-key entities, services, resolvers, connections, inputs, and creation results
 
 API-key enums cover the full scope catalogs, independently of the current grant
 allowlist, so existing keys remain readable after the allowlist is tightened.
-Workspace keys cannot be granted `invitation:create`: invitations require a user
-as sender. Use a personal API key for invitation creation.
+Workspace keys may carry `member:invite` to read and cancel invitations.
+Creating an invitation also requires a user as sender; use a personal API key
+for invitation creation.
 
 Update operation documents, ability subject mappings, and generated client types together. The example preserves `Migration00000000000000_Initial` and regenerates the entity baseline with two tables. Recreate development databases before applying this baseline; existing databases require a separate data-preserving upgrade migration.
 

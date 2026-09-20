@@ -37,11 +37,7 @@ export function resolveApiKeyPermissionCatalog(
       ...(options.apiKey?.[scope]?.defaultPermissions ?? []),
     ]),
     allowed: Object.freeze(
-      permissions.filter(
-        (permission) =>
-          allowlist.has(permission) &&
-          (scope !== "workspace" || permission !== "invitation:create"),
-      ),
+      permissions.filter((permission) => allowlist.has(permission)),
     ),
   });
   scopes[scope] = catalog;

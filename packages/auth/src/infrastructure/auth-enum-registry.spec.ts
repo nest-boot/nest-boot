@@ -85,6 +85,25 @@ describe("auth enum registration", () => {
   const enumType = (schema: GraphQLSchema, name: string) =>
     schema.getType(name) as GraphQLEnumType;
 
+  it("exposes member invitation management without legacy invitation enums", async () => {
+    register({});
+    const schema = await buildSchema();
+    for (const name of [
+      "WorkspacePermission",
+      "UserApiKeyPermission",
+      "WorkspaceApiKeyPermission",
+    ]) {
+      const permission = enumType(schema, name);
+      expect(permission.parseValue("MEMBER__INVITE")).toBe("member:invite");
+      expect(permission.serialize("member:invite")).toBe("MEMBER__INVITE");
+      expect(
+        permission
+          .getValues()
+          .some(({ name }) => name.startsWith("INVITATION__")),
+      ).toBe(false);
+    }
+  });
+
   it("keeps stored API-key grants serializable after tightening the allowlist", async () => {
     register({
       user: { permissions: ["user:read"] },
@@ -101,10 +120,7 @@ describe("auth enum registration", () => {
         .map(({ value }) => value),
     ).toEqual([
       ...DEFAULT_USER_PERMISSIONS,
-      "user:read",
-      ...DEFAULT_WORKSPACE_PERMISSIONS.filter(
-        (value) => !value.startsWith("api-key:"),
-      ),
+      ...DEFAULT_WORKSPACE_PERMISSIONS,
       "project:read",
       "project:write",
     ]);
@@ -137,10 +153,7 @@ describe("auth enum registration", () => {
         .map(({ value }) => value),
     ).toEqual([
       ...DEFAULT_USER_PERMISSIONS,
-      "user:read",
-      ...DEFAULT_WORKSPACE_PERMISSIONS.filter(
-        (value) => !value.startsWith("api-key:"),
-      ),
+      ...DEFAULT_WORKSPACE_PERMISSIONS,
       "project:read",
     ]);
     expect(
@@ -154,15 +167,15 @@ describe("auth enum registration", () => {
     register({
       user: {
         roles: { "super-admin": [] },
-        permissions: ["user:read", "api-key:read"],
+        permissions: ["user:read", "user-api-key:read"],
       },
       workspace: {
         roles: { "team-owner": [] },
         permissions: ["project:write"],
       },
       apiKey: {
-        user: { allowedPermissions: ["api-key:read"] },
-        workspace: { allowedPermissions: ["api-key:read"] },
+        user: { allowedPermissions: ["user-api-key:read"] },
+        workspace: { allowedPermissions: ["workspace-api-key:read"] },
       },
     });
     const schema = await buildSchema();
@@ -186,18 +199,15 @@ describe("auth enum registration", () => {
         value.toUpperCase().replaceAll(":", "__").replaceAll("-", "_"),
         value,
       ]),
-      ["USER__READ", "user:read"],
-      ...DEFAULT_WORKSPACE_PERMISSIONS.filter(
-        (value) => !value.startsWith("api-key:"),
-      ).map((value) => [
+      ...DEFAULT_WORKSPACE_PERMISSIONS.map((value) => [
         value.toUpperCase().replaceAll(":", "__").replaceAll("-", "_"),
         value,
       ]),
       ["PROJECT__WRITE", "project:write"],
     ]);
-    expect(apiKey.serialize("api-key:read")).toBe("API_KEY__READ");
+    expect(apiKey.serialize("user-api-key:read")).toBe("USER_API_KEY__READ");
     expect(apiKey.parseValue("USER__READ")).toBe("user:read");
-    expect(() => apiKey.parseValue("api-key:read")).toThrow();
+    expect(() => apiKey.parseValue("user-api-key:read")).toThrow();
     const document = parse(
       "query($role: UserRole!, $permissions: [UserApiKeyPermission!]!) { userRole(role: $role) apiKeyPermissions(permissions: $permissions) }",
     );
@@ -207,10 +217,10 @@ describe("auth enum registration", () => {
     expect(
       getVariableValues(schema, operation.variableDefinitions ?? [], {
         role: "SUPER_ADMIN",
-        permissions: ["API_KEY__READ"],
+        permissions: ["USER_API_KEY__READ"],
       }),
     ).toEqual({
-      coerced: { role: "super-admin", permissions: ["api-key:read"] },
+      coerced: { role: "super-admin", permissions: ["user-api-key:read"] },
     });
   });
 
@@ -220,8 +230,8 @@ describe("auth enum registration", () => {
       register({ [scope]: { permissions: [] } });
       register({});
       const schema = await buildSchema();
-      expect(enumType(schema, "UserPermission").parseValue("USER__GET")).toBe(
-        "user:get",
+      expect(enumType(schema, "UserPermission").parseValue("USER__READ")).toBe(
+        "user:read",
       );
     },
   );
@@ -250,8 +260,10 @@ describe("auth enum registration", () => {
   it("rejects mapping collisions before changing registered metadata", () => {
     register({});
     expect(() =>
-      register({ user: { permissions: ["api-key:read", "api_key:read"] } }),
+      register({
+        user: { permissions: ["user-api-key:read", "user_api_key:read"] },
+      }),
     ).toThrow("Permission enum collision");
-    expect(UserPermission.USER__GET).toBe("user:get");
+    expect(UserPermission.USER__READ).toBe("user:read");
   });
 });

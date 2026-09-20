@@ -374,10 +374,31 @@ test.describe("workspace invitations", () => {
         `/workspaces/${workspaceId}/members/${currentMember.id}`,
       );
       const permission = memberPage.getByTestId("permission-WORKSPACE__UPDATE");
-      await expect(memberPage).toHaveURL(
-        new RegExp(`/workspaces/${workspaceId}/members(?:\\?.*)?$`),
+      await expect(memberPage.locator("#member-name")).toBeDisabled();
+      await expect(permission).toBeDisabled();
+
+      // Direct-permission editors do not need profile-write or role-setting ability.
+      await graphqlRequest(
+        page.request,
+        "mutation ($id: ID!, $input: SetMemberPermissionsInput!) { setMemberPermissions(id: $id, input: $input) { id } }",
+        {
+          id: memberId,
+          input: {
+            permissions: ["MEMBER__SET_PERMISSIONS", "WORKSPACE__UPDATE"],
+          },
+        },
+        { "x-workspace-id": workspaceId },
       );
-      await expect(permission).toHaveCount(0);
+      await memberPage.reload();
+      await expect(memberPage.locator("#member-name")).toBeDisabled();
+      await expect(memberPage.getByTestId("member-role-OWNER")).toBeDisabled();
+      await expect(permission).toBeEnabled();
+      await permission.click();
+      await memberPage.getByTestId("member-save").click();
+      await expect(memberPage.getByText("成员更新成功")).toBeVisible();
+      await permission.click();
+      await memberPage.getByTestId("member-save").click();
+      await expect(permission).not.toBeChecked();
 
       await graphqlRequest(
         page.request,

@@ -1,64 +1,40 @@
 {
   "label": "Permissions",
-  "api_key_read": {
-    "name": "Read API Keys",
-    "description": "View API keys within the authorized scope"
-  },
-  "api_key_create": {
-    "name": "Create API Keys",
-    "description": "Issue API keys within the allowed permission ceiling"
-  },
-  "api_key_update": {
-    "name": "Update API Keys",
-    "description": "Modify API keys within the authorized scope"
-  },
-  "api_key_delete": {
-    "name": "Delete API Keys",
-    "description": "Revoke API keys within the authorized scope"
-  },
   "all": {
     "description": "Select or deselect all permissions at once",
     "name": "All Permissions"
-  },
-  "workspace_update": {
-    "name": "Update Workspace",
-    "description": "Change workspace settings and configuration"
-  },
-  "workspace_delete": {
-    "name": "Delete Workspace",
-    "description": "Permanently delete the workspace"
-  },
-  "member_create": {
-    "name": "Create Members",
-    "description": "Add members to the workspace"
-  },
-  "member_update": {
-    "name": "Update Members",
-    "description": "Change workspace member details and access"
-  },
-  "member_delete": {
-    "name": "Delete Members",
-    "description": "Remove members from the workspace"
-  },
-  "invitation_create": {
-    "name": "Create Invitations",
-    "description": "Invite people to join the workspace"
-  },
-  "invitation_cancel": {
-    "name": "Cancel Invitations",
-    "description": "Cancel pending workspace invitations"
   },
   "user_create": {
     "name": "Create Users",
     "description": "Create user accounts"
   },
-  "user_list": {
-    "name": "List Users",
-    "description": "Browse user accounts"
+  "user_read": {
+    "name": "Read Users",
+    "description": "View user accounts and profiles"
   },
-  "user_set_role": {
+  "user_update": {
+    "name": "Update Users",
+    "description": "Change user profile details"
+  },
+  "user_delete": {
+    "name": "Delete Users",
+    "description": "Permanently delete user accounts"
+  },
+  "user_set_roles": {
     "name": "Set User Roles",
-    "description": "Change user administration roles"
+    "description": "Replace user roles within the grant ceiling"
+  },
+  "user_set_permissions": {
+    "name": "Set User Permissions",
+    "description": "Replace direct user permissions within the grant ceiling"
+  },
+  "user_set_email": {
+    "name": "Set User Emails",
+    "description": "Replace user email addresses"
+  },
+  "user_set_password": {
+    "name": "Set User Passwords",
+    "description": "Replace user passwords"
   },
   "user_ban": {
     "name": "Ban Users",
@@ -68,40 +44,68 @@
     "name": "Impersonate Users",
     "description": "Start sessions as other users"
   },
-  "user_impersonate_admins": {
+  "user_impersonate_admin": {
     "name": "Impersonate Administrators",
-    "description": "Start sessions as administrator users"
+    "description": "Allow administrator targets when impersonating users"
   },
-  "user_delete": {
-    "name": "Delete Users",
-    "description": "Permanently delete user accounts"
-  },
-  "user_set_password": {
-    "name": "Set User Passwords",
-    "description": "Replace user passwords"
-  },
-  "user_set_email": {
-    "name": "Set User Emails",
-    "description": "Replace user email addresses"
-  },
-  "user_get": {
-    "name": "Get Users",
-    "description": "Read individual user accounts"
-  },
-  "user_update": {
-    "name": "Update Users",
-    "description": "Change user account details"
-  },
-  "session_list": {
-    "name": "List Sessions",
-    "description": "Browse user sessions"
+  "session_read": {
+    "name": "Read Sessions",
+    "description": "View user sessions"
   },
   "session_revoke": {
     "name": "Revoke Sessions",
-    "description": "Revoke active user sessions"
+    "description": "Revoke user sessions"
   },
-  "session_delete": {
-    "name": "Delete Sessions",
-    "description": "Delete user session records"
+  "user_api_key_read": {
+    "name": "Read Personal API Keys",
+    "description": "View personal API keys within the authorized scope"
+  },
+  "user_api_key_write": {
+    "name": "Manage Personal API Keys",
+    "description": "Create, update, enable, disable, and delete personal API keys"
+  },
+  "workspace_create": {
+    "name": "Create Workspaces",
+    "description": "Create workspaces for the current user"
+  },
+  "workspace_read": {
+    "name": "Read Workspace",
+    "description": "View the selected workspace"
+  },
+  "workspace_update": {
+    "name": "Update Workspace",
+    "description": "Change workspace settings"
+  },
+  "workspace_delete": {
+    "name": "Delete Workspace",
+    "description": "Permanently delete the workspace"
+  },
+  "member_read": {
+    "name": "Read Members",
+    "description": "View workspace member profiles"
+  },
+  "member_write": {
+    "name": "Manage Members",
+    "description": "Add, update, disable, and remove members; excludes changing roles and permissions"
+  },
+  "member_set_roles": {
+    "name": "Set Member Roles",
+    "description": "Replace member roles within the grant ceiling"
+  },
+  "member_set_permissions": {
+    "name": "Set Member Permissions",
+    "description": "Replace direct member permissions within the grant ceiling"
+  },
+  "member_invite": {
+    "name": "Manage Member Invitations",
+    "description": "View, create, and cancel workspace invitations"
+  },
+  "workspace_api_key_read": {
+    "name": "Read Workspace API Keys",
+    "description": "View API keys in the selected workspace"
+  },
+  "workspace_api_key_write": {
+    "name": "Manage Workspace API Keys",
+    "description": "Create, update, enable, disable, and delete workspace API keys"
   }
 }

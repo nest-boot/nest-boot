@@ -14,33 +14,31 @@ describe("DEFAULT_USER_ROLES", () => {
   });
 
   it("declares the complete default user permission catalog", () => {
-    expect(DEFAULT_USER_PERMISSIONS).toContain("user:set-role");
+    expect(DEFAULT_USER_PERMISSIONS).toContain("user:set-roles");
     expect(DEFAULT_USER_PERMISSIONS).toContain("session:revoke");
   });
 
-  it("grants the standard admin permissions and no permissions to users", () => {
+  it("grants administration to admins and explicit workspace creation to users", () => {
     expect(DEFAULT_USER_ROLES).toEqual({
       admin: [
         "user:create",
-        "user:list",
-        "user:set-role",
+        "user:read",
+        "user:set-roles",
+        "user:set-permissions",
         "user:ban",
         "user:impersonate",
-        "user:impersonate-admins",
+        "user:impersonate-admin",
         "user:delete",
         "user:set-password",
         "user:set-email",
-        "user:get",
         "user:update",
-        "session:list",
+        "session:read",
         "session:revoke",
-        "session:delete",
-        "api-key:read",
-        "api-key:create",
-        "api-key:update",
-        "api-key:delete",
+        "user-api-key:read",
+        "user-api-key:write",
+        "workspace:create",
       ],
-      user: [],
+      user: ["workspace:create"],
     });
   });
 });

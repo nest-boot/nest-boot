@@ -16,12 +16,7 @@ import { Module } from '@nestjs/common';
       },
       user: {
         roles: {
-          user: [
-            'api-key:read',
-            'api-key:create',
-            'api-key:update',
-            'api-key:delete',
-          ],
+          user: ['user-api-key:read', 'user-api-key:write'],
         },
         changeEmail: {
           enabled: true,

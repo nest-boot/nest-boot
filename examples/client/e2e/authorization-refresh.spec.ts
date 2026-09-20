@@ -37,7 +37,7 @@ for (const scope of ["user", "workspace"] as const) {
       if (body.data?.[field]) {
         // Model a server extension whose effective rules change with the profile.
         body.data[field].push({
-          actions: [scope === "user" ? "list" : "delete"],
+          actions: [scope === "user" ? "read" : "delete"],
           subjects: [scope === "user" ? "User" : "Workspace"],
           fields: null,
           conditions: null,

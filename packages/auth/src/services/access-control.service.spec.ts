@@ -21,6 +21,31 @@ describe("AccessControlService", () => {
   const options: AuthModuleOptions = {};
   const service = new AccessControlService(options);
 
+  it("restricts self-service paths to the current user without API-key delegation", async () => {
+    const user = Object.assign(new User(), { id: "user-1" });
+    expect(() => {
+      service.assertUserSession(user);
+    }).toThrow(ForbiddenException);
+    await RequestContext.run(new RequestContext({ type: "test" }), () => {
+      RequestContext.set(User, user);
+      expect(() => {
+        service.assertUserSession(user);
+      }).not.toThrow();
+      expect(() => {
+        service.assertUserSession(Object.assign(new User(), { id: "another" }));
+      }).toThrow(ForbiddenException);
+      RequestIdentity.stage({
+        apiKey: Object.assign(new UserApiKey(), {
+          user: ref(User, user),
+          permissions: [],
+        }),
+      });
+      expect(() => {
+        service.assertUserSession(user);
+      }).toThrow("requires a user session");
+    });
+  });
+
   it("fails closed when no request identity is available", async () => {
     expect(service.userCan("read", Subject)).toBe(false);
     expect(service.workspaceCan("read", Subject)).toBe(false);
@@ -224,29 +249,29 @@ describe("AccessControlService", () => {
       ...options,
       user: {
         defaultRole: "reader",
-        roles: { reader: ["user:get"], admin: ["user:delete"] },
+        roles: { reader: ["user:read"], admin: ["user:delete"] },
       },
     });
     const user = Object.assign(new User(), {
       roles: ["reader"],
-      permissions: ["user:set-role"],
+      permissions: ["user:set-roles"],
     });
     expect(() => {
-      ceilingService.assertCanGrantUserPermissions(["user:get"]);
+      ceilingService.assertCanGrantUserPermissions(["user:read"]);
     }).toThrow(ForbiddenException);
-    expect(ceilingService.canGrantUserPermissions(["user:get"])).toBe(false);
+    expect(ceilingService.canGrantUserPermissions(["user:read"])).toBe(false);
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
       RequestContext.set(User, user);
       expect(
-        ceilingService.canGrantUserPermissions(["user:get", "user:set-role"]),
+        ceilingService.canGrantUserPermissions(["user:read", "user:set-roles"]),
       ).toBe(true);
       expect(ceilingService.canGrantUserPermissions(["user:delete"])).toBe(
         false,
       );
       expect(() => {
         ceilingService.assertCanGrantUserPermissions([
-          "user:get",
-          "user:set-role",
+          "user:read",
+          "user:set-roles",
         ]);
       }).not.toThrow();
       expect(() => {
@@ -256,17 +281,17 @@ describe("AccessControlService", () => {
         apiKey: Object.assign(new UserApiKey(), {
           workspace: null,
           user: user,
-          permissions: ["user:get", "user:delete"],
+          permissions: ["user:read", "user:delete"],
         }),
       });
       expect(() => {
-        ceilingService.assertCanGrantUserPermissions(["user:get"]);
+        ceilingService.assertCanGrantUserPermissions(["user:read"]);
       }).not.toThrow();
       expect(() => {
-        ceilingService.assertCanGrantUserPermissions(["user:set-role"]);
+        ceilingService.assertCanGrantUserPermissions(["user:set-roles"]);
       }).toThrow(ForbiddenException);
-      expect(ceilingService.canGrantUserPermissions(["user:get"])).toBe(true);
-      expect(ceilingService.canGrantUserPermissions(["user:set-role"])).toBe(
+      expect(ceilingService.canGrantUserPermissions(["user:read"])).toBe(true);
+      expect(ceilingService.canGrantUserPermissions(["user:set-roles"])).toBe(
         false,
       );
       expect(ceilingService.canGrantUserPermissions(["user:delete"])).toBe(
@@ -278,13 +303,13 @@ describe("AccessControlService", () => {
       RequestIdentity.stage({
         apiKey: Object.assign(new WorkspaceApiKey(), {
           workspace: new Workspace(),
-          permissions: ["user:get"],
+          permissions: ["user:read"],
         }),
       });
       expect(() => {
-        ceilingService.assertCanGrantUserPermissions(["user:get"]);
+        ceilingService.assertCanGrantUserPermissions(["user:read"]);
       }).toThrow(ForbiddenException);
-      expect(ceilingService.canGrantUserPermissions(["user:get"])).toBe(false);
+      expect(ceilingService.canGrantUserPermissions(["user:read"])).toBe(false);
     });
   });
 

@@ -45,7 +45,7 @@ describe("auth Zod input constraints", () => {
     },
     {
       Input: SetUserPermissionsInput,
-      values: { permissions: "user:get" },
+      values: { permissions: "user:read" },
       field: "permissions",
     },
     {

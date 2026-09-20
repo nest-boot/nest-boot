@@ -37,6 +37,7 @@ import {
   normalizeAuthRoles,
   resolveAuthPermissions,
 } from "../utils/auth-role.util.js";
+import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
 import { resolveAuthCatalog } from "../utils/resolve-auth-catalog.util.js";
 import { DEFAULT_WORKSPACE_ROLE } from "../workspace.constants.js";
 import { AccessControlService } from "./access-control.service.js";
@@ -62,7 +63,7 @@ export class InvitationService {
   ): Promise<Invitation> {
     this.accessControlService.assertCurrentWorkspace(workspace);
     this.accessControlService.assertCurrentUser(inviter);
-    this.accessControlService.assertWorkspaceCan("create", Invitation);
+    this.accessControlService.assertWorkspaceCan("write", Invitation);
     const email = input.email.trim().toLowerCase();
     const roles = this.normalizeGrantedRoles(input.roles ?? [this.defaultRole]);
     const expiresIn = input.expiresIn ?? 60 * 60 * 48;
@@ -148,7 +149,7 @@ export class InvitationService {
             status: "pending",
             workspace,
           } as unknown as RequiredEntityData<Invitation>);
-          this.accessControlService.assertWorkspaceCan("create", created);
+          this.accessControlService.assertWorkspaceCan("write", created);
           await em.persist(created).flush();
           return { created, inviterMember };
         },
@@ -213,7 +214,7 @@ export class InvitationService {
   ): Promise<string | null> {
     this.accessControlService.assertCurrentWorkspace(workspace);
     this.accessControlService.assertCurrentUser(inviter);
-    this.accessControlService.assertWorkspaceCan("create", Invitation);
+    this.accessControlService.assertWorkspaceCan("write", Invitation);
     const user = await this.em.findOne(
       User,
       { email: email.trim().toLowerCase() } as FilterQuery<User>,
@@ -224,8 +225,12 @@ export class InvitationService {
 
   /** Finds an invitation after recipient or workspace authorization, preserving RLS. */
   async getInvitation(id: string): Promise<Invitation | null> {
+    const recipientSession =
+      RequestContext.isActive() &&
+      RequestContext.get(User) &&
+      !getCurrentApiKey();
     if (
-      !this.accessControlService.userCan("read", Invitation) &&
+      !recipientSession &&
       !this.accessControlService.workspaceCan("read", Invitation)
     ) {
       throw new ForbiddenException("Invitation read access denied");
@@ -243,7 +248,7 @@ export class InvitationService {
   async getInvitationInviter(invitation: Invitation): Promise<User> {
     const current = await this.getInvitationForRelation(invitation);
     const actor = RequestContext.isActive() ? RequestContext.get(User) : null;
-    const self = actor?.id === current.inviter.id;
+    const self = !getCurrentApiKey() && actor?.id === current.inviter.id;
     if (!self) this.accessControlService.assertUserCan("read", User);
     const user = await this.em.findOne(
       User,
@@ -288,7 +293,7 @@ export class InvitationService {
     const user = RequestContext.isActive() ? RequestContext.get(User) : null;
     if (
       invitation.email.toLowerCase() === user?.email?.toLowerCase() &&
-      this.accessControlService.userCan("read", invitation)
+      !getCurrentApiKey()
     ) {
       return;
     }
@@ -303,13 +308,11 @@ export class InvitationService {
     id: string,
     user: User,
   ): Promise<Invitation | null> {
-    this.accessControlService.assertCurrentUser(user);
-    this.accessControlService.assertUserCan("read", Invitation);
+    this.accessControlService.assertUserSession(user);
     const invitation = await this.em.findOne(Invitation, {
       id,
       email: user.email.toLowerCase(),
     } as FilterQuery<Invitation>);
-    if (invitation) this.accessControlService.assertUserCan("read", invitation);
     return invitation;
   }
 
@@ -352,8 +355,7 @@ export class InvitationService {
     user: User,
     args: ConnectionArgsInterface<Invitation>,
   ): Promise<ConnectionInterface<Invitation>> {
-    this.accessControlService.assertCurrentUser(user);
-    this.accessControlService.assertUserCan("read", Invitation);
+    this.accessControlService.assertUserSession(user);
     const now = new Date();
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
@@ -364,9 +366,6 @@ export class InvitationService {
         status: "pending",
       } as FilterQuery<Invitation>,
     });
-    for (const { node } of connection.edges) {
-      this.accessControlService.assertUserCan("read", node);
-    }
     return connection;
   }
 
@@ -375,8 +374,7 @@ export class InvitationService {
     user: User,
     invitationId: string,
   ): Promise<AcceptInvitationResult | null> {
-    this.accessControlService.assertCurrentUser(user);
-    this.accessControlService.assertUserCan("update", Invitation);
+    this.accessControlService.assertUserSession(user);
     return await this.em.transactional(
       async (em) => {
         const invitation = await em.findOne(
@@ -403,7 +401,6 @@ export class InvitationService {
           lockMode: LockMode.PESSIMISTIC_WRITE,
           populate: [],
         });
-        this.accessControlService.assertUserCan("update", invitation);
         if (invitation.status !== "pending") {
           throw new BadRequestException("Workspace invitation is not pending");
         }
@@ -442,11 +439,11 @@ export class InvitationService {
 
   /** Cancels a pending invitation. */
   async cancelInvitation(invitation: Invitation | string): Promise<Invitation> {
-    this.accessControlService.assertWorkspaceCan("cancel", Invitation);
+    this.accessControlService.assertWorkspaceCan("write", Invitation);
     invitation = await this.resolveInvitationForAction(invitation);
     const workspace = this.unwrapInvitationWorkspace(invitation);
     this.accessControlService.assertCurrentWorkspace(workspace);
-    this.accessControlService.assertWorkspaceCan("cancel", invitation);
+    this.accessControlService.assertWorkspaceCan("write", invitation);
     if (invitation.status !== "pending") {
       throw new BadRequestException("Workspace invitation is not pending");
     }
@@ -471,10 +468,8 @@ export class InvitationService {
     user: User,
     invitation: Invitation | string,
   ): Promise<Invitation> {
-    this.accessControlService.assertCurrentUser(user);
-    this.accessControlService.assertUserCan("update", Invitation);
+    this.accessControlService.assertUserSession(user);
     invitation = await this.resolveInvitationForAction(invitation);
-    this.accessControlService.assertUserCan("update", invitation);
     if (invitation.status !== "pending") {
       throw new BadRequestException("Workspace invitation is not pending");
     }

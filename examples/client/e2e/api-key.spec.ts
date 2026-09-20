@@ -35,8 +35,8 @@ test.describe("API keys", () => {
           id,
           input: {
             permissions: [
-              "API_KEY__READ",
-              "API_KEY__CREATE",
+              "WORKSPACE_API_KEY__READ",
+              "WORKSPACE_API_KEY__WRITE",
               "WORKSPACE__UPDATE",
             ],
           },
@@ -51,8 +51,8 @@ test.describe("API keys", () => {
       await issuerPage.getByTestId("permission-WORKSPACE__UPDATE").click();
       for (const permission of [
         "WORKSPACE__DELETE",
-        "MEMBER__UPDATE",
-        "INVITATION__CREATE",
+        "MEMBER__WRITE",
+        "MEMBER__INVITE",
       ]) {
         await expect(
           issuerPage.getByTestId(`permission-${permission}`),
@@ -122,23 +122,17 @@ async function exerciseApiKeyLifecycle(
   page: Page,
   names: { name: string; renamedName: string },
 ) {
+  const scope = page.url().includes("/workspaces/") ? "WORKSPACE" : "USER";
   await expect(page.getByTestId("api-keys-page")).toBeVisible();
 
   await page.getByTestId("api-key-create-action").click();
-  const invitationPermission = page.getByTestId(
-    "permission-INVITATION__CREATE",
-  );
-  if (page.url().includes("/workspaces/")) {
-    await expect(invitationPermission).not.toBeChecked();
-    await expect(invitationPermission).toBeDisabled();
-  } else {
-    await expect(invitationPermission).not.toBeChecked();
-    await expect(invitationPermission).toBeEnabled();
-  }
+  const invitationPermission = page.getByTestId("permission-MEMBER__INVITE");
+  await expect(invitationPermission).not.toBeChecked();
+  await expect(invitationPermission).toBeEnabled();
   await page.getByTestId("api-key-name-input").fill(names.name);
-  for (const action of ["read", "create", "update", "delete"]) {
+  for (const action of ["read", "write"]) {
     const permission = page.getByTestId(
-      `permission-API_KEY__${action.toUpperCase()}`,
+      `permission-${scope}_API_KEY__${action.toUpperCase()}`,
     );
     await expect(permission).toBeVisible();
     await expect(permission).not.toBeChecked();
@@ -161,9 +155,9 @@ async function exerciseApiKeyLifecycle(
 
   await row.getByRole("button").click();
   await page.getByRole("menuitem", { name: "编辑" }).click();
-  for (const action of ["read", "create", "update", "delete"]) {
+  for (const action of ["read", "write"]) {
     await expect(
-      page.getByTestId(`permission-API_KEY__${action.toUpperCase()}`),
+      page.getByTestId(`permission-${scope}_API_KEY__${action.toUpperCase()}`),
     ).toBeChecked();
   }
   await page.getByTestId("api-key-rename-input").fill(names.renamedName);

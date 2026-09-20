@@ -185,11 +185,6 @@ import {
             `apiKey.${scope}.defaultPermissions`,
             `apiKey.${scope}.allowedPermissions`,
           );
-          if (scope === "workspace" && defaults.includes("invitation:create")) {
-            throw new Error(
-              "apiKey.workspace.defaultPermissions cannot include invitation:create: workspace API keys require a user identity to send invitations",
-            );
-          }
         }
         assertAuthRolesExist(
           userRoles,

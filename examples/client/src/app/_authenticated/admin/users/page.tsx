@@ -227,7 +227,7 @@ function AdminUsersPage() {
           onRowClick={(row) => {
             if (
               !currentUserAbility.can(
-                "get",
+                "read",
                 createAbilitySubject("User", row.original),
               )
             )

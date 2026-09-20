@@ -102,7 +102,8 @@ export class SessionService {
     this.assertCanListSessions({ id: session.user.id } as User, session);
     if (!session.impersonatedBy) return null;
     const current = RequestContext.isActive() ? RequestContext.get(User) : null;
-    const self = current?.id === session.impersonatedBy.id;
+    const self =
+      !getCurrentApiKey() && current?.id === session.impersonatedBy.id;
     if (!self) this.accessControlService.assertUserCan("read", User);
     const user = await this.em.findOne(User, {
       id: String(session.impersonatedBy.id),
@@ -117,7 +118,7 @@ export class SessionService {
       : undefined;
     const apiKey = RequestContext.isActive() ? getCurrentApiKey() : undefined;
     if (!current || String(current.id) !== String(user.id) || apiKey) {
-      this.accessControlService.assertUserCan("list", session ?? Session);
+      this.accessControlService.assertUserCan("read", session ?? Session);
     }
   }
 

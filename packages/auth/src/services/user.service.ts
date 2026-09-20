@@ -87,8 +87,11 @@ export class UserService {
   /** Creates a user and its credential account atomically. */
   async createUser(input: CreateUserOptions): Promise<User> {
     this.accessControlService.assertUserCan("create", User);
-    if (input.roles !== undefined || input.permissions !== undefined) {
-      this.accessControlService.assertUserCan("set-role", User);
+    if (input.roles !== undefined) {
+      this.accessControlService.assertUserCan("set-roles", User);
+    }
+    if (input.permissions !== undefined) {
+      this.accessControlService.assertUserCan("set-permissions", User);
     }
     this.assertPasswordLength(input.password);
     const permissions = this.normalizePermissions(input.permissions ?? []);
@@ -110,8 +113,11 @@ export class UserService {
           roles,
         } as unknown as RequiredEntityData<User>);
         this.accessControlService.assertUserCan("create", user);
-        if (input.roles !== undefined || input.permissions !== undefined) {
-          this.accessControlService.assertUserCan("set-role", user);
+        if (input.roles !== undefined) {
+          this.accessControlService.assertUserCan("set-roles", user);
+        }
+        if (input.permissions !== undefined) {
+          this.accessControlService.assertUserCan("set-permissions", user);
         }
         em.persist(user);
         await em.flush();
@@ -134,21 +140,21 @@ export class UserService {
 
   /** Gets a user by identifier within the request's RLS scope. */
   async getUser(userId: string): Promise<User | null> {
-    this.accessControlService.assertUserCan("get", User);
+    this.accessControlService.assertUserCan("read", User);
     const user = await this.em.findOne(User, {
       id: userId,
     } as FilterQuery<User>);
-    if (user) this.accessControlService.assertUserCan("get", user);
+    if (user) this.accessControlService.assertUserCan("read", user);
     return user;
   }
 
   /** Gets a user by normalized email within the request's RLS scope. */
   async getUserByEmail(email: string): Promise<User | null> {
-    this.accessControlService.assertUserCan("get", User);
+    this.accessControlService.assertUserCan("read", User);
     const user = await this.em.findOne(User, {
       email: email.trim().toLowerCase(),
     } as FilterQuery<User>);
-    if (user) this.accessControlService.assertUserCan("get", user);
+    if (user) this.accessControlService.assertUserCan("read", user);
     return user;
   }
 
@@ -186,8 +192,8 @@ export class UserService {
     user: User | string,
     permissions: string[],
   ): Promise<User> {
-    user = await this.resolveUserForAction(user, "set-role");
-    this.accessControlService.assertUserCan("set-role", user);
+    user = await this.resolveUserForAction(user, "set-permissions");
+    this.accessControlService.assertUserCan("set-permissions", user);
     const normalized = this.normalizePermissions(permissions);
     this.accessControlService.assertCanGrantUserPermissions(normalized);
     this.assertAuthorizationCanCommit(user);
@@ -208,8 +214,8 @@ export class UserService {
     user: User | string,
     roleNames: string | readonly string[],
   ): Promise<User> {
-    user = await this.resolveUserForAction(user, "set-role");
-    this.accessControlService.assertUserCan("set-role", user);
+    user = await this.resolveUserForAction(user, "set-roles");
+    this.accessControlService.assertUserCan("set-roles", user);
     const roles = this.normalizeRoles(roleNames);
     this.accessControlService.assertCanGrantUserPermissions(
       resolveAuthPermissions(roles, [], this.roles),
@@ -272,7 +278,7 @@ export class UserService {
 
   /** Lists all configured roles with the current principal's grant availability. */
   listRoles(): UserRoleOption[] {
-    this.accessControlService.assertUserCan("set-role", User);
+    this.accessControlService.assertUserCan("set-roles", User);
     return Object.entries(this.roles).map(([role, permissions]) => ({
       role,
       grantable: this.accessControlService.canGrantUserPermissions(permissions),
@@ -281,7 +287,7 @@ export class UserService {
 
   /** Lists all configured permissions with the current principal's grant availability. */
   listPermissions(): UserPermissionOption[] {
-    this.accessControlService.assertUserCan("set-role", User);
+    this.accessControlService.assertUserCan("set-permissions", User);
     return listAuthPermissions(this.permissions).map((permission) => ({
       permission,
       grantable: this.accessControlService.canGrantUserPermissions([
@@ -299,12 +305,12 @@ export class UserService {
   async getUserConnection(
     args: ConnectionArgsInterface<User>,
   ): Promise<ConnectionInterface<User>> {
-    this.accessControlService.assertUserCan("list", User);
+    this.accessControlService.assertUserCan("read", User);
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
     ).find<User>(UserConnection, args);
     for (const { node } of connection.edges) {
-      this.accessControlService.assertUserCan("list", node);
+      this.accessControlService.assertUserCan("read", node);
     }
     return connection;
   }
@@ -404,7 +410,7 @@ export class UserService {
     user = await this.resolveUserForAction(user, "impersonate");
     this.accessControlService.assertUserCan("impersonate", user);
     if (this.isAdmin(user)) {
-      this.accessControlService.assertUserCan("impersonate-admins", user);
+      this.accessControlService.assertUserCan("impersonate-admin", user);
     }
     if (this.isActivelyBanned(user)) {
       throw new ForbiddenException("Banned users cannot be impersonated");

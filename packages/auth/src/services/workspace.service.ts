@@ -75,7 +75,12 @@ export class WorkspaceService {
   /** Finds a workspace only when the current user is an active member. */
   async getUserWorkspace(id: string, user: User): Promise<Workspace | null> {
     this.accessControlService.assertCurrentUser(user);
-    const workspace = await this.findOne({ id } as FilterQuery<Workspace>);
+    if (getCurrentApiKey())
+      return await this.findOne({ id } as FilterQuery<Workspace>);
+    this.accessControlService.assertUserSession(user);
+    const workspace = await this.em.findOne(Workspace, {
+      id,
+    } as FilterQuery<Workspace>);
     if (!workspace) return null;
     return (await this.findActiveMemberByUser(workspace, user))
       ? workspace
@@ -87,8 +92,7 @@ export class WorkspaceService {
     user: User,
     args: ConnectionArgsInterface<Workspace>,
   ): Promise<ConnectionInterface<Workspace>> {
-    this.accessControlService.assertCurrentUser(user);
-    this.accessControlService.assertUserCan("read", Workspace);
+    this.accessControlService.assertUserSession(user);
     const memberships = (this.em as SqlEntityManager)
       .createQueryBuilder<Member>(Member)
       .select("workspace")
@@ -100,17 +104,22 @@ export class WorkspaceService {
         id: { $in: memberships.toRaw() },
       } as unknown as FilterQuery<Workspace>,
     });
-    for (const { node } of connection.edges) {
-      this.accessControlService.assertUserCan("read", node);
-    }
     return connection;
   }
 
-  /** Finds a workspace matching the supplied filter. */
+  /** Finds the selected workspace matching the supplied filter and read ability. */
   async findOne(where: FilterQuery<Workspace>): Promise<Workspace | null> {
-    this.accessControlService.assertUserCan("read", Workspace);
-    const workspace = await this.em.findOne(Workspace, where);
-    if (workspace) this.accessControlService.assertUserCan("read", workspace);
+    const current = RequestContext.isActive()
+      ? RequestContext.get(Workspace)
+      : null;
+    if (!current) throw new ForbiddenException("A workspace must be selected");
+    this.accessControlService.assertCurrentWorkspace(current);
+    this.accessControlService.assertWorkspaceCan("read", current);
+    const workspace = await this.em.findOne(Workspace, {
+      $and: [where, { id: current.id }],
+    } as FilterQuery<Workspace>);
+    if (workspace)
+      this.accessControlService.assertWorkspaceCan("read", workspace);
     return workspace;
   }
 
@@ -219,8 +228,7 @@ export class WorkspaceService {
     workspace: Workspace,
     user: User,
   ): Promise<Member | null> {
-    this.accessControlService.assertCurrentUser(user);
-    this.accessControlService.assertUserCan("read", Workspace);
+    this.accessControlService.assertUserSession(user);
     return await this.em.findOne(Member, {
       status: "ACTIVE",
       user,

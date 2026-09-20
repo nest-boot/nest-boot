@@ -85,10 +85,14 @@ describe("AuthGuard permissions", () => {
       await expect(guard.canActivate(createContext())).resolves.toBe(true);
     });
 
-    expect(buildUserAbility).toHaveBeenCalledWith(expect.anything(), [], user);
+    expect(buildUserAbility).toHaveBeenCalledWith(
+      expect.anything(),
+      ["workspace:create"],
+      user,
+    );
     expect(buildWorkspaceAbility).toHaveBeenCalledWith(
       expect.anything(),
-      [],
+      ["workspace:read", "member:read"],
       workspace,
     );
     expect(buildUserAbility.mock.calls[0]?.[0]).not.toHaveProperty("build");
@@ -143,7 +147,7 @@ describe("AuthGuard permissions", () => {
 
     expect(buildAbility).toHaveBeenCalledWith(
       expect.anything(),
-      ["subject:publish"],
+      ["workspace:create", "subject:publish"],
       user,
     );
     expect(canMock).toHaveBeenCalledWith("publish", Subject);
@@ -179,7 +183,7 @@ describe("AuthGuard permissions", () => {
     expect(buildWorkspaceAbility).toHaveBeenCalledOnce();
     expect(buildWorkspaceAbility).toHaveBeenCalledWith(
       expect.anything(),
-      [],
+      ["workspace:read", "member:read"],
       workspace,
     );
     expect(buildUserAbility).not.toHaveBeenCalled();
@@ -222,17 +226,16 @@ describe("AuthGuard permissions", () => {
     expect(buildWorkspaceAbility).toHaveBeenCalledWith(
       expect.anything(),
       [
+        "workspace:read",
         "workspace:update",
         "workspace:delete",
-        "member:create",
-        "member:update",
-        "member:delete",
-        "invitation:create",
-        "invitation:cancel",
-        "api-key:read",
-        "api-key:create",
-        "api-key:update",
-        "api-key:delete",
+        "member:read",
+        "member:write",
+        "member:set-roles",
+        "member:set-permissions",
+        "member:invite",
+        "workspace-api-key:read",
+        "workspace-api-key:write",
         "project:create",
         "project:read",
         "project:share",
@@ -277,12 +280,12 @@ describe("AuthGuard permissions", () => {
     });
     expect(buildUserAbility).toHaveBeenCalledWith(
       expect.anything(),
-      ["subject:read"],
+      ["workspace:create", "subject:read"],
       user,
     );
     expect(buildWorkspaceAbility).toHaveBeenCalledWith(
       expect.anything(),
-      ["workspace:read"],
+      ["workspace:read", "member:read"],
       expect.any(BaseWorkspace),
     );
   });
@@ -316,7 +319,11 @@ describe("AuthGuard permissions", () => {
       await expect(guard.canActivate(context)).resolves.toBe(true);
     });
 
-    expect(buildAbility).toHaveBeenCalledWith(expect.anything(), [], user);
+    expect(buildAbility).toHaveBeenCalledWith(
+      expect.anything(),
+      ["workspace:create"],
+      user,
+    );
   });
 
   it("does not call ability builders when their current entities are missing", async () => {
@@ -1087,7 +1094,7 @@ describe("AuthGuard permissions", () => {
 
     setCanMetadata(reflector, {
       scope: "user",
-      action: "get",
+      action: "read",
       subject: User,
     });
 
@@ -1097,13 +1104,13 @@ describe("AuthGuard permissions", () => {
         Object.assign(new UserApiKey(), {
           workspace: null,
           user: ref(UserOwner, new UserOwner()),
-          permissions: ["user:get"],
+          permissions: ["user:read"],
         }),
       );
       RequestContext.set(
         BaseUser,
         Object.assign(new BaseUser(), {
-          permissions: ["user:get"],
+          permissions: ["user:read"],
         }),
       );
 
@@ -1286,7 +1293,7 @@ describe("AuthGuard permissions", () => {
     const { guard, reflector, buildUserAbility } =
       await createPermissionAwareGuard();
     setCanMetadata(reflector, {
-      action: "get",
+      action: "read",
       scope: "user",
       subject: User,
     });
@@ -1297,7 +1304,7 @@ describe("AuthGuard permissions", () => {
         Object.assign(new UserApiKey(), {
           workspace: null,
           user: ref(UserOwner, new UserOwner()),
-          permissions: ["user:get"],
+          permissions: ["user:read"],
         }),
       );
       RequestContext.set(
@@ -1313,13 +1320,13 @@ describe("AuthGuard permissions", () => {
         Object.assign(new UserApiKey(), {
           workspace: null,
           user: ref(UserOwner, new UserOwner()),
-          permissions: ["user:get"],
+          permissions: ["user:read"],
         }),
       );
       RequestContext.set(
         BaseUser,
         Object.assign(new BaseUser(), {
-          permissions: ["user:get"],
+          permissions: ["user:read"],
         }),
       );
       await expect(guard.canActivate(createContext())).resolves.toBe(true);
@@ -1334,8 +1341,8 @@ describe("AuthGuard permissions", () => {
     );
     expect(buildUserAbility).toHaveBeenCalledWith(
       expect.anything(),
-      ["user:get"],
-      expect.objectContaining({ permissions: ["user:get"] }),
+      ["user:read"],
+      expect.objectContaining({ permissions: ["user:read"] }),
     );
   });
 });

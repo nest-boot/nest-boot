@@ -35,10 +35,10 @@ expectTypeOf<RoleName<never>>().toEqualTypeOf<never>();
 
 type ValidPermissions =
   | "user:read"
-  | "api-key:read"
-  | "user:set-role"
-  | "api-key:create"
-  | "api-key:set-role"
+  | "user-api-key:read"
+  | "user:set-roles"
+  | "workspace-api-key:write"
+  | "member:set-roles"
   | "resource2:action3"
   | "true:false"
   | "null:read";
@@ -60,7 +60,7 @@ type InvalidPermissions =
   | "用户:read"
   | "user:读取"
   | "user:*"
-  | "api_key:read"
+  | "user_api_key:read"
   | "user:set_role";
 type ConsecutiveHyphenPermissions =
   | "api--key:read"
@@ -76,8 +76,8 @@ expectTypeOf<
 >().toEqualTypeOf<ValidPermissions>();
 expectTypeOf<PermissionName<InvalidPermissions>>().toEqualTypeOf<never>();
 expectTypeOf<
-  PermissionName<"api-key:read" | "user:Read">
->().toEqualTypeOf<"api-key:read">();
+  PermissionName<"user-api-key:read" | "user:Read">
+>().toEqualTypeOf<"user-api-key:read">();
 expectTypeOf<PermissionName<string>>().toEqualTypeOf<never>();
 expectTypeOf<PermissionName<`user:${string}`>>().toEqualTypeOf<never>();
 expectTypeOf<PermissionName<`${string}:read`>>().toEqualTypeOf<never>();
@@ -101,20 +101,26 @@ AuthModule.forRoot({
       rules.build();
     },
     roles: {
-      "super-admin": ["report:read", "user:get"],
+      "super-admin": ["report:read", "user:read"],
       admin: ["report:read"],
     },
     defaultRole: "super-admin",
     adminRoles: ["super-admin"],
   },
   workspace: {
-    permissions: ["api-key:create"],
-    roles: { "team-owner": ["api-key:create", "workspace:update"] },
+    permissions: ["workspace-api-key:write"],
+    roles: { "team-owner": ["workspace-api-key:write", "workspace:update"] },
     creatorRole: "team-owner",
     defaultRole: "team-owner",
   },
   apiKey: {
-    user: { allowedPermissions: ["report:read", "api-key:create", "user:get"] },
+    user: {
+      allowedPermissions: [
+        "report:read",
+        "workspace-api-key:write",
+        "user:read",
+      ],
+    },
   },
 });
 
@@ -173,7 +179,7 @@ AuthModule.forRoot({
 AuthModule.forRoot({
   user: {
     // @ts-expect-error Underscores are not allowed in permission names.
-    permissions: ["api_key:read"],
+    permissions: ["user_api_key:read"],
   },
 });
 AuthModule.forRootAsync({
@@ -190,7 +196,7 @@ AuthModule.forRoot({
   user: { permissions: ["report:read"] },
   workspace: { permissions: ["project:read"] },
   apiKey: {
-    user: { defaultPermissions: ["user:get", "report:read", "project:read"] },
+    user: { defaultPermissions: ["user:read", "report:read", "project:read"] },
     workspace: { defaultPermissions: ["project:read"] },
   },
 });

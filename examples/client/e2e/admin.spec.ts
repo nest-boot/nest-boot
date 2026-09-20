@@ -38,7 +38,7 @@ for (const change of [
           {
             id: currentUser.id,
             input: {
-              permissions: ["USER__LIST", "USER__GET", "USER__SET_ROLE"],
+              permissions: ["USER__READ", "USER__SET_PERMISSIONS"],
             },
           },
         );
@@ -66,7 +66,7 @@ for (const change of [
         await page.getByTestId("user-role-ADMIN").uncheck();
         await page.getByTestId("admin-user-roles-save").click();
       } else if (change === "permissions") {
-        for (const permission of ["USER__LIST", "USER__GET", "USER__SET_ROLE"])
+        for (const permission of ["USER__READ", "USER__SET_PERMISSIONS"])
           await page.getByTestId(`permission-${permission}`).uncheck();
         await page.getByTestId("admin-user-permissions-save").click();
       } else {

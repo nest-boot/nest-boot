@@ -143,18 +143,18 @@ describe("UserResolver", () => {
 
     await expect(
       resolver.setUserPermissions(user.id, {
-        permissions: ["user:list"],
+        permissions: ["user:read"],
       }),
     ).resolves.toEqual({ id: user.id });
     expect(service.setUserPermissions).toHaveBeenCalledWith(user.id, [
-      "user:list",
+      "user:read",
     ]);
   });
 
   it("lists configured roles and updates a user role", async () => {
     const user = { id: "user-1" } as BaseUser;
     const roles = [{ role: "admin", grantable: false }];
-    const permissions = [{ permission: "user:list", grantable: true }];
+    const permissions = [{ permission: "user:read", grantable: true }];
     const { resolver, service } = createResolver({
       getUser: vi.fn(async () => user),
       listPermissions: vi.fn(() => permissions),

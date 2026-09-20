@@ -65,7 +65,9 @@ describe("AuthGuard", () => {
       vi.fn(() => false),
       {},
       vi.fn((key) =>
-        key === USER_CAN_METADATA ? [{ action: "get", subject: BaseUser }] : [],
+        key === USER_CAN_METADATA
+          ? [{ action: "read", subject: BaseUser }]
+          : [],
       ),
     );
     const check = vi.spyOn(access, "userCan").mockReturnValue(false);
@@ -76,8 +78,8 @@ describe("AuthGuard", () => {
       );
       RequestContext.set(BaseSession, new BaseSession());
       await expect(guard.canActivate(createContext())).resolves.toBe(false);
-      expect(RequestContext.get(UserAbility)?.can("get", BaseUser)).toBe(true);
-      expect(check).toHaveBeenCalledWith("get", BaseUser);
+      expect(RequestContext.get(UserAbility)?.can("read", BaseUser)).toBe(true);
+      expect(check).toHaveBeenCalledWith("read", BaseUser);
     });
   });
 
@@ -100,11 +102,11 @@ describe("AuthGuard", () => {
     );
     const original = Object.assign(new BaseUser(), {
       id: "original",
-      permissions: ["user:get"],
+      permissions: ["user:read"],
     });
     const replacement = Object.assign(new BaseUser(), {
       id: "replacement",
-      permissions: ["user:get"],
+      permissions: ["user:read"],
     });
     const workspace = Object.assign(new Workspace(), { id: "workspace" });
     await RequestContext.run(new RequestContext({ type: "http" }), async () => {

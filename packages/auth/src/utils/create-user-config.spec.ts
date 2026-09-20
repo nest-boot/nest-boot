@@ -96,8 +96,8 @@ describe("createUserConfig", () => {
       adminRoles: ["admin"],
       buildAbility,
       defaultRole: "user",
-      permissions: ["user:list"],
-      roles: { admin: ["user:list"] },
+      permissions: ["user:read"],
+      roles: { admin: ["user:read"] },
     });
 
     expect(config).toBeUndefined();

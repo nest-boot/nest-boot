@@ -132,7 +132,7 @@ export function SidebarUser() {
                   {t("sidebar:user.api_keys")}
                 </DropdownMenuItem>
               ) : null}
-              {currentUserAbility.can("list", "User") ? (
+              {currentUserAbility.can("read", "User") ? (
                 <DropdownMenuItem
                   data-testid="sidebar-admin-link"
                   onClick={() => navigate({ to: "/admin/users" })}
