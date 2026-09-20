@@ -1,15 +1,12 @@
 import type { Subject } from "@casl/ability";
-import { RequestContext } from "@nest-boot/request-context";
 
-import { AccessControlService } from "../services/access-control.service.js";
+import { readRequestAbility } from "./get-ability.util.js";
 
-/** Checks the unified request ability, denying access when context is unavailable. */
+/** Checks an action, object, or field against the current request ability. */
 export function can(action: string, subject: Subject, field?: string): boolean {
-  if (!RequestContext.isActive()) return false;
-  const access = RequestContext.get(AccessControlService);
-  return (
-    (field === undefined
-      ? access?.can(action, subject)
-      : access?.can(action, subject, field)) ?? false
-  );
+  const ability = readRequestAbility();
+  if (!ability) return false;
+  return field === undefined
+    ? ability.can(action, subject)
+    : ability.can(action, subject, field);
 }

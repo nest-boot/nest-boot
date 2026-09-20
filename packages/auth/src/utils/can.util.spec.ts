@@ -2,11 +2,10 @@ import { RequestContext } from "@nest-boot/request-context";
 
 import { AuthAbility } from "../abilities/auth.ability.js";
 import { User } from "../entities/user.entity.js";
-import { AccessControlService } from "../services/access-control.service.js";
 import { can } from "./can.util.js";
 class TestSubject {}
 describe("can", () => {
-  it("fails closed without a context or authorization service", async () => {
+  it("fails closed without a request identity", async () => {
     expect(can("read", TestSubject)).toBe(false);
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
       RequestContext.set(
@@ -16,11 +15,9 @@ describe("can", () => {
       expect(can("read", TestSubject)).toBe(false);
     });
   });
-  it("delegates object and field checks to the unified authorization service", async () => {
+  it("evaluates object and field checks with the prepared ability", async () => {
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
-      const access = new AccessControlService({});
       RequestContext.set(User, new User());
-      RequestContext.set(AccessControlService, access);
       RequestContext.set(
         AuthAbility,
         new AuthAbility([

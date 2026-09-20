@@ -30,6 +30,11 @@
       "link_copied": "链接已复制到剪贴板",
       "update_failed": "更新成员失败",
       "updated_success": "成员更新成功"
+    },
+    "sections": {
+      "profile": "成员资料",
+      "roles": "角色",
+      "permissions": "直接权限"
     }
   },
   "filter": {

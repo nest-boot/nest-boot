@@ -24,7 +24,6 @@ import {
   CUSTOM_ROUTE_ARGS_METADATA,
   ROUTE_ARGS_METADATA,
 } from "./permission.constants.js";
-import { AccessControlService } from "./services/access-control.service.js";
 import type { AuthModuleRoles } from "./types/auth-module-roles.type.js";
 import type { RouteArgumentMetadata } from "./types/route-argument-metadata.type.js";
 import { getAbility } from "./utils/get-ability.util.js";
@@ -385,8 +384,12 @@ describe("AuthGuard permissions", () => {
       },
     };
     const subjectFactory = vi.fn(
-      (self: typeof handlerThis, params: { input: typeof input }) =>
-        self.memberService.findOne(params.input.id),
+      (
+        self: typeof handlerThis,
+        params: {
+          input: typeof input;
+        },
+      ) => self.memberService.findOne(params.input.id),
     );
     const canMock = vi.fn(() => true);
     const ability = {
@@ -966,7 +969,9 @@ describe("AuthGuard permissions", () => {
           headers: {},
         } as unknown as Request,
         {} as Response,
-      ) as ExecutionContext & { getHandler: Mock };
+      ) as ExecutionContext & {
+        getHandler: Mock;
+      };
       matchedContext.getHandler = vi.fn(() => matchedHandler);
 
       await expect(guard.canActivate(matchedContext)).resolves.toBe(true);
@@ -977,7 +982,9 @@ describe("AuthGuard permissions", () => {
           headers: {},
         } as unknown as Request,
         {} as Response,
-      ) as ExecutionContext & { getHandler: Mock };
+      ) as ExecutionContext & {
+        getHandler: Mock;
+      };
       unmatchedContext.getHandler = vi.fn(() => unmatchedHandler);
 
       await expect(guard.canActivate(unmatchedContext)).resolves.toBe(true);
@@ -1419,14 +1426,15 @@ async function createGuard(
   ];
   const moduleRefMock = {
     resolve: vi.fn(() => Promise.resolve(handlerThis)),
-  } as unknown as ModuleRef & { resolve: Mock };
+  } as unknown as ModuleRef & {
+    resolve: Mock;
+  };
   const req = {
     headers: {},
   } as Request;
   const res = {} as Response;
   const testingModule = await Test.createTestingModule({
     providers: [
-      AccessControlService,
       PermissionAuthGuard,
       {
         provide: Reflector,
@@ -1555,7 +1563,9 @@ function createUnnamedHandler() {
 }
 
 function setCanMetadata(
-  reflector: Reflector & { getAllAndMerge: Mock },
+  reflector: Reflector & {
+    getAllAndMerge: Mock;
+  },
   metadata: {
     action: string;
     subject: unknown;

@@ -1,54 +1,28 @@
-import { useSuspenseQuery } from "@apollo/client/react";
 import { createContext, useContext } from "react";
-
 import type { ReactNode } from "react";
-import type { GetCurrentUserFromCurrentUserContextQuery } from "@/gql/graphql";
-import { graphql } from "@/gql";
-import { AbilityProvider } from "@/contexts/ability-context";
+import type { GetCurrentUserFromAuthenticatedRouteQuery } from "@/gql/graphql";
 
-const GET_CURRENT_USER_FROM_CURRENT_USER_CONTEXT = graphql(`
-  query getCurrentUserFromCurrentUserContext {
-    currentUser {
-      id
-      name
-      email
-      permissions
-    }
-    currentAbilityRules {
-      actions
-      subjects
-      fields
-      conditions
-      inverted
-      reason
-    }
-  }
-`);
+type CurrentUser = NonNullable<
+  GetCurrentUserFromAuthenticatedRouteQuery["currentUser"]
+>;
+const CurrentUserContext = createContext<CurrentUser | null>(null);
 
-const CurrentUserContext = createContext<
-  GetCurrentUserFromCurrentUserContextQuery["currentUser"] | null
->(null);
-
-export function CurrentUserProvider({ children }: { children: ReactNode }) {
-  const { data } = useSuspenseQuery(GET_CURRENT_USER_FROM_CURRENT_USER_CONTEXT);
-
-  return (
-    <CurrentUserContext value={data.currentUser}>
-      <AbilityProvider rules={data.currentAbilityRules}>
-        {children}
-      </AbilityProvider>
-    </CurrentUserContext>
-  );
+/** Shares the identity already loaded and authorized by the route. */
+export function CurrentUserProvider({
+  value,
+  children,
+}: {
+  value: CurrentUser;
+  children: ReactNode;
+}) {
+  return <CurrentUserContext value={value}>{children}</CurrentUserContext>;
 }
 
 export function useCurrentUserContext() {
   const context = useContext(CurrentUserContext);
-
-  if (context == null) {
+  if (!context)
     throw new Error(
       "useCurrentUserContext must be used within a CurrentUserProvider",
     );
-  }
-
   return context;
 }

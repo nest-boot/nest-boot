@@ -82,9 +82,11 @@ Load the operation target before checking its conditions. Do not trust ownership
 fields supplied by the client or substitute a class-level route check:
 
 ```typescript
+import { assertCan } from "@nest-boot/auth";
+
 async archiveReport(id: string): Promise<Report> {
   const report = await this.loadReport(id);
-  this.access.assertCan("archive", report);
+  assertCan("archive", report);
   return await this.repository.archive(report);
 }
 ```
@@ -440,14 +442,16 @@ access control:
 - current-user authentication, session management, invitation acceptance, and
   leaving a workspace use authenticated identity and ownership checks.
 
-`AccessControlService` exposes `can()` and `assertCan()` for
-application services that need the same fail-closed boundary. An ability must
-have been prepared by the global `AuthGuard`; calls outside that request
-lifecycle are denied rather than implicitly trusted.
+`can()`, `assertCan()`, and `getAbility()` read the same request-scoped
+`AuthAbility` without injecting an authorization service. The global `AuthGuard`
+prepares it before protected operations. Missing request identity or ability
+denies access: `can()` returns `false`; `assertCan()` and `getAbility()` throw
+`ForbiddenException`.
 
 The Guard, route decorators, Services, and helpers all evaluate operations
-through this service's `ability.can()` checks. Helpers do not fall back to a cached
-Ability when the authorization service is unavailable.
+through this ability's `can()` checks. Identity publication and invalidation remain
+centralized in the internal `RequestIdentity`; helpers never construct a fallback
+ability.
 
 Ability construction and grantability checks share one immutable effective-permission
 snapshot for the current request identity. Owner permissions remain distinct from

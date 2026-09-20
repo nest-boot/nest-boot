@@ -7,7 +7,6 @@ import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { type User as BaseUser } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
-import { AccessControlService } from "../services/access-control.service.js";
 import { type AuthService } from "../services/auth.service.js";
 import { AuthResolver } from "./auth.resolver.js";
 
@@ -17,7 +16,6 @@ describe("AuthResolver", () => {
     const conditions = { id: "user-1" };
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
       expect(() => resolver.currentAbilityRules()).toThrow(ForbiddenException);
-      RequestContext.set(AccessControlService, new AccessControlService({}));
       RequestContext.set(User, new User());
       RequestContext.set(Member, new Member());
       RequestContext.set(Workspace, new Workspace());

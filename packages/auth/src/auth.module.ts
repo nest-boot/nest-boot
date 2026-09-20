@@ -47,7 +47,6 @@ import { UserResolver } from "./resolvers/user.resolver.js";
 import { UserApiKeyResolver } from "./resolvers/user-api-key.resolver.js";
 import { WorkspaceResolver } from "./resolvers/workspace.resolver.js";
 import { WorkspaceApiKeyResolver } from "./resolvers/workspace-api-key.resolver.js";
-import { AccessControlService } from "./services/access-control.service.js";
 import { AccountService } from "./services/account.service.js";
 import { AuthService } from "./services/auth.service.js";
 import { InvitationService } from "./services/invitation.service.js";
@@ -119,7 +118,6 @@ import {
     AccountService,
     ApiKeyUsageInterceptor,
     AuthService,
-    AccessControlService,
     UserDeletionService,
     AuthGuard,
     AuthHandlerMiddleware,
@@ -287,7 +285,6 @@ import {
     WorkspaceApiKeyService,
     AuthGuard,
     AuthService,
-    AccessControlService,
     SessionService,
     WorkspaceService,
     MemberService,

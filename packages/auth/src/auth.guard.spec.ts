@@ -19,8 +19,7 @@ import { Session as BaseSession } from "./entities/session.entity.js";
 import { User as BaseUser } from "./entities/user.entity.js";
 import { Workspace } from "./entities/workspace.entity.js";
 import { CAN_METADATA } from "./permission.constants.js";
-import { AccessControlService } from "./services/access-control.service.js";
-
+import * as abilityChecks from "./utils/can.util.js";
 class PromiseAuthGuard extends AuthGuard {
   override canActivate(_context: ExecutionContext): Promise<boolean> {
     return Promise.resolve(true);
@@ -57,8 +56,7 @@ describe("AuthGuard", () => {
       expect(subjectFactory).not.toHaveBeenCalled();
     });
   });
-
-  it("delegates decorator decisions to AccessControlService without a direct-ability fallback", async () => {
+  it("uses the shared ability check for decorator decisions", async () => {
     const { guard, access } = await createGuard(
       AuthGuard,
       vi.fn(() => false),
@@ -336,7 +334,6 @@ async function createGuard<T extends AuthGuard>(
 ) {
   const moduleRef = await Test.createTestingModule({
     providers: [
-      AccessControlService,
       guardType,
       {
         provide: Reflector,
@@ -354,7 +351,7 @@ async function createGuard<T extends AuthGuard>(
 
   return {
     guard: moduleRef.get(guardType),
-    access: moduleRef.get(AccessControlService),
+    access: abilityChecks,
   };
 }
 

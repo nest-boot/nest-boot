@@ -1,6 +1,6 @@
 import type { EntityManager } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
-import { BadRequestException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException } from "@nestjs/common";
 
 import { AuthAbility } from "../abilities/auth.ability.js";
 import { API_KEY } from "../auth.constants.js";
@@ -18,6 +18,71 @@ import { invalidateRequestPermissions } from "../utils/resolve-request-permissio
 
 /** Owns request identity publication, authorization invalidation, and database scope. @internal */
 export class RequestIdentity {
+  /** Throws unless the supplied user is the authenticated user. */
+  static assertCurrentUser(user: User): void {
+    const currentUser = RequestContext.isActive()
+      ? RequestContext.get(User)
+      : undefined;
+
+    if (!currentUser || String(currentUser.id) !== String(user.id)) {
+      throw new ForbiddenException("The operation belongs to another user");
+    }
+  }
+
+  /** Authorizes an explicit self-service path without granting a general resource ability. */
+  static assertUserSession(user: User): void {
+    this.assertCurrentUser(user);
+    if (getCurrentApiKey()) {
+      throw new ForbiddenException(
+        "This self-service operation requires a user session",
+      );
+    }
+  }
+
+  /** Throws unless the supplied session is the authenticated session. */
+  static assertCurrentSession(session: Session): void {
+    const currentSession = RequestContext.isActive()
+      ? RequestContext.get(Session)
+      : undefined;
+
+    if (currentSession?.token !== session.token) {
+      throw new ForbiddenException("The operation belongs to another session");
+    }
+  }
+
+  /** Throws unless the supplied workspace is selected for the current request. */
+  static assertCurrentWorkspace(workspace: Workspace): void {
+    const currentWorkspace = RequestContext.isActive()
+      ? RequestContext.get(Workspace)
+      : undefined;
+
+    if (
+      !currentWorkspace ||
+      String(currentWorkspace.id) !== String(workspace.id)
+    ) {
+      throw new ForbiddenException(
+        "The operation belongs to another workspace",
+      );
+    }
+  }
+
+  /** Throws unless the supplied member is the current workspace member. */
+  static assertCurrentMember(member: Member | null | undefined): void {
+    const currentMember = RequestContext.isActive()
+      ? RequestContext.get(Member)
+      : undefined;
+
+    if (
+      !member ||
+      !currentMember ||
+      String(currentMember.id) !== String(member.id)
+    ) {
+      throw new ForbiddenException(
+        "The operation belongs to another workspace member",
+      );
+    }
+  }
+
   /** Matches credentials by both table and ID. */
   static isCurrentApiKey(apiKey: ApiKey): boolean {
     const current = getCurrentApiKey();

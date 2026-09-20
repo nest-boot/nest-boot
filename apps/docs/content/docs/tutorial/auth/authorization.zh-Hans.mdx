@@ -78,9 +78,11 @@ AuthModule.forRoot({
 也不能只用路由层的类级判断代替对象检查：
 
 ```typescript
+import { assertCan } from "@nest-boot/auth";
+
 async archiveReport(id: string): Promise<Report> {
   const report = await this.loadReport(id);
-  this.access.assertCan("archive", report);
+  assertCan("archive", report);
   return await this.repository.archive(report);
 }
 ```
@@ -388,12 +390,13 @@ Service 权限划分与 Better Auth 的 admin、organization 访问控制保持�
 - 工作区 API Key 管理使用 `workspace-api-key:read/write`；
 - 当前用户认证、会话管理、接受邀请和退出工作区使用已认证身份与资源归属校验。
 
-应用 Service 可以注入 `AccessControlService`，使用 `can()` 与
-`assertCan()` 建立同样的默认拒绝边界。Ability 必须由全局 `AuthGuard` 在当前
-请求生命周期准备；生命周期外的调用不会被隐式信任。
+`can()`、`assertCan()` 和 `getAbility()` 直接读取当前请求的同一个 `AuthAbility`，
+无需注入授权服务。全局 `AuthGuard` 在受保护操作前准备 Ability。请求身份或 Ability
+缺失时默认拒绝：`can()` 返回 `false`，`assertCan()` 和 `getAbility()` 抛出
+`ForbiddenException`。
 
-Guard、路由装饰器、Service 和辅助函数统一通过该服务的 `ability.can()`
-判断操作权限。授权服务不可用时，辅助函数不会回退到缓存的 Ability。
+Guard、路由装饰器、Service 和辅助函数统一通过该 Ability 的 `can()` 判断操作权限。
+身份发布和授权失效仍由内部 `RequestIdentity` 集中管理；辅助函数不会自行构建备用 Ability。
 
 Ability 构建与可授予权限判断共用当前请求身份的一份不可变有效权限快照。
 所有者权限与凭证限制后的权限仍有区别：API Key 管理同时检查所有者授权和调用凭证的权限上限。

@@ -6,7 +6,6 @@ import { mockRlsContext } from "../../test/mock-rls-context.js";
 import { AUTH_TOKEN } from "../auth.constants.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
-import { AccessControlService } from "./access-control.service.js";
 import { SessionService } from "./session.service.js";
 
 const requestHeaders = vi.hoisted(
@@ -57,7 +56,10 @@ const authContext = {
 
 async function createService(
   api = createApi(),
-  em: { find: ReturnType<typeof vi.fn>; findOne: ReturnType<typeof vi.fn> } = {
+  em: {
+    find: ReturnType<typeof vi.fn>;
+    findOne: ReturnType<typeof vi.fn>;
+  } = {
     find: vi.fn(),
     findOne: vi.fn(),
   },
@@ -65,7 +67,6 @@ async function createService(
   const moduleRef = await Test.createTestingModule({
     providers: [
       SessionService,
-      { provide: AccessControlService, useValue: { assertCan: vi.fn() } },
       {
         provide: AUTH_TOKEN,
         useValue: { $context: Promise.resolve(authContext), api },

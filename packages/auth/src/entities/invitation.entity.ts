@@ -106,7 +106,7 @@ export class Invitation extends BaseEntity {
 
   /** Workspace identifier available to serialized authorization conditions. */
   @Field(() => ID)
-  get workspaceId(): string {
+  get workspaceId(): Opt<string> {
     return this.workspace.id;
   }
 }

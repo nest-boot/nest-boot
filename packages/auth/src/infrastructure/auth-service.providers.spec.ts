@@ -3,6 +3,7 @@ import { EntityManager } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import type { FactoryProvider } from "@nestjs/common";
 
+import { mockAuthorization } from "../../test/mock-authorization.js";
 import {
   createTestMember,
   createTestWorkspace,
@@ -15,7 +16,6 @@ import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
 import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
-import type { AccessControlService } from "../services/access-control.service.js";
 import { InvitationService } from "../services/invitation.service.js";
 import { MemberService } from "../services/member.service.js";
 import { SessionService } from "../services/session.service.js";
@@ -106,13 +106,7 @@ describe("auth service execution boundaries", () => {
           "provide" in candidate &&
           candidate.provide === UserService,
       ) as FactoryProvider<UserService>;
-      const service = await provider.useFactory(
-        em,
-        {},
-        {},
-        { assertCurrentSession: vi.fn() },
-        {},
-      );
+      const service = await provider.useFactory(em, {}, {}, {});
       await RequestContext.run(
         new RequestContext({ type: "test" }),
         async () => {
@@ -158,7 +152,7 @@ describe("auth service execution boundaries", () => {
   it.each([false, true])(
     "keeps deletion on the request manager and clears authorization only after commit (failure=%s)",
     async (failure) => {
-      const { em, accessControlService: access } = createWorkspaceServices();
+      const { em } = createWorkspaceServices();
       em.getSessionContext.mockReturnValue({
         role: "authenticated",
         variables: { "app.workspace.id": "workspace-1" },
@@ -176,7 +170,7 @@ describe("auth service execution boundaries", () => {
           "provide" in candidate &&
           candidate.provide === WorkspaceService,
       ) as FactoryProvider<WorkspaceService>;
-      const service = await provider.useFactory(em, {}, access);
+      const service = await provider.useFactory(em, {});
       await RequestContext.run(
         new RequestContext({ type: "test" }),
         async () => {
@@ -237,12 +231,8 @@ describe("auth service execution boundaries", () => {
         fork: vi.fn(() => reader),
         clearSessionContext: vi.fn(),
       } as unknown as EntityManager;
-      const access = {
-        assertCurrentWorkspace: vi.fn(),
-        assertCurrentUser: vi.fn(),
-        assertCan: vi.fn(),
-      };
-      const service = await provider.useFactory(current, {}, access);
+      mockAuthorization();
+      const service = await provider.useFactory(current, {});
       await RequestContext.run(
         new RequestContext({ type: "test" }),
         async () => {
@@ -290,11 +280,8 @@ describe("auth service execution boundaries", () => {
         "provide" in candidate &&
         candidate.provide === SessionService,
     ) as FactoryProvider<SessionService>;
-    const access = {
-      assertCan: vi.fn(),
-    } as unknown as AccessControlService;
-    const service = provider.useFactory({}, {} as EntityManager, access);
-
+    mockAuthorization();
+    const service = provider.useFactory({}, {} as EntityManager);
     for (const name of [
       "getCurrentAuthenticatedSession",
       "listCurrentUserSessions",
@@ -376,7 +363,6 @@ describe("auth service execution boundaries", () => {
       const service = provider.useFactory(
         {} as EntityManager,
         {} as AuthModuleOptions,
-        {} as AccessControlService,
       );
       for (const name of special)
         expect(Object.hasOwn(service, name)).toBe(true);

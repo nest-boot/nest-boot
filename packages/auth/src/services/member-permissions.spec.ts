@@ -3,6 +3,7 @@ import { ref } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException } from "@nestjs/common";
 
+import { restoreAuthorization } from "../../test/mock-authorization.js";
 import {
   createTestMember,
   createTestUser,
@@ -17,11 +18,12 @@ import { User } from "../entities/user.entity.js";
 import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
+import { canGrantPermissions } from "../utils/permission-grants.util.js";
+import { assertCanGrantPermissions } from "../utils/permission-grants.util.js";
 import {
   DEFAULT_WORKSPACE_PERMISSIONS,
   DEFAULT_WORKSPACE_ROLES,
 } from "../workspace.constants.js";
-import { AccessControlService } from "./access-control.service.js";
 import { MemberService } from "./member.service.js";
 
 describe("MemberService direct permission authorization", () => {
@@ -67,8 +69,8 @@ describe("MemberService direct permission authorization", () => {
     "lists grantable roles for $role with key=$key",
     async ({ role, direct, key, expected }) => {
       const { em } = createWorkspaceServices();
-      const access = new AccessControlService(options);
-      const service = new MemberService(em, options, access);
+      restoreAuthorization();
+      const service = new MemberService(em, options);
       const workspace = createTestWorkspace();
       await RequestContext.run(new RequestContext({ type: "test" }), () => {
         RequestContext.set(User, createTestUser());
@@ -119,7 +121,7 @@ describe("MemberService direct permission authorization", () => {
                   role as keyof typeof options.workspace.roles
                 ];
           expect(() => {
-            access.assertCanGrantWorkspacePermissions(grants);
+            assertCanGrantPermissions(options, "workspace", grants);
           }).not.toThrow();
         }
         RequestContext.set(AuthAbility, new AuthAbility());
@@ -144,7 +146,7 @@ describe("MemberService direct permission authorization", () => {
         expect(service.listPermissions()).toEqual(
           DEFAULT_WORKSPACE_PERMISSIONS.map((permission) => ({
             permission,
-            grantable: access.canGrantWorkspacePermissions([permission]),
+            grantable: canGrantPermissions(options, "workspace", [permission]),
           })),
         );
       });
@@ -208,11 +210,8 @@ describe("MemberService direct permission authorization", () => {
     "checks $name using ability and the credential grant ceiling",
     async (scenario) => {
       const { em } = createWorkspaceServices();
-      const service = new MemberService(
-        em,
-        options,
-        new AccessControlService(options),
-      );
+      restoreAuthorization();
+      const service = new MemberService(em, options);
       const workspace = createTestWorkspace();
       const target = Object.assign(createTestMember(), {
         workspace: ref(Workspace, workspace),

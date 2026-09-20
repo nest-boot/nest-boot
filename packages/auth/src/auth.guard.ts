@@ -19,9 +19,10 @@ import {
   ROUTE_ARGS_METADATA,
   ROUTE_PARAM_TYPES,
 } from "./permission.constants.js";
-import { AccessControlService } from "./services/access-control.service.js";
 import type { CanSubjectFactory } from "./types/can-subject-factory.type.js";
 import type { RouteArgumentMetadata } from "./types/route-argument-metadata.type.js";
+import { can } from "./utils/can.util.js";
+import { readRequestAbility } from "./utils/get-ability.util.js";
 import { getCurrentApiKey } from "./utils/get-current-api-key.util.js";
 
 /** Guard that enforces authentication and evaluates route permissions. */
@@ -37,14 +38,12 @@ export class AuthGuard implements CanActivate {
    * @param reflector - Nest metadata reflector.
    * @param options - Auth module options.
    * @param moduleRef - Nest module reference used to resolve handler instances.
-   * @param accessControlService - Shared fail-closed operation authorization.
    */
   constructor(
     protected readonly reflector: Reflector,
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly options: AuthModuleOptions,
     private readonly moduleRef: ModuleRef,
-    private readonly accessControlService: AccessControlService,
   ) {}
 
   /**
@@ -86,7 +85,6 @@ export class AuthGuard implements CanActivate {
     }
 
     if (RequestContext.isActive()) {
-      RequestContext.set(AccessControlService, this.accessControlService);
       RequestIdentity.prepare(this.options);
     }
 
@@ -96,10 +94,9 @@ export class AuthGuard implements CanActivate {
     );
     if (!metadata?.length) return true;
     for (const requirement of metadata) {
-      if (!this.accessControlService.getAbility()) return false;
+      if (!readRequestAbility()) return false;
       const subject = await this.resolveSubject(requirement, context);
-      if (!this.accessControlService.can(requirement.action, subject))
-        return false;
+      if (!can(requirement.action, subject)) return false;
     }
     return true;
   }

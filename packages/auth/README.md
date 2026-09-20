@@ -238,7 +238,8 @@ new privileged context is introduced.
 The internal email lookup context moves to `MemberService.getUserForMembership`;
 acceptance/rejection contexts move to `InvitationService`. Ordinary
 member/invitation reads and writes keep request RLS.
-`AccessControlService` owns request authorization, while the internal
+`can()` and `assertCan()` evaluate the request-scoped `AuthAbility` directly.
+The internal `RequestIdentity` owns identity checks and publication, while
 `UserDeletionService` coordinates atomic deletion across auth-owned entities.
 The impersonator relation checks User profile authorization in SessionService;
 permission to read a session alone does not reveal its impersonator's profile.
@@ -419,7 +420,7 @@ fields are nullable and permission sources remain separate.
 Use `can({ user: permission }, action, subject, conditions?)` or
 `can({ workspace: permission }, action, subject, conditions?)` for permission-bound
 business grants and `cannot(action, subject, conditions?)` for restrictions.
-Both support field restrictions. `@Can()`, `can()`, and `AccessControlService`
+Both support field restrictions. `@Can()`, `can()`, and `assertCan()`
 evaluate this same ability. The frontend queries `currentAbilityRules` and uses
 `useAbility()` for both personal and workspace pages. Callbacks are synchronous and return nothing.
 They cannot grant operations on built-in auth entities or `all`, access the raw

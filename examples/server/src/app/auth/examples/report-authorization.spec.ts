@@ -1,6 +1,5 @@
 import type { EntityManager } from '@mikro-orm/core';
 import {
-  AccessControlService,
   API_KEY,
   AuthGuard,
   AuthResolver,
@@ -72,14 +71,11 @@ describe('business authorization recipe', () => {
               API_KEY,
               Object.assign(new UserApiKey(), { user, permissions: key }),
             );
-          const access = new AccessControlService(reportAuthOptions);
-          RequestContext.set(AccessControlService, access);
           // Production requests are prepared by AuthGuard; manually prepare only this isolated test.
           new AuthGuard(
             new Reflector(),
             reportAuthOptions,
             {} as ModuleRef,
-            access,
           ).refreshAbility();
           const report = new Report('report-1', workspace.id);
           const repository = {
@@ -91,7 +87,7 @@ describe('business authorization recipe', () => {
                 new Report(value.id, value.workspaceId, true),
             ),
           };
-          const service = new ReportService(repository, access);
+          const service = new ReportService(repository);
           const rules = new AuthResolver(
             {} as AuthService,
           ).currentAbilityRules();
@@ -162,7 +158,6 @@ describe('business authorization recipe', () => {
           const catalog = new WorkspaceApiKeyService(
             {} as EntityManager,
             reportAuthOptions,
-            access,
           ).getWorkspaceApiKeyPermissions(workspace);
           const read = catalog.find(
             (option) => option.permission === 'report:read',

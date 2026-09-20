@@ -1,4 +1,4 @@
-import { EntityManager, type FilterQuery, LockMode } from "@mikro-orm/core";
+import { EntityManager, LockMode } from "@mikro-orm/core";
 import { Injectable, NotFoundException } from "@nestjs/common";
 
 import { User } from "../entities/user.entity.js";
@@ -24,7 +24,7 @@ export class UserDeletionService {
       async (em) => {
         const user = await em.findOne(
           User,
-          { id: userId } as FilterQuery<User>,
+          { id: userId },
           scoped
             ? { refresh: true }
             : { filters: false, lockMode: LockMode.PESSIMISTIC_WRITE },
@@ -35,7 +35,7 @@ export class UserDeletionService {
         // Delete only the root; foreign keys clean up dependants even under RLS.
         const count = await em.nativeDelete(User, {
           id: userId,
-        } as FilterQuery<User>);
+        });
         if (count !== 1) throw new NotFoundException("User not found");
         return user;
       },

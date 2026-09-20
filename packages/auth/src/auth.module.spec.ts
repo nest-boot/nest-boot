@@ -56,7 +56,6 @@ import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import { AuthHandlerMiddleware } from "./auth-handler.middleware.js";
 import { User as BaseUser } from "./entities/user.entity.js";
 import { Workspace as BaseWorkspace } from "./entities/workspace.entity.js";
-import { AccessControlService } from "./services/access-control.service.js";
 import { AuthService } from "./services/auth.service.js";
 import { InvitationService } from "./services/invitation.service.js";
 import { MemberService } from "./services/member.service.js";
@@ -238,7 +237,9 @@ describe("AuthModule", () => {
     expect(providers).toContain(UserDeletionService);
     expect(providers).toContain(WorkspaceApiKeyService);
     expect(providers).toContain(AuthService);
-    expect(providers).toContain(AccessControlService);
+    expect(providers).not.toContainEqual(
+      expect.objectContaining({ name: "AccessControlService" }),
+    );
     expect(providers).toContainEqual(
       expect.objectContaining({ provide: SessionService }),
     );
@@ -256,7 +257,9 @@ describe("AuthModule", () => {
     expect(exports).toContain(WorkspaceApiKeyService);
     expect(exports).toContain(AuthGuard);
     expect(exports).toContain(AuthService);
-    expect(exports).toContain(AccessControlService);
+    expect(exports).not.toContainEqual(
+      expect.objectContaining({ name: "AccessControlService" }),
+    );
     expect(exports).toContain(SessionService);
     expect(exports).toContain(WorkspaceService);
     expect(exports).toContain(MemberService);

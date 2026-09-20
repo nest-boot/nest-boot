@@ -11,7 +11,9 @@ import { User } from "../entities/user.entity.js";
 import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
-import { AccessControlService } from "../services/access-control.service.js";
+import { can } from "../utils/can.util.js";
+import { assertApiKeyPermissionCeiling } from "../utils/permission-grants.util.js";
+import { canGrantPermissions } from "../utils/permission-grants.util.js";
 import { resolveRequestPermissions } from "../utils/resolve-request-permissions.util.js";
 import { RequestIdentity } from "./request-identity.js";
 
@@ -25,7 +27,7 @@ function manager() {
 describe("RequestIdentity", () => {
   it("shares one immutable permission snapshot between abilities and delegation until publication", async () => {
     const options: AuthModuleOptions = {};
-    const access = new AccessControlService(options);
+
     const roles = vi.fn(() => ["admin"]);
     const user = Object.assign(new User(), { id: "user", permissions: [] });
     Object.defineProperty(user, "roles", { get: roles });
@@ -48,40 +50,40 @@ describe("RequestIdentity", () => {
       });
       RequestIdentity.prepare(options);
       const first = resolveRequestPermissions(options);
-      expect(access.getApiKeyPermissionCeiling()).toBe(first.apiKey);
+      expect(resolveRequestPermissions(options).apiKey).toBe(first.apiKey);
       expect(Object.isFrozen(first.apiKey)).toBe(true);
       expect(Object.isFrozen(first.user)).toBe(true);
-      expect(access.can("read", User)).toBe(true);
-      expect(access.can("delete", User)).toBe(false);
-      expect(access.canGrantUserPermissions(["user:read"])).toBe(true);
-      expect(access.canGrantUserPermissions(["user:delete"])).toBe(false);
-      expect(access.canGrantWorkspacePermissions(["workspace:delete"])).toBe(
-        true,
-      );
+      expect(can("read", User)).toBe(true);
+      expect(can("delete", User)).toBe(false);
+      expect(canGrantPermissions(options, "user", ["user:read"])).toBe(true);
+      expect(canGrantPermissions(options, "user", ["user:delete"])).toBe(false);
+      expect(
+        canGrantPermissions(options, "workspace", ["workspace:delete"]),
+      ).toBe(true);
       RequestIdentity.prepare(options);
       expect(resolveRequestPermissions(options)).toBe(first);
       expect(roles).toHaveBeenCalledOnce();
 
       roles.mockReturnValue(["user"]);
       // Pending writes do not publish a new authorization state.
-      expect(access.canGrantUserPermissions(["user:read"])).toBe(true);
+      expect(canGrantPermissions(options, "user", ["user:read"])).toBe(true);
       RequestIdentity.updateUser(manager(), options, user);
       expect(roles).toHaveBeenCalledTimes(2);
       expect(resolveRequestPermissions(options)).not.toBe(first);
-      expect(access.can("read", User)).toBe(false);
-      expect(access.canGrantUserPermissions(["user:read"])).toBe(false);
+      expect(can("read", User)).toBe(false);
+      expect(canGrantPermissions(options, "user", ["user:read"])).toBe(false);
       apiKey.permissions = [];
-      expect(access.getApiKeyPermissionCeiling()).toEqual([
+      expect(resolveRequestPermissions(options).apiKey).toEqual([
         "user:read",
         "workspace:delete",
       ]);
       RequestIdentity.updateApiKey(manager(), options, apiKey);
-      expect(access.getApiKeyPermissionCeiling()).toEqual([]);
-      expect(access.canGrantWorkspacePermissions(["workspace:delete"])).toBe(
-        false,
-      );
+      expect(resolveRequestPermissions(options).apiKey).toEqual([]);
+      expect(
+        canGrantPermissions(options, "workspace", ["workspace:delete"]),
+      ).toBe(false);
       expect(() => {
-        access.assertApiKeyPermissionCeiling(["workspace:delete"]);
+        assertApiKeyPermissionCeiling(options, ["workspace:delete"]);
       }).toThrow("exceed");
     });
   });
@@ -166,9 +168,9 @@ describe("RequestIdentity", () => {
       expect(() => {
         RequestIdentity.prepare(options);
       }).toThrow("Failed");
-      const access = new AccessControlService(options);
-      expect(access.can("delete", User)).toBe(false);
-      expect(access.can("read", Workspace)).toBe(false);
+
+      expect(can("delete", User)).toBe(false);
+      expect(can("read", Workspace)).toBe(false);
     });
   });
 
@@ -202,9 +204,7 @@ describe("RequestIdentity", () => {
         expect(RequestContext.get(API_KEY)).toBe(
           Key === UserApiKey ? key : null,
         );
-        expect(new AccessControlService(options).can("read", User)).toBe(
-          Key === UserApiKey,
-        );
+        expect(can("read", User)).toBe(Key === UserApiKey);
       });
     },
   );

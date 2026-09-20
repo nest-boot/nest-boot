@@ -1,22 +1,20 @@
-import { createContext, useContext, useMemo } from "react";
+import { createContext, useContext } from "react";
 import type { ReactNode } from "react";
 
-import type { SerializedAbilityRule } from "@/lib/ability";
-import { createAbility } from "@/lib/ability";
+import type { createAbility } from "@/lib/ability";
 
 const AbilityContext = createContext<ReturnType<typeof createAbility> | null>(
   null,
 );
 
-/** Publishes server-owned rules for the identity selected by the enclosing route. */
+/** Shares the enclosing route's server-derived ability with its components. */
 export function AbilityProvider({
-  rules,
+  ability,
   children,
 }: {
-  rules: ReadonlyArray<SerializedAbilityRule>;
+  ability: ReturnType<typeof createAbility>;
   children: ReactNode;
 }) {
-  const ability = useMemo(() => createAbility(rules), [rules]);
   return <AbilityContext value={ability}>{children}</AbilityContext>;
 }
 

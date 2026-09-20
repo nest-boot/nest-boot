@@ -94,11 +94,10 @@ describe("WorkspaceService and cross-domain coordination", () => {
   });
 
   it("updates by ID using write authorization without requiring read permission", async () => {
-    const { workspaceService, em, accessControlService } =
-      createWorkspaceServices();
+    const { workspaceService, em, authorization } = createWorkspaceServices();
     const workspace = createTestWorkspace();
     em.findOne.mockResolvedValue(workspace);
-    vi.mocked(accessControlService.assertCan).mockImplementation((action) => {
+    vi.mocked(authorization.assertCan).mockImplementation((action) => {
       if (action === "read") throw new ForbiddenException();
     });
 
@@ -110,20 +109,20 @@ describe("WorkspaceService and cross-domain coordination", () => {
       { id: workspace.id },
       { refresh: true },
     );
-    expect(accessControlService.assertCan).toHaveBeenNthCalledWith(
+    expect(authorization.assertCan).toHaveBeenNthCalledWith(
       1,
       "update",
       Workspace,
     );
-    expect(accessControlService.assertCan).toHaveBeenNthCalledWith(
+    expect(authorization.assertCan).toHaveBeenNthCalledWith(
       2,
       "update",
       workspace,
     );
-    expect(accessControlService.assertCurrentWorkspace).toHaveBeenCalledWith(
+    expect(authorization.assertCurrentWorkspace).toHaveBeenCalledWith(
       workspace,
     );
-    expect(accessControlService.assertCan).not.toHaveBeenCalledWith(
+    expect(authorization.assertCan).not.toHaveBeenCalledWith(
       "read",
       expect.anything(),
     );
@@ -134,11 +133,10 @@ describe("WorkspaceService and cross-domain coordination", () => {
   it.each(["type", "instance", "missing"] as const)(
     "does not write when ID-based workspace authorization fails at %s",
     async (failure) => {
-      const { workspaceService, em, accessControlService } =
-        createWorkspaceServices();
+      const { workspaceService, em, authorization } = createWorkspaceServices();
       const workspace = createTestWorkspace();
       em.findOne.mockResolvedValue(failure === "missing" ? null : workspace);
-      vi.mocked(accessControlService.assertCan).mockImplementation(
+      vi.mocked(authorization.assertCan).mockImplementation(
         (_action, subject) => {
           if (
             (failure === "type" && subject === Workspace) ||
@@ -160,7 +158,7 @@ describe("WorkspaceService and cross-domain coordination", () => {
   );
 
   it("paginates authorized workspace memberships and members inside the service", async () => {
-    const { workspaceService, memberService, em, accessControlService } =
+    const { workspaceService, memberService, em, authorization } =
       createWorkspaceServices();
     const user = createTestUser();
     const workspace = createTestWorkspace();
@@ -193,24 +191,17 @@ describe("WorkspaceService and cross-domain coordination", () => {
         where: { workspace },
       });
       expect(find.mock.instances[0]).toHaveProperty("em", em);
-      expect(accessControlService.assertCurrentWorkspace).toHaveBeenCalledWith(
+      expect(authorization.assertCurrentWorkspace).toHaveBeenCalledWith(
         workspace,
       );
-      expect(accessControlService.assertCan).toHaveBeenCalledWith(
-        "read",
-        Member,
-      );
+      expect(authorization.assertCan).toHaveBeenCalledWith("read", Member);
       find.mockClear();
-      vi.mocked(accessControlService.assertUserSession).mockImplementation(
-        () => {
-          throw new ForbiddenException();
-        },
-      );
-      vi.mocked(accessControlService.assertCurrentWorkspace).mockImplementation(
-        () => {
-          throw new ForbiddenException();
-        },
-      );
+      vi.mocked(authorization.assertUserSession).mockImplementation(() => {
+        throw new ForbiddenException();
+      });
+      vi.mocked(authorization.assertCurrentWorkspace).mockImplementation(() => {
+        throw new ForbiddenException();
+      });
       await expect(
         workspaceService.getWorkspaceConnectionByUser(user, args),
       ).rejects.toBeInstanceOf(ForbiddenException);
@@ -224,8 +215,7 @@ describe("WorkspaceService and cross-domain coordination", () => {
   });
 
   it("only returns a workspace to its active user member", async () => {
-    const { workspaceService, em, accessControlService } =
-      createWorkspaceServices();
+    const { workspaceService, em, authorization } = createWorkspaceServices();
     const workspace = createTestWorkspace();
     const user = createTestUser();
     em.findOne
@@ -234,7 +224,7 @@ describe("WorkspaceService and cross-domain coordination", () => {
     await expect(
       workspaceService.getUserWorkspace(workspace.id, user),
     ).resolves.toBe(workspace);
-    expect(accessControlService.assertCurrentUser).toHaveBeenCalledWith(user);
+    expect(authorization.assertCurrentUser).toHaveBeenCalledWith(user);
     em.findOne.mockResolvedValueOnce(workspace).mockResolvedValueOnce(null);
     await expect(
       workspaceService.getUserWorkspace(workspace.id, user),
@@ -314,9 +304,8 @@ describe("WorkspaceService and cross-domain coordination", () => {
   });
 
   it("fails before persistence when a service-level permission is denied", async () => {
-    const { accessControlService, em, workspaceService } =
-      createWorkspaceServices();
-    vi.mocked(accessControlService.assertCan).mockImplementation(() => {
+    const { authorization, em, workspaceService } = createWorkspaceServices();
+    vi.mocked(authorization.assertCan).mockImplementation(() => {
       throw new ForbiddenException();
     });
 
@@ -332,9 +321,8 @@ describe("WorkspaceService and cross-domain coordination", () => {
   it.each(["assertCurrentUser", "assertCan"] as const)(
     "checks %s before starting unrestricted workspace creation",
     async (check) => {
-      const { accessControlService, em, workspaceService } =
-        createWorkspaceServices();
-      vi.mocked(accessControlService[check]).mockImplementation(() => {
+      const { authorization, em, workspaceService } = createWorkspaceServices();
+      (authorization[check] as import("vitest").Mock).mockImplementation(() => {
         throw new ForbiddenException();
       });
 
@@ -412,7 +400,7 @@ describe("WorkspaceService and cross-domain coordination", () => {
   });
 
   it("uses delete ability independently of the configured creator role", async () => {
-    const { workspaceService, accessControlService } = createWorkspaceServices({
+    const { workspaceService, authorization } = createWorkspaceServices({
       creatorRole: "founder",
       defaultRole: "viewer",
       permissions: [],
@@ -422,15 +410,14 @@ describe("WorkspaceService and cross-domain coordination", () => {
     await expect(workspaceService.deleteWorkspace(workspace)).resolves.toBe(
       workspace,
     );
-    expect(accessControlService.assertCan).toHaveBeenLastCalledWith(
+    expect(authorization.assertCan).toHaveBeenLastCalledWith(
       "delete",
       workspace,
     );
   });
 
   it("updates mutable workspace fields", async () => {
-    const { accessControlService, em, workspaceService } =
-      createWorkspaceServices();
+    const { authorization, em, workspaceService } = createWorkspaceServices();
     const workspace = createTestWorkspace();
 
     await expect(
@@ -443,16 +430,15 @@ describe("WorkspaceService and cross-domain coordination", () => {
       { ignoreUndefined: true },
     );
     expect(em.flush).toHaveBeenCalledTimes(1);
-    expect(accessControlService.assertCurrentWorkspace).toHaveBeenCalledWith(
+    expect(authorization.assertCurrentWorkspace).toHaveBeenCalledWith(
       workspace,
     );
   });
 
   it("rejects workspace deletion without delete ability", async () => {
-    const { em, workspaceService, accessControlService } =
-      createWorkspaceServices();
+    const { em, workspaceService, authorization } = createWorkspaceServices();
     const workspace = createTestWorkspace();
-    vi.mocked(accessControlService.assertCan).mockImplementation(() => {
+    vi.mocked(authorization.assertCan).mockImplementation(() => {
       throw new ForbiddenException();
     });
 
@@ -463,13 +449,10 @@ describe("WorkspaceService and cross-domain coordination", () => {
   });
 
   it("does not let a caller delete a different workspace", async () => {
-    const { em, workspaceService, accessControlService } =
-      createWorkspaceServices();
-    vi.mocked(accessControlService.assertCurrentWorkspace).mockImplementation(
-      () => {
-        throw new ForbiddenException();
-      },
-    );
+    const { em, workspaceService, authorization } = createWorkspaceServices();
+    vi.mocked(authorization.assertCurrentWorkspace).mockImplementation(() => {
+      throw new ForbiddenException();
+    });
 
     await expect(
       workspaceService.deleteWorkspace(createTestWorkspace()),
@@ -478,9 +461,8 @@ describe("WorkspaceService and cross-domain coordination", () => {
   });
 
   it("rechecks delete ability after locking and refreshing the workspace", async () => {
-    const { em, workspaceService, accessControlService } =
-      createWorkspaceServices();
-    vi.mocked(accessControlService.assertCan)
+    const { em, workspaceService, authorization } = createWorkspaceServices();
+    vi.mocked(authorization.assertCan)
       .mockImplementationOnce(() => undefined)
       .mockImplementationOnce(() => {
         throw new ForbiddenException();

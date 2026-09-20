@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { AbilityProvider, useAbility } from "./ability-context";
 import type { SerializedAbilityRule } from "@/lib/ability";
-import { createAbilitySubject } from "@/lib/ability";
+import { createAbility, createAbilitySubject } from "@/lib/ability";
 
 const userRules: Array<SerializedAbilityRule> = [
   { actions: ["read"], subjects: ["User"], inverted: false },
@@ -45,9 +45,9 @@ describe("AbilityProvider", () => {
   it("replaces selected workspace rules and restores personal rules on exit", () => {
     function Page({ workspace }: { workspace?: string }) {
       return (
-        <AbilityProvider rules={userRules}>
+        <AbilityProvider ability={createAbility(userRules)}>
           {workspace ? (
-            <AbilityProvider rules={workspaceRules(workspace)}>
+            <AbilityProvider ability={createAbility(workspaceRules(workspace))}>
               <Probe />
             </AbilityProvider>
           ) : (
@@ -66,8 +66,8 @@ describe("AbilityProvider", () => {
 
   it("never falls back to a parent grant when the selected identity denies it", () => {
     render(
-      <AbilityProvider rules={userRules}>
-        <AbilityProvider rules={[]}>
+      <AbilityProvider ability={createAbility(userRules)}>
+        <AbilityProvider ability={createAbility([])}>
           <Probe />
         </AbilityProvider>
       </AbilityProvider>,

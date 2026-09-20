@@ -17,7 +17,6 @@ import { Verification } from "./entities/verification.entity.js";
 import { Workspace } from "./entities/workspace.entity.js";
 import { WorkspaceApiKey } from "./entities/workspace-api-key.entity.js";
 import * as publicApi from "./index.js";
-import { AccessControlService } from "./services/access-control.service.js";
 import { AccountService } from "./services/account.service.js";
 import { AuthService } from "./services/auth.service.js";
 import { InvitationService } from "./services/invitation.service.js";
@@ -27,6 +26,7 @@ import { UserService } from "./services/user.service.js";
 import { UserApiKeyService } from "./services/user-api-key.service.js";
 import { WorkspaceService } from "./services/workspace.service.js";
 import { WorkspaceApiKeyService } from "./services/workspace-api-key.service.js";
+import { assertCan } from "./utils/assert-can.util.js";
 import { can } from "./utils/can.util.js";
 import { getAbility } from "./utils/get-ability.util.js";
 vi.mock("better-auth", () => ({
@@ -383,7 +383,7 @@ describe("public API", () => {
     expect(publicApi.AuthModule).toBe(AuthModule);
     expect(publicApi.AuthService).toBe(AuthService);
     expect("AuthTransactionContext" in publicApi).toBe(false);
-    expect(publicApi.AccessControlService).toBe(AccessControlService);
+    expect(publicApi).not.toHaveProperty("AccessControlService");
     expect(publicApi.Can).toBe(Can);
     expect(publicApi.CurrentApiKey).toBe(CurrentApiKey);
     expect(publicApi.CurrentWorkspace).toBe(CurrentWorkspace);
@@ -411,6 +411,7 @@ describe("public API", () => {
       expect(publicApi).not.toHaveProperty(name);
     }
     expect(publicApi.can).toBe(can);
+    expect(publicApi.assertCan).toBe(assertCan);
     expect(publicApi.getAbility).toBe(getAbility);
     expect(publicApi.SessionService).toBe(SessionService);
     expect(publicApi.WorkspaceService).toBe(WorkspaceService);

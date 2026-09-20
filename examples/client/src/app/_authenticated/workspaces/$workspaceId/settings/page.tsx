@@ -8,10 +8,7 @@ import {
 import { t } from "i18next";
 import { toast } from "sonner";
 
-import {
-  GET_CURRENT_WORKSPACE_FROM_WORKSPACE_CONTEXT,
-  useCurrentWorkspaceContext,
-} from "../contexts/current-workspace-context";
+import { useCurrentWorkspaceContext } from "../contexts/current-workspace-context";
 import { useAbility } from "@/contexts/ability-context";
 
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
@@ -88,10 +85,7 @@ function SettingsComponent() {
   const canUpdateWorkspace = ability.can("update", workspaceSubject);
   const canDeleteWorkspace = ability.can("delete", workspaceSubject);
 
-  const [updateWorkspace] = useMutation(UPDATE_WORKSPACE_FROM_SETTINGS_ROUTE, {
-    refetchQueries: [GET_CURRENT_WORKSPACE_FROM_WORKSPACE_CONTEXT],
-    awaitRefetchQueries: true,
-  });
+  const [updateWorkspace] = useMutation(UPDATE_WORKSPACE_FROM_SETTINGS_ROUTE);
   const [deleteWorkspace, { loading: deleting, client }] = useMutation(
     DELETE_WORKSPACE_FROM_SETTINGS_ROUTE,
   );

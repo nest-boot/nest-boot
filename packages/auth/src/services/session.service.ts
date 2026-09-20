@@ -1,4 +1,4 @@
-import { EntityManager, type FilterQuery, LockMode } from "@mikro-orm/core";
+import { EntityManager, LockMode } from "@mikro-orm/core";
 import type { EntityManager as SqlEntityManager } from "@mikro-orm/sql";
 import {
   type ConnectionArgsInterface,
@@ -26,8 +26,8 @@ import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
 import { RequestIdentity } from "../infrastructure/request-identity.js";
 import type { AuthenticatedSession } from "../interfaces/authenticated-session.interface.js";
+import { assertCan } from "../utils/assert-can.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
-import { AccessControlService } from "./access-control.service.js";
 
 interface StatusResult {
   status: boolean;
@@ -64,13 +64,11 @@ export class SessionService {
    * Creates a new SessionService instance.
    * @param auth - Internal Better Auth instance.
    * @param em - Entity manager used to resolve application entities.
-   * @param accessControlService - Authorization for parent-scoped reads and administrative revocation.
    */
   constructor(
     @Inject(AUTH_TOKEN)
     auth: unknown,
     private readonly em: EntityManager,
-    private readonly accessControlService: AccessControlService,
   ) {
     this.auth = auth as InternalAuth;
   }
@@ -90,7 +88,7 @@ export class SessionService {
       where: {
         user: String(user.id),
         expiresAt: { $gt: new Date() },
-      } as FilterQuery<Session>,
+      },
     });
     for (const { node } of connection.edges)
       this.assertCanListSessions(user, node);
@@ -104,11 +102,11 @@ export class SessionService {
     const current = RequestContext.isActive() ? RequestContext.get(User) : null;
     const self =
       !getCurrentApiKey() && current?.id === session.impersonatedBy.id;
-    if (!self) this.accessControlService.assertCan("read", User);
+    if (!self) assertCan("read", User);
     const user = await this.em.findOne(User, {
       id: String(session.impersonatedBy.id),
-    } as FilterQuery<User>);
-    if (user && !self) this.accessControlService.assertCan("read", user);
+    });
+    if (user && !self) assertCan("read", user);
     return user;
   }
 
@@ -118,14 +116,14 @@ export class SessionService {
       : undefined;
     const apiKey = RequestContext.isActive() ? getCurrentApiKey() : undefined;
     if (!current || String(current.id) !== String(user.id) || apiKey) {
-      this.accessControlService.assertCan("read", session ?? Session);
+      assertCan("read", session ?? Session);
     }
   }
 
   /** Revokes one session by ID when it belongs to the supplied user. */
   async revokeSession(user: User | string, id: string): Promise<boolean> {
     user = await this.resolveUserForRevocation(user);
-    this.accessControlService.assertCan("revoke", Session);
+    assertCan("revoke", Session);
     const current = RequestContext.isActive()
       ? RequestContext.get(Session)
       : null;
@@ -138,11 +136,11 @@ export class SessionService {
           {
             id,
             user: String(user.id),
-          } as FilterQuery<Session>,
+          },
           { filters: false, lockMode: LockMode.PESSIMISTIC_WRITE },
         );
         if (!session) return false;
-        this.accessControlService.assertCan("revoke", session);
+        assertCan("revoke", session);
         await em.remove(session).flush();
         return true;
       },
@@ -155,7 +153,7 @@ export class SessionService {
   /** Revokes the user's sessions, including impersonation sessions they started. */
   async revokeUserSessions(user: User | string): Promise<number> {
     user = await this.resolveUserForRevocation(user);
-    this.accessControlService.assertCan("revoke", Session);
+    assertCan("revoke", Session);
     const current = RequestContext.isActive()
       ? RequestContext.get(Session)
       : null;
@@ -168,11 +166,10 @@ export class SessionService {
           Session,
           {
             $or: [{ user: String(user.id) }, { impersonatedBy: user }],
-          } as FilterQuery<Session>,
+          },
           { filters: false, lockMode: LockMode.PESSIMISTIC_WRITE },
         );
-        for (const session of sessions)
-          this.accessControlService.assertCan("revoke", session);
+        for (const session of sessions) assertCan("revoke", session);
         if (sessions.length === 0) return 0;
         // Delete only the locked, authorized snapshot; never include unchecked new sessions.
         return await em.nativeDelete(Session, {
@@ -187,12 +184,8 @@ export class SessionService {
 
   private async resolveUserForRevocation(user: User | string): Promise<User> {
     if (typeof user !== "string") return user;
-    this.accessControlService.assertCan("revoke", Session);
-    const entity = await this.em.findOne(
-      User,
-      { id: user } as FilterQuery<User>,
-      { refresh: true },
-    );
+    assertCan("revoke", Session);
+    const entity = await this.em.findOne(User, { id: user }, { refresh: true });
     if (!entity) throw new NotFoundException("User not found");
     return entity;
   }

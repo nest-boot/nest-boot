@@ -2,45 +2,38 @@ import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException } from "@nestjs/common";
 
 import { AuthAbility } from "../abilities/auth.ability.js";
-import { User } from "../entities/user.entity.js";
-import { AccessControlService } from "../services/access-control.service.js";
+import { User, WorkspaceApiKey } from "../entities/index.js";
+import { RequestIdentity } from "../infrastructure/request-identity.js";
 import { getAbility } from "./get-ability.util.js";
 
-describe("unified getAbility", () => {
-  it("rejects a cached ability without the authorization service", async () => {
-    await RequestContext.run(new RequestContext({ type: "http" }), () => {
-      RequestContext.set(AuthAbility, new AuthAbility());
-      expect(() => getAbility()).toThrow(ForbiddenException);
-    });
+describe("getAbility", () => {
+  it("rejects access outside a request", () => {
     expect(() => getAbility()).toThrow(ForbiddenException);
   });
-
-  it("throws when no user ability is cached", async () => {
-    await RequestContext.run(new RequestContext({ type: "http" }), () => {
+  it.each(["identity", "ability"])("rejects a missing %s", async (missing) => {
+    await RequestContext.run(new RequestContext({ type: "test" }), () => {
+      if (missing !== "identity") RequestContext.set(User, new User());
+      if (missing !== "ability")
+        RequestContext.set(AuthAbility, new AuthAbility());
       expect(() => getAbility()).toThrow(ForbiddenException);
     });
   });
-
-  it("does not read a workspace ability as a user ability", async () => {
-    await RequestContext.run(new RequestContext({ type: "http" }), () => {
-      RequestContext.set(AuthAbility, new AuthAbility());
-
-      expect(() => getAbility()).toThrow(ForbiddenException);
-    });
-  });
-
-  it("reads the user ability from request context", async () => {
-    const ability = new AuthAbility();
-
-    await RequestContext.run(
-      new RequestContext({ type: "http" }),
-      (context) => {
-        context.set(AccessControlService, new AccessControlService({}));
-        context.set(User, new User());
-        context.set(AuthAbility, ability);
-
+  it.each(["user", "workspace-key"])(
+    "reads the %s ability directly without a service",
+    async (identity) => {
+      await RequestContext.run(new RequestContext({ type: "test" }), () => {
+        RequestIdentity.stage(
+          identity === "user"
+            ? { user: new User() }
+            : { apiKey: new WorkspaceApiKey() },
+        );
+        const ability = new AuthAbility();
+        RequestContext.set(AuthAbility, ability);
         expect(getAbility()).toBe(ability);
-      },
-    );
-  });
+        RequestIdentity.stage({ user: null, apiKey: null });
+        RequestContext.set(AuthAbility, ability);
+        expect(() => getAbility()).toThrow(ForbiddenException);
+      });
+    },
+  );
 });

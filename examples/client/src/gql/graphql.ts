@@ -1370,23 +1370,6 @@ export type WorkspaceRoleOption = {
   role: WorkspaceRole;
 };
 
-export type GetAdminAccessFromAdminLayoutQueryVariables = Exact<{
-  [key: string]: never;
-}>;
-
-export type GetAdminAccessFromAdminLayoutQuery = {
-  __typename?: "Query";
-  currentAbilityRules: Array<{
-    __typename?: "AuthAbilityRuleType";
-    actions: Array<string>;
-    subjects: Array<string>;
-    fields?: Array<string> | null;
-    conditions?: Record<string, unknown> | null;
-    inverted: boolean;
-    reason?: string | null;
-  }>;
-};
-
 export type GetUserFromUserRouteQueryVariables = Exact<{
   id: Scalars["ID"]["input"];
   sessionsAfter?: InputMaybe<Scalars["String"]["input"]>;
@@ -1592,11 +1575,11 @@ export type SignOutFromSidebarUserMutation = {
   signOut: boolean;
 };
 
-export type GetCurrentUserFromCurrentUserContextQueryVariables = Exact<{
+export type GetCurrentUserFromAuthenticatedRouteQueryVariables = Exact<{
   [key: string]: never;
 }>;
 
-export type GetCurrentUserFromCurrentUserContextQuery = {
+export type GetCurrentUserFromAuthenticatedRouteQuery = {
   __typename?: "Query";
   currentUser: {
     __typename?: "User";
@@ -1605,45 +1588,19 @@ export type GetCurrentUserFromCurrentUserContextQuery = {
     email: string;
     permissions: Array<UserPermission>;
   };
-  currentAbilityRules: Array<{
-    __typename?: "AuthAbilityRuleType";
-    actions: Array<string>;
-    subjects: Array<string>;
-    fields?: Array<string> | null;
-    conditions?: Record<string, unknown> | null;
-    inverted: boolean;
-    reason?: string | null;
-  }>;
-};
-
-export type GetCurrentUserFromAuthenticatedRouteQueryVariables = Exact<{
-  [key: string]: never;
-}>;
-
-export type GetCurrentUserFromAuthenticatedRouteQuery = {
-  __typename?: "Query";
-  currentUser: { __typename?: "User"; id: string };
-  currentAbilityRules: Array<{
-    __typename?: "AuthAbilityRuleType";
-    actions: Array<string>;
-    subjects: Array<string>;
-    fields?: Array<string> | null;
-    conditions?: Record<string, unknown> | null;
-    inverted: boolean;
-    reason?: string | null;
-  }>;
-};
-
-export type GetImpersonationFromAuthenticatedRouteQueryVariables = Exact<{
-  [key: string]: never;
-}>;
-
-export type GetImpersonationFromAuthenticatedRouteQuery = {
-  __typename?: "Query";
   currentSession?: {
     __typename?: "Session";
     impersonatedById?: string | null;
   } | null;
+  currentAbilityRules: Array<{
+    __typename?: "AuthAbilityRuleType";
+    actions: Array<string>;
+    subjects: Array<string>;
+    fields?: Array<string> | null;
+    conditions?: Record<string, unknown> | null;
+    inverted: boolean;
+    reason?: string | null;
+  }>;
 };
 
 export type StopImpersonatingFromAuthenticatedRouteMutationVariables = Exact<{
@@ -1765,21 +1722,6 @@ export type DeleteUserApiKeyFromUserApiKeysRouteMutation = {
     createdAt: any;
     lastUsedAt?: any | null;
     expiresAt?: any | null;
-  };
-};
-
-export type GetCurrentUserFromUserRouteQueryVariables = Exact<{
-  [key: string]: never;
-}>;
-
-export type GetCurrentUserFromUserRouteQuery = {
-  __typename?: "Query";
-  currentUser: {
-    __typename?: "User";
-    id: string;
-    name: string;
-    email: string;
-    createdAt: any;
   };
 };
 
@@ -2169,12 +2111,19 @@ export type GetWorkspacesFromWorkspaceSwitcherQuery = {
   };
 };
 
-export type GetCurrentMemberFromMemberContextQueryVariables = Exact<{
-  [key: string]: never;
+export type GetCurrentWorkspaceFromWorkspaceLayoutQueryVariables = Exact<{
+  workspaceId: Scalars["ID"]["input"];
 }>;
 
-export type GetCurrentMemberFromMemberContextQuery = {
+export type GetCurrentWorkspaceFromWorkspaceLayoutQuery = {
   __typename?: "Query";
+  workspace?: {
+    __typename?: "Workspace";
+    id: string;
+    name: string;
+    createdAt: any;
+    updatedAt: any;
+  } | null;
   currentMember?: {
     __typename?: "Member";
     workspaceId: string;
@@ -2196,58 +2145,37 @@ export type GetCurrentMemberFromMemberContextQuery = {
   }>;
 };
 
-export type GetCurrentWorkspaceFromWorkspaceContextQueryVariables = Exact<{
-  [key: string]: never;
+export type SetMemberPermissionsFromMemberRouteMutationVariables = Exact<{
+  id: Scalars["ID"]["input"];
+  input: SetMemberPermissionsInput;
 }>;
 
-export type GetCurrentWorkspaceFromWorkspaceContextQuery = {
-  __typename?: "Query";
-  currentWorkspace?: {
-    __typename?: "Workspace";
+export type SetMemberPermissionsFromMemberRouteMutation = {
+  __typename?: "Mutation";
+  setMemberPermissions: {
+    __typename?: "SetMemberPermissionsPayload";
     id: string;
-    name: string;
-    createdAt: any;
-    updatedAt: any;
-  } | null;
+  };
 };
 
-export type GetCurrentWorkspaceFromWorkspaceLayoutQueryVariables = Exact<{
-  workspaceId: Scalars["ID"]["input"];
+export type UpdateMemberFromMemberRouteMutationVariables = Exact<{
+  id: Scalars["ID"]["input"];
+  input: UpdateMemberInput;
 }>;
 
-export type GetCurrentWorkspaceFromWorkspaceLayoutQuery = {
-  __typename?: "Query";
-  workspace?: { __typename?: "Workspace"; id: string } | null;
-  currentMember?: {
-    __typename?: "Member";
-    workspaceId: string;
-    id: string;
-    roles: Array<WorkspaceRole>;
-  } | null;
-  currentAbilityRules: Array<{
-    __typename?: "AuthAbilityRuleType";
-    actions: Array<string>;
-    subjects: Array<string>;
-    fields?: Array<string> | null;
-    conditions?: Record<string, unknown> | null;
-    inverted: boolean;
-    reason?: string | null;
-  }>;
+export type UpdateMemberFromMemberRouteMutation = {
+  __typename?: "Mutation";
+  updateMember?: { __typename?: "UpdateMemberPayload"; id: string } | null;
 };
 
-export type GetCurrentMemberFromMemberRouteQueryVariables = Exact<{
-  [key: string]: never;
+export type SetMemberRolesFromMemberRouteMutationVariables = Exact<{
+  id: Scalars["ID"]["input"];
+  input: SetMemberRolesInput;
 }>;
 
-export type GetCurrentMemberFromMemberRouteQuery = {
-  __typename?: "Query";
-  currentMember?: {
-    __typename?: "Member";
-    workspaceId: string;
-    id: string;
-    roles: Array<WorkspaceRole>;
-    permissions: Array<WorkspacePermission>;
-  } | null;
+export type SetMemberRolesFromMemberRouteMutation = {
+  __typename?: "Mutation";
+  setMemberRoles: { __typename?: "SetMemberRolesPayload"; id: string };
 };
 
 export type GetMemberFromMemberRouteQueryVariables = Exact<{
@@ -2276,39 +2204,6 @@ export type GetMemberFromMemberRouteQuery = {
     permission: WorkspacePermission;
     grantable: boolean;
   }>;
-};
-
-export type UpdateMemberFromMemberRouteMutationVariables = Exact<{
-  id: Scalars["ID"]["input"];
-  input: UpdateMemberInput;
-}>;
-
-export type UpdateMemberFromMemberRouteMutation = {
-  __typename?: "Mutation";
-  updateMember?: { __typename?: "UpdateMemberPayload"; id: string } | null;
-};
-
-export type SetMemberRolesFromMemberRouteMutationVariables = Exact<{
-  id: Scalars["ID"]["input"];
-  input: SetMemberRolesInput;
-}>;
-
-export type SetMemberRolesFromMemberRouteMutation = {
-  __typename?: "Mutation";
-  setMemberRoles: { __typename?: "SetMemberRolesPayload"; id: string };
-};
-
-export type SetMemberPermissionsFromMemberRouteMutationVariables = Exact<{
-  id: Scalars["ID"]["input"];
-  input: SetMemberPermissionsInput;
-}>;
-
-export type SetMemberPermissionsFromMemberRouteMutation = {
-  __typename?: "Mutation";
-  setMemberPermissions: {
-    __typename?: "SetMemberPermissionsPayload";
-    id: string;
-  };
 };
 
 export type RemoveMemberFromMemberRouteMutationVariables = Exact<{
@@ -2629,39 +2524,6 @@ export type AcceptInvitationFromInviteRouteMutation = {
   };
 };
 
-export const GetAdminAccessFromAdminLayoutDocument = {
-  kind: "Document",
-  definitions: [
-    {
-      kind: "OperationDefinition",
-      operation: "query",
-      name: { kind: "Name", value: "getAdminAccessFromAdminLayout" },
-      selectionSet: {
-        kind: "SelectionSet",
-        selections: [
-          {
-            kind: "Field",
-            name: { kind: "Name", value: "currentAbilityRules" },
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
-                { kind: "Field", name: { kind: "Name", value: "actions" } },
-                { kind: "Field", name: { kind: "Name", value: "subjects" } },
-                { kind: "Field", name: { kind: "Name", value: "fields" } },
-                { kind: "Field", name: { kind: "Name", value: "conditions" } },
-                { kind: "Field", name: { kind: "Name", value: "inverted" } },
-                { kind: "Field", name: { kind: "Name", value: "reason" } },
-              ],
-            },
-          },
-        ],
-      },
-    },
-  ],
-} as unknown as DocumentNode<
-  GetAdminAccessFromAdminLayoutQuery,
-  GetAdminAccessFromAdminLayoutQueryVariables
->;
 export const GetUserFromUserRouteDocument = {
   kind: "Document",
   definitions: [
@@ -3810,13 +3672,13 @@ export const SignOutFromSidebarUserDocument = {
   SignOutFromSidebarUserMutation,
   SignOutFromSidebarUserMutationVariables
 >;
-export const GetCurrentUserFromCurrentUserContextDocument = {
+export const GetCurrentUserFromAuthenticatedRouteDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "query",
-      name: { kind: "Name", value: "getCurrentUserFromCurrentUserContext" },
+      name: { kind: "Name", value: "getCurrentUserFromAuthenticatedRoute" },
       selectionSet: {
         kind: "SelectionSet",
         selections: [
@@ -3835,44 +3697,14 @@ export const GetCurrentUserFromCurrentUserContextDocument = {
           },
           {
             kind: "Field",
-            name: { kind: "Name", value: "currentAbilityRules" },
+            name: { kind: "Name", value: "currentSession" },
             selectionSet: {
               kind: "SelectionSet",
               selections: [
-                { kind: "Field", name: { kind: "Name", value: "actions" } },
-                { kind: "Field", name: { kind: "Name", value: "subjects" } },
-                { kind: "Field", name: { kind: "Name", value: "fields" } },
-                { kind: "Field", name: { kind: "Name", value: "conditions" } },
-                { kind: "Field", name: { kind: "Name", value: "inverted" } },
-                { kind: "Field", name: { kind: "Name", value: "reason" } },
-              ],
-            },
-          },
-        ],
-      },
-    },
-  ],
-} as unknown as DocumentNode<
-  GetCurrentUserFromCurrentUserContextQuery,
-  GetCurrentUserFromCurrentUserContextQueryVariables
->;
-export const GetCurrentUserFromAuthenticatedRouteDocument = {
-  kind: "Document",
-  definitions: [
-    {
-      kind: "OperationDefinition",
-      operation: "query",
-      name: { kind: "Name", value: "getCurrentUserFromAuthenticatedRoute" },
-      selectionSet: {
-        kind: "SelectionSet",
-        selections: [
-          {
-            kind: "Field",
-            name: { kind: "Name", value: "currentUser" },
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
-                { kind: "Field", name: { kind: "Name", value: "id" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "impersonatedById" },
+                },
               ],
             },
           },
@@ -3898,37 +3730,6 @@ export const GetCurrentUserFromAuthenticatedRouteDocument = {
 } as unknown as DocumentNode<
   GetCurrentUserFromAuthenticatedRouteQuery,
   GetCurrentUserFromAuthenticatedRouteQueryVariables
->;
-export const GetImpersonationFromAuthenticatedRouteDocument = {
-  kind: "Document",
-  definitions: [
-    {
-      kind: "OperationDefinition",
-      operation: "query",
-      name: { kind: "Name", value: "getImpersonationFromAuthenticatedRoute" },
-      selectionSet: {
-        kind: "SelectionSet",
-        selections: [
-          {
-            kind: "Field",
-            name: { kind: "Name", value: "currentSession" },
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "impersonatedById" },
-                },
-              ],
-            },
-          },
-        ],
-      },
-    },
-  ],
-} as unknown as DocumentNode<
-  GetImpersonationFromAuthenticatedRouteQuery,
-  GetImpersonationFromAuthenticatedRouteQueryVariables
 >;
 export const StopImpersonatingFromAuthenticatedRouteDocument = {
   kind: "Document",
@@ -4430,37 +4231,6 @@ export const DeleteUserApiKeyFromUserApiKeysRouteDocument = {
 } as unknown as DocumentNode<
   DeleteUserApiKeyFromUserApiKeysRouteMutation,
   DeleteUserApiKeyFromUserApiKeysRouteMutationVariables
->;
-export const GetCurrentUserFromUserRouteDocument = {
-  kind: "Document",
-  definitions: [
-    {
-      kind: "OperationDefinition",
-      operation: "query",
-      name: { kind: "Name", value: "getCurrentUserFromUserRoute" },
-      selectionSet: {
-        kind: "SelectionSet",
-        selections: [
-          {
-            kind: "Field",
-            name: { kind: "Name", value: "currentUser" },
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
-                { kind: "Field", name: { kind: "Name", value: "id" } },
-                { kind: "Field", name: { kind: "Name", value: "name" } },
-                { kind: "Field", name: { kind: "Name", value: "email" } },
-                { kind: "Field", name: { kind: "Name", value: "createdAt" } },
-              ],
-            },
-          },
-        ],
-      },
-    },
-  ],
-} as unknown as DocumentNode<
-  GetCurrentUserFromUserRouteQuery,
-  GetCurrentUserFromUserRouteQueryVariables
 >;
 export const UpdateUserFromUserRouteDocument = {
   kind: "Document",
@@ -6259,86 +6029,6 @@ export const GetWorkspacesFromWorkspaceSwitcherDocument = {
   GetWorkspacesFromWorkspaceSwitcherQuery,
   GetWorkspacesFromWorkspaceSwitcherQueryVariables
 >;
-export const GetCurrentMemberFromMemberContextDocument = {
-  kind: "Document",
-  definitions: [
-    {
-      kind: "OperationDefinition",
-      operation: "query",
-      name: { kind: "Name", value: "getCurrentMemberFromMemberContext" },
-      selectionSet: {
-        kind: "SelectionSet",
-        selections: [
-          {
-            kind: "Field",
-            name: { kind: "Name", value: "currentMember" },
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
-                { kind: "Field", name: { kind: "Name", value: "workspaceId" } },
-                { kind: "Field", name: { kind: "Name", value: "id" } },
-                { kind: "Field", name: { kind: "Name", value: "roles" } },
-                { kind: "Field", name: { kind: "Name", value: "permissions" } },
-                { kind: "Field", name: { kind: "Name", value: "status" } },
-                { kind: "Field", name: { kind: "Name", value: "name" } },
-                { kind: "Field", name: { kind: "Name", value: "email" } },
-              ],
-            },
-          },
-          {
-            kind: "Field",
-            name: { kind: "Name", value: "currentAbilityRules" },
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
-                { kind: "Field", name: { kind: "Name", value: "actions" } },
-                { kind: "Field", name: { kind: "Name", value: "subjects" } },
-                { kind: "Field", name: { kind: "Name", value: "fields" } },
-                { kind: "Field", name: { kind: "Name", value: "conditions" } },
-                { kind: "Field", name: { kind: "Name", value: "inverted" } },
-                { kind: "Field", name: { kind: "Name", value: "reason" } },
-              ],
-            },
-          },
-        ],
-      },
-    },
-  ],
-} as unknown as DocumentNode<
-  GetCurrentMemberFromMemberContextQuery,
-  GetCurrentMemberFromMemberContextQueryVariables
->;
-export const GetCurrentWorkspaceFromWorkspaceContextDocument = {
-  kind: "Document",
-  definitions: [
-    {
-      kind: "OperationDefinition",
-      operation: "query",
-      name: { kind: "Name", value: "getCurrentWorkspaceFromWorkspaceContext" },
-      selectionSet: {
-        kind: "SelectionSet",
-        selections: [
-          {
-            kind: "Field",
-            name: { kind: "Name", value: "currentWorkspace" },
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
-                { kind: "Field", name: { kind: "Name", value: "id" } },
-                { kind: "Field", name: { kind: "Name", value: "name" } },
-                { kind: "Field", name: { kind: "Name", value: "createdAt" } },
-                { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
-              ],
-            },
-          },
-        ],
-      },
-    },
-  ],
-} as unknown as DocumentNode<
-  GetCurrentWorkspaceFromWorkspaceContextQuery,
-  GetCurrentWorkspaceFromWorkspaceContextQueryVariables
->;
 export const GetCurrentWorkspaceFromWorkspaceLayoutDocument = {
   kind: "Document",
   definitions: [
@@ -6379,6 +6069,9 @@ export const GetCurrentWorkspaceFromWorkspaceLayoutDocument = {
               kind: "SelectionSet",
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "name" } },
+                { kind: "Field", name: { kind: "Name", value: "createdAt" } },
+                { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
               ],
             },
           },
@@ -6391,6 +6084,10 @@ export const GetCurrentWorkspaceFromWorkspaceLayoutDocument = {
                 { kind: "Field", name: { kind: "Name", value: "workspaceId" } },
                 { kind: "Field", name: { kind: "Name", value: "id" } },
                 { kind: "Field", name: { kind: "Name", value: "roles" } },
+                { kind: "Field", name: { kind: "Name", value: "permissions" } },
+                { kind: "Field", name: { kind: "Name", value: "status" } },
+                { kind: "Field", name: { kind: "Name", value: "name" } },
+                { kind: "Field", name: { kind: "Name", value: "email" } },
               ],
             },
           },
@@ -6417,44 +6114,13 @@ export const GetCurrentWorkspaceFromWorkspaceLayoutDocument = {
   GetCurrentWorkspaceFromWorkspaceLayoutQuery,
   GetCurrentWorkspaceFromWorkspaceLayoutQueryVariables
 >;
-export const GetCurrentMemberFromMemberRouteDocument = {
+export const SetMemberPermissionsFromMemberRouteDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
-      operation: "query",
-      name: { kind: "Name", value: "getCurrentMemberFromMemberRoute" },
-      selectionSet: {
-        kind: "SelectionSet",
-        selections: [
-          {
-            kind: "Field",
-            name: { kind: "Name", value: "currentMember" },
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
-                { kind: "Field", name: { kind: "Name", value: "workspaceId" } },
-                { kind: "Field", name: { kind: "Name", value: "id" } },
-                { kind: "Field", name: { kind: "Name", value: "roles" } },
-                { kind: "Field", name: { kind: "Name", value: "permissions" } },
-              ],
-            },
-          },
-        ],
-      },
-    },
-  ],
-} as unknown as DocumentNode<
-  GetCurrentMemberFromMemberRouteQuery,
-  GetCurrentMemberFromMemberRouteQueryVariables
->;
-export const GetMemberFromMemberRouteDocument = {
-  kind: "Document",
-  definitions: [
-    {
-      kind: "OperationDefinition",
-      operation: "query",
-      name: { kind: "Name", value: "getMemberFromMemberRoute" },
+      operation: "mutation",
+      name: { kind: "Name", value: "setMemberPermissionsFromMemberRoute" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
@@ -6464,13 +6130,27 @@ export const GetMemberFromMemberRouteDocument = {
             type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
           },
         },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "input" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: {
+              kind: "NamedType",
+              name: { kind: "Name", value: "SetMemberPermissionsInput" },
+            },
+          },
+        },
       ],
       selectionSet: {
         kind: "SelectionSet",
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "member" },
+            name: { kind: "Name", value: "setMemberPermissions" },
             arguments: [
               {
                 kind: "Argument",
@@ -6480,39 +6160,19 @@ export const GetMemberFromMemberRouteDocument = {
                   name: { kind: "Name", value: "id" },
                 },
               },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "input" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "input" },
+                },
+              },
             ],
             selectionSet: {
               kind: "SelectionSet",
               selections: [
-                { kind: "Field", name: { kind: "Name", value: "workspaceId" } },
                 { kind: "Field", name: { kind: "Name", value: "id" } },
-                { kind: "Field", name: { kind: "Name", value: "roles" } },
-                { kind: "Field", name: { kind: "Name", value: "permissions" } },
-                { kind: "Field", name: { kind: "Name", value: "status" } },
-                { kind: "Field", name: { kind: "Name", value: "name" } },
-                { kind: "Field", name: { kind: "Name", value: "email" } },
-              ],
-            },
-          },
-          {
-            kind: "Field",
-            name: { kind: "Name", value: "workspaceRoles" },
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
-                { kind: "Field", name: { kind: "Name", value: "role" } },
-                { kind: "Field", name: { kind: "Name", value: "grantable" } },
-              ],
-            },
-          },
-          {
-            kind: "Field",
-            name: { kind: "Name", value: "workspacePermissions" },
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
-                { kind: "Field", name: { kind: "Name", value: "permission" } },
-                { kind: "Field", name: { kind: "Name", value: "grantable" } },
               ],
             },
           },
@@ -6521,8 +6181,8 @@ export const GetMemberFromMemberRouteDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  GetMemberFromMemberRouteQuery,
-  GetMemberFromMemberRouteQueryVariables
+  SetMemberPermissionsFromMemberRouteMutation,
+  SetMemberPermissionsFromMemberRouteMutationVariables
 >;
 export const UpdateMemberFromMemberRouteDocument = {
   kind: "Document",
@@ -6664,13 +6324,13 @@ export const SetMemberRolesFromMemberRouteDocument = {
   SetMemberRolesFromMemberRouteMutation,
   SetMemberRolesFromMemberRouteMutationVariables
 >;
-export const SetMemberPermissionsFromMemberRouteDocument = {
+export const GetMemberFromMemberRouteDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
-      operation: "mutation",
-      name: { kind: "Name", value: "setMemberPermissionsFromMemberRoute" },
+      operation: "query",
+      name: { kind: "Name", value: "getMemberFromMemberRoute" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
@@ -6680,27 +6340,13 @@ export const SetMemberPermissionsFromMemberRouteDocument = {
             type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
           },
         },
-        {
-          kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "input" },
-          },
-          type: {
-            kind: "NonNullType",
-            type: {
-              kind: "NamedType",
-              name: { kind: "Name", value: "SetMemberPermissionsInput" },
-            },
-          },
-        },
       ],
       selectionSet: {
         kind: "SelectionSet",
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "setMemberPermissions" },
+            name: { kind: "Name", value: "member" },
             arguments: [
               {
                 kind: "Argument",
@@ -6710,19 +6356,39 @@ export const SetMemberPermissionsFromMemberRouteDocument = {
                   name: { kind: "Name", value: "id" },
                 },
               },
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "input" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "input" },
-                },
-              },
             ],
             selectionSet: {
               kind: "SelectionSet",
               selections: [
+                { kind: "Field", name: { kind: "Name", value: "workspaceId" } },
                 { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "roles" } },
+                { kind: "Field", name: { kind: "Name", value: "permissions" } },
+                { kind: "Field", name: { kind: "Name", value: "status" } },
+                { kind: "Field", name: { kind: "Name", value: "name" } },
+                { kind: "Field", name: { kind: "Name", value: "email" } },
+              ],
+            },
+          },
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "workspaceRoles" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "role" } },
+                { kind: "Field", name: { kind: "Name", value: "grantable" } },
+              ],
+            },
+          },
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "workspacePermissions" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "permission" } },
+                { kind: "Field", name: { kind: "Name", value: "grantable" } },
               ],
             },
           },
@@ -6731,8 +6397,8 @@ export const SetMemberPermissionsFromMemberRouteDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  SetMemberPermissionsFromMemberRouteMutation,
-  SetMemberPermissionsFromMemberRouteMutationVariables
+  GetMemberFromMemberRouteQuery,
+  GetMemberFromMemberRouteQueryVariables
 >;
 export const RemoveMemberFromMemberRouteDocument = {
   kind: "Document",

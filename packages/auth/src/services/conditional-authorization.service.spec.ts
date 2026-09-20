@@ -10,7 +10,6 @@ import { Member } from "../entities/member.entity.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
-import { AccessControlService } from "./access-control.service.js";
 import { SessionService } from "./session.service.js";
 import { UserService } from "./user.service.js";
 import { UserApiKeyService } from "./user-api-key.service.js";
@@ -83,7 +82,7 @@ describe("conditional service authorization", () => {
           workspace,
           email: "another-recipient@example.com",
           status: "pending",
-          expiresAt: new Date(Date.now() + 60_000),
+          expiresAt: new Date(Date.now() + 60000),
           roles: ["member"],
         });
         em.findOne.mockImplementation((Entity: unknown) =>
@@ -376,17 +375,9 @@ async function withIdentity(
 
 function fixture() {
   const result = createWorkspaceServices();
-  const access = new AccessControlService({});
-  Object.assign(result.accessControlService, {
-    assertCanGrantUserPermissions:
-      access.assertCanGrantUserPermissions.bind(access),
-  });
-  vi.mocked(result.accessControlService.assertCan).mockImplementation(
-    access.assertCan.bind(access),
-  );
-  vi.mocked(result.accessControlService.assertCan).mockImplementation(
-    access.assertCan.bind(access),
-  );
+  result.authorization.assertCanGrantPermissions.mockRestore();
+  result.authorization.assertCan.mockRestore();
+  result.authorization.can.mockRestore();
   const query = {
     select: vi.fn().mockReturnThis(),
     where: vi.fn().mockReturnThis(),
@@ -408,15 +399,10 @@ function fixture() {
       result.em,
       {},
       { hash: vi.fn().mockResolvedValue("hash") } as never,
-      result.accessControlService,
       {} as never,
     ),
-    sessionService: new SessionService(
-      {},
-      result.em,
-      result.accessControlService,
-    ),
-    userApiKeyService: new UserApiKeyService(result.em, {}, access),
-    workspaceApiKeyService: new WorkspaceApiKeyService(result.em, {}, access),
+    sessionService: new SessionService({}, result.em),
+    userApiKeyService: new UserApiKeyService(result.em, {}),
+    workspaceApiKeyService: new WorkspaceApiKeyService(result.em, {}),
   };
 }

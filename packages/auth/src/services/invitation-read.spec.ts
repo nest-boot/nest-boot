@@ -2,6 +2,7 @@ import { ref } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException } from "@nestjs/common";
 
+import { restoreAuthorization } from "../../test/mock-authorization.js";
 import {
   createTestInvitation,
   createTestMember,
@@ -16,7 +17,6 @@ import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
-import { AccessControlService } from "./access-control.service.js";
 import { InvitationService } from "./invitation.service.js";
 
 describe("InvitationService read authorization", () => {
@@ -83,11 +83,8 @@ describe("InvitationService read authorization", () => {
     "checks $name even when the database returns the row",
     async (scenario) => {
       const { em } = createWorkspaceServices();
-      const service = new InvitationService(
-        em,
-        options,
-        new AccessControlService(options),
-      );
+      restoreAuthorization();
+      const service = new InvitationService(em, options);
       const workspace = createTestWorkspace();
       const invitation = Object.assign(createTestInvitation(), {
         email: "recipient@example.com",
@@ -221,11 +218,8 @@ describe("InvitationService read authorization", () => {
     },
   ])("checks $name independently of RLS", async (scenario) => {
     const { em } = createWorkspaceServices();
-    const service = new InvitationService(
-      em,
-      options,
-      new AccessControlService(options),
-    );
+    restoreAuthorization();
+    const service = new InvitationService(em, options);
     const invitation = Object.assign(createTestInvitation(), {
       email: "recipient@example.com",
       workspace: ref(Workspace, createTestWorkspace()),
@@ -314,11 +308,8 @@ describe("InvitationService read authorization", () => {
 
   it("allows the recipient's own invitation without a management ability", async () => {
     const { em } = createWorkspaceServices();
-    const service = new InvitationService(
-      em,
-      options,
-      new AccessControlService(options),
-    );
+    restoreAuthorization();
+    const service = new InvitationService(em, options);
     const invitation = Object.assign(createTestInvitation(), {
       email: "recipient@example.com",
     });

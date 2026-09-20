@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@apollo/client/react";
+import { useMutation } from "@apollo/client/react";
 import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
 import { t } from "i18next";
 
@@ -6,11 +6,19 @@ import { CurrentUserProvider } from "./contexts/current-user-context";
 import { Button } from "@/components/thread-ui/button";
 import { graphql } from "@/gql";
 import { createAbility } from "@/lib/ability";
+import { AbilityProvider } from "@/contexts/ability-context";
+import { isAccessDenied } from "@/lib/auth-errors";
 
 const GET_CURRENT_USER_FROM_AUTHENTICATED_ROUTE = graphql(`
   query getCurrentUserFromAuthenticatedRoute {
     currentUser {
       id
+      name
+      email
+      permissions
+    }
+    currentSession {
+      impersonatedById
     }
     currentAbilityRules {
       actions
@@ -19,14 +27,6 @@ const GET_CURRENT_USER_FROM_AUTHENTICATED_ROUTE = graphql(`
       conditions
       inverted
       reason
-    }
-  }
-`);
-
-const GET_IMPERSONATION_FROM_AUTHENTICATED_ROUTE = graphql(`
-  query getImpersonationFromAuthenticatedRoute {
-    currentSession {
-      impersonatedById
     }
   }
 `);
@@ -56,9 +56,11 @@ export const Route = createFileRoute("/_authenticated")({
       }
       return {
         currentUser: data.currentUser,
+        currentSession: data.currentSession,
         ability: createAbility(data.currentAbilityRules),
       };
     } catch (error) {
+      if (!isAccessDenied(error)) throw error;
       throw redirect({
         to: "/auth/login",
         search: { redirect: location.href },
@@ -68,22 +70,25 @@ export const Route = createFileRoute("/_authenticated")({
 });
 
 function AuthenticatedLayout() {
+  const { currentUser, ability } = Route.useRouteContext();
   return (
-    <CurrentUserProvider>
-      <AuthenticatedContent />
+    <CurrentUserProvider value={currentUser}>
+      <AbilityProvider ability={ability}>
+        <AuthenticatedContent />
+      </AbilityProvider>
     </CurrentUserProvider>
   );
 }
 
 function AuthenticatedContent() {
-  const { data } = useQuery(GET_IMPERSONATION_FROM_AUTHENTICATED_ROUTE);
+  const { currentSession } = Route.useRouteContext();
   const [stopImpersonating, { loading }] = useMutation(
     STOP_IMPERSONATING_FROM_AUTHENTICATED_ROUTE,
   );
 
   return (
     <>
-      {data?.currentSession?.impersonatedById ? (
+      {currentSession?.impersonatedById ? (
         <div
           className="fixed inset-x-0 top-0 z-50 flex min-h-12 items-center justify-center gap-4 bg-amber-300 px-4 py-2 text-sm text-amber-950 shadow"
           data-testid="impersonation-banner"

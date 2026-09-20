@@ -1,57 +1,28 @@
 import { createContext, useContext } from "react";
-import { useSuspenseQuery } from "@apollo/client/react";
 import type { ReactNode } from "react";
-import type { GetCurrentMemberFromMemberContextQuery } from "@/gql/graphql";
-import { graphql } from "@/gql";
-import { AbilityProvider } from "@/contexts/ability-context";
+import type { GetCurrentWorkspaceFromWorkspaceLayoutQuery } from "@/gql/graphql";
 
-const GET_CURRENT_MEMBER_FROM_MEMBER_CONTEXT = graphql(`
-  query getCurrentMemberFromMemberContext {
-    currentMember {
-      workspaceId
-      id
-      roles
-      permissions
-      status
-      name
-      email
-    }
-    currentAbilityRules {
-      actions
-      subjects
-      fields
-      conditions
-      inverted
-      reason
-    }
-  }
-`);
+type CurrentMember = NonNullable<
+  GetCurrentWorkspaceFromWorkspaceLayoutQuery["currentMember"]
+>;
+const CurrentMemberContext = createContext<CurrentMember | null>(null);
 
-const CurrentMemberContext = createContext<
-  GetCurrentMemberFromMemberContextQuery["currentMember"] | null
->(null);
-
-export function CurrentMemberProvider({ children }: { children: ReactNode }) {
-  const { data } = useSuspenseQuery(GET_CURRENT_MEMBER_FROM_MEMBER_CONTEXT, {
-    fetchPolicy: "network-only",
-  });
-
-  return (
-    <CurrentMemberContext value={data.currentMember}>
-      <AbilityProvider rules={data.currentAbilityRules}>
-        {children}
-      </AbilityProvider>
-    </CurrentMemberContext>
-  );
+/** Shares the identity already loaded and authorized by the route. */
+export function CurrentMemberProvider({
+  value,
+  children,
+}: {
+  value: CurrentMember;
+  children: ReactNode;
+}) {
+  return <CurrentMemberContext value={value}>{children}</CurrentMemberContext>;
 }
 
 export function useCurrentMemberContext() {
   const context = useContext(CurrentMemberContext);
-
-  if (context == null) {
+  if (!context)
     throw new Error(
-      "useCurrentMemberContext must be used within a CurrentMemberContext",
+      "useCurrentMemberContext must be used within a CurrentMemberProvider",
     );
-  }
   return context;
 }
