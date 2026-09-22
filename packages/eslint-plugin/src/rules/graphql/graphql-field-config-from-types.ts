@@ -1,5 +1,9 @@
 import { AST_NODE_TYPES, TSESTree } from "@typescript-eslint/utils";
-import type { RuleFixer } from "@typescript-eslint/utils/ts-eslint";
+import {
+  type RuleFix,
+  type RuleFixer,
+  Scope,
+} from "@typescript-eslint/utils/ts-eslint";
 
 import { createRule } from "../../utils/createRule.js";
 import {
@@ -22,6 +26,7 @@ interface TypeInfo {
   isArray: boolean;
   isNullable: boolean;
   isCustomType?: boolean;
+  typeReference?: TSESTree.Node;
 }
 
 export type DecoratorBehavior = "ignore" | "remove";
@@ -250,13 +255,30 @@ export default createRule<
       // Identifier (class/custom type)
       const ident = getIdentifierName(targetTypeNode);
       if (ident) {
-        return { typeName: ident, isArray, isNullable, isCustomType: true };
+        return {
+          typeName: ident,
+          isArray,
+          isNullable,
+          isCustomType: true,
+          typeReference:
+            targetTypeNode.type === AST_NODE_TYPES.TSTypeReference
+              ? targetTypeNode.typeName
+              : undefined,
+        };
       }
 
       return null;
     };
 
     const graphqlModules = ["@nestjs/graphql", "@nest-boot/graphql"];
+    const decoratorModules = [
+      ...graphqlModules,
+      ...source.ast.body.flatMap((node) =>
+        node.type === AST_NODE_TYPES.ImportDeclaration
+          ? [node.source.value]
+          : [],
+      ),
+    ];
     const jsonModule = "graphql-type-json";
     const scalarModules = (name: string) =>
       name === "GraphQLJSONObject" ? jsonModule : graphqlModules;
@@ -269,14 +291,24 @@ export default createRule<
         ? (info.typeName ?? "")
         : scalarBinding(info.typeName ?? "");
     const fieldBinding = () =>
-      namedImportBinding(source, graphqlModules, "Field", importLocation);
+      namedImportBinding(source, decoratorModules, "Field", importLocation);
     const decoratorName = (name: TSESTree.Node) =>
-      importedBindingName(source, graphqlModules, name);
+      importedBindingName(source, decoratorModules, name);
 
     const ensureImports = (fixes: CustomFix[], info: TypeInfo) => {
       const expected = info.isCustomType ? "" : (info.typeName ?? "");
+      const fieldFromBarrel =
+        hasNamedImport(
+          source,
+          decoratorModules,
+          "Field",
+          false,
+          importLocation,
+        ) &&
+        fieldBinding() !==
+          namedImportBinding(source, graphqlModules, "Field", importLocation);
       const names = [
-        "Field",
+        ...(fieldFromBarrel ? [] : ["Field"]),
         ...(["Int", "Float", "ID"].includes(expected) ? [expected] : []),
       ];
       const edits = namedImportEdits(
@@ -286,6 +318,16 @@ export default createRule<
         true,
         importLocation,
       );
+      if (fieldFromBarrel)
+        edits.push(
+          ...namedImportEdits(
+            source,
+            decoratorModules,
+            ["Field"],
+            true,
+            importLocation,
+          ),
+        );
       if (expected === "GraphQLJSONObject")
         edits.push(
           ...namedImportEdits(
@@ -299,6 +341,45 @@ export default createRule<
       fixes.push(
         ...edits.map((edit) => ({ ...edit, type: "replace" as const })),
       );
+    };
+
+    const customTypeImportEdits = (info: TypeInfo): RuleFix[] => {
+      if (
+        !info.typeReference ||
+        !isTypeOnlyImportReference(source, info.typeReference)
+      )
+        return [];
+      const variable = (source.scopeManager?.scopes ?? [])
+        .flatMap((scope) => scope.references)
+        .find(
+          (reference) => reference.identifier === info.typeReference,
+        )?.resolved;
+      const definition = variable?.defs.find(
+        (candidate) => candidate.type === Scope.DefinitionType.ImportBinding,
+      );
+      if (!definition) return [];
+      const declaration = definition.parent;
+      if (declaration.importKind === "type") {
+        const edits: RuleFix[] = [
+          { range: source.getTokens(declaration)[1].range, text: "" },
+        ];
+        for (const specifier of declaration.type ===
+        AST_NODE_TYPES.ImportDeclaration
+          ? declaration.specifiers
+          : []) {
+          if (
+            specifier.type === AST_NODE_TYPES.ImportSpecifier &&
+            specifier !== definition.node
+          )
+            edits.push({
+              range: [specifier.range[0], specifier.range[0]],
+              text: "type ",
+            });
+        }
+        return edits;
+      }
+      const token = source.getFirstToken(definition.node);
+      return token ? [{ range: token.range, text: "" }] : [];
     };
 
     const addFieldDecorator = (
@@ -514,6 +595,15 @@ export default createRule<
 
           const typeInfo = computeTypeInfo(member);
           if (!typeInfo?.typeName) return;
+          const customImports = customTypeImportEdits(typeInfo);
+          if (customImports.length) {
+            context.report({
+              node: member,
+              messageId: "alignFieldDecoratorWithTsType",
+              fix: () => customImports,
+            });
+            return;
+          }
 
           // If there is no @Field decorator, add one
           if (!fieldDecorator) {

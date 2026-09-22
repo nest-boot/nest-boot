@@ -41,6 +41,36 @@ const cases: {
   field?: string;
 }[] = [
   {
+    name: "barrel Field alias",
+    imports:
+      'import { ObjectType } from "@nest-boot/graphql"; import { Field as GqlField } from "./v8-import-barrel.js";',
+    property: "@GqlField(() => String) name?: string;",
+    expected: "String",
+    field: "GqlField",
+  },
+  ...[
+    'import type { User } from "./v8-import-barrel.js";',
+    'import { type User } from "./v8-import-barrel.js";',
+    'import type User from "./v8-import-barrel.js";',
+  ].flatMap((customImport) =>
+    [true, false].map((existing) => ({
+      name: `custom runtime type ${customImport}, existing decorator: ${String(existing)}`,
+      imports:
+        'import { Field, ObjectType } from "@nest-boot/graphql"; ' +
+        customImport,
+      property: `${existing ? "@Field(() => User, { nullable: true }) " : ""} user?: User;`,
+      expected: "User",
+    })),
+  ),
+  {
+    name: "shared type-only barrel declaration",
+    imports:
+      'import { ObjectType } from "@nest-boot/graphql"; import type { User, Field } from "./v8-import-barrel.js";',
+    property: "@Field(() => User, { nullable: true }) user?: User;",
+    expected: "User",
+  },
+
+  {
     name: "type-only scalar reference beside a runtime alias",
     imports:
       'import { Field, ObjectType, Int as Integer, type Int } from "@nest-boot/graphql";',
@@ -285,6 +315,18 @@ it.each([
   60_000,
 );
 
+it("recognizes a model decorator alias re-exported through a barrel", () => {
+  const code =
+    'import { ObjectType as Model, Field } from "./v8-import-barrel.js"; @Model() class Thing { name?: string; }';
+  const result = linter.verifyAndFix(code, config, { filename });
+  expect(result.messages).toEqual([]);
+  expect(result.output).toContain("@Field(() => String, { nullable: true })");
+  expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
+    false,
+  );
+  expect(compileDiagnostics(result.output)).toEqual([]);
+});
+
 it("avoids bindings visible inside a nested model class", () => {
   const code =
     'import { ObjectType, Field, Float } from "@nest-boot/graphql"; function define(Field: number, Float: number) { @ObjectType() class Thing { score?: number; } return Thing; }';
@@ -341,7 +383,17 @@ let previousProgram: ts.Program | undefined;
 function compileDiagnostics(code: string): string[] {
   const host = ts.createCompilerHost(options);
   const getSourceFile = host.getSourceFile.bind(host);
+  const barrel = path.join(packageRoot, "v8-import-barrel.ts");
+  const fileExists = host.fileExists.bind(host);
+  host.fileExists = (file) => file === barrel || fileExists(file);
   host.getSourceFile = (file, ...args) => {
+    if (file === barrel)
+      return ts.createSourceFile(
+        file,
+        'export { Field, ObjectType } from "@nest-boot/graphql"; export class User {} export default User;',
+        ts.ScriptTarget.ES2023,
+        true,
+      );
     if (file === filename)
       return ts.createSourceFile(file, code, ts.ScriptTarget.ES2023, true);
     const cached = sourceFiles.get(file);
