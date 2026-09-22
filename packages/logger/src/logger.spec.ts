@@ -150,6 +150,54 @@ describe("Logger", () => {
     );
   });
 
+  it.each(["fallback", "request"])(
+    "preserves Nest error arguments with the %s logger",
+    async (mode) => {
+      const requestLogger = { error: vi.fn() };
+      vi.spyOn(RequestContext, "get").mockImplementation((token) => {
+        if (mode === "fallback") throw new Error("No request");
+        if (token === PINO_LOGGER) return requestLogger;
+        if (token === BINDINGS) return { requestId: "request-1" };
+        return undefined;
+      });
+      const logger = await createLogger();
+      const output =
+        mode === "request" ? requestLogger.error : mockPinoLogger.error;
+      const requestBindings =
+        mode === "request" ? { requestId: "request-1" } : {};
+      const error = new Error("boom");
+      const stack = "Error: boom\n    at handler (app.ts:1:1)";
+      const cases: { args: unknown[]; bindings: Record<string, unknown> }[] = [
+        { args: ["Context"], bindings: { context: "Context" } },
+        { args: [stack], bindings: { stack, context: "ParentService" } },
+        { args: [stack, "Context"], bindings: { stack, context: "Context" } },
+        { args: ["Context", stack], bindings: { stack, context: "Context" } },
+        {
+          args: ["opaque trace", "Context"],
+          bindings: { stack: "opaque trace", context: "Context" },
+        },
+        {
+          args: [{ err: error, jobId: "job-1" }, "Context"],
+          bindings: { err: error, jobId: "job-1", context: "Context" },
+        },
+        { args: [error], bindings: { err: error, context: "ParentService" } },
+        { args: [undefined, "Context"], bindings: { context: "Context" } },
+      ];
+      for (const { args, bindings } of cases) {
+        logger.error("boom", ...args);
+        expect(output).toHaveBeenLastCalledWith(
+          { ...requestBindings, ...bindings },
+          "boom",
+        );
+      }
+      logger.error(error);
+      expect(output).toHaveBeenLastCalledWith(
+        { ...requestBindings, err: error, context: "ParentService" },
+        "boom",
+      );
+    },
+  );
+
   it("should use the module-configured logger when request context is inactive", async () => {
     vi.spyOn(RequestContext, "get").mockImplementation(() => {
       throw new Error("Request context is not active");
