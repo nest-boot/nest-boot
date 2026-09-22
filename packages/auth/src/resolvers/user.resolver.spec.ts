@@ -2,8 +2,8 @@ import { NotFoundException } from "@nestjs/common";
 import type { Mocked } from "vitest";
 
 import { type User as BaseUser } from "../entities/user.entity.js";
+import { type InvitationService } from "../features/invitations/invitation.service.js";
 import { type AccountService } from "../services/account.service.js";
-import { type InvitationService } from "../services/invitation.service.js";
 import { type SessionService } from "../services/session.service.js";
 import { type UserService } from "../services/user.service.js";
 import { type WorkspaceService } from "../services/workspace.service.js";

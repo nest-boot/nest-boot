@@ -14,10 +14,6 @@ import {
   AccountConnectionArgs,
 } from "../connections/account.connection-definition.js";
 import {
-  InvitationConnection,
-  InvitationConnectionArgs,
-} from "../connections/invitation.connection-definition.js";
-import {
   SessionConnection,
   SessionConnectionArgs,
 } from "../connections/session.connection-definition.js";
@@ -39,6 +35,11 @@ import { type Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
 import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { type Workspace } from "../entities/workspace.entity.js";
+import {
+  InvitationConnection,
+  InvitationConnectionArgs,
+} from "../features/invitations/invitation.connection-definition.js";
+import { InvitationService } from "../features/invitations/invitation.service.js";
 import { BanUserInput } from "../inputs/ban-user.input.js";
 import { CreateUserInput } from "../inputs/create-user.input.js";
 import { SetUserPasswordInput } from "../inputs/set-user-password.input.js";
@@ -55,7 +56,6 @@ import { UpdateUserPayload } from "../objects/update-user-payload.object.js";
 import { UserPermissionOption } from "../objects/user-permission-option.object.js";
 import { UserRoleOption } from "../objects/user-role-option.object.js";
 import { AccountService } from "../services/account.service.js";
-import { InvitationService } from "../services/invitation.service.js";
 import { SessionService } from "../services/session.service.js";
 import { UserService } from "../services/user.service.js";
 import { UserApiKeyService } from "../services/user-api-key.service.js";

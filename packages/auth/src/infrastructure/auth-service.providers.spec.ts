@@ -16,7 +16,7 @@ import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
 import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
-import { InvitationService } from "../services/invitation.service.js";
+import { InvitationService } from "../features/invitations/invitation.service.js";
 import { MemberService } from "../services/member.service.js";
 import { SessionService } from "../services/session.service.js";
 import { UserService } from "../services/user.service.js";

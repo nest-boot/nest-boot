@@ -1,4 +1,4 @@
-import type { AuthInvitationEmailData } from "../interfaces/auth-invitation-email-data.interface.js";
+import type { AuthInvitationEmailData } from "./auth-invitation-email-data.interface.js";
 
 /** Sends a workspace invitation message. */
 export type AuthSendInvitationEmail = (

@@ -8,6 +8,17 @@ The example's handwritten `Initial` migration creates roles and default
 privileges; generated migrations create and evolve tables and RLS policies.
 Apply the complete migration sequence to a fresh database.
 
+## Feature organization
+
+Invitation behavior is the first feature organized under `src/features/invitations`.
+Its service, resolver, connection definition, inputs, payloads, invitation-specific types
+and adjacent tests live together. Shared entities stay under `src/entities`; contextual
+providers, identity and transaction infrastructure stay under `src/infrastructure`.
+
+Keep package consumers on `@nest-boot/auth`: the root barrel preserves all existing
+exports. Inside the package, import the specific owning file rather than the public barrel
+to avoid circular imports. Future feature moves can follow this pattern independently.
+
 ## Member and Invitation rename
 
 This is a breaking rename without compatibility aliases. Use `Member`,

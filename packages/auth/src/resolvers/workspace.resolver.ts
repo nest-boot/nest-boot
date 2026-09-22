@@ -10,10 +10,6 @@ import {
 import type { ConnectionArgsInterface } from "@nest-boot/graphql-connection";
 
 import {
-  InvitationConnection,
-  InvitationConnectionArgs,
-} from "../connections/invitation.connection-definition.js";
-import {
   MemberConnection,
   MemberConnectionArgs,
 } from "../connections/member.connection-definition.js";
@@ -28,13 +24,17 @@ import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
+import {
+  InvitationConnection,
+  InvitationConnectionArgs,
+} from "../features/invitations/invitation.connection-definition.js";
+import { InvitationService } from "../features/invitations/invitation.service.js";
 import { CreateWorkspaceInput } from "../inputs/create-workspace.input.js";
 import { UpdateWorkspaceInput } from "../inputs/update-workspace.input.js";
 import { CreateWorkspacePayload } from "../objects/create-workspace-payload.object.js";
 import { DeleteWorkspacePayload } from "../objects/delete-workspace-payload.object.js";
 import { LeaveWorkspacePayload } from "../objects/leave-workspace-payload.object.js";
 import { UpdateWorkspacePayload } from "../objects/update-workspace-payload.object.js";
-import { InvitationService } from "../services/invitation.service.js";
 import { MemberService } from "../services/member.service.js";
 import { WorkspaceService } from "../services/workspace.service.js";
 import { WorkspaceApiKeyService } from "../services/workspace-api-key.service.js";

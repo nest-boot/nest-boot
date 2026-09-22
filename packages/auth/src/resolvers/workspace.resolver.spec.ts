@@ -4,7 +4,7 @@ import type { Mocked } from "vitest";
 import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
-import { type InvitationService } from "../services/invitation.service.js";
+import { type InvitationService } from "../features/invitations/invitation.service.js";
 import { type MemberService } from "../services/member.service.js";
 import { type WorkspaceService } from "../services/workspace.service.js";
 import { WorkspaceResolver } from "./workspace.resolver.js";
