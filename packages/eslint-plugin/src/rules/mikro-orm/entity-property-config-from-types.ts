@@ -86,24 +86,19 @@ export default createRule<
     }
     const coreModule = "@mikro-orm/core";
     const decoratorsModule = "@mikro-orm/decorators/legacy";
+    const importedModules = source.ast.body.flatMap((node) =>
+      node.type === AST_NODE_TYPES.ImportDeclaration ? [node.source.value] : [],
+    );
+    // Follow the lexical import binding even when a project barrel re-exports it.
     const coreName = (local: TSESTree.Node) =>
-      importedBindingName(source, coreModule, local);
+      importedBindingName(source, importedModules, local);
     const decoratorModules = [
       decoratorsModule,
       "@nest-boot/mikro-orm-crypt",
       "@nest-boot/mikro-orm-hash",
     ];
-    const customDecoratorModules = source.ast.body.flatMap((node) =>
-      node.type === AST_NODE_TYPES.ImportDeclaration ? [node.source.value] : [],
-    );
-    const decoratorName = (local: TSESTree.Node) => {
-      const known = importedBindingName(source, decoratorModules, local);
-      if (known !== null) return known;
-      const custom = importedBindingName(source, customDecoratorModules, local);
-      return custom === "EncryptedProperty" || custom === "HashedProperty"
-        ? custom
-        : null;
-    };
+    const decoratorName = (local: TSESTree.Node) =>
+      importedBindingName(source, importedModules, local);
     const importEdits = (
       modules: string | readonly string[],
       names: readonly string[],

@@ -394,6 +394,39 @@ it.each([
   expect(compileDiagnostics(result.output)).toEqual([]);
 });
 
+it.each([
+  {
+    name: "barrel property decorator",
+    code: 'import { Entity } from "@mikro-orm/decorators/legacy"; import { Property as Column, t } from "./v8-orm-barrel.js"; @Entity() class Thing { @Column({ type: t.string }) name!: string; }',
+    unchanged: true,
+  },
+  {
+    name: "barrel model decorator alias",
+    code: 'import { Entity as Model } from "./v8-orm-barrel.js"; @Model() class Thing { name!: string; }',
+    unchanged: false,
+  },
+  {
+    name: "barrel helper retains UUID",
+    code: 'import { Entity, Property } from "@mikro-orm/decorators/legacy"; import { t as types } from "./v8-orm-barrel.js"; @Entity() class Thing { @Property({ type: types.uuid }) name?: string; }',
+    unchanged: false,
+  },
+  {
+    name: "barrel optional type wrapper",
+    code: 'import { Entity, Property } from "@mikro-orm/decorators/legacy"; import { t, type Opt as Optional } from "./v8-orm-barrel.js"; @Entity() class Thing { @Property({ type: t.string }) name: Optional<string> = "hello"; }',
+    unchanged: true,
+  },
+])("recognizes $name", ({ code, unchanged }) => {
+  const result = linter.verifyAndFix(code, config, { filename });
+  expect(result.messages).toEqual([]);
+  expect(result.fixed).toBe(!unchanged);
+  if (unchanged) expect(result.output).toBe(code);
+  if (code.includes(".uuid")) expect(result.output).toContain(".uuid");
+  expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
+    false,
+  );
+  expect(compileDiagnostics(result.output)).toEqual([]);
+});
+
 it("preserves a default binding when migrating its named decorators", () => {
   const code = 'import orm, { Entity } from "@mikro-orm/core";';
   const result = linter.verifyAndFix(code, config, { filename });
@@ -427,7 +460,17 @@ function compileDiagnostics(code: string): string[] {
   };
   const host = ts.createCompilerHost(options);
   const getSourceFile = host.getSourceFile.bind(host);
+  const barrel = path.join(packageRoot, "v8-orm-barrel.ts");
+  const fileExists = host.fileExists.bind(host);
+  host.fileExists = (file) => file === barrel || fileExists(file);
   host.getSourceFile = (file, ...args) => {
+    if (file === barrel)
+      return ts.createSourceFile(
+        file,
+        'export { Entity, Property } from "@mikro-orm/decorators/legacy"; export { t, type Opt } from "@mikro-orm/core";',
+        ts.ScriptTarget.ES2023,
+        true,
+      );
     if (file === filename)
       return ts.createSourceFile(file, code, ts.ScriptTarget.ES2023, true);
     const cached = sourceFiles.get(file);
