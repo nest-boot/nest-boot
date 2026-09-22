@@ -23,10 +23,23 @@ function importsFrom(source: Readonly<SourceCode>, modules: Modules) {
   );
 }
 
+function visibleScopes(source: Readonly<SourceCode>, location: TSESTree.Node) {
+  const scopes = [];
+  let scope: Scope.Scope | null = source.getScope(location);
+  if (location === source.ast)
+    scope =
+      source.scopeManager?.scopes.find(
+        (candidate) => candidate.type === Scope.ScopeType.module,
+      ) ?? scope;
+  for (; scope; scope = scope.upper) scopes.push(scope);
+  return scopes;
+}
+
 function findImport(
   source: Readonly<SourceCode>,
   modules: Modules,
   name: string,
+  location: TSESTree.Node,
 ):
   | {
       declaration: TSESTree.ImportDeclaration;
@@ -37,23 +50,26 @@ function findImport(
     declaration.specifiers.flatMap((specifier) =>
       specifier.type === AST_NODE_TYPES.ImportSpecifier &&
       importedName(specifier) === name &&
-      !(source.scopeManager?.scopes ?? []).some((scope) =>
-        scope.variables.some(
-          (variable) =>
-            variable.name === specifier.local.name &&
-            variable.defs.some(
-              (definition) =>
-                definition.type !== Scope.DefinitionType.ImportBinding,
-            ),
-        ),
-      )
+      visibleScopes(source, location)
+        .map((scope) => scope.set.get(specifier.local.name))
+        .find((variable) => !!variable)
+        ?.defs.some(
+          (definition) =>
+            definition.type === Scope.DefinitionType.ImportBinding &&
+            definition.node === specifier,
+        )
         ? [{ declaration, specifier }]
         : [],
     ),
   );
+  const values = bindings.filter(
+    ({ declaration, specifier }) =>
+      declaration.importKind !== "type" && specifier.importKind !== "type",
+  );
+  const preferred = values.length ? values : bindings;
   return (
-    bindings.find(({ specifier }) => specifier.local.name === name) ??
-    bindings[0]
+    preferred.find(({ specifier }) => specifier.local.name === name) ??
+    preferred[0]
   );
 }
 
@@ -62,11 +78,17 @@ export function namedImportBinding(
   source: Readonly<SourceCode>,
   modules: Modules,
   name: string,
+  location: TSESTree.Node = source.ast,
 ): string {
-  const existing = findImport(source, modules, name);
+  const existing = findImport(source, modules, name, location);
   if (existing) return existing.specifier.local.name;
   const occupied = new Set(
-    (source.scopeManager?.scopes ?? []).flatMap((scope) =>
+    [
+      ...new Set([
+        ...visibleScopes(source, location),
+        ...visibleScopes(source, source.ast),
+      ]),
+    ].flatMap((scope) =>
       scope.variables
         .filter((variable) => variable.defs.length > 0)
         .map((variable) => variable.name),
@@ -78,23 +100,75 @@ export function namedImportBinding(
   return local;
 }
 
-/** Resolves a local identifier back to its imported name in the selected modules. @internal */
+/** Resolves named and namespace imports through their lexical references. @internal */
 export function importedBindingName(
   source: Readonly<SourceCode>,
   modules: Modules,
-  local: string,
-): string {
-  for (const declaration of importsFrom(source, modules)) {
-    for (const specifier of declaration.specifiers) {
-      if (
-        specifier.type === AST_NODE_TYPES.ImportSpecifier &&
-        specifier.local.name === local
-      ) {
-        return importedName(specifier);
-      }
+  node: TSESTree.Node,
+): string | null {
+  const identifier =
+    node.type === AST_NODE_TYPES.Identifier
+      ? node
+      : node.type === AST_NODE_TYPES.MemberExpression &&
+          node.object.type === AST_NODE_TYPES.Identifier
+        ? node.object
+        : node.type === AST_NODE_TYPES.TSQualifiedName &&
+            node.left.type === AST_NODE_TYPES.Identifier
+          ? node.left
+          : null;
+  if (!identifier) return null;
+  const member =
+    node.type === AST_NODE_TYPES.MemberExpression &&
+    !node.computed &&
+    node.property.type === AST_NODE_TYPES.Identifier
+      ? node.property.name
+      : node.type === AST_NODE_TYPES.TSQualifiedName
+        ? node.right.name
+        : null;
+  const reference = (source.scopeManager?.scopes ?? [])
+    .flatMap((scope) => scope.references)
+    .find((candidate) => candidate.identifier === identifier);
+  const variable = reference?.resolved;
+  // Preserve the rules' support for unresolved ambient decorator names.
+  if (!variable) return node === identifier ? identifier.name : null;
+  for (const definition of variable.defs) {
+    if (
+      definition.type !== Scope.DefinitionType.ImportBinding ||
+      definition.parent.type !== AST_NODE_TYPES.ImportDeclaration ||
+      !matchesModule(modules, definition.parent.source.value)
+    )
+      continue;
+    if (
+      node === identifier &&
+      definition.node.type === AST_NODE_TYPES.ImportSpecifier
+    ) {
+      return importedName(definition.node);
     }
+    if (definition.node.type === AST_NODE_TYPES.ImportNamespaceSpecifier)
+      return member;
   }
-  return local;
+  return null;
+}
+
+/** Whether the actual reference points to an erased import. @internal */
+export function isTypeOnlyImportReference(
+  source: Readonly<SourceCode>,
+  node: TSESTree.Node,
+): boolean {
+  const identifier =
+    node.type === AST_NODE_TYPES.MemberExpression ? node.object : node;
+  const variable = (source.scopeManager?.scopes ?? [])
+    .flatMap((scope) => scope.references)
+    .find((reference) => reference.identifier === identifier)?.resolved;
+  return (
+    variable?.defs.some(
+      (definition) =>
+        definition.type === Scope.DefinitionType.ImportBinding &&
+        (definition.parent.importKind === "type" ||
+          (definition.node.type === AST_NODE_TYPES.ImportSpecifier &&
+            definition.node.importKind === "type")),
+    ) ?? false
+  );
 }
 
 /** Checks the binding used by generated code, including aliases and type-only imports. @internal */
@@ -103,8 +177,9 @@ export function hasNamedImport(
   modules: Modules,
   name: string,
   valueOnly = true,
+  location: TSESTree.Node = source.ast,
 ): boolean {
-  const existing = findImport(source, modules, name);
+  const existing = findImport(source, modules, name, location);
   return (
     !!existing &&
     (!valueOnly ||
@@ -119,6 +194,7 @@ export function namedImportEdits(
   modules: Modules,
   names: readonly string[],
   valueImport = true,
+  location: TSESTree.Node = source.ast,
 ): RuleFix[] {
   const imports = importsFrom(source, modules);
   const missing: string[] = [];
@@ -126,9 +202,9 @@ export function namedImportEdits(
   const promotions = new Map<TSESTree.ImportDeclaration, Set<string>>();
 
   for (const name of new Set(names)) {
-    const existing = findImport(source, modules, name);
+    const existing = findImport(source, modules, name, location);
     if (!existing) {
-      const local = namedImportBinding(source, modules, name);
+      const local = namedImportBinding(source, modules, name, location);
       missing.push(local === name ? name : `${name} as ${local}`);
     } else if (valueImport) {
       const promoted =
@@ -186,15 +262,22 @@ export function namedImportEdits(
       const firstImport = source.ast.body.find(
         (node) => node.type === AST_NODE_TYPES.ImportDeclaration,
       );
-      const start = firstImport?.range[0] ?? 0;
+      const firstStatement = source.ast.body.find(
+        (node) =>
+          node.type !== AST_NODE_TYPES.ExpressionStatement || !node.directive,
+      );
+      const start =
+        firstImport?.range[0] ?? firstStatement?.range[0] ?? source.text.length;
       const lineStart = source.text.lastIndexOf("\n", start - 1) + 1;
-      const indent = source.text.slice(lineStart, start);
+      const prefix = source.text.slice(lineStart, start);
+      const indent = /^[ \t]*/.exec(prefix)?.[0] ?? "";
+      const separator = prefix.trim() ? `\n${indent}` : "";
       const moduleName =
         imports[0]?.source.value ??
         (typeof modules === "string" ? modules : modules[0]);
       edits.push({
         range: [start, start],
-        text: `import { ${missing.join(", ")} } from ${JSON.stringify(moduleName)};\n${indent}`,
+        text: `${separator}import { ${missing.join(", ")} } from ${JSON.stringify(moduleName)};\n${indent}`,
       });
     }
   }

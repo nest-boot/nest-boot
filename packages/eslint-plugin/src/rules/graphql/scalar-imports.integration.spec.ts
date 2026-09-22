@@ -41,6 +41,42 @@ const cases: {
   field?: string;
 }[] = [
   {
+    name: "type-only scalar reference beside a runtime alias",
+    imports:
+      'import { Field, ObjectType, Int as Integer, type Int } from "@nest-boot/graphql";',
+    property: "@Field(() => Int, { nullable: true }) score?: number;",
+    expected: "Integer",
+  },
+  {
+    name: "type-only Field reference beside a runtime alias",
+    imports:
+      'import { Field as GqlField, ObjectType, type Field } from "@nest-boot/graphql";',
+    property: "@Field(() => String, { nullable: true }) name?: string;",
+    expected: "String",
+    field: "GqlField",
+  },
+  {
+    name: "numeric alias shadowed in an unrelated function",
+    imports:
+      'import { Field, ObjectType, Int as Integer } from "@nest-boot/graphql"; function other(Integer: number) { return Integer; }',
+    property: "@Field(() => Integer) score?: number;",
+    expected: "Integer",
+  },
+  {
+    name: "namespace numeric scalar and decorator",
+    imports:
+      'import { ObjectType } from "@nest-boot/graphql"; import * as gql from "@nest-boot/graphql";',
+    property: "@gql.Field(() => gql.Int) score?: number;",
+    expected: "Int",
+  },
+  {
+    name: "namespace MikroORM wrapper",
+    imports:
+      'import { Field, ObjectType } from "@nest-boot/graphql"; import type * as orm from "@mikro-orm/core";',
+    property: "name?: orm.Opt<string>;",
+    expected: "String",
+  },
+  {
     name: "aliased MikroORM optional wrapper",
     imports:
       'import { Field, ObjectType } from "@nest-boot/graphql"; import type { Opt as Optional } from "@mikro-orm/core";',
@@ -221,6 +257,58 @@ it.each(cases)(
   60_000,
 );
 
+it.each([
+  {
+    name: "model decorator shadowed by a parameter",
+    code: 'import { ObjectType as Model } from "@nest-boot/graphql"; function define(Model: () => ClassDecorator) { @Model() class Thing { name!: string; } return Thing; }',
+  },
+  {
+    name: "unrelated nested scalar binding",
+    code: 'import { Field, ObjectType, ID } from "@nest-boot/graphql"; @ObjectType() class Thing { @Field(() => ID) id!: string; method(ID: string) { return ID; } }',
+  },
+  {
+    name: "value alias preferred over a type-only canonical import",
+    code: 'import { Field, ObjectType, ID as Identifier } from "@nest-boot/graphql"; import type { ID } from "@nest-boot/graphql"; @ObjectType() class Thing { @Field(() => Identifier) id!: string; }',
+  },
+  {
+    name: "aliased relation decorator",
+    code: 'import { Field, ObjectType } from "@nest-boot/graphql"; import { ManyToOne as Relation } from "@mikro-orm/decorators/legacy"; @ObjectType() class Thing { @Relation(() => Thing) relation!: Thing; }',
+  },
+])(
+  "leaves valid $name unchanged",
+  ({ code }) => {
+    const result = linter.verifyAndFix(code, config, { filename });
+    expect(result.messages).toEqual([]);
+    expect(result.output).toBe(code);
+    expect(compileDiagnostics(result.output)).toEqual([]);
+  },
+  60_000,
+);
+
+it("avoids bindings visible inside a nested model class", () => {
+  const code =
+    'import { ObjectType, Field, Float } from "@nest-boot/graphql"; function define(Field: number, Float: number) { @ObjectType() class Thing { score?: number; } return Thing; }';
+  const result = linter.verifyAndFix(code, config, { filename });
+  expect(result.messages).toEqual([]);
+  expect(result.output).toContain("@Field2(() => Float2, { nullable: true })");
+  expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
+    false,
+  );
+  expect(compileDiagnostics(result.output)).toEqual([]);
+});
+
+it("recognizes a namespace model decorator", () => {
+  const code =
+    'import * as gql from "@nest-boot/graphql"; @gql.ObjectType() class Thing { score?: number; }';
+  const result = linter.verifyAndFix(code, config, { filename });
+  expect(result.messages).toEqual([]);
+  expect(result.output).toContain("@Field(() => Float, { nullable: true })");
+  expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
+    false,
+  );
+  expect(compileDiagnostics(result.output)).toEqual([]);
+});
+
 const options: ts.CompilerOptions = {
   noEmit: true,
   experimentalDecorators: true,
@@ -230,6 +318,12 @@ const options: ts.CompilerOptions = {
   skipLibCheck: true,
   types: [],
   paths: {
+    "@mikro-orm/decorators/legacy": [
+      path.resolve(
+        packageRoot,
+        "../mikro-orm/node_modules/@mikro-orm/decorators/legacy/index.d.ts",
+      ),
+    ],
     "@mikro-orm/core": [
       path.resolve(
         packageRoot,

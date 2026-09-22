@@ -5,6 +5,7 @@ import { createRule } from "../../utils/createRule.js";
 import {
   hasNamedImport,
   importedBindingName,
+  isTypeOnlyImportReference,
   namedImportBinding,
   namedImportEdits,
 } from "../../utils/named-imports.js";
@@ -78,13 +79,14 @@ export default createRule<
   ],
   create(context, [options]) {
     const source = context.sourceCode;
+    let importLocation: TSESTree.Node = source.ast;
     const ormModules = source.ast.body.flatMap((node) =>
       node.type === AST_NODE_TYPES.ImportDeclaration &&
       node.source.value.startsWith("@mikro-orm/")
         ? [node.source.value]
         : [],
     );
-    const ormTypeName = (name: string) =>
+    const ormTypeName = (name: TSESTree.Node) =>
       importedBindingName(source, ormModules, name);
 
     const scalarFromTsKeyword = (
@@ -167,9 +169,8 @@ export default createRule<
       // First unwrap Ref<T> and Opt<T> → T, and handle null/undefined within
       if (
         baseTypeNode?.type === AST_NODE_TYPES.TSTypeReference &&
-        baseTypeNode.typeName.type === AST_NODE_TYPES.Identifier &&
-        (ormTypeName(baseTypeNode.typeName.name) === "Ref" ||
-          ormTypeName(baseTypeNode.typeName.name) === "Opt")
+        (ormTypeName(baseTypeNode.typeName) === "Ref" ||
+          ormTypeName(baseTypeNode.typeName) === "Opt")
       ) {
         let inner = baseTypeNode.typeArguments?.params[0] ?? null;
         if (inner?.type === AST_NODE_TYPES.TSUnionType) {
@@ -261,15 +262,15 @@ export default createRule<
       name === "GraphQLJSONObject" ? jsonModule : graphqlModules;
     const scalarBinding = (name: string): string =>
       ["Int", "Float", "ID", "GraphQLJSONObject"].includes(name)
-        ? namedImportBinding(source, scalarModules(name), name)
+        ? namedImportBinding(source, scalarModules(name), name, importLocation)
         : name;
     const typeBinding = (info: TypeInfo) =>
       info.isCustomType
         ? (info.typeName ?? "")
         : scalarBinding(info.typeName ?? "");
     const fieldBinding = () =>
-      namedImportBinding(source, graphqlModules, "Field");
-    const decoratorName = (name: string) =>
+      namedImportBinding(source, graphqlModules, "Field", importLocation);
+    const decoratorName = (name: TSESTree.Node) =>
       importedBindingName(source, graphqlModules, name);
 
     const ensureImports = (fixes: CustomFix[], info: TypeInfo) => {
@@ -278,9 +279,23 @@ export default createRule<
         "Field",
         ...(["Int", "Float", "ID"].includes(expected) ? [expected] : []),
       ];
-      const edits = namedImportEdits(source, graphqlModules, names);
+      const edits = namedImportEdits(
+        source,
+        graphqlModules,
+        names,
+        true,
+        importLocation,
+      );
       if (expected === "GraphQLJSONObject")
-        edits.push(...namedImportEdits(source, jsonModule, [expected]));
+        edits.push(
+          ...namedImportEdits(
+            source,
+            jsonModule,
+            [expected],
+            true,
+            importLocation,
+          ),
+        );
       fixes.push(
         ...edits.map((edit) => ({ ...edit, type: "replace" as const })),
       );
@@ -410,9 +425,8 @@ export default createRule<
       return node.decorators.some(
         (decorator) =>
           decorator.expression.type === AST_NODE_TYPES.CallExpression &&
-          decorator.expression.callee.type === AST_NODE_TYPES.Identifier &&
           ["ObjectType", "InputType", "ArgsType"].includes(
-            decoratorName(decorator.expression.callee.name),
+            decoratorName(decorator.expression.callee) ?? "",
           ),
       );
     };
@@ -420,6 +434,7 @@ export default createRule<
     return {
       ClassDeclaration(node) {
         if (!isGraphqlModelClass(node)) return;
+        importLocation = node;
 
         node.body.body.forEach((member: TSESTree.ClassElement) => {
           if (member.type !== AST_NODE_TYPES.PropertyDefinition) return;
@@ -437,12 +452,18 @@ export default createRule<
           let foundBehavior: DecoratorBehavior | null = null;
 
           for (const decorator of member.decorators) {
-            if (
-              decorator.expression.type === AST_NODE_TYPES.CallExpression &&
-              decorator.expression.callee.type === AST_NODE_TYPES.Identifier
-            ) {
-              const name = decoratorName(decorator.expression.callee.name);
-              if (name in decoratorConfig) {
+            if (decorator.expression.type === AST_NODE_TYPES.CallExpression) {
+              const callee = decorator.expression.callee;
+              const name =
+                importedBindingName(
+                  source,
+                  [...graphqlModules, ...ormModules],
+                  callee,
+                ) ??
+                (callee.type === AST_NODE_TYPES.Identifier
+                  ? callee.name
+                  : null);
+              if (name && name in decoratorConfig) {
                 foundDecoratorName = name;
                 foundBehavior = decoratorConfig[name];
                 break;
@@ -456,8 +477,7 @@ export default createRule<
           const fieldDecorator = member.decorators.find(
             (decorator) =>
               decorator.expression.type === AST_NODE_TYPES.CallExpression &&
-              decorator.expression.callee.type === AST_NODE_TYPES.Identifier &&
-              decoratorName(decorator.expression.callee.name) === "Field",
+              decoratorName(decorator.expression.callee) === "Field",
           );
 
           // If behavior is "remove" and has @Field, remove @Field
@@ -513,6 +533,7 @@ export default createRule<
           if (callExpr.type !== AST_NODE_TYPES.CallExpression) return;
 
           let needReport = true;
+          let scalarReference: TSESTree.Node | null = null;
 
           if (
             callExpr.arguments.length > 0 &&
@@ -543,13 +564,20 @@ export default createRule<
             // For number types, both Int and Float are valid
             const isNumberType =
               !typeInfo.isCustomType && typeInfo.typeName === "Float";
-            const actualTypeText = calleeText.replace(/^\[|\]$/g, ""); // Remove array brackets
-            const numericScalar = ["Int", "Float"].find(
-              (name) => actualTypeText === scalarBinding(name),
-            );
+            const scalarNode =
+              firstArg.body.type === AST_NODE_TYPES.ArrayExpression
+                ? firstArg.body.elements.length === 1
+                  ? firstArg.body.elements[0]
+                  : null
+                : firstArg.body;
+            scalarReference = scalarNode;
+            const numericScalar = scalarNode
+              ? importedBindingName(source, graphqlModules, scalarNode)
+              : null;
             const isValidNumberType =
               isNumberType &&
               !!numericScalar &&
+              ["Int", "Float"].includes(numericScalar) &&
               typeInfo.isArray ===
                 (firstArg.body.type === AST_NODE_TYPES.ArrayExpression);
             if (isValidNumberType) typeInfo.typeName = numericScalar;
@@ -565,12 +593,39 @@ export default createRule<
           if (!needReport) {
             const modules = scalarModules(typeInfo.typeName);
             const typeOnlyScalar =
-              !typeInfo.isCustomType &&
-              hasNamedImport(source, modules, typeInfo.typeName, false) &&
-              !hasNamedImport(source, modules, typeInfo.typeName);
+              (scalarReference !== null &&
+                isTypeOnlyImportReference(source, scalarReference)) ||
+              (!typeInfo.isCustomType &&
+                hasNamedImport(
+                  source,
+                  modules,
+                  typeInfo.typeName,
+                  false,
+                  importLocation,
+                ) &&
+                !hasNamedImport(
+                  source,
+                  modules,
+                  typeInfo.typeName,
+                  true,
+                  importLocation,
+                ));
             const typeOnlyField =
-              hasNamedImport(source, graphqlModules, "Field", false) &&
-              !hasNamedImport(source, graphqlModules, "Field");
+              isTypeOnlyImportReference(source, callExpr.callee) ||
+              (hasNamedImport(
+                source,
+                graphqlModules,
+                "Field",
+                false,
+                importLocation,
+              ) &&
+                !hasNamedImport(
+                  source,
+                  graphqlModules,
+                  "Field",
+                  true,
+                  importLocation,
+                ));
             if (!typeOnlyScalar && !typeOnlyField) return;
           }
 

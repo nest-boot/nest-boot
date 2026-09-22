@@ -150,8 +150,8 @@ tester.run("graphql-field-config-from-types", rule, {
           name!: string;
         }
       `,
-      output: /* typescript */ `import { Field } from "@nestjs/graphql";
-
+      output: /* typescript */ `
+        import { Field } from "@nestjs/graphql";
         @ObjectType()
         class User {
           @Field(() => String)
@@ -169,8 +169,8 @@ tester.run("graphql-field-config-from-types", rule, {
           name?: string;
         }
       `,
-      output: /* typescript */ `import { Field } from "@nestjs/graphql";
-
+      output: /* typescript */ `
+        import { Field } from "@nestjs/graphql";
         @ObjectType()
         class User {
           @Field(() => String, { nullable: true })
@@ -188,8 +188,8 @@ tester.run("graphql-field-config-from-types", rule, {
           name!: string;
         }
       `,
-      output: /* typescript */ `import { Field } from "@nestjs/graphql";
-
+      output: /* typescript */ `
+        import { Field } from "@nestjs/graphql";
         @ObjectType()
         class User {
           @Field(() => String)
@@ -207,8 +207,8 @@ tester.run("graphql-field-config-from-types", rule, {
           tags!: string[];
         }
       `,
-      output: /* typescript */ `import { Field } from "@nestjs/graphql";
-
+      output: /* typescript */ `
+        import { Field } from "@nestjs/graphql";
         @ObjectType()
         class User {
           @Field(() => [String])
@@ -229,8 +229,8 @@ tester.run("graphql-field-config-from-types", rule, {
           hasPreviousPage!: boolean;
         }
       `,
-      output: /* typescript */ `import { Field } from "@nestjs/graphql";
-
+      output: /* typescript */ `
+        import { Field } from "@nestjs/graphql";
         @ObjectType()
         class PageInfo {
           @Field(() => Boolean, { complexity: 0, description: "Whether there are any pages prior to the current page." })
@@ -248,8 +248,8 @@ tester.run("graphql-field-config-from-types", rule, {
           name?: string;
         }
       `,
-      output: /* typescript */ `import { Field } from "@nestjs/graphql";
-
+      output: /* typescript */ `
+        import { Field } from "@nestjs/graphql";
         @ObjectType()
         class User {
           @Field(() => String, { nullable: true, description: "User name" })
@@ -274,8 +274,8 @@ tester.run("graphql-field-config-from-types", rule, {
           query?: string;
         }
       `,
-      output: /* typescript */ `import { Field } from "@nestjs/graphql";
-
+      output: /* typescript */ `
+        import { Field } from "@nestjs/graphql";
         @ObjectType()
         class Connection {
           @Field(() => String, { nullable: true, ...(filterableFields.length > 0
