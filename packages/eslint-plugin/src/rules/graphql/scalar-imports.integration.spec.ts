@@ -93,30 +93,41 @@ it.each(cases)(
     );
     expect(compileDiagnostics(result.output)).toEqual([]);
   },
+  // The first compiler run loads the full GraphQL declaration graph, also under CI coverage.
+  60_000,
 );
 
+const options: ts.CompilerOptions = {
+  noEmit: true,
+  experimentalDecorators: true,
+  module: ts.ModuleKind.NodeNext,
+  moduleResolution: ts.ModuleResolutionKind.NodeNext,
+  target: ts.ScriptTarget.ES2023,
+  skipLibCheck: true,
+  types: [],
+  paths: {
+    "@nest-boot/graphql": [
+      path.resolve(packageRoot, "../graphql/dist/index.d.ts"),
+    ],
+  },
+};
+const sourceFiles = new Map<string, ts.SourceFile>();
+let previousProgram: ts.Program | undefined;
+
 function compileDiagnostics(code: string): string[] {
-  const options: ts.CompilerOptions = {
-    noEmit: true,
-    experimentalDecorators: true,
-    module: ts.ModuleKind.NodeNext,
-    moduleResolution: ts.ModuleResolutionKind.NodeNext,
-    target: ts.ScriptTarget.ES2023,
-    skipLibCheck: true,
-    types: [],
-    paths: {
-      "@nest-boot/graphql": [
-        path.resolve(packageRoot, "../graphql/dist/index.d.ts"),
-      ],
-    },
-  };
   const host = ts.createCompilerHost(options);
   const getSourceFile = host.getSourceFile.bind(host);
-  host.getSourceFile = (file, ...args) =>
-    file === filename
-      ? ts.createSourceFile(file, code, ts.ScriptTarget.ES2023, true)
-      : getSourceFile(file, ...args);
-  const program = ts.createProgram([filename], options, host);
+  host.getSourceFile = (file, ...args) => {
+    if (file === filename)
+      return ts.createSourceFile(file, code, ts.ScriptTarget.ES2023, true);
+    const cached = sourceFiles.get(file);
+    if (cached) return cached;
+    const source = getSourceFile(file, ...args);
+    if (source) sourceFiles.set(file, source);
+    return source;
+  };
+  const program = ts.createProgram([filename], options, host, previousProgram);
+  previousProgram = program;
   return ts
     .getPreEmitDiagnostics(program)
     .map((diagnostic) =>
