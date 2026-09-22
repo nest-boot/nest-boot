@@ -9,6 +9,7 @@ import * as ts from "typescript";
 import { createRule } from "../../utils/createRule.js";
 import { hasClassDecorator } from "../../utils/decorators.js";
 import { hasNamedImport, namedImportEdits } from "../../utils/named-imports.js";
+import { legacyDecoratorImports } from "./legacy-decorator-imports.js";
 
 // Custom Fix object type for deferred fix application
 interface CustomFix {
@@ -33,6 +34,7 @@ export default createRule<
   | "useEnumDecorator"
   | "useOptTypeForInitializedProperty"
   | "removeOptTypeForNonInitializedProperty"
+  | "useLegacyDecoratorImports"
 >({
   name: "entity-property-config-from-types",
   meta: {
@@ -44,6 +46,8 @@ export default createRule<
     fixable: "code",
     schema: [],
     messages: {
+      useLegacyDecoratorImports:
+        "MikroORM decorators must be imported from @mikro-orm/decorators/legacy.",
       alignPropertyDecoratorWithTsType:
         "@Property decorator should align with the TypeScript type (type and nullable).",
       removePropertyDecorator:
@@ -59,6 +63,21 @@ export default createRule<
   defaultOptions: [],
   create(context) {
     const source = context.sourceCode;
+    const legacyImports = legacyDecoratorImports(source);
+    if (legacyImports.length > 0) {
+      // Let ESLint reparse migrated imports before generating property fixes.
+      return {
+        Program() {
+          for (const { node, text } of legacyImports) {
+            context.report({
+              node,
+              messageId: "useLegacyDecoratorImports",
+              fix: (fixer) => fixer.replaceText(node, text),
+            });
+          }
+        },
+      };
+    }
     const parserServices = ESLintUtils.getParserServices(context);
     const checker = parserServices.program.getTypeChecker();
 

@@ -45,6 +45,55 @@ const cases = [
     property: "@Property({ type: t.text }) name!: Opt<string>;",
   },
   {
+    name: "old core Entity and Property imports",
+    imports: 'import { Entity, Property } from "@mikro-orm/core";',
+    property: "name!: string;",
+  },
+  {
+    name: "old core Entity and Enum imports",
+    imports: 'import { Entity, Enum } from "@mikro-orm/core";',
+    property: "role!: Role;",
+  },
+  {
+    name: "mixed core imports with aliases, comments and trailing commas",
+    imports: `import { t, Entity, /* preserve this comment */ Property, type Opt, Enum as OrmEnum, } from '@mikro-orm/core';`,
+    property: 'name: Opt<string> = "hello";',
+  },
+  {
+    name: "old Property with an existing legacy import",
+    imports:
+      'import { Property, t } from "@mikro-orm/core";\nimport { Entity } from "@mikro-orm/decorators/legacy";',
+    property: "name!: string;",
+  },
+  {
+    name: "mixed type-only imports from core",
+    imports:
+      'import { Entity } from "@mikro-orm/decorators/legacy";\nimport type { Property, Opt } from "@mikro-orm/core";',
+    property: "name!: string;",
+  },
+  {
+    name: "inline type-only imports from core",
+    imports: 'import { Entity, type Property, t } from "@mikro-orm/core";',
+    property: "name!: string;",
+  },
+  {
+    name: "already aligned decorators from core",
+    imports: 'import { Entity, Property, t } from "@mikro-orm/core";',
+    property: "@Property({ type: t.text }) name!: string;",
+  },
+  {
+    name: "related decorators and core option types",
+    imports: `import { Entity, PrimaryKey, ManyToOne, BeforeCreate, type PropertyOptions, t } from "@mikro-orm/core";`,
+    property:
+      "@PrimaryKey({ type: t.integer }) id!: number; @ManyToOne(() => Thing) parent!: Thing; @BeforeCreate() beforeCreate() {} name!: string;",
+  },
+  {
+    name: "quoted import names",
+    imports:
+      'import { Entity, "Property" as Property } from "@mikro-orm/core";',
+    property: "name!: string;",
+  },
+  {
     name: "existing aliases",
     imports: `import { Entity, Property as MikroProperty } from "@mikro-orm/decorators/legacy";
 import { t as ormTypes } from "@mikro-orm/core";`,
@@ -94,6 +143,24 @@ class Thing { ${property} }`;
     false,
   );
   expect(compileDiagnostics(result.output)).toEqual([]);
+  if (imports.includes("preserve this comment")) {
+    expect(result.output).toContain("/* preserve this comment */");
+    expect(result.output).toContain("Enum as OrmEnum");
+    expect(result.output).toContain("type Opt");
+  }
+});
+
+it("preserves a default binding when migrating its named decorators", () => {
+  const code = 'import orm, { Entity } from "@mikro-orm/core";';
+  const result = linter.verifyAndFix(code, config, { filename });
+  expect(result.messages).toEqual([]);
+  expect(result.output).toContain('import orm, {  } from "@mikro-orm/core";');
+  expect(result.output).toContain(
+    'import { Entity } from "@mikro-orm/decorators/legacy";',
+  );
+  expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
+    false,
+  );
 });
 
 function compileDiagnostics(code: string): string[] {
