@@ -6,6 +6,7 @@ import {
   getPropertyDecorator,
   hasClassDecorator,
 } from "../../utils/decorators.js";
+import { hasNamedImport, namedImportEdits } from "../../utils/named-imports.js";
 
 // Custom Fix object type for deferred fix application
 interface CustomFix {
@@ -244,20 +245,59 @@ export default createRule<
       return null;
     };
 
-    const ensureScalarImport = (fixes: CustomFix[], expected: string) => {
-      if (["Int", "Float", "ID"].includes(expected)) {
-        if (
-          !context.sourceCode.text.includes(
-            `import { ${expected} } from "@nestjs/graphql"`,
+    const graphqlImports = source.ast.body.filter(
+      (node): node is TSESTree.ImportDeclaration =>
+        node.type === AST_NODE_TYPES.ImportDeclaration &&
+        ["@nestjs/graphql", "@nest-boot/graphql"].includes(node.source.value),
+    );
+
+    const scalarBinding = (name: string): string => {
+      for (const declaration of graphqlImports) {
+        if (declaration.importKind === "type") continue;
+        for (const specifier of declaration.specifiers) {
+          if (
+            specifier.type === AST_NODE_TYPES.ImportSpecifier &&
+            specifier.importKind !== "type" &&
+            specifier.imported.type === AST_NODE_TYPES.Identifier &&
+            specifier.imported.name === name
           )
-        ) {
-          fixes.push({
-            type: "insert",
-            range: [0, 0],
-            text: `import { ${expected} } from "@nestjs/graphql";\n`,
-          });
+            return specifier.local.name;
         }
       }
+      return name;
+    };
+
+    const ensureScalarImport = (fixes: CustomFix[], expected: string) => {
+      if (!["Int", "Float", "ID"].includes(expected)) return;
+      if (
+        graphqlImports.some((declaration) =>
+          hasNamedImport(source, declaration.source.value, expected),
+        )
+      )
+        return;
+      const existing = graphqlImports.find((declaration) =>
+        declaration.specifiers.some(
+          (specifier) =>
+            specifier.type === AST_NODE_TYPES.ImportSpecifier &&
+            specifier.imported.type === AST_NODE_TYPES.Identifier &&
+            specifier.imported.name === expected &&
+            (specifier.local.name === expected ||
+              (declaration.importKind !== "type" &&
+                specifier.importKind !== "type")),
+        ),
+      );
+      // A value alias can be reused directly in the generated decorator.
+      if (scalarBinding(expected) !== expected) return;
+      const moduleName =
+        existing?.source.value ??
+        graphqlImports.at(0)?.source.value ??
+        "@nestjs/graphql";
+      fixes.push(
+        ...namedImportEdits(source, moduleName, [expected]).map((edit) => ({
+          ...edit,
+          type: "replace" as const,
+        })),
+      );
     };
 
     const ensureJSONObjectImport = (fixes: CustomFix[]) => {
@@ -279,7 +319,7 @@ export default createRule<
     ) => {
       const fixes: CustomFix[] = [];
 
-      const typeName = info.typeName ?? "";
+      const typeName = scalarBinding(info.typeName ?? "");
       const typeExpr = info.isArray
         ? `() => [${typeName}]`
         : `() => ${typeName}`;
@@ -308,7 +348,7 @@ export default createRule<
     ) => {
       const fixes: CustomFix[] = [];
 
-      const typeName = info.typeName ?? "";
+      const typeName = scalarBinding(info.typeName ?? "");
       const typeExpr = info.isArray
         ? `() => [${typeName}]`
         : `() => ${typeName}`;
@@ -503,8 +543,8 @@ export default createRule<
             const firstArg = callExpr.arguments[0];
             const calleeText = source.getText(firstArg.body);
             const expectedTypeText = typeInfo.isArray
-              ? `[${typeInfo.typeName}]`
-              : typeInfo.typeName;
+              ? `[${scalarBinding(typeInfo.typeName)}]`
+              : scalarBinding(typeInfo.typeName);
 
             const hasNullableOption =
               callExpr.arguments.length > 1 &&
@@ -524,9 +564,15 @@ export default createRule<
             // For number types, both Int and Float are valid
             const isNumberType = typeInfo.typeName === "Float";
             const actualTypeText = calleeText.replace(/^\[|\]$/g, ""); // Remove array brackets
+            const numericScalar = ["Int", "Float"].find(
+              (name) => actualTypeText === scalarBinding(name),
+            );
             const isValidNumberType =
               isNumberType &&
-              (actualTypeText === "Int" || actualTypeText === "Float");
+              !!numericScalar &&
+              typeInfo.isArray ===
+                (firstArg.body.type === AST_NODE_TYPES.ArrayExpression);
+            if (isValidNumberType) typeInfo.typeName = numericScalar;
 
             const typeMatches =
               calleeText === expectedTypeText || isValidNumberType;
