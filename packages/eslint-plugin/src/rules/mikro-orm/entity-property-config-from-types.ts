@@ -8,6 +8,7 @@ import * as ts from "typescript";
 
 import { createRule } from "../../utils/createRule.js";
 import { hasClassDecorator } from "../../utils/decorators.js";
+import { hasNamedImport, namedImportEdits } from "../../utils/named-imports.js";
 
 // Custom Fix object type for deferred fix application
 interface CustomFix {
@@ -274,145 +275,22 @@ export default createRule<
       );
     };
 
-    // Check if a named MikroORM helper is imported
-    const hasMikroOrmImport = (
-      importName: string,
-      options: { valueOnly?: boolean } = {},
-    ): boolean => {
-      const program = context.sourceCode.ast;
-      for (const statement of program.body) {
-        if (statement.type === AST_NODE_TYPES.ImportDeclaration) {
-          const importSource = statement.source.value;
-          // Check imports from @mikro-orm/*
-          if (
-            typeof importSource === "string" &&
-            importSource.startsWith("@mikro-orm/")
-          ) {
-            if (options.valueOnly && statement.importKind === "type") {
-              continue;
-            }
+    const coreModule = "@mikro-orm/core";
+    const decoratorsModule = "@mikro-orm/decorators/legacy";
+    const hasOptImport = () => hasNamedImport(source, coreModule, "Opt", false);
+    const hasEnumImport = () =>
+      hasNamedImport(source, decoratorsModule, "Enum");
 
-            const hasImport = statement.specifiers.some(
-              (spec: TSESTree.ImportClause) => {
-                return (
-                  spec.type === AST_NODE_TYPES.ImportSpecifier &&
-                  (!options.valueOnly || spec.importKind !== "type") &&
-                  spec.local.name === importName
-                );
-              },
-            );
-            if (hasImport) return true;
-          }
-        }
-      }
-      return false;
-    };
-
-    const hasOptImport = (): boolean => hasMikroOrmImport("Opt");
-    const hasEnumImport = (): boolean =>
-      hasMikroOrmImport("Enum", { valueOnly: true });
-    const hasPropertyImport = (): boolean =>
-      hasMikroOrmImport("Property", { valueOnly: true });
-    const hasTImport = (): boolean =>
-      hasMikroOrmImport("t", { valueOnly: true });
-
-    // Add named helpers to the @mikro-orm/core import
-    const addMikroOrmImports = (
-      fixer: RuleFixer,
-      importNames: string[],
-      options: { valueImport?: boolean } = {},
-    ): RuleFix | null => {
-      const program = context.sourceCode.ast;
-      const uniqueImportNames = [...new Set(importNames)];
-
-      if (uniqueImportNames.length === 0) {
-        return null;
-      }
-
-      // Find the @mikro-orm/core import statement
-      let coreImport: TSESTree.ImportDeclaration | null = null;
-
-      for (const statement of program.body) {
-        if (statement.type === AST_NODE_TYPES.ImportDeclaration) {
-          const importSource = statement.source.value;
-          if (
-            importSource === "@mikro-orm/core" &&
-            (!options.valueImport || statement.importKind !== "type")
-          ) {
-            coreImport = statement;
-            break;
-          }
-        }
-      }
-
-      if (coreImport) {
-        // Already has @mikro-orm/core import, add the helper to the import list
-        const lastSpecifier =
-          coreImport.specifiers[coreImport.specifiers.length - 1];
-
-        // Check if it's a multiline import
-        const importText = source.getText(coreImport);
-        const isMultiline = importText.includes("\n");
-
-        if (isMultiline) {
-          // Multiline import: add after the last import item, keeping indentation
-          const indent = "  "; // Assuming 2-space indentation
-          return fixer.insertTextAfter(
-            lastSpecifier,
-            uniqueImportNames.map((name) => `,\n${indent}${name}`).join(""),
-          );
-        } else {
-          // Single-line import: add directly
-          return fixer.insertTextAfter(
-            lastSpecifier,
-            `, ${uniqueImportNames.join(", ")}`,
-          );
-        }
-      } else {
-        // No @mikro-orm/core import, add a new import statement at the top
-        const firstImport = program.body.find(
-          (node: TSESTree.ProgramStatement) =>
-            node.type === AST_NODE_TYPES.ImportDeclaration,
-        );
-
-        if (firstImport) {
-          return fixer.insertTextBefore(
-            firstImport,
-            `import { ${uniqueImportNames.join(", ")} } from '@mikro-orm/core';\n`,
-          );
-        }
-      }
-      return null;
-    };
-
-    const addMikroOrmImport = (
-      fixer: RuleFixer,
-      importName: string,
-      options: { valueImport?: boolean } = {},
-    ): RuleFix | null => addMikroOrmImports(fixer, [importName], options);
-
-    const addOptImport = (fixer: RuleFixer): RuleFix | null =>
-      addMikroOrmImport(fixer, "Opt");
-
-    const addEnumImport = (fixer: RuleFixer): RuleFix | null =>
-      addMikroOrmImport(fixer, "Enum", { valueImport: true });
-
-    const addPropertyDecoratorImports = (
-      fixer: RuleFixer,
-      info: TypeInfo,
-    ): RuleFix | null => {
-      const importNames: string[] = [];
-
-      if (!hasPropertyImport()) {
-        importNames.push("Property");
-      }
-
-      if (info.propertyType?.startsWith("t.") && !hasTImport()) {
-        importNames.push("t");
-      }
-
-      return addMikroOrmImports(fixer, importNames, { valueImport: true });
-    };
+    const addOptImport = (): RuleFix[] =>
+      namedImportEdits(source, coreModule, ["Opt"], false);
+    const addEnumImport = (): RuleFix[] =>
+      namedImportEdits(source, decoratorsModule, ["Enum"]);
+    const addPropertyDecoratorImports = (info: TypeInfo): RuleFix[] => [
+      ...namedImportEdits(source, decoratorsModule, ["Property"]),
+      ...(info.propertyType?.startsWith("t.")
+        ? namedImportEdits(source, coreModule, ["t"])
+        : []),
+    ];
 
     const computeTypeInfo = (
       property: TSESTree.PropertyDefinition,
@@ -914,9 +792,9 @@ export default createRule<
         context.report({
           node,
           messageId: "useOptTypeForInitializedProperty",
-          fix: (fixer) => {
-            const importFix = addOptImport(fixer);
-            return importFix ? [importFix] : [];
+          fix: () => {
+            const importFix = addOptImport();
+            return importFix;
           },
         });
       }
@@ -1052,8 +930,8 @@ export default createRule<
 
                   // If needed, add Opt import
                   if (needsImport) {
-                    const importFix = addOptImport(fixer);
-                    if (importFix) fixes.push(importFix);
+                    const importFix = addOptImport();
+                    fixes.push(...importFix);
                   }
 
                   return fixes;
@@ -1093,8 +971,8 @@ export default createRule<
 
                     // If needed, add Opt import
                     if (needsImport) {
-                      const importFix = addOptImport(fixer);
-                      if (importFix) fixes.push(importFix);
+                      const importFix = addOptImport();
+                      fixes.push(...importFix);
                     }
 
                     return fixes;
@@ -1139,11 +1017,11 @@ export default createRule<
                     propertyDecorator.range,
                     newDecoratorText,
                   );
-                  const importFix = hasEnumImport()
-                    ? null
-                    : addEnumImport(fixer);
+                  const importFix = hasEnumImport() ? null : addEnumImport();
 
-                  return importFix ? [importFix, decoratorFix] : decoratorFix;
+                  return importFix
+                    ? [...importFix, decoratorFix]
+                    : decoratorFix;
                 },
               });
               return;
@@ -1159,9 +1037,9 @@ export default createRule<
                   member.range,
                   newDecoratorText + "\n  ",
                 );
-                const importFix = hasEnumImport() ? null : addEnumImport(fixer);
+                const importFix = hasEnumImport() ? null : addEnumImport();
 
-                return importFix ? [importFix, decoratorFix] : decoratorFix;
+                return importFix ? [...importFix, decoratorFix] : decoratorFix;
               },
             });
             return;
@@ -1177,11 +1055,9 @@ export default createRule<
                   fixer,
                   addPropertyDecorator(member, typeInfo),
                 );
-                const importFix = addPropertyDecoratorImports(fixer, typeInfo);
+                const importFix = addPropertyDecoratorImports(typeInfo);
 
-                return importFix
-                  ? [importFix, ...decoratorFixes]
-                  : decoratorFixes;
+                return [...importFix, ...decoratorFixes];
               },
             });
             return;

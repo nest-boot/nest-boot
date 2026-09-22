@@ -5,7 +5,7 @@ tester.run("entity-property-config-from-types", rule, {
   valid: [
     // Correct string type
     /* typescript */ `
-      import { Entity, Property } from "@mikro-orm/core";
+      import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
       @Entity()
       class User {
@@ -15,7 +15,7 @@ tester.run("entity-property-config-from-types", rule, {
     `,
     // Correct nullable configuration
     /* typescript */ `
-      import { Entity, Property } from "@mikro-orm/core";
+      import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
       @Entity()
       class User {
@@ -25,7 +25,8 @@ tester.run("entity-property-config-from-types", rule, {
     `,
     // Using Opt<T> type with initializer
     /* typescript */ `
-      import { Entity, Property, Opt } from "@mikro-orm/core";
+      import { Opt } from "@mikro-orm/core";
+      import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
       @Entity()
       class User {
@@ -35,7 +36,7 @@ tester.run("entity-property-config-from-types", rule, {
     `,
     // Relation decorators don't need @Property
     /* typescript */ `
-      import { Entity, ManyToOne } from "@mikro-orm/core";
+      import { Entity, ManyToOne } from "@mikro-orm/decorators/legacy";
 
       @Entity()
       class Post {
@@ -45,7 +46,8 @@ tester.run("entity-property-config-from-types", rule, {
     `,
     // PrimaryKey needs type configuration
     /* typescript */ `
-      import { Entity, PrimaryKey, t } from "@mikro-orm/core";
+      import { t } from "@mikro-orm/core";
+      import { Entity, PrimaryKey } from "@mikro-orm/decorators/legacy";
 
       @Entity()
       class User {
@@ -55,7 +57,7 @@ tester.run("entity-property-config-from-types", rule, {
     `,
     // Enum type uses @Enum
     /* typescript */ `
-      import { Entity, Enum } from "@mikro-orm/core";
+      import { Entity, Enum } from "@mikro-orm/decorators/legacy";
 
       enum Role {
         Admin,
@@ -70,7 +72,7 @@ tester.run("entity-property-config-from-types", rule, {
     `,
     // Array type
     /* typescript */ `
-      import { Entity, Property } from "@mikro-orm/core";
+      import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
       @Entity()
       class User {
@@ -80,7 +82,7 @@ tester.run("entity-property-config-from-types", rule, {
     `,
     // boolean type
     /* typescript */ `
-      import { Entity, Property } from "@mikro-orm/core";
+      import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
       @Entity()
       class User {
@@ -90,7 +92,8 @@ tester.run("entity-property-config-from-types", rule, {
     `,
     // Date type using t.datetime
     /* typescript */ `
-      import { Entity, Property, Opt } from "@mikro-orm/core";
+      import { Opt } from "@mikro-orm/core";
+      import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
       @Entity()
       class User {
@@ -100,7 +103,7 @@ tester.run("entity-property-config-from-types", rule, {
     `,
     // Date type using t.date (valid Date type configuration)
     /* typescript */ `
-      import { Entity, Property } from "@mikro-orm/core";
+      import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
       @Entity()
       class User {
@@ -110,7 +113,7 @@ tester.run("entity-property-config-from-types", rule, {
     `,
     // Date type using t.time (valid Date type configuration)
     /* typescript */ `
-      import { Entity, Property } from "@mikro-orm/core";
+      import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
       @Entity()
       class User {
@@ -120,7 +123,7 @@ tester.run("entity-property-config-from-types", rule, {
     `,
     // Using t.text instead of t.string (valid string type configuration)
     /* typescript */ `
-      import { Entity, Property } from "@mikro-orm/core";
+      import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
       @Entity()
       class User {
@@ -130,7 +133,7 @@ tester.run("entity-property-config-from-types", rule, {
     `,
     // Decimal and BigInt string storage are valid string configurations
     /* typescript */ `
-      import { Entity, Property } from "@mikro-orm/core";
+      import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
       @Entity()
       class User {
@@ -140,7 +143,7 @@ tester.run("entity-property-config-from-types", rule, {
     `,
     // Decimal and BigInt number storage are valid number configurations
     /* typescript */ `
-      import { Entity, Property } from "@mikro-orm/core";
+      import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
       @Entity()
       class User {
@@ -150,7 +153,7 @@ tester.run("entity-property-config-from-types", rule, {
     `,
     // VectorType is valid for number arrays
     /* typescript */ `
-      import { Entity, Property } from "@mikro-orm/core";
+      import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
       @Entity()
       class User {
@@ -160,7 +163,7 @@ tester.run("entity-property-config-from-types", rule, {
     `,
     // VectorType class reference is valid for number arrays
     /* typescript */ `
-      import { Entity, Property } from "@mikro-orm/core";
+      import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
       @Entity()
       class User {
@@ -170,7 +173,7 @@ tester.run("entity-property-config-from-types", rule, {
     `,
     // Capitalized primitive wrapper names are supported
     /* typescript */ `
-      import { Entity, Property } from "@mikro-orm/core";
+      import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
       @Entity()
       class User {
@@ -186,7 +189,7 @@ tester.run("entity-property-config-from-types", rule, {
     `,
     // DecimalType class reference is valid for strings
     /* typescript */ `
-      import { Entity, Property } from "@mikro-orm/core";
+      import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
       @Entity()
       class User {
@@ -196,7 +199,7 @@ tester.run("entity-property-config-from-types", rule, {
     `,
     // BigIntType class reference is valid for numbers
     /* typescript */ `
-      import { Entity, Property } from "@mikro-orm/core";
+      import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
       @Entity()
       class User {
@@ -206,7 +209,7 @@ tester.run("entity-property-config-from-types", rule, {
     `,
     // GraphQLJSONObject identifier maps to JSON
     /* typescript */ `
-      import { Entity, Property } from "@mikro-orm/core";
+      import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
       @Entity()
       class User {
@@ -216,7 +219,7 @@ tester.run("entity-property-config-from-types", rule, {
     `,
     // Custom type arrays use t.json
     /* typescript */ `
-      import { Entity, Property } from "@mikro-orm/core";
+      import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
       class Profile {}
 
@@ -228,7 +231,8 @@ tester.run("entity-property-config-from-types", rule, {
     `,
     // Collection<T> is skipped
     /* typescript */ `
-      import { Collection, Entity, Property } from "@mikro-orm/core";
+      import { Collection } from "@mikro-orm/core";
+      import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
       @Entity()
       class User {
@@ -238,7 +242,7 @@ tester.run("entity-property-config-from-types", rule, {
     `,
     // Methods are ignored
     /* typescript */ `
-      import { Entity } from "@mikro-orm/core";
+      import { Entity } from "@mikro-orm/decorators/legacy";
 
       @Entity()
       class User {
@@ -258,7 +262,7 @@ tester.run("entity-property-config-from-types", rule, {
     // type configuration mismatch
     {
       code: /* typescript */ `
-        import { Entity, Property } from "@mikro-orm/core";
+        import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
         @Entity()
         class User {
@@ -267,7 +271,7 @@ tester.run("entity-property-config-from-types", rule, {
         }
       `,
       output: /* typescript */ `
-        import { Entity, Property } from "@mikro-orm/core";
+        import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
         @Entity()
         class User {
@@ -280,7 +284,7 @@ tester.run("entity-property-config-from-types", rule, {
     // nullable configuration mismatch
     {
       code: /* typescript */ `
-        import { Entity, Property } from "@mikro-orm/core";
+        import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
         @Entity()
         class User {
@@ -289,7 +293,7 @@ tester.run("entity-property-config-from-types", rule, {
         }
       `,
       output: /* typescript */ `
-        import { Entity, Property } from "@mikro-orm/core";
+        import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
         @Entity()
         class User {
@@ -302,7 +306,7 @@ tester.run("entity-property-config-from-types", rule, {
     // Has initializer but not using Opt<T>
     {
       code: /* typescript */ `
-        import { Entity, Property } from "@mikro-orm/core";
+        import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
         @Entity()
         class User {
@@ -311,7 +315,8 @@ tester.run("entity-property-config-from-types", rule, {
         }
       `,
       output: /* typescript */ `
-        import { Entity, Property, Opt } from "@mikro-orm/core";
+        import { Opt } from "@mikro-orm/core";
+        import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
         @Entity()
         class User {
@@ -324,7 +329,7 @@ tester.run("entity-property-config-from-types", rule, {
     // Enum type should use @Enum decorator
     {
       code: /* typescript */ `
-        import { Entity, Property } from "@mikro-orm/core";
+        import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
         enum Role {
           Admin,
@@ -338,7 +343,7 @@ tester.run("entity-property-config-from-types", rule, {
         }
       `,
       output: /* typescript */ `
-        import { Entity, Property, Enum } from "@mikro-orm/core";
+        import { Entity, Property, Enum } from "@mikro-orm/decorators/legacy";
 
         enum Role {
           Admin,
@@ -356,7 +361,7 @@ tester.run("entity-property-config-from-types", rule, {
     // @Enum nullable configuration mismatch
     {
       code: /* typescript */ `
-        import { Entity, Enum } from "@mikro-orm/core";
+        import { Entity, Enum } from "@mikro-orm/decorators/legacy";
 
         enum Role {
           Admin,
@@ -370,7 +375,7 @@ tester.run("entity-property-config-from-types", rule, {
         }
       `,
       output: /* typescript */ `
-        import { Entity, Enum } from "@mikro-orm/core";
+        import { Entity, Enum } from "@mikro-orm/decorators/legacy";
 
         enum Role {
           Admin,
@@ -388,7 +393,7 @@ tester.run("entity-property-config-from-types", rule, {
     // Array type configuration mismatch
     {
       code: /* typescript */ `
-        import { Entity, Property } from "@mikro-orm/core";
+        import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
         @Entity()
         class User {
@@ -397,7 +402,7 @@ tester.run("entity-property-config-from-types", rule, {
         }
       `,
       output: /* typescript */ `
-        import { Entity, Property } from "@mikro-orm/core";
+        import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
         @Entity()
         class User {
@@ -410,7 +415,7 @@ tester.run("entity-property-config-from-types", rule, {
     // Empty @Property() should add type: t.boolean
     {
       code: /* typescript */ `
-        import { Entity, Property } from "@mikro-orm/core";
+        import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
         @Entity()
         class User {
@@ -419,7 +424,7 @@ tester.run("entity-property-config-from-types", rule, {
         }
       `,
       output: /* typescript */ `
-        import { Entity, Property } from "@mikro-orm/core";
+        import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
         @Entity()
         class User {
@@ -432,7 +437,7 @@ tester.run("entity-property-config-from-types", rule, {
     // Empty @Property() should add type: t.datetime (Date type)
     {
       code: /* typescript */ `
-        import { Entity, Property } from "@mikro-orm/core";
+        import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
         @Entity()
         class User {
@@ -441,7 +446,7 @@ tester.run("entity-property-config-from-types", rule, {
         }
       `,
       output: /* typescript */ `
-        import { Entity, Property } from "@mikro-orm/core";
+        import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
         @Entity()
         class User {
@@ -454,7 +459,7 @@ tester.run("entity-property-config-from-types", rule, {
     // Date type with wrong configuration should be fixed to t.datetime
     {
       code: /* typescript */ `
-        import { Entity, Property } from "@mikro-orm/core";
+        import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
         @Entity()
         class User {
@@ -463,7 +468,7 @@ tester.run("entity-property-config-from-types", rule, {
         }
       `,
       output: /* typescript */ `
-        import { Entity, Property } from "@mikro-orm/core";
+        import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
         @Entity()
         class User {
@@ -475,12 +480,13 @@ tester.run("entity-property-config-from-types", rule, {
     },
     // Missing @Property decorator should add one from the TypeScript type
     {
-      code: /* typescript */ `import { Entity } from "@mikro-orm/core";
+      code: /* typescript */ `import { Entity } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   name!: string;
 }`,
-      output: /* typescript */ `import { Entity, Property, t } from "@mikro-orm/core";
+      output: /* typescript */ `import { t } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: t.string })
@@ -490,12 +496,13 @@ class User {
     },
     // Aliased Property imports should not suppress the unaliased runtime import
     {
-      code: /* typescript */ `import { Entity, Property as MikroProperty } from "@mikro-orm/core";
+      code: /* typescript */ `import { Entity, Property as MikroProperty } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   name!: string;
 }`,
-      output: /* typescript */ `import { Entity, Property as MikroProperty, Property, t } from "@mikro-orm/core";
+      output: /* typescript */ `import { t } from "@mikro-orm/core";
+import { Entity, Property as MikroProperty, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: t.string })
@@ -505,13 +512,13 @@ class User {
     },
     // Record types should use t.json
     {
-      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
+      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: t.string })
   metadata!: Record<string, unknown>;
 }`,
-      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
+      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: t.json })
@@ -521,13 +528,13 @@ class User {
     },
     // Union types without nullish members use the first concrete type
     {
-      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
+      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property()
   value!: string | number;
 }`,
-      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
+      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: t.string })
@@ -537,13 +544,13 @@ class User {
     },
     // Undefined unions should be nullable
     {
-      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
+      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: t.string })
   nickname!: string | undefined;
 }`,
-      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
+      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: t.string, nullable: true })
@@ -553,13 +560,13 @@ class User {
     },
     // Ref<T | null> should unwrap the type and preserve nullable
     {
-      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
+      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: t.string })
   owner!: Ref<User | null>;
 }`,
-      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
+      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ nullable: true })
@@ -569,13 +576,13 @@ class User {
     },
     // Ref<T | undefined> should unwrap the type and preserve nullable
     {
-      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
+      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property()
   owner!: Ref<User | undefined>;
 }`,
-      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
+      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ nullable: true })
@@ -585,13 +592,13 @@ class User {
     },
     // PrimaryKey number fields should default to t.integer when missing
     {
-      code: /* typescript */ `import { Entity, PrimaryKey } from "@mikro-orm/core";
+      code: /* typescript */ `import { Entity, PrimaryKey } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @PrimaryKey()
   id!: number;
 }`,
-      output: /* typescript */ `import { Entity, PrimaryKey } from "@mikro-orm/core";
+      output: /* typescript */ `import { Entity, PrimaryKey } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @PrimaryKey({ type: t.integer })
@@ -601,13 +608,13 @@ class User {
     },
     // Custom property-like decorators should keep their decorator name
     {
-      code: /* typescript */ `import { Entity } from "@mikro-orm/core";
+      code: /* typescript */ `import { Entity } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @EncryptedProperty({ type: t.float, length: 255 })
   secret!: string;
 }`,
-      output: /* typescript */ `import { Entity } from "@mikro-orm/core";
+      output: /* typescript */ `import { Entity } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @EncryptedProperty({ type: t.string, length: 255 })
@@ -617,14 +624,14 @@ class User {
     },
     // Custom class types should remove unnecessary type config
     {
-      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
+      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 class Profile {}
 @Entity()
 class User {
   @Property({ type: t.string })
   profile!: Profile;
 }`,
-      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
+      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 class Profile {}
 @Entity()
 class User {
@@ -635,13 +642,13 @@ class User {
     },
     // Missing decorators for custom class types should add an empty @Property()
     {
-      code: /* typescript */ `import { Entity } from "@mikro-orm/core";
+      code: /* typescript */ `import { Entity } from "@mikro-orm/decorators/legacy";
 class Profile {}
 @Entity()
 class User {
   profile!: Profile;
 }`,
-      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
+      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 class Profile {}
 @Entity()
 class User {
@@ -652,13 +659,13 @@ class User {
     },
     // String arrays should use t.array
     {
-      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
+      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: t.string })
   tags!: string[];
 }`,
-      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
+      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: t.array })
@@ -668,13 +675,13 @@ class User {
     },
     // Boolean arrays should use JSON storage
     {
-      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
+      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: t.array })
   flags!: boolean[];
 }`,
-      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
+      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: t.json })
@@ -684,13 +691,13 @@ class User {
     },
     // Record arrays should use JSON storage
     {
-      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
+      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: t.array })
   records!: Record<string, unknown>[];
 }`,
-      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
+      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: t.json })
@@ -700,13 +707,13 @@ class User {
     },
     // Bare Array references should remove unnecessary type config
     {
-      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
+      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: t.string })
   values!: Array;
 }`,
-      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
+      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property()
@@ -716,13 +723,13 @@ class User {
     },
     // Nullable number arrays should keep valid vector config and add nullable
     {
-      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
+      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: VectorType })
   embedding?: number[];
 }`,
-      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
+      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: VectorType, nullable: true })
@@ -732,7 +739,7 @@ class User {
     },
     // Enum types without decorators should add @Enum
     {
-      code: /* typescript */ `import { Entity } from "@mikro-orm/core";
+      code: /* typescript */ `import { Entity } from "@mikro-orm/decorators/legacy";
 enum Role {
   Admin,
   User
@@ -741,7 +748,7 @@ enum Role {
 class User {
   role!: Role;
 }`,
-      output: /* typescript */ `import { Entity, Enum } from "@mikro-orm/core";
+      output: /* typescript */ `import { Entity, Enum } from "@mikro-orm/decorators/legacy";
 enum Role {
   Admin,
   User
@@ -755,7 +762,7 @@ class User {
     },
     // Aliased Enum imports should not suppress the unaliased runtime import
     {
-      code: /* typescript */ `import { Entity, Enum as MikroEnum } from "@mikro-orm/core";
+      code: /* typescript */ `import { Entity, Enum as MikroEnum } from "@mikro-orm/decorators/legacy";
 enum Role {
   Admin,
   User
@@ -764,7 +771,7 @@ enum Role {
 class User {
   role!: Role;
 }`,
-      output: /* typescript */ `import { Entity, Enum as MikroEnum, Enum } from "@mikro-orm/core";
+      output: /* typescript */ `import { Entity, Enum as MikroEnum, Enum } from "@mikro-orm/decorators/legacy";
 enum Role {
   Admin,
   User
@@ -788,7 +795,7 @@ enum Role {
 class User {
   role!: Role;
 }`,
-      output: /* typescript */ `import { Enum } from '@mikro-orm/core';
+      output: /* typescript */ `import { Enum } from "@mikro-orm/decorators/legacy";
 import type { Ref } from "@mikro-orm/core";
 import { Entity } from "@mikro-orm/postgresql";
 enum Role {
@@ -804,7 +811,7 @@ class User {
     },
     // Empty @Enum() should be rebuilt when nullable configuration is wrong
     {
-      code: /* typescript */ `import { Entity, Enum } from "@mikro-orm/core";
+      code: /* typescript */ `import { Entity, Enum } from "@mikro-orm/decorators/legacy";
 enum Role {
   Admin,
   User
@@ -814,7 +821,7 @@ class User {
   @Enum()
   role?: Role;
 }`,
-      output: /* typescript */ `import { Entity, Enum } from "@mikro-orm/core";
+      output: /* typescript */ `import { Entity, Enum } from "@mikro-orm/decorators/legacy";
 enum Role {
   Admin,
   User
@@ -828,7 +835,7 @@ class User {
     },
     // Non-object @Enum arguments should be rebuilt
     {
-      code: /* typescript */ `import { Entity, Enum } from "@mikro-orm/core";
+      code: /* typescript */ `import { Entity, Enum } from "@mikro-orm/decorators/legacy";
 enum Role {
   Admin,
   User
@@ -838,7 +845,7 @@ class User {
   @Enum(() => Role)
   role?: Role;
 }`,
-      output: /* typescript */ `import { Entity, Enum } from "@mikro-orm/core";
+      output: /* typescript */ `import { Entity, Enum } from "@mikro-orm/decorators/legacy";
 enum Role {
   Admin,
   User
@@ -852,13 +859,13 @@ class User {
     },
     // Non-object @Property arguments should be replaced with object config
     {
-      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
+      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property(() => String)
   name!: string;
 }`,
-      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
+      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: t.string })
@@ -868,20 +875,22 @@ class User {
     },
     // Literal initializers without annotations should add Opt<T> and align @Property
     {
-      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
+      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property()
   enabled = true;
 }`,
       output: [
-        /* typescript */ `import { Entity, Property, Opt } from "@mikro-orm/core";
+        /* typescript */ `import { Opt } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property()
   enabled: Opt<boolean> = true;
 }`,
-        /* typescript */ `import { Entity, Property, Opt } from "@mikro-orm/core";
+        /* typescript */ `import { Opt } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: t.boolean })
@@ -895,20 +904,22 @@ class User {
     },
     // Number literal initializers without annotations should infer Opt<number>
     {
-      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
+      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property()
   score = 1;
 }`,
       output: [
-        /* typescript */ `import { Entity, Property, Opt } from "@mikro-orm/core";
+        /* typescript */ `import { Opt } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property()
   score: Opt<number> = 1;
 }`,
-        /* typescript */ `import { Entity, Property, Opt } from "@mikro-orm/core";
+        /* typescript */ `import { Opt } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: t.float })
@@ -922,20 +933,22 @@ class User {
     },
     // String literal initializers without annotations should infer Opt<string>
     {
-      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
+      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property()
   title = "hello";
 }`,
       output: [
-        /* typescript */ `import { Entity, Property, Opt } from "@mikro-orm/core";
+        /* typescript */ `import { Opt } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property()
   title: Opt<string> = "hello";
 }`,
-        /* typescript */ `import { Entity, Property, Opt } from "@mikro-orm/core";
+        /* typescript */ `import { Opt } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: t.string })
@@ -956,14 +969,14 @@ class User {
   enabled: boolean = true;
 }`,
       output: [
-        /* typescript */ `import { Opt } from '@mikro-orm/core';
+        /* typescript */ `import { Opt } from "@mikro-orm/core";
 import { Entity, Property } from "@mikro-orm/postgresql";
 @Entity()
 class User {
   @Property()
   enabled: Opt<boolean> = true;
 }`,
-        /* typescript */ `import { Opt } from '@mikro-orm/core';
+        /* typescript */ `import { Opt } from "@mikro-orm/core";
 import { Entity, Property } from "@mikro-orm/postgresql";
 @Entity()
 class User {
@@ -978,20 +991,14 @@ class User {
     },
     // Opt import should be inserted into multiline @mikro-orm/core imports
     {
-      code: /* typescript */ `import {
-  Entity,
-  Property
-} from "@mikro-orm/core";
+      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: t.boolean })
   enabled: boolean = true;
 }`,
-      output: /* typescript */ `import {
-  Entity,
-  Property,
-  Opt
-} from "@mikro-orm/core";
+      output: /* typescript */ `import { Opt } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: t.boolean })
@@ -1001,13 +1008,13 @@ class User {
     },
     // Invalid BigInt string storage for number should be replaced
     {
-      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
+      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: new BigIntType('string') })
   score!: number;
 }`,
-      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
+      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: t.float })
@@ -1017,13 +1024,13 @@ class User {
     },
     // Invalid BigInt number storage for string should be replaced
     {
-      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
+      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: new BigIntType('number') })
   externalId!: string;
 }`,
-      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/core";
+      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: t.string })

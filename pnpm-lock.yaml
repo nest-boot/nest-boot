@@ -939,6 +939,12 @@ importers:
       '@eslint/js':
         specifier: ^9.39.2
         version: 9.39.2
+      '@mikro-orm/core':
+        specifier: 7.2.0
+        version: 7.2.0
+      '@mikro-orm/decorators':
+        specifier: 7.2.0
+        version: 7.2.0
       '@nest-boot/tsconfig':
         specifier: workspace:^
         version: link:../tsconfig
