@@ -73,14 +73,22 @@ export class UserService {
 
 ### 关键方法
 
-| 方法                     | 描述                                           |
-| ------------------------ | ---------------------------------------------- |
-| `setContext(name)`       | 覆盖日志上下文（默认自动设置为注入类的类名）   |
-| `assign(metadata)`       | 将结构化元数据附加到本次请求的所有后续日志条目 |
-| `log(message)`           | INFO 级别日志                                  |
-| `warn(message)`          | WARN 级别日志                                  |
-| `error(message, trace?)` | ERROR 级别日志，可选堆栈跟踪                   |
-| `debug(message)`         | DEBUG 级别日志                                 |
+| 方法                               | 描述                                           |
+| ---------------------------------- | ---------------------------------------------- |
+| `setContext(name)`                 | 覆盖日志上下文（默认自动设置为注入类的类名）   |
+| `assign(metadata)`                 | 将结构化元数据附加到本次请求的所有后续日志条目 |
+| `log(message)`                     | INFO 级别日志                                  |
+| `warn(message)`                    | WARN 级别日志                                  |
+| `error(message, trace?, context?)` | ERROR 级别日志，可选堆栈跟踪                   |
+| `debug(message)`                   | DEBUG 级别日志                                 |
+
+直接传入 `Error`，或通过结构化参数 `{ err: error }` 传入，可在 `err` 中保留错误消息与堆栈。显式传入的堆栈字符串写入 `stack`。消息后的单个普通字符串仍表示 context；符合堆栈格式的字符串则保留 Logger 当前的 context。
+
+```typescript
+this.logger.error(error);
+this.logger.error("Operation failed", error.stack, "OrdersService");
+this.logger.error("Operation failed", { err: error, orderId });
+```
 
 ### 结构化输出
 

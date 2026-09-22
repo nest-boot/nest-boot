@@ -99,11 +99,42 @@ export class Logger implements LoggerService {
 
   /**
    * Logs a message at the `error` level.
-   * @param message - Log message
-   * @param optionalParams - Additional structured data or context override
+   * @param message - Log message or Error to serialize
+   * @param optionalParams - Stack trace, structured data, or context override
    */
-  error(message: string, ...optionalParams: unknown[]): void {
-    this.call("error", message, ...optionalParams);
+  error(message: string | Error, ...optionalParams: unknown[]): void {
+    let stack: string | undefined;
+    let context = this.context;
+    const lastParam = optionalParams.at(-1);
+
+    // A lone string remains a context override unless it looks like a stack.
+    // Also accept Nest's stack-last form without treating it as the context.
+    if (typeof lastParam === "string" && /\n\s+at\s/.test(lastParam)) {
+      stack = optionalParams.pop() as string;
+    }
+    if (typeof optionalParams.at(-1) === "string") {
+      context = optionalParams.pop() as string;
+    }
+    if (stack === undefined && typeof optionalParams[0] === "string") {
+      stack = optionalParams.shift() as string;
+    }
+
+    const data = optionalParams[0];
+    const bindings: Bindings =
+      data instanceof Error
+        ? { err: data }
+        : typeof data === "object" && data !== null
+          ? { ...data }
+          : {};
+    if (message instanceof Error) bindings.err = message;
+    if (stack !== undefined) bindings.stack = stack;
+
+    this.call(
+      "error",
+      message instanceof Error ? message.message : message,
+      bindings,
+      context,
+    );
   }
 
   /**
