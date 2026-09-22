@@ -24,38 +24,14 @@ import { AUTH_TOKEN } from "../auth.constants.js";
 import { SessionConnection } from "../connections/session.connection-definition.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
+import {
+  adaptBetterAuth,
+  type BetterAuthAdapter,
+} from "../infrastructure/better-auth-adapter.js";
 import { RequestIdentity } from "../infrastructure/request-identity.js";
 import type { AuthenticatedSession } from "../interfaces/authenticated-session.interface.js";
 import { assertCan } from "../utils/assert-can.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
-
-interface StatusResult {
-  status: boolean;
-}
-
-interface InternalAuth {
-  $context: Promise<{
-    authCookies: BetterAuthCookies;
-    secret: string;
-  }>;
-  api: {
-    getSession(options: { headers: HeadersInit }): Promise<{
-      session: { token: string };
-      user: { id: string };
-    } | null>;
-    listSessions(options: {
-      headers: HeadersInit;
-    }): Promise<{ token: string }[]>;
-    revokeSession(options: {
-      body: { token: string };
-      headers: HeadersInit;
-    }): Promise<StatusResult>;
-    revokeOtherSessions(options: {
-      headers: HeadersInit;
-    }): Promise<StatusResult>;
-    revokeSessions(options: { headers: HeadersInit }): Promise<StatusResult>;
-  };
-}
 
 /** Application-facing session management operations. */
 @Injectable()
@@ -70,10 +46,10 @@ export class SessionService {
     auth: unknown,
     private readonly em: EntityManager,
   ) {
-    this.auth = auth as InternalAuth;
+    this.auth = adaptBetterAuth(auth);
   }
 
-  private readonly auth: InternalAuth;
+  private readonly auth: BetterAuthAdapter;
 
   /** Paginates active sessions visible to the caller for the parent user. */
   async getSessionConnectionByUser(
