@@ -6,7 +6,6 @@ import {
   useNavigate,
   useRouter,
 } from "@tanstack/react-router";
-import { toast } from "sonner";
 import { t } from "i18next";
 
 import { useCurrentMemberContext } from "../../contexts/current-member-context";
@@ -15,6 +14,7 @@ import { MemberRolesForm } from "./components/member-roles-form";
 import { MemberPermissionsForm } from "./components/member-permissions-form";
 import type { MemberFormProps } from "./components/member-form-props";
 import type { GetMemberFromMemberRouteQuery } from "@/gql/graphql";
+import { toast } from "@/components/thread-ui/toast";
 import { useAbility } from "@/contexts/ability-context";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import {
@@ -133,10 +133,15 @@ function MemberDetails({
         return false;
       }
       await router.invalidate();
-      toast.success(t("member:details.toast.updated_success"));
+      toast.add({
+        type: "success",
+        title: t("member:details.toast.updated_success"),
+      });
       return true;
     } catch (error) {
-      toast.error(t("member:details.toast.update_failed"), {
+      toast.add({
+        type: "error",
+        title: t("member:details.toast.update_failed"),
         description: error instanceof Error ? error.message : "Unknown error",
       });
       return false;
@@ -173,9 +178,14 @@ function MemberDetails({
         to: "/workspaces/$workspaceId/members",
         params: { workspaceId },
       });
-      toast.success(t("member:details.toast.deleted_success"));
+      toast.add({
+        type: "success",
+        title: t("member:details.toast.deleted_success"),
+      });
     } catch (error) {
-      toast.error(t("member:details.toast.delete_failed"), {
+      toast.add({
+        type: "error",
+        title: t("member:details.toast.delete_failed"),
         description: error instanceof Error ? error.message : "Unknown error",
       });
     }

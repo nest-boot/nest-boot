@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { FC, PropsWithChildren, ReactNode } from "react";
 
 import {
@@ -15,6 +16,21 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+
+export {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogOverlay,
+  AlertDialogPortal,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export interface AlertDialogOptions {
   title: ReactNode;
@@ -89,6 +105,7 @@ const AlertDialogRenderer = memo(function AlertDialogRenderer({
   onRemove,
 }: AlertDialogRendererProps) {
   const { id, open, options } = dialog;
+  const { t } = useTranslation("thread-ui");
 
   return (
     <AlertDialog
@@ -124,14 +141,14 @@ const AlertDialogRenderer = memo(function AlertDialogRenderer({
 
         <AlertDialogFooter>
           <AlertDialogCancel data-testid="alert-dialog-cancel">
-            {options.cancelText ?? "Cancel"}
+            {options.cancelText ?? t("alertDialog.cancel", "Cancel")}
           </AlertDialogCancel>
           <AlertDialogAction
             data-testid="alert-dialog-confirm"
             variant={options.variant}
             onClick={() => onClose(id, true)}
           >
-            {options.confirmText ?? "Confirm"}
+            {options.confirmText ?? t("alertDialog.confirm", "Confirm")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

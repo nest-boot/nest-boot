@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { useDataFilterContext } from "./data-filter-context";
 import type { FC } from "react";
@@ -31,6 +32,7 @@ const emptyOptionCache: Record<string, DataFilterSelectOption> = {};
 export const DataFilterDefaultSelectField: FC<
   DataFilterDefaultSelectFieldProps
 > = ({ item, value, onChange }) => {
+  const { t } = useTranslation("thread-ui");
   const { cacheSelectOptions, selectOptionCache } = useDataFilterContext();
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
@@ -161,7 +163,10 @@ export const DataFilterDefaultSelectField: FC<
               );
             })}
           </ComboboxValue>
-          <ComboboxChipsInput placeholder={item.placeholder} />
+          <ComboboxChipsInput
+            aria-label={item.label}
+            placeholder={item.placeholder}
+          />
         </ComboboxChips>
 
         <ComboboxList className="max-h-72">
@@ -183,13 +188,15 @@ export const DataFilterDefaultSelectField: FC<
         {loading && (
           <div className="text-muted-foreground flex items-center justify-center gap-2 px-2 py-2 text-sm">
             <Spinner />
-            Loading
+            {t("dataFilter.loading", "Loading")}
           </div>
         )}
 
         {!loading && options.length === 0 && (
           <div className="text-muted-foreground px-2 py-2 text-center text-sm">
-            {error ? "Failed to load options" : "No options found"}
+            {error
+              ? t("dataFilter.loadFailed", "Failed to load options")
+              : t("dataFilter.noOptions", "No options found")}
           </div>
         )}
       </div>

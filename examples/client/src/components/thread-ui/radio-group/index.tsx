@@ -1,3 +1,4 @@
+import { useId } from "react";
 import type {
   RadioGroupChangeEventDetails,
   RadioGroupProps as RadioGroupPrimitiveProps,
@@ -65,11 +66,13 @@ export function RadioGroupItem<Value extends string | null>({
   disabled,
   value,
 }: RadioGroupItemProps<Value>) {
+  const id = useId();
+
   return (
     <Field data-disabled={disabled} orientation="horizontal">
-      <RadioGroupItemComponent disabled={disabled} value={value} />
+      <RadioGroupItemComponent disabled={disabled} id={id} value={value} />
       <FieldContent>
-        <FieldLabel>{children}</FieldLabel>
+        <FieldLabel htmlFor={id}>{children}</FieldLabel>
         {description && <FieldDescription>{description}</FieldDescription>}
       </FieldContent>
     </Field>

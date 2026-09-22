@@ -1,20 +1,16 @@
-import type { FC, PropsWithChildren } from "react";
-import type { ToasterProps } from "sonner";
+"use client";
 
-import { Toaster } from "@/components/ui/sonner";
+import type { ComponentProps, FC } from "react";
 
-export type ToastProviderProps = PropsWithChildren<ToasterProps>;
+import { Toaster, toast } from "@/components/ui/toast";
+
+export type ToastProviderProps = ComponentProps<typeof Toaster>;
 
 export const ToastProvider: FC<ToastProviderProps> = ({
   children,
   ...props
 }) => {
-  return (
-    <>
-      <Toaster {...props} />
-      {children}
-    </>
-  );
+  return <Toaster {...props}>{children}</Toaster>;
 };
 
-export { toast } from "sonner";
+export { toast };

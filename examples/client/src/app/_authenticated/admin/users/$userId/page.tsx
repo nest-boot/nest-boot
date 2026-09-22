@@ -3,11 +3,11 @@ import { useMutation, useQuery } from "@apollo/client/react";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import dayjs from "dayjs";
 import { t } from "i18next";
-import { toast } from "sonner";
 
 import { useCurrentUserContext } from "../../../contexts/current-user-context";
 import type { UserPermission } from "@/lib/permissions";
 import type { UserRole } from "@/gql/graphql";
+import { toast } from "@/components/thread-ui/toast";
 import { useAbility } from "@/contexts/ability-context";
 import { PermissionCheckboxGroup } from "@/components/permission-checkbox-group";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
@@ -277,9 +277,12 @@ function AdminUserPage() {
         return;
       }
       await refetch();
-      toast.success(message);
+      toast.add({ type: "success", title: message });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("admin:failed"));
+      toast.add({
+        type: "error",
+        title: error instanceof Error ? error.message : t("admin:failed"),
+      });
     }
   };
 
@@ -299,11 +302,13 @@ function AdminUserPage() {
                 await impersonateUser({ variables: { id: user.id } });
                 window.location.assign("/user");
               } catch (error) {
-                toast.error(
-                  error instanceof Error
-                    ? error.message
-                    : t("admin:impersonation.failed"),
-                );
+                toast.add({
+                  type: "error",
+                  title:
+                    error instanceof Error
+                      ? error.message
+                      : t("admin:impersonation.failed"),
+                });
               }
             }}
           >

@@ -2,10 +2,10 @@ import { useEffect, useMemo } from "react";
 import { useMutation, useQuery } from "@apollo/client/react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
-import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import z from "zod";
 import { t } from "i18next";
+import { toast } from "@/components/thread-ui/toast";
 
 import { graphql } from "@/gql";
 import { InvitationStatus } from "@/gql/graphql";
@@ -143,7 +143,10 @@ function InviteComponent() {
 
   const handleAccept = async () => {
     if (!invitationId) {
-      toast.error(t("workspace:invite.error.invalid_token"));
+      toast.add({
+        type: "error",
+        title: t("workspace:invite.error.invalid_token"),
+      });
       return;
     }
 
@@ -154,7 +157,7 @@ function InviteComponent() {
       const workspaceId = result.data?.acceptInvitation?.workspaceId;
       if (workspaceId) {
         localStorage.removeItem(INVITATION_ID_KEY);
-        toast.success(t("workspace:invite.success"));
+        toast.add({ type: "success", title: t("workspace:invite.success") });
         navigate({
           to: "/workspaces/$workspaceId",
           params: { workspaceId },
@@ -170,7 +173,7 @@ function InviteComponent() {
               .graphQLErrors?.[0]?.message
           : undefined) ||
         t("workspace:invite.error.accept_failed");
-      toast.error(errorMessage);
+      toast.add({ type: "error", title: errorMessage });
     }
   };
 
