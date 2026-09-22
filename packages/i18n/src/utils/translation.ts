@@ -13,7 +13,9 @@ export const translation = (
   key: string | string[],
   options?: TOptions,
 ): string => {
-  const instance = RequestContext?.get<i18n>(I18N) ?? i18next;
+  const instance =
+    (RequestContext.isActive() ? RequestContext.get<i18n>(I18N) : undefined) ??
+    i18next;
 
   if (typeof options !== "undefined") {
     return instance.t(key, options);
