@@ -39,6 +39,12 @@ const cases = [
     property: "role!: Role;",
   },
   {
+    name: "Opt used without an import",
+    imports:
+      'import { Entity, Property } from "@mikro-orm/decorators/legacy";\nimport { t } from "@mikro-orm/core";',
+    property: "@Property({ type: t.text }) name!: Opt<string>;",
+  },
+  {
     name: "existing aliases",
     imports: `import { Entity, Property as MikroProperty } from "@mikro-orm/decorators/legacy";
 import { t as ormTypes } from "@mikro-orm/core";`,
