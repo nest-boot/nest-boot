@@ -15,6 +15,8 @@ pnpm add @mikro-orm/postgresql
 # 或：pnpm add @mikro-orm/pglite
 ```
 
+`t`、`Opt`、`Ref` 和 `Collection` 统一从 `@mikro-orm/core` 导入；`Entity`、`Property`、`Enum` 等实体装饰器从 `@mikro-orm/decorators/legacy` 导入。`PostgreSqlDriver` 和 SQL `EntityManager` 等驱动专属 API 仍从驱动包导入。实体 ESLint 自动修复会迁移这些具名工具和旧装饰器导入，并保留别名与 type-only 修饰。
+
 ## 模块注册
 
 ### 基本注册

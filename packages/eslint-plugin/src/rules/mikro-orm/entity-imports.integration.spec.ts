@@ -29,6 +29,105 @@ const config: Linter.Config[] = [
 
 const cases = [
   {
+    name: "custom property decorator binding remains unchanged",
+    imports:
+      'import { Entity } from "@mikro-orm/decorators/legacy"; const EncryptedProperty = (...args: unknown[]): PropertyDecorator => () => {};',
+    property: "@EncryptedProperty() name!: string;",
+  },
+  {
+    name: "missing runtime helper while correcting an existing decorator",
+    imports: 'import { Entity, Property } from "@mikro-orm/decorators/legacy";',
+    property: "@Property() name!: string;",
+  },
+  {
+    name: "type-only helper with an otherwise aligned decorator",
+    imports:
+      'import { Entity, Property } from "@mikro-orm/decorators/legacy"; import type { t } from "@mikro-orm/core";',
+    property: "@Property({ type: t.text }) name!: string;",
+  },
+  {
+    name: "type-only decorator with an otherwise aligned property",
+    imports:
+      'import { Entity, type Property } from "@mikro-orm/decorators/legacy"; import { t } from "@mikro-orm/core";',
+    property: "@Property({ type: t.text }) name!: string;",
+  },
+  {
+    name: "type-only aliased Enum with an otherwise aligned property",
+    imports:
+      'import { Entity, type Enum as Choice } from "@mikro-orm/decorators/legacy";',
+    property: "@Choice({ items: () => Role }) role!: Role;",
+  },
+  ...[
+    {
+      imports: 'import { t } from "@mikro-orm/postgresql";',
+      property: "name!: string;",
+    },
+    {
+      imports: 'import type { Opt } from "@mikro-orm/postgresql";',
+      property: 'name: Opt<string> = "hello";',
+    },
+    {
+      imports: 'import { Opt } from "@mikro-orm/postgresql";',
+      property: 'name: string = "hello";',
+    },
+    {
+      imports: 'import type { t, Opt } from "@mikro-orm/postgresql";',
+      property: 'name: Opt<string> = "hello";',
+    },
+    {
+      imports:
+        'import { t, type Opt, PostgreSqlDriver } from "@mikro-orm/postgresql";',
+      property: 'name: Opt<string> = "hello";',
+    },
+    {
+      imports:
+        'import { t as ormTypes, type Opt as Optional } from "@mikro-orm/postgresql";',
+      property: 'name: Optional<string> = "hello";',
+    },
+    {
+      imports:
+        'import type { t as ormTypes, Opt as Optional } from "@mikro-orm/postgresql";',
+      property: 'name: string = "hello";',
+    },
+    {
+      imports: 'import { "t" as t, type "Opt" as Opt } from "@mikro-orm/core";',
+      property: 'name: Opt<string> = "hello";',
+    },
+    {
+      imports: 'import * as t from "@mikro-orm/core";',
+      property: "name!: string;",
+    },
+    {
+      imports: "const t = 1; const Property = 2; type Opt = boolean;",
+      property: 'name: string = "hello";',
+    },
+    { imports: "const Enum = 1;", property: "role!: Role;" },
+  ].map(({ imports, property }) => ({
+    name: `existing bindings: ${imports}`,
+    imports:
+      'import { Entity } from "@mikro-orm/decorators/legacy";\n' + imports,
+    property,
+  })),
+  {
+    name: "helpers and obsolete decorators from a driver",
+    imports:
+      'import { t, Entity, Property, type Opt, PostgreSqlDriver } from "@mikro-orm/postgresql";',
+    property: 'name: Opt<string> = "hello";',
+  },
+  {
+    name: "all driver bindings move to two destinations",
+    imports:
+      'import { t, Entity, /* keep driver comment */ Property, Opt } from "@mikro-orm/postgresql";',
+    property: 'name: Opt<string> = "hello";',
+  },
+  {
+    name: "existing decorator aliases",
+    imports:
+      'import { Entity, Property as Column, Enum as Choice } from "@mikro-orm/decorators/legacy"; import { t as types } from "@mikro-orm/core";',
+    property:
+      "@Column({ type: types.text }) name?: string; @Choice({ items: () => Role }) role?: Role;",
+  },
+  {
     name: "new Property and t imports",
     imports: 'import { Entity } from "@mikro-orm/decorators/legacy";',
     property: "name!: string;",
@@ -143,11 +242,48 @@ class Thing { ${property} }`;
     false,
   );
   expect(compileDiagnostics(result.output)).toEqual([]);
+  const fixed = ts.createSourceFile(
+    filename,
+    result.output,
+    ts.ScriptTarget.ES2023,
+    true,
+  );
+  for (const statement of fixed.statements) {
+    if (
+      !ts.isImportDeclaration(statement) ||
+      !ts.isStringLiteral(statement.moduleSpecifier)
+    )
+      continue;
+    const bindings = statement.importClause?.namedBindings;
+    if (!bindings || !ts.isNamedImports(bindings)) continue;
+    for (const binding of bindings.elements) {
+      if (["t", "Opt"].includes((binding.propertyName ?? binding.name).text)) {
+        expect(statement.moduleSpecifier.text).toBe("@mikro-orm/core");
+      }
+    }
+  }
+  if (imports.includes("keep driver comment"))
+    expect(result.output).toContain("/* keep driver comment */");
   if (imports.includes("preserve this comment")) {
     expect(result.output).toContain("/* preserve this comment */");
     expect(result.output).toContain("Enum as OrmEnum");
     expect(result.output).toContain("type Opt");
   }
+});
+
+it("avoids capturing a shadowed runtime helper", () => {
+  const code = `import { Entity } from "@mikro-orm/decorators/legacy";
+import { t } from "@mikro-orm/core";
+function makeEntity(t: number) {
+  @Entity() class Thing { name!: string; }
+  return Thing;
+}`;
+  const result = linter.verifyAndFix(code, config, { filename });
+  expect(result.messages).toEqual([]);
+  expect(compileDiagnostics(result.output)).toEqual([]);
+  expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
+    false,
+  );
 });
 
 it("preserves a default binding when migrating its named decorators", () => {
@@ -163,6 +299,9 @@ it("preserves a default binding when migrating its named decorators", () => {
   );
 });
 
+const sourceFiles = new Map<string, ts.SourceFile>();
+let previousProgram: ts.Program | undefined;
+
 function compileDiagnostics(code: string): string[] {
   const options: ts.CompilerOptions = {
     noEmit: true,
@@ -175,11 +314,17 @@ function compileDiagnostics(code: string): string[] {
   };
   const host = ts.createCompilerHost(options);
   const getSourceFile = host.getSourceFile.bind(host);
-  host.getSourceFile = (file, ...args) =>
-    file === filename
-      ? ts.createSourceFile(file, code, ts.ScriptTarget.ES2023, true)
-      : getSourceFile(file, ...args);
-  const program = ts.createProgram([filename], options, host);
+  host.getSourceFile = (file, ...args) => {
+    if (file === filename)
+      return ts.createSourceFile(file, code, ts.ScriptTarget.ES2023, true);
+    const cached = sourceFiles.get(file);
+    if (cached) return cached;
+    const source = getSourceFile(file, ...args);
+    if (source) sourceFiles.set(file, source);
+    return source;
+  };
+  const program = ts.createProgram([filename], options, host, previousProgram);
+  previousProgram = program;
   return ts
     .getPreEmitDiagnostics(program)
     .map((diagnostic) =>

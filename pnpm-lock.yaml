@@ -945,6 +945,9 @@ importers:
       '@mikro-orm/decorators':
         specifier: 7.2.0
         version: 7.2.0
+      '@mikro-orm/postgresql':
+        specifier: 7.2.0
+        version: 7.2.0
       '@nest-boot/tsconfig':
         specifier: workspace:^
         version: link:../tsconfig

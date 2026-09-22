@@ -34,7 +34,24 @@ const decorators = new Set([
   "Transactional",
 ]);
 
-/** Moves v6 decorator bindings before property fixes add v7 imports. @internal */
+const core = "@mikro-orm/core";
+const legacy = "@mikro-orm/decorators/legacy";
+const coreHelpers = new Set(["t", "Opt", "Ref", "Collection"]);
+const entryPoints = new Set([
+  core,
+  "@mikro-orm/sql",
+  "@mikro-orm/postgresql",
+  "@mikro-orm/mysql",
+  "@mikro-orm/mariadb",
+  "@mikro-orm/sqlite",
+  "@mikro-orm/better-sqlite",
+  "@mikro-orm/libsql",
+  "@mikro-orm/mssql",
+  "@mikro-orm/mongodb",
+  "@mikro-orm/pglite",
+]);
+
+/** Normalizes core helpers and legacy decorators before field fixes generate bindings. @internal */
 export function legacyDecoratorImports(source: Readonly<SourceCode>) {
   const bindingText = (specifier: TSESTree.ImportSpecifier) =>
     source.text.slice(specifier.range[0], specifier.imported.range[0]) +
@@ -46,29 +63,37 @@ export function legacyDecoratorImports(source: Readonly<SourceCode>) {
   return source.ast.body.flatMap((node) => {
     if (
       node.type !== AST_NODE_TYPES.ImportDeclaration ||
-      node.source.value !== "@mikro-orm/core"
+      !entryPoints.has(node.source.value)
     ) {
       return [];
     }
 
-    const moved = node.specifiers.filter(
-      (specifier): specifier is TSESTree.ImportSpecifier =>
-        specifier.type === AST_NODE_TYPES.ImportSpecifier &&
-        decorators.has(
-          specifier.imported.type === AST_NODE_TYPES.Identifier
-            ? specifier.imported.name
-            : specifier.imported.value,
-        ),
-    );
+    const destinations = new Map<string, TSESTree.ImportSpecifier[]>();
+    for (const specifier of node.specifiers) {
+      if (specifier.type !== AST_NODE_TYPES.ImportSpecifier) continue;
+      const name =
+        specifier.imported.type === AST_NODE_TYPES.Identifier
+          ? specifier.imported.name
+          : specifier.imported.value;
+      const target = decorators.has(name)
+        ? legacy
+        : coreHelpers.has(name)
+          ? core
+          : node.source.value;
+      if (target === node.source.value) continue;
+      const bindings = destinations.get(target) ?? [];
+      bindings.push(specifier);
+      destinations.set(target, bindings);
+    }
+    const moved = [...destinations.values()].flat();
     if (moved.length === 0) return [];
 
-    const legacySource = '"@mikro-orm/decorators/legacy"';
     let text = source.getText(node);
     const start = node.range[0];
-    if (moved.length === node.specifiers.length) {
+    if (moved.length === node.specifiers.length && destinations.size === 1) {
       text =
         text.slice(0, node.source.range[0] - start) +
-        legacySource +
+        JSON.stringify([...destinations.keys()][0]) +
         text.slice(node.source.range[1] - start);
       for (const specifier of moved.toReversed()) {
         text =
@@ -76,6 +101,20 @@ export function legacyDecoratorImports(source: Readonly<SourceCode>) {
           bindingText(specifier) +
           text.slice(specifier.range[1] - start);
       }
+    } else if (moved.length === node.specifiers.length) {
+      // Preserve comments between bindings when an import splits into two destinations.
+      text = source
+        .getCommentsInside(node)
+        .filter(
+          (comment) =>
+            !moved.some(
+              (item) =>
+                item.range[0] <= comment.range[0] &&
+                item.range[1] >= comment.range[1],
+            ),
+        )
+        .map((comment) => source.getText(comment))
+        .join("\n");
     } else {
       // Delete only bindings and redundant commas, retaining surrounding comments.
       const removed = new Set<TSESTree.Node>(moved);
@@ -96,8 +135,12 @@ export function legacyDecoratorImports(source: Readonly<SourceCode>) {
       for (const [from, to] of ranges.sort((a, b) => b[0] - a[0])) {
         text = text.slice(0, from - start) + text.slice(to - start);
       }
+    }
+    if (moved.length !== node.specifiers.length || destinations.size > 1) {
       const kind = node.importKind === "type" ? "type " : "";
-      text += `\nimport ${kind}{ ${moved.map(bindingText).join(", ")} } from ${legacySource};`;
+      for (const [target, bindings] of destinations) {
+        text += `\nimport ${kind}{ ${bindings.map(bindingText).join(", ")} } from ${JSON.stringify(target)};`;
+      }
     }
     return [{ node, text }];
   });

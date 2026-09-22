@@ -271,6 +271,7 @@ tester.run("entity-property-config-from-types", rule, {
         }
       `,
       output: /* typescript */ `
+        import { t } from "@mikro-orm/core";
         import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
         @Entity()
@@ -293,6 +294,7 @@ tester.run("entity-property-config-from-types", rule, {
         }
       `,
       output: /* typescript */ `
+        import { t } from "@mikro-orm/core";
         import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
         @Entity()
@@ -402,6 +404,7 @@ tester.run("entity-property-config-from-types", rule, {
         }
       `,
       output: /* typescript */ `
+        import { t } from "@mikro-orm/core";
         import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
         @Entity()
@@ -424,6 +427,7 @@ tester.run("entity-property-config-from-types", rule, {
         }
       `,
       output: /* typescript */ `
+        import { t } from "@mikro-orm/core";
         import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
         @Entity()
@@ -446,6 +450,7 @@ tester.run("entity-property-config-from-types", rule, {
         }
       `,
       output: /* typescript */ `
+        import { t } from "@mikro-orm/core";
         import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
         @Entity()
@@ -468,6 +473,7 @@ tester.run("entity-property-config-from-types", rule, {
         }
       `,
       output: /* typescript */ `
+        import { t } from "@mikro-orm/core";
         import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
         @Entity()
@@ -494,7 +500,7 @@ class User {
 }`,
       errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
     },
-    // Aliased Property imports should not suppress the unaliased runtime import
+    // Reuse existing decorator aliases in generated code
     {
       code: /* typescript */ `import { Entity, Property as MikroProperty } from "@mikro-orm/decorators/legacy";
 @Entity()
@@ -502,10 +508,10 @@ class User {
   name!: string;
 }`,
       output: /* typescript */ `import { t } from "@mikro-orm/core";
-import { Entity, Property as MikroProperty, Property } from "@mikro-orm/decorators/legacy";
+import { Entity, Property as MikroProperty } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
-  @Property({ type: t.string })
+  @MikroProperty({ type: t.string })
   name!: string;
 }`,
       errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
@@ -518,7 +524,8 @@ class User {
   @Property({ type: t.string })
   metadata!: Record<string, unknown>;
 }`,
-      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
+      output: /* typescript */ `import { t } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: t.json })
@@ -534,7 +541,8 @@ class User {
   @Property()
   value!: string | number;
 }`,
-      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
+      output: /* typescript */ `import { t } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: t.string })
@@ -550,7 +558,8 @@ class User {
   @Property({ type: t.string })
   nickname!: string | undefined;
 }`,
-      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
+      output: /* typescript */ `import { t } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: t.string, nullable: true })
@@ -598,7 +607,8 @@ class User {
   @PrimaryKey()
   id!: number;
 }`,
-      output: /* typescript */ `import { Entity, PrimaryKey } from "@mikro-orm/decorators/legacy";
+      output: /* typescript */ `import { t } from "@mikro-orm/core";
+import { Entity, PrimaryKey } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @PrimaryKey({ type: t.integer })
@@ -614,7 +624,8 @@ class User {
   @EncryptedProperty({ type: t.float, length: 255 })
   secret!: string;
 }`,
-      output: /* typescript */ `import { Entity } from "@mikro-orm/decorators/legacy";
+      output: /* typescript */ `import { t } from "@mikro-orm/core";
+import { Entity } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @EncryptedProperty({ type: t.string, length: 255 })
@@ -665,7 +676,8 @@ class User {
   @Property({ type: t.string })
   tags!: string[];
 }`,
-      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
+      output: /* typescript */ `import { t } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: t.array })
@@ -681,7 +693,8 @@ class User {
   @Property({ type: t.array })
   flags!: boolean[];
 }`,
-      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
+      output: /* typescript */ `import { t } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: t.json })
@@ -697,7 +710,8 @@ class User {
   @Property({ type: t.array })
   records!: Record<string, unknown>[];
 }`,
-      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
+      output: /* typescript */ `import { t } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: t.json })
@@ -760,7 +774,7 @@ class User {
 }`,
       errors: [{ messageId: "useEnumDecorator" }],
     },
-    // Aliased Enum imports should not suppress the unaliased runtime import
+    // Reuse existing Enum aliases in generated code
     {
       code: /* typescript */ `import { Entity, Enum as MikroEnum } from "@mikro-orm/decorators/legacy";
 enum Role {
@@ -771,14 +785,14 @@ enum Role {
 class User {
   role!: Role;
 }`,
-      output: /* typescript */ `import { Entity, Enum as MikroEnum, Enum } from "@mikro-orm/decorators/legacy";
+      output: /* typescript */ `import { Entity, Enum as MikroEnum } from "@mikro-orm/decorators/legacy";
 enum Role {
   Admin,
   User
 }
 @Entity()
 class User {
-  @Enum({ items: () => Role })
+  @MikroEnum({ items: () => Role })
   role!: Role;
 }`,
       errors: [{ messageId: "useEnumDecorator" }],
@@ -786,7 +800,7 @@ class User {
     // Enum imports should be value imports even when @mikro-orm/core is type-only
     {
       code: /* typescript */ `import type { Ref } from "@mikro-orm/core";
-import { Entity } from "@mikro-orm/postgresql";
+import { Entity } from "@mikro-orm/decorators/legacy";
 enum Role {
   Admin,
   User
@@ -795,9 +809,8 @@ enum Role {
 class User {
   role!: Role;
 }`,
-      output: /* typescript */ `import { Enum } from "@mikro-orm/decorators/legacy";
-import type { Ref } from "@mikro-orm/core";
-import { Entity } from "@mikro-orm/postgresql";
+      output: /* typescript */ `import type { Ref } from "@mikro-orm/core";
+import { Entity, Enum } from "@mikro-orm/decorators/legacy";
 enum Role {
   Admin,
   User
@@ -865,7 +878,8 @@ class User {
   @Property(() => String)
   name!: string;
 }`,
-      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
+      output: /* typescript */ `import { t } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: t.string })
@@ -882,14 +896,14 @@ class User {
   enabled = true;
 }`,
       output: [
-        /* typescript */ `import { Opt } from "@mikro-orm/core";
+        /* typescript */ `import { t } from "@mikro-orm/core";
 import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
-  @Property()
-  enabled: Opt<boolean> = true;
+  @Property({ type: t.boolean })
+  enabled = true;
 }`,
-        /* typescript */ `import { Opt } from "@mikro-orm/core";
+        /* typescript */ `import { t, Opt } from "@mikro-orm/core";
 import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
@@ -911,14 +925,14 @@ class User {
   score = 1;
 }`,
       output: [
-        /* typescript */ `import { Opt } from "@mikro-orm/core";
+        /* typescript */ `import { t } from "@mikro-orm/core";
 import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
-  @Property()
-  score: Opt<number> = 1;
+  @Property({ type: t.float })
+  score = 1;
 }`,
-        /* typescript */ `import { Opt } from "@mikro-orm/core";
+        /* typescript */ `import { t, Opt } from "@mikro-orm/core";
 import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
@@ -940,14 +954,14 @@ class User {
   title = "hello";
 }`,
       output: [
-        /* typescript */ `import { Opt } from "@mikro-orm/core";
+        /* typescript */ `import { t } from "@mikro-orm/core";
 import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
-  @Property()
-  title: Opt<string> = "hello";
+  @Property({ type: t.string })
+  title = "hello";
 }`,
-        /* typescript */ `import { Opt } from "@mikro-orm/core";
+        /* typescript */ `import { t, Opt } from "@mikro-orm/core";
 import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
@@ -962,22 +976,22 @@ class User {
     },
     // Opt import should be inserted when there is no @mikro-orm/core import
     {
-      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/postgresql";
+      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property()
   enabled: boolean = true;
 }`,
       output: [
-        /* typescript */ `import { Opt } from "@mikro-orm/core";
-import { Entity, Property } from "@mikro-orm/postgresql";
+        /* typescript */ `import { t } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
-  @Property()
-  enabled: Opt<boolean> = true;
+  @Property({ type: t.boolean })
+  enabled: boolean = true;
 }`,
-        /* typescript */ `import { Opt } from "@mikro-orm/core";
-import { Entity, Property } from "@mikro-orm/postgresql";
+        /* typescript */ `import { t, Opt } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: t.boolean })
@@ -1014,7 +1028,8 @@ class User {
   @Property({ type: new BigIntType('string') })
   score!: number;
 }`,
-      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
+      output: /* typescript */ `import { t } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: t.float })
@@ -1030,7 +1045,8 @@ class User {
   @Property({ type: new BigIntType('number') })
   externalId!: string;
 }`,
-      output: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
+      output: /* typescript */ `import { t } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
   @Property({ type: t.string })
