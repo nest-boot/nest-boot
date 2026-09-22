@@ -29,6 +29,25 @@ const config: Linter.Config[] = [
 
 const cases = [
   {
+    name: "type-only property reference with a runtime alias available",
+    imports:
+      'import { Entity, Property as Column, type Property } from "@mikro-orm/decorators/legacy"; import { t } from "@mikro-orm/core";',
+    property: "@Property({ type: t.string }) name!: string;",
+  },
+  {
+    name: "type-only helper reference with a runtime alias available",
+    imports:
+      'import { Entity, Property } from "@mikro-orm/decorators/legacy"; import { t as types, type t } from "@mikro-orm/core";',
+    property: "@Property({ type: t.uuid }) name!: string;",
+  },
+  {
+    name: "type-only enum reference with a runtime alias available",
+    imports:
+      'import { Entity, Enum as Choice, type Enum } from "@mikro-orm/decorators/legacy";',
+    property: "@Enum({ items: () => Role }) role!: Role;",
+  },
+
+  {
     name: "missing Opt reference reuses an imported alias",
     imports:
       'import { Entity } from "@mikro-orm/decorators/legacy"; import type { Opt as Optional } from "@mikro-orm/core";',
@@ -316,7 +335,7 @@ function shadow(types: number) {}
 @Entity() class Thing { @Property({ type: types.uuid }) id?: string; }`;
   const result = linter.verifyAndFix(code, config, { filename });
   expect(result.messages).toEqual([]);
-  expect(result.output).toContain("type: t.uuid");
+  expect(result.output).toContain("type: types.uuid");
   expect(compileDiagnostics(result.output)).toEqual([]);
   expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
     false,
@@ -353,6 +372,26 @@ function makeEntity(t: number) {
   expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
     false,
   );
+});
+
+it.each([
+  {
+    name: "runtime alias beside a type-only canonical import",
+    code: 'import { Entity, Property as Column } from "@mikro-orm/decorators/legacy"; import type { Property } from "@mikro-orm/decorators/legacy"; import { t as types } from "@mikro-orm/core"; import type { t } from "@mikro-orm/core"; @Entity() class Thing { @Column({ type: types.string }) name!: string; }',
+  },
+  {
+    name: "unrelated nested bindings",
+    code: 'import { Entity, Property } from "@mikro-orm/decorators/legacy"; import { t } from "@mikro-orm/core"; @Entity() class Thing { @Property({ type: t.string }) name!: string; method(t: string, Property: string) { return t + Property; } }',
+  },
+  {
+    name: "relative custom decorator import",
+    code: 'import { Entity } from "@mikro-orm/decorators/legacy"; import { t } from "@mikro-orm/core"; import { EncryptedProperty as Secret } from "../mikro-orm-crypt/dist/index.js"; @Entity() class Thing { @Secret({ type: t.string }) name!: string; }',
+  },
+])("preserves $name", ({ code }) => {
+  const result = linter.verifyAndFix(code, config, { filename });
+  expect(result.messages).toEqual([]);
+  expect(result.output).toBe(code);
+  expect(compileDiagnostics(result.output)).toEqual([]);
 });
 
 it("preserves a default binding when migrating its named decorators", () => {

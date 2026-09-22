@@ -23,10 +23,23 @@ function importsFrom(source: Readonly<SourceCode>, modules: Modules) {
   );
 }
 
+function visibleScopes(source: Readonly<SourceCode>, location: TSESTree.Node) {
+  const scopes = [];
+  let scope: Scope.Scope | null = source.getScope(location);
+  if (location === source.ast)
+    scope =
+      source.scopeManager?.scopes.find(
+        (candidate) => candidate.type === Scope.ScopeType.module,
+      ) ?? scope;
+  for (; scope; scope = scope.upper) scopes.push(scope);
+  return scopes;
+}
+
 function findImport(
   source: Readonly<SourceCode>,
   modules: Modules,
   name: string,
+  location: TSESTree.Node,
 ):
   | {
       declaration: TSESTree.ImportDeclaration;
@@ -37,23 +50,26 @@ function findImport(
     declaration.specifiers.flatMap((specifier) =>
       specifier.type === AST_NODE_TYPES.ImportSpecifier &&
       importedName(specifier) === name &&
-      !(source.scopeManager?.scopes ?? []).some((scope) =>
-        scope.variables.some(
-          (variable) =>
-            variable.name === specifier.local.name &&
-            variable.defs.some(
-              (definition) =>
-                definition.type !== Scope.DefinitionType.ImportBinding,
-            ),
-        ),
-      )
+      visibleScopes(source, location)
+        .map((scope) => scope.set.get(specifier.local.name))
+        .find((variable) => !!variable)
+        ?.defs.some(
+          (definition) =>
+            definition.type === Scope.DefinitionType.ImportBinding &&
+            definition.node === specifier,
+        )
         ? [{ declaration, specifier }]
         : [],
     ),
   );
+  const values = bindings.filter(
+    ({ declaration, specifier }) =>
+      declaration.importKind !== "type" && specifier.importKind !== "type",
+  );
+  const preferred = values.length ? values : bindings;
   return (
-    bindings.find(({ specifier }) => specifier.local.name === name) ??
-    bindings[0]
+    preferred.find(({ specifier }) => specifier.local.name === name) ??
+    preferred[0]
   );
 }
 
@@ -62,11 +78,17 @@ export function namedImportBinding(
   source: Readonly<SourceCode>,
   modules: Modules,
   name: string,
+  location: TSESTree.Node = source.ast,
 ): string {
-  const existing = findImport(source, modules, name);
+  const existing = findImport(source, modules, name, location);
   if (existing) return existing.specifier.local.name;
   const occupied = new Set(
-    (source.scopeManager?.scopes ?? []).flatMap((scope) =>
+    [
+      ...new Set([
+        ...visibleScopes(source, location),
+        ...visibleScopes(source, source.ast),
+      ]),
+    ].flatMap((scope) =>
       scope.variables
         .filter((variable) => variable.defs.length > 0)
         .map((variable) => variable.name),
@@ -128,14 +150,36 @@ export function importedBindingName(
   return null;
 }
 
+/** Whether the actual reference points to an erased import. @internal */
+export function isTypeOnlyImportReference(
+  source: Readonly<SourceCode>,
+  node: TSESTree.Node,
+): boolean {
+  const identifier =
+    node.type === AST_NODE_TYPES.MemberExpression ? node.object : node;
+  const variable = (source.scopeManager?.scopes ?? [])
+    .flatMap((scope) => scope.references)
+    .find((reference) => reference.identifier === identifier)?.resolved;
+  return (
+    variable?.defs.some(
+      (definition) =>
+        definition.type === Scope.DefinitionType.ImportBinding &&
+        (definition.parent.importKind === "type" ||
+          (definition.node.type === AST_NODE_TYPES.ImportSpecifier &&
+            definition.node.importKind === "type")),
+    ) ?? false
+  );
+}
+
 /** Checks the binding used by generated code, including aliases and type-only imports. @internal */
 export function hasNamedImport(
   source: Readonly<SourceCode>,
   modules: Modules,
   name: string,
   valueOnly = true,
+  location: TSESTree.Node = source.ast,
 ): boolean {
-  const existing = findImport(source, modules, name);
+  const existing = findImport(source, modules, name, location);
   return (
     !!existing &&
     (!valueOnly ||
@@ -150,6 +194,7 @@ export function namedImportEdits(
   modules: Modules,
   names: readonly string[],
   valueImport = true,
+  location: TSESTree.Node = source.ast,
 ): RuleFix[] {
   const imports = importsFrom(source, modules);
   const missing: string[] = [];
@@ -157,9 +202,9 @@ export function namedImportEdits(
   const promotions = new Map<TSESTree.ImportDeclaration, Set<string>>();
 
   for (const name of new Set(names)) {
-    const existing = findImport(source, modules, name);
+    const existing = findImport(source, modules, name, location);
     if (!existing) {
-      const local = namedImportBinding(source, modules, name);
+      const local = namedImportBinding(source, modules, name, location);
       missing.push(local === name ? name : `${name} as ${local}`);
     } else if (valueImport) {
       const promoted =

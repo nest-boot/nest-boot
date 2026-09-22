@@ -10,6 +10,7 @@ import { createRule } from "../../utils/createRule.js";
 import {
   hasNamedImport,
   importedBindingName,
+  isTypeOnlyImportReference,
   namedImportBinding,
   namedImportEdits,
 } from "../../utils/named-imports.js";
@@ -67,6 +68,7 @@ export default createRule<
   defaultOptions: [],
   create(context) {
     const source = context.sourceCode;
+    let importLocation: TSESTree.Node = source.ast;
     const legacyImports = legacyDecoratorImports(source);
     if (legacyImports.length > 0) {
       // Let ESLint reparse migrated imports before generating property fixes.
@@ -91,12 +93,31 @@ export default createRule<
       "@nest-boot/mikro-orm-crypt",
       "@nest-boot/mikro-orm-hash",
     ];
-    const decoratorName = (local: TSESTree.Node) =>
-      importedBindingName(source, decoratorModules, local);
+    const customDecoratorModules = source.ast.body.flatMap((node) =>
+      node.type === AST_NODE_TYPES.ImportDeclaration ? [node.source.value] : [],
+    );
+    const decoratorName = (local: TSESTree.Node) => {
+      const known = importedBindingName(source, decoratorModules, local);
+      if (known !== null) return known;
+      const custom = importedBindingName(source, customDecoratorModules, local);
+      return custom === "EncryptedProperty" || custom === "HashedProperty"
+        ? custom
+        : null;
+    };
+    const importEdits = (
+      modules: string | readonly string[],
+      names: readonly string[],
+      value = true,
+    ) => namedImportEdits(source, modules, names, value, importLocation);
+    const hasImport = (
+      modules: string | readonly string[],
+      name: string,
+      value = true,
+    ) => hasNamedImport(source, modules, name, value, importLocation);
     const coreBinding = (name: string) =>
-      namedImportBinding(source, coreModule, name);
+      namedImportBinding(source, coreModule, name, importLocation);
     const decoratorBinding = (name: string) =>
-      namedImportBinding(source, decoratorsModule, name);
+      namedImportBinding(source, decoratorsModule, name, importLocation);
     const parserServices = ESLintUtils.getParserServices(context);
     const checker = parserServices.program.getTypeChecker();
 
@@ -311,18 +332,17 @@ export default createRule<
       );
     };
 
-    const hasOptImport = () => hasNamedImport(source, coreModule, "Opt", false);
-    const hasEnumImport = () =>
-      hasNamedImport(source, decoratorsModule, "Enum");
+    const hasOptImport = () => hasImport(coreModule, "Opt", false);
+    const hasEnumImport = () => hasImport(decoratorsModule, "Enum");
 
     const addOptImport = (): RuleFix[] =>
-      namedImportEdits(source, coreModule, ["Opt"], false);
+      importEdits(coreModule, ["Opt"], false);
     const addEnumImport = (): RuleFix[] =>
-      namedImportEdits(source, decoratorsModule, ["Enum"]);
+      importEdits(decoratorsModule, ["Enum"]);
     const addPropertyDecoratorImports = (info: TypeInfo): RuleFix[] => [
-      ...namedImportEdits(source, decoratorsModule, ["Property"]),
+      ...importEdits(decoratorsModule, ["Property"]),
       ...(info.propertyType?.startsWith("t.")
-        ? namedImportEdits(source, coreModule, ["t"])
+        ? importEdits(coreModule, ["t"])
         : []),
     ];
 
@@ -693,6 +713,7 @@ export default createRule<
       type: string | null;
       nullable: boolean;
       otherProps: { key: string; value: string }[];
+      typeReference?: TSESTree.Node;
     } => {
       const callExpr = decorator.expression;
       if (
@@ -708,6 +729,7 @@ export default createRule<
       }
 
       let type: string | null = null;
+      let typeReference: TSESTree.Node | undefined;
       let nullable = false;
       const otherProps: { key: string; value: string }[] = [];
 
@@ -725,6 +747,7 @@ export default createRule<
             coreName(prop.value.object) === "t"
           ) {
             type = `t.${prop.value.property.name}`;
+            typeReference = prop.value.object;
           }
         } else if (prop.key.name === "nullable") {
           if (
@@ -742,7 +765,7 @@ export default createRule<
         }
       }
 
-      return { type, nullable, otherProps };
+      return { type, nullable, otherProps, typeReference };
     };
 
     const parseEnumDecorator = (
@@ -828,6 +851,7 @@ export default createRule<
     return {
       ClassDeclaration(node) {
         if (!isEntityClass(node)) return;
+        importLocation = node;
 
         // First check if Opt is used but not imported
         checkOptUsageWithoutImport(node);
@@ -909,23 +933,20 @@ export default createRule<
           ].filter(
             (name): name is string =>
               !!name &&
-              hasNamedImport(source, decoratorModules, name, false) &&
-              !hasNamedImport(source, decoratorModules, name),
+              hasImport(decoratorModules, name, false) &&
+              !hasImport(decoratorModules, name),
           );
-          const importPromotions = namedImportEdits(
-            source,
+          const importPromotions = importEdits(
             decoratorModules,
             typeOnlyDecorators,
           );
           if (
             propertyDecorator &&
             parsePropertyDecorator(propertyDecorator).type?.startsWith("t.") &&
-            hasNamedImport(source, coreModule, "t", false) &&
-            !hasNamedImport(source, coreModule, "t")
+            hasImport(coreModule, "t", false) &&
+            !hasImport(coreModule, "t")
           ) {
-            importPromotions.push(
-              ...namedImportEdits(source, coreModule, ["t"]),
-            );
+            importPromotions.push(...importEdits(coreModule, ["t"]));
           }
           if (importPromotions.length > 0) {
             context.report({
@@ -1034,7 +1055,15 @@ export default createRule<
             const enumConfig = parseEnumDecorator(enumDecorator);
 
             // Check if nullable configuration matches the TypeScript type
-            if (enumConfig.nullable !== typeInfo.isNullable) {
+            if (
+              enumConfig.nullable !== typeInfo.isNullable ||
+              (enumDecorator.expression.type ===
+                AST_NODE_TYPES.CallExpression &&
+                isTypeOnlyImportReference(
+                  source,
+                  enumDecorator.expression.callee,
+                ))
+            ) {
               const expectedEnumText = buildEnumDecorator(typeInfo);
               context.report({
                 node: enumDecorator,
@@ -1125,7 +1154,15 @@ export default createRule<
             expectedType = "t.integer";
           }
 
-          let needReport = false;
+          let needReport =
+            (propertyDecorator.expression.type ===
+              AST_NODE_TYPES.CallExpression &&
+              isTypeOnlyImportReference(
+                source,
+                propertyDecorator.expression.callee,
+              )) ||
+            (currentConfig.typeReference !== undefined &&
+              isTypeOnlyImportReference(source, currentConfig.typeReference));
 
           // Check type configuration
           if (expectedType && currentConfig.type !== expectedType) {
@@ -1191,13 +1228,9 @@ export default createRule<
                 ...applyFixes(fixer, fixes),
                 ...(currentDecoratorName !== null &&
                 ["Property", "PrimaryKey"].includes(currentDecoratorName)
-                  ? namedImportEdits(source, decoratorsModule, [
-                      currentDecoratorName,
-                    ])
+                  ? importEdits(decoratorsModule, [currentDecoratorName])
                   : []),
-                ...(usesTypes
-                  ? namedImportEdits(source, coreModule, ["t"])
-                  : []),
+                ...(usesTypes ? importEdits(coreModule, ["t"]) : []),
               ];
             },
           });
