@@ -9,12 +9,12 @@ import {
 import { zodValidator } from "@tanstack/zod-adapter";
 import dayjs from "dayjs";
 import { t } from "i18next";
-import { toast } from "sonner";
 import z from "zod";
 import { isEmpty, pick } from "lodash";
 import { useCurrentMemberContext } from "../contexts/current-member-context";
 import { InviteMemberDialog } from "./components/invite-member-dialog";
 import type { DataFilterItemProps } from "@/components/thread-ui/data-filter";
+import { toast } from "@/components/thread-ui/toast";
 import { useAbility } from "@/contexts/ability-context";
 import { Button } from "@/components/thread-ui/button";
 import { DataFilter } from "@/components/thread-ui/data-filter";
@@ -320,7 +320,7 @@ function MembersComponent() {
   const handleCopyInvitation = async (invitationId: string) => {
     const link = `${window.location.origin}/invite?invitationId=${invitationId}`;
     await navigator.clipboard.writeText(link);
-    toast.success(t("member:invite.link_copied"));
+    toast.add({ type: "success", title: t("member:invite.link_copied") });
   };
 
   const handleCancelInvitation = async (invitationId: string) => {
@@ -362,11 +362,11 @@ function MembersComponent() {
         },
       });
 
-      toast.success(t("member:toast.deleted_success"));
+      toast.add({ type: "success", title: t("member:toast.deleted_success") });
       refetch();
     } catch (err) {
       if (err instanceof Error) {
-        toast.error(err.message);
+        toast.add({ type: "error", title: err.message });
       }
     }
   };
@@ -398,11 +398,13 @@ function MembersComponent() {
         },
       });
 
-      toast.success(
-        newStatus === MemberStatus.DISABLED
-          ? t("member:toast.disabled_success")
-          : t("member:toast.enabled_success"),
-      );
+      toast.add({
+        type: "success",
+        title:
+          newStatus === MemberStatus.DISABLED
+            ? t("member:toast.disabled_success")
+            : t("member:toast.enabled_success"),
+      });
       if (
         memberId === currentMember.id &&
         newStatus === MemberStatus.DISABLED
@@ -413,7 +415,7 @@ function MembersComponent() {
       await refetch();
     } catch (err) {
       if (err instanceof Error) {
-        toast.error(err.message);
+        toast.add({ type: "error", title: err.message });
       }
     }
   };

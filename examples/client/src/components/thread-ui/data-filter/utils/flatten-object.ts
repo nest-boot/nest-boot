@@ -1,4 +1,4 @@
-import { forEach, isPlainObject, transform } from "lodash";
+import { forEach, isPlainObject, transform } from "lodash-es";
 
 type DataFilterRecord = Record<string, any>;
 

@@ -3,9 +3,9 @@ import { useMutation, useQuery } from "@apollo/client/react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { MonitorSmartphone } from "lucide-react";
 import { t } from "i18next";
-import { toast } from "sonner";
 import { z } from "zod";
 import type { FormEvent } from "react";
+import { toast } from "@/components/thread-ui/toast";
 
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import { Button } from "@/components/thread-ui/button";
@@ -211,13 +211,18 @@ function UserSecurityComponent() {
         throw new Error(t("user:security.sessions.toast.revoke_failed"));
       }
       await refetch();
-      toast.success(t("user:security.sessions.toast.revoked"));
+      toast.add({
+        type: "success",
+        title: t("user:security.sessions.toast.revoked"),
+      });
     } catch (cause) {
-      toast.error(
-        cause instanceof Error
-          ? cause.message
-          : t("user:security.sessions.toast.revoke_failed"),
-      );
+      toast.add({
+        type: "error",
+        title:
+          cause instanceof Error
+            ? cause.message
+            : t("user:security.sessions.toast.revoke_failed"),
+      });
     } finally {
       setRevokingSessionId(undefined);
     }
@@ -231,13 +236,18 @@ function UserSecurityComponent() {
         throw new Error(t("user:security.sessions.toast.revoke_failed"));
       }
       await refetch();
-      toast.success(t("user:security.sessions.toast.others_revoked"));
+      toast.add({
+        type: "success",
+        title: t("user:security.sessions.toast.others_revoked"),
+      });
     } catch (cause) {
-      toast.error(
-        cause instanceof Error
-          ? cause.message
-          : t("user:security.sessions.toast.revoke_failed"),
-      );
+      toast.add({
+        type: "error",
+        title:
+          cause instanceof Error
+            ? cause.message
+            : t("user:security.sessions.toast.revoke_failed"),
+      });
     } finally {
       setRevokingOthers(false);
     }
@@ -277,14 +287,14 @@ function UserSecurityComponent() {
       setNewPassword("");
       setConfirmPassword("");
       await refetch({ after: undefined });
-      toast.success(t("user:security.toast.updated"));
+      toast.add({ type: "success", title: t("user:security.toast.updated") });
     } catch (cause) {
       const message =
         cause instanceof Error
           ? cause.message
           : t("user:security.toast.update_failed");
       setError(message);
-      toast.error(message);
+      toast.add({ type: "error", title: message });
     } finally {
       setLoading(false);
     }
@@ -307,13 +317,18 @@ function UserSecurityComponent() {
         throw new Error(t("user:security.accounts.unlink_failed"));
       }
       await refetchAccounts();
-      toast.success(t("user:security.accounts.unlinked"));
+      toast.add({
+        type: "success",
+        title: t("user:security.accounts.unlinked"),
+      });
     } catch (cause) {
-      toast.error(
-        cause instanceof Error
-          ? cause.message
-          : t("user:security.accounts.unlink_failed"),
-      );
+      toast.add({
+        type: "error",
+        title:
+          cause instanceof Error
+            ? cause.message
+            : t("user:security.accounts.unlink_failed"),
+      });
     } finally {
       setUnlinkingAccountId(undefined);
     }
@@ -336,11 +351,13 @@ function UserSecurityComponent() {
       if (!url) throw new Error(t("user:security.accounts.link_failed"));
       window.location.assign(url);
     } catch (cause) {
-      toast.error(
-        cause instanceof Error
-          ? cause.message
-          : t("user:security.accounts.link_failed"),
-      );
+      toast.add({
+        type: "error",
+        title:
+          cause instanceof Error
+            ? cause.message
+            : t("user:security.accounts.link_failed"),
+      });
       setLinkingProviderId(undefined);
     }
   };
@@ -368,13 +385,15 @@ function UserSecurityComponent() {
       }
       await client.clearStore();
       await navigate({ to: "/auth/login", replace: true });
-      toast.success(t("user:security.delete.success"));
+      toast.add({ type: "success", title: t("user:security.delete.success") });
     } catch (cause) {
-      toast.error(
-        cause instanceof Error
-          ? cause.message
-          : t("user:security.delete.failed"),
-      );
+      toast.add({
+        type: "error",
+        title:
+          cause instanceof Error
+            ? cause.message
+            : t("user:security.delete.failed"),
+      });
     } finally {
       setDeletingUser(false);
     }

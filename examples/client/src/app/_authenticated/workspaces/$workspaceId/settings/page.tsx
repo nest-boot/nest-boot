@@ -6,9 +6,9 @@ import {
   useRouter,
 } from "@tanstack/react-router";
 import { t } from "i18next";
-import { toast } from "sonner";
-
 import { useCurrentWorkspaceContext } from "../contexts/current-workspace-context";
+import { toast } from "@/components/thread-ui/toast";
+
 import { useAbility } from "@/contexts/ability-context";
 
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
@@ -108,11 +108,13 @@ function SettingsComponent() {
         });
         await router.invalidate();
         form.reset({ name: value.name.trim() });
-        toast.success("保存成功");
+        toast.add({ type: "success", title: "保存成功" });
       } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : "保存失败，请稍后重试",
-        );
+        toast.add({
+          type: "error",
+          title:
+            error instanceof Error ? error.message : "保存失败，请稍后重试",
+        });
       }
     },
   });
@@ -132,11 +134,12 @@ function SettingsComponent() {
         to: "/workspaces",
         reloadDocument: true,
       });
-      toast.success("工作区已成功删除");
+      toast.add({ type: "success", title: "工作区已成功删除" });
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "删除失败，请稍后重试",
-      );
+      toast.add({
+        type: "error",
+        title: error instanceof Error ? error.message : "删除失败，请稍后重试",
+      });
     }
   };
 
@@ -153,13 +156,18 @@ function SettingsComponent() {
     try {
       await leaveWorkspace();
       await navigate({ to: "/user/workspaces" });
-      toast.success(t("workspace:settings.leave.success"));
+      toast.add({
+        type: "success",
+        title: t("workspace:settings.leave.success"),
+      });
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t("workspace:settings.leave.failed"),
-      );
+      toast.add({
+        type: "error",
+        title:
+          error instanceof Error
+            ? error.message
+            : t("workspace:settings.leave.failed"),
+      });
     }
   };
 

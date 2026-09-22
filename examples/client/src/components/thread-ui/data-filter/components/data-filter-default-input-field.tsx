@@ -59,6 +59,7 @@ export const DataFilterDefaultInputField: FC<
   return (
     <div className="px-2 pb-2">
       <Input
+        aria-label={item.label}
         placeholder={item.placeholder}
         value={draftValue}
         onBlur={commitValue}

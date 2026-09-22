@@ -349,11 +349,6 @@ export function DataTable<TData extends RowData, TValue = unknown>({
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
                       key={cell.id}
-                      onClick={
-                        cell.column.id === "$actions"
-                          ? (event) => event.stopPropagation()
-                          : undefined
-                      }
                       className={cn(
                         "bg-background group-hover:bg-muted whitespace-normal",
                         getCommonPinningClassNames<TData>(cell.column),
@@ -362,6 +357,11 @@ export function DataTable<TData extends RowData, TValue = unknown>({
                       style={{
                         ...getCommonPinningStyles<TData>(cell.column),
                       }}
+                      onClick={
+                        cell.column.id === "$actions"
+                          ? (event) => event.stopPropagation()
+                          : undefined
+                      }
                     >
                       {flexRender(
                         cell.column.columnDef.cell,

@@ -153,7 +153,10 @@ test.describe("email authentication", () => {
     await expect(page.getByTestId("auth-name-input")).toHaveCount(0);
   });
 
-  test("starts configured social login through GraphQL", async ({ page }) => {
+  test("starts configured social login through GraphQL", async ({
+    page,
+    baseURL,
+  }) => {
     await page.route("**/api/graphql", async (route) => {
       const request = route.request();
       const body = request.postDataJSON() as {
@@ -173,9 +176,11 @@ test.describe("email authentication", () => {
       }
 
       expect(body.variables?.input).toMatchObject({
-        callbackURL: "http://127.0.0.1:3100/user/security",
-        errorCallbackURL:
-          "http://127.0.0.1:3100/auth/login?redirect=%2Fuser%2Fsecurity",
+        callbackURL: new URL("/user/security", baseURL).href,
+        errorCallbackURL: new URL(
+          "/auth/login?redirect=%2Fuser%2Fsecurity",
+          baseURL,
+        ).href,
         provider: "github",
       });
       await route.fulfill({
@@ -184,7 +189,7 @@ test.describe("email authentication", () => {
           data: {
             signInSocial: {
               redirect: true,
-              url: "http://127.0.0.1:3100/auth/forgot-password",
+              url: new URL("/auth/forgot-password", baseURL).href,
             },
           },
         }),

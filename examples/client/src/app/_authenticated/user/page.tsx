@@ -4,10 +4,10 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { t } from "i18next";
 import { CircleX, MailCheck } from "lucide-react";
-import { toast } from "sonner";
 import { z } from "zod";
 
 import { useCurrentUserContext } from "../contexts/current-user-context";
+import { toast } from "@/components/thread-ui/toast";
 import { Button } from "@/components/thread-ui/button";
 import {
   Page,
@@ -83,13 +83,15 @@ function UserComponent() {
         await updateUser({ variables: { input: { name } } });
         await router.invalidate();
         form.reset({ name });
-        toast.success(t("user:profile.toast.updated"));
+        toast.add({ type: "success", title: t("user:profile.toast.updated") });
       } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : t("user:profile.toast.update_failed"),
-        );
+        toast.add({
+          type: "error",
+          title:
+            error instanceof Error
+              ? error.message
+              : t("user:profile.toast.update_failed"),
+        });
       }
     },
   });
@@ -120,13 +122,18 @@ function UserComponent() {
         }
 
         emailForm.reset();
-        toast.success(t("user:email.toast.confirmation_sent"));
+        toast.add({
+          type: "success",
+          title: t("user:email.toast.confirmation_sent"),
+        });
       } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : t("user:email.toast.request_failed"),
-        );
+        toast.add({
+          type: "error",
+          title:
+            error instanceof Error
+              ? error.message
+              : t("user:email.toast.request_failed"),
+        });
       }
     },
   });

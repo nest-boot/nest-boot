@@ -3,9 +3,17 @@
 import { cva } from "class-variance-authority";
 import { ArrowLeftIcon, MoreHorizontalIcon } from "lucide-react";
 import { Children, isValidElement } from "react";
-import type { ComponentProps, FC, ReactElement, ReactNode } from "react";
+import { useTranslation } from "react-i18next";
+import type {
+  AriaAttributes,
+  ComponentProps,
+  FC,
+  ReactElement,
+  ReactNode,
+} from "react";
 import type { VariantProps } from "class-variance-authority";
 
+import type { DataAttributes } from "@/components/thread-ui/common";
 import { Button } from "@/components/thread-ui/button";
 import {
   DropdownMenu,
@@ -22,7 +30,7 @@ const pageVariants = cva(
       variant: {
         full: "w-full",
         default: "max-w-5xl",
-        compact: "max-w-xl",
+        compact: "max-w-2xl",
       },
     },
     defaultVariants: {
@@ -55,19 +63,28 @@ export const PageHeader: FC<PageHeaderProps> = ({ className, ...props }) => {
   );
 };
 
-export interface PageActionProps extends ComponentProps<typeof Button> {
-  loading?: boolean;
-}
+export type PageActionProps = Omit<
+  ComponentProps<typeof Button>,
+  "size" | "variant" | "className"
+> & {
+  className?: string;
+};
 
 export type PageBackActionProps = PageActionProps;
 
 export const PageBackAction: FC<PageBackActionProps> = ({
   children,
   className,
+  "aria-label": ariaLabel,
   ...props
 }) => {
+  const { t } = useTranslation("thread-ui");
+
   return (
     <Button
+      aria-label={
+        ariaLabel ?? (children == null ? t("page.back", "Back") : undefined)
+      }
       {...props}
       data-slot="page-back-action"
       size="icon"
@@ -77,12 +94,7 @@ export const PageBackAction: FC<PageBackActionProps> = ({
         className,
       )}
     >
-      {children ?? (
-        <>
-          <ArrowLeftIcon />
-          <span className="sr-only">Back</span>
-        </>
-      )}
+      {children ?? <ArrowLeftIcon />}
     </Button>
   );
 };
@@ -103,16 +115,17 @@ export const PagePrimaryAction: FC<PagePrimaryActionProps> = ({
   );
 };
 
-export type PageSecondaryActionProps = {
-  children: ReactNode;
-  className?: string;
-  "data-testid"?: string;
-  destructive?: boolean;
-  disabled?: boolean;
-  icon?: ReactNode;
-  onAction?: () => void;
-  render?: ReactElement;
-};
+export type PageSecondaryActionProps = Pick<
+  PageActionProps,
+  "className" | "disabled" | "title"
+> &
+  AriaAttributes &
+  DataAttributes & {
+    children: ReactNode;
+    destructive?: boolean;
+    icon?: ReactNode;
+    onAction?: () => void;
+  };
 
 export const PageSecondaryAction: FC<PageSecondaryActionProps> = () => {
   return null;
@@ -169,9 +182,11 @@ export type PageActionsProps = Omit<
 export const PageActions: FC<PageActionsProps> = ({
   children,
   className,
-  secondaryMenuLabel = "More actions",
+  secondaryMenuLabel,
   ...props
 }) => {
+  const { t } = useTranslation("thread-ui");
+  const menuLabel = secondaryMenuLabel ?? t("page.moreActions", "More actions");
   const secondaryActions: Array<
     ReactElement<PageSecondaryActionProps, typeof PageSecondaryAction>
   > = [];
@@ -190,20 +205,17 @@ export const PageActions: FC<PageActionsProps> = ({
   const overflowSecondaryActions =
     secondaryActions.length > 3 ? secondaryActions.slice(2) : [];
   const renderSecondaryButtons = (actions: typeof secondaryActions) =>
-    actions.map(({ key, props: action }, index) => {
-      const {
-        children,
-        className,
-        destructive,
-        icon,
-        onAction,
-        ...buttonProps
-      } = action;
-
-      return (
+    actions.map(
+      (
+        {
+          key,
+          props: { children, className, destructive, icon, onAction, ...props },
+        },
+        index,
+      ) => (
         <Button
           key={key ?? index}
-          {...buttonProps}
+          {...props}
           className={className}
           data-slot="page-secondary-action"
           variant={destructive ? "destructive" : "secondary"}
@@ -212,17 +224,20 @@ export const PageActions: FC<PageActionsProps> = ({
           {icon}
           {children}
         </Button>
-      );
-    });
+      ),
+    );
   const renderSecondaryMenuItems = (actions: typeof secondaryActions) =>
-    actions.map(({ key, props: action }, index) => {
-      const { children, className, destructive, icon, onAction, ...itemProps } =
-        action;
-
-      return (
+    actions.map(
+      (
+        {
+          key,
+          props: { children, className, destructive, icon, onAction, ...props },
+        },
+        index,
+      ) => (
         <DropdownMenuItem
           key={key ?? index}
-          {...itemProps}
+          {...props}
           className={className}
           variant={destructive ? "destructive" : "default"}
           onClick={() => onAction?.()}
@@ -230,8 +245,8 @@ export const PageActions: FC<PageActionsProps> = ({
           {icon}
           {children}
         </DropdownMenuItem>
-      );
-    });
+      ),
+    );
 
   return (
     <div
@@ -255,9 +270,12 @@ export const PageActions: FC<PageActionsProps> = ({
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
-                  <Button size="icon" variant="secondary">
+                  <Button
+                    aria-label={menuLabel}
+                    size="icon"
+                    variant="secondary"
+                  >
                     <MoreHorizontalIcon />
-                    <span className="sr-only">{secondaryMenuLabel}</span>
                   </Button>
                 }
               />
@@ -271,9 +289,12 @@ export const PageActions: FC<PageActionsProps> = ({
               <DropdownMenu>
                 <DropdownMenuTrigger
                   render={
-                    <Button size="icon" variant="secondary">
+                    <Button
+                      aria-label={menuLabel}
+                      size="icon"
+                      variant="secondary"
+                    >
                       <MoreHorizontalIcon />
-                      <span className="sr-only">{secondaryMenuLabel}</span>
                     </Button>
                   }
                 />

@@ -3,9 +3,9 @@ import { useApolloClient, useMutation, useQuery } from "@apollo/client/react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { LogIn, ShieldCheck, UserPlus } from "lucide-react";
 import { t } from "i18next";
-import { toast } from "sonner";
 import { z } from "zod";
 import type { ChangeEvent, ComponentProps, FormEvent } from "react";
+import { toast } from "@/components/thread-ui/toast";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/thread-ui/button";
@@ -151,7 +151,7 @@ export function LoginForm({
       const message =
         error instanceof Error ? error.message : t("auth:form.authFailed");
       setErrors((current) => ({ ...current, form: message }));
-      toast.error(message);
+      toast.add({ type: "error", title: message });
       setSocialProviderId(undefined);
     }
   };
@@ -229,18 +229,20 @@ export function LoginForm({
       }
 
       await apolloClient.clearStore();
-      toast.success(
-        mode === "login"
-          ? t("auth:form.loginSuccess")
-          : t("auth:form.registerSuccess"),
-      );
+      toast.add({
+        type: "success",
+        title:
+          mode === "login"
+            ? t("auth:form.loginSuccess")
+            : t("auth:form.registerSuccess"),
+      });
       window.location.assign(resolvePostAuthUrl(redirect));
     } catch (error) {
       const message =
         error instanceof Error ? error.message : t("auth:form.authFailed");
 
       setErrors({ form: message });
-      toast.error(message);
+      toast.add({ type: "error", title: message });
     } finally {
       setLoading(false);
     }

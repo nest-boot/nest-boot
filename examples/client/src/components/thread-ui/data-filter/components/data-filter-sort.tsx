@@ -1,5 +1,6 @@
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   getDataFilterSortFieldChoices,
@@ -35,6 +36,7 @@ export const DataFilterSort: FC<DataFilterSortViewProps> = ({
   selected,
   onChange,
 }) => {
+  const { t } = useTranslation("thread-ui");
   const [open, setOpen] = useState(false);
 
   const selectedKey = selected?.field ?? "";
@@ -80,7 +82,12 @@ export const DataFilterSort: FC<DataFilterSortViewProps> = ({
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
           render={
-            <Button className="shrink-0" size="icon" variant="outline">
+            <Button
+              aria-label={t("dataFilter.sort", "Sort")}
+              className="shrink-0"
+              size="icon"
+              variant="outline"
+            >
               <ArrowUpDown className="size-4" />
             </Button>
           }
@@ -89,6 +96,7 @@ export const DataFilterSort: FC<DataFilterSortViewProps> = ({
           <div>
             <div className="p-3 pb-2">
               <RadioGroup
+                aria-label={t("dataFilter.sortField", "Sort field")}
                 value={selectedValue}
                 items={fieldChoices.map(({ key, option }) => ({
                   label: option.fieldLabel,

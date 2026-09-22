@@ -1,4 +1,8 @@
 {
+  "alertDialog": {
+    "cancel": "Cancel",
+    "confirm": "Confirm"
+  },
   "complexFilter": {
     "operators": {
       "$eq": "Equals",
@@ -20,9 +24,14 @@
     "clearAll": "Clear all",
     "selectField": "Select field",
     "selectOperator": "Select operator",
-    "selectValue": "Select value"
+    "selectValue": "Select value",
+    "removeCondition": "Remove condition",
+    "removeGroup": "Remove group"
   },
   "dataFilter": {
+    "loading": "Loading",
+    "loadFailed": "Failed to load options",
+    "noOptions": "No options found",
     "addFilter": "Add Filter",
     "removeFilter": "Remove filter",
     "empty": "empty",
@@ -43,7 +52,10 @@
       "$nin": "does not contain"
     },
     "minimumAriaLabel": "{{label}} minimum",
-    "maximumAriaLabel": "{{label}} maximum"
+    "maximumAriaLabel": "{{label}} maximum",
+    "search": "Search",
+    "sort": "Sort",
+    "sortField": "Sort field"
   },
   "dataTable": {
     "allSelected": "All selected",
@@ -55,9 +67,7 @@
     "selectAll": "Select all",
     "selectAllRows": "Select all rows",
     "selectAllRowsOnPage": "Select all {{count}} on page",
-    "selectAllRowsOnPage_other": "Select all {{count}} on page",
     "selectedRows": "{{count}} selected",
-    "selectedRows_other": "{{count}} selected",
     "selectRow": "Select row",
     "unselectAll": "Unselect all"
   },
@@ -199,5 +209,33 @@
       "nav": "Navigation bar",
       "weekNumberHeader": "Week Number"
     }
+  },
+  "fileUpload": {
+    "title": "Upload files",
+    "browseFiles": "Browse files",
+    "placeholder": "Click to upload, drop files here, or paste files",
+    "removeFile": "Remove {{name}}",
+    "uploadFile": "Upload {{name}}",
+    "cancelFile": "Cancel upload of {{name}}",
+    "retryFile": "Retry upload of {{name}}",
+    "status": {
+      "idle": "Waiting to upload",
+      "queued": "Queued",
+      "uploading": "Uploading",
+      "done": "Uploaded",
+      "error": "Upload failed",
+      "canceled": "Canceled"
+    }
+  },
+  "common": {
+    "copy": "Copy"
+  },
+  "page": {
+    "back": "Back",
+    "moreActions": "More actions"
+  },
+  "codeBlock": {
+    "copy": "Copy code",
+    "selectLanguage": "Select code language"
   }
 }
