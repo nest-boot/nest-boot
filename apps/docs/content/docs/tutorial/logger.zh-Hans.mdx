@@ -87,6 +87,12 @@ export class UserService {
 ```typescript
 this.logger.error(error);
 this.logger.error("Operation failed", error.stack, "OrdersService");
+this.logger.error(
+  "Operation failed",
+  { orderId },
+  error.stack,
+  "OrdersService",
+);
 this.logger.error("Operation failed", { err: error, orderId });
 ```
 

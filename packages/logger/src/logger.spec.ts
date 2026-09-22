@@ -173,6 +173,30 @@ describe("Logger", () => {
         { args: [stack, "Context"], bindings: { stack, context: "Context" } },
         { args: ["Context", stack], bindings: { stack, context: "Context" } },
         {
+          args: [{ orderId: "42" }, stack, "Context"],
+          bindings: { orderId: "42", stack, context: "Context" },
+        },
+        {
+          args: [{ orderId: "42" }, "opaque trace", "Context"],
+          bindings: {
+            orderId: "42",
+            stack: "opaque trace",
+            context: "Context",
+          },
+        },
+        {
+          args: [stack, { orderId: "42" }, "Context"],
+          bindings: { orderId: "42", stack, context: "Context" },
+        },
+        {
+          args: [{ orderId: "42" }, "Context", stack],
+          bindings: { orderId: "42", stack, context: "Context" },
+        },
+        {
+          args: [error, stack, "Context"],
+          bindings: { err: error, stack, context: "Context" },
+        },
+        {
           args: ["opaque trace", "Context"],
           bindings: { stack: "opaque trace", context: "Context" },
         },

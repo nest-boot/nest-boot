@@ -140,6 +140,24 @@ describe("LoggerModule - e2e", () => {
         logger.error("missing stack", undefined, "OrdersService");
         logger.error("opaque stack", "trace text", "OrdersService");
         logger.error("trailing stack", "OrdersService", stack);
+        logger.error(
+          "metadata and stack",
+          { orderId: "42" },
+          stack,
+          "OrdersService",
+        );
+        logger.error(
+          "metadata and opaque stack",
+          { orderId: "42" },
+          "trace text",
+          "OrdersService",
+        );
+        logger.error(
+          "stack before metadata",
+          stack,
+          { orderId: "42" },
+          "OrdersService",
+        );
       };
       if (mode === "request") {
         await RequestContext.run(
@@ -198,6 +216,24 @@ describe("LoggerModule - e2e", () => {
         }),
         expect.objectContaining({
           msg: "trailing stack",
+          stack,
+          context: "OrdersService",
+        }),
+        expect.objectContaining({
+          msg: "metadata and stack",
+          orderId: "42",
+          stack,
+          context: "OrdersService",
+        }),
+        expect.objectContaining({
+          msg: "metadata and opaque stack",
+          orderId: "42",
+          stack: "trace text",
+          context: "OrdersService",
+        }),
+        expect.objectContaining({
+          msg: "stack before metadata",
+          orderId: "42",
           stack,
           context: "OrdersService",
         }),

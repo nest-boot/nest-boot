@@ -115,7 +115,9 @@ export class Logger implements LoggerService {
     if (typeof optionalParams.at(-1) === "string") {
       context = optionalParams.pop() as string;
     }
-    if (stack === undefined && typeof optionalParams[0] === "string") {
+    if (stack === undefined && typeof optionalParams.at(-1) === "string") {
+      stack = optionalParams.pop() as string;
+    } else if (stack === undefined && typeof optionalParams[0] === "string") {
       stack = optionalParams.shift() as string;
     }
 

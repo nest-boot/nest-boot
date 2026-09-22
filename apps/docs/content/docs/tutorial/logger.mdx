@@ -87,6 +87,12 @@ Pass an `Error` directly or in structured bindings (`{ err: error }`) to retain 
 ```typescript
 this.logger.error(error);
 this.logger.error("Operation failed", error.stack, "OrdersService");
+this.logger.error(
+  "Operation failed",
+  { orderId },
+  error.stack,
+  "OrdersService",
+);
 this.logger.error("Operation failed", { err: error, orderId });
 ```
 
