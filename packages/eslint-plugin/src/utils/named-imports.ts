@@ -78,23 +78,54 @@ export function namedImportBinding(
   return local;
 }
 
-/** Resolves a local identifier back to its imported name in the selected modules. @internal */
+/** Resolves named and namespace imports through their lexical references. @internal */
 export function importedBindingName(
   source: Readonly<SourceCode>,
   modules: Modules,
-  local: string,
-): string {
-  for (const declaration of importsFrom(source, modules)) {
-    for (const specifier of declaration.specifiers) {
-      if (
-        specifier.type === AST_NODE_TYPES.ImportSpecifier &&
-        specifier.local.name === local
-      ) {
-        return importedName(specifier);
-      }
+  node: TSESTree.Node,
+): string | null {
+  const identifier =
+    node.type === AST_NODE_TYPES.Identifier
+      ? node
+      : node.type === AST_NODE_TYPES.MemberExpression &&
+          node.object.type === AST_NODE_TYPES.Identifier
+        ? node.object
+        : node.type === AST_NODE_TYPES.TSQualifiedName &&
+            node.left.type === AST_NODE_TYPES.Identifier
+          ? node.left
+          : null;
+  if (!identifier) return null;
+  const member =
+    node.type === AST_NODE_TYPES.MemberExpression &&
+    !node.computed &&
+    node.property.type === AST_NODE_TYPES.Identifier
+      ? node.property.name
+      : node.type === AST_NODE_TYPES.TSQualifiedName
+        ? node.right.name
+        : null;
+  const reference = (source.scopeManager?.scopes ?? [])
+    .flatMap((scope) => scope.references)
+    .find((candidate) => candidate.identifier === identifier);
+  const variable = reference?.resolved;
+  // Preserve the rules' support for unresolved ambient decorator names.
+  if (!variable) return node === identifier ? identifier.name : null;
+  for (const definition of variable.defs) {
+    if (
+      definition.type !== Scope.DefinitionType.ImportBinding ||
+      definition.parent.type !== AST_NODE_TYPES.ImportDeclaration ||
+      !matchesModule(modules, definition.parent.source.value)
+    )
+      continue;
+    if (
+      node === identifier &&
+      definition.node.type === AST_NODE_TYPES.ImportSpecifier
+    ) {
+      return importedName(definition.node);
     }
+    if (definition.node.type === AST_NODE_TYPES.ImportNamespaceSpecifier)
+      return member;
   }
-  return local;
+  return null;
 }
 
 /** Checks the binding used by generated code, including aliases and type-only imports. @internal */
@@ -186,15 +217,22 @@ export function namedImportEdits(
       const firstImport = source.ast.body.find(
         (node) => node.type === AST_NODE_TYPES.ImportDeclaration,
       );
-      const start = firstImport?.range[0] ?? 0;
+      const firstStatement = source.ast.body.find(
+        (node) =>
+          node.type !== AST_NODE_TYPES.ExpressionStatement || !node.directive,
+      );
+      const start =
+        firstImport?.range[0] ?? firstStatement?.range[0] ?? source.text.length;
       const lineStart = source.text.lastIndexOf("\n", start - 1) + 1;
-      const indent = source.text.slice(lineStart, start);
+      const prefix = source.text.slice(lineStart, start);
+      const indent = /^[ \t]*/.exec(prefix)?.[0] ?? "";
+      const separator = prefix.trim() ? `\n${indent}` : "";
       const moduleName =
         imports[0]?.source.value ??
         (typeof modules === "string" ? modules : modules[0]);
       edits.push({
         range: [start, start],
-        text: `import { ${missing.join(", ")} } from ${JSON.stringify(moduleName)};\n${indent}`,
+        text: `${separator}import { ${missing.join(", ")} } from ${JSON.stringify(moduleName)};\n${indent}`,
       });
     }
   }

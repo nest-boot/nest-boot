@@ -53,12 +53,21 @@ const entryPoints = new Set([
 
 /** Normalizes core helpers and legacy decorators before field fixes generate bindings. @internal */
 export function legacyDecoratorImports(source: Readonly<SourceCode>) {
-  const bindingText = (specifier: TSESTree.ImportSpecifier) =>
-    source.text.slice(specifier.range[0], specifier.imported.range[0]) +
-    (specifier.imported.type === AST_NODE_TYPES.Identifier
-      ? specifier.imported.name
-      : specifier.imported.value) +
-    source.text.slice(specifier.imported.range[1], specifier.range[1]);
+  const bindingText = (specifier: TSESTree.ImportSpecifier) => {
+    const name =
+      specifier.imported.type === AST_NODE_TYPES.Identifier
+        ? specifier.imported.name
+        : specifier.imported.value;
+    const prefix = source.text.slice(
+      specifier.range[0],
+      specifier.imported.range[0],
+    );
+    return (
+      (decorators.has(name) ? prefix.replace(/^type\b/, "") : prefix) +
+      name +
+      source.text.slice(specifier.imported.range[1], specifier.range[1])
+    );
+  };
 
   return source.ast.body.flatMap((node) => {
     if (
@@ -101,6 +110,12 @@ export function legacyDecoratorImports(source: Readonly<SourceCode>) {
           bindingText(specifier) +
           text.slice(specifier.range[1] - start);
       }
+      if (node.importKind === "type" && destinations.has(legacy)) {
+        const token = source.getTokens(node)[1];
+        text =
+          text.slice(0, token.range[0] - start) +
+          text.slice(token.range[1] - start);
+      }
     } else if (moved.length === node.specifiers.length) {
       // Preserve comments between bindings when an import splits into two destinations.
       text = source
@@ -137,8 +152,9 @@ export function legacyDecoratorImports(source: Readonly<SourceCode>) {
       }
     }
     if (moved.length !== node.specifiers.length || destinations.size > 1) {
-      const kind = node.importKind === "type" ? "type " : "";
       for (const [target, bindings] of destinations) {
+        const kind =
+          target !== legacy && node.importKind === "type" ? "type " : "";
         text += `\nimport ${kind}{ ${bindings.map(bindingText).join(", ")} } from ${JSON.stringify(target)};`;
       }
     }

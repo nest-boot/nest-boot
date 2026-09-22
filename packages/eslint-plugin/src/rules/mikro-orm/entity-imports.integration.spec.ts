@@ -29,10 +29,32 @@ const config: Linter.Config[] = [
 
 const cases = [
   {
+    name: "missing Opt reference reuses an imported alias",
+    imports:
+      'import { Entity } from "@mikro-orm/decorators/legacy"; import type { Opt as Optional } from "@mikro-orm/core";',
+    property: 'name: Opt<string> = "hello";',
+  },
+  {
+    name: "namespace optional wrapper",
+    imports:
+      'import { Entity } from "@mikro-orm/decorators/legacy"; import * as orm from "@mikro-orm/core";',
+    property: 'name: orm.Opt<string> = "hello";',
+  },
+  ...[
+    'import type { Entity, ManyToOne } from "@mikro-orm/core";',
+    'import { type Entity, type ManyToOne } from "@mikro-orm/core";',
+    'import type { Entity, ManyToOne, Opt } from "@mikro-orm/postgresql";',
+    'import { type Entity, type ManyToOne, t } from "@mikro-orm/postgresql";',
+  ].map((imports) => ({
+    name: `type-only class and relation decorators: ${imports}`,
+    imports,
+    property: "@ManyToOne(() => Thing) parent!: Thing; name!: string;",
+  })),
+  {
     name: "custom property decorator binding remains unchanged",
     imports:
-      'import { Entity } from "@mikro-orm/decorators/legacy"; const EncryptedProperty = (...args: unknown[]): PropertyDecorator => () => {};',
-    property: "@EncryptedProperty() name!: string;",
+      'import { Entity } from "@mikro-orm/decorators/legacy"; import { EncryptedProperty as SecureColumn } from "@nest-boot/mikro-orm-crypt";',
+    property: "@SecureColumn() name!: string;",
   },
   {
     name: "missing runtime helper while correcting an existing decorator",
@@ -242,6 +264,10 @@ class Thing { ${property} }`;
     false,
   );
   expect(compileDiagnostics(result.output)).toEqual([]);
+  if (imports.includes("SecureColumn")) {
+    expect(result.output).toContain("@SecureColumn({ type: t.string })");
+    expect(result.output).not.toContain("@Property(");
+  }
   const fixed = ts.createSourceFile(
     filename,
     result.output,
@@ -269,6 +295,49 @@ class Thing { ${property} }`;
     expect(result.output).toContain("Enum as OrmEnum");
     expect(result.output).toContain("type Opt");
   }
+});
+
+it("does not interpret a shadowed decorator alias as an ORM entity", () => {
+  const code = `import { Entity as Model } from "@mikro-orm/decorators/legacy";
+function define(Model: () => ClassDecorator) {
+  @Model() class Thing { name!: string; }
+  return Thing;
+}`;
+  const result = linter.verifyAndFix(code, config, { filename });
+  expect(result.messages).toEqual([]);
+  expect(result.fixed).toBe(false);
+  expect(compileDiagnostics(result.output)).toEqual([]);
+});
+
+it("retains aliased column types when another scope shadows the alias", () => {
+  const code = `import { Entity, Property } from "@mikro-orm/decorators/legacy";
+import { t as types } from "@mikro-orm/core";
+function shadow(types: number) {}
+@Entity() class Thing { @Property({ type: types.uuid }) id?: string; }`;
+  const result = linter.verifyAndFix(code, config, { filename });
+  expect(result.messages).toEqual([]);
+  expect(result.output).toContain("type: t.uuid");
+  expect(compileDiagnostics(result.output)).toEqual([]);
+  expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
+    false,
+  );
+});
+
+it("resolves namespace decorators and retains namespace column options", () => {
+  const code = `import * as entities from "@mikro-orm/decorators/legacy";
+import * as orm from "@mikro-orm/core";
+@entities.Entity() class Thing {
+  @entities.Property({ type: orm.t.uuid }) id?: string;
+  @entities.ManyToOne(() => Thing) parent!: Thing;
+}`;
+  const result = linter.verifyAndFix(code, config, { filename });
+  expect(result.messages).toEqual([]);
+  expect(result.fixed).toBe(true);
+  expect(result.output).toContain("type: t.uuid");
+  expect(compileDiagnostics(result.output)).toEqual([]);
+  expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
+    false,
+  );
 });
 
 it("avoids capturing a shadowed runtime helper", () => {
@@ -311,6 +380,11 @@ function compileDiagnostics(code: string): string[] {
     target: ts.ScriptTarget.ES2023,
     skipLibCheck: true,
     types: [],
+    paths: {
+      "@nest-boot/mikro-orm-crypt": [
+        path.resolve(packageRoot, "../mikro-orm-crypt/dist/index.d.ts"),
+      ],
+    },
   };
   const host = ts.createCompilerHost(options);
   const getSourceFile = host.getSourceFile.bind(host);
