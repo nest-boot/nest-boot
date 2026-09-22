@@ -33,7 +33,131 @@ const config: Linter.Config[] = [
   },
 ];
 
-const cases = [
+const cases: {
+  name: string;
+  imports: string;
+  property: string;
+  expected: string;
+  field?: string;
+}[] = [
+  {
+    name: "aliased MikroORM optional wrapper",
+    imports:
+      'import { Field, ObjectType } from "@nest-boot/graphql"; import type { Opt as Optional } from "@mikro-orm/core";',
+    property: "name?: Optional<string>;",
+    expected: "String",
+  },
+  {
+    name: "aliased MikroORM reference wrapper",
+    imports:
+      'import { Field, ObjectType } from "@nest-boot/graphql"; import type { Ref as Reference } from "@mikro-orm/core"; @ObjectType() class Related {}',
+    property: "relation?: Reference<Related>;",
+    expected: "Related",
+  },
+  ...["Float", "GraphQLJSONObject"].map((name) => ({
+    name: `custom object type named ${name}`,
+    imports: `import { Field, ObjectType } from "@nest-boot/graphql"; @ObjectType() class ${name} {}`,
+    property: `value?: ${name};`,
+    expected: name,
+  })),
+  ...[
+    {
+      imports: "import { GraphQLJSONObject } from 'graphql-type-json';",
+      expected: "GraphQLJSONObject",
+    },
+    {
+      imports:
+        'import { GraphQLJSONObject as JSONObject } from "graphql-type-json";',
+      expected: "JSONObject",
+    },
+    {
+      imports:
+        'import type { GraphQLJSONObject as JSONObject, GraphQLJSON } from "graphql-type-json";',
+      expected: "JSONObject",
+    },
+    {
+      imports: 'import { type GraphQLJSONObject } from "graphql-type-json";',
+      expected: "GraphQLJSONObject",
+    },
+    {
+      imports:
+        'import { "GraphQLJSONObject" as GraphQLJSONObject } from "graphql-type-json";',
+      expected: "GraphQLJSONObject",
+    },
+    {
+      imports:
+        'import Json from "graphql-type-json"; // GraphQLJSONObject is not imported',
+      expected: "GraphQLJSONObject",
+    },
+    {
+      imports: 'import * as GraphQLJSONObject from "graphql-type-json";',
+      expected: "GraphQLJSONObject2",
+    },
+    { imports: "const GraphQLJSONObject = 1;", expected: "GraphQLJSONObject2" },
+  ].map(({ imports, expected }) => ({
+    name: `JSON scalar: ${imports}`,
+    imports:
+      'import { Field, ObjectType } from "@nest-boot/graphql";\n' + imports,
+    property: "data?: Record<string, unknown>;",
+    expected,
+  })),
+  {
+    name: "type-only scalar alias",
+    imports:
+      'import { Field, ObjectType, type ID as Identifier } from "@nest-boot/graphql";',
+    property: "id?: string;",
+    expected: "Identifier",
+  },
+  {
+    name: "quoted scalar import",
+    imports:
+      'import { Field, ObjectType, "Float" as Float } from "@nest-boot/graphql";',
+    property: "score?: number;",
+    expected: "Float",
+  },
+  {
+    name: "unrelated local scalar binding",
+    imports:
+      'import { Field, ObjectType } from "@nest-boot/graphql"; const Float = 1;',
+    property: "score?: number;",
+    expected: "Float2",
+  },
+  {
+    name: "type-only scalar with an already aligned decorator",
+    imports:
+      'import { Field, ObjectType, type Float } from "@nest-boot/graphql";',
+    property: "@Field(() => Float, { nullable: true }) score?: number;",
+    expected: "Float",
+  },
+  {
+    name: "missing Field import",
+    imports: 'import { ObjectType } from "@nest-boot/graphql";',
+    property: "name?: string;",
+    expected: "String",
+  },
+  {
+    name: "aliased Field import",
+    imports:
+      'import { ObjectType, Field as GqlField } from "@nest-boot/graphql";',
+    property: "@GqlField(() => String) name?: string;",
+    expected: "String",
+    field: "GqlField",
+  },
+  {
+    name: "type-only Field import",
+    imports: 'import { ObjectType, type Field } from "@nest-boot/graphql";',
+    property: "name?: string;",
+    expected: "String",
+  },
+  {
+    name: "unrelated local Field binding",
+    imports:
+      'import { ObjectType } from "@nest-boot/graphql"; const Field = 1;',
+    property: "name?: string;",
+    expected: "String",
+    field: "Field2",
+  },
+
   ...["@nestjs/graphql", "@nest-boot/graphql"].flatMap((moduleName) =>
     ["ID", "Int", "Float"].map((scalar) => ({
       name: `${scalar} grouped import from ${moduleName}`,
@@ -80,13 +204,13 @@ const cases = [
 
 it.each(cases)(
   "compiles and stabilizes $name",
-  ({ imports, property, expected }) => {
+  ({ imports, property, expected, field = "Field" }) => {
     const code = `${imports}\n@ObjectType()\nclass Thing { ${property} }`;
     const result = linter.verifyAndFix(code, config, { filename });
     expect(result.messages).toEqual([]);
     expect(result.fixed).toBe(true);
     expect(result.output).toContain(
-      `@Field(() => ${expected}, { nullable: true })`,
+      `@${field}(() => ${expected}, { nullable: true })`,
     );
     expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
       false,
@@ -106,6 +230,12 @@ const options: ts.CompilerOptions = {
   skipLibCheck: true,
   types: [],
   paths: {
+    "@mikro-orm/core": [
+      path.resolve(
+        packageRoot,
+        "../mikro-orm/node_modules/@mikro-orm/core/index.d.ts",
+      ),
+    ],
     "@nest-boot/graphql": [
       path.resolve(packageRoot, "../graphql/dist/index.d.ts"),
     ],

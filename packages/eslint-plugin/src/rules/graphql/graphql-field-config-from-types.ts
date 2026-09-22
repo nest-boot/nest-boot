@@ -3,10 +3,11 @@ import type { RuleFixer } from "@typescript-eslint/utils/ts-eslint";
 
 import { createRule } from "../../utils/createRule.js";
 import {
-  getPropertyDecorator,
-  hasClassDecorator,
-} from "../../utils/decorators.js";
-import { hasNamedImport, namedImportEdits } from "../../utils/named-imports.js";
+  hasNamedImport,
+  importedBindingName,
+  namedImportBinding,
+  namedImportEdits,
+} from "../../utils/named-imports.js";
 
 // Custom Fix object type for deferred fix application
 interface CustomFix {
@@ -19,6 +20,7 @@ interface TypeInfo {
   typeName: string | null;
   isArray: boolean;
   isNullable: boolean;
+  isCustomType?: boolean;
 }
 
 export type DecoratorBehavior = "ignore" | "remove";
@@ -76,6 +78,14 @@ export default createRule<
   ],
   create(context, [options]) {
     const source = context.sourceCode;
+    const ormModules = source.ast.body.flatMap((node) =>
+      node.type === AST_NODE_TYPES.ImportDeclaration &&
+      node.source.value.startsWith("@mikro-orm/")
+        ? [node.source.value]
+        : [],
+    );
+    const ormTypeName = (name: string) =>
+      importedBindingName(source, ormModules, name);
 
     const scalarFromTsKeyword = (
       typeNodeType: AST_NODE_TYPES,
@@ -158,8 +168,8 @@ export default createRule<
       if (
         baseTypeNode?.type === AST_NODE_TYPES.TSTypeReference &&
         baseTypeNode.typeName.type === AST_NODE_TYPES.Identifier &&
-        (baseTypeNode.typeName.name === "Ref" ||
-          baseTypeNode.typeName.name === "Opt")
+        (ormTypeName(baseTypeNode.typeName.name) === "Ref" ||
+          ormTypeName(baseTypeNode.typeName.name) === "Opt")
       ) {
         let inner = baseTypeNode.typeArguments?.params[0] ?? null;
         if (inner?.type === AST_NODE_TYPES.TSUnionType) {
@@ -239,78 +249,41 @@ export default createRule<
       // Identifier (class/custom type)
       const ident = getIdentifierName(targetTypeNode);
       if (ident) {
-        return { typeName: ident, isArray, isNullable };
+        return { typeName: ident, isArray, isNullable, isCustomType: true };
       }
 
       return null;
     };
 
-    const graphqlImports = source.ast.body.filter(
-      (node): node is TSESTree.ImportDeclaration =>
-        node.type === AST_NODE_TYPES.ImportDeclaration &&
-        ["@nestjs/graphql", "@nest-boot/graphql"].includes(node.source.value),
-    );
+    const graphqlModules = ["@nestjs/graphql", "@nest-boot/graphql"];
+    const jsonModule = "graphql-type-json";
+    const scalarModules = (name: string) =>
+      name === "GraphQLJSONObject" ? jsonModule : graphqlModules;
+    const scalarBinding = (name: string): string =>
+      ["Int", "Float", "ID", "GraphQLJSONObject"].includes(name)
+        ? namedImportBinding(source, scalarModules(name), name)
+        : name;
+    const typeBinding = (info: TypeInfo) =>
+      info.isCustomType
+        ? (info.typeName ?? "")
+        : scalarBinding(info.typeName ?? "");
+    const fieldBinding = () =>
+      namedImportBinding(source, graphqlModules, "Field");
+    const decoratorName = (name: string) =>
+      importedBindingName(source, graphqlModules, name);
 
-    const scalarBinding = (name: string): string => {
-      for (const declaration of graphqlImports) {
-        if (declaration.importKind === "type") continue;
-        for (const specifier of declaration.specifiers) {
-          if (
-            specifier.type === AST_NODE_TYPES.ImportSpecifier &&
-            specifier.importKind !== "type" &&
-            specifier.imported.type === AST_NODE_TYPES.Identifier &&
-            specifier.imported.name === name
-          )
-            return specifier.local.name;
-        }
-      }
-      return name;
-    };
-
-    const ensureScalarImport = (fixes: CustomFix[], expected: string) => {
-      if (!["Int", "Float", "ID"].includes(expected)) return;
-      if (
-        graphqlImports.some((declaration) =>
-          hasNamedImport(source, declaration.source.value, expected),
-        )
-      )
-        return;
-      const existing = graphqlImports.find((declaration) =>
-        declaration.specifiers.some(
-          (specifier) =>
-            specifier.type === AST_NODE_TYPES.ImportSpecifier &&
-            specifier.imported.type === AST_NODE_TYPES.Identifier &&
-            specifier.imported.name === expected &&
-            (specifier.local.name === expected ||
-              (declaration.importKind !== "type" &&
-                specifier.importKind !== "type")),
-        ),
-      );
-      // A value alias can be reused directly in the generated decorator.
-      if (scalarBinding(expected) !== expected) return;
-      const moduleName =
-        existing?.source.value ??
-        graphqlImports.at(0)?.source.value ??
-        "@nestjs/graphql";
+    const ensureImports = (fixes: CustomFix[], info: TypeInfo) => {
+      const expected = info.isCustomType ? "" : (info.typeName ?? "");
+      const names = [
+        "Field",
+        ...(["Int", "Float", "ID"].includes(expected) ? [expected] : []),
+      ];
+      const edits = namedImportEdits(source, graphqlModules, names);
+      if (expected === "GraphQLJSONObject")
+        edits.push(...namedImportEdits(source, jsonModule, [expected]));
       fixes.push(
-        ...namedImportEdits(source, moduleName, [expected]).map((edit) => ({
-          ...edit,
-          type: "replace" as const,
-        })),
+        ...edits.map((edit) => ({ ...edit, type: "replace" as const })),
       );
-    };
-
-    const ensureJSONObjectImport = (fixes: CustomFix[]) => {
-      const hasImport =
-        context.sourceCode.text.includes(`from "graphql-type-json"`) &&
-        context.sourceCode.text.includes("GraphQLJSONObject");
-      if (!hasImport) {
-        fixes.push({
-          type: "insert",
-          range: [0, 0],
-          text: `import { GraphQLJSONObject } from "graphql-type-json";\n`,
-        });
-      }
     };
 
     const addFieldDecorator = (
@@ -319,18 +292,15 @@ export default createRule<
     ) => {
       const fixes: CustomFix[] = [];
 
-      const typeName = scalarBinding(info.typeName ?? "");
+      const typeName = typeBinding(info);
       const typeExpr = info.isArray
         ? `() => [${typeName}]`
         : `() => ${typeName}`;
       const optionsExpr = info.isNullable ? ", { nullable: true }" : "";
 
-      const newDecoratorText = `@Field(${typeExpr}${optionsExpr})`;
+      const newDecoratorText = `@${fieldBinding()}(${typeExpr}${optionsExpr})`;
 
-      ensureScalarImport(fixes, info.typeName ?? "");
-      if (info.typeName === "GraphQLJSONObject") {
-        ensureJSONObjectImport(fixes);
-      }
+      ensureImports(fixes, info);
 
       fixes.push({
         type: "insert",
@@ -348,7 +318,7 @@ export default createRule<
     ) => {
       const fixes: CustomFix[] = [];
 
-      const typeName = scalarBinding(info.typeName ?? "");
+      const typeName = typeBinding(info);
       const typeExpr = info.isArray
         ? `() => [${typeName}]`
         : `() => ${typeName}`;
@@ -413,12 +383,9 @@ export default createRule<
       // Build the new decorator text
       const optionsExpr =
         existingOptions.length > 0 ? `, { ${existingOptions.join(", ")} }` : "";
-      const newDecoratorText = `@Field(${typeExpr}${optionsExpr})`;
+      const newDecoratorText = `@${fieldBinding()}(${typeExpr}${optionsExpr})`;
 
-      ensureScalarImport(fixes, info.typeName ?? "");
-      if (info.typeName === "GraphQLJSONObject") {
-        ensureJSONObjectImport(fixes);
-      }
+      ensureImports(fixes, info);
 
       fixes.push({
         type: "replace",
@@ -440,7 +407,14 @@ export default createRule<
     };
 
     const isGraphqlModelClass = (node: TSESTree.ClassDeclaration): boolean => {
-      return hasClassDecorator(node, ["ObjectType", "InputType", "ArgsType"]);
+      return node.decorators.some(
+        (decorator) =>
+          decorator.expression.type === AST_NODE_TYPES.CallExpression &&
+          decorator.expression.callee.type === AST_NODE_TYPES.Identifier &&
+          ["ObjectType", "InputType", "ArgsType"].includes(
+            decoratorName(decorator.expression.callee.name),
+          ),
+      );
     };
 
     return {
@@ -467,10 +441,10 @@ export default createRule<
               decorator.expression.type === AST_NODE_TYPES.CallExpression &&
               decorator.expression.callee.type === AST_NODE_TYPES.Identifier
             ) {
-              const decoratorName = decorator.expression.callee.name;
-              if (decoratorName in decoratorConfig) {
-                foundDecoratorName = decoratorName;
-                foundBehavior = decoratorConfig[decoratorName];
+              const name = decoratorName(decorator.expression.callee.name);
+              if (name in decoratorConfig) {
+                foundDecoratorName = name;
+                foundBehavior = decoratorConfig[name];
                 break;
               }
             }
@@ -479,7 +453,12 @@ export default createRule<
           // If behavior is "ignore", skip directly
           if (foundBehavior === "ignore") return;
 
-          const fieldDecorator = getPropertyDecorator(member, "Field");
+          const fieldDecorator = member.decorators.find(
+            (decorator) =>
+              decorator.expression.type === AST_NODE_TYPES.CallExpression &&
+              decorator.expression.callee.type === AST_NODE_TYPES.Identifier &&
+              decoratorName(decorator.expression.callee.name) === "Field",
+          );
 
           // If behavior is "remove" and has @Field, remove @Field
           if (foundBehavior === "remove" && fieldDecorator) {
@@ -543,8 +522,8 @@ export default createRule<
             const firstArg = callExpr.arguments[0];
             const calleeText = source.getText(firstArg.body);
             const expectedTypeText = typeInfo.isArray
-              ? `[${scalarBinding(typeInfo.typeName)}]`
-              : scalarBinding(typeInfo.typeName);
+              ? `[${typeBinding(typeInfo)}]`
+              : typeBinding(typeInfo);
 
             const hasNullableOption =
               callExpr.arguments.length > 1 &&
@@ -562,7 +541,8 @@ export default createRule<
               );
 
             // For number types, both Int and Float are valid
-            const isNumberType = typeInfo.typeName === "Float";
+            const isNumberType =
+              !typeInfo.isCustomType && typeInfo.typeName === "Float";
             const actualTypeText = calleeText.replace(/^\[|\]$/g, ""); // Remove array brackets
             const numericScalar = ["Int", "Float"].find(
               (name) => actualTypeText === scalarBinding(name),
@@ -582,7 +562,17 @@ export default createRule<
             }
           }
 
-          if (!needReport) return;
+          if (!needReport) {
+            const modules = scalarModules(typeInfo.typeName);
+            const typeOnlyScalar =
+              !typeInfo.isCustomType &&
+              hasNamedImport(source, modules, typeInfo.typeName, false) &&
+              !hasNamedImport(source, modules, typeInfo.typeName);
+            const typeOnlyField =
+              hasNamedImport(source, graphqlModules, "Field", false) &&
+              !hasNamedImport(source, graphqlModules, "Field");
+            if (!typeOnlyScalar && !typeOnlyField) return;
+          }
 
           context.report({
             node: member,

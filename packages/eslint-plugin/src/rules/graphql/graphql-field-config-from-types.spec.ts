@@ -150,7 +150,8 @@ tester.run("graphql-field-config-from-types", rule, {
           name!: string;
         }
       `,
-      output: /* typescript */ `
+      output: /* typescript */ `import { Field } from "@nestjs/graphql";
+
         @ObjectType()
         class User {
           @Field(() => String)
@@ -168,7 +169,8 @@ tester.run("graphql-field-config-from-types", rule, {
           name?: string;
         }
       `,
-      output: /* typescript */ `
+      output: /* typescript */ `import { Field } from "@nestjs/graphql";
+
         @ObjectType()
         class User {
           @Field(() => String, { nullable: true })
@@ -186,7 +188,8 @@ tester.run("graphql-field-config-from-types", rule, {
           name!: string;
         }
       `,
-      output: /* typescript */ `
+      output: /* typescript */ `import { Field } from "@nestjs/graphql";
+
         @ObjectType()
         class User {
           @Field(() => String)
@@ -204,7 +207,8 @@ tester.run("graphql-field-config-from-types", rule, {
           tags!: string[];
         }
       `,
-      output: /* typescript */ `
+      output: /* typescript */ `import { Field } from "@nestjs/graphql";
+
         @ObjectType()
         class User {
           @Field(() => [String])
@@ -225,7 +229,8 @@ tester.run("graphql-field-config-from-types", rule, {
           hasPreviousPage!: boolean;
         }
       `,
-      output: /* typescript */ `
+      output: /* typescript */ `import { Field } from "@nestjs/graphql";
+
         @ObjectType()
         class PageInfo {
           @Field(() => Boolean, { complexity: 0, description: "Whether there are any pages prior to the current page." })
@@ -243,7 +248,8 @@ tester.run("graphql-field-config-from-types", rule, {
           name?: string;
         }
       `,
-      output: /* typescript */ `
+      output: /* typescript */ `import { Field } from "@nestjs/graphql";
+
         @ObjectType()
         class User {
           @Field(() => String, { nullable: true, description: "User name" })
@@ -268,7 +274,8 @@ tester.run("graphql-field-config-from-types", rule, {
           query?: string;
         }
       `,
-      output: /* typescript */ `
+      output: /* typescript */ `import { Field } from "@nestjs/graphql";
+
         @ObjectType()
         class Connection {
           @Field(() => String, { nullable: true, ...(filterableFields.length > 0
@@ -287,7 +294,8 @@ tester.run("graphql-field-config-from-types", rule, {
 class User {
   name!: string;
 }`,
-      output: /* typescript */ `@ObjectType()
+      output: /* typescript */ `import { Field } from "@nestjs/graphql";
+@ObjectType()
 class User {
   @Field(() => String)
   name!: string;
@@ -300,7 +308,7 @@ class User {
 class User {
   id!: string;
 }`,
-      output: /* typescript */ `import { ID } from "@nestjs/graphql";
+      output: /* typescript */ `import { Field, ID } from "@nestjs/graphql";
 @ObjectType()
 class User {
   @Field(() => ID)
@@ -315,7 +323,7 @@ class User {
 class User {
   ownerID!: string;
 }`,
-      output: /* typescript */ `import { ID } from "@nestjs/graphql";
+      output: /* typescript */ `import { ID, Field } from "@nestjs/graphql";
 @ObjectType()
 class User {
   @Field(() => ID)
@@ -330,7 +338,8 @@ class User {
   @Field(() => String)
   metadata!: Record<string, unknown>;
 }`,
-      output: /* typescript */ `import { GraphQLJSONObject } from "graphql-type-json";
+      output: /* typescript */ `import { Field } from "@nestjs/graphql";
+import { GraphQLJSONObject } from "graphql-type-json";
 @ObjectType()
 class User {
   @Field(() => GraphQLJSONObject)
@@ -345,7 +354,8 @@ class User {
 class User {
   metadata!: Record<string, unknown>;
 }`,
-      output: /* typescript */ `import { GraphQLJSONObject } from "graphql-type-json";
+      output: /* typescript */ `import { Field } from "@nestjs/graphql";
+import { GraphQLJSONObject } from "graphql-type-json";
 @ObjectType()
 class User {
   @Field(() => GraphQLJSONObject)
@@ -359,7 +369,8 @@ class User {
 class User {
   friend!: Ref<User | null>;
 }`,
-      output: /* typescript */ `@ObjectType()
+      output: /* typescript */ `import { Field } from "@nestjs/graphql";
+@ObjectType()
 class User {
   @Field(() => User, { nullable: true })
   friend!: Ref<User | null>;
@@ -372,7 +383,8 @@ class User {
 class User {
   friend!: Ref<User | undefined>;
 }`,
-      output: /* typescript */ `@ObjectType()
+      output: /* typescript */ `import { Field } from "@nestjs/graphql";
+@ObjectType()
 class User {
   @Field(() => User, { nullable: true })
   friend!: Ref<User | undefined>;
@@ -385,7 +397,8 @@ class User {
 class User {
   value!: string | number;
 }`,
-      output: /* typescript */ `@ObjectType()
+      output: /* typescript */ `import { Field } from "@nestjs/graphql";
+@ObjectType()
 class User {
   @Field(() => String)
   value!: string | number;
@@ -398,7 +411,8 @@ class User {
 class User {
   nickname!: string | undefined;
 }`,
-      output: /* typescript */ `@ObjectType()
+      output: /* typescript */ `import { Field } from "@nestjs/graphql";
+@ObjectType()
 class User {
   @Field(() => String, { nullable: true })
   nickname!: string | undefined;
@@ -411,7 +425,8 @@ class User {
 class User {
   tags!: Array<string>;
 }`,
-      output: /* typescript */ `@ObjectType()
+      output: /* typescript */ `import { Field } from "@nestjs/graphql";
+@ObjectType()
 class User {
   @Field(() => [String])
   tags!: Array<string>;
@@ -424,7 +439,8 @@ class User {
 class User {
   values!: Array;
 }`,
-      output: /* typescript */ `@ObjectType()
+      output: /* typescript */ `import { Field } from "@nestjs/graphql";
+@ObjectType()
 class User {
   @Field(() => Array)
   values!: Array;
@@ -437,7 +453,8 @@ class User {
 class User {
   published = true;
 }`,
-      output: /* typescript */ `@ObjectType()
+      output: /* typescript */ `import { Field } from "@nestjs/graphql";
+@ObjectType()
 class User {
   @Field(() => Boolean)
   published = true;
@@ -451,7 +468,7 @@ class User {
 class User {
   score = 1;
 }`,
-      output: /* typescript */ `import { Float } from "@nestjs/graphql";
+      output: /* typescript */ `import { Float, Field } from "@nestjs/graphql";
 @ObjectType()
 class User {
   @Field(() => Float)
@@ -465,7 +482,8 @@ class User {
 class User {
   title = "hello";
 }`,
-      output: /* typescript */ `@ObjectType()
+      output: /* typescript */ `import { Field } from "@nestjs/graphql";
+@ObjectType()
 class User {
   @Field(() => String)
   title = "hello";

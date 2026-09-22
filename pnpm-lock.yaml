@@ -963,6 +963,9 @@ importers:
       eslint-plugin-simple-import-sort:
         specifier: ^12.1.1
         version: 12.1.1
+      graphql-type-json:
+        specifier: 0.3.2
+        version: 0.3.2
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
