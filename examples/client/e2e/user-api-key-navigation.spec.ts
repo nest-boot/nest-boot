@@ -111,6 +111,14 @@ test("browses details across pages, survives back and refresh, then anchors the 
   await expectDetails(page, c.name);
   await expectNeighbor(page, "previous", b.id);
   await expectNeighbor(page, "next", d.id);
+  const pagination = page.locator('[data-slot="page-pagination"]');
+  await expect(pagination).toBeVisible();
+  const desktopViewport = page.viewportSize()!;
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(pagination).toBeHidden();
+  await expectDetails(page, c.name);
+  await page.setViewportSize(desktopViewport);
+  await expect(pagination).toBeVisible();
   await page.getByTestId("api-key-previous").click();
   await expectDetails(page, b.name);
   await expectNeighbor(page, "previous", a.id);

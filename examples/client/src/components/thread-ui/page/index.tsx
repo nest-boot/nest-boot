@@ -79,7 +79,7 @@ export const PagePrimaryAction: FC<PagePrimaryActionProps> = ({
   return (
     <Button
       {...props}
-      className={cn("order-last", className)}
+      className={cn("order-20", className)}
       data-slot="page-primary-action"
       variant="default"
     />
@@ -224,11 +224,10 @@ export const PageActions: FC<PageActionsProps> = ({
       {...props}
       data-slot="page-actions"
       className={cn(
-        "col-start-2 row-start-1 flex shrink-0 items-center gap-2 justify-self-end group-has-data-[slot=page-breadcrumb-actions]/page-header:col-start-3 [&>[data-slot=page-primary-action]]:order-last [&>[data-slot=page-secondary-actions]]:order-10",
+        "col-start-2 row-start-1 flex shrink-0 items-center gap-2 justify-self-end group-has-data-[slot=page-breadcrumb-actions]/page-header:col-start-3 [&>[data-slot=page-primary-action]]:order-20 [&>[data-slot=page-secondary-actions]]:order-10",
         className,
       )}
     >
-      {actionChildren}
       {secondaryActions.length > 0 ? (
         <div
           className="order-10 flex items-center gap-2"
@@ -277,6 +276,7 @@ export const PageActions: FC<PageActionsProps> = ({
           ) : null}
         </div>
       ) : null}
+      {actionChildren}
     </div>
   );
 };
@@ -292,3 +292,15 @@ export type {
   BreadcrumbActionsProps,
   BreadcrumbActionProps,
 } from "./breadcrumb-actions";
+
+export {
+  PagePagination,
+  PagePreviousAction,
+  PageNextAction,
+} from "./pagination";
+export type {
+  PagePaginationProps,
+  PagePaginationActionProps,
+  PagePreviousActionProps,
+  PageNextActionProps,
+} from "./pagination";

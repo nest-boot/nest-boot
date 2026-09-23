@@ -244,10 +244,12 @@
     "copy": "复制"
   },
   "page": {
-    "back": "返回",
-    "moreActions": "更多操作",
+    "pagination": "项目导航",
+    "previousItem": "上一项",
+    "nextItem": "下一项",
     "breadcrumbs": "面包屑导航",
-    "parentPages": "上级页面"
+    "parentPages": "上级页面",
+    "moreActions": "更多操作"
   },
   "codeBlock": {
     "copy": "复制代码",

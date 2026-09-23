@@ -43,7 +43,7 @@ matching Base UI toaster. Keep `i18next` as a runtime dependency and
 When refreshing registry components, preserve the alert dialog `data-testid`
 attributes and checkbox group option `testId` support used by the example's
 end-to-end tests. Resource creation and long permission forms use standalone
-compact pages; confirmation dialogs retain their viewport bounds.
+pages; confirmation dialogs retain their viewport bounds.
 
 ESLint includes [@shadcn/lint](https://github.com/shadcn-ui/lint) checks for
 component restyling, raw colors, arbitrary values, inline styles, dynamic
@@ -57,12 +57,20 @@ button is outside its form, connect it to the form's `id` with the native `form`
 attribute so validation, Enter-key submission, and loading states keep working.
 Use `Page variant="compact"` for form pages, with full-width `PageLayoutSection`
 elements so cards stay stacked within the compact page.
+`PagePagination` groups `PagePreviousAction` and `PageNextAction` inside
+`PageActions`, after the primary action. Each action supports `disabled`,
+`onClick`, and `render` for router links. The registry component hides pagination
+below the `@3xl/page` container breakpoint (48rem), including compact pages.
+Its default accessible labels are translated through the `thread-ui` namespace.
 Use theme color tokens from `src/styles.css` in application code.
 
 API key lists use `DataFilter` and `DataTable`; rows and name links open details.
-Creation and details use separate compact pages at `/user/api-keys/create`,
+Creation and details use separate pages at `/user/api-keys/create`,
 `/user/api-keys/$apiKeyId`, `/workspaces/$workspaceId/api-keys/create`, and
-`/workspaces/$workspaceId/api-keys/$apiKeyId`. The create page reveals the full
+`/workspaces/$workspaceId/api-keys/$apiKeyId`. Creation and details both use the
+default page width. Details include `PagePagination` and its previous/next
+actions, following the registry's narrow-container visibility rule.
+The create page reveals the full
 key once in a success Card. Keep that secret in component state only, outside
 URLs and persistent storage; the creation mutation does not cache it. Details
 query through the current user/workspace and allow read-only viewing when the
