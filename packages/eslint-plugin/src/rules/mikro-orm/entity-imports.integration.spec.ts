@@ -630,6 +630,7 @@ it.each([
   'import type * as orm from "@mikro-orm/core"; const { Entity, Property } = orm; @Entity() class Thing { @Property() name!: string; }',
   'import * as orm from "@mikro-orm/core"; const { ["Entity"]: Model, t }: { Entity: () => ClassDecorator; t: typeof orm.t } = orm; @Model() class Thing { name!: string; }',
   'import * as orm from "@mikro-orm/core"; const { Entity, t }: { Entity: () => ClassDecorator; t: typeof orm.t } = orm; @Entity() class Thing { name!: string; }',
+  'import * as orm from "@mikro-orm/core"; const { Entity: Model, Entity: ModelAgain, t }: { Entity: () => ClassDecorator; t: typeof orm.t } = orm; @Model() @ModelAgain() class Thing { name!: string; }',
   'import * as orm from "@mikro-orm/core"; const { Entity, Property } = orm; @Entity() class Thing { @Property() name!: string; }',
   'import * as orm from "@mikro-orm/core"; const { Entity: Model, Property: Column, t: types } = orm; @Model() class Thing { @Column({ type: types.string }) name!: string; score!: number; }',
   'import * as orm from "@mikro-orm/postgresql"; const { Entity, t, ...driver } = orm; @Entity() class Thing { name!: string; } const Driver = driver.PostgreSqlDriver;',
@@ -670,6 +671,69 @@ const { Entity: Model, EncryptedProperty: Secret, t } = orm;
   expect(result.messages).toEqual([]);
   expect(result.output).toContain("@Secret({ type: t.string })");
   expect(result.output).toContain("@Property({ type: t2.float })");
+  expect(compileDiagnostics(result.output)).toEqual([]);
+  expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
+    false,
+  );
+});
+
+it.each([
+  'export { Entity, Property } from "@mikro-orm/core";',
+  'export { Entity as Model, /* retain export comment */ Property as Column, t as types, type Opt as Optional } from "@mikro-orm/postgresql";',
+  'export { Entity, PostgreSqlDriver, t } from "@mikro-orm/postgresql";',
+  'export type { Entity as Model, Property } from "@mikro-orm/core";',
+  'export { type Entity, Property } from "@mikro-orm/core";',
+])("migrates named decorator re-exports: %s", (code) => {
+  const result = linter.verifyAndFix(code, config, { filename });
+  expect(result.messages).toEqual([]);
+  expect(result.output).toContain("@mikro-orm/decorators/legacy");
+  if (code.includes("export type"))
+    expect(result.output).toContain("export type");
+  if (code.includes("type Entity"))
+    expect(result.output).toContain("type Entity");
+  if (code.includes("retain export comment"))
+    expect(result.output).toContain("/* retain export comment */");
+  expect(compileDiagnostics(result.output)).toEqual([]);
+  expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
+    false,
+  );
+});
+
+it.each([
+  'import { Entity, Property, t, type Opt } from "@mikro-orm/knex"; @Entity() class Thing { @Property({ type: t.string }) name: Opt<string> = ""; }',
+  'import type { Opt } from "@mikro-orm/knex"; export type Name = Opt<string>;',
+  'import * as orm from "@mikro-orm/knex"; @orm.Entity() class Thing { @orm.Property({ type: orm.t.string }) name!: string; } export const Driver = orm.AbstractSqlDriver;',
+  'export { Entity as Model, Property, t, AbstractSqlDriver } from "@mikro-orm/knex";',
+])("migrates the legacy Knex entry point: %s", (code) => {
+  const result = linter.verifyAndFix(code, config, { filename });
+  expect(result.messages).toEqual([]);
+  expect(result.output).not.toContain("@mikro-orm/knex");
+  if (code.includes("Entity"))
+    expect(result.output).toContain("@mikro-orm/decorators/legacy");
+  if (code.includes("AbstractSqlDriver"))
+    expect(result.output).toContain("@mikro-orm/sql");
+  expect(compileDiagnostics(result.output)).toEqual([]);
+  expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
+    false,
+  );
+});
+
+it("repairs a project barrel before its consumer is autofixed", () => {
+  const barrel = linter.verifyAndFix(
+    'export { Entity as Model, Property as Column, t as types } from "@mikro-orm/core";',
+    config,
+    { filename },
+  );
+  expect(barrel.messages).toEqual([]);
+  expect(compileDiagnostics(barrel.output)).toEqual([]);
+  writeFileSync(path.join(fixtureRoot, "migrated-barrel.ts"), barrel.output);
+  const code =
+    'import { Model, Column, types } from "./.cache/orm-imports/migrated-barrel.js"; @Model() class Thing { @Column({ type: types.string }) name?: string; }';
+  const result = linter.verifyAndFix(code, config, { filename });
+  expect(result.messages).toEqual([]);
+  expect(result.output).toContain(
+    "@Column({ type: types.string, nullable: true })",
+  );
   expect(compileDiagnostics(result.output)).toEqual([]);
   expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
     false,

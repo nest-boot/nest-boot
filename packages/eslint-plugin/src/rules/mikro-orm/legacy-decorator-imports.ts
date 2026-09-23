@@ -43,6 +43,7 @@ const legacy = "@mikro-orm/decorators/legacy";
 const coreHelpers = new Set(["t", "Opt", "Ref", "Collection"]);
 const entryPoints = new Set([
   core,
+  "@mikro-orm/knex",
   "@mikro-orm/sql",
   "@mikro-orm/postgresql",
   "@mikro-orm/mysql",
@@ -55,39 +56,76 @@ const entryPoints = new Set([
   "@mikro-orm/pglite",
 ]);
 
+interface LegacyImportEdit {
+  node: TSESTree.Node;
+  text: string;
+}
+
 /** Normalizes core helpers and legacy decorators before field fixes generate bindings. @internal */
 export function legacyDecoratorImports(source: Readonly<SourceCode>) {
-  const bindingText = (specifier: TSESTree.ImportSpecifier) => {
+  type NamedBinding = TSESTree.ImportSpecifier | TSESTree.ExportSpecifier;
+  const bindingName = (specifier: NamedBinding) =>
+    specifier.type === AST_NODE_TYPES.ImportSpecifier
+      ? specifier.imported
+      : specifier.local;
+  const bindingText = (specifier: NamedBinding) => {
+    const imported = bindingName(specifier);
     const name =
-      specifier.imported.type === AST_NODE_TYPES.Identifier
-        ? specifier.imported.name
-        : specifier.imported.value;
-    const prefix = source.text.slice(
-      specifier.range[0],
-      specifier.imported.range[0],
-    );
+      imported.type === AST_NODE_TYPES.Identifier
+        ? imported.name
+        : imported.value;
+    const prefix = source.text.slice(specifier.range[0], imported.range[0]);
     return (
-      (decorators.has(name) ? prefix.replace(/^type\b/, "") : prefix) +
-      name +
-      source.text.slice(specifier.imported.range[1], specifier.range[1])
+      (specifier.type === AST_NODE_TYPES.ImportSpecifier && decorators.has(name)
+        ? prefix.replace(/^type\b/, "")
+        : prefix) +
+      source.getText(imported) +
+      source.text.slice(imported.range[1], specifier.range[1])
     );
   };
 
-  return source.ast.body.flatMap((node) => {
+  return source.ast.body.flatMap<LegacyImportEdit>((node) => {
+    // v7 renamed the shared SQL entry point; remaining SQL bindings stay valid there.
     if (
-      node.type !== AST_NODE_TYPES.ImportDeclaration ||
+      (node.type === AST_NODE_TYPES.ImportDeclaration ||
+        node.type === AST_NODE_TYPES.ExportNamedDeclaration ||
+        node.type === AST_NODE_TYPES.ExportAllDeclaration) &&
+      node.source?.value === "@mikro-orm/knex"
+    ) {
+      const text = source.getText(node);
+      return [
+        {
+          node,
+          text:
+            text.slice(0, node.source.range[0] - node.range[0]) +
+            JSON.stringify("@mikro-orm/sql") +
+            text.slice(node.source.range[1] - node.range[0]),
+        },
+      ];
+    }
+    if (
+      (node.type !== AST_NODE_TYPES.ImportDeclaration &&
+        node.type !== AST_NODE_TYPES.ExportNamedDeclaration) ||
+      !node.source ||
       !entryPoints.has(node.source.value)
     ) {
       return [];
     }
 
-    const destinations = new Map<string, TSESTree.ImportSpecifier[]>();
+    const keyword =
+      node.type === AST_NODE_TYPES.ImportDeclaration ? "import" : "export";
+    const destinations = new Map<string, NamedBinding[]>();
     for (const specifier of node.specifiers) {
-      if (specifier.type !== AST_NODE_TYPES.ImportSpecifier) continue;
+      if (
+        specifier.type !== AST_NODE_TYPES.ImportSpecifier &&
+        specifier.type !== AST_NODE_TYPES.ExportSpecifier
+      )
+        continue;
+      const imported = bindingName(specifier);
       const name =
-        specifier.imported.type === AST_NODE_TYPES.Identifier
-          ? specifier.imported.name
-          : specifier.imported.value;
+        imported.type === AST_NODE_TYPES.Identifier
+          ? imported.name
+          : imported.value;
       const target = decorators.has(name)
         ? legacy
         : coreHelpers.has(name)
@@ -114,7 +152,11 @@ export function legacyDecoratorImports(source: Readonly<SourceCode>) {
           bindingText(specifier) +
           text.slice(specifier.range[1] - start);
       }
-      if (node.importKind === "type" && destinations.has(legacy)) {
+      if (
+        node.type === AST_NODE_TYPES.ImportDeclaration &&
+        node.importKind === "type" &&
+        destinations.has(legacy)
+      ) {
         const token = source.getTokens(node)[1];
         text =
           text.slice(0, token.range[0] - start) +
@@ -139,7 +181,11 @@ export function legacyDecoratorImports(source: Readonly<SourceCode>) {
       const removed = new Set<TSESTree.Node>(moved);
       const ranges = moved.map((specifier) => specifier.range);
       for (const [index, specifier] of node.specifiers.entries()) {
-        if (specifier.type !== AST_NODE_TYPES.ImportSpecifier) continue;
+        if (
+          specifier.type !== AST_NODE_TYPES.ImportSpecifier &&
+          specifier.type !== AST_NODE_TYPES.ExportSpecifier
+        )
+          continue;
         const comma = source.getTokenAfter(specifier);
         const hasLaterBinding = node.specifiers
           .slice(index + 1)
@@ -157,9 +203,14 @@ export function legacyDecoratorImports(source: Readonly<SourceCode>) {
     }
     if (moved.length !== node.specifiers.length || destinations.size > 1) {
       for (const [target, bindings] of destinations) {
-        const kind =
-          target !== legacy && node.importKind === "type" ? "type " : "";
-        text += `\nimport ${kind}{ ${bindings.map(bindingText).join(", ")} } from ${JSON.stringify(target)};`;
+        const kind = (
+          node.type === AST_NODE_TYPES.ExportNamedDeclaration
+            ? node.exportKind === "type"
+            : target !== legacy && node.importKind === "type"
+        )
+          ? "type "
+          : "";
+        text += `\n${keyword} ${kind}{ ${bindings.map(bindingText).join(", ")} } from ${JSON.stringify(target)};`;
       }
     }
     return [{ node, text }];
@@ -195,7 +246,8 @@ export function legacyNamespaceEdits(source: Readonly<SourceCode>): RuleFix[] {
       );
     const mixedPatterns: {
       pattern: TSESTree.ObjectPattern;
-      moved: Set<TSESTree.Node>;
+      init: TSESTree.Identifier;
+      moved: Map<TSESTree.Node, string>;
     }[] = [];
     const references = (variable?.references ?? []).flatMap((reference) => {
       const parent = reference.identifier.parent;
@@ -204,23 +256,27 @@ export function legacyNamespaceEdits(source: Readonly<SourceCode>): RuleFix[] {
         parent.init === reference.identifier &&
         parent.id.type === AST_NODE_TYPES.ObjectPattern
       ) {
-        const moved = new Set<TSESTree.Node>(
-          parent.id.properties.filter((property) => {
-            if (property.type !== AST_NODE_TYPES.Property) return false;
-            const name =
-              !property.computed &&
-              property.key.type === AST_NODE_TYPES.Identifier
-                ? property.key.name
-                : property.key.type === AST_NODE_TYPES.Literal &&
-                    typeof property.key.value === "string"
-                  ? property.key.value
-                  : null;
-            return name !== null && decorators.has(name);
-          }),
-        );
+        const moved = new Map<TSESTree.Node, string>();
+        for (const property of parent.id.properties) {
+          if (property.type !== AST_NODE_TYPES.Property) continue;
+          const name =
+            !property.computed &&
+            property.key.type === AST_NODE_TYPES.Identifier
+              ? property.key.name
+              : property.key.type === AST_NODE_TYPES.Literal &&
+                  typeof property.key.value === "string"
+                ? property.key.value
+                : null;
+          if (name !== null && decorators.has(name)) moved.set(property, name);
+        }
         if (moved.size === parent.id.properties.length && moved.size > 0)
           return [reference.identifier];
-        if (moved.size > 0) mixedPatterns.push({ pattern: parent.id, moved });
+        if (moved.size > 0)
+          mixedPatterns.push({
+            pattern: parent.id,
+            init: reference.identifier,
+            moved,
+          });
         return [];
       }
       const name =
@@ -264,33 +320,15 @@ export function legacyNamespaceEdits(source: Readonly<SourceCode>): RuleFix[] {
     });
     for (const reference of references)
       edits.push({ range: reference.range, text: name });
-    for (const { pattern, moved } of mixedPatterns) {
+    for (const { pattern, init, moved } of mixedPatterns) {
       if (pattern.typeAnnotation) {
-        const init =
-          pattern.parent.type === AST_NODE_TYPES.VariableDeclarator
-            ? pattern.parent.init
-            : null;
-        if (init) {
-          const properties = pattern.properties.flatMap((property) => {
-            if (
-              !moved.has(property) ||
-              property.type !== AST_NODE_TYPES.Property
-            )
-              return [];
-            const key =
-              property.key.type === AST_NODE_TYPES.Identifier
-                ? property.key.name
-                : property.key.type === AST_NODE_TYPES.Literal
-                  ? String(property.key.value)
-                  : undefined;
-            if (!key) return [];
-            return [`${JSON.stringify(key)}: ${name}[${JSON.stringify(key)}]`];
-          });
-          edits.push({
-            range: init.range,
-            text: `{ ...${source.getText(init)}, ${properties.join(", ")} }`,
-          });
-        }
+        const properties = [...new Set(moved.values())].map(
+          (key) => `${JSON.stringify(key)}: ${name}[${JSON.stringify(key)}]`,
+        );
+        edits.push({
+          range: init.range,
+          text: `{ ...${source.getText(init)}, ${properties.join(", ")} }`,
+        });
         continue;
       }
       const retained = new Set<TSESTree.Node>(
@@ -298,7 +336,7 @@ export function legacyNamespaceEdits(source: Readonly<SourceCode>): RuleFix[] {
       );
       edits.push({
         range: pattern.range,
-        text: `${selectedPattern(source, pattern, moved)} = ${name}, ${selectedPattern(source, pattern, retained)}`,
+        text: `${selectedPattern(source, pattern, new Set(moved.keys()))} = ${name}, ${selectedPattern(source, pattern, retained)}`,
       });
     }
     if (mixedPatterns.length && declaration.importKind === "type")
