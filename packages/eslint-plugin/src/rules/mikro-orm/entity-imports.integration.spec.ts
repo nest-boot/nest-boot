@@ -1,3 +1,4 @@
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -8,6 +9,54 @@ import * as ts from "typescript";
 import rule from "./entity-property-config-from-types.js";
 
 const packageRoot = fileURLToPath(new URL("../../../", import.meta.url));
+// Keep executable compiler fixtures out of Nx's production dependency graph.
+const fixtureRoot = path.join(packageRoot, ".cache/orm-imports");
+mkdirSync(fixtureRoot, { recursive: true });
+afterAll(() => {
+  rmSync(fixtureRoot, { recursive: true, force: true });
+});
+writeFileSync(
+  path.join(fixtureRoot, "orm-barrel.ts"),
+  `export { EncryptedProperty } from "../../../mikro-orm-crypt/dist/index.js";
+export { HashedProperty } from "../../../mikro-orm-hash/dist/index.js";
+export { type Opt,t } from "@mikro-orm/core";
+export { Entity, Property } from "@mikro-orm/decorators/legacy";
+`,
+);
+writeFileSync(
+  path.join(fixtureRoot, "orm-mixed-barrel.ts"),
+  `export * from "./orm-barrel.js";
+export { Entity } from "./other-decorators.js";
+`,
+);
+writeFileSync(
+  path.join(fixtureRoot, "orm-renamed-barrel.ts"),
+  `export {
+  Property as Column,
+  Entity as Model,
+  EncryptedProperty as Secret,
+  t as types,
+} from "./orm-barrel.js";
+`,
+);
+writeFileSync(
+  path.join(fixtureRoot, "other-decorators.ts"),
+  `export function Entity(): ClassDecorator {
+  return () => undefined;
+}
+export function Property(...args: unknown[]): PropertyDecorator {
+  return () => {
+    void args;
+  };
+}
+export function Field(...args: unknown[]): PropertyDecorator {
+  return () => {
+    void args;
+  };
+}
+`,
+);
+
 const filename = path.join(packageRoot, "v8-autofix-fixture.ts");
 const linter = new Linter();
 const config: Linter.Config[] = [
@@ -397,22 +446,22 @@ it.each([
 it.each([
   {
     name: "barrel property decorator",
-    code: 'import { Entity } from "@mikro-orm/decorators/legacy"; import { Property as Column, t } from "./v8-orm-barrel.js"; @Entity() class Thing { @Column({ type: t.string }) name!: string; }',
+    code: 'import { Entity } from "@mikro-orm/decorators/legacy"; import { Property as Column, t } from "./.cache/orm-imports/orm-barrel.js"; @Entity() class Thing { @Column({ type: t.string }) name!: string; }',
     unchanged: true,
   },
   {
     name: "barrel model decorator alias",
-    code: 'import { Entity as Model } from "./v8-orm-barrel.js"; @Model() class Thing { name!: string; }',
+    code: 'import { Entity as Model } from "./.cache/orm-imports/orm-barrel.js"; @Model() class Thing { name!: string; }',
     unchanged: false,
   },
   {
     name: "barrel helper retains UUID",
-    code: 'import { Entity, Property } from "@mikro-orm/decorators/legacy"; import { t as types } from "./v8-orm-barrel.js"; @Entity() class Thing { @Property({ type: types.uuid }) name?: string; }',
+    code: 'import { Entity, Property } from "@mikro-orm/decorators/legacy"; import { t as types } from "./.cache/orm-imports/orm-barrel.js"; @Entity() class Thing { @Property({ type: types.uuid }) name?: string; }',
     unchanged: false,
   },
   {
     name: "barrel optional type wrapper",
-    code: 'import { Entity, Property } from "@mikro-orm/decorators/legacy"; import { t, type Opt as Optional } from "./v8-orm-barrel.js"; @Entity() class Thing { @Property({ type: t.string }) name: Optional<string> = "hello"; }',
+    code: 'import { Entity, Property } from "@mikro-orm/decorators/legacy"; import { t, type Opt as Optional } from "./.cache/orm-imports/orm-barrel.js"; @Entity() class Thing { @Property({ type: t.string }) name: Optional<string> = "hello"; }',
     unchanged: true,
   },
 ])("recognizes $name", ({ code, unchanged }) => {
@@ -460,17 +509,7 @@ function compileDiagnostics(code: string): string[] {
   };
   const host = ts.createCompilerHost(options);
   const getSourceFile = host.getSourceFile.bind(host);
-  const barrel = path.join(packageRoot, "v8-orm-barrel.ts");
-  const fileExists = host.fileExists.bind(host);
-  host.fileExists = (file) => file === barrel || fileExists(file);
   host.getSourceFile = (file, ...args) => {
-    if (file === barrel)
-      return ts.createSourceFile(
-        file,
-        'export { Entity, Property } from "@mikro-orm/decorators/legacy"; export { t, type Opt } from "@mikro-orm/core";',
-        ts.ScriptTarget.ES2023,
-        true,
-      );
     if (file === filename)
       return ts.createSourceFile(file, code, ts.ScriptTarget.ES2023, true);
     const cached = sourceFiles.get(file);
@@ -487,3 +526,83 @@ function compileDiagnostics(code: string): string[] {
       ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"),
     );
 }
+
+it.each(["EncryptedProperty", "HashedProperty"])(
+  "promotes the actual type-only barrel %s binding",
+  (name) => {
+    const code = `import { Entity } from "@mikro-orm/decorators/legacy";
+import { t } from "@mikro-orm/core";
+import type { ${name} as Secret } from "./.cache/orm-imports/orm-barrel.js";
+@Entity() class Thing { @Secret({ type: t.string }) name!: string; }`;
+    const result = linter.verifyAndFix(code, config, { filename });
+    expect(result.messages).toEqual([]);
+    expect(result.output).toContain("@Secret(");
+    expect(compileDiagnostics(result.output)).toEqual([]);
+    expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
+      false,
+    );
+  },
+);
+
+it("ignores another library's aliased model decorator", () => {
+  const code =
+    'import { Entity as Model } from "./.cache/orm-imports/other-decorators.js"; @Model() class Thing { name!: string; }';
+  const result = linter.verifyAndFix(code, config, { filename });
+  expect(result.output).toBe(code);
+  expect(result.messages).toEqual([]);
+  expect(compileDiagnostics(result.output)).toEqual([]);
+});
+
+it("retains an unrelated namespace decorator on an ORM property", () => {
+  const code =
+    'import { Entity } from "@mikro-orm/decorators/legacy"; import * as validation from "./.cache/orm-imports/other-decorators.js"; @Entity() class Thing { @validation.Property() name!: string; }';
+  const result = linter.verifyAndFix(code, config, { filename });
+  expect(result.output).toContain("@validation.Property()");
+  expect(result.output).toContain("@Property(");
+  expect(result.messages).toEqual([]);
+  expect(compileDiagnostics(result.output)).toEqual([]);
+  expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
+    false,
+  );
+});
+
+it.each([
+  'import * as orm from "@mikro-orm/core"; @orm.Entity() class Thing { @orm.Property({ type: orm.t.string }) name!: string; }',
+  'import * as orm from "@mikro-orm/core"; @orm.Entity() class Thing { name!: string; }',
+  'import type * as orm from "@mikro-orm/core"; @orm.Entity() class Thing { @orm.Property({ type: orm.t.string }) name!: string; }',
+  'import * as orm from "@mikro-orm/postgresql"; @orm.Entity() class Thing { @orm.Property({ type: orm.t.string }) name!: string; }',
+  'import * as orm from "@mikro-orm/core"; const ormDecorators = 1; function other(orm: { Entity(): ClassDecorator }) { @orm.Entity() class Other {} } @orm.Entity() class Thing { @orm.Property({ type: orm.t.string }) name!: string; }',
+])("migrates obsolete namespace decorators: %s", (code) => {
+  const result = linter.verifyAndFix(code, config, { filename });
+  expect(result.messages).toEqual([]);
+  expect(result.output).toContain("@mikro-orm/decorators/legacy");
+  if (code.includes("class Other"))
+    expect(result.output).toContain("@orm.Entity() class Other");
+  expect(compileDiagnostics(result.output)).toEqual([]);
+  expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
+    false,
+  );
+});
+
+it.each([
+  'import { Model, Column, types } from "./.cache/orm-imports/orm-renamed-barrel.js"; @Model() class Thing { @Column({ type: types.uuid }) id!: string; }',
+  'import { Entity as Model } from "./.cache/orm-imports/orm-mixed-barrel.js"; @Model() class Thing { name!: string; }',
+])("preserves the identity of chained and shadowed re-exports: %s", (code) => {
+  const result = linter.verifyAndFix(code, config, { filename });
+  expect(result.output).toBe(code);
+  expect(result.messages).toEqual([]);
+  expect(compileDiagnostics(result.output)).toEqual([]);
+});
+
+it.each([
+  'import { type Model, type Secret } from "./.cache/orm-imports/orm-renamed-barrel.js"; import { t } from "@mikro-orm/core"; @Model() class Thing { @Secret({ type: t.string }) name!: string; }',
+  'import type * as orm from "./.cache/orm-imports/orm-barrel.js"; @orm.Entity() class Thing { @orm.EncryptedProperty({ type: orm.t.string }) name!: string; }',
+  'import { Entity } from "@mikro-orm/decorators/legacy"; import { EncryptedProperty as Runtime, type EncryptedProperty as Secret, t } from "./.cache/orm-imports/orm-barrel.js"; @Entity() class Thing { @Secret({ type: t.string }) name!: string; }',
+])("promotes actual runtime references across barrel forms: %s", (code) => {
+  const result = linter.verifyAndFix(code, config, { filename });
+  expect(result.messages).toEqual([]);
+  expect(compileDiagnostics(result.output)).toEqual([]);
+  expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
+    false,
+  );
+});

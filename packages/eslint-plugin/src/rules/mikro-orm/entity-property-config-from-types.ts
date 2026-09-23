@@ -13,8 +13,12 @@ import {
   isTypeOnlyImportReference,
   namedImportBinding,
   namedImportEdits,
+  promoteImportReferences,
 } from "../../utils/named-imports.js";
-import { legacyDecoratorImports } from "./legacy-decorator-imports.js";
+import {
+  legacyDecoratorImports,
+  legacyNamespaceEdits,
+} from "./legacy-decorator-imports.js";
 
 // Custom Fix object type for deferred fix application
 interface CustomFix {
@@ -69,6 +73,17 @@ export default createRule<
   create(context) {
     const source = context.sourceCode;
     let importLocation: TSESTree.Node = source.ast;
+    const namespaceEdits = legacyNamespaceEdits(source);
+    if (namespaceEdits.length)
+      return {
+        Program(node) {
+          context.report({
+            node,
+            messageId: "useLegacyDecoratorImports",
+            fix: () => namespaceEdits,
+          });
+        },
+      };
     const legacyImports = legacyDecoratorImports(source);
     if (legacyImports.length > 0) {
       // Let ESLint reparse migrated imports before generating property fixes.
@@ -86,19 +101,15 @@ export default createRule<
     }
     const coreModule = "@mikro-orm/core";
     const decoratorsModule = "@mikro-orm/decorators/legacy";
-    const importedModules = source.ast.body.flatMap((node) =>
-      node.type === AST_NODE_TYPES.ImportDeclaration ? [node.source.value] : [],
-    );
-    // Follow the lexical import binding even when a project barrel re-exports it.
     const coreName = (local: TSESTree.Node) =>
-      importedBindingName(source, importedModules, local);
+      importedBindingName(source, coreModule, local);
     const decoratorModules = [
       decoratorsModule,
       "@nest-boot/mikro-orm-crypt",
       "@nest-boot/mikro-orm-hash",
     ];
     const decoratorName = (local: TSESTree.Node) =>
-      importedBindingName(source, importedModules, local);
+      importedBindingName(source, decoratorModules, local);
     const importEdits = (
       modules: string | readonly string[],
       names: readonly string[],
@@ -847,6 +858,38 @@ export default createRule<
       ClassDeclaration(node) {
         if (!isEntityClass(node)) return;
         importLocation = node;
+        const runtimeReferences: TSESTree.Node[] = [
+          ...node.decorators,
+          ...node.body.body.flatMap((member) =>
+            "decorators" in member ? member.decorators : [],
+          ),
+        ].flatMap((decorator) =>
+          decorator.expression.type === AST_NODE_TYPES.CallExpression &&
+          decoratorName(decorator.expression.callee) !== null
+            ? [decorator.expression.callee]
+            : [],
+        );
+        for (const member of node.body.body) {
+          if (member.type !== AST_NODE_TYPES.PropertyDefinition) continue;
+          for (const decorator of member.decorators) {
+            if (
+              decorator.expression.type !== AST_NODE_TYPES.CallExpression ||
+              decoratorName(decorator.expression.callee) === null
+            )
+              continue;
+            const reference = parsePropertyDecorator(decorator).typeReference;
+            if (reference) runtimeReferences.push(reference);
+          }
+        }
+        const promotions = promoteImportReferences(source, runtimeReferences);
+        if (promotions.length) {
+          context.report({
+            node,
+            messageId: "alignPropertyDecoratorWithTsType",
+            fix: () => promotions,
+          });
+          return;
+        }
 
         // First check if Opt is used but not imported
         checkOptUsageWithoutImport(node);
@@ -921,36 +964,6 @@ export default createRule<
           const currentDecoratorName = propertyDecorator
             ? getDecoratorName(propertyDecorator)
             : null;
-
-          const typeOnlyDecorators = [
-            currentDecoratorName,
-            enumDecorator ? "Enum" : null,
-          ].filter(
-            (name): name is string =>
-              !!name &&
-              hasImport(decoratorModules, name, false) &&
-              !hasImport(decoratorModules, name),
-          );
-          const importPromotions = importEdits(
-            decoratorModules,
-            typeOnlyDecorators,
-          );
-          if (
-            propertyDecorator &&
-            parsePropertyDecorator(propertyDecorator).type?.startsWith("t.") &&
-            hasImport(coreModule, "t", false) &&
-            !hasImport(coreModule, "t")
-          ) {
-            importPromotions.push(...importEdits(coreModule, ["t"]));
-          }
-          if (importPromotions.length > 0) {
-            context.report({
-              node: member,
-              messageId: "alignPropertyDecoratorWithTsType",
-              fix: () => importPromotions,
-            });
-            return;
-          }
 
           const typeInfo = computeTypeInfo(member);
 

@@ -1,5 +1,9 @@
 import { AST_NODE_TYPES, type TSESTree } from "@typescript-eslint/utils";
-import type { SourceCode } from "@typescript-eslint/utils/ts-eslint";
+import {
+  type RuleFix,
+  Scope,
+  type SourceCode,
+} from "@typescript-eslint/utils/ts-eslint";
 
 const decorators = new Set([
   "Entity",
@@ -160,4 +164,78 @@ export function legacyDecoratorImports(source: Readonly<SourceCode>) {
     }
     return [{ node, text }];
   });
+}
+
+/** Splits obsolete namespace decorators without changing core/driver members or shadowed references. @internal */
+export function legacyNamespaceEdits(source: Readonly<SourceCode>): RuleFix[] {
+  const edits: RuleFix[] = [];
+  const occupied = new Set(
+    (source.scopeManager?.scopes ?? []).flatMap((scope) =>
+      scope.variables.map((variable) => variable.name),
+    ),
+  );
+  for (const declaration of source.ast.body) {
+    if (
+      declaration.type !== AST_NODE_TYPES.ImportDeclaration ||
+      !entryPoints.has(declaration.source.value)
+    )
+      continue;
+    const binding = declaration.specifiers.find(
+      (specifier) => specifier.type === AST_NODE_TYPES.ImportNamespaceSpecifier,
+    );
+    if (!binding) continue;
+    const variable = source
+      .getDeclaredVariables(declaration)
+      .find((candidate) =>
+        candidate.defs.some(
+          (definition) =>
+            definition.type === Scope.DefinitionType.ImportBinding &&
+            definition.node === binding,
+        ),
+      );
+    const references = (variable?.references ?? []).flatMap((reference) => {
+      const parent = reference.identifier.parent;
+      const name =
+        parent.type === AST_NODE_TYPES.MemberExpression &&
+        parent.object === reference.identifier
+          ? !parent.computed &&
+            parent.property.type === AST_NODE_TYPES.Identifier
+            ? parent.property.name
+            : parent.computed &&
+                parent.property.type === AST_NODE_TYPES.Literal &&
+                typeof parent.property.value === "string"
+              ? parent.property.value
+              : null
+          : parent.type === AST_NODE_TYPES.TSQualifiedName &&
+              parent.left === reference.identifier
+            ? parent.right.name
+            : null;
+      return name && decorators.has(name) ? [reference.identifier] : [];
+    });
+    if (!references.length) continue;
+    if (
+      references.length === variable?.references.length &&
+      declaration.specifiers.length === 1
+    ) {
+      edits.push({
+        range: declaration.source.range,
+        text: JSON.stringify(legacy),
+      });
+      if (declaration.importKind === "type")
+        edits.push({ range: source.getTokens(declaration)[1].range, text: "" });
+      continue;
+    }
+    const base = `${binding.local.name}Decorators`;
+    let name = base;
+    for (let suffix = 2; occupied.has(name); suffix++)
+      name = `${base}${String(suffix)}`;
+    occupied.add(name);
+    edits.push({
+      range: [declaration.range[1], declaration.range[1]],
+      text: `\nimport * as ${name} from ${JSON.stringify(legacy)};`,
+    });
+    for (const reference of references)
+      edits.push({ range: reference.range, text: name });
+  }
+  return edits;
 }

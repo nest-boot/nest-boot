@@ -9,6 +9,7 @@ const rule = createRule<[], "missing">({
   name: "test-import",
   meta: {
     type: "problem",
+    docs: { description: "Exercise runtime import insertion." },
     fixable: "code",
     schema: [],
     messages: { missing: "Add runtime import." },
@@ -35,6 +36,7 @@ it.each([
 ])("preserves the file preamble %j", (preamble) => {
   const linter = new Linter();
   const config: Linter.Config = {
+    linterOptions: { reportUnusedDisableDirectives: "off" },
     languageOptions: { parser },
     plugins: {
       test: { rules: { imports: rule as unknown as Rule.RuleModule } },
@@ -48,5 +50,41 @@ it.each([
   expect(ts.preProcessFile(result.output).typeReferenceDirectives).toEqual(
     ts.preProcessFile(code).typeReferenceDirectives,
   );
+  expect(linter.verifyAndFix(result.output, config).fixed).toBe(false);
+});
+
+it.each([
+  "/** Public model description. */",
+  "// @ts-expect-error",
+  "/* istanbul ignore next */",
+  "/* c8 ignore next */",
+  "// eslint-disable-next-line no-unused-vars",
+])("keeps %s attached to its statement", (comment) => {
+  const preamble =
+    '#!/usr/bin/env node\n/// <reference types="node" />\n"use strict";\n';
+  const code = `${preamble}${comment}\nexport class Thing {}`;
+  const linter = new Linter();
+  const config: Linter.Config = {
+    linterOptions: { reportUnusedDisableDirectives: "off" },
+    languageOptions: { parser },
+    plugins: {
+      test: { rules: { imports: rule as unknown as Rule.RuleModule } },
+    },
+    rules: { "test/imports": "error" },
+  };
+  const result = linter.verifyAndFix(code, config);
+  expect(result.output).toContain(`${comment}\nexport class Thing`);
+  expect(result.output.startsWith(preamble)).toBe(true);
+  if (comment.startsWith("/**")) {
+    const source = ts.createSourceFile(
+      "test.ts",
+      result.output,
+      ts.ScriptTarget.ESNext,
+      true,
+    );
+    const declaration = source.statements.find(ts.isClassDeclaration);
+    if (!declaration) throw new Error("Missing class declaration");
+    expect(ts.getJSDocCommentsAndTags(declaration)).toHaveLength(1);
+  }
   expect(linter.verifyAndFix(result.output, config).fixed).toBe(false);
 });
