@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "@apollo/client/react";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import dayjs from "dayjs";
 import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 
 import { useCurrentUserContext } from "../../../contexts/current-user-context";
 import type { UserPermission } from "@/lib/permissions";
@@ -193,6 +194,7 @@ export const Route = createFileRoute("/_authenticated/admin/users/$userId/")({
 });
 
 function AdminUserPage() {
+  const { t } = useTranslation();
   const { userId } = Route.useParams();
   const navigate = useNavigate();
   const currentUser = useCurrentUserContext();

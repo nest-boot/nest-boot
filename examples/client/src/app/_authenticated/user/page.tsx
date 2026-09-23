@@ -3,6 +3,7 @@ import { useForm } from "@tanstack/react-form";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 import { CircleX, MailCheck } from "lucide-react";
 import { z } from "zod";
 
@@ -60,6 +61,7 @@ export const Route = createFileRoute("/_authenticated/user/")({
 });
 
 function UserComponent() {
+  const { t } = useTranslation();
   const router = useRouter();
   const currentUser = useCurrentUserContext();
   const [updateUser] = useMutation(UPDATE_USER_FROM_USER_ROUTE);

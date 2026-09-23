@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from "@apollo/client/react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
-import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 import { useAbility } from "@/contexts/ability-context";
 
 import { ApiKeysPage } from "@/components/api-keys-page";
@@ -146,6 +146,7 @@ function ScopedApiKeysComponent() {
 }
 
 function ApiKeysComponent() {
+  const { t } = useTranslation();
   const ability = useAbility();
   const search = Route.useSearch();
   const { data, refetch } = useQuery(GET_API_KEYS_FROM_API_KEYS_ROUTE, {

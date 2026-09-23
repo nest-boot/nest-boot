@@ -3,6 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { Link, createFileRoute, useSearch } from "@tanstack/react-router";
 import { CircleCheck, CircleX } from "lucide-react";
 import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
@@ -39,6 +40,7 @@ export const Route = createFileRoute("/auth/reset-password/")({
 });
 
 function ResetPasswordComponent() {
+  const { t } = useTranslation();
   const search = useSearch({ from: "/auth/reset-password/" });
   const [resetPassword] = useMutation(RESET_PASSWORD_FROM_RESET_PASSWORD);
   const [newPassword, setNewPassword] = useState("");

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation } from "@apollo/client/react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { MailCheck } from "lucide-react";
-import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
 import { AuthPageShell } from "../components/auth-page-shell";
@@ -35,6 +35,7 @@ export const Route = createFileRoute("/auth/forgot-password/")({
 });
 
 function ForgotPasswordComponent() {
+  const { t } = useTranslation();
   const [requestPasswordReset] = useMutation(
     REQUEST_PASSWORD_RESET_FROM_FORGOT_PASSWORD,
   );

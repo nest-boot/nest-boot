@@ -1,4 +1,4 @@
-import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 import md5 from "md5";
 
 import { useCurrentUserContext } from "../contexts/current-user-context";
@@ -6,6 +6,7 @@ import { UserMenu } from "./user-menu";
 import { WorkspaceMenu } from "./workspace-menu";
 import type { Workspace } from "@/components/thread-ui/topbar";
 import { Link } from "@/components/link";
+import { Logo } from "@/components/logo";
 import { AvatarImage } from "@/components/ui/avatar";
 import {
   Topbar,
@@ -24,14 +25,15 @@ export function AppTopbar({
   currentWorkspace?: Workspace;
   showSidebar?: boolean;
 }) {
+  const { t } = useTranslation();
   const currentUser = useCurrentUserContext();
 
   return (
     <Topbar>
       {showSidebar && <TopbarSidebarTrigger />}
       <TopbarBrand className={showSidebar ? undefined : "block"}>
-        <Link to="/workspaces" className="flex items-center gap-2">
-          <img src="/logo.svg" alt="" className="size-8" />
+        <Link to="/workspaces" className="text-primary flex items-center gap-2">
+          <Logo className="size-8" />
           <span>{t("app.name")}</span>
         </Link>
       </TopbarBrand>

@@ -107,7 +107,8 @@ test.describe("API keys", () => {
 
     await createFirstWorkspace(page, `个人 Key 工作空间 ${seed}`);
     await page.getByTestId("topbar-menu-trigger").click();
-    await page.getByTestId("sidebar-user-api-keys-link").click();
+    await page.getByTestId("sidebar-user-account-link").click();
+    await page.getByTestId("user-sidebar-api-keys-link").click();
 
     await expect(page).toHaveURL(/\/user\/api-keys(\?.*)?$/);
 

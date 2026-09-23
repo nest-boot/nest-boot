@@ -1,5 +1,5 @@
 import { Link, linkOptions } from "@tanstack/react-router";
-import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 import { UsersRound } from "lucide-react";
 import type { ComponentProps, FC } from "react";
 
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/sidebar";
 
 export const AdminSidebar: FC<ComponentProps<typeof Sidebar>> = (props) => {
+  const { t } = useTranslation();
   const { setOpenMobile } = useSidebar();
   const usersLink = linkOptions({ to: "/admin/users" });
 

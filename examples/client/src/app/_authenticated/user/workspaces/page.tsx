@@ -8,6 +8,7 @@ import {
 import { zodValidator } from "@tanstack/zod-adapter";
 import dayjs from "dayjs";
 import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 import { ArrowRight, Check, Plus, X } from "lucide-react";
 import { pick } from "lodash";
 import { Breadcrumbs } from "@/components/breadcrumbs";
@@ -143,6 +144,7 @@ export const Route = createFileRoute("/_authenticated/user/workspaces/")({
 });
 
 function UserWorkspacesComponent() {
+  const { t } = useTranslation();
   const search = Route.useSearch();
   const navigate = useNavigate();
   const location = useLocation();

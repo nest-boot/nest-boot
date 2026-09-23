@@ -1,5 +1,5 @@
 import { Boxes, CircleUserRound, KeyRound, LockKeyhole } from "lucide-react";
-import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 
 import { linkOptions } from "@tanstack/react-router";
 
@@ -28,6 +28,7 @@ type SidebarItem = {
 };
 
 export const UserSidebar: FC<ComponentProps<typeof Sidebar>> = (props) => {
+  const { t } = useTranslation();
   const { setOpenMobile } = useSidebar();
   const ability = useAbility();
   const items: Array<SidebarItem> = [

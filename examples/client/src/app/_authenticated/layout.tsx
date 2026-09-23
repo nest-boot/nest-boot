@@ -1,6 +1,6 @@
 import { useMutation } from "@apollo/client/react";
 import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
-import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 
 import { CurrentUserProvider } from "./contexts/current-user-context";
 import { Button } from "@/components/thread-ui/button";
@@ -81,6 +81,7 @@ function AuthenticatedLayout() {
 }
 
 function AuthenticatedContent() {
+  const { t } = useTranslation();
   const { currentSession } = Route.useRouteContext();
   const [stopImpersonating, { loading }] = useMutation(
     STOP_IMPERSONATING_FROM_AUTHENTICATED_ROUTE,

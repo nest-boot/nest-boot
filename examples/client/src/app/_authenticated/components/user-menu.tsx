@@ -1,18 +1,27 @@
 import { useApolloClient, useMutation } from "@apollo/client/react";
-import { useNavigate } from "@tanstack/react-router";
-import { t } from "i18next";
+import { useNavigate, useRouter } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
+import { useTheme } from "next-themes";
 import {
-  Boxes,
-  CircleUserRound,
-  KeyRound,
+  Languages,
   LogOut,
+  Monitor,
+  Moon,
   ShieldCheck,
+  Sun,
+  SunMoon,
 } from "lucide-react";
 
+import { Link } from "@/components/link";
 import { useAbility } from "@/contexts/ability-context";
 import {
   TopbarMenuItem,
+  TopbarMenuRadioGroup,
+  TopbarMenuRadioItem,
   TopbarMenuSeparator,
+  TopbarMenuSub,
+  TopbarMenuSubContent,
+  TopbarMenuSubTrigger,
   TopbarMenuUser,
 } from "@/components/thread-ui/topbar";
 import { graphql } from "@/gql";
@@ -24,6 +33,9 @@ const AUTH_SIGN_OUT_FROM_SIDEBAR_USER = graphql(`
 `);
 
 export function UserMenu() {
+  const { t, i18n } = useTranslation();
+  const { theme = "system", setTheme } = useTheme();
+  const router = useRouter();
   const navigate = useNavigate();
   const apolloClient = useApolloClient();
   const [signOut] = useMutation(AUTH_SIGN_OUT_FROM_SIDEBAR_USER);
@@ -31,39 +43,71 @@ export function UserMenu() {
 
   return (
     <>
-      <TopbarMenuUser />
-      <TopbarMenuSeparator />
-      <TopbarMenuItem
+      <TopbarMenuUser
         data-testid="sidebar-user-account-link"
-        onClick={() => navigate({ to: "/user" })}
-      >
-        <CircleUserRound />
-        {t("sidebar:user.account")}
-      </TopbarMenuItem>
-      <TopbarMenuItem
-        data-testid="sidebar-user-workspaces-link"
-        onClick={() => navigate({ to: "/user/workspaces" })}
-      >
-        <Boxes />
-        {t("sidebar:user.workspaces")}
-      </TopbarMenuItem>
-      {ability.can("read", "UserApiKey") ? (
-        <TopbarMenuItem
-          data-testid="sidebar-user-api-keys-link"
-          onClick={() => navigate({ to: "/user/api-keys" })}
-        >
-          <KeyRound />
-          {t("sidebar:user.api_keys")}
-        </TopbarMenuItem>
-      ) : null}
+        render={<Link to="/user" />}
+      />
+      <TopbarMenuSeparator />
+      <TopbarMenuSub>
+        <TopbarMenuSubTrigger data-testid="user-menu-language">
+          <Languages />
+          {t("thread-ui:topbarMenu.language")}
+        </TopbarMenuSubTrigger>
+        <TopbarMenuSubContent>
+          <TopbarMenuRadioGroup
+            aria-label={t("thread-ui:topbarMenu.language")}
+            value={i18n.resolvedLanguage ?? "en"}
+            onValueChange={async (language) => {
+              await i18n.changeLanguage(language);
+              await router.invalidate();
+            }}
+          >
+            <TopbarMenuRadioItem value="zh" closeOnClick>
+              简体中文
+            </TopbarMenuRadioItem>
+            <TopbarMenuRadioItem value="en" closeOnClick>
+              English
+            </TopbarMenuRadioItem>
+          </TopbarMenuRadioGroup>
+        </TopbarMenuSubContent>
+      </TopbarMenuSub>
+      <TopbarMenuSub>
+        <TopbarMenuSubTrigger data-testid="user-menu-theme">
+          <SunMoon />
+          {t("thread-ui:topbarMenu.theme")}
+        </TopbarMenuSubTrigger>
+        <TopbarMenuSubContent>
+          <TopbarMenuRadioGroup
+            aria-label={t("thread-ui:topbarMenu.theme")}
+            value={theme}
+            onValueChange={setTheme}
+          >
+            <TopbarMenuRadioItem value="light" closeOnClick>
+              <Sun />
+              {t("sidebar:user.theme.light")}
+            </TopbarMenuRadioItem>
+            <TopbarMenuRadioItem value="dark" closeOnClick>
+              <Moon />
+              {t("sidebar:user.theme.dark")}
+            </TopbarMenuRadioItem>
+            <TopbarMenuRadioItem value="system" closeOnClick>
+              <Monitor />
+              {t("sidebar:user.theme.system")}
+            </TopbarMenuRadioItem>
+          </TopbarMenuRadioGroup>
+        </TopbarMenuSubContent>
+      </TopbarMenuSub>
       {ability.can("read", "User") ? (
-        <TopbarMenuItem
-          data-testid="sidebar-admin-link"
-          onClick={() => navigate({ to: "/admin/users" })}
-        >
-          <ShieldCheck />
-          {t("sidebar:admin.title")}
-        </TopbarMenuItem>
+        <>
+          <TopbarMenuSeparator />
+          <TopbarMenuItem
+            data-testid="sidebar-admin-link"
+            onClick={() => navigate({ to: "/admin/users" })}
+          >
+            <ShieldCheck />
+            {t("sidebar:admin.title")}
+          </TopbarMenuItem>
+        </>
       ) : null}
       <TopbarMenuSeparator />
       <TopbarMenuItem

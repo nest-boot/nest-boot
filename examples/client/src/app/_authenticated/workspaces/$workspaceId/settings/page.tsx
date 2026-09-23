@@ -5,7 +5,7 @@ import {
   useNavigate,
   useRouter,
 } from "@tanstack/react-router";
-import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 import { useCurrentWorkspaceContext } from "../contexts/current-workspace-context";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import {
@@ -82,6 +82,7 @@ function ScopedSettingsComponent() {
 }
 
 function SettingsComponent() {
+  const { t } = useTranslation();
   const router = useRouter();
   const navigate = useNavigate();
 

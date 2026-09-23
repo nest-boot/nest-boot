@@ -3,6 +3,7 @@ import { useApolloClient, useMutation, useQuery } from "@apollo/client/react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { LogIn, ShieldCheck, UserPlus } from "lucide-react";
 import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import type { ChangeEvent, ComponentProps, FormEvent } from "react";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
@@ -92,6 +93,7 @@ export function LoginForm({
   mode: AuthMode;
   redirect?: string;
 }) {
+  const { t } = useTranslation();
   const apolloClient = useApolloClient();
   const navigate = useNavigate();
   const [signIn] = useMutation(AUTH_SIGN_IN_FROM_LOGIN_FORM);
@@ -115,7 +117,7 @@ export function LoginForm({
       mode === "login"
         ? t("auth:form.loginSubmit")
         : t("auth:form.registerSubmit"),
-    [mode],
+    [mode, t],
   );
 
   const handleSocialLogin = async (provider: { id: string; name: string }) => {

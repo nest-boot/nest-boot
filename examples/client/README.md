@@ -57,6 +57,11 @@ Use `Page variant="compact"` for form pages, with full-width `PageLayoutSection`
 elements so cards stay stacked within the compact page.
 Use theme color tokens from `src/styles.css` in application code.
 
+The topbar's user row links to the profile. Its Language and Theme submenus
+persist preferences in the browser, with Chinese/English and light/dark/system
+options. Use `useTranslation` in rendered components so text updates when the
+language changes; route metadata can use the shared i18next instance.
+
 The rules recognize both shadcn/ui and Thread UI imports. Thread UI
 implementations can define their own variants and structural styles; the
 Badge implementation permits its palette-based color variants. The existing

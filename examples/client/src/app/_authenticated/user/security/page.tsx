@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "@apollo/client/react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { MonitorSmartphone } from "lucide-react";
 import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import type { FormEvent } from "react";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
@@ -157,6 +158,7 @@ export const Route = createFileRoute("/_authenticated/user/security/")({
 });
 
 function UserSecurityComponent() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const {
     data: sessionData,

@@ -19,6 +19,11 @@
     "api_keys": "Personal API Keys",
     "logout": "Log out",
     "security": "Security",
+    "theme": {
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
+    },
     "title": "Personal",
     "workspaces": "Workspaces"
   }

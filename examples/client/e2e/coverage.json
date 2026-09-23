@@ -110,6 +110,13 @@
       "status": "covered",
       "specs": ["user.spec.ts", "workspace.spec.ts"],
       "notes": "Navigates with the mobile drawer, closes it after navigation and desktop resize, keeps the topbar visible while content scrolls, and returns through page breadcrumbs. The unified topbar menu provides account actions and paginated workspace switching."
+    },
+    {
+      "domain": "Navigation",
+      "scenario": "Profile navigation and persistent language/theme preferences in the user menu",
+      "status": "covered",
+      "specs": ["user.spec.ts"],
+      "notes": "Opens the profile from the user identity row, changes language without losing unsaved form input, persists language and theme across reloads, and follows system color scheme changes."
     }
   ]
 }

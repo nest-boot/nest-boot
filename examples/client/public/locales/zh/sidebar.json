@@ -19,6 +19,11 @@
     "api_keys": "个人 API 密钥",
     "logout": "退出登录",
     "security": "安全",
+    "theme": {
+      "light": "浅色",
+      "dark": "深色",
+      "system": "跟随系统"
+    },
     "title": "个人中心",
     "workspaces": "工作空间"
   }

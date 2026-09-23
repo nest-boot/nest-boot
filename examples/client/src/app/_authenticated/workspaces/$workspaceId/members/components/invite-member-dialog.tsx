@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { useMutation, useQuery } from "@apollo/client/react";
 import { Copy } from "lucide-react";
 import { useForm } from "@tanstack/react-form";
-import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 import type { WorkspaceRole } from "@/gql/graphql";
 import { toast } from "@/components/thread-ui/toast";
 import { Button } from "@/components/thread-ui/button";
@@ -45,6 +45,7 @@ export function InviteMemberDialog({
   onInviteOpenChange: (open: boolean) => void;
   onSuccess?: () => void | Promise<void>;
 }) {
+  const { t } = useTranslation();
   const [inviteLinkOpen, setInviteLinkOpen] = useState(false);
   const [inviteLink, setInviteLink] = useState("");
   const {
@@ -128,16 +129,19 @@ export function InviteMemberDialog({
     onInviteOpenChange(open);
   };
 
-  const handleCopyInviteLink = useCallback(async (link: string) => {
-    try {
-      await navigator.clipboard.writeText(link);
-      toast.add({ type: "success", title: t("member:invite.link_copied") });
-    } catch (err) {
-      if (err instanceof Error) {
-        toast.add({ type: "error", title: err.message });
+  const handleCopyInviteLink = useCallback(
+    async (link: string) => {
+      try {
+        await navigator.clipboard.writeText(link);
+        toast.add({ type: "success", title: t("member:invite.link_copied") });
+      } catch (err) {
+        if (err instanceof Error) {
+          toast.add({ type: "error", title: err.message });
+        }
       }
-    }
-  }, []);
+    },
+    [t],
+  );
 
   return (
     <>

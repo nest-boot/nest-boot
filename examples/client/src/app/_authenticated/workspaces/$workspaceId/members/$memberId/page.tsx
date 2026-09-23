@@ -7,6 +7,7 @@ import {
   useRouter,
 } from "@tanstack/react-router";
 import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 
 import { useCurrentMemberContext } from "../../contexts/current-member-context";
 import { MemberProfileForm } from "./components/member-profile-form";
@@ -114,6 +115,7 @@ function MemberDetails({
     member: NonNullable<GetMemberFromMemberRouteQuery["member"]>;
   };
 }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const navigate = useNavigate();
   const { workspaceId } = Route.useParams();

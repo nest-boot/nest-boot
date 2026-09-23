@@ -4,7 +4,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { Loader2 } from "lucide-react";
 import z from "zod";
-import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 import { toast } from "@/components/thread-ui/toast";
 
 import { graphql } from "@/gql";
@@ -67,6 +67,7 @@ export const Route = createFileRoute("/invite/")({
 });
 
 function InviteComponent() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const search = Route.useSearch();
 
@@ -107,7 +108,7 @@ function InviteComponent() {
       return t("workspace:invite.error.expired");
     }
     return null;
-  }, [invitation, invitationId, inviteError]);
+  }, [invitation, invitationId, inviteError, t]);
 
   // 如果未登录，立即跳转到登录页（避免闪烁）
   useEffect(() => {

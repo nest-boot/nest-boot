@@ -1,6 +1,6 @@
 import { useMutation } from "@apollo/client/react";
 import { useForm } from "@tanstack/react-form";
-import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
 import type { MemberFormProps } from "./member-form-props";
@@ -23,6 +23,7 @@ export function MemberProfileForm({
   disabled,
   onSave,
 }: MemberFormProps) {
+  const { t } = useTranslation();
   const [updateMember] = useMutation(UPDATE_MEMBER);
   const form = useForm({
     defaultValues: { name: member.name, email: member.email ?? "" },

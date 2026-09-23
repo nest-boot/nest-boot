@@ -8,6 +8,82 @@ import { createFirstWorkspace } from "./utils/workspace";
 import type { Page } from "@playwright/test";
 
 test.describe("user pages", () => {
+  test("opens the profile from the user row and persists language and theme preferences", async ({
+    page,
+  }) => {
+    await registerUser(page, {
+      email: `${uniqueSeed("user-preferences")}@example.com`,
+      name: "Preferences User",
+    });
+    await page.getByTestId("topbar-menu-trigger").click();
+    const profileLink = page.getByTestId("sidebar-user-account-link");
+    await expect(profileLink).toContainText("Preferences User");
+    await expect(profileLink).toHaveAttribute("href", "/user");
+    await expect(page.getByTestId("sidebar-user-workspaces-link")).toHaveCount(
+      0,
+    );
+    await expect(page.getByTestId("sidebar-user-api-keys-link")).toHaveCount(0);
+    await profileLink.click();
+    await expect(page).toHaveURL(/\/user$/);
+
+    const nameInput = page.getByTestId("user-profile-name-input");
+    await nameInput.fill("Unsaved profile name");
+    await page.getByTestId("topbar-menu-trigger").click();
+    await page.getByTestId("user-menu-language").click();
+    await page
+      .getByRole("menuitemradio", { name: "English", exact: true })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "Profile", exact: true }),
+    ).toBeVisible();
+    await expect(page.getByTestId("user-sidebar-security-link")).toHaveText(
+      "Security",
+    );
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await expect(nameInput).toHaveValue("Unsaved profile name");
+
+    const selectTheme = async (name: string) => {
+      await page.getByTestId("topbar-menu-trigger").click();
+      await page.getByTestId("user-menu-theme").click();
+      await page.getByRole("menuitemradio", { name, exact: true }).click();
+    };
+    await selectTheme("Dark");
+    await expect(page.locator("html")).toHaveClass(/\bdark\b/);
+    await page.reload();
+    await expect(page.locator("html")).toHaveClass(/\bdark\b/);
+    await expect(
+      page.getByRole("heading", { name: "Profile", exact: true }),
+    ).toBeVisible();
+    await page.getByTestId("topbar-menu-trigger").click();
+    await page.getByTestId("user-menu-theme").click();
+    await expect(
+      page.getByRole("menuitemradio", { name: "Dark", exact: true }),
+    ).toHaveAttribute("aria-checked", "true");
+    await page
+      .getByRole("menuitemradio", { name: "Light", exact: true })
+      .click();
+    await expect(page.locator("html")).toHaveClass(/\blight\b/);
+
+    await page.emulateMedia({ colorScheme: "dark" });
+    await selectTheme("System");
+    await expect(page.locator("html")).toHaveClass(/\bdark\b/);
+    await page.emulateMedia({ colorScheme: "light" });
+    await expect(page.locator("html")).toHaveClass(/\blight\b/);
+    await page.reload();
+    await page.getByTestId("topbar-menu-trigger").click();
+    await page.getByTestId("user-menu-language").click();
+    await expect(
+      page.getByRole("menuitemradio", { name: "English", exact: true }),
+    ).toHaveAttribute("aria-checked", "true");
+    await page
+      .getByRole("menuitemradio", { name: "简体中文", exact: true })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "个人资料", exact: true }),
+    ).toBeVisible();
+    await expect(page.locator("html")).toHaveAttribute("lang", "zh");
+  });
+
   test("navigates with the mobile drawer, account menu, and page breadcrumbs", async ({
     page,
   }) => {

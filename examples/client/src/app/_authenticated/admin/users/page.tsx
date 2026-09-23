@@ -4,6 +4,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import dayjs from "dayjs";
 import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 import { Plus } from "lucide-react";
 import { z } from "zod";
 import { Breadcrumbs } from "@/components/breadcrumbs";
@@ -95,6 +96,7 @@ export const Route = createFileRoute("/_authenticated/admin/users/")({
 });
 
 function AdminUsersPage() {
+  const { t } = useTranslation();
   const search = Route.useSearch();
   const navigate = useNavigate();
   const ability = useAbility();

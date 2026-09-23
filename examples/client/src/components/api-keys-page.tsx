@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { useForm } from "@tanstack/react-form";
 import dayjs from "dayjs";
-import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 import { isEmpty } from "lodash";
 import { AlertTriangle, Check, Copy, KeyRound } from "lucide-react";
 import z from "zod";
@@ -118,6 +118,7 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
   deleteApiKey,
   refetch,
 }: ApiKeysPageProps<Permission>) {
+  const { t } = useTranslation();
   const isPermission = (value: UserApiKeyPermission): value is Permission =>
     permissionValues.some((permission) => permission === value);
   const canCreate = ability.can("write", subject);
@@ -251,7 +252,7 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
         defaultOperator: "$gte",
       },
     ];
-  }, []);
+  }, [t]);
 
   const handleCreateDialogOpenChange = (open: boolean) => {
     if (!open) {

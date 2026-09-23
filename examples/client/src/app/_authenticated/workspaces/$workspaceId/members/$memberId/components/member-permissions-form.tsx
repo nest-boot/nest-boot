@@ -1,6 +1,6 @@
 import { useMutation } from "@apollo/client/react";
 import { useForm } from "@tanstack/react-form";
-import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
 import type { MemberFormProps } from "./member-form-props";
@@ -32,6 +32,7 @@ export function MemberPermissionsForm({
 }: MemberFormProps & {
   options: GetMemberFromMemberRouteQuery["workspacePermissions"];
 }) {
+  const { t } = useTranslation();
   const [setPermissions] = useMutation(SET_MEMBER_PERMISSIONS);
   const form = useForm({
     defaultValues: { permissions: member.permissions },

@@ -9,6 +9,7 @@ import {
 import { zodValidator } from "@tanstack/zod-adapter";
 import dayjs from "dayjs";
 import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 import z from "zod";
 import { isEmpty, pick } from "lodash";
 import { useCurrentMemberContext } from "../contexts/current-member-context";
@@ -215,6 +216,7 @@ function ScopedMembersComponent() {
 }
 
 function MembersComponent() {
+  const { t } = useTranslation();
   const search = Route.useSearch();
   const { workspaceId } = Route.useParams();
   const navigate = useNavigate();
@@ -310,7 +312,7 @@ function MembersComponent() {
         defaultOperator: "$gte",
       },
     ];
-  }, []);
+  }, [t]);
 
   const [removeMember, { loading: removeMemberLoading }] = useMutation(
     REMOVE_MEMBER_FROM_MEMBERS_ROUTE,

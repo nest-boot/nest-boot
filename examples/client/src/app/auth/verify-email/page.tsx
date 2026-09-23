@@ -3,7 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { CircleCheck, CircleX, MailCheck, RotateCw } from "lucide-react";
-import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
 import { AuthPageShell } from "../components/auth-page-shell";
@@ -40,6 +40,7 @@ export const Route = createFileRoute("/auth/verify-email/")({
 });
 
 function VerifyEmailComponent() {
+  const { t } = useTranslation();
   const search = Route.useSearch();
   const [sendVerificationEmail] = useMutation(
     SEND_VERIFICATION_EMAIL_FROM_VERIFY_EMAIL,

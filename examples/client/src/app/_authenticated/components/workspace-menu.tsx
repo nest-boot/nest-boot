@@ -1,6 +1,6 @@
 import { Loader2 } from "lucide-react";
 import { useQuery } from "@apollo/client/react";
-import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 import { useMemo, useState } from "react";
 
 import { Link } from "@/components/link";
@@ -52,6 +52,7 @@ export function WorkspaceMenu({
 }: {
   currentWorkspaceId?: string;
 }) {
+  const { t } = useTranslation();
   const [loadingMore, setLoadingMore] = useState(false);
   const [additionalWorkspaces, setAdditionalWorkspaces] = useState<
     Array<{ id: string; name: string }>

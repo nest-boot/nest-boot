@@ -1,7 +1,7 @@
 import { KeyRound, Settings, User } from "lucide-react";
 
 import { linkOptions, useParams } from "@tanstack/react-router";
-import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 
 import type { LinkProps } from "@tanstack/react-router";
 import type { ComponentProps, ComponentType, FC } from "react";
@@ -30,6 +30,7 @@ type SidebarItem = {
 export const WorkspaceSidebar: FC<ComponentProps<typeof Sidebar>> = ({
   ...props
 }) => {
+  const { t } = useTranslation();
   const workspaceId = useParams({
     from: "/_authenticated/workspaces/$workspaceId",
     select: (params) => params.workspaceId,

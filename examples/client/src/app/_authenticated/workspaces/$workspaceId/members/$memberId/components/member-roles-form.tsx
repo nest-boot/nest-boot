@@ -1,6 +1,6 @@
 import { useMutation } from "@apollo/client/react";
 import { useForm } from "@tanstack/react-form";
-import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
 import type { MemberFormProps } from "./member-form-props";
@@ -31,6 +31,7 @@ export function MemberRolesForm({
 }: MemberFormProps & {
   options: GetMemberFromMemberRouteQuery["workspaceRoles"];
 }) {
+  const { t } = useTranslation();
   const [setRoles] = useMutation(SET_MEMBER_ROLES);
   const form = useForm({
     defaultValues: { roles: member.roles },
