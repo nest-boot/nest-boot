@@ -18,6 +18,7 @@ import type {
 import type { ApiKeySearch } from "@/lib/api-key-search";
 import type { PageInfo } from "@/lib/connection-search";
 import type { createAbility } from "@/lib/ability";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { toast } from "@/components/thread-ui/toast";
 import { createAbilitySubject } from "@/lib/ability";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
@@ -45,6 +46,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Card, CardContent } from "@/components/ui/card";
 import { getApiKeyStatus } from "@/lib/api-key-status";
 import {
   getNextPageSearch,
@@ -333,6 +335,7 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
   return (
     <Page>
       <PageHeader>
+        <Breadcrumbs />
         <PageTitle>{title}</PageTitle>
         <PageDescription>{description}</PageDescription>
         <PageActions>
@@ -347,130 +350,140 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
         </PageActions>
       </PageHeader>
       <PageContent>
-        <div className="mb-4" data-testid="api-keys-page">
-          <DataFilter
-            filters={filters}
-            value={{ filter: filterValues, query }}
-            onChange={(value) => {
-              navigate({
-                to: location.pathname,
-                search: {
-                  ...(value.query ? { query: value.query } : {}),
-                  ...(!isEmpty(value.filter) ? { filter: value.filter } : {}),
-                },
-              });
-            }}
-            search={{
-              placeholder: t("api-key:filter.search.placeholder"),
-            }}
-          />
-        </div>
+        <Card>
+          <CardContent>
+            <div className="space-y-4">
+              <div data-testid="api-keys-page">
+                <DataFilter
+                  filters={filters}
+                  value={{ filter: filterValues, query }}
+                  onChange={(value) => {
+                    navigate({
+                      to: location.pathname,
+                      search: {
+                        ...(value.query ? { query: value.query } : {}),
+                        ...(!isEmpty(value.filter)
+                          ? { filter: value.filter }
+                          : {}),
+                      },
+                    });
+                  }}
+                  search={{
+                    placeholder: t("api-key:filter.search.placeholder"),
+                  }}
+                />
+              </div>
 
-        <DataTable
-          columns={[
-            {
-              accessorKey: "name",
-              header: t("api-key:table.name"),
-              cell: ({ row }) => {
-                const apiKey = row.original;
+              <DataTable
+                columns={[
+                  {
+                    accessorKey: "name",
+                    header: t("api-key:table.name"),
+                    cell: ({ row }) => {
+                      const apiKey = row.original;
 
-                return (
-                  <span
-                    className="font-medium"
-                    data-testid={`api-key-row-${apiKey.id}`}
-                  >
-                    {apiKey.name}
-                  </span>
-                );
-              },
-            },
-            {
-              accessorKey: "status",
-              header: t("api-key:table.status"),
-              size: 80,
-              cell: ({ row }) => {
-                const status = getApiKeyStatus(row.original);
+                      return (
+                        <span
+                          className="font-medium"
+                          data-testid={`api-key-row-${apiKey.id}`}
+                        >
+                          {apiKey.name}
+                        </span>
+                      );
+                    },
+                  },
+                  {
+                    accessorKey: "status",
+                    header: t("api-key:table.status"),
+                    size: 80,
+                    cell: ({ row }) => {
+                      const status = getApiKeyStatus(row.original);
 
-                return (
-                  <Badge
-                    color={status.color}
-                    data-testid={`api-key-status-${row.original.id}`}
-                  >
-                    {t(`api-key:status.${status.label}`)}
-                  </Badge>
-                );
-              },
-            },
-            {
-              accessorKey: "start",
-              header: t("api-key:table.key_start"),
-              size: 100,
-              cell: ({ row }) => (
-                <code className="text-xs">
-                  {row.original.start ?? row.original.prefix ?? "—"}
-                </code>
-              ),
-            },
-            {
-              accessorKey: "lastUsedAt",
-              header: t("api-key:table.last_used"),
-              cell: ({ row }) =>
-                row.original.lastUsedAt
-                  ? dayjs(row.original.lastUsedAt).format("YYYY-MM-DD HH:mm")
-                  : t("api-key:never_used"),
-            },
-            {
-              accessorKey: "expiresAt",
-              header: t("api-key:table.expires_at"),
-              cell: ({ row }) =>
-                row.original.expiresAt
-                  ? dayjs(row.original.expiresAt).format("YYYY-MM-DD")
-                  : t("api-key:never_expires"),
-            },
-            {
-              accessorKey: "createdAt",
-              header: t("api-key:table.created_at"),
-              cell: ({ row }) =>
-                dayjs(row.original.createdAt).format("YYYY-MM-DD"),
-            },
-          ]}
-          data={apiKeys}
-          pagination={{
-            hasPreviousPage: pageInfo?.hasPreviousPage,
-            hasNextPage: pageInfo?.hasNextPage,
-            onPreviousPage: () => {
-              navigate({
-                to: location.pathname,
-                search: getPreviousPageSearch(search, pageInfo),
-              });
-            },
-            onNextPage: () => {
-              navigate({
-                to: location.pathname,
-                search: getNextPageSearch(search, pageInfo),
-              });
-            },
-          }}
-          rowActions={(row) => [
-            {
-              disabled: updateLoading || !canUpdate(row.original),
-              label: row.original.enabled
-                ? t("action.disable")
-                : t("action.enable"),
-              onClick: () => handleToggleApiKey(row.original),
-            },
-            {
-              disabled: updateLoading || !canUpdate(row.original),
-              label: t("action.edit"),
-              onClick: () => handleOpenRename(row.original),
-            },
-            {
-              disabled: deleteLoading || !canDelete(row.original),
-              label: t("action.delete"),
-              onClick: () => handleDeleteApiKey(row.original),
-            },
-          ]}
-        />
+                      return (
+                        <Badge
+                          color={status.color}
+                          data-testid={`api-key-status-${row.original.id}`}
+                        >
+                          {t(`api-key:status.${status.label}`)}
+                        </Badge>
+                      );
+                    },
+                  },
+                  {
+                    accessorKey: "start",
+                    header: t("api-key:table.key_start"),
+                    size: 100,
+                    cell: ({ row }) => (
+                      <code className="text-xs">
+                        {row.original.start ?? row.original.prefix ?? "—"}
+                      </code>
+                    ),
+                  },
+                  {
+                    accessorKey: "lastUsedAt",
+                    header: t("api-key:table.last_used"),
+                    cell: ({ row }) =>
+                      row.original.lastUsedAt
+                        ? dayjs(row.original.lastUsedAt).format(
+                            "YYYY-MM-DD HH:mm",
+                          )
+                        : t("api-key:never_used"),
+                  },
+                  {
+                    accessorKey: "expiresAt",
+                    header: t("api-key:table.expires_at"),
+                    cell: ({ row }) =>
+                      row.original.expiresAt
+                        ? dayjs(row.original.expiresAt).format("YYYY-MM-DD")
+                        : t("api-key:never_expires"),
+                  },
+                  {
+                    accessorKey: "createdAt",
+                    header: t("api-key:table.created_at"),
+                    cell: ({ row }) =>
+                      dayjs(row.original.createdAt).format("YYYY-MM-DD"),
+                  },
+                ]}
+                data={apiKeys}
+                pagination={{
+                  hasPreviousPage: pageInfo?.hasPreviousPage,
+                  hasNextPage: pageInfo?.hasNextPage,
+                  onPreviousPage: () => {
+                    navigate({
+                      to: location.pathname,
+                      search: getPreviousPageSearch(search, pageInfo),
+                    });
+                  },
+                  onNextPage: () => {
+                    navigate({
+                      to: location.pathname,
+                      search: getNextPageSearch(search, pageInfo),
+                    });
+                  },
+                }}
+                rowActions={(row) => [
+                  {
+                    disabled: updateLoading || !canUpdate(row.original),
+                    label: row.original.enabled
+                      ? t("action.disable")
+                      : t("action.enable"),
+                    onClick: () => handleToggleApiKey(row.original),
+                  },
+                  {
+                    disabled: updateLoading || !canUpdate(row.original),
+                    label: t("action.edit"),
+                    onClick: () => handleOpenRename(row.original),
+                  },
+                  {
+                    disabled: deleteLoading || !canDelete(row.original),
+                    label: t("action.delete"),
+                    onClick: () => handleDeleteApiKey(row.original),
+                  },
+                ]}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
         <Dialog
           open={createDialogOpen}
@@ -636,10 +649,8 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
               <DialogTitle>{t("api-key:created.title")}</DialogTitle>
             </DialogHeader>
             <Alert className="mt-2">
-              <AlertTriangle className="h-4 w-4 text-amber-500" />
-              <AlertTitle className="font-semibold">
-                {t("api-key:created.warning")}
-              </AlertTitle>
+              <AlertTriangle className="text-warning h-4 w-4" />
+              <AlertTitle>{t("api-key:created.warning")}</AlertTitle>
               <AlertDescription>
                 {t("api-key:created.description")}
               </AlertDescription>

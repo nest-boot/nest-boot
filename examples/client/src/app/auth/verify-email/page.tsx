@@ -7,6 +7,7 @@ import { t } from "i18next";
 import { z } from "zod";
 
 import { AuthPageShell } from "../components/auth-page-shell";
+import { FieldDescription, FieldError } from "@/components/ui/field";
 import { Button } from "@/components/thread-ui/button";
 import {
   Card,
@@ -15,7 +16,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { FieldDescription } from "@/components/ui/field";
 import { graphql } from "@/gql";
 import { createEmailVerificationCallbackUrl } from "@/lib/auth-redirect";
 
@@ -115,50 +115,48 @@ function VerifyEmailComponent() {
                   })}
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          {resent && (
-            <FieldDescription
-              className="text-center"
-              data-testid="verify-email-resent"
-            >
-              {t("auth:emailVerification.resent")}
-            </FieldDescription>
-          )}
-          {error && (
-            <FieldDescription className="text-destructive text-center">
-              {error}
-            </FieldDescription>
-          )}
+        <CardContent>
+          <div className="flex flex-col gap-4">
+            {resent && (
+              <FieldDescription
+                className="text-center"
+                data-testid="verify-email-resent"
+              >
+                {t("auth:emailVerification.resent")}
+              </FieldDescription>
+            )}
+            {error && <FieldError className="text-center">{error}</FieldError>}
 
-          {verified ? (
-            <Button
-              className="w-full"
-              render={<a href={loginUrl} />}
-              data-testid="verify-email-sign-in"
-            >
-              {t("auth:emailVerification.signIn")}
-            </Button>
-          ) : search.email ? (
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={resend}
-              loading={loading}
-              data-testid="verify-email-resend"
-            >
-              <RotateCw />
-              {t("auth:emailVerification.resend")}
-            </Button>
-          ) : (
-            <Button
-              className="w-full"
-              variant="outline"
-              render={<a href={loginUrl} />}
-            >
-              {t("auth:emailVerification.backToSignIn")}
-            </Button>
-          )}
+            {verified ? (
+              <Button
+                className="w-full"
+                render={<a href={loginUrl} />}
+                data-testid="verify-email-sign-in"
+              >
+                {t("auth:emailVerification.signIn")}
+              </Button>
+            ) : search.email ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={resend}
+                loading={loading}
+                data-testid="verify-email-resend"
+              >
+                <RotateCw />
+                {t("auth:emailVerification.resend")}
+              </Button>
+            ) : (
+              <Button
+                className="w-full"
+                variant="outline"
+                render={<a href={loginUrl} />}
+              >
+                {t("auth:emailVerification.backToSignIn")}
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
     </AuthPageShell>

@@ -103,6 +103,13 @@
       "status": "covered",
       "specs": ["api-key.spec.ts"],
       "notes": "Creates, reveals, disables, edits, and deletes both owner types. Bearer authentication and privilege ceilings are covered by server PostgreSQL E2E."
+    },
+    {
+      "domain": "Navigation",
+      "scenario": "Responsive application layout, unified account menu, and page breadcrumbs",
+      "status": "covered",
+      "specs": ["user.spec.ts", "workspace.spec.ts"],
+      "notes": "Navigates with the mobile drawer, closes it after navigation and desktop resize, keeps the topbar visible while content scrolls, and returns through page breadcrumbs. The unified topbar menu provides account actions and paginated workspace switching."
     }
   ]
 }

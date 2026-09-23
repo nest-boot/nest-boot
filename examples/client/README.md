@@ -45,6 +45,23 @@ attributes and checkbox group option `testId` support used by the example's
 end-to-end tests. Keep the dialog content's viewport height limit and vertical
 scrolling so long permission forms remain usable on smaller screens.
 
+ESLint includes [@shadcn/lint](https://github.com/shadcn-ui/lint) checks for
+component restyling, raw colors, arbitrary values, inline styles, dynamic
+component classes, and unknown Tailwind classes. Prefer default component
+styles and existing `variant`/`size` props. Use `FormLayout` with
+`FormLayoutItem` for form layout and plain `div` elements for other custom
+layout; do not add Card or Field styling exceptions to the lint rules.
+Keep card titles and descriptions in `CardHeader`, the body in `CardContent`,
+and standalone card actions in `CardFooter`.
+Use `Page variant="compact"` for form pages, with full-width `PageLayoutSection`
+elements so cards stay stacked within the compact page.
+Use theme color tokens from `src/styles.css` in application code.
+
+The rules recognize both shadcn/ui and Thread UI imports. Thread UI
+implementations can define their own variants and structural styles; the
+Badge implementation permits its palette-based color variants. The existing
+ignore for generated `src/components/ui` source remains in place.
+
 ## Generated GraphQL types
 
 The checked-in GraphQL client types are generated from

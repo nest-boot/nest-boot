@@ -14,6 +14,11 @@ import { MemberRolesForm } from "./components/member-roles-form";
 import { MemberPermissionsForm } from "./components/member-permissions-form";
 import type { MemberFormProps } from "./components/member-form-props";
 import type { GetMemberFromMemberRouteQuery } from "@/gql/graphql";
+import { Breadcrumbs } from "@/components/breadcrumbs";
+import {
+  PageLayout,
+  PageLayoutSection,
+} from "@/components/thread-ui/page-layout";
 import { toast } from "@/components/thread-ui/toast";
 import { useAbility } from "@/contexts/ability-context";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
@@ -25,6 +30,7 @@ import {
   PageSecondaryAction,
   PageTitle,
 } from "@/components/thread-ui/page";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { graphql } from "@/gql";
 import { createAbilitySubject } from "@/lib/ability";
 import { isAccessDenied } from "@/lib/auth-errors";
@@ -194,6 +200,7 @@ function MemberDetails({
   return (
     <Page variant="compact" data-testid="member-detail-page">
       <PageHeader>
+        <Breadcrumbs />
         <PageTitle>{member.name ?? member.id}</PageTitle>
         {member.id !== currentMember.id &&
           ability.can("write", memberSubject) && (
@@ -209,28 +216,65 @@ function MemberDetails({
             </PageActions>
           )}
       </PageHeader>
-      <PageContent className="space-y-8">
-        <MemberProfileForm
-          member={member}
-          onSave={save}
-          disabled={saving || removing || !ability.can("write", memberSubject)}
-        />
-        <MemberRolesForm
-          member={member}
-          onSave={save}
-          options={data.workspaceRoles}
-          disabled={
-            saving || removing || !ability.can("set-roles", memberSubject)
-          }
-        />
-        <MemberPermissionsForm
-          member={member}
-          onSave={save}
-          options={data.workspacePermissions}
-          disabled={
-            saving || removing || !ability.can("set-permissions", memberSubject)
-          }
-        />
+      <PageContent>
+        <PageLayout>
+          <PageLayoutSection>
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("member:details.sections.profile")}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <MemberProfileForm
+                  member={member}
+                  onSave={save}
+                  disabled={
+                    saving || removing || !ability.can("write", memberSubject)
+                  }
+                />
+              </CardContent>
+            </Card>
+          </PageLayoutSection>
+          <PageLayoutSection>
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("member:details.sections.roles")}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <MemberRolesForm
+                  member={member}
+                  onSave={save}
+                  options={data.workspaceRoles}
+                  disabled={
+                    saving ||
+                    removing ||
+                    !ability.can("set-roles", memberSubject)
+                  }
+                />
+              </CardContent>
+            </Card>
+          </PageLayoutSection>
+          <PageLayoutSection>
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  {t("member:details.sections.permissions")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <MemberPermissionsForm
+                  member={member}
+                  onSave={save}
+                  options={data.workspacePermissions}
+                  disabled={
+                    saving ||
+                    removing ||
+                    !ability.can("set-permissions", memberSubject)
+                  }
+                />
+              </CardContent>
+            </Card>
+          </PageLayoutSection>
+        </PageLayout>
       </PageContent>
     </Page>
   );

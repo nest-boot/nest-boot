@@ -156,7 +156,7 @@ test.describe("workspace management", () => {
     await expect(nameInput).toHaveValue(renamedWorkspaceName);
 
     // The normalized Workspace cache must refresh without a page reload.
-    await expect(page.getByTestId("workspace-switcher-trigger")).toContainText(
+    await expect(page.getByTestId("topbar-menu-trigger")).toContainText(
       renamedWorkspaceName,
     );
 
@@ -202,7 +202,7 @@ test.describe("workspace management", () => {
     expect(secondPage.edges).toHaveLength(1);
 
     await page.goto(`/workspaces/${firstWorkspaceId}/settings`);
-    await page.getByTestId("workspace-switcher-trigger").click();
+    await page.getByTestId("topbar-menu-trigger").click();
     await expect(
       page.locator('[data-testid^="workspace-switcher-workspace-"]'),
     ).toHaveCount(10);
@@ -215,7 +215,7 @@ test.describe("workspace management", () => {
     await page.getByTestId(`workspace-switcher-workspace-${target.id}`).click();
     await expect(page).toHaveURL(new RegExp(`/workspaces/${target.id}/`));
 
-    await page.getByTestId("workspace-switcher-trigger").click();
+    await page.getByTestId("topbar-menu-trigger").click();
     await page.getByTestId("workspace-switcher-create").click();
     await expect(page).toHaveURL(/\/workspaces\/create$/);
     await expect(page.getByTestId("workspace-create-submit")).toBeVisible();

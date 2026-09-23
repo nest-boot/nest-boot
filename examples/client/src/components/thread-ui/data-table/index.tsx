@@ -44,18 +44,15 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
-function getCommonPinningStyles<TData>(column: Column<TData>): CSSProperties {
+function getCommonPinningClassNames<TData>(column: Column<TData>): string {
   const isPinned = column.getIsPinned();
 
-  return {
-    left: isPinned === "left" ? `${column.getStart("left")}px` : undefined,
-    right: isPinned === "right" ? `${column.getAfter("right")}px` : undefined,
-    width: column.getSize(),
-  };
-}
-
-function getCommonPinningClassNames<TData>(column: Column<TData>): string {
-  return cn(column.getIsPinned() ? "sticky z-1" : "relative z-0");
+  return cn(
+    "w-(--column-width)",
+    isPinned ? "sticky z-1" : "relative z-0",
+    isPinned === "left" && "left-(--column-offset)",
+    isPinned === "right" && "right-(--column-offset)",
+  );
 }
 
 export interface DataTablePaginationProps {
@@ -241,10 +238,10 @@ export function DataTable<TData extends RowData, TValue = unknown>({
   }, []);
 
   return (
-    <div>
+    <div className="flex flex-col gap-2">
       <div className="relative overflow-auto rounded-md">
         {selectedRowCount > 0 && (
-          <div className="bg-background absolute top-0 left-0 z-100 flex h-10 w-full items-center gap-2 px-2">
+          <div className="bg-card absolute top-0 left-0 z-100 flex h-10 w-full items-center gap-2 px-2">
             <Checkbox
               aria-label={t("dataTable.selectAllRows")}
               checked={table.getIsAllPageRowsSelected()}
@@ -256,7 +253,7 @@ export function DataTable<TData extends RowData, TValue = unknown>({
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
-                  <Button size="sm" variant="ghost">
+                  <Button size="xs" variant="ghost">
                     {isAllPageRowsSelected
                       ? t("dataTable.allSelected")
                       : t("dataTable.selectedRows", {
@@ -305,23 +302,30 @@ export function DataTable<TData extends RowData, TValue = unknown>({
           </div>
         )}
 
-        <Table className="bg-background table-fixed">
+        <Table className="bg-card table-fixed">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow
                 key={headerGroup.id}
-                className="group bg-background hover:bg-muted"
+                className="group bg-card hover:bg-muted"
               >
                 {headerGroup.headers.map((header) => (
                   <TableHead
                     key={header.id}
                     className={cn(
-                      "bg-background group-hover:bg-muted whitespace-normal",
+                      "bg-card group-hover:bg-muted whitespace-normal",
                       getCommonPinningClassNames<TData>(header.column),
                     )}
-                    style={{
-                      ...getCommonPinningStyles<TData>(header.column),
-                    }}
+                    style={
+                      {
+                        "--column-width": `${header.column.getSize()}px`,
+                        "--column-offset": `${
+                          header.column.getIsPinned() === "right"
+                            ? header.column.getAfter("right")
+                            : header.column.getStart("left")
+                        }px`,
+                      } as CSSProperties
+                    }
                   >
                     {header.isPlaceholder
                       ? null
@@ -341,7 +345,7 @@ export function DataTable<TData extends RowData, TValue = unknown>({
                   key={row.id}
                   data-state={row.getIsSelected() ? "selected" : undefined}
                   className={cn(
-                    "group bg-background hover:bg-muted",
+                    "group bg-card hover:bg-muted",
                     onRowClick && "cursor-pointer",
                   )}
                   {...(onRowClick ? { onClick: () => onRowClick?.(row) } : {})}
@@ -350,13 +354,20 @@ export function DataTable<TData extends RowData, TValue = unknown>({
                     <TableCell
                       key={cell.id}
                       className={cn(
-                        "bg-background group-hover:bg-muted whitespace-normal",
+                        "bg-card group-hover:bg-muted whitespace-normal",
                         getCommonPinningClassNames<TData>(cell.column),
                         cell.column.id === "$actions" && "text-right",
                       )}
-                      style={{
-                        ...getCommonPinningStyles<TData>(cell.column),
-                      }}
+                      style={
+                        {
+                          "--column-width": `${cell.column.getSize()}px`,
+                          "--column-offset": `${
+                            cell.column.getIsPinned() === "right"
+                              ? cell.column.getAfter("right")
+                              : cell.column.getStart("left")
+                          }px`,
+                        } as CSSProperties
+                      }
                       onClick={
                         cell.column.id === "$actions"
                           ? (event) => event.stopPropagation()
@@ -374,7 +385,7 @@ export function DataTable<TData extends RowData, TValue = unknown>({
             ) : (
               <TableRow>
                 <TableCell
-                  className="bg-background h-24 text-center"
+                  className="bg-card h-24 text-center"
                   colSpan={tableColumns.length}
                 >
                   {empty ?? (
@@ -391,7 +402,7 @@ export function DataTable<TData extends RowData, TValue = unknown>({
       </div>
 
       {pagination && (
-        <div className="flex items-center justify-center py-4">
+        <div className="flex items-center justify-center">
           <ButtonGroup>
             <Button
               aria-label={t("dataTable.previousPage")}

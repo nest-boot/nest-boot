@@ -1,14 +1,10 @@
 import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
+import { AppTopbar } from "../../components/app-topbar";
 import { CurrentWorkspaceProvider } from "./contexts/current-workspace-context";
 import { CurrentMemberProvider } from "./contexts/current-member-context";
 import { WorkspaceSidebar } from "./components/workspace-sidebar";
 import { graphql } from "@/gql";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
-import { Breadcrumbs } from "@/components/breadcrumbs";
+import { Layout, LayoutContent } from "@/components/thread-ui/layout";
 import { createAbility, createAbilitySubject } from "@/lib/ability";
 import { AbilityProvider } from "@/contexts/ability-context";
 import { isAccessDenied } from "@/lib/auth-errors";
@@ -82,21 +78,14 @@ function WorkspaceLayout() {
     <CurrentWorkspaceProvider value={currentWorkspace}>
       <CurrentMemberProvider value={currentMember}>
         <AbilityProvider ability={ability}>
-          <SidebarProvider>
+          <Layout>
+            <AppTopbar currentWorkspace={currentWorkspace} />
             <WorkspaceSidebar />
 
-            <SidebarInset>
-              <header className="bg-background flex h-16 shrink-0 items-center gap-2 border-b transition-[width,height] duration-200 ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 md:left-(--sidebar-width) md:group-has-data-[collapsible=icon]/sidebar-wrapper:left-(--sidebar-width-icon)">
-                <div className="flex items-center gap-2 px-4">
-                  <SidebarTrigger />
-
-                  <Breadcrumbs />
-                </div>
-              </header>
-
+            <LayoutContent>
               <Outlet />
-            </SidebarInset>
-          </SidebarProvider>
+            </LayoutContent>
+          </Layout>
         </AbilityProvider>
       </CurrentMemberProvider>
     </CurrentWorkspaceProvider>

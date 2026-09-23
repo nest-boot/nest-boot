@@ -8,6 +8,47 @@ import { createFirstWorkspace } from "./utils/workspace";
 import type { Page } from "@playwright/test";
 
 test.describe("user pages", () => {
+  test("navigates with the mobile drawer, account menu, and page breadcrumbs", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await registerUser(page, {
+      email: `${uniqueSeed("mobile-navigation")}@example.com`,
+      name: "Mobile navigation",
+    });
+    await page.goto("/user");
+
+    const navigation = page.getByRole("button", { name: "切换导航" });
+    await navigation.click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.getByTestId("user-sidebar-security-link").click();
+    await expect(page).toHaveURL(/\/user\/security$/);
+    await expect(navigation).toHaveAttribute("aria-expanded", "false");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+
+    await page.getByTestId("user-delete-card").scrollIntoViewIfNeeded();
+    await expect(page.getByTestId("topbar-menu-trigger")).toBeInViewport();
+    await expect(navigation).toBeInViewport();
+    await page.getByTestId("topbar-menu-trigger").click();
+    await page.getByTestId("sidebar-user-account-link").click();
+    await expect(page).toHaveURL(/\/user$/);
+
+    await navigation.click();
+    await page.getByTestId("user-sidebar-security-link").click();
+    await page
+      .getByRole("navigation", { name: "面包屑导航" })
+      .getByRole("link")
+      .click();
+    await expect(page).toHaveURL(/\/user$/);
+    await expect(page.getByTestId("user-profile-page")).toBeVisible();
+
+    await navigation.click();
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page.getByTestId("user-sidebar-security-link")).toBeVisible();
+    await expect(navigation).toBeHidden();
+  });
+
   test("loads subsequent pages of linked accounts", async ({ page }) => {
     await registerUser(page, {
       email: `${uniqueSeed("account-pages")}@example.com`,
@@ -91,7 +132,7 @@ test.describe("user pages", () => {
     });
     await createFirstWorkspace(page, workspaceName);
 
-    await page.getByTestId("sidebar-user-menu").click();
+    await page.getByTestId("topbar-menu-trigger").click();
     await page.getByTestId("sidebar-user-account-link").click();
 
     await expect(page).toHaveURL(/\/user$/);

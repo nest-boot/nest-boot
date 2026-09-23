@@ -63,7 +63,7 @@ for (const scope of ["user", "workspace"] as const) {
       scope === "user" ? "/user" : `/workspaces/${workspace.id}/settings`,
     );
     if (scope === "user") {
-      await page.getByTestId("sidebar-user-menu").click();
+      await page.getByTestId("topbar-menu-trigger").click();
       await expect(page.getByTestId("sidebar-admin-link")).toBeVisible();
       await page.keyboard.press("Escape");
     } else
@@ -85,7 +85,7 @@ for (const scope of ["user", "workspace"] as const) {
     await expect.poll(() => refreshedRoute).toBe(true);
     expect(identityReads).toBe(scope === "user" ? 1 : 2);
     if (scope === "user") {
-      await page.getByTestId("sidebar-user-menu").click();
+      await page.getByTestId("topbar-menu-trigger").click();
       await expect(page.getByTestId("sidebar-admin-link")).toHaveCount(0);
     } else
       await expect(page.getByTestId("workspace-settings-delete")).toHaveCount(

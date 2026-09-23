@@ -232,10 +232,30 @@
   },
   "page": {
     "back": "Back",
-    "moreActions": "More actions"
+    "moreActions": "More actions",
+    "breadcrumbs": "Breadcrumbs",
+    "parentPages": "Parent pages"
   },
   "codeBlock": {
     "copy": "Copy code",
     "selectLanguage": "Select code language"
+  },
+  "layout": {
+    "navigation": "Navigation",
+    "toggleNavigation": "Toggle navigation",
+    "skipToContent": "Skip to content"
+  },
+  "topbarMenu": {
+    "choose": "Choose workspace",
+    "switch": "Switch workspace: {{name}}",
+    "recentWorkspaces": "Recent workspaces",
+    "create": "Create workspace",
+    "userMenu": "Account: {{name}}",
+    "accountMenu": "Workspace and account: {{name}}",
+    "profile": "Open profile: {{name}}",
+    "language": "Language",
+    "theme": "Theme",
+    "help": "Help center",
+    "signOut": "Sign out"
   }
 }

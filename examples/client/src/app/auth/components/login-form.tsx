@@ -5,6 +5,13 @@ import { LogIn, ShieldCheck, UserPlus } from "lucide-react";
 import { t } from "i18next";
 import { z } from "zod";
 import type { ChangeEvent, ComponentProps, FormEvent } from "react";
+import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldSeparator,
+} from "@/components/ui/field";
 import { toast } from "@/components/thread-ui/toast";
 
 import { cn } from "@/lib/utils";
@@ -17,12 +24,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldSeparator,
-} from "@/components/ui/field";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -269,7 +270,7 @@ export function LoginForm({
     >
       <Card>
         <CardHeader className="text-center">
-          <CardTitle className="text-xl">{t("auth:welcomeBack")}</CardTitle>
+          <CardTitle>{t("auth:welcomeBack")}</CardTitle>
           <CardDescription>{t("auth:emailAuthDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
@@ -295,127 +296,141 @@ export function LoginForm({
             </TabsList>
 
             <form onSubmit={handleSubmit} className="mt-6">
-              <FieldGroup className="gap-4">
+              <FormLayout>
                 {mode === "register" && (
-                  <Input
-                    id="name"
-                    data-testid="auth-name-input"
-                    autoComplete="name"
-                    label={t("auth:form.name.label")}
-                    placeholder={t("auth:form.name.placeholder")}
-                    value={values.name}
-                    onChange={updateValue("name")}
-                    error={errors.name}
-                  />
+                  <FormLayoutItem>
+                    <Input
+                      id="name"
+                      data-testid="auth-name-input"
+                      autoComplete="name"
+                      label={t("auth:form.name.label")}
+                      placeholder={t("auth:form.name.placeholder")}
+                      value={values.name}
+                      onChange={updateValue("name")}
+                      error={errors.name}
+                    />
+                  </FormLayoutItem>
                 )}
 
-                <Input
-                  id="email"
-                  data-testid="auth-email-input"
-                  type="email"
-                  autoComplete="email"
-                  label={t("auth:form.email.label")}
-                  placeholder={t("auth:form.email.placeholder")}
-                  value={values.email}
-                  onChange={updateValue("email")}
-                  error={errors.email}
-                />
+                <FormLayoutItem>
+                  <Input
+                    id="email"
+                    data-testid="auth-email-input"
+                    type="email"
+                    autoComplete="email"
+                    label={t("auth:form.email.label")}
+                    placeholder={t("auth:form.email.placeholder")}
+                    value={values.email}
+                    onChange={updateValue("email")}
+                    error={errors.email}
+                  />
+                </FormLayoutItem>
 
-                <Input
-                  id="password"
-                  data-testid="auth-password-input"
-                  type="password"
-                  autoComplete={
-                    mode === "login" ? "current-password" : "new-password"
-                  }
-                  label={t("auth:form.password.label")}
-                  placeholder={t("auth:form.password.placeholder")}
-                  value={values.password}
-                  onChange={updateValue("password")}
-                  error={errors.password}
-                />
+                <FormLayoutItem>
+                  <Input
+                    id="password"
+                    data-testid="auth-password-input"
+                    type="password"
+                    autoComplete={
+                      mode === "login" ? "current-password" : "new-password"
+                    }
+                    label={t("auth:form.password.label")}
+                    placeholder={t("auth:form.password.placeholder")}
+                    value={values.password}
+                    onChange={updateValue("password")}
+                    error={errors.password}
+                  />
+                </FormLayoutItem>
 
                 {mode === "login" && (
-                  <div className="flex items-center justify-between gap-4 text-sm">
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        id="remember-me"
-                        data-testid="auth-remember-me"
-                        checked={values.rememberMe}
-                        onCheckedChange={(checked) =>
-                          setValues((current) => ({
-                            ...current,
-                            rememberMe: checked,
-                          }))
-                        }
-                      />
-                      <Label htmlFor="remember-me">
-                        {t("auth:form.rememberMe")}
-                      </Label>
-                    </div>
+                  <FormLayoutItem>
+                    <div className="flex items-center justify-between gap-4 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id="remember-me"
+                          data-testid="auth-remember-me"
+                          checked={values.rememberMe}
+                          onCheckedChange={(checked) =>
+                            setValues((current) => ({
+                              ...current,
+                              rememberMe: checked,
+                            }))
+                          }
+                        />
+                        <Label htmlFor="remember-me">
+                          {t("auth:form.rememberMe")}
+                        </Label>
+                      </div>
 
-                    <Link
-                      to="/auth/forgot-password"
-                      className="text-primary underline-offset-4 hover:underline"
-                      data-testid="auth-forgot-password-link"
-                    >
-                      {t("auth:form.forgotPassword")}
-                    </Link>
-                  </div>
+                      <Link
+                        to="/auth/forgot-password"
+                        className="text-primary underline-offset-4 hover:underline"
+                        data-testid="auth-forgot-password-link"
+                      >
+                        {t("auth:form.forgotPassword")}
+                      </Link>
+                    </div>
+                  </FormLayoutItem>
                 )}
 
                 {errors.form && (
-                  <FieldDescription className="text-destructive">
-                    {errors.form}
-                  </FieldDescription>
+                  <FormLayoutItem>
+                    <FieldError>{errors.form}</FieldError>
+                  </FormLayoutItem>
                 )}
 
-                <Button
-                  type="submit"
-                  className="w-full"
-                  data-testid="auth-submit"
-                  loading={loading}
-                >
-                  {mode === "login" ? <LogIn /> : <UserPlus />}
-                  {submitLabel}
-                </Button>
+                <FormLayoutItem>
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    data-testid="auth-submit"
+                    loading={loading}
+                  >
+                    {mode === "login" ? <LogIn /> : <UserPlus />}
+                    {submitLabel}
+                  </Button>
+                </FormLayoutItem>
 
                 {socialProviders.length > 0 && (
                   <>
-                    <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card">
-                      {t("auth:form.or")}
-                    </FieldSeparator>
+                    <FormLayoutItem>
+                      <FieldSeparator>{t("auth:form.or")}</FieldSeparator>
+                    </FormLayoutItem>
 
                     {socialProviders.map((provider) => (
-                      <Field key={provider.id}>
-                        <Button
-                          className="w-full"
-                          variant="outline"
-                          type="button"
-                          onClick={() => handleSocialLogin(provider)}
-                          disabled={loading || socialProviderId !== undefined}
-                          loading={socialProviderId === provider.id}
-                          data-testid={`auth-social-submit-${provider.id}`}
-                        >
-                          <ShieldCheck />
-                          {t("auth:continueWithProvider", {
-                            provider: provider.name,
-                          })}
-                        </Button>
-                      </Field>
+                      <FormLayoutItem key={provider.id}>
+                        <Field>
+                          <Button
+                            className="w-full"
+                            variant="outline"
+                            type="button"
+                            onClick={() => handleSocialLogin(provider)}
+                            disabled={loading || socialProviderId !== undefined}
+                            loading={socialProviderId === provider.id}
+                            data-testid={`auth-social-submit-${provider.id}`}
+                          >
+                            <ShieldCheck />
+                            {t("auth:continueWithProvider", {
+                              provider: provider.name,
+                            })}
+                          </Button>
+                        </Field>
+                      </FormLayoutItem>
                     ))}
                   </>
                 )}
-              </FieldGroup>
+              </FormLayout>
             </form>
           </Tabs>
         </CardContent>
       </Card>
-      <FieldDescription className="px-6 text-center">
-        {t("auth:byClickingContinue")}{" "}
-        <a href="#">{t("auth:termsOfService")}</a> {t("auth:and")}{" "}
-        <a href="#">{t("auth:privacyPolicy")}</a>.
-      </FieldDescription>
+      <div className="px-6">
+        <FieldDescription className="text-center">
+          {t("auth:byClickingContinue")}{" "}
+          <a href="#">{t("auth:termsOfService")}</a> {t("auth:and")}{" "}
+          <a href="#">{t("auth:privacyPolicy")}</a>.
+        </FieldDescription>
+      </div>
     </div>
   );
 }

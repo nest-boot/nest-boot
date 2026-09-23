@@ -87,10 +87,10 @@ function AuthenticatedContent() {
   );
 
   return (
-    <>
+    <div className="flex h-svh flex-col">
       {currentSession?.impersonatedById ? (
         <div
-          className="fixed inset-x-0 top-0 z-50 flex min-h-12 items-center justify-center gap-4 bg-amber-300 px-4 py-2 text-sm text-amber-950 shadow"
+          className="bg-warning-surface text-warning-foreground z-50 flex min-h-12 shrink-0 items-center justify-center gap-4 px-4 py-2 text-sm shadow"
           data-testid="impersonation-banner"
         >
           <span>{t("admin:impersonation.active")}</span>
@@ -113,7 +113,9 @@ function AuthenticatedContent() {
           </Button>
         </div>
       ) : null}
-      <Outlet />
-    </>
+      <div className="min-h-0 flex-1 [&>[data-slot=layout]]:h-full">
+        <Outlet />
+      </div>
+    </div>
   );
 }

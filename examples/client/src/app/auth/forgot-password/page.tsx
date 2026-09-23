@@ -7,6 +7,7 @@ import { z } from "zod";
 
 import { AuthPageShell } from "../components/auth-page-shell";
 import type { FormEvent } from "react";
+import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
 import { Button } from "@/components/thread-ui/button";
 import { Input } from "@/components/thread-ui/input";
 import {
@@ -16,7 +17,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { FieldDescription, FieldGroup } from "@/components/ui/field";
+import { FieldDescription } from "@/components/ui/field";
 import { graphql } from "@/gql";
 
 const REQUEST_PASSWORD_RESET_FROM_FORGOT_PASSWORD = graphql(`
@@ -107,37 +108,43 @@ function ForgotPasswordComponent() {
             </div>
           ) : (
             <form onSubmit={handleSubmit}>
-              <FieldGroup className="gap-4">
-                <Input
-                  id="forgot-password-email"
-                  data-testid="forgot-password-email"
-                  type="email"
-                  autoComplete="email"
-                  label={t("auth:form.email.label")}
-                  placeholder={t("auth:form.email.placeholder")}
-                  value={email}
-                  onChange={(event) => {
-                    setEmail(event.target.value);
-                    setError(undefined);
-                  }}
-                  error={error}
-                />
+              <FormLayout>
+                <FormLayoutItem>
+                  <Input
+                    id="forgot-password-email"
+                    data-testid="forgot-password-email"
+                    type="email"
+                    autoComplete="email"
+                    label={t("auth:form.email.label")}
+                    placeholder={t("auth:form.email.placeholder")}
+                    value={email}
+                    onChange={(event) => {
+                      setEmail(event.target.value);
+                      setError(undefined);
+                    }}
+                    error={error}
+                  />
+                </FormLayoutItem>
 
-                <Button
-                  type="submit"
-                  className="w-full"
-                  data-testid="forgot-password-submit"
-                  loading={loading}
-                >
-                  {t("auth:passwordReset.sendLink")}
-                </Button>
+                <FormLayoutItem>
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    data-testid="forgot-password-submit"
+                    loading={loading}
+                  >
+                    {t("auth:passwordReset.sendLink")}
+                  </Button>
+                </FormLayoutItem>
 
-                <FieldDescription className="text-center">
-                  <Link to="/auth/login">
-                    {t("auth:passwordReset.backToLogin")}
-                  </Link>
-                </FieldDescription>
-              </FieldGroup>
+                <FormLayoutItem>
+                  <FieldDescription className="text-center">
+                    <Link to="/auth/login">
+                      {t("auth:passwordReset.backToLogin")}
+                    </Link>
+                  </FieldDescription>
+                </FormLayoutItem>
+              </FormLayout>
             </form>
           )}
         </CardContent>

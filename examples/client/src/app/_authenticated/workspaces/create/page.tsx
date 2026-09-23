@@ -1,16 +1,27 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useForm } from "@tanstack/react-form";
 import { useMutation } from "@apollo/client/react";
+import { AppTopbar } from "../../components/app-topbar";
 import { Button } from "@/components/thread-ui/button";
+import { Link } from "@/components/link";
+import { Layout, LayoutContent } from "@/components/thread-ui/layout";
+import {
+  BreadcrumbAction,
+  BreadcrumbActions,
+  Page,
+  PageContent,
+  PageDescription,
+  PageHeader,
+  PageTitle,
+} from "@/components/thread-ui/page";
+import {
+  PageLayout,
+  PageLayoutSection,
+} from "@/components/thread-ui/page-layout";
 
 import { Input } from "@/components/thread-ui/input";
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLegend,
-  FieldSet,
-} from "@/components/ui/field";
+import { Field, FieldGroup, FieldSet } from "@/components/ui/field";
+import { Card, CardContent } from "@/components/ui/card";
 import { graphql } from "@/gql";
 
 const CREATE_WORKSPACE_FROM_CREATE_WORKSPACE_ROUTE = graphql(`
@@ -59,58 +70,80 @@ function CreateWorkspaceComponent() {
   });
 
   return (
-    <div className="mx-auto flex h-screen w-full items-center justify-center">
-      <div className="w-full max-w-md">
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            form.handleSubmit();
-          }}
-        >
-          <FieldGroup>
-            <FieldSet>
-              <FieldLegend>Create Workspace</FieldLegend>
-              <FieldDescription>
-                Create a new workspace to start managing your projects.
-              </FieldDescription>
-              <FieldGroup>
-                <form.Field name="name">
-                  {(field) => (
-                    <Input
-                      id="name"
-                      data-testid="workspace-create-name-input"
-                      label="Name"
-                      placeholder="My Workspace"
-                      required
-                      value={field.state.value}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      onBlur={field.handleBlur}
-                    />
-                  )}
-                </form.Field>
-              </FieldGroup>
-            </FieldSet>
+    <Layout>
+      <AppTopbar showSidebar={false} />
+      <LayoutContent>
+        <Page variant="compact">
+          <PageHeader>
+            <BreadcrumbActions>
+              <BreadcrumbAction render={<Link to="/user/workspaces" />}>
+                Workspaces
+              </BreadcrumbAction>
+            </BreadcrumbActions>
+            <PageTitle>Create Workspace</PageTitle>
+            <PageDescription>
+              Create a new workspace to start managing your projects.
+            </PageDescription>
+          </PageHeader>
+          <PageContent>
+            <PageLayout>
+              <PageLayoutSection>
+                <Card>
+                  <CardContent>
+                    <form
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        form.handleSubmit();
+                      }}
+                    >
+                      <FieldGroup>
+                        <FieldSet>
+                          <FieldGroup>
+                            <form.Field name="name">
+                              {(field) => (
+                                <Input
+                                  id="name"
+                                  data-testid="workspace-create-name-input"
+                                  label="Name"
+                                  placeholder="My Workspace"
+                                  required
+                                  value={field.state.value}
+                                  onChange={(e) =>
+                                    field.handleChange(e.target.value)
+                                  }
+                                  onBlur={field.handleBlur}
+                                />
+                              )}
+                            </form.Field>
+                          </FieldGroup>
+                        </FieldSet>
 
-            <Field orientation="horizontal">
-              <Button
-                type="submit"
-                data-testid="workspace-create-submit"
-                loading={loading}
-              >
-                Create
-              </Button>
-              <Button
-                variant="outline"
-                type="button"
-                onClick={() => router.history.back()}
-              >
-                Back
-              </Button>
-            </Field>
-          </FieldGroup>
-        </form>
-      </div>
-    </div>
+                        <Field orientation="horizontal">
+                          <Button
+                            type="submit"
+                            data-testid="workspace-create-submit"
+                            loading={loading}
+                          >
+                            Create
+                          </Button>
+                          <Button
+                            variant="outline"
+                            type="button"
+                            onClick={() => router.history.back()}
+                          >
+                            Back
+                          </Button>
+                        </Field>
+                      </FieldGroup>
+                    </form>
+                  </CardContent>
+                </Card>
+              </PageLayoutSection>
+            </PageLayout>
+          </PageContent>
+        </Page>
+      </LayoutContent>
+    </Layout>
   );
 }

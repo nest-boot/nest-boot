@@ -1,16 +1,12 @@
-import { Fragment, useMemo } from "react";
+import { useMemo } from "react";
 import { useRouter, useRouterState } from "@tanstack/react-router";
 import { uniqBy } from "lodash";
 import type { LinkComponentProps } from "@tanstack/react-router";
 import type { FC } from "react";
 import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
+  BreadcrumbAction,
+  BreadcrumbActions,
+} from "@/components/thread-ui/page";
 
 import { Link } from "@/components/link";
 
@@ -28,7 +24,7 @@ export const Breadcrumbs: FC<BreadcrumbsProps> = ({ baseItems = [] }) => {
 
   const matches = useRouterState({ select: (state) => state.matches });
 
-  const [breadcrumbs, lastBreadcrumb] = useMemo(() => {
+  const breadcrumbs = useMemo(() => {
     const allItems = [
       ...baseItems.map((item) => ({
         title: item.title,
@@ -54,34 +50,20 @@ export const Breadcrumbs: FC<BreadcrumbsProps> = ({ baseItems = [] }) => {
       item.path.replace(/\/+$/, ""),
     );
 
-    const lastBreadcrumb = breadcrumbs.pop();
-
-    return [breadcrumbs, lastBreadcrumb];
+    breadcrumbs.pop();
+    return breadcrumbs;
   }, [matches, baseItems, buildLocation]);
 
   return (
-    <Breadcrumb>
-      <BreadcrumbList>
-        {breadcrumbs?.map((breadcrumb) => (
-          <Fragment key={breadcrumb.title}>
-            <BreadcrumbItem className="hidden md:block">
-              <BreadcrumbLink
-                render={<Link to={breadcrumb.path}>{breadcrumb.title}</Link>}
-              />
-            </BreadcrumbItem>
-
-            <BreadcrumbSeparator className="hidden md:block" />
-          </Fragment>
-        ))}
-
-        {lastBreadcrumb && (
-          <BreadcrumbItem>
-            <BreadcrumbPage className="font-medium">
-              {lastBreadcrumb.title}
-            </BreadcrumbPage>
-          </BreadcrumbItem>
-        )}
-      </BreadcrumbList>
-    </Breadcrumb>
+    <BreadcrumbActions>
+      {breadcrumbs.map((breadcrumb) => (
+        <BreadcrumbAction
+          key={breadcrumb.path}
+          render={<Link to={breadcrumb.path} />}
+        >
+          {breadcrumb.title}
+        </BreadcrumbAction>
+      ))}
+    </BreadcrumbActions>
   );
 };

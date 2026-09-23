@@ -8,6 +8,8 @@ import { z } from "zod";
 
 import { AuthPageShell } from "../components/auth-page-shell";
 import type { FormEvent } from "react";
+import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
+import { FieldError } from "@/components/ui/field";
 import { Button } from "@/components/thread-ui/button";
 import { Input } from "@/components/thread-ui/input";
 import {
@@ -17,7 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { FieldDescription, FieldGroup } from "@/components/ui/field";
+
 import { graphql } from "@/gql";
 
 const RESET_PASSWORD_FROM_RESET_PASSWORD = graphql(`
@@ -124,47 +126,53 @@ function ResetPasswordComponent() {
             </div>
           ) : (
             <form onSubmit={handleSubmit}>
-              <FieldGroup className="gap-4">
-                <Input
-                  id="reset-password-new"
-                  data-testid="reset-password-new"
-                  type="password"
-                  autoComplete="new-password"
-                  label={t("auth:passwordReset.newPassword")}
-                  value={newPassword}
-                  onChange={(event) => {
-                    setNewPassword(event.target.value);
-                    setError(undefined);
-                  }}
-                />
-                <Input
-                  id="reset-password-confirm"
-                  data-testid="reset-password-confirm"
-                  type="password"
-                  autoComplete="new-password"
-                  label={t("auth:passwordReset.confirmPassword")}
-                  value={confirmPassword}
-                  onChange={(event) => {
-                    setConfirmPassword(event.target.value);
-                    setError(undefined);
-                  }}
-                />
+              <FormLayout>
+                <FormLayoutItem>
+                  <Input
+                    id="reset-password-new"
+                    data-testid="reset-password-new"
+                    type="password"
+                    autoComplete="new-password"
+                    label={t("auth:passwordReset.newPassword")}
+                    value={newPassword}
+                    onChange={(event) => {
+                      setNewPassword(event.target.value);
+                      setError(undefined);
+                    }}
+                  />
+                </FormLayoutItem>
+                <FormLayoutItem>
+                  <Input
+                    id="reset-password-confirm"
+                    data-testid="reset-password-confirm"
+                    type="password"
+                    autoComplete="new-password"
+                    label={t("auth:passwordReset.confirmPassword")}
+                    value={confirmPassword}
+                    onChange={(event) => {
+                      setConfirmPassword(event.target.value);
+                      setError(undefined);
+                    }}
+                  />
+                </FormLayoutItem>
 
                 {error && (
-                  <FieldDescription className="text-destructive">
-                    {error}
-                  </FieldDescription>
+                  <FormLayoutItem>
+                    <FieldError>{error}</FieldError>
+                  </FormLayoutItem>
                 )}
 
-                <Button
-                  type="submit"
-                  className="w-full"
-                  data-testid="reset-password-submit"
-                  loading={loading}
-                >
-                  {t("auth:passwordReset.resetSubmit")}
-                </Button>
-              </FieldGroup>
+                <FormLayoutItem>
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    data-testid="reset-password-submit"
+                    loading={loading}
+                  >
+                    {t("auth:passwordReset.resetSubmit")}
+                  </Button>
+                </FormLayoutItem>
+              </FormLayout>
             </form>
           )}
         </CardContent>

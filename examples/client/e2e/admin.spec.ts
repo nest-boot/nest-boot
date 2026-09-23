@@ -81,7 +81,7 @@ for (const change of [
       if (change === "roles" || change === "permissions") {
         await expect(page).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
         await expect(page.getByTestId("user-workspaces-page")).toBeVisible();
-        await page.getByTestId("sidebar-user-menu").click();
+        await page.getByTestId("topbar-menu-trigger").click();
         await expect(page.getByTestId("sidebar-admin-link")).toHaveCount(0);
       } else {
         await expect(page).toHaveURL(/\/auth\/login(?:\?.*)?$/);

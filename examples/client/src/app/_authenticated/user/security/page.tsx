@@ -5,6 +5,19 @@ import { MonitorSmartphone } from "lucide-react";
 import { t } from "i18next";
 import { z } from "zod";
 import type { FormEvent } from "react";
+import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldSet,
+} from "@/components/ui/field";
+import { Breadcrumbs } from "@/components/breadcrumbs";
+import {
+  PageLayout,
+  PageLayoutSection,
+} from "@/components/thread-ui/page-layout";
 import { toast } from "@/components/thread-ui/toast";
 
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
@@ -26,13 +39,6 @@ import {
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-  FieldSet,
-} from "@/components/ui/field";
 import { graphql } from "@/gql";
 
 const CHANGE_PASSWORD_FROM_USER_SECURITY = graphql(`
@@ -400,346 +406,366 @@ function UserSecurityComponent() {
   };
 
   return (
-    <Page data-testid="user-security-page">
+    <Page variant="compact" data-testid="user-security-page">
       <PageHeader>
+        <Breadcrumbs />
         <PageTitle>{t("user:security.title")}</PageTitle>
         <PageDescription>{t("user:security.description")}</PageDescription>
       </PageHeader>
 
       <PageContent>
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("user:security.card.title")}</CardTitle>
-            <CardDescription>
-              {t("user:security.card.description")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit}>
-              <FieldSet>
-                <FieldGroup>
-                  <Input
-                    id="current-password"
-                    data-testid="user-current-password"
-                    type="password"
-                    autoComplete="current-password"
-                    label={t("user:security.form.current_password")}
-                    value={currentPassword}
-                    onChange={(event) => {
-                      setCurrentPassword(event.target.value);
-                      setError(undefined);
-                    }}
-                  />
-                  <Input
-                    id="new-password"
-                    data-testid="user-new-password"
-                    type="password"
-                    autoComplete="new-password"
-                    label={t("user:security.form.new_password")}
-                    value={newPassword}
-                    onChange={(event) => {
-                      setNewPassword(event.target.value);
-                      setError(undefined);
-                    }}
-                  />
-                  <Input
-                    id="confirm-password"
-                    data-testid="user-confirm-password"
-                    type="password"
-                    autoComplete="new-password"
-                    label={t("user:security.form.confirm_password")}
-                    value={confirmPassword}
-                    onChange={(event) => {
-                      setConfirmPassword(event.target.value);
-                      setError(undefined);
-                    }}
-                  />
-
-                  <Field orientation="horizontal">
-                    <Checkbox
-                      id="revoke-other-sessions"
-                      data-testid="user-revoke-other-sessions"
-                      checked={revokeOtherSessions}
-                      onCheckedChange={setRevokeOtherSessions}
-                    />
-                    <FieldLabel htmlFor="revoke-other-sessions">
-                      {t("user:security.form.revoke_other_sessions")}
-                    </FieldLabel>
-                  </Field>
-
-                  {error && (
-                    <FieldDescription className="text-destructive">
-                      {error}
-                    </FieldDescription>
-                  )}
-
-                  <Field orientation="horizontal">
-                    <Button
-                      type="submit"
-                      data-testid="user-change-password-submit"
-                      loading={loading}
-                    >
-                      {t("user:security.form.submit")}
-                    </Button>
-                  </Field>
-                </FieldGroup>
-              </FieldSet>
-            </form>
-          </CardContent>
-        </Card>
-
-        <Card data-testid="user-sessions-card">
-          <CardHeader>
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="space-y-1.5">
-                <CardTitle>{t("user:security.sessions.title")}</CardTitle>
+        <PageLayout>
+          <PageLayoutSection>
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("user:security.card.title")}</CardTitle>
                 <CardDescription>
-                  {t("user:security.sessions.description")}
+                  {t("user:security.card.description")}
                 </CardDescription>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={otherSessionCount === 0}
-                loading={revokingOthers}
-                onClick={handleRevokeOtherSessions}
-                data-testid="user-revoke-other-session-list"
-              >
-                {t("user:security.sessions.revoke_others")}
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {sessionsLoading ? (
-              <p className="text-muted-foreground text-sm">
-                {t("user:security.sessions.loading")}
-              </p>
-            ) : sessions.length === 0 ? (
-              <p className="text-muted-foreground text-sm">
-                {t("user:security.sessions.empty")}
-              </p>
-            ) : (
-              <div className="divide-y" data-testid="user-session-list">
-                {sessions.map((session) => (
-                  <div
-                    key={session.id}
-                    className="flex flex-wrap items-center justify-between gap-4 py-4 first:pt-0 last:pb-0"
-                    data-testid="user-session-row"
-                  >
-                    <div className="flex min-w-0 items-start gap-3">
-                      <MonitorSmartphone className="text-muted-foreground mt-0.5 size-5 shrink-0" />
-                      <div className="min-w-0 space-y-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="max-w-xl truncate text-sm font-medium">
-                            {session.userAgent ??
-                              t("user:security.sessions.unknown_device")}
-                          </p>
-                          {session.current && (
-                            <Badge variant="secondary">
-                              {t("user:security.sessions.current")}
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-muted-foreground text-xs">
-                          {session.ipAddress ??
-                            t("user:security.sessions.unknown_ip")}
-                          {" · "}
-                          {t("user:security.sessions.created", {
-                            date: formatSessionDate(session.createdAt),
-                          })}
-                          {" · "}
-                          {t("user:security.sessions.expires", {
-                            date: formatSessionDate(session.expiresAt),
-                          })}
-                        </p>
-                      </div>
-                    </div>
-                    {!session.current && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        loading={revokingSessionId === session.id}
-                        onClick={() => handleRevokeSession(session.id)}
-                        data-testid="user-revoke-session"
-                      >
-                        {t("user:security.sessions.revoke")}
-                      </Button>
-                    )}
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit}>
+                  <FieldSet>
+                    <FieldGroup>
+                      <Input
+                        id="current-password"
+                        data-testid="user-current-password"
+                        type="password"
+                        autoComplete="current-password"
+                        label={t("user:security.form.current_password")}
+                        value={currentPassword}
+                        onChange={(event) => {
+                          setCurrentPassword(event.target.value);
+                          setError(undefined);
+                        }}
+                      />
+                      <Input
+                        id="new-password"
+                        data-testid="user-new-password"
+                        type="password"
+                        autoComplete="new-password"
+                        label={t("user:security.form.new_password")}
+                        value={newPassword}
+                        onChange={(event) => {
+                          setNewPassword(event.target.value);
+                          setError(undefined);
+                        }}
+                      />
+                      <Input
+                        id="confirm-password"
+                        data-testid="user-confirm-password"
+                        type="password"
+                        autoComplete="new-password"
+                        label={t("user:security.form.confirm_password")}
+                        value={confirmPassword}
+                        onChange={(event) => {
+                          setConfirmPassword(event.target.value);
+                          setError(undefined);
+                        }}
+                      />
+
+                      <Field orientation="horizontal">
+                        <Checkbox
+                          id="revoke-other-sessions"
+                          data-testid="user-revoke-other-sessions"
+                          checked={revokeOtherSessions}
+                          onCheckedChange={setRevokeOtherSessions}
+                        />
+                        <FieldLabel htmlFor="revoke-other-sessions">
+                          {t("user:security.form.revoke_other_sessions")}
+                        </FieldLabel>
+                      </Field>
+
+                      {error && <FieldError>{error}</FieldError>}
+
+                      <Field orientation="horizontal">
+                        <Button
+                          type="submit"
+                          data-testid="user-change-password-submit"
+                          loading={loading}
+                        >
+                          {t("user:security.form.submit")}
+                        </Button>
+                      </Field>
+                    </FieldGroup>
+                  </FieldSet>
+                </form>
+              </CardContent>
+            </Card>
+          </PageLayoutSection>
+
+          <PageLayoutSection>
+            <Card data-testid="user-sessions-card">
+              <CardHeader>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="space-y-1.5">
+                    <CardTitle>{t("user:security.sessions.title")}</CardTitle>
+                    <CardDescription>
+                      {t("user:security.sessions.description")}
+                    </CardDescription>
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {sessionData?.currentUser.sessions.pageInfo.hasNextPage && (
-          <Button
-            variant="outline"
-            loading={sessionsLoading}
-            onClick={() =>
-              fetchMoreSessions({
-                variables: {
-                  after: sessionData.currentUser.sessions.pageInfo.endCursor,
-                },
-                updateQuery: (previous, { fetchMoreResult }) => ({
-                  ...fetchMoreResult,
-                  currentUser: {
-                    ...fetchMoreResult.currentUser,
-                    sessions: {
-                      ...fetchMoreResult.currentUser.sessions,
-                      edges: [
-                        ...previous.currentUser.sessions.edges,
-                        ...fetchMoreResult.currentUser.sessions.edges,
-                      ],
-                    },
-                  },
-                }),
-              })
-            }
-          >
-            {t("action.load_more")}
-          </Button>
-        )}
-
-        <Card data-testid="user-accounts-card">
-          <CardHeader>
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="space-y-1.5">
-                <CardTitle>{t("user:security.accounts.title")}</CardTitle>
-                <CardDescription>
-                  {t("user:security.accounts.description")}
-                </CardDescription>
-              </div>
-              {linkableProviders.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {linkableProviders.map((provider) => (
-                    <Button
-                      key={provider.id}
-                      type="button"
-                      variant="outline"
-                      disabled={linkingProviderId !== undefined}
-                      loading={linkingProviderId === provider.id}
-                      onClick={() => handleLinkAccount(provider.id)}
-                      data-testid={`user-link-social-account-${provider.id}`}
-                    >
-                      {t("user:security.accounts.link", {
-                        provider: provider.name,
-                      })}
-                    </Button>
-                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={otherSessionCount === 0}
+                    loading={revokingOthers}
+                    onClick={handleRevokeOtherSessions}
+                    data-testid="user-revoke-other-session-list"
+                  >
+                    {t("user:security.sessions.revoke_others")}
+                  </Button>
                 </div>
-              ) : null}
-            </div>
-          </CardHeader>
-          <CardContent>
-            {accountsLoading ? (
-              <p className="text-muted-foreground text-sm">
-                {t("user:security.accounts.loading")}
-              </p>
-            ) : (
-              <div className="divide-y">
-                {accounts.map((account) => {
-                  const credential = account.providerId === "credential";
-                  return (
-                    <div
-                      key={account.id}
-                      className="flex flex-wrap items-center justify-between gap-4 py-4 first:pt-0 last:pb-0"
-                      data-testid={`user-account-${account.providerId}`}
-                    >
-                      <div>
-                        <p className="font-medium capitalize">
-                          {socialProviders.find(
-                            (provider) => provider.id === account.providerId,
-                          )?.name ?? account.providerId}
-                        </p>
-                        <p className="text-muted-foreground text-xs">
-                          {account.issuer} · {account.accountId}
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        {!credential &&
-                        (accountData?.currentUser.accounts.totalCount ?? 0) >
-                          1 ? (
+              </CardHeader>
+              <CardContent>
+                {sessionsLoading ? (
+                  <p className="text-muted-foreground text-sm">
+                    {t("user:security.sessions.loading")}
+                  </p>
+                ) : sessions.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">
+                    {t("user:security.sessions.empty")}
+                  </p>
+                ) : (
+                  <div className="divide-y" data-testid="user-session-list">
+                    {sessions.map((session) => (
+                      <div
+                        key={session.id}
+                        className="flex flex-wrap items-center justify-between gap-4 py-4 first:pt-0 last:pb-0"
+                        data-testid="user-session-row"
+                      >
+                        <div className="flex min-w-0 items-start gap-3">
+                          <MonitorSmartphone className="text-muted-foreground mt-0.5 size-5 shrink-0" />
+                          <div className="min-w-0 space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="max-w-xl truncate text-sm font-medium">
+                                {session.userAgent ??
+                                  t("user:security.sessions.unknown_device")}
+                              </p>
+                              {session.current && (
+                                <Badge variant="secondary">
+                                  {t("user:security.sessions.current")}
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-muted-foreground text-xs">
+                              {session.ipAddress ??
+                                t("user:security.sessions.unknown_ip")}
+                              {" · "}
+                              {t("user:security.sessions.created", {
+                                date: formatSessionDate(session.createdAt),
+                              })}
+                              {" · "}
+                              {t("user:security.sessions.expires", {
+                                date: formatSessionDate(session.expiresAt),
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                        {!session.current && (
                           <Button
                             type="button"
                             size="sm"
-                            variant="destructive"
-                            loading={unlinkingAccountId === account.id}
-                            onClick={() => handleUnlinkAccount(account.id)}
+                            variant="outline"
+                            loading={revokingSessionId === session.id}
+                            onClick={() => handleRevokeSession(session.id)}
+                            data-testid="user-revoke-session"
                           >
-                            {t("user:security.accounts.unlink")}
+                            {t("user:security.sessions.revoke")}
                           </Button>
-                        ) : null}
+                        )}
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </PageLayoutSection>
 
-        {accountData?.currentUser.accounts.pageInfo.hasNextPage && (
-          <Button
-            variant="outline"
-            loading={accountsLoading}
-            data-testid="user-accounts-load-more"
-            onClick={() =>
-              fetchMoreAccounts({
-                variables: {
-                  after: accountData.currentUser.accounts.pageInfo.endCursor,
-                },
-                updateQuery: (previous, { fetchMoreResult }) => ({
-                  ...fetchMoreResult,
-                  currentUser: {
-                    ...fetchMoreResult.currentUser,
-                    accounts: {
-                      ...fetchMoreResult.currentUser.accounts,
-                      edges: [
-                        ...previous.currentUser.accounts.edges,
-                        ...fetchMoreResult.currentUser.accounts.edges,
-                      ],
+          {sessionData?.currentUser.sessions.pageInfo.hasNextPage && (
+            <PageLayoutSection>
+              <Button
+                variant="outline"
+                loading={sessionsLoading}
+                onClick={() =>
+                  fetchMoreSessions({
+                    variables: {
+                      after:
+                        sessionData.currentUser.sessions.pageInfo.endCursor,
                     },
-                  },
-                }),
-              })
-            }
-          >
-            {t("action.load_more")}
-          </Button>
-        )}
+                    updateQuery: (previous, { fetchMoreResult }) => ({
+                      ...fetchMoreResult,
+                      currentUser: {
+                        ...fetchMoreResult.currentUser,
+                        sessions: {
+                          ...fetchMoreResult.currentUser.sessions,
+                          edges: [
+                            ...previous.currentUser.sessions.edges,
+                            ...fetchMoreResult.currentUser.sessions.edges,
+                          ],
+                        },
+                      },
+                    }),
+                  })
+                }
+              >
+                {t("action.load_more")}
+              </Button>
+            </PageLayoutSection>
+          )}
 
-        <Card className="border-destructive" data-testid="user-delete-card">
-          <CardHeader>
-            <CardTitle className="text-destructive">
-              {t("user:security.delete.title")}
-            </CardTitle>
-            <CardDescription>
-              {t("user:security.delete.description")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Input
-              id="delete-account-password"
-              type="password"
-              autoComplete="current-password"
-              label={t("user:security.delete.password")}
-              value={deletePassword}
-              onChange={(event) => setDeletePassword(event.target.value)}
-            />
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={!deletePassword}
-              loading={deletingUser}
-              onClick={handleDeleteUser}
-              data-testid="user-delete-account"
-            >
-              {t("user:security.delete.action")}
-            </Button>
-          </CardContent>
-        </Card>
+          <PageLayoutSection>
+            <Card data-testid="user-accounts-card">
+              <CardHeader>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="space-y-1.5">
+                    <CardTitle>{t("user:security.accounts.title")}</CardTitle>
+                    <CardDescription>
+                      {t("user:security.accounts.description")}
+                    </CardDescription>
+                  </div>
+                  {linkableProviders.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {linkableProviders.map((provider) => (
+                        <Button
+                          key={provider.id}
+                          type="button"
+                          variant="outline"
+                          disabled={linkingProviderId !== undefined}
+                          loading={linkingProviderId === provider.id}
+                          onClick={() => handleLinkAccount(provider.id)}
+                          data-testid={`user-link-social-account-${provider.id}`}
+                        >
+                          {t("user:security.accounts.link", {
+                            provider: provider.name,
+                          })}
+                        </Button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {accountsLoading ? (
+                  <p className="text-muted-foreground text-sm">
+                    {t("user:security.accounts.loading")}
+                  </p>
+                ) : (
+                  <div className="divide-y">
+                    {accounts.map((account) => {
+                      const credential = account.providerId === "credential";
+                      return (
+                        <div
+                          key={account.id}
+                          className="flex flex-wrap items-center justify-between gap-4 py-4 first:pt-0 last:pb-0"
+                          data-testid={`user-account-${account.providerId}`}
+                        >
+                          <div>
+                            <p className="font-medium capitalize">
+                              {socialProviders.find(
+                                (provider) =>
+                                  provider.id === account.providerId,
+                              )?.name ?? account.providerId}
+                            </p>
+                            <p className="text-muted-foreground text-xs">
+                              {account.issuer} · {account.accountId}
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            {!credential &&
+                            (accountData?.currentUser.accounts.totalCount ??
+                              0) > 1 ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="destructive"
+                                loading={unlinkingAccountId === account.id}
+                                onClick={() => handleUnlinkAccount(account.id)}
+                              >
+                                {t("user:security.accounts.unlink")}
+                              </Button>
+                            ) : null}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </PageLayoutSection>
+
+          {accountData?.currentUser.accounts.pageInfo.hasNextPage && (
+            <PageLayoutSection>
+              <Button
+                variant="outline"
+                loading={accountsLoading}
+                data-testid="user-accounts-load-more"
+                onClick={() =>
+                  fetchMoreAccounts({
+                    variables: {
+                      after:
+                        accountData.currentUser.accounts.pageInfo.endCursor,
+                    },
+                    updateQuery: (previous, { fetchMoreResult }) => ({
+                      ...fetchMoreResult,
+                      currentUser: {
+                        ...fetchMoreResult.currentUser,
+                        accounts: {
+                          ...fetchMoreResult.currentUser.accounts,
+                          edges: [
+                            ...previous.currentUser.accounts.edges,
+                            ...fetchMoreResult.currentUser.accounts.edges,
+                          ],
+                        },
+                      },
+                    }),
+                  })
+                }
+              >
+                {t("action.load_more")}
+              </Button>
+            </PageLayoutSection>
+          )}
+
+          <PageLayoutSection>
+            <Card data-testid="user-delete-card">
+              <CardHeader>
+                <CardTitle>{t("user:security.delete.title")}</CardTitle>
+                <CardDescription>
+                  {t("user:security.delete.description")}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <FormLayout>
+                  <FormLayoutItem>
+                    <Input
+                      id="delete-account-password"
+                      type="password"
+                      autoComplete="current-password"
+                      label={t("user:security.delete.password")}
+                      value={deletePassword}
+                      onChange={(event) =>
+                        setDeletePassword(event.target.value)
+                      }
+                    />
+                  </FormLayoutItem>
+                  <FormLayoutItem>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      disabled={!deletePassword}
+                      loading={deletingUser}
+                      onClick={handleDeleteUser}
+                      data-testid="user-delete-account"
+                    >
+                      {t("user:security.delete.action")}
+                    </Button>
+                  </FormLayoutItem>
+                </FormLayout>
+              </CardContent>
+            </Card>
+          </PageLayoutSection>
+        </PageLayout>
       </PageContent>
     </Page>
   );

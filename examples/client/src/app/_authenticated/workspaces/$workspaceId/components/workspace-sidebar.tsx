@@ -3,24 +3,19 @@ import { KeyRound, Settings, User } from "lucide-react";
 import { linkOptions, useParams } from "@tanstack/react-router";
 import { t } from "i18next";
 
-import { SidebarUser } from "../../../components/sidebar-user";
-import { SidebarLogo } from "./sidebar-logo";
-import { WorkspaceSwitcher } from "./workspace-switcher";
 import type { LinkProps } from "@tanstack/react-router";
 import type { ComponentProps, ComponentType, FC } from "react";
 import { useAbility } from "@/contexts/ability-context";
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
-  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
+  useSidebar,
 } from "@/components/ui/sidebar";
 
 import { Link } from "@/components/link";
@@ -39,6 +34,7 @@ export const WorkspaceSidebar: FC<ComponentProps<typeof Sidebar>> = ({
     from: "/_authenticated/workspaces/$workspaceId",
     select: (params) => params.workspaceId,
   });
+  const { setOpenMobile } = useSidebar();
   const ability = useAbility();
 
   const sidebarGroups: Array<{
@@ -86,13 +82,7 @@ export const WorkspaceSidebar: FC<ComponentProps<typeof Sidebar>> = ({
   ];
 
   return (
-    <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>
-        <SidebarLogo />
-
-        <WorkspaceSwitcher />
-      </SidebarHeader>
-
+    <Sidebar collapsible="offcanvas" {...props}>
       <SidebarContent>
         {sidebarGroups.map((group) => (
           <SidebarGroup key={group.title}>
@@ -104,7 +94,11 @@ export const WorkspaceSidebar: FC<ComponentProps<typeof Sidebar>> = ({
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
                       render={
-                        <Link {...item.link} data-testid={item.testId}>
+                        <Link
+                          {...item.link}
+                          data-testid={item.testId}
+                          onClick={() => setOpenMobile(false)}
+                        >
                           <item.icon />
                           <span>{item.title}</span>
                         </Link>
@@ -117,12 +111,6 @@ export const WorkspaceSidebar: FC<ComponentProps<typeof Sidebar>> = ({
           </SidebarGroup>
         ))}
       </SidebarContent>
-
-      <SidebarFooter>
-        <SidebarUser />
-      </SidebarFooter>
-
-      <SidebarRail />
     </Sidebar>
   );
 };

@@ -2,7 +2,6 @@ import { Boxes, CircleUserRound, KeyRound, LockKeyhole } from "lucide-react";
 import { t } from "i18next";
 
 import { linkOptions } from "@tanstack/react-router";
-import { SidebarUser } from "../../components/sidebar-user";
 
 import type { ComponentProps, ComponentType, FC } from "react";
 import type { LinkProps } from "@tanstack/react-router";
@@ -11,15 +10,13 @@ import { Link } from "@/components/link";
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
-  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
+  useSidebar,
 } from "@/components/ui/sidebar";
 
 type SidebarItem = {
@@ -31,6 +28,7 @@ type SidebarItem = {
 };
 
 export const UserSidebar: FC<ComponentProps<typeof Sidebar>> = (props) => {
+  const { setOpenMobile } = useSidebar();
   const ability = useAbility();
   const items: Array<SidebarItem> = [
     {
@@ -61,31 +59,7 @@ export const UserSidebar: FC<ComponentProps<typeof Sidebar>> = (props) => {
   ];
 
   return (
-    <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              size="lg"
-              render={
-                <Link to="/workspaces">
-                  <img
-                    src="/logo.svg"
-                    alt={t("app.name")}
-                    className="aspect-square size-8"
-                  />
-                  <div className="flex flex-col gap-0.5 leading-none">
-                    <span className="text-primary font-medium">
-                      {t("app.name")}
-                    </span>
-                  </div>
-                </Link>
-              }
-            />
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarHeader>
-
+    <Sidebar collapsible="offcanvas" {...props}>
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>{t("sidebar:user.title")}</SidebarGroupLabel>
@@ -97,7 +71,11 @@ export const UserSidebar: FC<ComponentProps<typeof Sidebar>> = (props) => {
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
                       render={
-                        <Link {...item.link} data-testid={item.testId}>
+                        <Link
+                          {...item.link}
+                          data-testid={item.testId}
+                          onClick={() => setOpenMobile(false)}
+                        >
                           <item.icon />
                           <span>{item.title}</span>
                         </Link>
@@ -109,12 +87,6 @@ export const UserSidebar: FC<ComponentProps<typeof Sidebar>> = (props) => {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-
-      <SidebarFooter>
-        <SidebarUser />
-      </SidebarFooter>
-
-      <SidebarRail />
     </Sidebar>
   );
 };

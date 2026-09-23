@@ -5,17 +5,13 @@ import { z } from "zod";
 
 import type { MemberFormProps } from "./member-form-props";
 import type { GetMemberFromMemberRouteQuery } from "@/gql/graphql";
+import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
 import { WorkspacePermission } from "@/gql/graphql";
 import { graphql } from "@/gql";
 import { getPermissionOptions } from "@/lib/permissions";
 import { PermissionCheckboxGroup } from "@/components/permission-checkbox-group";
 import { Button } from "@/components/thread-ui/button";
-import {
-  Field,
-  FieldGroup,
-  FieldLegend,
-  FieldSet,
-} from "@/components/ui/field";
+import { Field, FieldSet } from "@/components/ui/field";
 
 const SET_MEMBER_PERMISSIONS = graphql(`
   mutation setMemberPermissionsFromMemberRoute(
@@ -67,40 +63,46 @@ export function MemberPermissionsForm({
         void form.handleSubmit();
       }}
     >
-      <FieldSet disabled={disabled}>
-        <FieldLegend>{t("member:details.sections.permissions")}</FieldLegend>
-        <FieldGroup>
-          <form.Field name="permissions">
-            {(field) => (
-              <PermissionCheckboxGroup
-                options={getPermissionOptions(options)}
-                value={field.state.value}
-                onChange={field.handleChange}
-                disabled={disabled}
-              />
-            )}
-          </form.Field>
-          <form.Subscribe
-            selector={(state) => [
-              state.isDirty,
-              state.canSubmit,
-              state.isSubmitting,
-            ]}
-          >
-            {([isDirty, canSubmit, isSubmitting]) => (
-              <Field orientation="horizontal">
-                <Button
-                  type="submit"
-                  data-testid="member-permissions-save"
-                  disabled={disabled || !isDirty || !canSubmit}
-                  loading={isSubmitting}
-                >
-                  {t("action.save")}
-                </Button>
-              </Field>
-            )}
-          </form.Subscribe>
-        </FieldGroup>
+      <FieldSet
+        disabled={disabled}
+        aria-label={t("member:details.sections.permissions")}
+      >
+        <FormLayout>
+          <FormLayoutItem>
+            <form.Field name="permissions">
+              {(field) => (
+                <PermissionCheckboxGroup
+                  options={getPermissionOptions(options)}
+                  value={field.state.value}
+                  onChange={field.handleChange}
+                  disabled={disabled}
+                />
+              )}
+            </form.Field>
+          </FormLayoutItem>
+          <FormLayoutItem>
+            <form.Subscribe
+              selector={(state) => [
+                state.isDirty,
+                state.canSubmit,
+                state.isSubmitting,
+              ]}
+            >
+              {([isDirty, canSubmit, isSubmitting]) => (
+                <Field orientation="horizontal">
+                  <Button
+                    type="submit"
+                    data-testid="member-permissions-save"
+                    disabled={disabled || !isDirty || !canSubmit}
+                    loading={isSubmitting}
+                  >
+                    {t("action.save")}
+                  </Button>
+                </Field>
+              )}
+            </form.Subscribe>
+          </FormLayoutItem>
+        </FormLayout>
       </FieldSet>
     </form>
   );

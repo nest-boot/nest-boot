@@ -14,6 +14,7 @@ import { isEmpty, pick } from "lodash";
 import { useCurrentMemberContext } from "../contexts/current-member-context";
 import { InviteMemberDialog } from "./components/invite-member-dialog";
 import type { DataFilterItemProps } from "@/components/thread-ui/data-filter";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { toast } from "@/components/thread-ui/toast";
 import { useAbility } from "@/contexts/ability-context";
 import { Button } from "@/components/thread-ui/button";
@@ -29,6 +30,11 @@ import {
   PageTitle,
 } from "@/components/thread-ui/page";
 import { DataTable } from "@/components/thread-ui/data-table";
+import {
+  PageLayout,
+  PageLayoutSection,
+} from "@/components/thread-ui/page-layout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { graphql } from "@/gql";
 import { MemberOrderField, MemberStatus } from "@/gql/graphql";
 import {
@@ -423,6 +429,7 @@ function MembersComponent() {
   return (
     <Page>
       <PageHeader>
+        <Breadcrumbs />
         <PageTitle>{t("member:title")}</PageTitle>
         <PageDescription>{t("member:description")}</PageDescription>
         {canCreateInvitation ? (
@@ -437,228 +444,258 @@ function MembersComponent() {
         ) : null}
       </PageHeader>
       <PageContent>
-        <div className="mb-4" data-testid="members-page">
-          <DataFilter
-            filters={filters}
-            value={{ filter: filterValues, query }}
-            onChange={(value) => {
-              navigate({
-                to: location.pathname,
-                search: {
-                  ...(value.query ? { query: value.query } : {}),
-                  ...(!isEmpty(value.filter) ? { filter: value.filter } : {}),
-                },
-              });
-            }}
-            search={{
-              placeholder: t("member:filter.search.placeholder"),
-            }}
-          />
-        </div>
-
-        <DataTable
-          columns={[
-            {
-              accessorKey: "name",
-              header: t("member:table.name"),
-              cell: ({ row }) => {
-                const member = row.original;
-                return (
-                  <div
-                    data-testid={`member-row-${member.email ?? member.id}`}
-                    className={cn(
-                      "flex flex-col",
-                      !canEditMember(member) &&
-                        "pointer-events-none opacity-50",
-                    )}
-                  >
-                    <span className="font-medium">
-                      {member.name ?? member.id}
-                    </span>
-                    <span className="text-muted-foreground text-xs">
-                      {truncateEmail(member.email ?? "") ?? "-"}
-                    </span>
+        <PageLayout>
+          <PageLayoutSection>
+            <Card>
+              <CardContent>
+                <div className="space-y-4">
+                  <div data-testid="members-page">
+                    <DataFilter
+                      filters={filters}
+                      value={{ filter: filterValues, query }}
+                      onChange={(value) => {
+                        navigate({
+                          to: location.pathname,
+                          search: {
+                            ...(value.query ? { query: value.query } : {}),
+                            ...(!isEmpty(value.filter)
+                              ? { filter: value.filter }
+                              : {}),
+                          },
+                        });
+                      }}
+                      search={{
+                        placeholder: t("member:filter.search.placeholder"),
+                      }}
+                    />
                   </div>
-                );
-              },
-            },
-            {
-              accessorKey: "roles",
-              header: t("member:table.role"),
-              cell: ({ row }) => {
-                return (
-                  <Badge variant="outline">
-                    {getRolesLabel(row.original.roles)}
-                  </Badge>
-                );
-              },
-            },
-            {
-              accessorKey: "status",
-              header: t("member:table.status"),
-              cell: ({ row }) => {
-                const status = row.original.status;
 
-                const statusColorMap: Record<
-                  MemberStatus,
-                  "green" | "yellow" | "red" | "gray"
-                > = {
-                  [MemberStatus.ACTIVE]: "green",
-                  [MemberStatus.DISABLED]: "gray",
-                };
+                  <DataTable
+                    columns={[
+                      {
+                        accessorKey: "name",
+                        header: t("member:table.name"),
+                        cell: ({ row }) => {
+                          const member = row.original;
+                          return (
+                            <div
+                              data-testid={`member-row-${member.email ?? member.id}`}
+                              className={cn(
+                                "flex flex-col",
+                                !canEditMember(member) &&
+                                  "pointer-events-none opacity-50",
+                              )}
+                            >
+                              <span className="font-medium">
+                                {member.name ?? member.id}
+                              </span>
+                              <span className="text-muted-foreground text-xs">
+                                {truncateEmail(member.email ?? "") ?? "-"}
+                              </span>
+                            </div>
+                          );
+                        },
+                      },
+                      {
+                        accessorKey: "roles",
+                        header: t("member:table.role"),
+                        cell: ({ row }) => {
+                          return (
+                            <Badge variant="outline">
+                              {getRolesLabel(row.original.roles)}
+                            </Badge>
+                          );
+                        },
+                      },
+                      {
+                        accessorKey: "status",
+                        header: t("member:table.status"),
+                        cell: ({ row }) => {
+                          const status = row.original.status;
 
-                const color = status ? statusColorMap[status] : "green";
+                          const statusColorMap: Record<
+                            MemberStatus,
+                            "green" | "yellow" | "red" | "gray"
+                          > = {
+                            [MemberStatus.ACTIVE]: "green",
+                            [MemberStatus.DISABLED]: "gray",
+                          };
 
-                return (
-                  <Badge
-                    color={color}
-                    data-testid={
-                      status
-                        ? `member-status-${status.toLowerCase()}`
-                        : undefined
-                    }
-                  >
-                    {getStatusLabel(status)}
-                  </Badge>
-                );
-              },
-            },
-            {
-              accessorKey: "createdAt",
-              header: t("member:table.joined"),
-              cell: ({ row }) => {
-                return dayjs(row.original.createdAt).format("YYYY-MM-DD");
-              },
-            },
-          ]}
-          onRowClick={(row) => {
-            if (!canEditMember(row.original)) return;
-            navigate({
-              to: "/workspaces/$workspaceId/members/$memberId",
-              params: {
-                workspaceId,
-                memberId: row.original.id,
-              },
-            });
-          }}
-          rowActions={(row) => [
-            ...(canUpdateMember(row.original) &&
-            (row.original.status === MemberStatus.ACTIVE ||
-              row.original.status === MemberStatus.DISABLED)
-              ? [
-                  {
-                    disabled: updateStatusLoading,
-                    label:
-                      row.original.status === MemberStatus.DISABLED
-                        ? t("action.enable")
-                        : t("action.disable"),
-                    onClick: () =>
-                      handleToggleMemberStatus(
-                        row.original.id,
-                        row.original.status,
-                      ),
-                  },
-                ]
-              : []),
-            ...(canDeleteMember(row.original) &&
-            row.original.id !== currentMember.id
-              ? [
-                  {
-                    disabled: removeMemberLoading,
-                    label: t("action.delete"),
-                    onClick: () => handleRemoveMemberClick(row.original.id),
-                  },
-                ]
-              : []),
-          ]}
-          data={members}
-          pagination={{
-            hasPreviousPage: pageInfo?.hasPreviousPage,
-            hasNextPage: pageInfo?.hasNextPage,
-            onPreviousPage: () => {
-              navigate({
-                to: location.pathname,
-                search: getPreviousPageSearch(search, pageInfo),
-              });
-            },
-            onNextPage: () => {
-              navigate({
-                to: location.pathname,
-                search: getNextPageSearch(search, pageInfo),
-              });
-            },
-          }}
-        />
+                          const color = status
+                            ? statusColorMap[status]
+                            : "green";
 
-        {pendingInvitations.length > 0 ||
-        invitationPage.after ||
-        invitationPage.before ? (
-          <section className="mt-8 space-y-3" data-testid="invitations">
-            <h2 className="text-base font-semibold">
-              {t("member:invite.title")}
-            </h2>
-            {pendingInvitations.map((invitation) => (
-              <div
-                className="flex items-center justify-between gap-4 rounded-md border p-3"
-                data-testid={`invitation-${invitation.email}`}
-                key={invitation.id}
-              >
-                <div className="min-w-0">
-                  <p className="truncate font-medium">{invitation.email}</p>
-                  <p className="text-muted-foreground text-xs">
-                    {getRolesLabel(invitation.roles)} ·{" "}
-                    {dayjs(invitation.expiresAt).format("YYYY-MM-DD HH:mm")}
-                  </p>
+                          return (
+                            <Badge
+                              color={color}
+                              data-testid={
+                                status
+                                  ? `member-status-${status.toLowerCase()}`
+                                  : undefined
+                              }
+                            >
+                              {getStatusLabel(status)}
+                            </Badge>
+                          );
+                        },
+                      },
+                      {
+                        accessorKey: "createdAt",
+                        header: t("member:table.joined"),
+                        cell: ({ row }) => {
+                          return dayjs(row.original.createdAt).format(
+                            "YYYY-MM-DD",
+                          );
+                        },
+                      },
+                    ]}
+                    onRowClick={(row) => {
+                      if (!canEditMember(row.original)) return;
+                      navigate({
+                        to: "/workspaces/$workspaceId/members/$memberId",
+                        params: {
+                          workspaceId,
+                          memberId: row.original.id,
+                        },
+                      });
+                    }}
+                    rowActions={(row) => [
+                      ...(canUpdateMember(row.original) &&
+                      (row.original.status === MemberStatus.ACTIVE ||
+                        row.original.status === MemberStatus.DISABLED)
+                        ? [
+                            {
+                              disabled: updateStatusLoading,
+                              label:
+                                row.original.status === MemberStatus.DISABLED
+                                  ? t("action.enable")
+                                  : t("action.disable"),
+                              onClick: () =>
+                                handleToggleMemberStatus(
+                                  row.original.id,
+                                  row.original.status,
+                                ),
+                            },
+                          ]
+                        : []),
+                      ...(canDeleteMember(row.original) &&
+                      row.original.id !== currentMember.id
+                        ? [
+                            {
+                              disabled: removeMemberLoading,
+                              label: t("action.delete"),
+                              onClick: () =>
+                                handleRemoveMemberClick(row.original.id),
+                            },
+                          ]
+                        : []),
+                    ]}
+                    data={members}
+                    pagination={{
+                      hasPreviousPage: pageInfo?.hasPreviousPage,
+                      hasNextPage: pageInfo?.hasNextPage,
+                      onPreviousPage: () => {
+                        navigate({
+                          to: location.pathname,
+                          search: getPreviousPageSearch(search, pageInfo),
+                        });
+                      },
+                      onNextPage: () => {
+                        navigate({
+                          to: location.pathname,
+                          search: getNextPageSearch(search, pageInfo),
+                        });
+                      },
+                    }}
+                  />
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleCopyInvitation(invitation.id)}
-                  >
-                    {t("member:details.actions.copy_invite_link")}
-                  </Button>
-                  {canCancelInvitation ? (
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      disabled={cancelInvitationLoading}
-                      onClick={() => handleCancelInvitation(invitation.id)}
-                    >
-                      {t("action.cancel")}
-                    </Button>
-                  ) : null}
-                </div>
-              </div>
-            ))}
-            <div className="flex justify-center gap-2">
-              <Button
-                variant="outline"
-                disabled={!invitationPageInfo?.hasPreviousPage}
-                onClick={() =>
-                  setInvitationPage({
-                    last: 20,
-                    before: invitationPageInfo?.startCursor ?? undefined,
-                  })
-                }
-              >
-                {t("thread-ui:dataTable.previousPage")}
-              </Button>
-              <Button
-                variant="outline"
-                disabled={!invitationPageInfo?.hasNextPage}
-                onClick={() =>
-                  setInvitationPage({
-                    first: 20,
-                    after: invitationPageInfo?.endCursor ?? undefined,
-                  })
-                }
-              >
-                {t("thread-ui:dataTable.nextPage")}
-              </Button>
-            </div>
-          </section>
-        ) : null}
+              </CardContent>
+            </Card>
+          </PageLayoutSection>
+
+          {pendingInvitations.length > 0 ||
+          invitationPage.after ||
+          invitationPage.before ? (
+            <PageLayoutSection>
+              <Card data-testid="invitations">
+                <CardHeader>
+                  <CardTitle>{t("member:invite.title")}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {pendingInvitations.map((invitation) => (
+                      <div
+                        className="flex flex-col gap-4 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between"
+                        data-testid={`invitation-${invitation.email}`}
+                        key={invitation.id}
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">
+                            {invitation.email}
+                          </p>
+                          <p className="text-muted-foreground text-xs">
+                            {getRolesLabel(invitation.roles)} ·{" "}
+                            {dayjs(invitation.expiresAt).format(
+                              "YYYY-MM-DD HH:mm",
+                            )}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleCopyInvitation(invitation.id)}
+                          >
+                            {t("member:details.actions.copy_invite_link")}
+                          </Button>
+                          {canCancelInvitation ? (
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              disabled={cancelInvitationLoading}
+                              onClick={() =>
+                                handleCancelInvitation(invitation.id)
+                              }
+                            >
+                              {t("action.cancel")}
+                            </Button>
+                          ) : null}
+                        </div>
+                      </div>
+                    ))}
+                    <div className="flex justify-center gap-2">
+                      <Button
+                        variant="outline"
+                        disabled={!invitationPageInfo?.hasPreviousPage}
+                        onClick={() =>
+                          setInvitationPage({
+                            last: 20,
+                            before:
+                              invitationPageInfo?.startCursor ?? undefined,
+                          })
+                        }
+                      >
+                        {t("thread-ui:dataTable.previousPage")}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        disabled={!invitationPageInfo?.hasNextPage}
+                        onClick={() =>
+                          setInvitationPage({
+                            first: 20,
+                            after: invitationPageInfo?.endCursor ?? undefined,
+                          })
+                        }
+                      >
+                        {t("thread-ui:dataTable.nextPage")}
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </PageLayoutSection>
+          ) : null}
+        </PageLayout>
 
         {canCreateInvitation ? (
           <InviteMemberDialog

@@ -1,7 +1,7 @@
 "use client";
 
 import { cva } from "class-variance-authority";
-import { ArrowLeftIcon, MoreHorizontalIcon } from "lucide-react";
+import { MoreHorizontalIcon } from "lucide-react";
 import { Children, isValidElement } from "react";
 import { useTranslation } from "react-i18next";
 import type {
@@ -55,7 +55,7 @@ export const PageHeader: FC<PageHeaderProps> = ({ className, ...props }) => {
     <header
       data-slot="page-header"
       className={cn(
-        "group/page-header grid gap-1 pb-4 has-data-[slot=page-actions]:grid-cols-[1fr_auto] has-data-[slot=page-back-action]:grid-cols-[1fr_auto] has-data-[slot=page-back-action]:grid-rows-[auto_auto_auto] @3xl/page:has-data-[slot=page-back-action]:grid-cols-[auto_1fr_auto] @3xl/page:has-data-[slot=page-back-action]:grid-rows-[auto_auto] @3xl/page:has-data-[slot=page-back-action]:gap-x-2",
+        "group/page-header grid grid-cols-[minmax(0,1fr)] items-center gap-1 pb-4 has-data-[slot=page-actions]:grid-cols-[minmax(0,1fr)_auto] has-data-[slot=page-breadcrumb-actions]:grid-cols-[auto_minmax(0,1fr)] has-data-[slot=page-breadcrumb-actions]:has-data-[slot=page-actions]:grid-cols-[auto_minmax(0,1fr)_auto]",
         className,
       )}
       {...props}
@@ -68,35 +68,6 @@ export type PageActionProps = Omit<
   "size" | "variant" | "className"
 > & {
   className?: string;
-};
-
-export type PageBackActionProps = PageActionProps;
-
-export const PageBackAction: FC<PageBackActionProps> = ({
-  children,
-  className,
-  "aria-label": ariaLabel,
-  ...props
-}) => {
-  const { t } = useTranslation("thread-ui");
-
-  return (
-    <Button
-      aria-label={
-        ariaLabel ?? (children == null ? t("page.back", "Back") : undefined)
-      }
-      {...props}
-      data-slot="page-back-action"
-      size="icon"
-      variant="ghost"
-      className={cn(
-        "col-start-1 row-start-1 self-start justify-self-start @3xl/page:row-span-2",
-        className,
-      )}
-    >
-      {children ?? <ArrowLeftIcon />}
-    </Button>
-  );
 };
 
 export type PagePrimaryActionProps = PageActionProps;
@@ -145,7 +116,7 @@ export const PageTitle: FC<PageTitleProps> = ({ className, ...props }) => {
     <h2
       data-slot="page-title"
       className={cn(
-        "py-0.5 text-2xl font-semibold tracking-tight group-has-data-[slot=page-back-action]/page-header:col-span-2 group-has-data-[slot=page-back-action]/page-header:row-start-2 @3xl/page:group-has-data-[slot=page-back-action]/page-header:col-span-1 @3xl/page:group-has-data-[slot=page-back-action]/page-header:col-start-2 @3xl/page:group-has-data-[slot=page-back-action]/page-header:row-start-1",
+        "col-start-1 row-start-1 min-w-0 truncate py-0.5 text-lg font-semibold tracking-tight group-has-data-[slot=page-breadcrumb-actions]/page-header:col-start-2 sm:text-xl",
         className,
       )}
       {...props}
@@ -163,7 +134,7 @@ export const PageDescription: FC<PageDescriptionProps> = ({
     <p
       data-slot="page-description"
       className={cn(
-        "text-muted-foreground text-sm group-has-data-[slot=page-back-action]/page-header:col-span-2 group-has-data-[slot=page-back-action]/page-header:row-start-3 @3xl/page:group-has-data-[slot=page-back-action]/page-header:col-span-1 @3xl/page:group-has-data-[slot=page-back-action]/page-header:col-start-2 @3xl/page:group-has-data-[slot=page-back-action]/page-header:row-start-2",
+        "text-muted-foreground col-span-full row-start-2 min-w-0 text-sm wrap-anywhere sm:group-has-data-[slot=page-breadcrumb-actions]/page-header:col-start-2",
         className,
       )}
       {...props}
@@ -253,7 +224,7 @@ export const PageActions: FC<PageActionsProps> = ({
       {...props}
       data-slot="page-actions"
       className={cn(
-        "col-start-2 row-span-2 row-start-1 flex items-center gap-2 self-start justify-self-end group-has-data-[slot=page-back-action]/page-header:row-span-1 @3xl/page:group-has-data-[slot=page-back-action]/page-header:col-start-3 @3xl/page:group-has-data-[slot=page-back-action]/page-header:row-span-2 [&>[data-slot=page-primary-action]]:order-last [&>[data-slot=page-secondary-actions]]:order-10",
+        "col-start-2 row-start-1 flex shrink-0 items-center gap-2 justify-self-end group-has-data-[slot=page-breadcrumb-actions]/page-header:col-start-3 [&>[data-slot=page-primary-action]]:order-last [&>[data-slot=page-secondary-actions]]:order-10",
         className,
       )}
     >
@@ -315,3 +286,9 @@ export type PageContentProps = ComponentProps<"div">;
 export const PageContent: FC<PageContentProps> = ({ className, ...props }) => {
   return <div className={cn("flex-1", className)} {...props} />;
 };
+
+export { BreadcrumbActions, BreadcrumbAction } from "./breadcrumb-actions";
+export type {
+  BreadcrumbActionsProps,
+  BreadcrumbActionProps,
+} from "./breadcrumb-actions";

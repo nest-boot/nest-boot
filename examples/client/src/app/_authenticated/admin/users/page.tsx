@@ -6,6 +6,7 @@ import dayjs from "dayjs";
 import { t } from "i18next";
 import { Plus } from "lucide-react";
 import { z } from "zod";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { toast } from "@/components/thread-ui/toast";
 import { useAbility } from "@/contexts/ability-context";
 
@@ -32,6 +33,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { graphql } from "@/gql";
+import { Card, CardContent } from "@/components/ui/card";
 
 const PAGE_SIZE = 20;
 
@@ -147,6 +149,7 @@ function AdminUsersPage() {
   return (
     <Page data-testid="admin-users-page">
       <PageHeader>
+        <Breadcrumbs />
         <PageTitle>{t("admin:users.title")}</PageTitle>
         <PageDescription>{t("admin:users.description")}</PageDescription>
         {canCreate ? (
@@ -159,111 +162,123 @@ function AdminUsersPage() {
         ) : null}
       </PageHeader>
       <PageContent>
-        <form
-          className="mb-4 flex gap-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            navigate({
-              to: "/admin/users",
-              search: {
-                search: searchInput.trim() || undefined,
-              },
-            });
-          }}
-        >
-          <Input
-            aria-label={t("admin:users.search")}
-            placeholder={t("admin:users.search")}
-            value={searchInput}
-            onChange={(event) => setSearchInput(event.target.value)}
-          />
-          <Button type="submit">{t("admin:users.search_action")}</Button>
-        </form>
+        <Card>
+          <CardContent>
+            <div className="space-y-4">
+              <form
+                className="flex gap-2"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  navigate({
+                    to: "/admin/users",
+                    search: {
+                      search: searchInput.trim() || undefined,
+                    },
+                  });
+                }}
+              >
+                <Input
+                  aria-label={t("admin:users.search")}
+                  placeholder={t("admin:users.search")}
+                  value={searchInput}
+                  onChange={(event) => setSearchInput(event.target.value)}
+                />
+                <Button type="submit">{t("admin:users.search_action")}</Button>
+              </form>
 
-        <DataTable
-          data={users}
-          columns={[
-            {
-              accessorKey: "name",
-              header: t("admin:users.table.name"),
-              cell: ({ row }) => (
-                <div>
-                  <p className="font-medium">{row.original.name}</p>
-                  <p className="text-muted-foreground text-xs">
-                    {row.original.email}
-                  </p>
-                </div>
-              ),
-            },
-            {
-              accessorKey: "emailVerified",
-              header: t("admin:users.table.email_status"),
-              cell: ({ row }) => (
-                <Badge color={row.original.emailVerified ? "green" : "gray"}>
-                  {t(
-                    row.original.emailVerified
-                      ? "admin:users.verified"
-                      : "admin:users.unverified",
-                  )}
-                </Badge>
-              ),
-            },
-            {
-              accessorKey: "banned",
-              header: t("admin:users.table.status"),
-              cell: ({ row }) => (
-                <Badge color={row.original.banned ? "red" : "green"}>
-                  {t(
-                    row.original.banned
-                      ? "admin:users.banned"
-                      : "admin:users.active",
-                  )}
-                </Badge>
-              ),
-            },
-            {
-              accessorKey: "createdAt",
-              header: t("admin:users.table.created_at"),
-              cell: ({ row }) =>
-                dayjs(row.original.createdAt).format("YYYY-MM-DD"),
-            },
-          ]}
-          onRowClick={(row) => {
-            if (
-              !ability.can("read", createAbilitySubject("User", row.original))
-            )
-              return;
-            navigate({
-              to: "/admin/users/$userId",
-              params: { userId: row.original.id },
-            });
-          }}
-          pagination={{
-            hasPreviousPage: data?.users.pageInfo.hasPreviousPage ?? false,
-            hasNextPage: data?.users.pageInfo.hasNextPage ?? false,
-            onPreviousPage: () =>
-              navigate({
-                to: "/admin/users",
-                search: {
-                  search: search.search,
-                  before: data?.users.pageInfo.startCursor ?? undefined,
-                },
-              }),
-            onNextPage: () =>
-              navigate({
-                to: "/admin/users",
-                search: {
-                  search: search.search,
-                  after: data?.users.pageInfo.endCursor ?? undefined,
-                },
-              }),
-          }}
-        />
-        {loading ? (
-          <p className="text-muted-foreground mt-3 text-sm">
-            {t("admin:users.loading")}
-          </p>
-        ) : null}
+              <DataTable
+                data={users}
+                columns={[
+                  {
+                    accessorKey: "name",
+                    header: t("admin:users.table.name"),
+                    cell: ({ row }) => (
+                      <div>
+                        <p className="font-medium">{row.original.name}</p>
+                        <p className="text-muted-foreground text-xs">
+                          {row.original.email}
+                        </p>
+                      </div>
+                    ),
+                  },
+                  {
+                    accessorKey: "emailVerified",
+                    header: t("admin:users.table.email_status"),
+                    cell: ({ row }) => (
+                      <Badge
+                        color={row.original.emailVerified ? "green" : "gray"}
+                      >
+                        {t(
+                          row.original.emailVerified
+                            ? "admin:users.verified"
+                            : "admin:users.unverified",
+                        )}
+                      </Badge>
+                    ),
+                  },
+                  {
+                    accessorKey: "banned",
+                    header: t("admin:users.table.status"),
+                    cell: ({ row }) => (
+                      <Badge color={row.original.banned ? "red" : "green"}>
+                        {t(
+                          row.original.banned
+                            ? "admin:users.banned"
+                            : "admin:users.active",
+                        )}
+                      </Badge>
+                    ),
+                  },
+                  {
+                    accessorKey: "createdAt",
+                    header: t("admin:users.table.created_at"),
+                    cell: ({ row }) =>
+                      dayjs(row.original.createdAt).format("YYYY-MM-DD"),
+                  },
+                ]}
+                onRowClick={(row) => {
+                  if (
+                    !ability.can(
+                      "read",
+                      createAbilitySubject("User", row.original),
+                    )
+                  )
+                    return;
+                  navigate({
+                    to: "/admin/users/$userId",
+                    params: { userId: row.original.id },
+                  });
+                }}
+                pagination={{
+                  hasPreviousPage:
+                    data?.users.pageInfo.hasPreviousPage ?? false,
+                  hasNextPage: data?.users.pageInfo.hasNextPage ?? false,
+                  onPreviousPage: () =>
+                    navigate({
+                      to: "/admin/users",
+                      search: {
+                        search: search.search,
+                        before: data?.users.pageInfo.startCursor ?? undefined,
+                      },
+                    }),
+                  onNextPage: () =>
+                    navigate({
+                      to: "/admin/users",
+                      search: {
+                        search: search.search,
+                        after: data?.users.pageInfo.endCursor ?? undefined,
+                      },
+                    }),
+                }}
+              />
+              {loading ? (
+                <p className="text-muted-foreground mt-3 text-sm">
+                  {t("admin:users.loading")}
+                </p>
+              ) : null}
+            </div>
+          </CardContent>
+        </Card>
       </PageContent>
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>

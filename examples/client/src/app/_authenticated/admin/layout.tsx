@@ -1,13 +1,9 @@
 import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
 import { t } from "i18next";
 
+import { AppTopbar } from "../components/app-topbar";
 import { AdminSidebar } from "./components/admin-sidebar";
-import { Breadcrumbs } from "@/components/breadcrumbs";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
+import { Layout, LayoutContent } from "@/components/thread-ui/layout";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminLayout,
@@ -21,17 +17,12 @@ export const Route = createFileRoute("/_authenticated/admin")({
 
 function AdminLayout() {
   return (
-    <SidebarProvider>
+    <Layout>
+      <AppTopbar />
       <AdminSidebar />
-      <SidebarInset>
-        <header className="bg-background flex h-16 shrink-0 items-center gap-2 border-b">
-          <div className="flex items-center gap-2 px-4">
-            <SidebarTrigger />
-            <Breadcrumbs />
-          </div>
-        </header>
+      <LayoutContent>
         <Outlet />
-      </SidebarInset>
-    </SidebarProvider>
+      </LayoutContent>
+    </Layout>
   );
 }

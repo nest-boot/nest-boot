@@ -58,7 +58,7 @@ test.describe("email authentication", () => {
     await completeEmailVerification(page, email);
     await expect(page).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
 
-    await page.getByTestId("sidebar-user-menu").click();
+    await page.getByTestId("topbar-menu-trigger").click();
     await page.getByTestId("sidebar-user-sign-out").click();
     await expect(page).toHaveURL(/\/auth\/login(?:\?.*)?$/);
     await page.getByTestId("auth-forgot-password-link").click();
@@ -116,7 +116,7 @@ test.describe("email authentication", () => {
       page.getByTestId("user-revoke-other-session-list"),
     ).toBeDisabled();
 
-    await page.getByTestId("sidebar-user-menu").click();
+    await page.getByTestId("topbar-menu-trigger").click();
     await page.getByTestId("sidebar-user-sign-out").click();
     await expect(page).toHaveURL(/\/auth\/login$/);
     await page.getByTestId("auth-email-input").fill(email);
