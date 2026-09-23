@@ -44,7 +44,7 @@ type PageNavigationQuery<Schema extends z.ZodType<CursorPageSearch>> = (
 
 interface NavigationRequest<Schema extends z.ZodType<CursorPageSearch>> {
   scope: string;
-  query?: PageNavigationQuery<Schema>;
+  query: PageNavigationQuery<Schema>;
   conditions: PageSearchConditions<Schema>;
   cursor: string;
 }
@@ -66,7 +66,7 @@ interface PageNavigationOptions<
   /** Must include the id and, when ordered, the field selected by orderBy.field. */
   record: Record;
   /** A stable closure that executes the application's lazy query. */
-  query?: PageNavigationQuery<Schema>;
+  query: PageNavigationQuery<Schema>;
 }
 
 /** Derives cursor navigation from live record data; only page search is stored. */
@@ -105,7 +105,6 @@ export function usePageNavigation<
   };
 
   async function refetch() {
-    if (!query) return;
     const id = ++requestId.current;
     setState({ request, loading: true });
     try {
@@ -161,11 +160,10 @@ export function usePageNavigation<
   return {
     pageSearch,
     setPageSearch,
-    currentCursor,
     backSearch,
     previous,
     next,
-    loading: Boolean(query) && (!current || current.loading),
+    loading: !current || current.loading,
     error: current?.error,
     refetch,
   };

@@ -92,10 +92,11 @@ API-key pages also demonstrate two hooks for list/detail navigation:
   GraphQL order names map to camelCase record fields (`CREATED_AT` to `createdAt`).
   Include each supported sort field in the detail query; explicit `null` values
   are supported, while a missing field raises an error instead of an incorrect
-  cursor without persisting a cursor map. An optional stable
+  cursor. No cursor map is persisted. The required, stable
   `query({ pageSearch, cursor })` closure receives the current list search and
   the detail record's cursor separately; a list's `after`/`before` cannot stand in
-  for the current record. The closure
+  for the current record. The calculated cursor is passed only to the query closure,
+  not exposed in the hook's return value. The closure
   returns `{ previous: { edges }, next: { edges } }`, with each edge containing
   `cursor` and `node.id`. It runs when the record cursor, user/page scope, filters,
   sorting, or closure changes; updating only pagination does not trigger another

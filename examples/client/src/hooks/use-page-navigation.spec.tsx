@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 import { z } from "zod";
 import { usePageSearch } from "./use-page-search";
 import { usePageNavigation } from "./use-page-navigation";
@@ -94,6 +94,13 @@ describe("usePageNavigation", () => {
     expect(result.current).not.toHaveProperty("previousSearch");
     expect(result.current).not.toHaveProperty("nextSearch");
     expect(result.current).not.toHaveProperty("getBackSearch");
+    expect(result.current).not.toHaveProperty("currentCursor");
+    type Options = Parameters<
+      typeof usePageNavigation<typeof apiKeySearchSchema, typeof record>
+    >[0];
+    expectTypeOf<Pick<Options, "query">>().toEqualTypeOf<
+      Required<Pick<Options, "query">>
+    >();
     rerender({ item: { ...record }, execute: query });
     act(() => result.current.setPageSearch({ first: 5, after: "saved" }));
     expect(query).toHaveBeenCalledTimes(1);
@@ -201,7 +208,6 @@ describe("usePageNavigation", () => {
     );
     await waitFor(() => expect(result.current.loading).toBe(false));
     const cursor = btoa(JSON.stringify({ id: "B" }));
-    expect(result.current.currentCursor).toBe(cursor);
     expect(query).toHaveBeenLastCalledWith({
       pageSearch: { first: 10 },
       cursor,
@@ -435,7 +441,7 @@ describe("usePageNavigation", () => {
     });
   });
 
-  it("derives cursors from live record data, including browser-back and null sort values, without a stored cursor map", () => {
+  it("passes live record cursors to the query, including browser-back and null sort values, without a stored cursor map", async () => {
     saveSearch({
       orderBy: {
         field: UserApiKeyOrderField.LAST_USED_AT,
@@ -443,21 +449,35 @@ describe("usePageNavigation", () => {
       },
     });
     const stored = JSON.stringify(sessionStorage);
+    const query = vi.fn().mockResolvedValue(neighbors());
     const { result, rerender } = renderHook(
       ({ item }) =>
         usePageNavigation({
           key: pageKey,
           searchSchema: apiKeySearchSchema,
           record: item,
+          query,
         }),
       { wrapper, initialProps: { item: record } },
     );
-    const original = result.current.currentCursor;
-    expect(JSON.parse(atob(original))).toEqual({ id: "B", value: null });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    const original = btoa(JSON.stringify({ id: "B", value: null }));
+    expect(query).toHaveBeenLastCalledWith(
+      expect.objectContaining({ cursor: original }),
+    );
     rerender({ item: { ...record, id: "C" } });
-    expect(result.current.currentCursor).not.toBe(original);
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(query).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        cursor: btoa(JSON.stringify({ id: "C", value: null })),
+      }),
+    );
     rerender({ item: record });
-    expect(result.current.currentCursor).toBe(original);
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(query).toHaveBeenLastCalledWith(
+      expect.objectContaining({ cursor: original }),
+    );
+    expect(query).toHaveBeenCalledTimes(3);
     expect(JSON.stringify(sessionStorage)).toBe(stored);
   });
 
@@ -481,15 +501,19 @@ describe("usePageNavigation", () => {
         direction: OrderDirection.DESC,
       },
     });
-    expect(JSON.parse(atob(result.current.currentCursor))).toEqual({
-      id: record.id,
-      value: record.createdAt,
-    });
+    expect(query).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        cursor: btoa(
+          JSON.stringify({ id: record.id, value: record.createdAt }),
+        ),
+      }),
+    );
     expect(result.current.previous?.node.id).toBe("previous");
     expect(sessionStorage.length).toBe(0);
   });
 
-  it("applies schema sort defaults to an existing saved search without orderBy", () => {
+  it("applies schema sort defaults to an existing saved search without orderBy", async () => {
+    const query = vi.fn().mockResolvedValue(neighbors());
     sessionStorage.setItem(
       'page-search:v1:["navigation-user","api-keys"]',
       JSON.stringify({ first: 5, query: "example" }),
@@ -500,20 +524,26 @@ describe("usePageNavigation", () => {
           key: pageKey,
           searchSchema: apiKeySearchSchema,
           record,
+          query,
         }),
       { wrapper },
     );
+    await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.pageSearch.orderBy.field).toBe(
       UserApiKeyOrderField.CREATED_AT,
     );
     expect(result.current.backSearch).toMatchObject({ first: 5 });
-    expect(JSON.parse(atob(result.current.currentCursor))).toEqual({
-      id: record.id,
-      value: record.createdAt,
-    });
+    expect(query).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        cursor: btoa(
+          JSON.stringify({ id: record.id, value: record.createdAt }),
+        ),
+      }),
+    );
   });
 
-  it("uses another resource's schema defaults instead of hardcoded API-key ordering", () => {
+  it("uses another resource's schema defaults instead of hardcoded API-key ordering", async () => {
+    const query = vi.fn().mockResolvedValue(neighbors());
     const searchSchema = createConnectionSearchSchema({
       pageSize: 7,
       orderField: { NAME: "NAME" } as const,
@@ -526,13 +556,16 @@ describe("usePageNavigation", () => {
           key: ["other-resource"],
           searchSchema,
           record: { id: "1", name: "Alice" },
+          query,
         }),
       { wrapper },
     );
-    expect(JSON.parse(atob(result.current.currentCursor))).toEqual({
-      id: "1",
-      value: "Alice",
-    });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(query).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        cursor: btoa(JSON.stringify({ id: "1", value: "Alice" })),
+      }),
+    );
     expect(result.current.backSearch).toMatchObject({
       first: 7,
       orderBy: { field: "NAME", direction: OrderDirection.ASC },
