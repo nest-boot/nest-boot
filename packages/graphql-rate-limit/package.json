@@ -35,7 +35,8 @@
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts"
   },
   "dependencies": {
-    "@isaacs/ttlcache": "^2.1.5"
+    "@isaacs/ttlcache": "^2.1.5",
+    "@nest-boot/redis": "workspace:^"
   },
   "devDependencies": {
     "@apollo/server": "^5.2.0",

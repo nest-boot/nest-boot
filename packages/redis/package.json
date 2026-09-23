@@ -77,6 +77,10 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./connection-options": {
+      "types": "./dist/connection-options.d.ts",
+      "import": "./dist/connection-options.js"
+    }
   }
 }

@@ -711,6 +711,10 @@ importers:
         version: 4.3.6
 
   packages/bullmq:
+    dependencies:
+      '@nest-boot/redis':
+        specifier: workspace:^
+        version: link:../redis
     devDependencies:
       '@nest-boot/eslint-config':
         specifier: workspace:^
@@ -1231,6 +1235,9 @@ importers:
       '@isaacs/ttlcache':
         specifier: ^2.1.5
         version: 2.1.5
+      '@nest-boot/redis':
+        specifier: workspace:^
+        version: link:../redis
     devDependencies:
       '@apollo/server':
         specifier: ^5.2.0

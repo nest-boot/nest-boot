@@ -68,6 +68,16 @@ export class CacheService {
 }
 ```
 
+## 解析连接 URL
+
+Redis、BullMQ 和 GraphQL 限流共用同一个 URL 解析器。需要解析显式 URL，且不读取环境变量或加载 Nest 模块装配时，可以使用 connection-options 入口：
+
+```typescript
+import { parseRedisUrl } from "@nest-boot/redis/connection-options";
+
+const connection = parseRedisUrl("rediss://redis.local:6380/2");
+```
+
 ## API 参考
 
 详细的 API 文档请参阅 [Redis API 参考](/docs/api/redis)。
