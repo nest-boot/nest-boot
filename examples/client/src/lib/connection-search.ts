@@ -55,7 +55,10 @@ export function createConnectionSearchSchema<OrderField extends EnumLike>(
             .nativeEnum(OrderDirection)
             .default(options.defaultOrderDirection),
         })
-        .optional(),
+        .default({
+          field: options.defaultOrderField,
+          direction: options.defaultOrderDirection,
+        }),
       ...(options.filterSchema ? { filter: options.filterSchema } : {}),
     })
     .transform((data) => {

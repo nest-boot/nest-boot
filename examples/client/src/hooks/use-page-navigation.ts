@@ -2,8 +2,10 @@ import { useMemo } from "react";
 import { usePageSearch } from "./use-page-search";
 import type z from "zod";
 import type { PageKey } from "./use-page-search";
+import { createConnectionCursor } from "@/lib/connection-cursor";
 
 interface CursorPageSearch {
+  orderBy: { field: string };
   first?: number;
   last?: number;
   after?: string;
@@ -12,31 +14,26 @@ interface CursorPageSearch {
 
 interface PageNavigationOptions<
   Schema extends z.ZodType<CursorPageSearch>,
-  Record,
+  Record extends { id: string },
 > {
   key: PageKey;
-  /** Must accept {} to provide the direct-entry defaults. */
+  /** Must accept {} and provide a default orderBy, including on stored searches. */
   searchSchema: Schema;
+  /** Must include the id and the camelCase field selected by orderBy.field. */
   record: Record;
-  getCursor: (record: Record, search: z.output<Schema>) => string;
 }
 
 /** Derives cursor navigation from live record data; only list search is stored. */
 export function usePageNavigation<
   Schema extends z.ZodType<CursorPageSearch>,
-  Record,
->({
-  key,
-  searchSchema,
-  record,
-  getCursor,
-}: PageNavigationOptions<Schema, Record>) {
+  Record extends { id: string },
+>({ key, searchSchema, record }: PageNavigationOptions<Schema, Record>) {
   const { search: savedSearch } = usePageSearch({ key, searchSchema });
   const search = useMemo(
     () => savedSearch ?? searchSchema.parse({}),
     [savedSearch, searchSchema],
   );
-  const currentCursor = getCursor(record, search);
+  const currentCursor = createConnectionCursor(record, search.orderBy.field);
   const { first, last, after: _after, before: _before, ...conditions } = search;
 
   return {

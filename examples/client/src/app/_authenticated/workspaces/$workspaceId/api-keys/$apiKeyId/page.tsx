@@ -14,7 +14,6 @@ import {
 } from "@/lib/api-key-operations";
 import {
   apiKeySearchSchema,
-  createApiKeyCursor,
   createApiKeyQueryVariables,
   getWorkspaceApiKeysPageKey,
 } from "@/lib/api-key-search";
@@ -72,7 +71,6 @@ function ApiKeyDetailsPage() {
     key: getWorkspaceApiKeysPageKey(workspaceId),
     searchSchema: apiKeySearchSchema,
     record: apiKey,
-    getCursor: createApiKeyCursor,
   });
   const { query, filter, orderBy } = createApiKeyQueryVariables(
     navigation.search,

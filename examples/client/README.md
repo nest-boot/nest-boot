@@ -78,9 +78,13 @@ API-key pages also demonstrate two hooks for list/detail navigation:
   the same schema. Schemas must normalize JSON-compatible search values
   idempotently, as the existing connection search schemas do. Invalid stored
   data is discarded; unavailable storage falls back to memory for that tab.
-- `usePageNavigation({ key, searchSchema, record, getCursor })` reads those
+- `usePageNavigation({ key, searchSchema, record })` reads those
   conditions and calculates the current cursor from the live record's ID and
-  sort value. It derives previous/next connection arguments without persisting
+  sort value. The connection search schema supplies the default `orderBy`;
+  GraphQL order names map to camelCase record fields (`CREATED_AT` to `createdAt`).
+  Include each supported sort field in the detail query; explicit `null` values
+  are supported, while a missing field raises an error instead of an incorrect
+  cursor. It derives previous/next connection arguments without persisting
   a cursor map. Apollo queries both adjacent records; loading/error disables
   navigation, and errors offer retry. `getReturnSearch(previousCursor)` uses
   the preceding record's cursor so the current record becomes the first list

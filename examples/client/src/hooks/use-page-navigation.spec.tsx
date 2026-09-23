@@ -5,9 +5,12 @@ import { usePageSearch } from "./use-page-search";
 import { usePageNavigation } from "./use-page-navigation";
 import type { ReactNode } from "react";
 import { CurrentUserProvider } from "@/app/_authenticated/contexts/current-user-context";
-import { apiKeySearchSchema, createApiKeyCursor } from "@/lib/api-key-search";
+import { apiKeySearchSchema } from "@/lib/api-key-search";
 import { UserApiKeyOrderField } from "@/gql/graphql";
-import { OrderDirection } from "@/lib/connection-search";
+import {
+  OrderDirection,
+  createConnectionSearchSchema,
+} from "@/lib/connection-search";
 
 function wrapper({ children }: { children: ReactNode }) {
   return (
@@ -59,14 +62,10 @@ describe("usePageNavigation", () => {
           key: pageKey,
           searchSchema: apiKeySearchSchema,
           record,
-          getCursor: createApiKeyCursor,
         }),
       { wrapper },
     );
-    const cursor = createApiKeyCursor(
-      record,
-      apiKeySearchSchema.parse(conditions),
-    );
+    const cursor = btoa(JSON.stringify({ id: record.id, value: record.id }));
     expect(result.current.previousSearch).toEqual({
       ...conditions,
       last: 1,
@@ -114,7 +113,6 @@ describe("usePageNavigation", () => {
           key: pageKey,
           searchSchema: apiKeySearchSchema,
           record: item,
-          getCursor: createApiKeyCursor,
         }),
       { wrapper, initialProps: { item: record } },
     );
@@ -134,15 +132,71 @@ describe("usePageNavigation", () => {
           key: pageKey,
           searchSchema: apiKeySearchSchema,
           record,
-          getCursor: createApiKeyCursor,
         }),
       { wrapper },
     );
-    expect(result.current.search).toEqual({ first: 20 });
+    expect(result.current.search).toEqual({
+      first: 20,
+      orderBy: {
+        field: UserApiKeyOrderField.CREATED_AT,
+        direction: OrderDirection.DESC,
+      },
+    });
     expect(JSON.parse(atob(result.current.currentCursor))).toEqual({
       id: record.id,
       value: record.createdAt,
     });
     expect(sessionStorage.length).toBe(0);
+  });
+
+  it("applies schema sort defaults to an existing saved search without orderBy", () => {
+    sessionStorage.setItem(
+      'page-search:v1:["navigation-user","api-keys"]',
+      JSON.stringify({ first: 5, query: "example" }),
+    );
+    const { result } = renderHook(
+      () =>
+        usePageNavigation({
+          key: pageKey,
+          searchSchema: apiKeySearchSchema,
+          record,
+        }),
+      { wrapper },
+    );
+    expect(result.current.search.orderBy.field).toBe(
+      UserApiKeyOrderField.CREATED_AT,
+    );
+    expect(result.current.search).toMatchObject({ first: 5 });
+    expect(JSON.parse(atob(result.current.currentCursor))).toEqual({
+      id: record.id,
+      value: record.createdAt,
+    });
+  });
+
+  it("uses another resource's schema defaults instead of hardcoded API-key ordering", () => {
+    const searchSchema = createConnectionSearchSchema({
+      pageSize: 7,
+      orderField: { NAME: "NAME" } as const,
+      defaultOrderField: "NAME",
+      defaultOrderDirection: OrderDirection.ASC,
+    });
+    const { result } = renderHook(
+      () =>
+        usePageNavigation({
+          key: ["other-resource"],
+          searchSchema,
+          record: { id: "1", name: "Alice" },
+        }),
+      { wrapper },
+    );
+    expect(JSON.parse(atob(result.current.currentCursor))).toEqual({
+      id: "1",
+      value: "Alice",
+    });
+    expect(result.current.nextSearch.orderBy).toEqual({
+      field: "NAME",
+      direction: OrderDirection.ASC,
+    });
+    expect(result.current.getReturnSearch(null)).toMatchObject({ first: 7 });
   });
 });
