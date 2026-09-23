@@ -100,6 +100,26 @@ it.each<[string, string | null]>([
     'import * as orm from "@mikro-orm/decorators/legacy"; const { Entity: Model } = { Entity: orm[unknown] }; @Model() class Thing {}',
     null,
   ],
+  [
+    'import * as orm from "@mikro-orm/decorators/legacy"; const { Entity: Model } = { Entity: orm.Entity, unrelated: 1 }; @Model() class Thing {}',
+    "Entity",
+  ],
+  [
+    'import * as orm from "@mikro-orm/decorators/legacy"; const { ...Entity } = orm; @Entity() class Thing {}',
+    null,
+  ],
+  [
+    "function make() { return { Entity: () => (() => undefined) }; } const { Entity } = make(); @Entity() class Thing {}",
+    null,
+  ],
+  [
+    "const factories = [{ Entity: () => (() => undefined) }]; factories[0].Entity();",
+    null,
+  ],
+  [
+    'import * as orm from "@mikro-orm/decorators/legacy"; orm["Entity"]();',
+    "Entity",
+  ],
 ])("resolves only verified namespace bindings: %s", (code, expected) => {
   const probe = createRule<[], "unused">({
     name: "test-origin",
