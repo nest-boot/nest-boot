@@ -1,11 +1,12 @@
 import { useState } from "react";
+import { useForm, useStore } from "@tanstack/react-form";
 import { useMutation, useQuery } from "@apollo/client/react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { MonitorSmartphone } from "lucide-react";
 import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
-import type { FormEvent } from "react";
+import { getFormErrorMessage } from "@/lib/form-errors";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
 import {
   Field,
@@ -184,18 +185,10 @@ function UserSecurityComponent() {
   const [unlinkAccount] = useMutation(UNLINK_ACCOUNT_FROM_USER_SECURITY);
   const [linkAccount] = useMutation(LINK_ACCOUNT_FROM_USER_SECURITY);
   const [deleteUser, { client }] = useMutation(DELETE_USER_FROM_USER_SECURITY);
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [revokeOtherSessions, setRevokeOtherSessions] = useState(true);
-  const [error, setError] = useState<string>();
-  const [loading, setLoading] = useState(false);
   const [revokingSessionId, setRevokingSessionId] = useState<string>();
   const [revokingOthers, setRevokingOthers] = useState(false);
   const [unlinkingAccountId, setUnlinkingAccountId] = useState<string>();
   const [linkingProviderId, setLinkingProviderId] = useState<string>();
-  const [deletePassword, setDeletePassword] = useState("");
-  const [deletingUser, setDeletingUser] = useState(false);
   const sessions =
     sessionData?.currentUser.sessions.edges.map(({ node }) => node) ?? [];
   const accounts =
@@ -262,52 +255,55 @@ function UserSecurityComponent() {
     }
   };
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setError(undefined);
-
-    const parsed = createChangePasswordSchema().safeParse({
-      confirmPassword,
-      currentPassword,
-      newPassword,
-    });
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const result = await changePassword({
-        variables: {
-          input: {
-            currentPassword: parsed.data.currentPassword,
-            newPassword: parsed.data.newPassword,
-            revokeOtherSessions,
+  const passwordForm = useForm({
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+      revokeOtherSessions: true,
+    },
+    validators: { onSubmit: createChangePasswordSchema() },
+    listeners: {
+      onChange: ({ formApi }) => formApi.setErrorMap({ onSubmit: undefined }),
+    },
+    onSubmit: async ({ value, formApi }) => {
+      try {
+        const result = await changePassword({
+          variables: {
+            input: {
+              currentPassword: value.currentPassword,
+              newPassword: value.newPassword,
+              revokeOtherSessions: value.revokeOtherSessions,
+            },
           },
-        },
-      });
+        });
 
-      if (!result.data?.changeCurrentUserPassword) {
-        throw new Error(t("user:security.toast.update_failed"));
+        if (!result.data?.changeCurrentUserPassword) {
+          throw new Error(t("user:security.toast.update_failed"));
+        }
+
+        await refetch({ after: undefined });
+        formApi.reset({
+          ...value,
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        });
+        toast.add({ type: "success", title: t("user:security.toast.updated") });
+      } catch (cause) {
+        const message =
+          cause instanceof Error
+            ? cause.message
+            : t("user:security.toast.update_failed");
+        formApi.setErrorMap({ onSubmit: { form: message, fields: {} } });
+        toast.add({ type: "error", title: message });
       }
-
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-      await refetch({ after: undefined });
-      toast.add({ type: "success", title: t("user:security.toast.updated") });
-    } catch (cause) {
-      const message =
-        cause instanceof Error
-          ? cause.message
-          : t("user:security.toast.update_failed");
-      setError(message);
-      toast.add({ type: "error", title: message });
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+  });
+  const loading = useStore(passwordForm.store, (state) => state.isSubmitting);
+  const error = useStore(passwordForm.store, (state) =>
+    getFormErrorMessage(state.errors),
+  );
 
   const handleUnlinkAccount = async (accountId: string) => {
     const confirmed = await alertDialog({
@@ -371,42 +367,63 @@ function UserSecurityComponent() {
     }
   };
 
-  const handleDeleteUser = async () => {
-    const confirmed = await alertDialog({
-      title: t("user:security.delete.confirm_title"),
-      description: t("user:security.delete.confirm_description"),
-      confirmText: t("user:security.delete.action"),
-      cancelText: t("action.cancel"),
-      variant: "destructive",
-    });
-    if (!confirmed) return;
-
-    setDeletingUser(true);
-    try {
-      const result = await deleteUser({
-        variables: { input: { password: deletePassword } },
+  const deleteForm = useForm({
+    defaultValues: { password: "" },
+    validators: {
+      onSubmit: z.object({
+        password: z.string().min(1, t("user:security.form.current_required")),
+      }),
+    },
+    listeners: {
+      onChange: ({ formApi }) => formApi.setErrorMap({ onSubmit: undefined }),
+    },
+    onSubmit: async ({ value, formApi }) => {
+      const confirmed = await alertDialog({
+        title: t("user:security.delete.confirm_title"),
+        description: t("user:security.delete.confirm_description"),
+        confirmText: t("user:security.delete.action"),
+        cancelText: t("action.cancel"),
+        variant: "destructive",
       });
-      if (!result.data?.deleteCurrentUser.success) {
-        throw new Error(
-          result.data?.deleteCurrentUser.message ||
-            t("user:security.delete.failed"),
-        );
-      }
-      await client.clearStore();
-      await navigate({ to: "/auth/login", replace: true });
-      toast.add({ type: "success", title: t("user:security.delete.success") });
-    } catch (cause) {
-      toast.add({
-        type: "error",
-        title:
+      if (!confirmed) return;
+
+      try {
+        const result = await deleteUser({
+          variables: { input: { password: value.password } },
+        });
+        if (!result.data?.deleteCurrentUser.success) {
+          throw new Error(
+            result.data?.deleteCurrentUser.message ||
+              t("user:security.delete.failed"),
+          );
+        }
+        await client.clearStore();
+        await navigate({ to: "/auth/login", replace: true });
+        toast.add({
+          type: "success",
+          title: t("user:security.delete.success"),
+        });
+      } catch (cause) {
+        const message =
           cause instanceof Error
             ? cause.message
-            : t("user:security.delete.failed"),
-      });
-    } finally {
-      setDeletingUser(false);
-    }
-  };
+            : t("user:security.delete.failed");
+        formApi.setErrorMap({ onSubmit: { form: message, fields: {} } });
+        toast.add({ type: "error", title: message });
+      }
+    },
+  });
+  const deletingUser = useStore(
+    deleteForm.store,
+    (state) => state.isSubmitting,
+  );
+  const deletePassword = useStore(
+    deleteForm.store,
+    (state) => state.values.password,
+  );
+  const deleteError = useStore(deleteForm.store, (state) =>
+    getFormErrorMessage(state.errors),
+  );
 
   return (
     <Page variant="compact" data-testid="user-security-page">
@@ -427,53 +444,79 @@ function UserSecurityComponent() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <form id="user-password-form" onSubmit={handleSubmit}>
+                <form
+                  noValidate
+                  id="user-password-form"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (passwordForm.state.isSubmitting) return;
+                    passwordForm.setErrorMap({ onSubmit: undefined });
+                    passwordForm.handleSubmit();
+                  }}
+                >
                   <FieldSet>
                     <FieldGroup>
-                      <Input
-                        id="current-password"
-                        data-testid="user-current-password"
-                        type="password"
-                        autoComplete="current-password"
-                        label={t("user:security.form.current_password")}
-                        value={currentPassword}
-                        onChange={(event) => {
-                          setCurrentPassword(event.target.value);
-                          setError(undefined);
-                        }}
-                      />
-                      <Input
-                        id="new-password"
-                        data-testid="user-new-password"
-                        type="password"
-                        autoComplete="new-password"
-                        label={t("user:security.form.new_password")}
-                        value={newPassword}
-                        onChange={(event) => {
-                          setNewPassword(event.target.value);
-                          setError(undefined);
-                        }}
-                      />
-                      <Input
-                        id="confirm-password"
-                        data-testid="user-confirm-password"
-                        type="password"
-                        autoComplete="new-password"
-                        label={t("user:security.form.confirm_password")}
-                        value={confirmPassword}
-                        onChange={(event) => {
-                          setConfirmPassword(event.target.value);
-                          setError(undefined);
-                        }}
-                      />
+                      <passwordForm.Field name="currentPassword">
+                        {(field) => (
+                          <Input
+                            id="current-password"
+                            data-testid="user-current-password"
+                            type="password"
+                            autoComplete="current-password"
+                            label={t("user:security.form.current_password")}
+                            value={field.state.value}
+                            onChange={(event) =>
+                              field.handleChange(event.target.value)
+                            }
+                            error={getFormErrorMessage(field.state.meta.errors)}
+                          />
+                        )}
+                      </passwordForm.Field>
+                      <passwordForm.Field name="newPassword">
+                        {(field) => (
+                          <Input
+                            id="new-password"
+                            data-testid="user-new-password"
+                            type="password"
+                            autoComplete="new-password"
+                            label={t("user:security.form.new_password")}
+                            value={field.state.value}
+                            onChange={(event) =>
+                              field.handleChange(event.target.value)
+                            }
+                            error={getFormErrorMessage(field.state.meta.errors)}
+                          />
+                        )}
+                      </passwordForm.Field>
+                      <passwordForm.Field name="confirmPassword">
+                        {(field) => (
+                          <Input
+                            id="confirm-password"
+                            data-testid="user-confirm-password"
+                            type="password"
+                            autoComplete="new-password"
+                            label={t("user:security.form.confirm_password")}
+                            value={field.state.value}
+                            onChange={(event) =>
+                              field.handleChange(event.target.value)
+                            }
+                            error={getFormErrorMessage(field.state.meta.errors)}
+                          />
+                        )}
+                      </passwordForm.Field>
 
                       <Field orientation="horizontal">
-                        <Checkbox
-                          id="revoke-other-sessions"
-                          data-testid="user-revoke-other-sessions"
-                          checked={revokeOtherSessions}
-                          onCheckedChange={setRevokeOtherSessions}
-                        />
+                        <passwordForm.Field name="revokeOtherSessions">
+                          {(field) => (
+                            <Checkbox
+                              id="revoke-other-sessions"
+                              data-testid="user-revoke-other-sessions"
+                              checked={field.state.value}
+                              onCheckedChange={field.handleChange}
+                            />
+                          )}
+                        </passwordForm.Field>
                         <FieldLabel htmlFor="revoke-other-sessions">
                           {t("user:security.form.revoke_other_sessions")}
                         </FieldLabel>
@@ -735,28 +778,50 @@ function UserSecurityComponent() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <FormLayout>
-                  <FormLayoutItem>
-                    <Input
-                      id="delete-account-password"
-                      type="password"
-                      autoComplete="current-password"
-                      label={t("user:security.delete.password")}
-                      value={deletePassword}
-                      onChange={(event) =>
-                        setDeletePassword(event.target.value)
-                      }
-                    />
-                  </FormLayoutItem>
-                </FormLayout>
+                <form
+                  noValidate
+                  id="user-delete-form"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (deleteForm.state.isSubmitting) return;
+                    deleteForm.setErrorMap({ onSubmit: undefined });
+                    deleteForm.handleSubmit();
+                  }}
+                >
+                  <FormLayout>
+                    <FormLayoutItem>
+                      <deleteForm.Field name="password">
+                        {(field) => (
+                          <Input
+                            id="delete-account-password"
+                            type="password"
+                            autoComplete="current-password"
+                            label={t("user:security.delete.password")}
+                            value={field.state.value}
+                            onChange={(event) =>
+                              field.handleChange(event.target.value)
+                            }
+                            error={getFormErrorMessage(field.state.meta.errors)}
+                          />
+                        )}
+                      </deleteForm.Field>
+                    </FormLayoutItem>
+                    {deleteError && (
+                      <FormLayoutItem>
+                        <FieldError>{deleteError}</FieldError>
+                      </FormLayoutItem>
+                    )}
+                  </FormLayout>
+                </form>
               </CardContent>
               <CardFooter>
                 <Button
-                  type="button"
+                  type="submit"
+                  form="user-delete-form"
                   variant="destructive"
                   disabled={!deletePassword}
                   loading={deletingUser}
-                  onClick={handleDeleteUser}
                   data-testid="user-delete-account"
                 >
                   {t("user:security.delete.action")}
@@ -785,6 +850,7 @@ function createChangePasswordSchema() {
         .min(1, t("user:security.form.current_required")),
       newPassword: z.string().min(8, t("auth:form.password.min")),
       confirmPassword: z.string(),
+      revokeOtherSessions: z.boolean(),
     })
     .refine((value) => value.newPassword === value.confirmPassword, {
       message: t("auth:passwordReset.passwordMismatch"),

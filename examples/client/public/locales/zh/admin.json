@@ -35,6 +35,7 @@
     },
     "permissions": {
       "description": "设置用户的管理权限上限。",
+      "invalid": "只能选择您有权授予的权限。",
       "success": "权限已更新",
       "title": "权限"
     },
@@ -46,6 +47,7 @@
     },
     "roles": {
       "description": "为用户分配一个或多个已配置的管理角色。",
+      "invalid": "请至少选择一个您有权授予的角色。",
       "label": "角色",
       "success": "角色已更新",
       "title": "角色"

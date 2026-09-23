@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useForm, useStore } from "@tanstack/react-form";
 import { useMutation } from "@apollo/client/react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { MailCheck } from "lucide-react";
@@ -6,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
 import { AuthPageShell } from "../components/auth-page-shell";
-import type { FormEvent } from "react";
+import { getFormErrorMessage } from "@/lib/form-errors";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
 import { Button } from "@/components/thread-ui/button";
 import { Input } from "@/components/thread-ui/input";
@@ -18,7 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { FieldDescription } from "@/components/ui/field";
+import { FieldDescription, FieldError } from "@/components/ui/field";
 import { graphql } from "@/gql";
 
 const REQUEST_PASSWORD_RESET_FROM_FORGOT_PASSWORD = graphql(`
@@ -40,50 +41,51 @@ function ForgotPasswordComponent() {
   const [requestPasswordReset] = useMutation(
     REQUEST_PASSWORD_RESET_FROM_FORGOT_PASSWORD,
   );
-  const [email, setEmail] = useState("");
-  const [error, setError] = useState<string>();
-  const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setError(undefined);
-
-    const parsed = z
-      .string()
-      .email(t("auth:form.email.invalid"))
-      .safeParse(email);
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const result = await requestPasswordReset({
-        variables: {
-          input: {
-            email: parsed.data,
-            redirectTo: `${window.location.origin}/auth/reset-password`,
+  const form = useForm({
+    defaultValues: { email: "" },
+    validators: {
+      onSubmit: z.object({
+        email: z.string().email(t("auth:form.email.invalid")),
+      }),
+    },
+    listeners: {
+      onChange: ({ formApi }) => formApi.setErrorMap({ onSubmit: undefined }),
+    },
+    onSubmit: async ({ value, formApi }) => {
+      try {
+        const result = await requestPasswordReset({
+          variables: {
+            input: {
+              email: value.email,
+              redirectTo: `${window.location.origin}/auth/reset-password`,
+            },
           },
-        },
-      });
+        });
 
-      if (!result.data?.requestPasswordReset.status) {
-        throw new Error(t("auth:passwordReset.requestFailed"));
+        if (!result.data?.requestPasswordReset.status) {
+          throw new Error(t("auth:passwordReset.requestFailed"));
+        }
+
+        setSubmitted(true);
+      } catch (cause) {
+        formApi.setErrorMap({
+          onSubmit: {
+            form:
+              cause instanceof Error
+                ? cause.message
+                : t("auth:passwordReset.requestFailed"),
+            fields: {},
+          },
+        });
       }
-
-      setSubmitted(true);
-    } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : t("auth:passwordReset.requestFailed"),
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+  });
+  const loading = useStore(form.store, (state) => state.isSubmitting);
+  const error = useStore(form.store, (state) =>
+    getFormErrorMessage(state.errors),
+  );
 
   return (
     <AuthPageShell>
@@ -102,24 +104,42 @@ function ForgotPasswordComponent() {
               <MailCheck className="text-primary size-10" />
             </div>
           ) : (
-            <form id="forgot-password-form" onSubmit={handleSubmit}>
+            <form
+              noValidate
+              id="forgot-password-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                if (form.state.isSubmitting) return;
+                form.setErrorMap({ onSubmit: undefined });
+                form.handleSubmit();
+              }}
+            >
               <FormLayout>
                 <FormLayoutItem>
-                  <Input
-                    id="forgot-password-email"
-                    data-testid="forgot-password-email"
-                    type="email"
-                    autoComplete="email"
-                    label={t("auth:form.email.label")}
-                    placeholder={t("auth:form.email.placeholder")}
-                    value={email}
-                    onChange={(event) => {
-                      setEmail(event.target.value);
-                      setError(undefined);
-                    }}
-                    error={error}
-                  />
+                  <form.Field name="email">
+                    {(field) => (
+                      <Input
+                        id="forgot-password-email"
+                        data-testid="forgot-password-email"
+                        type="email"
+                        autoComplete="email"
+                        label={t("auth:form.email.label")}
+                        placeholder={t("auth:form.email.placeholder")}
+                        value={field.state.value}
+                        onChange={(event) =>
+                          field.handleChange(event.target.value)
+                        }
+                        error={getFormErrorMessage(field.state.meta.errors)}
+                      />
+                    )}
+                  </form.Field>
                 </FormLayoutItem>
+                {error && (
+                  <FormLayoutItem>
+                    <FieldError>{error}</FieldError>
+                  </FormLayoutItem>
+                )}
               </FormLayout>
             </form>
           )}

@@ -1,3 +1,4 @@
+import { useForm, useStore } from "@tanstack/react-form";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@apollo/client/react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
@@ -9,6 +10,8 @@ import { Plus } from "lucide-react";
 import { isEmpty, pick } from "lodash";
 import { z } from "zod";
 import type { DataFilterItemProps } from "@/components/thread-ui/data-filter";
+import { FieldError } from "@/components/ui/field";
+import { getFormErrorMessage } from "@/lib/form-errors";
 import { DataFilter } from "@/components/thread-ui/data-filter";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { toast } from "@/components/thread-ui/toast";
@@ -135,9 +138,6 @@ function AdminUsersPage() {
   const query = search.query ?? "";
   const filterValues = (search.filter ?? {}) as Record<string, unknown>;
   const [createOpen, setCreateOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const { data, loading, refetch } = useQuery(GET_USERS_FROM_USERS_ROUTE, {
     fetchPolicy: "network-only",
     variables: {
@@ -150,9 +150,7 @@ function AdminUsersPage() {
       },
     },
   });
-  const [createUser, { loading: creating }] = useMutation(
-    CREATE_USER_FROM_USERS_ROUTE,
-  );
+  const [createUser] = useMutation(CREATE_USER_FROM_USERS_ROUTE);
   const users = data?.users.edges.map(({ node }) => node) ?? [];
   const canCreate = ability.can("create", "User");
   const filters: Array<DataFilterItemProps> = useMemo(
@@ -183,25 +181,52 @@ function AdminUsersPage() {
     [t],
   );
 
-  const handleCreate = async () => {
-    try {
-      await createUser({ variables: { input: { name, email, password } } });
-      setCreateOpen(false);
-      setName("");
-      setEmail("");
-      setPassword("");
-      await refetch();
-      toast.add({ type: "success", title: t("admin:users.create.success") });
-    } catch (error) {
-      toast.add({
-        type: "error",
-        title:
+  const createForm = useForm({
+    defaultValues: { name: "", email: "", password: "" },
+    validators: {
+      onSubmit: z.object({
+        name: z.string().trim().min(1, t("auth:form.name.required")),
+        email: z.string().trim().email(t("auth:form.email.invalid")),
+        password: z.string().min(8, t("auth:form.password.min")),
+      }),
+    },
+    listeners: {
+      onChange: ({ formApi }) => formApi.setErrorMap({ onSubmit: undefined }),
+    },
+    onSubmit: async ({ value, formApi }) => {
+      if (!canCreate) return;
+      try {
+        await createUser({
+          variables: {
+            input: {
+              ...value,
+              name: value.name.trim(),
+              email: value.email.trim(),
+            },
+          },
+        });
+        await refetch();
+        setCreateOpen(false);
+        formApi.reset();
+        toast.add({ type: "success", title: t("admin:users.create.success") });
+      } catch (error) {
+        const message =
           error instanceof Error
             ? error.message
-            : t("admin:users.create.failed"),
-      });
-    }
-  };
+            : t("admin:users.create.failed");
+        formApi.setErrorMap({ onSubmit: { form: message, fields: {} } });
+        toast.add({ type: "error", title: message });
+      }
+    },
+  });
+  const creating = useStore(createForm.store, (state) => state.isSubmitting);
+  const { name, email, password } = useStore(
+    createForm.store,
+    (state) => state.values,
+  );
+  const createError = useStore(createForm.store, (state) =>
+    getFormErrorMessage(state.errors),
+  );
 
   return (
     <Page data-testid="admin-users-page">
@@ -339,39 +364,83 @@ function AdminUsersPage() {
               {t("admin:users.create.description")}
             </DialogDescription>
           </DialogHeader>
-          <FormLayout>
-            <FormLayoutItem>
-              <Input
-                label={t("admin:users.table.name")}
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-              />
-            </FormLayoutItem>
-            <FormLayoutItem>
-              <Input
-                type="email"
-                label={t("admin:users.table.email")}
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-              />
-            </FormLayoutItem>
-            <FormLayoutItem>
-              <Input
-                type="password"
-                label={t("admin:users.create.password")}
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-              />
-            </FormLayoutItem>
-          </FormLayout>
+          <form
+            id="admin-create-user-form"
+            noValidate
+            onSubmit={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              if (createForm.state.isSubmitting) return;
+              createForm.setErrorMap({ onSubmit: undefined });
+              createForm.handleSubmit();
+            }}
+          >
+            <FormLayout>
+              <FormLayoutItem>
+                <createForm.Field name="name">
+                  {(field) => (
+                    <Input
+                      label={t("admin:users.table.name")}
+                      value={field.state.value}
+                      onChange={(event) =>
+                        field.handleChange(event.target.value)
+                      }
+                      error={getFormErrorMessage(field.state.meta.errors)}
+                    />
+                  )}
+                </createForm.Field>
+              </FormLayoutItem>
+              <FormLayoutItem>
+                <createForm.Field name="email">
+                  {(field) => (
+                    <Input
+                      type="email"
+                      label={t("admin:users.table.email")}
+                      value={field.state.value}
+                      onChange={(event) =>
+                        field.handleChange(event.target.value)
+                      }
+                      error={getFormErrorMessage(field.state.meta.errors)}
+                    />
+                  )}
+                </createForm.Field>
+              </FormLayoutItem>
+              <FormLayoutItem>
+                <createForm.Field name="password">
+                  {(field) => (
+                    <Input
+                      type="password"
+                      label={t("admin:users.create.password")}
+                      value={field.state.value}
+                      onChange={(event) =>
+                        field.handleChange(event.target.value)
+                      }
+                      error={getFormErrorMessage(field.state.meta.errors)}
+                    />
+                  )}
+                </createForm.Field>
+              </FormLayoutItem>
+              {createError && (
+                <FormLayoutItem>
+                  <FieldError>{createError}</FieldError>
+                </FormLayoutItem>
+              )}
+            </FormLayout>
+          </form>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>
               {t("action.cancel")}
             </Button>
             <Button
-              disabled={!name.trim() || !email.trim() || password.length < 8}
+              disabled={
+                !canCreate ||
+                !name.trim() ||
+                !email.trim() ||
+                password.length < 8
+              }
               loading={creating}
-              onClick={handleCreate}
+              type="submit"
+              form="admin-create-user-form"
             >
               {t("admin:users.create.action")}
             </Button>

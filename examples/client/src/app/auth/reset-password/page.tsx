@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useForm, useStore } from "@tanstack/react-form";
 import { useMutation } from "@apollo/client/react";
 import { Link, createFileRoute, useSearch } from "@tanstack/react-router";
 import { CircleCheck, CircleX } from "lucide-react";
@@ -8,7 +9,7 @@ import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
 import { AuthPageShell } from "../components/auth-page-shell";
-import type { FormEvent } from "react";
+import { getFormErrorMessage } from "@/lib/form-errors";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
 import { FieldError } from "@/components/ui/field";
 import { Button } from "@/components/thread-ui/button";
@@ -44,53 +45,49 @@ function ResetPasswordComponent() {
   const { t } = useTranslation();
   const search = useSearch({ from: "/auth/reset-password/" });
   const [resetPassword] = useMutation(RESET_PASSWORD_FROM_RESET_PASSWORD);
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState<string>();
-  const [loading, setLoading] = useState(false);
   const [completed, setCompleted] = useState(false);
   const invalidToken = Boolean(search.error || !search.token);
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setError(undefined);
-
-    const parsed = createResetPasswordSchema().safeParse({
-      confirmPassword,
-      newPassword,
-    });
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message);
-      return;
-    }
-    if (!search.token) return;
-
-    setLoading(true);
-    try {
-      const result = await resetPassword({
-        variables: {
-          input: {
-            newPassword: parsed.data.newPassword,
-            token: search.token,
+  const form = useForm({
+    defaultValues: { newPassword: "", confirmPassword: "" },
+    validators: { onSubmit: createResetPasswordSchema() },
+    listeners: {
+      onChange: ({ formApi }) => formApi.setErrorMap({ onSubmit: undefined }),
+    },
+    onSubmit: async ({ value, formApi }) => {
+      if (invalidToken || !search.token) return;
+      try {
+        const result = await resetPassword({
+          variables: {
+            input: {
+              newPassword: value.newPassword,
+              token: search.token,
+            },
           },
-        },
-      });
+        });
 
-      if (!result.data?.resetPassword) {
-        throw new Error(t("auth:passwordReset.resetFailed"));
+        if (!result.data?.resetPassword) {
+          throw new Error(t("auth:passwordReset.resetFailed"));
+        }
+
+        setCompleted(true);
+      } catch (cause) {
+        formApi.setErrorMap({
+          onSubmit: {
+            form:
+              cause instanceof Error
+                ? cause.message
+                : t("auth:passwordReset.resetFailed"),
+            fields: {},
+          },
+        });
       }
-
-      setCompleted(true);
-    } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : t("auth:passwordReset.resetFailed"),
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+  });
+  const loading = useStore(form.store, (state) => state.isSubmitting);
+  const error = useStore(form.store, (state) =>
+    getFormErrorMessage(state.errors),
+  );
 
   return (
     <AuthPageShell>
@@ -115,35 +112,53 @@ function ResetPasswordComponent() {
               )}
             </div>
           ) : (
-            <form id="reset-password-form" onSubmit={handleSubmit}>
+            <form
+              noValidate
+              id="reset-password-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                if (form.state.isSubmitting) return;
+                form.setErrorMap({ onSubmit: undefined });
+                form.handleSubmit();
+              }}
+            >
               <FormLayout>
                 <FormLayoutItem>
-                  <Input
-                    id="reset-password-new"
-                    data-testid="reset-password-new"
-                    type="password"
-                    autoComplete="new-password"
-                    label={t("auth:passwordReset.newPassword")}
-                    value={newPassword}
-                    onChange={(event) => {
-                      setNewPassword(event.target.value);
-                      setError(undefined);
-                    }}
-                  />
+                  <form.Field name="newPassword">
+                    {(field) => (
+                      <Input
+                        id="reset-password-new"
+                        data-testid="reset-password-new"
+                        type="password"
+                        autoComplete="new-password"
+                        label={t("auth:passwordReset.newPassword")}
+                        value={field.state.value}
+                        onChange={(event) =>
+                          field.handleChange(event.target.value)
+                        }
+                        error={getFormErrorMessage(field.state.meta.errors)}
+                      />
+                    )}
+                  </form.Field>
                 </FormLayoutItem>
                 <FormLayoutItem>
-                  <Input
-                    id="reset-password-confirm"
-                    data-testid="reset-password-confirm"
-                    type="password"
-                    autoComplete="new-password"
-                    label={t("auth:passwordReset.confirmPassword")}
-                    value={confirmPassword}
-                    onChange={(event) => {
-                      setConfirmPassword(event.target.value);
-                      setError(undefined);
-                    }}
-                  />
+                  <form.Field name="confirmPassword">
+                    {(field) => (
+                      <Input
+                        id="reset-password-confirm"
+                        data-testid="reset-password-confirm"
+                        type="password"
+                        autoComplete="new-password"
+                        label={t("auth:passwordReset.confirmPassword")}
+                        value={field.state.value}
+                        onChange={(event) =>
+                          field.handleChange(event.target.value)
+                        }
+                        error={getFormErrorMessage(field.state.meta.errors)}
+                      />
+                    )}
+                  </form.Field>
                 </FormLayoutItem>
 
                 {error && (

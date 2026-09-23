@@ -59,6 +59,20 @@ Use `Page variant="compact"` for form pages, with full-width `PageLayoutSection`
 elements so cards stay stacked within the compact page.
 Use theme color tokens from `src/styles.css` in application code.
 
+Use TanStack Form (`@tanstack/react-form`) for editable forms, including login,
+password recovery/change, administrator edits, and password-confirmed account
+deletion. Keep values, validation, errors, and submission state in the form;
+Apollo mutations still perform requests. Await those requests and any refresh
+before ending submission. Separate Card forms save independently, so saving
+roles must not reset an unsaved profile draft.
+
+The migrated forms validate on submit and clear request errors on edit/retry.
+They do not bind blur validation: clearing a submit error on blur can move the
+footer button between pointer-down and pointer-up and swallow a retry click.
+Keep submission guards and native form associations for Enter-key submission.
+Use local UI state for dialogs/success screens, URL state for DataFilter and
+pagination, and direct mutations for actions with no editable fields.
+
 Application JSX also rejects native form controls and tables in favor of the
 existing components, and uses Thread UI's form controls and buttons instead of
 importing their lower-level shadcn counterparts. The local `client-ui/card-structure`

@@ -131,6 +131,27 @@
       "status": "covered",
       "specs": ["user.spec.ts"],
       "notes": "Opens the profile from the user identity row, changes language without losing unsaved form input, persists language and theme across reloads, and follows system color scheme changes."
+    },
+    {
+      "domain": "Auth",
+      "scenario": "Form validation, pending submissions, and server-error retries",
+      "status": "covered",
+      "specs": ["form-state.spec.ts"],
+      "notes": "Rejects invalid login fields and mismatched reset passwords before any mutation, prevents duplicate pending submissions, preserves inputs after server errors, and retries unchanged values."
+    },
+    {
+      "domain": "Administration",
+      "scenario": "Independent user detail forms and keyboard submission",
+      "status": "covered",
+      "specs": ["form-state.spec.ts"],
+      "notes": "Creates a user with Enter, initializes asynchronous profile fields, preserves an unsaved profile draft while saving roles, and saves the profile with Enter."
+    },
+    {
+      "domain": "Auth",
+      "scenario": "Password-confirmed account deletion form",
+      "status": "covered",
+      "specs": ["form-state.spec.ts"],
+      "notes": "Cancels confirmation without losing the password, recovers from an incorrect password, and deletes a disposable test account after correction."
     }
   ]
 }
