@@ -87,13 +87,18 @@ test.describe("user pages", () => {
   test("navigates with the mobile drawer, account menu, and page breadcrumbs", async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
+    await page.setViewportSize({ width: 390, height: 500 });
     await registerUser(page, {
       email: `${uniqueSeed("mobile-navigation")}@example.com`,
       name: "Mobile navigation",
     });
     await page.goto("/user");
 
+    const viewport = page.getByRole("main");
+    await page.getByTestId("user-change-email-submit").scrollIntoViewIfNeeded();
+    await expect
+      .poll(() => viewport.evaluate((element) => element.scrollTop))
+      .toBeGreaterThan(0);
     const navigation = page.getByRole("button", { name: "切换导航" });
     await navigation.click();
     await expect(page.getByRole("dialog")).toBeVisible();
@@ -101,13 +106,33 @@ test.describe("user pages", () => {
     await expect(page).toHaveURL(/\/user\/security$/);
     await expect(navigation).toHaveAttribute("aria-expanded", "false");
     await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect
+      .poll(() => viewport.evaluate((element) => element.scrollTop))
+      .toBe(0);
 
     await page.getByTestId("user-delete-card").scrollIntoViewIfNeeded();
+    const securityScrollTop = await viewport.evaluate(
+      (element) => element.scrollTop,
+    );
+    expect(securityScrollTop).toBeGreaterThan(200);
     await expect(page.getByTestId("topbar-menu-trigger")).toBeInViewport();
     await expect(navigation).toBeInViewport();
     await page.getByTestId("topbar-menu-trigger").click();
     await page.getByTestId("sidebar-user-account-link").click();
     await expect(page).toHaveURL(/\/user$/);
+    await expect
+      .poll(() => viewport.evaluate((element) => element.scrollTop))
+      .toBe(0);
+    await page.goBack();
+    await expect(page).toHaveURL(/\/user\/security$/);
+    await expect
+      .poll(() => viewport.evaluate((element) => element.scrollTop))
+      .toBe(securityScrollTop);
+    await page.goForward();
+    await expect(page).toHaveURL(/\/user$/);
+    await expect
+      .poll(() => viewport.evaluate((element) => element.scrollTop))
+      .toBe(0);
 
     await navigation.click();
     await page.getByTestId("user-sidebar-security-link").click();

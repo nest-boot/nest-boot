@@ -18,7 +18,7 @@ function AdminLayout() {
     <Layout>
       <AppTopbar />
       <AdminSidebar />
-      <LayoutContent>
+      <LayoutContent data-scroll-restoration-id="main-content">
         <Outlet />
       </LayoutContent>
     </Layout>

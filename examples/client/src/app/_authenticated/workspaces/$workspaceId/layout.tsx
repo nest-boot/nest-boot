@@ -82,7 +82,7 @@ function WorkspaceLayout() {
             <AppTopbar currentWorkspace={currentWorkspace} />
             <WorkspaceSidebar />
 
-            <LayoutContent>
+            <LayoutContent data-scroll-restoration-id="main-content">
               <Outlet />
             </LayoutContent>
           </Layout>

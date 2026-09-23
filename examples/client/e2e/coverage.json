@@ -127,7 +127,7 @@
       "scenario": "Responsive application layout, unified account menu, and page breadcrumbs",
       "status": "covered",
       "specs": ["user.spec.ts", "workspace.spec.ts"],
-      "notes": "Navigates with the mobile drawer, closes it after navigation and desktop resize, keeps the topbar visible while content scrolls, and returns through page breadcrumbs. The unified topbar menu provides account actions and paginated workspace switching."
+      "notes": "Navigates with the mobile drawer, closes it after navigation and desktop resize, keeps the topbar visible while content scrolls, and returns through page breadcrumbs. Checks that new routes reset the main viewport to the top while browser back/forward restores each history entry's scroll position. The unified topbar menu provides account actions and paginated workspace switching."
     },
     {
       "domain": "Navigation",

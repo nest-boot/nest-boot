@@ -18,7 +18,7 @@ function UserLayout() {
       <AppTopbar />
       <UserSidebar />
 
-      <LayoutContent>
+      <LayoutContent data-scroll-restoration-id="main-content">
         <Outlet />
       </LayoutContent>
     </Layout>

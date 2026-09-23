@@ -79,6 +79,7 @@ export const getRouter = () => {
   const router = createRouter({
     routeTree,
     scrollRestoration: true,
+    scrollToTopSelectors: ['[data-scroll-restoration-id="main-content"]'],
     defaultPreloadStaleTime: 0,
     defaultNotFoundComponent: NotFoundPage,
     notFoundMode: "root",

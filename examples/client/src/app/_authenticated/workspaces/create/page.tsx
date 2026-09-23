@@ -72,7 +72,7 @@ function CreateWorkspaceComponent() {
   return (
     <Layout>
       <AppTopbar showSidebar={false} />
-      <LayoutContent>
+      <LayoutContent data-scroll-restoration-id="main-content">
         <Page variant="compact">
           <PageHeader>
             <BreadcrumbActions>
