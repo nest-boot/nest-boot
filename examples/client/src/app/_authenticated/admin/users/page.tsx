@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@apollo/client/react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
@@ -6,7 +6,10 @@ import dayjs from "dayjs";
 import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 import { Plus } from "lucide-react";
+import { isEmpty, pick } from "lodash";
 import { z } from "zod";
+import type { DataFilterItemProps } from "@/components/thread-ui/data-filter";
+import { DataFilter } from "@/components/thread-ui/data-filter";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { toast } from "@/components/thread-ui/toast";
 import { useAbility } from "@/contexts/ability-context";
@@ -34,6 +37,21 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { graphql } from "@/gql";
+import { UserOrderField } from "@/gql/graphql";
+import {
+  OrderDirection,
+  createConnectionSearchSchema,
+  getNextPageSearch,
+  getPreviousPageSearch,
+} from "@/lib/connection-search";
+import {
+  createDataFilterInputSearchSchema,
+  dataFilterDateSearchSchema,
+} from "@/lib/data-filter-search-schema";
+import {
+  formatConnectionFilterValue,
+  formatFilterValues,
+} from "@/lib/format-filter-values";
 import { Card, CardContent } from "@/components/ui/card";
 
 const PAGE_SIZE = 20;
@@ -45,6 +63,8 @@ const GET_USERS_FROM_USERS_ROUTE = graphql(`
     $after: String
     $before: String
     $filter: UserFilter
+    $query: String
+    $orderBy: UserOrder
   ) {
     users(
       first: $first
@@ -52,7 +72,8 @@ const GET_USERS_FROM_USERS_ROUTE = graphql(`
       after: $after
       before: $before
       filter: $filter
-      orderBy: { field: CREATED_AT, direction: DESC }
+      query: $query
+      orderBy: $orderBy
     ) {
       edges {
         node {
@@ -87,10 +108,20 @@ export const Route = createFileRoute("/_authenticated/admin/users/")({
   component: AdminUsersPage,
   beforeLoad: () => ({ title: t("admin:users.title") }),
   validateSearch: zodValidator(
-    z.object({
-      after: z.string().optional(),
-      before: z.string().optional(),
-      search: z.string().optional().catch(undefined),
+    createConnectionSearchSchema({
+      filterSchema: z
+        .object({
+          name: createDataFilterInputSearchSchema().optional().catch(undefined),
+          email: createDataFilterInputSearchSchema()
+            .optional()
+            .catch(undefined),
+          created_at: dataFilterDateSearchSchema.optional().catch(undefined),
+        })
+        .optional(),
+      pageSize: PAGE_SIZE,
+      orderField: UserOrderField,
+      defaultOrderField: UserOrderField.CREATED_AT,
+      defaultOrderDirection: OrderDirection.DESC,
     }),
   ),
 });
@@ -100,7 +131,8 @@ function AdminUsersPage() {
   const search = Route.useSearch();
   const navigate = useNavigate();
   const ability = useAbility();
-  const [searchInput, setSearchInput] = useState(search.search ?? "");
+  const query = search.query ?? "";
+  const filterValues = (search.filter ?? {}) as Record<string, unknown>;
   const [createOpen, setCreateOpen] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -108,18 +140,13 @@ function AdminUsersPage() {
   const { data, loading, refetch } = useQuery(GET_USERS_FROM_USERS_ROUTE, {
     fetchPolicy: "network-only",
     variables: {
-      first: search.before ? undefined : PAGE_SIZE,
-      last: search.before ? PAGE_SIZE : undefined,
-      after: search.after,
-      before: search.before,
-      filter: search.search
-        ? {
-            $or: [
-              { name: { $prefix: search.search } },
-              { email: { $prefix: search.search } },
-            ],
-          }
-        : undefined,
+      ...pick(search, ["after", "before", "first", "last"]),
+      query,
+      filter: formatFilterValues(filterValues, formatConnectionFilterValue),
+      orderBy: {
+        field: search.orderBy?.field ?? UserOrderField.CREATED_AT,
+        direction: search.orderBy?.direction ?? OrderDirection.DESC,
+      },
     },
   });
   const [createUser, { loading: creating }] = useMutation(
@@ -127,6 +154,33 @@ function AdminUsersPage() {
   );
   const users = data?.users.edges.map(({ node }) => node) ?? [];
   const canCreate = ability.can("create", "User");
+  const filters: Array<DataFilterItemProps> = useMemo(
+    () => [
+      {
+        label: t("admin:users.table.name"),
+        field: "name",
+        type: "input",
+        operators: ["$eq", "$ne"],
+        defaultOperator: "$eq",
+      },
+      {
+        label: t("admin:users.table.email"),
+        field: "email",
+        type: "input",
+        operators: ["$eq", "$ne"],
+        defaultOperator: "$eq",
+      },
+      {
+        label: t("admin:users.table.created_at"),
+        field: "created_at",
+        type: "date-picker",
+        max: dayjs().toISOString(),
+        operators: ["$gte", "$lte"],
+        defaultOperator: "$gte",
+      },
+    ],
+    [t],
+  );
 
   const handleCreate = async () => {
     try {
@@ -167,26 +221,22 @@ function AdminUsersPage() {
         <Card>
           <CardContent>
             <div className="space-y-4">
-              <form
-                className="flex gap-2"
-                onSubmit={(event) => {
-                  event.preventDefault();
+              <DataFilter
+                filters={filters}
+                loading={loading}
+                value={{ filter: filterValues, query }}
+                search={{ placeholder: t("admin:users.search") }}
+                onChange={(value) => {
                   navigate({
                     to: "/admin/users",
                     search: {
-                      search: searchInput.trim() || undefined,
+                      query: value.query || undefined,
+                      filter: isEmpty(value.filter) ? undefined : value.filter,
+                      orderBy: search.orderBy,
                     },
                   });
                 }}
-              >
-                <Input
-                  aria-label={t("admin:users.search")}
-                  placeholder={t("admin:users.search")}
-                  value={searchInput}
-                  onChange={(event) => setSearchInput(event.target.value)}
-                />
-                <Button type="submit">{t("admin:users.search_action")}</Button>
-              </form>
+              />
 
               <DataTable
                 data={users}
@@ -258,18 +308,15 @@ function AdminUsersPage() {
                   onPreviousPage: () =>
                     navigate({
                       to: "/admin/users",
-                      search: {
-                        search: search.search,
-                        before: data?.users.pageInfo.startCursor ?? undefined,
-                      },
+                      search: getPreviousPageSearch(
+                        search,
+                        data?.users.pageInfo,
+                      ),
                     }),
                   onNextPage: () =>
                     navigate({
                       to: "/admin/users",
-                      search: {
-                        search: search.search,
-                        after: data?.users.pageInfo.endCursor ?? undefined,
-                      },
+                      search: getNextPageSearch(search, data?.users.pageInfo),
                     }),
                 }}
               />

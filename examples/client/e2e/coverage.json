@@ -105,6 +105,13 @@
       "notes": "Creates, reveals, disables, edits, and deletes both owner types. Bearer authentication and privilege ceilings are covered by server PostgreSQL E2E."
     },
     {
+      "domain": "Administration",
+      "scenario": "User search and DataFilter conditions with persistent pagination state",
+      "status": "covered",
+      "specs": ["admin-user-filter.spec.ts"],
+      "notes": "Searches by email prefix, filters by name, email, and creation date, resets the cursor when filters change, and preserves search and filters across next/previous pages and reloads."
+    },
+    {
       "domain": "Navigation",
       "scenario": "Responsive application layout, unified account menu, and page breadcrumbs",
       "status": "covered",

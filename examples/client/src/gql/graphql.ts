@@ -1528,6 +1528,8 @@ export type GetUsersFromUsersRouteQueryVariables = Exact<{
   after?: InputMaybe<Scalars["String"]["input"]>;
   before?: InputMaybe<Scalars["String"]["input"]>;
   filter?: InputMaybe<Scalars["UserFilter"]["input"]>;
+  query?: InputMaybe<Scalars["String"]["input"]>;
+  orderBy?: InputMaybe<UserOrder>;
 }>;
 
 export type GetUsersFromUsersRouteQuery = {
@@ -3449,6 +3451,25 @@ export const GetUsersFromUsersRouteDocument = {
             name: { kind: "Name", value: "UserFilter" },
           },
         },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "query" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "orderBy" },
+          },
+          type: {
+            kind: "NamedType",
+            name: { kind: "Name", value: "UserOrder" },
+          },
+        },
       ],
       selectionSet: {
         kind: "SelectionSet",
@@ -3499,21 +3520,18 @@ export const GetUsersFromUsersRouteDocument = {
               },
               {
                 kind: "Argument",
+                name: { kind: "Name", value: "query" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "query" },
+                },
+              },
+              {
+                kind: "Argument",
                 name: { kind: "Name", value: "orderBy" },
                 value: {
-                  kind: "ObjectValue",
-                  fields: [
-                    {
-                      kind: "ObjectField",
-                      name: { kind: "Name", value: "field" },
-                      value: { kind: "EnumValue", value: "CREATED_AT" },
-                    },
-                    {
-                      kind: "ObjectField",
-                      name: { kind: "Name", value: "direction" },
-                      value: { kind: "EnumValue", value: "DESC" },
-                    },
-                  ],
+                  kind: "Variable",
+                  name: { kind: "Name", value: "orderBy" },
                 },
               },
             ],
