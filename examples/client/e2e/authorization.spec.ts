@@ -186,6 +186,19 @@ test("authorizes workspace API-key controls and deletion without an owner role",
         page.getByRole("menuitem", { name, exact: true }),
       ).toBeDisabled();
     await page.keyboard.press("Escape");
+    await row.getByRole("link", { name: "Read-only workspace key" }).click();
+    await expect(page).toHaveURL(
+      new RegExp(`/workspaces/${workspace.id}/api-keys/\\d+$`),
+    );
+    await expect(page.getByTestId("api-key-rename-input")).toBeDisabled();
+    await expect(
+      page.getByTestId("permission-WORKSPACE__UPDATE"),
+    ).toBeDisabled();
+    await expect(page.getByTestId("api-key-rename-submit")).toHaveCount(0);
+    await page.goto(`/workspaces/${workspace.id}/api-keys/create`);
+    await expect(page).toHaveURL(
+      new RegExp(`/workspaces/${workspace.id}/api-keys(?:\\?.*)?$`),
+    );
     await page.goto(`/workspaces/${workspace.id}/settings`);
     await expect(page.getByTestId("workspace-settings-delete")).toBeEnabled();
     await page.getByTestId("workspace-settings-delete").click();
@@ -253,6 +266,10 @@ test("uses personal API-key abilities for navigation and instance actions", asyn
         page.getByRole("menuitem", { name, exact: true }),
       ).toBeDisabled();
     await page.keyboard.press("Escape");
+    await page.goto(`/user/api-keys/${key.entity.id}`);
+    await expect(page.getByTestId("api-key-rename-input")).toBeDisabled();
+    await expect(page.getByTestId("api-key-rename-submit")).toHaveCount(0);
+    await page.getByTestId("api-key-back").click();
     allowedId = key.entity.id;
     await page.reload();
     await row.getByRole("button").click();
@@ -261,8 +278,13 @@ test("uses personal API-key abilities for navigation and instance actions", asyn
         page.getByRole("menuitem", { name, exact: true }),
       ).toBeEnabled();
     await page.keyboard.press("Escape");
+    await page.goto(`/user/api-keys/${key.entity.id}`);
+    await expect(page.getByTestId("api-key-rename-input")).toBeEnabled();
+    await expect(page.getByTestId("api-key-rename-submit")).toBeEnabled();
     allowRead = false;
-    await page.goto("/user/api-keys");
+    await page.goto(`/user/api-keys/${key.entity.id}`);
+    await expect(page).toHaveURL(/\/user$/);
+    await page.goto("/user/api-keys/create");
     await expect(page).toHaveURL(/\/user$/);
     await expect(page.getByTestId("user-sidebar-api-keys-link")).toHaveCount(0);
   } finally {

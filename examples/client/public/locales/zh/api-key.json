@@ -7,9 +7,10 @@
   "created": {
     "copied": "已复制",
     "copy": "复制 API 密钥",
-    "description": "这是您唯一一次查看该密钥的机会。请立即复制并妥善保管，一旦关闭此窗口，您将无法再次查看它。",
+    "description": "请立即复制并妥善保管此密钥。离开或刷新此页面后，将无法再次查看完整密钥。",
     "title": "API 密钥已创建",
-    "warning": "请注意：此密钥只显示一次！"
+    "warning": "请注意：此密钥只显示一次！",
+    "copy_failed": "复制失败，请手动选择并复制密钥。"
   },
   "description": "创建和管理此工作空间的 API 密钥。",
   "filter": {
@@ -36,13 +37,14 @@
       "placeholder": "为此 API 密钥输入名称",
       "required": "API 密钥名称是必填的",
       "too_long": "API 密钥名称过长"
-    }
+    },
+    "save_failed": "无法保存此 API 密钥，请重试。"
   },
   "never_expires": "永不过期",
   "never_used": "从未使用",
   "edit": {
     "description": "更新此 API 密钥的显示名称和权限。",
-    "title": "编辑 API 密钥"
+    "title": "API 密钥详情"
   },
   "delete": {
     "description": "删除 {{name}}？此操作无法撤销。",
@@ -72,5 +74,8 @@
     "enabled_success": "API 密钥已启用",
     "updated_success": "API 密钥更新成功",
     "deleted_success": "API 密钥删除成功"
-  }
+  },
+  "back": "返回 API 密钥列表",
+  "details": "API 密钥",
+  "usage": "使用情况"
 }

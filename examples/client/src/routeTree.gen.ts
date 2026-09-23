@@ -17,6 +17,7 @@ import { Route as AuthenticatedUserLayoutRouteImport } from './app/_authenticate
 import { Route as InvitePageRouteImport } from './app/invite/page'
 import { Route as AuthenticatedAdminPageRouteImport } from './app/_authenticated/admin/page'
 import { Route as AuthenticatedUserPageRouteImport } from './app/_authenticated/user/page'
+import { Route as AuthenticatedUserApiKeysLayoutRouteImport } from './app/_authenticated/user/api-keys/layout'
 import { Route as AuthenticatedWorkspacesPageRouteImport } from './app/_authenticated/workspaces/page'
 import { Route as AuthenticatedWorkspacesWorkspaceIdLayoutRouteImport } from './app/_authenticated/workspaces/$workspaceId/layout'
 import { Route as AuthForgotPasswordPageRouteImport } from './app/auth/forgot-password/page'
@@ -33,9 +34,13 @@ import { Route as AuthenticatedWorkspacesWorkspaceIdApiKeysLayoutRouteImport } f
 import { Route as AuthenticatedWorkspacesWorkspaceIdMembersLayoutRouteImport } from './app/_authenticated/workspaces/$workspaceId/members/layout'
 import { Route as AuthenticatedWorkspacesCreatePageRouteImport } from './app/_authenticated/workspaces/create/page'
 import { Route as AuthenticatedAdminUsersUserIdPageRouteImport } from './app/_authenticated/admin/users/$userId/page'
+import { Route as AuthenticatedUserApiKeysApiKeyIdPageRouteImport } from './app/_authenticated/user/api-keys/$apiKeyId/page'
+import { Route as AuthenticatedUserApiKeysCreatePageRouteImport } from './app/_authenticated/user/api-keys/create/page'
 import { Route as AuthenticatedWorkspacesWorkspaceIdApiKeysPageRouteImport } from './app/_authenticated/workspaces/$workspaceId/api-keys/page'
 import { Route as AuthenticatedWorkspacesWorkspaceIdMembersPageRouteImport } from './app/_authenticated/workspaces/$workspaceId/members/page'
 import { Route as AuthenticatedWorkspacesWorkspaceIdSettingsPageRouteImport } from './app/_authenticated/workspaces/$workspaceId/settings/page'
+import { Route as AuthenticatedWorkspacesWorkspaceIdApiKeysApiKeyIdPageRouteImport } from './app/_authenticated/workspaces/$workspaceId/api-keys/$apiKeyId/page'
+import { Route as AuthenticatedWorkspacesWorkspaceIdApiKeysCreatePageRouteImport } from './app/_authenticated/workspaces/$workspaceId/api-keys/create/page'
 import { Route as AuthenticatedWorkspacesWorkspaceIdMembersMemberIdPageRouteImport } from './app/_authenticated/workspaces/$workspaceId/members/$memberId/page'
 
 const AuthenticatedLayoutRoute = AuthenticatedLayoutRouteImport.update({
@@ -78,6 +83,12 @@ const AuthenticatedUserPageRoute = AuthenticatedUserPageRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedUserLayoutRoute,
 } as any)
+const AuthenticatedUserApiKeysLayoutRoute =
+  AuthenticatedUserApiKeysLayoutRouteImport.update({
+    id: '/api-keys',
+    path: '/api-keys',
+    getParentRoute: () => AuthenticatedUserLayoutRoute,
+  } as any)
 const AuthenticatedWorkspacesPageRoute =
   AuthenticatedWorkspacesPageRouteImport.update({
     id: '/workspaces/',
@@ -123,9 +134,9 @@ const AuthenticatedAdminUsersPageRoute =
   } as any)
 const AuthenticatedUserApiKeysPageRoute =
   AuthenticatedUserApiKeysPageRouteImport.update({
-    id: '/api-keys/',
-    path: '/api-keys/',
-    getParentRoute: () => AuthenticatedUserLayoutRoute,
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedUserApiKeysLayoutRoute,
   } as any)
 const AuthenticatedUserSecurityPageRoute =
   AuthenticatedUserSecurityPageRouteImport.update({
@@ -169,6 +180,18 @@ const AuthenticatedAdminUsersUserIdPageRoute =
     path: '/users/$userId/',
     getParentRoute: () => AuthenticatedAdminLayoutRoute,
   } as any)
+const AuthenticatedUserApiKeysApiKeyIdPageRoute =
+  AuthenticatedUserApiKeysApiKeyIdPageRouteImport.update({
+    id: '/$apiKeyId/',
+    path: '/$apiKeyId/',
+    getParentRoute: () => AuthenticatedUserApiKeysLayoutRoute,
+  } as any)
+const AuthenticatedUserApiKeysCreatePageRoute =
+  AuthenticatedUserApiKeysCreatePageRouteImport.update({
+    id: '/create/',
+    path: '/create/',
+    getParentRoute: () => AuthenticatedUserApiKeysLayoutRoute,
+  } as any)
 const AuthenticatedWorkspacesWorkspaceIdApiKeysPageRoute =
   AuthenticatedWorkspacesWorkspaceIdApiKeysPageRouteImport.update({
     id: '/',
@@ -187,6 +210,18 @@ const AuthenticatedWorkspacesWorkspaceIdSettingsPageRoute =
     path: '/settings/',
     getParentRoute: () => AuthenticatedWorkspacesWorkspaceIdLayoutRoute,
   } as any)
+const AuthenticatedWorkspacesWorkspaceIdApiKeysApiKeyIdPageRoute =
+  AuthenticatedWorkspacesWorkspaceIdApiKeysApiKeyIdPageRouteImport.update({
+    id: '/$apiKeyId/',
+    path: '/$apiKeyId/',
+    getParentRoute: () => AuthenticatedWorkspacesWorkspaceIdApiKeysLayoutRoute,
+  } as any)
+const AuthenticatedWorkspacesWorkspaceIdApiKeysCreatePageRoute =
+  AuthenticatedWorkspacesWorkspaceIdApiKeysCreatePageRouteImport.update({
+    id: '/create/',
+    path: '/create/',
+    getParentRoute: () => AuthenticatedWorkspacesWorkspaceIdApiKeysLayoutRoute,
+  } as any)
 const AuthenticatedWorkspacesWorkspaceIdMembersMemberIdPageRoute =
   AuthenticatedWorkspacesWorkspaceIdMembersMemberIdPageRouteImport.update({
     id: '/$memberId/',
@@ -200,6 +235,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminLayoutRouteWithChildren
   '/user': typeof AuthenticatedUserLayoutRouteWithChildren
   '/invite/': typeof InvitePageRoute
+  '/user/api-keys': typeof AuthenticatedUserApiKeysLayoutRouteWithChildren
   '/workspaces/$workspaceId': typeof AuthenticatedWorkspacesWorkspaceIdLayoutRouteWithChildren
   '/admin/': typeof AuthenticatedAdminPageRoute
   '/user/': typeof AuthenticatedUserPageRoute
@@ -218,9 +254,13 @@ export interface FileRoutesByFullPath {
   '/workspaces/$workspaceId/': typeof AuthenticatedWorkspacesWorkspaceIdPageRoute
   '/workspaces/create/': typeof AuthenticatedWorkspacesCreatePageRoute
   '/admin/users/$userId/': typeof AuthenticatedAdminUsersUserIdPageRoute
+  '/user/api-keys/$apiKeyId/': typeof AuthenticatedUserApiKeysApiKeyIdPageRoute
+  '/user/api-keys/create/': typeof AuthenticatedUserApiKeysCreatePageRoute
   '/workspaces/$workspaceId/api-keys/': typeof AuthenticatedWorkspacesWorkspaceIdApiKeysPageRoute
   '/workspaces/$workspaceId/members/': typeof AuthenticatedWorkspacesWorkspaceIdMembersPageRoute
   '/workspaces/$workspaceId/settings/': typeof AuthenticatedWorkspacesWorkspaceIdSettingsPageRoute
+  '/workspaces/$workspaceId/api-keys/$apiKeyId/': typeof AuthenticatedWorkspacesWorkspaceIdApiKeysApiKeyIdPageRoute
+  '/workspaces/$workspaceId/api-keys/create/': typeof AuthenticatedWorkspacesWorkspaceIdApiKeysCreatePageRoute
   '/workspaces/$workspaceId/members/$memberId/': typeof AuthenticatedWorkspacesWorkspaceIdMembersMemberIdPageRoute
 }
 export interface FileRoutesByTo {
@@ -242,9 +282,13 @@ export interface FileRoutesByTo {
   '/workspaces/$workspaceId': typeof AuthenticatedWorkspacesWorkspaceIdPageRoute
   '/workspaces/create': typeof AuthenticatedWorkspacesCreatePageRoute
   '/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdPageRoute
+  '/user/api-keys/$apiKeyId': typeof AuthenticatedUserApiKeysApiKeyIdPageRoute
+  '/user/api-keys/create': typeof AuthenticatedUserApiKeysCreatePageRoute
   '/workspaces/$workspaceId/api-keys': typeof AuthenticatedWorkspacesWorkspaceIdApiKeysPageRoute
   '/workspaces/$workspaceId/members': typeof AuthenticatedWorkspacesWorkspaceIdMembersPageRoute
   '/workspaces/$workspaceId/settings': typeof AuthenticatedWorkspacesWorkspaceIdSettingsPageRoute
+  '/workspaces/$workspaceId/api-keys/$apiKeyId': typeof AuthenticatedWorkspacesWorkspaceIdApiKeysApiKeyIdPageRoute
+  '/workspaces/$workspaceId/api-keys/create': typeof AuthenticatedWorkspacesWorkspaceIdApiKeysCreatePageRoute
   '/workspaces/$workspaceId/members/$memberId': typeof AuthenticatedWorkspacesWorkspaceIdMembersMemberIdPageRoute
 }
 export interface FileRoutesById {
@@ -255,6 +299,7 @@ export interface FileRoutesById {
   '/_authenticated/user': typeof AuthenticatedUserLayoutRouteWithChildren
   '/_authenticated/': typeof AuthenticatedPageRoute
   '/invite/': typeof InvitePageRoute
+  '/_authenticated/user/api-keys': typeof AuthenticatedUserApiKeysLayoutRouteWithChildren
   '/_authenticated/workspaces/$workspaceId': typeof AuthenticatedWorkspacesWorkspaceIdLayoutRouteWithChildren
   '/_authenticated/admin/': typeof AuthenticatedAdminPageRoute
   '/_authenticated/user/': typeof AuthenticatedUserPageRoute
@@ -273,9 +318,13 @@ export interface FileRoutesById {
   '/_authenticated/workspaces/$workspaceId/': typeof AuthenticatedWorkspacesWorkspaceIdPageRoute
   '/_authenticated/workspaces/create/': typeof AuthenticatedWorkspacesCreatePageRoute
   '/_authenticated/admin/users/$userId/': typeof AuthenticatedAdminUsersUserIdPageRoute
+  '/_authenticated/user/api-keys/$apiKeyId/': typeof AuthenticatedUserApiKeysApiKeyIdPageRoute
+  '/_authenticated/user/api-keys/create/': typeof AuthenticatedUserApiKeysCreatePageRoute
   '/_authenticated/workspaces/$workspaceId/api-keys/': typeof AuthenticatedWorkspacesWorkspaceIdApiKeysPageRoute
   '/_authenticated/workspaces/$workspaceId/members/': typeof AuthenticatedWorkspacesWorkspaceIdMembersPageRoute
   '/_authenticated/workspaces/$workspaceId/settings/': typeof AuthenticatedWorkspacesWorkspaceIdSettingsPageRoute
+  '/_authenticated/workspaces/$workspaceId/api-keys/$apiKeyId/': typeof AuthenticatedWorkspacesWorkspaceIdApiKeysApiKeyIdPageRoute
+  '/_authenticated/workspaces/$workspaceId/api-keys/create/': typeof AuthenticatedWorkspacesWorkspaceIdApiKeysCreatePageRoute
   '/_authenticated/workspaces/$workspaceId/members/$memberId/': typeof AuthenticatedWorkspacesWorkspaceIdMembersMemberIdPageRoute
 }
 export interface FileRouteTypes {
@@ -286,6 +335,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/user'
     | '/invite/'
+    | '/user/api-keys'
     | '/workspaces/$workspaceId'
     | '/admin/'
     | '/user/'
@@ -304,9 +354,13 @@ export interface FileRouteTypes {
     | '/workspaces/$workspaceId/'
     | '/workspaces/create/'
     | '/admin/users/$userId/'
+    | '/user/api-keys/$apiKeyId/'
+    | '/user/api-keys/create/'
     | '/workspaces/$workspaceId/api-keys/'
     | '/workspaces/$workspaceId/members/'
     | '/workspaces/$workspaceId/settings/'
+    | '/workspaces/$workspaceId/api-keys/$apiKeyId/'
+    | '/workspaces/$workspaceId/api-keys/create/'
     | '/workspaces/$workspaceId/members/$memberId/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -328,9 +382,13 @@ export interface FileRouteTypes {
     | '/workspaces/$workspaceId'
     | '/workspaces/create'
     | '/admin/users/$userId'
+    | '/user/api-keys/$apiKeyId'
+    | '/user/api-keys/create'
     | '/workspaces/$workspaceId/api-keys'
     | '/workspaces/$workspaceId/members'
     | '/workspaces/$workspaceId/settings'
+    | '/workspaces/$workspaceId/api-keys/$apiKeyId'
+    | '/workspaces/$workspaceId/api-keys/create'
     | '/workspaces/$workspaceId/members/$memberId'
   id:
     | '__root__'
@@ -340,6 +398,7 @@ export interface FileRouteTypes {
     | '/_authenticated/user'
     | '/_authenticated/'
     | '/invite/'
+    | '/_authenticated/user/api-keys'
     | '/_authenticated/workspaces/$workspaceId'
     | '/_authenticated/admin/'
     | '/_authenticated/user/'
@@ -358,9 +417,13 @@ export interface FileRouteTypes {
     | '/_authenticated/workspaces/$workspaceId/'
     | '/_authenticated/workspaces/create/'
     | '/_authenticated/admin/users/$userId/'
+    | '/_authenticated/user/api-keys/$apiKeyId/'
+    | '/_authenticated/user/api-keys/create/'
     | '/_authenticated/workspaces/$workspaceId/api-keys/'
     | '/_authenticated/workspaces/$workspaceId/members/'
     | '/_authenticated/workspaces/$workspaceId/settings/'
+    | '/_authenticated/workspaces/$workspaceId/api-keys/$apiKeyId/'
+    | '/_authenticated/workspaces/$workspaceId/api-keys/create/'
     | '/_authenticated/workspaces/$workspaceId/members/$memberId/'
   fileRoutesById: FileRoutesById
 }
@@ -428,6 +491,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedUserPageRouteImport
       parentRoute: typeof AuthenticatedUserLayoutRoute
     }
+    '/_authenticated/user/api-keys': {
+      id: '/_authenticated/user/api-keys'
+      path: '/api-keys'
+      fullPath: '/user/api-keys'
+      preLoaderRoute: typeof AuthenticatedUserApiKeysLayoutRouteImport
+      parentRoute: typeof AuthenticatedUserLayoutRoute
+    }
     '/_authenticated/workspaces/': {
       id: '/_authenticated/workspaces/'
       path: '/workspaces'
@@ -486,10 +556,10 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/user/api-keys/': {
       id: '/_authenticated/user/api-keys/'
-      path: '/api-keys'
+      path: '/'
       fullPath: '/user/api-keys/'
       preLoaderRoute: typeof AuthenticatedUserApiKeysPageRouteImport
-      parentRoute: typeof AuthenticatedUserLayoutRoute
+      parentRoute: typeof AuthenticatedUserApiKeysLayoutRoute
     }
     '/_authenticated/user/security/': {
       id: '/_authenticated/user/security/'
@@ -540,6 +610,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminUsersUserIdPageRouteImport
       parentRoute: typeof AuthenticatedAdminLayoutRoute
     }
+    '/_authenticated/user/api-keys/$apiKeyId/': {
+      id: '/_authenticated/user/api-keys/$apiKeyId/'
+      path: '/$apiKeyId'
+      fullPath: '/user/api-keys/$apiKeyId/'
+      preLoaderRoute: typeof AuthenticatedUserApiKeysApiKeyIdPageRouteImport
+      parentRoute: typeof AuthenticatedUserApiKeysLayoutRoute
+    }
+    '/_authenticated/user/api-keys/create/': {
+      id: '/_authenticated/user/api-keys/create/'
+      path: '/create'
+      fullPath: '/user/api-keys/create/'
+      preLoaderRoute: typeof AuthenticatedUserApiKeysCreatePageRouteImport
+      parentRoute: typeof AuthenticatedUserApiKeysLayoutRoute
+    }
     '/_authenticated/workspaces/$workspaceId/api-keys/': {
       id: '/_authenticated/workspaces/$workspaceId/api-keys/'
       path: '/'
@@ -560,6 +644,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/workspaces/$workspaceId/settings/'
       preLoaderRoute: typeof AuthenticatedWorkspacesWorkspaceIdSettingsPageRouteImport
       parentRoute: typeof AuthenticatedWorkspacesWorkspaceIdLayoutRoute
+    }
+    '/_authenticated/workspaces/$workspaceId/api-keys/$apiKeyId/': {
+      id: '/_authenticated/workspaces/$workspaceId/api-keys/$apiKeyId/'
+      path: '/$apiKeyId'
+      fullPath: '/workspaces/$workspaceId/api-keys/$apiKeyId/'
+      preLoaderRoute: typeof AuthenticatedWorkspacesWorkspaceIdApiKeysApiKeyIdPageRouteImport
+      parentRoute: typeof AuthenticatedWorkspacesWorkspaceIdApiKeysLayoutRoute
+    }
+    '/_authenticated/workspaces/$workspaceId/api-keys/create/': {
+      id: '/_authenticated/workspaces/$workspaceId/api-keys/create/'
+      path: '/create'
+      fullPath: '/workspaces/$workspaceId/api-keys/create/'
+      preLoaderRoute: typeof AuthenticatedWorkspacesWorkspaceIdApiKeysCreatePageRouteImport
+      parentRoute: typeof AuthenticatedWorkspacesWorkspaceIdApiKeysLayoutRoute
     }
     '/_authenticated/workspaces/$workspaceId/members/$memberId/': {
       id: '/_authenticated/workspaces/$workspaceId/members/$memberId/'
@@ -590,17 +688,38 @@ const AuthenticatedAdminLayoutRouteWithChildren =
     AuthenticatedAdminLayoutRouteChildren,
   )
 
-interface AuthenticatedUserLayoutRouteChildren {
-  AuthenticatedUserPageRoute: typeof AuthenticatedUserPageRoute
+interface AuthenticatedUserApiKeysLayoutRouteChildren {
   AuthenticatedUserApiKeysPageRoute: typeof AuthenticatedUserApiKeysPageRoute
+  AuthenticatedUserApiKeysApiKeyIdPageRoute: typeof AuthenticatedUserApiKeysApiKeyIdPageRoute
+  AuthenticatedUserApiKeysCreatePageRoute: typeof AuthenticatedUserApiKeysCreatePageRoute
+}
+
+const AuthenticatedUserApiKeysLayoutRouteChildren: AuthenticatedUserApiKeysLayoutRouteChildren =
+  {
+    AuthenticatedUserApiKeysPageRoute: AuthenticatedUserApiKeysPageRoute,
+    AuthenticatedUserApiKeysApiKeyIdPageRoute:
+      AuthenticatedUserApiKeysApiKeyIdPageRoute,
+    AuthenticatedUserApiKeysCreatePageRoute:
+      AuthenticatedUserApiKeysCreatePageRoute,
+  }
+
+const AuthenticatedUserApiKeysLayoutRouteWithChildren =
+  AuthenticatedUserApiKeysLayoutRoute._addFileChildren(
+    AuthenticatedUserApiKeysLayoutRouteChildren,
+  )
+
+interface AuthenticatedUserLayoutRouteChildren {
+  AuthenticatedUserApiKeysLayoutRoute: typeof AuthenticatedUserApiKeysLayoutRouteWithChildren
+  AuthenticatedUserPageRoute: typeof AuthenticatedUserPageRoute
   AuthenticatedUserSecurityPageRoute: typeof AuthenticatedUserSecurityPageRoute
   AuthenticatedUserWorkspacesPageRoute: typeof AuthenticatedUserWorkspacesPageRoute
 }
 
 const AuthenticatedUserLayoutRouteChildren: AuthenticatedUserLayoutRouteChildren =
   {
+    AuthenticatedUserApiKeysLayoutRoute:
+      AuthenticatedUserApiKeysLayoutRouteWithChildren,
     AuthenticatedUserPageRoute: AuthenticatedUserPageRoute,
-    AuthenticatedUserApiKeysPageRoute: AuthenticatedUserApiKeysPageRoute,
     AuthenticatedUserSecurityPageRoute: AuthenticatedUserSecurityPageRoute,
     AuthenticatedUserWorkspacesPageRoute: AuthenticatedUserWorkspacesPageRoute,
   }
@@ -612,12 +731,18 @@ const AuthenticatedUserLayoutRouteWithChildren =
 
 interface AuthenticatedWorkspacesWorkspaceIdApiKeysLayoutRouteChildren {
   AuthenticatedWorkspacesWorkspaceIdApiKeysPageRoute: typeof AuthenticatedWorkspacesWorkspaceIdApiKeysPageRoute
+  AuthenticatedWorkspacesWorkspaceIdApiKeysApiKeyIdPageRoute: typeof AuthenticatedWorkspacesWorkspaceIdApiKeysApiKeyIdPageRoute
+  AuthenticatedWorkspacesWorkspaceIdApiKeysCreatePageRoute: typeof AuthenticatedWorkspacesWorkspaceIdApiKeysCreatePageRoute
 }
 
 const AuthenticatedWorkspacesWorkspaceIdApiKeysLayoutRouteChildren: AuthenticatedWorkspacesWorkspaceIdApiKeysLayoutRouteChildren =
   {
     AuthenticatedWorkspacesWorkspaceIdApiKeysPageRoute:
       AuthenticatedWorkspacesWorkspaceIdApiKeysPageRoute,
+    AuthenticatedWorkspacesWorkspaceIdApiKeysApiKeyIdPageRoute:
+      AuthenticatedWorkspacesWorkspaceIdApiKeysApiKeyIdPageRoute,
+    AuthenticatedWorkspacesWorkspaceIdApiKeysCreatePageRoute:
+      AuthenticatedWorkspacesWorkspaceIdApiKeysCreatePageRoute,
   }
 
 const AuthenticatedWorkspacesWorkspaceIdApiKeysLayoutRouteWithChildren =

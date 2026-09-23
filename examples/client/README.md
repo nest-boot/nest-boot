@@ -59,6 +59,15 @@ Use `Page variant="compact"` for form pages, with full-width `PageLayoutSection`
 elements so cards stay stacked within the compact page.
 Use theme color tokens from `src/styles.css` in application code.
 
+API key lists use `DataFilter` and `DataTable`; rows and name links open details.
+Creation and details use separate compact pages at `/user/api-keys/create`,
+`/user/api-keys/$apiKeyId`, `/workspaces/$workspaceId/api-keys/create`, and
+`/workspaces/$workspaceId/api-keys/$apiKeyId`. The create page reveals the full
+key once in a success Card. Keep that secret in component state only, outside
+URLs and persistent storage; the creation mutation does not cache it. Details
+query through the current user/workspace and allow read-only viewing when the
+principal lacks write permission. Enable/disable and delete remain list actions.
+
 Use TanStack Form (`@tanstack/react-form`) for editable forms, including login,
 password recovery/change, administrator edits, and password-confirmed account
 deletion. Keep values, validation, errors, and submission state in the form;

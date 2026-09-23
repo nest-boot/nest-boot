@@ -1,16 +1,12 @@
-import { useId, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
-import { useForm } from "@tanstack/react-form";
 import dayjs from "dayjs";
 import { useTranslation } from "react-i18next";
 import { isEmpty } from "lodash";
-import { AlertTriangle, Check, Copy, KeyRound } from "lucide-react";
-import z from "zod";
+import { KeyRound } from "lucide-react";
 
 import type { DataFilterItemProps } from "@/components/thread-ui/data-filter";
-import type { PermissionOption } from "@/lib/permissions";
 import type {
-  CreateUserApiKeyInput,
   UpdateUserApiKeyInput,
   UserApiKey,
   UserApiKeyPermission,
@@ -23,12 +19,9 @@ import { toast } from "@/components/thread-ui/toast";
 import { createAbilitySubject } from "@/lib/ability";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import { Badge } from "@/components/thread-ui/badge";
-import { Button } from "@/components/thread-ui/button";
+import { Link } from "@/components/link";
 import { DataFilter } from "@/components/thread-ui/data-filter";
 import { DataTable } from "@/components/thread-ui/data-table";
-import { Input } from "@/components/thread-ui/input";
-import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
-import { PermissionCheckboxGroup } from "@/components/permission-checkbox-group";
 import {
   Page,
   PageActions,
@@ -38,15 +31,6 @@ import {
   PagePrimaryAction,
   PageTitle,
 } from "@/components/thread-ui/page";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { getApiKeyStatus } from "@/lib/api-key-status";
 import {
@@ -54,7 +38,7 @@ import {
   getPreviousPageSearch,
 } from "@/lib/connection-search";
 
-type ApiKeyRow<Permission extends UserApiKeyPermission> = Omit<
+export type ApiKeyRow<Permission extends UserApiKeyPermission> = Omit<
   Pick<
     UserApiKey,
     | "id"
@@ -78,17 +62,10 @@ interface ApiKeysPageProps<Permission extends UserApiKeyPermission> {
   search: ApiKeySearch;
   apiKeys: Array<ApiKeyRow<Permission>>;
   pageInfo?: PageInfo;
-  permissionValues: ReadonlyArray<Permission>;
-  permissionOptions: ReadonlyArray<PermissionOption<Permission>>;
-  defaultPermissions: ReadonlyArray<Permission>;
-  createLoading: boolean;
+  createPath: string;
+  detailPath: (id: string) => string;
   updateLoading: boolean;
   deleteLoading: boolean;
-  createApiKey: (
-    input: Omit<CreateUserApiKeyInput, "permissions"> & {
-      permissions?: Array<Permission> | null;
-    },
-  ) => Promise<string | null | undefined>;
   updateApiKey: (
     id: string,
     input: Omit<UpdateUserApiKeyInput, "permissions"> & {
@@ -108,22 +85,15 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
   search,
   apiKeys,
   pageInfo,
-  permissionValues,
-  permissionOptions,
-  defaultPermissions,
-  createLoading,
+  createPath,
+  detailPath,
   updateLoading,
   deleteLoading,
-  createApiKey,
   updateApiKey,
   deleteApiKey,
   refetch,
 }: ApiKeysPageProps<Permission>) {
   const { t } = useTranslation();
-  const createFormId = useId();
-  const renameFormId = useId();
-  const isPermission = (value: UserApiKeyPermission): value is Permission =>
-    permissionValues.some((permission) => permission === value);
   const canCreate = ability.can("write", subject);
   const canUpdate = (apiKey: ApiKeyRow<Permission>) =>
     ability.can("write", createAbilitySubject(subject, apiKey));
@@ -134,99 +104,6 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
 
   const query = search?.query ?? "";
   const filterValues = (search?.filter ?? {}) as Record<string, unknown>;
-
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
-  const [renamingApiKey, setRenamingApiKey] =
-    useState<ApiKeyRow<Permission> | null>(null);
-  const [createdApiKey, setCreatedApiKey] = useState<string | null>(null);
-  const [createdDialogOpen, setCreatedDialogOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  const createForm = useForm({
-    defaultValues: {
-      name: "",
-      permissions: defaultPermissions.filter((permission) =>
-        permissionOptions.some(
-          (option) => option.value === permission && option.grantable !== false,
-        ),
-      ) as Array<UserApiKeyPermission>,
-    },
-    validators: {
-      onSubmit: z.object({
-        name: z
-          .string()
-          .trim()
-          .min(1, t("api-key:form.name.required"))
-          .max(255, t("api-key:form.name.too_long")),
-        permissions: z.array(z.enum(permissionValues)),
-      }),
-    },
-    onSubmit: async ({ value }) => {
-      if (!canCreate) return;
-      try {
-        const apiKey = await createApiKey({
-          name: value.name.trim(),
-          permissions: value.permissions.filter(isPermission),
-        });
-
-        if (apiKey) {
-          setCreatedApiKey(apiKey);
-          setCreatedDialogOpen(true);
-          setCreateDialogOpen(false);
-          createForm.reset();
-          await refetch();
-          toast.add({
-            type: "success",
-            title: t("api-key:toast.created_success"),
-          });
-        }
-      } catch (err) {
-        if (err instanceof Error) {
-          toast.add({ type: "error", title: err.message });
-        }
-      }
-    },
-  });
-
-  const renameForm = useForm({
-    defaultValues: {
-      name: "",
-      permissions: [] as Array<UserApiKeyPermission>,
-    },
-    validators: {
-      onSubmit: z.object({
-        name: z
-          .string()
-          .trim()
-          .min(1, t("api-key:form.name.required"))
-          .max(255, t("api-key:form.name.too_long")),
-        permissions: z.array(z.enum(permissionValues)),
-      }),
-    },
-    onSubmit: async ({ value }) => {
-      if (!renamingApiKey || !canUpdate(renamingApiKey)) return;
-
-      try {
-        await updateApiKey(renamingApiKey.id, {
-          name: value.name.trim(),
-          permissions: value.permissions.filter(isPermission),
-        });
-
-        setRenameDialogOpen(false);
-        setRenamingApiKey(null);
-        renameForm.reset();
-        toast.add({
-          type: "success",
-          title: t("api-key:toast.updated_success"),
-        });
-      } catch (err) {
-        if (err instanceof Error) {
-          toast.add({ type: "error", title: err.message });
-        }
-      }
-    },
-  });
 
   const filters: Array<DataFilterItemProps> = useMemo(() => {
     return [
@@ -256,34 +133,6 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
       },
     ];
   }, [t]);
-
-  const handleCreateDialogOpenChange = (open: boolean) => {
-    if (!open) {
-      createForm.reset();
-    }
-    setCreateDialogOpen(open);
-  };
-
-  const handleRenameDialogOpenChange = (open: boolean) => {
-    if (!open) {
-      renameForm.reset();
-      setRenamingApiKey(null);
-    }
-    setRenameDialogOpen(open);
-  };
-
-  const handleOpenRename = (apiKey: ApiKeyRow<Permission>) => {
-    if (!canUpdate(apiKey)) return;
-    setRenamingApiKey(apiKey);
-    renameForm.setFieldValue("name", apiKey.name);
-    renameForm.setFieldValue(
-      "permissions",
-      apiKey.permissions.filter((permission) =>
-        permissionValues.includes(permission),
-      ),
-    );
-    setRenameDialogOpen(true);
-  };
 
   const handleDeleteApiKey = async (apiKey: ApiKeyRow<Permission>) => {
     if (!canDelete(apiKey)) return;
@@ -330,12 +179,6 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
     }
   };
 
-  const copyToClipboard = async (value: string) => {
-    await navigator.clipboard.writeText(value);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   return (
     <Page>
       <PageHeader>
@@ -346,7 +189,7 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
           <PagePrimaryAction
             data-testid="api-key-create-action"
             disabled={!canCreate}
-            onClick={() => setCreateDialogOpen(true)}
+            onClick={() => navigate({ to: createPath })}
           >
             <KeyRound data-icon="inline-start" />
             {t("api-key:create.button")}
@@ -387,12 +230,14 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
                       const apiKey = row.original;
 
                       return (
-                        <span
+                        <Link
+                          to={detailPath(apiKey.id)}
+                          onClick={(event) => event.stopPropagation()}
                           className="font-medium"
                           data-testid={`api-key-row-${apiKey.id}`}
                         >
                           {apiKey.name}
-                        </span>
+                        </Link>
                       );
                     },
                   },
@@ -449,6 +294,9 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
                   },
                 ]}
                 data={apiKeys}
+                onRowClick={(row) =>
+                  navigate({ to: detailPath(row.original.id) })
+                }
                 pagination={{
                   hasPreviousPage: pageInfo?.hasPreviousPage,
                   hasNextPage: pageInfo?.hasNextPage,
@@ -476,7 +324,8 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
                   {
                     disabled: updateLoading || !canUpdate(row.original),
                     label: t("action.edit"),
-                    onClick: () => handleOpenRename(row.original),
+                    onClick: () =>
+                      navigate({ to: detailPath(row.original.id) }),
                   },
                   {
                     disabled: deleteLoading || !canDelete(row.original),
@@ -488,230 +337,6 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
             </div>
           </CardContent>
         </Card>
-
-        <Dialog
-          open={createDialogOpen}
-          onOpenChange={handleCreateDialogOpenChange}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{t("api-key:create.title")}</DialogTitle>
-              <DialogDescription>
-                {t("api-key:create.description")}
-              </DialogDescription>
-            </DialogHeader>
-            <form
-              id={createFormId}
-              onSubmit={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                createForm.handleSubmit();
-              }}
-            >
-              <FormLayout>
-                <FormLayoutItem>
-                  <createForm.Field name="name">
-                    {(field) => (
-                      <Input
-                        id="api-key-name"
-                        data-testid="api-key-name-input"
-                        label={t("api-key:form.name.label")}
-                        placeholder={t("api-key:form.name.placeholder")}
-                        value={field.state.value}
-                        onBlur={field.handleBlur}
-                        onChange={(e) => field.handleChange(e.target.value)}
-                        error={
-                          field.state.meta.errors.length > 0
-                            ? field.state.meta.errors
-                                .map((error: any) =>
-                                  typeof error === "string"
-                                    ? error
-                                    : error?.message || error,
-                                )
-                                .join(", ")
-                            : undefined
-                        }
-                      />
-                    )}
-                  </createForm.Field>
-                </FormLayoutItem>
-                <FormLayoutItem>
-                  <createForm.Field name="permissions">
-                    {(field) => (
-                      <PermissionCheckboxGroup
-                        options={permissionOptions}
-                        value={field.state.value}
-                        onChange={field.handleChange}
-                        disabled={createLoading}
-                      />
-                    )}
-                  </createForm.Field>
-                </FormLayoutItem>
-              </FormLayout>
-            </form>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => handleCreateDialogOpenChange(false)}
-              >
-                {t("action.cancel")}
-              </Button>
-              <Button
-                type="submit"
-                form={createFormId}
-                data-testid="api-key-create-submit"
-                disabled={!canCreate}
-                loading={createLoading}
-              >
-                {t("action.create")}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog
-          open={renameDialogOpen}
-          onOpenChange={handleRenameDialogOpenChange}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{t("api-key:edit.title")}</DialogTitle>
-              <DialogDescription>
-                {t("api-key:edit.description")}
-              </DialogDescription>
-            </DialogHeader>
-            <form
-              id={renameFormId}
-              onSubmit={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                renameForm.handleSubmit();
-              }}
-            >
-              <FormLayout>
-                <FormLayoutItem>
-                  <renameForm.Field name="name">
-                    {(field) => (
-                      <Input
-                        id="api-key-rename"
-                        data-testid="api-key-rename-input"
-                        label={t("api-key:form.name.label")}
-                        placeholder={t("api-key:form.name.placeholder")}
-                        value={field.state.value}
-                        onBlur={field.handleBlur}
-                        onChange={(e) => field.handleChange(e.target.value)}
-                        error={
-                          field.state.meta.errors.length > 0
-                            ? field.state.meta.errors
-                                .map((error: any) =>
-                                  typeof error === "string"
-                                    ? error
-                                    : error?.message || error,
-                                )
-                                .join(", ")
-                            : undefined
-                        }
-                      />
-                    )}
-                  </renameForm.Field>
-                </FormLayoutItem>
-                <FormLayoutItem>
-                  <renameForm.Field name="permissions">
-                    {(field) => (
-                      <PermissionCheckboxGroup
-                        options={permissionOptions}
-                        value={field.state.value}
-                        onChange={field.handleChange}
-                        disabled={updateLoading}
-                      />
-                    )}
-                  </renameForm.Field>
-                </FormLayoutItem>
-              </FormLayout>
-            </form>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => handleRenameDialogOpenChange(false)}
-              >
-                {t("action.cancel")}
-              </Button>
-              <Button
-                type="submit"
-                form={renameFormId}
-                data-testid="api-key-rename-submit"
-                disabled={!renamingApiKey || !canUpdate(renamingApiKey)}
-                loading={updateLoading}
-              >
-                {t("action.save")}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog
-          open={createdDialogOpen}
-          onOpenChange={(open) => {
-            setCreatedDialogOpen(open);
-            if (!open) {
-              setCopied(false);
-            }
-          }}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{t("api-key:created.title")}</DialogTitle>
-            </DialogHeader>
-            <Alert>
-              <AlertTriangle className="text-warning h-4 w-4" />
-              <AlertTitle>{t("api-key:created.warning")}</AlertTitle>
-              <AlertDescription>
-                {t("api-key:created.description")}
-              </AlertDescription>
-            </Alert>
-            <div className="flex flex-col gap-4 py-4">
-              <div className="bg-muted rounded-md p-4">
-                <code
-                  className="text-sm break-all"
-                  data-testid="api-key-created-value"
-                >
-                  {createdApiKey}
-                </code>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  if (createdApiKey) {
-                    copyToClipboard(createdApiKey);
-                  }
-                }}
-              >
-                {copied ? (
-                  <>
-                    <Check data-icon="inline-start" />
-                    {t("api-key:created.copied")}
-                  </>
-                ) : (
-                  <>
-                    <Copy data-icon="inline-start" />
-                    {t("api-key:created.copy")}
-                  </>
-                )}
-              </Button>
-            </div>
-            <DialogFooter>
-              <Button
-                data-testid="api-key-created-close"
-                onClick={() => setCreatedDialogOpen(false)}
-              >
-                {t("action.close")}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </PageContent>
     </Page>
   );

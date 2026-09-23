@@ -109,7 +109,7 @@
       "scenario": "User and workspace API key lifecycle",
       "status": "covered",
       "specs": ["api-key.spec.ts"],
-      "notes": "Creates, reveals, disables, edits, and deletes both owner types. Bearer authentication and privilege ceilings are covered by server PostgreSQL E2E."
+      "notes": "Uses four standalone create/detail routes, checks reloads and direct links, validates names, copies the once-only secret, and disables, edits, and deletes both owner types. Checks mobile layout, read-only controls, creation guards, and rejection of missing, deleted, cross-workspace, and foreign-owner detail IDs. Bearer authentication and privilege ceilings are covered by server PostgreSQL E2E."
     },
     {
       "domain": "Administration",
