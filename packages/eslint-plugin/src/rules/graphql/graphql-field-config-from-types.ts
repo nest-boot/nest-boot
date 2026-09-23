@@ -12,6 +12,7 @@ import {
   isTypeOnlyImportReference,
   namedImportBinding,
   namedImportEdits,
+  promoteImportReferences,
 } from "../../utils/named-imports.js";
 
 // Custom Fix object type for deferred fix application
@@ -27,6 +28,7 @@ interface TypeInfo {
   isNullable: boolean;
   isCustomType?: boolean;
   typeReference?: TSESTree.Node;
+  scalarExpression?: string;
 }
 
 export type DecoratorBehavior = "ignore" | "remove";
@@ -85,12 +87,16 @@ export default createRule<
   create(context, [options]) {
     const source = context.sourceCode;
     let importLocation: TSESTree.Node = source.ast;
-    const ormModules = source.ast.body.flatMap((node) =>
-      node.type === AST_NODE_TYPES.ImportDeclaration &&
-      node.source.value.startsWith("@mikro-orm/")
-        ? [node.source.value]
-        : [],
-    );
+    const ormModules = [
+      "@mikro-orm/core",
+      "@mikro-orm/decorators/legacy",
+      ...source.ast.body.flatMap((node) =>
+        node.type === AST_NODE_TYPES.ImportDeclaration &&
+        node.source.value.startsWith("@mikro-orm/")
+          ? [node.source.value]
+          : [],
+      ),
+    ];
     const ormTypeName = (name: TSESTree.Node) =>
       importedBindingName(source, ormModules, name);
 
@@ -271,14 +277,6 @@ export default createRule<
     };
 
     const graphqlModules = ["@nestjs/graphql", "@nest-boot/graphql"];
-    const decoratorModules = [
-      ...graphqlModules,
-      ...source.ast.body.flatMap((node) =>
-        node.type === AST_NODE_TYPES.ImportDeclaration
-          ? [node.source.value]
-          : [],
-      ),
-    ];
     const jsonModule = "graphql-type-json";
     const scalarModules = (name: string) =>
       name === "GraphQLJSONObject" ? jsonModule : graphqlModules;
@@ -287,28 +285,20 @@ export default createRule<
         ? namedImportBinding(source, scalarModules(name), name, importLocation)
         : name;
     const typeBinding = (info: TypeInfo) =>
-      info.isCustomType
+      info.scalarExpression ??
+      (info.isCustomType
         ? (info.typeName ?? "")
-        : scalarBinding(info.typeName ?? "");
+        : scalarBinding(info.typeName ?? ""));
     const fieldBinding = () =>
-      namedImportBinding(source, decoratorModules, "Field", importLocation);
+      namedImportBinding(source, graphqlModules, "Field", importLocation);
     const decoratorName = (name: TSESTree.Node) =>
-      importedBindingName(source, decoratorModules, name);
+      importedBindingName(source, graphqlModules, name);
 
     const ensureImports = (fixes: CustomFix[], info: TypeInfo) => {
-      const expected = info.isCustomType ? "" : (info.typeName ?? "");
-      const fieldFromBarrel =
-        hasNamedImport(
-          source,
-          decoratorModules,
-          "Field",
-          false,
-          importLocation,
-        ) &&
-        fieldBinding() !==
-          namedImportBinding(source, graphqlModules, "Field", importLocation);
+      const expected =
+        info.isCustomType || info.scalarExpression ? "" : (info.typeName ?? "");
       const names = [
-        ...(fieldFromBarrel ? [] : ["Field"]),
+        "Field",
         ...(["Int", "Float", "ID"].includes(expected) ? [expected] : []),
       ];
       const edits = namedImportEdits(
@@ -318,16 +308,6 @@ export default createRule<
         true,
         importLocation,
       );
-      if (fieldFromBarrel)
-        edits.push(
-          ...namedImportEdits(
-            source,
-            decoratorModules,
-            ["Field"],
-            true,
-            importLocation,
-          ),
-        );
       if (expected === "GraphQLJSONObject")
         edits.push(
           ...namedImportEdits(
@@ -343,44 +323,10 @@ export default createRule<
       );
     };
 
-    const customTypeImportEdits = (info: TypeInfo): RuleFix[] => {
-      if (
-        !info.typeReference ||
-        !isTypeOnlyImportReference(source, info.typeReference)
-      )
-        return [];
-      const variable = (source.scopeManager?.scopes ?? [])
-        .flatMap((scope) => scope.references)
-        .find(
-          (reference) => reference.identifier === info.typeReference,
-        )?.resolved;
-      const definition = variable?.defs.find(
-        (candidate) => candidate.type === Scope.DefinitionType.ImportBinding,
-      );
-      if (!definition) return [];
-      const declaration = definition.parent;
-      if (declaration.importKind === "type") {
-        const edits: RuleFix[] = [
-          { range: source.getTokens(declaration)[1].range, text: "" },
-        ];
-        for (const specifier of declaration.type ===
-        AST_NODE_TYPES.ImportDeclaration
-          ? declaration.specifiers
-          : []) {
-          if (
-            specifier.type === AST_NODE_TYPES.ImportSpecifier &&
-            specifier !== definition.node
-          )
-            edits.push({
-              range: [specifier.range[0], specifier.range[0]],
-              text: "type ",
-            });
-        }
-        return edits;
-      }
-      const token = source.getFirstToken(definition.node);
-      return token ? [{ range: token.range, text: "" }] : [];
-    };
+    const customTypeImportEdits = (info: TypeInfo): RuleFix[] =>
+      info.typeReference
+        ? promoteImportReferences(source, [info.typeReference])
+        : [];
 
     const addFieldDecorator = (
       property: TSESTree.PropertyDefinition,
@@ -516,6 +462,23 @@ export default createRule<
       ClassDeclaration(node) {
         if (!isGraphqlModelClass(node)) return;
         importLocation = node;
+        const modelImports = promoteImportReferences(
+          source,
+          node.decorators.flatMap((decorator) =>
+            decorator.expression.type === AST_NODE_TYPES.CallExpression &&
+            decoratorName(decorator.expression.callee) !== null
+              ? [decorator.expression.callee]
+              : [],
+          ),
+        );
+        if (modelImports.length) {
+          context.report({
+            node,
+            messageId: "alignFieldDecoratorWithTsType",
+            fix: () => modelImports,
+          });
+          return;
+        }
 
         node.body.body.forEach((member: TSESTree.ClassElement) => {
           if (member.type !== AST_NODE_TYPES.PropertyDefinition) return;
@@ -661,19 +624,60 @@ export default createRule<
                   : null
                 : firstArg.body;
             scalarReference = scalarNode;
-            const numericScalar = scalarNode
-              ? importedBindingName(source, graphqlModules, scalarNode)
+            const explicitScalar = scalarNode
+              ? importedBindingName(
+                  source,
+                  scalarModules(typeInfo.typeName),
+                  scalarNode,
+                )
               : null;
             const isValidNumberType =
               isNumberType &&
-              !!numericScalar &&
-              ["Int", "Float"].includes(numericScalar) &&
+              !!explicitScalar &&
+              ["Int", "Float"].includes(explicitScalar) &&
               typeInfo.isArray ===
                 (firstArg.body.type === AST_NODE_TYPES.ArrayExpression);
-            if (isValidNumberType) typeInfo.typeName = numericScalar;
+            if (isValidNumberType) typeInfo.typeName = explicitScalar;
+            const isValidScalar =
+              !typeInfo.isCustomType &&
+              !!explicitScalar &&
+              ["Int", "Float", "ID", "GraphQLJSONObject"].includes(
+                explicitScalar,
+              ) &&
+              explicitScalar === typeInfo.typeName &&
+              typeInfo.isArray ===
+                (firstArg.body.type === AST_NODE_TYPES.ArrayExpression);
+            if (
+              isValidScalar &&
+              scalarNode &&
+              !isTypeOnlyImportReference(source, scalarNode)
+            ) {
+              const identifier =
+                scalarNode.type === AST_NODE_TYPES.MemberExpression
+                  ? scalarNode.object
+                  : scalarNode;
+              const imported = (source.scopeManager?.scopes ?? []).some(
+                (scope) =>
+                  scope.references.some(
+                    (reference) =>
+                      reference.identifier === identifier &&
+                      reference.resolved?.defs.some(
+                        (definition) =>
+                          definition.type ===
+                          Scope.DefinitionType.ImportBinding,
+                      ),
+                  ),
+              );
+              // Keep existing explicit value references, including namespace members.
+              // Unresolved ambient names still need generated imports when fixing a field.
+              if (imported)
+                typeInfo.scalarExpression = source.getText(scalarNode);
+            }
 
             const typeMatches =
-              calleeText === expectedTypeText || isValidNumberType;
+              calleeText === expectedTypeText ||
+              isValidNumberType ||
+              isValidScalar;
 
             if (typeMatches && hasNullableOption === typeInfo.isNullable) {
               needReport = false;

@@ -1,3 +1,4 @@
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -9,6 +10,42 @@ import importRule from "../import/import-graphql.js";
 import rule from "./graphql-field-config-from-types.js";
 
 const packageRoot = fileURLToPath(new URL("../../../", import.meta.url));
+// Real re-exports let the parser and compiler verify the same symbol origins.
+const fixtureRoot = path.join(packageRoot, ".cache/graphql-imports");
+mkdirSync(fixtureRoot, { recursive: true });
+afterAll(() => {
+  rmSync(fixtureRoot, { recursive: true, force: true });
+});
+writeFileSync(
+  path.join(fixtureRoot, "barrel.ts"),
+  `
+export { Field, ObjectType, Int, Float, ID } from "@nestjs/graphql";
+export { GraphQLJSONObject } from "graphql-type-json";
+export class User {}
+export default User;
+`,
+);
+writeFileSync(
+  path.join(fixtureRoot, "renamed.ts"),
+  `
+export { Field as Column, ObjectType as Model, Int as Integer, ID as Identifier } from "./barrel.js";
+`,
+);
+writeFileSync(
+  path.join(fixtureRoot, "other.ts"),
+  `
+export function Field(...args: unknown[]): PropertyDecorator { return () => { void args; }; }
+export function ObjectType(): ClassDecorator { return () => undefined; }
+`,
+);
+writeFileSync(
+  path.join(fixtureRoot, "mixed.ts"),
+  `
+export * from "./barrel.js";
+export { Field, ObjectType } from "./other.js";
+`,
+);
+
 const filename = path.join(packageRoot, "v8-autofix-fixture.ts");
 const linter = new Linter();
 const config: Linter.Config[] = [
@@ -43,15 +80,15 @@ const cases: {
   {
     name: "barrel Field alias",
     imports:
-      'import { ObjectType } from "@nest-boot/graphql"; import { Field as GqlField } from "./v8-import-barrel.js";',
+      'import { ObjectType } from "@nest-boot/graphql"; import { Field as GqlField } from "./.cache/graphql-imports/barrel.js";',
     property: "@GqlField(() => String) name?: string;",
     expected: "String",
     field: "GqlField",
   },
   ...[
-    'import type { User } from "./v8-import-barrel.js";',
-    'import { type User } from "./v8-import-barrel.js";',
-    'import type User from "./v8-import-barrel.js";',
+    'import type { User } from "./.cache/graphql-imports/barrel.js";',
+    'import { type User } from "./.cache/graphql-imports/barrel.js";',
+    'import type User from "./.cache/graphql-imports/barrel.js";',
   ].flatMap((customImport) =>
     [true, false].map((existing) => ({
       name: `custom runtime type ${customImport}, existing decorator: ${String(existing)}`,
@@ -65,7 +102,7 @@ const cases: {
   {
     name: "shared type-only barrel declaration",
     imports:
-      'import { ObjectType } from "@nest-boot/graphql"; import type { User, Field } from "./v8-import-barrel.js";',
+      'import { ObjectType } from "@nest-boot/graphql"; import type { User, Field } from "./.cache/graphql-imports/barrel.js";',
     property: "@Field(() => User, { nullable: true }) user?: User;",
     expected: "User",
   },
@@ -97,7 +134,7 @@ const cases: {
     imports:
       'import { ObjectType } from "@nest-boot/graphql"; import * as gql from "@nest-boot/graphql";',
     property: "@gql.Field(() => gql.Int) score?: number;",
-    expected: "Int",
+    expected: "gql.Int",
   },
   {
     name: "namespace MikroORM wrapper",
@@ -317,7 +354,7 @@ it.each([
 
 it("recognizes a model decorator alias re-exported through a barrel", () => {
   const code =
-    'import { ObjectType as Model, Field } from "./v8-import-barrel.js"; @Model() class Thing { name?: string; }';
+    'import { ObjectType as Model, Field } from "./.cache/graphql-imports/barrel.js"; @Model() class Thing { name?: string; }';
   const result = linter.verifyAndFix(code, config, { filename });
   expect(result.messages).toEqual([]);
   expect(result.output).toContain("@Field(() => String, { nullable: true })");
@@ -383,17 +420,7 @@ let previousProgram: ts.Program | undefined;
 function compileDiagnostics(code: string): string[] {
   const host = ts.createCompilerHost(options);
   const getSourceFile = host.getSourceFile.bind(host);
-  const barrel = path.join(packageRoot, "v8-import-barrel.ts");
-  const fileExists = host.fileExists.bind(host);
-  host.fileExists = (file) => file === barrel || fileExists(file);
   host.getSourceFile = (file, ...args) => {
-    if (file === barrel)
-      return ts.createSourceFile(
-        file,
-        'export { Field, ObjectType } from "@nest-boot/graphql"; export class User {} export default User;',
-        ts.ScriptTarget.ES2023,
-        true,
-      );
     if (file === filename)
       return ts.createSourceFile(file, code, ts.ScriptTarget.ES2023, true);
     const cached = sourceFiles.get(file);
@@ -410,3 +437,143 @@ function compileDiagnostics(code: string): string[] {
       ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"),
     );
 }
+
+it.each([true, false])(
+  "does not reuse an unrelated Field (canonical alias: %s)",
+  (withAlias) => {
+    const code = `import { Field } from "./.cache/graphql-imports/other.js";
+import { ${withAlias ? "Field as GqlField, " : ""}ObjectType } from "@nestjs/graphql";
+@ObjectType() class Thing { name!: string; }`;
+    const result = linter.verifyAndFix(code, config, { filename });
+    expect(result.messages).toEqual([]);
+    expect(result.output).toContain(
+      `@${withAlias ? "GqlField" : "Field2"}(() => String)`,
+    );
+    expect(result.output).not.toContain("@Field(");
+    expect(compileDiagnostics(result.output)).toEqual([]);
+    expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
+      false,
+    );
+  },
+);
+
+it.each(["other", "mixed"])(
+  "ignores an unrelated model exported by %s",
+  (barrel) => {
+    const code = `import { ObjectType as Model } from "./.cache/graphql-imports/${barrel}.js"; @Model() class Thing { name!: string; }`;
+    const result = linter.verifyAndFix(code, config, { filename });
+    expect(result.output).toBe(code);
+    expect(result.messages).toEqual([]);
+    expect(compileDiagnostics(result.output)).toEqual([]);
+  },
+);
+
+it.each([
+  {
+    imports: 'import { Int } from "./.cache/graphql-imports/barrel.js";',
+    scalar: "Int",
+    property: "score!: number",
+  },
+  {
+    imports: 'import { ID } from "./.cache/graphql-imports/barrel.js";',
+    scalar: "ID",
+    property: "id!: string",
+  },
+  {
+    imports: 'import { Integer } from "./.cache/graphql-imports/renamed.js";',
+    scalar: "[Integer]",
+    property: "scores!: number[]",
+  },
+  {
+    imports: 'import * as scalars from "./.cache/graphql-imports/barrel.js";',
+    scalar: "scalars.ID",
+    property: "id!: string",
+  },
+])(
+  "preserves a valid explicit barrel $scalar",
+  ({ imports, scalar, property }) => {
+    const code = `import { Field, ObjectType } from "@nest-boot/graphql"; ${imports} @ObjectType() class Thing { @Field(() => ${scalar}) ${property}; }`;
+    const result = linter.verifyAndFix(code, config, { filename });
+    expect(result.messages).toEqual([]);
+    expect(result.output).toBe(code);
+    expect(compileDiagnostics(result.output)).toEqual([]);
+  },
+);
+
+it.each([
+  {
+    imports: 'import { Int } from "./.cache/graphql-imports/barrel.js";',
+    scalar: "Int",
+    property: "score?: number",
+  },
+  {
+    imports:
+      'import { Identifier } from "./.cache/graphql-imports/renamed.js";',
+    scalar: "Identifier",
+    property: "id?: string",
+  },
+  {
+    imports: 'import * as scalars from "./.cache/graphql-imports/barrel.js";',
+    scalar: "[scalars.Int]",
+    property: "scores?: number[]",
+  },
+  {
+    imports:
+      'import { GraphQLJSONObject as Json } from "./.cache/graphql-imports/barrel.js";',
+    scalar: "Json",
+    property: "data?: Record<string, unknown>",
+  },
+])(
+  "retains explicit $scalar while correcting nullability",
+  ({ imports, scalar, property }) => {
+    const code = `import { Field, ObjectType } from "@nestjs/graphql"; ${imports} @ObjectType() class Thing { @Field(() => ${scalar}) ${property}; }`;
+    const result = linter.verifyAndFix(code, config, { filename });
+    expect(result.messages).toEqual([]);
+    expect(result.output).toContain(
+      `@Field(() => ${scalar}, { nullable: true })`,
+    );
+    expect(compileDiagnostics(result.output)).toEqual([]);
+    expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
+      false,
+    );
+  },
+);
+
+it("reuses renamed model and field exports through a second barrel", () => {
+  const code =
+    'import { Model, Column } from "./.cache/graphql-imports/renamed.js"; @Model() class Thing { name!: string; }';
+  const result = linter.verifyAndFix(code, config, { filename });
+  expect(result.messages).toEqual([]);
+  expect(result.output).toContain("@Column(() => String)");
+  expect(compileDiagnostics(result.output)).toEqual([]);
+  expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
+    false,
+  );
+});
+
+it.each([
+  'import type { ObjectType, Field, Int } from "./.cache/graphql-imports/barrel.js"; @ObjectType() class Thing { @Field(() => Int) score?: number; }',
+  'import type * as gql from "./.cache/graphql-imports/barrel.js"; @gql.ObjectType() class Thing { @gql.Field(() => gql.Int) score?: number; }',
+  'import { ObjectType, Field } from "@nest-boot/graphql"; import { type Integer } from "./.cache/graphql-imports/renamed.js"; @ObjectType() class Thing { @Field(() => Integer) score?: number; }',
+])("promotes erased barrel runtime references and stabilizes: %s", (code) => {
+  const result = linter.verifyAndFix(code, config, { filename });
+  expect(result.messages).toEqual([]);
+  expect(result.output).not.toContain("Float");
+  expect(compileDiagnostics(result.output)).toEqual([]);
+  expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
+    false,
+  );
+});
+
+it("checks individual export identities in a mixed barrel", () => {
+  const code =
+    'import { ObjectType } from "@nestjs/graphql"; import { Field, Int } from "./.cache/graphql-imports/mixed.js"; @ObjectType() class Thing { @Field(() => Int) score!: number; }';
+  const result = linter.verifyAndFix(code, config, { filename });
+  expect(result.messages).toEqual([]);
+  expect(result.output).toContain("@Field(() => Int)");
+  expect(result.output).toContain("@Field2(() => Float)");
+  expect(compileDiagnostics(result.output)).toEqual([]);
+  expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
+    false,
+  );
+});

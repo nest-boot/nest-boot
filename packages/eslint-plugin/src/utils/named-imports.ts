@@ -1,9 +1,15 @@
-import { AST_NODE_TYPES, type TSESTree } from "@typescript-eslint/utils";
+import {
+  AST_NODE_TYPES,
+  AST_TOKEN_TYPES,
+  type TSESTree,
+} from "@typescript-eslint/utils";
 import {
   type RuleFix,
   Scope,
   type SourceCode,
 } from "@typescript-eslint/utils/ts-eslint";
+
+import { reexportedImportName } from "./import-origin.js";
 
 type Modules = string | readonly string[];
 
@@ -46,21 +52,26 @@ function findImport(
       specifier: TSESTree.ImportSpecifier;
     }
   | undefined {
-  const bindings = importsFrom(source, modules).flatMap((declaration) =>
-    declaration.specifiers.flatMap((specifier) =>
-      specifier.type === AST_NODE_TYPES.ImportSpecifier &&
-      importedName(specifier) === name &&
-      visibleScopes(source, location)
-        .map((scope) => scope.set.get(specifier.local.name))
-        .find((variable) => !!variable)
-        ?.defs.some(
-          (definition) =>
-            definition.type === Scope.DefinitionType.ImportBinding &&
-            definition.node === specifier,
-        )
-        ? [{ declaration, specifier }]
-        : [],
-    ),
+  const bindings = source.ast.body.flatMap((declaration) =>
+    declaration.type !== AST_NODE_TYPES.ImportDeclaration
+      ? []
+      : declaration.specifiers.flatMap((specifier) =>
+          specifier.type === AST_NODE_TYPES.ImportSpecifier &&
+          (matchesModule(modules, declaration.source.value)
+            ? importedName(specifier)
+            : reexportedImportName(source, modules, specifier.local)) ===
+            name &&
+          visibleScopes(source, location)
+            .map((scope) => scope.set.get(specifier.local.name))
+            .find((variable) => !!variable)
+            ?.defs.some(
+              (definition) =>
+                definition.type === Scope.DefinitionType.ImportBinding &&
+                definition.node === specifier,
+            )
+            ? [{ declaration, specifier }]
+            : [],
+        ),
   );
   const values = bindings.filter(
     ({ declaration, specifier }) =>
@@ -134,10 +145,11 @@ export function importedBindingName(
   for (const definition of variable.defs) {
     if (
       definition.type !== Scope.DefinitionType.ImportBinding ||
-      definition.parent.type !== AST_NODE_TYPES.ImportDeclaration ||
-      !matchesModule(modules, definition.parent.source.value)
+      definition.parent.type !== AST_NODE_TYPES.ImportDeclaration
     )
       continue;
+    if (!matchesModule(modules, definition.parent.source.value))
+      return reexportedImportName(source, modules, node);
     if (
       node === identifier &&
       definition.node.type === AST_NODE_TYPES.ImportSpecifier
@@ -214,6 +226,70 @@ export function namedImportEdits(
     }
   }
 
+  edits.push(...promotionEdits(source, promotions));
+
+  if (missing.length > 0) {
+    const target = imports.find(
+      (node) =>
+        (!valueImport || node.importKind !== "type") &&
+        node.specifiers.some(
+          (specifier) => specifier.type === AST_NODE_TYPES.ImportSpecifier,
+        ),
+    );
+    const last = target?.specifiers.at(-1);
+    if (last) {
+      const separator = source.getText(target).includes("\n") ? ",\n  " : ", ";
+      edits.push({
+        range: [last.range[1], last.range[1]],
+        text: separator + missing.join(separator),
+      });
+    } else {
+      const firstImport = source.ast.body.find(
+        (node) => node.type === AST_NODE_TYPES.ImportDeclaration,
+      );
+      const firstStatement = source.ast.body.find(
+        (node) =>
+          node.type !== AST_NODE_TYPES.ExpressionStatement || !node.directive,
+      );
+      const anchor = firstImport ?? firstStatement;
+      const attachedComment =
+        anchor &&
+        source
+          .getCommentsBefore(anchor)
+          .find(
+            (comment) =>
+              (comment.type === AST_TOKEN_TYPES.Block &&
+                comment.value.startsWith("*") &&
+                !/@(?:license|preserve|file(?:overview)?)\b|copyright/i.test(
+                  comment.value,
+                )) ||
+              /(?:istanbul|c8|v8)\s+ignore\s+(?:next|start)\b|@ts-(?:ignore|expect-error)\b|eslint-disable-next-line\b/.test(
+                comment.value,
+              ),
+          );
+      const start =
+        attachedComment?.range[0] ?? anchor?.range[0] ?? source.text.length;
+      const lineStart = source.text.lastIndexOf("\n", start - 1) + 1;
+      const prefix = source.text.slice(lineStart, start);
+      const indent = /^[ \t]*/.exec(prefix)?.[0] ?? "";
+      const separator = prefix.trim() ? `\n${indent}` : "";
+      const moduleName =
+        imports[0]?.source.value ??
+        (typeof modules === "string" ? modules : modules[0]);
+      edits.push({
+        range: [start, start],
+        text: `${separator}import { ${missing.join(", ")} } from ${JSON.stringify(moduleName)};\n${indent}`,
+      });
+    }
+  }
+  return edits;
+}
+
+function promotionEdits(
+  source: Readonly<SourceCode>,
+  promotions: Map<TSESTree.ImportDeclaration, Set<string>>,
+): RuleFix[] {
+  const edits: RuleFix[] = [];
   for (const [declaration, promoted] of promotions) {
     if (declaration.importKind === "type") {
       const typeToken = source.getTokens(declaration)[1];
@@ -243,43 +319,36 @@ export function namedImportEdits(
     }
   }
 
-  if (missing.length > 0) {
-    const target = imports.find(
-      (node) =>
-        (!valueImport || node.importKind !== "type") &&
-        node.specifiers.some(
-          (specifier) => specifier.type === AST_NODE_TYPES.ImportSpecifier,
-        ),
-    );
-    const last = target?.specifiers.at(-1);
-    if (last) {
-      const separator = source.getText(target).includes("\n") ? ",\n  " : ", ";
-      edits.push({
-        range: [last.range[1], last.range[1]],
-        text: separator + missing.join(separator),
-      });
-    } else {
-      const firstImport = source.ast.body.find(
-        (node) => node.type === AST_NODE_TYPES.ImportDeclaration,
-      );
-      const firstStatement = source.ast.body.find(
-        (node) =>
-          node.type !== AST_NODE_TYPES.ExpressionStatement || !node.directive,
-      );
-      const start =
-        firstImport?.range[0] ?? firstStatement?.range[0] ?? source.text.length;
-      const lineStart = source.text.lastIndexOf("\n", start - 1) + 1;
-      const prefix = source.text.slice(lineStart, start);
-      const indent = /^[ \t]*/.exec(prefix)?.[0] ?? "";
-      const separator = prefix.trim() ? `\n${indent}` : "";
-      const moduleName =
-        imports[0]?.source.value ??
-        (typeof modules === "string" ? modules : modules[0]);
-      edits.push({
-        range: [start, start],
-        text: `${separator}import { ${missing.join(", ")} } from ${JSON.stringify(moduleName)};\n${indent}`,
-      });
+  return edits;
+}
+
+/** Promotes exactly the erased imports referenced at runtime, including namespaces. @internal */
+export function promoteImportReferences(
+  source: Readonly<SourceCode>,
+  nodes: readonly TSESTree.Node[],
+): RuleFix[] {
+  const promotions = new Map<TSESTree.ImportDeclaration, Set<string>>();
+  for (const node of nodes) {
+    const identifier =
+      node.type === AST_NODE_TYPES.MemberExpression
+        ? node.object
+        : node.type === AST_NODE_TYPES.TSQualifiedName
+          ? node.left
+          : node;
+    const variable = (source.scopeManager?.scopes ?? [])
+      .flatMap((scope) => scope.references)
+      .find((reference) => reference.identifier === identifier)?.resolved;
+    for (const definition of variable?.defs ?? []) {
+      if (
+        definition.type !== Scope.DefinitionType.ImportBinding ||
+        definition.parent.type !== AST_NODE_TYPES.ImportDeclaration ||
+        definition.node.type === AST_NODE_TYPES.TSImportEqualsDeclaration
+      )
+        continue;
+      const names = promotions.get(definition.parent) ?? new Set<string>();
+      names.add(definition.node.local.name);
+      promotions.set(definition.parent, names);
     }
   }
-  return edits;
+  return promotionEdits(source, promotions);
 }
