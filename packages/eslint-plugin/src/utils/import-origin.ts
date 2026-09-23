@@ -16,6 +16,7 @@ export function reexportedImportName(
   source: Readonly<SourceCode>,
   modules: string | readonly string[],
   node: TSESTree.Node,
+  namespaceMember?: string,
 ): string | null {
   const { program, esTreeNodeToTSNodeMap } = source.parserServices ?? {};
   if (!program || !esTreeNodeToTSNodeMap) return null;
@@ -25,7 +26,9 @@ export function reexportedImportName(
     symbol.flags & ts.SymbolFlags.Alias
       ? checker.getAliasedSymbol(symbol)
       : symbol;
-  const reference = checker.getSymbolAtLocation(original);
+  const reference = namespaceMember
+    ? checker.getTypeAtLocation(original).getProperty(namespaceMember)
+    : checker.getSymbolAtLocation(original);
   if (!reference) return null;
   const symbol = unalias(reference);
   const declarations = symbol.getDeclarations();

@@ -54,6 +54,8 @@ const config: Linter.Config[] = [
     languageOptions: {
       parser,
       parserOptions: {
+        // verifyAndFix reparses different source snapshots in this process, including on CI.
+        disallowAutomaticSingleRunInference: true,
         projectService: { allowDefaultProject: ["v8-autofix-fixture.ts"] },
         tsconfigRootDir: packageRoot,
       },
@@ -577,3 +579,24 @@ it("checks individual export identities in a mixed barrel", () => {
     false,
   );
 });
+
+it.each([
+  ["@nestjs/graphql", "ObjectType", "Field", "Int"],
+  ["./.cache/graphql-imports/barrel.js", "ObjectType", "Field", "Int"],
+  ["./.cache/graphql-imports/renamed.js", "Model", "Column", "Integer"],
+])(
+  "recognizes const-destructured decorators and scalars from %s",
+  (module, model, field, scalar) => {
+    const code = `import * as gql from "${module}";
+const { ${model}: Model, ${field}: Column, ${scalar}: Integer } = gql;
+@Model() class Thing { @Column(() => Integer) score?: number; }`;
+    const result = linter.verifyAndFix(code, config, { filename });
+    expect(result.messages).toEqual([]);
+    expect(result.output).toContain("{ nullable: true }");
+    expect(result.output).not.toContain("Float");
+    expect(compileDiagnostics(result.output)).toEqual([]);
+    expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
+      false,
+    );
+  },
+);
