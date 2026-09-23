@@ -7,7 +7,18 @@ import type { RuleFix, RuleFixer } from "@typescript-eslint/utils/ts-eslint";
 import * as ts from "typescript";
 
 import { createRule } from "../../utils/createRule.js";
-import { hasClassDecorator } from "../../utils/decorators.js";
+import {
+  hasNamedImport,
+  importedBindingName,
+  isTypeOnlyImportReference,
+  namedImportBinding,
+  namedImportEdits,
+  promoteImportReferences,
+} from "../../utils/named-imports.js";
+import {
+  legacyDecoratorImports,
+  legacyNamespaceEdits,
+} from "./legacy-decorator-imports.js";
 
 // Custom Fix object type for deferred fix application
 interface CustomFix {
@@ -32,6 +43,7 @@ export default createRule<
   | "useEnumDecorator"
   | "useOptTypeForInitializedProperty"
   | "removeOptTypeForNonInitializedProperty"
+  | "useLegacyDecoratorImports"
 >({
   name: "entity-property-config-from-types",
   meta: {
@@ -43,6 +55,8 @@ export default createRule<
     fixable: "code",
     schema: [],
     messages: {
+      useLegacyDecoratorImports:
+        "Import MikroORM helpers from @mikro-orm/core and decorators from @mikro-orm/decorators/legacy.",
       alignPropertyDecoratorWithTsType:
         "@Property decorator should align with the TypeScript type (type and nullable).",
       removePropertyDecorator:
@@ -58,6 +72,58 @@ export default createRule<
   defaultOptions: [],
   create(context) {
     const source = context.sourceCode;
+    let importLocation: TSESTree.Node = source.ast;
+    const namespaceEdits = legacyNamespaceEdits(source);
+    if (namespaceEdits.length)
+      return {
+        Program(node) {
+          context.report({
+            node,
+            messageId: "useLegacyDecoratorImports",
+            fix: () => namespaceEdits,
+          });
+        },
+      };
+    const legacyImports = legacyDecoratorImports(source);
+    if (legacyImports.length > 0) {
+      // Let ESLint reparse migrated imports before generating property fixes.
+      return {
+        Program() {
+          for (const { node, text } of legacyImports) {
+            context.report({
+              node,
+              messageId: "useLegacyDecoratorImports",
+              fix: (fixer) => fixer.replaceText(node, text),
+            });
+          }
+        },
+      };
+    }
+    const coreModule = "@mikro-orm/core";
+    const decoratorsModule = "@mikro-orm/decorators/legacy";
+    const coreName = (local: TSESTree.Node) =>
+      importedBindingName(source, coreModule, local);
+    const decoratorModules = [
+      decoratorsModule,
+      "@nest-boot/mikro-orm-crypt",
+      "@nest-boot/mikro-orm-hash",
+    ];
+    const decoratorName = (local: TSESTree.Node) =>
+      importedBindingName(source, decoratorModules, local);
+    const importEdits = (
+      modules: string | readonly string[],
+      names: readonly string[],
+      value = true,
+    ) => namedImportEdits(source, modules, names, value, importLocation);
+    const hasImport = (
+      modules: string | readonly string[],
+      name: string,
+      value = true,
+    ) => hasNamedImport(source, modules, name, value, importLocation);
+    const coreBinding = (name: string) =>
+      namedImportBinding(source, coreModule, name, importLocation);
+    const decoratorBinding = (name: string) =>
+      namedImportBinding(source, decoratorsModule, name, importLocation);
     const parserServices = ESLintUtils.getParserServices(context);
     const checker = parserServices.program.getTypeChecker();
 
@@ -252,8 +318,7 @@ export default createRule<
     const isCollectionType = (node: TSESTree.TypeNode): boolean => {
       return (
         node.type === AST_NODE_TYPES.TSTypeReference &&
-        node.typeName.type === AST_NODE_TYPES.Identifier &&
-        node.typeName.name === "Collection"
+        coreName(node.typeName) === "Collection"
       );
     };
 
@@ -269,150 +334,23 @@ export default createRule<
       const typeNode = typeAnnotation.typeAnnotation;
       return (
         typeNode.type === AST_NODE_TYPES.TSTypeReference &&
-        typeNode.typeName.type === AST_NODE_TYPES.Identifier &&
-        typeNode.typeName.name === "Opt"
+        coreName(typeNode.typeName) === "Opt"
       );
     };
 
-    // Check if a named MikroORM helper is imported
-    const hasMikroOrmImport = (
-      importName: string,
-      options: { valueOnly?: boolean } = {},
-    ): boolean => {
-      const program = context.sourceCode.ast;
-      for (const statement of program.body) {
-        if (statement.type === AST_NODE_TYPES.ImportDeclaration) {
-          const importSource = statement.source.value;
-          // Check imports from @mikro-orm/*
-          if (
-            typeof importSource === "string" &&
-            importSource.startsWith("@mikro-orm/")
-          ) {
-            if (options.valueOnly && statement.importKind === "type") {
-              continue;
-            }
+    const hasOptImport = () => hasImport(coreModule, "Opt", false);
+    const hasEnumImport = () => hasImport(decoratorsModule, "Enum");
 
-            const hasImport = statement.specifiers.some(
-              (spec: TSESTree.ImportClause) => {
-                return (
-                  spec.type === AST_NODE_TYPES.ImportSpecifier &&
-                  (!options.valueOnly || spec.importKind !== "type") &&
-                  spec.local.name === importName
-                );
-              },
-            );
-            if (hasImport) return true;
-          }
-        }
-      }
-      return false;
-    };
-
-    const hasOptImport = (): boolean => hasMikroOrmImport("Opt");
-    const hasEnumImport = (): boolean =>
-      hasMikroOrmImport("Enum", { valueOnly: true });
-    const hasPropertyImport = (): boolean =>
-      hasMikroOrmImport("Property", { valueOnly: true });
-    const hasTImport = (): boolean =>
-      hasMikroOrmImport("t", { valueOnly: true });
-
-    // Add named helpers to the @mikro-orm/core import
-    const addMikroOrmImports = (
-      fixer: RuleFixer,
-      importNames: string[],
-      options: { valueImport?: boolean } = {},
-    ): RuleFix | null => {
-      const program = context.sourceCode.ast;
-      const uniqueImportNames = [...new Set(importNames)];
-
-      if (uniqueImportNames.length === 0) {
-        return null;
-      }
-
-      // Find the @mikro-orm/core import statement
-      let coreImport: TSESTree.ImportDeclaration | null = null;
-
-      for (const statement of program.body) {
-        if (statement.type === AST_NODE_TYPES.ImportDeclaration) {
-          const importSource = statement.source.value;
-          if (
-            importSource === "@mikro-orm/core" &&
-            (!options.valueImport || statement.importKind !== "type")
-          ) {
-            coreImport = statement;
-            break;
-          }
-        }
-      }
-
-      if (coreImport) {
-        // Already has @mikro-orm/core import, add the helper to the import list
-        const lastSpecifier =
-          coreImport.specifiers[coreImport.specifiers.length - 1];
-
-        // Check if it's a multiline import
-        const importText = source.getText(coreImport);
-        const isMultiline = importText.includes("\n");
-
-        if (isMultiline) {
-          // Multiline import: add after the last import item, keeping indentation
-          const indent = "  "; // Assuming 2-space indentation
-          return fixer.insertTextAfter(
-            lastSpecifier,
-            uniqueImportNames.map((name) => `,\n${indent}${name}`).join(""),
-          );
-        } else {
-          // Single-line import: add directly
-          return fixer.insertTextAfter(
-            lastSpecifier,
-            `, ${uniqueImportNames.join(", ")}`,
-          );
-        }
-      } else {
-        // No @mikro-orm/core import, add a new import statement at the top
-        const firstImport = program.body.find(
-          (node: TSESTree.ProgramStatement) =>
-            node.type === AST_NODE_TYPES.ImportDeclaration,
-        );
-
-        if (firstImport) {
-          return fixer.insertTextBefore(
-            firstImport,
-            `import { ${uniqueImportNames.join(", ")} } from '@mikro-orm/core';\n`,
-          );
-        }
-      }
-      return null;
-    };
-
-    const addMikroOrmImport = (
-      fixer: RuleFixer,
-      importName: string,
-      options: { valueImport?: boolean } = {},
-    ): RuleFix | null => addMikroOrmImports(fixer, [importName], options);
-
-    const addOptImport = (fixer: RuleFixer): RuleFix | null =>
-      addMikroOrmImport(fixer, "Opt");
-
-    const addEnumImport = (fixer: RuleFixer): RuleFix | null =>
-      addMikroOrmImport(fixer, "Enum", { valueImport: true });
-
-    const addPropertyDecoratorImports = (
-      fixer: RuleFixer,
-      info: TypeInfo,
-    ): RuleFix | null => {
-      const importNames: string[] = [];
-
-      if (!hasPropertyImport()) {
-        importNames.push("Property");
-      }
-
-      if (info.propertyType?.startsWith("t.") && !hasTImport()) {
-        importNames.push("t");
-      }
-
-      return addMikroOrmImports(fixer, importNames, { valueImport: true });
-    };
+    const addOptImport = (): RuleFix[] =>
+      importEdits(coreModule, ["Opt"], false);
+    const addEnumImport = (): RuleFix[] =>
+      importEdits(decoratorsModule, ["Enum"]);
+    const addPropertyDecoratorImports = (info: TypeInfo): RuleFix[] => [
+      ...importEdits(decoratorsModule, ["Property"]),
+      ...(info.propertyType?.startsWith("t.")
+        ? importEdits(coreModule, ["t"])
+        : []),
+    ];
 
     const computeTypeInfo = (
       property: TSESTree.PropertyDefinition,
@@ -453,9 +391,8 @@ export default createRule<
       // First unwrap Ref<T> and Opt<T> → T, and handle null/undefined within
       if (
         baseTypeNode?.type === AST_NODE_TYPES.TSTypeReference &&
-        baseTypeNode.typeName.type === AST_NODE_TYPES.Identifier &&
-        (baseTypeNode.typeName.name === "Ref" ||
-          baseTypeNode.typeName.name === "Opt")
+        (coreName(baseTypeNode.typeName) === "Ref" ||
+          coreName(baseTypeNode.typeName) === "Opt")
       ) {
         let inner = baseTypeNode.typeArguments?.params[0] ?? null;
         if (inner?.type === AST_NODE_TYPES.TSUnionType) {
@@ -612,7 +549,7 @@ export default createRule<
 
     // Wrap type with Opt<T>
     const wrapWithOpt = (typeString: string): string => {
-      return `Opt<${typeString}>`;
+      return `${coreBinding("Opt")}<${typeString}>`;
     };
 
     const buildEnumDecorator = (info: TypeInfo): string => {
@@ -627,22 +564,30 @@ export default createRule<
       }
 
       if (options.length === 0) {
-        return "@Enum()";
+        return `@${decoratorBinding("Enum")}()`;
       }
 
-      return `@Enum({ ${options.join(", ")} })`;
+      return `@${decoratorBinding("Enum")}({ ${options.join(", ")} })`;
     };
 
     const buildPropertyDecorator = (
       info: TypeInfo,
       otherProps: { key: string; value: string }[] = [],
       decoratorName = "Property",
+      customReference?: string,
     ): string => {
+      const binding =
+        customReference ??
+        (["Property", "PrimaryKey"].includes(decoratorName)
+          ? decoratorBinding(decoratorName)
+          : decoratorName);
       const options: string[] = [];
 
       // If there is a propertyType configuration, add type
       if (info.propertyType) {
-        options.push(`type: ${info.propertyType}`);
+        options.push(
+          `type: ${info.propertyType.replace(/^t\./, `${coreBinding("t")}.`)}`,
+        );
       }
 
       // Add other properties (keeping original order)
@@ -655,10 +600,10 @@ export default createRule<
       }
 
       if (options.length === 0) {
-        return `@${decoratorName}()`;
+        return `@${binding}()`;
       }
 
-      return `@${decoratorName}({ ${options.join(", ")} })`;
+      return `@${binding}({ ${options.join(", ")} })`;
     };
 
     const addPropertyDecorator = (
@@ -735,6 +680,10 @@ export default createRule<
         finalInfo,
         currentConfig.otherProps,
         decoratorName,
+        !["Property", "PrimaryKey"].includes(decoratorName) &&
+          propertyDecorator.expression.type === AST_NODE_TYPES.CallExpression
+          ? source.getText(propertyDecorator.expression.callee)
+          : undefined,
       );
 
       fixes.push({
@@ -757,7 +706,11 @@ export default createRule<
     };
 
     const isEntityClass = (node: TSESTree.ClassDeclaration): boolean => {
-      return hasClassDecorator(node, "Entity");
+      return node.decorators.some(
+        (decorator) =>
+          decorator.expression.type === AST_NODE_TYPES.CallExpression &&
+          decoratorName(decorator.expression.callee) === "Entity",
+      );
     };
 
     const parsePropertyDecorator = (
@@ -766,6 +719,7 @@ export default createRule<
       type: string | null;
       nullable: boolean;
       otherProps: { key: string; value: string }[];
+      typeReference?: TSESTree.Node;
     } => {
       const callExpr = decorator.expression;
       if (
@@ -781,6 +735,7 @@ export default createRule<
       }
 
       let type: string | null = null;
+      let typeReference: TSESTree.Node | undefined;
       let nullable = false;
       const otherProps: { key: string; value: string }[] = [];
 
@@ -791,6 +746,15 @@ export default createRule<
 
         if (prop.key.name === "type") {
           type = source.getText(prop.value);
+          if (
+            prop.value.type === AST_NODE_TYPES.MemberExpression &&
+            !prop.value.computed &&
+            prop.value.property.type === AST_NODE_TYPES.Identifier &&
+            coreName(prop.value.object) === "t"
+          ) {
+            type = `t.${prop.value.property.name}`;
+            typeReference = prop.value.object;
+          }
         } else if (prop.key.name === "nullable") {
           if (
             prop.value.type === AST_NODE_TYPES.Literal &&
@@ -807,7 +771,7 @@ export default createRule<
         }
       }
 
-      return { type, nullable, otherProps };
+      return { type, nullable, otherProps, typeReference };
     };
 
     const parseEnumDecorator = (
@@ -854,70 +818,38 @@ export default createRule<
 
     // Check if the file uses the Opt type but hasn't imported it
     const checkOptUsageWithoutImport = (node: TSESTree.ClassDeclaration) => {
-      let usesOpt = false;
+      const annotations = node.body.body.flatMap((member) =>
+        member.type === AST_NODE_TYPES.PropertyDefinition &&
+        member.typeAnnotation
+          ? [member.typeAnnotation]
+          : [],
+      );
+      const missingOpt = (source.scopeManager?.scopes ?? [])
+        .flatMap((scope) => scope.references)
+        .filter(
+          (reference) =>
+            !reference.resolved &&
+            reference.identifier.name === "Opt" &&
+            reference.identifier.parent.type ===
+              AST_NODE_TYPES.TSTypeReference &&
+            annotations.some(
+              (annotation) =>
+                annotation.range[0] <= reference.identifier.range[0] &&
+                annotation.range[1] >= reference.identifier.range[1],
+            ),
+        )
+        .map((reference) => reference.identifier);
 
-      // Iterate through all members to check for Opt<T> type annotations
-      node.body.body.forEach((member: TSESTree.ClassElement) => {
-        if (member.type !== AST_NODE_TYPES.PropertyDefinition) return;
-
-        const typeAnnotation = member.typeAnnotation?.typeAnnotation;
-        if (!typeAnnotation) return;
-
-        // Recursively check if the type node contains Opt
-        const containsOpt = (typeNode: TSESTree.TypeNode): boolean => {
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-          if (!typeNode) return false;
-
-          // Check if it's Opt<T>
-          if (
-            typeNode.type === AST_NODE_TYPES.TSTypeReference &&
-            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-            typeNode.typeName?.type === AST_NODE_TYPES.Identifier &&
-            typeNode.typeName.name === "Opt"
-          ) {
-            return true;
-          }
-
-          // Recursively check union types
-          if (typeNode.type === AST_NODE_TYPES.TSUnionType) {
-            return typeNode.types.some((t: TSESTree.TypeNode) =>
-              containsOpt(t),
-            );
-          }
-
-          // Recursively check type parameters
-          if (
-            typeNode.type === AST_NODE_TYPES.TSTypeReference &&
-            typeNode.typeArguments?.params
-          ) {
-            return typeNode.typeArguments.params.some(
-              (param: TSESTree.TypeNode) => containsOpt(param),
-            );
-          }
-
-          // Recursively check array element type
-          if (typeNode.type === AST_NODE_TYPES.TSArrayType) {
-            return containsOpt(typeNode.elementType);
-          }
-
-          return false;
-        };
-
-        if (containsOpt(typeAnnotation)) {
-          usesOpt = true;
-        }
-      });
-
-      // If Opt is used but not imported, report an error
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      if (usesOpt && !hasOptImport()) {
+      if (missingOpt.length > 0) {
         context.report({
           node,
           messageId: "useOptTypeForInitializedProperty",
-          fix: (fixer) => {
-            const importFix = addOptImport(fixer);
-            return importFix ? [importFix] : [];
-          },
+          fix: (fixer) => [
+            ...addOptImport(),
+            ...missingOpt.map((identifier) =>
+              fixer.replaceText(identifier, coreBinding("Opt")),
+            ),
+          ],
         });
       }
     };
@@ -925,6 +857,39 @@ export default createRule<
     return {
       ClassDeclaration(node) {
         if (!isEntityClass(node)) return;
+        importLocation = node;
+        const runtimeReferences: TSESTree.Node[] = [
+          ...node.decorators,
+          ...node.body.body.flatMap((member) =>
+            "decorators" in member ? member.decorators : [],
+          ),
+        ].flatMap((decorator) =>
+          decorator.expression.type === AST_NODE_TYPES.CallExpression &&
+          decoratorName(decorator.expression.callee) !== null
+            ? [decorator.expression.callee]
+            : [],
+        );
+        for (const member of node.body.body) {
+          if (member.type !== AST_NODE_TYPES.PropertyDefinition) continue;
+          for (const decorator of member.decorators) {
+            if (
+              decorator.expression.type !== AST_NODE_TYPES.CallExpression ||
+              decoratorName(decorator.expression.callee) === null
+            )
+              continue;
+            const reference = parsePropertyDecorator(decorator).typeReference;
+            if (reference) runtimeReferences.push(reference);
+          }
+        }
+        const promotions = promoteImportReferences(source, runtimeReferences);
+        if (promotions.length) {
+          context.report({
+            node,
+            messageId: "alignPropertyDecoratorWithTsType",
+            fix: () => promotions,
+          });
+          return;
+        }
 
         // First check if Opt is used but not imported
         checkOptUsageWithoutImport(node);
@@ -936,17 +901,14 @@ export default createRule<
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           const hasRelationDecorator = member.decorators?.some(
             (decorator: TSESTree.Decorator) => {
-              if (
-                decorator.expression.type === AST_NODE_TYPES.CallExpression &&
-                decorator.expression.callee.type === AST_NODE_TYPES.Identifier
-              ) {
-                const decoratorName = decorator.expression.callee.name;
+              if (decorator.expression.type === AST_NODE_TYPES.CallExpression) {
+                const name = decoratorName(decorator.expression.callee);
                 return [
                   "OneToOne",
                   "OneToMany",
                   "ManyToOne",
                   "ManyToMany",
-                ].includes(decoratorName);
+                ].includes(name ?? "");
               }
               return false;
             },
@@ -967,12 +929,9 @@ export default createRule<
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           const propertyLikeDecorator = member.decorators?.find(
             (decorator: TSESTree.Decorator) => {
-              if (
-                decorator.expression.type === AST_NODE_TYPES.CallExpression &&
-                decorator.expression.callee.type === AST_NODE_TYPES.Identifier
-              ) {
+              if (decorator.expression.type === AST_NODE_TYPES.CallExpression) {
                 return propertyLikeDecorators.includes(
-                  decorator.expression.callee.name,
+                  decoratorName(decorator.expression.callee) ?? "",
                 );
               }
               return false;
@@ -983,11 +942,8 @@ export default createRule<
           const getDecoratorName = (
             decorator: TSESTree.Decorator,
           ): string | null => {
-            if (
-              decorator.expression.type === AST_NODE_TYPES.CallExpression &&
-              decorator.expression.callee.type === AST_NODE_TYPES.Identifier
-            ) {
-              return decorator.expression.callee.name;
+            if (decorator.expression.type === AST_NODE_TYPES.CallExpression) {
+              return decoratorName(decorator.expression.callee);
             }
             return null;
           };
@@ -998,9 +954,7 @@ export default createRule<
             (decorator: TSESTree.Decorator) => {
               return (
                 decorator.expression.type === AST_NODE_TYPES.CallExpression &&
-                decorator.expression.callee.type ===
-                  AST_NODE_TYPES.Identifier &&
-                decorator.expression.callee.name === "Enum"
+                decoratorName(decorator.expression.callee) === "Enum"
               );
             },
           );
@@ -1052,8 +1006,8 @@ export default createRule<
 
                   // If needed, add Opt import
                   if (needsImport) {
-                    const importFix = addOptImport(fixer);
-                    if (importFix) fixes.push(importFix);
+                    const importFix = addOptImport();
+                    fixes.push(...importFix);
                   }
 
                   return fixes;
@@ -1093,8 +1047,8 @@ export default createRule<
 
                     // If needed, add Opt import
                     if (needsImport) {
-                      const importFix = addOptImport(fixer);
-                      if (importFix) fixes.push(importFix);
+                      const importFix = addOptImport();
+                      fixes.push(...importFix);
                     }
 
                     return fixes;
@@ -1109,16 +1063,27 @@ export default createRule<
             const enumConfig = parseEnumDecorator(enumDecorator);
 
             // Check if nullable configuration matches the TypeScript type
-            if (enumConfig.nullable !== typeInfo.isNullable) {
+            if (
+              enumConfig.nullable !== typeInfo.isNullable ||
+              (enumDecorator.expression.type ===
+                AST_NODE_TYPES.CallExpression &&
+                isTypeOnlyImportReference(
+                  source,
+                  enumDecorator.expression.callee,
+                ))
+            ) {
               const expectedEnumText = buildEnumDecorator(typeInfo);
               context.report({
                 node: enumDecorator,
                 messageId: "alignPropertyDecoratorWithTsType",
                 fix: (fixer) => {
-                  return fixer.replaceTextRange(
-                    enumDecorator.range,
-                    expectedEnumText,
-                  );
+                  return [
+                    ...addEnumImport(),
+                    fixer.replaceTextRange(
+                      enumDecorator.range,
+                      expectedEnumText,
+                    ),
+                  ];
                 },
               });
             }
@@ -1139,11 +1104,11 @@ export default createRule<
                     propertyDecorator.range,
                     newDecoratorText,
                   );
-                  const importFix = hasEnumImport()
-                    ? null
-                    : addEnumImport(fixer);
+                  const importFix = hasEnumImport() ? null : addEnumImport();
 
-                  return importFix ? [importFix, decoratorFix] : decoratorFix;
+                  return importFix
+                    ? [...importFix, decoratorFix]
+                    : decoratorFix;
                 },
               });
               return;
@@ -1159,9 +1124,9 @@ export default createRule<
                   member.range,
                   newDecoratorText + "\n  ",
                 );
-                const importFix = hasEnumImport() ? null : addEnumImport(fixer);
+                const importFix = hasEnumImport() ? null : addEnumImport();
 
-                return importFix ? [importFix, decoratorFix] : decoratorFix;
+                return importFix ? [...importFix, decoratorFix] : decoratorFix;
               },
             });
             return;
@@ -1177,11 +1142,9 @@ export default createRule<
                   fixer,
                   addPropertyDecorator(member, typeInfo),
                 );
-                const importFix = addPropertyDecoratorImports(fixer, typeInfo);
+                const importFix = addPropertyDecoratorImports(typeInfo);
 
-                return importFix
-                  ? [importFix, ...decoratorFixes]
-                  : decoratorFixes;
+                return [...importFix, ...decoratorFixes];
               },
             });
             return;
@@ -1199,7 +1162,15 @@ export default createRule<
             expectedType = "t.integer";
           }
 
-          let needReport = false;
+          let needReport =
+            (propertyDecorator.expression.type ===
+              AST_NODE_TYPES.CallExpression &&
+              isTypeOnlyImportReference(
+                source,
+                propertyDecorator.expression.callee,
+              )) ||
+            (currentConfig.typeReference !== undefined &&
+              isTypeOnlyImportReference(source, currentConfig.typeReference));
 
           // Check type configuration
           if (expectedType && currentConfig.type !== expectedType) {
@@ -1258,7 +1229,17 @@ export default createRule<
                 currentConfig,
                 currentDecoratorName ?? "Property",
               );
-              return applyFixes(fixer, fixes);
+              const usesTypes = fixes.some((fix) =>
+                fix.text.includes(`${coreBinding("t")}.`),
+              );
+              return [
+                ...applyFixes(fixer, fixes),
+                ...(currentDecoratorName !== null &&
+                ["Property", "PrimaryKey"].includes(currentDecoratorName)
+                  ? importEdits(decoratorsModule, [currentDecoratorName])
+                  : []),
+                ...(usesTypes ? importEdits(coreModule, ["t"]) : []),
+              ];
             },
           });
         });

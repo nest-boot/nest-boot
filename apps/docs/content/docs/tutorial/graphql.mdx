@@ -60,8 +60,11 @@ const GraphQLDynamicModule = GraphQLModule.forRootAsync({
 
 `@nest-boot/graphql` re-exports everything from `@nestjs/graphql`, so you can define GraphQL types and entity models using a single set of decorators:
 
+The entity example also uses MikroORM. Complete the [MikroORM installation](./mikro-orm#installation), including `@mikro-orm/decorators`, first.
+
 ```typescript
-import { Entity, PrimaryKey, Property, t } from "@mikro-orm/postgresql";
+import { t } from "@mikro-orm/core";
+import { Entity, PrimaryKey, Property } from "@mikro-orm/decorators/legacy";
 import { Field, ID, ObjectType } from "@nest-boot/graphql";
 
 @ObjectType()

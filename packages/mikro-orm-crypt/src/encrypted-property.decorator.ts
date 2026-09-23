@@ -14,7 +14,8 @@ const ENCRYPTED_PROPERTIES_KEY = Symbol("encryptedProperties");
  *
  * @example
  * ```typescript
- * import { Entity } from '@mikro-orm/core';
+ * import { t } from '@mikro-orm/core';
+ * import { Entity } from '@mikro-orm/decorators/legacy';
  * import { EncryptedProperty } from '@nest-boot/mikro-orm-crypt';
  *
  * @Entity()

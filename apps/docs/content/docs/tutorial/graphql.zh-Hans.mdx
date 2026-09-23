@@ -60,8 +60,11 @@ const GraphQLDynamicModule = GraphQLModule.forRootAsync({
 
 `@nest-boot/graphql` 重新导出了 `@nestjs/graphql` 的所有内容，因此你可以使用一组装饰器同时定义 GraphQL 类型和实体模型：
 
+下面的实体示例还使用了 MikroORM，请先完成 [MikroORM 安装](./mikro-orm#安装)，包括 `@mikro-orm/decorators`。
+
 ```typescript
-import { Entity, PrimaryKey, Property, t } from "@mikro-orm/postgresql";
+import { t } from "@mikro-orm/core";
+import { Entity, PrimaryKey, Property } from "@mikro-orm/decorators/legacy";
 import { Field, ID, ObjectType } from "@nest-boot/graphql";
 
 @ObjectType()

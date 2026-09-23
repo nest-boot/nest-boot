@@ -14,7 +14,8 @@ const HASH_PROPERTIES_KEY = Symbol("hashProperties");
  *
  * @example
  * ```typescript
- * import { Entity } from '@mikro-orm/core';
+ * import { t } from '@mikro-orm/core';
+ * import { Entity } from '@mikro-orm/decorators/legacy';
  * import { HashedProperty } from '@nest-boot/mikro-orm-hash';
  *
  * @Entity()

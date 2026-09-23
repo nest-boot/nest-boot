@@ -10,9 +10,9 @@ description: "@nest-boot/graphql-connection 模块提供遵循 Relay 连接规�
 需要 MikroORM 7.2 或更高版本。游标分页遵循数据库平台原生的空值排序规则，可空字段的正向和反向遍历均适用。
 
 ```bash
-npm install @nest-boot/graphql-connection @nest-boot/graphql @mikro-orm/core@^7.2.0 @mikro-orm/sql@^7.2.0
+npm install @nest-boot/graphql-connection @nest-boot/graphql @mikro-orm/core@^7.2.0 @mikro-orm/sql@^7.2.0 @mikro-orm/decorators@^7.2.0
 # 或
-pnpm add @nest-boot/graphql-connection @nest-boot/graphql @mikro-orm/core@^7.2.0 @mikro-orm/sql@^7.2.0
+pnpm add @nest-boot/graphql-connection @nest-boot/graphql @mikro-orm/core@^7.2.0 @mikro-orm/sql@^7.2.0 @mikro-orm/decorators@^7.2.0
 ```
 
 ## 基本用法
@@ -111,7 +111,7 @@ export class UserResolver {
 字符串字段可以把全文检索映射到专门的 MikroORM 全文检索属性：
 
 ```typescript
-import { Entity, Index, Property } from "@mikro-orm/core";
+import { Entity, Index, Property } from "@mikro-orm/decorators/legacy";
 import { FullTextType } from "@mikro-orm/postgresql";
 
 @Entity()

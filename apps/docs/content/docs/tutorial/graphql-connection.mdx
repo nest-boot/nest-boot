@@ -10,9 +10,9 @@ The `@nest-boot/graphql-connection` module provides cursor-based pagination for 
 Requires MikroORM 7.2 or later. Cursor pagination follows the database platform's native null ordering, including when traversing nullable sort fields in either direction.
 
 ```bash
-npm install @nest-boot/graphql-connection @nest-boot/graphql @mikro-orm/core@^7.2.0 @mikro-orm/sql@^7.2.0
+npm install @nest-boot/graphql-connection @nest-boot/graphql @mikro-orm/core@^7.2.0 @mikro-orm/sql@^7.2.0 @mikro-orm/decorators@^7.2.0
 # or
-pnpm add @nest-boot/graphql-connection @nest-boot/graphql @mikro-orm/core@^7.2.0 @mikro-orm/sql@^7.2.0
+pnpm add @nest-boot/graphql-connection @nest-boot/graphql @mikro-orm/core@^7.2.0 @mikro-orm/sql@^7.2.0 @mikro-orm/decorators@^7.2.0
 ```
 
 ## Basic Usage
@@ -114,7 +114,7 @@ MongoDB-style filter syntax with operators: `$eq`, `$ne`, `$gt`, `$gte`, `$lt`, 
 String fields can map full-text filters to a dedicated MikroORM full-text property:
 
 ```typescript
-import { Entity, Index, Property } from "@mikro-orm/core";
+import { Entity, Index, Property } from "@mikro-orm/decorators/legacy";
 import { FullTextType } from "@mikro-orm/postgresql";
 
 @Entity()

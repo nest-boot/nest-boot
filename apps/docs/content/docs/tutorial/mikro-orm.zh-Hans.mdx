@@ -8,12 +8,27 @@ description: "MikroORM 集成，支持请求作用域实体管理器、EntitySer
 ## 安装
 
 ```bash
-pnpm add @nest-boot/mikro-orm @mikro-orm/core @mikro-orm/nestjs @mikro-orm/reflection @mikro-orm/migrations
+pnpm add @nest-boot/mikro-orm @mikro-orm/core @mikro-orm/decorators @mikro-orm/nestjs @mikro-orm/reflection @mikro-orm/migrations
 
 # 安装与 DATABASE_URL 匹配的驱动
 pnpm add @mikro-orm/postgresql
 # 或：pnpm add @mikro-orm/pglite
 ```
+
+`t`、`Opt`、`Ref` 和 `Collection` 统一从 `@mikro-orm/core` 导入；`Entity`、`Property`、`Enum` 等实体装饰器从 `@mikro-orm/decorators/legacy` 导入。`PostgreSqlDriver` 和 SQL `EntityManager` 等驱动专属 API 仍从驱动包导入。实体 ESLint 自动修复会迁移这些具名工具和旧装饰器导入，并保留别名与 type-only 修饰。
+
+从 MikroORM v6 升级时，原先转导出 core 或驱动的 barrel 还需要转导出 legacy 装饰器。ESLint 可以补全普通 `export *`。如果使用 `export * as orm`，先新建兼容 barrel，再将该 namespace 转导出指向它，以保留 `orm.Entity()` 等运行时成员和 `orm.Ref<T>` 等类型成员：
+
+```ts
+// orm-compat.ts
+export * from "@mikro-orm/core";
+export * from "@mikro-orm/decorators/legacy";
+
+// index.ts
+export * as orm from "./orm-compat.js";
+```
+
+如果原 barrel 转导出的是驱动，请在兼容 barrel 中保留该驱动入口。namespace 转导出不会自动替换成展开对象，因为这会丢失其类型命名空间；ESLint 的单文件修复也不能替你创建兼容文件。
 
 ## 模块注册
 
@@ -229,7 +244,8 @@ pnpm add @nest-boot/mikro-orm-crypt @nest-boot/crypt
 ```
 
 ```typescript
-import { Entity, PrimaryKey, t } from "@mikro-orm/postgresql";
+import { t } from "@mikro-orm/core";
+import { Entity, PrimaryKey } from "@mikro-orm/decorators/legacy";
 import { EncryptedProperty } from "@nest-boot/mikro-orm-crypt";
 
 @Entity()
@@ -269,7 +285,8 @@ pnpm add @nest-boot/mikro-orm-hash @nest-boot/hash
 ```
 
 ```typescript
-import { Entity, PrimaryKey, t } from "@mikro-orm/postgresql";
+import { t } from "@mikro-orm/core";
+import { Entity, PrimaryKey } from "@mikro-orm/decorators/legacy";
 import { HashedProperty } from "@nest-boot/mikro-orm-hash";
 
 @Entity()
