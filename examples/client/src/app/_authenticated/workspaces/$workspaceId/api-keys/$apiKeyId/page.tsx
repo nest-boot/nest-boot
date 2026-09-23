@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "@apollo/client/react";
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { t } from "i18next";
+import { useEffect } from "react";
 
 import { ApiKeyFormPage } from "@/components/api-key-form-page";
 import { ApiKeyNavigation } from "@/components/api-key-navigation";
@@ -73,7 +74,7 @@ function ApiKeyDetailsPage() {
     record: apiKey,
   });
   const { query, filter, orderBy } = createApiKeyQueryVariables(
-    navigation.search,
+    navigation.pageSearch,
   );
   const { data, loading, error, refetch } = useQuery(
     GET_WORKSPACE_API_KEY_NEIGHBORS,
@@ -97,7 +98,12 @@ function ApiKeyDetailsPage() {
   const next = neighbors?.next.edges[0];
   const listSearch = neighbors
     ? navigation.getBackSearch(previous?.cursor)
-    : navigation.search;
+    : navigation.pageSearch;
+  const { setPageSearch } = navigation;
+  useEffect(() => {
+    if (!neighbors) return;
+    setPageSearch((saved) => (saved === undefined ? undefined : listSearch));
+  }, [neighbors, listSearch, setPageSearch]);
   const listPath = `/workspaces/${workspaceId}/api-keys`;
   return (
     <ApiKeyFormPage

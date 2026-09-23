@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, renderHook } from "@testing-library/react";
+import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { usePageSearch } from "./use-page-search";
@@ -59,7 +59,7 @@ describe("usePageNavigation", () => {
     expect(result.current.currentCursor).toBe(cursor);
     expect(result.current.previousSearch).toEqual({ last: 1, before: cursor });
     expect(result.current.nextSearch).toEqual({ first: 1, after: cursor });
-    expect(result.current.search).toEqual({ first: 10 });
+    expect(result.current.pageSearch).toEqual({ first: 10 });
     expect(sessionStorage.length).toBe(0);
   });
 
@@ -72,14 +72,21 @@ describe("usePageNavigation", () => {
         query: z.string().optional(),
         orderBy: z.object({ field: z.string() }).nullish(),
       });
-      renderHook(
+      const saved = renderHook(
         () =>
           usePageSearch({
             key: ["id-only"],
             searchSchema,
-            search: { first: 5, after: "old", query: "example", orderBy },
           }),
         { wrapper },
+      );
+      act(() =>
+        saved.result.current.setPageSearch({
+          first: 5,
+          after: "old",
+          query: "example",
+          orderBy,
+        }),
       );
       const { result } = renderHook(
         () =>
@@ -116,14 +123,16 @@ describe("usePageNavigation", () => {
     { first: 5, after: "old" },
     { last: 5, before: "old" },
   ])("preserves filters and size but replaces pagination: %j", (pagination) => {
-    renderHook(
+    const saved = renderHook(
       () =>
         usePageSearch({
           key: pageKey,
           searchSchema: apiKeySearchSchema,
-          search: { ...conditions, ...pagination },
         }),
       { wrapper },
+    );
+    act(() =>
+      saved.result.current.setPageSearch({ ...conditions, ...pagination }),
     );
     const { result } = renderHook(
       () =>
@@ -158,25 +167,27 @@ describe("usePageNavigation", () => {
       });
     }
     // Callers can use the original search while neighbors are unavailable.
-    expect(result.current.search).toEqual(
+    expect(result.current.pageSearch).toEqual(
       apiKeySearchSchema.parse({ ...conditions, ...pagination }),
     );
   });
 
   it("derives the position from live record data, including browser-back and null sort values, without persisting it", () => {
-    renderHook(
+    const saved = renderHook(
       () =>
         usePageSearch({
           key: pageKey,
           searchSchema: apiKeySearchSchema,
-          search: {
-            orderBy: {
-              field: UserApiKeyOrderField.LAST_USED_AT,
-              direction: OrderDirection.DESC,
-            },
-          },
         }),
       { wrapper },
+    );
+    act(() =>
+      saved.result.current.setPageSearch({
+        orderBy: {
+          field: UserApiKeyOrderField.LAST_USED_AT,
+          direction: OrderDirection.DESC,
+        },
+      }),
     );
     const stored = JSON.stringify(sessionStorage);
     const { result, rerender } = renderHook(
@@ -207,7 +218,7 @@ describe("usePageNavigation", () => {
         }),
       { wrapper },
     );
-    expect(result.current.search).toEqual({
+    expect(result.current.pageSearch).toEqual({
       first: 20,
       orderBy: {
         field: UserApiKeyOrderField.CREATED_AT,
@@ -219,9 +230,9 @@ describe("usePageNavigation", () => {
       value: record.createdAt,
     });
     expect(result.current.getBackSearch("previous")).toEqual(
-      result.current.search,
+      result.current.pageSearch,
     );
-    expect(result.current.getBackSearch()).toEqual(result.current.search);
+    expect(result.current.getBackSearch()).toEqual(result.current.pageSearch);
     expect(sessionStorage.length).toBe(0);
   });
 
@@ -239,10 +250,10 @@ describe("usePageNavigation", () => {
         }),
       { wrapper },
     );
-    expect(result.current.search.orderBy.field).toBe(
+    expect(result.current.pageSearch.orderBy.field).toBe(
       UserApiKeyOrderField.CREATED_AT,
     );
-    expect(result.current.search).toMatchObject({ first: 5 });
+    expect(result.current.pageSearch).toMatchObject({ first: 5 });
     expect(JSON.parse(atob(result.current.currentCursor))).toEqual({
       id: record.id,
       value: record.createdAt,

@@ -70,10 +70,12 @@ principal lacks write permission. Enable/disable and delete remain list actions.
 
 API-key pages also demonstrate two hooks for list/detail navigation:
 
-- `usePageSearch({ key, searchSchema, search })` saves the list's validated
-  URL search in `sessionStorage`. Omit `search` on creation/detail pages to read
-  without overwriting it; passing `{}` explicitly resets it. The current user's
-  ID scopes every key. Personal keys use `["user", "api-keys"]`; workspace keys
+- `usePageSearch({ key, searchSchema })` returns `pageSearch` and `setPageSearch`.
+  Reading never overwrites storage. Lists call `setPageSearch` in an effect when
+  URL search changes. The setter accepts a value or a function of the latest
+  shared value; `{}` resets to schema defaults and `undefined` clears storage.
+  Writes are schema-validated; invalid updates throw and preserve the saved value.
+  The current user's ID scopes every key. Personal keys use `["user", "api-keys"]`; workspace keys
   use `["workspaces", workspaceId, "api-keys"]`. All callers of a key must reuse
   the same schema. Schemas must normalize JSON-compatible search values
   idempotently, as the existing connection search schemas do. Invalid stored
@@ -94,8 +96,11 @@ API-key pages also demonstrate two hooks for list/detail navigation:
   current record becomes the first list row, retaining the original filters,
   sorting, and page size. Both `null` and `undefined` cursors mean the first record
   and return to page one. Call this method only after the current record's neighbors
-  load successfully; otherwise use `navigation.search` unchanged. The breadcrumb
-  and footer share the resulting destination.
+  load successfully; otherwise use `navigation.pageSearch` unchanged. The navigation
+  hook also exposes `setPageSearch`. Detail pages use it to save the new list position
+  after loading each record's neighbors, including browser back/forward. They update
+  only existing saved search, so direct entry without a list visit remains read-only.
+  The breadcrumb and footer share the resulting destination.
 
 The list URL remains authoritative: entering a bare list URL resets its search
 instead of silently restoring storage. Direct detail visits without saved search

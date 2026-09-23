@@ -23,27 +23,40 @@ interface PageNavigationOptions<
   record: Record;
 }
 
-/** Derives cursor navigation from live record data; only list search is stored. */
+/** Derives cursor navigation from live record data; only page search is stored. */
 export function usePageNavigation<
   Schema extends z.ZodType<CursorPageSearch>,
   Record extends { id: string },
 >({ key, searchSchema, record }: PageNavigationOptions<Schema, Record>) {
-  const { search: savedSearch } = usePageSearch({ key, searchSchema });
-  const search = useMemo(
+  const { pageSearch: savedSearch, setPageSearch } = usePageSearch({
+    key,
+    searchSchema,
+  });
+  const pageSearch = useMemo(
     () => savedSearch ?? searchSchema.parse({}),
     [savedSearch, searchSchema],
   );
-  const currentCursor = createConnectionCursor(record, search.orderBy?.field);
-  const { first, last, after: _after, before: _before, ...conditions } = search;
+  const currentCursor = createConnectionCursor(
+    record,
+    pageSearch.orderBy?.field,
+  );
+  const {
+    first,
+    last,
+    after: _after,
+    before: _before,
+    ...conditions
+  } = pageSearch;
 
   return {
-    search,
+    pageSearch,
+    setPageSearch,
     currentCursor,
     previousSearch: { ...conditions, last: 1, before: currentCursor },
     nextSearch: { ...conditions, first: 1, after: currentCursor },
     /** No saved search uses defaults; an absent previous cursor means page one. */
     getBackSearch(previousCursor?: string | null): z.output<Schema> {
-      if (!savedSearch) return search;
+      if (!savedSearch) return pageSearch;
       return searchSchema.parse({
         ...conditions,
         first: first ?? last,

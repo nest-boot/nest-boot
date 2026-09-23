@@ -73,6 +73,30 @@ async function expectNeighbor(
   );
 }
 
+async function expectSavedPosition(page: Page, previousId?: string) {
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        const entry = Object.entries(sessionStorage).find(([key]) =>
+          key.startsWith("page-search:v1:"),
+        );
+        if (!entry) return null;
+        const search = JSON.parse(entry[1]);
+        return {
+          ...search,
+          after: search.after ? JSON.parse(atob(search.after)).id : null,
+        };
+      }),
+    )
+    .toMatchObject({
+      first: 2,
+      query,
+      filter,
+      orderBy: { field: "ID", direction: "ASC" },
+      after: previousId ?? null,
+    });
+}
+
 test("browses details across pages, survives back and refresh, then anchors the filtered list at the current key", async ({
   page,
 }) => {
@@ -90,6 +114,7 @@ test("browses details across pages, survives back and refresh, then anchors the 
   await page.getByTestId("api-key-previous").click();
   await expectDetails(page, b.name);
   await expectNeighbor(page, "previous", a.id);
+  await expectSavedPosition(page, a.id);
   await page.getByTestId("api-key-previous").click();
   await expectDetails(page, a.name);
   await expectNeighbor(page, "next", b.id);
@@ -106,16 +131,20 @@ test("browses details across pages, survives back and refresh, then anchors the 
       };
     })
     .toEqual({ after: null, query });
+  await expectSavedPosition(page);
   await page.goBack();
   await expectDetails(page, b.name);
+  await expectSavedPosition(page, a.id);
   await page.goBack();
   await expectDetails(page, c.name);
+  await expectSavedPosition(page, b.id);
   await page.reload();
   await expectNeighbor(page, "previous", b.id);
   await page.getByTestId("api-key-next").click();
   await expectDetails(page, d.name);
   await expectNeighbor(page, "previous", c.id);
   await expect(page.getByTestId("api-key-next")).toBeDisabled();
+  await expectSavedPosition(page, c.id);
   await page.getByTestId("api-key-previous").click();
   await expectDetails(page, c.name);
   await expectNeighbor(page, "previous", b.id);

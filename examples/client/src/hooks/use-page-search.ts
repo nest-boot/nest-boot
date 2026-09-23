@@ -7,9 +7,16 @@ export type PageKey = ReadonlyArray<string | number>;
 export interface PageSearchOptions<Schema extends z.ZodType> {
   key: PageKey;
   searchSchema: Schema;
-  /** Omit to read only. An empty object explicitly replaces the saved search. */
-  search?: z.input<Schema>;
 }
+
+type PageSearchUpdater<Schema extends z.ZodType> = (
+  previous: z.output<Schema> | undefined,
+) => z.input<Schema> | undefined;
+
+type PageSearchUpdate<Schema extends z.ZodType> =
+  | z.input<Schema>
+  | undefined
+  | PageSearchUpdater<Schema>;
 
 interface Entry {
   value: string | null;
@@ -73,8 +80,10 @@ function parse<Schema extends z.ZodType>(
 export function usePageSearch<Schema extends z.ZodType>({
   key,
   searchSchema,
-  search,
-}: PageSearchOptions<Schema>): { search: z.output<Schema> | undefined } {
+}: PageSearchOptions<Schema>): {
+  pageSearch: z.output<Schema> | undefined;
+  setPageSearch: (update: PageSearchUpdate<Schema>) => void;
+} {
   const { id: userId } = useCurrentUserContext();
   const storageKey = `page-search:v1:${JSON.stringify([userId, ...key])}`;
   const subscribe = useCallback(
@@ -94,32 +103,35 @@ export function usePageSearch<Schema extends z.ZodType>({
   );
   const getSnapshot = useCallback(() => read(storageKey), [storageKey]);
   const raw = useSyncExternalStore(subscribe, getSnapshot, () => null);
-  const savedSearch = useMemo(
+  const pageSearch = useMemo(
     () => parse(raw, searchSchema),
     [raw, searchSchema],
   );
 
-  // Serialize a validated value so unrelated URL fields are not persisted.
-  let serialized: string | null | undefined;
-  if (search !== undefined) {
-    try {
-      const result = searchSchema.safeParse(search);
-      serialized = result.success ? JSON.stringify(result.data) : null;
-    } catch {
-      serialized = null;
-    }
-  }
+  const setPageSearch = useCallback(
+    (update: PageSearchUpdate<Schema>) => {
+      const next =
+        typeof update === "function"
+          ? (update as PageSearchUpdater<Schema>)(
+              parse(read(storageKey), searchSchema),
+            )
+          : update;
+      // Validate before writing so invalid updates preserve the last valid value.
+      const serialized =
+        next === undefined ? null : JSON.stringify(searchSchema.parse(next));
+      if (serialized === undefined) {
+        throw new TypeError("Page search must be JSON-serializable.");
+      }
+      write(storageKey, serialized);
+    },
+    [storageKey, searchSchema],
+  );
 
   useEffect(() => {
-    if (serialized !== undefined) write(storageKey, serialized);
-    else if (
-      raw !== null &&
-      savedSearch === undefined &&
-      read(storageKey) === raw
-    ) {
+    if (raw !== null && pageSearch === undefined && read(storageKey) === raw) {
       write(storageKey, null);
     }
-  }, [storageKey, serialized, raw, savedSearch]);
+  }, [storageKey, raw, pageSearch]);
 
-  return { search: savedSearch };
+  return { pageSearch, setPageSearch };
 }

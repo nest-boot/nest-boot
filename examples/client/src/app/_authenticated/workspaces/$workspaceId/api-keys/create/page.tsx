@@ -49,7 +49,7 @@ export const Route = createFileRoute(
 
 function CreateApiKeyPage() {
   const { workspaceId } = Route.useParams();
-  const { search } = usePageSearch({
+  const { pageSearch } = usePageSearch({
     key: getWorkspaceApiKeysPageKey(workspaceId),
     searchSchema: apiKeySearchSchema,
   });
@@ -62,7 +62,7 @@ function CreateApiKeyPage() {
       key={workspaceId}
       canWrite
       listPath={`/workspaces/${workspaceId}/api-keys`}
-      listSearch={search}
+      listSearch={pageSearch}
       permissionValues={workspaceApiKeyPermissionValues}
       permissionOptions={getPermissionOptions(permissionOptions)}
       defaultPermissions={getDefaultApiKeyPermissions(permissionOptions)}

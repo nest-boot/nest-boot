@@ -80,7 +80,7 @@ test("isolates two workspaces' list search, creation returns and detail navigati
       `${workspace.path}/${workspace === one ? workspace.keys[3].id : workspace.keys[4].id}`,
     );
   }
-  // A detail/create visit must not overwrite either workspace's saved list.
+  // Entering the first row preserves each workspace's page; create remains read-only.
   const saved = await page.evaluate(() =>
     Object.fromEntries(
       Object.entries(sessionStorage).filter(([key]) =>
@@ -130,6 +130,24 @@ test("isolates two workspaces' list search, creation returns and detail navigati
     `${one.path}/${one.keys[3].id}`,
   );
   await expect(page.getByTestId("api-key-next")).toBeDisabled();
+  await expect
+    .poll(async () =>
+      page.evaluate((workspaceId) => {
+        const entry = Object.entries(sessionStorage).find(
+          ([key]) =>
+            key.startsWith("page-search:v1:") && key.includes(workspaceId),
+        );
+        if (!entry) return null;
+        const search = JSON.parse(entry[1]);
+        return search.after ? JSON.parse(atob(search.after)).id : null;
+      }, one.id),
+    )
+    .toBe(one.keys[3].id);
+  // Advancing one workspace must leave the other's saved state untouched.
+  const otherKey = Object.keys(saved).find((key) => key.includes(two.id))!;
+  expect(
+    await page.evaluate((key) => sessionStorage.getItem(key), otherKey),
+  ).toBe(saved[otherKey]);
   await page.getByTestId("api-key-previous").click();
   await expect(page.getByTestId("api-key-previous")).toHaveAttribute(
     "href",

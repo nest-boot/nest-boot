@@ -38,7 +38,7 @@ export const Route = createFileRoute("/_authenticated/user/api-keys/create/")({
 });
 
 function CreateApiKeyPage() {
-  const { search } = usePageSearch({
+  const { pageSearch } = usePageSearch({
     key: userApiKeysPageKey,
     searchSchema: apiKeySearchSchema,
   });
@@ -51,7 +51,7 @@ function CreateApiKeyPage() {
     <ApiKeyFormPage
       canWrite
       listPath={"/user/api-keys"}
-      listSearch={search}
+      listSearch={pageSearch}
       permissionValues={authPermissionValues}
       permissionOptions={getPermissionOptions(permissionOptions)}
       defaultPermissions={getDefaultApiKeyPermissions(permissionOptions)}
